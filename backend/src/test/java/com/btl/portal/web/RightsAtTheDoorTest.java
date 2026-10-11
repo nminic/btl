@@ -1216,10 +1216,13 @@ class RightsAtTheDoorTest {
 	 *
 	 * <p><b>"Asks which member" is the type system answering</b>: {@link MemberOfAccount} is the one home
 	 * of that question, so a class that holds one asks it - directly, or through a bean of the portal's
-	 * that holds one, which is what {@link #asksWhichMember} reads. {@code MePasswordApi} is not such a
-	 * class and is not named: a password belongs to the account and not to a member, so there is no
-	 * question for a body to be read in front of, and every signed in account is entitled to be told 400
-	 * there.
+	 * that holds one, which is what {@link #asksWhichMember} reads. {@code MePasswordApi} is such a class
+	 * since PDL P8 of 11.10.2026, and is not named: it asks whether the member behind the account HAS
+	 * LAPSED, so it reads its body through {@link WhatWasSent} after that question and not as an argument
+	 * before it. It asks nothing of an account that names no member, because a password belongs to the
+	 * account and not to a member, so every signed in account that may use it is entitled to be told 400
+	 * there; {@code ABodyIsReadAfterTheDoorOverRealHttpTest} leaves it out of the comparisons about an
+	 * account that names no member by its name on the list of what a member who has never paid may do.
 	 *
 	 * <p><b>The routes the door decides are asked the opposite question, which is why this has two
 	 * halves.</b> A route a right guards is refused by the door, in {@code preHandle}, before any argument

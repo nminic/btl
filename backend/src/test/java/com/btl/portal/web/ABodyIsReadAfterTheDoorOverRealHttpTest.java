@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -60,9 +61,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p><b>Which routes is read off the dispatcher and is not a list.</b> A handler no right decides at
  * the door, whose class holds a {@link MemberOfAccount} - which is the type system saying the class
- * asks the question - and which takes a body. {@code PUT /api/me/password} is not one of them and is
- * not named: its class asks no such question, because a password belongs to the account and not to a
- * member, so every signed in account is entitled to be told 400 there.
+ * asks the question - and which takes a body. A route that a member who has NEVER paid may use is left
+ * out, and by its name in {@code NoWriteTakesAMemberWhoHasNotPaidTest.MAY_BEFORE_PAYING}, which is a
+ * list this class does not keep. {@code PUT /api/me/password} is the one: since PDL P8 of 11.10.2026 its
+ * class asks whether the member behind the account HAS LAPSED, so it holds the question, but it asks
+ * nothing of an account that names no member, because a password belongs to the account and not to a
+ * member, and every signed in account that may use it is entitled to be told 400 there. A member whose
+ * fee has lapsed is turned away from it, and from {@code PUT /api/me}, as an address that maps nothing,
+ * and that is asked in {@link #aMemberWhoseFeeHasLapsedIsToldWhatAnAddressThatMapsNothingIsTold}.
  *
  * <p><b>Three comparisons, because there are three things a refusal can give away.</b>
  *
@@ -137,6 +143,22 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 	private long theMemberWhoHasNotPaid;
 
 	/**
+	 * A MEMBER WHO WAS MADE A MEMBER ONCE AND WHOSE FEE DOES NOT STAND: a number (V16), not active, and no
+	 * row of {@code membership} at all - the one a rule that told him from somebody who never paid BY A ROW
+	 * would take for somebody who never paid. PDL P8 of 11.10.2026 takes {@code PUT /api/me} and
+	 * {@code PUT /api/me/password} from him and leaves him the renewal and his profile. He is asked every act
+	 * of his own beside the member who never paid ({@link #membersWhoHaveNotPaid}), and the two routes he is
+	 * turned away from, and nobody else is, by themselves
+	 * ({@link #aMemberWhoseFeeHasLapsedIsToldWhatAnAddressThatMapsNothingIsTold}).
+	 */
+	private static final String A_MEMBER_WHOSE_FEE_HAS_LAPSED = "b257-istekao@primer.rs";
+
+	private static final String THE_NUMBER_OF_THE_ONE_WHOSE_FEE_HAS_LAPSED = "990203";
+
+	/** {@code competitor.id} of the member whose fee has lapsed, who holds a number and no row. */
+	private long theMemberWhoseFeeHasLapsed;
+
+	/**
 	 * EVERY BODY THAT IS NOT THE ONE THE FORM ASKS FOR, and each is a different way of not being it:
 	 * cut short, nothing, the wrong shape, not JSON at all, and JSON that says nothing.
 	 */
@@ -172,14 +194,15 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 	private final Map<String, String> sessions = new LinkedHashMap<>();
 
 	/**
-	 * THREE KINDS OF CALLER, AND THE FOURTH IS NOBODY.
+	 * FIVE KINDS OF CALLER, AND THE SIXTH IS NOBODY.
 	 *
 	 * <p>The member is the anchor. The moderator who races for nobody is the account the member-less
 	 * answers are for, and the one holding every box is the one who knows the most: a right does not
-	 * make a member, so he must be told exactly what the other is.
+	 * make a member, so he must be told exactly what the other is. The member who has never paid and the
+	 * member whose fee has lapsed are the two the decision of P8U is about.
 	 */
 	@BeforeEach
-	void threeKindsOfCaller() {
+	void fiveKindsOfCaller() {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, first_season, first_season_2027, active, membership_basis,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
@@ -211,6 +234,21 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 		db.sql("update account set competitor_id = ? where email = ?")
 				.params(theMemberWhoHasNotPaid, A_MEMBER_WHO_HAS_NOT_PAID).update();
 
+		theMemberWhoseFeeHasLapsed = db.sql("insert into competitor (member_number, first_name, last_name,"
+						+ " gender, birth_date, place_id, first_season, first_season_2027, active,"
+						+ " membership_basis, referral_code, bio, profile_hidden, birthday_shown,"
+						+ " father_name, address, shirt_size, health_statement_at)"
+						+ " values (?, 'Istekao', 'Istekaovic', 'M', date '1990-01-01',"
+						+ " (select id from place where rank = 1), 2027, false, false, 'payment', ?, '',"
+						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
+						+ " returning id")
+				.params(THE_NUMBER_OF_THE_ONE_WHOSE_FEE_HAS_LAPSED, "b257000000000002")
+				.query(Long.class).single();
+
+		account(A_MEMBER_WHOSE_FEE_HAS_LAPSED, "competitor");
+		db.sql("update account set competitor_id = ? where email = ?")
+				.params(theMemberWhoseFeeHasLapsed, A_MEMBER_WHOSE_FEE_HAS_LAPSED).update();
+
 		for (String right : db.sql("select code from admin_right").query(String.class).list()) {
 			db.sql("insert into account_admin_right (account_id, right_code)"
 							+ " values ((select id from account where email = ?), ?)")
@@ -227,6 +265,7 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 
 		db.sql("delete from competitor where member_number = ?").param(THE_MEMBERS_NUMBER).update();
 		db.sql("delete from competitor where id = ?").param(theMemberWhoHasNotPaid).update();
+		db.sql("delete from competitor where id = ?").param(theMemberWhoseFeeHasLapsed).update();
 	}
 
 	private void account(String email, String role) {
@@ -423,6 +462,15 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 					: patterns.getPatternValues()) {
 				for (String verb : one.getKey().getMethodsCondition().getMethods().stream()
 						.map(Enum::name).toList()) {
+					/* A ROUTE A MEMBER WHO HAS NEVER PAID MAY USE IS NOT ONE THAT TURNS AN ACCOUNT
+					   NAMING NO MEMBER AWAY, and every comparison made of these routes is about that
+					   account. It is left out by its name on the list of what he may do, which is
+					   kept in NoWriteTakesAMemberWhoHasNotPaidTest and is not a list kept here. */
+					if (NoWriteTakesAMemberWhoHasNotPaidTest.MAY_BEFORE_PAYING
+							.containsKey(verb + " " + pattern)) {
+						continue;
+					}
+
 					found.add(new Route(verb, pattern, ApiSecurity.READ_BY_ANYBODY.contains(pattern),
 							validBodyOf(body.get())));
 				}
@@ -703,9 +751,13 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 		return found;
 	}
 
-	/** The members this class asks about, each a different way of not having paid. */
+	/**
+	 * The members this class asks about, each a different way of not having paid: somebody who never did
+	 * and a member whose fee has lapsed. Both are turned away from every act of his own and from the two
+	 * fields of {@code PUT /api/me} that make a member seen, down the same road.
+	 */
 	private static List<String> membersWhoHaveNotPaid() {
-		return List.of(A_MEMBER_WHO_HAS_NOT_PAID);
+		return List.of(A_MEMBER_WHO_HAS_NOT_PAID, A_MEMBER_WHOSE_FEE_HAS_LAPSED);
 	}
 
 	/**
@@ -748,6 +800,17 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 				.as("the member who has not paid names a member who carries a number or is active, so"
 						+ " the case about him is about somebody else")
 				.isTrue();
+		assertThat(db.sql("select c.member_number is not null and not c.active from account a"
+						+ " join competitor c on c.id = a.competitor_id where a.email = ?")
+				.param(A_MEMBER_WHOSE_FEE_HAS_LAPSED).query(Boolean.class).single())
+				.as("the member whose fee has lapsed names a member who carries no number or is active, so"
+						+ " the case about him is about somebody else")
+				.isTrue();
+		assertThat(db.sql("select count(*) from membership where competitor_id = ?")
+				.param(theMemberWhoseFeeHasLapsed).query(Long.class).single())
+				.as("the member whose fee has lapsed holds a row of membership, so a rule that told him"
+						+ " from somebody who never paid by the row would not be asked about him")
+				.isZero();
 	}
 
 	/**
@@ -1112,6 +1175,228 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 				his, address,
 				answerTo(act.verb(), address, MODERATOR_WITH_NO_MEMBER, act.contentType(), body, chunked),
 				address));
+
+		return wrong;
+	}
+
+	/**
+	 * THE FIELDS OF {@code PUT /api/me} THAT A MEMBER WHO HAS NEVER PAID MAY CHANGE, as a body: every
+	 * field of {@link MeWriteApi.Change} except the two that make a member seen. That route reads its body
+	 * by hand and declares no type for it, so there is nothing for {@link #validBodyOf} to read.
+	 */
+	private static String theFieldsOfHisOwn() {
+		return Stream.of(MeWriteApi.Change.class.getRecordComponents())
+				.filter(one -> !MeWriteApi.ONLY_A_MEMBER_WHOSE_FEE_STANDS_CHANGES.contains(one.getName()))
+				.map(ABodyIsReadAfterTheDoorOverRealHttpTest::aValueFor).filter(v -> v != null)
+				.collect(Collectors.joining(",", "{", "}"));
+	}
+
+	/**
+	 * THE ROUTES A MEMBER WHO HAS NEVER PAID MAY USE AND A MEMBER WHOSE FEE HAS LAPSED MAY NOT, each as a
+	 * request its route takes.
+	 *
+	 * <p>Read off the list of what he may do, {@code NoWriteTakesAMemberWhoHasNotPaidTest.MAY_BEFORE_PAYING},
+	 * the entries whose {@code lapsedToo} is false: not a list this class keeps. That class holds that they are
+	 * the two PDL P8 of 11.10.2026 names ({@code PUT /api/me}, {@code PUT /api/me/password}), and holds each
+	 * of them against the answers of the server. How each is sent is read off its mapping, the way
+	 * {@link #actsOfHisOwn} does it: JSON, built from the type the handler declares for its body where it
+	 * declares one.
+	 */
+	private List<ActAsSent> routesTheLapsedAreTurnedAwayFrom() {
+		List<ActAsSent> found = new ArrayList<>();
+
+		for (Map.Entry<String, NoWriteTakesAMemberWhoHasNotPaidTest.Before> one
+				: new TreeMap<>(NoWriteTakesAMemberWhoHasNotPaidTest.MAY_BEFORE_PAYING).entrySet()) {
+
+			if (one.getValue().lapsedToo() || one.getValue().act() == null) {
+				continue;
+			}
+
+			String name = one.getKey();
+			String verb = name.substring(0, name.indexOf(' '));
+			String pattern = name.substring(name.indexOf(' ') + 1);
+			Map.Entry<RequestMappingInfo, HandlerMethod> mapped = mappingOf(verb, pattern);
+
+			assertThat(mapped.getKey().getConsumesCondition().getConsumableMediaTypes())
+					.as("%s does not consume JSON, so a body is sent to it as something it does not take",
+							name)
+					.contains(MediaType.APPLICATION_JSON);
+
+			String form = TheBodyOf.type(mapped.getValue())
+					.map(ABodyIsReadAfterTheDoorOverRealHttpTest::validBodyOf)
+					.orElseGet(ABodyIsReadAfterTheDoorOverRealHttpTest::theFieldsOfHisOwn);
+
+			found.add(new ActAsSent(name, verb, pattern, ApiSecurity.READ_BY_ANYBODY.contains(pattern),
+					mapped.getValue(), Takes.JSON, JSON, form.getBytes(StandardCharsets.ISO_8859_1), true));
+		}
+
+		return found;
+	}
+
+	/**
+	 * A MEMBER WHOSE FEE HAS LAPSED IS TOLD, BYTE FOR BYTE, WHAT AN ADDRESS THAT MAPS NOTHING TELLS HIM, ON
+	 * THE TWO ROUTES OF HIS DATA AND HIS PASSWORD, WHATEVER HE SENT.
+	 *
+	 * <p>PDL P8, 11.10.2026: „izmena podataka (`PUT /api/me`) i lozinke (`PUT /api/me/password`) mu daje
+	 * 404". What MockMvc cannot see is the road that 404 takes: a status written onto the response and an
+	 * error sent through the container are one number and different bytes, and the difference is an oracle
+	 * for whether a write lives at the address (ADL A8, 13.09.2026). So his answer to the request the form
+	 * sends is compared with the answer of an address of the same length that maps nothing, and so is his
+	 * answer to every other body: one that cannot be read, none at all, and one a byte over the line,
+	 * declared and in chunks, which is what shows that his body is not read before the question is asked.
+	 *
+	 * <p><b>Compared with the twin and NOT with the moderator who races for nobody</b>, as the acts of
+	 * {@link #actsOfHisOwn} are: that account is not turned away from {@code PUT /api/me/password}, which
+	 * belongs to the account and not to a member, so the two would be answered otherwise there and the
+	 * comparison would hold nothing. The twin is the comparison only on an address that
+	 * {@link ApiSecurity#READ_BY_ANYBODY} does not open, and this asserts that neither route is on one.
+	 *
+	 * <p><b>The anchors are the callers the routes ARE for.</b> A member who has never paid is not told 404
+	 * for the request the form sends, is told 400 in the route's own words for every body that cannot be
+	 * read, and 413 for the one over the line: so the route does read a body, and what turns the other away
+	 * is the question in front of it. Somebody who is not signed in is told 401 for every body, as on every
+	 * route {@link #routes} derives, which this class no longer asks of {@code PUT /api/me/password}.
+	 */
+	@Test
+	void aMemberWhoseFeeHasLapsedIsToldWhatAnAddressThatMapsNothingIsTold() throws Exception {
+		List<ActAsSent> acts = routesTheLapsedAreTurnedAwayFrom();
+
+		assertThat(acts)
+				.as("no route is one a member who has never paid may use and a member whose fee has lapsed"
+						+ " may not, so every comparison below is empty")
+				.isNotEmpty();
+		assertThat(acts.stream().filter(ActAsSent::open).map(ActAsSent::what).toList())
+				.as("a route the lapsed are turned away from is on an address opened for reading, where"
+						+ " the decision of 18.09.2026 keeps the status written onto the response and an"
+						+ " address that maps nothing is not what the answer is compared with")
+				.isEmpty();
+
+		List<String> wrong = new ArrayList<>();
+
+		for (ActAsSent act : acts) {
+			theDispatcherTakesIt(act);
+
+			wrong.addAll(howTheLapsedAreTurnedAway(A_MEMBER_WHOSE_FEE_HAS_LAPSED, act));
+			wrong.addAll(howSomebodyWhoMayUseItIsTold(A_MEMBER_WHO_HAS_NOT_PAID, act));
+			wrong.addAll(howNobodyIsTold(act));
+		}
+
+		assertThat(wrong)
+				.as("a member whose fee has lapsed was told something an address that maps nothing is not"
+						+ " told, or a member who may use the route was not told what the route tells him, or"
+						+ " somebody not signed in was not told to sign in")
+				.isEmpty();
+	}
+
+	/** Every body a member whose fee has lapsed is asked, each answered like an address that maps nothing. */
+	private List<String> howTheLapsedAreTurnedAway(String caller, ActAsSent act) throws Exception {
+		List<String> wrong = new ArrayList<>(
+				likeAnAddressThatMapsNothing(caller, act, act.what(), act.form(), false));
+
+		for (String body : BODIES_THAT_ARE_NOT_THE_FORM) {
+			wrong.addAll(likeAnAddressThatMapsNothing(caller, act, act.what() + ", body [" + body + "]",
+					body.getBytes(StandardCharsets.ISO_8859_1), false));
+		}
+
+		for (boolean chunked : new boolean[] {false, true}) {
+			wrong.addAll(likeAnAddressThatMapsNothing(caller, act, act.what() + ", a body one byte over the"
+					+ " line, " + (chunked ? "chunked" : "declared"), aBodyOverTheLine(), chunked));
+		}
+
+		return wrong;
+	}
+
+	/** ONE REQUEST: pinned to 404, so that two answers that are both a fault are not "the same", and then the twin's. */
+	private List<String> likeAnAddressThatMapsNothing(String caller, ActAsSent act, String what, byte[] body,
+			boolean chunked) throws Exception {
+
+		List<String> wrong = new ArrayList<>();
+		String address = act.address();
+		String twin = twinOf(address);
+		String his = answerTo(act.verb(), address, caller, act.contentType(), body, chunked);
+
+		if (!firstLine(his).equals("HTTP/1.1 404 ")) {
+			wrong.add(what + " from " + caller + " was not answered as nothing is, but "
+					+ firstLine(his).strip());
+		}
+
+		wrong.addAll(differences(what + " from " + caller + " against its twin", his, address,
+				answerTo(act.verb(), twin, caller, act.contentType(), body, chunked), twin));
+
+		return wrong;
+	}
+
+	/**
+	 * WHAT A MEMBER WHO MAY USE THE ROUTE IS TOLD, which is the anchor of the comparison above: he is not
+	 * turned away by the request the form sends, and the route reads his body.
+	 */
+	private List<String> howSomebodyWhoMayUseItIsTold(String caller, ActAsSent act) throws Exception {
+		List<String> wrong = new ArrayList<>();
+		String address = act.address();
+		String form = answerTo(act.verb(), address, caller, act.contentType(), act.form(), false);
+
+		if (firstLine(form).equals("HTTP/1.1 404 ")) {
+			wrong.add(act.what() + " from " + caller + ": a member who may use the route was answered 404 for"
+					+ " the request the form sends, so the refusal of the lapsed member is the request and"
+					+ " not his fee");
+		}
+
+		for (String body : BODIES_THAT_ARE_NOT_THE_FORM) {
+			String answer = answerTo(act.verb(), address, caller, act.contentType(),
+					body.getBytes(StandardCharsets.ISO_8859_1), false);
+
+			if (!firstLine(answer).equals("HTTP/1.1 400 ")) {
+				wrong.add(act.what() + ", body [" + body + "] from " + caller + ": a body that cannot be read"
+						+ " was answered " + firstLine(answer).strip() + " and not 400, so the route does not"
+						+ " read it for the member it is for");
+			}
+			else if (!answer.contains("\"reason\":\"theFormIsNotComplete\"")) {
+				wrong.add(act.what() + ", body [" + body + "] from " + caller + ": the refusal is the"
+						+ " container's error document and not the route's own sentence");
+			}
+		}
+
+		for (boolean chunked : new boolean[] {false, true}) {
+			String answer = answerTo(act.verb(), address, caller, act.contentType(), aBodyOverTheLine(), chunked);
+
+			if (!firstLine(answer).equals("HTTP/1.1 413 ")) {
+				wrong.add(act.what() + ", a body one byte over the line, " + (chunked ? "chunked" : "declared")
+						+ " from " + caller + " was answered " + firstLine(answer).strip() + " and not 413");
+			}
+		}
+
+		return wrong;
+	}
+
+	/**
+	 * WHAT SOMEBODY WHO IS NOT SIGNED IN IS TOLD: 401 for every body, the form and the one over the line
+	 * included, and the twin's bytes. The 401 comes from the chain before anything reads a byte.
+	 */
+	private List<String> howNobodyIsTold(ActAsSent act) throws Exception {
+		List<String> wrong = new ArrayList<>();
+		String address = act.address();
+		String twin = twinOf(address);
+
+		List<byte[]> bodies = new ArrayList<>();
+		bodies.add(act.form());
+
+		for (String body : BODIES_THAT_ARE_NOT_THE_FORM) {
+			bodies.add(body.getBytes(StandardCharsets.ISO_8859_1));
+		}
+
+		bodies.add(aBodyOverTheLine());
+
+		for (byte[] body : bodies) {
+			String what = act.what() + " with a body of " + body.length + " bytes and nobody signed in";
+			String toTheRoute = answerTo(act.verb(), address, null, act.contentType(), body, false);
+
+			if (!firstLine(toTheRoute).equals("HTTP/1.1 401 ")) {
+				wrong.add(what + " was not told to sign in, but " + firstLine(toTheRoute).strip());
+			}
+
+			wrong.addAll(differences(what + " against its twin", toTheRoute, address,
+					answerTo(act.verb(), twin, null, act.contentType(), body, false), twin));
+		}
 
 		return wrong;
 	}
