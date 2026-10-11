@@ -101,6 +101,13 @@ export const WHEN_A_RESULT_IS_WRITTEN: Record<string, string> = {
   theCountryIsNotKnown: 'results.refused.theCountryIsNotKnown',
   theCountryBelongsToATypedTown: 'results.refused.theCountryBelongsToATypedTown',
   aTypedTownNamesItsCountry: 'results.refused.aTypedTownNamesItsCountry',
+  /* This route's own two for a town typed by hand, which `EventWriteApi` does not have, so they
+     are not borrowed from it. The first is the owner's phrase (ADL, 10.10.2026: „Stavi samo
+     validaciju "Predugačak naziv grada"."); the second is worded by whoever wrote the route, and
+     the answer it carries out asks only for „granicu dužine i znakova na serveru" (PDL,
+     10.10.2026). Reachable only from the road where the member describes a race. */
+  theTownIsTooLong: 'results.refused.theTownIsTooLong',
+  theTownHoldsAnInvisibleCharacter: 'results.refused.theTownHoldsAnInvisibleCharacter',
   /* The three the proof rule names (`ProofThatTheRunHappened`). The forms ask for a link
      unless a picture stands in for it, so the first two are what a body that went round a
      form would meet; the third is a link that is not a web address, which a form does not

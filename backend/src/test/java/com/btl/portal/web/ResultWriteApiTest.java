@@ -29,9 +29,12 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -455,6 +458,100 @@ class ResultWriteApiTest {
 		assertThat(reasonIn(reportedAs(ME, form(described))))
 				.as("a country the codebook does not hold was taken")
 				.isEqualTo(EventWriteApi.THE_COUNTRY_IS_NOT_KNOWN);
+	}
+
+	/**
+	 * A TOWN TYPED BY HAND IS HELD TO THE BOX IT IS TYPED INTO: ONE THAT FILLS IT IS TAKEN, ONE
+	 * CHARACTER MORE IS REFUSED BY NAME, AND NOTHING OF IT IS WRITTEN.
+	 *
+	 * <p>The owner, 10.10.2026: „Stavi samo validaciju "Predugačak naziv grada"." Both sides of
+	 * the boundary, so a limit moved one way or the other is a different answer; and counted the
+	 * way the box counts, in code units, so a town of letters outside the first plane (two units
+	 * each) is held to the same eighty units and not to eighty letters. Spaces at its end do not
+	 * count, because they are not stored.
+	 */
+	@Test
+	void aTownTypedByHandIsHeldToTheBoxItIsTypedInto() throws Exception {
+		Map<String, Object> described = aDescribedRun();
+
+		described.remove("placeId");
+		described.put("country", aCountryCode());
+
+		for (String fills : List.of("a".repeat(80), "a".repeat(80) + "   ", "𝔸".repeat(40))) {
+			described.put("city", fills);
+
+			assertThat(reportedAs(ME, form(described)).getStatus())
+					.as("a town that fills its box was refused (%d units)", fills.length())
+					.isEqualTo(201);
+		}
+
+		long before = howManySubmissions();
+
+		for (String over : List.of("a".repeat(81), "𝔸".repeat(40) + "a")) {
+			described.put("city", over);
+
+			assertThat(reasonIn(reportedAs(ME, form(described))))
+					.as("a town longer than its box was taken (%d units)", over.length())
+					.isEqualTo(ResultWriteApi.THE_TOWN_IS_TOO_LONG);
+		}
+
+		assertThat(howManySubmissions()).as("a refused town was written down anyway").isEqualTo(before);
+	}
+
+	/**
+	 * A TOWN TYPED BY HAND THAT HOLDS A CHARACTER NOBODY SEES IS REFUSED BY NAME: one that turns
+	 * the direction of writing, and the rest of Unicode's control and format characters.
+	 *
+	 * <p>The owner's answer of 10.10.2026 asks a limit of „znakova" on the server as well as of
+	 * length. One case per character the security review and the portal's own address rule found
+	 * doing harm (`data/outsideLink.ts`), each inside an ordinary town, and an ordinary town with a
+	 * hyphen, an apostrophe and letters of three scripts that is taken, so a rule that refused more
+	 * than the two categories is a different answer too.
+	 */
+	@ParameterizedTest
+	@CsvSource({ "202E", "200B", "200E", "2066", "00AD", "0009", "000A", "0085" })
+	void aTownTypedByHandThatHoldsACharacterNobodySeesIsRefused(String code) throws Exception {
+		Map<String, Object> described = aDescribedRun();
+
+		described.remove("placeId");
+		described.put("country", aCountryCode());
+		described.put("city", "Bela" + Character.toString(Integer.parseInt(code, 16)) + "Palanka");
+
+		long before = howManySubmissions();
+
+		assertThat(reasonIn(reportedAs(ME, form(described))))
+				.as("a town holding U+%s was taken", code)
+				.isEqualTo(ResultWriteApi.THE_TOWN_HOLDS_AN_INVISIBLE_CHARACTER);
+		assertThat(howManySubmissions()).isEqualTo(before);
+
+		described.put("city", "Sremska Mitrovica-Laćarak d'Ivoire Шабац");
+
+		assertThat(reportedAs(ME, form(described)).getStatus())
+				.as("an ordinary town was refused for its letters")
+				.isEqualTo(201);
+	}
+
+	/**
+	 * THE LIMIT IS THE ONE THE MEMBER'S OWN BOX CARRIES, read off the form and not written twice:
+	 * the arrangement {@code MeWriteApiTest} has with the biography's box. The day the box moves,
+	 * the build stops until the server moves with it.
+	 */
+	@Test
+	void theLimitOfATownTypedByHandIsTheOneItsBoxCarries() throws Exception {
+		JsonNode theBox = null;
+
+		for (JsonNode field : mapper.readTree(Files.readString(Path.of("..", "frontend", "src", "forms",
+				"definitions", "unos-rezultata.form.json"))).path("fields")) {
+			if ("city".equals(field.path("name").asString())) {
+				theBox = field;
+			}
+		}
+
+		assertThat(theBox).as("unos-rezultata.form.json has no field called city at all").isNotNull();
+		assertThat(theBox.path("maxLength").asInt())
+				.as("the box the member types a town into and the number this server refuses him by"
+						+ " are two different numbers")
+				.isEqualTo(ResultWriteApi.A_TYPED_TOWN_HOLDS_AT_MOST);
 	}
 
 	/**

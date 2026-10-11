@@ -64,7 +64,7 @@ const NOT_A_REASON = ['results', 'Rezultati']
  * THE THREE PLACES IT REALLY KEEPS THEM.
  *
  * <p><b>Three readers and not one, because the class holds them three ways and a guard that
- * knew only the first would pass while nine of the twelve reached a member as a bare
+ * knew only the first would pass while eight of the fourteen reached a member as a bare
  * word.</b> `pages/account/refusals.test.ts` reads the first kind for eighteen routes; the
  * other two kinds are why this route keeps its floor here rather than joining that list -
  * the same division `member/myAccount.ts` writes down for itself, and for the same second
@@ -125,22 +125,25 @@ describe('every reason the result routes can name', () => {
    *
    * <p>A regular expression that stopped matching answers „nothing is missing" to both
    * directions at once, which is the shape that reads as though it works. So each of the
-   * three is asked for a count, and the counts are written out: four declared, five borrowed
-   * for the town, three for the proof. A thirteenth reason added to that class fails here
-   * with the number in the message, and somebody decides once what its sentence is.
+   * three is asked for a count, and the counts are written out: six declared, five borrowed
+   * for the town, three for the proof. The six went up from four on 10.10.2026, when a town
+   * typed by hand was held to its box and to the characters anybody can see
+   * (`theTownIsTooLong`, `theTownHoldsAnInvisibleCharacter`). A fifteenth reason added to that
+   * class fails here with the number in the message, and somebody decides once what its
+   * sentence is.
    */
   it('is found by all three readers, and none of them has gone quiet', () => {
     const ours = declaredIn(java('ResultWriteApi.java'))
 
-    expect([...ours.values()], 'ResultWriteApi declares no constant at all').toHaveLength(6)
+    expect([...ours.values()], 'ResultWriteApi declares no constant at all').toHaveLength(8)
     expect(
       [...ours.values()].filter((one) => !NOT_A_REASON.includes(one)),
       'the declared refusals of ResultWriteApi',
-    ).toHaveLength(4)
-    expect(declaredHere(), 'the declared refusals').toHaveLength(4)
+    ).toHaveLength(6)
+    expect(declaredHere(), 'the declared refusals').toHaveLength(6)
     expect(borrowedForTheTown(), 'the town reasons borrowed from EventWriteApi').toHaveLength(5)
     expect(forTheProof(), 'the reasons the proof rule names').toHaveLength(3)
-    expect(everyReasonTheRouteCanName(), 'every reason across the three readers').toHaveLength(12)
+    expect(everyReasonTheRouteCanName(), 'every reason across the three readers').toHaveLength(14)
   })
 
   /**
@@ -168,7 +171,7 @@ describe('every reason the result routes can name', () => {
     /* THE SOURCE IS DOCTORED RATHER THAN THE BACKEND TOUCHED. Handing the readers a copy of
        the real file with one line spliced in is the only way to show they read Java at all:
        against the file as it stands, a union that recited `WHEN_A_RESULT_IS_WRITTEN` back
-       gives the very same twelve strings, so every comparison between the two passes.
+       gives the very same fourteen strings, so every comparison between the two passes.
 
        What this asks is the question the whole file exists for - „a reason added on the
        server is a red gate on the day it is written" - and it asks it without waiting for

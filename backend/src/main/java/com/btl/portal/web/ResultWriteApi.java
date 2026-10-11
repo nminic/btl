@@ -205,6 +205,47 @@ class ResultWriteApi {
 	static final String THE_RACE_IS_NAMED_TWICE = "theRaceIsNamedTwice";
 
 	/**
+	 * A TOWN TYPED BY HAND THAT IS LONGER THAN THE BOX THE MEMBER TYPES IT INTO.
+	 *
+	 * <p>The owner, 10.10.2026, in his words: „Stavi samo validaciju "Predugačak naziv grada"."
+	 * (ADL, „Predugačak tekst u polju se odbija kratkom porukom"), and the same day, in the
+	 * record's wording of his answer about a run on a race the calendar does not hold: „moderator
+	 * u redu vidi mesto koje je član upisao, i to je uslov za ekran, uz granicu dužine i znakova na
+	 * serveru". Such a town is what the event an approval makes stands in, in the public calendar
+	 * (ADL, owner, 11.09.2026: „Trka van kalendara postaje javna."), and a security review
+	 * measured a hundred thousand characters going in through this route. The screen draws the
+	 * sentence; this is its name.
+	 */
+	static final String THE_TOWN_IS_TOO_LONG = "theTownIsTooLong";
+
+	/**
+	 * A TOWN TYPED BY HAND THAT HOLDS A CHARACTER NOBODY CAN SEE: a control character or a format
+	 * character, the letters that turn the direction of writing among them.
+	 *
+	 * <p>The second half of the same answer of 10.10.2026, „granicu dužine i znakova na serveru",
+	 * which named the reason in its own words: a character that turns the direction of writing went
+	 * in through this route, measured, and would have turned the words around it in the public
+	 * calendar. The set is Unicode's own two categories, {@code Cc} and {@code Cf}, asked of
+	 * {@link Character#getType} and not listed: the set the portal already refuses in an address
+	 * (`data/outsideLink.ts`, `INVISIBLE`), where a list written by hand was found seven short.
+	 */
+	static final String THE_TOWN_HOLDS_AN_INVISIBLE_CHARACTER = "theTownHoldsAnInvisibleCharacter";
+
+	/**
+	 * AS MANY CHARACTERS AS THE BOX FOR A TOWN TYPED BY HAND HOLDS on the member's own form
+	 * ({@code unos-rezultata.form.json}, {@code city}), which is where the number lives: the
+	 * owner's rule of 10.10.2026, as the ADL derives it from his answer, is that the server refuses
+	 * a text longer than the limit the form already carries. {@code ResultWriteApiTest} reads the
+	 * form and demands this number, the arrangement {@link MeWriteApi#AS_LONG_AS_THE_FORM_ALLOWS}
+	 * has with its own box.
+	 *
+	 * <p>Counted as that constant is counted and for its reasons: in the units HTML's
+	 * {@code maxlength} counts ({@link String#length()}), over what is stored (the town is
+	 * stripped on the way in).
+	 */
+	static final int A_TYPED_TOWN_HOLDS_AT_MOST = 80;
+
+	/**
 	 * WHY A REPORT IS NOT READY, IN THE PORTAL'S OWN WORDS, AND IT IS A MAP RATHER THAN A
 	 * {@code switch}.
 	 *
@@ -579,8 +620,9 @@ class ResultWriteApi {
 	/**
 	 * THE TOWN, EXACTLY ONE WAY AND BY THE NUMBER THE PORTAL REALLY PUBLISHES.
 	 *
-	 * <p><b>This is {@link EventWriteApi#whatIsWrongWithTheTown} word for word, and copying it
-	 * is the instruction rather than the shortcut.</b> The owner, 11.08.2026: „Mesto i drzava
+	 * <p><b>This is {@link EventWriteApi#whatIsWrongWithTheTown} word for word, but for what a
+	 * town typed by hand may hold (the comment inside says why this route is first), and copying
+	 * it is the instruction rather than the shortcut.</b> The owner, 11.08.2026: „Mesto i drzava
 	 * na registraciji rade isto kao na formi dogadjaja ... Jedna kontrola i jedno pravilo za
 	 * ceo portal, ne dva slicna." The reasons it answers with are that class's own constants
 	 * and not copies of its strings, so the two cannot come to say different words for one
@@ -629,12 +671,35 @@ class ResultWriteApi {
 					: no(EventWriteApi.THE_TOWN_IS_NOT_KNOWN);
 		}
 
+		/* AND WHAT A TOWN TYPED BY HAND MAY HOLD, which is this route's own and not yet the event
+		   form's: the owner made it the condition of the screen that shows the moderator this
+		   town (10.10.2026, `THE_TOWN_IS_TOO_LONG` and `THE_TOWN_HOLDS_AN_INVISIBLE_CHARACTER` carry
+		   his words). The rule that the server holds every text to the box its form draws reaches
+		   the other towns of the portal with the rest of that work (NV), and `EventWriteApi` is
+		   word for word the rest of this method until then. */
+		String town = typed.city().strip();
+
+		if (town.length() > A_TYPED_TOWN_HOLDS_AT_MOST) {
+			return no(THE_TOWN_IS_TOO_LONG);
+		}
+
+		if (town.codePoints().anyMatch(ResultWriteApi::nobodySees)) {
+			return no(THE_TOWN_HOLDS_AN_INVISIBLE_CHARACTER);
+		}
+
 		if (isNothing(typed.country())) {
 			return no(EventWriteApi.A_TYPED_TOWN_NAMES_ITS_COUNTRY);
 		}
 
 		return countryKey(typed.country()).isPresent() ? null
 				: no(EventWriteApi.THE_COUNTRY_IS_NOT_KNOWN);
+	}
+
+	/** A control character or a format character, by Unicode's own category (`Cc`, `Cf`). */
+	private static boolean nobodySees(int character) {
+		int category = Character.getType(character);
+
+		return category == Character.CONTROL || category == Character.FORMAT;
 	}
 
 	/** The row of the codebook a MARK names, and nothing where the codebook has no such town.

@@ -287,6 +287,38 @@ describe('a run entered away from the calendar', () => {
     SLOW,
   )
 
+  /**
+   * THE TWO REFUSALS A TOWN TYPED BY HAND CAN MEET ARE EACH SAID IN THEIR OWN SENTENCE, under the
+   * name the route gives it and never under the other's.
+   *
+   * <p>`member/resultWrites.test.ts` asks that a sentence EXISTS under every name `ResultWriteApi`
+   * can answer with, and that is all it can ask. Measured 11.10.2026 on the commit that added these
+   * two names: the map's two values exchanged, and the two Serbian sentences exchanged in `sr.json`
+   * and its snapshot together, each left green all 137 cases of the floors over the map and the
+   * dictionaries (`resultWrites.test.ts`, `account/refusals.test.ts`, everything under `i18n/` and
+   * `league/componentWords.test.ts`). So the sentence is asked for here, by name, off the screen the
+   * member sends the run from. The server is made to refuse with the name alone, whatever was
+   * typed, because the sentence is chosen by the name.
+   */
+  it.each([
+    ['theTownIsTooLong', 'Predugačak naziv grada.'],
+    ['theTownHoldsAnInvisibleCharacter', 'Naziv grada sadrži nedozvoljen znak.'],
+  ])(
+    'says %s in its own sentence',
+    async (reason, sentence) => {
+      const user = setupUser()
+
+      listening(() => refused(reason))
+      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+
+      await describeARace(user)
+      await send(user)
+
+      expect(await screen.findByText(sentence, undefined, SOON)).toBeVisible()
+    },
+    SLOW,
+  )
+
   it(
     'says the refusal in the server’s own words even when the screen does not know it',
     async () => {

@@ -278,3 +278,51 @@
   display: grid;
   gap: var(--space-6);
 }
+
+/* The town the member gave for a race the calendar does not hold, under the race's name in the
+   queue of results (the owner's answer of 10.10.2026: the moderator sees it there). Anybody may
+   type it, so it wraps wherever it has to rather than push the table sideways (PDL P24), the way
+   the member's own words above it do (`.review__said`). */
+.review__town {
+  display: block;
+  margin-block-start: var(--space-4);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+/* The figures and the day a run was sent, under the race's name on a telephone, where their
+   columns are not drawn (the owner's answer of 10.10.2026: „pokazuje brojke ... ispod naziva
+   trke"). Whether it is drawn at all is `table__phone-only`'s on the box around it, never this
+   rule's: a `display` written here would win over that one wherever this sheet comes later. Each
+   figure keeps its name beside it and the pairs wrap as a row, so four of them take two short
+   lines rather than a column of eight. */
+.review__figures {
+  margin: var(--space-4) 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-12);
+  font-size: 0.85rem;
+}
+
+.review__figures div {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.review__figures dt {
+  color: var(--text-muted);
+}
+
+.review__figures dd {
+  margin: 0;
+}
+
+/* The button that opens the panel naming the race is four words, where the other buttons of the
+   cell are one (`.review__decide .button` keeps each to a single line, Member.css). Held to one line
+   it set the width of the whole column of decisions, and measured at 360 in Chrome the table then
+   scrolled inside its box by 149 px instead of the 72 it scrolled by with „Odobri" in its place; let
+   to wrap, it is 72 again. Written with three classes, so it outweighs that rule's two wherever this
+   sheet stands. */
+.review__decide .button.review__place {
+  white-space: normal;
+}
