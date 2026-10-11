@@ -97,7 +97,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <p>The routes a right decides at the door are not asked about: a member as such never opens them,
  * and {@code RightsAtTheDoorTest} holds that a competitor is answered 404 by every one of them.
  *
- * <p><b>EVERY ACT IS ASKED OF FIVE CALLERS, AND THE AXES ARE NAMED SO THAT A SOURCE CANNOT STAND IN
+ * <p><b>EVERY ACT IS ASKED OF SIX CALLERS, AND THE AXES ARE NAMED SO THAT A SOURCE CANNOT STAND IN
  * FOR ANOTHER.</b>
  *
  * <ul>
@@ -172,6 +172,13 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 	/** Each a different way of being a member whose fee does not stand. */
 	private static final List<String> TURNED_AWAY = List.of(NEVER_PAID, LAPSED, LAPSED_WITHOUT_A_ROW,
 			A_MODERATOR_WHO_HAS_NOT_PAID);
+
+	/**
+	 * The two ways of being a member whose fee has lapsed: the one who holds a {@code membership} row
+	 * and the one who holds none. Both hold a member number, which is what tells them from somebody who
+	 * never paid.
+	 */
+	private static final List<String> THE_LAPSED = List.of(LAPSED, LAPSED_WITHOUT_A_ROW);
 
 	/** Who an act is sent about, and the request a member sends about his own row. */
 	@FunctionalInterface
@@ -358,18 +365,21 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 	}
 
 	/**
-	 * FIVE CALLERS, FOUR MEMBERS WHO STAND BESIDE THEM, AND A CALENDAR.
+	 * SIX CALLERS, FOUR MEMBERS WHO STAND BESIDE THEM, AND A CALENDAR.
 	 *
 	 * <p>The member whose fee lapsed holds a {@code membership} row for 2027, given free of the fee:
-	 * a gate that read „he has a membership row" would let him through. The moderator's own member
+	 * a gate that read „he has a membership row" would let him through. The other member whose fee
+	 * lapsed holds a number and no row at all, which is the one a gate that told him from somebody
+	 * who never paid BY A ROW would take for somebody who never paid. The moderator's own member
 	 * has not paid either, and the moderator holds no right: being the administration opens nothing a
 	 * member does.
 	 */
 	@BeforeEach
-	void fiveCallersAndTheMembersBesideThem() {
+	void sixCallersAndTheMembersBesideThem() {
 		memberOf.put(PAID, member("993010", "M", true));
 		memberOf.put(NEVER_PAID, member(null, "M", false));
 		memberOf.put(LAPSED, member("993040", "M", false));
+		memberOf.put(LAPSED_WITHOUT_A_ROW, member("993050", "M", false));
 		memberOf.put(A_MODERATOR_WHO_HAS_NOT_PAID, member("993070", "M", false));
 
 		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
@@ -384,6 +394,7 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 		account(PAID, "competitor", memberOf.get(PAID));
 		account(NEVER_PAID, "competitor", memberOf.get(NEVER_PAID));
 		account(LAPSED, "competitor", memberOf.get(LAPSED));
+		account(LAPSED_WITHOUT_A_ROW, "competitor", memberOf.get(LAPSED_WITHOUT_A_ROW));
 		account(A_MODERATOR_WHO_HAS_NOT_PAID, "moderator", memberOf.get(A_MODERATOR_WHO_HAS_NOT_PAID));
 		account(NAMES_NO_MEMBER, "moderator", null);
 
@@ -533,12 +544,26 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 	}
 
 	/**
-	 * A MEMBER WHO HAS NOT PAID IS ANSWERED WHAT A MEMBER WHOSE FEE STANDS IS ANSWERED, ON EVERY
-	 * ROUTE PDL P8 GIVES HIM BEFORE HE PAYS.
+	 * The routes with a session that the list of what he may do gives to a member who has NEVER paid
+	 * and takes from one whose fee has LAPSED, which PDL P8 of 11.10.2026 names as two.
+	 */
+	static Stream<String> whatTheLapsedAreTurnedAwayFrom() {
+		return MAY_BEFORE_PAYING.entrySet().stream()
+				.filter(one -> one.getValue().act() != null && !one.getValue().lapsedToo())
+				.map(Map.Entry::getKey).sorted();
+	}
+
+	/**
+	 * A MEMBER WHO HAS NEVER PAID IS ANSWERED WHAT A MEMBER WHOSE FEE STANDS IS ANSWERED, ON EVERY
+	 * ROUTE PDL P8 GIVES HIM BEFORE HE PAYS (10.10.2026).
+	 *
+	 * <p>The two routes a member whose fee has lapsed is turned away from are among them, and this is
+	 * the half of the owner's choice of 11.10.2026 that keeps them his: „Spisak „Sme" važi za člana koji
+	 * nikad nije platio".
 	 */
 	@ParameterizedTest
 	@MethodSource("whatHeMayDoWithASession")
-	void aMemberWhoHasNotPaidMayDoWhatTheDecisionGivesHim(String route) throws Exception {
+	void aMemberWhoHasNeverPaidMayDoWhatTheDecisionGivesHim(String route) throws Exception {
 		Act act = MAY_BEFORE_PAYING.get(route).act();
 
 		int whatAPaidMemberIsTold = sent(act.about(this, PAID), PAID).getStatus();
@@ -548,14 +573,104 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 						route)
 				.isNotEqualTo(404);
 
-		for (String caller : List.of(NEVER_PAID, LAPSED)) {
-			MockHttpServletResponse answer = sent(act.about(this, caller), caller);
+		MockHttpServletResponse answer = sent(act.about(this, NEVER_PAID), NEVER_PAID);
 
-			assertThat(answer.getStatus())
-					.as("%s as %s: PDL P8 gives him this before he pays (%s), and he was answered"
-							+ " otherwise than a member whose fee stands - %s", route, caller,
-							MAY_BEFORE_PAYING.get(route).reason(), answer.getContentAsString())
-					.isEqualTo(whatAPaidMemberIsTold);
+		assertThat(answer.getStatus())
+				.as("%s as %s: PDL P8 gives him this before he pays (%s), and he was answered"
+						+ " otherwise than a member whose fee stands - %s", route, NEVER_PAID,
+						MAY_BEFORE_PAYING.get(route).reason(), answer.getContentAsString())
+				.isEqualTo(whatAPaidMemberIsTold);
+	}
+
+	/**
+	 * A MEMBER WHOSE FEE HAS LAPSED KEEPS THE RENEWAL AND HIS PROFILE AND NOTHING ELSE, AND IS TURNED
+	 * AWAY FROM THE TWO ROUTES THE DECISION NAMES AS AN ADDRESS THAT IS NOT THERE.
+	 *
+	 * <p>PDL P8, 11.10.2026: „Istekao član po odluci od 19.09.2026 dopire samo do obnove i svog
+	 * profila: izmena podataka (`PUT /api/me`) i lozinke (`PUT /api/me/password`) mu daje 404, a ostaju
+	 * mu izbor kategorije i plaćanje (obnova) i sopstveni profil." So on every route of the list the
+	 * answer depends on {@link Before#lapsedToo}: where it is true he is answered what a member whose
+	 * fee stands is answered (the renewal, and signing in, which PDL P13 of 19.09.2026 leaves
+	 * untouched), and where it is false he is answered 404 with nothing in it and nothing is written.
+	 *
+	 * <p><b>Both kinds of member whose fee has lapsed</b>, because the rule tells him from somebody who
+	 * never paid by the member number: the one who holds a {@code membership} row and the one who holds
+	 * none are the same answer, and a rule that read the row would give the second back what the
+	 * decision takes from him.
+	 */
+	@ParameterizedTest
+	@MethodSource("whatHeMayDoWithASession")
+	void aMemberWhoseFeeHasLapsedMayDoOnlyWhatTheRenewalNeeds(String route) throws Exception {
+		Before before = MAY_BEFORE_PAYING.get(route);
+		Act act = before.act();
+
+		int whatAPaidMemberIsTold = sent(act.about(this, PAID), PAID).getStatus();
+
+		assertThat(whatAPaidMemberIsTold)
+				.as("%s: the member whose fee stands is answered as though the address were not there",
+						route)
+				.isNotEqualTo(404);
+
+		for (String caller : THE_LAPSED) {
+			if (before.lapsedToo()) {
+				MockHttpServletResponse answer = sent(act.about(this, caller), caller);
+
+				assertThat(answer.getStatus())
+						.as("%s as %s: PDL P8 of 11.10.2026 leaves him this (%s), and he was answered"
+								+ " otherwise than a member whose fee stands - %s", route, caller,
+								before.reason(), answer.getContentAsString())
+						.isEqualTo(whatAPaidMemberIsTold);
+			}
+			else {
+				assertTurnedAway(route + " as " + caller, () -> act.about(this, caller), caller);
+			}
+		}
+	}
+
+	/**
+	 * AND THE LIST OF WHAT THE LAPSED ARE TURNED AWAY FROM IS THE TWO ROUTES THE DECISION NAMES, NOT A
+	 * THIRD.
+	 *
+	 * <p>Asked of the table and not of the answers, because the answers follow whatever the table says:
+	 * a route set to {@code false} here and refused by the server alike would pass every case above.
+	 * PDL P8, 11.10.2026, names {@code PUT /api/me} and {@code PUT /api/me/password}; a third is the
+	 * owner's to name.
+	 */
+	@Test
+	void theLapsedAreTurnedAwayFromTheTwoRoutesTheDecisionNames() {
+		assertThat(whatTheLapsedAreTurnedAwayFrom().toList())
+				.as("the list of what a member whose fee has lapsed is turned away from is not the two"
+						+ " routes PDL P8 of 11.10.2026 names: izmena podataka and lozinka")
+				.containsExactlyInAnyOrder("PUT /api/me", "PUT /api/me/password");
+	}
+
+	/**
+	 * THE FEE IS ASKED OF A MEMBER WHO HAS LAPSED BEFORE A BYTE OF HIS BODY IS READ, on the two routes
+	 * he is turned away from: a body that cannot be read is answered 404 exactly like the one that can.
+	 *
+	 * <p><b>The anchor is the member who may use the route</b>: a member whose fee stands and one who
+	 * never paid are each told 400 for the same body, so the route DOES read it, and what turns the
+	 * other away is the question asked in front of it.
+	 */
+	@ParameterizedTest
+	@MethodSource("whatTheLapsedAreTurnedAwayFrom")
+	void aMemberWhoseFeeHasLapsedIsTurnedAwayBeforeHisBodyIsRead(String route) throws Exception {
+		Act act = MAY_BEFORE_PAYING.get(route).act();
+
+		assertThat(takesJson(route))
+				.as("%s does not take JSON, so there is no body to be read before the fee is asked", route)
+				.isTrue();
+
+		for (String caller : THE_LAPSED) {
+			assertTurnedAway(route + " with a body that cannot be read, as " + caller,
+					() -> act.about(this, caller).content("{"), caller);
+		}
+
+		for (String caller : List.of(PAID, NEVER_PAID)) {
+			assertThat(sent(act.about(this, caller).content("{"), caller).getStatus())
+					.as("%s as %s: he was not told 400 for a body that cannot be read, so this route does"
+							+ " not read one and the case above asks about nothing", route, caller)
+					.isEqualTo(400);
 		}
 	}
 
@@ -600,10 +715,24 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 				.as("the member who never paid carries a number, which V16 says only a payment gives")
 				.isTrue();
 		assertThat(activeOf(memberOf.get(LAPSED))).isFalse();
+		assertThat(carriesANumber(memberOf.get(LAPSED)))
+				.as("the member whose fee has lapsed carries no number, so he is somebody who never paid"
+						+ " and the rule that tells the two apart by the number is not asked about him")
+				.isTrue();
 		assertThat(db.sql("select count(*) from membership where competitor_id = ?")
 				.param(memberOf.get(LAPSED)).query(Long.class).single())
 				.as("the lapsed member holds no membership row, so „a row\" and „the fee\" never differ")
 				.isPositive();
+		assertThat(activeOf(memberOf.get(LAPSED_WITHOUT_A_ROW))).isFalse();
+		assertThat(carriesANumber(memberOf.get(LAPSED_WITHOUT_A_ROW)))
+				.as("the member whose fee has lapsed and who holds no row carries no number either, so he"
+						+ " is somebody who never paid")
+				.isTrue();
+		assertThat(db.sql("select count(*) from membership where competitor_id = ?")
+				.param(memberOf.get(LAPSED_WITHOUT_A_ROW)).query(Long.class).single())
+				.as("the lapsed member who is meant to hold no membership row holds one, so he is the same"
+						+ " kind as the other and a rule that read the row would not tell them apart")
+				.isZero();
 		assertThat(activeOf(memberOf.get(A_MODERATOR_WHO_HAS_NOT_PAID))).isFalse();
 		assertThat(db.sql("select count(*) from account_admin_right r join account a"
 						+ " on a.id = r.account_id where a.email = ?")
@@ -847,6 +976,11 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 
 	private boolean activeOf(long competitor) {
 		return db.sql("select active from competitor where id = ?").param(competitor)
+				.query(Boolean.class).single();
+	}
+
+	private boolean carriesANumber(long competitor) {
+		return db.sql("select member_number is not null from competitor where id = ?").param(competitor)
 				.query(Boolean.class).single();
 	}
 
