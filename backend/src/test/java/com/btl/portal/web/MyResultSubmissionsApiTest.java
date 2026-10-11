@@ -495,6 +495,19 @@ class MyResultSubmissionsApiTest {
 		Answers.noFieldIsTheSameInEveryRecord(PATH, mapper.readTree(asked(MY_ADDRESS).getContentAsString()));
 	}
 
+	/**
+	 * EVERY FIELD THE PORTAL READS IS ONE THIS ROUTE ANSWERS WITH, and the answer carries no name
+	 * the portal does not read, held against the file the screen's own cases are served
+	 * ({@code frontend/src/test/mock/me/result-submissions.json}, written with „Moji rezultati" on
+	 * the server, R2 of the results flows). The route and the screen came in two pull requests;
+	 * this is where the two ends are held against each other, in both directions.
+	 */
+	@Test
+	void everyFieldThePortalReadsIsOneThisRouteAnswersWith() throws Exception {
+		Answers.everyFieldThePortalReadsIsAnswered(PATH,
+				mapper.readTree(asked(MY_ADDRESS).getContentAsString()), "me/result-submissions.json");
+	}
+
 	/*
 	 * THE TWO HALVES MEET
 	 */

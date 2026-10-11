@@ -127,6 +127,45 @@ public final class MembershipPrice {
 	}
 
 	/**
+	 * WHETHER AN AMOUNT SOMEBODY TYPED HAS NO FRACTION IN IT AT ALL.
+	 *
+	 * <p><b>PDL, ODLUKA 02.10.2026 („Iznosi se unose kao celi brojevi"), records it as the owner's
+	 * own words:</b> „Iznosi se unose bez tačaka i zareza! tačke i zarezi (zavisno od srpskog ili
+	 * engleskog) se pominju samo u opisnoj labeli zbog estetike." (The entry notes that the section it
+	 * was first written under calls every decision there a choice among offered outcomes, so the
+	 * sentence is quoted as recorded.) What started it was measured: „3.500" typed into the price
+	 * list was quietly becoming 3,5 dinars. On 03.10.2026 he chose, against the recommendation he
+	 * was given, that the amount of a PAYMENT is whole as well (the cost put to him: a payment of
+	 * 39,97 EUR cannot be entered exactly), and on 10.10.2026 that the rule is for what is TYPED:
+	 * „celi brojevi važe za ono što se kuca, balans sme decimale" (PDL, the entry „Odgovori na pitanja
+	 * skupljena dok je bio odsutan", a choice among outcomes and not his words). A balance is WORKED
+	 * OUT, and converting at the rate of 120 gives it two decimals (650 RSD is 5.42 EUR), so nothing
+	 * here is asked of one.
+	 *
+	 * <p><b>It asks the value and not the writing, and the writing is somebody else's question.</b>
+	 * The form and the screen refuse a separator as it is typed (the writing is where „4.800" turns
+	 * into 4,8), and by the time a number reaches a route it is a number: {@code 4.800} is 4.8 and
+	 * is refused here as the fraction it is, while {@code 4800}, {@code 4800.0} and {@code 4800.00}
+	 * are all four thousand eight hundred and pass. That is why the trailing zeros are stripped
+	 * before the scale is read, and why a scale BELOW nought passes ({@code 1e2} arrives as
+	 * {@code 1E+2}, scale -2, which is a hundred).
+	 *
+	 * <p><b>The parameter stays {@code BigDecimal} and is not turned into a {@code Long}, and that
+	 * is the reason this method exists rather than a type doing the work.</b> Read into a
+	 * {@code Long}, Jackson takes {@code 40.5} as 40 without saying a word (measured on 09.10.2026
+	 * with 3.1.4, the version the portal runs on), which is a different number arriving as a
+	 * quietly different price - the very fault the decision above was made about. A
+	 * {@code BigDecimal} keeps what was sent, so the fraction can be refused instead of dropped.
+	 *
+	 * <p><b>Nothing else is judged here.</b> A negative whole number passes, so does a ceiling-sized
+	 * one, and so does nought; those are {@link #amountIsKeptExactly}'s questions and the route's
+	 * own, asked after this one.
+	 */
+	public static boolean amountIsWhole(java.math.BigDecimal amount) {
+		return amount.stripTrailingZeros().scale() <= 0;
+	}
+
+	/**
 	 * WHETHER THE PRICE LIST WOULD KEEP THIS AMOUNT AS IT WAS TYPED.
 	 *
 	 * <p><b>The half a constraint cannot say.</b> {@code price_row_eur_not_negative} refuses
@@ -136,6 +175,12 @@ public final class MembershipPrice {
 	 * price by a para that nobody typed, on the one number that is a promise to a member.
 	 * The same question {@code WhatARaceCarries.distanceIsKeptExactly} asks for a distance,
 	 * and for the same reason.
+	 *
+	 * <p><b>Since 10.10.2026 the two routes that ask this refuse a fraction one question earlier</b>
+	 * ({@link #amountIsWhole}: an amount that is typed is a whole number), so on them the scale
+	 * clause below can no longer be the one that answers. It stays because it is a fact about the
+	 * column and not about those routes, and {@code AnAmountMatchesTheSchemaTest} holds it to the
+	 * catalogue.
 	 *
 	 * <p>All three halves are here rather than two of them being left to the database,
 	 * because the answer to each is otherwise a 500 landing on an administrator who has just

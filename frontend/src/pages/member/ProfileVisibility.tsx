@@ -20,10 +20,13 @@ import { THE_ACCOUNT_GOES_TO, WHEN_CHANGING_MY_DATA, hiddenIn } from './myAccoun
  * rather than striking the sentence. Since 03.10.2026 the readers it hides from are every one
  * who is neither an active member nor the administration, a free account and a member whose fee
  * has lapsed among them (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan
- * član ni administracija,
- * nikad prema aktivnom članu"); the words next to the box and in the policy still name only the
- * visitors who are not signed in, which understates it and is a named boundary rather than a
- * decision to leave it so.
+ * član ni administracija, nikad prema aktivnom članu"). The words next to the box say so since
+ * 10.10.2026: the label names the rule and the note names who falls under it, in the words of
+ * the policy sentence the owner approved that day („od svakoga ko nije aktivan član ni
+ * administracija, dakle od posetilaca koji nisu prijavljeni i od prijavljenih naloga bez
+ * aktivne članarine"), split between the two. Until then they named only the visitors who are
+ * not signed in, which understated it and was a boundary written down rather than a decision
+ * to leave it so.
  *
  * <p><b>WHAT WAS WRONG WITH IT UNTIL TODAY, and it is the worst shape a control can have.</b>
  * The box wrote into the session overlay and stopped there ({@code Settings.tsx}, {@code

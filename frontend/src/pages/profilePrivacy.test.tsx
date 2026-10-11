@@ -161,7 +161,9 @@ function hiddenIn(init: RequestInit): boolean {
  */
 async function hide(user: ReturnType<typeof setupUser>): Promise<void> {
   await user.click(
-    await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+    await screen.findByLabelText(
+      'Sakrij moj profil od svakoga ko nije aktivan član ni administracija',
+    ),
   )
 
   await within(screen.getByRole('region', { name: 'Privatnost' })).findByText('Sačuvano.')
@@ -861,7 +863,9 @@ describe('what the settings show back', () => {
     await router.navigate('/sr/podesavanja')
 
     expect(
-      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+      await screen.findByLabelText(
+        'Sakrij moj profil od svakoga ko nije aktivan član ni administracija',
+      ),
     ).toBeChecked()
   }, SLOW)
 

@@ -408,11 +408,13 @@ class PricingWriteApiTest {
 	 * database gives, so a column added to the table tomorrow is compared on the day it is
 	 * added.
 	 *
-	 * <p><b>AND THE ANSWER IS THE ROW AND NOT THE REQUEST, which is what {@code 41.1}
-	 * measures.</b> Sent with one decimal and stored in {@code numeric(10,2)}, it comes back
-	 * {@code 41.10}. An answer built out of the request would say {@code 41.1}, and the two
-	 * are the same number and a different text - so this is the one shape that tells them
-	 * apart without a second request.
+	 * <p><b>AND THE ANSWER IS THE ROW AND NOT THE REQUEST, which is what sending {@code 41}
+	 * measures.</b> Sent as a whole number with no scale at all and stored in
+	 * {@code numeric(10,2)}, it comes back {@code 41.00}. An answer built out of the request would
+	 * say {@code 41}, and the two are the same number and a different text - so this is the one
+	 * shape that tells them apart without a second request. It was {@code 41.1} and came back
+	 * {@code 41.10} until a price became a whole number (PDL, 02.10.2026, confirmed for what is
+	 * typed on 10.10.2026), when a fraction stopped being something the route takes.
 	 */
 	@Test
 	void aPriceIsChangedAndTheAnswerIsTheRowAsItNowStands() throws Exception {
@@ -420,7 +422,7 @@ class PricingWriteApiTest {
 		Map<String, Object> was = rowOf(ACTED);
 		Map<String, Object> theTwinWas = rowOf(THE_TWIN);
 
-		MockHttpServletResponse answer = change(ACTED, new BigDecimal("41.1"), NEW_RSD, mayCookie);
+		MockHttpServletResponse answer = change(ACTED, new BigDecimal("41"), NEW_RSD, mayCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(200);
 
@@ -428,15 +430,14 @@ class PricingWriteApiTest {
 
 		assertThat(said.path("key").asString()).isEqualTo(ACTED);
 		assertThat(said.path("eur").decimalValue().toPlainString())
-				.as("the answer carries the amount that was SENT rather than the one the price"
-						+ " list now holds, so an amount the column changed on the way in would be"
-						+ " reported back as though it had been kept")
-				.isEqualTo("41.10");
+				.as("the answer carries the amount that was SENT, spelled as it was sent, rather than"
+						+ " the one the price list now holds, which has two decimals")
+				.isEqualTo("41.00");
 		assertThat(said.path("rsd").decimalValue().toPlainString()).isEqualTo("4900.00");
 
 		Map<String, Object> now = rowOf(ACTED);
 
-		assertThat(now.get("eur")).isEqualTo(new BigDecimal("41.10"));
+		assertThat(now.get("eur")).isEqualTo(new BigDecimal("41.00"));
 		assertThat(now.get("rsd")).isEqualTo(NEW_RSD);
 
 		/* EVERY OTHER COLUMN OF THE ROW, WITHOUT NAMING ONE. */
@@ -945,11 +946,11 @@ class PricingWriteApiTest {
 		clock.moveTo(A_SECOND_BEFORE_THE_WINDOW_OPENS);
 
 		assertThat(change(PricingWriteApi.A_REFERRAL,
-						new BigDecimal("6.50"), new BigDecimal("780.00"), mayCookie).getStatus())
+						new BigDecimal("8.00"), new BigDecimal("960.00"), mayCookie).getStatus())
 				.as("the amount was already settled a second before midnight in Belgrade, so the"
 						+ " deadline this route keeps is earlier than the one the owner set")
 				.isEqualTo(200);
-		assertThat(euroOf(PricingWriteApi.A_REFERRAL)).isEqualByComparingTo(new BigDecimal("6.50"));
+		assertThat(euroOf(PricingWriteApi.A_REFERRAL)).isEqualByComparingTo(new BigDecimal("8.00"));
 
 		clock.moveTo(AS_THE_WINDOW_OPENS);
 		Map<String, Object> was = rowOf(PricingWriteApi.A_REFERRAL);
@@ -1107,22 +1108,100 @@ class PricingWriteApiTest {
 	}
 
 	/**
-	 * AN AMOUNT THE PRICE LIST WOULD NOT KEEP AS IT WAS TYPED IS REFUSED, ON EITHER SIDE.
+	 * A PRICE WITH A FRACTION IN IT IS REFUSED, ON EITHER SIDE, AND NOTHING IS WRITTEN.
 	 *
-	 * <p><b>{@code 41.125} is the one that matters and the one no constraint could catch.</b>
-	 * PostgreSQL does not refuse it, it ROUNDS it to {@code 41.13}
-	 * ({@code AnAmountMatchesTheSchemaTest} asks the table itself), so without this the portal
-	 * would quietly have changed a price by a para nobody typed. The other two are the
-	 * constraint and the column saying the same thing as sentences instead of as a 500.
+	 * <p><b>PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi"</b>, recorded as the owner's
+	 * own words - „Iznosi se unose bez tačaka i zareza!" - and, for what is typed, confirmed on
+	 * 10.10.2026 („celi brojevi važe za ono što se kuca, balans sme decimale"). What started it was a
+	 * price: „3.500" typed into the list was quietly becoming 3,5 dinars. {@code 3.500} is a row
+	 * below for that reason, in the dinar column, where the incident happened.
+	 *
+	 * <p><b>{@code 41.125} and {@code 4900.125} are the rows that used to be refused as something the
+	 * column would not keep</b> (PostgreSQL ROUNDS them, to {@code 41.13} and {@code 4900.13}), and
+	 * they meet the whole-number word now, one question earlier. {@code 41.5} and {@code 4900.5}
+	 * are the rows that no question before this one ever refused: the column keeps them exactly.
+	 * {@code 1000.5} and {@code 200000.5} are over the ceiling AS WELL, and the fraction is told
+	 * first (the order the route asks in). That {@code 41.0} and {@code 41.00} are NOT fractions is
+	 * held by {@code MembershipPriceTest} on the method itself and by every case of this file that
+	 * writes a price with its two zeros.
 	 *
 	 * <p>Both columns are asked in every shape, because a rule written over {@code eur} alone
-	 * would leave the dinar price rounding in silence - and the dinar price is the one most
-	 * members pay.
+	 * would leave the dinar price taking a fraction in silence - and the dinar price is the one
+	 * most members pay.
 	 */
 	@ParameterizedTest
 	@CsvSource({
+			"41.5, 4900.00",
+			"41.00, 4900.5",
 			"41.125, 4900.00",
 			"41.00, 4900.125",
+			"41.00, 3.500",
+			"1000.5, 4900.00",
+			"41.00, 200000.5"})
+	void aPriceWithAFractionInItIsRefusedAndNothingIsWritten(String eur, String rsd) throws Exception {
+		List<String> before = keysInOrder();
+		Map<String, Object> was = rowOf(ACTED);
+
+		MockHttpServletResponse answer = change(ACTED, new BigDecimal(eur), new BigDecimal(rsd), mayCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(answer.getContentAsString())
+				.as("a price with a fraction in it was refused for some other reason, or not at all")
+				.contains(PricingWriteApi.THE_AMOUNT_IS_NOT_WHOLE);
+		assertThat(rowOf(ACTED))
+				.as("a price with a fraction in it was refused and stored anyway, rounded or otherwise")
+				.isEqualTo(was);
+		assertThat(keysInOrder()).isEqualTo(before);
+	}
+
+	/**
+	 * THE FEE IS TYPED WHOLE TOO, AND IT IS THE ROW WITH NO DINAR PRICE TO ASK ABOUT.
+	 *
+	 * <p>The fee reaches every question of this route through a different arm: its dinar price is
+	 * {@code null} and forbidden. A whole-number question written as one condition over both
+	 * amounts would throw a {@code NullPointerException} on it - a 500 - and a fee that was only
+	 * asked in the arm of the other six rows would take a fraction. Both are here: the fee with a
+	 * fraction is refused with the whole-number word, and the fee with {@code 4.00}, which is
+	 * whole, is written (the same request {@link #theProcessingFeeIsSetWithNoDinarPriceAtAll}
+	 * sends, so this is also the proof that a trailing zero is not a fraction).
+	 */
+	@Test
+	void theFeeIsTypedWholeToo() throws Exception {
+		Map<String, Object> was = rowOf(MembershipPrice.PROCESSING);
+
+		MockHttpServletResponse withAFraction =
+				change(MembershipPrice.PROCESSING, new BigDecimal("3.5"), null, mayCookie);
+
+		assertThat(withAFraction.getStatus()).isEqualTo(400);
+		assertThat(withAFraction.getContentAsString()).contains(PricingWriteApi.THE_AMOUNT_IS_NOT_WHOLE);
+		assertThat(rowOf(MembershipPrice.PROCESSING))
+				.as("the processing fee took a fraction, which the other six rows are refused")
+				.isEqualTo(was);
+
+		MockHttpServletResponse whole =
+				change(MembershipPrice.PROCESSING, new BigDecimal("4.00"), null, mayCookie);
+
+		assertThat(whole.getStatus())
+				.as("a whole fee written with two zeros after the point was taken for a fraction")
+				.isEqualTo(200);
+	}
+
+	/**
+	 * AN AMOUNT THE PRICE LIST WOULD NOT KEEP AS IT WAS TYPED IS REFUSED, ON EITHER SIDE.
+	 *
+	 * <p><b>What is left of the column's question once a fraction has been turned away one step
+	 * earlier is the sign and the ceiling of the column</b> ({@code numeric(10,2)}): the constraint
+	 * {@code price_row_eur_not_negative} and the overflow {@code PostgreSQL} answers with a 500,
+	 * said as a sentence instead. The row that used to be here for the third half of this question,
+	 * a price with more para than the column keeps ({@code 41.125}, which PostgreSQL ROUNDS to
+	 * {@code 41.13}), is in {@link #aPriceWithAFractionInItIsRefusedAndNothingIsWritten} now and
+	 * meets the whole-number word.
+	 *
+	 * <p>Both columns are asked in every shape, because a rule written over {@code eur} alone
+	 * would leave the dinar price out of it.
+	 */
+	@ParameterizedTest
+	@CsvSource({
 			"-1.00, 4900.00",
 			"41.00, -1.00",
 			"100000000, 4900.00",
@@ -1166,10 +1245,10 @@ class PricingWriteApiTest {
 	 */
 	@ParameterizedTest
 	@CsvSource({
-			"1000.01, 4900.00",
-			"41.00, 200000.01",
+			"1001, 4900.00",
+			"41.00, 200001",
 			"1500.00, 4900.00",
-			"1000.01, 200000.01"})
+			"1001, 200001"})
 	void anAmountAboveWhatARowMayCostIsRefusedAndNothingIsWritten(String eur, String rsd)
 			throws Exception {
 		List<String> before = keysInOrder();
@@ -1202,7 +1281,7 @@ class PricingWriteApiTest {
 		Map<String, Object> was = rowOf(MembershipPrice.PROCESSING);
 
 		MockHttpServletResponse answer =
-				change(MembershipPrice.PROCESSING, new BigDecimal("1000.01"), null, mayCookie);
+				change(MembershipPrice.PROCESSING, new BigDecimal("1001"), null, mayCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(answer.getContentAsString())
@@ -1219,7 +1298,8 @@ class PricingWriteApiTest {
 	 * {@code <} instead of {@code <=} the route would refuse exactly 1.000 EUR - the number
 	 * the owner named as allowed and the number {@code admin-cena.form.json} writes as
 	 * {@code max}, which every form renderer reads as „at most". The case above holds the
-	 * other side by one para.
+	 * other side by one unit (1001 EUR and 200001 RSD): a price is whole now, so one para above the
+	 * ceiling is not a price anybody can write.
 	 *
 	 * <p><b>And nought is asked in the same breath</b> because it is the edge a ceiling
 	 * invites somebody to close by accident: {@code price_row_eur_not_negative} allows it,
@@ -1238,8 +1318,8 @@ class PricingWriteApiTest {
 
 		assertThat(change(ACTED, MembershipPrice.mostARowMayCostInEuro(),
 						MembershipPrice.mostARowMayCostInDinars(), mayCookie).getStatus())
-				.as("the ceiling the owner named as allowed was refused, so the route stops one"
-						+ " para below the number in the form")
+				.as("the ceiling the owner named as allowed was refused, so the route stops below"
+						+ " the number in the form")
 				.isEqualTo(200);
 		assertThat(amountsOf(ACTED))
 				.containsExactly(new BigDecimal("1000.00"), new BigDecimal("200000.00"));

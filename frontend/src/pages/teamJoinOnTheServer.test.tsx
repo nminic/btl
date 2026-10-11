@@ -4,10 +4,12 @@ import { act, configure, getConfig, screen, waitFor, within } from '@testing-lib
 import { describe, expect, it } from 'vitest'
 import { arrivedResource } from '../data/client'
 import sr from '../i18n/sr.json'
+import { useSession } from '../session/useSession'
 import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { Asked } from '../test/saved'
 import { answeredWith, did, refused, serverThat, type Asked as Request } from '../test/serverAnswers'
+import { theCookieNames, whoTheCookieCurrentlyNames } from '../test/setup'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 
@@ -70,6 +72,10 @@ const ELSEWHERE = '000013'
 /** A member the file carries with a fee that has lapsed, whom `/api/competitors` does not. */
 const LAPSED = '000032'
 
+/** A second member with no team, who signs in after the first on the same page. Not the first
+ *  member with no team on file, and not the one who asks everywhere else in this file. */
+const NEXT_ASKER = '000012'
+
 /* A day inside the transfer window and a day outside it. Neither is a day any application below
    was sent on, so a screen drawing today where it means the day of the asking draws neither. */
 const DAY_IN = '2026-10-16'
@@ -82,6 +88,16 @@ type Application = { id: number; teamId: number; date: string }
 const TO_ANOTHER: Application = { id: 71, teamId: ANOTHER.id, date: '2026-05-02' }
 
 const TO_THIS: Application = { id: 74, teamId: THIS.id, date: '2026-05-04' }
+
+/**
+ * WHAT THE MEMBER WHO SIGNS IN AFTER THE FIRST HAS APPLIED TO: rows of his own, because an
+ * application is one member's and so no id of the first reader's can stand on this list, and the one
+ * to this page's team second, as on the first reader's.
+ */
+const NEXT_ONES: Application[] = [
+  { id: 77, teamId: ANOTHER.id, date: '2026-05-03' },
+  { id: 78, teamId: THIS.id, date: '2026-05-05' },
+]
 
 /** The key `POST` answers a new application with, which no fixture above carries. */
 const NEW_KEY = 90
@@ -105,6 +121,13 @@ type HowItIsRead = null | (() => Response | Promise<Response>)
  */
 type TheAsker = {
   rows?: Application[]
+  /**
+   * What each reader waits on, by his number, for a case in which somebody else signs in after the
+   * first. Given, it is what the list is answered from instead of `rows`: the route answers the one
+   * who is signed in and nobody else (`MyApplicationsApi` reads the session and nothing the caller
+   * sends), and in this harness the one who is signed in is whoever the cookie names.
+   */
+  lists?: Record<string, Application[]>
   alreadyInATeam?: boolean
   post?: () => Response
   remove?: () => Response
@@ -114,6 +137,7 @@ type TheAsker = {
 
 function aServerForTheAsker({
   rows = [],
+  lists,
   alreadyInATeam = false,
   post = (): Response => json({ id: NEW_KEY, teamId: THIS.id }, 201),
   remove = did,
@@ -135,7 +159,8 @@ function aServerForTheAsker({
       }
 
       return json({
-        teamApplications: standing,
+        teamApplications:
+          lists === undefined ? standing : (lists[whoTheCookieCurrentlyNames()?.memberNumber ?? ''] ?? []),
         teamInvitations: [],
         teamProposals: [],
         pairInvites: [],
@@ -212,6 +237,58 @@ const withdrawButton = () => screen.queryByRole('button', { name: sr.teams.joinW
 /** The applications the BROWSER holds, which since T5 must stay empty whatever is pressed. */
 const heldInTheBrowser = () =>
   within(screen.getByRole('list', { name: 'open applications' })).queryAllByRole('listitem')
+
+/**
+ * WHICH OF THE TWO BUTTONS THE PAGE DRAWS to the one who is signed in: the way in, the way back,
+ * both or neither. Both and neither are answers too, so a screen that is still reading, or draws
+ * both, is not taken for either of the right ones.
+ */
+const whatIsDrawn = () => ({ wayIn: applyButton() !== null, wayBack: withdrawButton() !== null })
+
+const THE_WAY_IN_ONLY = { wayIn: true, wayBack: false }
+
+const THE_WAY_BACK_ONLY = { wayIn: false, wayBack: true }
+
+const NEITHER = { wayIn: false, wayBack: false }
+
+/**
+ * The reader signs out, in place, the way the header's menu does (`app/AccountMenu.tsx`): the
+ * portal forgets him at once and the page stays where it is, with nobody on it. The cookie goes
+ * with him, so what the fake route answers next is answered to whoever signs in.
+ */
+function LeaveInPlace() {
+  const { signOut } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        theCookieNames(null)
+        signOut()
+      }}
+    >
+      odjavi prvog člana
+    </button>
+  )
+}
+
+/** Somebody else signs in, in place, with the cookie and the session both naming him: what the
+ *  route answers about what he waits on is his, and so is what the page draws. */
+function Become({ who }: { who: string }) {
+  const { signIn } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        theCookieNames({ role: 'competitor', memberNumber: who })
+        signIn(who)
+      }}
+    >
+      postani {who}
+    </button>
+  )
+}
 
 describe('„Prijavi se u tim", sent to the server', () => {
   it('asks THIS team, once, and then draws the way back that the server says stands', async () => {
@@ -737,6 +814,123 @@ describe('„Povuci prijavu", sent to the server', () => {
       server.stop()
     }
   }, SLOW)
+})
+
+describe('whose applications the page draws', () => {
+  /* THE LIST IS THE READER'S AND THE PAGE IS NOT. The portal signs out and signs in without
+     anything being reloaded (`app/AccountMenu.tsx` signs out in place; `pages/member/SignIn.tsx`
+     signs in and navigates), and the page of a team is the same page for whoever is reading it:
+     `here` in `AskingThisTeam.tsx` is the team and the season and nothing of the reader. The list
+     is the member's (PDL, 06.09.2026: „traženo po broju člana kroz sve timove"). What it draws has
+     to come from what the route says to the one who is signed in NOW, and two things can
+     hand him the first reader's list instead: the number the half gives `useWhatIsWaiting`
+     (`mine`) and the cache that is dropped when that number changes (`data/useResource.ts`,
+     `theWaitingNowBelongsTo`). Measured 10.10.2026: `mine={here}` in place of
+     `mine={me.memberNumber}` left every case that mounts a team's page green, because not one of
+     them has a second reader.
+
+     **SIGNED OUT FIRST, NOT SWITCHED.** A reader changes in one of two ways, and in neither is the
+     half left standing for the next one: the header's menu signs out in place, which leaves the
+     team's page with nobody on it and the half gone, and the sign in page signs in and navigates
+     (`pages/member/SignIn.tsx`), so the team's page is off the screen by then. What has to hold is
+     what the second reader MOUNTS onto. A switch from one number to the next with the half left
+     standing is a road nothing on the portal takes. It is also one this half does not survive
+     cleanly: `ForAMember` has no key of the reader's and `useResource` keeps the state it has
+     while its owner changes, so it would go on drawing the first reader's buttons until the second
+     one's list landed (measured 10.10.2026, with that list held). A case asking for „nothing of
+     the first's" there would be asking for what the half does not do.
+
+     **The two lists differ in the one row that matters, and in both directions.** An application
+     the first reader sent to this team is not drawn to the next, who is no party to it (a „Povuci
+     prijavu" over a row that is not his); and one that stands with the next reader takes the
+     button's place instead of „Prijavi se u tim" being offered over it, which the route would
+     refuse. Neither can be had without the list being read AGAIN, once for each reader, which is
+     the second thing every row holds. */
+  it.each([
+    [
+      'the first had applied to this team and the next has not',
+      [TO_ANOTHER, TO_THIS],
+      [],
+      THE_WAY_BACK_ONLY,
+      THE_WAY_IN_ONLY,
+    ],
+    [
+      'the first had not and the next has applied to this team',
+      [],
+      NEXT_ONES,
+      THE_WAY_IN_ONLY,
+      THE_WAY_BACK_ONLY,
+    ],
+  ])(
+    'draws what the route says to the reader who signs in after the first on the same page, and nothing of the first’s, when %s',
+    async (_, first, next, firstSees, nextSees) => {
+      /* HIS LIST IS HELD while the page is looked at. Asked right after the click and answered at
+         once, a half that drew the first reader's list for the first paint and his own a moment
+         later would pass: by the time a click is handed back, an answer that came at once has
+         landed (measured 10.10.2026: dropping the cache in an effect, after the render that reads
+         it, kept a form of this case that did not hold his list green). „Nothing of the first's"
+         is exactly the paint that comes before his own list can, so it is looked at while it is
+         out. */
+      let answerHim: () => void = () => {}
+      const held = new Promise<void>((resolve) => {
+        answerHim = resolve
+      })
+      const server = aServerForTheAsker({ lists: { [ASKER]: first, [NEXT_ASKER]: next } })
+      const answering = globalThis.fetch
+
+      globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const response = await answering(input, init)
+        const heIsAsking =
+          String(input) === '/api/me/applications' &&
+          whoTheCookieCurrentlyNames()?.memberNumber === NEXT_ASKER
+
+        return heIsAsking ? held.then(() => response) : response
+      }
+
+      const user = setupUser()
+
+      try {
+        renderAt(at(THIS.slug), 'competitor', ASKER, undefined, DAY_IN, (
+          <>
+            <LeaveInPlace />
+            <Become who={NEXT_ASKER} />
+          </>
+        ))
+
+        /* The first reader is told what his own list says, from the one read that went out for him. */
+        await waitFor(() => {
+          expect(whatIsDrawn()).toEqual(firstSees)
+        })
+        expect(readsOfWhatHeWaitsOn(server.asked)).toBe(1)
+
+        await user.click(screen.getByRole('button', { name: 'odjavi prvog člana' }))
+
+        /* Nobody is signed in: the page stays, and nothing of this half is drawn to nobody. */
+        expect(whatIsDrawn()).toEqual(NEITHER)
+
+        await user.click(screen.getByRole('button', { name: `postani ${NEXT_ASKER}` }))
+
+        /* While his own list is out nothing of this half is drawn, and so nothing of the first
+           reader's: the page asks for his list and draws no list at all until it has come. That it
+           WAS asked for is the second read, which is also what tells a list read for him from the
+           first reader's list served to him. */
+        expect(whatIsDrawn()).toEqual(NEITHER)
+        expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
+
+        answerHim()
+
+        /* And then his own: the right one of the two, and nothing asked again. */
+        await waitFor(() => {
+          expect(whatIsDrawn()).toEqual(nextSees)
+        })
+        expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
+      } finally {
+        globalThis.fetch = answering
+        server.stop()
+      }
+    },
+    SLOW,
+  )
 })
 
 describe('what a case of this file may end in', () => {

@@ -141,6 +141,16 @@ export const RESOURCE_NAMES = [
      PLACE, so a visit is not one person. That is `theWaitingNowBelongsTo` in
      `data/useResource.ts`. */
   'me/applications',
+  /* THE ASKER'S OWN RUNS THAT NOBODY HAS COUNTED: the ones waiting on a moderator and the ones
+     a moderator sent back with a reason (`MyResultSubmissionsApi`, R2 of the results flows).
+     „Moji rezultati" drew them out of the browser's own session until 10.10.2026, so a run a
+     member really sent was gone from his list the moment he reloaded the page, and a refusal
+     never reached the list at all once the moderator's queue had moved onto the server.
+
+     **THE THIRD NAME A HOOK DROPS WHEN THE CALLER CHANGES**, after `inbox` and
+     `me/applications`, for the reason written over `inbox`: signing out and back in happen in
+     place. That is `theSubmissionsNowBelongTo` in `data/useResource.ts`. */
+  'me/result-submissions',
   'moderators',
   'pages',
   'pairs',

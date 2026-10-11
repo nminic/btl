@@ -1,5 +1,4 @@
-import { screen, within } from '@testing-library/react'
-import { useSession } from '../session/useSession'
+import { screen } from '@testing-library/react'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -22,23 +21,9 @@ import { setupUser } from '../test/user'
  * written one per kind — the form to ask for, the sentence to say — and a lookup
  * with a word that is not there gives `undefined`, which takes the screen down to
  * the error boundary. It was measured doing exactly that on 30.08.2026. And the
- * word travels: reporting a result writes the race's kind into the submission, so
- * an unknown word would be filed against the result and read again by whoever
- * decides on it.
+ * word decides what is sent: which of the figures come off the race and which off the
+ * boxes is chosen by it (`reportedResult.ts`).
  */
-
-/** What the session was told, for a value no screen a member reaches draws. */
-function Sent() {
-  const { submissions } = useSession()
-
-  return (
-    <ul aria-label="sent">
-      {submissions.map((one) => (
-        <li key={one.id}>{`${one.raceId} | ${one.raceKind} | ${one.distanceKm}`}</li>
-      ))}
-    </ul>
-  )
-}
 
 /** The event and race the sweep of every address already reports from. */
 const EVENT = 'fruskogorski-maraton-2010'
@@ -98,25 +83,28 @@ describe('a race whose kind is a word the portal does not know', () => {
     expect(screen.queryByLabelText(/^Dužina/)).toBeNull()
   })
 
-  it('is filed as a race of a length, so the word reaches nothing that reads it later', async () => {
-    /* The submission carries the kind, and whoever decides on it reads that word
-       again (`admin/ReviewQueue.tsx`, which asks its own `raceKind` of it for the
-       same reason). Written raw, „ludilo" would be filed against a real result and
-       handed on.
+  it('is sent as a race of a length, so the race answers for its own distance', async () => {
+    /* Since R2 of the results flows the kind itself is not sent from this road at all: the
+       run goes to `POST /api/results` as the race's id and the four figures, and the server
+       knows the race's kind. What the word still decides is WHICH figures this screen sends,
+       and read raw it chooses the branch that reads boxes the form never drew, so the length
+       goes as `NaN` in place of 57.68 (`reportedResult.ts` made raw, measured 05.09.2026).
 
-       Read off the session rather than off a screen, because no screen a member can
-       reach draws the kind of a result they have just sent. Same shape as
-       `test/decided.tsx`, which exists for exactly that. */
+       Read off the request, because no screen a member can reach draws what he has just sent
+       until the server answers it back. */
     const user = setupUser()
+    const sent: string[] = []
+    const inner = globalThis.fetch
 
-    renderAt(
-      `/sr/kalendar/${EVENT}/prijava?trka=${String(RACE)}`,
-      'competitor',
-      '000002',
-      undefined,
-      null,
-      <Sent />,
-    )
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === '/api/results' && init?.method === 'POST') {
+        sent.push(String(init.body))
+      }
+
+      return inner(input, init)
+    })
+
+    renderAt(`/sr/kalendar/${EVENT}/prijava?trka=${String(RACE)}`, 'competitor', '000002')
 
     await user.type(await screen.findByLabelText(/^Sati/), '3')
     await user.type(screen.getByLabelText(/^Minuta/), '12')
@@ -124,20 +112,13 @@ describe('a race whose kind is a word the portal does not know', () => {
     await user.type(screen.getByLabelText(/^Link ka zvani/), 'https://primer.rs/rezultat')
     await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
-    const sent = within(await screen.findByRole('list', { name: 'sent' }))
+    await screen.findByRole('heading', { name: 'Rezultat je poslat' })
 
-    /* The kind, and the length filed beside it. Both readings of the word are held
-       from here: `ReportResult.tsx` made raw fails both cases in this file, and
-       `reportedResult.ts` made raw fails this one — a race of a length answers for
-       its own distance, so the other branch reads boxes the form never drew and files
-       `NaN` in place of 57.68 (measured 05.09.2026).
-
-       **Asked as a whole line and not as a pattern.** The first draft asked
-       ``new RegExp(`^${RACE} \| length \| 57.68$`)``, and in a template literal
-       „\|" is not an escaped pipe but a pipe: the pattern became three alternatives
-       and matched the id alone, so it passed with the length unread. The lint rule
-       that names it is a warning, not the gate. */
-    expect(sent.getByText(`${RACE} | length | 57.68`)).toBeVisible()
-    expect(sent.queryByText(/ludilo/)).toBeNull()
+    /* The race and the length beside it, as one record: both readings of the word are held
+       from here, `ReportResult.tsx` made raw failing the case above and `reportedResult.ts`
+       made raw failing this one. */
+    expect(sent).toHaveLength(1)
+    expect(JSON.parse(sent[0] ?? '{}')).toMatchObject({ raceId: RACE, distanceKm: 57.68 })
+    expect(sent[0]).not.toMatch(/ludilo/)
   })
 })

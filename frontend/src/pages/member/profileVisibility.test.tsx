@@ -84,7 +84,9 @@ const writes = (asked: Asked[]): Asked[] =>
 const panelFor = async () => within(await screen.findByRole('region', { name: 'Privatnost' }))
 
 const theBox = async () =>
-  (await panelFor()).getByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni')
+  (await panelFor()).getByLabelText(
+    'Sakrij moj profil od svakoga ko nije aktivan član ni administracija',
+  )
 
 /** Somebody else signing in during the same visit, through the portal's own live writer -
  *  the very call `member/SignIn.tsx` makes with the answer to `GET /api/me`. */
@@ -113,6 +115,33 @@ function SignInAs({ memberNumber }: { memberNumber: string }) {
 }
 
 describe('the choice to hide a profile from visitors', () => {
+  it('says in the note above the box who the profile is hidden from', async () => {
+    /* THE OTHER HALF OF THE SENTENCE BESIDE THE BOX (SP, 10.10.2026). The box names the rule and
+       the note names who falls under it, and every case below finds the box by its words while
+       nothing found the note: measured on the five files that read this panel, the note taken
+       out of it, or drawn from the key of the box, left 110 of 110 green.
+     *
+       Asked for by its WORDS, as the box is, and not by its key. A key read back out of the
+       dictionary agrees with whatever the dictionary holds, so the old sentence put back in the
+       book together with its snapshot would pass; the words written here are one more place that
+       has to be edited with them, which is the cost of this being the sentence that tells a
+       member who can no longer read his page. */
+    const { stop } = theServer(false, () => null)
+
+    try {
+      renderAt('/sr/podesavanja', 'competitor', ME)
+
+      expect(
+        (await panelFor()).getByText(
+          'Ime ostaje u tabelama i na rang listama, jer bi bez toga zajedničko rangiranje izgubilo smisao. Skriva se samo tvoja profilna strana, i to samo od posetilaca koji nisu prijavljeni i od prijavljenih naloga bez aktivne članarine.',
+        ),
+      ).toBeVisible()
+    } finally {
+      stop()
+      clearResourceCache()
+    }
+  }, SLOW)
+
   it('goes to the route as that one field and takes nothing else with it', async () => {
     /* `profileHidden` ALONE. A field left out means „do not touch it" on this route (ADL A54,
        and `MeWriteApi` says so in as many words), so a panel that sent the whole record would
