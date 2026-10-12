@@ -66,6 +66,30 @@ export function paymentReference(season: number, memberNumber: string): string {
   return `${season}${Number(memberNumber)}`
 }
 
+/**
+ * THE SAME REFERENCE FOR SOMEBODY WHO MAY NOT HAVE A NUMBER YET, and the empty string for one
+ * who has none.
+ *
+ * <p>PDL P8, owner 10.10.2026, the entry „Prvu članarinu nov član plaća bez poziva na broj": a
+ * member has no number when he registers (30.07.2026), so the slip and the QR code „nose sve
+ * podatke osim poziva na broj". That is not a reference with a gap in it: the season alone
+ * („2027") would still be a reference, a bank statement would carry it, and a moderator looking
+ * for a payment would read it as somebody's. So there is NO reference, and what this hands back
+ * for that is the empty string `IpsPayment.reference` already means „none" by, which
+ * `ipsPayload` leaves the `RO` tag out for and the screens leave the row and the PayPal note
+ * out for.
+ *
+ * <p>Kept beside {@link paymentReference} and not folded into it: that one is about how a number
+ * becomes a reference and takes a number that is there, and every caller that already has one
+ * goes on getting a string and nothing else.
+ *
+ * @param memberNumber the number the league gave him, or nothing for somebody who registered and
+ *   has not paid
+ */
+export function paymentReferenceOrNone(season: number, memberNumber: string | null): string {
+  return memberNumber === null ? '' : paymentReference(season, memberNumber)
+}
+
 /** What the money is for, in the words the statement will carry. */
 export function paymentPurpose(season: number): string {
   return `Članarina za ${season}. godinu`

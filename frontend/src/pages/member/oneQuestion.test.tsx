@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { configure, getConfig, screen, within } from '@testing-library/react'
 import { join, relative, sep } from 'node:path'
 import { isValidElement } from 'react'
 import { matchRoutes } from 'react-router'
@@ -13,6 +13,8 @@ import {
   serverThat,
   type Asked,
 } from '../../test/serverAnswers'
+import { aNeverPaidRecord } from '../../test/neverPaid'
+import { SLOW } from '../../test/slow'
 import { sources, WHOLE_PORTAL } from '../../test/sources'
 
 /**
@@ -266,6 +268,23 @@ describe('the one door to „nobody is signed in"', () => {
   })
 
   /**
+   * And the same for the fourth, which arrived on 11.10.2026.
+   *
+   * <p>„Ovaj deo se otvara kad članarina bude evidentirana" is said to somebody who registered
+   * and has not paid, and it is said INSTEAD of a screen of a member's. A screen deciding on it
+   * by itself is the same fault once more - two homes for one fact, and the second home is the
+   * one that would be wrong the day the first is mended. The two screens that DO draw for him
+   * ask the hook beside this one for a different answer (`useScreenForTheUnpaidToo`), so they do
+   * not name this module either.
+   */
+  it('has a twin for „it opens when your fee is recorded", named by the same one module', () => {
+    const { walked, naming } = modulesNaming('pages/member/NotAMemberYet.tsx')
+
+    expect(walked, 'the portal is still here').toBeGreaterThan(WHOLE_PORTAL)
+    expect(naming).toEqual([HOOK])
+  })
+
+  /**
    * The floor under the table below, and it is what makes the walk every screen rather
    * than the ones somebody remembered.
    *
@@ -342,8 +361,15 @@ describe('the one door to „nobody is signed in"', () => {
   })
 })
 
-/** The two things the member area says INSTEAD of itself, and the only two. */
-const REFUSALS = ['Za ovo treba prijava', 'Ovaj deo je za takmičare']
+/**
+ * The three things the member area says INSTEAD of itself, and the only three: nobody is signed
+ * in; the account races for nobody; and the account has registered and has not paid.
+ */
+const REFUSALS = [
+  'Za ovo treba prijava',
+  'Ovaj deo je za takmičare',
+  'Ovaj deo se otvara kad članarina bude evidentirana',
+]
 
 /**
  * The screen's own heading, once the server has answered who is asking.
@@ -395,7 +421,7 @@ describe('every screen of the member area, to a MEMBER the server has signed in'
    * that draws nothing at all, which is a worse fault reported as none - `findByRole`
    * requires the heading to be there, so both halves have to hold.
    */
-  it.each(WALKED)('draws $at rather than one of the two refusals', async ({ at }) => {
+  it.each(WALKED)('draws $at rather than one of the refusals', async ({ at }) => {
     aSignedInMember()
     /* A VISITOR AND NO MEMBER NUMBER HANDED IN, which is a browser that has touched no
        development control and a case that cannot pass on the prop: the only thing that
@@ -544,27 +570,48 @@ describe('the member number the screens read', () => {
   })
 
   /**
-   * AND A RECORD WITH NO NUMBER IN IT IS THE THIRD WAY OF BEING NOBODY, which is a state
-   * of the server's making rather than of this portal's.
+   * AND A RECORD WITH NO NUMBER IN IT IS NOT A MEMBER, which is a state of the server's
+   * making rather than of this portal's - and since 11.10.2026 it is not nobody either.
    *
    * <p>ADL A44, owner 11.09.2026: „Osoba je `competitor` od registracije, a clan postaje
    * kad dobije broj", so `MeApi.MyOwnRecord` leaves `memberNumber` out for somebody who
    * has registered and has not been given one. Read as „the record is here, so he is a
    * member", such a person is signed in as the member number `undefined`.
    *
-   * <p><b>What he is told is not true of him and that is a boundary rather than a
-   * decision</b>: „uz ovaj nalog ne stoji takmicarski zapis" - his account has one, and
-   * what it has not got is a number. No decision anywhere says what his screen should be,
-   * so he is not given an invented one (`memberScreen.tsx` carries this).
+   * <p><b>This case said until 11.10.2026 that he is told „Ovaj deo je za takmicare", and
+   * called it a boundary rather than a decision.</b> It was neither: it was a sentence false
+   * of him, because his account HAS a record and what it lacks is a number, and the owner
+   * has since decided what he may do (PDL P8, the entry „Šta sme neplaćen član"). He is told
+   * that the part opens when his fee is recorded, and the walk below measures it on all eleven
+   * addresses.
+   *
+   * <p><b>The record is deliberately a poor one</b> - a basis and nothing else - because what
+   * says „there is a record" is the presence of the object and not of any field in it
+   * (`session/theServer.ts`, `hasARecord`). A reader that asked for a country, or a season, would
+   * take this for an account that races for nobody.
    */
-  it('is missing rather than invented when the record carries no number', async () => {
-    aServerAnswering({ role: 'competitor', account: 107, member: { membershipBasis: 'payment' } })
-    renderAt('/sr/moj-profil', 'visitor', null)
+  it(
+    'is missing rather than invented when the record carries no number',
+    async () => {
+      aServerAnswering({ role: 'competitor', account: 107, member: { membershipBasis: 'payment' } })
+      renderAt('/sr/moj-profil', 'visitor', null)
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Ovaj deo je za takmičare' }),
-    ).toBeVisible()
-  })
+      /* The wait is given half of the time the case has, which is the arrangement of the cases
+         below this one in the file for the new states (`waitsForHalfOfACase`); this case is older
+         than that and was reworded, so it carries the half itself. */
+      expect(
+        await screen.findByRole(
+          'heading',
+          { level: 1, name: 'Ovaj deo se otvara kad članarina bude evidentirana' },
+          { timeout: SLOW / 2 },
+        ),
+      ).toBeVisible()
+      expect(
+        screen.queryByRole('heading', { level: 1, name: 'Ovaj deo je za takmičare' }),
+      ).not.toBeInTheDocument()
+    },
+    SLOW,
+  )
 
   it('is missing rather than guessed at when only the account is there', async () => {
     /* The same two facts with the member number taken away, which is the only difference
@@ -576,4 +623,145 @@ describe('the member number the screens read', () => {
       await screen.findByRole('heading', { level: 1, name: 'Ovaj deo je za takmičare' }),
     ).toBeVisible()
   })
+})
+
+/**
+ * EVERY WAIT OF THE CASES THAT FOLLOW IS GIVEN HALF OF THE TIME A CASE HAS, so that a wait which
+ * never succeeds ends the case with the assertion's own words and not with the case's clock
+ * (`pages/admin/saveWhileSaving.test.tsx` found the arrangement for itself).
+ *
+ * <p>Called from inside a `describe` and not once for the file, because the cases above are older
+ * than this and wait for the whole of a case, and halving their waits is not this change's to
+ * decide. The value the wait had is put back after each case, whatever it was.
+ */
+function waitsForHalfOfACase(): void {
+  let before = SLOW
+
+  beforeEach(() => {
+    before = getConfig().asyncUtilTimeout
+    configure({ asyncUtilTimeout: SLOW / 2 })
+  })
+
+  afterEach(() => {
+    configure({ asyncUtilTimeout: before })
+  })
+}
+
+describe('every screen of the member area, to somebody who has registered and has not paid', () => {
+  waitsForHalfOfACase()
+
+  /**
+   * THE TWO SCREENS THAT ARE DRAWN FOR HIM, and what each calls itself.
+   *
+   * <p>PDL P8, the entry „Šta sme neplaćen član" (10.10.2026, chosen by the owner between offered
+   * outcomes; the sentence is the record's): „Sme: izbor kategorije i plaćanje, lozinku, adresu
+   * pošte i svoje podatke za evidenciju i majicu." Paying and choosing a category are
+   * „Moja članarina", and the password and his data are the settings. The other nine screens are
+   * not his yet, and each of them tells him so.
+   *
+   * <p><b>Written by hand, and held on both sides.</b> The walk below is derived from `WALKED`,
+   * which has a floor of its own (the module graph and the router, above), and the case right
+   * after this names both of these in it, so a rename on either side fails there and not by
+   * quietly leaving a screen unwalked.
+   */
+  const HIS_OWN = [
+    { screen: 'pages/member/Membership.tsx', heading: 'Moja članarina' },
+    { screen: 'pages/member/Settings.tsx', heading: 'Podešavanja' },
+  ]
+
+  const THE_TWO = WALKED.flatMap((one) => {
+    const his = HIS_OWN.find((own) => own.screen === one.screen)
+
+    return his === undefined ? [] : [{ ...one, heading: his.heading }]
+  })
+
+  const THE_OTHER_NINE = WALKED.filter((one) => !HIS_OWN.some((own) => own.screen === one.screen))
+
+  it('walks the two that are drawn for him and the nine that are not, and nothing else', () => {
+    expect(THE_TWO.map((one) => one.screen).toSorted()).toEqual(
+      HIS_OWN.map((own) => own.screen).toSorted(),
+    )
+    expect(THE_OTHER_NINE).toHaveLength(WALKED.length - HIS_OWN.length)
+    expect(THE_OTHER_NINE).toHaveLength(9)
+  })
+
+  it('ends a wait that never succeeds in an assertion and not in its own clock', () => {
+    /* The floor under `waitsForHalfOfACase`, asked of the number that decides: without it a wait
+       and the case that is waiting for it are both `SLOW`, and the clock of the case ends it. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
+
+  it.each(THE_TWO)(
+    'draws its own page at $at, and not a sentence about a part that is shut',
+    async ({ at, heading }) => {
+      aServerAnswering({ role: 'competitor', account: 107, member: aNeverPaidRecord })
+      renderAt(at, 'visitor', null)
+
+      expect((await theHeadingOnceTheAnswerHasArrived()).textContent).toBe(heading)
+    },
+    SLOW,
+  )
+
+  it.each(THE_OTHER_NINE)(
+    'tells him at $at that it opens when his fee is recorded, and where he pays it',
+    async ({ at }) => {
+      aServerAnswering({ role: 'competitor', account: 107, member: aNeverPaidRecord })
+      renderAt(at, 'visitor', null)
+
+      expect((await theHeadingOnceTheAnswerHasArrived()).textContent).toBe(
+        'Ovaj deo se otvara kad članarina bude evidentirana',
+      )
+
+      /* Read inside the screen rather than on the page, because the menu behind the picture
+         has a „Moja članarina" of its own and the header has a way home: the sentence is
+         measured by what stands under it. The way onward is the page he pays on and not the
+         front page and not the sign in - he is signed in already, and the front page would
+         leave him looking for it. */
+      const mine = within(screen.getByRole('main'))
+
+      expect(mine.getByText(/Registrovao si se, ali članarina još nije evidentirana/)).toBeVisible()
+      expect(mine.getByRole('link', { name: 'Moja članarina' })).toHaveAttribute(
+        'href',
+        '/sr/moja-clanarina',
+      )
+      expect(mine.queryByRole('link', { name: 'Naslovna strana' })).not.toBeInTheDocument()
+      expect(mine.queryByRole('link', { name: 'Prijava' })).not.toBeInTheDocument()
+    },
+    SLOW,
+  )
+})
+
+describe('every screen of the member area, to a member whose fee has lapsed', () => {
+  waitsForHalfOfACase()
+
+  /**
+   * HE HAS A NUMBER, SO HE IS A MEMBER, and the flag on the answer is what the settings read and
+   * nothing else on the portal does (PDL P8, the addition of 11.10.2026).
+   *
+   * <p>The mutation this exists for is deciding „has not paid" by the flag alone: both people are
+   * not active, and only the number parts them. Read that way, this man would be told on nine
+   * screens that the part opens when his fee is recorded, which is a sentence for somebody who has
+   * none. The answer carries the number and a plain no, and nothing else, because that is the
+   * smallest answer that can tell the two apart.
+   */
+  it('ends a wait that never succeeds in an assertion and not in its own clock', () => {
+    /* The floor under `waitsForHalfOfACase`, asked here as well as above because the call is made
+       once in each `describe` and one of the two could be taken out alone. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
+
+  it.each(WALKED)(
+    'draws $at rather than one of the refusals',
+    async ({ at }) => {
+      aServerAnswering({
+        role: 'competitor',
+        account: 107,
+        member: { memberNumber: '000032', active: false },
+      })
+      renderAt(at, 'visitor', null)
+
+      expect(REFUSALS).not.toContain((await theHeadingOnceTheAnswerHasArrived()).textContent)
+    },
+    SLOW,
+  )
 })

@@ -24,11 +24,14 @@ import {
  * the cache in `data/client.ts`. That is the same ground `pages/account` stood on from
  * 19.09.2026.
  *
- * <p><b>THE SECOND OF THE THREE IS READ TWICE SINCE 10.10.2026</b>: once for who is asking
- * ({@link whoTheServerSaysIAm}, which the session believes) and once for the page of the member
+ * <p><b>THE SECOND OF THE THREE IS READ THREE TIMES SINCE 11.10.2026</b>: once for who is asking
+ * ({@link whoTheServerSaysIAm}, which the session believes), once for the page of the member
  * himself ({@link whatTheServerSaysOfMyProfile}, which one screen asks for when the page is his
- * own and the public list does not carry him). They share the request and nothing it returns,
- * so that a fault in the second can never sign him out of the first.
+ * own and the public list does not carry him) and once for the data of somebody who has registered
+ * and has no number ({@link whatTheServerSaysOfMyData}, which the settings screen asks for when
+ * there is no profile to draw and still a name and a town to show). They share the request and
+ * nothing it returns, so that a fault in the second or the third can never sign him out of the
+ * first.
  *
  * <p><b>The token is asked of `askTheServer` rather than copied out of it.</b> That
  * file warns the next reader off IMPORTING AND WIDENING it, and nothing here widens it:
@@ -213,6 +216,37 @@ export type WhoTheServerSaysIAm = {
    * says only what arrived.
    */
   referredCount: number | null
+  /**
+   * WHETHER THE ANSWER CARRIED A RECORD OF THE CALLER AT ALL, and a member number does not say
+   * it.
+   *
+   * **Here because the number answers a narrower question than the one the portal now asks.**
+   * Until 11.10.2026 „no number" was one state and the portal drew one sentence for it. It is two:
+   * an account that races for nobody, which has no `member` in the answer, and somebody who
+   * registered and has not paid, who has the `member` and not the number inside it (ADL A44,
+   * `numberIn` above). The second may pay, choose his category and change his password and his
+   * data (PDL P8, „Šta sme neplaćen član", 10.10.2026), so the portal has to be able to tell him
+   * from the first. This is the presence of the object, nothing more: it is true for the record of
+   * a member whose fee has lapsed and for a member, and it is the number that parts them from him.
+   */
+  hasARecord: boolean
+  /**
+   * WHETHER HIS FEE STANDS, and null where the answer did not say.
+   *
+   * **`MeApi.MyOwnRecord.active`, which is `competitor.active`, since 11.10.2026.** Before that
+   * day the answer did not say, and a member whose fee has lapsed was drawn every screen of a
+   * member whose fee stands (measured against a real database that day: the two were answered the
+   * same names). The server refuses him 404 on `PUT /api/me` and `PUT /api/me/password` (PDL P8,
+   * the addition of 11.10.2026), so this is what lets a screen not offer him two forms that fail
+   * every time.
+   *
+   * **Looked for and never asserted, and null for four things**: no record, a record that does not
+   * carry the key (a server one release behind), a value that is not a yes or a no, and a caller
+   * who is not a member. The session turns a null into „stands", because the flag is only ever
+   * acted on to take something AWAY from a member and a word the portal was not told is a word it
+   * may not act on (`session/context.ts`, first arm of `SignedIn`).
+   */
+  feeStands: boolean | null
 }
 
 /**
@@ -320,11 +354,11 @@ export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null>
     return null
   }
 
-  /* READ ONCE AND HANDED TO ALL SEVEN, rather than dug out seven times. Readers walking
+  /* READ ONCE AND HANDED TO ALL NINE, rather than dug out nine times. Readers walking
      to the same record by themselves are that many places that can disagree about where
      it is, and the fact they are reading - „does this caller race for anybody" - is one
-     fact. It said „all four" until 25.09.2026 and the number is the only thing in it
-     that moved. */
+     fact. It said „all four" until 25.09.2026 and „all seven" until 11.10.2026, and the
+     number is the only thing in it that moved. */
   const mine = recordIn(body)
 
   return {
@@ -337,6 +371,10 @@ export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null>
     membershipBasis: basisIn(mine),
     referralCode: codeIn(mine),
     referredCount: wholeIn(mine, 'referredCount'),
+    /* The presence of the object and not of any key inside it, which is the one difference
+       between „races for nobody" and „registered and has not paid". */
+    hasARecord: mine !== null,
+    feeStands: feeStandsIn(mine),
   }
 }
 
@@ -374,6 +412,40 @@ export async function whatTheServerSaysOfMyProfile(): Promise<Competitor | null>
   const body = await whatTheServerAnswersMe()
 
   return body === null ? null : profileIn(recordIn(body))
+}
+
+/**
+ * WHAT A MEMBER'S OWN DATA SCREEN IS DRAWN FROM: who he is, in the six facts it shows.
+ *
+ * <p>His first and last name, his gender, his town, the band he races in and whether he runs in
+ * the beginners' category - and nothing else, in particular **no member number**. That is what
+ * parts it from {@link Competitor}: somebody who registered and has not paid has no number, so
+ * there is no profile to draw (the profile is headed by a number and stands on a page nobody may
+ * open for him yet), and he still has a name to correct and a town and a category to read
+ * (PDL P8, „Šta sme neplaćen član", 10.10.2026: „svoje podatke za evidenciju i majicu").
+ *
+ * <p>A type of its own and not a {@link Competitor} with a hole in it, because a record with a
+ * number that may be absent is a record every screen that draws a member would then have to ask
+ * about; this one is read by one screen, and a screen that wants a number cannot be handed it.
+ */
+export type MyData = Pick<
+  Competitor,
+  'firstName' | 'lastName' | 'gender' | 'city' | 'ageBand' | 'firstSeason2027'
+>
+
+/**
+ * THE SAME RECORD AS {@link whatTheServerSaysOfMyProfile}, read for the six facts above, or
+ * nothing.
+ *
+ * <p>Its own reader for the reason that one has: a fault in it must never sign him out, and it
+ * shares the request and nothing it returned ({@link whatTheServerAnswersMe}). The six are read
+ * by the very functions the profile is read with (`dataIn`), so the two cannot disagree about what
+ * a name is or what makes a record unreadable.
+ */
+export async function whatTheServerSaysOfMyData(): Promise<MyData | null> {
+  const body = await whatTheServerAnswersMe()
+
+  return body === null ? null : dataIn(recordIn(body))
 }
 
 /**
@@ -562,29 +634,22 @@ function profileIn(mine: object | null): Competitor | null {
     return null
   }
 
+  /* THE SIX THAT A DATA SCREEN IS DRAWN FROM ARE READ BY `dataIn`, and are not read a second
+     time here: two readers of the same name are two answers to „is this a name", and the
+     profile used to be the only one. Its own conditions are exactly what they were. */
+  const data = dataIn(mine)
   const memberNumber = numberIn(mine)
-  const firstName = nameIn(mine, 'firstName')
-  const lastName = nameIn(mine, 'lastName')
-  const gender = genderIn(mine)
-  const city = nameIn(mine, 'city')
   const country = countryIn(mine)
-  const ageBand = ageBandIn(mine)
   const firstSeason = wholeIn(mine, 'firstSeason')
-  const firstSeason2027 = flagIn(mine, 'firstSeason2027')
   const bio = textIn(mine, 'bio')
   const profileHidden = flagIn(mine, 'profileHidden')
   const birthdayShown = birthdayShownIn(mine)
 
   if (
+    data === null ||
     memberNumber === null ||
-    firstName === null ||
-    lastName === null ||
-    gender === null ||
-    city === null ||
     country === null ||
-    ageBand === null ||
     firstSeason === null ||
-    firstSeason2027 === null ||
     bio === null ||
     profileHidden === null ||
     birthdayShown === null
@@ -596,14 +661,9 @@ function profileIn(mine: object | null): Competitor | null {
   const crop = squareIn(mine)
 
   return {
+    ...data,
     memberNumber,
-    firstName,
-    lastName,
-    gender,
-    city,
     country,
-    ageBand,
-    firstSeason2027,
     firstSeason,
     profileHidden,
     birthdayShown,
@@ -613,6 +673,53 @@ function profileIn(mine: object | null): Competitor | null {
     photo: crop === null ? null : photo,
     crop: photo === null ? null : crop,
   }
+}
+
+/**
+ * THE SIX FACTS OF {@link MyData} out of the caller's record, or nothing when any of them is
+ * missing or of a kind the portal does not know.
+ *
+ * <p>The conditions are the profile's own for these six - a name that says nothing, a gender
+ * that is not one of the two words, a band the portal does not know, a flag that merely reads as
+ * one - and they end the whole reading, because a screen showing a member his own category
+ * made up is a lie about him to himself (`profileIn` says it for the profile).
+ */
+function dataIn(mine: object | null): MyData | null {
+  if (mine === null) {
+    return null
+  }
+
+  const firstName = nameIn(mine, 'firstName')
+  const lastName = nameIn(mine, 'lastName')
+  const gender = genderIn(mine)
+  const city = nameIn(mine, 'city')
+  const ageBand = ageBandIn(mine)
+  const firstSeason2027 = flagIn(mine, 'firstSeason2027')
+
+  if (
+    firstName === null ||
+    lastName === null ||
+    gender === null ||
+    city === null ||
+    ageBand === null ||
+    firstSeason2027 === null
+  ) {
+    return null
+  }
+
+  return { firstName, lastName, gender, city, ageBand, firstSeason2027 }
+}
+
+/**
+ * Whether the caller's fee stands, out of the answer, or nothing.
+ *
+ * **Looked for and never asserted**: a yes or a no and nothing that merely reads as one. Null for
+ * a caller with no record, for a record without the key, and for a value of another sort - all of
+ * them „I was not told", which the session turns into „stands" because the flag is only acted on
+ * to take something away (`session/context.ts`, first arm of `SignedIn`).
+ */
+function feeStandsIn(mine: object | null): boolean | null {
+  return mine === null ? null : flagIn(mine, 'active')
 }
 
 /** A name or a town: text that says something. A blank one is a server saying nothing. */
@@ -651,7 +758,7 @@ function birthdayShownIn(mine: object): BirthdayShown | null {
 }
 
 /** A yes or a no, and nothing that merely reads as one. */
-function flagIn(mine: object, name: 'firstSeason2027' | 'profileHidden'): boolean | null {
+function flagIn(mine: object, name: 'firstSeason2027' | 'profileHidden' | 'active'): boolean | null {
   const said: unknown = Reflect.get(mine, name)
 
   return typeof said === 'boolean' ? said : null

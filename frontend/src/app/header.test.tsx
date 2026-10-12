@@ -432,6 +432,37 @@ describe('the inbox in the header', () => {
   })
 })
 
+describe('the envelope for somebody who registered and has not paid', () => {
+  /**
+   * HE HAS A RECORD AND NO NUMBER, and the panel under the envelope is drawn for a member
+   * (`app/MessagesMenu.tsx` reads the member arm of `SignedIn`), as it was drawn for nobody else while
+   * he was the account arm: it asks nothing and says there is nothing. **Whether somebody who has
+   * not paid should have an inbox is not decided anywhere** - this holds what the panel does, so
+   * that giving him one is a deliberate change and not a side effect of a new arm. **Measured as
+   * the ABSENCE of the request**, for the reason the case above gives, and asked of the third arm
+   * because a panel written `signedIn.as !== 'account'` would draw his inbox and spend a request on
+   * every new member who signs in.
+   */
+  it('asks for no inbox at all', async () => {
+    const user = setupUser()
+    clearResourceCache()
+
+    const { asked, stop } = serverThat(() => null)
+
+    try {
+      renderInbox([], { as: 'neverPaid', account: 4 })
+
+      await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+
+      expect(screen.getByText('Nema poruka.')).toBeVisible()
+      expect(asked.map((one) => one.path)).not.toContain('/api/inbox')
+    } finally {
+      stop()
+      clearResourceCache()
+    }
+  })
+})
+
 describe('the icons', () => {
   it('draws the envelope as a picture that carries no name of its own', () => {
     const { container } = render(<MailIcon className="inbox__glyph" />)
@@ -448,7 +479,10 @@ describe('the icons', () => {
    because the envelope is drawn for EVERY signed in account (`app/Shell.tsx`) while the inbox
    belongs only to somebody the league has given a number, and the two states of that are what
    decides whether anything is asked for at all. */
-function renderInbox(inbox: Message[], who: SignedIn = { as: 'member', memberNumber: '000007' }) {
+function renderInbox(
+  inbox: Message[],
+  who: SignedIn = { as: 'member', memberNumber: '000007', feeStands: true },
+) {
   const session: SessionValue = {
     /* Kept in step with the arm above rather than written out, because „an account that races
        for nobody" is exactly a session with no member number, and a helper that set one anyway

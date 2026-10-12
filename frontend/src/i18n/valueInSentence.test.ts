@@ -366,6 +366,10 @@ describe('a sentence with a value put into it', () => {
          now, so it is formatted like the two amounts either side of it. */
       'membership.costs <- money',
       'membership.feeExempt',
+      /* The heading of the panel somebody who has not paid pays in, which takes the season the
+         way the renewal heading below takes it (`membership.renewal`): a bare number from the
+         clock (`seasonBeingRenewed`), not a value with a separator or a case of its own. */
+      'membership.firstPayment',
       'membership.firstSeasonClosed',
       'membership.firstSeasonOpen',
       'membership.inTeam',

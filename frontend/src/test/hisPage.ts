@@ -24,6 +24,10 @@ export const aLapsedMembersPage = {
   country: 'RS',
   firstSeason: 2016,
   membershipBasis: 'payment',
+  /* The one thing that makes him the member this sample is: his fee has lapsed, and since
+     11.10.2026 the answer says so (`MeApi.MyOwnRecord.active`). A sample of the lapsed member
+     that said `true` would be a standing one with the same name. */
+  active: false,
   referralCode: 'a92a9c8493cecc3e',
   referredCount: 0,
   firstName: 'Vojislav',

@@ -1,0 +1,73 @@
+import { serverThat, type Asked } from './serverAnswers'
+
+/**
+ * THE ANSWER `GET /api/me` GIVES SOMEBODY WHO REGISTERED AND HAS NOT PAID, written out field by
+ * field.
+ *
+ * <p>PDL P8, the entry „Šta sme neplaćen član" (10.10.2026): such a person has a record of his
+ * own and no member number, because registration hands out none (30.07.2026, ADL A44) and the
+ * league gives it when the payment is recorded. What `MeApi.MyOwnRecord` therefore leaves out for
+ * him is not four names but five - the number is the fifth annotated component, and it is the
+ * one he does not have ({@link WHAT_HE_DOES_NOT_HAVE_YET}). His fee does not stand
+ * (`active: false`), his basis is the one registration writes (`payment`, because
+ * `feeExempt` is honorary membership and the owner's to grant), and his first season is the one
+ * being paid for.
+ *
+ * <p><b>Written out here, and not read off the generated members</b>, for the reason
+ * `test/hisPage.ts` gives about the lapsed member: a case about what a body is BELIEVED as must
+ * not take its body from the place the screens take theirs. Nobody in `test/mock/competitors.json`
+ * is in this state - every row there has a number - so there is nothing on the disc to read.
+ *
+ * <p><b>What holds it to the server is a case and not this comment</b>:
+ * `pages/member/neverPaid.test.tsx` requires these names, with the five, to be exactly the
+ * components `MeApi.MyOwnRecord` declares, read off the backend's own source.
+ */
+export const aNeverPaidRecord = {
+  country: 'RS',
+  firstSeason: 2027,
+  membershipBasis: 'payment',
+  active: false,
+  referralCode: '3d6b1f0a9c2e4478',
+  referredCount: 0,
+  firstName: 'Tek',
+  lastName: 'Stigao',
+  gender: 'M',
+  city: 'Beograd',
+  ageBand: '25-39',
+  firstSeason2027: false,
+  bio: '',
+  profileHidden: false,
+  birthdayShown: 'none',
+}
+
+/**
+ * THE FIVE NAMES `MeApi.MyOwnRecord` LEAVES OUT RATHER THAN CARRY AS NULL (`@JsonInclude
+ * (NON_NULL)`), all five of them absent for him: the number he has not been given, and the team,
+ * the year in it, the portrait and its square, none of which he has.
+ */
+export const WHAT_HE_DOES_NOT_HAVE_YET = ['memberNumber', 'teamId', 'teamSince', 'photo', 'crop']
+
+/**
+ * `GET /api/me` AS THE SERVER ANSWERS SOMEBODY WHO HAS NOT PAID, for the length of one case.
+ *
+ * <p>In front of the disc reader, as every `serverThat` is, so everything the case does not name
+ * is answered as it always was. The cookie is not looked at: this stands in for the server's
+ * answer to ONE caller, and what the caller is, is the case's to arrange.
+ *
+ * @param changes what this case changes in the record, over {@link aNeverPaidRecord}; a name given
+ *                as `undefined` is left out of the answer, which is how a real server says „none"
+ * @param role    what the answer calls him, which is `competitor` for anybody with a record
+ */
+export function neverPaidAsServed(
+  changes: Record<string, unknown> = {},
+  role = 'competitor',
+): { asked: Asked[]; stop: () => void } {
+  return serverThat((path) =>
+    path === '/api/me'
+      ? new Response(
+          JSON.stringify({ role, account: 1, member: { ...aNeverPaidRecord, ...changes } }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      : null,
+  )
+}

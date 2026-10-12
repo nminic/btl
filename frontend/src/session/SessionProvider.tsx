@@ -84,6 +84,15 @@ export function SessionProvider({
      written above it: they come in one answer and half a session is worse than none. */
   const [myReferralCode, setMyReferralCode] = useState<string | null>(null)
   const [myReferredCount, setMyReferredCount] = useState<number | null>(null)
+  /* AND THE TWO THE SAME ANSWER SAYS ABOUT THE RECORD RATHER THAN OUT OF IT, here since
+     11.10.2026 (PDL P8, „Šta sme neplaćen član"). Whether the league keeps a record of the
+     caller at all, which a member number cannot say (somebody who registered and has not paid
+     has the record and no number), and whether his fee stands. Neither is handed to a screen as
+     it is: `signedIn` below is worked out from them, so that the three kinds of person who can
+     be signed in are one question with one answer and a screen cannot ask it two ways. Set in
+     the same breath as the rest, for the reason written above: they come in one answer. */
+  const [myRecordExists, setMyRecordExists] = useState(false)
+  const [myFeeStands, setMyFeeStands] = useState<boolean | null>(null)
   /* EMPTY, AND IT IS THE OWNER'S OWN DECISION RATHER THAN A TIDY-UP (PDL 34, 28.09.2026).
      Two records lived here as the starting value until that day - `data/seedMessages.ts`,
      „Dobro došao u pripremu sezone 2027" and „Rezultat je odobren" - and they shipped, so
@@ -325,6 +334,8 @@ export function SessionProvider({
       membershipBasis: MembershipBasis | null
       referralCode: string | null
       referredCount: number | null
+      hasARecord: boolean
+      feeStands: boolean | null
     }) => {
       setAccount(who.account)
       /* **WRITTEN EVEN WHEN IT IS NULL, and that is the half that carries a fault if it
@@ -360,6 +371,12 @@ export function SessionProvider({
          hand out. */
       setMyReferralCode(who.referralCode)
       setMyReferredCount(who.referredCount)
+      /* WRITTEN EVEN WHEN NULL OR FALSE, which is the same rule once more and the one that
+         matters most here: a moderator who signs in behind somebody who registered and has not
+         paid must not inherit „he has a record", and a member whose fee has lapsed must not
+         leave „it does not stand" for the member who signs in after him on a shared laptop. */
+      setMyRecordExists(who.hasARecord)
+      setMyFeeStands(who.feeStands)
     },
     [],
   )
@@ -399,9 +416,18 @@ export function SessionProvider({
          can draw. */
       signedIn:
         memberNumber !== null
-          ? { as: 'member', memberNumber }
+          ? /* **THE NUMBER DECIDES WHO IS A MEMBER, AND THE FLAG ONLY WHAT HE IS TO BE GIVEN.**
+               `feeStands` is read for somebody who has a number and for nobody else, which is
+               what keeps a member whose fee has lapsed (a number, not standing) apart from
+               somebody who has not paid (no number, not standing): both are „no" on the flag,
+               and only the number parts them (`MeApiTest`, the fee flag, asserts it). A plain
+               no takes something away; anything else, null included, leaves him a member whose
+               fee stands, because the flag is never acted on to refuse. */
+            { as: 'member', memberNumber, feeStands: myFeeStands !== false }
           : account !== null
-            ? { as: 'account', account }
+            ? myRecordExists
+              ? { as: 'neverPaid', account }
+              : { as: 'account', account }
             : null,
       /* BOTH, and never one of them. Signing out of a real session while the prototype
          member number stood would leave the header signed in with a server that has
@@ -466,6 +492,11 @@ export function SessionProvider({
       myTeamId,
       myReferralCode,
       myReferredCount,
+      /* Read by `signedIn` and by nothing else, so named here for the same reason the five
+         above are: a dependency list that leaves out what it reads is a list somebody has to
+         re-derive by hand the next time it grows. */
+      myRecordExists,
+      myFeeStands,
       theServerSignedMeIn,
       theServerHasAnswered,
       theServerAnswered,

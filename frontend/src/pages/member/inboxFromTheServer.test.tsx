@@ -361,6 +361,8 @@ function SignInAsWithoutSigningOut({
           membershipBasis: null,
           referralCode: null,
           referredCount: null,
+          hasARecord: true,
+          feeStands: null,
         })
       }}
     >

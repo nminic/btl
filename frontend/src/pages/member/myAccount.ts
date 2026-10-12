@@ -113,7 +113,7 @@ export function waitingIn(body: unknown): number | null {
  * <p>{@code standing} is `null` where the portal <b>cannot say</b> what the server holds,
  * which is not the same as an empty box and is the whole reason this type has three states
  * rather than two. Measured on 24.09.2026 and written here rather than implied:
- * {@code GET /api/me} answers a role, an account and the member's own record - seven facts
+ * {@code GET /api/me} answers a role, an account and the member's own record - eight facts
  * about his membership, and since 10.10.2026 the twelve his own page is drawn from
  * (`MeApi.MyOwnRecord`) - and {@code /api/competitors} answers the PUBLIC record, which
  * carries a name and a town and by ADL A8 may carry nothing else. Neither carries the

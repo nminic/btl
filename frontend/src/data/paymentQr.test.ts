@@ -1,7 +1,19 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { CONTACT_ADDRESS } from '../app/routes'
-import { methodFor, methodsFor, paysInDinars, PAYPAL_ADDRESS, paypalPaymentLink } from './paymentQr'
+import {
+  ipsPayload,
+  methodFor,
+  methodsFor,
+  paymentPurpose,
+  paymentReference,
+  paymentReferenceOrNone,
+  paysInDinars,
+  PAYPAL_ADDRESS,
+  paypalPaymentLink,
+  RECIPIENT_ACCOUNT,
+  RECIPIENT_NAME,
+} from './paymentQr'
 
 /**
  * The two additions PR 385's second round made to this file, each covered directly
@@ -130,5 +142,51 @@ describe('the way to pay, asked by the money instead of by the country', () => {
        through. */
     expect(methodFor('RSDX')).toBeNull()
     expect(methodFor('eur')).toBeNull()
+  })
+})
+
+/**
+ * THE REFERENCE OF SOMEBODY WHO MAY HAVE NO NUMBER YET.
+ *
+ * <p>PDL P8, the entry „Prvu članarinu nov član plaća bez poziva na broj" (10.10.2026, chosen by the
+ * owner between offered outcomes; the sentence is the record's): a member has no number when he
+ * registers (30.07.2026), so the slip and the code „nose sve podatke osim poziva na broj". That is
+ * not a reference with a gap in it. The season alone would still be a reference a bank statement
+ * carries, and a moderator looking for a payment would read it as somebody's; so the answer for
+ * somebody with no number is the empty string `IpsPayment.reference` already means „none" by, and
+ * the code leaves its `RO` tag out for it.
+ */
+describe('the reference of somebody who may have no number yet', () => {
+  it('is the very reference a member with a number is given, for every member', () => {
+    for (const number of ['000001', '000037', '001234', '000032']) {
+      expect(paymentReferenceOrNone(2027, number), number).toBe(paymentReference(2027, number))
+    }
+
+    expect(paymentReferenceOrNone(2027, '000037')).toBe('202737')
+  })
+
+  it('is nothing at all for somebody with no number, and not the season on its own', () => {
+    expect(paymentReferenceOrNone(2027, null)).toBe('')
+    expect(paymentReferenceOrNone(2027, null)).not.toContain('2027')
+  })
+
+  it('leaves the reference tag out of the code when there is none, and nothing else', () => {
+    const paying = {
+      account: RECIPIENT_ACCOUNT,
+      recipient: RECIPIENT_NAME,
+      amountRsd: 4800,
+      purpose: paymentPurpose(2027),
+    }
+
+    expect(ipsPayload({ ...paying, reference: paymentReferenceOrNone(2027, null) })).toBe(
+      'K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD4800,00|SF:289' +
+        '|S:Članarina za 2027. godinu',
+    )
+    /* And the same code for somebody who has one is this one with the tag added, which is what
+       makes the pair a measurement of the reference alone. */
+    expect(ipsPayload({ ...paying, reference: paymentReferenceOrNone(2027, '000037') })).toBe(
+      'K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD4800,00|SF:289' +
+        '|S:Članarina za 2027. godinu|RO:202737',
+    )
   })
 })

@@ -804,6 +804,18 @@ class MeApiTest {
 			}
 			swept++;
 			for (RecordComponent field : MeApi.MyOwnRecord.class.getRecordComponents()) {
+				/* THE ONE FIELD THAT CANNOT BE THE CALLER'S ALONE, and it is named rather than
+				   skipped quietly. Whether a fee stands is a yes or a no, and the portal writes
+				   it as the number does (`competitor(...)` below): five of the seven rows stand,
+				   so the caller cannot be the odd one out of it the way he is in the gender or the
+				   switch that hides a profile. What this sweep exists to catch - another member's
+				   value leaving through the caller's door - cannot be caught on a flag that most
+				   of the rows share, and is caught on the other nineteen; that the flag itself is
+				   read off HIS row is `andWhetherHisFeeStandsWhichTheNumberAloneCannotSay`, which
+				   asks it of rows chosen so that each wrong source gives a different answer. */
+				if (field.getName().equals("active")) {
+					continue;
+				}
 				assertThat(his.path(field.getName()).toString())
 						.as("the record behind %s carries the very value the caller was answered"
 								+ " for %s, so on that field his own record and somebody else's"
@@ -953,6 +965,85 @@ class MeApiTest {
 						+ " counting everybody anybody brought in would answer 3, and counting every"
 						+ " active member would answer 5")
 				.isEqualTo(1);
+	}
+
+	/**
+	 * AND HE IS TOLD WHETHER HIS FEE STANDS, WHICH IS WHAT TELLS A LAPSED MEMBER FROM A STANDING
+	 * ONE AND IS ASKED OF THREE PEOPLE WHO ARE NOT ALL ALIKE.
+	 *
+	 * <p>Measured on 11.10.2026 before the flag existed: a standing member and one whose fee has
+	 * lapsed were answered the same names, and nothing in either said which was which. PDL P8
+	 * (the entry „Šta sme neplaćen član", 10.10.2026, and its addition of 11.10.2026) treats the
+	 * two differently - the one who never paid may change his data and his password, the one
+	 * whose fee has lapsed is answered 404 on both - so the screens that draw those two forms
+	 * have to be able to tell.
+	 *
+	 * <p><b>Every expectation is read out of the database, never typed here</b>, and the rows are
+	 * chosen so that each wrong way of answering is a different value on one of them:
+	 * {@code true} always is wrong on the lapsed member and on the one with no number,
+	 * {@code false} always is wrong on the caller and on her, and "he has a number" is wrong on
+	 * the lapsed member alone. <b>Her row is the one that separates the flag from the basis</b>:
+	 * the caller is freed of the fee, so a flag worked out from {@code feeExempt} would answer him
+	 * right, but she pays and her fee stands, so it would answer her wrong.
+	 *
+	 * <p><b>And the flag does not tell the lapsed member from the one who never paid, which is the
+	 * reason the number is asked beside it and not instead of it.</b> Both are {@code false}; what
+	 * parts them is whether the answer has a number in it. That is asserted here rather than
+	 * left to a comment, because a reader who decides "never paid" by the flag alone would hand a
+	 * lapsed member a screen for somebody who has no number.
+	 */
+	@Test
+	void andWhetherHisFeeStandsWhichTheNumberAloneCannotSay() throws Exception {
+		JsonNode standing = answerFor(MY_ACCOUNT).path("member");
+		JsonNode alsoStanding = answerFor(HER_ACCOUNT).path("member");
+		JsonNode lapsed = answerFor(THE_LAPSED_ACCOUNT).path("member");
+		JsonNode neverPaid = answerFor(THE_ACCOUNT_WITH_NO_NUMBER).path("member");
+
+		for (JsonNode one : List.of(standing, alsoStanding, lapsed, neverPaid)) {
+			assertThat(one.path("active").isBoolean())
+					.as("the flag is missing or is not a yes or a no in an answer, so what follows"
+							+ " compares nothing: %s", one)
+					.isTrue();
+		}
+
+		assertThat(standing.path("active").asBoolean())
+				.as("the caller's fee stands and he was told it does not")
+				.isEqualTo(Boolean.parseBoolean(columnOf("active", ME)))
+				.isTrue();
+		assertThat(alsoStanding.path("active").asBoolean())
+				.as("she pays and her fee stands, and a flag worked out from the basis (the caller is"
+						+ " freed of the fee, she is not) was handed back to her instead")
+				.isEqualTo(Boolean.parseBoolean(columnOf("active", ABROAD)))
+				.isTrue();
+		assertThat(columnOf("membership_basis", ABROAD))
+				.as("she is freed of the fee after all, so the row that separates the flag from the"
+						+ " basis does not")
+				.isEqualTo("payment");
+		assertThat(lapsed.path("active").asBoolean())
+				.as("a member whose fee has lapsed was told it stands, which is what the portal could"
+						+ " not tell him from a standing one until this flag existed")
+				.isEqualTo(Boolean.parseBoolean(columnOf("active", LAPSED)))
+				.isFalse();
+		assertThat(neverPaid.path("active").asBoolean())
+				.as("somebody who registered and never paid was told his fee stands")
+				.isEqualTo(Boolean.parseBoolean(
+						db.sql("select active::text from competitor where member_number is null")
+								.query(String.class).single()))
+				.isFalse();
+
+		/* The pair that tells three people apart, asked of the answers themselves. The lapsed
+		   member has a number and the one who never paid has none; the flag is false for both. */
+		assertThat(lapsed.has("memberNumber"))
+				.as("a member whose fee has lapsed lost his number, so the number cannot be what tells"
+						+ " him from somebody who never paid")
+				.isTrue();
+		assertThat(neverPaid.has("memberNumber"))
+				.as("somebody who never paid was handed a number")
+				.isFalse();
+		assertThat(lapsed.path("active").asBoolean())
+				.as("the flag parts the lapsed member from the standing one, and does not part him from"
+						+ " the one who never paid")
+				.isEqualTo(neverPaid.path("active").asBoolean());
 	}
 
 	/**
@@ -1439,12 +1530,14 @@ class MeApiTest {
 	 * doors about the same member, AS that member, and compares every name they share.
 	 *
 	 * <p><b>The names they share are worked out and not listed</b> - the components of the two
-	 * records - and the ones that are NOT shared are three, each with a reason: his referral code
-	 * and his count left the public list for good (PDL P26a, 25.09.2026) and the basis is the
+	 * records - and the ones that are NOT compared are four, each with a reason: his referral code
+	 * and his count left the public list for good (PDL P26a, 25.09.2026), the basis is the
 	 * administration's to read there and his own to read here ("Clan vidi SVOJ osnov clanstva;
-	 * tudj ne vidi niko osim administracije", owner, 20.09.2026). A fourth fact on this record
-	 * that the public one does not carry fails the first assertion; it has to be named here with
-	 * its reason or given a twin.
+	 * tudj ne vidi niko osim administracije", owner, 20.09.2026), and since 11.10.2026 the flag
+	 * that says whether his fee stands, whose twin on the public list is the presence of the row
+	 * itself (that list ends {@code where c.active}). A fifth fact on this record that the public
+	 * one does not carry fails the first assertion; it has to be named here with its reason or
+	 * given a twin.
 	 *
 	 * <p><b>Absent and null are one answer here</b> and the value is what is compared: the list
 	 * says {@code null} where this route says nothing, by each one's own precedent.
@@ -1458,13 +1551,18 @@ class MeApiTest {
 		Set<String> shared = mine.stream().filter(theirs::contains).collect(Collectors.toSet());
 
 		assertThat(mine)
-				.as("one of the three names this case excuses is not on this record at all, so the"
+				.as("one of the four names this case excuses is not on this record at all, so the"
 						+ " excuse is for nothing")
-				.containsAll(Set.of("referralCode", "referredCount", "membershipBasis"));
+				.containsAll(Set.of("referralCode", "referredCount", "membershipBasis", "active"));
+		/* `active` IS THE FOURTH, since 11.10.2026, AND ITS TWIN IS THE ROW ITSELF. The public
+		   list is `where c.active`, so on it the fact is not a field but the presence of the
+		   member (`frontend/src/data/types.ts`: "it is the PRESENCE OF THE ROW"), and a lapsed
+		   member is absent from it by the owner's decision of 13.09.2026. There is nothing to
+		   compare it with by name; what holds the two together is that both read one column. */
 		assertThat(mine.stream().filter(name -> !theirs.contains(name)).collect(Collectors.toSet()))
 				.as("a fact this record carries has no twin on the public list and is not one of the"
-						+ " three named for it: give it a twin, or name it here with its reason")
-				.containsExactlyInAnyOrder("referralCode", "referredCount");
+						+ " four named for it: give it a twin, or name it here with its reason")
+				.containsExactlyInAnyOrder("referralCode", "referredCount", "active");
 		shared.remove("membershipBasis");
 
 		assertThat(shared)

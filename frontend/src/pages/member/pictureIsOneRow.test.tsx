@@ -160,6 +160,8 @@ function SignInAs({ memberNumber }: { memberNumber: string }) {
           membershipBasis: null,
           referralCode: null,
           referredCount: null,
+          hasARecord: true,
+          feeStands: null,
         })
       }}
     >

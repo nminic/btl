@@ -5,7 +5,11 @@ import { ROLES, SIGNED_IN_ROLES } from '../roles/context'
 import { must } from '../test/at'
 import { serverThat, type Asked } from '../test/serverAnswers'
 import { myOwnRecordFromMe } from '../test/theAnswer'
-import { whatTheServerSaysOfMyProfile, whoTheServerSaysIAm } from './theServer'
+import {
+  whatTheServerSaysOfMyData,
+  whatTheServerSaysOfMyProfile,
+  whoTheServerSaysIAm,
+} from './theServer'
 
 /**
  * WHAT THE PORTAL BELIEVES ABOUT THE ANSWER TO „WHO IS ASKING".
@@ -71,6 +75,11 @@ describe('who the server says I am', () => {
          a man who does not run is a sentence nobody can finish. */
       referralCode: null,
       referredCount: null,
+      /* AND THE TWO THE SESSION KEEPS ABOUT THE RECORD, since 11.10.2026: that there is none
+         (an account that races for nobody has no `member` in its answer), and so that nothing
+         was said about whether a fee stands. */
+      hasARecord: false,
+      feeStands: null,
     })
     expect(server.asked.map((one) => one.path)).toEqual(['/api/me'])
   })
@@ -143,6 +152,8 @@ describe('who the server says I am', () => {
         membershipBasis: null,
         referralCode: null,
         referredCount: null,
+        hasARecord: false,
+        feeStands: null,
       })
     }
 
@@ -556,6 +567,73 @@ describe('who the server says I am', () => {
 
     expect(await whoTheServerSaysIAm()).toBeNull()
   })
+
+  /* **WHETHER THERE IS A RECORD AT ALL, WHICH IS THE SIXTH THING THIS ANSWER CARRIES, SINCE
+     11.10.2026, and it is not what the member number says.** Until that day „no number" was one
+     state and the portal drew one sentence for it. It is two: an account that races for nobody
+     (no `member` in the answer) and somebody who registered and has not paid (the `member` is
+     there and the number inside it is not, ADL A44). The second may pay, choose his category
+     and change his password and his data (PDL P8, „Šta sme neplaćen član", 10.10.2026), so the
+     portal has to be able to tell him from the first.
+
+     **The record is the PRESENCE OF THE OBJECT and nothing inside it**: the poorest record a
+     server could send is a bare `{}`, and it is still a record. A reader that asked for a field
+     would read an almost empty one as no record at all and send its owner to the sentence for a
+     moderator. */
+  it.each([
+    ['a member the league has given a number', { member: { memberNumber: '000012' } }, true],
+    ['somebody who registered and has no number yet', { member: { membershipBasis: 'payment' } }, true],
+    ['the poorest record there is, an empty one', { member: {} }, true],
+    /* An account that races for nobody: the key is ABSENT altogether (`MeApi.WhoIAm`, „Absent
+       rather than null, and rather than an object of nulls"). */
+    ['an account that races for nobody', {}, false],
+    /* And a `member` that is not an object: a server saying something this portal has no
+       screen for is not a record, and ends as no record rather than as one with nothing in it
+       (ADL A14, looked for and never asserted). */
+    ['a record that is null', { member: null }, false],
+    ['a record that is a word', { member: 'x' }, false],
+  ])('says whether there is a record at all for %s', async (_what, extra, expected) => {
+    server?.stop()
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'competitor', account: 41, ...extra })),
+    )
+
+    expect((await whoTheServerSaysIAm())?.hasARecord).toBe(expected)
+  })
+
+  /* **WHETHER HIS FEE STANDS, WHICH IS THE SEVENTH, and the axis has more states than two.**
+     `MeApi.MyOwnRecord.active` is `competitor.active`, and until 11.10.2026 the answer did not say:
+     a member whose fee has lapsed was answered the same names as one whose fee stands, so the
+     portal drew him every screen of a member whose fee stands (measured against a real database
+     that day, `MeApiTest`). The server refuses him 404 on two of his forms (PDL P8, the addition
+     of 11.10.2026), so this is what lets a screen not offer a form that fails every time.
+
+     **Null for four things, and none of them is a plain no**: no record at all, a record that does
+     not carry the key (a server one release behind), and a value that merely reads as a yes or a no.
+     The session turns a null into „stands", because the flag is only ever acted on to take something
+     AWAY from a member and a word the portal was not told is a word it may not act on. */
+  it.each([
+    ['a member whose fee stands', { member: { memberNumber: '000012', active: true } }, true],
+    ['a member whose fee has lapsed', { member: { memberNumber: '000031', active: false } }, false],
+    /* Somebody who never paid is `false` as well, and that is exactly why the portal does NOT
+       decide „has not paid" by this flag: a lapsed member is a plain no too, and only the number
+       parts them (`SessionProvider`, `signedIn`). */
+    ['somebody who registered and has not paid', { member: { active: false } }, false],
+    ['an account that races for nobody', {}, null],
+    ['a record that does not carry it', { member: { memberNumber: '000012' } }, null],
+    ['a word that reads as a yes', { member: { memberNumber: '000012', active: 'true' } }, null],
+    ['a word that reads as a no', { member: { memberNumber: '000012', active: 'false' } }, null],
+    ['a number for a yes', { member: { memberNumber: '000012', active: 1 } }, null],
+    ['a number for a no', { member: { memberNumber: '000012', active: 0 } }, null],
+    ['a null', { member: { memberNumber: '000012', active: null } }, null],
+  ])('says whether the fee stands for %s', async (_what, extra, expected) => {
+    server?.stop()
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'competitor', account: 41, ...extra })),
+    )
+
+    expect((await whoTheServerSaysIAm())?.feeStands).toBe(expected)
+  })
 })
 
 /**
@@ -578,6 +656,9 @@ const HIS_PAGE: Record<string, unknown> = {
   country: 'RS',
   firstSeason: 2016,
   membershipBasis: 'payment',
+  /* HIS FEE HAS LAPSED, which is what he is in the generated data and the reason the page is read
+     apart from who he is. Not a fact about his PAGE (it is left out of `WHAT_A_PAGE_NEEDS`). */
+  active: false,
   referralCode: 'a92a9c8493cecc3e',
   referredCount: 0,
   firstName: 'Vojislav',
@@ -597,12 +678,13 @@ function aMemberSaying(member: Record<string, unknown>): string {
 }
 
 /**
- * THE FACTS A PAGE CANNOT BE DRAWN WITHOUT, which are the sample's keys less the three that are
- * about his fee and not about his page: the basis he pays on, his referral code and his count.
+ * THE FACTS A PAGE CANNOT BE DRAWN WITHOUT, which are the sample's keys less the four that are
+ * about his fee and not about his page: the basis he pays on, whether it stands, his referral code
+ * and his count.
  * Derived from the sample, so a fact added to it tomorrow is measured here on the day it arrives.
  */
 const WHAT_A_PAGE_NEEDS = Object.keys(HIS_PAGE).filter(
-  (key) => !['membershipBasis', 'referralCode', 'referredCount'].includes(key),
+  (key) => !['membershipBasis', 'active', 'referralCode', 'referredCount'].includes(key),
 )
 
 /** The three of those that are ALSO who he is, and so are read by the session as well. */
@@ -824,6 +906,8 @@ describe('the page of the caller himself', () => {
         membershipBasis: 'payment',
         referralCode: 'a92a9c8493cecc3e',
         referredCount: 0,
+        hasARecord: true,
+        feeStands: false,
       })
     },
   )
@@ -838,6 +922,145 @@ describe('the page of the caller himself', () => {
       expect(await whoTheServerSaysIAm(), 'who he is').toMatchObject({
         role: 'competitor',
         memberNumber: '000032',
+      })
+    },
+  )
+})
+
+/**
+ * THE DATA OF THE CALLER HIMSELF, for somebody who may have no number: the six facts a settings
+ * screen shows about a person, read APART from who he is and apart from his page.
+ *
+ * <p>PDL P8, the entry „Šta sme neplaćen član" (10.10.2026): such a person may change „svoje
+ * podatke za evidenciju i majicu". He has no number, so there is no page to draw (`profileIn` asks
+ * for one), and the public list does not carry him, so the screen has to read him off the one
+ * answer that has a row for him.
+ *
+ * <p><b>The sample is a person who registered and has not paid</b>, written out here for the
+ * reason `HIS_PAGE` gives, and it is `HIS_PAGE` with the number taken away and the fee not standing:
+ * the one change that makes him the person this reader exists for.
+ */
+const A_NEWCOMERS_RECORD: Record<string, unknown> = (() => {
+  const { memberNumber: _none, ...rest } = HIS_PAGE
+
+  return { ...rest, firstSeason: 2027, active: false }
+})()
+
+/** The six this reader is for, which are the facts a data screen draws and nothing a page needs
+ *  besides them. Derived from the reader's own sample, never from a list of the page. */
+const THE_SIX = ['firstName', 'lastName', 'gender', 'city', 'ageBand', 'firstSeason2027']
+
+describe('the data of the caller himself', () => {
+  it('is the six facts and no number, for somebody who has registered and has not paid', async () => {
+    server = serverThat(() => saying(aMemberSaying(A_NEWCOMERS_RECORD)))
+
+    expect(await whatTheServerSaysOfMyData()).toEqual({
+      firstName: 'Vojislav',
+      lastName: 'Antonijević',
+      gender: 'M',
+      city: 'Zaječar',
+      ageBand: '40-54',
+      firstSeason2027: false,
+    })
+    expect(server.asked.map((one) => one.path)).toEqual(['/api/me'])
+  })
+
+  /* **THE PROPERTY THE READER EXISTS FOR, asked on its own**: the profile is nothing without a
+     number and this is not. A reader that required one would read this man as nobody. */
+  it('does not need a number, and does not hand one back even when the answer has it', async () => {
+    server = serverThat(() => saying(aMemberSaying(A_NEWCOMERS_RECORD)))
+
+    expect(await whatTheServerSaysOfMyProfile(), 'his page needs a number and he has none').toBeNull()
+    expect(await whatTheServerSaysOfMyData(), 'his data does not').not.toBeNull()
+
+    server.stop()
+    server = serverThat(() => saying(aMemberSaying(HIS_PAGE)))
+
+    expect(Object.keys(must(await whatTheServerSaysOfMyData(), 'a member has data too')).toSorted()).toEqual(
+      THE_SIX.toSorted(),
+    )
+  })
+
+  it('reads the six off the sample, and finds six', () => {
+    /* An empty list would make both sweeps below say nothing at all, quietly. */
+    expect(THE_SIX).toHaveLength(6)
+    expect(THE_SIX.every((key) => key in A_NEWCOMERS_RECORD)).toBe(true)
+  })
+
+  it.each(THE_SIX)('is nothing at all without %s, which no data screen can be drawn without', async (key) => {
+    const { [key]: _left, ...without } = A_NEWCOMERS_RECORD
+
+    server = serverThat(() => saying(aMemberSaying(without)))
+
+    expect(await whatTheServerSaysOfMyData(), `${key} left out`).toBeNull()
+  })
+
+  it.each(NOT_BELIEVED_AS_A_PAGE.filter(([key]) => THE_SIX.includes(key)))(
+    'does not believe %s sent as %j',
+    async (key, sent) => {
+      server = serverThat(() => saying(aMemberSaying({ ...A_NEWCOMERS_RECORD, [key]: sent })))
+
+      expect(await whatTheServerSaysOfMyData()).toBeNull()
+    },
+  )
+
+  /* **AND WHAT A PAGE NEEDS BESIDES THE SIX IS NOT ASKED OF HIM.** A data screen is drawn for a
+     person whose record is missing his country, his first season, his biography or his two
+     choices, because none of them is on it. This is what parts the reader from `profileIn`, which
+     would answer nothing for any of these. */
+  it.each(WHAT_A_PAGE_NEEDS.filter((key) => !THE_SIX.includes(key) && key !== 'memberNumber'))(
+    'is still the six when %s is missing, which only a page needs',
+    async (key) => {
+      const { [key]: _left, ...without } = A_NEWCOMERS_RECORD
+
+      server = serverThat(() => saying(aMemberSaying(without)))
+
+      expect(await whatTheServerSaysOfMyData(), `${key} left out`).not.toBeNull()
+    },
+  )
+
+  it.each([
+    ['an account that races for nobody', JSON.stringify({ role: 'moderator', account: 41 })],
+    ['a record that is null', JSON.stringify({ role: 'competitor', account: 41, member: null })],
+    ['a record that is not an object', JSON.stringify({ role: 'competitor', account: 41, member: 'x' })],
+    ['nothing but the word for it', '"competitor"'],
+    ['null', 'null'],
+    ['something that is not JSON', '<!doctype html><title>ne ovo</title>'],
+  ])('is nothing for %s', async (_what, body) => {
+    server = serverThat(() => saying(body))
+
+    expect(await whatTheServerSaysOfMyData()).toBeNull()
+  })
+
+  it('is nothing when the chain refuses, and when there is no server to reach', async () => {
+    server = serverThat(() => new Response(null, { status: 401 }))
+
+    expect(await whatTheServerSaysOfMyData()).toBeNull()
+
+    server.stop()
+    server = serverThat(() => {
+      throw new Error('nema veze')
+    })
+
+    expect(await whatTheServerSaysOfMyData()).toBeNull()
+  })
+
+  /* **THE CONDITION THIS READER EXISTS UNDER, MEASURED FROM THE OTHER SIDE** - the same one the
+     page's reader is held to, and for the same reason: `whoTheServerSaysIAm` answers `null` for
+     every fault and the session reads `null` as nobody, so a fact of his data the portal cannot
+     believe, read THERE, would sign him out of every screen of the portal. */
+  it.each(NOT_BELIEVED_AS_A_PAGE.filter(([key]) => THE_SIX.includes(key)))(
+    'leaves him signed in when %s is sent as %j, whatever it does to his data',
+    async (key, sent) => {
+      server = serverThat(() => saying(aMemberSaying({ ...A_NEWCOMERS_RECORD, [key]: sent })))
+
+      expect(await whatTheServerSaysOfMyData(), 'his data').toBeNull()
+      expect(await whoTheServerSaysIAm(), 'who he is').toMatchObject({
+        role: 'competitor',
+        account: 41,
+        memberNumber: null,
+        hasARecord: true,
+        feeStands: false,
       })
     },
   )
