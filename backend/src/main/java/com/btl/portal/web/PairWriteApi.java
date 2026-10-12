@@ -305,6 +305,9 @@ class PairWriteApi {
 
 	private final MemberOfAccount memberOfAccount;
 
+	/** Who is asking, and whether his fee stands: what asking and answering open with. */
+	private final ActiveMemberOrAdministration readers;
+
 	private final Clock clock;
 
 	/**
@@ -317,11 +320,12 @@ class PairWriteApi {
 	 */
 	private final TransactionTemplate inOneTransaction;
 
-	PairWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, Clock clock,
-			TransactionTemplate inOneTransaction) {
+	PairWriteApi(JdbcClient db, MemberOfAccount memberOfAccount,
+			ActiveMemberOrAdministration readers, Clock clock, TransactionTemplate inOneTransaction) {
 
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
+		this.readers = readers;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
 	}
@@ -417,13 +421,14 @@ class PairWriteApi {
 	ResponseEntity<?> invite(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			WhatWasSent<Asked> sent) throws IOException {
 
-		Long me = memberOfAccount.competitorId(asking.account());
+		Long me = readers.activeMember(asking).orElse(null);
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 calls the ordinary case for a moderator
-		   who does not race. A pair is two members, and there is nobody here to be one of
-		   them; the answer is the one InboxApi and InboxWriteApi already give him, and his
-		   body is not read: it is read below, after this question, and not bound as an
-		   argument (register 166). */
+		   who does not race, OR A MEMBER WHOSE FEE DOES NOT STAND: pairs are on the list PDL P8
+		   gives of what a member who has not paid may not do (10.10.2026, „parove"). A pair is
+		   two members, and there is nobody here to be one of them; the answer is the one InboxApi
+		   and InboxWriteApi already give an account naming no member, and his body is not read:
+		   it is read below, after this question, and not bound as an argument (register 166). */
 		if (me == null) {
 			return awayAtAnOpenAddress();
 		}
@@ -438,25 +443,27 @@ class PairWriteApi {
 	}
 
 	private ResponseEntity<?> ask(long me, String memberNumber) {
-		Optional<Half> mine = half(me);
+		Half mine = himself(me);
 		Optional<Half> other = halfNumbered(memberNumber);
 
-		/* FOUR PEOPLE GET THIS ONE ANSWER, AND THAT IS THE POINT OF IT. Nobody of that
-		   number; a number whose member has not renewed; himself; and himself after HIS OWN
-		   fee has lapsed. None of them is a form filled in wrongly - V12 refuses one of them
-		   outright („Nobody invites himself", `pair_invite_two_people`) and the screen offers
-		   none of them - so all four are one address that is not there for him, which is the
-		   shape every write on this portal answers a caller it turns away with.
+		/* THREE PEOPLE GET THIS ONE ANSWER, AND THAT IS THE POINT OF IT. Nobody of that
+		   number; a number whose member has not renewed; and himself. None of them is a form
+		   filled in wrongly - V12 refuses one of them outright („Nobody invites himself",
+		   `pair_invite_two_people`) and the screen offers none of them - so all three are one
+		   address that is not there for him, which is the shape every write on this portal
+		   answers a caller it turns away with. The fourth this list used to carry, himself
+		   after HIS OWN fee has lapsed, is turned away before his body is read, by the
+		   question `invite` opens with (PDL P8, 10.10.2026).
 
 		   THE LAPSED ONES ARE IN THIS LIST AND NOT BELOW IT, which is PDL's rule of
 		   13.09.2026 read as `halfNumbered` explains: told apart from a number nobody carries,
 		   they would answer 409 or 201 where this answers 404, and the difference between
 		   those answers over consecutive numbers is a list of who has not paid. */
-		if (mine.isEmpty() || other.isEmpty() || other.get().id() == me) {
+		if (other.isEmpty() || other.get().id() == me) {
 			return awayAtAnOpenAddress();
 		}
 
-		Optional<Mixed> mixed = mixed(mine.get(), other.get());
+		Optional<Mixed> mixed = mixed(mine, other.get());
 
 		if (mixed.isEmpty()) {
 			return no(HttpStatus.CONFLICT, THE_PAIR_WOULD_NOT_BE_MIXED);
@@ -489,7 +496,7 @@ class PairWriteApi {
 		db.sql("insert into message (to_id, from_id, from_name, subject, body, pair_invite_id)"
 						+ " values (?, null, ?, ?, ?, ?)")
 				.params(other.get().id(), THE_LEAGUE, THE_PAIR_INVITATION,
-						theInvitationBodyReads(mine.get().name()), question)
+						theInvitationBodyReads(mine.name()), question)
 				.update();
 
 		return ResponseEntity.status(HttpStatus.CREATED)
@@ -545,7 +552,10 @@ class PairWriteApi {
 	ResponseEntity<?> answer(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			@PathVariable AKey id, WhatWasSent<Answered> sent) throws IOException {
 
-		Long me = memberOfAccount.competitorId(asking.account());
+		/* AN ACCOUNT THAT NAMES NO MEMBER OR A MEMBER WHOSE FEE DOES NOT STAND, the question
+		   `invite` opens with, and for the same reason: „Odbij" is an act about a pair as much as
+		   „Prihvati" is, and pairs are on the list PDL P8 gives (10.10.2026, „parove"). */
+		Long me = readers.activeMember(asking).orElse(null);
 
 		if (me == null) {
 			throw nothingIsHere();
@@ -582,23 +592,25 @@ class PairWriteApi {
 		}
 
 		Optional<Half> asker = half(whoAsked.get());
-		Optional<Half> answerer = half(me);
+		Half answerer = himself(me);
 
-		/* AND EITHER OF THEM MAY HAVE STOPPED PAYING BETWEEN THE QUESTION AND THE ANSWER,
-		   which is the whole reason the two are read again here rather than trusted from the
-		   row. „Ne postoji par onda, raskida se" (owner, 11.08.2026): a pair made now with a
-		   half who is no longer a member is a pair `PairApi` refuses to serve from the moment
-		   it is written, and this route would be the only thing that ever created one.
+		/* AND THE ONE WHO ASKED MAY HAVE STOPPED PAYING BETWEEN THE QUESTION AND THE ANSWER,
+		   which is the whole reason he is read again here rather than trusted from the row. The
+		   one who answers is the caller, and `answer` has already turned him away if his own
+		   fee does not stand. „Ne postoji par onda, raskida se" (owner, 11.08.2026): a pair made
+		   now with a half who is no longer a member is a pair `PairApi` refuses to serve from
+		   the moment it is written, and this route would be the only thing that ever created
+		   one.
 
 		   The answer is the one an unanswerable question gets, and it tells the member
 		   nothing he could not already see: `/api/me/applications` stops naming a counterpart
 		   whose fee has lapsed by the same rule (`case when ... active then member_number`),
 		   so the question had already gone nameless on his own screen. */
-		if (asker.isEmpty() || answerer.isEmpty()) {
+		if (asker.isEmpty()) {
 			throw nothingIsHere();
 		}
 
-		Optional<Mixed> mixed = mixed(asker.get(), answerer.get());
+		Optional<Mixed> mixed = mixed(asker.get(), answerer);
 
 		/* ASKED AGAIN HERE AND NOT ONLY WHERE THE QUESTION WAS SENT, because the two are
 		   different moments and V12 keeps no gender key on `pair_invite` on purpose: „a
@@ -1013,15 +1025,16 @@ class PairWriteApi {
 	 * Somebody the portal has already resolved, by key, and only while he is still a member.
 	 *
 	 * <p>{@code optional()} rather than {@code single()}, and the empty case is not a broken
-	 * database: the id itself always names a row - it came out of {@code account.competitor_id}
-	 * or {@code pair_invite.from_id}, both foreign keys into this table - but the row stops
-	 * matching the moment the fee lapses, and that is a state this route has to answer rather
-	 * than throw on.
+	 * database: the id itself always names a row - it came out of {@code pair_invite.from_id}, a
+	 * foreign key into this table - but the row stops matching the moment the fee lapses, and
+	 * that is a state this route has to answer rather than throw on.
 	 *
 	 * <p><b>Both sides, because a pair has two and the rule is about the PAIR.</b> „Ne postoji
 	 * par onda, raskida se" does not ask which of the two stopped paying, and a route that
 	 * asked it of one of them would make a pair {@link PairApi} refuses to serve from the
-	 * moment it was written.
+	 * moment it was written. The caller's side is asked first, by
+	 * {@link ActiveMemberOrAdministration#activeMember} before his body is read, so this asks
+	 * the other side and {@link #himself} reads the caller.
 	 */
 	private Optional<Half> half(long who) {
 		return db.sql("select id, gender, first_name, last_name from competitor"
@@ -1030,6 +1043,22 @@ class PairWriteApi {
 				.query((row, one) -> new Half(row.getLong(1), row.getString(2),
 						row.getString(3) + " " + row.getString(4)))
 				.optional();
+	}
+
+	/**
+	 * THE CALLER HIMSELF, whom the route has already let through as a member whose fee stands.
+	 *
+	 * <p>{@code single()} and no {@code active} here, because that question was asked once,
+	 * first, by {@link ActiveMemberOrAdministration#activeMember}, and the id came out of it: a
+	 * second copy of the condition here would be a branch nothing reaches, which the coverage gate
+	 * refuses and the next reader would delete without knowing why it was there.
+	 */
+	private Half himself(long me) {
+		return db.sql("select id, gender, first_name, last_name from competitor where id = ?")
+				.param(me)
+				.query((row, one) -> new Half(row.getLong(1), row.getString(2),
+						row.getString(3) + " " + row.getString(4)))
+				.single();
 	}
 
 	private boolean aQuestionStandsBetween(long one, long other) {
