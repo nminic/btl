@@ -384,7 +384,22 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   breaks and a BOM left out), which reproduced V46, V49 and V56 to the digit before it was trusted
 			   here, and this list is what confirms it on the gate. */
 			new Applied("57", "V57__the_written_pages_follow_the_decisions_of_the_tenth_of_october.sql",
-					722394376));
+					722394376),
+
+			/* V58. The written pages say that moving to an older age category between two seasons reveals
+			   the exact year of birth (item BR): one sentence, the owner's words of 16.10.2026 (PDL, the
+			   entry "Reči za BR"), placed directly after the sentence that says the category is always
+			   public, in Article 74 of the rulebook and in section 3 of the privacy policy, in Serbian and
+			   in English. Four edits, each of which stops the migration unless its anchor stands exactly
+			   once where it is written and the sentence is not already there. No schema, no row.
+
+			   58 because it is the next free number, and that was MEASURED rather than taken: every remote
+			   ref, every worktree and the open pull requests were searched on 16.10.2026 and none held a
+			   migration at V58 or above, and origin/main stands at V57.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file. */
+			new Applied("58", "V58__moving_to_an_older_category_between_seasons_reveals_the_year_of_birth.sql",
+					2106832325));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
