@@ -544,6 +544,16 @@ export type SessionValue = {
    * What holds the three is a case apiece that puts a server in front whose answer has not come
    * back (`pages/admin/beforeTheAnswer.test.tsx`, `pages/profile/beforeTheAnswer.test.tsx`), and
    * not this list: a fourth reader is a fourth case.
+   *
+   * <p><b>And a fourth way of reading it, of another kind, since 10.10.2026</b> (PDL P26):
+   * `session/useServerIsStillBeingAsked.ts` asks whether the session names nobody AND this is
+   * still false, and three places draw nothing about the reader while that holds - the two links of
+   * a visitor in `app/Shell.tsx`, the sentence under the comments of a past event
+   * (`pages/event/EventComments.tsx`) and the eleven screens of the member area
+   * (`pages/member/memberScreen.tsx`). They differ from the three above in what they do with the
+   * answer: those REFUSE a reader by who he is, and these only decline to say what a visitor is
+   * told until it is known that he is one. The cases are `session/beforeTheServerHasSaid.test.tsx`
+   * and the last `describe` of `pages/member/oneQuestion.test.tsx`.
    */
   theServerHasAnswered: boolean
   /** That the answer came back. Called once a visit from the one place that asks

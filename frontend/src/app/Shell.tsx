@@ -7,6 +7,7 @@ import { useMayOpen, usePermittedQueues } from '../pages/admin/mayOpen'
 import { usePending } from '../pages/admin/pending'
 import { notMembersYetIn, totalWaiting } from '../pages/admin/queues'
 import { useRole } from '../roles/useRole'
+import { useServerIsStillBeingAsked } from '../session/useServerIsStillBeingAsked'
 import { useSession } from '../session/useSession'
 import { useTheServersSession } from '../session/useTheServersSession'
 import { AccountMenu } from './AccountMenu'
@@ -141,6 +142,16 @@ function NavEntry({ section, onNavigate }: { section: NavSection; onNavigate: ()
   )
 }
 
+/* What a link carries while it is there and is not offered: out of the tab order, out of the
+   reader's tree, and unreachable by anything. Spread whole so that the three cannot be told
+   apart by a reader of the markup, and so that taking one off is a visible change. */
+const NOT_OFFERED = { 'aria-hidden': true, tabIndex: -1, inert: true } as const
+
+/* The class a header link wears while it waits, beside the ones it has. */
+function waitingFor(classes: string, asking: boolean): string {
+  return asking ? `${classes} shell__guest--waiting` : classes
+}
+
 export function Shell() {
   const main = useRef<HTMLElement>(null)
   const { locale, t } = useI18n()
@@ -155,6 +166,7 @@ export function Shell() {
      development role switch also sets, so the inbox and the cog stayed on
      screen after a member signed out. The session is the one that knows. */
   const { signedIn } = useSession()
+  const asking = useServerIsStillBeingAsked()
   /* And the session is asked of the SERVER here, because this is the one component
      every address on the portal is drawn inside. The cookie from yesterday's visit is
      one no script can read, so without this the browser would be signed in and the
@@ -208,10 +220,27 @@ export function Shell() {
               </>
             ) : (
               <>
-                <Link className="button button--secondary button--compact" to={`/${locale}/prijava`}>
+                {/* UNTIL THE SERVER HAS SAID WHO IS READING, THE TWO ARE THERE AND ARE NOT OFFERED (owner,
+                    10.10.2026, PDL P26, „nevidljiva i nedostupna, pa se ništa ne pomera i ništa se ne
+                    izgovara"). Offered, they tell a member whose cookie nobody has asked about yet to
+                    sign in and to join. Taken out, the row of tools would shrink and grow back under
+                    his pointer when the answer lands; hidden, the row keeps its width and nothing
+                    moves. `visibility` takes a link out of the tab order and the reader's tree in one
+                    word, and the three attributes say the same where a stylesheet is not applied
+                    (`app/Shell.css`, `shell__guest--waiting`). A dead server ends the wait like any
+                    answer and they appear, as they always did for a visitor. */}
+                <Link
+                  className={waitingFor('button button--secondary button--compact', asking)}
+                  to={`/${locale}/prijava`}
+                  {...(asking ? NOT_OFFERED : {})}
+                >
                   {t('shell.signIn')}
                 </Link>
-                <Link className="button--cta" to={`/${locale}/registracija`}>
+                <Link
+                  className={waitingFor('button--cta', asking)}
+                  to={`/${locale}/registracija`}
+                  {...(asking ? NOT_OFFERED : {})}
+                >
                   {t('shell.join')}
                 </Link>
               </>

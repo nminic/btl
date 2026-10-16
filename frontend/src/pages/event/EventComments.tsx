@@ -8,10 +8,12 @@ import type { Competitor, EventComment } from '../../data/types'
 import { editionsOf } from '../../data/editions'
 import { overall, rated } from './overall'
 import { combineResources, useComments, useCompetitors, useEvents } from '../../data/useResource'
+import { Loader } from '../../components/Loader'
 import { Resource } from '../../components/Resource'
 import { formatDate, formatNumber } from '../../i18n/format'
 import { useToday } from '../../clock/useClock'
 import { useI18n } from '../../i18n/useI18n'
+import { useServerIsStillBeingAsked } from '../../session/useServerIsStillBeingAsked'
 import { useReadsComments } from './readsComments'
 import './EventComments.css'
 
@@ -46,6 +48,7 @@ const AT_FIRST = 10
 export function EventComments({ eventId, date }: { eventId: number; date: string }) {
   const { t } = useI18n()
   const reads = useReadsComments()
+  const asking = useServerIsStillBeingAsked()
   const today = useToday()
 
   /* **Active members and the administration read them (owner, 03.10.2026), and the question is
@@ -95,7 +98,17 @@ export function EventComments({ eventId, date }: { eventId: number; date: string
         <h2 className="profile__section" id="comments">
           {t('event.comments')}
         </h2>
-        <p className="profile__empty">{t('event.commentsForMembers')}</p>
+        {/* UNTIL THE SERVER HAS SAID WHO IS READING, THE SENTENCE IS NOT SAID (owner, 10.10.2026,
+            PDL P26: „rečenica o komentarima ide u isti posao"). It tells somebody his fee does
+            not stand, and a member whose cookie nobody has asked about yet is not that
+            reader. A small indicator stands where it will be, so the heading does not move;
+            the wait ends on every outcome of the request, and a reader a failed request
+            leaves is told the sentence a visitor always was. */}
+        {asking ? (
+          <Loader inline label={t('event.comments')} />
+        ) : (
+          <p className="profile__empty">{t('event.commentsForMembers')}</p>
+        )}
       </>
     )
   }
