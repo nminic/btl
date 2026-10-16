@@ -547,19 +547,29 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    */
   const [pictureOutcomes, setPictureOutcomes] = useState<Outcomes>(new Map())
   /**
-   * THE SAME MAP, ANSWERED LIVE rather than as of the render that started
-   * whoever is asking.
+   * THE SAME MAP, ANSWERED AS OF THE MOMENT OF THE PRESS rather than as of the render the press was
+   * made in, and asked ONCE per walk, by the press, and never by the walk's later turns.
    *
-   * <p><b>Why a render-time read of `pictureOutcomes` is not enough for
-   * `approveAll`.</b> Its walk is one server round trip per item and can be
-   * several seconds into a sweep by the time a LATER row's picture fails, or
-   * arrives - a closure over `pictureOutcomes` from the render that started the
-   * walk answers with what had come of each picture WHEN THE WALK BEGAN, not
-   * now. Measured rather than assumed, for a picture that failed: one that broke
-   * while the walk was parked on an earlier row's `await` was still approved,
-   * because that walk's own copy never moved. `outstanding` above is the
-   * identical fix for the identical shape of problem, a fact an async walk has
-   * to read live rather than close over.
+   * <p><b>Why a render-time read of `pictureOutcomes` is not enough for the press that starts
+   * `approveAll`.</b> A report can arrive in the very tick of the press, before the render it asked
+   * for, and the closure of the render the press was made in then answers with what had come of each
+   * picture before that report. The ref answers as of the press itself, which is the instant the
+   * moderator decided (`buttonsWaitForThePicture.test.tsx`, „takes a card whose picture arrived in the
+   * very tick of the press"). It is the reason `outstanding` above is a ref as well: a press can
+   * arrive before the render the last change asked for.
+   *
+   * <p><b>And why the walk does NOT ask it again on a later turn.</b> The walk is one server round
+   * trip per item and can be several seconds long. A picture that arrives while it is out is a
+   * picture the moderator had not seen when he pressed, and „Moderator mora da vidi sliku koju
+   * odobrava" (owner, 27.09.2026) is about what he saw when he decided. Asked again after each
+   * `await`, the walk approved it when its turn came, naming the key and the circle of a picture
+   * nobody had looked at, and only for a card standing behind the first one the walk approves: a card
+   * in front of it had its turn in the tick of the press and was left alone. The same screen at the
+   * same press was decided by the order of the cards (measured by the review of PR 524 in four
+   * probes, held by `buttonsWaitForThePicture.test.tsx` and `moderatorSeesThePicture.test.tsx`; PDL,
+   * 11.10.2026: „ne šalje odobravanje za red čija slika nije stigla DO TRENUTKA PRITISKA"). So
+   * `approveAll` takes the set of cards it may approve once, at its start (`sweepable`), from this
+   * ref; a picture that arrives later is for the NEXT press.
    *
    * <p><b>And why the single card's own `onClick` reads this too, not the
    * value its render drew the button from.</b> `approveAll` reports what it
@@ -568,10 +578,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * this portal already knows cannot be decided (a picture that failed, or one
    * that has not arrived) would clear whatever OTHER card's refusal `sayIt` last
    * set, a row that did nothing overwriting a sentence about a row that did.
-   * Refusing to start that walk at all, off the same live answer the walk itself
-   * would use, is what keeps `approveAll` and the button that calls it from ever
-   * disagreeing about this row - one live fact asked in two places, not two
-   * facts that happen to usually agree.
+   * Refusing to start that walk at all, off the same answer the walk itself
+   * takes at its start, is what keeps `approveAll` and the button that calls it
+   * from ever disagreeing about this row - one fact asked in two places at the
+   * same instant, not two facts that happen to usually agree.
    *
    * <p>Kept in step with `pictureOutcomes` at the single place either of them
    * changes (`settlePicture` below) rather than derived from it on each read,
@@ -581,31 +591,33 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * <p><b>WHAT THIS DOES NOT CLOSE, MEASURED RATHER THAN ASSUMED.</b> A row's
    * OWN picture failing WHILE that row's OWN single-card `approveAll([one],
    * teams)` is awaiting the SAME row's `askTheServer` cannot be caught here,
-   * by any reading of any variable: the `onClick` guard and the loop's own
-   * skip both run - and must both have already passed, or the walk would
-   * never have reached the `await` at all - before `askTheServer` is called,
-   * so by the time a picture could fail "during" that one call, this row's
-   * decision has already left for the server. Measured directly: a request
-   * held on a controlled `Promise` already appears in a `serverThat` harness's
-   * `asked` the instant a click resolves, before any later line in the same
-   * test can fire the picture's own `error` event. Nothing after the `await`
-   * re-asks this ref either, and it should not: PDL P28f has the server
-   * showing an approved picture "tog trenutka", so a `done` answer already
-   * means the server acted on it, and skipping `settle` here would leave the
-   * screen behind what the server has already recorded rather than ahead of
-   * a race it could still have won. Closing this - if it needs closing at
-   * all, given how narrow the window is even in a real browser - is a
-   * question for the server that answers `askTheServer`, not for a client
-   * that has already asked it and cannot unask.
+   * by any reading of any variable: the `onClick` guard and the walk's own
+   * set (`sweepable`) are both taken - and must both have passed, or the walk
+   * would never have reached the `await` at all - before `askTheServer` is
+   * called, so by the time a picture could fail "during" that one call, this
+   * row's decision has already left for the server. Measured directly: a
+   * request held on a controlled `Promise` already appears in a `serverThat`
+   * harness's `asked` the instant a click resolves, before any later line in
+   * the same test can fire the picture's own `error` event. Nothing after the
+   * `await` re-asks this ref either, in a single card's walk or in a sweep's,
+   * and it should not: PDL P28f has the server showing an approved picture
+   * "tog trenutka", so a `done` answer already means the server acted on it,
+   * and skipping `settle` here would leave the screen behind what the server
+   * has already recorded rather than ahead of a race it could still have
+   * won. Closing this - if it needs closing at all, given how narrow the
+   * window is even in a real browser - is a question for the server that
+   * answers `askTheServer`, not for a client that has already asked it and
+   * cannot unask.
    */
   const pictureOutcomesRef = useRef<Outcomes>(new Map())
   /**
    * What a picture's element reported, written to both homes of the fact at this one place: the ref
-   * first, because it is what a walk already under way and the press of a card's own Odobri both read
-   * live, and the state second, to ask for the render that draws the sentence and each button's
-   * `aria-disabled`. The base of the new map is the REF and never the state: two reports can arrive
-   * before the render the first one asked for (a burst of pictures), and a map built from the state
-   * its closure holds would lose the first (`buttonsWaitForThePicture.test.tsx`, „in the same tick").
+   * first, because it is what the press of a card's own Odobri and the start of a walk (the sweep's
+   * included) both read, at the moment of the press, and the state second, to ask for the render that
+   * draws the sentence and each button's `aria-disabled`. The base of the new map is the REF and
+   * never the state: two reports can arrive before the render the first one asked for (a burst of
+   * pictures), and a map built from the state its closure holds would lose the first
+   * (`buttonsWaitForThePicture.test.tsx`, „in the same tick").
    * Neither is guarded against being told twice: an element says what became of its picture once, and
    * the one that says `failed` is replaced by the sentence in the same render, so a guard would be a
    * branch nothing can take (PR 405's own coverage run named this exact shape, for the failure alone).
@@ -711,6 +723,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * finished would be handed a list that is out of date. Fired off together they
    * would also reach the route together, and two approvals of one member's two
    * proposals are exactly what the carrying exists to stop.
+   *
+   * <p><b>What it may approve at all is carried like the rest, and taken once.</b> The cards whose
+   * picture had not arrived at the press, or could not be drawn, are left out when the walk begins
+   * (`sweepable`, below) and not on a later turn. Pictures go on arriving while the walk is out; the
+   * set it was started with does not move.
    */
   const approveAll = async (items: PendingItem[], teams: Team[]): Promise<number> => {
     /* NEITHER DOOR THAT CALLS THIS MAY OPEN A SECOND ONE WHILE THIS WALK IS OUT.
@@ -732,45 +749,58 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          addresses are: the session does not change while a loop runs, so two proposals
          from one member approved in one press would both go through. */
       const inATeam = organisers(allMembers, teams)
+      /* THE CARDS THIS WALK MAY APPROVE, TAKEN ONCE, HERE, AT THE PRESS - before anything below
+         awaits anything - AND NEVER ASKED AGAIN. The same shape `identities`, `addresses` and
+         `inATeam` have above: read once and carried, because the walk is several seconds of round
+         trips and the screen goes on changing under it.
+
+         PDL.md "29. Slika koja ne moze da se ucita" (owner, 27.09.2026): the
+         same rule the single card's own Odobri already carries - „gledanje
+         je uslov odobravanja" names a condition on the ACT of approving, not
+         on one button, so a sweep over many rows is not a second door around
+         it.
+
+         AND THE PICTURE THAT HAS NOT ARRIVED YET IS HELD TO IT AS WELL AS THE ONE
+         THAT FAILED. DERIVED, NOT SAID: the owner's sentence of 11.10.2026 names
+         the card's two buttons („Dok se slika učitava, oba dugmeta su neaktivna"),
+         and the sweep is a third door to the same approval, so an approval the
+         card's own button may not send is not one the sweep sends in its name.
+         Measured before this: a sweep over cards whose pictures had not reported
+         approved every one of them, naming the key and the circle of a picture no
+         eyes had been on.
+
+         AND „HAS NOT ARRIVED" MEANS AT THE PRESS, WHICH IS THE WHOLE OF THE CONDITION.
+         DERIVED, NOT SAID, from the owner's „Moderator mora da vidi sliku koju odobrava"
+         (27.09.2026): he decides on what he is looking at when he presses, and a picture
+         that arrives while the walk is out is one he had not seen. PDL, 11.10.2026: „ne
+         šalje odobravanje za red čija slika nije stigla DO TRENUTKA PRITISKA". The question
+         was asked on every turn of the loop until the review of PR 524 measured what that
+         does: a card in front of the first one the walk approved was left alone, and a card
+         behind it was approved if its picture had arrived by the time its turn came, so the
+         same screen at the same press was decided by the order of the cards.
+
+         Left out exactly like a team's own `refusal` below: no `done`, no `refusals` entry,
+         nothing removed - the row stays in the queue, visible, and its buttons come alive the
+         moment its picture arrives, so the NEXT press takes it; the line under the button counts
+         what was settled and nothing else. A row with no picture at all is not this decision's
+         business (`mayApprove` of `none`), the same distinction `WaitingPicture`'s own doc draws
+         for the single card.
+
+         Read off `pictureOutcomesRef`, NEVER off `pictureOutcomes` the state: a press can come in
+         the tick of a report, before the render that report asked for (`pictureOutcomesRef`'s own
+         doc, above). A picture that had arrived at the press is not reported on again, because an
+         element says what became of its picture once (`settlePicture`), so the loop below has no
+         failure to look for either. */
+      const sweepable = items.filter((one) =>
+        mayApprove(cardPictureOf(one, pictureOutcomesRef.current)),
+      )
       const refusals: ServerRefusal[] = []
       let done = 0
       /* Whether the route refused, in its own words, a decision about a card that drew a picture:
          asked once for the whole walk, after it (`readTheQueueAgain`). */
       let pictureRefused = false
 
-      for (const one of items) {
-        /* PDL.md "29. Slika koja ne moze da se ucita" (owner, 27.09.2026): the
-           same rule the single card's own Odobri already carries - „gledanje
-           je uslov odobravanja" names a condition on the ACT of approving, not
-           on one button, so a sweep over many rows is not a second door around
-           it.
-
-           AND THE PICTURE THAT HAS NOT ARRIVED YET IS HELD TO IT AS WELL AS THE ONE
-           THAT FAILED. DERIVED, NOT SAID: the owner's sentence of 11.10.2026 names
-           the card's two buttons („Dok se slika učitava, oba dugmeta su neaktivna"),
-           and the sweep is a third door to the same approval, so an approval the
-           card's own button may not send is not one the sweep sends in its name.
-           Measured before this: a sweep over cards whose pictures had not reported
-           approved every one of them, naming the key and the circle of a picture no
-           eyes had been on.
-
-           Skipped exactly like a team's own `refusal` two lines down: no
-           `done`, no `refusals` entry, nothing removed - the row stays in the
-           queue, visible, and its buttons come alive the moment its picture
-           arrives; the line under the button counts what was settled and nothing
-           else. A row with no picture at all is not this decision's business
-           (`mayApprove` of `none`), the same distinction `WaitingPicture`'s own
-           doc draws for the single card.
-
-           Read off `pictureOutcomesRef`, NEVER off `pictureOutcomes` the state:
-           this walk asks the question again on every turn, sometimes several
-           seconds and one `await` apart, and a render-time `pictureOutcomes`
-           closed over when the walk began answers with what had come of each
-           picture THEN, not now (`pictureOutcomesRef`'s own doc, above). */
-        if (!mayApprove(cardPictureOf(one, pictureOutcomesRef.current))) {
-          continue
-        }
-
+      for (const one of sweepable) {
         const made = queue.id === 'teams' ? teamFrom(one, edits) : null
 
         if (
@@ -1701,7 +1731,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                    picture this row cannot show), and since the
                                    owner's sentence of 11.10.2026 a picture that
                                    has not arrived either. Not for
-                                   symmetry with the loop - `approveAll` reports
+                                   symmetry with the walk's own set -
+                                   `approveAll` reports
                                    what it settled through `sayIt`
                                    UNCONDITIONALLY, including "nothing" when the
                                    one row it was handed was skipped, so a press
@@ -1712,10 +1743,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                    walk at all is the fix that leaves `sayIt`
                                    untouched, and it reads the ref rather than
                                    the `picture` this render drew the button from
-                                   so this check and the
-                                   loop's can never disagree about what has come
-                                   of the picture right now (`pictureOutcomesRef`'s
-                                   own doc, above). */
+                                   so this check and the walk's own set
+                                   (`sweepable`) can never disagree about what has
+                                   come of the picture at the press
+                                   (`pictureOutcomesRef`'s own doc, above). */
                                 if (
                                   !decisionUnknown &&
                                   !outstanding.current &&

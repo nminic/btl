@@ -345,22 +345,30 @@ describe('the picture on a card the moderator is deciding about', () => {
     }
   })
 
-  it('reads the freshest outcome of a picture during a walk already under way, not the one the walk started with', async () => {
-    /* Review's own measurement, reproduced in the direction that is left: two rows,
-       biography FIRST and photograph second; the biography's decision held open so
-       the walk is PARKED on it; the photograph's picture ARRIVES during that wait,
-       never before the walk started and never after it finished. A closure over
-       `pictureOutcomes` taken when the walk began says the picture is still on its
-       way and leaves the card alone - only a live read sees it has arrived
-       (`pictureOutcomesRef`'s own doc in PendingQueue.tsx).
+  it('does not approve a picture that arrives while a walk is already under way: the moderator had not seen it when he pressed', async () => {
+    /* THE SWEEP TAKES WHAT IT MAY APPROVE AT THE PRESS AND DOES NOT ASK AGAIN (PDL, 11.10.2026: „ne
+       šalje odobravanje za red čija slika nije stigla DO TRENUTKA PRITISKA", DERIVED from the owner's
+       „Moderator mora da vidi sliku koju odobrava" of 27.09.2026). Two rows, biography FIRST and
+       photograph second; the biography's decision held open so the walk is PARKED on it; the
+       photograph's picture ARRIVES during that wait, never before the press and never after the walk
+       finished.
 
-       THE OTHER DIRECTION, a picture that FAILS during the wait, was this case's
-       measurement until PDL, 11.10.2026: a card whose picture had said nothing was
-       approved by the sweep, so a picture that broke while the walk was parked on an
-       earlier row was still approved. A picture nobody has heard from is waited for
-       now, which settles that direction by construction and leaves it nothing to
-       measure here (`buttonsWaitForThePicture.test.tsx` holds that a sweep leaves
-       such a card). */
+       The moderator pressed over a card whose picture he had not seen, and a walk is several seconds of
+       round trips, so a picture that comes in meanwhile is one he has still not looked at. The sweep
+       sends nothing in the name of that card: the row stays, it is not counted, and the next press takes
+       it (`buttonsWaitForThePicture.test.tsx` holds the next press, and this same press with the cards
+       the other way round).
+
+       THIS CASE HELD THE OPPOSITE until the review of PR 524: the walk asked `pictureOutcomesRef` again
+       on every turn, and approved the photograph when it reached it, naming the key and the circle of a
+       picture nobody had looked at. What a press did then depended on the place of the card in the
+       list: with the photograph FIRST its turn came in the tick of the press and it was left alone.
+
+       THE OTHER DIRECTION, a picture that FAILS during the wait, was this case's measurement before PDL,
+       11.10.2026: a card whose picture had said nothing was approved by the sweep, so a picture that
+       broke while the walk was parked on an earlier row was still approved. A picture nobody has heard
+       from is waited for now, which settles that direction by construction and leaves it nothing to
+       measure here (`buttonsWaitForThePicture.test.tsx` holds that a sweep leaves such a card). */
     let releaseBio = (): void => {}
     const bioHeld = new Promise<Response>((resolve) => {
       releaseBio = () => resolve(did())
@@ -403,19 +411,16 @@ describe('the picture on a card the moderator is deciding about', () => {
         expect(screen.getByText(/^Rešen/)).toBeVisible()
       })
 
-      const decided = asked.find((one) => one.path === decisionPath('21'))
-
       expect(
-        decided,
-        'the photograph must be decided: its picture had arrived by the time the walk reached it',
-      ).toBeDefined()
-      expect(JSON.parse(String(decided?.init?.body))).toEqual({
-        approved: true,
-        reason: '',
-        seenPhotoId: 9,
-        seenCrop: { x: 0.4, y: 0.6, size: 0.5 },
-      })
-      expect(screen.getByText(/^Rešen.* 2 stavk/)).toBeVisible()
+        asked.find((one) => one.path === decisionPath('21')),
+        'the photograph must not be decided: its picture had not arrived when the moderator pressed',
+      ).toBeUndefined()
+
+      /* The one number that tells „left it" apart from „took it": the biography alone. */
+      expect(screen.getByText(/^Rešen.* 1 stavk/)).toBeVisible()
+
+      /* And the row is still in the queue, waiting, not swept away with nothing decided about it. */
+      expect(screen.getByRole('heading', { name: 'Neda Nedić' })).toBeVisible()
     } finally {
       confirm.mockRestore()
       stop()
@@ -468,9 +473,9 @@ describe('the picture on a card the moderator is deciding about', () => {
   })
 
   it("checks a row's own picture before asking for its own approval, and cannot check it again once that request is already out", async () => {
-    /* THE NARROWER RACE, named apart from "reads the freshest..." above: not a
-       LATER row breaking while an EARLIER row's own request is out, but THIS
-       SAME row's own picture breaking while THIS SAME row's own single-card
+    /* THE NARROWER RACE, named apart from "does not approve a picture that arrives while a walk is
+       already under way" above: not a LATER row breaking while an EARLIER row's own request is out,
+       but THIS SAME row's own picture breaking while THIS SAME row's own single-card
        `approveAll([one], teams)` is awaiting THIS SAME row's own
        `askTheServer`. Written because the question deserved a measurement,
        not my own reasoning about whether `onClick` reading `pictureOutcomesRef`
@@ -478,9 +483,10 @@ describe('the picture on a card the moderator is deciding about', () => {
 
        MEASURED, NOT ASSUMED: the request already stands in `asked` the instant
        `user.click` resolves, before this test's next line can even fire the
-       picture's own `error` event. `onClick`'s guard and the loop's own skip
-       both run synchronously and must both already have passed - failing
-       either is the only way `askTheServer` is never reached - so by the time
+       picture's own `error` event. `onClick`'s guard and the walk's own set
+       (`sweepable`) are both taken synchronously and must both already have
+       passed - failing either is the only way `askTheServer` is never
+       reached - so by the time
        a picture could fail "during" that one call, this row's request has
        already left for the server. The mutation below (`onClick` reading
        the picture's state as its render drew it instead of the ref) is

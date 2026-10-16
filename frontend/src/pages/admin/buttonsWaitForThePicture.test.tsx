@@ -1,4 +1,4 @@
-import { act, configure, getConfig, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, fireEvent, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { did, refused, serverThat, type Asked } from '../../test/serverAnswers'
@@ -31,6 +31,11 @@ import { QUEUE } from './queues'
  *
  * <p>`decidingOnThePictureHeSaw.test.tsx` says first that the picture arrived before every press of its own;
  * this file is where what a card does BEFORE that, and when it never does, is held.
+ *
+ * <p>The sweep is held here too, and in two places: which cards it takes when it is pressed (the group over
+ * cards in different states), and what it does with a picture that arrives AFTER the press, while the walk is
+ * out (the group at the foot of it). The second is the owner's „Moderator mora da vidi sliku koju odobrava"
+ * read at the instant he decides: the set is taken once, at the press.
  */
 
 /* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, which is what `saveWhileSaving.test.tsx`
@@ -137,6 +142,47 @@ async function inTheFourStates() {
   thePictureArrives(cardOf('Mira Mirić'))
   thePictureFails(cardOf('Zora Zorić'))
 }
+
+/** A decision the route answers only when the case lets it, so that a walk is PARKED on that card for as
+ *  long as the case wants and a picture can arrive while it is. */
+function aDecisionThatWaits(path: string): { path: string; answer: Promise<Response>; release: () => void } {
+  let release = (): void => {}
+  const answer = new Promise<Response>((resolve) => {
+    release = () => resolve(did())
+  })
+
+  return { path, answer, release }
+}
+
+/** A server that answers the list, holds the decision it is told of until the case lets it go, and takes the
+ *  decisions about `taken` at once. */
+function aServerThatHolds(
+  rows: unknown[],
+  held: ReturnType<typeof aDecisionThatWaits>,
+  taken: string[],
+) {
+  return serverThat((path) =>
+    path === '/api/verification'
+      ? asTheList(rows)
+      : path === held.path
+        ? held.answer
+        : taken.includes(path)
+          ? did()
+          : null,
+  )
+}
+
+/** The walk is PARKED on the held card: the route has been asked about that card and about nothing else. */
+const parkedOn = (asked: Asked[], path: string) =>
+  waitFor(() => {
+    expect(decisionsIn(asked).map((one) => one.path)).toEqual([path])
+  })
+
+/** The sweep has said how many it settled, which is the last thing it does. */
+const sweepIsOver = () =>
+  waitFor(() => {
+    expect(screen.getByText(/^Rešen/)).toBeVisible()
+  })
 
 describe('the two buttons of a card, by what has become of the picture on it', () => {
   it('are told off or live by the state of the picture on each card, four cards at once', async () => {
@@ -507,6 +553,220 @@ describe('the sweep over cards whose pictures are in different states', () => {
         "Petar Petrović's refusal must survive a press on a card whose picture has not arrived",
       ).toHaveTextContent(SOMEBODY_ANSWERED_IT_ALREADY)
     } finally {
+      stop()
+    }
+  }, SLOW)
+})
+
+/**
+ * THE SWEEP TAKES WHAT IT MAY APPROVE AT THE PRESS, AND A PICTURE THAT ARRIVES WHILE IT IS OUT IS FOR THE
+ * NEXT PRESS.
+ *
+ * <p>PDL, 11.10.2026, derived from the owner's „Moderator mora da vidi sliku koju odobrava" (27.09.2026):
+ * „„Odobri sve" ne šalje odobravanje za red čija slika nije stigla DO TRENUTKA PRITISKA, kao ni za onaj čija
+ * nije uspela; red ostaje i ne broji se, i kad slika stigne dok obilazak traje". The moderator decides on
+ * what he is looking at when he presses, and a walk is one round trip per card, so pictures go on arriving
+ * while it is out: one that arrives then is one he has not looked at.
+ *
+ * <p><b>The four probes of the review of PR 524, which had one cause between them</b> (the walk asked the ref
+ * again on every turn) <b>and are cases here:</b>
+ *
+ * <ul>
+ * <li>a biography and then the picture, which the walk approved, and the picture and then a biography, which
+ * it left alone: the same screen at the same press, two outcomes by the order of the cards, so one case
+ * takes both orders and asks for the same outcome;</li>
+ * <li>a card whose picture arrived BEFORE the press and one behind it whose picture arrives AFTER it: the
+ * walk took both, and takes the first;</li>
+ * <li>the picture arrives mid-walk and the moderator opens „Odbij" over it and writes a reason: the walk
+ * approved it afterwards, over the reason he was writing.</li>
+ * </ul>
+ *
+ * <p><b>And the one the probes do not reach: the press is the instant the ref says it is.</b> A report can
+ * come in the tick of the press, before the render it asked for; the sweep takes that picture as the card's
+ * own Odobri does (`PendingQueue.tsx`, `pictureOutcomesRef`), and a set read off the render the press was
+ * made in does not.
+ *
+ * <p>Every card the walk is to be parked on is held by the case (`aDecisionThatWaits`) and not by a timer, so
+ * what a case measures is the order of events and not how fast the machine is.
+ */
+describe('the sweep, and a picture that arrives while it is out', () => {
+  it.each([
+    { order: 'a biography and then the picture', rows: () => [petar, neda()] },
+    { order: 'the picture and then a biography', rows: () => [neda(), petar] },
+  ])(
+    'leaves the card whose picture arrives while the walk is parked, with the cards as $order',
+    async ({ rows }) => {
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      const held = aDecisionThatWaits(decisionPath('22'))
+      const { asked, stop } = aServerThatHolds(rows(), held, [decisionPath('21')])
+
+      try {
+        const user = setupUser()
+
+        openQueue()
+        await screen.findByRole('list', { name: /Čeka/ })
+
+        await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+        await parkedOn(asked, decisionPath('22'))
+
+        thePictureArrives(cardOf('Neda Nedić'))
+
+        /* THE PICTURE HAS REACHED THE SCREEN: her Odbij answers. Without it a card left alone would be a card
+           whose picture never arrived, and the case would say nothing about the walk. (Her Odobri is told off
+           by the walk itself, `deciding`, so it cannot say.) */
+        expect(refuseOf('Neda Nedić')).not.toHaveAttribute('aria-disabled')
+
+        held.release()
+        await sweepIsOver()
+
+        /* The biography alone, in either order: no request for Neda, and the one number that tells „left
+           her" from „took her". */
+        expect(decisionsIn(asked)).toEqual([
+          { path: decisionPath('22'), body: { approved: true, reason: '' } },
+        ])
+        expect(screen.getByText('Rešena je 1 stavka.')).toBeVisible()
+        expect(screen.getByRole('heading', { name: 'Neda Nedić' })).toBeVisible()
+        expect(screen.queryByRole('heading', { name: 'Petar Petrović' })).toBeNull()
+      } finally {
+        confirm.mockRestore()
+        stop()
+      }
+    },
+    SLOW,
+  )
+
+  it('does not approve a picture that arrives after the press behind a card whose picture arrived before it, and takes it with the next press', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const held = aDecisionThatWaits(decisionPath('23'))
+    const { asked, stop } = aServerThatHolds([mira(), neda()], held, [decisionPath('21')])
+
+    try {
+      const user = setupUser()
+
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+      /* Mira's picture arrived BEFORE the press, so she is in the walk; Neda's has not said anything. */
+      thePictureArrives(cardOf('Mira Mirić'))
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+      await parkedOn(asked, decisionPath('23'))
+
+      /* The press is over: it asked its question, was answered yes, and the walk is out. What comes now comes
+         after it. */
+      expect(confirm).toHaveBeenCalledTimes(1)
+      thePictureArrives(cardOf('Neda Nedić'))
+      expect(refuseOf('Neda Nedić')).not.toHaveAttribute('aria-disabled')
+
+      held.release()
+      await sweepIsOver()
+
+      expect(decisionsIn(asked)).toEqual([
+        {
+          path: decisionPath('23'),
+          body: { approved: true, reason: '', seenPhotoId: 12, seenCrop: MIRA_CROP },
+        },
+      ])
+      expect(screen.getByText('Rešena je 1 stavka.')).toBeVisible()
+      expect(screen.getByRole('heading', { name: 'Neda Nedić' })).toBeVisible()
+      expect(screen.queryByRole('heading', { name: 'Mira Mirić' })).toBeNull()
+
+      /* THE NEXT PRESS TAKES HER: the row was left and not lost, and its picture has arrived by then. */
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+      await waitFor(() => {
+        expect(screen.queryByRole('heading', { name: 'Neda Nedić' })).toBeNull()
+      })
+      expect(decisionsIn(asked)).toEqual([
+        {
+          path: decisionPath('23'),
+          body: { approved: true, reason: '', seenPhotoId: 12, seenCrop: MIRA_CROP },
+        },
+        {
+          path: decisionPath('21'),
+          body: { approved: true, reason: '', seenPhotoId: 9, seenCrop: NEDA_CROP },
+        },
+      ])
+    } finally {
+      confirm.mockRestore()
+      stop()
+    }
+  }, SLOW)
+
+  it('does not approve a picture the moderator opened „Odbij" over while the walk was out, and keeps the reason he wrote', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const held = aDecisionThatWaits(decisionPath('22'))
+    const { asked, stop } = aServerThatHolds([petar, neda()], held, [decisionPath('21')])
+
+    try {
+      const user = setupUser()
+
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+      await parkedOn(asked, decisionPath('22'))
+
+      /* The picture arrives while the walk is out, and the moderator, who has now seen it, opens the box
+         and begins a reason. */
+      thePictureArrives(cardOf('Neda Nedić'))
+      await user.click(refuseOf('Neda Nedić'))
+      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Slika je mutna.')
+
+      held.release()
+      await sweepIsOver()
+
+      expect(
+        decisionsIn(asked).filter((one) => one.path === decisionPath('21')),
+        'the walk sends nothing in the name of a card the moderator is refusing',
+      ).toEqual([])
+      expect(screen.getByRole('heading', { name: 'Neda Nedić' })).toBeVisible()
+      expect(screen.getByLabelText('Razlog odbijanja')).toHaveValue('Slika je mutna.')
+
+      /* And the refusal he was writing goes out as he wrote it, naming the picture he saw. */
+      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+      await waitFor(() => {
+        expect(decisionsIn(asked).filter((one) => one.path === decisionPath('21'))).toEqual([
+          {
+            path: decisionPath('21'),
+            body: { approved: false, reason: 'Slika je mutna.', seenPhotoId: 9, seenCrop: NEDA_CROP },
+          },
+        ])
+      })
+    } finally {
+      confirm.mockRestore()
+      stop()
+    }
+  }, SLOW)
+
+  it('takes a card whose picture arrived in the very tick of the press, which the screen has not drawn yet', async () => {
+    /* THE REPORT AND THE PRESS INSIDE ONE `act`, so that nothing is drawn between them: the closure of the
+       render the press is made in still says the picture is on its way, and only the ref says it arrived
+       (the way „keeps every picture that arrived in the same tick" above puts two reports in one tick). The
+       card's own Odobri reads the ref for the same reason; the sweep does the same, and a set read off
+       `pictureOutcomes` would leave her. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const { asked, stop } = aServerThatTakesTheDecisions([neda()], [decisionPath('21')])
+
+    try {
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+
+      const sweep = screen.getByRole('button', { name: 'Odobri sve' })
+
+      act(() => {
+        thePictureArrives(cardOf('Neda Nedić'))
+        fireEvent.click(sweep)
+      })
+      await sweepIsOver()
+
+      expect(decisionsIn(asked)).toEqual([
+        {
+          path: decisionPath('21'),
+          body: { approved: true, reason: '', seenPhotoId: 9, seenCrop: NEDA_CROP },
+        },
+      ])
+      expect(screen.getByText('Rešena je 1 stavka.')).toBeVisible()
+    } finally {
+      confirm.mockRestore()
       stop()
     }
   }, SLOW)
