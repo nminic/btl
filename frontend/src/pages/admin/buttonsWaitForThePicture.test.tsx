@@ -718,13 +718,18 @@ describe('the sweep, and a picture that arrives while it is out', () => {
         decisionsIn(asked).filter((one) => one.path === decisionPath('21')),
         'the walk sends nothing in the name of a card the moderator is refusing',
       ).toEqual([])
+      /* The walk did reach the end and settled the biography, so the silence about her is not a walk that
+         stopped. */
+      expect(screen.getByText('Rešena je 1 stavka.')).toBeVisible()
       expect(screen.getByRole('heading', { name: 'Neda Nedić' })).toBeVisible()
       expect(screen.getByLabelText('Razlog odbijanja')).toHaveValue('Slika je mutna.')
 
-      /* And the refusal he was writing goes out as he wrote it, naming the picture he saw. */
+      /* And the refusal he was writing goes out as he wrote it, naming the picture he saw, and is the only
+         thing the route is ever asked about her. */
       await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
       await waitFor(() => {
-        expect(decisionsIn(asked).filter((one) => one.path === decisionPath('21'))).toEqual([
+        expect(decisionsIn(asked)).toEqual([
+          { path: decisionPath('22'), body: { approved: true, reason: '' } },
           {
             path: decisionPath('21'),
             body: { approved: false, reason: 'Slika je mutna.', seenPhotoId: 9, seenCrop: NEDA_CROP },
