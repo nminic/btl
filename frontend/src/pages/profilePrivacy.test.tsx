@@ -825,6 +825,99 @@ describe.each([
 })
 
 /**
+ * THE SESSION AND THE LIST OF MEMBERS SAY DIFFERENT THINGS ABOUT THE READER, AND A HIDDEN PROFILE IS
+ * READ BY WHAT THE SESSION SAYS.
+ *
+ * <p>ADL, 16.10.2026, „Činjenica „član je aktivan" dobija jedan dom na ekranu" (the record's
+ * sentence and not the owner's own words): the fact that the reader is active is the session's
+ * (`GET /api/me`, `active`), and the list the server serves is no longer asked about HIM.
+ *
+ * <p><b>The axis the two `describe`s above cannot tell apart.</b> In both the list and the session
+ * agree - the member the list leaves out is the one the answer calls lapsed, and the member it
+ * carries is the one it calls active - so a screen that asked either would pass every case. They come
+ * apart in a visit, because the list is read once and nothing drops it while the answer about the
+ * caller is the one the server gave a moment ago; each row below makes them say opposite things.
+ * Both directions, because they fail differently: a screen reading the list lets a lapsed reader into
+ * a profile the server then refuses him, and turns away a member whose fee stands.
+ *
+ * <p>**Each of the three screens that ask has a case of its own** (the profile, its page of awards and
+ * the name on a list), for the reason written above them: one expression on each, and restoring it on
+ * one leaves the other two green.
+ */
+describe.each([
+  /* 000002 is on the list and the session says his fee has lapsed: he is read as a visitor is. */
+  ['a member the list carries and the session says has lapsed', '000002', false, false],
+  /* 000032 is off the list and the session says his fee stands: he is let in. */
+  ['a member the list leaves out and the session says stands', '000032', true, true],
+] as const)('a hidden profile, read by %s', (_who, number, feeStands, opens) => {
+  const served = theServerAnswersWithItsMembers()
+
+  async function visit(where: string) {
+    /* That the two really disagree is part of the case: the file's flag and the list are what
+       `membersAsServed` puts in front of the disc, and the row says what the session claims. */
+    expect(served.lapsed().includes(number), 'the list and the session say the same').toBe(feeStands)
+
+    const user = setupUser()
+    const { router } = renderAt(
+      where,
+      'visitor',
+      null,
+      undefined,
+      DAY,
+      <>
+        <Hide who="000007" />
+        <SignInAs role="competitor" memberNumber={number} feeStands={feeStands} label="prijavi čitaoca" />
+      </>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'sakrij 000007' }))
+
+    return { user, router }
+  }
+
+  it.each([
+    ['the profile', HIM],
+    ['the page of awards', `${HIM}/priznanja`],
+  ])(`${opens ? 'opens' : 'does not open'} %s`, async (_what, where) => {
+    const { user, router } = await visit('/sr')
+
+    /* Turned away first, as a visitor is, so the sign in is the only thing that changes. */
+    await router.navigate(where)
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
+
+    await user.click(screen.getByRole('button', { name: 'prijavi čitaoca' }))
+    await router.navigate(where)
+
+    if (opens) {
+      expect(
+        await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ }),
+      ).toBeVisible()
+      expect(router.state.location.pathname).toBe(where)
+    } else {
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/sr')
+      })
+      expect(screen.queryByRole('heading', { level: 1, name: /Strahinja Vukićević/ })).toBeNull()
+    }
+  }, SLOW)
+
+  it(`leaves a name on a list as ${opens ? 'a way in' : 'words'}`, async () => {
+    const { user } = await visit('/sr/takmicari')
+
+    expect((await screen.findByText('Strahinja Vukićević')).closest('a')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'prijavi čitaoca' }))
+
+    /* Read off the same card after the sign in, so a screen that stopped drawing him cannot satisfy
+       either half. */
+    expect(await screen.findByText('Strahinja Vukićević')).toBeVisible()
+    expect(screen.getByText('Strahinja Vukićević').closest('a') !== null).toBe(opens)
+  }, SLOW)
+})
+
+/**
  * TWO CASES ABOUT A FIELD THAT IS SIMPLY ABSENT STOOD HERE, AND THEIR SUBJECT WENT EXTINCT ON
  * 26.09.2026.
  *
