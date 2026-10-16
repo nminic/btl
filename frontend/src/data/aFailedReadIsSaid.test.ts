@@ -321,11 +321,6 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     why: 'THE FILE\'S OWN: a single figure in the head of the page, silent because a box that resolves into nothing moves the name of the race under the reader\'s eye, and an alert about a mark is noise about a figure nobody asked for. Not a list.',
   },
   {
-    file: 'pages/event/readsComments.ts',
-    how: 'hands on',
-    why: 'MY REASONING: the list of members that failed, or is still on its way, is handed on as it is, as the state of the answer to „does this reader read the comments", to the two screens that read it and say it (`EventComments.tsx` through `<Resource>`, `OverallMark.tsx` by drawing nothing, for the reason its own row gives). It is never turned into a no: a reader whose list did not come is not read as somebody who may not read, he is told the part could not be read, with the button that asks again. Written with the reader fact (PDL P6, 03.10.2026).',
-  },
-  {
     file: 'pages/EventDetail.tsx',
     how: 'open',
     why: 'OPEN: PENDING stavka 372, a separate PR (D). The block of actions is drawn only when the races AND the results are both ready, so a failed read of either takes the buttons away without a word. (The part for the results is silent for an event still to be run for the reason `pages/event/EventComments.tsx` gives, held by `pages/event/eventWaiting.test.tsx`.)',
@@ -345,12 +340,6 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     file: 'pages/profile/RacingPairLine.tsx',
     how: 'says',
     why: 'THE FILE\'S OWN, and held by `pages/pairInviteOnTheServer.test.tsx` („say so when they cannot be read, and the pairs stay drawn"): the questions still standing on the reader\'s own page, read off `/api/me/applications`, say `data.error` under the pairs through `Unreadable`, with the button that asks again (decision of 02.10.2026, PENDING stavka 368), and the pairs above them, which are this page\'s own read, stay drawn. While it is read, nothing. Written 10.10.2026 with P2.',
-  },
-  {
-    file: 'pages/profile/useProfileLink.ts',
-    how: 'boundary',
-    why: 'MY REASONING: a BOOLEAN and not a list. The call asks only whether the reader\'s number is on the list the server serves, to decide whether a name is a link or plain text, so a read that failed leaves the reader read as nobody who may read a hidden profile: a refusal that lifts when the list arrives, never an admission. The list is not drawn from this call: every caller hands in a `Competitor`, a record of that same list, so a failure of it is already the caller\'s to say. Written 04.10.2026 with the reader fact (PDL P23).',
-    calls: [{ shape: 'dataOr', call: 'dataOr(useCompetitors(), [])' }],
   },
 ]
 
