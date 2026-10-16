@@ -729,12 +729,29 @@ class APictureGoesWithItsLastHolderTest {
 				.andReturn().getResponse();
 	}
 
+	/**
+	 * A MODERATOR DECIDING THE PICTURE THE ROW HOLDS WHEN THE CASE PRESSES, which is the only
+	 * sense in which this file decides anything.
+	 *
+	 * <p>A decision about a picture names the picture the moderator saw (PDL, 10.10.2026), and the
+	 * key AND THE CIRCLE are read off the row here, at the moment of the call. That is the one place
+	 * in the suite where they are allowed to be, and the reason is that no case in this file is about
+	 * WHICH picture he saw: each is about where a file goes when a row is decided or deleted, and
+	 * each presses on the row it has just made. The cases that ARE about the key and the circle name
+	 * them from outside the row, in {@code VerificationWriteApiTest}.
+	 */
 	private MockHttpServletResponse deciding(long item, boolean approved, String reason)
 			throws Exception {
 
-		String body = reason == null
-				? "{\"approved\":" + approved + "}"
-				: "{\"approved\":" + approved + ",\"reason\":\"" + reason + "\"}";
+		Long held = db.sql("select photo_id from verification where id = ?").param(item)
+				.query(Long.class).optional().orElse(null);
+		String circle = db.sql("select '{\"x\":' || trim_scale(p.crop_x) || ',\"y\":' ||"
+						+ " trim_scale(p.crop_y) || ',\"size\":' || trim_scale(p.crop_diameter) || '}'"
+						+ " from verification v join photo p on p.id = v.photo_id where v.id = ?")
+				.param(item).query(String.class).optional().orElse(null);
+		String body = "{\"approved\":" + approved
+				+ (reason == null ? "" : ",\"reason\":\"" + reason + "\"")
+				+ (held == null ? "" : ",\"seenPhotoId\":" + held + ",\"seenCrop\":" + circle) + "}";
 
 		return http.perform(asModerator(post("/api/verification/" + item + "/decision"))
 						.contentType(MediaType.APPLICATION_JSON).content(body))

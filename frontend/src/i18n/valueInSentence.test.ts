@@ -526,10 +526,12 @@ describe('a sentence with a value put into it', () => {
       'units.btlPoints <- formatPoints',
       'units.memberCount',
       /* NOT A SENTENCE, and written here because the guard reads names and cannot tell: the queue
-         is read again with a revision since R3b (`useResource('verification', { revision })` in
-         `admin/pending.ts`), and `verification` is also the name of a section of the dictionary,
-         which counts as a name here on purpose (a plural is a branch, „knows the dictionary by its
-         own names" below). Nothing is put into any sentence by that call. */
+         of results (R3b, `useWaitingRuns`) and the queue of cards (after a refusal of a decision about
+         a picture, OS, `usePending`) are each read again with a revision
+         (`useResource('verification', { revision })` in `admin/pending.ts`), and `verification` is
+         also the name of a section of the dictionary, which counts as a name here on purpose (a
+         plural is a branch, „knows the dictionary by its own names" below). Nothing is put into any
+         sentence by either call. */
       'verification',
       'verification.approveAllAsk',
       'verification.approveAllDone',

@@ -218,6 +218,7 @@ function aRunWith(link: string): ServedPendingItem {
     city: '',
     country: '',
     photoId: null,
+    crop: null,
     rating: NO_RATING,
     raceId: 21,
     raceDate: '2026-05-10',

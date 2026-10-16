@@ -60,6 +60,9 @@ const A_RUN = {
   who: 'Ana Anić',
   subjectId: '',
   photoId: null,
+  /* A run holds no picture and so no circle: the queue answers null for it
+     (`VerificationApi.Waiting.crop`, since 10.10.2026), exactly as for every row without one. */
+  crop: null,
   rating: NO_RATING,
   kind: '' as const,
   body: '',

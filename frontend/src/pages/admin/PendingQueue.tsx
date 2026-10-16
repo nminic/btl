@@ -18,8 +18,24 @@ import { useSession } from '../../session/useSession'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { WhatTheServerSaid } from './WhatTheServerSaid'
 import { clearResourceCache } from '../../data/client'
-import { aRefusal, anApproval, decisionPath, photoPath } from './verificationWrites'
+import {
+  aRefusal,
+  aRefusalOfThePicture,
+  anApproval,
+  anApprovalOfThePicture,
+  decisionPath,
+  photoPath,
+  type Answered,
+} from './verificationWrites'
 import { usePending, WAITING, waitingIn } from './pending'
+import {
+  cardPictureOf,
+  mayApprove,
+  mayRefuse,
+  pictureKey,
+  type Outcome,
+  type Outcomes,
+} from './cardPicture'
 import { recordKey } from '../../session/context'
 import type { PendingItem, Team } from '../../data/types'
 import { idFor, MEMBERS, recordsOf, TEAMS } from './entityForms'
@@ -91,6 +107,33 @@ import './Verification.css'
  */
 function isProposal(id: string): boolean {
   return id.startsWith('prop-')
+}
+
+/**
+ * THE DECISIONS A CARD SENDS, each naming the picture the card drew where it drew one, and the
+ * circle that came with it.
+ *
+ * <p>PDL, the owner's answer of 10.10.2026: „Obe odluke o profilnoj slici, odobravanje i
+ * odbijanje, važe samo za sliku koju je moderator video". What a card drew is `photoId`, the one
+ * fact `WaitingPicture` gates the picture on, so the two cannot come apart: a card that draws a
+ * picture sends its key with BOTH answers, and one that draws none sends none (the route answers
+ * 400 to a key beside a row that holds no picture, and to a picture's decision without one).
+ * Asked here once for the three doors that decide - a card's own Odobri, the sweep, and the box
+ * that hands a card back - so that none of them can spell it its own way.
+ *
+ * <p><b>The circle is `one.crop`, exactly as the queue served it</b> (`PendingItem.crop`), because
+ * the key alone does not move when the member sends the same picture with the circle moved and a
+ * decision is only about what the moderator saw. It is read where `photoId` is, off the same card,
+ * and for the same reason: two facts about one picture that came in one answer.
+ */
+function approvalOf(one: PendingItem): Answered {
+  return one.photoId === null ? anApproval() : anApprovalOfThePicture(one.photoId, one.crop)
+}
+
+function refusalOf(one: PendingItem, reason: string): Answered {
+  return one.photoId === null
+    ? aRefusal(reason)
+    : aRefusalOfThePicture(reason, one.photoId, one.crop)
 }
 
 /** Whether a queue has a second decision that hands the work back to its
@@ -195,22 +238,24 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * vidi ISECAK sa zatamnjenim ostatkom" (owner, 27.09.2026), confirms and sharpens
  * the 12.08.2026 decision this paragraph used to read as unmet: the moderator sees
  * the crop with its remainder dimmed but still perceptible, not the whole
- * photograph this card draws today. Drawing that needs `/api/verification` to
- * carry the crop's three fractions beside the picture, which this branch's route
- * does not - so drawing the crop is its own increment, and the whole photograph
- * drawn here in the meantime is a temporary stand-in rather than a decision of
- * this component's own. It stands in because it is strictly better than the
+ * photograph this card draws today. Drawing that is its own increment, and the
+ * whole photograph drawn here in the meantime is a temporary stand-in rather than
+ * a decision of this component's own. It stands in because it is strictly better than the
  * "Datoteka" label with nothing under it this branch replaces (owner, 27.09.2026:
  * "Svakako uradi sta god je potrebno da moderator vidi sliku koju verifikuje"),
  * not because the question of what he should see was ever open - it no longer is.
  * `PhotoApi.waitingOn`'s own comment still answers the WHOLE original and nothing
- * about the crop - "the circle is the MEMBER's choice over his own picture... not
- * part of the one being taken here" - and `VerificationApi.Waiting` carries no
- * `crop` field at all today, which is exactly what the branch that draws the crop
- * has to add. Drawing `CropWindow` here regardless would mean feeding it
- * `one.crop`, which is always `WHOLE` for a server row (`ABSENT.crop` in
- * `./pending.ts`) and would show a generic centred circle as though it were the
- * member's own choice, which it is not.
+ * about the crop. **`VerificationApi.Waiting` has carried the member's circle since
+ * 10.10.2026, as the print of a decision and for nothing else:** `one.crop` is the
+ * circle this card was served for a row that holds a picture, and `approvalOf` and
+ * `refusalOf` send it back with the key. Nothing here draws it, so a circle moved
+ * under the moderator's hand refuses his decision (409 „Slika je promenjena,
+ * pogledaj je ponovo.") and the card, read again, looks exactly as it did - the whole
+ * original and no circle. That is the price of the owner's sentence until the crop
+ * is drawn, written here where the refusal is handled and not left to be found on
+ * QA; drawing it is the job this paragraph names, and it now needs nothing added
+ * to the server. For a row with no picture `one.crop` is `WHOLE`, the portal's own
+ * word for „no square of its own" (`./pending.ts`), and is not sent.
  *
  * <p><b>A failed load says so rather than hiding the picture or drawing a broken
  * image icon, since PDL.md "29. Slika koja ne moze da se ucita" (owner,
@@ -222,14 +267,38 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * stays silent exactly as before - it never had a picture to fail, so there is
  * nothing to report missing.
  *
+ * <p><b>THE ADDRESS CARRIES `photoId`, SO THAT THE PICTURE DRAWN AND THE PICTURE NAMED ARE ONE
+ * VALUE READ ONCE (PDL, 10.10.2026: „Odobrava se samo slika koju je moderator video").</b> A
+ * decision from this card names `photoId` (`approvalOf`, `refusalOf`), and the route refuses it
+ * when the row holds another picture. After that refusal the list is read again and the card
+ * holds a new `photoId`; the row's address (`/api/verification/{id}/photo`) is the same
+ * character for character, so without the number in it the `<img>` would keep its `src`, keep its
+ * element and draw the old pixels beside a decision that names the new picture - the moderator
+ * would be asked to „pogledaj je ponovo" over a picture that did not change on his screen, and the
+ * next press would approve what he never saw. With the number in it the `src` moves with the
+ * fact it stands for, and a request for a new address is the one thing a browser cannot answer
+ * from its own memory. <b>The element is keyed by the same number</b>, so a picture that is
+ * replaced is a new element that draws nothing until its own pixels arrive: left to change its
+ * `src` in place, the element keeps drawing the old pixels until the new ones are decoded, and a
+ * press in that moment names the new picture over the old one on the screen. The circle needs none
+ * of this: the pixels do not change with it, and it travels in the decision itself (`approvalOf`,
+ * `refusalOf`).
+ *
  * <p><b>`broken` is a prop and never state of its own, unlike before this
- * decision.</b> The Approve button beside this card has to read the identical
- * fact this paragraph draws a sentence about - it is disabled while a picture
- * cannot be seen, per the same owner decision - and a second copy of "did this
- * load" kept here could disagree with the parent's copy (`CLAUDE.md`, "Dva izvora,
- * jedna vrednost"). `PendingQueue`'s own `brokenPictures` is the one place this
- * fact is decided; this component only reports a load failure up through
- * `onBroken` and draws whatever `broken` says.
+ * decision.</b> The two buttons beside this card have to read the identical
+ * fact this component draws - the Approve is disabled while a picture cannot be
+ * seen, per the same owner decision, and both wait while it has not arrived
+ * (PDL, 11.10.2026: „Dok se slika učitava, oba dugmeta su neaktivna; kad se učita, oba
+ * rade.") - and a second copy of "did this load" kept here could disagree with the
+ * parent's copy (`CLAUDE.md`, "Dva izvora, jedna vrednost"). `PendingQueue`'s own
+ * `pictureOutcomes` is the one place this fact is decided (`./cardPicture.ts` holds
+ * what each of the four states allows); this component only reports what its element
+ * did and draws whatever `broken` says.
+ *
+ * <p><b>What it reports is the outcome AND THE PICTURE IT WAS FOR</b>, off the number
+ * the element itself was drawn with and not off whatever the card holds when the event
+ * is handled, so an outcome cannot be written against a picture other than the one that
+ * produced it (`pictureKey`).
  *
  * <p><b>The alt text is the dictionary's own call and never a string built here.</b>
  * `data/theRealAnswer.test.tsx`'s guard against this exact frame returning unfed is
@@ -245,20 +314,25 @@ function RatingGiven({ rating }: { rating: EventRating }) {
 function WaitingPicture({
   item,
   broken,
-  onBroken,
+  onOutcome,
 }: {
   item: PendingItem
-  /** Whether this row's picture has already failed to load once, read off
-   *  `PendingQueue`'s own `brokenPictures` rather than kept here. */
+  /** Whether this picture has already failed to load, read off `PendingQueue`'s own
+   *  `pictureOutcomes` rather than kept here. */
   broken: boolean
-  /** Reported once, the moment `<img onerror>` fires: a 404, a redirect
-   *  nowhere, a file the browser cannot decode. Not asked to say which,
-   *  the same way the sentence this draws does not either. */
-  onBroken: () => void
+  /** Reported once, the moment the element says what became of its picture, and with the
+   *  number of the picture it was drawn for: `loaded` when `<img onload>` fires, `failed`
+   *  when `<img onerror>` does (a 404, a redirect nowhere, a file the browser cannot
+   *  decode). Not asked to say which kind of failure, the same way the sentence this draws
+   *  does not either. */
+  onOutcome: (outcome: Outcome, photoId: number) => void
 }) {
   const { t } = useI18n()
+  /* Taken out of the item once and narrowed here, because the two handlers below are
+     closures and a narrowing of `item.photoId` does not reach into a closure. */
+  const { photoId } = item
 
-  if (item.photoId === null) {
+  if (photoId === null) {
     return null
   }
 
@@ -272,10 +346,12 @@ function WaitingPicture({
 
   return (
     <img
+      key={photoId}
       className="pending__picture"
-      src={photoPath(item.id)}
+      src={photoPath(item.id, photoId)}
       alt={t('verification.pictureAlt', { who: item.who })}
-      onError={onBroken}
+      onLoad={() => onOutcome('loaded', photoId)}
+      onError={() => onOutcome('failed', photoId)}
     />
   )
 }
@@ -433,7 +509,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   /**
    * THE CARDS WHOSE REFUSAL IS OUT WITH THE ROUTE, as a render reads it, and `handingBackNow` as a press
    * reads it: ONE FACT IN THE TWO LIFETIMES A FACT HAS HERE, written at exactly one place
-   * (`markHandingBack`) to the identical value, the way `brokenPictures` and `brokenPicturesRef` are.
+   * (`markHandingBack`) to the identical value, the way `pictureOutcomes` and `pictureOutcomesRef` are.
    * The state is for the box that sent the refusal, to say so and to tell its buttons off
    * (`SendBack`, `working`); the ref is for the press, because a second press can arrive before the
    * render the state would cause.
@@ -453,10 +529,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
     setHandingBack(now)
   }
   /**
-   * Which rows' pictures have failed to load, so the Approve button beside a
-   * broken photograph can read the identical fact `WaitingPicture` already
-   * draws a sentence about (PDL.md, "29. Slika koja ne moze da se ucita",
-   * owner 27.09.2026).
+   * What has become of every picture this screen has drawn, by the picture (`pictureKey`), so the
+   * two buttons beside a card can read the identical fact `WaitingPicture` already draws: a picture
+   * that arrived, one that could not (PDL.md, "29. Slika koja ne moze da se ucita", owner
+   * 27.09.2026, and the sentence it draws) and - by not being in it yet - one still on its way (PDL,
+   * 11.10.2026: „Dok se slika učitava, oba dugmeta su neaktivna; kad se učita, oba rade.").
    *
    * Lifted up rather than left as `WaitingPicture`'s own state, on purpose: a
    * fact two places would otherwise carry separately is a fact that can
@@ -464,67 +541,102 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * not a second guess at it worked out from different props.
    *
    * Read by the render below to decide what to draw - the sentence, the
-   * `aria-disabled` on this card's own button - and by nothing that runs
-   * outside this render's own lifetime. `brokenPicturesRef` beside it is that
+   * `aria-disabled` on this card's two buttons - and by nothing that runs
+   * outside this render's own lifetime. `pictureOutcomesRef` beside it is that
    * second thing.
    */
-  const [brokenPictures, setBrokenPictures] = useState<ReadonlySet<string>>(new Set())
+  const [pictureOutcomes, setPictureOutcomes] = useState<Outcomes>(new Map())
   /**
-   * THE SAME SET, ANSWERED LIVE rather than as of the render that started
-   * whoever is asking.
+   * THE SAME MAP, ANSWERED AS OF THE MOMENT OF THE PRESS rather than as of the render the press was
+   * made in, and asked ONCE per walk, by the press, and never by the walk's later turns.
    *
-   * <p><b>Why a render-time read of `brokenPictures` is not enough for
-   * `approveAll`.</b> Its walk is one server round trip per item and can be
-   * several seconds into a sweep by the time a LATER row's picture fails - a
-   * closure over `brokenPictures` from the render that started the walk
-   * answers with what had failed WHEN THE WALK BEGAN, not now. Measured
-   * rather than assumed: a picture that broke while the walk was parked on an
-   * earlier row's `await` was still approved, because that walk's own copy of
-   * `brokenPictures` never moved. `outstanding` above is the identical fix
-   * for the identical shape of problem, a fact an async walk has to read live
-   * rather than close over.
+   * <p><b>Why a render-time read of `pictureOutcomes` is not enough for the press that starts
+   * `approveAll`.</b> A report can arrive in the very tick of the press, before the render it asked
+   * for, and the closure of the render the press was made in then answers with what had come of each
+   * picture before that report. The ref answers as of the press itself, which is the instant the
+   * moderator decided (`buttonsWaitForThePicture.test.tsx`, „takes a card whose picture arrived in the
+   * very tick of the press"). It is the reason `outstanding` above is a ref as well: a press can
+   * arrive before the render the last change asked for.
    *
-   * <p><b>And why the single card's own `onClick` reads this too, not
-   * `pictureUnavailable`.</b> `approveAll` reports what it settled through
-   * `sayIt` UNCONDITIONALLY, including "nothing" when every item it was
-   * handed was skipped - so a press that starts a walk over one row this
-   * portal already knows cannot be decided would clear whatever OTHER card's
-   * refusal `sayIt` last set, a row that did nothing overwriting a sentence
-   * about a row that did. Refusing to start that walk at all, off the same
-   * live answer the walk itself would use, is what keeps `approveAll` and
-   * the button that calls it from ever disagreeing about this row - one live
-   * fact asked in two places, not two facts that happen to usually agree.
+   * <p><b>And why the walk does NOT ask it again on a later turn.</b> The walk is one server round
+   * trip per item and can be several seconds long. A picture that arrives while it is out is a
+   * picture the moderator had not seen when he pressed, and „Moderator mora da vidi sliku koju
+   * odobrava" (owner, 27.09.2026) is about what he saw when he decided. Asked again after each
+   * `await`, the walk approved it when its turn came, naming the key and the circle of a picture
+   * nobody had looked at, and only for a card standing behind the first one the walk approves: a card
+   * in front of it had its turn in the tick of the press and was left alone. The same screen at the
+   * same press was decided by the order of the cards (measured by the review of PR 524 in four
+   * probes, held by `buttonsWaitForThePicture.test.tsx` and `moderatorSeesThePicture.test.tsx`; PDL,
+   * 11.10.2026: „ne šalje odobravanje za red čija slika nije stigla DO TRENUTKA PRITISKA"). So
+   * `approveAll` takes the set of cards it may approve once, at its start (`sweepable`), from this
+   * ref; a picture that arrives later is for the NEXT press.
    *
-   * <p>Kept in step with `brokenPictures` at the single place either of them
-   * changes (`onBroken` below) rather than derived from it on each read,
+   * <p><b>And why the single card's own `onClick` reads this too, not the
+   * value its render drew the button from.</b> `approveAll` reports what it
+   * settled through `sayIt` UNCONDITIONALLY, including "nothing" when every
+   * item it was handed was skipped - so a press that starts a walk over one row
+   * this portal already knows cannot be decided (a picture that failed, or one
+   * that has not arrived) would clear whatever OTHER card's refusal `sayIt` last
+   * set, a row that did nothing overwriting a sentence about a row that did.
+   * Refusing to start that walk at all, off the same answer the walk itself
+   * takes at its start, is what keeps `approveAll` and the button that calls it
+   * from ever disagreeing about this row - one fact asked in two places at the
+   * same instant, not two facts that happen to usually agree.
+   *
+   * <p>Kept in step with `pictureOutcomes` at the single place either of them
+   * changes (`settlePicture` below) rather than derived from it on each read,
    * which would be the closure problem this exists to avoid, moved one line
    * over.
    *
    * <p><b>WHAT THIS DOES NOT CLOSE, MEASURED RATHER THAN ASSUMED.</b> A row's
    * OWN picture failing WHILE that row's OWN single-card `approveAll([one],
    * teams)` is awaiting the SAME row's `askTheServer` cannot be caught here,
-   * by any reading of any variable: the `onClick` guard and the loop's own
-   * skip both run - and must both have already passed, or the walk would
-   * never have reached the `await` at all - before `askTheServer` is called,
-   * so by the time a picture could fail "during" that one call, this row's
-   * decision has already left for the server. Measured directly: a request
-   * held on a controlled `Promise` already appears in a `serverThat` harness's
-   * `asked` the instant a click resolves, before any later line in the same
-   * test can fire the picture's own `error` event. Nothing after the `await`
-   * re-asks this ref either, and it should not: PDL P28f has the server
-   * showing an approved picture "tog trenutka", so a `done` answer already
-   * means the server acted on it, and skipping `settle` here would leave the
-   * screen behind what the server has already recorded rather than ahead of
-   * a race it could still have won. Closing this - if it needs closing at
-   * all, given how narrow the window is even in a real browser - is a
-   * question for the server that answers `askTheServer`, not for a client
-   * that has already asked it and cannot unask.
+   * by any reading of any variable: the `onClick` guard and the walk's own
+   * set (`sweepable`) are both taken - and must both have passed, or the walk
+   * would never have reached the `await` at all - before `askTheServer` is
+   * called, so by the time a picture could fail "during" that one call, this
+   * row's decision has already left for the server. Measured directly: a
+   * request held on a controlled `Promise` already appears in a `serverThat`
+   * harness's `asked` the instant a click resolves, before any later line in
+   * the same test can fire the picture's own `error` event. Nothing after the
+   * `await` re-asks this ref either, in a single card's walk or in a sweep's,
+   * and it should not: PDL P28f has the server showing an approved picture
+   * "tog trenutka", so a `done` answer already means the server acted on it,
+   * and skipping `settle` here would leave the screen behind what the server
+   * has already recorded rather than ahead of a race it could still have
+   * won. Closing this - if it needs closing at all, given how narrow the
+   * window is even in a real browser - is a question for the server that
+   * answers `askTheServer`, not for a client that has already asked it and
+   * cannot unask.
    */
-  const brokenPicturesRef = useRef<ReadonlySet<string>>(new Set())
+  const pictureOutcomesRef = useRef<Outcomes>(new Map())
+  /**
+   * What a picture's element reported, written to both homes of the fact at this one place: the ref
+   * first, because it is what the press of a card's own Odobri and the start of a walk (the sweep's
+   * included) both read, at the moment of the press, and the state second, to ask for the render that
+   * draws the sentence and each button's `aria-disabled`. The base of the new map is the REF and
+   * never the state: two reports can arrive before the render the first one asked for (a burst of
+   * pictures), and a map built from the state its closure holds would lose the first
+   * (`buttonsWaitForThePicture.test.tsx`, „in the same tick").
+   * Neither is guarded against being told twice: an element says what became of its picture once, and
+   * the one that says `failed` is replaced by the sentence in the same render, so a guard would be a
+   * branch nothing can take (PR 405's own coverage run named this exact shape, for the failure alone).
+   */
+  const settlePicture = (key: string, outcome: Outcome): void => {
+    const next = new Map(pictureOutcomesRef.current).set(key, outcome)
+
+    pictureOutcomesRef.current = next
+    setPictureOutcomes(next)
+  }
+  /**
+   * How many times the list has been read again because the route refused a decision about a
+   * picture (`readTheQueueAgain`); bumping it is what reads it again while the screen stays.
+   */
+  const [revision, setRevision] = useState(0)
   /* The teams as well, for one rule: a name already in the league cannot be
      taken by a proposal (PDL P13). Read through what this visit has entered, so
      two proposals of the same name in one sitting cannot both go through. */
-  const state = combinePair(usePending(), useTeams())
+  const state = combinePair(usePending(revision), useTeams())
   /* The members, for the one rule a team proposal cannot be decided without:
      a member is in one team at a time (PDL P13), so a proposal from somebody who
      already has one cannot be approved. Read through the overlay like everything
@@ -560,6 +672,29 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   const decisionUnknown = whyNoDecision !== null
 
   /**
+   * THE LIST READ AGAIN, after the route refused a decision about a picture.
+   *
+   * <p>A refusal in the route's own words about a card that drew a picture says the screen is
+   * not looking at the queue any more: the member sent another while the moderator looked
+   * („Slika je promenjena, pogledaj je ponovo.", PDL, 10.10.2026), or somebody else decided the
+   * row, or holds it. Left as it was, the card would go on drawing the picture it drew and naming
+   * its key, and the next press would be refused the same way for ever. The cached answer is
+   * dropped and the revision bumped, which is what reads it again while this screen stays
+   * mounted: dropped alone, the screen would go on drawing the answer it holds
+   * (`data/useResource.ts`, `revision`). It is the fix of the review of T5, for the queue of
+   * cards (PENDING, „Odbijanje koje dokazuje da je ekran zastareo ostavlja zastareo crtež"), and
+   * `ReviewQueue.tsx` makes it for the queue of results.
+   *
+   * <p>Asked only of a decision about a CARD THAT DREW A PICTURE, and that is the extent of what
+   * was asked and not a finding that no other refusal here proves a list stale. A refusal about a
+   * biography or a team is left to say what it says over a card that stays where it was.
+   */
+  const readTheQueueAgain = (): void => {
+    clearResourceCache('verification')
+    setRevision((was) => was + 1)
+  }
+
+  /**
    * Approving, one item or forty, with everything the next one has to know.
    *
    * Written as a walk rather than as a call per item, and that is the whole
@@ -588,6 +723,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * finished would be handed a list that is out of date. Fired off together they
    * would also reach the route together, and two approvals of one member's two
    * proposals are exactly what the carrying exists to stop.
+   *
+   * <p><b>What it may approve at all is carried like the rest, and taken once.</b> The cards whose
+   * picture had not arrived at the press, or could not be drawn, are left out when the walk begins
+   * (`sweepable`, below) and not on a later turn. Pictures go on arriving while the walk is out; the
+   * set it was started with does not move.
    */
   const approveAll = async (items: PendingItem[], teams: Team[]): Promise<number> => {
     /* NEITHER DOOR THAT CALLS THIS MAY OPEN A SECOND ONE WHILE THIS WALK IS OUT.
@@ -609,31 +749,58 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          addresses are: the session does not change while a loop runs, so two proposals
          from one member approved in one press would both go through. */
       const inATeam = organisers(allMembers, teams)
+      /* THE CARDS THIS WALK MAY APPROVE, TAKEN ONCE, HERE, AT THE PRESS - before anything below
+         awaits anything - AND NEVER ASKED AGAIN. The same shape `identities`, `addresses` and
+         `inATeam` have above: read once and carried, because the walk is several seconds of round
+         trips and the screen goes on changing under it.
+
+         PDL.md "29. Slika koja ne moze da se ucita" (owner, 27.09.2026): the
+         same rule the single card's own Odobri already carries - „gledanje
+         je uslov odobravanja" names a condition on the ACT of approving, not
+         on one button, so a sweep over many rows is not a second door around
+         it.
+
+         AND THE PICTURE THAT HAS NOT ARRIVED YET IS HELD TO IT AS WELL AS THE ONE
+         THAT FAILED. DERIVED, NOT SAID: the owner's sentence of 11.10.2026 names
+         the card's two buttons („Dok se slika učitava, oba dugmeta su neaktivna"),
+         and the sweep is a third door to the same approval, so an approval the
+         card's own button may not send is not one the sweep sends in its name.
+         Measured before this: a sweep over cards whose pictures had not reported
+         approved every one of them, naming the key and the circle of a picture no
+         eyes had been on.
+
+         AND „HAS NOT ARRIVED" MEANS AT THE PRESS, WHICH IS THE WHOLE OF THE CONDITION.
+         DERIVED, NOT SAID, from the owner's „Moderator mora da vidi sliku koju odobrava"
+         (27.09.2026): he decides on what he is looking at when he presses, and a picture
+         that arrives while the walk is out is one he had not seen. PDL, 11.10.2026: „ne
+         šalje odobravanje za red čija slika nije stigla DO TRENUTKA PRITISKA". The question
+         was asked on every turn of the loop until the review of PR 524 measured what that
+         does: a card in front of the first one the walk approved was left alone, and a card
+         behind it was approved if its picture had arrived by the time its turn came, so the
+         same screen at the same press was decided by the order of the cards.
+
+         Left out exactly like a team's own `refusal` below: no `done`, no `refusals` entry,
+         nothing removed - the row stays in the queue, visible, and its buttons come alive the
+         moment its picture arrives, so the NEXT press takes it; the line under the button counts
+         what was settled and nothing else. A row with no picture at all is not this decision's
+         business (`mayApprove` of `none`), the same distinction `WaitingPicture`'s own doc draws
+         for the single card.
+
+         Read off `pictureOutcomesRef`, NEVER off `pictureOutcomes` the state: a press can come in
+         the tick of a report, before the render that report asked for (`pictureOutcomesRef`'s own
+         doc, above). A picture that had arrived at the press is not reported on again, because an
+         element says what became of its picture once (`settlePicture`), so the loop below has no
+         failure to look for either. */
+      const sweepable = items.filter((one) =>
+        mayApprove(cardPictureOf(one, pictureOutcomesRef.current)),
+      )
       const refusals: ServerRefusal[] = []
       let done = 0
+      /* Whether the route refused, in its own words, a decision about a card that drew a picture:
+         asked once for the whole walk, after it (`readTheQueueAgain`). */
+      let pictureRefused = false
 
-      for (const one of items) {
-        /* PDL.md "29. Slika koja ne moze da se ucita" (owner, 27.09.2026): the
-           same rule the single card's own Odobri already carries - „gledanje
-           je uslov odobravanja" names a condition on the ACT of approving, not
-           on one button, so a sweep over many rows is not a second door around
-           it. Skipped exactly like a team's own `refusal` two lines down: no
-           `done`, no `refusals` entry, nothing removed - the row stays in the
-           queue and waits for the picture or a fresh sweep, which is the
-           rejected alternative PDL.md names by its cost („krije posao iz reda").
-           Read off `photoId === null` never: a row with no picture at all is
-           not this decision's business, the same distinction `WaitingPicture`'s
-           own doc draws for the single card.
-
-           Read off `brokenPicturesRef`, NEVER off `brokenPictures` the state:
-           this walk asks the question again on every turn, sometimes several
-           seconds and one `await` apart, and a render-time `brokenPictures`
-           closed over when the walk began answers with what had failed THEN,
-           not now (`brokenPicturesRef`'s own doc, above). */
-        if (brokenPicturesRef.current.has(one.id)) {
-          continue
-        }
-
+      for (const one of sweepable) {
         const made = queue.id === 'teams' ? teamFrom(one, edits) : null
 
         if (
@@ -672,10 +839,14 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          * this whole screen decided everything before this increment: locally, and
          * at once. */
         if (!isProposal(one.id)) {
-          const answer = await askTheServer(decisionPath(one.id), anApproval())
+          const answer = await askTheServer(decisionPath(one.id), approvalOf(one))
 
           if (answer.got !== 'done') {
             refusals.push({ id: one.id, answer })
+
+            if (answer.got === 'refused' && one.photoId !== null) {
+              pictureRefused = true
+            }
 
             continue
           }
@@ -846,6 +1017,12 @@ export function PendingQueue({ queue }: { queue: Queue }) {
         clearResourceCache('verification')
       }
 
+      /* AND READ AGAIN WHERE THE ROUTE REFUSED A DECISION ABOUT A PICTURE, once for the whole
+         walk: the cards it left standing then draw what the rows hold now (`readTheQueueAgain`). */
+      if (pictureRefused) {
+        readTheQueueAgain()
+      }
+
       /* The first of them, on the card it is about, or nothing where every press went
          through - which is also what takes a sentence about the last press off the
          screen. */
@@ -954,11 +1131,19 @@ export function PendingQueue({ queue }: { queue: Queue }) {
        carry an id of this shape (`@PathVariable long id`). Handed back locally,
        exactly as every queue was decided before server-recorded decisions existed. */
     if (!isProposal(one.id)) {
-      const answer = await askTheServer(decisionPath(one.id), aRefusal(reason))
+      const answer = await askTheServer(decisionPath(one.id), refusalOf(one, reason))
 
       if (answer.got !== 'done') {
         sayIt({ id: one.id, answer })
         putTheBoxAway(one)
+
+        /* A refusal of a picture that moved on says the list is stale as the approval's does
+           (`readTheQueueAgain`), and it reads it again for the same reason: the box has just
+           closed over the reason he typed about a picture that is not on the row any more, and
+           the card must draw the one that is before he writes another. */
+        if (answer.got === 'refused' && one.photoId !== null) {
+          readTheQueueAgain()
+        }
 
         return
       }
@@ -1208,6 +1393,18 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                 <Swept count={swept} />
               </div>
 
+              {/* A SENTENCE ABOUT A CARD THE LIST NO LONGER HOLDS, said over the list where the card
+                  stood. It is what a refusal that read the list again leaves when the card it was
+                  about was decided by somebody else (`readTheQueueAgain`): the card goes with the
+                  list it was in, and without this the moderator would watch it go with no word about
+                  why - the shape `ReviewQueue.tsx` gives the same case (`saidOfNoRow`). Nothing here
+                  keeps it from following the moderator to another queue, because nothing has to: this
+                  screen is mounted afresh for each queue (measured, and held by a case in
+                  `decidingOnThePictureHeSaw.test.tsx`), so what it was saying is gone with it. */}
+              {said !== null && !waiting.some((one) => one.id === said.id) && (
+                <WhatTheServerSaid answer={said.answer} />
+              )}
+
               {waiting.length === 0 ? (
                 <p className="profile__empty">{t('verification.empty')}</p>
               ) : (
@@ -1224,10 +1421,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                        places that ask do not ask twice. */
                     const about = teamOf(one)
                     /* Read off the state `WaitingPicture` reports into rather than
-                       kept a second time here - see `brokenPictures` above and
+                       kept a second time here - see `pictureOutcomes` above and
                        `WaitingPicture`'s own doc for why there is exactly one copy
-                       of this fact. */
-                    const pictureUnavailable = brokenPictures.has(one.id)
+                       of this fact. What it says is one of four (`./cardPicture.ts`):
+                       no picture, one on its way, one that arrived, one that did not. */
+                    const picture = cardPictureOf(one, pictureOutcomes)
 
                     return (
                       <li key={one.id} className="submissions__item">
@@ -1376,31 +1574,14 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             next reader to repeat. */}
                         <WaitingPicture
                           item={one}
-                          broken={pictureUnavailable}
-                          /* No `was.has(one.id)` guard: `onBroken` only ever
-                             reaches here once for a given row. The `<img>` it is
-                             wired to is what `broken` replaces with the sentence
-                             below the moment it fires, so the element that could
-                             call it again is gone before a second call could
-                             happen - a guard against that would be a branch
-                             nothing can take, which the gate's hundred per cent
-                             refuses (measured, not assumed: PR 405's own coverage
-                             run named this exact line the one branch never
-                             reached).
-
-                             Both homes of the fact are written here and only
-                             here, to the identical value, so neither can be the
-                             one a reader missed: `brokenPicturesRef` first,
-                             because it is what a walk already under way and this
-                             card's own `onClick` both read live, and the state
-                             second, to ask for the render that draws the
-                             sentence and this card's `aria-disabled`. */
-                          onBroken={() => {
-                            const next = new Set(brokenPicturesRef.current).add(one.id)
-
-                            brokenPicturesRef.current = next
-                            setBrokenPictures(next)
-                          }}
+                          broken={picture === 'failed'}
+                          /* Both homes of the fact are written at one place
+                             (`settlePicture`, which also says why there is no
+                             guard against being told twice), under the picture
+                             the element was drawn for. */
+                          onOutcome={(outcome, photoId) =>
+                            settlePicture(pictureKey(one.id, photoId), outcome)
+                          }
                         />
 
                         {/* WHAT THE ROUTE SAID WHEN IT WOULD NOT TAKE THE DECISION,
@@ -1481,6 +1662,17 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                `admin/LeagueRaceModeration.tsx`). */
                             onConfirm={(reason) => void handBackGuarded(one, reason)}
                             working={handingBack.has(one.id)}
+                            /* AND THE THIRD DOOR TO THE REFUSAL waits for the picture as the two
+                               buttons beside it do (PDL, 11.10.2026: „Dok se slika učitava, oba
+                               dugmeta su neaktivna; kad se učita, oba rade."; DERIVED for this
+                               one, as for the sweep). The box is opened by an Odbij that was
+                               pressed over a picture that had arrived or failed, and it STAYS
+                               open when the list is read again because a decision about another
+                               card was refused: if this card's member has sent another picture
+                               meanwhile, the card now names the new key over a reason written
+                               about the old picture, and the press would refuse what nobody
+                               has seen. The reason he typed stays, and „Odustani" still works. */
+                            held={!mayRefuse(picture)}
                             onCancel={() => {
                               setOpen(null)
                               setClosed(one.id)
@@ -1494,16 +1686,23 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                               /* Not switched off: a control that leaves the row
                                  takes the keyboard with it, and this one is meant
                                  to be reachable so its reason can be read. It says
-                                 it cannot act and points at why. */
+                                 it cannot act and points at why - except while it
+                                 waits for a picture that has not arrived, which has
+                                 no sentence to point at, the way `deciding` has
+                                 none (this decision adds no line to the
+                                 dictionary). */
                               aria-disabled={
-                                why !== null || decisionUnknown || deciding || pictureUnavailable
+                                why !== null ||
+                                decisionUnknown ||
+                                deciding ||
+                                !mayApprove(picture)
                               }
                               aria-describedby={
                                 why !== null
                                   ? `${one.id}-blocked`
                                   : decisionUnknown
                                     ? `${waitingId}-blocked`
-                                    : pictureUnavailable
+                                    : picture === 'failed'
                                       ? `${one.id}-picture-unavailable`
                                       : undefined
                               }
@@ -1528,25 +1727,30 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                    second home for a fact the loop already owns.
 
                                    CHECKED here, unlike `why`, since PDL.md "29."
-                                   (owner 27.09.2026): `brokenPicturesRef` (a
-                                   picture this row cannot show). Not for
-                                   symmetry with the loop - `approveAll` reports
+                                   (owner 27.09.2026): `pictureOutcomesRef` (a
+                                   picture this row cannot show), and since the
+                                   owner's sentence of 11.10.2026 a picture that
+                                   has not arrived either. Not for
+                                   symmetry with the walk's own set -
+                                   `approveAll` reports
                                    what it settled through `sayIt`
                                    UNCONDITIONALLY, including "nothing" when the
                                    one row it was handed was skipped, so a press
                                    that started a walk here would clear whatever
                                    OTHER card's refusal `sayIt` last set (measured:
-                                   it did, exactly that). Refusing to start the
+                                   it did, exactly that, for a picture that failed).
+                                   Refusing to start the
                                    walk at all is the fix that leaves `sayIt`
                                    untouched, and it reads the ref rather than
-                                   `pictureUnavailable` so this check and the
-                                   loop's can never disagree about what is broken
-                                   right now (`brokenPicturesRef`'s own doc,
-                                   above). */
+                                   the `picture` this render drew the button from
+                                   so this check and the walk's own set
+                                   (`sweepable`) can never disagree about what has
+                                   come of the picture at the press
+                                   (`pictureOutcomesRef`'s own doc, above). */
                                 if (
                                   !decisionUnknown &&
                                   !outstanding.current &&
-                                  !brokenPicturesRef.current.has(one.id)
+                                  mayApprove(cardPictureOf(one, pictureOutcomesRef.current))
                                 ) {
                                   void approveAll([one], teams)
                                 }
@@ -1595,8 +1799,27 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                               <button
                                 type="button"
                                 className="button button--secondary"
+                                /* THE OTHER BUTTON THAT WAITS FOR THE PICTURE (PDL,
+                                   11.10.2026: „Dok se slika učitava, oba dugmeta su
+                                   neaktivna; kad se učita, oba rade."), and the one the
+                                   owner let through when it never arrives („Slika koja se
+                                   nije učitala sme da se odbije"). Told off with
+                                   `aria-disabled` and refused in the handler as well,
+                                   because `aria-disabled` stops nothing by itself: the same
+                                   two halves the Odobri beside it has. This one reads the
+                                   state its render drew and not the live ref: there is no
+                                   walk for this press to disagree with, and what it opens
+                                   is a box whose own button waits for the picture again
+                                   (`SendBack`, `held`). The attribute is there only while
+                                   it is true, so a card that waits for nothing draws this
+                                   button as it always did. */
+                                aria-disabled={mayRefuse(picture) ? undefined : true}
                                 autoFocus={one.id === closed}
-                                onClick={() => setOpen(one.id)}
+                                onClick={() => {
+                                  if (mayRefuse(picture)) {
+                                    setOpen(one.id)
+                                  }
+                                }}
                               >
                                 {t('review.sendBack')}
                               </button>

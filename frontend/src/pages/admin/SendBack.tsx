@@ -35,6 +35,7 @@ export function SendBack({
   onConfirm,
   onCancel,
   working = false,
+  held = false,
 }: {
   /**
    * What the empty field asks for.
@@ -114,6 +115,26 @@ export function SendBack({
    * refusal is drawn by the caller where it always was, over the buttons the box leaves behind.
    */
   working?: boolean
+  /**
+   * Whether what this box would send is about something the moderator has not looked at yet, so the
+   * button that sends it cannot answer just now.
+   *
+   * <p>PDL, 11.10.2026 (the owner chose between the outcomes he was offered): „Dok se slika učitava,
+   * oba dugmeta su neaktivna; kad se učita, oba rade." The sentence names the two buttons of a card, and
+   * this is the third door to the refusal, as the sweep is the third door to the approval (DERIVED, not
+   * said). The queue of cards asks it of a box that stays open under a picture the member has replaced
+   * in the meantime: a refusal of ANOTHER card was refused and the list was read again, so the card now
+   * names the new key over a reason that was written about the old picture, and a press in that moment
+   * would refuse a picture nobody has looked at.
+   *
+   * <p>Not `working`, and the difference is what this is for. `working` says the decision this box
+   * sent is still out, and takes „Odustani" with it and says so in words. This holds back the one button
+   * that sends and nothing else: the reason stays, „Odustani" still puts the box away, and no sentence
+   * is drawn, the way the card's own buttons wait for the same picture (`pages/admin/cardPicture.ts`).
+   * Told off with `aria-disabled` and refused in the handler as well, because `aria-disabled` stops
+   * nothing by itself.
+   */
+  held?: boolean
 }) {
   const { t } = useI18n()
   const [note, setNote] = useState('')
@@ -168,11 +189,11 @@ export function SendBack({
         <button
           type="button"
           className="button button--primary"
-          aria-disabled={missing || working}
+          aria-disabled={missing || working || held}
           aria-describedby={missing ? waitsId : undefined}
           onClick={() => {
             /* Reachable means pressable, so the refusal lives here too. */
-            if (missing || working) {
+            if (missing || working || held) {
               return
             }
 

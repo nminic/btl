@@ -58,6 +58,7 @@ const A_RUN = {
   city: '',
   country: '',
   photoId: null,
+  crop: null,
   rating: NO_RATING,
 }
 
