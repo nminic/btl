@@ -548,7 +548,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   const [pictureOutcomes, setPictureOutcomes] = useState<Outcomes>(new Map())
   /**
    * THE SAME MAP, ANSWERED AS OF THE MOMENT OF THE PRESS rather than as of the render the press was
-   * made in, and asked ONCE per walk, by the press, and never by the walk's later turns.
+   * made in, and asked ONCE per walk WHICH CARDS IT MAY TAKE, by the press, and never by the walk's later
+   * turns - which ask it only whether a card of that set has FAILED since (`approveAll`).
    *
    * <p><b>Why a render-time read of `pictureOutcomes` is not enough for the press that starts
    * `approveAll`.</b> A report can arrive in the very tick of the press, before the render it asked
@@ -558,7 +559,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * very tick of the press"). It is the reason `outstanding` above is a ref as well: a press can
    * arrive before the render the last change asked for.
    *
-   * <p><b>And why the walk does NOT ask it again on a later turn.</b> The walk is one server round
+   * <p><b>And why the walk does NOT ask it again, on a later turn, whether a picture has ARRIVED.</b>
+   * (It does ask whether one has failed; that is the opposite direction and has its own reason, in
+   * `approveAll`.) The walk is one server round
    * trip per item and can be several seconds long. A picture that arrives while it is out is a
    * picture the moderator had not seen when he pressed, and „Moderator mora da vidi sliku koju
    * odobrava" (owner, 27.09.2026) is about what he saw when he decided. Asked again after each
@@ -599,12 +602,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * request held on a controlled `Promise` already appears in a `serverThat`
    * harness's `asked` the instant a click resolves, before any later line in
    * the same test can fire the picture's own `error` event. Nothing after the
-   * `await` re-asks this ref either, in a single card's walk or in a sweep's,
-   * and it should not: PDL P28f has the server showing an approved picture
+   * `await` of a card's own request re-asks this ref either, and it should not: PDL P28f has the server showing an approved picture
    * "tog trenutka", so a `done` answer already means the server acted on it,
    * and skipping `settle` here would leave the screen behind what the server
    * has already recorded rather than ahead of a race it could still have
-   * won. Closing this - if it needs closing at all, given how narrow the
+   * won. (A failure reported while the walk is out on ANOTHER card's request is a different case and
+   * is caught: the turn of the failed card asks the ref just before it sends, PDL, 16.10.2026.)
+   * Closing this - if it needs closing at all, given how narrow the
    * window is even in a real browser - is a question for the server that
    * answers `askTheServer`, not for a client that has already asked it and
    * cannot unask.
@@ -621,6 +625,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * Neither is guarded against being told twice: an element says what became of its picture once, and
    * the one that says `failed` is replaced by the sentence in the same render, so a guard would be a
    * branch nothing can take (PR 405's own coverage run named this exact shape, for the failure alone).
+   * A picture CAN be told about twice, though, by two elements: the list read again draws new ones over
+   * the same picture, and the later word stands. That is why the sweep asks the ref at each turn
+   * whether a card failed (`approveAll`), and why this does not need to.
    */
   const settlePicture = (key: string, outcome: Outcome): void => {
     const next = new Map(pictureOutcomesRef.current).set(key, outcome)
@@ -788,9 +795,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
          Read off `pictureOutcomesRef`, NEVER off `pictureOutcomes` the state: a press can come in
          the tick of a report, before the render that report asked for (`pictureOutcomesRef`'s own
-         doc, above). A picture that had arrived at the press is not reported on again, because an
-         element says what became of its picture once (`settlePicture`), so the loop below has no
-         failure to look for either. */
+         doc, above). A picture that had arrived at the press CAN be reported on again - the list
+         read again while the walk is out draws new elements, and one of them can say `failed` for
+         the same picture - so the loop below asks, at each turn, whether the card in front of it
+         has failed since (PDL, 16.10.2026), and asks nothing else of the live ref. */
       const sweepable = items.filter((one) =>
         mayApprove(cardPictureOf(one, pictureOutcomesRef.current)),
       )
@@ -801,6 +809,30 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       let pictureRefused = false
 
       for (const one of sweepable) {
+        /* AND ONCE MORE, AT THE MOMENT OF SENDING, WHETHER THE PICTURE HAS FAILED SINCE: that
+           question and no other. PDL, 16.10.2026 (owner, between the outcomes he was offered, with
+           the recommendation): „„Odobri sve" preskače sliku koja je stigla pa usred obilaska javi
+           grešku: u trenutku slanja još jednom se pita da li je slika pala." Rejected there: to
+           measure the instant of the press only, because a card that now says „ne može se
+           odobriti" would be approved by the walk.
+
+           IT CAN HAPPEN, though an earlier version of this file said it could not. An element
+           says what became of its picture once, but the element is not for ever: the list can be
+           read again while the walk is out (a refusal of another card whose picture moved on,
+           `readTheQueueAgain`), the read can fail and be asked again with „Pokušaj ponovo", and
+           the cards that come back are NEW elements, which draw their pixels afresh and say what
+           became of them. One that says `failed` replaces `loaded` for the same picture
+           (`settlePicture`), and the card then tells the moderator that the file cannot be seen.
+
+           THE SET AND THIS QUESTION ARE ASKED OF DIFFERENT THINGS ON PURPOSE. Which cards the walk
+           may take is settled once, at the press (above): a picture that ARRIVES while the walk is
+           out is for the next press. Whether a card in that set has FAILED is asked live, of the
+           ref, at each turn. Left out exactly like a team's own `refusal` below: no `done`, no
+           `refusals` entry, nothing removed, so the row stays and its sentence says why. */
+        if (cardPictureOf(one, pictureOutcomesRef.current) === 'failed') {
+          continue
+        }
+
         const made = queue.id === 'teams' ? teamFrom(one, edits) : null
 
         if (
@@ -1328,9 +1360,23 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                     promises no number, because a proposal the sweep cannot take
                     is left standing: promising two and settling one is the same
                     lie in the question that the line under the button was
-                    written to avoid. On the other four nothing is ever left
-                    standing, so there the question says the number, and a
-                    hedge on all four would be a hedge that means nothing. */}
+                    written to avoid. On the other four nothing is left standing
+                    while every card is one the sweep may take, so there the
+                    question says the number, and a hedge on all four would be a
+                    hedge that means nothing.
+
+                    EXCEPT WHERE A CARD HAS A PICTURE THAT HAS NOT ARRIVED OR HAS
+                    FAILED: the sweep leaves that card standing as well (the walk,
+                    `sweepable`), so a question promising all of them is the same
+                    lie. PDL, 16.10.2026 (owner, between the outcomes he was
+                    offered, against the recommendation): the question before
+                    „Odobri sve" on the queue of profiles „nema broj kad ijedna
+                    kartica ima sliku koja nije stigla: tada glasi „Odobriti sve što
+                    se može odobriti?" (rečenica već postoji za timove)". So it
+                    reads the sentence the queue of teams already has, and no new
+                    word is added. Asked of the ref, at the press, as the walk is,
+                    so the question and the walk cannot disagree about which cards
+                    are in. */}
                 {waiting.length > 0 && (
                   <button
                     type="button"
@@ -1353,7 +1399,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                       }
 
                       const ask =
-                        queue.id === 'teams'
+                        queue.id === 'teams' ||
+                        waiting.some(
+                          (one) => !mayApprove(cardPictureOf(one, pictureOutcomesRef.current)),
+                        )
                           ? 'verification.approveAllAskTeams'
                           : 'verification.approveAllAsk'
 
