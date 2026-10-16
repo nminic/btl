@@ -1,7 +1,7 @@
 import { act, configure, fireEvent, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
-import { did, refused, serverThat, type Asked } from '../../test/serverAnswers'
+import { answeredWith, did, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
 import { pictureOn, thePictureArrives, thePictureFails } from '../../test/waitingPicture'
@@ -770,6 +770,237 @@ describe('the sweep, and a picture that arrives while it is out', () => {
         },
       ])
       expect(screen.getByText('Rešena je 1 stavka.')).toBeVisible()
+    } finally {
+      confirm.mockRestore()
+      stop()
+    }
+  }, SLOW)
+})
+
+/**
+ * THE WALK ASKS ONCE MORE AT THE MOMENT OF SENDING WHETHER THE PICTURE HAS FAILED.
+ *
+ * <p>PDL, 16.10.2026 (owner, between the outcomes he was offered, with the recommendation): „„Odobri sve"
+ * preskače sliku koja je stigla pa usred obilaska javi grešku: u trenutku slanja još jednom se pita da li je
+ * slika pala." Rejected there: to measure the instant of the press only, because a card that says „ne može se
+ * odobriti" would then be approved.
+ *
+ * <p><b>The road to it is the reviewer's, measured on PR 524 (probe P2), and every step of it is a thing a
+ * moderator does.</b> The sweep is parked on a card; he refuses ANOTHER card whose picture could not be
+ * drawn, the route answers that the picture was changed, and the list is read again; the read fails and
+ * he asks again with „Pokušaj ponovo"; the cards come back as NEW elements, and the one whose picture had
+ * arrived before the press now says its file cannot be drawn. The walk, released, reaches that card.
+ *
+ * <p>The cards are different on purpose. The one that fails again is Neda, behind the parked card; Mira
+ * stands behind Neda with her picture arrived and unchanged, so a walk that stopped at Neda instead of
+ * leaving her would be seen; and the card refused is Zora, whose picture had failed before the press and so
+ * is not in the walk at all. A card that is refused and in the walk is the other finding of the same review
+ * (PENDING), and this case does not ask about it.
+ */
+describe('the sweep, and a picture that fails while it is out', () => {
+  it('sends nothing in the name of a card whose picture had arrived at the press and has failed since, and settles the rest', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const held = aDecisionThatWaits(decisionPath('22'))
+    let read = 0
+    const { asked, stop } = serverThat((path) => {
+      if (path === '/api/verification') {
+        read += 1
+
+        /* The first read is the screen's own, the second is the one after the refusal and it fails, the
+           third is the one „Pokušaj ponovo" asks. */
+        return read === 2 ? answeredWith(500) : asTheList([petar, zora(), neda(), mira()])
+      }
+
+      return path === held.path
+        ? held.answer
+        : path === decisionPath('25')
+          ? refused(THE_PICTURE_WAS_CHANGED, 409)
+          : [decisionPath('21'), decisionPath('23')].includes(path)
+            ? did()
+            : null
+    })
+
+    try {
+      const user = setupUser()
+
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+      /* Neda's and Mira's pictures arrived BEFORE the press, so they are in the walk; Zora's had failed,
+         so she is not. */
+      thePictureArrives(cardOf('Neda Nedić'))
+      thePictureArrives(cardOf('Mira Mirić'))
+      thePictureFails(cardOf('Zora Zorić'))
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+      await parkedOn(asked, decisionPath('22'))
+
+      await user.click(refuseOf('Zora Zorić'))
+      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Fajl je nestao.')
+      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+      await user.click(await screen.findByRole('button', { name: /^Pokušaj ponovo/ }))
+      await screen.findByRole('list', { name: /Čeka/ })
+
+      /* THE CARDS ARE NEW ELEMENTS: Mira's picture arrives again and Neda's says her file cannot be
+         drawn. The sentence on her card is what the moderator reads; without it the case would say
+         nothing about the walk. */
+      thePictureArrives(cardOf('Mira Mirić'))
+      thePictureFails(cardOf('Neda Nedić'))
+      expect(cardOf('Neda Nedić').getByText(THE_PICTURE_IS_NOT_AVAILABLE)).toBeVisible()
+
+      held.release()
+      await sweepIsOver()
+
+      /* The biography, which the walk was parked on, the refusal he sent, and Mira, who stands behind
+         the card that failed; and NOTHING for Neda: the route would have taken it (`did()`), which is
+         why the count below is 2 and not 3. */
+      expect(decisionsIn(asked)).toEqual([
+        { path: decisionPath('22'), body: { approved: true, reason: '' } },
+        {
+          path: decisionPath('25'),
+          body: { approved: false, reason: 'Fajl je nestao.', seenPhotoId: 14, seenCrop: ZORA_CROP },
+        },
+        {
+          path: decisionPath('23'),
+          body: { approved: true, reason: '', seenPhotoId: 12, seenCrop: MIRA_CROP },
+        },
+      ])
+      expect(screen.getByText('Rešene su 2 stavke.')).toBeVisible()
+      /* Left standing, visible, with the sentence that says why. */
+      expect(screen.getByRole('heading', { name: 'Neda Nedić' })).toBeVisible()
+      expect(cardOf('Neda Nedić').getByText(THE_PICTURE_IS_NOT_AVAILABLE)).toBeVisible()
+    } finally {
+      confirm.mockRestore()
+      stop()
+    }
+  }, SLOW)
+})
+
+/**
+ * THE QUESTION BEFORE „ODOBRI SVE" PROMISES NO NUMBER WHEN THE SWEEP WILL LEAVE A CARD STANDING.
+ *
+ * <p>PDL, 16.10.2026 (owner, between the outcomes he was offered, against the recommendation): the question
+ * on the queue of profiles „nema broj kad ijedna kartica ima sliku koja nije stigla: tada glasi „Odobriti
+ * sve što se može odobriti?" (rečenica već postoji za timove)". Rejected: „Odobriti N stavki?" with the
+ * number of all of them. It is the sentence the queue of teams already asks (`verification.approveAllAskTeams`),
+ * word for word, because the owner priced reusing it.
+ *
+ * <p>Three states of the picture make a card the sweep will not take (on its way, could not be drawn) or will
+ * (arrived, none), and the cases put them in different mixes: one card in one state is satisfied by a screen
+ * that asks about the first card only, or about the last one to report. The press is the instant the ref says
+ * it is, as it is for the walk (the last case).
+ *
+ * <p>The question is answered „no" in every case, so nothing is decided and what is held is the sentence.
+ */
+describe('the question before „Odobri sve" on the queue of profiles', () => {
+  const HEDGED_FOR_TWO =
+    'U redu čekaju 2 stavke. Odobriti sve što se može odobriti? Ovo se ne može opozvati.'
+
+  const HEDGED_FOR_THREE =
+    'U redu čekaju 3 stavke. Odobriti sve što se može odobriti? Ovo se ne može opozvati.'
+
+  async function questionAskedFor(
+    rows: unknown[],
+    saysWhatBecameOfThePictures: () => void,
+  ): Promise<{ question: string; decisions: unknown[] }> {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const { asked, stop } = aServerThatTakesTheDecisions(rows)
+
+    try {
+      const user = setupUser()
+
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+      saysWhatBecameOfThePictures()
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(confirm).toHaveBeenCalledTimes(1)
+
+      return { question: String(confirm.mock.calls[0]?.[0]), decisions: decisionsIn(asked) }
+    } finally {
+      confirm.mockRestore()
+      stop()
+    }
+  }
+
+  it.each([
+    {
+      state: 'a picture on its way beside a card that draws none',
+      rows: () => [neda(), petar],
+      say: (): void => {},
+      question: HEDGED_FOR_TWO,
+    },
+    {
+      state: 'a picture that could not be drawn beside a card that draws none',
+      rows: () => [zora(), petar],
+      say: (): void => thePictureFails(cardOf('Zora Zorić')),
+      question: HEDGED_FOR_TWO,
+    },
+    {
+      state: 'one picture that arrived and one still on its way, beside a card that draws none',
+      rows: () => [mira(), neda(), petar],
+      say: (): void => thePictureArrives(cardOf('Mira Mirić')),
+      question: HEDGED_FOR_THREE,
+    },
+    {
+      state: 'one picture that arrived and one that could not be drawn, beside a card that draws none',
+      rows: () => [mira(), zora(), petar],
+      say: (): void => {
+        thePictureArrives(cardOf('Mira Mirić'))
+        thePictureFails(cardOf('Zora Zorić'))
+      },
+      question: HEDGED_FOR_THREE,
+    },
+  ])('says no number of approvals with $state', async ({ rows, say, question }) => {
+    const asking = await questionAskedFor(rows(), say)
+
+    expect(asking.question).toBe(question)
+    expect(asking.decisions).toEqual([])
+  }, SLOW)
+
+  it.each([
+    {
+      state: 'every picture has arrived, beside a card that draws none',
+      rows: () => [mira(), neda(), petar],
+      say: (): void => {
+        thePictureArrives(cardOf('Mira Mirić'))
+        thePictureArrives(cardOf('Neda Nedić'))
+      },
+      question: 'Odobriti 3 stavke? Ovo se ne može opozvati.',
+    },
+    {
+      state: 'no card draws a picture',
+      rows: () => [petar],
+      say: (): void => {},
+      question: 'Odobriti 1 stavku? Ovo se ne može opozvati.',
+    },
+  ])('says the number when $state', async ({ rows, say, question }) => {
+    const asking = await questionAskedFor(rows(), say)
+
+    expect(asking.question).toBe(question)
+    expect(asking.decisions).toEqual([])
+  }, SLOW)
+
+  it('asks about the pictures as they stand at the press, in the very tick a picture arrived', async () => {
+    /* THE REPORT AND THE PRESS INSIDE ONE `act`, as the sweep's own case does it: the render the press is
+       made in still says the picture is on its way, and only the ref says it arrived. A question asked
+       of the render would hedge over a set the walk then takes whole. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const { stop } = aServerThatTakesTheDecisions([neda(), petar])
+
+    try {
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+
+      const sweep = screen.getByRole('button', { name: 'Odobri sve' })
+
+      act(() => {
+        thePictureArrives(cardOf('Neda Nedić'))
+        fireEvent.click(sweep)
+      })
+
+      expect(confirm).toHaveBeenCalledWith('Odobriti 2 stavke? Ovo se ne može opozvati.')
     } finally {
       confirm.mockRestore()
       stop()
