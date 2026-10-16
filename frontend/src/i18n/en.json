@@ -1131,7 +1131,8 @@
     "firstPaymentOpen": "Paying is open.",
     "firstRenew": "The payment details are below. As soon as the payment arrives, the moderator confirms it and you get your member number.",
     "recognisedByName": "As you do not have a member number yet, the payment has no reference number. It is recognised by your name, and a moderator confirms it by hand.",
-    "ipsNoteNoReference": "Scan the code in your bank's app. The amount and the payee are already filled in."
+    "ipsNoteNoReference": "Scan the code in your bank's app. The amount and the payee are already filled in.",
+    "noRanking": "A fee paid now does not give you the right to be ranked."
   },
   "review": {
     "title": "The queue for checking results",

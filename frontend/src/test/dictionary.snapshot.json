@@ -1131,7 +1131,8 @@
     "firstPaymentOpen": "Uplata je otvorena.",
     "firstRenew": "Podatke za uplatu vidiš u nastavku. Čim uplata stigne, moderator je potvrđuje i dobijaš članski broj.",
     "recognisedByName": "Pošto još nemaš članski broj, uplata nema poziv na broj. Prepoznaje se po imenu, a moderator je potvrđuje ručno.",
-    "ipsNoteNoReference": "Skeniraj kod u aplikaciji svoje banke. Iznos i primalac su već upisani."
+    "ipsNoteNoReference": "Skeniraj kod u aplikaciji svoje banke. Iznos i primalac su već upisani.",
+    "noRanking": "Članarina plaćena sada ne daje pravo rangiranja."
   },
   "review": {
     "title": "Red za proveru rezultata",
