@@ -1,4 +1,6 @@
 import type { ReactElement } from 'react'
+import { Loader } from '../../components/Loader'
+import { useServerIsStillBeingAsked } from '../../session/useServerIsStillBeingAsked'
 import { useSession } from '../../session/useSession'
 import { NotAMemberYet } from './NotAMemberYet'
 import { NotRacing } from './NotRacing'
@@ -197,9 +199,20 @@ export function useScreenForTheUnpaidToo(): ScreenForTheUnpaidToo {
      from either (session/context.ts); the member number is one of those facts and
      answers a narrower question than the one being asked here. */
   const { signedIn } = useSession()
+  const asking = useServerIsStillBeingAsked()
 
   if (signedIn === null) {
-    return { standing: null, memberNumber: null, instead: <SignedOut /> }
+    /* UNTIL THE SERVER HAS SAID WHO IS READING THE SCREEN SAYS NOTHING ABOUT HIM (owner, 10.10.2026,
+       PDL P26): the portal's own indicator, the one the door of administration draws for the same
+       moment (`pages/admin/Guard.tsx`), and not „Za ovo treba prijava", which is a statement about
+       a visitor made to a member whose cookie nobody has asked about yet. The wait ends on every
+       outcome of the request (`session/useServerIsStillBeingAsked.ts`), so a visitor, and a reader a
+       failed request leaves, are told the sentence they always were. */
+    return {
+      standing: null,
+      memberNumber: null,
+      instead: asking ? <Loader inline={false} /> : <SignedOut />,
+    }
   }
 
   if (signedIn.as === 'member') {

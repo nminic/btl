@@ -32,3 +32,24 @@ describe('the footer of every screen', () => {
     expect(rule.getPropertyValue('justify-content')).toBe('center')
   })
 })
+
+/**
+ * The two links of a visitor, while the server has not said who is reading (owner, 10.10.2026,
+ * PDL P26: „nevidljiva i nedostupna, pa se ništa ne pomera i ništa se ne izgovara").
+ *
+ * <p>jsdom applies no stylesheet, so `session/beforeTheServerHasSaid.test.tsx` can say the links
+ * are there and wear the class, and cannot say what the class does. It must hide them AND keep
+ * their box, and those are two different words: `visibility: hidden` does both, `display: none`
+ * hides and gives the row of tools its width back a moment later, which is the pomak this is meant
+ * not to have. Measured in Chrome at 360, 768 and 1280 as well, by hand, for the same reason.
+ */
+describe('the header links of a visitor, while they wait', () => {
+  it('are hidden by visibility, which keeps their box, and never by display', () => {
+    const rule = ruleFor(css, '.shell__guest--waiting', 'Shell.css')
+
+    expect(rule.getPropertyValue('visibility')).toBe('hidden')
+    expect(rule.getPropertyValue('display')).toBe('')
+    expect(rule.getPropertyValue('position')).toBe('')
+  })
+})
+

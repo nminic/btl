@@ -741,6 +741,15 @@
   white-space: nowrap;
 }
 
+/* THE TWO LINKS OF A VISITOR, WHILE THE SERVER HAS NOT SAID WHO IS READING (owner, 10.10.2026,
+   PDL P26). `visibility` and not `display`, and that is the whole rule: the box keeps its width,
+   so the row of tools does not move when the answer lands, and the link leaves the tab order and
+   the reader's tree without a line of script. `display: none` would be the other way to hide it
+   and it is the wrong one, because it gives the row back its width a moment later. */
+.shell__guest--waiting {
+  visibility: hidden;
+}
+
 /* The one control in the header that brings the league any money (PDL P28a).
 
    Gold rather than the accent blue: blue is already the colour of every link,

@@ -1,4 +1,4 @@
-import { configure, getConfig, screen, within } from '@testing-library/react'
+import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { join, relative, sep } from 'node:path'
 import { isValidElement } from 'react'
 import { matchRoutes } from 'react-router'
@@ -494,10 +494,11 @@ describe('every screen of the member area, to somebody the server has signed in'
        member area that lets everybody in, which is a worse fault than the one it
        measures, and by a screen that answers a visitor with nothing at all.
 
-       WHAT IT CANNOT TELL APART, said rather than left to be found: a session the server
-       refused and one it has not answered yet are the same state by design, because
-       `signedIn` is null in both and the hook is meant to answer them the same. So the
-       401 below fixes which of the two this is, and cannot be what makes it pass. */
+       WHAT IT COULD NOT TELL APART until 10.10.2026, said rather than left to be found: a
+       session the server refused and one it had not answered yet were the same state, because
+       `signedIn` is null in both and the hook answered them the same. They are two since then
+       (`describe` „while the server has not said who is asking", below): the one that has not
+       answered draws the portal's indicator, and the 401 below is what ends that wait. */
     server = serverThat((one) => (one.startsWith('/api') ? answeredWith(401) : null))
     renderAt(at, 'visitor', null)
 
@@ -761,6 +762,96 @@ describe('every screen of the member area, to a member whose fee has lapsed', ()
       renderAt(at, 'visitor', null)
 
       expect(REFUSALS).not.toContain((await theHeadingOnceTheAnswerHasArrived()).textContent)
+    },
+    SLOW,
+  )
+})
+
+/**
+ * A `GET /api/me` that has not come back, with the two ways it can end for somebody nobody
+ * signed in: a 401 and a network that is gone.
+ *
+ * <p>The rule for everything else is the one `aServerAnswering` keeps (the disc for a resource,
+ * a 404 for anything else under `/api`), so a screen is waiting for ONE answer and not for all
+ * of them.
+ */
+function aMeStillOnItsWay(): { says401: () => void; goesDown: () => void } {
+  let deliver: (answer: Response) => void = () => undefined
+  let fail: (why: unknown) => void = () => undefined
+  const waiting = new Promise<Response>((resolve, reject) => {
+    deliver = resolve
+    fail = reject
+  })
+
+  server = serverThat((path) => {
+    if (path === '/api/me') {
+      return waiting
+    }
+
+    return path.startsWith('/api') && !isResource(path) ? answeredWith(404) : null
+  })
+
+  return { says401: () => deliver(answeredWith(401)), goesDown: () => fail(new TypeError('Failed to fetch')) }
+}
+
+/** The portal's own indicator for a whole screen, which is `Loader` and says one word. */
+function theScreenIsWaiting(): HTMLElement[] {
+  return screen.queryAllByRole('status').filter((one) => one.textContent === 'Učitavanje')
+}
+
+describe('while the server has not said who is asking', () => {
+  waitsForHalfOfACase()
+
+  /**
+   * THE ELEVEN SCREENS SAY NOTHING ABOUT THE READER UNTIL THE SERVER HAS SAID WHO HE IS (owner,
+   * 10.10.2026, chosen between offered outcomes; PDL, P26 of the answers of that day, the first
+   * of the three parts: „Jedanaest članskih ekrana pokazuje „Učitavanje" umesto „Za ovo treba
+   * prijava" dok odgovor ne stigne"; the record's sentence and not his own words).
+   *
+   * <p>Walked over the same list as every other `describe` here, which is what keeps „eleven" the
+   * number of the screens that ask the question and not the number somebody wrote down. What is
+   * asked is three things at once and none of them alone: the indicator IS there, none of the
+   * three refusals is, and when the answer comes back saying nobody is signed in the sentence a
+   * visitor has always been told IS (so the wait ends on an answer and is not a screen that waits
+   * for ever, which is what „the session names nobody" read as a wait would be).
+   */
+  it.each(WALKED)(
+    'draws the indicator at $at and no refusal, and tells a visitor the sign in once he is one',
+    async ({ at }) => {
+      const me = aMeStillOnItsWay()
+      renderAt(at, 'visitor', null)
+
+      await waitFor(() => expect(theScreenIsWaiting().length).toBeGreaterThan(0))
+      for (const refusal of REFUSALS) {
+        expect(screen.queryByRole('heading', { level: 1, name: refusal })).toBeNull()
+      }
+
+      me.says401()
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Za ovo treba prijava' }),
+      ).toBeVisible()
+    },
+    SLOW,
+  )
+
+  /**
+   * AND A NETWORK THAT IS GONE ENDS IT THE SAME WAY (owner, 10.10.2026, „pad mreže isto kao
+   * posetiocu"). The request throws and never answers, which is the one outcome that is neither a
+   * 401 nor a body, and the screen must not stand on the indicator for it.
+   */
+  it.each(WALKED)(
+    'tells a visitor the sign in at $at when the network is gone',
+    async ({ at }) => {
+      const me = aMeStillOnItsWay()
+      renderAt(at, 'visitor', null)
+
+      await waitFor(() => expect(theScreenIsWaiting().length).toBeGreaterThan(0))
+      me.goesDown()
+
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Za ovo treba prijava' }),
+      ).toBeVisible()
     },
     SLOW,
   )
