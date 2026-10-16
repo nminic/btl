@@ -121,8 +121,8 @@ import java.util.List;
  * not the only one that makes it: the list read before and after a New Year gives the same, and
  * so do the frozen tables, which carry the category of their season. The owner kept the season's
  * band with that cost in view, and the published text, Article 74 of the rulebook and the privacy
- * policy, is to say before 1 January 2028 that a change of category between seasons shows the
- * year of birth; that is item BR, a job of its own and not this class's. The second cost is a
+ * policy, says since migration V58 (item BR) that a change of category between seasons shows the
+ * year of birth; that is not this class's job. The second cost is a
  * beginner's band, which the frozen table hides behind its „R" and which stands here beside the
  * result, with the beginner's mark. {@code noYearOfBirthLeavesTheServer} holds the year itself,
  * which is a field and not an inference.

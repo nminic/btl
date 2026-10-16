@@ -30,6 +30,12 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * {@link TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest}: not that the two articles are right but that the
  * sentence stands in exactly those two sections of each language and in no third one.
  *
+ * <p><b>And the sign-off date of the two documents that carry it.</b> The same edit moves "Poslednja izmena" of
+ * the privacy policy (section 7) and of the rulebook (section 19) from 10.10.2026 to 16.10.2026, in both languages
+ * (PDL, the entry "Datum Poslednja izmena se pomera", owner, 16.10.2026). The terms of use are NOT edited and keep
+ * 10.10.2026. Three things are held, each in its own case, because each is a different way to be wrong: the date
+ * left old on one of the two documents, the date moved on the terms too, and the date moved in one language only.
+ *
  * <p><b>The words are the owner's and are written out here in full, not as phrases.</b> The usual rule against a
  * second copy of a legal text does not hold for one sentence of one line, and a phrase would let a changed word
  * through: "tačna" for "približna" is a different decision (PDL, "Odaje se TAČNA, ne približna godina rođenja").
@@ -53,6 +59,13 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 	private static final String ENGLISH_SENTENCE = "Moving to an older age category between two seasons reveals the "
 			+ "exact year of birth, even when the date of birth is not displayed.";
 
+	private static final String TERMS = "uslovi-koriscenja";
+
+	private static final String SERBIAN_SIGN_OFF_BEFORE = "Poslednja izmena: 10.10.2026.";
+	private static final String SERBIAN_SIGN_OFF_AFTER = "Poslednja izmena: 16.10.2026.";
+	private static final String ENGLISH_SIGN_OFF_BEFORE = "Last amended: 10.10.2026.";
+	private static final String ENGLISH_SIGN_OFF_AFTER = "Last amended: 16.10.2026.";
+
 	/** A section by the page it belongs to and its place in it; the order is the one they are sorted into. */
 	record Place(String slug, int position) {
 	}
@@ -60,8 +73,22 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 	/** Where the sentence belongs, in either language. */
 	private static final List<Place> WHERE_IT_STANDS = List.of(new Place(POLICY, 3), new Place(RULEBOOK, 17));
 
+	/** The sign-offs this migration moves: the privacy policy's and the rulebook's. */
+	private static final List<Place> SIGNED_OFF_ON_THE_SIXTEENTH = List.of(new Place(POLICY, 7), new Place(RULEBOOK, 19));
+
+	/** The sign-off it does not move. */
+	private static final Place THE_TERMS_SIGN_OFF = new Place(TERMS, 12);
+
 	@Autowired
 	JdbcTemplate jdbc;
+
+	private static String signOffBefore(String language) {
+		return language.equals("sr") ? SERBIAN_SIGN_OFF_BEFORE : ENGLISH_SIGN_OFF_BEFORE;
+	}
+
+	private static String signOffAfter(String language) {
+		return language.equals("sr") ? SERBIAN_SIGN_OFF_AFTER : ENGLISH_SIGN_OFF_AFTER;
+	}
 
 	private static String anchorIn(String language) {
 		return language.equals("sr") ? SERBIAN_ANCHOR : ENGLISH_ANCHOR;
@@ -144,6 +171,38 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 		theSentenceFollowsItsAnchorDirectlyAndStandsOnceThere("en");
 	}
 
+	private void theSignOffIsMovedOnTheTwoDocumentsAndOnlyOnThem(String language) {
+		assertThat(placesWhichCarry(language, signOffAfter(language)))
+				.as("the %s sign-off of 16.10.2026 must stand on the privacy policy and on the rulebook, and nowhere"
+						+ " else", language)
+				.containsExactlyInAnyOrderElementsOf(SIGNED_OFF_ON_THE_SIXTEENTH);
+		assertThat(placesWhichCarry(language, signOffBefore(language)))
+				.as("the %s sign-off of 10.10.2026 must stand on the terms of use alone", language)
+				.containsExactly(THE_TERMS_SIGN_OFF);
+
+		for (Place place : SIGNED_OFF_ON_THE_SIXTEENTH) {
+			assertThat(bodyOf(language, place))
+					.as("%s #%s %s: the sign-off must stand once", place.slug(), place.position(), language)
+					.containsOnlyOnce(signOffAfter(language))
+					.doesNotContain(signOffBefore(language));
+		}
+
+		assertThat(bodyOf(language, THE_TERMS_SIGN_OFF))
+				.as("the terms of use must keep the day they were signed off on")
+				.containsOnlyOnce(signOffBefore(language))
+				.doesNotContain(signOffAfter(language));
+	}
+
+	@Test
+	void theSerbianSignOffIsMovedOnThePolicyAndTheRulebookAndNotOnTheTerms() {
+		theSignOffIsMovedOnTheTwoDocumentsAndOnlyOnThem("sr");
+	}
+
+	@Test
+	void theEnglishSignOffIsMovedOnThePolicyAndTheRulebookAndNotOnTheTerms() {
+		theSignOffIsMovedOnTheTwoDocumentsAndOnlyOnThem("en");
+	}
+
 	/**
 	 * THE FLOORS, asked of the migrations.
 	 *
@@ -165,6 +224,15 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 
 		for (String sentence : List.of(SERBIAN_SENTENCE, ENGLISH_SENTENCE)) {
 			assertThat(before).as("a migration before V58 already writes \"%s\"", sentence).doesNotContain(sentence);
+		}
+
+		for (String signOff : List.of(SERBIAN_SIGN_OFF_BEFORE, ENGLISH_SIGN_OFF_BEFORE)) {
+			assertThat(v57).as("V57 does not write the sign-off \"%s\", so moving it measures nothing", signOff)
+					.contains(signOff);
+		}
+
+		for (String signOff : List.of(SERBIAN_SIGN_OFF_AFTER, ENGLISH_SIGN_OFF_AFTER)) {
+			assertThat(before).as("a migration before V58 already writes \"%s\"", signOff).doesNotContain(signOff);
 		}
 	}
 
@@ -212,7 +280,13 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 		PSQLException error = v58RunAgain();
 
 		assertThat(error.getServerErrorMessage().getMessage()).contains("the written pages were not edited");
-		assertThat(error.getServerErrorMessage().getMessage()).contains("4 of 4 edits");
+		assertThat(error.getServerErrorMessage().getMessage()).contains("8 of 8 edits");
+		assertThat(reportOf(error))
+				.as("the sign-off is already moved and V58 did not say so")
+				.contains("BR date @ politika-privatnosti #7 sr: found 0 times, and its new text is already there")
+				.contains("BR date @ politika-privatnosti #7 en: found 0 times, and its new text is already there")
+				.contains("BR date @ pravilnik #19 sr: found 0 times, and its new text is already there")
+				.contains("BR date @ pravilnik #19 en: found 0 times, and its new text is already there");
 		assertThat(reportOf(error))
 				.as("the anchor stands once and the sentence is already there, and V58 did not say so")
 				.contains("BR @ politika-privatnosti #3 sr: found once, and its new text is already there")
@@ -222,8 +296,8 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 	}
 
 	/**
-	 * The text as it stood BEFORE V58: the sentence taken out of the four sections it was put into, by hand and
-	 * with nothing else touched. The refusals below are asked of this text, because it is the one V58 is written
+	 * The text as it stood BEFORE V58: the sentence taken out of the four sections it was put into and the sign-off
+	 * of the policy and of the rulebook put back to 10.10.2026, by hand and with nothing else touched. The refusals below are asked of this text, because it is the one V58 is written
 	 * for; asked of the finished text every edit would refuse for the same reason (the sentence is already there)
 	 * and one edit's own check could be taken away without any case noticing.
 	 */
@@ -231,6 +305,13 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 		for (Place place : WHERE_IT_STANDS) {
 			for (String language : List.of("sr", "en")) {
 				setBody(language, place, bodyOf(language, place).replace(" " + sentenceIn(language), ""));
+			}
+		}
+
+		for (Place place : SIGNED_OFF_ON_THE_SIXTEENTH) {
+			for (String language : List.of("sr", "en")) {
+				setBody(language, place,
+						bodyOf(language, place).replace(signOffAfter(language), signOffBefore(language)));
 			}
 		}
 	}
@@ -251,11 +332,12 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 	}
 
 	/**
-	 * V58 run over the text before it, which is the one case in which it succeeds: the four sections gain the
-	 * sentence directly after the anchor, and no other section of either table changes by a character.
+	 * V58 run over the text before it, which is the one case in which it succeeds: four sections gain the sentence
+	 * directly after the anchor, the sign-off of two documents moves in both languages, and no other section of
+	 * either table changes by a character.
 	 */
 	@Test
-	void v58AddsTheSentenceToTheFourSectionsAndChangesNothingElse() {
+	void v58AddsTheSentenceAndMovesTheSignOffInEightSectionsAndChangesNothingElse() {
 		putBackTheTextAsItStoodBeforeV58();
 
 		List<String> before = everySectionBody();
@@ -275,7 +357,8 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 			}
 		}
 
-		assertThat(changed).as("V58 must change the body of four sections and no other").isEqualTo(4);
+		assertThat(changed).as("V58 must change the body of eight sections (four for the sentence, four for the date)"
+				+ " and no other").isEqualTo(8);
 
 		for (Place place : WHERE_IT_STANDS) {
 			for (String language : List.of("sr", "en")) {
@@ -283,6 +366,10 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 						.as("%s #%s %s after V58", place.slug(), place.position(), language)
 						.containsOnlyOnce(anchorIn(language) + " " + sentenceIn(language));
 			}
+		}
+
+		for (String language : List.of("sr", "en")) {
+			theSignOffIsMovedOnTheTwoDocumentsAndOnlyOnThem(language);
 		}
 	}
 
@@ -303,7 +390,7 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 
 		PSQLException error = v58RunAgain();
 
-		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 4 edits");
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 8 edits");
 		assertThat(reportOf(error))
 				.as("the anchor stands twice and V58 did not say so")
 				.contains("BR @ pravilnik #17 sr: found 2 times");
@@ -316,7 +403,7 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 
 		PSQLException error = v58RunAgain();
 
-		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 4 edits");
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 8 edits");
 		assertThat(reportOf(error))
 				.as("the anchor is not where V58 looks for it and V58 did not say so")
 				.contains("BR @ politika-privatnosti #3 en: found 0 times");
@@ -330,10 +417,38 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 
 		PSQLException error = v58RunAgain();
 
-		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 4 edits");
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 8 edits");
 		assertThat(reportOf(error))
 				.as("the anchor stands once and the sentence is already there, and V58 did not say so")
 				.contains("BR @ politika-privatnosti #3 sr: found once, and its new text is already there");
+	}
+
+	@Test
+	void aSignOffThatIsAlreadyMovedInOneDocumentStopsV58() {
+		putBackTheTextAsItStoodBeforeV58();
+		setBody("sr", new Place(RULEBOOK, 19),
+				bodyOf("sr", new Place(RULEBOOK, 19)).replace(SERBIAN_SIGN_OFF_BEFORE, SERBIAN_SIGN_OFF_AFTER));
+
+		PSQLException error = v58RunAgain();
+
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 8 edits");
+		assertThat(reportOf(error))
+				.as("the rulebook is already signed off on 16.10.2026 and V58 did not say so")
+				.contains("BR date @ pravilnik #19 sr: found 0 times, and its new text is already there");
+	}
+
+	@Test
+	void aSignOffWithoutTheOldDateStopsV58() {
+		putBackTheTextAsItStoodBeforeV58();
+		setBody("en", new Place(POLICY, 7),
+				bodyOf("en", new Place(POLICY, 7)).replace(ENGLISH_SIGN_OFF_BEFORE, "Last amended: 01.01.2026."));
+
+		PSQLException error = v58RunAgain();
+
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 8 edits");
+		assertThat(reportOf(error))
+				.as("the policy does not carry the date V58 was written against and V58 did not say so")
+				.contains("BR date @ politika-privatnosti #7 en: found 0 times");
 	}
 
 	@Test
@@ -349,7 +464,7 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 
 		PSQLException error = v58RunAgain();
 
-		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 4 edits");
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 8 edits");
 		assertThat(reportOf(error))
 				.as("an edit was aimed at a text that is not there and V58 did not say so")
 				.contains("BR @ pravilnik #17 en: there is no such text");
@@ -358,11 +473,11 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 	private static final Pattern A_LINE_OF_THE_REPORT = Pattern.compile("^(.+ @ \\S+ #\\d+ \\w+): .+$");
 
 	/**
-	 * THE TABLE NAMES EXACTLY THE EDITS V58 MAKES, asked of V58 itself: the four it aims at the places and the
-	 * languages above. An edit added to the file and not here, or one dropped from it, fails.
+	 * THE TABLE NAMES EXACTLY THE EDITS V58 MAKES, asked of V58 itself: the eight it aims at the places and the
+	 * languages above (four for the sentence, four for the sign-off). An edit added to the file and not here, or one dropped from it, fails.
 	 */
 	@Test
-	void v58MakesExactlyTheFourEditsTheSweepsHold() {
+	void v58MakesExactlyTheEightEditsTheSweepsHold() {
 		Set<String> editedByTheMigration = new HashSet<>();
 
 		for (String line : reportOf(v58RunAgain()).lines().toList()) {
@@ -377,6 +492,12 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 		for (Place place : WHERE_IT_STANDS) {
 			for (String language : List.of("sr", "en")) {
 				heldByTheSweeps.add("BR @ " + place.slug() + " #" + place.position() + " " + language);
+			}
+		}
+
+		for (Place place : SIGNED_OFF_ON_THE_SIXTEENTH) {
+			for (String language : List.of("sr", "en")) {
+				heldByTheSweeps.add("BR date @ " + place.slug() + " #" + place.position() + " " + language);
 			}
 		}
 

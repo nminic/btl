@@ -391,7 +391,11 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   entry "Reči za BR"), placed directly after the sentence that says the category is always
 			   public, in Article 74 of the rulebook and in section 3 of the privacy policy, in Serbian and
 			   in English. Four edits, each of which stops the migration unless its anchor stands exactly
-			   once where it is written and the sentence is not already there. No schema, no row.
+			   once where it is written and the sentence is not already there; and four more that move the
+			   sign-off of the policy and of the rulebook from 10.10.2026 to 16.10.2026 (PDL, the entry
+			   "Datum Poslednja izmena se pomera", owner, 16.10.2026), in both languages, the terms of use
+			   keeping theirs. The file was changed for the date after the pull request was opened and before
+			   it merged, so no database has run the file with four edits. No schema, no row.
 
 			   58 because it is the next free number, and that was MEASURED rather than taken: every remote
 			   ref, every worktree and the open pull requests were searched on 16.10.2026 and none held a
@@ -399,7 +403,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file. */
 			new Applied("58", "V58__moving_to_an_older_category_between_seasons_reveals_the_year_of_birth.sql",
-					2106832325));
+					951555262));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

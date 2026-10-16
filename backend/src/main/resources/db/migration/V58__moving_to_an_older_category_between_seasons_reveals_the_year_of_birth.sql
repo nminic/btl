@@ -1,5 +1,5 @@
 /* THE WRITTEN PAGES SAY THAT MOVING TO AN OLDER AGE CATEGORY BETWEEN TWO SEASONS REVEALS THE EXACT YEAR OF
-   BIRTH (item BR).
+   BIRTH (item BR), AND THE TWO DOCUMENTS THAT SAY IT ARE SIGNED OFF ON 16.10.2026.
 
    WHOSE DECISION, AND WHERE IT IS WRITTEN. PDL, the entry "Reči za BR" (owner, 16.10.2026, who chose between
    two proposed wordings, the shorter; the assistant's recommendation had been the longer one, which names where
@@ -23,6 +23,16 @@
    Both anchors were written by V57 (its edits C and D), so this file must run after V57, and the old text of each
    edit below is the text V57 LEFT, not the text V24 or V43 wrote before it.
 
+   THE SIGN-OFF DATE, four more edits. PDL, the entry "Datum „Poslednja izmena" se pomera" (owner, 16.10.2026,
+   who chose it among the outcomes offered and on the assistant's recommendation): the privacy policy and the
+   rulebook change their text here, so their "Poslednja izmena: 10.10.2026." becomes "Poslednja izmena:
+   16.10.2026." and "Last amended: 10.10.2026." becomes "Last amended: 16.10.2026.". The date is the day this
+   change reaches QA (the assistant's derivation, recorded in that entry: production goes only on the owner's word).
+     BR date   politika-privatnosti   section 7    the sign-off of the privacy policy
+     BR date   pravilnik              section 19   the sign-off of the rulebook
+   THE TERMS OF USE ARE NOT EDITED and keep 10.10.2026, because their text does not change in this file; V57 wrote
+   that date and it stands. The anchors of these edits are the dates V57 wrote (its edits E policy and E rulebook).
+
    HOW. The shape of V57 and for its reason: every edit is asked how many times its anchor stands in the text it is
    aimed at, and anything but exactly once is a problem. One question is added, because this edit, unlike most of
    V57's, leaves its anchor standing: a section that already carries the sentence is a problem too, otherwise a
@@ -31,17 +41,17 @@
    nothing changed, and Flyway refuses to start the backend. A replace() that matched nothing would be recorded as
    a migration that succeeded while the old text went on being published (V57 has the whole argument).
 
-   WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row added or removed; the body of four
-   section texts and nothing else in them. The sign-off date of the three documents stays 10.10.2026: the owner's
-   entry names the sentence and says nothing of the date, and a date changed on an assumption would be a
-   decision nobody took.
+   WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row added or removed; the body of eight
+   section texts (four for the sentence, four for the date) and nothing else in them. The sign-off of the terms of
+   use stays 10.10.2026, in both languages.
 
    WHY A NEW FILE AND NOT AN EDIT OF V57: ADL A2. V57 has been applied, its checksum is in flyway_schema_history,
    and MigrationsAreImmutableTest holds Flyway to it.
 
    WHAT HOLDS THE HOMES OF THIS TEXT TOGETHER. frontend/src/test/mock/pages.json, which PageApiTest compares the
    Serbian answer of this server to, field by field; frontend/src/test/writtenPages.snapshot.json, which
-   writtenVerification.test.ts holds that fixture to in the other direction; and, for both languages and for
+   writtenVerification.test.ts holds that fixture to in the other direction; the sign-off check of
+   writtenPages.test.tsx, which names the day of each of the three documents; and, for both languages and for
    every edit, TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest. */
 
 do $edit$
@@ -68,7 +78,20 @@ begin
              $new$Javna je uvek kategorija koja iz njega proizlazi, bez obzira na vaš izbor. Iz prelaska u stariju uzrasnu kategoriju između dve sezone vidi se tačna godina rođenja, i kad datum rođenja nije prikazan.$new$),
             ('BR', 'pravilnik', 17, 'en',
              $old$The category that follows from it is always public, whatever you choose.$old$,
-             $new$The category that follows from it is always public, whatever you choose. Moving to an older age category between two seasons reveals the exact year of birth, even when the date of birth is not displayed.$new$)
+             $new$The category that follows from it is always public, whatever you choose. Moving to an older age category between two seasons reveals the exact year of birth, even when the date of birth is not displayed.$new$),
+
+            ('BR date', 'politika-privatnosti', 7, 'sr',
+             $old$Poslednja izmena: 10.10.2026.$old$,
+             $new$Poslednja izmena: 16.10.2026.$new$),
+            ('BR date', 'politika-privatnosti', 7, 'en',
+             $old$Last amended: 10.10.2026.$old$,
+             $new$Last amended: 16.10.2026.$new$),
+            ('BR date', 'pravilnik', 19, 'sr',
+             $old$Poslednja izmena: 10.10.2026.$old$,
+             $new$Poslednja izmena: 16.10.2026.$new$),
+            ('BR date', 'pravilnik', 19, 'en',
+             $old$Last amended: 10.10.2026.$old$,
+             $new$Last amended: 16.10.2026.$new$)
 
         ) as edits (label, slug, section_position, in_language, old_text, new_text)
     loop
@@ -99,10 +122,10 @@ begin
         seen := (length(current_body) - length(replace(current_body, edit.old_text, '')))
                 / length(edit.old_text);
 
-        /* This edit ADDS a sentence after its old text, so the old text is still there once the edit has been made.
-           That is what makes it unlike a replacement, which finds nothing the second time: run over a section that
-           already carries the sentence it would find its anchor once and put the sentence in again. So the new text
-           is asked about too, and a section that already holds it is a problem. */
+        /* The four edits that ADD a sentence leave their old text standing once the edit has been made. That is what
+           makes them unlike a replacement, which finds nothing the second time: run over a section that already
+           carries the sentence they would find their anchor once and put the sentence in again. So the new text is
+           asked about too, for every edit, and a section that already holds it is a problem. */
         already := strpos(current_body, edit.new_text) > 0;
 
         report := report || format(E'\n%s @ %s #%s %s: found %s%s',
