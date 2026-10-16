@@ -708,11 +708,12 @@ describe('a hidden profile, read by the administration, which races for nobody',
 /**
  * THE MEMBERS `/api/competitors` REALLY ANSWERS WITH, for every case of the `describe` that calls this.
  *
- * <p>Since 03.10.2026 a screen reads „is this reader an active member" off that list, and the file
+ * <p>Until 16.10.2026 a screen read „is this reader an active member" off that list; it reads the
+ * session now (ADL), and the list is what a profile on the page is looked up in. The file
  * `test/setup.ts` answers out of still carries members whose fee has lapsed, flagged `active:
  * false`, which the server never serves (`test/serverAnswers.ts`, `membersAsServed`). A case about a
- * member whose fee has lapsed that left the file as it is would be about a member the list names, so
- * it would be let in for the very reason it is meant to be turned away.
+ * member whose fee has lapsed that left the file as it is would put a profile on the page that the
+ * server never serves, so the list stays in front of the file.
  *
  * @returns the numbers the answer leaves out, asked after the case has started
  */
@@ -744,9 +745,9 @@ function theServerAnswersWithItsMembers(): { lapsed: () => string[] } {
  *
  * <p>**Two readers, because the two ways of not being let in are different facts.** An account with
  * no member behind it (somebody who registered and has not paid, or any account that is not the
- * administration) has no number the list could carry; a member WITH a number whose fee has run out is
- * simply not on the list the server serves (`test/mock/competitors.json`, 000032). A reader read by
- * `memberNumber !== null` lets the second one in.
+ * administration) has no number at all; a member WITH a number whose fee has run out is the one the
+ * answer about him says `active: false` of (and the list leaves out, `test/mock/competitors.json`,
+ * 000032). A reader read by `memberNumber !== null` lets the second one in.
  *
  * <p>**Each of the three screens that ask has a case of its own**, and each is one visit with the
  * reader as the only thing that changes: turned away as a visitor, signed in, and turned away still.

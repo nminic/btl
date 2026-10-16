@@ -72,7 +72,8 @@ const WHAT_OPENS_LATER =
  * bude obnovljena, uz vezu na stranu za obnovu"; the record's sentence and not the owner's own
  * words), asked of its words in front of the link. The link is asked apart, by its role.
  */
-const WHAT_OPENS_ON_RENEWAL = /^Podaci i lozinka otvaraju se kad tvoja članarina bude obnovljena\./
+const WHAT_OPENS_ON_RENEWAL =
+  /^Podaci i lozinka otvaraju se kad tvoja članarina bude obnovljena\. Obnovi je ovde: \.$/
 
 /**
  * The sentence is there once, with its link to the page the fee is renewed on, and it is in the

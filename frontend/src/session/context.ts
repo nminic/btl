@@ -387,6 +387,13 @@ export type SignedIn =
    * and a word the portal was not told is a word it may not act on (`session/theServer.ts`);
    * the server stays the authority either way.
    *
+   * **Since 16.10.2026 it is also what decides whether a screen draws what active members are
+   * owed** (the list of who goes, the comments, a hidden profile; ADL, „Činjenica „član je aktivan"
+   * dobija jedan dom na ekranu", the record's sentence and not the owner's own words), through
+   * `roles/activeMemberOrAdministration.ts`. There the unsaid reading has a cost worth saying: a
+   * server that did not say `active` (the server says it since PR 526) would have the screen draw a
+   * part the server then answers 404, never withhold one from somebody it was owed.
+   *
    * **Where the number comes from, said as a list so the next sentence about it can be
    * checked rather than believed:** `GET /api/me`, through `session/theServer.ts`, and
    * nothing else on the portal. The `signIn` setter beside this type is a second door and
