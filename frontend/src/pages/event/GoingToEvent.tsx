@@ -9,7 +9,7 @@ import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 import { limitOf } from '../../forms/records'
 import type { FormDef } from '../../forms/types'
-import { isMember, type Role } from '../../roles/context'
+import { isMember } from '../../roles/context'
 import {
   isActiveMember,
   isActiveMemberOrAdministration,
@@ -63,7 +63,7 @@ import './GoingToEvent.css'
 export function GoingToEvent({ event }: { event: BtlEvent }) {
   const today = useToday()
   const { role } = useRole()
-  const { memberNumber } = useSession()
+  const { memberNumber, signedIn } = useSession()
 
   /* Nobody signed in, and a race that has been run: nothing at all, and nothing is
      asked of the server either. A visitor used to fetch the list he was never shown,
@@ -72,29 +72,38 @@ export function GoingToEvent({ event }: { event: BtlEvent }) {
     return null
   }
 
-  return <ForAReader event={event} role={role} me={memberNumber} />
+  /* **Whether he reads the list is the session's to say** (`roles/activeMemberOrAdministration.ts`,
+     the one home of the fact since 16.10.2026). The administration reads it whatever its own
+     fee; a member reads it when his fee is standing. This used to learn it from the list of
+     members the server serves, and so asked for that list before it could say whether to ask for
+     the other; now the list of who is going is not asked for until the answer is yes, and neither
+     is the list of members that names them. */
+  if (!isActiveMemberOrAdministration(role, signedIn)) {
+    return null
+  }
+
+  return <WithTheNames event={event} mayGo={isActiveMember(signedIn)} me={memberNumber} />
 }
 
 /**
- * Somebody signed in, before it is known whether he reads the list.
- *
- * The administration reads it whatever its own fee; a member reads it when his
- * fee is standing, which the screen learns from the list of members the server
- * serves (`isActiveMember`). That list is what names everybody below anyway, so
- * the question costs no request of its own, and the list of who is going is not
- * asked for until the answer is yes.
+ * The names the list is drawn with, for somebody who reads it: a component of its own, so the
+ * members are asked for only by a reader who is going to be shown them.
  */
-function ForAReader({ event, role, me }: { event: BtlEvent; role: Role; me: string | null }) {
+function WithTheNames({
+  event,
+  mayGo,
+  me,
+}: {
+  event: BtlEvent
+  mayGo: boolean
+  me: string | null
+}) {
   const { t } = useI18n()
   const competitors = useCompetitors()
 
   return (
     <Resource state={competitors} inline label={t('event.going')}>
-      {(served) =>
-        isActiveMemberOrAdministration(role, me, served) ? (
-          <TheList event={event} competitors={served} me={me} mayGo={isActiveMember(me, served)} />
-        ) : null
-      }
+      {(served) => <TheList event={event} competitors={served} me={me} mayGo={mayGo} />}
     </Resource>
   )
 }

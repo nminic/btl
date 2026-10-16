@@ -1,4 +1,4 @@
-import type { Competitor } from '../data/types'
+import type { SignedIn } from '../session/context'
 import { isStaff, type Role } from './context'
 
 /**
@@ -9,41 +9,51 @@ import { isStaff, type Role } from './context'
  * to an event, and PDL records the choice as „Najavu dolaska daju i spisak najavljenih vide
  * aktivni članovi (važeća članarina), a spisak vidi i administracija; isto kao za skriven profil
  * (P23, odeljak 18)." (the record's sentence, not his own words). The same reader is therefore
- * asked about by the hidden profile as well, and this module is where
- * both screens read the question from: the list of who is going (`event/GoingToEvent.tsx`) and,
- * since 03.10.2026, the hidden profile (`pages/profile/visible.ts`, through the two profile
- * pages and `pages/profile/useProfileLink.ts`).
+ * asked about by the hidden profile as well, and this module is where every screen reads the
+ * question from: the list of who is going (`event/GoingToEvent.tsx`), the comments under an event
+ * (`event/readsComments.ts`) and the hidden profile (`pages/profile/visible.ts`, through the two
+ * profile pages and `pages/profile/useProfileLink.ts`).
  *
  * <p><b>The server decides, and this is the screen's copy of the decision.</b>
  * `ActiveMemberOrAdministration.java` answers it on every request and refuses anybody else 404,
  * so what is asked here is only whether to draw a part of a page or to leave it out, never
  * whether somebody may have it.
+ *
+ * <p><b>ONE HOME FOR THE FACT „THE READER IS ACTIVE", AND IT IS THE SESSION'S</b> (ADL, 16.10.2026,
+ * „Činjenica „član je aktivan" dobija jedan dom na ekranu"; the sentence is the record's and not
+ * the owner's own words). Until that day this module asked the list the server serves for the
+ * reader's own number, while the payment page and the settings asked the session's flag for the
+ * very same fact (`signedIn.feeStands`, which `GET /api/me` carries as `active` since
+ * 11.10.2026). Two doors read one column; they said one thing only as long as nothing made the
+ * list and the answer about the caller differ for the length of a visit, and a list read once
+ * per visit and never dropped does exactly that when the reader renews his fee.
+ *
+ * <p><b>THE QUESTION IS ABOUT THE READER AND NEVER ABOUT ANYBODY ELSE, and that is what lets the
+ * session answer it.</b> The session knows who is reading and nothing about the member whose page
+ * is on the screen. Measured 16.10.2026: every call of this module in `src` passes the reader
+ * (`CompetitorProfile`, `CompetitorAwards`, `useProfileLink`, `GoingToEvent`, `readsComments`), and
+ * `visible.ts` only mentions it in prose. A question about ANOTHER member - is the person whose
+ * profile this is active - stays on the public list, which carries him exactly when he is
+ * (`/api/competitors` ends `where c.active`), and is asked there (`profile/visible.ts`,
+ * `profileFor`). This module takes the session's object and not a member number, so a call site
+ * cannot hand it somebody else's number: the compiler says so.
  */
 
 /**
- * WHETHER THIS MEMBER NUMBER BELONGS TO A MEMBER WHOSE FEE IS STANDING, READ OFF THE LIST THE
- * SERVER SERVES.
+ * WHETHER THE READER IS A MEMBER WHOSE FEE IS STANDING, read off the session.
  *
- * <p>`/api/competitors` ends `where c.active` (owner, 13.09.2026: a member whose fee has lapsed
- * is not on that list at all), so „he is on it" is „he is active", answered by the very flag the
- * server reads, `competitor.active`. **`GET /api/me` did not carry the flag when this was written, and
- * it does since 11.10.2026** (`MeApi.MyOwnRecord.active`, kept by the session as `signedIn.feeStands`
- * and read by the payment page and the settings). The two doors read one column and say one thing.
- * This module still asks the list, because the screens that ask it are drawn from that list and what
- * a screen believes about the reader and what the list carries for him then come from one answer;
- * moving them onto the session's flag is a change nobody has asked for (my reasoning, not a
- * decision).
+ * <p>Somebody who is not a member at all (nobody signed in, an account the league keeps no record
+ * of, somebody who registered and has not paid) is not active; a member is as the flag says
+ * (`session/context.ts`, first arm of `SignedIn`). **The flag reads „stands" where the answer did
+ * not say** (an older server, a word that is neither a yes nor a no), because the session acts on
+ * it only to take something away; here that means a screen may draw a part the server then
+ * refuses, never that a part is withheld from somebody it was owed. The server stays the
+ * authority either way.
  *
- * <p><b>What that costs, said rather than left to be found:</b> the list is read once per visit
- * and nothing drops it when the reader renews his own fee, so a member who becomes active during
- * a visit is drawn as active from the next reload on. The server meanwhile already lets him act.
- *
- * @param memberNumber whose number, or nothing for somebody with none (a moderator who does not
- *   race, or somebody who registered and has never paid): nothing matches no row of the list
- * @param served `/api/competitors` as it was answered
+ * @param signedIn who is reading, as the session works it out, or nothing for nobody
  */
-export function isActiveMember(memberNumber: string | null, served: readonly Competitor[]): boolean {
-  return served.some((one) => one.memberNumber === memberNumber)
+export function isActiveMember(signedIn: SignedIn | null): boolean {
+  return signedIn?.as === 'member' && signedIn.feeStands
 }
 
 /**
@@ -53,10 +63,6 @@ export function isActiveMember(memberNumber: string | null, served: readonly Com
  * superadmin, which is the list PDL section 18 gives, supplemented on 03.10.2026: „administracija
  * (moderatori i superadmin)". The server reads the same people off `role.rights_mode`.
  */
-export function isActiveMemberOrAdministration(
-  role: Role,
-  memberNumber: string | null,
-  served: readonly Competitor[],
-): boolean {
-  return isStaff(role) || isActiveMember(memberNumber, served)
+export function isActiveMemberOrAdministration(role: Role, signedIn: SignedIn | null): boolean {
+  return isStaff(role) || isActiveMember(signedIn)
 }

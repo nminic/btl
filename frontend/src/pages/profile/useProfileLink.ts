@@ -1,5 +1,4 @@
 import { useCallback } from 'react'
-import { dataOr, useCompetitors } from '../../data/useResource'
 import { applyChanges } from '../../forms/records'
 import { useI18n } from '../../i18n/useI18n'
 import { isActiveMemberOrAdministration } from '../../roles/activeMemberOrAdministration'
@@ -83,20 +82,20 @@ function profileLinkFor(
  * plain text.
  */
 export function useProfileLink(): (competitor: Competitor) => string | undefined {
-  const { memberNumber, edits } = useSession()
+  const { signedIn, edits } = useSession()
   const { role } = useRole()
   const { locale } = useI18n()
   /* **WHETHER THIS READER MAY READ A HIDDEN PROFILE** (since 03.10.2026; `profile/visible.ts` says
-     why it is not „is anybody signed in"), worked out from the role, the member number and the list
-     the server serves, exactly as the two profile pages work it out. The list is read the way every
-     list on this portal is, through the same cache, so a page that drew these names has already
-     asked for it; until it has arrived the reader is read as nobody who may, which draws the name as
-     plain text for a moment (a refusal that can only be lifted, never an admission), and the link
-     appears when the list does. Read out as a boolean here rather than handed on as the session's
-     own object: that object is a new one whenever anything in the session changes, so it would
-     rebuild this callback, and every board memoised over it, on every change of the session. */
-  const served = dataOr(useCompetitors(), [])
-  const readsHiddenProfiles = isActiveMemberOrAdministration(role, memberNumber, served)
+     why it is not „is anybody signed in"), worked out from the role and the session, exactly as the
+     two profile pages work it out (`roles/activeMemberOrAdministration.ts`; the fact that the reader
+     is active has the session for its one home since 16.10.2026, and this used to ask the list the
+     server serves, which asks a request of its own). Until the server has said who is reading, the
+     reader is read as nobody who may, which draws the name as plain text for a moment (a refusal
+     that can only be lifted, never an admission), and the link appears when the answer does. Read
+     out as a boolean here rather than handed on as the session's own object: that object is a new
+     one whenever anything in the session changes, so it would rebuild this callback, and every board
+     memoised over it, on every change of the session. */
+  const readsHiddenProfiles = isActiveMemberOrAdministration(role, signedIn)
 
   return useCallback(
     (competitor: Competitor) =>

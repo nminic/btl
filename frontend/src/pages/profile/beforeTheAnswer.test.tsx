@@ -122,7 +122,7 @@ function aServerThatHasNotSaidWho(hidden: string[]): {
 /** What the server says about somebody it has let in: the shape `MeApi` really sends, and no more of
  *  it than the portal reads. A member carries his record; an account that races for nobody carries
  *  none (`session/theServer.ts`, „Absent rather than null"). */
-const aMember = { role: 'competitor', account: 1, member: { memberNumber: '000002' } }
+const aMember = { role: 'competitor', account: 1, member: { memberNumber: '000002', active: true } }
 const anAccountThatRacesForNobody = { role: 'moderator', account: 1 }
 
 /** And the two readers the owner's choice of 03.10.2026 keeps a hidden profile from while they are
@@ -131,7 +131,15 @@ const anAccountThatRacesForNobody = { role: 'moderator', account: 1 }
  *  nikad prema aktivnom članu"): a member whose fee has lapsed, who has a number the list the stand-in serves does
  *  not carry (the file flags 000032 `active: false`, and `competitorsServed` leaves him out as the
  *  server does), and an account that is not the administration and names no member at all. */
-const aMemberWhoseFeeHasLapsed = { role: 'competitor', account: 1, member: { memberNumber: '000032' } }
+const aMemberWhoseFeeHasLapsed = {
+  role: 'competitor',
+  account: 1,
+  /* `active: false` IS WHAT MAKES HIM LAPSED, since 16.10.2026: the screen asks the session for the
+     fact and the session reads it off this one name (`MeApi.MyOwnRecord.active`). Without it the
+     answer says nothing of his fee, and the portal reads a member whose fee it was not told about as
+     standing. */
+  member: { memberNumber: '000032', active: false },
+}
 const aFreeAccount = { role: 'competitor', account: 1 }
 
 /** The announced places on the page that say „waiting" this instant, by role AND by word: the page

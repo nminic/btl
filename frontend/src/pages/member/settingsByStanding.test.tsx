@@ -67,6 +67,38 @@ const WHAT_OPENS_LATER =
   'Slika, biografija i skrivanje profila otvaraju se kad tvoja članarina bude evidentirana.'
 
 /**
+ * The sentence a member whose fee has lapsed is told (PDL P8, 16.10.2026, „Članu kome je istekla
+ * članarina strana Podešavanja dobija jednu rečenicu da se podaci i lozinka otvaraju kad članarina
+ * bude obnovljena, uz vezu na stranu za obnovu"; the record's sentence and not the owner's own
+ * words), asked of its words in front of the link. The link is asked apart, by its role.
+ */
+const WHAT_OPENS_ON_RENEWAL =
+  /^Podaci i lozinka otvaraju se kad tvoja članarina bude obnovljena\. Obnovi je ovde: \.$/
+
+/**
+ * The sentence is there once, with its link to the page the fee is renewed on, and it is in the
+ * screen's own part and not the menu's (the menu names the same page, so a link asked of the whole
+ * document would be answered by the menu).
+ */
+function expectTheSentenceAboutRenewal(): void {
+  const main = within(screen.getByRole('main'))
+
+  expect(main.getAllByText(WHAT_OPENS_ON_RENEWAL)).toHaveLength(1)
+  expect(main.getByRole('link', { name: 'Moja članarina' })).toHaveAttribute(
+    'href',
+    '/sr/moja-clanarina',
+  )
+}
+
+/** The sentence is not on the screen, and neither is a link to the page the fee is renewed on. */
+function expectNoSentenceAboutRenewal(): void {
+  const main = within(screen.getByRole('main'))
+
+  expect(main.queryByText(WHAT_OPENS_ON_RENEWAL)).not.toBeInTheDocument()
+  expect(main.queryByRole('link', { name: 'Moja članarina' })).not.toBeInTheDocument()
+}
+
+/**
  * The screen once it has drawn what it is going to draw: its own heading, and then everything the
  * public list was asked for and the settings was waiting on.
  *
@@ -117,6 +149,8 @@ describe('the settings of somebody who registered and has not paid', () => {
 
     expect(await screen.findByText(WHAT_OPENS_LATER)).toBeVisible()
     expect(screen.getAllByText(WHAT_OPENS_LATER)).toHaveLength(1)
+    /* And not the other one: his fee was never recorded, so there is nothing to be renewed. */
+    expectNoSentenceAboutRenewal()
   }, SLOW)
 
   it('draws his data from the answer that has a row for him, and not from the public list', async () => {
@@ -269,6 +303,23 @@ describe('the settings of a member whose fee has lapsed', () => {
     /* And not the sentence that is for somebody who has not paid: he HAS a number, and „kad tvoja
        članarina bude evidentirana" is said to a person whose fee was never recorded. */
     expect(screen.queryByText(WHAT_OPENS_LATER)).not.toBeInTheDocument()
+    /* What he is told instead: his data and his password open once the fee is renewed, and where. */
+    expectTheSentenceAboutRenewal()
+  }, SLOW)
+
+  it('is told the same sentence in English, and the link names the page as the English menu does', async () => {
+    renderAt('/en/podesavanja', 'competitor', '000032')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeVisible()
+
+    const main = within(screen.getByRole('main'))
+
+    expect(
+      await main.findByText(
+        /^Your data and your password open once your fee has been renewed\. Renew it here:/,
+      ),
+    ).toBeVisible()
+    expect(main.getByRole('link', { name: 'My fee' })).toHaveAttribute('href', '/en/moja-clanarina')
   }, SLOW)
 })
 
@@ -299,6 +350,7 @@ describe('the settings of a member the list still carries and the answer about h
     }
 
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    expectTheSentenceAboutRenewal()
   }, SLOW)
 })
 
@@ -323,6 +375,8 @@ describe('the settings of a member whose fee stands', () => {
 
     expect(screen.getByRole('checkbox')).toBeVisible()
     expect(screen.queryByText(WHAT_OPENS_LATER)).not.toBeInTheDocument()
+    /* Nothing to be told: his fee stands, so nothing is waiting on a renewal. */
+    expectNoSentenceAboutRenewal()
   }, SLOW)
 
   it('draws them in the order of how much each is his own, with the password before the theme', async () => {

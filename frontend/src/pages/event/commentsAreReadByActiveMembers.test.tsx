@@ -4,6 +4,7 @@ import { act, screen } from '@testing-library/react'
 import { loadResource } from '../../data/client'
 import type { BtlEvent, EventComment } from '../../data/types'
 import { must } from '../../test/at'
+import { hisPageAsServed } from '../../test/hisPage'
 import { renderAt } from '../../test/render'
 import { answeredWith, membersAsServed, serverThat } from '../../test/serverAnswers'
 import type { Asked } from '../../test/serverAnswers'
@@ -236,15 +237,18 @@ describe('an event still to be run', () => {
   }
 })
 
-describe('a reader whose fee is not known yet', () => {
+describe('the list of members is no part of whether a reader reads', () => {
   /**
    * THE LIST OF MEMBERS, HELD BACK, which is the moment a part that waits for it would be drawn as
    * waiting and a part that does not would be drawn already.
    *
-   * <p>The page itself waits only for the calendar, so its heading is up while the members are
-   * still on their way. A visitor is told the sentence at once, because nothing the list could say
-   * changes his answer; a member is not told anything yet, because it does; and the administration
-   * is asked for the comments at once, because its own fee does not matter.
+   * <p>**It decided the answer until 16.10.2026** (ADL, „Činjenica „član je aktivan" dobija jedan
+   * dom na ekranu"), and a member was told nothing while it was on its way. It is the session that
+   * decides now, so a member is asked for the comments and drawn the figure at once, and the list
+   * is wanted only to NAME the people who wrote them. The page itself waits only for the calendar,
+   * so its heading is up while the members are still on their way. A visitor is told the sentence
+   * at once, because nothing the list could say changes his answer, and the administration is
+   * asked for the comments at once, because its own fee does not matter.
    *
    * @param whileHeld the case, handed the way to let the members answer; they are let answer in any
    *                  case when it ends
@@ -274,7 +278,7 @@ describe('a reader whose fee is not known yet', () => {
     }
   }
 
-  it('holds a box open for a member and draws the list when the members arrive', async () => {
+  it('asks for the comments and draws the figure for a member while the members are still on their way, and the list when they arrive', async () => {
     const comment = aRatedComment()
 
     await withTheListHeldBack(async (letTheMembersAnswer) => {
@@ -282,17 +286,21 @@ describe('a reader whose fee is not known yet', () => {
 
       await screen.findByRole('heading', { level: 1, name: 'Fruškogorski maraton' })
 
+      /* The part that names the writers is held open by the list; the answer to whether he reads
+         is not. */
       expect(await screen.findByText('Učitavanje: Komentari')).toBeVisible()
-      expect(screen.queryByText(SENTENCE), 'a member was told the comments are not for him while it was not known').toBeNull()
-      expect(screen.queryByText(THE_MARK)).toBeNull()
-      expect(askedForTheComments(), 'the comments were asked for before it was known the reader reads them').toBe(0)
+      expect(await screen.findByText(THE_MARK), 'the figure waited for the list of members').toBeVisible()
+      expect(screen.queryByText(SENTENCE), 'a member was told the comments are not for him').toBeNull()
+      expect(
+        askedForTheComments(),
+        'the comments waited for the list of members before they were asked for',
+      ).toBeGreaterThan(0)
 
       /* And when the members arrive he is drawn what he reads, so the wait ends in the list and not
          in a box that stays open. */
       letTheMembersAnswer()
 
       expect(await screen.findByText(comment.body), 'the member was never drawn what was written').toBeVisible()
-      expect(await screen.findByText(THE_MARK)).toBeVisible()
       expect(screen.queryByText(SENTENCE)).toBeNull()
     })
   }, LONGER_THAN_A_MISS)
@@ -366,10 +374,65 @@ describe('a reader whose fee is not known yet', () => {
         screen.queryByText(SENTENCE),
         'a reader whose list did not come was read as somebody who may not read',
       ).toBeNull()
-      expect(screen.queryByText(THE_MARK)).toBeNull()
-      expect(askedForTheComments()).toBe(0)
     } finally {
       broken.stop()
+    }
+  }, LONGER_THAN_A_MISS)
+})
+
+/**
+ * THE SESSION AND THE LIST OF MEMBERS SAY DIFFERENT THINGS ABOUT THE SAME READER, and the screen
+ * believes the session (ADL, 16.10.2026, „Činjenica „član je aktivan" dobija jedan dom na ekranu";
+ * the sentence is the record's and not the owner's own words).
+ *
+ * <p><b>The one axis the grid above cannot tell apart.</b> For every reader in `READERS` the two
+ * agree: the member the list leaves out is also the member the file calls inactive, so a screen that
+ * asked either one would pass every row. They come apart in a visit: the list is read once and
+ * nothing drops it, and the answer about the caller is the one the server gave a moment ago. Each
+ * case below makes the two say opposite things and asks which one the screen believed, and it is
+ * the only place that does.
+ *
+ * <p>Both directions, because they fail differently: a screen that read the list would draw a
+ * lapsed reader the comments (the server answers him 404 and the part would end in an alarm), and
+ * would tell a member whose fee stands that the comments are not for him. The reader is brought in
+ * the way a member really arrives, by `GET /api/me` and with no number to start from.
+ */
+describe('a reader on whom the session and the list of members disagree', () => {
+  it('is told the sentence when the session says his fee has lapsed, though the list still carries him', async () => {
+    const comment = aRatedComment()
+    const session = hisPageAsServed({ memberNumber: ACTIVE, active: false })
+
+    try {
+      renderAt(`/sr/kalendar/${RAN}`, 'visitor', null)
+
+      await screen.findByRole('heading', { level: 1, name: 'Fruškogorski maraton' })
+
+      expect(await screen.findByText(SENTENCE)).toBeVisible()
+      expect(screen.queryByText(comment.body), 'a lapsed reader was drawn what was written').toBeNull()
+      expect(screen.queryByText(THE_MARK), 'a lapsed reader was drawn the figure').toBeNull()
+      expect(
+        session.asked.filter((one) => one.path === '/api/comments'),
+        'the comments were asked of the server for a reader the session calls lapsed',
+      ).toHaveLength(0)
+    } finally {
+      session.stop()
+    }
+  }, LONGER_THAN_A_MISS)
+
+  it('is drawn the comments when the session says his fee stands, though the list leaves him out', async () => {
+    const comment = aRatedComment()
+    const session = hisPageAsServed({ memberNumber: LAPSED, active: true })
+
+    try {
+      renderAt(`/sr/kalendar/${RAN}`, 'visitor', null)
+
+      await screen.findByRole('heading', { level: 1, name: 'Fruškogorski maraton' })
+
+      expect(await screen.findByText(comment.body), 'a member whose fee stands was not drawn what was written').toBeVisible()
+      expect(await screen.findByText(THE_MARK)).toBeVisible()
+      expect(screen.queryByText(SENTENCE), 'a member whose fee stands was told the comments are not for him').toBeNull()
+    } finally {
+      session.stop()
     }
   }, LONGER_THAN_A_MISS)
 })

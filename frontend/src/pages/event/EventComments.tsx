@@ -49,8 +49,7 @@ export function EventComments({ eventId, date }: { eventId: number; date: string
   const today = useToday()
 
   /* **Active members and the administration read them (owner, 03.10.2026), and the question is
-     asked HERE, in front of everything that reads a comment and in front of the `Resource` that
-     says a failure.**
+     asked HERE, in front of everything that reads a comment.**
    *
      Asked inside, it was never reached: `Resource` answers a fetch that failed with
      `role="alert"` BEFORE it calls its children at all (components/Resource.tsx), so the guard
@@ -68,24 +67,21 @@ export function EventComments({ eventId, date }: { eventId: number; date: string
      („nothing is asked that nobody draws"), and the question itself is the one it asks
      (`useReadsComments`).
    *
-     A reader whose fee is not known yet (the list of members is on its way) holds a box open
-     like any other part, and one whose list did not come is told so with the button that asks
-     again. What is settled without the list is settled at once: a visitor is told the sentence in
-     the first paint.
+     **The answer is the session's and needs no request of its own** (ADL, 16.10.2026): this used
+     to wait for the list of members to say whether the reader's fee stands, and held a box open
+     for as long as that took. What the session has not been told yet it reads as nobody, so a
+     reader is told the sentence below in the first paint and the comments replace it once
+     `GET /api/me` has said who he is, exactly as a visitor was always answered at once.
    *
      **This is a screen and not a lock, and it must not be mistaken for one.** The server is what
      refuses. What this keeps is the page from promising what it will not deliver, and from
      reporting that refusal as a fault. */
-  if (reads.status === 'ready' && !reads.data) {
+  if (!reads) {
     /* Nothing at all before the race, not even that the comments are for
        members. Said on a future event, the line appeared on exactly those whose
        earlier editions carry something and was missing from the rest: the
        sentence meant to hide what was said would have said which race there is
        something to read about.
-
-       Its own condition and not folded into the guard below, because the two
-       have different reasons. That one is about a box held open for data that is
-       still on its way; this one is about a sentence that needs no data.
 
        **The same sentence for everybody who does not read them**, a visitor and
        an account whose fee is not standing alike. That is this screen's reasoning
@@ -104,23 +100,7 @@ export function EventComments({ eventId, date }: { eventId: number; date: string
     )
   }
 
-  /* An event still to be run draws no section here at all, so while it is not known
-     whether this reader reads it, it must not hold a box open either: the reader would
-     watch a space that resolves into nothing, and on a broken connection an alert about
-     a section that was never going to be there. The results above say the same
-     thing the same way (EventDetail.tsx). */
-  if (date > today && reads.status !== 'ready') {
-    return null
-  }
-
-  return (
-    /* Inline for the reason the comments are: this is a part of a screen and not the
-       screen. It waits for the list of members to say whether this reader reads, and
-       then for the comments themselves, under the same name. */
-    <Resource state={reads} inline label={t('event.comments')}>
-      {() => <TheComments eventId={eventId} date={date} />}
-    </Resource>
-  )
+  return <TheComments eventId={eventId} date={date} />
 }
 
 /**

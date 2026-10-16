@@ -74,10 +74,16 @@ async function becomes(user: ReturnType<typeof setupUser>, who: string): Promise
 function SignInAs({
   role,
   memberNumber,
+  feeStands,
   label,
 }: {
   role: Role
   memberNumber: string | null
+  /** What the answer says of his fee: a yes or a no for a member, nothing for anybody with no number.
+   *  A member whose fee has lapsed is one the answer says `active: false` of (`MeApi`), and since
+   *  16.10.2026 that is the ONLY thing that makes him one on the screen: a number the list happens
+   *  not to carry says nothing. */
+  feeStands: boolean | null
   label: string
 }) {
   const { theServerSignedMeIn } = useSession()
@@ -98,7 +104,7 @@ function SignInAs({
           referralCode: null,
           referredCount: null,
           hasARecord: memberNumber !== null,
-          feeStands: null,
+          feeStands,
         })
       }}
     >
@@ -646,7 +652,12 @@ describe('a hidden profile, read by the administration, which races for nobody',
       DAY,
       <>
         <Hide who="000007" />
-        <SignInAs role="moderator" memberNumber={null} label="prijavi nalog bez člana" />
+        <SignInAs
+          role="moderator"
+          memberNumber={null}
+          feeStands={null}
+          label="prijavi nalog bez člana"
+        />
       </>,
     )
 
@@ -697,11 +708,12 @@ describe('a hidden profile, read by the administration, which races for nobody',
 /**
  * THE MEMBERS `/api/competitors` REALLY ANSWERS WITH, for every case of the `describe` that calls this.
  *
- * <p>Since 03.10.2026 a screen reads „is this reader an active member" off that list, and the file
+ * <p>Until 16.10.2026 a screen read „is this reader an active member" off that list; it reads the
+ * session now (ADL), and the list is what a profile on the page is looked up in. The file
  * `test/setup.ts` answers out of still carries members whose fee has lapsed, flagged `active:
  * false`, which the server never serves (`test/serverAnswers.ts`, `membersAsServed`). A case about a
- * member whose fee has lapsed that left the file as it is would be about a member the list names, so
- * it would be let in for the very reason it is meant to be turned away.
+ * member whose fee has lapsed that left the file as it is would put a profile on the page that the
+ * server never serves, so the list stays in front of the file.
  *
  * @returns the numbers the answer leaves out, asked after the case has started
  */
@@ -733,9 +745,9 @@ function theServerAnswersWithItsMembers(): { lapsed: () => string[] } {
  *
  * <p>**Two readers, because the two ways of not being let in are different facts.** An account with
  * no member behind it (somebody who registered and has not paid, or any account that is not the
- * administration) has no number the list could carry; a member WITH a number whose fee has run out is
- * simply not on the list the server serves (`test/mock/competitors.json`, 000032). A reader read by
- * `memberNumber !== null` lets the second one in.
+ * administration) has no number at all; a member WITH a number whose fee has run out is the one the
+ * answer about him says `active: false` of (and the list leaves out, `test/mock/competitors.json`,
+ * 000032). A reader read by `memberNumber !== null` lets the second one in.
  *
  * <p>**Each of the three screens that ask has a case of its own**, and each is one visit with the
  * reader as the only thing that changes: turned away as a visitor, signed in, and turned away still.
@@ -743,9 +755,9 @@ function theServerAnswersWithItsMembers(): { lapsed: () => string[] } {
  * screen that turned everybody away would pass here.
  */
 describe.each([
-  ['an account with no member behind it', 'competitor', null],
-  ['a member whose fee has lapsed', 'competitor', '000032'],
-] as const)('a hidden profile, read by %s', (_who, role, number) => {
+  ['an account with no member behind it', 'competitor', null, null],
+  ['a member whose fee has lapsed', 'competitor', '000032', false],
+] as const)('a hidden profile, read by %s', (_who, role, number, feeStands) => {
   const served = theServerAnswersWithItsMembers()
 
   async function visit(where: string) {
@@ -762,7 +774,12 @@ describe.each([
       DAY,
       <>
         <Hide who="000007" />
-        <SignInAs role={role} memberNumber={number} label="prijavi čitaoca" />
+        <SignInAs
+          role={role}
+          memberNumber={number}
+          feeStands={feeStands}
+          label="prijavi čitaoca"
+        />
       </>,
     )
 
@@ -805,6 +822,99 @@ describe.each([
        this: he is drawn, and he is still not a way in. */
     expect(await screen.findByText('Strahinja Vukićević')).toBeVisible()
     expect(screen.getByText('Strahinja Vukićević').closest('a')).toBeNull()
+  }, SLOW)
+})
+
+/**
+ * THE SESSION AND THE LIST OF MEMBERS SAY DIFFERENT THINGS ABOUT THE READER, AND A HIDDEN PROFILE IS
+ * READ BY WHAT THE SESSION SAYS.
+ *
+ * <p>ADL, 16.10.2026, „Činjenica „član je aktivan" dobija jedan dom na ekranu" (the record's
+ * sentence and not the owner's own words): the fact that the reader is active is the session's
+ * (`GET /api/me`, `active`), and the list the server serves is no longer asked about HIM.
+ *
+ * <p><b>The axis the two `describe`s above cannot tell apart.</b> In both the list and the session
+ * agree - the member the list leaves out is the one the answer calls lapsed, and the member it
+ * carries is the one it calls active - so a screen that asked either would pass every case. They come
+ * apart in a visit, because the list is read once and nothing drops it while the answer about the
+ * caller is the one the server gave a moment ago; each row below makes them say opposite things.
+ * Both directions, because they fail differently: a screen reading the list lets a lapsed reader into
+ * a profile the server then refuses him, and turns away a member whose fee stands.
+ *
+ * <p>**Each of the three screens that ask has a case of its own** (the profile, its page of awards and
+ * the name on a list), for the reason written above them: one expression on each, and restoring it on
+ * one leaves the other two green.
+ */
+describe.each([
+  /* 000002 is on the list and the session says his fee has lapsed: he is read as a visitor is. */
+  ['a member the list carries and the session says has lapsed', '000002', false, false],
+  /* 000032 is off the list and the session says his fee stands: he is let in. */
+  ['a member the list leaves out and the session says stands', '000032', true, true],
+] as const)('a hidden profile, read by %s', (_who, number, feeStands, opens) => {
+  const served = theServerAnswersWithItsMembers()
+
+  async function visit(where: string) {
+    /* That the two really disagree is part of the case: the file's flag and the list are what
+       `membersAsServed` puts in front of the disc, and the row says what the session claims. */
+    expect(served.lapsed().includes(number), 'the list and the session say the same').toBe(feeStands)
+
+    const user = setupUser()
+    const { router } = renderAt(
+      where,
+      'visitor',
+      null,
+      undefined,
+      DAY,
+      <>
+        <Hide who="000007" />
+        <SignInAs role="competitor" memberNumber={number} feeStands={feeStands} label="prijavi čitaoca" />
+      </>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'sakrij 000007' }))
+
+    return { user, router }
+  }
+
+  it.each([
+    ['the profile', HIM],
+    ['the page of awards', `${HIM}/priznanja`],
+  ])(`${opens ? 'opens' : 'does not open'} %s`, async (_what, where) => {
+    const { user, router } = await visit('/sr')
+
+    /* Turned away first, as a visitor is, so the sign in is the only thing that changes. */
+    await router.navigate(where)
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
+
+    await user.click(screen.getByRole('button', { name: 'prijavi čitaoca' }))
+    await router.navigate(where)
+
+    if (opens) {
+      expect(
+        await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ }),
+      ).toBeVisible()
+      expect(router.state.location.pathname).toBe(where)
+    } else {
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/sr')
+      })
+      expect(screen.queryByRole('heading', { level: 1, name: /Strahinja Vukićević/ })).toBeNull()
+    }
+  }, SLOW)
+
+  it(`leaves a name on a list as ${opens ? 'a way in' : 'words'}`, async () => {
+    const { user } = await visit('/sr/takmicari')
+
+    expect((await screen.findByText('Strahinja Vukićević')).closest('a')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'prijavi čitaoca' }))
+
+    /* Read off the same card after the sign in, so a screen that stopped drawing him cannot satisfy
+       either half. */
+    expect(await screen.findByText('Strahinja Vukićević')).toBeVisible()
+    expect(screen.getByText('Strahinja Vukićević').closest('a') !== null).toBe(opens)
   }, SLOW)
 })
 

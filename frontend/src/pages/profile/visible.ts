@@ -101,12 +101,13 @@ export type Readable =
  * fee has lapsed are signed in, and read a hidden profile exactly as a visitor does, which is to say
  * not at all; the administration reads it whether or not it races, and so does every member whose
  * fee is standing. The two questions are worked out where the reader is known, as
- * `isActiveMemberOrAdministration(role, memberNumber, served)` (`roles/activeMemberOrAdministration.ts`,
+ * `isActiveMemberOrAdministration(role, signedIn)` (`roles/activeMemberOrAdministration.ts`,
  * the screen's copy of what `ActiveMemberOrAdministration.java` decides on the server): the role names
  * the administration, whose own number and fee do not matter and who may have no number at all (PDL
- * P21), and the member number is looked up on the list the server serves, which is the members whose
- * fee is standing - the very list the screens below are drawn from, so what a screen believes about the
- * reader and what the list carries for him come from one answer.
+ * P21), and whether the reader is an active member is the session's flag (`GET /api/me`, `active`),
+ * the one home of that fact on the screen since 16.10.2026 (ADL). It used to be looked up on the list
+ * the server serves; that list is still what the question about ANOTHER member - whose profile this
+ * is - is asked of, below in `profileFor`.
  *
  * **A boolean, and not the member number or the session's own object.** A number cannot be handed
  * in by a call site again without the compiler saying so, which is the only thing that keeps a

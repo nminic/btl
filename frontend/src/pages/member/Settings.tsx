@@ -1,7 +1,10 @@
+import { Link } from 'react-router'
+import { MEMBERSHIP_ADDRESS } from '../../app/routes'
 import { Resource } from '../../components/Resource'
 import { useCompetitors } from '../../data/useResource'
 import { useTheme } from '../../app/useTheme'
 import type { Theme } from '../../app/themeContext'
+import { Sentence } from '../../i18n/Sentence'
 import { useI18n } from '../../i18n/useI18n'
 import { MEMBERS, recordsOf } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
@@ -48,11 +51,13 @@ const THEMES: Theme[] = ['dark', 'light']
  * što ga čini vidljivim ili ga uključuje u ligu: sliku, biografiju, skrivanje profila". The three
  * panels that are left out are the three that entry names, and a sentence says they open when his
  * fee is recorded.</li>
- * <li><b>A member whose fee has lapsed</b> is drawn the theme and nothing else: his data and his
+ * <li><b>A member whose fee has lapsed</b> is drawn the theme and one sentence: his data and his
  * password are answered 404 (the addition of 11.10.2026: „izmena podataka (PUT /api/me) i lozinke
  * (PUT /api/me/password) mu daje 404"), and so are the picture, the biography and the switch,
  * which this screen did not draw him before either - he is on no row of the public list they are
- * drawn from. That is now said by the shape rather than by that accident.</li>
+ * drawn from. That is now said by the shape rather than by that accident. The sentence, since
+ * 16.10.2026, says his data and his password open once his fee is renewed, with a link to the page
+ * he renews it on ({@link WhatOpensWhenTheFeeIsRenewed}).</li>
  * </ul>
  *
  * <p><b>The server is the authority in all three and this is only what is worth offering.</b> A
@@ -134,6 +139,18 @@ export function Settings() {
 
       {who.standing === 'neverPaid' && <TheDataOfSomebodyWhoHasNotPaid account={who.account} />}
 
+      {/* **THE ONE SENTENCE A MEMBER WHOSE FEE HAS LAPSED IS TOLD**, since 16.10.2026 (PDL P8, the
+          entry „Šta sme neplaćen član", the decision of that day, chosen by the owner between
+          offered outcomes; the sentence is the record's and not his own words): „Članu kome je
+          istekla članarina strana Podešavanja dobija jednu rečenicu da se podaci i lozinka otvaraju
+          kad članarina bude obnovljena, uz vezu na stranu za obnovu." Rejected in the same entry:
+          a page with only the choice of theme and no sentence. The words are the assistant's and the
+          owner changes them on QA (PDL, same entry). Drawn by the flag the session carries
+          (`standing === 'lapsed'`) and by nothing else, so a member whose fee stands and somebody who
+          never paid are not told it: the second has a sentence of his own below, and the first has
+          nothing to be told. */}
+      {who.standing === 'lapsed' && <WhatOpensWhenTheFeeIsRenewed />}
+
       {/* Outside the block above, because it asks nothing of the member record: a
           password belongs to the ACCOUNT, and an account that races and one that only
           moderates have one each. It is drawn after the profile and before the
@@ -202,6 +219,27 @@ export function Settings() {
         </Resource>
       )}
     </div>
+  )
+}
+
+/**
+ * THE SENTENCE FOR A MEMBER WHOSE FEE HAS LAPSED, with the way to the page he renews it on.
+ *
+ * <p>The way is the page he pays on (`MEMBERSHIP_ADDRESS`, the same address `NotAMemberYet` sends
+ * somebody who has not paid to), and it stands INSIDE the sentence as a link, so a screen reader
+ * hears where it goes without a label repeating what the sentence says (`i18n/Sentence.tsx`, the
+ * same arrangement the club on a profile uses). It is named by what the menu calls it
+ * (`nav.membership`), so the link and the entry in the menu cannot be two names for one page.
+ */
+function WhatOpensWhenTheFeeIsRenewed() {
+  const { locale, t } = useI18n()
+
+  return (
+    <p className="member__note">
+      <Sentence text={t('settings.opensWhenTheFeeIsRenewed')} slot="renewal">
+        <Link to={`/${locale}/${MEMBERSHIP_ADDRESS}`}>{t('nav.membership')}</Link>
+      </Sentence>
+    </p>
   )
 }
 
