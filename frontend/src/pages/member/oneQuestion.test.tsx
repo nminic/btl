@@ -15,6 +15,7 @@ import {
 } from '../../test/serverAnswers'
 import { aNeverPaidRecord } from '../../test/neverPaid'
 import { SLOW } from '../../test/slow'
+import { HOW_LONG_THE_DOOR_WAITS } from '../../session/useTheServersSession'
 import { sources, WHOLE_PORTAL } from '../../test/sources'
 
 /**
@@ -801,6 +802,14 @@ function theScreenIsWaiting(): HTMLElement[] {
 
 describe('while the server has not said who is asking', () => {
   waitsForHalfOfACase()
+
+  /* SHORTER STILL than half of a case: ten seconds is the bound after which the portal stops waiting by
+     itself (`HOW_LONG_THE_DOOR_WAITS`), so a screen that waits for ever for the wrong reason was let go by
+     the bound and a wait of the same ten seconds saw the sign in arrive and passed. Measured on the first
+     series of mutations of this work (`session/beforeTheServerHasSaid.test.tsx` says the rest). */
+  beforeEach(() => {
+    configure({ asyncUtilTimeout: HOW_LONG_THE_DOOR_WAITS / 2 })
+  })
 
   /**
    * THE ELEVEN SCREENS SAY NOTHING ABOUT THE READER UNTIL THE SERVER HAS SAID WHO HE IS (owner,

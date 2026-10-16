@@ -6,6 +6,7 @@ import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { answeredWith, forgetEveryCookie, serverThat } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
+import { HOW_LONG_THE_DOOR_WAITS } from './useTheServersSession'
 import { useSession } from './useSession'
 
 /**
@@ -32,12 +33,16 @@ import { useSession } from './useSession'
  * keeps the first from being „the session names nobody" read as a wait, which would make a visitor
  * wait for ever for an answer he already has.
  *
- * <p><b>Every wait is given half of the time a case has</b>, so a case that fails fails with the
- * words of its assertion and never by the case's own clock (the same arrangement as
- * `pages/admin/saveWhileSaving.test.tsx`, and the floor at the foot of this file holds it).
+ * <p><b>Every wait is given half of the time the portal itself waits for the answer</b>
+ * (`HOW_LONG_THE_DOOR_WAITS`), and that is shorter than the half of a case that
+ * `pages/admin/saveWhileSaving.test.tsx` uses, for a reason measured on the first series of
+ * mutations: a wait of ten seconds is the bound after which the portal stops waiting by itself, so
+ * a screen that waits for ever for the wrong reason was let go by the bound, and a case waiting
+ * the same ten seconds saw the sentence arrive and passed. Shorter than the bound, a wait that
+ * never succeeds ends in its assertion's own words; the floor at the foot of this file holds it.
  */
 
-configure({ asyncUtilTimeout: SLOW / 2 })
+configure({ asyncUtilTimeout: HOW_LONG_THE_DOOR_WAITS / 2 })
 
 /** A past event with comments the portal serves, so the section under it has something to say. */
 const RAN = '/sr/kalendar/fruskogorski-maraton-2010'
@@ -273,7 +278,9 @@ describe('the sentence under the comments of a race that has been run', { timeou
 
     renderAt(RAN, 'visitor', null, undefined, null, <SignsIn />)
 
-    expect(await screen.findByText(FOR_MEMBERS)).toBeVisible()
+    await screen.findByRole('heading', HEADING)
+
+    expect(screen.getByText(FOR_MEMBERS)).toBeVisible()
     expect(waitingOutLoud(sr.event.comments)).toHaveLength(0)
   })
 
@@ -296,10 +303,11 @@ describe('the sentence under the comments of a race that has been run', { timeou
 })
 
 describe('what is waited for, and how long', () => {
-  it('is given half of the time a case has, so that a case never fails by its clock', () => {
-    /* Take the `configure` at the head of the file away and every wait is `SLOW` for a case that
-       is also `SLOW`, and a case whose assertion never comes ends by `Test timed out` in the
-       words of the clock: a mutation run cannot tell that from a caught one. */
+  it('is shorter than the bound after which the portal stops waiting by itself', () => {
+    /* Take the `configure` at the head of the file away and every wait is longer than the bound,
+       so a reader the portal wrongly keeps waiting is let go by the bound at the very moment the
+       case gives up, and the case passes. Strictly shorter, and by a margin that is not a race. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(HOW_LONG_THE_DOOR_WAITS)
     expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
   })
 })
