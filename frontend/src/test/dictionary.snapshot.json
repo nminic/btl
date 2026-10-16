@@ -1621,7 +1621,7 @@
     "deleteNote": "Napomena o brisanju",
     "deleteNotePlaceholder": "Zašto je sklonjen, za moderatore. Sme da ostane prazno.",
     "confirmDelete": "Obriši komentar",
-    "pictureAlt": "Slika koju je poslao {who}",
+    "pictureAlt": "Slika koju je poslao {who}, sa uokvirenim delom koji će se videti",
     "pictureUnavailable": "Slika nije dostupna: fajl se ne može učitati, pa se ovaj red ne može odobriti dok se slika ne vidi. Odbijanje i dalje radi.",
     "resultReturned": "Rezultat je vraćen",
     "teamReturned": "Predlog tima je vraćen",
