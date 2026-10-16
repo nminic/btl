@@ -791,10 +791,11 @@ describe('the sweep, and a picture that arrives while it is out', () => {
  * he asks again with „Pokušaj ponovo"; the cards come back as NEW elements, and the one whose picture had
  * arrived before the press now says its file cannot be drawn. The walk, released, reaches that card.
  *
- * <p>Two cards stand in the walk besides the one it is parked on, and they are different on purpose: the
- * one that fails again is Neda, behind the parked card, and the card refused is Zora, whose picture had
- * failed before the press and so is not in the walk at all. A card that is refused and in the walk is the
- * other finding of the same review (PENDING), and this case does not ask about it.
+ * <p>The cards are different on purpose. The one that fails again is Neda, behind the parked card; Mira
+ * stands behind Neda with her picture arrived and unchanged, so a walk that stopped at Neda instead of
+ * leaving her would be seen; and the card refused is Zora, whose picture had failed before the press and so
+ * is not in the walk at all. A card that is refused and in the walk is the other finding of the same review
+ * (PENDING), and this case does not ask about it.
  */
 describe('the sweep, and a picture that fails while it is out', () => {
   it('sends nothing in the name of a card whose picture had arrived at the press and has failed since, and settles the rest', async () => {
@@ -807,14 +808,14 @@ describe('the sweep, and a picture that fails while it is out', () => {
 
         /* The first read is the screen's own, the second is the one after the refusal and it fails, the
            third is the one „Pokušaj ponovo" asks. */
-        return read === 2 ? answeredWith(500) : asTheList([petar, zora(), neda()])
+        return read === 2 ? answeredWith(500) : asTheList([petar, zora(), neda(), mira()])
       }
 
       return path === held.path
         ? held.answer
         : path === decisionPath('25')
           ? refused(THE_PICTURE_WAS_CHANGED, 409)
-          : path === decisionPath('21')
+          : [decisionPath('21'), decisionPath('23')].includes(path)
             ? did()
             : null
     })
@@ -824,8 +825,10 @@ describe('the sweep, and a picture that fails while it is out', () => {
 
       openQueue()
       await screen.findByRole('list', { name: /Čeka/ })
-      /* Neda's picture arrived BEFORE the press, so she is in the walk; Zora's had failed, so she is not. */
+      /* Neda's and Mira's pictures arrived BEFORE the press, so they are in the walk; Zora's had failed,
+         so she is not. */
       thePictureArrives(cardOf('Neda Nedić'))
+      thePictureArrives(cardOf('Mira Mirić'))
       thePictureFails(cardOf('Zora Zorić'))
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
@@ -838,24 +841,31 @@ describe('the sweep, and a picture that fails while it is out', () => {
       await user.click(await screen.findByRole('button', { name: /^Pokušaj ponovo/ }))
       await screen.findByRole('list', { name: /Čeka/ })
 
-      /* THE CARDS ARE NEW ELEMENTS and Neda's says her file cannot be drawn. The sentence on her card is
-         what the moderator reads; without it the case would say nothing about the walk. */
+      /* THE CARDS ARE NEW ELEMENTS: Mira's picture arrives again and Neda's says her file cannot be
+         drawn. The sentence on her card is what the moderator reads; without it the case would say
+         nothing about the walk. */
+      thePictureArrives(cardOf('Mira Mirić'))
       thePictureFails(cardOf('Neda Nedić'))
       expect(cardOf('Neda Nedić').getByText(THE_PICTURE_IS_NOT_AVAILABLE)).toBeVisible()
 
       held.release()
       await sweepIsOver()
 
-      /* The biography, which the walk was parked on, and the refusal he sent, and NOTHING for Neda: the
-         route would have taken it (`did()`), which is why the count below is 1 and not 2. */
+      /* The biography, which the walk was parked on, the refusal he sent, and Mira, who stands behind
+         the card that failed; and NOTHING for Neda: the route would have taken it (`did()`), which is
+         why the count below is 2 and not 3. */
       expect(decisionsIn(asked)).toEqual([
         { path: decisionPath('22'), body: { approved: true, reason: '' } },
         {
           path: decisionPath('25'),
           body: { approved: false, reason: 'Fajl je nestao.', seenPhotoId: 14, seenCrop: ZORA_CROP },
         },
+        {
+          path: decisionPath('23'),
+          body: { approved: true, reason: '', seenPhotoId: 12, seenCrop: MIRA_CROP },
+        },
       ])
-      expect(screen.getByText('Rešena je 1 stavka.')).toBeVisible()
+      expect(screen.getByText('Rešene su 2 stavke.')).toBeVisible()
       /* Left standing, visible, with the sentence that says why. */
       expect(screen.getByRole('heading', { name: 'Neda Nedić' })).toBeVisible()
       expect(cardOf('Neda Nedić').getByText(THE_PICTURE_IS_NOT_AVAILABLE)).toBeVisible()
