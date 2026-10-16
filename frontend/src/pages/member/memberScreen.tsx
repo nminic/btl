@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { useSession } from '../../session/useSession'
+import { NotAMemberYet } from './NotAMemberYet'
 import { NotRacing } from './NotRacing'
 import { SignedOut } from './SignedOut'
 
@@ -31,43 +32,60 @@ import { SignedOut } from './SignedOut'
  * `theServer.ts` reading the field and `SessionProvider` writing it; a sentence waiting
  * for a day that has already come is a job nobody is doing.
  *
- * <p><b>WHAT THE THIRD ANSWER NOW HOLDS, and one of the three is a boundary rather than
- * a decision.</b> It is „the session names no member", and there are three ways to be
- * there: an account that races for nobody, which is administration and is permanent; a
+ * <p><b>AND UNTIL 11.10.2026 SOMEBODY WHO HAD REGISTERED AND NOT PAID WAS IN THE THIRD ANSWER
+ * AS WELL, which was the same fault one door along, and it is the reason this hook has a
+ * fourth answer.</b> The third was „the session names no member", and there were three ways to
+ * be there: an account that races for nobody, which is administration and is permanent; a
  * server saying something this portal does not know, which must land somewhere and lands
  * here; and <b>somebody who has registered and has not been given a number</b> (ADL A44,
  * owner 11.09.2026: „Osoba je `competitor` od registracije, a clan postaje kad dobije
- * broj"). The third of those is told „uz ovaj nalog ne stoji takmicarski zapis", and for
- * him that sentence is not quite true - he has a record, and what he has not got is a
- * number.
+ * broj"). The third of those was told „uz ovaj nalog ne stoji takmicarski zapis", which was
+ * not true of him - he has a record, and what he has not got is a number. This file said it
+ * was „worth a word to the owner and not a fourth state", on the strength of PDL 19.09.2026
+ * („NIJE otvoreno pitanje i ne trazi trece stanje"). **That entry was about what he may DO,
+ * and the owner chose what he may do on 10.10.2026 (PDL P8, the entry „Šta sme neplaćen
+ * član", chosen between offered outcomes; the sentence is the record's and not his own
+ * words): „Sme: izbor kategorije i plaćanje, lozinku, adresu pošte i svoje podatke za
+ * evidenciju i majicu. Ne sme ništa što ga čini vidljivim ili ga uključuje u ligu".** What he is
+ * TOLD was a separate matter and it was a fault: the agent working on P8U found on 10.10.2026,
+ * and it was checked in the code, that a member who had registered met „Ovaj deo je za
+ * takmicare" on all eleven screens, „Moja clanarina" among them, and was shown a payment slip
+ * nowhere. Registration hands out no number (30.07.2026), and on QA the owner was the only
+ * competitor, so from 15.10.2026 every new member is this member.
  *
- * <p><b>He is nonetheless in the right place, and that is a decision rather than this
- * hook's guess.</b> PDL, 19.09.2026, deriving it from what was already written rather
- * than asking again: registered and never paid „NIJE otvoreno pitanje i ne trazi trece
- * stanje", and what he may do is „vidi javne strane (kalendar, rang liste, tudje
- * profile) a ne moze nista da uradi". That is what this answer is: the public portal, and
- * one way back to it. So the screen is settled and only the SENTENCE on it is loose,
- * which is worth a word to the owner and not a fourth state.
+ * <p><b>SO THERE ARE FOUR ANSWERS, and the hook is the only place that tells them apart:</b>
+ * nobody signed in; a member (whose fee stands or has lapsed, a flag on the answer); somebody
+ * who has registered and has not paid; and an account with no record. Two screens are drawn
+ * for the third of them instead of telling him, and say so by asking
+ * {@link useScreenForTheUnpaidToo}: „Moja clanarina", where he pays and chooses his category, and
+ * the settings, where he changes his data and his password. The other nine ask
+ * {@link useMemberScreen} and are told, by {@link NotAMemberYet}, that the rest opens when his
+ * fee is recorded and where to go to pay it.
  *
- * <p><b>AND ONE THING THIS HOOK DOES NOT DO, named so that a reader does not take its
- * silence for a rule.</b> PDL P8, owner 19.09.2026: „Zelim da od svih mesta clan kojem je
- * istekla clanarina moze da pristupa samo strani za obnovu clanarine, dok ga verifikator
- * ne odobri." This hook does not keep that, and it is written here rather than left to be
- * noticed.
+ * <p><b>The member whose fee has LAPSED is a member here, not a fifth answer, and that is
+ * deliberate.</b> PDL P8, 11.10.2026 (the addition to „Šta sme neplaćen član", the owner's choice
+ * between offered outcomes): that list of what an unpaid member may do holds for somebody who
+ * never paid and not for somebody whose fee has lapsed, who „dopire samo do obnove i svog
+ * profila" - the record's words, and the data and the password of such a member are answered 404
+ * while his choice of category, his payment and his own profile stay open. What differs for him
+ * is therefore two forms of the settings screen, not the screen: he has a number, so every screen
+ * asked by {@link useMemberScreen} draws for him exactly as it did, and the flag on the member
+ * answer is what the settings read.
  *
- * <p><b>It is not this hook's to keep, by that decision's own words</b>, which name where
- * the refusal goes: „prijava uspeva, a odbijaju vrata svake pojedinacne rute". The door of
- * each route on the server, and the sign in deliberately untouched. Measured 22.09.2026
- * that no route keeps it yet.
- *
- * <p><b>And it could not be kept here even if it were</b>, which is a fact about the
- * answer rather than an argument: `GET /api/me` answers a member whose fee has lapsed -
- * deliberately, it is half of why {@code MeApi} exists beside {@code CompetitorApi} - but
- * it does not answer WHETHER the fee is standing. `c.active` is on no component of
- * {@code MeApi.MyOwnRecord}, and the only `active` in that query counts who he brought in.
- *
- * <p>So this hook opens all eleven screens to a lapsed member and to a standing one alike,
- * and <b>it cannot tell them apart</b>.
+ * <p><b>WHAT THIS HOOK DID NOT SAY IS KEPT BY THE DOORS OF THE SERVER, and that is a decision
+ * of the owner's rather than this hook's omission.</b> PDL P8, owner 19.09.2026: „Zelim da od
+ * svih mesta clan kojem je istekla clanarina moze da pristupa samo strani za obnovu clanarine,
+ * dok ga verifikator ne odobri." — and the same decision names where the refusal goes:
+ * „prijava uspeva, a odbijaju vrata svake pojedinacne rute". The door of each route on the
+ * server, and the sign in deliberately untouched. **This said, until 11.10.2026, that „no route
+ * keeps it yet" (measured 22.09.2026), and it is corrected rather than deleted because a
+ * sentence saying a rule is kept nowhere is an invitation to keep it here.** The doors of the
+ * writes are closed by P8U (PR 522): the writes that are an act of his own in the league are
+ * answered 404 to somebody who has not paid and to a member whose fee has lapsed, with the number
+ * and the bytes an account with no member is answered, and the author of that change measured it
+ * route by route. What this hook does is therefore not enforcement and must not become it: a
+ * refusal drawn here is a second home for a rule whose home is the route, and the screens ask the
+ * server and say what it answered.
  *
  * <p><b>THIS SAID HE „CAN NOW REACH Moja clanarina, WHICH IS THE PAGE HE RENEWS ON", AND
  * THAT WAS FALSE.</b> It was written from reasoning rather than from a measurement - the
@@ -104,14 +122,17 @@ import { SignedOut } from './SignedOut'
  * „draws the whole renewal for the member the public list does not carry"). His own
  * profile was the one left turning him away until 10.10.2026.
  *
- * <p><b>What he had before 24.09.2026 and what he has now, counted rather than
- * summarised.</b> Before: the same sentence on all eleven, with a way home. Now, since
- * his own profile opened (10.10.2026, PDL P8a): <b>seven</b> screens that really work, his
- * own profile among them, <b>none</b> left that merely fail to strand him or turn him away
- * in silence, and four that answer him the way they answer anybody not entitled to them.
- * It was six, one and four from 25.09.2026 until that day. This paragraph has been tightened
- * five times now, and each time by a measurement rather than by rereading it - which is the
- * whole reason the sentence at the top of it was wrong in the first place.
+ * <p><b>What he had before 24.09.2026 and what he had on 10.10.2026, counted rather than
+ * summarised - and NOT counted again since the doors of the writes closed.</b> Before: the
+ * same sentence on all eleven, with a way home. On 10.10.2026, once his own profile opened
+ * (PDL P8a): <b>seven</b> screens that really work, his own profile among them, <b>none</b>
+ * left that merely fail to strand him or turn him away in silence, and four that answer him the
+ * way they answer anybody not entitled to them. It was six, one and four from 25.09.2026 until
+ * that day. That count was taken while every write still accepted him, so it says what the
+ * SCREENS do and not what the server then does with a press; it has not been taken again, and a
+ * reader who needs it should measure rather than add. This paragraph has been tightened five
+ * times now, and each time by a measurement rather than by rereading it - which is the whole
+ * reason the sentence at the top of it was wrong in the first place.
  *
  * <p><b>What it must NOT say is that nobody is signed in</b>, which is what those eleven
  * screens said. Somebody is: the cookie is in the browser, the header knows their number
@@ -123,8 +144,8 @@ import { SignedOut } from './SignedOut'
  * these eleven screens are on that list and six are not, and a review put the old question
  * back into all six with the package staying green. „Which screens belong to one person"
  * cannot be answered by an address, so `pages/member/oneQuestion.test.tsx` asks the module
- * graph instead - which modules of the portal name `SignedOut` - and requires the answer to
- * be this file and nothing else.
+ * graph instead - which modules of the portal name `SignedOut`, `NotRacing` and
+ * `NotAMemberYet` - and requires the answer to be this file and nothing else.
  *
  * <p><b>And that catches ONE of the two ways back, which is why the walk beside it is not
  * spare.</b> A screen that writes the sentence for itself again has to name `SignedOut`, and
@@ -142,18 +163,70 @@ export type MemberScreen =
   /** And what to draw instead, for one that may not. */
   | { memberNumber: null; instead: ReactElement }
 
-export function useMemberScreen(): MemberScreen {
+/**
+ * The same question for the two screens that are drawn for somebody who has not paid: who is
+ * reading, and in which of the four ways.
+ *
+ * <p>`standing` is the whole answer and the rest follows from it, so a screen that reads the
+ * number off a `neverPaid` or the account off a member does not compile: a member has a number,
+ * somebody who has not paid has an account and no number, and nobody else has either to draw
+ * from. `instead` is what to draw for the fourth way and for nobody signed in, exactly as in
+ * {@link MemberScreen}.
+ */
+export type ScreenForTheUnpaidToo =
+  /** A member, and whether his fee stands. A flag and not two kinds of person, for the reason
+   *  written on {@link useMemberScreen}. */
+  | { standing: 'standing' | 'lapsed'; memberNumber: string; instead: null }
+  /** Somebody who registered and has not paid: a record, no number. His account is the key
+   *  the screen asks the server for his data under (`pages/member/useMyData.ts`). */
+  | { standing: 'neverPaid'; memberNumber: null; account: number; instead: null }
+  /** Nobody signed in, or an account the league keeps no record of. */
+  | { standing: null; memberNumber: null; instead: ReactElement }
+
+/**
+ * THE QUESTION ASKED BY THE TWO SCREENS THAT ARE OPEN TO SOMEBODY WHO HAS NOT PAID, and it is
+ * the only place that tells the four apart.
+ *
+ * <p>Everything {@link useMemberScreen} answers is worked out from this, so the two cannot
+ * disagree about who is a member: that one folds the unpaid into „draw the sentence", this one
+ * hands him through.
+ */
+export function useScreenForTheUnpaidToo(): ScreenForTheUnpaidToo {
   /* THE SAME FIELD THE HEADER READS, AND DELIBERATELY NOT THE MEMBER NUMBER BESIDE IT.
-     `signedIn` is worked out from the only two facts there are and cannot drift away
-     from either (session/context.ts); the member number is one of those two facts and
+     `signedIn` is worked out from the only facts there are and cannot drift away
+     from either (session/context.ts); the member number is one of those facts and
      answers a narrower question than the one being asked here. */
   const { signedIn } = useSession()
 
   if (signedIn === null) {
-    return { memberNumber: null, instead: <SignedOut /> }
+    return { standing: null, memberNumber: null, instead: <SignedOut /> }
   }
 
-  return signedIn.as === 'member'
-    ? { memberNumber: signedIn.memberNumber, instead: null }
-    : { memberNumber: null, instead: <NotRacing /> }
+  if (signedIn.as === 'member') {
+    return {
+      standing: signedIn.feeStands ? 'standing' : 'lapsed',
+      memberNumber: signedIn.memberNumber,
+      instead: null,
+    }
+  }
+
+  return signedIn.as === 'neverPaid'
+    ? { standing: 'neverPaid', memberNumber: null, account: signedIn.account, instead: null }
+    : { standing: null, memberNumber: null, instead: <NotRacing /> }
+}
+
+export function useMemberScreen(): MemberScreen {
+  const who = useScreenForTheUnpaidToo()
+
+  /* THE SENTENCE FOR SOMEBODY WHO HAS NOT PAID IS DRAWN HERE AND NOWHERE ELSE, the same
+     arrangement `SignedOut` and `NotRacing` have: the nine screens that ask this hook cannot
+     say it for themselves, and `oneQuestion.test.tsx` requires that the only module naming
+     `NotAMemberYet` is this one. */
+  if (who.standing === 'neverPaid') {
+    return { memberNumber: null, instead: <NotAMemberYet /> }
+  }
+
+  return who.standing === null
+    ? { memberNumber: null, instead: who.instead }
+    : { memberNumber: who.memberNumber, instead: null }
 }

@@ -1123,7 +1123,15 @@
     "balance": "na balansu",
     "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu i ne prenosi se drugom članu.",
     "feeExemptNoRenewal": "Oslobođen si plaćanja članarine, pa nema šta da uplatiš.",
-    "amountLabel": "Iznos"
+    "amountLabel": "Iznos",
+    "notYetTitle": "Ovaj deo se otvara kad članarina bude evidentirana",
+    "notYetText": "Registrovao si se, ali članarina još nije evidentirana, pa ti ovaj deo još nije otvoren. Uplatu i izbor kategorije obavljaš na strani Moja članarina.",
+    "notPaidYet": "Članarina ti još nije evidentirana, pa još nemaš članski broj. Dobijaš ga kad moderator evidentira tvoju uplatu.",
+    "firstPayment": "Uplata članarine za {season}.",
+    "firstPaymentOpen": "Uplata je otvorena.",
+    "firstRenew": "Podatke za uplatu vidiš u nastavku. Čim uplata stigne, moderator je potvrđuje i dobijaš članski broj.",
+    "recognisedByName": "Pošto još nemaš članski broj, uplata nema poziv na broj. Prepoznaje se po imenu, a moderator je potvrđuje ručno.",
+    "ipsNoteNoReference": "Skeniraj kod u aplikaciji svoje banke. Iznos i primalac su već upisani."
   },
   "review": {
     "title": "Red za proveru rezultata",
@@ -1461,6 +1469,7 @@
     "privacy": "Privatnost",
     "hideProfile": "Sakrij moj profil od svakoga ko nije aktivan član ni administracija",
     "hideProfileNote": "Ime ostaje u tabelama i na rang listama, jer bi bez toga zajedničko rangiranje izgubilo smisao. Skriva se samo tvoja profilna strana, i to samo od posetilaca koji nisu prijavljeni i od prijavljenih naloga bez aktivne članarine.",
+    "opensWithTheFee": "Slika, biografija i skrivanje profila otvaraju se kad tvoja članarina bude evidentirana.",
     "themeLabel": "Tema",
     "themeDark": "Tamna",
     "themeLight": "Svetla"  },

@@ -26,8 +26,13 @@ import { isStaff, type Role } from './context'
  *
  * <p>`/api/competitors` ends `where c.active` (owner, 13.09.2026: a member whose fee has lapsed
  * is not on that list at all), so „he is on it" is „he is active", answered by the very flag the
- * server reads, `competitor.active`. `GET /api/me` does not carry the flag, which is why it is
- * asked of the list and not of the session.
+ * server reads, `competitor.active`. **`GET /api/me` did not carry the flag when this was written, and
+ * it does since 11.10.2026** (`MeApi.MyOwnRecord.active`, kept by the session as `signedIn.feeStands`
+ * and read by the payment page and the settings). The two doors read one column and say one thing.
+ * This module still asks the list, because the screens that ask it are drawn from that list and what
+ * a screen believes about the reader and what the list carries for him then come from one answer;
+ * moving them onto the session's flag is a change nobody has asked for (my reasoning, not a
+ * decision).
  *
  * <p><b>What that costs, said rather than left to be found:</b> the list is read once per visit
  * and nothing drops it when the reader renews his own fee, so a member who becomes active during

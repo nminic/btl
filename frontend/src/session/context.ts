@@ -356,17 +356,36 @@ export type PictureSent = { row: string; picture: string; crop: Crop; member: st
  * of his own - his profile, his settings and his picture among them. Owner, 24.09.2026:
  * „Trenutno ne mogu cak ni svojim profilom da se igram, podesavam, prilozim slika."
  *
- * <p><b>So the two arms no longer divide „the prototype" from „a real session", and that
+ * <p><b>So the arms no longer divide „the prototype" from „a real session", and that
  * is the point.</b> They divide somebody the league has given a number from somebody it
  * has not, which is a fact about the person rather than about how he got in - a moderator
- * and a superadmin are the second arm for good (PDL P21), and so is anybody who has
- * registered and has no number yet (ADL A44).
+ * and a superadmin have no number for good (PDL P21), and so has anybody who has
+ * registered and has not paid yet (ADL A44).
+ *
+ * <p><b>THREE ARMS SINCE 11.10.2026, AND THE THIRD IS NOT A SPLIT OF THE SECOND FOR THE
+ * SAKE OF A WORD.</b> Until that day „has no number" was one arm, and it held two people
+ * who are not alike: an administrator, who races for nobody and has nothing of his own to be
+ * told about, and somebody who registered and has not paid, who has a record, may pay, may
+ * choose his category and may change his password and his data (PDL P8, „Šta sme neplaćen
+ * član", 10.10.2026) and was being told „uz ovaj nalog ne stoji takmičarski zapis". The
+ * second arm is for the first of them and the new one is for the second. A member whose fee
+ * has LAPSED is not a fourth arm: he has a number and so is the first, with a flag on it, and
+ * what a screen does differently for him is decided by the flag and nowhere else.
  */
 export type SignedIn =
   /**
    * SOMEBODY THE LEAGUE HAS GIVEN A NUMBER, which is what „a member" means (ADL A44).
    *
    * Every screen that draws a member reads through this, so it wins where both are set.
+   *
+   * **`feeStands` IS WHETHER HIS FEE STANDS NOW, and it is on the arm and not beside it because
+   * it is only a question about somebody who has a number.** A member whose fee has lapsed is
+   * answered by `GET /api/me` like any other (`MeApi`), and since 11.10.2026 that answer says
+   * which he is; the number is what makes him a member and this flag is what makes him a member
+   * the server answers 404 on two of his forms (PDL P8, the addition of 11.10.2026). `true`
+   * where the answer did not say, because the flag is only ever acted on to TAKE something away
+   * and a word the portal was not told is a word it may not act on (`session/theServer.ts`);
+   * the server stays the authority either way.
    *
    * **Where the number comes from, said as a list so the next sentence about it can be
    * checked rather than believed:** `GET /api/me`, through `session/theServer.ts`, and
@@ -384,15 +403,34 @@ export type SignedIn =
    * five cases. The list above is in the same danger and is held the same way, by cases
    * rather than by this sentence.
    */
-  | { as: 'member'; memberNumber: string }
+  | { as: 'member'; memberNumber: string; feeStands: boolean }
   /**
-   * SOMEBODY SIGNED IN WHOM THE LEAGUE HAS GIVEN NO NUMBER, which is an account and
-   * nothing more.
+   * SOMEBODY WHO REGISTERED AND HAS NOT PAID, which is a record and no number (ADL A44, owner
+   * 11.09.2026: „Osoba je `competitor` od registracije, a clan postaje kad dobije broj").
    *
-   * <b>A permanent state rather than a moment on the way to the arm above</b>, and that
-   * is why it is an arm and not a wait: a moderator and a superadmin have no competitor
-   * record at all (PDL P21, owner 14.09.2026), and somebody who has registered and has
-   * not been given a number has a record and no number (ADL A44).
+   * **He is not a member and he is not nobody, and the portal said the second of those to him
+   * until 11.10.2026.** He has a record of his own, so „uz ovaj nalog ne stoji takmicarski
+   * zapis" was not true of him; and what he may do is written down (PDL P8, the entry „Šta sme
+   * neplaćen član", 10.10.2026, which the owner chose between offered outcomes - the sentence is
+   * the record's and not his own words): „Sme: izbor kategorije i plaćanje, lozinku, adresu
+   * pošte i svoje podatke za evidenciju i majicu. Ne sme ništa što ga čini vidljivim ili ga
+   * uključuje u ligu". So he is told that the rest opens when his fee is recorded and is sent
+   * to the page he pays on, and two screens draw for him instead of telling him
+   * (`pages/member/memberScreen.tsx`).
+   *
+   * **The account is the only thing the arm carries**, because everything else he has is a
+   * record the screens that need it read for themselves (`pages/member/useMyData.ts`), exactly
+   * as the profile of a member whose fee has lapsed is read.
+   */
+  | { as: 'neverPaid'; account: number }
+  /**
+   * SOMEBODY SIGNED IN OF WHOM THE LEAGUE KEEPS NO RECORD, which is an account and nothing
+   * more.
+   *
+   * <b>A permanent state rather than a moment on the way to a member</b>, and that is why it
+   * is an arm and not a wait: a moderator and a superadmin have no competitor record at all
+   * (PDL P21, owner 14.09.2026). Somebody who has registered and has not paid used to be here
+   * as well, and is not any more (the arm above).
    */
   | { as: 'account'; account: number }
 
@@ -453,6 +491,17 @@ export type SessionValue = {
      *  carries that is not of the sort this portal reads. */
     referralCode: string | null
     referredCount: number | null
+    /** Whether the answer carried a record of the caller AT ALL, which is not what a member
+     *  number says: a person who registered and has not paid has the record and no number,
+     *  and an account that races for nobody has neither. Set in the same breath as the
+     *  number for the reason written above it, and read by `signedIn` below and by nothing
+     *  else. */
+    hasARecord: boolean
+    /** Whether his fee stands, as the answer said it, or null where it did not (an older
+     *  server, a word that is not a yes or a no, a caller with no record). Acted on only to
+     *  take something away from a member who HAS a number, and only when it is a plain no:
+     *  see the first arm of {@link SignedIn}. */
+    feeStands: boolean | null
   }) => void
   /**
    * WHETHER `GET /api/me` HAS COME BACK YET, WHATEVER IT CAME BACK WITH.
@@ -505,10 +554,12 @@ export type SessionValue = {
    * (`session/theServer.ts` writes out what reading it the other way cost).
    *
    * **ONE OF SIX OF THE SEVEN THE SESSION KEEPS OF THE ANSWER, and it was the only one until
-   * 25.09.2026.** (The answer carries nineteen names since 10.10.2026: the other twelve are the
-   * page his own profile is drawn from, which the screen of that profile reads for itself and
-   * the session does not keep, `session/theServer.ts`.) The rule it was written under was „a
-   * field is remembered here when it
+   * 25.09.2026.** (The answer carries twenty names since 11.10.2026: twelve are the page his own
+   * profile is drawn from, which the screen of that profile reads for itself and the session
+   * does not keep, `session/theServer.ts`; and the twentieth, whether his fee stands, is kept
+   * as `feeStands` on the member arm of `signedIn` together with whether there was a record at
+   * all, which are the two the session keeps ABOUT the answer and not OF it.) The rule it was
+   * written under was „a field is remembered here when it
    * has NO OTHER DOOR", and that rule is no longer the whole of it: the country, the
    * first season and the team below are remembered here although `/api/competitors`
    * carries all three. **The rule that replaces it is one sentence wider and is the

@@ -58,8 +58,16 @@ import java.util.Optional;
  *
  * <p><b>AN ACCOUNT NAMING NO MEMBER IS TOLD THE SAME NOTHING {@link InboxApi} AND
  * {@link InboxWriteApi} TELL HIM</b> - „a moderator who does not race, which is the ordinary
- * case and not a fault" (V23) - off the identical {@link MemberOfAccount} lookup those two
- * classes already share, so the fact is asked once rather than copied a third time.
+ * case and not a fault" (V23).
+ *
+ * <p><b>AND SINCE P8U SO IS A MEMBER WHOSE FEE DOES NOT STAND, ON THE SAME LINE.</b> The
+ * question is {@link ActiveMemberOrAdministration#activeMember}, which {@link InboxWriteApi}
+ * asks too. Marking a message read is not on the list PDL P8 gives of what a member may do
+ * before he pays (10.10.2026, „Sme: izbor kategorije i plaćanje, lozinku, adresu pošte i svoje
+ * podatke za evidenciju i majicu"), so the older line under it holds - „ne može ništa da radi u
+ * sistemu" - and of the member whose fee has lapsed PDL P13 says the mailbox is one „koje ne može
+ * da otvori" (19.09.2026). That is derived from the two and is not a decision of its own; the
+ * decision of 10.10.2026 is quoted in full on {@link ActiveMemberOrAdministration}.
  *
  * <p><b>NEEDS NO {@link RightIsNeeded}, FOR THE SAME REASON {@code POST /api/inbox} DOES
  * NOT.</b> There is no box a superadmin could tick for reading your own mail; it is a
@@ -93,11 +101,12 @@ class InboxReadApi {
 
 	private final JdbcClient db;
 
-	private final MemberOfAccount memberOfAccount;
+	/** Who is asking, and whether his fee stands: the one question this route opens with. */
+	private final ActiveMemberOrAdministration readers;
 
-	InboxReadApi(JdbcClient db, MemberOfAccount memberOfAccount) {
+	InboxReadApi(JdbcClient db, ActiveMemberOrAdministration readers) {
 		this.db = db;
-		this.memberOfAccount = memberOfAccount;
+		this.readers = readers;
 	}
 
 	/**
@@ -113,7 +122,7 @@ class InboxReadApi {
 			@AuthenticationPrincipal WhoIsAsking.Member member, HttpServletResponse response)
 			throws IOException {
 
-		Long me = memberOfAccount.competitorId(member.account());
+		Long me = readers.activeMember(member).orElse(null);
 
 		if (me == null) {
 			return away(response);

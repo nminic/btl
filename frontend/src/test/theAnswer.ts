@@ -407,7 +407,7 @@ export const readAsFee: Price = aProcessingFee
  * requires the two to be the same set - so a name added here that the server has not got
  * fails by name, and a name the server has that is missing here fails the same way.
  *
- * **Twelve of its nineteen names are the page his own profile is drawn from, since
+ * **Twelve of its twenty names are the page his own profile is drawn from, since
  * 10.10.2026** (PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god
  * postoji"): a member whose fee has lapsed is on no row of `/api/competitors`, so his name,
  * his town, his category, his biography and his portrait reach the screen through this
@@ -417,11 +417,18 @@ export const readAsFee: Price = aProcessingFee
  * that happen to stand beside seven others.
  *
  * **Not handed to a type, and that is said rather than left as an omission.** The portal
- * has no type for this record: `session/theServer.ts` reads the first seven off it for who
- * is asking (`whoTheServerSaysIAm`) and the twelve for his page
- * (`whatTheServerSaysOfMyProfile`), two readers over one request on purpose, each field
- * looked for and never asserted (ADL A14). A type here would be nineteen names that two
+ * has no type for this record: `session/theServer.ts` reads the first seven off it, and the
+ * twentieth, for who is asking (`whoTheServerSaysIAm`), the twelve for his page
+ * (`whatTheServerSaysOfMyProfile`) and six of those for his data
+ * (`whatTheServerSaysOfMyData`), three readers over one request on purpose, each field
+ * looked for and never asserted (ADL A14). A type here would be twenty names that three
  * readers already narrow for themselves.
+ *
+ * **`active` IS THE TWENTIETH, since 11.10.2026**: whether his fee stands, which is what tells a
+ * member whose fee has lapsed from one whose fee stands (`MeApi.MyOwnRecord.active`,
+ * `session/theServer.ts#feeStandsIn`). The sample says `true` because the sample is the member
+ * the generated file calls `000001`, whose fee stands; the harness fills the real value in for
+ * every member of the file (`test/setup.ts`, `whatMeAnswers`), so `000032` is answered `false`.
  */
 export const myOwnRecordFromMe = {
   memberNumber: '000001',
@@ -429,6 +436,7 @@ export const myOwnRecordFromMe = {
   firstSeason: 2014,
   teamId: 1,
   membershipBasis: 'payment',
+  active: true,
   referralCode: '7f07b38ff7ee7543',
   referredCount: 4,
   firstName: aCompetitor.firstName,

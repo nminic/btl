@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { categoryCodeFor, categoryLabel } from '../../data/categories'
-import type { Competitor } from '../../data/types'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
+import type { MyData } from '../../session/theServer'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import {
@@ -30,7 +30,7 @@ import {
  * <ul>
  * <li><b>It does not show what the postal address and the telephone are today.</b> Nothing
  * serves them: {@code GET /api/me} answers a role, an account and the member's own record
- * (seven facts about his membership, and since 10.10.2026 the twelve his own page is drawn
+ * (eight facts about his membership, and since 10.10.2026 the twelve his own page is drawn
  * from), and {@code /api/competitors} answers the PUBLIC record, which by ADL A8 is
  * public to anybody who asks. So those two boxes open empty and say so beside themselves,
  * rather than opening empty and reading as „you have given none". They are sent only when
@@ -58,7 +58,7 @@ import {
  * iz njega proizlazi", so what the record carries is the age band, and the band is what is
  * drawn - beside the category, which is the very thing the owner's reason names.
  */
-export function PersonalData({ me }: { me: Competitor }) {
+export function PersonalData({ me }: { me: MyData }) {
   const { t } = useI18n()
 
   /* WHAT THE SERVER HOLDS, held here and not read off `me` on every render, because a

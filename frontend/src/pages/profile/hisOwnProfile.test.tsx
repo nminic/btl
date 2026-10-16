@@ -130,6 +130,8 @@ function SignInAs({ memberNumber, label }: { memberNumber: string; label: string
           membershipBasis: null,
           referralCode: null,
           referredCount: null,
+          hasARecord: true,
+          feeStands: null,
         })
       }}
     >
@@ -152,6 +154,16 @@ describe('the record the server declares', () => {
     expect([...Object.keys(aLapsedMembersPage), ...WHAT_MAY_BE_LEFT_OUT].sort()).toEqual(
       componentsOf('MyOwnRecord'),
     )
+  })
+
+  it('is the record of somebody whose fee does not stand and who has a number', () => {
+    /* What makes the sample the member it is, said as two facts and not left to the shape of it:
+       the flag that parts him from a standing member (`MeApi.MyOwnRecord.active`, since
+       11.10.2026) and the number that parts him from somebody who registered and never paid. A
+       sample whose flag said `true` would be a standing member under the same name, and the
+       names above would not notice. */
+    expect(aLapsedMembersPage.active).toBe(false)
+    expect('memberNumber' in aLapsedMembersPage).toBe(true)
   })
 })
 

@@ -70,6 +70,16 @@ import java.time.ZonedDateTime;
  * of the seasons he was a member in. Neither is {@link CompetitorApi}, which stays
  * the members whose fee is standing.
  *
+ * <p><b>AND SINCE 11.10.2026 IT SAYS WHETHER HIS FEE STANDS, which is the one thing the
+ * paragraph above could not say.</b> It answered the member whose fee has lapsed with the very
+ * names a standing member gets, so a screen could not tell the two apart, and two decisions that
+ * treat them differently could not be carried out on the screens that draw their forms: PDL P8,
+ * the entry „Šta sme neplaćen član" (10.10.2026) and its addition of 11.10.2026, by which a
+ * member whose fee has lapsed is answered 404 on {@code PUT /api/me} and
+ * {@code PUT /api/me/password} while one who never paid is not. The flag is
+ * {@code competitor.active}, the column every other door reads, and it rides on the record beside
+ * the basis. Nothing is decided here about what to SHOW; this only says a fact that is his own.
+ *
  * <p><b>AND THREE FIELDS THAT ARE HIS OWN BUSINESS AND NOBODY ELSE'S, each here
  * because a decision or a measurement put it here.</b> Two of them were refused on
  * 20.09.2026 and both refusals are gone for different reasons: the first was
@@ -256,6 +266,30 @@ class MeApi {
 	 *                     administracije." Never absent: {@code competitor.membership_basis}
 	 *                     is NOT NULL (V7) and {@code competitor_membership_basis_known}
 	 *                     names the words it may hold, so there is no branch here for none
+	 * @param active       WHETHER HIS FEE STANDS NOW, which is {@code competitor.active} and the
+	 *                     one fact this record could not tell until 11.10.2026. Never absent: the
+	 *                     column is NOT NULL. <b>It is what tells a member whose fee has lapsed
+	 *                     from one whose fee stands</b>, who were otherwise answered the same
+	 *                     names (measured 11.10.2026 against a real database: a standing member
+	 *                     and a lapsed one differed in nothing that says anything about the fee,
+	 *                     and {@code membershipBasis} is {@code payment} for a payer whose fee
+	 *                     stands and for one whose fee has lapsed alike).
+	 *                     <b>Together with {@code memberNumber} it tells three people apart who are
+	 *                     all "not active"</b>: no number and not active is somebody who registered
+	 *                     and never paid (ADL A44), a number and not active is a member whose fee
+	 *                     has lapsed, and a number and active is a member. The fourth combination,
+	 *                     active with no number, is a state nothing in the portal writes
+	 *                     ({@code PaymentApi} draws the number in the statement that sets the flag,
+	 *                     and {@code MeApiTest.everyRowHereIsAStateThePortalCanWrite} refuses it),
+	 *                     so a reader may let the number decide and use this flag only for a
+	 *                     member who has one. <b>Answered to HIM and to nobody else</b>, by the
+	 *                     shape of the query (one row, and the row is his): the public list leaves
+	 *                     a lapsed member off altogether so that nothing may be read out of the
+	 *                     difference between two answers (owner, 13.09.2026), and this is not that
+	 *                     list. The reason it is wanted at all is PDL P8 (11.10.2026): such a member
+	 *                     is answered 404 on {@code PUT /api/me} and {@code PUT /api/me/password},
+	 *                     so a screen that offered him either would offer a control that is
+	 *                     refused every time
 	 * @param referralCode never absent, and it names one row: {@code competitor.referral_code}
 	 *                     is NOT NULL and UNIQUE (V7), and its shape is sixteen hexadecimal
 	 *                     characters rather than anything a member number could collide with
@@ -339,7 +373,7 @@ class MeApi {
 	record MyOwnRecord(@JsonInclude(JsonInclude.Include.NON_NULL) String memberNumber,
 			String country, int firstSeason,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Long teamId,
-			String membershipBasis, String referralCode, int referredCount,
+			String membershipBasis, boolean active, String referralCode, int referredCount,
 			String firstName, String lastName, String gender, String city, String ageBand,
 			boolean firstSeason2027,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer teamSince,
@@ -387,8 +421,15 @@ class MeApi {
 						+ " coalesce(town_country.code, typed_country.code) as country,"
 						+ " c.first_season, m.team_id,"
 						/* HIS OWN, and there is one row here, so there is no shape in which
-						   somebody else's could come out of it. */
-						+ " c.membership_basis, c.referral_code,"
+						   somebody else's could come out of it.
+
+						   `c.active` IS THE COLUMN EVERY OTHER DOOR READS FOR "does his fee stand",
+						   and it is answered next to the basis because it is the same kind of fact:
+						   how his membership is held, and whether it is. It is NOT worked out here
+						   from the number or from the basis. The number being absent says "never
+						   paid" and nothing about a member who HAS one, and `payment` is the basis of
+						   a payer whose fee stands and of one whose fee has lapsed alike. */
+						+ " c.membership_basis, c.active, c.referral_code,"
 						/* AND HOW MANY HE HAS BROUGHT IN WHOSE FEE IS STANDING.
 
 						   THIS SAID „word for word `CompetitorApi`'s" UNTIL 25.09.2026, and the
@@ -457,28 +498,28 @@ class MeApi {
 					   column of `photo` is NOT NULL (V8), so each of these is null exactly when
 					   no row joined, and the two are read side by side rather than one from the
 					   other so that the answer says what the row says. */
-					String portrait = row.getString(17);
-					BigDecimal across = row.getBigDecimal(18);
+					String portrait = row.getString(18);
+					BigDecimal across = row.getBigDecimal(19);
 
 					return new MyOwnRecord(row.getString(1), row.getString(2), row.getInt(3),
 							row.getObject(4) == null ? null : row.getLong(4),
-							row.getString(5), row.getString(6), row.getInt(7),
-							row.getString(8), row.getString(9), row.getString(10),
-							row.getString(11),
+							row.getString(5), row.getBoolean(6), row.getString(7), row.getInt(8),
+							row.getString(9), row.getString(10), row.getString(11),
+							row.getString(12),
 							/* THE RULE IS ASKED FOR, NEVER REPEATED HERE: `Category` is where the
 							   league's bands live and where the decision that age is settled on 1
 							   January rather than on the birthday is written down (PDL P7). */
-							Category.ageBandFor(row.getInt(21), season).code(),
-							row.getBoolean(12),
-							row.getObject(13) == null ? null : row.getInt(13),
-							row.getString(14), row.getBoolean(15), row.getString(16),
+							Category.ageBandFor(row.getInt(22), season).code(),
+							row.getBoolean(13),
+							row.getObject(14) == null ? null : row.getInt(14),
+							row.getString(15), row.getBoolean(16), row.getString(17),
 							/* The digest and never the key, and never the empty path for a member
 							   who has no portrait: an empty path is an address a browser would ask
 							   for. */
 							portrait == null ? null : A_PICTURE_IS_ASKED_FOR_AT + portrait,
 							across == null ? null
-									: new CompetitorApi.Crop(across, row.getBigDecimal(19),
-											row.getBigDecimal(20)));
+									: new CompetitorApi.Crop(across, row.getBigDecimal(20),
+											row.getBigDecimal(21)));
 				})
 				.single();
 	}
