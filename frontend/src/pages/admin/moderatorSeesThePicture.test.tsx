@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { did, refused, serverThat } from '../../test/serverAnswers'
+import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
 import { thePictureArrives } from '../../test/waitingPicture'
 import { decisionPath } from './verificationWrites'
@@ -407,9 +408,14 @@ describe('the picture on a card the moderator is deciding about', () => {
       /* Only now does the walk move past the biography. */
       releaseBio()
 
-      await waitFor(() => {
-        expect(screen.getByText(/^Rešen/)).toBeVisible()
-      })
+      /* Given half of the time the case has (`SLOW`, below), as `saveWhileSaving.test.tsx` does: a wait
+         that never succeeds ends by its own assertion and not by the clock of the case. */
+      await waitFor(
+        () => {
+          expect(screen.getByText(/^Rešen/)).toBeVisible()
+        },
+        { timeout: SLOW / 2 },
+      )
 
       expect(
         asked.find((one) => one.path === decisionPath('21')),
@@ -425,7 +431,7 @@ describe('the picture on a card the moderator is deciding about', () => {
       confirm.mockRestore()
       stop()
     }
-  })
+  }, SLOW)
 
   it("does not clear another card's refusal when Odobri is pressed on a row whose picture has failed to load", async () => {
     /* PDL.md "29." is answered by refusing to START a walk over this row at
