@@ -167,6 +167,17 @@ describe('a member whose fee has lapsed, outside the window', () => {
     ).toHaveLength(1)
   }, SLOW)
 
+  it('and the transfer window stays shut, because it is the window and nothing else', async () => {
+    openHisPage(LAPSED, '2027-03-01')
+
+    /* The panel about a team reads the window, not the question „does he pay now". A screen that
+       drew the payment panel and then took the transfer sentence off the same condition would tell
+       a member in March that he may enter a team, which the server answers 404. */
+    expect(await screen.findByText(/Prelazni rok je zatvoren/)).toBeVisible()
+    expect(screen.queryByText(/Prelazni rok je otvoren/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/U tim ulaziš prijavom/)).not.toBeInTheDocument()
+  }, SLOW)
+
   it('and the junior sentence is still the fixed one, whatever the date', async () => {
     openHisPage(LAPSED, '2027-03-01')
 
