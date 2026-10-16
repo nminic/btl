@@ -74,10 +74,16 @@ async function becomes(user: ReturnType<typeof setupUser>, who: string): Promise
 function SignInAs({
   role,
   memberNumber,
+  feeStands,
   label,
 }: {
   role: Role
   memberNumber: string | null
+  /** What the answer says of his fee: a yes or a no for a member, nothing for anybody with no number.
+   *  A member whose fee has lapsed is one the answer says `active: false` of (`MeApi`), and since
+   *  16.10.2026 that is the ONLY thing that makes him one on the screen: a number the list happens
+   *  not to carry says nothing. */
+  feeStands: boolean | null
   label: string
 }) {
   const { theServerSignedMeIn } = useSession()
@@ -98,7 +104,7 @@ function SignInAs({
           referralCode: null,
           referredCount: null,
           hasARecord: memberNumber !== null,
-          feeStands: null,
+          feeStands,
         })
       }}
     >
@@ -646,7 +652,12 @@ describe('a hidden profile, read by the administration, which races for nobody',
       DAY,
       <>
         <Hide who="000007" />
-        <SignInAs role="moderator" memberNumber={null} label="prijavi nalog bez člana" />
+        <SignInAs
+          role="moderator"
+          memberNumber={null}
+          feeStands={null}
+          label="prijavi nalog bez člana"
+        />
       </>,
     )
 
@@ -743,9 +754,9 @@ function theServerAnswersWithItsMembers(): { lapsed: () => string[] } {
  * screen that turned everybody away would pass here.
  */
 describe.each([
-  ['an account with no member behind it', 'competitor', null],
-  ['a member whose fee has lapsed', 'competitor', '000032'],
-] as const)('a hidden profile, read by %s', (_who, role, number) => {
+  ['an account with no member behind it', 'competitor', null, null],
+  ['a member whose fee has lapsed', 'competitor', '000032', false],
+] as const)('a hidden profile, read by %s', (_who, role, number, feeStands) => {
   const served = theServerAnswersWithItsMembers()
 
   async function visit(where: string) {
@@ -762,7 +773,12 @@ describe.each([
       DAY,
       <>
         <Hide who="000007" />
-        <SignInAs role={role} memberNumber={number} label="prijavi čitaoca" />
+        <SignInAs
+          role={role}
+          memberNumber={number}
+          feeStands={feeStands}
+          label="prijavi čitaoca"
+        />
       </>,
     )
 

@@ -11,6 +11,7 @@ import {
 } from '../../test/serverAnswers'
 import type { Attending, BtlEvent, Competitor } from '../../data/types'
 import { must } from '../../test/at'
+import { hisPageAsServed } from '../../test/hisPage'
 import { renderAt } from '../../test/render'
 import { whoTheCookieCurrentlyNames } from '../../test/setup'
 import { setupUser } from '../../test/user'
@@ -27,6 +28,26 @@ import { useSession } from '../../session/useSession'
 
 /** Somebody signed in. */
 const ME = '000007'
+
+/**
+ * Waits until the server has said who is reading, and then a few ticks more for the screen to act
+ * on it, so that an absence asked afterwards is an absence for a reader who is KNOWN and not for
+ * one who has not been told yet (a visitor is drawn nothing of this either).
+ *
+ * @param asked what the visit has asked of the server so far, as `serverThat` records it
+ */
+async function untilTheSessionHasAnswered(asked: Asked[]): Promise<void> {
+  await waitFor(() => {
+    expect(asked.some((one) => one.path === '/api/me')).toBe(true)
+  })
+  await act(async () => {
+    for (let tick = 0; tick < 5; tick += 1) {
+      await new Promise((settled) => {
+        setTimeout(settled, 0)
+      })
+    }
+  })
+}
 
 /** The reader stops being signed in without leaving the visit, the way `AccountMenu`
  *  really does it: in place, no navigation and no reload (`data/client.ts`). The same
@@ -905,20 +926,23 @@ describe('writing to somebody else who is going', () => {
     ).toBeNull()
   })
 
-  it('offers no envelope to a writer the list of members does not carry, because it draws him no list', async () => {
-    /* The number is handed out when the fee is recorded (PDL P8) and the list of
-       members is read separately, so for a moment there is a signed-in number
-       with nothing behind it.
+  it('draws the list, and an envelope beside every other name, to a member the session says stands though the list of members does not carry him yet', async () => {
+    /* The number is handed out when the fee is recorded (PDL P8) and the list of members is read
+     * once per visit, so for a while there is a member whose fee stands with nothing behind his
+     * number on the list.
      *
-       WHAT THIS CASE IS ABOUT CHANGED TWICE, AND BOTH ARE WORTH SAYING. Until 28.09.2026
+       WHAT THIS CASE IS ABOUT CHANGED THREE TIMES, AND ALL ARE WORTH SAYING. Until 28.09.2026
        the screen worked the sender's name out of that list; from then until 03.10.2026 it
        held that such a writer's note went out the same as anybody's. On 03.10.2026 the
        owner's choice gave the list, in the words PDL records it in, to „aktivni članovi
-       (važeća članarina)" and the administration,
-       and the screen learns that a reader is a member in good standing from that very list
-       of members - so a number the list does not carry is not drawn the list, and with it
-       no envelope. What the note carries is still held, by „sends three fields" below, for
-       a writer the list does carry. */
+       (važeća članarina)" and the administration, and the screen learned that a reader is a
+       member in good standing from that very list - so a number the list did not carry was
+       drawn no list, and with it no envelope. **On 16.10.2026 the fact has one home on the
+       screen, the session's** (ADL, „Činjenica „član je aktivan" dobija jedan dom na ekranu";
+       the sentence is the record's and not the owner's own words), so this reader is drawn
+       what he is owed: `GET /api/me` says his fee stands, and what the list has not caught up
+       with is no reason to withhold it. What the note carries is held by „sends three fields"
+       below. */
     const { event, going, day } = await upcoming()
     const competitors = await loadResource<Competitor[]>('competitors')
     const them = must(
@@ -930,13 +954,19 @@ describe('writing to somebody else who is going', () => {
 
     expect(competitors.some((one) => one.memberNumber === '999999')).toBe(false)
 
-    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', '999999', undefined, day)
+    const session = hisPageAsServed({ memberNumber: '999999', active: true })
 
-    await screen.findByRole('heading', { level: 1, name: event.name })
-    expect(screen.queryByRole('list', { name: 'Ko ide' })).toBeNull()
-    expect(
-      screen.queryByRole('button', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
-    ).toBeNull()
+    try {
+      renderAt(`/sr/kalendar/${event.slug}`, 'visitor', null, undefined, day)
+
+      await screen.findByRole('heading', { level: 1, name: event.name })
+      expect(await screen.findByRole('list', { name: 'Ko ide' })).toBeVisible()
+      expect(
+        await screen.findByRole('button', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
+      ).toBeVisible()
+    } finally {
+      session.stop()
+    }
   })
 
   it('names the member whose envelope was pressed, and never the league, the writer or a bystander', async () => {
@@ -1556,7 +1586,11 @@ describe('a name the list cannot lead to', () => {
        „aktivni članovi (važeća članarina)" and the administration's, so a member whose fee has lapsed is drawn
        neither - the server refuses him the list 404 and the screen does not ask. He is on
        the event in the file, which is what makes his absence here a statement about him and
-       not about an empty event. */
+       not about an empty event.
+
+       **BROUGHT IN BY `GET /api/me`, NOT BY A NUMBER THE RENDER STARTS WITH** (since 16.10.2026):
+       a starting number reads as standing until the server has answered, which is a state the
+       portal is never in, and a lapsed reader is one the server says so of. */
     const { event, strangers } = await withStrangers()
     const him = must(lapsed[0], 'a member whose fee has lapsed')
 
@@ -1564,13 +1598,47 @@ describe('a name the list cannot lead to', () => {
 
     clearResourceCache('attendance')
     const asked = readsOfTheList()
+    const session = hisPageAsServed({ memberNumber: him, active: false })
 
-    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', him, undefined, '2026-08-01')
+    try {
+      renderAt(`/sr/kalendar/${event.slug}`, 'visitor', null, undefined, '2026-08-01')
 
-    await screen.findByRole('heading', { level: 1, name: event.name })
-    expect(screen.queryByRole('heading', { name: 'Ko ide' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Idem na ovaj događaj' })).toBeNull()
-    expect(readsOfTheList()).toBe(asked)
+      await screen.findByRole('heading', { level: 1, name: event.name })
+      await untilTheSessionHasAnswered(session.asked)
+
+      expect(screen.queryByRole('heading', { name: 'Ko ide' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Idem na ovaj događaj' })).toBeNull()
+      expect(readsOfTheList()).toBe(asked)
+    } finally {
+      session.stop()
+    }
+  })
+
+  it('is drawn neither the list nor the switch to a member the list carries and the session says has lapsed', async () => {
+    /* **THE AXIS THE CASE ABOVE CANNOT TELL APART, since 16.10.2026.** For a member the list leaves
+       out, the list and the session say the same thing, so a screen that asked either would pass.
+       Here they come apart: ME is on the list the server serves and the answer about the caller
+       says his fee has lapsed (he did not renew; the list is read once per visit and nothing drops
+       it). A screen that asked the list would draw him all of it, and the server would answer him
+       404. */
+    const { event } = await upcoming()
+
+    clearResourceCache('attendance')
+    const asked = readsOfTheList()
+    const session = hisPageAsServed({ memberNumber: ME, active: false })
+
+    try {
+      renderAt(`/sr/kalendar/${event.slug}`, 'visitor', null, undefined, '2026-08-01')
+
+      await screen.findByRole('heading', { level: 1, name: event.name })
+      await untilTheSessionHasAnswered(session.asked)
+
+      expect(screen.queryByRole('heading', { name: 'Ko ide' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Idem na ovaj događaj' })).toBeNull()
+      expect(readsOfTheList()).toBe(asked)
+    } finally {
+      session.stop()
+    }
   })
 
   it('is read by a moderator whose own fee has lapsed, who has no switch', async () => {
@@ -1580,11 +1648,19 @@ describe('a name the list cannot lead to', () => {
        for the switch would hand him one. */
     const { event } = await withStrangers()
     const him = must(lapsed[0], 'a member whose fee has lapsed')
+    /* Brought in by `GET /api/me`, which says both what he is and that his fee has lapsed: a number
+       the render starts with reads as standing until the server has answered. */
+    const session = hisPageAsServed({ memberNumber: him, active: false }, 'moderator')
 
-    renderAt(`/sr/kalendar/${event.slug}`, 'moderator', him, undefined, '2026-08-01')
+    try {
+      renderAt(`/sr/kalendar/${event.slug}`, 'visitor', null, undefined, '2026-08-01')
 
-    expect(await screen.findByRole('list', { name: 'Ko ide' })).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Idem na ovaj događaj' })).toBeNull()
+      expect(await screen.findByRole('list', { name: 'Ko ide' })).toBeVisible()
+      await untilTheSessionHasAnswered(session.asked)
+      expect(screen.queryByRole('button', { name: 'Idem na ovaj događaj' })).toBeNull()
+    } finally {
+      session.stop()
+    }
   })
 
   it('is read by the superadmin, who has nothing to say about going', async () => {

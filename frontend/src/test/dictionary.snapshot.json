@@ -1470,6 +1470,7 @@
     "hideProfile": "Sakrij moj profil od svakoga ko nije aktivan član ni administracija",
     "hideProfileNote": "Ime ostaje u tabelama i na rang listama, jer bi bez toga zajedničko rangiranje izgubilo smisao. Skriva se samo tvoja profilna strana, i to samo od posetilaca koji nisu prijavljeni i od prijavljenih naloga bez aktivne članarine.",
     "opensWithTheFee": "Slika, biografija i skrivanje profila otvaraju se kad tvoja članarina bude evidentirana.",
+    "opensWhenTheFeeIsRenewed": "Podaci i lozinka otvaraju se kad tvoja članarina bude obnovljena. Obnovi je ovde: {renewal}.",
     "themeLabel": "Tema",
     "themeDark": "Tamna",
     "themeLight": "Svetla"  },

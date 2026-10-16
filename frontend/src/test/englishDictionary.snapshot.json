@@ -1470,6 +1470,7 @@
     "hideProfile": "Hide my profile from anyone who is neither an active member nor the administration",
     "hideProfileNote": "The name stays in the tables and on the boards, because without it ranking everybody together would lose its point. What is hidden is only your profile page, and only from visitors who are not signed in and from signed-in accounts without an active membership.",
     "opensWithTheFee": "Your picture, your biography and the switch that hides your profile open once your fee has been recorded.",
+    "opensWhenTheFeeIsRenewed": "Your data and your password open once your fee has been renewed. Renew it here: {renewal}.",
     "themeLabel": "Theme",
     "themeDark": "Dark",
     "themeLight": "Light"  },
