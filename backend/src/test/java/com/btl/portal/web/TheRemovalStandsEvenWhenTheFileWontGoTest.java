@@ -252,7 +252,12 @@ class TheRemovalStandsEvenWhenTheFileWontGoTest {
 		}
 	}
 
-	/** A picture of his own in front of a moderator, which a removal must leave where it is. */
+	/**
+	 * A picture of his own in front of a moderator, which a removal takes back with the one that
+	 * stands (PDL 27.09.2026). Its file is NOT on the disk here: the cases about the standing
+	 * picture's file give it one with {@link #itsFileIsOnTheDisk}, and the case about a file that
+	 * will not leave blocks it with {@link #blockTheFileOf}.
+	 */
 	private void aPictureWaits() {
 		theWaitingPhoto = aPicture(2);
 
@@ -261,6 +266,16 @@ class TheRemovalStandsEvenWhenTheFileWontGoTest {
 						+ " ?, ?) returning id")
 				.params(member, theWaitingPhoto, Timestamp.from(Instant.parse("2026-09-01T10:00:00Z")))
 				.query(Long.class).single();
+	}
+
+	/**
+	 * A FILE THAT CAN LEAVE, where a picture's file should be. Written for the picture that
+	 * waits in the cases that are about the picture that stands: a waiting picture with no file
+	 * is a state the route names with a line of its own ("was already gone"), and a case that
+	 * counts the lines the route says would then count that one.
+	 */
+	private static void itsFileIsOnTheDisk(long picture) throws IOException {
+		Files.writeString(PHOTOS.resolve(String.valueOf(picture)), "bajtovi slike koja ceka");
 	}
 
 	/** What the request got back and everything the route said to the log while it ran. */
@@ -387,16 +402,35 @@ class TheRemovalStandsEvenWhenTheFileWontGoTest {
 	 * rolls the two statements above it back too, and a removal that was supposed to happen at
 	 * once leaves the picture exactly as published as it was before the request. Written as a
 	 * parameter over whether a picture waits as well, so the rows are asserted in both states
-	 * of that axis and not in the one that happens to be easy to arrange.
+	 * of that axis and not in the one that happens to be easy to arrange: with one waiting, its
+	 * row is withdrawn in the same transaction that the fault would have rolled back, and its own
+	 * file, which CAN leave, leaves.
 	 */
 	@ParameterizedTest
 	@ValueSource(booleans = {false, true})
 	void theRowAndThePointerStillGoWhenTheFileWillNot(boolean aPictureWaits) throws Exception {
 		if (aPictureWaits) {
 			aPictureWaits();
+			itsFileIsOnTheDisk(theWaitingPhoto);
 		}
 
 		removingMyPicture();
+
+		if (aPictureWaits) {
+			assertThat(db.sql("select count(*) from verification where id = ?").param(theQueueRow)
+							.query(Long.class).single())
+					.as("the picture that waited is still in front of a moderator, so the fault of"
+							+ " the other file rolled the withdrawal back")
+					.isZero();
+			assertThat(db.sql("select count(*) from photo where id = ?").param(theWaitingPhoto)
+							.query(Long.class).single())
+					.as("the photo row of the picture that waited survived its withdrawal")
+					.isZero();
+			assertThat(Files.exists(PHOTOS.resolve(String.valueOf(theWaitingPhoto))))
+					.as("the file of the picture that waited is still on the disk, so the fault of"
+							+ " the other file stopped this one from going")
+					.isFalse();
+		}
 
 		assertThat(db.sql("select photo_id from competitor where member_number = ?").param(ME)
 						.query(Long.class).optional())
@@ -411,29 +445,27 @@ class TheRemovalStandsEvenWhenTheFileWontGoTest {
 	}
 
 	/**
-	 * THE MEMBER IS ANSWERED EXACTLY AS HE IS WHEN THE FILE LEAVES, AND THE ANSWER STILL NAMES
-	 * WHAT WAITS.
+	 * THE MEMBER IS ANSWERED EXACTLY AS HE IS WHEN THE FILE LEAVES.
 	 *
 	 * <p>PDL P28e, 25.09.2026: the owner chose, among the outcomes offered, that he gets a
-	 * normal answer. <b>Normal is the whole answer and not only its number</b>: this route's
-	 * answer carries the key of the picture still in front of a moderator, which is how a
-	 * screen says „your profile is empty but a picture of yours is waiting" instead of
-	 * pretending the profile is empty for good, so a fix that caught the fault and then
-	 * returned a bare 200 with that field left out would pass a case that read only the status.
-	 * The second state of the parameter is what catches it: with a picture waiting, the answer
-	 * must carry that row's key, which is a number no early return can have guessed.
+	 * normal answer. <b>Normal is the whole answer and not only its number</b>: until PDL
+	 * 27.09.2026 was carried out this route's answer carried the key of the picture still in front
+	 * of a moderator, and this case asked for it in the second state of the parameter. A removal
+	 * now takes that picture back, nothing is left to name, and the answer is a 200 with nothing
+	 * in it. So what is asked is that the fault changes nothing the member can see: the status is
+	 * the ordinary one and the body is empty, in both states, which a route that caught the fault
+	 * and then answered with something of its own would not be.
 	 *
 	 * <p><b>The mutations:</b> the fault leaves the route again (a thrown exception is no
 	 * answer at all, so the case fails on the line that makes the request); the route answers
-	 * the fault with a status of its own; the route catches it and answers with the field
-	 * empty.
+	 * the fault with a status of its own; the route catches it and answers with a body.
 	 */
 	@ParameterizedTest
 	@ValueSource(booleans = {false, true})
-	void theMemberIsAnsweredAsHeIsWhenTheFileLeavesAndTheAnswerStillNamesWhatWaits(
-			boolean aPictureWaits) throws Exception {
+	void theMemberIsAnsweredAsHeIsWhenTheFileLeaves(boolean aPictureWaits) throws Exception {
 		if (aPictureWaits) {
 			aPictureWaits();
+			itsFileIsOnTheDisk(theWaitingPhoto);
 		}
 
 		MockHttpServletResponse answer = removingMyPicture().answer();
@@ -441,20 +473,9 @@ class TheRemovalStandsEvenWhenTheFileWontGoTest {
 		assertThat(answer.getStatus())
 				.as("the member was told something went wrong with a removal that had happened")
 				.isEqualTo(200);
-
-		JsonNode said = mapper.readTree(answer.getContentAsString());
-
-		assertThat(said.path("waiting").isNull())
-				.as("the answer names a waiting picture exactly where one does not wait, or"
-						+ " leaves it out where one does")
-				.isEqualTo(!aPictureWaits);
-
-		if (aPictureWaits) {
-			assertThat(said.path("waiting").asLong())
-					.as("the answer does not name the picture that is still waiting, so the member"
-							+ " is left believing his profile is empty for good")
-					.isEqualTo(theQueueRow);
-		}
+		assertThat(answer.getContentAsString())
+				.as("the member was told something beyond the status")
+				.isEmpty();
 	}
 
 	/**
@@ -474,9 +495,67 @@ class TheRemovalStandsEvenWhenTheFileWontGoTest {
 			throws Exception {
 		if (aPictureWaits) {
 			aPictureWaits();
+			itsFileIsOnTheDisk(theWaitingPhoto);
 		}
 
 		theFaultIsInTheLogAsTheOnlyEvent(removingMyPicture().events(), photo, "took it down");
+	}
+
+	/**
+	 * A WAITING PICTURE'S FILE THAT WILL NOT GO IS LOGGED BESIDE THE STANDING ONE'S, AND NEITHER
+	 * FAULT STOPS THE OTHER FILE FROM BEING TRIED.
+	 *
+	 * <p>Both files are blocked, so the route meets two faults in one request. <b>Each is asked for
+	 * separately</b> because the case above counts exactly one event and a route that caught the
+	 * first fault outside the loop would stop there and log one: a count of two, naming both keys,
+	 * is what tells a loop that tries every file from one that gives up at the first. The member is
+	 * answered as he is when the files leave, the row of the picture that waited is withdrawn all
+	 * the same, and both pointers are gone.
+	 *
+	 * <p>The line says what the member DID (“took it down”) for the picture that waited as for the
+	 * one that stood: both are the same act of his, and the operator finds a stray file by its key.
+	 */
+	@Test
+	void aWaitingPicturesFileThatWillNotGoIsLoggedBesideTheStandingOnes() throws Exception {
+		aPictureWaits();
+		blockTheFileOf(theWaitingPhoto);
+
+		assertThat(theWaitingPhoto)
+				.as("the waiting picture's key is the member's key, the card's or the standing"
+						+ " picture's, so a line that names the wrong one reads as the right one")
+				.isNotIn(member, theQueueRow, photo);
+
+		Heard heard = removingMyPicture();
+
+		assertThat(heard.answer().getStatus()).isEqualTo(200);
+		assertThat(heard.events())
+				.as("the route said something other than one line for each of the two files that"
+						+ " would not go")
+				.hasSize(2);
+
+		for (long whose : List.of(theWaitingPhoto, photo)) {
+			List<ILoggingEvent> aboutIt = heard.events().stream()
+					.filter(one -> one.getFormattedMessage().contains("photo " + whose + " "))
+					.toList();
+
+			assertThat(aboutIt)
+					.as("there is not exactly one line naming photo %s", whose)
+					.hasSize(1);
+			assertThat(aboutIt.get(0).getLevel().isGreaterOrEqual(Level.WARN)).isTrue();
+			assertThat(aboutIt.get(0).getFormattedMessage())
+					.contains("could not be removed")
+					.contains("took it down");
+			assertThat(aboutIt.get(0).getThrowableProxy().getClassName())
+					.isEqualTo("java.nio.file.DirectoryNotEmptyException");
+		}
+
+		assertThat(db.sql("select count(*) from verification where id = ?").param(theQueueRow)
+						.query(Long.class).single())
+				.as("a file that would not go stopped the picture that waited from being withdrawn")
+				.isZero();
+		assertThat(db.sql("select photo_id from competitor where member_number = ?").param(ME)
+						.query(Long.class).optional())
+				.isEmpty();
 	}
 
 	/**
