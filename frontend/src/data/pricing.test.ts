@@ -3,6 +3,7 @@ import {
   PRICES,
   priceOn,
   registrationOpen,
+  seasonBeingPaidFor,
   seasonBeingRenewed,
 } from './pricing'
 import { first, last } from '../test/at'
@@ -108,6 +109,42 @@ describe('the season a renewal is for', () => {
     expect(seasonBeingRenewed('2025-11-01')).toBe(2027)
     expect(seasonBeingRenewed('2024-01-01')).toBe(2027)
     expect(seasonBeingRenewed('2026-11-01')).toBe(2027)
+  })
+})
+
+describe('the season a payment made today buys', () => {
+  /* Two seasons and one window. Inside the window (15 October to 31 December) it is the next
+   * season, which is what `seasonBeingRenewed` answers; outside it the running one, because the
+   * owner confirmed on 16.10.2026 that somebody who pays between 1 January and 14 October pays for
+   * the current year at once (PDL P8, the price list, item U1). The server books under the same
+   * value (`SeasonClock.seasonBeingPaidFor`, measured in `PaymentOutsideTheWindowTest`).
+   *
+   * Each edge is stood on from both sides, and the two seasons part company on every day outside the
+   * window, so replacing this call by `seasonBeingRenewed` is caught by the first of them. */
+  it.each([
+    ['2027-10-15', 2028],
+    ['2027-12-31', 2028],
+    ['2026-10-15', 2027],
+    ['2026-12-31', 2027],
+  ])('is the next season on %s, inside the window', (day, season) => {
+    expect(seasonBeingPaidFor(day)).toBe(season)
+  })
+
+  it.each([
+    ['2027-01-01', 2027],
+    ['2027-10-14', 2027],
+    ['2028-01-01', 2028],
+    ['2028-10-14', 2028],
+  ])('is the season that is running on %s, outside it', (day, season) => {
+    expect(seasonBeingPaidFor(day)).toBe(season)
+    expect(seasonBeingRenewed(day), 'the two parted company, or this measures nothing').not.toBe(season)
+  })
+
+  it('never answers a season before the first one the league runs', () => {
+    /* The calendar year of 2026 is a year with no season in it (PDL P2), so the answer outside the
+       window is the first one, exactly as the server floors it. */
+    expect(seasonBeingPaidFor('2026-03-01')).toBe(2027)
+    expect(seasonBeingPaidFor('2024-06-01')).toBe(2027)
   })
 })
 

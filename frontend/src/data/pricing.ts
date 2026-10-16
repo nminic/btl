@@ -1,4 +1,4 @@
-import { FIRST_SEASON, transfersTakeEffect } from './season'
+import { FIRST_SEASON, inYearlyWindow, transfersTakeEffect } from './season'
 /* THE SELLING YEAR AND THE RULES OF WHO PAYS WHAT. **NO SCREEN DRAWS AN AMOUNT OUT OF THIS
  * FILE ANY MORE, and that is the whole of what changed on 26.09.2026.**
  *
@@ -291,6 +291,26 @@ export function seasonBeingRenewed(today: string): number {
      while it was answered in two places that could drift apart. One of them is
      enough, and the lower of the two is where a season belongs. */
   return transfersTakeEffect(today)
+}
+
+/**
+ * The season a payment made on this day buys.
+ *
+ * Inside the renewal window (15 October to 31 December) it is the next season, which is
+ * `seasonBeingRenewed`; outside it, it is the season that is running, because the owner
+ * confirmed on 16.10.2026 that a member who pays between 1 January and 14 October pays at
+ * once, for the current year, at the row „1. januara do 14. oktobra" (PDL, the price list,
+ * item U1). Never before the first season the league runs, for the reason
+ * `seasonBeingRenewed` gives.
+ *
+ * **This is the screen's copy of `SeasonClock.seasonBeingPaidFor` on the server**, which is
+ * the season a payment is booked for and the one the reference of the slip must name; the
+ * slip, the code and the PayPal note are all read off this one value.
+ */
+export function seasonBeingPaidFor(today: string): number {
+  return inYearlyWindow(today)
+    ? seasonBeingRenewed(today)
+    : Math.max(FIRST_SEASON, Number(today.slice(0, 4)))
 }
 
 /* `MAIN_LEAGUE_SLUG` STOOD HERE AND IS GONE (PDL P15a, owner 22.09.2026).

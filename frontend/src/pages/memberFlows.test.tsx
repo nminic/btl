@@ -1502,9 +1502,12 @@ describe('membership', () => {
       try {
         renderMembershipOn(today, '000032')
 
-        /* The renewal's own sentence for a shut window, asserted first: without it the case
-           could pass on a day the window is in fact open and say nothing at all. */
-        expect(await screen.findByText(/Obnova se otvara 15. oktobra/)).toBeVisible()
+        /* The transfer panel's own sentence for a shut window, asserted first: without it the
+           case could pass on a day the window is in fact open and say nothing at all. It was the
+           renewal's sentence until 16.10.2026, but a member whose fee has lapsed (000032) is drawn
+           the payment panel on these days now, so the sentence that is true of him and is the
+           window's alone is this one. */
+        expect(await screen.findByText(/Prelazni rok je zatvoren/)).toBeVisible()
 
         expect(
           await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
