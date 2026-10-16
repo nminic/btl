@@ -71,16 +71,16 @@ describe('the line that says what a star means, on a queue of folded cards', () 
 })
 
 describe('the picture a moderator is deciding about', () => {
-  it('draws with no cap on its height, which is the other half of a decision `CropWindow.tsx` already guards for the member', () => {
+  it('stands in a place with no cap on its height, which is the other half of a decision `CropWindow.tsx` already guards for the member', () => {
     /* PDL.md, ODLUKA 28.08.2026 (derived from measurement, not a new owner
        sentence): "Moderatoru se ne ograničava, jer on nema šta da povlači i
        njegov je posao da vidi ceo ostatak." `CropWindow.tsx` guards its half of
        that split - `maxBlockSize: '60svh'` only where `onChange !== undefined` -
        at `cropChooser.test.tsx`'s "takes none of them where there is nothing to
        drag": an empty `maxBlockSize` where there is nothing to drag. This rule is
-       the other half of the identical split, on the plain `<img>` this card draws
-       instead of `CropWindow`, and it had no guard of its own: a `max-block-size:
-       20rem` written here once passed every case in this file and in
+       the other half of the identical split, on the place the window stands in on
+       this card, and it had no guard of its own: a `max-block-size: 20rem` written
+       here once passed every case in this file and in
        `moderatorSeesThePicture.test.tsx` unchanged. */
     const rule = ruleFor(css, '.pending__picture', 'Verification.css')
 
