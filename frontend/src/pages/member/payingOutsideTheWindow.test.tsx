@@ -1,0 +1,328 @@
+import { configure, getConfig, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it } from 'vitest'
+import { ipsPayload, paymentPurpose, RECIPIENT_ACCOUNT, RECIPIENT_NAME } from '../../data/paymentQr'
+import { must } from '../../test/at'
+import { neverPaidAsServed } from '../../test/neverPaid'
+import { readQr } from '../../test/readQr'
+import { renderAt } from '../../test/render'
+import { serverThat } from '../../test/serverAnswers'
+import { SLOW } from '../../test/slow'
+import servedPrices from '../../test/mock/pricing.json'
+
+/**
+ * „MOJA ČLANARINA" OUTSIDE THE RENEWAL WINDOW: SOMEBODY WHO OWES A FEE FOR THE RUNNING SEASON PAYS AT ONCE.
+ *
+ * <p><b>Why this file exists.</b> PDL P8, the price list, the owner's confirmation of 16.10.2026
+ * (item U1): „Tacno, ali moze da uplati odmah za tekucu godinu bez rangiranja, pricali smo o ovome 5
+ * puta". Somebody who registers between 1 January and 14 October pays for the RUNNING season, at the
+ * row „1. januara do 14. oktobra" (40 EUR, no right to be ranked). The screen drew its payment panel
+ * only from 15 October to 31 December, so for nine and a half months a new member had no road to
+ * the one act the league asks of him. The server was measured first and takes the payment
+ * (`PaymentOutsideTheWindowTest`), so this is a fault of the screen alone.
+ *
+ * <p><b>THE AXES, each with its own cases and each stood on BOTH sides of its edge:</b>
+ * the date (14 October against 15 October, 31 December against 1 January, and the day before the
+ * first sale, 15 October 2026, which this file does not move); the standing of the member (never
+ * paid, fee lapsed, fee standing, freed of the fee); the money (Serbia and abroad); the junior
+ * sentence; and the season the money buys, which is the running one outside the window and the next
+ * one inside it. The two seasons part company on every day of the year but the window, so a screen
+ * that reads the wrong one is told apart on the first day tried.
+ *
+ * <p><b>THE SENTENCES ARE MINE AND THE OWNER CHANGES THEM ON QA</b>, so the cases read them whole.
+ */
+
+configure({ asyncUtilTimeout: SLOW / 2 })
+
+const stops: (() => void)[] = []
+
+afterEach(() => {
+  while (stops.length > 0) {
+    stops.pop()?.()
+  }
+})
+
+function stand<T extends { stop: () => void }>(server: T): T {
+  stops.push(server.stop)
+
+  return server
+}
+
+/** A member with a number whose fee has lapsed, the one of this file. His reference is the season and 50. */
+const LAPSED = { memberNumber: '000050' }
+
+/** The same member, whose fee stands. */
+const STANDING = { memberNumber: '000050', active: true }
+
+function openHisPage(changes: Record<string, unknown>, today: string) {
+  stand(neverPaidAsServed(changes))
+  renderAt('/sr/moja-clanarina', 'visitor', null, undefined, today)
+}
+
+function rowOf(key: string) {
+  return must(
+    servedPrices.find((one) => one.key === key),
+    `the served row ${key}`,
+  )
+}
+
+function dinars(amount: number | null): string {
+  return `${must(amount, 'a dinar amount').toLocaleString('sr-Latn')} RSD`
+}
+
+const NO_RANKING = 'Članarina plaćena sada ne daje pravo rangiranja.'
+
+const SHUT = 'Obnova se otvara 15. oktobra i traje do 31. decembra.'
+
+/** Every day outside the window on which something is on sale, with the season a payment buys on it. */
+const OUTSIDE: [string, number][] = [
+  ['2027-01-01', 2027],
+  ['2027-03-01', 2027],
+  ['2027-10-14', 2027],
+  ['2028-01-01', 2028],
+]
+
+describe('somebody who has never paid, outside the window', () => {
+  it.each(OUTSIDE)(
+    'pays on %s for the season that is running, %i, without a reference',
+    async (today, season) => {
+      openHisPage({}, today)
+
+      expect(
+        await screen.findByRole('heading', { level: 2, name: `Uplata članarine za ${season}.` }),
+      ).toBeVisible()
+
+      const slip = must(
+        (await screen.findByRole('heading', { level: 3, name: 'Uplatnica' })).closest<HTMLElement>(
+          '.pay__slip',
+        ),
+        'the slip',
+      )
+
+      expect(within(slip).getByText(`Članarina za ${season}. godinu`)).toBeVisible()
+      expect(within(slip).queryByText('Poziv na broj')).not.toBeInTheDocument()
+      expect(within(slip).getByText(dinars(rowOf('season').rsd))).toBeVisible()
+
+      /* THE WHOLE CODE, from the same four facts, so the season in it, the amount and the absence
+         of a reference tag are one assertion. The empty string is what `IpsPayment` means by none. */
+      expect(readQr(within(slip).getByRole('img', { name: /QR/ }))).toBe(
+        ipsPayload({
+          account: RECIPIENT_ACCOUNT,
+          recipient: RECIPIENT_NAME,
+          amountRsd: must(rowOf('season').rsd, 'the dinar amount'),
+          purpose: paymentPurpose(season),
+          reference: '',
+        }),
+      )
+
+      expect(screen.getByText('Uplata je otvorena.')).toBeVisible()
+      expect(screen.getByText(/Prepoznaje se po imenu/)).toBeVisible()
+      expect(screen.queryByText(SHUT)).not.toBeInTheDocument()
+    },
+    SLOW,
+  )
+})
+
+describe('a member whose fee has lapsed, outside the window', () => {
+  it.each(OUTSIDE)(
+    'renews on %s for the season that is running, %i, under the reference of that season',
+    async (today, season) => {
+      openHisPage(LAPSED, today)
+
+      expect(
+        await screen.findByRole('heading', { level: 2, name: `Obnova članarine za ${season}.` }),
+      ).toBeVisible()
+
+      const slip = must(
+        (await screen.findByRole('heading', { level: 3, name: 'Uplatnica' })).closest<HTMLElement>(
+          '.pay__slip',
+        ),
+        'the slip',
+      )
+
+      expect(within(slip).getByText(`${season}50`)).toBeVisible()
+      expect(within(slip).getByText(`Članarina za ${season}. godinu`)).toBeVisible()
+      expect(readQr(within(slip).getByRole('img', { name: /QR/ }))).toBe(
+        ipsPayload({
+          account: RECIPIENT_ACCOUNT,
+          recipient: RECIPIENT_NAME,
+          amountRsd: must(rowOf('season').rsd, 'the dinar amount'),
+          purpose: paymentPurpose(season),
+          reference: `${season}50`,
+        }),
+      )
+      expect(screen.getByText(/Ne registruješ se ponovo/)).toBeVisible()
+      expect(screen.queryByText(SHUT)).not.toBeInTheDocument()
+    },
+    SLOW,
+  )
+
+  it('is told once that this payment does not give the right to be ranked', async () => {
+    openHisPage(LAPSED, '2027-03-01')
+
+    await screen.findByRole('heading', { level: 3, name: 'Uplatnica' })
+
+    expect(
+      screen.getAllByText(NO_RANKING),
+      'the sentence stands once for the panel, whatever the ways of paying',
+    ).toHaveLength(1)
+  }, SLOW)
+
+  it('and the junior sentence is still the fixed one, whatever the date', async () => {
+    openHisPage(LAPSED, '2027-03-01')
+
+    const junior = rowOf('junior')
+
+    expect(
+      await screen.findByText(
+        `Ko u sezoni ima bar jedan dan 14 godina ili manje plaća ${junior.eur} EUR, a iz Srbije ${dinars(junior.rsd).replace(' RSD', '')} RSD, bez obzira na datum uplate.`,
+      ),
+    ).toBeVisible()
+
+    /* AND THE SLIP STAYS THE ROW OF THE DAY, not the junior one: nothing on the record tells a
+       junior from an adult (the 13.09.2026 boundary the screen already lives with). */
+    const slip = must(
+      (await screen.findByRole('heading', { level: 3, name: 'Uplatnica' })).closest<HTMLElement>(
+        '.pay__slip',
+      ),
+      'the slip',
+    )
+
+    expect(within(slip).getByText(dinars(rowOf('season').rsd))).toBeVisible()
+    expect(within(slip).queryByText(dinars(junior.rsd))).not.toBeInTheDocument()
+  }, SLOW)
+
+  it('abroad is given the PayPal data of the running season, with the tax in the amount', async () => {
+    openHisPage({ ...LAPSED, country: 'MK' }, '2027-03-01')
+
+    expect(await screen.findByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
+
+    const sends = rowOf('season').eur + rowOf('processing').eur
+
+    expect(screen.getByText(sends.toFixed(2).replace('.', ','))).toBeVisible()
+    expect(screen.getByText('202750')).toBeVisible()
+    expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
+    expect(screen.getByText(NO_RANKING)).toBeVisible()
+  }, SLOW)
+})
+
+describe('the edges of the window, from both sides', () => {
+  /* **EACH ROW IS A DAY, THE SEASON ITS PAYMENT BUYS, THE ROW OF THE PRICE LIST IT FALLS IN AND WHETHER
+     THE SENTENCE ABOUT RANKING STANDS.** 14 October and 15 October are the last day outside and the
+     first inside; 31 December and 1 January the last inside and the first outside. A window wrong by
+     a day is wrong on exactly one of the four, and the sentence about ranking is the part of the panel
+     that follows the date in both directions. */
+  it.each([
+    ['2027-10-14', 2027, 'season', true],
+    ['2027-10-15', 2028, 'early', false],
+    ['2027-12-31', 2028, 'late', false],
+    ['2028-01-01', 2028, 'season', true],
+  ])('on %s the money buys %i at the row %s', async (today, season, key, ranking) => {
+    openHisPage(LAPSED, today)
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: `Obnova članarine za ${season}.` }),
+    ).toBeVisible()
+    expect(
+      screen.getByText(
+        `Danas članarina košta ${rowOf(key).eur} EUR, a iz Srbije ${dinars(rowOf(key).rsd).replace(' RSD', '')} RSD.`,
+      ),
+    ).toBeVisible()
+
+    const slip = must(
+      screen.getByRole('heading', { level: 3, name: 'Uplatnica' }).closest<HTMLElement>('.pay__slip'),
+      'the slip',
+    )
+
+    expect(within(slip).getByText(`${season}50`)).toBeVisible()
+    expect(within(slip).getByText(dinars(rowOf(key).rsd))).toBeVisible()
+    expect(screen.queryAllByText(NO_RANKING)).toHaveLength(ranking ? 1 : 0)
+  }, SLOW)
+
+  it('and a renewal still opens the same way inside it for a member whose fee stands', async () => {
+    openHisPage(STANDING, '2027-10-15')
+
+    expect(await screen.findByRole('heading', { level: 3, name: 'Uplatnica' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 2, name: 'Obnova članarine za 2028.' })).toBeVisible()
+    expect(screen.queryByText(NO_RANKING)).not.toBeInTheDocument()
+  }, SLOW)
+})
+
+describe('whoever owes nothing for the running season is told what he was told', () => {
+  it.each(OUTSIDE)('a member whose fee stands, on %s, is told when renewal opens', async (today) => {
+    openHisPage(STANDING, today)
+
+    expect(await screen.findByText(SHUT)).toBeVisible()
+    /* THE HEADING OVER IT STAYS THE RENEWAL STILL TO OPEN, which is the next season: the one
+       sentence a shut panel carries is about that. */
+    expect(
+      screen.getByRole('heading', {
+        level: 2,
+        name: `Obnova članarine za ${Number(today.slice(0, 4)) + 1}.`,
+      }),
+    ).toBeVisible()
+    expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
+    expect(screen.queryByText(NO_RANKING)).not.toBeInTheDocument()
+  }, SLOW)
+
+  it.each([
+    ['whose fee has lapsed', LAPSED],
+    ['whose fee stands', STANDING],
+  ])('a member %s who is freed of the fee is asked for nothing', async (_what, record) => {
+    openHisPage({ ...record, membershipBasis: 'feeExempt' }, '2027-03-01')
+
+    expect(await screen.findByText('Oslobođen si plaćanja članarine, pa nema šta da uplatiš.')).toBeVisible()
+    expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
+    expect(screen.queryByText(NO_RANKING)).not.toBeInTheDocument()
+  }, SLOW)
+
+  /* **AND THE DAYS BEFORE THE FIRST SALE ARE UNTOUCHED**: nothing is for sale until 15 October 2026,
+     so there is nothing to pay at once, and the sentence that says when it opens stays where it was
+     for both of the people who would otherwise be drawn a panel. 14 October is the last such day. */
+  it.each([
+    ['never paid', {}],
+    ['lapsed', LAPSED],
+  ])('somebody %s is told when payment opens until the first sale, 15 October 2026', async (_who, record) => {
+    openHisPage(record, '2026-10-14')
+
+    expect(await screen.findByText(SHUT)).toBeVisible()
+    expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
+    expect(screen.queryByText(NO_RANKING)).not.toBeInTheDocument()
+  }, SLOW)
+})
+
+describe('the sentence about ranking follows the row and not the date', () => {
+  function servedWith(change: (row: (typeof servedPrices)[number]) => object) {
+    stand(
+      serverThat((path) =>
+        path === '/api/pricing'
+          ? new Response(JSON.stringify(servedPrices.map(change)), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            })
+          : null,
+      ),
+    )
+  }
+
+  it('is not drawn outside the window when the served row carries the right', async () => {
+    servedWith((row) => (row.key === 'season' ? { ...row, ranking: true } : row))
+    openHisPage(LAPSED, '2027-03-01')
+
+    expect(await screen.findByRole('heading', { level: 3, name: 'Uplatnica' })).toBeVisible()
+    expect(screen.queryByText(NO_RANKING)).not.toBeInTheDocument()
+  }, SLOW)
+
+  it('is drawn inside the window when the served row does not carry it', async () => {
+    servedWith((row) => (row.key === 'regular' ? { ...row, ranking: false } : row))
+    openHisPage(LAPSED, '2027-11-01')
+
+    expect(await screen.findByRole('heading', { level: 3, name: 'Uplatnica' })).toBeVisible()
+    expect(screen.getAllByText(NO_RANKING)).toHaveLength(1)
+  }, SLOW)
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
+})

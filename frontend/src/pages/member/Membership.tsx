@@ -21,7 +21,7 @@ import {
   RECIPIENT_ADDRESS,
   RECIPIENT_NAME,
 } from '../../data/paymentQr'
-import { registrationOpen, seasonBeingRenewed } from '../../data/pricing'
+import { registrationOpen, seasonBeingPaidFor, seasonBeingRenewed } from '../../data/pricing'
 import {
   A_FEE,
   A_LEVEL,
@@ -165,11 +165,16 @@ function inTheirCurrency(
  *   član": the list of what he may not do names the teams), and the panel's one sentence about
  *   getting into a team would promise him what the server refuses.
  *
- * What is NOT decided and is left as it stood, said rather than left to be found: the payment
- * panel is drawn only inside the renewal window, for him too (15 October to 31 December), and
- * the season on it is the one being renewed. Nobody has said how somebody who registers in March
- * pays, and a panel that opened for him then would be a rule invented here. The referral panel is
- * drawn to him as to everybody: no entry says he may not have a link or a balance.
+ * **Outside the window he pays at once, for the running season (PDL P8, the owner's confirmation
+ * of 16.10.2026: „moze da uplati odmah za tekucu godinu bez rangiranja, pricali smo o ovome 5
+ * puta").** This said until that day that nobody had said how somebody who registers in March
+ * pays and that a panel opened for him then would be a rule invented here. It was not
+ * undecided: the price list has a row for exactly that stretch („1. januara do 14. oktobra",
+ * 40 EUR, no right to be ranked) and the owner had been asked about it before. From 15 October to
+ * 31 December the panel is the renewal's, for the next season; from 1 January to 14 October it is
+ * the same panel for the running one (`seasonBeingPaidFor`), drawn to whoever owes a fee for it -
+ * him, and a member whose fee has lapsed - and not to a member whose fee stands. The referral
+ * panel is drawn to him as to everybody: no entry says he may not have a link or a balance.
  */
 export function Membership() {
   const { locale, t } = useI18n()
@@ -454,6 +459,26 @@ export function Membership() {
            2028, and the heading said 2027. */
         const nextSeason = seasonBeingRenewed(today)
         const windowOpen = inYearlyWindow(today)
+        /* THE SEASON A PAYMENT MADE TODAY BUYS, AND WHETHER THE PANEL THAT TAKES IT IS DRAWN
+           (PDL P8, the price list, owner's confirmation of 16.10.2026, item U1: „moze da
+           uplati odmah za tekucu godinu bez rangiranja").
+
+           **Inside the window nothing changed, byte for byte**: the season is the next one and
+           the panel is drawn to everybody who is not freed of the fee, a member whose fee
+           stands included, because he may renew early. **Outside it the panel is drawn to the
+           two who owe a fee for the running season** - somebody who has never paid and a
+           member whose fee has lapsed - and not to the member whose fee stands, who has paid
+           for it already and is told when renewal opens, as before. The season it buys is
+           the running one, the same value the server books the payment under
+           (`SeasonClock.seasonBeingPaidFor`), so the purpose, the reference and the heading
+           cannot name a year the money will not buy.
+
+           `registrationOpen` is asked as well, and it is what keeps the days before the
+           league's first sale (15.10.2026) as they were: there is nothing to pay for yet, and
+           the sentence that says so stays where it was. The transfer panel below is NOT
+           read off `payable`: a transfer window is the window and nothing else. */
+        const payingSeason = seasonBeingPaidFor(today)
+        const payable = windowOpen || (registrationOpen(today) && who.standing !== 'standing')
         const team = teams.find((one) => one.id === myTeamId)
         /* THE FOUR AMOUNTS THIS SCREEN QUOTES, EACH AS A LIST OF NONE OR ONE.
          *
@@ -550,10 +575,10 @@ export function Membership() {
            The purpose says what the money is for and the reference says whose it
            is, which is the split a bank statement is reconciled by (owner,
            31.07.2026). */
-        const purpose = paymentPurpose(nextSeason)
+        const purpose = paymentPurpose(payingSeason)
         /* THE EMPTY STRING FOR SOMEBODY WITH NO NUMBER, and it is the value the code, the slip and
            PayPal are all asked of (see the note above `Membership`). */
-        const reference = paymentReferenceOrNone(nextSeason, memberNumber)
+        const reference = paymentReferenceOrNone(payingSeason, memberNumber)
         /* WHAT A MEMBER ABROAD ACTUALLY SENDS THROUGH PAYPAL, fee included (owner,
            27.09.2026: „cena ostaje 35, clan salje 38, a taksa se vidi kao svoj red").
            The same `due` row the slip above already quotes, plus the same processing
@@ -790,7 +815,13 @@ export function Membership() {
             <section className="member__panel" aria-labelledby="membership-renewal">
               <h2 className="profile__section" id="membership-renewal">
                 {t(neverPaid ? 'membership.firstPayment' : 'membership.renewal', {
-                  season: nextSeason,
+                  /* THE SEASON OF THE PAYMENT ONLY WHERE A PAYMENT IS TAKEN. The heading stands
+                     over the sentence for a shut panel too, and for a member whose fee stands
+                     or who is freed of it that sentence is about the renewal still to open, which
+                     is the next season: measured on 120 renderings, every one of those read
+                     „2028" before this branch and read „2027" when this was `payingSeason`
+                     alone. */
+                  season: !feeExempt && payable ? payingSeason : nextSeason,
                 })}
               </h2>
 
@@ -803,11 +834,25 @@ export function Membership() {
                   only thing this screen ever showed. */}
               {feeExempt ? (
                 <p className="member__note">{t('membership.feeExemptNoRenewal')}</p>
-              ) : windowOpen ? (
+              ) : payable ? (
                 <>
                   <p className="member__note">
                     {t(neverPaid ? 'membership.firstPaymentOpen' : 'membership.renewalOpen')}
                   </p>
+
+                  {/* THE ONE SENTENCE A PAYMENT MADE OUTSIDE THE WINDOW OWES HIM (PDL P8, the row
+                      „1. januara do 14. oktobra: 40 EUR, bez prava rangiranja"): what he pays
+                      now does not give the right to be ranked. Read off the row in force and
+                      not off the date, so it is drawn exactly where the served list says the
+                      period carries no such right, and never inside the window, where every
+                      period does. The words are mine and the owner changes them on QA. */}
+                  {due
+                    .filter((row) => row.ranking === false)
+                    .map((row) => (
+                      <p className="member__note" key={row.key}>
+                        {t('membership.noRanking')}
+                      </p>
+                    ))}
 
                   {/* A SENTENCE WHERE A BUTTON USED TO BE, since 26.09.2026. The button had
                       no `onClick`, no enclosing `<form>` and no route to reach: renewing has

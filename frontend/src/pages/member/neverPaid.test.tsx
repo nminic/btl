@@ -69,8 +69,8 @@ function stand<T extends { stop: () => void }>(server: T): T {
  *  drawn on, and the first period of the price list after its first fortnight. */
 const IN_THE_WINDOW = '2026-11-01'
 
-/** A day outside it. */
-const OUT_OF_THE_WINDOW = '2027-03-01'
+/** The last day before anything is for sale (15 October 2026). */
+const BEFORE_THE_FIRST_SALE = '2026-10-14'
 
 /**
  * HIS PAGE, AS THE SERVER ANSWERS HIM.
@@ -276,14 +276,14 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
     expect(screen.getByText(/registracija\?preporuka=3d6b1f0a9c2e4478/)).toBeVisible()
   }, SLOW)
 
-  /* **WHERE THE PAYMENT PANEL STOPS, written down because it is not decided.** It is drawn inside
-     the renewal window for him as for everybody (15 October to 31 December), and outside it he is
-     told when it opens, in the words a member who renews is told. Nobody has said how somebody who
-     registers in March pays, and a panel that opened for him then would be a rule invented in this
-     file: the case holds what the screen does today so that the day it is decided, this is the line
-     that changes. */
-  it('is told when payment opens, outside the window, as everybody is', async () => {
-    openHisPage({}, OUT_OF_THE_WINDOW)
+  /* **WHERE THE PAYMENT PANEL STOPS, and it stops at the first sale and not at the window.** It was
+     written down here as not decided: nobody had said how somebody who registers in March pays. The
+     owner said it on 16.10.2026 (PDL P8, the price list, item U1): he pays at once, for the running
+     season, and what that looks like outside the window is measured in `payingOutsideTheWindow.test.tsx`.
+     What stays here is the other edge, the day before anything is for sale: 14 October 2026 is told
+     when payment opens, as everybody is. */
+  it('is told when payment opens, before the first sale, as everybody is', async () => {
+    openHisPage({}, BEFORE_THE_FIRST_SALE)
 
     expect(await screen.findByText('Obnova se otvara 15. oktobra i traje do 31. decembra.')).toBeVisible()
     expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
