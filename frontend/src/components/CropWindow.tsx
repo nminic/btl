@@ -26,7 +26,7 @@ import './Crop.css'
  * two components drawing the same three numbers is two chances to draw them
  * differently.
  */
-export function CropWindow({ picture, crop, alt, children, onChange }: {
+export function CropWindow({ picture, crop, alt, children, onChange, onLoaded, onFailed }: {
   /** The picture itself. In the prototype this is what the browser read off the
    *  member's own disc; after F5 it is a path, and nothing here changes. */
   picture: string
@@ -60,6 +60,24 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
    * drag.
    */
   onChange?: (crop: Crop) => void
+  /**
+   * What the picture's own element said, told to whoever needs to know whether
+   * the picture is there to be looked at: `onLoaded` when the browser has the
+   * file, `onFailed` when it could not (a 404, a redirect nowhere, a file it
+   * cannot decode).
+   *
+   * Missing where nothing waits on the picture, which is the member's screen:
+   * he is arranging a circle over a file he has just chosen from his own disc.
+   * Present on the moderator's card, where two buttons wait for the picture
+   * before they answer (PDL, 11.10.2026: „Dok se slika učitava, oba dugmeta su
+   * neaktivna; kad se učita, oba rade."). The element is told about, not
+   * replaced: it is the same `<img>` that measures the file, so there is one
+   * element and one answer about it, and a second `<img>` beside it to ask
+   * "did it arrive" would be a second picture that could disagree with the
+   * first (ADL A31).
+   */
+  onLoaded?: () => void
+  onFailed?: () => void
 }) {
   const { t } = useI18n()
   /* What the browser knows about the file, which is nothing until it has
@@ -317,7 +335,10 @@ export function CropWindow({ picture, crop, alt, children, onChange }: {
             if (naturalWidth > 0 && naturalHeight > 0) {
               setShape({ width: naturalWidth, height: naturalHeight })
             }
+
+            onLoaded?.()
           }}
+          onError={onFailed}
         />
 
         {/* The shade, as a sheet over the whole picture with the circle cut out

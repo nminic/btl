@@ -5,6 +5,7 @@ import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { combinePair, dataOr, failed, useCompetitors, useTeams } from '../../data/useResource'
 import { Stars } from '../../components/Stars'
+import { CropWindow } from '../../components/CropWindow'
 import { commentFrom } from '../../data/comment'
 import { afterJoining } from '../../data/afterJoining'
 import { transfersTakeEffect } from '../../data/season'
@@ -233,29 +234,28 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * (`CLAUDE.md`, "mutacija koja mora da... nije mutacija", the class of finding it
  * warns against).
  *
- * <p><b>A plain `<img>`, and never `CropWindow`, and that is a decision the owner
- * has since taken the other way for a branch of its own.</b> PDL.md, "28. Moderator
- * vidi ISECAK sa zatamnjenim ostatkom" (owner, 27.09.2026), confirms and sharpens
- * the 12.08.2026 decision this paragraph used to read as unmet: the moderator sees
- * the crop with its remainder dimmed but still perceptible, not the whole
- * photograph this card draws today. Drawing that is its own increment, and the
- * whole photograph drawn here in the meantime is a temporary stand-in rather than
- * a decision of this component's own. It stands in because it is strictly better than the
- * "Datoteka" label with nothing under it this branch replaces (owner, 27.09.2026:
- * "Svakako uradi sta god je potrebno da moderator vidi sliku koju verifikuje"),
- * not because the question of what he should see was ever open - it no longer is.
- * `PhotoApi.waitingOn`'s own comment still answers the WHOLE original and nothing
- * about the crop. **`VerificationApi.Waiting` has carried the member's circle since
- * 10.10.2026, as the print of a decision and for nothing else:** `one.crop` is the
- * circle this card was served for a row that holds a picture, and `approvalOf` and
- * `refusalOf` send it back with the key. Nothing here draws it, so a circle moved
- * under the moderator's hand refuses his decision (409 „Slika je promenjena,
- * pogledaj je ponovo.") and the card, read again, looks exactly as it did - the whole
- * original and no circle. That is the price of the owner's sentence until the crop
- * is drawn, written here where the refusal is handled and not left to be found on
- * QA; drawing it is the job this paragraph names, and it now needs nothing added
- * to the server. For a row with no picture `one.crop` is `WHOLE`, the portal's own
- * word for „no square of its own" (`./pending.ts`), and is not sent.
+ * <p><b>THE CIRCLE THE MEMBER CHOSE, with the rest dimmed and still there to be made out (PDL.md,
+ * „Odobravanje slike", owner, 27.09.2026: „Isecak sa zatamnjenim ostatkom ali tako da se i tu nazire
+ * slika, kako sam odlucio.").</b> Drawn by `CropWindow`, the component the member arranges the circle
+ * in, and by no second drawing: „isto" in the owner's sentence of 12.08.2026 is the requirement that
+ * what the member arranges is what the moderator judges, and two components drawing the same three
+ * numbers are two chances to draw them differently (`components/CropWindow.tsx` says the same of
+ * itself). That includes the shade, which is the member's own token (`--crop-shade`, 55 per cent black,
+ * held between 35 and 70 by `styles/circle.test.ts`) and not a value of this card's: the owner's
+ * sentence makes the number a measurement and names the member's as where it starts from, and this
+ * card departs from it nowhere.
+ *
+ * <p><b>The circle is `one.crop`, the one this card was served for a row that holds a picture
+ * (`VerificationApi.Waiting.crop`).</b> It is the same fact the card's decisions send back as
+ * `seenCrop` (`approvalOf`, `refusalOf`), read off the same card for the same reason: what he looks at
+ * and what he decides about are one answer. A circle moved under the moderator's hand therefore
+ * refuses his decision (409 „Slika je promenjena, pogledaj je ponovo.") and the card, read again,
+ * draws the circle where it now is - the `<img>` is not keyed by it and does not need to be, the
+ * pixels did not change. `CropWindow` is given NO `onChange`, so nothing on the picture listens to a
+ * pointer and the height is not capped: „Moderatoru se ne ograničava" (PDL.md, 28.08.2026), because he
+ * has nothing to drag and his job is to see the whole of what is thrown away. For a row with no
+ * picture `one.crop` is `WHOLE`, the portal's own word for „no square of its own" (`./pending.ts`),
+ * and nothing is drawn at all.
  *
  * <p><b>A failed load says so rather than hiding the picture or drawing a broken
  * image icon, since PDL.md "29. Slika koja ne moze da se ucita" (owner,
@@ -307,9 +307,9 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * pictureAlt', ...)` - so this reads the key by name rather than composing an
  * equivalent sentence that would satisfy the guard without answering it. Shortened
  * to "Slika koju je poslao {who}" on 27.09.2026, the day this component stopped
- * drawing a crop and the framed part it used to promise stopped being true; PDL.md
- * "28." above means it goes back to naming that framed part the day the branch
- * that draws the crop replaces this component's picture, and not one day before.
+ * drawing a crop and the framed part it used to promise stopped being true; it names
+ * that framed part again from the day this card draws the crop, because it is true
+ * again (the frame's own sentence, `crop.framed`, is read out beside it).
  */
 function WaitingPicture({
   item,
@@ -345,14 +345,19 @@ function WaitingPicture({
   }
 
   return (
-    <img
-      key={photoId}
-      className="pending__picture"
-      src={photoPath(item.id, photoId)}
-      alt={t('verification.pictureAlt', { who: item.who })}
-      onLoad={() => onOutcome('loaded', photoId)}
-      onError={() => onOutcome('failed', photoId)}
-    />
+    <div className="pending__picture">
+      {/* Keyed by the picture, so that a replaced one is a component of its own with an
+          `<img>` of its own, which draws nothing until its own pixels arrive and reports
+          for itself. The circle is not in the key (see above). */}
+      <CropWindow
+        key={photoId}
+        picture={photoPath(item.id, photoId)}
+        crop={item.crop}
+        alt={t('verification.pictureAlt', { who: item.who })}
+        onLoaded={() => onOutcome('loaded', photoId)}
+        onFailed={() => onOutcome('failed', photoId)}
+      />
+    </div>
   )
 }
 
@@ -1590,27 +1595,18 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             sliku učesnika... treba da vidi isto fokus na vidljiv
                             deo slike i zatamnjen ali dovoljno vidljiv ostatak."
                             That requirement stood UNMET on this card between
-                            27.09.2026 and this branch: the block that used to
+                            27.09.2026 and the day it drew the circle again: the block that used to
                             draw here was the very component the member arranges
                             his circle in, and it was removed the same day because
                             it was fed by a session row no route could decide
                             (`member/pictureIsOneRow.test.tsx`), never by this one.
 
-                            WHY THE COMPONENT BELOW STILL DRAWS THE WHOLE PICTURE
-                            AND NOT THAT ONE BROUGHT BACK, AND IT IS TEMPORARY.
-                            PDL.md, „28. Moderator vidi ISECAK sa zatamnjenim
-                            ostatkom" (owner, 27.09.2026), confirms 12.08.2026's
-                            „isto" the way it was always meant: the moderator sees
-                            the crop with its remainder dimmed but still visible,
-                            not the whole photograph this card draws today. That
-                            needs `/api/verification` to carry the crop's three
-                            fractions beside the picture, which is its own branch
-                            and not a line changed here (`WaitingPicture`'s own doc
-                            above, in full). Until that branch lands, this whole
-                            picture stands in because it is better than the
-                            „Datoteka" label with nothing under it this branch
-                            replaces, and not because the question was ever open:
-                            it no longer is.
+                            WHAT THE COMPONENT BELOW DRAWS: THE CIRCLE THE MEMBER
+                            CHOSE, FROM `one.crop`, WITH THE REST DIMMED AND STILL
+                            VISIBLE. PDL.md, „Odobravanje slike" (owner, 27.09.2026),
+                            confirms 12.08.2026's „isto" the way it was always meant,
+                            and `WaitingPicture`'s own doc says what it draws, from
+                            where, and why through the member's own `CropWindow`.
 
                             Unaffected either way is everything else this row
                             draws, whatever it holds: this paragraph used to say a
