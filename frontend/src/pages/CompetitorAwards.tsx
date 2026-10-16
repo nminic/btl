@@ -59,7 +59,7 @@ function AwardsBody({
   part: string | undefined
 }) {
   const { locale } = useI18n()
-  const { memberNumber: readerNumber, theServerHasAnswered } = useSession()
+  const { memberNumber: readerNumber, signedIn, theServerHasAnswered } = useSession()
   const { role } = useRole()
   const overlay = useOverlay()
   const state = combinePair(
@@ -74,7 +74,7 @@ function AwardsBody({
            same overlay: this page draws the same head from the same record, and a check written
            on one of the two is a check on neither. */
         const competitors = recordsOf(MEMBERS, everybody, overlay)
-        const readsHiddenProfiles = isActiveMemberOrAdministration(role, readerNumber, everybody)
+        const readsHiddenProfiles = isActiveMemberOrAdministration(role, signedIn)
         const readable = profileFor(
           competitors,
           memberNumber,

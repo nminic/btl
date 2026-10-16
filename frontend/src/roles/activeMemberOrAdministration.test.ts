@@ -1,8 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import type { Competitor } from '../data/types'
-import { must } from '../test/at'
+import type { SignedIn } from '../session/context'
 import { isActiveMember, isActiveMemberOrAdministration } from './activeMemberOrAdministration'
 
 /**
@@ -13,50 +10,57 @@ import { isActiveMember, isActiveMemberOrAdministration } from './activeMemberOr
  * reader who is the administration and not a member in good standing is the one who tells them
  * apart, and a single question could not.
  *
- * <p><b>The list is the one the server serves</b>, which leaves out whoever's fee has lapsed
- * (`/api/competitors` ends `where c.active`). Read off the generated file and cut the way the
- * server cuts it, so the member this case calls lapsed is one the file really carries: his
- * absence from the served list is then a fact about the fee and not about a number nobody has.
+ * <p><b>THE SESSION IS THE ONE HOME OF „THE READER IS ACTIVE" SINCE 16.10.2026</b> (ADL, „Činjenica
+ * „član je aktivan" dobija jedan dom na ekranu"), so the grid is over the people the session can
+ * describe, each as `session/context.ts` defines them, and not over a list of members. The list
+ * the server serves is no argument of either question: that it is not is the type of the call, and
+ * what the screens do when the list and the session disagree is asked of the screens
+ * (`pages/profile/hisOwnProfile.test.tsx`, `pages/event/goingToEvent.test.tsx`,
+ * `pages/event/commentsAreReadByActiveMembers.test.tsx`).
  */
-type FileMember = Competitor & { active: boolean }
 
-const file: FileMember[] = JSON.parse(
-  readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'competitors.json'), 'utf-8'),
-)
+const STANDING: SignedIn = { as: 'member', memberNumber: '000001', feeStands: true }
 
-const served: Competitor[] = file.filter((one) => one.active)
+/* A member: he has a number, and the flag is what says his fee has run out. */
+const LAPSED: SignedIn = { as: 'member', memberNumber: '000032', feeStands: false }
 
-const ACTIVE = must(served[0], 'a member whose fee is standing').memberNumber
+/* Registered and never paid: a record and no number. */
+const NEVER_PAID: SignedIn = { as: 'neverPaid', account: 7 }
 
-const LAPSED = must(
-  file.find((one) => !one.active),
-  'a member whose fee has lapsed',
-).memberNumber
+/* An account the league keeps no record of: what a moderator who races for nobody is. */
+const ACCOUNT_ONLY: SignedIn = { as: 'account', account: 8 }
 
 describe('an active member, or the administration', () => {
-  it('reads a member as active only where the served list carries him', () => {
-    expect(isActiveMember(ACTIVE, served)).toBe(true)
-    /* In the file, and not on the list: the fee and nothing else is why. */
-    expect(file.some((one) => one.memberNumber === LAPSED)).toBe(true)
-    expect(isActiveMember(LAPSED, served)).toBe(false)
-    /* Somebody with no number at all: a moderator who does not race, or somebody who has
-       registered and never paid. */
-    expect(isActiveMember(null, served)).toBe(false)
+  it('reads a member as active only where the session says his fee stands', () => {
+    expect(isActiveMember(STANDING)).toBe(true)
+    expect(isActiveMember(LAPSED)).toBe(false)
   })
 
-  it('lets the administration in whatever its own fee, and a member only where his fee stands', () => {
-    /* A member, whose fee is standing, has run out, or who has no number. */
-    expect(isActiveMemberOrAdministration('competitor', ACTIVE, served)).toBe(true)
-    expect(isActiveMemberOrAdministration('competitor', LAPSED, served)).toBe(false)
-    expect(isActiveMemberOrAdministration('competitor', null, served)).toBe(false)
+  it('reads nobody who is not a member as active: not somebody who never paid, not an account with no record, not nobody', () => {
+    expect(isActiveMember(NEVER_PAID)).toBe(false)
+    expect(isActiveMember(ACCOUNT_ONLY)).toBe(false)
+    expect(isActiveMember(null)).toBe(false)
+  })
 
-    /* The administration: a moderator who races for nobody, one whose own fee has lapsed, and
+  it('lets a member in only where his fee stands', () => {
+    expect(isActiveMemberOrAdministration('competitor', STANDING)).toBe(true)
+    expect(isActiveMemberOrAdministration('competitor', LAPSED)).toBe(false)
+    expect(isActiveMemberOrAdministration('competitor', NEVER_PAID)).toBe(false)
+    expect(isActiveMemberOrAdministration('competitor', ACCOUNT_ONLY)).toBe(false)
+  })
+
+  it('lets the administration in whatever its own fee, and with no number at all', () => {
+    /* A moderator who races for nobody, one whose own fee has lapsed, one who has never paid, and
        the superadmin. PDL section 18's list, „administracija (moderatori i superadmin)". */
-    expect(isActiveMemberOrAdministration('moderator', null, served)).toBe(true)
-    expect(isActiveMemberOrAdministration('moderator', LAPSED, served)).toBe(true)
-    expect(isActiveMemberOrAdministration('superadmin', null, served)).toBe(true)
+    expect(isActiveMemberOrAdministration('moderator', ACCOUNT_ONLY)).toBe(true)
+    expect(isActiveMemberOrAdministration('moderator', LAPSED)).toBe(true)
+    expect(isActiveMemberOrAdministration('moderator', NEVER_PAID)).toBe(true)
+    expect(isActiveMemberOrAdministration('moderator', STANDING)).toBe(true)
+    expect(isActiveMemberOrAdministration('superadmin', ACCOUNT_ONLY)).toBe(true)
+    expect(isActiveMemberOrAdministration('superadmin', null)).toBe(true)
+  })
 
-    /* And nobody signed in, who has no number to be on any list with. */
-    expect(isActiveMemberOrAdministration('visitor', null, served)).toBe(false)
+  it('lets nobody signed in in', () => {
+    expect(isActiveMemberOrAdministration('visitor', null)).toBe(false)
   })
 })

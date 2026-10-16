@@ -43,11 +43,11 @@ export function OverallMark({ eventId }: { eventId: number }) {
      endpoint is the one that refuses, 401 to a visitor and 404 to anybody else who does
      not read.
 
-     Nothing is drawn while it is not known whether this reader reads, and nothing is
-     said if it never becomes known: this stands in the head of the page, where a box
+     Nothing is drawn while the server has not said who is reading (the session reads that
+     as nobody who reads, ADL 16.10.2026): this stands in the head of the page, where a box
      that resolves into nothing moves the name of the race under the reader's eye. The
      comments are not asked for either, for a reader who is not drawn the figure. */
-  if (reads.status !== 'ready' || !reads.data) {
+  if (!reads) {
     return null
   }
 

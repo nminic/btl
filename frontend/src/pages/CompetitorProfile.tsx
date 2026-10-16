@@ -452,7 +452,13 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
   const params = useParams()
   const { search } = useLocation()
   const memberNumber = given ?? memberNumberIn(params.memberNumber)
-  const { memberNumber: readerNumber, theServerHasAnswered, pairsMade, pairsBroken } = useSession()
+  const {
+    memberNumber: readerNumber,
+    signedIn,
+    theServerHasAnswered,
+    pairsMade,
+    pairsBroken,
+  } = useSession()
   const { role } = useRole()
   const overlay = useOverlay()
   const state = combineFour(useCompetitors(), useResults(), useTeams(), usePairs())
@@ -469,11 +475,11 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
         const competitors = recordsOf(MEMBERS, everybody, overlay)
         const teams = recordsOf(TEAMS, allTeams, overlay)
         /* Whether THIS reader may read a hidden profile, as the server already answers it: an active
-           member (his number is on the list the server serves, which is the list drawn here) or the
-           administration, which races for nobody and reads all the same (`profile/visible.ts`,
+           member (the session says his fee stands, `GET /api/me`) or the administration, which races
+           for nobody and reads all the same (`profile/visible.ts`,
            `roles/activeMemberOrAdministration.ts`). A free account and a member whose fee has lapsed
            are signed in and are read as a visitor is. */
-        const readsHiddenProfiles = isActiveMemberOrAdministration(role, readerNumber, everybody)
+        const readsHiddenProfiles = isActiveMemberOrAdministration(role, signedIn)
         const readable = profileFor(
           competitors,
           memberNumber,
