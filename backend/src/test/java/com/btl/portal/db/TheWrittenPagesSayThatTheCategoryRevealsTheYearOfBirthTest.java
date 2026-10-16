@@ -221,39 +221,125 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 				.contains("BR @ pravilnik #17 en: found once, and its new text is already there");
 	}
 
+	/**
+	 * The text as it stood BEFORE V58: the sentence taken out of the four sections it was put into, by hand and
+	 * with nothing else touched. The refusals below are asked of this text, because it is the one V58 is written
+	 * for; asked of the finished text every edit would refuse for the same reason (the sentence is already there)
+	 * and one edit's own check could be taken away without any case noticing.
+	 */
+	private void putBackTheTextAsItStoodBeforeV58() {
+		for (Place place : WHERE_IT_STANDS) {
+			for (String language : List.of("sr", "en")) {
+				setBody(language, place, bodyOf(language, place).replace(" " + sentenceIn(language), ""));
+			}
+		}
+	}
+
+	private void setBody(String language, Place place, String body) {
+		int changed = language.equals("sr")
+				? db.sql("update static_page_section s set body = :body from static_page p"
+								+ " where p.id = s.page_id and p.slug = :slug and s.position = :position")
+						.param("body", body).param("slug", place.slug()).param("position", place.position()).update()
+				: db.sql("update static_page_section_translation t set body = :body"
+								+ " from static_page_section s, static_page p"
+								+ " where s.id = t.section_id and p.id = s.page_id and p.slug = :slug"
+								+ " and s.position = :position and t.language = :language")
+						.param("body", body).param("slug", place.slug()).param("position", place.position())
+						.param("language", language).update();
+
+		assertThat(changed).as("there is no %s text of %s #%s to write", language, place.slug(), place.position()).isOne();
+	}
+
+	/**
+	 * V58 run over the text before it, which is the one case in which it succeeds: the four sections gain the
+	 * sentence directly after the anchor, and no other section of either table changes by a character.
+	 */
+	@Test
+	void v58AddsTheSentenceToTheFourSectionsAndChangesNothingElse() {
+		putBackTheTextAsItStoodBeforeV58();
+
+		List<String> before = everySectionBody();
+
+		jdbc.execute(migrationSql(String.valueOf(THE_MIGRATION)));
+
+		List<String> after = everySectionBody();
+
+		assertThat(before).as("there is no page text at all, so this case measures nothing").isNotEmpty();
+		assertThat(after).hasSameSizeAs(before);
+
+		int changed = 0;
+
+		for (int row = 0; row < before.size(); row++) {
+			if (!before.get(row).equals(after.get(row))) {
+				changed++;
+			}
+		}
+
+		assertThat(changed).as("V58 must change the body of four sections and no other").isEqualTo(4);
+
+		for (Place place : WHERE_IT_STANDS) {
+			for (String language : List.of("sr", "en")) {
+				assertThat(bodyOf(language, place))
+						.as("%s #%s %s after V58", place.slug(), place.position(), language)
+						.containsOnlyOnce(anchorIn(language) + " " + sentenceIn(language));
+			}
+		}
+	}
+
+	/** Every body of both tables in a fixed order, so that two readings can be compared row by row. */
+	private List<String> everySectionBody() {
+		return db.sql("select body from (select p.slug, s.position, 'sr' as language, s.body"
+						+ " from static_page_section s join static_page p on p.id = s.page_id"
+						+ " union all select p.slug, s.position, t.language, t.body"
+						+ " from static_page_section_translation t join static_page_section s on s.id = t.section_id"
+						+ " join static_page p on p.id = s.page_id) every_body order by slug, position, language")
+				.query(String.class).list();
+	}
+
 	@Test
 	void anAnchorThatStandsTwiceStopsV58() {
-		assertThat(db.sql("update static_page_section s set body = :body || ' ' || :anchor from static_page p"
-						+ " where p.id = s.page_id and p.slug = 'pravilnik' and s.position = 17")
-				.param("body", bodyOf("sr", new Place(RULEBOOK, 17)).replace(" " + SERBIAN_SENTENCE, ""))
-				.param("anchor", SERBIAN_ANCHOR)
-				.update())
-				.as("there is no seventeenth section of the rulebook to write the anchor into twice")
-				.isOne();
+		putBackTheTextAsItStoodBeforeV58();
+		setBody("sr", new Place(RULEBOOK, 17), bodyOf("sr", new Place(RULEBOOK, 17)) + " " + SERBIAN_ANCHOR);
 
-		assertThat(reportOf(v58RunAgain()))
+		PSQLException error = v58RunAgain();
+
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 4 edits");
+		assertThat(reportOf(error))
 				.as("the anchor stands twice and V58 did not say so")
 				.contains("BR @ pravilnik #17 sr: found 2 times");
 	}
 
 	@Test
 	void anAnchorThatIsNotThereStopsV58() {
-		assertThat(db.sql("update static_page_section_translation t set body = replace(t.body, :anchor, 'gone')"
-						+ " from static_page_section s, static_page p"
-						+ " where s.id = t.section_id and p.id = s.page_id and p.slug = 'politika-privatnosti'"
-						+ " and s.position = 3 and t.language = 'en'")
-				.param("anchor", ENGLISH_ANCHOR)
-				.update())
-				.as("there is no English text of the policy's third section to take the anchor out of")
-				.isOne();
+		putBackTheTextAsItStoodBeforeV58();
+		setBody("en", new Place(POLICY, 3), bodyOf("en", new Place(POLICY, 3)).replace(ENGLISH_ANCHOR, "gone"));
 
-		assertThat(reportOf(v58RunAgain()))
+		PSQLException error = v58RunAgain();
+
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 4 edits");
+		assertThat(reportOf(error))
 				.as("the anchor is not where V58 looks for it and V58 did not say so")
 				.contains("BR @ politika-privatnosti #3 en: found 0 times");
 	}
 
 	@Test
+	void aSentenceThatIsAlreadyThereInOneSectionStopsV58() {
+		putBackTheTextAsItStoodBeforeV58();
+		setBody("sr", new Place(POLICY, 3),
+				bodyOf("sr", new Place(POLICY, 3)).replace(SERBIAN_ANCHOR, SERBIAN_ANCHOR + " " + SERBIAN_SENTENCE));
+
+		PSQLException error = v58RunAgain();
+
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 4 edits");
+		assertThat(reportOf(error))
+				.as("the anchor stands once and the sentence is already there, and V58 did not say so")
+				.contains("BR @ politika-privatnosti #3 sr: found once, and its new text is already there");
+	}
+
+	@Test
 	void aSectionThatHasNoSuchTextStopsV58() {
+		putBackTheTextAsItStoodBeforeV58();
+
 		assertThat(db.sql("delete from static_page_section_translation t using static_page_section s, static_page p"
 						+ " where s.id = t.section_id and p.id = s.page_id and p.slug = 'pravilnik'"
 						+ " and s.position = 17 and t.language = 'en'")
@@ -261,7 +347,10 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 				.as("there is no English text of Article 74 to take away")
 				.isOne();
 
-		assertThat(reportOf(v58RunAgain()))
+		PSQLException error = v58RunAgain();
+
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 4 edits");
+		assertThat(reportOf(error))
 				.as("an edit was aimed at a text that is not there and V58 did not say so")
 				.contains("BR @ pravilnik #17 en: there is no such text");
 	}
