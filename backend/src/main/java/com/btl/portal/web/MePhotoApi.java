@@ -24,6 +24,8 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -182,6 +184,20 @@ import java.util.Optional;
  * cannot be part of such a cycle, because a send waits for it only while holding nothing else.
  * </ul>
  *
+ * <p><b>THE REMOVAL TAKES THE SAME TURN, since PDL 27.09.2026 („Uklanjanje slike koja još čeka
+ * povlači i red verifikacije") made it withdraw the row that waits, and ADL had recorded in
+ * advance that it must: „kad uklanjanje slike koja čeka počne da povlači i red verifikacije, mora
+ * da uzme istu bravu".</b> The reason is the same hole seen from the other side. A removal that
+ * asked for the waiting row before a FIRST send of the same member had committed it would find
+ * nothing, answer that the member has no picture waiting, and leave behind the row the send then
+ * opened: the one outcome the decision names as a failure, a picture in front of a moderator that
+ * its member has just taken back. With the turn the removal waits for the send, finds its row and
+ * withdraws it. <b>The order of the three locks is the send's own and the decision's</b>: the
+ * member's turn, then the queue row {@code for update}, then (for the removal) the member's row
+ * and (for the decision) the member's row again, so no two of the three can each hold what another
+ * wants. {@code APictureSentTwiceAtOnceTest} holds the turn of a send; the removal's turn and its
+ * place among the three are held by {@code APictureTakenBackWhileItIsBeingDecidedOrSentTest}.
+ *
  * <p><b>Transaction-scoped and not session-scoped, and that is measured too.</b> A session lock
  * outlives the request that took it: it stays on the pooled connection, and the next send of that
  * member, on another connection, waits behind a request that has finished (made session-scoped,
@@ -201,6 +217,7 @@ import java.util.Optional;
  * with the same bound; the first send waits now too. This is the first advisory lock in the portal
  * (there is none in backend/src, deploy or backend/tools on 09.10.2026). Its key is a text hashed
  * by the database, so it is this route's own, and two members whose keys met would only take turns.
+ * The removal waits behind a send of its member in the same way, and a send behind a removal.
  *
  * <h2>THE ROW IS WRITTEN FIRST AND THE FILE IS WRITTEN AFTER IT, WHICH IS NOT AN ORDER
  * ANYBODY MAY SWAP</h2>
@@ -276,7 +293,7 @@ import java.util.Optional;
  * that reads a picture off a disk for a response and the one place {@code NOFOLLOW_LINKS} is
  * written - a second reader would split the refusal of a symbolic link across two files. What
  * is NOT loosened is {@link PhotoApi#photo}: a picture only a queue row holds is still not
- * public and {@code THE_PICTURE_A_DIGEST_NAMES} is untouched, so „javan nosilac" still means
+ * public and {@code THE_PICTURE_A_DIGEST_NAMES} names no queue row, so „javan nosilac" still means
  * exactly {@code competitor.photo_id} and {@code team.logo_id} (ADL A60).
  * <li><b>The decision.</b> Approving or refusing belongs to whoever holds
  * {@code queue:profiles} and {@link VerificationWriteApi} already does it - on approval it
@@ -289,7 +306,8 @@ import java.util.Optional;
  * database deletes the {@code photo} row of a picture that a decision, or anything else, leaves
  * with no holder, and {@link ThePicturesFolderIsSwept} deletes the file of a row that is gone
  * at its next hourly pass. This class deletes a file itself in two cases only, both of them a
- * member's own act: he takes his standing picture down, and he overwrites one that waits.
+ * member's own act: he takes his pictures down (the one that stands and the one that waits), and he
+ * overwrites one that waits.
  * <li><b>A SIZE IN PIXELS, AND IT IS A REAL DECISION OF THE OWNER'S THAT THIS ROUTE DOES NOT
  * ENFORCE.</b> PDL, 27.08.2026, between three measured candidates: „Poslusacu preporuku 240."
  * So a picture whose shorter edge is under 240 real pixels is refused and a circle may not be
@@ -585,7 +603,7 @@ class MePhotoApi {
 		   a protection claimed. That is about a DECISION landing in the middle of a send; two
 		   SENDS of one member cannot land in the middle of each other, because of the turn above,
 		   and `APictureSentTwiceAtOnceTest` holds that. */
-		Optional<Waits> waits = theOneThatWaits(me, true);
+		Optional<Waits> waits = theOneThatWaits(me);
 
 		/* A SEND WITH NO FILE IS 21c'S SECOND HALF, and it is legal exactly when there is
 		   something to move a circle over. „Ako hocu da pregazim novom ILI DA POMERIM KRUG da
@@ -878,27 +896,61 @@ class MePhotoApi {
 	}
 
 	/**
-	 * TAKING DOWN THE PICTURE THAT STANDS ON THE PROFILE, WHICH HAPPENS AT ONCE.
+	 * TAKING DOWN THE PICTURE THAT STANDS ON THE PROFILE AND TAKING BACK THE ONE THAT WAITS, WHICH
+	 * HAPPENS AT ONCE.
 	 *
 	 * <p>Owner, PDL P28b, 3, 24.09.2026: „Brisanje slike stupa odmah, bez moderacije...
 	 * Uklanjanje ne moze da bude sporno." It is the picture's half of the sentence PDL P11
 	 * already carries about the biography, and it is the member's right over his own datum
 	 * rather than a proposal.
 	 *
-	 * <p><b>A MEMBER WITH NO PICTURE IS ANSWERED 204 AND NOT 404, which is a decision and
-	 * not a shrug.</b> „Take my picture down" asked by somebody who has none is a request
+	 * <p><b>A MEMBER WITH NO PICTURE IS ANSWERED 200 LIKE ONE WITH A PICTURE, AND NOT 404, which is
+	 * a decision and not a shrug.</b> „Take my picture down" asked by somebody who has none is a request
 	 * that is already true, and the alternative answer would be the portal refusing to agree
 	 * with itself. It is also what makes the control on a screen safe to press twice.
 	 *
-	 * <p><b>AND IT DOES NOT WITHDRAW A PICTURE THAT IS WAITING.</b> This is the same
-	 * boundary {@link MeWriteApi#write} writes down for the biography, and it is written
-	 * here rather than quietly patched for the same reason: removing what STANDS and taking
-	 * back what a moderator is already HOLDING are different things, no decision covers the
-	 * second, and a member whose waiting picture is later approved gets a portrait back on a
-	 * profile he had cleared. That is what the decisions say read together. What keeps it
-	 * from being a trap is the answer: {@link #Removed} carries the key of the picture that
-	 * is still waiting, so a screen says so instead of pretending the profile is now empty
-	 * for good.
+	 * <p><b>AND IT WITHDRAWS THE PICTURE THAT IS WAITING, in the same transaction and under the same
+	 * turn a send takes.</b> Until this increment it did not: the boundary stood here, in the words
+	 * that removing what STANDS and taking back what a moderator is already HOLDING are different
+	 * things and no decision covered the second. PDL 27.09.2026 covers it, chosen by the owner
+	 * between offered outcomes with my recommendation beside the one he took: „Kad član pritisne
+	 * „Ukloni sliku" dok slika još čeka odluku, red odlazi zajedno sa njom i moderatoru se nikad ne
+	 * pojavi." Sledi iz već zapisanog: uklanjanje sopstvene slike je pravo člana, ne predlog, pa
+	 * nema šta da se odobrava. The two outcomes he turned down: that the row stays (so the
+	 * moderator decides about a picture its member has already taken back, and approving it hands
+	 * it back), and that the button is locked until the decision arrives.
+	 *
+	 * <p><b>THE ROW IS DELETED AND NOT DECIDED, and the picture goes with it by the same rule that
+	 * takes the standing one.</b> A refusal would write a decision nobody took and send the member a
+	 * message saying his picture was refused, about a picture he took back himself. The row that
+	 * goes is the one {@link #theOneThatWaits} names - this member's, in the profiles tab, waiting,
+	 * with a picture - and not every row of his: a text that waits in the same tab, a row that was
+	 * decided and a row in another tab are not touched, and the case that holds it gives one member
+	 * all of them. Its {@code verification_lock}, if a moderator is reading it, goes by the
+	 * {@code on delete cascade} V28 gives it, and the moderator's next request for the row is
+	 * answered as an item that is not there.
+	 *
+	 * <p><b>THE ORDER IS THE SEND'S, AND THE DECISION'S AFTER IT.</b> The member's turn, then the
+	 * queue row {@code for update}, then everything else. The row is read under the lock for a
+	 * reason that is not the send's: a decision in flight holds it, so a removal that read the row
+	 * without it would find a row that is waiting, and by the time its delete got the lock the
+	 * decision would have decided the row and the delete would remove a DECIDED row, taking the
+	 * record of an approval with it. Under the lock the read is repeated against the committed row
+	 * and finds nothing, so the removal takes down what the approval put on the profile and leaves
+	 * the decision where it is. <b>The decision, for its part, meets a withdrawn row two ways and
+	 * neither is a fault:</b> asked after the commit, the item is not there and the answer is the
+	 * one for an address that is not there; asked before it, it is stopped behind the removal's
+	 * lock, finds the row gone, and is told „O stavci je već odlučeno." That second is the sentence
+	 * for a row nobody can decide any more, and it is the one a loser of a race for a row has
+	 * always been told. {@code APictureTakenBackWhileItIsBeingDecidedOrSentTest} holds both.
+	 *
+	 * <p><b>THE ANSWER NO LONGER NAMES A PICTURE THAT STILL WAITS, because none can.</b> It used to
+	 * carry the key of the waiting row so that a screen could say „your profile is empty but a
+	 * picture of yours is waiting" instead of pretending it was empty for good. After this
+	 * increment nothing waits once the answer is sent, so the field would be a null on every
+	 * response, and a null that cannot be anything else is a sentence nobody reads. It is gone, and
+	 * the answer is a plain 200 with no body. No screen read it: the control is not on the profile
+	 * screen (PDL P11, 15.08.2026), so no contract moved with it.
 	 *
 	 * <p><b>THE ROW GOES BY ITSELF AND THE FILE GOES HERE.</b> Emptying the pointer is what
 	 * lets go of the picture, and the database deletes a {@code photo} row that nobody holds at
@@ -934,16 +986,45 @@ class MePhotoApi {
 			return away(response);
 		}
 
+		/* HIS TURN FIRST AND THE QUEUE ROW SECOND, which is `send`'s order line for line and is
+		   what makes the two safe against each other (the class note on the turn). Without the
+		   turn a removal can ask for the waiting row while a FIRST send of his is still on its
+		   way to writing it, find nothing, and return having withdrawn nothing, with the row
+		   appearing a moment later. Without the lock on the row a decision in flight is not seen:
+		   the question finds a row that is waiting, and the delete below then removes it after
+		   the moderator has decided it. Both are measured, by
+		   `APictureTakenBackWhileItIsBeingDecidedOrSentTest`. */
+		oneSendOfAMemberAtATime(me);
+
+		Optional<Waits> waits = theOneThatWaits(me);
+
 		Optional<Long> standing = db.sql("select photo_id from competitor where id = ?")
 				.param(me)
 				.query(Long.class)
 				.optional();
 
-		if (standing.isPresent()) {
-			long photo = standing.orElseThrow();
+		/* THE PICTURES WHOSE FILES HAVE TO LEAVE THE DISK, in the order the rows go. A file is not
+		   part of a transaction, so none of them is touched until every statement has run. */
+		List<Long> theFilesThatLeave = new ArrayList<>();
 
+		if (waits.isPresent()) {
+			/* THE ROW GOES AND THE PICTURE GOES WITH IT BY THE DATABASE'S OWN RULE (V54), not by a
+			   `delete from photo` written here: the end of this transaction finds a `photo` row that
+			   no column points at and deletes it, which is the rule for the standing picture too.
+			   BY KEY, taken from the row read above under the lock, and not by member: a delete
+			   written over his member and his tab would take his waiting text with it. */
+			db.sql("delete from verification where id = ?").param(waits.orElseThrow().row()).update();
+
+			theFilesThatLeave.add(waits.orElseThrow().photo());
+		}
+
+		if (standing.isPresent()) {
 			db.sql("update competitor set photo_id = null where id = ?").param(me).update();
 
+			theFilesThatLeave.add(standing.orElseThrow());
+		}
+
+		for (long photo : theFilesThatLeave) {
 			/* deleteIfExists AND NOT delete: a row whose file has already gone is a state
 			   `PhotoApi` names and serves nothing for, and refusing to take the picture down
 			   because of it would leave the member unable to remove a picture nobody can see
@@ -955,7 +1036,10 @@ class MePhotoApi {
 			   because `PhotoApi` asks for a `photo` row and a holder and neither exists, so what
 			   is left on the disk is a file nothing reads, which `ThePicturesFolderIsSwept`
 			   deletes once it is older than ten minutes. The same shape, for the same reason,
-			   is in `CompetitorWriteApi` and `ATeamGoesWithItsLastMember`. */
+			   is in `CompetitorWriteApi` and `ATeamGoesWithItsLastMember`.
+
+			   ONE LOOP FOR BOTH PICTURES, so that the picture that waited is held to exactly what
+			   the one that stood is: a fault in one must not stop the other file from going. */
 			try {
 				if (!Files.deleteIfExists(folder.resolve(String.valueOf(photo)))) {
 					LOG.warn("the file of photo {} was already gone when its member took it down",
@@ -968,24 +1052,7 @@ class MePhotoApi {
 			}
 		}
 
-		/* READ WITHOUT THE LOCK `send` TAKES, and that is deliberate rather than an omission.
-		   This read only REPORTS what is waiting; nothing here writes to that row, so there is
-		   nothing for a concurrent decision to spoil. Taking the lock anyway would have this
-		   route and `send` acquire the same two rows in opposite orders, which is how two
-		   requests of one member deadlock rather than queue. */
-		return ResponseEntity.ok(new Removed(theOneThatWaits(me, false)
-				.map(Waits::row)
-				.orElse(null)));
-	}
-
-	/**
-	 * What is true after a removal.
-	 *
-	 * @param waiting the key of the picture still standing in front of a moderator, or null.
-	 *                Here so that the boundary above is a sentence a screen can draw rather
-	 *                than a surprise a member meets a week later
-	 */
-	record Removed(Long waiting) {
+		return ResponseEntity.ok().build();
 	}
 
 	/**
@@ -1003,16 +1070,17 @@ class MePhotoApi {
 	 * because the overwrite then takes that one away. Read as one row rather than two reads, so
 	 * a decision cannot land between them.
 	 *
-	 * @param holdIt whether the row is locked for the length of the caller's transaction.
-	 *               {@link #send} needs it because it WRITES to the row it just read;
-	 *               {@link #remove} must not take it, because it only reports what is waiting
-	 *               and would otherwise take these two rows in the opposite order from
-	 *               {@link #send} and deadlock against it
+	 * <p><b>THE ROW IS LOCKED FOR THE LENGTH OF THE CALLER'S TRANSACTION, by both callers.</b>
+	 * {@link #send} writes to the row it just read, and {@link #remove} deletes it. Until the
+	 * removal began to withdraw the row this was a parameter and the removal passed false, on the
+	 * reasoning that it only REPORTED what waited and a lock would have it take the queue row and
+	 * the member's row in the opposite order from {@code send}; neither half holds any more. It
+	 * writes to the row, and it takes the queue row FIRST, as {@code send} does, so the two orders
+	 * are one.
 	 */
-	private Optional<Waits> theOneThatWaits(long me, boolean holdIt) {
+	private Optional<Waits> theOneThatWaits(long me) {
 		return db
-				.sql("select v.id, v.photo_id" + THE_ONE_OF_MINE_THAT_WAITS
-						+ (holdIt ? " for update" : ""))
+				.sql("select v.id, v.photo_id" + THE_ONE_OF_MINE_THAT_WAITS + " for update")
 				.param("me", me)
 				.param("tab", THE_PROFILES_TAB)
 				.query((row, one) -> new Waits(row.getLong(1), row.getLong(2)))

@@ -183,8 +183,14 @@ class ActiveMemberOrAdministration {
 	/**
 	 * Whether the role this request carries is a role that can hold a right at all: a
 	 * moderator, ticked or not, or the superadmin.
+	 *
+	 * <p>Package-private since {@link PhotoApi} asks it on its own: that route needs the
+	 * administration apart from the active member, because the administration reads the portrait of a
+	 * member whose fee has lapsed and an active member does not. <b>It does not take the null of a
+	 * visitor</b>, which {@link #includes} guards for the three doors that meet one; the caller that
+	 * can meet a visitor asks it behind its own {@code != null}.
 	 */
-	private boolean isTheAdministration(WhoIsAsking.Member asking) {
+	boolean isTheAdministration(WhoIsAsking.Member asking) {
 		return db.sql("select rights_mode <> 'none' from role where code = ?")
 				.param(asking.role())
 				.query(Boolean.class)
