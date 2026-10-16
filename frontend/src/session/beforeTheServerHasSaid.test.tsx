@@ -141,6 +141,9 @@ describe('the two links of a visitor in the header', { timeout: SLOW }, () => {
       expect(there).toHaveAttribute('tabindex', '-1')
       expect(there).toHaveAttribute('inert')
       expect(there).toHaveClass('shell__guest--waiting')
+      /* And not by the `hidden` attribute, which is `display: none` and gives the row its width
+         back: the one other way to hide a link, and the wrong one (`app/shellStyle.test.ts`). */
+      expect(there).not.toHaveAttribute('hidden')
     }
   })
 
