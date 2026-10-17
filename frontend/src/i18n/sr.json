@@ -31,7 +31,7 @@
     },
     "topBoards": {
       "title": "BTL top liste",
-      "description": "Deset lista iz Pravilnika: kilometri, vreme na stazi, najbolja trka, najbolji napredak, trkački parovi i trke po dužini."
+      "description": "Deset lista iz Pravilnika: kilometri, vreme na stazi, najbolja trka, najbolji napredak, trkački parovi i trke po distanci."
     },
     "leagues": {
       "title": "BTL lige",
@@ -291,7 +291,7 @@
     "topWomen": "Top 10 žene",
     "place": "{place}.",
     "wholeStanding": "Cela tabela",
-    "byCategory": "Trke po dužini",
+    "byCategory": "Trke po distanci",
     "calculator": "BTL kalkulator",
     "calcLength": "Dužina (km)",
     "calcAscent": "Uspon (m)",
@@ -306,7 +306,7 @@
     "sponsorOfTheDay": "Sponzor dana",
     "partners": "Sponzori i partneri",
     "noneYet": "U ovoj sezoni još nema istrčanih trka ove distance.",
-    "turning": "Najviše trka po dužini",
+    "turning": "Najviše trka po distanci",
     "pauseTurning": "Zaustavi smenjivanje",
     "resumeTurning": "Nastavi smenjivanje",
     "mostOf": {
@@ -744,7 +744,7 @@
       "descent": "Spust (m)"
     },
     "notFound": "Ovog profila nema.",
-    "byCategory": "Trke po dužini",
+    "byCategory": "Trke po distanci",
     "noneInFilter": "Za izabranu sezonu i distancu nema nijednog rezultata.",
     "racesWord": {
       "one": "trka",
@@ -1008,13 +1008,13 @@
     "change": "Izmeni",
     "changeNamed": "Izmeni rezultat: {name}",
     "own": "Moje",
+    "distance": "Dist.",
     "noneSent": "Nijedan rezultat još nije poslat na proveru.",
     "counted": "Uračunato"
   },
   "newResult": {
     "title": "Unos rezultata",
     "submit": "Pošalji na proveru",
-    "note": "Rezultat ulazi u rang liste tek kad ga administrator odobri. Dok čeka, vidiš ga samo ti.",
     "again": "Ispravljaš rezultat koji je odbijen. Razlog je bio: {reason}",
     "fixingCounted": "Menjaš rezultat koji je već uračunat. Dok se izmena ne odobri, u poretku ostaje stari rezultat, a odbijena izmena ništa ne menja. Uz izmenu mora da ide nov dokaz.",
     "needsProof": "Uz izmenu uračunatog rezultata mora da ide link ka zvaničnim rezultatima ili slika kao dokaz.",
