@@ -86,8 +86,8 @@ export function Home() {
             <>
               <div className="home__split">
                 <div className="home__boards">
-                  <TopTen competitors={field} results={results} season={season} gender="M" />
-                  <TopTen competitors={field} results={results} season={season} gender="F" />
+                  <TopTen competitors={field} results={results} season={season} today={today} gender="M" />
+                  <TopTen competitors={field} results={results} season={season} today={today} gender="F" />
                 </div>
 
                 <div className="home__figures">

@@ -4,6 +4,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { did, refused, serverThat, type Asked } from '../test/serverAnswers'
+import { playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 
@@ -653,6 +654,11 @@ describe('a team its administrator takes down', () => {
  * so „the team on the page" is a thing that can be told apart from „a team".
  */
 describe('a refusal of the deletion of a team', () => {
+  /* The history in league seasons, because the page of a team offers no season before 2027
+     (`test/leagueSeasons.ts`): the case below needs a second season on offer, and the imported
+     history of this team ends in 2026. */
+  playTheHistoryAsLeagueSeasons()
+
   const VARDAR = 'vardarski-krug'
   const ITS_NAME = 'Vardarski krug'
 
