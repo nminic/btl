@@ -374,6 +374,19 @@
       "other": "{count} trka iz kalendara odgovara"
     }
   },
+  "editor": {
+    "tools": "Oblikovanje teksta",
+    "bold": "Podebljano",
+    "italic": "Kurziv",
+    "heading": "Naslov",
+    "list": "Spisak",
+    "link": "Veza",
+    "address": "Adresa veze",
+    "setLink": "Postavi vezu",
+    "removeLink": "Ukloni vezu",
+    "cancel": "Odustani",
+    "wrongAddress": "Adresa veze počinje sa https://, http:// ili mailto:, ili kosom crtom za stranu ovog portala, i nema razmaka."
+  },
   "registration": {
     "title": "Registracija",
     "submit": "Pošalji prijavu",

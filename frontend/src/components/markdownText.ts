@@ -1,4 +1,4 @@
-import { addressesIn } from '../pages/league/addressesIn'
+import { addressesIn, CLOSING, OPENING } from '../pages/league/addressesIn'
 
 /* WHAT A WRITTEN TEXT SAYS, READ ONCE, FOR EVERY READER OF IT.
  *
@@ -294,6 +294,12 @@ function blank(unit: Unit | undefined): boolean {
   return unit !== undefined && 'char' in unit && /\s/u.test(unit.char)
 }
 
+/** Whether a character may stand at the edge of a word without being part of an address in it: a
+ *  mark of bold or italic, or the punctuation `addressesIn` already lets stand there. */
+function edge(unit: Char | undefined, punctuation: RegExp): boolean {
+  return unit !== undefined && (unit.marks || punctuation.test(unit.char))
+}
+
 /**
  * THE BARE ADDRESSES OF A LINE, AS LINKS (PDL P15, 03.10.2026): „Svaka adresa koja počinje sa
  * `www.` ili `https://` otvara se u novom prozoru, sa vidljivim domenom". Which words are addresses
@@ -301,8 +307,8 @@ function blank(unit: Unit | undefined): boolean {
  *
  * Asked BEFORE bold and italic are, so an address keeps every character it was typed with: an
  * underscore in its path is part of the address and not the start of an italic piece. Asked of the
- * words with the marks of bold and italic taken off their ends, so a bold address is still an
- * address (`**www.runtrace.net**`).
+ * words with the marks of bold and italic, and the punctuation that may stand around an address,
+ * taken off their ends, so a bold address is still an address (`**www.runtrace.net**.`).
  */
 function withAddresses(units: Unit[]): Unit[] {
   const out: Unit[] = []
@@ -312,11 +318,11 @@ function withAddresses(units: Unit[]): Unit[] {
     let from = 0
     let to = word.length
 
-    while (from < to && (marksWith(word[from], '*') || marksWith(word[from], '_'))) {
+    while (from < to && edge(word[from], OPENING)) {
       from += 1
     }
 
-    while (to > from && (marksWith(word[to - 1], '*') || marksWith(word[to - 1], '_'))) {
+    while (to > from && edge(word[to - 1], CLOSING)) {
       to -= 1
     }
 
@@ -438,15 +444,20 @@ export function inlineOf(text: string, addresses: boolean): Inline[] {
   return marked(read)
 }
 
-/** Which of the characters above, at the start of a line, would make the line something it is not:
- *  a heading, an item of a list, a row of a table, a rule. Escaped by the editor, so a line that
- *  begins with one is the words it was typed with. */
+/**
+ * A line of words, escaped where it begins if the line would otherwise be read as something it is
+ * not: a heading, an item of a list, a rule, a row of a table.
+ *
+ * Asked of the very shapes `blocksOf` reads a line by, so a line is escaped exactly when it would be
+ * read as one and never otherwise. Written by the editor (`markdownEditor/convert.ts`) over a line
+ * whose words are already escaped, so a star or a bracket at its start is already words.
+ */
 export function escapeLineStart(line: string): string {
-  if (/^#/.test(line) || /^-/.test(line) || /^\|/.test(line)) {
+  if (HEADING.test(line) || BULLET.test(line) || RULE.test(line) || ROW.test(line)) {
     return `\\${line}`
   }
 
-  return line.replace(/^(\d+)\.(?=\s)/, '$1\\.')
+  return NUMBERED.test(line) ? line.replace('.', '\\.') : line
 }
 
 /** The characters of words that would otherwise mark a piece of the line, escaped. */

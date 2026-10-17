@@ -96,9 +96,14 @@ function Controls({ view, id, locked }: { view: EditorView; id: string; locked: 
   const existing = linkIn(state)
   const panelId = `${id}-link`
 
-  const run = (command: Command) => {
-    command(view.state, view.dispatch)
-    view.focus()
+  /* A button that cannot act stays where it is and says so (`aria-disabled`), rather than leaving the
+     order of focus: held, not switched off, which is how every control of a form on the portal is
+     held (`forms/FormRenderer.tsx`). So the press is refused here. */
+  const run = (command: Command, refused: boolean) => {
+    if (!refused) {
+      command(view.state, view.dispatch)
+      view.focus()
+    }
   }
 
   const closeLink = () => {
@@ -119,35 +124,43 @@ function Controls({ view, id, locked }: { view: EditorView; id: string; locked: 
   return (
     <>
       <div className="md-editor__tools" role="group" aria-label={t('editor.tools')}>
-        {TOOLS.map((tool) => (
-          <button
-            key={tool.key}
-            type="button"
-            className={tool.className}
-            aria-pressed={tool.on(state)}
-            disabled={locked || !tool.command(state)}
-            /* The press must not take the cursor out of the text first: what is selected is what
-               the button acts on. */
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => run(tool.command)}
-          >
-            {t(tool.key)}
-          </button>
-        ))}
+        {TOOLS.map((tool) => {
+          const refused = locked || !tool.command(state)
+
+          return (
+            <button
+              key={tool.key}
+              type="button"
+              className={tool.className}
+              aria-pressed={tool.on(state)}
+              aria-disabled={refused ? true : undefined}
+              /* The press must not take the cursor out of the text first: what is selected is what
+                 the button acts on. */
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => run(tool.command, refused)}
+            >
+              {t(tool.key)}
+            </button>
+          )
+        })}
 
         <button
           type="button"
           className="md-editor__tool"
           aria-expanded={linking !== null}
-          disabled={locked || !linkable(state)}
+          aria-disabled={locked || !linkable(state) ? true : undefined}
           onMouseDown={(event) => event.preventDefault()}
-          onClick={() =>
+          onClick={() => {
+            if (locked || !linkable(state)) {
+              return
+            }
+
             setLinking(
               linking === null
                 ? { address: existing === undefined ? '' : hrefOf(existing), wrong: false }
                 : null,
             )
-          }
+          }}
         >
           {t('editor.link')}
         </button>

@@ -502,21 +502,6 @@ const Field = memo(function Field({
      bubble on top of the portal's error, in the browser's language. */
   const asked = field.required === true ? true : undefined
 
-  /* The name of the field, which a label carries or, for the editor of a
-     written text, a span (below). */
-  const name = (
-    <>
-      {/* And a link inside the words where the words carry one, the same on
-          every kind of field: it was written only into the confirmation,
-          which is the one field that has one today, so a link put on any
-          other was dropped without a word. */}
-      {worded(t(field.labelKey), field, locale, t)}
-      {field.required !== true && (
-        <span className="field__optional"> ({t('form.optional')})</span>
-      )}
-    </>
-  )
-
   const shared = {
     id: inputId,
     name: field.name,
@@ -748,6 +733,21 @@ const Field = memo(function Field({
       </div>
     )
   }
+
+  /* The name of the field, which a label carries or, for the editor of a
+     written text, a span (below). */
+  const name = (
+    <>
+      {/* And a link inside the words where the words carry one, the same on
+          every kind of field: it was written only into the confirmation,
+          which is the one field that has one today, so a link put on any
+          other was dropped without a word. */}
+      {worded(t(field.labelKey), field, locale, t)}
+      {field.required !== true && (
+        <span className="field__optional"> ({t('form.optional')})</span>
+      )}
+    </>
+  )
 
   return (
     /* The town carries the country beside it, so where a row has three columns

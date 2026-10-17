@@ -46,18 +46,25 @@ describe('the box that holds what an organiser writes about a competition', () =
       ),
     )
 
+    /* Since 17.10.2026 the box is the editor of a written text, which holds the limit by refusing
+       what would pass it and counts the room down beside it, rather than by an attribute: so what is
+       read is the room it says it has, which is the limit less what is already written. The served
+       texts carry no marks of Markdown, so what is written is as long as what is drawn. */
     for (const [heading, limit] of [
-      ['Propozicije', '4242'],
-      ['Nagrade', '137'],
+      ['Propozicije', 4242],
+      ['Nagrade', 137],
     ] as const) {
       const section = must(box.getByRole('heading', { name: heading }).closest('section'), 'section')
 
       await user.click(within(section).getByRole('button', { name: 'Izmeni' }))
 
-      expect(
-        within(section).getByRole('textbox', { name: heading }),
-        `${heading} nosi granicu drugog polja`,
-      ).toHaveAttribute('maxlength', limit)
+      const typing = within(section).getByRole('textbox', { name: heading })
+      const written = must(typing.textContent, 'the words in the box').length
+
+      expect(written, 'the box holds the served text').toBeGreaterThan(0)
+      expect(typing, `${heading} nosi granicu drugog polja`).toHaveAccessibleDescription(
+        new RegExp(`^Još ${limit - written} znak`),
+      )
     }
   }, SLOW)
 })

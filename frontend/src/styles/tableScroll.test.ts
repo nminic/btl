@@ -121,11 +121,22 @@ const TABLE = join(SRC, 'styles', 'table.css')
  * table, it lands here, and the honest answer then is to add it rather than to
  * pretend the check can see the difference.
  *
+ * That day came on 17.10.2026. What a written text says is read in
+ * `components/markdownText.ts` since then, because the editor of the texts of the
+ * administration reads it too, so the tag of the union moved there, and the editor
+ * reads it in `components/markdownEditor/convert.ts`. Neither draws anything, so
+ * both are added here; `Markdown.tsx` still draws the table and still owes the
+ * sheet.
+ *
  * By path, and a whole file at that, which is blunter than the reason: nothing
- * else in `routes.ts` is checked either. A list of one that grows is a list
- * worth reading.
+ * else in these files is checked either. A list that grows is a list worth
+ * reading.
  */
-const NOT_A_CLASS = ['app/routes.ts']
+const NOT_A_CLASS = [
+  'app/routes.ts',
+  'components/markdownText.ts',
+  'components/markdownEditor/convert.ts',
+]
 
 /**
  * Every class name it defines.

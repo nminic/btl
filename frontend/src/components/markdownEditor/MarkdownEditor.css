@@ -40,7 +40,7 @@
   border-color: var(--accent);
 }
 
-.md-editor__tool:disabled {
+.md-editor__tool[aria-disabled='true'] {
   color: var(--text-muted);
   cursor: not-allowed;
 }

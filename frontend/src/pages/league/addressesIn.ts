@@ -22,7 +22,7 @@ const WWW = 'www.'
  * would have had the one and missed the other. The floor under this is a test that walks every code
  * point of those categories (`addressesIn.test.ts`).
  */
-const OPENING = /^[\p{Ps}\p{Pi}\p{Pf}"']$/u
+export const OPENING = /^[\p{Ps}\p{Pi}\p{Pf}"']$/u
 
 /**
  * What may stand behind an address without being part of it: a closing bracket, a quotation mark,
@@ -33,7 +33,7 @@ const OPENING = /^[\p{Ps}\p{Pi}\p{Pf}"']$/u
  * (`/`, `%`, `&`, `#`). A slash is therefore **not** here: `www.runtrace.net/` is an address that
  * ends in a slash, and a sentence that ends is one that ends in a full stop.
  */
-const CLOSING = /^[\p{Pe}\p{Pi}\p{Pf}"'.,;:!?…]$/u
+export const CLOSING = /^[\p{Pe}\p{Pi}\p{Pf}"'.,;:!?…]$/u
 
 /**
  * The scheme of an address and the slashes behind it, which a browser skips however many there are

@@ -115,8 +115,11 @@ function modulesImporting(wanted: string): { walked: number; importing: string[]
  *
  * The table is written by hand and the first `it` below is its floor, in both directions.
  */
+/* Since 17.10.2026 the module that asks `addressesIn` is the reading of a written text
+   (`components/markdownText.ts`), and what draws its links is `components/Markdown.tsx`, asked for
+   them by the box of a competition. The seat draws that box, which is where the links stand. */
 const SEATS: Record<string, (text: string) => void> = {
-  'pages/league/EditableText.tsx': (text) => {
+  'components/markdownText.ts': (text) => {
     renderWithI18n(
       <EditableText
         value={text}

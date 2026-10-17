@@ -3203,9 +3203,11 @@ describe('what is read as a row of a table', () => {
        Comments are blanked before the question is asked, because a rule described in
        prose is not a rule (`styles/scale.test.ts` keeps the same rule over CSS).
 
-       `Markdown.tsx` is where the pattern lives and is therefore not an offender;
-       everything else, this file included, must import it. */
-    const HOME = join('components', 'Markdown.tsx')
+       `markdownText.ts` is where the pattern lives (it moved there from
+       `Markdown.tsx` on 17.10.2026, when the editor of the texts of the
+       administration became its second reader) and is therefore not an
+       offender; everything else, this file included, must import it. */
+    const HOME = join('components', 'markdownText.ts')
     const asks = /startsWith\('\|'\)|\/\^\\\|/
     const mine = {
       path: join('pages', 'writtenPages.test.tsx'),

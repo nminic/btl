@@ -181,19 +181,18 @@
     "visually-hidden"
   ],
   "src/pages/league/EditableText.tsx": [
+    "-left",
+    "-text",
+    "../../components/Markdown",
+    "../../components/TextEditor",
     "../../forms/definitions",
     "../../forms/records",
     "../../i18n/useI18n",
     "../admin/leagueWrites",
-    "./addressesIn",
-    "_blank",
     "admin.change",
     "button",
     "button button--secondary",
-    "field__control league__editor",
     "leagues.notWritten",
-    "ltr",
-    "noreferrer noopener",
     "profile__section",
     "profile__text",
     "react"

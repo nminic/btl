@@ -1408,7 +1408,7 @@ describe('the races of an event', () => {
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
     /* And the form is still there with what he typed, so he can put the row right. */
     expect(screen.getByRole('button', { name: 'Sačuvaj' })).toBeVisible()
-    expect(screen.getByLabelText(/^Opis događaja/)).toHaveValue('jedna rečenica')
+    expect(screen.getByLabelText(/^Opis događaja/)).toHaveTextContent('jedna rečenica')
 
     /* The event was written once and only once: pressing again after reading why sends the
        races and nothing else. Counted AFTER the second press has sent every race, so a write
@@ -1512,7 +1512,7 @@ describe('the races of an event', () => {
       'Na toj adresi već stoji jedan događaj.',
     )
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
-    expect(screen.getByLabelText(/^Opis događaja/)).toHaveValue('jedna rečenica')
+    expect(screen.getByLabelText(/^Opis događaja/)).toHaveTextContent('jedna rečenica')
   }, SLOW)
 
   it('says so where the route wrote it and handed back no address', async () => {

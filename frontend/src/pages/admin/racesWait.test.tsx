@@ -812,9 +812,13 @@ describe('an event whose races wait', () => {
        would answer no controls here, and that is a failure this says out loud. */
     const form = must(named instanceof HTMLFormElement ? named : null, `a form called ${title}`)
     const table = screen.getByRole('region', { name: /^Trke na događaju/ })
-    const every = Array.from(form.elements).filter(
-      (one): one is HTMLElement => one instanceof HTMLElement,
-    )
+    /* And the box the description is written in, which is the editor of a written text since
+       17.10.2026: a box of its own that is typed into (`contenteditable`) and not a form element, so
+       the platform's list does not have it. Its buttons are form elements and are in that list. */
+    const every = [
+      ...Array.from(form.elements),
+      ...Array.from(form.querySelectorAll('[contenteditable]')),
+    ].filter((one): one is HTMLElement => one instanceof HTMLElement)
 
     return {
       event: every.filter(
@@ -830,6 +834,11 @@ describe('an event whose races wait', () => {
 
   const isHeld = (control: HTMLElement): boolean => control.getAttribute('aria-disabled') === 'true'
 
+  /** The field an editor of a written text writes, which it says by its id (`field-<name>`, the id
+   *  every control of a form carries), since a box that is not a form element carries no name. */
+  const editorOf = (control: HTMLElement): string | null =>
+    control.hasAttribute('contenteditable') ? control.id.replace(/^field-/, '') : null
+
   async function holdsExactlyWhatTheEventDraws(
     title: string,
     makeRacesWait: () => Promise<void>,
@@ -840,7 +849,7 @@ describe('an event whose races wait', () => {
 
     expect(drawn.length, 'the form draws no control, so nothing below measures anything').toBeGreaterThan(0)
     expect(
-      open.event.map((one) => one.getAttribute('name')),
+      open.event.map((one) => one.getAttribute('name') ?? editorOf(one)),
       'the form does not draw a control for every field of its definition',
     ).toEqual(expect.arrayContaining([...fields]))
     expect(

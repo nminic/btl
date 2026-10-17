@@ -271,3 +271,95 @@ describe('Markdown', () => {
     expect(screen.getByText(/<b>ne podebljano<\/b>/)).toBeVisible()
   })
 })
+
+/* What the texts of the administration ask of it since 16.10.2026 (PDL, „Ispravke sa ekrana
+   16.10.2026"): the description of an event, the terms and the prizes of a competition. */
+describe('Markdown, for a text of the administration', () => {
+  it('draws italic as italic, and bold inside it as bold', () => {
+    render(<Markdown text="Trči se _po svakom **vremenu**_." />)
+
+    const italic = screen.getByText(/po svakom/)
+
+    expect(italic.tagName).toBe('EM')
+    expect(within(italic).getByText('vremenu').tagName).toBe('STRONG')
+  })
+
+  it('starts its headings one below the heading it stands under', () => {
+    /* Under the name of an event, an h1. */
+    const event = render(<Markdown text={'## Staza\n\n#### Okrepa'} under={1} />)
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Staza' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 3, name: 'Okrepa' })).toBeVisible()
+    event.unmount()
+
+    /* Under the heading of a box of a competition, an h3. */
+    render(<Markdown text={'## Bodovanje\n\n#### Izuzeci\n\n###### Najdublje'} under={3} />)
+
+    expect(screen.getByRole('heading', { level: 4, name: 'Bodovanje' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 5, name: 'Izuzeci' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 6, name: 'Najdublje' })).toBeVisible()
+  })
+
+  it('opens a link to another site in a window of its own where the text asks for it, and tells it nothing', () => {
+    render(
+      <Markdown text="Prijava je [ovde](https://primer.rs/prijava), a pravila [tu](/pravilnik)." outward />,
+    )
+
+    const out = screen.getByRole('link', { name: 'ovde' })
+
+    expect(out).toHaveAttribute('href', 'https://primer.rs/prijava')
+    expect(out).toHaveAttribute('target', '_blank')
+    expect(out).toHaveAttribute('rel', 'noreferrer noopener')
+    /* A page of this portal is still a page of it, in the same window. */
+    expect(screen.getByRole('link', { name: 'tu' })).toHaveAttribute('href', '/sr/pravilnik')
+    expect(screen.getByRole('link', { name: 'tu' })).not.toHaveAttribute('target')
+  })
+
+  it('opens a link to another site in the same window where the text does not ask, as a written page always has', () => {
+    render(<Markdown text="Prijava je [ovde](https://primer.rs/prijava)." />)
+
+    expect(screen.getByRole('link', { name: 'ovde' })).not.toHaveAttribute('target')
+    expect(screen.getByRole('link', { name: 'ovde' })).not.toHaveAttribute('rel')
+  })
+
+  it('draws a bare address as a link where it is asked, left to right, in a window of its own (PDL P15)', () => {
+    render(<Markdown text="Vreme meri **www.runtrace.net**." addresses outward />)
+
+    const link = screen.getByRole('link', { name: 'www.runtrace.net' })
+
+    expect(link).toHaveAttribute('href', 'https://www.runtrace.net')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noreferrer noopener')
+    expect(link).toHaveAttribute('dir', 'ltr')
+    expect(link.parentElement?.tagName).toBe('STRONG')
+  })
+
+  it('draws no bare address as a link where it is not asked', () => {
+    render(<Markdown text="Vreme meri www.runtrace.net." outward />)
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('makes nothing of a link to javascript: or of a script written in the text, in any of its readings', () => {
+    const { container } = render(
+      <Markdown
+        text={'[klik](javascript:window.btlRanALink=1) <script>window.btlRanAScript = true</script>'}
+        addresses
+        outward
+      />,
+    )
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(container.querySelector('script')).toBeNull()
+    expect(container.textContent).toBe(
+      '[klik](javascript:window.btlRanALink=1) <script>window.btlRanAScript = true</script>',
+    )
+    expect(Reflect.get(window, 'btlRanAScript')).toBeUndefined()
+  })
+
+  it('draws the place of a drawing as the words it is, outside a written page', () => {
+    render(<Markdown text={'Prvo\n[[gallery]]'} />)
+
+    expect(screen.getByText('[[gallery]]').tagName).toBe('P')
+  })
+})
