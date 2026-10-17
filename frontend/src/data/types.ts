@@ -452,6 +452,16 @@ export type Race = {
   ascentM: number
   descentM: number
   category: RaceCategory
+  /**
+   * The dots the calendar draws for this race, in no particular order.
+   *
+   * Worked out by the server and only there (`CalendarApi.DOTS`), because the one
+   * rule of them that is new needs the results: a timed race is an ultra until its
+   * results say otherwise, and then carries exactly the lengths they were run at
+   * (PDL, „Ispravke sa ekrana 16.10.2026"). `category` is not that and does not move:
+   * on a timed race it is the category of nought.
+   */
+  dots: readonly Dot[]
 }
 
 export type BtlEvent = {

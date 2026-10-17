@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import {
   dotsAt,
   CATEGORIES,
@@ -1440,6 +1442,7 @@ describe('dotsAt', () => {
     ascentM: 0,
     descentM: 0,
     category,
+    dots: [category],
   })
 
   it('takes the lengths of that event and of no other', () => {
@@ -1469,33 +1472,52 @@ describe('dotsAt', () => {
     expect(dotsAt(event(12), [])).toEqual([])
   })
 
-  it('gives a race that fixes no length a dot of its own, not the one its category says', () => {
-    /* A category is read off a length (`data/raceCategory.ts`), and a race that fixes
-       none carries nought, so its category says „short": a twenty four hour ultra
-       would sit on the calendar beside the five kilometre races, on the one screen
-       somebody scans to find out what is on.
+  it('draws the dots the server says a race carries, not the one its category says', () => {
+    /* Which dots a race carries is worked out by the server (`CalendarApi.DOTS`): a
+       timed race is an ultra until its results say otherwise, and then exactly the
+       lengths they were run at (owner, 16.10.2026). Its category is the category of
+       nought, „short", so every race here carries a category that is NOT among its
+       dots, and reading the one in place of the other is seen. */
+    const timedWithNothingYet: Race = { ...race(1, 12, 'short'), kind: 'time', dots: ['ultra'] }
+    const timedWithResults: Race = { ...race(2, 13, 'short'), kind: 'time', dots: ['long', 'half'] }
+    const free: Race = { ...race(3, 14, 'short'), kind: 'free', dots: ['unmeasured'] }
 
-       Both kinds that fix no length, because they arrive by different roads and the
-       reading has to be about the kind rather than about the limit. And the dot comes
-       last, after the five, because the list it is filtered from puts it there. */
-    const timed: Race = { ...race(1, 12, 'short'), kind: 'time', limitSeconds: 86_400, distanceKm: 0 }
-    const free: Race = { ...race(2, 12, 'short'), kind: 'free', distanceKm: 0 }
-
-    expect(dotsAt(event(12), [timed])).toEqual(['unmeasured'])
-    expect(dotsAt(event(12), [free])).toEqual(['unmeasured'])
-    expect(dotsAt(event(12), [timed, race(3, 12, 'marathon')])).toEqual([
-      'marathon',
-      'unmeasured',
-    ])
+    expect(dotsAt(event(12), [timedWithNothingYet])).toEqual(['ultra'])
+    expect(dotsAt(event(13), [timedWithResults])).toEqual(['half', 'long'])
+    expect(dotsAt(event(14), [free])).toEqual(['unmeasured'])
   })
 
-  it('reads a kind it does not know as a race of a length, like every other screen', () => {
-    /* The type says one of three and the file says whatever it says. Read as a race
-       of a length, so an unknown word puts the dot its category asks for rather than
-       taking every race on the calendar out of the five. */
-    const strange = { ...race(1, 12, 'marathon'), kind: 'ludilo' }
+  it('puts the dots of every race of the event together, once each and in the order of `DOTS`', () => {
+    /* Two timed races of one event and one over a length, so a dot is said once
+       however many races bring it and the order is the list's and not the server's. */
+    const races: Race[] = [
+      { ...race(1, 12, 'short'), kind: 'time', dots: ['ultra', 'half'] },
+      { ...race(2, 12, 'short'), kind: 'time', dots: ['half'] },
+      race(3, 12, 'marathon'),
+    ]
 
-    expect(dotsAt(event(12), [strange])).toEqual(['marathon'])
+    expect(dotsAt(event(12), races)).toEqual(['half', 'marathon', 'ultra'])
+  })
+
+  it('is handed by the served file only dots it can draw, and a race of a length only its own', () => {
+    /* The file is what the server answered, kept for the prototype, and a word in it
+       that is not one of `DOTS` would be filtered out above without a sound: a race
+       on the calendar with no dot at all. And on a race over a length the server
+       answers the race's own category and reads no result (`CalendarApi.DOTS`), so a
+       file where the two parted would be drawing a rule the server does not have. */
+    const served: Race[] = JSON.parse(
+      readFileSync(join(process.cwd(), 'src/test/mock/races.json'), 'utf-8'),
+    )
+    const drawable = new Set<string>(DOTS)
+
+    expect(served.length).toBeGreaterThan(0)
+    expect(served.flatMap((one) => one.dots).filter((one) => !drawable.has(one))).toEqual([])
+    expect(
+      served
+        .filter((one) => one.kind === 'length')
+        .filter((one) => one.dots.length !== 1 || one.dots[0] !== one.category)
+        .map((one) => one.id),
+    ).toEqual([])
   })
 
   it('offers exactly the five lengths and one more', () => {
@@ -2000,6 +2022,7 @@ describe('the span of an event', () => {
     ascentM: 0,
     descentM: 0,
     category: 'short',
+    dots: ['short'],
   })
 
   it('is the first and the last day a race of it is run on, never the day it was entered under', () => {

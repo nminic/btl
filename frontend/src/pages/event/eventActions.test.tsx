@@ -333,6 +333,7 @@ describe('a race carried into a copy of its event', () => {
     ascentM: 0,
     descentM: 0,
     category: 'short',
+    dots: ['ultra'],
   }
 
   it('is the same kind of race it was, and keeps the limit it was run to', () => {
@@ -353,10 +354,14 @@ describe('a race carried into a copy of its event', () => {
        number of its own. The category is among them: it is worked out from the
        length rather than carried, which is what the other writer of a race record
        does (`admin/raceRows.ts`), and until 30.08.2026 the two disagreed and this
-       case wrote the disagreement down as though it were a decision. */
+       case wrote the disagreement down as though it were a decision.
+
+       And except the dots, which no writer of a race record writes: they are the
+       server's answer about the results a race has (`CalendarApi.DOTS`, 16.10.2026),
+       and a copy is a race nobody has run yet. */
     expect(Object.keys(copy).sort()).toEqual(
       Object.keys(timed)
-        .filter((one) => one !== 'id')
+        .filter((one) => one !== 'id' && one !== 'dots')
         .sort(),
     )
   })

@@ -723,6 +723,7 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
       ascentM: 0,
       descentM: 0,
       category: 'short',
+      dots: ['short'],
     }
     const two: Race = { ...one, id: 2, distanceKm: 8.74 }
     /* The same written length as the other two, so all three collide at the first
@@ -768,6 +769,7 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
       ascentM: 0,
       descentM: 0,
       category: 'short',
+      dots: ['short'],
     }
     const among: Race[] = [
       morning,
@@ -809,6 +811,7 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
       ascentM: 0,
       descentM: 0,
       category: 'short',
+      dots: ['short'],
     }
     const among: Race[] = [one, { ...one, id: 2, distanceKm: 8.684 }]
 
@@ -840,6 +843,7 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
       ascentM: 0,
       descentM: 0,
       category: 'long',
+      dots: ['long'],
     }
     const among: Race[] = [one, { ...one, id: 2, name: 'Beogradski polumaraton' }]
     const said = among.map((race) => raceLabel(race, among, 'sr-Latn'))

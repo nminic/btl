@@ -39,6 +39,7 @@ const race = (over: Partial<Race> = {}): Race => ({
      import, a file somebody edited. What this fixture says is that the two readings
      are different readings, not that the portal produces the difference. */
   category: 'marathon',
+  dots: ['marathon'],
   ...over,
 })
 
