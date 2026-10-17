@@ -210,9 +210,14 @@ class MeApi {
 	 *               nobody. Absent rather than null, and rather than an object of
 	 *               nulls: „I have no record" and „my record is empty" are two
 	 *               different facts and a reader has to be able to tell them apart
+	 * @param mailLanguage the language the ACCOUNT's mail is written in, {@code sr} or {@code en}
+	 *               (V59), which the screen that changes it starts from. On the account and not
+	 *               in {@code member}, because it is the account's setting and every account has
+	 *               one, a moderator who does not race included (PDL, „Odgovori vlasnika
+	 *               17.10.2026, jezik pošte": „Jezik pošte sme da promeni svako ko ima nalog")
 	 */
 	record WhoIAm(String role, long account,
-			@JsonInclude(JsonInclude.Include.NON_NULL) MyOwnRecord member) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) MyOwnRecord member, String mailLanguage) {
 	}
 
 	/**
@@ -395,7 +400,13 @@ class MeApi {
 		   reasoning `MemberOfAccount` was written with and `CompetitorApi` follows. */
 		Long me = memberOfAccount.competitorId(member.account());
 
-		return new WhoIAm(member.role(), member.account(), me == null ? null : recordOf(me));
+		/* THE LANGUAGE OF HIS OWN ACCOUNT, by the account the chain resolved and by nothing in the
+		   request. */
+		String mailLanguage = db.sql("select mail_language from account where id = ?")
+				.param(member.account()).query(String.class).single();
+
+		return new WhoIAm(member.role(), member.account(), me == null ? null : recordOf(me),
+				mailLanguage);
 	}
 
 	/**

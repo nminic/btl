@@ -8,14 +8,13 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * A MEMBER CHOOSES THE LANGUAGE HIS MAIL IS WRITTEN IN.
+ * WHOEVER HOLDS AN ACCOUNT CHOOSES THE LANGUAGE HIS MAIL IS WRITTEN IN.
  *
  * <p><b>The owner, PDL P18, 03.10.2026, choosing between the outcomes put to him:</b> the screen
  * does not remember a language, because the address carries it, but „član u profilu bira jezik
@@ -23,16 +22,14 @@ import java.util.Optional;
  * V57. Where the choice lives and what reads it is {@link MailLanguage} and V59; this is the one
  * road that changes it after registration, which sets it first (owner, 10.10.2026, Q1).
  *
- * <p><b>WHO MAY, AND THAT IS A DERIVATION RATHER THAN A SENTENCE OF THE OWNER'S, SO IT IS NAMED.</b>
- * The decision speaks of a MEMBER choosing in his PROFILE, so an account that names no member is
- * answered as an address that is not there (ADL A8, 401 and 404). And it is not on the list of what
- * a member who has not paid may do (PDL P8, 10.10.2026, „Sme: izbor kategorije i plaćanje, lozinku,
- * adresu pošte i svoje podatke za evidenciju i majicu"), so the older line of the same entry holds,
- * „Pre plaćanja član ... ne može ništa da radi u sistemu", which is the derivation
- * {@code NoWriteTakesAMemberWhoHasNotPaidTest} already writes beside {@code POST /api/inbox/{id}/read}.
- * A member whose fee stands may change it; nobody else may. Widening it to a member who has not paid
- * is the owner's to decide, and the registration already gives him the language of the page he
- * joined on.
+ * <p><b>WHO MAY: EVERY ACCOUNT, and that is the owner's choice of 17.10.2026 among the outcomes
+ * put to him</b> (PDL, „Odgovori vlasnika 17.10.2026, jezik pošte", in the record's wording: „Jezik
+ * pošte sme da promeni svako ko ima nalog, i član bez plaćene članarine i član kome je istekla, jer je
+ * to podešavanje naloga a ne takmičarsko pravo"). So the fee is not asked, and neither is whether the
+ * account names a member at all: a moderator who does not race has an address and is written to, so
+ * he chooses the language of what he is written. A caller who is not signed in is 401 from the chain
+ * (ADL A8). The outcomes refused were a member whose fee stands and nobody else, which this route
+ * carried until that day by derivation, and „a member who never paid yes, a lapsed one no".
  *
  * <p><b>No path variable, so there is nobody else's row to name.</b> The account written is the one
  * the session belongs to, read off {@link WhoIsAsking.Member} and never off the request, which is
@@ -52,12 +49,8 @@ class MeMailLanguageApi {
 
 	private final JdbcClient db;
 
-	/** Who is asking, and whether his fee stands: the one question this route opens with. */
-	private final ActiveMemberOrAdministration readers;
-
-	MeMailLanguageApi(JdbcClient db, ActiveMemberOrAdministration readers) {
+	MeMailLanguageApi(JdbcClient db) {
 		this.db = db;
-		this.readers = readers;
 	}
 
 	/**
@@ -87,16 +80,12 @@ class MeMailLanguageApi {
 	/**
 	 * @param asking who the chain decided is asking; never null, because the chain answers 401
 	 *               before this method runs
-	 * @param sent   the body, not read until „is he a member whose fee stands" is answered, so a
-	 *               caller this is not for is told nothing about what a body here should look like
+	 * @param sent   the body, read by the handler rather than bound, the shape every write route
+	 *               of the portal takes ({@link WhatWasSent})
 	 */
 	@PutMapping(path = "/api/me/mail-language", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> choose(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			WhatWasSent<Chosen> sent) throws IOException {
-
-		if (readers.activeMember(asking).isEmpty()) {
-			throw nothingIsHere();
-		}
 
 		Chosen typed = sent.read();
 		Optional<MailLanguage> language = typed == null || typed.language() == null
@@ -118,13 +107,4 @@ class MeMailLanguageApi {
 		return ResponseEntity.ok(new Stands(stands));
 	}
 
-	/**
-	 * THE ANSWER FOR SOMEBODY THIS ADDRESS IS NOT FOR, which carries nothing at all and goes down
-	 * the road an address that maps nothing goes down ({@code sendError}, through
-	 * {@link ResponseStatusException}). Made here and thrown at the call site, for the reason
-	 * {@code MePasswordApi} gives: a line whose call never comes back is counted as not run.
-	 */
-	private static ResponseStatusException nothingIsHere() {
-		return new ResponseStatusException(HttpStatus.NOT_FOUND);
-	}
 }

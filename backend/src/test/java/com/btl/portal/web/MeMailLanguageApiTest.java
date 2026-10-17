@@ -31,14 +31,16 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
- * {@code PUT /api/me/mail-language}: a member whose fee stands chooses the language of his mail,
- * and nobody else may.
+ * {@code PUT /api/me/mail-language}: whoever holds an account chooses the language of his mail
+ * (PDL, „Odgovori vlasnika 17.10.2026, jezik pošte": „Jezik pošte sme da promeni svako ko ima
+ * nalog").
  *
  * <p><b>The axes, named so that a source cannot stand in for another.</b> Whose row: the member
  * who writes is neither the first account by key nor the only one, and a third member already holds
  * English, so an update that wrote the first row, every row, or nobody's would each leave a
- * different column wrong. Who may: an account that names no member and a member who has not paid
- * are each answered what an address that maps nothing is answered, and nothing is written.
+ * different column wrong. Who may: every signed-in account, so a member who never paid, a member
+ * whose fee has lapsed and a moderator who races for nobody each change their own row, and a caller
+ * who is not signed in is 401.
  *
  * <p><b>What this cannot tell apart, said rather than left to be found:</b> an answer read back off
  * the row and one echoed from the request are the same value by construction (only a known code is
@@ -66,6 +68,9 @@ class MeMailLanguageApiTest {
 	/** A member who has not paid: no number, and his fee does not stand. */
 	private static final String NEVER_PAID = "neplacen@primer.rs";
 
+	/** A member whose fee has lapsed: a number, and his fee does not stand. */
+	private static final String LAPSED = "000054";
+
 	private static final String MODERATOR_WHO_DOES_NOT_RACE = "moderator@primer.rs";
 
 	@Autowired
@@ -86,11 +91,13 @@ class MeMailLanguageApiTest {
 		competitor(HE_CHOOSES, true);
 		competitor(ALREADY_ENGLISH, true);
 		competitor(null, false);
+		competitor(LAPSED, false);
 
 		account(FIRST_BY_KEY + "@primer.rs", "competitor", "number", FIRST_BY_KEY);
 		account(HE_CHOOSES + "@primer.rs", "competitor", "number", HE_CHOOSES);
 		account(ALREADY_ENGLISH + "@primer.rs", "competitor", "number", ALREADY_ENGLISH);
 		account(NEVER_PAID, "competitor", "unpaid", null);
+		account(LAPSED + "@primer.rs", "competitor", "number", LAPSED);
 		account(MODERATOR_WHO_DOES_NOT_RACE, "moderator", null, null);
 
 		db.sql("update account set mail_language = 'en' where email = ?")
@@ -103,22 +110,24 @@ class MeMailLanguageApiTest {
 		assertThat(sentBy(HE_CHOOSES + "@primer.rs", PATH, choosing("en")).getStatus()).isEqualTo(200);
 	}
 
+	/**
+	 * EVERY ACCOUNT MAY, WHATEVER ITS FEE AND WHETHER IT NAMES A MEMBER AT ALL: the owner's choice of
+	 * 17.10.2026, „jer je to podešavanje naloga a ne takmičarsko pravo". Each writes his own row and
+	 * nobody else's, which the member who chooses in every other case does not touch.
+	 */
 	@Test
-	void anAccountThatNamesNoMemberAndAMemberWhoHasNotPaidAreToldNothingIsHere() throws Exception {
-		for (String caller : List.of(MODERATOR_WHO_DOES_NOT_RACE, NEVER_PAID)) {
-			MockHttpServletResponse refused = sentBy(caller, PATH, choosing("en"));
-			MockHttpServletResponse nowhere = sentBy(caller, NOTHING_IS_THERE, choosing("en"));
+	void everyAccountMayWhateverItsFeeAndWhetherItNamesAMember() throws Exception {
+		for (String caller : List.of(MODERATOR_WHO_DOES_NOT_RACE, NEVER_PAID, LAPSED + "@primer.rs")) {
+			MockHttpServletResponse written = sentBy(caller, PATH, choosing("en"));
 
-			assertThat(nowhere.getStatus())
-					.as("an address nothing maps stopped answering 404, so the comparison below "
-							+ "compares two answers that are both fine")
-					.isEqualTo(404);
-			assertThat(refused.getStatus()).as("%s was not turned away", caller)
-					.isEqualTo(nowhere.getStatus());
-			assertThat(refused.getContentAsString()).isEqualTo(nowhere.getContentAsString());
-			assertThat(languageOf(caller)).as("%s was turned away and his column moved anyway", caller)
-					.isEqualTo("sr");
+			assertThat(written.getStatus()).as("%s was turned away", caller).isEqualTo(200);
+			assertThat(languageOf(caller)).as("%s was answered 200 and his column did not move", caller)
+					.isEqualTo("en");
 		}
+
+		assertThat(languageOf(HE_CHOOSES + "@primer.rs"))
+				.as("somebody else's request wrote the row of the member who chooses")
+				.isEqualTo("sr");
 	}
 
 	@Test

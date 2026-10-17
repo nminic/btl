@@ -549,9 +549,10 @@ class RightsAtTheDoorTest {
 					/* A MEMBER'S OWN CHOICE OF THE LANGUAGE OF HIS MAIL, ADDED 17.10.2026 WITH
 					   V59, for the category's reason: no box the superadmin ticks decides it,
 					   because it is the member's own setting (owner, PDL P18, 03.10.2026, „član u
-					   profilu bira jezik mejlova"). The door is the session; inside the handler an
-					   account with no member and a member whose fee does not stand are answered
-					   404. `MeMailLanguageApiTest` holds that half. */
+					   profilu bira jezik mejlova"). The door is the session and nothing else asks:
+					   every account may change it, a member whose fee does not stand and an account
+					   naming no member included (PDL, „Odgovori vlasnika 17.10.2026, jezik pošte").
+					   `MeMailLanguageApiTest` holds that half. */
 					"PUT /api/me/mail-language",
 					"ANY /error");
 
