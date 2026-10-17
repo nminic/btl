@@ -147,9 +147,11 @@ describe('the fields of an event, line by line', () => {
 
       expect(wrapperOf(/^Naziv događaja/)).toHaveClass('field--wide')
       expect(wrapperOf(/^Vrsta događaja/)).not.toHaveClass('field--wide')
-      for (const rest of [/^Datum/, /^Istaknuto/, /^Mesto/]) {
-        expect(wrapperOf(rest), `${String(rest)} was widened`).not.toHaveClass('field--wide')
-      }
+      /* And no other field of the form is widened: the lines of the event, not the races under it,
+         which have a Datum and a Vrsta of their own. */
+      const widened = [...document.querySelectorAll('.form .field--wide')]
+
+      expect(widened, 'a field besides the name was widened').toEqual([wrapperOf(/^Naziv događaja/)])
       /* The line has three columns, and the name and the kind fill them: the third that stood empty
          beside them is gone. */
       expect(
