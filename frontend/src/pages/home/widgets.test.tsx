@@ -1021,7 +1021,7 @@ describe('TopByCategory', () => {
 
     // It carried `aria-live="off"`, which is the default and does nothing, and
     // had no heading, so the region had no name at all.
-    expect(screen.getByRole('region', { name: 'Najviše trka po dužini' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Najviše trka po distanci' })).toBeInTheDocument()
   })
 
   it('names the length underneath, and says so when nobody ran one', () => {
