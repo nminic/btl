@@ -114,6 +114,38 @@ export function seasonShown(today: string): number {
   return Math.max(FIRST_SEASON, Number(today.slice(0, 4)))
 }
 
+/**
+ * The day on which the boards of the front page stop holding places for members who
+ * have not scored, and the first day of the league's first season.
+ *
+ * Owner, 17.10.2026, against the recommendation put to him: „Top 10 na naslovnoj se od
+ * 1.1.2027 popunjava samo članovima sa bodovima. Do 1.1.2027 važi odluka P24 (registrovani
+ * članovi po datumu učlanjenja)." Refused by him: filling the boards only while 2027 has
+ * no results.
+ *
+ * **It is a day of reading and it is not read off any result.** The first board that
+ * stops being filled is the one read on this day, and it stops whether or not anybody has
+ * raced yet, so a result's own date is the wrong thing to ask. The two are different
+ * facts that sometimes share a value: a board read on 1 January with no result in 2027 is
+ * empty, and a board read on 31 December whose clock was set back over results of 2027 is
+ * still filled.
+ *
+ * Written as a day and not as `FIRST_SEASON`, because it is the owner's date for these
+ * boards and merely coincides with the start of the first season.
+ *
+ * **Whole days, as everywhere in this file.** The owner's decision does not name an hour;
+ * the portal reads the UTC day off its one clock (`clock/context.ts`), so for the first
+ * hour or two of 1 January in Belgrade the boards are still filled. The server's
+ * `SeasonClock` is not asked from here: no route hands this side a season, and a second
+ * answer in a second zone would be worse than the hour.
+ */
+export const BOARDS_ARE_FILLED_BEFORE = '2027-01-01'
+
+/** Whether a board of the front page, read on this day, is topped up with members who have not scored. */
+export function boardsAreToppedUp(today: string): boolean {
+  return today < BOARDS_ARE_FILLED_BEFORE
+}
+
 export function inYearlyWindow(today: string): boolean {
   const dayInYear = today.slice(5)
 

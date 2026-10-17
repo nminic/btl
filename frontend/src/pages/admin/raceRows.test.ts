@@ -215,8 +215,11 @@ describe('the races of an event while they are being entered', () => {
 
     expect(whatIsMissing(timed)).toBeUndefined()
     expect(allFinished([timed])).toBe(true)
-    /* On a free race, which draws them. A timed race draws neither (owner, 16.10.2026; below). */
-    expect(whatIsMissing(row({ kind: 'free', ascentM: '-5' }))).toBe('ascentM')
+    /* A free race draws no measure at all (owner, 17.10.2026) and a timed one draws only its
+       duration (owner, 16.10.2026), so neither is refused for a climb it has no cell for; only a
+       race of a length draws the climb (below). */
+    expect(whatIsMissing(row({ kind: 'free', ascentM: '-5' }))).toBeUndefined()
+    expect(whatIsMissing(row({ ascentM: '-5' }))).toBe('ascentM')
 
     /* And a race of a length is asked for one exactly as before. */
     expect(whatIsMissing(row({ distanceKm: '0' }))).toBe('distanceKm')
@@ -365,13 +368,13 @@ describe('what is wrong with one cell of a row', () => {
     ['a fall written with a dot for the thousands', { descentM: '1.200' }, 'descentM', 'notWhole'],
     ['a fall that is not a number', { descentM: 'sto' }, 'descentM', 'notANumber'],
     ['a negative fall', { descentM: '-1' }, 'descentM', 'outOfBounds'],
-    /* THE CLIMB AND THE FALL ARE ASKED WHERE THE RACE DRAWS THEM (owner, 16.10.2026): a race of a
-       length and a free one do, a timed one draws only how long it lasts. A cell that is not on the
-       screen cannot be the reason a press is refused, so the same writing that is wrong on the first
-       two is nothing on the third. */
-    ['a negative climb on a free race', { kind: 'free', ascentM: '-500' }, 'ascentM', 'outOfBounds'],
-    ['a climb that is not a number on a free race', { kind: 'free', ascentM: 'sto' }, 'ascentM', 'notANumber'],
-    ['a negative fall on a free race', { kind: 'free', descentM: '-1' }, 'descentM', 'outOfBounds'],
+    /* THE CLIMB AND THE FALL ARE ASKED WHERE THE RACE DRAWS THEM: a race of a length does, a timed
+       one draws only how long it lasts (owner, 16.10.2026) and a free one draws nothing (owner,
+       17.10.2026). A cell that is not on the screen cannot be the reason a press is refused, so the
+       same writing that is wrong on the first is nothing on the other two. */
+    ['a negative climb on a free race, which it does not draw', { kind: 'free', ascentM: '-500' }, 'ascentM', NONE],
+    ['a climb that is not a number on a free race', { kind: 'free', ascentM: 'sto' }, 'ascentM', NONE],
+    ['a negative fall on a free race', { kind: 'free', descentM: '-1' }, 'descentM', NONE],
     ['a negative climb on a timed race, which it does not draw', { kind: 'time', limitHours: '2', ascentM: '-500' }, 'ascentM', NONE],
     ['a climb that is not a number on a timed race', { kind: 'time', limitHours: '2', ascentM: 'sto' }, 'ascentM', NONE],
     ['a fall written with a separator on a timed race', { kind: 'time', limitHours: '2', descentM: '1.200' }, 'descentM', NONE],
@@ -429,7 +432,8 @@ describe('what is wrong with one cell of a row', () => {
  * THE SECOND LINE OF A RACE IS READ OFF ITS KIND, and the kind is the whole of the answer (owner,
  * 16.10.2026, PDL „Ispravke sa ekrana 16.10.2026": „Ako je obeleženo Dužinska ili Slobodna, onda
  * Dužina, Uspon, Spust", and for a timed race only „Trajanje (h)", chosen between the outcomes he
- * was offered).
+ * was offered; and for a free one, 17.10.2026, nothing: „Zapravo za slobodnu onda ne treba
+ * ukucavati ni jedno od tih polja").
  *
  * <p>Asked of the one function the screen, the marking and the writing all ask, over every kind
  * the portal has: a fourth kind arrives here as a red gate and not as a race that draws nothing.
@@ -438,13 +442,13 @@ describe('the measures a race draws on its second line', () => {
   it.each([
     ['length', ['distanceKm', 'ascentM', 'descentM']],
     ['time', ['limitHours']],
-    ['free', ['distanceKm', 'ascentM', 'descentM']],
+    ['free', []],
   ] as const)('are, for a race of the kind %s, those the owner named', (kind, expected) => {
     expect(measuresOf(row({ kind }))).toEqual(expected)
   })
 
   it('is asked of every kind there is, so a kind added later has to be answered', () => {
-    expect(RACE_KINDS.map((kind) => measuresOf(row({ kind })).length)).toEqual([3, 1, 3])
+    expect(RACE_KINDS.map((kind) => measuresOf(row({ kind })).length)).toEqual([3, 1, 0])
   })
 
   it('writes nought for a climb and a fall that the race does not draw, and what was typed where it does', () => {
@@ -457,11 +461,16 @@ describe('the measures a race draws on its second line', () => {
       ascentM: '0',
       descentM: '0',
     })
-    /* And the two that draw them keep them. */
+    /* And a free one, which draws none of them since 17.10.2026: a climb that was typed, or that a
+       free race stored before that day, is written as nought (the route does not read it for such a
+       race, `WhatARaceCarries.figuresOf`). */
     expect(storedRow(row({ kind: 'free', ...typed }), 'evt')).toMatchObject({
-      ascentM: '120',
-      descentM: '90',
+      ascentM: '0',
+      descentM: '0',
+      distanceKm: '0',
+      limitSeconds: '0',
     })
+    /* The one that draws them keeps them. */
     expect(storedRow(row(typed), 'evt')).toMatchObject({ ascentM: '120', descentM: '90' })
     /* And a timed race whose hidden climb is not even a number is still written, because nothing
        reads it: it would have been `NaN` on the wire. */

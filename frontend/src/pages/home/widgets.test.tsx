@@ -135,6 +135,12 @@ describe('Sponsor', () => {
   })
 })
 
+/* **The day a board is read on, and never the date of a result** (owner, 17.10.2026: the Top 10 is
+   filled with members who have not scored until 1.1.2027 and after that only with those who have).
+   `result()` above is dated in May 2027, so neither of these days is the date of any result here. */
+const THE_DAY_BEFORE = '2026-12-31'
+const THE_FIRST_DAY = '2027-01-01'
+
 describe('TopTen', () => {
   // Four, so the board is short of its ten and the empty places have to be
   // exercised as well as the full ones.
@@ -154,6 +160,7 @@ describe('TopTen', () => {
         competitors={competitors}
         results={[result('000001', 30), result('000002', 20)]}
         season={2027}
+        today={THE_DAY_BEFORE}
         gender="M"
       />,
     )
@@ -177,6 +184,7 @@ describe('TopTen', () => {
         competitors={competitors}
         results={[result('000001', 30), result('000002', 20)]}
         season={2027}
+        today={THE_DAY_BEFORE}
         gender="M"
       />,
     )
@@ -191,7 +199,7 @@ describe('TopTen', () => {
   })
 
   it('numbers every place, from the leader to the tenth', () => {
-    renderWidget(<TopTen competitors={competitors} results={[]} season={2027} gender="M" />)
+    renderWidget(<TopTen competitors={competitors} results={[]} season={2027} today={THE_DAY_BEFORE} gender="M" />)
 
     expect(screen.getAllByText(/^\d+\.$/).map((one) => one.textContent)).toEqual([
       '1.',
@@ -215,7 +223,7 @@ describe('TopTen', () => {
      `components/portrait.test.tsx`. */
   it('gives each face its own initials and its own colour', () => {
     const { container } = renderWidget(
-      <TopTen competitors={competitors} results={[]} season={2027} gender="M" />,
+      <TopTen competitors={competitors} results={[]} season={2027} today={THE_DAY_BEFORE} gender="M" />,
     )
 
     // Only the ones with somebody in them: an empty place carries no colour.
@@ -258,6 +266,7 @@ describe('TopTen', () => {
         competitors={[competitor('000001'), hiding]}
         results={[result('000001', 30), result('000004', 10)]}
         season={2027}
+        today={THE_DAY_BEFORE}
         gender="M"
       />,
     )
@@ -290,8 +299,62 @@ describe('TopTen', () => {
     }
   })
 
+  describe('from 1 January 2027', () => {
+    /* Owner, 17.10.2026, against the recommendation put to him: „Top 10 na naslovnoj se od
+       1.1.2027 popunjava samo članovima sa bodovima." Four members have joined, and what the
+       reader sees depends on the day alone. */
+    it('shows no face at all when nobody has scored, although four have joined', () => {
+      const { container } = renderWidget(
+        <TopTen competitors={competitors} results={[]} season={2027} today={THE_FIRST_DAY} gender="M" />,
+      )
+      const block = screen.getByRole('list')
+
+      expect(screen.queryAllByRole('link', { name: /Ime/ })).toHaveLength(0)
+      expect(container.querySelectorAll('.portrait:not(.portrait--empty)')).toHaveLength(0)
+      /* The ten places are still drawn, so the two boards stay the height they are, and every
+         one of them is out of the reading. */
+      expect(within(block).getAllByRole('listitem', { hidden: true })).toHaveLength(10)
+      expect(within(block).queryAllByRole('listitem')).toHaveLength(0)
+    })
+
+    it('shows the two who have scored and nobody behind them', () => {
+      renderWidget(
+        <TopTen
+          competitors={competitors}
+          results={[result('000001', 30), result('000004', 20)]}
+          season={2027}
+          today={THE_FIRST_DAY}
+          gender="M"
+        />,
+      )
+      const block = screen.getByRole('list')
+
+      expect(screen.getAllByRole('link', { name: /^\d+\. Ime/ })).toHaveLength(2)
+      expect(screen.getByRole('link', { name: '1. Ime 000001' })).toBeVisible()
+      expect(screen.getByRole('link', { name: '2. Ime 000004' })).toBeVisible()
+      expect(within(block).getAllByRole('listitem', { hidden: true })).toHaveLength(10)
+      expect(within(block).getAllByRole('listitem')).toHaveLength(2)
+    })
+
+    it('is empty on a later day as well', () => {
+      renderWidget(
+        <TopTen competitors={competitors} results={[]} season={2028} today="2028-06-01" gender="M" />,
+      )
+
+      expect(screen.queryAllByRole('link', { name: /Ime/ })).toHaveLength(0)
+    })
+  })
+
+  it('still holds a place for each of the four on the last day of 2026, with nothing scored', () => {
+    renderWidget(
+      <TopTen competitors={competitors} results={[]} season={2027} today={THE_DAY_BEFORE} gender="M" />,
+    )
+
+    expect(screen.getAllByRole('link', { name: /^\d+\. Ime/ })).toHaveLength(4)
+  })
+
   it('draws a circle and no link at all where the league has nobody', () => {
-    renderWidget(<TopTen competitors={[]} results={[]} season={2027} gender="F" />)
+    renderWidget(<TopTen competitors={[]} results={[]} season={2027} today={THE_DAY_BEFORE} gender="F" />)
 
     expect(screen.queryByRole('link', { name: /Ime/ })).not.toBeInTheDocument()
     /* Ten empty places, and every one of them out of the reading: a board of ten
@@ -1021,7 +1084,7 @@ describe('TopByCategory', () => {
 
     // It carried `aria-live="off"`, which is the default and does nothing, and
     // had no heading, so the region had no name at all.
-    expect(screen.getByRole('region', { name: 'Najviše trka po dužini' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Najviše trka po distanci' })).toBeInTheDocument()
   })
 
   it('names the length underneath, and says so when nobody ran one', () => {
@@ -1070,6 +1133,7 @@ describe('a member the portal no longer has, in a widget of a season they did ra
         competitors={[still]}
         results={[result('000099', 20), result('000001', 10)]}
         season={2027}
+        today={THE_DAY_BEFORE}
         gender="M"
       />,
     )

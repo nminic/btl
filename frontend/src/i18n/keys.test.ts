@@ -316,6 +316,44 @@ describe('the words the owner took off the portal on 16.10.2026', () => {
     expect(leaves(en.event).filter((one) => /^measure$/i.test(one))).toEqual([])
   })
 
+  it('says „po distanci" over the charts and the titles of the races by distance, in both languages', () => {
+    /* Owner, 17.10.2026: „Trke po dužini" on the front page, the profile, the page of a team, „Najviše
+       trka po dužini" and the description for the search engines become „po distanci". Swept by the
+       root and not by the keys it was found in: no sentence of the Serbian dictionary says „po
+       dužini" any more. The English one keeps „By length" for the KIND of race (a race by length,
+       a race by time), which is a different thing, so it is held by the five places it was found. */
+    expect(leaves(sr).filter((one) => /po dužini/i.test(one))).toEqual([])
+    expect(sr.home.byCategory).toBe('Trke po distanci')
+    expect(sr.profile.byCategory).toBe('Trke po distanci')
+    expect(sr.home.turning).toBe('Najviše trka po distanci')
+    expect(sr.seo.topBoards.description).toMatch(/i trke po distanci\.$/)
+    expect(en.home.byCategory).toBe('Races by distance')
+    expect(en.profile.byCategory).toBe('Races by distance')
+    expect(en.home.turning).toBe('Most races by distance')
+    expect(en.seo.topBoards.description).toMatch(/and races by distance\.$/)
+  })
+
+  it('heads the distance on „Moji rezultati" „Dist." and keeps „Kat." for the category of a member', () => {
+    /* Owner, 17.10.2026. Its own key, because `rankings.columns.category` is read by the rankings and
+       the list of members, which keep „Kat.". The rankings, the top lists and the moderator's row
+       keep „d (km)", „+ (m)" and „− (m)". */
+    expect(sr.myResults.distance).toBe('Dist.')
+    expect(en.myResults.distance).toBe('Dist.')
+    expect(sr.rankings.columns.category).toBe('Kat.')
+    expect(sr.competitors.columns.category).toBe('Kat.')
+    expect(sr.rankings.columns.distance).toBe('d (km)')
+    expect(sr.rankings.columns.ascent).toBe('+ (m)')
+    expect(sr.rankings.columns.descent).toBe('− (m)')
+  })
+
+  it('has no sentence at the top of the form for a new result', () => {
+    /* Owner, 17.10.2026: the sentence „Rezultat ulazi u rang liste tek kad ga administrator odobri..."
+       is deleted. A key nobody reads is nobody's, so the dictionary is asked as well as the screen. */
+    expect(Object.keys(sr.newResult)).not.toContain('note')
+    expect(Object.keys(en.newResult)).not.toContain('note')
+    expect(leaves(sr).filter((one) => /tek kad ga administrator odobri/.test(one))).toEqual([])
+  })
+
   it('calls the group by length „Distanca" on the screens that group by it, and keeps the length for the figure', () => {
     /* „Neka se zove DISTANCA ovo što je opisno, pa onda može Distanca, Dužina (km), Uspon (m),
        Spust (m)". The group is the first and the kilometres the second. The filter on a profile and

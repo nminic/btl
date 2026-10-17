@@ -144,11 +144,18 @@ export const BOUNDS: Record<(typeof MEASURES)[number], { least: number; most: nu
  * Trka, Datum, Vrsta, a onda u drugom redu: Ako je obeleženo Dužinska ili Slobodna, onda Dužina,
  * Uspon, Spust").
  *
- * <p>A race of a length and a free one draw the length, the climb and the fall; a timed one draws
- * how long it lasts and nothing else. The owner chose that for the timed race between the outcomes
- * he was offered, and the reason is that the points depend on the duration (PDL P4, 29.08.2026: „Na
- * vremenskoj trci `Tsec` je ograničenje same trke"), while the course of a timed race is the
- * runner's own and the race cannot know it beforehand (PDL P9, 29.08.2026).
+ * <p>A race of a length draws the length, the climb and the fall; a timed one draws how long it
+ * lasts and nothing else; <b>a free one draws nothing, and has no second line</b> (owner,
+ * 17.10.2026, PDL „Odgovori vlasnika 17.10.2026 na pitanja posle izvođenja": „Zapravo za
+ * slobodnu onda ne treba ukucavati ni jedno od tih polja, mozes izbaciti sve sto bi se dicalo
+ * duzine, uspona, spusta, sati, minuta, ili sekundi."). That replaces the part of the sentence
+ * above that put the length, the climb and the fall on a free race; what a member types with the
+ * result of a free race is a different question and is not touched (PDL 29.08.2026).
+ *
+ * <p>The owner chose the timed race between the outcomes he was offered, and the reason is that the
+ * points depend on the duration (PDL P4, 29.08.2026: „Na vremenskoj trci `Tsec` je ograničenje
+ * same trke"), while the course of a timed race is the runner's own and the race cannot know it
+ * beforehand (PDL P9, 29.08.2026). A free race fixes neither, so there is nothing to ask.
  *
  * <p><b>One home and not four.</b> The screen draws a cell by it, `isBounded` marks a cell wrong by
  * it, and `storedRow` writes a cell by it: a cell that is not drawn must be neither marked nor
@@ -159,7 +166,13 @@ export const BOUNDS: Record<(typeof MEASURES)[number], { least: number; most: nu
  * <p>Through the one function that knows the three words, like every other reader of a kind.
  */
 export function measuresOf(row: Pick<RaceRow, 'kind'>): readonly (typeof MEASURES)[number][] {
-  return raceKind(row.kind) === 'time' ? ['limitHours'] : ['distanceKm', 'ascentM', 'descentM']
+  const kind = raceKind(row.kind)
+
+  if (kind === 'free') {
+    return []
+  }
+
+  return kind === 'time' ? ['limitHours'] : ['distanceKm', 'ascentM', 'descentM']
 }
 
 /**
@@ -537,9 +550,12 @@ export function storedRow(row: RaceRow, eventId: string): StoredRace {
        race turned into a timed one does not carry the kilometres somebody typed
        before they changed their mind. */
     distanceKm: asksLength(row) ? String(distanceKm) : '0',
-    /* Nought where the table does not draw the cell (`measuresOf`): a race turned into a timed one
-       does not carry the climb somebody typed before they changed their mind, for the reason the
-       length above does not. Its course is the runner's own (PDL P9, 29.08.2026). */
+    /* Nought where the table does not draw the cell (`measuresOf`): a race turned into a timed or a
+       free one does not carry the climb somebody typed before they changed their mind, for the
+       reason the length above does not. Its course is the runner's own (PDL P9, 29.08.2026). The
+       route takes the two as numbers whichever kind the race is (`RaceWriteApi`, `whatTheEditLeftOut`),
+       and for a free race it does not read them (`WhatARaceCarries.figuresOf`), so nought is both
+       accepted and harmless. */
     ascentM: String(measuresOf(row).includes('ascentM') && row.ascentM !== '' ? read(row.ascentM) : 0),
     descentM: String(measuresOf(row).includes('descentM') && row.descentM !== '' ? read(row.descentM) : 0),
     category: categoryOf(asksLength(row) ? distanceKm : 0),
