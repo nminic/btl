@@ -5,7 +5,7 @@ import { countryName } from '../../data/countryName'
 import { outsideHost, outsideLink } from '../../data/outsideLink'
 import { raceKind } from '../../data/raceKind'
 import type { RaceKind, WaitingRun } from '../../data/types'
-import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { AskedLabel } from '../../forms/AskedLabel'
 import { inBoxes, noTime } from '../../forms/clock'
 import { validateField } from '../../forms/validate'
 import { formatDuration, formatNumber, formatShortDate } from '../../i18n/format'
@@ -740,8 +740,6 @@ export function ReviewQueue() {
                   {/* Obligatory, and it says so both ways: the star for the eye and
                       `aria-required` for a reader (owner, 12.08.2026, „na svim formama za
                       unos i verifikaciju"). */}
-                  <RequiredNote />
-
                   <div className="rankings__field rankings__field--wide">
                     <AskedLabel id="review-reason">{t('review.reason')}</AskedLabel>
                     <input
@@ -899,8 +897,6 @@ function AmendPanel({
       {/* What this panel is for, said before the boxes: the figures the race fixes are not
           the moderator's to set on one run. */}
       <p className="profile__empty">{t('review.amendNote')}</p>
-
-      <RequiredNote />
 
       {asked.map(({ name, field }) => (
         <div className="rankings__field" key={name}>

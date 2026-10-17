@@ -195,13 +195,14 @@ export function EventActions({
        (Rankings.css). The component already knows whether it draws anything;
        wrapping it outside meant the wrapper was drawn either way.
 
-       It wears the shared row's control box and nothing of its own. A sheet
-       stood here setting flex, wrap and a gap, all three of which
+       It wears the shared row's control box and one thing of its own, and the one
+       is the size of the buttons in it (`.event__actions` in `Profile.css`). A
+       sheet stood here setting flex, wrap and a gap, all three of which
        `.rankings__head-tool` already sets on this same element (Rankings.css);
        the one difference was a smaller gap, written at the same weight as the
        shared one and so settled by whichever sheet the bundle put last, which
        is not a decision anybody made. */
-    <div className="rankings__head-tool">
+    <div className="rankings__head-tool event__actions">
       {mayEdit && (
         <>
           <button type="button" className="button button--secondary" onClick={change}>

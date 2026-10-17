@@ -306,7 +306,7 @@
     "news": "News",
     "sponsorOfTheDay": "Sponsor of the day",
     "partners": "Sponsors and partners",
-    "noneYet": "No race of this length has been run this season yet.",
+    "noneYet": "No race of this distance has been run this season yet.",
     "turning": "Most races by length",
     "pauseTurning": "Stop the turning",
     "resumeTurning": "Resume the turning",
@@ -367,7 +367,6 @@
     "explain": "Explanation",
     "country": "Country",
     "explainMark": "i",
-    "requiredNote": "The fields with a star are required.",
     "clearPhoto": "Remove",
     "suggested": {
       "one": "{count} race from the calendar matches",
@@ -617,7 +616,8 @@
     "races": "Races",
     "competitor": "Competitor",
     "distance": "Length",
-    "measure": "Measure",
+    "duration": "Duration",
+    "distanceOrDuration": "Length / duration",
     "raceKind": "Kind",
     "raceLimit": "Limit (h)",
     "ascent": "Ascent",
@@ -726,11 +726,14 @@
       "distance": "d (km)",
       "time": "Time",
       "points": "Points",
-      "length": "Length"
+      "category": "Distance",
+      "length": "Length (km)",
+      "ascent": "Ascent (m)",
+      "descent": "Descent (m)"
     },
     "notFound": "There is no such profile.",
     "byCategory": "Races by length",
-    "noneInFilter": "There is no result for the chosen season and length.",
+    "noneInFilter": "There is no result for the chosen season and distance.",
     "racesWord": {
       "one": "race",
       "few": "races",
@@ -766,8 +769,8 @@
     "stats": "Summary statistics",
     "bio": "In their own words",
     "bioEmpty": "This competitor has not written anything about themselves yet.",
-    "length": "Length",
-    "allLengths": "All lengths",
+    "length": "Distance",
+    "allLengths": "All distances",
     "lengthsShort": {
       "all": "All",
       "short": "Short",
@@ -777,7 +780,7 @@
       "ultra": "Ultra"
     },
     "noneInSeason": "There is no result at all in season {season}.",
-    "noneInLength": "There is no result of the chosen length.",
+    "noneInLength": "There is no result of the chosen distance.",
     "clearFilters": "Clear the filters",
     "parts": {
       "label": "Parts of the profile",

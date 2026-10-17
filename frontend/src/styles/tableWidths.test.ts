@@ -105,9 +105,9 @@ const EVENT_FLOOR_REM = 4.25
  */
 const MEASURED: Record<string, number> = {
   'profile.columns.date': 6.75,
-  'profile.columns.distance': 6.25,
-  'rankings.columns.ascent': 4,
-  'rankings.columns.descent': 4,
+  'profile.columns.length': 6.25,
+  'profile.columns.ascent': 4,
+  'profile.columns.descent': 4,
   'profile.columns.time': 5.25,
   'profile.columns.points': 4.25,
 }
@@ -115,7 +115,7 @@ const MEASURED: Record<string, number> = {
 /** And the same for the telephone, which narrows the distance and hides three. */
 const MEASURED_ON_PHONE: Record<string, number> = {
   ...MEASURED,
-  'profile.columns.distance': 5.25,
+  'profile.columns.length': 5.25,
 }
 
 /**

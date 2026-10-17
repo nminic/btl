@@ -84,7 +84,7 @@ describe('who is offered what on an event', () => {
        ostaje kraca za tu kolonu" (owner, 23.08.2026). */
     expect(
       within(races()).getAllByRole('columnheader').map((one) => one.textContent),
-    ).toEqual(['Trka', 'Mera', 'Uspon', 'Spust'])
+    ).toEqual(['Trka', 'Dužina', 'Uspon', 'Spust'])
   })
 
   it('names each race in the first column, not only the category it falls in', async () => {
@@ -1180,6 +1180,28 @@ describe('changing an event', () => {
       ).toEqual([...links])
       cleanup()
     }
+  }, SEVERAL_SCREENS)
+
+  it('draws the three buttons and the link of the rating in one box, which is what gives them one size', async () => {
+    /* Owner, 16.10.2026: „Dodaj komentar dugme gore levo je bezrazložno veliko. Treba da se
+       alignuje sa ostalim dugmićima i naslovom". Three of the four are `<button>` and the
+       fourth is a link, and the browser sizes the two differently unless the row says
+       otherwise (`.event__actions` in `Profile.css`, measured in Chrome: 37px and 46,8px).
+       The sheet is written for the box and a jsdom screen draws no sheet, so what is asked
+       here is that all four stand in the box the sheet is written for, and
+       `eventTableStyle.test.ts` asks what the sheet says about it. A link drawn outside it, or
+       a button left out of it, is the fault back. */
+    await openEvent('superadmin', '000007')
+
+    const link = await screen.findByRole('link', { name: 'Dodaj komentar' })
+    const box = must(link.closest<HTMLElement>('.event__actions'), 'the box that sets the size of the four')
+
+    expect(within(box).queryAllByRole('button').map(textOf)).toEqual([
+      'Izmena',
+      'Kopiranje',
+      'Brisanje',
+    ])
+    expect(box, 'the box is not the shared row of controls').toHaveClass('rankings__head-tool')
   }, SEVERAL_SCREENS)
 
   it('offers it on an event still ahead too, where the rating is not offered', async () => {

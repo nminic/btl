@@ -245,10 +245,32 @@
     border-bottom-width: 0;
   }
 
+  /* Every cell of a race stands in the middle of its row (owner, 16.10.2026: „Red sa Unesi
+     rezultat nije vertikalno centriran. Labele su otišle gore, dugme niže u odnosu na njih").
+     `styles/table.css` starts every cell of every table at the top, on purpose (a table is read
+     across, and top keeps a shared first line), and that is right while a row is as tall as its
+     text. This one is not: the way in is a button with a box of its own, 38,4px against a line
+     of 24,8px, so under the shared rule the name and the three figures stood 8px above the
+     middle of the row and the button in it. Two classes and an element, `(0,2,1)`, against the
+     shared `(0,1,1)`, so this wins wherever the bundle puts the sheets. The head is not in it:
+     a heading is read across and stays where the shared sheet puts it. */
   .table.table--races td {
     display: table-cell;
     padding: var(--space-12) var(--space-8);
     border-bottom-width: 1px;
+    vertical-align: middle;
+  }
+
+  /* A head that does not fit its column breaks at its spaces. `„Dužina / trajanje"` is the
+     longest the first figure can be called (`event/measureHeading.ts`), and the column of a
+     figure is 92px with 8px of padding either side, 76px for the words, which is less than the
+     two words and the slash side by side. The shared head does not break (`white-space:
+     nowrap`), so it ran past its column. Broken at the space it is two lines, 55,7px of head
+     against 38,4px, and „TRAJANJE", the longer half, is 58,98px (`pages/eventTableStyle.test.ts`,
+     the same look). Measured in Chrome 154 at 1280, where the table shape is drawn, at the
+     ordinary size and at 200% text: no head is wider than its cell. */
+  .table.table--races th {
+    white-space: normal;
   }
 
   .table--races .event-races__label {
@@ -449,6 +471,26 @@
    them. */
 .event__where {
   margin: 0 0 var(--space-16);
+}
+
+/* THE FOUR THINGS THAT CAN BE DONE WITH AN EVENT, IN ONE SIZE (owner, 16.10.2026: „Dodaj
+   komentar dugme gore levo je bezrazložno veliko. Treba da se alignuje sa ostalim dugmićima i
+   naslovom").
+
+   Three of them are `<button>` and one is a link, and `.button` (Home.css) sets no font, so the
+   three took the browser's own for a button (Arial, 13,33px) while the link took the page's
+   (Segoe UI, 16px on a line of 24,8px): 37px against 46,8px, measured in Chrome 154 at 360, 768
+   and 1280. The row is the one place the two sorts stand side by side, so the font is said here,
+   for all four, and nowhere else: `.button` itself is on every screen of the portal and a
+   different size for every button of it is not what he asked.
+
+   Two classes, so this outweighs `.button` on weight and not on which sheet the bundle put last
+   (ADL A24). In `rem`, so the four grow with the text together; the browser's own size for a
+   button does not follow the reader's. */
+.event__actions .button {
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.2;
 }
 
 .profile__text {
@@ -824,6 +866,16 @@
 
      6,75 + 6,25 + 4 + 4 + 5,25 + 4,25 = 30,5, and eight for the event. */
   min-inline-size: 38.5rem;
+}
+
+/* The heads break at their spaces. They are „Dužina (km)", „Uspon (m)" and „Spust (m)" since
+   16.10.2026 (owner: „SAMO TREBA PREIMENOVATI POSTOJEĆE D + i - na profilu"), and the shared
+   head does not break (`white-space: nowrap`, styles/table.css) while these columns are pinned:
+   „USPON (M)" is wider than the 48px a pinned 4rem column leaves it, and ran under the column
+   beside it. Broken at the space, the unit goes under the name and each half fits. The pinned
+   widths are the widest VALUE the league can hold and are not touched. */
+.profile__results .table th {
+  white-space: normal;
 }
 
 .profile__results .table th:nth-child(1),

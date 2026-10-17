@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { AskedLabel } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 import { ServerSaid } from '../account/ServerSaid'
 import type { Answer } from '../account/askTheServer'
@@ -152,10 +152,7 @@ export function SignIn() {
         }}
       >
         {/* The rule every field on the portal keeps since 12.08.2026, this one
-            included: a star, `aria-required`, and one line saying what the star means
-            (forms/AskedLabel.tsx). */}
-        <RequiredNote />
-
+            included: a star and `aria-required` (forms/AskedLabel.tsx). */}
         <div className="rankings__field">
           <AskedLabel id="sign-in-email">{t('signIn.email')}</AskedLabel>
           <input
