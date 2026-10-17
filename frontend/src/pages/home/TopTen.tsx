@@ -56,21 +56,26 @@ function Face({ slot, place }: { slot: Competitor | undefined; place: number }) 
  * beside them, no sentence underneath.
  *
  * The board keeps its ten places whether or not the league has ten members, so
- * the two boards standing side by side are the same height all season.
+ * the two boards standing side by side are the same height all season. From 1
+ * January 2027 the places nobody has won are empty circles (owner, 17.10.2026).
  */
 export function TopTen({
   competitors,
   results,
   season,
+  today,
   gender,
 }: {
   competitors: Competitor[]
   results: Result[]
   season: number
+  /** The day the board is read on, which decides whether places are held for members who have
+   *  not scored (`boardsAreToppedUp`). Not the season and not a date of any result. */
+  today: string
   gender: Gender
 }) {
   const { locale, t } = useI18n()
-  const slots = boardOfTen(competitors, results, season, gender)
+  const slots = boardOfTen(competitors, results, season, gender, today)
   const headingId = `top-ten-${gender}`
   const places = Array.from({ length: BOARD_PLACES }, (_, index) => slots[index])
 

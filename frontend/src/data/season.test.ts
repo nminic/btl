@@ -3,6 +3,7 @@ import { basename } from 'node:path'
 import { seasonBeingRenewed } from './pricing'
 import { sources, WHOLE_PORTAL } from '../test/sources'
 import {
+  boardsAreToppedUp,
   FIRST_SEASON,
   inYearlyWindow,
   referralMayBeSet,
@@ -166,5 +167,20 @@ describe('the yearly window', () => {
     expect(seasonShown('2026-12-31')).toBe(2027)
     expect(seasonShown('2027-01-01')).toBe(2027)
     expect(seasonShown('2028-02-01')).toBe(2028)
+  })
+})
+
+describe('the boards of the front page', () => {
+  it('are topped up with members who have not scored until the last day of 2026, and from 1 January 2027 never', () => {
+    /* Owner, 17.10.2026: „Top 10 na naslovnoj se od 1.1.2027 popunjava samo članovima sa
+       bodovima. Do 1.1.2027 važi odluka P24." The two days either side of the boundary, so a
+       boundary one day early or one day late cannot pass, and a day far on either side so a rule
+       that is not about the boundary at all cannot either. */
+    expect(boardsAreToppedUp('2010-03-01')).toBe(true)
+    expect(boardsAreToppedUp('2026-12-30')).toBe(true)
+    expect(boardsAreToppedUp('2026-12-31')).toBe(true)
+    expect(boardsAreToppedUp('2027-01-01')).toBe(false)
+    expect(boardsAreToppedUp('2027-01-02')).toBe(false)
+    expect(boardsAreToppedUp('2028-06-01')).toBe(false)
   })
 })
