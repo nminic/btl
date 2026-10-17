@@ -6,6 +6,7 @@ import com.btl.portal.domain.account.PasswordReset;
 import com.btl.portal.domain.account.PasswordReset.Outcome;
 import com.btl.portal.domain.account.StoredPassword;
 import com.btl.portal.domain.account.WhatAnAddressLooksLike;
+import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatTheMessageSays;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
@@ -157,7 +158,7 @@ class PasswordResetApi {
 		return ResponseEntity.noContent().build();
 	}
 
-	private record ToSend(long account, String address, String link) {
+	private record ToSend(long account, String address, String link, MailLanguage language) {
 	}
 
 	/**
@@ -167,7 +168,7 @@ class PasswordResetApi {
 	 * (case, a fold Postgres and Java do not agree on for every code point) and
 	 * only the row's own spelling is a mailbox anybody can read.
 	 */
-	private record Found(long id, String email) {
+	private record Found(long id, String email, MailLanguage language) {
 	}
 
 	private ToSend write(RequestTyped typed) {
@@ -180,9 +181,12 @@ class PasswordResetApi {
 		   reset is not conditioned on `email_confirmed_at` in either direction. */
 		String address = WhatAnAddressLooksLike.withoutTheSpacesAround(typed.email());
 
-		Optional<Found> found = db.sql("select id, email from account where lower(email) = lower(?)")
+		/* AND THE LANGUAGE OFF THE SAME ROW, in the same statement as the address it goes to. */
+		Optional<Found> found = db.sql("select id, email, mail_language from account"
+						+ " where lower(email) = lower(?)")
 				.param(address)
-				.query((row, i) -> new Found(row.getLong(1), row.getString(2)))
+				.query((row, i) -> new Found(row.getLong(1), row.getString(2),
+						MailLanguage.ofTheColumn(row.getString(3))))
 				.optional();
 
 		if (found.isEmpty()) {
@@ -203,13 +207,15 @@ class PasswordResetApi {
 		   what the account carries can end up at a mailbox the account does not
 		   live at, which is a message this portal sent to nowhere on request
 		   rather than a member's own mistake. */
-		return new ToSend(found.orElseThrow().id(), found.orElseThrow().email(), link.secret());
+		return new ToSend(found.orElseThrow().id(), found.orElseThrow().email(), link.secret(),
+				found.orElseThrow().language());
 	}
 
 	private void send(ToSend made) {
 		try {
 			postman.send(
-					WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, portal, made.link()),
+					WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, made.language(), portal,
+							made.link()),
 					made.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("a password reset message for account {} did not go out; asking again is"

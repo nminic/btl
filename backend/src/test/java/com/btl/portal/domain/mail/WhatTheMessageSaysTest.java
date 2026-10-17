@@ -23,12 +23,30 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** What the two messages say, and that the words behind them are all there. */
+/** What the messages say, in each language they are written in, and that the words behind them
+ *  are all there. */
 class WhatTheMessageSaysTest {
 
 	private static final Portal PORTAL = new Portal("https://balkanskatrkackaliga.net");
 
 	private static final String TOKEN = "AbCd-EfGh_1234";
+
+	/**
+	 * One message in one language, asked for the only way the class lets it be asked for: a message
+	 * that follows its reader with his language, an invitation without one, and then always in
+	 * Serbian whatever {@code in} says.
+	 */
+	private static Said said(Message message, MailLanguage in) {
+		return message.followsTheReader() ? WhatTheMessageSays.about(message, in, PORTAL, TOKEN)
+				: WhatTheMessageSays.about(message, PORTAL, TOKEN);
+	}
+
+	/** The languages a message is really written in: both for one that follows its reader,
+	 *  Serbian alone for an invitation. */
+	private static List<MailLanguage> languagesOf(Message message) {
+		return message.followsTheReader() ? List.of(MailLanguage.values())
+				: List.of(MailLanguage.SERBIAN);
+	}
 
 	/**
 	 * THE LINK IS BUILT FROM THE PORTAL AND FROM NOTHING ELSE.
@@ -40,12 +58,77 @@ class WhatTheMessageSaysTest {
 	@ParameterizedTest
 	@EnumSource(Message.class)
 	void everyMessageCarriesOneLinkAndItIsOurs(Message message) {
-		Said said = WhatTheMessageSays.about(message, PORTAL, TOKEN);
+		for (MailLanguage in : languagesOf(message)) {
+			Said said = said(message, in);
 
-		assertThat(said.body())
-				.as("%s did not carry the link it exists to carry", message)
-				.contains(PORTAL.address() + message.path() + "?token=" + TOKEN);
-		assertThat(said.subject()).isNotBlank();
+			assertThat(said.body())
+					.as("%s in %s did not carry the link it exists to carry", message, in)
+					.contains(PORTAL.address() + in.prefix() + message.path() + "?token=" + TOKEN);
+			assertThat(said.subject()).isNotBlank();
+		}
+	}
+
+	/**
+	 * A LETTER IN ENGLISH LEADS TO THE ENGLISH PAGE, AND A SERBIAN ONE TO THE ADDRESS IT HAS ALWAYS
+	 * LED TO.
+	 *
+	 * <p>The owner's answer of 10.10.2026, Q2 (B), „Veza u engleskom mejlu … nosi {@code /en/}". Asked
+	 * as the whole address on both sides, because „contains {@code /en}" is also true of a Serbian
+	 * link that grew one, and the Serbian half is every link already in somebody's mailbox: it must
+	 * not move. And in words, not only in the link: an English letter whose link was right and whose
+	 * text was Serbian would pass the first assertion.
+	 */
+	@Test
+	void anEnglishLetterLeadsToTheEnglishPageAndASerbianOneWhereItAlwaysLed() {
+		Said english = WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, MailLanguage.ENGLISH,
+				PORTAL, TOKEN);
+		Said serbian = WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, MailLanguage.SERBIAN,
+				PORTAL, TOKEN);
+
+		assertThat(english.body())
+				.contains("https://balkanskatrkackaliga.net/en/nova-lozinka?token=" + TOKEN)
+				.contains("1 hour")
+				.contains("Balkanska trkačka liga")
+				.doesNotContain("lozinku");
+		assertThat(serbian.body())
+				.contains("https://balkanskatrkackaliga.net/nova-lozinka?token=" + TOKEN)
+				.doesNotContain("/en/")
+				.contains("1 sat");
+		assertThat(english.subject()).isNotEqualTo(serbian.subject());
+	}
+
+	/**
+	 * AN INVITATION IS ALWAYS SERBIAN AND CANNOT BE ASKED FOR IN A LANGUAGE, AND A MESSAGE THAT
+	 * FOLLOWS ITS READER CANNOT BE ASKED FOR WITHOUT ONE.
+	 *
+	 * <p>The owner's answer of 10.10.2026, Q4 (A): „Pozivnice (moderator, grupni unos): uvek srpski."
+	 * Refused rather than quietly answered in Serbian, so a call site that read somebody's language
+	 * and handed it to an invitation fails where it is written rather than looking as if it worked.
+	 * And the other way, so a letter that needs its reader's language cannot be sent in Serbian by a
+	 * call site that forgot to read it.
+	 */
+	@Test
+	void anInvitationIsAlwaysSerbianAndALetterThatFollowsItsReaderIsToldWhich() {
+		assertThat(Arrays.stream(Message.values()).filter(one -> !one.followsTheReader()).toList())
+				.as("the two invitations, and only they, are always Serbian")
+				.containsExactlyInAnyOrder(Message.INVITED_AS_A_MODERATOR, Message.INVITED_AS_A_MEMBER);
+
+		for (Message invitation : List.of(Message.INVITED_AS_A_MODERATOR, Message.INVITED_AS_A_MEMBER)) {
+			for (MailLanguage in : MailLanguage.values()) {
+				assertThatThrownBy(() -> WhatTheMessageSays.about(invitation, in, PORTAL, TOKEN))
+						.as("%s was asked for in %s and not refused", invitation, in)
+						.isInstanceOf(IllegalArgumentException.class)
+						.hasMessageContaining("always written in Serbian");
+			}
+
+			assertThat(WhatTheMessageSays.about(invitation, PORTAL, TOKEN).body())
+					.as("%s did not lead to the Serbian page", invitation)
+					.contains(PORTAL.address() + invitation.path() + "?token=");
+		}
+
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, PORTAL, TOKEN))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("its reader's language");
 	}
 
 	/**
@@ -84,17 +167,21 @@ class WhatTheMessageSaysTest {
 	 */
 	@Test
 	void noTwoMessagesSayTheSameThing() {
-		assertThat(Stream.of(Message.values())
-				.map(one -> WhatTheMessageSays.about(one, PORTAL, TOKEN).subject())
-				.collect(Collectors.toSet()))
-				.as("two messages share a subject, so one of them is not being looked at")
-				.hasSize(Message.values().length);
+		for (MailLanguage in : MailLanguage.values()) {
+			List<Message> written = Stream.of(Message.values())
+					.filter(one -> languagesOf(one).contains(in)).toList();
 
-		assertThat(Stream.of(Message.values())
-				.map(one -> WhatTheMessageSays.about(one, PORTAL, TOKEN).body())
-				.collect(Collectors.toSet()))
-				.as("two messages share their whole text, so one of them is not being written")
-				.hasSize(Message.values().length);
+			assertThat(written.stream().map(one -> said(one, in).subject())
+					.collect(Collectors.toSet()))
+					.as("two messages share a subject in %s, so one of them is not being looked at", in)
+					.hasSize(written.size());
+
+			assertThat(written.stream().map(one -> said(one, in).body())
+					.collect(Collectors.toSet()))
+					.as("two messages share their whole text in %s, so one of them is not being written",
+							in)
+					.hasSize(written.size());
+		}
 
 		for (Message message : Message.values()) {
 			assertThat(message.path())
@@ -126,13 +213,29 @@ class WhatTheMessageSaysTest {
 		assertThat(WhatTheMessageSays.howLong(Duration.ofHours(24))).isEqualTo("24 sata");
 	}
 
+	/** And in English, where one is singular and every other number is not. */
+	@Test
+	void theHoursAreSpokenTheWayEnglishSpeaksThem() {
+		assertThat(WhatTheMessageSays.howLong(Duration.ofHours(1), MailLanguage.ENGLISH))
+				.isEqualTo("1 hour");
+		assertThat(WhatTheMessageSays.howLong(Duration.ofHours(24), MailLanguage.ENGLISH))
+				.isEqualTo("24 hours");
+		assertThat(WhatTheMessageSays.howLong(Duration.ofHours(21), MailLanguage.ENGLISH))
+				.as("twenty one hours took the Serbian rule's singular")
+				.isEqualTo("21 hours");
+		assertThat(WhatTheMessageSays.howLong(Duration.ofHours(21), MailLanguage.SERBIAN))
+				.isEqualTo("21 sat");
+	}
+
 	/** And what the class works out is what the member reads. */
 	@ParameterizedTest
 	@EnumSource(Message.class)
 	void howLongTheLinkLastsReachesTheMember(Message message) {
-		assertThat(WhatTheMessageSays.about(message, PORTAL, TOKEN).body())
-				.as("%s never told the member how long he has", message)
-				.contains(WhatTheMessageSays.howLong(message.lasts()));
+		for (MailLanguage in : languagesOf(message)) {
+			assertThat(said(message, in).body())
+					.as("%s in %s never told the member how long he has", message, in)
+					.contains(WhatTheMessageSays.howLong(message.lasts(), in));
+		}
 	}
 
 	/**
@@ -222,7 +325,8 @@ class WhatTheMessageSaysTest {
 			String secret = SecretToken.fresh().secret();
 			secret.chars().forEach(one -> seen.add((char) one));
 
-			assertThat(WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, PORTAL, secret).body())
+			assertThat(WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, MailLanguage.SERBIAN, PORTAL,
+					secret).body())
 					.as("a token the portal itself made was refused: %s", secret)
 					.contains(secret);
 		}
@@ -244,9 +348,17 @@ class WhatTheMessageSaysTest {
 				.isInstanceOf(NullPointerException.class).hasMessage("address");
 		assertThatThrownBy(() -> WhatTheMessageSays.about(null, PORTAL, TOKEN))
 				.isInstanceOf(NullPointerException.class).hasMessage("message");
-		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, null, TOKEN))
+		assertThatThrownBy(() -> WhatTheMessageSays.about(null, MailLanguage.SERBIAN, PORTAL, TOKEN))
+				.isInstanceOf(NullPointerException.class).hasMessage("message");
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, null, PORTAL,
+				TOKEN)).isInstanceOf(NullPointerException.class).hasMessage("reader");
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
+				MailLanguage.SERBIAN, null, TOKEN))
 				.isInstanceOf(NullPointerException.class).hasMessage("portal");
-		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, PORTAL, null))
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, null, TOKEN))
+				.isInstanceOf(NullPointerException.class).hasMessage("portal");
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
+				MailLanguage.SERBIAN, PORTAL, null))
 				.isInstanceOf(NullPointerException.class).hasMessage("token");
 	}
 
@@ -261,7 +373,8 @@ class WhatTheMessageSaysTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"", "   "})
 	void aMessageWithNoTokenIsNotSent(String nothing) {
-		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, PORTAL, nothing))
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD,
+				MailLanguage.SERBIAN, PORTAL, nothing))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining("no link");
 	}
@@ -283,7 +396,8 @@ class WhatTheMessageSaysTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"abc&admin=true", "abc#vrh", "abc def", "abc\nx", "abc%20", "abc=", "abc/d"})
 	void aTokenThatWouldBreakTheLinkIsNotSent(String broken) {
-		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, PORTAL, broken))
+		assertThatThrownBy(() -> WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD,
+				MailLanguage.ENGLISH, PORTAL, broken))
 				.as("'%s' was written into a link and sent to somebody", broken)
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining("no link");
@@ -299,24 +413,39 @@ class WhatTheMessageSaysTest {
 	 *
 	 * <p>Neither side is typed out here: the keys come off the enum and the rest
 	 * comes off the bundle itself.
+	 *
+	 * <p><b>ONE DICTIONARY PER LANGUAGE, EACH EXACT OVER ITS OWN SET.</b> Serbian holds every
+	 * message; English holds exactly the ones that follow their reader, so an invitation written
+	 * into it fails here (owner, 10.10.2026, Q4: always Serbian) and so does a message that follows
+	 * its reader and has no English words. The languages come off {@link MailLanguage}, so a third
+	 * one is a dictionary this asks for on the day it is named.
 	 */
 	@Test
 	void everyMessageHasItsWordsAndEveryWordHasItsMessage() {
-		ResourceBundle words = ResourceBundle.getBundle("mail/sr", Locale.ROOT);
+		for (MailLanguage in : MailLanguage.values()) {
+			ResourceBundle words = WhatTheMessageSays.words(in);
+			List<Message> writtenIn = Arrays.stream(Message.values())
+					.filter(one -> languagesOf(one).contains(in)).toList();
 
-		Set<String> expected = Arrays.stream(Message.values())
-				.flatMap(one -> Stream.of(one.key() + ".subject", one.key() + ".body"))
-				.collect(Collectors.toSet());
+			Set<String> expected = writtenIn.stream()
+					.flatMap(one -> Stream.of(one.key() + ".subject", one.key() + ".body"))
+					.collect(Collectors.toSet());
 
-		assertThat(words.keySet())
-				.as("the words and the messages no longer name the same things")
-				.isEqualTo(expected);
+			assertThat(words.keySet())
+					.as("the words in %s and the messages written in it no longer name the same things", in)
+					.isEqualTo(expected);
 
-		for (Message message : Message.values()) {
-			assertThat(words.getString(message.key() + ".body"))
-					.as("%s has nowhere to put the link and how long it lasts", message)
-					.contains("{0}")
-					.contains("{1}");
+			for (Message message : writtenIn) {
+				assertThat(words.getString(message.key() + ".body"))
+						.as("%s in %s has nowhere to put the link and how long it lasts", message, in)
+						.contains("{0}")
+						.contains("{1}");
+			}
 		}
+
+		assertThat(WhatTheMessageSays.words(MailLanguage.SERBIAN).getString("confirmTheAddress.subject"))
+				.as("the Serbian dictionary is not the one under mail/sr")
+				.isEqualTo(ResourceBundle.getBundle("mail/sr", Locale.ROOT)
+						.getString("confirmTheAddress.subject"));
 	}
 }

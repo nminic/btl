@@ -876,6 +876,44 @@ class MePasswordApiTest {
 	 * about a change that did not happen would be worse than not being told at all: it is the
 	 * portal teaching him to ignore exactly the warning that is meant to alarm him.
 	 */
+	/**
+	 * THE NOTICE IS WRITTEN IN THE LANGUAGE OF THE ACCOUNT IT GOES TO, the moment included.
+	 *
+	 * <p>Owner, PDL P18, 03.10.2026. The account written first is put in the other language each
+	 * time, so a notice whose language came off another row than its address is wrong in one of the
+	 * two cases, and so is one that was always Serbian.
+	 */
+	@Test
+	void theNoticeIsWrittenInTheLanguageOfHisOwnAccount() throws Exception {
+		db.sql("update account set mail_language = 'en' where email = ?").param(ME).update();
+
+		assertThat(asking(theSessionIAskFrom(),
+				body(MY_OLD_PASSWORD, MY_NEW_PASSWORD, MY_NEW_PASSWORD)).getStatus())
+				.isEqualTo(204);
+
+		MimeMessage posted = waitForOne();
+
+		assertThat(posted.getSubject()).isEqualTo("The password of your account has changed");
+		assertThat(posted.getContent().toString())
+				.contains("Devices signed out this way: 2.")
+				.containsPattern("was changed on \\d{1,2} [A-Z][a-z]+ \\d{4} at \\d{2}:\\d{2}\\.");
+	}
+
+	/** And the other way round: he is Serbian, the account written first is English. */
+	@Test
+	void aSerbianAccountIsToldInSerbianWhateverTheOthersChose() throws Exception {
+		db.sql("update account set mail_language = 'en' where email = ?").param(FIRST_WRITTEN).update();
+
+		assertThat(asking(theSessionIAskFrom(),
+				body(MY_OLD_PASSWORD, MY_NEW_PASSWORD, MY_NEW_PASSWORD)).getStatus())
+				.isEqualTo(204);
+
+		MimeMessage posted = waitForOne();
+
+		assertThat(posted.getSubject()).isEqualTo("Lozinka na vašem nalogu je promenjena");
+		assertThat(posted.getContent().toString()).contains("Broj tako odjavljenih uređaja: 2.");
+	}
+
 	@Test
 	void aRefusedRequestPostsNothing() throws Exception {
 		assertThat(asking(theSessionIAskFrom(),

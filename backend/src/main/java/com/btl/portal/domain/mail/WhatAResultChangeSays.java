@@ -54,8 +54,17 @@ import java.util.ResourceBundle;
  * does to his own result is not copied to the league. Both are carried out, and cited, in
  * {@code ResultWriteApi}.
  *
- * <p><b>The words live in {@code notices/sr.properties}</b> and deliberately not beside the
+ * <p><b>The words live in {@code notices/results.properties}</b> and deliberately not beside the
  * other Serbian this server says out loud; {@link #WORDS} carries the measured reason.
+ *
+ * <p><b>AND IN ENGLISH IN {@code notices/results-en.properties}, FOR THE MEMBER WHO CHOSE IT.</b>
+ * The owner's answer of 10.10.2026, Q3 (A): „Sanduče: kopija rezultatskih poruka prati jezik
+ * mejla, ostalo srpsko". So each occasion here is written in the language of the account it is
+ * about, and the line in his inbox is the same {@link Said} as the letter, in the same language,
+ * because it is the same value. What is NOT here follows the other half of that answer: the line
+ * about a race recounted ({@code RaceWriteApi}) and the line about a category that closed
+ * ({@code VerificationWriteApi}) are not copies of a letter and stay Serbian, which is why
+ * {@link #inWords(Run)} and {@link #asADay(LocalDate)} keep their Serbian shape for them.
  *
  * <p><b>THIS CLASS IS HALF A PLACEHOLDER, AND SAYING SO IS CHEAPER THAN LETTING IT BE
  * FOUND.</b> A parallel branch ({@code b87-moj-nalog}) writes {@code WhatANoticeSays}, the
@@ -91,12 +100,25 @@ public final class WhatAResultChangeSays {
 	 */
 	private static final String WORDS = "notices/results";
 
-	/** One set of words, and {@code mail/sr.properties} is it - {@link WhatTheMessageSays}
-	 *  carries the reason at length and this does not repeat it. */
+	/**
+	 * The English words, named by their own file. A hyphen and not an underscore, because
+	 * {@code results_en} is the shape {@link ResourceBundle} reads as a variant of
+	 * {@code results} for an English locale, and the language here is chosen by naming a file,
+	 * never by asking for a locale ({@link WhatTheMessageSays} carries the reason).
+	 */
+	private static final String ENGLISH_WORDS = "notices/results-en";
+
+	/** {@code Locale.ROOT}: the language is chosen by naming its file, and
+	 *  {@link WhatTheMessageSays} carries the reason at length and this does not repeat it. */
 	private static final Locale ONE_SET_OF_WORDS = Locale.ROOT;
 
 	/** „05.05.2027", which is how the portal writes a day everywhere a person reads one. */
 	private static final DateTimeFormatter A_DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+	/** „5 May 2027", the day in words for a reader outside the region, for whom „05.06." is the
+	 *  sixth of May as often as it is the fifth of June. */
+	private static final DateTimeFormatter AN_ENGLISH_DAY =
+			DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH);
 
 	private WhatAResultChangeSays() {
 	}
@@ -211,10 +233,10 @@ public final class WhatAResultChangeSays {
 	 * odobren". So the mandatory mail „unet rezultat" is no longer these words but
 	 * {@link #approved}, sent when the run counts.
 	 */
-	public static Said entered(Run sent) {
+	public static Said entered(Run sent, MailLanguage in) {
 		Objects.requireNonNull(sent, "sent");
 
-		return said(Told.A_RESULT_WAS_ENTERED, inWords(sent));
+		return said(Told.A_RESULT_WAS_ENTERED, in, inWords(sent, in));
 	}
 
 	/**
@@ -223,18 +245,18 @@ public final class WhatAResultChangeSays {
 	 * <p>The old one first and the new one after it, which is the order the decision is
 	 * about: what the member has to be able to prove years later is what the figures WERE.
 	 */
-	public static Said changed(Run before, Run after) {
+	public static Said changed(Run before, Run after, MailLanguage in) {
 		Objects.requireNonNull(before, "before");
 		Objects.requireNonNull(after, "after");
 
-		return said(Told.A_RESULT_WAS_CHANGED, inWords(before), inWords(after));
+		return said(Told.A_RESULT_WAS_CHANGED, in, inWords(before, in), inWords(after, in));
 	}
 
 	/** A RESULT HAS BEEN DELETED, and what it said is the whole of the message. */
-	public static Said deleted(Run before) {
+	public static Said deleted(Run before, MailLanguage in) {
 		Objects.requireNonNull(before, "before");
 
-		return said(Told.A_RESULT_WAS_DELETED, inWords(before));
+		return said(Told.A_RESULT_WAS_DELETED, in, inWords(before, in));
 	}
 
 	/**
@@ -248,20 +270,28 @@ public final class WhatAResultChangeSays {
 	 * {@link #changed} carries two, and that difference is a decision rather than a
 	 * shortcut.
 	 */
-	public static Said approved(Run counted) {
+	public static Said approved(Run counted, MailLanguage in) {
 		Objects.requireNonNull(counted, "counted");
 
-		return said(Told.A_RESULT_WAS_APPROVED, inWords(counted));
+		return said(Told.A_RESULT_WAS_APPROVED, in, inWords(counted, in));
 	}
 
 	/** The words of one occasion, filled in. Package visible so the floor over the
 	 *  dictionary can ask for every occasion rather than for the three somebody remembers. */
-	static Said said(Told told, Object... values) {
-		ResourceBundle words = ResourceBundle.getBundle(WORDS, ONE_SET_OF_WORDS);
+	static Said said(Told told, MailLanguage in, Object... values) {
+		Objects.requireNonNull(in, "in");
+
+		ResourceBundle words = words(in);
 
 		return new Said(words.getString(told.key() + ".subject"),
 				new MessageFormat(words.getString(told.key() + ".body"), ONE_SET_OF_WORDS)
 						.format(values));
+	}
+
+	/** The dictionary of one language, which the floor over the dictionaries reads too. */
+	static ResourceBundle words(MailLanguage in) {
+		return ResourceBundle.getBundle(in == MailLanguage.ENGLISH ? ENGLISH_WORDS : WORDS,
+				ONE_SET_OF_WORDS);
 	}
 
 	/**
@@ -290,10 +320,29 @@ public final class WhatAResultChangeSays {
 	 * same, so a run reads one way in a letter and in that line.
 	 */
 	public static String inWords(Run run) {
+		return inWords(run, MailLanguage.SERBIAN);
+	}
+
+	/**
+	 * THE SAME RUN IN THE WORDS OF THE LANGUAGE ITS LETTER IS WRITTEN IN, and the figures are the
+	 * same figures: only the words around them and the decimal mark move. English writes the
+	 * decimal with a point, the way the English page writes it ({@code Intl.NumberFormat} for
+	 * {@code en}), so a length reads 42.20 there and 42,20 here.
+	 */
+	public static String inWords(Run run, MailLanguage in) {
+		Objects.requireNonNull(in, "in");
+
+		if (in == MailLanguage.ENGLISH) {
+			return run.raceName() + ", " + run.day().format(AN_ENGLISH_DAY) + ", "
+					+ twoDecimals(run.distanceKm(), '.') + " km, ascent " + run.ascentM()
+					+ " m, descent " + run.descentM() + " m, time " + asAClock(run.seconds())
+					+ ", " + twoDecimals(run.points(), '.') + " points";
+		}
+
 		return run.raceName() + ", " + asADay(run.day()) + ", "
-				+ twoDecimals(run.distanceKm()) + " km, uspon " + run.ascentM()
+				+ twoDecimals(run.distanceKm(), ',') + " km, uspon " + run.ascentM()
 				+ " m, spust " + run.descentM() + " m, vreme " + asAClock(run.seconds())
-				+ ", " + twoDecimals(run.points()) + " bodova";
+				+ ", " + twoDecimals(run.points(), ',') + " bodova";
 	}
 
 	/**
@@ -309,18 +358,19 @@ public final class WhatAResultChangeSays {
 	}
 
 	/**
-	 * „42,20", with the comma Serbian writes a decimal with.
+	 * „42,20", with the comma Serbian writes a decimal with, or „42.20" with the point English
+	 * writes it with.
 	 *
 	 * <p>The separator is SET rather than asked of a locale: the answer would then depend on
 	 * which locale data the machine running the server happens to carry, and the one thing
 	 * this file is about is a record that reads the same in ten years as it does today.
 	 */
-	private static String twoDecimals(BigDecimal value) {
-		DecimalFormatSymbols serbian = new DecimalFormatSymbols(Locale.ROOT);
+	private static String twoDecimals(BigDecimal value, char decimalMark) {
+		DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.ROOT);
 
-		serbian.setDecimalSeparator(',');
+		symbols.setDecimalSeparator(decimalMark);
 
-		return new DecimalFormat("0.00", serbian).format(value.setScale(2, RoundingMode.HALF_UP));
+		return new DecimalFormat("0.00", symbols).format(value.setScale(2, RoundingMode.HALF_UP));
 	}
 
 	/**

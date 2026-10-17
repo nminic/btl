@@ -692,6 +692,83 @@ class RegistrationApiTest {
 	}
 
 	/**
+	 * A REGISTRATION TYPED ON THE ENGLISH PAGE STARTS HIS MAIL IN ENGLISH, AND THE FIRST LETTER IS
+	 * ALREADY ONE.
+	 *
+	 * <p>The owner's answer of 10.10.2026, Q1 (B): „registracija nosi jezik strane na kojoj je
+	 * kucana kao početni izbor", and Q2: the link in an English letter carries {@code /en/}. The
+	 * column and the letter are both asked, because a route that wrote the column and wrote the
+	 * letter in Serbian, or the other way round, would pass either half alone.
+	 */
+	@Test
+	void aRegistrationTypedOnTheEnglishPageStartsHisMailInEnglish() throws Exception {
+		Map<String, Object> onTheEnglishPage = aGrownUp();
+
+		onTheEnglishPage.put("mailLanguage", "en");
+
+		assertThat(register(onTheEnglishPage).getStatus()).isEqualTo(204);
+		assertThat(theAccountAt(ADDRESS).get("mail_language")).isEqualTo("en");
+
+		MimeMessage first = waitForOne();
+
+		assertThat(first.getSubject()).isEqualTo("Confirm your address");
+		assertThat(first.getContent().toString())
+				.contains(portal + "/en" + Message.CONFIRM_THE_ADDRESS.path() + "?token=")
+				.contains("Welcome to BTL.");
+	}
+
+	/**
+	 * AND ONE TYPED ON THE SERBIAN PAGE, OR SENT WITH NO LANGUAGE AT ALL, IS SERBIAN.
+	 *
+	 * <p>„Podrazumevano srpski" (owner, 03.10.2026): absent is the column's own default, and the
+	 * Serbian link stays the one every message already sent carries.
+	 */
+	@Test
+	void aRegistrationOnTheSerbianPageOrWithNoLanguageIsSerbian() throws Exception {
+		Map<String, Object> onTheSerbianPage = aGrownUp();
+
+		onTheSerbianPage.put("mailLanguage", "sr");
+
+		assertThat(register(onTheSerbianPage).getStatus()).isEqualTo(204);
+		assertThat(theAccountAt(ADDRESS).get("mail_language")).isEqualTo("sr");
+
+		MimeMessage first = waitForOne();
+
+		assertThat(first.getSubject()).isEqualTo("Potvrdite svoju adresu");
+		assertThat(first.getContent().toString())
+				.contains(portal + Message.CONFIRM_THE_ADDRESS.path() + "?token=")
+				.doesNotContain("/en/");
+
+		Map<String, Object> withNoLanguage = aGrownUp();
+
+		withNoLanguage.put("email", "bez.jezika@primer.rs");
+
+		assertThat(register(withNoLanguage).getStatus()).isEqualTo(204);
+		assertThat(theAccountAt("bez.jezika@primer.rs").get("mail_language")).isEqualTo("sr");
+	}
+
+	/**
+	 * AND A LANGUAGE THE PORTAL DOES NOT WRITE IN IS REFUSED BEFORE ANYTHING IS WRITTEN, with the
+	 * sentence every other field the form should have caught gets.
+	 */
+	@Test
+	void aLanguageThePortalDoesNotWriteInIsRefusedAndNothingIsWritten() throws Exception {
+		for (String notOne : List.of("de", "EN", "")) {
+			Map<String, Object> carrying = aGrownUp();
+
+			carrying.put("mailLanguage", notOne);
+
+			MockHttpServletResponse refused = register(carrying);
+
+			assertThat(refused.getStatus()).as("'%s' was taken for a language", notOne).isEqualTo(400);
+			assertThat(refused.getContentAsString()).contains("theFormIsNotComplete");
+		}
+
+		assertThat(howMany("account")).isZero();
+		assertThat(SMTP.getReceivedMessages()).isEmpty();
+	}
+
+	/**
 	 * A MEMBER WHO ARRIVED BY SOMEBODY'S LINK IS CREDITED TO THAT SOMEBODY.
 	 *
 	 * <p><b>Why this is not a nicety.</b> The programme pays when the new member's own

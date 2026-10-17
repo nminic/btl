@@ -270,6 +270,42 @@ class PasswordResetApiTest {
 		assertThat(SMTP.getReceivedMessages()).isEmpty();
 	}
 
+	/**
+	 * THE LINK GOES OUT IN THE LANGUAGE THE ACCOUNT CHOSE, AND LEADS TO THE PAGE IN IT.
+	 *
+	 * <p>Owner, PDL P18, 03.10.2026: the member chooses the language of his mail; 10.10.2026, Q2:
+	 * the link in an English letter carries {@code /en/}. Two accounts, the first written in
+	 * English and the second in Serbian, so a lookup that read the language off the first row, or
+	 * a letter that was always Serbian, fails one of the two halves.
+	 */
+	@Test
+	void theLinkGoesOutInTheLanguageTheAccountChose() throws Exception {
+		String english = aFreshAddress();
+		String serbian = aFreshAddress();
+
+		db.sql("update account set mail_language = 'en' where id = ?").param(anAccount(english)).update();
+		anAccount(serbian);
+
+		assertThat(request(serbian).getStatus()).isEqualTo(204);
+
+		MimeMessage toTheSerbian = waitForOne();
+
+		assertThat(toTheSerbian.getSubject()).isEqualTo("Postavljanje nove lozinke");
+		assertThat(toTheSerbian.getContent().toString())
+				.contains(portal + Message.SET_A_NEW_PASSWORD.path() + "?token=");
+
+		SMTP.purgeEmailFromAllMailboxes();
+
+		assertThat(request(english).getStatus()).isEqualTo(204);
+
+		MimeMessage toTheEnglish = waitForOne();
+
+		assertThat(toTheEnglish.getSubject()).isEqualTo("Setting a new password");
+		assertThat(toTheEnglish.getContent().toString())
+				.contains(portal + "/en" + Message.SET_A_NEW_PASSWORD.path() + "?token=")
+				.contains("1 hour");
+	}
+
 	@Test
 	void requestBuildsTheLinkFromTheSettingAndNotFromWhoeverAsked() throws Exception {
 		String email = aFreshAddress();

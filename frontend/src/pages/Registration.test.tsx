@@ -1245,6 +1245,7 @@ describe('what the registration sends', () => {
       parentConsent: '',
       parentRelation: '',
       referredBy: null,
+      mailLanguage: 'sr',
     })
   }, SLOW)
 
@@ -1367,6 +1368,48 @@ describe('what the registration sends', () => {
     })
 
     expect(Reflect.get(Object(theBodySent()), 'referredBy')).toBe('7f07b38ff7ee7543')
+  }, SLOW)
+
+  it('carries the language of the page it was typed on, so an English page starts his mail in English', async () => {
+    /* THE OWNER'S ANSWER OF 10.10.2026: „registracija nosi jezik strane na kojoj je kucana kao
+       početni izbor". Every other case here types on the Serbian page, where „the page's
+       language" and „always Serbian" send the same two letters; this one types on the English
+       page, so a body that wrote `sr` whatever the page was, or the default language instead of
+       the page's own, fails here and nowhere else. The labels are the English ones because the
+       page is. */
+    const user = setupUser()
+
+    render(
+      <ClockProvider simulatedDay={OPEN}>
+        <I18nProvider locale="en">
+          <MemoryRouter initialEntries={['/en/registracija']}>
+            <Registration />
+          </MemoryRouter>
+        </I18nProvider>
+      </ClockProvider>,
+    )
+
+    await user.type(screen.getByLabelText(/^First name$/), 'Vladan')
+    await user.type(screen.getByLabelText(/^Last name$/), 'Đurišić')
+    await user.type(screen.getByLabelText(/^Father's name$/), 'Milan')
+    await user.type(screen.getByLabelText(/^Identity document number$/), '123456789')
+    await user.type(screen.getByLabelText(/Email address/), 'vladan@primer.rs')
+    await user.type(screen.getByLabelText(/^Password$/), PASSWORD)
+    await user.type(screen.getByLabelText(/Repeat the password/), PASSWORD)
+    await user.click(screen.getByRole('radio', { name: 'Male' }))
+    await user.type(screen.getByLabelText(/^Postal address$/), 'Bulevar oslobođenja 12')
+    await user.type(screen.getByLabelText(/^Town$/), 'Beograd')
+    await user.click(screen.getByRole('radio', { name: 'By age' }))
+    await user.selectOptions(screen.getByLabelText(/Shirt size/), 'XXXL')
+    await user.click(screen.getByLabelText(/medically fit/))
+    await user.type(screen.getByLabelText(/Date of birth/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Send the application' }))
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    expect(Reflect.get(Object(theBodySent()), 'mailLanguage')).toBe('en')
   }, SLOW)
 
   it('sends the password exactly as it was typed, spaces and all', async () => {

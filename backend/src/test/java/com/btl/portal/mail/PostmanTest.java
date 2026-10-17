@@ -1,5 +1,6 @@
 package com.btl.portal.mail;
 
+import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatTheMessageSays;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
@@ -194,7 +195,8 @@ class PostmanTest {
 	 */
 	@Test
 	void theMessageArrivesAndItIsTheOneThatWasWritten() throws Exception {
-		Said said = WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, PORTAL, "AbCd-EfGh_1234");
+		Said said = WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN, PORTAL,
+				"AbCd-EfGh_1234");
 
 		postman.send(said, "clan@primer.rs");
 

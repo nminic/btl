@@ -4,6 +4,7 @@ import com.btl.portal.domain.account.BreachedPasswords;
 import com.btl.portal.domain.account.PasswordPolicy;
 import com.btl.portal.domain.account.SignIn;
 import com.btl.portal.domain.account.StoredPassword;
+import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatANoticeSays;
 import com.btl.portal.domain.mail.WhatANoticeSays.Notice;
 import com.btl.portal.domain.token.SecretToken;
@@ -301,7 +302,7 @@ class MePasswordApi {
 	 *               be a second question about a table that has changed in between
 	 */
 	private record Done(ResponseEntity<Refused> refusal, long account, String address, Instant at,
-			int others) {
+			int others, MailLanguage language) {
 	}
 
 	private Done write(long account, String carried, Change typed) {
@@ -330,11 +331,12 @@ class MePasswordApi {
 		   result is a `Held`, which the mapper always builds; the nullable thing is a FIELD on
 		   it, and that is what the line below asks about. */
 		Held stored = db.sql("select password_hash, email, failed_sign_ins, locked_until,"
-						+ " email_confirmed_at from account where id = ? for update")
+						+ " email_confirmed_at, mail_language from account where id = ? for update")
 				.param(account)
 				.query((row, one) -> new Held(row.getString(1), row.getString(2), row.getInt(3),
 						row.getTimestamp(4) == null ? null : row.getTimestamp(4).toInstant(),
-						row.getTimestamp(5) == null ? null : row.getTimestamp(5).toInstant()))
+						row.getTimestamp(5) == null ? null : row.getTimestamp(5).toInstant(),
+						MailLanguage.ofTheColumn(row.getString(6))))
 				.single();
 
 		/* AN ACCOUNT WITH NO PASSWORD AT ALL, which V18 makes a real state and the head of
@@ -446,18 +448,19 @@ class MePasswordApi {
 				.params(account, SecretToken.hashOf(carried))
 				.update();
 
-		return new Done(null, account, stored.address(), now, others);
+		return new Done(null, account, stored.address(), now, others, stored.language());
 	}
 
 	/**
 	 * What the decision needs off the account, read in one statement.
 	 *
-	 * <p>Three of the five are there for {@link SignIn} rather than for this route: the
+	 * <p>Three of the six are there for {@link SignIn} rather than for this route: the
 	 * misses, the lock and the moment the address was confirmed are what its rule asks about,
-	 * and reading them here is what lets that rule be called instead of rewritten.
+	 * and reading them here is what lets that rule be called instead of rewritten. The language
+	 * is the notice's, read with the address it goes to.
 	 */
 	private record Held(String hash, String address, int misses, Instant lockedUntil,
-			Instant addressConfirmedAt) {
+			Instant addressConfirmedAt, MailLanguage language) {
 	}
 
 	/**
@@ -474,9 +477,9 @@ class MePasswordApi {
 	 */
 	private void tell(Done done) {
 		try {
-			postman.send(WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED,
-					WhatANoticeSays.moment(done.at()), String.valueOf(done.others())),
-					done.address());
+			postman.send(WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, done.language(),
+					WhatANoticeSays.moment(done.at(), done.language()),
+					String.valueOf(done.others())), done.address());
 		}
 		catch (MailException theRelayDidNotTakeIt) {
 			/* THE ACCOUNT'S NUMBER AND NEVER ITS ADDRESS, which is what `RegistrationApi`,
@@ -507,7 +510,7 @@ class MePasswordApi {
 	}
 
 	private static Done no(String reason) {
-		return new Done(ResponseEntity.badRequest().body(new Refused(reason)), 0, null, null, 0);
+		return new Done(ResponseEntity.badRequest().body(new Refused(reason)), 0, null, null, 0, null);
 	}
 
 	/**

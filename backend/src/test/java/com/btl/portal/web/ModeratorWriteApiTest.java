@@ -3,6 +3,7 @@ package com.btl.portal.web;
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.account.StoredPassword;
+import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatTheMessageSays;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
@@ -1856,7 +1857,8 @@ class ModeratorWriteApiTest {
 						+ " password reads, which tell him a request arrived, that his password"
 						+ " is still the one he knows, and to do nothing if he did not ask")
 				.isNotEqualTo(WhatTheMessageSays
-						.about(Message.SET_A_NEW_PASSWORD, new Portal(portal), "AbCd").subject())
+						.about(Message.SET_A_NEW_PASSWORD, MailLanguage.SERBIAN, new Portal(portal), "AbCd")
+						.subject())
 				.isEqualTo(WhatTheMessageSays
 						.about(Message.INVITED_AS_A_MODERATOR, new Portal(portal), "AbCd").subject());
 

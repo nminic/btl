@@ -251,7 +251,13 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 			   radi u sistemu"; and of the lapsed PDL P13 says the mailbox is one „koje ne može da
 			   otvori" */
 			entry("POST /api/inbox/{id}/read", (f, owner) -> post("/api/inbox/" + f.messageToHim(owner)
-					+ "/read")));
+					+ "/read")),
+			/* derived the same way, and named so the owner can overturn it: the language of his
+			   mail is not on the list of what he may (PDL P8, 10.10.2026), so the older line holds,
+			   „ne može ništa da radi u sistemu". The registration already gives him the language of
+			   the page he joined on (owner, 10.10.2026, Q1). */
+			entry("PUT /api/me/mail-language", (f, owner) -> json(put("/api/me/mail-language"),
+					"{\"language\":\"en\"}")));
 
 	/**
 	 * How a member asks for something he MAY do before he pays, or {@code null} for a route that

@@ -546,6 +546,13 @@ class RightsAtTheDoorTest {
 					   deadline of 1 January 10:00 has passed with 409. `MeCategoryApiTest` and
 					   `MeCategoryWriteApiTest` hold those halves. */
 					"GET /api/me/category", "PUT /api/me/category",
+					/* A MEMBER'S OWN CHOICE OF THE LANGUAGE OF HIS MAIL, ADDED 17.10.2026 WITH
+					   V59, for the category's reason: no box the superadmin ticks decides it,
+					   because it is the member's own setting (owner, PDL P18, 03.10.2026, „član u
+					   profilu bira jezik mejlova"). The door is the session; inside the handler an
+					   account with no member and a member whose fee does not stand are answered
+					   404. `MeMailLanguageApiTest` holds that half. */
+					"PUT /api/me/mail-language",
 					"ANY /error");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";

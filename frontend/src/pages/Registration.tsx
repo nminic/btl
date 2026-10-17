@@ -8,6 +8,7 @@ import { askTheServer, type Answer } from './account/askTheServer'
 import { WHEN_REGISTERING } from './account/refusals'
 import { ServerSaid } from './account/ServerSaid'
 import { useSend, useSent } from './sent'
+import type { Locale } from '../i18n/config'
 import { useI18n } from '../i18n/useI18n'
 
 /**
@@ -53,8 +54,17 @@ function written(values: FormValues, name: string): string {
  * @param agreeing the fields that only agree with another one, which is the repeated
  *   password: the route asks for it by name, and what travels is what was really typed
  * @param referral the code this member arrived by, or nothing
+ * @param language the language of the page the form was typed on, which is where his mail
+ *   starts: the owner's answer of 10.10.2026, „registracija nosi jezik strane na kojoj je
+ *   kucana kao početni izbor (cena: jedno polje u zahtevu)", chosen over a control on the form.
+ *   Like `referredBy` it is not a field of the form, so no spread could produce it either
  */
-function theBody(values: FormValues, agreeing: FormValues, referral: string | null): object {
+function theBody(
+  values: FormValues,
+  agreeing: FormValues,
+  referral: string | null,
+  language: Locale,
+): object {
   return {
     firstName: written(values, 'firstName'),
     lastName: written(values, 'lastName'),
@@ -127,6 +137,7 @@ function theBody(values: FormValues, agreeing: FormValues, referral: string | nu
        send `referredBy: ''` and have somebody told a credit was recorded that nobody
        could ever be paid. */
     referredBy: referral,
+    mailLanguage: language,
   }
 }
 
@@ -427,7 +438,7 @@ export function Registration() {
              can throw, an unreadable date, now happens a step earlier and in the same
              press (`forms/records.ts`, `storedDates`), and the reason stands for whatever
              is built here next. */
-          void send(theBody(values, agreeing, referral), written(values, 'email'))
+          void send(theBody(values, agreeing, referral, locale), written(values, 'email'))
         }}
       />
 

@@ -41,8 +41,11 @@ import java.util.regex.Pattern;
  * any of them. A notice that grew a link would be a notice somebody could be phished with,
  * and the road it would have to take is closed rather than discouraged.
  *
- * <p><b>THE WORDS ARE IN THEIR OWN FILE, {@code notices/sr.properties}, AND THAT IS NOT
- * TIDINESS EITHER.</b> {@code WhatTheMessageSaysTest} requires the keys of {@code mail/sr} to
+ * <p><b>IN THE LANGUAGE THE MEMBER CHOSE FOR HIS MAIL</b> ({@link MailLanguage}; owner, PDL P18,
+ * 03.10.2026), so there are two files, {@code notices/sr.properties} and
+ * {@code notices/en.properties}, each held to the whole set of notices.
+ *
+ * <p><b>THE WORDS ARE IN THEIR OWN FILES, AND THAT IS NOT TIDINESS EITHER.</b> {@code WhatTheMessageSaysTest} requires the keys of {@code mail/sr} to
  * be EXACTLY the keys of its enum, in both directions, so a notice key added to that file
  * would have broken it. Two files, two exact floors, neither loosened.
  *
@@ -81,18 +84,20 @@ import java.util.regex.Pattern;
 public final class WhatANoticeSays {
 
 	/**
-	 * Their own file, beside {@code mail/sr.properties} rather than inside it.
+	 * Their own files, {@code notices/sr} and {@code notices/en}, beside {@code mail/} rather than
+	 * inside it.
 	 *
-	 * <p>See the head of this class: the other bundle is held to being EXACTLY the messages'
-	 * keys, in both directions, so a notice written into it would have broken that floor
+	 * <p>See the head of this class: the other bundles are held to being EXACTLY the messages'
+	 * keys, in both directions, so a notice written into one would have broken that floor
 	 * rather than joined it.
 	 */
-	private static final String WORDS = "notices/sr";
+	private static final String WORDS = "notices/";
 
 	/**
-	 * {@code Locale.ROOT}, for the reason {@link WhatTheMessageSays} gives about its own: there
-	 * is one set of words and this file is it, and asking for a language would let the machine
-	 * the server happens to run on decide which half of the members get which text.
+	 * {@code Locale.ROOT}, for the reason {@link WhatTheMessageSays} gives about its own: the
+	 * language is chosen by naming its file, and asking {@link ResourceBundle} for a locale would
+	 * let the machine the server happens to run on decide which half of the members get which
+	 * text.
 	 */
 	private static final Locale ONE_SET_OF_WORDS = Locale.ROOT;
 
@@ -111,6 +116,15 @@ public final class WhatANoticeSays {
 	 */
 	private static final DateTimeFormatter AS_A_MEMBER_READS_IT =
 			DateTimeFormatter.ofPattern("dd.MM.yyyy. HH:mm", ONE_SET_OF_WORDS);
+
+	/**
+	 * The same moment as an English reader writes it, „24 September 2026 at 16:35", in the same
+	 * zone and on the same clock of twenty four hours: the day in words, because a reader outside
+	 * the region cannot tell „09.10." from the tenth of September, and the hour as the league
+	 * keeps it.
+	 */
+	private static final DateTimeFormatter AS_AN_ENGLISH_READER_READS_IT =
+			DateTimeFormatter.ofPattern("d MMMM yyyy 'at' HH:mm", Locale.ENGLISH);
 
 	private WhatANoticeSays() {
 	}
@@ -165,10 +179,12 @@ public final class WhatANoticeSays {
 	 * The day one of them needs another shape, that is a decision about what a member reads and
 	 * it is made here, once.
 	 */
-	public static String moment(Instant at) {
+	public static String moment(Instant at, MailLanguage in) {
 		Objects.requireNonNull(at, "at");
+		Objects.requireNonNull(in, "in");
 
-		return AS_A_MEMBER_READS_IT.format(at.atZone(SeasonClock.ZONE));
+		return (in == MailLanguage.ENGLISH ? AS_AN_ENGLISH_READER_READS_IT : AS_A_MEMBER_READS_IT)
+				.format(at.atZone(SeasonClock.ZONE));
 	}
 
 	/**
@@ -180,14 +196,17 @@ public final class WhatANoticeSays {
 	 * different class.
 	 *
 	 * @param notice which occasion
+	 * @param in     the language the account it goes to holds, read off the same row as the
+	 *               address
 	 * @param facts  the values its words take, already written as text. Exactly as many as
 	 *               {@link Notice#facts} declares, which is checked rather than trusted: a
 	 *               notice sent with too few would mail a member the characters {@code {1}}
 	 * @throws IllegalArgumentException when the count does not match, which is a fault in this
 	 *                                  server rather than in anything a member sent
 	 */
-	public static Said about(Notice notice, String... facts) {
+	public static Said about(Notice notice, MailLanguage in, String... facts) {
 		Objects.requireNonNull(notice, "notice");
+		Objects.requireNonNull(in, "in");
 		Objects.requireNonNull(facts, "facts");
 
 		if (facts.length != notice.facts()) {
@@ -199,7 +218,7 @@ public final class WhatANoticeSays {
 			Objects.requireNonNull(one, "a fact");
 		}
 
-		ResourceBundle words = ResourceBundle.getBundle(WORDS, ONE_SET_OF_WORDS);
+		ResourceBundle words = words(in);
 
 		return new Said(words.getString(notice.key() + ".subject"),
 				/* MessageFormat and not concatenation, the same as the other bundle: the words
@@ -230,8 +249,9 @@ public final class WhatANoticeSays {
 		return highest + 1;
 	}
 
-	/** The bundle itself, so the floor reads the one this class reads and not a copy of it. */
-	static ResourceBundle words() {
-		return ResourceBundle.getBundle(WORDS, ONE_SET_OF_WORDS);
+	/** The bundle of one language, so the floor reads the one this class reads and not a copy of
+	 *  its name. */
+	static ResourceBundle words(MailLanguage in) {
+		return ResourceBundle.getBundle(WORDS + in.code(), ONE_SET_OF_WORDS);
 	}
 }

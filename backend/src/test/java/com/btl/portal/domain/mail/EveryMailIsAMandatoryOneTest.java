@@ -4,11 +4,12 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
@@ -45,7 +46,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p><b>THE FLOOR, and it is derived twice over.</b> The classes that turn an occasion into
  * words are found by <b>walking</b> {@code domain/mail} rather than named here; each is
- * asked, by reflection, for the dictionary it loads ({@code WORDS}); and each dictionary is
+ * asked, by reflection, for the dictionaries it loads ({@code words}, one per language); and
+ * each dictionary is
  * asked for its own keys. So a seventh occasion fails here whichever way it arrives - a new
  * key in a dictionary that already exists, a new dictionary, or a whole new class beside
  * these three. Nothing about it can be forgotten by this file, because this file does not
@@ -65,9 +67,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * the question above answerable off a single read.
  */
 class EveryMailIsAMandatoryOneTest {
-
-	/** The bundles are loaded under this locale by every class that loads one. */
-	private static final Locale ONE_SET_OF_WORDS = Locale.ROOT;
 
 	/**
 	 * Every occasion the portal has words for, and which mandatory mail each one serves.
@@ -133,12 +132,12 @@ class EveryMailIsAMandatoryOneTest {
 	 */
 	@Test
 	void theSweepReadsTheDictionariesRatherThanFindingNone() {
-		List<String> bundles = dictionariesTheMailClassesLoad();
+		List<ResourceBundle> bundles = dictionariesTheMailClassesLoad();
 
 		assertThat(bundles)
 				.as("the walk over domain/mail found fewer dictionaries than the portal has, so the"
 						+ " line beside this one is comparing two empty sets and measures nothing")
-				.hasSizeGreaterThanOrEqualTo(3);
+				.hasSizeGreaterThanOrEqualTo(3 * MailLanguage.values().length);
 
 		assertThat(occasionsThePortalHasWordsFor())
 				.as("dictionaries were found but no occasion was read out of them, so the keys are"
@@ -147,7 +146,7 @@ class EveryMailIsAMandatoryOneTest {
 	}
 
 	/**
-	 * Every occasion key in every dictionary the mail classes load.
+	 * Every occasion key in every dictionary the mail classes load, in every language.
 	 *
 	 * <p>A key is {@code <occasion>.subject} or {@code <occasion>.body}, so the occasion is
 	 * what stands before the first dot. Read off the bundle rather than off the file, so a
@@ -156,8 +155,8 @@ class EveryMailIsAMandatoryOneTest {
 	private static Set<String> occasionsThePortalHasWordsFor() {
 		Set<String> occasions = new TreeSet<>();
 
-		for (String bundle : dictionariesTheMailClassesLoad()) {
-			for (String key : ResourceBundle.getBundle(bundle, ONE_SET_OF_WORDS).keySet()) {
+		for (ResourceBundle bundle : dictionariesTheMailClassesLoad()) {
+			for (String key : bundle.keySet()) {
 				int dot = key.indexOf('.');
 
 				occasions.add(dot < 0 ? key : key.substring(0, dot));
@@ -168,42 +167,51 @@ class EveryMailIsAMandatoryOneTest {
 	}
 
 	/**
-	 * The dictionary each class in {@code domain/mail} loads, asked of the class itself.
+	 * The dictionaries each class in {@code domain/mail} loads, one per language, asked of the
+	 * class itself.
 	 *
-	 * <p>The classes are found by walking the package's own source directory, and the name
-	 * of the bundle is read off the {@code WORDS} field rather than written out again here.
-	 * A class that loads no dictionary simply has no such field and contributes nothing,
-	 * which is how a helper beside these three stays out of the way without being excluded
-	 * by name.
+	 * <p>The classes are found by walking the package's own source directory, and each is asked
+	 * through its own {@code words(MailLanguage)} for the bundle it reads in every language the
+	 * portal writes in, rather than the names being written out again here. Since the mail follows
+	 * its reader's language (V59) a class reads one dictionary per language, so it is asked for
+	 * each; a class that loads no dictionary has no such method and contributes nothing, which is
+	 * how a helper beside these three stays out of the way without being excluded by name.
 	 */
-	private static List<String> dictionariesTheMailClassesLoad() {
+	private static List<ResourceBundle> dictionariesTheMailClassesLoad() {
 		Path sources = repositoryRoot().resolve("backend/src/main/java/com/btl/portal/domain/mail");
 
 		try (Stream<Path> tree = Files.list(sources)) {
 			return tree
 					.map(path -> path.getFileName().toString())
 					.filter(name -> name.endsWith(".java"))
-					.map(name -> name.substring(0, name.length() - ".java".length()))
-					.map(EveryMailIsAMandatoryOneTest::wordsOf)
-					.filter(words -> words != null)
 					.sorted()
+					.map(name -> name.substring(0, name.length() - ".java".length()))
+					.flatMap(name -> wordsOf(name).stream())
 					.toList();
 		} catch (IOException cannot) {
 			throw new UncheckedIOException(cannot);
 		}
 	}
 
-	/** The {@code WORDS} constant of one class, or {@code null} if it holds none. */
-	private static String wordsOf(String simpleName) {
+	/** The dictionaries one class reads, one per language, or none if it reads none. */
+	private static List<ResourceBundle> wordsOf(String simpleName) {
 		try {
-			Field words = Class.forName("com.btl.portal.domain.mail." + simpleName)
-					.getDeclaredField("WORDS");
+			Method words = Class.forName("com.btl.portal.domain.mail." + simpleName)
+					.getDeclaredMethod("words", MailLanguage.class);
 
 			words.setAccessible(true);
 
-			return (String) words.get(null);
-		} catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException noDictionary) {
-			return null;
+			List<ResourceBundle> read = new ArrayList<>();
+
+			for (MailLanguage in : MailLanguage.values()) {
+				read.add((ResourceBundle) words.invoke(null, in));
+			}
+
+			return read;
+		} catch (ClassNotFoundException | NoSuchMethodException noDictionary) {
+			return List.of();
+		} catch (IllegalAccessException | InvocationTargetException cannot) {
+			throw new IllegalStateException(simpleName + " could not be asked for its words", cannot);
 		}
 	}
 

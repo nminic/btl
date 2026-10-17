@@ -353,6 +353,41 @@ class EmailConfirmationApiTest {
 	 * measures for registration's own message, asked again here because resending
 	 * builds a message through a second, independent call to the same {@code Portal}.
 	 */
+	/**
+	 * A RESENT LINK GOES OUT IN THE LANGUAGE THE ACCOUNT HOLDS, and leads to the page in it.
+	 *
+	 * <p>Owner, PDL P18, 03.10.2026, and 10.10.2026, Q2. Two unconfirmed accounts, the first in
+	 * English and the second in Serbian, so a lookup that read the language off another row than
+	 * the address, or a letter that was always Serbian, fails one half.
+	 */
+	@Test
+	void aResentLinkGoesOutInTheLanguageTheAccountHolds() throws Exception {
+		String english = aFreshAddress();
+		String serbian = aFreshAddress();
+
+		db.sql("update account set mail_language = 'en' where id = ?").param(anAccount(english)).update();
+		anAccount(serbian);
+
+		assertThat(resend(serbian).getStatus()).isEqualTo(204);
+
+		MimeMessage toTheSerbian = waitForOne();
+
+		assertThat(toTheSerbian.getSubject()).isEqualTo("Potvrdite svoju adresu");
+		assertThat(toTheSerbian.getContent().toString())
+				.contains(portal + Message.CONFIRM_THE_ADDRESS.path() + "?token=");
+
+		SMTP.purgeEmailFromAllMailboxes();
+
+		assertThat(resend(english).getStatus()).isEqualTo(204);
+
+		MimeMessage toTheEnglish = waitForOne();
+
+		assertThat(toTheEnglish.getSubject()).isEqualTo("Confirm your address");
+		assertThat(toTheEnglish.getContent().toString())
+				.contains(portal + "/en" + Message.CONFIRM_THE_ADDRESS.path() + "?token=")
+				.contains("24 hours");
+	}
+
 	@Test
 	void resendBuildsTheLinkFromTheSettingAndNotFromWhoeverAsked() throws Exception {
 		String email = aFreshAddress();

@@ -65,23 +65,32 @@ import java.util.regex.Pattern;
  * owner actually chose. So the message cannot come to say twenty four hours about
  * a link the schema ends in one.
  *
- * <p>The words themselves live in {@code mail/sr.properties} rather than here,
- * because they are the only Serbian the server says out loud and they are edited
- * by somebody reading them as prose, not as code.
+ * <p>The words themselves live in {@code mail/sr.properties} and {@code mail/en.properties}
+ * rather than here, because they are edited by somebody reading them as prose, not as code.
+ *
+ * <p><b>IN THE LANGUAGE THE READER CHOSE, EXCEPT FOR THE TWO INVITATIONS.</b> The owner, PDL P18,
+ * 03.10.2026: the member chooses the language of his mail, Serbian unless he chooses otherwise
+ * ({@link MailLanguage}). And on 10.10.2026, Q4, „Pozivnice (moderator, grupni unos): uvek
+ * srpski." So each {@link Message} says which of the two it is, and there is one way to ask for
+ * each: {@link #about(Message, MailLanguage, Portal, String)} for a message that follows its
+ * reader, {@link #about(Message, Portal, String)} for one that is always Serbian, and each refuses
+ * the other kind. A call site cannot hand an invitation a language, and cannot forget to hand
+ * one to a message that needs it.
  */
 public final class WhatTheMessageSays {
 
-	private static final String WORDS = "mail/sr";
+	/** Where the words of one language are: {@code mail/sr}, {@code mail/en}. */
+	private static final String WORDS = "mail/";
 
 	/**
-	 * {@code Locale.ROOT} and not a Serbian one, deliberately.
+	 * {@code Locale.ROOT} and not a Serbian or an English one, deliberately.
 	 *
-	 * <p>There is one set of words and {@code mail/sr.properties} is it. Asking for
-	 * a language would let the machine the server happens to run on pick, and the
-	 * day somebody adds {@code mail/sr_RS.properties} for a reason that looks good
-	 * at the time, half the members would get one text and half the other with
-	 * nothing to say why. The file is named for the language it is in; the lookup
-	 * is not a question.
+	 * <p>The LANGUAGE is chosen by naming its file, {@code mail/sr} or {@code mail/en}, and never
+	 * by asking {@link ResourceBundle} for a locale. Asked for a locale, the machine the server
+	 * happens to run on would join in the choosing, and the day somebody adds
+	 * {@code mail/sr_RS.properties} for a reason that looks good at the time, half the members
+	 * would get one text and half the other with nothing to say why. Each file is named for the
+	 * language it is in; the lookup is not a question.
 	 */
 	private static final Locale ONE_SET_OF_WORDS = Locale.ROOT;
 
@@ -201,9 +210,9 @@ public final class WhatTheMessageSays {
 	 */
 	public enum Message {
 
-		CONFIRM_THE_ADDRESS("confirmTheAddress", "/potvrda-adrese", Duration.ofHours(24)),
+		CONFIRM_THE_ADDRESS("confirmTheAddress", "/potvrda-adrese", Duration.ofHours(24), true),
 
-		SET_A_NEW_PASSWORD("setANewPassword", "/nova-lozinka", Duration.ofHours(1)),
+		SET_A_NEW_PASSWORD("setANewPassword", "/nova-lozinka", Duration.ofHours(1), true),
 
 		/**
 		 * The superadmin has made somebody a moderator and the portal is handing him
@@ -215,7 +224,7 @@ public final class WhatTheMessageSays {
 		 * give would be a message promising what the table does not do, which is the
 		 * one thing {@code HowLongALinkLastsMatchesTheSchemaTest} exists to refuse.
 		 */
-		INVITED_AS_A_MODERATOR("invitedAsAModerator", "/nova-lozinka", Duration.ofHours(1)),
+		INVITED_AS_A_MODERATOR("invitedAsAModerator", "/nova-lozinka", Duration.ofHours(1), false),
 
 		/**
 		 * The administration has entered somebody into the league on a paper consent and
@@ -240,7 +249,7 @@ public final class WhatTheMessageSays {
 		 * password or a confirmed address, so somebody who opens his post that evening
 		 * gets himself another link from the sign-in screen. The words below say so.
 		 */
-		INVITED_AS_A_MEMBER("invitedAsAMember", "/nova-lozinka", Duration.ofHours(1));
+		INVITED_AS_A_MEMBER("invitedAsAMember", "/nova-lozinka", Duration.ofHours(1), false);
 
 		private final String key;
 
@@ -248,10 +257,26 @@ public final class WhatTheMessageSays {
 
 		private final Duration lasts;
 
-		Message(String key, String path, Duration lasts) {
+		private final boolean followsTheReader;
+
+		Message(String key, String path, Duration lasts, boolean followsTheReader) {
 			this.key = key;
 			this.path = path;
 			this.lasts = lasts;
+			this.followsTheReader = followsTheReader;
+		}
+
+		/**
+		 * Whether it is written in the language its reader chose, or always in Serbian.
+		 *
+		 * <p>False for the two invitations and for nothing else, which is the owner's answer of
+		 * 10.10.2026, Q4 (A), „Pozivnice (moderator, grupni unos): uvek srpski", chosen over a
+		 * field for the language on both forms. A man being invited has chosen nothing yet, and
+		 * the moderator made out of an existing member is invited in Serbian as well, whatever he
+		 * chose for his own mail.
+		 */
+		public boolean followsTheReader() {
+			return followsTheReader;
 		}
 
 		/** What the words are filed under, and the floor over the bundle reads this. */
@@ -270,13 +295,46 @@ public final class WhatTheMessageSays {
 	}
 
 	/**
-	 * The message, with the link already in it.
+	 * A MESSAGE THAT IS ALWAYS SERBIAN, which is the two invitations ({@link Message#followsTheReader}).
 	 *
 	 * @param token the secret from the row, which is url safe by construction
 	 *              ({@code SecretToken} writes base64 without padding)
+	 * @throws IllegalArgumentException for a message that follows its reader, which has to be
+	 *                                  told whose language to speak and is not told it here
 	 */
 	public static Said about(Message message, Portal portal, String token) {
 		Objects.requireNonNull(message, "message");
+
+		if (message.followsTheReader()) {
+			throw new IllegalArgumentException(message + " is written in its reader's language,"
+					+ " so it is asked for with one");
+		}
+
+		return written(message, MailLanguage.SERBIAN, portal, token);
+	}
+
+	/**
+	 * A MESSAGE IN ITS READER'S LANGUAGE, with the link already in it and leading to the page in
+	 * that language.
+	 *
+	 * @param reader the language the account it goes to holds, read off the same row as the
+	 *               address it goes to - never the language of whoever set it off
+	 * @throws IllegalArgumentException for an invitation, which is always Serbian (owner,
+	 *                                  10.10.2026, Q4) and must not be given a language to ignore
+	 */
+	public static Said about(Message message, MailLanguage reader, Portal portal, String token) {
+		Objects.requireNonNull(message, "message");
+		Objects.requireNonNull(reader, "reader");
+
+		if (!message.followsTheReader()) {
+			throw new IllegalArgumentException(message + " is always written in Serbian (owner,"
+					+ " 10.10.2026), so it is not asked for in a language");
+		}
+
+		return written(message, reader, portal, token);
+	}
+
+	private static Said written(Message message, MailLanguage in, Portal portal, String token) {
 		Objects.requireNonNull(portal, "portal");
 		Objects.requireNonNull(token, "token");
 
@@ -299,12 +357,36 @@ public final class WhatTheMessageSays {
 					"a message with no usable token in it is a message with no link");
 		}
 
-		ResourceBundle words = ResourceBundle.getBundle(WORDS, ONE_SET_OF_WORDS);
-		String link = portal.address() + message.path() + "?token=" + token;
+		ResourceBundle words = words(in);
+		/* THE LANGUAGE GOES IN FRONT OF THE PATH, and the path itself stays the Serbian word it
+		   has always been: the frontend's slugs are Serbian in every language (PDL P18, „Adrese
+		   nose jezički prefiks za sve jezike"), so the English page that sets a password is
+		   `/en/nova-lozinka` and not a translated address `postedAddresses.json` has never heard
+		   of. */
+		String link = portal.address() + in.prefix() + message.path() + "?token=" + token;
 
 		return new Said(words.getString(message.key() + ".subject"),
 				new MessageFormat(words.getString(message.key() + ".body"), ONE_SET_OF_WORDS)
-						.format(new Object[] {link, howLong(message.lasts())}));
+						.format(new Object[] {link, howLong(message.lasts(), in)}));
+	}
+
+	/**
+	 * The words of one language, named by its file. Package visible so the floor over the
+	 * dictionaries reads the bundle this class reads and not a copy of its name.
+	 */
+	static ResourceBundle words(MailLanguage in) {
+		return ResourceBundle.getBundle(WORDS + in.code(), ONE_SET_OF_WORDS);
+	}
+
+	/** How long a link lasts, in the words of the language it is told in. */
+	static String howLong(Duration lasts, MailLanguage in) {
+		if (in == MailLanguage.ENGLISH) {
+			long hours = lasts.toHours();
+
+			return hours + (hours == 1 ? " hour" : " hours");
+		}
+
+		return howLong(lasts);
 	}
 
 	/**
