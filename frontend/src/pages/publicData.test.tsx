@@ -470,12 +470,18 @@ describe('what a browser downloads on the three screens that draw rows, with row
 
       renderAt(address, role, who, undefined, DAY)
 
-      const named = await screen.findByRole('heading', { level: 1, name: heading })
+      /* Every wait here is half of the time the case has, so a screen that never draws its heading or
+         its row fails with the words of the wait and not with the clock of the case (the precedent and
+         the reason are in `pages/admin/saveWhileSaving.test.tsx`). */
+      const named = await screen.findByRole('heading', { level: 1, name: heading }, { timeout: SLOW / 2 })
 
       expect(named).toBeVisible()
 
       /* The row, before anything else is asked: without one this case is the one above it. */
-      expect((await screen.findAllByRole('cell')).length, `${role} on ${address} draws no row`).toBeGreaterThan(0)
+      expect(
+        (await screen.findAllByRole('cell', {}, { timeout: SLOW / 2 })).length,
+        `${role} on ${address} draws no row`,
+      ).toBeGreaterThan(0)
 
       await quiet(asked)
 
