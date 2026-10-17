@@ -1563,6 +1563,12 @@ const BY_PROGRESS = byLadder<ProgressRow>([
  * season nobody bettered. What it says when it is empty has to name both
  * exclusions, or it tells a season in which everybody ran and nobody improved
  * that nobody ran (topBoards.progressEmpty).
+ *
+ * **And a season before the league is no season before.** PDL P27: „nijedan istorijski
+ * rezultat ne ulazi u tabele, rang liste, priznanja ni „all time" statistiku. Sezona 2027.
+ * počinje od nule za sve." So in 2027 nobody has a previous league season and the board
+ * stands empty, as it does for anybody who did not race the season before; until 17.10.2026
+ * it measured 2027 against the imported 2026.
  */
 export function topByProgress(
   competitors: Competitor[],
@@ -1571,7 +1577,9 @@ export function topByProgress(
   limit: number,
 ): Placed<ProgressRow>[] {
   const now = totalsByMember(results.filter((result) => seasonOf(result) === season))
-  const before = totalsByMember(results.filter((result) => seasonOf(result) === season - 1))
+  const before = totalsByMember(
+    results.filter((result) => seasonOf(result) === season - 1 && season - 1 >= FIRST_SEASON),
+  )
 
   const rows = competitors.flatMap((competitor) => {
     const own = now.get(competitor.memberNumber)
