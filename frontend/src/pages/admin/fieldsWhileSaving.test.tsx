@@ -140,7 +140,10 @@ const dressedOf = (
       one instanceof HTMLTextAreaElement,
   )
 
-/** What a reader could change about a control, as one line: its value and whether it is open. */
+/** What a reader could change about a control, as one line: its value, whether it is open, and
+ *  whether it is on. The last since 17.10.2026: the buttons of the editor of a written text
+ *  (`components/markdownEditor/`) switch bold, italic, a heading and a list, and what a press of one
+ *  changes is that it says it is on, which no value and no opening would show. */
 function stateOf(control: HTMLElement): string {
   const value =
     control instanceof HTMLInputElement ||
@@ -149,7 +152,7 @@ function stateOf(control: HTMLElement): string {
       ? control.value
       : ''
 
-  return `${describing(control)} = ${value} | ${control.getAttribute('aria-expanded') ?? ''}`
+  return `${describing(control)} = ${value} | ${control.getAttribute('aria-expanded') ?? ''} | ${control.getAttribute('aria-pressed') ?? ''}`
 }
 
 /** The whole form as a reader could change it: every control, in order, so that a control added or

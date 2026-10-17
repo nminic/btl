@@ -297,7 +297,7 @@ describe('the text of a competition', () => {
     expect(await within(rules).findByRole('alert')).toHaveTextContent(
       'Sezona ove lige je zamrznuta, pa se liga više ne menja. Brisanje i dalje radi.',
     )
-    expect(within(rules).getByRole('textbox', { name: 'Propozicije' })).toHaveValue(
+    expect(within(rules).getByRole('textbox', { name: 'Propozicije' })).toHaveTextContent(
       'Boduju se samo trke sa spiska.',
     )
 
@@ -357,9 +357,14 @@ describe('the text of a competition', () => {
 
       await user.click(within(section).getByRole('button', { name: 'Izmeni' }))
 
-      expect(within(section).getByRole('textbox', { name: heading })).toHaveAttribute(
-        'maxlength',
-        String(limitOf(liga, field)),
+      /* The editor of a written text holds the limit by refusing what would pass it and says how
+         much room is left (since 17.10.2026), so the room is what is read: the limit less what the
+         box already holds, which carries no marks of Markdown here. */
+      const typing = within(section).getByRole('textbox', { name: heading })
+      const written = must(typing.textContent, 'the words in the box').length
+
+      expect(typing).toHaveAccessibleDescription(
+        new RegExp(`^Još ${limitOf(liga, field) - written} znak`),
       )
     }
   }, SLOW)

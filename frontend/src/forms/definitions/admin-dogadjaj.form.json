@@ -68,6 +68,7 @@
     {
       "name": "description",
       "type": "textarea",
+      "formatted": true,
       "labelKey": "admin.field.eventDescription",
       "maxLength": 600
     },

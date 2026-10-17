@@ -9,7 +9,7 @@ import {
   hrefOf,
 } from '../../test/misleadingAddresses'
 import { SLOW } from '../../test/slow'
-import { addressesIn, type Piece } from './addressesIn'
+import { addressesIn, opensAsTyped, type Piece } from './addressesIn'
 
 /**
  * Which words of an administrator's text are addresses, and where each of them begins and ends.
@@ -785,5 +785,33 @@ describe('what stands in front of and behind an address, asked of every characte
         www('www.primer.rs'),
       ])
     }
+  })
+})
+
+/* The one question that a bare address and the address under the words of a Markdown link are both
+   asked (PDL P15, 03.10.2026): is the host, as it was typed, the host that opens? */
+describe('whether an address opens the host it was typed as', () => {
+  const withScheme = (typed: string) => (typed.startsWith('www.') ? `https://${typed}` : typed)
+
+  it('says no to every address that reads as one host and opens another, with either scheme', () => {
+    expect(MISLEADING.length).toBeGreaterThan(20)
+
+    for (const one of MISLEADING) {
+      expect(opensAsTyped(withScheme(one.typed)), one.how).toBeUndefined()
+      expect(opensAsTyped(withScheme(one.typed).replace('https:', 'http:')), `${one.how}, http`).toBeUndefined()
+    }
+  })
+
+  it('says the address itself for every address that is only odd in its path, its query or its number', () => {
+    for (const one of STAYS_A_LINK) {
+      expect(opensAsTyped(withScheme(one.typed)), one.why).toBe(withScheme(one.typed))
+    }
+
+    expect(opensAsTyped('http://primer.rs/a@b')).toBe('http://primer.rs/a@b')
+  })
+
+  it('says no where the gate says no, and not only where the typed part does', () => {
+    expect(opensAsTyped('https://')).toBeUndefined()
+    expect(opensAsTyped('javascript:alert(1)')).toBeUndefined()
   })
 })

@@ -22,7 +22,7 @@ const WWW = 'www.'
  * would have had the one and missed the other. The floor under this is a test that walks every code
  * point of those categories (`addressesIn.test.ts`).
  */
-const OPENING = /^[\p{Ps}\p{Pi}\p{Pf}"']$/u
+export const OPENING = /^[\p{Ps}\p{Pi}\p{Pf}"']$/u
 
 /**
  * What may stand behind an address without being part of it: a closing bracket, a quotation mark,
@@ -33,7 +33,7 @@ const OPENING = /^[\p{Ps}\p{Pi}\p{Pf}"']$/u
  * (`/`, `%`, `&`, `#`). A slash is therefore **not** here: `www.runtrace.net/` is an address that
  * ends in a slash, and a sentence that ends is one that ends in a full stop.
  */
-const CLOSING = /^[\p{Pe}\p{Pi}\p{Pf}"'.,;:!?…]$/u
+export const CLOSING = /^[\p{Pe}\p{Pi}\p{Pf}"'.,;:!?…]$/u
 
 /**
  * The scheme of an address and the slashes behind it, which a browser skips however many there are
@@ -47,7 +47,7 @@ const CLOSING = /^[\p{Pe}\p{Pi}\p{Pf}"'.,;:!?…]$/u
  * looked at, and it would be a link to `zlo.example` that is written as `www.runtrace.net`.
  * Measured on 03.10.2026.
  */
-const BEHIND_THE_SCHEME = /^https:[/\\]*/
+const BEHIND_THE_SCHEME = /^https?:[/\\]*/
 
 /**
  * Where the part of an address that says who is addressed ends: at the first `/`, `?` or `#`, the
@@ -95,6 +95,22 @@ function hostPartOf(core: string): string {
   return core.replace(BEHIND_THE_SCHEME, '').replace(FROM_THE_FIRST_END, '')
 }
 
+/**
+ * THE ONE QUESTION EVERY ADDRESS OF A COMPETITION'S TEXT IS ASKED BEFORE IT BECOMES A LINK (PDL P15,
+ * 03.10.2026): is the host, as it was typed, the host that opens? Answered with the address a
+ * browser may be given, or nothing.
+ *
+ * Asked of a bare address (`addressIn` below) and of the address under the words of a Markdown
+ * link (`components/markdownText.ts`, `addressOf`), so the two cannot disagree: the link
+ * `[www.runtrace.net](https://www.runtrace.net@zlo.example)` is exactly as much a link as the bare
+ * address it is made of, which is none. The typed part is asked first (`NOT_A_HOST_AS_TYPED`), then
+ * the gate (`outsideLink`). Both schemes the gate accepts are asked, `http://` too, because a user
+ * part or an escape hides a host behind it exactly as it does behind `https://`.
+ */
+export function opensAsTyped(address: string): string | undefined {
+  return NOT_A_HOST_AS_TYPED.test(hostPartOf(address)) ? undefined : outsideLink(address)
+}
+
 type Found = { before: string; text: string; href: string; after: string }
 
 /**
@@ -124,7 +140,7 @@ type Found = { before: string; text: string; href: string; after: string }
  * host, and a character that looks like a slash (U+2215, U+2044, U+29F8) or like nothing (U+3164,
  * U+2800) puts what follows it into the host. All of them are held, with the host a browser opens
  * for each, in `addressesIn.test.ts`.
- * The words of a link are the address as it was typed (`EditableText`), so they say the domain
+ * The words of a link are the address as it was typed (`components/Markdown.tsx`), so they say the domain
  * only where the domain that was typed is the one that opens, and an address that does not pass
  * is words, the whole word of it with its brackets, as one the gate refuses is.
  *
@@ -182,20 +198,16 @@ function addressIn(word: string): Found | null {
 
   const core = rest.slice(0, length).join('')
 
-  /* Words, and the whole word of them: the host as it was typed is not one that can be taken for
-     the host that opens. Asked before the gate, and of `core` and not of the word, so that the
-     punctuation taken off behind the address is not part of what is asked. */
-  if (NOT_A_HOST_AS_TYPED.test(hostPartOf(core))) {
-    return null
-  }
-
   /* The scheme is written in front of `www.` here and nowhere else, so what the browser is given is
      the address with `https` in front of it, the scheme the owner's other form already names, and
-     what is drawn on the screen is still what was typed. */
-  const href = outsideLink(prefix === HTTPS.length ? core : `${HTTPS}${core}`)
+     what is drawn on the screen is still what was typed.
+
+     Asked of `core` and not of the word, so that the punctuation taken off behind the address is
+     not part of what is asked. */
+  const href = opensAsTyped(prefix === HTTPS.length ? core : `${HTTPS}${core}`)
 
   /* Nothing rather than a repaired address, which is the rule of the gate and holds here too: an
-     address the gate refuses is words, and the whole word stays words, brackets and all. */
+     address that does not pass is words, and the whole word stays words, brackets and all. */
   if (href === undefined) {
     return null
   }
@@ -213,17 +225,25 @@ function addressIn(word: string): Found | null {
  * as one.
  *
  * Written for the terms and the prizes of a competition, the two boxes on the list of competitions
- * (`pages/league/EditableText.tsx`), and for the sentence the owner gave on 03.10.2026 (PDL P15): the
+ * (`pages/league/EditableText.tsx`, drawn through `components/Markdown.tsx` since 16.10.2026, which
+ * asks this through `components/markdownText.ts`), and for the sentence the owner gave on 03.10.2026
+ * (PDL P15): the
  * paragraph of the terms of the RunTrace league has to carry `www.runtrace.net` as a link that opens
  * that portal in a window of its own. Before that day the two boxes drew their text and nothing
  * else.
  *
  * **What is returned is the text, cut where an address begins and where it ends, and never
  * changed.** The `text` of the runs put back together is the argument, character for character:
- * blanks, line breaks, brackets and the full stop after an address included. Nothing is trimmed,
- * nothing is collapsed, and nothing is turned into markup, because the terms of a league are not
- * moderated (PDL, 01.09.2026: „Administratorova reč stoji") and what a reader sees is therefore
- * whatever was typed. The caller draws every run as text, and only the addresses as links.
+ * blanks, line breaks, brackets and the full stop after an address included. Nothing is trimmed and
+ * nothing is collapsed here.
+ *
+ * **What is around the addresses is Markdown since 16.10.2026** (PDL, „Ispravke sa ekrana
+ * 16.10.2026": the terms and the prizes are written with the editor and kept as Markdown, „isto kao
+ * pisane strane"). So this is no longer asked of the whole text: `components/markdownText.ts` asks
+ * it of each word that is not already a piece of Markdown (a link, a value between backticks), with
+ * the marks of bold and italic and the punctuation around the word taken off first, and before bold
+ * and italic are read, so an underscore in the path of an address stays in the address. A line of
+ * Markdown is drawn without the blanks around it, as a written page always was.
  *
  * **An address is a whole word.** A word is what stands between two blanks, a line break counting
  * as one, and an address ends where its word ends, less the punctuation that closes a sentence or

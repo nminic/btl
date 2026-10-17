@@ -6,6 +6,7 @@ import { beforeEach, expect, vi } from 'vitest'
 import { clearResourceCache } from '../data/client'
 import { asAnswered, myOwnRecordFromMe, whoIAm } from './theAnswer'
 import { SLOW } from './slow'
+import { measureNothing } from './proseMirrorInJsdom'
 import { eventSlug } from '../pages/admin/entityForms'
 
 /**
@@ -68,7 +69,29 @@ vi.mock('../clock/context', async (whatItReallyIs) => {
  * such number costs: a genuinely missing element is reported later. That is paid
  * once per real failure, against a red gate that lied on every busy run.
  */
+/**
+ * THE EDITOR OF A WRITTEN TEXT IS DRAWN AT ONCE IN A TEST, since 17.10.2026.
+ *
+ * On the portal it is loaded the first time it is drawn (`components/TextEditor.tsx`), so a screen
+ * with one draws a place held for it first and the editor a moment later. Every case that opens a
+ * form of the administration would then have to wait for that moment before it could find the
+ * description of an event, and the cases that look for it at once (dozens of them, written before
+ * the editor) would find the place and not the box. What they measure is the form and not the
+ * loading, so here the wrapper is the editor itself.
+ *
+ * The loading is not left unmeasured: `components/TextEditor.test.tsx` asks for the real wrapper
+ * (`importActual`) and holds that it draws the place first and the editor after it.
+ */
+vi.mock('../components/TextEditor', async () => {
+  const { default: MarkdownEditor } = await import('../components/markdownEditor/MarkdownEditor')
+
+  return { TextEditor: MarkdownEditor }
+})
+
 configure({ asyncUtilTimeout: SLOW })
+
+/* The editor of the texts of the administration asks for a layout jsdom does not draw. */
+measureNothing()
 
 // The data layer caches a resource for the whole visit. Tests are separate
 // visits, so each one starts from an empty cache. So does the day the portal is

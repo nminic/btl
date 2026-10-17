@@ -1,7 +1,7 @@
 import { act, cleanup, configure, getConfig, screen } from '@testing-library/react'
 import axe from 'axe-core'
 import { matchRoutes, type RouteObject } from 'react-router'
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { routeObjects } from '../app/routeObjects'
 import type { Role } from '../roles/context'
 import { BEHIND, BEHIND_DAY, DAY, PUBLIC, WITH_ROWS } from '../test/addresses'
@@ -111,17 +111,16 @@ type Row = [address: string, role: Role, who: string | null, heading: string, da
  * Nothing is drawn at any point of a document that has no layout, so that is the answer given. It
  * keeps the half of the question jsdom can answer (an open `dialog`, `role="dialog"` or
  * `aria-modal="true"` is found by axe without any point) and gives up only the half about geometry,
- * which no rule here could answer anyway. Put back exactly as it was after the file.
+ * which no rule here could answer anyway.
+ *
+ * **Given by the setup of every file since 17.10.2026, and asked here rather than given twice.** The
+ * editor of the texts of the administration asks the same question on every press of the mouse
+ * (`test/proseMirrorInJsdom.ts`), with the same answer, so the stub this file put in and took out
+ * again is now there for every file. What this file still holds is that axe gets that answer: a
+ * function that says nothing is drawn, and not a missing one.
  */
-const UNDRAWN = (): Element | null => null
-
 beforeAll(() => {
-  expect(document.elementFromPoint, 'jsdom has its own now, and this answer is no longer needed').toBeUndefined()
-  document.elementFromPoint = UNDRAWN
-})
-
-afterAll(() => {
-  Reflect.deleteProperty(document, 'elementFromPoint')
+  expect(document.elementFromPoint(0, 0), 'axe is told nothing is drawn at any point').toBeNull()
 })
 
 /** The same three screens a second time, each as a visitor and as a member, in a season that has rows

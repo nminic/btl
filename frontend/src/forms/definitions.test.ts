@@ -61,6 +61,33 @@ describe('every form definition in the portal', () => {
     ).toThrow('Form proba, field ime: tekst is not a field type')
   })
 
+  it('writes with the editor exactly the four texts the owner chose, and no other box', () => {
+    /* Owner, 16.10.2026, chosen among the options offered (PDL, „Ispravke sa
+       ekrana 16.10.2026"): the editor is for the texts of the administration,
+       „opis događaja, Propozicije i Nagrade lige, pisane strane", and the
+       biography of a member, the comments on an event and the notes to a
+       moderator stay plain text. Both halves are held: a fifth `formatted` box
+       is a decision nobody took, and one of the four left plain is the decision
+       half done. And only ever on a box for many words, because that is the one
+       the renderer swaps for the editor. */
+    const formatted = FORMS.flatMap(({ name, form }) =>
+      form.fields.filter((one) => one.formatted === true).map((one) => `${name}:${one.name}`),
+    )
+
+    expect(formatted.sort()).toEqual([
+      'admin-dogadjaj.form.json:description',
+      'admin-liga.form.json:prizes',
+      'admin-liga.form.json:rules',
+      'admin-strana.form.json:body',
+    ])
+
+    for (const { form } of FORMS) {
+      for (const field of form.fields.filter((one) => one.formatted === true)) {
+        expect(field.type, field.name).toBe('textarea')
+      }
+    }
+  })
+
   it('gives every long box a limit', () => {
     /* A box with no limit is a box somebody can paste a novel into, and the
        column underneath it is not that wide. It is also the one field on the
@@ -104,11 +131,15 @@ describe('every form definition in the portal', () => {
        definition knows about. The tag is bounded by its own first `>`: bounded
        by `/>` instead, a box written as a pair ran on to the next self-closing
        tag in the file and borrowed its `maxLength`. */
-    const drawn = sourceFiles().filter(({ code }) => code.includes('<textarea'))
+    /* And the editor of a written text, which is a box for many words that is not
+       a `textarea` (since 17.10.2026): the terms of a competition rewritten in
+       place are written with it, and so is every `formatted` field of a form. */
+    const BOXES = /<textarea|<TextEditor/
+    const drawn = sourceFiles().filter(({ code }) => BOXES.test(code))
     const loose = drawn
       .filter(({ code }) =>
         code
-          .split('<textarea')
+          .split(BOXES)
           .slice(1)
           .some((one) => !one.slice(0, one.indexOf('>')).includes('maxLength=')),
       )
@@ -122,15 +153,17 @@ describe('every form definition in the portal', () => {
        about themselves is now approved as written or refused with a reason, so
        there is no box to limit. */
     expect(drawn.map(({ path }) => path).sort()).toEqual([
+      'forms/FormRenderer.tsx',
       'forms/LongBox.tsx',
       'pages/event/GoingToEvent.tsx',
       'pages/league/EditableText.tsx',
     ])
     expect(loose).toEqual([])
 
-    /* And each takes the number from a definition rather than typing one. */
+    /* And each takes the number from a definition rather than typing one: the
+       renderer from the field it draws, the others through `limitOf`. */
     for (const { path, code } of drawn) {
-      expect(code, path).toMatch(/maxLength=\{(limitOf\(|maxLength\})/)
+      expect(code, path).toMatch(/maxLength=\{(limitOf\(|maxLength\}|field\.maxLength\})/)
     }
   })
 

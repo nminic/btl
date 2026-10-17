@@ -29,16 +29,19 @@ import { setupUser } from '../../test/user'
  */
 const RUNTRACE_RULES = 'Vreme na svim trkama meri portal www.runtrace.net i na kojima se boduje.'
 const RUNTRACE_PRIZES = 'Detalji: https://nagrade.example/runtrace.'
-/* In brackets, and between blanks that are part of what was typed: the terms of a competition are
-   typed into a box that keeps what is put in it, and what is drawn must not be a trimmed copy. */
+/* In brackets, and between blanks that are part of what was typed. Since 17.10.2026 the text is
+   Markdown (PDL, „Ispravke sa ekrana 16.10.2026"), and a line of Markdown is drawn without the blanks
+   around it, as every written page has always been; the brackets and the address are the words that
+   stay, and the address is still a link. */
 const PLANINSKA_PRIZES = '  (www.planina.example/nagrade)\n'
 /* Words that look like addresses to somebody in a hurry and are none of them: `http://` is not one
    of the two forms, a bracket nobody closed is an address a browser refuses, and `javascript:` is
    what the gate exists to keep off an `href`. */
 const BRDSKA_RULES = 'Vidi http://stara.example/pravila i https://[::1 i javascript:alert(1) dalje.'
-/* And text that looks like markup, which is text. */
-const BRDSKA_PRIZES =
-  '<b>Medalje</b> [tekst](https://x.example) <https://y.example> <a href="https://z.example">z</a>'
+/* And text that looks like markup of HTML, which is text: raw HTML is never read, and an address in
+   angle brackets is not one of the two forms. A link written in Markdown is the one piece of markup
+   of this kind the text is read for since 17.10.2026, and it is held apart (`components/Markdown.test.tsx`). */
+const BRDSKA_PRIZES = '<b>Medalje</b> <https://y.example> <a href="https://z.example">z</a>'
 
 const league = (id: number, name: string, rules: string, prizes: string): League => ({
   id,
@@ -161,7 +164,7 @@ describe('an address in the terms or in the prizes of a competition', () => {
         'href',
         'https://www.planina.example/nagrade',
       )
-      expect(bracketed.getByRole('paragraph').textContent).toBe(PLANINSKA_PRIZES)
+      expect(bracketed.getByRole('paragraph').textContent).toBe(PLANINSKA_PRIZES.trim())
 
       /* Nothing written in the terms is a link in neither of the two, and to somebody who may write
          it the box is still there, and so is the control that opens it, beside a link that was
@@ -226,6 +229,43 @@ describe('an address in the terms or in the prizes of a competition', () => {
     }
   }, SLOW)
 
+  it('draws a link written in Markdown whose address reads as one host and opens another as the words it was typed as', async () => {
+    const typed = MISLEADING.map((one) => (one.typed.startsWith('www.') ? `https://${one.typed}` : one.typed))
+    /* A clean link stands first and alone among them, so that what is measured is the refusal of the
+       others and not a box that links nothing; the same words stand in a table of the prizes. */
+    const written = `[prava](https://www.runtrace.net) ${typed.map((one) => `[x](${one})`).join(' ')}`
+    const table = `| a | b |\n|---|---|\n| ${typed.map((one) => `[x](${one})`).join(' ')} | c |`
+
+    serving([league(1, 'Proba Veza', written, table)])
+    renderAt('/sr/lige?sezona=2027')
+
+    const box = await boxOf(/Proba Veza/)
+    const rules = sectionOf(box, 'Propozicije')
+    const prizes = sectionOf(box, 'Nagrade')
+
+    expect(typed.length).toBeGreaterThan(20)
+    expect(rules.getAllByRole('link')).toHaveLength(1)
+    expect(rules.getByRole('link')).toHaveAccessibleName('prava')
+    expect(rules.getByRole('link')).toHaveAttribute('href', 'https://www.runtrace.net')
+    expect(rules.getByRole('paragraph').textContent).toBe(
+      `prava ${typed.map((one) => `[x](${one})`).join(' ')}`,
+    )
+    expect(prizes.queryAllByRole('link')).toEqual([])
+  }, SLOW)
+
+  it('draws a numbered list of the prizes with the numbers it was typed with', async () => {
+    serving([league(1, 'Proba Brojevi', '15. oktobra se trči trka.', '1. mesto: 100 EUR\n2. mesto: 50 EUR\n4. do 10. mesto: medalja')])
+    renderAt('/sr/lige?sezona=2027')
+
+    const box = await boxOf(/Proba Brojevi/)
+    const prizes = sectionOf(box, 'Nagrade')
+    const rules = sectionOf(box, 'Propozicije')
+
+    expect(prizes.getAllByRole('listitem').map((item) => item.getAttribute('value'))).toEqual([null, null, '4'])
+    expect(prizes.getByRole('list')).not.toHaveAttribute('start')
+    expect(rules.getByRole('list')).toHaveAttribute('start', '15')
+  }, SLOW)
+
   it('draws the same address twice as two links', async () => {
     serving([league(1, 'Proba Dupla', 'www.runtrace.net pa opet www.runtrace.net', 'Nista.')])
     renderAt('/sr/lige?sezona=2027')
@@ -280,7 +320,7 @@ describe('an address in the terms or in the prizes of a competition', () => {
        never the drawn text. */
     const typing = rules.getByRole('textbox', { name: 'Propozicije' })
 
-    expect(typing).toHaveValue(RUNTRACE_RULES)
+    expect(typing).toHaveTextContent(RUNTRACE_RULES)
     expect(rules.queryAllByRole('link')).toEqual([])
 
     await user.clear(typing)

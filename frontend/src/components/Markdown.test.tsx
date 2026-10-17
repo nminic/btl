@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router'
 import { at, first } from '../test/at'
 import { renderWithI18n } from '../test/render'
+import { MISLEADING, STAYS_A_LINK } from '../test/misleadingAddresses'
 import { Markdown } from './Markdown'
 
 /* Written pages carry links now, and a link is a router element, so the
@@ -269,5 +270,212 @@ describe('Markdown', () => {
     expect(container.innerHTML).toContain('&lt;script&gt;')
     expect(Reflect.get(window, 'btlRanAScript')).toBeUndefined()
     expect(screen.getByText(/<b>ne podebljano<\/b>/)).toBeVisible()
+  })
+})
+
+/* What the texts of the administration ask of it since 16.10.2026 (PDL, „Ispravke sa ekrana
+   16.10.2026"): the description of an event, the terms and the prizes of a competition. */
+describe('Markdown, for a text of the administration', () => {
+  it('draws italic as italic, and bold inside it as bold', () => {
+    render(<Markdown text="Trči se _po svakom **vremenu**_." />)
+
+    const italic = screen.getByText(/po svakom/)
+
+    expect(italic.tagName).toBe('EM')
+    expect(within(italic).getByText('vremenu').tagName).toBe('STRONG')
+  })
+
+  it('starts its headings one below the heading it stands under', () => {
+    /* Under the name of an event, an h1. */
+    const event = render(<Markdown text={'## Staza\n\n#### Okrepa'} under={1} />)
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Staza' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 3, name: 'Okrepa' })).toBeVisible()
+    event.unmount()
+
+    /* Under the heading of a box of a competition, an h3. */
+    render(<Markdown text={'## Bodovanje\n\n#### Izuzeci\n\n###### Najdublje'} under={3} />)
+
+    expect(screen.getByRole('heading', { level: 4, name: 'Bodovanje' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 5, name: 'Izuzeci' })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 6, name: 'Najdublje' })).toBeVisible()
+  })
+
+  it('opens a link to another site in a window of its own where the text asks for it, and tells it nothing', () => {
+    render(
+      <Markdown text="Prijava je [ovde](https://primer.rs/prijava), a pravila [tu](/pravilnik)." outward />,
+    )
+
+    const out = screen.getByRole('link', { name: 'ovde' })
+
+    expect(out).toHaveAttribute('href', 'https://primer.rs/prijava')
+    expect(out).toHaveAttribute('target', '_blank')
+    expect(out).toHaveAttribute('rel', 'noreferrer noopener')
+    /* A page of this portal is still a page of it, in the same window. */
+    expect(screen.getByRole('link', { name: 'tu' })).toHaveAttribute('href', '/sr/pravilnik')
+    expect(screen.getByRole('link', { name: 'tu' })).not.toHaveAttribute('target')
+  })
+
+  it('opens a link to another site in the same window where the text does not ask, as a written page always has', () => {
+    render(<Markdown text="Prijava je [ovde](https://primer.rs/prijava)." />)
+
+    expect(screen.getByRole('link', { name: 'ovde' })).not.toHaveAttribute('target')
+    expect(screen.getByRole('link', { name: 'ovde' })).not.toHaveAttribute('rel')
+  })
+
+  it('draws a bare address as a link where it is asked, left to right, in a window of its own (PDL P15)', () => {
+    render(<Markdown text="Vreme meri **www.runtrace.net**." addresses outward />)
+
+    const link = screen.getByRole('link', { name: 'www.runtrace.net' })
+
+    expect(link).toHaveAttribute('href', 'https://www.runtrace.net')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noreferrer noopener')
+    expect(link).toHaveAttribute('dir', 'ltr')
+    expect(link.parentElement?.tagName).toBe('STRONG')
+  })
+
+  it('draws no bare address as a link where it is not asked', () => {
+    render(<Markdown text="Vreme meri www.runtrace.net." outward />)
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('makes nothing of a link to javascript: or of a script written in the text, in any of its readings', () => {
+    const { container } = render(
+      <Markdown
+        text={'[klik](javascript:window.btlRanALink=1) <script>window.btlRanAScript = true</script>'}
+        addresses
+        outward
+      />,
+    )
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(container.querySelector('script')).toBeNull()
+    expect(container.textContent).toBe(
+      '[klik](javascript:window.btlRanALink=1) <script>window.btlRanAScript = true</script>',
+    )
+    expect(Reflect.get(window, 'btlRanAScript')).toBeUndefined()
+  })
+
+  it('draws the place of a drawing as the words it is, outside a written page', () => {
+    render(<Markdown text={'Prvo\n[[gallery]]'} />)
+
+    expect(screen.getByText('[[gallery]]').tagName).toBe('P')
+  })
+})
+
+/* PDL P15, 03.10.2026: „Adresa sa „@" ili sa slovima van latinice u hostu ne postaje veza nego ostaje
+   običan tekst." The address under the words of a Markdown link is asked what a bare address is asked,
+   in the texts that make bare addresses links (the terms and the prizes of a competition). */
+describe('Markdown, a link whose address reads as one host and opens another', () => {
+  const typed = MISLEADING.map((one) => one.typed)
+
+  /** The address as a link would carry it: `www.` has no scheme in front of it in a link, so it is
+   *  written the way a person who meant it would write it. */
+  const address = (one: string) => (one.startsWith('www.') ? `https://${one}` : one)
+
+  it('is the words it was typed as, every character of them, in the texts that ask for the addresses', () => {
+    /* A floor under the table, since a table that lost its rows would pass every line below it. */
+    expect(typed.length).toBeGreaterThan(20)
+
+    for (const one of typed) {
+      const text = `[x](${address(one)})`
+      const { unmount } = render(<Markdown text={text} addresses outward />)
+
+      expect(screen.queryAllByRole('link'), text).toEqual([])
+      expect(screen.getByText(text, { exact: false }).textContent, text).toBe(text)
+      unmount()
+    }
+  })
+
+  it('is the words it was typed as in a cell of a table of those texts, which draws no bare address', () => {
+    for (const one of typed) {
+      const link = `[x](${address(one)})`
+      const text = `| ${link} | b |\n|---|---|\n| ${link} | www.runtrace.net |`
+      const { unmount } = render(<Markdown text={text} addresses outward />)
+
+      expect(screen.queryAllByRole('link'), one).toEqual([])
+      expect(screen.getByRole('columnheader', { name: link })).toBeVisible()
+      expect(screen.getByRole('cell', { name: link })).toBeVisible()
+      expect(screen.getByRole('cell', { name: 'www.runtrace.net' })).toBeVisible()
+      unmount()
+    }
+  })
+
+  it('is the link it has always been in a written page, which asks for no addresses', () => {
+    const text = `[x](${address(MISLEADING[0]?.typed ?? '')})`
+
+    render(<Markdown text={text} outward />)
+
+    expect(screen.getByRole('link', { name: 'x' })).toHaveAttribute('href', 'https://www.runtrace.net@zlo.example')
+  })
+
+  it('is a link again once the address under it is an address that opens what it says', () => {
+    for (const one of STAYS_A_LINK) {
+      const target = address(one.typed)
+      const { unmount } = render(<Markdown text={`[x](${target})`} addresses outward />)
+
+      expect(screen.getByRole('link', { name: 'x' }), one.why).toHaveAttribute('href', target)
+      unmount()
+    }
+
+    render(<Markdown text="[stara](http://primer.rs/a@b) [pravilnik](/pravilnik) [pošta](mailto:liga@primer.rs)" addresses outward />)
+
+    expect(screen.getByRole('link', { name: 'stara' })).toHaveAttribute('href', 'http://primer.rs/a@b')
+    expect(screen.getByRole('link', { name: 'pravilnik' })).toHaveAttribute('href', '/sr/pravilnik')
+    expect(screen.getByRole('link', { name: 'pošta' })).toHaveAttribute('href', 'mailto:liga@primer.rs')
+  })
+
+  /* NOT DECIDED, and held as a case so that deciding is a decision and not a side effect: the words
+     of a link may name one host while the address under them opens another that is nothing wrong
+     with it. The owner has not been asked whether the words may differ from the domain. */
+  it('is a link whose words name another domain than its address, until the owner says otherwise', () => {
+    render(<Markdown text="[www.runtrace.net](https://zlo.example)" addresses outward />)
+
+    expect(screen.getByRole('link', { name: 'www.runtrace.net' })).toHaveAttribute('href', 'https://zlo.example')
+  })
+})
+
+/* A number somebody typed is the number that is drawn. */
+describe('Markdown, the numbers of a numbered list', () => {
+  it('draws a list that counts from one with nothing said about its numbers, as it always was', () => {
+    render(<Markdown text={'1. prvo\n2. drugo\n3. treće'} />)
+
+    const list = screen.getByRole('list')
+
+    expect(list.tagName).toBe('OL')
+    expect(list).not.toHaveAttribute('start')
+    for (const item of screen.getAllByRole('listitem')) {
+      expect(item).not.toHaveAttribute('value')
+    }
+  })
+
+  it('draws a list that begins at three from three', () => {
+    render(<Markdown text={'3. treće\n4. četvrto'} />)
+
+    expect(screen.getByRole('list')).toHaveAttribute('start', '3')
+    expect(screen.getAllByRole('listitem').map((item) => item.getAttribute('value'))).toEqual([null, null])
+  })
+
+  it('draws the number of an item that does not follow the one above it', () => {
+    render(<Markdown text={'1. mesto\n2. mesto\n4. do 10. mesto'} />)
+
+    expect(screen.getByRole('list')).not.toHaveAttribute('start')
+    expect(screen.getAllByRole('listitem').map((item) => item.getAttribute('value'))).toEqual([null, null, '4'])
+  })
+
+  it('draws a line that begins with a year as the sentence it is, and not as an item of a list', () => {
+    render(<Markdown text={'Prvi red\n2026. godine je liga počela.'} />)
+
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
+    expect(screen.getByText(/2026\. godine je liga počela\./)).toBeVisible()
+  })
+
+  it('draws a date at the start of a text as the number it was typed with', () => {
+    render(<Markdown text={'15. oktobra se trči trka.'} />)
+
+    expect(screen.getByRole('list')).toHaveAttribute('start', '15')
+    expect(screen.getByRole('listitem')).toHaveTextContent('oktobra se trči trka.')
   })
 })

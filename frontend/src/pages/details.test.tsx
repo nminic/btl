@@ -1018,6 +1018,104 @@ describe('the description of an event and the organiser’s page', () => {
     }
   })
 
+  /* Written with the editor and kept as Markdown since 16.10.2026 (PDL, „Ispravke sa ekrana
+     16.10.2026": „opis događaja" is one of the three texts the editor writes). Drawn the way a
+     written page is, under the name of the event. */
+  it('draws the description as the text it was written as, with its marks and its link', async () => {
+    const restore = eventCarrying(
+      '## Staza\n\nTrči se **po nasipu** i _preko mosta_:\n\n- prvi krug\n- drugi krug\n\n' +
+        'Prijave [kod organizatora](https://organizator.example/prijava).',
+      '',
+    )
+
+    try {
+      renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
+
+      /* Waited for words that are on the page however the description is drawn, and then asked at
+         once, so a description drawn as plain words fails on what it says and not on a clock. */
+      await screen.findByText(/po nasipu/)
+
+      /* An h2, one below the name of the event, which is the h1. */
+      expect(screen.getByRole('heading', { level: 2, name: 'Staza' })).toBeVisible()
+      expect(screen.getByText('po nasipu').tagName).toBe('STRONG')
+      expect(screen.getByText('preko mosta').tagName).toBe('EM')
+      expect(screen.getByRole('list', { name: '' })).toHaveTextContent('prvi krugdrugi krug')
+
+      /* A link to another site, in a window of its own, telling it nothing, like the organiser's
+         page beside it. */
+      const link = screen.getByRole('link', { name: 'kod organizatora' })
+
+      expect(link).toHaveAttribute('href', 'https://organizator.example/prijava')
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noreferrer noopener')
+    } finally {
+      restore()
+    }
+  })
+
+  it('makes nothing of a link to javascript: or of a script written in the description', async () => {
+    const written = '[klik](javascript:window.btlRanALink=1) <script>window.btlRanAScript = true</script>'
+    const restore = eventCarrying(written, '')
+
+    try {
+      renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
+
+      /* Waited for the name of the event, and the description asked at once. */
+      await screen.findByRole('heading', { level: 1 })
+
+      const said = screen.getByText(written)
+
+      expect(said.tagName).toBe('P')
+      expect(said.querySelector('a, script')).toBeNull()
+      expect(screen.queryByRole('link', { name: 'klik' })).toBeNull()
+      expect(Reflect.get(window, 'btlRanAScript')).toBeUndefined()
+    } finally {
+      restore()
+    }
+  })
+
+  it('draws the description of the event that is opened, and not that of another', async () => {
+    /* Two events with two descriptions, so the one on the page can only be the right one by having
+       been read off the event that was opened: with one description served, any event's page would
+       draw it. */
+    const served = globalThis.fetch
+
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+      const answer = await served(input, init)
+
+      if (!String(input).endsWith('/api/events')) {
+        return answer
+      }
+
+      const events: BtlEvent[] = await answer.json()
+
+      return new Response(
+        JSON.stringify(
+          events.map((one) =>
+            one.slug === SLUG
+              ? { ...one, description: '**Ovaj** događaj.' }
+              : one.slug === GATHERING
+                ? { ...one, description: '**Onaj drugi** događaj.' }
+                : one,
+          ),
+        ),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      )
+    })
+
+    try {
+      renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
+
+      /* Waited for the name of the event, which is there whichever description is drawn. */
+      await screen.findByRole('heading', { level: 1 })
+
+      expect(screen.getByText('Ovaj').tagName).toBe('STRONG')
+      expect(screen.queryByText('Onaj drugi')).toBeNull()
+    } finally {
+      vi.stubGlobal('fetch', served)
+    }
+  })
+
   it('says where the link leads, and keeps this portal out of the other end', async () => {
     const restore = eventCarrying(SAID, 'https://organizator.example/trka')
 
