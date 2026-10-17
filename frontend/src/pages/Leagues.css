@@ -87,6 +87,22 @@
    three boxes and not an afterthought under the second: `.leagues__item section` above sets that
    distance on every one of them. */
 
+/* The title of the box in administration, an h2 drawn as the h3 it was (owner, 16.10.2026, PDL
+   „Jedini nalaz axe-a": „naslov kutije „Trke u ligi" postaje drugog nivoa (h2), sa istom veličinom
+   kao danas, pa izgled i tekst ostaju isti").
+
+   Written out because nothing else says it. The box stands in a row of a table and not in a
+   `.leagues__item`, so `.leagues__item h3` above never reached it and what was drawn was the
+   browser's own h3: 1.17em, with a line of distance above it and below it. Left to the browser an
+   h2 would be 1.5em with .83em of distance, a bigger title and a row that grew with it. Measured in
+   Chrome on 17.10.2026 at 360 and 1280: 18,72px and 18,72px of distance before and after. The
+   public box is another component with its own h3 (`league/LeagueEvents.tsx`) and does not wear
+   this class. */
+.leagues__counting-title {
+  font-size: 1.17em;
+  margin-block: 1em;
+}
+
 /* The button that opens it, dressed as the heading it stands inside so the three boxes read
    alike, and drawn as something to press. No colour of its own: `.leagues__item h3` already says
    what a heading here looks like, and `font: inherit` takes the rest from it rather than naming
@@ -129,7 +145,8 @@
   gap: var(--space-14);
 }
 
-/* The name of the event, which is an h4 and keeps the size of one. What is set here is the
+/* The name of the event, which is an h4 on the public page and an h3 in administration, and keeps
+   the size of one in both. What is set here is the
    distance to the day under it and to the races under that, because those two lines are read with
    it rather than after it. */
 .leagues__event-name {
