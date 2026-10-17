@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { RequiredNote } from '../../forms/AskedLabel'
 import { CropChooser } from '../../components/CropChooser'
 import type { Chosen } from '../../components/CropChooser'
 import { CropWindow } from '../../components/CropWindow'
@@ -288,8 +287,6 @@ export function ProfilePicture({ me }: { me: Competitor }) {
               it is on this very screen, in the header - and „Izaberi novu sliku" under
               it already reads as it should for somebody who has one. */}
           {me.photo === null && <p className="member__note">{t('picture.none')}</p>}
-
-          <RequiredNote />
 
           <CropChooser
             id="picture-file"

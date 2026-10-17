@@ -18,7 +18,9 @@ import { DUCAT_KINDS } from '../data/ducatRule'
 import { JUNIOR, PRICES } from '../data/pricing'
 import { ENTITY_FORMS, RACES } from '../pages/admin/entityForms'
 import { QUEUES } from '../pages/admin/queues'
+import en from './en.json'
 import sr from './sr.json'
+import { sources } from '../test/sources'
 import { translate } from './translate'
 
 const dictionary = sr
@@ -271,5 +273,61 @@ describe('the words the search engine is given', () => {
 
     expect(missing).toEqual([])
     expect(resolves('seo.message.recordTitle')).toBe(false)
+  })
+})
+
+/** Every sentence and word the dictionary holds, whatever depth it is written at. */
+function leaves(node: unknown): string[] {
+  if (typeof node === 'string') {
+    return [node]
+  }
+
+  return node !== null && typeof node === 'object' ? Object.values(node).flatMap(leaves) : []
+}
+
+describe('the words the owner took off the portal on 16.10.2026', () => {
+  it('has no sentence that says what the star beside a field means, in either language', () => {
+    /* „ovo za obavezna polja sa zvezdicom pobriši svuda sa sajta". The star stays (12.08.2026) and
+       so does `aria-required` on the control, which is what a reader is told; the line over the
+       form that explained the star is gone. Asked of every word of both dictionaries, so the
+       sentence cannot come back under another key, and of the code, so that nothing draws it from
+       a key that is not there. */
+    expect(leaves(sr).filter((one) => /zvezdic/i.test(one))).toEqual([])
+    expect(leaves(en).filter((one) => /\bstars?\b/i.test(one))).toEqual([])
+    expect(
+      sources()
+        .filter((one) => /\bRequiredNote\b|form\.requiredNote/.test(one.code))
+        .map((one) => one.path),
+    ).toEqual([])
+  })
+
+  it('says „istrčanih" and not „odtrčanih"', () => {
+    /* „Kaže se istrčanih." Swept by the root and not by the one sentence it was found in. */
+    expect(leaves(sr).filter((one) => /odtrč/i.test(one))).toEqual([])
+    expect(sources().filter((one) => /odtrč/i.test(one.code)).map((one) => one.path)).toEqual([])
+    expect(sr.home.noneYet).toBe('U ovoj sezoni još nema istrčanih trka ove distance.')
+  })
+
+  it('does not name a measure „Mera" or „Measure" anywhere a race is listed', () => {
+    /* „Nisam rekao da se bilo gde više pominje MERA. Pominje se dužina ili trajanje zavisno od toga
+       kakva je trka. BEZ MERE." */
+    expect(Object.keys(sr.event)).not.toContain('measure')
+    expect(leaves(sr.event).filter((one) => /^mera$/i.test(one))).toEqual([])
+    expect(leaves(en.event).filter((one) => /^measure$/i.test(one))).toEqual([])
+  })
+
+  it('calls the group by length „Distanca" on the screens that group by it, and keeps the length for the figure', () => {
+    /* „Neka se zove DISTANCA ovo što je opisno, pa onda može Distanca, Dužina (km), Uspon (m),
+       Spust (m)". The group is the first and the kilometres the second. The filter on a profile and
+       the sentences about it follow (the assistant's derivation from that, not the owner's word). */
+    expect(sr.profile.columns.category).toBe('Distanca')
+    expect(sr.profile.columns.length).toBe('Dužina (km)')
+    expect(sr.profile.columns.ascent).toBe('Uspon (m)')
+    expect(sr.profile.columns.descent).toBe('Spust (m)')
+    expect(sr.profile.length).toBe('Distanca')
+    expect(sr.profile.allLengths).toBe('Sve distance')
+    expect(en.profile.columns.category).toBe('Distance')
+    expect(en.profile.columns.length).toBe('Length (km)')
+    expect(en.profile.allLengths).toBe('All distances')
   })
 })

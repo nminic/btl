@@ -12,8 +12,11 @@ import './FormRenderer.css'
  * Owner, 12.08.2026: „Obavezna polja treba da imaju zvezdicu pored." Drawn and
  * not spoken: the same thing is said to a screen reader by `aria-required` on
  * the control, which is where a reader looks for it, and a star read out after
- * every second label is noise. What the star means is said once, over the form
- * (`RequiredNote`), which is where a legend belongs.
+ * every second label is noise.
+ *
+ * What the star means is NOT written out anywhere (owner, 16.10.2026: „ovo za
+ * obavezna polja sa zvezdicom pobriši svuda sa sajta"). The line „Polja sa
+ * zvezdicom su obavezna." that stood over every form is gone; the star stays.
  *
  * The two halves are one decision and neither works alone. Written before
  * `aria-required` existed, the comment here said a reader was „already given"
@@ -26,13 +29,6 @@ export function RequiredMark() {
       {'*'}
     </span>
   )
-}
-
-/** What the star means, said once over whatever draws one. */
-export function RequiredNote() {
-  const { t } = useI18n()
-
-  return <p className="form__legend">{t('form.requiredNote')}</p>
 }
 
 /**

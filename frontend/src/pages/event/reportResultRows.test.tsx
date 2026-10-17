@@ -217,9 +217,9 @@ describe('the measures of a result, in lines by the kind of the race the address
   it.each(KINDS)('says nothing between the heading and the first box of a %s race', async (kind) => {
     /* Owner, 16.10.2026: „Ceo disclaimer sa vrha strane obriši". Asked of every paragraph that
        stands after the heading and before the first box, and not of the one sentence that was
-       there, which a rewording would walk past. The one sentence the renderer itself draws there
-       is the note on the asterisk, and it is another screen's to remove (`forms/AskedLabel.tsx`),
-       so it is left out of the count by what it says rather than by where it stands. */
+       there, which a rewording would walk past. The note on the asterisk the renderer used to draw
+       there is gone from every form as well (owner, 16.10.2026: „pobriši svuda sa sajta"), so
+       nothing is left out of the count. */
     renderAt(await addressOf(kind), 'competitor', ME)
 
     const heading = await screen.findByRole('heading', { level: 1, name: sr.report.title })
@@ -230,8 +230,7 @@ describe('the measures of a result, in lines by the kind of the race the address
       (one) =>
         heading.compareDocumentPosition(one) & Node.DOCUMENT_POSITION_FOLLOWING &&
         !one.contains(box) &&
-        one.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING &&
-        one.textContent !== sr.form.requiredNote,
+        one.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING,
     )
 
     expect(

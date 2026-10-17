@@ -2664,20 +2664,13 @@ describe('the five queues read from the file', () => {
        them simply stayed dead.
 
        Both halves at each, since one without the other is what was found: the
-       star for the eye and `aria-required` for a reader, plus the one line that
-       says what a star means. */
+       star for the eye and `aria-required` for a reader. The line that said what
+       a star means went on 16.10.2026 (owner: „ovo za obavezna polja sa
+       zvezdicom pobriši svuda sa sajta"), and nothing on this screen brings it
+       back. */
     const user = await open('teams', 'Novi timovi')
 
-    /* Exactly one, wherever it comes from: the queue draws it over the three
-       fields, and the box for a reason draws its own when it opens. Both at
-       once explained the same mark twice on one screen. */
-    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
-    /* And in the box the stylesheet folds away with the cards, since every star
-       it explains is inside one (admin/verificationStyle.test.ts). Named here
-       because that file reads the stylesheet and cannot see the markup. */
-    expect(
-      screen.getByText('Polja sa zvezdicom su obavezna.').closest('.pending__legend'),
-    ).not.toBeNull()
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
 
     for (const name of ['Naziv tima', 'Mesto', /^Država/]) {
       const field = screen.getAllByLabelText(name)[0]
@@ -2696,72 +2689,32 @@ describe('the five queues read from the file', () => {
         '.field__required',
       ),
     ).not.toBeNull()
-    /* And still one line explaining the star, not two. */
-    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
   })
 
-  it('keeps that line on the screen when a sweep takes the card it stood in', async () => {
-    /* It used to stand inside the box for a reason, which stands inside a card,
-       and a card is not a safe place for it: a sweep settles the card the box
-       belongs to and the line went with it while three stars stayed on the
-       screen. A star this portal deliberately keeps out of the accessibility
-       tree, so the line is all a sighted reader has.
-
-       Two ways in, and this is the one a test can walk: open a reason, then
-       press „Odobri sve". The other is a telephone, where a card folds shut and
-       takes whatever is inside it. */
-    const user = await open('teams', 'Novi timovi')
-
-    const asked = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    try {
-      await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
-      expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
-
-      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-    } finally {
-      /* In a `finally`, as everywhere else in this repo: left to the next line,
-         a failed assertion between the two would leave `confirm` answering yes
-         for every test after it in the file. */
-      asked.mockRestore()
-    }
-
-    /* The stars are still drawn, so the line has to be there with them. */
-    expect(document.querySelectorAll('.field__required').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
-  })
-
-  it('says nothing about a star on a queue that draws none', async () => {
+  it('draws no star on a queue where nothing is obligatory', async () => {
     /* The comments queue is the one where nothing is obligatory: the only field
        on it is the note that goes with a deletion, and that note may be left
-       blank, so it carries no star. A line saying „fields with a star are
-       obligatory" over that screen tells the moderator the opposite of the truth
-       about the only field in front of them.
-
-       It was drawn there for a while, because whether to draw it was guessed at
-       from the name of the queue and from whether a box was open, and this box
-       is open exactly when a comment is being deleted. */
+       blank, so it carries no star and no `aria-required`. */
     const user = await open('comments', 'Komentari')
 
-    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
+    expect(document.querySelectorAll('.field__required')).toHaveLength(0)
 
     await user.click(first(screen.getAllByRole('button', { name: /^Obriši:/ })))
 
     expect(screen.getByLabelText(/Napomena/)).toBeVisible()
+    expect(screen.getByLabelText(/Napomena/)).not.toHaveAttribute('aria-required')
     expect(document.querySelectorAll('.field__required')).toHaveLength(0)
-    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
   })
 
-  it('says nothing about a star on a queue that has emptied', async () => {
+  it('draws no star on a queue that has emptied', async () => {
     /* The three fields of a proposed team are drawn once per proposal, so a
-       queue with nothing left in it has no star on it either. The line stood
-       there all the same, because it was drawn for the name of the queue rather
-       than for anything on the screen. */
+       queue with nothing left in it has no star on it either. */
     const user = await open('teams', 'Novi timovi')
     const asked = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     try {
-      expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+      expect(document.querySelectorAll('.field__required').length).toBeGreaterThan(0)
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
@@ -2778,15 +2731,13 @@ describe('the five queues read from the file', () => {
     }
 
     expect(document.querySelectorAll('.field__required')).toHaveLength(0)
-    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
   })
 
-  it('takes the reason away with the card the sweep settled, and the line with it', async () => {
-    /* The other way round, on a queue with no fields of its own: the only star
-       there is the reason's, so when the sweep takes the card away the line has
-       to go too, or it explains a mark that is nowhere on the screen. The box
-       was left standing open over nothing, which is also a reason half written
-       about a proposal already decided.
+  it('takes the reason away with the card the sweep settled, and the star with it', async () => {
+    /* On a queue with no fields of its own the only star there is the reason's,
+       so when the sweep takes the card away the box has to go too. The box was
+       left standing open over nothing, which is also a reason half written about
+       a proposal already decided.
 
        The racing profile and not the new teams, for the reason written out twice
        above: a team whose name is taken is left standing by the sweep, so the
@@ -2799,7 +2750,7 @@ describe('the five queues read from the file', () => {
     try {
       await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
       expect(screen.getByLabelText('Razlog odbijanja')).toBeVisible()
-      expect(screen.getAllByText('Polja sa zvezdicom su obavezna.')).toHaveLength(1)
+      expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute('aria-required', 'true')
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
     } finally {
@@ -2808,7 +2759,6 @@ describe('the five queues read from the file', () => {
 
     expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
     expect(document.querySelectorAll('.field__required')).toHaveLength(0)
-    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
   })
 
   it('will not send anything back without a reason', async () => {

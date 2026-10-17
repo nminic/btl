@@ -215,8 +215,8 @@ function renderMembershipOn(today: string, memberNumber = '000032', probe: React
    take. A case rewritten to the new screen would be the new file's case written twice.
 
    What did NOT go with them is the rule they were holding - the owner's of 12.08.2026,
-   that every field on every form carries a star, `aria-required` and the line saying
-   what the star means. It is held over both new fields, in that file, and the smallest
+   that every field on every form carries a star and `aria-required` (the line saying
+   what the star means went on 16.10.2026). It is held over both new fields, in that file, and the smallest
    form on the portal is still where it is worth holding. */
 
 describe('a member looking at their own profile', () => {
