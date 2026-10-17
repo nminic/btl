@@ -1085,6 +1085,43 @@ class MePasswordApiTest {
 	}
 
 	/**
+	 * AN ADMINISTRATION ACCOUNT THAT NAMES NO MEMBER CHANGES ITS PASSWORD.
+	 *
+	 * <p>PDL P8, the answers of the owner of 17.10.2026 in the evening: „Nalog administracije bez
+	 * člana na strani Podešavanja vidi sve troje: jezik pošte, izbor teme i promenu lozinke." The
+	 * screen draws the password to such an account, so the route behind it must take it: measured here
+	 * for both roles that can hold no member, over a session of its own, with the right old password.
+	 * Nothing about the role is read by this route ({@link ActiveMemberOrAdministration#hasLapsed} is
+	 * false for an account with no competitor), and this case is what keeps that so.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"moderator", "superadmin"})
+	void anAdministrationAccountWithNoMemberChangesItsPassword(String role) throws Exception {
+		String email = role + "-bez-clana@primer.rs";
+
+		account(email, MY_OLD_PASSWORD, 1);
+		db.sql("update account set role_id = (select id from role where code = ?) where email = ?")
+				.params(role, email).update();
+
+		assertThat(db.sql("select competitor_id is null from account where email = ?").param(email)
+				.query(Boolean.class).single())
+				.as("the account of this case names a member, so it measures a member and not"
+						+ " the administration")
+				.isTrue();
+
+		MockHttpServletResponse answer = asking(theSessionOf(email),
+				body(MY_OLD_PASSWORD, MY_NEW_PASSWORD, MY_NEW_PASSWORD));
+
+		assertThat(answer.getStatus())
+				.as("an administration account (%s) with no member was turned away from changing its"
+						+ " password, so PDL P8 of 17.10.2026 cannot be carried out on the screen", role)
+				.isEqualTo(204);
+		assertThat(new StoredPassword().matches(MY_NEW_PASSWORD, passwordHashOf(email)))
+				.as("the new password was not written")
+				.isTrue();
+	}
+
+	/**
 	 * A MEMBER WHOSE FEE HAS LAPSED IS TOLD THE ADDRESS IS NOT THERE, AND NOTHING HAPPENS.
 	 *
 	 * <p>PDL P8, 11.10.2026, the owner's choice between offered outcomes: „Istekao član po odluci od
