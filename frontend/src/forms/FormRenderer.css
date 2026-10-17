@@ -191,6 +191,43 @@
     column-gap: var(--space-16);
   }
 
+  /* TWO OF THOSE COLUMNS FOR A FIELD THAT IS NOT A TOWN, and only inside this query: below it the
+     row is one column, and a `span 2` there would make the grid invent a second one (owner,
+     17.10.2026: „U formi događaja Naziv zauzima dve trećine reda, a Vrsta jednu"). Two class
+     names on the field for the weight the town's rule has, so the two are written the same way
+     and neither can be settled by the order the sheets are emitted in. */
+  .form__row .field.field--wide {
+    grid-column: span 2;
+  }
+
+  /* THE WHOLE ROW FOR A TOWN, WITH THE TOWN TWO THIRDS OF IT AND THE COUNTRY THE THIRD (owner,
+     17.10.2026, of the event form: „Mesto dve trećine i Država jedna trećina"). The three columns
+     are the row's own, drawn again inside the field, so the town ends where the second column of
+     the row above it ends and the country begins where its third does; two tracks of 2fr and 1fr
+     would be a third of a gap off. Four class names for a weight above the two rules it overrides,
+     `PlaceField.css` and the town's rule above, whichever sheet the bundle emits last. */
+  .form__row .field.field--place.field--full {
+    grid-column: span 3;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+      'townName townName countryName'
+      'town     town     country';
+  }
+
+  /* THE FORM THAT CARRIES THE RACES UNDER IT IS AS WIDE AS THE PAGE, in its fields as well as under
+     them (owner, 17.10.2026: „Iskoristi celu širinu strane za gornja polja"). The two caps below
+     are measures for reading on a form that stands alone; this one has a box of races as wide as
+     the page beneath it, and the fields over it stood in the left half of the same page. Three and
+     four class names, to beat `.form:has(.form__row)` and the cap on a field that stands on no
+     row (the description and the link, which now take the whole width too). */
+  .form.form--wide:has(.form__row) {
+    max-width: none;
+  }
+
+  .form.form--wide:has(.form__row) > .field {
+    max-inline-size: none;
+  }
+
   /* And a field standing on its own inside such a form keeps the width one
      field should have. „Svojim rečima" stretched to the full sixty rem, and a
      box whose ends are that far apart is two places to look rather than one. */

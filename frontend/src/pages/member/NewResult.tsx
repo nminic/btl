@@ -497,7 +497,13 @@ function TheForm({ me }: { me: string }) {
                same shape as the proposal of a team). */
             above={
               correcting === undefined && fixingOne === undefined ? (
-                <p className="member__note">{t('newResult.note')}</p>
+                /* NOTHING ABOVE THE FIELDS OF A NEW RESULT since 17.10.2026. The sentence that stood
+                   here said the result enters the boards only once an administrator approves it;
+                   the owner took it off the page (PDL „Odgovori vlasnika 17.10.2026 na pitanja
+                   posle izvođenja", the sentence at the top of the form for a result away from the
+                   calendar). The two roads that follow still say what they do that the plain one
+                   does not. */
+                undefined
               ) : correcting === undefined ? (
                 /* The third state, and it says the two things this road does that the
                    others do not: the OLD result stays in the standing until somebody

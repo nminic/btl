@@ -45,7 +45,7 @@
     },
     "topBoards": {
       "title": "BTL top liste",
-      "description": "Deset lista iz Pravilnika: kilometri, vreme na stazi, najbolja trka, najbolji napredak, trkački parovi i trke po dužini."
+      "description": "Deset lista iz Pravilnika: kilometri, vreme na stazi, najbolja trka, najbolji napredak, trkački parovi i trke po distanci."
     },
     "leagues": {
       "title": "BTL lige",

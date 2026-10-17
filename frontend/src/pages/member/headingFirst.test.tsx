@@ -33,7 +33,10 @@ const DAY = '2026-10-15'
  */
 const SCREENS = [
   ['/sr/novi-tim', 'Predlog tima', /Tim postoji tek kad ga odobri/],
-  ['/sr/rezultat/novi', 'Unos rezultata', /Rezultat ulazi u rang liste tek kad/],
+  /* **No note since 17.10.2026**, so it is `null` here, as on the third row: the owner deleted the
+     sentence at the top of the form for a result away from the calendar. That nothing stands
+     between its heading and its first box is `pages/member/newResult.test.tsx`'s to say. */
+  ['/sr/rezultat/novi', 'Unos rezultata', null],
   /* The third screen of the same shape, and the one this file first claimed did not
      exist. Found in review 04.09.2026, after the other two were closed: the note
      naming the race stood over the heading „Prijava rezultata" exactly as the other

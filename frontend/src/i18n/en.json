@@ -31,7 +31,7 @@
     },
     "topBoards": {
       "title": "BTL top boards",
-      "description": "The ten boards from the Rulebook: kilometres, time on course, best race, best progress, racing pairs and races by length."
+      "description": "The ten boards from the Rulebook: kilometres, time on course, best race, best progress, racing pairs and races by distance."
     },
     "leagues": {
       "title": "BTL competitions",
@@ -291,7 +291,7 @@
     "topWomen": "Top 10 women",
     "place": "{place}.",
     "wholeStanding": "The whole table",
-    "byCategory": "Races by length",
+    "byCategory": "Races by distance",
     "calculator": "The BTL calculator",
     "calcLength": "Length (km)",
     "calcAscent": "Ascent (m)",
@@ -306,7 +306,7 @@
     "sponsorOfTheDay": "Sponsor of the day",
     "partners": "Sponsors and partners",
     "noneYet": "No race of this distance has been run this season yet.",
-    "turning": "Most races by length",
+    "turning": "Most races by distance",
     "pauseTurning": "Stop the turning",
     "resumeTurning": "Resume the turning",
     "mostOf": {
@@ -744,7 +744,7 @@
       "descent": "Descent (m)"
     },
     "notFound": "There is no such profile.",
-    "byCategory": "Races by length",
+    "byCategory": "Races by distance",
     "noneInFilter": "There is no result for the chosen season and distance.",
     "racesWord": {
       "one": "race",
@@ -1008,13 +1008,13 @@
     "change": "Change",
     "changeNamed": "Change the result: {name}",
     "own": "Mine",
+    "distance": "Dist.",
     "noneSent": "No result has been sent to be checked yet.",
     "counted": "Counted"
   },
   "newResult": {
     "title": "Entering a result",
     "submit": "Send to be checked",
-    "note": "The result enters the boards only once an administrator approves it. While it waits, only you see it.",
     "again": "You are correcting a result that was refused. The reason was: {reason}",
     "fixingCounted": "You are changing a result that is already counted. Until the change is approved, the old result stays in the standing, and a refused change alters nothing. New proof has to go with the change.",
     "needsProof": "A change to a counted result must carry a link to the official results or a picture as proof.",

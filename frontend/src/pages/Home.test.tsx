@@ -156,7 +156,7 @@ describe('Home', () => {
     renderAt('/sr')
 
     await screen.findByText(/^Najviše/)
-    expect(screen.queryByRole('heading', { name: /Trke po dužini/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /Trke po distanci/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /kategorija/ })).not.toBeInTheDocument()
   })
 
