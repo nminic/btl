@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { baseKeymap } from 'prosemirror-commands'
 import { EditorState, TextSelection, type Command } from 'prosemirror-state'
 import {
   aroundCursor,
@@ -17,6 +18,7 @@ import {
   removeLink,
   setLink,
   sizeOf,
+  splitItem,
   stateFor,
 } from './commands'
 import { MISLEADING, STAYS_A_LINK } from '../../test/misleadingAddresses'
@@ -103,6 +105,77 @@ describe('the four buttons that switch something', () => {
     expect(bold(table)).toBe(false)
     expect(linkable(table)).toBe(false)
     expect(linkable(at('Reči', 1))).toBe(true)
+  })
+})
+
+/** What a text is after Enter at `from` and then `typed`, which is how a writer meets a number:
+ *  an empty item is written as nothing, so a number shows only once something is typed in it. */
+function pressed(text: string, from: number, typed: string, into?: number): string | null {
+  const state = at(text, from)
+  const next: EditorState[] = []
+
+  if (!splitItem(state, (tr) => next.push(state.apply(tr)))) {
+    return null
+  }
+
+  const split = next.at(-1) ?? state
+  const where = into === undefined ? split : split.apply(split.tr.setSelection(TextSelection.create(split.doc, into)))
+
+  return toMarkdown(where.apply(where.tr.insertText(typed)).doc.content)
+}
+
+describe('Enter in an item of a list', () => {
+  /* Positions in this text: the third item opens at 19, its words begin at 21 and run to 33. */
+  const PLACES = '1. mesto\n2. mesto\n4. do 10. mesto'
+
+  it('makes an item numbered one more than the item above, and not the number that item was written with', () => {
+    expect(pressed(PLACES, 33, 'novo')).toBe('1. mesto\n2. mesto\n4. do 10. mesto\n5. novo')
+    expect(pressed('1. a\n2. b', 9, 'c')).toBe('1. a\n2. b\n3. c')
+    expect(pressed('- a\n- b', 9, 'c')).toBe('- a\n- b\n- c')
+  })
+
+  it('numbers the second half of a split item one more than the first, and leaves the items below as they were written', () => {
+    expect(pressed(PLACES, 23, '')).toBe('1. mesto\n2. mesto\n4. do\n5. 10. mesto')
+    expect(pressed('1. a\n2. bc\n7. d', 9, '')).toBe('1. a\n2. b\n3. c\n7. d')
+  })
+
+  it('keeps the number with the words where Enter is pressed at the start of the line, and gives the new item above it the next one', () => {
+    /* The cursor stays with the words, so the new item above is entered by going up into it. */
+    expect(pressed(PLACES, 21, 'novo', 21)).toBe('1. mesto\n2. mesto\n3. novo\n4. do 10. mesto')
+  })
+
+  it('splits an item with words selected as one that begins where they were', () => {
+    const state = at(PLACES, 21, 24)
+    const next: EditorState[] = []
+
+    splitItem(state, (tr) => next.push(state.apply(tr)))
+
+    expect(toMarkdown((next.at(-1) ?? state).doc.content)).toBe('1. mesto\n2. mesto\n4. 10. mesto')
+  })
+
+  it('does not split an empty item, which Enter takes out of the list, nor a paragraph', () => {
+    const state = at('1. a\n2. b', 9)
+    const next: EditorState[] = []
+
+    splitItem(state, (tr) => next.push(state.apply(tr)))
+
+    expect(splitItem(next.at(-1) ?? state)).toBe(false)
+    expect(pressed('Reči', 2, '')).toBeNull()
+  })
+
+  it('answers whether it can be done without doing it', () => {
+    expect(splitItem(at('1. a', 4))).toBe(true)
+  })
+
+  it('is the one way an item is made that copies a number: the other ways to join, take out or make one do not', () => {
+    const LIST = '1. a\n4. b\n5. c'
+
+    /* Backspace at the start of an item joins it to the item above, which keeps the number it had. */
+    expect(after(at(LIST, 8), baseKeymap.Backspace)).toBe('1. ab\n2. c')
+    expect(after(at(LIST, 4), baseKeymap.Delete)).toBe('1. ab\n2. c')
+    /* The button takes the item out as a paragraph, and makes a bulleted item of a paragraph. */
+    expect(after(at('1. a\n4. b', 8), list)).toBe('1. a\n\nb')
+    expect(after(at('Reči', 2), list)).toBe('- Reči')
   })
 })
 

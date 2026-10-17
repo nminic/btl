@@ -157,6 +157,21 @@ describe('the editor of a written text', () => {
     expect(onLeave).toHaveBeenCalledWith('**Reči**')
   })
 
+  it('numbers an item made with Enter one more than the item above, and the items below keep their numbers', async () => {
+    const user = setupUser()
+    const { onChange } = draw({ value: '1. mesto\n2. mesto\n4. do 10. mesto\n9. kraj', maxLength: 500 })
+
+    after('do 10. mesto')
+    await user.keyboard('{Enter}novo')
+
+    expect(last(onChange)).toBe('1. mesto\n2. mesto\n4. do 10. mesto\n5. novo\n9. kraj')
+
+    select('do 10. mesto', 2)
+    await user.keyboard('{Enter}')
+
+    expect(last(onChange)).toBe('1. mesto\n2. mesto\n4. do\n5. 10. mesto\n6. novo\n9. kraj')
+  })
+
   it('takes the keys every editor has: bold, italic, a line break, a new paragraph, undo and redo', async () => {
     const user = setupUser()
     const { onChange } = draw({ value: 'Reč' })

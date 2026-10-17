@@ -87,6 +87,31 @@ export const list: Command = (state, dispatch) => {
   })
 }
 
+/**
+ * Enter in an item of a list: a new item, numbered the way the item before it counts on, and the
+ * items below it as they were written.
+ *
+ * ProseMirror splits an item into two copies of it, and a copy carries the number the item was
+ * written with (`list_item` in `schema.ts`), so the new item would be numbered as the one it came
+ * from: „4. do" and „4. 10. mesto". The new item is the one that holds the end of the line (a
+ * number of its own is taken off it, and it counts on from the item above), or the one above where
+ * Enter was pressed at the very start of the line, which leaves the words and their number where
+ * they were. An empty item is not split at all: Enter takes it out of the list.
+ */
+export const splitItem: Command = (state, dispatch) =>
+  splitListItem(schema.nodes.list_item)(
+    state,
+    dispatch &&
+      ((tr) => {
+        const { $from } = tr.selection
+        const second = $from.before(-1)
+        const first = $from.node(-2).child($from.index(-2) - 1)
+        const atStart = first.child(0).content.size === 0
+
+        dispatch(tr.setNodeMarkup(atStart ? second - first.nodeSize : second, null, { number: null }))
+      }),
+  )
+
 /** Whether what is selected, or what is about to be typed, carries the mark. */
 export function marked(state: EditorState, type: MarkType): boolean {
   const { from, to, empty, $from } = state.selection
@@ -230,7 +255,7 @@ const KEYS = keymap({
   'Mod-z': undo,
   'Mod-y': redo,
   'Shift-Mod-z': redo,
-  Enter: splitListItem(schema.nodes.list_item),
+  Enter: splitItem,
   'Shift-Enter': lineBreak,
 })
 
