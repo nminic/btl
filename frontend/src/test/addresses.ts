@@ -206,7 +206,7 @@ export const BEHIND: [string, Role, string | null, string][] = [
  * empty room. Measured 17.10.2026 on `DAY`, both roles: 0 cells on `/sr/tabela`, 0 on
  * `/sr/top-liste`, 0 on `/sr/takmicar/000001/priznanja`, and an `<img>` without `alt` put into the
  * cell of a row of each (`Rankings.tsx`, `TopBoards.tsx`, `CompetitorAwards.tsx`) passed
- * `pages/accessibility.test.tsx`, which had caught all three on `main`.
+ * `pages/accessibility.test.tsx`, 87 of 87 (the review of PR 538 reports the same three fall on `main`).
  *
  * **What a walk reads these with.** The same history moved forward into league seasons
  * (`test/leagueSeasons.ts`, `playTheHistoryAsLeagueSeasons`), on `DAY`, with the season named in
