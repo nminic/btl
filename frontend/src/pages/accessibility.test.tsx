@@ -136,18 +136,10 @@ const WALK: Row[] = [
  * fails on an allowance nobody needs any more.
  */
 const KNOWN: Record<string, Record<string, { places: number; why: string }>> = {
-  'superadmin /sr/administracija/lige': {
-    /* The box „Trke u ligi" under a competition is headed `h3` (`admin/LeagueRaceModeration.tsx`),
-       because on the public page of a league it stands under the competition's own `h2`. In
-       administration it stands in a row of a table under the screen's `h1`, with no `h2` between.
-       Making it an `h2` changes how big it is drawn, and adding an `h2` over the table adds words to the
-       screen: both are the owner's to choose. Axe files this rule under best practice, not under a
-       numbered criterion of WCAG. */
-    'heading-order': {
-      places: 1,
-      why: 'the h3 of the box of races sits under the h1 of the screen, with no h2 between',
-    },
-  },
+  /* Empty since 17.10.2026. The one allowance this file began with, `heading-order` on the box „Trke u
+     ligi" in administration, was the owner's to decide, and he decided it (PDL „Jedini nalaz axe-a",
+     16.10.2026): the title is an `h2`, drawn at the size it had (`admin/LeagueRaceModeration.tsx`). The
+     mechanism stays, with the case at the foot that fails on an allowance nobody needs. */
 }
 
 /** Which allowances were actually needed, so the list above cannot quietly go stale. */

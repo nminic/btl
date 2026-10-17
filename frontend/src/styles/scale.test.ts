@@ -84,6 +84,10 @@ const ALLOWED = new Map([
     'the same, at the width the wide layout gives that column',
   ],
   [
+    'pages/Leagues.css | margin-block | 1em',
+    'not a step: the distance the browser gives an h3, kept on the h2 that took its place so the title and the row under it stay where they were (owner, 16.10.2026: izgled ostaje isti); it is one line of the title, so it grows with the title',
+  ],
+  [
     'components/Markdown.css | padding | 0.05em 0.3em',
     'in em on purpose: the padding around code inside a sentence grows with the code, not with the page',
   ],
