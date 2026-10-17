@@ -1031,10 +1031,12 @@ describe('the description of an event and the organiser’s page', () => {
     try {
       renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
 
-      /* An h2, one below the name of the event, which is the h1. */
-      const heading = await screen.findByRole('heading', { level: 2, name: 'Staza' })
+      /* Waited for words that are on the page however the description is drawn, and then asked at
+         once, so a description drawn as plain words fails on what it says and not on a clock. */
+      await screen.findByText(/po nasipu/)
 
-      expect(heading).toBeVisible()
+      /* An h2, one below the name of the event, which is the h1. */
+      expect(screen.getByRole('heading', { level: 2, name: 'Staza' })).toBeVisible()
       expect(screen.getByText('po nasipu').tagName).toBe('STRONG')
       expect(screen.getByText('preko mosta').tagName).toBe('EM')
       expect(screen.getByRole('list', { name: '' })).toHaveTextContent('prvi krugdrugi krug')
@@ -1058,7 +1060,10 @@ describe('the description of an event and the organiser’s page', () => {
     try {
       renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
 
-      const said = await screen.findByText(written)
+      /* Waited for the name of the event, and the description asked at once. */
+      await screen.findByRole('heading', { level: 1 })
+
+      const said = screen.getByText(written)
 
       expect(said.tagName).toBe('P')
       expect(said.querySelector('a, script')).toBeNull()
@@ -1101,7 +1106,10 @@ describe('the description of an event and the organiser’s page', () => {
     try {
       renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
 
-      expect((await screen.findByText('Ovaj')).tagName).toBe('STRONG')
+      /* Waited for the name of the event, which is there whichever description is drawn. */
+      await screen.findByRole('heading', { level: 1 })
+
+      expect(screen.getByText('Ovaj').tagName).toBe('STRONG')
       expect(screen.queryByText('Onaj drugi')).toBeNull()
     } finally {
       vi.stubGlobal('fetch', served)
