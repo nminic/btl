@@ -374,6 +374,19 @@
       "other": "{count} races from the calendar match"
     }
   },
+  "editor": {
+    "tools": "Text formatting",
+    "bold": "Bold",
+    "italic": "Italic",
+    "heading": "Heading",
+    "list": "List",
+    "link": "Link",
+    "address": "Link address",
+    "setLink": "Set link",
+    "removeLink": "Remove link",
+    "cancel": "Cancel",
+    "wrongAddress": "A link address starts with https://, http:// or mailto:, or with a slash for a page of this portal, and has no spaces."
+  },
   "registration": {
     "title": "Registration",
     "submit": "Send the application",

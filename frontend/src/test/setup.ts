@@ -6,6 +6,7 @@ import { beforeEach, expect, vi } from 'vitest'
 import { clearResourceCache } from '../data/client'
 import { asAnswered, myOwnRecordFromMe, whoIAm } from './theAnswer'
 import { SLOW } from './slow'
+import { measureNothing } from './proseMirrorInJsdom'
 import { eventSlug } from '../pages/admin/entityForms'
 
 /**
@@ -69,6 +70,9 @@ vi.mock('../clock/context', async (whatItReallyIs) => {
  * once per real failure, against a red gate that lied on every busy run.
  */
 configure({ asyncUtilTimeout: SLOW })
+
+/* The editor of the texts of the administration asks for a layout jsdom does not draw. */
+measureNothing()
 
 // The data layer caches a resource for the whole visit. Tests are separate
 // visits, so each one starts from an empty cache. So does the day the portal is

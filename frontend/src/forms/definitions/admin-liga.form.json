@@ -30,12 +30,14 @@
     {
       "name": "rules",
       "type": "textarea",
+      "formatted": true,
       "labelKey": "leagues.rules",
       "maxLength": 4000
     },
     {
       "name": "prizes",
       "type": "textarea",
+      "formatted": true,
       "labelKey": "leagues.prizes",
       "maxLength": 4000
     }

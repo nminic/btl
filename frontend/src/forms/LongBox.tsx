@@ -40,7 +40,6 @@ export function LongBox({
   TextareaHTMLAttributes<HTMLTextAreaElement>,
   'value' | 'maxLength' | 'onChange' | 'onPaste' | 'rows'
 >) {
-  const { t } = useI18n()
   /**
    * How many characters the last paste lost.
    *
@@ -63,11 +62,6 @@ export function LongBox({
    * which is the first thing the writer does themselves.
    */
   const fromPaste = useRef(false)
-  /** Whether the box will take no more. One sentence hangs off it in three
-   *  places, and reading it three times from three copies of the same
-   *  comparison is how the three drift apart. */
-  const atTheLimit = maxLength !== undefined && value.length >= maxLength
-
   return (
     <>
       <textarea
@@ -118,53 +112,88 @@ export function LongBox({
         }}
       />
 
-      {maxLength !== undefined && (
-        <>
-          {/* How much room is left, counted down.
-         *
-            Not a live region. It was one, politely, and polite only means the
-            reader waits its turn: the text changes on every keystroke, so the
-            queue filled with three hundred and fifty-nine announcements of a
-            number nobody was waiting to hear, and each one had to be got through
-            before anything else could be said. What a writer needs is the count
-            when they arrive at the field and a word when the box will take no
-            more, and those are two different things.
-         *
-            The count on arrival is `aria-describedby` on the box. The word at the
-            wall is the region at the bottom of this block. */}
-          <p className="field__left" id={leftId} aria-hidden="true">
-            {atTheLimit
-              ? t('registration.bioFull', { count: maxLength })
-              : t('registration.bioLeft', { count: maxLength - value.length })}
-          </p>
+      <Room length={value.length} maxLength={maxLength} leftId={leftId} dropped={dropped} />
+    </>
+  )
+}
 
-          {/* What the last paste lost. Said in full, in its own words, and not left
-            to be worked out from a counter that has gone to zero. */}
-          {dropped > 0 && (
-            <p className="field__dropped" aria-hidden="true">
-              {t('form.pasteCut', { count: dropped })}
-            </p>
-          )}
+/**
+ * How much room a box has left, what the last paste lost, and the word at the wall.
+ *
+ * Written out of `LongBox` on 17.10.2026, when the editor of the texts of the administration
+ * (`components/markdownEditor/MarkdownEditor.tsx`) needed the same three things about the same
+ * limit: one copy of the sentences and one copy of the region, so the two boxes cannot start saying
+ * different things about the same field. Drawn only where there is a limit to count down from.
+ */
+export function Room({
+  length,
+  maxLength,
+  leftId,
+  dropped,
+}: {
+  /** How many characters the box holds now, counted the way the server counts them. */
+  length: number
+  maxLength: number | undefined
+  leftId: string
+  /** How many characters the last paste lost. */
+  dropped: number
+}) {
+  const { t } = useI18n()
 
-          {/* The two moments worth saying out loud, and nothing in between.
-         *
-            One region, always on the page, and only its text changes. A region
-            that is added to the page together with its text is one a screen
-            reader often misses, because there was nothing there to be watching;
-            the portal says so where it does the same thing for a bank statement
-            (src/pages/admin/Payments.tsx).
-         *
-            Everything it says is said once. The two visible lines above carry the
-            same words and are hidden from the reader, which costs nothing: the
-            count is read on the way into the field through `aria-describedby`,
-            and a description is read whether or not the element carrying it is
-            hidden. */}
-          <p className="visually-hidden" role="status">
-            {dropped > 0 ? t('form.pasteCut', { count: dropped }) : ''}
-            {dropped === 0 && atTheLimit ? t('registration.bioFull', { count: maxLength }) : ''}
-          </p>
-        </>
+  if (maxLength === undefined) {
+    return null
+  }
+
+  /** Whether the box will take no more. One sentence hangs off it in three
+   *  places, and reading it three times from three copies of the same
+   *  comparison is how the three drift apart. */
+  const atTheLimit = length >= maxLength
+
+  return (
+    <>
+      {/* How much room is left, counted down.
+     *
+        Not a live region. It was one, politely, and polite only means the
+        reader waits its turn: the text changes on every keystroke, so the
+        queue filled with three hundred and fifty-nine announcements of a
+        number nobody was waiting to hear, and each one had to be got through
+        before anything else could be said. What a writer needs is the count
+        when they arrive at the field and a word when the box will take no
+        more, and those are two different things.
+     *
+        The count on arrival is `aria-describedby` on the box. The word at the
+        wall is the region at the bottom of this block. */}
+      <p className="field__left" id={leftId} aria-hidden="true">
+        {atTheLimit
+          ? t('registration.bioFull', { count: maxLength })
+          : t('registration.bioLeft', { count: maxLength - length })}
+      </p>
+
+      {/* What the last paste lost. Said in full, in its own words, and not left
+        to be worked out from a counter that has gone to zero. */}
+      {dropped > 0 && (
+        <p className="field__dropped" aria-hidden="true">
+          {t('form.pasteCut', { count: dropped })}
+        </p>
       )}
+
+      {/* The two moments worth saying out loud, and nothing in between.
+     *
+        One region, always on the page, and only its text changes. A region
+        that is added to the page together with its text is one a screen
+        reader often misses, because there was nothing there to be watching;
+        the portal says so where it does the same thing for a bank statement
+        (src/pages/admin/Payments.tsx).
+     *
+        Everything it says is said once. The two visible lines above carry the
+        same words and are hidden from the reader, which costs nothing: the
+        count is read on the way into the field through `aria-describedby`,
+        and a description is read whether or not the element carrying it is
+        hidden. */}
+      <p className="visually-hidden" role="status">
+        {dropped > 0 ? t('form.pasteCut', { count: dropped }) : ''}
+        {dropped === 0 && atTheLimit ? t('registration.bioFull', { count: maxLength }) : ''}
+      </p>
     </>
   )
 }

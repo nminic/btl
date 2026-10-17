@@ -27,6 +27,7 @@
     {
       "name": "body",
       "type": "textarea",
+      "formatted": true,
       "labelKey": "admin.field.sectionBody",
       "maxLength": 8000
     }

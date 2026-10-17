@@ -117,6 +117,18 @@ export type FieldDef = {
   required?: boolean
   minLength?: number
   maxLength?: number
+  /**
+   * A box for many words that is written with the editor of the texts of the administration
+   * („vidiš šta dobijaš", `components/markdownEditor/`) and kept as Markdown, rather than typed
+   * into a plain box.
+   *
+   * Only on a `textarea`, and only on the four the owner chose on 16.10.2026: the description of an
+   * event, the terms and the prizes of a competition, and the body of a written page (PDL,
+   * „Ispravke sa ekrana 16.10.2026"; the biography of a member, the comments on an event and the
+   * notes to a moderator stay plain text by the same decision). `definitions.test.ts` holds the
+   * list.
+   */
+  formatted?: boolean
   min?: number
   max?: number
   /**

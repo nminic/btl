@@ -2,6 +2,7 @@ import { ProfileLink } from './profile/ProfileLink'
 import { Link, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { useToday } from '../clock/useClock'
+import { Markdown } from '../components/Markdown'
 import { Resource } from '../components/Resource'
 import {
   combinePair,
@@ -498,8 +499,20 @@ export function EventDetail() {
 
                   Empty draws nothing at all, which is what „ako postoji" means and
                   is also the ordinary case: neither field is required, and no
-                  event in the file carries either. */}
-              {event.description !== '' && <p className="event__said">{event.description}</p>}
+                  event in the file carries either.
+
+                  Written with the editor and kept as Markdown since 16.10.2026
+                  (PDL, „Ispravke sa ekrana 16.10.2026"), so it is drawn the way a
+                  written page is: under the name of the event, an h1, so a
+                  heading of its own is an h2, and a link to another site in a
+                  window of its own, like the organiser's page below it. A
+                  description written before the editor has no marks in it and is
+                  the paragraph it always was. */}
+              {event.description !== '' && (
+                <div className="event__said">
+                  <Markdown text={event.description} under={1} outward />
+                </div>
+              )}
 
               {/* And the address, asked of the store again rather than taken on
                   trust from the form that stored it (`data/outsideLink.ts` says

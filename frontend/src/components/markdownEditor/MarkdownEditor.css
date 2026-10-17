@@ -1,0 +1,92 @@
+/* The editor of the texts of the administration: a row of buttons over a box that looks like the
+   page it writes (`.markdown`, the sheet of a written page, is worn by the box itself).
+
+   Mobile first, and nothing here has a width of its own: the buttons wrap onto a second row where
+   five words do not fit beside each other, and the box is as wide as the field it stands in. */
+.md-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+/* The place the editor will stand in while it loads, held at the height of the box. */
+.md-editor--waiting {
+  min-block-size: 7rem;
+}
+
+.md-editor__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.md-editor__tool {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: var(--space-4) var(--space-10);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-4);
+  cursor: pointer;
+}
+
+/* On is said by the ground and by the border, and by `aria-pressed` to whoever cannot see either. */
+.md-editor__tool[aria-pressed='true'],
+.md-editor__tool[aria-expanded='true'] {
+  color: var(--accent);
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
+
+.md-editor__tool:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.md-editor__tool--bold {
+  font-weight: 700;
+}
+
+.md-editor__tool--italic {
+  font-style: italic;
+}
+
+/* The box. Two classes, so it outweighs `.markdown` and `.field__control` on weight and not on which
+   sheet the bundle put last (ADL A24). Tall enough for a few lines, and growing with what is in it. */
+.md-editor__area.markdown {
+  min-block-size: 7rem;
+  overflow-wrap: anywhere;
+}
+
+/* What ProseMirror needs of the blank: kept as typed, so two blanks are two and the cursor lands
+   where the reader put it. The page itself collapses them (`.markdown p`), which costs nothing,
+   because a written text is drawn one paragraph at a time. */
+.md-editor__area.markdown p,
+.md-editor__area.markdown li {
+  white-space: pre-wrap;
+}
+
+/* A block kept as it was written (a table, a rule, the place of a drawing): its lines, in the
+   letters of the text around it, and wrapped rather than pushing the form sideways. */
+.md-editor__area.markdown .md-editor__kept {
+  margin: 0;
+  font: inherit;
+  white-space: pre-wrap;
+  color: var(--text-muted);
+  border-inline-start: 2px solid var(--border);
+  padding-inline-start: var(--space-8);
+}
+
+.md-editor__link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.md-editor__link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}

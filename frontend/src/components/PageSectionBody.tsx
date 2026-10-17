@@ -3,15 +3,16 @@ import type { PageSection } from '../data/types'
 import { DucatGallery } from './DucatGallery'
 import { PriceTable } from './PriceTable'
 import { Markdown } from './Markdown'
+import { MARKER } from './markdownText'
 import './PageSectionBody.css'
 
-/* Where in the text the drawing stands. A line holding nothing but this is taken
+/* Where in the text the drawing stands (`MARKER`, kept in `markdownText.ts` because
+ * the editor has to keep the line as it is). A line holding nothing but it is taken
  * out of the words and the drawing takes its place.
  *
  * The mark says only "here". Which drawing it is stays on the section, in the
  * closed list the type carries, so neither fact is written twice and a written
  * page cannot name an element of its own. */
-const MARKER = '[[gallery]]'
 
 /**
  * Whether a half of the body has anything in it to draw.

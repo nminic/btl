@@ -379,11 +379,6 @@
   inline-size: 100%;
 }
 
-.league__editor {
-  inline-size: 100%;
-  min-block-size: 7rem;
-}
-
 /* The payment details in writing, beside the code that says the same thing
    (owner, 31.07.2026). Two columns where there is room, one where there is not,
    and the figures are tabular so an account number can be read a group at a

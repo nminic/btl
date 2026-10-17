@@ -20,6 +20,7 @@ import { heldControl } from './held'
    still reads it. */
 import { worded } from './worded'
 import { LongBox } from './LongBox'
+import { TextEditor } from '../components/TextEditor'
 import type {
   DerivedField,
   FieldDef,
@@ -501,6 +502,21 @@ const Field = memo(function Field({
      bubble on top of the portal's error, in the browser's language. */
   const asked = field.required === true ? true : undefined
 
+  /* The name of the field, which a label carries or, for the editor of a
+     written text, a span (below). */
+  const name = (
+    <>
+      {/* And a link inside the words where the words carry one, the same on
+          every kind of field: it was written only into the confirmation,
+          which is the one field that has one today, so a link put on any
+          other was dropped without a word. */}
+      {worded(t(field.labelKey), field, locale, t)}
+      {field.required !== true && (
+        <span className="field__optional"> ({t('form.optional')})</span>
+      )}
+    </>
+  )
+
   const shared = {
     id: inputId,
     name: field.name,
@@ -742,16 +758,19 @@ const Field = memo(function Field({
           rule put there is read out as part of it, and „Mejl" becomes „Mejl, na
           njega stiže veza za potvrdu, i njime se kasnije prijavljuješ". */}
       <span className="field__head">
-        <label className="field__label" htmlFor={inputId} id={labelId}>
-          {/* And a link inside the words where the words carry one, the same on
-              every kind of field: it was written only into the confirmation,
-              which is the one field that has one today, so a link put on any
-              other was dropped without a word. */}
-          {worded(t(field.labelKey), field, locale, t)}
-          {field.required !== true && (
-            <span className="field__optional"> ({t('form.optional')})</span>
-          )}
-        </label>
+        {/* A label names a control the browser can label, and the editor of a
+            written text is not one: it is a box of its own that is typed into.
+            It names itself by this name (`aria-labelledby`), so the words are a
+            span there and a label everywhere else. */}
+        {field.formatted === true ? (
+          <span className="field__label" id={labelId}>
+            {name}
+          </span>
+        ) : (
+          <label className="field__label" htmlFor={inputId} id={labelId}>
+            {name}
+          </label>
+        )}
         {field.required === true && <RequiredMark />}
 
         {field.hintKey !== undefined && (
@@ -829,7 +848,28 @@ const Field = memo(function Field({
         </select>
       )}
 
-      {field.type === 'textarea' && (
+      {/* The four texts of the administration the owner chose on 16.10.2026
+          are written with the editor and kept as Markdown (`formatted`, PDL
+          „Ispravke sa ekrana 16.10.2026"); every other box for many words stays
+          the plain one. */}
+      {field.type === 'textarea' && field.formatted === true && (
+        <TextEditor
+          id={inputId}
+          value={String(value)}
+          maxLength={field.maxLength}
+          leftId={leftId}
+          labelledBy={labelId}
+          describedBy={describedBy === '' ? undefined : describedBy}
+          required={asked}
+          invalid={error !== undefined}
+          locked={locked}
+          autoFocus={open}
+          onChange={change}
+          onLeave={() => undefined}
+        />
+      )}
+
+      {field.type === 'textarea' && field.formatted !== true && (
         <LongBox
           {...shared}
           value={String(value)}

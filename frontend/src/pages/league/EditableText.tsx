@@ -1,55 +1,10 @@
 import { useState, type ReactNode } from 'react'
+import { Markdown } from '../../components/Markdown'
+import { TextEditor } from '../../components/TextEditor'
 import { liga } from '../../forms/definitions'
 import { limitOf } from '../../forms/records'
 import { useI18n } from '../../i18n/useI18n'
 import type { LeagueWords } from '../admin/leagueWrites'
-import { addressesIn } from './addressesIn'
-
-/**
- * The words as written, with every address in them drawn as a link to somebody else's page.
- *
- * `target="_blank"` and `rel="noreferrer noopener"` are the shape of the link to an outside page
- * that the event's page already draws (`pages/EventDetail.tsx`): a reader in the middle of a list
- * of competitions keeps their place, the other end is not told which page they came from, and the
- * page that opens cannot reach back through `window.opener`. Written out, and not left to what a
- * browser does for `_blank`, for the reason the guard of the event's link gives
- * (`pages/details.test.tsx`): a rule that depends on a default is a rule nobody can read.
- *
- * **`dir="ltr"` on every link, since 03.10.2026** (review of PR 484, measured in Chrome 154). The
- * words of a link are the address as it was typed, and the words beside it were typed by the same
- * hand: a right-to-left override or embedding in a neighbouring word (U+202E, U+202B, U+2067)
- * reorders the characters of the link as they are drawn. Typed as
- * `https://zlo.example/#/ten.ecartnur.www//:sptth`, the link was drawn as
- * `https://www.runtrace.net/#/elpmaxe.olz//:sptth` and opened `zlo.example`. Neither `addressesIn`
- * nor the gate beneath it can see that, because the control is not in the address but in the word
- * before it. The attribute makes the link an isolate with a direction of its own, so what is drawn
- * is what was typed, in the order it was typed, which is what its accessible name always was. It is
- * an attribute on the link itself, so it goes wherever the link is drawn, and it changes nothing
- * about which words are a link. **Derived from PDL P15 ("sa vidljivim domenom", "domen je sama
- * otkucana adresa") and not the owner's word.** What it does not do, said here and not left to be
- * found: the words around a link are drawn as their author typed them, so an override in them still
- * reorders them; and the isolation is the browser's own rule for the attribute, which a rule of a
- * sheet that sets `unicode-bidi` on links would beat (measured). None does, and the value on the
- * built sheet is `isolate`. `pages/league/linkDirection.test.tsx` holds that every link carries the
- * attribute and that nothing which draws one from `addressesIn` goes without a case.
- *
- * **Every run that is not an address is a string, and a string in a child position is a text
- * node**, so nothing an administrator typed is ever read as markup. The terms of a competition are
- * not moderated (PDL, 01.09.2026: „Administratorova reč stoji"), which is the reason that matters
- * here: what a reader sees has to be exactly what was typed. A text with no address draws as the one
- * text node it always did.
- */
-function drawn(text: string): ReactNode {
-  return addressesIn(text).map((piece, at) =>
-    piece.href === null ? (
-      piece.text
-    ) : (
-      <a key={at} href={piece.href} target="_blank" rel="noreferrer noopener" dir="ltr">
-        {piece.text}
-      </a>
-    ),
-  )
-}
 
 /**
  * A piece of what an organiser has written about a competition, read where it is written.
@@ -82,8 +37,19 @@ function drawn(text: string): ReactNode {
  * What a link says is the address as it was typed, and that is what makes the domain visible: no
  * second element repeats it beside the link, as the event's page did on that day for the words of
  * its own link, which say nothing about where a press leads. Both boxes draw it the same way,
- * because both are this component, and the box that is being edited shows the text as it was typed
- * and not as it is drawn.
+ * because both are this component.
+ *
+ * **Written with the editor and kept as Markdown, since 16.10.2026** (PDL, „Ispravke sa ekrana
+ * 16.10.2026", chosen among the options offered): „Uređivač je „vidiš šta dobijaš", sa dugmadima za
+ * podebljano, kurziv, naslov, spisak i vezu; tekst se čuva kao Markdown, isto kao pisane strane."
+ * The text is drawn by the component every written page is drawn by (`components/Markdown.tsx`),
+ * which keeps the sentence of 03.10.2026 above: its bare addresses are links, in a new window, with
+ * the address as their words. A text written before the editor is drawn the same way; one that has
+ * no marks of Markdown in it is the paragraph it always was, its line breaks included. The box that
+ * is being edited shows the text as it will be drawn, which is the point of the editor.
+ *
+ * **Every link carries `dir="ltr"` and `rel="noreferrer noopener"`**, and why is said where the
+ * link is drawn (`components/Markdown.tsx`) and held by `pages/league/linkDirection.test.tsx`.
  *
  * Hides itself while nobody has written it and nobody may.
  */
@@ -168,21 +134,33 @@ export function EditableText({
         {heading}
       </h3>
 
-      {editing ? (
-        <textarea
-          className="field__control league__editor"
-          autoFocus
-          aria-label={heading}
-          defaultValue={value}
+      {editing && (
+        <TextEditor
+          id={`${headingId}-text`}
+          label={heading}
+          value={value}
           /* The same cap the administration form puts on it. Rewriting in place took as much as
              anybody cared to paste, so the text could come back longer than the form that made it
              accepts, and the next person to open that form was told their own words were too
              long. The number lives in the definition (`forms/records.ts`). */
           maxLength={limitOf(liga, field)}
-          onBlur={(event) => void keep(event.target.value)}
+          leftId={`${headingId}-left`}
+          describedBy={`${headingId}-left`}
+          autoFocus
+          /* Kept when the cursor leaves the box and its buttons, which is what leaving the plain box
+             did: nothing is written on every key. */
+          onChange={() => undefined}
+          onLeave={(text) => void keep(text)}
         />
-      ) : (
-        <p className="profile__text">{value === '' ? t('leagues.notWritten') : drawn(value)}</p>
+      )}
+
+      {!editing && value === '' && <p className="profile__text">{t('leagues.notWritten')}</p>}
+
+      {!editing && value !== '' && (
+        /* Under the heading of its box, an h3, so a heading of its own is an h4. */
+        <div className="profile__text">
+          <Markdown text={value} under={3} addresses outward />
+        </div>
       )}
 
       {canEdit && !editing && (
