@@ -175,6 +175,19 @@ export type FieldDef = {
    */
   row?: number
   /**
+   * How many of the columns of its row this field takes, where the row has columns at all
+   * (`FormDef.columns`). Two, or nothing for one: the town takes two by being a town
+   * (`FormRenderer.tsx`, `columnsOf`), and this is the way a field that is not a town says the
+   * same.
+   *
+   * Owner, 17.10.2026, of the event form: „U formi događaja Naziv zauzima dve trećine reda, a
+   * Vrsta jednu." A number counted and not a width written, for the reason `row` is: the row's
+   * columns are still counted, so the name and the kind are three columns and the third that was
+   * left empty beside them is gone. Only two exists, because it is the only width anybody has
+   * asked for; a third kind of width arrives as a type error here and not as a class nobody styled.
+   */
+  span?: 2
+  /**
    * Which group of the form this field belongs to, named by what the group is
    * called (owner, 28.09.2026: „organizuj je bolje, možda ponovo jedno ispod
    * drugog", answered with groups rather than with one column).

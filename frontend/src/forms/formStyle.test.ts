@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { everyRule, ruleFor, ruleInMedia } from '../test/stylesheet'
+import { everyRule, ruleFor, ruleInMedia, unconditionalRules } from '../test/stylesheet'
 
 /**
  * Three things about a form that no rendered test can see, because jsdom lays
@@ -358,6 +358,30 @@ describe('the field that asks for a town', () => {
         .filter((rule) => rule.style.getPropertyValue('color') !== '')
         .map((rule) => rule.selectorText),
     ).toEqual(['.place__country'])
+  })
+})
+
+describe('a field that is two columns wide', () => {
+  const QUERY = '(min-width: 51.25em)'
+
+  /* Owner, 17.10.2026: „U formi događaja Naziv zauzima dve trećine reda, a Vrsta jednu." The
+     renderer puts `field--wide` on a field that names `span: 2` (`FormRenderer.test.tsx`); the
+     sheet is the other half, and it is asked here because jsdom applies none (ADL A18). */
+  it('is two of the columns of its row, from the width where the row has columns', () => {
+    const wide = ruleInMedia(fields, QUERY, '.form__row .field.field--wide', 'FormRenderer.css')
+
+    expect(wide.getPropertyValue('grid-column')).toBe('span 2')
+  })
+
+  it('is two of them nowhere below that width, where the row is one column', () => {
+    /* A `span 2` outside the query makes the one-column grid of a telephone invent a second column
+       and scroll sideways (WCAG 2.2 SC 1.4.10). */
+    expect(
+      unconditionalRules(fields, 'FormRenderer.css')
+        .filter((rule) => rule.selectorText.includes('field--wide'))
+        .map((rule) => rule.selectorText),
+      'the rule that widens a field stands outside the query',
+    ).toEqual([])
   })
 })
 

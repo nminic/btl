@@ -121,6 +121,47 @@ describe('the fields of an event, line by line', () => {
     expect(dogadjaj.columns, 'the form of an event is not in thirds').toBe(3)
   })
 
+  /**
+   * „U formi događaja Naziv zauzima dve trećine reda, a Vrsta jednu." (owner, 17.10.2026, PDL
+   * „Odgovori vlasnika 17.10.2026 na pitanja posle izvođenja"), taken apart into what it says:
+   * the name is TWO of the three columns of its line, the kind is one, and nothing else on the
+   * form is widened.
+   *
+   * <p>Asked of the definition (the one home of a width, `FieldDef.span`) AND of the field the
+   * screen draws: the definition says two, and the stylesheet only gives two columns to a field
+   * that wears the class the renderer puts on it, so each of the two halves is asked and the join
+   * between them is the class (`entityStyle.test.ts` and `forms/formStyle.test.ts` hold the sheet).
+   */
+  it.each(['new', 'change'] as const)(
+    'gives the name two of the three columns of its line and the kind one, when opened as: %s',
+    async (way) => {
+      expect(
+        dogadjaj.fields.filter((one) => one.span !== undefined).map((one) => [one.name, one.span]),
+        'the only widened field of the form is the name',
+      ).toEqual([['name', 2]])
+
+      await open(way)
+
+      const wrapperOf = (label: RegExp) =>
+        must(screen.getByLabelText(label).closest('.field'), 'the field a control stands in')
+
+      expect(wrapperOf(/^Naziv događaja/)).toHaveClass('field--wide')
+      expect(wrapperOf(/^Vrsta događaja/)).not.toHaveClass('field--wide')
+      for (const rest of [/^Datum/, /^Istaknuto/, /^Mesto/]) {
+        expect(wrapperOf(rest), `${String(rest)} was widened`).not.toHaveClass('field--wide')
+      }
+      /* The line has three columns, and the name and the kind fill them: the third that stood empty
+         beside them is gone. */
+      expect(
+        must(
+          screen.getByLabelText(/^Naziv događaja/).closest('.form__row'),
+          'the line of the name',
+        ).getAttribute('style'),
+      ).toContain('--columns: 3')
+    },
+    SLOW,
+  )
+
   it.each([
     ['new', [['Naziv događaja', 'Vrsta događaja'], ['Datum', 'Istaknuto'], ['Mesto', 'Država']]],
     ['change', [['Naziv događaja', 'Vrsta događaja'], ['Datum', 'Istaknuto'], ['Mesto', 'Država']]],
@@ -208,21 +249,40 @@ describe('a race, in two lines', () => {
     SLOW,
   )
 
+  /**
+   * A FREE RACE HAS NO SECOND LINE (owner, 17.10.2026: „Zapravo za slobodnu onda ne treba ukucavati
+   * ni jedno od tih polja, mozes izbaciti sve sto bi se dicalo duzine, uspona, spusta, sati,
+   * minuta, ili sekundi."), taken apart into what he named: no length, no climb, no fall, no hours,
+   * and not an empty line in their place.
+   */
   it.each(WAYS)(
-    'draws the length, the climb and the fall on a free race, and no duration, when opened as: %s',
+    'draws nothing at all on a second line of a free race, and not an empty line, when opened as: %s',
     async (way) => {
       const user = await open(way)
 
       await user.selectOptions(screen.getByRole('combobox', { name: 'Vrsta, 1. trka' }), 'free')
 
-      expect(linesOf(1)).toEqual([
-        ['Trka', 'Datum', 'Vrsta'],
-        ['Dužina (km)', 'Uspon (m)', 'Spust (m)'],
-      ])
-      expect(raceNumber(1).queryByLabelText(/^Trajanje/), 'a free race draws a duration').toBeNull()
+      expect(linesOf(1)).toEqual([['Trka', 'Datum', 'Vrsta']])
+      expect(boxesOf(1), 'a free race draws more than its name, day and kind').toEqual(['Trka', 'Datum', 'Vrsta'])
+      for (const gone of [/^Dužina/, /^Uspon/, /^Spust/, /^Trajanje/]) {
+        expect(raceNumber(1).queryByLabelText(gone), `a free race draws ${String(gone)}`).toBeNull()
+      }
+      expect(
+        raceNumber(1).getByLabelText(/^Trka/).closest('fieldset')?.querySelectorAll('.race__row').length,
+        'a free race keeps a second line with nothing on it',
+      ).toBe(1)
     },
     SLOW,
   )
+
+  it('gives the second line back when a free race is turned into a race of a length', async () => {
+    const user = await open('change')
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Vrsta, 1. trka' }), 'free')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Vrsta, 1. trka' }), 'length')
+
+    expect(linesOf(1)[1]).toEqual(['Dužina (km)', 'Uspon (m)', 'Spust (m)'])
+  }, SLOW)
 
   it('draws no duration on a race of a length', async () => {
     await open('change')
@@ -275,6 +335,32 @@ describe('a race, in two lines', () => {
       'Spust (m)',
     ])
     expect(linesOf(2)[1]).toEqual(['Trajanje (h)'])
+  }, SLOW)
+
+  it('reads the kind of ITS OWN race when an event has a race of a length and a free one', async () => {
+    /* The same two sources as above, asked with the kind that draws nothing. A second line that read
+       the first race's kind would draw a free first race's nothing under the race of a length, and
+       the length's three under the free one, in the two orders. */
+    const user = await open('change')
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Vrsta, 1. trka' }), 'free')
+
+    expect(linesOf(1)).toEqual([['Trka', 'Datum', 'Vrsta']])
+    expect(linesOf(2)[1], 'the second race drew the (empty) second line of the first').toEqual([
+      'Dužina (km)',
+      'Uspon (m)',
+      'Spust (m)',
+    ])
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Vrsta, 1. trka' }), 'length')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Vrsta, 2. trka' }), 'free')
+
+    expect(linesOf(1)[1], 'the first race drew the second line of the second').toEqual([
+      'Dužina (km)',
+      'Uspon (m)',
+      'Spust (m)',
+    ])
+    expect(linesOf(2)).toEqual([['Trka', 'Datum', 'Vrsta']])
   }, SLOW)
 
   it('asks a timed race for how long it lasts, and says so in the box', async () => {

@@ -191,6 +191,15 @@
     column-gap: var(--space-16);
   }
 
+  /* TWO OF THOSE COLUMNS FOR A FIELD THAT IS NOT A TOWN, and only inside this query: below it the
+     row is one column, and a `span 2` there would make the grid invent a second one (owner,
+     17.10.2026: „U formi događaja Naziv zauzima dve trećine reda, a Vrsta jednu"). Two class
+     names on the field for the weight the town's rule has, so the two are written the same way
+     and neither can be settled by the order the sheets are emitted in. */
+  .form__row .field.field--wide {
+    grid-column: span 2;
+  }
+
   /* And a field standing on its own inside such a form keeps the width one
      field should have. „Svojim rečima" stretched to the full sixty rem, and a
      box whose ends are that far apart is two places to look rather than one. */

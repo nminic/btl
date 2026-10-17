@@ -2159,3 +2159,55 @@ describe('the button that sends, while the screen says its send is out', () => {
     expect(onSubmit).toHaveBeenCalledTimes(1)
   })
 })
+
+/**
+ * A FIELD THAT NAMES A WIDTH IS AS MANY COLUMNS AS IT NAMES (owner, 17.10.2026, of the event form:
+ * „Naziv zauzima dve trećine reda, a Vrsta jednu").
+ *
+ * <p>Asked of a form that declares NO columns of its own, because `columns` is a floor and a form
+ * that declares three hides whether the row was counted: the name (two) and the kind (one) are three
+ * either way. Here the row is as wide as the fields on it, so counting a `span` as one is a row of
+ * two, and a stylesheet that gives the field two columns of a grid with two is a grid that invents
+ * a third.
+ */
+describe('a field that is two columns wide', () => {
+  const kindWords = [{ value: 'race', labelKey: 'proba.trka' }]
+  const wide: FormDef = {
+    id: 'proba',
+    titleKey: 'proba.naslov',
+    submitKey: 'form.submit',
+    fields: [
+      { name: 'ime', type: 'text', labelKey: 'proba.ime', row: 1, span: 2 },
+      { name: 'vrsta', type: 'select', labelKey: 'proba.vrsta', row: 1, options: kindWords },
+      { name: 'bez', type: 'text', labelKey: 'proba.bez', row: 2 },
+      { name: 'uzan', type: 'text', labelKey: 'proba.uzan', row: 2 },
+    ],
+  }
+
+  const drawn = () => {
+    renderWithI18n(<FormRenderer form={wide} onSubmit={vi.fn()} />)
+
+    return [...document.querySelectorAll<HTMLElement>('.form__row')]
+  }
+
+  it('makes its row three columns, and a row without one stays at the fields on it', () => {
+    const [first, second] = drawn()
+
+    expect(must(first, 'the first row')).toHaveStyle({ '--columns': '3' })
+    expect(must(second, 'the second row')).toHaveStyle({ '--columns': '2' })
+  })
+
+  it('wears the class the stylesheet gives two columns to, and nothing else does', () => {
+    drawn()
+
+    expect(must(screen.getByLabelText(/proba.ime/).closest('.field'), 'the name')).toHaveClass(
+      'field--wide',
+    )
+    for (const narrow of [/proba.vrsta/, /proba.bez/, /proba.uzan/]) {
+      expect(
+        must(screen.getByLabelText(narrow).closest('.field'), 'a field'),
+        `${String(narrow)} was widened`,
+      ).not.toHaveClass('field--wide')
+    }
+  })
+})

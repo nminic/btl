@@ -10,6 +10,7 @@
       "labelKey": "admin.field.eventName",
       "required": true,
       "maxLength": 120,
+      "span": 2,
       "row": 1
     },
     {

@@ -68,8 +68,10 @@ const ROWS: Record<RaceKind, RaceRow> = {
     ascentM: '',
     descentM: '',
   },
-  /* On the second morning, with a climb and a fall, so the set carries both states of
-     those two cells: empty (read as nought) and written. */
+  /* On the second morning. A free race draws no measure since 17.10.2026 (owner: „Zapravo za
+     slobodnu onda ne treba ukucavati ni jedno od tih polja"), so its cells are empty here like
+     those of any row, and it goes over with the climb and the fall as nought: the route takes the
+     two as numbers whatever the kind (`RaceWriteApi`) and does not read them for a free race. */
   free: {
     id: '',
     name: 'BBKT slobodna',
@@ -78,8 +80,8 @@ const ROWS: Record<RaceKind, RaceRow> = {
     kind: 'free',
     limitHours: '',
     distanceKm: '',
-    ascentM: '120',
-    descentM: '120',
+    ascentM: '',
+    descentM: '',
   },
 }
 
@@ -99,6 +101,15 @@ describe('what the table of mornings puts on the wire', () => {
 
   it.each(RACE_KINDS)('sends a race of the kind %s exactly as the file says', (kind) => {
     expect(onTheWireFor(ROWS[kind])).toStrictEqual(Reflect.get(onTheWire, kind))
+  })
+
+  it('sends a free race with nought for the climb and the fall even when its row still holds them', () => {
+    /* A free race that was read off the record before 17.10.2026 can carry a climb, and a row whose
+       kind was changed to free carries what was typed before: the screen draws no cell for either,
+       so nothing on it says they are there, and they must not go over (`measuresOf`). */
+    expect(onTheWireFor({ ...ROWS.free, ascentM: '120', descentM: '90' })).toStrictEqual(
+      Reflect.get(onTheWire, 'free'),
+    )
   })
 })
 
