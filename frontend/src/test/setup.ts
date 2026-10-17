@@ -183,6 +183,13 @@ function whatMeAnswers(): Response {
   const answered = {
     role: whoTheCookieNames.role,
     account: 1,
+    /* The language of the account's mail (V59), which `MeApi.WhoIAm` carries for every account and
+       the language panel of the settings reads (`member/MailLanguageChoice.tsx`). Left out, the
+       harness answered a body no server sends, and every screen of the settings drew that panel's
+       „Podaci se ne mogu učitati." under whatever the case was about. Serbian, because that is what
+       a row the owner has never touched holds. A case that means to measure another language puts
+       its own server in front (`member/mailLanguageChoice.test.tsx`). */
+    mailLanguage: 'sr',
     /* **THE COOKIE NAMING A MEMBER IS THE RECORD EXISTING, and the generated file only
        fills the rest of it in.** This answered NO RECORD AT ALL for a number the file has
        no row for until 24.09.2026, and that conflated two things `MeApi` exists to keep

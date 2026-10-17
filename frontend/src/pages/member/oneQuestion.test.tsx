@@ -519,7 +519,9 @@ describe('every screen of the member area, to somebody the server has signed in'
   it.each(['competitor', 'moderator', 'superadmin'])(
     'draws the settings to a %s account with no record, and neither refusal nor the sign in',
     async (role) => {
-      aSignedInAccount(role, 11)
+      /* With the language of its mail in the answer, which `MeApi.WhoIAm` always carries: the panel
+         is drawn from it, and an answer without it is the panel's own „Podaci se ne mogu učitati.". */
+      aServerAnswering({ role, account: 11, mailLanguage: 'sr' })
       renderAt('/sr/podesavanja', 'visitor', null)
 
       /* Named, and not „is none of the refusals": that is satisfied by a screen that draws a
