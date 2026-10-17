@@ -2006,7 +2006,7 @@ describe('CompetitorProfile', () => {
        which is what a screen reader gets instead of the drawing. */
     expect(screen.queryByText(/Istrčanih trka/)).not.toBeInTheDocument()
     expect(
-      within(screen.getByRole('table', { name: 'Trke po dužini' })).getByRole('rowheader', {
+      within(screen.getByRole('table', { name: 'Trke po distanci' })).getByRole('rowheader', {
         name: 'Zbirno',
       }).parentElement,
     ).toHaveTextContent(/\d+ trk/)
@@ -2075,7 +2075,7 @@ describe('CompetitorProfile', () => {
        the check stronger, because narrowing the ring to marathons would show up
        as rows disappearing, not merely as one number changing. */
     const ring = () =>
-      within(screen.getByRole('table', { name: 'Trke po dužini' }))
+      within(screen.getByRole('table', { name: 'Trke po distanci' }))
         .getAllByRole('row')
         .map((row) => row.textContent)
     const before = ring()
@@ -2263,7 +2263,7 @@ describe('CompetitorProfile', () => {
     const user = setupUser()
     renderAt('/sr/takmicar/000007?sezona=sve')
 
-    const chart = await screen.findByRole('table', { name: 'Trke po dužini' })
+    const chart = await screen.findByRole('table', { name: 'Trke po distanci' })
 
     /* The whole table first. It grows as it is read and stops at fifty, and this
        reads the lengths out of the rows: with only the first fifty on screen a

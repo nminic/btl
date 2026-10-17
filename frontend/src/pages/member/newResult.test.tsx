@@ -123,6 +123,34 @@ const shaped = (over: Partial<Race>): Race => ({
    still measured where it decides something, in `member/racesToOffer.ts`. */
 
 
+describe('the top of the form for a new result', () => {
+  it('says nothing between the heading and the first box', async () => {
+    /* Owner, 17.10.2026: the sentence at the top of the form for a result away from the calendar,
+       „Rezultat ulazi u rang liste tek kad ga administrator odobri...", is deleted. Asked of every
+       paragraph that stands after the heading and before the first box, and not of the one sentence
+       that was there, which a rewording would walk past (the shape `event/reportResultRows.test.tsx`
+       keeps for the form on the calendar). */
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Unos rezultata' })
+    const main = screen.getByRole('main')
+    const box = first(within(main).getAllByRole('textbox'))
+
+    const between = [...main.querySelectorAll('p')].filter(
+      (one) =>
+        heading.compareDocumentPosition(one) & Node.DOCUMENT_POSITION_FOLLOWING &&
+        !one.contains(box) &&
+        one.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+
+    expect(
+      between.map((one) => one.textContent),
+      'a sentence stands between the heading and the first box',
+    ).toEqual([])
+    expect(screen.queryByText(/Rezultat ulazi u rang liste tek kad/)).toBeNull()
+  })
+})
+
 describe('a race chosen from the list', () => {
   it('travels with the request, so verification knows there is nothing to make', async () => {
     /* The one thing that tells a run from a run: a member who chose a race sends its id, and a
@@ -1013,9 +1041,7 @@ describe('a run sent back, opened again by its address', () => {
     try {
       renderAt(`${NEW}?ponovo=77`, 'competitor', ME, undefined, TODAY)
 
-      expect(
-        await screen.findByText(/Rezultat ulazi u rang liste tek kad ga administrator odobri/, undefined, SOON),
-      ).toBeVisible()
+      expect(await screen.findByLabelText(/^Naziv trke/, undefined, SOON)).toBeVisible()
       expect(screen.queryByText(/Link ne otvara rezultate/), 'a reason was shown').toBeNull()
       expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('')
     } finally {
@@ -1033,9 +1059,7 @@ describe('a run sent back, opened again by its address', () => {
     try {
       renderAt(`${NEW}?ponovo=78`, 'competitor', ME, undefined, TODAY)
 
-      expect(
-        await screen.findByText(/Rezultat ulazi u rang liste tek kad ga administrator odobri/, undefined, SOON),
-      ).toBeVisible()
+      expect(await screen.findByLabelText(/^Naziv trke/, undefined, SOON)).toBeVisible()
       expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('')
       expect(screen.getByLabelText(/^Naziv trke/)).not.toHaveAttribute('aria-disabled', 'true')
     } finally {

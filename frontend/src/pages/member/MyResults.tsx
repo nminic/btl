@@ -294,7 +294,7 @@ function Mine({ me }: { me: string }) {
                             The moderator's queue makes the same trade with four of
                             its columns (`admin/ReviewQueue.tsx`). */}
                         <th scope="col" className="table__hide-phone">
-                          {t('rankings.columns.category')}
+                          {t('myResults.distance')}
                         </th>
                         <th scope="col" className="table__hide-phone">
                           {t('profile.columns.time')}

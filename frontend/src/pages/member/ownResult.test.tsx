@@ -613,7 +613,10 @@ describe('somebody else’s result that has been counted', () => {
 
     await screen.findByLabelText(/^Naziv trke/)
 
-    expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
+    /* The plain form says nothing at the top since 17.10.2026, so what shows that this is the
+       plain form is that neither of the two notes the other roads draw is there. */
+    expect(screen.queryByText(/Rezultat ulazi u rang liste tek kad/)).toBeNull()
+    expect(screen.queryByText(/Ispravljaš rezultat koji je odbijen/)).toBeNull()
     expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
   })
 })
@@ -860,6 +863,20 @@ describe('a result that has been counted', () => {
     expect(must(cells[5], 'what a member may do').className).not.toContain('table__hide-phone')
   })
 
+  it('heads the column of the distance „Dist." and not „Kat."', async () => {
+    /* Owner, 17.10.2026: „Na Mojim rezultatima zaglavlje Kat. postaje Dist." The column holds
+       Kraća trka … Ultramaraton, which is the distance group and not the category of the member,
+       and the member's category keeps „Kat." in the rankings and on the list of members (held in
+       `publicScreens.test.tsx`). Read off the heading row of THIS table, so that the rankings
+       taking the new word, or this table keeping the old one, is a case that fails. */
+    renderAt(COUNTED, 'competitor', '000001', undefined, null)
+
+    const table = within(await screen.findByRole('table', { name: 'Uračunato' }))
+
+    expect(table.getByRole('columnheader', { name: 'Dist.' })).toBeInTheDocument()
+    expect(table.queryByRole('columnheader', { name: 'Kat.' })).toBeNull()
+  }, SLOW)
+
   it('says what is missing even when the box holds only spaces', async () => {
     /* The sentence is the whole of what this road adds to the form, and it was
        skipped for anything that is not exactly empty. Measured by a review on
@@ -1058,7 +1075,8 @@ describe('a result that has been counted', () => {
         expect(screen.getByText(/Menjaš rezultat koji je već uračunat/)).toBeVisible()
       } else {
         expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
-        expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
+        expect(screen.queryByText(/Ispravljaš rezultat koji je odbijen/)).toBeNull()
+        expect(screen.queryByText(/Rezultat ulazi u rang liste tek kad/)).toBeNull()
       }
     },
     SLOW,
@@ -1214,7 +1232,7 @@ describe('a result that has been counted', () => {
           'the form for a counted result is open',
         ).toBeNull()
         expect(screen.queryByText(/Link ne otvara rezultate/), 'a reason was shown').toBeNull()
-        expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
+        expect(screen.queryByText(/Rezultat ulazi u rang liste tek kad/)).toBeNull()
         expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('')
       } else {
         expect(screen.getByText(opens)).toBeVisible()
@@ -1341,7 +1359,8 @@ describe('a correction by its address, before the list of what was sent has come
     await screen.findByLabelText(/^Naziv trke/, undefined, SOON)
 
     expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
-    expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
+    expect(screen.queryByText(/Ispravljaš rezultat koji je odbijen/)).toBeNull()
+    expect(screen.queryByText(/Rezultat ulazi u rang liste tek kad/)).toBeNull()
     expect(writes()).toEqual([])
   }, SLOW)
 
@@ -1392,7 +1411,8 @@ describe('a correction by its address, before the list of what was sent has come
     await screen.findByLabelText(/^Naziv trke/, undefined, SOON)
 
     expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
-    expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
+    expect(screen.queryByText(/Ispravljaš rezultat koji je odbijen/)).toBeNull()
+    expect(screen.queryByText(/Rezultat ulazi u rang liste tek kad/)).toBeNull()
     expect(writes()).toEqual([])
   }, SLOW)
 })

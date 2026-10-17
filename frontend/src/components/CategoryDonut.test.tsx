@@ -8,7 +8,7 @@ import { CategoryDonut } from './CategoryDonut'
 function renderDonut(counts: Map<RaceCategory, number>) {
   render(
     <I18nProvider locale="sr">
-      <CategoryDonut counts={counts} caption="Trke po dužini" />
+      <CategoryDonut counts={counts} caption="Trke po distanci" />
     </I18nProvider>,
   )
 }
@@ -82,7 +82,7 @@ describe('CategoryDonut', () => {
 
     expect(document.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
-    expect(screen.getByRole('table', { name: 'Trke po dužini' })).toBeInTheDocument()
+    expect(screen.getByRole('table', { name: 'Trke po distanci' })).toBeInTheDocument()
   })
 })
 
