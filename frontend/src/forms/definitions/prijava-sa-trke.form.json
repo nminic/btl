@@ -10,7 +10,8 @@
       "required": true,
       "min": 0,
       "max": 200,
-      "integer": true
+      "integer": true,
+      "row": 2
     },
     {
       "name": "minutes",
@@ -19,7 +20,8 @@
       "required": true,
       "min": 0,
       "max": 59,
-      "integer": true
+      "integer": true,
+      "row": 2
     },
     {
       "name": "seconds",
@@ -28,7 +30,8 @@
       "required": true,
       "min": 0,
       "max": 59,
-      "integer": true
+      "integer": true,
+      "row": 2
     },
     {
       "name": "link",

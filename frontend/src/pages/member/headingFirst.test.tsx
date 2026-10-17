@@ -38,12 +38,14 @@ const SCREENS = [
      exist. Found in review 04.09.2026, after the other two were closed: the note
      naming the race stood over the heading „Prijava rezultata" exactly as the other
      two had. Counting the screens by reading them, rather than by remembering which
-     ones were reported, is what this row costs. */
-  [
-    '/sr/kalendar/maraton-maratona-2015/prijava?trka=683',
-    'Prijava rezultata',
-    /Prijavljuješ rezultat sa trke/,
-  ],
+     ones were reported, is what this row costs.
+
+     **No note since 16.10.2026**, so it is `null` here and the second case below leaves
+     it out: the owner took the sentence off the page („Ceo disclaimer sa vrha strane
+     obriši"). It stays in the list because the first case is about the heading and the
+     heading is still first; what nothing may stand between the heading and the first
+     field is `pages/event/reportResult.test.tsx`'s to say. */
+  ['/sr/kalendar/maraton-maratona-2015/prijava?trka=683', 'Prijava rezultata', null],
   /* The fourth, added with the screen itself on 05.09.2026 and found missing by the
      round after: the form a team is changed on explains itself the same way and the
      rule is the same. It is read as the member who administers Dunav, because nobody
@@ -79,6 +81,10 @@ describe('the screens a member writes on', () => {
        button and under every field, so a member read what happens to their result
        only after filling the whole form in (review, 04.09.2026). */
     for (const [route, name, note, who] of SCREENS) {
+      if (note === null) {
+        continue
+      }
+
       cleanup()
       renderAt(route, 'competitor', who ?? '000002', undefined, DAY)
 

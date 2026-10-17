@@ -1663,9 +1663,6 @@
   "report": {
     "title": "Reporting a result",
     "submit": "Send the result",
-    "note": "You are reporting a result from the race {race}. The portal already knows the length, the ascent and the descent from the race itself.",
-    "noteTime": "You are reporting a result from the race {race}. The portal already knows the time from the race itself and it is the same for everybody who finished; enter how far you got.",
-    "noteFree": "You are reporting a result from the race {race}. This race sets neither a length nor a time, so enter both.",
     "noRaces": "This event has no race yet, so there is nothing to report.",
     "noRace": "A result is entered from the row of a race, on the event's page."
   },
