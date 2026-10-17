@@ -373,12 +373,39 @@ describe('a field that is two columns wide', () => {
     expect(wide.getPropertyValue('grid-column')).toBe('span 2')
   })
 
+  it('is the whole row for a town that names three, with the town two columns of it and the country one', () => {
+    /* „Mesto dve trećine i Država jedna trećina" (owner, 17.10.2026). The tracks are the row's three
+       columns drawn again, so the town ends where the second column of the line above ends. */
+    const full = ruleInMedia(fields, QUERY, '.form__row .field.field--place.field--full', 'FormRenderer.css')
+
+    expect(full.getPropertyValue('grid-column')).toBe('span 3')
+    expect(full.getPropertyValue('grid-template-columns')).toBe('repeat(3, minmax(0, 1fr))')
+    expect(full.getPropertyValue('grid-template-areas').replace(/\s+/g, ' ')).toBe(
+      "'townName townName countryName' 'town town country'",
+    )
+  })
+
+  it('lets the form that carries the races take the width of the page, in its fields too', () => {
+    /* „Iskoristi celu širinu strane za gornja polja" (owner, 17.10.2026). Two caps stand over a
+       form in rows, the width of the form and the width of a field that is on no row; both are
+       undone for `.form--wide`, and only for it. */
+    const form = ruleInMedia(fields, QUERY, '.form.form--wide:has(.form__row)', 'FormRenderer.css')
+    const field = ruleInMedia(fields, QUERY, '.form.form--wide:has(.form__row) > .field', 'FormRenderer.css')
+
+    expect(form.getPropertyValue('max-width')).toBe('none')
+    expect(field.getPropertyValue('max-inline-size')).toBe('none')
+    expect(
+      ruleInMedia(fields, QUERY, '.form:has(.form__row)', 'FormRenderer.css').getPropertyValue('max-width'),
+      'the cap went from the forms that stand alone as well',
+    ).toBe('60rem')
+  })
+
   it('is two of them nowhere below that width, where the row is one column', () => {
     /* A `span 2` outside the query makes the one-column grid of a telephone invent a second column
        and scroll sideways (WCAG 2.2 SC 1.4.10). */
     expect(
       unconditionalRules(fields, 'FormRenderer.css')
-        .filter((rule) => rule.selectorText.includes('field--wide'))
+        .filter((rule) => /field--(wide|full)|form--wide:has/.test(rule.selectorText))
         .map((rule) => rule.selectorText),
       'the rule that widens a field stands outside the query',
     ).toEqual([])

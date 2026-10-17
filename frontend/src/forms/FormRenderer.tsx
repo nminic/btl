@@ -313,7 +313,7 @@ type Drawn = { field: FieldDef; value: string | boolean }
 function columnsOf(fields: Drawn[], declared: number): number {
   return Math.max(
     declared,
-    fields.reduce((so, one) => so + (one.field.type === 'place' ? 2 : (one.field.span ?? 1)), 0),
+    fields.reduce((so, one) => so + (one.field.span ?? (one.field.type === 'place' ? 2 : 1)), 0),
   )
 }
 
@@ -754,16 +754,12 @@ const Field = memo(function Field({
   return (
     /* The town carries the country beside it, so where a row has three columns
        this field is two of them (FormRenderer.css). A field that names a `span`
-       is as many columns as it names, and the stylesheet knows only the two
+       is as many columns as it names, and the stylesheet knows only two and three
        (`FieldDef.span`). */
     <div
-      className={
-        field.type === 'place'
-          ? 'field field--place'
-          : field.span === 2
-            ? 'field field--wide'
-            : 'field'
-      }
+      className={`field${field.type === 'place' ? ' field--place' : ''}${
+        field.span === 2 ? ' field--wide' : field.span === 3 ? ' field--full' : ''
+      }`}
     >
       {/* The name of the field and, beside it, the rule it carries. Beside and
           not inside: everything inside a label is the name of the field, so a

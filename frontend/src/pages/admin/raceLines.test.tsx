@@ -123,9 +123,11 @@ describe('the fields of an event, line by line', () => {
 
   /**
    * „U formi događaja Naziv zauzima dve trećine reda, a Vrsta jednu." (owner, 17.10.2026, PDL
-   * „Odgovori vlasnika 17.10.2026 na pitanja posle izvođenja"), taken apart into what it says:
-   * the name is TWO of the three columns of its line, the kind is one, and nothing else on the
-   * form is widened.
+   * „Odgovori vlasnika 17.10.2026 na pitanja posle izvođenja") and, over a picture of the form the
+   * same day, „Iskoristi celu širinu strane za gornja polja, Prva tri reda mogu u trećinama (2/3 pa
+   * 1/3)", taken apart into what they say: on each of the three lines the first field is TWO of the
+   * three columns and the second is one (the town is two thirds of the whole row and the country
+   * the third), and the description and the link are not on a line at all.
    *
    * <p>Asked of the definition (the one home of a width, `FieldDef.span`) AND of the field the
    * screen draws: the definition says two, and the stylesheet only gives two columns to a field
@@ -137,29 +139,34 @@ describe('the fields of an event, line by line', () => {
     async (way) => {
       expect(
         dogadjaj.fields.filter((one) => one.span !== undefined).map((one) => [one.name, one.span]),
-        'the only widened field of the form is the name',
-      ).toEqual([['name', 2]])
+        'the first field of each line is the only one widened',
+      ).toEqual([
+        ['name', 2],
+        ['date', 2],
+        ['city', 3],
+      ])
 
       await open(way)
 
-      const wrapperOf = (label: RegExp) =>
-        must(screen.getByLabelText(label).closest('.field'), 'the field a control stands in')
+      /* The three lines of the form, and the class each field of each wears: the first is two
+         columns and the second is one, and the town is the whole row (it carries its country). */
+      const form = screen.getByRole('form', { name: /./ })
+      const classesOnLines = [...form.querySelectorAll<HTMLElement>(':scope .form__row')].map((line) =>
+        [...line.querySelectorAll<HTMLElement>(':scope > .field')].map((one) =>
+          [...one.classList].filter((name) => name !== 'field').join(' '),
+        ),
+      )
 
-      expect(wrapperOf(/^Naziv događaja/)).toHaveClass('field--wide')
-      expect(wrapperOf(/^Vrsta događaja/)).not.toHaveClass('field--wide')
-      /* And no other field of the form is widened: the lines of the event, not the races under it,
-         which have a Datum and a Vrsta of their own. */
-      const widened = [...document.querySelectorAll('.form .field--wide')]
-
-      expect(widened, 'a field besides the name was widened').toEqual([wrapperOf(/^Naziv događaja/)])
-      /* The line has three columns, and the name and the kind fill them: the third that stood empty
-         beside them is gone. */
-      expect(
-        must(
-          screen.getByLabelText(/^Naziv događaja/).closest('.form__row'),
-          'the line of the name',
-        ).getAttribute('style'),
-      ).toContain('--columns: 3')
+      expect(classesOnLines).toEqual([
+        ['field--wide', ''],
+        ['field--wide', ''],
+        ['field--place field--full'],
+      ])
+      /* The lines are three columns, and the two fields of each fill them: nothing is left empty
+         beside them. */
+      for (const line of form.querySelectorAll<HTMLElement>(':scope .form__row')) {
+        expect(line.getAttribute('style')).toContain('--columns: 3')
+      }
     },
     SLOW,
   )

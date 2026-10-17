@@ -2181,6 +2181,10 @@ describe('a field that is two columns wide', () => {
       { name: 'vrsta', type: 'select', labelKey: 'proba.vrsta', row: 1, options: kindWords },
       { name: 'bez', type: 'text', labelKey: 'proba.bez', row: 2 },
       { name: 'uzan', type: 'text', labelKey: 'proba.uzan', row: 2 },
+      /* A town is two columns by being a town, and three where the definition says the whole row
+         (owner, 17.10.2026: the town two thirds of the line and the country the third). */
+      { name: 'grad', type: 'place', labelKey: 'proba.grad', row: 3, span: 3 },
+      { name: 'selo', type: 'place', labelKey: 'proba.selo', row: 4 },
     ],
   }
 
@@ -2191,10 +2195,12 @@ describe('a field that is two columns wide', () => {
   }
 
   it('makes its row three columns, and a row without one stays at the fields on it', () => {
-    const [first, second] = drawn()
+    const [first, second, third, fourth] = drawn()
 
     expect(must(first, 'the first row')).toHaveStyle({ '--columns': '3' })
     expect(must(second, 'the second row')).toHaveStyle({ '--columns': '2' })
+    expect(must(third, 'the third row')).toHaveStyle({ '--columns': '3' })
+    expect(must(fourth, 'the fourth row')).toHaveStyle({ '--columns': '2' })
   })
 
   it('wears the class the stylesheet gives two columns to, and nothing else does', () => {
@@ -2209,5 +2215,14 @@ describe('a field that is two columns wide', () => {
         `${String(narrow)} was widened`,
       ).not.toHaveClass('field--wide')
     }
+  })
+
+  it('wears the class of the whole row on a town that names three, and on no other', () => {
+    drawn()
+
+    const towns = [...document.querySelectorAll<HTMLElement>('.field--place')]
+
+    expect(towns.map((one) => one.classList.contains('field--full'))).toEqual([true, false])
+    expect(document.querySelectorAll('.field--full').length).toBe(1)
   })
 })

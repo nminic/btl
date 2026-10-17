@@ -39,6 +39,7 @@
       "type": "date",
       "labelKey": "admin.field.date",
       "required": true,
+      "span": 2,
       "row": 2
     },
     {
@@ -64,6 +65,7 @@
       "labelKey": "admin.field.city",
       "required": true,
       "maxLength": 80,
+      "span": 3,
       "row": 3
     },
     {
