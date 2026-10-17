@@ -7,6 +7,7 @@ import { serverThat, type Asked } from '../test/serverAnswers'
 import { myOwnRecordFromMe } from '../test/theAnswer'
 import {
   whatTheServerSaysOfMyData,
+  whatTheServerSaysOfMyMailLanguage,
   whatTheServerSaysOfMyProfile,
   whoTheServerSaysIAm,
 } from './theServer'
@@ -1064,4 +1065,68 @@ describe('the data of the caller himself', () => {
       })
     },
   )
+})
+
+/**
+ * THE LANGUAGE OF THE ACCOUNT'S MAIL, read off the same request (JM-B).
+ *
+ * <p>`GET /api/me` carries `mailLanguage` beside the role and the account, for every account that is
+ * signed in, **a record or none** - which is why this reader looks at the OUTER answer and not at
+ * `member`. The case that measures that is the second one: an account with no competitor record has
+ * a language, and a reader that went through the record would answer nothing for administration.
+ */
+describe('the language of the mail the server says the account holds', () => {
+  it.each(['sr', 'en'] as const)('is %s for a member', async (language) => {
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'competitor', account: 41, member: {}, mailLanguage: language })),
+    )
+
+    expect(await whatTheServerSaysOfMyMailLanguage()).toBe(language)
+    expect(server.asked.map((one) => one.path)).toEqual(['/api/me'])
+  })
+
+  it('is there for an account with no competitor record at all', async () => {
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'moderator', account: 41, mailLanguage: 'en' })),
+    )
+
+    expect(await whatTheServerSaysOfMyMailLanguage()).toBe('en')
+  })
+
+  it.each([
+    ['a language the portal does not write', JSON.stringify({ role: 'moderator', account: 41, mailLanguage: 'de' })],
+    ['no language at all', JSON.stringify({ role: 'moderator', account: 41 })],
+    ['a language inside the record and not beside it', JSON.stringify({ role: 'competitor', account: 41, member: { mailLanguage: 'en' } })],
+    ['null', 'null'],
+    ['something that is not JSON', '<!doctype html><title>ne ovo</title>'],
+  ])('is nothing for %s', async (_what, body) => {
+    server = serverThat(() => saying(body))
+
+    expect(await whatTheServerSaysOfMyMailLanguage()).toBeNull()
+  })
+
+  it('is nothing when the chain refuses, and when there is no server to reach', async () => {
+    server = serverThat(() => new Response(null, { status: 401 }))
+
+    expect(await whatTheServerSaysOfMyMailLanguage()).toBeNull()
+
+    server.stop()
+    server = serverThat(() => {
+      throw new Error('nema veze')
+    })
+
+    expect(await whatTheServerSaysOfMyMailLanguage()).toBeNull()
+  })
+
+  /* **A FAULT HERE MUST NEVER SIGN HIM OUT**, the condition every reader of this request is held
+     to: `whoTheServerSaysIAm` answers `null` for every fault and the session reads `null` as nobody,
+     so a language the portal cannot believe, read THERE, would sign him out of every screen. */
+  it('leaves him signed in when the language is one the portal cannot believe', async () => {
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'moderator', account: 41, mailLanguage: 'de' })),
+    )
+
+    expect(await whatTheServerSaysOfMyMailLanguage(), 'his language').toBeNull()
+    expect(await whoTheServerSaysIAm(), 'who he is').toMatchObject({ role: 'moderator', account: 41 })
+  })
 })

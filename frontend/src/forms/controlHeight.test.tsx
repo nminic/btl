@@ -468,6 +468,14 @@ describe('how tall a control in a form is', () => {
          is why this screen is on the list and not outside it. */
       'pages/admin/EventRaces.tsx',
       'pages/event/GoingToEvent.tsx',
+      /* THE GROUP OF TWO RADIOS FOR THE LANGUAGE OF A MEMBER'S MAIL (JM-B, 17.10.2026), written as
+         the theme beside it on the settings screen is: a `.field--radio` with a `.field__confirm` a
+         radio. Measured in Chrome over the built package at 360, 768 and 1280, for a member whose
+         fee stands, one whose fee has lapsed and an account with no record: each radio is 18,0px
+         square, which is the tick of the box beside it and not the height of a text box, so the way
+         out above reaches it; the group is 324, 732 and 1064px wide inside the page's own gutter, and
+         nothing on the screen is wider than the window at any of the three. */
+      'pages/member/MailLanguageChoice.tsx',
       'pages/member/Membership.tsx',
       /* THE FIRST SCREEN THIS CASE EVER STOPPED, and it stopped it the day it arrived: the
          block that hides a profile moved out of the settings into a screen of its own, and

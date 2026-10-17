@@ -21,6 +21,7 @@ import { WHEN_WRITING_A_MODERATOR } from '../admin/moderatorWrites'
 import { WHEN_ACTIVATING, WHEN_BOOKING_A_PAYMENT } from '../admin/activation'
 import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
 import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
+import { WHEN_CHOOSING_THE_LANGUAGE_OF_MAIL } from '../member/mailLanguage'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
 import { WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR } from '../member/pairWrites'
 import { WHEN_ANSWERING_A_TEAM_INVITE } from '../member/teamWrites'
@@ -329,6 +330,11 @@ describe('the reasons the server can name', () => {
        - so the one dictionary the screen hands in still covers everything the file can
        say. */
     ['MePhotoApi.java', [WHEN_SENDING_A_PICTURE], 7],
+    /* THE LANGUAGE OF AN ACCOUNT'S MAIL, added 17.10.2026 with the panel that meets it
+       (`member/MailLanguageChoice.tsx`). One constant, `theFormIsNotComplete`, and it is a refusal: a
+       body with no language, or one the portal does not write in. Counted over the file like every
+       row above, so a second reason arrives as a red gate with the number in the message. */
+    ['MeMailLanguageApi.java', [WHEN_CHOOSING_THE_LANGUAGE_OF_MAIL], 1],
     /* THE EIGHTH, ADDED 26.09.2026 WITH THE SCREEN THAT MEETS HALF OF IT. `CompetitorWriteApi`
        declares fourteen constants, which is the largest number on this list and the first
        where all three categories appear at once: five that are not refusals

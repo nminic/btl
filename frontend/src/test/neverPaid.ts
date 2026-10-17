@@ -65,7 +65,15 @@ export function neverPaidAsServed(
   return serverThat((path) =>
     path === '/api/me'
       ? new Response(
-          JSON.stringify({ role, account: 1, member: { ...aNeverPaidRecord, ...changes } }),
+          JSON.stringify({
+            role,
+            account: 1,
+            member: { ...aNeverPaidRecord, ...changes },
+            /* The third name of the answer (`MeApi.WhoIAm`), which the language panel of the settings
+               reads. The server sends it to every account, so a stand-in that left it out would make
+               every case below a case about a panel that cannot read its language. */
+            mailLanguage: 'sr',
+          }),
           { status: 200, headers: { 'content-type': 'application/json' } },
         )
       : null,

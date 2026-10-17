@@ -1,4 +1,5 @@
 import { askTheServer, type Answer } from '../pages/account/askTheServer'
+import { mailLanguageOfMe, type MailLanguage } from '../pages/member/mailLanguage'
 import { SIGNED_IN_ROLES, type SignedInRole } from '../roles/context'
 import { AGE_BANDS, type AgeBand } from '../data/categories'
 import { REFERRAL_CODE } from '../data/pricing'
@@ -446,6 +447,24 @@ export async function whatTheServerSaysOfMyData(): Promise<MyData | null> {
   const body = await whatTheServerAnswersMe()
 
   return body === null ? null : dataIn(recordIn(body))
+}
+
+/**
+ * THE LANGUAGE THE ACCOUNT'S MAIL IS WRITTEN IN, or nothing.
+ *
+ * <p>The fourth reader of the request the second of the three things above makes, and the first
+ * that reads nothing of the member: `GET /api/me` carries `mailLanguage` beside the role and the
+ * account (`MeApi.WhoIAm`), for every account that is signed in, a record or no record. It is read
+ * off the OUTER answer, which is why it needs no {@link recordIn} and why an administration account
+ * with no competitor record has one.
+ *
+ * <p>Its own reader for the reason the other two have: a fault in it must never sign him out
+ * ({@link whatTheServerAnswersMe} is shared and nothing it returns is).
+ */
+export async function whatTheServerSaysOfMyMailLanguage(): Promise<MailLanguage | null> {
+  const body = await whatTheServerAnswersMe()
+
+  return body === null ? null : mailLanguageOfMe(body)
 }
 
 /**
