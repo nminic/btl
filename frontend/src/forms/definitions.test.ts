@@ -61,6 +61,22 @@ describe('every form definition in the portal', () => {
     ).toThrow('Form proba, field ime: tekst is not a field type')
   })
 
+  it('refuses a width the stylesheet does not know, and reads the two it does', () => {
+    /* JSON reads `"span": 2` as a number, so `formDef` looks at it the way it looks at a type: a
+       width of four would otherwise be a class nobody styled and a row that counts a column more
+       than it draws. */
+    const written = (span: number) => ({
+      id: 'proba',
+      titleKey: 'proba.title',
+      submitKey: 'proba.submit',
+      fields: [{ name: 'ime', type: 'text', labelKey: 'proba.ime', span }],
+    })
+
+    expect(() => formDef(written(4))).toThrow('Form proba, field ime: 4 is not a width')
+    expect(formDef(written(2)).fields[0]?.span).toBe(2)
+    expect(formDef(written(3)).fields[0]?.span).toBe(3)
+  })
+
   it('writes with the editor exactly the four texts the owner chose, and no other box', () => {
     /* Owner, 16.10.2026, chosen among the options offered (PDL, „Ispravke sa
        ekrana 16.10.2026"): the editor is for the texts of the administration,

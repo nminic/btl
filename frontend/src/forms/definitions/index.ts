@@ -51,7 +51,7 @@ const FIELD_TYPES: Record<FieldType, true> = {
 
 /** A field as JSON is able to describe one: everything `FieldDef` carries,
  *  except that the type is still only a string. */
-type WrittenField = Omit<FieldDef, 'type'> & { type: string }
+type WrittenField = Omit<FieldDef, 'type' | 'span'> & { type: string; span?: number }
 
 /** A form as JSON is able to describe one. */
 export type WrittenForm = Omit<FormDef, 'fields'> & { fields: WrittenField[] }
@@ -76,7 +76,19 @@ export function formDef(written: WrittenForm): FormDef {
         throw new Error(`Form ${written.id}, field ${field.name}: ${field.type} is not a field type`)
       }
 
-      return { ...field, type: field.type }
+      /* The same look for a width: JSON reads `"span": 2` as a number, and the two the sheet knows are
+         the only ones that come through (`FieldDef.span`). */
+      const { span, ...rest } = field
+
+      if (span === undefined) {
+        return { ...rest, type: field.type }
+      }
+
+      if (span !== 2 && span !== 3) {
+        throw new Error(`Form ${written.id}, field ${field.name}: ${String(span)} is not a width`)
+      }
+
+      return { ...rest, type: field.type, span }
     }),
   }
 }
