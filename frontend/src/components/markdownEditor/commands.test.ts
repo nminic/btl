@@ -80,6 +80,18 @@ describe('the four buttons that switch something', () => {
     expect(after(at('1. Reči', 3), list)).toBe('Reči')
   })
 
+  it('make an item of a heading, as a line of words, in one change', () => {
+    const state = at('## Naslov', 2)
+    const next: EditorState[] = []
+
+    expect(list(state)).toBe(true)
+    list(state, (tr) => next.push(state.apply(tr)))
+
+    const made = next.at(-1)
+
+    expect(made === undefined ? null : toMarkdown(made.doc.content)).toBe('- Naslov')
+  })
+
   it('refuse a heading inside a list, which a written list cannot hold', () => {
     expect(heading(at('- Reči', 3))).toBe(false)
   })

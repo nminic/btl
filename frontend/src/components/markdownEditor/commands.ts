@@ -64,11 +64,28 @@ export function inList(state: EditorState): boolean {
   return $from.node(Math.max(0, $from.depth - 1)).type === schema.nodes.list_item
 }
 
-/** A list, or out of one where it already is in one. */
-export const list: Command = (state, dispatch) =>
-  inList(state)
-    ? liftListItem(schema.nodes.list_item)(state, dispatch)
-    : wrapInList(schema.nodes.bullet_list)(state, dispatch)
+/**
+ * A list, or out of one where it already is in one.
+ *
+ * A heading becomes an item too: it is made a paragraph first, because an item of a written list is
+ * one line of words and not a heading, and both happen in one change, so one undo takes back both.
+ */
+export const list: Command = (state, dispatch) => {
+  if (inList(state)) {
+    return liftListItem(schema.nodes.list_item)(state, dispatch)
+  }
+
+  if (!inHeading(state)) {
+    return wrapInList(schema.nodes.bullet_list)(state, dispatch)
+  }
+
+  const tr = state.tr.setBlockType(state.selection.from, state.selection.to, schema.nodes.paragraph)
+
+  return wrapInList(schema.nodes.bullet_list)(state.apply(tr), (wrapped) => {
+    wrapped.steps.forEach((step) => tr.step(step))
+    dispatch?.(tr.scrollIntoView())
+  })
+}
 
 /** Whether what is selected, or what is about to be typed, carries the mark. */
 export function marked(state: EditorState, type: MarkType): boolean {
