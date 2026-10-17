@@ -36,11 +36,3 @@ export function freshNews(items: NewsItem[], today: string): NewsItem[] {
     .sort((left, right) => right.date.localeCompare(left.date))
     .slice(0, 3)
 }
-
-/**
- * The counters carry the running season once it has results. Until then they
- * show the fullest season there is, and say so, rather than five zeros.
- */
-export function seasonLabelKey(season: number, runningSeason: number): string {
-  return season === runningSeason ? 'home.season' : 'home.seasonSample'
-}

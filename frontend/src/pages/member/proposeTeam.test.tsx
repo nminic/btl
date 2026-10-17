@@ -197,17 +197,21 @@ describe('the way to propose a team', () => {
        suite green (review, 05.09.2026). */
     const user = setupUser()
 
-    renderAt('/sr/timovi', 'competitor', '000002', undefined, DAY)
+    /* Read in the window of 2027 and not on `DAY`: before the league has a season the one
+       that has not begun and the one the standing opens on are both 2027 (owner,
+       16.10.2026, `seasonShown`), so on `DAY` the two halves of this case could not be
+       told apart. */
+    renderAt('/sr/timovi', 'competitor', '000002', undefined, '2027-10-15')
 
     await screen.findByRole('table', { name: 'Timovi' })
 
     const seasons = screen.getByLabelText(/Sezona/)
 
-    expect(within(seasons).getAllByRole('option').map((one) => one.textContent)).toContain('2027')
+    expect(within(seasons).getAllByRole('option').map((one) => one.textContent)).toContain('2028')
     /* And it opens on the season now running, never on the one that has not begun. */
-    expect(seasons).toHaveValue('2026')
+    expect(seasons).toHaveValue('2027')
 
-    await user.selectOptions(seasons, '2027')
+    await user.selectOptions(seasons, '2028')
 
     const table = within(await screen.findByRole('table', { name: 'Timovi' }))
     /* Read by role and by the place in the row rather than by a class name: the

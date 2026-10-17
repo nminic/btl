@@ -9,11 +9,11 @@ import { SeasonPicker } from '../components/SeasonPicker'
 import {
   categoriesOf,
   categoryOfMember,
-  defaultSeason,
-  numbered,
   rankingFor,
-  seasonsWithResults,
+  seasonsOnOffer,
 } from '../data/derive'
+import { seasonShown } from '../data/season'
+import { offeredSeason } from '../components/season'
 import type { Competitor, Gender, Result } from '../data/types'
 import { combinePair, useCompetitors, useResults } from '../data/useResource'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
@@ -55,24 +55,25 @@ function Standing({
      table: it is what gives the circle its address, or none where the profile cannot be reached. */
   const linkTo = useProfileLink()
 
-  const seasons = useMemo(() => seasonsWithResults(results), [results])
+  /* No season before the league's first (owner, 10.10.2026: „Ne postoje obracuni liga"
+     before 2027), and always the one this screen opens on (`seasonsOnOffer`). */
+  const seasons = useMemo(() => seasonsOnOffer(results, today), [results, today])
 
   /* The season this screen opens on when the address names none, worked out
      apart from the season being read. The shared control needs both: it writes a
      year into the address only while that year is not the one the screen would
      have opened on anyway, which is how every address on the portal stays as
-     short as it can be (SeasonPicker). */
-  const fallback = useMemo(() => {
-    // The default follows the list being shown, not the data as a whole: a
-    // season can have a full women's field and a single man in it.
-    const ofGender = new Set(
-      competitors.filter((one) => one.gender === gender).map((one) => one.memberNumber),
-    )
+     short as it can be (SeasonPicker).
 
-    return defaultSeason(numbered(results).filter((one) => ofGender.has(one.memberNumber)), today)
-  }, [competitors, results, gender, today])
+     **The running season, and before the league has one its first, however empty**
+     (owner, 16.10.2026, `seasonShown`). Until that day it was the fullest season of
+     the men or of the women, whichever list was open, until the running one had
+     three people in it, so the table opened on 2019. */
+  const fallback = seasonShown(today)
 
-  const season = seasonParam === null ? fallback : Number(seasonParam)
+  /* Held against what is on offer, so `?sezona=2019` in an address shows this season
+     and not a table the control cannot name (`offeredSeason`). */
+  const season = Number(offeredSeason(seasonParam ?? '', seasons, String(fallback)))
 
   /* Who this season's table is drawn from (PDL P11).
    *

@@ -5,7 +5,6 @@ import {
   categoriesOf,
   topByCategory,
   defaultMonth,
-  defaultSeason,
   eventSpan,
   eventsOnDay,
   monthDrawing,
@@ -26,6 +25,7 @@ import {
   pairsFrom,
   rankTeams,
   resultsOf,
+  seasonsOnOffer,
   seasonsWithResults,
   totalsByMember,
   totalsOf,
@@ -401,38 +401,55 @@ describe('monthGrid', () => {
   })
 })
 
-describe('defaultSeason', () => {
-  const results = [
-    result('000001', '2026-01-01', 1),
+describe('the seasons a seasonal view offers', () => {
+  /* Owner, 16.10.2026: „Prva sezona je 2027, pa su samim tim svi brojači na nuli";
+     chosen with it, between the options put to him, that a seasonal view is always
+     the running season and an empty one is not swapped for an earlier one. And
+     10.10.2026: „Ne postoje obracuni liga" before 2027.
+
+     **The day the screen is read and the days the results were run are two
+     different constants in every case**, so an answer read off the results cannot
+     pass for one read off the clock, nor the other way round. */
+  const history = [
     result('000001', '2019-01-01', 1),
     result('000002', '2019-02-01', 1),
     result('000004', '2019-03-01', 1),
+    result('000001', '2026-04-04', 1),
+    result('000002', '2026-05-05', 1),
+    result('000004', '2026-06-06', 1),
   ]
 
-  it('opens on the running season once it has a field', () => {
-    const started = [
-      ...results,
-      result('000002', '2026-02-02', 1),
-      result('000004', '2026-03-03', 1),
+  it('before 2027 is 2027 alone, with full seasons of history behind it', () => {
+    expect(seasonsOnOffer(history, '2026-10-16')).toEqual([2027])
+  })
+
+  it('in an empty 2027 is still 2027 alone', () => {
+    expect(seasonsOnOffer(history, '2027-03-01')).toEqual([2027])
+  })
+
+  it('in 2027 with one member who has raced is 2027', () => {
+    /* Three were needed before a season counted as „a field"; that rule is gone. */
+    expect(seasonsOnOffer([...history, result('000001', '2027-02-02', 1)], '2027-03-01')).toEqual([
+      2027,
+    ])
+  })
+
+  it('in an empty 2028 is 2028 first, and 2027 after it because it was run', () => {
+    const run = [
+      ...history,
+      result('000001', '2027-02-02', 1),
+      result('000002', '2027-04-04', 1),
+      result('000004', '2027-06-06', 1),
     ]
 
-    expect(defaultSeason(started, '2026-08-01')).toBe(2026)
+    expect(seasonsOnOffer(run, '2028-02-01')).toEqual([2028, 2027])
   })
 
-  it('skips a season too thin to fill a podium', () => {
-    // Two people are not a standing, and a table judged on them looks broken.
-    const two = [...results, result('000002', '2026-02-02', 1)]
-
-    expect(defaultSeason(results, '2026-08-01')).toBe(2019)
-    expect(defaultSeason(two, '2026-08-01')).toBe(2019)
-  })
-
-  it('opens on the fullest season when the running one is still empty', () => {
-    expect(defaultSeason(results, '2027-03-01')).toBe(2019)
-  })
-
-  it('falls back to the running season when there is nothing at all', () => {
-    expect(defaultSeason([], '2027-03-01')).toBe(2027)
+  it('leaves the career list alone: a profile still reads every season raced', () => {
+    /* `seasonsWithResults` is what a profile offers (owner, 16.10.2026: the counters
+       on a profile stay career figures). Held here so that the floor above cannot be
+       moved into it without this going red. */
+    expect(seasonsWithResults(history)).toEqual([2026, 2019])
   })
 })
 
@@ -503,27 +520,6 @@ describe('a result that names no member', () => {
 
     expect(memberOf(byNumber, at(anybody, 0))).toBe(who)
     expect(memberOf(byNumber, at(nobody, 0))).toBeUndefined()
-  })
-
-  it('does not fill up a season that has no field', () => {
-    /* The one place it shows without anybody going looking. The season being read
-       has two members in it, which is under the three a podium needs, so the
-       screen opens on the older one instead. Counted as a member, the rows above
-       make a third „person" and the screen opens on a season of two.
-
-       2019 carries three, so the answer is a season and not a shrug: a fallback
-       to the running year would pass either way. */
-    const older = [
-      result('000001', '2019-01-01', 1),
-      result('000002', '2019-02-01', 1),
-      result('000004', '2019-03-01', 1),
-    ]
-
-    expect(defaultSeason([...anybody, ...older, ...nobody], '2026-08-01')).toBe(2019)
-    expect(
-      defaultSeason([...anybody, ...older, ...nobody], '2026-08-01'),
-      'the rows with no member number changed which season the screen opens on',
-    ).toBe(defaultSeason([...anybody, ...older], '2026-08-01'))
   })
 })
 

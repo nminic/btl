@@ -90,6 +90,30 @@ export function seasonRunning(today: string): number | null {
   return year < FIRST_SEASON ? null : year
 }
 
+/**
+ * The season every seasonal view of the league is drawn for: the running one, and
+ * before the league has one, its first.
+ *
+ * Owner, 16.10.2026: „Nema šta probni ili ne probni podaci. Prva sezona je 2027, pa
+ * su samim tim svi brojači na nuli, a i sve su statistike prazne jer nema trka u
+ * 2027. godini. Ovo se odnosi na rang liste, Tabelu, naslovnu stranu i sl." Chosen
+ * with it, between the options put to him: a seasonal view is always this season,
+ * and an empty one shows noughts rather than falling back to an earlier one.
+ *
+ * **So this never looks at a result.** Until 16.10.2026 the front page, the table
+ * and the top boards opened on „the fullest season there is" until the running one
+ * had three people in it (`defaultSeason` in `data/derive.ts`, gone), which drew
+ * 2019 under the words „probni podaci" in 2026 and would have gone on drawing it in
+ * January 2027. That rule was a choice made in code and never the owner's.
+ *
+ * Not `seasonRunning`, which answers nothing before 2027 and is right to: a
+ * sentence about „the season now running" is about nothing in 2026. A screen still
+ * has to show some season, and the one it shows is the first the league runs.
+ */
+export function seasonShown(today: string): number {
+  return Math.max(FIRST_SEASON, Number(today.slice(0, 4)))
+}
+
 export function inYearlyWindow(today: string): boolean {
   const dayInYear = today.slice(5)
 

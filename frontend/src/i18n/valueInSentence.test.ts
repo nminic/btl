@@ -244,7 +244,6 @@ describe('a sentence with a value put into it', () => {
          no separator for the thousands, so they have no case to be wrong in. */
       '? (EventRaces.tsx)',
       '? (FormRenderer.tsx)',
-      '? (Home.tsx)',
       /* The rule beside the password, whose name is declared as a `hintKey` on the
          screen rather than written into the call: `t(PASSWORD_FIELD.hintKey, { count })`.
          That shape is not an accident and is not avoidable either. `forms/fieldHint.test.tsx`
@@ -354,6 +353,11 @@ describe('a sentence with a value put into it', () => {
       'form.suggested',
       'home.moreRuns',
       'home.place',
+      /* The heading of the counters on the front page: „Sezona {season}.". The year is a
+         figure after a noun in the nominative, so it has no case to be wrong in. It was
+         chosen out of two keys until 16.10.2026, the other one „Sezona {season}, probni
+         podaci", and so stood among the calls whose key is not written out. */
+      'home.season',
       /* The name of the competition inside the name of the control that opens its list of events
          and races, and inside the wait under it. Nominative, because the competition is what the
          box is about and nothing governs it: „Događaji i trke, RunTrace liga 2027". */

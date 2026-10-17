@@ -21,6 +21,7 @@ import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { sep } from 'node:path'
 import { sources } from '../test/sources'
 import { at, first, htmlElement, last, must, selectElement } from '../test/at'
+import { inLeague, playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
 import { renderAt } from '../test/render'
 import { membersAsServed, serverThat } from '../test/serverAnswers'
 import { everyRule } from '../test/stylesheet'
@@ -218,7 +219,7 @@ function shareOf(column: HTMLElement, name: string): number {
  * it (PDL P28a), and has its own block further down. */
 /** A season the league barely raced in, so a category the chips offer can
  *  hold nobody. Named once, because three assertions read it. */
-const SPARSE = 2022
+const SPARSE = inLeague(2022)
 
 /** The standing at a season, and at a category if one is asked for. */
 const ADDRESS = (season: number, category?: string) =>
@@ -257,8 +258,104 @@ function everySaying(inKey: string): [string, string][] {
 }
 
 describe('Rankings', () => {
-  it('opens on a season that has a field, with the columns from the rulebook', async () => {
+  /* The history in league seasons, because no season before 2027 is on these screens
+     (`test/leagueSeasons.ts`). */
+  playTheHistoryAsLeagueSeasons()
+
+  it('opens on the first season of the league, empty, and offers nothing before it', async () => {
+    /* Owner, 16.10.2026: „Prva sezona je 2027, pa su samim tim svi brojači na nuli, a i
+       sve su statistike prazne"; chosen with it, between the options put to him, that
+       an empty season is not swapped for an earlier one. And 10.10.2026: „Ne postoje
+       obracuni liga" before 2027.
+
+       **Read on the suite's two days, 30.09.2026 and 1.11.2027, and both open on
+       2027**, because the history moved into league seasons has nothing in it. And it
+       has a full 2026 (the history's 2010), which is the season the floor must keep
+       off the control: a floor at „the year before" or none at all offers it. */
     renderAt('/sr/tabela')
+
+    const season = selectElement(await screen.findByLabelText('Sezona'))
+
+    expect(season.value).toBe('2027')
+    expect(await screen.findByText('U ovoj sezoni i kategoriji nema nijednog rezultata.')).toBeVisible()
+    expect(
+      within(season)
+        .getAllByRole('option')
+        .map((option) => Number(option.textContent))
+        .filter((year) => year < 2027),
+      'a season before the league is on offer',
+    ).toEqual([])
+    expect(within(season).getByRole('option', { name: String(inLeague(2019)) })).toBeInTheDocument()
+  })
+
+  it('ignores an address that names a season before the league', async () => {
+    /* `?sezona=2019` in a link from before 16.10.2026: the control cannot name it, so
+       the table under it must not draw it either (`offeredSeason`). */
+    renderAt('/sr/tabela?sezona=2019')
+
+    expect(selectElement(await screen.findByLabelText('Sezona')).value).toBe('2027')
+    expect(await screen.findByText('U ovoj sezoni i kategoriji nema nijednog rezultata.')).toBeVisible()
+  })
+
+  /** The history as this describe serves it, and these results of the league on top of it,
+   *  each on a day of its own. Put back by the hook the describe already has. */
+  function serveAlso(added: { memberNumber: string; date: string }[]): void {
+    const served = globalThis.fetch
+
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+      const answer = await served(input, init)
+
+      if (String(input) !== '/api/results' || (init?.method ?? 'GET') !== 'GET') {
+        return answer
+      }
+
+      const history: unknown = await answer.json()
+      const rows = Array.isArray(history) ? history : []
+      const template: unknown = rows[0]
+
+      return new Response(
+        JSON.stringify([
+          ...rows,
+          ...added.map((one, index) => ({
+            ...(typeof template === 'object' && template !== null ? template : {}),
+            id: 900_000 + index,
+            ...one,
+          })),
+        ]),
+        { headers: { 'content-type': 'application/json' } },
+      )
+    })
+  }
+
+  it('opens on 2027 with one member in it, and not on a fuller season', async () => {
+    /* Until 16.10.2026 a season needed three people before the table opened on it. */
+    serveAlso([{ memberNumber: '000001', date: '2027-02-02' }])
+    renderAt('/sr/tabela', 'visitor', null, undefined, '2027-03-01')
+
+    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+
+    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2027')
+    expect(rows).toHaveLength(1)
+    expect(first(rows).textContent).toContain('Đurišić')
+  }, SLOW)
+
+  it('opens on an empty 2028 with a full 2027 one choice away', async () => {
+    serveAlso([
+      { memberNumber: '000001', date: '2027-02-02' },
+      { memberNumber: '000002', date: '2027-04-04' },
+      { memberNumber: '000004', date: '2027-06-06' },
+    ])
+    renderAt('/sr/tabela', 'visitor', null, undefined, '2028-02-01')
+
+    const season = selectElement(await screen.findByLabelText('Sezona'))
+
+    expect(season.value).toBe('2028')
+    expect(await screen.findByText('U ovoj sezoni i kategoriji nema nijednog rezultata.')).toBeVisible()
+    expect(within(season).getByRole('option', { name: '2027' })).toBeInTheDocument()
+  }, SLOW)
+
+  it('draws the columns from the rulebook', async () => {
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     expect(await screen.findByRole('table')).toBeVisible()
     // The two vertical columns stand beside the distance, and no column below is
@@ -272,7 +369,7 @@ describe('Rankings', () => {
   })
 
   it('orders by points, and marks the podium gold', async () => {
-    renderAt('/sr/tabela?sezona=2020')
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
     const points = rows.map(lastNumberIn)
@@ -287,7 +384,7 @@ describe('Rankings', () => {
 
   it('keeps men and women apart', async () => {
     const user = setupUser()
-    renderAt('/sr/tabela?sezona=2020')
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     const men = within(await screen.findByRole('table')).getAllByRole('row').length
     await user.click(screen.getByRole('button', { name: 'Žene' }))
@@ -299,20 +396,20 @@ describe('Rankings', () => {
 
   it('goes back to the men after the women, and changes the season', async () => {
     const user = setupUser()
-    renderAt('/sr/tabela?sezona=2020')
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     await screen.findByRole('table')
     await user.click(screen.getByRole('button', { name: 'Žene' }))
     await user.click(screen.getByRole('button', { name: 'Muškarci' }))
     expect(screen.getByRole('button', { name: 'Muškarci' })).toHaveAttribute('aria-pressed', 'true')
 
-    await user.selectOptions(screen.getByLabelText('Sezona'), '2019')
-    expect(screen.getByLabelText('Sezona')).toHaveValue('2019')
+    await user.selectOptions(screen.getByLabelText('Sezona'), String(inLeague(2019)))
+    expect(screen.getByLabelText('Sezona')).toHaveValue(String(inLeague(2019)))
   })
 
   it('narrows by category, and lets it go again', async () => {
     const user = setupUser()
-    renderAt('/sr/tabela?sezona=2020')
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     const all = within(await screen.findByRole('table')).getAllByRole('row').length
     const categories = within(screen.getByRole('group', { name: 'Kategorija' }))
@@ -338,13 +435,13 @@ describe('Rankings', () => {
        shared control that writes the address for itself. Both controls are pressed
        below, and the address is read before either of them. */
     const user = setupUser()
-    const { router } = renderAt('/sr/tabela?sezona=2020&trazi=nesto')
+    const { router } = renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}&trazi=nesto`)
     const address = () => new URLSearchParams(router.state.location.search)
 
     await screen.findByRole('table')
 
     expect(address().get('trazi'), 'the address still names a control that is gone').toBeNull()
-    expect(address().get('sezona'), 'the rest of the address went with it').toBe('2020')
+    expect(address().get('sezona'), 'the rest of the address went with it').toBe(String(inLeague(2020)))
 
     await user.click(
       within(screen.getByRole('group', { name: 'Kategorija' })).getAllByRole('button')[1] ??
@@ -354,10 +451,10 @@ describe('Rankings', () => {
     expect(address().get('trazi')).toBeNull()
     expect(address().get('kategorija')).not.toBeNull()
 
-    await user.selectOptions(screen.getByLabelText('Sezona'), '2019')
+    await user.selectOptions(screen.getByLabelText('Sezona'), String(inLeague(2019)))
 
     expect(address().get('trazi'), 'the season wrote it back').toBeNull()
-    expect(address().get('sezona')).toBe('2019')
+    expect(address().get('sezona')).toBe(String(inLeague(2019)))
   })
 
   it('marks the chosen category as chosen, and not only to a screen reader', async () => {
@@ -372,7 +469,7 @@ describe('Rankings', () => {
        controls: „Sve" is on when nothing is filtered, and a band is on when it
        is the one in the address. */
     const user = setupUser()
-    renderAt(ADDRESS(2020))
+    renderAt(ADDRESS(inLeague(2020)))
 
     await screen.findByRole('table')
 
@@ -417,7 +514,7 @@ describe('Rankings', () => {
        the awards on a profile, which lift one row out of a standing and keep
        the place it held (pages/profile/awards.ts, and the assertion on `[2, 3]`
        in pages/profile/profile.test.tsx). */
-    renderAt('/sr/tabela?sezona=2020')
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     /* Waited for, and that is not a formality. Written without it this test
        passed while a search box was put back on the screen: the standing is
@@ -451,7 +548,7 @@ describe('Rankings', () => {
        table was translated and the row of buttons above it was not, so one screen
        called one category two things. */
     const user = setupUser()
-    renderAt('/sr/tabela?sezona=2020')
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     const categories = within(await screen.findByRole('group', { name: 'Kategorija' }))
 
@@ -474,7 +571,7 @@ describe('Rankings', () => {
        alone, because a row of buttons where the chosen one is merely darker
        says nothing to anybody who cannot see it (WCAG 2.2 SC 1.4.1). */
     const user = setupUser()
-    renderAt('/sr/tabela?sezona=2020')
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     const categories = within(await screen.findByRole('group', { name: 'Kategorija' }))
     expect(categories.getByRole('button', { name: 'Sve' })).toHaveAttribute(
@@ -534,7 +631,7 @@ describe('Rankings', () => {
   })
 
   it('leads from a row to the profile', async () => {
-    renderAt('/sr/tabela?sezona=2020')
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
     const link = within(first(rows)).getByRole('link')
@@ -555,7 +652,7 @@ describe('Rankings', () => {
        before anything about order. `compareDocumentPosition` sets FOLLOWING for a descendant too
        (`CLAUDE.md`, „bez izricitog !a.contains(b) tvrdnja o redosledu je tvrdnja o hijerarhiji"), so
        containment is refused first and order is asked only once containment is already false. */
-    renderAt('/sr/tabela?sezona=2020')
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
     const cell = at(within(first(rows)).getAllByRole('cell'), 1)
@@ -600,7 +697,7 @@ describe('Rankings', () => {
   describe('the circle in the row', () => {
     async function theRows() {
       const user = setupUser()
-      const { router } = renderAt('/sr/tabela?sezona=2020')
+      const { router } = renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
       const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
 
       return {
@@ -681,6 +778,10 @@ describe('Rankings', () => {
  * back to what it said is a change nobody would notice for a month.
  */
 describe('what the filters are called', () => {
+  /* The history in league seasons, because no season before 2027 is on these screens
+     (`test/leagueSeasons.ts`). */
+  playTheHistoryAsLeagueSeasons()
+
   it('keeps the gender and the season in the head, and the categories alone under it', async () => {
     /* Owner, 23.08.2026: the season goes up beside the name of the screen, in the
        shape it has on the top boards, and the two gender buttons stand in front
@@ -699,7 +800,7 @@ describe('what the filters are called', () => {
        Both halves of it, because the season arriving in the head while a copy of
        it stayed among the filters reads right on the screen and is two controls
        of one purpose, which is exactly what the owner had taken apart. */
-    renderAt('/sr/tabela?sezona=2020')
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     await screen.findByRole('table')
 
@@ -718,7 +819,7 @@ describe('what the filters are called', () => {
   })
 
   it('names the category in full, and offers all of them as Sve', async () => {
-    renderAt('/sr/tabela?sezona=2019')
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2019))}`)
 
     const categories = within(await screen.findByRole('group', { name: 'Kategorija' }))
 
@@ -754,22 +855,22 @@ describe('what the filters are called', () => {
           .map((one) => one.memberNumber),
       ).size
 
-    renderAt('/sr/tabela?sezona=2019&pol=z')
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2019))}&pol=z`)
 
     const count = async () => must((await screen.findByText(/takmičar/)).textContent, 'the count')
     const seasons = await screen.findByLabelText('Sezona')
 
-    expect(await count()).toBe(`${String(raced(2019))} takmičarki`)
+    expect(await count()).toBe(`${String(raced(inLeague(2019)))} takmičarki`)
 
-    await user.selectOptions(seasons, '2022')
-    expect(await count()).toBe(`${String(raced(2022))} takmičarka`)
+    await user.selectOptions(seasons, String(inLeague(2022)))
+    expect(await count()).toBe(`${String(raced(inLeague(2022)))} takmičarka`)
 
-    await user.selectOptions(seasons, '2023')
-    expect(await count()).toBe(`${String(raced(2023))} takmičarke`)
+    await user.selectOptions(seasons, String(inLeague(2023)))
+    expect(await count()).toBe(`${String(raced(inLeague(2023)))} takmičarke`)
   })
 
   it('counts men as takmičari, which is the other word entirely', async () => {
-    renderAt('/sr/tabela?sezona=2019')
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2019))}`)
 
     expect(must((await screen.findByText(/takmičar/)).textContent, 'the count')).toMatch(
       /takmičara?$/,
@@ -778,6 +879,10 @@ describe('what the filters are called', () => {
 })
 
 describe('TopBoards', () => {
+  /* The history in league seasons, because no season before 2027 is on these screens
+     (`test/leagueSeasons.ts`). */
+  playTheHistoryAsLeagueSeasons()
+
   /** The day these screens are read on. Handed to the render rather than left to
    *  the real clock, so what a test works out beside a screen is worked out for
    *  the same day the screen had (PDL P11: who a season's field is drawn from
@@ -814,7 +919,7 @@ describe('TopBoards', () => {
   ]
 
   it('carries the ten boards in the order the owner laid them out', async () => {
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Top liste' })).toBeVisible()
 
@@ -827,7 +932,7 @@ describe('TopBoards', () => {
     /* Owner, 04.08.2026: "Top timove ne prezentovati uopšte, jer timovi imaju
        svoju zasebnu stranu." It is still one of the lists of Article 48 and
        still worked out; it is not drawn here. */
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('heading', { level: 1, name: 'Top liste' })
 
@@ -863,11 +968,11 @@ describe('TopBoards', () => {
       loadResource<Competitor[]>('competitors'),
       loadResource<Result[]>('results'),
     ])
-    const ranked = topByCategory(competitors, results, 2016, 'long', 10)
+    const ranked = topByCategory(competitors, results, inLeague(2016), 'long', 10)
 
     expect(ranked.map((row) => row.position).slice(-2)).toEqual([9, 10])
 
-    renderAt('/sr/top-liste?sezona=2016', 'visitor', null, undefined, TODAY)
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2016))}`, 'visitor', null, undefined, TODAY)
     await screen.findByRole('heading', { level: 1, name: 'Top liste' })
 
     const columns = board('Najviše dužih trka').getAllByRole('listitem')
@@ -888,7 +993,7 @@ describe('TopBoards', () => {
        to: a reader landing on "Najviše maratona" would find the next board's
        columns under it. It is first in the markup and last on the screen, which
        is what `order` in the stylesheet is for. */
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('heading', { level: 1, name: 'Top liste' })
 
@@ -912,7 +1017,7 @@ describe('TopBoards', () => {
        strane... bez rotiranja (jer će svaki imati svoj prikaz)". So each of the
        five stands still and keeps its own widget, and none of them is a table
        any more. */
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('heading', { level: 1, name: 'Top liste' })
 
@@ -942,7 +1047,7 @@ describe('TopBoards', () => {
   })
 
   it('puts the tallest column first and the number inside every bar', async () => {
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('heading', { level: 1, name: 'Top liste' })
 
@@ -953,7 +1058,7 @@ describe('TopBoards', () => {
   })
 
   it('leads from a column of a chart to the profile behind it', async () => {
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('heading', { level: 1, name: 'Top liste' })
 
@@ -967,7 +1072,7 @@ describe('TopBoards', () => {
 
   it('says so on a chart that the season leaves empty', async () => {
     // 2012 has two results in it, and neither of them is a marathon.
-    renderAt('/sr/top-liste?sezona=2012')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2012))}`)
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Najviše maratona' })).toBeVisible()
     expect(
@@ -982,7 +1087,7 @@ describe('TopBoards', () => {
        looking at the ten best runs of a season wants to see what they were, so
        the whole result is here, which is also why this board takes the whole
        width of the page. */
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('table', { name: 'Najbolji pojedinačni rezultati' })
     const races = board('Najbolji pojedinačni rezultati')
@@ -1007,7 +1112,7 @@ describe('TopBoards', () => {
        and the five columns after the name are read back off it: a column drawn
        from the wrong field, or two of them changed places, is eight cells that
        are all filled and all plausible. */
-    const record = await racesOf(2019)
+    const record = await racesOf(inLeague(2019))
     const rows = races.getAllByRole('row').slice(1)
 
     expect(rows.length).toBeGreaterThan(1)
@@ -1061,7 +1166,7 @@ describe('TopBoards', () => {
     })
 
     try {
-      renderAt('/sr/top-liste?sezona=2019')
+      renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
       await screen.findByRole('table', { name: 'Najbolji pojedinačni rezultati' })
       const races = board('Najbolji pojedinačni rezultati')
@@ -1081,7 +1186,7 @@ describe('TopBoards', () => {
        keeps is the place, the name, one column of its own and the measure. The
        columns are marked rather than dropped, so the head and the body cannot
        disagree about which went. */
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('table', { name: 'Najbolji pojedinačni rezultati' })
     const races = board('Najbolji pojedinačni rezultati')
@@ -1114,7 +1219,7 @@ describe('TopBoards', () => {
        and it lost both when the boards learned to carry more than one column;
        the Top liste were then the one place on the portal where the number a
        table ranks by looked like any other number. */
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
@@ -1142,8 +1247,8 @@ describe('TopBoards', () => {
 
     expect(router.state.location.search).toBe('')
 
-    await user.selectOptions(season, '2019')
-    expect(router.state.location.search).toBe('?sezona=2019')
+    await user.selectOptions(season, String(inLeague(2019)))
+    expect(router.state.location.search).toBe(`?sezona=${String(inLeague(2019))}`)
 
     await user.selectOptions(season, opens)
     expect(router.state.location.search).toBe('')
@@ -1178,7 +1283,7 @@ describe('TopBoards', () => {
        levels are counted is held on a chart written for it, in
        pages/home/widgets.test.tsx, because no season in the record has the lower
        level longer than the upper one. */
-    renderAt('/sr/top-liste?sezona=2013')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2013))}`)
 
     const board = must(
       (await screen.findByRole('heading', { level: 2, name: 'Najbolji napredak' })).closest(
@@ -1233,7 +1338,7 @@ describe('TopBoards', () => {
        nothing left to keep in step. */
     const TODAY = '2026-08-04'
 
-    renderAt('/sr/top-liste?sezona=2019', 'visitor', null, undefined, TODAY)
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`, 'visitor', null, undefined, TODAY)
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
@@ -1257,8 +1362,8 @@ describe('TopBoards', () => {
     const results = await loadResource<Result[]>('results')
 
     for (const [name, ranked] of [
-      ['Najviše kilometara', topByKilometers(field, results, 2019, 10)],
-      ['Najduže na stazi', topByTimeOnCourse(field, results, 2019, 10)],
+      ['Najviše kilometara', topByKilometers(field, results, inLeague(2019), 10)],
+      ['Najduže na stazi', topByTimeOnCourse(field, results, inLeague(2019), 10)],
     ] as const) {
       const rows = board(name).getAllByRole('row').slice(1)
 
@@ -1314,7 +1419,7 @@ describe('TopBoards', () => {
        apply. What is checked is that the marks are on the right cells, and
        goldBand.test.ts checks that the stylesheet still does something with
        them. */
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('table', { name: 'Najbolji pojedinačni rezultati' })
 
@@ -1363,7 +1468,7 @@ describe('TopBoards', () => {
   it('marks the leader of a board and nobody else', async () => {
     /* Owner, 04.08.2026: "Nagrade se i dodeljuju samo najboljima." The standing
        still gilds three, because three is its podium; a Top lista gilds one. */
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
@@ -1391,7 +1496,7 @@ describe('TopBoards', () => {
   })
 
   it('shows the time on the course in the shape the owner asked for', async () => {
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     const rows = (await screen.findAllByRole('row')).length
 
@@ -1411,7 +1516,7 @@ describe('TopBoards', () => {
        formed for has a table, and a season they were not formed for still says the sentence. Without
        the second half the empty board would have no case at all, and the sentence it stands on could
        be deleted with the whole gate green. */
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('heading', { level: 2, name: 'Najbolji trkački parovi' })
 
@@ -1440,7 +1545,7 @@ describe('TopBoards', () => {
     /* And a season nobody paired up for: the sentence, and no table at all. The sentence is about
        **this season** and not about the database, which is what it said until 07.09.2026 and what
        it could no longer say once another season had a table (review). */
-    renderAt('/sr/top-liste?sezona=2018')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2018))}`)
 
     await screen.findByRole('heading', { level: 2, name: 'Najbolji trkački parovi' })
 
@@ -1470,9 +1575,9 @@ describe('TopBoards', () => {
       ['000007', '000015'],
     ].map(([one, two], index) => ({
       id: `probe-${index}`,
-      season: 2019,
+      season: inLeague(2019),
       memberNumbers: [one, two],
-      since: '2018-12-01',
+      since: `${String(inLeague(2018))}-12-01`,
     }))
 
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
@@ -1482,7 +1587,7 @@ describe('TopBoards', () => {
     )
 
     try {
-      renderAt('/sr/top-liste?sezona=2019')
+      renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
       await screen.findByRole('table', { name: 'Najbolji trkački parovi' })
 
@@ -1516,7 +1621,7 @@ describe('TopBoards', () => {
        two decimals on his next one: "neka vrednosti BTL poena u krugovima budu
        zaokružene na dve decimale. Ovako je neprecizno." The second is what
        stands, and it is what the portal writes everywhere else. */
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('heading', { level: 2, name: 'Najbolji napredak' })
 
@@ -1553,7 +1658,7 @@ describe('TopBoards', () => {
   })
 
   it('ranks the progress by the gain, tallest first', async () => {
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('heading', { level: 2, name: 'Najbolji napredak' })
 
@@ -1567,7 +1672,7 @@ describe('TopBoards', () => {
   })
 
   it('leaves out whoever did not race the season before', async () => {
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('heading', { level: 2, name: 'Najbolji napredak' })
 
@@ -1586,13 +1691,16 @@ describe('TopBoards', () => {
   })
 
   it('stands the progress board empty for a season nobody has a season before', async () => {
-    renderAt('/sr/top-liste?sezona=2010')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2012))}`)
 
     await screen.findByRole('heading', { level: 2, name: 'Najbolji napredak' })
     const progress = board('Najbolji napredak')
 
-    /* 2010 is the first season with any results at all, so there is nothing to
-       measure a gain against and the board says which rules left it empty. Both
+    /* 2012 of the history comes after a year with no results at all (2011), so
+       there is nothing to measure a gain against and the board says which rules
+       left it empty. It was 2010, the first season of the history, until
+       16.10.2026; moved into league seasons that one is 2026, which no seasonal
+       view offers (`test/leagueSeasons.ts`). Both
        of them: a season in which everybody ran and nobody bettered their total
        is just as empty, and a sentence naming only the first tells that season
        that nobody ran (PDL P12, 30.07.2026). */
@@ -1601,7 +1709,7 @@ describe('TopBoards', () => {
   })
 
   it('leads from every name to the profile behind it', async () => {
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
     // The first row of the board, which is the second row of the table.
@@ -1618,23 +1726,16 @@ describe('TopBoards', () => {
     renderAt('/sr/top-liste')
 
     const season = await screen.findByLabelText('Sezona')
-    // No season in the address, so the page picks one that has results.
-    expect(Number(selectElement(season).value)).toBeGreaterThan(2000)
+    /* No season in the address, so the page opens on the first season of the league
+       on both days the suite is read as, empty as it is: nothing falls back to a
+       fuller one (owner, 16.10.2026). The history has nothing in 2027. */
+    expect(selectElement(season).value).toBe('2027')
+    expect(board('Najviše kilometara').queryAllByRole('row').slice(1)).toEqual([])
 
-    const before = board('Najviše kilometara')
-      .getAllByRole('row')
-      .slice(1)
-      .map((row) => row.textContent)
+    await user.selectOptions(season, String(inLeague(2016)))
 
-    await user.selectOptions(season, '2016')
-
-    expect(screen.getByLabelText('Sezona')).toHaveValue('2016')
-    expect(
-      board('Najviše kilometara')
-        .getAllByRole('row')
-        .slice(1)
-        .map((row) => row.textContent),
-    ).not.toEqual(before)
+    expect(screen.getByLabelText('Sezona')).toHaveValue(String(inLeague(2016)))
+    expect(board('Najviše kilometara').getAllByRole('row').slice(1).length).toBeGreaterThan(0)
     // The one filter reaches the charts and the boards further down the page.
     expect(board('Najduže na stazi').getAllByRole('row').length).toBeGreaterThan(1)
     expect(board('Najviše kraćih trka').getAllByRole('listitem').length).toBeGreaterThan(0)
@@ -2321,6 +2422,10 @@ describe('EventDetail', () => {
  * are held to `pricing.ts` in their own files. */
 
 describe('Teams', () => {
+  /* The history in league seasons, because no season before 2027 is on these screens
+     (`test/leagueSeasons.ts`). */
+  playTheHistoryAsLeagueSeasons()
+
   it('names its season control and draws it in the shape the other screens use', async () => {
     /* Owner, 04.08.2026: the one here "je ružnija nego u Top listama". It is the
        same control as the season on the Top liste now, with its name beside it
@@ -2348,7 +2453,7 @@ describe('Teams', () => {
        season's, so which season is running decides whether there is a podium at
        all, and a case that says nothing about the day says nothing about that
        either. */
-    renderAt('/sr/timovi', 'visitor', null, undefined, '2026-06-01')
+    renderAt('/sr/timovi', 'visitor', null, undefined, `${String(inLeague(2020))}-06-01`)
 
     const rows = (await standing()).getAllByRole('row').slice(1)
 
@@ -2376,8 +2481,12 @@ describe('Teams', () => {
     await standing()
     const season = selectElement(screen.getByLabelText('Sezona'))
 
-    expect(season.value).toBe('2026')
+    /* The first season of the league, read on a day of 2026, and nothing before it on
+       offer although the history moved into league seasons holds a 2026 (owner,
+       16.10.2026 and 10.10.2026). */
+    expect(season.value).toBe('2027')
     expect(within(season).queryByRole('option', { name: 'Sve' })).not.toBeInTheDocument()
+    expect(within(season).queryByRole('option', { name: '2026' })).not.toBeInTheDocument()
 
     /* Every team keeps its row whatever the season, so what has to change is
        what the rows say: the points are of the season being looked at. */
@@ -2389,8 +2498,8 @@ describe('Teams', () => {
 
     const before = await points()
 
-    await user.selectOptions(season, '2019')
-    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2019')
+    await user.selectOptions(season, String(inLeague(2019)))
+    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe(String(inLeague(2019)))
     expect(await points()).not.toEqual(before)
   })
 
@@ -2423,7 +2532,7 @@ describe('Teams', () => {
 
     await standing()
 
-    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2026')
+    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2027')
     expect(
       within(screen.getByLabelText('Sezona')).queryByRole('option', { name: '1999' }),
     ).not.toBeInTheDocument()
@@ -2564,6 +2673,10 @@ describe('the head of an event with nothing to offer', () => {
 })
 
 describe('the row of whoever is signed in', () => {
+  /* The history in league seasons, because no season before 2027 is on these screens
+     (`test/leagueSeasons.ts`). */
+  playTheHistoryAsLeagueSeasons()
+
   /* 000007 is in the field of 2019 on every one of these screens, and is in a
      team, which the standing of teams needs. */
   const ME = '000007'
@@ -2584,7 +2697,7 @@ describe('the row of whoever is signed in', () => {
     ['000009', 'Bogdanović'],
   ] as const) {
     it(`is marked on the board of pairs for ${family}`, async () => {
-      renderAt('/sr/top-liste?sezona=2019', 'competitor', member)
+      renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`, 'competitor', member)
 
       await screen.findByRole('table', { name: 'Najbolji trkački parovi' })
 
@@ -2600,7 +2713,7 @@ describe('the row of whoever is signed in', () => {
   }
 
   it('is marked in the season table, and nowhere else in it', async () => {
-    renderAt('/sr/tabela?sezona=2019', 'competitor', ME)
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2019))}`, 'competitor', ME)
 
     const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
     const mine = marked(rows)
@@ -2613,7 +2726,7 @@ describe('the row of whoever is signed in', () => {
     /* 2015 rather than 2019, because in 2015 he stands on all three boards that
        are tables. A season where he is on two of them cannot say anything about
        the third, and the third is where the mark would be missing. */
-    renderAt('/sr/top-liste?sezona=2015', 'competitor', ME)
+    renderAt(`/sr/top-liste?sezona=${String(inLeague(2015))}`, 'competitor', ME)
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
@@ -2644,7 +2757,7 @@ describe('the row of whoever is signed in', () => {
   it('is marked among the results of an event he ran', async () => {
     const results = await loadResource<Result[]>('results')
     const ran = must(
-      results.find((one) => one.memberNumber === ME && one.date < '2027-01-01'),
+      results.find((one) => one.memberNumber === ME),
       'a result of his',
     )
     /* Through the race, because the address of an event is its name and the
@@ -2698,8 +2811,8 @@ describe('the row of whoever is signed in', () => {
        the one that numbers it; the results of an event have no such column, so
        there it is the cell with the name in it. */
     for (const [path, said] of [
-      ['/sr/tabela?sezona=2019', 'vaš red'],
-      ['/sr/top-liste?sezona=2015', 'vaš red'],
+      [`/sr/tabela?sezona=${String(inLeague(2019))}`, 'vaš red'],
+      [`/sr/top-liste?sezona=${String(inLeague(2015))}`, 'vaš red'],
       ['/sr/kalendar/beogradski-maraton-2019', 'vaš red'],
       ['/sr/timovi', 'vaš tim'],
     ] as const) {
@@ -2727,7 +2840,7 @@ describe('the row of whoever is signed in', () => {
   })
 
   it('says nothing to a visitor, on any of them', async () => {
-    for (const path of ['/sr/tabela?sezona=2019', '/sr/top-liste?sezona=2019', '/sr/timovi']) {
+    for (const path of [`/sr/tabela?sezona=${String(inLeague(2019))}`, `/sr/top-liste?sezona=${String(inLeague(2019))}`, '/sr/timovi']) {
       cleanup()
       renderAt(path)
       await screen.findAllByRole('row')
@@ -3062,6 +3175,10 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
 })
 
 describe('a member whose fee has run out, in the tables', () => {
+  /* The history in league seasons, because no season before 2027 is on these screens
+     (`test/leagueSeasons.ts`). */
+  playTheHistoryAsLeagueSeasons()
+
   /* **BOTH CASES BELOW CHANGED ON 21.09.2026, AND THE FIRST OF THEM IS A COST RATHER
      THAN A DECISION TAKEN HERE.** PDL P11 has two halves: the name stays in the table
      of the season they were a member of, and the link goes because the profile it
@@ -3078,7 +3195,7 @@ describe('a member whose fee has run out, in the tables', () => {
     const { stop } = membersAsServed()
 
     try {
-      renderAt('/sr/tabela?sezona=2017', 'visitor', null, undefined, '2026-06-01')
+      renderAt(`/sr/tabela?sezona=${String(inLeague(2017))}`, 'visitor', null, undefined, '2026-06-01')
 
       const table = await screen.findByRole('table')
 
@@ -3101,7 +3218,7 @@ describe('a member whose fee has run out, in the tables', () => {
     const { stop } = membersAsServed()
 
     try {
-      renderAt('/sr/tabela?sezona=2017', 'visitor', null, undefined, '2017-06-01')
+      renderAt(`/sr/tabela?sezona=${String(inLeague(2017))}`, 'visitor', null, undefined, `${String(inLeague(2017))}-06-01`)
 
       await screen.findByRole('table')
       expect(screen.queryByText(/Vojislav Antonijević/)).not.toBeInTheDocument()
@@ -3112,6 +3229,10 @@ describe('a member whose fee has run out, in the tables', () => {
 })
 
 describe('the top boards, when a member on them has left the league', () => {
+  /* The history in league seasons, because no season before 2027 is on these screens
+     (`test/leagueSeasons.ts`). */
+  playTheHistoryAsLeagueSeasons()
+
   it('keep the name on the board and take the link off it', async () => {
     /* PDL P11 again, on the one page that builds its links from a helper rather
        than from the shared component. Nobody in the generated data is both
@@ -3141,7 +3262,7 @@ describe('the top boards, when a member on them has left the league', () => {
     })
 
     try {
-      renderAt('/sr/top-liste?sezona=2019')
+      renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
       const board = await screen.findByRole('table', { name: 'Najviše kilometara' })
       const names = within(board)
@@ -3159,14 +3280,26 @@ describe('the top boards, when a member on them has left the league', () => {
 })
 
 describe('the front page, in the season running now', () => {
+  /* The history in league seasons (`test/leagueSeasons.ts`): the front page shows the
+     running season and nothing before 2027, so read on a day of 2017 it would draw an empty
+     2027 and the case below would hold of a page with nobody on it. */
+  playTheHistoryAsLeagueSeasons()
+
   it('has nobody on it whose fee has run out', async () => {
     /* PDL P11: they are not in the season now at all, and the top ten and the
        turning chart are that season's standing in another shape. Read on a day
        inside the one season 000032 raced, so they would be there if the rule
        were not kept. */
-    renderAt('/sr', 'visitor', null, undefined, '2017-06-01')
+    renderAt('/sr', 'visitor', null, undefined, `${String(inLeague(2017))}-06-01`)
 
     await screen.findAllByRole('heading', { name: /Top 10/ })
+    /* Somebody is on it, or the line under this one says nothing. */
+    expect(await screen.findByRole('heading', { name: `Sezona ${String(inLeague(2017))}.` })).toBeVisible()
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole('link').filter((one) => one.getAttribute('href')?.includes('/takmicar/')),
+      ).not.toEqual([])
+    })
     expect(screen.queryByText(/Vojislav Antonijević/)).not.toBeInTheDocument()
   })
 

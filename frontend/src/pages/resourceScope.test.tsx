@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { arrivedResource, type ResourceName } from '../data/client'
 import { must } from '../test/at'
+import { inLeague, playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
 import { renderAt } from '../test/render'
 import { serverThat } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
@@ -352,6 +353,10 @@ describe('a part of a screen waits without covering the page', () => {
 })
 
 describe('a screen waits only on the data it shows', () => {
+  /* The history in league seasons, because no season before 2027 is on the table or the
+     top boards (`test/leagueSeasons.ts`). */
+  playTheHistoryAsLeagueSeasons()
+
   let restore = () => {}
 
   afterEach(() => {
@@ -360,7 +365,7 @@ describe('a screen waits only on the data it shows', () => {
 
   it('draws the standing when the events cannot be loaded', async () => {
     restore = breakResource('events')
-    renderAt('/sr/tabela?sezona=2020')
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     expect(await screen.findByRole('table')).toBeVisible()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
