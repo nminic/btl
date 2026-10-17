@@ -381,13 +381,14 @@ describe('Markdown, for a text of the administration', () => {
   it('draws a link of the description of an event whose address reads as one host and opens another as words, in a cell too', () => {
     const bad = '[x](https://www.runtrace.net@zlo.example)'
 
-    render(<Markdown text={`${bad} [prava](https://primer.rs)\n\n| ${bad} | [druga](https://primer.rs/b) |\n|---|---|\n| a | b |`} addresses="mail" outward />)
+    render(<Markdown text={`${bad} [prava](https://primer.rs)\n\n| ${bad} | [druga](https://primer.rs/b) |\n|---|---|\n| ${bad} | [treca](https://primer.rs/c) |`} addresses="mail" outward />)
 
     expect(screen.queryAllByRole('link', { name: 'x' })).toEqual([])
     /* The clean links on both sides of them, so what is measured is the refusal and not a text that
        links nothing. */
-    expect(screen.getAllByRole('link').map((one) => one.textContent)).toEqual(['prava', 'druga'])
+    expect(screen.getAllByRole('link').map((one) => one.textContent)).toEqual(['prava', 'druga', 'treca'])
     expect(screen.getByRole('columnheader', { name: bad })).toBeVisible()
+    expect(screen.getByRole('cell', { name: bad })).toBeVisible()
     expect(screen.getByRole('link', { name: 'prava' }).parentElement?.textContent).toBe(`${bad} prava`)
   })
 
