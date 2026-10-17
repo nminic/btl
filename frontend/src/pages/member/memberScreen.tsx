@@ -228,6 +228,46 @@ export function useScreenForTheUnpaidToo(): ScreenForTheUnpaidToo {
     : { standing: null, memberNumber: null, instead: <NotRacing /> }
 }
 
+/**
+ * The same question for the screen that is drawn to EVERY signed in account, and the fifth way:
+ * an account the league keeps no record of, which administration is.
+ *
+ * <p>`standing: 'account'` is that fifth way and carries the account it is signed in as. The other
+ * three signed in ways are exactly {@link ScreenForTheUnpaidToo}'s, and so is the way for nobody.
+ */
+export type ScreenForEveryAccount =
+  | Exclude<ScreenForTheUnpaidToo, { standing: null }>
+  /** A moderator or a superadmin: signed in, and no competitor record behind the account (PDL P21,
+   *  „Jedan nalog je tačno jedan član", which administration is not). */
+  | { standing: 'account'; memberNumber: null; account: number; instead: null }
+  | Extract<ScreenForTheUnpaidToo, { standing: null }>
+
+/**
+ * THE QUESTION ASKED BY THE ONE SCREEN THAT IS OPEN TO EVERYBODY WHO IS SIGNED IN, and it exists
+ * because of one setting: the language of an account's mail.
+ *
+ * <p>PDL, the answers of 17.10.2026 (chosen by the owner between offered outcomes; the sentence is
+ * the record's and not his own words): „Jezik pošte sme da promeni svako ko ima nalog [...] jer je
+ * to podešavanje naloga a ne takmičarsko pravo." Every other question this module answers ends an
+ * account with no record in „Ovaj deo je za takmičare", which is right for a profile, a result and
+ * a fee and wrong for a setting of the account itself.
+ *
+ * <p><b>It is {@link useScreenForTheUnpaidToo} with one answer taken out of the refusals, and
+ * nothing else</b>: the account with no record, which that hook ends in `NotRacing`, is handed
+ * through here as its own way. It is not a second place that decides who is a member and it names
+ * neither `NotRacing` nor `SignedOut`: both stay named by this module alone, which
+ * `oneQuestion.test.tsx` requires, and a visitor, and a reader the server has not yet answered, are
+ * told exactly what that hook tells them.
+ */
+export function useScreenForEveryAccount(): ScreenForEveryAccount {
+  const who = useScreenForTheUnpaidToo()
+  const { signedIn } = useSession()
+
+  return who.standing === null && signedIn?.as === 'account'
+    ? { standing: 'account', memberNumber: null, account: signedIn.account, instead: null }
+    : who
+}
+
 export function useMemberScreen(): MemberScreen {
   const who = useScreenForTheUnpaidToo()
 

@@ -1491,7 +1491,11 @@
     "opensWhenTheFeeIsRenewed": "Your data and your password open once your fee has been renewed. Renew it here: {renewal}.",
     "themeLabel": "Theme",
     "themeDark": "Dark",
-    "themeLight": "Light"  },
+    "themeLight": "Light",
+    "mail": "Mail",
+    "mailLanguageLegend": "Language of the mail",
+    "mailLanguageNote": "The emails the portal sends you arrive in the language you choose here. The language of the page you are looking at makes no difference.",
+    "mailLanguageNotChosen": "No language of the mail was chosen. Choose one of the two offered."  },
   "rights": {
     "title": "Moderators' rights",
     "intro": "A row is a moderator, a column is a right. A box is remembered the moment it is pressed, there is no button to save. The rights are in two groups because they are two different actions: editing changes a record, while deciding lets somebody else's work through or sends it back.",

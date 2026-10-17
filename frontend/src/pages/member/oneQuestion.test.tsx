@@ -467,8 +467,34 @@ describe('every screen of the member area, to a MEMBER the server has signed in'
   })
 })
 
+/**
+ * THE ONE SCREEN OF THE ELEVEN THAT IS DRAWN TO AN ACCOUNT WITH NO COMPETITOR RECORD, since
+ * 17.10.2026, and it is the settings.
+ *
+ * <p>PDL, the answers of 17.10.2026 on the language of the mail (chosen by the owner between offered
+ * outcomes; the sentence is the record's and not his own words): „Jezik pošte sme da promeni svako ko
+ * ima nalog [...] jer je to podešavanje naloga a ne takmičarsko pravo." A setting of the ACCOUNT is
+ * the only thing on the member area that does not belong to a competitor, and the settings screen is
+ * the only one that holds one (`useScreenForEveryAccount`). The other ten still tell such an account
+ * „Ovaj deo je za takmičare", and the case below walks exactly those, so the exception is a name
+ * written here and not a screen quietly dropped from the walk.
+ */
+const THE_SCREEN_AN_ACCOUNT_WITH_NO_RECORD_IS_DRAWN = 'pages/member/Settings.tsx'
+
+const REFUSED_TO_AN_ACCOUNT_WITH_NO_RECORD = WALKED.filter(
+  (one) => one.screen !== THE_SCREEN_AN_ACCOUNT_WITH_NO_RECORD_IS_DRAWN,
+)
+
 describe('every screen of the member area, to somebody the server has signed in', () => {
-  it.each(WALKED)('does not send $at back to the sign in', async ({ at }) => {
+  it('refuses ten of the eleven to an account with no record, and draws the eleventh', () => {
+    /* The floor under the walk below: the exception is one screen, it is a row of the list, and the
+       other ten are what is walked. A second screen dropped from the walk would move both. */
+    expect(WALKED.map((one) => one.screen)).toContain(THE_SCREEN_AN_ACCOUNT_WITH_NO_RECORD_IS_DRAWN)
+    expect(REFUSED_TO_AN_ACCOUNT_WITH_NO_RECORD).toHaveLength(WALKED.length - 1)
+    expect(REFUSED_TO_AN_ACCOUNT_WITH_NO_RECORD).toHaveLength(10)
+  })
+
+  it.each(REFUSED_TO_AN_ACCOUNT_WITH_NO_RECORD)('does not send $at back to the sign in', async ({ at }) => {
     aSignedInAccount()
     /* A visitor and no member number, which is a browser that has touched no
        development control: the only thing that makes this a session is the answer
@@ -489,6 +515,20 @@ describe('every screen of the member area, to somebody the server has signed in'
       await screen.findByRole('heading', { level: 1, name: 'Ovaj deo je za takmičare' }),
     ).toBeVisible()
   })
+
+  it.each(['competitor', 'moderator', 'superadmin'])(
+    'draws the settings to a %s account with no record, and neither refusal nor the sign in',
+    async (role) => {
+      aSignedInAccount(role, 11)
+      renderAt('/sr/podesavanja', 'visitor', null)
+
+      /* Named, and not „is none of the refusals": that is satisfied by a screen that draws a
+         different heading, and the screen's own is what proves the settings were reached. */
+      expect((await theHeadingOnceTheAnswerHasArrived()).textContent).toBe('Podešavanja')
+      expect(await screen.findByRole('group', { name: 'Jezik pošte' })).toBeVisible()
+    },
+    SLOW,
+  )
 
   it.each(WALKED)('still sends $at to the sign in when nobody is signed in at all', async ({ at }) => {
     /* THE OTHER HALF OF THE SAME AXIS. Read alone, the case above is satisfied by a

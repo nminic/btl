@@ -1491,7 +1491,11 @@
     "opensWhenTheFeeIsRenewed": "Podaci i lozinka otvaraju se kad tvoja članarina bude obnovljena. Obnovi je ovde: {renewal}.",
     "themeLabel": "Tema",
     "themeDark": "Tamna",
-    "themeLight": "Svetla"  },
+    "themeLight": "Svetla",
+    "mail": "Pošta",
+    "mailLanguageLegend": "Jezik pošte",
+    "mailLanguageNote": "Mejlovi koje ti portal šalje stižu na jeziku koji ovde izabereš. Jezik strane koju gledaš na to ne utiče.",
+    "mailLanguageNotChosen": "Jezik pošte nije izabran. Izaberi jedan od dva ponuđena."  },
   "rights": {
     "title": "Prava moderatora",
     "intro": "Red je moderator, kolona je pravo. Kućica se pamti čim se pritisne, nema dugmeta za čuvanje. Prava su u dve grupe zato što su to dve različite radnje: uređivanje menja zapis, a odlučivanje pušta ili vraća tuđi rad.",

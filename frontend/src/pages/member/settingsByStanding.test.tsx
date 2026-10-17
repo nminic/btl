@@ -60,6 +60,7 @@ const PANELS = {
   biography: 'Tekst o sebi',
   password: 'Lozinka',
   appearance: 'Izgled',
+  mail: 'Pošta',
   privacy: 'Privatnost',
 } as const
 
@@ -156,7 +157,9 @@ describe('the settings of somebody who registered and has not paid', () => {
   it('draws his data from the answer that has a row for him, and not from the public list', async () => {
     /* The list the server serves is every member whose fee stands, and he is on no row of it, so a
        screen that looked him up THERE would draw nothing of his. His data is asked for under his own
-       cookie (`GET /api/me`) a second time, after the shell's own question. */
+       cookie (`GET /api/me`) a second time, after the shell's own question, and the language of his
+       mail (`MailLanguageChoice`) is a third: it is read off the same answer by a panel of its own,
+       which is drawn to every kind of reader and so cannot borrow a read that is made only for him. */
     const { asked } = stand(neverPaidAsServed())
 
     renderAt('/sr/podesavanja', 'visitor', null)
@@ -164,13 +167,15 @@ describe('the settings of somebody who registered and has not paid', () => {
     await drawn()
     await screen.findByRole('heading', { level: 2, name: PANELS.data })
 
-    expect(asked.filter((one) => one.path === '/api/me')).toHaveLength(2)
+    expect(asked.filter((one) => one.path === '/api/me')).toHaveLength(3)
   }, SLOW)
 
   it('says his data could not be read, and offers to ask again, when the server will not give it', async () => {
     /* The shell's question is answered, and the one that follows is not: the second read of the
        same address is the screen's own. Said in the portal's own words (`components/Resource`) and
-       not in a sentence of this screen's. */
+       not in a sentence of this screen's. The THIRD read is the language panel's and is answered,
+       because this case is about his data: the panels read in the order they stand on the screen
+       (the shell, his data, the language of his mail), which is what makes „the second" his. */
     let answered = 0
 
     stand(
@@ -181,12 +186,17 @@ describe('the settings of somebody who registered and has not paid', () => {
 
         answered += 1
 
-        return answered === 1
-          ? new Response(
-              JSON.stringify({ role: 'competitor', account: 1, member: aNeverPaidRecord }),
+        return answered === 2
+          ? new Response(null, { status: 500 })
+          : new Response(
+              JSON.stringify({
+                role: 'competitor',
+                account: 1,
+                member: aNeverPaidRecord,
+                mailLanguage: 'sr',
+              }),
               { status: 200, headers: { 'content-type': 'application/json' } },
             )
-          : new Response(null, { status: 500 })
       }),
     )
     renderAt('/sr/podesavanja', 'visitor', null)
@@ -396,6 +406,7 @@ describe('the settings of a member whose fee stands', () => {
       PANELS.biography,
       PANELS.password,
       PANELS.appearance,
+      PANELS.mail,
       PANELS.privacy,
     ])
   }, SLOW)

@@ -9,11 +9,12 @@ import { useI18n } from '../../i18n/useI18n'
 import { MEMBERS, recordsOf } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
 import { ChangePassword } from './ChangePassword'
+import { MailLanguageChoice } from './MailLanguageChoice'
 import { PersonalData } from './PersonalData'
 import { ProfileBio } from './ProfileBio'
 import { ProfilePicture } from './ProfilePicture'
 import { ProfileVisibility } from './ProfileVisibility'
-import { useScreenForTheUnpaidToo } from './memberScreen'
+import { useScreenForEveryAccount } from './memberScreen'
 import { useMyData } from './useMyData'
 import './Member.css'
 
@@ -39,13 +40,15 @@ const THEMES: Theme[] = ['dark', 'light']
  * sme da se iskljuci, ekran se pravi ponovo." `settings.test.tsx` is the floor that makes
  * a return deliberate rather than accidental.
  *
- * <p><b>THE SCREEN HAS THREE SHAPES SINCE 11.10.2026, AND WHICH ONE IS DRAWN IS DECIDED BY THE
- * HOOK AND BY NOTHING ON THIS PAGE</b> (`memberScreen.tsx`, `useScreenForTheUnpaidToo`). PDL P8,
+ * <p><b>THE SCREEN HAS FOUR SHAPES SINCE 17.10.2026, AND WHICH ONE IS DRAWN IS DECIDED BY THE
+ * HOOK AND BY NOTHING ON THIS PAGE</b> (`memberScreen.tsx`, `useScreenForEveryAccount`). Three of
+ * them are the ones of 11.10.2026, and the fourth is below them. PDL P8,
  * the entry „Šta sme neplaćen član" (10.10.2026) and its addition of 11.10.2026, both chosen by
  * the owner between offered outcomes - the sentences are the record's and not his own words:
  *
  * <ul>
- * <li><b>A member whose fee stands</b> is drawn everything, exactly as he was.</li>
+ * <li><b>A member whose fee stands</b> is drawn everything, exactly as he was, and now the language
+ * of his mail.</li>
  * <li><b>Somebody who registered and has not paid</b> is drawn his data and his password and the
  * theme: „Sme: [...] lozinku, adresu pošte i svoje podatke za evidenciju i majicu. Ne sme ništa
  * što ga čini vidljivim ili ga uključuje u ligu: sliku, biografiju, skrivanje profila". The three
@@ -58,9 +61,21 @@ const THEMES: Theme[] = ['dark', 'light']
  * drawn from. That is now said by the shape rather than by that accident. The sentence, since
  * 16.10.2026, says his data and his password open once his fee is renewed, with a link to the page
  * he renews it on ({@link WhatOpensWhenTheFeeIsRenewed}).</li>
+ * <li><b>An account with no competitor record</b> - a moderator, a superadmin - is drawn the
+ * language of its mail and nothing else, since 17.10.2026. It was told „Ovaj deo je za takmičare"
+ * before, as on every screen of the member area (PDL P21: administration is nobody's member), and
+ * that stays true of every other screen; this one has a setting that is the ACCOUNT's and not a
+ * competitor's (PDL, the answers of 17.10.2026: „Jezik pošte sme da promeni svako ko ima nalog [...]
+ * jer je to podešavanje naloga a ne takmičarsko pravo", chosen by the owner between offered
+ * outcomes; the sentence is the record's and not his own words). **Its password and its theme are
+ * NOT drawn to it, and that is a boundary rather than a decision**: nothing the owner has said
+ * covers them for administration, the password route's answer for such an account has not been
+ * measured here, and the language was asked for by name.</li>
  * </ul>
  *
- * <p><b>The server is the authority in all three and this is only what is worth offering.</b> A
+ * <p>The language of the mail (`MailLanguageChoice`) is the one panel drawn in every shape.
+ *
+ * <p><b>The server is the authority in all four and this is only what is worth offering.</b> A
  * control drawn to a reader whose every press is refused does nothing for him, and the owner's
  * word for that is that it is worse than none (PDL P11, 15.08.2026, „Kontrola koja ništa ne radi
  * je gora nego da je nema"; that a refused press counts as doing nothing is this record's reading
@@ -68,7 +83,7 @@ const THEMES: Theme[] = ['dark', 'light']
  * the door answers 404 is told what every screen of this portal tells him then. */
 export function Settings() {
   const { t } = useI18n()
-  const who = useScreenForTheUnpaidToo()
+  const who = useScreenForEveryAccount()
   const overlay = useOverlay()
   const { theme, choose } = useTheme()
   /* Above the early return, because a hook is: called after it, the order of
@@ -80,6 +95,9 @@ export function Settings() {
   }
 
   const { memberNumber } = who
+  /* WHOSE LANGUAGE OF MAIL THIS IS, for the panel that holds it (`MailLanguageChoice`): the member number
+     where there is one and the account where there is not, which is every reader this screen draws. */
+  const reader = who.memberNumber === null ? String(who.account) : who.memberNumber
 
   return (
     <div className="member">
@@ -160,34 +178,50 @@ export function Settings() {
 
           **NOT DRAWN TO A MEMBER WHOSE FEE HAS LAPSED**, since 11.10.2026: `PUT
           /api/me/password` answers him 404. It is drawn to somebody who has not paid, whom
-          the same entry lets change it. */}
-      {who.standing !== 'lapsed' && <ChangePassword />}
+          the same entry lets change it. **And named for the two who see it rather than excluded
+          for the two who do not**, since 17.10.2026: an administration account with no member is
+          drawn this screen for the language of its mail only, so a condition written as „anybody
+          but a lapsed member" would have drawn it a password it was never offered. */}
+      {(who.standing === 'standing' || who.standing === 'neverPaid') && <ChangePassword />}
 
-      <section className="member__panel" aria-labelledby="settings-appearance">
-        <h2 className="profile__section" id="settings-appearance">
-          {t('settings.appearance')}
-        </h2>
+      {who.standing !== 'account' && (
+        <section className="member__panel" aria-labelledby="settings-appearance">
+          <h2 className="profile__section" id="settings-appearance">
+            {t('settings.appearance')}
+          </h2>
 
-        <fieldset className="field field--radio">
-          <legend className="field__label">{t('settings.themeLabel')}</legend>
-          {THEMES.map((one) => (
-            <div key={one} className="field__confirm">
-              <input
-                className="field__control"
-                type="radio"
-                name="theme"
-                id={`theme-${one}`}
-                value={one}
-                checked={theme === one}
-                onChange={() => choose(one)}
-              />
-              <label className="field__label" htmlFor={`theme-${one}`}>
-                {t(one === 'dark' ? 'settings.themeDark' : 'settings.themeLight')}
-              </label>
-            </div>
-          ))}
-        </fieldset>
-      </section>
+          <fieldset className="field field--radio">
+            <legend className="field__label">{t('settings.themeLabel')}</legend>
+            {THEMES.map((one) => (
+              <div key={one} className="field__confirm">
+                <input
+                  className="field__control"
+                  type="radio"
+                  name="theme"
+                  id={`theme-${one}`}
+                  value={one}
+                  checked={theme === one}
+                  onChange={() => choose(one)}
+                />
+                <label className="field__label" htmlFor={`theme-${one}`}>
+                  {t(one === 'dark' ? 'settings.themeDark' : 'settings.themeLight')}
+                </label>
+              </div>
+            ))}
+          </fieldset>
+        </section>
+      )}
+
+      {/* **THE ONE PANEL DRAWN TO EVERY KIND OF SIGNED IN ACCOUNT**, since 17.10.2026: the language
+          the portal's mail to this account is written in. PDL, the answers of 17.10.2026 (chosen by
+          the owner between offered outcomes; the sentence is the record's and not his own words):
+          „Jezik pošte sme da promeni svako ko ima nalog, i član bez plaćene članarine i član kome
+          je istekla, jer je to podešavanje naloga a ne takmičarsko pravo." So it stands outside
+          every `who.standing` condition on this screen, and it is the only panel an administration
+          account with no member is drawn (`useScreenForEveryAccount`). It stands after the theme,
+          which is the other thing the reader keeps for himself, and before the one panel that is
+          about other people. */}
+      <MailLanguageChoice reader={reader} />
 
       {/* **What other people see, and the one thing on this screen that is not only the
           reader's own business.** The published privacy policy has promised this control since
