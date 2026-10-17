@@ -2784,6 +2784,19 @@ describe('what the written pages say the fee buys', () => {
        the shape he asked for. Held together rather than one by one, because
        what he asked for is that they **match**: pinned separately, the next one
        to be reworded drifts and nothing says so. */
+    /* The day each of the three was last changed. The rulebook and the privacy
+       policy moved to 16.10.2026 together with the sentence that says moving to
+       an older category between two seasons reveals the year of birth (owner,
+       16.10.2026); the terms of use did not change that day and keep the day
+       they were signed off on. Written per document and not as one day for all
+       three, so a date moved on the terms, or left behind on one of the other
+       two, is a failure that names the document. */
+    const SIGNED_OFF = {
+      pravilnik: '16.10.2026',
+      'uslovi-koriscenja': '10.10.2026',
+      'politika-privatnosti': '16.10.2026',
+    } as const
+
     for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {
       const sections = pageAt(slug).sections
       const last = must(sections[sections.length - 1], `the last section of ${slug}`).body
@@ -2797,7 +2810,7 @@ describe('what the written pages say the fee buys', () => {
          are different: is it in the right shape, and is there one of it. */
       expect(last, `${slug} does not sign off the way the other two do`).toMatch(
         new RegExp(
-          ['', '---', '', 'Sportsko udruženje BTL', 'Poslednja izmena: 10.10.2026.']
+          ['', '---', '', 'Sportsko udruženje BTL', `Poslednja izmena: ${SIGNED_OFF[slug]}.`]
             .join(NEWLINE)
             .replaceAll('.', String.fromCharCode(92) + '.') + String.fromCharCode(36),
         ),

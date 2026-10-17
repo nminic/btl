@@ -438,6 +438,34 @@ class PageApiTest {
 	}
 
 	/**
+	 * THE SENTENCE V58 ADDS (item BR) REACHES THE VISITOR, in Article 74 of the rulebook and in section 3 of the
+	 * privacy policy, in the language he asks for.
+	 *
+	 * <p>{@code TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest} holds the rows; this holds that the
+	 * route serves them, which is the one thing it cannot see. Asked in Serbian and in real English.
+	 */
+	@Test
+	void theSentenceThatTheCategoryRevealsTheYearOfBirthIsServedInBothArticlesInBothLanguages() throws Exception {
+		String serbian = "Javna je uvek kategorija koja iz njega proizlazi, bez obzira na vaš izbor. Iz prelaska u"
+				+ " stariju uzrasnu kategoriju između dve sezone vidi se tačna godina rođenja, i kad datum rođenja"
+				+ " nije prikazan.";
+		String english = "The category that follows from it is always public, whatever you choose. Moving to an"
+				+ " older age category between two seasons reveals the exact year of birth, even when the date of"
+				+ " birth is not displayed.";
+
+		for (String[] asked : new String[][] { { "sr", serbian }, { "en", english } }) {
+			JsonNode served = answerIn(asked[0]);
+
+			assertThat(fieldOf(served, "pravilnik", "body").get(16))
+					.as("Article 74 asked in %s", asked[0])
+					.containsOnlyOnce(asked[1]);
+			assertThat(fieldOf(served, "politika-privatnosti", "body").get(2))
+					.as("section 3 of the privacy policy asked in %s", asked[0])
+					.containsOnlyOnce(asked[1]);
+		}
+	}
+
+	/**
 	 * SECTION ORDER IS THE {@code position} COLUMN, AND NOT THE ORDER ROWS WERE WRITTEN IN.
 	 *
 	 * <p>Task instruction, section 5: dropping the {@code order by} on
