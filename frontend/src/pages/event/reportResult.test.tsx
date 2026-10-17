@@ -105,7 +105,7 @@ describe('the way to report a result', () => {
 
     renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
 
-    for (const asked of [/Sati/, /Minuta/, /Sekundi/, /Komentar/, /Link ka zvaničnim/]) {
+    for (const asked of [/Sati/, /Minuti/, /Sekunde/, /Komentar/, /Link ka zvaničnim/]) {
       expect(await screen.findByLabelText(asked)).toBeVisible()
     }
 
@@ -114,26 +114,6 @@ describe('the way to report a result', () => {
     for (const known of [/^Naziv trke/, /Datum/, /Dužina/, /Uspon/, /Spust/, /^Trka/]) {
       expect(screen.queryByLabelText(known)).toBeNull()
     }
-  })
-
-  it('says which race it is reporting, by its name and length, in this language', async () => {
-    /* A race is told from the one beside it by its name and its length, and by
-       its day where two of them share both (`data/raceLabel.ts`, since
-       28.08.2026): the event is the page this form was opened from. It stood
-       in a list of choices until 23.08.2026 and stands in the sentence over the
-       form now, said by the same helper, so the two never drifted apart.
-
-       Written raw it read „5.0 km" with a full stop, which is not how a number
-       is written in Serbian. */
-    const { races } = await racesOf(EVENT)
-    const race = first(races)
-
-    renderAt(reportAddress(EVENT, race), 'competitor', ME)
-
-    const note = await screen.findByText(/Prijavljuješ rezultat/)
-
-    expect(note).toHaveTextContent(formatDistance(race.distanceKm, 'sr-Latn'))
-    expect(note).toHaveTextContent('Maraton maratona')
   })
 
   it('refuses a race that belongs to another event', async () => {
@@ -229,8 +209,8 @@ describe('a result reported this way', () => {
   /** The three boxes of the time, and the address of the official results. */
   async function fillIn(user: ReturnType<typeof setupUser>, said = 'https://primer.rs/rezultati') {
     await user.type(await screen.findByLabelText(/Sati/), '3')
-    await user.type(screen.getByLabelText(/Minuta/), '41')
-    await user.type(screen.getByLabelText(/Sekundi/), '12')
+    await user.type(screen.getByLabelText(/Minuti/), '41')
+    await user.type(screen.getByLabelText(/Sekunde/), '12')
     await user.type(screen.getByLabelText(/Link ka zvaničnim/), said)
   }
 
@@ -324,8 +304,8 @@ describe('a result reported this way', () => {
       renderAt(reportAddress(EVENT, first(races)), 'superadmin', ME)
 
       await user.type(await screen.findByLabelText(/Sati/), '3')
-      await user.type(screen.getByLabelText(/Minuta/), '41')
-      await user.type(screen.getByLabelText(/Sekundi/), '12')
+      await user.type(screen.getByLabelText(/Minuti/), '41')
+      await user.type(screen.getByLabelText(/Sekunde/), '12')
       await user.upload(
         screen.getByLabelText(/Slika kao dokaz/),
         new File(['proba'], 'sat.jpg', { type: 'image/jpeg' }),
@@ -388,7 +368,7 @@ describe('a result reported this way', () => {
       await screen.findByText('Rezultat ne može da se pošalje pre dana same trke.')
 
       expect(screen.queryByRole('heading', { name: 'Rezultat je poslat' })).toBeNull()
-      expect(screen.getByLabelText(/Minuta/)).toHaveValue('41')
+      expect(screen.getByLabelText(/Minuti/)).toHaveValue('41')
     } finally {
       server.stop()
     }
@@ -481,24 +461,6 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
      Since then every screen that writes a race writes its name and its length, and
      the two together are what tells it from the one beside it
      (`data/raceLabel.ts`). */
-  /** The one race in the file whose name is not its event's, which is the only
-   *  kind that can tell a name apart from a length. Every other race carries the
-   *  event's name, so a case built on one of those passes whether the label is the
-   *  name or the length: the sentence it is read out of names the event as well.
-   *  Measured on 28.08.2026, which is how this helper came to exist. */
-  async function renamedRace() {
-    const races = await loadResource<Race[]>('races')
-    const events = await loadResource<BtlEvent[]>('events')
-    const named = must(
-      races
-        .map((race) => ({ race, event: events.find((one) => one.id === race.eventId) }))
-        .find(({ race, event }) => event !== undefined && event.name !== race.name),
-      'a race called something other than its event',
-    )
-
-    return { race: named.race, event: must(named.event, 'the event it belongs to') }
-  }
-
   /** And one run on a morning its event did not begin on, for the same reason: a
    *  race that carries its event's day cannot tell the two apart. Thirty of them
    *  in the file, counted the same day. */
@@ -547,83 +509,6 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     expect(
       within(table).getAllByText(`${formatNumber(race.distanceKm, 'sr-Latn', 2)} km`).length,
     ).toBeGreaterThan(0)
-  })
-
-  it('is named by its own name on the form that reports a result', async () => {
-    const { race, event } = await renamedRace()
-
-    renderAt(reportAddress(event.slug, race), 'competitor', ME)
-
-    /* By its name, since 23.08.2026, when the owner gave a race one: „ja mogu da u
-       okviru Beogradskog maratona imam dve trke, od 42.2 i 21.1, i obe će dobiti
-       default naziv Beogradski maraton. Ali onda mogu izmeniti ovu drugu da se
-       zove Beogradski polumaraton." Until 28.08.2026 this sentence said the
-       length, so a race the administrator had renamed read „21,10 km" here and on
-       the event's own page. */
-    expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(race.name)
-    /* And its length beside it, which the name does not replace. A race's name
-       starts out as its event's, and 886 of the 1163 events in the file hold
-       exactly one race, so on three quarters of them the name alone says nothing
-       the screen has not already said and the one thing that told the race apart
-       is gone. Measured by a review on 28.08.2026 in Chrome: „sa trke Mala Sveta
-       gora na događaju „Mala Sveta gora"", against „21,1 km" the day before. */
-    expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(
-      formatDistance(race.distanceKm, 'sr-Latn'),
-    )
-  })
-
-  it('names the race and nothing else, whatever the event is called', async () => {
-    /* Owner, 29.08.2026, asked which of three forms this sentence should take:
-       „Nikad događaj, uvek trka." One form everywhere, whether the two names differ
-       or not.
-
-       Asked as the **whole sentence** and not as the absence of a word, because the
-       absence cannot be asked for here: a race's name starts out as its event's, so
-       on most events the event's name is inside the race's and „does not contain it"
-       is false while the sentence is right. Measured the day the event was taken
-       out: with the clause gone and no case written this way, the whole suite stayed
-       green, and the only thing that had ever held the sentence's shape was a case
-       asking that the race's own label is somewhere inside it.
-
-       On a race called something other than its event, so the two names really
-       differ. Found by the helper that asks exactly that (`renamedRace`) and not by
-       the `renamed` flag beside it: that flag says somebody typed the name by hand,
-       which `pages/admin/EventRaces.tsx` writes on every keystroke, so a name typed
-       back to the event's own would carry it and part the two facts. */
-    const { race, event } = await renamedRace()
-    const races = await loadResource<Race[]>('races')
-
-    renderAt(reportAddress(event.slug, race), 'competitor', ME)
-
-    const said = await screen.findByText(/Prijavljuješ rezultat/)
-    const here = races.filter((one) => one.eventId === race.eventId)
-
-    /* `textContent` and not `toHaveTextContent`, which asks whether the string is
-       **somewhere inside** the element. A review on 30.08.2026 put the clause back
-       as a sentence of its own at the end — „Trka je na događaju „X"." — and the
-       whole suite stayed green, which is the decision broken and the guard that
-       claims to hold it silent. */
-    expect(said.textContent).toBe(
-      `Prijavljuješ rezultat sa trke ${raceLabel(race, here, 'sr-Latn')}. Dužinu, uspon i spust portal već zna sa same trke.`,
-    )
-  })
-
-  it('says its length even where its name is its event’s, which is most of them', async () => {
-    /* The case the name alone got wrong, on the ordinary event rather than on the
-       one renamed race in the file: 886 of the 1163 events that hold any race at
-       all hold exactly one, and there the name is the event's name.
-
-       The two are asked for **together**, as the one string the label builds, and
-       not one at a time. Measured by a review on 28.08.2026: asking for the name on
-       its own passes on such an event whatever the label returns, because the
-       sentence names the event beside it. */
-    const { race, event } = await anyRace()
-
-    renderAt(reportAddress(event.slug, race), 'competitor', ME)
-
-    expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(
-      `${race.name} ${formatYear(race.date, 'sr-Latn')} (${formatDistance(race.distanceKm, 'sr-Latn')})`,
-    )
   })
 
   it('tells two races apart even where the day cannot, which is where it gave up', async () => {
@@ -892,10 +777,9 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     try {
       renderAt(reportAddress(event.slug, race), 'competitor', ME)
 
-      await screen.findByText(/Prijavljuješ rezultat/)
       await user.type(await screen.findByLabelText(/Sati/), '3')
-      await user.type(screen.getByLabelText(/Minuta/), '30')
-      await user.type(screen.getByLabelText(/Sekundi/), '0')
+      await user.type(screen.getByLabelText(/Minuti/), '30')
+      await user.type(screen.getByLabelText(/Sekunde/), '0')
       await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
       await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
@@ -932,8 +816,8 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
 
     await user.type(await screen.findByLabelText(/Sati/), '3')
-    await user.type(screen.getByLabelText(/Minuta/), '30')
-    await user.type(screen.getByLabelText(/Sekundi/), '0')
+    await user.type(screen.getByLabelText(/Minuti/), '30')
+    await user.type(screen.getByLabelText(/Sekunde/), '0')
     await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
     await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
@@ -963,10 +847,9 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     try {
       renderAt(reportAddress(event.slug, race), 'competitor', ME)
 
-      await screen.findByText(/Prijavljuješ rezultat/)
       await user.type(await screen.findByLabelText(/Sati/), '0')
-      await user.type(screen.getByLabelText(/Minuta/), '0')
-      await user.type(screen.getByLabelText(/Sekundi/), '0')
+      await user.type(screen.getByLabelText(/Minuti/), '0')
+      await user.type(screen.getByLabelText(/Sekunde/), '0')
       await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
       await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
@@ -974,8 +857,8 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
       expect(route.sent()).toHaveLength(0)
 
       /* And one of the three above nought is enough to send it. */
-      await user.clear(screen.getByLabelText(/Minuta/))
-      await user.type(screen.getByLabelText(/Minuta/), '45')
+      await user.clear(screen.getByLabelText(/Minuti/))
+      await user.type(screen.getByLabelText(/Minuti/), '45')
       await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
       await screen.findByRole('heading', { name: 'Rezultat je poslat' })
@@ -1001,10 +884,9 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     try {
       renderAt(reportAddress(event.slug, race), 'competitor', ME)
 
-      await screen.findByText(/Prijavljuješ rezultat/)
       await user.type(await screen.findByLabelText(/Sati/), '3')
-      await user.type(screen.getByLabelText(/Minuta/), '30')
-      await user.type(screen.getByLabelText(/Sekundi/), '0')
+      await user.type(screen.getByLabelText(/Minuti/), '30')
+      await user.type(screen.getByLabelText(/Sekunde/), '0')
       await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
       await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
@@ -1031,10 +913,9 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     try {
       renderAt(reportAddress(event.slug, race), 'competitor', ME)
 
-      await screen.findByText(/Prijavljuješ rezultat/)
       await user.type(await screen.findByLabelText(/Sati/), '3')
-      await user.type(screen.getByLabelText(/Minuta/), '30')
-      await user.type(screen.getByLabelText(/Sekundi/), '0')
+      await user.type(screen.getByLabelText(/Minuti/), '30')
+      await user.type(screen.getByLabelText(/Sekunde/), '0')
       await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
       await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 

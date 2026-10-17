@@ -435,11 +435,9 @@ describe('a race that fixes no length', () => {
     try {
       renderAt(await reportAddress(), 'competitor', '000001')
 
-      const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
-
-      expect(note.textContent, 'the sentence is not the one a timed race gets').toMatch(
-        /Vreme portal već zna sa same trke/,
-      )
+      /* The form is up when its first box is, and only then is the absence of the time boxes
+         a fact about it. */
+      expect(await screen.findByLabelText(/^Dužina/)).toBeVisible()
       expect(screen.queryByLabelText(/^Sati/), 'a timed race is asking for a time').toBeNull()
 
       /* Climb and fall differ, and neither is nought: with both the same a screen
@@ -490,14 +488,14 @@ describe('a race that fixes no length', () => {
     }
   }, SLOW)
 
-  it('says of a free race that it fixes neither, and asks for all four', async () => {
+  it('asks of a free race for all four, because it fixes neither', async () => {
     /* The third kind, which fixes nothing: the member gives the length, the climb,
-       the fall and the time. Its sentence is its own because the sentence says what
-       the portal already knows, and on a free race that is nothing at all.
+       the fall and the time. (Until 16.10.2026 a sentence over the form said so; the
+       owner took it off the page, and what is asked is read off the boxes.)
 
-       Asked on the screen and not only of the form, because the sentence and the
-       fields are chosen in two different places and a case about one of them says
-       nothing about the other. */
+       Asked on the screen and not only of the form, because the fields are chosen
+       by the kind the screen reads off the race, and a case about the form says
+       nothing about that. */
     const real = globalThis.fetch
 
     globalThis.fetch = servingRaces(real, (one) => ({ ...one, kind: 'free', distanceKm: 0 }))
@@ -505,9 +503,6 @@ describe('a race that fixes no length', () => {
     try {
       renderAt(await reportAddress(), 'competitor', '000001')
 
-      const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
-
-      expect(note.textContent).toMatch(/ne zadaje ni dužinu ni vreme/)
       expect(await screen.findByLabelText(/^Dužina/)).toBeVisible()
       expect(screen.getByLabelText(/^Uspon/)).toBeVisible()
       expect(screen.getByLabelText(/^Spust/)).toBeVisible()
@@ -591,10 +586,7 @@ describe('a race that fixes no length', () => {
     try {
       renderAt(await reportAddress(), 'competitor', '000001')
 
-      const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
-
-      expect(note.textContent).toMatch(/Dužinu, uspon i spust portal već zna sa same trke/)
-      expect(screen.getByLabelText(/^Sati/)).toBeVisible()
+      expect(await screen.findByLabelText(/^Sati/)).toBeVisible()
       expect(screen.queryByLabelText(/^Dužina/), 'it is asking for what it knows').toBeNull()
     } finally {
       globalThis.fetch = real
