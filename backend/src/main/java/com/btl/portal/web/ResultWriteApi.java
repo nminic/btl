@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.event.WhatARaceCarries;
 import com.btl.portal.domain.event.WhatARaceCarries.Figures;
+import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatAResultChangeSays;
 import com.btl.portal.domain.mail.WhatAResultChangeSays.Run;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
@@ -452,7 +453,8 @@ class ResultWriteApi {
 						figures.distanceKm(), figures.ascentM(), figures.descentM(),
 						figures.seconds()));
 
-		Said said = WhatAResultChangeSays.changed(before.run(), after);
+		Recipient him = recipient(asking.account());
+		Said said = WhatAResultChangeSays.changed(before.run(), after, him.language());
 
 		Long made = inOneTransaction.execute(committing -> {
 			long submission = writeTheSubmission(me, before.raceId(), before.day(), null, null,
@@ -464,7 +466,7 @@ class ResultWriteApi {
 			return submission;
 		});
 
-		post(asking.account(), said);
+		post(asking.account(), him, said);
 
 		return ResponseEntity.ok(new Made(made));
 	}
@@ -501,7 +503,8 @@ class ResultWriteApi {
 			throw nothingIsHere();
 		}
 
-		Said said = WhatAResultChangeSays.deleted(standing.get().run());
+		Recipient him = recipient(asking.account());
+		Said said = WhatAResultChangeSays.deleted(standing.get().run(), him.language());
 
 		inOneTransaction.executeWithoutResult(committing -> {
 			/* WHOSE IT IS IS IN THIS STATEMENT TOO, AND IT IS A SECOND LOCK WITH NO CASE OF
@@ -518,7 +521,7 @@ class ResultWriteApi {
 			tell(me, said);
 		});
 
-		post(asking.account(), said);
+		post(asking.account(), him, said);
 
 		return ResponseEntity.noContent().build();
 	}
@@ -728,7 +731,13 @@ class ResultWriteApi {
 	private ResponseEntity<?> write(long me, Long raceId, LocalDate day, String raceName,
 			String raceKind, Long theTownsKey, String city, Long theCountrysKey, Run run, Ran typed,
 			String subject) {
-		Said said = WhatAResultChangeSays.entered(run);
+		/* IN HIS LANGUAGE, which is the account's (owner, 10.10.2026, Q3: the inbox copy of the
+		   messages about a result follows the language of the letter). There is no letter for a
+		   run sent in, and so no address to read the language beside; it is read off the account
+		   whose member this is, which `account_competitor_unique` (V23) makes one row. */
+		Said said = WhatAResultChangeSays.entered(run, MailLanguage.ofTheColumn(db.sql(
+						"select mail_language from account where competitor_id = ?")
+				.param(me).query(String.class).single()));
 
 		Long made = inOneTransaction.execute(committing -> {
 			long submission = writeTheSubmission(me, raceId, day, raceName, raceKind, theTownsKey,
@@ -853,19 +862,35 @@ class ResultWriteApi {
 	 * {@link RegistrationApi}'s rule and ADL A12's reason: an address is a personal datum and
 	 * a log is read by whoever can read the disk.
 	 */
-	private void post(long account, Said said) {
-		String to = db.sql("select email from account where id = ?")
-				.param(account)
-				.query(String.class)
-				.single();
-
+	private void post(long account, Recipient him, Said said) {
 		try {
-			postman.send(said, to);
+			postman.send(said, him.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("the message about the result of account {} did not go out; what it said is"
 					+ " in his inbox and the row is written either way", account,
 					theRelayDidNotTakeIt);
 		}
+	}
+
+	/**
+	 * WHERE HIS LETTER GOES AND WHICH LANGUAGE IT IS WRITTEN IN, read in one statement off the
+	 * account that is asking.
+	 *
+	 * <p>Both halves of one row, so the language cannot be anybody's but the reader's: the
+	 * member who corrects or deletes his own result IS the one the letter goes to, and nothing
+	 * in the request names either. Read before the letter is built, because the same
+	 * {@link Said} goes into his inbox inside the transaction and to the relay after it.
+	 */
+	private Recipient recipient(long account) {
+		return db.sql("select email, mail_language from account where id = ?")
+				.param(account)
+				.query((row, one) -> new Recipient(row.getString(1),
+						MailLanguage.ofTheColumn(row.getString(2))))
+				.single();
+	}
+
+	/** An address and the language of what is written to it, off one row of {@code account}. */
+	private record Recipient(String address, MailLanguage language) {
 	}
 
 	/** What the proof rule is asked about, and the photograph is always absent - see the

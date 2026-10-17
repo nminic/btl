@@ -42,6 +42,11 @@ class WhatAResultChangeSaysTest {
 		return ResourceBundle.getBundle("notices/results", Locale.ROOT);
 	}
 
+	/** The dictionary of one language, as the class itself reads it. */
+	private static ResourceBundle words(MailLanguage in) {
+		return WhatAResultChangeSays.words(in);
+	}
+
 	/**
 	 * EVERY OCCASION HAS ITS WORDS AND EVERY WORD HAS ITS OCCASION.
 	 *
@@ -63,6 +68,19 @@ class WhatAResultChangeSaysTest {
 		assertThat(words().keySet())
 				.as("the words and the occasions no longer name the same things")
 				.isEqualTo(expected);
+
+		/* AND EVERY LANGUAGE, EACH EXACT OVER THE WHOLE SET: the owner's answer of 10.10.2026, Q3,
+		   is that these follow the language of the letter, so an occasion with no English words
+		   throws for exactly the member who chose English. */
+		for (MailLanguage in : MailLanguage.values()) {
+			assertThat(words(in).keySet())
+					.as("the words in %s and the occasions no longer name the same things", in)
+					.isEqualTo(expected);
+		}
+
+		assertThat(words(MailLanguage.SERBIAN).getString("resultEntered.subject"))
+				.as("the Serbian dictionary the class reads is not notices/results")
+				.isEqualTo(words().getString("resultEntered.subject"));
 	}
 
 	/**
@@ -78,13 +96,15 @@ class WhatAResultChangeSaysTest {
 	@ParameterizedTest
 	@EnumSource(Told.class)
 	void everyOccasionTakesAsManyFactsAsItsWordsHaveHolesFor(Told told) {
-		int holes = new MessageFormat(words().getString(told.key() + ".body"), Locale.ROOT)
-				.getFormatsByArgumentIndex().length;
+		for (MailLanguage in : MailLanguage.values()) {
+			int holes = new MessageFormat(words(in).getString(told.key() + ".body"), Locale.ROOT)
+					.getFormatsByArgumentIndex().length;
 
-		assertThat(holes)
-				.as("%s says it takes %d facts and its words have %d holes", told, told.facts(),
-						holes)
-				.isEqualTo(told.facts());
+			assertThat(holes)
+					.as("%s says it takes %d facts and its words in %s have %d holes", told,
+							told.facts(), in, holes)
+					.isEqualTo(told.facts());
+		}
 	}
 
 	/**
@@ -129,12 +149,14 @@ class WhatAResultChangeSaysTest {
 	 */
 	@Test
 	void theMessageAboutAChangeCarriesTheOldRunBeforeTheNewOne() {
-		String body = WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN).body();
+		for (MailLanguage in : MailLanguage.values()) {
+			String body = WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN, in).body();
 
-		assertThat(body.indexOf("Dugi maraton"))
-				.as("the old run is missing, or it comes after the new one")
-				.isGreaterThanOrEqualTo(0)
-				.isLessThan(body.indexOf("Kratka trka"));
+			assertThat(body.indexOf("Dugi maraton"))
+					.as("the old run is missing in %s, or it comes after the new one", in)
+					.isGreaterThanOrEqualTo(0)
+					.isLessThan(body.indexOf("Kratka trka"));
+		}
 	}
 
 	/**
@@ -162,6 +184,44 @@ class WhatAResultChangeSaysTest {
 	/** „6:00:00" and „0:01:01": the hours are however many there are and the rest is padded,
 	 *  because a race of a hundred and twelve hours is a real thing in this league while
 	 *  {@code 3:2:5} is not a time anybody writes. */
+	/**
+	 * AND IN ENGLISH, THE SAME FIGURES IN ENGLISH WORDS, with the decimal point the English page
+	 * writes and the day in words.
+	 *
+	 * <p>Asked of the whole line, because a line that kept the Serbian comma or the Serbian
+	 * „uspon" would still contain every figure.
+	 */
+	@Test
+	void oneRunIsWrittenOutTheWayAnEnglishReaderReadsIt() {
+		assertThat(WhatAResultChangeSays.inWords(A_RUN, MailLanguage.ENGLISH))
+				.isEqualTo("Dugi maraton, 5 May 2027, 42.20 km, ascent 350 m, descent 410 m,"
+						+ " time 3:20:00, 123.45 points");
+		assertThat(WhatAResultChangeSays.inWords(ANOTHER_RUN, MailLanguage.ENGLISH))
+				.isEqualTo("Kratka trka, 9 November 2026, 9.50 km, ascent 12 m, descent 7 m,"
+						+ " time 0:44:05, 8.10 points");
+		assertThat(WhatAResultChangeSays.inWords(A_RUN, MailLanguage.SERBIAN))
+				.isEqualTo(WhatAResultChangeSays.inWords(A_RUN));
+	}
+
+	/**
+	 * EVERY OCCASION IN ENGLISH IS ENGLISH, carries the run in English words, and is signed the way
+	 * the owner chose (10.10.2026, Q5: „potpis „Balkanska trkačka liga", u prozi BTL").
+	 */
+	@Test
+	void everyOccasionInEnglishIsEnglishAndSignedAsTheOwnerChose() {
+		for (Said said : everyOneOfThem(MailLanguage.ENGLISH)) {
+			assertThat(said.body())
+					.contains("ascent 350 m")
+					.endsWith("Balkanska trkačka liga")
+					.doesNotContain("uspon")
+					.doesNotContain("Sačuvajte");
+		}
+
+		for (Said said : everyOneOfThem(MailLanguage.SERBIAN)) {
+			assertThat(said.body()).contains("uspon 350 m").doesNotContain("ascent");
+		}
+	}
+
 	@Test
 	void theClockPadsWhatReadsWrongUnpaddedAndNothingElse() {
 		assertThat(WhatAResultChangeSays.asAClock(21600)).isEqualTo("6:00:00");
@@ -182,13 +242,19 @@ class WhatAResultChangeSaysTest {
 	/** A run that is not there at all is refused here rather than rendered as „null". */
 	@Test
 	void nothingIsWrittenAboutARunThatIsNotThere() {
-		assertThatThrownBy(() -> WhatAResultChangeSays.entered(null))
+		assertThatThrownBy(() -> WhatAResultChangeSays.entered(null, MailLanguage.SERBIAN))
 				.isInstanceOf(NullPointerException.class);
-		assertThatThrownBy(() -> WhatAResultChangeSays.changed(null, A_RUN))
+		assertThatThrownBy(() -> WhatAResultChangeSays.changed(null, A_RUN, MailLanguage.SERBIAN))
 				.isInstanceOf(NullPointerException.class);
-		assertThatThrownBy(() -> WhatAResultChangeSays.changed(A_RUN, null))
+		assertThatThrownBy(() -> WhatAResultChangeSays.changed(A_RUN, null, MailLanguage.SERBIAN))
 				.isInstanceOf(NullPointerException.class);
-		assertThatThrownBy(() -> WhatAResultChangeSays.deleted(null))
+		assertThatThrownBy(() -> WhatAResultChangeSays.deleted(null, MailLanguage.SERBIAN))
+				.isInstanceOf(NullPointerException.class);
+		assertThatThrownBy(() -> WhatAResultChangeSays.approved(null, MailLanguage.SERBIAN))
+				.isInstanceOf(NullPointerException.class);
+		assertThatThrownBy(() -> WhatAResultChangeSays.approved(A_RUN, null))
+				.isInstanceOf(NullPointerException.class);
+		assertThatThrownBy(() -> WhatAResultChangeSays.inWords(A_RUN, null))
 				.isInstanceOf(NullPointerException.class);
 		assertThatThrownBy(() -> new Run(null, LocalDate.now(), BigDecimal.ONE, 0, 0, 1,
 				BigDecimal.ONE)).isInstanceOf(NullPointerException.class);
@@ -203,9 +269,15 @@ class WhatAResultChangeSaysTest {
 	/** All three, built through the three methods a caller really uses rather than through
 	 *  the enum, so a method that reached for the wrong occasion is visible here too. */
 	private static Said[] everyOneOfThem() {
+		return Stream.of(MailLanguage.values()).flatMap(in -> Stream.of(everyOneOfThem(in)))
+				.toArray(Said[]::new);
+	}
+
+	private static Said[] everyOneOfThem(MailLanguage in) {
 		return new Said[] {
-				WhatAResultChangeSays.entered(A_RUN),
-				WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN),
-				WhatAResultChangeSays.deleted(A_RUN)};
+				WhatAResultChangeSays.entered(A_RUN, in),
+				WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN, in),
+				WhatAResultChangeSays.deleted(A_RUN, in),
+				WhatAResultChangeSays.approved(A_RUN, in)};
 	}
 }

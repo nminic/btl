@@ -53,9 +53,14 @@ class WhatANoticeSaysTest {
 				.flatMap(one -> Stream.of(one.key() + ".subject", one.key() + ".body"))
 				.collect(Collectors.toSet());
 
-		assertThat(WhatANoticeSays.words().keySet())
-				.as("the words and the notices no longer name the same things")
-				.isEqualTo(expected);
+		/* EVERY LANGUAGE, EACH DICTIONARY EXACT OVER THE WHOLE SET: a notice follows its reader
+		   (owner, PDL P18, 03.10.2026), so one with no English words would throw at the worst
+		   moment, for the member who chose English. */
+		for (MailLanguage in : MailLanguage.values()) {
+			assertThat(WhatANoticeSays.words(in).keySet())
+					.as("the words in %s and the notices no longer name the same things", in)
+					.isEqualTo(expected);
+		}
 	}
 
 	/**
@@ -71,12 +76,14 @@ class WhatANoticeSaysTest {
 	 */
 	@Test
 	void theNoticesAndTheMessagesShareNoWordsAtAll() {
-		Set<String> messages = ResourceBundle.getBundle("mail/sr", Locale.ROOT).keySet();
+		for (MailLanguage in : MailLanguage.values()) {
+			Set<String> messages = ResourceBundle.getBundle("mail/" + in.code(), Locale.ROOT).keySet();
 
-		assertThat(WhatANoticeSays.words().keySet())
-				.as("a notice and a message are filed under the same key, so one of them is"
-						+ " reading words written for the other")
-				.doesNotContainAnyElementsOf(messages);
+			assertThat(WhatANoticeSays.words(in).keySet())
+					.as("a notice and a message are filed under the same key in %s, so one of them"
+							+ " is reading words written for the other", in)
+					.doesNotContainAnyElementsOf(messages);
+		}
 
 		assertThat(Arrays.stream(Notice.values()).map(Notice::key).toList())
 				.as("a notice is named after a message, which is how the two bundles start"
@@ -99,13 +106,15 @@ class WhatANoticeSaysTest {
 	@ParameterizedTest
 	@EnumSource(Notice.class)
 	void theWordsTakeExactlyAsManyFactsAsTheNoticeSends(Notice notice) {
-		String body = WhatANoticeSays.words().getString(notice.key() + ".body");
+		for (MailLanguage in : MailLanguage.values()) {
+			String body = WhatANoticeSays.words(in).getString(notice.key() + ".body");
 
-		assertThat(WhatANoticeSays.howManyFactsTheWordsTake(body))
-				.as("%s says it sends %d facts and its words use a different number of them, so"
-						+ " a member is posted either a hole or nothing at all",
-						notice, notice.facts())
-				.isEqualTo(notice.facts());
+			assertThat(WhatANoticeSays.howManyFactsTheWordsTake(body))
+					.as("%s says it sends %d facts and its words in %s use a different number of"
+							+ " them, so a member is posted either a hole or nothing at all",
+							notice, notice.facts(), in)
+					.isEqualTo(notice.facts());
+		}
 	}
 
 	/**
@@ -123,19 +132,27 @@ class WhatANoticeSaysTest {
 	@ParameterizedTest
 	@EnumSource(Notice.class)
 	void noNoticeCarriesALink(Notice notice) {
-		Said said = WhatANoticeSays.about(notice, someFactsFor(notice));
+		for (MailLanguage in : MailLanguage.values()) {
+			Said said = WhatANoticeSays.about(notice, in, someFactsFor(notice));
 
-		assertThat(said.subject() + "\n" + said.body())
-				.as("%s carries an address, so it is a message rather than a notice and it"
-						+ " belongs where the floors ask for a screen and a lifetime", notice)
-				.doesNotContain("://");
+			assertThat(said.subject() + "\n" + said.body())
+					.as("%s in %s carries an address, so it is a message rather than a notice and it"
+							+ " belongs where the floors ask for a screen and a lifetime", notice, in)
+					.doesNotContain("://");
+		}
 	}
 
 	/** Every notice says something, and nothing it says is empty or still full of holes. */
 	@ParameterizedTest
 	@EnumSource(Notice.class)
 	void everyNoticeSaysSomethingWithNoHolesLeftInIt(Notice notice) {
-		Said said = WhatANoticeSays.about(notice, someFactsFor(notice));
+		for (MailLanguage in : MailLanguage.values()) {
+			everyNoticeSaysSomethingWithNoHolesLeftInIt(notice, in);
+		}
+	}
+
+	private static void everyNoticeSaysSomethingWithNoHolesLeftInIt(Notice notice, MailLanguage in) {
+		Said said = WhatANoticeSays.about(notice, in, someFactsFor(notice));
 
 		assertThat(said.subject()).isNotBlank();
 		assertThat(said.body()).isNotBlank();
@@ -167,27 +184,33 @@ class WhatANoticeSaysTest {
 		Arrays.fill(tooFew, "x");
 		Arrays.fill(tooMany, "x");
 
-		assertThatThrownBy(() -> WhatANoticeSays.about(notice, tooFew))
+		assertThatThrownBy(() -> WhatANoticeSays.about(notice, MailLanguage.SERBIAN, tooFew))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining(notice.name());
 
-		assertThatThrownBy(() -> WhatANoticeSays.about(notice, tooMany))
+		assertThatThrownBy(() -> WhatANoticeSays.about(notice, MailLanguage.ENGLISH, tooMany))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining(notice.name());
 	}
 
 	@Test
 	void nothingIsAcceptedWhereSomethingIsRequired() {
-		assertThatThrownBy(() -> WhatANoticeSays.about(null, "a", "b"))
+		assertThatThrownBy(() -> WhatANoticeSays.about(null, MailLanguage.SERBIAN, "a", "b"))
 				.isInstanceOf(NullPointerException.class);
 
-		assertThatThrownBy(() -> WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED,
-				(String[]) null)).isInstanceOf(NullPointerException.class);
+		assertThatThrownBy(() -> WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, null, "a",
+				"b")).isInstanceOf(NullPointerException.class).hasMessage("in");
 
 		assertThatThrownBy(() -> WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED,
-				null, "1")).isInstanceOf(NullPointerException.class);
+				MailLanguage.SERBIAN, (String[]) null)).isInstanceOf(NullPointerException.class);
 
-		assertThatThrownBy(() -> WhatANoticeSays.moment(null))
+		assertThatThrownBy(() -> WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED,
+				MailLanguage.SERBIAN, null, "1")).isInstanceOf(NullPointerException.class);
+
+		assertThatThrownBy(() -> WhatANoticeSays.moment(null, MailLanguage.SERBIAN))
+				.isInstanceOf(NullPointerException.class);
+
+		assertThatThrownBy(() -> WhatANoticeSays.moment(AN_AFTERNOON, null))
 				.isInstanceOf(NullPointerException.class);
 	}
 
@@ -207,10 +230,32 @@ class WhatANoticeSaysTest {
 	 */
 	@Test
 	void aMomentIsWrittenInTheLeaguesOwnZone() {
-		assertThat(WhatANoticeSays.moment(AN_AFTERNOON))
+		assertThat(WhatANoticeSays.moment(AN_AFTERNOON, MailLanguage.SERBIAN))
 				.as("the moment is not written in the zone the league lives in, so a member"
 						+ " cannot check it against his own afternoon")
 				.isEqualTo("24.09.2026. 16:35");
+		assertThat(WhatANoticeSays.moment(AN_AFTERNOON, MailLanguage.ENGLISH))
+				.as("an English reader is not told the moment in his own words, in the league's zone")
+				.isEqualTo("24 September 2026 at 16:35");
+	}
+
+	/**
+	 * AND AN ENGLISH NOTICE IS ENGLISH, NOT THE SERBIAN WORDS WITH AN ENGLISH MOMENT IN THEM.
+	 *
+	 * <p>The floors above would pass a dictionary that held the right keys with the Serbian text
+	 * copied under them; the language is asked of the words themselves. And the prose calls the
+	 * league BTL (owner, 10.10.2026, Q5).
+	 */
+	@Test
+	void anEnglishNoticeIsWrittenInEnglish() {
+		Said english = WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, MailLanguage.ENGLISH,
+				"24 September 2026 at 16:35", "2");
+		Said serbian = WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, MailLanguage.SERBIAN,
+				"24.09.2026. 16:35", "2");
+
+		assertThat(english.body()).contains("password").contains("BTL").doesNotContain("lozink");
+		assertThat(serbian.body()).contains("lozink").doesNotContain("password");
+		assertThat(english.subject()).isNotEqualTo(serbian.subject());
 	}
 
 	/** Facts of the right count, each one visibly itself so a case can find it in the text. */

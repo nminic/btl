@@ -403,7 +403,24 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file. */
 			new Applied("58", "V58__moving_to_an_older_category_between_seasons_reveals_the_year_of_birth.sql",
-					951555262));
+					951555262),
+
+			/* V59. An account says which language its mail is written in: one column on account,
+			   `mail_language`, `sr` by default and NOT NULL, with a check on the two languages the
+			   portal writes in (owner, PDL P18, 03.10.2026, and the answers of 10.10.2026 on the
+			   language of the mail, JM). Every account standing when it runs is given `sr` by the
+			   default, which MailLanguageCarriedOverTest measures over rows written before it.
+
+			   59 because it is the next free number, and that was MEASURED rather than taken: every
+			   remote ref, every worktree and the three open pull requests were searched on 17.10.2026
+			   and none held a migration at V59 or above, and origin/main stands at V58.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the
+			   file, worked out with the copy of its algorithm the rows above describe (CRC32 over the
+			   lines, line breaks and a BOM left out), which reproduced V58 to the digit before it was
+			   trusted here, and this list is what confirms it on the gate. */
+			new Applied("59", "V59__an_account_says_which_language_its_mail_is_written_in.sql",
+					-1673487001));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

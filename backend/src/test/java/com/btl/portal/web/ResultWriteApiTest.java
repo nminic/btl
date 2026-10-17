@@ -1420,6 +1420,64 @@ class ResultWriteApiTest {
 				.isEqualTo("Vaš rezultat je obrisan");
 	}
 
+	/**
+	 * A CORRECTION IS TOLD IN HIS OWN LANGUAGE, IN THE LETTER AND IN HIS INBOX ALIKE.
+	 *
+	 * <p>The owner's answer of 10.10.2026, Q3 (A): the inbox copy of the messages about a result
+	 * follows the language of the letter. He chose English and the member written first did not, so
+	 * a language read off another account than the one the letter goes to is Serbian here, and so is
+	 * a letter that was always Serbian. The inbox is compared with what travelled, so an inbox left
+	 * Serbian beside an English letter fails too.
+	 */
+	@Test
+	void aCorrectionIsToldInHisOwnLanguageInTheLetterAndInTheInboxAlike() throws Exception {
+		db.sql("update account set mail_language = 'en' where email = ?").param(MY_ADDRESS).update();
+
+		correctedAs(ME, myResult, correction("42.20", 350, 410, 11400,
+				"https://rezultati.rs/ispravka", ""));
+
+		MimeMessage arrived = theMessageThatWentOut();
+
+		assertThat(arrived.getSubject()).isEqualTo("We have received a change to your result");
+		assertThat(asItWasWritten(arrived))
+				.contains("Old value:\nDugi maraton, 5 May 2027, 42.20 km, ascent 350 m, descent 410 m,"
+						+ " time 3:20:00, 123.45 points")
+				.endsWith("Balkanska trkačka liga");
+		assertThat(theLineInTheInboxOf(ME))
+				.as("the inbox says something other than what the English letter said")
+				.containsExactly(arrived.getSubject(), asItWasWritten(arrived));
+	}
+
+	/** And the other way round: he is Serbian and the member written first chose English. */
+	@Test
+	void aDeletionIsToldInSerbianToAMemberWhoKeptSerbianWhateverTheOthersChose() throws Exception {
+		db.sql("update account set mail_language = 'en' where email = 'ana@primer.rs'").update();
+		db.sql("update account set mail_language = 'en' where email = ?").param(SOMEBODY_ELSES_ADDRESS)
+				.update();
+
+		deletedAs(ME, myResult);
+
+		MimeMessage arrived = theMessageThatWentOut();
+
+		assertThat(arrived.getSubject()).isEqualTo("Vaš rezultat je obrisan");
+		assertThat(theLineInTheInboxOf(ME)).containsExactly(arrived.getSubject(), asItWasWritten(arrived));
+	}
+
+	/**
+	 * A RUN SENT IN IS TOLD IN HIS INBOX IN HIS LANGUAGE, with no letter, and the language is his
+	 * and not that of the member written first.
+	 */
+	@Test
+	void aRunSentInIsToldInHisInboxInHisLanguage() throws Exception {
+		db.sql("update account set mail_language = 'en' where email = ?").param(MY_ADDRESS).update();
+
+		assertThat(reportedAs(ME, ordinaryReport()).getStatus()).isEqualTo(201);
+
+		assertThat(theLineInTheInboxOf(ME).get(0)).isEqualTo("We have received your result");
+		assertThat(theLineInTheInboxOf(ME).get(1)).contains(" points").doesNotContain("bodova");
+		assertThat(SMTP.getReceivedMessages()).isEmpty();
+	}
+
 	/*
 	 * FIXTURE
 	 */

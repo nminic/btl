@@ -99,7 +99,33 @@ class AccountAndVerificationTest extends DatabaseTest {
 						   whoever owns the login, which is not the same fact as the name in the
 						   register of members and does not replace it. And the member this
 						   account belongs to, if there is one at all. */
-						"first_name", "last_name", "competitor_id");
+						"first_name", "last_name", "competitor_id",
+						/* V59. The language the account's mail is written in (owner, PDL P18,
+						   03.10.2026), on the account because a letter goes to its address. */
+						"mail_language");
+	}
+
+	/**
+	 * AN ACCOUNT NOBODY CHOSE A LANGUAGE FOR IS SERBIAN, and that is the column's own default,
+	 * not something each writer remembers.
+	 *
+	 * <p>The owner, 03.10.2026: „podrazumevano srpski". Every road that makes an account without
+	 * naming a language - the administration entering a member, the superadmin making a
+	 * moderator - leaves the column out and relies on this, so it is measured as behaviour: an
+	 * account written without the column comes back {@code sr}.
+	 */
+	@Test
+	void anAccountNobodyChoseALanguageForIsSerbian() {
+		db.sql("insert into account (first_name, last_name, email, role_id)"
+						+ " values ('Probni', 'Probic', 'bezizbora@primer.rs',"
+						+ " (select id from role where code = 'moderator'))")
+				.update();
+
+		assertThat(db.sql("select mail_language from account where email = 'bezizbora@primer.rs'")
+				.query(String.class).single())
+				.as("an account written without a language was not given Serbian")
+				.isEqualTo("sr");
+		assertThat(defaultOf("account", "mail_language")).isEqualTo("'sr'::text");
 	}
 
 	/**

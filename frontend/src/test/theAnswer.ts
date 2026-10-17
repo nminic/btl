@@ -477,6 +477,8 @@ export const whoIAm = {
   role: 'competitor',
   account: 1,
   member: myOwnRecordFromMe,
+  /* The language of the account's mail (V59), which the screen that changes it starts from. */
+  mailLanguage: 'sr',
 }
 
 /**

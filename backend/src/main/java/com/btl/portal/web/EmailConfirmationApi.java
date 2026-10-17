@@ -3,6 +3,7 @@ package com.btl.portal.web;
 import com.btl.portal.domain.account.EmailConfirmation;
 import com.btl.portal.domain.account.EmailConfirmation.Outcome;
 import com.btl.portal.domain.account.WhatAnAddressLooksLike;
+import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatTheMessageSays;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
@@ -217,7 +218,7 @@ class EmailConfirmationApi {
 	 * carries an answer too, because its answer varies; this route's never does, so
 	 * there is nothing here but what the letter needs.
 	 */
-	private record ToSend(long account, String address, String link) {
+	private record ToSend(long account, String address, String link, MailLanguage language) {
 	}
 
 	private ToSend write(ResendTyped typed) {
@@ -233,10 +234,13 @@ class EmailConfirmationApi {
 		   could disagree with the unique index by one character. */
 		String address = WhatAnAddressLooksLike.withoutTheSpacesAround(typed.email());
 
-		Optional<Found> found = db.sql("select id, email from account"
+		/* THE LANGUAGE OFF THE SAME ROW AS THE ADDRESS, in the same statement: the letter is
+		   written in the language of the account it goes to (owner, PDL P18, 03.10.2026). */
+		Optional<Found> found = db.sql("select id, email, mail_language from account"
 						+ " where lower(email) = lower(?) and email_confirmed_at is null")
 				.param(address)
-				.query((row, i) -> new Found(row.getLong(1), row.getString(2)))
+				.query((row, i) -> new Found(row.getLong(1), row.getString(2),
+						MailLanguage.ofTheColumn(row.getString(3))))
 				.optional();
 
 		if (found.isEmpty()) {
@@ -252,10 +256,11 @@ class EmailConfirmationApi {
 		db.sql("insert into email_verification_token (account_id, token_hash) values (?, ?)")
 				.params(found.orElseThrow().id(), link.hash()).update();
 
-		return new ToSend(found.orElseThrow().id(), found.orElseThrow().email(), link.secret());
+		return new ToSend(found.orElseThrow().id(), found.orElseThrow().email(), link.secret(),
+				found.orElseThrow().language());
 	}
 
-	private record Found(long id, String email) {
+	private record Found(long id, String email, MailLanguage language) {
 	}
 
 	/**
@@ -266,9 +271,8 @@ class EmailConfirmationApi {
 	 */
 	private void send(ToSend made) {
 		try {
-			postman.send(
-					WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, portal, made.link()),
-					made.address());
+			postman.send(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, made.language(),
+					portal, made.link()), made.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("a resent confirmation message for account {} did not go out; the token is"
 					+ " written and asking again is what gets him out of it",

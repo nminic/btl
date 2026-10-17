@@ -303,6 +303,28 @@ class AccountConstraintsTest extends DatabaseTest {
 								+ " values ('Drugi', 'Nalog', 'dvostruki@primer.rs', " + COMPETITOR + ", "
 								+ PROBE_MEMBER + ")"),
 
+				/* V59, THE LANGUAGE OF THE ACCOUNT'S MAIL, and the same reason the rows above stand
+				   here. Two letters and only the two the portal writes in: a third language,
+				   a language spelt in capitals, and a word where the code belongs. NOT NULL as
+				   well, because a default speaks only for a column left out of the statement, and
+				   this row puts null in it out loud. */
+				Violation.of("account_mail_language_known",
+						"insert into account (first_name, last_name, email, role_id, mail_language)"
+								+ " values ('Probni', 'Probic', 'nemacki@primer.rs', " + COMPETITOR
+								+ ", 'de')"),
+				Violation.of("account_mail_language_known",
+						"insert into account (first_name, last_name, email, role_id, mail_language)"
+								+ " values ('Probni', 'Probic', 'velika@primer.rs', " + COMPETITOR
+								+ ", 'EN')"),
+				Violation.of("account_mail_language_known",
+						"insert into account (first_name, last_name, email, role_id, mail_language)"
+								+ " values ('Probni', 'Probic', 'rec@primer.rs', " + COMPETITOR
+								+ ", 'english')"),
+				Violation.notNull("account_mail_language_not_null", "mail_language",
+						"insert into account (first_name, last_name, email, role_id, mail_language)"
+								+ " values ('Probni', 'Probic', 'bezjezika@primer.rs', " + COMPETITOR
+								+ ", null)"),
+
 				Violation.notNull("account_id_not_null", "id",
 						"insert into account (id, first_name, last_name, email, role_id)"
 								+ " values (null, 'Probni', 'Probic', 'drugi@primer.rs', " + COMPETITOR

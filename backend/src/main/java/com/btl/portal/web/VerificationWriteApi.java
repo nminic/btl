@@ -5,6 +5,7 @@ import com.btl.portal.domain.event.EventAddress;
 import com.btl.portal.domain.event.WhatARaceCarries;
 import com.btl.portal.domain.event.WhatARaceCarries.Figures;
 import com.btl.portal.domain.event.WhatAnEventCarries;
+import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatAResultChangeSays;
 import com.btl.portal.domain.mail.WhatAResultChangeSays.Run;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
@@ -1144,7 +1145,7 @@ class VerificationWriteApi {
 		   with no proposal of its own to fetch. A fourth branch stood here for SCHEDULE,
 		   calling {@code moveTheEvent}, from V30 until PDL P10a, 22.09.2026 took the queue
 		   away the same day: „Redova je pet, ne šest." */
-		Said said = null;
+		Run approved = null;
 
 		if (answer.yes()) {
 			if (TEAMS.equals(item.queue())) {
@@ -1152,7 +1153,7 @@ class VerificationWriteApi {
 			} else if (COMMENTS.equals(item.queue())) {
 				publishTheComment(item);
 			} else if (RESULTS.equals(item.queue())) {
-				said = countTheResult(item, sent, counting);
+				approved = countTheResult(item, sent, counting);
 			} else {
 				publishTheProfile(item);
 			}
@@ -1168,7 +1169,7 @@ class VerificationWriteApi {
 		}
 
 		return new Carried(ResponseEntity.ok(new Decided(item.id(), state)), item.competitorId(),
-				said);
+				approved);
 	}
 
 	/**
@@ -1644,9 +1645,12 @@ class VerificationWriteApi {
 	 *
 	 * @param counting the race and the four figures as they are counted, worked out and checked
 	 *                 by {@link #write} before the row was claimed
-	 * @return what the member is told by post once this has committed
+	 * @return the run as it is approved, which the member is told about by post once this has
+	 *         committed. The run and not the letter: the letter is written in HIS language, and
+	 *         that is read off his account in the statement that reads where it goes
+	 *         ({@link #post}), never off the moderator deciding
 	 */
-	private Said countTheResult(Item item, Submission sent, Counting counting) {
+	private Run countTheResult(Item item, Submission sent, Counting counting) {
 		CountedOn on = counting.on();
 		Figures counted = counting.counted();
 
@@ -1721,7 +1725,7 @@ class VerificationWriteApi {
 			tellHimHisCategoryMoved(item.competitorId(), theSeasonAfterTheRun, run);
 		}
 
-		return WhatAResultChangeSays.approved(run);
+		return run;
 	}
 
 	/**
@@ -1859,11 +1863,11 @@ class VerificationWriteApi {
 	 * rather than serves „za svaki slucaj".
 	 */
 	private void postAfterwards(Carried carried) {
-		if (carried.said() == null) {
+		if (carried.approved() == null) {
 			return;
 		}
 
-		post(carried.member(), carried.said());
+		post(carried.member(), carried.approved());
 	}
 
 	/**
@@ -1896,18 +1900,25 @@ class VerificationWriteApi {
 	 * moderator's, so failing his request over the post office would undo a decision that was
 	 * correctly made.
 	 */
-	private void post(long member, Said said) {
-		Optional<String> to = db.sql("select email from account where competitor_id = ?")
+	private void post(long member, Run approved) {
+		/* WHERE IT GOES AND THE LANGUAGE IT IS WRITTEN IN, ONE ROW AND ONE STATEMENT: his account,
+		   by the member the row is about. The moderator who decided is on another account and in
+		   another language as often as not, and nothing of his is read here (owner, PDL P18,
+		   03.10.2026: the member chooses the language of his own mail). */
+		Optional<Reader> to = db.sql("select email, mail_language from account where competitor_id = ?")
 				.param(member)
-				.query(String.class)
+				.query((row, one) -> new Reader(row.getString(1),
+						MailLanguage.ofTheColumn(row.getString(2))))
 				.optional();
 
 		if (to.isEmpty()) {
 			return;
 		}
 
+		Said said = WhatAResultChangeSays.approved(approved, to.get().language());
+
 		try {
-			postman.send(said, to.get(), theLeague);
+			postman.send(said, to.get().address(), theLeague);
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("the message about the approved result of member {} did not go out; the"
 					+ " result is written and the decision stands either way", member,
@@ -2156,10 +2167,14 @@ class VerificationWriteApi {
 	 * than posted where it is decided, so nothing holds a pool connection open across a relay
 	 * that may hang, and so a letter is never sent about a transaction that then rolled back.
 	 *
-	 * @param said   what to post, or empty where there is nothing to post - which is every
+	 * @param approved the run to post, or empty where there is nothing to post - which is every
 	 *               answer but an approved result
-	 * @param member whose address, read only when there is something to send
+	 * @param member whose address and language, read only when there is something to send
 	 */
-	private record Carried(ResponseEntity<?> answer, Long member, Said said) {
+	private record Carried(ResponseEntity<?> answer, Long member, Run approved) {
+	}
+
+	/** Where a letter goes and the language it is written in, off one row of {@code account}. */
+	private record Reader(String address, MailLanguage language) {
 	}
 }

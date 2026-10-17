@@ -4,6 +4,7 @@ import com.btl.portal.domain.account.BreachedPasswords;
 import com.btl.portal.domain.account.PasswordPolicy;
 import com.btl.portal.domain.account.StoredPassword;
 import com.btl.portal.domain.account.WhatAnAddressLooksLike;
+import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatTheMessageSays;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
@@ -360,12 +361,21 @@ class RegistrationApi {
 	 *                in the row it is a key, which is V7's own distinction: „the code is
 	 *                the public half and lives in its own column; who it belongs to is a
 	 *                row, and a row is what a foreign key points at"
+	 * @param mailLanguage the language of the PAGE the form was typed on, {@code sr} or
+	 *                {@code en}, and the second field here that is not on the form: the owner's
+	 *                answer of 10.10.2026, Q1 (B), „registracija nosi jezik strane na kojoj je
+	 *                kucana kao početni izbor (cena: jedno polje u zahtevu)", chosen over a
+	 *                control on the form. It is where his mail starts, the confirmation of his
+	 *                address being the first letter, and he changes it later in his profile.
+	 *                Absent is Serbian, which is the column's own default and the owner's
+	 *                „podrazumevano srpski"; a code that is not one of the two is refused like
+	 *                every other thing the form should have caught
 	 */
 	record Typed(String firstName, String lastName, String fatherName, String birthDate,
 			String gender, Boolean firstSeason2027, String email, String password,
 			String passwordRepeat, String address, Long placeId, String city, String country,
 			String idNumber, String phone, String shirtSize, Boolean healthStatement,
-			String parentConsent, String parentRelation, String referredBy) {
+			String parentConsent, String parentRelation, String referredBy, String mailLanguage) {
 	}
 
 	/** Why a registration was refused, and never which field. */
@@ -436,12 +446,24 @@ class RegistrationApi {
 			return no(THE_FORM_IS_NOT_COMPLETE);
 		}
 
+		/* THE LANGUAGE OF THE PAGE, OR SERBIAN WHERE NONE WAS SENT (see `Typed`). Asked before the
+		   password is judged, with the other questions about what the form carries, so that a
+		   request naming a language the portal does not write is refused before anything about it
+		   is looked up. */
+		Optional<MailLanguage> language = typed.mailLanguage() == null
+				? Optional.of(MailLanguage.SERBIAN)
+				: MailLanguage.of(typed.mailLanguage());
+
+		if (language.isEmpty()) {
+			return no(THE_FORM_IS_NOT_COMPLETE);
+		}
+
 		/* THE ONE REFUSAL TOLD APART, and the constant above says why it is this one and
 		   not the length beside it. */
 		return switch (passwords.judge(typed.password())) {
 			case BREACHED -> no(THE_PASSWORD_HAS_LEAKED);
 			case TOO_SHORT -> no(THE_FORM_IS_NOT_COMPLETE);
-			case FINE -> writeThenSend(typed, born, town, address, today, asking);
+			case FINE -> writeThenSend(typed, language.get(), born, town, address, today, asking);
 		};
 	}
 
@@ -482,11 +504,11 @@ class RegistrationApi {
 	 *
 	 * @return what the answer is, and what is left to be sent
 	 */
-	private ResponseEntity<Refused> writeThenSend(Typed typed, LocalDate born, Town town,
-			String address, LocalDate today, HttpServletRequest asking) {
+	private ResponseEntity<Refused> writeThenSend(Typed typed, MailLanguage language, LocalDate born,
+			Town town, String address, LocalDate today, HttpServletRequest asking) {
 
 		Made made = inOneTransaction.execute(
-				committing -> write(typed, born, town, address, today, asking));
+				committing -> write(typed, language, born, town, address, today, asking));
 
 		if (made.link() != null) {
 			send(made);
@@ -518,9 +540,8 @@ class RegistrationApi {
 	 */
 	private void send(Made made) {
 		try {
-			postman.send(
-					WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, portal, made.link()),
-					made.address());
+			postman.send(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, made.language(),
+					portal, made.link()), made.address());
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("the confirmation message for account {} did not go out, so nobody has"
 					+ " told him his address; the token is written and asking for the link"
@@ -560,11 +581,11 @@ class RegistrationApi {
 	 * instead is {@link Made} - the answer, and what the message will need - and the
 	 * sending happens after the commit.
 	 */
-	private Made write(Typed typed, LocalDate born, Town town, String address,
-			LocalDate today, HttpServletRequest asking) {
+	private Made write(Typed typed, MailLanguage language, LocalDate born, Town town,
+			String address, LocalDate today, HttpServletRequest asking) {
 
 		Optional<Long> account = db.sql("insert into account"
-						+ " (first_name, last_name, email, role_id, password_hash)"
+						+ " (first_name, last_name, email, role_id, password_hash, mail_language)"
 						/* `competitor` and not `visitor`: the front end's own roles say
 						   „'registered but unpaid' is a state of a competitor, not a role"
 						   (frontend/src/roles/context.ts). Both hold `rights_mode = 'none'`
@@ -585,20 +606,20 @@ class RegistrationApi {
 						   ever carries the superadmin's role. What this statement writes stays
 						   `competitor` for him too, and that is not a gap: the role he holds
 						   is not in the row at all. */
-						+ " values (?, ?, ?, (select id from role where code = 'competitor'), ?)"
+						+ " values (?, ?, ?, (select id from role where code = 'competitor'), ?, ?)"
 						/* AND `email_confirmed_at` IS NOT IN THAT LIST. V6 gives the column no
 						   default so that an account is born unconfirmed, and being born is
 						   not being confirmed. */
 						+ " on conflict ((lower(email))) do nothing"
 						+ " returning id")
 				.params(typed.firstName().strip(), typed.lastName().strip(), address,
-						keeping.of(typed.password()))
+						keeping.of(typed.password()), language.code())
 				.query(Long.class)
 				.optional();
 
 		if (account.isEmpty()) {
 			return new Made(ResponseEntity.status(409).body(new Refused(THE_ADDRESS_IS_TAKEN)),
-					0, null, null);
+					0, null, null, null);
 		}
 
 		Timestamp now = Timestamp.from(clock.instant());
@@ -764,10 +785,14 @@ class RegistrationApi {
 		db.sql("insert into email_verification_token (account_id, token_hash) values (?, ?)")
 				.params(account, link.hash()).update();
 
-		String stored = db.sql("select email from account where id = ?")
-				.param(account).query(String.class).single();
-
-		return new Made(ResponseEntity.noContent().build(), account, stored, link.secret());
+		/* AND THE LANGUAGE COMES OFF THE SAME ROW IN THE SAME STATEMENT, read back like the
+		   address and for the same reason: every later letter is written from the row, so the
+		   first one is too. */
+		return db.sql("select email, mail_language from account where id = ?")
+				.param(account)
+				.query((row, one) -> new Made(ResponseEntity.noContent().build(), account,
+						row.getString(1), link.secret(), MailLanguage.ofTheColumn(row.getString(2))))
+				.single();
 	}
 
 	/**
@@ -792,9 +817,11 @@ class RegistrationApi {
 	 *                in the message; the row holds what it hashes to and nothing else.
 	 *                Null when there is nothing to send, which is the refused
 	 *                registration, and that null is what {@link #writeThenSend} asks
+	 * @param language the language the letter is written in, read back off the row with the
+	 *                address
 	 */
 	private record Made(ResponseEntity<Refused> answer, long account, String address,
-			String link) {
+			String link, MailLanguage language) {
 	}
 
 	/**

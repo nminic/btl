@@ -860,6 +860,33 @@ class MeApiTest {
 	}
 
 	/**
+	 * THE ANSWER CARRIES THE LANGUAGE OF HIS OWN ACCOUNT'S MAIL, AND OF NOBODY ELSE'S.
+	 *
+	 * <p>V59, and the screen that changes it starts from it (JM-B). Every other account is put in
+	 * the other language each time, once in each direction, so an answer that read the language of
+	 * another row than the caller's account, or that was a constant, is wrong in one of the two.
+	 * And a moderator who races for nobody is handed his too: it is the account's setting (PDL,
+	 * „Odgovori vlasnika 17.10.2026, jezik pošte").
+	 */
+	@Test
+	void theAnswerCarriesTheLanguageOfHisOwnAccountsMailAndOfNobodyElses() throws Exception {
+		db.sql("update account set mail_language = 'en' where email <> ?").param(MY_ACCOUNT).update();
+
+		assertThat(answerFor(MY_ACCOUNT).path("mailLanguage").asString()).isEqualTo("sr");
+
+		db.sql("update account set mail_language = case when email = ? then 'en' else 'sr' end")
+				.param(MY_ACCOUNT).update();
+
+		assertThat(answerFor(MY_ACCOUNT).path("mailLanguage").asString()).isEqualTo("en");
+		assertThat(answerFor(HER_ACCOUNT).path("mailLanguage").asString()).isEqualTo("sr");
+
+		db.sql("update account set mail_language = 'en' where email = ?").param(RACES_FOR_NOBODY)
+				.update();
+
+		assertThat(answerFor(RACES_FOR_NOBODY).path("mailLanguage").asString()).isEqualTo("en");
+	}
+
+	/**
 	 * AND A PERSON WHO HAS REGISTERED AND HAS NO NUMBER YET IS STILL A COMPETITOR.
 	 *
 	 * <p>ADL A44, owner 11.09.2026: „`member_number` postaje neobavezan na `competitor`.

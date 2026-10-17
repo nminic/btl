@@ -279,6 +279,16 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 					(f, owner) -> json(put("/api/me"), "{\"phone\":\"0601234567\"}"), false)),
 			entry("PUT /api/me/category", new Before("„izbor kategorije\"",
 					(f, owner) -> json(put("/api/me/category"), "{\"firstSeason\":false}"))),
+			/* THE NAMED EXCEPTION, AND IT IS NOT ON THE LIST OF P8: the language of his mail is a
+			   setting of the account and not a right of a competitor, so every account may change
+			   it, whether his fee never stood or has lapsed (PDL, „Odgovori vlasnika 17.10.2026,
+			   jezik pošte", the owner's choice among the outcomes put to him, in the record's
+			   wording: „Jezik pošte sme da promeni svako ko ima nalog, i član bez plaćene članarine
+			   i član kome je istekla, jer je to podešavanje naloga a ne takmičarsko pravo"). */
+			entry("PUT /api/me/mail-language", new Before("not on P8's list; PDL, „Odgovori vlasnika"
+					+ " 17.10.2026, jezik pošte\": „Jezik pošte sme da promeni svako ko ima nalog\", the"
+					+ " lapsed member included", (f, owner) -> json(put("/api/me/mail-language"),
+					"{\"language\":\"en\"}"))),
 			entry("POST /api/me/membership", new Before("„plaćanje\": his own membership, out of his"
 					+ " balance", (f, owner) -> post("/api/me/membership"))),
 			entry("PUT /api/me/password", new Before("„lozinku\"; not to a member whose fee has lapsed"

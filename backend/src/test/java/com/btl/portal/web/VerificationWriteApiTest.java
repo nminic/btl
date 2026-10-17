@@ -2877,6 +2877,55 @@ class VerificationWriteApiTest {
 	 * which since 09.10.2026 is all it writes then; this route's letter was asserted for its
 	 * recipient and its subject and not for a word of its body.
 	 */
+	/**
+	 * THE LETTER ABOUT AN APPROVAL IS WRITTEN IN THE MEMBER'S LANGUAGE, NEVER IN THE MODERATOR'S.
+	 *
+	 * <p>Owner, PDL P18, 03.10.2026: the member chooses the language of his own mail. The two
+	 * sources of a language this route could read are the member the row is about and the
+	 * moderator deciding it, and they are put in opposite languages, once each way: a moderator who
+	 * kept Serbian approves the run of a member who chose English, and then a moderator who chose
+	 * English approves the run of a member who kept Serbian. A letter that read the language of
+	 * whoever decided is wrong in both; one that was always Serbian is wrong in the first.
+	 */
+	@Test
+	void theLetterAboutAnApprovalIsInTheMembersLanguageAndNeverInTheModerators() throws Exception {
+		db.sql("update account set mail_language = 'en' where email = ?").param(A_COMPETITOR).update();
+
+		assertThat(answer(RESULTS_MODERATOR, anasMarathon, true, null)).isEqualTo(200);
+
+		MimeMessage toTheEnglish = theOneLetterTo(A_COMPETITOR);
+
+		assertThat(toTheEnglish.getSubject()).isEqualTo("Your result has been approved");
+		assertThat(toTheEnglish.getContent().toString()).contains(" points").contains("ascent ")
+				.doesNotContain("uspon");
+	}
+
+	/** And the other way round, with the moderator in English and the member in Serbian. */
+	@Test
+	void aModeratorWhoChoseEnglishDoesNotTurnTheMembersLetterEnglish() throws Exception {
+		db.sql("update account set mail_language = 'en' where email = ?").param(RESULTS_MODERATOR)
+				.update();
+
+		assertThat(answer(RESULTS_MODERATOR, anasMarathon, true, null)).isEqualTo(200);
+
+		MimeMessage toTheSerbian = theOneLetterTo(A_COMPETITOR);
+
+		assertThat(toTheSerbian.getSubject()).isEqualTo("Vaš rezultat je odobren");
+		assertThat(toTheSerbian.getContent().toString()).contains("uspon ").doesNotContain("ascent");
+	}
+
+	/** The one letter the member got, waited for: the league's blind copy is the same letter. */
+	private MimeMessage theOneLetterTo(String member) throws Exception {
+		assertThat(SMTP.waitForIncomingEmail(5000, 1)).as("no letter went out about the approval").isTrue();
+
+		MimeMessage[] arrived = SMTP.getReceivedMessages();
+
+		assertThat(Arrays.stream(arrived[0].getAllRecipients()).map(Object::toString))
+				.containsExactly(member);
+
+		return arrived[0];
+	}
+
 	@Test
 	void theLetterAboutSuchARunNamesTheClimbAndTheDropInTheOrderHeSentThem() throws Exception {
 		assertThat(answer(THE_SUPERADMIN, anasTrailRun, true, null)).isEqualTo(200);
