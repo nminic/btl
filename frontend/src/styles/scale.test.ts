@@ -84,6 +84,10 @@ const ALLOWED = new Map([
     'the same, at the width the wide layout gives that column',
   ],
   [
+    'pages/Leagues.css | margin-block | 1em',
+    'not a step: the distance the browser gives an h3, kept on the h2 that took its place so the title and the row under it stay where they were (owner, 16.10.2026: izgled ostaje isti); it is one line of the title, so it grows with the title',
+  ],
+  [
     'components/Markdown.css | padding | 0.05em 0.3em',
     'in em on purpose: the padding around code inside a sentence grows with the code, not with the page',
   ],
@@ -414,8 +418,6 @@ describe('space and corners are chosen from the scale, not typed', () => {
       ['pages/admin/Verification.css .pending__toggle', 'the same, on the queue of things to verify'],
       ['pages/Rulebook.css .rulebook__toggle', 'the same, on the table of contents'],
       ['pages/admin/Rights.css .rights__inline', 'the words beside a checkbox, which the column heading now carries and which are aria-hidden either way'],
-      ['pages/admin/Verification.css .member:not(:has(.pending__card--open .field__required)) .pending__legend',
-        'the line saying what the star means, on a screen where every card is folded and no star is drawn'],
       ['pages/Profile.css .profile__length-full', 'the long name of a length, swapped for the short one; both are in the accessible name, so nothing is lost to anybody'],
       [
         'pages/Profile.css .table--races .event-races__label',

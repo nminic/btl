@@ -88,8 +88,8 @@ async function describeARace(user: ReturnType<typeof setupUser>, name = 'Trka kr
   await user.type(screen.getByLabelText(/Uspon/), '540')
   await user.type(screen.getByLabelText(/Spust/), '540')
   await user.type(screen.getByLabelText('Sati'), '1')
-  await user.type(screen.getByLabelText('Minuta'), '52')
-  await user.type(screen.getByLabelText('Sekundi'), '10')
+  await user.type(screen.getByLabelText('Minuti'), '52')
+  await user.type(screen.getByLabelText('Sekunde'), '10')
   await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/rezultati')
 }
 
@@ -242,14 +242,14 @@ describe('a run entered away from the calendar', () => {
       renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
 
       await describeARace(user)
-      await user.clear(screen.getByLabelText('Sekundi'))
-      await user.type(screen.getByLabelText('Sekundi'), '30,5')
+      await user.clear(screen.getByLabelText('Sekunde'))
+      await user.type(screen.getByLabelText('Sekunde'), '30,5')
       await user.clear(screen.getByLabelText(/Uspon/))
       await user.type(screen.getByLabelText(/Uspon/), '1.200')
       await send(user)
 
       expect(await screen.findAllByText('Unesi ceo broj.')).toHaveLength(2)
-      expect(screen.getByLabelText('Sekundi')).toHaveAttribute('aria-invalid', 'true')
+      expect(screen.getByLabelText('Sekunde')).toHaveAttribute('aria-invalid', 'true')
       expect(screen.getByLabelText(/Uspon/)).toHaveAttribute('aria-invalid', 'true')
       expect(writes()).toHaveLength(0)
     },
@@ -281,7 +281,7 @@ describe('a run entered away from the calendar', () => {
          emptied itself would make the member enter the whole race again to change a link. */
       expect(await screen.findByLabelText(/^Naziv trke/)).toHaveValue('Trka kroz šumu')
       expect(screen.getByLabelText(/Dužina/)).toHaveValue('21.1')
-      expect(screen.getByLabelText('Minuta')).toHaveValue('52')
+      expect(screen.getByLabelText('Minuti')).toHaveValue('52')
       expect(screen.getByLabelText(/Link/)).toHaveValue('https://primer.rs/rezultati')
     },
     SLOW,
@@ -436,8 +436,8 @@ describe('a run picked from the calendar, on the form away from the event page',
       await user.type(screen.getByLabelText('Mesto'), 'Niš')
       await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
       await user.type(screen.getByLabelText('Sati'), '3')
-      await user.type(screen.getByLabelText('Minuta'), '30')
-      await user.type(screen.getByLabelText('Sekundi'), '0')
+      await user.type(screen.getByLabelText('Minuti'), '30')
+      await user.type(screen.getByLabelText('Sekunde'), '0')
       await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/rezultati')
       await send(user)
 
@@ -521,8 +521,8 @@ describe('a run reported from the event it was run at', () => {
 
       if (race.kind !== 'time') {
         await user.type(screen.getByLabelText('Sati'), '0')
-        await user.type(screen.getByLabelText('Minuta'), '44')
-        await user.type(screen.getByLabelText('Sekundi'), '2')
+        await user.type(screen.getByLabelText('Minuti'), '44')
+        await user.type(screen.getByLabelText('Sekunde'), '2')
       }
 
       await send(user, 'Pošalji rezultat')
@@ -576,8 +576,8 @@ describe('a run reported from the event it was run at', () => {
 
       if (race.kind !== 'time') {
         await user.type(screen.getByLabelText('Sati'), '0')
-        await user.type(screen.getByLabelText('Minuta'), '44')
-        await user.type(screen.getByLabelText('Sekundi'), '2')
+        await user.type(screen.getByLabelText('Minuti'), '44')
+        await user.type(screen.getByLabelText('Sekunde'), '2')
       }
 
       await send(user, 'Pošalji rezultat')
@@ -617,8 +617,8 @@ describe('a run reported from the event it was run at', () => {
 
       if (race.kind !== 'time') {
         await user.type(screen.getByLabelText('Sati'), '0')
-        await user.type(screen.getByLabelText('Minuta'), '44')
-        await user.type(screen.getByLabelText('Sekundi'), '2')
+        await user.type(screen.getByLabelText('Minuti'), '44')
+        await user.type(screen.getByLabelText('Sekunde'), '2')
       }
 
       await send(user, 'Pošalji rezultat')
@@ -658,8 +658,8 @@ describe('a run reported from the event it was run at', () => {
 
       if (race.kind !== 'time') {
         await user.type(screen.getByLabelText('Sati'), '0')
-        await user.type(screen.getByLabelText('Minuta'), '44')
-        await user.type(screen.getByLabelText('Sekundi'), '2')
+        await user.type(screen.getByLabelText('Minuti'), '44')
+        await user.type(screen.getByLabelText('Sekunde'), '2')
       }
 
       await send(user, 'Pošalji rezultat')
@@ -963,8 +963,8 @@ describe('a run sent back, sent again', () => {
 
       await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
 
-      await user.clear(screen.getByLabelText('Minuta'))
-      await user.type(screen.getByLabelText('Minuta'), '49')
+      await user.clear(screen.getByLabelText('Minuti'))
+      await user.type(screen.getByLabelText('Minuti'), '49')
       await user.clear(screen.getByLabelText(/Link/))
       await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/ispravno')
       await send(user)

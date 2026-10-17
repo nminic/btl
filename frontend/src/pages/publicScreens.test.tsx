@@ -2004,7 +2004,7 @@ describe('CompetitorProfile', () => {
     /* And it counts everything except the races, which the ring beside it
        carries. The number itself is not lost: it is in the ring's own reading,
        which is what a screen reader gets instead of the drawing. */
-    expect(screen.queryByText(/Odtrčanih trka/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Istrčanih trka/)).not.toBeInTheDocument()
     expect(
       within(screen.getByRole('table', { name: 'Trke po dužini' })).getByRole('rowheader', {
         name: 'Zbirno',

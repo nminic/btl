@@ -105,8 +105,12 @@ function controlsOf(title: string): Controls {
   /* Looked at and not asserted into a shape (ADL A14). */
   const form = must(named instanceof HTMLFormElement ? named : null, `a form called ${title}`)
   const table = screen.queryByRole('region', { name: /^Trke na događaju/ })
+  /* Without the `fieldset` of each race (`EventRaces.tsx`): it is in `form.elements` because the
+     browser lists every form-associated element, and it is a group a reader cannot operate, so it
+     is neither held nor open. The fields inside it are listed one by one and are what is asked. */
   const every = Array.from(form.elements).filter(
-    (one): one is HTMLElement => one instanceof HTMLElement,
+    (one): one is HTMLElement =>
+      one instanceof HTMLElement && !(one instanceof HTMLFieldSetElement),
   )
 
   return {

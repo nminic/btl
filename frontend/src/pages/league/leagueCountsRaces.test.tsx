@@ -263,6 +263,28 @@ describe('the standing of a competition that counts some of the races of a day',
 })
 
 describe('the list of competitions, for a competition that counts some of the races of a day', () => {
+  it('heads the box that folds with an h3, one level under the name of its competition', async () => {
+    servedCountingFour()
+
+    renderAt(LIST)
+
+    const box = must(
+      (await screen.findByRole('heading', { level: 2, name: /Brdska liga 2019/ })).closest('li'),
+      'the box of the competition',
+    )
+
+    /* THE PUBLIC BOX STAYS AN `h3` (owner, 16.10.2026, PDL „Jedini nalaz axe-a"): it stands under the
+       competition's own `h2`, so it is the box in administration that was a level short and not this
+       one. They are two components (`league/LeagueEvents.tsx`, `admin/LeagueRaceModeration.tsx`); an
+       `h2` here would put the box level with the name of the competition it belongs to. */
+    expect(
+      must(
+        within(box).getByRole('button', { name: /Događaji i trke/ }).parentElement,
+        'what the button sits in',
+      ).tagName,
+    ).toBe('H3')
+  }, SLOW)
+
   it('lists under a day only the races it counts, and counts days and people by them', async () => {
     const { races } = theArrangement()
     const raceOf = (id: number) => must(races.find((one) => one.id === id), `trka ${String(id)}`)

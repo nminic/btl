@@ -260,7 +260,6 @@ describe('a sentence with a value put into it', () => {
          values: a count of letters after „Najviše" or „Najmanje", or a bound after „vrednost
          je", all in figures, so none has a case to be wrong in. */
       '? (RaceForTheRun.tsx)',
-      '? (ReportResult.tsx)',
       '? (ReviewQueue.tsx)',
       '? (SendBack.tsx)',
       /* The sentence a bare number gets from the decision route, chosen by

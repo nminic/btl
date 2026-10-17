@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useFilterParams } from '../../app/useFilterParams'
-import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { AskedLabel } from '../../forms/AskedLabel'
 import { FieldHint } from '../../forms/FieldHint'
 import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from './askTheServer'
@@ -158,11 +158,8 @@ export function NewPassword() {
           }
         }}
       >
-        {/* The rule every field on the portal keeps since 12.08.2026: a star, one
-            line saying what the star means, and `aria-required` on the control
-            itself (forms/AskedLabel.tsx). */}
-        <RequiredNote />
-
+        {/* The rule every field on the portal keeps since 12.08.2026: a star and
+            `aria-required` on the control itself (forms/AskedLabel.tsx). */}
         <div className="rankings__field">
           {/* AND THE RULE BESIDE IT, WHICH THE OWNER ASKED FOR ON 20.09.2026 as the
               eighth of the seven he kept on 31.08.2026. His reason is the one thing

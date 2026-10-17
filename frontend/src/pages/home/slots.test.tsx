@@ -44,7 +44,7 @@ describe('CalendarExtract', () => {
       kind: 'length' as const,
       limitSeconds: 0,
       date: '2027-04-03',
-      distanceKm: 42.2, ascentM: 0, descentM: 0, category: 'marathon',
+      distanceKm: 42.2, ascentM: 0, descentM: 0, category: 'marathon', dots: ['marathon'],
     },
     {
       id: 2,
@@ -54,7 +54,7 @@ describe('CalendarExtract', () => {
       kind: 'length' as const,
       limitSeconds: 0,
       date: '2027-04-03',
-      distanceKm: 100, ascentM: 0, descentM: 0, category: 'ultra',
+      distanceKm: 100, ascentM: 0, descentM: 0, category: 'ultra', dots: ['ultra'],
     },
     {
       id: 3,
@@ -64,7 +64,7 @@ describe('CalendarExtract', () => {
       kind: 'length' as const,
       limitSeconds: 0,
       date: '2027-04-03',
-      distanceKm: 42.2, ascentM: 0, descentM: 0, category: 'marathon',
+      distanceKm: 42.2, ascentM: 0, descentM: 0, category: 'marathon', dots: ['marathon'],
     },
   ]
 

@@ -305,7 +305,7 @@
     "news": "Vesti",
     "sponsorOfTheDay": "Sponzor dana",
     "partners": "Sponzori i partneri",
-    "noneYet": "U ovoj sezoni još nema odtrčanih trka ove dužine.",
+    "noneYet": "U ovoj sezoni još nema istrčanih trka ove distance.",
     "turning": "Najviše trka po dužini",
     "pauseTurning": "Zaustavi smenjivanje",
     "resumeTurning": "Nastavi smenjivanje",
@@ -366,7 +366,6 @@
     "explain": "Objašnjenje",
     "country": "Država",
     "explainMark": "i",
-    "requiredNote": "Polja sa zvezdicom su obavezna.",
     "clearPhoto": "Obriši",
     "suggested": {
       "one": "{count} trka iz kalendara odgovara",
@@ -616,7 +615,8 @@
     "races": "Trke",
     "competitor": "Takmičar",
     "distance": "Dužina",
-    "measure": "Mera",
+    "duration": "Trajanje",
+    "distanceOrDuration": "Dužina / trajanje",
     "raceKind": "Vrsta",
     "raceLimit": "Ograničenje (h)",
     "ascent": "Uspon",
@@ -725,11 +725,14 @@
       "distance": "d (km)",
       "time": "Vreme",
       "points": "Bodovi",
-      "length": "Dužina"
+      "category": "Distanca",
+      "length": "Dužina (km)",
+      "ascent": "Uspon (m)",
+      "descent": "Spust (m)"
     },
     "notFound": "Ovog profila nema.",
     "byCategory": "Trke po dužini",
-    "noneInFilter": "Za izabranu sezonu i dužinu nema nijednog rezultata.",
+    "noneInFilter": "Za izabranu sezonu i distancu nema nijednog rezultata.",
     "racesWord": {
       "one": "trka",
       "few": "trke",
@@ -765,8 +768,8 @@
     "stats": "Zbirna statistika",
     "bio": "Svojim rečima",
     "bioEmpty": "Ovaj takmičar još nije napisao ništa o sebi.",
-    "length": "Dužina",
-    "allLengths": "Sve dužine",
+    "length": "Distanca",
+    "allLengths": "Sve distance",
     "lengthsShort": {
       "all": "Sve",
       "short": "Kratke",
@@ -776,7 +779,7 @@
       "ultra": "Ultra"
     },
     "noneInSeason": "U sezoni {season}. nema nijednog rezultata.",
-    "noneInLength": "Nema nijednog rezultata izabrane dužine.",
+    "noneInLength": "Nema nijednog rezultata izabrane distance.",
     "clearFilters": "Poništi filtere",
     "parts": {
       "label": "Delovi profila",
@@ -1014,8 +1017,8 @@
     "ascentM": "Uspon (m)",
     "descentM": "Spust (m)",
     "hours": "Sati",
-    "minutes": "Minuta",
-    "seconds": "Sekundi",
+    "minutes": "Minuti",
+    "seconds": "Sekunde",
     "link": "Link ka zvaničnim rezultatima",
     "linkHint": "Obavezno, osim ukoliko prilažete slike rezultata / aplikacije kao dokaz.",
     "photo": "Slika kao dokaz",
@@ -1282,7 +1285,7 @@
       "raceDate": "Datum",
       "raceName": "Trka",
       "distanceKm": "Dužina (km)",
-      "limitHours": "Ograničenje (h)",
+      "limitHours": "Trajanje (h)",
       "ascentM": "Uspon (m)",
       "descentM": "Spust (m)",
       "category": "Kategorija",
@@ -1659,9 +1662,6 @@
   "report": {
     "title": "Prijava rezultata",
     "submit": "Pošalji rezultat",
-    "note": "Prijavljuješ rezultat sa trke {race}. Dužinu, uspon i spust portal već zna sa same trke.",
-    "noteTime": "Prijavljuješ rezultat sa trke {race}. Vreme portal već zna sa same trke i isto je za svakoga ko ju je završio; upiši koliko si prešao.",
-    "noteFree": "Prijavljuješ rezultat sa trke {race}. Ova trka ne zadaje ni dužinu ni vreme, pa upiši i jedno i drugo.",
     "noRaces": "Ovaj događaj još nema nijednu trku, pa nema šta da se prijavi.",
     "noRace": "Rezultat se unosi sa reda trke, na strani događaja."
   },

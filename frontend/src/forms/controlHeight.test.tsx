@@ -453,6 +453,14 @@ describe('how tall a control in a form is', () => {
        disbelieved. */
     expect(handWrittenFields()).toEqual([
       'forms/FormRenderer.tsx',
+      /* THE FOURTH SCREEN THIS CASE STOPPED, on the day the races of an event stopped being a table
+         and became a group of fields per race (owner, 16.10.2026). Measured in Chrome over the built
+         package at 360, 768 and 1280, for a new event, a change and a copy, with a race of each of the
+         three kinds on the page: every control of every line of every race is 48,0px tall, the name,
+         the date with the button of its calendar, the kind and the measures alike, and a line of a
+         race has one height wherever it stands. What holds it is that the wrapper is a `.field`, which
+         is why this screen is on the list and not outside it. */
+      'pages/admin/EventRaces.tsx',
       'pages/event/GoingToEvent.tsx',
       'pages/member/Membership.tsx',
       /* THE FIRST SCREEN THIS CASE EVER STOPPED, and it stopped it the day it arrived: the

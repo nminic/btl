@@ -96,23 +96,27 @@ describe('the races of an event', () => {
     ])
     expect(kind.value, 'a race in the file is one of a length').toBe('length')
 
-    const length = () => inputElement(screen.getAllByLabelText(/^Dužina \(km\),/)[0])
-    const limit = () =>
-      inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0])
+    /* The first race and nothing else: the other races of the event keep their own kind, and a
+       query over the whole screen would find theirs once the first has none. */
+    const firstRace = () => within(screen.getByRole('group', { name: '1. trka' }))
+    const length = () => firstRace().queryByLabelText(/^Dužina \(km\),/)
+    const duration = () => firstRace().queryByLabelText(/^Trajanje \(h\),/)
 
-    expect(length()).toHaveAttribute('aria-required', 'true')
-    expect(limit(), 'a race of a length is asked for a limit').toHaveAttribute(
+    expect(inputElement(must(length(), 'a race of a length has no length'))).toHaveAttribute(
       'aria-required',
-      'false',
+      'true',
     )
+    /* How long a timed race lasts is not on a race of a length at all (owner, 16.10.2026), and
+       not merely not asked for: a cell that is not drawn cannot be the reason a press is refused. */
+    expect(duration(), 'a race of a length draws how long a timed one lasts').toBeNull()
     await user.selectOptions(kind, 'time')
 
-    /* And the two swap over: the length is no longer asked for and the limit is. */
-    expect(length(), 'a timed race is still asked for a length').toHaveAttribute(
+    /* And the two swap over: the length is gone and the duration is there, and asked for. */
+    expect(length(), 'a timed race still draws a length').toBeNull()
+    expect(inputElement(must(duration(), 'a timed race has no duration'))).toHaveAttribute(
       'aria-required',
-      'false',
+      'true',
     )
-    expect(limit()).toHaveAttribute('aria-required', 'true')
 
     /* ~~And the floor and the ceiling swap with them~~, through `min` and `max`, which is
        what these cells said until 02.10.2026, on the reasoning that a control announcing a
@@ -123,11 +127,19 @@ describe('the races of an event', () => {
        what is asked, swapped above, and the bounds are held by the save
        (`admin/raceRows.test.ts`). So neither cell claims a floor or a ceiling in either
        kind, and both offer a keyboard with a separator, because both take decimals. */
-    for (const cell of [length(), limit()]) {
-      expect(cell, 'a cell claims a floor').not.toHaveAttribute('min')
-      expect(cell, 'a cell claims a ceiling').not.toHaveAttribute('max')
-      expect(cell).toHaveAttribute('inputmode', 'decimal')
-    }
+    const timed = inputElement(must(duration(), 'a timed race has no duration'))
+
+    expect(timed, 'a cell claims a floor').not.toHaveAttribute('min')
+    expect(timed, 'a cell claims a ceiling').not.toHaveAttribute('max')
+    expect(timed).toHaveAttribute('inputmode', 'decimal')
+
+    await user.selectOptions(kind, 'length')
+
+    const measured = inputElement(must(length(), 'a race of a length has no length'))
+
+    expect(measured, 'a cell claims a floor').not.toHaveAttribute('min')
+    expect(measured, 'a cell claims a ceiling').not.toHaveAttribute('max')
+    expect(measured).toHaveAttribute('inputmode', 'decimal')
   }, SLOW)
 
   it('will not save a timed race with no limit, and marks the cell that is missing', async () => {
@@ -145,13 +157,13 @@ describe('the races of an event', () => {
 
     expect(await screen.findByText(/Trke nisu sačuvane/)).toBeVisible()
     expect(
-      inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0]),
+      inputElement(screen.getAllByLabelText(/^Trajanje \(h\),/)[0]),
       'the limit of a timed race is not marked as the thing that is missing',
     ).toHaveAttribute('aria-invalid', 'true')
     expect(
-      inputElement(screen.getAllByLabelText(/^Dužina \(km\),/)[0]),
-      'the length is marked wrong on a race that does not fix one',
-    ).toHaveAttribute('aria-invalid', 'false')
+      within(screen.getByRole('group', { name: '1. trka' })).queryByLabelText(/^Dužina \(km\),/),
+      'a race that does not fix a length draws one, to be marked wrong',
+    ).toBeNull()
   }, SLOW)
 
   it('writes the limit in seconds, whatever the table asks it in', async () => {
@@ -166,7 +178,7 @@ describe('the races of an event', () => {
       selectElement(screen.getAllByLabelText(/^Vrsta,/)[0]),
       'time',
     )
-    await user.type(inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0]), '24')
+    await user.type(inputElement(screen.getAllByLabelText(/^Trajanje \(h\),/)[0]), '24')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     const written = whatWasSent(watching.asked).filter((one) => one.includes('limitSeconds='))
@@ -174,65 +186,6 @@ describe('the races of an event', () => {
     expect(written.length, 'no race was written at all').toBeGreaterThan(0)
     expect(first(written), 'the race was not written as a timed one').toContain('kind=time')
     expect(first(written)).toContain('limitSeconds=86400')
-  }, SLOW)
-
-  it('marks every measuring cell as one, which is what the sheet lays out by', async () => {
-    /* The widths of this table were written against column numbers until 30.08.2026,
-       and two columns added in the middle moved every one of them off the thing it
-       was written for: the climb and the fall lost 22 and 25 pixels of room and
-       „506" showed as „5" while the fall showed nothing, with the table fitting its
-       box exactly so nothing said a number was missing. Measured in Chrome by a
-       review, at 1280 and at 360.
-
-       The sheet reads a class now (`Entity.css`, `.races__measure`), and this is the
-       half that says the cells carry it: a rule that finds nothing and a rule that
-       finds the wrong cells look the same from inside a stylesheet. jsdom lays
-       nothing out (ADL A33), so what is asked here is the marking, and the widths
-       themselves are asked of the sheet (`entityStyle.test.ts`). */
-    await openFirstEvent()
-
-    const table = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-    const heads = table.getAllByRole('columnheader')
-    const named = heads.map((one) => one.textContent)
-
-    /* Every heading that names a measure, and no other. */
-    for (const [at, said] of named.entries()) {
-      const measures = ['Dužina', 'Ograničenje (h)', 'Uspon', 'Spust'].includes(said ?? '')
-
-      expect(
-        must(heads[at], `heading ${String(at)}`).classList.contains('races__measure'),
-        `the heading „${said ?? ''}" is marked as a measure and is not one, or the other way round`,
-      ).toBe(measures)
-    }
-
-    /* And the kind, by the same reading. It has a rule of its own in the sheet and
-       nothing said the cell carries the class that rule looks for: measured on
-       30.08.2026, removing the class from both the heading and the cell left the
-       whole package green while the column lost the floor that holds its longest
-       word. */
-    const kindAt = named.indexOf('Vrsta')
-
-    expect(kindAt, 'the table has no column of kinds').toBeGreaterThan(-1)
-    expect(
-      must(heads[kindAt], 'the heading of the kind').classList.contains('races__kind'),
-      'the heading of the kind is not marked as one',
-    ).toBe(true)
-
-    const cells = within(must(table.getAllByRole('row')[1], 'the first race')).getAllByRole('cell')
-
-    expect(
-      must(cells[kindAt], 'the kind of the first race').classList.contains('races__kind'),
-      'the cell of the kind is not marked as one',
-    ).toBe(true)
-
-    /* And the cells under them, by the same reading: the row and the heading are
-       marked in two places and either could be right while the other is not. */
-    for (const [at] of named.entries()) {
-      expect(
-        must(cells[at], `cell ${String(at)}`).classList.contains('races__measure'),
-        `cell ${String(at)} does not answer to its own heading`,
-      ).toBe(must(heads[at], `heading ${String(at)}`).classList.contains('races__measure'))
-    }
   }, SLOW)
 
   it('writes only the measure the kind it was saved as fixes', async () => {
@@ -251,7 +204,7 @@ describe('the races of an event', () => {
     const kind = () => selectElement(screen.getAllByLabelText(/^Vrsta,/)[0])
 
     await user.selectOptions(kind(), 'time')
-    await user.type(inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0]), '24')
+    await user.type(inputElement(screen.getAllByLabelText(/^Trajanje \(h\),/)[0]), '24')
     await user.selectOptions(kind(), 'length')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
@@ -289,7 +242,7 @@ describe('the races of an event', () => {
 
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
     await user.selectOptions(selectElement(screen.getAllByLabelText(/^Vrsta,/)[0]), 'time')
-    await user.type(inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0]), '24')
+    await user.type(inputElement(screen.getAllByLabelText(/^Trajanje \(h\),/)[0]), '24')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     const written = whatWasSent(watching.asked).filter((one) => one.includes('limitSeconds='))
@@ -341,7 +294,7 @@ describe('the races of an event', () => {
 
     await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
 
-    expect(screen.queryByRole('table', { name: /^Trke na događaju/ })).toBeNull()
+    expect(screen.queryByRole('region', { name: /^Trke na događaju/ })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Nova trka' })).toBeNull()
 
     await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'race')
@@ -391,7 +344,9 @@ describe('the races of an event', () => {
     await user.clear(day)
     await user.type(day, '01012020')
 
-    const date = screen.getByLabelText('Datum')
+    /* By its accessible name, which is „Datum" for the event and „Datum, 1. trka" for a race: the
+       word is also the visible name of the date of every race, so asked by its label it is many. */
+    const date = screen.getByRole('textbox', { name: 'Datum' })
     const asked = inputElement(date).value
 
     await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
@@ -487,17 +442,18 @@ describe('the races of an event', () => {
        words, because the table this test began with is gone: `rowsOfRaces` would
        fail to find it and say so as though the section itself were missing. */
     expect(await screen.findByRole('heading', { name: /^Trke na događaju/ })).toBeVisible()
-    expect(screen.queryByRole('table', { name: /^Trke na događaju/ })).toBeNull()
+    expect(screen.queryAllByRole('group', { name: /^\d+\. trka$/ })).toHaveLength(0)
     expect(screen.getByText('Ovaj događaj još nema nijednu trku.')).toBeVisible()
   })
 
-  /** The table of races on the open event, and one row of it. */
+  /** The races of the open event, and one race of them: a group of fields named by its number
+   *  (`EventRaces.tsx`, a `fieldset` and its `legend`), no longer a row of a table. */
   function races() {
-    return within(screen.getByRole('table', { name: /^Trke na događaju/ }))
+    return within(screen.getByRole('region', { name: /^Trke na događaju/ }))
   }
 
   function rowsOfRaces() {
-    return races().getAllByRole('row').slice(1)
+    return races().getAllByRole('group', { name: /^\d+\. trka$/ })
   }
 
   function lastRow() {
@@ -747,89 +703,6 @@ describe('the races of an event', () => {
     expect(first).toHaveAttribute('aria-invalid', 'true')
   })
 
-  it('puts the name first and no category at all, which is what the floor is written on', async () => {
-    /* Owner, 23.08.2026: „u okviru događaja editabilno polje Trka treba da bude u
-       prvoj koloni". The category stood second until the same day, when it was taken
-       back out: „U dodavanju trka na događaju (administriranje) ne treba da postoji
-       Kategorija kolona ipak."
-
-       Asked here and not only in the stylesheet, because the floor that makes the
-       name readable is written on `td:first-child` (`Entity.css`): which column that
-       is lives in this file, and nothing compared the two. A round swapped „Trka"
-       and „Kategorija" and all 2151 tests stayed green while the floor moved onto a
-       column that is only read, and the name fell back to 47,27px on a 360px screen. */
-    await openFirstEvent()
-
-    const table = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
-
-    expect(table.getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
-      'Trka',
-      'Datum',
-      'Vrsta',
-      'Dužina',
-      'Ograničenje (h)',
-      'Uspon',
-      'Spust',
-      'Zapis',
-    ])
-
-    /* And the body in the same order, which is a second fact: the heading and the
-       cells are written in two places, and the floor that makes the name readable is
-       on `td:first-child`. Measured 23.08.2026 by a round: swapping only the cells
-       left „Trka | Kategorija" standing over „Kategorija | Trka", the floor moved
-       onto the column that is only read, and 2153 tests stayed green. A screen
-       reader reads the two together (WCAG 2.2 SC 1.3.1). */
-    const first = must(table.getAllByRole('row')[1], 'the first race')
-    const cells = within(first).getAllByRole('cell')
-
-    /* The whole row against the whole heading, not only its first cell. Asked of the
-       first alone, swapping any other pair leaves the heading saying one thing over
-       cells saying another: a round swapped the day and the length and 52 tests
-       stayed green while a screen reader read „Dužina: 17/10/2026" (WCAG 2.2 SC
-       1.3.1). The same shape is already used for the tables of the portal in
-       `styles/tableWidths.test.ts`. */
-    expect(cells.length, 'the row and the heading are not the same width').toBe(8)
-
-    /* Every one of the six, not five of them: the last was left out as „has no control
-       of its own", and a round measured what that cost — swapping a read-only cell and
-       the „Obriši" button leaves the heading standing over cells that say something
-       else, and all 2154 tests stay green. The one without a control is asked by what
-       it holds instead. */
-    const named = [
-      /^Trka,/,
-      /^Datum,/,
-      /^Vrsta,/,
-      /^Dužina \(km\),/,
-      /^Ograničenje \(h\),/,
-      /^Uspon \(m\),/,
-      /^Spust \(m\),/,
-    ] as const
-    const at = [0, 1, 2, 3, 4, 5, 6] as const
-
-    for (const [which, asked] of named.entries()) {
-      const where = at[which] ?? 0
-
-      expect(
-        within(must(cells[where], `cell ${String(where + 1)}`)).queryByLabelText(asked),
-        `cell ${String(where + 1)} of a row does not answer to its own heading`,
-      ).not.toBeNull()
-    }
-
-    /* The last cell is the one button of the row. */
-    expect(
-      within(must(cells[7], 'the record')).queryByRole('button', { name: /^Obriši/ }),
-      'the last cell is not the one that removes the row',
-    ).not.toBeNull()
-
-    /* And no cell of the row says a category any more, which is the thing the owner
-       took out. Asked by what it would hold: „Maraton" is what the first race of the
-       fixture read before. */
-    expect(
-      cells.map((one) => one.textContent),
-      'a cell still reads a category',
-    ).not.toContain('Maraton')
-  })
-
   it('names every control in a row by the row it is in', async () => {
     /* „Dužina" twelve times over is twelve controls a screen reader cannot tell
        apart, and the table has no row heading to read them with. Written without
@@ -843,7 +716,7 @@ describe('the races of an event', () => {
     /* Every control of the table is a text box since 02.10.2026, the measures included: they
        take a comma as well as a dot (owner, „Polje za broj prima i zarez i tacku"), which a
        number box cannot. */
-    const named = within(screen.getByRole('table', { name: /^Trke na događaju/ }))
+    const named = within(screen.getByRole('region', { name: /^Trke na događaju/ }))
       .getAllByRole('textbox')
       .map((one) => one.getAttribute('aria-label') ?? '')
 
@@ -2678,7 +2551,7 @@ describe('what the form for a new event asks for', () => {
     await user.type(screen.getByLabelText(/^Mesto/), 'Niš')
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
 
-    const under = within(screen.getByRole('table', { name: /^Trke na događaju/ }))
+    const under = within(screen.getByRole('region', { name: /^Trke na događaju/ }))
 
     expect(under.queryByLabelText(/^Naziv/), 'a race is asked for a name').toBeNull()
 

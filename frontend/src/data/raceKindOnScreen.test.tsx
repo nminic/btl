@@ -107,8 +107,8 @@ describe('a race whose kind is a word the portal does not know', () => {
     renderAt(`/sr/kalendar/${EVENT}/prijava?trka=${String(RACE)}`, 'competitor', '000002')
 
     await user.type(await screen.findByLabelText(/^Sati/), '3')
-    await user.type(screen.getByLabelText(/^Minuta/), '12')
-    await user.type(screen.getByLabelText(/^Sekundi/), '5')
+    await user.type(screen.getByLabelText(/^Minuti/), '12')
+    await user.type(screen.getByLabelText(/^Sekunde/), '5')
     await user.type(screen.getByLabelText(/^Link ka zvani/), 'https://primer.rs/rezultat')
     await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 

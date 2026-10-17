@@ -4,6 +4,7 @@ import { screen } from '@testing-library/react'
 import { must } from '../../test/at'
 import { chainToShell, markupOf, nameOf } from '../../test/chain'
 import { renderAt } from '../../test/render'
+import { rulesInMedia } from '../../test/stylesheet'
 
 /**
  * What the refusal on the entity screens declares, and nothing about who wins.
@@ -86,6 +87,9 @@ function unconditional(): { selector: string; style: CSSStyleDeclaration }[] {
 function oneLine(selector: string): string {
   return selector.replace(/\s+/g, ' ').trim()
 }
+
+/** A value or a selector with its runs of white space as one space, as the parser gives it back. */
+const squashed = (text: string) => text.replace(/\s+/g, ' ').trim()
 
 function ruleFor(selector: string): CSSStyleDeclaration {
   const found = unconditional().filter((rule) => oneLine(rule.selector) === oneLine(selector))
@@ -278,149 +282,86 @@ describe('a record that may no longer be opened', () => {
   })
 })
 
-describe('the column a race is read by', () => {
-  it('has a floor, and it is an unconditional rule of the sheet', () => {
-    /* The name is what a row is picked out by (owner, 23.08.2026), and shared out by
-       what each column holds it came out narrowest of the seven: measured in Chrome
-       at 360px with the default letters, the cell was 47,27px and the box inside it
-       31,27px, some three letters of „Šidski novogodišnji maraton", while
-       „Kategorija", which is only read, had 88,34. With the floor: 128 and 112, and
-       at 200% text 256 and 224, since it is written in the reader's own letters. The
-       page does not scroll at either size; the box does, which is the pattern this
-       table already uses, and the owner chose that of three offered.
+/**
+ * THE LINES A RACE IS DRAWN IN (owner, 16.10.2026, PDL „Ispravke sa ekrana 16.10.2026": „sve ovo za
+ * novu trku je užasno. U prvom redu mora da se vidi Trka, Datum, Vrsta, a onda u drugom redu...").
+ *
+ * <p>jsdom lays nothing out (ADL A18), so what is asked here is that the rules are written, that
+ * they apply where they are meant to (below the wide query and inside it), and that nothing is left
+ * in the sheet that scrolls a race sideways. Whether the page scrolls sideways at 360, 768 and 1280 is
+ * a question for a browser and was measured in one; the numbers are in the pull request.
+ *
+ * <p>Read through the parser, as the rest of this file is, and not as text: a rule wrapped in
+ * `@media print` stops applying on a screen and a text search still finds it.
+ */
+describe('the lines a race is drawn in', () => {
+  const WIDE = '(min-width: 51.25em)'
 
-       Asked through the parser and not as text in the file, which is the whole point
-       of writing it here rather than beside the other stylesheet claims: wrapped in
-       `@media print` the rule stops applying on a screen and a text search still
-       finds it. Measured 23.08.2026 by a round, on this very rule: wrapped, eighty
-       tests stayed green while the column fell back to 47,27px. ADL A18 records the
-       same shape of miss over this same file. */
-    /* Named exactly as the parser gives it back, newline and all: jsdom keeps the
-       line break the sheet is written with rather than folding the two selectors onto
-       one line. */
-    const floor = ruleFor(
-      '.entity-races .table th:first-child, .entity-races .table td:first-child',
+  it('puts every field on a line of its own below the wide query, and thirds from it', () => {
+    /* Mobile first (CLAUDE.md, UI standards): the plain rule is ONE column, which is what a telephone
+       and a tablet get, and the thirds are written inside the same query the form above them uses
+       (`forms/FormRenderer.css`, 51.25em, 820px). Written the other way round, thirds first and
+       undone by a query, the two rules met at a width that a larger text size really reaches (WCAG
+       2.2 SC 1.4.4). */
+    expect(
+      squashed(ruleFor('.race__row').getPropertyValue('grid-template-columns')),
+      'a line of a race is not one column on a telephone',
+    ).toBe('minmax(0, 1fr)')
+
+    const inTheWide = rulesInMedia(css, WIDE, 'Entity.css').filter(
+      (rule) => squashed(rule.selectorText) === '.race__row',
     )
 
-    expect(floor.getPropertyValue('min-inline-size')).toBe('8rem')
+    expect(inTheWide.length, 'the thirds are not one rule inside the wide query').toBe(1)
+    expect(
+      squashed(must(inTheWide[0], 'the thirds').style.getPropertyValue('grid-template-columns')),
+      'a line of a race is not three equal columns from the wide query on',
+    ).toBe('repeat(3, minmax(0, 1fr))')
   })
 
-  it('shares the room with the date, and takes it from the three measures', () => {
-    /* Owner, 23.08.2026, on the picture: „dužina, uspon i spust se sužavaju" so that
-       the name of the race and its date have room. The category came out of the table
-       the same day, which is where that room comes from.
-
-       Both numbers are measured in Chrome at 360px with the default letters, on the
-       screen of an event, and neither is chosen:
-
-       - the date without a floor came out 89,59px, and after the button that opens
-         the calendar and the padding there were 26px left for the field, with
-         „17/10/2026" running 81px past its own edge. At 9,5rem the field was 88px and
-         still 19px short. At 11rem it is 112px and nothing runs over.
-       - the three measures hold „42.20" and „1250" and no more, and the box inside
-         them is told to fill its cell, so left to themselves they take a share as wide
-         as the name they crowd out: 109 and 105 and 101px at 1280px, against 5,5rem
-         asked for here, and the name 162px against the 205px it has now.
-
-       Two rounds measured what the obvious ways cost, and both are worth keeping here
-       because both looked right and were green:
-
-       - `max-inline-size` is a wall the column cannot pass however much it holds, so
-         the values were cut: „42.2" drawn „42." and „506" „50(" from 700px up.
-       - `inline-size` alone is no better, because the field is told to fill its cell
-         and to have no floor of its own: the cell then has no width to push the column
-         with, the column stood at exactly 88,00px on every screen, and „59.27" lost
-         its last digit on the very first race of the very first event.
-
-       What works is to take the room out of the padding rather than out of the digits.
-       At 5,5rem the field is 70px inside its border and was keeping 12px of padding on
-       each side, leaving 46px for a value that a number field also spends some of on
-       its arrows. Four pixels a side hands 16px back. The floor on the field is what
-       keeps the column from falling under that on a narrow screen, where the table is
-       at its smallest and a suggested width loses.
-
-       Measured after all three, with „163.29" and „12345" typed into the row, which is
-       the longest the portal holds: the page does not scroll sideways at 360, 700, 768
-       or 1280, no field runs over at any of them, the columns are 88px at every one,
-       and the box scrolls 313px at 360 and not at all above it. */
+  it('lets a race be narrower than what is in it, which is what keeps the page from scrolling', () => {
+    /* A `fieldset` carries `min-inline-size: min-content` from the browser and the lines inside are
+       grids, so the widest single control sets a floor under the whole race (measured at 360, the
+       same reason `.form__group` gives in `forms/FormRenderer.css`). Without the floor undone here a
+       telephone scrolls sideways; `minmax(0, 1fr)` undoes it for a column and this undoes it for
+       the box the columns are in. */
     expect(
-      ruleFor('.entity-races .table th:nth-child(2), .entity-races .table td:nth-child(2)')
-        .getPropertyValue('min-inline-size'),
-      'the date lost its floor',
-    ).toBe('11rem')
-
+      parseFloat(ruleFor('.race').getPropertyValue('min-inline-size')),
+      'a race has a floor under it',
+    ).toBe(0)
     expect(
-      ruleFor('.entity-races .table .races__measure').getPropertyValue('inline-size'),
-      'the measures lost their width',
-    ).toBe('5.5rem')
-
-    /* And a width it is, not a ceiling. Asked by name because the two read the same
-       in a diff and behave differently on the screen: a ceiling cut „42.2" down to
-       „42." at 768px while every test stayed green. */
-    expect(
-      ruleFor('.entity-races .table .races__measure').getPropertyValue('max-inline-size'),
-      'the measures were walled in again',
-    ).toBe('')
-
-    /* And the room comes out of the padding, with a floor under the field so the
-       column cannot fall below what it holds when the table is at its smallest. Both
-       are asked here because the width above is only a suggestion, and a suggestion
-       without these two is what let „59.27" lose a digit with every test green. */
-    const field = ruleFor('.entity-races .table td.races__measure .field__control')
-
-    expect(
-      field.getPropertyValue('padding-inline'),
-      'the measures took their padding back and the digits pay for it',
-    ).toBe('var(--space-4)')
-
-    expect(
-      field.getPropertyValue('min-inline-size'),
-      'the measures lost the floor that holds them open on a narrow screen',
-    ).toBe('4.5rem')
+      parseFloat(ruleFor('.race__row > .field').getPropertyValue('min-inline-size')),
+      'a field of a race has a floor under it',
+    ).toBe(0)
   })
 
-  it('gives the kind of a race room for the longest word it offers', () => {
-    /* Measured in Chrome on 30.08.2026: „Vremenska" is 77,36px in this font, Chrome's
-       own arrow takes about 16, and the control keeps 12px of padding a side, so it
-       needs about 119. Asked here because jsdom lays nothing out (ADL A33), so what
-       a case can hold is the floor the sheet gives, not the width the word needs.
+  it('has nothing left in the sheet that scrolls a race sideways or lays it out as a table', () => {
+    /* The races were a table in a box that scrolled sideways on every width below the widest
+       (owner, 23.08.2026, chose that of three outcomes). It is the thing the owner took out, so it is
+       asked by what the rules say and not by which rules there are: a new rule written about the
+       races that scrolls them is as much the fault as the old one. */
+    const about = unconditional().filter((rule) =>
+      /entity-races|\.race\b|\.races\b|\.race__/.test(rule.selector),
+    )
 
-       Two rounds got this wrong in two different ways, and both are asked about: a
-       width on the cell does nothing at all, and seven rem left „Vremensk" with the
-       last letter cut. */
-    expect(
-      ruleFor('.entity-races .table .races__kind .field__control').getPropertyValue(
-        'min-inline-size',
-      ),
-      'the kind lost the room its longest word needs',
-    ).toBe('8rem')
-    /* On the control and not on the cell, which is the half that matters: every
-       control here is told to fill its cell and to have no floor, so a width on the
-       cell is a suggestion the table is free to ignore, and it does. Measured in
-       Chrome: twenty rem on the cell left the column at 53,52px. */
-    expect(
-      unconditional().filter((rule) => oneLine(rule.selector).includes('.races__kind')),
-      'the kind is held open by a rule on the cell, which does nothing',
-    ).toHaveLength(1)
+    expect(about.length, 'no rule is written about the races at all').toBeGreaterThan(3)
+
+    for (const rule of about) {
+      expect(
+        [rule.style.getPropertyValue('overflow'), rule.style.getPropertyValue('overflow-x')],
+        `${oneLine(rule.selector)} scrolls a race sideways`,
+      ).toEqual(['', ''])
+      expect(
+        oneLine(rule.selector),
+        `${oneLine(rule.selector)} still lays the races out as a table`,
+      ).not.toMatch(/\.table|races__measure|races__kind|th:|td:/)
+    }
   })
 
-  it('reads the length from the right, like the two measures beside it', () => {
-    /* The portal reads the first three columns of a table from the left, because in
-       every other table those three are words (`styles/table.css`). Here they were
-       words too until the category came out from between the date and the length, and
-       the length moved into third place: „Dužina" then stood against the left edge
-       while „Uspon" and „Spust" stood against the right.
-
-       Measured in Chrome on the screen of an event: before, the heading of the length
-       computed `text-align: left` and the other two `right`; after, all three read
-       `right`, and 2158 tests were green either way.
-
-       Asked by what the cell is and not by where it sits, since 30.08.2026: two
-       columns were added in the middle and every rule that counted columns moved off
-       the thing it was written for. */
-    expect(
-      ruleFor('.entity-races .table th.races__measure').getPropertyValue('text-align'),
-      'a measure reads from the left again',
-    ).toBe('right')
+  it('says "1. trka" in the full colour of the text, and the way out of a race at its end', () => {
+    expect(ruleFor('.race__legend').getPropertyValue('color'), 'the name of a race is muted').toBe(
+      'var(--text)',
+    )
+    expect(ruleFor('.race__actions').getPropertyValue('justify-content')).toBe('flex-end')
   })
 })

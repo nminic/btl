@@ -50,7 +50,7 @@ import {
   refusal,
   teamFrom,
 } from './teamProposal'
-import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { AskedLabel } from '../../forms/AskedLabel'
 import { useOverlay } from './overlay'
 import { QueueMeta } from './QueueMeta'
 import { canSendBack, outcomeFor, returned, type Queue } from './queues'
@@ -1089,11 +1089,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * folded, and the moderator would see the count drop with nothing anywhere saying
    * why.
    *
-   * <p>That is the same shape as the fault `admin/verificationStyle.test.ts` was
-   * written for - „the line saying what a star means was drawn by the renderer over a
-   * screen whose every star the stylesheet had folded away" - so it is answered the
-   * same way round: the card the route refused is the one thing the moderator now has
-   * to look at, so it opens.
+   * <p>So the card the route refused is the one thing the moderator now has to look at,
+   * and it opens.
    *
    * <p>Above that width nothing is folded and this changes nothing anybody can see.
    */
@@ -1129,10 +1126,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * whichever box is open: the settled card's own box goes with the card, so what that line added was
    * the closing of somebody else's.
    *
-   * <p><b>And a success still has to close its own card's box</b>, though the card goes: `open` is
-   * read by the line that says what a star means (`starsHere`, off `items` and not off `waiting`), so
-   * a box left naming a settled card would keep that line on a queue that has emptied
-   * (`adminFlows.test.tsx`, „says nothing about a star on a queue that has emptied").
+   * <p><b>And a success still has to close its own card's box</b>, though the card goes: a box
+   * left naming a settled card would stay open over a queue that has emptied
+   * (`adminFlows.test.tsx`, „draws no star on a queue that has emptied").
    *
    * <p>The card is named in `closed` as well, so its buttons take the focus back as they return: on a
    * refusal that is the whole of where the focus goes, because the box that had it has left. The
@@ -1323,34 +1319,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
               : null
           const waiting = waitingIn(items, decisions, queue.id)
 
-          /* Whether a star is on this screen at all, which is what decides the
-             one line that says what a star means (forms/AskedLabel.tsx). Asked
-             of the two things that draw one and of nothing else:
-
-             - the three fields a proposed team is corrected in, which are drawn
-               once per proposal, so an emptied queue has none;
-             - the reason a proposal is sent back, which carries a star unless
-               the outcome is a deletion, where a note may be left blank. That is
-               the whole of the comments queue, and a legend over it said the
-               opposite of the truth about the only field on the screen.
-
-             Guessed at instead, from the name of the queue and from whether a
-             box was open, it was drawn over a queue with nothing left in it and
-             over a field that may be left empty, and taken away while three
-             stars stayed. */
-          const openItem = items.find((one) => one.id === open)
-          const starsHere =
-            (queue.id === 'teams' && waiting.length > 0) ||
-            (openItem !== undefined && outcomeFor(queue, openItem) !== 'delete')
-
           return (
             <>
-              {starsHere && (
-                <div className="pending__legend">
-                  <RequiredNote />
-                </div>
-              )}
-
               <div className="pending__bar">
                 <h2 className="profile__section" id={waitingId}>
                   {t('review.waiting')} <span className="profile__count">{waiting.length}</span>

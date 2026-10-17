@@ -10,7 +10,7 @@ import { aCompetitor } from '../../test/theAnswer'
 import { setupUser } from '../../test/user'
 import { clearResourceCache, loadResource } from '../../data/client'
 import sr from '../../i18n/sr.json'
-import { formatPoints } from '../../i18n/format'
+import { formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
 import type { AgeBand } from '../../data/categories'
 import type { Competitor, Result } from '../../data/types'
 import { awardsOf } from './awards'
@@ -199,7 +199,7 @@ describe('clearing the filters', () => {
 
     expect(screen.getByRole('table', { name: 'Rezultati' })).toBeVisible()
     // The length is a row of six now, and the one that is on says which.
-    expect(screen.getByRole('button', { name: 'Sve dužine Sve' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Sve distance Sve' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
@@ -239,7 +239,7 @@ describe('the length, as one row of six', () => {
       'aria-pressed',
       'true',
     )
-    expect(screen.getByRole('button', { name: 'Sve dužine Sve' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Sve distance Sve' })).toHaveAttribute(
       'aria-pressed',
       'false',
     )
@@ -254,7 +254,7 @@ describe('the length, as one row of six', () => {
     await screen.findByRole('table', { name: 'Rezultati' })
     expect(router.state.location.search).toContain('duzina=half')
 
-    await user.click(screen.getByRole('button', { name: 'Sve dužine Sve' }))
+    await user.click(screen.getByRole('button', { name: 'Sve distance Sve' }))
 
     // Written into the address only where it differs from the default, so an
     // address stays as short as it can be.
@@ -273,7 +273,7 @@ describe('the length, as one row of six', () => {
        name at all below 620px: six unnamed buttons on the width PDL P24 calls
        the main one. */
     expect(screen.getByRole('button', { name: 'Maraton 42,2 km' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Sve dužine Sve' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Sve distance Sve' })).toBeVisible()
     expect(document.querySelector('.profile__length-short')).not.toHaveAttribute('aria-hidden')
   })
 
@@ -472,7 +472,7 @@ describe('an empty table says which of the four kinds of nothing it is', () => {
     renderAt('/sr/takmicar/000002?sezona=sve&duzina=ultra')
 
     expect(
-      await screen.findByText('Nema nijednog rezultata izabrane dužine.'),
+      await screen.findByText('Nema nijednog rezultata izabrane distance.'),
     ).toBeVisible()
   })
 
@@ -480,7 +480,7 @@ describe('an empty table says which of the four kinds of nothing it is', () => {
     renderAt('/sr/takmicar/000002?sezona=2010&duzina=ultra')
 
     expect(
-      await screen.findByText('Za izabranu sezonu i dužinu nema nijednog rezultata.'),
+      await screen.findByText('Za izabranu sezonu i distancu nema nijednog rezultata.'),
     ).toBeVisible()
   })
 })
@@ -1022,5 +1022,54 @@ describe('the head of my own profile', () => {
 
     expect(classes, 'my own head is drawn by another rule').toEqual([...theirs.classList])
     expect(inside, "a wrapper stands around my own head and around nobody else").toBeNull()
+  })
+})
+
+describe('the table of results on a profile, named in full', () => {
+  it('heads its figures Dužina (km), Uspon (m) and Spust (m), and adds no column', async () => {
+    /* Owner, 16.10.2026: „SAMO TREBA PREIMENOVATI POSTOJEĆE D + i - na profilu". The columns that
+       stood as „d (km)", „+ (m)" and „− (m)" are the same three, named. Counted as well as named:
+       „Nijedna kolona se ne dodaje", so the group a run falls in is still the dot beside the
+       length and not a column. */
+    renderAt('/sr/takmicar/000021?sezona=sve')
+
+    const table = await screen.findByRole('table', { name: 'Rezultati' })
+
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((one) => one.textContent),
+    ).toEqual(['Datum', 'Trka', 'Dužina (km)', 'Uspon (m)', 'Spust (m)', 'Vreme', 'Bodovi'])
+  })
+
+  it('reads each of the three from its own field, in every row', async () => {
+    renderAt('/sr/takmicar/000021?sezona=sve')
+
+    const table = await screen.findByRole('table', { name: 'Rezultati' })
+    const mine = (await loadResource<Result[]>('results')).filter((one) => one.memberNumber === '000021')
+    const rows = within(table).getAllByRole('row').slice(1)
+    let differing = 0
+
+    expect(rows.length).toBeGreaterThan(5)
+
+    for (const row of rows) {
+      const cells = within(row).getAllByRole('cell')
+      const date = must(at(cells, 0).textContent, 'the day')
+      const race = must(at(cells, 1).textContent, 'the race')
+      /* The run this row is: a day and a race name tell it from the others of the member. */
+      const run = must(
+        mine.find((one) => formatShortDate(one.date, 'sr') === date && one.raceName === race),
+        `a run of 000021 on ${date} named ${race}`,
+      )
+
+      expect(at(cells, 2).textContent, 'the length').toContain(formatNumber(run.distanceKm, 'sr', 2))
+      expect(at(cells, 3).textContent, 'the climb').toBe(formatNumber(run.ascentM, 'sr'))
+      expect(at(cells, 4).textContent, 'the fall').toBe(formatNumber(run.descentM, 'sr'))
+      differing += run.ascentM === run.descentM ? 0 : 1
+    }
+
+    /* The climb is not the fall in some of the rows drawn, so a column read from the other field is
+       a different number and this cannot pass on it. */
+    expect(differing, 'every run drawn climbs as far as it falls, so this measures nothing').toBeGreaterThan(0)
   })
 })

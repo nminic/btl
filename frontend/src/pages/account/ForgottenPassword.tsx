@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { AskedLabel } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from './askTheServer'
 import { ServerSaid } from './ServerSaid'
@@ -133,11 +133,8 @@ export function ForgottenPassword() {
           void send()
         }}
       >
-        {/* The rule every field on the portal keeps since 12.08.2026: a star, one line
-            saying what the star means, and `aria-required` on the control itself
-            (forms/AskedLabel.tsx). */}
-        <RequiredNote />
-
+        {/* The rule every field on the portal keeps since 12.08.2026: a star and
+            `aria-required` on the control itself (forms/AskedLabel.tsx). */}
         <div className="rankings__field">
           <AskedLabel id="forgotten-password-email">{t('forgottenPassword.email')}</AskedLabel>
           <input

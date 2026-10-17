@@ -188,7 +188,7 @@ describe('rating an event', () => {
       expect(must(named.firstElementChild, `the words of ${mark}`).textContent).toBe(mark)
     }
 
-    expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeVisible()
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
   })
 
   it('offers five stars to each mark, as radios rather than as five buttons', async () => {

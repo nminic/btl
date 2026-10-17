@@ -1,11 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, within } from '@testing-library/react'
+import axe from 'axe-core'
 import { arrivedResource, clearResourceCache } from '../../data/client'
 import { renderAt } from '../../test/render'
 import { did, isResource, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { at, first, must } from '../../test/at'
+import { ruleFor } from '../../test/stylesheet'
 import { SLOW } from '../../test/slow'
 
 /**
@@ -232,7 +234,7 @@ describe('which races count towards a competition', () => {
 
       const panels = toggles.map((toggle) => {
         expect(toggle).toHaveAttribute('aria-expanded', 'false')
-        expect(must(toggle.parentElement, 'what the button sits in').tagName).toBe('H3')
+        expect(must(toggle.parentElement, 'what the button sits in').tagName).toBe('H2')
 
         return toggle.getAttribute('aria-controls')
       })
@@ -685,6 +687,77 @@ describe('which races count towards a competition', () => {
    * at 360, 768 and 1280 pixels is measured in a browser (`admin/entityStyle.test.ts` gives
    * the full reasoning for that division).
    */
+  /**
+   * THE TITLE OF THE BOX IS AN `h2`, AND IS DRAWN AT THE SIZE IT HAD AS AN `h3` (owner,
+   * 16.10.2026, PDL „Jedini nalaz axe-a": „naslov kutije „Trke u ligi" postaje drugog nivoa
+   * (h2), sa istom veličinom kao danas, pa izgled i tekst ostaju isti").
+   *
+   * Two halves, and the join between them is the class: `accessibility.test.tsx` walks the
+   * screen with the box folded, so it cannot see what is inside, and jsdom lays nothing out,
+   * so what is held of the size is what the sheet says about the class the heading wears.
+   * The size itself was measured in Chrome (18,72px before and after, at 360 and 1280).
+   */
+  describe('and its title is an h2, drawn the size the h3 was', () => {
+    it('stands under the h1 of the screen with no level skipped, with the box open', async () => {
+      const server = serving()
+
+      await openTheBox()
+
+      const title = must(
+        screen.getByRole('button', { name: `Trke u ligi ${ITS_NAME}` }).parentElement,
+        'the title the button stands in',
+      )
+
+      /* The names of the events inside it are one level under it: an `h4` there would skip a level
+         in the open box, which `accessibility.test.tsx` never sees because it leaves the box folded. */
+      const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
+
+      expect(
+        within(box).getAllByRole('heading', { level: 3 }).length,
+        'the events the competition counts are not headed h3',
+      ).toBeGreaterThan(0)
+      expect(within(box).queryAllByRole('heading', { level: 4 })).toEqual([])
+      expect(title.tagName).toBe('H2')
+      expect(screen.getAllByRole('heading', { level: 2 })).toContain(title)
+      expect(title.parentElement?.tagName).toBe('SECTION')
+
+      /* Asked of axe as well, on the open box: this is the rule that found it. */
+      const results = await axe.run(document.body, {
+        runOnly: { type: 'rule', values: ['heading-order'] },
+      })
+
+      expect(results.violations.map((found) => found.nodes.map((node) => node.html))).toEqual([])
+
+      server.stop()
+    }, SLOW)
+
+    it('wears a class that sets the size and the distance the browser gave an h3', async () => {
+      const server = serving()
+
+      await openTheBox()
+
+      const title = must(
+        screen.getByRole('button', { name: `Trke u ligi ${ITS_NAME}` }).parentElement,
+        'the title the button stands in',
+      )
+
+      /* THE CLASS IS READ OFF THE ELEMENT, so the rule below is the rule this heading wears and not
+         one that happens to have the name. Without it an h2 is 1.5em with .83em of distance. */
+      expect([...title.classList]).toEqual(['leagues__counting-title'])
+
+      const rule = ruleFor(
+        readFileSync(join(process.cwd(), 'src/pages/Leagues.css'), 'utf-8'),
+        `.${must(title.classList.item(0), 'the class of the title')}`,
+        'Leagues.css',
+      )
+
+      expect(rule.getPropertyValue('font-size')).toBe('1.17em')
+      expect(rule.getPropertyValue('margin-block')).toBe('1em')
+
+      server.stop()
+    }, SLOW)
+  })
+
   describe('and it wears what the portal already dresses a chooser and a row in', () => {
     /** Every selector the screen's own sheet declares a rule for, unconditionally or not. */
     function selectorsOfLeaguesCss(): string[] {

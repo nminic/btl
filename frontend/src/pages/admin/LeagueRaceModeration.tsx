@@ -143,8 +143,17 @@ export function LeagueRaceModeration({
           by headings still finds the box, and the control they land on is the one that opens
           it. Named after its own competition, because a screen carries several of these and
           four controls reading the same three words are four controls a screen reader cannot
-          tell apart (WCAG 2.2 SC 2.4.4). */}
-      <h3>
+          tell apart (WCAG 2.2 SC 2.4.4).
+
+          **AN `h2`, AND DRAWN AS THE `h3` IT WAS** (owner, 16.10.2026, PDL „Jedini nalaz axe-a":
+          „naslov kutije „Trke u ligi" postaje drugog nivoa (h2), sa istom veličinom kao danas, pa
+          izgled i tekst ostaju isti"). In administration this box stands in a row of a table under
+          the screen's `h1` and under no `h2`, so an `h3` skipped a level (axe, `heading-order`).
+          The public page of a competition draws its own box (`league/LeagueEvents.tsx`), which
+          stands under the competition's `h2` and is rightly an `h3`; it shares no component with
+          this one, so nothing here is handed down. The names of the events inside are `h3` for the
+          same reason, and the class they wear already fixes their size. */}
+      <h2 className="leagues__counting-title">
         <button
           type="button"
           className="leagues__toggle"
@@ -155,7 +164,7 @@ export function LeagueRaceModeration({
         >
           {t('admin.leagueRaces')}
         </button>
-      </h3>
+      </h2>
 
       <div id={panelId} hidden={!open}>
         <Resource state={combinePair(useEvents(), races)} inline label={named}>
@@ -213,7 +222,7 @@ export function LeagueRaceModeration({
                   <ul className="leagues__events">
                     {listed.map(({ event, races: run }) => (
                       <li key={event.id}>
-                        <h4 className="leagues__event-name">{event.name}</h4>
+                        <h3 className="leagues__event-name">{event.name}</h3>
                         <p className="leagues__event-day">{formatShortDate(event.date, locale)}</p>
 
                         <ul className="leagues__event-races">

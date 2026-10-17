@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { AskedLabel } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { SHORTEST_PASSWORD } from '../account/passwordRule'
@@ -102,8 +102,6 @@ export function ChangePassword() {
       <h2 className="profile__section" id="account-password">
         {t('account.passwordTitle')}
       </h2>
-
-      <RequiredNote />
 
       <form
         className="member__form"

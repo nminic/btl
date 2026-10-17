@@ -118,12 +118,12 @@ describe('the table of races on an event, as it is written', () => {
 
        And the day is the race's and not the event's: the event of a weekend is dated on its first
        morning, so a column that read the day off the event would write the Friday on all four rows. */
-    expect(headings(await openTable(TWELVE_RACES, 'visitor', null, null))).toEqual(['Trka', 'Mera', 'Uspon', 'Spust'])
+    expect(headings(await openTable(TWELVE_RACES, 'visitor', null, null))).toEqual(['Trka', 'Dužina', 'Uspon', 'Spust'])
     cleanup()
 
     const weekend = await openTable(TWO_DAYS, 'visitor', null, null)
 
-    expect(headings(weekend)).toEqual(['Trka', 'Dan', 'Mera', 'Uspon', 'Spust'])
+    expect(headings(weekend)).toEqual(['Trka', 'Dan', 'Dužina', 'Uspon', 'Spust'])
     expect(columnOf(weekend, 'Dan')).toEqual(['17. 9. 2021.', '17. 9. 2021.', '18. 9. 2021.', '18. 9. 2021.'])
     cleanup()
 
@@ -138,7 +138,7 @@ describe('the table of races on an event, as it is written', () => {
       .getAllByRole('columnheader')
       .map((one) => one.textContent)
 
-    expect(heads, 'the heads this case is written around').toEqual(['Trka', 'Mera', 'Uspon', 'Spust'])
+    expect(heads, 'the heads this case is written around').toEqual(['Trka', 'Dužina', 'Uspon', 'Spust'])
 
     for (const row of raceRows(table)) {
       const cells = within(row).getAllByRole('cell')
