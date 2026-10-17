@@ -124,7 +124,7 @@ type Found = { before: string; text: string; href: string; after: string }
  * host, and a character that looks like a slash (U+2215, U+2044, U+29F8) or like nothing (U+3164,
  * U+2800) puts what follows it into the host. All of them are held, with the host a browser opens
  * for each, in `addressesIn.test.ts`.
- * The words of a link are the address as it was typed (`EditableText`), so they say the domain
+ * The words of a link are the address as it was typed (`components/Markdown.tsx`), so they say the domain
  * only where the domain that was typed is the one that opens, and an address that does not pass
  * is words, the whole word of it with its brackets, as one the gate refuses is.
  *
@@ -213,17 +213,25 @@ function addressIn(word: string): Found | null {
  * as one.
  *
  * Written for the terms and the prizes of a competition, the two boxes on the list of competitions
- * (`pages/league/EditableText.tsx`), and for the sentence the owner gave on 03.10.2026 (PDL P15): the
+ * (`pages/league/EditableText.tsx`, drawn through `components/Markdown.tsx` since 16.10.2026, which
+ * asks this through `components/markdownText.ts`), and for the sentence the owner gave on 03.10.2026
+ * (PDL P15): the
  * paragraph of the terms of the RunTrace league has to carry `www.runtrace.net` as a link that opens
  * that portal in a window of its own. Before that day the two boxes drew their text and nothing
  * else.
  *
  * **What is returned is the text, cut where an address begins and where it ends, and never
  * changed.** The `text` of the runs put back together is the argument, character for character:
- * blanks, line breaks, brackets and the full stop after an address included. Nothing is trimmed,
- * nothing is collapsed, and nothing is turned into markup, because the terms of a league are not
- * moderated (PDL, 01.09.2026: „Administratorova reč stoji") and what a reader sees is therefore
- * whatever was typed. The caller draws every run as text, and only the addresses as links.
+ * blanks, line breaks, brackets and the full stop after an address included. Nothing is trimmed and
+ * nothing is collapsed here.
+ *
+ * **What is around the addresses is Markdown since 16.10.2026** (PDL, „Ispravke sa ekrana
+ * 16.10.2026": the terms and the prizes are written with the editor and kept as Markdown, „isto kao
+ * pisane strane"). So this is no longer asked of the whole text: `components/markdownText.ts` asks
+ * it of each word that is not already a piece of Markdown (a link, a value between backticks), with
+ * the marks of bold and italic and the punctuation around the word taken off first, and before bold
+ * and italic are read, so an underscore in the path of an address stays in the address. A line of
+ * Markdown is drawn without the blanks around it, as a written page always was.
  *
  * **An address is a whole word.** A word is what stands between two blanks, a line break counting
  * as one, and an address ends where its word ends, less the punctuation that closes a sentence or

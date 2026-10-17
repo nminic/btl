@@ -10,6 +10,10 @@
  * Each is given the answer jsdom already gives for an element, which is „nothing is drawn": no
  * rectangles, a rectangle of nought, and no element under any point. Added only where missing, so a
  * jsdom that learns them is asked instead.
+ *
+ * The third is also the one axe asks before it decides whether a page has a `main` and an `h1`, and
+ * `pages/accessibility.test.tsx` gave it the same answer for its own file until this was written
+ * (16.10.2026). It is given here once, for every file, and that file holds that axe gets it.
  */
 export function measureNothing(): void {
   if (!('getClientRects' in Range.prototype)) {
