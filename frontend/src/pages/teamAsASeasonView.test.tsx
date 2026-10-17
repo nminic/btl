@@ -297,3 +297,181 @@ describe('the page of a team that nobody was in yet', () => {
     }
   }, SLOW)
 })
+
+/**
+ * THE SEASON THAT HAS NOT BEGUN, IN THE TRANSFER WINDOW (PDL, „Odgovori vlasnika 17.10.2026, uveče").
+ *
+ * Owner, 17.10.2026: „Strana tima u prelaznom roku nudi i sledeću sezonu, isto kao spisak Timova
+ * (`transfersTakeEffect`), sa sastavom kakav će biti."
+ *
+ * **Three days with three jobs, never one value for them.** The day the page is READ on is the clock;
+ * the day a result was run on is the date it carries (May of 2027, for all of them); and the season a
+ * member joins the team from is a year (`LATE` joins from 2028, which is what a founder of a team made
+ * in the window is given). A case where the reading day and the date of a result shared a value would
+ * be satisfied by a page that asked either.
+ *
+ * **The window is 15 October to 31 December** (`inYearlyWindow`), so the days below sit on both edges
+ * of it, and 1 January is the first day after it: the season that was on offer is now the running one
+ * and the next one is not on offer again.
+ */
+describe('the page of a team, in the transfer window', () => {
+  const RESULTS = [...BEFORE_THE_LEAGUE, ...IN_2027]
+
+  it.each(['2027-10-15', '2027-11-01', '2027-12-31'])(
+    'offers the season that has not begun on %s, and still opens on the running one',
+    async (day) => {
+      const { stop } = answering(RESULTS)
+
+      try {
+        renderAt(`/sr/tim/${ITS_ADDRESS}`, 'visitor', null, undefined, day)
+
+        const rows = await roster()
+        const select = await control()
+
+        expect(offered(select)).toEqual(['2028', '2027'])
+        /* The running one, with its own roster: the member who joins from 2028 is not on it. */
+        expect(select.value).toBe('2027')
+        expect(namesOf(rows)).toEqual(['Ime 000201 000201', 'Ime 000202 000202'])
+        expect(pointsOf(rows)).toEqual([formatPoints(10, 'sr'), formatPoints(6, 'sr')])
+      } finally {
+        stop()
+      }
+    },
+    SLOW,
+  )
+
+  it('draws the roster as it will be in the season that has not begun, and then the running one again', async () => {
+    const user = setupUser()
+    const { stop } = answering(RESULTS)
+
+    try {
+      renderAt(`/sr/tim/${ITS_ADDRESS}`, 'visitor', null, undefined, '2027-11-01')
+
+      await roster()
+      await user.selectOptions(await control(), '2028')
+
+      /* Three, the founder among them, and every one on nought: nobody has run in 2028 yet. The
+         2027 results (10, 6 and the 7 of the member who is not on the roster of 2027) are on none
+         of these lines. */
+      await waitFor(
+        async () => {
+          expect(namesOf(await roster())).toEqual([
+            'Ime 000201 000201',
+            'Ime 000202 000202',
+            'Ime 000203 000203',
+          ])
+        },
+        { timeout: HALF },
+      )
+      expect(pointsOf(await roster())).toEqual(Array.from({ length: 3 }, () => formatPoints(0, 'sr')))
+      expect((await control()).value).toBe('2028')
+
+      await user.selectOptions(await control(), '2027')
+
+      await waitFor(
+        async () => {
+          expect(namesOf(await roster())).toEqual(['Ime 000201 000201', 'Ime 000202 000202'])
+        },
+        { timeout: HALF },
+      )
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
+  it('opens on the season that has not begun when the address names it', async () => {
+    const { stop } = answering(RESULTS)
+
+    try {
+      renderAt(`/sr/tim/${ITS_ADDRESS}?sezona=2028`, 'visitor', null, undefined, '2027-11-01')
+
+      await roster()
+
+      expect((await control()).value).toBe('2028')
+      expect(namesOf(await roster())).toHaveLength(3)
+    } finally {
+      stop()
+    }
+  }, SLOW)
+})
+
+describe('the page of a team, outside the transfer window', () => {
+  const RESULTS = [...BEFORE_THE_LEAGUE, ...IN_2027]
+
+  /* A day of the running season, the day before the window opens, and the last day of the one before
+     it, so the edges are read from both sides. */
+  it.each(['2027-01-15', '2027-06-01', '2027-10-14'])(
+    'offers only the running season on %s',
+    async (day) => {
+      const { stop } = answering(RESULTS)
+
+      try {
+        renderAt(`/sr/tim/${ITS_ADDRESS}`, 'visitor', null, undefined, day)
+
+        await roster()
+        const select = await control()
+
+        expect(offered(select)).toEqual(['2027'])
+        expect(select.value).toBe('2027')
+      } finally {
+        stop()
+      }
+    },
+    SLOW,
+  )
+
+  it('holds an address that names the season that has not begun against what it offers', async () => {
+    const { stop } = answering(RESULTS)
+
+    try {
+      renderAt(`/sr/tim/${ITS_ADDRESS}?sezona=2028`, 'visitor', null, undefined, '2027-06-01')
+
+      const rows = await roster()
+
+      expect((await control()).value).toBe('2027')
+      expect(namesOf(rows)).toEqual(['Ime 000201 000201', 'Ime 000202 000202'])
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
+  it('on the first day after the window, has the season that was next as the running one and offers no further', async () => {
+    const { stop } = answering(RESULTS)
+
+    try {
+      renderAt(`/sr/tim/${ITS_ADDRESS}`, 'visitor', null, undefined, '2028-01-01')
+
+      const rows = await roster()
+      const select = await control()
+
+      expect(select.value).toBe('2028')
+      expect(offered(select)).toEqual(['2028', '2027'])
+      /* The founder who joined from 2028 is on the running roster now. */
+      expect(rows).toHaveLength(3)
+    } finally {
+      stop()
+    }
+  }, SLOW)
+})
+
+describe('the page of a team, in the transfer window before the league has a season', () => {
+  /* The season a transfer takes effect in is never earlier than the first (`transfersTakeEffect`), and
+     the one shown is the first as well, so there is nothing further to offer. Two days of two kinds:
+     one of 2026, where "the running one plus one" would be 2028, and one of 2025, where "the year plus
+     one" would be 2026, a season the league does not have. */
+  it.each(['2026-11-01', '2025-11-01'])('offers 2027 and nothing else on %s', async (day) => {
+    const { stop } = answering(BEFORE_THE_LEAGUE)
+
+    try {
+      renderAt(`/sr/tim/${ITS_ADDRESS}`, 'visitor', null, undefined, day)
+
+      await roster()
+      const select = await control()
+
+      expect(offered(select)).toEqual(['2027'])
+      expect(select.value).toBe('2027')
+    } finally {
+      stop()
+    }
+  }, SLOW)
+})

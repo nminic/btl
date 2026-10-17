@@ -29,7 +29,7 @@ import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
 import { teamOf } from '../data/derive'
-import { inYearlyWindow, seasonShown } from '../data/season'
+import { inYearlyWindow, seasonShown, transfersTakeEffect } from '../data/season'
 import { readerAdministers, teamAdminOf } from '../data/teamAdmin'
 import { useSession } from '../session/useSession'
 import { DeleteRecord } from './admin/EntityEditor'
@@ -59,7 +59,14 @@ import { TeamQueue } from './TeamQueue'
  * are therefore those of the season shown, and the season shown is read the way
  * `pages/Teams.tsx` reads it: `seasonShown` for the default, `seasonsOnOffer` for the
  * choice, so the control cannot offer a season the league did not run and an address
- * naming one (`?sezona=2019`) is held against it (`offeredSeason`). */
+ * naming one (`?sezona=2019`) is held against it (`offeredSeason`).
+ *
+ * **And in the transfer window it also offers the season that has not begun**, as the list
+ * does (owner, 17.10.2026, uveče: „Strana tima u prelaznom roku nudi i sledeću sezonu, isto
+ * kao spisak Timova (`transfersTakeEffect`), sa sastavom kakav će biti"). The roster of that
+ * season is the one `inTeamIn` already works out for any season, so a founder whose team was
+ * made in the window is in it and is not in the running one. The page still OPENS on the
+ * running season: the next one is a choice, never the default. */
 
 export function TeamDetail() {
   const { locale, t } = useI18n()
@@ -255,10 +262,21 @@ export function TeamDetail() {
            the first** (`seasonsOnOffer`): the imported history of this team's members stays
            on their profiles and on the pages of the events, and is not a standing here.
            Worked out before the choice, because the choice is held against it. */
-        const seasons = seasonsOnOffer(
-          numbered(results).filter((one) => everNumbers.has(one.memberNumber)),
-          today,
-        )
+        const seasons = [
+          ...new Set([
+            /* **The one that has not begun, and only in the window** (owner, 17.10.2026: „u
+               prelaznom roku"). It is the season a transfer takes effect in
+               (`transfersTakeEffect`), the same one `pages/Teams.tsx` puts on its list, and not
+               the running one plus one: in 2026 the running one is shown as 2027, which is also
+               the one a transfer lands in, so there is nothing further to offer. Outside the
+               window nothing is joined, founded or agreed for it, so it is not on offer. */
+            ...(inYearlyWindow(today) ? [transfersTakeEffect(today)] : []),
+            ...seasonsOnOffer(
+              numbered(results).filter((one) => everNumbers.has(one.memberNumber)),
+              today,
+            ),
+          ]),
+        ].sort((left, right) => right - left)
         const season = offeredSeason(asked, seasons, running)
         /* The roster of the season being read, not of today: a page headed by
            a year has to be that year's team (PDL P13). */
