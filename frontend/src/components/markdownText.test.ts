@@ -239,11 +239,18 @@ describe('the mailboxes of a line', () => {
     expect(inlineOf('`info@primer.rs`', 'mail')).toEqual([{ kind: 'code', text: 'info@primer.rs' }])
   })
 
-  it('leave the links of the description of an event as they were, asked nothing of their hosts', () => {
+  /* PDL „Odgovori vlasnika 17.10.2026, jezik pošte (PR 545) i uređivač (PR 546)": the check of the
+     host holds for the links of the description of an event as well, and a written page keeps
+     asking nothing. */
+  it('ask the host of the address under the words of a link in the description of an event, as the terms do', () => {
     const typed = '[x](https://www.runtrace.net@zlo.example)'
 
-    expect(inlineOf(typed, 'mail')).toEqual([
+    expect(inlineOf(typed, 'mail')).toEqual([text(typed)])
+    expect(inlineOf(typed, false)).toEqual([
       { kind: 'link', url: 'https://www.runtrace.net@zlo.example', inside: false, children: [text('x')] },
+    ])
+    expect(inlineOf('[x](https://www.runtrace.net)', 'mail')).toEqual([
+      { kind: 'link', url: 'https://www.runtrace.net', inside: false, children: [text('x')] },
     ])
   })
 })

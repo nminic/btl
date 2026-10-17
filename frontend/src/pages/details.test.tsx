@@ -3,6 +3,7 @@ import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import type { BtlEvent, League, Race } from '../data/types'
 import { at, first, last, must } from '../test/at'
+import { MISLEADING } from '../test/misleadingAddresses'
 import { renderAt } from '../test/render'
 import { membersAsServed } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
@@ -1074,6 +1075,30 @@ describe('the description of an event and the organiser’s page', () => {
       restore()
     }
   })
+
+  /* PDL „Odgovori vlasnika 17.10.2026, jezik pošte (PR 545) i uređivač (PR 546)", chosen with my
+     recommendation: the check of PDL P15 (03.10.2026) holds for the links of the description too, and
+     a link pasted with an address that reads as one host and opens another is drawn as plain words. */
+  it('draws a link whose address reads as one host and opens another as the words it was typed as', async () => {
+    const typed = MISLEADING.map((one) => (one.typed.startsWith('www.') ? `https://${one.typed}` : one.typed))
+    /* A clean link stands first among them, so what is measured is the refusal of the others and
+       not a description that links nothing. */
+    const written = `[prava](https://organizator.example) ${typed.map((one) => `[x](${one})`).join(' ')}`
+    const restore = eventCarrying(written, '')
+
+    try {
+      renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
+
+      const clean = await screen.findByRole('link', { name: 'prava' })
+
+      expect(typed.length).toBeGreaterThan(20)
+      expect(clean).toHaveAttribute('href', 'https://organizator.example')
+      expect(screen.queryAllByRole('link', { name: 'x' })).toEqual([])
+      expect(clean.parentElement?.textContent).toBe(`prava ${typed.map((one) => `[x](${one})`).join(' ')}`)
+    } finally {
+      restore()
+    }
+  }, SLOW)
 
   it('makes nothing of a link to javascript: or of a script written in the description', async () => {
     const written = '[klik](javascript:window.btlRanALink=1) <script>window.btlRanAScript = true</script>'

@@ -376,6 +376,21 @@ describe('Markdown, for a text of the administration', () => {
     expect(screen.getByText('Pišite na info@primer.rs.')).toBeVisible()
   })
 
+  /* PDL „Odgovori vlasnika 17.10.2026, jezik pošte (PR 545) i uređivač (PR 546)": the host of a link
+     is asked in the description of an event as in the terms, in its sentences and in its tables. */
+  it('draws a link of the description of an event whose address reads as one host and opens another as words, in a cell too', () => {
+    const bad = '[x](https://www.runtrace.net@zlo.example)'
+
+    render(<Markdown text={`${bad} [prava](https://primer.rs)\n\n| ${bad} | [druga](https://primer.rs/b) |\n|---|---|\n| a | b |`} addresses="mail" outward />)
+
+    expect(screen.queryAllByRole('link', { name: 'x' })).toEqual([])
+    /* The clean links on both sides of them, so what is measured is the refusal and not a text that
+       links nothing. */
+    expect(screen.getAllByRole('link').map((one) => one.textContent)).toEqual(['prava', 'druga'])
+    expect(screen.getByRole('columnheader', { name: bad })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'prava' }).parentElement?.textContent).toBe(`${bad} prava`)
+  })
+
   it('draws no typed mailbox as a link in a cell of a table, which draws no bare address of any kind', () => {
     render(<Markdown text={'| Pošta | info@primer.rs |\n|---|---|\n| a | b |'} addresses="mail" outward />)
 

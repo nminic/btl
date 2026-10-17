@@ -167,7 +167,7 @@ function Table({
             <tr>
               {head.map((cell, index) => (
                 <th key={index} scope="col">
-                  {inline(inlineOf(cell, false, addresses === true), reading)}
+                  {inline(inlineOf(cell, false, addresses !== false), reading)}
                 </th>
               ))}
             </tr>
@@ -177,7 +177,7 @@ function Table({
           {body.map((row, rowIndex) => (
             <tr key={rowIndex}>
               {row.map((cell, index) => (
-                <td key={index}>{inline(inlineOf(cell, false, addresses === true), reading)}</td>
+                <td key={index}>{inline(inlineOf(cell, false, addresses !== false), reading)}</td>
               ))}
             </tr>
           ))}

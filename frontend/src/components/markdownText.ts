@@ -524,13 +524,14 @@ function marked(units: Unit[]): Inline[] {
 
 /** The pieces of a line. `addresses` turns its bare addresses into links (`Bare`): of a site and of
  *  a mailbox in the terms and the prizes of a competition (PDL P15), of a mailbox alone in the
- *  description of an event (PDL, „Ispravke sa ekrana 17.10.2026"). For the terms and the prizes the
- *  address under the words of a link has to pass what a bare address passes (PDL P15, 03.10.2026,
- *  „ostaje običan tekst"). `hostChecked` asks that of the links alone, for a place that draws no bare
+ *  description of an event (PDL, „Ispravke sa ekrana 17.10.2026"). In every text that asks for either
+ *  the address under the words of a link has to pass what a bare address passes (PDL P15, 03.10.2026,
+ *  „ostaje običan tekst"; for the description of an event since the owner's answer of 17.10.2026,
+ *  PDL „Odgovori vlasnika 17.10.2026, jezik pošte (PR 545) i uređivač (PR 546)", chosen with my
+ *  recommendation). `hostChecked` asks that of the links alone, for a place that draws no bare
  *  address and has links all the same: the cells of a table in those texts. It follows `addresses`
- *  where it is not said, and only `true` checks: the description of an event asked nothing of its
- *  links before and asks nothing now. */
-export function inlineOf(text: string, addresses: Bare, hostChecked: boolean = addresses === true): Inline[] {
+ *  where it is not said; a written page, which asks for none, asks nothing of its links either. */
+export function inlineOf(text: string, addresses: Bare, hostChecked: boolean = addresses !== false): Inline[] {
   const units = unitsOf(text, hostChecked)
   const read = addresses === false ? units : withAddresses(units, addresses)
 

@@ -511,7 +511,11 @@ export function EventDetail() {
 
                   A mailbox typed into it is a link to write to (PDL, „Ispravke sa
                   ekrana 17.10.2026"); an address of a site typed bare is not, which
-                  is the terms' and the prizes' alone (PDL P15). */}
+                  is the terms' and the prizes' alone (PDL P15). The address under
+                  the words of a link is asked what the terms ask of theirs: one
+                  whose host as typed is not the host that opens is words (owner,
+                  17.10.2026, chosen with my recommendation, PDL „Odgovori vlasnika
+                  17.10.2026, jezik pošte (PR 545) i uređivač (PR 546)"). */}
               {event.description !== '' && (
                 <div className="event__said">
                   <Markdown text={event.description} under={1} addresses="mail" outward />
