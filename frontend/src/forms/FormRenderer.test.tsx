@@ -936,6 +936,25 @@ describe('FormRenderer', () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ opis: '## Reči' }), {})
   })
 
+  it('describes a formatted box by nothing where it has no rule and no limit, and counts nothing', () => {
+    /* Every definition on the portal gives its boxes a limit (`definitions.test.ts`); the renderer
+       is handed a definition and is in no position to insist, so the editor has to stand without
+       one as the plain box does. */
+    const form: FormDef = {
+      id: 'proba',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: [{ name: 'opis', type: 'textarea', formatted: true, labelKey: 'proba.opis' }],
+    }
+
+    renderWithI18n(<FormRenderer form={form} onSubmit={vi.fn()} />)
+
+    const editor = screen.getByRole('textbox', { name: /^proba\.opis/ })
+
+    expect(editor).not.toHaveAttribute('aria-describedby')
+    expect(screen.queryByText(/^Još \d+ znak/)).toBeNull()
+  })
+
   it('renders the registration definition straight from JSON', () => {
     renderWithI18n(<FormRenderer form={registracija} onSubmit={vi.fn()} />)
 
