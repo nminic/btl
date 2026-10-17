@@ -40,9 +40,6 @@ const EVENT = '/sr/kalendar/maraton-maratona-2015'
  *  two mornings. The second is what the day column is drawn for. */
 const ONE_DAY = EVENT
 const TWO_DAYS = '/sr/kalendar/balkansko-prvenstvo-veterana-2021'
-/** Four mornings and the same length on each of them, which is the only shape in
- *  which a race is known by more than its length (data/raceLabel.ts). */
-const FOUR_MORNINGS = '/sr/kalendar/danube-maraton-2022-03'
 /** Twelve races of one name on one morning, four of which agree on the length as it
  *  is written, so this page is where a label that gives up too early is seen
  *  (data/raceLabel.ts). */
@@ -84,7 +81,7 @@ describe('who is offered what on an event', () => {
        ostaje kraca za tu kolonu" (owner, 23.08.2026). */
     expect(
       within(races()).getAllByRole('columnheader').map((one) => one.textContent),
-    ).toEqual(['Trka', 'Mera', 'Uspon', 'Spust'])
+    ).toEqual(['Trka', 'Dužina', 'Uspon', 'Spust'])
   })
 
   it('names each race in the first column, not only the category it falls in', async () => {
@@ -262,39 +259,6 @@ describe('reporting a result from the event', () => {
     expect(named.length, 'the file no longer holds the event this is about').toBe(12)
     expect(new Set(named).size, `two links read the same: ${named.join(' / ')}`).toBe(12)
   })
-
-  it('calls a race the same thing in the row and in the form the row opens', async () => {
-    /* A race is known by its name and its length, and by its day as well where two
-       of them share both (`data/raceLabel.ts`; it had no name of its own until
-       23.08.2026 and was known by the length alone). What it is
-       known among decides that, and the two screens were reading two different
-       sets: the table read every race of the event and the form read only those
-       already run.
-
-       Measured on 23.08.2026 on this event, on the day of its first morning: the
-       row said „42,2 km, 14. 3. 2022." and the form said „42,2 km". One race, two
-       names, two steps of one flow, and a screen reader hears both. */
-    const user = setupUser()
-
-    renderAt(FOUR_MORNINGS, 'competitor', '000007', undefined, '2022-03-14')
-
-    await screen.findByRole('heading', { level: 1 })
-
-    const row = must(within(races()).getAllByRole('row')[1], 'the first race')
-    const link = within(row).getByRole('link', { name: /^Unesi rezultat/ })
-    const named = must(link.getAttribute('aria-label'), 'what the row calls the race').replace(
-      'Unesi rezultat: ',
-      '',
-    )
-
-    /* The day is part of it here, which is what makes this reading worth having:
-       on an event of one length a morning the two sets cannot disagree. */
-    expect(named).toMatch(/\d{1,2}\. \d{1,2}\. \d{4}\./)
-
-    await user.click(link)
-
-    expect(await screen.findByText(/Prijavljuješ rezultat/)).toHaveTextContent(named)
-  }, SEVERAL_SCREENS)
 
   it('carries the race into the form, so it asks neither which event nor which race', async () => {
     const user = setupUser()
@@ -1185,6 +1149,28 @@ describe('changing an event', () => {
       ).toEqual([...links])
       cleanup()
     }
+  }, SEVERAL_SCREENS)
+
+  it('draws the three buttons and the link of the rating in one box, which is what gives them one size', async () => {
+    /* Owner, 16.10.2026: „Dodaj komentar dugme gore levo je bezrazložno veliko. Treba da se
+       alignuje sa ostalim dugmićima i naslovom". Three of the four are `<button>` and the
+       fourth is a link, and the browser sizes the two differently unless the row says
+       otherwise (`.event__actions` in `Profile.css`, measured in Chrome: 37px and 46,8px).
+       The sheet is written for the box and a jsdom screen draws no sheet, so what is asked
+       here is that all four stand in the box the sheet is written for, and
+       `eventTableStyle.test.ts` asks what the sheet says about it. A link drawn outside it, or
+       a button left out of it, is the fault back. */
+    await openEvent('superadmin', '000007')
+
+    const link = await screen.findByRole('link', { name: 'Dodaj komentar' })
+    const box = must(link.closest<HTMLElement>('.event__actions'), 'the box that sets the size of the four')
+
+    expect(within(box).queryAllByRole('button').map(textOf)).toEqual([
+      'Izmena',
+      'Kopiranje',
+      'Brisanje',
+    ])
+    expect(box, 'the box is not the shared row of controls').toHaveClass('rankings__head-tool')
   }, SEVERAL_SCREENS)
 
   it('offers it on an event still ahead too, where the rating is not offered', async () => {

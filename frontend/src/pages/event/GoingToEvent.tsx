@@ -5,7 +5,7 @@ import { useToday } from '../../clock/useClock'
 import { clearResourceCache } from '../../data/client'
 import { useAttendance, useCompetitors } from '../../data/useResource'
 import type { Attending, BtlEvent, Competitor } from '../../data/types'
-import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { AskedLabel } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 import { limitOf } from '../../forms/records'
 import type { FormDef } from '../../forms/types'
@@ -571,11 +571,6 @@ function WriteTo({
         void submit()
       }}
     >
-      {/* Obligatory, and it says so the way every field on the portal says it
-          since 12.08.2026: a star for the eye, `aria-required` for a reader, and
-          one line saying what the star means (forms/AskedLabel.tsx). */}
-      <RequiredNote />
-
       <div className="field">
         <AskedLabel className="field__label" id="going-write">
           {t('event.writeTo', { name: `${them.firstName} ${them.lastName}` })}

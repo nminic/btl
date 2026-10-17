@@ -97,10 +97,19 @@ describe('EventDetail, the results of the league members who ran it', () => {
     renderAt(RAN)
 
     const table = await screen.findByRole('table', { name: 'Rezultati članova' })
+    /* The column the head „Bodovi" stands over, found by the head and not by a number: the table
+       gained three columns on 16.10.2026 (Distanca, Uspon, Spust) and a position written here moved
+       onto the time. */
+    const column = within(table)
+      .getAllByRole('columnheader')
+      .findIndex((one) => one.textContent === 'Bodovi')
+
+    expect(column, 'the table has no column of points').toBeGreaterThan(-1)
+
     const points = within(table)
       .getAllByRole('row')
       .slice(1)
-      .map((row) => Number(must(at(within(row).getAllByRole('cell'), 4).textContent, 'text').replace(',', '.')))
+      .map((row) => Number(must(at(within(row).getAllByRole('cell'), column).textContent, 'text').replace(',', '.')))
 
     expect(points.length).toBeGreaterThan(1)
     expect([...points].sort((left, right) => right - left)).toEqual(points)

@@ -358,25 +358,19 @@ describe('the star of an obligatory field', () => {
     expect(screen.getByRole('radiogroup', { name: 'proba.izbor' })).toBeInTheDocument()
   })
 
-  it('is explained once over the form, where there is one to explain', () => {
+  it('is not explained in words anywhere, and a reader is still told the field is obligatory', () => {
+    /* Owner, 16.10.2026: „ovo za obavezna polja sa zvezdicom pobriši svuda sa
+       sajta". The sentence that stood over every form is gone and the star stays
+       (12.08.2026). Both halves, since one without the other is the fault: a star
+       with nothing behind it for a reader who cannot see it. */
     renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
 
-    expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeInTheDocument()
-  })
-
-  it('is not explained on a form that draws none', () => {
-    /* A line about a mark that is nowhere on the screen is a line to work out
-       rather than a line to read. */
-    const nothingAsked: FormDef = {
-      id: 'proba',
-      titleKey: 'proba.naslov',
-      submitKey: 'form.submit',
-      fields: [{ name: 'dopisano', type: 'text', labelKey: 'proba.dopisano' }],
-    }
-
-    renderWithI18n(<FormRenderer form={nothingAsked} onSubmit={vi.fn()} />)
-
     expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('proba.ime')).toHaveAttribute('aria-required', 'true')
+    expect(
+      must(screen.getByLabelText('proba.ime').closest('.field'), 'the field it stands in')
+        .querySelector('.field__required'),
+    ).not.toBeNull()
   })
 })
 
@@ -1713,23 +1707,23 @@ async function attach(user: ReturnType<typeof setupUser>) {
   )
 }
 
-describe('the legend that explains the star', () => {
-  it('is drawn for a star that only another answer brings', async () => {
-    /* Recorded 22.08.2026: the legend was read off the written definition and the
-       star off `asAsked`, so a form whose only star arrives from another answer
-       drew the mark and never the sentence that says what it means. Unreachable on
-       the portal, because `link` is written `required: true` and the sentence
-       therefore always stood. */
+describe('the star that only another answer brings', () => {
+  it('is drawn, and told to a reader, once the other answer is given', async () => {
+    /* Recorded 22.08.2026: a form whose only star arrives from another answer.
+       The sentence that explained the star went on 16.10.2026, so what is held
+       here is the star itself and `aria-required` beside it, both arriving with
+       the picture. */
     const user = setupUser()
 
     renderWithI18n(<FormRenderer form={askedByAnswer} onSubmit={() => undefined} />)
 
-    expect(screen.queryByText(sr.form.requiredNote)).toBeNull()
+    expect(screen.getByLabelText(/proba.rec/)).not.toHaveAttribute('aria-required')
+    expect(document.querySelectorAll('.field__required')).toHaveLength(0)
 
     await attach(user)
 
     expect(screen.getByLabelText(/proba.rec/)).toHaveAttribute('aria-required', 'true')
-    expect(screen.getByText(sr.form.requiredNote)).toBeVisible()
+    expect(document.querySelectorAll('.field__required')).toHaveLength(1)
   })
 })
 
@@ -1808,21 +1802,22 @@ describe('an error that is not about a field being obligatory', () => {
   })
 })
 
-describe('the legend, once the last star goes', () => {
+describe('the star, once the last field that asked for it is freed', () => {
   it('goes with it', async () => {
-    /* The other direction of the same reading, and the one a form of nothing but
-       optional fields exists to prevent: a sentence explaining a mark that is not
-       drawn anywhere. `freedByPicture` has exactly one obligatory field and a
-       picture lets it go, so attaching one takes the last star off the form. */
+    /* The other direction of the same reading. `freedByPicture` has exactly one
+       obligatory field and a picture lets it go, so attaching one takes the last
+       star off the form, and `aria-required` with it. */
     const user = setupUser()
 
     renderWithI18n(<FormRenderer form={freedByPicture} onSubmit={() => undefined} />)
 
-    expect(screen.getByText(sr.form.requiredNote)).toBeVisible()
+    expect(document.querySelectorAll('.field__required')).toHaveLength(1)
+    expect(screen.getByLabelText(/proba.veza/)).toHaveAttribute('aria-required', 'true')
 
     await attach(user)
 
-    expect(screen.queryByText(sr.form.requiredNote)).toBeNull()
+    expect(document.querySelectorAll('.field__required')).toHaveLength(0)
+    expect(screen.getByLabelText(/proba.veza/)).not.toHaveAttribute('aria-required')
   })
 })
 

@@ -3,7 +3,6 @@ import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { Stars } from '../../components/Stars'
-import { RequiredNote } from '../../forms/AskedLabel'
 import { NO_RATING, RATING_MARKS, type EventRating } from '../../data/types'
 import { combineResources, useEvents, useRaces, useResults } from '../../data/useResource'
 import { ran } from './ran'
@@ -194,10 +193,6 @@ function RateOne() {
                   a form of radios submits on Enter from anywhere inside it, so a
                   member pressing Enter after the third star would send a comment
                   they had not written yet. */}
-              {/* One line for the three ratings below, which are the obligatory
-                  part of this screen (forms/AskedLabel.tsx). */}
-              <RequiredNote />
-
               <div className="rate">
                 {RATING_MARKS.map((mark) => (
                   <Stars

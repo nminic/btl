@@ -25,6 +25,7 @@ import { outsideLink } from '../data/outsideLink'
 import type { Race, BtlEvent } from '../data/types'
 import { useSession } from '../session/useSession'
 import { EventActions } from './event/EventActions'
+import { measureHeadingKey, measureKey } from './event/measureHeading'
 import { GoingToEvent } from './event/GoingToEvent'
 import { OverallMark } from './event/OverallMark'
 import { EventComments } from './event/EventComments'
@@ -115,24 +116,28 @@ function RaceTable({ event }: { event: BtlEvent }) {
                       {t('event.raceDay')}
                     </th>
                   )}
-                  {/* „Mera" and not „Dužina" since 30.08.2026, on the owner's word:
-                      a race of a length is measured by its length, a timed race by
-                      how long it lasts, and a free race by nothing until somebody
-                      has run it, so a heading that says „Dužina" is untrue of two of
-                      the three kinds. He was offered the two ways of closing that
-                      and took this one; the other was for the first column to write
-                      the race's full name, which repeats the year on every row of a
-                      table already standing under one event.
+                  {/* Not „Dužina" for every event, and not „Mera" at all. A race of a
+                      length is measured by its length, a timed race by how long it
+                      lasts, and a free race by nothing until somebody has run it
+                      (30.08.2026), and on 30.08.2026 the heading was „Mera" to be
+                      true of all three. The owner took that word off on 16.10.2026:
+                      „Nisam rekao da se bilo gde više pominje MERA. Pominje se
+                      dužina ili trajanje zavisno od toga kakva je trka. BEZ MERE."
+                      So the heading is what the races of THIS event are measured by,
+                      chosen among his three offered ways with the assistant's
+                      recommendation: „Dužina" where every race is of a length or
+                      free, „Trajanje" where every race is timed, and „Dužina /
+                      trajanje" where they are mixed (`event/measureHeading.ts`). The
+                      climb and the fall have no unit in the heading, as he chose.
 
                       Only this table. The table of results below is a table of runs
-                      that happened, and every one of those has a length, so the word
-                      there stays what it was.
+                      that happened, and every one of those has a length.
 
                       The climb and the fall stay on a telephone since 03.10.2026
                       (they carried `table__hide-phone` before): the owner asked for
                       three figures under the name. */}
                   <th scope="col" className="event-races__measure">
-                    {t('event.measure')}
+                    {t(measureHeadingKey(mine))}
                   </th>
                   <th scope="col" className="event-races__ascent">
                     {t('event.ascent')}
@@ -186,8 +191,11 @@ function RaceTable({ event }: { event: BtlEvent }) {
                           F87). Not over a measure that is not there: a free race has
                           none, and a word over an empty cell is a label on nothing. */}
                       <td className="event-races__measure">
+                        {/* The word of THIS race and not of the table: on an event of
+                            mixed races the head says both, and a figure under a name
+                            on a telephone says which one it is. */}
                         {measure !== '' && (
-                          <span className="event-races__label">{t('event.measure')}</span>
+                          <span className="event-races__label">{t(measureKey(race.kind))}</span>
                         )}
                         {measure}
                       </td>
@@ -317,21 +325,29 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                 <thead>
                   <tr>
                     <th scope="col">{t('event.competitor')}</th>
-                    {/* Both of these used to read "Dužina", one beside the
-                        other: `event.distance` is the word too. The results
-                        table on a profile has had the answer all along, and it
-                        is the kilometres that get the shorter head, because the
-                        length is a name and the kilometres are a number.
+                    {/* Four heads since 16.10.2026, in the owner's order: „Distanca,
+                        Dužina (km), Uspon (m), Spust (m)". The first is the group a
+                        run falls in (Kraća trka ... Ultramaraton), which he named
+                        „Distanca" because „Ultramaraton nije dužina"; the other
+                        three are the figures, each with its unit in brackets. They
+                        were „Dužina" and „d (km)" beside one another before, and the
+                        climb and the fall were not here at all.
 
-                        The length goes with the phone columns as well. Left in,
-                        the table was three hundred and thirty six pixels inside
-                        a box of three hundred and twenty eight, which is the
-                        horizontal scroll PDL P24 forbids on a table. */}
+                        All four go with the phone columns. Left in, the table was
+                        three hundred and thirty six pixels inside a box of three
+                        hundred and twenty eight, which is the horizontal scroll PDL
+                        P24 forbids on a table. */}
+                    <th scope="col" className="table__hide-phone">
+                      {t('profile.columns.category')}
+                    </th>
                     <th scope="col" className="table__hide-phone">
                       {t('profile.columns.length')}
                     </th>
                     <th scope="col" className="table__hide-phone">
-                      {t('profile.columns.distance')}
+                      {t('profile.columns.ascent')}
+                    </th>
+                    <th scope="col" className="table__hide-phone">
+                      {t('profile.columns.descent')}
                     </th>
                     <th scope="col">{t('profile.columns.time')}</th>
                     <th scope="col">{t('profile.columns.points')}</th>
@@ -384,6 +400,8 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                         <td className="table__hide-phone">
                           {formatNumber(result.distanceKm, locale, 2)}
                         </td>
+                        <td className="table__hide-phone">{formatNumber(result.ascentM, locale)}</td>
+                        <td className="table__hide-phone">{formatNumber(result.descentM, locale)}</td>
                         <td>{formatDuration(result.seconds)}</td>
                         <td className="table__points">{formatPoints(result.points, locale)}</td>
                       </tr>
