@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { hisPageAsServed } from '../../test/hisPage'
 import { aNeverPaidRecord, neverPaidAsServed } from '../../test/neverPaid'
 import { renderAt } from '../../test/render'
-import { serverThat } from '../../test/serverAnswers'
+import { answeredWith, isResource, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 
 /**
@@ -22,6 +22,11 @@ import { SLOW } from '../../test/slow'
  * <li><b>A member whose fee has lapsed</b> „dopire samo do obnove i svog profila": the data and the
  * password are answered 404 (`PUT /api/me`, `PUT /api/me/password`), and the picture, the
  * biography and the switch with them.</li>
+ * <li><b>An administration account with no member</b> is drawn „sve troje" since the evening of
+ * 17.10.2026 (PDL, the answers of that evening, chosen by the owner between offered outcomes; the
+ * sentence is the record's and not his own words: „Nalog administracije bez člana na strani
+ * Podešavanja vidi sve troje: jezik pošte, izbor teme i promenu lozinke"): the language of its mail,
+ * the theme and the password, and none of the six panels that are a competitor's.</li>
  * <li><b>A member whose fee stands</b> may change all of it, and is the anchor the other two are
  * measured against: a screen that took everything from everybody would pass every absence below
  * and fail every presence.</li>
@@ -362,6 +367,51 @@ describe('the settings of a member the list still carries and the answer about h
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     expectTheSentenceAboutRenewal()
   }, SLOW)
+})
+
+describe('the settings of an administration account with no member', () => {
+  /* The answer a moderator or a superadmin gets from `GET /api/me`: a role, an account, the language of
+     its mail, and no `member` at all (PDL P21). Everything else is the disc, as for every screen. */
+  function administration(role: string): void {
+    stand(
+      serverThat((path) => {
+        if (path === '/api/me') {
+          return new Response(JSON.stringify({ role, account: 11, mailLanguage: 'sr' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        }
+
+        return path.startsWith('/api') && !isResource(path) ? answeredWith(404) : null
+      }),
+    )
+  }
+
+  it.each(['moderator', 'superadmin'])(
+    'draws a %s the password and the theme and the language of the mail, in that order, and nothing else',
+    async (role) => {
+      administration(role)
+      renderAt('/sr/podesavanja', 'visitor', null)
+
+      await drawn()
+      expect(await screen.findByRole('group', { name: 'Jezik pošte' })).toBeVisible()
+
+      /* Asked of the whole list of headings, so that a panel drawn beyond these three, and one of
+         these three drawn in another place, both fail. */
+      expect(
+        within(screen.getByRole('main'))
+          .getAllByRole('heading', { level: 2 })
+          .map((one) => one.textContent),
+      ).toEqual([PANELS.password, PANELS.appearance, PANELS.mail])
+      expect(screen.getByRole('radio', { name: 'Tamna' })).toBeVisible()
+      expect(screen.getByLabelText(/^Trenutna lozinka/)).toBeVisible()
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+      /* Nothing is waiting on a renewal for somebody who has no fee: the sentence is a lapsed member's. */
+      expectNoSentenceAboutRenewal()
+      expect(screen.queryByText(WHAT_OPENS_LATER)).not.toBeInTheDocument()
+    },
+    SLOW,
+  )
 })
 
 describe('the settings of a member whose fee stands', () => {
