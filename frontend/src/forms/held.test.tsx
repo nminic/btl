@@ -309,7 +309,7 @@ describe('what a held control wears', () => {
     }
   })
 
-  it('still dresses every held cell of the table of races, whatever else the sheets say', () => {
+  it('still dresses every held field of the races, whatever else the sheets say', () => {
     /* The table of an event is the second place the portal draws held boxes outside the renderer
        (04.10.2026: while the save of an event is out, every cell of it is held, `EventRaces.tsx`).
        It stands under `.entity-races`, whose rules reach a `.field__control` by an ancestor and
@@ -346,9 +346,11 @@ describe('what a held control wears', () => {
     try {
       const cells = [...document.querySelectorAll<HTMLElement>('.entity-races .field__control')]
 
-      /* The floor, and it says what was measured: the name, the day, the kind and the four measures
-         of the one row. A table that draws fewer is a table this case is no longer asking about. */
-      expect(cells.length, 'the table draws fewer cells than a row has').toBe(7)
+      /* The floor, and it says what was measured: the name, the day and the kind of the first line
+         of the one race, and the length, the climb and the fall of the second (a new race is a race
+         of a length, 16.10.2026; a timed one draws its duration in their place). A race that draws
+         fewer is a race this case is no longer asking about. */
+      expect(cells.length, 'the race draws fewer fields than a race of a length has').toBe(6)
 
       for (const cell of cells) {
         const seen = getComputedStyle(cell)

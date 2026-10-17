@@ -237,7 +237,7 @@ describe('a race that fixes no length', () => {
       await user.click(
         within(must(rows[1], 'the first event')).getByRole('button', { name: /^Otvori/ }),
       )
-      await screen.findByRole('table', { name: /^Trke/ })
+      await screen.findByRole('region', { name: /^Trke na događaju/ })
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
       expect(await screen.findByText(/Trke nisu sačuvane/)).toBeVisible()
@@ -281,21 +281,27 @@ describe('a race that fixes no length', () => {
         within(must(rows[1], 'the first event')).getByRole('button', { name: /^Otvori/ }),
       )
 
-      const races = await screen.findByRole('table', { name: /^Trke/ })
+      const races = within(await screen.findByRole('region', { name: /^Trke na događaju/ }))
 
       expect(
-        within(races).getAllByRole('row').length,
+        races.getAllByRole('group', { name: /^\d+\. trka$/ }).length,
         'the event has no races, so nothing here is being refused or allowed',
-      ).toBeGreaterThan(1)
+      ).toBeGreaterThan(0)
 
       /* Tied to the served file before anything is pressed. „It saved" on its own
          is green on a screen that never saw the stub at all, since an event of
-         ordinary races saves perfectly well; the cell of a race that fixes no
-         length is the one thing here that cannot be true of the real file. */
+         ordinary races saves perfectly well; a race that fixes no length draws none
+         (owner, 16.10.2026: a timed race draws how long it lasts and nothing else),
+         and draws the 24 hours the stub gave it, which is the one thing here that
+         cannot be true of the real file. */
       expect(
-        within(races).getAllByRole('textbox', { name: /^Dužina/ })[0],
-        'the first length is required, so these are not the served races',
-      ).toHaveAttribute('aria-required', 'false')
+        races.queryAllByRole('textbox', { name: /^Dužina/ }),
+        'a timed race draws a length, so these are not the served races',
+      ).toHaveLength(0)
+      expect(
+        first(races.getAllByRole('textbox', { name: /^Trajanje/ })),
+        'the duration is not the one the stub gave',
+      ).toHaveValue('24')
 
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
@@ -333,7 +339,7 @@ describe('a race that fixes no length', () => {
       await user.click(
         within(must(rows[1], 'the first event')).getByRole('button', { name: /^Otvori/ }),
       )
-      await screen.findByRole('table', { name: /^Trke/ })
+      await screen.findByRole('region', { name: /^Trke na događaju/ })
       await user.click(screen.getByRole('button', { name: 'Nova trka' }))
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
@@ -344,13 +350,17 @@ describe('a race that fixes no length', () => {
 
       const lengths = screen.getAllByRole('textbox', { name: /^Dužina/ })
 
-      /* Tied to the served file: with the races as they really are, the first row
-         is a race of a length and this reads „true", so the case cannot pass on a
-         screen the stub never reached. */
+      /* Tied to the served file: with the races as they really are, every row is a race of a
+         length and draws one, so there would be as many lengths as races. Served as timed they
+         draw none (owner, 16.10.2026), and the one length on the screen is the row just added,
+         which is what is refused. A race that fixes no length therefore cannot be marked wrong
+         in a cell it does not have, and the case cannot pass on a screen the stub never
+         reached. */
+      expect(lengths, 'a timed race draws a length, so these are not the served races').toHaveLength(1)
       expect(
-        first(lengths),
-        'the first length is required, so these are not the served races',
-      ).toHaveAttribute('aria-required', 'false')
+        first(screen.getAllByRole('textbox', { name: /^Trajanje/ })),
+        'the duration of the served race is marked wrong, which nothing is',
+      ).toHaveAttribute('aria-invalid', 'false')
       /* AND NO CELL ANNOUNCES BOUNDS THROUGH ATTRIBUTES A TEXT BOX CANNOT HOLD.
        *
          Until 02.10.2026 these cells were number boxes and said their floor and ceiling
@@ -381,12 +391,7 @@ describe('a race that fixes no length', () => {
         'inputmode',
         'numeric',
       )
-      expect(first(lengths), 'the length of a race that fixes none is marked wrong').toHaveAttribute(
-        'aria-invalid',
-        'false',
-      )
-      /* And the row that really is missing one still says so, so the exemption
-         cannot widen to the whole column. */
+      /* And the row that really is missing one still says so. */
       expect(must(lengths[lengths.length - 1], 'the row just added')).toHaveAttribute(
         'aria-invalid',
         'true',

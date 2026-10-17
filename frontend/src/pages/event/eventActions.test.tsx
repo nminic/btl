@@ -489,7 +489,7 @@ describe('copying an event', () => {
        Sačuvaj and none of it survived a reload. */
     expect(router.state.location.search).toMatch(/kopija=/)
 
-    const date = await screen.findByLabelText('Datum')
+    const date = await screen.findByRole('textbox', { name: 'Datum' })
 
     expect(date).toHaveFocus()
     /* Everything else came across, so the only thing to do is the date. */
@@ -520,7 +520,7 @@ describe('copying an event', () => {
 
     await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
 
-    const date = await screen.findByLabelText('Datum')
+    const date = await screen.findByRole('textbox', { name: 'Datum' })
     const season = screen.getByRole('button', { name: '+1y' })
     const week = screen.getByRole('button', { name: '+1w' })
 
@@ -575,7 +575,7 @@ describe('copying an event', () => {
 
     await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
 
-    const date = await screen.findByLabelText('Datum')
+    const date = await screen.findByRole('textbox', { name: 'Datum' })
     await user.clear(date)
     await user.type(date, '14032027')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
@@ -598,9 +598,9 @@ describe('copying an event', () => {
 
     await user.click(within(copy).getByRole('button', { name: /^Otvori:/ }))
 
-    const under = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+    const under = within(await screen.findByRole('region', { name: /^Trke na događaju/ }))
 
-    expect(under.getAllByRole('row').slice(1)).toHaveLength(races)
+    expect(under.getAllByRole('group', { name: /^\d+\. trka$/ })).toHaveLength(races)
   }, SEVERAL_SCREENS)
 
   it('never carries being featured across to the copy', async () => {
@@ -614,7 +614,7 @@ describe('copying an event', () => {
     renderAt('/sr/kalendar/beogradski-maraton-2027', 'superadmin')
     await screen.findByRole('heading', { level: 1 })
     await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
-    await screen.findByLabelText('Datum')
+    await screen.findByRole('textbox', { name: 'Datum' })
 
     expect(screen.getByLabelText(/^Istaknuto/)).toHaveValue('no')
   }, SEVERAL_SCREENS)
@@ -641,7 +641,7 @@ describe('copying an event', () => {
       const { router } = await openEvent('superadmin')
 
       await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
-      await screen.findByLabelText('Datum')
+      await screen.findByRole('textbox', { name: 'Datum' })
 
       expect(
         server.asked.filter((one) => (one.init?.method ?? 'GET') !== 'GET'),
@@ -652,7 +652,7 @@ describe('copying an event', () => {
       /* Moved off the day the copy opens on, which is next season's. This race is run
          every year, so the address that day builds is one another event already answers
          at and the form refuses it before anything is sent (`eventClash`). */
-      const date = await screen.findByLabelText('Datum')
+      const date = await screen.findByRole('textbox', { name: 'Datum' })
 
       await user.clear(date)
       await user.type(date, '14032027')
@@ -711,7 +711,7 @@ describe('copying an event', () => {
     /* The same place in next year's calendar, worked out from the day it was
        copied from. „Maraton maratona" of 2015 ran on the second Saturday of March;
        the second Saturday of March 2016 is the twelfth. */
-    expect(screen.getByLabelText('Datum')).toHaveValue('12/03/2016')
+    expect(screen.getByRole('textbox', { name: 'Datum' })).toHaveValue('12/03/2016')
 
     /* And every race under it moved by the same number of days, so two mornings
        stay two mornings. */
@@ -745,7 +745,7 @@ describe('copying an event', () => {
 
     await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
 
-    const date = await screen.findByLabelText('Datum')
+    const date = await screen.findByRole('textbox', { name: 'Datum' })
     await user.clear(date)
     await user.type(date, '14032027')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
@@ -792,7 +792,7 @@ describe('copying an event', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Kopiranje' }))
 
-    const date = await screen.findByLabelText('Datum')
+    const date = await screen.findByRole('textbox', { name: 'Datum' })
     await user.clear(date)
     await user.type(date, '05012031')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
@@ -842,7 +842,7 @@ describe('copying an event', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Kopiranje' }))
 
-    const date = await screen.findByLabelText('Datum')
+    const date = await screen.findByRole('textbox', { name: 'Datum' })
     await user.clear(date)
     await user.type(date, '14032032')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
@@ -916,7 +916,7 @@ describe('copying an event', () => {
 
       await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
 
-      const date = await screen.findByLabelText('Datum')
+      const date = await screen.findByRole('textbox', { name: 'Datum' })
 
       /* Counted off the form the copy opened, which is what the press will really send.
          Read out of the file instead, the two disagreed by one: the length of the list
@@ -1053,12 +1053,12 @@ describe('changing an event', () => {
 
     /* THIS event, which takes the name and the day together (see the note over this block). */
     expect(first(screen.getAllByLabelText(/^Naziv događaja/))).toHaveValue(mine.name)
-    expect(screen.getByLabelText('Datum')).toHaveValue(fieldDate(mine.date))
+    expect(screen.getByRole('textbox', { name: 'Datum' })).toHaveValue(fieldDate(mine.date))
 
     /* And its own races beneath it, counted off the file. */
-    const under = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+    const under = within(await screen.findByRole('region', { name: /^Trke na događaju/ }))
 
-    expect(under.getAllByRole('row').slice(1)).toHaveLength(its.length)
+    expect(under.getAllByRole('group', { name: /^\d+\. trka$/ })).toHaveLength(its.length)
 
     /* Leaving the form leaves nothing behind in the address. Left in it, the address would
        name the event again the moment the form closed, and it would never close. */
@@ -1204,7 +1204,7 @@ describe('changing an event', () => {
 
     expect(router.state.location.pathname).toBe('/sr/administracija/dogadjaji')
     /* Through the door and onto THIS event, which takes the name and the day together. */
-    expect(await screen.findByLabelText('Datum')).toHaveValue(fieldDate(mine.date))
+    expect(await screen.findByRole('textbox', { name: 'Datum' })).toHaveValue(fieldDate(mine.date))
     expect(first(screen.getAllByLabelText(/^Naziv događaja/))).toHaveValue(mine.name)
   }, SEVERAL_SCREENS)
 
@@ -1354,6 +1354,6 @@ describe('changing an event', () => {
     expect(await screen.findByRole('heading', { name: 'Kopiranje događaja' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Izmena događaja' })).toBeNull()
     expect(first(screen.getAllByLabelText(/^Naziv događaja/))).toHaveValue(mine.name)
-    expect(screen.getByLabelText('Datum')).toHaveValue(copiedDay)
+    expect(screen.getByRole('textbox', { name: 'Datum' })).toHaveValue(copiedDay)
   }, SEVERAL_SCREENS)
 })

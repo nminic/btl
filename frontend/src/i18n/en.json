@@ -1286,7 +1286,7 @@
       "raceDate": "Date",
       "raceName": "Race",
       "distanceKm": "Length (km)",
-      "limitHours": "Limit (h)",
+      "limitHours": "Duration (h)",
       "ascentM": "Ascent (m)",
       "descentM": "Descent (m)",
       "category": "Category",

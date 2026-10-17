@@ -184,7 +184,7 @@ describe('what the screen sends when it saves the table of mornings', () => {
         const box = (cell: string) => screen.getByRole('textbox', { name: `${cell}, ${which}` })
         const measures: [string, string][] = [
           ['Dužina (km)', row.distanceKm],
-          ['Ograničenje (h)', row.limitHours],
+          ['Trajanje (h)', row.limitHours],
           ['Uspon (m)', row.ascentM],
           ['Spust (m)', row.descentM],
         ]

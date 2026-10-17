@@ -1,9 +1,11 @@
 /* The form behind a list, and the two controls that open it. */
 
-/* For `.table` and `.table-scroll`, which the races of an event wear
-   (EventRaces.tsx). Asked for here because that component writes those names
-   (ADL A7): until now it reached them through AdminEvents, which brings
-   Member.css for the list beside it and not for this table.
+/* For `.table` and `.table-scroll`. The races of an event wore them (EventRaces.tsx) until
+   16.10.2026, when each race became a group of fields and the table went; this import was
+   asked for then (ADL A7) because that component wrote those names. It stays, because it was not
+   measured whether the list of the events and the other tables of these screens reach the sheet
+   by another road, and an import that is dropped on a guess is a table that loses its dress on a
+   cold route. Dropping it is its own change, with that measurement.
 
    This sheet is shared, so the ask is made for one of its two readers:
    EntityEditor draws no table and gets the rules anyway. That is the ordinary
@@ -203,155 +205,91 @@
   margin-block-start: var(--space-32);
 }
 
-/* A control in a cell takes the cell, and no more.
+/* THE RACES OF AN EVENT ARE A GROUP OF FIELDS PER RACE, AND NO LONGER A TABLE (owner,
+   16.10.2026: „sve ovo za novu trku je užasno. U prvom redu mora da se vidi Trka, Datum,
+   Vrsta, a onda u drugom redu: Ako je obeleženo Dužinska ili Slobodna, onda Dužina, Uspon,
+   Spust").
  *
- * A number box carries a width of its own, about twenty characters, and six of
- * them side by side asked for 1101px of table where the screen had 483: the last
- * three columns stood outside the box on every width, on a wide desk as much as on
- * a phone. Measured 23.08.2026. Told to fill the cell instead, the table is laid
- * out by what is in it and the columns come out the size of what they hold. */
-.entity-races .field__control,
-.entity-races .datepicker {
-  inline-size: 100%;
+ * What the table cost, measured and written down here so it is not paid again: seven columns
+ * that asked for 1101px where a phone had 483, a floor under the name, a floor under the date, a
+ * floor under the kind, a width and a padding squeezed out of the three measures, and a box
+ * that scrolled sideways on every width below the widest. Each of those rules was a
+ * measurement of one column against another, and none of them is needed when a field has a
+ * line to itself.
+ *
+ * MOBILE FIRST, AND THE SAME QUERY AS THE FORM ABOVE (`forms/FormRenderer.css`, 51.25em, 820px,
+ * where the portal already becomes its wide self). Below it every field stands on a line of its
+ * own, which is what a telephone and a tablet get everywhere else on the portal; from it the
+ * lines are thirds, the way the registration and the event form above are (owner, 12.08.2026:
+ * „Podeli je racionalno na trećine horizontalno"). A third that nothing stands in is empty on
+ * purpose: a timed race draws one field on its second line, and that field is a third wide and
+ * not the whole line.
+ *
+ * `minmax(0, 1fr)` and not `1fr`, because a track's floor is the width of its content and a
+ * date with the button of its calendar would push the line past the page. */
+.races {
+  display: grid;
+  gap: var(--space-16);
+}
+
+/* One race. A `fieldset` so a screen reader says „1. trka" before every field inside it.
+ *
+ * `min-inline-size: 0` is the line that is not decoration: a `fieldset` carries
+ * `min-inline-size: min-content` from the browser and the lines inside are grids, so without it
+ * the widest single control sets a floor under the whole race and a telephone scrolls sideways
+ * (`forms/FormRenderer.css`, `.form__group`, measured at 360). Flex and not grid for the
+ * box itself, for the reason that sheet has: a fieldset laid out as a flex column is the shape
+ * this portal already relies on. */
+.race {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  min-inline-size: 0;
+  margin: 0;
+  padding: var(--space-16);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-8);
+}
+
+/* „1. trka" over the race, in full text colour (WCAG 2.2 SC 1.4.3) and not the muted grey. */
+.race__legend {
+  padding-inline: var(--space-4);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.race__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-16);
+  align-items: start;
+}
+
+/* A field in a line may be narrower than what it holds: the box inside it takes the share
+   it was given and a long name scrolls inside its own box. */
+.race__row > .field {
   min-inline-size: 0;
 }
 
-/* And the table is the width of its box before it is anything else, so the cells
-   are shared out rather than added up. */
-.entity-races .table {
-  inline-size: 100%;
+@media (min-width: 51.25em) {
+  .race__row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
-/* Except the name, which is what the row is read by (owner, 23.08.2026) and which
-   came out narrowest of the seven.
- *
- * Shared out by what each column holds, the name lost: measured in Chrome at 360px
- * with the default letters, the cell was 47px and the box inside it **31px**, some
- * three letters of „Šidski novogodišnji maraton", while „Kategorija", which is only
- * read, had 88. A column somebody types a name into cannot be narrower than one
- * they only look at.
- *
- * The floor is on the cell rather than on the control, because the control is told
- * to take the cell (`inline-size: 100%` above) and a floor on it would be shared
- * out again. Eight rem is about a dozen letters at the default size and grows with
- * the reader's own.
- *
- * The cost is measured and is the ordinary one for this table: the box scrolls
- * further, and the page does not (owner's choice of the three offered,
- * 23.08.2026). */
-.entity-races .table th:first-child,
-.entity-races .table td:first-child {
-  min-inline-size: 8rem;
+/* The way out of a race, at the end of it. */
+.race__actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
-/* And the date beside it, which the owner named in the same breath as the name
-   („dužina, uspon i spust se sužavaju toliko da ostane dovoljno mesta za naziv trke
-   i datum", 23.08.2026, uz sliku).
+/* What is wrong with each marked cell, said under the races (`EventRaces.tsx`).
  *
- * Measured in Chrome at 360px with the default letters, before the floor: the column
- * came out 89,59px, and after the button that opens the calendar and the padding
- * there were 26px left for the field, with „17/10/2026" running 81px past its own
- * edge. A date that cannot be read is worse than one that is not shown.
- *
- * Eleven rem is the field, the button beside it and the padding at the default size,
- * measured rather than chosen: at 9,5rem the field came out 88px and „17/10/2026"
- * still ran 19px past its own edge. It grows with the reader's letters like every
- * other floor here. */
-.entity-races .table th:nth-child(2),
-.entity-races .table td:nth-child(2) {
-  min-inline-size: 11rem;
-}
-
-/* And the three measures give room back, because they never hold much: a length is
-   „42.20" and a climb „1250", while the name beside them holds „Šidski novogodišnji
-   maraton". Owner, 23.08.2026, on the picture: the length, the climb and the drop
-   narrow enough that the name of the race and its date have room.
- *
- * Two rounds measured what the obvious ways cost. A ceiling (`max-inline-size`) is a
- * wall the column cannot pass however much it holds, so „42.2" was drawn „42." and
- * „506" „50(" from 700px up. A width alone is no better here: the field is told to
- * fill its cell and to have no minimum of its own (above), so the cell has no width
- * of its own to push the column with, and the column stood at exactly 88,00px on
- * every screen while „59.27" lost its last digit. Both times every one of the 2158
- * tests was green.
- *
- * So the floor goes where the reading is, on the field, and the width above stays a
- * suggestion: the column is 5,5rem while what is typed fits in it, and as wide as it
- * must be when it does not. */
-.entity-races .table .races__measure {
-  inline-size: 5.5rem;
-}
-
-/* And the kind is wide enough for the word it holds, said on the control and not on
-   the cell.
- *
- * A plain width on the cell does nothing at all, unlike a floor. Every control in
- * this table is told to fill its cell and to have no floor of its own
- * (`inline-size: 100%; min-inline-size: 0`, above), so a table laid out by what it
- * holds has nothing to be held open by: a width of twenty rem on the cell was
- * measured in Chrome on 30.08.2026 and the column stayed 53,52px.
- *
- * What that cost, measured the same day: the kind used to sit in the counted range
- * that gave the measures a floor of 4,5rem, so it was 70px wide by accident. Moving
- * the measures onto a class took that away, and the select fell to 36px of content
- * with Chrome's own arrow taking about 16 of it. Nothing of the word was left, not
- * one letter of „Dužinska".
- *
- * The number: „Vremenska" is 77,36px in this font, the arrow takes about 16, and the
- * control keeps 12px of padding on each side and a pixel of border. That is 119,4px,
- * so 8rem, 128px, is the first round figure with room to spare. Seven rem was tried
- * and measured: 86px of content, and „Vremensk" with the last letter cut. */
-.entity-races .table .races__kind .field__control {
-  min-inline-size: 8rem;
-}
-
-/* And the room the column gives up comes out of the padding rather than out of the
-   digits, which is the part two rounds got wrong.
- *
- * Measured on this screen at 5,5rem: the field is 70px wide inside its border and
- * keeps 12px of padding on each side, so 46px are left for the value and a number
- * field spends some of that on the arrows that step it. „59.27" ran 7px past that and
- * „2253" 4px, on the very first race of the very first event. Read back to back, the
- * two ways to make that fit are a wider column or a narrower padding, and only the
- * second one is room the reader was not using.
- *
- * Four pixels each side, which is the smallest that still separates the digits from
- * the border, hands 16px back to every value: measured after, nothing runs over at
- * 360, 700, 768 or 1280, „163.29" included. The other columns keep the padding the
- * portal uses everywhere, because words need the air and numbers do not. */
-.entity-races .table td.races__measure .field__control {
-  padding-inline: var(--space-4);
-  min-inline-size: 4.5rem;
-}
-
-/* And every measure reads from the right, whichever column it sits in. The portal
-   reads the first three columns of a table from the left, because in every other
-   table those three are words (`styles/table.css`); here the third has been a number
-   since the category came out from between the date and the length, and „Dužina"
-   stood against the left edge while „Uspon" and „Spust" stood against the right,
-   columns of one kind read two ways.
- *
- * By what the cell is and not by where it sits, which is the whole reason these
- * rules stopped counting columns: two columns were added in the middle on 30.08.2026
- * and the counted range moved off the measures and onto a word, leaving the climb
- * and the fall 22 and 25 pixels wider than the room they had, so „506" showed as „5"
- * and the fall showed nothing at all. Measured in Chrome, 1280 and 360, and nothing
- * on the screen said a number was missing because the table fitted its box exactly.
- *
- * The heading and not the cell, because the cell holds a control rather than text:
- * measured on the same screen, the fields compute `text-align: start` whatever the
- * cell around them says, so moving the cell would change nothing anybody sees. */
-.entity-races .table th.races__measure {
-  text-align: right;
-}
-
-/* What is wrong with each marked cell, said under the table (`EventRaces.tsx`).
- *
- * Under the table and not in the cells, because the columns are narrow on purpose: a sentence in a
- * cell of five rem is a cell a dozen lines tall, and the table already scrolls inside its box
- * (owner, 23.08.2026). The list takes the width of the section instead, so each sentence is one or
- * two lines at 360px, and it is read in the colour and the size a field's own error is
- * (`.field__error`, `forms/FormRenderer.css`), which is the one dress this portal gives a
+ * Under the races and not in the fields, as it was under the table: the sentence names its cell by
+ * column and row ("Uspon (m), 2. trka"), so it can be found without the colour, and a list in one
+ * place is read out once instead of once per race. The list takes the width of the section, so each
+ * sentence is one or two lines at 360px, and it is read in the colour and the size a field's own
+ * error is (`.field__error`, `forms/FormRenderer.css`), which is the one dress this portal gives a
  * refusal. Said again here and not inherited, because that file belongs to the forms and this
  * list stands where no form class reaches. */
 .entity-races .races__problems {

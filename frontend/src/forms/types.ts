@@ -274,8 +274,9 @@ export type FormDef = {
    * How many columns every row of this form has, whatever its fields fill.
    *
    * Without it a row is as wide as the fields standing on it, which is right for
-   * eleven of the twelve forms: they have no shape of their own and a row of two
-   * is two halves. The registration has one. Owner, 12.08.2026: „Podeli je
+   * ten of the twelve forms: they have no shape of their own and a row of two
+   * is two halves. The registration has one, and the event form has since
+   * 16.10.2026 (owner: „Naziv, Vrsta; Datum, istaknuto; Mesto, država"). Owner, 12.08.2026: „Podeli je
    * racionalno na trećine horizontalno", and on 28.09.2026 he said what happens
    * where a row does not fill them, three times over: „Prvi red je Adresa i
    * telefon (Treća kolona je prazna)", „Drugi red su jednake trećine za Mesto i
