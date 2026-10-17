@@ -191,6 +191,11 @@ describe('every screen, as axe reads it', () => {
 
     const results = await axe.run(document, {
       rules: Object.fromEntries(Object.keys(NOT_IN_JSDOM).map((rule) => [rule, { enabled: false }])),
+      /* Every place is listed for a violation, and one place for every other answer, which is all the
+         cases below read of them: that a rule passed, and which rules were left undecided. Measured
+         16.10.2026 on `/sr/moji-rezultati` as a member, 2918 elements: 8.6 s for a full report, 0.8 s
+         for this one. The full one timed out at 20 s under coverage in CI (PR 534). */
+      resultTypes: ['violations'],
     })
 
     /* That axe asked something at all. A run that matched nothing answers „no violations" in the
