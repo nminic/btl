@@ -281,6 +281,17 @@ describe('a link', () => {
     )
   })
 
+  it('keeps two paragraphs two where the selection runs over both and its words are left as they were', () => {
+    /* The words of the two read as one line („a b"), which is one character shorter than the
+       selection they stand over, so words put back would join the paragraphs into one. */
+    const state = at('a\n\nb', 1, 5)
+
+    expect(wordsAt(state)).toBe('a b')
+    expect(toMarkdown(state.apply(putLink(state, 'a b', 'https://primer.rs')).doc.content)).toBe(
+      '[a](https://primer.rs)\n\n[b](https://primer.rs)',
+    )
+  })
+
   it('reads a selection over a line break as one line, which is what the field holds', () => {
     expect(wordsAt(at('a\nb', 1, 4))).toBe('a b')
   })
