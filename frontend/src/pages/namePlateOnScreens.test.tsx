@@ -1,5 +1,6 @@
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { htmlElement, must } from '../test/at'
+import { inLeague as leagueSeason, playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
 import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
 
@@ -43,6 +44,10 @@ const SHAPE = [
 ] as const
 
 describe('the circle beside a name', () => {
+  /* The history in league seasons, because no season before 2027 is on the table or the
+     top boards (`test/leagueSeasons.ts`). */
+  playTheHistoryAsLeagueSeasons()
+
   it('breaks the name in the standing of a competition, and keeps it whole in the tables', async () => {
     renderAt('/sr/liga/brdska-2019')
 
@@ -69,7 +74,7 @@ describe('the circle beside a name', () => {
 
     /* And the main standing, where the same circle stands beside a name that does not break.
        Read on a season the standing has rows in, or there is no plate to ask about. */
-    renderAt('/sr/tabela?sezona=2019')
+    renderAt(`/sr/tabela?sezona=${String(leagueSeason(2019))}`)
 
     await waitFor(() => {
       expect(document.querySelector('.plate')).not.toBeNull()
@@ -110,7 +115,7 @@ describe('the circle beside a name', () => {
        empty, „because a pair is made by two people confirming each other and there is no database",
        and this comment said so; the owner then asked for two pairs to be mocked so he could see
        the shape (`public/mock/pairs.json`). */
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(leagueSeason(2019))}`)
 
     await screen.findByRole('table', { name: 'Najviše kilometara' })
 
@@ -165,7 +170,7 @@ describe('the circle beside a name', () => {
        and one at y 164; the four lines all at x 119; the row 106px. At **360**, where the card is
        328px wide: the circles at x 74 and 1,7rem across, the four lines at x 107, the races under
        the points at x 214 and 107px wide, the row 106px, and the page does not scroll sideways. */
-    renderAt('/sr/top-liste?sezona=2019')
+    renderAt(`/sr/top-liste?sezona=${String(leagueSeason(2019))}`)
 
     await screen.findByRole('table', { name: 'Najbolji trkački parovi' })
 

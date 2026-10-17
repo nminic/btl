@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { must } from '../test/at'
 import { DAY, PUBLIC } from '../test/addresses'
+import { inLeague, playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
 import { renderAt } from '../test/render'
 import { membersAsServed, serverThat } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
@@ -279,6 +280,15 @@ const NAMES: Record<string, string> = {
 const HIM = '/sr/takmicar/000007-strahinja-vukicevic'
 
 describe('hiding a profile from readers who may not read it', () => {
+  /* The history in league seasons, and two cases read on a day inside one of them: the table,
+     the top boards and the front page show the running season and nothing before 2027
+     (owner, 16.10.2026), so on the suite's own days they would draw nobody, and „no way in is
+     his" would be said of an empty screen (`test/leagueSeasons.ts`). */
+  playTheHistoryAsLeagueSeasons()
+
+  /** A day inside the season of the history the walk below always stood on. */
+  const IN_A_SEASON_HE_RAN = `${String(inLeague(2019))}-06-01`
+
   it('is offered in the settings and answered by the profile', async () => {
     const user = setupUser()
     const { router } = renderAt('/sr/podesavanja', 'competitor', '000007', undefined, undefined, <SignOut />)
@@ -365,7 +375,14 @@ describe('hiding a profile from readers who may not read it', () => {
        the member's face taken off a table the owner asked it be on (PDL P23: hiding is about
        reaching the profile, not about what a list says). */
     const user = setupUser()
-    const { router } = renderAt('/sr/podesavanja', 'competitor', '000007', undefined, undefined, <SignOut />)
+    const { router } = renderAt(
+      '/sr/podesavanja',
+      'competitor',
+      '000007',
+      undefined,
+      IN_A_SEASON_HE_RAN,
+      <SignOut />,
+    )
 
     await hide(user)
     await user.click(screen.getByRole('button', { name: 'odjavi se' }))
@@ -415,7 +432,7 @@ describe('hiding a profile from readers who may not read it', () => {
       'competitor',
       '000007',
       undefined,
-      undefined,
+      IN_A_SEASON_HE_RAN,
       <>
         <Become who="000001" />
         <SignOut />

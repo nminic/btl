@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { screen } from '@testing-library/react'
 import { at, must } from '../test/at'
+import { inLeague, playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
 import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
 import { everyRule } from '../test/stylesheet'
@@ -116,7 +117,7 @@ function holdsAt(query: string, width: number, where: string): boolean {
 
 /** The main standing as the screen draws it, once it has drawn its rows. */
 async function theStanding(): Promise<{ heads: Element[]; row: Element[]; table: Element }> {
-  renderAt('/sr/tabela?sezona=2019', 'visitor', null)
+  renderAt(`/sr/tabela?sezona=${String(inLeague(2019))}`, 'visitor', null)
 
   const table = must((await screen.findByRole('table')).closest('table'), 'the standing')
 
@@ -131,6 +132,10 @@ async function theStanding(): Promise<{ heads: Element[]; row: Element[]; table:
 }
 
 describe('the main standing, at the widths the owner chose', () => {
+  /* The history in league seasons, because no season before 2027 is on the table or the
+     top boards (`test/leagueSeasons.ts`). */
+  playTheHistoryAsLeagueSeasons()
+
   /** The columns, by position, that some rule of the portal takes off the screen at this width. */
   function takenAwayAt(width: number, cells: Element[][]): number[] {
     const taken = new Set<number>()

@@ -5,6 +5,7 @@ import {
   seasonOf,
   seasonsWithResults,
 } from '../../data/derive'
+import { FIRST_SEASON } from '../../data/season'
 import type { Competitor, Result } from '../../data/types'
 
 /* What a competitor has won, worked out rather than stored.
@@ -65,7 +66,13 @@ export function awardsOf(
     }
   }
 
-  const raced = new Set(seasonsWithResults(mine))
+  /* **Only the seasons the league runs.** PDL P27: „Takmičenje kreće ispočetka: nijedan
+     istorijski rezultat ne ulazi u tabele, rang liste, priznanja ni „all time" statistiku.
+     Sezona 2027. počinje od nule za sve." Until 17.10.2026 this read every season the member
+     raced, so somebody who stood third on the imported 2019 was handed a trophy of a standing
+     the league never had. The results themselves stay on the profile (P27, 28.07.2026: the
+     personal history goes into the profile); what goes is the place worked out of them. */
+  const raced = new Set(seasonsWithResults(mine).filter((season) => season >= FIRST_SEASON))
 
   return [...bySeason.entries()]
     .filter(([season]) => raced.has(season))

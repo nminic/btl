@@ -1,7 +1,7 @@
 import { SLOW } from '../test/slow'
 import { matchingMedia } from '../test/media'
 import { must } from '../test/at'
-import { screen, within } from '@testing-library/react'
+import { configure, getConfig, screen, within } from '@testing-library/react'
 import { renderAt } from '../test/render'
 import { membersAsServed } from '../test/serverAnswers'
 import { setupUser } from '../test/user'
@@ -333,6 +333,109 @@ describe('Home', () => {
     expect(screen.queryByRole('heading', { name: 'Vesti' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Sponzor dana' })).not.toBeInTheDocument()
   })
+})
+
+/**
+ * WHICH SEASON THE FRONT PAGE COUNTS, on each side of the first one.
+ *
+ * Owner, 16.10.2026: „Nema šta probni ili ne probni podaci. Prva sezona je 2027, pa su samim
+ * tim svi brojači na nuli, a i sve su statistike prazne jer nema trka u 2027. godini. Ovo se
+ * odnosi na rang liste, Tabelu, naslovnu stranu i sl." Chosen with it, between the options put
+ * to him: always the running season, and an empty one is not swapped for an earlier one.
+ *
+ * **The day the page is read and the days the results were run are never one constant.** The
+ * history served by the suite has a full 2026 and a fuller 2019, which are exactly the seasons
+ * the page used to fall back to; the results added here are on days of their own.
+ */
+describe('the season the front page counts', () => {
+  const served = globalThis.fetch
+  let previous = window.matchMedia
+
+  /** The history as served, and these results of the league on top of it. */
+  function serveAlso(added: { memberNumber: string; date: string }[]): void {
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+      const answer = await served(input, init)
+
+      if (String(input) !== '/api/results' || (init?.method ?? 'GET') !== 'GET') {
+        return answer
+      }
+
+      const history: unknown = await answer.json()
+      const rows = Array.isArray(history) ? history : []
+      const template: unknown = rows[0]
+
+      return new Response(
+        JSON.stringify([
+          ...rows,
+          ...added.map((one, index) => ({
+            ...(typeof template === 'object' && template !== null ? template : {}),
+            id: 900_000 + index,
+            ...one,
+          })),
+        ]),
+        { headers: { 'content-type': 'application/json' } },
+      )
+    })
+  }
+
+  /** What the row of results says, read the way a screen reader hears it. */
+  async function resultsRow(): Promise<string> {
+    const label = await screen.findByText('Prijavljenih rezultata:', { exact: false })
+
+    return must(label.parentElement?.textContent, 'the row of results').trim()
+  }
+
+  let waits = getConfig().asyncUtilTimeout
+
+  beforeEach(() => {
+    /* Every wait here is half of the case's own clock, so a heading that never comes fails on
+       its own words and not on the clock (`pages/admin/saveWhileSaving.test.tsx`). */
+    waits = getConfig().asyncUtilTimeout
+    configure({ asyncUtilTimeout: SLOW / 2 })
+    previous = window.matchMedia
+    /* With less motion asked for, so the counters stand on their target at once and a
+       nought is a nought rather than a frame on the way somewhere. */
+    window.matchMedia = matchingMedia((query) => query.includes('reduced-motion'))
+  })
+
+  afterEach(() => {
+    configure({ asyncUtilTimeout: waits })
+    window.matchMedia = previous
+    vi.stubGlobal('fetch', served)
+  })
+
+  it('counts 2027 before it begins, at nought, and calls nothing sample data', async () => {
+    renderAt('/sr', 'visitor', null, undefined, '2026-10-16')
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Sezona 2027.' })).toBeVisible()
+    expect(await resultsRow()).toBe('Prijavljenih rezultata: 0 rezultata')
+    expect(screen.queryByText(/probni podaci/)).not.toBeInTheDocument()
+  }, SLOW)
+
+  it('counts 2027 with two people in it, and not a fuller season', async () => {
+    /* Three were needed before a season counted until 16.10.2026; with two the page went back
+       to the fullest season of the history. */
+    serveAlso([
+      { memberNumber: '000001', date: '2027-01-10' },
+      { memberNumber: '000002', date: '2027-02-14' },
+    ])
+    renderAt('/sr', 'visitor', null, undefined, '2027-03-01')
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Sezona 2027.' })).toBeVisible()
+    expect(await resultsRow()).toBe('Prijavljenih rezultata: 2 rezultata')
+  }, SLOW)
+
+  it('counts an empty 2028 at nought, with a full 2027 behind it', async () => {
+    serveAlso([
+      { memberNumber: '000001', date: '2027-01-10' },
+      { memberNumber: '000002', date: '2027-02-14' },
+      { memberNumber: '000004', date: '2027-05-20' },
+    ])
+    renderAt('/sr', 'visitor', null, undefined, '2028-02-01')
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Sezona 2028.' })).toBeVisible()
+    expect(await resultsRow()).toBe('Prijavljenih rezultata: 0 rezultata')
+  }, SLOW)
 })
 
 describe('freshNews', () => {

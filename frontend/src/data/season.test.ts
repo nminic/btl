@@ -7,6 +7,7 @@ import {
   inYearlyWindow,
   referralMayBeSet,
   seasonRunning,
+  seasonShown,
   transfersTakeEffect,
 } from './season'
 
@@ -153,5 +154,17 @@ describe('the yearly window', () => {
     expect(seasonRunning('2027-01-01')).toBe(2027)
     expect(seasonRunning('2027-12-31')).toBe(2027)
     expect(seasonRunning('2028-06-01')).toBe(2028)
+  })
+
+  it('shows the first season on every day before it, and the running one after', () => {
+    /* Owner, 16.10.2026: „Prva sezona je 2027", and a seasonal view shows that
+       season, empty, rather than an earlier one. The two days before it are
+       2026 and the year the history starts, so a floor that reads „last year"
+       or „the year before the first" cannot pass. */
+    expect(seasonShown('2010-03-01')).toBe(2027)
+    expect(seasonShown('2026-10-16')).toBe(2027)
+    expect(seasonShown('2026-12-31')).toBe(2027)
+    expect(seasonShown('2027-01-01')).toBe(2027)
+    expect(seasonShown('2028-02-01')).toBe(2028)
   })
 })

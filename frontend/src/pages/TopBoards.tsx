@@ -6,10 +6,11 @@ import { useToday } from '../clock/useClock'
 import { ColumnChart, type ChartColumn } from '../components/ColumnChart'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
+import { offeredSeason } from '../components/season'
+import { seasonShown } from '../data/season'
 import {
   bestSingleRaces,
-  defaultSeason,
-  seasonsWithResults,
+  seasonsOnOffer,
   topByCategory,
   topByKilometers,
   topByProgress,
@@ -280,9 +281,13 @@ function Boards({
 }) {
   const { locale, t } = useI18n()
   const today = useToday()
-  const seasons = useMemo(() => seasonsWithResults(results), [results])
-  const fallback = useMemo(() => defaultSeason(results, today), [results, today])
-  const season = seasonParam === null ? fallback : Number(seasonParam)
+  /* The running season, and before the league has one its first, empty or not; and
+     nothing before it on offer (owner, 16.10.2026 and 10.10.2026; `seasonShown`,
+     `seasonsOnOffer`). Held against the offer, as on the table, so an address naming
+     2019 shows this season under a control that says so. */
+  const seasons = useMemo(() => seasonsOnOffer(results, today), [results, today])
+  const fallback = seasonShown(today)
+  const season = Number(offeredSeason(seasonParam ?? '', seasons, String(fallback)))
   /* Who the boards of this season are drawn from (PDL P11). Article 48 is the
      standing of a season in several shapes, so the rule that holds for the table
      holds here.

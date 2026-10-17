@@ -1,5 +1,5 @@
 import { categoryCodeFor } from './categories'
-import { FIRST_SEASON } from './season'
+import { FIRST_SEASON, seasonShown } from './season'
 import { DOTS } from './types'
 import type {
   BtlEvent,
@@ -78,9 +78,8 @@ export type NumberedResult = Result & { memberNumber: string }
  * figure below gathers results into a map keyed by the number, so left in,
  * everybody who has raced without one is a single „member" carrying the sum of
  * all of them. Measured on two results of two different people: one entry,
- * `{ races: 2, kilometers: 20, points: 30 }`. `defaultSeason` is where it shows
- * without anybody going looking, because it counts the field by how many numbers
- * a season has and would say three people raced where thirty did.
+ * `{ races: 2, kilometers: 20, points: 30 }`. The table of a season is where it
+ * would show first, as one row carrying everybody's points.
  *
  * **Written the day before it could bite, and biting since 21.09.2026.** It went
  * in while the portal still read the generated file, where nothing is missing a
@@ -123,38 +122,32 @@ export function memberOf<T>(byNumber: Map<string, T>, result: Result): T | undef
   return result.memberNumber === null ? undefined : byNumber.get(result.memberNumber)
 }
 
-/** A standing that cannot fill a podium is not a standing. */
-const SMALLEST_FIELD = 3
-
-/**
- * Which season the rankings open on: the running one, as long as it has a
- * field to show. Until the season fills up, the screen opens on the fullest one
- * there is, so nobody judges the table by a season with two people in it.
- */
-export function defaultSeason(results: Result[], today: string): number {
-  const current = Number(today.slice(0, 4))
-  const fields = new Map<number, Set<string>>()
-
-  for (const result of numbered(results)) {
-    const season = seasonOf(result)
-    const field = fields.get(season) ?? new Set<string>()
-
-    field.add(result.memberNumber)
-    fields.set(season, field)
-  }
-
-  if ((fields.get(current)?.size ?? 0) >= SMALLEST_FIELD) {
-    return current
-  }
-
-  const fullest = [...fields.entries()].sort((left, right) => right[1].size - left[1].size)[0]
-
-  return fullest === undefined ? current : fullest[0]
-}
-
 /** Newest first, and only seasons that actually have results. */
 export function seasonsWithResults(results: Result[]): number[] {
   return [...new Set(results.map(seasonOf))].sort((left, right) => right - left)
+}
+
+/**
+ * The seasons a seasonal view offers: the one it shows (`seasonShown`) and every
+ * season of the league anybody has raced in, newest first.
+ *
+ * **Never a season before the first one.** Owner, 10.10.2026: „Ne postoje obracuni
+ * liga" before 2027, so a table, a top board or a standing of teams for 2019 is a
+ * standing the league never had. The results stay where they are read whole: on
+ * the page of the event they were run at, and on a profile, which asks
+ * `seasonsWithResults` and is a career view (chosen by the owner on 16.10.2026,
+ * between the options put to him: the counters on a profile stay career figures).
+ *
+ * **And always the one shown, empty or not**, because a select cannot open on an
+ * option it does not have, and the shown season is what these screens open on.
+ */
+export function seasonsOnOffer(results: Result[], today: string): number[] {
+  return [
+    ...new Set([
+      seasonShown(today),
+      ...seasonsWithResults(results).filter((season) => season >= FIRST_SEASON),
+    ]),
+  ].sort((left, right) => right - left)
 }
 
 export function addToTotals(totals: Totals, result: Result): Totals {
@@ -1563,6 +1556,12 @@ const BY_PROGRESS = byLadder<ProgressRow>([
  * season nobody bettered. What it says when it is empty has to name both
  * exclusions, or it tells a season in which everybody ran and nobody improved
  * that nobody ran (topBoards.progressEmpty).
+ *
+ * **And a season before the league is no season before.** PDL P27: „nijedan istorijski
+ * rezultat ne ulazi u tabele, rang liste, priznanja ni „all time" statistiku. Sezona 2027.
+ * počinje od nule za sve." So in 2027 nobody has a previous league season and the board
+ * stands empty, as it does for anybody who did not race the season before; until 17.10.2026
+ * it measured 2027 against the imported 2026.
  */
 export function topByProgress(
   competitors: Competitor[],
@@ -1571,7 +1570,9 @@ export function topByProgress(
   limit: number,
 ): Placed<ProgressRow>[] {
   const now = totalsByMember(results.filter((result) => seasonOf(result) === season))
-  const before = totalsByMember(results.filter((result) => seasonOf(result) === season - 1))
+  const before = totalsByMember(
+    results.filter((result) => seasonOf(result) === season - 1 && season - 1 >= FIRST_SEASON),
+  )
 
   const rows = competitors.flatMap((competitor) => {
     const own = now.get(competitor.memberNumber)

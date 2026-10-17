@@ -7,7 +7,6 @@ import {
   categoriesOf,
   topByCategory,
   defaultMonth,
-  defaultSeason,
   eventSpan,
   eventsOnDay,
   monthDrawing,
@@ -28,6 +27,7 @@ import {
   pairsFrom,
   rankTeams,
   resultsOf,
+  seasonsOnOffer,
   seasonsWithResults,
   totalsByMember,
   totalsOf,
@@ -403,38 +403,55 @@ describe('monthGrid', () => {
   })
 })
 
-describe('defaultSeason', () => {
-  const results = [
-    result('000001', '2026-01-01', 1),
+describe('the seasons a seasonal view offers', () => {
+  /* Owner, 16.10.2026: „Prva sezona je 2027, pa su samim tim svi brojači na nuli";
+     chosen with it, between the options put to him, that a seasonal view is always
+     the running season and an empty one is not swapped for an earlier one. And
+     10.10.2026: „Ne postoje obracuni liga" before 2027.
+
+     **The day the screen is read and the days the results were run are two
+     different constants in every case**, so an answer read off the results cannot
+     pass for one read off the clock, nor the other way round. */
+  const history = [
     result('000001', '2019-01-01', 1),
     result('000002', '2019-02-01', 1),
     result('000004', '2019-03-01', 1),
+    result('000001', '2026-04-04', 1),
+    result('000002', '2026-05-05', 1),
+    result('000004', '2026-06-06', 1),
   ]
 
-  it('opens on the running season once it has a field', () => {
-    const started = [
-      ...results,
-      result('000002', '2026-02-02', 1),
-      result('000004', '2026-03-03', 1),
+  it('before 2027 is 2027 alone, with full seasons of history behind it', () => {
+    expect(seasonsOnOffer(history, '2026-10-16')).toEqual([2027])
+  })
+
+  it('in an empty 2027 is still 2027 alone', () => {
+    expect(seasonsOnOffer(history, '2027-03-01')).toEqual([2027])
+  })
+
+  it('in 2027 with one member who has raced is 2027', () => {
+    /* Three were needed before a season counted as „a field"; that rule is gone. */
+    expect(seasonsOnOffer([...history, result('000001', '2027-02-02', 1)], '2027-03-01')).toEqual([
+      2027,
+    ])
+  })
+
+  it('in an empty 2028 is 2028 first, and 2027 after it because it was run', () => {
+    const run = [
+      ...history,
+      result('000001', '2027-02-02', 1),
+      result('000002', '2027-04-04', 1),
+      result('000004', '2027-06-06', 1),
     ]
 
-    expect(defaultSeason(started, '2026-08-01')).toBe(2026)
+    expect(seasonsOnOffer(run, '2028-02-01')).toEqual([2028, 2027])
   })
 
-  it('skips a season too thin to fill a podium', () => {
-    // Two people are not a standing, and a table judged on them looks broken.
-    const two = [...results, result('000002', '2026-02-02', 1)]
-
-    expect(defaultSeason(results, '2026-08-01')).toBe(2019)
-    expect(defaultSeason(two, '2026-08-01')).toBe(2019)
-  })
-
-  it('opens on the fullest season when the running one is still empty', () => {
-    expect(defaultSeason(results, '2027-03-01')).toBe(2019)
-  })
-
-  it('falls back to the running season when there is nothing at all', () => {
-    expect(defaultSeason([], '2027-03-01')).toBe(2027)
+  it('leaves the career list alone: a profile still reads every season raced', () => {
+    /* `seasonsWithResults` is what a profile offers (owner, 16.10.2026: the counters
+       on a profile stay career figures). Held here so that the floor above cannot be
+       moved into it without this going red. */
+    expect(seasonsWithResults(history)).toEqual([2026, 2019])
   })
 })
 
@@ -505,27 +522,6 @@ describe('a result that names no member', () => {
 
     expect(memberOf(byNumber, at(anybody, 0))).toBe(who)
     expect(memberOf(byNumber, at(nobody, 0))).toBeUndefined()
-  })
-
-  it('does not fill up a season that has no field', () => {
-    /* The one place it shows without anybody going looking. The season being read
-       has two members in it, which is under the three a podium needs, so the
-       screen opens on the older one instead. Counted as a member, the rows above
-       make a third „person" and the screen opens on a season of two.
-
-       2019 carries three, so the answer is a season and not a shrug: a fallback
-       to the running year would pass either way. */
-    const older = [
-      result('000001', '2019-01-01', 1),
-      result('000002', '2019-02-01', 1),
-      result('000004', '2019-03-01', 1),
-    ]
-
-    expect(defaultSeason([...anybody, ...older, ...nobody], '2026-08-01')).toBe(2019)
-    expect(
-      defaultSeason([...anybody, ...older, ...nobody], '2026-08-01'),
-      'the rows with no member number changed which season the screen opens on',
-    ).toBe(defaultSeason([...anybody, ...older], '2026-08-01'))
   })
 })
 
@@ -863,18 +859,33 @@ describe('membersOf', () => {
  * before (PDL P12, 30.07.2026); the rungs under it are derived, and are marked as
  * derived where they are written (BY_PROGRESS in derive.ts). */
 describe('topByProgress', () => {
+  it('stands empty in 2027, because the season before it is not a season of the league', () => {
+    /* PDL P27: „nijedan istorijski rezultat ne ulazi u tabele, rang liste, priznanja ni „all
+       time" statistiku. Sezona 2027. počinje od nule za sve." The imported 2026 is history, so
+       the gain below is not a gain on anything the league counted. */
+    const competitors = [competitor('000001'), competitor('000002')]
+    const results = [
+      result('000001', '2026-03-03', 10),
+      result('000001', '2027-04-04', 40),
+      result('000002', '2026-05-05', 10),
+      result('000002', '2027-06-06', 20),
+    ]
+
+    expect(topByProgress(competitors, results, 2027, 10)).toEqual([])
+  })
+
   it('measures the gain against the season before, and orders by it', () => {
     const competitors = [competitor('000001'), competitor('000002')]
     const results = [
-      result('000001', '2026-01-01', 100),
-      result('000001', '2027-01-01', 150),
-      result('000002', '2026-01-01', 10),
+      result('000001', '2027-01-01', 100),
+      result('000001', '2028-01-01', 150),
+      result('000002', '2027-01-01', 10),
       // Twice the points of the first, and a smaller gain. The board is about
       // the gain, so the smaller total is ahead.
-      result('000002', '2027-01-01', 40),
+      result('000002', '2028-01-01', 40),
     ]
 
-    const ranked = topByProgress(competitors, results, 2027, 10)
+    const ranked = topByProgress(competitors, results, 2028, 10)
 
     expect(ranked.map((row) => row.competitor.memberNumber)).toEqual(['000001', '000002'])
     expect(ranked.map((row) => row.gain)).toEqual([50, 30])
@@ -884,17 +895,17 @@ describe('topByProgress', () => {
   it('leaves out whoever did not race the season before', () => {
     const competitors = [competitor('000001'), competitor('000002'), competitor('000003')]
     const results = [
-      result('000001', '2026-01-01', 10),
-      result('000001', '2027-01-01', 20),
+      result('000001', '2027-01-01', 10),
+      result('000001', '2028-01-01', 20),
       // A first season of 500 points is not a gain of 500, it is no gain at all:
       // there is nothing to have gained on.
-      result('000002', '2027-01-01', 500),
+      result('000002', '2028-01-01', 500),
       // And a member who raced the season before and not this one has no season
       // to be measured.
-      result('000003', '2026-01-01', 300),
+      result('000003', '2027-01-01', 300),
     ]
 
-    expect(topByProgress(competitors, results, 2027, 10).map((row) => row.competitor.memberNumber))
+    expect(topByProgress(competitors, results, 2028, 10).map((row) => row.competitor.memberNumber))
       .toEqual(['000001'])
   })
 
@@ -904,58 +915,58 @@ describe('topByProgress', () => {
       // Fell from 100 to 40. Not progress by any reading of the word, and a
       // board of best progress that ends in minus figures says the opposite of
       // its own name (owner, 30.07.2026).
-      result('000001', '2026-01-01', 100),
-      result('000001', '2027-01-01', 40),
+      result('000001', '2027-01-01', 100),
+      result('000001', '2028-01-01', 40),
       // Exactly level: no gain either.
-      result('000002', '2026-01-01', 50),
       result('000002', '2027-01-01', 50),
+      result('000002', '2028-01-01', 50),
     ]
 
-    expect(topByProgress(competitors, results, 2027, 10)).toEqual([])
+    expect(topByProgress(competitors, results, 2028, 10)).toEqual([])
   })
 
   it('goes on to the points of the season when two gains are level', () => {
     const competitors = [competitor('000001'), competitor('000002')]
     const results = [
-      result('000001', '2026-01-01', 10),
-      result('000001', '2027-01-01', 30),
-      result('000002', '2026-01-01', 100),
+      result('000001', '2027-01-01', 10),
+      result('000001', '2028-01-01', 30),
+      result('000002', '2027-01-01', 100),
       // The same gain of 20, from a season three times the size.
-      result('000002', '2027-01-01', 120),
+      result('000002', '2028-01-01', 120),
     ]
 
-    expect(topByProgress(competitors, results, 2027, 10).map((row) => row.competitor.memberNumber))
+    expect(topByProgress(competitors, results, 2028, 10).map((row) => row.competitor.memberNumber))
       .toEqual(['000002', '000001'])
   })
 
   it('goes on to the races when the gain and the season are level too', () => {
     const competitors = [competitor('000001'), competitor('000002')]
     const results = [
-      result('000001', '2026-01-01', 10),
-      result('000001', '2027-01-01', 30),
-      result('000002', '2026-01-01', 10),
+      result('000001', '2027-01-01', 10),
+      result('000001', '2028-01-01', 30),
+      result('000002', '2027-01-01', 10),
       // The same gain and the same points of the season, over two races rather
       // than one. Volume decides, never efficiency (PDL P12).
-      result('000002', '2027-01-01', 15),
-      result('000002', '2027-02-02', 15),
+      result('000002', '2028-01-01', 15),
+      result('000002', '2028-02-02', 15),
     ]
 
-    expect(topByProgress(competitors, results, 2027, 10).map((row) => row.competitor.memberNumber))
+    expect(topByProgress(competitors, results, 2028, 10).map((row) => row.competitor.memberNumber))
       .toEqual(['000002', '000001'])
   })
 
   it('settles a tie the whole ladder leaves standing, and shares no place', () => {
     const competitors = [competitor('000002'), competitor('000001'), competitor('000003')]
     const results = [
-      result('000001', '2026-01-01', 10),
-      result('000001', '2027-01-01', 30),
-      result('000002', '2026-01-01', 10),
-      result('000002', '2027-01-01', 30),
-      result('000003', '2026-01-01', 10),
-      result('000003', '2027-01-01', 20),
+      result('000001', '2027-01-01', 10),
+      result('000001', '2028-01-01', 30),
+      result('000002', '2027-01-01', 10),
+      result('000002', '2028-01-01', 30),
+      result('000003', '2027-01-01', 10),
+      result('000003', '2028-01-01', 20),
     ]
 
-    const ranked = topByProgress(competitors, results, 2027, 10)
+    const ranked = topByProgress(competitors, results, 2028, 10)
 
     expect(ranked.map((row) => row.position)).toEqual([1, 2, 3])
     expect(ranked.map((row) => row.competitor.memberNumber)).toEqual([
@@ -968,13 +979,13 @@ describe('topByProgress', () => {
   it('stops at the places the board has', () => {
     const competitors = [competitor('000001'), competitor('000002')]
     const results = [
-      result('000001', '2026-01-01', 10),
-      result('000001', '2027-01-01', 40),
-      result('000002', '2026-01-01', 10),
-      result('000002', '2027-01-01', 20),
+      result('000001', '2027-01-01', 10),
+      result('000001', '2028-01-01', 40),
+      result('000002', '2027-01-01', 10),
+      result('000002', '2028-01-01', 20),
     ]
 
-    expect(topByProgress(competitors, results, 2027, 1)).toHaveLength(1)
+    expect(topByProgress(competitors, results, 2028, 1)).toHaveLength(1)
   })
 })
 

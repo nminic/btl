@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { at, first, must, selectElement } from '../../test/at'
+import { inLeague, playTheHistoryAsLeagueSeasons } from '../../test/leagueSeasons'
 import { renderAt } from '../../test/render'
+import { SLOW } from '../../test/slow'
 import { membersAsServed, serverThat } from '../../test/serverAnswers'
 import { aCompetitor } from '../../test/theAnswer'
 import { setupUser } from '../../test/user'
@@ -70,6 +72,24 @@ describe('the biography, cut to fit beside the widgets', () => {
 })
 
 describe('what a competitor has won', () => {
+  /* The history in league seasons, because no place taken before 2027 is a trophy (PDL P27;
+     `test/leagueSeasons.ts`). Moved forward it still holds a 2026, the history's 2010, which
+     000021 won alone: the one season the screen below must leave off. */
+  playTheHistoryAsLeagueSeasons()
+
+  it('lists no season before the league, though the history has one she won', async () => {
+    renderAt('/sr/takmicar/000021/priznanja?sezona=sve')
+
+    const table = await screen.findByRole('table', { name: 'Pehari' }, { timeout: SLOW / 2 })
+    const seasons = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => Number(first(within(row).getAllByRole('cell')).textContent))
+
+    expect(seasons).toContain(inLeague(2012))
+    expect(seasons.filter((season) => season < 2027)).toEqual([])
+  }, SLOW)
+
   it('says so plainly where they have won nothing', async () => {
     // 000031 has never raced, so no board has ever had them on it.
     renderAt('/sr/takmicar/000031/priznanja')
@@ -324,14 +344,14 @@ describe('a season in which both a trophy and a plaque were taken', () => {
 
   let made = 0
 
-  const race = (memberNumber: string, points: number) => ({
+  const race = (memberNumber: string, points: number, date = '2027-05-01') => ({
     id: (made += 1),
     memberNumber,
     raceId: 1,
     raceName: 'Proba, polumaraton',
     eventName: 'Proba',
     eventSlug: 'proba',
-    date: '2027-05-01',
+    date,
     distanceKm: 10,
     ascentM: 0,
     descentM: 0,
@@ -369,9 +389,33 @@ describe('a season in which both a trophy and a plaque were taken', () => {
 
     expect(awardsOf(mine, [mine, ...others], results)).toEqual([])
   })
+
+  it('carries nothing from a season before the league, though it was won outright', () => {
+    /* PDL P27: „nijedan istorijski rezultat ne ulazi u tabele, rang liste, priznanja ni „all
+       time" statistiku." First of three in 2026 and first of three in 2027, on two different
+       days, and only the season of the league is a trophy. */
+    const mine = person('000101', '25-39')
+    const others = [person('000102', '25-39'), person('000103', '25-39')]
+    const results = [
+      race('000101', 300, '2026-06-06'),
+      race('000102', 200, '2026-06-07'),
+      race('000103', 100, '2026-06-08'),
+      race('000101', 300, '2027-05-01'),
+      race('000102', 200, '2027-05-02'),
+      race('000103', 100, '2027-05-03'),
+    ]
+
+    expect([...new Set(awardsOf(mine, [mine, ...others], results).map((one) => one.season))]).toEqual([
+      2027,
+    ])
+  })
 })
 
 describe('the address stays as short as it can be', () => {
+  /* The history in league seasons: no place taken before 2027 is a trophy (PDL P27), so the
+     cases below that read trophies stand on the history moved forward (`test/leagueSeasons.ts`). */
+  playTheHistoryAsLeagueSeasons()
+
   it('carries the season only where it differs from the default', async () => {
     const user = setupUser()
     const { router } = renderAt('/sr/takmicar/000007')
@@ -479,12 +523,16 @@ describe('a member whose fee has run out', () => {
 })
 
 describe('the season, over both parts of the profile', () => {
+  /* The history in league seasons: no place taken before 2027 is a trophy (PDL P27), so the
+     cases below that read trophies stand on the history moved forward (`test/leagueSeasons.ts`). */
+  playTheHistoryAsLeagueSeasons()
+
   it('narrows the trophies too, and says which kind of empty it is', async () => {
     /* One control at the top of the page governs the results and the trophies
        alike (owner, 31.07.2026). 000001 has trophies, but not in every season,
        so a season without one has to say that rather than that there are none
        at all. */
-    renderAt('/sr/takmicar/000001/priznanja?sezona=2010')
+    renderAt(`/sr/takmicar/000001/priznanja?sezona=${String(inLeague(2010))}`)
 
     expect(
       await screen.findByText('U izabranoj sezoni nije osvojen nijedan pehar.'),
