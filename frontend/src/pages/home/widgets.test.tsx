@@ -1028,7 +1028,7 @@ describe('TopByCategory', () => {
     renderWidget(<TopByCategory competitors={[]} results={[]} season={2027} />)
 
     expect(screen.getByText('Najviše kraćih trka')).toBeVisible()
-    expect(screen.getByText('U ovoj sezoni još nema odtrčanih trka ove dužine.')).toBeVisible()
+    expect(screen.getByText('U ovoj sezoni još nema istrčanih trka ove distance.')).toBeVisible()
   })
 })
 

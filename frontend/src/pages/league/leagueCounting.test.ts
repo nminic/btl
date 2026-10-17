@@ -28,6 +28,7 @@ const race = (id: number, eventId: number, distanceKm = 10, date = '2019-05-01')
   ascentM: 0,
   descentM: 0,
   category: 'short',
+  dots: ['short'],
 })
 
 /**

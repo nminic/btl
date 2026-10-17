@@ -76,22 +76,13 @@ export function SendBack({
    * `explain` STOOD HERE AND IS GONE (27.09.2026), and it is worth saying why rather than
    * leaving the next reader to reinvent it.
    *
-   * It decided whether this box drew the line saying what the star means, and it was `false`
-   * „where whoever draws it already draws that line for a block of fields beside this one, so
-   * one screen carries one legend and not two". Every screen that still opens this box does
-   * exactly that: `PendingQueue.tsx` and `ReviewQueue.tsx` both draw their own `RequiredNote`
-   * over the whole screen. The one caller that did NOT was the screen of payments, which drew
-   * no legend of its own - and that screen has stopped opening this box altogether, because a
-   * derived list of whoever has not paid has nothing anybody sent in to hand back.
+   * It decided whether this box drew the line saying what the star means. Every screen that still
+   * opened this box drew that line itself, so the flag was `false` everywhere and the branch behind
+   * `true` was one no screen could reach, which is the one thing a list of mutations cannot see and
+   * the hundred per cent threshold can: the gate fell to 99.94 on branches with all 3323 cases green.
    *
-   * So the `true` side of it became a branch no screen could reach, which is the one thing a
-   * list of mutations cannot see and the hundred per cent threshold can: the gate fell to
-   * 99.94 on branches with all 3323 cases green, and this line was the whole of it.
-   *
-   * WHAT COMES BACK WITH IT, if a screen ever needs it: the prop, its default, and the
-   * `explain && !optional` render. Not written now, because a screen that opens this box
-   * without a legend of its own does not exist and inventing the flag for it is inventing a
-   * user interface for nobody.
+   * Since 16.10.2026 the line is gone from the whole portal (owner: „ovo za obavezna polja sa
+   * zvezdicom pobriši svuda sa sajta“), so there is nothing left for such a flag to decide.
    */
   /** The words on the confirming button, where the decision is not a refusal. */
   confirmKey?: string

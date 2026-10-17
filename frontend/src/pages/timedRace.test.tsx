@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { cleanup, getNodeText, screen, within } from '@testing-library/react'
 import { SLOW } from '../test/slow'
 import { clearResourceCache, loadResource } from '../data/client'
@@ -64,10 +66,24 @@ function servingRaces(
   }
 }
 
+/** What the head over the measure of the races of an event may say, among three. */
+const MEASURE_HEADS = ['Dužina', 'Trajanje', 'Dužina / trajanje']
+
 /** Every race run to a limit of twenty four hours and no fixed length. */
 const asTimed = (race: Race) => ({ ...race, kind: 'time', limitSeconds: 86_400, distanceKm: 0 })
 
 const EVENT = 'jagodinski-maraton-2017'
+
+/** The ids of the races of that event, read off the files the portal is served from and not written
+ *  here: a number written here is a second home for a fixture. */
+const OWN_RACES = (() => {
+  const mock = (name: string) => JSON.parse(readFileSync(join(process.cwd(), 'src/test/mock', `${name}.json`), 'utf-8'))
+  const event: { id: number; slug: string }[] = mock('events')
+  const id = must(event.find((one) => one.slug === EVENT)?.id, 'the event these cases are written around')
+  const all: Race[] = mock('races')
+
+  return new Set(all.filter((one) => one.eventId === id).map((one) => one.id))
+})()
 
 /**
  * The address of the form for reporting a result on the first race of that event.
@@ -125,9 +141,12 @@ describe('a race that fixes no length', () => {
       const heads = within(table)
         .getAllByRole('columnheader')
         .map((one) => one.textContent)
-      const at = heads.indexOf('Mera')
+      /* The head is „Dužina", „Trajanje" or „Dužina / trajanje" by what the races of the event
+         are (owner, 16.10.2026; `event/measureHeading.ts`), and never „Mera". */
+      const at = heads.findIndex((one) => MEASURE_HEADS.includes(one ?? ''))
 
       expect(at, 'the table no longer has a column of measures').toBeGreaterThan(-1)
+      expect(heads, 'the word the owner took off the portal is back').not.toContain('Mera')
 
       const row = must(within(table).getAllByRole('row')[1], 'the first race of the event')
       const cells = within(row).getAllByRole('cell')
@@ -142,14 +161,21 @@ describe('a race that fixes no length', () => {
          over the figure, for a telephone, where the head is not drawn (`pages/EventDetail.tsx`),
          so the whole of the text is that word and then the figure, and the figure is the
          part the cell has of its own. */
-      return { said: getNodeText(cell), whole: cell.textContent }
+      const rows = within(table)
+        .getAllByRole('row')
+        .slice(1)
+        .map((one) => must(within(one).getAllByRole('cell')[at], 'a measure').textContent ?? '')
+
+      return { said: getNodeText(cell), whole: cell.textContent, head: heads[at], rows }
     }
 
     try {
       const timed = await measureCell(asTimed)
 
       expect(timed.said).toBe('24 h')
-      expect(timed.whole, 'the word over the measure is not the head of its column').toBe('Mera24 h')
+      /* Every race of the event is timed, so the head says how long and not how far. */
+      expect(timed.head).toBe('Trajanje')
+      expect(timed.whole, 'the word over the measure is not the head of its column').toBe('Trajanje24 h')
 
       /* No word over it either: a word over an empty cell is a label on nothing, and a free
          race has no measure to put one over. */
@@ -157,11 +183,29 @@ describe('a race that fixes no length', () => {
 
       expect(free.said).toBe('')
       expect(free.whole, 'a word is drawn over a measure that is not there').toBe('')
+      /* A free race is read with the length: nothing here is timed. */
+      expect(free.head).toBe('Dužina')
 
       const length = await measureCell((one) => ({ ...one, distanceKm: 33.3 }))
 
       expect(length.said).toBe('33,30 km')
-      expect(length.whole).toBe('Mera33,30 km')
+      expect(length.head).toBe('Dužina')
+      expect(length.whole).toBe('Dužina33,30 km')
+
+      /* And an event of both: the head says both, and the word over each figure is the word of
+         ITS race. The two races of this event are 513 and 514: the even one is timed and the odd
+         one is of a length. */
+      const mixed = await measureCell((one) => (one.id % 2 === 0 ? asTimed(one) : { ...one, distanceKm: 33.3 }))
+
+      expect(mixed.head).toBe('Dužina / trajanje')
+      expect([...mixed.rows].sort()).toEqual(['Dužina33,30 km', 'Trajanje24 h'])
+
+      /* And the head is asked of the races of THIS event and of no others: every race in the file but
+         this event's is timed, and the head still says the length. Read off the whole file it would say
+         both, or how long, and each of the cases above would pass all the same. */
+      const alone = await measureCell((one) => (OWN_RACES.has(one.id) ? { ...one, distanceKm: 33.3 } : asTimed(one)))
+
+      expect(alone.head).toBe('Dužina')
     } finally {
       globalThis.fetch = real
     }
@@ -440,11 +484,9 @@ describe('a race that fixes no length', () => {
     try {
       renderAt(await reportAddress(), 'competitor', '000001')
 
-      const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
-
-      expect(note.textContent, 'the sentence is not the one a timed race gets').toMatch(
-        /Vreme portal već zna sa same trke/,
-      )
+      /* The form is up when its first box is, and only then is the absence of the time boxes
+         a fact about it. */
+      expect(await screen.findByLabelText(/^Dužina/)).toBeVisible()
       expect(screen.queryByLabelText(/^Sati/), 'a timed race is asking for a time').toBeNull()
 
       /* Climb and fall differ, and neither is nought: with both the same a screen
@@ -495,14 +537,14 @@ describe('a race that fixes no length', () => {
     }
   }, SLOW)
 
-  it('says of a free race that it fixes neither, and asks for all four', async () => {
+  it('asks of a free race for all four, because it fixes neither', async () => {
     /* The third kind, which fixes nothing: the member gives the length, the climb,
-       the fall and the time. Its sentence is its own because the sentence says what
-       the portal already knows, and on a free race that is nothing at all.
+       the fall and the time. (Until 16.10.2026 a sentence over the form said so; the
+       owner took it off the page, and what is asked is read off the boxes.)
 
-       Asked on the screen and not only of the form, because the sentence and the
-       fields are chosen in two different places and a case about one of them says
-       nothing about the other. */
+       Asked on the screen and not only of the form, because the fields are chosen
+       by the kind the screen reads off the race, and a case about the form says
+       nothing about that. */
     const real = globalThis.fetch
 
     globalThis.fetch = servingRaces(real, (one) => ({ ...one, kind: 'free', distanceKm: 0 }))
@@ -510,9 +552,6 @@ describe('a race that fixes no length', () => {
     try {
       renderAt(await reportAddress(), 'competitor', '000001')
 
-      const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
-
-      expect(note.textContent).toMatch(/ne zadaje ni dužinu ni vreme/)
       expect(await screen.findByLabelText(/^Dužina/)).toBeVisible()
       expect(screen.getByLabelText(/^Uspon/)).toBeVisible()
       expect(screen.getByLabelText(/^Spust/)).toBeVisible()
@@ -556,7 +595,9 @@ describe('a race that fixes no length', () => {
         .map((one) => one.textContent)
       const row = must(within(table).getAllByRole('row')[1], 'the first race of the event')
       const cells = within(row).getAllByRole('cell')
-      const said = getNodeText(must(cells[heads.indexOf('Mera')], 'the measure of the first race'))
+      const said = getNodeText(
+        must(cells[heads.indexOf('Dužina')], 'the measure of the first race'),
+      )
 
       /* The cell writes two decimals and the name writes one, so the two are not
          compared as strings; what is asked is that both of them say a length at all.
@@ -596,10 +637,7 @@ describe('a race that fixes no length', () => {
     try {
       renderAt(await reportAddress(), 'competitor', '000001')
 
-      const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
-
-      expect(note.textContent).toMatch(/Dužinu, uspon i spust portal već zna sa same trke/)
-      expect(screen.getByLabelText(/^Sati/)).toBeVisible()
+      expect(await screen.findByLabelText(/^Sati/)).toBeVisible()
       expect(screen.queryByLabelText(/^Dužina/), 'it is asking for what it knows').toBeNull()
     } finally {
       globalThis.fetch = real

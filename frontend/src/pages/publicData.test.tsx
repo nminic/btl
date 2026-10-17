@@ -4,7 +4,7 @@ import { DEFAULT_LOCALE } from '../i18n/config'
 import { QUEUES } from './admin/queues'
 import type { Role } from '../roles/context'
 import { beginsWith, metSaid } from '../test/met'
-import { DAY, PUBLIC } from '../test/addresses'
+import { BEHIND, BEHIND_DAY, DAY, PUBLIC } from '../test/addresses'
 import { renderAt } from '../test/render'
 
 /**
@@ -254,30 +254,6 @@ const FRONT = `/${DEFAULT_LOCALE}`
  *  without a sound (review, 06.09.2026). */
 const QUEUE_PATTERN = 'administracija/verifikacija/:queue'
 
-const ADMIN = '000001'
-
-const BEHIND: [string, Role, string | null, string][] = [
-  ['/sr/administracija', 'superadmin', ADMIN, 'Administracija'],
-  ['/sr/administracija/entiteti', 'superadmin', ADMIN, 'Članovi'],
-  ['/sr/administracija/verifikacija', 'superadmin', ADMIN, 'Red za proveru rezultata'],
-  ['/sr/administracija/verifikacija/rezultati', 'superadmin', ADMIN, 'Red za proveru rezultata'],
-  ['/sr/administracija/verifikacija/uplate', 'superadmin', ADMIN, 'Uplate i aktivacija članova'],
-  ['/sr/administracija/verifikacija/timovi', 'superadmin', ADMIN, 'Novi timovi'],
-  ['/sr/administracija/verifikacija/trkacki-profil', 'superadmin', ADMIN, 'Trkački profil'],
-  ['/sr/administracija/verifikacija/komentari', 'superadmin', ADMIN, 'Komentari'],
-  ['/sr/administracija/cenovnik', 'superadmin', ADMIN, 'Cenovnik'],
-  ['/sr/administracija/clanovi', 'superadmin', ADMIN, 'Članovi'],
-  ['/sr/administracija/dogadjaji', 'superadmin', ADMIN, 'Događaji'],
-  ['/sr/administracija/timovi', 'superadmin', ADMIN, 'Timovi'],
-  ['/sr/administracija/lige', 'superadmin', ADMIN, 'Lige'],
-  ['/sr/administracija/strane', 'superadmin', ADMIN, 'Statične strane'],
-  ['/sr/administracija/moderatori', 'superadmin', ADMIN, 'Moderatori'],
-  /* A member with no team, inside the window, so the form is really drawn. */
-  ['/sr/novi-tim', 'competitor', '000002', 'Predlog tima'],
-  /* And the one who administers this team, likewise. */
-  ['/sr/tim/dunavski-trkaci/izmena', 'competitor', '000001', 'Izmena tima'],
-]
-
 describe('what administration and the member forms offer', () => {
   it('has a row for every administration address the route table has', () => {
     const every = [...ROUTES, ...EXTRA_ADDRESSES]
@@ -313,7 +289,7 @@ describe('what administration and the member forms offer', () => {
     who,
     heading,
   ) => {
-    renderAt(address, role, who, undefined, '2026-10-15')
+    renderAt(address, role, who, undefined, BEHIND_DAY)
 
     expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
 

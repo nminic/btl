@@ -75,8 +75,8 @@ describe('the way back from a confirmation', () => {
     const form = router.state.location.pathname
 
     await user.type(await screen.findByLabelText(/Sati/), '3')
-    await user.type(screen.getByLabelText(/Minuta/), '41')
-    await user.type(screen.getByLabelText(/Sekundi/), '12')
+    await user.type(screen.getByLabelText(/Minuti/), '41')
+    await user.type(screen.getByLabelText(/Sekunde/), '12')
     await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
     await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
@@ -115,8 +115,8 @@ describe('the way back from a confirmation', () => {
     await user.type(screen.getByLabelText(/Uspon/), '540')
     await user.type(screen.getByLabelText(/Spust/), '540')
     await user.type(screen.getByLabelText(/Sati/), '1')
-    await user.type(screen.getByLabelText(/Minuta/), '52')
-    await user.type(screen.getByLabelText(/Sekundi/), '10')
+    await user.type(screen.getByLabelText(/Minuti/), '52')
+    await user.type(screen.getByLabelText(/Sekunde/), '10')
     await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 

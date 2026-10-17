@@ -82,3 +82,51 @@ describe('the form a result is reported on', () => {
     }
   })
 })
+
+describe('the lines the measures of a result stand on', () => {
+  /* Owner, 16.10.2026: the length, the climb and the fall in ONE line, the hours, minutes and
+     seconds in ONE line, and on a free race the first above the second. Read off the definitions
+     themselves, so what is held here is that each kind carries the numbers and the screen's own
+     cases (`reportResultRows.test.tsx`) hold that the renderer draws them. */
+  const rowOf = (kind: (typeof RACE_KINDS)[number], names: readonly string[]) =>
+    reportForm(kind)
+      .fields.filter((one) => names.includes(one.name))
+      .map((one) => one.row)
+
+  it.each(RACE_KINDS)('puts the boxes of one measure on one line, for a %s race', (kind) => {
+    for (const names of [MEASURED, TIME]) {
+      const rows = rowOf(kind, names)
+
+      expect(new Set(rows).size, `${names.join(', ')}: ${rows.join(', ')}`).toBe(rows.length === 0 ? 0 : 1)
+      expect(rows.every((one) => one !== undefined), 'a box of the measure names no line').toBe(true)
+    }
+  })
+
+  it('puts the two measures of a free race on two different lines, the length first', () => {
+    const [measured] = rowOf('free', MEASURED)
+    const [timed] = rowOf('free', TIME)
+
+    expect(measured).toBeDefined()
+    expect(timed).toBeDefined()
+    expect(measured).toBeLessThan(Number(timed))
+  })
+
+  it('puts the same measure on the same line on the form away from the calendar', () => {
+    /* One home for the numbers: the form away from the calendar has both lines for every kind,
+       and the report form takes the measures from it. */
+    expect(rowOf('free', MEASURED)).toEqual(
+      unosRezultata.fields.filter((one) => MEASURED.includes(one.name)).map((one) => one.row),
+    )
+    expect(rowOf('free', TIME)).toEqual(
+      unosRezultata.fields.filter((one) => TIME.includes(one.name)).map((one) => one.row),
+    )
+  })
+
+  it('puts nothing else on a line', () => {
+    for (const kind of RACE_KINDS) {
+      for (const one of reportForm(kind).fields) {
+        expect(one.row !== undefined, `${kind}: ${one.name}`).toBe([...MEASURED, ...TIME].includes(one.name))
+      }
+    }
+  })
+})

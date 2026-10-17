@@ -295,7 +295,7 @@ describe('a run a moderator sent back', () => {
     expect(race).toHaveAttribute('readonly')
     expect(screen.getByLabelText(/^Datum trke/)).toHaveValue(fieldDate('2026-08-01'))
 
-    for (const open of [/^Datum trke/, /^Dužina/, /^Uspon/, /^Spust/, /^Sati/, /^Minuta/, /^Sekundi/]) {
+    for (const open of [/^Datum trke/, /^Dužina/, /^Uspon/, /^Spust/, /^Sati/, /^Minuti/, /^Sekunde/]) {
       expect(screen.getByLabelText(open), String(open)).not.toHaveAttribute('readonly')
     }
   }, SLOW)
@@ -315,8 +315,8 @@ describe('a run a moderator sent back', () => {
    * out of the file: the calendar the disc serves holds no race to a limit.
    */
   it.each([
-    ['a length', 'length', 'Polumaraton iz kalendara', [/^Dužina/, /^Uspon/, /^Spust/], [/^Sati/, /^Minuta/, /^Sekundi/]],
-    ['a limit', 'time', 'Šestočasovna trka iz kalendara', [/^Sati/, /^Minuta/, /^Sekundi/], [/^Dužina/, /^Uspon/, /^Spust/]],
+    ['a length', 'length', 'Polumaraton iz kalendara', [/^Dužina/, /^Uspon/, /^Spust/], [/^Sati/, /^Minuti/, /^Sekunde/]],
+    ['a limit', 'time', 'Šestočasovna trka iz kalendara', [/^Sati/, /^Minuti/, /^Sekunde/], [/^Dužina/, /^Uspon/, /^Spust/]],
   ] as const)(
     'holds the day and every figure a race of %s fixes, where the race is in the calendar',
     async (_what, kind, name, held, open) => {

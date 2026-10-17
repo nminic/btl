@@ -194,8 +194,8 @@ describe('the list of races under the name of a race, on the form a result is en
     await user.type(screen.getByLabelText(/Uspon/), '540')
     await user.type(screen.getByLabelText(/Spust/), '540')
     await user.type(screen.getByLabelText('Sati'), '1')
-    await user.type(screen.getByLabelText('Minuta'), '52')
-    await user.type(screen.getByLabelText('Sekundi'), '10')
+    await user.type(screen.getByLabelText('Minuti'), '52')
+    await user.type(screen.getByLabelText('Sekunde'), '10')
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/rezultati')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
@@ -464,8 +464,8 @@ describe('the town on the form a result is entered on, which is the boundary of 
     await user.type(screen.getByLabelText(/Uspon/), '540')
     await user.type(screen.getByLabelText(/Spust/), '540')
     await user.type(screen.getByLabelText('Sati'), '1')
-    await user.type(screen.getByLabelText('Minuta'), '52')
-    await user.type(screen.getByLabelText('Sekundi'), '10')
+    await user.type(screen.getByLabelText('Minuti'), '52')
+    await user.type(screen.getByLabelText('Sekunde'), '10')
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/rezultati')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 

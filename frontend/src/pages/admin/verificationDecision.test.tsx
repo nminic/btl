@@ -647,8 +647,7 @@ describe('a decision on a queue served by the pending screen', () => {
        single card that is harmless: the buttons are inside the fold too, so the
        moderator has already opened it. „Odobri sve" is NOT - it sits in the bar
        outside every card - so a refusal met during a sweep would land in a card still
-       folded, and the count would drop with nothing anywhere saying why. That is the
-       same fault `admin/verificationStyle.test.ts` exists for, one line further on.
+       folded, and the count would drop with nothing anywhere saying why.
      *
        Measured through `aria-expanded` rather than through the class, because that is
        what a moderator reading the screen is told and jsdom applies no stylesheet

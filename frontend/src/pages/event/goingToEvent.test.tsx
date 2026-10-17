@@ -733,8 +733,8 @@ describe('writing to somebody else who is going', () => {
 
     await write(first)
     /* Obligatory, and it says so the way every field on the portal does since
-       12.08.2026: a star, `aria-required`, and one line saying what the star
-       means. Before that the box carried the browser's own `required`, and an
+       12.08.2026: a star and `aria-required` (the line saying what the star means
+       went on 16.10.2026). Before that the box carried the browser's own `required`, and an
        empty send was refused by Chrome in English, on a Serbian page. */
     const box = screen.getByRole('textbox', {
       name: `Piši članu ${first.firstName} ${first.lastName}`,
@@ -775,7 +775,7 @@ describe('writing to somebody else who is going', () => {
     expect(screen.queryByText(/^Poruka je poslata članu/)).not.toBeInTheDocument()
 
     await user.clear(box)
-    expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeVisible()
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
     expect(must(box.closest('.field'), 'the field it stands in').querySelector('.field__required'))
       .not.toBeNull()
 

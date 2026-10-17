@@ -35,6 +35,7 @@ function race(id: number, date: string, distanceKm: number): Race {
     ascentM: 120,
     descentM: 140,
     category: 'short',
+    dots: ['short'],
   }
 }
 

@@ -232,11 +232,10 @@
 
 /* The star that says a field has to be answered.
  *
-   What it means is written once over the form (`.form__legend`) rather than
-   spelled out beside every field, which is the whole reason for a mark instead
-   of a word. Kept out of what is read aloud (`aria-hidden` in FormRenderer.tsx)
-   because `aria-required` on the control says the same thing to a reader, and
-   twice is worse than once.
+   What it means is not written out anywhere since 16.10.2026 (owner: „ovo za
+   obavezna polja sa zvezdicom pobriši svuda sa sajta"). Kept out of what is read
+   aloud (`aria-hidden` in FormRenderer.tsx) because `aria-required` on the control
+   says the same thing to a reader, and twice is worse than once.
 
    Outside the label and beside it, never inside: inside, it joins the words the
    field is found by, and „Ime" becomes „Ime *" for every test and every reader
@@ -245,14 +244,6 @@
   color: var(--down);
   font-weight: 700;
   line-height: 1;
-}
-
-/* And the one line that says what that star is. Quiet, because it is read once
-   and then remembered. */
-.form__legend {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--text-muted);
 }
 
 .field__optional {

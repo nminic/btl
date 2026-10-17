@@ -199,10 +199,12 @@ function step(written: string, what: string): number {
  */
 const MEASURED: Record<string, number> = {
   /* The labels, in both languages. */
-  MERA: 34.11,
+  DUŽINA: 46.8,
+  TRAJANJE: 58.98,
   USPON: 41.41,
   SPUST: 36.91,
-  MEASURE: 56.3,
+  LENGTH: 46.78,
+  DURATION: 62.7,
   ASCENT: 45.88,
   DESCENT: 52.78,
   /* A distance of a hundred kilometres or more with its unit, and a climb or a fall of a thousand metres or more. */
@@ -240,7 +242,7 @@ function held(locale: Locale): { figures: string[]; days: string[] } {
 
   return {
     figures: [
-      ...['measure', 'ascent', 'descent'].map((key) =>
+      ...['distance', 'duration', 'ascent', 'descent'].map((key) =>
         must(dictionary.event[key], `event.${key} in ${locale}`).toUpperCase(),
       ),
       widest(races.map((one) => formatDistance(one.distanceKm, locale, 2))),
@@ -783,6 +785,54 @@ describe('the table of races on an event', () => {
     expect(wide('.table--races tbody tr').getPropertyValue('border-bottom-width')).toMatch(nought)
   })
 
+  it('centres every cell of a race in the table shape, which the shared table does not do anywhere', () => {
+    /* Owner, 16.10.2026: „Red sa Unesi rezultat nije vertikalno centriran. Labele su otišle gore,
+       dugme niže u odnosu na njih". Every cell, and not the one that carries the button: the name
+       and the three figures stood 8px above the middle of a row that the button makes taller than a
+       line (measured in Chrome 154: 38,4px of button against 24,8px of text). Written where the cell
+       is written, behind the same query, and at a weight that beats `.table td` on the weight and not
+       on which sheet the bundle put last. */
+    expect(wide('.table.table--races td').getPropertyValue('vertical-align')).toBe('middle')
+
+    /* The floors under it: the shared table still starts every cell at the top, on purpose, so that
+       this is the one place that centres and not a change to every table on the portal; and a block on
+       a telephone says nothing about it, because a cell that is a block has no row to be in the middle
+       of. The head of this table is not in the rule: a heading is read across. */
+    const everyCell = unconditionalRules(shared, 'table.css').filter(
+      (rule) => squash(rule.selectorText) === '.table th, .table td',
+    )
+
+    expect(everyCell, 'the shared rule for every cell is not one rule').toHaveLength(1)
+    expect(must(everyCell[0], 'the rule').style.getPropertyValue('vertical-align')).toBe('top')
+    expect(plain('.table.table--races td').getPropertyValue('vertical-align')).toBe('')
+    expect(wide('.table.table--races th').getPropertyValue('vertical-align')).toBe('')
+  })
+
+  it('lets the head of a column break at its spaces, in the table shape only', () => {
+    /* „Dužina / trajanje" is the longest the first figure can be called, and the shared head does not
+       break (`white-space: nowrap`), so in a column of the narrowest width it ran into the one beside
+       it. Only in the table shape: a block on a telephone draws no head. */
+    expect(wide('.table.table--races th').getPropertyValue('white-space')).toBe('normal')
+    expect(plain('.table.table--races th, .table.table--races td').getPropertyValue('white-space')).toBe('')
+  })
+
+  it('gives the four things that can be done with an event one size, in the box that holds them', () => {
+    /* Owner, 16.10.2026: „Dodaj komentar dugme gore levo je bezrazložno veliko". Three of the four are
+       `<button>`, which takes the browser's own font (Arial, 13,33px), and one is a link, which takes the
+       page's (16px on a line of 24,8px): 37px and 46,8px. One font for the four, said once, in `rem` so
+       that they grow with the text together. The box wears the class in `EventActions.tsx`, and
+       `pages/event/eventActions.test.tsx` asks that all four are in it. */
+    const row = ruleFor(profile, '.event__actions .button', 'Profile.css')
+
+    expect(row.getPropertyValue('font-family')).toBe('inherit')
+    expect(row.getPropertyValue('font-size')).toBe('0.85rem')
+    expect(row.getPropertyValue('line-height')).toBe('1.2')
+    /* Nothing here sets a height or a padding: a height is what two kinds of control would be made to
+       agree on by being wrong in the same direction, and the padding is the shared button's. */
+    expect(row.getPropertyValue('height')).toBe('')
+    expect(row.getPropertyValue('padding')).toBe('')
+  })
+
   it('lets a word break rather than leave the box, in both shapes', () => {
     /* In a block nothing grows for a word, and in a fixed table a column cannot, so a name of forty
        letters with no space in it is the one input that pushes a page sideways (WCAG 2.2 SC 1.4.10). It
@@ -874,5 +924,22 @@ describe('what the organiser says the event is', () => {
       said.getPropertyValue('max-width'),
       'the description is capped, and the portal caps no prose',
     ).toBe('')
+  })
+})
+
+describe('the results table on a profile and on an event, headed in full', () => {
+  it('lets the head of a pinned column break at its space, which the shared head does not', () => {
+    /* Owner, 16.10.2026: the three figures are „Dužina (km)", „Uspon (m)" and „Spust (m)". The columns
+       of this table are pinned to the widest VALUE (`tableWidths.test.ts`), and the shared head does
+       not break (`white-space: nowrap`), so „USPON (M)" ran past the 48px a pinned column of 4rem leaves
+       it and under the column beside it (`scrollWidth` over `clientWidth`, measured in Chrome 154 at 768
+       and 1280). Broken at the space the unit goes under the name. The pinned widths are not touched. */
+    expect(ruleFor(profile, '.profile__results .table th', 'Profile.css').getPropertyValue('white-space')).toBe(
+      'normal',
+    )
+    expect(
+      ruleFor(shared, '.table th', 'table.css').getPropertyValue('white-space'),
+      'the shared head no longer holds its words together, so this rule is a rule for nothing',
+    ).toBe('nowrap')
   })
 })

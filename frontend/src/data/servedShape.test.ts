@@ -178,6 +178,7 @@ const aRace = {
   ascentM: 1200,
   descentM: 1200,
   category: 'marathon' as const,
+  dots: ['marathon' as const],
 }
 
 /** A result of somebody who has registered and has no member number yet, which is
@@ -196,6 +197,7 @@ const aResult = {
   seconds: 15_600,
   points: 231.44,
   category: 'marathon' as const,
+  dots: ['marathon' as const],
 }
 
 /** A list whose rows carry their own address, and every block says whether it
