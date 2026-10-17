@@ -66,6 +66,9 @@ afterEach(() => {
  *  day it happened to run on. */
 const DAY = '2026-10-15'
 
+/** A day inside the transfer window of the first season: the page of a team opens on 2027 and a team founded now begins in 2028. */
+const A_WINDOW_DAY_OF_THE_FIRST_SEASON = '2027-10-15'
+
 describe('the way to propose a team', () => {
   it('is offered to a member who is in no team, on the standing of the teams', async () => {
     /* Member 000002 runs alone: `teamId` is null on their record. Somebody with
@@ -1041,7 +1044,7 @@ describe('a team the moment it is approved', () => {
       'superadmin',
       '000004',
       undefined,
-      DAY,
+      A_WINDOW_DAY_OF_THE_FIRST_SEASON,
     )
 
     const heading = await screen.findByRole('heading', { name: 'Timočka trkačka družina' })
@@ -1058,11 +1061,44 @@ describe('a team the moment it is approved', () => {
     expect(screen.queryByText(/0 članova/)).toBeNull()
     /* And in **this** season the team has nobody, because a team founded in the
        window scores from 1 January: the count above is who is in the team, the table
-       below is who was in it that season, and the two are different questions. */
+       below is who was in it that season, and the two are different questions.
+
+       **Read on a day of 2027 since 17.10.2026**, because the page of a team opens on the season
+       shown and in 2026 that is 2027 itself, the season the founder joins (owner: „otvara tekuću
+       sezonu (najmanje 2027)"). On a day of the first season the next one is the founder's. */
     expect(screen.getByText(/te sezone nije imao članova/)).toBeVisible()
     /* And the founder is the one who may change it, which is the other half of the
        same answer and the reason the two must be read off one list. */
     expect(screen.getByRole('link', { name: 'Izmeni' })).toBeVisible()
+  }, SLOW)
+
+  it('puts the founder on the roster of the first season, when the team is founded before it', async () => {
+    /* The other half of the case above, and the one the owner's decision of 17.10.2026 creates: read
+       on a day of 2026 the page of a team opens on 2027, which is the season a team founded in this
+       window begins in (`transfersTakeEffect`), so the founder is on its roster, on nought. */
+    const user = setupUser()
+    const { router } = renderAt(
+      '/sr/administracija/verifikacija/timovi',
+      'superadmin',
+      '000004',
+      undefined,
+      DAY,
+    )
+
+    const heading = await screen.findByRole('heading', { name: 'Timočka trkačka družina' })
+    const card = within(must(heading.closest('li'), 'the card the heading stands in'))
+
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    await router.navigate('/sr/tim/timocka-trkacka-druzina')
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Timočka trkačka družina' }),
+    ).toBeVisible()
+    expect(await screen.findByText(/1 član/)).toBeVisible()
+    expect(screen.queryByText(/te sezone nije imao članova/)).toBeNull()
+    expect(within(await screen.findByRole('table', { name: 'Članovi' })).getAllByRole('row')).toHaveLength(2)
+    expect(screen.getByLabelText('Sezona')).toHaveValue('2027')
   }, SLOW)
 })
 

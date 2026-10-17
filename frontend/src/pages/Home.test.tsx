@@ -141,7 +141,10 @@ describe('Home', () => {
 
     const men = must((await screen.findByRole('heading', { name: 'Top 10 muškarci' })).closest('section'), 'section')
 
-    expect(within(men).getAllByRole('listitem').length).toBeGreaterThan(0)
+    /* The ten places, hidden or not: from 1.1.2027 a board nobody has scored on draws its places as
+       empty circles that are out of the reading (owner, 17.10.2026), and this case is read on both of
+       the suite's days, one on each side of that. Who is on the board is held in `publicScreens.test.tsx`. */
+    expect(within(men).getAllByRole('listitem', { hidden: true })).toHaveLength(10)
     // The standing moved to /tabela; /top-liste is the page of Top 10 boards now.
     expect(within(men).getByRole('link', { name: 'Cela tabela' })).toHaveAttribute(
       'href',
