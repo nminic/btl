@@ -6,6 +6,7 @@ import {
   bold,
   fits,
   heading,
+  hrefFor,
   inHeading,
   inList,
   linkable,
@@ -15,13 +16,14 @@ import {
   list,
   marked,
   paste,
+  putLink,
   removeLink,
-  setLink,
   sizeOf,
   splitItem,
   stateFor,
+  wordsAt,
 } from './commands'
-import { MISLEADING, STAYS_A_LINK } from '../../test/misleadingAddresses'
+import { hrefOf, MISLEADING, STAYS_A_LINK } from '../../test/misleadingAddresses'
 import { toMarkdown } from './convert'
 import { schema } from './schema'
 
@@ -238,30 +240,73 @@ describe('a link', () => {
     }
   })
 
-  it('is written as the address itself where nothing is selected and no link stands', () => {
+  it('is written as its words at the cursor where nothing is selected and no link stands', () => {
     const state = at('Vidi', 5)
 
     expect(linkIn(state)).toBeUndefined()
-    expect(toMarkdown(state.apply(setLink(state, 'https://primer.rs')).doc.content)).toBe(
-      'Vidi[https://primer.rs](https://primer.rs)',
+    expect(wordsAt(state)).toBe('')
+    expect(toMarkdown(state.apply(putLink(state, 'sajt', 'https://primer.rs')).doc.content)).toBe(
+      'Vidi[sajt](https://primer.rs)',
     )
   })
 
-  it('is put on the selection', () => {
+  it('is put on the selection, which the field Ispis starts with', () => {
     const state = at('Vidi sajt lige', 6, 10)
 
-    expect(toMarkdown(state.apply(setLink(state, 'https://primer.rs')).doc.content)).toBe(
+    expect(wordsAt(state)).toBe('sajt')
+    expect(toMarkdown(state.apply(putLink(state, 'sajt', 'https://primer.rs')).doc.content)).toBe(
       'Vidi [sajt](https://primer.rs) lige',
     )
   })
 
-  it('is changed whole where the cursor stands in it with nothing selected', () => {
+  it('keeps the marks of words left as they were, each where it stood', () => {
+    /* Half of the words bold, so that words put back in their place and words left alone are two
+       different texts: put back, the bold would cover all of them or none. */
+    const state = at('Vidi **sa**jt lige', 6, 10)
+
+    expect(toMarkdown(state.apply(putLink(state, 'sajt', 'https://primer.rs')).doc.content)).toBe(
+      'Vidi [**sa**jt](https://primer.rs) lige',
+    )
+  })
+
+  it('puts changed words in the place of the selected ones, with the marks they began with', () => {
+    const plain = at('Vidi sajt lige', 6, 10)
+    const strong = at('Vidi **sajt** lige', 6, 10)
+
+    expect(toMarkdown(plain.apply(putLink(plain, 'portal BTL', 'https://primer.rs')).doc.content)).toBe(
+      'Vidi [portal BTL](https://primer.rs) lige',
+    )
+    expect(toMarkdown(strong.apply(putLink(strong, 'portal', 'https://primer.rs')).doc.content)).toBe(
+      'Vidi [**portal**](https://primer.rs) lige',
+    )
+  })
+
+  it('keeps two paragraphs two where the selection runs over both and its words are left as they were', () => {
+    /* The words of the two read as one line („a b"), which is one character shorter than the
+       selection they stand over, so words put back would join the paragraphs into one. */
+    const state = at('a\n\nb', 1, 5)
+
+    expect(wordsAt(state)).toBe('a b')
+    expect(toMarkdown(state.apply(putLink(state, 'a b', 'https://primer.rs')).doc.content)).toBe(
+      '[a](https://primer.rs)\n\n[b](https://primer.rs)',
+    )
+  })
+
+  it('reads a selection over a line break as one line, which is what the field holds', () => {
+    expect(wordsAt(at('a\nb', 1, 4))).toBe('a b')
+  })
+
+  it('is changed whole where the cursor stands in it with nothing selected, its words and where it leads', () => {
     const state = at('A [prva](https://a.example) b [druga](https://b.example) c', 4)
     const existing = linkIn(state)
 
     expect(existing?.attrs.href).toBe('https://a.example')
-    expect(toMarkdown(state.apply(setLink(state, 'https://c.example')).doc.content)).toBe(
+    expect(wordsAt(state)).toBe('prva')
+    expect(toMarkdown(state.apply(putLink(state, 'prva', 'https://c.example')).doc.content)).toBe(
       'A [prva](https://c.example) b [druga](https://b.example) c',
+    )
+    expect(toMarkdown(state.apply(putLink(state, 'prvi sajt', 'https://c.example')).doc.content)).toBe(
+      'A [prvi sajt](https://c.example) b [druga](https://b.example) c',
     )
   })
 
@@ -290,6 +335,66 @@ describe('a link', () => {
     /* Words of one link that carry different marks are two pieces, and still one link. */
     expect(aroundCursor(state, link)).toEqual({ from: 1, to: 4 })
     expect(aroundCursor(at('Reči', 2), link)).toEqual({ from: 2, to: 2 })
+  })
+})
+
+/* The owner, 17.10.2026 (PDL „Ispravke sa ekrana 17.10.2026"): „https:// ne treba uopšte da
+   popunjavam nego da se podrazumeva (dakle ti ga dodaj automatski)", and a mailbox typed into the
+   field Link is a link to write to it. */
+describe('where a link made in the box leads, for what was typed into its field Link', () => {
+  it.each([
+    ['runtrace.net', 'https://runtrace.net'],
+    ['www.runtrace.net', 'https://www.runtrace.net'],
+    ['  runtrace.net/lige?sezona=2027  ', 'https://runtrace.net/lige?sezona=2027'],
+    ['runtrace.net:8080/x', 'https://runtrace.net:8080/x'],
+    ['https://runtrace.net', 'https://runtrace.net'],
+    ['http://runtrace.net/a', 'http://runtrace.net/a'],
+    ['info@runtrace.net', 'mailto:info@runtrace.net'],
+    ['Ime.Prezime+liga@mail.runtrace.net', 'mailto:Ime.Prezime+liga@mail.runtrace.net'],
+    ['mailto:info@runtrace.net', 'mailto:info@runtrace.net'],
+    ['/sr/statut', '/sr/statut'],
+    /* A mailbox whose name looks like a host is a mailbox: what a press does is open a letter to it,
+       with the whole of it in the field „To", which is no site opened under another's name. The
+       boundary is written as a case so that moving it is a decision. */
+    ['runtrace.net@zlo.example', 'mailto:runtrace.net@zlo.example'],
+  ])('leads %s to %s', (typed, href) => {
+    expect(hrefFor(typed)).toBe(href)
+  })
+
+  it.each([
+    '',
+    '   ',
+    'javascript:alert(1)',
+    'JavaScript:alert(1)',
+    'www.runtrace.net@zlo.example',
+    'https://runtrace.net@zlo.example',
+    'runtrace',
+    'info@runtrace',
+    'info@rüntrace.net',
+    'ime@primer.rs?subject=x',
+    'mailto:ime@primer',
+    'mailto:ime@primer.rs?subject=x',
+    'mailto:www.runtrace.net@zlo.example',
+    '//zlo.example',
+    'runtrace .net',
+    '.runtrace.net',
+    'runtrace.',
+  ])('leads %j nowhere, and the box says so', (typed) => {
+    expect(hrefFor(typed)).toBeUndefined()
+  })
+
+  it('leads nowhere for an address that reads as one host and opens another, typed with or without its scheme', () => {
+    expect(MISLEADING.length).toBeGreaterThan(20)
+
+    for (const one of MISLEADING) {
+      expect(hrefFor(one.typed), `${one.typed} (${one.how})`).toBeUndefined()
+    }
+  })
+
+  it('leads every address that opens what it says where it says, the ones typed with www. under https', () => {
+    for (const one of STAYS_A_LINK) {
+      expect(hrefFor(one.typed), `${one.typed} (${one.why})`).toBe(hrefOf(one.typed))
+    }
   })
 })
 

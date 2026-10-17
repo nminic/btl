@@ -452,6 +452,12 @@ describe('how tall a control in a form is', () => {
        at, and a guard that asks a question with a known answer is asked once and then
        disbelieved. */
     expect(handWrittenFields()).toEqual([
+      /* THE BOX FOR A LINK OF THE EDITOR OF A TEXT (owner, 17.10.2026: „boks u koji se upišu Ispis i
+         Link"), two text fields and nothing that is a mark. Measured in Chrome over the built package
+         at 360, 768 and 1280, light and dark, over the box of a competition and over the form of an
+         event: both fields are 48,0px tall, which is the shared height reaching them through the
+         `.field` they stand in. */
+      'components/markdownEditor/LinkDialog.tsx',
       'forms/FormRenderer.tsx',
       /* THE FOURTH SCREEN THIS CASE STOPPED, on the day the races of an event stopped being a table
          and became a group of fields per race (owner, 16.10.2026). Measured in Chrome over the built

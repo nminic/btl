@@ -1,4 +1,6 @@
-import { addressesIn, CLOSING, opensAsTyped, OPENING } from '../pages/league/addressesIn'
+import { addressesIn, opensAsTyped } from '../pages/league/addressesIn'
+import { CLOSING, OPENING, type Piece } from '../pages/league/aroundAWord'
+import { mailOf, mailsIn } from '../pages/league/mailsIn'
 
 /* WHAT A WRITTEN TEXT SAYS, READ ONCE, FOR EVERY READER OF IT.
  *
@@ -32,8 +34,8 @@ export type Block =
   | { kind: 'rule'; source: string }
   | { kind: 'marker'; source: string }
 
-/** One piece of a line. `address` is a bare address drawn as a link (PDL P15), and only a reader
- *  that asks for them gets one. */
+/** One piece of a line. `address` is a bare address drawn as a link, of a site (PDL P15) or of a
+ *  mailbox (PDL, „Ispravke sa ekrana 17.10.2026"), and only a reader that asks for them gets one. */
 export type Inline =
   | { kind: 'text'; text: string }
   | { kind: 'strong'; children: Inline[] }
@@ -106,8 +108,13 @@ export function addressOf(
     return { inside: !/\.[a-z0-9]{2,4}(?=$|[?#])/i.test(url), href: url }
   }
 
+  /* A mailbox has no host a browser opens, but it has one the mail program writes to, and PDL P15
+     (03.10.2026, with its addition of 17.10.2026) holds for every link the editor makes: so where the
+     host is checked, what stands behind `mailto:` has to be a mailbox as `mailOf` reads one, the
+     very rule a mailbox typed into a text is read by. Elsewhere (a written page, which asks nothing
+     of its links) it is a link as it always was. */
   if (url.startsWith('mailto:')) {
-    return { inside: false, href: url }
+    return !hostChecked || mailOf(url.slice('mailto:'.length)) === url ? { inside: false, href: url } : undefined
   }
 
   if (url.startsWith('https://') || url.startsWith('http://')) {
@@ -365,16 +372,32 @@ function edge(unit: Char | undefined, punctuation: RegExp): boolean {
 }
 
 /**
+ * Which bare addresses of a text are links: those of a site and of a mailbox (`true`, the terms and
+ * the prizes of a competition), those of a mailbox alone (`'mail'`, the description of an event), or
+ * none (`false`, a written page, which draws its words as it always did).
+ */
+export type Bare = boolean | 'mail'
+
+/** The addresses in the middle of a word: of a site where they are asked for, and of a mailbox in
+ *  whatever of the word is not an address of a site. */
+function addressesOf(word: string, bare: Bare): Piece[] {
+  const sites = bare === true ? addressesIn(word) : [{ text: word, href: null }]
+
+  return sites.flatMap((piece) => (piece.href === null ? mailsIn(piece.text) : [piece]))
+}
+
+/**
  * THE BARE ADDRESSES OF A LINE, AS LINKS (PDL P15, 03.10.2026): „Svaka adresa koja počinje sa
  * `www.` ili `https://` otvara se u novom prozoru, sa vidljivim domenom". Which words are addresses
- * is `addressesIn`'s to say and nobody else's.
+ * is `addressesIn`'s to say and nobody else's, and which are mailboxes is `mailsIn`'s (PDL,
+ * „Ispravke sa ekrana 17.10.2026").
  *
  * Asked BEFORE bold and italic are, so an address keeps every character it was typed with: an
  * underscore in its path is part of the address and not the start of an italic piece. Asked of the
  * words with the marks of bold and italic, and the punctuation that may stand around an address,
  * taken off their ends, so a bold address is still an address (`**www.runtrace.net**.`).
  */
-function withAddresses(units: Unit[]): Unit[] {
+function withAddresses(units: Unit[], bare: Bare): Unit[] {
   const out: Unit[] = []
   let word: Char[] = []
 
@@ -393,7 +416,7 @@ function withAddresses(units: Unit[]): Unit[] {
     /* Every unit of a word is a character (a whole piece ends the word), one code unit each, so
        the text and the units line up place for place and a run of the text is a run of units. */
     const middle = word.slice(from, to)
-    const pieces = addressesIn(middle.map((unit) => unit.char).join(''))
+    const pieces = addressesOf(middle.map((unit) => unit.char).join(''), bare)
 
     out.push(...word.slice(0, from))
 
@@ -499,14 +522,18 @@ function marked(units: Unit[]): Inline[] {
   return out
 }
 
-/** The pieces of a line. `addresses` turns its bare addresses into links (PDL P15); only the terms
- *  and the prizes of a competition ask for that, and for them the address under the words of a
- *  link has to pass what a bare address passes (PDL P15, 03.10.2026, „ostaje običan tekst").
- *  `hostChecked` asks that of the links alone, for a place that draws no bare address and has links
- *  all the same: the cells of a table in those texts. It follows `addresses` where it is not said. */
-export function inlineOf(text: string, addresses: boolean, hostChecked: boolean = addresses): Inline[] {
+/** The pieces of a line. `addresses` turns its bare addresses into links (`Bare`): of a site and of
+ *  a mailbox in the terms and the prizes of a competition (PDL P15), of a mailbox alone in the
+ *  description of an event (PDL, „Ispravke sa ekrana 17.10.2026"). In every text that asks for either
+ *  the address under the words of a link has to pass what a bare address passes (PDL P15, 03.10.2026,
+ *  „ostaje običan tekst"; for the description of an event since the owner's answer of 17.10.2026,
+ *  PDL „Odgovori vlasnika 17.10.2026, jezik pošte (PR 545) i uređivač (PR 546)", chosen with my
+ *  recommendation). `hostChecked` asks that of the links alone, for a place that draws no bare
+ *  address and has links all the same: the cells of a table in those texts. It follows `addresses`
+ *  where it is not said; a written page, which asks for none, asks nothing of its links either. */
+export function inlineOf(text: string, addresses: Bare, hostChecked: boolean = addresses !== false): Inline[] {
   const units = unitsOf(text, hostChecked)
-  const read = addresses ? withAddresses(units) : units
+  const read = addresses === false ? units : withAddresses(units, addresses)
 
   return marked(read)
 }

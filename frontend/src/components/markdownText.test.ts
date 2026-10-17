@@ -183,6 +183,78 @@ describe('the bare addresses of a line, for the terms and the prizes of a compet
   })
 })
 
+/* The owner, 17.10.2026 (PDL „Ispravke sa ekrana 17.10.2026"): „kad otkucam nešto nalik mail adresi,
+   treba da ga pretvoriš automatski u link za slanje maila", in the description of an event and in
+   the terms and the prizes, and not in a written page. */
+describe('the mailboxes of a line', () => {
+  const info: Inline = { kind: 'address', text: 'info@primer.rs', href: 'mailto:info@primer.rs' }
+  const liga: Inline = { kind: 'address', text: 'liga@runtrace.net', href: 'mailto:liga@runtrace.net' }
+
+  it('are links in the texts the editor writes, each from its own words, and words in a written page', () => {
+    const line = 'Pišite na info@primer.rs ili liga@runtrace.net.'
+
+    expect(inlineOf(line, 'mail')).toEqual([text('Pišite na '), info, text(' ili '), liga, text('.')])
+    expect(inlineOf(line, true)).toEqual([text('Pišite na '), info, text(' ili '), liga, text('.')])
+    expect(inlineOf(line, false)).toEqual([text(line)])
+  })
+
+  it('are the only bare addresses of the description of an event, where an address of a site stays words', () => {
+    expect(inlineOf('Vidi www.runtrace.net i info@primer.rs', 'mail')).toEqual([
+      text('Vidi www.runtrace.net i '),
+      info,
+    ])
+    expect(inlineOf('Vidi www.runtrace.net i info@primer.rs', true)).toEqual([
+      text('Vidi '),
+      { kind: 'address', text: 'www.runtrace.net', href: 'https://www.runtrace.net' },
+      text(' i '),
+      info,
+    ])
+  })
+
+  it('are not found inside the address of a site, which is a link of its own or words', () => {
+    expect(inlineOf('https://a.example/x@y.example', 'mail')).toEqual([text('https://a.example/x@y.example')])
+    expect(inlineOf('https://a.example/x@y.example', true)).toEqual([
+      { kind: 'address', text: 'https://a.example/x@y.example', href: 'https://a.example/x@y.example' },
+    ])
+    expect(inlineOf('www.runtrace.net@zlo.example', true)).toEqual([text('www.runtrace.net@zlo.example')])
+  })
+
+  it('stay mailboxes inside bold and italic, and keep the underscores of their names', () => {
+    expect(inlineOf('**info@primer.rs** i _liga@runtrace.net_', 'mail')).toEqual([
+      { kind: 'strong', children: [info] },
+      text(' i '),
+      { kind: 'em', children: [liga] },
+    ])
+    expect(inlineOf('ime_prezime@primer.rs i ime\\_drugo@primer.rs', 'mail')).toEqual([
+      { kind: 'address', text: 'ime_prezime@primer.rs', href: 'mailto:ime_prezime@primer.rs' },
+      text(' i '),
+      { kind: 'address', text: 'ime_drugo@primer.rs', href: 'mailto:ime_drugo@primer.rs' },
+    ])
+  })
+
+  it('are never read inside the words of a link, nor inside a value between backticks', () => {
+    expect(inlineOf('[piši na info@primer.rs](https://a.example)', 'mail')).toEqual([
+      { kind: 'link', url: 'https://a.example', inside: false, children: [text('piši na info@primer.rs')] },
+    ])
+    expect(inlineOf('`info@primer.rs`', 'mail')).toEqual([{ kind: 'code', text: 'info@primer.rs' }])
+  })
+
+  /* PDL „Odgovori vlasnika 17.10.2026, jezik pošte (PR 545) i uređivač (PR 546)": the check of the
+     host holds for the links of the description of an event as well, and a written page keeps
+     asking nothing. */
+  it('ask the host of the address under the words of a link in the description of an event, as the terms do', () => {
+    const typed = '[x](https://www.runtrace.net@zlo.example)'
+
+    expect(inlineOf(typed, 'mail')).toEqual([text(typed)])
+    expect(inlineOf(typed, false)).toEqual([
+      { kind: 'link', url: 'https://www.runtrace.net@zlo.example', inside: false, children: [text('x')] },
+    ])
+    expect(inlineOf('[x](https://www.runtrace.net)', 'mail')).toEqual([
+      { kind: 'link', url: 'https://www.runtrace.net', inside: false, children: [text('x')] },
+    ])
+  })
+})
+
 describe('the addresses a link may lead to', () => {
   it('are this portal, a file of it, and another site written in one of three ways', () => {
     for (const hostChecked of [false, true]) {
@@ -242,9 +314,34 @@ describe('the host of the address under the words of a link', () => {
     }
   })
 
-  it('is not asked of an address of this portal or of a mailbox, which have no host to mistake', () => {
+  it('is not asked of an address of this portal, which has no host to mistake', () => {
     expect(addressOf('/pravilnik#ime@kraj', true)).toEqual({ inside: true, href: '/pravilnik#ime@kraj' })
+  })
+
+  /* PDL P15 with its addition of 17.10.2026: the check holds for every link the editor makes, so a
+     link to a mailbox leads to one only where what stands behind `mailto:` is a mailbox as one typed
+     into a text is read (`mailsIn.ts`). */
+  it('is asked of a mailbox where it is asked, by the rule a typed mailbox is read by', () => {
     expect(addressOf('mailto:ime@primer.rs', true)).toEqual({ inside: false, href: 'mailto:ime@primer.rs' })
+    expect(addressOf('mailto:Ime.Prezime+liga@mail.primer.rs', true)).toEqual({
+      inside: false,
+      href: 'mailto:Ime.Prezime+liga@mail.primer.rs',
+    })
+
+    for (const refused of [
+      'mailto:ime@primer',
+      'mailto:ime@a@primer.rs',
+      'mailto:ime@primer.rs?subject=x',
+      'mailto:ime@primer.rs,drugi@zlo.example',
+      'mailto:ime%40zlo.example@primer.rs',
+      'mailto:www.runtrace.net@zlo.example',
+      'mailto:ime@ni\u0161.rs',
+      'mailto:',
+    ]) {
+      expect(addressOf(refused, true), refused).toBeUndefined()
+      /* And a written page, which asks nothing of its links, keeps the link it has always had. */
+      expect(addressOf(refused, false), refused).toEqual({ inside: false, href: refused })
+    }
   })
 
   it('is refused by the gate as well as by the typed part, so an address with nothing in it is text', () => {

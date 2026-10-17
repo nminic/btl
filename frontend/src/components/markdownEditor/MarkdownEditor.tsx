@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useReducer, useRef, useState, type FocusEvent } from 'react'
-import type { MarkType } from 'prosemirror-model'
+import { useCallback, useEffect, useReducer, useRef, useState, type FocusEvent, type ReactNode } from 'react'
+import type { Mark, MarkType } from 'prosemirror-model'
 import type { Command, EditorState } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
+import { LinkIcon, ListIcon } from '../../app/icons'
 import { Room } from '../../forms/LongBox'
 import { heldControl } from '../../forms/held'
 import { useI18n } from '../../i18n/useI18n'
@@ -12,44 +13,56 @@ import {
   inList,
   italic,
   linkable,
-  linkableAddress,
   linkIn,
   list,
   marked,
   paste,
+  putLink,
   removeLink,
-  setLink,
   sizeOf,
   stateFor,
+  wordsAt,
 } from './commands'
 import { hrefOf, schema } from './schema'
 import { toMarkdown } from './convert'
+import { LinkDialog } from './LinkDialog'
 import type { EditorProps } from './props'
 import 'prosemirror-view/style/prosemirror.css'
 import './MarkdownEditor.css'
 
-/** One button of the toolbar: what it is called, what it does, and whether it is on. */
-type Tool = { key: string; command: Command; on: (state: EditorState) => boolean; className: string }
+/** One button of the toolbar: what it is called, what it shows, what it does, and whether it is on. */
+type Tool = { key: string; symbol: ReactNode; command: Command; on: (state: EditorState) => boolean }
 
 const markOn = (type: MarkType) => (state: EditorState) => marked(state, type)
 
 /* The four that switch something on and off, in the owner's order (PDL, 16.10.2026: „podebljano,
-   kurziv, naslov, spisak i vezu"). The fifth, the link, opens a row of its own and is drawn apart. */
+   kurziv, naslov, spisak i vezu"). The fifth, the link, opens the box for a link and is drawn apart.
+
+   Each shows a symbol, as the palette of Word does (owner, 17.10.2026, PDL „Ispravke sa ekrana
+   17.10.2026": „voleo bih da svi ti dugmići za formatiranje budu simboli nalik Word paleti (B, I, U i
+   sl)... ovako deluje nezgrapno"): the letters B and I, set the way they set the text, an H for a
+   heading, and a drawing for the list and for the link. There is no U, because the owner chose that
+   there is no underlining (the same section). */
 const TOOLS: readonly Tool[] = [
   {
     key: 'editor.bold',
+    symbol: <span className="md-editor__symbol md-editor__symbol--bold">B</span>,
     command: bold,
     on: markOn(schema.marks.strong),
-    className: 'md-editor__tool md-editor__tool--bold',
   },
   {
     key: 'editor.italic',
+    symbol: <span className="md-editor__symbol md-editor__symbol--italic">I</span>,
     command: italic,
     on: markOn(schema.marks.em),
-    className: 'md-editor__tool md-editor__tool--italic',
   },
-  { key: 'editor.heading', command: heading, on: inHeading, className: 'md-editor__tool' },
-  { key: 'editor.list', command: list, on: inList, className: 'md-editor__tool' },
+  {
+    key: 'editor.heading',
+    symbol: <span className="md-editor__symbol md-editor__symbol--bold">H</span>,
+    command: heading,
+    on: inHeading,
+  },
+  { key: 'editor.list', symbol: <ListIcon className="md-editor__icon" />, command: list, on: inList },
 ]
 
 /** The attributes of the box that is typed into: what it is, what names it, and how it stands. */
@@ -88,13 +101,14 @@ function attributesOf(props: EditorProps): Record<string, string> {
   return attributes
 }
 
-/** The toolbar and the row that asks for the address of a link, over a drawn editor. */
+/** What the box for a link is opened with: its two fields, and the link the cursor stood in. */
+type Linking = { words: string; address: string; existing: Mark | undefined }
+
+/** The toolbar and the box for a link, over a drawn editor. */
 function Controls({ view, id, locked }: { view: EditorView; id: string; locked: boolean }) {
   const { t } = useI18n()
-  const [linking, setLinking] = useState<{ address: string; wrong: boolean } | null>(null)
+  const [linking, setLinking] = useState<Linking | null>(null)
   const { state } = view
-  const existing = linkIn(state)
-  const panelId = `${id}-link`
 
   /* A button that cannot act stays where it is and says so (`aria-disabled`), rather than leaving the
      order of focus: held, not switched off, which is how every control of a form on the portal is
@@ -106,20 +120,22 @@ function Controls({ view, id, locked }: { view: EditorView; id: string; locked: 
     }
   }
 
+  /* Closed by any road, the cursor goes back into the text, where the link is or was to be. */
   const closeLink = () => {
     setLinking(null)
     view.focus()
   }
 
-  const applyLink = (address: string) => {
-    if (!linkableAddress(address.trim())) {
-      setLinking({ address, wrong: true })
-      return
-    }
+  const linkRefused = locked || !linkable(state)
 
-    view.dispatch(setLink(view.state, address.trim()))
-    closeLink()
-  }
+  /* Taking a link off is offered only where there is one to take off. */
+  const removing = (existing: Mark | undefined) =>
+    existing === undefined
+      ? undefined
+      : () => {
+          view.dispatch(removeLink(view.state, existing))
+          closeLink()
+        }
 
   return (
     <>
@@ -131,7 +147,12 @@ function Controls({ view, id, locked }: { view: EditorView; id: string; locked: 
             <button
               key={tool.key}
               type="button"
-              className={tool.className}
+              className="md-editor__tool"
+              /* A symbol is no name (WCAG 2.2 SC 1.1.1, and what SC 2.5.3 says of symbols), so the
+                 button is named by the word it showed before it showed a symbol, and that word is
+                 what a pointer resting on it shows too. */
+              aria-label={t(tool.key)}
+              title={t(tool.key)}
               aria-pressed={tool.on(state)}
               aria-disabled={refused ? true : undefined}
               /* The press must not take the cursor out of the text first: what is selected is what
@@ -139,7 +160,7 @@ function Controls({ view, id, locked }: { view: EditorView; id: string; locked: 
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => run(tool.command, refused)}
             >
-              {t(tool.key)}
+              {tool.symbol}
             </button>
           )
         })}
@@ -147,80 +168,41 @@ function Controls({ view, id, locked }: { view: EditorView; id: string; locked: 
         <button
           type="button"
           className="md-editor__tool"
-          aria-expanded={linking !== null}
-          aria-disabled={locked || !linkable(state) ? true : undefined}
+          aria-label={t('editor.link')}
+          title={t('editor.link')}
+          aria-haspopup="dialog"
+          aria-disabled={linkRefused ? true : undefined}
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => {
-            if (locked || !linkable(state)) {
+            if (linkRefused) {
               return
             }
 
-            setLinking(
-              linking === null
-                ? { address: existing === undefined ? '' : hrefOf(existing), wrong: false }
-                : null,
-            )
+            const existing = linkIn(state)
+
+            setLinking({
+              words: wordsAt(state),
+              address: existing === undefined ? '' : hrefOf(existing),
+              existing,
+            })
           }}
         >
-          {t('editor.link')}
+          <LinkIcon className="md-editor__icon" />
         </button>
       </div>
 
       {linking !== null && (
-        <div className="md-editor__link" role="group" aria-labelledby={`${panelId}-label`}>
-          <label className="field__label" id={`${panelId}-label`} htmlFor={panelId}>
-            {t('editor.address')}
-          </label>
-          <input
-            id={panelId}
-            className="field__control"
-            type="text"
-            inputMode="url"
-            autoFocus
-            value={linking.address}
-            aria-invalid={linking.wrong}
-            aria-describedby={linking.wrong ? `${panelId}-wrong` : undefined}
-            onChange={(event) => setLinking({ address: event.target.value, wrong: false })}
-            onKeyDown={(event) => {
-              /* Enter keeps the address rather than sending the form the editor stands in, and
-                 Escape puts the row away and the cursor back into the text. */
-              if (event.key === 'Enter') {
-                event.preventDefault()
-                applyLink(linking.address)
-              }
-
-              if (event.key === 'Escape') {
-                event.preventDefault()
-                closeLink()
-              }
-            }}
-          />
-          {linking.wrong && (
-            <p className="field__error" id={`${panelId}-wrong`}>
-              {t('editor.wrongAddress')}
-            </p>
-          )}
-          <div className="md-editor__link-actions">
-            <button type="button" className="button" onClick={() => applyLink(linking.address)}>
-              {t('editor.setLink')}
-            </button>
-            {existing !== undefined && (
-              <button
-                type="button"
-                className="button button--secondary"
-                onClick={() => {
-                  view.dispatch(removeLink(view.state, existing))
-                  closeLink()
-                }}
-              >
-                {t('editor.removeLink')}
-              </button>
-            )}
-            <button type="button" className="button button--secondary" onClick={closeLink}>
-              {t('editor.cancel')}
-            </button>
-          </div>
-        </div>
+        <LinkDialog
+          id={id}
+          words={linking.words}
+          address={linking.address}
+          onKeep={(words, href) => {
+            view.dispatch(putLink(view.state, words, href))
+            closeLink()
+          }}
+          onRemove={removing(linking.existing)}
+          onClose={closeLink}
+        />
       )}
     </>
   )
@@ -241,10 +223,11 @@ function Controls({ view, id, locked }: { view: EditorView; id: string; locked: 
  * the change that brought it: the smallest of the three measured, a schema that can be closed to
  * exactly what a written text says, and a toolbar that is ours, so every button is a `<button>`.
  *
- * The buttons say what they do in words and not in pictures, because a word is its own name: what a
- * screen reader reads is what is on the button (WCAG 2.2 SC 2.5.3), and nobody has to guess what a
- * slanted letter means. Each of the four that switch says whether it is on (`aria-pressed`), and a
- * press never takes the cursor out of the text.
+ * The buttons show symbols, as the palette of Word does (owner, 17.10.2026, PDL „Ispravke sa ekrana
+ * 17.10.2026"), and each is named by its word for whoever cannot see the symbol (`aria-label`), with
+ * the same word shown where a pointer rests on it (`title`). Until that day they showed their words,
+ * which the owner found clumsy. Each of the four that switch says whether it is on (`aria-pressed`),
+ * and a press never takes the cursor out of the text.
  */
 export default function MarkdownEditor(props: EditorProps) {
   const latest = useRef(props)
@@ -323,8 +306,8 @@ export default function MarkdownEditor(props: EditorProps) {
     }
   }, [view, value])
 
-  /* The cursor has left everything that belongs to the editor: the text, the toolbar and the row
-     that asks for an address. Leaving the text for one of its own buttons is not leaving it. */
+  /* The cursor has left everything that belongs to the editor: the text, the toolbar and the box for
+     a link. Leaving the text for one of its own buttons is not leaving it. */
   const left = (event: FocusEvent<HTMLDivElement>) => {
     const to = event.relatedTarget
 
