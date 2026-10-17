@@ -60,6 +60,16 @@
   overflow-wrap: anywhere;
 }
 
+/* The ring every control of the portal wears when it has the cursor (`index.css`, `:focus-visible`),
+   worn on any focus at all, as a box for many words wears it: a box that is typed into shows where the
+   cursor is however it got there. Measured 17.10.2026 in Chrome 155: a `textarea` matches
+   `:focus-visible` after a press of the mouse, and a box of the editor (`contenteditable`) does not,
+   so with the global rule alone the editor showed no ring while it was being written in. */
+.md-editor__area.markdown:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* What ProseMirror needs of the blank: kept as typed, so two blanks are two and the cursor lands
    where the reader put it. The page itself collapses them (`.markdown p`), which costs nothing,
    because a written text is drawn one paragraph at a time. */
