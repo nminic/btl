@@ -1,7 +1,7 @@
 import { SLOW } from '../test/slow'
 import { matchingMedia } from '../test/media'
 import { must } from '../test/at'
-import { screen, within } from '@testing-library/react'
+import { configure, getConfig, screen, within } from '@testing-library/react'
 import { renderAt } from '../test/render'
 import { membersAsServed } from '../test/serverAnswers'
 import { setupUser } from '../test/user'
@@ -385,7 +385,13 @@ describe('the season the front page counts', () => {
     return must(label.parentElement?.textContent, 'the row of results').trim()
   }
 
+  let waits = getConfig().asyncUtilTimeout
+
   beforeEach(() => {
+    /* Every wait here is half of the case's own clock, so a heading that never comes fails on
+       its own words and not on the clock (`pages/admin/saveWhileSaving.test.tsx`). */
+    waits = getConfig().asyncUtilTimeout
+    configure({ asyncUtilTimeout: SLOW / 2 })
     previous = window.matchMedia
     /* With less motion asked for, so the counters stand on their target at once and a
        nought is a nought rather than a frame on the way somewhere. */
@@ -393,6 +399,7 @@ describe('the season the front page counts', () => {
   })
 
   afterEach(() => {
+    configure({ asyncUtilTimeout: waits })
     window.matchMedia = previous
     vi.stubGlobal('fetch', served)
   })

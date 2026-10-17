@@ -227,6 +227,20 @@ describe('the way to propose a team', () => {
     expect([...new Set(points)]).toEqual(['0,00'])
   })
 
+  it('in the window of 2026 offers 2027 and nothing else, because it is both seasons', async () => {
+    /* Before the league has a season, the one the standing opens on and the one a team founded
+       now belongs to are one and the same, 2027 (owner, 16.10.2026, `seasonShown`, and
+       `transfersTakeEffect`). Read as „the shown one plus one" this offered 2028 in 2026, a
+       season nothing founded today belongs to. The history served here has nothing from 2027
+       on, so the list is exactly the one season. */
+    renderAt('/sr/timovi', 'competitor', '000002', undefined, DAY)
+
+    const seasons = await screen.findByLabelText(/Sezona/, {}, { timeout: SLOW / 2 })
+
+    expect(within(seasons).getAllByRole('option').map((one) => one.textContent)).toEqual(['2027'])
+    expect(seasons).toHaveValue('2027')
+  }, SLOW)
+
   it('asks whoever reaches the address without signing in to sign in', async () => {
     renderAt('/sr/novi-tim')
 

@@ -221,6 +221,10 @@ function shareOf(column: HTMLElement, name: string): number {
  *  hold nobody. Named once, because three assertions read it. */
 const SPARSE = inLeague(2022)
 
+/** Every wait in a case written for 16.10.2026 is half of the case's own clock, so a wait that
+ *  never ends fails on its own words rather than on the clock (`pages/admin/saveWhileSaving.test.tsx`). */
+const HALF = SLOW / 2
+
 /** The standing at a season, and at a category if one is asked for. */
 const ADDRESS = (season: number, category?: string) =>
   `/sr/tabela?sezona=${String(season)}&pol=z${
@@ -274,10 +278,10 @@ describe('Rankings', () => {
        off the control: a floor at „the year before" or none at all offers it. */
     renderAt('/sr/tabela')
 
-    const season = selectElement(await screen.findByLabelText('Sezona'))
+    const season = selectElement(await screen.findByLabelText('Sezona', {}, { timeout: HALF }))
 
     expect(season.value).toBe('2027')
-    expect(await screen.findByText('U ovoj sezoni i kategoriji nema nijednog rezultata.')).toBeVisible()
+    expect(await screen.findByText('U ovoj sezoni i kategoriji nema nijednog rezultata.', {}, { timeout: HALF })).toBeVisible()
     expect(
       within(season)
         .getAllByRole('option')
@@ -286,16 +290,16 @@ describe('Rankings', () => {
       'a season before the league is on offer',
     ).toEqual([])
     expect(within(season).getByRole('option', { name: String(inLeague(2019)) })).toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('ignores an address that names a season before the league', async () => {
     /* `?sezona=2019` in a link from before 16.10.2026: the control cannot name it, so
        the table under it must not draw it either (`offeredSeason`). */
     renderAt('/sr/tabela?sezona=2019')
 
-    expect(selectElement(await screen.findByLabelText('Sezona')).value).toBe('2027')
-    expect(await screen.findByText('U ovoj sezoni i kategoriji nema nijednog rezultata.')).toBeVisible()
-  })
+    expect(selectElement(await screen.findByLabelText('Sezona', {}, { timeout: HALF })).value).toBe('2027')
+    expect(await screen.findByText('U ovoj sezoni i kategoriji nema nijednog rezultata.', {}, { timeout: HALF })).toBeVisible()
+  }, SLOW)
 
   /** The history as this describe serves it, and these results of the league on top of it,
    *  each on a day of its own. Put back by the hook the describe already has. */
@@ -332,7 +336,7 @@ describe('Rankings', () => {
     serveAlso([{ memberNumber: '000001', date: '2027-02-02' }])
     renderAt('/sr/tabela', 'visitor', null, undefined, '2027-03-01')
 
-    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+    const rows = within(await screen.findByRole('table', {}, { timeout: HALF })).getAllByRole('row').slice(1)
 
     expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2027')
     expect(rows).toHaveLength(1)
@@ -347,10 +351,10 @@ describe('Rankings', () => {
     ])
     renderAt('/sr/tabela', 'visitor', null, undefined, '2028-02-01')
 
-    const season = selectElement(await screen.findByLabelText('Sezona'))
+    const season = selectElement(await screen.findByLabelText('Sezona', {}, { timeout: HALF }))
 
     expect(season.value).toBe('2028')
-    expect(await screen.findByText('U ovoj sezoni i kategoriji nema nijednog rezultata.')).toBeVisible()
+    expect(await screen.findByText('U ovoj sezoni i kategoriji nema nijednog rezultata.', {}, { timeout: HALF })).toBeVisible()
     expect(within(season).getByRole('option', { name: '2027' })).toBeInTheDocument()
   }, SLOW)
 
@@ -1262,10 +1266,19 @@ describe('TopBoards', () => {
        handed in as the default, and this screen hands one in. */
     renderAt('/sr/top-liste', 'visitor', null, undefined, '2026-06-01')
 
-    const season = selectElement(await screen.findByLabelText('Sezona'))
+    const season = selectElement(await screen.findByLabelText('Sezona', {}, { timeout: HALF }))
 
     expect(within(season).queryByRole('option', { name: 'Sve' })).not.toBeInTheDocument()
     expect(within(season).getAllByRole('option').length).toBeGreaterThan(3)
+    /* And none before the league's first, although the history this describe is served
+       holds a full 2026 (owner, 10.10.2026: „Ne postoje obracuni liga" before 2027). */
+    expect(
+      within(season)
+        .getAllByRole('option')
+        .map((option) => Number(option.textContent))
+        .filter((year) => year < 2027),
+      'a season before the league is on offer',
+    ).toEqual([])
   })
 
   it('tells the stylesheet how many characters the longest number in it is', async () => {
@@ -1725,7 +1738,7 @@ describe('TopBoards', () => {
     const user = setupUser()
     renderAt('/sr/top-liste')
 
-    const season = await screen.findByLabelText('Sezona')
+    const season = await screen.findByLabelText('Sezona', {}, { timeout: HALF })
     /* No season in the address, so the page opens on the first season of the league
        on both days the suite is read as, empty as it is: nothing falls back to a
        fuller one (owner, 16.10.2026). The history has nothing in 2027. */
@@ -1739,7 +1752,8 @@ describe('TopBoards', () => {
     // The one filter reaches the charts and the boards further down the page.
     expect(board('Najduže na stazi').getAllByRole('row').length).toBeGreaterThan(1)
     expect(board('Najviše kraćih trka').getAllByRole('listitem').length).toBeGreaterThan(0)
-  })
+  }, SLOW)
+
 })
 
 /**
@@ -3292,15 +3306,15 @@ describe('the front page, in the season running now', () => {
        were not kept. */
     renderAt('/sr', 'visitor', null, undefined, `${String(inLeague(2017))}-06-01`)
 
-    await screen.findAllByRole('heading', { name: /Top 10/ })
+    await screen.findAllByRole('heading', { name: /Top 10/ }, { timeout: HALF })
     /* Somebody is on it, or the line under this one says nothing. */
-    expect(await screen.findByRole('heading', { name: `Sezona ${String(inLeague(2017))}.` })).toBeVisible()
+    expect(await screen.findByRole('heading', { name: `Sezona ${String(inLeague(2017))}.` }, { timeout: HALF })).toBeVisible()
     await waitFor(() => {
       expect(
         screen.getAllByRole('link').filter((one) => one.getAttribute('href')?.includes('/takmicar/')),
       ).not.toEqual([])
-    })
+    }, { timeout: HALF })
     expect(screen.queryByText(/Vojislav Antonijević/)).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
 })
