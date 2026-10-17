@@ -252,9 +252,6 @@ export default function MarkdownEditor(props: EditorProps) {
      one is somebody else's change (a form put back, a record read again) and replaces what is in the
      box; one that is this one is the box's own change coming back, and changes nothing. */
   const written = useRef(props.value)
-  /* And the text last handed in, so only a change of what is handed in is read as one: a screen
-     that hands in the text it opened with and keeps it there is not asking for it back. */
-  const handed = useRef(props.value)
   const [view, setView] = useState<EditorView | null>(null)
   const [, redraw] = useReducer((count: number) => count + 1, 0)
   const [dropped, setDropped] = useState(0)
@@ -306,27 +303,25 @@ export default function MarkdownEditor(props: EditorProps) {
     return () => made.destroy()
   }, [])
 
-  /* What a screen hands in after the box is drawn: the attributes every time, and a text that is
-     somebody else's change. */
+  /* What a screen hands in after the box is drawn: the attributes, every time it draws. */
   useEffect(() => {
-    if (view === null) {
-      return
-    }
-
-    view.setProps({ attributes: attributesOf(props) })
-
-    if (props.value === handed.current) {
-      return
-    }
-
-    handed.current = props.value
-
-    if (props.value !== written.current) {
-      written.current = props.value
-      view.updateState(stateFor(props.value, () => latest.current.maxLength))
-      redraw()
+    if (view !== null) {
+      view.setProps({ attributes: attributesOf(props) })
     }
   })
+
+  /* And a text handed in that is not the one the box last said it holds: somebody else's change,
+     which replaces what is in the box. Asked only when what is handed in changes, so a screen that
+     hands in the text it opened with and keeps it there is not asking for it back. */
+  const { value } = props
+
+  useEffect(() => {
+    if (view !== null && value !== written.current) {
+      written.current = value
+      view.updateState(stateFor(value, () => latest.current.maxLength))
+      redraw()
+    }
+  }, [view, value])
 
   /* The cursor has left everything that belongs to the editor: the text, the toolbar and the row
      that asks for an address. Leaving the text for one of its own buttons is not leaving it. */

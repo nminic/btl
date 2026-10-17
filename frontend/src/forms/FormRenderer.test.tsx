@@ -897,6 +897,45 @@ describe('FormRenderer', () => {
     expect(asked).toBe(once)
   })
 
+  /* The four texts the owner chose on 16.10.2026 are written with the editor and kept as Markdown
+     (PDL, „Ispravke sa ekrana 16.10.2026"); `formatted` is how a definition says which. */
+  it('draws a formatted box for many words as the editor, named by the field and kept as Markdown', async () => {
+    const user = setupUser()
+    const onSubmit = vi.fn()
+    const form: FormDef = {
+      id: 'proba',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: [
+        { name: 'opis', type: 'textarea', formatted: true, labelKey: 'proba.opis', hintKey: 'proba.opisPravilo', maxLength: 50, required: true },
+        { name: 'beleska', type: 'textarea', labelKey: 'proba.beleska', maxLength: 50 },
+      ],
+    }
+
+    renderWithI18n(<FormRenderer form={form} onSubmit={onSubmit} />)
+
+    const editor = screen.getByRole('textbox', { name: /^proba\.opis/ })
+
+    /* The editor, and not the plain box beside it: a box typed into that is not a `textarea`. */
+    expect(editor).toHaveAttribute('contenteditable', 'true')
+    expect(screen.getByRole('textbox', { name: /^proba\.beleska/ }).tagName).toBe('TEXTAREA')
+    expect(editor).toHaveAttribute('aria-required', 'true')
+    expect(editor).toHaveAccessibleDescription('proba.opisPravilo Još 50 znakova')
+    /* Named by a span and not by a label: a label names only what a browser can label. */
+    expect(screen.getByText('proba.opis').closest('label')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(editor).toHaveAttribute('aria-invalid', 'true')
+
+    await user.type(editor, 'Reči')
+    await user.click(within(screen.getByRole('group', { name: 'Oblikovanje teksta' })).getByRole('button', { name: 'Naslov' }))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ opis: '## Reči' }), {})
+  })
+
   it('renders the registration definition straight from JSON', () => {
     renderWithI18n(<FormRenderer form={registracija} onSubmit={vi.fn()} />)
 

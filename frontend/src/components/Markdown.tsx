@@ -52,7 +52,7 @@ function headingTag(level: number): 'h2' | 'h3' | 'h4' | 'h5' | 'h6' {
  * an event stands under the name of the event (an h1), the terms of a competition under the heading
  * of their box (an h3). Six is the deepest there is.
  */
-export function levelOf(hashes: number, under: number): number {
+function levelOf(hashes: number, under: number): number {
   return Math.min(6, Math.max(hashes + under - 2, under + 1))
 }
 
