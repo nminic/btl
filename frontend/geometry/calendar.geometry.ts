@@ -102,6 +102,7 @@ const aRace = (id: number, eventId: number, day: number, category: RaceCategory 
   ascentM: 0,
   descentM: 0,
   category,
+  dots: [category],
 })
 
 /* 1 October 2026 is a Thursday, so the rows run Monday 5 to Sunday 11, 12 to 18, 19 to 25. */
