@@ -1281,6 +1281,25 @@ describe('TopBoards', () => {
     ).toEqual([])
   })
 
+  it.each(['2019', '2026'])('ignores an address that names a season before the league, %s', async (named) => {
+    /* The same case the table has (`Rankings`, „ignores an address that names a season before the
+       league"), for the page that was changed with it: `?sezona=2019` is held against what the
+       control offers (`offeredSeason`), so the boards under it are of the season it says, 2027, and
+       not of one it cannot name. Read as the address says it (`Number(seasonParam)`) the control
+       falls to no selection at all and the boards are drawn for 2019, so what is asked is both: the
+       value of the control and the rows under it.
+
+       **Two seasons, because one of them can hide the fault.** The history this describe serves
+       begins in 2026, so 2019 has nothing in it and the boards under it are empty either way: only
+       the control tells the two apart. 2026 is the season the floor exists to keep off, and it is
+       full: the boards under it are not empty if the address is believed. */
+    renderAt(`/sr/top-liste?sezona=${named}`)
+
+    expect(selectElement(await screen.findByLabelText('Sezona', {}, { timeout: HALF })).value).toBe('2027')
+    expect(board('Najviše kilometara').queryAllByRole('row').slice(1)).toEqual([])
+    expect(board('Najduže na stazi').queryAllByRole('row').slice(1)).toEqual([])
+  }, SLOW)
+
   it('tells the stylesheet how many characters the longest number in it is', async () => {
     /* The circle in a bar is as wide as that (owner, 05.08.2026: it has to be a
        circle, and a circle holding two decimals is wider than one holding a

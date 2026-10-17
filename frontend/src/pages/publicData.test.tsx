@@ -4,8 +4,10 @@ import { DEFAULT_LOCALE } from '../i18n/config'
 import { QUEUES } from './admin/queues'
 import type { Role } from '../roles/context'
 import { beginsWith, metSaid } from '../test/met'
-import { BEHIND, BEHIND_DAY, DAY, PUBLIC } from '../test/addresses'
+import { BEHIND, BEHIND_DAY, DAY, PUBLIC, WITH_ROWS } from '../test/addresses'
+import { playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
 import { renderAt } from '../test/render'
+import { SLOW } from '../test/slow'
 
 /**
  * What a browser is allowed to ask the server for, and on whose behalf.
@@ -421,6 +423,70 @@ describe('what a browser downloads outside administration', () => {
 
     expect(asked.some((one) => one.includes('comments'))).toBe(true)
   })
+})
+
+/** Writes down every address asked for, on top of whatever the case is already served by, and hands the
+ *  question on whole. Unlike `watch()` it leaves nothing for `afterEach` below to put back: the
+ *  history the next describe serves is put back by its own hook, and a copy of it written into
+ *  `unwrapped` would be served a second time by the case after. */
+function recording(): string[] {
+  const asked: string[] = []
+  const served = globalThis.fetch
+
+  vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
+    asked.push(String(input))
+    return served(input, init)
+  })
+
+  return asked
+}
+
+/** `WITH_ROWS`, once for a visitor and once for the member the signed-in half reads as. */
+const WITH_ROWS_WALK: [address: string, role: Role, who: string | null, heading: string, part: string | undefined][] =
+  WITH_ROWS.flatMap(([address, heading, part]) => [
+    [address, 'visitor', null, heading, part],
+    [address, 'competitor', ME, heading, part],
+  ])
+
+describe('what a browser downloads on the three screens that draw rows, with rows in them', () => {
+  /* The history in league seasons, because the table and the boards offer no season before 2027 and
+     the trophies count none (`test/leagueSeasons.ts`). Read as it is served on `DAY` all three are
+     drawn with no row in them, and every case above then asks its questions of an empty room: a
+     link put into a row of the trophies, or a read added to a row of a table, would never be met
+     (measured 17.10.2026: 0 cells on each of the three, and a link to `/sr/takmicar/000001` put into
+     the cell of a trophy passed this whole file, 88 of 88). */
+  playTheHistoryAsLeagueSeasons()
+
+  it('names only addresses the walk above has a row for', () => {
+    const paths = PUBLIC.map(([address]) => address.split('?')[0])
+
+    expect(WITH_ROWS.filter(([address]) => !paths.includes(address.split('?')[0]))).toEqual([])
+  })
+
+  it.each(WITH_ROWS_WALK)(
+    'asks for nothing of anybody else on %s, as %s, and offers no way up from a row',
+    async (address, role, who, heading, part) => {
+      const asked = recording()
+
+      renderAt(address, role, who, undefined, DAY)
+
+      const named = await screen.findByRole('heading', { level: 1, name: heading })
+
+      expect(named).toBeVisible()
+
+      /* The row, before anything else is asked: without one this case is the one above it. */
+      expect((await screen.findAllByRole('cell')).length, `${role} on ${address} draws no row`).toBeGreaterThan(0)
+
+      await quiet(asked)
+
+      expect(beginsWith(named), `${address} begins with its heading, met ${metSaid(named)}`).toBe(true)
+
+      noWayUp(address, role)
+      expectPart(part)
+      expect(asked.filter((one) => DENIED.some((name) => one.includes(name)))).toEqual([])
+    },
+    SLOW,
+  )
 })
 
 describe('the pattern a route is matched by', () => {
