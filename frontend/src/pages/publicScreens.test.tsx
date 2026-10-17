@@ -3336,4 +3336,27 @@ describe('the front page, in the season running now', () => {
     expect(screen.queryByText(/Vojislav Antonijević/)).not.toBeInTheDocument()
   }, SLOW)
 
+  /* **The Top 10 of the front page is filled with members who have not scored until 1.1.2027, and
+     from that day only with those who have** (owner, 17.10.2026, against the recommendation put to
+     him). The history moved into league seasons has nothing in 2027, so a page read on either of
+     these two days draws the same empty season, and the day alone is what tells them apart. */
+  describe.each([
+    ['2026-12-31', true],
+    ['2027-01-01', false],
+  ])('read on %s', (day, filled) => {
+    it.each(['Top 10 muškarci', 'Top 10 žene'])(
+      `${filled ? 'holds' : 'does not hold'} members who have not scored on the board "%s"`,
+      async (name) => {
+        renderAt('/sr', 'visitor', null, undefined, day)
+
+        const board = await screen.findByRole('region', { name }, { timeout: HALF })
+        const faces = within(board).queryAllByRole('link', { name: /^\d+\. / })
+
+        /* Both genders have joined members in the served list, so a filled board is never empty. */
+        expect(faces.length > 0).toBe(filled)
+        expect(faces).toHaveLength(filled ? 10 : 0)
+      },
+      SLOW,
+    )
+  })
 })

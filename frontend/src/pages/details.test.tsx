@@ -9,18 +9,10 @@ import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 
 describe('TeamDetail', () => {
-  it('says a team had nobody that season, which is not the same as never having anybody', async () => {
-    /* Nišavski maraton klub has five members today and none of them had joined
-       by 2014, a season the control offers because those same people were racing
-       then, under nobody's colours. The sentence has to tell those two silences
-       apart: a team nobody has ever joined, and a team that had nobody that
-       year. */
-    renderAt('/sr/tim/nisavski-maraton-klub?sezona=2014', 'visitor', null, undefined, '2026-06-01')
-
-    expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
-    expect(screen.getByText('Ovaj tim te sezone nije imao članova.')).toBeVisible()
-    expect(screen.queryByText('Ovaj tim još nema članova.')).not.toBeInTheDocument()
-  })
+  /* „Says a team had nobody that season, which is not the same as never having anybody" is held in
+     `teamAsASeasonView.test.tsx` since 17.10.2026. It was read here off the imported history in 2014,
+     a season the page of a team no longer offers, and a team whose members all joined before the
+     league's first season has somebody in it in every season the page can open on. */
 
   it('shows the team, its totals and its members with what each contributed', async () => {
     /* Vardarski krug in 2026: five in the team that season, four of whom raced.

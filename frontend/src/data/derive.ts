@@ -1,5 +1,5 @@
 import { categoryCodeFor } from './categories'
-import { FIRST_SEASON, seasonShown } from './season'
+import { boardsAreToppedUp, FIRST_SEASON, seasonShown } from './season'
 import { DOTS } from './types'
 import type {
   BtlEvent,
@@ -1119,12 +1119,21 @@ export type BoardSlot = {
  *
  * A member who is only holding a place is marked, so nothing downstream can show
  * them as having come fifth.
+ *
+ * **And the topping up ends on 1 January 2027** (owner, 17.10.2026, against the
+ * recommendation put to him): from that day the board holds only members with points,
+ * and a board nobody has scored on is empty, with no face on it. Until then P24 stands.
+ * What decides is the day the board is READ (`today`, `boardsAreToppedUp`) and never
+ * the date of a result, which is why this takes the day beside the season rather than
+ * working it out from the season: the two are different facts that share a value on
+ * some days.
  */
 export function boardOfTen(
   competitors: Competitor[],
   results: Result[],
   season: number,
   gender: Gender,
+  today: string,
 ): BoardSlot[] {
   const ranked = rankingFor(competitors, results, { season, gender }).slice(0, BOARD_PLACES)
   const taken = new Set(ranked.map((row) => row.competitor.memberNumber))
@@ -1133,6 +1142,10 @@ export function boardOfTen(
     points: row.points,
     ranked: true,
   }))
+
+  if (!boardsAreToppedUp(today)) {
+    return board
+  }
 
   const waiting = competitors
     .filter((competitor) => competitor.gender === gender && !taken.has(competitor.memberNumber))

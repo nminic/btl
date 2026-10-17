@@ -16,7 +16,7 @@ import {
   numbered,
   rankMembers,
   seasonOf,
-  seasonsWithResults,
+  seasonsOnOffer,
   totalsOf,
 } from '../data/derive'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
@@ -29,7 +29,7 @@ import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
 import { teamOf } from '../data/derive'
-import { inYearlyWindow } from '../data/season'
+import { inYearlyWindow, seasonShown } from '../data/season'
 import { readerAdministers, teamAdminOf } from '../data/teamAdmin'
 import { useSession } from '../session/useSession'
 import { DeleteRecord } from './admin/EntityEditor'
@@ -49,13 +49,26 @@ import { TeamQueue } from './TeamQueue'
  * The season is chosen once, beside the name, and it is the running one by
  * default with no "all of them" on offer: a team is a thing of one season, its
  * members change from year to year, and a standing summed over every season
- * would be a list of who has been around longest. */
+ * would be a list of who has been around longest.
+ *
+ * **And it is the same season view as the list of teams, since 17.10.2026**, when the
+ * owner answered that the page of a team „je sezonski prikaz kao spisak Timova: otvara
+ * tekuću sezonu (najmanje 2027) i ne nudi sezone pre 2027". That replaced his answer of
+ * 16.10.2026 that the counters on a team stay career figures, which was given on the
+ * mistaken premise that this page was a career view. The figures, the ring and the roster
+ * are therefore those of the season shown, and the season shown is read the way
+ * `pages/Teams.tsx` reads it: `seasonShown` for the default, `seasonsOnOffer` for the
+ * choice, so the control cannot offer a season the league did not run and an address
+ * naming one (`?sezona=2019`) is held against it (`offeredSeason`). */
 
 export function TeamDetail() {
   const { locale, t } = useI18n()
   const { slug } = useParams()
   const today = useToday()
-  const running = today.slice(0, 4)
+  /* The running season, and before the league has one its first (owner, 16.10.2026 and
+     17.10.2026, `seasonShown`): the calendar year read here until today opened this page
+     on 2026 in 2026, a season the league never ran. */
+  const running = String(seasonShown(today))
   const asked = useSeason(running)
   /* **THE MEMBER'S OWN HALF IS THE SERVER'S SINCE T5 (10.10.2026), AND NOTHING OF IT IS READ
      FROM THE SESSION HERE ANY MORE.** „Prijavi se u tim" and „Povuci prijavu" are drawn off
@@ -237,14 +250,15 @@ export function TeamDetail() {
            doneo"). `membersOf` is the one place the two are put together. */
         const everMembers = membersOf(team, listedMembers)
         const everNumbers = new Set(everMembers.map((one) => one.competitor.memberNumber))
-        /* The seasons this team has anything in, plus the running one, which is
-           the default and a control cannot open on an option it does not have.
+        /* The seasons of the league this team has anything in, plus the one shown, which is
+           the default and a control cannot open on an option it does not have. **None before
+           the first** (`seasonsOnOffer`): the imported history of this team's members stays
+           on their profiles and on the pages of the events, and is not a standing here.
            Worked out before the choice, because the choice is held against it. */
-        const seasons = [
-          ...new Set([Number(running), ...seasonsWithResults(numbered(results).filter(
-            (one) => everNumbers.has(one.memberNumber),
-          ))]),
-        ].sort((left, right) => right - left)
+        const seasons = seasonsOnOffer(
+          numbered(results).filter((one) => everNumbers.has(one.memberNumber)),
+          today,
+        )
         const season = offeredSeason(asked, seasons, running)
         /* The roster of the season being read, not of today: a page headed by
            a year has to be that year's team (PDL P13). */

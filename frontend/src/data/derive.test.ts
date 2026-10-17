@@ -1367,6 +1367,12 @@ describe('bestSingleRaces', () => {
 /* The board of the front page (PDL P14). The places that are won come first, and
  * the rest are held by members who have joined and not yet raced, so the widget
  * is never a row of empty rings in the first weeks of a season. */
+/* **Two kinds of day, and never one constant for both.** The day a board is READ decides whether
+ * it is topped up (owner, 17.10.2026); the date a result was run on decides which season it is
+ * in. A case that gave them the same value would be satisfied by a rule that asked either. */
+const THE_DAY_BEFORE = '2026-12-31'
+const THE_FIRST_DAY = '2027-01-01'
+
 describe('boardOfTen', () => {
   const twelve = Array.from({ length: 12 }, (_, index) =>
     competitor(String(index + 1).padStart(6, '0')),
@@ -1378,6 +1384,7 @@ describe('boardOfTen', () => {
       [result('000005', '2027-03-01', 20), result('000009', '2027-03-01', 40)],
       2027,
       'M',
+      THE_DAY_BEFORE,
     )
 
     expect(board.slice(0, 2)).toEqual([
@@ -1387,7 +1394,7 @@ describe('boardOfTen', () => {
   })
 
   it('fills the rest with those who joined earliest, and marks them as waiting', () => {
-    const board = boardOfTen(twelve, [result('000009', '2027-03-01', 40)], 2027, 'M')
+    const board = boardOfTen(twelve, [result('000009', '2027-03-01', 40)], 2027, 'M', THE_DAY_BEFORE)
 
     expect(board).toHaveLength(10)
     expect(first(board).competitor.memberNumber).toBe('000009')
@@ -1409,16 +1416,62 @@ describe('boardOfTen', () => {
   it('never goes past ten, however many have scored', () => {
     const results = twelve.map((one) => result(one.memberNumber, '2027-03-01', 5))
 
-    expect(boardOfTen(twelve, results, 2027, 'M')).toHaveLength(10)
-    expect(boardOfTen(twelve, results, 2027, 'M').every((slot) => slot.ranked)).toBe(true)
+    expect(boardOfTen(twelve, results, 2027, 'M', THE_DAY_BEFORE)).toHaveLength(10)
+    expect(boardOfTen(twelve, results, 2027, 'M', THE_DAY_BEFORE).every((slot) => slot.ranked)).toBe(true)
   })
 
   it('holds only the places of its own gender', () => {
     const mixed = [competitor('000001'), competitor('000002', { gender: 'F' })]
 
-    expect(boardOfTen(mixed, [], 2027, 'F').map((slot) => slot.competitor.memberNumber)).toEqual([
+    expect(boardOfTen(mixed, [], 2027, 'F', THE_DAY_BEFORE).map((slot) => slot.competitor.memberNumber)).toEqual([
       '000002',
     ])
+  })
+
+  /* **From 1 January 2027 the places nobody has won stay empty** (owner, 17.10.2026, against
+     the recommendation put to him). Until then P24 holds, and the cases above are read on its
+     last day. */
+  describe('from 1 January 2027', () => {
+    it('holds nobody on a board nobody has scored on, whoever has joined', () => {
+      expect(boardOfTen(twelve, [], 2027, 'M', THE_FIRST_DAY)).toEqual([])
+      expect(boardOfTen(twelve, [], 2028, 'M', '2028-06-01')).toEqual([])
+    })
+
+    it('holds only the two who have scored, and no member behind them', () => {
+      const board = boardOfTen(
+        twelve,
+        [result('000005', '2027-03-01', 20), result('000009', '2027-03-01', 40)],
+        2027,
+        'M',
+        THE_FIRST_DAY,
+      )
+
+      expect(board.map((slot) => slot.competitor.memberNumber)).toEqual(['000009', '000005'])
+      expect(board.every((slot) => slot.ranked)).toBe(true)
+    })
+
+    it('does not count a result of an earlier season as having scored', () => {
+      expect(boardOfTen(twelve, [result('000009', '2026-11-01', 40)], 2027, 'M', THE_FIRST_DAY)).toEqual([])
+    })
+  })
+
+  /* **The boundary is the day of reading and not the date of a result.** Read on the last day
+     of 2026 with the clock set back over a result of 2027, the board is still topped up behind
+     it; read on 1 January with a result of 2026 only, it is empty. */
+  it('keeps topping up on 31 December 2026 even when a result of 2027 exists', () => {
+    const board = boardOfTen(twelve, [result('000009', '2027-03-01', 40)], 2027, 'M', THE_DAY_BEFORE)
+
+    expect(board).toHaveLength(10)
+    expect(board.filter((slot) => !slot.ranked)).toHaveLength(9)
+  })
+
+  it('holds the places of 31 December 2026 for those who have joined, when nobody has scored', () => {
+    const board = boardOfTen(twelve, [], 2027, 'M', THE_DAY_BEFORE)
+
+    expect(board.map((slot) => slot.competitor.memberNumber)).toEqual(
+      twelve.slice(0, 10).map((one) => one.memberNumber),
+    )
+    expect(board.every((slot) => !slot.ranked)).toBe(true)
   })
 })
 
