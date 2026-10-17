@@ -147,12 +147,14 @@
      columns wide is not the same as two columns.
    *
      Here and not in `PlaceField.css`, and inside this query, because it is true
-     of a town standing on a ROW IN COLUMNS and of nothing else. Two other forms
-     draw a town (`admin-dogadjaj`, `unos-rezultata`) and in both it stands on no
-     row, where there are no thirds to be equal to and where the reason for the
-     fixed width still holds: the town is typed and the country is chosen from a
-     list, so the one that is typed is given the room. Left global, this would
-     have widened a control on two administrative screens nobody asked about.
+     of a town standing on a ROW IN COLUMNS and of nothing else. One other form
+     draws a town (`unos-rezultata`) and there it stands on no row, where there
+     are no thirds to be equal to and where the reason for the fixed width still
+     holds: the town is typed and the country is chosen from a list, so the one
+     that is typed is given the room. Left global, this would have widened a
+     control on an administrative screen nobody asked about. (The event form,
+     `admin-dogadjaj`, stood there too until 16.10.2026, when the owner put its
+     town on a row in thirds: „Mesto, država".)
    *
      AND THE GAP BETWEEN THE HALVES IS THE GAP BETWEEN THE COLUMNS, so that the
      two halves land ON the columns rather than merely beside each other.

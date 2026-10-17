@@ -1,5 +1,6 @@
 import { DatePicker } from '../../forms/DatePicker'
-import { useEffect, useRef } from 'react'
+import { AskedLabel } from '../../forms/AskedLabel'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateField'
 import { heldControl } from '../../forms/held'
 import { useI18n } from '../../i18n/useI18n'
@@ -10,6 +11,7 @@ import {
   BOUNDS,
   boundsOf,
   keptWhole,
+  measuresOf,
   newRaceRow,
   RACE_CELLS,
   sentenceFor,
@@ -283,23 +285,72 @@ export function EventRaces({
     return ids.length === 0 ? undefined : ids.join(' ')
   }
 
-  /** One measurement of one race, in its own cell. Labelled by row and column,
+  /**
+   * ONE FIELD OF ONE RACE: its name over its box, the way every field of a form on the portal stands
+   * (owner, 16.10.2026: the race is two lines of fields and not a row of a table that scrolls
+   * sideways).
+   *
+   * <p>The name is a label the eye reads (`AskedLabel`, with the star of a field that has to be
+   * answered and the word where it may be left empty, as everywhere else) and the box carries the
+   * longer name as well, with the race's place in it: „Dužina" is the same word in every race of
+   * the event, and a list of twenty of them is twenty controls nothing tells apart. The longer name
+   * begins with the visible one, which is what a name has to do to be the same name (WCAG 2.2
+   * SC 2.5.3).
+   */
+  const field = (
+    row: RaceRow,
+    at: number,
+    cell: RaceCell | 'kind',
+    asked: boolean | null,
+    box: (id: string) => ReactNode,
+  ) => {
+    const id = cell === 'date' ? `race-date-${String(at)}` : `race-${String(at)}-${cell}`
+    const words =
+      cell === 'kind'
+        ? t('event.raceKind')
+        : t(
+            cell === 'name'
+              ? 'admin.field.raceName'
+              : cell === 'date'
+                ? 'admin.field.raceDate'
+                : `admin.field.${cell}`,
+          )
+
+    return (
+      <div className="field" key={`${row.id === '' ? 'nova' : row.id}-${cell}`}>
+        {asked === null ? (
+          /* The kind always holds one of its three words, so it is neither asked for nor optional. */
+          <label className="field__label" htmlFor={id}>
+            {words}
+          </label>
+        ) : (
+          <AskedLabel id={id} asked={asked} className="field__label">
+            {words}
+          </AskedLabel>
+        )}
+        {box(id)}
+      </div>
+    )
+  }
+
+  /** One measurement of one race, in its own field. Labelled by row and column,
    *  because „Dužina" twenty times over is twenty controls a screen reader cannot
    *  tell apart. */
-  const measure = (row: RaceRow, at: number, field: keyof typeof BOUNDS) => {
+  const measure = (row: RaceRow, at: number, cell: keyof typeof BOUNDS) => {
     /* Whether the row has to give this measure, asked of the one home rather than
        handed in by the caller. Handed in, the caller wrote `false` for the climb and
        the fall and named the other two by hand, which is three places to keep in
        step with one answer. */
-    const asked = asksFor(row, field)
+    const asked = asksFor(row, cell)
     /* This cell and not „the first thing wrong in the row": a climb of minus five
        hundred is as wrong as the fall of minus nine hundred beside it, and a cell
        that says it is fine sends a reader looking somewhere else
        (WCAG 2.2 SC 3.3.1). */
-    const wrong = why(row, field) !== undefined
+    const wrong = why(row, cell) !== undefined
 
-    return (
+    return field(row, at, cell, asked, (id) => (
       <input
+        id={id}
         className={heldControl(locked)}
         /* Held, not switched off, like every control that cannot act (`locked` above). */
         aria-disabled={locked ? true : undefined}
@@ -308,7 +359,7 @@ export function EventRaces({
            A number box in a Serbian browser refuses the comma Serbian writes a decimal
            with and reports it as empty, so „21,1" typed into the length of a race read
            as no length at all; the owner decided that day „Polje za broj prima i zarez i
-           tacku, a portal salje tacku", and this table is where an administrator types a
+           tacku, a portal salje tacku", and this is where an administrator types a
            length. What the cell takes is read by `raceRows.ts` (`read`), and what leaves
            it by `storedRow`. The climb and the fall are kept whole by the server, so they
            are offered digits alone (`keptWhole`).
@@ -319,20 +370,19 @@ export function EventRaces({
            claim with nobody to hear it. The bounds are what the save holds the cell to
            (`isBounded`, `isWrong`), and a cell outside them is marked when it is refused. */
         type="text"
-        inputMode={keptWhole(field) ? 'numeric' : 'decimal'}
-        value={row[field]}
+        inputMode={keptWhole(cell) ? 'numeric' : 'decimal'}
+        value={row[cell]}
         /* Named by its row as well as its column. „Dužina" twenty times over is
-           twenty controls a screen reader cannot tell apart, and the table has no
-           row heading to read it with. */
-        aria-label={cellName(field, at)}
+           twenty controls a screen reader cannot tell apart. */
+        aria-label={cellName(cell, at)}
         aria-required={asked}
         aria-invalid={wrong}
-        /* Described by the sentence under the table that is about THIS cell, and only while it is
+        /* Described by the sentence under the races that is about THIS cell, and only while it is
            marked: a description on a cell that is fine would be read out beside nothing wrong. */
-        aria-describedby={wrong ? problemId(at, field) : undefined}
-        onChange={(event) => change(at, { [field]: event.target.value })}
+        aria-describedby={wrong ? problemId(at, cell) : undefined}
+        onChange={(event) => change(at, { [cell]: event.target.value })}
       />
-    )
+    ))
   }
 
   /**
@@ -389,167 +439,129 @@ export function EventRaces({
         {t('admin.racesOf', { event: eventName })}
       </h2>
 
-
       {rows.length === 0 ? (
-        /* Said rather than left as an empty table. An event with no races yet is
+        /* Said rather than left as an empty list. An event with no races yet is
            the ordinary state of one entered a fortnight before its distances are
            known (reportResult.test), not a fault. */
         <p className="profile__empty">{t('admin.noRaces')}</p>
       ) : (
-        <div className="table-scroll">
-          <table className="table">
-            <caption className="visually-hidden">
-              {t('admin.racesOf', { event: eventName })}
-            </caption>
-            <thead>
-              <tr>
-                {/* The name first, because it is what the row is read by (owner,
-                    23.08.2026: „u okviru događaja editabilno polje Trka treba da
-                    bude u prvoj koloni").
+        /* EACH RACE IS TWO LINES OF FIELDS (owner, 16.10.2026, PDL „Ispravke sa ekrana
+           16.10.2026"): „sve ovo za novu trku je užasno. U prvom redu mora da se vidi Trka, Datum,
+           Vrsta, a onda u drugom redu: Ako je obeleženo Dužinska ili Slobodna, onda Dužina, Uspon,
+           Spust". A race that runs to a clock draws one field on the second line, how long it
+           lasts, which is what the owner chose between the outcomes he was offered.
 
-                    The category used to stand beside it and was taken back out the
-                    same day: „U dodavanju trka na događaju (administriranje) ne
-                    treba da postoji Kategorija kolona ipak." It was read off the
-                    length and never asked for, so nothing is lost that the length
-                    beside it does not already say, and the room it took is what the
-                    button at the end of the row was missing. */}
-                <th scope="col">{t('admin.field.raceName')}</th>
-                {/* The day, because an event may run over more than one (owner,
-                    10.08.2026). */}
-                <th scope="col">{t('admin.field.raceDate')}</th>
-                {/* Which of the three kinds the race is, and how long a timed one
-                    lasts. Two columns and not one: the length and the limit are two
-                    different questions in two different units, and a single cell
-                    that changed unit under the reader would carry a number typed as
-                    kilometres into a race measured in hours.
+           It was a table until then, with seven columns that scrolled sideways inside their box on
+           every width below the widest (owner, 23.08.2026, chose that of three outcomes). It is a
+           group of fields now because the second line is different for each kind, and a table has
+           one set of columns for all its rows.
 
-                    Neither is hidden on a phone. Nothing else in this table is, and
-                    hiding these two would leave an administrator on a 360 pixel
-                    screen unable to make a timed race at all, and unable to see the
-                    cell a refused save marks. The table grows wider than its box and
-                    scrolls inside it, which is the shape the owner chose on
-                    23.08.2026 for exactly this table. */}
-                <th scope="col" className="races__kind">
-                  {t('event.raceKind')}
-                </th>
-                <th scope="col" className="races__measure">
-                  {t('event.distance')}
-                </th>
-                <th scope="col" className="races__measure">
-                  {t('event.raceLimit')}
-                </th>
-                <th scope="col" className="races__measure">
-                  {t('event.ascent')}
-                </th>
-                <th scope="col" className="races__measure">
-                  {t('event.descent')}
-                </th>
-                <th scope="col">{t('admin.form.record')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, at) => (
-                <tr key={row.id === '' ? `nova-${String(at)}` : row.id}>
-                  <td>
-                    <input
-                      className={heldControl(locked)}
-                      aria-disabled={locked ? true : undefined}
-                      readOnly={locked ? true : undefined}
-                      type="text"
-                      value={row.name}
-                      /* Named by its row as well as its column, like every other
-                         control of this table. */
-                      aria-label={cellName('name', at)}
-                      aria-required="true"
-                      aria-invalid={why(row, 'name') !== undefined}
-                      aria-describedby={nameDescribedBy(row, at)}
-                      /* The column's own explanation, said again for every box in
-                         it: a heading is not read out with the control on every
-                         reader, and a hint nobody is pointed at is a hint nobody
-                         hears. */
-                      /* Changed by hand, so this race stops following its event:
-                         renaming the event afterwards leaves it alone
-                         (owner, 23.08.2026). */
-                      onChange={(event) => change(at, { name: event.target.value, renamed: true })}
-                    />
-                  </td>
-                  <td>
-                    <DatePicker
-                      id={`race-date-${String(at)}`}
-                      name={`race-date-${String(at)}`}
-                      value={row.date}
-                      label={cellName('date', at)}
-                      required
-                      locked={locked}
-                      invalid={why(row, 'date') !== undefined}
-                      describedBy={
-                        why(row, 'date') === undefined ? undefined : problemId(at, 'date')
-                      }
-                      onChange={(next) => change(at, { date: next })}
-                    />
-                  </td>
-                  <td className="races__kind">
-                    <select
-                      className={heldControl(locked)}
-                      aria-disabled={locked ? true : undefined}
-                      value={row.kind}
-                      /* Named by its row as well as its column, like every other
-                         control in this table: „Vrsta" twenty times over is twenty
-                         controls a screen reader cannot tell apart. */
-                      aria-label={`${t('event.raceKind')}, ${t('admin.form.raceNumber', {
-                        which: String(at + 1),
-                      })}`}
-                      /* Read through the one function that knows the three words,
-                         like every other reader of a kind (`data/raceKind.ts`): a
-                         select can only offer what is drawn above, but nothing in
-                         the type of a change event says so. */
-                      onChange={(event) => change(at, { kind: raceKind(event.target.value) })}
-                    >
-                      {RACE_KINDS.map((one) => (
-                        <option key={one} value={one}>
-                          {t(`race.kind.${one}`)}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="races__measure">
-                    {/* And nothing about the row above it. Two races of one length
-                        on one morning were refused until 23.08.2026; the owner said
-                        that day that a course can genuinely be run twice over the
-                        same distance and the same climb, rarely but really, and
-                        that the portal must not forbid it. */}
-                    {measure(row, at, 'distanceKm')}
-                  </td>
-                  <td className="races__measure">
-                    {measure(row, at, 'limitHours')}
-                  </td>
-                  <td className="races__measure">{measure(row, at, 'ascentM')}</td>
-                  <td className="races__measure">{measure(row, at, 'descentM')}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className="entity-open entity-delete"
-                      aria-label={t('admin.form.removeRow', {
-                        which: String(at + 1),
-                      })}
-                      /* Told off while the save is out, and refused in the handler as well:
-                         `aria-disabled` stops nothing by itself (`locked` above). */
-                      aria-disabled={locked ? true : undefined}
-                      onClick={() => {
-                        if (locked) {
-                          return
-                        }
+           A `fieldset` and its `legend` per race, which is the one construct a screen reader says
+           before every field inside it: „1. trka" is read before „Dužina", so twenty races are not
+           twenty unnamed groups. The lines are thirds, the way the form above and the registration
+           are (owner, 12.08.2026: „Podeli je racionalno na trećine horizontalno"), and on a phone
+           and a tablet every field stands on a line of its own, as everywhere else on the portal. */
+        <div className="races">
+          {rows.map((row, at) => (
+            <fieldset className="race" key={row.id === '' ? `nova-${String(at)}` : row.id}>
+              <legend className="race__legend">
+                {t('admin.form.raceNumber', { which: String(at + 1) })}
+              </legend>
 
-                        onRows(rows.filter((_, index) => index !== at))
-                      }}
-                    >
-                      {t('admin.form.delete')}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              <div className="race__row">
+                {field(row, at, 'name', true, (id) => (
+                  <input
+                    id={id}
+                    className={heldControl(locked)}
+                    aria-disabled={locked ? true : undefined}
+                    readOnly={locked ? true : undefined}
+                    type="text"
+                    value={row.name}
+                    /* Named by its row as well as its column, like every other
+                       control of the race. */
+                    aria-label={cellName('name', at)}
+                    aria-required="true"
+                    aria-invalid={why(row, 'name') !== undefined}
+                    aria-describedby={nameDescribedBy(row, at)}
+                    /* Changed by hand, so this race stops following its event:
+                       renaming the event afterwards leaves it alone
+                       (owner, 23.08.2026). */
+                    onChange={(event) => change(at, { name: event.target.value, renamed: true })}
+                  />
+                ))}
+                {field(row, at, 'date', true, (id) => (
+                  <DatePicker
+                    id={id}
+                    name={`race-date-${String(at)}`}
+                    value={row.date}
+                    label={cellName('date', at)}
+                    required
+                    locked={locked}
+                    invalid={why(row, 'date') !== undefined}
+                    describedBy={why(row, 'date') === undefined ? undefined : problemId(at, 'date')}
+                    onChange={(next) => change(at, { date: next })}
+                  />
+                ))}
+                {field(row, at, 'kind', null, (id) => (
+                  <select
+                    id={id}
+                    className={heldControl(locked)}
+                    aria-disabled={locked ? true : undefined}
+                    value={row.kind}
+                    /* Named by its row as well as its column, like every other
+                       control of the race: „Vrsta" twenty times over is twenty
+                       controls a screen reader cannot tell apart. */
+                    aria-label={`${t('event.raceKind')}, ${t('admin.form.raceNumber', {
+                      which: String(at + 1),
+                    })}`}
+                    /* Read through the one function that knows the three words,
+                       like every other reader of a kind (`data/raceKind.ts`): a
+                       select can only offer what is drawn above, but nothing in
+                       the type of a change event says so. */
+                    onChange={(event) => change(at, { kind: raceKind(event.target.value) })}
+                  >
+                    {RACE_KINDS.map((one) => (
+                      <option key={one} value={one}>
+                        {t(`race.kind.${one}`)}
+                      </option>
+                    ))}
+                  </select>
+                ))}
+              </div>
+
+              {/* The second line is read off the kind (`measuresOf`), which is also what the
+                  press asks, so a measure that is not on this line is neither marked nor
+                  written. Nothing about the race above it: two races of one length on one
+                  morning were refused until 23.08.2026; the owner said that day that a course
+                  can genuinely be run twice over the same distance and the same climb, rarely
+                  but really, and that the portal must not forbid it. */}
+              <div className="race__row">
+                {measuresOf(row).map((cell) => measure(row, at, cell))}
+              </div>
+
+              <div className="race__actions">
+                <button
+                  type="button"
+                  className="entity-open entity-delete"
+                  aria-label={t('admin.form.removeRow', {
+                    which: String(at + 1),
+                  })}
+                  /* Told off while the save is out, and refused in the handler as well:
+                     `aria-disabled` stops nothing by itself (`locked` above). */
+                  aria-disabled={locked ? true : undefined}
+                  onClick={() => {
+                    if (locked) {
+                      return
+                    }
+
+                    onRows(rows.filter((_, index) => index !== at))
+                  }}
+                >
+                  {t('admin.form.delete')}
+                </button>
+              </div>
+            </fieldset>
+          ))}
         </div>
       )}
 
