@@ -123,7 +123,9 @@ describe('an event saved with no races, before the results are here', () => {
         await user.click(button)
       }
 
-      expect(screen.queryByRole('table', { name: /^Trke na događaju/ })).toBeNull()
+      /* No race is left to count: the section stays and says there are none, where the table it
+         was drew nothing at all. */
+      expect(screen.queryAllByRole('group', { name: /^\d+\. trka$/ })).toHaveLength(0)
 
       await user.selectOptions(screen.getByLabelText(/^Vrsta događaja/), 'gathering')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
@@ -176,7 +178,7 @@ describe('an event saved with no races, before the results are here', () => {
 
       /* Still a race, and still a table: this is the case the old shape missed. */
       expect(screen.getByLabelText(/^Vrsta događaja/)).toHaveValue('race')
-      expect(screen.getByRole('table', { name: /^Trke na događaju/ })).toBeVisible()
+      expect(screen.getByRole('region', { name: /^Trke na događaju/ })).toBeVisible()
 
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
@@ -265,7 +267,7 @@ describe('an event saved with no races, before the results are here', () => {
       const form = within(await screen.findByRole('form', { name: /^Izmena događaja/ }))
 
       expect(form.getByLabelText(/^Vrsta događaja/)).toHaveValue('gathering')
-      expect(screen.queryByRole('table', { name: /^Trke na događaju/ })).toBeNull()
+      expect(screen.queryByRole('region', { name: /^Trke na događaju/ })).toBeNull()
 
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 

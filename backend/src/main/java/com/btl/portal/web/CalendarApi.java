@@ -62,10 +62,49 @@ class CalendarApi {
 	/**
 	 * @param renamed whether the name was changed after the event was created,
 	 *                which is what stops an import matching on it
+	 * @param dots    the lengths the calendar draws for this race, worked out by
+	 *                {@link #DOTS} and by nothing on the screen
 	 */
 	record Race(long id, long eventId, String name, boolean renamed, LocalDate date, String kind,
-			int limitSeconds, BigDecimal distanceKm, int ascentM, int descentM, String category) {
+			int limitSeconds, BigDecimal distanceKm, int ascentM, int descentM, String category,
+			List<String> dots) {
 	}
+
+	/**
+	 * THE DOTS A RACE CARRIES IN THE CALENDAR, and the one place that decides them.
+	 *
+	 * <p><b>A race over a length</b> carries the dot of its own length, which is
+	 * {@code race.category}, generated off {@code race.distance_km}. What its results say
+	 * is not read: on such a race the length is the race's and not the runner's.
+	 *
+	 * <p><b>A free race</b> carries the sixth dot, the one without a set length (PDL,
+	 * 30.08.2026, chosen by the owner among three outcomes offered, with his words „Jedna nova
+	 * boja i njeno ime u legendi"). Its results are not read either; the decision below is
+	 * about a timed race and nothing else.
+	 *
+	 * <p><b>A timed race is an ultra until its results say otherwise</b> (PDL, „Ispravke sa
+	 * ekrana 16.10.2026", owner in his own words): „vodi se da je ultramaraton po defaultu
+	 * jer nema ograničenja, ali čim počnu da pristižu rezultati, oni diktiraju koje će tačke
+	 * ostati u sistemu." And, chosen the same day among the outcomes offered: once results
+	 * arrive, the dots are exactly the lengths those results carry, so the ultra goes away
+	 * where none of them is an ultra. Its own {@code category} cannot answer this: the race
+	 * fixes no length, carries nought, and the column says „short".
+	 *
+	 * <p><b>A result is a row of {@code result}</b>, which only an approval writes
+	 * ({@code VerificationWriteApi}); a submission still waiting is in
+	 * {@code result_submission} and is not read. Each result brings its own generated
+	 * {@code category}, off the kilometres that runner covered, so this rule decides which
+	 * dots are drawn and never what length a result is.
+	 *
+	 * <p><b>Only the calendar reads this.</b> {@code category} stays what it is for every
+	 * other reader, and the rankings, the awards and the profile read the category of the
+	 * result, not of the race.
+	 */
+	private static final String DOTS = "case r.kind"
+			+ " when 'length' then array[r.category]"
+			+ " when 'free' then array['unmeasured']"
+			+ " when 'time' then coalesce(ran.lengths, array['ultra'])"
+			+ " end";
 
 	@GetMapping("/api/events")
 	List<Event> events() {
@@ -88,12 +127,19 @@ class CalendarApi {
 	@GetMapping("/api/races")
 	List<Race> races() {
 		return db.sql("select r.id, r.event_id, r.name, r.renamed, r.date, r.kind,"
-						+ " r.limit_seconds, r.distance_km, r.ascent_m, r.descent_m, r.category"
-						+ " from race r order by r.date, r.id")
+						+ " r.limit_seconds, r.distance_km, r.ascent_m, r.descent_m, r.category,"
+						+ " " + DOTS + " as dots"
+						+ " from race r"
+						/* The lengths run at each race, joined by the race and never by its
+						   event: two timed races of one event are two answers. */
+						+ " left join (select res.race_id,"
+						+ " array_agg(distinct res.category order by res.category) as lengths"
+						+ " from result res group by res.race_id) ran on ran.race_id = r.id"
+						+ " order by r.date, r.id")
 				.query((row, one) -> new Race(row.getLong(1), row.getLong(2), row.getString(3),
 						row.getBoolean(4), row.getDate(5).toLocalDate(), row.getString(6),
 						row.getInt(7), row.getBigDecimal(8), row.getInt(9), row.getInt(10),
-						row.getString(11)))
+						row.getString(11), List.of((String[]) row.getArray(12).getArray())))
 				.list();
 	}
 }

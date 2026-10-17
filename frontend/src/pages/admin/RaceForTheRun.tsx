@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useToday } from '../../clock/useClock'
 import { raceKind } from '../../data/raceKind'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
-import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { AskedLabel } from '../../forms/AskedLabel'
 import { dogadjaj, unosRezultata } from '../../forms/definitions'
 import { limitOf, optionsFor } from '../../forms/records'
 import { Suggesting } from '../../forms/Suggesting'
@@ -86,8 +86,6 @@ export function RaceForTheRun({
   return (
     <div className="review__reason" role="group" aria-label={t('review.placeTitle')}>
       <p className="profile__empty">{t('review.placeNote')}</p>
-
-      <RequiredNote />
 
       {RACE_NAME.map((field) => (
         <div className="rankings__field" key={field.name}>

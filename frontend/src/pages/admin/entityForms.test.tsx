@@ -633,8 +633,10 @@ describe('the category of a race', () => {
     await user.click(screen.getByRole('button', { name: t('admin.form.new.races') }))
 
     const rows = () =>
-      within(screen.getByRole('table', { name: /^Trke na doga\u0111aju/ })).getAllByRole('row')
-    const last = () => within(must(rows()[rows().length - 1], 'the row just opened'))
+      within(screen.getByRole('region', { name: /^Trke na doga\u0111aju/ })).getAllByRole('group', {
+        name: /^\d+\. trka$/,
+      })
+    const last = () => within(must(rows()[rows().length - 1], 'the race just opened'))
 
     /* Nothing chooses it and nothing asks which event this is: the screen it is
        entered on already answers that. */

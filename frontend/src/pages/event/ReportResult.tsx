@@ -2,9 +2,7 @@ import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import type { RaceKind } from '../../data/types'
 import { useFilterParams } from '../../app/useFilterParams'
-import { raceLabel } from '../../data/raceLabel'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { noTime } from '../../forms/clock'
@@ -42,18 +40,6 @@ import '../member/Member.css'
  * in the terms rather than argued case by case, and a moderator corrects them on
  * the race rather than on one member's entry.
  */
-/* One sentence per kind, because the sentence says what the portal already knows
-   and that is a different thing on each of the three. A record and not a branch, so
-   a kind added to `RACE_KINDS` and forgotten here does not compile. What holds the
-   three keys to the dictionary is `i18n/said.test.ts`, which sweeps every key the
-   portal asks for; `keys.test.ts` walks lists written into it by hand and knows
-   nothing of these. */
-const NOTE = {
-  length: 'report.note',
-  time: 'report.noteTime',
-  free: 'report.noteFree',
-} as const satisfies Record<RaceKind, string>
-
 export function ReportResult() {
   const { locale, t } = useI18n()
   const { slug } = useParams()
@@ -257,53 +243,12 @@ export function ReportResult() {
             <>
               <FormRenderer
                 form={reportForm(kind)}
-                /* Above the fields and under the heading, so the heading is the
-                   first thing on the page. Drawn before the form, this note stood
-                   ahead of it and the page began without a heading at all (owner,
-                   01.09.2026; the third screen of the same shape, found in review
-                   04.09.2026 after the first two were closed). */
-                above={
-                  <p className="member__note">
-                    {/* The race said the way every screen on the portal says one: its
-                        name, when it was run, and its measure in brackets
-                        (`data/raceLabel.ts`). It is the same sentence the chooser used
-                        to write into its own list, which is why the helper stays after
-                        the chooser has gone.
-
-                        **And the race alone.** Owner, 29.08.2026, asked which of three
-                        forms this sentence should take and answered „Nikad događaj,
-                        uvek trka." One form everywhere, whether the two names differ or
-                        not, and no second form for the case where they do.
-
-                        Why it needed asking: a race's name starts out as its event's,
-                        and 886 of the 1163 events that hold any race at all hold exactly
-                        one, so on 885 of them the sentence said the same name twice over
-                        (Mrazijada is the one race in the file somebody renamed).
-
-                        What that cost, measured in Chrome on 360 by 780 over every one
-                        of the 1612 races rather than over the worst of them: the old
-                        sentence ran to four lines on 724 and to five on two, and the new
-                        one never passes three. So 763 races get a line back and 849 get
-                        nothing, which is the honest shape of the gain. An earlier
-                        version of this note gave the five-line reading as though it were
-                        the ordinary case; it is two races out of 1612.
-
-                        What it costs, in his words as he took it: where a race is named
-                        differently from its event, the member no longer sees from this
-                        sentence which event it belongs to. He sees it on the page he
-                        came from, which is the event's own. */}
-                    {t(NOTE[kind], {
-                      /* Among **all** the races of the event and not only the run
-                         ones, because that is what the table on the event says
-                         (EventDetail.tsx) and a race must not change its name between
-                         the row somebody pressed and the form it opened. Measured on
-                         23.08.2026: the row read „42,2 km, 14. 3. 2022." and the form
-                         said „42,2 km", which is two names for one race in two steps
-                         of one flow. */
-                      race: raceLabel(race, here, locale),
-                    })}
-                  </p>
-                }
+                /* NOTHING ABOVE THE FIELDS since 16.10.2026. The sentence that stood here told
+                   the member which race this was and what the portal already knew about it;
+                   the owner took it off the page: „Ceo disclaimer sa vrha strane obriši". What
+                   the portal asks for is now said by the rows themselves (`reportForm.ts`): the
+                   length, the climb and the fall in one, the hours, minutes and seconds in
+                   another, and on each kind the row it does not ask for is not drawn. */
                 /* The third road a time reaches a submission by, and the one that
                    was left out when the rule was written: a race run in no time is
                    not a result (owner, 31.08.2026), and no single box can refuse

@@ -215,8 +215,8 @@ function renderMembershipOn(today: string, memberNumber = '000032', probe: React
    take. A case rewritten to the new screen would be the new file's case written twice.
 
    What did NOT go with them is the rule they were holding - the owner's of 12.08.2026,
-   that every field on every form carries a star, `aria-required` and the line saying
-   what the star means. It is held over both new fields, in that file, and the smallest
+   that every field on every form carries a star and `aria-required` (the line saying
+   what the star means went on 16.10.2026). It is held over both new fields, in that file, and the smallest
    form on the portal is still where it is worth holding. */
 
 describe('a member looking at their own profile', () => {
@@ -2043,8 +2043,8 @@ describe('a result from entry to decision', () => {
     await user.type(screen.getByLabelText(/Uspon/), '540')
     await user.type(screen.getByLabelText(/Spust/), '540')
     await user.type(screen.getByLabelText('Sati'), '1')
-    await user.type(screen.getByLabelText('Minuta'), '52')
-    await user.type(screen.getByLabelText('Sekundi'), '10')
+    await user.type(screen.getByLabelText('Minuti'), '52')
+    await user.type(screen.getByLabelText('Sekunde'), '10')
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/rezultati')
     /* Something said about the race, because it is one of the two optional fields
        the two doors of reporting share (PDL P9) and it has to survive the whole
@@ -2135,8 +2135,8 @@ describe('a result from entry to decision', () => {
     await user.type(screen.getByLabelText(/Uspon/), '0')
     await user.type(screen.getByLabelText(/Spust/), '0')
     await user.type(screen.getByLabelText('Sati'), '0')
-    await user.type(screen.getByLabelText('Minuta'), '44')
-    await user.type(screen.getByLabelText('Sekundi'), '2')
+    await user.type(screen.getByLabelText('Minuti'), '44')
+    await user.type(screen.getByLabelText('Sekunde'), '2')
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
     await user.type(screen.getByLabelText(/Komentar/), 'Sat mi je stao na petom kilometru.')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
@@ -2174,8 +2174,8 @@ describe('a result from entry to decision', () => {
     await user.type(screen.getByLabelText(/Uspon/), '0')
     await user.type(screen.getByLabelText(/Spust/), '0')
     await user.type(screen.getByLabelText('Sati'), '1')
-    await user.type(screen.getByLabelText('Minuta'), '52')
-    await user.type(screen.getByLabelText('Sekundi'), '10')
+    await user.type(screen.getByLabelText('Minuti'), '52')
+    await user.type(screen.getByLabelText('Sekunde'), '10')
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
@@ -2199,8 +2199,8 @@ describe('a result from entry to decision', () => {
     await user.type(screen.getByLabelText(/Uspon/), '0')
     await user.type(screen.getByLabelText(/Spust/), '0')
     await user.type(screen.getByLabelText('Sati'), '0')
-    await user.type(screen.getByLabelText('Minuta'), '0')
-    await user.type(screen.getByLabelText('Sekundi'), '0')
+    await user.type(screen.getByLabelText('Minuti'), '0')
+    await user.type(screen.getByLabelText('Sekunde'), '0')
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
@@ -2223,7 +2223,7 @@ describe('a result from entry to decision', () => {
     expect(screen.queryByRole('heading', { name: 'Rezultat je poslat' })).toBeNull()
 
     /* And one of the three above nought is enough to send it. */
-    await user.type(screen.getByLabelText('Minuta'), '45')
+    await user.type(screen.getByLabelText('Minuti'), '45')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
     expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
   }, SEVERAL_SCREENS)
@@ -2279,8 +2279,8 @@ describe('a result from entry to decision', () => {
       await user.type(screen.getByLabelText(/Uspon/), '0')
       await user.type(screen.getByLabelText(/Spust/), '0')
       await user.type(screen.getByLabelText('Sati'), '0')
-      await user.type(screen.getByLabelText('Minuta'), '44')
-      await user.type(screen.getByLabelText('Sekundi'), '2')
+      await user.type(screen.getByLabelText('Minuti'), '44')
+      await user.type(screen.getByLabelText('Sekunde'), '2')
       await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/druga')
       await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
       await screen.findByRole('heading', { name: 'Rezultat je poslat' })

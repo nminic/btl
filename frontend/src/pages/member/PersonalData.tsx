@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { categoryCodeFor, categoryLabel } from '../../data/categories'
-import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { AskedLabel } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 import type { MyData } from '../../session/theServer'
 import { askTheServer, type Answer } from '../account/askTheServer'
@@ -124,8 +124,6 @@ export function PersonalData({ me }: { me: MyData }) {
           {t('account.personalTitle')}
         </h2>
         <p className="member__note">{t('account.personalNote')}</p>
-
-        <RequiredNote />
 
         <form
           className="member__form"

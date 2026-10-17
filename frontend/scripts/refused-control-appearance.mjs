@@ -305,7 +305,6 @@ const LOCKED_DATE = `
       <p class="member__note">Unesi rezultat</p>
       <form class="form" aria-labelledby="form-name" novalidate>
         <h1 class="form__title" id="form-name">Unos rezultata</h1>
-        <p class="form__legend">Polja sa zvezdicom su obavezna</p>
         <div class="field">
           <span class="field__head">
             <label class="field__label" for="date-held" id="date-held-label">Datum</label>

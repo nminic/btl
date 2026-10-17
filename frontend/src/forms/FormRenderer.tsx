@@ -11,7 +11,7 @@ import {
 } from 'react'
 import { useTodayDate } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
-import { RequiredMark, RequiredNote } from './AskedLabel'
+import { RequiredMark } from './AskedLabel'
 import { FieldHint } from './FieldHint'
 import { heldControl } from './held'
 /* `plainWords` went with the summary of errors on 28.09.2026: it was here to write a
@@ -1427,14 +1427,6 @@ export function FormRenderer({
       )}
 
       {above}
-
-      {/* What the star beside a name means, said once over the form rather than
-          spelled out on every field (owner, 12.08.2026). Only where there is a
-          star to explain: a form of nothing but optional fields would be
-          explaining a mark it never draws. Every form the portal has draws at
-          least one, the registration included, where „Svojim rečima" is the one
-          field that may be left empty. */}
-      {visible.some((one) => one.required === true) && <RequiredNote />}
 
       {/* WHAT WAS REFUSED OVER THE WHOLE FORM, AND NOTHING THAT BELONGS TO A FIELD.
        *

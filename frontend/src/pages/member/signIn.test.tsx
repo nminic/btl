@@ -205,7 +205,7 @@ describe('what the form sends', () => {
       ).not.toBeNull()
     }
 
-    expect(screen.getByText('Polja sa zvezdicom su obavezna.')).toBeVisible()
+    expect(screen.queryByText('Polja sa zvezdicom su obavezna.')).not.toBeInTheDocument()
   })
 
   it('takes the password in a box that hides it and offers the saved one', async () => {

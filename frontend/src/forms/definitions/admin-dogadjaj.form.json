@@ -2,26 +2,15 @@
   "id": "admin-dogadjaj",
   "titleKey": "admin.form.new.events",
   "submitKey": "form.submit",
+  "columns": 3,
   "fields": [
     {
       "name": "name",
       "type": "text",
       "labelKey": "admin.field.eventName",
       "required": true,
-      "maxLength": 120
-    },
-    {
-      "name": "date",
-      "type": "date",
-      "labelKey": "admin.field.date",
-      "required": true
-    },
-    {
-      "name": "city",
-      "type": "place",
-      "labelKey": "admin.field.city",
-      "required": true,
-      "maxLength": 80
+      "maxLength": 120,
+      "row": 1
     },
     {
       "name": "kind",
@@ -41,7 +30,15 @@
           "value": "gathering",
           "labelKey": "event.kind.gathering"
         }
-      ]
+      ],
+      "row": 1
+    },
+    {
+      "name": "date",
+      "type": "date",
+      "labelKey": "admin.field.date",
+      "required": true,
+      "row": 2
     },
     {
       "name": "featured",
@@ -57,7 +54,16 @@
           "value": "yes",
           "labelKey": "form.yes"
         }
-      ]
+      ],
+      "row": 2
+    },
+    {
+      "name": "city",
+      "type": "place",
+      "labelKey": "admin.field.city",
+      "required": true,
+      "maxLength": 80,
+      "row": 3
     },
     {
       "name": "description",

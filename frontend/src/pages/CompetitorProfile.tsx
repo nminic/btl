@@ -326,16 +326,21 @@ function ProfileBody({
                       the race (owner, 23.08.2026), and a heading that says otherwise
                       is read out with every cell under it. */}
                   <th scope="col">{t('profile.columns.race')}</th>
-                  {/* The length has no column of its own any more (owner,
+                  {/* The group a run falls in has no column of its own (owner,
                       31.07.2026). It is the colour of the dot beside the
-                      distance, and the distance already says which length it is:
-                      21,10 is a half marathon whatever colour it wears. */}
-                  <th scope="col">{t('profile.columns.distance')}</th>
+                      figure, and the figure already says which one it is: 21,10
+                      is a half marathon whatever colour it wears.
+
+                      Named in full since 16.10.2026: „SAMO TREBA PREIMENOVATI
+                      POSTOJEĆE D + i - na profilu", so the three columns that
+                      stood as „d (km)", „+ (m)" and „− (m)" read Dužina (km),
+                      Uspon (m) and Spust (m). None is added. */}
+                  <th scope="col">{t('profile.columns.length')}</th>
                   <th scope="col" className="table__hide-phone">
-                    {t('rankings.columns.ascent')}
+                    {t('profile.columns.ascent')}
                   </th>
                   <th scope="col" className="table__hide-phone">
-                    {t('rankings.columns.descent')}
+                    {t('profile.columns.descent')}
                   </th>
                   <th scope="col" className="table__hide-phone">
                     {t('profile.columns.time')}

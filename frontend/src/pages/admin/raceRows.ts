@@ -139,6 +139,30 @@ export const BOUNDS: Record<(typeof MEASURES)[number], { least: number; most: nu
 }
 
 /**
+ * WHICH MEASURES THE TABLE DRAWS FOR A RACE OF THIS KIND, in the order they stand on the second line
+ * of the race (owner, 16.10.2026, PDL „Ispravke sa ekrana 16.10.2026": „u prvom redu mora da se vidi
+ * Trka, Datum, Vrsta, a onda u drugom redu: Ako je obeleženo Dužinska ili Slobodna, onda Dužina,
+ * Uspon, Spust").
+ *
+ * <p>A race of a length and a free one draw the length, the climb and the fall; a timed one draws
+ * how long it lasts and nothing else. The owner chose that for the timed race between the outcomes
+ * he was offered, and the reason is that the points depend on the duration (PDL P4, 29.08.2026: „Na
+ * vremenskoj trci `Tsec` je ograničenje same trke"), while the course of a timed race is the
+ * runner's own and the race cannot know it beforehand (PDL P9, 29.08.2026).
+ *
+ * <p><b>One home and not four.</b> The screen draws a cell by it, `isBounded` marks a cell wrong by
+ * it, and `storedRow` writes a cell by it: a cell that is not drawn must be neither marked nor
+ * written from what is in it, or a reader is sent to a cell that is not there and a record goes
+ * out carrying a number nobody can see (WCAG 2.2 SC 3.3.1, and ADL A31 on a fact with more than one
+ * home).
+ *
+ * <p>Through the one function that knows the three words, like every other reader of a kind.
+ */
+export function measuresOf(row: Pick<RaceRow, 'kind'>): readonly (typeof MEASURES)[number][] {
+  return raceKind(row.kind) === 'time' ? ['limitHours'] : ['distanceKm', 'ascentM', 'descentM']
+}
+
+/**
  * Whether this row has to give a measure, which is the one home for that question.
  *
  * A race does not fix every measure there is: one of a length fixes its length, a
@@ -219,7 +243,13 @@ export function asksLimit(row: Pick<RaceRow, 'kind'>): boolean {
  * so it could take a comma, and on a text box those two announce nothing to anybody.
  */
 export function isBounded(row: Pick<RaceRow, 'kind'>, field: keyof typeof BOUNDS): boolean {
-  return field === 'ascentM' || field === 'descentM' || asksFor(row, field)
+  /* The climb and the fall are bounded wherever the table draws them, and only there: a timed race
+     draws neither (`measuresOf`), and a cell that is not on the screen cannot be the reason a
+     press is refused. */
+  return (
+    asksFor(row, field) ||
+    ((field === 'ascentM' || field === 'descentM') && measuresOf(row).includes(field))
+  )
 }
 
 /**
@@ -507,8 +537,11 @@ export function storedRow(row: RaceRow, eventId: string): StoredRace {
        race turned into a timed one does not carry the kilometres somebody typed
        before they changed their mind. */
     distanceKm: asksLength(row) ? String(distanceKm) : '0',
-    ascentM: String(row.ascentM === '' ? 0 : read(row.ascentM)),
-    descentM: String(row.descentM === '' ? 0 : read(row.descentM)),
+    /* Nought where the table does not draw the cell (`measuresOf`): a race turned into a timed one
+       does not carry the climb somebody typed before they changed their mind, for the reason the
+       length above does not. Its course is the runner's own (PDL P9, 29.08.2026). */
+    ascentM: String(measuresOf(row).includes('ascentM') && row.ascentM !== '' ? read(row.ascentM) : 0),
+    descentM: String(measuresOf(row).includes('descentM') && row.descentM !== '' ? read(row.descentM) : 0),
     category: categoryOf(asksLength(row) ? distanceKm : 0),
   }
 }
