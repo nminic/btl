@@ -86,10 +86,9 @@ export type Answered = {
    * <p>The key alone does not say what the moderator saw: a member can send the same picture with
    * the circle moved, and `MePhotoApi.send` then keeps the key and changes the circle on the row.
    * A decision is only about what the moderator saw (PDL, 10.10.2026), so the route compares both
-   * and answers the same 409 for either. <b>The card does not draw the circle</b> - it shows the
-   * whole original, and drawing the crop is a job of its own - so a card read again after such a
-   * refusal looks as it did before; the price of the owner's sentence until the crop is drawn
-   * (`PendingQueue.tsx` says it where the refusal is handled).
+   * and answers the same 409 for either. <b>The card draws the circle</b> (`CropWindow`, from the same
+   * `PendingItem.crop`), so a card read again after such a refusal shows the circle where it now
+   * is, which is what „pogledaj je ponovo" asks him to look at (`PendingQueue.tsx`).
    *
    * <p>Written with the key by {@link anApprovalOfThePicture} and {@link aRefusalOfThePicture} and
    * by nothing else: a key without its circle is a form not filled in (400), and so is a circle

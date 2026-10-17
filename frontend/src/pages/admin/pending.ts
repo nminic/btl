@@ -115,13 +115,14 @@ export const WAITING = 'waiting'
  * The sentence that stood here said `crop` had no reader at all, measured the day
  * `picture`/`email`/`rating` were: set to a quarter of the picture it left every case
  * green, because the one thing that had read it, `CropWindow`, was gone from the card
- * on 27.09.2026 (the moderator is shown the WHOLE original, the note on
+ * on 27.09.2026 (the moderator was shown the WHOLE original, the note on
  * `PhotoApi.waitingOn`). It is answered since 10.10.2026 for a row that holds a picture
  * (`VerificationApi.Waiting.crop`), and the reader is the DECISION about that card:
  * `admin/PendingQueue.tsx` sends it back with `photoId` (`approvalOf`, `refusalOf`),
  * because a circle moved over the same picture does not change the key and a decision is
- * only about what the moderator saw (PDL, 10.10.2026). Nothing draws it still, and
- * drawing it is the owner's decision of 27.09.2026 and a job of its own.
+ * only about what the moderator saw (PDL, 10.10.2026). It has a second reader since the
+ * card draws the circle again: `WaitingPicture` hands it to `CropWindow`, the owner's
+ * decision of 27.09.2026 (PDL.md, „Odobravanje slike").
  *
  * **It arrives as null for a row that holds no picture, and null is turned into `WHOLE`
  * here** (`itemFrom`, next to `photoId`), because `PendingItem.crop` is never null:

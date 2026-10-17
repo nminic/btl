@@ -121,7 +121,9 @@ describe('the picture on a card the moderator is deciding about', () => {
       /* The dictionary's own sentence, naming who sent it - never the file name or
          the subject read straight off the row, which is exactly the mutation
          `theRealAnswer.test.tsx` already measured this alt text against. */
-      expect(picture).toHaveAccessibleName('Slika koju je poslao Neda Nedić')
+      expect(picture).toHaveAccessibleName(
+        'Slika koju je poslao Neda Nedić, sa uokvirenim delom koji će se videti',
+      )
       /* The row's own „Datoteka" field stays too, picture or not - empty here
          because it always is for a photo row (`MePhotoApi.java` inserts `body: ''`
          for every one it gives a `photo_id`), never a name to read. */

@@ -68,8 +68,9 @@ import java.util.regex.Pattern;
  *
  * <ul>
  * <li>{@code competitor.photo_id} - a member's portrait, drawn on his card and on his page,
- * <b>and since 26.09.2026 only while the member is not hiding his profile from the caller</b>
- * (see the paragraph after this list).
+ * <b>and since 26.09.2026 only while the member is not hiding his profile from the caller,
+ * and since this increment only while the member is active, the member himself and the
+ * administration excepted</b> (see the paragraphs after this list).
  * <li>{@code team.logo_id} - a team's mark, drawn before its name in the table of teams
  * (PDL, owner, 12.08.2026).
  * <li>{@code verification.photo_id} - a picture WAITING for a moderator. PDL, „Profilnu
@@ -128,13 +129,37 @@ import java.util.regex.Pattern;
  * on the wire (measured 13.09.2026). It also opens no new branch, so it adds nothing to the
  * timing difference this class records further down.
  *
- * <p><b>THE FEE OF THE MEMBER WHOSE PORTRAIT IT IS IS NOT PART OF THIS RULE, said here rather
- * than left to be found</b> (the fee of the READER is, since 03.10.2026). A
- * member whose fee has lapsed still has his portrait answered to a reader who may read hidden
- * profiles and holds the digest.
- * The digest cannot be got from {@link CompetitorApi} - such a member is not on that list at
- * all (PDL P11, owner 13.09.2026) - so nothing hands it out; and no decision covers the case,
- * so no condition is invented for it. It is a boundary and not a protection.
+ * <p><b>AND THE FEE OF THE MEMBER WHOSE PORTRAIT IT IS DECIDES TOO, which until this increment
+ * was a boundary written down here and is now a condition. [IZVEDENO 10.10.2026, my reasoning
+ * from the record and NOT a sentence of the owner's; carried out here]</b> The reader's fee has
+ * been part of this rule since 03.10.2026; the HOLDER's was not, and a member whose fee had
+ * lapsed still had his portrait answered to anybody holding the digest. It is derived from three
+ * entries of PDL: P8, „Pre plaćanja član sme da otvori nalog, ali nigde nije vidljiv i ne može
+ * ništa da radi u sistemu"; P11, „profil se ne prikazuje za sezonu u kojoj član nije aktivan",
+ * which the owner confirmed on 03.08.2026 as deliberate; and the rule of 13.09.2026, „Nijedan
+ * javni odgovor ne sme da imenuje člana kome je članarina istekla, ni posredno". A portrait that
+ * is served to whoever holds its address is a public answer about a member who is on no public
+ * list, and the member himself cannot take it down (PDL P8, 10.10.2026 and 11.10.2026: the
+ * picture is on the list of what a member who is not active may not do). The league has members
+ * under age, which is why the boundary was not left to be found.
+ *
+ * <p><b>So two readers are answered the bytes of a portrait whose member is not active, and
+ * nobody else is.</b> The member himself while his profile is open, because PDL P8 of 25.09.2026
+ * lets a member whose fee has lapsed open his own profile („Treba da moze da otvori svoj profil
+ * dokle god postoji, odnosno dok ga admin ne obrise") and that page draws his portrait; and the
+ * administration, which reads what a member keeps from everybody else. <b>The member himself is
+ * NOT answered it when his fee has lapsed AND his profile is hidden, and that is the owner's choice
+ * and not an oversight:</b> shown with PR 515 (10.10.2026) that this member is handed the address
+ * and not the bytes, he chose to leave it (the boundary C of that PR, written out in
+ * {@link MeApi}). Every other reader, an active member and a visitor included, is answered what a
+ * digest nobody wrote is answered: the refusal is inside the lookup and takes the one road out. <b>The question is asked of the HOLDER's {@code competitor.active}
+ * and never of the reader's</b>, and the two are different facts that this route now asks side by
+ * side: {@code readsHiddenProfiles} is the reader's, {@code his.active} is the holder's, and
+ * written with one for the other the rule would serve the bytes of a lapsed member to every
+ * active reader. {@code PhotoOfAMemberWhoseFeeHasLapsedTest} walks the four combinations.
+ *
+ * <p><b>A team's mark is not touched.</b> A team has no fee and {@code team.logo_id} is on the
+ * other {@code exists}, so a team whose last member lapsed still has its mark answered.
  *
  * <p><b>The whole picture and never the crop.</b> PDL P11, „Odseceni deo se ne baca.
  * Slika ostaje cela, a isecak se pamti pored nje." The three fractions are answered beside
@@ -262,8 +287,8 @@ import java.util.regex.Pattern;
  * bytes out and none of which is about permission. <b>What they deliberately do NOT share any
  * more is how long an answer may be kept</b>, and that split arrived with PDL 21c: see
  * {@link #FOR_A_DAY_PRIVATELY} and {@link #NOT_KEPT_AT_ALL}, where the line is drawn by whether
- * the ADDRESS is derived from the content. {@code THE_PICTURE_A_DIGEST_NAMES} is untouched by
- * either of the two, so which pictures are PUBLIC is exactly what it was.
+ * the ADDRESS is derived from the content. {@code THE_PICTURE_A_DIGEST_NAMES} gains no holder from
+ * either of the two, so which KINDS of holder are public is exactly what it was.
  */
 @RestController
 class PhotoApi {
@@ -366,12 +391,46 @@ class PhotoApi {
 	 * {@code profile_hidden} is not a column of {@code team}, so a rule written over the
 	 * whole {@code or} would refuse a team's mark to every visitor the day one member hid
 	 * himself. {@code whatHoldsAPictureDecidesWhetherItIsAnswered} walks the team's mark as
-	 * a visitor and is what falls.
+	 * a visitor and is what falls. The same goes for {@code his.active}, and a team has no fee.
+	 *
+	 * <p><b>AND THE MEMBER MUST BE ACTIVE, UNLESS THE READER IS HIM OR THE ADMINISTRATION</b>
+	 * ([IZVEDENO 10.10.2026], the paragraph on the fee of the holder at the head of this class).
+	 * Three alternatives in one parenthesis, in this order and for these reasons:
+	 *
+	 * <ul>
+	 * <li>{@code :administration} - the role can hold a right at all, a moderator ticked or not
+	 * and the superadmin. Asked of the REQUEST's role and not of the reader's member, because
+	 * an account that races for nobody is still the administration.
+	 * <li>{@code me.competitor_id = his.id and not his.profile_hidden} - the account asking IS the
+	 * holder, and his profile is open. Joined through {@code account} in this statement, the shape
+	 * {@link #THE_PICTURE_I_AM_WAITING_ON} already has, so „whose picture is this" is a part of the
+	 * permission and not a lookup beside it. <b>{@code not his.profile_hidden} IS NOT A SECOND
+	 * CAUTION AND IT IS NOT MINE:</b> the owner was shown, with PR 515 (10.10.2026), that a member
+	 * whose fee has lapsed AND who hides his profile is handed the ADDRESS of his own portrait by
+	 * {@code GET /api/me} and not its bytes, and chose to leave it so: the profile is drawn and the
+	 * portrait does not load (the boundary C of that PR, written out in {@link MeApi}). This clause
+	 * lets a lapsed holder read his own open portrait, which is what he was served before this
+	 * increment as well, and does not undo that choice. An ACTIVE holder who hides is not in this
+	 * clause at all: he is the reader of the next one, and {@code readsHiddenProfiles} is true for him.
+	 * <li>{@code his.active and (readsHidden or not hidden)} - everybody else, and an active holder
+	 * who hides himself as well, and this is the
+	 * rule that stood alone until this increment with {@code his.active} in front of it. <b>It is
+	 * the HOLDER's {@code active}, a column of {@code his}</b>; the reader's fee is
+	 * {@code readsHiddenProfiles}, a parameter, and the two answer different questions.
+	 * </ul>
+	 *
+	 * <p>The account is cast to {@code bigint} because a visitor has none, and a null parameter
+	 * has no type of its own; the cast gives PostgreSQL the type, as the one beside
+	 * {@code :administration} does for a boolean.
 	 */
 	private static final String THE_PICTURE_A_DIGEST_NAMES =
 			"select p.id, p.media_type from photo p where p.digest = :digest"
 			+ " and (exists (select 1 from competitor his where his.photo_id = p.id"
-			+ "  and (cast(:readsHiddenProfiles as boolean) or not his.profile_hidden))"
+			+ "  and (cast(:administration as boolean)"
+			+ "   or (not his.profile_hidden and exists (select 1 from account me"
+			+ "    where me.id = cast(:account as bigint) and me.competitor_id = his.id))"
+			+ "   or (his.active"
+			+ "    and (cast(:readsHiddenProfiles as boolean) or not his.profile_hidden))))"
 			+ " or exists (select 1 from team its where its.logo_id = p.id))"
 			+ " order by p.id limit 1";
 
@@ -494,11 +553,12 @@ class PhotoApi {
 	 *                 resolver hands a parameter of this type nothing when the principal is
 	 *                 the anonymous token - the same arrangement {@link CompetitorApi} writes
 	 *                 out. <b>It is read for one thing only</b>: whether a member who hides
-	 *                 his profile has his portrait answered. Nothing here asks whose portrait
-	 *                 it is or what the caller may do, because the rule is about a reader who
-	 *                 is neither an active member nor the administration and about nothing
-	 *                 finer; {@link ActiveMemberOrAdministration} answers it, and answers no
-	 *                 for the null of a visitor
+	 *                 his profile has his portrait answered, <b>and since this increment for two
+	 *                 more</b>: whether the reader is the administration, and whether the
+	 *                 account asking is the very member whose portrait it is and his profile is
+	 *                 open, which is the one reader the fee of the holder does not shut out. Nothing here asks what
+	 *                 right the caller may use; {@link ActiveMemberOrAdministration} answers the
+	 *                 first and the second, and answers no for the null of a visitor
 	 * @param response asked for so that every refusal goes down the same road an address
 	 *                 that is not there takes, exactly as {@link InboxApi#inbox} and
 	 *                 {@link VerificationApi#verification} do
@@ -527,6 +587,13 @@ class PhotoApi {
 				   whole permission: handed to a reader the list withholds it from, it would be a
 				   capability and not an access. */
 				.param("readsHiddenProfiles", readers.includes(member))
+				/* AND TWO FACTS ABOUT THE READER THAT DECIDE WHETHER THE HOLDER'S OWN FEE MATTERS
+				   (the note on `THE_PICTURE_A_DIGEST_NAMES`). The administration is asked of the
+				   request's role and a visitor, who arrives as null, is not it; the account is the
+				   session's own and never anything the request carried, and null for a visitor,
+				   which no account has. */
+				.param("administration", member != null && readers.isTheAdministration(member))
+				.param("account", member == null ? null : member.account())
 				.query((row, one) -> new Kept(row.getLong(1), row.getString(2)))
 				.optional();
 
@@ -555,7 +622,7 @@ class PhotoApi {
 	 * <p><b>THIS IS THE SECOND NAMED EXCEPTION AND NOT A WIDENING, which is the whole reason it
 	 * is a route of its own.</b> A60 of 20.09.2026 still stands word for word: a picture only a
 	 * queue row holds „nije javna" and „odgovara tacno isto kao slika koje nema". {@link #photo}
-	 * still refuses it and {@code THE_PICTURE_A_DIGEST_NAMES} is untouched, so „javan nosilac"
+	 * still refuses it and {@code THE_PICTURE_A_DIGEST_NAMES} names no queue row, so „javan nosilac"
 	 * still means exactly {@code competitor.photo_id} and {@code team.logo_id}. A60's own words
 	 * for why this is cheaper: „cuvar uske rute po konstrukciji sluzi jednom pozivaocu nad jednim
 	 * redom, pa se ne moze slucajno prosiriti."
@@ -649,8 +716,8 @@ class PhotoApi {
 	 * <p><b>THE RULE ABOVE IS NARROWED AND NOT OVERTURNED, which is the whole reason this is
 	 * a route of its own.</b> A60 of 20.09.2026 still stands: „Slika koju drzi samo nesto sto
 	 * ceka odluku moderatora nije javna... Takva slika odgovara tacno isto kao slika koje
-	 * nema." {@link #photo} still refuses it and {@code THE_PICTURE_A_DIGEST_NAMES} is not
-	 * touched, so a picture waiting for a decision is still not PUBLIC. What changes is that
+	 * nema." {@link #photo} still refuses it and {@code THE_PICTURE_A_DIGEST_NAMES} names no queue
+	 * row, so a picture waiting for a decision is still not PUBLIC. What changes is that
 	 * one moderator has an address. Widening the digest route instead would have moved the
 	 * idea of „a public holder" and pulled the identical question along for
 	 * {@code team_proposal.logo_id}, which no decision covers; a route keyed to a ROW serves

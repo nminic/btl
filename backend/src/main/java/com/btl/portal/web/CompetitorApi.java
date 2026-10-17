@@ -284,11 +284,15 @@ import java.util.List;
  * the same sentence on the other side, and {@link ActiveMemberOrAdministration} is where it is
  * asked on this one.
  *
- * <p><b>What that does NOT cover, named rather than left to be found.</b> The fee of the one
- * ASKING is part of this rule since 03.10.2026; the fee of the member whose portrait it is, is
- * not: {@link PhotoApi} goes on answering the portrait of a member whose fee has lapsed to a
- * reader who may read hidden profiles and holds the digest. It cannot be got from here - such a
- * member is not on this list at all - and no decision covers it, so nothing is invented for it.
+ * <p><b>The fee of the member whose portrait it is is a second question, and it is answered by
+ * the other door.</b> The fee of the one ASKING is part of this rule since 03.10.2026. The fee of
+ * the member whose portrait it is, was a boundary here until the increment in which
+ * {@link PhotoApi} began to answer the bytes of a portrait only while its member is active, the
+ * member himself and the administration excepted ([IZVEDENO 10.10.2026], the paragraph on the fee
+ * of the holder at the head of that class). It could not be answered from here, because such a
+ * member is not on this list at all, and it is not asked here now either: this list names the
+ * members whose fee is standing, so every digest it publishes is of a member for whom the other
+ * door answers.
  *
  * <p><b>AND SINCE THIS INCREMENT THE BIOGRAPHY IS WITHHELD BY THE SAME RULE, in its own PR so
  * that the portrait's guard did not grow past the change it was measuring</b> (rule of

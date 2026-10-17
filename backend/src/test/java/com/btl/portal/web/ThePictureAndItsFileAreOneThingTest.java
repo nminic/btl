@@ -58,9 +58,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <p><b>ONE HALF OF THAT COST HAS GONE AND THE GUARD HAS NOT, which is why it is set out here
  * rather than left reading as it did.</b> Until PDL 21c the member was also refused FOR EVER:
  * his next attempt met a 409 {@code aPictureAlreadyWaits} and he could not take back a picture a
- * moderator was holding, because {@code DELETE /api/me/photo} deliberately removes only what
- * STANDS. That 409 is what 21c removed - „opet se salje na verifikaciju i gazi trenutan red kod
- * verifikatora" - so he is no longer stuck. <b>The rollback matters MORE since that day and not
+ * moderator was holding, because {@code DELETE /api/me/photo} then removed only what STANDS. That
+ * 409 is what 21c removed - „opet se salje na verifikaciju i gazi trenutan red kod verifikatora" -
+ * so he is no longer stuck, and since PDL 27.09.2026 was carried out the removal takes back the
+ * picture that waits as well (PDL: „red odlazi zajedno sa njom i moderatoru se nikad ne
+ * pojavi"). <b>The rollback matters MORE since that day and not
  * less:</b> a card in front of a moderator naming bytes nobody can read is wrong whether or not
  * its member can send again, and an overwrite DELETES the picture it replaces, so a half-written
  * send that committed would take a good picture down with it.

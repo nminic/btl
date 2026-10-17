@@ -1354,32 +1354,211 @@ class MePhotoApiTest {
 	}
 
 	/**
-	 * AND A REMOVAL DOES NOT WITHDRAW A PICTURE THAT IS WAITING, WHICH IS WRITTEN DOWN RATHER
-	 * THAN PATCHED.
+	 * A REMOVAL TAKES BACK THE PICTURE THAT IS WAITING AS WELL AS THE ONE THAT STANDS.
 	 *
-	 * <p>The same boundary {@link MeWriteApi#write} carries for the biography: removing what
-	 * STANDS and taking back what a moderator is HOLDING are different things, and no
-	 * decision covers the second. What keeps it from being a trap is the answer, which names
-	 * the picture that is still waiting - so a screen can say so.
+	 * <p>PDL 27.09.2026, which the owner chose between offered outcomes with my recommendation
+	 * beside the one he took: „Kad član pritisne „Ukloni sliku" dok slika još čeka odluku, red
+	 * odlazi zajedno sa njom i moderatoru se nikad ne pojavi." Until this case this file asserted
+	 * the opposite (the route left the waiting picture where it was and said so in its answer),
+	 * which was a boundary written down and is now a decision carried out.
+	 *
+	 * <p><b>WHAT IS ASKED, each against the mutation it is written for:</b>
+	 * <ul>
+	 * <li>the row is GONE and not decided, which a count of waiting pictures cannot tell from a
+	 * route that refused it: the row is asked for by its key, and no message was written to him
+	 * (a refusal tells the member his picture was refused, about one he took back himself);
+	 * <li>the queue is one row shorter and the picture ROW of both pictures is gone (V54 at the end
+	 * of the transaction), where a route that deleted nothing or only the row leaves one behind;
+	 * <li>the FILES of both are off the disk, and the files of the member waiting in front of him
+	 * are not, so a path built from the wrong key is heard;
+	 * <li>somebody else's waiting row is still where it was and still holds its own picture, which
+	 * is the source swap: the oldest row in the profiles tab is not this member's.
+	 * </ul>
 	 */
 	@Test
-	void takingTheStandingPictureDownLeavesTheWaitingOneWhereItIs() throws Exception {
-		long waiting = howManyPicturesWaitFor(WHOSE_PICTURE_WAITS);
+	void takingThePictureDownAlsoTakesBackTheOneThatWaitsAndNobodyElses() throws Exception {
+		long theRow = theQueueRowOf(WHOSE_PICTURE_WAITS);
+		long theWaitingPhoto = theWaitingPhotoOf(WHOSE_PICTURE_WAITS);
+		long theStandingPhoto = db.sql("select photo_id from competitor where member_number = ?")
+				.param(WHOSE_PICTURE_WAITS).query(Long.class).single();
+		long theOthersRow = theQueueRowOf(SOMEONE_ELSE);
+		long theOthersWaitingPhoto = theWaitingPhotoOf(SOMEONE_ELSE);
+		long theOthersStandingPhoto = db.sql("select photo_id from competitor where member_number"
+				+ " = ?").param(SOMEONE_ELSE).query(Long.class).single();
+		long before = howManyRowsInTheQueue();
+		/* READ WITHOUT `howManyPhotoRows`, which would bring the deferred triggers forward for the
+		   rest of the case and so change when the route's own statements are answered. */
+		long photosBefore = db.sql("select count(*) from photo").query(Long.class).single();
+
+		Files.createDirectories(Path.of(folder));
+
+		for (long one : List.of(theWaitingPhoto, theStandingPhoto, theOthersWaitingPhoto,
+				theOthersStandingPhoto)) {
+			Files.write(fileOf(one), aJpeg("bajtovi slike " + one));
+		}
 
 		MockHttpServletResponse answer = removing(WHOSE_PICTURE_WAITS);
 
 		assertThat(answer.getStatus()).isEqualTo(200);
 		assertThat(digestStandingOn(WHOSE_PICTURE_WAITS)).isNull();
-
 		assertThat(howManyPicturesWaitFor(WHOSE_PICTURE_WAITS))
-				.as("a removal quietly withdrew what a moderator was already holding, which is a"
-						+ " decision nobody has taken")
-				.isEqualTo(waiting);
+				.as("a picture of his is still in front of a moderator after he took it back")
+				.isZero();
+		assertThat(db.sql("select count(*) from verification where id = ?").param(theRow)
+				.query(Long.class).single())
+				.as("the row is still in the table: it was decided, or left, and not taken back")
+				.isZero();
+		assertThat(db.sql("select count(*) from message where to_id = (select id from competitor"
+						+ " where member_number = ?)").param(WHOSE_PICTURE_WAITS)
+				.query(Long.class).single())
+				.as("he was written to about a picture he took back himself, which is what a"
+						+ " refusal does")
+				.isZero();
+		assertThat(howManyRowsInTheQueue())
+				.as("the queue did not lose exactly his row")
+				.isEqualTo(before - 1);
+		assertThat(howManyRowsHasThePhoto(theWaitingPhoto))
+				.as("the picture that waited has a row at the end of the transaction")
+				.isZero();
+		assertThat(howManyRowsHasThePhoto(theStandingPhoto)).isZero();
+		assertThat(howManyPhotoRows())
+				.as("a picture row other than his two went")
+				.isEqualTo(photosBefore - 2);
 
-		assertThat(answerIn(answer).path("waiting").asLong())
-				.as("the answer does not name the picture that is still waiting, so the member is"
-						+ " left believing his profile is empty for good")
-				.isPositive();
+		assertThat(Files.exists(fileOf(theWaitingPhoto)))
+				.as("the file of the picture that waited is still on the disk")
+				.isFalse();
+		assertThat(Files.exists(fileOf(theStandingPhoto)))
+				.as("the file of the picture that stood is still on the disk")
+				.isFalse();
+		assertThat(Files.exists(fileOf(theOthersWaitingPhoto)))
+				.as("the file of somebody else's waiting picture went")
+				.isTrue();
+		assertThat(Files.exists(fileOf(theOthersStandingPhoto)))
+				.as("the file of somebody else's standing picture went")
+				.isTrue();
+
+		assertThat(theQueueRowOf(SOMEONE_ELSE))
+				.as("the row of the member waiting in front of him went, or was replaced")
+				.isEqualTo(theOthersRow);
+		assertThat(theWaitingPhotoOf(SOMEONE_ELSE)).isEqualTo(theOthersWaitingPhoto);
+	}
+
+	/**
+	 * THE ANSWER IS A PLAIN 200 WITH NOTHING IN IT, BOTH FOR A MEMBER WHO HAD A PICTURE WAITING AND
+	 * FOR ONE WHO HAD NONE.
+	 *
+	 * <p>The answer used to carry the key of the picture that was still waiting so that a screen
+	 * could say so. After a removal nothing waits, so the field could only ever be null, and it is
+	 * gone; no screen read it. <b>Both states of the axis are asked</b>, so that a route which
+	 * answered a body only to a member with something to take back, or only to one with nothing,
+	 * is heard.
+	 */
+	@Test
+	void aRemovalAnswersNothingButTheStatusWhateverWaited() throws Exception {
+		MockHttpServletResponse nothingWaited = removing(ME);
+		MockHttpServletResponse somethingWaited = removing(WHOSE_PICTURE_WAITS);
+
+		assertThat(nothingWaited.getStatus()).isEqualTo(200);
+		assertThat(nothingWaited.getContentAsString())
+				.as("the answer to a member with nothing waiting carries a body")
+				.isEmpty();
+		assertThat(somethingWaited.getStatus()).isEqualTo(200);
+		assertThat(somethingWaited.getContentAsString())
+				.as("the answer to a member who had a picture waiting carries a body, so a field"
+						+ " nobody can fill is on the wire again")
+				.isEmpty();
+	}
+
+	/**
+	 * A MEMBER WHOSE FIRST PICTURE IS THE ONE WAITING, with nothing standing on his profile, takes
+	 * it back all the same.
+	 *
+	 * <p>The case where the two pictures are one question and not two: a route that withdrew the
+	 * waiting row only on the road through the standing picture would leave this one in front of a
+	 * moderator, and the member would have pressed a button that did nothing.
+	 */
+	@Test
+	void aFirstPictureThatWaitsIsTakenBackWithNothingStandingToTakeDown() throws Exception {
+		waitingPicture(HAS_NO_PICTURE);
+
+		long theRow = theQueueRowOf(HAS_NO_PICTURE);
+		long thePhoto = theWaitingPhotoOf(HAS_NO_PICTURE);
+
+		Files.createDirectories(Path.of(folder));
+		Files.write(fileOf(thePhoto), aJpeg("prva slika koja ceka"));
+
+		assertThat(digestStandingOn(HAS_NO_PICTURE)).isNull();
+		assertThat(removing(HAS_NO_PICTURE).getStatus()).isEqualTo(200);
+
+		assertThat(db.sql("select count(*) from verification where id = ?").param(theRow)
+				.query(Long.class).single())
+				.as("his first picture is still in front of a moderator")
+				.isZero();
+		assertThat(howManyRowsHasThePhoto(thePhoto)).isZero();
+		assertThat(Files.exists(fileOf(thePhoto)))
+				.as("the file of the picture he took back is still on the disk")
+				.isFalse();
+	}
+
+	/**
+	 * WHAT ELSE OF HIS IS IN THE QUEUE STAYS: A TEXT THAT WAITS IN THE SAME TAB, A PICTURE THAT WAS
+	 * REFUSED, AND A ROW IN ANOTHER TAB.
+	 *
+	 * <p><b>The mutations this is written against:</b> a delete over the member alone, which takes
+	 * all four rows; a delete over the member and the profiles tab, which takes the text; and one
+	 * over the member and his state, which takes the text with it. Each of the three other rows
+	 * is the state one of them forgets, and the member is given all three at once.
+	 */
+	@Test
+	void takingAPictureBackLeavesTheRestOfHisRowsInTheQueueWhereTheyAre() throws Exception {
+		waitingText(WHOSE_PICTURE_WAITS);
+		refusedPicture(WHOSE_PICTURE_WAITS);
+		waitingInTeams(WHOSE_PICTURE_WAITS);
+
+		long theRow = theQueueRowOf(WHOSE_PICTURE_WAITS);
+		List<Long> theOthers = db.sql("select v.id from verification v where v.id <> ?"
+						+ " and v.competitor_id = (select id from competitor where member_number = ?)"
+						+ " order by v.id")
+				.params(theRow, WHOSE_PICTURE_WAITS).query(Long.class).list();
+
+		assertThat(theOthers)
+				.as("the member was not given the three other rows this case is about")
+				.hasSize(3);
+
+		assertThat(removing(WHOSE_PICTURE_WAITS).getStatus()).isEqualTo(200);
+
+		assertThat(db.sql("select v.id from verification v where v.id <> ? and v.competitor_id ="
+						+ " (select id from competitor where member_number = ?) order by v.id")
+				.params(theRow, WHOSE_PICTURE_WAITS).query(Long.class).list())
+				.as("a row of his that was not the picture went with it")
+				.containsExactlyElementsOf(theOthers);
+		assertThat(db.sql("select count(*) from verification where id = ?").param(theRow)
+				.query(Long.class).single())
+				.isZero();
+	}
+
+	/**
+	 * A MODERATOR WHO IS READING THE ROW DOES NOT HOLD THE REMOVAL UP, and his hold goes with it.
+	 *
+	 * <p>V28's {@code verification_lock_verification_fk} is {@code on delete cascade}, and the
+	 * removal depends on it: it writes nothing about a hold. A key that stopped cascading would
+	 * turn this member's request into a 500 the first time somebody had his picture open, and
+	 * that is the member this feature is for.
+	 */
+	@Test
+	void aPictureAModeratorHasOpenIsTakenBackAndTheHoldGoesWithIt() throws Exception {
+		long theRow = theQueueRowOf(WHOSE_PICTURE_WAITS);
+
+		aModeratorHolds(theRow);
+
+		assertThat(howManyHoldsOn(theRow)).isEqualTo(1);
+		assertThat(removing(WHOSE_PICTURE_WAITS).getStatus())
+				.as("a hold on his picture stopped him taking it back")
+				.isEqualTo(200);
+		assertThat(howManyHoldsOn(theRow))
+				.as("the hold on a row that no longer exists is still there")
+				.isZero();
 	}
 
 	/**
@@ -1486,14 +1665,6 @@ class MePhotoApiTest {
 						+ " holds one no route could ever write into it. A later migration has"
 						+ " moved this constraint and V8's text no longer describes it.")
 				.containsExactlyInAnyOrderElementsOf(inTheColumn);
-	}
-
-	/** And a member with nothing waiting is told exactly that. */
-	@Test
-	void aRemovalWithNothingWaitingSaysSo() throws Exception {
-		assertThat(answerIn(removing(ME)).path("waiting").isNull())
-				.as("the answer names a waiting picture where there is none")
-				.isTrue();
 	}
 
 	/* ------------------------------------------------------------------------------------
