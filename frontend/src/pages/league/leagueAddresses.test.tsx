@@ -229,6 +229,43 @@ describe('an address in the terms or in the prizes of a competition', () => {
     }
   }, SLOW)
 
+  it('draws a link written in Markdown whose address reads as one host and opens another as the words it was typed as', async () => {
+    const typed = MISLEADING.map((one) => (one.typed.startsWith('www.') ? `https://${one.typed}` : one.typed))
+    /* A clean link stands first and alone among them, so that what is measured is the refusal of the
+       others and not a box that links nothing; the same words stand in a table of the prizes. */
+    const written = `[prava](https://www.runtrace.net) ${typed.map((one) => `[x](${one})`).join(' ')}`
+    const table = `| a | b |\n|---|---|\n| ${typed.map((one) => `[x](${one})`).join(' ')} | c |`
+
+    serving([league(1, 'Proba Veza', written, table)])
+    renderAt('/sr/lige?sezona=2027')
+
+    const box = await boxOf(/Proba Veza/)
+    const rules = sectionOf(box, 'Propozicije')
+    const prizes = sectionOf(box, 'Nagrade')
+
+    expect(typed.length).toBeGreaterThan(20)
+    expect(rules.getAllByRole('link')).toHaveLength(1)
+    expect(rules.getByRole('link')).toHaveAccessibleName('prava')
+    expect(rules.getByRole('link')).toHaveAttribute('href', 'https://www.runtrace.net')
+    expect(rules.getByRole('paragraph').textContent).toBe(
+      `prava ${typed.map((one) => `[x](${one})`).join(' ')}`,
+    )
+    expect(prizes.queryAllByRole('link')).toEqual([])
+  }, SLOW)
+
+  it('draws a numbered list of the prizes with the numbers it was typed with', async () => {
+    serving([league(1, 'Proba Brojevi', '15. oktobra se trči trka.', '1. mesto: 100 EUR\n2. mesto: 50 EUR\n4. do 10. mesto: medalja')])
+    renderAt('/sr/lige?sezona=2027')
+
+    const box = await boxOf(/Proba Brojevi/)
+    const prizes = sectionOf(box, 'Nagrade')
+    const rules = sectionOf(box, 'Propozicije')
+
+    expect(prizes.getAllByRole('listitem').map((item) => item.getAttribute('value'))).toEqual([null, null, '4'])
+    expect(prizes.getByRole('list')).not.toHaveAttribute('start')
+    expect(rules.getByRole('list')).toHaveAttribute('start', '15')
+  }, SLOW)
+
   it('draws the same address twice as two links', async () => {
     serving([league(1, 'Proba Dupla', 'www.runtrace.net pa opet www.runtrace.net', 'Nista.')])
     renderAt('/sr/lige?sezona=2027')

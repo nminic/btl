@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useI18n } from '../i18n/useI18n'
-import { blocksOf, inlineOf, type Block, type Inline } from './markdownText'
+import { blocksOf, breakOf, inlineOf, startOf, type Block, type Inline } from './markdownText'
 import './Markdown.css'
 
 /* The written pages (rulebook, terms, privacy policy) are data, not code, and they run to
@@ -135,7 +135,15 @@ function inline(pieces: Inline[], reading: Reading): ReactNode[] {
   })
 }
 
-function Table({ rows, reading }: { rows: string[][]; reading: Reading }) {
+function Table({
+  rows,
+  reading,
+  addresses,
+}: {
+  rows: string[][]
+  reading: Reading
+  addresses: boolean
+}) {
   const [head, ...body] = rows
 
   // A table that held nothing but the dashed line under the head has no rows
@@ -156,7 +164,7 @@ function Table({ rows, reading }: { rows: string[][]; reading: Reading }) {
             <tr>
               {head.map((cell, index) => (
                 <th key={index} scope="col">
-                  {inline(inlineOf(cell, false), reading)}
+                  {inline(inlineOf(cell, false, addresses), reading)}
                 </th>
               ))}
             </tr>
@@ -166,7 +174,7 @@ function Table({ rows, reading }: { rows: string[][]; reading: Reading }) {
           {body.map((row, rowIndex) => (
             <tr key={rowIndex}>
               {row.map((cell, index) => (
-                <td key={index}>{inline(inlineOf(cell, false), reading)}</td>
+                <td key={index}>{inline(inlineOf(cell, false, addresses), reading)}</td>
               ))}
             </tr>
           ))}
@@ -194,15 +202,26 @@ function block(
   }
 
   if (item.kind === 'list') {
+    /* An ordered list is drawn with the numbers it was written with: from the first one, and with
+       the number of an item that does not follow the item above it. A list that counts from one
+       carries neither, so it is drawn as it always was. */
     const items = item.items.map((text, index) => (
-      <li key={index}>{inline(inlineOf(text, addresses), reading)}</li>
+      <li key={index} value={breakOf(item.numbers, index)}>
+        {inline(inlineOf(text, addresses), reading)}
+      </li>
     ))
 
-    return item.ordered ? <ol key={key}>{items}</ol> : <ul key={key}>{items}</ul>
+    return item.ordered ? (
+      <ol key={key} start={startOf(item.numbers)}>
+        {items}
+      </ol>
+    ) : (
+      <ul key={key}>{items}</ul>
+    )
   }
 
   if (item.kind === 'table') {
-    return <Table key={key} rows={item.rows} reading={reading} />
+    return <Table key={key} rows={item.rows} reading={reading} addresses={addresses} />
   }
 
   /* The place of a drawing, met outside a written page: the words it is. */

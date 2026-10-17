@@ -1,4 +1,4 @@
-import { addressesIn, CLOSING, OPENING } from '../pages/league/addressesIn'
+import { addressesIn, CLOSING, opensAsTyped, OPENING } from '../pages/league/addressesIn'
 
 /* WHAT A WRITTEN TEXT SAYS, READ ONCE, FOR EVERY READER OF IT.
  *
@@ -18,13 +18,16 @@ import { addressesIn, CLOSING, OPENING } from '../pages/league/addressesIn'
  * an element of its own on the page.
  */
 
-/** One block of a text. `source` is the lines as they were written, for the blocks the editor
+/** One block of a text. `numbers` is, for an ordered list, the number each item was written with,
+ *  one for every item and none for a bulleted list: a number that somebody typed is the one the page
+ *  draws and the editor writes back, whatever its place in the list. `source` is the lines as they
+ *  were written, for the blocks the editor
  *  keeps exactly as written (a table, a rule, the place of a drawing): the toolbar has no button
  *  for any of them, and a text that went through the editor must come out with them unchanged. */
 export type Block =
   | { kind: 'heading'; hashes: number; text: string }
   | { kind: 'paragraph'; lines: string[] }
-  | { kind: 'list'; ordered: boolean; items: string[] }
+  | { kind: 'list'; ordered: boolean; items: string[]; numbers: number[] }
   | { kind: 'table'; rows: string[][]; source: string[] }
   | { kind: 'rule'; source: string }
   | { kind: 'marker'; source: string }
@@ -49,7 +52,10 @@ export const MARKER = '[[gallery]]'
 const RULE = /^-{3,}$/
 const HEADING = /^#{2,6}\s+(?=\S)/
 const BULLET = /^[-*]\s+(?=\S)/
-const NUMBERED = /^\d+\.\s+(?=\S)/
+/** A number, a full stop and a blank: the number is captured. At most nine digits and no zero in
+ *  front of them, so that the number read is the number written and nothing is lost in reading it
+ *  (`007.` and a number of twenty digits are words, which is what they were typed as). */
+const NUMBERED = /^(0|[1-9]\d{0,8})\.\s+(?=\S)/
 /** A row of a table, matched whole.
  *
  *  Exported because a guard over the written pages asks the same question
@@ -79,7 +85,10 @@ export const ESCAPABLE = new Set(['*', '_', '`', '[', ']', '#', '-', '.', '|'])
  * produce is closed here rather than trusted: a link is the one piece of markup that can carry an
  * instruction to the browser, and `javascript:` in a text somebody else typed is a script on the
  * portal. Anything outside this list stays literal text, so nothing is silently swallowed either. */
-export function addressOf(url: string): { inside: boolean; href: string } | undefined {
+export function addressOf(
+  url: string,
+  hostChecked: boolean,
+): { inside: boolean; href: string } | undefined {
   /* One slash is this portal. Two is another host, which a browser reads as a scheme-relative
      address and the router would turn into a path of ours; neither is what somebody writing a page
      meant.
@@ -97,11 +106,59 @@ export function addressOf(url: string): { inside: boolean; href: string } | unde
     return { inside: !/\.[a-z0-9]{2,4}(?=$|[?#])/i.test(url), href: url }
   }
 
-  if (url.startsWith('mailto:') || url.startsWith('https://') || url.startsWith('http://')) {
+  if (url.startsWith('mailto:')) {
     return { inside: false, href: url }
   }
 
+  if (url.startsWith('https://') || url.startsWith('http://')) {
+    /* PDL P15, 03.10.2026: „Adresa sa „@" ili sa slovima van latinice u hostu ne postaje veza nego
+       ostaje običan tekst". Said of an address of another site wherever it is written, so the
+       address under the words of a link is asked what a bare address is asked (`opensAsTyped`),
+       by the texts that make bare addresses links (the terms and the prizes of a competition) and
+       by the editor that writes the links of every text. Elsewhere the list above is all that is
+       asked, as it was. */
+    return !hostChecked || opensAsTyped(url) !== undefined ? { inside: false, href: url } : undefined
+  }
+
   return undefined
+}
+
+/** The number a numbered line was written with, or nothing when the line is not one. */
+function numberOf(line: string): number | undefined {
+  const marker = NUMBERED.exec(line)
+
+  return marker === null ? undefined : Number(marker[1])
+}
+
+/**
+ * Whether a numbered line begins a list, given whether words of a paragraph stand right above it.
+ *
+ * Anywhere else every numbered line does. Right under the words of a paragraph only a one does
+ * (the rule of CommonMark, and the one the portal has always had for a one): „2026. godine je liga
+ * počela." on a line of its own inside a paragraph is a sentence with a year in front of it and not
+ * a list whose first item is „godine je liga počela." Read as a list, it lost its year. Asked by
+ * `blocksOf` and by `escapeLineStart`, so a line is escaped exactly when it would be read as one.
+ */
+function opensAList(number: number | undefined, afterWords: boolean): number is number {
+  return number !== undefined && (!afterWords || number === 1)
+}
+
+/** The number an ordered list is drawn from, or nothing where that is one, which is where a list
+ *  starts when nothing is said. */
+export function startOf(numbers: readonly number[]): number | undefined {
+  return numbers[0] === 1 ? undefined : numbers[0]
+}
+
+/** The number an item is drawn with when it is not the one that follows the item above it, or
+ *  nothing where it is (and for the first item, whose number is the start of the list). A number
+ *  somebody typed is the number the page draws, so „1. 2. 4." is drawn as typed and not renumbered
+ *  into „1. 2. 3." Asked by the page and by the editor, so they cannot disagree about where a list
+ *  jumps. */
+export function breakOf(numbers: readonly number[], index: number): number | undefined {
+  const above = numbers[index - 1]
+  const number = numbers[index]
+
+  return above === undefined || number === above + 1 ? undefined : number
 }
 
 /** The hashes of a heading and the words on it, or nothing when the line is not one. */
@@ -183,19 +240,24 @@ export function blocksOf(text: string): Block[] {
       continue
     }
 
-    const ordered = NUMBERED.test(line)
-    const mark = ordered ? NUMBERED : BULLET
+    const number = numberOf(line)
+    const ordered = opensAList(number, open?.kind === 'paragraph')
 
     if (ordered || BULLET.test(line)) {
       // The item is the line with the mark that opened it taken off the front.
-      const item = line.replace(mark, '')
+      const item = line.replace(ordered ? NUMBERED : BULLET, '')
 
       if (open?.kind !== 'list' || open.ordered !== ordered) {
         close()
-        open = { kind: 'list', ordered, items: [] }
+        open = { kind: 'list', ordered, items: [], numbers: [] }
       }
 
       open.items.push(item)
+
+      if (ordered) {
+        open.numbers.push(number)
+      }
+
       continue
     }
 
@@ -224,8 +286,10 @@ type Unit = Char | { piece: Inline }
 const LINK = /\[((?:\\.|[^\]\\])+)\]\(([^)\s]+)\)/y
 
 /** The pieces that are whole the moment they are found: an escaped character, a value written
- *  between backticks, and a link. Everything else is a character, to be read by `marked` below. */
-function unitsOf(text: string): Unit[] {
+ *  between backticks, and a link. Everything else is a character, to be read by `marked` below.
+ *  `hostChecked` is whether the address of a link must also be one whose host, as typed, is the host
+ *  that opens (`addressOf`). */
+function unitsOf(text: string, hostChecked: boolean): Unit[] {
   const units: Unit[] = []
   let at = 0
 
@@ -260,7 +324,7 @@ function unitsOf(text: string): Unit[] {
          the shape has both, so neither is ever missing. */
       if (link !== null) {
         const [whole, words, url] = link
-        const address = addressOf(String(url))
+        const address = addressOf(String(url), hostChecked)
 
         if (address !== undefined) {
           units.push({
@@ -268,7 +332,7 @@ function unitsOf(text: string): Unit[] {
               kind: 'link',
               url: String(url),
               inside: address.inside,
-              children: inlineOf(String(words), false),
+              children: inlineOf(String(words), false, hostChecked),
             },
           })
           at += whole.length
@@ -436,9 +500,12 @@ function marked(units: Unit[]): Inline[] {
 }
 
 /** The pieces of a line. `addresses` turns its bare addresses into links (PDL P15); only the terms
- *  and the prizes of a competition ask for that. */
-export function inlineOf(text: string, addresses: boolean): Inline[] {
-  const units = unitsOf(text)
+ *  and the prizes of a competition ask for that, and for them the address under the words of a
+ *  link has to pass what a bare address passes (PDL P15, 03.10.2026, „ostaje običan tekst").
+ *  `hostChecked` asks that of the links alone, for a place that draws no bare address and has links
+ *  all the same: the cells of a table in those texts. It follows `addresses` where it is not said. */
+export function inlineOf(text: string, addresses: boolean, hostChecked: boolean = addresses): Inline[] {
+  const units = unitsOf(text, hostChecked)
   const read = addresses ? withAddresses(units) : units
 
   return marked(read)
@@ -451,13 +518,17 @@ export function inlineOf(text: string, addresses: boolean): Inline[] {
  * Asked of the very shapes `blocksOf` reads a line by, so a line is escaped exactly when it would be
  * read as one and never otherwise. Written by the editor (`markdownEditor/convert.ts`) over a line
  * whose words are already escaped, so a star or a bracket at its start is already words.
+ *
+ * `afterWords` is whether a line of the same paragraph stands above it: a number other than one
+ * does not begin a list there (`opensAList`), so it is a number in a sentence and keeps its full
+ * stop unescaped, as it was typed.
  */
-export function escapeLineStart(line: string): string {
+export function escapeLineStart(line: string, afterWords: boolean): string {
   if (HEADING.test(line) || BULLET.test(line) || RULE.test(line) || ROW.test(line)) {
     return `\\${line}`
   }
 
-  return NUMBERED.test(line) ? line.replace('.', '\\.') : line
+  return opensAList(numberOf(line), afterWords) ? line.replace('.', '\\.') : line
 }
 
 /** The characters of words that would otherwise mark a piece of the line, escaped. */

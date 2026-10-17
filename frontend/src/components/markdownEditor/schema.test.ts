@@ -37,7 +37,52 @@ describe('a piece of a page, read into the editor', () => {
   })
 })
 
+describe('the numbers of a pasted numbered list', () => {
+  it('keeps the number a list counts from and the number of an item that jumps', () => {
+    expect(read('<ol start="3"><li>prva</li><li>druga</li><li value="9">treća</li></ol>')).toBe(
+      '3. prva\n4. druga\n9. treća',
+    )
+    expect(read('<ol start="0"><li>nulta</li></ol>')).toBe('0. nulta')
+  })
+
+  it('reads a number it cannot write as no number at all, so the list counts from one', () => {
+    for (const start of ['', 'x', '-2', '1.5', '007', '1234567890']) {
+      expect(read(`<ol start="${start}"><li value="${start}">prva</li><li>druga</li></ol>`), start).toBe(
+        '1. prva\n2. druga',
+      )
+    }
+
+    expect(read('<ol><li>prva</li><li>druga</li></ol>')).toBe('1. prva\n2. druga')
+  })
+})
+
 describe('what the editor draws', () => {
+  it('draws a list with the numbers it holds, and a list that counts from one with none said', () => {
+    const item = (number: number | null) =>
+      schema.nodes.list_item.create({ number }, schema.nodes.paragraph.create(null, schema.text('a')))
+    const drawn = (start: number, numbers: (number | null)[]) => {
+      const list = DOMSerializer.fromSchema(schema).serializeNode(
+        schema.nodes.ordered_list.create({ start }, numbers.map(item)),
+      )
+
+      if (!(list instanceof HTMLElement)) {
+        throw new Error('A list is drawn as an element')
+      }
+
+      return list
+    }
+
+    const counting = drawn(1, [null, null])
+
+    expect(counting.getAttribute('start')).toBeNull()
+    expect(Array.from(counting.children).map((one) => one.getAttribute('value'))).toEqual([null, null])
+
+    const skipping = drawn(3, [null, 8])
+
+    expect(skipping.getAttribute('start')).toBe('3')
+    expect(Array.from(skipping.children).map((one) => one.getAttribute('value'))).toEqual([null, '8'])
+  })
+
   it('draws a heading as a written page draws it, an h3 for two and three hashes', () => {
     const drawn = (hashes: number) =>
       DOMSerializer.fromSchema(schema).serializeNode(schema.nodes.heading.create({ hashes }, schema.text('N')))

@@ -384,7 +384,7 @@
     "setLink": "Postavi vezu",
     "removeLink": "Ukloni vezu",
     "cancel": "Odustani",
-    "wrongAddress": "Adresa veze počinje sa https://, http:// ili mailto:, ili kosom crtom za stranu ovog portala, i nema razmaka."
+    "wrongAddress": "Adresa veze počinje sa https://, http:// ili mailto:, ili kosom crtom za stranu ovog portala, i nema razmaka. Ime sajta, do prve kose crte, ne sme da ima „@“, „%“, kosu crtu unazad ni slova van engleske abecede (na primer š ili ć)."
   },
   "registration": {
     "title": "Registracija",

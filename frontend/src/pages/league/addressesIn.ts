@@ -47,7 +47,7 @@ export const CLOSING = /^[\p{Pe}\p{Pi}\p{Pf}"'.,;:!?…]$/u
  * looked at, and it would be a link to `zlo.example` that is written as `www.runtrace.net`.
  * Measured on 03.10.2026.
  */
-const BEHIND_THE_SCHEME = /^https:[/\\]*/
+const BEHIND_THE_SCHEME = /^https?:[/\\]*/
 
 /**
  * Where the part of an address that says who is addressed ends: at the first `/`, `?` or `#`, the
@@ -93,6 +93,22 @@ const NOT_A_HOST_AS_TYPED = /[@%\\\P{ASCII}]/u
  */
 function hostPartOf(core: string): string {
   return core.replace(BEHIND_THE_SCHEME, '').replace(FROM_THE_FIRST_END, '')
+}
+
+/**
+ * THE ONE QUESTION EVERY ADDRESS OF A COMPETITION'S TEXT IS ASKED BEFORE IT BECOMES A LINK (PDL P15,
+ * 03.10.2026): is the host, as it was typed, the host that opens? Answered with the address a
+ * browser may be given, or nothing.
+ *
+ * Asked of a bare address (`addressIn` below) and of the address under the words of a Markdown
+ * link (`components/markdownText.ts`, `addressOf`), so the two cannot disagree: the link
+ * `[www.runtrace.net](https://www.runtrace.net@zlo.example)` is exactly as much a link as the bare
+ * address it is made of, which is none. The typed part is asked first (`NOT_A_HOST_AS_TYPED`), then
+ * the gate (`outsideLink`). Both schemes the gate accepts are asked, `http://` too, because a user
+ * part or an escape hides a host behind it exactly as it does behind `https://`.
+ */
+export function opensAsTyped(address: string): string | undefined {
+  return NOT_A_HOST_AS_TYPED.test(hostPartOf(address)) ? undefined : outsideLink(address)
 }
 
 type Found = { before: string; text: string; href: string; after: string }
@@ -182,20 +198,16 @@ function addressIn(word: string): Found | null {
 
   const core = rest.slice(0, length).join('')
 
-  /* Words, and the whole word of them: the host as it was typed is not one that can be taken for
-     the host that opens. Asked before the gate, and of `core` and not of the word, so that the
-     punctuation taken off behind the address is not part of what is asked. */
-  if (NOT_A_HOST_AS_TYPED.test(hostPartOf(core))) {
-    return null
-  }
-
   /* The scheme is written in front of `www.` here and nowhere else, so what the browser is given is
      the address with `https` in front of it, the scheme the owner's other form already names, and
-     what is drawn on the screen is still what was typed. */
-  const href = outsideLink(prefix === HTTPS.length ? core : `${HTTPS}${core}`)
+     what is drawn on the screen is still what was typed.
+
+     Asked of `core` and not of the word, so that the punctuation taken off behind the address is
+     not part of what is asked. */
+  const href = opensAsTyped(prefix === HTTPS.length ? core : `${HTTPS}${core}`)
 
   /* Nothing rather than a repaired address, which is the rule of the gate and holds here too: an
-     address the gate refuses is words, and the whole word stays words, brackets and all. */
+     address that does not pass is words, and the whole word stays words, brackets and all. */
   if (href === undefined) {
     return null
   }

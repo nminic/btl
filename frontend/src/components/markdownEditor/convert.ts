@@ -1,6 +1,6 @@
 import { Fragment, type Mark, type Node } from 'prosemirror-model'
-import { blocksOf, escapeLineStart, escapeWords, inlineOf, type Inline } from '../markdownText'
-import { hashesOf, hrefOf, schema } from './schema'
+import { blocksOf, breakOf, escapeLineStart, escapeWords, inlineOf, startOf, type Inline } from '../markdownText'
+import { hashesOf, hrefOf, numberOfItem, schema, startOf as startOfList } from './schema'
 
 /*
  * THE TWO DIRECTIONS BETWEEN A WRITTEN TEXT AND WHAT THE EDITOR HOLDS.
@@ -54,14 +54,18 @@ export function fromMarkdown(text: string): Node {
     }
 
     if (block.kind === 'list') {
-      const type = block.ordered ? schema.nodes.ordered_list : schema.nodes.bullet_list
-
-      return type.create(
-        null,
-        block.items.map((item) =>
-          schema.nodes.list_item.create(null, schema.nodes.paragraph.create(null, line(item))),
+      /* The numbers a list was written with go in with it, so the editor writes the same numbers
+         back (`blockOf`). A bulleted list has none to give. */
+      const items = block.items.map((item, index) =>
+        schema.nodes.list_item.create(
+          { number: breakOf(block.numbers, index) ?? null },
+          schema.nodes.paragraph.create(null, line(item)),
         ),
       )
+
+      return block.ordered
+        ? schema.nodes.ordered_list.create({ start: startOf(block.numbers) ?? 1 }, items)
+        : schema.nodes.bullet_list.create(null, items)
     }
 
     const source = block.kind === 'table' ? block.source.join('\n') : block.source
@@ -190,8 +194,9 @@ function wordsOf(block: Node): string {
 function paragraphOf(block: Node): string {
   return wordsOf(block)
     .split('\n')
-    .map((one) => escapeLineStart(one.trim()))
+    .map((one) => one.trim())
     .filter((one) => one !== '')
+    .map((one, index) => escapeLineStart(one, index > 0))
     .join('\n')
 }
 
@@ -204,12 +209,17 @@ function blockOf(block: Node): string {
 
   if (block.type === schema.nodes.bullet_list || block.type === schema.nodes.ordered_list) {
     const items: string[] = []
+    /* The number the next item of a numbered list is written with: the one the list counts from,
+       then one more for each, unless an item was written with a number of its own. */
+    let number = block.type === schema.nodes.ordered_list ? startOfList(block) : 0
 
     block.forEach((item) => {
       const words = wordsOf(item.child(0)).replace(/\n/g, ' ').trim()
 
       if (words !== '') {
-        items.push(block.type === schema.nodes.ordered_list ? `${items.length + 1}. ${words}` : `- ${words}`)
+        number = numberOfItem(item) ?? number
+        items.push(block.type === schema.nodes.ordered_list ? `${number}. ${words}` : `- ${words}`)
+        number += 1
       }
     })
 

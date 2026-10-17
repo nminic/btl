@@ -19,6 +19,7 @@ import {
   sizeOf,
   stateFor,
 } from './commands'
+import { MISLEADING, STAYS_A_LINK } from '../../test/misleadingAddresses'
 import { toMarkdown } from './convert'
 import { schema } from './schema'
 
@@ -128,6 +129,23 @@ describe('a line break', () => {
 })
 
 describe('a link', () => {
+  it('does not lead to an address that reads as one host and opens another (PDL P15, 03.10.2026)', () => {
+    /* A floor under the table, since a table that lost its rows would pass every line below it. */
+    expect(MISLEADING.length).toBeGreaterThan(20)
+
+    for (const one of MISLEADING) {
+      const address = one.typed.startsWith('www.') ? `https://${one.typed}` : one.typed
+
+      expect(linkableAddress(address), `${address} (${one.how})`).toBe(false)
+    }
+
+    for (const one of STAYS_A_LINK) {
+      const address = one.typed.startsWith('www.') ? `https://${one.typed}` : one.typed
+
+      expect(linkableAddress(address), `${address} (${one.why})`).toBe(true)
+    }
+  })
+
   it('leads only where a written page may lead', () => {
     for (const address of ['https://primer.rs', 'http://primer.rs/a', 'mailto:liga@primer.rs', '/pravilnik']) {
       expect(linkableAddress(address), address).toBe(true)

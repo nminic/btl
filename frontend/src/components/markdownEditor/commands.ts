@@ -145,12 +145,15 @@ export function aroundCursor(state: EditorState, link: Mark): { from: number; to
  * which a written link cannot hold.
  *
  * Whether the page will draw it is asked of the page's own list (`addressOf`), so the editor never
- * makes a link the page would show as words.
+ * makes a link the page would show as words. It is asked with the host check (PDL P15, 03.10.2026:
+ * an address with an „@" or with letters outside ASCII in its host is text), which the terms and the
+ * prizes of a competition make of every link. The editor does not know which text it writes, so a
+ * link the page of a description would still draw is refused here too: the stricter of the two.
  */
 const LINKABLE = /^(?:https?:\/\/|mailto:|\/(?![/\\]))[^\s)]+$/
 
 export function linkableAddress(address: string): boolean {
-  return LINKABLE.test(address) && addressOf(address) !== undefined
+  return LINKABLE.test(address) && addressOf(address, true) !== undefined
 }
 
 /** The selection, or the link around the cursor, made a link to the address. With nothing

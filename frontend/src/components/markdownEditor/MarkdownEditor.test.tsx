@@ -262,6 +262,30 @@ describe('a link, from the button', () => {
     expect(box()).toHaveFocus()
   })
 
+  it('refuses an address that reads as one host and opens another, and says what is wrong with it', async () => {
+    const user = setupUser()
+    const { onChange } = draw({ value: 'Vidi sajt' })
+
+    select('sajt', 0, 4)
+    await user.click(tool('Veza'))
+
+    const address = screen.getByRole('textbox', { name: 'Adresa veze' })
+
+    for (const typed of ['https://www.runtrace.net@zlo.example', 'http://www.runtrace.net@zlo.example']) {
+      await user.clear(address)
+      await user.type(address, `${typed}{Enter}`)
+
+      expect(address, typed).toHaveAttribute('aria-invalid', 'true')
+      expect(address, typed).toHaveAccessibleDescription(/ne sme da ima „@“/)
+      expect(onChange, typed).not.toHaveBeenCalled()
+    }
+
+    await user.clear(address)
+    await user.type(address, 'https://medium.com/@ime/post{Enter}')
+
+    expect(last(onChange)).toBe('Vidi [sajt](https://medium.com/@ime/post)')
+  })
+
   it('keeps the address with Enter, and not by sending the form it stands in', async () => {
     const user = setupUser()
     const sent = vi.fn((event: SubmitEvent) => event.preventDefault())

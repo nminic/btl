@@ -98,6 +98,8 @@ describe('what the editor holds, written out', () => {
       nodes.hard_break.create(),
       words('2027. nije broj'),
       nodes.hard_break.create(),
+      words('1. nije stavka'),
+      nodes.hard_break.create(),
       words('| nije | red |'),
       nodes.hard_break.create(),
       words('---'),
@@ -152,7 +154,7 @@ describe('what the editor holds, written out', () => {
     expect(written).toContain('**jako** i **_jako i koso_**, _koso_ pa [veza **jaka veza**](https://primer.rs/a_b)')
     expect(written).toContain('Beo_grad_ski.')
     expect(written).toContain('Zvezde \\* i \\*\\* i \\_ i \\` i \\[ \\] i \\ ostaju znaci.')
-    expect(written).toContain('\\## nije naslov\n\\- nije stavka\n2027\\. nije broj\n\\| nije | red |\n\\---\n\\[\\[gallery\\]\\]')
+    expect(written).toContain('\\## nije naslov\n\\- nije stavka\n2027. nije broj\n1\\. nije stavka\n\\| nije | red |\n\\---\n\\[\\[gallery\\]\\]')
     /* Blanks at the edge of an italic piece stand outside it, where an italic piece may begin. */
     expect(written).toContain('razmak  _koso sa razmacima_  kraj')
     expect(written).toContain('Vrednost `42.2` i ne\\`moguća')
@@ -187,5 +189,60 @@ describe('what the editor holds, written out', () => {
     ])
 
     expect(toMarkdown(broken.content)).toBe('**jako**\n**dalje**')
+  })
+})
+
+/* A number somebody typed is the number the page draws and the editor writes back: whatever its place
+   in a list, and whatever it is in front of in a paragraph. */
+describe('the numbers of a text, through the editor', () => {
+  const again = (text: string) => toMarkdown(fromMarkdown(text).content)
+
+  it('come out as they went in, for a date, for places that skip one, for a year inside a paragraph', () => {
+    for (const text of [
+      '15. oktobra se trči trka.',
+      'Nagrade:\n\n1. mesto: 100 EUR\n2. mesto: 50 EUR\n4. do 10. mesto: medalja',
+      'Prvi red\n2026. godine je liga počela.',
+      '4. do 10. mesto',
+      '1. prvo\n2. drugo\n3. treće',
+      '3. treće\n4. četvrto\n5. peto',
+      'Broj usred pasusa: 3. mesto je osvojio Petar.',
+      '1. a\n3. b\n3. c\n9. d',
+      '0. nulti\n1. prvi',
+    ]) {
+      expect(again(text), text).toBe(text)
+      expect(again(again(text)), text).toBe(text)
+    }
+  })
+
+  it('are held by the list that holds them, from where it starts and where it jumps', () => {
+    const list = fromMarkdown('3. treće\n4. četvrto\n7. sedmo').child(0)
+
+    expect(list.type).toBe(nodes.ordered_list)
+    expect(list.attrs.start).toBe(3)
+    expect(list.maybeChild(0)?.attrs.number).toBeNull()
+    expect(list.maybeChild(1)?.attrs.number).toBeNull()
+    expect(list.maybeChild(2)?.attrs.number).toBe(7)
+    expect(fromMarkdown('1. a\n2. b').child(0).attrs.start).toBe(1)
+  })
+
+  it('are counted on from the list start in a document the editor made, and from the number of an item that has one', () => {
+    const item = (text: string, number: number | null = null) =>
+      nodes.list_item.create({ number }, para(words(text)))
+    const doc = nodes.doc.create(null, [
+      nodes.ordered_list.create({ start: 3 }, [item('a'), item('b'), item('c', 9), item('d')]),
+      nodes.ordered_list.create(null, [item('e'), nodes.list_item.create(null, para()), item('f')]),
+    ])
+
+    expect(toMarkdown(doc.content)).toBe('3. a\n4. b\n9. c\n10. d\n\n1. e\n2. f')
+  })
+
+  it('stay in the paragraph they were typed in, escaped only where a one would begin a list', () => {
+    const typed = nodes.doc.create(null, [
+      para(words('15. oktobra'), nodes.hard_break.create(), words('2026. godine'), nodes.hard_break.create(), words('1. nije stavka')),
+    ])
+    const written = toMarkdown(typed.content)
+
+    expect(written).toBe('15\\. oktobra\n2026. godine\n1\\. nije stavka')
+    expect(fromMarkdown(written).toJSON()).toEqual(typed.toJSON())
   })
 })

@@ -47,19 +47,29 @@ export const schema = new Schema({
       parseDOM: [{ tag: 'ul' }],
       toDOM: () => ['ul', 0],
     },
+    /**
+     * A numbered list, with the number it counts from. Typed numbers are kept: a list that was
+     * written to start at three starts at three on the page and comes out of the editor the same.
+     */
     ordered_list: {
+      attrs: { start: { default: 1 } },
       content: 'list_item+',
       group: 'block',
-      parseDOM: [{ tag: 'ol' }],
-      toDOM: () => ['ol', 0],
+      parseDOM: [{ tag: 'ol', getAttrs: (dom) => ({ start: numberedBy(dom.getAttribute('start')) ?? 1 }) }],
+      toDOM: (node) => (startOf(node) === 1 ? ['ol', 0] : ['ol', { start: String(startOf(node)) }, 0]),
     },
     /** One line of words and nothing else, because an item of a written list is one line: a
-     *  list inside a list is not something a written text can say. */
+     *  list inside a list is not something a written text can say.
+     *
+     *  `number` is the number an item was written with where it is not the one after the item above
+     *  it (`breakOf` in `markdownText.ts`), and nothing where it is: „1. 2. 4." keeps its four. */
     list_item: {
+      attrs: { number: { default: null } },
       content: 'paragraph',
       defining: true,
-      parseDOM: [{ tag: 'li' }],
-      toDOM: () => ['li', 0],
+      parseDOM: [{ tag: 'li', getAttrs: (dom) => ({ number: numberedBy(dom.getAttribute('value')) }) }],
+      toDOM: (node) =>
+        numberOfItem(node) === null ? ['li', 0] : ['li', { value: String(numberOfItem(node)) }, 0],
     },
     /**
      * A block kept as it was written: a table, a rule, the place of a drawing on a written page.
@@ -112,6 +122,24 @@ export const schema = new Schema({
     },
   },
 })
+
+/** A number as a pasted list says it (`start` of an `ol`, `value` of an `li`), or nothing where it
+ *  says none or says what a written text cannot (`NUMBERED` in `markdownText.ts` reads nine digits
+ *  at most). */
+function numberedBy(said: string | null): number | null {
+  return said !== null && /^(0|[1-9]\d{0,8})$/.test(said) ? Number(said) : null
+}
+
+/** The number a list counts from. An attribute of ProseMirror is untyped, so it is read as a number
+ *  here and nowhere else. */
+export function startOf(node: Node): number {
+  return Number(node.attrs.start)
+}
+
+/** The number an item was written with, or nothing where it is the one after the item above. */
+export function numberOfItem(node: Node): number | null {
+  return node.attrs.number === null ? null : Number(node.attrs.number)
+}
 
 /** The hashes of a heading. An attribute of ProseMirror is untyped, so it is read as a number here
  *  and nowhere else. */
