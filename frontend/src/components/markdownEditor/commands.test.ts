@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { baseKeymap } from 'prosemirror-commands'
+import { joinBackward, joinForward } from 'prosemirror-commands'
 import { EditorState, TextSelection, type Command } from 'prosemirror-state'
 import {
   aroundCursor,
@@ -171,8 +171,8 @@ describe('Enter in an item of a list', () => {
     const LIST = '1. a\n4. b\n5. c'
 
     /* Backspace at the start of an item joins it to the item above, which keeps the number it had. */
-    expect(after(at(LIST, 8), baseKeymap.Backspace)).toBe('1. ab\n2. c')
-    expect(after(at(LIST, 4), baseKeymap.Delete)).toBe('1. ab\n2. c')
+    expect(after(at(LIST, 8), joinBackward)).toBe('1. ab\n2. c')
+    expect(after(at(LIST, 4), joinForward)).toBe('1. ab\n2. c')
     /* The button takes the item out as a paragraph, and makes a bulleted item of a paragraph. */
     expect(after(at('1. a\n4. b', 8), list)).toBe('1. a\n\nb')
     expect(after(at('Reči', 2), list)).toBe('- Reči')
