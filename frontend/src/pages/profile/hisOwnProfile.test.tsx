@@ -243,10 +243,12 @@ describe('a member whose fee has lapsed, on his own page', () => {
   }, SLOW)
 
   describe('and the awards', () => {
-    /* A podium he won in 2019, in a season when his fee stood. The results are what the server
+    /* A podium he won in 2029, in a season when his fee stood. A season of the league and not of
+       the imported history, which is no trophy at all (PDL P27): until 17.10.2026 these were
+       2019 and 2018. The results are what the server
        serves: the rows of the seasons he was a member in, with his number on them. The other man
        is on the list. */
-    const aRun = (id: number, memberNumber: string, points: number, year = 2019) => ({
+    const aRun = (id: number, memberNumber: string, points: number, year = 2029) => ({
       id,
       memberNumber,
       raceId: 700 + id,
@@ -275,14 +277,14 @@ describe('a member whose fee has lapsed, on his own page', () => {
 
       expect(screen.getByRole('heading', { level: 2, name: 'Pehari 2' })).toBeVisible()
       expect(rows.map((row) => row.textContent)).toEqual([
-        expect.stringContaining('2019Generalni plasman1. mesto'),
-        expect.stringContaining('2019Kategorija M40-541. mesto'),
+        expect.stringContaining('2029Generalni plasman1. mesto'),
+        expect.stringContaining('2029Kategorija M40-541. mesto'),
       ])
     }, SLOW)
 
     it('hands him nothing for a season in which three men of his band finished ahead of him', async () => {
       /* The one thing a list of him alone cannot say: he races against the members the list carries,
-         so a trophy is a place among THEM. In 2018 he is fourth on both boards (the men, and the men
+         so a trophy is a place among THEM. In 2028 he is fourth on both boards (the men, and the men
          of his band), and a ranking drawn against nobody but himself would put him first on both. The
          three are read off the list the case serves and not named, and the case says first that there
          are three of them to be read. */
@@ -299,8 +301,8 @@ describe('a member whose fee has lapsed, on his own page', () => {
             ? json([
                 aRun(9001, '000032', 100),
                 aRun(9002, '000001', 50),
-                aRun(9003, '000032', 100, 2018),
-                ...ahead.map((one, index) => aRun(9010 + index, String(one.memberNumber), 300 - 50 * index, 2018)),
+                aRun(9003, '000032', 100, 2028),
+                ...ahead.map((one, index) => aRun(9010 + index, String(one.memberNumber), 300 - 50 * index, 2028)),
               ])
             : null,
         ),
@@ -311,8 +313,8 @@ describe('a member whose fee has lapsed, on his own page', () => {
 
       expect(screen.getByRole('heading', { level: 2, name: 'Pehari 2' })).toBeVisible()
       expect(within(table).getAllByRole('row').slice(1).map((row) => row.textContent)).toEqual([
-        expect.stringContaining('2019Generalni plasman1. mesto'),
-        expect.stringContaining('2019Kategorija M40-541. mesto'),
+        expect.stringContaining('2029Generalni plasman1. mesto'),
+        expect.stringContaining('2029Kategorija M40-541. mesto'),
       ])
     }, SLOW)
 

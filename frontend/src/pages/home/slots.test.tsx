@@ -3,7 +3,6 @@ import { MemoryRouter } from 'react-router'
 import type { BtlEvent, Race } from '../../data/types'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { CalendarExtract } from './CalendarExtract'
-import { seasonLabelKey } from './content'
 
 /* The extract of the calendar, which is the widget "Priprema, pozor, SAD!".
  *
@@ -156,9 +155,3 @@ describe('CalendarExtract', () => {
   })
 })
 
-describe('seasonLabelKey', () => {
-  it('names the running season plainly and any other one as a sample', () => {
-    expect(seasonLabelKey(2027, 2027)).toBe('home.season')
-    expect(seasonLabelKey(2020, 2027)).toBe('home.seasonSample')
-  })
-})

@@ -3,8 +3,8 @@ import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import { offeredSeason, useSeason } from '../components/season'
-import { rankTeams, seasonOf, seasonsWithResults, teamOf } from '../data/derive'
-import { inYearlyWindow } from '../data/season'
+import { rankTeams, seasonOf, seasonsOnOffer, teamOf } from '../data/derive'
+import { inYearlyWindow, seasonShown, transfersTakeEffect } from '../data/season'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { formatNumber, formatPoints } from '../i18n/format'
 import { TeamMark } from '../components/TeamMark'
@@ -35,7 +35,10 @@ export function Teams() {
   const today = useToday()
   const { memberNumber } = useSession()
   const overlay = useOverlay()
-  const running = today.slice(0, 4)
+  /* The running season, and before the league has one its first (owner, 16.10.2026,
+     `seasonShown`): until that day this was the calendar year, so in 2026 the standing
+     opened on 2026, a season the league never ran. */
+  const running = String(seasonShown(today))
   const asked = useSeason(running)
   const state = combineResources(useTeams(), useCompetitors(), useResults())
 
@@ -55,8 +58,13 @@ export function Teams() {
              then find it nowhere. Every team stands there on nought, because in that
              season nobody has run yet. */
           const members = recordsOf(MEMBERS, competitors, overlay)
+          /* **The one that has not begun is the season a transfer takes effect in**
+             (`transfersTakeEffect`), and since 16.10.2026 that is not always the running
+             one plus one: in 2026 the running one is shown as 2027, and 2027 is also the
+             one a team founded now belongs to. **And no season before the first**, for
+             the reason `seasonsOnOffer` gives. */
           const seasons = [
-            ...new Set([Number(running) + 1, Number(running), ...seasonsWithResults(results)]),
+            ...new Set([transfersTakeEffect(today), ...seasonsOnOffer(results, today)]),
           ].sort((left, right) => right - left)
           const season = offeredSeason(asked, seasons, running)
           const inSeason = results.filter((one) => seasonOf(one) === Number(season))

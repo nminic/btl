@@ -1,13 +1,14 @@
 import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
-import { defaultSeason, totalsOf } from '../data/derive'
+import { totalsOf } from '../data/derive'
+import { seasonShown } from '../data/season'
 import { combineFour, useCompetitors, useEvents, useRaces, useResults } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
 import { CalendarExtract } from './home/CalendarExtract'
 import { Calculator } from './home/Calculator'
 import { TopByCategory } from './home/TopByCategory'
 import { Counters } from './home/Counters'
-import { NEWS, seasonLabelKey, SPONSORS } from './home/content'
+import { NEWS, SPONSORS } from './home/content'
 import { News } from './home/News'
 import { President } from './home/President'
 import { Sponsor, SponsorStrip } from './home/Sponsor'
@@ -63,9 +64,10 @@ export function Home() {
 
       <Resource state={state}>
         {([competitors, events, results, races]) => {
-          // The running season once it has results; until then the fullest one
-          // there is, so the widgets can be judged before the first race.
-          const season = defaultSeason(results, today)
+          /* The running season, and before the league has one its first, empty or
+             not: nothing here falls back to a season the league did not run (owner,
+             16.10.2026, `seasonShown`). */
+          const season = seasonShown(today)
           /* Who the widgets of this season are drawn from (PDL P11): a member
              whose fee has run out is not in the season now at all, and the top
              ten and the chart are that season's standing in another shape.
@@ -75,9 +77,10 @@ export function Home() {
              to take out. */
           const field = competitors
           const totals = totalsOf(results.filter((one) => one.date.startsWith(String(season))))
-          // The running season is the calendar year, not the year the
-          // membership is sold for.
-          const label = t(seasonLabelKey(season, Number(today.slice(0, 4))), { season })
+          /* One heading for every season it can show, because there is only one kind
+             of season it shows now. „Sezona 2019, probni podaci" stood here until
+             16.10.2026, over the fullest season of the imported history. */
+          const label = t('home.season', { season })
 
           return (
             <>

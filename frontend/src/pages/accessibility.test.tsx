@@ -4,7 +4,8 @@ import { matchRoutes, type RouteObject } from 'react-router'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { routeObjects } from '../app/routeObjects'
 import type { Role } from '../roles/context'
-import { BEHIND, BEHIND_DAY, DAY, PUBLIC } from '../test/addresses'
+import { BEHIND, BEHIND_DAY, DAY, PUBLIC, WITH_ROWS } from '../test/addresses'
+import { playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
 import { renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
 
@@ -25,6 +26,17 @@ import { SLOW } from '../test/slow'
  * (`matchRoutes` over `routeObjects`) which of the routes it serves were named by a row that axe
  * actually ran on, and every one must be. A screen added to the router tomorrow fails here until
  * somebody walks it, and a row that is skipped fails it today.
+ *
+ * <p><b>The three screens that draw rows are walked twice, and the second time with rows in them.</b> Since
+ * 16.10.2026 the table and the top boards open on the league's first season, and since 17.10.2026 a
+ * member's trophies are the places he took in a season of the league, so on `DAY` and the history that
+ * `test/mock` serves (nothing after 2026) all three are drawn with no row: a table that says nobody has
+ * raced, boards that say the same, trophies that count nought. Axe was given those, and an `<img>` with no
+ * `alt` put into the cell of a row of each (`Rankings.tsx`, `CompetitorAwards.tsx`, `TopBoards.tsx`) passed
+ * the whole file, 87 of 87 (review of PR 538, measured again 17.10.2026). So `WITH_ROWS`
+ * (`test/addresses.ts`) is walked as well, in the history moved forward into league seasons
+ * (`test/leagueSeasons.ts`), and every one of those rows asks for a cell before it asks axe anything: a
+ * screen that is empty again fails with the words of the wait and not with a clean report.
  *
  * <p><b>A route that only sends the reader on counts as walked</b> (`*`, the bare `/`, and the two
  * sectors of administration, which open their first section): what a reader meets there is the screen
@@ -111,6 +123,13 @@ beforeAll(() => {
   expect(document.elementFromPoint(0, 0), 'axe is told nothing is drawn at any point').toBeNull()
 })
 
+/** The same three screens a second time, each as a visitor and as a member, in a season that has rows
+ *  (`WITH_ROWS`). Read on `DAY` like the first walk; what differs is the history they are served. */
+const WITH_ROWS_WALK: Row[] = [
+  ...WITH_ROWS.map(([address, heading]): Row => [address, 'visitor', null, heading, DAY]),
+  ...WITH_ROWS.map(([address, heading]): Row => [address, 'competitor', ME, heading, DAY]),
+]
+
 /** Where the portal sends whoever arrives somewhere it has no screen for. */
 const FRONT_PAGE = 'Balkanska trkačka liga'
 
@@ -135,18 +154,10 @@ const WALK: Row[] = [
  * fails on an allowance nobody needs any more.
  */
 const KNOWN: Record<string, Record<string, { places: number; why: string }>> = {
-  'superadmin /sr/administracija/lige': {
-    /* The box „Trke u ligi" under a competition is headed `h3` (`admin/LeagueRaceModeration.tsx`),
-       because on the public page of a league it stands under the competition's own `h2`. In
-       administration it stands in a row of a table under the screen's `h1`, with no `h2` between.
-       Making it an `h2` changes how big it is drawn, and adding an `h2` over the table adds words to the
-       screen: both are the owner's to choose. Axe files this rule under best practice, not under a
-       numbered criterion of WCAG. */
-    'heading-order': {
-      places: 1,
-      why: 'the h3 of the box of races sits under the h1 of the screen, with no h2 between',
-    },
-  },
+  /* Empty since 17.10.2026. The one allowance this file began with, `heading-order` on the box „Trke u
+     ligi" in administration, was the owner's to decide, and he decided it (PDL „Jedini nalaz axe-a",
+     16.10.2026): the title is an `h2`, drawn at the size it had (`admin/LeagueRaceModeration.tsx`). The
+     mechanism stays, with the case at the foot that fails on an allowance nobody needs. */
 }
 
 /** Which allowances were actually needed, so the list above cannot quietly go stale. */
@@ -180,53 +191,80 @@ function said(found: axe.Result): string {
   return `${found.id}: ${found.help} at ${found.nodes.map((node) => node.target.join(' ')).join(', ')}`
 }
 
+/**
+ * One row of the walk handed to axe: drawn fresh, waited for until it is the screen it names and has
+ * stopped changing, and then every rule asked of it.
+ *
+ * @param draws what the screen must be seen to hold before axe is asked anything, when it is a screen
+ *        whose business is rows. Axe on an empty room answers in the words of a clean screen.
+ */
+async function handToAxe([address, role, who, heading, day]: Row, draws: 'rows' | null): Promise<void> {
+  renderAt(address, role, who, undefined, day)
+
+  expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
+
+  await settled()
+
+  /* That there is a row for axe to read, on the screens that are read for their rows. A `cell` is a
+     `td`, so it is a row of data and not the heading of a column. */
+  if (draws === 'rows') {
+    expect(screen.queryAllByRole('cell').length, `${role} on ${address} draws no row`).toBeGreaterThan(0)
+  }
+
+  const results = await axe.run(document, {
+    rules: Object.fromEntries(Object.keys(NOT_IN_JSDOM).map((rule) => [rule, { enabled: false }])),
+    /* Every place is listed for a violation, and one place for every other answer, which is all the
+       cases below read of them: that a rule passed, and which rules were left undecided. Measured
+       16.10.2026 on `/sr/moji-rezultati` as a member, 2918 elements: 8.6 s for a full report, 0.8 s
+       for this one. The full one timed out at 20 s under coverage in CI (PR 534). */
+    resultTypes: ['violations'],
+  })
+
+  /* That axe asked something at all. A run that matched nothing answers „no violations" in the
+     words of a clean screen. */
+  expect(results.passes.length, `${role} on ${address}`).toBeGreaterThan(0)
+
+  /* And that axe decided every rule it asked. „Incomplete" is two things and neither is an answer: a
+     rule that threw (axe says so in `error`, and it reads like a question left to a person when it is
+     a question never asked), and a rule axe could not settle and leaves to a person. A gate has no
+     person, so either one is a screen this file did not measure. Measured 16.10.2026: with the
+     answer above and contrast off, no row of the walk leaves anything undecided. */
+  expect(
+    results.incomplete.map((found) => `${found.id}${found.error === undefined ? '' : ' (threw)'}`),
+    `${role} on ${address}`,
+  ).toEqual([])
+
+  measured.push(address)
+
+  const screenOf = `${role} ${address}`
+  const known = KNOWN[screenOf] ?? {}
+  const unknown = results.violations.filter((found) => known[found.id] === undefined)
+
+  expect(unknown.map(said), `${role} on ${address}`).toEqual([])
+
+  results.violations.forEach((found) => {
+    const allowed = known[found.id]
+
+    expect(found.nodes, `${role} on ${address}, ${found.id}: ${allowed?.why}`).toHaveLength(
+      allowed?.places ?? 0,
+    )
+    met.add(`${screenOf} ${found.id}`)
+  })
+}
+
 describe('every screen, as axe reads it', () => {
-  it.each(WALK)('%s, as %s', async (address, role, who, heading, day) => {
-    renderAt(address, role, who, undefined, day)
+  it.each(WALK)('%s, as %s', async (...row) => {
+    await handToAxe(row, null)
+  }, SLOW)
+})
 
-    expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
+describe('the three screens that draw rows, as axe reads them with rows in them', () => {
+  /* The history in league seasons, because the table and the boards offer no season before 2027 and
+     the trophies count none (`test/leagueSeasons.ts`). Put back as it was after every case. */
+  playTheHistoryAsLeagueSeasons()
 
-    await settled()
-
-    const results = await axe.run(document, {
-      rules: Object.fromEntries(Object.keys(NOT_IN_JSDOM).map((rule) => [rule, { enabled: false }])),
-      /* Every place is listed for a violation, and one place for every other answer, which is all the
-         cases below read of them: that a rule passed, and which rules were left undecided. Measured
-         16.10.2026 on `/sr/moji-rezultati` as a member, 2918 elements: 8.6 s for a full report, 0.8 s
-         for this one. The full one timed out at 20 s under coverage in CI (PR 534). */
-      resultTypes: ['violations'],
-    })
-
-    /* That axe asked something at all. A run that matched nothing answers „no violations" in the
-       words of a clean screen. */
-    expect(results.passes.length, `${role} on ${address}`).toBeGreaterThan(0)
-
-    /* And that axe decided every rule it asked. „Incomplete" is two things and neither is an answer: a
-       rule that threw (axe says so in `error`, and it reads like a question left to a person when it is
-       a question never asked), and a rule axe could not settle and leaves to a person. A gate has no
-       person, so either one is a screen this file did not measure. Measured 16.10.2026: with the
-       answer above and contrast off, no row of the walk leaves anything undecided. */
-    expect(
-      results.incomplete.map((found) => `${found.id}${found.error === undefined ? '' : ' (threw)'}`),
-      `${role} on ${address}`,
-    ).toEqual([])
-
-    measured.push(address)
-
-    const screenOf = `${role} ${address}`
-    const known = KNOWN[screenOf] ?? {}
-    const unknown = results.violations.filter((found) => known[found.id] === undefined)
-
-    expect(unknown.map(said), `${role} on ${address}`).toEqual([])
-
-    results.violations.forEach((found) => {
-      const allowed = known[found.id]
-
-      expect(found.nodes, `${role} on ${address}, ${found.id}: ${allowed?.why}`).toHaveLength(
-        allowed?.places ?? 0,
-      )
-      met.add(`${screenOf} ${found.id}`)
-    })
+  it.each(WITH_ROWS_WALK)('%s, as %s', async (...row) => {
+    await handToAxe(row, 'rows')
   }, SLOW)
 })
 
@@ -251,7 +289,7 @@ describe('the walk itself', () => {
 
     /* Asked beside the answer, because a walk narrowed by accident answers „nothing is missing" in
        the words of a clean portal. */
-    expect(measured).toHaveLength(WALK.length)
+    expect(measured).toHaveLength(WALK.length + WITH_ROWS_WALK.length)
     expect(missing).toEqual([])
   })
 

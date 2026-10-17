@@ -1,4 +1,5 @@
 import type { Role } from '../roles/context'
+import { inLeague } from './leagueSeasons'
 
 /* Every address the portal answers outside administration, written once and read by two cases.
  *
@@ -78,7 +79,9 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
   ],
   ['/sr/takmicari', 'Takmičari', 'Takmičari'],
   ['/sr/takmicar/000001', 'Vladan Đurišić', 'Vladan Đurišić', 'Svojim rečima'],
-  ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Vladan Đurišić', 'Pehari 5'],
+  /* Nought since 17.10.2026: every place he took is in the imported history, and no season before
+     2027 is a trophy (PDL P27). The count is still the sign that the part has been worked out. */
+  ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Vladan Đurišić', 'Pehari 0'],
   ['/sr/timovi', 'Timovi', 'Timovi'],
   ['/sr/tim/dunavski-trkaci', 'Dunavski trkači', 'Dunavski trkači'],
   /* The front page, to a member, and that is the screen this address answers with
@@ -190,3 +193,38 @@ export const BEHIND: [string, Role, string | null, string][] = [
   ['/sr/tim/dunavski-trkaci/izmena', 'competitor', '000001', 'Izmena tima'],
 ]
 
+
+/**
+ * The three screens of `PUBLIC` that draw ROWS, read in a season that has some.
+ *
+ * **Why they are here and not only above.** Since 16.10.2026 the table and the top boards open on
+ * the league's first season and offer nothing before it, and since 17.10.2026 a member's trophies
+ * are the places he took in a season of the league (PDL P27). The history `test/mock` serves ends
+ * in 2026, so read as it is served, on `DAY`, those three screens are drawn with no row in them:
+ * a table says nobody has raced, the boards say the same, and the trophies are nought. Every walk
+ * over `PUBLIC` still goes through all three and still passes, having read the heading and an
+ * empty room. Measured 17.10.2026 on `DAY`, both roles: 0 cells on `/sr/tabela`, 0 on
+ * `/sr/top-liste`, 0 on `/sr/takmicar/000001/priznanja`, and an `<img>` without `alt` put into the
+ * cell of a row of each (`Rankings.tsx`, `TopBoards.tsx`, `CompetitorAwards.tsx`) passed
+ * `pages/accessibility.test.tsx`, 87 of 87 (the review of PR 538 reports the same three fall on `main`).
+ *
+ * **What a walk reads these with.** The same history moved forward into league seasons
+ * (`test/leagueSeasons.ts`, `playTheHistoryAsLeagueSeasons`), on `DAY`, with the season named in
+ * the address where the screen takes one: `inLeague(2019)` is 2035 and has the same people and the
+ * same figures 2019 had. Measured the same day: 153 cells on the table, 146 on the boards, 20 on
+ * the trophies. The trophies need no season in the address, because they are read over every
+ * season there is, and the history moved has five places in it.
+ *
+ * **They are the same addresses as three rows above and not three new screens**, so the floor
+ * against the route table stays where it was and each walk that reads this table also asks that
+ * the path of every row is one `PUBLIC` has. The heading is the same for a visitor and for a
+ * member, and the part (where two parts share a heading) is named as `PUBLIC` names it.
+ *
+ * A walk that reads this table must serve the moved history, or the rows are empty again and it
+ * says so: each of them asks for a cell before it asks for anything else.
+ */
+export const WITH_ROWS: [address: string, heading: string, part?: string][] = [
+  [`/sr/tabela?sezona=${String(inLeague(2019))}`, 'BTL tabele'],
+  [`/sr/top-liste?sezona=${String(inLeague(2019))}`, 'Top liste'],
+  ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Pehari 5'],
+]
