@@ -391,11 +391,13 @@ describe('Markdown, a link whose address reads as one host and opens another', (
 
   it('is the words it was typed as in a cell of a table of those texts, which draws no bare address', () => {
     for (const one of typed) {
-      const text = `| a | b |\n|---|---|\n| [x](${address(one)}) | www.runtrace.net |`
+      const link = `[x](${address(one)})`
+      const text = `| ${link} | b |\n|---|---|\n| ${link} | www.runtrace.net |`
       const { unmount } = render(<Markdown text={text} addresses outward />)
 
       expect(screen.queryAllByRole('link'), one).toEqual([])
-      expect(screen.getByRole('cell', { name: `[x](${address(one)})` })).toBeVisible()
+      expect(screen.getByRole('columnheader', { name: link })).toBeVisible()
+      expect(screen.getByRole('cell', { name: link })).toBeVisible()
       expect(screen.getByRole('cell', { name: 'www.runtrace.net' })).toBeVisible()
       unmount()
     }

@@ -332,7 +332,7 @@ function unitsOf(text: string, hostChecked: boolean): Unit[] {
               kind: 'link',
               url: String(url),
               inside: address.inside,
-              children: inlineOf(String(words), false, hostChecked),
+              children: inlineOf(String(words), false),
             },
           })
           at += whole.length
