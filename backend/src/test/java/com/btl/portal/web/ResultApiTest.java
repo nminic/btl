@@ -701,8 +701,8 @@ class ResultApiTest {
 	 * through, and not what can be INFERRED from the bands.</b> A band per season is the map that
 	 * gives the EXACT year of birth back of a member who crosses a band between two seasons he ran
 	 * in, and that is the cost the owner kept on 10.10.2026 once it was measured (the notes on
-	 * {@code ResultApi} and on {@code SeasonClock} give it, and the published text is to say it,
-	 * item BR); no case can refuse the inference without refusing the decision.
+	 * {@code ResultApi} and on {@code SeasonClock} give it, and the published text says it since
+	 * migration V58, item BR); no case can refuse the inference without refusing the decision.
 	 *
 	 * <p><b>The answer is read as TEXT and the things to look for are read out of the table</b>,
 	 * so the case refuses the year however it is spelt and whatever the field it leaks through is

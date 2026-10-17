@@ -79,6 +79,12 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 		}
 	}
 
+	/*
+	 * THE SIGN-OFF OF THE POLICY AND THE RULEBOOK (E policy, E rulebook) STANDS AT 16.10.2026 BELOW, not at the
+	 * 10.10.2026 V57 wrote: V58 moved it with the sentence it adds (owner, 16.10.2026). The terms' (E terms) is
+	 * still V57's. What V58 itself holds of the date is its own guard,
+	 * TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest.
+	 */
 	/**
 	 * One entry per edit and language, written by hand. What keeps it honest is the two floors in the class header,
 	 * and not whoever wrote it: a phrase that was never in the old text, and a section V57 does not edit, both fail.
@@ -230,10 +236,10 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 						"and private messages are never shown")),
 			new Edit("E policy", POLICY, 7, "sr",
 					List.of("Poslednja izmena: 28.09.2026."),
-					List.of("Poslednja izmena: 10.10.2026.")),
+					List.of("Poslednja izmena: 16.10.2026.")),
 			new Edit("E policy", POLICY, 7, "en",
 					List.of("Last amended: 28.09.2026."),
-					List.of("Last amended: 10.10.2026.")),
+					List.of("Last amended: 16.10.2026.")),
 			new Edit("E terms", TERMS, 12, "sr",
 					List.of("Poslednja izmena: 28.09.2026."),
 					List.of("Poslednja izmena: 10.10.2026.")),
@@ -242,10 +248,10 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 					List.of("Last amended: 10.10.2026.")),
 			new Edit("E rulebook", RULEBOOK, 19, "sr",
 					List.of("Poslednja izmena: 28.09.2026."),
-					List.of("Poslednja izmena: 10.10.2026.")),
+					List.of("Poslednja izmena: 16.10.2026.")),
 			new Edit("E rulebook", RULEBOOK, 19, "en",
 					List.of("Last amended: 28.09.2026."),
-					List.of("Last amended: 10.10.2026."))
+					List.of("Last amended: 16.10.2026."))
 		);
 
 	@Autowired
