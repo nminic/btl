@@ -69,6 +69,7 @@ const aRace = (id: number, eventId: number, date: string): Race => ({
   ascentM: 0,
   descentM: 0,
   category: 'short',
+  dots: ['short'],
 })
 
 /**

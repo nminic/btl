@@ -181,6 +181,7 @@
     "date",
     "descentM",
     "distanceKm",
+    "dots",
     "eventId",
     "id",
     "kind",

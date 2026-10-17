@@ -1,6 +1,5 @@
 import { categoryCodeFor } from './categories'
 import { FIRST_SEASON } from './season'
-import { raceKind } from './raceKind'
 import { DOTS } from './types'
 import type {
   BtlEvent,
@@ -1072,10 +1071,6 @@ export function countsByCategory(results: Result[]): Map<RaceCategory, number> {
   return counts
 }
 
-/** A race as it really arrives here: everything `Race` carries, except that the kind
- *  is still only a word, which is what the file says and what `raceKind` reads. */
-type Dotted = Omit<Race, 'kind'> & { kind: string }
-
 /**
  * Which dots an event carries, in the order `DOTS` names them.
  *
@@ -1084,26 +1079,24 @@ type Dotted = Omit<Race, 'kind'> & { kind: string }
  * per race, so an event with four half marathons carries one green dot rather
  * than four.
  *
- * Six and not five since 30.08.2026, and it was `categoriesAt` until then: a race
- * that fixes no length has no length to be named by, and it gets a dot of its own
- * (owner, on three offered answers: „šesta tačkica, bez zadate dužine").
+ * **Which dots a race carries is the server's answer and not worked out here**
+ * (`CalendarApi.DOTS`). A race over a length carries its own; a free race the
+ * sixth, the one without a set length (30.08.2026); and a timed race is an ultra
+ * until its results say otherwise, after which it carries exactly the lengths its
+ * results were run at (owner, 16.10.2026: „vodi se da je ultramaraton po defaultu
+ * jer nema ograničenja, ali čim počnu da pristižu rezultati, oni diktiraju koje će
+ * tačke ostati u sistemu"). This side never had the results to decide the last of
+ * those, and a second copy of the first two beside the server's would be two rules
+ * for one dot.
  */
-export function dotsAt(event: BtlEvent, races: Dotted[]): Dot[] {
+export function dotsAt(event: BtlEvent, races: readonly Pick<Race, 'eventId' | 'dots'>[]): Dot[] {
   /* Read off the race and not off a list the event carries. The list is written
      by the generator and by nothing else, so a race added in administration was
      run by nobody as far as this was concerned: its event lost the dot for that
      length, and the league beside it counted one race fewer. A race says which
-     event it belongs to, and that is the one place it is written down (ADL A7).
-
-     A race that fixes no length gets a dot of its own rather than the one its
-     category says. Category is read off the length (`data/raceCategory.ts`) and such
-     a race carries nought, so it would come out „short": a twenty four hour ultra
-     shown beside the five kilometre races, on the one screen somebody scans to find
-     out what is on. */
-  const held = new Set(
-    races
-      .filter((race) => race.eventId === event.id)
-      .map((race) => (raceKind(race.kind) === 'length' ? race.category : 'unmeasured')),
+     event it belongs to, and that is the one place it is written down (ADL A7). */
+  const held = new Set<string>(
+    races.filter((race) => race.eventId === event.id).flatMap((race) => race.dots),
   )
 
   return DOTS.filter((one) => held.has(one))

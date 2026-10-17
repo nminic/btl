@@ -56,6 +56,7 @@ const race = (
   ascentM: 0,
   descentM: 0,
   category: 'short',
+  dots: ['short'],
 })
 
 let resultsMade = 0

@@ -1,7 +1,7 @@
 import { MemoryRouter } from 'react-router'
 import { screen } from '@testing-library/react'
 import { renderWithI18n } from '../test/render'
-import type { BtlEvent, Race, RaceCategory, RaceKind } from '../data/types'
+import type { BtlEvent, Dot, Race, RaceCategory, RaceKind } from '../data/types'
 import { EventChip } from './calendar/DayChips'
 import { CalendarExtract } from './home/CalendarExtract'
 
@@ -46,7 +46,13 @@ import { CalendarExtract } from './home/CalendarExtract'
  * Rendered directly rather than through a screen, because both take their events
  * and races as arguments while a screen takes what the store holds, and the store
  * holds no race that fixes a time or nothing at all: all 1612 of them are run to a
- * length. The router is here because both draw links (`Markdown.test.tsx` renders
+ * length.
+ *
+ * **Which dots a race carries is the server's answer since 16.10.2026**
+ * (`CalendarApi.DOTS`, the timed race that is an ultra until its results say
+ * otherwise), so a race here is given its dots the way the server gives them, and
+ * every race carries a category that says something else: a screen that went back to
+ * reading the category would draw it, and the cases below would see it. The router is here because both draw links (`Markdown.test.tsx` renders
  * the same way).
  */
 
@@ -64,7 +70,7 @@ const event: BtlEvent = {
   featured: false,
 }
 
-const race = (id: number, kind: RaceKind, category: RaceCategory): Race => ({
+const race = (id: number, kind: RaceKind, category: RaceCategory, dots: readonly Dot[]): Race => ({
   id,
   eventId: 1,
   name: 'Trka',
@@ -81,6 +87,7 @@ const race = (id: number, kind: RaceKind, category: RaceCategory): Race => ({
   ascentM: 0,
   descentM: 0,
   category,
+  dots,
 })
 
 /** The two screens that draw these dots, each given the same event and races.
@@ -108,14 +115,22 @@ function drawn(races: Race[], draw: (races: Race[]) => React.ReactNode) {
 }
 
 describe('the dots a screen draws beside an event', () => {
-  it('give a race that fixes no length a dot of its own, for either kind', () => {
-    /* Both kinds that fix no length, since „a race that fixes none" is two
-       things and a screen could be written to catch one of them. */
-    for (const { where, draw } of SCREENS) {
-      for (const kind of ['time', 'free'] as const) {
-        const { dots, unmount } = drawn([race(1, kind, 'marathon')], draw)
+  it('draw what the server says a race carries, and not the category beside it', () => {
+    /* A timed race with no result yet is an ultra, one with results carries what they
+       were run at, and a free race the sixth dot (owner, 16.10.2026, and 30.08.2026).
+       The category under each says „marathon", which is what a screen reading it
+       instead would draw. */
+    const cases: [RaceKind, readonly Dot[]][] = [
+      ['time', ['ultra']],
+      ['time', ['half', 'long']],
+      ['free', ['unmeasured']],
+    ]
 
-        expect(dots, `${kind} on ${where}`).toEqual(['unmeasured'])
+    for (const { where, draw } of SCREENS) {
+      for (const [kind, said] of cases) {
+        const { dots, unmount } = drawn([race(1, kind, 'marathon', said)], draw)
+
+        expect(dots, `${kind} ${said.join('+')} on ${where}`).toEqual(said)
         unmount()
       }
     }
@@ -124,7 +139,7 @@ describe('the dots a screen draws beside an event', () => {
   it('still give a race of a length the dot its length says, and no other', () => {
     for (const { where, draw } of SCREENS) {
       const { dots, unmount } = drawn(
-        [race(1, 'length', 'marathon'), race(2, 'length', 'short')],
+        [race(1, 'length', 'marathon', ['marathon']), race(2, 'length', 'short', ['short'])],
         draw,
       )
 
@@ -140,7 +155,7 @@ describe('the dots a screen draws beside an event', () => {
        reader gets. */
     for (const { where, draw } of SCREENS) {
       const { allHidden, unmount } = drawn(
-        [race(1, 'free', 'marathon'), race(2, 'length', 'short')],
+        [race(1, 'free', 'marathon', ['unmeasured']), race(2, 'length', 'short', ['short'])],
         draw,
       )
 
