@@ -76,7 +76,9 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
   ],
   ['/sr/takmicari', 'Takmičari', 'Takmičari'],
   ['/sr/takmicar/000001', 'Vladan Đurišić', 'Vladan Đurišić', 'Svojim rečima'],
-  ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Vladan Đurišić', 'Pehari 5'],
+  /* Nought since 17.10.2026: every place he took is in the imported history, and no season before
+     2027 is a trophy (PDL P27). The count is still the sign that the part has been worked out. */
+  ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Vladan Đurišić', 'Pehari 0'],
   ['/sr/timovi', 'Timovi', 'Timovi'],
   ['/sr/tim/dunavski-trkaci', 'Dunavski trkači', 'Dunavski trkači'],
   /* The front page, to a member, and that is the screen this address answers with
