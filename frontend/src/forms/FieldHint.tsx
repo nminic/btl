@@ -90,13 +90,20 @@ export function FieldHint({
        WHAT THAT MEANS FOR THIS LISTENER, MEASURED RATHER THAN REASONED. It is
        registered with `capture` true on the DOCUMENT, so it runs before anything
        inside such a sheet and the sheet cannot stop it - a press answering the
-       sheet would also put away a hint standing behind it. That costs nothing
-       today and the reason is countable, not hopeful: this component is rendered
-       by `FormRenderer` and by `pages/account/NewPassword` only, and neither
-       stands on a screen that opens a prompt, so there is no hint on the page for
-       such a press to reach. The day one screen draws both, the answer belongs
-       here - this listener asking whether the press came from inside a dialog -
-       and not in the sheet, which by construction cannot be heard first. */
+       sheet would also put away a hint standing behind it.
+     *
+       SINCE 17.10.2026 ONE SCREEN DRAWS BOTH, so the sentence that stood here
+       („neither stands on a screen that opens a prompt") is no longer true. The
+       editor of a text in a form (`FormRenderer`, the description of an event)
+       opens the box for a link, an `aria-modal` sheet
+       (`components/markdownEditor/LinkDialog.tsx`). An Escape that closes the box
+       therefore also puts away a hint that was open behind it. That is the whole
+       of the cost, and it is left as it is: the hint is a few words under the
+       head of a field, nothing typed is lost with it, and it opens again the
+       way it opened the first time. Should a sheet ever stand over a hint that must
+       stay open, the answer belongs here - this listener asking whether the press
+       came from inside a dialog - and not in the sheet, which by construction
+       cannot be heard first. */
     function onKeyDown(pressed: KeyboardEvent) {
       if (pressed.key === 'Escape') {
         setDismissed(true)

@@ -48,6 +48,11 @@ import type { LeagueWords } from '../admin/leagueWrites'
  * no marks of Markdown in it is the paragraph it always was, its line breaks included. The box that
  * is being edited shows the text as it will be drawn, which is the point of the editor.
  *
+ * **A mailbox typed into the text is a link to write to, since 17.10.2026** (PDL, „Ispravke sa
+ * ekrana 17.10.2026", chosen with my recommendation): „Slično važi i za mailto tag, kad otkucam nešto
+ * nalik mail adresi, treba da ga pretvoriš automatski u link za slanje maila." Which words are
+ * mailboxes is `mailsIn`'s to say, and the link is drawn the way a bare address of a site is.
+ *
  * **Every link carries `dir="ltr"` and `rel="noreferrer noopener"`**, and why is said where the
  * link is drawn (`components/Markdown.tsx`) and held by `pages/league/linkDirection.test.tsx`.
  *

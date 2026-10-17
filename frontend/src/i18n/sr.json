@@ -380,11 +380,13 @@
     "heading": "Naslov",
     "list": "Spisak",
     "link": "Veza",
-    "address": "Adresa veze",
-    "setLink": "Postavi vezu",
+    "words": "Ispis",
+    "address": "Link",
+    "add": "Dodaj",
     "removeLink": "Ukloni vezu",
-    "cancel": "Odustani",
-    "wrongAddress": "Adresa veze počinje sa https://, http:// ili mailto:, ili kosom crtom za stranu ovog portala, i nema razmaka. Ime sajta, do prve kose crte, ne sme da ima „@“, „%“, kosu crtu unazad ni slova van engleske abecede (na primer š ili ć)."
+    "cancel": "Otkaži",
+    "noAddress": "Upiši gde veza vodi.",
+    "wrongAddress": "Upiši adresu sajta (na primer runtrace.net), mejl adresu ili kosu crtu za stranu ovog portala, bez razmaka. Ime sajta, do prve kose crte, ne sme da ima „@“, „%“, kosu crtu unazad ni slova van engleske abecede (na primer š ili ć), a ni mejl adresa ne sme da ima ta slova."
   },
   "registration": {
     "title": "Registracija",

@@ -507,10 +507,14 @@ export function EventDetail() {
                   heading of its own is an h2, and a link to another site in a
                   window of its own, like the organiser's page below it. A
                   description written before the editor has no marks in it and is
-                  the paragraph it always was. */}
+                  the paragraph it always was.
+
+                  A mailbox typed into it is a link to write to (PDL, „Ispravke sa
+                  ekrana 17.10.2026"); an address of a site typed bare is not, which
+                  is the terms' and the prizes' alone (PDL P15). */}
               {event.description !== '' && (
                 <div className="event__said">
-                  <Markdown text={event.description} under={1} outward />
+                  <Markdown text={event.description} under={1} addresses="mail" outward />
                 </div>
               )}
 

@@ -1053,6 +1053,28 @@ describe('the description of an event and the organiser’s page', () => {
     }
   })
 
+  /* PDL „Ispravke sa ekrana 17.10.2026": a mailbox typed into the description is a link to write to
+     it, and an address of a site typed bare stays words (that is the terms' and the prizes' alone,
+     PDL P15). */
+  it('draws a mailbox typed into the description as a link to write to it, and a bare address of a site as words', async () => {
+    const restore = eventCarrying('Pitanja na info@organizator.example, sve ostalo na www.organizator.example.', '')
+
+    try {
+      renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
+
+      /* Waited for words that are on the page however the description is drawn. */
+      await screen.findByText(/Pitanja na/)
+
+      const mail = screen.getByRole('link', { name: 'info@organizator.example' })
+
+      expect(mail).toHaveAttribute('href', 'mailto:info@organizator.example')
+      expect(mail).toHaveAttribute('dir', 'ltr')
+      expect(screen.queryByRole('link', { name: 'www.organizator.example' })).toBeNull()
+    } finally {
+      restore()
+    }
+  })
+
   it('makes nothing of a link to javascript: or of a script written in the description', async () => {
     const written = '[klik](javascript:window.btlRanALink=1) <script>window.btlRanAScript = true</script>'
     const restore = eventCarrying(written, '')

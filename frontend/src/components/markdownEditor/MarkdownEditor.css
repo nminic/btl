@@ -1,8 +1,10 @@
 /* The editor of the texts of the administration: a row of buttons over a box that looks like the
    page it writes (`.markdown`, the sheet of a written page, is worn by the box itself).
 
-   Mobile first, and nothing here has a width of its own: the buttons wrap onto a second row where
-   five words do not fit beside each other, and the box is as wide as the field it stands in. */
+   Mobile first, and nothing here has a width of its own but the buttons, which are squares of the
+   size a finger can press (WCAG 2.2 SC 2.5.8 asks for 24 px; these are 36): five of them fit beside
+   each other at 360 px with room to spare, and the row wraps where they do not. The box is as wide
+   as the field it stands in. */
 .md-editor {
   display: flex;
   flex-direction: column;
@@ -22,9 +24,15 @@
 }
 
 .md-editor__tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: 2.25rem;
+  block-size: 2.25rem;
+  padding: 0 var(--space-6);
   font: inherit;
-  font-size: 0.85rem;
-  padding: var(--space-4) var(--space-10);
+  font-size: 1.05rem;
+  line-height: 1;
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--control-border);
@@ -33,8 +41,7 @@
 }
 
 /* On is said by the ground and by the border, and by `aria-pressed` to whoever cannot see either. */
-.md-editor__tool[aria-pressed='true'],
-.md-editor__tool[aria-expanded='true'] {
+.md-editor__tool[aria-pressed='true'] {
   color: var(--accent);
   background: var(--surface-hover);
   border-color: var(--accent);
@@ -45,12 +52,25 @@
   cursor: not-allowed;
 }
 
-.md-editor__tool--bold {
+/* The symbols, set the way they set the text: B in bold, I in italic, as the palette of Word sets
+   them (owner, 17.10.2026). In a face with serifs, so the I is a letter and not a stroke. */
+.md-editor__symbol {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.md-editor__symbol--bold {
   font-weight: 700;
 }
 
-.md-editor__tool--italic {
+.md-editor__symbol--italic {
   font-style: italic;
+  font-weight: 700;
+}
+
+/* The drawings, at the height of the letters beside them, in the colour of the button. */
+.md-editor__icon {
+  inline-size: 1.15rem;
+  block-size: 1.15rem;
 }
 
 /* The box. Two classes, so it outweighs `.markdown` and `.field__control` on weight and not on which
@@ -89,14 +109,19 @@
   padding-inline-start: var(--space-8);
 }
 
-.md-editor__link {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
+/* A mailbox the page will draw as a link (`mails.ts`), drawn here the way a link of the text is
+   (`.markdown a`), so what is seen while writing is what the page shows. */
+.md-editor__area.markdown .md-editor__mail {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
-.md-editor__link-actions {
+/* The two fields of the box for a link, one under the other at every width: each holds an address
+   or a few words, and a field beside another would be too narrow for either at 360 px. */
+.md-editor__fields {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-6);
+  flex-direction: column;
+  gap: var(--space-12);
 }
