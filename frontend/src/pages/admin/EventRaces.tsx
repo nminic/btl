@@ -449,7 +449,8 @@ export function EventRaces({
            16.10.2026"): „sve ovo za novu trku je užasno. U prvom redu mora da se vidi Trka, Datum,
            Vrsta, a onda u drugom redu: Ako je obeleženo Dužinska ili Slobodna, onda Dužina, Uspon,
            Spust". A race that runs to a clock draws one field on the second line, how long it
-           lasts, which is what the owner chose between the outcomes he was offered.
+           lasts, which is what the owner chose between the outcomes he was offered, and a free
+           race has no second line at all (owner, 17.10.2026).
 
            It was a table until then, with seven columns that scrolled sideways inside their box on
            every width below the widest (owner, 23.08.2026, chose that of three outcomes). It is a
