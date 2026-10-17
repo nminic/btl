@@ -384,7 +384,7 @@
     "setLink": "Set link",
     "removeLink": "Remove link",
     "cancel": "Cancel",
-    "wrongAddress": "A link address starts with https://, http:// or mailto:, or with a slash for a page of this portal, and has no spaces. The name of the site, up to the first slash, may not hold “@”, “%”, a backslash or a letter outside the English alphabet (š or ć, for instance)."
+    "wrongAddress": "A link address starts with https://, http:// or mailto:, or with a slash for a page of this portal, and has no spaces. The name of the site, up to the first slash, may not hold “@”, “%”, a backslash or a letter outside the English alphabet."
   },
   "registration": {
     "title": "Registration",
