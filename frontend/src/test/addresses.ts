@@ -1,3 +1,5 @@
+import type { Role } from '../roles/context'
+
 /* Every address the portal answers outside administration, written once and read by two cases.
  *
  * It lived inside `pages/publicData.test.tsx` until 07.09.2026, when a second sweep needed the
@@ -150,3 +152,43 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
   ['/sr/poruke/41', 'Za ovo treba prijava', 'Fotografija je prihvaćena'],
   ['/sr/rezultat/novi', 'Za ovo treba prijava', 'Unos rezultata'],
 ]
+
+/**
+ * Administration and the two member forms the walk over `PUBLIC` cannot reach, each with who reads
+ * it and the heading it is supposed to draw.
+ *
+ * It lived inside `pages/publicData.test.tsx` until 16.10.2026, where the reasons for every row are
+ * still written, and moved here when a second sweep needed the same list: the one that hands every
+ * screen of the portal to axe (`pages/accessibility.test.tsx`). Two copies would be two answers to
+ * „what administration has", and only one of them would carry the floor against the route table.
+ */
+const ADMIN = '000001'
+
+/** The day `BEHIND` is read on: inside the transfer window, so the two member forms are really
+ *  drawn (a member with no team may propose one only inside it). Beside the table for the reason
+ *  `DAY` is beside `PUBLIC`: two sweeps read it, and written out in both it would part from the
+ *  table the moment somebody moved one of them. */
+export const BEHIND_DAY = '2026-10-15'
+
+export const BEHIND: [string, Role, string | null, string][] = [
+  ['/sr/administracija', 'superadmin', ADMIN, 'Administracija'],
+  ['/sr/administracija/entiteti', 'superadmin', ADMIN, 'Članovi'],
+  ['/sr/administracija/verifikacija', 'superadmin', ADMIN, 'Red za proveru rezultata'],
+  ['/sr/administracija/verifikacija/rezultati', 'superadmin', ADMIN, 'Red za proveru rezultata'],
+  ['/sr/administracija/verifikacija/uplate', 'superadmin', ADMIN, 'Uplate i aktivacija članova'],
+  ['/sr/administracija/verifikacija/timovi', 'superadmin', ADMIN, 'Novi timovi'],
+  ['/sr/administracija/verifikacija/trkacki-profil', 'superadmin', ADMIN, 'Trkački profil'],
+  ['/sr/administracija/verifikacija/komentari', 'superadmin', ADMIN, 'Komentari'],
+  ['/sr/administracija/cenovnik', 'superadmin', ADMIN, 'Cenovnik'],
+  ['/sr/administracija/clanovi', 'superadmin', ADMIN, 'Članovi'],
+  ['/sr/administracija/dogadjaji', 'superadmin', ADMIN, 'Događaji'],
+  ['/sr/administracija/timovi', 'superadmin', ADMIN, 'Timovi'],
+  ['/sr/administracija/lige', 'superadmin', ADMIN, 'Lige'],
+  ['/sr/administracija/strane', 'superadmin', ADMIN, 'Statične strane'],
+  ['/sr/administracija/moderatori', 'superadmin', ADMIN, 'Moderatori'],
+  /* A member with no team, inside the window, so the form is really drawn. */
+  ['/sr/novi-tim', 'competitor', '000002', 'Predlog tima'],
+  /* And the one who administers this team, likewise. */
+  ['/sr/tim/dunavski-trkaci/izmena', 'competitor', '000001', 'Izmena tima'],
+]
+
