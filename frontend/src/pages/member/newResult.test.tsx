@@ -152,8 +152,8 @@ describe('a race chosen from the list', () => {
       await user.type(screen.getByLabelText('Mesto'), 'Niš')
       await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
       await user.type(screen.getByLabelText('Sati'), '3')
-      await user.type(screen.getByLabelText('Minuta'), '30')
-      await user.type(screen.getByLabelText('Sekundi'), '0')
+      await user.type(screen.getByLabelText('Minuti'), '30')
+      await user.type(screen.getByLabelText('Sekunde'), '0')
       await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
       await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
@@ -206,8 +206,8 @@ describe('a race chosen from the list', () => {
       await user.type(screen.getByLabelText(/Uspon/), '0')
       await user.type(screen.getByLabelText(/Spust/), '0')
       await user.type(screen.getByLabelText('Sati'), '1')
-      await user.type(screen.getByLabelText('Minuta'), '52')
-      await user.type(screen.getByLabelText('Sekundi'), '10')
+      await user.type(screen.getByLabelText('Minuti'), '52')
+      await user.type(screen.getByLabelText('Sekunde'), '10')
       await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
       await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
@@ -1047,3 +1047,49 @@ describe('a run sent back, opened again by its address', () => {
    the run was written into the browser only after the server agreed. Nothing about a run sent is
    written into the browser any more, so there is no store to hold to it; that a refusal confirms
    nothing and leaves every box as it was is `resultToTheServer.test.tsx`'s. */
+
+describe('the measures of a result entered away from the calendar', () => {
+  /* Owner, 16.10.2026, chosen between the outcomes offered: the form away from the calendar
+     always has BOTH lines, because here the member picks the kind himself and always enters all
+     six (PDL, 30.08.2026, which stands). The lines are drawn for the form and not for the kind
+     picked in the list, so choosing a kind changes what the portal does with the numbers and not
+     what it asks for. */
+  const THE_LENGTH = ['Dužina (km)', 'Uspon (m)', 'Spust (m)']
+  const THE_TIME = ['Sati', 'Minuti', 'Sekunde']
+
+  /** The line a box stands on, by its label. */
+  function lineOf(label: string): HTMLElement | null {
+    return screen.getByLabelText(label).closest<HTMLElement>('.form__row')
+  }
+
+  /** The boxes on a line, by the names a reader hears for them, in the order they stand. */
+  function boxesOn(line: HTMLElement): string[] {
+    return within(line)
+      .getAllByRole('textbox')
+      .map((one) => must(inputElement(one).labels?.[0]?.textContent, 'the label of a box'))
+  }
+
+  it.each(RACE_KINDS)('draws the length in one line and the time under it, with a %s race picked', async (picked) => {
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await user.selectOptions(await screen.findByLabelText(/^Vrsta trke/, undefined, SOON), picked)
+
+    const measured = must(lineOf('Dužina (km)'), 'the line of the length')
+    const timed = must(lineOf('Sati'), 'the line of the time')
+
+    expect(boxesOn(measured)).toEqual(THE_LENGTH)
+    expect(boxesOn(timed)).toEqual(THE_TIME)
+    expect(lineOf('Uspon (m)')).toBe(measured)
+    expect(lineOf('Spust (m)')).toBe(measured)
+    expect(lineOf('Minuti')).toBe(timed)
+    expect(lineOf('Sekunde')).toBe(timed)
+    expect(measured).not.toBe(timed)
+    expect(measured.contains(timed)).toBe(false)
+    expect(measured.compareDocumentPosition(timed) & Node.DOCUMENT_POSITION_FOLLOWING).toBeGreaterThan(0)
+    /* And the boxes above and below them stand on no line, as they did before the lines. */
+    for (const stands of [/^Naziv trke/, /^Datum trke/, /^Link ka zvaničnim/, /^Komentar/]) {
+      expect(screen.getByLabelText(stands).closest('.form__row')).toBeNull()
+    }
+  })
+})

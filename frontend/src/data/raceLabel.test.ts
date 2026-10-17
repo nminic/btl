@@ -4,8 +4,9 @@ import type { Named } from './raceLabel'
 
 /* What a race is called, asked of the function rather than of a screen.
 
-   Three screens read it (`pages/EventDetail.tsx`, `pages/event/ReportResult.tsx`,
-   `pages/league/LeagueResults.tsx`) and each one of them has guards of its own,
+   Several screens read it (`pages/EventDetail.tsx`, `pages/league/LeagueEvents.tsx`,
+   `pages/member/racesToOffer.ts`; the form that reports a result stopped on 16.10.2026,
+   when its sentence over the form was taken off) and each one of them has guards of its own,
    but every race in `public/mock/races.json` is a race of a length, so between
    them they can only ever ask the one question. The other two kinds have nowhere
    else to be asked from.
