@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { useI18n } from '../i18n/useI18n'
-import { blocksOf, breakOf, inlineOf, startOf, type Block, type Inline } from './markdownText'
+import { blocksOf, breakOf, inlineOf, startOf, type Bare, type Block, type Inline } from './markdownText'
 import './Markdown.css'
 
 /* The written pages (rulebook, terms, privacy policy) are data, not code, and they run to
@@ -111,9 +111,12 @@ function inline(pieces: Inline[], reading: Reading): ReactNode[] {
     }
 
     if (piece.kind === 'address') {
-      /* A bare address of the terms or the prizes of a competition (PDL P15): a new window, the
+      /* A bare address of the terms or the prizes of a competition (PDL P15), or a mailbox typed into
+         one of the texts the editor writes (PDL, „Ispravke sa ekrana 17.10.2026"): a new window, the
          address as it was typed for its words, so the domain is visible, and `dir="ltr"` so it is
-         drawn in the order it was typed (`pages/league/linkDirection.test.tsx` says why). */
+         drawn in the order it was typed (`pages/league/linkDirection.test.tsx` says why). A mailbox
+         is drawn the way a link to one made with the button is drawn in the same texts, which open
+         every outside link in a window of their own. */
       return (
         <a key={index} href={piece.href} target="_blank" rel="noreferrer noopener" dir="ltr">
           {piece.text}
@@ -142,7 +145,7 @@ function Table({
 }: {
   rows: string[][]
   reading: Reading
-  addresses: boolean
+  addresses: Bare
 }) {
   const [head, ...body] = rows
 
@@ -164,7 +167,7 @@ function Table({
             <tr>
               {head.map((cell, index) => (
                 <th key={index} scope="col">
-                  {inline(inlineOf(cell, false, addresses), reading)}
+                  {inline(inlineOf(cell, false, addresses !== false), reading)}
                 </th>
               ))}
             </tr>
@@ -174,7 +177,7 @@ function Table({
           {body.map((row, rowIndex) => (
             <tr key={rowIndex}>
               {row.map((cell, index) => (
-                <td key={index}>{inline(inlineOf(cell, false, addresses), reading)}</td>
+                <td key={index}>{inline(inlineOf(cell, false, addresses !== false), reading)}</td>
               ))}
             </tr>
           ))}
@@ -189,7 +192,7 @@ function block(
   key: number,
   reading: Reading,
   under: number,
-  addresses: boolean,
+  addresses: Bare,
 ): ReactNode {
   if (item.kind === 'rule') {
     return <hr key={key} />
@@ -248,8 +251,10 @@ export function Markdown({
    * for a section of a written page, which is what every text was drawn under until 16.10.2026.
    */
   under?: number
-  /** Whether its bare addresses are links (PDL P15, the terms and the prizes of a competition). */
-  addresses?: boolean
+  /** Which of its bare addresses are links (`Bare`): of a site and of a mailbox in the terms and the
+   *  prizes of a competition (PDL P15), of a mailbox in the description of an event (PDL, „Ispravke
+   *  sa ekrana 17.10.2026"), and none in a written page. */
+  addresses?: Bare
   /** Whether a link to another site opens in a window of its own. */
   outward?: boolean
 }) {

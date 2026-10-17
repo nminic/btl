@@ -380,11 +380,13 @@
     "heading": "Heading",
     "list": "List",
     "link": "Link",
-    "address": "Link address",
-    "setLink": "Set link",
+    "words": "Text",
+    "address": "Link",
+    "add": "Add",
     "removeLink": "Remove link",
     "cancel": "Cancel",
-    "wrongAddress": "A link address starts with https://, http:// or mailto:, or with a slash for a page of this portal, and has no spaces. The name of the site, up to the first slash, may not hold “@”, “%”, a backslash or a letter outside the English alphabet."
+    "noAddress": "Type where the link leads.",
+    "wrongAddress": "Type the address of a site (runtrace.net, for example), a mail address, or a slash for a page of this portal, with no spaces. The name of the site, up to the first slash, may not hold “@”, “%”, a backslash or a letter outside the English alphabet, and neither may a mail address hold such a letter."
   },
   "registration": {
     "title": "Registration",

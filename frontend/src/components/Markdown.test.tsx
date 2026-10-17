@@ -341,6 +341,63 @@ describe('Markdown, for a text of the administration', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 
+  /* PDL „Ispravke sa ekrana 17.10.2026": a mailbox typed into the description of an event or into
+     the terms and the prizes is a link to write to it, and a written page is drawn as it was. */
+  it('draws a typed mailbox as a link to write to it in the description of an event, and no address of a site', () => {
+    render(<Markdown text="Pišite na **info@primer.rs** ili liga@runtrace.net, www.runtrace.net." addresses="mail" outward />)
+
+    const info = screen.getByRole('link', { name: 'info@primer.rs' })
+    const liga = screen.getByRole('link', { name: 'liga@runtrace.net' })
+
+    expect(info).toHaveAttribute('href', 'mailto:info@primer.rs')
+    expect(liga).toHaveAttribute('href', 'mailto:liga@runtrace.net')
+    expect(info.parentElement?.tagName).toBe('STRONG')
+
+    for (const one of [info, liga]) {
+      expect(one).toHaveAttribute('target', '_blank')
+      expect(one).toHaveAttribute('rel', 'noreferrer noopener')
+      expect(one).toHaveAttribute('dir', 'ltr')
+    }
+
+    expect(screen.getAllByRole('link')).toHaveLength(2)
+  })
+
+  it('draws a typed mailbox as a link in the terms and the prizes, beside the address of a site', () => {
+    render(<Markdown text="Pišite na info@primer.rs, www.runtrace.net." addresses outward />)
+
+    expect(screen.getByRole('link', { name: 'info@primer.rs' })).toHaveAttribute('href', 'mailto:info@primer.rs')
+    expect(screen.getByRole('link', { name: 'www.runtrace.net' })).toHaveAttribute('href', 'https://www.runtrace.net')
+  })
+
+  it('draws no typed mailbox as a link in a written page, which asks for no addresses', () => {
+    render(<Markdown text={'Pišite na info@primer.rs.\n\n- liga@runtrace.net\n\n## info@primer.rs'} />)
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.getByText('Pišite na info@primer.rs.')).toBeVisible()
+  })
+
+  /* PDL „Odgovori vlasnika 17.10.2026, jezik pošte (PR 545) i uređivač (PR 546)": the host of a link
+     is asked in the description of an event as in the terms, in its sentences and in its tables. */
+  it('draws a link of the description of an event whose address reads as one host and opens another as words, in a cell too', () => {
+    const bad = '[x](https://www.runtrace.net@zlo.example)'
+
+    render(<Markdown text={`${bad} [prava](https://primer.rs)\n\n| ${bad} | [druga](https://primer.rs/b) |\n|---|---|\n| ${bad} | [treca](https://primer.rs/c) |`} addresses="mail" outward />)
+
+    expect(screen.queryAllByRole('link', { name: 'x' })).toEqual([])
+    /* The clean links on both sides of them, so what is measured is the refusal and not a text that
+       links nothing. */
+    expect(screen.getAllByRole('link').map((one) => one.textContent)).toEqual(['prava', 'druga', 'treca'])
+    expect(screen.getByRole('columnheader', { name: bad })).toBeVisible()
+    expect(screen.getByRole('cell', { name: bad })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'prava' }).parentElement?.textContent).toBe(`${bad} prava`)
+  })
+
+  it('draws no typed mailbox as a link in a cell of a table, which draws no bare address of any kind', () => {
+    render(<Markdown text={'| Pošta | info@primer.rs |\n|---|---|\n| a | b |'} addresses="mail" outward />)
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
   it('makes nothing of a link to javascript: or of a script written in the text, in any of its readings', () => {
     const { container } = render(
       <Markdown

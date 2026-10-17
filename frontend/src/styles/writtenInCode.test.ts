@@ -249,10 +249,11 @@ describe('what a screen says in its own voice', () => {
        thinking harder about it, so it is not the list that is held here but the
        whole of what it is a list of.
 
-       Fifty nine names carry a value written out today, over nineteen hundred
-       and ninety values (1997 on 02.10.2026, a number that moves with every
-       screen), and none of them is one a reader meets. The list was sixty
-       names until that day: `min`, `max` and `step` were written nowhere but
+       Sixty names carry a value written out today (fifty nine from 02.10.2026
+       to 17.10.2026, when `addresses` came), over nineteen hundred and ninety
+       values (1997 on 02.10.2026, a number that moves with every screen), and
+       none of them is one a reader meets. The list was sixty
+       names until 02.10.2026: `min`, `max` and `step` were written nowhere but
        on the boxes of the calculator, and left the portal with their type when
        the owner decided that a number box takes a comma and the boxes became
        text. A name that is
@@ -268,6 +269,12 @@ describe('what a screen says in its own voice', () => {
 
     expect(carrying).toEqual([
       'accept',
+      /* WHICH BARE ADDRESSES A TEXT MAKES LINKS OF, 17.10.2026, and it is machinery rather than
+         speech. It carries the word „mail" and a reader never meets it: what he meets is a link to
+         write to a mailbox typed into the description of an event, which `pages/EventDetail.tsx`
+         asks `components/Markdown.tsx` for (PDL „Ispravke sa ekrana 17.10.2026"). The only thing
+         that writes it. Same kind of name as `dir` below. */
+      'addresses',
       'aria-autocomplete',
       'aria-controls',
       'aria-describedby',

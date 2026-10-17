@@ -1,8 +1,12 @@
 import { act, fireEvent, screen, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { useState } from 'react'
 import axe from 'axe-core'
 import { describe, expect, it, vi } from 'vitest'
+import { at } from '../../test/at'
 import { renderWithI18n } from '../../test/render'
+import { ruleFor } from '../../test/stylesheet'
 import { setupUser } from '../../test/user'
 import MarkdownEditor from './MarkdownEditor'
 import type { EditorProps } from './props'
@@ -12,6 +16,9 @@ import type { EditorProps } from './props'
    and can be used from the keyboard alone. */
 
 const TOOLBAR = ['Podebljano', 'Kurziv', 'Naslov', 'Spisak', 'Veza']
+/* What each of them shows (owner, 17.10.2026: „simboli nalik Word paleti (B, I, U i sl)"): three
+   letters, and a drawing for the list and for the link, which says no letters of its own. */
+const SYMBOLS = ['B', 'I', 'H', '', '']
 
 function draw(props: Partial<EditorProps> = {}) {
   const onChange = vi.fn<(text: string) => void>()
@@ -76,7 +83,7 @@ const tool = (name: string) => screen.getByRole('button', { name })
 const last = (spy: { mock: { calls: string[][] } }) => spy.mock.calls.at(-1)?.[0]
 
 describe('the editor of a written text', () => {
-  it('is a box with a name, and five buttons each named by its words', async () => {
+  it('is a box with a name, and five buttons that show symbols and are named by their words', async () => {
     draw({ value: 'Reči' })
 
     expect(box()).toHaveAttribute('aria-multiline', 'true')
@@ -84,17 +91,22 @@ describe('the editor of a written text', () => {
 
     const tools = within(screen.getByRole('group', { name: 'Oblikovanje teksta' })).getAllByRole('button')
 
-    expect(tools.map((one) => one.textContent)).toEqual(TOOLBAR)
+    /* Five and in the owner's order, and no sixth for underlining (owner, 17.10.2026: „Ne treba"). */
+    expect(tools).toHaveLength(TOOLBAR.length)
+    expect(tools.map((one) => one.textContent)).toEqual(SYMBOLS)
 
-    for (const one of tools) {
-      /* A name, and the name is the words on it (WCAG 2.2 SC 2.5.3). */
-      expect(one).toHaveAccessibleName(one.textContent ?? '')
-      expect(one.textContent).not.toBe('')
+    for (const [index, one] of tools.entries()) {
+      /* A symbol is no name (WCAG 2.2 SC 1.1.1), so each is named by its word, and shows the same
+         word where a pointer rests on it. */
+      expect(one).toHaveAccessibleName(at(TOOLBAR, index))
+      expect(one).toHaveAttribute('title', at(TOOLBAR, index))
       expect(one).not.toBeDisabled()
     }
+
+    expect(tool('Veza')).toHaveAttribute('aria-haspopup', 'dialog')
   })
 
-  it('meets every rule axe can ask of it, with the row for an address open', async () => {
+  it('meets every rule axe can ask of it, with the box for a link open', async () => {
     const user = setupUser()
     const { container } = draw({ value: 'Reči' })
 
@@ -241,67 +253,148 @@ describe('the editor of a written text', () => {
     await user.click(tool('Veza'))
 
     expect(onChange).not.toHaveBeenCalled()
-    expect(screen.queryByRole('textbox', { name: 'Adresa veze' })).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  /* The owner, 17.10.2026: „kad otkucam nešto nalik mail adresi, treba da ga pretvoriš automatski u
+     link za slanje maila." The page makes the link; the box shows it as one the moment it is typed,
+     and the stylesheet draws what the box marks the way a link is drawn. The two are held together
+     here, since a class the sheet does not know is a mailbox drawn as words. */
+  it('shows a typed mailbox as the link the page will make of it, and keeps it as typed', async () => {
+    const user = setupUser()
+    const { onChange } = draw({ value: 'Piši na' })
+
+    after('Piši na')
+    await user.keyboard(' info@primer.rs.')
+
+    expect(last(onChange)).toBe('Piši na info@primer.rs.')
+    expect(screen.getByText('info@primer.rs')).toHaveClass('md-editor__mail')
+
+    const sheet = readFileSync(join(process.cwd(), 'src/components/markdownEditor/MarkdownEditor.css'), 'utf8')
+    const drawn = ruleFor(sheet, '.md-editor__area.markdown .md-editor__mail', 'MarkdownEditor.css')
+
+    expect(drawn.getPropertyValue('text-decoration')).toBe('underline')
+    expect(drawn.getPropertyValue('color')).toBe('var(--accent)')
   })
 })
 
-describe('a link, from the button', () => {
-  it('asks for an address, refuses one a page may not lead to, and keeps one it may', async () => {
+/* The owner, 17.10.2026 (PDL „Ispravke sa ekrana 17.10.2026"): „Treba da izbaci boks u koji se upišu
+   Ispis i Link. Ispis je ono što piše, a link ono gde zapravo vodi. https:// ne treba uopšte da
+   popunjavam nego da se podrazumeva (dakle ti ga dodaj automatski)." What each address becomes is
+   held without a screen (`commands.test.ts`, `hrefFor`); here, that the box asks it and says what it
+   said. */
+describe('a link, from the box for a link', () => {
+  const sheet = () => screen.getByRole('dialog', { name: 'Veza' })
+  const words = () => within(sheet()).getByRole('textbox', { name: 'Ispis' })
+  const address = () => within(sheet()).getByRole('textbox', { name: 'Link' })
+  const press = (name: string) => within(sheet()).getByRole('button', { name })
+
+  it('is a sheet over the page with its name, its two fields and its buttons', async () => {
+    const user = setupUser()
+
+    draw({ value: 'Reči' })
+    await user.click(box())
+    await user.click(tool('Veza'))
+
+    expect(sheet()).toHaveAttribute('aria-modal', 'true')
+    expect(within(sheet()).getAllByRole('textbox')).toEqual([words(), address()])
+    expect(within(sheet()).getAllByRole('button').map((one) => one.textContent)).toEqual(['Dodaj', 'Otkaži'])
+  })
+
+  it('starts Ispis with the selected words and the cursor in Link, and adds https:// itself', async () => {
     const user = setupUser()
     const { onChange } = draw({ value: 'Vidi sajt' })
 
     select('sajt', 0, 4)
     await user.click(tool('Veza'))
 
-    expect(tool('Veza')).toHaveAttribute('aria-expanded', 'true')
+    expect(words()).toHaveValue('sajt')
+    expect(address()).toHaveValue('')
+    expect(address()).toHaveFocus()
 
-    const address = screen.getByRole('textbox', { name: 'Adresa veze' })
+    await user.keyboard('runtrace.net/lige{Enter}')
 
-    expect(address).toHaveFocus()
-
-    await user.type(address, 'javascript:alert(1){Enter}')
-
-    expect(address).toHaveAttribute('aria-invalid', 'true')
-    expect(address).toHaveAccessibleDescription(/počinje sa https:\/\//)
-    expect(onChange).not.toHaveBeenCalled()
-
-    await user.clear(address)
-
-    expect(address).toHaveAttribute('aria-invalid', 'false')
-
-    await user.type(address, ' https://primer.rs ')
-    await user.click(screen.getByRole('button', { name: 'Postavi vezu' }))
-
-    expect(last(onChange)).toBe('Vidi [sajt](https://primer.rs)')
-    expect(screen.queryByRole('textbox', { name: 'Adresa veze' })).toBeNull()
+    expect(last(onChange)).toBe('Vidi [sajt](https://runtrace.net/lige)')
+    expect(screen.queryByRole('dialog')).toBeNull()
     expect(box()).toHaveFocus()
   })
 
-  it('refuses an address that reads as one host and opens another, and says what is wrong with it', async () => {
+  it('takes the words typed into Ispis, and the cursor starts there when nothing is selected', async () => {
+    const user = setupUser()
+    const { onChange } = draw({ value: 'Pišite' })
+
+    after('Pišite')
+    await user.click(tool('Veza'))
+
+    expect(words()).toHaveValue('')
+    expect(words()).toHaveFocus()
+
+    await user.keyboard(' nam')
+    await user.type(address(), 'info@runtrace.net')
+    await user.click(press('Dodaj'))
+
+    expect(last(onChange)).toBe('Pišite[nam](mailto:info@runtrace.net)')
+  })
+
+  it('makes the address its words where Ispis is left empty, and a mailbox a link to write to it', async () => {
+    const user = setupUser()
+    const { onChange } = draw({ value: 'Reči' })
+
+    after('Reči')
+    await user.click(tool('Veza'))
+    await user.type(address(), 'info@runtrace.net{Enter}')
+
+    expect(last(onChange)).toBe('Reči[info@runtrace.net](mailto:info@runtrace.net)')
+  })
+
+  it('says where the link leads is missing, beside the field and with the cursor taken there', async () => {
+    const user = setupUser()
+    const { onChange } = draw({ value: 'Reči' })
+
+    after('Reči')
+    await user.click(tool('Veza'))
+    await user.type(words(), 'BTL{Enter}')
+
+    expect(address()).toHaveAttribute('aria-invalid', 'true')
+    expect(address()).toHaveAccessibleDescription('Upiši gde veza vodi.')
+    expect(address()).toHaveFocus()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('refuses an address a page may not lead to, and one that reads as one host and opens another, and says why', async () => {
     const user = setupUser()
     const { onChange } = draw({ value: 'Vidi sajt' })
 
     select('sajt', 0, 4)
     await user.click(tool('Veza'))
 
-    const address = screen.getByRole('textbox', { name: 'Adresa veze' })
+    for (const typed of [
+      'javascript:alert(1)',
+      'www.runtrace.net@zlo.example',
+      'https://www.runtrace.net@zlo.example',
+      'http://www.runtrace.net@zlo.example',
+      'info@rüntrace.net',
+    ]) {
+      await user.clear(address())
 
-    for (const typed of ['https://www.runtrace.net@zlo.example', 'http://www.runtrace.net@zlo.example']) {
-      await user.clear(address)
-      await user.type(address, `${typed}{Enter}`)
+      expect(address(), typed).toHaveAttribute('aria-invalid', 'false')
 
-      expect(address, typed).toHaveAttribute('aria-invalid', 'true')
-      expect(address, typed).toHaveAccessibleDescription(/ne sme da ima „@“/)
+      await user.type(address(), typed)
+      await user.click(press('Dodaj'))
+
+      expect(address(), typed).toHaveAttribute('aria-invalid', 'true')
+      expect(address(), typed).toHaveAccessibleDescription(/Upiši adresu sajta .* ne sme da ima „@“/)
+      expect(address(), typed).toHaveFocus()
       expect(onChange, typed).not.toHaveBeenCalled()
     }
 
-    await user.clear(address)
-    await user.type(address, 'https://medium.com/@ime/post{Enter}')
+    await user.clear(address())
+    await user.type(address(), 'medium.com/@ime/post{Enter}')
 
     expect(last(onChange)).toBe('Vidi [sajt](https://medium.com/@ime/post)')
   })
 
-  it('keeps the address with Enter, and not by sending the form it stands in', async () => {
+  it('keeps the link with Enter in either field, and not by sending the form it stands in', async () => {
     const user = setupUser()
     const sent = vi.fn((event: SubmitEvent) => event.preventDefault())
     const onChange = vi.fn()
@@ -314,58 +407,104 @@ describe('a link, from the button', () => {
 
     after('Reči')
     await user.click(tool('Veza'))
-    await user.type(screen.getByRole('textbox', { name: 'Adresa veze' }), '/pravilnik{Enter}')
+    await user.type(address(), '/pravilnik')
+    await user.type(words(), 'pravilnik{Enter}')
 
     expect(sent).not.toHaveBeenCalled()
-    expect(last(onChange)).toBe('Reči[/pravilnik](/pravilnik)')
+    expect(last(onChange)).toBe('Reči[pravilnik](/pravilnik)')
   })
 
-  it('shows the address of the link the cursor stands in, changes it, and takes it off', async () => {
+  it('opens again over the link the cursor stands in with both fields filled, changes both, and takes it off', async () => {
     const user = setupUser()
     const { onChange } = draw({ value: 'A [prva](https://a.example) b' })
 
     select('prva', 2)
     await user.click(tool('Veza'))
 
-    const address = screen.getByRole('textbox', { name: 'Adresa veze' })
+    expect(words()).toHaveValue('prva')
+    expect(address()).toHaveValue('https://a.example')
+    expect(words()).toHaveFocus()
 
-    expect(address).toHaveValue('https://a.example')
+    await user.clear(words())
+    await user.type(words(), 'prvi sajt')
+    await user.clear(address())
+    await user.type(address(), 'c.example{Enter}')
 
-    await user.clear(address)
-    await user.type(address, 'https://c.example{Enter}')
+    expect(last(onChange)).toBe('A [prvi sajt](https://c.example) b')
 
-    expect(last(onChange)).toBe('A [prva](https://c.example) b')
-
-    select('prva', 2)
+    select('prvi', 2)
     await user.click(tool('Veza'))
-    await user.click(screen.getByRole('button', { name: 'Ukloni vezu' }))
+    await user.click(press('Ukloni vezu'))
 
-    expect(last(onChange)).toBe('A prva b')
+    expect(last(onChange)).toBe('A prvi sajt b')
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('puts the row away with Escape, with the second press of the button, or with the button that declines', async () => {
+  it('closes with Escape or with Otkaži, changes nothing, and puts the cursor back into the text', async () => {
     const user = setupUser()
     const { onChange } = draw({ value: 'Reči' })
+    /* Where the menus of the page wait for Escape (`app/Dropdown.tsx`): the press that closes the
+       sheet must not reach them, or it shuts a menu left open behind it as well. */
+    const heard: string[] = []
+    const listen = (pressed: KeyboardEvent) => heard.push(pressed.key)
 
+    document.addEventListener('keydown', listen)
+
+    try {
+      await user.click(box())
+      await user.click(tool('Veza'))
+      await user.type(address(), 'primer.rs')
+      await user.keyboard('{Escape}')
+
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(box()).toHaveFocus()
+      expect(heard).not.toContain('Escape')
+      /* Heard at all, so what is measured is the stopping and not a listener that hears nothing. */
+      expect(heard).toContain('p')
+
+      await user.click(tool('Veza'))
+
+      /* No link to take off where the cursor stands, so no button that would. */
+      expect(within(sheet()).queryByRole('button', { name: 'Ukloni vezu' })).toBeNull()
+      /* And what was typed before Escape is gone with the sheet. */
+      expect(address()).toHaveValue('')
+
+      await user.click(press('Otkaži'))
+
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(box()).toHaveFocus()
+      expect(onChange).not.toHaveBeenCalled()
+    } finally {
+      document.removeEventListener('keydown', listen)
+    }
+  })
+
+  it('holds Tab inside the sheet both ways, and a press outside it closes nothing', async () => {
+    const user = setupUser()
+
+    draw({ value: 'Reči' })
     await user.click(box())
     await user.click(tool('Veza'))
-    await user.keyboard('{Escape}')
 
-    expect(screen.queryByRole('textbox', { name: 'Adresa veze' })).toBeNull()
-    expect(box()).toHaveFocus()
+    expect(words()).toHaveFocus()
 
-    await user.click(tool('Veza'))
-    await user.click(tool('Veza'))
+    await user.tab()
+    expect(address()).toHaveFocus()
+    await user.tab()
+    expect(press('Dodaj')).toHaveFocus()
+    await user.tab()
+    expect(press('Otkaži')).toHaveFocus()
+    await user.tab()
+    expect(words()).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(press('Otkaži')).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(press('Dodaj')).toHaveFocus()
 
-    expect(screen.queryByRole('textbox', { name: 'Adresa veze' })).toBeNull()
+    /* The backdrop the sheet stands on. */
+    await user.click(sheet().parentElement ?? document.body)
 
-    await user.click(tool('Veza'))
-    /* No link to take off where the cursor stands, so no button that would. */
-    expect(screen.queryByRole('button', { name: 'Ukloni vezu' })).toBeNull()
-    await user.click(screen.getByRole('button', { name: 'Odustani' }))
-
-    expect(screen.queryByRole('textbox', { name: 'Adresa veze' })).toBeNull()
-    expect(onChange).not.toHaveBeenCalled()
+    expect(sheet()).toBeVisible()
   })
 
   it('does not leave the editor while the address is typed', async () => {
@@ -374,7 +513,8 @@ describe('a link, from the button', () => {
 
     await user.click(box())
     await user.click(tool('Veza'))
-    await user.type(screen.getByRole('textbox', { name: 'Adresa veze' }), 'https://primer.rs')
+    await user.type(address(), 'https://primer.rs')
+    await user.type(words(), 'primer')
 
     expect(onLeave).not.toHaveBeenCalled()
   })

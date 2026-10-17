@@ -1,39 +1,10 @@
 import { outsideLink } from '../../data/outsideLink'
+import { CLOSING, OPENING, runsOf, type Found, type Piece } from './aroundAWord'
 
-/**
- * One run of a text: words exactly as somebody wrote them, or an address among those words that a
- * press should open.
- *
- * `text` is always what was written, character for character, so the runs of a text put back
- * together are that text and nothing else. `href` is where a press leads, and `null` for words.
- */
-export type Piece = { text: string; href: string | null }
+export type { Piece }
 
 const HTTPS = 'https://'
 const WWW = 'www.'
-
-/**
- * What may stand in front of an address without being part of it: an opening bracket or a quotation
- * mark, in whichever of the usual typographies the text was written.
- *
- * **Asked of Unicode and never listed** (`Ps` open punctuation, `Pi` and `Pf` the quotation marks
- * of every language, and the two straight ones that Unicode files under `Po`). Serbian opens a quote
- * with `„` and closes it with `“`, which is a `Ps` and a `Pi`, and a list written from the keyboard
- * would have had the one and missed the other. The floor under this is a test that walks every code
- * point of those categories (`addressesIn.test.ts`).
- */
-export const OPENING = /^[\p{Ps}\p{Pi}\p{Pf}"']$/u
-
-/**
- * What may stand behind an address without being part of it: a closing bracket, a quotation mark,
- * and the marks that end a sentence or a clause.
- *
- * Asked of Unicode for the same reason as `OPENING`, with the seven marks of a sentence written out
- * because Unicode files them under `Po` beside characters that an address legitimately ends in
- * (`/`, `%`, `&`, `#`). A slash is therefore **not** here: `www.runtrace.net/` is an address that
- * ends in a slash, and a sentence that ends is one that ends in a full stop.
- */
-export const CLOSING = /^[\p{Pe}\p{Pi}\p{Pf}"'.,;:!?…]$/u
 
 /**
  * The scheme of an address and the slashes behind it, which a browser skips however many there are
@@ -110,8 +81,6 @@ function hostPartOf(core: string): string {
 export function opensAsTyped(address: string): string | undefined {
   return NOT_A_HOST_AS_TYPED.test(hostPartOf(address)) ? undefined : outsideLink(address)
 }
-
-type Found = { before: string; text: string; href: string; after: string }
 
 /**
  * THE ADDRESS IN ONE WORD, if the word holds one, with what stands in front of it and behind it.
@@ -249,7 +218,9 @@ function addressIn(word: string): Found | null {
  * as one, and an address ends where its word ends, less the punctuation that closes a sentence or
  * a bracket. It begins where its word begins, after the brackets and the quotation marks that may
  * open it. `ime@www.runtrace.net`, `pogledaj:www.runtrace.net` and `www` in the middle of another
- * word are not addresses, and neither is anything that begins with `http://`.
+ * word are not addresses of a site, and neither is anything that begins with `http://`. (The first
+ * of the three is the address of a mailbox, which `mailsIn` below reads, and the texts that ask for
+ * those draw it as one since 17.10.2026.)
  *
  * **Nor is an address whose host, as it was typed, is not the host that opens.** One with a user
  * part (`www.runtrace.net@zlo.example`), a `%`, a backslash or a letter outside ASCII in the part in
@@ -265,32 +236,5 @@ function addressIn(word: string): Found | null {
  * opening bracket in Unicode's sense, and the text it begins looks like markup, which is left alone.
  */
 export function addressesIn(text: string): Piece[] {
-  const pieces: Piece[] = []
-  let words = ''
-
-  const closeWords = (): void => {
-    if (words !== '') {
-      pieces.push({ text: words, href: null })
-      words = ''
-    }
-  }
-
-  /* `split` with a capturing group alternates what stands between blanks with the blanks themselves,
-     so the even parts are the words and the odd ones are what to leave alone. */
-  for (const [at, part] of text.split(/(\s+)/u).entries()) {
-    const found = at % 2 === 0 ? addressIn(part) : null
-
-    if (found === null) {
-      words += part
-    } else {
-      words += found.before
-      closeWords()
-      pieces.push({ text: found.text, href: found.href })
-      words = found.after
-    }
-  }
-
-  closeWords()
-
-  return pieces
+  return runsOf(text, addressIn)
 }

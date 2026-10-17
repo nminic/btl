@@ -10,8 +10,10 @@ import { keymap } from 'prosemirror-keymap'
 import { Slice, type Mark, type MarkType, type Node } from 'prosemirror-model'
 import { liftListItem, splitListItem, wrapInList } from 'prosemirror-schema-list'
 import { EditorState, Plugin, type Command, type Transaction } from 'prosemirror-state'
+import { mailOf } from '../../pages/league/mailsIn'
 import { addressOf } from '../markdownText'
 import { fromMarkdown, toMarkdown } from './convert'
+import { mailsShown } from './mails'
 import { schema } from './schema'
 
 /*
@@ -181,20 +183,92 @@ export function linkableAddress(address: string): boolean {
   return LINKABLE.test(address) && addressOf(address, true) !== undefined
 }
 
-/** The selection, or the link around the cursor, made a link to the address. With nothing
- *  selected and no link to change, the address itself is written as its words. */
-export function setLink(state: EditorState, address: string): Transaction {
+/**
+ * WHERE A LINK MADE IN THE BOX FOR A LINK LEADS, for what was typed into its field Link (owner,
+ * 17.10.2026, PDL „Ispravke sa ekrana 17.10.2026": „Ispis je ono što piše, a link ono gde zapravo
+ * vodi. https:// ne treba uopšte da popunjavam nego da se podrazumeva (dakle ti ga dodaj
+ * automatski)."), or nothing where it may not lead there.
+ *
+ * - **A mailbox is a link to write to it** (`mailOf`), chosen by the owner the same day among the
+ *   options offered, with my recommendation (PDL, the same section).
+ * - **A host with nothing in front of it gets `https://`**: what was typed, up to its first `/`,
+ *   `?` or `#`, holds a full stop with something on both sides of it (`runtrace.net`,
+ *   `www.runtrace.net/lige`, `runtrace.net:8080`). Derived from his sentence and not his word:
+ *   `https` and not `http`, because it is the scheme the portal's addresses of other sites are
+ *   given everywhere (`addressesIn`, the `www.` of PDL P15).
+ * - **What already says where it goes is asked as it stands**: a scheme of its own (`https://`,
+ *   `http://`, `mailto:`, and `javascript:` too, which is then refused), or one slash for a page of
+ *   this portal (PR 541, the written pages' `/pravilnik` and the statute).
+ *
+ * Every one of them is then asked what every link of the editor is asked (`linkableAddress`), the
+ * host check of PDL P15 included, so a `https://` put in front can never make a link of what the
+ * page would draw as words: `www.runtrace.net@zlo.example` becomes
+ * `https://www.runtrace.net@zlo.example`, and that is refused.
+ *
+ * A scheme here has no full stop in it, so a host with a port is not read as one: by the standard
+ * `runtrace.net:8080` is the scheme `runtrace.net`, and nobody typing it means that.
+ */
+const SCHEME = /^[a-z][a-z0-9+-]*:/i
+const A_HOST = /^[^/?#.\s][^/?#\s]*\.[^/?#.\s]/
+
+export function hrefFor(typed: string): string | undefined {
+  const address = typed.trim()
+  const bare = !SCHEME.test(address) && !address.startsWith('/') && A_HOST.test(address)
+  const href = mailOf(address) ?? (bare ? `https://${address}` : address)
+
+  return linkableAddress(href) ? href : undefined
+}
+
+/** What a link would be made over: what is selected, the words of the link the cursor stands in, or
+ *  nothing where the cursor stands in neither. */
+function rangeOf(state: EditorState): { from: number; to: number } | null {
   const { empty, from, to } = state.selection
   const existing = linkIn(state)
-  const mark = schema.marks.link.create({ href: address })
 
-  if (empty && existing === undefined) {
-    return state.tr.replaceSelectionWith(schema.text(address, [mark]), false)
+  if (!empty) {
+    return { from, to }
   }
 
-  const range = empty && existing !== undefined ? aroundCursor(state, existing) : { from, to }
+  return existing === undefined ? null : aroundCursor(state, existing)
+}
 
-  return state.tr.removeMark(range.from, range.to, schema.marks.link).addMark(range.from, range.to, mark)
+/** The words of a range as one line, which is what the field Ispis can hold. */
+function textOf(state: EditorState, range: { from: number; to: number }): string {
+  return state.doc.textBetween(range.from, range.to, ' ', ' ')
+}
+
+/** What the field Ispis of the box for a link starts with: the words that are selected, or the words
+ *  of the link the cursor stands in, or nothing. */
+export function wordsAt(state: EditorState): string {
+  const range = rangeOf(state)
+
+  return range === null ? '' : textOf(state, range)
+}
+
+/**
+ * The link the box for a link makes: `words` leading to `href`, over what is selected or over the
+ * link the cursor stands in, and at the cursor where there is neither.
+ *
+ * Words that are the words already there are left as they are, with their bold and their italic,
+ * and only the link is put over them. Words that were changed in the box take the place of the old
+ * ones, with the marks the old ones began with.
+ */
+export function putLink(state: EditorState, words: string, href: string): Transaction {
+  const mark = schema.marks.link.create({ href })
+  const range = rangeOf(state)
+
+  if (range === null) {
+    return state.tr.replaceSelectionWith(schema.text(words, [mark]), false)
+  }
+
+  const tr = state.tr
+  const to = textOf(state, range) === words ? range.to : range.from + words.length
+
+  if (to !== range.to) {
+    tr.insertText(words, range.from, range.to)
+  }
+
+  return tr.removeMark(range.from, to, schema.marks.link).addMark(range.from, to, mark)
 }
 
 /** The link the cursor stands in, or every link in the selection, taken off its words. */
@@ -264,6 +338,7 @@ export function stateFor(text: string, max: () => number | undefined): EditorSta
   return EditorState.create({
     doc: fromMarkdown(text),
     plugins: [
+      mailsShown,
       history(),
       KEYS,
       keymap(baseKeymap),
