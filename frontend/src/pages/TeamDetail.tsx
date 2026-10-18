@@ -487,7 +487,7 @@ export function TeamDetail() {
                               {row.competitor.memberNumber}
                             </span>
                           </td>
-                          <td>{categoryLabel(categoryOfMember(row.competitor), t)}</td>
+                          <td className="table__category">{categoryLabel(categoryOfMember(row.competitor), t)}</td>
                           <td className="table__hide-phone">{formatNumber(row.races, locale)}</td>
                           <td className="table__points">{formatPoints(row.points, locale)}</td>
                         </tr>

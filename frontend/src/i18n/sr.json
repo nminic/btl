@@ -693,6 +693,8 @@
   "category": {
     "rookieMale": "Početnici",
     "rookieFemale": "Početnice",
+    "markMale": "M",
+    "markFemale": "Ž",
     "short": "Kraća trka",
     "long": "Duža trka",
     "half": "Polumaraton",

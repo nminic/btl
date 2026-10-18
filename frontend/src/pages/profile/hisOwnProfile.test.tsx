@@ -186,7 +186,7 @@ describe('a member whose fee has lapsed, on his own page', () => {
        here carries: the number, the category worked out from his band and his gender, the town,
        the season he started in and the absence of a club. */
     const line = must(screen.getByText(/Članski broj 000032/).closest('p'), 'the line under the name')
-    expect(line).toHaveTextContent('M40-54')
+    expect(line).toHaveTextContent('M 40-54')
     expect(line).toHaveTextContent('Zaječar')
     expect(line).toHaveTextContent('U ligi od 2016.')
     expect(line).toHaveTextContent('Bez tima')
@@ -278,7 +278,7 @@ describe('a member whose fee has lapsed, on his own page', () => {
       expect(screen.getByRole('heading', { level: 2, name: 'Pehari 2' })).toBeVisible()
       expect(rows.map((row) => row.textContent)).toEqual([
         expect.stringContaining('2029Generalni plasman1. mesto'),
-        expect.stringContaining('2029Kategorija M40-541. mesto'),
+        expect.stringContaining('2029Kategorija M 40-541. mesto'),
       ])
     }, SLOW)
 
@@ -314,7 +314,7 @@ describe('a member whose fee has lapsed, on his own page', () => {
       expect(screen.getByRole('heading', { level: 2, name: 'Pehari 2' })).toBeVisible()
       expect(within(table).getAllByRole('row').slice(1).map((row) => row.textContent)).toEqual([
         expect.stringContaining('2029Generalni plasman1. mesto'),
-        expect.stringContaining('2029Kategorija M40-541. mesto'),
+        expect.stringContaining('2029Kategorija M 40-541. mesto'),
       ])
     }, SLOW)
 

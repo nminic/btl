@@ -41,6 +41,33 @@ describe('TeamDetail', () => {
     expect(last(rows)).toHaveTextContent('0,00')
   })
 
+  it('writes the category of every member with the space after the letter of the gender', async () => {
+    /* Owner, 18.10.2026: `M 40-54` and `Ž 40-54` (PDL P7). The column is found by its head and the
+       whole text of every cell in it is held, so a cell that kept the old spelling, or showed the
+       code the league keeps the category under, is a cell that does not match. At least one cell
+       must be an age band, or the case would be satisfied by a team of beginners alone. */
+    renderAt('/sr/tim/vardarski-krug', 'visitor', null, undefined, '2026-06-01')
+
+    const table = await screen.findByRole('table', { name: 'Članovi' })
+    const column = within(table)
+      .getAllByRole('columnheader')
+      .findIndex((one) => one.textContent === 'Kat.')
+
+    expect(column, 'the table has no column of categories').toBeGreaterThan(-1)
+
+    const cells = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => at(within(row).getAllByRole('cell'), column))
+    const said = cells.map((one) => must(one.textContent, 'text'))
+
+    expect(said.length).toBeGreaterThan(1)
+    /* On one line (`styles/table.css`, `.table__category`): the cell has to carry the class. */
+    expect(cells.filter((one) => !one.classList.contains('table__category'))).toEqual([])
+    expect(said.filter((one) => /^(M|Ž) (24-|25-39|40-54|55\+)$/.test(one)).length).toBeGreaterThan(0)
+    expect(said.filter((one) => !/^((M|Ž) (24-|25-39|40-54|55\+)|Početnici|Početnice)$/.test(one))).toEqual([])
+  })
+
   it('leads from a member back to their profile', async () => {
     renderAt('/sr/tim/dunavski-trkaci')
 

@@ -1,3 +1,6 @@
+import en from '../i18n/en.json'
+import sr from '../i18n/sr.json'
+import { translate } from '../i18n/translate'
 import { sources } from '../test/sources'
 import { AGE_BANDS, categoryCodeFor, categoryLabel, firstSeasonAllowed } from './categories'
 
@@ -49,33 +52,60 @@ describe('categoryCodeFor', () => {
 })
 
 describe('categoryLabel', () => {
-  /* A dictionary of two words, which is all this needs: the labeller is asked
-     for one key and hands back what it is given. */
-  const t = (key: string) =>
-    key === 'category.rookieMale' ? 'Početnici' : key === 'category.rookieFemale' ? 'Početnice' : key
+  /* The real dictionaries and not a stub of two words: the letter of a woman's
+     category is the one thing that follows the language (owner, 18.10.2026), so a
+     stub that answered it by hand would measure the stub. */
+  const inSerbian = (key: string) => translate(sr, 'sr', key)
+  const inEnglish = (key: string) => translate(en, 'en', key)
 
   it('names the beginners by the word that carries the gender', () => {
     /* Serbian says it in one word and needs no letter in front of it; English
-       says `M R` and `F R`, because rookie does not carry the gender (owner,
-       11.08.2026). So the label comes out of the dictionary and the code does
-       not. */
-    expect(categoryLabel('M R', t)).toBe('Početnici')
-    expect(categoryLabel('Ž R', t)).toBe('Početnice')
+       says `Rookies` for both (owner, 18.10.2026). So the label comes out of the
+       dictionary and the code does not. */
+    expect(categoryLabel('M R', inSerbian)).toBe('Početnici')
+    expect(categoryLabel('Ž R', inSerbian)).toBe('Početnice')
+    expect(categoryLabel('M R', inEnglish)).toBe('Rookies')
+    expect(categoryLabel('Ž R', inEnglish)).toBe('Rookies')
   })
 
-  it('leaves an age band exactly as it is', () => {
-    /* The bands are the same in every language, so nothing looks them up. A
-       label that went through the dictionary here would need forty keys saying
-       what they already say. */
-    expect(categoryLabel('M40-54', t)).toBe('M40-54')
-    expect(categoryLabel('Ž25-39', t)).toBe('Ž25-39')
+  it.each(AGE_BANDS)('writes the band %s with a space after the mark, in Serbian', (band) => {
+    expect(categoryLabel(`M${band}`, inSerbian)).toBe(`M ${band}`)
+    expect(categoryLabel(`Ž${band}`, inSerbian)).toBe(`Ž ${band}`)
+  })
+
+  it.each(AGE_BANDS)('writes the band %s with a space after the mark, in English', (band) => {
+    /* The men keep `M` and the women are `F` in English, where Serbian keeps `Ž`
+       (owner, 18.10.2026). Both sexes at once, so neither letter is the only
+       thing the case holds. */
+    expect(categoryLabel(`M${band}`, inEnglish)).toBe(`M ${band}`)
+    expect(categoryLabel(`Ž${band}`, inEnglish)).toBe(`F ${band}`)
+  })
+
+  it('takes the letter from the dictionary and the band from the code', () => {
+    /* A labeller that answers every key with its own name, so a label that was
+       built from anything but `category.markMale` / `category.markFemale` and the
+       band of the code comes out as something else. */
+    const named = (key: string) => key
+
+    expect(categoryLabel('M40-54', named)).toBe('category.markMale 40-54')
+    expect(categoryLabel('Ž40-54', named)).toBe('category.markFemale 40-54')
   })
 
   it('is not fooled by a band that merely ends in the letter', () => {
     /* The whole word, not the last letter: a band called `MR` is not the
        beginners' category, and a test that passes on `endsWith('R')` alone
        would let it through. */
-    expect(categoryLabel('MR', t)).toBe('MR')
+    expect(categoryLabel('MR', inSerbian)).toBe('MR')
+  })
+
+  it('leaves alone a code that is not a mark and an age band', () => {
+    /* Neither a mark that is not one of the two, nor a mark in front of something
+       that is not a band, is made into a label: the code is shown as it is, so a
+       code the league has not met is visible rather than dressed up. */
+    expect(categoryLabel('X40-54', inSerbian)).toBe('X40-54')
+    expect(categoryLabel('M40-55', inSerbian)).toBe('M40-55')
+    expect(categoryLabel('Ž', inSerbian)).toBe('Ž')
+    expect(categoryLabel('', inSerbian)).toBe('')
   })
 })
 
