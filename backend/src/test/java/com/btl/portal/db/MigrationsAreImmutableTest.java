@@ -453,7 +453,22 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read
 			   off this very assertion when it ran before the entry existed and then confirmed by it. */
 			new Applied("61", "V61__the_written_pages_use_the_english_quotation_mark.sql",
-					-1802649289));
+					-1802649289),
+
+			/* V62. The basis of a membership has one home, the row of a season: the per-person column
+			   `competitor.membership_basis` (V7) is dropped together with its one rule,
+			   `competitor_membership_basis_known`, in the change that moves every reader to
+			   `membership` for the season on sale (owner, 18.10.2026, PDL P8, „Osnov clanstva ima
+			   jedan dom, zapis po sezoni; stara kolona po coveku se brise"). No row of `membership` is
+			   touched, which `TheBasisHasOneHomeTest` measures over the shape a real database holds.
+
+			   62 because it is the next free number, and that was MEASURED rather than taken: every ref
+			   this clone knows was searched on 18.10.2026 after a fetch and none held a migration at V62
+			   or above, there was no open pull request, and origin/main stands at V61.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
+			   read off this very assertion when it ran before the entry existed. */
+			new Applied("62", "V62__the_basis_of_a_membership_has_one_home.sql", -777830705));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
