@@ -48,12 +48,33 @@ const common: Answers = {
   '/api/me/category': aChoice,
 }
 
-/** A member of the file whose fee stands, renewing early, with a reference of his own. */
-const WITH_A_REFERENCE: Answers = { ...common, '/api/me': whoIAm }
+/**
+ * A member of the file whose fee stands, renewing early, with a reference of his own.
+ *
+ * **HOLDING NO MEMBERSHIP OF THE SEASON ON SALE**, which is what renewing early means: the sample
+ * of the file holds 2027 on a payment, and a member who holds the season on sale is shown „already
+ * paid" and no slip (PDL P8, 18.10.2026, „Osnov članstva ima jedan dom"), so with the sample as it
+ * stands this block waits for a slip the screen rightly never draws. The server leaves the two
+ * names out for somebody who holds none (`MeApi.MyOwnRecord`, `@JsonInclude(NON_NULL)`), and so
+ * does this.
+ */
+const { membershipBasis: _basis, membershipSeason: _heldSeason, ...holdingNone } = whoIAm.member
+const WITH_A_REFERENCE: Answers = { ...common, '/api/me': { ...whoIAm, member: holdingNone } }
 
 /** Somebody who registered and has not paid: no member number, so no reference and one row less. */
-const { memberNumber: _number, teamId: _team, teamSince: _since, photo: _photo, crop: _crop, ...unpaid } =
-  whoIAm.member
+const {
+  memberNumber: _number,
+  teamId: _team,
+  teamSince: _since,
+  photo: _photo,
+  crop: _crop,
+  /* And holding no membership of the season on sale, as somebody who has never paid does not
+     (`test/neverPaid.ts`, `WHAT_HE_DOES_NOT_HAVE_YET`): the sample's basis and season would make this
+     block „already paid" for him, and no slip would be drawn. */
+  membershipBasis: _unpaidBasis,
+  membershipSeason: _unpaidSeason,
+  ...unpaid
+} = whoIAm.member
 const WITHOUT_ONE: Answers = {
   ...common,
   '/api/me': { ...whoIAm, member: { ...unpaid, active: false, firstSeason: 2027 } },
