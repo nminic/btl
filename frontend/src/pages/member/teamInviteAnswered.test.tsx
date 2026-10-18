@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, configure, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { renderAt } from '../../test/render'
 import {
@@ -13,6 +13,14 @@ import { setupUser } from '../../test/user'
 import { arrivedResource, clearResourceCache } from '../../data/client'
 import { SLOW } from '../../test/slow'
 import sr from '../../i18n/sr.json'
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, the arrangement
+   `pages/teamInviteOnTheServer.test.tsx` holds and for its reason: `test/setup.ts` gives a wait and
+   a case the same `SLOW`, so a sentence that is never drawn ended the case in `Test timed out`
+   and not in the wait's own words, which a series of mutations cannot tell from a fault of the
+   machine. Measured 18.10.2026 on the cases that choose the word by the reader's sex: seven
+   mutations that changed the sentence ended in a timeout and not in a missing text. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * ANSWERING A SERVED INVITATION INTO A TEAM, BY PRESSING A BUTTON.
@@ -612,6 +620,59 @@ describe('answering a served invitation into a team', () => {
       })
 
       expect(sentTo(THE_ADDRESS)).toEqual([{ accepted: false }])
+    },
+    SLOW,
+  )
+
+  /* **THE WORD FOLLOWS THE SEX OF THE MEMBER THE SENTENCE IS ABOUT, WHO HERE IS THE READER** (PDL P18,
+     18.10.2026, „I tri rečenice na ekranima sa „ušao/la” biraju reč po polu"). Every other case of
+     this file reads as `000007`, a man, and draws „ušao"; these read as `000009`, a woman, so a
+     screen that kept the one sentence for everybody fails here, and a screen that wrote „ušla" for
+     everybody fails above. Both kinds of reader are needed for the same reason a case needs a
+     second source for a value: with one sex only, "always the one word" and "the right word" are
+     the same screen. */
+  it(
+    'tells a woman who already has a team in her word, and not in the man\'s',
+    async () => {
+      aServerWhere(waitingWhere(true))
+      asking = HER
+      renderAt(`/sr/poruke/${String(OPENED.id)}`, 'competitor', '000009', undefined, IN_THE_WINDOW)
+
+      await screen.findByRole('heading', { level: 1, name: OPENED.subject })
+
+      expect(await screen.findByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeVisible()
+      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
+      expect(anyAcceptButton()).toBeNull()
+    },
+    SLOW,
+  )
+
+  it(
+    'tells a man who already has a team in his word, and not in the woman\'s',
+    async () => {
+      aServerWhere(waitingWhere(true))
+      await openTheQuestion()
+
+      expect(screen.getByText(sr.teams.inviteOvertakenUnnamed)).toBeVisible()
+      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeNull()
+    },
+    SLOW,
+  )
+
+  it(
+    'tells a woman the route refused in her word as well, out of the same map as the sentence drawn first',
+    async () => {
+      const user = setupUser()
+
+      aServerWhere(waitingWhere(), () => refused('heIsAlreadyInATeam', 409))
+      asking = HER
+      renderAt(`/sr/poruke/${String(OPENED.id)}`, 'competitor', '000009', undefined, IN_THE_WINDOW)
+
+      await screen.findByRole('heading', { level: 1, name: OPENED.subject })
+      await user.click(await screen.findByRole('button', { name: sr.teams.inviteAccept }))
+
+      expect(await screen.findByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeVisible()
+      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
     },
     SLOW,
   )

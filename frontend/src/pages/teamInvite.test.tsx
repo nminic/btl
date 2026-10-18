@@ -366,7 +366,7 @@ describe('what the invitation does', () => {
     await openTheInvitation(user)
     await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
 
-    expect(await screen.findByText(/Prihvatio\/la si ovaj poziv/)).toBeVisible()
+    expect(await screen.findByText(/Prihvatio si ovaj poziv/)).toBeVisible()
 
     /* WHAT THE TEAM IS STILL WAITING ON IS NOT ASKED HERE ANY MORE, since T5. It was asked on
        the team's page as „Poslati pozivi", and that list has been `GET /api/teams/{id}/invitations`
@@ -387,6 +387,36 @@ describe('what the invitation does', () => {
        05.09.2026). Read off the line rather than off the page, so „2027" cannot be answered by
        a result, a season control or the invitation still sitting in the header panel. */
     expect(clubLine()).toContain('U klubu Dunavski trkači od 2027.')
+  }, SEVERAL_SCREENS)
+
+  /**
+   * AND A WOMAN WHO ACCEPTS IS TOLD "Prihvatila si" (PDL P18, 18.10.2026, „I rečenice „Prihvatio/la
+   * si…” i „…poslao/la…” biraju reč po polu člana koji čita"). The walk above has a man accept and
+   * reads "Prihvatio"; here Ivona is asked by Dunavski trkači, whose leader is a man, and the visit
+   * began as `000007`, also a man, so a screen taking the word from anybody but her writes "Prihvatio".
+   */
+  it('tells a woman who accepted it "Prihvatila si", and not the man\'s word', async () => {
+    const user = setupUser()
+
+    renderAt(
+      FREE,
+      'competitor',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Invite from={DUNAV} who="000006" />
+        <Become who="000006" />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'pozovi 000006 u tim 1' }))
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await openTheInvitation(user)
+    await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
+
+    expect(await screen.findByText(/Prihvatila si ovaj poziv i od naredne sezone/)).toBeVisible()
+    expect(screen.queryByText(/Prihvatio si/)).toBeNull()
   }, SEVERAL_SCREENS)
 
   it('writes nothing when it is refused, and says so where the buttons were', async () => {
@@ -462,8 +492,55 @@ describe('a member who is asked by more than one team', () => {
     /* **The right to answer is worked out when the message is drawn, not remembered on it.**
        Three teams may ask the same person on the same day and none of them knows about the
        others, so „already answered" cannot be a flag on any one of them (PDL, 06.09.2026). */
-    expect(await screen.findByText(/U međuvremenu si ušao\/la u tim/)).toBeVisible()
+    expect(await screen.findByText(/U međuvremenu si ušao u tim "Dunavski trkači"/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
+  }, SEVERAL_SCREENS)
+
+  /**
+   * AND WHEN THE ONE WHO WAS OVERTAKEN IS A WOMAN, THE WORD IS "ušla" (PDL P18, 18.10.2026,
+   * "I tri rečenice na ekranima sa „ušao/la” biraju reč po polu").
+   *
+   * <p>The walk above has a man read it. Here Ivona is asked by both clubs, goes into Vardarski
+   * krug and reads the invitation of Dunavski trkači. The sentence is about her and she is the one
+   * reading it, and everybody else in the walk is a man: the reader the visit began as (`000007`)
+   * and the leader of the club she left waiting. A screen that took the word from anybody but her
+   * writes "ušao" here.
+   */
+  it('says "ušla" on the invitation she was overtaken on, when the reader is a woman', async () => {
+    const user = setupUser()
+
+    renderAt(
+      FREE,
+      'competitor',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Invite from={DUNAV} who="000006" />
+        <Invite from={VARDAR} who="000006" />
+        <Become who="000006" />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'pozovi 000006 u tim 1' }))
+    await user.click(screen.getByRole('button', { name: 'pozovi 000006 u tim 3' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+
+    const both = (await inbox(user)).filter((one) => /Poziv u tim/.test(one.textContent ?? ''))
+
+    expect(both).toHaveLength(2)
+
+    /* Newest first, so the one Vardarski krug sent is first and the one Dunavski trkači sent last. */
+    await user.click(must(both[0], 'the invitation Vardarski krug sent'))
+    await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
+
+    const after = (await inbox(user)).filter((one) => /Poziv u tim/.test(one.textContent ?? ''))
+
+    await user.click(must(after[1], 'the invitation Dunavski trkači sent, which nobody answered'))
+
+    expect(await screen.findByText(/U međuvremenu si ušla u tim "Vardarski krug"/)).toBeVisible()
+    expect(screen.queryByText(/ušao/)).toBeNull()
   }, SEVERAL_SCREENS)
 
   it('tells the team that was left waiting, and not the team that was joined', async () => {
@@ -1232,7 +1309,7 @@ describe('what the invitation must not be confused with', () => {
     await openTheInvitation(user)
     await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
 
-    expect(await screen.findByText(/Prihvatio\/la si ovaj poziv/)).toBeVisible()
+    expect(await screen.findByText(/Prihvatio si ovaj poziv/)).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'obriši 1' }))
 

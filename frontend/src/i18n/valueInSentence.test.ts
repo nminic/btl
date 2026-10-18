@@ -495,9 +495,11 @@ describe('a sentence with a value put into it', () => {
          that went on 29.09.2026: `TeamJoiningWriteApiTest.theSentencesAreThePortalsOwnWords`
          holds both against the Java that writes them. */
       'teams.inviteAccepted',
+      'teams.inviteAcceptedFemale',
       'teams.inviteMissedBody',
       'teams.inviteMissedBodyFemale',
       'teams.inviteOvertaken',
+      'teams.inviteOvertakenFemale',
       /* The third control of the same kind, added 29.09.2026 with the team's own queue going
          to the server: „Povuci poziv: {name}", a person's name after a colon, which is the
          nominative for the same reason `teams.joinRefusedNamed` is. The two sentences beside

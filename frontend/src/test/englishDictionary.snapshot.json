@@ -875,14 +875,16 @@
       "theWindowIsShut": "The transfer window has closed in the meantime, so he has not been taken into the team. The application still waits: the window opens on 15 October and runs to 31 December."
     },
     "applyRefused": {
-      "aQuestionAlreadyStands": "You already have an application waiting for a team's answer, so a new one was not sent. You withdraw it on the page of the team you sent it to."
+      "aQuestionAlreadyStands": "You already have an application waiting for a team's answer, so a new one was not sent. You withdraw it on the page of the team you sent it to.",
+      "aQuestionAlreadyStandsFemale": "You already have an application waiting for a team's answer, so a new one was not sent. You withdraw it on the page of the team you sent it to."
     },
     "invite": "Invite into the team",
     "invited": "The invitation into the team \"{team}\" has been sent.",
     "inviteRefused": {
       "theFormIsNotComplete": "The request did not reach the server in full, so the invitation was not sent. Refresh the page and try again.",
       "theWindowIsShut": "The transfer window has closed in the meantime, so the invitation was not sent. The window opens on 15 October and runs to 31 December.",
-      "heIsAlreadyInATeam": "The member has joined a team in the meantime, so the invitation was not sent."
+      "heIsAlreadyInATeam": "The member has joined a team in the meantime, so the invitation was not sent.",
+      "heIsAlreadyInATeamFemale": "The member has joined a team in the meantime, so the invitation was not sent."
     },
     "inviteSubject": "An invitation into the team \"{team}\"",
     "inviteBody": "The team \"{team}\" invites you to run for them from the next season.",
@@ -895,8 +897,11 @@
     "inviteWithdrawNamed": "Withdraw the invitation: {name}",
     "inviteLapsed": "A member whose fee has lapsed",
     "inviteAccepted": "You have accepted this invitation and from the next season you run for the team \"{team}\".",
+    "inviteAcceptedFemale": "You have accepted this invitation and from the next season you run for the team \"{team}\".",
     "inviteOvertaken": "You have joined the team \"{team}\" in the meantime, so this invitation no longer stands.",
+    "inviteOvertakenFemale": "You have joined the team \"{team}\" in the meantime, so this invitation no longer stands.",
     "inviteOvertakenUnnamed": "You have joined a team in the meantime, so you can no longer accept this invitation.",
+    "inviteOvertakenUnnamedFemale": "You have joined a team in the meantime, so you can no longer accept this invitation.",
     "inviteClosed": "This invitation no longer stands.",
     "inviteGone": "The team that invited you no longer exists.",
     "inviteWaits": "The invitation waits: a team is joined during the transfer window only, from 15 October to 31 December.",
@@ -1091,7 +1096,6 @@
     "notYetSold": "The fee is not on sale yet. Collection starts on 15 October.",
     "junior": "Anybody who is fourteen or younger on at least one day of the season pays {eur} EUR, and {rsd} RSD from Serbia, whatever the date of payment.",
     "ips": "A payment slip with a QR code",
-    "ipsNote": "Scan the code in your bank's app. The amount, the payee and the reference number are already filled in.",
     "paypal": "PayPal",
     "paypalNote": "The account is a business one, in the name of the BTL sports association. PayPal is not offered to members from Serbia, because paying with it between residents of Serbia is not allowed.",
     "paypalAddressLabel": "Account address",
@@ -1152,7 +1156,6 @@
     "firstPaymentOpen": "Paying is open.",
     "firstRenew": "The payment details are below. As soon as the payment arrives, the moderator confirms it and you get your member number.",
     "recognisedByName": "As you do not have a member number yet, the payment has no reference number. It is recognised by your name, and a moderator confirms it by hand.",
-    "ipsNoteNoReference": "Scan the code in your bank's app. The amount and the payee are already filled in.",
     "noRanking": "A fee paid now does not give you the right to be ranked."
   },
   "review": {
@@ -1745,7 +1748,7 @@
     "lockedTitle": "Details that are not changed here",
     "category": "Category",
     "lockedNote": "Gender and the date of birth are changed by the administration only, because the category and the age group are worked out from them. If a member changed them himself, he would be choosing which category he runs in and changing a standing already run, backwards.",
-    "birthDateNote": "The date of birth is not shown here: the portal does not keep it with your public record, and the Statute asks that it not be shown either in full or in short. Public is only the category that follows from it.",
+    "birthDateNote": "The date of birth is not shown here: the portal does not keep it with your public record, and it is not shown either in full or in short. Public is only the category that follows from it.",
     "cityNote": "A town is chosen from the codebook of settlements, so for now it is changed through the administration. A town chooser on this screen does not exist yet.",
     "emailNote": "You change the email address yourself, but you have to confirm the new one, because it is also your sign-in to the portal. The confirmation has not been built yet, so the field is locked.",
     "nothingToSave": "The server found no change at all in the request. Refresh the page and try again.",

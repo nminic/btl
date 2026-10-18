@@ -875,14 +875,16 @@
       "theWindowIsShut": "Prelazni rok se u međuvremenu zatvorio, pa član nije primljen u tim. Prijava i dalje čeka: rok se otvara 15. oktobra i traje do 31. decembra."
     },
     "applyRefused": {
-      "aQuestionAlreadyStands": "Već imaš prijavu koja čeka odgovor tima, pa nova nije poslata. Prijavu povlačiš na strani tima kome si je poslao/la."
+      "aQuestionAlreadyStands": "Već imaš prijavu koja čeka odgovor tima, pa nova nije poslata. Prijavu povlačiš na strani tima kome si je poslao.",
+      "aQuestionAlreadyStandsFemale": "Već imaš prijavu koja čeka odgovor tima, pa nova nije poslata. Prijavu povlačiš na strani tima kome si je poslala."
     },
     "invite": "Pozovi u tim",
     "invited": "Poziv u tim \"{team}\" je poslat.",
     "inviteRefused": {
       "theFormIsNotComplete": "Zahtev nije poslat do kraja, pa poziv nije poslat. Osveži stranicu i pokušaj ponovo.",
       "theWindowIsShut": "Prelazni rok se u međuvremenu zatvorio, pa poziv nije poslat. Rok se otvara 15. oktobra i traje do 31. decembra.",
-      "heIsAlreadyInATeam": "Član je u međuvremenu ušao/la u tim, pa poziv nije poslat."
+      "heIsAlreadyInATeam": "Član je u međuvremenu ušao u tim, pa poziv nije poslat.",
+      "heIsAlreadyInATeamFemale": "Članica je u međuvremenu ušla u tim, pa poziv nije poslat."
     },
     "inviteSubject": "Poziv u tim \"{team}\"",
     "inviteBody": "Tim \"{team}\" te poziva da od naredne sezone trčiš za njih.",
@@ -894,9 +896,12 @@
     "inviteWithdraw": "Povuci poziv",
     "inviteWithdrawNamed": "Povuci poziv: {name}",
     "inviteLapsed": "Član kome je članarina istekla",
-    "inviteAccepted": "Prihvatio/la si ovaj poziv i od naredne sezone trčiš za tim \"{team}\".",
-    "inviteOvertaken": "U međuvremenu si ušao/la u tim \"{team}\", pa ovaj poziv više ne stoji.",
-    "inviteOvertakenUnnamed": "U međuvremenu si ušao/la u tim, pa ovaj poziv više ne možeš da prihvatiš.",
+    "inviteAccepted": "Prihvatio si ovaj poziv i od naredne sezone trčiš za tim \"{team}\".",
+    "inviteAcceptedFemale": "Prihvatila si ovaj poziv i od naredne sezone trčiš za tim \"{team}\".",
+    "inviteOvertaken": "U međuvremenu si ušao u tim \"{team}\", pa ovaj poziv više ne stoji.",
+    "inviteOvertakenFemale": "U međuvremenu si ušla u tim \"{team}\", pa ovaj poziv više ne stoji.",
+    "inviteOvertakenUnnamed": "U međuvremenu si ušao u tim, pa ovaj poziv više ne možeš da prihvatiš.",
+    "inviteOvertakenUnnamedFemale": "U međuvremenu si ušla u tim, pa ovaj poziv više ne možeš da prihvatiš.",
     "inviteClosed": "Ovaj poziv više ne stoji.",
     "inviteGone": "Tim koji te je pozvao više ne postoji.",
     "inviteWaits": "Poziv čeka: u tim se ulazi samo u prelaznom roku, od 15. oktobra do 31. decembra.",
@@ -1091,7 +1096,6 @@
     "notYetSold": "Članarina se još ne prodaje. Naplata kreće 15. oktobra.",
     "junior": "Ko u sezoni ima bar jedan dan 14 godina ili manje plaća {eur} EUR, a iz Srbije {rsd} RSD, bez obzira na datum uplate.",
     "ips": "Uplatnica sa QR kodom",
-    "ipsNote": "Skeniraj kod u aplikaciji svoje banke. Iznos, primalac i poziv na broj su već upisani.",
     "paypal": "PayPal",
     "paypalNote": "Nalog je poslovni, na Sportsko udruženje BTL. PayPal se ne nudi članovima iz Srbije, jer plaćanje njime između rezidenata Srbije nije dozvoljeno.",
     "paypalAddressLabel": "Adresa naloga",
@@ -1152,7 +1156,6 @@
     "firstPaymentOpen": "Uplata je otvorena.",
     "firstRenew": "Podatke za uplatu vidiš u nastavku. Čim uplata stigne, moderator je potvrđuje i dobijaš članski broj.",
     "recognisedByName": "Pošto još nemaš članski broj, uplata nema poziv na broj. Prepoznaje se po imenu, a moderator je potvrđuje ručno.",
-    "ipsNoteNoReference": "Skeniraj kod u aplikaciji svoje banke. Iznos i primalac su već upisani.",
     "noRanking": "Članarina plaćena sada ne daje pravo rangiranja."
   },
   "review": {
@@ -1745,7 +1748,7 @@
     "lockedTitle": "Podaci koji se ne menjaju ovde",
     "category": "Kategorija",
     "lockedNote": "Pol i datum rođenja menja samo administracija, jer se iz njih izvode kategorija i uzrasna grupa. Kad bi ih član menjao sam, birao bi u kojoj kategoriji trči i time menjao već odigran poredak unazad.",
-    "birthDateNote": "Datum rođenja se ovde ne prikazuje: portal ga ne čuva uz tvoj javni zapis, a Statut traži da se ne prikazuje ni u punom ni u skraćenom obliku. Javna je samo kategorija koja iz njega proizlazi.",
+    "birthDateNote": "Datum rođenja se ovde ne prikazuje: portal ga ne čuva uz tvoj javni zapis, i ne prikazuje se ni u punom ni u skraćenom obliku. Javna je samo kategorija koja iz njega proizlazi.",
     "cityNote": "Mesto se bira iz šifarnika naselja, pa se za sada menja preko administracije. Birač mesta na ovom ekranu još ne postoji.",
     "emailNote": "Adresu elektronske pošte menjaš sam, ali novu moraš da potvrdiš, jer je ona ujedno i tvoja prijava na portal. Potvrda još nije napravljena, pa je polje zaključano.",
     "nothingToSave": "Server nije našao nijednu izmenu u zahtevu. Osveži stranu i pokušaj ponovo.",

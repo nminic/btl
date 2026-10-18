@@ -179,6 +179,17 @@ export const WHEN_APPLYING_TO_A_TEAM = {
 }
 
 /**
+ * THE SAME ONE REFUSAL, FOR A MEMBER WHO IS A WOMAN.
+ *
+ * <p>PDL P18, 18.10.2026: „I rečenice „Prihvatio/la si…” i „…poslao/la…” biraju reč po polu člana
+ * koji čita". The sentence says who sent the application, and that is the reader, so the page hands
+ * this map in when the reader is a woman and the verb is „poslala".
+ */
+export const WHEN_A_WOMAN_APPLIES_TO_A_TEAM = {
+  aQuestionAlreadyStands: 'teams.applyRefused.aQuestionAlreadyStandsFemale',
+}
+
+/**
  * THE FOUR REFUSALS `POST /api/teams/{id}/invitations` NAMES, each to a sentence.
  *
  * <p><b>Read off the route.</b> `TeamJoiningWriteApi.invite` and `inviting` name
@@ -205,6 +216,22 @@ export const WHEN_INVITING_INTO_A_TEAM = {
   theWindowIsShut: 'teams.inviteRefused.theWindowIsShut',
   heIsAlreadyInATeam: 'teams.inviteRefused.heIsAlreadyInATeam',
   heHasAlreadyBeenAsked: 'teams.invited',
+}
+
+/**
+ * THE SAME FOUR, FOR A MEMBER BEING INVITED WHO IS A WOMAN.
+ *
+ * <p>PDL P18, 18.10.2026, „I tri rečenice na ekranima sa „ušao/la” biraju reč po polu": the word
+ * follows the sex of the member the sentence is about, **not the reader's**. The one who reads
+ * `heIsAlreadyInATeam` leads a team and the one it is about is the member whose profile she is
+ * on, so the screen hands this map in when THAT member is a woman, whoever is reading.
+ *
+ * <p>Only that sentence differs. The other three are the very keys above, and the map is a spread
+ * so that a fifth refusal added to the first arrives here with its sentence.
+ */
+export const WHEN_INVITING_A_WOMAN_INTO_A_TEAM = {
+  ...WHEN_INVITING_INTO_A_TEAM,
+  heIsAlreadyInATeam: 'teams.inviteRefused.heIsAlreadyInATeamFemale',
 }
 
 /**

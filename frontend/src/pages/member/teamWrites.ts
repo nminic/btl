@@ -106,6 +106,26 @@ export const WHEN_ANSWERING_A_TEAM_INVITE = {
 }
 
 /**
+ * THE SAME THREE, FOR A READER WHO IS A WOMAN, and the one sentence that differs is the only
+ * one that says what she did.
+ *
+ * <p>PDL P18, 18.10.2026, „I tri rečenice na ekranima sa „ušao/la” biraju reč po polu": the
+ * word follows the sex of the member the sentence is about, and here that member is the one
+ * who is answering, so it is HER sex. `heIsAlreadyInATeam` is „ušla" instead of „ušao"; the
+ * other two name no act of hers and are the very keys above, which is why this is the first
+ * map spread rather than written out: a third name added to the first map arrives here with
+ * its sentence and cannot be forgotten.
+ *
+ * <p>A map of its own and not a suffix put on a key at the screen, because `refusals.test.ts`
+ * reads maps and not string arithmetic, and a key made by joining two strings is one no search
+ * for the key finds.
+ */
+export const WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE = {
+  ...WHEN_ANSWERING_A_TEAM_INVITE,
+  heIsAlreadyInATeam: 'teams.inviteOvertakenUnnamedFemale',
+}
+
+/**
  * WHETHER „PRIHVATI" MAY BE OFFERED, AND WHERE IT MAY NOT, WHY NOT.
  *
  * <p><b>The two names that are not `offered` are the SERVER'S OWN WORDS</b>, and that is the

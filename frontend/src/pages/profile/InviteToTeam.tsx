@@ -12,6 +12,7 @@ import { ServerSaid } from '../account/ServerSaid'
 import {
   theInvitationWasSent,
   whatThisTeamHasAsked,
+  WHEN_INVITING_A_WOMAN_INTO_A_TEAM,
   WHEN_INVITING_INTO_A_TEAM,
   type Queue,
   type TeamInvitation,
@@ -95,6 +96,9 @@ export function InviteToTeam({
       key={`${String(team.id)}/${competitor.memberNumber}`}
       team={team}
       member={competitor.memberNumber}
+      /* HIS sex, the member on this profile, and never the reader's: the sentence for a member who
+         took a team in the meantime says what HE did (PDL P18, 18.10.2026). */
+      woman={competitor.gender === 'F'}
     />
   )
 }
@@ -119,7 +123,7 @@ export function InviteToTeam({
  * stood and takes the focus the button left with, the arrangement `event/GoingToEvent.tsx` holds
  * for the line that replaces its form.
  */
-function AskingHimIn({ team, member }: { team: Team; member: string }) {
+function AskingHimIn({ team, member, woman }: { team: Team; member: string; woman: boolean }) {
   const { t } = useI18n()
   /** What this team has asked, or nothing while it has not been read yet. */
   const [asked, setAsked] = useState<Queue<TeamInvitation> | null>(null)
@@ -231,7 +235,7 @@ function AskingHimIn({ team, member }: { team: Team; member: string }) {
       {refused !== null && (
         <ServerSaid
           answer={refused}
-          refusals={WHEN_INVITING_INTO_A_TEAM}
+          refusals={woman ? WHEN_INVITING_A_WOMAN_INTO_A_TEAM : WHEN_INVITING_INTO_A_TEAM}
           params={{ team: team.name }}
         />
       )}

@@ -261,12 +261,54 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-16);
+  /* The dashed line over the whole slip and not over the code alone (owner,
+     18.10.2026: "Horizontalna linija na vrhu treba da ide celom sirinom
+     strane"). It was `.pay`'s own line on the code's half, so in the grid it
+     covered the right column only; here it is the first thing of the slip and
+     spans both, the way the PayPal block's line spans its panel. */
+  border-top: 1px dashed var(--border);
+  padding-top: var(--space-10);
 }
 
+/* The code's half: its title at the height of the written half's, and the
+   code starting where the details do (the same gap as `.pay__slipText`), so
+   the two read as one slip and the code stands to the right of the details
+   (owner, 18.10.2026: "QR kod treba da bude alignovan desno u odnosu na
+   tekstualne podatke za uplatu"). */
+.pay__qr {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+/* THE CODE AT THE RIGHT EDGE OF THE PANEL, NOT BESIDE THE DETAILS (owner,
+   18.10.2026, chosen between offered outcomes, against the recommendation:
+   "QR kod stoji uz DESNU IVICU strane"). The second track is the width of the
+   code and no more, the first takes the rest, so the empty space is between
+   the details and the code and the code ends where the dashed line ends. It
+   was two equal tracks, which put the code at the left of the right half and
+   next to the details. `minmax(0, 1fr)` stays on the first track for the
+   reason above: the postal address must be able to wrap. */
 @media (min-width: 51.25em) {
   .pay__slip {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
+  }
+
+  /* The track is as wide as its title or its code, whichever is wider, and
+     the title is the wider (about 189px against 180), so a code left at the
+     start of it would stop short of the edge by the difference. Both go to
+     the end of the track instead. */
+  .pay__qr {
+    align-items: flex-end;
+  }
+
+  .pay__qr .pay__code {
+    align-items: flex-end;
+  }
+
+  .pay__qr h4 {
+    text-align: end;
   }
 }
 
