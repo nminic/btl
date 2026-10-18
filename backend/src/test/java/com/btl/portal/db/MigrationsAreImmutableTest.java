@@ -437,7 +437,23 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read
 			   off this very assertion when it ran before the entry existed and then confirmed by it. */
 			new Applied("60", "V60__the_privacy_policy_names_zoho_as_a_processor.sql",
-					-1729292466));
+					-1729292466),
+
+			/* V61. The written pages use the English quotation mark: the low Serbian opening mark U+201E
+			   (and U+201C and U+201D, which no page carries) is replaced by the plain `"` in the body of
+			   ten sections, six in Serbian and four in English (owner, PDL P18, the section "Navodnici",
+			   18.10.2026). No word, space, line break or date moves; the sign-offs stay as V57, V58 and V60
+			   left them. The migration first asks how many marks stand in each text column and stops unless
+			   the answer is the ten places it was measured over. No schema.
+
+			   61 because it is the next free number, and that was MEASURED rather than taken: every remote
+			   ref, every worktree and the open pull requests were searched on 18.10.2026 and none held a
+			   migration at V61 or above, and origin/main stands at V60.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read
+			   off this very assertion when it ran before the entry existed and then confirmed by it. */
+			new Applied("61", "V61__the_written_pages_use_the_english_quotation_mark.sql",
+					-1802649289));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
