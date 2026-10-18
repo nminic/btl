@@ -136,6 +136,15 @@ describe('the text a reader meets on a screen', () => {
        the quantity that would silently be small if the walk had been narrowed. */
     expect(sources().length).toBeGreaterThan(150)
     expect(everything.length).toBeGreaterThan(1000)
+
+    /* And it reached both kinds of file. A walk narrowed to the files that draw
+       (`.tsx`) still finds well over a thousand literals, so the count alone cannot
+       tell it from the whole portal, and the portal has plenty of `.ts` modules that
+       hand a sentence to a screen. Narrowing a sweep to the files that draw has hidden
+       a live instance before (`styles/writtenInCode.test.ts` reads `.tsx` only, on
+       purpose, and says so). */
+    expect(everything.some(({ at }) => /\.tsx:\d+$/.test(at))).toBe(true)
+    expect(everything.some(({ at }) => /\.ts:\d+$/.test(at))).toBe(true)
     expect(offendersIn(everything)).toEqual([])
   })
 
@@ -158,6 +167,15 @@ describe('the reader of source that holds those two to the decision', () => {
   const HIGH = MARKS[1]
 
   const found = (file: string, code: string) => offendersIn(literalsIn(file, code))
+
+  it('finds each of the three marks by itself, named here again and not read back out of the list it holds', () => {
+    /* A guard whose list lost one of the three would otherwise be asked about the other
+       two only. The code points are written a second time on purpose: that is the
+       second source this case is checked against. */
+    for (const code of [0x201e, 0x201c, 0x201d]) {
+      expect(found('a.ts', `export const a = 'x${String.fromCharCode(code)}y'`), code.toString(16)).toHaveLength(1)
+    }
+  })
 
   it('finds a mark in a string literal', () => {
     expect(found('a.ts', `export const a = 'Tim ${LOW}x${HIGH}'`)).toHaveLength(1)
