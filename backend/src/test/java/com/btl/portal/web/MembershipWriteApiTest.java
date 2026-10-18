@@ -193,9 +193,9 @@ class MembershipWriteApiTest {
 
 		superadminCookie = account(SUPERADMIN, "superadmin", "Vlasnik", "Probic");
 
-		whoPays = competitor("c1", "009001", true, "payment");
-		him = competitor("c2", null, false, "payment");
-		alreadyFreeElsewhere = competitor("c3", "009003", true, "feeExempt");
+		whoPays = competitor("c1", "009001", true);
+		him = competitor("c2", null, false);
+		alreadyFreeElsewhere = competitor("c3", "009003", true);
 
 		freeOfTheFee(alreadyFreeElsewhere, 2029);
 	}
@@ -223,12 +223,12 @@ class MembershipWriteApiTest {
 				.params(email, right).update();
 	}
 
-	private long competitor(String referralSuffix, String memberNumber, boolean active, String basis) {
+	private long competitor(String referralSuffix, String memberNumber, boolean active) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni',"
 						+ " 'Takmicar', 'M', date '1990-05-15', " + A_TOWN + ", null, null, 2027,"
-						+ " false, ?, ?, ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " false, ?, ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(memberNumber, active, basis, "00112233445566" + referralSuffix)
+				.params(memberNumber, active, "00112233445566" + referralSuffix)
 				.query(Long.class).single();
 	}
 
@@ -409,9 +409,16 @@ class MembershipWriteApiTest {
 				.param(competitorId).query(String.class).single();
 	}
 
+	/**
+	 * His number, his flag and the basis of the season the route grants (2027 at IN_JUNE_2027), or
+	 * {@code none} where he holds no row for it. Until V62 the third word was the per-person column;
+	 * since then the basis has one home, and it is what the moderation of the members and „Moja
+	 * clanarina" read for the season on sale.
+	 */
 	private String competitorRow(long id) {
-		return db.sql("select coalesce(member_number, 'none') || ' ' || active || ' ' || membership_basis"
-						+ " from competitor where id = ?")
+		return db.sql("select coalesce(member_number, 'none') || ' ' || active || ' '"
+						+ " || coalesce((select m.basis from membership m where m.competitor_id = c.id"
+						+ " and m.season = 2027), 'none') from competitor c where c.id = ?")
 				.param(id).query(String.class).single();
 	}
 
@@ -439,8 +446,8 @@ class MembershipWriteApiTest {
 		assertThat(body.memberNumber()).matches("^[0-9]{6}$");
 
 		assertThat(competitorRow(him))
-				.as("the per-person home of the basis, the number and the flag every public"
-						+ " reader ends on, all three off the row itself")
+				.as("the basis of the season, the number and the flag every public reader ends"
+						+ " on")
 				.isEqualTo(body.memberNumber() + " true feeExempt");
 
 		assertThat(db.sql("select basis, payment_id, decided_by_name, decided_at from membership"
@@ -458,9 +465,9 @@ class MembershipWriteApiTest {
 				.isTrue();
 
 		assertThat(competitorRow(whoPays)).as("somebody else was freed of the fee as well")
-				.isEqualTo("009001 true payment");
+				.isEqualTo("009001 true none");
 		assertThat(competitorRow(alreadyFreeElsewhere)).as("somebody else was touched")
-				.isEqualTo("009003 true feeExempt");
+				.isEqualTo("009003 true none");
 	}
 
 	/**
@@ -489,7 +496,7 @@ class MembershipWriteApiTest {
 	void whoeverBroughtHimInIsPaidWhenTheAdministrationFreesHimOfTheFee() throws Exception {
 		/* Created LAST, so nothing may pass by crediting the earliest competitor - `whoPays` is the
 		   first row and his book is asserted empty below for exactly that reason. */
-		long whoBroughtHimIn = competitor("c4", "009004", true, "payment");
+		long whoBroughtHimIn = competitor("c4", "009004", true);
 		db.sql("update competitor set referred_by = ? where id = ?").params(whoBroughtHimIn, him).update();
 
 		assertThat(bookOf(whoBroughtHimIn))
@@ -540,7 +547,7 @@ class MembershipWriteApiTest {
 	 */
 	@Test
 	void asecondSeasonFreeOfTheFeeEarnsTheReferrerNothingFurther() throws Exception {
-		long whoBroughtHimIn = competitor("c4", "009004", true, "payment");
+		long whoBroughtHimIn = competitor("c4", "009004", true);
 		db.sql("update competitor set referred_by = ? where id = ?").params(whoBroughtHimIn, him).update();
 
 		assertThat(freeHim(him, cashierCookie).getStatus()).isEqualTo(201);
@@ -1339,27 +1346,24 @@ class MembershipWriteApiTest {
 	 */
 
 	/**
-	 * THE PER-PERSON BASIS IS LEFT ALONE ON THIS GROUND, AND THAT IS THE SCHEMA'S DOING.
+	 * THE BALANCE GROUND ACTIVATES HIM AND HIS SEASON STANDS ON THE BALANCE, which is what every
+	 * screen reads since V62.
 	 *
-	 * <p>V38 widened {@code membership_basis_known} to three words and left V7:281's
-	 * {@code competitor_membership_basis_known check (membership_basis in ('payment', 'feeExempt'))}
-	 * exactly where it was. So {@code 'balance'} has no second home, and this reads the column back
-	 * to prove the route does not try - a route that did would answer 500 rather than 201, which is
-	 * the mutation this case is really about.
-	 *
-	 * <p><b>What is given up, asserted rather than only written down:</b> he goes on being called a
-	 * payer by every screen that reads that column, exactly as he already is when he lets himself in
-	 * through his own door. {@code active} is what changes, and it is what ten public readers end on.
+	 * <p>Until V62 this case read the per-person column back and required it to still say
+	 * {@code payment}: V7's {@code competitor_membership_basis_known} knew two words and not
+	 * {@code balance}, so a man activated on his balance went on being called a payer by every
+	 * screen. The column went with the owner's decision of 18.10.2026 (PDL P8, „Osnov clanstva ima
+	 * jedan dom"), and the season's own row is what the moderation of the members now names.
 	 */
 	@Test
-	void thebalanceGroundActivatesHimWithoutTouchingThePerPersonBasis() throws Exception {
+	void theBalanceGroundActivatesHimOnTheBalanceOfThatSeason() throws Exception {
 		earnedAReferral(him, whoPays, "50", "EUR");
 
 		assertThat(fromHisBalance(him, cashierCookie).getStatus()).isEqualTo(201);
 
 		assertThat(competitorRow(him))
-				.as("numbered and active, and the per-person basis is untouched")
-				.matches("\\d{6} true payment");
+				.as("numbered and active, and the season he was let into stands on the balance")
+				.matches("\\d{6} true balance");
 	}
 
 	/**

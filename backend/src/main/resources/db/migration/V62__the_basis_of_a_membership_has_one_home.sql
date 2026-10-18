@@ -11,9 +11,10 @@
  * WHAT GOES, NAMED RATHER THAN LEFT TO `cascade`: the column, and with it the one constraint that
  * stands on it alone, `competitor_membership_basis_known` (V7). PostgreSQL drops a check that names
  * only the dropped column together with it. Nothing else depends on the column: no view, no
- * trigger, no function and no index names it, which `TheBasisHasOneHomeTest` asks of the catalogue
- * rather than of this sentence. The drop is written WITHOUT `cascade` on purpose, so that a
- * dependency nobody counted stops this migration instead of going with it quietly.
+ * trigger, no function and no index names it. The drop is written WITHOUT `cascade` on purpose, so
+ * that a view or a rule nobody counted stops this migration instead of going with it quietly; the
+ * body of a function is text PostgreSQL does not track, so `TheBasisHasOneHomeTest` asks the
+ * catalogue that no function or view still names the column.
  *
  * WHAT IS NOT CARRIED, AND WHY NOTHING IS LOST. The column held one word per person and no season,
  * and the decision of 13.09.2026 is that a basis is a fact about a season ("Oslobodjenje se odobrava
@@ -23,8 +24,8 @@
  * database holds was measured before this was written: the one member freed of the fee carried
  * `payment` in the column and `2027 | feeExempt` in the table, and the table is the one the owner
  * says is true.
- * `TheBasisHasOneHomeCarriedOverTest` runs this file over that shape and requires every row of
- * `membership` to come out as it went in.
+ * `TheBasisHasOneHomeTest` runs this file over that shape and requires every row of `membership`
+ * to come out as it went in.
  */
 
 alter table competitor drop column membership_basis;

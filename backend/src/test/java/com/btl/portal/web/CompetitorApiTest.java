@@ -89,6 +89,13 @@ class CompetitorApiTest {
 	private static final String THE_REFERRAL_CODE = "referralCode";
 	private static final String WHO_HANDED_OUT_THE_CODE = "referredBy";
 	private static final String HOW_THE_MEMBERSHIP_IS_HELD = "membershipBasis";
+
+	/**
+	 * THE SEASON THAT BASIS IS THE BASIS OF, which since V62 rides beside it: the owner, 18.10.2026
+	 * (PDL P8), wants the moderation of the members to name the basis of the season on sale „uz
+	 * godinu". Present exactly when the basis is, so it is withheld from exactly the same callers.
+	 */
+	private static final String THE_SEASON_OF_THE_BASIS = "membershipSeason";
 	private static final String WHETHER_THE_FEE_IS_STANDING = "active";
 
 	/**
@@ -626,17 +633,26 @@ class CompetitorApiTest {
 			String place, String city, String country, int firstSeason, boolean firstSeason2027,
 			boolean active, String basis, String bio, String referralCode, String broughtBy,
 			boolean hidden, String birthdayShown) {
-		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, city, country_id, first_season, first_season_2027, active,"
-						+ " membership_basis, referral_code, referred_by, bio, profile_hidden,"
+		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+						+ " birth_date, place_id, city, country_id, first_season, first_season_2027,"
+						+ " active, referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, date '" + born + "', " + place + ", " + city + ", "
-						+ country + ", ?, ?, ?, ?, ?, " + broughtBy + ", ?, ?, ?, 'Otac', 'Ulica 1',"
-						+ " 'M', timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, first, last, gender, firstSeason, firstSeason2027, active, basis,
+						+ country + ", ?, ?, ?, ?, " + broughtBy + ", ?, ?, ?, 'Otac', 'Ulica 1',"
+						+ " 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
+				.params(number, first, last, gender, firstSeason, firstSeason2027, active,
 						referralCode, bio, hidden, birthdayShown)
-				.update();
+				.query(Long.class).single();
+
+		/* THE BASIS IS A ROW OF THE SEASON ON SALE SINCE V62, and at AUTUMN_2026 that is 2027:
+		   the calendar answers 2026, which the league does not have, so `seasonBeingPaidFor`
+		   answers the first season. Written for that season and no other, which is what the
+		   per-person column used to stand for in every case of this file. */
+		HeldOn.season(db, id, THE_SEASON_ON_SALE, basis);
 	}
+
+	/** What {@code SeasonClock.seasonBeingPaidFor} answers at {@link #AUTUMN_2026}. */
+	private static final int THE_SEASON_ON_SALE = 2027;
 
 	/** Both teams start in 2027, so the season a membership starts in is never the team's. */
 	private void team(String slug, String name, String adminNumber, String mark) {
@@ -779,7 +795,7 @@ class CompetitorApiTest {
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/competitors", answer(), "competitors.json",
 				THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
-				HOW_THE_MEMBERSHIP_IS_HELD, WHETHER_THE_FEE_IS_STANDING);
+				HOW_THE_MEMBERSHIP_IS_HELD, THE_SEASON_OF_THE_BASIS, WHETHER_THE_FEE_IS_STANDING);
 	}
 
 	/**
@@ -1832,7 +1848,7 @@ class CompetitorApiTest {
 					.as("a visitor was answered something only the administration may have, on"
 							+ " the record of %s", one.path("memberNumber").asString())
 					.doesNotContain(THE_REFERRAL_CODE, THE_COUNT_SHE_BROUGHT_IN,
-							HOW_THE_MEMBERSHIP_IS_HELD);
+							HOW_THE_MEMBERSHIP_IS_HELD, THE_SEASON_OF_THE_BASIS);
 		}
 
 		/* AND SIGNING IN CHANGES NOTHING ELSE AT ALL, WHICH IS A STRONGER SENTENCE THAN THE ONE
@@ -1926,7 +1942,7 @@ class CompetitorApiTest {
 				new ObjectMapper().createArrayNode().add(recordOf(HER_OWN_ACCOUNT, "000012")),
 				"competitors.json",
 				THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
-				HOW_THE_MEMBERSHIP_IS_HELD, WHETHER_THE_FEE_IS_STANDING);
+				HOW_THE_MEMBERSHIP_IS_HELD, THE_SEASON_OF_THE_BASIS, WHETHER_THE_FEE_IS_STANDING);
 	}
 
 	/*
@@ -2053,7 +2069,7 @@ class CompetitorApiTest {
 								+ " names the superadmin and a moderator with the right over the"
 								+ " members, and nobody else", nobody,
 								one.path("memberNumber").asString())
-						.doesNotContain(HOW_THE_MEMBERSHIP_IS_HELD);
+						.doesNotContain(HOW_THE_MEMBERSHIP_IS_HELD, THE_SEASON_OF_THE_BASIS);
 			}
 		}
 
@@ -2100,8 +2116,12 @@ class CompetitorApiTest {
 	void aModeratorOverTheMembersIsToldHowEveryMembershipIsHeld() throws Exception {
 		Map<String, String> onTheRows = new HashMap<>();
 
-		for (Map.Entry<String, String> row : db.sql("select member_number, membership_basis"
-						+ " from competitor where active")
+		/* READ OFF THE ROW OF THE SEASON ON SALE, which is the one home of the basis since V62. A
+		   member on the list who held no row for it would come back with no basis at all, and every
+		   member this fixture writes holds one. */
+		for (Map.Entry<String, String> row : db.sql("select c.member_number, m.basis"
+						+ " from competitor c join membership m on m.competitor_id = c.id"
+						+ " and m.season = ? where c.active").param(THE_SEASON_ON_SALE)
 				.query((one, number) -> Map.entry(one.getString(1), one.getString(2))).list()) {
 			onTheRows.put(row.getKey(), row.getValue());
 		}
@@ -2111,9 +2131,10 @@ class CompetitorApiTest {
 						+ " constant would satisfy this case")
 				.hasSizeGreaterThan(1);
 
-		String his = db.sql("select membership_basis from competitor where id ="
+		String his = db.sql("select basis from membership where season = ? and competitor_id ="
 						+ " (select competitor_id from account where email = ?)")
-				.param(THE_MODERATOR_OVER_THE_MEMBERS).query(String.class).single();
+				.params(THE_SEASON_ON_SALE, THE_MODERATOR_OVER_THE_MEMBERS).query(String.class)
+				.single();
 
 		assertThat(onTheRows.values().stream().filter(one -> !one.equals(his)).toList())
 				.as("no row the moderator looks at is held on a basis other than his own (%s), so"
@@ -2131,8 +2152,9 @@ class CompetitorApiTest {
 						+ " not on it, so the map below says nothing about the caller's own row")
 				.containsKey(hisMemberNumber());
 
-		String onTheList = db.sql("select membership_basis from competitor where member_number = ?")
-				.param(hisMemberNumber()).query(String.class).single();
+		String onTheList = db.sql("select m.basis from membership m join competitor c"
+						+ " on c.id = m.competitor_id where m.season = ? and c.member_number = ?")
+				.params(THE_SEASON_ON_SALE, hisMemberNumber()).query(String.class).single();
 		assertThat(onTheRows.values().stream().filter(one -> !one.equals(onTheList)).toList())
 				.as("every row the administrator on the list looks at is held on his own basis"
 						+ " (%s), so his own row carrying another row's word reads the same",
@@ -2151,6 +2173,15 @@ class CompetitorApiTest {
 					.as("%s was told a basis that is not the one standing on that member's row;"
 							+ " his own is %s", administration, his)
 					.isEqualTo(onTheRows);
+
+			/* AND EVERY BASIS IS SAID WITH THE SEASON IT IS THE BASIS OF, which is the season on
+			   sale and the one the rows above were read for. */
+			for (JsonNode one : answerFor(administration)) {
+				assertThat(one.path(THE_SEASON_OF_THE_BASIS).asInt())
+						.as("%s was told the basis of %s without the season on sale beside it",
+								administration, one.path("memberNumber").asString())
+						.isEqualTo(THE_SEASON_ON_SALE);
+			}
 		}
 	}
 
@@ -2202,7 +2233,7 @@ class CompetitorApiTest {
 
 				answersAgreeExceptForWhatHidingOrTheBasisMayChange(
 						recordOf(administration, memberNumber), visitorRecord, memberNumber,
-						Set.of(HOW_THE_MEMBERSHIP_IS_HELD));
+						Set.of(HOW_THE_MEMBERSHIP_IS_HELD, THE_SEASON_OF_THE_BASIS));
 			}
 		}
 	}
@@ -2307,10 +2338,12 @@ class CompetitorApiTest {
 						+ " so a resource answering the record at either edge would pass for his")
 				.doesNotContain(number);
 
-		String hisBasis = db.sql("select membership_basis from competitor where member_number = ?")
-				.param(number).query(String.class).single();
-		assertThat(db.sql("select count(*) from competitor where active and membership_basis <> ?")
-				.param(hisBasis).query(Integer.class).single())
+		String hisBasis = db.sql("select m.basis from membership m join competitor c"
+						+ " on c.id = m.competitor_id where m.season = ? and c.member_number = ?")
+				.params(THE_SEASON_ON_SALE, number).query(String.class).single();
+		assertThat(db.sql("select count(*) from competitor c join membership m"
+						+ " on m.competitor_id = c.id and m.season = ? where c.active and m.basis <> ?")
+				.params(THE_SEASON_ON_SALE, hisBasis).query(Integer.class).single())
 				.as("every other row on the list is held on the same basis as his (%s), so his own"
 						+ " row carrying another row's word would read the same", hisBasis)
 				.isGreaterThan(0);

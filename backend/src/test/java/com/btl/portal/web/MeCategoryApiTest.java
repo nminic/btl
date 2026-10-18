@@ -382,8 +382,8 @@ class MeCategoryApiTest {
 	 * koju ce kategoriju." The draft box this route replaces was drawn only for a member who is
 	 * NOT freed of the fee, and twenty nine of the thirty two members in the shipped data are
 	 * freed of it, so a route that asked about money would be wrong for very nearly everybody.
-	 * Nothing in this class's production code reads {@code membership_basis}, and this is the
-	 * case that would fail if it started to.
+	 * Nothing in this class's production code reads the basis of a membership, which since V62 is
+	 * the {@code membership} row of a season, and this is the case that would fail if it started to.
 	 */
 	@Test
 	void payingNothingEverMakesNoDifferenceToTheChoice() throws Exception {
@@ -571,17 +571,21 @@ class MeCategoryApiTest {
 	private void competitor(String number, String first, String last, String gender,
 			String birthDate, boolean firstSeason, String basis) {
 
-		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, first_season_2027, active, membership_basis,"
+		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+						+ " birth_date, place_id, first_season, first_season_2027, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name,"
 						+ " address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, cast(? as date),"
-						+ " (select id from place where rank = 1), 2027, ?, true, ?,"
+						+ " (select id from place where rank = 1), 2027, ?, true,"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
-						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, first, last, gender, birthDate, firstSeason, basis,
+						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
+				.params(number, first, last, gender, birthDate, firstSeason,
 						String.format("%016x", ++issued))
-				.update();
+				.query(Long.class).single();
+
+		/* THE BASIS IS A ROW OF THE SEASON ON SALE SINCE V62, and at IN_OCTOBER_2028 that is
+		   2029. The case about being freed of the fee measures that this route reads none of it. */
+		HeldOn.season(db, id, 2029, basis);
 	}
 
 	private void account(String email, String role, String memberNumber) {

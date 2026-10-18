@@ -953,12 +953,11 @@ class MyMembershipApiTest {
 	 * zauvek!" This case used to free him by writing {@code competitor.membership_basis}, and that
 	 * fixture was measuring the wrong source: the column is written once and never taken back, so it
 	 * answered this 404 for every season after the one he was given. The two directions it was blind
-	 * to have cases of their own, {@code acolumnSayingFeeExemptDoesNotFreeHimOfASeasonHeHoldsNoRowFor}
+	 * to have cases of their own, {@code anExemptionOfAnySeasonButTheOneOnSaleFreesHimOfNothing}
 	 * and {@code anexemptionForOneSeasonDoesNotFreeHimOfTheNext}.
 	 *
-	 * <p><b>THE OPEN PART, named rather than settled:</b> what his own screen should show him instead
-	 * of an invoice. His basis already reaches it through {@code /api/me}, and a field on this answer
-	 * would be the cheap way to say more - deliberately not invented here.
+	 * <p><b>What his own screen shows him instead of an invoice</b> comes off {@code /api/me}: the
+	 * basis of the season on sale with its year (PDL P8, 18.10.2026), off this same row.
 	 */
 	@Test
 	void amemberFreedOfTheFeeIsToldThereIsNoInvoiceHere() throws Exception {
@@ -1006,7 +1005,7 @@ class MyMembershipApiTest {
 	}
 
 	/**
-	 * A COLUMN SAYING {@code feeExempt} FREES HIM OF NO SEASON HE HOLDS NO ROW FOR, and this is the
+	 * AN EXEMPTION OF ANY SEASON BUT THE ONE ON SALE FREES HIM OF NOTHING HE OWES, and this is the
 	 * direction that had the portal unable to bill a man ever again.
 	 *
 	 * <p><b>The owner, 27.09.2026:</b> „BESPLATNI CLANOVI NISU BESPLATNI DOZIVOTNO. Admin moze da
@@ -1014,21 +1013,26 @@ class MyMembershipApiTest {
 	 * entry, the shape: „red u {@code membership} postoji za svaku sezonu posebno, a {@code feeExempt}
 	 * je osnov TOG reda, ne svojstvo coveka."
 	 *
-	 * <p><b>Why the column is what it is here.</b> {@code MembershipWriteApi} writes BOTH homes when
-	 * the administration frees somebody - the row for that season and the column on him - and
-	 * <b>nothing ever writes the column back</b>. So this is not a contrived state: it is exactly what
-	 * every member freed of one season looks like in every season afterwards.
+	 * <p><b>What this case was until V62.</b> It wrote {@code feeExempt} into the per-person column
+	 * {@code competitor.membership_basis}, which {@code MembershipWriteApi} wrote beside the row and
+	 * nothing ever wrote back, so it was what every member freed of one season looked like in every
+	 * season afterwards. The column is gone (PDL P8, 18.10.2026, „Osnov clanstva ima jedan dom"), and
+	 * the same claim - a word about him that is not the row of THIS season frees him of nothing - is
+	 * asked of the only home left: he is freed of the season BEFORE and the season AFTER the one on
+	 * sale, so a read that took any {@code feeExempt} row of his, or the newest, or the oldest, frees
+	 * him here and fails. {@code anexemptionForOneSeasonDoesNotFreeHimOfTheNext} holds the earlier
+	 * neighbour alone.
 	 *
 	 * <p><b>And he is served a WHOLE invoice rather than merely a 200</b>, because „he is billed" is
 	 * the claim: the fee, the transfer and the processing fee are all there and none of them is
 	 * nought.
 	 */
 	@Test
-	void acolumnSayingFeeExemptDoesNotFreeHimOfASeasonHeHoldsNoRowFor() throws Exception {
+	void anExemptionOfAnySeasonButTheOneOnSaleFreesHimOfNothing() throws Exception {
 		String him = aMemberOfHisOwn("007105", 0);
 
-		db.sql("update competitor set membership_basis = 'feeExempt' where id = ?")
-				.param(idOf("007105")).update();
+		freeOfTheFeeFor("007105", THE_SEASON_ON_SALE - 1);
+		freeOfTheFeeFor("007105", THE_SEASON_ON_SALE + 1);
 
 		assertThat(statusOf(PATH, him))
 				.as("one season the Board gave him freed him of every season after it, and the portal"

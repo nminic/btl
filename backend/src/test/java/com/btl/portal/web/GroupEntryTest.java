@@ -259,8 +259,14 @@ class GroupEntryTest {
 		assertThat(member.get("member_number")).as("a member number was handed out by this"
 				+ " route; PDL says it is drawn when a payment is recorded and that the"
 				+ " administrator never types it").isNull();
-		assertThat(member.get("membership_basis")).as("the form claimed honorary membership,"
-				+ " which is the owner's to grant").isEqualTo("payment");
+		/* NO BASIS OF ANY SEASON, which since V62 is a `membership` row and nothing on him: a
+		   member entered off paper holds no season until a fee is recorded or the fee is waived,
+		   and either of those is the administration's own act, not the form's. */
+		assertThat(db.sql("select count(*) from membership where competitor_id = ?")
+				.param(member.get("id")).query(Integer.class).single())
+				.as("the form claimed a membership of some season, which is the administration's"
+						+ " to grant")
+				.isZero();
 		assertThat(member.get("referred_by")).as("somebody was credited with a referral,"
 				+ " and nobody opened a link here").isNull();
 		assertThat(member.get("first_season")).isEqualTo(THE_SEASON);

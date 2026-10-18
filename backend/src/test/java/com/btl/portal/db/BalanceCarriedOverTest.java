@@ -53,7 +53,7 @@ class BalanceCarriedOverTest extends DatabaseTest {
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
 			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
-			+ " membership_basis, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
+			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
 	/** The man who brought people in, and nobody brought him in. */
@@ -114,12 +114,12 @@ class BalanceCarriedOverTest extends DatabaseTest {
 				+ " check (basis in ('payment', 'feeExempt'))");
 	}
 
-	private void competitor(String number, String last, String code, String basis, String referredBy) {
+	private void competitor(String number, String last, String code, String referredBy) {
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', ?, 'M',"
-						+ " date '1982-02-02', " + A_TOWN + ", null, null, 2027, false, true, ?, ?,"
+						+ " date '1982-02-02', " + A_TOWN + ", null, null, 2027, false, true, ?,"
 						+ " " + referredBy + ", '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, last, basis, code).update();
+				.params(number, last, code).update();
 	}
 
 	private static String broughtBy(String memberNumber) {
@@ -196,14 +196,14 @@ class BalanceCarriedOverTest extends DatabaseTest {
 		db.sql("insert into account (first_name, last_name, email, role_id) values ('Drugi', 'Blagajnik',"
 				+ " 'drugi@primer.rs', (select id from role where code = 'moderator'))").update();
 
-		competitor(THE_REFERRER, "Preporucilac", "00112233445566a1", "payment", "null");
-		competitor(ANOTHER_REFERRER, "Drugi Preporucilac", "00112233445566a5", "payment", "null");
+		competitor(THE_REFERRER, "Preporucilac", "00112233445566a1", "null");
+		competitor(ANOTHER_REFERRER, "Drugi Preporucilac", "00112233445566a5", "null");
 
-		competitor(PAID_FOR_TWO_SEASONS, "Platio Dvaput", "00112233445566a2", "payment",
+		competitor(PAID_FOR_TWO_SEASONS, "Platio Dvaput", "00112233445566a2",
 				broughtBy(THE_REFERRER));
-		competitor(NEVER_PAID, "Nikad Platio", "00112233445566a3", "payment", broughtBy(THE_REFERRER));
-		competitor(LET_IN_FREE, "Oslobodjen", "00112233445566a4", "feeExempt", broughtBy(THE_REFERRER));
-		competitor(BROUGHT_IN_BY_THE_OTHER, "Doveden", "00112233445566a6", "payment",
+		competitor(NEVER_PAID, "Nikad Platio", "00112233445566a3", broughtBy(THE_REFERRER));
+		competitor(LET_IN_FREE, "Oslobodjen", "00112233445566a4", broughtBy(THE_REFERRER));
+		competitor(BROUGHT_IN_BY_THE_OTHER, "Doveden", "00112233445566a6",
 				broughtBy(ANOTHER_REFERRER));
 
 		/* TWO PAYMENTS FOR ONE MAN, recognised on two different days by two different people, so

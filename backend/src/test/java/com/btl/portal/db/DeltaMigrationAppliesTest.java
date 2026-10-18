@@ -654,7 +654,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	private static String submissionStandingOn(String town, String city, String country) {
 		return "with runner as (insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000905',"
 				+ " 'Probni', 'Trkac', 'M', date '1991-06-06', null, 'Zaselak', " + ANOTHER_COUNTRY
-				+ ", 2027, false, true, 'payment', '00112233445566cd', null, '', false, 'none', 'Otac',"
+				+ ", 2027, false, true, '00112233445566cd', null, '', false, 'none', 'Otac',"
 				+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id)"
 				+ " insert into result_submission (competitor_id, race_date, race_name, race_kind, place_id,"
 				+ " city, country_id, distance_km, ascent_m, descent_m, seconds, link, comment)"
@@ -685,7 +685,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	private static String teamProposalStandingOn(String town, String city, String country) {
 		return "with proposer as (insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000906',"
 				+ " 'Probni', 'Predlagac', 'M', date '1989-09-09', null, 'Zaselak', " + ANOTHER_COUNTRY
-				+ ", 2027, false, true, 'payment', '00112233445566ef', null, '', false, 'none', 'Otac',"
+				+ ", 2027, false, true, '00112233445566ef', null, '', false, 'none', 'Otac',"
 				+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id)"
 				+ " insert into team_proposal (competitor_id, team_id, name, bio, link, place_id, city,"
 				+ " country_id, logo_id) select id, null, 'Predlozen tim', '', '', " + town + ", " + city

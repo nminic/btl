@@ -280,10 +280,13 @@ class RegistrationApiTest {
 				.as("nothing recorded when he said he was fit to run")
 				.isNotNull();
 
-		/* The basis is how the membership will be held and not that it is held: 'feeExempt'
-		   is honorary membership, which is the owner's to grant, and a form must never be
-		   able to claim it. */
-		assertThat(competitor.get("membership_basis")).isEqualTo("payment");
+		/* NO BASIS OF ANY SEASON, which since V62 is a `membership` row and nothing on him: a
+		   registration is no membership until a payment is recognised or the fee is waived, and
+		   'feeExempt' is the administration's to grant, which a form must never be able to claim. */
+		assertThat(db.sql("select count(*) from membership where competitor_id = ?")
+				.param(competitor.get("id")).query(Integer.class).single())
+				.as("the registration wrote a membership of some season")
+				.isZero();
 		assertThat(competitor.get("profile_hidden")).isEqualTo(false);
 		/* V7's only default, which is O17's decision: none unless the member chooses
 		   otherwise. Left out of the INSERT so that the default is what decides. */

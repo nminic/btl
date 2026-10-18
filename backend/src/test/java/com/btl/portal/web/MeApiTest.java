@@ -358,20 +358,20 @@ class MeApiTest {
 		   count is 3 rather than 2. And he is written here, before the two people HE brought
 		   in, because `referred_by` names a row that has to exist already. */
 		competitor(LAPSED, "Nenad", "Ilic", "(select id from place where rank = 1)", "null",
-				"null", 2015, false, "payment", broughtBy(ME));
+				"null", 2015, false, null, broughtBy(ME));
 		/* Brought in by HIM and not by the caller, and active, so „brought in by the caller"
 		   and „brought in by anybody" are two different counts - and the lapsed member's own
 		   count is 1 rather than 0, which is the only way a clause carried into it from
 		   `CompetitorApi` can be told from the right one. */
 		competitor(BROUGHT_BY_ANOTHER, "Jovana", "Popovic", "null", "'Sarajevo'",
-				"(select id from country where code = 'BA')", 2024, false, "payment",
+				"(select id from country where code = 'BA')", 2024, false, "balance",
 				broughtBy(LAPSED));
 		/* Registered, no number (A44), IN A TEAM - which is what keeps „he has no number"
 		   from resting on the same row as „he is in no team" - and brought in by the lapsed
 		   member, so that member's count of 1 also carries the „whose fee stands" clause
 		   rather than only the caller's count of 2. */
 		competitor(NOT_A_MEMBER_YET, "Tek", "Stigao", "null", "'Skoplje'",
-				"(select id from country where code = 'MK')", 2027, false, "payment",
+				"(select id from country where code = 'MK')", 2027, false, null,
 				broughtBy(LAPSED));
 		/* The caller's first recruit whose fee stands. */
 		competitor(ALSO_BROUGHT_BY_ME, "Dusan", "Maric", "null", "'Tirana'",
@@ -543,48 +543,63 @@ class MeApiTest {
 	 * saying so is that a man who is not being charged has to know it, „inace ne razume zasto
 	 * mu portal ne trazi uplatu".
 	 *
-	 * <p><b>BOTH STATES ARE ASKED AND THE SCHEMA SAYS THERE ARE TWO</b>, which is the floor
+	 * <p><b>EVERY STATE IS ASKED AND THE SCHEMA SAYS THERE ARE THREE</b>, which is the floor
 	 * this case stands on rather than a sentence about it: the words are read out of
-	 * {@code competitor_membership_basis_known} itself, so a third basis added tomorrow turns
-	 * this case red and asks for a third caller instead of being quietly unmeasured.
+	 * {@code membership_basis_known} itself, the one rule about a basis since V62, so a fourth
+	 * basis added tomorrow turns this case red and asks for a fourth caller instead of being
+	 * quietly unmeasured. And a fourth state that is no word at all: a member who holds no row
+	 * for the season on sale is answered no basis, which is the member whose fee has lapsed.
 	 *
-	 * <p><b>And the caller is the ONLY row freed of the fee</b>, which is what makes
-	 * „feeExempt" his own value: a route that answered off any other row in this fixture -
-	 * the first, the last, the one that signed in first - answers „payment" and fails here.
-	 * The lapsed member's „payment" is a word five rows carry, so what separates HIS answer
-	 * from theirs is the number asserted beside it and not the word.
+	 * <p><b>And each caller is the ONLY row of the season on sale held on his word</b>, except
+	 * the payers, which is what makes „feeExempt" and „balance" their own values: a route that
+	 * answered off any other row in this fixture - the first, the last, the one that signed in
+	 * first - answers another word and fails here.
 	 */
 	@Test
 	void aMemberIsHandedHisOwnBasisAndTheOtherWordIsNotIt() throws Exception {
 		String rule = db.sql("select pg_get_constraintdef(oid) from pg_constraint"
-						+ " where conname = ?").param("competitor_membership_basis_known")
+						+ " where conname = ?").param("membership_basis_known")
 				.query(String.class).single();
 		List<String> everyBasis = Pattern.compile("'([a-zA-Z]+)'").matcher(rule).results()
 				.map(one -> one.group(1)).toList();
 		assertThat(everyBasis).as("the schema knows a basis this case never asks anybody about,"
-				+ " so one of the two answers below is unmeasured; the rule it read was: %s", rule)
-				.containsExactlyInAnyOrder("feeExempt", "payment");
+				+ " so one of the answers below is unmeasured; the rule it read was: %s", rule)
+				.containsExactlyInAnyOrder("feeExempt", "payment", "balance");
 
-		assertThat(db.sql("select count(*) from competitor where membership_basis = 'feeExempt'")
-				.query(Integer.class).single())
-				.as("more than one row here is freed of the fee, so that word coming back would"
-						+ " not say the answer was read off HIS row").isEqualTo(1);
+		for (String alone : List.of("feeExempt", "balance")) {
+			assertThat(db.sql("select count(*) from membership where season = ? and basis = ?")
+					.params(THE_SEASON_ON_SALE, alone).query(Integer.class).single())
+					.as("more than one row of the season on sale here is held on %s, so that word"
+							+ " coming back would not say the answer was read off HIS row", alone)
+					.isEqualTo(1);
+		}
 
-		JsonNode mine = answerFor(MY_ACCOUNT).path("member");
-		assertThat(mine.path("memberNumber").asString())
-				.as("this is not his record at all, so the basis below says nothing").isEqualTo(ME);
-		assertThat(mine.path("membershipBasis").asString())
-				.as("the caller is freed of the fee and the portal did not tell him so, which is"
-						+ " the whole of the owner's reason: he cannot understand why no payment is"
-						+ " being asked of him").isEqualTo("feeExempt");
+		for (String[] who : new String[][] {{MY_ACCOUNT, ME, "feeExempt"},
+				{HER_ACCOUNT, ABROAD, "payment"}, {THE_THIRD_PARTYS_ACCOUNT, BROUGHT_BY_ANOTHER, "balance"}}) {
+			JsonNode one = answerFor(who[0]).path("member");
+			assertThat(one.path("memberNumber").asString())
+					.as("this is not his record at all, so the basis below says nothing")
+					.isEqualTo(who[1]);
+			assertThat(one.path("membershipBasis").asString())
+					.as("%s holds the season on sale on %s and was not told so, which is the whole of"
+							+ " the owner's reason: he cannot understand why a payment is or is not"
+							+ " being asked of him", who[1], who[2])
+					.isEqualTo(who[2]);
+			assertThat(one.path("membershipSeason").asInt())
+					.as("%s was told his basis without the season it is the basis of", who[1])
+					.isEqualTo(THE_SEASON_ON_SALE);
+		}
 
+		/* AND THE MEMBER WHOSE FEE HAS LAPSED HOLDS NO ROW FOR THE SEASON ON SALE, so he is answered
+		   no basis and no season: absent, never a word in their place. Until V62 he was answered
+		   „payment" off the per-person column, a basis for a season nobody had given him. */
 		JsonNode his = answerFor(THE_LAPSED_ACCOUNT).path("member");
 		assertThat(his.path("memberNumber").asString())
-				.as("this is not his record at all, so the basis below says nothing")
+				.as("this is not his record at all, so the absence below says nothing")
 				.isEqualTo(LAPSED);
-		assertThat(his.path("membershipBasis").asString())
-				.as("a member who pays was answered the other word, so only one of the two states"
-						+ " the schema knows is really served").isEqualTo("payment");
+		assertThat(his.has("membershipBasis") || his.has("membershipSeason"))
+				.as("a member who holds no row for the season on sale was answered a basis for it")
+				.isFalse();
 	}
 
 	/**
@@ -830,6 +845,15 @@ class MeApiTest {
 				if (field.getName().equals("active")) {
 					continue;
 				}
+				/* AND THE SEASON OF THE BASIS, for the same kind of reason: it is the season on
+				   sale, which on any one day is one number for every member who holds a basis at
+				   all, so four of the seven rows share it with the caller by construction. That it
+				   is HIS is said by the basis beside it, which is his alone here, and
+				   `TheBasisOfTheSeasonOnSaleTest` asks the season of rows chosen so that every wrong
+				   season gives a different answer. */
+				if (field.getName().equals("membershipSeason")) {
+					continue;
+				}
 				assertThat(his.path(field.getName()).toString())
 						.as("the record behind %s carries the very value the caller was answered"
 								+ " for %s, so on that field his own record and somebody else's"
@@ -1056,7 +1080,7 @@ class MeApiTest {
 						+ " freed of the fee, she is not) was handed back to her instead")
 				.isEqualTo(Boolean.parseBoolean(columnOf("active", ABROAD)))
 				.isTrue();
-		assertThat(columnOf("membership_basis", ABROAD))
+		assertThat(basisOf(ABROAD))
 				.as("she is freed of the fee after all, so the row that separates the flag from the"
 						+ " basis does not")
 				.isEqualTo("payment");
@@ -1651,8 +1675,8 @@ class MeApiTest {
 		assertThat(mine)
 				.as("one of the names this case excuses is not on this record at all, so the"
 						+ " excuse is for nothing")
-				.containsAll(Set.of("referralCode", "referredCount", "membershipBasis", "active",
-						"address", "phone"));
+				.containsAll(Set.of("referralCode", "referredCount", "membershipBasis",
+						"membershipSeason", "active", "address", "phone"));
 		/* THE PUBLIC LIST CARRIES NEITHER OF THE LAST TWO, and that is a decision and not a gap:
 		   PDL „Uvek privatno: mejl, telefon i adresa". Asked of the record's components so that a
 		   field added to it tomorrow under either name is a red case on the day it is written. */
@@ -1671,6 +1695,8 @@ class MeApiTest {
 				.containsExactlyInAnyOrder("referralCode", "referredCount", "active", "address",
 						"phone");
 		shared.remove("membershipBasis");
+		/* And the season beside it, which leaves with the basis and is withheld with it. */
+		shared.remove("membershipSeason");
 
 		assertThat(shared)
 				.as("the two doors share almost nothing, so the comparison below is asked of a few"
@@ -1701,6 +1727,13 @@ class MeApiTest {
 	private void bornOn(String memberNumber, String date) {
 		db.sql("update competitor set birth_date = date '" + date + "' where member_number = ?")
 				.param(memberNumber).update();
+	}
+
+	/** The basis of his membership of the season on sale, off the one home it has since V62. */
+	private String basisOf(String memberNumber) {
+		return db.sql("select m.basis from membership m join competitor c on c.id = m.competitor_id"
+						+ " where m.season = ? and c.member_number = ?")
+				.params(THE_SEASON_ON_SALE, memberNumber).query(String.class).optional().orElse(null);
 	}
 
 	private String columnOf(String column, String memberNumber) {
@@ -1795,17 +1828,23 @@ class MeApiTest {
 		return "(select id from competitor where member_number = '" + memberNumber + "')";
 	}
 
-	/** @param number null for somebody who has registered and has no number yet (A44) */
+	/**
+	 * @param number null for somebody who has registered and has no number yet (A44)
+	 * @param basis  the basis of his membership of THE SEASON ON SALE, which since V62 is a
+	 *               {@code membership} row of that season and nothing on {@code competitor}; null
+	 *               for somebody who holds no row for it, which is the member whose fee has lapsed
+	 *               and the one who never paid
+	 */
 	private void competitor(String number, String first, String last, String place, String city,
 			String country, int firstSeason, boolean firstSeason2027, String basis,
 			String broughtBy) {
-		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, city, country_id, first_season, first_season_2027, active,"
-						+ " membership_basis, referral_code, referred_by, bio, profile_hidden,"
+		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+						+ " birth_date, place_id, city, country_id, first_season, first_season_2027,"
+						+ " active, referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'M', date '1990-01-01', " + place + ", " + city + ", "
-						+ country + ", ?, ?, ?, ?, ?, " + broughtBy + ", '', false, 'none', 'Otac',"
-						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
+						+ country + ", ?, ?, ?, ?, " + broughtBy + ", '', false, 'none', 'Otac',"
+						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				/* ACTIVE FOLLOWS THE NUMBER, and is worked out here rather than passed in because
 				   the portal does not let the two be chosen separately: `PaymentApi` is the only
 				   writer of `active = true` and it either draws the number in the same statement
@@ -1815,10 +1854,20 @@ class MeApiTest {
 				   does write - a number, and not active. Both halves are measured by
 				   `everyRowHereIsAStateThePortalCanWrite` rather than promised by this comment. */
 				.params(number, first, last, firstSeason, firstSeason2027,
-						number != null && !LAPSED.equals(number), basis,
+						number != null && !LAPSED.equals(number),
 						String.format("%016x", ++issued))
-				.update();
+				.query(Long.class).single();
+
+		if (basis != null) {
+			HeldOn.season(db, id, THE_SEASON_ON_SALE, basis);
+		}
 	}
+
+	/**
+	 * What {@code SeasonClock.seasonBeingPaidFor} answers at {@link #AUTUMN_2026}: the calendar says
+	 * 2026, which the league does not have, so it is the first season.
+	 */
+	private static final int THE_SEASON_ON_SALE = 2027;
 
 	/**
 	 * THE CALLER, WRITTEN AS THE ONE ROW OF HIS KIND IN EVERY FIELD THE PROFILE ADDED (see the
