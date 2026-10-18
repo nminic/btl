@@ -405,7 +405,7 @@ describe('a change waiting on the queue of teams', () => {
     await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
 
     expect(
-      screen.getByRole('link', { name: /Izmena tima „Dunavski trkači“ je prihvaćena/ }),
+      screen.getByRole('link', { name: /Izmena tima "Dunavski trkači" je prihvaćena/ }),
     ).toBeVisible()
     expect(screen.queryByRole('link', { name: /predlog tima/i })).toBeNull()
   }, SLOW)
