@@ -492,6 +492,9 @@ export type SessionValue = {
     firstSeason: number | null
     teamId: number | null
     membershipBasis: MembershipBasis | null
+    /** The season that basis is the basis of: the season on sale, present exactly when he
+     *  holds a membership of it (`session/theServer.ts`). */
+    membershipSeason: number | null
     /** The caller's own link and his count of whom he brought in, which are the two
      *  facts P26a gave one home (25.09.2026) and that home is `GET /api/me`. Null for
      *  a visitor, for an account that races for nobody, and for a value the answer
@@ -591,6 +594,12 @@ export type SessionValue = {
    * are no longer READ off it by this screen.
    */
   myMembershipBasis: MembershipBasis | null
+  /**
+   * THE SEASON `myMembershipBasis` IS THE BASIS OF, which is the season on sale (PDL P8,
+   * 18.10.2026), or null where the caller holds no membership of it. „Moja članarina" names it
+   * beside the basis and offers no payment for a season he already holds.
+   */
+  myMembershipSeason: number | null
   /**
    * WHERE THE CALLER LIVES, as the server answered it, or null where it did not say.
    *

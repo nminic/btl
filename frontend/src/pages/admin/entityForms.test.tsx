@@ -120,7 +120,7 @@ const SCREENS: Screen[] = [
  * unfinished: `POST /api/competitors` is the GROUP entry that sends invitations (PDL P8b,
  * 25.09.2026), which is a different act from filling one record in. `admin/AdminMembers.tsx`
  * states it in full, and the shape of the refusal is measurable rather than argued -
- * `CompetitorWriteApi.Invited` takes eighteen fields where `admin-clan.form.json` has nine,
+ * `CompetitorWriteApi.Invited` takes eighteen fields where `admin-clan.form.json` has eight,
  * and the form carries no email address at all, which is the one field an invitation cannot
  * be sent without.
  *

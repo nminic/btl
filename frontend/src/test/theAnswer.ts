@@ -128,6 +128,7 @@ export const myOwnRow = {
 export const aCompetitorToTheAdministration = {
   ...aCompetitor,
   membershipBasis: 'payment' as const,
+  membershipSeason: 2027,
 }
 
 /** A team as the administration is answered one: the seat is a member number, and the
@@ -407,7 +408,7 @@ export const readAsFee: Price = aProcessingFee
  * requires the two to be the same set - so a name added here that the server has not got
  * fails by name, and a name the server has that is missing here fails the same way.
  *
- * **AND TWO OF ITS TWENTY-TWO ARE HIS OWN POSTAL ADDRESS AND TELEPHONE, since 18.10.2026**
+ * **AND TWO OF ITS TWENTY-THREE ARE HIS OWN POSTAL ADDRESS AND TELEPHONE, since 18.10.2026**
  * (`MeApi.MyOwnRecord.address` and `.phone`): the owner saved both on QA, was told so, refreshed and
  * found both boxes empty, because nothing served them. Neither is in `test/mock/competitors.json`,
  * which is the PUBLIC record and carries neither by decision (PDL „Uvek privatno: mejl, telefon i
@@ -415,7 +416,7 @@ export const readAsFee: Price = aProcessingFee
  * (`test/setup.ts`, `whatMeAnswers`) and a case that means to measure a particular pair puts its
  * own server in front.
  *
- * **Twelve of its twenty-two names are the page his own profile is drawn from, since
+ * **Twelve of its twenty-three names are the page his own profile is drawn from, since
  * 10.10.2026** (PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god
  * postoji"): a member whose fee has lapsed is on no row of `/api/competitors`, so his name,
  * his town, his category, his biography and his portrait reach the screen through this
@@ -432,6 +433,10 @@ export const readAsFee: Price = aProcessingFee
  * looked for and never asserted (ADL A14). A type here would be twenty names that three
  * readers already narrow for themselves.
  *
+ * **`membershipSeason` IS THE TWENTY-THIRD, since 18.10.2026**: the season `membershipBasis` is the
+ * basis of, which is the season on sale (PDL P8, „Osnov članstva ima jedan dom”), present exactly
+ * when the basis is. The sample says 2027, the season on sale before 15 October 2027.
+ *
  * **`active` IS THE TWENTIETH, since 11.10.2026**: whether his fee stands, which is what tells a
  * member whose fee has lapsed from one whose fee stands (`MeApi.MyOwnRecord.active`,
  * `session/theServer.ts#feeStandsIn`). The sample says `true` because the sample is the member
@@ -444,6 +449,7 @@ export const myOwnRecordFromMe = {
   firstSeason: 2014,
   teamId: 1,
   membershipBasis: 'payment',
+  membershipSeason: 2027,
   active: true,
   referralCode: '7f07b38ff7ee7543',
   referredCount: 4,

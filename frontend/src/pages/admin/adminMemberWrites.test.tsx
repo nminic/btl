@@ -199,11 +199,27 @@ describe('the members screen', () => {
       firstSeason2027: true,
       city: 'Kraljevo',
       membershipBasis: 'feeExempt',
+      membershipSeason: 2028,
+    }
+    /* AND THE OTHER TWO STATES OF THE BASIS OF THE SEASON ON SALE (PDL P8, 18.10.2026): one let
+       in on his balance, which is the third word and was drawn with no label at all until that
+       day, and one who holds no membership of the season on sale, for whom the server answers
+       neither field and the cell says nothing. Each a year that is not the beginner's, so a tag
+       that took its year off another row reads differently. */
+    const onHisBalance: Competitor = {
+      ...person('000007', 'Petar', 'Balans'),
+      membershipBasis: 'balance',
+      membershipSeason: 2027,
+    }
+    const notYetRenewed: Competitor = {
+      ...person('000008', 'Jovan', 'Neobnovio'),
+      membershipBasis: undefined,
+      membershipSeason: undefined,
     }
     clearResourceCache()
     const server = serverThat((path, init) =>
       path === '/api/competitors' && (init?.method ?? 'GET') === 'GET'
-        ? new Response(JSON.stringify([...MEMBERS, beginner]), {
+        ? new Response(JSON.stringify([...MEMBERS, beginner, onHisBalance, notYetRenewed]), {
             status: 200,
             headers: { 'content-type': 'application/json' },
           })
@@ -225,7 +241,19 @@ describe('the members screen', () => {
     expect(row.queryByText('Ž 25-39')).not.toBeInTheDocument()
     expect(row.queryByText('Ž25-39')).not.toBeInTheDocument()
     expect(row.getByText('Kraljevo')).toBeVisible()
-    expect(row.getByText('Oslobođen članarine')).toBeVisible()
+    expect(row.getByText('Oslobođen članarine za 2028')).toBeVisible()
+
+    const balance = within(must(within(table).getByText('000007').closest('tr'), 'his row'))
+    expect(balance.getByText('Balans za 2027')).toBeVisible()
+
+    /* Nothing at all in the cell of a member who holds no membership of the season on sale: not
+       „Uplata", which is what the per-person column used to say of everybody it did not free, and
+       not a label with no year. Asked of the last cell before the actions, by its column. */
+    const unpaid = must(within(table).getByText('000008').closest('tr'), 'the unrenewed row')
+    const basisColumn = within(table).getAllByRole('columnheader')
+      .findIndex((one) => one.textContent === 'Osnov članstva')
+    expect(basisColumn).toBeGreaterThan(-1)
+    expect(unpaid.querySelectorAll('td')[basisColumn].textContent).toBe('')
 
     /* And no year of birth anywhere on the row, which is the half of this that is about
        privacy rather than about wording: the record is served to anybody who asks for its
