@@ -80,10 +80,11 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 	}
 
 	/*
-	 * THE SIGN-OFF OF THE POLICY AND THE RULEBOOK (E policy, E rulebook) STANDS AT 16.10.2026 BELOW, not at the
-	 * 10.10.2026 V57 wrote: V58 moved it with the sentence it adds (owner, 16.10.2026). The terms' (E terms) is
-	 * still V57's. What V58 itself holds of the date is its own guard,
-	 * TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest.
+	 * THE SIGN-OFF OF THE RULEBOOK (E rulebook) STANDS AT 16.10.2026 BELOW AND THE POLICY'S (E policy) AT 18.10.2026,
+	 * not at the 10.10.2026 V57 wrote: V58 moved both with the sentence it adds (owner, 16.10.2026) and V60 moved the
+	 * policy's again with the row that names Zoho (owner, 17.10.2026). The terms' (E terms) is still V57's. What V58
+	 * and V60 hold of the date is their own guards, TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest and
+	 * TheWrittenPagesNameZohoAsAProcessorTest.
 	 */
 	/**
 	 * One entry per edit and language, written by hand. What keeps it honest is the two floors in the class header,
@@ -236,10 +237,10 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 						"and private messages are never shown")),
 			new Edit("E policy", POLICY, 7, "sr",
 					List.of("Poslednja izmena: 28.09.2026."),
-					List.of("Poslednja izmena: 16.10.2026.")),
+					List.of("Poslednja izmena: 18.10.2026.")),
 			new Edit("E policy", POLICY, 7, "en",
 					List.of("Last amended: 28.09.2026."),
-					List.of("Last amended: 16.10.2026.")),
+					List.of("Last amended: 18.10.2026.")),
 			new Edit("E terms", TERMS, 12, "sr",
 					List.of("Poslednja izmena: 28.09.2026."),
 					List.of("Poslednja izmena: 10.10.2026.")),
