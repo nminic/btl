@@ -557,10 +557,16 @@ describe('the members screen', () => {
       expect(reads(server.asked, '/api/competitors')).toBeGreaterThan(beforeMembers)
     })
     /* AND THE ROWS OF THIS SCREEN THEMSELVES (`members`, 18.10.2026): kept, they would draw the
-       deleted member again on the way back. */
-    await waitFor(() => {
-      expect(reads(server.asked, '/api/members')).toBeGreaterThan(beforeTheRows)
-    })
+       deleted member again on the way back. Waited for HALF the case's clock, so that a screen which
+       never asks again fails on this assertion and not on the clock of the case (the trap
+       `saveWhileSaving.test.tsx` names; measured: with the default wait the mutation that keeps the
+       rows cached ended as „Test timed out"). */
+    await waitFor(
+      () => {
+        expect(reads(server.asked, '/api/members')).toBeGreaterThan(beforeTheRows)
+      },
+      { timeout: SLOW / 2 },
+    )
 
     server.stop()
   }, SLOW)
