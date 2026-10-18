@@ -111,11 +111,11 @@ class TheSwitchAndTheTextAreOneThingTest {
 	@BeforeEach
 	void oneMemberWhoIsNotHidden() {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, first_season_2027, active, membership_basis,"
+						+ " place_id, first_season, first_season_2027, active, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, true, 'payment',"
+						+ " (select id from place where rank = 1), 2027, false, true, "
 						+ " 'b91b7c5d0e3f2402', ?, false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(ME, THE_TEXT_ON_MY_PROFILE).update();

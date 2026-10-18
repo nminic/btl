@@ -73,11 +73,11 @@ class ResultsCarriedOverTest extends DatabaseTest {
 		theColumnAsV7ShippedIt();
 
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, first_season_2027, active, membership_basis,"
+						+ " place_id, first_season, first_season_2027, active, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name,"
 						+ " address, shirt_size, health_statement_at)"
 						+ " values ('000777', 'Zatecena', 'Clanica', 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, true, 'payment',"
+						+ " (select id from place where rank = 1), 2027, false, true, "
 						+ " '0000000000000777', '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.update();

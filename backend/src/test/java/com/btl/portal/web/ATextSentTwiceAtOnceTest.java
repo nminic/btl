@@ -109,11 +109,11 @@ class ATextSentTwiceAtOnceTest {
 	@BeforeEach
 	void oneMemberWithNothingWaiting() {
 		me = db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, first_season_2027, active, membership_basis,"
+						+ " place_id, first_season, first_season_2027, active, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, 'Dvoklikovic', 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, true, 'payment',"
+						+ " (select id from place where rank = 1), 2027, false, true, "
 						+ " 'b2031000000000a1', 'Tekst koji je vec odobren.', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-01-01 10:00:00+00') returning id")
 				.params(ME, THE_NAME_HE_HAD)

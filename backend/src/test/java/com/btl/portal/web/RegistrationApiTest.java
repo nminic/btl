@@ -877,11 +877,11 @@ class RegistrationApiTest {
 	private long aMemberWhoseCodeIs(String code) {
 		return db.sql("insert into competitor (first_name, last_name, gender, birth_date,"
 						+ " city, country_id, first_season, first_season_2027, active,"
-						+ " membership_basis, referral_code, bio, profile_hidden, father_name,"
+						+ " referral_code, bio, profile_hidden, father_name,"
 						+ " address, shirt_size, health_statement_at)"
 						+ " values ('Stari', 'Clanovic', 'M', ?,"
 						+ " 'Beograd', (select id from country where code = ?), 2027, false, true,"
-						+ " 'payment', ?, '', false, 'Otac', 'Ulica 1', 'M', now())"
+						+ " ?, '', false, 'Otac', 'Ulica 1', 'M', now())"
 						+ " returning id")
 				.params(java.sql.Date.valueOf(today.minusYears(40)), theCountryThatTownIsIn, code)
 				.query(Long.class).single();

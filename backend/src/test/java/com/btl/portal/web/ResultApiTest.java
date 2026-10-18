@@ -171,11 +171,11 @@ class ResultApiTest {
 			String referral, boolean feeStanding) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, city, country_id, first_season, first_season_2027, active,"
-						+ " membership_basis, referral_code, referred_by, bio, profile_hidden,"
+						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, date '" + born + "',"
 						+ " (select id from place where rank = 1), null, null, 2027, false, ?,"
-						+ " 'payment', ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, first, last, gender, feeStanding, referral).update();
 	}
@@ -296,11 +296,11 @@ class ResultApiTest {
 			String born) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, city, country_id, first_season, first_season_2027, active,"
-						+ " membership_basis, referral_code, referred_by, bio, profile_hidden,"
+						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (null, ?, ?, ?, date '" + born + "',"
 						+ " (select id from place where rank = 1), null, null, 2027, false, false,"
-						+ " 'payment', '00112233440000ab', null, '', false, 'none', 'Otac', 'Ulica 1',"
+						+ " '00112233440000ab', null, '', false, 'none', 'Otac', 'Ulica 1',"
 						+ " 'M', timestamptz '2026-09-01 10:00:00+00')")
 				.params(first, last, gender).update();
 	}

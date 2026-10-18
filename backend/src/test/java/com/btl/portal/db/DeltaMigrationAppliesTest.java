@@ -581,7 +581,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 					+ " order by c.sort_order limit 1)";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender, birth_date,"
-			+ " place_id, city, country_id, first_season, first_season_2027, active, membership_basis,"
+			+ " place_id, city, country_id, first_season, first_season_2027, active, "
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 	private static final String EVENT_COLUMNS =
@@ -589,7 +589,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 
 	private static String memberStandingOn(String town, String city, String country) {
 		return "insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000904', 'Probni', 'Clan', 'M',"
-				+ " date '1990-05-05', " + town + ", " + city + ", " + country + ", 2027, false, true, 'payment',"
+				+ " date '1990-05-05', " + town + ", " + city + ", " + country + ", 2027, false, true, "
 				+ " '00112233445566ab', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 				+ " timestamptz '2026-09-01 10:00:00+00')";
 	}

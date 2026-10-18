@@ -107,7 +107,7 @@ class AxisConstraintsTest extends DatabaseTest {
 	private static final String AN_INSTANT = "timestamptz '2027-04-04 09:00:00+00'";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender, birth_date,"
-			+ " place_id, city, country_id, first_season, first_season_2027, active, membership_basis,"
+			+ " place_id, city, country_id, first_season, first_season_2027, active, "
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 	private static final String EVENT_COLUMNS =
@@ -125,7 +125,7 @@ class AxisConstraintsTest extends DatabaseTest {
 	   annotation that uses them takes a constant and a method call is not one. */
 	private static final String GOOD_COMPETITOR = "insert into competitor (" + COMPETITOR_COLUMNS + ") values ("
 			+ "'000902', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN + ", null, null, 2027, false, true,"
-			+ " 'payment', '00112233445566aa', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+			+ " '00112233445566aa', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 			+ " timestamptz '2026-09-01 10:00:00+00')";
 	private static final String GOOD_EVENT = "insert into btl_event (" + EVENT_COLUMNS + ") values ("
 			+ "'druga-proba-2027', 'Druga proba', date '2027-05-05', " + A_TOWN
@@ -199,11 +199,11 @@ class AxisConstraintsTest extends DatabaseTest {
 						competitorRow("'000903'", "'aaaabbbbccccdddd'")),
 				Violation.of("competitor_place_fk", "insert into competitor (" + COMPETITOR_COLUMNS + ") values ("
 						+ "'000903', 'Probni', 'Clan', 'M', date '1990-05-05', (select max(id) + 1 from place), null, null,"
-						+ " 2027, false, true, 'payment', '00112233445566aa', null, '', false, 'none',"
+						+ " 2027, false, true, '00112233445566aa', null, '', false, 'none',"
 						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"),
 				Violation.of("competitor_country_fk", "insert into competitor (" + COMPETITOR_COLUMNS + ") values ("
 						+ "'000903', 'Probni', 'Clan', 'M', date '1990-05-05', null, 'Zaselak',"
-						+ " (select max(id) + 1 from country), 2027, false, true, 'payment', '00112233445566aa',"
+						+ " (select max(id) + 1 from country), 2027, false, true, '00112233445566aa',"
 						+ " null, '', false, 'none',"
 						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"),
 				/* A member brought by a member who is not there. Minus one rather

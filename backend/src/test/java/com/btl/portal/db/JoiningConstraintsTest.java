@@ -71,7 +71,7 @@ class JoiningConstraintsTest extends DatabaseTest {
 	private static final String ANOTHER_TEAM = "(select id from team where slug = 'drugi-tim-za-uclanjenje')";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender, birth_date,"
-			+ " place_id, city, country_id, first_season, first_season_2027, active, membership_basis,"
+			+ " place_id, city, country_id, first_season, first_season_2027, active, "
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -107,15 +107,15 @@ class JoiningConstraintsTest extends DatabaseTest {
 	@BeforeEach
 	void probe() {
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000960', 'Prvi', 'Trkac', 'M',"
-				+ " date '1986-06-06', " + A_TOWN + ", null, null, 2027, false, true, 'payment',"
+				+ " date '1986-06-06', " + A_TOWN + ", null, null, 2027, false, true, "
 				+ " '0011223344556690', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000961', 'Drugi', 'Trkac', 'M',"
-				+ " date '1991-01-01', " + A_TOWN + ", null, null, 2027, false, true, 'payment',"
+				+ " date '1991-01-01', " + A_TOWN + ", null, null, 2027, false, true, "
 				+ " '0011223344556691', null, '', false, 'none', 'Otac', 'Ulica 2', 'L',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000962', 'Prva', 'Trkacica', 'F',"
-				+ " date '1994-04-04', null, 'Zaselak', " + A_COUNTRY + ", 2027, false, true, 'payment',"
+				+ " date '1994-04-04', null, 'Zaselak', " + A_COUNTRY + ", 2027, false, true, "
 				+ " '0011223344556692', null, '', false, 'none', 'Otac', 'Ulica 3', 'S',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 		/* A SECOND WOMAN, and she is here for one case only. Without her, "the same man again
@@ -125,7 +125,7 @@ class JoiningConstraintsTest extends DatabaseTest {
 		   11.09.2026, and it is the class this file spends most of its length guarding. */
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000963', 'Druga', 'Trkacica',"
 				+ " 'F', date '1996-06-06', null, 'Zaselak', " + A_COUNTRY + ", 2027, false, true,"
-				+ " 'payment', '0011223344556693', null, '', false, 'none', 'Otac', 'Ulica 4', 'M',"
+				+ " '0011223344556693', null, '', false, 'none', 'Otac', 'Ulica 4', 'M',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 
 		db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, logo_id, first_season,"

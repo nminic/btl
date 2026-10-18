@@ -43,7 +43,7 @@ class APhotoNobodyHoldsCarriedOverTest extends DatabaseTest {
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
 			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
-			+ " membership_basis, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
+			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at, photo_id";
 
 	private int photos;
@@ -216,7 +216,7 @@ class APhotoNobodyHoldsCarriedOverTest extends DatabaseTest {
 	private long aMember(String number, Long photo) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni',"
 						+ " 'Zateceni', 'M', date '1982-02-02', " + A_TOWN + ", null, null, 2027,"
-						+ " false, true, 'payment', ?, null, '', false, 'none', 'Otac', 'Ulica 1',"
+						+ " false, true, ?, null, '', false, 'none', 'Otac', 'Ulica 1',"
 						+ " 'M', timestamptz '2026-09-01 10:00:00+00', "
 						+ (photo == null ? "null" : photo.toString()) + ") returning id")
 				.params(number, "00112233445588" + number.substring(4))

@@ -72,7 +72,7 @@ class BalanceBecameOneAmountTest extends DatabaseTest {
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
 			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
-			+ " membership_basis, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
+			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
 	/** He lives in Serbia, by a town out of the codebook, so his money is dinars. */
@@ -137,7 +137,7 @@ class BalanceBecameOneAmountTest extends DatabaseTest {
 
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', 'Takmicar',"
 						+ " 'M', date '1982-02-02', " + town + ", " + city + ", " + country + ", 2027,"
-						+ " false, true, 'payment', ?, " + referredBy + ", '', false, 'none', 'Otac',"
+						+ " false, true, ?, " + referredBy + ", '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, "00112233445599" + number.substring(4))
 				.update();

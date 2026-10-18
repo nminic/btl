@@ -194,7 +194,7 @@ class PricingWriteApiTest {
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
 			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
-			+ " membership_basis, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
+			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
 	@Autowired
@@ -1565,7 +1565,7 @@ class PricingWriteApiTest {
 	private long competitor(String referralSuffix, String memberNumber) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni',"
 						+ " 'Takmicar', 'M', ?, " + A_TOWN + ", null, null, 2027, false, ?,"
-						+ " 'payment', ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(memberNumber, java.sql.Date.valueOf(LocalDate.parse("1990-05-05")),
 						memberNumber != null, "00112233445566" + referralSuffix)
