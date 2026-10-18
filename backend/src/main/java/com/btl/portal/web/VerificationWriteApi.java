@@ -1992,7 +1992,7 @@ class VerificationWriteApi {
 				.update();
 
 		tell(proposal.competitorId(), "Tim je prihvaćen",
-				"Vaš tim " + proposal.name() + " je prihvaćen i od sada ga vodite.");
+				"Vaš tim \"" + proposal.name() + "\" je prihvaćen i od sada ga vodite.");
 	}
 
 	/**

@@ -450,6 +450,11 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 * starom i novom vrednošću", „mejl ne ide". One line per run that moved, to its member: the
 	 * runner reads two, the lapsed member one, the member whose run did not move none, the member
 	 * with only a waiting run at the marathon none, and no line is addressed to everybody.
+	 *
+	 * <p>And each line ENDS with the new value (PDL P18, 18.10.2026): the sentence that used to
+	 * follow it, about the portal keeping no history of changes, is gone from every message the
+	 * portal writes, so these are {@code endsWith} and not {@code contains}, which an appended
+	 * sentence would not break.
 	 */
 	@Test
 	void aCorrectedCourseReachesEveryRunAtTheRaceAndOnlyItsMembersAreTold() throws Exception {
@@ -479,10 +484,10 @@ class ARaceCorrectedRecountsItsRunsTest {
 
 		assertThat(linesTo(runner)).as("the runner reads one line for each of his two runs")
 				.extracting(Line::subject).containsExactly(RECOUNTED, RECOUNTED);
-		assertThat(linesTo(runner).get(0).body()).contains(asItWasAndAsItIs(12600));
-		assertThat(linesTo(runner).get(1).body()).contains(asItWasAndAsItIs(13800));
+		assertThat(linesTo(runner).get(0).body()).endsWith(asItWasAndAsItIs(12600));
+		assertThat(linesTo(runner).get(1).body()).endsWith(asItWasAndAsItIs(13800));
 		assertThat(linesTo(lapsed)).extracting(Line::subject).containsExactly(RECOUNTED);
-		assertThat(linesTo(lapsed).get(0).body()).contains(asItWasAndAsItIs(15000));
+		assertThat(linesTo(lapsed).get(0).body()).endsWith(asItWasAndAsItIs(15000));
 		assertThat(linesTo(alreadyThere)).as("a line about a run the correction did not move")
 				.isEmpty();
 		assertThat(linesTo(third)).as("a line about a run that is still waiting").isEmpty();
@@ -966,12 +971,12 @@ class ARaceCorrectedRecountsItsRunsTest {
 		assertThat(linesTo(runner)).as("the runner reads one line for each of his two runs")
 				.extracting(Line::subject).containsExactly(RECOUNTED, RECOUNTED);
 		assertThat(linesTo(runner).get(0).body())
-				.contains(theMarathonsRunAsItWasAndAsItIs(ascent, descent, 12600));
+				.endsWith(theMarathonsRunAsItWasAndAsItIs(ascent, descent, 12600));
 		assertThat(linesTo(runner).get(1).body())
-				.contains(theMarathonsRunAsItWasAndAsItIs(ascent, descent, 13800));
+				.endsWith(theMarathonsRunAsItWasAndAsItIs(ascent, descent, 13800));
 		assertThat(linesTo(lapsed)).extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(lapsed).get(0).body())
-				.contains(theMarathonsRunAsItWasAndAsItIs(ascent, descent, 15000));
+				.endsWith(theMarathonsRunAsItWasAndAsItIs(ascent, descent, 15000));
 		assertThat(linesTo(third)).as("a line about a run that is still waiting").isEmpty();
 		assertThat(newLines()).as("a line addressed to nobody would reach the whole league")
 				.allSatisfy(line -> assertThat(line.to()).isNotNull());

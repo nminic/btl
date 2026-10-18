@@ -1402,6 +1402,25 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * THE MESSAGE THAT TELLS HIM READS THE NAME OF HIS TEAM BETWEEN QUOTES (PDL P18, 18.10.2026).
+	 *
+	 * <p>The owner: "Za poruku 11, navodnici oko Trkači sa Ade", and the quotes are the English
+	 * ones, as for every other message about a team. Asserted as the whole subject and the whole
+	 * body of the one message he has, and not as "contains the name", because a name with no
+	 * quotes around it contains the name as well. The name is the fixture's own team and no
+	 * other, so a body that read the name of some other row would not match either.
+	 */
+	@Test
+	void theMessageThatAcceptsATeamPutsItsNameBetweenEnglishQuotes() throws Exception {
+		assertThat(answer(TEAMS_MODERATOR, bojansTeam, true, null)).isEqualTo(200);
+
+		assertThat(db.sql("select subject || ' | ' || body from message where to_id = ?")
+				.param(memberId(BOJAN)).query(String.class).list())
+				.containsExactly("Tim je prihvaćen | Vaš tim \"" + THE_TEAM
+						+ "\" je prihvaćen i od sada ga vodite.");
+	}
+
+	/**
 	 * THE SEASON IS THE ONE TRANSFERS TAKE EFFECT IN, AND THE PORTAL HAS ALREADY GOT THIS
 	 * WRONG ONCE.
 	 *

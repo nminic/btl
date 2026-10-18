@@ -309,6 +309,13 @@ class TeamJoiningWriteApiTest {
 				.update();
 	}
 
+	/** The letter {@code competitor.gender} holds, changed for one member of the fixture. */
+	private void hisGenderIs(String memberNumber, String gender) {
+		db.sql("update competitor set gender = ? where member_number = ?")
+				.params(gender, memberNumber)
+				.update();
+	}
+
 	private void team(String slug, String name) {
 		db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, logo_id,"
 						+ " first_season, admin_id)"
@@ -764,7 +771,8 @@ class TeamJoiningWriteApiTest {
 						+ TeamJoiningWriteApi.theSeasonHeRunsFromReads("Sava Runners"));
 
 		String missed = TeamJoiningWriteApi.THE_INVITATION_WAS_MISSED + " | "
-				+ TeamJoiningWriteApi.theMissedInvitationReads("Probni Probić" + ME, "Sava Runners");
+				+ TeamJoiningWriteApi.theMissedInvitationReads("Probni Probić" + ME, "M",
+						"Sava Runners");
 
 		assertThat(inboxOf(OUTSIDER)).as("the team whose invitation is now dead").containsExactly(missed);
 		assertThat(inboxOf(THIRD)).as("and the second such team, so this is never one")
@@ -783,6 +791,57 @@ class TeamJoiningWriteApiTest {
 		assertThat(invitationStands(aboutSomebodyElse))
 				.as("somebody else's open question was closed by this answer")
 				.isTrue();
+	}
+
+	/**
+	 * THE TEAMS HE LEFT WITHOUT AN ANSWER READ "ušao" OR "ušla" BY HIS GENDER, ON BOTH ROADS THAT
+	 * TAKE HIM IN (PDL P18, 18.10.2026).
+	 *
+	 * <p>The owner: "Za poruku 10, možeš li da nemaš ušao/la nego da zavisi reč od pola?" The word
+	 * follows the member who JOINED, and this fixture makes every other person in it the
+	 * opposite sex of him: the two leaders who are written to, the leader who decides on the
+	 * application road, and the first row of {@code competitor}. A route that took the gender of
+	 * whoever reads the message, of whoever decides, or of the first row therefore writes the
+	 * other word, and that is the whole of what is measured. Both of his own sexes are asked,
+	 * because a constant is the right word for one of them.
+	 *
+	 * <p>Asserted as the whole sentence and not as "contains ušao", because the old "ušao/la"
+	 * contains that too.
+	 */
+	@ParameterizedTest
+	@CsvSource({ "M, ušao, true", "M, ušao, false", "F, ušla, true", "F, ušla, false" })
+	void theTeamsThatAskedHimReadTheWordOfHisOwnGender(String his, String word,
+			boolean byApplication) throws Exception {
+
+		String everyoneElse = "M".equals(his) ? "F" : "M";
+
+		for (String other : List.of(FIRST_WRITTEN, LEADER, PLAIN, OUTSIDER, THIRD, ANOTHER_PLAIN,
+				NOBODY_ELSE, LAPSED)) {
+			hisGenderIs(other, everyoneElse);
+		}
+
+		hisGenderIs(ME, his);
+		invitationTo(ME, THE_OTHER_TEAM, 2028);
+		invitationTo(ME, A_THIRD_TEAM, 2028);
+
+		if (byApplication) {
+			long application = applicationOf(ME, THE_TEAM);
+
+			assertThat(decide(THE_TEAM, application, answered(true), LEADER).getStatus())
+					.isEqualTo(204);
+		} else {
+			long invitation = invitationTo(ME, THE_TEAM, 2028);
+
+			assertThat(answer(THE_TEAM, invitation, answered(true), ME).getStatus())
+					.isEqualTo(204);
+		}
+
+		String missed = "Poziv u tim je ostao bez odgovora | Probni Probić" + ME
+				+ " je u međuvremenu " + word + " u tim \"Sava Runners\", pa vaš poziv više ne stoji.";
+
+		assertThat(inboxOf(OUTSIDER)).as("the team whose invitation is now dead")
+				.containsExactly(missed);
+		assertThat(inboxOf(THIRD)).as("and the second such team").containsExactly(missed);
 	}
 
 	/**
@@ -1340,7 +1399,8 @@ class TeamJoiningWriteApiTest {
 				.isNull();
 
 		String missed = TeamJoiningWriteApi.THE_INVITATION_WAS_MISSED + " | "
-				+ TeamJoiningWriteApi.theMissedInvitationReads("Probni Probić" + ME, "Sava Runners");
+				+ TeamJoiningWriteApi.theMissedInvitationReads("Probni Probić" + ME, "M",
+						"Sava Runners");
 
 		assertThat(inboxOf(OUTSIDER)).containsExactly(missed);
 		assertThat(inboxOf(THIRD)).containsExactly(missed);
@@ -1718,11 +1778,42 @@ class TeamJoiningWriteApiTest {
 		assertThat(filled(teams, "inviteMissedSubject", team, name))
 				.isEqualTo(TeamJoiningWriteApi.THE_INVITATION_WAS_MISSED);
 		assertThat(filled(teams, "inviteMissedBody", team, name))
-				.isEqualTo(TeamJoiningWriteApi.theMissedInvitationReads(name, team));
+				.isEqualTo(TeamJoiningWriteApi.theMissedInvitationReads(name, "M", team));
 
 		assertThat(theDictionary().get("app").get("name").stringValue())
 				.as("the portal signs its own message with a name it calls itself elsewhere")
 				.isEqualTo(PairWriteApi.THE_LEAGUE);
+	}
+
+	/**
+	 * EVERY SENTENCE ABOUT A TEAM PUTS ITS NAME BETWEEN ENGLISH QUOTES, AND THE TWO ARE THE SAME
+	 * ONES (PDL P18, 18.10.2026).
+	 *
+	 * <p>The owner: "Neka navodnici budu engleski". These used to open with the Serbian low
+	 * quote and close with the plain one, so a member read two different marks in one sentence.
+	 * Asserted as the whole text of each sentence and not by comparing with the other
+	 * sentences or with the dictionary, because a comparison is satisfied by two sentences that
+	 * are wrong in the same way.
+	 */
+	@Test
+	void everySentenceAboutATeamPutsItsNameBetweenEnglishQuotes() {
+		String team = "Sava Runners";
+
+		assertThat(TeamJoiningWriteApi.heIsInTheTeamReads(team))
+				.isEqualTo("Primljen si u tim \"Sava Runners\"");
+		assertThat(TeamJoiningWriteApi.theSeasonHeRunsFromReads(team))
+				.isEqualTo("Od naredne sezone trčiš za tim \"Sava Runners\".");
+		assertThat(TeamJoiningWriteApi.theApplicationWasRefusedReads(team))
+				.isEqualTo("Prijava u tim \"Sava Runners\" nije prihvaćena");
+		assertThat(TeamJoiningWriteApi.theRefusalReads(team))
+				.isEqualTo("Tim \"Sava Runners\" nije prihvatio tvoju prijavu.");
+		assertThat(TeamJoiningWriteApi.theInvitationReads(team))
+				.isEqualTo("Poziv u tim \"Sava Runners\"");
+		assertThat(TeamJoiningWriteApi.theInvitationBodyReads(team))
+				.isEqualTo("Tim \"Sava Runners\" te poziva da od naredne sezone trčiš za njih.");
+		assertThat(TeamJoiningWriteApi.theMissedInvitationReads("Petar Petrović", "M", team))
+				.isEqualTo("Petar Petrović je u međuvremenu ušao u tim \"Sava Runners\","
+						+ " pa vaš poziv više ne stoji.");
 	}
 
 	private static String filled(JsonNode teams, String key, String team, String name) {

@@ -69,6 +69,22 @@ class WhatTheMessageSaysTest {
 	}
 
 	/**
+	 * THE NAME OF THE LINK TO ASK FOR A NEW ONE IS BETWEEN ENGLISH QUOTES (PDL P18, 18.10.2026).
+	 *
+	 * <p>The owner: "Neka navodnici budu engleski", for the whole portal and every mail. The
+	 * member who reads this invitation is told which link on the sign-in page to press, and the
+	 * words of that link are the only thing in any mail the portal sends that sits between
+	 * quotes. Asserted as the whole sentence, with the quotes on both sides, because the old
+	 * opening mark and the plain closing one were two different marks in one sentence.
+	 */
+	@Test
+	void theLinkToAskForANewOneIsNamedBetweenEnglishQuotes() {
+		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN).body())
+				.contains("Ako veza istekne, zatražite novu sa strane za prijavu, na"
+						+ " \"Zaboravljena lozinka\".\n");
+	}
+
+	/**
 	 * A LETTER IN ENGLISH LEADS TO THE ENGLISH PAGE, AND A SERBIAN ONE TO THE ADDRESS IT HAS ALWAYS
 	 * LED TO.
 	 *
