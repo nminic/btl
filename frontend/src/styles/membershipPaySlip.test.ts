@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ruleFor, ruleInMedia } from '../test/stylesheet'
+import { everyRule, ruleFor, ruleInMedia, unconditionalRules } from '../test/stylesheet'
 
 /**
  * The payment slip's two forms, side by side where there is room (owner,
@@ -21,6 +21,7 @@ import { ruleFor, ruleInMedia } from '../test/stylesheet'
  * is what PDL P24 (no horizontal scroll at any width) forbids.
  */
 const MEMBER_CSS = readFileSync(join(process.cwd(), 'src/pages/member/Member.css'), 'utf-8')
+const QR_CSS = readFileSync(join(process.cwd(), 'src/components/QrCode.css'), 'utf-8')
 
 describe('the payment slip written out beside its QR code', () => {
   it('stacks in one column by default, narrow enough for a postal address to wrap', () => {
@@ -57,26 +58,55 @@ describe('the payment slip written out beside its QR code', () => {
 describe('the code at the right edge of the panel', () => {
   /* PDL P8, 18.10.2026, chosen between offered outcomes against the recommendation: „QR kod stoji uz
      DESNU IVICU strane, ne odmah pored podataka; između podataka i koda ostaje prazan prostor. Na
-     telefonu kod ostaje ispod podataka." Measured on the built page at 1280: the code ends at x 1167,
-     which is where the panel and the dashed line end, and the details end at 962. The track is as wide
-     as the title over the code, which is wider than the code, so the code must go to the END of the
-     track or it stops short by the difference. */
+     telefonu kod ostaje ispod podataka." The code's track is as wide as the code since its title
+     went (same day, „obriši naslov Uplatnica sa QR kodom"), and the code still goes to the END of
+     its box, so nothing about the track's width can leave it short of the edge. Measured on the built
+     page by `geometry/paySlip.geometry.ts`. */
   it('goes to the end of its track from the same width the two columns start at', () => {
-    const half = ruleInMedia(MEMBER_CSS, '(min-width: 51.25em)', '.pay__qr', 'Member.css')
     const code = ruleInMedia(MEMBER_CSS, '(min-width: 51.25em)', '.pay__qr .pay__code', 'Member.css')
-    const title = ruleInMedia(MEMBER_CSS, '(min-width: 51.25em)', '.pay__qr h4', 'Member.css')
 
-    expect(half.getPropertyValue('align-items')).toBe('flex-end')
     expect(code.getPropertyValue('align-items')).toBe('flex-end')
-    expect(title.getPropertyValue('text-align')).toBe('end')
   })
 
   it('stays under the details on a telephone, where the slip is one column and nothing is moved', () => {
     expect(ruleFor(MEMBER_CSS, '.pay__slip', 'Member.css').getPropertyValue('grid-template-columns')).toBe(
       'minmax(0, 1fr)',
     )
-    expect(ruleFor(MEMBER_CSS, '.pay__qr', 'Member.css').getPropertyValue('align-items')).toBe('')
     expect(ruleFor(MEMBER_CSS, '.pay__code', 'Member.css').getPropertyValue('align-items')).toBe('flex-start')
+    /* And at its own size there: the rule that ties the code to the details is written inside the
+       query and nowhere outside it. */
+    expect(unconditionalRules(MEMBER_CSS, 'Member.css').filter((rule) => rule.selectorText === '.pay__qr .qr')).toEqual(
+      [],
+    )
+  })
+})
+
+/**
+ * NO TALLER THAN THE DETAILS, AND SQUARE (PDL P8, owner, 18.10.2026: „A QR kod ne treba da pređe
+ * vertikalnu visinu stupca teksta sa leve strane u Uplatnici", and „Kod ostaje kvadrat i poravnat po
+ * vrhu sa podacima"). The height of the details reaches the sheet as `--slip-details`
+ * (`pages/member/PaySlip.tsx`); the width follows it, and the height follows the width
+ * (`components/QrCode.css`, `height: auto`). What a browser makes of it is measured by
+ * `geometry/paySlip.geometry.ts` at 820 and 1280: 159px with a reference, 130px without.
+ */
+describe('the size of the code beside the details', () => {
+  it('is the height of the details, never over 180 and never under 120, beside them only', () => {
+    const code = ruleInMedia(MEMBER_CSS, '(min-width: 51.25em)', '.pay__qr .qr', 'Member.css')
+
+    expect(code.getPropertyValue('width')).toBe('min(180px, max(120px, var(--slip-details, 180px)))')
+    expect(code.getPropertyValue('height')).toBe('')
+    expect(ruleFor(QR_CSS, '.qr', 'QrCode.css').getPropertyValue('height')).toBe('auto')
+  })
+
+  it('is begun where the details are, under the one heading of the slip', () => {
+    /* „ne diži gore na mesto naslova": the heading takes the whole first row, so the details and the
+       code share the second and begin at one height. 2 and the slip's 16 are the 8 of
+       `.profile__section` and the 10 the written half put between its heading and the details. */
+    const heading = ruleFor(MEMBER_CSS, '.pay__heading', 'Member.css')
+
+    expect(heading.getPropertyValue('grid-column')).toBe('1 / -1')
+    expect(heading.getPropertyValue('margin-bottom')).toBe('var(--space-2)')
+    expect(ruleFor(MEMBER_CSS, '.pay__slip', 'Member.css').getPropertyValue('gap')).toBe('var(--space-16)')
   })
 })
 
@@ -91,15 +121,12 @@ describe('the line over the payment slip', () => {
   })
 
   it("is not drawn a second time by the code's half, which would put it over one column again", () => {
-    const code = ruleFor(MEMBER_CSS, '.pay__qr', 'Member.css')
-
-    expect(code.getPropertyValue('border-top')).toBe('')
-    expect(code.getPropertyValue('border')).toBe('')
-    expect(code.getPropertyValue('display')).toBe('flex')
-    expect(code.getPropertyValue('flex-direction')).toBe('column')
-    /* The same gap as the written half, so the code starts at the height of the first detail. */
-    expect(code.getPropertyValue('gap')).toBe(
-      ruleFor(MEMBER_CSS, '.pay__slipText', 'Member.css').getPropertyValue('gap'),
+    const drawsALine = everyRule(MEMBER_CSS, 'Member.css').filter(
+      (rule) =>
+        rule.selectorText.includes('.pay__qr') &&
+        (rule.style.getPropertyValue('border-top') !== '' || rule.style.getPropertyValue('border') !== ''),
     )
+
+    expect(drawsALine.map((rule) => rule.selectorText)).toEqual([])
   })
 })

@@ -326,6 +326,17 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     why: 'OPEN: PENDING stavka 372, a separate PR (D). The block of actions is drawn only when the races AND the results are both ready, so a failed read of either takes the buttons away without a word. (The part for the results is silent for an event still to be run for the reason `pages/event/EventComments.tsx` gives, held by `pages/event/eventWaiting.test.tsx`.)',
   },
   {
+    file: 'pages/member/MyRacingPairs.tsx',
+    how: 'says',
+    why: 'THE FILE\'S OWN, and held by `pages/pairInviteOnTheServer.test.tsx` („say so when they cannot be read, and the pairs stay drawn"): the questions still standing, read off `/api/me/applications`, say `data.error` under the pairs through `Unreadable`, with the button that asks again (decision of 02.10.2026, PENDING stavka 368), and the pairs above them, which are this panel\'s own read, stay drawn. While it is read, nothing. Written 10.10.2026 with P2 as `pages/profile/RacingPairLine.tsx`, and moved to „Moja članarina" on 18.10.2026 (PDL P11). MY REASONING for the call below: the empty list is what the panel counts to decide whether it is drawn at all, and a read that failed is asked for by name before that count is read (`waiting.status !== \'error\'`), so a failure draws the panel and says so rather than reading as „no questions".',
+    calls: [
+      {
+        shape: 'condition',
+        call: "waiting.status === 'ready' ? waiting.data.pairInvites.flatMap(({ id, memberNumber, sentByMe }) => memberNumber === null ? [] : [{ id, other: memberNumber, sentByMe }], ) : []",
+      },
+    ],
+  },
+  {
     file: 'pages/member/NewResult.tsx',
     how: 'says',
     why: 'THE FILE\'S OWN, and held by `pages/member/racesUnreadable.test.tsx` (the screen) and `forms/suggestingUnreadable.test.tsx` (the form): when either of the two files the list of races is made from could not be read, the name box says so beside itself, with the button that asks again, and goes on taking the name typed into it (decision of 03.10.2026, PDL: the races yes, the towns no). When either read failed, the list handed to the form for the field is that failure (`suggests`), and not the empty rows `offered` holds then. The road in with `?ispravka=` waits through `<Resource>`, which says it and offers to ask again. MY REASONING: the two roads that hold the name (`?ponovo=`, `?ispravka=`) say nothing about the list, because nothing is typed into a held box, and `behind` reads the same two files for hint fields of a record kept in the browser and draws nothing from them, so a failure there is not a list that looks empty.',
@@ -335,11 +346,6 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     file: 'pages/profile/InviteToPair.tsx',
     how: 'says',
     why: 'THE FILE\'S OWN, and held by `pages/pairInviteOnTheServer.test.tsx` („says so when what the reader waits on cannot be read, offers no button over it, and asks again"): what the reader waits on, read off `/api/me/applications` for „Pozovi u trkački par" on somebody else\'s profile, says `data.error` where the button would stand, through `Unreadable` with the button that asks again, and draws no button over it, because the button is a claim that no question stands between the two (decision of 02.10.2026, PENDING stavka 368). While it is read, nothing, which is `profile/InviteToTeam.tsx`\'s answer directly above it. Written 10.10.2026 with P2.',
-  },
-  {
-    file: 'pages/profile/RacingPairLine.tsx',
-    how: 'says',
-    why: 'THE FILE\'S OWN, and held by `pages/pairInviteOnTheServer.test.tsx` („say so when they cannot be read, and the pairs stay drawn"): the questions still standing on the reader\'s own page, read off `/api/me/applications`, say `data.error` under the pairs through `Unreadable`, with the button that asks again (decision of 02.10.2026, PENDING stavka 368), and the pairs above them, which are this page\'s own read, stay drawn. While it is read, nothing. Written 10.10.2026 with P2.',
   },
 ]
 

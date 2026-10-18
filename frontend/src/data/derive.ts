@@ -326,6 +326,52 @@ export function rankingFor(
 }
 
 /**
+ * THE STANDING OF THE SEASON BEING SHOWN AS THE RUNNING ONE, WITH EVERY MEMBER ON IT, raced or not.
+ *
+ * PDL P7, owner, 18.10.2026 („Izbor kategorije se vidi odmah i svuda, u oba smera"): „tabela sezone
+ * prikazuje svakog člana sa važećom članarinom za tu sezonu, i bez ijedne trke, ispod onih koji imaju
+ * bodove, sa 0 bodova i 0 trka, uvek", and the same day, of which season: „Ovo je samo sada bitno"
+ * - the season shown as the running one. So the members `rankingFor` leaves out because they have no
+ * race stand UNDER everybody it placed, with empty totals, in the order of their member numbers (the
+ * last rung of every list on the portal), and they are numbered on from there: „Red bez trke ima
+ * redni broj, ali nikad boju postolja" (same entry), which is the screen's half.
+ *
+ * **A function of its own and not a change to `rankingFor`, and that is the point of it.** Two other
+ * readers stand on `rankingFor`: `boardOfTen`, whose boards hold only members with points from
+ * 1 January 2027 (owner, 17.10.2026), and the awards (`profile/awards.ts`), where a member with no
+ * race placed third would be handed a medal. Neither may see these rows.
+ *
+ * **Who „has a fee for that season" is the list itself**: `/api/competitors` carries exactly the
+ * members whose fee stands (`CompetitorApi`, `where c.active`), which for the season shown as the
+ * running one is the same set. It stops being the same set in October 2027, when a member who paid
+ * for 2028 is active while 2027 is still the season shown - the debt of `first_season_2027`, written
+ * down in the pull request rather than solved here.
+ */
+export function rankingWithEverybody(
+  competitors: Competitor[],
+  results: Result[],
+  filter: RankingFilter,
+): RankingRow[] {
+  const ranked = rankingFor(competitors, results, filter)
+  const placed = new Set(ranked.map((row) => row.competitor.memberNumber))
+  const unraced = competitors
+    .filter((competitor) => competitor.gender === filter.gender)
+    .filter(
+      (competitor) =>
+        filter.categoryCode === undefined || categoryOfMember(competitor) === filter.categoryCode,
+    )
+    .filter((competitor) => !placed.has(competitor.memberNumber))
+    .sort((left, right) => left.memberNumber.localeCompare(right.memberNumber))
+    .map((competitor, index) => ({
+      competitor,
+      ...EMPTY_TOTALS,
+      position: ranked.length + index + 1,
+    }))
+
+  return [...ranked, ...unraced]
+}
+
+/**
  * The members of one team, ordered by what each of them brought to it, down the
  * ladder of the general standing and with a tie nothing separates settled by the
  * member number, like every other list on the portal (PDL P12).

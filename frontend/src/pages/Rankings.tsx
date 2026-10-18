@@ -10,6 +10,7 @@ import {
   categoriesOf,
   categoryOfMember,
   rankingFor,
+  rankingWithEverybody,
   seasonsOnOffer,
 } from '../data/derive'
 import { seasonShown } from '../data/season'
@@ -24,6 +25,8 @@ import { useSession } from '../session/useSession'
 import { useProfileLink } from './profile/useProfileLink'
 import './Rankings.css'
 import { useFilterParams } from '../app/useFilterParams'
+import { MEMBERS, recordsOf } from './admin/entityForms'
+import { useOverlay } from './admin/overlay'
 
 type Filters = {
   gender: Gender
@@ -86,9 +89,20 @@ function Standing({
    * quietly rewrites who came third in a season already run. */
   const field = competitors
 
+  /* EVERY MEMBER IN THE SEASON SHOWN AS THE RUNNING ONE, AND ONLY THE RACED IN ANY OTHER (PDL P7,
+     owner, 18.10.2026: „tabela sezone prikazuje svakog člana sa važećom članarinom za tu sezonu, i
+     bez ijedne trke, ispod onih koji imaju bodove", clarified the same day as the season shown as the
+     running one, „Ovo je samo sada bitno"). `fallback` is that season: `seasonShown(today)`, which
+     is 2027 until 2027 is over. Read off the same value the control opens on, so the table that
+     opens and the table that carries everybody cannot be two different seasons. */
   const rows = useMemo(
-    () => rankingFor(field, results, { season, gender, categoryCode: category }),
-    [field, results, season, gender, category],
+    () =>
+      (season === fallback ? rankingWithEverybody : rankingFor)(field, results, {
+        season,
+        gender,
+        categoryCode: category,
+      }),
+    [field, results, season, fallback, gender, category],
   )
 
   /* No sentence under the heading (owner, 04.08.2026). It said that the 2027
@@ -227,7 +241,12 @@ function Standing({
                      (src/components/podium.ts), and blue on the row of whoever
                      is reading (src/components/mine.ts). A row can be both. */
                   className={rowClass(
-                    podiumClass(row.position),
+                    /* Never for a row with no points, whatever its number (PDL P7, owner,
+                       18.10.2026, chosen with the recommendation: „Red bez trke ima redni
+                       broj, ali nikad boju postolja; zlato, srebro i bronzu dobijaju samo
+                       članovi sa bodovima"). Before the first result of a season every row is
+                       one of these, and the first three of them would otherwise be gold. */
+                    row.points > 0 ? podiumClass(row.position) : undefined,
                     mineClass(row.competitor.memberNumber, mine),
                   )}
                 >
@@ -356,6 +375,11 @@ export function Rankings() {
    * table turned into an error message if that one file failed, over data no row
    * in it has ever read. */
   const state = combinePair(useCompetitors(), useResults())
+  /* THROUGH THE OVERLAY, like the cards, the profile, the team and the administration: a category
+     chosen a moment ago lives there until the list is read again (`member/useMyCategory.ts`), and
+     PDL P7 (owner, 18.10.2026) names the buttons and the column of this table among the places that
+     must show it at once. */
+  const overlay = useOverlay()
 
   function change(next: Record<string, string>) {
     const merged = new URLSearchParams(params)
@@ -378,7 +402,7 @@ export function Rankings() {
       <Resource state={state}>
         {([competitors, results]) => (
           <Standing
-            competitors={competitors}
+            competitors={recordsOf(MEMBERS, competitors, overlay)}
             results={results}
             filters={{
               gender: params.get('pol') === 'z' ? 'F' : 'M',

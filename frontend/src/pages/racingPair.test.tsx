@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import sr from '../i18n/sr.json'
 import { at, first, htmlElement, must } from '../test/at'
 import { renderAt } from '../test/render'
@@ -261,9 +261,19 @@ async function inbox(user: ReturnType<typeof setupUser>) {
     .filter((one) => /\/poruke\/./.test(one.getAttribute('href') ?? ''))
 }
 
-/** The reader's own profile, reached the way a member reaches it: through the account menu in the
- *  header. Walked rather than rendered again, because a pair confirmed a moment ago lives in the
- *  session and rendering again would build a new one. */
+/** Where the reader's own pairs stand with the way to end them: „Moja članarina", under the transfer
+ *  window, since 18.10.2026 (PDL P11, owner: „Dugme „Raskini” i pozivi u par koji čekaju sele na
+ *  „Moja članarina”, ispod prelaznog roka”); until that day they stood on his own profile. Reached
+ *  the way a member reaches it, through the account menu in the header, and walked rather than
+ *  rendered again, because a pair confirmed a moment ago lives in the session and rendering again
+ *  would build a new one. */
+async function goToMyPairs(user: ReturnType<typeof setupUser>) {
+  await user.click(await screen.findByRole('button', { name: 'Otvori nalog' }))
+  await user.click(await screen.findByRole('link', { name: 'Moja članarina' }))
+  await screen.findByRole('heading', { level: 1, name: 'Moja članarina' })
+}
+
+/** The reader's own profile, the same way, for what its line under the name says. */
 async function goToMyProfile(user: ReturnType<typeof setupUser>) {
   await user.click(await screen.findByRole('button', { name: 'Otvori nalog' }))
   await user.click(await screen.findByRole('link', { name: 'Moj profil' }))
@@ -348,8 +358,8 @@ describe('the answer to „Pozovi u trkački par"', () => {
        same line. Four days now, each with one job: asked on 15 October, confirmed on 20 November,
        read on 5 December, and the pair belongs to 2027. */
     await user.click(screen.getByRole('button', { name: 'danas je 2026-12-05' }))
-    await goToMyProfile(user)
-    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await goToMyPairs(user)
+    await screen.findByRole('heading', { level: 2, name: 'Trkački par' })
 
     const line = pairText()
 
@@ -387,11 +397,12 @@ describe('the answer to „Pozovi u trkački par"', () => {
     await goToMyProfile(user)
     await screen.findByRole('heading', { level: 1, name: /Katarina/ })
 
-    /* The line stays and says there is no pair, which is what a profile owes its own reader: an
-       empty space answers nothing. */
-    expect(must(document.querySelector('.profile__pair'), 'the line').textContent).toContain(
-      'Nije u trkačkom paru',
-    )
+    /* NOTHING AT ALL WHERE THERE IS NO PAIR, since 18.10.2026 (PDL P11, owner: „Na profilnoj strani
+       ne treba da piše Nije u trkačkom paru. Ukoliko nije, ništa se ne prikazuje”): the line under
+       the name ends where it ended, and the sentence that used to stand there is gone. */
+    expect(document.querySelector('.profile__pair')).toBeNull()
+    expect(screen.queryByText(/Trkački par/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Nije u trkačkom paru/)).not.toBeInTheDocument()
   }, SLOW)
 })
 
@@ -409,8 +420,8 @@ describe('a pair that is ended', () => {
 
     /* His profile, read by her: the pair is said, and there is no button on it. Ending somebody
        else's pair is somebody else's decision. */
-    await goToMyProfile(user)
-    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await goToMyPairs(user)
+    await screen.findByRole('heading', { level: 2, name: 'Trkački par' })
     /* And from her own profile to his, by the link the pair itself draws: naming the other half is
        what „par sa linkovima" in PDL means. */
     await user.click(
@@ -439,15 +450,22 @@ describe('a pair that is ended', () => {
     await user.click(screen.getByRole('button', { name: 'postani 000015' }))
     await openTheInvitation(user)
     await user.click(screen.getByRole('button', { name: 'Prihvati' }))
-    await goToMyProfile(user)
-    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await goToMyPairs(user)
+    await screen.findByRole('heading', { level: 2, name: 'Trkački par' })
     await user.click(screen.getByRole('button', { name: 'Raskini trkački par' }))
 
-    /* The line stays and says there is no pair, which is what a profile owes its own reader: an
-       empty space answers nothing. */
-    expect(must(document.querySelector('.profile__pair'), 'the line').textContent).toContain(
-      'Nije u trkačkom paru',
-    )
+    /* The panel goes with the last pair (`member/MyRacingPairs.tsx`: no pair and no question, no
+       panel), and her profile's line says nothing about a pair any more. */
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { level: 2, name: 'Trkački par' })).not.toBeInTheDocument()
+    })
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    /* NOTHING AT ALL WHERE THERE IS NO PAIR, since 18.10.2026 (PDL P11, owner: „Na profilnoj strani
+       ne treba da piše Nije u trkačkom paru. Ukoliko nije, ništa se ne prikazuje”): the line under
+       the name ends where it ended, and the sentence that used to stand there is gone. */
+    expect(document.querySelector('.profile__pair')).toBeNull()
+    expect(screen.queryByText(/Nije u trkačkom paru/)).not.toBeInTheDocument()
 
     /* **And the other half is told**, by name and in his own inbox. Ending a pair is a change that
        hits somebody who is not pressing anything, and PDL says such a member is told at once; the
@@ -500,8 +518,8 @@ describe('a pair that is ended', () => {
     await user.click(screen.getByRole('button', { name: 'Prihvati' }))
 
     await user.click(screen.getByRole('button', { name: 'postani 000002' }))
-    await goToMyProfile(user)
-    await screen.findByRole('heading', { level: 1, name: /Relja/ })
+    await goToMyPairs(user)
+    await screen.findByRole('heading', { level: 2, name: 'Trkački par' })
     await user.click(screen.getByRole('button', { name: 'Raskini trkački par' }))
 
     await user.click(screen.getByRole('button', { name: 'postani 000015' }))
@@ -542,8 +560,8 @@ describe('the board of best pairs', () => {
        the file" are not two different screens in this prototype, and nothing here can tell them
        apart. What is held is the half that can be: the portal does not fall over on a pair that has
        nothing to rank, and her own page says what it should. */
-    await goToMyProfile(user)
-    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await goToMyPairs(user)
+    await screen.findByRole('heading', { level: 2, name: 'Trkački par' })
 
     /* The pair is on her profile the moment it exists, which is the half of „every screen reads the
        file and the session as one thing" that can be walked to (`data/derive.ts`, `pairsNow`). */
@@ -642,11 +660,11 @@ describe('a question that has been overtaken, and a pair that makes room', () =>
     await goToMyProfile(user)
     await screen.findByRole('heading', { level: 1, name: /Ivona/ })
 
-    /* The line stays and says there is no pair, which is what a profile owes its own reader: an
-       empty space answers nothing. */
-    expect(must(document.querySelector('.profile__pair'), 'the line').textContent).toContain(
-      'Nije u trkačkom paru',
-    )
+    /* NOTHING AT ALL WHERE THERE IS NO PAIR, since 18.10.2026 (PDL P11, owner: „Na profilnoj strani
+       ne treba da piše Nije u trkačkom paru. Ukoliko nije, ništa se ne prikazuje”): the line under
+       the name ends where it ended, and the sentence that used to stand there is gone. */
+    expect(document.querySelector('.profile__pair')).toBeNull()
+    expect(screen.queryByText(/Nije u trkačkom paru/)).not.toBeInTheDocument()
 
     /* **And it was written to her and not to the league**, which is the other thing the notice
        alone cannot say: a third member, who has nothing to do with either of them, has no such
@@ -720,9 +738,10 @@ describe('a pair whose other half the portal does not have', () => {
     )
 
     try {
-      renderAt(HER, 'competitor', '000015', undefined, TODAY)
+      /* On „Moja članarina", where „Raskini" stands since 18.10.2026 (PDL P11). */
+      renderAt('/sr/moja-clanarina', 'competitor', '000015', undefined, TODAY)
 
-      await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+      await screen.findByRole('heading', { level: 1, name: 'Moja članarina' })
 
       const buttons = await screen.findAllByRole('button', { name: 'Raskini trkački par' })
 
@@ -764,8 +783,8 @@ describe('the last day of December', () => {
     await openTheInvitation(user)
     await user.click(screen.getByRole('button', { name: 'Prihvati' }))
 
-    await goToMyProfile(user)
-    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await goToMyPairs(user)
+    await screen.findByRole('heading', { level: 2, name: 'Trkački par' })
 
     const line = must(document.querySelector('.profile__pair'), 'the line').textContent ?? ''
 
@@ -786,9 +805,11 @@ describe('a pair from a season that is over', () => {
 
     await screen.findByRole('heading', { level: 1, name: /Milica/ })
 
-    expect(must(document.querySelector('.profile__pair'), 'the line').textContent).toContain(
-      'Nije u trkačkom paru',
-    )
+    /* And with nothing in its place since 18.10.2026 (PDL P11, „Ukoliko nije, ništa se ne
+       prikazuje”): the line ends with her team, and Vladan Đurišić is named nowhere on it. */
+    expect(document.querySelector('.profile__pair')).toBeNull()
+    expect(screen.queryByText(/Trkački par/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Đurišić/)).not.toBeInTheDocument()
   }, SLOW)
 })
 
@@ -880,8 +901,8 @@ describe('a clock set before the league had a season', () => {
     await user.click(screen.getByRole('button', { name: 'postani 000015' }))
     await openTheInvitation(user)
     await user.click(screen.getByRole('button', { name: 'Prihvati' }))
-    await goToMyProfile(user)
-    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await goToMyPairs(user)
+    await screen.findByRole('heading', { level: 2, name: 'Trkački par' })
 
     const line = must(document.querySelector('.profile__pair'), 'the line').textContent ?? ''
 
@@ -939,8 +960,8 @@ describe('a pair that ends because the same two are pairing again', () => {
        each with its own „Raskini" — the one state `pairsNow` calls impossible („one member is in
        one pair per season", PDL P13). One row, and it is the pair they have just confirmed. */
     await user.click(screen.getByRole('button', { name: 'postani 000015' }))
-    await goToMyProfile(user)
-    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await goToMyPairs(user)
+    await screen.findByRole('heading', { level: 2, name: 'Trkački par' })
 
     const rows = pairRows()
 
@@ -1021,8 +1042,8 @@ describe('the day a notice about a broken pair carries', () => {
     await user.click(screen.getByRole('button', { name: 'Prihvati' }))
 
     await user.click(screen.getByRole('button', { name: 'danas je 2027-01-02' }))
-    await goToMyProfile(user)
-    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await goToMyPairs(user)
+    await screen.findByRole('heading', { level: 2, name: 'Trkački par' })
     await user.click(screen.getByRole('button', { name: 'Raskini trkački par' }))
 
     await user.click(screen.getByRole('button', { name: 'postani 000002' }))
@@ -1081,8 +1102,8 @@ describe('a member who holds a pair for this season and one for the next', () =>
     await openTheInvitation(user)
     await user.click(screen.getByRole('button', { name: 'Prihvati' }))
 
-    await goToMyProfile(user)
-    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await goToMyPairs(user)
+    await screen.findByRole('heading', { level: 2, name: 'Trkački par' })
 
     /* **Row by row, and each carries its own name and season** (reviews of 07.09.2026). Read as
        one page rather than as rows, a portal that hands each row the **other** row's season says
@@ -1169,8 +1190,8 @@ describe('a member who holds a pair for this season and one for the next', () =>
     await openTheInvitation(user)
     await user.click(screen.getByRole('button', { name: 'Prihvati' }))
 
-    await goToMyProfile(user)
-    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await goToMyPairs(user)
+    await screen.findByRole('heading', { level: 2, name: 'Trkački par' })
 
     expect(screen.getAllByRole('button', { name: 'Raskini trkački par' }).length).toBe(2)
 

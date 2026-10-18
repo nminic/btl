@@ -11,7 +11,8 @@ import { useColumns, useGrowing } from '../components/growing'
 import { LoadMore } from '../components/LoadMore'
 import { earnedDucats } from '../data/ducatEarned'
 import { unitFor, type Ducat } from '../data/ducatRule'
-import type { Competitor } from '../data/types'
+import { pairsNow } from '../data/derive'
+import type { Competitor, RacingPair } from '../data/types'
 import { formatNumber, formatPoints, wholePeriod } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { isActiveMemberOrAdministration } from '../roles/activeMemberOrAdministration'
@@ -22,10 +23,11 @@ import { useOverlay } from './admin/overlay'
 import { HisOwnRecord } from './profile/HisOwnRecord'
 import { profileFor } from './profile/visible'
 import {
+  combineFour,
   combinePair,
-  combineResources,
   useDucats,
   useCompetitors,
+  usePairs,
   useResults,
   useTeams,
 } from '../data/useResource'
@@ -59,17 +61,22 @@ function AwardsBody({
   part: string | undefined
 }) {
   const { locale } = useI18n()
-  const { memberNumber: readerNumber, signedIn, theServerHasAnswered } = useSession()
+  const { memberNumber: readerNumber, signedIn, theServerHasAnswered, pairsMade, pairsBroken } =
+    useSession()
   const { role } = useRole()
   const overlay = useOverlay()
+  /* THE PAIRS AS WELL SINCE 18.10.2026, because the head of this page is the head of the profile and
+     its line now ends with the racing pair (PDL P11, owner, 18.10.2026, „Trkački par stoji u liniji
+     ispod imena, posle tima"). One head on both parts (`profile/ProfileHead.tsx`): a line that said
+     the pair on „Pregled" and dropped it on „Priznanja" would be two answers about one person. */
   const state = combinePair(
-    combineResources(useCompetitors(), useResults(), useTeams()),
+    combineFour(useCompetitors(), useResults(), useTeams(), usePairs()),
     useDucats(),
   )
 
   return (
     <Resource state={state}>
-      {([[everybody, results, teams], ducats]) => {
+      {([[everybody, results, teams, fromFile], ducats]) => {
         /* The same three answers as the profile itself, from the same place, and through the
            same overlay: this page draws the same head from the same record, and a check written
            on one of the two is a check on neither. */
@@ -113,6 +120,7 @@ function AwardsBody({
             results={results}
             ducats={ducats}
             team={teams.find((one) => one.id === competitor.teamId)}
+            pairs={pairsNow(fromFile, pairsMade, pairsBroken)}
           />
         )
 
@@ -155,6 +163,7 @@ function AwardsFor({
   results,
   ducats,
   team,
+  pairs,
 }: {
   competitor: Parameters<typeof awardsOf>[0]
   part: string | undefined
@@ -162,6 +171,8 @@ function AwardsFor({
   results: Parameters<typeof awardsOf>[2]
   ducats: Parameters<typeof earnedDucats>[2]
   team: Parameters<typeof ProfileTop>[0]['team']
+  /** The pairs that hold now, for the line under the name (`profile/ProfileHead.tsx`). */
+  pairs: RacingPair[]
 }) {
   const { locale, t } = useI18n()
   const { search } = useLocation()
@@ -249,7 +260,14 @@ function AwardsFor({
         description={t('seo.competitor.awardsDescription', { name })}
       />
 
-      <ProfileTop competitor={competitor} team={team} seasons={seasons} season={season} />
+      <ProfileTop
+        competitor={competitor}
+        team={team}
+        competitors={competitors}
+        pairs={pairs}
+        seasons={seasons}
+        season={season}
+      />
 
       <section aria-labelledby="awards-trophies">
         <h2 className="profile__section" id="awards-trophies">

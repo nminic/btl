@@ -265,7 +265,7 @@ describe('Rankings', () => {
      (`test/leagueSeasons.ts`). */
   playTheHistoryAsLeagueSeasons()
 
-  it('opens on the first season of the league, empty, and offers nothing before it', async () => {
+  it('opens on the first season of the league, with everybody on it and nothing yet, and offers nothing before it', async () => {
     /* Owner, 16.10.2026: „Prva sezona je 2027, pa su samim tim svi brojači na nuli, a i
        sve su statistike prazne"; chosen with it, between the options put to him, that
        an empty season is not swapped for an earlier one. And 10.10.2026: „Ne postoje
@@ -280,7 +280,15 @@ describe('Rankings', () => {
     const season = selectElement(await screen.findByLabelText('Sezona', {}, { timeout: HALF }))
 
     expect(season.value).toBe('2027')
-    expect(await screen.findByText('U ovoj sezoni i kategoriji nema nijednog rezultata.', {}, { timeout: HALF })).toBeVisible()
+    /* NOT EMPTY SINCE 18.10.2026: every member whose fee stands is on the table of the season shown
+       as the running one, with 0 points and 0 races (PDL P7, owner: „tabela sezone prikazuje svakog
+       člana sa važećom članarinom za tu sezonu, i bez ijedne trke ... uvek"), and none of them on the
+       podium („Red bez trke ima redni broj, ali nikad boju postolja"). */
+    const rows = within(await screen.findByRole('table', {}, { timeout: HALF })).getAllByRole('row').slice(1)
+
+    expect(rows.length).toBeGreaterThan(1)
+    expect(rows.filter((row) => row.classList.contains('podium'))).toEqual([])
+    expect(screen.queryByText('U ovoj sezoni i kategoriji nema nijednog rezultata.')).not.toBeInTheDocument()
     expect(
       within(season)
         .getAllByRole('option')
@@ -297,7 +305,9 @@ describe('Rankings', () => {
     renderAt('/sr/tabela?sezona=2019')
 
     expect(selectElement(await screen.findByLabelText('Sezona', {}, { timeout: HALF })).value).toBe('2027')
-    expect(await screen.findByText('U ovoj sezoni i kategoriji nema nijednog rezultata.', {}, { timeout: HALF })).toBeVisible()
+    /* The table of 2027, which carries everybody since 18.10.2026 (PDL P7), and no row of 2019. */
+    expect(await screen.findByRole('table', {}, { timeout: HALF })).toBeVisible()
+    expect(screen.queryByText('U ovoj sezoni i kategoriji nema nijednog rezultata.')).not.toBeInTheDocument()
   }, SLOW)
 
   /** The history as this describe serves it, and these results of the league on top of it,
@@ -330,31 +340,63 @@ describe('Rankings', () => {
     })
   }
 
-  it('opens on 2027 with one member in it, and not on a fuller season', async () => {
-    /* Until 16.10.2026 a season needed three people before the table opened on it. */
+  it('opens on 2027 with the one who raced first, and everybody else under him with nothing', async () => {
+    /* Until 16.10.2026 a season needed three people before the table opened on it. Since
+       18.10.2026 the members with no race stand under the ones who have points, numbered on, with
+       0 points and 0 races, and with no colour of the podium (PDL P7, owner, „Red bez trke ima
+       redni broj, ali nikad boju postolja"). */
     serveAlso([{ memberNumber: '000001', date: '2027-02-02' }])
     renderAt('/sr/tabela', 'visitor', null, undefined, '2027-03-01')
 
     const rows = within(await screen.findByRole('table', {}, { timeout: HALF })).getAllByRole('row').slice(1)
 
     expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2027')
-    expect(rows).toHaveLength(1)
+    expect(rows.length).toBeGreaterThan(3)
     expect(first(rows).textContent).toContain('Đurišić')
+    expect(first(rows)).toHaveClass('podium')
+
+    const [, ...unraced] = rows
+
+    /* Numbered on from the one above them, in the order of their member numbers. */
+    expect(unraced.map((row) => within(row).getAllByRole('cell')[0]?.textContent)).toEqual(
+      unraced.map((_, index) => String(index + 2)),
+    )
+    const numbers = unraced.map((row) => must(row.textContent?.match(/\d{6}/)?.[0], 'a member number'))
+
+    expect(numbers).toEqual([...numbers].sort())
+    /* Second and third place are not gold for somebody who has not run. */
+    expect(unraced.filter((row) => row.classList.contains('podium'))).toEqual([])
+    expect(unraced.every((row) => row.textContent?.includes(formatPoints(0, 'sr')) === true)).toBe(true)
   }, SLOW)
 
-  it('opens on an empty 2028 with a full 2027 one choice away', async () => {
+  it('opens on a 2028 of everybody with nothing, and leaves 2027 to the ones who raced', async () => {
     serveAlso([
       { memberNumber: '000001', date: '2027-02-02' },
       { memberNumber: '000002', date: '2027-04-04' },
       { memberNumber: '000004', date: '2027-06-06' },
     ])
-    renderAt('/sr/tabela', 'visitor', null, undefined, '2028-02-01')
+    const { router } = renderAt('/sr/tabela', 'visitor', null, undefined, '2028-02-01')
 
     const season = selectElement(await screen.findByLabelText('Sezona', {}, { timeout: HALF }))
 
     expect(season.value).toBe('2028')
-    expect(await screen.findByText('U ovoj sezoni i kategoriji nema nijednog rezultata.', {}, { timeout: HALF })).toBeVisible()
+    /* The season shown as the running one carries everybody (PDL P7, 18.10.2026). */
+    const now = within(await screen.findByRole('table', {}, { timeout: HALF })).getAllByRole('row').slice(1)
+
+    expect(now.length).toBeGreaterThan(3)
     expect(within(season).getByRole('option', { name: '2027' })).toBeInTheDocument()
+
+    /* AND A SEASON THAT IS OVER IS ITS RACED AND NOBODY ELSE (same day, „Ovo je samo sada bitno":
+       the rule is for the season shown as the running one). The three who raced in 2027 are all men,
+       so the men's table of 2027 is those three, and a member who did not race that year is not on it. */
+    await router.navigate('/sr/tabela?sezona=2027')
+
+    await waitFor(
+      () => {
+        expect(within(screen.getByRole('table')).getAllByRole('row').slice(1)).toHaveLength(3)
+      },
+      { timeout: HALF },
+    )
   }, SLOW)
 
   it('draws the columns from the rulebook', async () => {
@@ -2232,8 +2274,10 @@ describe('CompetitorProfile', () => {
     expect(heading.textContent).not.toMatch(/[()]/)
     expect(within(heading).queryByRole('link')).not.toBeInTheDocument()
 
-    const club = screen.getByText(/U klubu/)
-    expect(club.textContent).toMatch(/U klubu .+ od \d{4}\./)
+    /* „U timu”, not „U klubu” (PDL P11, owner, 18.10.2026: „ne treba da piše npr. U klubu HTEC
+       nego u timu HTEC”), and the year stays with it. */
+    const club = screen.getByText(/U timu/)
+    expect(club.textContent).toMatch(/U timu .+ od \d{4}\./)
     expect(within(club).getByRole('link')).toHaveAttribute(
       'href',
       expect.stringContaining('/tim/'),
@@ -2248,6 +2292,7 @@ describe('CompetitorProfile', () => {
 
     await screen.findByRole('heading', { level: 1 })
     expect(screen.getByText('Bez tima')).toBeVisible()
+    expect(screen.queryByText(/U timu/)).not.toBeInTheDocument()
     expect(screen.queryByText(/U klubu/)).not.toBeInTheDocument()
   })
 

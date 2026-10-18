@@ -7,7 +7,7 @@ import { whoTheServerSaysIAm } from '../../session/theServer'
 import { CopyField } from '../../components/CopyField'
 import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
-import { FIRST_SEASON_POINTS } from '../../data/categories'
+import { FIRST_SEASON_POINTS, categoryLabel } from '../../data/categories'
 import { inYearlyWindow, seasonRunning } from '../../data/season'
 import { useResults } from '../../data/useResource'
 import {
@@ -39,6 +39,8 @@ import { ServerSaid } from '../account/ServerSaid'
 import { useScreenForTheUnpaidToo } from './memberScreen'
 import { useMyCategory } from './useMyCategory'
 import { theServerWasToldILeft } from './teamExit'
+import { MyRacingPairs } from './MyRacingPairs'
+import { PaySlip } from './PaySlip'
 import './Member.css'
 
 /* The account, the name and the seat are the association's own and live with the
@@ -794,6 +796,21 @@ export function Membership() {
                       : t('membership.firstSeasonClosed', { points: FIRST_SEASON_POINTS })}
                   </p>
 
+                  {/* WHAT HE ACTUALLY RUNS IN, AND NOT WHAT HE TICKED (PDL P7, owner, 18.10.2026,
+                      „Izbor kategorije se vidi odmah i svuda": „strana članarine kaže koju
+                      kategoriju član zaista dobija za tu sezonu (izvedenu: želja i pravo)"). Read
+                      off `category`, the one field of the route that is the wish AND the right
+                      together (`TheChoiceAsItStands`), so a member whose wish was overtaken by a
+                      verified result reads his age band here while his radio stays on the wish -
+                      which is what the journal's „čuva se ŽELJA, ne kategorija" means on a screen.
+                      Both the season and the category are the route's, never this side's. */}
+                  <p className="member__note">
+                    {t('membership.categoryYouRunIn', {
+                      season: standing.season,
+                      category: categoryLabel(standing.category, t),
+                    })}
+                  </p>
+
                   {/* WHAT THE SERVER REFUSED, SAID OUT LOUD. The one refusal this route makes
                       that a reader can meet is `theChoiceIsShut`: his deadline passed between
                       the box being drawn and his pressing it. Swallowed, the radio would move
@@ -949,92 +966,73 @@ export function Membership() {
                       `700px`... one column). */}
                   {slipDrawn &&
                     due.map((row) => (
-                    <div className="pay__slip" key={row.key}>
-                      <div className="pay__slipText">
-                        <h3 className="profile__section">{t('membership.payNow')}</h3>
-
-                        {/* The same four facts the code carries, in writing, because a
-                            code is no use to somebody typing a payment into their bank
-                            on a telephone they are also holding the code on (owner,
-                            31.07.2026). The reference is what the statement is
-                            reconciled by, so it is called out under them. */}
-                        <dl className="pay__details">
-                          <dt>{t('membership.toWhom')}</dt>
-                          <dd>
-                            {RECIPIENT_NAME}
-                            <span className="pay__seat">{RECIPIENT_ADDRESS}</span>
-                          </dd>
-                          <dt>{t('membership.account')}</dt>
-                          <dd>{RECIPIENT_ACCOUNT}</dd>
-                          {/* NO ROW FOR SOMEBODY WITH NO REFERENCE: a „Poziv na broj" with
-                              nothing after it would be a field he is told to fill in and cannot. */}
-                          {!neverPaid && (
-                            <>
-                              <dt>{t('membership.reference')}</dt>
+                    <PaySlip
+                      key={row.key}
+                      heading={t('membership.payNow')}
+                      details={
+                        <>
+                            {/* The same four facts the code carries, in writing, because a
+                                code is no use to somebody typing a payment into their bank
+                                on a telephone they are also holding the code on (owner,
+                                31.07.2026). The reference is what the statement is
+                                reconciled by, so it is called out under them. */}
+                            <dl className="pay__details">
+                              <dt>{t('membership.toWhom')}</dt>
                               <dd>
-                                <strong>{reference}</strong>
+                                {RECIPIENT_NAME}
+                                <span className="pay__seat">{RECIPIENT_ADDRESS}</span>
                               </dd>
-                            </>
-                          )}
-                          <dt>{t('membership.purposeLabel')}</dt>
-                          <dd>{purpose}</dd>
-                          {/* The amount, which this list did not have at all. It exists
-                              for somebody typing the payment into their bank by hand,
-                              and the one thing a bank cannot do without is the sum. A
-                              junior member had it worse than nobody: the only figure
-                              they could read on this screen was the grown one, and the
-                              right one was inside the code, where only a camera
-                              reaches. */}
-                          <dt>{t('membership.amountLabel')}</dt>
-                          <dd>
-                            <strong>{inTheirCurrency(myCountry, row, locale)}</strong>
-                          </dd>
-                        </dl>
-
-                        {/* „Bez njega članarina stiže, ali se ne zna čija je" is said of a
-                            reference, and he has none: the sentence about how HIS payment is
-                            known is the one above the slip. */}
-                        {!neverPaid && (
-                          <p className="member__note">{t('membership.referenceNote')}</p>
-                        )}
-                      </div>
-
-                      {/* THE AMOUNT INSIDE THE CODE IS THE ONE THE SERVER SENT, and this is
-                          the sharpest end of the whole increment. `PricingWriteApi` names it
-                          in its own heading: while this read the bundled constant, an
-                          administrator who raised the fee raised what the next payment was
-                          BOOKED at and left the code asking for the old figure - so a member
-                          scanned a request for one sum and was recorded as owing another. */}
-                      {/* **NO SENTENCE UNDER THE TITLE, AND THE LINE ABOVE IT IS THE SLIP'S, NOT
-                          THIS HALF'S** (PDL P8, 18.10.2026, „Blok „Uplatnica sa QR kodom”: bez
-                          rečenice ispod naslova, linija preko cele širine, QR desno od podataka";
-                          the owner: „Ovaj tekst ne treba da postoji. Horizontalna linija na vrhu
-                          treba da ide celom sirinom strane, a QR kod treba da bude alignovan desno
-                          u odnosu na tekstualne podatke za uplatu").
-
-                          The sentence was `membership.ipsNote` and its form without a reference,
-                          and both keys are gone with it. The dashed line is on `.pay__slip` now
-                          (Member.css) and not on this `div`, which is why this is no longer a
-                          `.pay`: that class draws its own line, and in a grid cell it drew it over
-                          the right column alone. The title takes the written half's own style so
-                          the two headings stand at one height and the code starts where the
-                          details do. */}
-                      <div className="pay__qr">
-                        <h4 className="profile__section">{t('membership.ips')}</h4>
-                        <div className="pay__code">
-                          <QrCode
-                            text={ipsPayload({
-                              account: RECIPIENT_ACCOUNT,
-                              recipient: RECIPIENT,
-                              amountRsd: row.rsd,
-                              purpose,
-                              reference,
-                            })}
-                            label={t('membership.ipsQrLabel')}
-                          />
-                        </div>
-                      </div>
-                    </div>
+                              <dt>{t('membership.account')}</dt>
+                              <dd>{RECIPIENT_ACCOUNT}</dd>
+                              {/* NO ROW FOR SOMEBODY WITH NO REFERENCE: a „Poziv na broj" with
+                                  nothing after it would be a field he is told to fill in and cannot. */}
+                              {!neverPaid && (
+                                <>
+                                  <dt>{t('membership.reference')}</dt>
+                                  <dd>
+                                    <strong>{reference}</strong>
+                                  </dd>
+                                </>
+                              )}
+                              <dt>{t('membership.purposeLabel')}</dt>
+                              <dd>{purpose}</dd>
+                              {/* The amount, which this list did not have at all. It exists
+                                  for somebody typing the payment into their bank by hand,
+                                  and the one thing a bank cannot do without is the sum. A
+                                  junior member had it worse than nobody: the only figure
+                                  they could read on this screen was the grown one, and the
+                                  right one was inside the code, where only a camera
+                                  reaches. */}
+                              <dt>{t('membership.amountLabel')}</dt>
+                              <dd>
+                                <strong>{inTheirCurrency(myCountry, row, locale)}</strong>
+                              </dd>
+                            </dl>
+                        </>
+                      }
+                      /* THE AMOUNT INSIDE THE CODE IS THE ONE THE SERVER SENT, and this is the
+                         sharpest end of the whole increment. `PricingWriteApi` names it in its own
+                         heading: while this read the bundled constant, an administrator who raised
+                         the fee raised what the next payment was BOOKED at and left the code asking
+                         for the old figure.
+                       *
+                         NO TITLE OVER THE CODE AND NO SENTENCE UNDER THE DETAILS SINCE 18.10.2026
+                         (PDL P8, owner: „obriši naslov Uplatnica sa QR kodom, nepotreban je", and of
+                         `membership.referenceNote`, „Ovo obriši, ne služi ničemu"); both keys are
+                         gone. Where the code stands and how tall it may be is `PaySlip`'s. */
+                      code={
+                        <QrCode
+                          text={ipsPayload({
+                            account: RECIPIENT_ACCOUNT,
+                            recipient: RECIPIENT,
+                            amountRsd: row.rsd,
+                            purpose,
+                            reference,
+                          })}
+                          label={t('membership.ipsQrLabel')}
+                        />
+                      }
+                    />
                     ))}
 
                   {/* CARD LEFT, since 26.09.2026 (PDL.md:1659). No provider was ever chosen
@@ -1310,6 +1308,13 @@ export function Membership() {
               )}
             </section>
             )}
+
+            {/* HIS RACING PAIRS, RIGHT UNDER THE TRANSFER WINDOW (PDL P11, owner, 18.10.2026: „Može
+                ispod prelazni rok u Mojoj članarini"): the way to end each and the questions still
+                standing, moved here off his profile, whose line keeps only „Trkački par: [ime]".
+                Not drawn to somebody who has not paid, for the reason the panel above is not: PDL
+                P8, „Šta sme neplaćen član", „Ne sme [...] parove". */}
+            {memberNumber !== null && <MyRacingPairs memberNumber={memberNumber} />}
 
             {/* The referral programme, and the balance it pays into.
              *

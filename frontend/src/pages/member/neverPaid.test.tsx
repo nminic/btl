@@ -340,7 +340,9 @@ describe('a member who HAS a number, on the same page', () => {
 
     expect(within(slip).getByText('Poziv na broj')).toBeVisible()
     expect(within(slip).getByText('202732')).toBeVisible()
-    expect(within(slip).getByText(/Poziv na broj je ono po čemu se uplata prepoznaje/)).toBeVisible()
+    /* The sentence that used to stand under the reference is gone (PDL P8, owner, 18.10.2026,
+       „Ovo obriši, ne služi ničemu”), for him as for everybody. */
+    expect(within(slip).queryByText(/Poziv na broj je ono po čemu se uplata prepoznaje/)).not.toBeInTheDocument()
     expect(within(slip).queryByText(/Skeniraj kod/)).not.toBeInTheDocument()
     expect(within(slip).queryByText(/su već upisani/)).not.toBeInTheDocument()
     expect(must(readQr(within(slip).getByRole('img', { name: /QR/ })), 'the code')).toContain(

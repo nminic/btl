@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
+import { clearResourceCache } from '../../data/client'
+import { recordKey } from '../../session/context'
+import { useSession } from '../../session/useSession'
+import { MEMBERS } from '../admin/entityForms'
 import {
   categoryIn,
   tellTheServerMyCategory,
@@ -30,6 +34,7 @@ export function useMyCategory(): TheCategoryIChoose {
   const [standing, setStanding] = useState<MyCategory | null>(null)
   const [choosing, setChoosing] = useState(false)
   const [refusal, setRefusal] = useState<string | null>(null)
+  const { memberNumber, editRecord } = useSession()
 
   useEffect(() => {
     let stillHere = true
@@ -64,6 +69,31 @@ export function useMyCategory(): TheCategoryIChoose {
 
       if (said !== null) {
         setStanding(said)
+
+        /* AND EVERY OTHER SCREEN OF THIS VISIT SAYS IT TOO, AT ONCE AND IN BOTH DIRECTIONS
+           (PDL P7, owner, 18.10.2026, „Izbor kategorije se vidi odmah i svuda, u oba smera":
+           „baš svuda svuda da ostane. Ako vratim na starosnu, treba svuda da se promeni
+           ponovo"). Measured on QA before this: the choice was written, and the profile, the
+           card, the team and the table went on drawing the list this visit had fetched before
+           it, because `data/client.ts` asks for a resource once per visit.
+
+           Two writes and both are needed, which is `ProfileVisibility.tsx`'s own pair: the
+           overlay for a screen already holding the list, the dropped cache for the next one to
+           read the row. The value is the WISH as the route answered it, because the WISH is
+           what `/api/competitors` serves on every row (`firstSeason2027`) and what the screens
+           make the category of - the right is not on that list, and a beginner's right cannot
+           close for 2027 (`BestOfficialSeason` reads the seasons strictly before it). Written
+           as the word the overlay keeps (`forms/records.ts`, `like`).
+
+           Nothing for a reader with no member number: he is on no list, so there is no row of
+           his for a screen to draw. */
+        if (memberNumber !== null) {
+          editRecord(recordKey(MEMBERS.id, memberNumber), {
+            firstSeason2027: String(said.firstSeason),
+          })
+        }
+
+        clearResourceCache('competitors')
       }
     }
 
@@ -72,7 +102,7 @@ export function useMyCategory(): TheCategoryIChoose {
     }
 
     setChoosing(false)
-  }, [])
+  }, [memberNumber, editRecord])
 
   return { standing, choosing, refusal, choose }
 }

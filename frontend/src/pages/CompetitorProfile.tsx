@@ -1,7 +1,6 @@
 import { HisOwnRecord } from './profile/HisOwnRecord'
 import { InviteToTeam } from './profile/InviteToTeam'
 import { InviteToPair } from './profile/InviteToPair'
-import { RacingPairLine } from './profile/RacingPairLine'
 import { memberNumberIn, redirectTo } from './profileAddress'
 import { useMemo } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router'
@@ -269,7 +268,14 @@ function ProfileBody({
 
   return (
     <div className="profile profile--competitor">
-      <ProfileTop competitor={competitor} team={team} seasons={options} season={season} />
+      <ProfileTop
+        competitor={competitor}
+        team={team}
+        competitors={competitors}
+        pairs={pairs}
+        seasons={options}
+        season={season}
+      />
 
       {/* Under the head and above everything the profile is about, because it is
           an act aimed at the person rather than a fact about them. It draws
@@ -282,8 +288,10 @@ function ProfileBody({
           (profile/InviteToPair.tsx). */}
       <InviteToPair competitor={competitor} competitors={competitors} pairs={pairs} />
 
-      {/* And the fact itself, which PDL asks a profile to show beside the team. */}
-      <RacingPairLine competitor={competitor} competitors={competitors} pairs={pairs} />
+      {/* THE PAIR ITSELF IS IN THE LINE UNDER THE NAME SINCE 18.10.2026, and the way to end it and
+          the questions still standing are on „Moja članarina" (PDL P11, owner, 18.10.2026: „Dugme
+          „Raskini" i pozivi u par koji čekaju sele na „Moja članarina", ispod prelaznog roka";
+          `profile/ProfileHead.tsx` and `member/MyRacingPairs.tsx`). */}
 
       <div className="profile__row profile__row--bio">
         <Biography text={competitor.bio} gender={competitor.gender} />
