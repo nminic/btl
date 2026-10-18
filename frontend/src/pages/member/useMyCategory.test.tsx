@@ -158,7 +158,7 @@ describe('the category I choose, after a refresh', () => {
 
     try {
       for (const chosen of [true, false]) {
-        const first = renderHook(() => useMyCategory())
+        const first = renderHook(() => useMyCategory(), { wrapper: inASession })
 
         await waitFor(() => {
           expect(first.result.current.standing).not.toBeNull()
@@ -168,7 +168,7 @@ describe('the category I choose, after a refresh', () => {
         })
         first.unmount()
 
-        const second = renderHook(() => useMyCategory())
+        const second = renderHook(() => useMyCategory(), { wrapper: inASession })
 
         await waitFor(() => {
           expect(second.result.current.standing?.firstSeason).toBe(chosen)
