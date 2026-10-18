@@ -281,10 +281,34 @@
   gap: var(--space-10);
 }
 
+/* THE CODE AT THE RIGHT EDGE OF THE PANEL, NOT BESIDE THE DETAILS (owner,
+   18.10.2026, chosen between offered outcomes, against the recommendation:
+   "QR kod stoji uz DESNU IVICU strane"). The second track is the width of the
+   code and no more, the first takes the rest, so the empty space is between
+   the details and the code and the code ends where the dashed line ends. It
+   was two equal tracks, which put the code at the left of the right half and
+   next to the details. `minmax(0, 1fr)` stays on the first track for the
+   reason above: the postal address must be able to wrap. */
 @media (min-width: 51.25em) {
   .pay__slip {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
+  }
+
+  /* The track is as wide as its title or its code, whichever is wider, and
+     the title is the wider (about 189px against 180), so a code left at the
+     start of it would stop short of the edge by the difference. Both go to
+     the end of the track instead. */
+  .pay__qr {
+    align-items: flex-end;
+  }
+
+  .pay__qr .pay__code {
+    align-items: flex-end;
+  }
+
+  .pay__qr h4 {
+    text-align: end;
   }
 }
 

@@ -93,13 +93,15 @@ export function InvitationAnswer({
                the two it was, and nothing should: what is true either way is that the
                question is over. */
             t('teams.inviteClosed')
-          : /* **Being overtaken is said in the word of HIS sex** ("ušao" or "ušla", PDL P18,
-               18.10.2026, "I tri rečenice na ekranima sa „ušao/la” biraju reč po polu"): the
-               member this sentence is about is the reader, who joined the other team, so
-               `mineIsAWoman` above is the right question and there is no second one. */
+          : /* **Both sentences are said in the word of HER OR HIS sex** („Prihvatio"/„Prihvatila",
+               „ušao"/„ušla", PDL P18, 18.10.2026): the member they are about is the reader, who
+               accepted this invitation or joined the other team, so `mineIsAWoman` above is the
+               right question and there is no second one. */
             t(
               mine.id === invitation?.teamId
-                ? 'teams.inviteAccepted'
+                ? mineIsAWoman
+                  ? 'teams.inviteAcceptedFemale'
+                  : 'teams.inviteAccepted'
                 : mineIsAWoman
                   ? 'teams.inviteOvertakenFemale'
                   : 'teams.inviteOvertaken',

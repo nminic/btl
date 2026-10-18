@@ -8,6 +8,7 @@ import { ServerSaid } from './account/ServerSaid'
 import {
   theApplicationWasSent,
   theApplicationWasTakenBack,
+  WHEN_A_WOMAN_APPLIES_TO_A_TEAM,
   WHEN_APPLYING_TO_A_TEAM,
 } from './joiningThisTeam'
 
@@ -89,7 +90,14 @@ export function AskingThisTeam({
   }
 
   return (
-    <ForAMember mine={me.memberNumber} mayApply={mayApply} team={team} standing={standing} here={here}>
+    <ForAMember
+      mine={me.memberNumber}
+      woman={me.gender === 'F'}
+      mayApply={mayApply}
+      team={team}
+      standing={standing}
+      here={here}
+    >
       {children}
     </ForAMember>
   )
@@ -106,6 +114,7 @@ type Refused = { answer: Exclude<Answer, { got: 'done' }>; refusals: Record<stri
 
 function ForAMember({
   mine,
+  woman,
   mayApply,
   team,
   standing,
@@ -113,6 +122,8 @@ function ForAMember({
   children,
 }: {
   mine: string
+  /** HER sex, the reader's: the sentence of a refused application says who sent it (PDL P18, 18.10.2026). */
+  woman: boolean
   mayApply: boolean
   team: number
   standing: (team: number) => boolean
@@ -242,7 +253,11 @@ function ForAMember({
                 className="button button--secondary"
                 aria-disabled={sending ? true : undefined}
                 onClick={() => {
-                  void press(() => theApplicationWasSent(team), WHEN_APPLYING_TO_A_TEAM, waiting)
+                  void press(
+                    () => theApplicationWasSent(team),
+                    woman ? WHEN_A_WOMAN_APPLIES_TO_A_TEAM : WHEN_APPLYING_TO_A_TEAM,
+                    waiting,
+                  )
                 }}
               >
                 {t('teams.join')}

@@ -875,7 +875,8 @@
       "theWindowIsShut": "The transfer window has closed in the meantime, so he has not been taken into the team. The application still waits: the window opens on 15 October and runs to 31 December."
     },
     "applyRefused": {
-      "aQuestionAlreadyStands": "You already have an application waiting for a team's answer, so a new one was not sent. You withdraw it on the page of the team you sent it to."
+      "aQuestionAlreadyStands": "You already have an application waiting for a team's answer, so a new one was not sent. You withdraw it on the page of the team you sent it to.",
+      "aQuestionAlreadyStandsFemale": "You already have an application waiting for a team's answer, so a new one was not sent. You withdraw it on the page of the team you sent it to."
     },
     "invite": "Invite into the team",
     "invited": "The invitation into the team \"{team}\" has been sent.",
@@ -896,6 +897,7 @@
     "inviteWithdrawNamed": "Withdraw the invitation: {name}",
     "inviteLapsed": "A member whose fee has lapsed",
     "inviteAccepted": "You have accepted this invitation and from the next season you run for the team \"{team}\".",
+    "inviteAcceptedFemale": "You have accepted this invitation and from the next season you run for the team \"{team}\".",
     "inviteOvertaken": "You have joined the team \"{team}\" in the meantime, so this invitation no longer stands.",
     "inviteOvertakenFemale": "You have joined the team \"{team}\" in the meantime, so this invitation no longer stands.",
     "inviteOvertakenUnnamed": "You have joined a team in the meantime, so you can no longer accept this invitation.",

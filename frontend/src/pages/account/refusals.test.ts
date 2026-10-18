@@ -29,6 +29,7 @@ import {
   WHEN_ANSWERING_A_TEAM_INVITE,
 } from '../member/teamWrites'
 import {
+  WHEN_A_WOMAN_APPLIES_TO_A_TEAM,
   WHEN_APPLYING_TO_A_TEAM,
   WHEN_DECIDING_AN_APPLICATION,
   WHEN_INVITING_A_WOMAN_INTO_A_TEAM,
@@ -495,6 +496,7 @@ describe('the reasons the server can name', () => {
         WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE,
         WHEN_DECIDING_AN_APPLICATION,
         WHEN_APPLYING_TO_A_TEAM,
+        WHEN_A_WOMAN_APPLIES_TO_A_TEAM,
         WHEN_INVITING_INTO_A_TEAM,
         WHEN_INVITING_A_WOMAN_INTO_A_TEAM,
       ],
