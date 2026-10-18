@@ -59,6 +59,18 @@ describe('the races of one event, in the owner\'s order', () => {
     expect(ids([timed(1, 6, 'Čačak'), timed(2, 6, 'Cer')])).toEqual([2, 1])
   })
 
+  it('puts a letter with a mark where the Serbian alphabet puts it, and not after „Z" where code units do', () => {
+    /* „Č" and „Š" are above „Z" in code units, so a comparison of code units, or of lower-cased
+       ones, sends „Čačak" after „Drina" and „Šabac" after „Tara"; in the Serbian alphabet „Č" is
+       before „D" and „Š" is before „T". Each pair is handed in the order code units give and with
+       the ids the other way round, so neither that comparison nor the number can give the answer. */
+    expect(ids([length(1, 10, 'Drina'), length(2, 10, 'Čačak')])).toEqual([2, 1])
+    expect(ids([length(1, 10, 'Tara'), length(2, 10, 'Šabac')])).toEqual([2, 1])
+    expect(ids([timed(1, 6, 'Drina'), timed(2, 6, 'Čačak')])).toEqual([2, 1])
+    expect(ids([timed(1, 6, 'Tara'), timed(2, 6, 'Šabac')])).toEqual([2, 1])
+    expect(ids([free(1, 'Tara'), free(2, 'Šabac')])).toEqual([2, 1])
+  })
+
   it('puts the free races last, among themselves by the name', () => {
     expect(ids([free(1, 'Zvezda'), length(2, 5), free(3, 'Avala')])).toEqual([2, 3, 1])
   })
