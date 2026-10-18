@@ -75,11 +75,13 @@ import { translate, type Dictionary } from './translate'
  *
  * **And five things measured on the way, so nobody pays for them twice.**
  *
- * - `data/categories.ts` writes „Ž" into the category code and **stays that way**. It
+ * - `data/categories.ts` writes „Ž" into the category **code** and **stays that way**. It
  *   is not a label but the key the standing groups rows by (`leagueTable.ts`,
  *   `LeagueResults.tsx`), so making it follow the language would make the order of a
- *   competition follow the language. `F` is a separate piece of work with a guard of
- *   its own over the standing.
+ *   competition follow the language. What a reader is shown is another thing, and since
+ *   18.10.2026 it does follow the language: `categoryLabel` writes `Ž 40-54` in Serbian
+ *   and `F 40-54` in English out of `category.markFemale`, and the code under it is
+ *   untouched.
  * - `format.ts`, `formatDayInSentence` needs a second answer for English and has none
  *   yet: it adds the Serbian genitive to whatever `Intl` returns, so with English
  *   wired it answers **„Octobera 1, 2026"**, measured, not guessed.
