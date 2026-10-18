@@ -186,9 +186,10 @@ describe('who is drawn the choice of the language of the mail', () => {
     expect(server.asked.filter((one) => one.path === THE_MAIL_LANGUAGE_GOES_TO)).toEqual([])
   }, SLOW)
 
-  it('draws an account with no record only the language of its mail, and none of the rest', async () => {
-    /* The boundary named on `Settings.tsx` rather than left to be found: such an account is not
-       offered a password or a theme here, because nothing the owner has said covers them for it. */
+  it('draws an account with no record the language of its mail beside the theme and the password, and none of the competitor panels', async () => {
+    /* Since the evening of 17.10.2026 (PDL: „Nalog administracije bez člana na strani Podešavanja vidi
+       sve troje: jezik pošte, izbor teme i promenu lozinke"); the record before it drew such an account
+       the language alone. What is still not drawn is every panel that is a competitor's. */
     theServer('account', 'sr')
     renderAt('/sr/podesavanja', 'visitor', null)
 
@@ -199,9 +200,8 @@ describe('who is drawn the choice of the language of the mail', () => {
       within(screen.getByRole('main'))
         .getAllByRole('heading', { level: 2 })
         .map((one) => one.textContent),
-    ).toEqual(['Pošta'])
-    expect(screen.queryByRole('radio', { name: 'Tamna' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Lozinka' })).not.toBeInTheDocument()
+    ).toEqual(['Lozinka', 'Izgled', 'Pošta'])
+    expect(screen.getByRole('radio', { name: 'Tamna' })).toBeVisible()
   }, SLOW)
 })
 

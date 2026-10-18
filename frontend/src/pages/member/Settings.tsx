@@ -62,18 +62,22 @@ const THEMES: Theme[] = ['dark', 'light']
  * 16.10.2026, says his data and his password open once his fee is renewed, with a link to the page
  * he renews it on ({@link WhatOpensWhenTheFeeIsRenewed}).</li>
  * <li><b>An account with no competitor record</b> - a moderator, a superadmin - is drawn the
- * language of its mail and nothing else, since 17.10.2026. It was told „Ovaj deo je za takmičare"
- * before, as on every screen of the member area (PDL P21: administration is nobody's member), and
- * that stays true of every other screen; this one has a setting that is the ACCOUNT's and not a
- * competitor's (PDL, the answers of 17.10.2026: „Jezik pošte sme da promeni svako ko ima nalog [...]
- * jer je to podešavanje naloga a ne takmičarsko pravo", chosen by the owner between offered
- * outcomes; the sentence is the record's and not his own words). **Its password and its theme are
- * NOT drawn to it, and that is a boundary rather than a decision**: nothing the owner has said
- * covers them for administration, the password route's answer for such an account has not been
- * measured here, and the language was asked for by name.</li>
+ * language of its mail since 17.10.2026 (PDL, the answers of 17.10.2026: „Jezik pošte sme da promeni
+ * svako ko ima nalog [...] jer je to podešavanje naloga a ne takmičarsko pravo", chosen by the owner
+ * between offered outcomes; the sentence is the record's and not his own words), and **the theme and
+ * the password with it, since the evening of the same day** (PDL, the answers of 17.10.2026 in the
+ * evening, chosen by the owner between offered outcomes; the sentence is the
+ * record's and not his own words: „Nalog administracije bez člana na strani Podešavanja vidi sve troje: jezik pošte, izbor
+ * teme i promenu lozinke"; rejected there: the language and the password without the theme, and the
+ * language alone). It was told „Ovaj deo je za takmičare" before, as on every screen of the member area
+ * (PDL P21: administration is nobody's member), and that stays true of every other screen. The
+ * password route takes such an account (`MePasswordApiTest`, the case for both roles), and it is
+ * the member whose fee has LAPSED that the route answers 404, which is the third shape and not this
+ * one.</li>
  * </ul>
  *
- * <p>The language of the mail (`MailLanguageChoice`) is the one panel drawn in every shape.
+ * <p>The language of the mail (`MailLanguageChoice`) is the one panel drawn in every shape, and the
+ * theme is drawn in every shape too.
  *
  * <p><b>The server is the authority in all four and this is only what is worth offering.</b> A
  * control drawn to a reader whose every press is refused does nothing for him, and the owner's
@@ -178,39 +182,41 @@ export function Settings() {
 
           **NOT DRAWN TO A MEMBER WHOSE FEE HAS LAPSED**, since 11.10.2026: `PUT
           /api/me/password` answers him 404. It is drawn to somebody who has not paid, whom
-          the same entry lets change it. **And named for the two who see it rather than excluded
-          for the two who do not**, since 17.10.2026: an administration account with no member is
-          drawn this screen for the language of its mail only, so a condition written as „anybody
-          but a lapsed member" would have drawn it a password it was never offered. */}
-      {(who.standing === 'standing' || who.standing === 'neverPaid') && <ChangePassword />}
+          the same entry lets change it, and **to an administration account with no member, since
+          17.10.2026** (PDL, the answers of that evening: „Nalog administracije bez člana na strani
+          Podešavanja vidi sve troje: jezik pošte, izbor teme i promenu lozinke"; the route takes
+          it, `MePasswordApiTest`). **Named for the three who see it rather than excluded for the
+          one who does not**, so a fifth way of being signed in that this screen learns to draw is
+          not handed a password by a condition written as „anybody but a lapsed member". */}
+      {(who.standing === 'standing' ||
+        who.standing === 'neverPaid' ||
+        who.standing === 'account') && <ChangePassword />}
 
-      {who.standing !== 'account' && (
-        <section className="member__panel" aria-labelledby="settings-appearance">
-          <h2 className="profile__section" id="settings-appearance">
-            {t('settings.appearance')}
-          </h2>
+      <section className="member__panel" aria-labelledby="settings-appearance">
+        <h2 className="profile__section" id="settings-appearance">
+          {t('settings.appearance')}
+        </h2>
 
-          <fieldset className="field field--radio">
-            <legend className="field__label">{t('settings.themeLabel')}</legend>
-            {THEMES.map((one) => (
-              <div key={one} className="field__confirm">
-                <input
-                  className="field__control"
-                  type="radio"
-                  name="theme"
-                  id={`theme-${one}`}
-                  value={one}
-                  checked={theme === one}
-                  onChange={() => choose(one)}
-                />
-                <label className="field__label" htmlFor={`theme-${one}`}>
-                  {t(one === 'dark' ? 'settings.themeDark' : 'settings.themeLight')}
-                </label>
-              </div>
-            ))}
-          </fieldset>
-        </section>
-      )}
+        <fieldset className="field field--radio">
+          <legend className="field__label">{t('settings.themeLabel')}</legend>
+          {THEMES.map((one) => (
+            <div key={one} className="field__confirm">
+              <input
+                className="field__control"
+                type="radio"
+                name="theme"
+                id={`theme-${one}`}
+                value={one}
+                checked={theme === one}
+                onChange={() => choose(one)}
+              />
+              <label className="field__label" htmlFor={`theme-${one}`}>
+                {t(one === 'dark' ? 'settings.themeDark' : 'settings.themeLight')}
+              </label>
+            </div>
+          ))}
+        </fieldset>
+      </section>
 
       {/* **THE ONE PANEL DRAWN TO EVERY KIND OF SIGNED IN ACCOUNT**, since 17.10.2026: the language
           the portal's mail to this account is written in. PDL, the answers of 17.10.2026 (chosen by
