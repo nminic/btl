@@ -882,11 +882,19 @@ export function Membership() {
                   only thing this screen ever showed. */}
               {feeExempt ? (
                 <p className="member__note">{t('membership.feeExemptNoRenewal')}</p>
-              ) : held ? (
+              ) : held && payable ? (
                 /* HE HOLDS THE SEASON ON SALE ALREADY, on a payment or on his balance, so there
                    is nothing to pay for it and no slip, no QR code and no reference are drawn
                    (PDL P8, 18.10.2026). Until that day only an exemption shut this panel, and a
-                   member who had paid for next season was shown the slip for it again. */
+                   member who had paid for next season was shown the slip for it again.
+
+                   ONLY WHERE A PAYMENT WOULD OTHERWISE BE OFFERED (`held && payable`), and not
+                   wherever he holds it. From 1 January to 14 October the season on sale is the
+                   running one and every member whose fee stands holds it, so `held` alone drew
+                   this sentence to all of them and took away the one they were told before:
+                   when renewal opens (PDL P8, 16.10.2026: the member whose fee stands and the freed one „ostaju
+                   kako su bili"). Where nothing would be offered anyway, the shut panel's
+                   sentence below stays. */
                 <p className="member__note">
                   {t('membership.alreadyPaid', { season: payingSeason })}
                 </p>
