@@ -85,6 +85,7 @@ describe('the list of resources', () => {
          hyphen in it, which `test/setup.ts` had to be told about, and the THIRD a hook drops
          when the caller changes (`theSubmissionsNowBelongTo`). */
       'me/result-submissions',
+      'members',
       'moderators',
       'pages',
       'pairs',

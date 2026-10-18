@@ -131,6 +131,21 @@
     "seconds",
     "state"
   ],
+  "members.json": [
+    "active",
+    "ageBand",
+    "city",
+    "firstName",
+    "firstSeason2027",
+    "gender",
+    "lastName",
+    "memberNumber",
+    "membershipBasis",
+    "membershipSeason",
+    "seasons",
+    "seasons.basis",
+    "seasons.season"
+  ],
   "moderators.json": [
     "email",
     "firstName",

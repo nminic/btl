@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { arrivedResource, clearResourceCache, loadResource, type ResourceName } from '../../data/client'
 import type { Competitor } from '../../data/types'
-import { person } from '../../test/plate'
+import { asMember, person } from '../../test/plate'
 import { renderAt } from '../../test/render'
 import { answeredWith, did, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
@@ -73,6 +73,15 @@ describe('the members screen', () => {
 
       if (path === '/api/competitors' && how === 'GET') {
         return new Response(JSON.stringify(MEMBERS), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
+      /* THE ROWS OF THIS SCREEN SINCE 18.10.2026 (`MembersApi`), the same three members as the
+         moderation is answered them; `competitors` above is what their names link through. */
+      if (path === '/api/members' && how === 'GET') {
+        return new Response(JSON.stringify(MEMBERS.map((one) => asMember(one))), {
           status: 200,
           headers: { 'content-type': 'application/json' },
         })
@@ -217,12 +226,13 @@ describe('the members screen', () => {
       membershipSeason: undefined,
     }
     clearResourceCache()
+    const listed = [...MEMBERS, beginner, onHisBalance, notYetRenewed]
     const server = serverThat((path, init) =>
-      path === '/api/competitors' && (init?.method ?? 'GET') === 'GET'
-        ? new Response(JSON.stringify([...MEMBERS, beginner, onHisBalance, notYetRenewed]), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          })
+      (path === '/api/competitors' || path === '/api/members') && (init?.method ?? 'GET') === 'GET'
+        ? new Response(
+            JSON.stringify(path === '/api/members' ? listed.map((one) => asMember(one)) : listed),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
         : null,
     )
     renderAt('/sr/administracija/clanovi', 'superadmin')
@@ -241,19 +251,23 @@ describe('the members screen', () => {
     expect(row.queryByText('Ž 25-39')).not.toBeInTheDocument()
     expect(row.queryByText('Ž25-39')).not.toBeInTheDocument()
     expect(row.getByText('Kraljevo')).toBeVisible()
-    expect(row.getByText('Oslobođen članarine za 2028')).toBeVisible()
 
-    const balance = within(must(within(table).getByText('000017').closest('tr'), 'his row'))
-    expect(balance.getByText('Balans za 2027')).toBeVisible()
+    /* In the column of the basis, by its header, since 18.10.2026: the column of every season
+       beside it draws the same words for the season held on that basis (`MembersApi`). */
+    const basisColumn = within(table).getAllByRole('columnheader')
+      .findIndex((one) => one.textContent === 'Osnov članstva')
+    expect(basisColumn).toBeGreaterThan(-1)
+    const basisOf = (number: string) =>
+      must(within(table).getByText(number).closest('tr'), `the row of ${number}`)
+        .querySelectorAll('td')[basisColumn]?.textContent
+
+    expect(basisOf('000002')).toBe('Oslobođen članarine za 2028')
+    expect(basisOf('000017')).toBe('Balans za 2027')
 
     /* Nothing at all in the cell of a member who holds no membership of the season on sale: not
        „Uplata", which is what the per-person column used to say of everybody it did not free, and
        not a label with no year. Asked of the last cell before the actions, by its column. */
-    const unpaid = must(within(table).getByText('000018').closest('tr'), 'the unrenewed row')
-    const basisColumn = within(table).getAllByRole('columnheader')
-      .findIndex((one) => one.textContent === 'Osnov članstva')
-    expect(basisColumn).toBeGreaterThan(-1)
-    expect(must(unpaid.querySelectorAll('td')[basisColumn], 'the basis cell').textContent).toBe('')
+    expect(basisOf('000018')).toBe('')
 
     /* And no year of birth anywhere on the row, which is the half of this that is about
        privacy rather than about wording: the record is served to anybody who asks for its
@@ -432,6 +446,13 @@ describe('the members screen', () => {
         })
       }
 
+      if (path === '/api/members' && how === 'GET') {
+        return new Response(JSON.stringify(remembered.map((one) => asMember(one))), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
       if (path === '/api/teams' && how === 'GET') {
         return new Response(JSON.stringify(TEAMS), {
           status: 200,
@@ -501,6 +522,7 @@ describe('the members screen', () => {
     await screen.findByRole('table', { name: 'Članovi' })
 
     const beforeMembers = reads(server.asked, '/api/competitors')
+    const beforeTheRows = reads(server.asked, '/api/members')
 
     await Promise.all(ALSO_CLEARED.map((name) => loadResource(name)))
     for (const name of ALSO_CLEARED) {
@@ -533,6 +555,11 @@ describe('the members screen', () => {
     })
     await waitFor(() => {
       expect(reads(server.asked, '/api/competitors')).toBeGreaterThan(beforeMembers)
+    })
+    /* AND THE ROWS OF THIS SCREEN THEMSELVES (`members`, 18.10.2026): kept, they would draw the
+       deleted member again on the way back. */
+    await waitFor(() => {
+      expect(reads(server.asked, '/api/members')).toBeGreaterThan(beforeTheRows)
     })
 
     server.stop()

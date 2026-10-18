@@ -1214,6 +1214,14 @@
       "balance": "Balance"
     },
     "basisOfTheSeason": "{basis} for {season}",
+    "memberFilter": "Membership",
+    "memberFilterValue": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "all": "All"
+    },
+    "seasons": "Seasons of membership",
+    "lastSeason": "Last season",
     "pricing": "Price list",
     "ranking": "The right to be ranked",
     "rankingByPeriod": "By the period of payment",

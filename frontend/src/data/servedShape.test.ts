@@ -36,6 +36,7 @@ import type {
   BtlEvent,
   EventComment,
   MembershipDue,
+  Member,
   Moderator,
   Outstanding,
   Race,
@@ -303,6 +304,43 @@ const readAsEnglishTown: Place = anEnglishTown
 const readAsAttendance: Attending = anAttendance
 const readAsComment: EventComment = aComment
 const readAsModerator: Moderator = aModerator
+
+/**
+ * A member as the moderation of the members is answered one (`MembersApi`), in both of the states
+ * its optional fields have: the first holds a membership of the season on sale and two seasons, the
+ * second is a member whose fee has lapsed and who holds no season at all.
+ */
+const aMember = {
+  memberNumber: '000002',
+  firstName: 'Ana',
+  lastName: 'Babić',
+  gender: 'F' as const,
+  city: 'Beograd',
+  ageBand: '40-54' as const,
+  firstSeason2027: false,
+  active: true,
+  membershipBasis: 'balance' as const,
+  membershipSeason: 2028,
+  seasons: [
+    { season: 2027, basis: 'payment' as const },
+    { season: 2028, basis: 'balance' as const },
+  ],
+}
+
+const aLapsedMember = {
+  memberNumber: '000011',
+  firstName: 'Dara',
+  lastName: 'Filić',
+  gender: 'F' as const,
+  city: 'Niš',
+  ageBand: '25-39' as const,
+  firstSeason2027: true,
+  active: false,
+  seasons: [],
+}
+
+const readAsMember: Member = aMember
+const readAsLapsedMember: Member = aLapsedMember
 
 /**
  * THE SIXTEENTH RESOURCE, whose answer is a record and not a list.
@@ -648,6 +686,8 @@ describe('the answer the backend gives', () => {
     expect(readAsAttendance.eventId).toBe(273)
     expect(readAsComment.eventId).toBe(273)
     expect(readAsModerator.id).toBe(4)
+    expect(readAsMember.seasons.at(-1)?.season).toBe(2028)
+    expect(readAsLapsedMember.membershipBasis).toBeUndefined()
     /* The four that had never been seen until 21.09.2026, and for each of them the
        state that is the whole reason it is written down twice or not at all. */
     /* THE ONE CONDITIONAL FIELD LEFT, in each of the states its condition puts it in:
@@ -754,6 +794,7 @@ describe('the answer the backend gives', () => {
          rulebook publishes. */
       ['pricing', [aPricePeriod, aProcessingFee]],
       ['moderators', [aModerator]],
+      ['members', [aMember, aLapsedMember]],
       /* Both states of the inbox against the served file. The pair is what makes the two
          question ids measured as KEYS: one sample alone would say „a number" or „nothing", and
          the file may then hold either of those and nothing else. */
@@ -858,6 +899,7 @@ describe('the answer the backend gives', () => {
     expect(missing(anAttendance, servedRow('attendance'))).toEqual([])
     expect(missing(aComment, servedRow('comments'))).toEqual([])
     expect(missing(aModerator, servedRow('moderators'))).toEqual([])
+    expect(missing(aMember, servedRow('members'))).toEqual([])
     expect(missing(aSentRunThatWaits, servedRow('me/result-submissions'))).toEqual([])
 
     /* AND THE DUCATS, WHICH LEFT THIS LIST ON 20.09.2026 RATHER THAN SHRANK IN IT.
@@ -1059,6 +1101,9 @@ describe('the answer the backend gives', () => {
          the next reload, and a run sent back never reached it once the moderator's queue had
          moved onto the server. */
       'me/result-submissions',
+      /* THE TWENTIETH NAME, added 18.10.2026 with the moderation of the members, which reads it.
+         Measured on the day it arrives, in both states of its optional fields. */
+      'members',
     ]
 
     /* AND NOTHING IS EXCUSED ANY MORE. */
