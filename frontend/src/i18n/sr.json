@@ -521,7 +521,8 @@
     "brokenBody": "{who} je od sezone {season} u drugom trkačkom paru, pa je vaš raskinut.",
     "sent": "Poslat poziv: {who}.",
     "received": "Primljen poziv: {who}.",
-    "endedBody": "Trkački par sa {who} za sezonu {season} je raskinut.",
+    "endedBody": "{who} je raskinuo vaš trkački par za sezonu {season}.",
+    "endedBodyFemale": "{who} je raskinula vaš trkački par za sezonu {season}.",
     "mine": "Trkački par",
     "none": "Nije u trkačkom paru.",
     "breakUp": "Raskini trkački par",
@@ -863,10 +864,10 @@
     "joinTakenNamed": "Primi u tim: {name}",
     "joinRefused": "Odbij",
     "joinRefusedNamed": "Odbij: {name}",
-    "joinDoneSubject": "Primljen si u tim „{team}\"",
-    "joinDoneBody": "Od naredne sezone trčiš za tim „{team}\".",
-    "joinNoSubject": "Prijava u tim „{team}\" nije prihvaćena",
-    "joinNoBody": "Tim „{team}\" nije prihvatio tvoju prijavu.",
+    "joinDoneSubject": "Primljen si u tim \"{team}\"",
+    "joinDoneBody": "Od naredne sezone trčiš za tim \"{team}\".",
+    "joinNoSubject": "Prijava u tim \"{team}\" nije prihvaćena",
+    "joinNoBody": "Tim \"{team}\" nije prihvatio tvoju prijavu.",
     "joinWithdraw": "Povuci prijavu",
     "joinWaiting": "Prijave koje čekaju",
     "decideRefused": {
@@ -883,8 +884,8 @@
       "theWindowIsShut": "Prelazni rok se u međuvremenu zatvorio, pa poziv nije poslat. Rok se otvara 15. oktobra i traje do 31. decembra.",
       "heIsAlreadyInATeam": "Član je u međuvremenu ušao/la u tim, pa poziv nije poslat."
     },
-    "inviteSubject": "Poziv u tim „{team}\"",
-    "inviteBody": "Tim „{team}\" te poziva da od naredne sezone trčiš za njih.",
+    "inviteSubject": "Poziv u tim \"{team}\"",
+    "inviteBody": "Tim \"{team}\" te poziva da od naredne sezone trčiš za njih.",
     "inviteAccept": "Prihvati",
     "inviteRefuse": "Odbij",
     "inviteSent": "Poslati pozivi",
@@ -900,7 +901,8 @@
     "inviteGone": "Tim koji te je pozvao više ne postoji.",
     "inviteWaits": "Poziv čeka: u tim se ulazi samo u prelaznom roku, od 15. oktobra do 31. decembra.",
     "inviteMissedSubject": "Poziv u tim je ostao bez odgovora",
-    "inviteMissedBody": "{name} je u međuvremenu ušao/la u tim „{team}\", pa vaš poziv više ne stoji.",
+    "inviteMissedBody": "{name} je u međuvremenu ušao u tim \"{team}\", pa vaš poziv više ne stoji.",
+    "inviteMissedBodyFemale": "{name} je u međuvremenu ušla u tim \"{team}\", pa vaš poziv više ne stoji.",
     "answerRefused": {
       "theFormIsNotComplete": "Odgovor nije poslat do kraja, pa poziv nije odgovoren. Osveži stranicu i pokušaj ponovo."
     }

@@ -59,6 +59,13 @@ export function InvitationAnswer({
     .filter((one) => one.memberNumber === memberNumber)
     .map((one) => `${one.firstName} ${one.lastName}`)
     .join('')
+  /* And the word that notice says he did follows HIS sex ("ušao" or "ušla", PDL P18,
+     18.10.2026), never the sex of the team leader who reads it. Asked as a question with
+     two answers rather than read off the record, for the reason above: a member the portal
+     no longer has is simply not a woman. */
+  const mineIsAWoman = competitors.some(
+    (one) => one.memberNumber === memberNumber && one.gender === 'F',
+  )
 
   if (invitation === undefined || mine !== undefined) {
     /* **Three sentences, and none of them is remembered.** An accepted invitation
@@ -164,7 +171,10 @@ export function InvitationAnswer({
               from: t('app.name'),
               to,
               subject: t('teams.inviteMissedSubject'),
-              body: t('teams.inviteMissedBody', { name: mineName, team: asking.name }),
+              body: t(mineIsAWoman ? 'teams.inviteMissedBodyFemale' : 'teams.inviteMissedBody', {
+                name: mineName,
+                team: asking.name,
+              }),
               date: today,
             })
           }

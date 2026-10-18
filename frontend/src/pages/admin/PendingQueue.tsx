@@ -1025,16 +1025,23 @@ export function PendingQueue({ queue }: { queue: Queue }) {
             from: t('app.name'),
             to,
             subject: t('teams.inviteMissedSubject'),
-            body: t('teams.inviteMissedBody', {
-              /* Off the member's own record and not off the queue item, which carries the
-                 proposal and not the person. Joined rather than taken out of the list, so a
-                 member the portal no longer has needs no question of its own. */
-              name: allMembers
-                .filter((each) => each.memberNumber === one.memberNumber)
-                .map((each) => `${each.firstName} ${each.lastName}`)
-                .join(''),
-              team: made.name,
-            }),
+            /* The word the notice says he did follows HIS sex, who founded the team, and never
+               the sex of the leader who reads it (PDL P18, 18.10.2026). */
+            body: t(
+              allMembers.some((each) => each.memberNumber === one.memberNumber && each.gender === 'F')
+                ? 'teams.inviteMissedBodyFemale'
+                : 'teams.inviteMissedBody',
+              {
+                /* Off the member's own record and not off the queue item, which carries the
+                   proposal and not the person. Joined rather than taken out of the list, so a
+                   member the portal no longer has needs no question of its own. */
+                name: allMembers
+                  .filter((each) => each.memberNumber === one.memberNumber)
+                  .map((each) => `${each.firstName} ${each.lastName}`)
+                  .join(''),
+                team: made.name,
+              },
+            ),
             date: today,
           })
         }

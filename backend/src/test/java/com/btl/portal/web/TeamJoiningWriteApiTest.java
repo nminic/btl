@@ -1778,7 +1778,11 @@ class TeamJoiningWriteApiTest {
 		assertThat(filled(teams, "inviteMissedSubject", team, name))
 				.isEqualTo(TeamJoiningWriteApi.THE_INVITATION_WAS_MISSED);
 		assertThat(filled(teams, "inviteMissedBody", team, name))
+				.as("the man's word, which is the dictionary key without a suffix")
 				.isEqualTo(TeamJoiningWriteApi.theMissedInvitationReads(name, "M", team));
+		assertThat(filled(teams, "inviteMissedBodyFemale", team, name))
+				.as("and the woman's, PDL P18, 18.10.2026")
+				.isEqualTo(TeamJoiningWriteApi.theMissedInvitationReads(name, "F", team));
 
 		assertThat(theDictionary().get("app").get("name").stringValue())
 				.as("the portal signs its own message with a name it calls itself elsewhere")

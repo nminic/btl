@@ -515,7 +515,57 @@ describe('a member who is asked by more than one team', () => {
     await user.click(must(sent[0], 'the notice Vardar was sent'))
 
     expect(
-      await screen.findByText(/Relja Momčilović je u međuvremenu ušao\/la u tim „Dunavski trkači"/),
+      await screen.findByText(/Relja Momčilović je u međuvremenu ušao u tim "Dunavski trkači"/),
+    ).toBeVisible()
+  }, SEVERAL_SCREENS)
+
+  /**
+   * AND WHEN THE ONE WHO WENT IS A WOMAN, THE WORD IS "ušla" (PDL P18, 18.10.2026).
+   *
+   * <p>The walk above has a man go and the word is his. Here Ivona is asked by both clubs and
+   * goes into the one that asked last, so the club that is left waiting is Dunavski trkači,
+   * whose leader is a man: the reader and the one who went are of opposite sexes, as they are
+   * in the walk above the other way round, and a screen that took the word from the reader
+   * writes "ušao" in this walk and "ušla" in that one.
+   */
+  it('says "ušla" when the one who went into the other club is a woman', async () => {
+    const user = setupUser()
+
+    renderAt(
+      FREE,
+      'competitor',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Invite from={DUNAV} who="000006" />
+        <Invite from={VARDAR} who="000006" />
+        <Become who="000006" />
+        <Become who="000001" />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'pozovi 000006 u tim 1' }))
+    await user.click(screen.getByRole('button', { name: 'pozovi 000006 u tim 3' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+
+    const both = (await inbox(user)).filter((one) => /Poziv u tim/.test(one.textContent ?? ''))
+
+    /* Newest first, so the one Vardarski krug sent is first. */
+    await user.click(must(both[0], 'the invitation Vardarski krug sent'))
+    await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
+
+    const sent = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
+
+    expect(sent).toHaveLength(1)
+
+    await user.click(must(sent[0], 'the notice Dunavski trkači were sent'))
+
+    expect(
+      await screen.findByText(/Ivona Stamenkovska je u međuvremenu ušla u tim "Vardarski krug"/),
     ).toBeVisible()
   }, SEVERAL_SCREENS)
 })
@@ -757,7 +807,7 @@ describe('which day the answer is read off', () => {
     await user.click(screen.getByRole('button', { name: 'danas je 2027-10-15' }))
     await user.click(screen.getByRole('button', { name: 'postani 000002' }))
 
-    const both = (await inbox(user)).filter((one) => /Poziv u tim „/.test(one.textContent ?? ''))
+    const both = (await inbox(user)).filter((one) => /Poziv u tim "/.test(one.textContent ?? ''))
 
     await user.click(must(both[1], 'the invitation Dunavski trkači sent'))
     await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
@@ -953,7 +1003,56 @@ describe('the third door, and the team that was joined', () => {
     await user.click(must(told[0], 'the notice Dunavski trkači were sent'))
 
     expect(
-      await screen.findByText(/Relja Momčilović je u međuvremenu ušao\/la u tim „Trkači Morave"/),
+      await screen.findByText(/Relja Momčilović je u međuvremenu ušao u tim "Trkači Morave"/),
+    ).toBeVisible()
+  }, SEVERAL_SCREENS)
+
+  it('says "ušla" on the road through the queue when the one who founded it is a woman', async () => {
+    const user = setupUser()
+    const { router } = renderAt(
+      FREE,
+      'superadmin',
+      '000007',
+      undefined,
+      IN_WINDOW,
+      <>
+        <Invite from={DUNAV} who="000006" />
+        <Become who="000006" />
+        <Become who="000001" />
+        <Become who="000007" />
+      </>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'pozovi 000006 u tim 1' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+    await router.navigate('/sr/novi-tim')
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkačice Morave')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
+    await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
+    await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
+
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+    clearResourceCache()
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    const heading = await screen.findByRole('heading', { name: 'Trkačice Morave' })
+    const card = within(must(heading.closest('li'), 'the card the proposal stands on'))
+
+    /* Approved by somebody else, for the reason given in the walk above, and the one who is told
+       is a man: Dunavski trkači are led by Vladan. */
+    await user.click(screen.getByRole('button', { name: 'postani 000007' }))
+    await user.click(card.getByRole('button', { name: 'Odobri' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
+
+    const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
+
+    await user.click(must(told[0], 'the notice Dunavski trkači were sent'))
+
+    expect(
+      await screen.findByText(/Ivona Stamenkovska je u međuvremenu ušla u tim "Trkačice Morave"/),
     ).toBeVisible()
   }, SEVERAL_SCREENS)
 

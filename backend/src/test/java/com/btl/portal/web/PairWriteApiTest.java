@@ -1755,6 +1755,12 @@ class PairWriteApiTest {
 				.as("the body the server writes is not the sentence the dictionary holds")
 				.isEqualTo(PairWriteApi.theBrokenPairReads("Petar Petrović", "M", 2031));
 
+		assertThat(pair.get("endedBodyFemale").stringValue()
+				.replace("{who}", "Petra Petrović").replace("{season}", String.valueOf(2031)))
+				.as("the body the server writes when a woman pressed is not the sentence the"
+						+ " dictionary holds (PDL P18, 18.10.2026)")
+				.isEqualTo(PairWriteApi.theBrokenPairReads("Petra Petrović", "F", 2031));
+
 		assertThat(pair.get("inviteSubject").stringValue())
 				.as("the invitation's subject is not the sentence the dictionary holds")
 				.isEqualTo(PairWriteApi.THE_PAIR_INVITATION);
