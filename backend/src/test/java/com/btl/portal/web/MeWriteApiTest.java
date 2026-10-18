@@ -1264,14 +1264,15 @@ class MeWriteApiTest {
 	/**
 	 * AND REMOVING WHAT STANDS IS NOT REFUSED BECAUSE A PROPOSAL OF HIS IS UNDECIDED.
 	 *
-	 * <p>The guard that answers 409 asks whether a TEXT was sent and not whether the field
-	 * was. Asked the second way, a member wanting his own words taken down would be refused
-	 * on account of somebody else's queue - a right withheld until a moderator gets round to
-	 * a different question.
+	 * <p>Nothing refuses a removal on account of a proposal that waits. There is no 409 for a
+	 * text any more (struck 18.10.2026, PDL P11), and the removal never asked about the queue:
+	 * a member wanting his own words taken down would otherwise be held until a moderator gets
+	 * round to a different question.
 	 *
 	 * <p><b>And the boundary that follows is measured here rather than argued:</b> the
 	 * waiting text stays waiting. Nothing decided that removing what stands withdraws what
-	 * was proposed, and the two decisions of 19.09.2026 are about different things.
+	 * was proposed: the decision of 19.09.2026 is about what STANDS and the one of 18.10.2026
+	 * about what WAITS.
 	 */
 	@Test
 	void removingWhatStandsIsNotRefusedWhileAProposalOfHisWaits() throws Exception {
