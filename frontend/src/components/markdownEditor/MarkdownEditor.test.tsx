@@ -383,7 +383,7 @@ describe('a link, from the box for a link', () => {
       await user.click(press('Dodaj'))
 
       expect(address(), typed).toHaveAttribute('aria-invalid', 'true')
-      expect(address(), typed).toHaveAccessibleDescription(/Upiši adresu sajta .* ne sme da ima „@“/)
+      expect(address(), typed).toHaveAccessibleDescription(/Upiši adresu sajta .* ne sme da ima "@"/)
       expect(address(), typed).toHaveFocus()
       expect(onChange, typed).not.toHaveBeenCalled()
     }
