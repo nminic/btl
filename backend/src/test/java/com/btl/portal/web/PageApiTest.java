@@ -466,6 +466,37 @@ class PageApiTest {
 	}
 
 	/**
+	 * THE ROW V60 ADDS (Zoho as a processor) AND THE DAY THE POLICY IS SIGNED OFF ON REACH THE VISITOR, in section 5
+	 * and section 7 of the privacy policy, in the language he asks for.
+	 *
+	 * <p>{@code TheWrittenPagesNameZohoAsAProcessorTest} holds the rows; this holds that the route serves them, which
+	 * is the one thing it cannot see. Asked in Serbian and in real English.
+	 */
+	@Test
+	void theRowThatNamesZohoAndTheNewSignOffAreServedInBothLanguages() throws Exception {
+		String[][] asked = {
+				{ "sr", "| Brevo (Sendinblue SAS) | Vaša adresa i sadržaj poruke | Francuska |\n"
+						+ "| Zoho Corporation | Prepiska sa adresom info@: vaša adresa i sadržaj poruka | SAD |\n"
+						+ "| Poslovna banka Udruženja |",
+						"Poslednja izmena: 18.10.2026." },
+				{ "en", "| Brevo (Sendinblue SAS) | Your address and the content of the message | France |\n"
+						+ "| Zoho Corporation | Correspondence with info@: your address and the content of the messages"
+						+ " | USA |\n| The Association's business bank |",
+						"Last amended: 18.10.2026." } };
+
+		for (String[] each : asked) {
+			JsonNode served = answerIn(each[0]);
+
+			assertThat(fieldOf(served, "politika-privatnosti", "body").get(4))
+					.as("section 5 of the privacy policy asked in %s", each[0])
+					.containsOnlyOnce(each[1]);
+			assertThat(fieldOf(served, "politika-privatnosti", "body").get(6))
+					.as("section 7 of the privacy policy asked in %s", each[0])
+					.containsOnlyOnce(each[2]);
+		}
+	}
+
+	/**
 	 * SECTION ORDER IS THE {@code position} COLUMN, AND NOT THE ORDER ROWS WERE WRITTEN IN.
 	 *
 	 * <p>Task instruction, section 5: dropping the {@code order by} on

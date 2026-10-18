@@ -420,7 +420,24 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   lines, line breaks and a BOM left out), which reproduced V58 to the digit before it was
 			   trusted here, and this list is what confirms it on the gate. */
 			new Applied("59", "V59__an_account_says_which_language_its_mail_is_written_in.sql",
-					-1673487001));
+					-1673487001),
+
+			/* V60. The privacy policy names Zoho as a processor: one row in the table of processors of
+			   section 5, directly under the row for Brevo, in Serbian and in English, the owner's words of
+			   17.10.2026 (PDL, the entry "Nove reči dopune politike za Zoho (američki region)"), and the
+			   policy's sign-off moved from 16.10.2026 to 18.10.2026 (the same entry), in both languages,
+			   the rulebook and the terms of use keeping theirs. Four edits, each of which stops the
+			   migration unless its old text stands exactly once where it is written and its new text is not
+			   already there. No schema, no row.
+
+			   60 because it is the next free number, and that was MEASURED rather than taken: every remote
+			   ref, every worktree and the open pull requests were searched on 18.10.2026 and none held a
+			   migration at V60 or above, and origin/main stands at V59.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read
+			   off this very assertion when it ran before the entry existed and then confirmed by it. */
+			new Applied("60", "V60__the_privacy_policy_names_zoho_as_a_processor.sql",
+					-1729292466));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
