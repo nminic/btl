@@ -744,9 +744,7 @@ class RaceWriteApi {
 						+ WhatAResultChangeSays.asADay(is.day())
 						+ ", pa je vaš rezultat sa nje ponovo bodovan.\n\nStara vrednost:\n"
 						+ WhatAResultChangeSays.inWords(was) + "\n\nNova vrednost:\n"
-						+ WhatAResultChangeSays.inWords(is)
-						+ "\n\nPortal ne čuva istoriju izmena, pa je ova poruka jedini zapis stare"
-						+ " vrednosti.");
+						+ WhatAResultChangeSays.inWords(is));
 	}
 
 	/**

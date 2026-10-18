@@ -401,6 +401,7 @@ describe('a sentence with a value put into it', () => {
          season, whose pair the reader is already in, and who a broken pair was broken for. */
       'pair.brokenBody',
       'pair.endedBody',
+      'pair.endedBodyFemale',
       /* The season a pair runs in, and not the day it was made: that day is answered to
          nobody since 13.09.2026 and is drawn nowhere. */
       'pair.forSeason',
@@ -495,6 +496,7 @@ describe('a sentence with a value put into it', () => {
          holds both against the Java that writes them. */
       'teams.inviteAccepted',
       'teams.inviteMissedBody',
+      'teams.inviteMissedBodyFemale',
       'teams.inviteOvertaken',
       /* The third control of the same kind, added 29.09.2026 with the team's own queue going
          to the server: „Povuci poziv: {name}", a person's name after a colon, which is the

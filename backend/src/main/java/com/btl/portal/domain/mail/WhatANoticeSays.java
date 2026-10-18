@@ -144,13 +144,13 @@ public final class WhatANoticeSays {
 		 * A member changed his own password while signed in.
 		 *
 		 * <p>Owner, PDL P22, 11.08.2026: „promena lozinke" is one of the six mandatory
-		 * messages, „i clan ih ne moze iskljuciti". Two facts, and neither of them is a
-		 * password: WHEN it changed, and how many other sessions were ended by it - which is
-		 * the security half of the owner's decision of 24.09.2026, „odjavljuje sve ostale
-		 * sesije... ako se lozinka menja zbog sumnje da je neko zna, promena bez odjave ne
-		 * resava nista".
+		 * messages, „i clan ih ne moze iskljuciti". One fact, and it is not a password: WHEN it
+		 * changed. The count of the other sessions it ended was a second fact until the owner's
+		 * decision of 18.10.2026 (PDL P18, "Lozinka promenjena": "IZBRISATI"); the sessions are
+		 * still ended by the route, the owner's decision of 24.09.2026, and the letter no longer
+		 * says how many.
 		 */
-		THE_PASSWORD_HAS_CHANGED("thePasswordHasChanged", 2);
+		THE_PASSWORD_HAS_CHANGED("thePasswordHasChanged", 1);
 
 		private final String key;
 

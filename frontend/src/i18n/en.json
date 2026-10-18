@@ -521,7 +521,8 @@
     "brokenBody": "{who} is in another racing pair from season {season}, so yours has been broken up.",
     "sent": "Invitation sent: {who}.",
     "received": "Invitation received: {who}.",
-    "endedBody": "The racing pair with {who} for season {season} has been broken up.",
+    "endedBody": "{who} has broken up your racing pair for season {season}.",
+    "endedBodyFemale": "{who} has broken up your racing pair for season {season}.",
     "mine": "Racing pair",
     "none": "Not in a racing pair.",
     "breakUp": "Break up the racing pair",
@@ -863,10 +864,10 @@
     "joinTakenNamed": "Take into the team: {name}",
     "joinRefused": "Decline",
     "joinRefusedNamed": "Decline: {name}",
-    "joinDoneSubject": "You have been taken into the team „{team}\"",
-    "joinDoneBody": "From the next season you run for the team „{team}\".",
-    "joinNoSubject": "The application to the team „{team}\" was not accepted",
-    "joinNoBody": "The team „{team}\" did not accept your application.",
+    "joinDoneSubject": "You have been taken into the team \"{team}\"",
+    "joinDoneBody": "From the next season you run for the team \"{team}\".",
+    "joinNoSubject": "The application to the team \"{team}\" was not accepted",
+    "joinNoBody": "The team \"{team}\" did not accept your application.",
     "joinWithdraw": "Withdraw the application",
     "joinWaiting": "Applications waiting",
     "decideRefused": {
@@ -883,8 +884,8 @@
       "theWindowIsShut": "The transfer window has closed in the meantime, so the invitation was not sent. The window opens on 15 October and runs to 31 December.",
       "heIsAlreadyInATeam": "The member has joined a team in the meantime, so the invitation was not sent."
     },
-    "inviteSubject": "An invitation into the team „{team}\"",
-    "inviteBody": "The team „{team}\" invites you to run for them from the next season.",
+    "inviteSubject": "An invitation into the team \"{team}\"",
+    "inviteBody": "The team \"{team}\" invites you to run for them from the next season.",
     "inviteAccept": "Accept",
     "inviteRefuse": "Decline",
     "inviteSent": "Invitations sent",
@@ -900,7 +901,8 @@
     "inviteGone": "The team that invited you no longer exists.",
     "inviteWaits": "The invitation waits: a team is joined during the transfer window only, from 15 October to 31 December.",
     "inviteMissedSubject": "An invitation into the team went unanswered",
-    "inviteMissedBody": "{name} has joined the team „{team}\" in the meantime, so your invitation no longer stands.",
+    "inviteMissedBody": "{name} has joined the team \"{team}\" in the meantime, so your invitation no longer stands.",
+    "inviteMissedBodyFemale": "{name} has joined the team \"{team}\" in the meantime, so your invitation no longer stands.",
     "answerRefused": {
       "theFormIsNotComplete": "The answer did not reach the server in full, so the invitation was not answered. Refresh the page and try again."
     }

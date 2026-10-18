@@ -132,6 +132,109 @@ class WhatAResultChangeSaysTest {
 		}
 	}
 
+	/**
+	 * WHAT EACH OF THE FOUR SAYS, WORD FOR WORD, IN BOTH LANGUAGES, AND THAT NONE OF THEM ADVISES
+	 * KEEPING IT (PDL P18, 18.10.2026).
+	 *
+	 * <p>The owner: "Liniju ... izbacite iz svih poruka", chosen for every message and every
+	 * mail, in both languages. These are the portal's own sentences, so they are held as a
+	 * snapshot of the whole text and not as a pattern over what they must not say: a pattern has
+	 * to be right about sentences nobody has written yet, and a snapshot is not asked to. The
+	 * run in the middle is written by {@link WhatAResultChangeSays#inWords}, which has its own
+	 * case, so what is measured here is the prose around it and where each message stops.
+	 */
+	@Test
+	void theFourMessagesSayExactlyWhatTheyWereDecidedToSayAndStopAtTheLeague() {
+		for (MailLanguage in : MailLanguage.values()) {
+			String run = WhatAResultChangeSays.inWords(A_RUN, in);
+			String other = WhatAResultChangeSays.inWords(ANOTHER_RUN, in);
+			boolean serbian = in == MailLanguage.SERBIAN;
+
+			assertThat(WhatAResultChangeSays.entered(A_RUN, in).body())
+					.as("the message about a result that was sent, in %s", in)
+					.isEqualTo(lines(
+							serbian ? "Primili smo rezultat koji ste poslali:"
+									: "We have received the result you sent:",
+							"",
+							run,
+							"",
+							serbian ? "Bodovi su izračunati po javnoj formuli lige i ovde stoje kao račun."
+									+ " Prave bodove i promenu plasmana rezultat dobija tek kad ga"
+									+ " moderator odobri."
+									: "The points were worked out by the public formula of the league and"
+									+ " are shown here as a calculation. The result gets its real points"
+									+ " and its change of standing only once a moderator approves it.",
+							"",
+							"Balkanska trkačka liga"));
+
+			assertThat(WhatAResultChangeSays.changed(A_RUN, ANOTHER_RUN, in).body())
+					.as("the message about a change, in %s", in)
+					.isEqualTo(lines(
+							serbian ? "Zatražili ste izmenu svog rezultata."
+									: "You have asked for a change to your result.",
+							"",
+							serbian ? "Stara vrednost:" : "Old value:",
+							run,
+							"",
+							serbian ? "Nova vrednost:" : "New value:",
+							other,
+							"",
+							serbian ? "Stari rezultat ostaje u poretku dok izmena čeka i menja se tek kad"
+									+ " je moderator odobri."
+									: "The old result stays in the standings while the change waits, and is"
+									+ " replaced only once a moderator approves it.",
+							"",
+							"Balkanska trkačka liga"));
+
+			assertThat(WhatAResultChangeSays.approved(A_RUN, in).body())
+					.as("the message about an approval, in %s", in)
+					.isEqualTo(lines(
+							serbian ? "Moderator je odobrio vaš rezultat:"
+									: "A moderator has approved your result:",
+							"",
+							run,
+							"",
+							serbian ? "Od ovog trenutka rezultat ulazi u vaš profil, rang liste i sezonsku"
+									+ " tabelu."
+									: "From now on the result counts in your profile, the rankings and the"
+									+ " season table.",
+							"",
+							"Balkanska trkačka liga"));
+
+			assertThat(WhatAResultChangeSays.deleted(A_RUN, in).body())
+					.as("the message about a deletion, in %s", in)
+					.isEqualTo(lines(
+							serbian ? "Sa portala je obrisan vaš rezultat:"
+									: "Your result has been deleted from the portal:",
+							"",
+							run,
+							"",
+							serbian ? "Uklonjen je odmah i od ovog trenutka ne ulazi ni u jednu tabelu."
+									: "It was removed at once, and from this moment it counts in no table.",
+							"",
+							"Balkanska trkačka liga"));
+		}
+	}
+
+	/**
+	 * THE POINTS OF A RUN IN A SERBIAN MESSAGE: TWO DECIMALS AND THE COMMA (PDL P18, 18.10.2026).
+	 *
+	 * <p>A figure with decimals, one with a single decimal that must keep its second, a whole
+	 * number that must keep both noughts, and one that has to round, which is the four
+	 * shapes {@code toPlainString} writes four different ways and a decimal comma never does.
+	 */
+	@Test
+	void pointsAreWrittenWithTwoDecimalsAndTheComma() {
+		assertThat(WhatAResultChangeSays.pointsInWords(new BigDecimal("98.45"))).isEqualTo("98,45");
+		assertThat(WhatAResultChangeSays.pointsInWords(new BigDecimal("98.4"))).isEqualTo("98,40");
+		assertThat(WhatAResultChangeSays.pointsInWords(new BigDecimal("100"))).isEqualTo("100,00");
+		assertThat(WhatAResultChangeSays.pointsInWords(new BigDecimal("98.455"))).isEqualTo("98,46");
+	}
+
+	private static String lines(String... each) {
+		return String.join("\n", each);
+	}
+
 	/** AND NONE OF THEM IS EMPTY OR LEAVES A HOLE UNFILLED. */
 	@Test
 	void everyOneOfThemIsFilledIn() {

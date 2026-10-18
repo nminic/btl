@@ -468,7 +468,7 @@ describe('a pair that is ended', () => {
        2027 and this is read in 2026, so a notice that named the running season would say 2026 and
        the case can tell the two apart. */
     expect(
-      screen.getByText(/Trkački par sa Katarina Novaković za sezonu 2027 je raskinut/),
+      screen.getByText(/Katarina Novaković je raskinula vaš trkački par za sezonu 2027\./),
     ).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'postani 000004' }))
@@ -477,6 +477,46 @@ describe('a pair that is ended', () => {
       (await inbox(user)).filter((one) => /Trkački par je raskinut/.test(one.textContent ?? ''))
         .length,
     ).toBe(0)
+  }, SLOW)
+
+  /**
+   * AND WHEN IT IS THE MAN WHO PRESSES, THE OTHER VERB IS THE ONE THAT IS WRITTEN (PDL P18,
+   * 18.10.2026, "Raskid para: ime u nominativu").
+   *
+   * <p>The walk above has the woman press and reads "raskinula". A racing pair is one man and
+   * one woman, so the half who reads is always of the other sex than the one who pressed: a
+   * screen that took the verb from the reader writes the wrong word in both walks, and a
+   * screen that wrote one verb always passes one of them.
+   */
+  it('names the man who pressed with his own verb', async () => {
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, THREE)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(ask('000002', '000015'))
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+    await openTheInvitation(user)
+    await user.click(screen.getByRole('button', { name: 'Prihvati' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await goToMyProfile(user)
+    await screen.findByRole('heading', { level: 1, name: /Relja/ })
+    await user.click(screen.getByRole('button', { name: 'Raskini trkački par' }))
+
+    await user.click(screen.getByRole('button', { name: 'postani 000015' }))
+
+    const hers = (await inbox(user)).filter((one) =>
+      /Trkački par je raskinut/.test(one.textContent ?? ''),
+    )
+
+    expect(hers.length).toBe(1)
+
+    await user.click(must(hers[0], 'the notice'))
+
+    expect(
+      screen.getByText(/Relja Momčilović je raskinuo vaš trkački par za sezonu 2027\./),
+    ).toBeVisible()
   }, SLOW)
 })
 
@@ -1001,7 +1041,7 @@ describe('the day a notice about a broken pair carries', () => {
        unnamed. */
     const body = must(document.querySelector('.messages__body'), 'the notice').textContent ?? ''
 
-    expect(body).toContain('Trkački par sa Katarina Novaković za sezonu 2027 je raskinut')
+    expect(body).toContain('Katarina Novaković je raskinula vaš trkački par za sezonu 2027.')
     expect(body).not.toContain('2028')
   }, SLOW)
 })
@@ -1098,7 +1138,7 @@ describe('a member who holds a pair for this season and one for the next', () =>
     await user.click(must(first(told), 'his notice'))
 
     expect(
-      screen.getByText(/Trkački par sa Katarina Novaković za sezonu 2028 je raskinut/),
+      screen.getByText(/Katarina Novaković je raskinula vaš trkački par za sezonu 2028\./),
     ).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'postani 000002' }))

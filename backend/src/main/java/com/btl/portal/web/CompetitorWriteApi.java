@@ -207,27 +207,18 @@ class CompetitorWriteApi {
 	 * clanica>, sa uglastim zagradama." His own words: „Moze da bude <Obrisani clan> ili
 	 * clanica npr. Sa sve ovim znakovima okolo."
 	 *
-	 * <p><b>Why the man's word and never the woman's, in the one place this class writes
-	 * it.</b> The message below is addressed to the other half of a racing pair, and a
-	 * racing pair is one man and one woman ({@code racing_pair_man_fk},
-	 * {@code racing_pair_woman_fk}, V12, both keyed on {@code (id, gender)}). So the half
-	 * who is told is never of the same sex as the half who is gone, and which word to use is
-	 * decided by the column the recipient is NOT read off. It is derived here rather than
-	 * read, because after the deletion there is no row left to read a gender from and before
-	 * it the message has not been written; {@link #partnersOf} answers the pairs and the
-	 * schema answers the sex.
+	 * <p><b>This class no longer writes them into the message to the other half of a pair</b>
+	 * (PDL P18, 18.10.2026, "Raskid para: ime u nominativu"): that sentence now carries no name
+	 * and says "vašeg partnera" or "vaše partnerke" by the sex of the member who is gone, which
+	 * {@link #partnersOf} derives from the column the recipient is NOT read off.
 	 *
-	 * <p><b>The same two words are also written by the trigger in V33</b>, which has
-	 * {@code old.gender} in its hand and picks between them. Two homes for one pair of
-	 * words, and they are named here so the next reader finds the other one.
+	 * <p><b>The two words are written by the trigger in V33</b>, which has {@code old.gender} in
+	 * its hand and picks between them, over the sender of a message and the author of a comment.
+	 * The man's word is kept here because {@code CompetitorWriteApiTest} reads those columns back
+	 * and names what V33 must have written; the woman's is the trigger's alone, and
+	 * {@code InboxConstraintsTest} spells it where it measures that branch.
 	 */
 	static final String A_DELETED_MAN = "<Obrisani član>";
-
-	/** The other of the pair. See {@link #A_DELETED_MAN}. */
-	static final String A_DELETED_WOMAN = "<Obrisana članica>";
-
-	/** The letter {@code competitor.gender} carries for a man ({@code competitor_gender_known}). */
-	private static final String A_MAN = "M";
 
 	private static final Logger LOG = LoggerFactory.getLogger(CompetitorWriteApi.class);
 
@@ -291,8 +282,8 @@ class CompetitorWriteApi {
 	/**
 	 * The other half of one pair, and the season that pair runs in.
 	 *
-	 * @param gender the gender of the half who is GOING, which is what decides which of the
-	 *               two replacement words the message carries
+	 * @param gender the gender of the half who is GOING, which is what decides whether the
+	 *               message says "vašeg partnera" or "vaše partnerke"
 	 */
 	private record Partner(long member, int season, String gender) {
 	}
@@ -370,8 +361,7 @@ class CompetitorWriteApi {
 		   it is the first thing a reader of V33 will wonder about. */
 		for (Partner each : partners) {
 			tell(each.member(), PairWriteApi.THE_PAIR_IS_BROKEN,
-					PairWriteApi.theBrokenPairReads(theNameThatIsGone(each.gender()),
-							each.season()));
+					PairWriteApi.theBrokenPairByDeletionReads(each.gender(), each.season()));
 		}
 
 		/* AND THE ACCOUNT, WHICH THE DATABASE DEMANDS GO FIRST. `account_competitor_fk` is
@@ -542,11 +532,6 @@ class CompetitorWriteApi {
 				.param("me", member)
 				.query((row, one) -> new Partner(row.getLong(1), row.getInt(2), row.getString(3)))
 				.list();
-	}
-
-	/** Which of ADL A37's two words stands where his name stood. See {@link #A_DELETED_MAN}. */
-	private static String theNameThatIsGone(String gender) {
-		return A_MAN.equals(gender) ? A_DELETED_MAN : A_DELETED_WOMAN;
 	}
 
 	/**

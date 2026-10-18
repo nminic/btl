@@ -358,6 +358,21 @@ public final class WhatAResultChangeSays {
 	}
 
 	/**
+	 * „98,45", THE POINTS OF A RUN THE WAY A SERBIAN MESSAGE WRITES THEM: two decimals and the
+	 * comma, the same figure {@link #inWords(Run)} writes for the run's own points. A whole
+	 * number keeps its two noughts, „100,00".
+	 *
+	 * <p>Public because the line that tells a member his beginners' category has closed names
+	 * the points of the run that closed it (PDL P18, 18.10.2026, "Bodovi u poruci Početnička
+	 * kategorija vam je zatvorena"), and a second formatter in the web layer would be a second
+	 * home for a figure that must read the same in that line and in the letter about the same
+	 * approval.
+	 */
+	public static String pointsInWords(BigDecimal points) {
+		return twoDecimals(points, ',');
+	}
+
+	/**
 	 * „42,20", with the comma Serbian writes a decimal with, or „42.20" with the point English
 	 * writes it with.
 	 *

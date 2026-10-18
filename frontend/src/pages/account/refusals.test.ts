@@ -131,13 +131,16 @@ const NOT_A_REASON: Record<string, string[]> = {
      three is a refusal and no screen answers any of them, which is what the third case
      below checks about every name on this list. */
   'MePhotoApi.java': ['profiles', '/api/photos/', '/api/me/photo/'],
-  /* `CompetitorWriteApi` declares five that are not refusals either, and they fall into two
+  /* `CompetitorWriteApi` declares three that are not refusals either, and they fall into two
      kinds. `delete` and `anonymise` are the two words the DELETE's `account` parameter may
      carry (PDL P23, 14.09.2026), so they are what a request SAYS rather than why one was
-     turned away - the same kind of constant as `PricingWriteApi`'s two. `<Obrisani član>`,
-     `<Obrisana članica>` and `M` are what stands where a deleted member's name stood, and
-     the letter the route reads his gender off to choose between the first two. */
-  'CompetitorWriteApi.java': ['delete', 'anonymise', '<Obrisani član>', '<Obrisana članica>', 'M'],
+     turned away - the same kind of constant as `PricingWriteApi`'s two. `<Obrisani član>` is
+     what V33's trigger writes where a deleted member's name stood, kept so that its test can
+     read it back. It held two more until 18.10.2026 (`<Obrisana članica>` and the letter `M`
+     the route read his gender off to choose between the two): the message to the other half of
+     a pair stopped carrying a replacement name and says "vašeg partnera" or "vaše partnerke"
+     instead (PDL P18, "Raskid para: ime u nominativu"), which `PairWriteApi` now chooses. */
+  'CompetitorWriteApi.java': ['delete', 'anonymise', '<Obrisani član>'],
   /* THE TWO WORDS `membership.basis` SPELLS, and they are the schema's vocabulary rather than
      anything the route refuses. `MembershipWriteApi` turns the ground a moderator pressed into
      one of them and writes it to the column; `membership_basis_known` (V38) is what decides the
@@ -336,11 +339,13 @@ describe('the reasons the server can name', () => {
        row above, so a second reason arrives as a red gate with the number in the message. */
     ['MeMailLanguageApi.java', [WHEN_CHOOSING_THE_LANGUAGE_OF_MAIL], 1],
     /* THE EIGHTH, ADDED 26.09.2026 WITH THE SCREEN THAT MEETS HALF OF IT. `CompetitorWriteApi`
-       declares fourteen constants, which is the largest number on this list and the first
-       where all three categories appear at once: five that are not refusals
+       declared fourteen constants, which was the largest number on this list and the first
+       where all three categories appear at once: five that were not refusals
        (`NOT_A_REASON`), six that are refusals of an act with no screen yet
        (`NOT_YET_ON_ANY_SCREEN`), and the three the administration's screen of members
-       answers.
+       answers. It declares TWELVE since 18.10.2026: the two that left were the replacement
+       name of a deleted woman and the letter `M`, neither a refusal, when the message to the
+       other half of a pair stopped carrying a replacement name (see `NOT_A_REASON`).
 
        AND THE THREE IT ANSWERS ARE WHOLE SERBIAN SENTENCES RATHER THAN CODES, which changes
        nothing here and is worth saying because it looks like it should. This gate is over
@@ -348,7 +353,7 @@ describe('the reasons the server can name', () => {
        names LOOK like is not its question. `WHEN_DELETING_A_MEMBER` explains why the server
        answers prose here where every other route answers a code, and why the screen maps it
        rather than letting `ServerSaid` print it. */
-    ['CompetitorWriteApi.java', [WHEN_DELETING_A_MEMBER], 14],
+    ['CompetitorWriteApi.java', [WHEN_DELETING_A_MEMBER], 12],
     /* THE TENTH, ADDED 28.09.2026 WITH THE SCREEN THAT ACTIVATES A MEMBERSHIP. Nine constants
        and SEVEN reasons, which is the third file on this list where those two numbers differ;
        `NOT_A_REASON` above says which two are not refusals and why. The payments screen answers

@@ -485,12 +485,16 @@ class TeamJoiningWriteApi {
 	 * @param applicantName his name as {@code teams.inviteMissedBody} names him, read in the
 	 *                      same statement as everything else so that the name written into a
 	 *                      message cannot be one from after the row was gone
+	 * @param applicantGender the letter {@code competitor.gender} holds for the applicant, read
+	 *                      in that same statement for the reason the name is: it picks the word
+	 *                      that message says he did, and it is HIS, never the reader's
 	 */
-	private record TheApplication(long id, long applicant, String applicantName, String teamName) {
+	private record TheApplication(long id, long applicant, String applicantName,
+			String applicantGender, String teamName) {
 	}
 
 	/** An invitation the member it names may really answer. */
-	private record TheInvitation(long id, String teamName, String hisName) {
+	private record TheInvitation(long id, String teamName, String hisName, String hisGender) {
 	}
 
 	/**
@@ -659,7 +663,7 @@ class TeamJoiningWriteApi {
 				theSeasonHeRunsFromReads(his.get().teamName()));
 
 		theOtherTeamsThatAskedHim(his.get().applicant(), team, his.get().applicantName(),
-				his.get().teamName());
+				his.get().applicantGender(), his.get().teamName());
 
 		return ResponseEntity.noContent().build();
 	}
@@ -880,7 +884,8 @@ class TeamJoiningWriteApi {
 		takeHimIn(me, team, now);
 		theInvitationIsOver(invitation);
 
-		theOtherTeamsThatAskedHim(me, team, his.get().hisName(), his.get().teamName());
+		theOtherTeamsThatAskedHim(me, team, his.get().hisName(), his.get().hisGender(),
+				his.get().teamName());
 
 		return ResponseEntity.noContent().build();
 	}
@@ -1040,7 +1045,7 @@ class TeamJoiningWriteApi {
 	 * would be the same news twice.
 	 */
 	private void theOtherTeamsThatAskedHim(long member, long joined, String hisName,
-			String joinedTeam) {
+			String hisGender, String joinedTeam) {
 
 		List<Long> leaders = db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
 						+ " select leader from ("
@@ -1054,7 +1059,8 @@ class TeamJoiningWriteApi {
 				.list();
 
 		for (long leader : leaders) {
-			tell(leader, THE_INVITATION_WAS_MISSED, theMissedInvitationReads(hisName, joinedTeam));
+			tell(leader, THE_INVITATION_WAS_MISSED,
+					theMissedInvitationReads(hisName, hisGender, joinedTeam));
 		}
 	}
 
@@ -1067,41 +1073,52 @@ class TeamJoiningWriteApi {
 	 * for one sentence.
 	 */
 	static String heIsInTheTeamReads(String team) {
-		return "Primljen si u tim „" + team + "\"";
+		return "Primljen si u tim \"" + team + "\"";
 	}
 
 	/** {@code teams.joinDoneBody}. */
 	static String theSeasonHeRunsFromReads(String team) {
-		return "Od naredne sezone trčiš za tim „" + team + "\".";
+		return "Od naredne sezone trčiš za tim \"" + team + "\".";
 	}
 
 	/** {@code teams.joinNoSubject}. */
 	static String theApplicationWasRefusedReads(String team) {
-		return "Prijava u tim „" + team + "\" nije prihvaćena";
+		return "Prijava u tim \"" + team + "\" nije prihvaćena";
 	}
 
 	/** {@code teams.joinNoBody}. */
 	static String theRefusalReads(String team) {
-		return "Tim „" + team + "\" nije prihvatio tvoju prijavu.";
+		return "Tim \"" + team + "\" nije prihvatio tvoju prijavu.";
 	}
 
 	/** {@code teams.inviteSubject}. */
 	static String theInvitationReads(String team) {
-		return "Poziv u tim „" + team + "\"";
+		return "Poziv u tim \"" + team + "\"";
 	}
 
 	/** {@code teams.inviteBody}. */
 	static String theInvitationBodyReads(String team) {
-		return "Tim „" + team + "\" te poziva da od naredne sezone trčiš za njih.";
+		return "Tim \"" + team + "\" te poziva da od naredne sezone trčiš za njih.";
 	}
 
 	/**
-	 * {@code teams.inviteMissedBody}, whose two values are the member who joined somewhere and
-	 * the team he joined - never the team being written to, which is the reading that would
-	 * make every one of these letters say the wrong thing.
+	 * {@code teams.inviteMissedBody}, whose values are the member who joined somewhere, his
+	 * gender and the team he joined - never the team being written to, which is the reading
+	 * that would make every one of these letters say the wrong thing.
+	 *
+	 * <p>PDL P18, 18.10.2026: the word is "ušao" or "ušla" by the gender of the member who joined
+	 * the team, and not "ušao/la". It is HIS gender and not the reader's: the team leader this is
+	 * written to may be either, and is unrelated to who joined.
+	 *
+	 * @param gender the letter {@code competitor.gender} holds, which the schema keeps to
+	 *               {@code M} and {@code F} (so there is no third word to choose). The man's
+	 *               letter is spelt here and not held in a constant, because the frontend's
+	 *               {@code refusals.test.ts} reads every constant of this class as a possible
+	 *               refusal, and a letter is not one.
 	 */
-	static String theMissedInvitationReads(String name, String team) {
-		return name + " je u međuvremenu ušao/la u tim „" + team + "\", pa vaš poziv više ne stoji.";
+	static String theMissedInvitationReads(String name, String gender, String team) {
+		return name + " je u međuvremenu " + ("M".equals(gender) ? "ušao" : "ušla")
+				+ " u tim \"" + team + "\", pa vaš poziv više ne stoji.";
 	}
 
 	/**
@@ -1183,7 +1200,8 @@ class TeamJoiningWriteApi {
 	 */
 	private Optional<TheApplication> applicationHeMayDecide(long me, long team, long application) {
 		return db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
-						+ " select a.id, a.competitor_id, c.first_name || ' ' || c.last_name, t.name"
+						+ " select a.id, a.competitor_id, c.first_name || ' ' || c.last_name, c.gender,"
+						+ " t.name"
 						+ " from team_application a"
 						/* THE TEAM IS JOINED FROM THE PATH AND THE ROW MUST NAME IT, which is
 						   the other way round from how this was first written - and a mutation
@@ -1201,7 +1219,7 @@ class TeamJoiningWriteApi {
 						+ " and coalesce(" + TeamApi.WHO_ADMINISTERS_IT + " = ?, false)")
 				.params(team, application, me)
 				.query((row, one) -> new TheApplication(row.getLong(1), row.getLong(2),
-						row.getString(3), row.getString(4)))
+						row.getString(3), row.getString(4), row.getString(5)))
 				.optional();
 	}
 
@@ -1213,14 +1231,14 @@ class TeamJoiningWriteApi {
 	 * about him, and reading it afterwards would be reading it from after the row was gone.
 	 */
 	private Optional<TheInvitation> invitationHeMayAnswer(long me, long team, long invitation) {
-		return db.sql("select i.id, t.name, c.first_name || ' ' || c.last_name"
+		return db.sql("select i.id, t.name, c.first_name || ' ' || c.last_name, c.gender"
 						+ " from team_invitation i"
 						+ " join team t on t.id = i.team_id"
 						+ " join competitor c on c.id = i.competitor_id"
 						+ " where i.id = ? and i.team_id = ? and i.competitor_id = ? and c.active")
 				.params(invitation, team, me)
 				.query((row, one) -> new TheInvitation(row.getLong(1), row.getString(2),
-						row.getString(3)))
+						row.getString(3), row.getString(4)))
 				.optional();
 	}
 

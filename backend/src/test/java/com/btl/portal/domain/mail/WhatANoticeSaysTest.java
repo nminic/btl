@@ -195,17 +195,16 @@ class WhatANoticeSaysTest {
 
 	@Test
 	void nothingIsAcceptedWhereSomethingIsRequired() {
-		assertThatThrownBy(() -> WhatANoticeSays.about(null, MailLanguage.SERBIAN, "a", "b"))
+		assertThatThrownBy(() -> WhatANoticeSays.about(null, MailLanguage.SERBIAN, "a"))
 				.isInstanceOf(NullPointerException.class);
 
-		assertThatThrownBy(() -> WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, null, "a",
-				"b")).isInstanceOf(NullPointerException.class).hasMessage("in");
+		assertThatThrownBy(() -> WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, null, "a")).isInstanceOf(NullPointerException.class).hasMessage("in");
 
 		assertThatThrownBy(() -> WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED,
 				MailLanguage.SERBIAN, (String[]) null)).isInstanceOf(NullPointerException.class);
 
 		assertThatThrownBy(() -> WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED,
-				MailLanguage.SERBIAN, null, "1")).isInstanceOf(NullPointerException.class);
+				MailLanguage.SERBIAN, (String) null)).isInstanceOf(NullPointerException.class);
 
 		assertThatThrownBy(() -> WhatANoticeSays.moment(null, MailLanguage.SERBIAN))
 				.isInstanceOf(NullPointerException.class);
@@ -249,13 +248,56 @@ class WhatANoticeSaysTest {
 	@Test
 	void anEnglishNoticeIsWrittenInEnglish() {
 		Said english = WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, MailLanguage.ENGLISH,
-				"24 September 2026 at 16:35", "2");
+				"24 September 2026 at 16:35");
 		Said serbian = WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, MailLanguage.SERBIAN,
-				"24.09.2026. 16:35", "2");
+				"24.09.2026. 16:35");
 
 		assertThat(english.body()).contains("password").contains("BTL").doesNotContain("lozink");
 		assertThat(serbian.body()).contains("lozink").doesNotContain("password");
 		assertThat(english.subject()).isNotEqualTo(serbian.subject());
+	}
+
+	/**
+	 * WHAT THE PASSWORD NOTICE SAYS, WORD FOR WORD, IN BOTH LANGUAGES (PDL P18, 18.10.2026).
+	 *
+	 * <p>The owner, on the line "Broj tako odjavljenih uređaja": "IZBRISATI". It is held as a
+	 * snapshot of the whole text and not as a pattern over what must not be there, because a
+	 * pattern has to be right about sentences nobody has written yet. The sessions are still
+	 * ended by the route, and that has its own case in {@code MePasswordApiTest}; what is held
+	 * here is only that the letter no longer says how many. The text ends with the line break
+	 * the dictionary's last continuation leaves, which is how it has always been.
+	 */
+	@Test
+	void thePasswordNoticeSaysExactlyWhatItWasDecidedToSayAndNoCountOfDevices() {
+		assertThat(WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, MailLanguage.SERBIAN,
+				"24.09.2026. 16:35").body())
+				.isEqualTo(String.join("\n",
+						"Lozinka na vašem nalogu u Balkanskoj trkačkoj ligi promenjena je"
+								+ " 24.09.2026. 16:35.",
+						"",
+						"Tom promenom su odjavljeni svi ostali uređaji sa kojih ste bili prijavljeni, i"
+								+ " na njima ćete ponovo morati da se prijavite, novom lozinkom.",
+						"",
+						"Ako ste ovo uradili vi, nemate šta dalje da uradite.",
+						"",
+						"Ako niste, neko drugi zna vašu staru lozinku. Odmah zatražite novu lozinku sa"
+								+ " strane za prijavu i javite nam se na info@balkanskatrkackaliga.net.",
+						""));
+
+		assertThat(WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, MailLanguage.ENGLISH,
+				"24 September 2026 at 16:35").body())
+				.isEqualTo(String.join("\n",
+						"The password of your BTL account was changed on 24 September 2026 at 16:35.",
+						"",
+						"That change signed out every other device you were signed in on, and on each"
+								+ " of them you will have to sign in again, with the new password.",
+						"",
+						"If it was you, there is nothing more you need to do.",
+						"",
+						"If it was not, somebody else knows your old password. Ask for a new password on"
+								+ " the sign-in page at once and write to us at"
+								+ " info@balkanskatrkackaliga.net.",
+						""));
 	}
 
 	/** Facts of the right count, each one visibly itself so a case can find it in the text. */

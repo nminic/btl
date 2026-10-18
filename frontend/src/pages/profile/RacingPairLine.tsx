@@ -160,7 +160,10 @@ export function RacingPairLine({
         from: t('app.name'),
         to: other,
         subject: t('pair.brokenSubject'),
-        body: t('pair.endedBody', {
+        /* The verb follows the sex of whoever PRESSED, who is the reader on his own page, and
+           never of the half who is told (PDL P18, 18.10.2026, "Raskid para: ime u nominativu"):
+           a racing pair is one man and one woman, so the other half is always the other sex. */
+        body: t(competitor.gender === 'F' ? 'pair.endedBodyFemale' : 'pair.endedBody', {
           who: named(competitor.memberNumber),
           season: pair.season,
         }),
