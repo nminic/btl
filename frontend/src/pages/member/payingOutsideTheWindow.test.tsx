@@ -275,11 +275,62 @@ describe('whoever owes nothing for the running season is told what he was told',
     expect(screen.queryByText(NO_RANKING)).not.toBeInTheDocument()
   }, SLOW)
 
+  /* **THE MEMBER WHOSE FEE STANDS, AS PRODUCTION HAS HIM**: from 1 January to 14 October the season
+     on sale is the running one and he holds a membership row of it, so the server answers a basis
+     AND the season beside it (PDL P8, 18.10.2026). The case above stands him with neither, a state
+     that cannot exist once a fee stands, and so measured a panel production never draws.
+
+     **TWO SOURCES OF THE SEASON, SEPARATED BY THE DATE.** The season a payment buys
+     (`seasonBeingPaidFor`) and the season the renewal still to open is for (`seasonBeingRenewed`)
+     are the same year on every day inside the window and different on every day outside it, so
+     these three days are the only ones on which a sentence that names the wrong one reads a
+     different year. The state line names the running season, the heading over the shut panel
+     names the next. */
+  it.each([
+    ['2027-03-01', 'payment', 'Članarina za sezonu 2027 je plaćena.'],
+    ['2027-03-01', 'balance', 'Članarina za sezonu 2027 je plaćena iz balansa.'],
+    ['2027-10-14', 'payment', 'Članarina za sezonu 2027 je plaćena.'],
+  ])(
+    'a member whose fee stands and who holds the running season, on %s on a %s, is still told when renewal opens',
+    async (today, basis, stated) => {
+      openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: 2027 }, today)
+
+      expect(await screen.findByText(SHUT)).toBeVisible()
+      expect(screen.getByText(stated)).toBeVisible()
+      expect(screen.getByRole('heading', { level: 2, name: 'Obnova članarine za 2028.' })).toBeVisible()
+      expect(screen.queryByText(/je već plaćena/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
+    },
+    SLOW,
+  )
+
+  /* **AND WHERE A PAYMENT WOULD OTHERWISE BE OFFERED, HE IS TOLD HE HAS PAID, FOR THE SEASON THE
+     PAYMENT WOULD HAVE BOUGHT.** Outside the window the panel is drawn to somebody whose fee does
+     not stand, and a basis of the season on sale beside such a flag is the seam this measures: the
+     sentence names the running season, and a screen that took it from the renewal (the next one)
+     reads 2028 on every one of these days. Whether production ever answers this pair is not claimed;
+     what is claimed is which season the sentence names when it does. */
+  it.each([
+    ['2027-03-01', 2027],
+    ['2027-10-14', 2027],
+    ['2028-01-01', 2028],
+  ])('a member holding the running season whose fee does not stand, on %s, is told it is paid for %i', async (today, season) => {
+    openHisPage({ ...LAPSED, membershipBasis: 'payment', membershipSeason: season }, today)
+
+    expect(
+      await screen.findByText(`Članarina za ${season} je već plaćena, pa nema šta da uplatiš.`),
+    ).toBeVisible()
+    expect(screen.queryByText(SHUT)).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
+  }, SLOW)
+
   it.each([
     ['whose fee has lapsed', LAPSED],
     ['whose fee stands', STANDING],
   ])('a member %s who is freed of the fee is asked for nothing', async (_what, record) => {
-    openHisPage({ ...record, membershipBasis: 'feeExempt' }, '2027-03-01')
+    /* Freed of the season on sale, which on 1 March 2027 is 2027 (PDL P8, 18.10.2026): the basis
+       comes with the season it is the basis of, as the server answers it. */
+    openHisPage({ ...record, membershipBasis: 'feeExempt', membershipSeason: 2027 }, '2027-03-01')
 
     expect(await screen.findByText('Oslobođen si plaćanja članarine, pa nema šta da uplatiš.')).toBeVisible()
     expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()

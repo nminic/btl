@@ -66,6 +66,14 @@ class MembershipCarriedOverTest extends DatabaseTest {
 	private void whatV22Creates() {
 		jdbc.execute("drop table membership");
 		jdbc.execute("alter table payment drop constraint payment_competitor_season_unique");
+
+		/* AND WHAT STOOD BEFORE V22 AND IS GONE SINCE V62: the per-person column, put back as V7
+		   wrote it, so the carry is still measured against the one source it must NOT read. Without
+		   it the fixture could not write the man whose column says `feeExempt` while his payments
+		   make him a payer, and that disagreement is what the class note says this case is about. */
+		jdbc.execute("alter table competitor add column membership_basis text not null default 'payment'"
+				+ " constraint competitor_membership_basis_known"
+				+ " check (membership_basis in ('payment', 'feeExempt'))");
 	}
 
 	private void competitor(String number, String last, String code, String basis, int firstSeason) {

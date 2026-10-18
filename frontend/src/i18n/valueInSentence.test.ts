@@ -281,6 +281,11 @@ describe('a sentence with a value put into it', () => {
          race's own name and adds what parts it from the races beside it. No case to be
          wrong in - it stands after „trku" as the thing being named, and a proper name in
          Serbian keeps its written form there. */
+      /* The basis of the season on sale and that season, in the moderation of the members (PDL P8,
+         18.10.2026, „uz godinu"): „Oslobođen članarine za 2028". The basis is the dictionary's own
+         label in the nominative, and the season is a bare year after „za", which has no case to be
+         wrong in. */
+      'admin.basisOfTheSeason',
       'admin.dropRaceNamed',
       /* „Ovim brišeš i {count} rezultata.", asked before an event is deleted (owner,
          28.09.2026). The value is a COUNT, so it governs the noun rather than being
@@ -363,6 +368,8 @@ describe('a sentence with a value put into it', () => {
       'leagues.countingOf',
       'leagues.season',
       'membership.active',
+      /* The season on sale a member already holds, a bare year after „za" (PDL P8, 18.10.2026). */
+      'membership.alreadyPaid',
       /* What the member actually runs in, since 18.10.2026 (PDL P7): the season is a figure
          after a noun in the locative and has no case to be wrong in, and the category is a name
          after a colon, in the nominative, which is the form `categoryLabel` gives. */
@@ -388,6 +395,10 @@ describe('a sentence with a value put into it', () => {
          „tim" and leaves the name itself alone. No formatter writes it: `Team.name` is
          handed over as the server answers it. */
       'membership.leaveTeamAsk',
+      /* And the two bases of the season on sale said in „Stanje" with the year, after „sezonu",
+         which the year follows as a label and does not decline (PDL P8, 18.10.2026). */
+      'membership.paidFor',
+      'membership.paidFromBalance',
       'membership.priceNow <- money',
       'membership.referralNote',
       'membership.renewal',

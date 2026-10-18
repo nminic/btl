@@ -62,7 +62,7 @@ class InboxConstraintsTest extends DatabaseTest {
 	private static final String AN_INVITE = "(select id from pair_invite limit 1)";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender, birth_date,"
-			+ " place_id, city, country_id, first_season, first_season_2027, active, membership_basis,"
+			+ " place_id, city, country_id, first_season, first_season_2027, active, "
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -90,11 +90,11 @@ class InboxConstraintsTest extends DatabaseTest {
 	@BeforeEach
 	void probe() {
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000970', 'Prvi', 'Primalac', 'M',"
-				+ " date '1985-05-05', " + A_TOWN + ", null, null, 2027, false, true, 'payment',"
+				+ " date '1985-05-05', " + A_TOWN + ", null, null, 2027, false, true, "
 				+ " '00112233445566a0', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000971', 'Druga', 'Clanica', 'F',"
-				+ " date '1990-10-10', " + A_TOWN + ", null, null, 2027, false, true, 'payment',"
+				+ " date '1990-10-10', " + A_TOWN + ", null, null, 2027, false, true, "
 				+ " '00112233445566a1', null, '', false, 'none', 'Otac', 'Ulica 2', 'S',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 

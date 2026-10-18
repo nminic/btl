@@ -835,10 +835,10 @@ class APictureGoesWithItsLastHolderTest {
 	private long aMember(String number, String referralCode) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, first_season, first_season_2027, active,"
-						+ " membership_basis, referral_code, bio, profile_hidden, birthday_shown,"
+						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Slika', 'Bez Nosioca', 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, true, 'payment',"
+						+ " (select id from place where rank = 1), 2027, false, true, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00') returning id")
 				.params(number, referralCode).query(Long.class).single();

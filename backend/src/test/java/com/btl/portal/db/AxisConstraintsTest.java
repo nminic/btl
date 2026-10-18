@@ -107,7 +107,7 @@ class AxisConstraintsTest extends DatabaseTest {
 	private static final String AN_INSTANT = "timestamptz '2027-04-04 09:00:00+00'";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender, birth_date,"
-			+ " place_id, city, country_id, first_season, first_season_2027, active, membership_basis,"
+			+ " place_id, city, country_id, first_season, first_season_2027, active, "
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 	private static final String EVENT_COLUMNS =
@@ -125,7 +125,7 @@ class AxisConstraintsTest extends DatabaseTest {
 	   annotation that uses them takes a constant and a method call is not one. */
 	private static final String GOOD_COMPETITOR = "insert into competitor (" + COMPETITOR_COLUMNS + ") values ("
 			+ "'000902', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN + ", null, null, 2027, false, true,"
-			+ " 'payment', '00112233445566aa', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+			+ " '00112233445566aa', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 			+ " timestamptz '2026-09-01 10:00:00+00')";
 	private static final String GOOD_EVENT = "insert into btl_event (" + EVENT_COLUMNS + ") values ("
 			+ "'druga-proba-2027', 'Druga proba', date '2027-05-05', " + A_TOWN
@@ -158,10 +158,10 @@ class AxisConstraintsTest extends DatabaseTest {
 	@BeforeEach
 	void probe() {
 		db.sql(competitor("'" + PROBE_MEMBER + "', 'Probni', 'Takmicar', 'M', date '1985-03-03', " + A_TOWN
-				+ ", null, null, 2027, false, true, 'payment', 'aaaabbbbccccdddd', null, '', false, 'none',"
+				+ ", null, null, 2027, false, true, 'aaaabbbbccccdddd', null, '', false, 'none',"
 						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")).update();
 		db.sql(competitor("'000901', 'Druga', 'Proba', 'F', date '1992-07-07', null, 'Zaselak', " + A_COUNTRY
-				+ ", 2027, true, true, 'feeExempt', 'ffffeeeeddddcccc', null, '', true, 'full',"
+				+ ", 2027, true, true, 'ffffeeeeddddcccc', null, '', true, 'full',"
 				+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")).update();
 
 		db.sql("insert into btl_event (" + EVENT_COLUMNS + ") values ('" + PROBE_SLUG + "', 'Probni dogadjaj', "
@@ -185,7 +185,7 @@ class AxisConstraintsTest extends DatabaseTest {
 				// ------------------------------------------------------------- competitor
 				Violation.of("competitor_pk",
 						"insert into competitor (id, " + COMPETITOR_COLUMNS + ") select id, '000903', 'Probni',"
-								+ " 'Clan', 'M', date '1990-05-05', place_id, null, null, 2027, false, true, 'payment',"
+								+ " 'Clan', 'M', date '1990-05-05', place_id, null, null, 2027, false, true,"
 								+ " '00112233445566aa', null, '', false, 'none',"
 								+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00' from competitor"
 								+ " where member_number = '" + PROBE_MEMBER + "'"),
@@ -199,11 +199,11 @@ class AxisConstraintsTest extends DatabaseTest {
 						competitorRow("'000903'", "'aaaabbbbccccdddd'")),
 				Violation.of("competitor_place_fk", "insert into competitor (" + COMPETITOR_COLUMNS + ") values ("
 						+ "'000903', 'Probni', 'Clan', 'M', date '1990-05-05', (select max(id) + 1 from place), null, null,"
-						+ " 2027, false, true, 'payment', '00112233445566aa', null, '', false, 'none',"
+						+ " 2027, false, true, '00112233445566aa', null, '', false, 'none',"
 						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"),
 				Violation.of("competitor_country_fk", "insert into competitor (" + COMPETITOR_COLUMNS + ") values ("
 						+ "'000903', 'Probni', 'Clan', 'M', date '1990-05-05', null, 'Zaselak',"
-						+ " (select max(id) + 1 from country), 2027, false, true, 'payment', '00112233445566aa',"
+						+ " (select max(id) + 1 from country), 2027, false, true, '00112233445566aa',"
 						+ " null, '', false, 'none',"
 						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"),
 				/* A member brought by a member who is not there. Minus one rather
@@ -211,7 +211,7 @@ class AxisConstraintsTest extends DatabaseTest {
 				   id this very row is about to be given and the failure would then
 				   name the check that refuses a member who brought himself. */
 				Violation.of("competitor_referred_by_fk", competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', "
-						+ A_TOWN + ", null, null, 2027, false, true, 'payment', '00112233445566aa',"
+						+ A_TOWN + ", null, null, 2027, false, true, '00112233445566aa',"
 						+ " -1, '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 
 				/* Six digits, because the address of a profile is built out of the
@@ -222,39 +222,34 @@ class AxisConstraintsTest extends DatabaseTest {
 				Violation.of("competitor_member_number_shape",
 						competitorRow("'00090A'", "'00112233445566aa'")),
 				Violation.of("competitor_first_name_not_blank", competitor("'000903', '   ', 'Clan', 'M', date '1990-05-05', "
-						+ A_TOWN + ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+						+ A_TOWN + ", null, null, 2027, false, true, '00112233445566aa', null,"
 						+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.of("competitor_last_name_not_blank", competitor("'000903', 'Probni', '   ', 'M', date '1990-05-05', "
-						+ A_TOWN + ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+						+ A_TOWN + ", null, null, 2027, false, true, '00112233445566aa', null,"
 						+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				/* Two letters and nothing else. Not a third word: the portal reads M
 				   and F everywhere, and a lowercase m is the same member written twice
 				   as far as any tally by gender is concerned. */
 				Violation.of("competitor_gender_known", competitor("'000903', 'Probni', 'Clan', 'X', date '1990-05-05', "
-						+ A_TOWN + ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+						+ A_TOWN + ", null, null, 2027, false, true, '00112233445566aa', null,"
 						+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.of("competitor_gender_known", competitor("'000903', 'Probni', 'Clan', 'm', date '1990-05-05', "
-						+ A_TOWN + ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+						+ A_TOWN + ", null, null, 2027, false, true, '00112233445566aa', null,"
 						+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
-				/* `honorary` on purpose, and it must stay. The new Statute of 17.08.2026 has one
-				   kind of membership, and somebody who does not pay is a full member the board has
-				   exempted (article 24, point 10); "počasni" there means somebody who is NOT a
-				   member, so the word may not be used for one. This row is what refuses it: the
-				   basis moved to `feeExempt` and the old value must never be storable again. */
-				Violation.of("competitor_membership_basis_known",
-						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'honorary', '00112233445566aa', null,"
-								+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
+				/* `honorary` WAS REFUSED HERE ON THE PER-PERSON COLUMN, which V62 dropped together
+				   with `competitor_membership_basis_known`. The word is still refused, on the one
+				   home the basis has left: `MembershipConstraintsTest` writes `honorary` into
+				   `membership.basis` and requires `membership_basis_known` to name itself. */
 				/* Three values and no fourth. A fourth would be a promise the profile
 				   cannot keep, and the empty string is the shape a form sends when
 				   nobody chose. */
 				Violation.of("competitor_birthday_shown_known",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'day', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.of("competitor_birthday_shown_known",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, '', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				/* Sixteen lowercase hexadecimal characters. The member number is what
 				   the link used to carry and is exactly what it must not be again. */
@@ -267,11 +262,11 @@ class AxisConstraintsTest extends DatabaseTest {
 				   is a member from nowhere, and both is a member in two towns. */
 				Violation.of("competitor_town_is_from_the_codebook_or_typed",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', null, null, null,"
-								+ " 2027, false, true, 'payment', '00112233445566aa', null, '', false, 'none',"
+								+ " 2027, false, true, '00112233445566aa', null, '', false, 'none',"
 										+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.of("competitor_town_is_from_the_codebook_or_typed",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN + ", 'Zaselak', " + A_COUNTRY
-								+ ", 2027, false, true, 'payment', '00112233445566aa', null, '', false, 'none',"
+								+ ", 2027, false, true, '00112233445566aa', null, '', false, 'none',"
 										+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				/* And both halves of "a typed town brings its own country": a typed
 				   town with no country is a member whose country nothing can answer
@@ -279,29 +274,29 @@ class AxisConstraintsTest extends DatabaseTest {
 				   made to avoid. */
 				Violation.of("competitor_typed_town_names_its_country",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', null, 'Zaselak', null,"
-								+ " 2027, false, true, 'payment', '00112233445566aa', null, '', false, 'none',"
+								+ " 2027, false, true, '00112233445566aa', null, '', false, 'none',"
 										+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.of("competitor_typed_town_names_its_country",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN + ", null, " + A_COUNTRY
-								+ ", 2027, false, true, 'payment', '00112233445566aa', null, '', false, 'none',"
+								+ ", 2027, false, true, '00112233445566aa', null, '', false, 'none',"
 										+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.of("competitor_city_not_blank",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', null, '   ', " + A_COUNTRY
-								+ ", 2027, false, true, 'payment', '00112233445566aa', null, '', false, 'none',"
+								+ ", 2027, false, true, '00112233445566aa', null, '', false, 'none',"
 										+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				/* Nobody brought himself. Not a joke: an empty value read as
 				   "everybody" has already once let every member of this portal read
 				   somebody else's news as his own. */
 				Violation.of("competitor_not_referred_by_itself",
 						"insert into competitor (id, " + COMPETITOR_COLUMNS + ") select 900001, '000903', 'Probni',"
-								+ " 'Clan', 'M', date '1990-05-05', place_id, null, null, 2027, false, true, 'payment',"
+								+ " 'Clan', 'M', date '1990-05-05', place_id, null, null, 2027, false, true,"
 								+ " '00112233445566aa', 900001, '', false, 'none',"
 								+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00' from competitor"
 								+ " where member_number = '" + PROBE_MEMBER + "'"),
 
 				Violation.notNull("competitor_id_not_null", "id",
 						"insert into competitor (id, " + COMPETITOR_COLUMNS + ") values (null, '000903', 'Probni',"
-								+ " 'Clan', 'M', date '1990-05-05', " + A_TOWN + ", null, null, 2027, false, true, 'payment',"
+								+ " 'Clan', 'M', date '1990-05-05', " + A_TOWN + ", null, null, 2027, false, true,"
 								+ " '00112233445566aa', null, '', false, 'none',"
 								+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"),
 				/* `competitor_member_number_not_null` je ovde stajao do V16, kad je clanski broj
@@ -313,50 +308,46 @@ class AxisConstraintsTest extends DatabaseTest {
 				   `competitor_member_number_shape`, i to se nije promenilo. */
 				Violation.notNull("competitor_first_name_not_null", "first_name",
 						competitor("'000903', null, 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.notNull("competitor_last_name_not_null", "last_name",
 						competitor("'000903', 'Probni', null, 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.notNull("competitor_gender_not_null", "gender",
 						competitor("'000903', 'Probni', 'Clan', null, date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.notNull("competitor_birth_date_not_null", "birth_date",
 						competitor("'000903', 'Probni', 'Clan', 'M', null, " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.notNull("competitor_first_season_not_null", "first_season",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, null, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, null, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.notNull("competitor_first_season_2027_not_null", "first_season_2027",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, null, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, null, true, '00112233445566aa', null,"
 								+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.notNull("competitor_active_not_null", "active",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, null, 'payment', '00112233445566aa', null,"
-								+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
-				Violation.notNull("competitor_membership_basis_not_null", "membership_basis",
-						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, null, '00112233445566aa', null,"
+								+ ", null, null, 2027, false, null, '00112233445566aa', null,"
 								+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.notNull("competitor_referral_code_not_null", "referral_code",
 						competitorRow("'000903'", "null")),
 				Violation.notNull("competitor_bio_not_null", "bio",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " null, false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.notNull("competitor_profile_hidden_not_null", "profile_hidden",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', null, 'none',"
 								+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.notNull("competitor_birthday_shown_not_null", "birthday_shown",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, null,"
 								+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 
@@ -366,43 +357,43 @@ class AxisConstraintsTest extends DatabaseTest {
 				   be sent to. */
 				Violation.notNull("competitor_birth_date_not_null", "birth_date",
 						competitor("'000903', 'Probni', 'Clan', 'M', null, " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none',"
 								+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.notNull("competitor_father_name_not_null", "father_name",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none',"
 								+ " null, 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.of("competitor_father_name_not_blank",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none',"
 								+ " '   ', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.notNull("competitor_address_not_null", "address",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none',"
 								+ " 'Otac', null, 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.of("competitor_address_not_blank",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none',"
 								+ " 'Otac', '   ', 'M', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.notNull("competitor_shirt_size_not_null", "shirt_size",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none',"
 								+ " 'Otac', 'Ulica 1', null, timestamptz '2026-09-01 10:00:00+00'")),
 				/* An eighth size, which the form cannot offer and the league cannot order. */
 				Violation.of("competitor_shirt_size_known",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none',"
 								+ " 'Otac', 'Ulica 1', 'XXXXL', timestamptz '2026-09-01 10:00:00+00'")),
 				Violation.notNull("competitor_health_statement_at_not_null", "health_statement_at",
 						competitor("'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none',"
 								+ " 'Otac', 'Ulica 1', 'M', null")),
 
@@ -413,14 +404,14 @@ class AxisConstraintsTest extends DatabaseTest {
 				Violation.of("competitor_phone_not_blank",
 						"insert into competitor (" + COMPETITOR_COLUMNS + ", phone) values ("
 								+ "'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 								+ " timestamptz '2026-09-01 10:00:00+00', '   ')"),
 				/* A photograph that is not there: the row would name a file the disk never got. */
 				Violation.of("competitor_photo_fk",
 						"insert into competitor (" + COMPETITOR_COLUMNS + ", photo_id) values ("
 								+ "'000903', 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-								+ ", null, null, 2027, false, true, 'payment', '00112233445566aa', null,"
+								+ ", null, null, 2027, false, true, '00112233445566aa', null,"
 								+ " '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 								+ " timestamptz '2026-09-01 10:00:00+00', 999999)"),
 
@@ -727,7 +718,7 @@ class AxisConstraintsTest extends DatabaseTest {
 	 *  case is about. */
 	private static String competitorRow(String memberNumber, String referralCode) {
 		return competitor(memberNumber + ", 'Probni', 'Clan', 'M', date '1990-05-05', " + A_TOWN
-				+ ", null, null, 2027, false, true, 'payment', " + referralCode + ", null, '', false, 'none',"
+				+ ", null, null, 2027, false, true, " + referralCode + ", null, '', false, 'none',"
 				+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00'");
 	}
 

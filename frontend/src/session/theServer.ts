@@ -164,7 +164,7 @@ export type WhoTheServerSaysIAm = {
    * chosen.** The owner, 20.09.2026: „Clan vidi SVOJ osnov clanstva; tudj ne vidi niko
    * osim administracije." `/api/competitors` keeps the second half by asking about the
    * CALLER and never about the row (`CompetitorApi`,
-   * `case when cast(:administration as boolean) then c.membership_basis end`), so a
+   * `case when cast(:administration as boolean) then held.basis end`), so a
    * member is not given it even on his own row. `/api/me` is where the first half
    * lives: `MeApi.MyOwnRecord` carries it, on one row, and that row is his.
    *
@@ -174,11 +174,24 @@ export type WhoTheServerSaysIAm = {
    * opened with a payment slip on it. A member who owes the league nothing would have
    * been asked for money the first time he opened „Moja clanarina".
    *
-   * Null for a visitor, for an account that races for nobody, and for a word the
-   * answer carries that the portal does not know: all three are „I was not told", and
-   * the screen may not turn any of them into „you pay".
+   * **It is the basis of the SEASON ON SALE since V62** (owner, 18.10.2026, PDL P8: „do
+   * 14.10. je osnova 2027, od 15.10 je osnova 2028"), read off his membership row of that
+   * season, which is the one home of the fact.
+   *
+   * Null for a visitor, for an account that races for nobody, for a member who holds no
+   * row for the season on sale, and for a word the answer carries that the portal does not
+   * know. The last of those is told apart by `membershipSeason`, which the server answers
+   * exactly when a row stands: a season with no word the portal knows is still a season he
+   * holds, and the screen may not turn it into „you pay".
    */
   membershipBasis: MembershipBasis | null
+  /**
+   * THE SEASON THAT BASIS IS THE BASIS OF, which is whether he holds a membership of the season
+   * on sale at all, and null where the answer did not say. Present exactly when a row stands
+   * (`MeApi.MyOwnRecord.membershipSeason`), so it is the one fact the renewal panel turns on: a
+   * member who holds the season on sale is offered no payment for it, on whichever basis.
+   */
+  membershipSeason: number | null
   /**
    * THE CALLER'S OWN REFERRAL LINK, and null where the answer did not say.
    *
@@ -370,6 +383,7 @@ export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null>
     firstSeason: wholeIn(mine, 'firstSeason'),
     teamId: wholeIn(mine, 'teamId'),
     membershipBasis: basisIn(mine),
+    membershipSeason: wholeIn(mine, 'membershipSeason'),
     referralCode: codeIn(mine),
     referredCount: wholeIn(mine, 'referredCount'),
     /* The presence of the object and not of any key inside it, which is the one difference
@@ -743,7 +757,7 @@ function countryIn(mine: object | null): string | null {
  */
 function wholeIn(
   mine: object | null,
-  name: 'firstSeason' | 'teamId' | 'teamSince' | 'referredCount',
+  name: 'firstSeason' | 'teamId' | 'teamSince' | 'referredCount' | 'membershipSeason',
 ): number | null {
   if (mine === null) {
     return null

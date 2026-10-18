@@ -89,8 +89,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 	void theSixTablesCarryTheseColumnsAndNoOthers() {
 		assertThat(columnsOf("competitor")).containsExactlyInAnyOrder("id", "member_number", "first_name",
 				"last_name", "gender", "place_id", "city", "country_id", "first_season",
-				"first_season_2027", "active", "membership_basis", "referral_code", "referred_by", "bio",
+				"first_season_2027", "active", "referral_code", "referred_by", "bio",
 				"profile_hidden", "birthday_shown",
+				/* AND NO BASIS OF A MEMBERSHIP. `membership_basis` stood here from V7 until V62
+				   dropped it: the basis is a fact about a season and its one home is
+				   `membership.basis` (PDL P8, 18.10.2026). */
 				/* V8, the thirteen things registration collects. `birth_year` is here too and is no
 				   longer written by anybody: it is generated from `birth_date`, so the date is the
 				   fact and the year is a way of saying it. */
@@ -766,11 +769,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 		int number = nextMember++;
 		return db
 				.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date, place_id,"
-						+ " city, country_id, first_season, first_season_2027, active, membership_basis,"
+						+ " city, country_id, first_season, first_season_2027, active,"
 						+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at) values ('000" + number
 						+ "', '" + firstName + "', '" + lastName + "', 'M', date '1990-05-05', " + town
-						+ ", 2027, false, true, 'payment', '0000000000000" + number + "', "
+						+ ", 2027, false, true, '0000000000000" + number + "', "
 						+ (referredBy == null ? "null" : referredBy) + ", '', false, 'none', "
 						+ "'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.query(Long.class)

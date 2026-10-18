@@ -378,11 +378,11 @@ class WhatAnIndexHoldsTest {
 	void aMemberWhoCanPay() {
 		payer = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, first_season, first_season_2027, active,"
-						+ " membership_basis, referral_code, bio, profile_hidden, birthday_shown,"
+						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (null, 'Probni', 'Platisa', 'M', date '1985-01-01',"
 						+ " (select id from place order by rank limit 1), 2027, false, false,"
-						+ " 'payment', '00112233445566aa', '', false, 'none', 'Otac', 'Ulica 9', 'L',"
+						+ " '00112233445566aa', '', false, 'none', 'Otac', 'Ulica 9', 'L',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.query(Long.class).single();
 	}

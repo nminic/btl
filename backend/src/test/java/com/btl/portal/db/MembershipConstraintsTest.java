@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -28,12 +27,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <p><b>One answer per person per season</b>, which is the primary key and not a unique constraint
  * beside a surrogate.
  *
- * <p><b>The basis is one of exactly two words</b>, and that is not a list written down here: both
- * rules are taken out of the catalogue and PostgreSQL is asked to judge each word against the
- * other rule, which is the shape {@link PaymentStatesMatchTheSchemaTest} uses. Comparing two
- * written expressions instead was measured to have a hole: a value with any character that is not
- * a letter appeared on neither side of the comparison, so {@code 'fee-waived'} added to one of the
- * two rules alone passed the whole suite.
+ * <p><b>The basis is one of exactly three words, and this is its one home</b> (V62). Until V62 a
+ * second rule stood on the per-person column {@code competitor.membership_basis} and the words of
+ * the two rules were put to each other by PostgreSQL, which is the shape
+ * {@link PaymentStatesMatchTheSchemaTest} uses; comparing two written expressions instead was
+ * measured to have a hole, because {@code 'fee-waived'} added to one rule alone passed the whole
+ * suite. The column is gone, and what is asked now is that no second home comes back
+ * ({@code theBasisStandsOnTheMembershipAndNowhereElse}).
  *
  * <p><b>And a membership names the receipt behind it</b> (ADL A12, 03.08.2026): "aktivacija nosi
  * polje osnova i vezu ka uplati koja sme biti prazna samo kad je osnov pocasni". Both directions
@@ -85,7 +85,7 @@ class MembershipConstraintsTest extends DatabaseTest {
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
 			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
-			+ " membership_basis, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
+			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
 	private static final String COLUMNS = "competitor_id, season, basis, payment_id";
@@ -169,15 +169,11 @@ class MembershipConstraintsTest extends DatabaseTest {
 	 * be satisfied by a cascade that emptied it if his were the only row in it. Three receipts
 	 * because the composite key has two ways to be wrong - another member's receipt and another
 	 * season's - and a fixture with one receipt can express neither.
-	 *
-	 * <p>The member who holds the membership carries {@code feeExempt} in the per-person column of
-	 * V7 while his membership stands on a payment. That is the disagreement the table exists to
-	 * end, and here it keeps the two columns from being two sources of one value.
 	 */
 	@BeforeEach
 	void probe() {
-		competitor("001000", "Probni", "Clan", "00112233445566f1", "feeExempt");
-		competitor("001001", "Drugi", "Clan", "00112233445566f2", "payment");
+		competitor("001000", "Probni", "Clan", "00112233445566f1");
+		competitor("001001", "Drugi", "Clan", "00112233445566f2");
 
 		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'blagajnik@primer.rs',"
 				+ " (select id from role where code = 'moderator'))").update();
@@ -198,12 +194,12 @@ class MembershipConstraintsTest extends DatabaseTest {
 				.update();
 	}
 
-	private void competitor(String number, String first, String last, String code, String basis) {
+	private void competitor(String number, String first, String last, String code) {
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, ?, ?, 'M',"
-						+ " date '1982-02-02', " + A_TOWN + ", null, null, 2027, false, true, ?, ?,"
+						+ " date '1982-02-02', " + A_TOWN + ", null, null, 2027, false, true, ?,"
 						+ " null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, first, last, basis, code).update();
+				.params(number, first, last, code).update();
 	}
 
 	/** A recognised payment, because an awaited one is not a membership of anything. */
@@ -601,126 +597,60 @@ class MembershipConstraintsTest extends DatabaseTest {
 	}
 
 	@Test
-	void bothRulesAboutABasisAreStillThere() {
+	void theRuleAboutABasisIsStillThere() {
 		assertThat(ruleFor("membership_basis_known"))
 				.as("the membership has no rule about the basis, so nothing below compares anything")
 				.startsWith("CHECK").contains("basis");
-		assertThat(ruleFor("competitor_membership_basis_known"))
-				.as("V7 has no rule about the basis, so nothing below compares anything")
-				.startsWith("CHECK").contains("membership_basis");
-		assertThat(basesNamedIn("competitor_membership_basis_known"))
-				.as("V7 names fewer than two bases, so the loops below assert almost nothing")
-				.hasSize(2);
+		assertThat(basesNamedIn("membership_basis_known"))
+				.as("the membership names fewer than three bases, so the cases below assert almost"
+						+ " nothing")
+				.hasSize(3);
 	}
 
 	/**
-	 * EVERY BASIS V7 NAMES, THIS TABLE TAKES, and PostgreSQL is the one asked.
+	 * AND IT IS THE ONLY ONE, BECAUSE THE BASIS HAS ONE HOME (V62).
 	 *
-	 * <p>The words are read off the rule the catalogue hands back and each is put to the OTHER
-	 * rule, rather than two written expressions being compared to each other. Measured on
-	 * 13.09.2026, which is why it is written this way: a comparison of the words alone went
-	 * through {@code '([a-zA-Z]+)'}, so {@code 'fee-waived'} added to one of the two rules matched
-	 * on neither side and the suite stayed green while the same fact had two vocabularies.
+	 * <p>Until V62 a second rule stood on {@code competitor.membership_basis}, V7's
+	 * {@code competitor_membership_basis_known}, and the cases here held the two vocabularies to each
+	 * other in both directions. The owner's decision of 18.10.2026 (PDL P8, „Osnov clanstva ima jedan
+	 * dom, zapis po sezoni; stara kolona po coveku se brise") took the column away, so there is no
+	 * second vocabulary to hold: what this asks instead is that NO table but {@code membership}
+	 * carries a basis at all. It is asked of the catalogue over every column of the schema rather
+	 * than of the one name that went, so a per-person basis that comes back under another name, on
+	 * {@code competitor} or anywhere else, turns this red, and so does a rule about one.
 	 */
 	@Test
-	void everyBasisTheCompetitorNamesTheMembershipTakes() {
-		for (String basis : basesNamedIn("competitor_membership_basis_known")) {
-			assertThat(ruleTakes("membership_basis_known", "basis", basis))
-					.as("V7 lets a member be held on the basis '%s' and this table refuses it", basis)
-					.isTrue();
-		}
+	void theBasisStandsOnTheMembershipAndNowhereElse() {
+		assertThat(db.sql("select table_name || '.' || column_name from information_schema.columns"
+						+ " where table_schema = current_schema() and column_name like '%basis%'"
+						+ " order by 1").query(String.class).list())
+				.as("a basis of a membership stands in a second home again")
+				.containsExactly("membership.basis");
+
+		assertThat(db.sql("select con.conname from pg_constraint con"
+						+ " join pg_class rel on rel.oid = con.conrelid"
+						+ " join pg_namespace ns on ns.oid = rel.relnamespace"
+						+ " where ns.nspname = current_schema() and con.contype = 'c'"
+						+ " and pg_get_constraintdef(con.oid) like '%''feeExempt''%'"
+						+ " and rel.relname <> 'membership'").query(String.class).list())
+				.as("a rule outside the membership names a basis, so a second home holds the word")
+				.isEmpty();
 	}
 
 	/**
-	 * THE WORDS THE TWO COLUMNS DO NOT SHARE, and there is exactly one.
+	 * And the rule is a rule: a word nobody named is refused.
 	 *
-	 * <p><b>This list is the narrowing of 27.09.2026 and it has a floor under it rather than a
-	 * promise</b>, which is {@link #theOnlyWordTheTwoColumnsDoNotShareIsThePerSeasonOne}: the
-	 * difference between the two rules is read out of the catalogue and compared with this, so a
-	 * FOURTH word added to one column alone turns that case red and asks for a decision instead of
-	 * being waved through by this one.
-	 */
-	private static final Set<String> ONLY_A_SEASON_CAN_STAND_ON = Set.of("balance");
-
-	/**
-	 * And the other direction, which is the one a rule widened here alone gets wrong - <b>less the
-	 * one word that belongs to a SEASON and not to a PERSON.</b>
-	 *
-	 * <p><b>Why this direction stopped being total, and it is a decision rather than a workaround.</b>
-	 * The owner, 26.09.2026: „Balans veci ili jednak clanarini: clanstvo se aktivira iz balansa." So
-	 * a season can stand on a balance. {@code competitor.membership_basis} is not that fact: PDL
-	 * 06.09.2026 says it „nosi oslobodjenje od clanarine", and the owner on 20.09.2026 gave the
-	 * reason a member is shown his own - „inace ne razume zasto mu portal ne trazi uplatu". It
-	 * answers <b>does this person pay or is he let in free</b>, which is a standing property, and a
-	 * man who settles a season out of his balance is <b>paying</b>; he is not exempt from anything.
-	 *
-	 * <p><b>And the alternative was measured to be worse.</b> Widening V7 to take 'balance' would put
-	 * a word in the per-person column that nothing could ever mean by it: that column says whether a
-	 * person is charged at all, and a man who settles ONE SEASON out of his balance is charged and
-	 * pays. The word would describe no person, only a season, which is the column beside it. It would
-	 * also turn two other floors red for a reason that is not theirs:
-	 * {@code MeApiTest.aMemberIsHandedHisOwnBasisAndTheOtherWordIsNotIt} asserts V7 names exactly
-	 * two words so that a third demands a third caller, and {@link #bothRulesAboutABasisAreStillThere}
-	 * counts them.
-	 *
-	 * <p><b>What holds the half of this case that is still live</b> is
-	 * {@link #everyBasisTheCompetitorNamesTheMembershipTakes} in the other direction, the floor
-	 * under it, and - for the sentence this narrowing rests on - the behaviour itself:
-	 * {@code MyMembershipWriteApiTest.beingLetInOnTheBalanceLeavesTheStandingBasisAlone} activates a
-	 * membership out of the book and demands that {@code competitor.membership_basis} still says
-	 * 'payment' afterwards. If that word ever does have to reach the person, that case turns red
-	 * first.
+	 * <p>Without it the cases above would pass against a rule that takes anything at all, and a floor
+	 * that accepts everything holds nothing up. The word is the one the hole of 13.09.2026 was
+	 * measured with, so it is also the case that fails first if the comparison ever goes back to
+	 * matching letters only.
 	 */
 	@Test
-	void everyBasisTheMembershipNamesTheCompetitorTakes() {
-		for (String basis : basesNamedIn("membership_basis_known")) {
-			if (ONLY_A_SEASON_CAN_STAND_ON.contains(basis)) {
-				continue;
-			}
-			assertThat(ruleTakes("competitor_membership_basis_known", "membership_basis", basis))
-					.as("this table takes the basis '%s' and V7 refuses it, so the same fact has"
-							+ " two vocabularies", basis)
-					.isTrue();
-		}
-	}
-
-	/**
-	 * THE FLOOR UNDER THE EXEMPTION ABOVE, and it is the catalogue that answers rather than a
-	 * sentence.
-	 *
-	 * <p>Whatever {@code membership_basis_known} names and {@code competitor_membership_basis_known}
-	 * does not must be exactly the one word a decision was made about. A fourth basis added to the
-	 * season alone lands here, red, on the day it is added.
-	 */
-	@Test
-	void theOnlyWordTheTwoColumnsDoNotShareIsThePerSeasonOne() {
-		Set<String> theSeasonAlone = new HashSet<>(basesNamedIn("membership_basis_known"));
-		theSeasonAlone.removeAll(basesNamedIn("competitor_membership_basis_known"));
-
-		assertThat(theSeasonAlone)
-				.as("a basis a season can stand on that a person cannot, which is either a decision"
-						+ " or a mistake and has to be one of them on purpose")
-				.containsExactlyInAnyOrderElementsOf(ONLY_A_SEASON_CAN_STAND_ON);
-	}
-
-	/**
-	 * And the rules are rules: a word nobody named is refused by both.
-	 *
-	 * <p>Without it the two cases above would pass against a rule that takes anything at all, and
-	 * a floor that accepts everything holds nothing up. The word is the one the hole was measured
-	 * with, so it is also the case that fails first if the comparison ever goes back to matching
-	 * letters only.
-	 */
-	@Test
-	void aBasisNobodyNamedIsRefusedByBoth() {
+	void aBasisNobodyNamedIsRefused() {
 		assertThat(ruleTakes("membership_basis_known", "basis", "fee-waived"))
 				.as("this table would hold a basis nothing in the portal can produce")
 				.isFalse();
-		assertThat(ruleTakes("competitor_membership_basis_known", "membership_basis", "fee-waived"))
-				.as("V7 would hold a basis nothing in the portal can produce")
-				.isFalse();
 	}
-
 	/**
 	 * AND THE SEASON BOUNDARY IS THE ONE THE PAYMENT ALREADY CARRIES, word for word.
 	 *
@@ -738,8 +668,8 @@ class MembershipConstraintsTest extends DatabaseTest {
 
 	/**
 	 * ONE MAN MAY BE A PAYER ONE SEASON AND LET IN FREE THE NEXT, which is the sentence the owner
-	 * gave on 13.09.2026 as the reason {@code competitor.membership_basis} is the wrong shape:
-	 * it stands per person, so it cannot say this at all.
+	 * gave on 13.09.2026 as the reason {@code competitor.membership_basis} (V7, dropped by V62) was
+	 * the wrong shape: it stood per person, so it could not say this at all.
 	 */
 	@Test
 	void oneManMayHoldTwoSeasonsOnDifferentBases() {

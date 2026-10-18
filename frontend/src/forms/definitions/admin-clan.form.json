@@ -83,22 +83,6 @@
       "name": "firstSeason2027",
       "type": "checkbox",
       "labelKey": "admin.field.firstSeason2027"
-    },
-    {
-      "name": "membershipBasis",
-      "type": "select",
-      "labelKey": "admin.basis",
-      "required": true,
-      "options": [
-        {
-          "value": "payment",
-          "labelKey": "admin.basisValue.payment"
-        },
-        {
-          "value": "feeExempt",
-          "labelKey": "admin.basisValue.feeExempt"
-        }
-      ]
     }
   ]
 }

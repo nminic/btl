@@ -67,6 +67,7 @@ export function SessionProvider({
      (`GET /api/me`) and a screen that had one without the other would be reading half
      a session. */
   const [myMembershipBasis, setMyMembershipBasis] = useState<MembershipBasis | null>(null)
+  const [myMembershipSeason, setMyMembershipSeason] = useState<number | null>(null)
   /* AND THE THREE THE SAME ANSWER CARRIES WHOSE OTHER DOOR CANNOT ANSWER THE CALLER,
      here since 25.09.2026 (PDL P8a). `/api/competitors` carries a country, a first
      season and a team on every row, so these three are not like the four around them -
@@ -332,6 +333,7 @@ export function SessionProvider({
       firstSeason: number | null
       teamId: number | null
       membershipBasis: MembershipBasis | null
+      membershipSeason: number | null
       referralCode: string | null
       referredCount: number | null
       hasARecord: boolean
@@ -363,6 +365,9 @@ export function SessionProvider({
       setMyFirstSeason(who.firstSeason)
       setMyTeamId(who.teamId)
       setMyMembershipBasis(who.membershipBasis)
+      /* And the season beside it, written even when null for the same road: a second sign in
+         during one visit must not inherit the season somebody else holds. */
+      setMyMembershipSeason(who.membershipSeason)
       /* WRITTEN EVEN WHEN NULL, for the same reason the two above are: the road this
          rule was written for is a second sign in during one visit, and a value kept from
          the person before is a value shown to the person after. A member's referral link
@@ -394,6 +399,7 @@ export function SessionProvider({
       signIn: setMemberNumber,
       account,
       myMembershipBasis,
+      myMembershipSeason,
       myCountry,
       myFirstSeason,
       myTeamId,
@@ -483,6 +489,7 @@ export function SessionProvider({
          the same, because a dependency list that leaves out what it reads is a list
          somebody has to re-derive by hand the next time it grows. */
       myMembershipBasis,
+      myMembershipSeason,
       /* And the five P26a and P8a moved here on 25.09.2026, named for the same reason:
          they are set in the same breath as the basis, so the memo would be rebuilt for
          its sake and they would come along - which is the right screen for the wrong

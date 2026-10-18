@@ -55,12 +55,13 @@ const SEARCH_ID = 'members-search'
  *    make an account at all: the invited man sets his own password through a link
  *    and takes the account over himself. It is also not a shape this form could
  *    fill. `CompetitorWriteApi.Invited` takes eighteen fields and
- *    `admin-clan.form.json` has nine, six of which overlap; the form has **no
+ *    `admin-clan.form.json` has eight, six of which overlap; the form has **no
  *    email address at all**, which is the one field the invitation cannot be sent
- *    without, and it asks for `membershipBasis`, which the route refuses from a
- *    form and pins to `payment` because exemption is the owner's to grant. So the
- *    button did not lose a route, it never had one, and its replacement is a
- *    screen of its own.
+ *    without, and it asked for `membershipBasis`, which the route never took from a
+ *    form because exemption is the administration's to grant (and since V62 a basis
+ *    is a membership of a season, which no entry of a person writes; the field is
+ *    gone from the form). So the button did not lose a route, it never had one, and
+ *    its replacement is a screen of its own.
  *
  * 3. **„Otvori" and the town cell are gone, because there is no `PUT`.** This is
  *    the boundary `admin/AdminModerators.tsx` already states in its own words and
@@ -247,10 +248,23 @@ export function AdminMembers() {
                         {/* Read, not edited in place - see the note at the top of
                             this file for why there is no route to write it back. */}
                         <td>{one.city}</td>
+                        {/* THE BASIS OF THE SEASON ON SALE, WITH ITS YEAR, and nothing for a
+                            member who holds no membership of it (owner, 18.10.2026, PDL P8:
+                            „do 14.10. je osnova 2027, od 15.10 je osnova 2028"). Until that day
+                            this drew the per-person column, so a member freed of 2027 was
+                            tagged „Uplata" and one let in on his balance was drawn with a
+                            word the screen did not know. The two fields travel together on
+                            the answer (`CompetitorApi`), and the tag is drawn only when both
+                            are there. */}
                         <td>
-                          <span className={`tag tag--${one.membershipBasis}`}>
-                            {t(`admin.basisValue.${one.membershipBasis}`)}
-                          </span>
+                          {one.membershipBasis !== undefined && one.membershipSeason !== undefined && (
+                            <span className={`tag tag--${one.membershipBasis}`}>
+                              {t('admin.basisOfTheSeason', {
+                                basis: t(`admin.basisValue.${one.membershipBasis}`),
+                                season: one.membershipSeason,
+                              })}
+                            </span>
+                          )}
                         </td>
                         <td>
                           <span className="entity-row-actions">

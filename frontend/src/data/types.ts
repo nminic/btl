@@ -80,11 +80,15 @@ export type Attending = {
   memberNumber: string
 }
 
-/* The two ways a membership is held. A list rather than a union, so what the server
-   said can be looked FOR among them rather than asserted to be one of them (ADL A14,
-   and the shape `SIGNED_IN_ROLES` already has): a word the answer carries that the
-   portal does not know is „I was not told", not a third basis. */
-export const MEMBERSHIP_BASES = ['payment', 'feeExempt'] as const
+/* The three ways a membership of a season is held: a recorded payment, the fee waived by the
+   Managing Board, and the balance (PDL P8, 26.09.2026: „Član se aktivira na tri načina"), which
+   are the three words of `membership_basis_known` (V38). `balance` was missing here until
+   18.10.2026, so a member let in on his balance was answered a word the portal did not know and
+   was drawn with no basis at all. A list rather than a union, so what the server said can be
+   looked FOR among them rather than asserted to be one of them (ADL A14, and the shape
+   `SIGNED_IN_ROLES` already has): a word the answer carries that the portal does not know is
+   „I was not told", not a fourth basis. */
+export const MEMBERSHIP_BASES = ['payment', 'feeExempt', 'balance'] as const
 
 export type MembershipBasis = (typeof MEMBERSHIP_BASES)[number]
 
@@ -195,8 +199,14 @@ export type Competitor = {
    * `MembershipBasis` the portal claimed every member carries it, which was true of
    * the generated file and is false of the answer; the one screen that draws it
    * (`pages/admin/AdminMembers.tsx`) is behind the same door the field is.
+   *
+   * **It is the basis of the SEASON ON SALE**, and absent as well for a member who holds no
+   * membership of that season (owner, 18.10.2026, PDL P8: „do 14.10. je osnova 2027, od 15.10 je
+   * osnova 2028"). The season it is the basis of is `membershipSeason`, beside it.
    */
   membershipBasis?: MembershipBasis
+  /** The season `membershipBasis` is the basis of, present exactly when it is. */
+  membershipSeason?: number
   /*
    * TWO FIELDS STOOD HERE BETWEEN 21.09.2026 AND 25.09.2026 AND BOTH ARE GONE:
    * `referralCode` and `referredCount`, each optional because `/api/competitors`

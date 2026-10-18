@@ -120,7 +120,7 @@ const SCREENS: Screen[] = [
  * unfinished: `POST /api/competitors` is the GROUP entry that sends invitations (PDL P8b,
  * 25.09.2026), which is a different act from filling one record in. `admin/AdminMembers.tsx`
  * states it in full, and the shape of the refusal is measurable rather than argued -
- * `CompetitorWriteApi.Invited` takes eighteen fields where `admin-clan.form.json` has nine,
+ * `CompetitorWriteApi.Invited` takes eighteen fields where `admin-clan.form.json` has eight,
  * and the form carries no email address at all, which is the one field an invitation cannot
  * be sent without.
  *
@@ -423,6 +423,17 @@ describe('a record that is entered rather than changed', () => {
     for (const one of served) {
       for (const [field, value] of Object.entries(one)) {
         shapes.set(field, (shapes.get(field) ?? new Set()).add(shapeOf(value)))
+      }
+    }
+
+    /* AND A FIELD SOME SERVED RECORD LEAVES OUT ALTOGETHER IS ONE A RECORD MAY LEAVE OUT, since
+       18.10.2026: the basis of the season on sale and its season are absent from a member who
+       holds no membership of that season (PDL P8, „Osnov članstva ima jedan dom”), which is the
+       first field of a served member that is sometimes not there rather than sometimes null. The
+       fields every served record carries are asked exactly as before. */
+    for (const field of shapes.keys()) {
+      if (served.some((one) => !(field in one))) {
+        shapes.get(field)?.add('undefined')
       }
     }
 

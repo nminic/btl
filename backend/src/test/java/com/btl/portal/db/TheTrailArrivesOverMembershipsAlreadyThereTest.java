@@ -96,7 +96,7 @@ class TheTrailArrivesOverMembershipsAlreadyThereTest extends DatabaseTest {
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
 			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
-			+ " membership_basis, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
+			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
 	/**
@@ -113,12 +113,12 @@ class TheTrailArrivesOverMembershipsAlreadyThereTest extends DatabaseTest {
 				+ " drop column decided_at cascade");
 	}
 
-	private void competitor(String number, String last, String code, String basis) {
+	private void competitor(String number, String last, String code) {
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', ?, 'M',"
-						+ " date '1982-02-02', " + A_TOWN + ", null, null, 2027, false, true, ?, ?, null,"
+						+ " date '1982-02-02', " + A_TOWN + ", null, null, 2027, false, true, ?, null,"
 						+ " '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, last, basis, code).update();
+				.params(number, last, code).update();
 	}
 
 	/**
@@ -148,11 +148,11 @@ class TheTrailArrivesOverMembershipsAlreadyThereTest extends DatabaseTest {
 				+ " 'Probic', 'blagajnik@primer.rs', (select id from role where code = 'moderator'))")
 				.update();
 
-		competitor("001000", "Oslobodjen", "00112233445566b1", "feeExempt");
-		competitor("001001", "Platisa", "00112233445566b2", "payment");
+		competitor("001000", "Oslobodjen", "00112233445566b1");
+		competitor("001001", "Platisa", "00112233445566b2");
 		/* A third member nobody's account names and nobody's membership mentions, so neither the
 		   competitor table nor the membership table is a list of exactly the rows under test. */
-		competitor("001002", "Bezveze", "00112233445566b3", "payment");
+		competitor("001002", "Bezveze", "00112233445566b3");
 
 		/* And an account that DOES name a competitor, so `account.competitor_id` is not uniformly
 		   empty in this fixture either. */

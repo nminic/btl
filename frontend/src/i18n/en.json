@@ -1155,7 +1155,10 @@
     "firstPaymentOpen": "Paying is open.",
     "firstRenew": "The payment details are below. As soon as the payment arrives, the moderator confirms it and you get your member number.",
     "recognisedByName": "As you do not have a member number yet, the payment has no reference number. It is recognised by your name, and a moderator confirms it by hand.",
-    "noRanking": "A fee paid now does not give you the right to be ranked."
+    "noRanking": "A fee paid now does not give you the right to be ranked.",
+    "paidFor": "The fee for season {season} is paid.",
+    "paidFromBalance": "The fee for season {season} is paid from your balance.",
+    "alreadyPaid": "The fee for {season} is already paid, so there is nothing to pay."
   },
   "review": {
     "title": "The queue for checking results",
@@ -1207,8 +1210,10 @@
     "basis": "Membership basis",
     "basisValue": {
       "payment": "Payment",
-      "feeExempt": "Exempt from the fee"
+      "feeExempt": "Exempt from the fee",
+      "balance": "Balance"
     },
+    "basisOfTheSeason": "{basis} for {season}",
     "pricing": "Price list",
     "ranking": "The right to be ranked",
     "rankingByPeriod": "By the period of payment",

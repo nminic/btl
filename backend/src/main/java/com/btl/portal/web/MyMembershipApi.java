@@ -133,7 +133,8 @@ class MyMembershipApi {
 		   in" - which for this member is false, because that route answers him 409
 		   `thereIsNoFeeToPay` with his balance untouched. Serving nought in every column would
 		   therefore put a false value in the one field that drives a button. His basis already
-		   reaches his own screen through `/api/me` (owner, 20.09.2026), so nothing he needs is lost.
+		   reaches his own screen through `/api/me` (owner, 20.09.2026), and since V62 it is the basis
+		   of this same season off this same row, so nothing he needs is lost.
 
 		   WHAT THIS WAS BEFORE, said out loud because it was money: until this was written the route
 		   read `exemptFromTheFee` not at all, while `MembershipInvoice` computed it and both writing
@@ -148,8 +149,10 @@ class MyMembershipApi {
 		   404 for every season after it and the portal could no longer bill a man it had freed once.
 		   It now asks the `membership` row for the season on sale.
 
-		   THE OPEN PART, named rather than settled: what his own screen should show him instead. A
-		   field on this answer would be the cheap way and it is deliberately not invented here. */
+		   WHAT HIS OWN SCREEN SHOWS HIM INSTEAD comes off `/api/me` and not off this answer: the
+		   basis of the season on sale with its year (PDL P8, 18.10.2026), so „Moja clanarina" draws
+		   the sentence about being freed for that season and offers no payment. No field is added
+		   here for it. */
 		if (owed.exemptFromTheFee()) {
 			return ResponseEntity.notFound().build();
 		}

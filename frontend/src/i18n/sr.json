@@ -1155,7 +1155,10 @@
     "firstPaymentOpen": "Uplata je otvorena.",
     "firstRenew": "Podatke za uplatu vidiš u nastavku. Čim uplata stigne, moderator je potvrđuje i dobijaš članski broj.",
     "recognisedByName": "Pošto još nemaš članski broj, uplata nema poziv na broj. Prepoznaje se po imenu, a moderator je potvrđuje ručno.",
-    "noRanking": "Članarina plaćena sada ne daje pravo rangiranja."
+    "noRanking": "Članarina plaćena sada ne daje pravo rangiranja.",
+    "paidFor": "Članarina za sezonu {season} je plaćena.",
+    "paidFromBalance": "Članarina za sezonu {season} je plaćena iz balansa.",
+    "alreadyPaid": "Članarina za {season} je već plaćena, pa nema šta da uplatiš."
   },
   "review": {
     "title": "Red za proveru rezultata",
@@ -1207,8 +1210,10 @@
     "basis": "Osnov članstva",
     "basisValue": {
       "payment": "Uplata",
-      "feeExempt": "Oslobođen članarine"
+      "feeExempt": "Oslobođen članarine",
+      "balance": "Balans"
     },
+    "basisOfTheSeason": "{basis} za {season}",
     "pricing": "Cenovnik",
     "ranking": "Pravo rangiranja",
     "rankingByPeriod": "Prema periodu uplate",

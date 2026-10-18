@@ -44,7 +44,7 @@ class OneTextWaitsCarriedOverTest extends DatabaseTest {
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
 			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
-			+ " membership_basis, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
+			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
 	/** Everything V53 creates, taken away so it has something to create. */
@@ -55,7 +55,7 @@ class OneTextWaitsCarriedOverTest extends DatabaseTest {
 	private void competitor(String number, String code) {
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', 'Zateceni',"
 						+ " 'M', date '1982-02-02', " + A_TOWN + ", null, null, 2027, false, true,"
-						+ " 'payment', ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, code).update();
 	}

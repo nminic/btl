@@ -930,6 +930,8 @@ describe('the answer the backend gives', () => {
        - `membershipBasis`, which a member is not given even on his own row - the
          condition is the CALLER and never the row - and which reaches him through
          `/api/me` instead (owner, 20.09.2026, „Clan vidi SVOJ osnov clanstva");
+       - `membershipSeason`, the season that basis is the basis of (PDL P8, 18.10.2026), which
+         leaves with the basis and is withheld with it;
        - `since`, the day a pair was made, answered to nobody (owner, 13.09.2026). */
     const answers: [ResourceName, Record<string, unknown>][] = [
       ['competitors', myOwnRow],
@@ -945,6 +947,7 @@ describe('the answer the backend gives', () => {
     expect(held).toEqual([
       'competitors.active',
       'competitors.membershipBasis',
+      'competitors.membershipSeason',
       'competitors.referralCode',
       'competitors.referredBy',
       'pairs.since',
@@ -959,7 +962,7 @@ describe('the answer the backend gives', () => {
 
     expect(
       Object.keys(servedRow('competitors')).filter((one) => !(one in asTheServerWould)).sort(),
-    ).toEqual(['active', 'membershipBasis', 'referralCode', 'referredBy'])
+    ).toEqual(['active', 'membershipBasis', 'membershipSeason', 'referralCode', 'referredBy'])
 
     /* **AND THE SAME QUESTION ASKED OF THE OTHER TWO READERS, which is what makes the
        list above a statement about the CALLER rather than about the field.**
@@ -977,6 +980,7 @@ describe('the answer the backend gives', () => {
     expect(missing(aCompetitor, servedRow('competitors'))).toEqual([
       'active',
       'membershipBasis',
+      'membershipSeason',
       'referralCode',
       'referredBy',
     ])

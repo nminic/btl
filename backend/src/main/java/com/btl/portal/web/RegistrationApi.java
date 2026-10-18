@@ -625,14 +625,14 @@ class RegistrationApi {
 		Timestamp now = Timestamp.from(clock.instant());
 		long competitor = db.sql("insert into competitor"
 						+ " (first_name, last_name, gender, place_id, city, country_id,"
-						+ "  first_season, first_season_2027, active, membership_basis,"
+						+ "  first_season, first_season_2027, active,"
 						+ "  referral_code, referred_by, bio, profile_hidden, birth_date,"
 						+ "  father_name, address, phone, shirt_size, health_statement_at)"
 						/* `member_number` IS NOT WRITTEN AND `member_number_seq` IS NOT ASKED.
-						   `active` is false and `membership_basis` is 'payment': the basis says
-						   HOW this membership will be held, and 'feeExempt' is honorary
-						   membership, which is the owner's to grant and not a thing a form can
-						   claim. `profile_hidden` is false because hiding a profile is the
+						   `active` is false and NO BASIS IS WRITTEN: since V62 a basis is a
+						   `membership` row of a season, and a registration is no membership of
+						   any season until a payment is recognised or the fee is waived, which
+						   is the administration's to grant and not a thing a form can claim. `profile_hidden` is false because hiding a profile is the
 						   member's own later choice, and `birthday_shown` is left out
 						   altogether so that V7's default - none unless he chooses otherwise,
 						   which is what the privacy policy and article 74 already say - is what
@@ -649,7 +649,7 @@ class RegistrationApi {
 						   `PUT /api/me`, where a moderator sees them before anybody else does.
 						   Written as a literal rather than as an empty parameter so that there
 						   is no value here for a caller to influence at all. */
-						+ " values (?, ?, ?, ?, ?, ?, ?, ?, false, 'payment', ?, ?, '', false, ?,"
+						+ " values (?, ?, ?, ?, ?, ?, ?, ?, false, ?, ?, '', false, ?,"
 						+ "  ?, ?, ?, ?, ?)"
 						+ " returning id")
 				.params(typed.firstName().strip(), typed.lastName().strip(), typed.gender(),

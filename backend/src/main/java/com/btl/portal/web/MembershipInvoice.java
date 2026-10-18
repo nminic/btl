@@ -33,9 +33,10 @@ import java.time.ZonedDateTime;
  *
  * <p><b>AND EVERY ONE OF THOSE IS ASKED OF THE SEASON ON SALE, INCLUDING BEING FREED OF THE
  * FEE.</b> The owner, 27.09.2026: „BESPLATNI CLANOVI NISU BESPLATNI DOZIVOTNO." An exemption is
- * granted one year at a time and lives in {@code membership.basis}, never in the per-person column
- * {@code competitor.membership_basis} - which is written once and never taken back, so reading it
- * here freed a man of every season that followed the one he was given.
+ * granted one year at a time and lives in {@code membership.basis}, its one home since V62. The
+ * per-person column {@code competitor.membership_basis} that stood beside it until then was written
+ * once and never taken back, so reading it here freed a man of every season that followed the one
+ * he was given.
  */
 @Component
 class MembershipInvoice {
@@ -153,10 +154,10 @@ class MembershipInvoice {
 		   named rather than left to be found: `exemptFromTheFee` implies `alreadyAMember`, because
 		   an exemption IS a membership.
 
-		   THE COLUMN IS NOT TOUCHED, and that is deliberate. It has two homes by a boundary PDL
-		   records (`CompetitorApi`, `MembershipWriteApi`), it is what every SCREEN reads, and
-		   moving it is the increment that removes `competitor.active`. What this changes is which
-		   home answers the question about MONEY, and money is per season. */
+		   AND SINCE V62 THIS IS THE ONLY HOME THERE IS. The column is gone (owner, 18.10.2026, PDL
+		   P8, „Osnov clanstva ima jedan dom"), and `MeApi` and `CompetitorApi` answer the basis off
+		   this same row for this same season, so the panel „Stanje" and the panel for renewal
+		   cannot name two different bases for one season. */
 		String basisForTheSeason = db.sql(
 						"select basis from membership where competitor_id = ? and season = ?")
 				.params(me, season).query(String.class).optional().orElse(null);

@@ -280,10 +280,13 @@ class RegistrationApiTest {
 				.as("nothing recorded when he said he was fit to run")
 				.isNotNull();
 
-		/* The basis is how the membership will be held and not that it is held: 'feeExempt'
-		   is honorary membership, which is the owner's to grant, and a form must never be
-		   able to claim it. */
-		assertThat(competitor.get("membership_basis")).isEqualTo("payment");
+		/* NO BASIS OF ANY SEASON, which since V62 is a `membership` row and nothing on him: a
+		   registration is no membership until a payment is recognised or the fee is waived, and
+		   'feeExempt' is the administration's to grant, which a form must never be able to claim. */
+		assertThat(db.sql("select count(*) from membership where competitor_id = ?")
+				.param(competitor.get("id")).query(Integer.class).single())
+				.as("the registration wrote a membership of some season")
+				.isZero();
 		assertThat(competitor.get("profile_hidden")).isEqualTo(false);
 		/* V7's only default, which is O17's decision: none unless the member chooses
 		   otherwise. Left out of the INSERT so that the default is what decides. */
@@ -877,11 +880,11 @@ class RegistrationApiTest {
 	private long aMemberWhoseCodeIs(String code) {
 		return db.sql("insert into competitor (first_name, last_name, gender, birth_date,"
 						+ " city, country_id, first_season, first_season_2027, active,"
-						+ " membership_basis, referral_code, bio, profile_hidden, father_name,"
+						+ " referral_code, bio, profile_hidden, father_name,"
 						+ " address, shirt_size, health_statement_at)"
 						+ " values ('Stari', 'Clanovic', 'M', ?,"
 						+ " 'Beograd', (select id from country where code = ?), 2027, false, true,"
-						+ " 'payment', ?, '', false, 'Otac', 'Ulica 1', 'M', now())"
+						+ " ?, '', false, 'Otac', 'Ulica 1', 'M', now())"
 						+ " returning id")
 				.params(java.sql.Date.valueOf(today.minusYears(40)), theCountryThatTownIsIn, code)
 				.query(Long.class).single();

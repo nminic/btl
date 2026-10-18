@@ -72,6 +72,7 @@ describe('who the server says I am', () => {
       firstSeason: null,
       teamId: null,
       membershipBasis: null,
+      membershipSeason: null,
       /* AND THE TWO P26a MOVED HERE ON 25.09.2026, null for the same reason the two above
          are: this answer carries no record at all, so nothing was said about any of them.
          An answer with no `member` key is an account that races for nobody, and a link for
@@ -153,6 +154,7 @@ describe('who the server says I am', () => {
         firstSeason: null,
         teamId: null,
         membershipBasis: null,
+        membershipSeason: null,
         referralCode: null,
         referredCount: null,
         hasARecord: false,
@@ -174,6 +176,9 @@ describe('who the server says I am', () => {
   it.each([
     ['a member who pays', { member: { membershipBasis: 'payment' } }, 'payment'],
     ['a member the league has freed', { member: { membershipBasis: 'feeExempt' } }, 'feeExempt'],
+    /* The third word, which the portal did not know until 18.10.2026 (PDL P8, „Član se aktivira
+       na tri načina"), so a member let in on his balance was read as „I was not told". */
+    ['a member let in on his balance', { member: { membershipBasis: 'balance' } }, 'balance'],
     /* An account that races for nobody: the record is ABSENT altogether rather than an
        object of nulls, which is what `MeApi.WhoIAm` says in as many words. */
     ['an account that races for nobody', {}, null],
@@ -188,6 +193,27 @@ describe('who the server says I am', () => {
     )
 
     expect((await whoTheServerSaysIAm())?.membershipBasis).toBe(expected)
+  })
+
+  /* **AND THE SEASON THAT BASIS IS THE BASIS OF, since 18.10.2026** (PDL P8, „Osnov članstva ima
+     jedan dom”): the season on sale, which the server answers exactly when he holds a membership
+     of it. It is what „Moja članarina" turns the offer of a payment on, so a value of a sort the
+     portal does not read is null and never a season he would be told he holds. Each state carries
+     a basis beside it except the last, so the season is read off its own key and not off the
+     basis. */
+  it.each([
+    ['a member who holds the season on sale', { member: { membershipBasis: 'payment', membershipSeason: 2028 } }, 2028],
+    ['a member who holds none', { member: { membershipBasis: 'payment' } }, null],
+    ['a season written as text', { member: { membershipBasis: 'feeExempt', membershipSeason: '2028' } }, null],
+    ['a season that is not a whole number', { member: { membershipBasis: 'feeExempt', membershipSeason: 2027.5 } }, null],
+    ['an account that races for nobody', {}, null],
+  ])('says which season the basis is of for %s', async (_what, extra, expected) => {
+    server?.stop()
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'competitor', account: 41, ...extra })),
+    )
+
+    expect((await whoTheServerSaysIAm())?.membershipSeason).toBe(expected)
   })
 
   /* **WHICH MEMBER OF THE LEAGUE THE CALLER IS, WHICH IS THE FOURTH THING THIS ANSWER
@@ -913,6 +939,7 @@ describe('the page of the caller himself', () => {
         firstSeason: 2016,
         teamId: null,
         membershipBasis: 'payment',
+        membershipSeason: null,
         referralCode: 'a92a9c8493cecc3e',
         referredCount: 0,
         hasARecord: true,

@@ -272,10 +272,10 @@ class AttendanceApiTest {
 	private long neverPaid(String first, String last) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, first_season, first_season_2027, active,"
-						+ " membership_basis, referral_code, bio, profile_hidden, birthday_shown,"
+						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (null, ?, ?, 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, false, 'payment',"
+						+ " (select id from place where rank = 1), 2027, false, false, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(first, last, String.format("%016x", ++issued))
@@ -322,11 +322,11 @@ class AttendanceApiTest {
 	private void member(String number, String first, String last, String gender,
 			boolean feeStanding) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, first_season_2027, active, membership_basis,"
+						+ " place_id, first_season, first_season_2027, active, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, ?, 'payment',"
+						+ " (select id from place where rank = 1), 2027, false, ?, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, first, last, gender, feeStanding, String.format("%016x", ++issued))

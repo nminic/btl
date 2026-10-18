@@ -34,6 +34,7 @@ export function person(
     firstSeason2027: false,
     firstSeason: 2027,
     membershipBasis: 'payment',
+    membershipSeason: 2027,
     teamId: null,
     teamSince: null,
     profileHidden: false,

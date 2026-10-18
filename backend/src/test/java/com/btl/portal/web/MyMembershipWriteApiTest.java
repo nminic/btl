@@ -146,17 +146,17 @@ class MyMembershipWriteApiTest {
 
 	@BeforeEach
 	void fiveMembersAndFiveReasons() {
-		competitor(ALREADY_IN_FOR_THIS_SEASON, "payment");
-		competitor(FREED_OF_THE_FEE, "feeExempt");
-		competitor(THE_MAN_WHO_BROUGHT_HIM_IN, "payment");
-		competitor(COMING_BACK, "payment");
-		competitor(SHORT_BY_SIX_HUNDRED, "payment");
-		competitor(EXACTLY_ENOUGH, "payment");
+		competitor(ALREADY_IN_FOR_THIS_SEASON);
+		competitor(FREED_OF_THE_FEE);
+		competitor(THE_MAN_WHO_BROUGHT_HIM_IN);
+		competitor(COMING_BACK);
+		competitor(SHORT_BY_SIX_HUNDRED);
+		competitor(EXACTLY_ENOUGH);
 
 		/* THE ONE WITH NO NUMBER, and he is the one the referral cases are about: he was brought in
 		   by somebody, so activating him has to pay that somebody. Written last, so no case about
 		   him is satisfied by his being the first row of anything. */
-		theFirstTimer = competitor(NEVER_NUMBERED, "payment");
+		theFirstTimer = competitor(NEVER_NUMBERED);
 		db.sql("update competitor set referred_by ="
 						+ " (select id from competitor where member_number = ?) where id = ?")
 				.params(THE_MAN_WHO_BROUGHT_HIM_IN, theFirstTimer).update();
@@ -198,7 +198,7 @@ class MyMembershipWriteApiTest {
 		alreadyInOnHisOwnBalance(idOf(ALREADY_IN_FOR_THIS_SEASON), THE_SEASON_ON_SALE);
 
 		/* AND THE ONE THE BOARD FREED HOLDS A ROW FOR THE SEASON ON SALE, because that is what being
-		   freed of THIS season's fee is. His column says so too, and nothing reads it here. */
+		   freed of THIS season's fee is, and since V62 it is the only place that says so. */
 		db.sql("insert into membership (" + MEMBERSHIP_FREE_OF_THE_FEE + ") values (?, ?, " + A_TRAIL + ")")
 				.params(idOf(FREED_OF_THE_FEE), THE_SEASON_ON_SALE).update();
 	}
@@ -235,7 +235,7 @@ class MyMembershipWriteApiTest {
 
 	private void brought(long referrer, int howMany) {
 		for (int one = 0; one < howMany; one++) {
-			long newcomer = competitor("009" + String.format("%03d", ++issued), "payment");
+			long newcomer = competitor("009" + String.format("%03d", ++issued));
 
 			db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
 							+ " referred_competitor_id, occurred_at, recorded_by, recorded_by_name)"
@@ -247,9 +247,9 @@ class MyMembershipWriteApiTest {
 		}
 	}
 
-	private long competitor(String number, String basis) {
+	private long competitor(String number) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, first_season_2027, active, membership_basis,"
+						+ " place_id, first_season, first_season_2027, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Clan', 'M', date '1990-01-01',"
@@ -258,10 +258,10 @@ class MyMembershipWriteApiTest {
 						   list's DINAR column: 4.200 for the early period, 600 a referral. Until V42
 						   an invoice carried both columns and where he lived changed nothing. */
 						+ " (select id from place where country_id = (select id from country"
-						+ "   where code = 'RS') order by rank limit 1), 2027, false, false, ?, ?, '',"
+						+ "   where code = 'RS') order by rank limit 1), 2027, false, false, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, basis, String.format("%016x", ++issued))
+				.params(number, String.format("%016x", ++issued))
 				.query(Long.class).single();
 	}
 
@@ -634,27 +634,35 @@ class MyMembershipWriteApiTest {
 	}
 
 	/**
-	 * BEING LET IN ON THE BALANCE LEAVES THE STANDING BASIS ALONE.
+	 * BEING LET IN ON THE BALANCE IS WHAT HIS OWN SCREEN IS TOLD HIS BASIS IS, for the season on sale.
 	 *
-	 * <p><b>This is the behaviour that {@code MembershipConstraintsTest}'s narrowing of the basis
-	 * vocabulary rests on</b>, so it is measured here rather than argued there:
-	 * {@code membership.basis} gains the word {@code balance} and
-	 * {@code competitor.membership_basis} does not, because that column answers a different question
-	 * - „does this person pay or is he let in free" (PDL 06.09.2026, „nosi oslobodjenje od
-	 * clanarine"). A man who settles a season out of his balance is paying.
-	 *
-	 * <p>If that word ever does have to reach the person, this case is what turns red first.
+	 * <p>Until V62 this case required the per-person column {@code competitor.membership_basis} to
+	 * still say {@code payment} after he was let in, because V7's rule knew no {@code balance}, and
+	 * {@code /api/me} answered him that per-person word. The owner's decision of 18.10.2026 (PDL P8,
+	 * „Osnov clanstva ima jedan dom") made the season's row the one home, so what is asked now is the
+	 * other end: the row this door writes is the basis his own record answers, with its season.
 	 */
 	@Test
-	void beingLetInOnTheBalanceLeavesTheStandingBasisAlone() throws Exception {
+	void beingLetInOnTheBalanceIsTheBasisHisOwnRecordAnswers() throws Exception {
+		JsonNode before = new ObjectMapper().readTree(http.perform(get("/api/me")
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(FIRST_TIMER).secret())))
+				.andReturn().getResponse().getContentAsString()).path("member");
+		assertThat(before.has("membershipBasis"))
+				.as("he already holds a basis for the season on sale, so the answer below need not"
+						+ " have come from the row this door writes")
+				.isFalse();
+
 		assertThat(activate(FIRST_TIMER).getStatus()).isEqualTo(201);
 
-		assertThat(db.sql("select membership_basis from competitor where id = ?").param(theFirstTimer)
-						.query(String.class).single())
-				.as("the per-person column was rewritten by a fact about one season")
-				.isEqualTo("payment");
-
 		assertThat(membershipOf(theFirstTimer)).startsWith("balance ");
+
+		JsonNode after = new ObjectMapper().readTree(http.perform(get("/api/me")
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(FIRST_TIMER).secret())))
+				.andReturn().getResponse().getContentAsString()).path("member");
+		assertThat(after.path("membershipBasis").asString())
+				.as("he was let in on his balance and his own record does not say so")
+				.isEqualTo("balance");
+		assertThat(after.path("membershipSeason").asInt()).isEqualTo(THE_SEASON_ON_SALE);
 	}
 
 	/**

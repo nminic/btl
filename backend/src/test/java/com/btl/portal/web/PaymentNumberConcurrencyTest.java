@@ -83,7 +83,7 @@ class PaymentNumberConcurrencyTest {
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
 			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
-			+ " membership_basis, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
+			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
 	@Autowired
@@ -135,7 +135,7 @@ class PaymentNumberConcurrencyTest {
 
 	private long competitor(String referralSuffix) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (null, 'Probni',"
-						+ " 'Takmicar', 'M', ?, " + A_TOWN + ", null, null, 2027, false, false, 'payment',"
+						+ " 'Takmicar', 'M', ?, " + A_TOWN + ", null, null, 2027, false, false, "
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(java.sql.Date.valueOf(LocalDate.of(1990, 1, 1)), "00112233445577" + referralSuffix)

@@ -393,6 +393,11 @@ describe('what the portal serves about how old somebody is', () => {
    */
   const MAY_HOLD_A_YEAR = [
     'competitors.json:firstSeason',
+    /* A SEASON, NOT A YEAR OF BIRTH, since 18.10.2026: the season the basis of a membership is the
+       basis of, which is the season on sale (PDL P8, „Osnov članstva ima jedan dom”). It stands
+       beside `membershipBasis` and is present exactly when it is; its value in the file is 2027, the
+       first season of the league, for the twenty nine members the file frees of the fee. */
+    'competitors.json:membershipSeason',
     'competitors.json:teamSince',
     'leagues.json:season',
     'pairs.json:season',

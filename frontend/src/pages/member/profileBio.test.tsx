@@ -221,6 +221,7 @@ function SignInAs({ memberNumber, asking }: { memberNumber: string; asking?: { w
           firstSeason: null,
           teamId: null,
           membershipBasis: null,
+          membershipSeason: null,
           referralCode: null,
           referredCount: null,
           hasARecord: true,

@@ -23,7 +23,6 @@ export const aLapsedMembersPage = {
   memberNumber: '000032',
   country: 'RS',
   firstSeason: 2016,
-  membershipBasis: 'payment',
   /* The one thing that makes him the member this sample is: his fee has lapsed, and since
      11.10.2026 the answer says so (`MeApi.MyOwnRecord.active`). A sample of the lapsed member
      that said `true` would be a standing one with the same name. */
@@ -49,7 +48,19 @@ export const aLapsedMembersPage = {
  * moderator. `memberNumber` is the seventh annotated component and is present in the sample, because a
  * member has one.
  */
-export const WHAT_MAY_BE_LEFT_OUT = ['teamId', 'teamSince', 'photo', 'crop', 'phone', 'bioWaiting']
+export const WHAT_MAY_BE_LEFT_OUT = [
+  'teamId',
+  'teamSince',
+  'photo',
+  'crop',
+  'phone',
+  'bioWaiting',
+  /* And the basis of the season on sale with its season, which a member whose fee has lapsed holds
+     no membership of (`MeApi.MyOwnRecord`, since V62; PDL P8, 18.10.2026). Until that day he was
+     answered the per-person word `payment`. */
+  'membershipBasis',
+  'membershipSeason',
+]
 
 /**
  * `GET /api/me` AS THE SERVER ANSWERS THE LAPSED MEMBER, for the length of one case.

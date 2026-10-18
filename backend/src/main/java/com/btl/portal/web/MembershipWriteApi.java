@@ -90,17 +90,13 @@ import java.util.Optional;
  * zauvek vezan za tu osobu", so somebody freed of the fee a second year keeps the one he
  * has, which is the same rule {@link RecordingAPayment} states for a renewal.
  *
- * <p><b>AND THE FACT IS WRITTEN IN BOTH OF ITS HOMES, WHICH IS A BOUNDARY AND NOT A
- * CHOICE.</b> {@code membership.basis} stands per person per SEASON (V22) and is the shape
- * the owner decided on 13.09.2026; {@code competitor.membership_basis} stands per PERSON
- * (V7) and is the one every reader on this portal actually reads -
- * {@link CompetitorApi#competitors} serves the column, {@link MeApi} serves the member his own,
- * and {@code frontend/src/data/types.ts} declares it. Writing only the table would free a
- * man in a table nothing reads while every screen still called him a payer. PDL:3476 records
- * the two homes as a boundary in as many words, and {@link CompetitorApi} names the
- * increment that ends it: the one that removes {@code competitor.active}, moving both homes
- * and all eight readers at once. Until then this route writes both, and the cases replace
- * one source with the other to prove neither is standing in for it.
+ * <p><b>AND THE FACT HAS ONE HOME, THE ROW OF THE SEASON.</b> {@code membership.basis} stands
+ * per person per SEASON (V22), the shape the owner decided on 13.09.2026. Until V62 this route
+ * also wrote the per-person column {@code competitor.membership_basis}, because every screen
+ * read that one; the owner's decision of 18.10.2026 (PDL P8, „Osnov clanstva ima jedan dom,
+ * zapis po sezoni; stara kolona po coveku se brise") moved {@link CompetitorApi#competitors}
+ * and {@link MeApi} to the row of the season on sale and dropped the column, so the row
+ * written here is what the moderation of the members and „Moja clanarina" both read.
  *
  * <p><b>AND WHOEVER BROUGHT HIM IN IS PAID HERE, which is an obligation this branch's own book
  * creates rather than anything this route wanted.</b> The owner, 13.08.2026: „OK je da se za
@@ -147,19 +143,10 @@ import java.util.Optional;
 @RestController
 class MembershipWriteApi {
 
-	/** {@code membership_basis_known} and {@code competitor_membership_basis_known}, one word. */
+	/** One of the three words of {@code membership_basis_known} (V22, widened by V38). */
 	private static final String FEE_EXEMPT = "feeExempt";
 
-	/**
-	 * {@code membership_basis_known} (V38), AND NOT {@code competitor_membership_basis_known},
-	 * which is the whole reason the two grounds do not write the same columns.
-	 *
-	 * <p><b>Measured rather than assumed:</b> V38 widened the per-SEASON constraint to
-	 * {@code ('payment', 'feeExempt', 'balance')} and left the per-PERSON one at V7:281,
-	 * {@code check (membership_basis in ('payment', 'feeExempt'))}. So this word can be written to
-	 * {@code membership.basis} and CANNOT be written to {@code competitor.membership_basis} - the
-	 * row would be refused outright. See {@link #grant}.
-	 */
+	/** One of the three words of {@code membership_basis_known}, the one V38 added. */
 	private static final String ON_A_BALANCE = "balance";
 
 	static final String THE_FORM_IS_NOT_COMPLETE = "theFormIsNotComplete";
@@ -471,7 +458,7 @@ class MembershipWriteApi {
 	}
 
 	/**
-	 * WRITES THE MEMBERSHIP, AND THE TWO GROUNDS DIFFER IN THREE PLACES RATHER THAN BEING TWO
+	 * WRITES THE MEMBERSHIP, AND THE TWO GROUNDS DIFFER IN TWO PLACES RATHER THAN BEING TWO
 	 * METHODS.
 	 *
 	 * <p>Everything that is the same is the same by construction - the number, {@code active}, the
@@ -479,21 +466,14 @@ class MembershipWriteApi {
 	 * with what decided it. Two methods would let one of the four common things be edited in one of
 	 * them.
 	 *
-	 * <p><b>1. THE SECOND HOME OF THE BASIS IS WRITTEN FOR AN EXEMPTION AND CANNOT BE FOR A
-	 * BALANCE, and that is measured rather than a choice.</b> {@code competitor.membership_basis}
-	 * stands per PERSON (V7) and is what every SCREEN reads. V38 widened the per-SEASON constraint
-	 * {@code membership_basis_known} to three words and left the per-person one exactly where V7:281
-	 * put it: {@code check (membership_basis in ('payment', 'feeExempt'))}. So {@code 'balance'} has
-	 * no second home to be written to - the row would be refused outright - and this route does what
-	 * {@link MyMembershipWriteApi} already does at the other door onto the same ground: it writes
-	 * {@code active} and leaves that column alone.
-	 * <p><b>What is given up by that, said rather than left to be found:</b> a man activated on his
-	 * balance goes on being called a payer by every screen that reads the per-person column, exactly
-	 * as he already is when he lets himself in. That is the boundary PDL:3476 records and
-	 * {@link CompetitorApi} names the increment that ends it - the one that removes
-	 * {@code competitor.active} and moves both homes and all their readers at once.
+	 * <p><b>WHAT IS THE SAME ON BOTH GROUNDS SINCE V62, AND USED TO DIFFER:</b> the basis is
+	 * written in one place, the {@code membership} row. Until then an exemption also wrote the
+	 * per-person column {@code competitor.membership_basis} and a balance could not, because V7's
+	 * {@code competitor_membership_basis_known} knew two words and not three, so a man activated
+	 * on his balance was called a payer by every screen. The column and its check went with the
+	 * owner's decision of 18.10.2026 (PDL P8, „Osnov clanstva ima jedan dom").
 	 *
-	 * <p><b>2. THE TRAIL OF WHO DECIDED IT IS WRITTEN FOR EVERY ACT THAT FORGIVES MONEY, AND ON A
+	 * <p><b>1. THE TRAIL OF WHO DECIDED IT IS WRITTEN FOR EVERY ACT THAT FORGIVES MONEY, AND ON A
 	 * SHORT BALANCE IT STANDS IN TWO PLACES.</b> The owner's decision of 03.10.2026, chosen among the
 	 * options put to him (PDL P8, the entry „Trag (ko je odobrio i kada) ide uz svaku radnju koja
 	 * prasta novac"): an exemption from the fee, and „Odobri umanjen iznos iz balansa"; „Odobri iz
@@ -526,7 +506,7 @@ class MembershipWriteApi {
 	 * {@link MyMembershipWriteApi} only ever spends a balance that covers the fee, so the act forgives
 	 * nothing there, exactly as a whole fee forgives nothing here.
 	 *
-	 * <p><b>3. THE BOOK IS WRITTEN FIRST, AND ONLY ON THE GROUND THAT SPENDS.</b> V38 gives
+	 * <p><b>2. THE BOOK IS WRITTEN FIRST, AND ONLY ON THE GROUND THAT SPENDS.</b> V38 gives
 	 * {@code membership} a {@code balance_entry_id} and
 	 * {@code membership_basis_says_whether_a_book_entry_is_named} refuses a {@code balance}
 	 * membership naming none, so the order is not a preference. An exemption takes nothing off
@@ -548,7 +528,7 @@ class MembershipWriteApi {
 
 		boolean freeOfTheFee = FEE_EXEMPT.equals(basis);
 
-		/* THE LINE IN THE BOOK BEFORE THE MEMBERSHIP THAT NAMES IT, for the reason point 3 gives.
+		/* THE LINE IN THE BOOK BEFORE THE MEMBERSHIP THAT NAMES IT, for the reason point 2 gives.
 		   `spentOnAMembership` is where the sign lives, so what is handed over is money he HAS and
 		   the minus is the book's business rather than this route's. */
 		Long entry = freeOfTheFee ? null
@@ -600,26 +580,19 @@ class MembershipWriteApi {
 		   drew first, and the reason it gave - that no case could fail on the move - is answered by
 		   `FreeingTwiceAtOneInstantTest.aBookingTheDatabaseRefusesDrawsNoNumber`.
 
-		   THE NUMBER AND THE FLAG, AND THE SECOND HOME OF THE BASIS ONLY WHERE IT CAN HOLD THE WORD.
-		   `active` is what every public reader ends on (`where c.active`, ten of them), and PDL:3417
-		   says an activation shows „odmah" exactly as a booked payment does. Both are written whether
-		   or not a number was drawn, so the facts cannot come apart. See point 1 on this method for
-		   why the third column is written on one ground and not the other. Nothing written above
-		   reads any of the three: the book and the referral touch `balance_entry`, and the only
-		   column of `competitor` they read is `referred_by`. */
+		   THE NUMBER AND THE FLAG, AND NOTHING ELSE ON `competitor`. `active` is what every public
+		   reader ends on (`where c.active`, ten of them), and PDL:3417 says an activation shows
+		   „odmah" exactly as a booked payment does. Both are written whether or not a number was
+		   drawn, so the facts cannot come apart, and on both grounds alike: the basis is the row
+		   written above and has no second home since V62. Nothing written above reads either of the
+		   two: the book and the referral touch `balance_entry`, and the only column of `competitor`
+		   they read is `referred_by`. */
 		MemberNumber number = competitor.memberNumber() == null
 				? numbers.draw()
 				: new MemberNumber(competitor.memberNumber());
 
-		if (freeOfTheFee) {
-			db.sql("update competitor set member_number = ?, active = true, membership_basis = ?"
-							+ " where id = ?")
-					.params(number.written(), FEE_EXEMPT, competitor.id()).update();
-		}
-		else {
-			db.sql("update competitor set member_number = ?, active = true where id = ?")
-					.params(number.written(), competitor.id()).update();
-		}
+		db.sql("update competitor set member_number = ?, active = true where id = ?")
+				.params(number.written(), competitor.id()).update();
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 				.body(new Granted(competitor.id(), season, number.written()));

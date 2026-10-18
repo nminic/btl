@@ -292,17 +292,32 @@ class MeApi {
 	 *                     says which of the two a member's own page draws in October
 	 * @param membershipBasis HIS OWN, and the only one that leaves here. Owner, 20.09.2026:
 	 *                     „Clan vidi SVOJ osnov clanstva; tudji ne vidi niko osim
-	 *                     administracije." Never absent: {@code competitor.membership_basis}
-	 *                     is NOT NULL (V7) and {@code competitor_membership_basis_known}
-	 *                     names the words it may hold, so there is no branch here for none
+	 *                     administracije." <b>It is the basis of the SEASON ON SALE</b>
+	 *                     ({@link SeasonClock#seasonBeingPaidFor}), read off his
+	 *                     {@code membership} row for that season, which is the one home of the
+	 *                     fact since V62. Owner, 18.10.2026 (PDL P8, „Osnov clanstva ima jedan
+	 *                     dom"): „do 14.10. je osnova 2027, od 15.10 je osnova 2028." So in the
+	 *                     window it is next season's, and the season the panel „Stanje" names
+	 *                     with it is {@code membershipSeason}. <b>Absent when he holds no row
+	 *                     for that season</b>, which is the ordinary state of a member who has
+	 *                     not yet renewed and of one who never paid: he holds no basis for it,
+	 *                     and a word written in its place would be a basis nobody gave him.
+	 *                     One of the three words {@code membership_basis_known} (V38) names:
+	 *                     {@code payment}, {@code feeExempt} or {@code balance}
+	 * @param membershipSeason the season {@code membershipBasis} is the basis OF, present exactly
+	 *                     when it is, so the screen names the year rather than working it out a
+	 *                     second time from its own clock
 	 * @param active       WHETHER HIS FEE STANDS NOW, which is {@code competitor.active} and the
 	 *                     one fact this record could not tell until 11.10.2026. Never absent: the
 	 *                     column is NOT NULL. <b>It is what tells a member whose fee has lapsed
 	 *                     from one whose fee stands</b>, who were otherwise answered the same
 	 *                     names (measured 11.10.2026 against a real database: a standing member
 	 *                     and a lapsed one differed in nothing that says anything about the fee,
-	 *                     and {@code membershipBasis} is {@code payment} for a payer whose fee
-	 *                     stands and for one whose fee has lapsed alike).
+	 *                     and {@code membershipBasis}, read then off the per-person column, was
+	 *                     {@code payment} for a payer whose fee stood and for one whose fee had
+	 *                     lapsed alike). Since V62 the basis is the row of the season on sale, and
+	 *                     it still does not say whether his fee stands NOW: in the window a member
+	 *                     who has renewed holds a basis for next season whatever this season says.
 	 *                     <b>Together with {@code memberNumber} it tells three people apart who are
 	 *                     all "not active"</b>: no number and not active is somebody who registered
 	 *                     and never paid (ADL A44), a number and not active is a member whose fee
@@ -414,7 +429,9 @@ class MeApi {
 	record MyOwnRecord(@JsonInclude(JsonInclude.Include.NON_NULL) String memberNumber,
 			String country, int firstSeason,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Long teamId,
-			String membershipBasis, boolean active, String referralCode, int referredCount,
+			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis,
+			@JsonInclude(JsonInclude.Include.NON_NULL) Integer membershipSeason,
+			boolean active, String referralCode, int referredCount,
 			String firstName, String lastName, String gender, String city, String ageBand,
 			boolean firstSeason2027,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer teamSince,
@@ -458,7 +475,15 @@ class MeApi {
 		   once for the whole answer, as `CompetitorApi` reads it once for a whole list: a clock
 		   read inside the mapper could cross midnight on 1 January in the middle of one row,
 		   which is the one night of the year this field moves on. */
-		int season = SeasonClock.seasonTheBandIsWorkedOutFor(ZonedDateTime.now(clock));
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		int season = SeasonClock.seasonTheBandIsWorkedOutFor(now);
+
+		/* AND THE SEASON ON SALE, WHICH IS THE ONE HIS BASIS IS ANSWERED FOR, off the same reading
+		   of the clock and from the same home `MembershipInvoice` asks, so the panel „Stanje" and
+		   the panel for renewal name the same season. It is not `season` above: that one is the
+		   season the band is worked out for, and from 15 October to 31 December the two are a year
+		   apart. */
+		int sold = SeasonClock.seasonBeingPaidFor(now);
 
 		return db.sql("select c.member_number,"
 						/* The town's country when the town came out of the codebook, and the
@@ -476,9 +501,13 @@ class MeApi {
 						   and it is answered next to the basis because it is the same kind of fact:
 						   how his membership is held, and whether it is. It is NOT worked out here
 						   from the number or from the basis. The number being absent says "never
-						   paid" and nothing about a member who HAS one, and `payment` is the basis of
-						   a payer whose fee stands and of one whose fee has lapsed alike. */
-						+ " c.membership_basis, c.active, c.referral_code,"
+						   paid" and nothing about a member who HAS one, and the basis is about the
+						   season on sale, which in the window is not the season his fee stands for.
+
+						   THE BASIS IS THE ROW OF THE SEASON ON SALE (V62, PDL P8 of 18.10.2026), and
+						   null when he holds none for it, which `@JsonInclude` turns into an absent
+						   key. */
+						+ " held.basis, c.active, c.referral_code,"
 						/* AND HOW MANY HE HAS BROUGHT IN WHOSE FEE IS STANDING.
 
 						   THIS SAID „word for word `CompetitorApi`'s" UNTIL 25.09.2026, and the
@@ -552,8 +581,16 @@ class MeApi {
 						   gets its decision both change together. */
 						+ " left join team_membership m on m.competitor_id = c.id"
 						+ "  and m.season_to is null"
+						/* HIS MEMBERSHIP OF THE SEASON ON SALE, AND NO OTHER. `membership_pk` is
+						   (competitor, season), so this joins at most one row and he still comes
+						   back once. Both halves of the condition are the question: without the
+						   member it is somebody else's basis, without the season it is every
+						   season he ever held and `single()` refuses the answer. */
+						+ " left join membership held on held.competitor_id = c.id"
+						+ "  and held.season = :sold"
 						+ " where c.id = :me")
 				.param("me", me)
+				.param("sold", sold)
 				.query((row, one) -> {
 					/* Exact decimal all the way out, never a double: `CompetitorApi` and `TeamApi`
 					   say why about the same three numbers (V21 chose `numeric(9, 8)`). Every
@@ -563,9 +600,15 @@ class MeApi {
 					String portrait = row.getString(18);
 					BigDecimal across = row.getBigDecimal(19);
 
+					/* The season of the basis is the season the join was pinned to, so it is
+					   present exactly when a row joined and is never a second reading of the
+					   clock. */
+					String basis = row.getString(5);
+
 					return new MyOwnRecord(row.getString(1), row.getString(2), row.getInt(3),
 							row.getObject(4) == null ? null : row.getLong(4),
-							row.getString(5), row.getBoolean(6), row.getString(7), row.getInt(8),
+							basis, basis == null ? null : sold,
+							row.getBoolean(6), row.getString(7), row.getInt(8),
 							row.getString(9), row.getString(10), row.getString(11),
 							row.getString(12),
 							/* THE RULE IS ASKED FOR, NEVER REPEATED HERE: `Category` is where the
