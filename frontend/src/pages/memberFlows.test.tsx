@@ -421,7 +421,9 @@ describe('membership', () => {
       try {
         renderMembershipOn(today, '000032')
 
-        expect(await screen.findByText(inTheState)).toBeVisible()
+        /* Half the case's clock, so a wait that never ends fails on its own assertion and not on
+           the clock of the case (`btl/CLAUDE.md`, section 25). */
+        expect(await screen.findByText(inTheState, {}, { timeout: SLOW / 2 })).toBeVisible()
         expect(screen.getByText(inTheRenewal)).toBeVisible()
         expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
         expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
@@ -440,7 +442,7 @@ describe('membership', () => {
     try {
       renderMembershipOn('2027-11-01', '000032')
 
-      expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
+      expect(await screen.findByRole('heading', { name: 'Uplatnica' }, { timeout: SLOW / 2 })).toBeVisible()
       expect(screen.queryByText(/Oslobođen si plaćanja/)).not.toBeInTheDocument()
       expect(screen.queryByText(/je već plaćena/)).not.toBeInTheDocument()
     } finally {
@@ -456,7 +458,7 @@ describe('membership', () => {
     try {
       renderMembershipOn('2027-11-01', '000032')
 
-      expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
+      expect(await screen.findByRole('heading', { name: 'Uplatnica' }, { timeout: SLOW / 2 })).toBeVisible()
       expect(screen.queryByText(/je plaćena|je već plaćena|Oslobođen si/)).not.toBeInTheDocument()
     } finally {
       stop()
