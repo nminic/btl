@@ -576,6 +576,30 @@ describe('Rankings', () => {
     expect(men.queryByRole('button', { name: 'F 40-54' })).toBeNull()
   })
 
+  it('writes the category of every row of the table with the space after the letter of the gender', async () => {
+    /* The cell and not only the chip above the table (owner, 18.10.2026): the chip is drawn from
+       the code and the cell from the member, in two places, and either could keep the old
+       spelling or show the code itself. The column is found by its head, and every cell in it is
+       held whole. */
+    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
+
+    const table = await screen.findByRole('table')
+    const column = within(table)
+      .getAllByRole('columnheader')
+      .findIndex((one) => one.textContent === 'Kat.')
+
+    expect(column, 'the table has no column of categories').toBeGreaterThan(-1)
+
+    const said = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => must(at(within(row).getAllByRole('cell'), column).textContent, 'text'))
+
+    expect(said.length).toBeGreaterThan(1)
+    expect(said.filter((one) => /^M (24-|25-39|40-54|55\+)$/.test(one)).length).toBeGreaterThan(0)
+    expect(said.filter((one) => !/^(M (24-|25-39|40-54|55\+)|Početnici)$/.test(one))).toEqual([])
+  })
+
   it('names the beginners by their word, on the buttons and in the table alike', async () => {
     /* The category the league keeps as `M R` is read as „Početnici" wherever a
        visitor meets it (owner, 11.08.2026: „Tako neka se zovu od sada svuda").
