@@ -40,3 +40,36 @@ describe('the payment slip written out beside its QR code', () => {
     expect(rule.getPropertyValue('grid-template-columns')).toBe('minmax(0, 1fr) minmax(0, 1fr)')
   })
 })
+
+/**
+ * The dashed line over the slip is the slip's, and spans both halves (owner, 18.10.2026: „Horizontalna
+ * linija na vrhu treba da ide celom sirinom strane, a QR kod treba da bude alignovan desno u odnosu na
+ * tekstualne podatke za uplatu"; PDL P8, „Blok „Uplatnica sa QR kodom”").
+ *
+ * It was `.pay`'s own line on the code's half, so inside the two columns it covered the right one
+ * only. Nothing rendered can see it (ADL A33), so the sheet is read as text, as above: the line is on
+ * the wrapper that holds both halves, and the code's half draws none of its own.
+ */
+describe('the line over the payment slip', () => {
+  it('is on the wrapper of both halves, dashed, as the PayPal block draws its own', () => {
+    const slip = ruleFor(MEMBER_CSS, '.pay__slip', 'Member.css')
+    const paypal = ruleFor(MEMBER_CSS, '.pay', 'Member.css')
+
+    expect(slip.getPropertyValue('border-top')).toBe(paypal.getPropertyValue('border-top'))
+    expect(slip.getPropertyValue('border-top')).toContain('dashed')
+    expect(slip.getPropertyValue('padding-top')).toBe(paypal.getPropertyValue('padding-top'))
+  })
+
+  it("is not drawn a second time by the code's half, which would put it over one column again", () => {
+    const code = ruleFor(MEMBER_CSS, '.pay__qr', 'Member.css')
+
+    expect(code.getPropertyValue('border-top')).toBe('')
+    expect(code.getPropertyValue('border')).toBe('')
+    expect(code.getPropertyValue('display')).toBe('flex')
+    expect(code.getPropertyValue('flex-direction')).toBe('column')
+    /* The same gap as the written half, so the code starts at the height of the first detail. */
+    expect(code.getPropertyValue('gap')).toBe(
+      ruleFor(MEMBER_CSS, '.pay__slipText', 'Member.css').getPropertyValue('gap'),
+    )
+  })
+})

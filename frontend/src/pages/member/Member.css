@@ -261,6 +261,24 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-16);
+  /* The dashed line over the whole slip and not over the code alone (owner,
+     18.10.2026: "Horizontalna linija na vrhu treba da ide celom sirinom
+     strane"). It was `.pay`'s own line on the code's half, so in the grid it
+     covered the right column only; here it is the first thing of the slip and
+     spans both, the way the PayPal block's line spans its panel. */
+  border-top: 1px dashed var(--border);
+  padding-top: var(--space-10);
+}
+
+/* The code's half: its title at the height of the written half's, and the
+   code starting where the details do (the same gap as `.pay__slipText`), so
+   the two read as one slip and the code stands to the right of the details
+   (owner, 18.10.2026: "QR kod treba da bude alignovan desno u odnosu na
+   tekstualne podatke za uplatu"). */
+.pay__qr {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
 }
 
 @media (min-width: 51.25em) {
