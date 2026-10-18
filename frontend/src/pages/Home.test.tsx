@@ -355,7 +355,7 @@ describe('the season the front page counts', () => {
   let previous = window.matchMedia
 
   /** The history as served, and these results of the league on top of it. */
-  function serveAlso(added: { memberNumber: string; date: string }[]): void {
+  function serveAlso(added: { memberNumber: string; date: string; inItsSeason?: boolean }[]): void {
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
       const answer = await served(input, init)
 
@@ -373,6 +373,9 @@ describe('the season the front page counts', () => {
           ...added.map((one, index) => ({
             ...(typeof template === 'object' && template !== null ? template : {}),
             id: 900_000 + index,
+            /* Runs of the league, by members of the season they were run in: the history they
+               are copied from counts in no season (`Result.inItsSeason`). */
+            inItsSeason: true,
             ...one,
           })),
         ]),
@@ -421,6 +424,21 @@ describe('the season the front page counts', () => {
     serveAlso([
       { memberNumber: '000001', date: '2027-01-10' },
       { memberNumber: '000002', date: '2027-02-14' },
+    ])
+    renderAt('/sr', 'visitor', null, undefined, '2027-03-01')
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Sezona 2027.' })).toBeVisible()
+    expect(await resultsRow()).toBe('Prijavljenih rezultata: 2 rezultata')
+  }, SLOW)
+
+  it('leaves out of 2027 a run of it that counts in no season', async () => {
+    /* PDL P9, 18.10.2026: a run of a year its member was no member of „ne ulazi ni u jednu
+       sezonsku tabelu", and the figures of a season are its table in another shape. Three runs of
+       2027, and the third is one of a year its member was no member of. */
+    serveAlso([
+      { memberNumber: '000001', date: '2027-01-10' },
+      { memberNumber: '000002', date: '2027-02-14' },
+      { memberNumber: '000004', date: '2027-02-20', inItsSeason: false },
     ])
     renderAt('/sr', 'visitor', null, undefined, '2027-03-01')
 

@@ -20,6 +20,7 @@ import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { sep } from 'node:path'
 import { sources } from '../test/sources'
 import { at, first, htmlElement, last, must, selectElement } from '../test/at'
+import { countTheHistoryInItsSeasons } from '../test/countedHistory'
 import { inLeague, playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
 import { renderAt } from '../test/render'
 import { membersAsServed, serverThat } from '../test/serverAnswers'
@@ -2995,6 +2996,10 @@ describe('the row of whoever is signed in', () => {
 })
 
 describe('Leagues', () => {
+  /* The competitions of the generated files are of 2019, whose runs no season counts as served
+     (`test/countedHistory.ts`); these cases measure how one is drawn. */
+  countTheHistoryInItsSeasons()
+
   it('lists what runs alongside the league, and never the league itself', async () => {
     renderAt('/sr/lige')
 

@@ -61,6 +61,14 @@ function movedRecord(record: unknown): unknown {
     copy.season = inLeague(copy.season)
   }
 
+  /* And a run of the history is read as a run of a member of the season it now falls in, which is
+     what „as if the league had run it" means: as served, no season counts a run of 2010 to 2026
+     (`Result.inItsSeason`, PDL P9, 18.10.2026), so every one of these screens would be empty again.
+     Only where the record says it at all, so a pair is moved and nothing more. */
+  if (typeof copy.inItsSeason === 'boolean') {
+    copy.inItsSeason = true
+  }
+
   return copy
 }
 

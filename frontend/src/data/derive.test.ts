@@ -89,6 +89,7 @@ const result = (memberNumber: string | null, date: string, points: number, extra
   seconds: 3000,
   points,
   category: 'short',
+  inItsSeason: true,
   ...extra,
 })
 

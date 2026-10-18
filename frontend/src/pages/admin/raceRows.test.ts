@@ -53,18 +53,36 @@ const row = (over: Partial<RaceRow> = {}): RaceRow => ({
 })
 
 describe('the races of an event while they are being entered', () => {
-  it('opens in the order they are run', () => {
-    /* The day first and the length inside it, which is what „two mornings" reads
-       as. Entered in the other order on purpose, so the sort is what puts them
-       right rather than the order they happened to come in. */
+  it("opens in the owner's order, the longest first and the day not asked", () => {
+    /* PDL P6, 18.10.2026 (`data/raceOrder.ts`): by the length, the longest first, and the day is
+       not a key. Entered in neither that order nor the order of the days, so the sort is what puts
+       them right: the shortest is the earliest, and a list that asked the day first or the length
+       rising would open on it. */
     const rows = rowsOf(
-      [race(3, '2026-10-18', 5), race(1, '2026-10-17', 21.1), race(2, '2026-10-17', 10)],
+      [race(3, '2026-10-17', 5), race(1, '2026-10-18', 21.1), race(2, '2026-10-17', 10)],
       fieldDate,
     )
 
-    expect(rows.map((one) => one.id)).toEqual(['2', '1', '3'])
-    expect(rows[0]?.date).toBe('17/10/2026')
-    expect(rows[0]?.distanceKm).toBe('10')
+    expect(rows.map((one) => one.id)).toEqual(['1', '2', '3'])
+    expect(rows[0]?.date).toBe('18/10/2026')
+    expect(rows[0]?.distanceKm).toBe('21.1')
+  })
+
+  it('opens the races of a length first, then the timed ones by how long they last, then the free', () => {
+    /* The kinds and the limit, which the length alone cannot order: a timed race and a free one
+       carry a length of nought. Handed in with the free race first and the timed ones in neither
+       order, so a table that ordered by the length would open on them as they came. */
+    const rows = rowsOf(
+      [
+        { ...race(1, '2026-10-17', 0), kind: 'free' as const },
+        { ...race(2, '2026-10-17', 0), kind: 'time' as const, limitSeconds: 6 * 3600 },
+        { ...race(3, '2026-10-17', 10) },
+        { ...race(4, '2026-10-17', 0), kind: 'time' as const, limitSeconds: 24 * 3600 },
+      ],
+      fieldDate,
+    )
+
+    expect(rows.map((one) => one.id)).toEqual(['3', '4', '2', '1'])
   })
 
   it('asks for the day and the length, and for nothing else', () => {

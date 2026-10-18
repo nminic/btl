@@ -4,6 +4,7 @@ import { inBoxes } from '../../forms/clock'
 import { fieldDate } from '../../forms/dateField'
 import { raceKind } from '../../data/raceKind'
 import { raceMeasure } from '../../data/raceLabel'
+import { inEventOrder } from '../../data/raceOrder'
 import { formatNumericDate } from '../../i18n/format'
 
 /**
@@ -82,8 +83,13 @@ export function racesToOffer(
     byEvent.set(race.eventId, [...(byEvent.get(race.eventId) ?? []), race])
   }
 
+  /* The races of one event in the owner's order (PDL P6, 18.10.2026, `data/raceOrder.ts`), which
+     names „izbor trke pri unosu rezultata" among the lists it holds for. The sort by the day below
+     is stable, so the races of one event on one day keep that order beside each other; a race of
+     another morning of the same event stands under its own day, which is what this list is
+     ordered by („po datumu od poslednje prema ranijim"). */
   const pairs = events.flatMap((event) =>
-    (byEvent.get(event.id) ?? [])
+    inEventOrder(byEvent.get(event.id) ?? [])
       .filter((race) => race.date <= today)
       .map((race) => ({ event, race })),
   )

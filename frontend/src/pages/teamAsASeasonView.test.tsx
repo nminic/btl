@@ -55,7 +55,9 @@ function aMember(memberNumber: string, since: number) {
 
 let resultsMade = 700_000
 
-function aResult(memberNumber: string, date: string, points: number, distanceKm = 10) {
+/** @param inItsSeason whether a season counts it (`Result.inItsSeason`): true for a run of a member
+ *  of that year, and false for a run of a year before the league, which no season counts. */
+function aResult(memberNumber: string, date: string, points: number, distanceKm = 10, inItsSeason = true) {
   resultsMade += 1
 
   return {
@@ -72,6 +74,7 @@ function aResult(memberNumber: string, date: string, points: number, distanceKm 
     seconds: 3000,
     points,
     category: 'short',
+    inItsSeason,
   }
 }
 
@@ -79,9 +82,9 @@ const MEMBERS = [aMember(FIRST, 2021), aMember(SECOND, 2021), aMember(LATE, 2028
 
 /** What the team did before the league, which is on no standing of it: 99 and 55 points. */
 const BEFORE_THE_LEAGUE = [
-  aResult(FIRST, '2026-05-01', 99),
-  aResult(FIRST, '2019-05-01', 55),
-  aResult(SECOND, '2025-05-01', 77),
+  aResult(FIRST, '2026-05-01', 99, 10, false),
+  aResult(FIRST, '2019-05-01', 55, 10, false),
+  aResult(SECOND, '2025-05-01', 77, 10, false),
 ]
 
 /** What it did in the first season: two members who are in the team then, and the one who is not. */
@@ -248,6 +251,35 @@ describe('the page of a team, in 2027 and after', () => {
       /* The ring counts the same two results, and not the three of 2027 nor the five of the team's
          whole history. */
       expect(racesInTheRing()).toBe('Zbirno2 trke')
+    } finally {
+      stop()
+    }
+  }, SLOW)
+})
+
+describe('the page of a team, and a run of 2027 that no season counts', () => {
+  /* PDL P9, 18.10.2026: a run of a year its member was no member of „ne ulazi ni u jednu sezonsku
+     tabelu". The second member is in the team in 2027 and ran 20 km in it; here that run is one of a
+     year he was no member of, so the team's 2027 is the first member's 10 km alone, and the ring holds
+     one run. The same 2027 as the case above, so the season and the roster cannot be what differs. */
+  it('leaves it out of the counters, the ring and the roster of that season', async () => {
+    const { stop } = answering([
+      aResult(FIRST, '2027-05-02', 10, 10),
+      aResult(SECOND, '2027-05-03', 6, 20, false),
+    ])
+
+    try {
+      renderAt(`/sr/tim/${ITS_ADDRESS}?sezona=2027`, 'visitor', null, undefined, '2028-06-01')
+
+      const rows = await roster()
+      const counters = screen.getByRole('region', { name: sr.profile.stats })
+
+      await waitFor(() => {
+        expect(counters).toHaveTextContent(/\b10\b/)
+      }, { timeout: HALF })
+      expect(counters).not.toHaveTextContent(/\b30\b/)
+      expect(racesInTheRing()).toBe('Zbirno1 trka')
+      expect(pointsOf(rows)).not.toContain(formatPoints(6, 'sr'))
     } finally {
       stop()
     }

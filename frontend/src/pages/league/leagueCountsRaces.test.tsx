@@ -103,6 +103,7 @@ const ran = (id: number, memberNumber: string, raceId: number, points: number): 
   seconds: 3000,
   points,
   category: 'short',
+  inItsSeason: true,
 })
 
 /**
@@ -329,7 +330,9 @@ describe('the list of competitions, for a competition that counts some of the ra
       ids.map(raceOf).map((one, _index, among) => raceLabel(one, among, 'sr'))
 
     expect(underEach('BTL trening trek')).toEqual(named([THE_MIDDLE_OF_THREE]))
-    expect(underEach('Šidski novogodišnji maraton')).toEqual(named(BOTH_OF_TWO))
+    /* The two of one day in the owner's order (PDL P6, 18.10.2026, `data/raceOrder.ts`), the
+       longer first: 1089 is the 42,2 km and 1088 the 32,4, so the server's order is the other way. */
+    expect(underEach('Šidski novogodišnji maraton')).toEqual(named([1089, 1088]))
     expect(underEach('Mrazijada')).toEqual(named([THE_ONLY_ONE]))
 
     /* **The two numbers on the row, from the same races.** Three days and not the eleven the record

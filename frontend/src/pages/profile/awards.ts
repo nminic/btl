@@ -3,7 +3,7 @@ import {
   rankingFor,
   resultsOf,
   seasonOf,
-  seasonsWithResults,
+  seasonsCounted,
 } from '../../data/derive'
 import { FIRST_SEASON } from '../../data/season'
 import type { Competitor, Result } from '../../data/types'
@@ -57,6 +57,12 @@ export function awardsOf(
 
   for (const result of results) {
     const season = seasonOf(result)
+
+    /* A result no season counts stands on no board of any season (`seasonOf`). */
+    if (season === null) {
+      continue
+    }
+
     const inSeason = bySeason.get(season)
 
     if (inSeason === undefined) {
@@ -72,7 +78,7 @@ export function awardsOf(
      raced, so somebody who stood third on the imported 2019 was handed a trophy of a standing
      the league never had. The results themselves stay on the profile (P27, 28.07.2026: the
      personal history goes into the profile); what goes is the place worked out of them. */
-  const raced = new Set(seasonsWithResults(mine).filter((season) => season >= FIRST_SEASON))
+  const raced = new Set(seasonsCounted(mine).filter((season) => season >= FIRST_SEASON))
 
   return [...bySeason.entries()]
     .filter(([season]) => raced.has(season))

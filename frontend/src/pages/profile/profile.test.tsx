@@ -358,6 +358,7 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     seconds: 3000,
     points,
     category: 'short' as const,
+    inItsSeason: true,
   })
 
   it('carries both, the better place first', () => {

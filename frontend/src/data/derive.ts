@@ -53,7 +53,30 @@ export const EMPTY_TOTALS: Totals = {
   points: 0,
 }
 
-export function seasonOf(result: Result): number {
+/**
+ * THE SEASON A RESULT COUNTS IN, OR NONE, AND THE ONE PLACE THAT QUESTION IS ANSWERED.
+ *
+ * PDL P9, the owner's choice of 18.10.2026 on the recommendation put to him: „Rezultat za datum pre
+ * 2027 ili za godinu kad čovek nije bio član vidi se na profilu člana (istorija, krugovi po tipu
+ * trke) i na strani događaja, a ne ulazi ni u jednu sezonsku tabelu, Top listu ni nagradu." Whether
+ * he was a member of that year is the server's to say (`Result.inItsSeason`); the season is the
+ * year the race was run in.
+ *
+ * **`null` is the answer for a result no season counts**, and that is the shape that cannot be
+ * forgotten: every table, board and standing asks `seasonOf(result) === season`, and nothing is
+ * equal to a season but a season, so the result falls out of all of them without any of them
+ * asking a second question. A caller that does arithmetic with the answer is stopped by the
+ * compiler until it says what a result with no season does.
+ *
+ * **A view of a member's own history does not ask this**, and asks `yearOf` instead: the profile,
+ * the page of an event and the ducats count what was run, whether or not a season counts it.
+ */
+export function seasonOf(result: Result): number | null {
+  return result.inItsSeason ? yearOf(result) : null
+}
+
+/** The year a result was run in, which is what a history is read by (see `seasonOf`). */
+export function yearOf(result: Result): number {
   return Number(result.date.slice(0, 4))
 }
 
@@ -122,9 +145,22 @@ export function memberOf<T>(byNumber: Map<string, T>, result: Result): T | undef
   return result.memberNumber === null ? undefined : byNumber.get(result.memberNumber)
 }
 
-/** Newest first, and only seasons that actually have results. */
+/** Newest first, and only years that actually have results: the years of a history, which is a
+ *  profile's own view and counts every run (`yearOf`). A seasonal view asks `seasonsCounted`. */
 export function seasonsWithResults(results: Result[]): number[] {
-  return [...new Set(results.map(seasonOf))].sort((left, right) => right - left)
+  return [...new Set(results.map(yearOf))].sort((left, right) => right - left)
+}
+
+/** Newest first, the seasons some result counts in (`seasonOf`), which is what a seasonal view
+ *  offers: a year whose every run counts in no season is no season of the league's. */
+export function seasonsCounted(results: Result[]): number[] {
+  return [
+    ...new Set(results.flatMap((result) => {
+      const season = seasonOf(result)
+
+      return season === null ? [] : [season]
+    })),
+  ].sort((left, right) => right - left)
 }
 
 /**
@@ -145,7 +181,7 @@ export function seasonsOnOffer(results: Result[], today: string): number[] {
   return [
     ...new Set([
       seasonShown(today),
-      ...seasonsWithResults(results).filter((season) => season >= FIRST_SEASON),
+      ...seasonsCounted(results).filter((season) => season >= FIRST_SEASON),
     ]),
   ].sort((left, right) => right - left)
 }
@@ -446,7 +482,7 @@ export function bestOfficialSeason(results: Result[], memberNumber: string): num
   for (const result of results) {
     const season = seasonOf(result)
 
-    if (result.memberNumber === memberNumber && season >= FIRST_SEASON) {
+    if (result.memberNumber === memberNumber && season !== null && season >= FIRST_SEASON) {
       seasons.set(season, (seasons.get(season) ?? 0) + result.points)
     }
   }

@@ -84,6 +84,7 @@ const result = (memberNumber: string, points: number): Result => ({
   seconds: 3000,
   points,
   category: 'short',
+  inItsSeason: true,
 })
 
 describe('News', () => {

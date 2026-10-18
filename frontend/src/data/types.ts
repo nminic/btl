@@ -583,6 +583,17 @@ export type Result = {
   seconds: number
   points: number
   category: RaceCategory
+  /**
+   * Whether a season counts this result: true exactly when its member was a member OF the year it
+   * was run in (`ResultApi.Result`, which asks `membership`), and so never before 2027.
+   *
+   * PDL P9, the owner's choice of 18.10.2026 on the recommendation put to him: „Rezultat za datum
+   * pre 2027 ili za godinu kad čovek nije bio član vidi se na profilu člana (istorija, krugovi po
+   * tipu trke) i na strani događaja, a ne ulazi ni u jednu sezonsku tabelu, Top listu ni nagradu."
+   * So the result is drawn wherever a result is drawn, and this is read by one function only,
+   * `seasonOf` (`data/derive.ts`), which answers no season for a result that counts in none.
+   */
+  inItsSeason: boolean
 }
 
 /**
