@@ -1,0 +1,557 @@
+[
+  {
+    "memberNumber": "000001",
+    "firstName": "Vladan",
+    "lastName": "Đurišić",
+    "gender": "M",
+    "city": "Beograd",
+    "ageBand": "55+",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000002",
+    "firstName": "Relja",
+    "lastName": "Momčilović",
+    "gender": "M",
+    "city": "Novi Sad",
+    "ageBand": "40-54",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000003",
+    "firstName": "Anđelija",
+    "lastName": "Vukotić",
+    "gender": "F",
+    "city": "Niš",
+    "ageBand": "40-54",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000004",
+    "firstName": "Časlav",
+    "lastName": "Radenković",
+    "gender": "M",
+    "city": "Kragujevac",
+    "ageBand": "25-39",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000005",
+    "firstName": "Bogoljub",
+    "lastName": "Nikolajević",
+    "gender": "M",
+    "city": "Čačak",
+    "ageBand": "25-39",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000006",
+    "firstName": "Ivona",
+    "lastName": "Stamenkovska",
+    "gender": "F",
+    "city": "Subotica",
+    "ageBand": "24-",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000007",
+    "firstName": "Strahinja",
+    "lastName": "Vukićević",
+    "gender": "M",
+    "city": "Banja Luka",
+    "ageBand": "24-",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000008",
+    "firstName": "Ognjen",
+    "lastName": "Perišić",
+    "gender": "M",
+    "city": "Sarajevo",
+    "ageBand": "55+",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000009",
+    "firstName": "Milica",
+    "lastName": "Bogdanović",
+    "gender": "F",
+    "city": "Podgorica",
+    "ageBand": "40-54",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000010",
+    "firstName": "Miloje",
+    "lastName": "Stanojlović",
+    "gender": "M",
+    "city": "Skoplje",
+    "ageBand": "25-39",
+    "firstSeason2027": false,
+    "active": true,
+    "seasons": []
+  },
+  {
+    "memberNumber": "000011",
+    "firstName": "Vukašin",
+    "lastName": "Todorović",
+    "gender": "M",
+    "city": "Beograd",
+    "ageBand": "55+",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000012",
+    "firstName": "Jovana",
+    "lastName": "Tomašević",
+    "gender": "F",
+    "city": "Novi Sad",
+    "ageBand": "40-54",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000013",
+    "firstName": "Damjan",
+    "lastName": "Krstić",
+    "gender": "M",
+    "city": "Niš",
+    "ageBand": "40-54",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000014",
+    "firstName": "Radoslav",
+    "lastName": "Milovanović",
+    "gender": "M",
+    "city": "Kragujevac",
+    "ageBand": "25-39",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000015",
+    "firstName": "Katarina",
+    "lastName": "Novaković",
+    "gender": "F",
+    "city": "Čačak",
+    "ageBand": "25-39",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000016",
+    "firstName": "Nemanja",
+    "lastName": "Cvetković",
+    "gender": "M",
+    "city": "Subotica",
+    "ageBand": "24-",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000017",
+    "firstName": "Andrija",
+    "lastName": "Pavlović",
+    "gender": "M",
+    "city": "Banja Luka",
+    "ageBand": "24-",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000018",
+    "firstName": "Teodora",
+    "lastName": "Mitrović",
+    "gender": "F",
+    "city": "Sarajevo",
+    "ageBand": "55+",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000019",
+    "firstName": "Borivoje",
+    "lastName": "Jovanović",
+    "gender": "M",
+    "city": "Podgorica",
+    "ageBand": "40-54",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000020",
+    "firstName": "Slobodan",
+    "lastName": "Ristić",
+    "gender": "M",
+    "city": "Skoplje",
+    "ageBand": "25-39",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000021",
+    "firstName": "Ksenija",
+    "lastName": "Vasiljević",
+    "gender": "F",
+    "city": "Beograd",
+    "ageBand": "55+",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000022",
+    "firstName": "Dušan",
+    "lastName": "Marković",
+    "gender": "M",
+    "city": "Novi Sad",
+    "ageBand": "40-54",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000023",
+    "firstName": "Zoran",
+    "lastName": "Petrović",
+    "gender": "M",
+    "city": "Niš",
+    "ageBand": "40-54",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000024",
+    "firstName": "Sara",
+    "lastName": "Đukić",
+    "gender": "F",
+    "city": "Kragujevac",
+    "ageBand": "25-39",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000025",
+    "firstName": "Milorad",
+    "lastName": "Đorđević",
+    "gender": "M",
+    "city": "Čačak",
+    "ageBand": "25-39",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000026",
+    "firstName": "Predrag",
+    "lastName": "Simić",
+    "gender": "M",
+    "city": "Subotica",
+    "ageBand": "24-",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000027",
+    "firstName": "Nevena",
+    "lastName": "Popović",
+    "gender": "F",
+    "city": "Banja Luka",
+    "ageBand": "24-",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000028",
+    "firstName": "Uroš",
+    "lastName": "Lazarević",
+    "gender": "M",
+    "city": "Sarajevo",
+    "ageBand": "55+",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000029",
+    "firstName": "Filip",
+    "lastName": "Obradović",
+    "gender": "M",
+    "city": "Podgorica",
+    "ageBand": "40-54",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000030",
+    "firstName": "Isidora",
+    "lastName": "Živković",
+    "gender": "F",
+    "city": "Skoplje",
+    "ageBand": "25-39",
+    "firstSeason2027": false,
+    "active": true,
+    "membershipBasis": "feeExempt",
+    "membershipSeason": 2027,
+    "seasons": [
+      {
+        "season": 2027,
+        "basis": "feeExempt"
+      }
+    ]
+  },
+  {
+    "memberNumber": "000031",
+    "firstName": "Konstantin",
+    "lastName": "Karađorđević-Obrenović",
+    "gender": "M",
+    "city": "Sremski Karlovci",
+    "ageBand": "24-",
+    "firstSeason2027": true,
+    "active": true,
+    "seasons": []
+  },
+  {
+    "memberNumber": "000032",
+    "firstName": "Vojislav",
+    "lastName": "Antonijević",
+    "gender": "M",
+    "city": "Zaječar",
+    "ageBand": "40-54",
+    "firstSeason2027": false,
+    "active": false,
+    "seasons": []
+  }
+]
