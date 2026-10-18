@@ -111,7 +111,7 @@ export const aCompetitorWithNoPortrait = {
  *
  * **And NOT his basis, which is the correction of 21.09.2026 and the reason a screen
  * was wrong.** The condition on that field is the CALLER and never the row - written
- * `case when cast(:administration as boolean) then c.membership_basis end` - so a
+ * `case when cast(:administration as boolean) then held.basis end` - so a
  * member does not get it here even about himself. Where he does get it is `/api/me`,
  * which answers one row and that row is his (`MeApi.MyOwnRecord`), and that is the
  * owner's sentence of 20.09.2026 kept in both halves: „Clan vidi SVOJ osnov clanstva;

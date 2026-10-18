@@ -164,7 +164,7 @@ export type WhoTheServerSaysIAm = {
    * chosen.** The owner, 20.09.2026: „Clan vidi SVOJ osnov clanstva; tudj ne vidi niko
    * osim administracije." `/api/competitors` keeps the second half by asking about the
    * CALLER and never about the row (`CompetitorApi`,
-   * `case when cast(:administration as boolean) then c.membership_basis end`), so a
+   * `case when cast(:administration as boolean) then held.basis end`), so a
    * member is not given it even on his own row. `/api/me` is where the first half
    * lives: `MeApi.MyOwnRecord` carries it, on one row, and that row is his.
    *
