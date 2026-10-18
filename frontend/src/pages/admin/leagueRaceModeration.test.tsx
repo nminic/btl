@@ -222,6 +222,54 @@ describe('which races count towards a competition', () => {
     server.stop()
   }, SLOW)
 
+  it("offers the races of a day in the owner's order, the longest first and the day not asked", async () => {
+    /* PDL P6, 18.10.2026 (`data/raceOrder.ts`). The two mornings of Beogradski maraton are made
+       two timed races here, 6 h on the first morning and 24 h on the second, and only for this
+       case: so the order the chooser used until that day (the server's, by the morning), a list
+       by the length (both carry nought) and the owner's are not one answer. The other cases read
+       the calendar as it is. */
+    clearResourceCache()
+
+    const real: { id: number }[] = JSON.parse(
+      readFileSync(join(process.cwd(), 'src/test/mock/races.json'), 'utf-8'),
+    )
+    const timed = real.map((race) =>
+      race.id === ITS_FIRST_RACE
+        ? { ...race, kind: 'time', limitSeconds: 6 * 3600, distanceKm: 0 }
+        : race.id === 126
+          ? { ...race, kind: 'time', limitSeconds: 24 * 3600, distanceKm: 0 }
+          : race,
+    )
+    const server = serverThat((path) => {
+      if (path === '/api/leagues' || path === '/api/races') {
+        return new Response(JSON.stringify(path === '/api/races' ? timed : LEAGUES), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
+      return isResource(path) ? null : did()
+    })
+    const user = await openTheBox()
+
+    await user.selectOptions(
+      screen.getByLabelText('Događaj', { selector: `#league-moderation-${ACTED}-event` }),
+      String(OVER_TWO_MORNINGS),
+    )
+
+    const offered = within(
+      screen.getByLabelText('Trka', { selector: `#league-moderation-${ACTED}-race` }),
+    )
+      .getAllByRole('option')
+      .map((one) => one.getAttribute('value'))
+
+    /* The whole day first, which is the owner's own shortcut and not a race; then the 24 h of the
+       second morning over the 6 h of the first. */
+    expect(offered).toEqual(['', '126', String(ITS_FIRST_RACE)])
+
+    server.stop()
+  }, SLOW)
+
   it('the box is folded on arrival, named after its own competition, and points at its own panel',
     async () => {
       const server = serving()

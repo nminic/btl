@@ -43,12 +43,13 @@ export const aLapsedMembersPage = {
 }
 
 /**
- * THE FIVE NAMES `MeApi.MyOwnRecord` LEAVES OUT RATHER THAN CARRY AS NULL (`@JsonInclude
+ * THE SIX NAMES `MeApi.MyOwnRecord` LEAVES OUT RATHER THAN CARRY AS NULL (`@JsonInclude
  * (NON_NULL)`), because a member may honestly have none of what they say: no club, and with it
- * no year in it, and no portrait, and with it no square, and no telephone. `memberNumber` is the
- * sixth annotated component and is present in the sample, because a member has one.
+ * no year in it, and no portrait, and with it no square, no telephone, and no words waiting for a
+ * moderator. `memberNumber` is the seventh annotated component and is present in the sample, because a
+ * member has one.
  */
-export const WHAT_MAY_BE_LEFT_OUT = ['teamId', 'teamSince', 'photo', 'crop', 'phone']
+export const WHAT_MAY_BE_LEFT_OUT = ['teamId', 'teamSince', 'photo', 'crop', 'phone', 'bioWaiting']
 
 /**
  * `GET /api/me` AS THE SERVER ANSWERS THE LAPSED MEMBER, for the length of one case.

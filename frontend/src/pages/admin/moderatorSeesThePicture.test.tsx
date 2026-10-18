@@ -332,7 +332,11 @@ describe('the picture on a card the moderator is deciding about', () => {
       const settled = asked.find((one) => one.path === decisionPath('22'))
 
       expect(settled, 'the row after it must still be decided').toBeDefined()
-      expect(JSON.parse(String(settled?.init?.body))).toEqual({ approved: true, reason: '' })
+      expect(JSON.parse(String(settled?.init?.body))).toEqual({
+        approved: true,
+        reason: '',
+        seenText: 'Trčim od malena, najviše volim brdske staze.',
+      })
 
       /* The count the sweep actually settled - one, not two and not nought - is
          the one number that tells "skipped and moved on" apart from either

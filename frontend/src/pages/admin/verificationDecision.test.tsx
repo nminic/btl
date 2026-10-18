@@ -138,6 +138,15 @@ const taken = () =>
     headers: { 'content-type': 'application/json' },
   })
 
+/**
+ * THE WORDS OF `ver-bio-1`, copied out of `test/mock/verification.json` and never read from it, so that
+ * a screen which sent something else (the subject, a stale copy, nothing) is not satisfied by a test
+ * that read the same thing from the same place. A decision about a biography names the words the card
+ * drew (`seenText`, PDL P11, 18.10.2026).
+ */
+const THE_WORDS_OF_THE_FIRST_BIOGRAPHY =
+  'Rekreativac iz Čačka. Trčim zbog druženja i putovanja, a rezultat mi je uvek bio na drugom mestu.\n\nNajviše volim trail trke do dvadeset kilometara i planinarske akcije preko Ovčara.'
+
 describe('a decision on a queue served by the pending screen', () => {
   it('sends an approval to the route that records it, and nothing else', async () => {
     const user = setupUser()
@@ -160,8 +169,13 @@ describe('a decision on a queue served by the pending screen', () => {
       expect(sent[0]?.path).toBe('/api/verification/ver-bio-1/decision')
       expect(sent[0]?.init?.method).toBe('POST')
       /* Approving carries no reason, which is what `anApproval` is for and what the
-         route reads: `DecidingOnASubmission` asks for one only when the answer is no. */
-      expect(bodyOf(sent[0])).toEqual({ approved: true, reason: '' })
+         route reads: `DecidingOnASubmission` asks for one only when the answer is no. A biography
+         names the words it drew (`anApprovalOfTheText`) and nothing else besides them. */
+      expect(bodyOf(sent[0])).toEqual({
+        approved: true,
+        reason: '',
+        seenText: THE_WORDS_OF_THE_FIRST_BIOGRAPHY,
+      })
     } finally {
       server.stop()
     }
@@ -192,7 +206,11 @@ describe('a decision on a queue served by the pending screen', () => {
       expect(sent[0]?.path).toBe('/api/verification/ver-bio-1/decision')
       /* Two acts and never one with a flag (`verificationWrites.ts`): what parts them
          on the wire is `approved`, and the reason travels only with the no. */
-      expect(bodyOf(sent[0])).toEqual({ approved: false, reason: 'Tekst je prekratak.' })
+      expect(bodyOf(sent[0])).toEqual({
+        approved: false,
+        reason: 'Tekst je prekratak.',
+        seenText: THE_WORDS_OF_THE_FIRST_BIOGRAPHY,
+      })
     } finally {
       server.stop()
     }

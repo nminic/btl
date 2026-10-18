@@ -188,7 +188,7 @@ export function ProfileVisibility({ me }: { me: Competitor }) {
       {/* What the server said, in its own reason's words, under the control it answers.
           `WHEN_CHANGING_MY_DATA` is the table of `PUT /api/me`'s own refusals, held to the
           Java source by `myAccount.test.ts`; this panel can reach none of the eight through
-          the box it draws, and answers all eight because the route names them and a request
+          the box it draws, and answers all seven because the route names them and a request
           that goes round the screen meets the route with nothing in between. */}
       {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_CHANGING_MY_DATA} />}
     </section>

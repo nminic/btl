@@ -249,9 +249,10 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
 
   /* Which note the button points at, and never one that is not on the screen:
      `aria-describedby` naming an element that is not there is a description a
-     screen reader announces as nothing at all, which is worse than none. The two
-     cannot both stand - nothing is ever being sent while nothing has changed. */
-  const describes = !changed ? 'picture-waits' : sending ? 'picture-sending' : undefined
+     screen reader announces as nothing at all, which is worse than none. Since 18.10.2026 the
+     sentence under the button that said why it was told off is gone (PDL P11, owner), so the one
+     note left to point at is the one that says the picture is on its way. */
+  const describes = sending ? 'picture-sending' : undefined
 
   /* One handler for the chooser, which tells a file the member chose from the picture that was
      there by the placeholder it was handed. */
@@ -405,12 +406,6 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
           {t('picture.send')}
         </button>
       </p>
-
-      {!changed && (
-        <p id="picture-waits" className="rate__hint" role="status">
-          {there === null ? t('picture.chooseFirst') : t('picture.moveFirst')}
-        </p>
-      )}
 
       {/* Said out loud while the picture is on its way, because a press that
           changes nothing visible is a press a reader by ear cannot tell from

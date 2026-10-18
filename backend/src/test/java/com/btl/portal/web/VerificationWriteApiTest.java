@@ -212,6 +212,11 @@ class VerificationWriteApiTest {
 
 	private static final String THE_REASON = "Slika je mutna, posalji ostriju";
 
+	/** The words of Ana's text, as the queue serves them and as a screen sends them back
+	 *  (`seenText`, PDL P11, 18.10.2026): written once here and never read off the row at the
+	 *  moment of the press, which is the route a case about the text he read is written against. */
+	private static final String ANAS_WORDS = "Trcim od 2021. godine";
+
 	/** The owner's sentence for a decision about a picture that is not the one he looked at, said
 	 *  whole and with its full stop (PDL, 10.10.2026), and the same for the approval and the
 	 *  refusal. Written out here and not read off the route's constant, so a route that reworded
@@ -219,6 +224,16 @@ class VerificationWriteApiTest {
 	private static final String THE_PICTURE_WAS_CHANGED = "Slika je promenjena, pogledaj je ponovo.";
 
 	private static final String THE_FORM_IS_NOT_COMPLETE = "Forma nije popunjena.";
+
+	/** The sentence of a decision about words that are not the ones the row holds now (PDL P11,
+	 *  18.10.2026), said whole with its full stop, and the one of words named beside a row with none. */
+	private static final String THE_TEXT_WAS_CHANGED = "Tekst je promenjen, pogledaj ga ponovo.";
+
+	private static final String A_SEEN_TEXT_GOES_WITH_A_TEXT =
+			"Viđeni tekst se zadaje samo uz odluku o tekstu.";
+
+	/** What the member writes over the words that wait: not a prefix of them, nor they of it. */
+	private static final String ANAS_CORRECTION = "Trcim planinske trke vec deset godina";
 
 	private static final String A_SEEN_PICTURE_GOES_WITH_A_PICTURE =
 			"Viđena slika se zadaje samo uz odluku o slici.";
@@ -489,7 +504,7 @@ class VerificationWriteApiTest {
 
 		/* FOUR IN THE PROFILES TAB AND NOT ONE, so „this item" is never „the first item". */
 		waiting("profiles", BOJAN, "Biografija Bojana", "Trcim od 2019.", null);
-		anasText = waiting("profiles", ANA, "Biografija Ane", "Trcim od 2021. godine", null);
+		anasText = waiting("profiles", ANA, "Biografija Ane", ANAS_WORDS, null);
 		verasPhoto = photograph();
 		verasCircle = circleOf(verasPhoto);
 		verasPicture = waiting("profiles", VERA, "Slika Vere", "vera.jpg", verasPhoto);
@@ -709,7 +724,7 @@ class VerificationWriteApiTest {
 		assertThat(take(PROFILES_MODERATOR, anasText)).isEqualTo(200);
 
 		assertThat(take(PROFILES_MODERATOR, anasText)).isEqualTo(200);
-		assertThat(answer(PROFILES_MODERATOR, anasText, true, null)).isEqualTo(200);
+		assertThat(answerReading(PROFILES_MODERATOR, anasText, true, null, ANAS_WORDS)).isEqualTo(200);
 	}
 
 	/**
@@ -826,11 +841,11 @@ class VerificationWriteApiTest {
 
 	@Test
 	void approvingATextPutsItOnTheProfileAndTakesTheItemOutOfTheQueue() throws Exception {
-		assertThat(answer(PROFILES_MODERATOR, anasText, true, null)).isEqualTo(200);
+		assertThat(answerReading(PROFILES_MODERATOR, anasText, true, null, ANAS_WORDS)).isEqualTo(200);
 
 		assertThat(stateOf(anasText)).isEqualTo("approved");
 		assertThat(db.sql("select bio from competitor where member_number = ?")
-				.param(ANA).query(String.class).single()).isEqualTo("Trcim od 2021. godine");
+				.param(ANA).query(String.class).single()).isEqualTo(ANAS_WORDS);
 
 		/* AND IT IS GONE FOR EVERYBODY, which needs no mechanism of its own: the queue serves
 		   `state = 'waiting'`, so one answer removes it from every screen at once. */
@@ -938,7 +953,7 @@ class VerificationWriteApiTest {
 	 */
 	@Test
 	void anApprovalCarriesNoReasonEvenWhenTheBoxWasFilledIn() throws Exception {
-		assertThat(answer(PROFILES_MODERATOR, anasText, true, THE_REASON)).isEqualTo(200);
+		assertThat(answerReading(PROFILES_MODERATOR, anasText, true, THE_REASON, ANAS_WORDS)).isEqualTo(200);
 
 		assertThat(db.sql("select reason from verification where id = ?")
 				.param(anasText).query(String.class).optional()).isEmpty();
@@ -1249,6 +1264,200 @@ class VerificationWriteApiTest {
 		assertThat(circleOn(verasPhoto)).isEqualTo("0.12500000/0.87500000/0.62500000");
 	}
 
+	// ----- the text he read ------------------------------------------------------------
+
+	/**
+	 * A DECISION ABOUT A TEXT THAT NAMES NO WORDS IS A FORM NOT FILLED IN, FOR BOTH ANSWERS.
+	 *
+	 * <p>PDL P11, 18.10.2026 (derived from the picture's, recorded as such): a decision about a text
+	 * is about the words the moderator read. A field whose absence switched the check off would be a
+	 * check anybody could skip (ADL A8, owner, 19.09.2026: „Izostavljeno polje nikad ne sme tiho da
+	 * promeni vrednost"), and so would a check that only one of the two answers asks. The two are one
+	 * loop here so that neither can be satisfied by a route that guards the other. Empty words are
+	 * words, not a field left out: they are asked in the case below.
+	 */
+	@Test
+	void aDecisionAboutATextThatNamesNoWordsIsAFormNotFilledIn() throws Exception {
+		for (boolean approved : new boolean[] {true, false}) {
+			MockHttpServletResponse answered = decideReading(PROFILES_MODERATOR, anasText, approved,
+					approved ? null : THE_REASON, null);
+
+			assertThat(answered.getStatus())
+					.as("a decision that named no words (approved=%s) was taken", approved)
+					.isEqualTo(400);
+			assertThat(reasonIn(answered)).isEqualTo(THE_FORM_IS_NOT_COMPLETE);
+			nothingWasDecidedAboutTheText(anasText, ANAS_WORDS);
+		}
+	}
+
+	/**
+	 * WORDS NAMED BESIDE A ROW THAT HOLDS NO TEXT ARE REFUSED, FOR BOTH ANSWERS, which is the rule this
+	 * route keeps for every field that rides with one kind of decision only.
+	 *
+	 * <p>The rows are a picture, a team's proposal and a comment: taken and dropped, the words would
+	 * tell whoever sent them that they were kept. The screen sends them only for a card of the
+	 * biography, so this is a request that did not come from it.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"PICTURE", "TEAM", "COMMENT"})
+	void wordsNamedBesideARowThatHoldsNoTextAreRefusedForBothAnswers(String which) throws Exception {
+		long row = switch (which) {
+			case "PICTURE" -> verasPicture;
+			case "TEAM" -> bojansTeam;
+			default -> anasComment;
+		};
+		String as = switch (which) {
+			case "PICTURE" -> PROFILES_MODERATOR;
+			case "TEAM" -> TEAMS_MODERATOR;
+			default -> COMMENTS_MODERATOR;
+		};
+
+		for (boolean approved : new boolean[] {true, false}) {
+			String body = "{\"approved\":" + approved
+					+ (approved ? "" : ",\"reason\":\"" + THE_REASON + "\"")
+					+ (which.equals("PICTURE") ? ",\"seenPhotoId\":" + verasPhoto + ",\"seenCrop\":" + verasCircle : "")
+					+ ",\"seenText\":\"" + ANAS_WORDS + "\"}";
+			MockHttpServletResponse answered = decideWith(as, row, body);
+
+			assertThat(answered.getStatus())
+					.as("words were taken beside a %s (approved=%s)", which, approved)
+					.isEqualTo(400);
+			assertThat(reasonIn(answered)).isEqualTo(A_SEEN_TEXT_GOES_WITH_A_TEXT);
+			assertThat(stateOf(row)).isEqualTo("waiting");
+		}
+	}
+
+	/**
+	 * THE WORDS THE MODERATOR READ ARE THE ONLY WORDS A DECISION IS ABOUT: A TEXT THE MEMBER HAS
+	 * CORRECTED SINCE REFUSES THE DECISION, FOR BOTH ANSWERS, AND THE ROW STAYS WITH THE CORRECTION.
+	 *
+	 * <p>Without the check an approval published the words the row HELD, which nobody had read (the
+	 * member wrote them after the card was drawn). Here the correction lands before the press, which
+	 * the route meets as a row that already holds other words; the same race with the correction
+	 * landing during the press is {@code AMemberCorrectsTheTextWhileTheDecisionWaitsTest}.
+	 */
+	@ParameterizedTest
+	@ValueSource(booleans = {true, false})
+	void aTextCorrectedSinceItWasReadRefusesTheDecisionAndTheRowStaysWithTheCorrection(boolean approved)
+			throws Exception {
+
+		theMemberCorrectsTheText(anasText, ANAS_CORRECTION);
+
+		MockHttpServletResponse answered = decideReading(PROFILES_MODERATOR, anasText, approved,
+				approved ? null : THE_REASON, ANAS_WORDS);
+
+		assertThat(answered.getStatus())
+				.as("a decision about words the member had since written over was taken (approved=%s)",
+						approved)
+				.isEqualTo(409);
+		assertThat(reasonIn(answered)).isEqualTo(THE_TEXT_WAS_CHANGED);
+		nothingWasDecidedAboutTheText(anasText, ANAS_CORRECTION);
+	}
+
+	/**
+	 * AND THE MODERATOR WHO READS IT AGAIN IS DECIDED, naming the words as they stand now: an approval
+	 * publishes those and not the words he first read. This is the other half of „odluka se odbija i
+	 * red ostaje" (PDL P11, 18.10.2026): a refusal that left the row waiting but unable to be
+	 * answered would satisfy every assertion of the case above.
+	 */
+	@Test
+	void afterTheRefusalADecisionNamingTheWordsAsTheyStandNowGoesThrough() throws Exception {
+		theMemberCorrectsTheText(anasText, ANAS_CORRECTION);
+
+		assertThat(answerReading(PROFILES_MODERATOR, anasText, true, null, ANAS_WORDS)).isEqualTo(409);
+
+		assertThat(answerReading(PROFILES_MODERATOR, anasText, true, null, ANAS_CORRECTION))
+				.as("the moderator who read it again was refused")
+				.isEqualTo(200);
+		assertThat(stateOf(anasText)).isEqualTo("approved");
+		assertThat(db.sql("select bio from competitor where member_number = ?").param(ANA)
+				.query(String.class).single())
+				.as("an approval published something other than the words it was about")
+				.isEqualTo(ANAS_CORRECTION);
+	}
+
+	/**
+	 * THE WORDS ARE COMPARED AS THEY ARE, CHARACTER FOR CHARACTER: another capital, a space at the
+	 * end or the words with one removed are other words.
+	 *
+	 * <p>A comparison that folded the case, trimmed or asked only whether one contains the other would
+	 * call these unchanged, and a member who corrects a single letter is exactly the correction the
+	 * moderator has to read again. The row holds {@link #ANAS_WORDS}.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"trcim od 2021. godine", "Trcim od 2021. godine ", "Trcim od 2021.",
+			"Trcim od 2021. godine i dalje"})
+	void wordsThatDifferInTheSmallestWayAreOtherWords(String named) throws Exception {
+		MockHttpServletResponse answered =
+				decideReading(PROFILES_MODERATOR, anasText, true, null, named);
+
+		assertThat(answered.getStatus())
+				.as("'%s' was taken for the words the row holds", named)
+				.isEqualTo(409);
+		assertThat(reasonIn(answered)).isEqualTo(THE_TEXT_WAS_CHANGED);
+		nothingWasDecidedAboutTheText(anasText, ANAS_WORDS);
+	}
+
+	/**
+	 * THE VERY SAME WORDS SENT AGAIN ARE THE WORDS HE READ, and the decision about them goes through.
+	 *
+	 * <p>This pins a boundary and does not argue for it (named in {@code Answered.seenText}): the
+	 * print is the words and not a key, so a member who sends a text identical to the one that waits
+	 * leaves the card as the moderator read it, and the moderator is not asked to read what he has read.
+	 */
+	@Test
+	void theVerySameWordsSentAgainAreTheWordsHeRead() throws Exception {
+		theMemberCorrectsTheText(anasText, ANAS_WORDS);
+
+		assertThat(answerReading(PROFILES_MODERATOR, anasText, true, null, ANAS_WORDS)).isEqualTo(200);
+		assertThat(db.sql("select bio from competitor where member_number = ?").param(ANA)
+				.query(String.class).single()).isEqualTo(ANAS_WORDS);
+	}
+
+	/**
+	 * THE EMPTY WORDS ARE WORDS: a card whose text is empty names the empty string and is decided,
+	 * and a request that names the empty string beside a row that holds other words is refused as
+	 * changed. Left out is a form not filled in; empty is not left out.
+	 */
+	@Test
+	void emptyWordsAreNamedWordsAndNotAFieldLeftOut() throws Exception {
+		assertThat(answerReading(PROFILES_MODERATOR, anasText, true, null, "")).isEqualTo(409);
+		assertThat(answerReading(PROFILES_MODERATOR, aboutNobody, true, null, "")).isEqualTo(200);
+	}
+
+	/**
+	 * Nothing a decision writes is there, and the row holds the words it should: still waiting, no
+	 * trace of an answer, no biography published and nothing written to the member.
+	 */
+	private void nothingWasDecidedAboutTheText(long item, String holding) {
+		assertThat(stateOf(item)).as("the row was decided although the decision was refused")
+				.isEqualTo("waiting");
+		assertThat(db.sql("select body from verification where id = ?").param(item)
+				.query(String.class).single())
+				.as("the row does not hold the words it should")
+				.isEqualTo(holding);
+		assertThat(db.sql("select count(*) from verification where id = ? and decided_at is null"
+						+ " and decided_by is null and decided_by_name is null and reason is null")
+				.param(item).query(Integer.class).single())
+				.as("a column of the decision was written although it was refused")
+				.isEqualTo(1);
+		assertThat(db.sql("select bio from competitor where member_number = ?").param(ANA)
+				.query(String.class).single())
+				.as("a biography was published although the decision was refused")
+				.isEmpty();
+		assertThat(db.sql("select count(*) from message where to_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.param(ANA).query(Integer.class).single())
+				.as("Ana was written to although the decision was refused")
+				.isZero();
+	}
+
+	/** WHAT A MEMBER'S CORRECTION DOES TO THE ROW THAT WAITS (`MeWriteApi.queued`, PDL P11,
+	 *  18.10.2026): the words are written over and the row keeps its key and its place. */
+	private void theMemberCorrectsTheText(long item, String words) {
+		db.sql("update verification set body = ? where id = ?").params(words, item).update();
+	}
+
 	/**
 	 * THE CIRCLE IS COMPARED BY VALUE AND NOT BY SPELLING: the column keeps eight decimals and the
 	 * number a screen sends back is the one it read, so {@code 0.3} is the circle the column holds as
@@ -1347,7 +1556,7 @@ class VerificationWriteApiTest {
 	 */
 	@Test
 	void anItemAboutNobodyIsAnsweredAndNobodyIsWrittenTo() throws Exception {
-		assertThat(answer(PROFILES_MODERATOR, aboutNobody, false, THE_REASON)).isEqualTo(200);
+		assertThat(answerReading(PROFILES_MODERATOR, aboutNobody, false, THE_REASON, "")).isEqualTo(200);
 
 		assertThat(stateOf(aboutNobody)).isEqualTo("rejected");
 		assertThat(db.sql("select count(*) from message").query(Integer.class).single()).isZero();
@@ -1362,7 +1571,7 @@ class VerificationWriteApiTest {
 	 */
 	@Test
 	void theDecisionKeepsTheNameOnTheAccountAndNotTheNameOnHisMemberRow() throws Exception {
-		assertThat(answer(PROFILES_MODERATOR, anasText, true, null)).isEqualTo(200);
+		assertThat(answerReading(PROFILES_MODERATOR, anasText, true, null, ANAS_WORDS)).isEqualTo(200);
 
 		assertThat(db.sql("select decided_by_name from verification where id = ?")
 				.param(anasText).query(String.class).single())
@@ -1378,7 +1587,7 @@ class VerificationWriteApiTest {
 	void answeringAnItemLetsGoOfWhateverWasHoldingIt() throws Exception {
 		assertThat(take(PROFILES_MODERATOR, anasText)).isEqualTo(200);
 
-		assertThat(answer(PROFILES_MODERATOR, anasText, true, null)).isEqualTo(200);
+		assertThat(answerReading(PROFILES_MODERATOR, anasText, true, null, ANAS_WORDS)).isEqualTo(200);
 		assertThat(holdsOn(anasText)).isZero();
 	}
 
@@ -3361,7 +3570,14 @@ class VerificationWriteApiTest {
 
 			assertThat(item).as("the fixture holds nothing waiting in " + tab).isNotNull();
 
-			int status = answer(THE_SUPERADMIN, item, true, null);
+			/* The profiles tab holds a text, and a decision about one names the words it read (PDL P11,
+			   18.10.2026); asked of the row here because this case is about the tabs and not about the
+			   text he read, which the cases below and the file of the forced race hold. */
+			int status = "profiles".equals(tab)
+					? answerReading(THE_SUPERADMIN, item, true, null,
+							db.sql("select body from verification where id = ?").param(item)
+									.query(String.class).single())
+					: answer(THE_SUPERADMIN, item, true, null);
 
 			if (List.of("profiles", "teams", "comments", "results").contains(tab)) {
 				assertThat(status).as(tab + " is carried out").isEqualTo(200);
@@ -3461,6 +3677,28 @@ class VerificationWriteApiTest {
 				+ (circle == null ? "" : ",\"seenCrop\":" + circle) + "}";
 
 		return decideWith(email, id, body);
+	}
+
+	/**
+	 * A DECISION ABOUT A TEXT, written out whole so that what it names is exactly what the case
+	 * names: {@code seenText} is the words the moderator read, and left out when it is {@code
+	 * null}. Never read off the row here, for the reason {@link #decideSeeing} gives for a picture.
+	 * The words are JSON-escaped with the application's own mapper, so a case may use any.
+	 */
+	private MockHttpServletResponse decideReading(String email, long id, boolean approved,
+			String reason, String seenText) throws Exception {
+
+		String body = "{\"approved\":" + approved
+				+ (reason == null ? "" : ",\"reason\":\"" + reason + "\"")
+				+ (seenText == null ? "" : ",\"seenText\":" + new ObjectMapper().writeValueAsString(seenText)) + "}";
+
+		return decideWith(email, id, body);
+	}
+
+	private int answerReading(String email, long id, boolean approved, String reason, String seenText)
+			throws Exception {
+
+		return decideReading(email, id, approved, reason, seenText).getStatus();
 	}
 
 	private int answerSeeing(String email, long id, boolean approved, String reason, Long seen)

@@ -236,8 +236,12 @@ describe('a picture that waits for a moderator', () => {
     let panel = await panelFor()
 
     await theCircleOn(panel)
-    expect(await panel.findByRole('button', { name: sr.picture.send })).toHaveAttribute('aria-disabled', 'true')
-    expect(panel.getByText(sr.picture.moveFirst)).toBeVisible()
+    const send = await panel.findByRole('button', { name: sr.picture.send })
+
+    expect(send).toHaveAttribute('aria-disabled', 'true')
+    /* Told off and silent about it (PDL P11, 18.10.2026): no sentence under the button, and nothing
+       for the button to point at. */
+    expect(send).not.toHaveAttribute('aria-describedby')
 
     fireEvent.change(panel.getByLabelText(sr.crop.size), { target: { value: '0.9' } })
     fireEvent.change(panel.getByLabelText(sr.crop.x), { target: { value: '0.3' } })

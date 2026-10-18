@@ -219,23 +219,23 @@ export function whatChanged(standing: Standing, typed: Typed): Partial<Record<Se
 }
 
 /**
- * {@code MeWriteApi}, which names eight refusals, of which this screen can meet six.
+ * {@code MeWriteApi}, which names seven refusals, of which this screen can meet five.
  *
  * <p><b>Held to the server by `myAccount.test.ts`</b>, which reads the Java source and takes
  * every reason constant it declares, in the shape `pages/account/refusals.test.ts` already
  * has: a reason added on the server is a red gate on the day it is written, rather than a
  * member shown a code he cannot read.
  *
- * <p><b>Two of the eight belong to the biography and one to the privacy switch, which is why
- * this table is keyed by ROUTE and not by panel</b> - and since 28.09.2026 all three panels
- * really do send to it, so the table is read by three screens rather than by one. That was
- * always the shape the guard above could hold: it reads the Java source, which knows one
- * route and nothing about which of our panels reaches it.
+ * <p><b>One of the seven belongs to the biography, which is why this table is keyed by ROUTE and
+ * not by panel</b> - and since 28.09.2026 three panels really do send to it, so the table is read
+ * by three screens rather than by one. That was always the shape the guard above could hold: it
+ * reads the Java source, which knows one route and nothing about which of our panels reaches it.
  *
- * <p>{@code theTextIsTooLong} and {@code aTextAlreadyWaits} are what {@code PUT /api/me}
- * answers about a `bio`, and {@code ProfileBio.tsx} is what meets them.
- * {@code onlyAnAdministratorChangesThese} is what it answers about a date of birth or a
- * gender, which no panel here draws at all.
+ * <p>{@code theTextIsTooLong} is what {@code PUT /api/me} answers about a `bio`, and
+ * {@code ProfileBio.tsx} is what meets it. <b>{@code aTextAlreadyWaits} was the second, and left on
+ * 18.10.2026</b> with the decision it carried out: a text sent over one that waits overwrites it
+ * (PDL P11, the entry of 19.09.2026 struck as OBORENO). {@code onlyAnAdministratorChangesThese} is
+ * what it answers about a date of birth or a gender, which no panel here draws at all.
  */
 export const WHEN_CHANGING_MY_DATA: Record<string, string> = {
   /* Nothing this route could act on arrived. On this screen it is unreachable by
@@ -254,9 +254,8 @@ export const WHEN_CHANGING_MY_DATA: Record<string, string> = {
      picker, and named so that the day it does, the sentence is already here. */
   theTownIsNotSaidOnce: 'account.townNotSaidOnce',
   theTownIsNotKnown: 'account.townNotKnown',
-  /* The biography's two, which this panel does not send. The words are the biography's. */
+  /* The biography's, which the panels of personal data do not send. The words are the biography's. */
   theTextIsTooLong: 'account.textIsTooLong',
-  aTextAlreadyWaits: 'account.textAlreadyWaits',
 }
 
 /**

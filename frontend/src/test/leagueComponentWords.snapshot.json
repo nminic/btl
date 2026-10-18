@@ -132,6 +132,7 @@
     "-race",
     "../../components/Resource",
     "../../data/raceLabel",
+    "../../data/raceOrder",
     "../../data/types",
     "../../data/useResource",
     "../../i18n/format",

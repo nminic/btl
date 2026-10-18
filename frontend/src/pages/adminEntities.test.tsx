@@ -16,6 +16,7 @@ import { whatWasSent, whereItWrote } from '../test/sent'
 import { clearResourceCache, loadResource } from '../data/client'
 import { eventSlug } from './admin/entityForms'
 import { SEASON } from '../data/pricing'
+import { inEventOrder } from '../data/raceOrder'
 import { formatShortDate } from '../i18n/format'
 import type { BtlEvent, League, Race, Result } from '../data/types'
 import { fieldDate, isoDate, shiftDate } from '../forms/dateField'
@@ -1573,13 +1574,11 @@ describe('the races of an event', () => {
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
 
     const rows = screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ })
-    /* The race the first row stands for, in the order the table draws them: by the day, and
-       by the distance inside one day (`raceRows.rowsOf`). It has no row left once it is taken
-       off, so it is named by its own name and day. */
+    /* The race the first row stands for, in the order the table draws them, asked of the one
+       place that decides it (`data/raceOrder.ts`, which `raceRows.rowsOf` calls). It has no row
+       left once it is taken off, so it is named by its own name and day. */
     const first = must(
-      races
-        .filter((race) => race.eventId === mine.id)
-        .sort((left, right) => left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm)[0],
+      inEventOrder(races.filter((race) => race.eventId === mine.id))[0],
       'the race of the first row',
     )
 

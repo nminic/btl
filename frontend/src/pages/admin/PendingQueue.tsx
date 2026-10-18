@@ -22,8 +22,10 @@ import { clearResourceCache } from '../../data/client'
 import {
   aRefusal,
   aRefusalOfThePicture,
+  aRefusalOfTheText,
   anApproval,
   anApprovalOfThePicture,
+  anApprovalOfTheText,
   decisionPath,
   photoPath,
   type Answered,
@@ -128,13 +130,34 @@ function isProposal(id: string): boolean {
  * and for the same reason: two facts about one picture that came in one answer.
  */
 function approvalOf(one: PendingItem): Answered {
-  return one.photoId === null ? anApproval() : anApprovalOfThePicture(one.photoId, one.crop)
+  if (one.photoId !== null) {
+    return anApprovalOfThePicture(one.photoId, one.crop)
+  }
+
+  return one.kind === 'bio' ? anApprovalOfTheText(one.body) : anApproval()
 }
 
 function refusalOf(one: PendingItem, reason: string): Answered {
-  return one.photoId === null
-    ? aRefusal(reason)
-    : aRefusalOfThePicture(reason, one.photoId, one.crop)
+  if (one.photoId !== null) {
+    return aRefusalOfThePicture(reason, one.photoId, one.crop)
+  }
+
+  return one.kind === 'bio' ? aRefusalOfTheText(reason, one.body) : aRefusal(reason)
+}
+
+/**
+ * WHETHER A CARD DREW SOMETHING THE DECISION ABOUT IT NAMES: a picture, or the words of a biography.
+ *
+ * <p>PDL P11, 18.10.2026 (derived, told to the owner): a decision about a text is about the text the
+ * moderator read, as one about a picture is about the picture (`approvalOf`, `refusalOf`). A route's
+ * refusal about such a card says the screen is not looking at the queue any more - the member sent
+ * another picture or wrote the text over while the moderator looked, or somebody else decided the row
+ * or holds it - so the list is read again after it (`readTheQueueAgain`). `kind === 'bio'` is the
+ * server's own mark of a profiles row that holds no picture (`VerificationApi`), the same fact the
+ * route asks of the row (`VerificationWriteApi.isAText`).
+ */
+function drewWhatItNames(one: PendingItem): boolean {
+  return one.photoId !== null || one.kind === 'bio'
 }
 
 /** Whether a queue has a second decision that hands the work back to its
@@ -697,9 +720,12 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * cards (PENDING, „Odbijanje koje dokazuje da je ekran zastareo ostavlja zastareo crtež"), and
    * `ReviewQueue.tsx` makes it for the queue of results.
    *
-   * <p>Asked only of a decision about a CARD THAT DREW A PICTURE, and that is the extent of what
-   * was asked and not a finding that no other refusal here proves a list stale. A refusal about a
-   * biography or a team is left to say what it says over a card that stays where it was.
+   * <p>Asked only of a decision about a CARD THAT DREW A PICTURE OR THE WORDS OF A BIOGRAPHY
+   * (`drewWhatItNames`; the biography since 18.10.2026, when a new text began to overwrite the one that
+   * waits and a decision began to name the words it read: „Tekst je promenjen, pogledaj ga ponovo."),
+   * and that is the extent of what was asked and not a finding that no other refusal here proves a
+   * list stale. A refusal about a team is left to say what it says over a card that stays where it
+   * was.
    */
   const readTheQueueAgain = (): void => {
     clearResourceCache('verification')
@@ -809,9 +835,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       )
       const refusals: ServerRefusal[] = []
       let done = 0
-      /* Whether the route refused, in its own words, a decision about a card that drew a picture:
-         asked once for the whole walk, after it (`readTheQueueAgain`). */
-      let pictureRefused = false
+      /* Whether the route refused, in its own words, a decision about a card that drew a picture or
+         the words of a biography (`drewWhatItNames`): asked once for the whole walk, after it
+         (`readTheQueueAgain`). */
+      let staleRefused = false
 
       for (const one of sweepable) {
         /* AND ONCE MORE, AT THE MOMENT OF SENDING, WHETHER THE PICTURE HAS FAILED SINCE: that
@@ -881,8 +908,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
           if (answer.got !== 'done') {
             refusals.push({ id: one.id, answer })
 
-            if (answer.got === 'refused' && one.photoId !== null) {
-              pictureRefused = true
+            if (answer.got === 'refused' && drewWhatItNames(one)) {
+              staleRefused = true
             }
 
             continue
@@ -1061,9 +1088,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
         clearResourceCache('verification')
       }
 
-      /* AND READ AGAIN WHERE THE ROUTE REFUSED A DECISION ABOUT A PICTURE, once for the whole
-         walk: the cards it left standing then draw what the rows hold now (`readTheQueueAgain`). */
-      if (pictureRefused) {
+      /* AND READ AGAIN WHERE THE ROUTE REFUSED A DECISION ABOUT A PICTURE OR A TEXT, once for the
+         whole walk: the cards it left standing then draw what the rows hold now
+         (`readTheQueueAgain`). */
+      if (staleRefused) {
         readTheQueueAgain()
       }
 
@@ -1181,7 +1209,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
            (`readTheQueueAgain`), and it reads it again for the same reason: the box has just
            closed over the reason he typed about a picture that is not on the row any more, and
            the card must draw the one that is before he writes another. */
-        if (answer.got === 'refused' && one.photoId !== null) {
+        if (answer.got === 'refused' && drewWhatItNames(one)) {
           readTheQueueAgain()
         }
 

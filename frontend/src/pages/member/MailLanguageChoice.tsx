@@ -132,8 +132,6 @@ function TheChoice({ stands }: { stands: Language }) {
 
   return (
     <>
-      <p className="member__note">{t('settings.mailLanguageNote')}</p>
-
       <fieldset className="field field--radio">
         <legend className="field__label">{t('settings.mailLanguageLegend')}</legend>
         {MAIL_LANGUAGES.map((one) => (
