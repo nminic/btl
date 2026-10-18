@@ -495,6 +495,7 @@ describe('a sentence with a value put into it', () => {
          that went on 29.09.2026: `TeamJoiningWriteApiTest.theSentencesAreThePortalsOwnWords`
          holds both against the Java that writes them. */
       'teams.inviteAccepted',
+      'teams.inviteAcceptedFemale',
       'teams.inviteMissedBody',
       'teams.inviteMissedBodyFemale',
       'teams.inviteOvertaken',

@@ -179,6 +179,17 @@ export const WHEN_APPLYING_TO_A_TEAM = {
 }
 
 /**
+ * THE SAME ONE REFUSAL, FOR A MEMBER WHO IS A WOMAN.
+ *
+ * <p>PDL P18, 18.10.2026: „I rečenice „Prihvatio/la si…” i „…poslao/la…” biraju reč po polu člana
+ * koji čita". The sentence says who sent the application, and that is the reader, so the page hands
+ * this map in when the reader is a woman and the verb is „poslala".
+ */
+export const WHEN_A_WOMAN_APPLIES_TO_A_TEAM = {
+  aQuestionAlreadyStands: 'teams.applyRefused.aQuestionAlreadyStandsFemale',
+}
+
+/**
  * THE FOUR REFUSALS `POST /api/teams/{id}/invitations` NAMES, each to a sentence.
  *
  * <p><b>Read off the route.</b> `TeamJoiningWriteApi.invite` and `inviting` name

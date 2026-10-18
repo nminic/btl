@@ -21,6 +21,7 @@ import {
   theWithdrawalGoesTo,
   whatIsWaitingOn,
   whatThisTeamHasAsked,
+  WHEN_A_WOMAN_APPLIES_TO_A_TEAM,
   WHEN_APPLYING_TO_A_TEAM,
   WHEN_DECIDING_AN_APPLICATION,
   WHEN_INVITING_A_WOMAN_INTO_A_TEAM,
@@ -714,5 +715,50 @@ describe("the woman's words for what a member did", () => {
       'teams.inviteRefused.heIsAlreadyInATeam',
     )
     expect(WHEN_ANSWERING_A_TEAM_INVITE.heIsAlreadyInATeam).toBe('teams.inviteOvertakenUnnamed')
+  })
+})
+
+/* **AND THE TWO SENTENCES THAT SAY WHAT THE READER DID** (PDL P18, 18.10.2026, „I rečenice „Prihvatio/la
+   si…” i „…poslao/la…” biraju reč po polu člana koji čita"): `teams.inviteAccepted` and
+   `teams.applyRefused.aQuestionAlreadyStands`. Same two questions as above: the woman's map differs
+   from the man's in its one name, and the words are „Prihvatio"/„Prihvatila" and „poslao"/„poslala"
+   with no „/la" left, the English one repeating its sentence. The screens are measured in
+   `teamInvite.test.tsx` and `teamJoinOnTheServer.test.tsx`. */
+describe("the woman's words for what the reader did", () => {
+  const read = (dictionary: object, key: string): unknown =>
+    key
+      .split('.')
+      .reduce<unknown>(
+        (at, part) => (at !== null && typeof at === 'object' ? Reflect.get(at, part) : undefined),
+        dictionary,
+      )
+
+  it('has a woman\'s map that names the same refusal and a different sentence', () => {
+    expect(Object.keys(WHEN_A_WOMAN_APPLIES_TO_A_TEAM)).toEqual(Object.keys(WHEN_APPLYING_TO_A_TEAM))
+    expect(WHEN_APPLYING_TO_A_TEAM.aQuestionAlreadyStands).toBe(
+      'teams.applyRefused.aQuestionAlreadyStands',
+    )
+    expect(WHEN_A_WOMAN_APPLIES_TO_A_TEAM.aQuestionAlreadyStands).toBe(
+      'teams.applyRefused.aQuestionAlreadyStandsFemale',
+    )
+  })
+
+  it.each([
+    ['teams.inviteAccepted', 'teams.inviteAcceptedFemale', 'Prihvatio si', 'Prihvatila si'],
+    [
+      'teams.applyRefused.aQuestionAlreadyStands',
+      'teams.applyRefused.aQuestionAlreadyStandsFemale',
+      'je poslao.',
+      'je poslala.',
+    ],
+  ])('says it in %s as a man and in %s as a woman, with no „/la"', (man, woman, his, hers) => {
+    expect(read(sr, man)).toEqual(expect.stringContaining(his))
+    expect(read(sr, woman)).toEqual(expect.stringContaining(hers))
+    expect(read(sr, man)).not.toEqual(expect.stringContaining('/la'))
+    expect(read(sr, woman)).not.toEqual(expect.stringContaining('/la'))
+    expect(read(sr, man)).not.toEqual(expect.stringContaining(hers))
+    expect(read(sr, woman)).not.toEqual(expect.stringContaining(his))
+    expect(read(en, woman)).toEqual(expect.any(String))
+    expect(read(en, woman)).toBe(read(en, man))
   })
 })

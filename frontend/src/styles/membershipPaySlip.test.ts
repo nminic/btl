@@ -37,7 +37,11 @@ describe('the payment slip written out beside its QR code', () => {
        here. */
     const rule = ruleInMedia(MEMBER_CSS, '(min-width: 51.25em)', '.pay__slip', 'Member.css')
 
-    expect(rule.getPropertyValue('grid-template-columns')).toBe('minmax(0, 1fr) minmax(0, 1fr)')
+    /* The code's track is `auto`, the width of the code, so the code ends at the right edge of the
+       panel and the empty space is between it and the details (PDL P8, 18.10.2026: „QR kod stoji
+       uz DESNU IVICU strane, ne odmah pored podataka"). Two equal tracks put it at the left of the
+       right half, which is „odmah pored podataka". */
+    expect(rule.getPropertyValue('grid-template-columns')).toBe('minmax(0, 1fr) auto')
   })
 })
 
@@ -50,6 +54,32 @@ describe('the payment slip written out beside its QR code', () => {
  * only. Nothing rendered can see it (ADL A33), so the sheet is read as text, as above: the line is on
  * the wrapper that holds both halves, and the code's half draws none of its own.
  */
+describe('the code at the right edge of the panel', () => {
+  /* PDL P8, 18.10.2026, chosen between offered outcomes against the recommendation: „QR kod stoji uz
+     DESNU IVICU strane, ne odmah pored podataka; između podataka i koda ostaje prazan prostor. Na
+     telefonu kod ostaje ispod podataka." Measured on the built page at 1280: the code ends at x 1167,
+     which is where the panel and the dashed line end, and the details end at 962. The track is as wide
+     as the title over the code, which is wider than the code, so the code must go to the END of the
+     track or it stops short by the difference. */
+  it('goes to the end of its track from the same width the two columns start at', () => {
+    const half = ruleInMedia(MEMBER_CSS, '(min-width: 51.25em)', '.pay__qr', 'Member.css')
+    const code = ruleInMedia(MEMBER_CSS, '(min-width: 51.25em)', '.pay__qr .pay__code', 'Member.css')
+    const title = ruleInMedia(MEMBER_CSS, '(min-width: 51.25em)', '.pay__qr h4', 'Member.css')
+
+    expect(half.getPropertyValue('align-items')).toBe('flex-end')
+    expect(code.getPropertyValue('align-items')).toBe('flex-end')
+    expect(title.getPropertyValue('text-align')).toBe('end')
+  })
+
+  it('stays under the details on a telephone, where the slip is one column and nothing is moved', () => {
+    expect(ruleFor(MEMBER_CSS, '.pay__slip', 'Member.css').getPropertyValue('grid-template-columns')).toBe(
+      'minmax(0, 1fr)',
+    )
+    expect(ruleFor(MEMBER_CSS, '.pay__qr', 'Member.css').getPropertyValue('align-items')).toBe('')
+    expect(ruleFor(MEMBER_CSS, '.pay__code', 'Member.css').getPropertyValue('align-items')).toBe('flex-start')
+  })
+})
+
 describe('the line over the payment slip', () => {
   it('is on the wrapper of both halves, dashed, as the PayPal block draws its own', () => {
     const slip = ruleFor(MEMBER_CSS, '.pay__slip', 'Member.css')

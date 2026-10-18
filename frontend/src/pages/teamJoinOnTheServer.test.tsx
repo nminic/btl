@@ -340,6 +340,32 @@ describe('„Prijavi se u tim", sent to the server', () => {
     }
   }, SLOW)
 
+  /* **THE VERB FOLLOWS THE SEX OF THE READER, WHO SENT THE APPLICATION** (PDL P18, 18.10.2026, „I
+     rečenice „Prihvatio/la si…” i „…poslao/la…” biraju reč po polu člana koji čita"). `ASKER` is a
+     woman (Ivona) and the man is `000008`: a screen that kept one sentence for everybody fails one
+     of the two, and neither is the other's word. */
+  it.each([
+    ['a woman', ASKER, sr.teams.applyRefused.aQuestionAlreadyStandsFemale, /je poslala\./],
+    ['a man', '000008', sr.teams.applyRefused.aQuestionAlreadyStands, /je poslao\./],
+  ])('says in the word of the sex of the reader that the application was sent: %s', async (_who, member, words, verb) => {
+    const server = aServerForTheAsker({ post: () => refused('aQuestionAlreadyStands', 409) })
+    const user = setupUser()
+
+    try {
+      renderAt(at(THIS.slug), 'competitor', member, undefined, DAY_IN)
+
+      await user.click(await screen.findByRole('button', { name: sr.teams.join }))
+
+      const said = await screen.findByRole('alert')
+
+      expect(said).toHaveTextContent(words)
+      expect(said).toHaveTextContent(verb)
+      expect(said).not.toHaveTextContent('/la')
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
   it('keeps the button as it was when the server refuses, says why under the row, and asks nothing again', async () => {
     const server = aServerForTheAsker({ post: () => refused('aQuestionAlreadyStands', 409) })
     const user = setupUser()
@@ -349,8 +375,9 @@ describe('„Prijavi se u tim", sent to the server', () => {
 
       await user.click(await screen.findByRole('button', { name: sr.teams.join }))
 
+      /* Ivona, so in her word; the man's is the case above. */
       expect(await screen.findByRole('alert')).toHaveTextContent(
-        sr.teams.applyRefused.aQuestionAlreadyStands,
+        sr.teams.applyRefused.aQuestionAlreadyStandsFemale,
       )
       expect(applyButton()).toBeVisible()
       expect(applyButton()).not.toHaveAttribute('aria-disabled')
