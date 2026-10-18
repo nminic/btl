@@ -362,15 +362,15 @@ describe('the way in', () => {
   )
 
   /**
-   * The one control the messages name, in the Serbian quotation marks they name it in.
+   * The one control the messages name, in the English quotation marks they name it in.
    *
-   * <p>The closing mark is the plain ASCII one and the opening is U+201E, which is how
-   * the file is really written; measured rather than assumed, because a pattern that
-   * expected a matching pair would find nothing and this case would then be holding an
-   * empty string against an empty string.
+   * <p>Both marks are the plain ASCII one since 18.10.2026 (PDL P18, "Navodnici"); the opening
+   * was U+201E until then. Measured rather than assumed, because a pattern that expected the
+   * old opening mark would find nothing and this case would then be holding an empty string
+   * against an empty string, which is what the length check below is for.
    */
   function theControlTheMessagesName(): string[] {
-    return [...readFileSync(MAIL, 'utf-8').matchAll(/„([^"]+)"/g)].map((one) => one[1] ?? '')
+    return [...readFileSync(MAIL, 'utf-8').matchAll(/"([^"]+)"/g)].map((one) => one[1] ?? '')
   }
 
   it('is a link on the sign-in page, called what the messages call it, and it leads here', async () => {

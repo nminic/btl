@@ -383,9 +383,6 @@ class TeamJoiningWriteApi {
 	 */
 	static final String THE_INVITATION_WAS_MISSED = "Poziv u tim je ostao bez odgovora";
 
-	/** The letter {@code competitor.gender} carries for a man ({@code competitor_gender_known}). */
-	private static final String A_MAN = "M";
-
 	/**
 	 * WHO THE PORTAL IS WHEN IT WRITES TO A MEMBER ITSELF, ASKED OF THE ONE PLACE THAT
 	 * ALREADY ANSWERS IT.
@@ -1114,10 +1111,13 @@ class TeamJoiningWriteApi {
 	 * written to may be either, and is unrelated to who joined.
 	 *
 	 * @param gender the letter {@code competitor.gender} holds, which the schema keeps to
-	 *               {@code M} and {@code F} (so there is no third word to choose)
+	 *               {@code M} and {@code F} (so there is no third word to choose). The man's
+	 *               letter is spelt here and not held in a constant, because the frontend's
+	 *               {@code refusals.test.ts} reads every constant of this class as a possible
+	 *               refusal, and a letter is not one.
 	 */
 	static String theMissedInvitationReads(String name, String gender, String team) {
-		return name + " je u međuvremenu " + (A_MAN.equals(gender) ? "ušao" : "ušla")
+		return name + " je u međuvremenu " + ("M".equals(gender) ? "ušao" : "ušla")
 				+ " u tim \"" + team + "\", pa vaš poziv više ne stoji.";
 	}
 
