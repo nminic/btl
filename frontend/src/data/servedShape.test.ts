@@ -197,6 +197,9 @@ const aResult = {
   seconds: 15_600,
   points: 231.44,
   category: 'marathon' as const,
+  /* A run of 2010, which no season counts: the league begins in 2027, and `membership` holds no
+     season before it (V22). */
+  inItsSeason: false,
   dots: ['marathon' as const],
 }
 

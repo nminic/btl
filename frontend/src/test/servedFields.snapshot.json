@@ -198,6 +198,7 @@
     "eventName",
     "eventSlug",
     "id",
+    "inItsSeason",
     "memberNumber",
     "points",
     "raceId",

@@ -3,6 +3,7 @@ import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import { loadResource } from '../data/client'
 import type { BtlEvent, League, Race } from '../data/types'
 import { at, first, last, must } from '../test/at'
+import { countTheHistoryInItsSeasons } from '../test/countedHistory'
 import { MISLEADING } from '../test/misleadingAddresses'
 import { renderAt } from '../test/render'
 import { membersAsServed } from '../test/serverAnswers'
@@ -321,6 +322,10 @@ describe('EventDetail, the results of the league members who ran it', () => {
 })
 
 describe('LeagueDetail', () => {
+  /* The competitions of the generated files are of 2019, whose runs no season counts as served
+     (`test/countedHistory.ts`); these cases measure how one is drawn. */
+  countTheHistoryInItsSeasons()
+
   /* **The page of one competition is its name, the half of the field being read, and the
      standing** (owner, 07.09.2026): „na strani Lige ne postoje propozicije i nagrade (one se vide
      samo na listi svih liga), pa ni događaji koji ulaze u ligu, a ni dugme rezultati jer se odmah
@@ -730,6 +735,10 @@ const placings = (grid: HTMLElement): HTMLElement[] =>
     )
 
 describe('a competition, on one page', () => {
+  /* The competitions of the generated files are of 2019, whose runs no season counts as served
+     (`test/countedHistory.ts`); these cases measure how one is drawn. */
+  countTheHistoryInItsSeasons()
+
   /* Owner, 31.07.2026 for the grid and 07.09.2026 for the page being one: the standing is a grid,
      with everybody who ran down the side and every event of the competition across the top. The
      data has one competition that has actually been run; the three of 2027 are necessarily empty,
@@ -818,6 +827,10 @@ describe('a competition, on one page', () => {
 })
 
 describe('the grid of a competition, in the details the review found unguarded', () => {
+  /* The competitions of the generated files are of 2019, whose runs no season counts as served
+     (`test/countedHistory.ts`); these cases measure how one is drawn. */
+  countTheHistoryInItsSeasons()
+
   const RUN = '/sr/liga/brdska-2019'
 
   it('names each row by its runner, as a heading of that row', async () => {
@@ -932,6 +945,10 @@ describe('the grid of a competition, in the details the review found unguarded',
 })
 
 describe('the control that names the parts of a record', () => {
+  /* The competitions of the generated files are of 2019, whose runs no season counts as served
+     (`test/countedHistory.ts`); these cases measure how one is drawn. */
+  countTheHistoryInItsSeasons()
+
   it('carries the query from one part to the other', async () => {
     /* The whole reason the profile's season survives a trip to the trophies and
        back. Nothing was holding it. */

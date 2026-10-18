@@ -61,7 +61,7 @@ const race = (
 
 let resultsMade = 0
 
-const result = (memberNumber: string, raceId: number, points: number): Result => ({
+const result = (memberNumber: string, raceId: number, points: number, inItsSeason = true): Result => ({
   id: (resultsMade += 1),
   memberNumber,
   raceId,
@@ -75,6 +75,7 @@ const result = (memberNumber: string, raceId: number, points: number): Result =>
   seconds: 3000,
   points,
   category: 'short',
+  inItsSeason,
 })
 
 /* **Counts every race of the two events it holds**, which is the ordinary arrangement and the one
@@ -256,6 +257,23 @@ describe('the grid of a competition', () => {
 
     expect(first(table.rows).points.get(4)).toBe(17)
     expect(first(table.rows).total).toBe(17)
+  })
+
+  it('leaves out a run that counts in no season, even on a race the competition counts', () => {
+    /* PDL P9, 18.10.2026: a run of a year its member was no member of „ne ulazi ni u jednu
+       sezonsku tabelu". The same race and the same member as the case above, so the race and the
+       member cannot be what decides; the second run is one of a year he was no member of. And a
+       second man whose only run counts in none, who would otherwise have a row. */
+    const table = leagueTable(
+      league,
+      events,
+      races,
+      [result('000001', 9, 10), result('000001', 9, 7, false), result('000002', 9, 50, false)],
+      [person('000001'), person('000002')],
+    )
+
+    expect(table.rows.map((row) => row.competitor.memberNumber)).toEqual(['000001'])
+    expect(first(table.rows).total).toBe(10)
   })
 })
 

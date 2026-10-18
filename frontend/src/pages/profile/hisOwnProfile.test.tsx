@@ -262,6 +262,7 @@ describe('a member whose fee has lapsed, on his own page', () => {
       seconds: 6000,
       points,
       category: 'half',
+      inItsSeason: true,
     })
 
     it('shows the trophies he won, which are read back out of boards he is not on', async () => {

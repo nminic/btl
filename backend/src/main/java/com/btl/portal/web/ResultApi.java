@@ -222,10 +222,24 @@ class ResultApi {
 	 *                 distance, never by this server: one rule, one home (V7)
 	 * @param runner   who ran it, or NULL when the competitor has no member number. Null and
 	 *                 never an absent key; the note on this class gives both reasons
+	 * @param inItsSeason whether the result counts in the season of its own year: true exactly
+	 *                 when {@code membership} holds the member for that year (V22), which is never
+	 *                 before 2027 ({@code membership_season_not_before_the_league}). PDL P9, the
+	 *                 owner's choice of 18.10.2026 on the recommendation put to him: „Rezultat za
+	 *                 datum pre 2027 ili za godinu kad čovek nije bio član vidi se na profilu člana
+	 *                 (istorija, krugovi po tipu trke) i na strani događaja, a ne ulazi ni u jednu
+	 *                 sezonsku tabelu, Top listu ni nagradu." So the result is served either way, to
+	 *                 be drawn where a result is drawn, and this says whether a season may count it.
+	 *                 The year of the race and never the year of the payment: a member who paid in
+	 *                 October for the next season is a member OF the next season (V22), and what he
+	 *                 runs in the rest of the running one counts in no season. Asked here and not on
+	 *                 each screen because the screens do not have the memberships, and
+	 *                 {@link BestOfficialSeason} asks the same join, so the two sides cannot disagree
+	 *                 about which runs a season holds.
 	 */
 	record Result(long id, String memberNumber, long raceId, String raceName, String eventName,
 			String eventSlug, LocalDate date, BigDecimal distanceKm, int ascentM, int descentM,
-			int seconds, BigDecimal points, String category, Runner runner) {
+			int seconds, BigDecimal points, String category, boolean inItsSeason, Runner runner) {
 	}
 
 	@GetMapping("/api/results")
@@ -246,7 +260,12 @@ class ResultApi {
 						   `theRunnerIsFiveNamesAndNothingElse` and `noYearOfBirthLeavesTheServer`
 						   refuse it, the first by its names and the second by the text of the
 						   whole answer. */
-						+ " c.birth_year"
+						+ " c.birth_year,"
+						/* WHETHER A SEASON MAY COUNT IT (see `inItsSeason`). The key of
+						   `membership` is the member and the season, so this is one probe of an
+						   index per row and not a scan. */
+						+ " exists(select 1 from membership m where m.competitor_id = r.competitor_id"
+						+ " and m.season = extract(year from r.race_date)) as in_its_season"
 						+ " from result r"
 						+ " join competitor c on c.id = r.competitor_id"
 						+ " join race ra on ra.id = r.race_id"
@@ -269,6 +288,7 @@ class ResultApi {
 							row.getString(4), row.getString(5), row.getString(6),
 							day, row.getBigDecimal(8), row.getInt(9),
 							row.getInt(10), row.getInt(11), row.getBigDecimal(12), row.getString(13),
+							row.getBoolean(19),
 							/* NULL WHEN HE HAS NO MEMBER NUMBER, the key still there. The note on
 							   this class says why a registration without one is not named. */
 							memberNumber == null ? null

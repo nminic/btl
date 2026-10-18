@@ -89,7 +89,7 @@ function aTeamNaming(
 /** One result, the fields the server answers a result with and nothing else. */
 let resultsMade = 900_000
 
-function aResult(memberNumber: string, date: string, points: number) {
+function aResult(memberNumber: string, date: string, points: number, inItsSeason = true) {
   resultsMade += 1
 
   return {
@@ -106,6 +106,9 @@ function aResult(memberNumber: string, date: string, points: number) {
     seconds: 3000,
     points,
     category: 'short',
+    /* A run of a member of the season it is run in, unless a case says it counts in none
+       (`Result.inItsSeason`). */
+    inItsSeason,
   }
 }
 
@@ -307,6 +310,36 @@ describe('a member who hides his profile, in the table of teams', () => {
       expect(pointsIn(first)).toBe(formatPoints(17, 'sr'))
       /* The head count is the fourth cell: place, team, town, members, points. */
       expect(must(cells[3], 'the head count').textContent).toBe('2')
+    } finally {
+      stop()
+    }
+  })
+
+  it("leaves out of a team's sum a run of a year its member was no member of", async () => {
+    /* PDL P9, 18.10.2026: such a run „ne ulazi ni u jednu sezonsku tabelu". His team has his 10 and
+       a run of 5 that counts in no season; the other team stands on 12. Counted, his team would
+       stand on 15 and first; not counted, it is second on 10. */
+    const { stop } = answering(
+      [
+        aMember(OPEN, 'Jovan', 'Javni', { id: THE_TEAM, since: 2027 }),
+        aMember(ELSEWHERE, 'Drugi', 'Drugic', { id: 42, since: 2027 }),
+      ],
+      [aTeamNaming(THE_TEAM, ITS_ADDRESS, ITS_NAME, []), aTeamNaming(42, 'drugi-tim', 'Drugi tim', [])],
+      [
+        aResult(OPEN, '2027-05-01', 10),
+        aResult(OPEN, '2027-05-04', 5, false),
+        aResult(ELSEWHERE, '2027-05-03', 12),
+      ],
+    )
+
+    try {
+      renderAt('/sr/timovi', 'visitor', null, undefined, '2027-06-01')
+
+      const table = await screen.findByRole('table', { name: 'Timovi' })
+      const rows = within(table).getAllByRole('row').slice(1)
+
+      expect(must(rows[0], 'the first team in the table').textContent).toContain('Drugi tim')
+      expect(pointsIn(must(rows[1], 'his team'))).toBe(formatPoints(10, 'sr'))
     } finally {
       stop()
     }

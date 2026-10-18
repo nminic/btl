@@ -7,6 +7,7 @@ import { setupUser } from '../../test/user'
 import { PER_PAGE } from '../../components/pageOf'
 import { SLOW } from '../../test/slow'
 import { formatDayMonth } from '../../i18n/format'
+import { countTheHistoryInItsSeasons } from '../../test/countedHistory'
 
 /* Fifty placed to a page (owner, 03.08.2026, PDL P24).
  *
@@ -152,6 +153,10 @@ async function withCompetitors(count: number, mixed = false) {
 afterEach(() => {
   globalThis.fetch = REAL_FETCH
 })
+
+/* The competition is the generated `brdska-2019`, whose runs no season counts as served; what
+   these cases measure is how a standing is laid out and paged (`test/countedHistory.ts`). */
+countTheHistoryInItsSeasons()
 
 const grid = async () => within(await screen.findByRole('table', { name: 'Poredak takmičenja' }))
 

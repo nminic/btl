@@ -1,6 +1,6 @@
 import type { Ducat, DucatFamily, DucatKind } from './ducatRule'
 import { instancesOf } from './ducatRule'
-import { resultsOf, seasonOf } from './derive'
+import { resultsOf, yearOf } from './derive'
 import type { Competitor, Result } from './types'
 
 /* Which ducats a competitor has actually won.
@@ -64,7 +64,10 @@ export function quantityOf(kind: DucatKind, races: Result[]): number {
        for ever. Recorded as owed, because a family of ducats now depends on it
        (ADL A12, 8). */
     countryCount: () => 0,
-    seasonCount: () => new Set(races.map(seasonOf)).size,
+    /* The years run in, and every one of them: a ducat counts the history as well (PDL P16, „Petnaest
+       ugrađenih porodica primenjuje se i na uvezenu istoriju"), so it reads `yearOf` and not the
+       season a result counts in, which is nothing for a year before 2027. */
+    seasonCount: () => new Set(races.map(yearOf)).size,
     bestRacePoints: () => best((one) => one.points),
     bestRaceKm: () => best((one) => one.distanceKm),
     bestRaceAscent: () => best((one) => one.ascentM),

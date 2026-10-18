@@ -43,6 +43,7 @@ function race(date: string, over: Partial<Result> = {}): Result {
     seconds: 3600,
     points: 20,
     category: 'short',
+    inItsSeason: true,
     ...over,
   }
 }
@@ -97,6 +98,19 @@ describe('the quantity a kind names', () => {
 
   it('counts the seasons raced in, not the ones a member has been a member for', () => {
     expect(quantityOf('seasonCount', races)).toBe(2)
+  })
+
+  it('counts the years of the history too, which no season counts', () => {
+    /* PDL P16: the families of ducats „primenjuje se i na uvezenu istoriju", so a year of the
+       history is a year raced in, though no season counts a run of it (`Result.inItsSeason`). Read
+       by the season a run counts in, the three years below would be one answer of nothing. */
+    const history = [
+      race('2015-03-01', { inItsSeason: false }),
+      race('2016-03-01', { inItsSeason: false }),
+      race('2019-03-01', { inItsSeason: false }),
+    ]
+
+    expect(quantityOf('seasonCount', history)).toBe(3)
   })
 
   it('takes the best single race, never the sum of them', () => {
