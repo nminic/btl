@@ -2,17 +2,16 @@ import { SLOW } from '../test/slow'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
-import { categoryLabel } from '../data/categories'
 import { loadResource } from '../data/client'
 import {
   categoriesOf,
-  categoryOfMember,
   rankingFor,
   topByCategory,
   topByKilometers,
   topByTimeOnCourse,
 } from '../data/derive'
 import { hueFor } from './competitorFace'
+import en from '../i18n/en.json'
 import sr from '../i18n/sr.json'
 import pages from '../test/mock/pages.json'
 import words from '../test/leagueWords.snapshot.json'
@@ -413,13 +412,16 @@ describe('Rankings', () => {
 
   it('narrows by category, and lets it go again', async () => {
     const user = setupUser()
-    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
+    const { router } = renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     const all = within(await screen.findByRole('table')).getAllByRole('row').length
     const categories = within(screen.getByRole('group', { name: 'Kategorija' }))
 
-    await user.click(categories.getByRole('button', { name: 'M40-54' }))
+    await user.click(categories.getByRole('button', { name: 'M 40-54' }))
     expect(within(screen.getByRole('table')).getAllByRole('row').length).toBeLessThan(all)
+    /* The button says „M 40-54" and the address says what it always said (owner, 18.10.2026:
+       only what is shown gets the space), so a bookmark made before that day still opens it. */
+    expect(new URLSearchParams(router.state.location.search).get('kategorija')).toBe('M40-54')
 
     await user.click(categories.getByRole('button', { name: 'Sve' }))
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(all)
@@ -542,6 +544,38 @@ describe('Rankings', () => {
     expect(Object.keys(sr.rankings)).not.toContain('searchPlaceholder')
   })
 
+  it('writes the women\'s bands with the letter of the language, and the men\'s with M in both', async () => {
+    /* Owner, 18.10.2026: `Ž 40-54` in Serbian, `F 40-54` in English, `M 40-54` in both. Both
+       sexes are drawn in both languages, so a letter that is right for one sex or one language
+       only is not enough to pass; and the address of the woman's chip is her code, `Ž40-54`,
+       whatever the language reads. */
+    const user = setupUser()
+    const season = String(inLeague(2020))
+
+    for (const [path, dictionary, mark] of [
+      [`/sr/tabela?sezona=${season}&pol=z`, sr, 'Ž'],
+      [`/en/tabela?sezona=${season}&pol=z`, en, 'F'],
+    ] as const) {
+      const { router } = renderAt(path)
+      const chips = within(await screen.findByRole('group', { name: dictionary.rankings.categoryFilter }))
+
+      await user.click(chips.getByRole('button', { name: `${mark} 25-39` }))
+
+      expect(new URLSearchParams(router.state.location.search).get('kategorija')).toBe('Ž25-39')
+      expect(chips.queryByRole('button', { name: 'Ž25-39' })).toBeNull()
+      expect(chips.queryByRole('button', { name: 'F25-39' })).toBeNull()
+
+      cleanup()
+    }
+
+    renderAt(`/en/tabela?sezona=${season}`)
+
+    const men = within(await screen.findByRole('group', { name: en.rankings.categoryFilter }))
+
+    expect(men.getByRole('button', { name: 'M 40-54' })).toBeVisible()
+    expect(men.queryByRole('button', { name: 'F 40-54' })).toBeNull()
+  })
+
   it('names the beginners by their word, on the buttons and in the table alike', async () => {
     /* The category the league keeps as `M R` is read as „Početnici" wherever a
        visitor meets it (owner, 11.08.2026: „Tako neka se zovu od sada svuda").
@@ -575,7 +609,7 @@ describe('Rankings', () => {
        alone, because a row of buttons where the chosen one is merely darker
        says nothing to anybody who cannot see it (WCAG 2.2 SC 1.4.1). */
     const user = setupUser()
-    renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
+    const { router } = renderAt(`/sr/tabela?sezona=${String(inLeague(2020))}`)
 
     const categories = within(await screen.findByRole('group', { name: 'Kategorija' }))
     expect(categories.getByRole('button', { name: 'Sve' })).toHaveAttribute(
@@ -583,12 +617,13 @@ describe('Rankings', () => {
       'true',
     )
 
-    await user.click(categories.getByRole('button', { name: 'M40-54' }))
+    await user.click(categories.getByRole('button', { name: 'M 40-54' }))
 
-    expect(categories.getByRole('button', { name: 'M40-54' })).toHaveAttribute(
+    expect(categories.getByRole('button', { name: 'M 40-54' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
+    expect(new URLSearchParams(router.state.location.search).get('kategorija')).toBe('M40-54')
     expect(categories.getByRole('button', { name: 'Sve' })).toHaveAttribute(
       'aria-pressed',
       'false',
@@ -1781,15 +1816,18 @@ describe('TopBoards', () => {
  *
  * **Built out of the record that was served and not read off the card**, so that the card has
  * something to disagree with. The category is the one part that is worked out and not copied, and
- * it is worked out by the two functions the screen itself uses: nothing here is a claim about the
- * category, only about what else a card says. The two words of a beginner's band are the
- * dictionary's own.
+ * it is worked out below from the gender, the band and the first season flag of the record.
  */
 function whatTheCardSays(one: Competitor): string {
-  const asTheDictionaryHasIt = (key: string): string =>
-    key === 'category.rookieMale' ? sr.category.rookieMale : sr.category.rookieFemale
+  /* **The category is written out here by hand and not by `categoryLabel`**, which is the
+     function the screen draws it with: an oracle that calls the subject agrees with it whatever
+     it does. The letter and the two words are the dictionary's own, and the space after the
+     letter is typed here (owner, 18.10.2026). */
+  const word = one.gender === 'M' ? sr.category.rookieMale : sr.category.rookieFemale
+  const mark = one.gender === 'M' ? sr.category.markMale : sr.category.markFemale
+  const category = one.firstSeason2027 ? word : `${mark} ${one.ageBand}`
 
-  return `${one.firstName} ${one.lastName}${one.memberNumber}${categoryLabel(categoryOfMember(one), asTheDictionaryHasIt)}${one.city}`
+  return `${one.firstName} ${one.lastName}${one.memberNumber}${category}${one.city}`
 }
 
 /** The letters in the circle of a card, or nothing where the circle is a photograph. */
