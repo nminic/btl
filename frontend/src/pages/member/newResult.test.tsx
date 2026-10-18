@@ -379,10 +379,12 @@ describe('the list of races under the name of an event', () => {
       'sr-Latn',
     ).map((one) => one.said)
 
+    /* In the owner's order of the races of one event (PDL P6, 18.10.2026, `data/raceOrder.ts`): the
+       race of a length, then the timed one, then the free one, whatever order they were handed in. */
     expect(said).toEqual([
+      'Trka – 19.09.2026. – 21,1 km',
       'Trka – 19.09.2026. – 24 h',
       'Trka – 19.09.2026.',
-      'Trka – 19.09.2026. – 21,1 km',
     ])
   })
 
@@ -478,19 +480,21 @@ describe('the list of races under the name of an event', () => {
        it rides with the rest because what it says is exactly what the link is, so
        typing over the name empties it with the measures (`racesToOffer.ts`). What
        it locks is a control, and there is none of that name. */
+    /* In the owner's order of the races of one event (PDL P6, 18.10.2026): the race of a length,
+       then the timed one, then the free one. */
     expect(filled.map((one) => Object.keys(one ?? {}).sort())).toEqual([
+      ['ascentM', 'date', 'descentM', 'distanceKm', 'raceId'],
       ['date', 'hours', 'minutes', 'raceId', 'seconds'],
       ['date', 'raceId'],
-      ['ascentM', 'date', 'descentM', 'distanceKm', 'raceId'],
     ])
-    expect(filled.map((one) => one?.ascentM)).toEqual([undefined, undefined, '120'])
-    expect(filled.map((one) => one?.distanceKm)).toEqual([undefined, undefined, '21.1'])
-    expect(filled.map((one) => one?.descentM)).toEqual([undefined, undefined, '140'])
+    expect(filled.map((one) => one?.ascentM)).toEqual(['120', undefined, undefined])
+    expect(filled.map((one) => one?.distanceKm)).toEqual(['21.1', undefined, undefined])
+    expect(filled.map((one) => one?.descentM)).toEqual(['140', undefined, undefined])
     /* Each in its own box and each a different number, so no two of the three can be
        read for one another. */
-    expect(filled.map((one) => one?.hours)).toEqual(['6', undefined, undefined])
-    expect(filled.map((one) => one?.minutes)).toEqual(['30', undefined, undefined])
-    expect(filled.map((one) => one?.seconds)).toEqual(['45', undefined, undefined])
+    expect(filled.map((one) => one?.hours)).toEqual([undefined, '6', undefined])
+    expect(filled.map((one) => one?.minutes)).toEqual([undefined, '30', undefined])
+    expect(filled.map((one) => one?.seconds)).toEqual([undefined, '45', undefined])
     /* And the day, which is the one thing handed over on all three kinds and so the
        one the two lists above cannot reach. It is locked like the rest, so a value
        the form cannot read is a field nobody can mend: the box asks for

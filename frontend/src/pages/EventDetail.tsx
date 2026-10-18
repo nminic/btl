@@ -22,6 +22,7 @@ import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
 import { memberOf } from '../data/derive'
 import { raceLabel, raceMeasure } from '../data/raceLabel'
+import { inEventOrder } from '../data/raceOrder'
 import { outsideLink } from '../data/outsideLink'
 import type { Race, BtlEvent } from '../data/types'
 import { useSession } from '../session/useSession'
@@ -45,14 +46,9 @@ function RaceTable({ event }: { event: BtlEvent }) {
   return (
     <Resource state={races} inline label={t('event.races')}>
       {(all) => {
-        /* In the order they are run, and told whether that is more than one
-           morning. */
-        const mine = all
-          .filter((race) => race.eventId === event.id)
-          .sort(
-            (left, right) =>
-              left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm,
-          )
+        /* In the owner's order (PDL P6, 18.10.2026, `data/raceOrder.ts`), and told
+           whether that is more than one morning. */
+        const mine = inEventOrder(all.filter((race) => race.eventId === event.id))
         const overDays = new Set(mine.map((race) => race.date)).size > 1
 
         /* The way into the form, one per race, for whoever is signed in (owner,

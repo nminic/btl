@@ -105,7 +105,7 @@ describe('the events of a competition, with the races of each that count', () =>
     const held = racesByEvent([race(11, 4, 10), race(13, 4, 5.5)], events)
 
     expect(held).toHaveLength(1)
-    expect(first(held).races.map((one) => one.id)).toEqual([13, 11])
+    expect(first(held).races.map((one) => one.id)).toEqual([11, 13])
   })
 
   it('leaves out an event none of whose races count, one that has none and one that has some', () => {
@@ -134,15 +134,32 @@ describe('the events of a competition, with the races of each that count', () =>
     expect(held.map((one) => one.event.name)).toEqual(['Alfa', 'Beta'])
   })
 
-  it('puts the races of one event in the order they are run, and parts one morning by the length', () => {
-    /* The order the event's own page lists them in (`pages/EventDetail.tsx`). One event may run
-       over several mornings (PDL P10), so the day comes first and the length parts the races of
-       one morning: `r3` and `r1` share 1 May, `r4` is the next morning. */
+  it("puts the races of one event in the owner's order, the longest first and the day not asked", () => {
+    /* The order the event's own page lists them in (`pages/EventDetail.tsx`, PDL P6, 18.10.2026,
+       `data/raceOrder.ts`). `r4` is the next morning and the longest, so a list that still asked
+       the day first would put it last: `r3` and `r1` share 1 May. */
     const held = racesByEvent(leagueRaces(league, races), events)
     const later = at(held, 1)
 
     expect(later.event.id).toBe(4)
-    expect(later.races.map((one) => one.id)).toEqual([13, 11, 14])
+    expect(later.races.map((one) => one.id)).toEqual([14, 11, 13])
+  })
+
+  it('puts a timed race after the races of a length and before a free one, by how long it lasts', () => {
+    /* A length of nought on the three that have none, as the calendar keeps them, so the length
+       alone would leave them in the order they were handed in, which is neither this nor its
+       reverse. */
+    const timed = (id: number, hours: number): Race => ({
+      ...race(id, 4, 0),
+      kind: 'time',
+      limitSeconds: hours * 3600,
+    })
+    const held = racesByEvent(
+      [{ ...race(21, 4, 0), kind: 'free' }, timed(22, 6), race(23, 4, 5), timed(24, 12)],
+      events,
+    )
+
+    expect(first(held).races.map((one) => one.id)).toEqual([23, 24, 22, 21])
   })
 
   it('hands back the event it was given, so what draws it needs nothing else', () => {

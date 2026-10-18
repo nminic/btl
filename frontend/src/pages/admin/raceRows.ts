@@ -3,6 +3,7 @@ import { trka } from '../../forms/definitions'
 import { isWhole, parseNumber } from '../../forms/numberField'
 import { categoryOf } from '../../data/raceCategory'
 import { raceKind } from '../../data/raceKind'
+import { inEventOrder } from '../../data/raceOrder'
 import type { Race, RaceKind } from '../../data/types'
 
 /**
@@ -106,11 +107,10 @@ export function newRaceRow(eventName: string, eventDate: string): RaceRow {
 }
 
 export function rowsOf(races: RaceOfRow[], fieldDate: (iso: string) => string): RaceRow[] {
-  return [...races]
-    /* By the day first and the distance inside it, which is the order they are
-       run in: an event over two mornings reads as two mornings. */
-    .sort((left, right) => left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm)
-    .map((race) => ({
+  /* In the owner's order, which is the one the page of the event lists them in (PDL P6,
+     18.10.2026, `data/raceOrder.ts`). Only as the table opens: a row added afterwards stays
+     where it was added, so nothing moves under the hand that is typing into it. */
+  return inEventOrder(races).map((race) => ({
       id: String(race.id),
       name: race.name,
       renamed: race.renamed,
