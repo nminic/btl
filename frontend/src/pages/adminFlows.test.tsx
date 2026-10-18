@@ -2612,7 +2612,7 @@ describe('the five queues read from the file', () => {
        passing, by the link the message is opened from. */
     expect(
       screen.getByText(
-        'Tvoj predlog tima „Timočka trkačka družina" je prihvaćen. Ti si njegov organizator.',
+        'Tvoj predlog tima "Timočka trkačka družina" je prihvaćen. Ti si njegov organizator.',
       ),
     ).toBeVisible()
   })

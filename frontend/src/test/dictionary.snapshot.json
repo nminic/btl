@@ -386,7 +386,7 @@
     "removeLink": "Ukloni vezu",
     "cancel": "Otkaži",
     "noAddress": "Upiši gde veza vodi.",
-    "wrongAddress": "Upiši adresu sajta (na primer runtrace.net), mejl adresu ili kosu crtu za stranu ovog portala, bez razmaka. Ime sajta, do prve kose crte, ne sme da ima „@“, „%“, kosu crtu unazad ni slova van engleske abecede (na primer š ili ć), a ni mejl adresa ne sme da ima ta slova."
+    "wrongAddress": "Upiši adresu sajta (na primer runtrace.net), mejl adresu ili kosu crtu za stranu ovog portala, bez razmaka. Ime sajta, do prve kose crte, ne sme da ima \"@\", \"%\", kosu crtu unazad ni slova van engleske abecede (na primer š ili ć), a ni mejl adresa ne sme da ima ta slova."
   },
   "registration": {
     "title": "Registracija",
@@ -653,9 +653,9 @@
     "copy": "Kopiranje",
     "delete": "Brisanje",
     "deleteAsk": {
-      "one": "Obrisati događaj „{name}\" i {count} njegovu trku? Ovo se ne može opozvati.",
-      "few": "Obrisati događaj „{name}\" i {count} njegove trke? Ovo se ne može opozvati.",
-      "other": "Obrisati događaj „{name}\" i {count} njegovih trka? Ovo se ne može opozvati."
+      "one": "Obrisati događaj \"{name}\" i {count} njegovu trku? Ovo se ne može opozvati.",
+      "few": "Obrisati događaj \"{name}\" i {count} njegove trke? Ovo se ne može opozvati.",
+      "other": "Obrisati događaj \"{name}\" i {count} njegovih trka? Ovo se ne može opozvati."
     },
     "kind": {
       "race": "Trka",
@@ -846,14 +846,14 @@
     "proposeNote2": "Tim postoji tek kad ga odobri moderator. Do tada nije vidljiv nigde na portalu.",
     "proposeBody": "{city}, {country}. {note}",
     "proposeDoneTitle": "Predlog je poslat",
-    "proposeDone": "Tim „{name}\" čeka odluku moderatora. Dok čeka, nije vidljiv nigde na portalu.",
+    "proposeDone": "Tim \"{name}\" čeka odluku moderatora. Dok čeka, nije vidljiv nigde na portalu.",
     "proposeShut": "Tim se osniva u prelaznom roku, od 15. oktobra do 31. decembra.",
     "edit": "Izmeni",
     "editTitle": "Izmena tima",
     "editSubmit": "Pošalji izmenu",
     "editNote": "Izmena ponovo prolazi verifikaciju. Dok čeka odluku moderatora, na portalu stoje postojeći podaci tima.",
     "editDoneTitle": "Izmena je poslata",
-    "editDone": "Izmena tima „{name}“ čeka odluku moderatora. Dok čeka, na portalu stoje postojeći podaci.",
+    "editDone": "Izmena tima \"{name}\" čeka odluku moderatora. Dok čeka, na portalu stoje postojeći podaci.",
     "proposeTaken": "Tim pod ovim nazivom već postoji u ligi. Velika slova, kvačice i znaci interpunkcije se ne računaju kao razlika, a ćirilica i latinica su isto pismo. Izaberi drugi naziv.",
     "proposeNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Dodaj bar jedno slovo naše abecede ili ćirilice, ili cifru.",
     "proposeFormIncomplete": "Naziv, mesto i država moraju biti popunjeni.",
@@ -878,7 +878,7 @@
       "aQuestionAlreadyStands": "Već imaš prijavu koja čeka odgovor tima, pa nova nije poslata. Prijavu povlačiš na strani tima kome si je poslao/la."
     },
     "invite": "Pozovi u tim",
-    "invited": "Poziv u tim „{team}\" je poslat.",
+    "invited": "Poziv u tim \"{team}\" je poslat.",
     "inviteRefused": {
       "theFormIsNotComplete": "Zahtev nije poslat do kraja, pa poziv nije poslat. Osveži stranicu i pokušaj ponovo.",
       "theWindowIsShut": "Prelazni rok se u međuvremenu zatvorio, pa poziv nije poslat. Rok se otvara 15. oktobra i traje do 31. decembra.",
@@ -894,8 +894,8 @@
     "inviteWithdraw": "Povuci poziv",
     "inviteWithdrawNamed": "Povuci poziv: {name}",
     "inviteLapsed": "Član kome je članarina istekla",
-    "inviteAccepted": "Prihvatio/la si ovaj poziv i od naredne sezone trčiš za tim „{team}\".",
-    "inviteOvertaken": "U međuvremenu si ušao/la u tim „{team}\", pa ovaj poziv više ne stoji.",
+    "inviteAccepted": "Prihvatio/la si ovaj poziv i od naredne sezone trčiš za tim \"{team}\".",
+    "inviteOvertaken": "U međuvremenu si ušao/la u tim \"{team}\", pa ovaj poziv više ne stoji.",
     "inviteOvertakenUnnamed": "U međuvremenu si ušao/la u tim, pa ovaj poziv više ne možeš da prihvatiš.",
     "inviteClosed": "Ovaj poziv više ne stoji.",
     "inviteGone": "Tim koji te je pozvao više ne postoji.",
@@ -1579,9 +1579,9 @@
     },
     "subject": "Predmet",
     "teamChange": "Izmena postojećeg tima",
-    "teamChangeOf": "Izmena tima „{name}“",
-    "teamChangeAccepted": "Izmena tima „{name}“ je prihvaćena",
-    "teamChangeAcceptedBody": "Podaci tima „{name}“ su izmenjeni. Moderator sme da ispravi ono što ste poslali pre nego što prihvati, pa pogledajte stranu tima.",
+    "teamChangeOf": "Izmena tima \"{name}\"",
+    "teamChangeAccepted": "Izmena tima \"{name}\" je prihvaćena",
+    "teamChangeAcceptedBody": "Podaci tima \"{name}\" su izmenjeni. Moderator sme da ispravi ono što ste poslali pre nego što prihvati, pa pogledajte stranu tima.",
     "sentBy": "Poslao {who}, član {memberNumber}",
     "sentByAnonymous": "Prijavio posetilac bez naloga",
     "paymentsSeason": "Nisu članovi za sezonu {season}",
@@ -1659,8 +1659,8 @@
       "few": "Rešene su {count} stavke.",
       "other": "Rešeno je {count} stavki."
     },
-    "teamAccepted": "Tim „{name}\" je prihvaćen",
-    "teamAcceptedBody": "Tvoj predlog tima „{name}\" je prihvaćen. Ti si njegov organizator.",
+    "teamAccepted": "Tim \"{name}\" je prihvaćen",
+    "teamAcceptedBody": "Tvoj predlog tima \"{name}\" je prihvaćen. Ti si njegov organizator.",
     "teamTaken": "Tim pod ovim nazivom, ili pod nazivom koji daje istu adresu, već postoji u ligi. Ispravi naziv ili odbij predlog.",
     "teamNoAddress": "Od ovog naziva se ne može napraviti adresa strane tima. Ispravi naziv tako da ima bar jedno slovo naše abecede ili ćirilice, ili cifru, ili odbij predlog.",
     "teamIncomplete": "Naziv, mesto i država moraju biti popunjeni da bi tim mogao da nastane.",

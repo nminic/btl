@@ -117,8 +117,8 @@ const THE_WRONG_ADDRESSES = [
 const OPENED = {
   id: 612,
   from: 'Balkanska trkačka liga',
-  subject: 'Poziv u tim „Dunavski trkači"',
-  body: 'Tim „Dunavski trkači" te poziva da od naredne sezone trčiš za njih.',
+  subject: 'Poziv u tim "Dunavski trkači"',
+  body: 'Tim "Dunavski trkači" te poziva da od naredne sezone trčiš za njih.',
   date: '2026-10-06',
   read: true,
   teamInvitationId: HIS_INVITE,
@@ -130,7 +130,7 @@ const OPENED = {
 const ANOTHER_TEAM_QUESTION = {
   ...OPENED,
   id: 611,
-  subject: 'Poziv u tim „Savski maratonci"',
+  subject: 'Poziv u tim "Savski maratonci"',
   date: '2026-10-09',
   read: false,
   teamInvitationId: 44,

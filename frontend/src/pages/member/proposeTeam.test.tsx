@@ -267,7 +267,7 @@ describe('a proposal a member sends', () => {
     await fill(user, 'Trkači Morave')
 
     expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
-    expect(screen.getByText(/„Trkači Morave" čeka odluku moderatora/)).toBeVisible()
+    expect(screen.getByText(/"Trkači Morave" čeka odluku moderatora/)).toBeVisible()
   })
 
   it('offers no way to attach a logo, and the request names none', async () => {
@@ -1386,7 +1386,7 @@ describe('a proposal a moderator accepts', () => {
     await router.navigate('/sr/poruke')
     const inbox = within(await screen.findByRole('list'))
 
-    expect(inbox.getByText(/Tim „Trkači Morave" je prihvaćen/)).toBeVisible()
+    expect(inbox.getByText(/Tim "Trkači Morave" je prihvaćen/)).toBeVisible()
   })
 
   it('makes the team, with the member who proposed it as its organiser', async () => {

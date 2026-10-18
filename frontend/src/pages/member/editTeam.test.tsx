@@ -323,7 +323,7 @@ describe('a change waiting on the queue of teams', () => {
        left the moderator to guess: a change of name puts the new one in the heading
        and the old one nowhere on the card, so the decision was taken blind (review,
        05.09.2026). */
-    expect(card.getByText('Izmena tima „Dunavski trkači“')).toBeVisible()
+    expect(card.getByText('Izmena tima "Dunavski trkači"')).toBeVisible()
     /* And the reason a moderator reads carries the new town, which is the thing
        being decided about. */
     expect(card.getByText(/Sremski Karlovci/)).toBeVisible()
@@ -405,7 +405,7 @@ describe('a change waiting on the queue of teams', () => {
     await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
 
     expect(
-      screen.getByRole('link', { name: /Izmena tima „Dunavski trkači“ je prihvaćena/ }),
+      screen.getByRole('link', { name: /Izmena tima "Dunavski trkači" je prihvaćena/ }),
     ).toBeVisible()
     expect(screen.queryByRole('link', { name: /predlog tima/i })).toBeNull()
   }, SLOW)

@@ -386,7 +386,7 @@
     "removeLink": "Remove link",
     "cancel": "Cancel",
     "noAddress": "Type where the link leads.",
-    "wrongAddress": "Type the address of a site (runtrace.net, for example), a mail address, or a slash for a page of this portal, with no spaces. The name of the site, up to the first slash, may not hold “@”, “%”, a backslash or a letter outside the English alphabet, and neither may a mail address hold such a letter."
+    "wrongAddress": "Type the address of a site (runtrace.net, for example), a mail address, or a slash for a page of this portal, with no spaces. The name of the site, up to the first slash, may not hold \"@\", \"%\", a backslash or a letter outside the English alphabet, and neither may a mail address hold such a letter."
   },
   "registration": {
     "title": "Registration",
@@ -653,9 +653,9 @@
     "copy": "Copying",
     "delete": "Deleting",
     "deleteAsk": {
-      "one": "Delete the event „{name}\" and {count} race of it? This cannot be undone.",
-      "few": "Delete the event „{name}\" and {count} races of it? This cannot be undone.",
-      "other": "Delete the event „{name}\" and {count} races of it? This cannot be undone."
+      "one": "Delete the event \"{name}\" and {count} race of it? This cannot be undone.",
+      "few": "Delete the event \"{name}\" and {count} races of it? This cannot be undone.",
+      "other": "Delete the event \"{name}\" and {count} races of it? This cannot be undone."
     },
     "kind": {
       "race": "Race",
@@ -846,14 +846,14 @@
     "proposeNote2": "The team exists only once a moderator approves it. Until then it is not visible anywhere on the portal.",
     "proposeBody": "{city}, {country}. {note}",
     "proposeDoneTitle": "The proposal has been sent",
-    "proposeDone": "The team „{name}\" is waiting for a moderator's decision. While it waits, it is not visible anywhere on the portal.",
+    "proposeDone": "The team \"{name}\" is waiting for a moderator's decision. While it waits, it is not visible anywhere on the portal.",
     "proposeShut": "A team is founded during the transfer window, from 15 October to 31 December.",
     "edit": "Change",
     "editTitle": "Changing the team",
     "editSubmit": "Send the change",
     "editNote": "The change goes through verification again. While it waits for a moderator's decision, the team's existing details stand on the portal.",
     "editDoneTitle": "The change has been sent",
-    "editDone": "The change to the team „{name}“ is waiting for a moderator's decision. While it waits, the existing details stand on the portal.",
+    "editDone": "The change to the team \"{name}\" is waiting for a moderator's decision. While it waits, the existing details stand on the portal.",
     "proposeTaken": "A team under this name already exists in the League. Capital letters, diacritics and punctuation do not count as a difference, and Cyrillic and Latin are the same script. Choose another name.",
     "proposeNoAddress": "No page address can be made from this name. Add at least one letter of our alphabet or of Cyrillic, or a digit.",
     "proposeFormIncomplete": "The name, the town and the country must all be filled in.",
@@ -878,7 +878,7 @@
       "aQuestionAlreadyStands": "You already have an application waiting for a team's answer, so a new one was not sent. You withdraw it on the page of the team you sent it to."
     },
     "invite": "Invite into the team",
-    "invited": "The invitation into the team „{team}\" has been sent.",
+    "invited": "The invitation into the team \"{team}\" has been sent.",
     "inviteRefused": {
       "theFormIsNotComplete": "The request did not reach the server in full, so the invitation was not sent. Refresh the page and try again.",
       "theWindowIsShut": "The transfer window has closed in the meantime, so the invitation was not sent. The window opens on 15 October and runs to 31 December.",
@@ -894,8 +894,8 @@
     "inviteWithdraw": "Withdraw the invitation",
     "inviteWithdrawNamed": "Withdraw the invitation: {name}",
     "inviteLapsed": "A member whose fee has lapsed",
-    "inviteAccepted": "You have accepted this invitation and from the next season you run for the team „{team}\".",
-    "inviteOvertaken": "You have joined the team „{team}\" in the meantime, so this invitation no longer stands.",
+    "inviteAccepted": "You have accepted this invitation and from the next season you run for the team \"{team}\".",
+    "inviteOvertaken": "You have joined the team \"{team}\" in the meantime, so this invitation no longer stands.",
     "inviteOvertakenUnnamed": "You have joined a team in the meantime, so you can no longer accept this invitation.",
     "inviteClosed": "This invitation no longer stands.",
     "inviteGone": "The team that invited you no longer exists.",
@@ -1579,9 +1579,9 @@
     },
     "subject": "Subject",
     "teamChange": "A change to an existing team",
-    "teamChangeOf": "A change to the team „{name}“",
-    "teamChangeAccepted": "The change to the team „{name}“ has been accepted",
-    "teamChangeAcceptedBody": "The details of the team „{name}“ have been changed. A moderator may correct what you sent before accepting it, so have a look at the team's page.",
+    "teamChangeOf": "A change to the team \"{name}\"",
+    "teamChangeAccepted": "The change to the team \"{name}\" has been accepted",
+    "teamChangeAcceptedBody": "The details of the team \"{name}\" have been changed. A moderator may correct what you sent before accepting it, so have a look at the team's page.",
     "sentBy": "Sent by {who}, member {memberNumber}",
     "sentByAnonymous": "Reported by a visitor without an account",
     "paymentsSeason": "Not members for the {season} season",
@@ -1659,8 +1659,8 @@
       "few": "{count} items have been settled.",
       "other": "{count} items have been settled."
     },
-    "teamAccepted": "The team „{name}\" has been accepted",
-    "teamAcceptedBody": "Your proposal for the team „{name}\" has been accepted. You are its organiser.",
+    "teamAccepted": "The team \"{name}\" has been accepted",
+    "teamAcceptedBody": "Your proposal for the team \"{name}\" has been accepted. You are its organiser.",
     "teamTaken": "A team under this name, or under a name that gives the same address, already exists in the League. Correct the name or refuse the proposal.",
     "teamNoAddress": "No page address can be made from this name. Correct the name so that it has at least one letter of our alphabet or of Cyrillic, or a digit, or refuse the proposal.",
     "teamIncomplete": "The name, the town and the country must all be filled in for the team to come into being.",
