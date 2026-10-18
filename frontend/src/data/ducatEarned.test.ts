@@ -43,6 +43,7 @@ function race(date: string, over: Partial<Result> = {}): Result {
     seconds: 3600,
     points: 20,
     category: 'short',
+    inItsSeason: true,
     ...over,
   }
 }

@@ -165,6 +165,24 @@ class ResultApiTest {
 		/* And somebody who has paid, on that same race of that same morning. */
 		run(A_MEMBER_WHOSE_FEE_IS_STANDING, "Novogodisnja trka", NEW_YEARS_DAY, 5.00, 40, 8,
 				1200, 20.00);
+
+		/* WHICH SEASONS EACH OF THEM IS A MEMBER OF (V22), and no two of the three the same. The
+		   first paid in the autumn for 2028 and ran in March of 2027, so his is the run of a year he
+		   was a member of nobody's league in; the second is a member of both; the third of 2027 and
+		   not of 2028, which is what his fee having lapsed is. */
+		memberOf("000001", 2028);
+		memberOf(A_MEMBER_WHOSE_FEE_IS_STANDING, 2027);
+		memberOf(A_MEMBER_WHOSE_FEE_IS_STANDING, 2028);
+		memberOf(THE_LAPSED_MEMBER, 2027);
+	}
+
+	/** A membership of one season, given free of the fee, which needs no payment to name; the trail
+	 *  V35 asks of such a row is the shape `AttendanceApiTest.exemptFor` writes. */
+	private void memberOf(String memberNumber, int season) {
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " values ((select id from competitor where member_number = ?), ?, 'feeExempt',"
+						+ " 'Probni Probic', timestamptz '2026-09-01 10:00:00+00')")
+				.params(memberNumber, season).update();
 	}
 
 	private void member(String number, String first, String last, String gender, String born,
@@ -389,6 +407,63 @@ class ResultApiTest {
 	@Test
 	void noFieldOfTheAnswerIsTheSameInEveryRecord() throws Exception {
 		Answers.noFieldIsTheSameInEveryRecord("/api/results", answer());
+	}
+
+	/** Whether a season counts each run, by whose run it is and the day it was run. */
+	private Map<String, Boolean> countedBy() throws Exception {
+		Map<String, Boolean> counted = new HashMap<>();
+
+		for (JsonNode row : served()) {
+			counted.put(row.path("memberNumber").asString() + " " + row.path("date").asString(),
+					row.path("inItsSeason").asBoolean());
+		}
+
+		return counted;
+	}
+
+	/**
+	 * A RUN COUNTS IN A SEASON ONLY WHERE ITS MEMBER WAS A MEMBER OF THE YEAR IT WAS RUN IN.
+	 *
+	 * <p>PDL P9, the owner's choice of 18.10.2026: „Rezultat za datum pre 2027 ili za godinu kad
+	 * čovek nije bio član vidi se na profilu člana ... a ne ulazi ni u jednu sezonsku tabelu, Top
+	 * listu ni nagradu." So every run below is SERVED, and the field says whether a season counts it.
+	 *
+	 * <p><b>Each of the three wrong readings has a row it gives away.</b> A membership of anybody
+	 * that year (the second member is one of 2027) would count the first member's March. A
+	 * membership of his in any year (he is one of 2028) would count it too, and the lapsed member's
+	 * New Year's Day besides. A year off by one (the season after the run) would count the March
+	 * and drop the second member's May. Asked a year later, so the lapsed member's run of 2028 is
+	 * served at all.
+	 */
+	@Test
+	void aRunCountsInASeasonOnlyWhereItsMemberWasAMemberOfTheYearItWasRunIn() throws Exception {
+		clock.moveTo(A_YEAR_LATER);
+
+		assertThat(countedBy()).isEqualTo(Map.of(
+				"000001 2027-03-01", false,
+				A_MEMBER_WHOSE_FEE_IS_STANDING + " 2027-03-01", true,
+				A_MEMBER_WHOSE_FEE_IS_STANDING + " 2027-05-05", true,
+				A_MEMBER_WHOSE_FEE_IS_STANDING + " " + NEW_YEARS_DAY, true,
+				THE_LAPSED_MEMBER + " " + NEW_YEARS_EVE, true,
+				THE_LAPSED_MEMBER + " " + NEW_YEARS_DAY, false));
+	}
+
+	/**
+	 * AND A RUN OF A YEAR BEFORE THE LEAGUE COUNTS IN NO SEASON, whoever ran it.
+	 *
+	 * <p>The member who runs it is a member of both seasons the league has had, so nothing about him
+	 * says no; what says no is that the league has no season of 2019 to be a member of
+	 * ({@code membership_season_not_before_the_league}, V22).
+	 */
+	@Test
+	void aRunOfAYearBeforeTheLeagueCountsInNoSeason() throws Exception {
+		event("stara-2019", "Stara trka", "2019-06-01");
+		race("stara-2019", "Stara trka", "2019-06-01", 10.00);
+		run(A_MEMBER_WHOSE_FEE_IS_STANDING, "Stara trka", "2019-06-01", 10.00, 0, 0, 3000, 30.00);
+
+		assertThat(countedBy())
+				.containsEntry(A_MEMBER_WHOSE_FEE_IS_STANDING + " 2019-06-01", false)
+				.containsEntry(A_MEMBER_WHOSE_FEE_IS_STANDING + " 2027-05-05", true);
 	}
 
 	/**

@@ -1,6 +1,6 @@
 import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
-import { totalsOf } from '../data/derive'
+import { seasonOf, totalsOf } from '../data/derive'
 import { seasonShown } from '../data/season'
 import { combineFour, useCompetitors, useEvents, useRaces, useResults } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
@@ -76,7 +76,9 @@ export function Home() {
              for such a member (owner, 13.09.2026), so there is nothing here left
              to take out. */
           const field = competitors
-          const totals = totalsOf(results.filter((one) => one.date.startsWith(String(season))))
+          /* The season's own figures, so what its season counts and nothing else (`seasonOf`, PDL
+             P9, 18.10.2026): a run of somebody who was not a member that year is not the season's. */
+          const totals = totalsOf(results.filter((one) => seasonOf(one) === season))
           /* One heading for every season it can show, because there is only one kind
              of season it shows now. „Sezona 2019, probni podaci" stood here until
              16.10.2026, over the fullest season of the imported history. */

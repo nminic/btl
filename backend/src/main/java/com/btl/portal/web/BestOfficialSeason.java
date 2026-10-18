@@ -28,14 +28,24 @@ import java.math.BigDecimal;
  * svi mogu da odu u Prvu Sezonu." The year is read off {@link SeasonClock} rather than
  * written here, so the first season the league has is one number in one place.
  *
+ * <p><b>AND ONLY A SEASON HE WAS A MEMBER IN.</b> PDL P9, the owner's choice of 18.10.2026 on the
+ * recommendation put to him: „Rezultat za datum pre 2027 ili za godinu kad čovek nije bio član vidi
+ * se na profilu člana (istorija, krugovi po tipu trke) i na strani događaja, a ne ulazi ni u jednu
+ * sezonsku tabelu, Top listu ni nagradu." A year he ran in without being a member is therefore not
+ * an official season of his, and the points of it do not close the category; that is my reading of
+ * the decision for this rule, which names tables, lists and prizes and not the category. The season
+ * a member is a member OF is {@code membership.season} (V22), never the year he paid in, so a member
+ * who paid in October for the next season ran the rest of the running one as nobody's member. The
+ * join is the same condition {@link ResultApi} serves as {@code inItsSeason}, which is what the
+ * screens count a season by, so the two sides cannot disagree about which runs a season holds.
  * <p><b>The season a result belongs to is the year its RACE was run in</b>, and that is
  * read off {@code result.race_date} rather than joined to the race. The column is on the
  * row by a composite reference to {@code (race.id, race.date)} with
  * {@code on update cascade} (V7), so the database itself refuses a day that is not that
  * race's and rewrites every result the moment a race is moved - which is what makes
  * reading it here a fact rather than a copy. {@code frontend/src/data/derive.ts} answers the
- * same question the same way ({@code seasonOf}, the year of the result's date), so the two
- * sides cannot disagree about which season a run belongs to.
+ * same question the same way ({@code seasonOf}: the year of the result's date, where the result
+ * counts in a season at all), so the two sides cannot disagree about which season a run belongs to.
  *
  * <p><b>THE RUNNING SEASON COUNTS TOWARD THE SEASON AFTER IT, AND NEVER TOWARD ITSELF.</b>
  * A season's own category was already decided off the seasons before it (PDL P7: „cela
@@ -112,11 +122,16 @@ class BestOfficialSeason {
 	 *         Java.
 	 */
 	BigDecimal pointsFor(long competitor, int season) {
+		/* ONLY A SEASON HE WAS A MEMBER IN IS A SEASON OF HIS AT ALL, and the join says so (see the
+		   note on this class). The key of `membership` is the member and the season, so the join is
+		   one row per result or none, and never two. */
 		return db.sql("select coalesce(max(total), 0) from ("
-						+ " select sum(points) as total from result"
-						+ " where competitor_id = ? and extract(year from race_date) >= ?"
-						+ " and extract(year from race_date) < ?"
-						+ " group by extract(year from race_date)) each_season")
+						+ " select sum(r.points) as total from result r"
+						+ " join membership m on m.competitor_id = r.competitor_id"
+						+ " and m.season = extract(year from r.race_date)"
+						+ " where r.competitor_id = ? and extract(year from r.race_date) >= ?"
+						+ " and extract(year from r.race_date) < ?"
+						+ " group by extract(year from r.race_date)) each_season")
 				.params(competitor, SeasonClock.FIRST_SEASON, season)
 				.query(BigDecimal.class)
 				.single();

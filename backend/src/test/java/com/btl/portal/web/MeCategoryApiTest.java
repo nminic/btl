@@ -226,6 +226,15 @@ class MeCategoryApiTest {
 		   aSeasonStillRunningNeverClosesItselfAndClosesTheNextOneOnceItIsBehind. */
 		aRunBy(STILL_RUNNING, "Trka prve sezone", "2027-05-10", "7.00");
 		aRunBy(STILL_RUNNING, "Trka druge sezone", "2028-05-10", "13.00");
+
+		/* EVERY MEMBER OF THIS FIXTURE IS A MEMBER OF THE SEASONS IT RUNS IN, 2027 AND 2028, which is
+		   what a run needs to count towards the beginners' category since 18.10.2026
+		   ({@code BestOfficialSeason}; {@code BestOfficialSeasonTest} holds the other state). */
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " select c.id, s.season, 'feeExempt', 'Probni Probic', timestamptz '2026-09-01 10:00:00+00'"
+						+ " from competitor c cross join (values (2027), (2028)) as s (season)"
+						+ " where c.member_number is not null on conflict do nothing")
+				.update();
 	}
 
 	/**
