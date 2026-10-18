@@ -215,10 +215,14 @@ describe('the members screen', () => {
     const row = within(must(within(table).getByText('000002').closest('tr'), 'her row'))
 
     expect(row.getByText('Milica Pavlović')).toBeVisible()
-    /* „Početnice" and not „Ž25-39": a beginner carries that category INSTEAD of her band and
+    /* „Početnice" and not „Ž 25-39": a beginner carries that category INSTEAD of her band and
        never both (owner, 03.08.2026), so this also says the band is being read through
-       `categoryOfMember` and the dictionary rather than printed raw. */
+       `categoryOfMember` and the dictionary rather than printed raw. Neither spelling of the
+       band, with the space (owner, 18.10.2026) and without, so the case does not go quiet the
+       day the space is written differently. */
     expect(row.getByText('Početnice')).toBeVisible()
+    expect(row.getByText('Početnice')).toHaveClass('table__category')
+    expect(row.queryByText('Ž 25-39')).not.toBeInTheDocument()
     expect(row.queryByText('Ž25-39')).not.toBeInTheDocument()
     expect(row.getByText('Kraljevo')).toBeVisible()
     expect(row.getByText('Oslobođen članarine')).toBeVisible()

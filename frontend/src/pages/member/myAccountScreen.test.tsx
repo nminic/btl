@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, within } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Competitor } from '../../data/types'
 import { at, inputElement, must } from '../../test/at'
@@ -8,6 +8,7 @@ import { renderAt } from '../../test/render'
 import { answeredWith, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { ruleFor } from '../../test/stylesheet'
 import { setupUser } from '../../test/user'
+import en from '../../i18n/en.json'
 import sr from '../../i18n/sr.json'
 import { WHAT_THIS_SCREEN_SENDS, type Sent } from './myAccount'
 
@@ -468,7 +469,7 @@ describe('the things a member may not change himself', () => {
     const panel = panelOf(sr.account.lockedTitle)
 
     expect(within(panel).getByText(sr.rankings.men)).toBeInTheDocument()
-    expect(within(panel).getByText(`M${ME.ageBand}`)).toBeInTheDocument()
+    expect(within(panel).getByText(`M ${ME.ageBand}`)).toBeInTheDocument()
     expect(within(panel).queryByRole('textbox', { name: /Pol/ })).not.toBeInTheDocument()
     expect(within(panel).queryByRole('textbox', { name: /Datum rođenja/ })).not.toBeInTheDocument()
     expect(within(panel).getByText(sr.account.lockedNote)).toBeInTheDocument()
@@ -482,8 +483,27 @@ describe('the things a member may not change himself', () => {
     const panel = panelOf(sr.account.lockedTitle)
 
     expect(within(panel).getByText(sr.rankings.women)).toBeInTheDocument()
-    expect(within(panel).getByText(`Ž${HER.ageBand}`)).toBeInTheDocument()
+    expect(within(panel).getByText(`Ž ${HER.ageBand}`)).toBeInTheDocument()
     expect(within(panel).queryByText(sr.rankings.men)).not.toBeInTheDocument()
+  })
+
+  /** The same two members in English: the women's letter follows the language and the men's does
+   *  not (owner, 18.10.2026), so a member of each sex is read, and the Serbian letter is refused. */
+  it('writes the category with the letter of the language', async () => {
+    for (const [member, mark] of [
+      [ME, 'M'],
+      [HER, 'F'],
+    ] as const) {
+      renderAt('/en/podesavanja', 'competitor', member.memberNumber)
+      await screen.findByRole('heading', { level: 2, name: en.account.lockedTitle })
+
+      const panel = panelOf(en.account.lockedTitle)
+
+      expect(within(panel).getByText(`${mark} ${member.ageBand}`)).toBeInTheDocument()
+      expect(within(panel).queryByText(`Ž ${member.ageBand}`)).not.toBeInTheDocument()
+
+      cleanup()
+    }
   })
 
   /**

@@ -243,7 +243,7 @@ export function AdminMembers() {
                           </ProfileLink>{' '}
                           <span className="table__member-number">{one.memberNumber}</span>
                         </td>
-                        <td>{categoryLabel(categoryOfMember(one), t)}</td>
+                        <td className="table__category">{categoryLabel(categoryOfMember(one), t)}</td>
                         {/* Read, not edited in place - see the note at the top of
                             this file for why there is no route to write it back. */}
                         <td>{one.city}</td>

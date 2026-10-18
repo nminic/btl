@@ -14,14 +14,13 @@ export type AgeBand = (typeof AGE_BANDS)[number]
 /**
  * Marks a member who has not yet left the beginners' category.
  *
- * `R` for rookie, which is what the category is called in English: `M R` and
- * `F R` (owner, 11.08.2026). The letter in front is the one the language uses,
- * so the code itself reads `M R` and `Ž R` while there is only Serbian; the
- * English `F` arrives with the English dictionary, the same way `Ž25-39` will. In Serbian the word carries the gender on its own,
- * so there the two are `Početnici` and `Početnice` with no letter in front of
- * them, and the code here is what the dictionary looks them up by
- * (`categoryLabel`). It was `PS`, for „Prva sezona", a name the owner dropped
- * the same day.
+ * `R` for rookie, which is what the category is called in English. The code
+ * reads `M R` and `Ž R` whatever the language, because it is what a filter, an
+ * address and a saved choice are written with. In Serbian the word carries the
+ * gender on its own, so there the two are `Početnici` and `Početnice` with no
+ * letter in front of them, and in English both are `Rookies`; the code here is
+ * what the dictionary looks them up by (`categoryLabel`). It was `PS`, for
+ * „Prva sezona", a name the owner dropped the same day (11.08.2026).
  */
 export const FIRST_SEASON_BAND = 'R'
 
@@ -77,15 +76,19 @@ export function firstSeasonAllowed(points: number): boolean {
  * What a category is called on the screen, out of the code the league keeps it
  * under.
  *
- * The age bands are the same word in every language, so they are shown as they
- * are: `M40-54`. The beginners' category is not, and that is the whole reason
- * this exists: in Serbian it is `Početnici` and `Početnice`, one word each and
- * no letter of gender in front, because the word already says it; in English it
- * is `M R` and `F R`, because `rookie` does not (owner, 11.08.2026).
+ * An age band is shown with a space after the letter of the gender: the code
+ * `M40-54` is written `M 40-54`, and the code `Ž40-54` is written `Ž 40-54` in
+ * Serbian and `F 40-54` in English (owner, 18.10.2026, PDL P7). The letter comes
+ * out of the dictionary (`category.markMale`, `category.markFemale`) because the
+ * women's one is the only part of it that follows the language; the band itself
+ * is the same in both. The beginners' category is not an age band: in Serbian it
+ * is `Početnici` and `Početnice`, one word each and no letter of gender in
+ * front, because the word already says it, and in English it is `Rookies`.
  *
- * The code stays what it was in every other respect: it is what a filter, an
- * address and a saved choice are written with, and none of those may change
- * with the language.
+ * **Only what is shown changes.** The code stays what it was: it is what a
+ * filter, an address and a saved choice are written with, and the league keys
+ * its groups and its frozen rows on it (`Category.java`), so none of those may
+ * change with the language or gain a space.
  */
 export function categoryLabel(code: string, t: (key: string) => string): string {
   /* **A bare mark of a gender was answered here until 07.09.2026, and is not any more.**
@@ -99,9 +102,21 @@ export function categoryLabel(code: string, t: (key: string) => string): string 
      control says „Muškarci" and „Žene" out of `rankings.men` and `rankings.women`, which is
      where they always came from. */
 
-  if (!code.endsWith(` ${FIRST_SEASON_BAND}`)) {
+  if (code.endsWith(` ${FIRST_SEASON_BAND}`)) {
+    return t(code.startsWith('M') ? 'category.rookieMale' : 'category.rookieFemale')
+  }
+
+  /* The whole band after the mark, not any tail: a code such as `MR` is not an age
+     band and is shown as it is. */
+  const band = code.slice(1)
+
+  if (!AGE_BANDS.some((one) => one === band)) {
     return code
   }
 
-  return t(code.startsWith('M') ? 'category.rookieMale' : 'category.rookieFemale')
+  if (code.startsWith('M')) {
+    return `${t('category.markMale')} ${band}`
+  }
+
+  return code.startsWith('Ž') ? `${t('category.markFemale')} ${band}` : code
 }

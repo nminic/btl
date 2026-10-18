@@ -107,6 +107,14 @@
   font-weight: 700;
 }
 
+/* The category of a member, written `M 25-39` since 18.10.2026 (PDL P7). Measured at 360px on
+   the standing: with the space in it the label broke in two places, after the letter and after
+   the hyphen, and ten rows of twenty-two stood on two lines (`M 25-` over `39`). It is one word
+   to the eye and is held on one line, which costs the column about seven pixels. */
+.table__category {
+  white-space: nowrap;
+}
+
 /* Gold on the podium, and only there. */
 .podium .table__position {
   color: var(--gold-text);

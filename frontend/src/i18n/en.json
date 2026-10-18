@@ -693,6 +693,8 @@
   "category": {
     "rookieMale": "Rookies",
     "rookieFemale": "Rookies",
+    "markMale": "M",
+    "markFemale": "F",
     "short": "Short race",
     "long": "Long race",
     "half": "Half marathon",
