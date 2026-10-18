@@ -44,8 +44,8 @@
    is not on the list (in a title, in a heading, in a text added since), and a listed place that carries none are all
    problems. The questions are all asked and not stopped at the first problem; if there is any, one error lists every
    place and what it found, the statement is rolled back with nothing changed, and Flyway refuses to start the backend.
-   Only then are the marks replaced, in the body of the sections, and a last question asks whether any mark of the
-   three is left anywhere, in any of the six columns; if one is, the statement is rolled back in the same way.
+   Only then are the marks replaced, in the body of the sections, which is the one column the answer can have found
+   them in.
 
    WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row added or removed; the text of ten sections
    (the body of each, the old mark replaced by the new one) and nothing else in them.
@@ -65,49 +65,51 @@ declare
        U+201E the low double quotation mark, U+201C and U+201D the two high ones. */
     serbian_marks constant text := U&'\201E\201C\201D';
 
-    /* Every text column of the written pages, and what is asked of each: how many marks of the three stand in it. The
-       kind is the column (title, heading, body), the place is the position of the section (0 for a title), and Serbian
-       is the base table while every other language is its translation (V37). The gallery name is a closed list of two
-       words (V24) and carries no prose, so it is not asked. */
-    asked_sql constant text := $q$
-        select 'title' as kind, p.slug as slug, 0 as place, 'sr' as language,
-               length(p.title) - length(translate(p.title, U&'\201E\201C\201D', '')) as marks
-        from static_page p
-        union all
-        select 'title', p.slug, 0, t.language,
-               length(t.title) - length(translate(t.title, U&'\201E\201C\201D', ''))
-        from static_page_translation t join static_page p on p.id = t.page_id
-        union all
-        select 'heading', p.slug, s.position, 'sr',
-               length(s.heading) - length(translate(s.heading, U&'\201E\201C\201D', ''))
-        from static_page_section s join static_page p on p.id = s.page_id
-        union all
-        select 'body', p.slug, s.position, 'sr',
-               length(s.body) - length(translate(s.body, U&'\201E\201C\201D', ''))
-        from static_page_section s join static_page p on p.id = s.page_id
-        union all
-        select 'heading', p.slug, s.position, t.language,
-               length(t.heading) - length(translate(t.heading, U&'\201E\201C\201D', ''))
-        from static_page_section_translation t
-        join static_page_section s on s.id = t.section_id join static_page p on p.id = s.page_id
-        union all
-        select 'body', p.slug, s.position, t.language,
-               length(t.body) - length(translate(t.body, U&'\201E\201C\201D', ''))
-        from static_page_section_translation t
-        join static_page_section s on s.id = t.section_id join static_page p on p.id = s.page_id
-        $q$;
-
-    place        record;
-    left_over    integer;
+    found_place  record;
     total        integer := 0;
     problems     integer := 0;
     report       text := '';
 begin
-    for place in execute format($q$
+    /* Every text column of the written pages, and how many marks of the three stand in each, against the ten places the
+       marks were measured at. The kind is the column (title, heading, body), the place is the position of the section (0
+       for a title), and Serbian is the base table while every other language is its translation (V37). The gallery name
+       is a closed list of two words (V24) and carries no prose, so it is not asked. A place that carries marks and is not
+       on the list is a row with a measured count of 0, and a listed place that carries none is a row with a found count
+       of 0, so both come out of the one comparison. */
+    for found_place in
         select coalesce(f.kind, e.kind) as kind, coalesce(f.slug, e.slug) as slug,
                coalesce(f.place, e.place) as place, coalesce(f.language, e.language) as language,
                coalesce(e.marks, 0) as expected, coalesce(f.marks, 0) as found
-        from (select * from (%s) every_place where marks > 0) f
+        from (
+            select * from (
+                select 'title' as kind, p.slug as slug, 0 as place, 'sr' as language,
+                       length(p.title) - length(translate(p.title, serbian_marks, '')) as marks
+                from static_page p
+                union all
+                select 'title', p.slug, 0, t.language,
+                       length(t.title) - length(translate(t.title, serbian_marks, ''))
+                from static_page_translation t join static_page p on p.id = t.page_id
+                union all
+                select 'heading', p.slug, s.position, 'sr',
+                       length(s.heading) - length(translate(s.heading, serbian_marks, ''))
+                from static_page_section s join static_page p on p.id = s.page_id
+                union all
+                select 'body', p.slug, s.position, 'sr',
+                       length(s.body) - length(translate(s.body, serbian_marks, ''))
+                from static_page_section s join static_page p on p.id = s.page_id
+                union all
+                select 'heading', p.slug, s.position, t.language,
+                       length(t.heading) - length(translate(t.heading, serbian_marks, ''))
+                from static_page_section_translation t
+                join static_page_section s on s.id = t.section_id join static_page p on p.id = s.page_id
+                union all
+                select 'body', p.slug, s.position, t.language,
+                       length(t.body) - length(translate(t.body, serbian_marks, ''))
+                from static_page_section_translation t
+                join static_page_section s on s.id = t.section_id join static_page p on p.id = s.page_id
+            ) every_place
+            where every_place.marks > 0
+        ) f
         full outer join (values
             ('body', 'uslovi-koriscenja', 6, 'sr', 1),
             ('body', 'rec-predsednika',   1, 'sr', 1),
@@ -122,14 +124,14 @@ begin
         ) as e (kind, slug, place, language, marks)
           on e.kind = f.kind and e.slug = f.slug and e.place = f.place and e.language = f.language
         order by 2, 3, 4, 1
-        $q$, asked_sql)
     loop
         total := total + 1;
 
         report := report || format(E'\n%s @ %s #%s %s: measured %s, found %s',
-            place.kind, place.slug, place.place, place.language, place.expected, place.found);
+            found_place.kind, found_place.slug, found_place.place, found_place.language,
+            found_place.expected, found_place.found);
 
-        if place.expected <> place.found then
+        if found_place.expected <> found_place.found then
             problems := problems + 1;
         end if;
     end loop;
@@ -152,14 +154,5 @@ begin
     update static_page_section_translation
     set body = translate(body, serbian_marks, '"""')
     where translate(body, serbian_marks, '') <> body;
-
-    /* The last question: is any mark of the three left anywhere in the text of the written pages? */
-    execute format('select coalesce(sum(marks), 0) from (%s) every_place', asked_sql) into left_over;
-
-    if left_over > 0 then
-        raise exception using
-            message = format('the quotation marks of the written pages were not changed: %s marks of the Serbian kind are still there', left_over),
-            hint = 'Nothing was changed. A text column of the written pages that this migration does not replace in carries them.';
-    end if;
 end
 $edit$;

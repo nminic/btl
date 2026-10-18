@@ -444,7 +444,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   ten sections, six in Serbian and four in English (owner, PDL P18, the section "Navodnici",
 			   18.10.2026). No word, space, line break or date moves; the sign-offs stay as V57, V58 and V60
 			   left them. The migration first asks how many marks stand in each text column and stops unless
-			   the answer is the ten places it was measured over, and last asks whether any is left. No schema.
+			   the answer is the ten places it was measured over. No schema.
 
 			   61 because it is the next free number, and that was MEASURED rather than taken: every remote
 			   ref, every worktree and the open pull requests were searched on 18.10.2026 and none held a
@@ -453,7 +453,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read
 			   off this very assertion when it ran before the entry existed and then confirmed by it. */
 			new Applied("61", "V61__the_written_pages_use_the_english_quotation_mark.sql",
-					1967967788));
+					-1802649289));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
