@@ -672,11 +672,18 @@ export function Payments() {
          below, which is where the focus goes when a row has left the list. */
       afterAnActivation={readAgain > 0}
       onActivated={() => {
-        /* BOTH NAMES, and the second is not tidiness. An activation draws a member number and
-           sets `competitor.active`, which is what `admin/AdminMembers.tsx` reads under
-           `competitors` - so leaving that cached would show the man still outside the league on
-           the next screen the moderator opens. */
+        /* THREE NAMES, and the second and the third are not tidiness. An activation draws a member
+           number and sets `competitor.active`, and the moderation of the members
+           (`admin/AdminMembers.tsx`) reads that fact twice: the rows are `members`, which carry
+           `active`, the seasons he holds and the basis of the one on sale, and the link to a
+           profile is `competitors`, the public list that answers only the members whose fee
+           stands. Leaving either cached would show the man still outside the league on the next
+           screen the moderator opens - under all three values of the filter for a new member, and
+           with „Sezone članstva" and „Poslednja sezona" as they were for a renewal. Both doors of
+           this screen end here (`POST /api/payments` and `POST /api/memberships`), so one place
+           clears for both. */
         clearResourceCache('payments')
+        clearResourceCache('members')
         clearResourceCache('competitors')
         setReadAgain((was) => was + 1)
       }}
