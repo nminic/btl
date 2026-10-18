@@ -103,6 +103,15 @@ class PostmanTest {
 	private String from;
 
 	/**
+	 * The league's address, resolved out of the real {@code application.properties} for the
+	 * reason {@link #from} is: overridden in {@code @TestPropertySource} this class would carry
+	 * a copy and stay green while the installation was configured to ask for replies anywhere
+	 * at all.
+	 */
+	@Value("${btl.mail.league}")
+	private String league;
+
+	/**
 	 * The port SPRING was told to send to, which is the other home of one fact.
 	 *
 	 * <p>Read from the context rather than written here a third time: the extension above
@@ -267,6 +276,11 @@ class PostmanTest {
 	 * the whitespace is gone before the value is.
 	 */
 	private static String theAddressTheSettingCarries() throws Exception {
+		return theSettingTheFileCarries("btl.mail.from");
+	}
+
+	/** Any one setting out of the file, parsed, for the cases that compare it with a message. */
+	private static String theSettingTheFileCarries(String key) throws Exception {
 		Properties settings = new Properties();
 
 		try (Reader file = Files.newBufferedReader(
@@ -275,11 +289,11 @@ class PostmanTest {
 			settings.load(file);
 		}
 
-		String address = settings.getProperty("btl.mail.from");
+		String address = settings.getProperty(key);
 
 		assertThat(address)
-				.as("application.properties does not set btl.mail.from, so the portal has no"
-						+ " address of its own and this case compares nothing")
+				.as("application.properties does not set %s, so the portal has no address for it"
+						+ " and this case compares nothing", key)
 				.isNotNull();
 
 		return address;
@@ -301,13 +315,129 @@ class PostmanTest {
 	 */
 	@Test
 	void theAddressTravelsFromTheSettingAndNotFromTheCode() throws Exception {
-		new Postman(relay, "drugacija@primer.rs", "", "", false)
+		new Postman(relay, "drugacija@primer.rs", league, "", "", false)
 				.send(new Said("Naslov", "Telo"), "clan@primer.rs");
 
 		assertThat(waitForOne().getFrom()[0].toString())
 				.as("the portal wrote from an address of its own rather than from the one it"
 						+ " was given")
 				.isEqualTo("drugacija@primer.rs");
+	}
+
+	/**
+	 * EVERY MESSAGE ASKS THAT A REPLY GO TO THE LEAGUE, AND NOT TO THE ADDRESS IT WAS WRITTEN FROM.
+	 *
+	 * <p>ADL A4c, 29.07.2026: „Prva odbrana je `Reply-To: info@` na svakoj poruci koju portal
+	 * šalje." The address the portal writes from rejects what comes back, so without this
+	 * header a member who answers a confirmation link gets a bounce and the league never
+	 * hears of it. Measured 18.10.2026 on a real message from QA: no {@code Reply-To} at all.
+	 *
+	 * <p><b>It is read from the HEADER and not from {@code getReplyTo()}</b>, which is the
+	 * library falling back to {@code From} when the header is absent: a message with no
+	 * {@code Reply-To} would answer with the address that refuses replies, and a case that
+	 * asked the fallback could not tell the two apart.
+	 *
+	 * <p><b>Three things are held and no two of them are the same question</b>, as with
+	 * the sender above: the file carries the decided address, Spring hands the portal what the
+	 * file carries, and the message leaves with what the portal was handed. And the league's
+	 * address is not the sender's, here, so that {@code Reply-To} and {@code From} cannot
+	 * produce the same string: a header copied from {@code From} would otherwise pass.
+	 */
+	@Test
+	void aMessageAsksThatRepliesGoToTheLeagueAndNotToTheAddressItWritesFrom() throws Exception {
+		String configured = theSettingTheFileCarries("btl.mail.league");
+
+		assertThat(configured)
+				.as("the setting no longer carries the league's address (ADL A4c, 29.07.2026)")
+				.isEqualTo("info@balkanskatrkackaliga.net");
+		assertThat(league)
+				.as("the portal was handed an address other than the one the setting file"
+						+ " carries, so something between the two is overriding it")
+				.isEqualTo(configured);
+		assertThat(league)
+				.as("the league and the sender are the same address, so a Reply-To copied from the"
+						+ " sender would pass every assertion below")
+				.isNotEqualTo(from);
+
+		postman.send(new Said("Naslov", "Telo"), "clan@primer.rs");
+
+		MimeMessage arrived = waitForOne();
+
+		assertThat(arrived.getHeader("Reply-To"))
+				.as("the message left without asking that a reply go to the league, or asking"
+						+ " for it more than once")
+				.containsExactly(configured);
+		assertThat(arrived.getHeader("Bcc"))
+				.as("a message with nobody copied in arrived with a blind copy header")
+				.isNull();
+	}
+
+	/**
+	 * AND THE ASK IS THERE WHETHER OR NOT A BLIND COPY IS.
+	 *
+	 * <p>The league's address is also where the blind copy of a record goes (PDL P22), so
+	 * a message with a copy and a message without one are the two shapes this has to hold
+	 * for, and a {@code Reply-To} set only on the first would leave the confirmation link and
+	 * the new password with a sender that rejects the answer. The copy here goes to a THIRD
+	 * address, so that {@code Reply-To} set to the blind copy and {@code Reply-To} set to the
+	 * league do not give the same string; the case after it is the real one, where the two
+	 * are the same address.
+	 *
+	 * <p>GreenMail delivers one copy per envelope recipient, so two messages arrive here,
+	 * and both of them are read.
+	 */
+	@Test
+	void theAskIsOnBothCopiesOfAMessageWithABlindCopy() throws Exception {
+		postman.send(new Said("Naslov", "Telo"), "clan@primer.rs", "arhiva@primer.rs");
+
+		assertThat(SMTP.waitForIncomingEmail(5000, 2))
+				.as("the message and its blind copy did not both arrive")
+				.isTrue();
+
+		MimeMessage[] arrived = SMTP.getReceivedMessages();
+
+		assertThat(arrived).as("one send with a blind copy is two deliveries").hasSize(2);
+
+		for (MimeMessage one : arrived) {
+			assertThat(one.getHeader("Reply-To"))
+					.as("a copy of the message did not ask that a reply go to the league")
+					.containsExactly(league);
+		}
+	}
+
+	/** And where the blind copy goes to the league itself, which is how a record travels. */
+	@Test
+	void theAskIsThereWhereTheBlindCopyGoesToTheLeagueItself() throws Exception {
+		postman.send(new Said("Naslov", "Telo"), "clan@primer.rs", league);
+
+		assertThat(SMTP.waitForIncomingEmail(5000, 2)).isTrue();
+
+		MimeMessage[] arrived = SMTP.getReceivedMessages();
+
+		assertThat(arrived).hasSize(2);
+
+		for (MimeMessage one : arrived) {
+			assertThat(one.getHeader("Reply-To")).containsExactly(league);
+		}
+	}
+
+	/**
+	 * AND THE ADDRESS TO ANSWER TO TRAVELS FROM THE SETTING, NOT FROM THE CODE.
+	 *
+	 * <p>The same trade as {@link #theAddressTravelsFromTheSettingAndNotFromTheCode}: the cases
+	 * above are all equal when everything is right, and cannot tell an address read from the
+	 * setting apart from {@code info@} written into the class. This hands the postman a league
+	 * the setting does not carry, and a sender that is neither of the two.
+	 */
+	@Test
+	void theAddressToAnswerToTravelsFromTheSettingAndNotFromTheCode() throws Exception {
+		new Postman(relay, "drugacija@primer.rs", "druga-liga@primer.rs", "", "", false)
+				.send(new Said("Naslov", "Telo"), "clan@primer.rs");
+
+		assertThat(waitForOne().getHeader("Reply-To"))
+				.as("the portal asked for replies to an address of its own rather than to the one"
+						+ " it was given")
+				.containsExactly("druga-liga@primer.rs");
 	}
 
 	/**
@@ -347,7 +477,7 @@ class PostmanTest {
 	 */
 	@Test
 	void aPortalThatWouldSendItsKeyInTheClearDoesNotStart() {
-		assertThatThrownBy(() -> new Postman(anywhere(), from, "brevo-korisnik", "kljuc", false))
+		assertThatThrownBy(() -> new Postman(anywhere(), from, league, "brevo-korisnik", "kljuc", false))
 				.as("the portal carries a key and does not require TLS")
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("starttls.required");
@@ -358,9 +488,9 @@ class PostmanTest {
 		   question: Jakarta Mail sends AUTH LOGIN whenever credentials are present and
 		   the server offers AUTH, whatever that switch says. Either half being set is
 		   an installation that means to authenticate. */
-		assertThatThrownBy(() -> new Postman(anywhere(), from, "brevo-korisnik", "", false))
+		assertThatThrownBy(() -> new Postman(anywhere(), from, league, "brevo-korisnik", "", false))
 				.isInstanceOf(IllegalStateException.class);
-		assertThatThrownBy(() -> new Postman(anywhere(), from, "", "kljuc", false))
+		assertThatThrownBy(() -> new Postman(anywhere(), from, league, "", "kljuc", false))
 				.isInstanceOf(IllegalStateException.class);
 
 		/* A SINGLE SPACE IS A CREDENTIAL, and a third round on 12.09.2026 found this
@@ -368,17 +498,17 @@ class PostmanTest {
 		   library a space is a value: it opens the connection, sends AUTH LOGIN, and
 		   the space travels in Base64. Somebody typing a stray space into
 		   `deploy/.env` is all it takes. */
-		assertThatThrownBy(() -> new Postman(anywhere(), from, " ", " ", false))
+		assertThatThrownBy(() -> new Postman(anywhere(), from, league, " ", " ", false))
 				.as("a space is nothing to us and a credential to the library")
 				.isInstanceOf(IllegalStateException.class);
 
-		assertThatCode(() -> new Postman(anywhere(), from, "brevo-korisnik", "kljuc", true))
+		assertThatCode(() -> new Postman(anywhere(), from, league, "brevo-korisnik", "kljuc", true))
 				.as("signing in over required TLS is the arrangement QA and production use")
 				.doesNotThrowAnyException();
-		assertThatCode(() -> new Postman(anywhere(), from, "", "", false))
+		assertThatCode(() -> new Postman(anywhere(), from, league, "", "", false))
 				.as("development signs in to nothing and must keep working")
 				.doesNotThrowAnyException();
-		assertThatCode(() -> new Postman(anywhere(), from, "", "", true))
+		assertThatCode(() -> new Postman(anywhere(), from, league, "", "", true))
 				.doesNotThrowAnyException();
 	}
 
@@ -399,7 +529,7 @@ class PostmanTest {
 		insisting.getJavaMailProperties().setProperty("mail.smtp.starttls.enable", "true");
 		insisting.getJavaMailProperties().setProperty("mail.smtp.starttls.required", "true");
 
-		assertThatThrownBy(() -> new Postman(insisting, from, "", "", true)
+		assertThatThrownBy(() -> new Postman(insisting, from, league, "", "", true)
 				.send(new Said("Naslov", "Telo"), "clan@primer.rs"))
 				.as("the message went to a server offering no STARTTLS")
 				.isInstanceOf(org.springframework.mail.MailException.class);
@@ -572,7 +702,7 @@ class PostmanTest {
 		nowhere.setPort(1);
 		nowhere.getJavaMailProperties().setProperty("mail.smtp.connectiontimeout", "2000");
 
-		assertThatThrownBy(() -> new Postman(nowhere, from, "", "", false).send(new Said("Naslov", "Telo"),
+		assertThatThrownBy(() -> new Postman(nowhere, from, league, "", "", false).send(new Said("Naslov", "Telo"),
 				"clan@primer.rs"))
 				.as("a message that could not be sent was reported as sent")
 				.isInstanceOf(org.springframework.mail.MailException.class);
