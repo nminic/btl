@@ -34,11 +34,13 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * column added tomorrow is swept the day it arrives; the six that exist today are held as a floor, so a sweep that found
  * nothing cannot pass.
  *
- * <p><b>"Nothing but the mark moved" is measured, not read.</b> The finished text is taken whole, the ten sentences are
- * put back as they stood before V61, V61 is run over them, and the result must be the finished text again, in every
- * column of every row. That one comparison holds the dates, the apostrophes, the other language, the other pages and
- * the order. Beside it, the rows that differ between the put-back text and the result are counted (ten) and each is
- * asked to differ by the three marks only.
+ * <p><b>"Nothing but the mark moved" is measured, not read, and from two sides.</b> The finished text is taken whole,
+ * the ten sentences are put back as they stood before V61, V61 is run over them, and the result must be the finished
+ * text again, in every column of every row; the rows that differ between the put-back text and the result are counted
+ * (ten) and each is asked to differ by the three marks only. That comparison holds the other pages, the other rows, the
+ * dates and the order, but its "before" comes out of a database V61 has already edited, so it cannot see a change V61
+ * makes to the ten sections themselves. That is held by the second side: the ten bodies are pinned by digest, a baseline
+ * that does not come from V61.
  *
  * <p><b>The sentences are written out here, in full enough to be read,</b> once each, with {@code {} standing where the
  * quotation opens. The old text is that with the Serbian mark and the new text is that with the plain one; the closing
@@ -224,6 +226,59 @@ class TheWrittenPagesUseTheEnglishQuotationMarkTest extends DatabaseTest {
 					.as("%s", sentence.place())
 					.containsOnlyOnce(sentence.now())
 					.doesNotContain(sentence.before());
+		}
+	}
+
+	/** A section and the SHA-256 of its whole body as V61 left it, line breaks normalised to {@code \n}. */
+	record Pinned(Place place, String sha256) {
+	}
+
+	private static final List<Pinned> THE_TEN_AS_V61_LEFT_THEM = List.of(
+			new Pinned(new Place("uslovi-koriscenja", 6, "sr"),
+					"67797049a86e1d3d1af2b1475d8c0e4963fa6f4778264c4bea82ef9c57e65c67"),
+			new Pinned(new Place("rec-predsednika", 1, "sr"),
+					"6b57ee459ba1b90bd88baeab9573daf7e8fe35c9e4a0e83e0fcc59a21dfed896"),
+			new Pinned(new Place("pravilnik", 5, "sr"),
+					"51b536c83d7e7c860058b059593828f8fb167706182d2ce96b54359582593f8a"),
+			new Pinned(new Place("pravilnik", 9, "sr"),
+					"99cb3186eefb25ed2ec15fe364c1928ed13418553f538efc848841e4bdeb6bb8"),
+			new Pinned(new Place("pravilnik", 12, "sr"),
+					"d7dd7bc699ac228079163f204693c2904a469d0f9ff8f5e8101b60ead4ed53f4"),
+			new Pinned(new Place("pravilnik", 16, "sr"),
+					"e81c83cf7acc1e2715efbb7a4867c0f57c8309eeed41d6b4b225c3674990ca0c"),
+			new Pinned(new Place("pravilnik", 5, "en"),
+					"74d78287105b630905e9a59d2c10b55e4383d7962e5d85ff8c76c809264b72ac"),
+			new Pinned(new Place("pravilnik", 9, "en"),
+					"b4025c36fbd000728b35c3a7934fd8eab2ea36f521e6a6f982fa3bfd9a98feaa"),
+			new Pinned(new Place("pravilnik", 12, "en"),
+					"da3120a9047f8429328bda9d9a366472c0ed7273d2c42bbdbef2f48e8d0b144c"),
+			new Pinned(new Place("pravilnik", 16, "en"),
+					"547943cce4f156ac0b8c90f8c9e2ec5867b737924fce73b507615252f0f91f01"));
+
+	/**
+	 * THE TEN SECTIONS ARE, CHARACTER FOR CHARACTER, THE TEXT V61 WAS MEANT TO LEAVE.
+	 *
+	 * <p><b>Why a digest.</b> The comparison in {@link #v61ChangesTenSectionsByTheMarkAndNothingElse} takes its "before"
+	 * from the database, which V61 has already edited, so a change V61 makes to something else (an apostrophe, a space)
+	 * is in the "before" too and cannot be seen. Measured: V61 rewriting every apostrophe of the English bodies in the
+	 * same statement passed every other case here. The finished text of the ten sections is the only baseline that does
+	 * not come from V61, so it is pinned, as a SHA-256 of the whole body with the line breaks normalised (a checkout may
+	 * hold the older migrations with {@code \r\n}, and the database then holds them so).
+	 *
+	 * <p><b>What it costs, said plainly.</b> A later migration that edits one of these ten sections changes its
+	 * digest, and whoever writes it re-pins the section here, which is the same act the whole-record snapshot of the
+	 * written pages already asks (writtenVerification.test.ts). The pins were taken from V61 run over the text of V60, and
+	 * checked against {@code after - before} on the three marks alone.
+	 */
+	@Test
+	void theTenSectionsAreExactlyTheTextV61WasMeantToLeave() throws Exception {
+		for (Pinned pinned : THE_TEN_AS_V61_LEFT_THEM) {
+			byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(
+					bodyOf(pinned.place()).replace("\r", "").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+			assertThat(java.util.HexFormat.of().formatHex(digest))
+					.as("%s is not the text V61 was meant to leave, character for character", pinned.place())
+					.isEqualTo(pinned.sha256());
 		}
 	}
 
