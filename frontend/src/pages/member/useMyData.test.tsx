@@ -251,7 +251,7 @@ describe('his own data', () => {
     const { result, rerender } = renderHook<
       ReturnType<typeof useMyData>,
       { asked: number | string }
-    >(({ asked }) => useMyData(asked), { initialProps: { asked: '000012' } })
+    >(({ asked }) => useMyData(asked), { initialProps: { asked: '7' } })
 
     await waitFor(() => {
       expect(server.count()).toBe(1)
@@ -264,7 +264,7 @@ describe('his own data', () => {
       expect(result.current.status).toBe('ready')
     })
 
-    rerender({ asked: 12 })
+    rerender({ asked: 7 })
     expect(result.current.status).toBe('loading')
   }, SLOW)
 
