@@ -194,10 +194,10 @@ class WhatAResultChangeSaysTest {
 							"",
 							run,
 							"",
-							serbian ? "Od ovog trenutka ulazi u rang liste i u vaš zbir za sezonu. Bodovi"
-									+ " koji ovde stoje su konačni."
-									: "From this moment it counts in the rankings and in your total for the"
-									+ " season. The points shown here are final.",
+							serbian ? "Od ovog trenutka rezultat ulazi u vaš profil, rang liste i sezonsku"
+									+ " tabelu."
+									: "From now on the result counts in your profile, the rankings and the"
+									+ " season table.",
 							"",
 							"Balkanska trkačka liga"));
 
@@ -214,6 +214,21 @@ class WhatAResultChangeSaysTest {
 							"",
 							"Balkanska trkačka liga"));
 		}
+	}
+
+	/**
+	 * THE POINTS OF A RUN IN A SERBIAN MESSAGE: TWO DECIMALS AND THE COMMA (PDL P18, 18.10.2026).
+	 *
+	 * <p>A figure with decimals, one with a single decimal that must keep its second, a whole
+	 * number that must keep both noughts, and one that has to round, which is the four
+	 * shapes {@code toPlainString} writes four different ways and a decimal comma never does.
+	 */
+	@Test
+	void pointsAreWrittenWithTwoDecimalsAndTheComma() {
+		assertThat(WhatAResultChangeSays.pointsInWords(new BigDecimal("98.45"))).isEqualTo("98,45");
+		assertThat(WhatAResultChangeSays.pointsInWords(new BigDecimal("98.4"))).isEqualTo("98,40");
+		assertThat(WhatAResultChangeSays.pointsInWords(new BigDecimal("100"))).isEqualTo("100,00");
+		assertThat(WhatAResultChangeSays.pointsInWords(new BigDecimal("98.455"))).isEqualTo("98,46");
 	}
 
 	private static String lines(String... each) {

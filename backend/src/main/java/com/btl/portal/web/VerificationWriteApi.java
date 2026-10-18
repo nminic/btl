@@ -1847,7 +1847,7 @@ class VerificationWriteApi {
 		tell(member, "Početnička kategorija vam je zatvorena",
 				"Odobren vam je rezultat sa trke " + counted.raceName() + " od "
 						+ WhatAResultChangeSays.asADay(counted.day()) + ", koji nosi "
-						+ counted.points().toPlainString() + " bodova."
+						+ WhatAResultChangeSays.pointsInWords(counted.points()) + " bodova."
 						+ " Time ste u zvaničnoj sezoni prešli prag od "
 						+ Category.FIRST_SEASON_POINTS + " bodova, pa vam je početnička"
 						+ " kategorija zatvorena za sezonu " + season + ".");

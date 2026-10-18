@@ -297,12 +297,9 @@ class MePasswordApi {
 	 * rather than the message, so nothing under {@code domain.mail} is touched while a
 	 * transaction is open and nothing about the relay reaches a decision.
 	 *
-	 * @param others how many OTHER sessions were ended, which is the count the statement itself
-	 *               returned rather than one counted again afterwards - counted again it would
-	 *               be a second question about a table that has changed in between
 	 */
 	private record Done(ResponseEntity<Refused> refusal, long account, String address, Instant at,
-			int others, MailLanguage language) {
+			MailLanguage language) {
 	}
 
 	private Done write(long account, String carried, Change typed) {
@@ -444,11 +441,11 @@ class MePasswordApi {
 		   OSTALE" adds to the sentence `PasswordResetApi` already carries. The case that
 		   holds it gives the member THREE sessions and requires the two he is not asking
 		   from to be gone and the one he is asking from to go on answering. */
-		int others = db.sql("delete from account_session where account_id = ? and token_hash <> ?")
+		db.sql("delete from account_session where account_id = ? and token_hash <> ?")
 				.params(account, SecretToken.hashOf(carried))
 				.update();
 
-		return new Done(null, account, stored.address(), now, others, stored.language());
+		return new Done(null, account, stored.address(), now, stored.language());
 	}
 
 	/**
@@ -478,8 +475,7 @@ class MePasswordApi {
 	private void tell(Done done) {
 		try {
 			postman.send(WhatANoticeSays.about(Notice.THE_PASSWORD_HAS_CHANGED, done.language(),
-					WhatANoticeSays.moment(done.at(), done.language()),
-					String.valueOf(done.others())), done.address());
+					WhatANoticeSays.moment(done.at(), done.language())), done.address());
 		}
 		catch (MailException theRelayDidNotTakeIt) {
 			/* THE ACCOUNT'S NUMBER AND NEVER ITS ADDRESS, which is what `RegistrationApi`,
@@ -510,7 +506,7 @@ class MePasswordApi {
 	}
 
 	private static Done no(String reason) {
-		return new Done(ResponseEntity.badRequest().body(new Refused(reason)), 0, null, null, 0, null);
+		return new Done(ResponseEntity.badRequest().body(new Refused(reason)), 0, null, null, null);
 	}
 
 	/**

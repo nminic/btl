@@ -80,8 +80,108 @@ class WhatTheMessageSaysTest {
 	@Test
 	void theLinkToAskForANewOneIsNamedBetweenEnglishQuotes() {
 		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN).body())
-				.contains("Ako veza istekne, zatražite novu sa strane za prijavu, na"
+				.contains("Ako link istekne, zatražite novi sa strane za prijavu, na"
 						+ " \"Zaboravljena lozinka\".\n");
+	}
+
+	/**
+	 * WHAT EACH OF THE FOUR MAILS SAYS, WORD FOR WORD, AND THAT NONE OF THEM CALLS THE ADDRESS IT
+	 * CARRIES "VEZA" (PDL P18, 18.10.2026, "Tekst mejlova, posle pregleda svih osam").
+	 *
+	 * <p>The owner: "U mejlovima svuda umesto veza koristi link." The Serbian mails are held as a
+	 * snapshot of the whole text, with the address and the lifetime filled in as the class writes
+	 * them, because a pattern over a word has to be right about every case and gender the
+	 * word can stand in, and the whole text is not asked to. The English mails, which are my
+	 * translation of the same meaning and not his words, are held the same way.
+	 */
+	@Test
+	void theMailsSayExactlyWhatTheyWereDecidedToSay() {
+		String tail = "Balkanska trkačka liga";
+
+		assertThat(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN, PORTAL,
+				TOKEN).body()).isEqualTo(String.join("\n",
+				"Dobrodošli u Balkansku trkačku ligu.",
+				"",
+				"Da bismo znali da je ova adresa zaista vaša, otvorite ovaj link:",
+				linkOf(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN),
+				"",
+				"Link važi 24 sata. Ako istekne, zatražite novi sa strane za prijavu.",
+				"",
+				"Ako se niste registrovali kod nas, ovu poruku slobodno zanemarite.",
+				"",
+				tail));
+
+		assertThat(WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, MailLanguage.SERBIAN, PORTAL,
+				TOKEN).body()).isEqualTo(String.join("\n",
+				"Stigao nam je zahtev da postavite novu lozinku za svoj nalog.",
+				"",
+				"Otvorite ovaj link i upišite je:",
+				linkOf(Message.SET_A_NEW_PASSWORD, MailLanguage.SERBIAN),
+				"",
+				"Link važi 1 sat i može da se upotrebi jednom.",
+				"",
+				"Ako niste inicirali promenu lozinke, ovu poruku slobodno zanemarite.",
+				"",
+				tail));
+
+		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MODERATOR, PORTAL, TOKEN).body())
+				.isEqualTo(String.join("\n",
+				"Superadmin vam je otvorio nalog moderatora na portalu Balkanske trkačke lige.",
+				"",
+				"Nalog još nema lozinku. Otvorite ovaj link i postavite je sami:",
+				linkOf(Message.INVITED_AS_A_MODERATOR, MailLanguage.SERBIAN),
+				"",
+				"Link važi 1 sat i može da se upotrebi jednom. Dok ga ne upotrebite, na nalog ne može da"
+						+ " se prijavi niko, pa ni vi.",
+				"",
+				"Ako link istekne, zatražite novi sa strane za prijavu.",
+				"",
+				tail));
+
+		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN).body())
+				.isEqualTo(String.join("\n",
+				"Upisani smo vas u Balkansku trkačku ligu na osnovu saglasnosti koju ste potpisali.",
+				"",
+				"Vaš nalog postoji, ali još nema lozinku. Otvorite ovaj link i postavite je sami:",
+				linkOf(Message.INVITED_AS_A_MEMBER, MailLanguage.SERBIAN),
+				"",
+				"Link važi 1 sat i može da se upotrebi jednom. Dok ga ne upotrebite, na nalog ne može da"
+						+ " se prijavi niko, pa ni vi.",
+				"",
+				"Ako link istekne, zatražite novi sa strane za prijavu, na \"Zaboravljena lozinka\".",
+				"",
+				tail));
+
+		assertThat(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, MailLanguage.ENGLISH, PORTAL,
+				TOKEN).body()).isEqualTo(String.join("\n",
+				"Welcome to BTL.",
+				"",
+				"So that we know this address really is yours, open this link:",
+				linkOf(Message.CONFIRM_THE_ADDRESS, MailLanguage.ENGLISH),
+				"",
+				"The link is valid for 24 hours. If it expires, ask for a new one on the sign-in page.",
+				"",
+				"If you did not register with us, you can safely ignore this message.",
+				"",
+				tail));
+
+		assertThat(WhatTheMessageSays.about(Message.SET_A_NEW_PASSWORD, MailLanguage.ENGLISH, PORTAL,
+				TOKEN).body()).isEqualTo(String.join("\n",
+				"We have received a request to set a new password for your account.",
+				"",
+				"Open this link and enter it:",
+				linkOf(Message.SET_A_NEW_PASSWORD, MailLanguage.ENGLISH),
+				"",
+				"The link is valid for 1 hour and can be used once.",
+				"",
+				"If you did not request a password change, you can safely ignore this message.",
+				"",
+				tail));
+	}
+
+	/** The address a mail carries, as the class builds it and as the case above fills it in. */
+	private static String linkOf(Message message, MailLanguage in) {
+		return PORTAL.address() + in.prefix() + message.path() + "?token=" + TOKEN;
 	}
 
 	/**

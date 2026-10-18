@@ -398,10 +398,13 @@ class PairWriteApi {
 	 *
 	 * @param other  the other half, who is the one told about it
 	 * @param myName the leaver's name AS THE MESSAGE NAMES HIM, which is the whole of why it
-	 *               is here: {@code pair.endedBody} is „Trkacki par sa {who} za sezonu
-	 *               {season} je raskinut", and {who} is the one who pressed
+	 *               is here: the message is "{who} je raskinuo/raskinula vaš trkački par za sezonu
+	 *               {season}", and {who} is the one who pressed
+	 * @param myGender his own letter in {@code competitor.gender}, which picks the verb: read in
+	 *               the same statement as the name, off the column he is in, and never the
+	 *               other half's
 	 */
-	private record Held(long other, String myName, int season) {
+	private record Held(long other, String myName, String myGender, int season) {
 	}
 
 	/** The two of them in the order {@code racing_pair} stores them. */
@@ -808,7 +811,7 @@ class PairWriteApi {
 		db.sql("delete from racing_pair where id = ?").param(pair).update();
 
 		tell(his.get().other(), THE_PAIR_IS_BROKEN,
-				theBrokenPairReads(his.get().myName(), his.get().season()));
+				theBrokenPairReads(his.get().myName(), his.get().myGender(), his.get().season()));
 
 		return ResponseEntity.noContent().build();
 	}
@@ -829,11 +832,36 @@ class PairWriteApi {
 	 * {@code {who}} and {@code {season}} and its own {@code t()} replaces them; a
 	 * {@code MessageFormat} here would be a second convention for one sentence.
 	 *
+	 * <p>PDL P18, 18.10.2026, "Raskid para: ime u nominativu": the name stands as the subject and
+	 * the verb follows the sex of the one who PRESSED, never of the one who reads it. The reader
+	 * is always of the other sex in a racing pair, so a verb taken from the reader writes the
+	 * wrong word every time.
+	 *
 	 * @param who    the half who pressed „Raskini", by the name his profile carries
+	 * @param gender the letter {@code competitor.gender} holds for that half
 	 * @param season the season the pair held for, off the row rather than off the clock
 	 */
-	static String theBrokenPairReads(String who, int season) {
-		return "Trkački par sa " + who + " za sezonu " + season + " je raskinut.";
+	static String theBrokenPairReads(String who, String gender, int season) {
+		return who + " je " + (MAN.equals(gender) ? "raskinuo" : "raskinula")
+				+ " vaš trkački par za sezonu " + season + ".";
+	}
+
+	/**
+	 * WHAT THE OTHER HALF READS WHEN AN ADMINISTRATOR DELETES THE MEMBER HE WAS PAIRED WITH,
+	 * written beside {@link #theBrokenPairReads} because it is the same fact from a third door
+	 * and {@code CompetitorWriteApi} is its only caller.
+	 *
+	 * <p>PDL P18, 18.10.2026, "Raskid para: ime u nominativu": no name at all, and the noun follows
+	 * the sex of the member who is GONE ("vašeg partnera" or "vaše partnerke"), never of the one
+	 * who reads it. The replacement words V33 writes in place of a deleted member's name no
+	 * longer stand in this sentence.
+	 *
+	 * @param gone   the letter {@code competitor.gender} held for the deleted member
+	 * @param season the season the pair held for
+	 */
+	static String theBrokenPairByDeletionReads(String gone, int season) {
+		return "Vaš trkački par za sezonu " + season + " je raskinut, jer je nalog "
+				+ (MAN.equals(gone) ? "vašeg partnera" : "vaše partnerke") + " obrisan.";
 	}
 
 	/**
@@ -892,7 +920,7 @@ class PairWriteApi {
 		return db.sql("select case when p.man_id = :me then p.woman_id else p.man_id end,"
 						+ " case when p.man_id = :me then man.first_name else woman.first_name end,"
 						+ " case when p.man_id = :me then man.last_name else woman.last_name end,"
-						+ " p.season"
+						+ " p.season, case when p.man_id = :me then 'M' else 'F' end"
 						+ " from racing_pair p"
 						+ " join competitor man on man.id = p.man_id"
 						+ " join competitor woman on woman.id = p.woman_id"
@@ -903,7 +931,7 @@ class PairWriteApi {
 				.param("pair", pair)
 				.param("running", SeasonClock.seasonBeingRun(ZonedDateTime.now(clock)))
 				.query((row, one) -> new Held(row.getLong(1),
-						row.getString(2) + " " + row.getString(3), row.getInt(4)))
+						row.getString(2) + " " + row.getString(3), row.getString(5), row.getInt(4)))
 				.optional();
 	}
 

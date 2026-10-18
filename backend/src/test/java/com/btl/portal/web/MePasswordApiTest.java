@@ -815,9 +815,11 @@ class MePasswordApiTest {
 	 * THE MEMBER IS TOLD BY POST, AND THE NOTICE CARRIES NEITHER PASSWORD.
 	 *
 	 * <p>PDL P22, 11.08.2026 makes „promena lozinke" one of the six mandatory messages. What
-	 * it carries is the owner's own reading of P9 applied correctly: WHEN it changed and how
-	 * many other devices were signed out - never the old password, which this portal does not
-	 * hold at all (V18 keeps a BCrypt hash).
+	 * it carries is the owner's own reading of P9 applied correctly: WHEN it changed - never the
+	 * old password, which this portal does not hold at all (V18 keeps a BCrypt hash). It carried
+	 * how many other devices were signed out until the owner's decision of 18.10.2026 (PDL P18,
+	 * "Lozinka promenjena": "IZBRISATI"); the sessions are still ended, and the case that holds
+	 * that is the one with three of them.
 	 *
 	 * <p><b>The last assertion is a SWEEP and not a spot check</b>, which is the shape
 	 * {@code newPassword.test.tsx} uses on the other side of the repository for the same
@@ -838,25 +840,17 @@ class MePasswordApiTest {
 
 		String whole = wholeOf(posted);
 
-		/* THE COUNT IS READ AS „OTHERS" AND NOT AS „ALL", and the first draft of this
-		   assertion could not tell them apart: it asked for the character `2`, which the
-		   moment supplies four times over in „24.09.2026". Two sources for one value, which
-		   is the very fault this branch spent the day measuring in other people's fixtures.
-
-		   The member holds THREE sessions and asks from one, so „others" is 2 and „all" is 3.
-		   Asked over the rendered pair - a colon, the number, a full stop - the two are
-		   different strings, and a route that counted every session instead of every other
-		   one comes back visibly wrong rather than accidentally right. */
+		/* THE COUNT IS GONE FROM THE LETTER (owner, 18.10.2026), and it is looked for in both
+		   shapes it could still be written in: "others" would have been 2 and "all" 3, the member
+		   holding THREE sessions and asking from one, so a count that came back from some other
+		   source is found whichever it is. The rendered pair is a colon, the number and a full
+		   stop, because the bare character `2` is supplied four times over by the moment. */
 		assertThat(whole)
-				.as("the notice does not say how many other devices were signed out, which is"
-						+ " the half of the owner's decision of 24.09.2026 a member cannot see"
-						+ " anywhere else")
-				.contains(": 2.");
-
-		assertThat(whole)
-				.as("the notice counted EVERY session rather than every OTHER one, so it tells"
-						+ " the member the browser he is reading in was signed out too")
-				.doesNotContain(": 3.");
+				.as("the letter still says how many other devices were signed out, which the owner"
+						+ " asked to be taken out of it on 18.10.2026")
+				.doesNotContain(": 2.")
+				.doesNotContain(": 3.")
+				.doesNotContain("odjavljenih uređaja");
 
 		assertThat(whole)
 				.as("A PASSWORD LEFT THIS PORTAL BY POST. The old one cannot even be produced"
@@ -895,7 +889,7 @@ class MePasswordApiTest {
 
 		assertThat(posted.getSubject()).isEqualTo("The password of your account has changed");
 		assertThat(posted.getContent().toString())
-				.contains("Devices signed out this way: 2.")
+				.doesNotContain("Devices signed out")
 				.containsPattern("was changed on \\d{1,2} [A-Z][a-z]+ \\d{4} at \\d{2}:\\d{2}\\.");
 	}
 
@@ -911,7 +905,7 @@ class MePasswordApiTest {
 		MimeMessage posted = waitForOne();
 
 		assertThat(posted.getSubject()).isEqualTo("Lozinka na vašem nalogu je promenjena");
-		assertThat(posted.getContent().toString()).contains("Broj tako odjavljenih uređaja: 2.");
+		assertThat(posted.getContent().toString()).doesNotContain("odjavljenih uređaja");
 	}
 
 	@Test

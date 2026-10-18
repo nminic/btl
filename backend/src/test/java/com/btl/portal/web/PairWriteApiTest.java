@@ -1616,12 +1616,18 @@ class PairWriteApiTest {
 	 * season ({@code pair.endedBody}) - so a message that named the reader himself, or the
 	 * wrong season, or was signed „Verifikacija", fails on the text and not on a null.
 	 *
+	 * <p>PDL P18, 18.10.2026, "Raskid para: ime u nominativu": the verb follows the sex of the half
+	 * who PRESSED. The two rows are a man pressing and a woman pressing, and a racing pair is one
+	 * of each, so the reader is always of the other sex: a verb taken from the reader writes the
+	 * wrong word in both rows.
+	 *
 	 * @param who  the half who presses
 	 * @param told the half who pressed nothing
+	 * @param verb the word for the one who pressed, which is the man's in the first row
 	 */
 	@ParameterizedTest
-	@CsvSource({ "001000,000800", "000800,001000" })
-	void eitherHalfEndsThePairAndTheOtherHalfIsToldByName(String who, String told)
+	@CsvSource({ "001000,000800,raskinuo", "000800,001000,raskinula" })
+	void eitherHalfEndsThePairAndTheOtherHalfIsToldByName(String who, String told, String verb)
 			throws Exception {
 
 		long pair = pairOf(THE_FOURTH, SHE_ANSWERS, BEING_FORMED);
@@ -1652,8 +1658,8 @@ class PairWriteApiTest {
 				.as("the half who pressed nothing was told nothing, which is the fault PDL calls"
 						+ " a portal telling through one door and staying silent through another")
 				.containsExactly("Balkanska trkačka liga | Trkački par je raskinut |"
-						+ " Trkački par sa Ime" + who + " Probic" + who + " za sezonu "
-						+ BEING_FORMED + " je raskinut.");
+						+ " Ime" + who + " Probic" + who + " je " + verb
+						+ " vaš trkački par za sezonu " + BEING_FORMED + ".");
 
 		assertThat(postFor(who))
 				.as("the one who pressed the button was told about his own press")
@@ -1701,8 +1707,8 @@ class PairWriteApiTest {
 				.as("the woman he was running the season with was told about a season nobody"
 						+ " has run yet")
 				.containsExactly("Balkanska trkačka liga | Trkački par je raskinut |"
-						+ " Trkački par sa Ime" + HE_ASKED_HER + " Probic" + HE_ASKED_HER
-						+ " za sezonu " + STILL_RUNNING + " je raskinut.");
+						+ " Ime" + HE_ASKED_HER + " Probic" + HE_ASKED_HER
+						+ " je raskinuo vaš trkački par za sezonu " + STILL_RUNNING + ".");
 
 		assertThat(seasonsPairedIn(HE_ASKED_HER))
 				.as("the pair of the season being formed went instead of the one that was named")
@@ -1747,7 +1753,7 @@ class PairWriteApiTest {
 		assertThat(pair.get("endedBody").stringValue()
 				.replace("{who}", "Petar Petrović").replace("{season}", String.valueOf(2031)))
 				.as("the body the server writes is not the sentence the dictionary holds")
-				.isEqualTo(PairWriteApi.theBrokenPairReads("Petar Petrović", 2031));
+				.isEqualTo(PairWriteApi.theBrokenPairReads("Petar Petrović", "M", 2031));
 
 		assertThat(pair.get("inviteSubject").stringValue())
 				.as("the invitation's subject is not the sentence the dictionary holds")

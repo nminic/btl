@@ -2060,9 +2060,11 @@ class VerificationWriteApiTest {
 				.contains("Desetka");
 		assertThat(said).as("the day it names is not the day that run was run")
 				.contains("13.03.2027");
-		assertThat(said.contains(points) || said.contains(points.replace('.', ',')))
-				.as("the points it names are not the approved run's, which are %s", points)
-				.isTrue();
+		assertThat(said)
+				.as("the points it names are not the approved run's, which are %s, or they are not"
+						+ " written with the comma (PDL P18, 18.10.2026)", points)
+				.contains("koji nosi " + points.replace('.', ',') + " bodova.")
+				.doesNotContain(points);
 
 		assertThat(said)
 				.as("it names the race of another result of his, or the event's own name")
