@@ -158,6 +158,12 @@ describe('a run that no season counts', () => {
     ]
 
     expect(numbers(topByProgress([...EVERYBODY, third], later, 2028, 10))).not.toContain(third.memberNumber)
+
+    /* And the season shown: the second man's only run of 2028 counts in no season, worth 100. Read
+       by its year, he grew 95 from his 5 of 2027; read by its season, he has no 2028 at all. */
+    const shown = [...RESULTS, run(SECOND.memberNumber, '2028-05-01', 100, 50, false)]
+
+    expect(numbers(topByProgress(EVERYBODY, shown, 2028, 10))).not.toContain(SECOND.memberNumber)
   })
 
   it('makes no race shared, on the board of pairs', () => {
