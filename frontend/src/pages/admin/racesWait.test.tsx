@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { loadResource } from '../../data/client'
+import { inEventOrder } from '../../data/raceOrder'
 import type { BtlEvent, Race } from '../../data/types'
 import { RESULTS } from '../../data/useResource'
 import { dogadjaj } from '../../forms/definitions'
@@ -141,12 +142,10 @@ describe('an event whose races wait', () => {
 
     return {
       event,
-      races: races
-        .filter((race) => race.eventId === event.id)
-        .sort(
-          (left, right) =>
-            left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm,
-        ),
+      /* In the order the table opens them in, asked of the one place that decides it
+         (`data/raceOrder.ts`) rather than written out again here, where a second copy would keep
+         the old order the day the screen's changed. */
+      races: inEventOrder(races.filter((race) => race.eventId === event.id)),
     }
   }
 

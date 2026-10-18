@@ -124,7 +124,9 @@ describe('the table of races on an event, as it is written', () => {
     const weekend = await openTable(TWO_DAYS, 'visitor', null, null)
 
     expect(headings(weekend)).toEqual(['Trka', 'Dan', 'Dužina', 'Uspon', 'Spust'])
-    expect(columnOf(weekend, 'Dan')).toEqual(['17. 9. 2021.', '17. 9. 2021.', '18. 9. 2021.', '18. 9. 2021.'])
+    /* In the owner's order and not by the morning (PDL P6, 18.10.2026, `data/raceOrder.ts`): 5, 2,
+       1,5 and 0,8 km, so the Friday stands first and last. */
+    expect(columnOf(weekend, 'Dan')).toEqual(['17. 9. 2021.', '18. 9. 2021.', '18. 9. 2021.', '17. 9. 2021.'])
     cleanup()
 
     const four = await openTable(FOUR_MORNINGS, 'visitor', null, null)
@@ -193,8 +195,9 @@ describe('the table of races on an event, as it is written', () => {
     const table = await openTable(TWO_DAYS, 'competitor', MEMBER, '2021-09-17')
     const ways = raceRows(table).map((row) => at(within(row).getAllByRole('cell'), 5))
 
-    /* Two races on the Friday, which is today, and two on the Saturday after it. */
-    expect(ways.map((one) => within(one).queryByRole('link') !== null)).toEqual([true, true, false, false])
+    /* Two races on the Friday, which is today, and two on the Saturday after it, in the owner's
+       order (5, 2, 1,5 and 0,8 km): the Friday's are the first row and the last. */
+    expect(ways.map((one) => within(one).queryByRole('link') !== null)).toEqual([true, false, false, true])
 
     for (const empty of ways.filter((one) => within(one).queryByRole('link') === null)) {
       /* Nothing in it at all, not a space and not a word: `:empty` is what takes the cell out of the

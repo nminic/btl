@@ -1,3 +1,4 @@
+import { inEventOrder } from '../../data/raceOrder'
 import type { BtlEvent, League, Race } from '../../data/types'
 
 /** One event of a competition, with the races of it that the competition counts. */
@@ -51,9 +52,8 @@ export function leagueRaces(league: League, races: Race[]): Race[] {
  * in, so the list does not shuffle between renders; the data holds such a pair (two half
  * marathons in Mandarine, 3.11.2019).
  *
- * **Inside an event, the day and then the distance**, which is the order the event's own page
- * lists its races in (`pages/EventDetail.tsx`). One event may run over several mornings (PDL
- * P10), so the day comes first there and the distance parts the races of one morning.
+ * **Inside an event, the owner's order** (PDL P6, 18.10.2026, `data/raceOrder.ts`), which is the
+ * order the event's own page lists its races in (`pages/EventDetail.tsx`).
  */
 export function racesByEvent(races: Race[], events: BtlEvent[]): EventRaces[] {
   const byEvent = new Map<number, Race[]>()
@@ -71,10 +71,7 @@ export function racesByEvent(races: Race[], events: BtlEvent[]): EventRaces[] {
         : [
             {
               event,
-              races: [...mine].sort(
-                (left, right) =>
-                  left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm,
-              ),
+              races: inEventOrder(mine),
             },
           ]
     })

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Resource } from '../../components/Resource'
 import { raceLabel } from '../../data/raceLabel'
+import { inEventOrder } from '../../data/raceOrder'
 import type { League, Race } from '../../data/types'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
@@ -185,7 +186,9 @@ export function LeagueRaceModeration({
                 (race) => race.eventId === event.id && race.date.startsWith(String(league.season)),
               ),
             )
-            const chosen = everyRace.filter((race) => String(race.eventId) === day)
+            /* In the owner's order, which is the one the page of the event lists them in (PDL P6,
+               18.10.2026, `data/raceOrder.ts`); the list arrives in the server's order, by day. */
+            const chosen = inEventOrder(everyRace.filter((race) => String(race.eventId) === day))
 
             /** Which races a press just entered: one of them, or a whole day of them. */
             function entered(): number[] {
