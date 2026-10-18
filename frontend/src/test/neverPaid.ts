@@ -43,10 +43,10 @@ export const aNeverPaidRecord = {
 }
 
 /**
- * THE SIX NAMES `MeApi.MyOwnRecord` LEAVES OUT RATHER THAN CARRY AS NULL (`@JsonInclude
- * (NON_NULL)`), all six of them absent for him: the number he has not been given, the team, the
- * year in it, the portrait and its square, none of which he has, and the telephone, which
- * registration does not ask for.
+ * THE SEVEN NAMES `MeApi.MyOwnRecord` LEAVES OUT RATHER THAN CARRY AS NULL (`@JsonInclude
+ * (NON_NULL)`), all seven of them absent for him: the number he has not been given, the team, the
+ * year in it, the portrait and its square, none of which he has, the telephone, which
+ * registration does not ask for, and the words that wait for a moderator, of which he has none.
  */
 export const WHAT_HE_DOES_NOT_HAVE_YET = [
   'memberNumber',
@@ -55,6 +55,7 @@ export const WHAT_HE_DOES_NOT_HAVE_YET = [
   'photo',
   'crop',
   'phone',
+  'bioWaiting',
 ]
 
 /**

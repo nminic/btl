@@ -235,7 +235,17 @@ describe('the answer the harness stands in with', () => {
     const names =
       typeof member === 'object' && member !== null ? Object.keys(member) : []
 
-    expect(names.sort()).toEqual(Object.keys(myOwnRecordFromMe).sort())
+    /* EVERY NAME BUT ONE. `bioWaiting` is in the template because the server declares it
+       (`data/contract.test.ts` holds that), and it is NOT on the wire here on purpose: the server
+       leaves it out for a member whose words do not wait, which is nearly every one, and a harness
+       that answered it would show every member a text that waits. The name is taken out by name
+       and nothing else is, so a second key the harness stopped answering still fails here. */
+    expect(names.sort()).toEqual(
+      Object.keys(myOwnRecordFromMe)
+        .filter((name) => name !== 'bioWaiting')
+        .sort(),
+    )
+    expect(names, 'the harness answers the words that wait for every member').not.toContain('bioWaiting')
   })
 })
 
