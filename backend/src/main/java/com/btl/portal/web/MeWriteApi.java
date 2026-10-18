@@ -169,30 +169,35 @@ import java.util.function.Function;
  * way, and it is two things and not one: the SWITCH is written here and now, and so is a
  * DELETION, because nothing approves either of them.
  *
- * <p><b>2. A SECOND TEXT WHILE ONE IS WAITING IS REFUSED, AND THE PORTAL ALREADY DECIDED
- * THAT ON ITS OWN SIDE.</b> The owner settled it on 19.09.2026 - „Nov tekst o sebi se
- * ODBIJA dok prethodni ceka odluku moderatora. Odgovor je 409, i prvi tekst ostaje u redu
- * netaknut" - and his reason is the portal's own:
- * {@code pages/member/ProfileBio.tsx} draws no button while one stands, „a second ask gives
- * a moderator two texts of one person and no question to answer", and the same file names
- * the hole it could not close from a browser. The rule therefore lives on this side as well,
- * exactly as {@link com.btl.portal.domain.registration.WhatRegistrationAsksFor} says of its
- * own: „the form is JavaScript in somebody else's browser: a registration can arrive
- * without ever having passed through it".
+ * <p><b>2. A TEXT SENT WHILE ONE IS WAITING OVERWRITES IT, AND THE ROW STAYS THE ROW.</b> The owner
+ * decided on 18.10.2026 (PDL P11, „Dok tekst o sebi čeka odobrenje, član ga vidi u Podešavanjima sa
+ * oznakom da čeka i može da ga ispravi pre odluke; na profilu se do odobrenja vidi stari, odobren
+ * tekst") and confirmed it when he was shown what it costs: a new text overwrites the one that waits,
+ * on the same row and at the same place in the queue, as a picture does (27.09.2026, „Ponovno slanje
+ * pregazi red koji čeka, ne pravi drugi"). The cost he accepted is the one the earlier entry named
+ * as the reason to refuse: the moderator's text changes under his hand while he reads. A decision
+ * he takes about the words he read is then refused, „Tekst je promenjen, pogledaj ga ponovo.", and
+ * the row stays waiting with the new ones ({@code VerificationWriteApi.Answered#seenText}); the row
+ * is taken before it is looked at, so a correction that lands while the decision waits for the row
+ * is refused too. <b>That entry
+ * - 19.09.2026, a second text answered 409 and the first left untouched - is struck in PDL as
+ * OBORENO 18.10.2026, and so is the reason {@code aTextAlreadyWaits} existed: the constant, the
+ * guard and the sentence a screen drew for it are gone, and nothing on this route answers 409 for
+ * a text any more.</b>
  *
- * <p><b>AND ON THIS SIDE IT IS TWO THINGS SINCE V53, EACH FOR ITS OWN CASE.</b> The route asks
- * {@link #theTextThatWaits} before anything is written, which answers one request at a time
- * and answers it ahead of every other write the request carries. But a question asked and
- * then a row written are two statements, and two requests that both asked before either wrote
- * were both told yes - a member pressing „Posalji" twice was enough, measured by
- * {@code ATextSentTwiceAtOnceTest} before the index existed. So the database says it too:
- * {@code verification_one_text_waits_per_member} is the one thing both requests meet, and
- * {@link #queued} meets it with {@code on conflict do nothing}, so the loser is answered the
- * owner's 409 rather than a fault, and goes back whole.
+ * <p><b>AND IT IS ONE STATEMENT, WHICH IS WHAT KEEPS IT ONE ROW.</b> {@link #queued} is an upsert
+ * against {@code verification_one_text_waits_per_member} (V53): a member with no text waiting gets a
+ * row, and a member with one gets {@code body} (and the subject, which is his current name) written
+ * over on the row that is there, so the row keeps its {@code id}, its {@code raised_at} and any
+ * {@code verification_lock} a moderator holds on it. The index is no longer there to refuse
+ * anything - V53's header still says it is, because a migration that has run cannot be edited
+ * (A2) - but it is the thing that makes "at most one text waits per member" a fact of the table
+ * rather than of this method, and it is the conflict target the upsert needs. Two sends at once are
+ * two writes to one row, and the last wins; {@code ATextSentTwiceAtOnceTest} holds that.
  *
  * <ul>
- * <li><b>Refused:</b> a member whose text is standing in the queue undecided, sending
- * another, is answered 409 and the queue still holds the FIRST text.
+ * <li><b>Overwritten:</b> a member whose text is standing in the queue undecided, sending
+ * another, changes THAT row. The queue still holds exactly one text of his, and it is the new one.
  * <li><b>Accepted, and each of these is its own case:</b> a member whose earlier text was
  * DECIDED, approved or refused, may send another - that is the whole reason the owner
  * asked for this screen („odbijanje se vraca, clan ispravi i posalje ponovo", PDL P22,
@@ -210,12 +215,9 @@ import java.util.function.Function;
  * fills {@code photo_id}, which V9 calls „the picture, while there still is one" and which a
  * moderator must have in order to judge one, so this guard and the index go on being right.
  * A writer that invented a mark of its own instead is the day this sentence is to be read.
- * <li><b>AND A DELETION IS NOT A SECOND TEXT.</b> Since the owner's decision of the same
- * day, a blank {@code bio} removes what stands, at once. Asked as „{@code bio} was sent"
- * this guard would answer 409 to a member asking for his own words to come down because a
- * PROPOSAL of his is still undecided, which is a right refused on account of somebody
- * else's queue. So it asks whether a TEXT was sent, and {@link #write} carries the reason
- * and the boundary that follows.
+ * <li><b>AND A DELETION IS NOT A TEXT SENT.</b> Since the owner's decision of 19.09.2026, a
+ * blank {@code bio} removes what stands, at once. It queues nothing, and it neither overwrites
+ * nor withdraws a text that waits: {@link #write} carries the boundary that follows.
  * </ul>
  *
  * <p><b>3. ONE ROUTE, THREE ROADS, AND THE ANSWER MUST NOT LIE ON ANY OF THEM.</b> Two of
@@ -374,8 +376,21 @@ class MeWriteApi {
 	/** More characters than the box the member types into will hold. */
 	static final String THE_TEXT_IS_TOO_LONG = "theTextIsTooLong";
 
-	/** This member's words are already standing in front of a moderator. */
-	static final String A_TEXT_ALREADY_WAITS = "aTextAlreadyWaits";
+	/**
+	 * WHAT MAKES A ROW OF THE QUEUE "A TEXT OF A MEMBER'S THAT WAITS", ONE HOME FOR IT.
+	 *
+	 * <p>Written against the alias {@code v}, and read by this class (the {@code waiting} it answers
+	 * with) and by {@link MeApi} (the words themselves, which the Settings screen draws with a mark
+	 * that they wait). Two queries with the clause written out twice would be two ways of arriving at
+	 * one fact, free to disagree the day one of them was edited.
+	 *
+	 * <p>{@code state = 'waiting'} and not merely "a row in this tab": a text that has been decided,
+	 * approved or refused alike, stands in the table for ever (V9, ADL A42) and is not waiting.
+	 * {@code photo_id is null} is the schema's mark for "this item brings no picture", and it is the
+	 * condition of {@code verification_one_text_waits_per_member} word for word.
+	 */
+	static final String A_TEXT_THAT_WAITS =
+			"v.queue = 'profiles' and v.state = 'waiting' and v.photo_id is null";
 
 	/**
 	 * A field of the member's own form that only an administrator moves.
@@ -1196,42 +1211,22 @@ class MeWriteApi {
 	/**
 	 * THE WRITING, AND IT IS ONE TRANSACTION OVER AT MOST TWO STATEMENTS.
 	 *
-	 * <p>The conflict is asked FIRST, before either statement, for the reason written at the
-	 * head of this class: a value returned from inside {@code TransactionTemplate.execute}
-	 * commits whatever has already been written, so a refusal decided after the switch had
-	 * moved would be a 409 reported over a change that was kept.
+	 * <p><b>A TEXT SENT IS WRITTEN LAST, AND IT NEVER REFUSES.</b> The update of the member's own row
+	 * comes first and the queue row after it, in the same transaction, so a request that carries a
+	 * name and a text either keeps both or neither. Nothing here can answer 409 for a text: it
+	 * overwrites the one that waits (decision 2 at the head of this class), and the caller is
+	 * handed what stands, read back out of the table.
 	 *
-	 * <p><b>AND ASKED FIRST IT STILL ANSWERS SOMETHING THE INDEX DOES NOT, measured on the
-	 * branch that added V53.</b> The index refuses the same second text, but only when the row
-	 * is written, which is after everything else this request carries. A request that also
-	 * carries something only the database would refuse - a first name that a trigger refuses,
-	 * which is how the case below makes it; a name with a NUL character used to be that, and a
-	 * zero is now turned away where the body is read - is answered 409 with this question in
-	 * place and a server fault without it: the update meets the fault before the insert meets
-	 * the index.
-	 * {@code MeWriteApiTest.aTextThatWaitsIsToldBeforeAFieldOnlyTheDatabaseWouldRefuse} holds
-	 * that difference, and it is the reason this question was not folded into the index.
-	 *
-	 * <p><b>THE RACE IS THE INDEX'S, AND IT IS ANSWERED THE SAME WAY.</b> Two requests that both
-	 * asked here before either wrote both pass; the one whose row then meets
-	 * {@code verification_one_text_waits_per_member} gets no row back from {@link #queued}, and
-	 * this method asks the transaction to roll back before answering 409, so the name, town and
-	 * switch it wrote on the way go back with it.
-	 *
-	 * <p><b>THE CONFLICT IS ABOUT A TEXT AND NOT ABOUT THE FIELD, WHICH IS WHAT THE OWNER'S
-	 * DECISION OF 19.09.2026 CHANGED.</b> A blank {@code bio} is now a DELETION, and
-	 * deleting is „pravo clana nad sopstvenim podatkom, ne predlog" (PDL P11). Asked as
-	 * „{@code bio} was sent" this guard would answer 409 to a member asking for his own text
-	 * to be taken down because somebody else has not yet decided a PROPOSAL of his, which is
-	 * a right refused on account of a queue. So it asks „a text was sent", and the case that
-	 * holds it sends a deletion from exactly that member.
+	 * <p><b>IT IS A TEXT THAT IS QUEUED AND NOT THE FIELD.</b> A blank {@code bio} is a DELETION,
+	 * and deleting is „pravo clana nad sopstvenim podatkom, ne predlog" (PDL P11, 19.09.2026), so
+	 * nothing is queued for it and the text that waits is not touched by it.
 	 *
 	 * <p><b>THE BOUNDARY THAT FOLLOWS AND IS NOT INVENTED AWAY:</b> deleting what stands does
-	 * NOT withdraw a text that is waiting. Nothing decided that it should, the two decisions
-	 * of 19.09.2026 are about different things, and a member whose waiting text is later
-	 * approved gets words back on a profile he had cleared. That is what the two decisions
-	 * say read together; it is written here rather than quietly patched, because patching it
-	 * would be this route deciding what withdrawal means.
+	 * NOT withdraw a text that is waiting. Nothing decided that it should - the deletion of
+	 * 19.09.2026 is about what STANDS, and the overwrite of 18.10.2026 about what WAITS - and a
+	 * member whose waiting text is later approved gets words back on a profile he had cleared.
+	 * That is what the two decisions say read together; it is written here rather than quietly
+	 * patched, because patching it would be this route deciding what withdrawal means.
 	 *
 	 * <p><b>THE SWITCH AND THE DELETION ARE ONE STATEMENT, AND THAT IS THE ANSWER TO „TOGETHER
 	 * OR NOT AT ALL" RATHER THAN A CASE.</b> Both are immediate and both are columns of
@@ -1253,10 +1248,6 @@ class MeWriteApi {
 			TransactionStatus committing) {
 
 		boolean removing = typed.bio() != null && typed.bio().isBlank();
-
-		if (typed.bio() != null && !removing && theTextThatWaits(me).isPresent()) {
-			return no(HttpStatus.CONFLICT, A_TEXT_ALREADY_WAITS);
-		}
 
 		/* THE PHONE IS THE ONE FIELD WHOSE „NOT SENT" AND WHOSE VALUE ARE BOTH NULL, so it
 		   cannot ride on `coalesce` the way the rest do: the parameter that would mean
@@ -1372,16 +1363,9 @@ class MeWriteApi {
 			}
 		}
 
-		/* A TEXT THAT ANOTHER REQUEST GOT IN FIRST, which is the race the question at the top of
-		   this method cannot see: both asked before either wrote. `queued` hands back no row when
-		   V53's index already holds his waiting text, and what this request wrote on the way - a
-		   name, a town, a switch - must not outlive the refusal, so the transaction is told to go
-		   back before the 409 is returned (`CompetitorWriteApi.writeAll` returns a refusal with a
-		   body the same way). */
-		if (typed.bio() != null && !removing && queued(me, typed.bio().strip()).isEmpty()) {
-			committing.setRollbackOnly();
-
-			return no(HttpStatus.CONFLICT, A_TEXT_ALREADY_WAITS);
+		/* THE TEXT, LAST: it overwrites the one that waits or opens a row if none does (`queued`). */
+		if (typed.bio() != null && !removing) {
+			queued(me, typed.bio().strip());
 		}
 
 		return ResponseEntity.ok(whatStandsFor(me));
@@ -1419,36 +1403,44 @@ class MeWriteApi {
 	 * may moderate it. {@code photo_id} is left null, which is this route saying it brings
 	 * no picture; see decision 2 at the head of this class for what that null also does.
 	 *
-	 * <p><b>AND IT MEETS V53 WITH {@code on conflict do nothing}, SO A LOST RACE IS AN ANSWER
-	 * AND NOT A FAULT.</b> {@code verification_one_text_waits_per_member} holds one waiting text
-	 * per member, and a second request that got past {@link #theTextThatWaits} because the first
-	 * had not committed yet waits here for it, and then writes nothing. The conflict is named by
-	 * its column and the index's own condition, which is how PostgreSQL is told which index is
-	 * meant, so a refusal by any OTHER key stays a fault rather than being read as „a text
-	 * waits". The precedent is {@code CompetitorWriteApi.accountFor}, which meets the address
-	 * index the same way and reads the row back with {@code returning}.
+	 * <p><b>AND IT MEETS V53 WITH {@code on conflict ... do update}, SO ONE STATEMENT IS EVERY CASE.</b>
+	 * {@code verification_one_text_waits_per_member} holds one waiting text per member. A member
+	 * with none gets a row; a member with one gets the words (and the subject, which is his name as
+	 * it is now) written over on THE ROW THAT IS THERE, so the row keeps its key, its
+	 * {@code raised_at} - his place in the queue, V9 orders by it - and any hold a moderator has on it
+	 * (V28's lock points at the row, not at the words). The owner accepted that a moderator's text
+	 * changes under his hand (PDL P11, 18.10.2026); a row deleted and opened again would instead
+	 * VANISH from under the moderator and take the hold with it, which no decision describes.
+	 * Two requests at once cannot make two rows, because the second meets the first's row, and
+	 * a decision that lands in between leaves the row out of the index's condition, so the write
+	 * opens a fresh row beside the decided one, which is the right answer for a text sent after
+	 * its predecessor was decided. The conflict is named by its column and the index's own
+	 * condition, which is how PostgreSQL is told which index is meant, so a refusal by any OTHER
+	 * key stays a fault. The precedent is {@code CompetitorWriteApi.accountFor}, which meets the
+	 * address index the same way and reads the row back with {@code returning}.
 	 *
-	 * @return the key of the row written, or nothing when his text already waits
+	 * @return the key of the row the words are in now
 	 */
-	private Optional<Long> queued(long me, String text) {
+	private long queued(long me, String text) {
 		return db.sql("insert into verification (queue, competitor_id, subject, body)"
 						+ " select ?, c.id, c.first_name || ' ' || c.last_name, ?"
 						+ " from competitor c where c.id = ?"
 						+ " on conflict (competitor_id)"
 						+ " where queue = 'profiles' and state = 'waiting' and photo_id is null"
-						+ " do nothing returning id")
+						+ " do update set body = excluded.body, subject = excluded.subject"
+						+ " returning id")
 				.params(THE_PROFILES_TAB, text, me)
 				.query(Long.class)
-				.optional();
+				.single();
 	}
 
 	/**
 	 * THIS MEMBER'S TEXT STANDING IN THE QUEUE UNDECIDED, OR NOTHING.
 	 *
-	 * <p>One home for the question, asked twice in one request: once as the guard that
-	 * refuses a second text, and once as the {@code waiting} this route answers with.
-	 * Written as two queries they would be two ways of arriving at one fact, free to
-	 * disagree the day one of them was edited - which is {@link VerificationApi}'s own
+	 * <p>The {@code waiting} this route answers with, read out of the table after the writing.
+	 * The clause is {@link #A_TEXT_THAT_WAITS}, shared with {@link MeApi}, which reads the words
+	 * of the same row: two queries with the clause written out would be two ways of arriving at one
+	 * fact, free to disagree the day one of them was edited - which is {@link VerificationApi}'s own
 	 * reason for reading „may he" off one list.
 	 *
 	 * <p><b>{@code state = 'waiting'} and not merely „a row in this tab".</b> A text that
@@ -1462,21 +1454,19 @@ class MeWriteApi {
 	 *
 	 * <p><b>Oldest first with the key last, and {@code limit 1}.</b> V9 indexes the queue
 	 * that way and {@link VerificationApi} reads it that way. Since V53 the table itself cannot
-	 * hold two waiting texts of one member - the guard above could not promise that, because two
-	 * requests both asked it before either wrote - but the order stays, so the answer never
-	 * depends on the order the table happens to hold rows in.
+	 * hold two waiting texts of one member, but the order stays, so the answer never depends on
+	 * the order the table happens to hold rows in.
 	 *
 	 * <p><b>The same condition as {@code verification_one_text_waits_per_member}, word for
 	 * word</b>, and the two are held to each other by behaviour rather than by a comparison of
-	 * strings: a condition here narrower than the index's would let {@link #queued} meet a
-	 * conflict this question never saw, and one wider would refuse a text the index lets in, and
+	 * strings: a condition here narrower than the index's would make {@link #queued} overwrite a
+	 * row this question never saw, and one wider would report a text the index does not hold, and
 	 * each of those has its case in {@code MeWriteApiTest}.
 	 */
 	private Optional<Long> theTextThatWaits(long me) {
-		return db.sql("select id from verification where competitor_id = ? and queue = ?"
-						+ " and state = 'waiting' and photo_id is null"
-						+ " order by raised_at, id limit 1")
-				.params(me, THE_PROFILES_TAB)
+		return db.sql("select v.id from verification v where v.competitor_id = ? and "
+						+ A_TEXT_THAT_WAITS + " order by v.raised_at, v.id limit 1")
+				.param(me)
 				.query(Long.class)
 				.optional();
 	}

@@ -131,7 +131,32 @@ export function Settings() {
           reason `useMyData` gives: an answer is believed for the reader it was asked for and no
           other. It stands before the list is drawn, so the order of the panels is the one this
           screen always had. */}
-      {who.standing === 'standing' && <HisOwnData whose={who.memberNumber} />}
+      {(who.standing === 'standing' ||
+        who.standing === 'neverPaid' ||
+        who.standing === 'account') && (
+        <div className="member__pair">
+          {who.standing === 'standing' && <HisOwnData whose={who.memberNumber} />}
+          {who.standing === 'neverPaid' && <HisOwnData whose={who.account} />}
+          {/* **NOT DRAWN TO A MEMBER WHOSE FEE HAS LAPSED**, since 11.10.2026: `PUT
+              /api/me/password` answers him 404. It is drawn to somebody who has not paid, whom the
+              same entry lets change it, and **to an administration account with no member, since
+              17.10.2026** (PDL, the answers of that evening: „Nalog administracije bez člana na
+              strani Podešavanja vidi sve troje: jezik pošte, izbor teme i promenu lozinke"; the
+              route takes it, `MePasswordApiTest`). **Named for the three who see it rather than
+              excluded for the one who does not**, so a fifth way of being signed in that this
+              screen learns to draw is not handed a password by a condition written as „anybody
+              but a lapsed member".
+
+              **BESIDE THE PERSONAL DATA, since 18.10.2026** (PDL P11, owner, „Strana Podešavanja,
+              sa snimaka": „boks za promenu lozinke stoji pored boksa za lične podatke"). A password
+              belongs to the ACCOUNT and asks nothing of the member record, so an account that
+              races for nobody has it alone and the box then takes the whole row
+              (`.member__pair > :only-child`). */}
+          <ChangePassword />
+        </div>
+      )}
+
+      {who.standing === 'neverPaid' && <p className="member__note">{t('settings.opensWithTheFee')}</p>}
 
       {who.standing === 'standing' && (
         <Resource state={competitors} inline>
@@ -168,8 +193,6 @@ export function Settings() {
         </Resource>
       )}
 
-      {who.standing === 'neverPaid' && <TheDataOfSomebodyWhoHasNotPaid account={who.account} />}
-
       {/* **THE ONE SENTENCE A MEMBER WHOSE FEE HAS LAPSED IS TOLD**, since 16.10.2026 (PDL P8, the
           entry „Šta sme neplaćen član", the decision of that day, chosen by the owner between
           offered outcomes; the sentence is the record's and not his own words): „Članu kome je
@@ -182,61 +205,48 @@ export function Settings() {
           nothing to be told. */}
       {who.standing === 'lapsed' && <WhatOpensWhenTheFeeIsRenewed />}
 
-      {/* Outside the block above, because it asks nothing of the member record: a
-          password belongs to the ACCOUNT, and an account that races and one that only
-          moderates have one each. It is drawn after the profile and before the
-          preferences for the same reason the personal data is drawn first - this is
-          the part of the screen that is about the account itself rather than about
-          how it likes to be shown.
+      {/* **BESIDE EACH OTHER, since 18.10.2026** (PDL P11, owner, „Strana Podešavanja, sa snimaka":
+          „Boksovi „Tema" i „Jezik pošte" stoje jedan pored drugog u istom redu"). One column on a
+          telephone, as the UI standard of this repository asks (`CLAUDE.md`), and two from 51.25em, the
+          width at which the portal's navigation unfolds (`Member.css`, `.member__pair`). */}
+      <div className="member__pair">
+        <section className="member__panel" aria-labelledby="settings-appearance">
+          <h2 className="profile__section" id="settings-appearance">
+            {t('settings.appearance')}
+          </h2>
 
-          **NOT DRAWN TO A MEMBER WHOSE FEE HAS LAPSED**, since 11.10.2026: `PUT
-          /api/me/password` answers him 404. It is drawn to somebody who has not paid, whom
-          the same entry lets change it, and **to an administration account with no member, since
-          17.10.2026** (PDL, the answers of that evening: „Nalog administracije bez člana na strani
-          Podešavanja vidi sve troje: jezik pošte, izbor teme i promenu lozinke"; the route takes
-          it, `MePasswordApiTest`). **Named for the three who see it rather than excluded for the
-          one who does not**, so a fifth way of being signed in that this screen learns to draw is
-          not handed a password by a condition written as „anybody but a lapsed member". */}
-      {(who.standing === 'standing' ||
-        who.standing === 'neverPaid' ||
-        who.standing === 'account') && <ChangePassword />}
+          <fieldset className="field field--radio">
+            <legend className="field__label">{t('settings.themeLabel')}</legend>
+            {THEMES.map((one) => (
+              <div key={one} className="field__confirm">
+                <input
+                  className="field__control"
+                  type="radio"
+                  name="theme"
+                  id={`theme-${one}`}
+                  value={one}
+                  checked={theme === one}
+                  onChange={() => choose(one)}
+                />
+                <label className="field__label" htmlFor={`theme-${one}`}>
+                  {t(one === 'dark' ? 'settings.themeDark' : 'settings.themeLight')}
+                </label>
+              </div>
+            ))}
+          </fieldset>
+        </section>
 
-      <section className="member__panel" aria-labelledby="settings-appearance">
-        <h2 className="profile__section" id="settings-appearance">
-          {t('settings.appearance')}
-        </h2>
-
-        <fieldset className="field field--radio">
-          <legend className="field__label">{t('settings.themeLabel')}</legend>
-          {THEMES.map((one) => (
-            <div key={one} className="field__confirm">
-              <input
-                className="field__control"
-                type="radio"
-                name="theme"
-                id={`theme-${one}`}
-                value={one}
-                checked={theme === one}
-                onChange={() => choose(one)}
-              />
-              <label className="field__label" htmlFor={`theme-${one}`}>
-                {t(one === 'dark' ? 'settings.themeDark' : 'settings.themeLight')}
-              </label>
-            </div>
-          ))}
-        </fieldset>
-      </section>
-
-      {/* **THE ONE PANEL DRAWN TO EVERY KIND OF SIGNED IN ACCOUNT**, since 17.10.2026: the language
-          the portal's mail to this account is written in. PDL, the answers of 17.10.2026 (chosen by
-          the owner between offered outcomes; the sentence is the record's and not his own words):
-          „Jezik pošte sme da promeni svako ko ima nalog, i član bez plaćene članarine i član kome
-          je istekla, jer je to podešavanje naloga a ne takmičarsko pravo." So it stands outside
-          every `who.standing` condition on this screen, and it is the only panel an administration
-          account with no member is drawn (`useScreenForEveryAccount`). It stands after the theme,
-          which is the other thing the reader keeps for himself, and before the one panel that is
-          about other people. */}
-      <MailLanguageChoice reader={reader} />
+        {/* **THE ONE PANEL DRAWN TO EVERY KIND OF SIGNED IN ACCOUNT**, since 17.10.2026: the language
+            the portal's mail to this account is written in. PDL, the answers of 17.10.2026 (chosen by
+            the owner between offered outcomes; the sentence is the record's and not his own words):
+            „Jezik pošte sme da promeni svako ko ima nalog, i član bez plaćene članarine i član kome
+            je istekla, jer je to podešavanje naloga a ne takmičarsko pravo." So it stands outside
+            every `who.standing` condition on this screen, and it is the only panel an administration
+            account with no member is drawn (`useScreenForEveryAccount`). It stands after the theme,
+            which is the other thing the reader keeps for himself, and before the one panel that is
+            about other people. */}
+        <MailLanguageChoice reader={reader} />
+      </div>
 
       {/* **What other people see, and the one thing on this screen that is not only the
           reader's own business.** The published privacy policy has promised this control since
@@ -289,31 +299,6 @@ function WhatOpensWhenTheFeeIsRenewed() {
         <Link to={`/${locale}/${MEMBERSHIP_ADDRESS}`}>{t('nav.membership')}</Link>
       </Sentence>
     </p>
-  )
-}
-
-/**
- * HIS DATA, FOR SOMEBODY WHO REGISTERED AND HAS NOT PAID, and the one sentence about what is not
- * here.
- *
- * <p>A component of its own and not a branch of {@link Settings}, because it is the only place
- * that reads `GET /api/me` for him (`useMyData`) and a hook cannot be called under a condition:
- * drawn inside the screen it would ask the server on every visit of every member whose fee
- * stands, for an answer nobody reads.
- *
- * <p>The sentence says what he cannot find here and when it opens: the picture, the biography
- * and the switch that hides a profile are the three things the entry of 10.10.2026 names (PDL P8)
- * among the ones that make a member visible or put him in the league, and he gets them with his
- * number.
- */
-function TheDataOfSomebodyWhoHasNotPaid({ account }: { account: number }) {
-  const { t } = useI18n()
-
-  return (
-    <>
-      <HisOwnData whose={account} />
-      <p className="member__note">{t('settings.opensWithTheFee')}</p>
-    </>
   )
 }
 

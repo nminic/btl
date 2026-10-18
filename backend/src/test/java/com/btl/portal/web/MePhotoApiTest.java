@@ -957,9 +957,12 @@ class MePhotoApiTest {
 	 * <p>This is the boundary as it was settled: 21c's sentence presupposes a row to overwrite
 	 * („gazi trenutan red"), so with nothing waiting there is no picture here to re-cut and the
 	 * answer this class already had goes on being the right one. Whether a member may move the
-	 * circle over a picture that has been APPROVED is a separate question that no decision
-	 * answers, and nothing here invents one: that would mean copying a {@code photo} row and its
-	 * file, which is a mechanism this portal does not have.
+	 * circle over a picture that has been APPROVED is answered by PDL P11, IZVEDENO 18.10.2026:
+	 * „Krug se pomera i nad ODOBRENOM slikom, i pomeren krug ide na odobrenje kao nova slika". That
+	 * needs no mechanism on this route: the screen fetches the approved picture's own bytes and sends
+	 * them as a file with the new circle (`ProfilePicture.tsx`, the "again" road), which this route
+	 * cannot tell from a file chosen on a disc. A request with NO file and nothing waiting therefore
+	 * stays an incomplete form.
 	 *
 	 * <p><b>{@link #ME} has a picture ON the profile and nothing waiting</b>, so this is not the
 	 * empty case: there is a portrait of his in the table, and the answer is still that there is

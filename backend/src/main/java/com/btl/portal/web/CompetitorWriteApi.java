@@ -596,8 +596,8 @@ class CompetitorWriteApi {
 	 * the first three, this is not the registration's own boundary moving under it - it is
 	 * measured against {@link MeWriteApi}, the one place a member's own words reach
 	 * {@code competitor.bio}, which never writes that column without also queuing the text
-	 * for a moderator (PDL, 19.09.2026: „Nov tekst o sebi se ODBIJA dok prethodni ceka
-	 * odluku moderatora", so that a moderator always faces exactly one text per member).
+	 * for a moderator (so that a moderator always faces exactly one text per member:
+	 * V53, and PDL P11, 18.10.2026, where a text sent over one that waits overwrites it).
 	 * This route wrote the column directly and queued nothing, the same shape this branch
 	 * has just refused for the registration itself, reached from an administrator's screen
 	 * rather than the public one. <b>That the queue was bypassed is measured; that removing

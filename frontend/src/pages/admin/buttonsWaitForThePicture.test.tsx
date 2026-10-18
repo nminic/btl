@@ -104,6 +104,10 @@ const petar = {
   crop: null,
 }
 
+/** The words of that row as the list serves them, written out here and never read off the row: a
+ *  decision about a biography names the words its card drew (`seenText`, PDL P11, 18.10.2026). */
+const THE_BIOGRAPHYS_WORDS = 'Trčim od malena, najviše volim brdske staze.'
+
 const asTheList = (rows: unknown[]): Response =>
   new Response(JSON.stringify(rows), {
     status: 200,
@@ -347,7 +351,7 @@ describe('the two buttons of a card, by what has become of the picture on it', (
 
       /* Named nothing: the route answers 400 to a key or a circle beside a row that holds no picture. */
       expect(decisionsIn(asked)).toEqual([
-        { path: decisionPath('22'), body: { approved: true, reason: '' } },
+        { path: decisionPath('22'), body: { approved: true, reason: '', seenText: THE_BIOGRAPHYS_WORDS } },
       ])
     } finally {
       stop()
@@ -371,7 +375,9 @@ describe('the two buttons of a card, by what has become of the picture on it', (
       await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
 
       expect(decisionsIn(asked)).toEqual([
-        { path: decisionPath('22'), body: { approved: false, reason: 'Prekratko.' } },
+        { path: decisionPath('22'),
+          body: { approved: false, reason: 'Prekratko.', seenText: THE_BIOGRAPHYS_WORDS },
+        },
       ])
     } finally {
       stop()
@@ -467,7 +473,7 @@ describe('the sweep over cards whose pictures are in different states', () => {
           path: decisionPath('23'),
           body: { approved: true, reason: '', seenPhotoId: 12, seenCrop: MIRA_CROP },
         },
-        { path: decisionPath('22'), body: { approved: true, reason: '' } },
+        { path: decisionPath('22'), body: { approved: true, reason: '', seenText: THE_BIOGRAPHYS_WORDS } },
       ])
 
       /* The two it left are still in the queue, not hidden. */
@@ -622,7 +628,7 @@ describe('the sweep, and a picture that arrives while it is out', () => {
         /* The biography alone, in either order: no request for Neda, and the one number that tells „left
            her" from „took her". */
         expect(decisionsIn(asked)).toEqual([
-          { path: decisionPath('22'), body: { approved: true, reason: '' } },
+          { path: decisionPath('22'), body: { approved: true, reason: '', seenText: THE_BIOGRAPHYS_WORDS } },
         ])
         expect(screen.getByText('Rešena je 1 stavka.')).toBeVisible()
         expect(screen.getByRole('heading', { name: 'Neda Nedić' })).toBeVisible()
@@ -729,7 +735,7 @@ describe('the sweep, and a picture that arrives while it is out', () => {
       await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
       await waitFor(() => {
         expect(decisionsIn(asked)).toEqual([
-          { path: decisionPath('22'), body: { approved: true, reason: '' } },
+          { path: decisionPath('22'), body: { approved: true, reason: '', seenText: THE_BIOGRAPHYS_WORDS } },
           {
             path: decisionPath('21'),
             body: { approved: false, reason: 'Slika je mutna.', seenPhotoId: 9, seenCrop: NEDA_CROP },
@@ -855,7 +861,7 @@ describe('the sweep, and a picture that fails while it is out', () => {
          the card that failed; and NOTHING for Neda: the route would have taken it (`did()`), which is
          why the count below is 2 and not 3. */
       expect(decisionsIn(asked)).toEqual([
-        { path: decisionPath('22'), body: { approved: true, reason: '' } },
+        { path: decisionPath('22'), body: { approved: true, reason: '', seenText: THE_BIOGRAPHYS_WORDS } },
         {
           path: decisionPath('25'),
           body: { approved: false, reason: 'Fajl je nestao.', seenPhotoId: 14, seenCrop: ZORA_CROP },

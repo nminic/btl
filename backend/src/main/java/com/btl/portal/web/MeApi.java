@@ -182,6 +182,16 @@ import java.time.ZonedDateTime;
  * reading of the entry, that a member may be handed his own, is this record's and not the
  * owner's sentence.
  *
+ * <p><b>AND SINCE 18.10.2026 IT CARRIES THE TEXT OF HIS THAT WAITS FOR A MODERATOR, so a refresh
+ * does not make it disappear.</b> PDL P11, the owner, 18.10.2026: „Dok tekst o sebi čeka odobrenje,
+ * član ga vidi u Podešavanjima sa oznakom da čeka i može da ga ispravi pre odluke; na profilu se do
+ * odobrenja vidi stari, odobren tekst." Until then nothing served it on a read: a member who sent a
+ * text and came back found his box holding the OLD words and no sign that anything was with a
+ * moderator. It is {@code bioWaiting}, his own and nobody else's by the shape of the query (one row,
+ * and the row is his), and it is NOT {@code bio}: {@code bio} stays the approved words that stand on
+ * the profile, which is the other half of the same sentence. Absent when nothing of his waits, as a
+ * telephone is absent for a member with none.
+ *
  * <p><b>A BOUNDARY, WRITTEN DOWN BECAUSE IT IS REAL AND NOT BECAUSE IT IS
  * COMFORTABLE: no pattern over the English above measures anything.</b> What the
  * cases hold is the thing the prose is about - that the basis answered is the
@@ -391,6 +401,11 @@ class MeApi {
 	 * @param address      WHERE A SHIRT AND A MEDAL ARE SENT, his own and read off the one row that
 	 *                     is his (class note, 18.10.2026). Never absent: {@code competitor.address}
 	 *                     is NOT NULL and V8 refuses a blank one, so there is no branch here for none
+	 * @param bioWaiting   the words of his that wait for a moderator, and ABSENT where nothing of his
+	 *                     does (PDL P11, 18.10.2026). The row is the one {@code MeWriteApi.A_TEXT_THAT_WAITS}
+	 *                     names - the very clause that decides the {@code waiting} the write answers - so
+	 *                     a picture that waits, a text that was decided and a row of another tab are none
+	 *                     of them this. Never {@code bio}: that is the approved text on the profile
 	 * @param phone        his telephone, and ABSENT for a member who has none. Absent and not null
 	 *                     and not an empty string: V8 says „no phone is NULL" and refuses a blank
 	 *                     one ({@code competitor_phone_not_blank}), so a missing key is the one way
@@ -406,7 +421,8 @@ class MeApi {
 			String bio, boolean profileHidden, String birthdayShown,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String photo,
 			@JsonInclude(JsonInclude.Include.NON_NULL) CompetitorApi.Crop crop,
-			String address, @JsonInclude(JsonInclude.Include.NON_NULL) String phone) {
+			String address, @JsonInclude(JsonInclude.Include.NON_NULL) String phone,
+			@JsonInclude(JsonInclude.Include.NON_NULL) String bioWaiting) {
 	}
 
 	/**
@@ -500,6 +516,13 @@ class MeApi {
 						   is no second home for either, which is why this is a read and not a
 						   decision about which of two copies is true. */
 						+ " c.address, c.phone,"
+						/* THE WORDS OF HIS THAT WAIT, off the clause the write answers its `waiting` with
+						   (`MeWriteApi.A_TEXT_THAT_WAITS`), and the oldest first like the write: since
+						   V53 the table holds at most one, but the order is what makes the answer not
+						   depend on the order the table happens to hold rows in. */
+						+ " (select v.body from verification v where v.competitor_id = c.id and "
+						+ MeWriteApi.A_TEXT_THAT_WAITS + " order by v.raised_at, v.id limit 1)"
+						+ "  as bio_waiting,"
 						/* AND THE YEAR, WHICH IS READ HERE AND LEAVES NOWHERE: the input the band is
 						   worked out from and the one field of this table the privacy policy is
 						   written about (Clan 74, „Datum rodjenja se nikada ne prikazuje, ni u punom
@@ -548,7 +571,7 @@ class MeApi {
 							/* THE RULE IS ASKED FOR, NEVER REPEATED HERE: `Category` is where the
 							   league's bands live and where the decision that age is settled on 1
 							   January rather than on the birthday is written down (PDL P7). */
-							Category.ageBandFor(row.getInt(24), season).code(),
+							Category.ageBandFor(row.getInt(25), season).code(),
 							row.getBoolean(13),
 							row.getObject(14) == null ? null : row.getInt(14),
 							row.getString(15), row.getBoolean(16), row.getString(17),
@@ -559,7 +582,7 @@ class MeApi {
 							across == null ? null
 									: new CompetitorApi.Crop(across, row.getBigDecimal(20),
 											row.getBigDecimal(21)),
-							row.getString(22), row.getString(23));
+							row.getString(22), row.getString(23), row.getString(24));
 				})
 				.single();
 	}

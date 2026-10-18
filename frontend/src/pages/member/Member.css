@@ -52,14 +52,48 @@
   width: 100%;
 }
 
-/* What a member may read about himself and may not change (`PersonalData.tsx`): pairs of what
-   it is called and what it says. The town in it is typed text of up to 80 characters and can be
-   one word with nothing to break at, which a block does not wrap, so it ran out of its box and
-   took the page sideways with it: 119px at 360, measured in Chrome (PENDING 217.6). The rule is
-   the one `.pay__details dd` below and the confirmation list of `admin/Entity.css` already carry
-   for the same reason. */
-.member__facts dd {
-  overflow-wrap: anywhere;
+/* TWO PANELS BESIDE EACH OTHER (PDL P11, owner, 18.10.2026, "Strana Podešavanja, sa snimaka": the
+   password beside the personal data, and the theme beside the language of the mail). One column on a
+   telephone and two from 51.25em, the width at which the navigation unfolds (`app/Shell.css`) and
+   `forms/FormRenderer.css` lays a row out in columns, so the portal has one width at which it goes
+   from one column to several and not one of its own for this.
+
+   `minmax(0, 1fr)` and not `1fr`, because a column's floor is the width of its content and a long
+   word in a box would push the pair past the page. `align-items: start`, because the two panels are
+   not the same height and a panel stretched to its neighbour's would carry a border-top that is
+   not the top of its content. A panel that has no neighbour (an account that races for nobody has
+   the password alone) takes the whole row. */
+.member__pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-16);
+  align-items: start;
+}
+
+@media (min-width: 51.25em) {
+  .member__pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .member__pair > :only-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* THE FIELD THAT TAKES WHAT IS LEFT OF A ROW, IN A PANEL THAT IS A COLUMN. `.rankings__field--wide`
+   says `flex: 1 1 14rem` (`pages/Rankings.css`) for the screens where its parent is a ROW, and there
+   the 14rem is a width. A panel and a form of this screen are COLUMNS, where the same basis is a
+   HEIGHT: the box for choosing a picture and the box for the words about oneself each stood 224px tall
+   with their control at the top, and the rest was a gap (PENDING, review of PR 558; owner, 18.10.2026:
+   "veliki prazan prostor"). The cause is the rule meeting a parent it was not written for, so it is
+   answered here, where the parent is, and the rule itself is not touched: the screens that put it in
+   a row (the competitors, the administration lists) are exactly as they were. */
+.member__panel .rankings__field--wide {
+  flex: 0 0 auto;
+}
+
+.member__form .rankings__field--wide {
+  flex: 0 0 auto;
 }
 
 .button[disabled] {
