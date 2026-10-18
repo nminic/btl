@@ -5,6 +5,7 @@ import { formatShortDate } from '../i18n/format'
 import sr from '../i18n/sr.json'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
+import servedMembers from '../test/mock/competitors.json'
 import servedPrices from '../test/mock/pricing.json'
 import { did, refused, serverThat } from '../test/serverAnswers'
 import { translate } from '../i18n/translate'
@@ -215,10 +216,25 @@ describe('the panel', () => {
 
 describe('members', () => {
   it('is the only place that says on what basis a membership is active', async () => {
-    renderAt('/sr/administracija/clanovi', 'superadmin')
+    /* **THE TAG IS THE BASIS WITH THE YEAR OF THE SEASON IT IS THE BASIS OF** (owner, 18.10.2026,
+       PDL P8, „Osnov članstva ima jedan dom"): „Oslobođen članarine za 2027" is one text, so the bare
+       „Oslobođen članarine" this case looked for is a tag the screen no longer draws. The count is
+       what the served rows hold and is never typed, and the three members who hold no membership of
+       the season on sale carry no tag at all.
+
+       **TWO SOURCES OF THE YEAR, SEPARATED BY THE CLOCK.** The day is 1 November 2027, when the season
+       on sale is 2028, while every served row says 2027: a tag that took its year from the clock
+       reads 2028, a tag that took it from the row reads 2027. On the real day of a run (2026) the
+       two are the same year and this case would tell them apart on no day at all. */
+    renderAt('/sr/administracija/clanovi', 'superadmin', null, undefined, '2027-11-01')
 
     const table = await screen.findByRole('table', { name: 'Članovi' })
-    expect(within(table).getAllByText('Oslobođen članarine').length).toBeGreaterThan(0)
+    const freed = servedMembers.filter((one) => one.membershipBasis === 'feeExempt')
+
+    expect(freed.length).toBeGreaterThan(0)
+    expect(within(table).getAllByText('Oslobođen članarine za 2027')).toHaveLength(freed.length)
+    expect(within(table).queryByText('Oslobođen članarine')).not.toBeInTheDocument()
+    expect(within(table).queryByText(/za 2028/)).not.toBeInTheDocument()
   })
 
   it('searches', async () => {
