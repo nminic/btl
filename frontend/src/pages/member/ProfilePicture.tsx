@@ -256,9 +256,11 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
   /* One handler for the chooser, which tells a file the member chose from the picture that was
      there by the placeholder it was handed. */
   function choose(next: Chosen | null): void {
+    /* A file that could not be opened, or none: the picture that was there is drawn again with the circle
+       the member left on it. The circle was already put aside when the file arrived (below), so nothing
+       is reset here - a line that did would be one no case can reach. */
     if (next === null) {
       setPicked(null)
-      setCircle(null)
 
       return
     }
