@@ -2,7 +2,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { afterEach, describe, expect, it } from 'vitest'
 import sr from '../../i18n/sr.json'
 import { inputElement, must } from '../../test/at'
-import { measurePicture } from '../../test/picture'
+import { measurePicture, theMeasuringPicture } from '../../test/picture'
 import { renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
@@ -60,13 +60,13 @@ function aServerThatKeepsThePictures(initial: { standing?: Held; waiting?: Held 
   stop: () => void
   pictures: () => { standing: Held | null; waiting: Held | null }
   rows: () => number
-  failToServeStanding: () => void
+  failToServeStanding: (how: 'refuses' | 'throws') => void
 } {
   let standing: Held | null = initial.standing ?? null
   let waiting: Held | null = initial.waiting ?? null
   let rows = waiting === null ? 0 : 1
   let sent = 0
-  let standingIsServed = true
+  let standingFails: 'refuses' | 'throws' | null = null
 
   const { asked, stop } = serverThat((path, init) => {
     if (path === '/api/me/photo' && init?.method === undefined) {
@@ -77,7 +77,11 @@ function aServerThatKeepsThePictures(initial: { standing?: Held; waiting?: Held 
     }
 
     if (path.startsWith('/api/photos/')) {
-      return standingIsServed
+      if (standingFails === 'throws') {
+        throw new Error('nema veze')
+      }
+
+      return standingFails === null
         ? new Response(BYTES, { status: 200, headers: { 'content-type': 'image/png' } })
         : new Response(null, { status: 404 })
     }
@@ -122,8 +126,8 @@ function aServerThatKeepsThePictures(initial: { standing?: Held; waiting?: Held 
     stop,
     pictures: () => ({ standing, waiting }),
     rows: () => rows,
-    failToServeStanding: () => {
-      standingIsServed = false
+    failToServeStanding: (how) => {
+      standingFails = how
     },
   }
 }
@@ -148,6 +152,27 @@ async function theCircleOn(panel: Panel): Promise<Circle> {
     y: Number(inputElement(y).value),
     size: Number(inputElement(size).value),
   }
+}
+
+/**
+ * A FILE CHOSEN ON THE DISC, and the screen waited for until it is the FILE that is drawn.
+ *
+ * <p>The picture that is already there has a measuring element of its own, and the browser hands the
+ * chosen file back a tick after the press, so a case that measured at once would measure the old
+ * picture and then move a slider that is replaced a moment later. The element is waited for until it
+ * carries the file, and the frame until it is the one for a file the member chose.
+ */
+async function chooseAFile(
+  user: ReturnType<typeof setupUser>,
+  panel: Panel,
+  file: File,
+): Promise<void> {
+  await user.upload(await panel.findByLabelText(sr.picture.choose), file)
+  await waitFor(() => {
+    expect(theMeasuringPicture().getAttribute('src')).toMatch(/^data:/)
+  })
+  await measurePicture()
+  await panel.findByRole('img', { name: sr.picture.chosenAlt })
 }
 
 const sends = (asked: Asked[]): Asked[] =>
@@ -239,6 +264,31 @@ describe('a picture that waits for a moderator', () => {
     expect(await theCircleOn(panel)).toEqual({ x: 0.3, y: THE_WAITING_ONE.crop.y, size: 0.9 })
   }, SLOW)
 
+  /**
+   * <p><b>A circle moved and moved back is the circle that stands.</b> The button is told off again and
+   * nothing is sent: "changed" is a question about the circle against the server's, not about whether
+   * the member touched a control.
+   */
+  it('is not sent again when the circle is moved and then put back where it was', async () => {
+    const user = setupUser()
+    const server = aServerThatKeepsThePictures({ waiting: THE_WAITING_ONE })
+
+    stop = server.stop
+    renderAt('/sr/podesavanja', 'competitor', '000007')
+
+    const panel = await panelFor()
+
+    await theCircleOn(panel)
+    fireEvent.change(panel.getByLabelText(sr.crop.size), { target: { value: '0.9' } })
+    expect(panel.getByRole('button', { name: sr.picture.send })).toHaveAttribute('aria-disabled', 'false')
+    fireEvent.change(panel.getByLabelText(sr.crop.size), { target: { value: String(THE_WAITING_ONE.crop.size) } })
+    expect(panel.getByRole('button', { name: sr.picture.send })).toHaveAttribute('aria-disabled', 'true')
+
+    await user.click(panel.getByRole('button', { name: sr.picture.send }))
+
+    expect(sends(server.asked)).toEqual([])
+  }, SLOW)
+
   it('sends nothing for a press while nothing has changed', async () => {
     const user = setupUser()
     const server = aServerThatKeepsThePictures({ waiting: THE_WAITING_ONE })
@@ -268,11 +318,7 @@ describe('a picture that waits for a moderator', () => {
     let panel = await panelFor()
 
     await theCircleOn(panel)
-    await user.upload(
-      await panel.findByLabelText(sr.picture.choose),
-      new File(['nova'], 'nova-slika.jpg', { type: 'image/jpeg' }),
-    )
-    await measurePicture()
+    await chooseAFile(user, panel, new File(['nova'], 'nova-slika.jpg', { type: 'image/jpeg' }))
     fireEvent.change(await panel.findByLabelText(sr.crop.size), { target: { value: '0.8' } })
     await user.click(panel.getByRole('button', { name: sr.picture.send }))
 
@@ -367,6 +413,38 @@ describe('a picture that stands on the profile', () => {
     expect((await theCircleOn(panel)).size).toBeCloseTo(0.7, 8)
   }, SLOW)
 
+  /**
+   * <p><b>A file the browser cannot read gives the picture that stands back, with its own circle.</b> The
+   * chooser refuses it ("Ova slika se ne može otvoriti") and hands the screen nothing; what the member
+   * moved over the picture that stands is not carried over to a file that never opened, and he is not
+   * left holding a button that would send the circle he set a moment ago.
+   */
+  it('is drawn again with its own circle when the file chosen cannot be opened', async () => {
+    const user = setupUser()
+    const server = aServerThatKeepsThePictures({ standing: THE_STANDING_ONE })
+
+    stop = server.stop
+    renderAt('/sr/podesavanja', 'competitor', '000007')
+
+    const panel = await panelFor()
+
+    await theCircleOn(panel)
+    fireEvent.change(panel.getByLabelText(sr.crop.size), { target: { value: '0.9' } })
+    await user.upload(
+      await panel.findByLabelText(sr.picture.choose),
+      new File(['nije slika'], 'nije-slika.heic', { type: 'image/heic' }),
+    )
+    await waitFor(() => {
+      expect(theMeasuringPicture().getAttribute('src')).toMatch(/^data:/)
+    })
+    await measurePicture(0, 0)
+
+    expect(await panel.findByRole('alert')).toHaveTextContent(sr.crop.unreadable)
+    expect(await theCircleOn(panel)).toEqual(THE_STANDING_ONE.crop)
+    expect(panel.getByRole('button', { name: sr.picture.send })).toHaveAttribute('aria-disabled', 'true')
+    expect(sends(server.asked)).toEqual([])
+  }, SLOW)
+
   it('sends nothing for a press while the circle has not moved', async () => {
     const user = setupUser()
     const server = aServerThatKeepsThePictures({ standing: THE_STANDING_ONE })
@@ -386,12 +464,12 @@ describe('a picture that stands on the profile', () => {
    * <p>When the bytes cannot be had there is nothing to send: the member is told so in the portal's
    * own words for a request that did not reach the server, and nothing is posted.
    */
-  it('says so, and sends nothing, when the picture cannot be fetched to be sent again', async () => {
+  it.each(['refuses', 'throws'] as const)('says so, and sends nothing, when the picture cannot be fetched to be sent again (%s)', async (how) => {
     const user = setupUser()
     const server = aServerThatKeepsThePictures({ standing: THE_STANDING_ONE })
 
     stop = server.stop
-    server.failToServeStanding()
+    server.failToServeStanding(how)
     renderAt('/sr/podesavanja', 'competitor', '000007')
 
     const panel = await panelFor()
@@ -425,11 +503,7 @@ describe('a member with no picture at all', () => {
     let panel = await panelFor()
 
     expect(await panel.findByText(sr.picture.none)).toBeVisible()
-    await user.upload(
-      await panel.findByLabelText(sr.picture.choose),
-      new File(['prva'], 'prva.jpg', { type: 'image/jpeg' }),
-    )
-    await measurePicture()
+    await chooseAFile(user, panel, new File(['prva'], 'prva.jpg', { type: 'image/jpeg' }))
     fireEvent.change(await panel.findByLabelText(sr.crop.size), { target: { value: '0.6' } })
     await user.click(panel.getByRole('button', { name: sr.picture.send }))
 

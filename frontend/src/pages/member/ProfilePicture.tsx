@@ -154,6 +154,31 @@ function sameCircle(a: Crop, b: Crop): boolean {
 }
 
 /**
+ * WHAT A PRESS OF THE BUTTON WOULD SEND, or nothing where nothing has changed.
+ *
+ * <p>Worked out once, in one place, so that "is there anything to send" and "what is it" cannot be two
+ * answers: a file the member chose goes as it is; a circle moved over the picture that WAITS goes alone,
+ * because the row is there to move it on (`MePhotoApi.send`, "A SEND WITH NO FILE IS 21c'S SECOND
+ * HALF"); and a circle moved over the picture that STANDS goes with that picture's own bytes, because
+ * there is no row to move it on and the route cannot tell them from a file chosen on a disc.
+ */
+type Plan =
+  | { how: 'file'; file: File; crop: Crop; drawn: string }
+  | { how: 'circle' | 'again'; crop: Crop; drawn: string }
+
+function planOf(picked: Chosen | null, there: Origin | null, circle: Crop | null): Plan | null {
+  if (picked !== null) {
+    return { how: 'file', file: picked.file, crop: picked.crop, drawn: picked.picture }
+  }
+
+  if (there === null || circle === null || sameCircle(circle, there.crop)) {
+    return null
+  }
+
+  return { how: there.kind === 'waiting' ? 'circle' : 'again', crop: circle, drawn: there.photo }
+}
+
+/**
  * The bytes of the picture that stands on the profile, as a file, or nothing where they cannot be had.
  * Needed only to send the same picture again with another circle: nothing waits then, so there is no row
  * to move the circle on.
@@ -176,7 +201,7 @@ async function theBytesAt(address: string): Promise<File | null> {
 
 function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) {
   const { t } = useI18n()
-  const { sendPicture, pictureSent, decisions } = useSession()
+  const { sendPicture } = useSession()
   const [origin, setOrigin] = useState<Origin | null>(() => originOf(pictures))
   /* A NEW FILE the member chose, and the circle he set over it. */
   const [picked, setPicked] = useState<Chosen | null>(null)
@@ -196,19 +221,12 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
   const [refusal, setRefusal] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
   const said = useRef<HTMLParagraphElement>(null)
 
-  /* THE PICTURE A MODERATOR HAS DECIDED DURING THIS VISIT IS NOT WAITING ANY MORE, and the screen hands
-     the control back rather than leaving a member told to wait over a decision that has landed. Only a
-     send of this visit can be decided here (`pictureSent` is the session's and names its member), so a
-     picture that was already waiting when the screen was drawn is cleared by a refresh, which is how the
-     server's own answer reaches it. AND THE KEY IS THE SERVER'S: the moderator decides the row the
-     server made, `settle` files it under that row's id, and this reads the same id. */
-  const decidedHere =
-    origin !== null &&
-    origin.kind === 'waiting' &&
-    pictureSent !== null &&
-    pictureSent.member === me.memberNumber &&
-    decisions[pictureSent.row] !== undefined
-  const there = decidedHere ? null : origin
+  /* WHAT STANDS HERE IS WHAT THE SERVER SAID, and no decision of this visit is read from the session any
+     more (`pictureSent` and `decisions` were this panel's until 18.10.2026). A moderator decides on
+     another screen, which takes this one down, and the next time it is drawn the server's own answer
+     says whether the picture still waits or has been approved. A second source for "does it wait" is
+     a place for the two to disagree. */
+  const there = origin
 
   /* WHAT THE CHOOSER DRAWS: the file the member picked, or the picture that is already there with the
      circle wherever he has moved it. */
@@ -217,8 +235,8 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
     (there === null
       ? null
       : { name: there.photo, picture: there.photo, crop: circle ?? there.crop, file: NO_FILE })
-  const moved = there !== null && circle !== null && !sameCircle(circle, there.crop)
-  const changed = picked !== null || moved
+  const plan = planOf(picked, there, circle)
+  const changed = plan !== null
 
   /* Said out loud, because the control just pressed is replaced by a sentence:
      without this the focus falls to the body and a screen reader is told nothing
@@ -268,27 +286,21 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
    * the column holds</b> (`photoWrites.ts` says why the rounding is not tidying), or the three
    * fractions alone where the circle of a picture that waits has been moved.
    */
-  async function send(): Promise<void> {
-    const crop = picked !== null ? picked.crop : circle
-
-    if (crop === null || (picked === null && there === null)) {
-      return
-    }
-
+  async function send(what: Plan): Promise<void> {
     outstanding.current = true
     setSending(true)
     setRefusal(null)
 
     let body: FormData | null
 
-    if (picked !== null) {
-      body = pictureToSend(picked.file, crop)
-    } else if (there !== null && there.kind === 'waiting') {
-      body = pictureToSend(null, crop)
+    if (what.how === 'file') {
+      body = pictureToSend(what.file, what.crop)
+    } else if (what.how === 'circle') {
+      body = pictureToSend(null, what.crop)
     } else {
-      const bytes = await theBytesAt(there === null ? '' : there.photo)
+      const bytes = await theBytesAt(what.drawn)
 
-      body = bytes === null ? null : pictureToSend(bytes, crop)
+      body = bytes === null ? null : pictureToSend(bytes, what.crop)
     }
 
     const answer: Answer =
@@ -306,18 +318,14 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
       return
     }
 
-    const drawn = picked !== null ? picked.picture : there === null ? '' : there.photo
-
     /* WHAT THE MEMBER IS WAITING ON IS THE ROW THE SERVER MADE, NAMED BY THE KEY IT
        ANSWERED WITH, and `theRowIn` reads that key (`photoWrites.ts`). It is the same key the
-       moderator's decision is filed under, which is what lets the mark clear when that decision
-       lands. Where the answer names no row the key is the empty string: no decision is ever
-       filed under that, so the mark stands for the rest of the visit, which is the direction
-       that cannot mislead. */
+       moderator's decision is filed under. Where the answer names no row the key is the empty
+       string: no decision is ever filed under that, which is the direction that cannot mislead. */
     sendPicture({
       row: String(theRowIn(answer.body) ?? ''),
-      picture: drawn,
-      crop,
+      picture: what.drawn,
+      crop: what.crop,
       /* WHOSE IT IS, so that the next member to sign in during this visit is neither told
          it is his nor shown it (`session/context.ts#PictureSent`). */
       member: me.memberNumber,
@@ -331,7 +339,7 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
     /* AND WHAT STANDS ON THIS SCREEN IS NOW WHAT THE SERVER ACCEPTED: the picture waits, with the
        circle that was sent. The next press measures against that and not against what the screen was
        drawn with. */
-    setOrigin({ kind: 'waiting', photo: drawn, crop })
+    setOrigin({ kind: 'waiting', photo: what.drawn, crop: what.crop })
     setPicked(null)
     setCircle(null)
     setJustSent(true)
@@ -385,11 +393,11 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
           aria-disabled={!changed || sending}
           aria-describedby={describes}
           onClick={() => {
-            if (!changed || outstanding.current) {
+            if (plan === null || outstanding.current) {
               return
             }
 
-            void send()
+            void send(plan)
           }}
         >
           {t('picture.send')}
