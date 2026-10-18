@@ -282,6 +282,20 @@ class MeApiTest {
 	/** What the caller has written about himself, in letters alone for the same reason. */
 	private static final String HIS_BIOGRAPHY = "Trci od detinjstva i o tome pise.";
 
+	/**
+	 * THE CALLER'S POSTAL ADDRESS AND TELEPHONE, each a value no other row carries (every other row
+	 * is written with {@code 'Ulica 1'} and no telephone at all). Spelt with no run of four digits,
+	 * for the reason the portrait is spelt in letters: {@link #noDateOfBirthLeavesHisOwnDoor} reads
+	 * the whole answer as text and asks it for a year, and a telephone number is exactly the sort of
+	 * thing that spells one by accident.
+	 */
+	private static final String HIS_ADDRESS = "Bulevar Pupina 10";
+
+	private static final String HIS_TELEPHONE = "+381 60 123 456";
+
+	/** And the lapsed member's address, so an address answered to him is his and not the caller's. */
+	private static final String THE_LAPSED_MEMBERS_ADDRESS = "Vojvode Stepe 5";
+
 	/** And the lapsed member's, so a biography answered to him is his and nobody else's. */
 	private static final String THE_LAPSED_MEMBERS_BIOGRAPHY = "Prestao je da trci ali nije prestao da pise.";
 
@@ -1136,6 +1150,63 @@ class MeApiTest {
 	}
 
 	/**
+	 * HIS POSTAL ADDRESS AND HIS TELEPHONE ARE HIS OWN, and a member who has no telephone is
+	 * answered no key for it.
+	 *
+	 * <p>Measured on QA on 18.10.2026: the owner saved both, was told so, refreshed and found the
+	 * boxes empty, because this answer carried neither. <b>The sources are separated on three axes
+	 * rather than one.</b> The caller's values are carried by nobody else (the fixture, and the
+	 * sweep in {@link #andNothingOfAnybodyElses}); the lapsed member is given an address of his
+	 * own and no telephone, so „the caller's" and „whoever is asking" are two answers and „a
+	 * telephone" and „his telephone" are two answers; and the person with no number has the
+	 * fixture's shared address and no telephone, which is the third state of the pair.
+	 *
+	 * <p><b>And neither value leaves through anybody else's door</b>, read off the whole text of
+	 * every other answer: the caller's address and number are in the caller's answer and in no
+	 * other, however they are spelt.
+	 */
+	@Test
+	void hisPostalAddressAndHisTelephoneAreHisOwn() throws Exception {
+		db.sql("update competitor set address = ? where member_number = ?")
+				.params(THE_LAPSED_MEMBERS_ADDRESS, LAPSED).update();
+
+		JsonNode mine = answerFor(MY_ACCOUNT).path("member");
+		assertThat(mine.path("address").asString())
+				.as("the postal address in his own record is not the one on his own row")
+				.isEqualTo(columnOf("address", ME)).isEqualTo(HIS_ADDRESS);
+		assertThat(mine.path("phone").asString())
+				.as("the telephone in his own record is not the one on his own row")
+				.isEqualTo(columnOf("phone", ME)).isEqualTo(HIS_TELEPHONE);
+
+		JsonNode lapsed = answerFor(THE_LAPSED_ACCOUNT).path("member");
+		assertThat(lapsed.path("address").asString())
+				.as("a member whose fee has lapsed is not handed his own postal address")
+				.isEqualTo(columnOf("address", LAPSED)).isEqualTo(THE_LAPSED_MEMBERS_ADDRESS);
+		assertThat(lapsed.has("phone"))
+				.as("a member with no telephone was answered one, or a null instead of no key")
+				.isFalse();
+		assertThat(db.sql("select phone is null from competitor where member_number = ?")
+				.param(LAPSED).query(Boolean.class).single())
+				.as("the fixture gave him a telephone").isTrue();
+
+		JsonNode nobodyYet = answerFor(THE_ACCOUNT_WITH_NO_NUMBER).path("member");
+		assertThat(nobodyYet.path("address").asString())
+				.as("somebody who registered and has no number yet is not handed his postal address")
+				.isEqualTo(db.sql("select address from competitor where member_number is null")
+						.query(String.class).single()).isEqualTo("Ulica 1");
+		assertThat(nobodyYet.has("phone")).isFalse();
+
+		for (String email : sessions.keySet()) {
+			if (email.equals(MY_ACCOUNT)) {
+				continue;
+			}
+			assertThat(whole(email))
+					.as("the caller's postal address or telephone left through the door of %s", email)
+					.doesNotContain(HIS_ADDRESS).doesNotContain(HIS_TELEPHONE);
+		}
+	}
+
+	/**
 	 * AND A TOWN THAT WAS TYPED ANSWERS ITS OWN NAME, with the keys that belong to a member who
 	 * has no portrait and no team left out altogether.
 	 *
@@ -1578,9 +1649,17 @@ class MeApiTest {
 		Set<String> shared = mine.stream().filter(theirs::contains).collect(Collectors.toSet());
 
 		assertThat(mine)
-				.as("one of the four names this case excuses is not on this record at all, so the"
+				.as("one of the names this case excuses is not on this record at all, so the"
 						+ " excuse is for nothing")
-				.containsAll(Set.of("referralCode", "referredCount", "membershipBasis", "active"));
+				.containsAll(Set.of("referralCode", "referredCount", "membershipBasis", "active",
+						"address", "phone"));
+		/* THE PUBLIC LIST CARRIES NEITHER OF THE LAST TWO, and that is a decision and not a gap:
+		   PDL „Uvek privatno: mejl, telefon i adresa". Asked of the record's components so that a
+		   field added to it tomorrow under either name is a red case on the day it is written. */
+		assertThat(theirs)
+				.as("the public list carries a member's postal address or telephone, which is"
+						+ " private (PDL) and is handed to him alone through this route")
+				.doesNotContain("address", "phone");
 		/* `active` IS THE FOURTH, since 11.10.2026, AND ITS TWIN IS THE ROW ITSELF. The public
 		   list is `where c.active`, so on it the fact is not a field but the presence of the
 		   member (`frontend/src/data/types.ts`: "it is the PRESENCE OF THE ROW"), and a lapsed
@@ -1589,7 +1668,8 @@ class MeApiTest {
 		assertThat(mine.stream().filter(name -> !theirs.contains(name)).collect(Collectors.toSet()))
 				.as("a fact this record carries has no twin on the public list and is not one of the"
 						+ " four named for it: give it a twin, or name it here with its reason")
-				.containsExactlyInAnyOrder("referralCode", "referredCount", "active");
+				.containsExactlyInAnyOrder("referralCode", "referredCount", "active", "address",
+						"phone");
 		shared.remove("membershipBasis");
 
 		assertThat(shared)
@@ -1757,8 +1837,8 @@ class MeApiTest {
 
 		db.sql("update competitor set gender = 'F', bio = ?, profile_hidden = true,"
 						+ " birthday_shown = 'full', birth_date = date '" + HIS_DATE_OF_BIRTH + "',"
-						+ " photo_id = ? where member_number = ?")
-				.params(HIS_BIOGRAPHY, portrait, ME).update();
+						+ " photo_id = ?, address = ?, phone = ? where member_number = ?")
+				.params(HIS_BIOGRAPHY, portrait, HIS_ADDRESS, HIS_TELEPHONE, ME).update();
 	}
 
 	/**

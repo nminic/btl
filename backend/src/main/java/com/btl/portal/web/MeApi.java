@@ -168,6 +168,20 @@ import java.time.ZonedDateTime;
  * with a small broken-picture mark in it. So this answers the address and leaves the bytes
  * where they are; it is named here so that the next reader meets a boundary and not a fault.
  *
+ * <p><b>AND SINCE 18.10.2026 IT CARRIES HIS POSTAL ADDRESS AND HIS TELEPHONE, which were stored
+ * and never served by any route.</b> The owner typed both on QA, pressed save, was told it was
+ * saved, refreshed the page and found both boxes empty (his report of 18.10.2026: „Upravo sam
+ * uneo u svom profilu adresu za slanje i telefon, sacuvao, pokazalo mi je da je sacuvano, a
+ * onda sam refreshovao stranu i ta polja su ponovo bila prazna"). The write was never the
+ * fault: {@code MeWriteApi} has written both columns since 24.09.2026 (PDL P28b, 1: „Licni
+ * podaci (adresa, telefon, ime, prezime) stupaju odmah"). Nothing READ them, so the screen
+ * opened its two boxes empty by construction and said so beside them. Both are the caller's
+ * own and nobody else's, by the shape of the query (one row, and the row is his), exactly as the
+ * basis and the referral code are, and PDL's „Uvek privatno: mejl, telefon i adresa" is about
+ * what OTHER readers are shown: {@link CompetitorApi} still answers neither, to anybody. That
+ * reading of the entry, that a member may be handed his own, is this record's and not the
+ * owner's sentence.
+ *
  * <p><b>A BOUNDARY, WRITTEN DOWN BECAUSE IT IS REAL AND NOT BECAUSE IT IS
  * COMFORTABLE: no pattern over the English above measures anything.</b> What the
  * cases hold is the thing the prose is about - that the basis answered is the
@@ -374,6 +388,13 @@ class MeApi {
 	 *                     {@link PhotoApi})
 	 * @param crop         which circle of it is drawn, and ABSENT exactly when {@code photo} is:
 	 *                     the other half of the same fact, read off the same joined row
+	 * @param address      WHERE A SHIRT AND A MEDAL ARE SENT, his own and read off the one row that
+	 *                     is his (class note, 18.10.2026). Never absent: {@code competitor.address}
+	 *                     is NOT NULL and V8 refuses a blank one, so there is no branch here for none
+	 * @param phone        his telephone, and ABSENT for a member who has none. Absent and not null
+	 *                     and not an empty string: V8 says „no phone is NULL" and refuses a blank
+	 *                     one ({@code competitor_phone_not_blank}), so a missing key is the one way
+	 *                     this record says „he has none", as {@code teamId} says it for a team
 	 */
 	record MyOwnRecord(@JsonInclude(JsonInclude.Include.NON_NULL) String memberNumber,
 			String country, int firstSeason,
@@ -384,7 +405,8 @@ class MeApi {
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer teamSince,
 			String bio, boolean profileHidden, String birthdayShown,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String photo,
-			@JsonInclude(JsonInclude.Include.NON_NULL) CompetitorApi.Crop crop) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) CompetitorApi.Crop crop,
+			String address, @JsonInclude(JsonInclude.Include.NON_NULL) String phone) {
 	}
 
 	/**
@@ -472,6 +494,12 @@ class MeApi {
 						   `portrait.id` never is. */
 						+ " portrait.digest, portrait.crop_x, portrait.crop_y,"
 						+ " portrait.crop_diameter,"
+						/* HIS POSTAL ADDRESS AND HIS TELEPHONE, read off the very row the rest of
+						   this answer comes off, so they cannot be anybody else's. They are the
+						   columns `MeWriteApi` writes and the only ones it writes them to: there
+						   is no second home for either, which is why this is a read and not a
+						   decision about which of two copies is true. */
+						+ " c.address, c.phone,"
 						/* AND THE YEAR, WHICH IS READ HERE AND LEAVES NOWHERE: the input the band is
 						   worked out from and the one field of this table the privacy policy is
 						   written about (Clan 74, „Datum rodjenja se nikada ne prikazuje, ni u punom
@@ -520,7 +548,7 @@ class MeApi {
 							/* THE RULE IS ASKED FOR, NEVER REPEATED HERE: `Category` is where the
 							   league's bands live and where the decision that age is settled on 1
 							   January rather than on the birthday is written down (PDL P7). */
-							Category.ageBandFor(row.getInt(22), season).code(),
+							Category.ageBandFor(row.getInt(24), season).code(),
 							row.getBoolean(13),
 							row.getObject(14) == null ? null : row.getInt(14),
 							row.getString(15), row.getBoolean(16), row.getString(17),
@@ -530,7 +558,8 @@ class MeApi {
 							portrait == null ? null : A_PICTURE_IS_ASKED_FOR_AT + portrait,
 							across == null ? null
 									: new CompetitorApi.Crop(across, row.getBigDecimal(20),
-											row.getBigDecimal(21)));
+											row.getBigDecimal(21)),
+							row.getString(22), row.getString(23));
 				})
 				.single();
 	}
