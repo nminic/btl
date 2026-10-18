@@ -70,7 +70,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * member's waiting text" is never „the only one" and never „the first one".
  * <li><b>The profiles tab holds four different states at once</b> - a waiting text, a
  * waiting PICTURE, a text that was refused, and nothing - and a fifth row waits in another
- * tab entirely. Four different members carry them, so the guard that refuses a second text
+ * tab entirely. Four different members carry them, so the question „does a text of his wait"
  * has four separate answers to get right.
  * <li><b>The text sent is never the text stored.</b> Every text a case sends that is meant
  * to be accepted carries spaces around it, so an answer echoed off the request and a row
@@ -104,7 +104,7 @@ class MeWriteApiTest {
 	/** The member most cases ask with, written third. */
 	private static final String ME = "000300";
 
-	/** His own text is standing in the queue undecided, so a second one is refused. */
+	/** His own text is standing in the queue undecided, so a text sent now overwrites it. */
 	private static final String WHOSE_TEXT_WAITS = "000400";
 
 	/** His text was REFUSED, which is the one state that must NOT stop him sending another. */
@@ -184,13 +184,6 @@ class MeWriteApiTest {
 	 * against rather than compared with a number written down.
 	 */
 	private static final String NOTHING_IS_THERE = "/api/nema-ovoga";
-
-	/**
-	 * A first name the database refuses and the route does not, which is the fault only the
-	 * database finds (see {@link AFailureOnlyTheDatabaseCanCause}). Ordinary words, so nothing
-	 * about it is a reason for the route to turn it away on its own.
-	 */
-	private static final String A_NAME_ONLY_THE_DATABASE_REFUSES = "Ime koje baza odbija";
 
 	@Autowired
 	private MockMvc http;
@@ -512,11 +505,11 @@ class MeWriteApiTest {
 
 		assertThat(textsWaitingFor(ME))
 				.as("the member every case asks with already has a text waiting, so the ordinary"
-						+ " case below is measuring a refusal")
+						+ " case below is measuring an overwrite")
 				.isEmpty();
 
 		assertThat(textsWaitingFor(WHOSE_TEXT_WAITS))
-				.as("the member who is meant to be refused a second text has none waiting")
+				.as("the member whose waiting text is overwritten has none waiting")
 				.containsExactly(THE_TEXT_ALREADY_WAITING);
 
 		assertThat(db.sql("select state from verification where competitor_id = ?")
@@ -741,44 +734,157 @@ class MeWriteApiTest {
 	}
 
 	/**
-	 * A SECOND TEXT WHILE ONE WAITS IS REFUSED, AND THE FIRST IS THE ONE STILL STANDING.
+	 * A TEXT SENT WHILE ONE WAITS OVERWRITES IT, ON THE SAME ROW.
 	 *
-	 * <p>{@code pages/member/ProfileBio.tsx} draws no button while one stands, „a second ask
-	 * gives a moderator two texts of one person and no question to answer", and names the
-	 * hole it cannot close from a browser. This is the side that can.
+	 * <p>Owner, PDL P11, 18.10.2026 (the entry of 19.09.2026 that answered 409 is struck there as
+	 * OBORENO): „Dok tekst o sebi čeka odobrenje, član ga vidi u Podešavanjima sa oznakom da čeka i
+	 * može da ga ispravi pre odluke", and, shown the cost, that the new text overwrites the one that
+	 * waits „isti red, isto mesto u redu", as a picture does.
+	 *
+	 * <p><b>Four things are held, each by its own mutation.</b> The answer is 200 and not 409. The
+	 * queue holds ONE text of his and it is the new one, stripped. It is the SAME ROW: the key and
+	 * {@code raised_at} - his place in the queue - are what they were, and a row deleted and written
+	 * again would pass the first two. And the hold a moderator has on the row is still there, which is
+	 * what the owner's cost ("moderatoru se tekst menja ispod ruke") presupposes: a row that vanished
+	 * from under the moderator would take the hold with it.
+	 *
+	 * <p>The text that STANDS on the profile is not touched (PDL P11, 12.08.2026), and nobody else's
+	 * waiting text is: {@link #SOMEONE_ELSE} has one written first.
 	 */
 	@Test
-	void aSecondTextWhileOneWaitsIsRefusedAndTheFirstIsTheOneStanding() throws Exception {
-		MockHttpServletResponse answer = changeAs(WHOSE_TEXT_WAITS, "  Drugi pokusaj.  ", null);
+	void aTextSentWhileOneWaitsOverwritesItOnTheSameRow() throws Exception {
+		long row = db.sql("select id from verification where competitor_id = ? and state = 'waiting'"
+						+ " and photo_id is null").param(competitorId(WHOSE_TEXT_WAITS))
+				.query(Long.class).single();
+		String raisedAt = db.sql("select raised_at::text from verification where id = ?").param(row)
+				.query(String.class).single();
 
-		assertThat(answer.getStatus()).isEqualTo(409);
-		assertThat(reasonIn(answer)).isEqualTo(MeWriteApi.A_TEXT_ALREADY_WAITS);
+		db.sql("insert into verification_lock (verification_id, held_by, held_until) values (?,"
+						+ " (select id from account where email = ?), now() + interval '10 minutes')")
+				.params(row, MODERATOR_OF_PROFILES).update();
+
+		MockHttpServletResponse answer = changeAs(WHOSE_TEXT_WAITS, "  Ispravljen tekst.  ", null);
+
+		assertThat(answer.getStatus())
+				.as("a text sent over one that waits is refused, which the owner struck on 18.10.2026")
+				.isEqualTo(200);
 
 		assertThat(textsWaitingFor(WHOSE_TEXT_WAITS))
-				.as("a moderator now holds two texts of one member and no question he can answer")
-				.containsExactly(THE_TEXT_ALREADY_WAITING);
+				.as("the queue does not hold exactly the new text of his")
+				.containsExactly("Ispravljen tekst.");
+		assertThat(db.sql("select count(*) from verification where competitor_id = ?")
+				.param(competitorId(WHOSE_TEXT_WAITS)).query(Long.class).single())
+				.as("a second row was made beside the one that waited")
+				.isOne();
+		assertThat(db.sql("select id from verification where competitor_id = ?")
+				.param(competitorId(WHOSE_TEXT_WAITS)).query(Long.class).single())
+				.as("the row was deleted and opened again, so it is not the row the moderator holds")
+				.isEqualTo(row);
+		assertThat(db.sql("select raised_at::text from verification where id = ?").param(row)
+				.query(String.class).single())
+				.as("the member went to the back of the queue for mending a word")
+				.isEqualTo(raisedAt);
+		assertThat(db.sql("select count(*) from verification_lock where verification_id = ?")
+				.param(row).query(Long.class).single())
+				.as("the hold a moderator had on the row went with the old words")
+				.isOne();
+		assertThat(answerIn(answer).path("waiting").asLong())
+				.as("the answer names another row than the one his words are in")
+				.isEqualTo(row);
+		assertThat(answerIn(answer).path("bio").asString())
+				.as("the unapproved words are what the answer says stands on his profile")
+				.isEqualTo("Biografija onoga ciji tekst ceka.");
+		assertThat(textsWaitingFor(SOMEONE_ELSE))
+				.as("somebody else's waiting text was overwritten by his")
+				.containsExactly(SOMEBODY_ELSES_WAITING_TEXT);
 	}
 
 	/**
-	 * AND A REFUSAL COMMITS NOTHING, WHICH IS WHY THE CONFLICT IS ASKED BEFORE THE FIRST
-	 * WRITE.
+	 * A CORRECTION THAT CARRIES THE SWITCH MOVES BOTH, AND THEY ARE ONE REQUEST.
 	 *
-	 * <p>{@code TransactionTemplate.execute} rolls back on an exception and not on a
-	 * returned value, so a 409 decided after the switch had been written would be a refusal
-	 * reported over a change that was kept - and the member would be hidden by a request he
-	 * was told did nothing.
+	 * <p>Both halves are written by one request in one transaction: the switch takes effect at once
+	 * and the words overwrite what waits. The old order of the questions (the conflict asked before
+	 * either half was written, so that a refusal committed nothing) has no counterpart now, because
+	 * nothing is refused.
 	 */
 	@Test
-	void aRefusedRequestLeavesTheSwitchWhereItWas() throws Exception {
+	void aCorrectionThatCarriesTheSwitchMovesBoth() throws Exception {
 		MockHttpServletResponse answer =
-				changeAs(WHOSE_TEXT_WAITS, "  Drugi pokusaj sa prekidacem.  ", true);
+				changeAs(WHOSE_TEXT_WAITS, "  Ispravljen tekst sa prekidacem.  ", true);
 
-		assertThat(answer.getStatus()).isEqualTo(409);
-
+		assertThat(answer.getStatus()).isEqualTo(200);
 		assertThat(profileOf(WHOSE_TEXT_WAITS).get(1))
-				.as("the request was refused and the switch moved anyway, so the member was told"
-						+ " nothing happened while his profile was hidden")
-				.isEqualTo(false);
+				.as("the switch did not take effect with the correction")
+				.isEqualTo(true);
+		assertThat(textsWaitingFor(WHOSE_TEXT_WAITS)).containsExactly("Ispravljen tekst sa prekidacem.");
+	}
+
+	/**
+	 * WHAT WAITS IS WHAT HIS NEXT VISIT IS HANDED, AND THE PROFILE KEEPS WHAT STANDS.
+	 *
+	 * <p>Owner, 18.10.2026: the member sees his waiting text in the Settings with a mark that it
+	 * waits; „na profilu se do odobrenja vidi stari, odobren tekst". The two are two fields of
+	 * {@code GET /api/me}: {@code bioWaiting} is the words that wait and {@code bio} is the approved
+	 * ones, and they are read off the table after each write. Compared along three moments - a text
+	 * nobody has decided, a correction of it, and a deletion of the standing words - so a route that
+	 * answered one for the other is told by the value.
+	 */
+	@Test
+	void whatWaitsIsHandedBackAndTheProfileKeepsWhatStands() throws Exception {
+		assertThat(hisOwnRecord(ME).has("bioWaiting"))
+				.as("a member with nothing waiting is handed words that wait")
+				.isFalse();
+
+		assertThat(changeAs(ME, "  Prva verzija.  ", null).getStatus()).isEqualTo(200);
+
+		assertThat(hisOwnRecord(ME).path("bioWaiting").asString())
+				.as("the next visit is not handed the words that wait")
+				.isEqualTo("Prva verzija.").isEqualTo(textsWaitingFor(ME).getFirst());
+		assertThat(hisOwnRecord(ME).path("bio").asString())
+				.as("the words that wait are what stands on his profile")
+				.isEqualTo(THE_TEXT_ON_MY_PROFILE);
+		assertThat(rowOnTheList(ME).path("bio").asString())
+				.as("the profile list shows the words that wait")
+				.isEqualTo(THE_TEXT_ON_MY_PROFILE);
+
+		assertThat(changeAs(ME, "  Druga verzija.  ", null).getStatus()).isEqualTo(200);
+
+		assertThat(hisOwnRecord(ME).path("bioWaiting").asString()).isEqualTo("Druga verzija.");
+		assertThat(textsWaitingFor(ME)).containsExactly("Druga verzija.");
+
+		/* Taken down while the correction waits: the deletion is his right and stands at once, and
+		   it does not withdraw the words that wait. */
+		assertThat(changeAs(ME, "", null).getStatus()).isEqualTo(200);
+
+		assertThat(hisOwnRecord(ME).path("bio").asString()).isEmpty();
+		assertThat(hisOwnRecord(ME).path("bioWaiting").asString())
+				.as("a deletion of what stands withdrew the words that wait")
+				.isEqualTo("Druga verzija.");
+	}
+
+	/**
+	 * THE WORDS THAT WAIT ARE HIS OWN AND NOBODY ELSE'S.
+	 *
+	 * <p>{@link #SOMEONE_ELSE} and {@link #WHOSE_TEXT_WAITS} both have a text waiting and each is
+	 * handed his own; {@link #ME} has none and is handed none, so neither "the first row" nor "any
+	 * waiting text" can pass for his.
+	 */
+	@Test
+	void theWordsThatWaitAreNeverAnotherMembers() throws Exception {
+		assertThat(hisOwnRecord(WHOSE_TEXT_WAITS).path("bioWaiting").asString())
+				.isEqualTo(THE_TEXT_ALREADY_WAITING);
+		assertThat(hisOwnRecord(SOMEONE_ELSE).path("bioWaiting").asString())
+				.isEqualTo(SOMEBODY_ELSES_WAITING_TEXT);
+		assertThat(hisOwnRecord(ME).has("bioWaiting")).isFalse();
+		assertThat(hisOwnRecord(WHOSE_TEXT_WAS_REFUSED).has("bioWaiting"))
+				.as("a text that was decided is handed back as one that waits")
+				.isFalse();
+		assertThat(hisOwnRecord(WAITING_IN_ANOTHER_TAB).has("bioWaiting"))
+				.as("a row of another tab is handed back as his words")
+				.isFalse();
+		assertThat(hisOwnRecord(WHOSE_PICTURE_WAITS).has("bioWaiting"))
+				.as("a picture that waits is handed back as his words")
+				.isFalse();
 	}
 
 	/**
@@ -840,87 +946,6 @@ class MeWriteApiTest {
 				.param(competitorId(ME)).query(Long.class).single())
 				.as("the approved row was taken away, and V9 says a decided row stands for ever")
 				.isOne();
-	}
-
-	/**
-	 * A TEXT THAT WAITS IS SAID BEFORE ANYTHING ELSE THE REQUEST CARRIES IS WRITTEN.
-	 *
-	 * <p><b>Why this is a case of its own since V53.</b> The database now refuses a second text by
-	 * itself, so a reader may ask what the route's own question is still for. It is for the order:
-	 * asked first, the conflict is the answer before the name, the town or the switch is written;
-	 * left to the database, it would come after them, and a request that carries a second fault
-	 * only the database finds would be answered by that fault instead.
-	 *
-	 * <p><b>The fault only the database finds is a trigger this case makes</b>
-	 * ({@link AFailureOnlyTheDatabaseCanCause}): a row of {@code competitor} whose first name is
-	 * {@link #A_NAME_ONLY_THE_DATABASE_REFUSES} is refused by PostgreSQL and by nothing in the route.
-	 * Until 10.10.2026 it was a name carrying a NUL character, which {@code text} cannot hold, and
-	 * that road is closed on purpose: a zero is now refused where a body is read
-	 * ({@code NoTextHoldsAZero}), so the same request would be answered 400 and this case would
-	 * measure the door and not the order.
-	 *
-	 * <p><b>That the lever is live is the next case's, and not this one's.</b> This one is green
-	 * exactly when the trigger does NOT go off, so a trigger that was never made, or never matched
-	 * (a marker mistyped, a column renamed), would satisfy it as well as a question asked first.
-	 * {@link #theNameThisCaseSendsIsOneTheDatabaseRefusesWhenNoTextIsSentWithIt} sends the same name
-	 * from the same member with the text left out, and requires the trigger's own message in what
-	 * the route threw.
-	 *
-	 * <p>What this does NOT say: that such a name is refused properly. Sent with no text waiting it
-	 * is a server fault, with or without this question, and that is its own fault.
-	 */
-	@Test
-	void aTextThatWaitsIsToldBeforeAFieldOnlyTheDatabaseWouldRefuse() throws Exception {
-		try (AFailureOnlyTheDatabaseCanCause theName = AFailureOnlyTheDatabaseCanCause.on(db,
-				"competitor", "first_name", A_NAME_ONLY_THE_DATABASE_REFUSES)) {
-
-			MockHttpServletResponse[] answered = new MockHttpServletResponse[1];
-			Throwable thrown = catchThrowable(() -> answered[0] = changeAs(WHOSE_TEXT_WAITS,
-					changing("bio", "  Drugi pokusaj sa imenom.  ", "firstName",
-							A_NAME_ONLY_THE_DATABASE_REFUSES)));
-
-			assertThat(theName.wentOffIn(thrown))
-					.as("the name reached the database before the question about the waiting text was"
-							+ " asked, and the database refused it, so the conflict is no longer the answer."
-							+ " What was thrown: %s", thrown)
-					.isFalse();
-			assertThat(thrown)
-					.as("the request failed, and not because of the trigger this case made")
-					.isNull();
-
-			assertThat(answered[0].getStatus()).isEqualTo(409);
-			assertThat(reasonIn(answered[0])).isEqualTo(MeWriteApi.A_TEXT_ALREADY_WAITS);
-
-			assertThat(db.sql("select first_name from competitor where member_number = ?")
-					.param(WHOSE_TEXT_WAITS).query(String.class).single())
-					.isEqualTo("Vera");
-			assertThat(textsWaitingFor(WHOSE_TEXT_WAITS)).containsExactly(THE_TEXT_ALREADY_WAITING);
-		}
-	}
-
-	/**
-	 * THE LEVER OF THE CASE ABOVE REALLY GOES OFF, which is the whole of this case.
-	 *
-	 * <p>The same member, the same name and the same trigger, with the text left out of the request:
-	 * with no text to be told about first, the route writes the name, PostgreSQL refuses it, and what
-	 * the route throws carries the trigger's own message. The case above asks for the trigger NOT to
-	 * go off, which a trigger that was never made would give it for nothing; this is the one that
-	 * fails on such a trigger.
-	 */
-	@Test
-	void theNameThisCaseSendsIsOneTheDatabaseRefusesWhenNoTextIsSentWithIt() {
-		try (AFailureOnlyTheDatabaseCanCause theName = AFailureOnlyTheDatabaseCanCause.on(db,
-				"competitor", "first_name", A_NAME_ONLY_THE_DATABASE_REFUSES)) {
-
-			Throwable thrown = catchThrowable(() -> changeAs(WHOSE_TEXT_WAITS,
-					changing("firstName", A_NAME_ONLY_THE_DATABASE_REFUSES)));
-
-			assertThat(theName.wentOffIn(thrown))
-					.as("a name only the database refuses was written without complaint, or the request"
-							+ " failed for a reason of its own, so the trigger of the case above is a lever"
-							+ " that does not move. What was thrown: %s", thrown)
-					.isTrue();
-		}
 	}
 
 	/** Something waiting in ANOTHER tab is not this member's text waiting. */
@@ -1313,9 +1338,7 @@ class MeWriteApiTest {
 	 * <p>{@code waiting} is read off the queue and not off what THIS request wrote, and
 	 * until this case nothing held that. Filled only when the request queued something, the
 	 * Settings screen would be handed {@code waiting: null} while a text of his really is
-	 * with a moderator; {@code ProfileBio.tsx} hides the button on exactly that field, so it
-	 * would draw one, the member would send a second text, and the 409 he then meets
-	 * explains nothing to him.
+	 * with a moderator, and would draw the box as if nothing of his were with anybody.
 	 */
 	@Test
 	void aMemberWhoseTextWaitsIsToldSoWhenHeOnlyFlicksTheSwitch() throws Exception {
