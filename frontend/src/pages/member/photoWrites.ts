@@ -140,13 +140,21 @@ export function asTheColumnHolds(fraction: number): string {
  * looking at the bytes (`WhatAPictureIs.sniff`, ADL A12a), so what it is handed has to be
  * the bytes the member chose.
  *
- * @param file the file itself, off `Chosen`
+ * <p><b>The file may be left out, and that is a request of its own</b>: PDL P11, 27.09.2026, „Ako hocu
+ * da pregazim novom ili da pomerim krug da gadja drugi deo slike". `MePhotoApi.send` reads a request with
+ * no `picture` part as "the same picture, the circle somewhere else" and moves it on the row that waits,
+ * keeping the bytes, the digest and the member's place in the queue.
+ *
+ * @param file the file itself, off `Chosen`, or nothing to move the circle of the picture that waits
  * @param crop the three fractions, each written as fine as the column and no finer
  */
-export function pictureToSend(file: File, crop: Crop): FormData {
+export function pictureToSend(file: File | null, crop: Crop): FormData {
   const body = new FormData()
 
-  body.append('picture', file)
+  if (file !== null) {
+    body.append('picture', file)
+  }
+
   body.append('cropX', asTheColumnHolds(crop.x))
   body.append('cropY', asTheColumnHolds(crop.y))
   /* `cropSize` ON THE WIRE AND `size` IN THE PORTAL, AND THE COLUMN IS `crop_diameter`.

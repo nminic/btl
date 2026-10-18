@@ -484,6 +484,85 @@ export async function whatTheServerSaysOfMyMailLanguage(): Promise<MailLanguage 
 }
 
 /**
+ * ONE PICTURE OF A MEMBER'S, as an address to fetch it from and the circle over it.
+ *
+ * <p>`photo` is an address and never a key (`MePhotoApi.Picture`): `/api/photos/<digest>` for the
+ * one that stands on the profile, which is public, and `/api/me/photo/<digest>` for the one that
+ * waits, which is nobody's address but his.
+ */
+export type HeldPicture = { photo: string; crop: Crop }
+
+/**
+ * WHAT THIS MEMBER'S PORTRAIT IS DOING, BOTH HALVES OF IT, and either may be nothing.
+ *
+ * <p>`GET /api/me/photo` (`MePhotoApi.mine`), the answer a reload needs. PDL P11, the entry of
+ * 27.09.2026 „Na ekranu za slanje slike vidi se slika koja čeka, sa krugom i oznakom da čeka
+ * odobrenje" (the owner: „ukoliko udjem da posaljem ponovo, vidim da je trenutno slika u statusu
+ * cekanja i tu vidim trenutno azuriranu sliku sa krugom"). The route has served it since PR 531 and
+ * until 18.10.2026 nothing on this side asked: a picture sent in one visit was gone from the screen
+ * in the next, and the circle with it.
+ */
+export type MyPictures = { waiting: HeldPicture | null; standing: HeldPicture | null }
+
+/**
+ * THE PICTURES A MEMBER HAS, or nothing when the answer cannot be believed.
+ *
+ * <p>Both keys are always there on the server and each is null for a member who has no such
+ * picture, so a missing key is not "none" but a server saying something this portal does not
+ * know, and it ends the reading as it does for every other fact of a record. Each picture is
+ * believed only under the address that belongs to it: a waiting picture under a public address
+ * would be drawn from a route that refuses it.
+ */
+export async function whatTheServerSaysOfMyPictures(): Promise<MyPictures | null> {
+  let answer: Response
+
+  try {
+    answer = await fetch('/api/me/photo')
+  } catch {
+    return null
+  }
+
+  if (!answer.ok) {
+    return null
+  }
+
+  let body: unknown
+
+  try {
+    body = await answer.json()
+  } catch {
+    return null
+  }
+
+  if (typeof body !== 'object' || body === null) {
+    return null
+  }
+
+  const waiting = heldIn(body, 'waiting', '/api/me/photo/')
+  const standing = heldIn(body, 'standing', '/api/photos/')
+
+  return waiting === undefined || standing === undefined ? null : { waiting, standing }
+}
+
+/** One of the two pictures: `null` where there is none, `undefined` where the answer is not believed. */
+function heldIn(body: object, name: 'waiting' | 'standing', under: string): HeldPicture | null | undefined {
+  const said: unknown = Reflect.get(body, name)
+
+  if (said === null) {
+    return null
+  }
+
+  if (typeof said !== 'object') {
+    return undefined
+  }
+
+  const photo: unknown = Reflect.get(said, 'photo')
+  const crop = squareIn(said)
+
+  return typeof photo === 'string' && photo.startsWith(under) && crop !== null ? { photo, crop } : undefined
+}
+
+/**
  * The caller's own record out of the answer, or nothing.
  *
  * Absent altogether for an account that races for nobody (`MeApi.WhoIAm`, „Absent rather

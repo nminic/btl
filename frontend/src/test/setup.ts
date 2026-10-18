@@ -490,6 +490,18 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
     return whatMeAnswers()
   }
 
+  /* `GET /api/me/photo` (`MePhotoApi.mine`), READ ONLY: the same address takes the picture itself as a
+     `POST`, and that one is not answered here. A member the harness signs in has no picture waiting
+     and none standing under a public address - the generated files keep their pictures under `/mock`,
+     which is not an address the server hands out - so both halves are null, which is what the server
+     says of a member with none. A case about a picture puts its own server in front. */
+  if (asked === '/api/me/photo' && init?.method === undefined) {
+    return new Response(JSON.stringify({ waiting: null, standing: null }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
+
   if (init?.method === 'POST' && WRITES_THAT_QUEUE.has(asked)) {
     return new Response(JSON.stringify({ id: 1 }), {
       status: 201,

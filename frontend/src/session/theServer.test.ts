@@ -8,6 +8,7 @@ import { myOwnRecordFromMe } from '../test/theAnswer'
 import {
   whatTheServerSaysOfMyData,
   whatTheServerSaysOfMyMailLanguage,
+  whatTheServerSaysOfMyPictures,
   whatTheServerSaysOfMyProfile,
   whoTheServerSaysIAm,
 } from './theServer'
@@ -1202,5 +1203,74 @@ describe('the language of the mail the server says the account holds', () => {
 
     expect(await whatTheServerSaysOfMyMailLanguage(), 'his language').toBeNull()
     expect(await whoTheServerSaysIAm(), 'who he is').toMatchObject({ role: 'moderator', account: 41 })
+  })
+})
+
+/**
+ * THE PICTURES OF THE CALLER HIMSELF, which `GET /api/me/photo` answers (`MePhotoApi.mine`): the one
+ * that waits for a moderator and the one that stands on his profile, each as an address and a circle.
+ *
+ * <p>Asked on every visit to the screen that sends a picture, and believed only in the shape the route
+ * promises: both keys, each `null` or a picture under the address that belongs to it. A waiting picture
+ * under the public address would be drawn from a route that refuses it, so it is not believed; a key
+ * that is missing is not "none" but a server saying something the portal does not know.
+ */
+const A_CIRCLE = { x: 0.25, y: 0.5, size: 0.75 }
+const A_WAITING_PICTURE = { photo: '/api/me/photo/' + 'ab'.repeat(32), crop: A_CIRCLE }
+const A_STANDING_PICTURE = { photo: '/api/photos/' + 'cd'.repeat(32), crop: A_CIRCLE }
+
+describe('the pictures of the caller himself', () => {
+  it.each([
+    ['none at all', { waiting: null, standing: null }],
+    ['one that waits', { waiting: A_WAITING_PICTURE, standing: null }],
+    ['one that stands', { waiting: null, standing: A_STANDING_PICTURE }],
+    ['both', { waiting: A_WAITING_PICTURE, standing: A_STANDING_PICTURE }],
+  ])('are read as they are said, for a member with %s', async (_what, said) => {
+    server = serverThat(() => saying(JSON.stringify(said)))
+
+    expect(await whatTheServerSaysOfMyPictures()).toEqual(said)
+    expect(server.asked.map((one) => one.path)).toEqual(['/api/me/photo'])
+  })
+
+  it.each([
+    ['a waiting picture under the public address', { waiting: A_STANDING_PICTURE, standing: null }],
+    ['a standing picture under the address of the waiting one', { waiting: null, standing: A_WAITING_PICTURE }],
+    ['a picture with no address', { waiting: { crop: A_CIRCLE }, standing: null }],
+    ['a picture whose address is not text', { waiting: { photo: 7, crop: A_CIRCLE }, standing: null }],
+    ['a picture with no circle', { waiting: { photo: A_WAITING_PICTURE.photo }, standing: null }],
+    [
+      'a circle whose size is a word',
+      { waiting: { photo: A_WAITING_PICTURE.photo, crop: { x: 0.2, y: 0.2, size: 'big' } }, standing: null },
+    ],
+    ['a picture that is a word', { waiting: 'yes', standing: null }],
+    ['the standing key missing', { waiting: null }],
+    ['the waiting key missing', { standing: null }],
+  ])('are not believed when the answer has %s', async (_what, said) => {
+    server = serverThat(() => saying(JSON.stringify(said)))
+
+    expect(await whatTheServerSaysOfMyPictures()).toBeNull()
+  })
+
+  it.each([
+    ['a body that is not an object', '"x"'],
+    ['null', 'null'],
+    ['something that is not JSON', '<!doctype html><title>ne ovo</title>'],
+  ])('are not believed for %s', async (_what, body) => {
+    server = serverThat(() => saying(body))
+
+    expect(await whatTheServerSaysOfMyPictures()).toBeNull()
+  })
+
+  it('are nothing when the route refuses, and when there is no server to reach', async () => {
+    server = serverThat(() => new Response(null, { status: 404 }))
+
+    expect(await whatTheServerSaysOfMyPictures()).toBeNull()
+
+    server.stop()
+    server = serverThat(() => {
+      throw new Error('nema veze')
+    })
+
+    expect(await whatTheServerSaysOfMyPictures()).toBeNull()
   })
 })

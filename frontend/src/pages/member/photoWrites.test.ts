@@ -148,6 +148,22 @@ describe('the body a picture travels in', () => {
   })
 })
 
+describe('a send with no file', () => {
+  /* PDL P11, 27.09.2026: „ili da pomerim krug da gadja drugi deo slike". `MePhotoApi.send` reads a
+     request with no `picture` part as the same picture with the circle somewhere else, and a request
+     that carried an empty part, or the word for nothing, would be read as a file. So the part is LEFT
+     OUT, which is what this holds, and the three fractions are written exactly as for a file. */
+  it('leaves the picture part out altogether and keeps the three fractions', () => {
+    const body = pictureToSend(null, { x: 0.25, y: 0.5, size: 0.75 })
+
+    expect(body.has('picture')).toBe(false)
+    expect([...body.keys()].sort()).toEqual(['cropSize', 'cropX', 'cropY'])
+    expect(Number(body.get('cropX'))).toBe(0.25)
+    expect(Number(body.get('cropY'))).toBe(0.5)
+    expect(Number(body.get('cropSize'))).toBe(0.75)
+  })
+})
+
 describe('the queue row the answer names', () => {
   /* The key the member's own screen files his wait under, and the SAME key the moderator's
      decision is filed under (`session/context.ts#pictureSent`). The shape of these cases is
