@@ -145,11 +145,9 @@ import java.util.List;
  * written for. It belongs on a route that answers about one caller whether or not he
  * is on any list, which is {@link MeApi}.
  *
- * <p><b>AND IT IS NOT THERE YET, said here rather than implied.</b> Measured on
- * 21.09.2026 against {@code origin/main}: {@code MeApi.WhoIAm} carries {@code role}
- * and {@code account} and nothing else, so as of this increment the member's own
- * basis leaves the server through NO route. That is the other half of P8 and it is
- * its own piece of work; what this one settles is the half about everybody else.
+ * <p><b>It is there now</b>: {@link MeApi} answers a member his own basis on his own
+ * record. Measured on 21.09.2026 it did not yet, and that half of P8 was its own piece of
+ * work; what this resource settles is the half about everybody else.
  *
  * <p>The boundary in both directions, with a case on each side:
  * {@code theAdministrationIsTheOnlyOneToldHowAMembershipIsHeld} fails if a plain
@@ -157,22 +155,18 @@ import java.util.List;
  * {@code aModeratorOverTheMembersIsToldHowEveryMembershipIsHeld} fails if the
  * administration is answered it nowhere.
  *
- * <p><b>The fact has two homes today and this reads the older one on purpose.</b>
- * {@code competitor.membership_basis} stands per PERSON (V7); {@code membership.basis}
- * stands per person per SEASON (V22) and is the shape the owner decided on 13.09.2026.
- * V22 left the column where it is with the reason written out - „it is read today, and
- * dropping a column that is read is a different increment from adding a table that is
- * not" - and PDL records the two homes as a boundary rather than passing over them.
- * This resource answers the field the PORTAL reads, and the portal reads the column:
- * {@code frontend/src/data/types.ts} declares {@code membershipBasis} and
- * {@code AdminMembers.tsx} draws it as a tag. Until 27.09.2026 there was a second
- * reason - that no row of the table existed for anybody the fee had been forgiven,
- * „because the screen that grants an honorary membership does not exist yet and no such
- * row is ever written (PDL, B50)". {@link MembershipWriteApi} writes them now, and it
- * writes BOTH homes for exactly this reason, so what this resource answers is unchanged
- * and the boundary is again the one it always was: the column is what the portal reads.
- * Moving the fact is still the increment that removes {@code competitor.active}, and it
- * moves both homes and all eight readers at once.
+ * <p><b>The fact has ONE home since V62, and it is the row of a season.</b>
+ * {@code membership.basis} stands per person per SEASON (V22), the shape the owner decided
+ * on 13.09.2026; the per-person column {@code competitor.membership_basis} (V7) stood beside
+ * it until the owner's decision of 18.10.2026 (PDL P8, „Osnov clanstva ima jedan dom, zapis
+ * po sezoni; stara kolona po coveku se brise"), which moved every reader to the table and
+ * dropped the column in one change, as V22's own header said it would go. The season
+ * answered is the one ON SALE ({@link SeasonClock#seasonBeingPaidFor}): „do 14.10. je osnova
+ * 2027, od 15.10 je osnova 2028", the same owner and day, so the moderation of the members
+ * names the basis of the season being sold, with that season beside it as
+ * {@code membershipSeason}. A member who holds no row for that season is answered no basis
+ * at all, which is what a member who has not renewed yet holds for it.
+ * {@code competitor.active} is a separate fact and is NOT moved here.
  *
  * <p><b>What is NOT answered here, and why each one is a decision rather than an
  * oversight.</b> {@code referredBy} itself - the code of whoever brought the CALLER
@@ -511,12 +505,19 @@ class CompetitorApi {
 	 *                       left together (PDL P26a); they were the CALLER'S OWN facts
 	 *                       answered back to him on a public list, while this is a fact
 	 *                       about everybody answered to the few who may read it
+	 *                       <p>IT IS THE BASIS OF THE SEASON ON SALE, and absent as well for a
+	 *                       member who holds no {@code membership} row for that season (see the
+	 *                       note on this class)
+	 * @param membershipSeason the season {@code membershipBasis} is the basis of, present exactly
+	 *                       when it is: to the administration, for a member who holds a row for
+	 *                       the season on sale
 	 */
 	record Competitor(String memberNumber, String firstName, String lastName, String gender,
 			String city, String country, String ageBand, boolean firstSeason2027, int firstSeason,
 			String bio, Long teamId, Integer teamSince, boolean profileHidden,
 			String birthdayShown, String photo, Crop crop,
-			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis,
+			@JsonInclude(JsonInclude.Include.NON_NULL) Integer membershipSeason) {
 	}
 
 	/**
@@ -599,7 +600,13 @@ class CompetitorApi {
 		   on 1 January between two rows of one list - which is the one night of the year
 		   this field moves on. `SeasonClock.seasonTheBandIsWorkedOutFor` says which season
 		   it is and why. */
-		int season = SeasonClock.seasonTheBandIsWorkedOutFor(ZonedDateTime.now(clock));
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		int season = SeasonClock.seasonTheBandIsWorkedOutFor(now);
+
+		/* AND THE SEASON ON SALE, WHICH IS THE ONE THE BASIS IS ANSWERED FOR, off the same reading
+		   of the clock. Not `season` above: from 15 October to 31 December the two are a year
+		   apart, and the owner's decision of 18.10.2026 is about exactly that stretch. */
+		int sold = SeasonClock.seasonBeingPaidFor(now);
 
 		return db.sql("select c.member_number, c.first_name, c.last_name, c.gender,"
 						+ " coalesce(town.name, c.city) as city,"
@@ -694,7 +701,7 @@ class CompetitorApi {
 						   standing alone in a `case` has no neighbour to take a type from and
 						   PostgreSQL refuses the statement rather than guessing. */
 						+ " case when cast(:administration as boolean)"
-						+ "  then c.membership_basis end as membership_basis,"
+						+ "  then held.basis end as membership_basis,"
 						/* AND THE YEAR, WHICH IS READ HERE AND LEAVES NOWHERE. It is the
 						   input the band is worked out from and it is the one field on this
 						   table the privacy policy is written about, so it is taken LAST and
@@ -765,6 +772,13 @@ class CompetitorApi {
 						   cast. */
 						+ " left join photo mine on mine.id = c.photo_id"
 						+ "  and " + THE_PROFILE_IS_OPEN_TO_THE_CALLER
+						/* THE MEMBERSHIP OF THE SEASON ON SALE, the one home of the basis since V62.
+						   `membership_pk` is (competitor, season), so this joins at most one row
+						   and a member still comes back once. The condition on who may READ it is
+						   the `case` above and not this join, so the row is joined for every caller
+						   and withheld from all but the administration in one place. */
+						+ " left join membership held on held.competitor_id = c.id"
+						+ "  and held.season = :sold"
 						/* AND ONLY THE MEMBERS WHOSE FEE IS STANDING, which is the whole of what
 						   this resource is allowed to say about a fee. PDL P11: „Status clanarine
 						   se ne prikazuje na profilu... ko nije platio, ne vidi se nigde osim u
@@ -775,6 +789,7 @@ class CompetitorApi {
 						+ " order by c.member_number")
 				.param("administration", administration)
 				.param("readsHiddenProfiles", readsHiddenProfiles)
+				.param("sold", sold)
 				.query((row, one) -> {
 					/* Exact decimal all the way out, never a double, which is `TeamApi`'s own
 					   sentence about the same three numbers: V21 chose `numeric(9, 8)` because
@@ -788,6 +803,7 @@ class CompetitorApi {
 					   what the row says. */
 					String portrait = row.getString(15);
 					BigDecimal across = row.getBigDecimal(16);
+					String basis = row.getString(14);
 
 					return new Competitor(row.getString(1), row.getString(2),
 						row.getString(3), row.getString(4), row.getString(5), row.getString(6),
@@ -807,7 +823,9 @@ class CompetitorApi {
 						portrait == null ? null : A_PICTURE_IS_ASKED_FOR_AT + portrait,
 						across == null ? null
 								: new Crop(across, row.getBigDecimal(17), row.getBigDecimal(18)),
-						row.getString(14));
+						/* The season of the basis is the season the join was pinned to, present
+						   exactly when the basis is, so it is withheld by the same `case`. */
+						basis, basis == null ? null : sold);
 				})
 				.list();
 	}

@@ -780,10 +780,10 @@ class CompetitorWriteApi {
 	 * {@code RecordingAPayment} calls a person who registered and is not yet a member.
 	 *
 	 * <p><b>AND NOTHING HERE MAY CLAIM HONORARY MEMBERSHIP.</b>
-	 * {@code membership_basis} is written {@code 'payment'}, the same constant
-	 * {@link RegistrationApi} writes and for its reason: {@code 'feeExempt'} is the
-	 * owner's to grant, and a form that could name its own basis would be a form that
-	 * grants it. The owner's answer of 25.09.2026 was „the whole of the registration's
+	 * No basis is written at all, as {@link RegistrationApi} writes none and for its reason:
+	 * since V62 a basis is a {@code membership} row of a season, {@code 'feeExempt'} is the
+	 * administration's to grant through {@link MembershipWriteApi}, and a form that could name
+	 * its own basis would be a form that grants it. The owner's answer of 25.09.2026 was „the whole of the registration's
 	 * field set", and the registration has never had that field.
 	 *
 	 * <p><b>ALL OR NOTHING, AND THAT IS THE ONE PIECE OF THIS ROUTE'S SHAPE I DECIDED
@@ -966,10 +966,10 @@ class CompetitorWriteApi {
 		   is no value here for a caller to influence at all. */
 		long member = db.sql("insert into competitor"
 						+ " (first_name, last_name, gender, place_id, city, country_id,"
-						+ "  first_season, first_season_2027, active, membership_basis,"
+						+ "  first_season, first_season_2027, active,"
 						+ "  referral_code, bio, profile_hidden, birth_date,"
 						+ "  father_name, address, phone, shirt_size, health_statement_at)"
-						+ " values (?, ?, ?, ?, ?, ?, ?, ?, false, 'payment', ?, '', false, ?,"
+						+ " values (?, ?, ?, ?, ?, ?, ?, ?, false, ?, '', false, ?,"
 						+ "  ?, ?, ?, ?, ?)"
 						+ " returning id")
 				.params(reading.typed().firstName().strip(), reading.typed().lastName().strip(),
