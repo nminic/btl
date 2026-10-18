@@ -185,7 +185,7 @@ class AxisConstraintsTest extends DatabaseTest {
 				// ------------------------------------------------------------- competitor
 				Violation.of("competitor_pk",
 						"insert into competitor (id, " + COMPETITOR_COLUMNS + ") select id, '000903', 'Probni',"
-								+ " 'Clan', 'M', date '1990-05-05', place_id, null, null, 2027, false, true,\"
+								+ " 'Clan', 'M', date '1990-05-05', place_id, null, null, 2027, false, true,"
 								+ " '00112233445566aa', null, '', false, 'none',"
 								+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00' from competitor"
 								+ " where member_number = '" + PROBE_MEMBER + "'"),
@@ -289,14 +289,14 @@ class AxisConstraintsTest extends DatabaseTest {
 				   somebody else's news as his own. */
 				Violation.of("competitor_not_referred_by_itself",
 						"insert into competitor (id, " + COMPETITOR_COLUMNS + ") select 900001, '000903', 'Probni',"
-								+ " 'Clan', 'M', date '1990-05-05', place_id, null, null, 2027, false, true,\"
+								+ " 'Clan', 'M', date '1990-05-05', place_id, null, null, 2027, false, true,"
 								+ " '00112233445566aa', 900001, '', false, 'none',"
 								+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00' from competitor"
 								+ " where member_number = '" + PROBE_MEMBER + "'"),
 
 				Violation.notNull("competitor_id_not_null", "id",
 						"insert into competitor (id, " + COMPETITOR_COLUMNS + ") values (null, '000903', 'Probni',"
-								+ " 'Clan', 'M', date '1990-05-05', " + A_TOWN + ", null, null, 2027, false, true,\"
+								+ " 'Clan', 'M', date '1990-05-05', " + A_TOWN + ", null, null, 2027, false, true,"
 								+ " '00112233445566aa', null, '', false, 'none',"
 								+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"),
 				/* `competitor_member_number_not_null` je ovde stajao do V16, kad je clanski broj

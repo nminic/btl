@@ -709,7 +709,7 @@ class MembershipWriteApiTest {
 
 		assertThat(db.sql("select count(*) from membership where competitor_id = ?").param(him)
 				.query(Long.class).single()).as("a reversal was settled by an exemption").isZero();
-		assertThat(competitorRow(him)).isEqualTo("none false payment");
+		assertThat(competitorRow(him)).isEqualTo("none false none");
 	}
 
 	/**
@@ -821,7 +821,7 @@ class MembershipWriteApiTest {
 
 		assertThat(answer.getStatus()).isEqualTo(404);
 		assertThat(membershipCount()).as("a refused moderator still wrote a membership").isEqualTo(1);
-		assertThat(competitorRow(him)).isEqualTo("none false payment");
+		assertThat(competitorRow(him)).isEqualTo("none false none");
 	}
 
 	/**
@@ -857,7 +857,7 @@ class MembershipWriteApiTest {
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(refusal(answer)).isEqualTo(MembershipWriteApi.THE_FORM_IS_NOT_COMPLETE);
 		assertThat(membershipCount()).isEqualTo(1);
-		assertThat(competitorRow(him)).isEqualTo("none false payment");
+		assertThat(competitorRow(him)).isEqualTo("none false none");
 	}
 
 	/**
@@ -877,7 +877,7 @@ class MembershipWriteApiTest {
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(refusal(answer)).isEqualTo(MembershipWriteApi.THE_GROUND_IS_NOT_KNOWN);
 		assertThat(membershipCount()).isEqualTo(1);
-		assertThat(competitorRow(him)).isEqualTo("none false payment");
+		assertThat(competitorRow(him)).isEqualTo("none false none");
 		assertThat(bookOf(him)).isEqualTo("no lines");
 	}
 
@@ -1322,7 +1322,7 @@ class MembershipWriteApiTest {
 		assertThat(bookOf(him)).isEqualTo("no lines");
 		assertThat(competitorRow(him))
 				.as("no number was drawn and he was not activated")
-				.isEqualTo("none false payment");
+				.isEqualTo("none false none");
 	}
 
 	/*

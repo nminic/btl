@@ -892,9 +892,9 @@ class CompetitorApiTest {
 	 * that could arrive under any name at all.
 	 *
 	 * <p><b>The words are read off the schema, not written here.</b> Which words exist
-	 * is a CHECK on the column, so the day a third basis is added the rule grows and this
-	 * case grows with it. A list written by hand would have stayed two words long and
-	 * said nothing about the third.
+	 * is a CHECK on {@code membership.basis}, its one home since V62, so the day a fourth
+	 * basis is added the rule grows and this case grows with it. A list written by hand
+	 * would have stayed as long as it was written and said nothing about the next one.
 	 *
 	 * <p><b>The boundary, measured and written down rather than left to a review:</b> it
 	 * refuses the WORDS. It does not refuse the same fact answered as a boolean under a
@@ -905,7 +905,7 @@ class CompetitorApiTest {
 	@Test
 	void nothingAboutTheMembershipFeeLeavesTheServer() throws Exception {
 		String rule = db.sql("select pg_get_constraintdef(oid) from pg_constraint"
-						+ " where conname = ?").param("competitor_membership_basis_known")
+						+ " where conname = ?").param("membership_basis_known")
 				.query(String.class).single();
 		List<String> everyBasis = Pattern.compile("'([a-zA-Z]+)'").matcher(rule).results()
 				.map(one -> one.group(1)).toList();
