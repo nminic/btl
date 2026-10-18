@@ -1005,11 +1005,22 @@ export function Membership() {
                           administrator who raised the fee raised what the next payment was
                           BOOKED at and left the code asking for the old figure - so a member
                           scanned a request for one sum and was recorded as owing another. */}
-                      <div className="pay">
-                        <h4>{t('membership.ips')}</h4>
-                        <p className="member__note">
-                          {t(neverPaid ? 'membership.ipsNoteNoReference' : 'membership.ipsNote')}
-                        </p>
+                      {/* **NO SENTENCE UNDER THE TITLE, AND THE LINE ABOVE IT IS THE SLIP'S, NOT
+                          THIS HALF'S** (PDL P8, 18.10.2026, „Blok „Uplatnica sa QR kodom”: bez
+                          rečenice ispod naslova, linija preko cele širine, QR desno od podataka";
+                          the owner: „Ovaj tekst ne treba da postoji. Horizontalna linija na vrhu
+                          treba da ide celom sirinom strane, a QR kod treba da bude alignovan desno
+                          u odnosu na tekstualne podatke za uplatu").
+
+                          The sentence was `membership.ipsNote` and its form without a reference,
+                          and both keys are gone with it. The dashed line is on `.pay__slip` now
+                          (Member.css) and not on this `div`, which is why this is no longer a
+                          `.pay`: that class draws its own line, and in a grid cell it drew it over
+                          the right column alone. The title takes the written half's own style so
+                          the two headings stand at one height and the code starts where the
+                          details do. */}
+                      <div className="pay__qr">
+                        <h4 className="profile__section">{t('membership.ips')}</h4>
                         <div className="pay__code">
                           <QrCode
                             text={ipsPayload({

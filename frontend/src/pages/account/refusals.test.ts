@@ -24,10 +24,14 @@ import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_CHOOSING_THE_LANGUAGE_OF_MAIL } from '../member/mailLanguage'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
 import { WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR } from '../member/pairWrites'
-import { WHEN_ANSWERING_A_TEAM_INVITE } from '../member/teamWrites'
+import {
+  WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE,
+  WHEN_ANSWERING_A_TEAM_INVITE,
+} from '../member/teamWrites'
 import {
   WHEN_APPLYING_TO_A_TEAM,
   WHEN_DECIDING_AN_APPLICATION,
+  WHEN_INVITING_A_WOMAN_INTO_A_TEAM,
   WHEN_INVITING_INTO_A_TEAM,
 } from '../joiningThisTeam'
 import { WHEN_WRITING_AN_EVENT, WHEN_WRITING_A_RACE } from '../admin/eventWrites'
@@ -484,9 +488,15 @@ describe('the reasons the server can name', () => {
       'TeamJoiningWriteApi.java',
       [
         WHEN_ANSWERING_A_TEAM_INVITE,
+        /* The two maps in the woman's word (PDL P18, 18.10.2026), added so that a key spelled
+           wrong in either is read against both dictionaries like every other: a map on no line
+           of this table is held by nothing. Their names are the maps' above, so the six does
+           not move. */
+        WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE,
         WHEN_DECIDING_AN_APPLICATION,
         WHEN_APPLYING_TO_A_TEAM,
         WHEN_INVITING_INTO_A_TEAM,
+        WHEN_INVITING_A_WOMAN_INTO_A_TEAM,
       ],
       6,
     ],

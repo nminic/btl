@@ -508,14 +508,19 @@ describe('the things a member may not change himself', () => {
 
   /**
    * <p>The date of birth is not on this screen at all and the sentence says why: the portal
-   * does not hold it beside the public record, and the Statute asks that it never be shown.
+   * does not hold it beside the public record, and it is shown neither in full nor in short.
    * What IS shown is the category it produces, which is the owner's own reason for locking it.
+   *
+   * <p>And the sentence names no source (PDL P32, 18.10.2026: „rečenica uz datum rođenja
+   * (`birthDateNote`, oba jezika) više ne navodi izvor"), in either language.
    */
   it('explains where the date of birth went rather than drawing an empty row for it', async () => {
     renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
     await screen.findByRole('heading', { level: 2, name: sr.account.lockedTitle })
 
     expect(within(panelOf(sr.account.lockedTitle)).getByText(sr.account.birthDateNote)).toBeInTheDocument()
+    expect(sr.account.birthDateNote).not.toMatch(/Statut/i)
+    expect(en.account.birthDateNote).not.toMatch(/Statute/i)
   })
 
   /**

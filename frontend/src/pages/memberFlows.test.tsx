@@ -864,6 +864,23 @@ describe('membership', () => {
       withCode,
     )
 
+    /* AND THE CODE IS WHAT STANDS UNDER ITS TITLE, with no sentence between (PDL P8, 18.10.2026,
+       „Blok „Uplatnica sa QR kodom”: bez rečenice ispod naslova"). The element right after the
+       title is the one that holds the code, so a sentence put back under the title - in either
+       of its two old forms - is the element that takes its place and fails here. */
+    expect(
+      must(withCode.nextElementSibling, 'what stands under the title of the code'),
+    ).toContainElement(within(slip).getByRole('img', { name: /QR/ }))
+    expect(within(slip).queryByText(/Skeniraj kod/)).not.toBeInTheDocument()
+
+    /* AND ITS HALF DRAWS NO LINE OF ITS OWN: the line over the slip is the wrapper's, and the class
+       that draws one on a half (`pay`) put back on it would be the line over the right column alone
+       again, under the wrapper's line (owner, 18.10.2026, „linija ... celom sirinom strane"). The
+       sheet is read in `styles/membershipPaySlip.test.ts`; what only a rendered page can say is
+       which class this element wears. */
+    expect(must(withCode.parentElement, 'the half that holds the code')).toHaveClass('pay__qr')
+    expect(must(withCode.parentElement, 'the half that holds the code')).not.toHaveClass('pay')
+
     expect(screen.queryByRole('heading', { name: /[Kk]artic/ })).not.toBeInTheDocument()
     // Paying between residents of Serbia through PayPal is not allowed.
     expect(screen.queryByRole('heading', { name: 'PayPal' })).not.toBeInTheDocument()

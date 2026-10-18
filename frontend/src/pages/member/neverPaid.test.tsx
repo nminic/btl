@@ -180,13 +180,11 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
     expect(within(slip).getByText('Svrha uplate')).toBeVisible()
     expect(within(slip).getByText('Iznos')).toBeVisible()
 
-    /* AND THE NOTE UNDER THE CODE, which used to promise a reference that is not there. */
-    expect(
-      within(slip).getByText(
-        'Skeniraj kod u aplikaciji svoje banke. Iznos i primalac su već upisani.',
-      ),
-    ).toBeVisible()
-    expect(within(slip).queryByText(/poziv na broj su već upisani/)).not.toBeInTheDocument()
+    /* AND NO NOTE UNDER THE CODE'S TITLE, in either form: it used to promise a reference that is
+       not there, and since 18.10.2026 there is no sentence there at all (PDL P8, owner: „Ovaj
+       tekst ne treba da postoji"). */
+    expect(within(slip).queryByText(/Skeniraj kod/)).not.toBeInTheDocument()
+    expect(within(slip).queryByText(/su već upisani/)).not.toBeInTheDocument()
   }, SLOW)
 
   it('says once that the payment is recognised by his name', async () => {
@@ -343,11 +341,8 @@ describe('a member who HAS a number, on the same page', () => {
     expect(within(slip).getByText('Poziv na broj')).toBeVisible()
     expect(within(slip).getByText('202732')).toBeVisible()
     expect(within(slip).getByText(/Poziv na broj je ono po čemu se uplata prepoznaje/)).toBeVisible()
-    expect(
-      within(slip).getByText(
-        'Skeniraj kod u aplikaciji svoje banke. Iznos, primalac i poziv na broj su već upisani.',
-      ),
-    ).toBeVisible()
+    expect(within(slip).queryByText(/Skeniraj kod/)).not.toBeInTheDocument()
+    expect(within(slip).queryByText(/su već upisani/)).not.toBeInTheDocument()
     expect(must(readQr(within(slip).getByRole('img', { name: /QR/ })), 'the code')).toContain(
       '|RO:202732',
     )
