@@ -1752,7 +1752,11 @@ describe('activating a membership from the payments screen', () => {
 
         const again = await screen.findByRole('table', { name: 'Članovi' })
 
-        expect(await within(again).findByText('000099')).toBeVisible()
+        /* ASKED AT ONCE AND NOT WAITED FOR, which is what makes this fail on its own assertion
+           rather than on the clock of the case: the table is only drawn once the list has arrived,
+           so a screen that read the list again has the new man in the table the instant it
+           exists, and one that drew the cached list has it without him. */
+        expect(within(again).getByText('000099')).toBeVisible()
         expect(reads.members).toBe(2)
 
         server.stop()
@@ -1782,9 +1786,8 @@ describe('activating a membership from the payments screen', () => {
 
         const again = await screen.findByRole('table', { name: 'Članovi' })
 
-        await waitFor(() => {
-          expect(cellOf(again, '000019', 'Poslednja sezona').textContent).toBe('2031')
-        })
+        /* AT ONCE, for the reason written in the case above. */
+        expect(cellOf(again, '000019', 'Poslednja sezona').textContent).toBe('2031')
         expect(cellOf(again, '000019', 'Sezone članstva').querySelectorAll('.tag')).toHaveLength(2)
         expect(reads.members).toBe(2)
 
