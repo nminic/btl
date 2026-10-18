@@ -246,6 +246,19 @@ import java.util.Set;
  * the two cannot each hold what the other wants. A second moderator meets the first at the same
  * lock and finds the row no longer waiting, which the claim then answers as it always did.
  *
+ * <p><b>A DECISION ABOUT A TEXT IS A DECISION ABOUT THE TEXT THE MODERATOR READ, THE SAME WAY</b>
+ * ({@link Answered#seenText}). PDL P11, 18.10.2026, recorded as derived from the owner's „isto kao za
+ * sliku" and from his answer of 10.10.2026 about the picture (told to him, he may object): „Odluka
+ * moderatora o tekstu važi samo za tekst koji je video. Ako je član u međuvremenu poslao nov tekst,
+ * odluka se odbija rečenicom da je tekst promenjen i da ga pogleda ponovo." <b>Measured on a real
+ * PostgreSQL on 18.10.2026 by the review of PR 560, before this existed:</b> with the row held
+ * {@code for update} from a second connection, a decision stood behind it, a correction was written
+ * over the row and committed, and the decision then answered 200 with the row {@code approved}
+ * carrying the NEW words and the profile carrying the OLD ones - the words this route had read before
+ * the wait. Since a new text overwrites the row that waits (the same day), the row is no longer a
+ * fixed thing under a decision, and a text is taken and then looked at exactly as a picture is
+ * ({@link #whyTheTextIsNotTheOneHeRead}); what is published is the text that was compared.
+ *
  * <p><b>WHAT THE MEMBER IS TOLD, AND WHAT HE IS NOT.</b> A refusal reaches his inbox with
  * the reason in it, from every queue and not only from his profile: PDL P22, 15.08.2026,
  * „Poruka o odbijanju ide sa svih redova verifikacije, ne samo sa trkackog profila". The
@@ -365,6 +378,30 @@ class VerificationWriteApi {
 	 */
 	private static final String A_SEEN_PICTURE_GOES_WITH_A_DECISION_ABOUT_ONE =
 			"Viđena slika se zadaje samo uz odluku o slici.";
+
+	/**
+	 * THE TEXT THE MODERATOR READ IS NOT THE ONE THE ROW HOLDS NOW: NOTHING IS DECIDED AND THE ROW
+	 * STAYS, WAITING WITH THE NEW TEXT.
+	 *
+	 * <p>PDL P11, 18.10.2026, derived from the owner's „isto kao za sliku" and from his answer of
+	 * 10.10.2026 about the picture and recorded as such (rečeno vlasniku, može da prigovori): „Odluka
+	 * moderatora o tekstu važi samo za tekst koji je video. Ako je član u međuvremenu poslao nov
+	 * tekst, odluka se odbija rečenicom da je tekst promenjen i da ga pogleda ponovo." The sentence
+	 * below is the assistant's wording of that, in the form of the picture's
+	 * ({@link #THE_PICTURE_WAS_CHANGED}), not a sentence of the owner's. The same one for both
+	 * answers, as the picture's is, and 409 for the reason the head of this class gives.
+	 *
+	 * <p>Like every refusal of this route it is a sentence the screen draws as it came back, so the
+	 * dictionary has no key for it.
+	 */
+	private static final String THE_TEXT_WAS_CHANGED = "Tekst je promenjen, pogledaj ga ponovo.";
+
+	/**
+	 * THE SEEN TEXT BESIDE A DECISION THAT HAS NO TEXT: a form fault, so 400, for the reason {@link
+	 * #A_SEEN_PICTURE_GOES_WITH_A_DECISION_ABOUT_ONE} gives.
+	 */
+	private static final String A_SEEN_TEXT_GOES_WITH_A_DECISION_ABOUT_ONE =
+			"Viđeni tekst se zadaje samo uz odluku o tekstu.";
 
 	/**
 	 * A RUN ON A RACE THE CALENDAR DOES NOT HOLD IS NOT APPROVED BY A PLAIN YES: THE ANSWER HAS
@@ -630,9 +667,32 @@ class VerificationWriteApi {
 	 *                    spelling</b>: the column keeps eight decimals ({@code 0.30000000}) and the
 	 *                    number the screen sends back is one it read off the queue's answer
 	 *                    ({@code 0.3}), so the two are the same circle
+	 * @param seenText    the words of the text the moderator had in front of him when he answered,
+	 *                    which is {@code verification.body} as the queue served it ({@code body}).
+	 *                    <b>Asked of EVERY decision about a row that holds a text</b> (the profiles
+	 *                    queue, {@code photo_id is null}), the refusal as much as the approval, and
+	 *                    refused beside any other ({@link #A_SEEN_TEXT_GOES_WITH_A_DECISION_ABOUT_ONE}).
+	 *                    Left out of a decision about a text it is a form not filled in
+	 *                    ({@link #THE_FORM_IS_NOT_COMPLETE}), never „do not check": a field whose
+	 *                    absence switched the check off would be a check anybody could skip (ADL A8,
+	 *                    owner, 19.09.2026: „Izostavljeno polje nikad ne sme tiho da promeni
+	 *                    vrednost").
+	 *                    <p><b>The words themselves and not a digest of them, and that is a technical
+	 *                    choice of mine</b> (the owner chose the outcome, by deriving it from the
+	 *                    picture's). A picture's print is its key and its circle because a picture is
+	 *                    a file and its key is what the queue already serves; a text has no key of its
+	 *                    own to name, since a new text OVERWRITES the row that waits (PDL P11,
+	 *                    18.10.2026) and the row keeps its {@code id}. A text is at most {@link
+	 *                    MeWriteApi#AS_LONG_AS_THE_FORM_ALLOWS} characters, the queue already sends it,
+	 *                    and comparing the words exactly needs no hash on either side. <b>Its one cost, named so it is not found:</b> a member
+	 *                    who sends the very same words again leaves the row as the moderator read it,
+	 *                    and the decision goes through, which is right: it IS the text he saw.
+	 *                    <p>Compared as it is, character for character ({@link String#equals}): the
+	 *                    stored text is what the member sent, stripped, and the screen sends back what
+	 *                    it read
 	 */
 	record Answered(Boolean approved, String reason, Amended amended, NewRace newRace, Long raceId,
-			Long seenPhotoId, VerificationApi.Crop seenCrop) {
+			Long seenPhotoId, VerificationApi.Crop seenCrop, String seenText) {
 	}
 
 	/**
@@ -1008,6 +1068,14 @@ class VerificationWriteApi {
 			return new Carried(unnamed.get(), null, null);
 		}
 
+		/* AND THE SAME FOR A TEXT: a decision about one names the words the moderator read, and a
+		   decision about anything else names none. */
+		Optional<ResponseEntity<?>> textUnnamed = whyTheTextIsNotNamedRight(item, typed);
+
+		if (textUnnamed.isPresent()) {
+			return new Carried(textUnnamed.get(), null, null);
+		}
+
 		/* THE ROW IS TAKEN HERE, FIRST, AND THEN LOOKED AT, for a decision about a picture (every other
 		   decision passes through this line without touching the database). See the head of this class
 		   for why it is two statements and what was measured. For a picture everything below this line
@@ -1017,6 +1085,18 @@ class VerificationWriteApi {
 
 		if (notTheOneHeSaw.isPresent()) {
 			return new Carried(notTheOneHeSaw.get(), null, null);
+		}
+
+		/* THE ROW IS TAKEN AND THEN LOOKED AT FOR A TEXT TOO (every other decision passes through this
+		   line without touching the database). A member's correction is an upsert on THIS row
+		   (`MeWriteApi.queued`), so the words it holds can change under a decision that has read the
+		   row and not yet claimed it: the claim below would then match the row all the same (it is
+		   still waiting) and publish the words read BEFORE the wait, which is not what the row holds
+		   and not what the moderator saw. */
+		Optional<ResponseEntity<?>> notTheTextHeRead = whyTheTextIsNotTheOneHeRead(item, typed);
+
+		if (notTheTextHeRead.isPresent()) {
+			return new Carried(notTheTextHeRead.get(), null, null);
 		}
 
 		/* WHAT AN APPROVAL WOULD RUN INTO, ASKED FIRST AND WRITING NOTHING. It has to be
@@ -1155,7 +1235,7 @@ class VerificationWriteApi {
 			} else if (RESULTS.equals(item.queue())) {
 				approved = countTheResult(item, sent, counting);
 			} else {
-				publishTheProfile(item);
+				publishTheProfile(item, typed);
 			}
 		} else if (!COMMENTS.equals(item.queue())) {
 			/* COMMENTS NEVER REACHES HERE (ADL A64 A4). PDL P22, „Jedini red bez njega je red
@@ -1184,10 +1264,15 @@ class VerificationWriteApi {
 	 * statements simply match no member and the decision is still recorded. That is a state
 	 * V9 allows on purpose and this is what it does here.
 	 */
-	private void publishTheProfile(Item item) {
+	private void publishTheProfile(Item item, Answered typed) {
 		if (item.photoId() == null) {
+			/* THE WORDS THE ROW WAS FOUND TO HOLD WHEN IT WAS TAKEN, and not `item.body()`: that was read
+			   before the lock, and a correction that landed while this request waited for the row has
+			   changed it since. `typed.seenText()` is equal to what the row held under the lock
+			   (`whyTheTextIsNotTheOneHeRead`, which refuses every other case), so this is the text
+			   that was read, compared and is now published - one text, not three. */
 			db.sql("update competitor set bio = ? where id = ?")
-					.params(item.body(), item.competitorId()).update();
+					.params(typed.seenText(), item.competitorId()).update();
 		} else {
 			db.sql("update competitor set photo_id = ? where id = ?")
 					.params(item.photoId(), item.competitorId()).update();
@@ -1296,6 +1381,77 @@ class VerificationWriteApi {
 
 		return theSame ? Optional.empty()
 				: Optional.of(no(HttpStatus.CONFLICT, THE_PICTURE_WAS_CHANGED));
+	}
+
+	/**
+	 * A TEXT, WHICH IS A ROW OF THE PROFILES QUEUE THAT HOLDS NO PICTURE: the same distinction {@link
+	 * #publishTheProfile} and {@code VerificationApi} (kind {@code bio}) make, read off the row the
+	 * request already has.
+	 */
+	private static boolean isAText(Item item) {
+		return PROFILES.equals(item.queue()) && item.photoId() == null;
+	}
+
+	/**
+	 * WHETHER THE REQUEST NAMES THE WORDS WHERE THERE ARE SOME AND NONE WHERE THERE ARE NOT, asked of
+	 * the request and the row alone and writing nothing: {@link #whyThePictureIsNotNamedRight} for a
+	 * text.
+	 *
+	 * <p>A row that holds a text and a request that names no words is a form not filled in
+	 * ({@link #THE_FORM_IS_NOT_COMPLETE}), and a request that names words beside a row that holds
+	 * none is a field that rides with the wrong decision
+	 * ({@link #A_SEEN_TEXT_GOES_WITH_A_DECISION_ABOUT_ONE}). Both are 400. <b>The same for the
+	 * approval and the refusal</b>, as the picture's is: a reason typed about one text would reach the
+	 * member as the verdict on another otherwise.
+	 */
+	private static Optional<ResponseEntity<?>> whyTheTextIsNotNamedRight(Item item, Answered typed) {
+
+		if (isAText(item)) {
+			return typed.seenText() == null
+					? Optional.of(no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE))
+					: Optional.empty();
+		}
+
+		return typed.seenText() == null ? Optional.empty()
+				: Optional.of(no(HttpStatus.BAD_REQUEST, A_SEEN_TEXT_GOES_WITH_A_DECISION_ABOUT_ONE));
+	}
+
+	/**
+	 * WHETHER THE ROW STILL HOLDS THE WORDS THE MODERATOR READ, asked of the row WHILE HOLDING IT.
+	 * Writes nothing, and the first thing a decision about a text does to the database.
+	 *
+	 * <p><b>The row is taken first and looked at after</b> ({@code select ... for update}, then the
+	 * comparison in Java), the shape {@link #whyThePictureIsNotTheOneHeSaw} has and for the same
+	 * reason: a comparison in Java of words read before any lock is a check-then-act, which passes
+	 * every sequential case and fails only under concurrency. <b>One statement and not two</b>, unlike
+	 * the picture's, because the words are a column of the locked row itself: a statement that waited
+	 * for the lock re-reads the locked row (READ COMMITTED), so the {@code body} it returns is the
+	 * one the member's correction has just committed. The picture's circle lives in another table,
+	 * which a statement that waited does NOT re-read, and that is why that check needs two.
+	 *
+	 * <p><b>Nothing here when the row is not waiting any more</b>: somebody decided it while this
+	 * request stood behind the lock, and the claim then answers what it always did,
+	 * {@link #SOMEBODY_ANSWERED_IT_ALREADY}. A moderator who lost a race is never told the text was
+	 * changed.
+	 */
+	private Optional<ResponseEntity<?>> whyTheTextIsNotTheOneHeRead(Item item, Answered typed) {
+
+		if (typed.seenText() == null) {
+			return Optional.empty();
+		}
+
+		Optional<String> held = db.sql("select body from verification where id = ? and state = ?"
+						+ " for update")
+				.params(item.id(), DecidingOnASubmission.WAITING)
+				.query(String.class)
+				.optional();
+
+		if (held.isEmpty()) {
+			return Optional.empty();
+		}
+
+		return held.get().equals(typed.seenText()) ? Optional.empty()
+				: Optional.of(no(HttpStatus.CONFLICT, THE_TEXT_WAS_CHANGED));
 	}
 
 	/**

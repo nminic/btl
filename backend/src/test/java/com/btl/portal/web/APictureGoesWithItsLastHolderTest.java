@@ -749,9 +749,17 @@ class APictureGoesWithItsLastHolderTest {
 						+ " trim_scale(p.crop_y) || ',\"size\":' || trim_scale(p.crop_diameter) || '}'"
 						+ " from verification v join photo p on p.id = v.photo_id where v.id = ?")
 				.param(item).query(String.class).optional().orElse(null);
+		/* A decision about a TEXT names the words it read (PDL P11, 18.10.2026), which this file reads
+		   off the row at the moment of the press: its cases are about what a decision releases, and
+		   the text he read is the business of `AMemberCorrectsTheTextWhileTheDecisionWaitsTest`. The
+		   fixture's words have no character that JSON would need to escape. */
+		String words = db.sql("select body from verification where id = ? and queue = 'profiles'"
+						+ " and photo_id is null")
+				.param(item).query(String.class).optional().orElse(null);
 		String body = "{\"approved\":" + approved
 				+ (reason == null ? "" : ",\"reason\":\"" + reason + "\"")
-				+ (held == null ? "" : ",\"seenPhotoId\":" + held + ",\"seenCrop\":" + circle) + "}";
+				+ (held == null ? "" : ",\"seenPhotoId\":" + held + ",\"seenCrop\":" + circle)
+				+ (words == null ? "" : ",\"seenText\":\"" + words + "\"") + "}";
 
 		return http.perform(asModerator(post("/api/verification/" + item + "/decision"))
 						.contentType(MediaType.APPLICATION_JSON).content(body))
