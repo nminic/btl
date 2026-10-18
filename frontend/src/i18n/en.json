@@ -882,7 +882,8 @@
     "inviteRefused": {
       "theFormIsNotComplete": "The request did not reach the server in full, so the invitation was not sent. Refresh the page and try again.",
       "theWindowIsShut": "The transfer window has closed in the meantime, so the invitation was not sent. The window opens on 15 October and runs to 31 December.",
-      "heIsAlreadyInATeam": "The member has joined a team in the meantime, so the invitation was not sent."
+      "heIsAlreadyInATeam": "The member has joined a team in the meantime, so the invitation was not sent.",
+      "heIsAlreadyInATeamFemale": "The member has joined a team in the meantime, so the invitation was not sent."
     },
     "inviteSubject": "An invitation into the team \"{team}\"",
     "inviteBody": "The team \"{team}\" invites you to run for them from the next season.",
@@ -896,7 +897,9 @@
     "inviteLapsed": "A member whose fee has lapsed",
     "inviteAccepted": "You have accepted this invitation and from the next season you run for the team \"{team}\".",
     "inviteOvertaken": "You have joined the team \"{team}\" in the meantime, so this invitation no longer stands.",
+    "inviteOvertakenFemale": "You have joined the team \"{team}\" in the meantime, so this invitation no longer stands.",
     "inviteOvertakenUnnamed": "You have joined a team in the meantime, so you can no longer accept this invitation.",
+    "inviteOvertakenUnnamedFemale": "You have joined a team in the meantime, so you can no longer accept this invitation.",
     "inviteClosed": "This invitation no longer stands.",
     "inviteGone": "The team that invited you no longer exists.",
     "inviteWaits": "The invitation waits: a team is joined during the transfer window only, from 15 October to 31 December.",

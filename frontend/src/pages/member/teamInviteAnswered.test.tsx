@@ -616,6 +616,59 @@ describe('answering a served invitation into a team', () => {
     SLOW,
   )
 
+  /* **THE WORD FOLLOWS THE SEX OF THE MEMBER THE SENTENCE IS ABOUT, WHO HERE IS THE READER** (PDL P18,
+     18.10.2026, „I tri rečenice na ekranima sa „ušao/la” biraju reč po polu"). Every other case of
+     this file reads as `000007`, a man, and draws „ušao"; these read as `000009`, a woman, so a
+     screen that kept the one sentence for everybody fails here, and a screen that wrote „ušla" for
+     everybody fails above. Both kinds of reader are needed for the same reason a case needs a
+     second source for a value: with one sex only, "always the one word" and "the right word" are
+     the same screen. */
+  it(
+    'tells a woman who already has a team in her word, and not in the man\'s',
+    async () => {
+      aServerWhere(waitingWhere(true))
+      asking = HER
+      renderAt(`/sr/poruke/${String(OPENED.id)}`, 'competitor', '000009', undefined, IN_THE_WINDOW)
+
+      await screen.findByRole('heading', { level: 1, name: OPENED.subject })
+
+      expect(await screen.findByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeVisible()
+      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
+      expect(anyAcceptButton()).toBeNull()
+    },
+    SLOW,
+  )
+
+  it(
+    'tells a man who already has a team in his word, and not in the woman\'s',
+    async () => {
+      aServerWhere(waitingWhere(true))
+      await openTheQuestion()
+
+      expect(screen.getByText(sr.teams.inviteOvertakenUnnamed)).toBeVisible()
+      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeNull()
+    },
+    SLOW,
+  )
+
+  it(
+    'tells a woman the route refused in her word as well, out of the same map as the sentence drawn first',
+    async () => {
+      const user = setupUser()
+
+      aServerWhere(waitingWhere(), () => refused('heIsAlreadyInATeam', 409))
+      asking = HER
+      renderAt(`/sr/poruke/${String(OPENED.id)}`, 'competitor', '000009', undefined, IN_THE_WINDOW)
+
+      await screen.findByRole('heading', { level: 1, name: OPENED.subject })
+      await user.click(await screen.findByRole('button', { name: sr.teams.inviteAccept }))
+
+      expect(await screen.findByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeVisible()
+      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
+    },
+    SLOW,
+  )
+
   it(
     'says the window is shut, and not that he has a team, when both are true at once',
     async () => {

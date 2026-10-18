@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { did, refused, serverThat, type Asked } from '../test/serverAnswers'
 import { clearResourceCache, loadResource } from '../data/client'
+import en from '../i18n/en.json'
+import sr from '../i18n/sr.json'
+import {
+  WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE,
+  WHEN_ANSWERING_A_TEAM_INVITE,
+} from './member/teamWrites'
 import {
   applicationIn,
   invitationIn,
@@ -17,6 +23,7 @@ import {
   whatThisTeamHasAsked,
   WHEN_APPLYING_TO_A_TEAM,
   WHEN_DECIDING_AN_APPLICATION,
+  WHEN_INVITING_A_WOMAN_INTO_A_TEAM,
   WHEN_INVITING_INTO_A_TEAM,
 } from './joiningThisTeam'
 
@@ -649,5 +656,63 @@ describe('the team asking a member in', () => {
         }
       }),
     ).toBe(0)
+  })
+})
+
+/* **THE THREE SENTENCES THAT SAY WHAT A MEMBER DID, IN THE WORD OF HIS OR HER SEX** (PDL P18,
+   18.10.2026, „I tri rečenice na ekranima sa „ušao/la” biraju reč po polu"): `teams.inviteOvertaken`,
+   `teams.inviteOvertakenUnnamed` and `teams.inviteRefused.heIsAlreadyInATeam`. The screens that
+   draw them are measured in `teamInvite.test.tsx`, `member/teamInviteAnswered.test.tsx` and
+   `teamInviteOnTheServer.test.tsx`; what is asked here is what a screen cannot show: that the
+   woman's map differs from the man's in the one name that says it and in no other, and that both
+   words are in both dictionaries, the English one repeating the English sentence because English
+   has no gender to choose. */
+describe("the woman's words for what a member did", () => {
+  const read = (dictionary: object, key: string): unknown =>
+    key
+      .split('.')
+      .reduce<unknown>(
+        (at, part) => (at !== null && typeof at === 'object' ? Reflect.get(at, part) : undefined),
+        dictionary,
+      )
+
+  it.each([
+    ['inviting', WHEN_INVITING_INTO_A_TEAM, WHEN_INVITING_A_WOMAN_INTO_A_TEAM],
+    ['answering', WHEN_ANSWERING_A_TEAM_INVITE, WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE],
+  ])('differ, when %s, in the one name that says it and in no other', (_route, man, woman) => {
+    expect(Object.keys(woman)).toEqual(Object.keys(man))
+
+    expect(
+      Object.keys(man).filter((name) => Reflect.get(man, name) !== Reflect.get(woman, name)),
+    ).toEqual(['heIsAlreadyInATeam'])
+  })
+
+  it.each([
+    ['teams.inviteOvertaken', 'teams.inviteOvertakenFemale'],
+    ['teams.inviteOvertakenUnnamed', 'teams.inviteOvertakenUnnamedFemale'],
+    ['teams.inviteRefused.heIsAlreadyInATeam', 'teams.inviteRefused.heIsAlreadyInATeamFemale'],
+  ])('says „ušao" in %s and „ušla" in %s, and „ušao/la" in neither', (man, woman) => {
+    expect(read(sr, man)).toEqual(expect.stringContaining('ušao u tim'))
+    expect(read(sr, woman)).toEqual(expect.stringContaining('ušla u tim'))
+    expect(read(sr, man)).not.toEqual(expect.stringContaining('/la'))
+    expect(read(sr, woman)).not.toEqual(expect.stringContaining('/la'))
+    expect(read(sr, man)).not.toEqual(expect.stringContaining('ušla'))
+    expect(read(sr, woman)).not.toEqual(expect.stringContaining('ušao'))
+    /* English has no gender to choose, so the woman's key repeats the sentence. */
+    expect(read(en, woman)).toEqual(expect.any(String))
+    expect(read(en, woman)).toBe(read(en, man))
+  })
+
+  it("points each woman's map at the key that exists, and each man's at the one it always did", () => {
+    expect(WHEN_INVITING_A_WOMAN_INTO_A_TEAM.heIsAlreadyInATeam).toBe(
+      'teams.inviteRefused.heIsAlreadyInATeamFemale',
+    )
+    expect(WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE.heIsAlreadyInATeam).toBe(
+      'teams.inviteOvertakenUnnamedFemale',
+    )
+    expect(WHEN_INVITING_INTO_A_TEAM.heIsAlreadyInATeam).toBe(
+      'teams.inviteRefused.heIsAlreadyInATeam',
+    )
+    expect(WHEN_ANSWERING_A_TEAM_INVITE.heIsAlreadyInATeam).toBe('teams.inviteOvertakenUnnamed')
   })
 })

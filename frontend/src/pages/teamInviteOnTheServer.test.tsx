@@ -520,7 +520,9 @@ describe('the press', () => {
   it.each([
     ['heHasAlreadyBeenAsked', 409, itStands],
     ['theWindowIsShut', 409, sr.teams.inviteRefused.theWindowIsShut],
-    ['heIsAlreadyInATeam', 409, sr.teams.inviteRefused.heIsAlreadyInATeam],
+    /* The member on this profile is a woman (`000006`, Ivona), so the word for what she did is
+       hers: „ušla" (PDL P18, 18.10.2026). The man's sentence has its own case below. */
+    ['heIsAlreadyInATeam', 409, sr.teams.inviteRefused.heIsAlreadyInATeamFemale],
     ['theFormIsNotComplete', 400, sr.teams.inviteRefused.theFormIsNotComplete],
   ])('says %s in its own words under the button, which stays', async (reason, status, words) => {
     const server = aServerForTheTeam({ post: () => refused(reason, status) })
@@ -535,6 +537,34 @@ describe('the press', () => {
       expect(theButton()).toBeVisible()
       /* A refusal is a thing that did not happen, so the list is not asked for again. */
       expect(readsOfLists(server.asked)).toHaveLength(1)
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  /* **THE WORD FOLLOWS THE SEX OF THE MEMBER ON THE PROFILE, AND THE READER IS THE OTHER ONE** (PDL
+     P18, 18.10.2026, „Pol je onog člana o kome rečenica govori, ne čitaoca"). Both profiles here are
+     read by `000005`, who is a man: the woman's profile above draws „ušla" and this man's draws
+     „ušao", so a screen choosing by the reader's sex draws the same word on both and fails the one
+     of them. The reader being a man is also why the mutation that picks the word by the reader
+     fails on the woman's profile and not on this one, which is the reason there are two. */
+  it.each([
+    ['a man', NEXT_AT, sr.teams.inviteRefused.heIsAlreadyInATeam, /ušao u tim/],
+    ['a woman', ASKED_AT, sr.teams.inviteRefused.heIsAlreadyInATeamFemale, /ušla u tim/],
+  ])('says what the member being asked did in the word of HIS sex: %s', async (_who, at, words, word) => {
+    const server = aServerForTheTeam({ post: () => refused('heIsAlreadyInATeam', 409) })
+    const user = setupUser()
+
+    try {
+      renderAt(at, 'competitor', LEADS_IT, undefined, DAY_IN)
+
+      await user.click(await screen.findByRole('button', { name: sr.teams.invite }))
+
+      const alert = await screen.findByRole('alert')
+
+      expect(alert).toHaveTextContent(words)
+      expect(alert).toHaveTextContent(word)
+      expect(alert).not.toHaveTextContent('ušao/la')
     } finally {
       server.stop()
     }

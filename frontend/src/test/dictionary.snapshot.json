@@ -882,7 +882,8 @@
     "inviteRefused": {
       "theFormIsNotComplete": "Zahtev nije poslat do kraja, pa poziv nije poslat. Osveži stranicu i pokušaj ponovo.",
       "theWindowIsShut": "Prelazni rok se u međuvremenu zatvorio, pa poziv nije poslat. Rok se otvara 15. oktobra i traje do 31. decembra.",
-      "heIsAlreadyInATeam": "Član je u međuvremenu ušao/la u tim, pa poziv nije poslat."
+      "heIsAlreadyInATeam": "Član je u međuvremenu ušao u tim, pa poziv nije poslat.",
+      "heIsAlreadyInATeamFemale": "Članica je u međuvremenu ušla u tim, pa poziv nije poslat."
     },
     "inviteSubject": "Poziv u tim \"{team}\"",
     "inviteBody": "Tim \"{team}\" te poziva da od naredne sezone trčiš za njih.",
@@ -895,8 +896,10 @@
     "inviteWithdrawNamed": "Povuci poziv: {name}",
     "inviteLapsed": "Član kome je članarina istekla",
     "inviteAccepted": "Prihvatio/la si ovaj poziv i od naredne sezone trčiš za tim \"{team}\".",
-    "inviteOvertaken": "U međuvremenu si ušao/la u tim \"{team}\", pa ovaj poziv više ne stoji.",
-    "inviteOvertakenUnnamed": "U međuvremenu si ušao/la u tim, pa ovaj poziv više ne možeš da prihvatiš.",
+    "inviteOvertaken": "U međuvremenu si ušao u tim \"{team}\", pa ovaj poziv više ne stoji.",
+    "inviteOvertakenFemale": "U međuvremenu si ušla u tim \"{team}\", pa ovaj poziv više ne stoji.",
+    "inviteOvertakenUnnamed": "U međuvremenu si ušao u tim, pa ovaj poziv više ne možeš da prihvatiš.",
+    "inviteOvertakenUnnamedFemale": "U međuvremenu si ušla u tim, pa ovaj poziv više ne možeš da prihvatiš.",
     "inviteClosed": "Ovaj poziv više ne stoji.",
     "inviteGone": "Tim koji te je pozvao više ne postoji.",
     "inviteWaits": "Poziv čeka: u tim se ulazi samo u prelaznom roku, od 15. oktobra do 31. decembra.",

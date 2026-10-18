@@ -2,11 +2,12 @@ import { useRef, useState } from 'react'
 import { useI18n } from '../../i18n/useI18n'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import { useWhatIsWaiting } from '../../data/useResource'
+import { combinePair, useCompetitors, useWhatIsWaiting } from '../../data/useResource'
 import type { WhatIsWaiting } from '../../data/types'
 import { ServerSaid } from '../account/ServerSaid'
 import type { Answer } from '../account/askTheServer'
 import {
+  WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE,
   WHEN_ANSWERING_A_TEAM_INVITE,
   theInvitationStanding,
   theServerWasAnswered,
@@ -71,13 +72,33 @@ import {
  */
 export function ServedTeamInvite({ invitation, mine }: { invitation: number; mine: string }) {
   return (
-    <Resource state={useWhatIsWaiting(mine)} inline>
-      {(waiting) => <TheAnswer invitation={invitation} waiting={waiting} />}
+    <Resource state={combinePair(useWhatIsWaiting(mine), useCompetitors())} inline>
+      {([waiting, everybody]) => (
+        <TheAnswer
+          invitation={invitation}
+          waiting={waiting}
+          /* HER sex, the reader's, because the one sentence this changes says what the reader did
+             (PDL P18, 18.10.2026, „I tri rečenice na ekranima sa „ušao/la” biraju reč po polu").
+             Asked as a question with two answers rather than read off the record: a reader the
+             public list does not carry (a member whose fee has lapsed is not on it) is simply
+             not a woman here, which is the arrangement `member/InvitationAnswer.tsx` keeps for
+             the same fact. */
+          woman={everybody.some((one) => one.memberNumber === mine && one.gender === 'F')}
+        />
+      )}
     </Resource>
   )
 }
 
-function TheAnswer({ invitation, waiting }: { invitation: number; waiting: WhatIsWaiting }) {
+function TheAnswer({
+  invitation,
+  waiting,
+  woman,
+}: {
+  invitation: number
+  waiting: WhatIsWaiting
+  woman: boolean
+}) {
   const { t } = useI18n()
   const today = useToday()
   /* What came back, where it was anything but „done". A successful answer draws nothing of
@@ -108,6 +129,9 @@ function TheAnswer({ invitation, waiting }: { invitation: number; waiting: WhatI
   const outstanding = useRef(false)
 
   const standing = theInvitationStanding(waiting, invitation, today)
+  /* The sentences in the reader's sex, the one drawn before anything is sent and the one the
+     route refuses with, out of one map, so the two cannot come apart. */
+  const words = woman ? WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE : WHEN_ANSWERING_A_TEAM_INVITE
 
   async function answer(team: number, accepted: boolean): Promise<void> {
     if (outstanding.current) {
@@ -199,7 +223,7 @@ function TheAnswer({ invitation, waiting }: { invitation: number; waiting: WhatI
              route's refusals are read out of, so the sentence a member gets before he
              presses and the one he gets if the server refuses him cannot come apart. */
           <span className="messages__answered">
-            {t(WHEN_ANSWERING_A_TEAM_INVITE[standing.accept])}
+            {t(words[standing.accept])}
           </span>
         )}{' '}
         <button
@@ -213,7 +237,7 @@ function TheAnswer({ invitation, waiting }: { invitation: number; waiting: WhatI
           {t('teams.inviteRefuse')}
         </button>
       </p>
-      {said !== null && <ServerSaid answer={said} refusals={WHEN_ANSWERING_A_TEAM_INVITE} />}
+      {said !== null && <ServerSaid answer={said} refusals={words} />}
     </>
   )
 }
