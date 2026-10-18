@@ -122,4 +122,45 @@ describe('the written pages', () => {
       'uslovi-koriscenja: 5. Unos i verifikacija rezultata',
     ])
   })
+
+  it('use the English quotation mark and carry no Serbian one in any title, heading or body', () => {
+    /* Owner, 18.10.2026 (PDL P18, "Navodnici"): the text the portal writes uses the
+       English quotation marks, not the Serbian ones. V61 replaced the low opening mark
+       in ten sections of the Serbian text; this holds the fixture AND the snapshot to it,
+       both, so a deliberate change made in only one of them cannot bring the mark back
+       past the comparison above. Named by code point and not typed: an editor cannot
+       turn this line into a different line. The three are the low mark and the two high
+       ones, every one the decision is about. */
+    const serbianMarks = [0x201e, 0x201c, 0x201d].map((code) => String.fromCharCode(code))
+
+    const everyText = (record: { title: string; sections: { heading: string; body: string }[] }[]) =>
+      record.flatMap((page) => [
+        page.title,
+        ...page.sections.flatMap((section) => [section.heading, section.body]),
+      ])
+
+    for (const [name, record] of [
+      ['the fixture', pages],
+      ['the snapshot', settled],
+    ] as const) {
+      const texts = everyText(record)
+
+      expect(texts.length, `${name} holds no text at all, so this measures nothing`).toBeGreaterThan(0)
+
+      for (const text of texts) {
+        for (const mark of serbianMarks) {
+          expect(text.includes(mark), `${name}: ${text.slice(0, 60)}`).toBe(false)
+        }
+      }
+    }
+
+    /* And the sentences that carried it in the Serbian text stand with the plain mark
+       in the place the low one was, so the sweep above cannot pass by the quotation
+       having been taken out. */
+    const rulebook = pages.find((page) => page.slug === 'pravilnik')
+
+    expect(rulebook?.sections.map((section) => section.body).join('\n')).toContain(
+      'dugmetom "Unesi rezultat" u redu te trke.',
+    )
+  })
 })

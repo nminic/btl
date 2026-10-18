@@ -497,6 +497,61 @@ class PageApiTest {
 	}
 
 	/**
+	 * NO TEXT THE ROUTE SERVES CARRIES A SERBIAN QUOTATION MARK, AND THE TEN SENTENCES V61 CHANGED CARRY THE ENGLISH ONE
+	 * (owner, PDL P18, the section "Navodnici", 18.10.2026).
+	 *
+	 * <p>{@code TheWrittenPagesUseTheEnglishQuotationMarkTest} holds the columns; this holds that the route serves the
+	 * result, in Serbian and in real English, which is the one thing it cannot see. The sweep reads every title, every
+	 * heading and every body the route answers with, so a text the route adds from somewhere other than those columns
+	 * is swept too.
+	 */
+	@Test
+	void noServedTextCarriesASerbianQuotationMarkAndTheTenSentencesCarryTheEnglishOne() throws Exception {
+		String[][] ten = {
+				{ "sr", "uslovi-koriscenja", "6", "na vašoj strani \"Moja članarina\", uz sam link." },
+				{ "sr", "rec-predsednika", "1", "Sportsko udruženje \"BTL\", pod popularnim imenom" },
+				{ "sr", "pravilnik", "5", "na primer \"Beogradski maraton, štafeta 1\", sa dužinom" },
+				{ "sr", "pravilnik", "9", "dugmetom \"Unesi rezultat\" u redu te trke." },
+				{ "sr", "pravilnik", "12", "- \"Zajednička trka\" znači ista trka" },
+				{ "sr", "pravilnik", "16", "Oznake \"arhiviran takmičar\" nema" },
+				{ "en", "pravilnik", "5", "for example \"Beogradski maraton, relay leg 1\", with the length" },
+				{ "en", "pravilnik", "9", "with the \"Submit result\" button on that race" },
+				{ "en", "pravilnik", "12", "- A \"shared race\" means the same race" },
+				{ "en", "pravilnik", "16", "There is no \"archived competitor\" marker" } };
+
+		for (String language : List.of("sr", "en")) {
+			JsonNode served = answerIn(language);
+			int texts = 0;
+
+			for (JsonNode page : served) {
+				List<String> every = new ArrayList<>();
+
+				every.add(page.path("title").asString());
+
+				for (JsonNode section : page.path("sections")) {
+					every.add(section.path("heading").asString());
+					every.add(section.path("body").asString());
+				}
+
+				for (String text : every) {
+					texts++;
+					assertThat(text).as("a %s text of %s", language, page.path("slug").asString())
+							.doesNotContain("\u201E", "\u201C", "\u201D");
+				}
+			}
+
+			assertThat(texts).as("the %s answer carried no text at all, so the sweep measured nothing", language)
+					.isPositive();
+		}
+
+		for (String[] each : ten) {
+			assertThat(fieldOf(answerIn(each[0]), each[1], "body").get(Integer.parseInt(each[2]) - 1))
+					.as("%s #%s asked in %s", each[1], each[2], each[0])
+					.containsOnlyOnce(each[3]);
+		}
+	}
+
+	/**
 	 * SECTION ORDER IS THE {@code position} COLUMN, AND NOT THE ORDER ROWS WERE WRITTEN IN.
 	 *
 	 * <p>Task instruction, section 5: dropping the {@code order by} on
