@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { clearResourceCache } from '../../data/client'
 import type { Member } from '../../data/types'
 import { must } from '../../test/at'
@@ -130,6 +130,22 @@ describe('the moderation of the members', () => {
     await user.selectOptions(screen.getByLabelText('Članstvo'), 'Svi')
     expect(numbers(drawn)).toEqual(['000009', '000006', '000003', '000012'])
     expect(screen.getByText('4 takmičara')).toBeVisible()
+
+    server.stop()
+  })
+
+  it('keeps the filter it holds when the control hands back a word it does not offer', async () => {
+    /* A select set to an option it does not have reports nothing chosen, so what the handler reads
+       is not a filter; it is looked for among the three rather than declared one (ADL A14), the
+       same as `RoleSwitch` (`roles/roles.test.tsx`). */
+    const server = serving()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const drawn = await table()
+
+    fireEvent.change(screen.getByLabelText('Članstvo'), { target: { value: 'bivsi' } })
+
+    expect(numbers(drawn)).toEqual(['000009', '000003'])
 
     server.stop()
   })
