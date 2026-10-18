@@ -261,7 +261,7 @@ describe('which races count towards a competition', () => {
       screen.getByLabelText('Trka', { selector: `#league-moderation-${ACTED}-race` }),
     )
       .getAllByRole('option')
-      .map((one) => (one as HTMLOptionElement).value)
+      .map((one) => one.getAttribute('value'))
 
     /* The whole day first, which is the owner's own shortcut and not a race; then the 24 h of the
        second morning over the 6 h of the first. */
