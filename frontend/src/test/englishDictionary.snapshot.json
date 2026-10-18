@@ -1734,7 +1734,6 @@
   "account": {
     "personalTitle": "Personal details",
     "personalNote": "A change here takes effect at once, without approval. The picture and the text about yourself go to a moderator to be looked over, and there are separate sections for them below.",
-    "notShown": "The portal is not showing you what is entered here at the moment. If you leave it empty, nothing changes; what you enter becomes the new value.",
     "save": "Save",
     "changeFirst": "Change something so that you have something to save.",
     "saved": "Saved.",

@@ -6,6 +6,7 @@ import type { Competitor } from '../../data/types'
 import { at, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { answeredWith, refused, serverThat, type Asked } from '../../test/serverAnswers'
+import { myOwnRecordFromMe } from '../../test/theAnswer'
 import { ruleFor } from '../../test/stylesheet'
 import { setupUser } from '../../test/user'
 import en from '../../i18n/en.json'
@@ -76,6 +77,118 @@ async function personalPanel(): Promise<HTMLElement> {
   return panelOf(sr.account.personalTitle)
 }
 
+/**
+ * A BOX THAT ALREADY HOLDS SOMETHING IS TYPED OVER, NOT TYPED INTO.
+ *
+ * <p>The postal address and the telephone open holding what the server holds (18.10.2026), so
+ * `user.type` appends to it. A case that means to change the telephone replaces it, as a member
+ * does by selecting the box and typing.
+ */
+async function typeOver(
+  user: ReturnType<typeof setupUser>,
+  box: HTMLElement,
+  text: string,
+): Promise<void> {
+  await user.clear(box)
+  await user.type(box, text)
+}
+
+function theBox(panel: HTMLElement, label: RegExp): HTMLInputElement {
+  return inputElement(within(panel).getByRole('textbox', { name: label }))
+}
+
+function jsonResponse(body: object, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  })
+}
+
+/** A field of a body that came off the wire, as text, or nothing where it was not named. */
+function textIn(body: unknown, name: string): string | undefined {
+  const said: unknown = typeof body === 'object' && body !== null ? Reflect.get(body, name) : undefined
+
+  return typeof said === 'string' ? said : undefined
+}
+
+/**
+ * `GET /api/me` AS THE SERVER ANSWERS THE MEMBER THESE CASES SIGN IN AS, with the two private
+ * columns he holds.
+ *
+ * <p>The telephone is left out for a member who has none, which is how the server says it
+ * (`MeApi.MyOwnRecord`, `@JsonInclude(NON_NULL)`). Everything else is the sample's own, with the
+ * member's name and category over it, so the session and the panel agree about who is reading.
+ */
+function hisRecord(held: { address: string; phone?: string }): Record<string, unknown> {
+  const withoutTheTelephone = Object.fromEntries(
+    Object.entries(myOwnRecordFromMe).filter(([name]) => name !== 'phone'),
+  )
+
+  return {
+    ...withoutTheTelephone,
+    memberNumber: ME.memberNumber,
+    firstName: ME.firstName,
+    lastName: ME.lastName,
+    gender: ME.gender,
+    city: ME.city,
+    ageBand: ME.ageBand,
+    firstSeason2027: ME.firstSeason2027,
+    address: held.address,
+    ...(held.phone === undefined ? {} : { phone: held.phone }),
+  }
+}
+
+/**
+ * A SERVER THAT KEEPS WHAT IT IS TOLD, which is the thing the fault of 18.10.2026 could not be
+ * seen without: one that answers a `PUT` and a later `GET` out of the same place.
+ *
+ * <p>It stores what it is sent the way the route does - stripped of the spaces around it, and a
+ * blank telephone as none (V8: "no phone is NULL") - so what it answers afterwards is NOT what the
+ * screen typed. A screen that drew the box from its own memory of what it had just sent would show
+ * the typed spaces; one that draws it from the server shows the stripped value, and the case tells
+ * them apart on that.
+ *
+ * @param opening what the server holds before the visit
+ * @returns what was asked, how to put the disc reader back, and what is held now
+ */
+function aServerThatKeepsWhatItIsTold(opening: { address: string; phone?: string }): {
+  asked: Asked[]
+  stop: () => void
+  held: () => { address: string; phone?: string }
+} {
+  const held = { ...opening }
+
+  const { asked, stop } = serverThat((path, init) => {
+    if (path !== '/api/me') {
+      return null
+    }
+
+    if (init?.method === 'PUT') {
+      const body: unknown = JSON.parse(String(init.body))
+      const address = textIn(body, 'address')
+      const phone = textIn(body, 'phone')
+
+      if (address !== undefined) {
+        held.address = address.trim()
+      }
+
+      if (phone !== undefined) {
+        if (phone.trim() === '') {
+          delete held.phone
+        } else {
+          held.phone = phone.trim()
+        }
+      }
+
+      return jsonResponse({ address: held.address })
+    }
+
+    return jsonResponse({ role: 'competitor', account: 1, member: hisRecord(held), mailLanguage: 'sr' })
+  })
+
+  return { asked, stop, held: () => ({ ...held }) }
+}
+
 describe('a member’s own data', () => {
   let stop = (): void => {}
 
@@ -94,17 +207,37 @@ describe('a member’s own data', () => {
   })
 
   /**
-   * <p><b>The two boxes nothing serves open EMPTY and say so.</b> An empty box with no
-   * sentence beside it reads as „you have given none", which is a different and untrue thing.
+   * <p><b>The two boxes open holding what the server holds</b>, and this is the half of the fault
+   * of 18.10.2026 that is about OPENING. The owner saved a postal address and a telephone, refreshed,
+   * and found both boxes empty, because nothing served them and the screen drew an empty box with a
+   * sentence beside it. The values come from a server that holds a pair of its own, which the
+   * sample and the other members do not carry, so a box drawn from anything but the server's own
+   * answer holds a different string.
    */
-  it('says plainly that it cannot show the address and the telephone it holds', async () => {
+  it('opens with the postal address and the telephone the server holds', async () => {
+    ;({ stop } = aServerThatKeepsWhatItIsTold({
+      address: 'Vojvode Stepa 5',
+      phone: '+381 11 765 432',
+    }))
+
     renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
-    expect(within(panel).getByRole('textbox', { name: /Adresa za slanje/ })).toHaveValue('')
-    expect(within(panel).getByRole('textbox', { name: /Telefon/ })).toHaveValue('')
-    expect(within(panel).getAllByText(sr.account.notShown)).toHaveLength(2)
+    expect(theBox(panel, /Adresa za slanje/)).toHaveValue('Vojvode Stepa 5')
+    expect(theBox(panel, /Telefon/)).toHaveValue('+381 11 765 432')
+  })
+
+  /** The other state of the telephone: a member who has none is handed no key, and his box is empty. */
+  it('opens with an empty telephone for a member who has none, and his address beside it', async () => {
+    ;({ stop } = aServerThatKeepsWhatItIsTold({ address: 'Vojvode Stepa 5' }))
+
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await personalPanel()
+
+    expect(theBox(panel, /Telefon/)).toHaveValue('')
+    expect(theBox(panel, /Adresa za slanje/)).toHaveValue('Vojvode Stepa 5')
   })
 
   it('has nothing to save until something is changed', async () => {
@@ -138,7 +271,7 @@ describe('a member’s own data', () => {
 
     const panel = await personalPanel()
 
-    await user.type(within(panel).getByRole('textbox', { name: /Telefon/ }), '065 1234')
+    await typeOver(user, within(panel).getByRole('textbox', { name: /Telefon/ }), '065 1234')
     await user.click(within(panel).getByRole('button', { name: sr.account.save }))
 
     expect(await within(panel).findByText(sr.account.saved)).toBeInTheDocument()
@@ -199,7 +332,7 @@ describe('a member’s own data', () => {
 
     const panel = await personalPanel()
 
-    await user.type(within(panel).getByRole('textbox', { name: /Telefon/ }), '065')
+    await typeOver(user, within(panel).getByRole('textbox', { name: /Telefon/ }), '065')
     const save = within(panel).getByRole('button', { name: sr.account.save })
 
     await user.click(save)
@@ -223,7 +356,7 @@ describe('a member’s own data', () => {
 
     const panel = await personalPanel()
 
-    await user.type(within(panel).getByRole('textbox', { name: /Telefon/ }), '065')
+    await typeOver(user, within(panel).getByRole('textbox', { name: /Telefon/ }), '065')
     await user.click(within(panel).getByRole('button', { name: sr.account.save }))
 
     expect(await within(panel).findByText(/500/)).toBeInTheDocument()
@@ -244,7 +377,7 @@ describe('a member’s own data', () => {
 
     const panel = await personalPanel()
 
-    await user.type(within(panel).getByRole('textbox', { name: /Telefon/ }), '065')
+    await typeOver(user, within(panel).getByRole('textbox', { name: /Telefon/ }), '065')
     await user.click(within(panel).getByRole('button', { name: sr.account.save }))
     await within(panel).findByText(sr.account.saved)
 
@@ -254,28 +387,112 @@ describe('a member’s own data', () => {
   })
 
   /**
-   * <p>After a save the portal DOES know what is in the box, because it put it there, so the
-   * sentence about not knowing goes - and pressing Save again sends nothing.
+   * <p>What the server holds after a save is what the screen compares with next, so pressing Save
+   * again sends nothing: the button is told off. Without this, a screen that went on comparing with
+   * what the box held when it OPENED would offer the same change again after every save.
    */
-  it('stops saying it cannot see a field once it has written one', async () => {
+  it('has nothing left to save once it has been saved', async () => {
     const user = setupUser()
-    ;({ stop } = serverThat((path, init) =>
-      path === '/api/me' && init?.method === 'PUT' ? answeredWith(200) : null,
-    ))
+    ;({ stop } = aServerThatKeepsWhatItIsTold({ address: 'Vojvode Stepa 5' }))
 
     renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
-    await user.type(within(panel).getByRole('textbox', { name: /Telefon/ }), '065 1234')
+    await typeOver(user, theBox(panel, /Telefon/), '065 1234')
     await user.click(within(panel).getByRole('button', { name: sr.account.save }))
     await within(panel).findByText(sr.account.saved)
 
-    expect(within(panel).getAllByText(sr.account.notShown)).toHaveLength(1)
     expect(within(panel).getByRole('button', { name: sr.account.save })).toHaveAttribute(
       'aria-disabled',
       'true',
     )
+  })
+
+  /**
+   * THE ROUND TRIP, WHICH IS THE CASE THE FAULT OF 18.10.2026 WAS INVISIBLE WITHOUT.
+   *
+   * <p>The owner typed a postal address and a telephone on QA, pressed Save, read „Sačuvano",
+   * refreshed the page and found both boxes empty. Every case above asks what was SENT and what was
+   * SAID; none asked what the next visit is drawn from. The screen is torn down and drawn again
+   * (`cleanup`, which is a refresh: nothing of the old screen survives but the server), and the boxes
+   * must hold what the SERVER kept.
+   *
+   * <p><b>Two sources of one value, and the case separates them.</b> The box could be filled from the
+   * answer the server gives on the second visit, or from anything the screen remembered of the first
+   * one. The server keeps the value stripped of the spaces the member typed around it, so the two
+   * are different strings and only one of them is in the box when the screen is drawn from the
+   * server. The telephone and the address are asked together, because a screen that read one of the
+   * two from the right place and the other from nowhere would pass either alone.
+   */
+  it('shows after a refresh what the server kept, and not what was typed', async () => {
+    const user = setupUser()
+    const kept = aServerThatKeepsWhatItIsTold({ address: 'Vojvode Stepa 5' })
+    stop = kept.stop
+
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await personalPanel()
+
+    await typeOver(user, theBox(panel, /Adresa za slanje/), '  Bulevar oslobođenja 12  ')
+    await typeOver(user, theBox(panel, /Telefon/), '  065 1234  ')
+    await user.click(within(panel).getByRole('button', { name: sr.account.save }))
+    await within(panel).findByText(sr.account.saved)
+
+    expect(kept.held(), 'the server was not told what the member typed').toEqual({
+      address: 'Bulevar oslobođenja 12',
+      phone: '065 1234',
+    })
+
+    cleanup()
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const again = await personalPanel()
+
+    expect(theBox(again, /Adresa za slanje/)).toHaveValue('Bulevar oslobođenja 12')
+    expect(theBox(again, /Telefon/)).toHaveValue('065 1234')
+  })
+
+  /**
+   * AND THE OTHER DIRECTION OF THE SAME ROUND TRIP: A TELEPHONE REMOVED STAYS REMOVED.
+   *
+   * <p>Emptying the box is how a member removes the number, and it must reach the server as the
+   * blank the route reads as a removal. The case above is satisfied by a screen that only ever
+   * sends non-empty values; this one is not, and the address beside it must not move.
+   */
+  it('shows no telephone after a refresh once he has removed it, and the address still stands', async () => {
+    const user = setupUser()
+    const kept = aServerThatKeepsWhatItIsTold({
+      address: 'Vojvode Stepa 5',
+      phone: '+381 11 765 432',
+    })
+    stop = kept.stop
+
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await personalPanel()
+
+    await user.clear(theBox(panel, /Telefon/))
+    await user.click(within(panel).getByRole('button', { name: sr.account.save }))
+    await within(panel).findByText(sr.account.saved)
+
+    const sent = must(
+      kept.asked.find((one) => one.path === '/api/me' && one.init?.method === 'PUT'),
+      'the screen asked the server to remove the telephone',
+    )
+
+    expect(JSON.parse(String(sent.init?.body)), 'the request named something besides the telephone').toEqual({
+      phone: '',
+    })
+    expect(kept.held()).toEqual({ address: 'Vojvode Stepa 5' })
+
+    cleanup()
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const again = await personalPanel()
+
+    expect(theBox(again, /Telefon/)).toHaveValue('')
+    expect(theBox(again, /Adresa za slanje/)).toHaveValue('Vojvode Stepa 5')
   })
 })
 
@@ -334,15 +551,6 @@ function saysOptional(box: HTMLInputElement): boolean {
   return (labelOf(box).textContent ?? '').includes(sr.form.optional)
 }
 
-/** The boxes the screen says it cannot see what stands in, read off the sentence that says so. */
-function unseen(panel: HTMLElement, boxes: { name: Sent; box: HTMLInputElement }[]): Sent[] {
-  const notes = within(panel).queryAllByText(sr.account.notShown)
-
-  return boxes
-    .filter(({ box }) => notes.some((note) => note.id === box.getAttribute('aria-describedby')))
-    .map(({ name }) => name)
-}
-
 describe('which boxes of a member’s own data are asked for', () => {
   let stop = (): void => {}
 
@@ -351,28 +559,21 @@ describe('which boxes of a member’s own data are asked for', () => {
   })
 
   /**
-   * A BOX IS ASKED FOR WHEN THE SERVER WILL NOT TAKE IT EMPTY AND THE PORTAL KNOWS WHAT IT HOLDS.
+   * A BOX IS ASKED FOR WHEN THE SERVER WILL NOT TAKE IT EMPTY.
    *
-   * <p>PENDING 217.5. The address carried the star and `aria-required` while the sentence beside
-   * it said „Ako ostaviš prazno, ništa se ne menja": a field marked as obligatory over a form that
-   * is sent perfectly well without it, which is what a screen reader says out loud to the member
-   * who cannot see the sentence. The star and the attribute read a hand-written list („every box
-   * but the telephone") while the sentence read a different fact, whether the portal can see what
-   * stands there; two facts, and the screen answered for one of them.
-   *
-   * <p><b>The three things a box says are asked of the DOM and held to two independent sources.</b>
-   * What the server takes empty comes off the Java (`neverEmptiedByTheServer`), and what the portal
-   * cannot see comes off the sentence on the screen. The star, `aria-required` and the word
-   * „neobavezno" are all read, because the first two are one decision and neither works alone
-   * (`forms/AskedLabel.tsx`), and the third is the label saying the opposite for the same box.
+   * <p>PENDING 217.5 asked for it only where the portal could also see what the server held, because
+   * an address it could not see was a box a member could leave alone. It sees all four since
+   * 18.10.2026, so the server's own list is the whole answer and the second half is gone. What the
+   * server takes empty comes off the Java (`neverEmptiedByTheServer`), and the three things a box says
+   * about itself - the star, `aria-required` and the word „neobavezno" - are all read, because the
+   * first two are one decision and neither works alone (`forms/AskedLabel.tsx`), and the third is the
+   * label saying the opposite for the same box.
    */
   function expectEachBoxAsked(panel: HTMLElement): void {
-    const boxes = personalBoxes(panel)
     const neverEmptied = neverEmptiedByTheServer()
-    const cannotSee = unseen(panel, boxes)
 
-    for (const { name, box } of boxes) {
-      const asked = neverEmptied.includes(name) && !cannotSee.includes(name)
+    for (const { name, box } of personalBoxes(panel)) {
+      const asked = neverEmptied.includes(name)
 
       expect(box.getAttribute('aria-required'), `aria-required on ${name}`).toBe(asked ? 'true' : null)
       expect(hasTheStar(box), `the star beside ${name}`).toBe(asked)
@@ -380,83 +581,61 @@ describe('which boxes of a member’s own data are asked for', () => {
     }
   }
 
-  it('does not ask for the address while the portal cannot see what the server holds there', async () => {
+  it('asks for the address and not for the telephone, as the server takes them', async () => {
+    ;({ stop } = aServerThatKeepsWhatItIsTold({ address: 'Vojvode Stepa 5' }))
+
     renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
-    const boxes = personalBoxes(panel)
     const neverEmptied = neverEmptiedByTheServer()
-    const cannotSee = unseen(panel, boxes)
 
-    /* **THE TWO SOURCES ARE PULLED APART BEFORE ANYTHING IS ASKED OF THEM.** A box that is both
-       „never taken empty" and „cannot be seen" is the whole case: without one, „asked for" and
-       „seen" are the same fact and the loop below is satisfied by either reading. And one that
-       cannot be seen and may be emptied (the telephone) is the other half, so „unseen" cannot pass
-       for „optional". */
+    /* **THE TWO SOURCES ARE PULLED APART BEFORE ANYTHING IS ASKED OF THEM.** The telephone is empty
+       here and the address is not, so „asked for" and „holds something" are two different facts and
+       the loop below cannot be satisfied by reading either one: a box asked for because it is full
+       would star the address and miss the name, and one asked for because it is empty would star the
+       telephone. */
     expect(neverEmptied, 'the Java list names nothing, so this measures nothing').not.toEqual([])
-    expect(cannotSee.filter((name) => neverEmptied.includes(name))).not.toEqual([])
-    expect(cannotSee.filter((name) => !neverEmptied.includes(name))).not.toEqual([])
+    expect(neverEmptied).toContain('address')
+    expect(neverEmptied).not.toContain('phone')
+    expect(theBox(panel, /Telefon/)).toHaveValue('')
 
     expectEachBoxAsked(panel)
   })
 
   /**
-   * <p><b>Typing is not knowing.</b> Something in the address box does not tell the portal what the
-   * server holds there, so the sentence that says it cannot see stays until a save lands, and the box
-   * stays one that may be left alone. Two sources of „is there something in the box": what was typed
-   * and what the portal knows. A star that followed the first would come and go with every keystroke
-   * over a sentence that said the opposite the whole time.
+   * <p><b>The same answer with the telephone FULL</b>, so a box starred because it is empty is told
+   * apart from one starred because the server takes no empty one: the telephone holds a number here
+   * and is still not asked for, and the address is.
    */
-  it('does not start asking for the address because something was typed into it', async () => {
-    const user = setupUser()
+  it('still does not ask for the telephone when it holds a number', async () => {
+    ;({ stop } = aServerThatKeepsWhatItIsTold({
+      address: 'Vojvode Stepa 5',
+      phone: '+381 11 765 432',
+    }))
 
     renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
-    const address = must(
-      personalBoxes(panel).find(({ name }) => name === 'address'),
-      'the address box',
-    )
 
-    await user.type(address.box, 'Ulica 1')
-
-    /* Still unseen, and that is the fixture's own fact, asked rather than assumed. */
-    expect(unseen(panel, personalBoxes(panel))).toEqual(['address', 'phone'])
+    expect(theBox(panel, /Telefon/)).toHaveValue('+381 11 765 432')
     expectEachBoxAsked(panel)
   })
 
   /**
-   * <p><b>The other state of the same axis, and the one that keeps „not asked" from being
-   * hard-wired to the address.</b> Once the portal has written a box it knows what stands there,
-   * and the server takes no empty address, so the star comes back; the telephone does not take it
-   * even then, because it is known and still optional.
+   * <p><b>Typing is not what decides it.</b> Emptying the address does not stop it being asked for,
+   * and typing a telephone does not start it: the star follows the server's list and not the box.
    */
-  it('asks for the address once the portal has written one, and still not for the telephone', async () => {
+  it('does not change what it asks for because of what is typed', async () => {
     const user = setupUser()
-    ;({ stop } = serverThat((path, init) =>
-      path === '/api/me' && init?.method === 'PUT' ? answeredWith(200) : null,
-    ))
+    ;({ stop } = aServerThatKeepsWhatItIsTold({ address: 'Vojvode Stepa 5' }))
 
     renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
-    const typed: Record<Sent, string> = {
-      firstName: 'x',
-      lastName: 'x',
-      address: 'Ulica 1',
-      phone: '065 1234',
-    }
 
-    for (const { name, box } of personalBoxes(panel)) {
-      await user.type(box, typed[name])
-    }
+    await user.clear(theBox(panel, /Adresa za slanje/))
+    await user.type(theBox(panel, /Telefon/), '065 1234')
 
-    await user.click(within(panel).getByRole('button', { name: sr.account.save }))
-    await within(panel).findByText(sr.account.saved)
-
-    /* Every box is seen now, which is the fixture's own fact and is asked rather than assumed: a
-       case that went on holding a box unseen would be measuring the state above again. */
-    expect(unseen(panel, personalBoxes(panel))).toEqual([])
     expectEachBoxAsked(panel)
   })
 })

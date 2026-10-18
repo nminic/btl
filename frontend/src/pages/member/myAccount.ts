@@ -108,20 +108,20 @@ export function waitingIn(body: unknown): number | null {
 }
 
 /**
- * A FIELD OF THE MEMBER'S OWN FORM, AND WHETHER THE PORTAL KNOWS WHAT IS IN IT TODAY.
+ * WHAT THE SERVER HOLDS IN EACH FIELD OF THE MEMBER'S OWN FORM, AS OF THE LAST TIME THE PORTAL
+ * HEARD IT.
  *
- * <p>{@code standing} is `null` where the portal <b>cannot say</b> what the server holds,
- * which is not the same as an empty box and is the whole reason this type has three states
- * rather than two. Measured on 24.09.2026 and written here rather than implied:
- * {@code GET /api/me} answers a role, an account and the member's own record - eight facts
- * about his membership, and since 10.10.2026 the twelve his own page is drawn from
- * (`MeApi.MyOwnRecord`) - and {@code /api/competitors} answers the PUBLIC record, which
- * carries a name and a town and by ADL A8 may carry nothing else. Neither carries the
- * member's postal address or his telephone, so a box for one of those opens knowing
- * nothing, and the screen says so instead of drawing an empty box that reads as „you have
- * none".
+ * <p><b>There is no "unknown" any more, and that is the correction of 18.10.2026.</b> This type
+ * had a third state until then, `null` for "the portal cannot say what the server holds", because
+ * nothing served the postal address and the telephone (measured 24.09.2026: {@code GET /api/me}
+ * answered a role, an account and a record that carried neither, and {@code /api/competitors}
+ * answers the PUBLIC record). The boxes opened empty and said so beside themselves. The owner
+ * saved both on QA, was told so, refreshed, and found them empty again: the screen was telling
+ * the truth about its own ignorance, and the ignorance was the fault. {@code MeApi.MyOwnRecord}
+ * carries both now, so the portal knows what stands in every box and an empty box means what it
+ * says: for the telephone, "I have none".
  */
-export type Standing = Record<Sent, string | null>
+export type Standing = Record<Sent, string>
 
 export type Typed = Record<Sent, string>
 
@@ -153,10 +153,11 @@ export type Sent = (typeof WHAT_THIS_SCREEN_SENDS)[number]
  * `myAccountScreen.test.tsx`, which reads it off the Java and compares it with what the screen
  * asks for, so a box taken off it on either side alone is a red gate on the day it is written.
  *
- * <p><b>A box is asked for where it is on this list AND the portal knows what the server holds
- * in it</b> (`PersonalData.tsx`, PENDING 217.5). The second half is why this is a floor and not
- * the answer: an address the portal cannot see is a box a member may leave alone, because an
- * empty one is sent as nothing (`whatChanged`), and the screen says exactly that beside it.
+ * <p><b>A box is asked for where it is on this list</b> (`PersonalData.tsx`). Until 18.10.2026 it
+ * was asked for only where it was on this list AND the portal knew what the server held in it
+ * (PENDING 217.5), because an address the portal could not see was a box a member could leave
+ * alone. The portal sees all four now, so the second half has nothing left to say and the list is
+ * the answer.
  */
 export const NEVER_EMPTIED: readonly Sent[] = ['firstName', 'lastName', 'address']
 
@@ -177,19 +178,14 @@ export const AS_LONG_AS_THE_FORM_ALLOWS: Record<Sent, number> = {
  * make every save a rewrite of every column, and a member who came here to correct a
  * telephone would have his name written again by a box that happened to be on the screen.
  *
- * <p><b>The two knowledge states are answered differently on purpose, and this is the
- * measured part.</b>
- *
- * <ul>
- * <li><b>A field the portal can see today</b> (a name) travels when what is typed differs
- * from what stands. Unchanged, it is left out, so pressing Save twice sends nothing the
- * second time.</li>
- * <li><b>A field the portal cannot see</b> (an address, a telephone) has nothing to differ
- * FROM. It travels when something was typed, and never when the box is empty - because an
- * empty box here means „I do not know what is there and I am not changing it", and sending
- * an empty string would ask the server to CLEAR a column the form requires, which is its
- * own refusal ({@code aFieldIsBlank}).</li>
- * </ul>
+ * <p><b>A field travels when what is typed differs from what stands, and only then.</b>
+ * Unchanged, it is left out, so pressing Save twice sends nothing the second time. That holds for
+ * all four boxes since 18.10.2026, when the portal learned what the server holds in the address
+ * and the telephone: until then those two had "nothing to differ FROM" and travelled whenever
+ * something was typed, and a box left empty meant "I do not know what is there". An empty
+ * box now means what it says, so a telephone emptied on purpose is a change - it travels as the
+ * empty string, which the route reads as a removal (V8) - and an address emptied on purpose
+ * travels too and is refused by name, which is the server's to say.
  *
  * <p><b>What is deliberately NOT judged here:</b> whether a name emptied on purpose may be
  * emptied. It may not - {@code competitor.first_name} is NOT NULL - and the server says so
@@ -204,7 +200,7 @@ export const AS_LONG_AS_THE_FORM_ALLOWS: Record<Sent, number> = {
  * compiler demand a value for EVERY field this screen sends, so a fifth one cannot be added
  * to the list and quietly left out of the reading.
  *
- * @param standing what the server holds for each field, `null` where nothing serves it
+ * @param standing what the server holds for each field
  * @param typed    what is in each box now
  * @return only what changed, which is empty when nothing did
  */
@@ -212,20 +208,9 @@ export function whatChanged(standing: Standing, typed: Typed): Partial<Record<Se
   const changed: Partial<Record<Sent, string>> = {}
 
   for (const name of WHAT_THIS_SCREEN_SENDS) {
-    const held = standing[name]
     const written = typed[name].trim()
 
-    /* The portal knows nothing about this one, so „changed" can only mean „something was
-       typed". */
-    if (held === null) {
-      if (written !== '') {
-        changed[name] = written
-      }
-
-      continue
-    }
-
-    if (written !== held.trim()) {
+    if (written !== standing[name].trim()) {
       changed[name] = written
     }
   }

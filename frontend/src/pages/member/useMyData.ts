@@ -11,7 +11,7 @@ import { whatTheServerSaysOfMyData, type MyData } from '../../session/theServer'
  * server could not be reached, or answered nobody, or answered a record the portal cannot
  * believe. The screen says the same thing for all of them, and so does this.
  */
-type Heard = { asked: number; data: MyData | null }
+type Heard = { asked: number | string; data: MyData | null }
 
 /**
  * THE DATA A MEMBER'S OWN SETTINGS SCREEN IS DRAWN FROM WHEN THE PUBLIC LIST DOES NOT CARRY HIM
@@ -40,9 +40,11 @@ type Heard = { asked: number; data: MyData | null }
  * <p>The read is dropped, not cached: what is drawn is what the server said a moment ago, and the
  * one screen that uses it does not outlive the visit that asked.
  *
- * @param asked the account of the reader, which is whose data this is
+ * @param asked whose data this is: the account of a reader who has no number, and the number of a
+ *              member. Only what the answer is held against - the cookie decides whose record comes
+ *              back - so the two kinds of key never meet inside one visit's hook
  */
-export function useMyData(asked: number): ResourceState<MyData> {
+export function useMyData(asked: number | string): ResourceState<MyData> {
   const [heard, setHeard] = useState<Heard | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [reading, setReading] = useState(false)

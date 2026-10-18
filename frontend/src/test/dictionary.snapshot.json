@@ -1734,7 +1734,6 @@
   "account": {
     "personalTitle": "Lični podaci",
     "personalNote": "Izmena ovde stupa odmah, bez odobrenja. Slika i tekst o sebi idu moderatoru na pregled i za njih stoje posebni odeljci ispod.",
-    "notShown": "Portal ti trenutno ne prikazuje šta je ovde upisano. Ako ostaviš prazno, ništa se ne menja; ono što upišeš postaje nova vrednost.",
     "save": "Sačuvaj",
     "changeFirst": "Izmeni nešto da bi imao šta da sačuvaš.",
     "saved": "Sačuvano.",

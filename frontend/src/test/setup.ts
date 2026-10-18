@@ -210,7 +210,19 @@ function whatMeAnswers(): Response {
        the cookie naming nobody, answered 401 above. */
     ...(mine === undefined
       ? { member: { memberNumber: whoTheCookieNames.memberNumber } }
-      : { member: { ...asAnswered(mine, myOwnRecordFromMe), referredCount: broughtIn(members, mine) } }),
+      : {
+          member: {
+            ...asAnswered(mine, myOwnRecordFromMe),
+            referredCount: broughtIn(members, mine),
+            /* THE TWO COLUMNS THE PUBLIC FILE DOES NOT HAVE, BY DECISION (PDL „Uvek privatno: mejl,
+               telefon i adresa"), so `asAnswered` cannot copy them off the row. They are the sample's
+               own, the same for every member of the file, which is the arrangement
+               `referredCount` has just above for the reason that one has: a case about a pair of
+               values puts its own server in front. */
+            address: myOwnRecordFromMe.address,
+            phone: myOwnRecordFromMe.phone,
+          },
+        }),
   }
 
   return new Response(JSON.stringify(asAnswered(answered, whoIAm)), {

@@ -416,10 +416,17 @@ export async function whatTheServerSaysOfMyProfile(): Promise<Competitor | null>
 }
 
 /**
- * WHAT A MEMBER'S OWN DATA SCREEN IS DRAWN FROM: who he is, in the six facts it shows.
+ * WHAT A MEMBER'S OWN DATA SCREEN IS DRAWN FROM: who he is, in the six facts it shows and the two
+ * he can change.
  *
  * <p>His first and last name, his gender, his town, the band he races in and whether he runs in
- * the beginners' category - and nothing else, in particular **no member number**. That is what
+ * the beginners' category, and **since 18.10.2026 his postal address and his telephone**
+ * (`MeApi.MyOwnRecord.address`, `.phone`): the owner saved both on QA, was told so, refreshed, and
+ * found both boxes empty, because nothing served them. They are the one place the portal ever
+ * reads them back, and they are his alone; the public record (`Competitor`) still carries neither,
+ * which is why they are added to THIS type and not to the one it is picked from.
+ *
+ * <p>Nothing else, in particular **no member number**. That is what
  * parts it from {@link Competitor}: somebody who registered and has not paid has no number, so
  * there is no profile to draw (the profile is headed by a number and stands on a page nobody may
  * open for him yet), and he still has a name to correct and a town and a category to read
@@ -432,16 +439,25 @@ export async function whatTheServerSaysOfMyProfile(): Promise<Competitor | null>
 export type MyData = Pick<
   Competitor,
   'firstName' | 'lastName' | 'gender' | 'city' | 'ageBand' | 'firstSeason2027'
->
+> & {
+  /** Where a shirt and a medal are sent. Never empty: the server takes no blank one. */
+  address: string
+  /**
+   * His telephone, and the EMPTY STRING for a member who has none. The server leaves the key out
+   * for him (`@JsonInclude(NON_NULL)`, V8: "no phone is NULL"), and the box a member types into
+   * has no other way to say "none" than to be empty.
+   */
+  phone: string
+}
 
 /**
- * THE SAME RECORD AS {@link whatTheServerSaysOfMyProfile}, read for the six facts above, or
+ * THE SAME RECORD AS {@link whatTheServerSaysOfMyProfile}, read for the eight facts above, or
  * nothing.
  *
  * <p>Its own reader for the reason that one has: a fault in it must never sign him out, and it
- * shares the request and nothing it returned ({@link whatTheServerAnswersMe}). The six are read
- * by the very functions the profile is read with (`dataIn`), so the two cannot disagree about what
- * a name is or what makes a record unreadable.
+ * shares the request and nothing it returned ({@link whatTheServerAnswersMe}). The first six are
+ * read by the very functions the profile is read with (`dataIn`), so the two cannot disagree about
+ * what a name is or what makes a record unreadable.
  */
 export async function whatTheServerSaysOfMyData(): Promise<MyData | null> {
   const body = await whatTheServerAnswersMe()
@@ -695,13 +711,15 @@ function profileIn(mine: object | null): Competitor | null {
 }
 
 /**
- * THE SIX FACTS OF {@link MyData} out of the caller's record, or nothing when any of them is
+ * THE EIGHT FACTS OF {@link MyData} out of the caller's record, or nothing when any of them is
  * missing or of a kind the portal does not know.
  *
- * <p>The conditions are the profile's own for these six - a name that says nothing, a gender
+ * <p>The conditions are the profile's own for the first six - a name that says nothing, a gender
  * that is not one of the two words, a band the portal does not know, a flag that merely reads as
  * one - and they end the whole reading, because a screen showing a member his own category
- * made up is a lie about him to himself (`profileIn` says it for the profile).
+ * made up is a lie about him to himself (`profileIn` says it for the profile). The address is
+ * text that says something, like a name; the telephone is text or nothing at all, and nothing
+ * at all is a member who has none.
  */
 function dataIn(mine: object | null): MyData | null {
   if (mine === null) {
@@ -714,6 +732,8 @@ function dataIn(mine: object | null): MyData | null {
   const city = nameIn(mine, 'city')
   const ageBand = ageBandIn(mine)
   const firstSeason2027 = flagIn(mine, 'firstSeason2027')
+  const address = nameIn(mine, 'address')
+  const phone = phoneIn(mine)
 
   if (
     firstName === null ||
@@ -721,12 +741,14 @@ function dataIn(mine: object | null): MyData | null {
     gender === null ||
     city === null ||
     ageBand === null ||
-    firstSeason2027 === null
+    firstSeason2027 === null ||
+    address === null ||
+    phone === null
   ) {
     return null
   }
 
-  return { firstName, lastName, gender, city, ageBand, firstSeason2027 }
+  return { firstName, lastName, gender, city, ageBand, firstSeason2027, address, phone }
 }
 
 /**
@@ -741,11 +763,31 @@ function feeStandsIn(mine: object | null): boolean | null {
   return mine === null ? null : flagIn(mine, 'active')
 }
 
-/** A name or a town: text that says something. A blank one is a server saying nothing. */
-function nameIn(mine: object, name: 'firstName' | 'lastName' | 'city'): string | null {
+/**
+ * A name, a town or a postal address: text that says something. A blank one is a server saying
+ * nothing.
+ */
+function nameIn(mine: object, name: 'firstName' | 'lastName' | 'city' | 'address'): string | null {
   const said: unknown = Reflect.get(mine, name)
 
   return typeof said === 'string' && said.trim() !== '' ? said : null
+}
+
+/**
+ * The telephone: text, or nothing at all for a member who has none.
+ *
+ * <p>The server leaves the key OUT for him (`MeApi.MyOwnRecord.phone`), so absence is read as the
+ * empty box. Anything else that is not text is a server saying something the portal does not know,
+ * and ends the reading like every other fact of the record.
+ */
+function phoneIn(mine: object): string | null {
+  const said: unknown = Reflect.get(mine, 'phone')
+
+  if (said === undefined) {
+    return ''
+  }
+
+  return typeof said === 'string' ? said : null
 }
 
 /** Text that may be empty: what a member has written about himself, when he has written nothing. */
