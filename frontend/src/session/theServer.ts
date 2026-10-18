@@ -669,10 +669,16 @@ function profileIn(mine: object | null): Competitor | null {
     return null
   }
 
-  /* THE SIX THAT A DATA SCREEN IS DRAWN FROM ARE READ BY `dataIn`, and are not read a second
+  /* THE SIX THAT A DATA SCREEN IS DRAWN FROM ARE READ BY `sixFactsIn`, and are not read a second
      time here: two readers of the same name are two answers to „is this a name", and the
-     profile used to be the only one. Its own conditions are exactly what they were. */
-  const data = dataIn(mine)
+     profile used to be the only one. Its own conditions are exactly what they were.
+
+     **AND ONLY THE SIX, which is the point of the split of 18.10.2026.** `dataIn` also reads the
+     postal address and the telephone, which are his alone (`MeApi.MyOwnRecord`) and which a
+     profile neither needs nor may carry: spread into this record they would have travelled to every
+     screen that draws a member, and a profile of a member who has none to read would have gone
+     unreadable. */
+  const data = sixFactsIn(mine)
   const memberNumber = numberIn(mine)
   const country = countryIn(mine)
   const firstSeason = wholeIn(mine, 'firstSeason')
@@ -711,17 +717,17 @@ function profileIn(mine: object | null): Competitor | null {
 }
 
 /**
- * THE EIGHT FACTS OF {@link MyData} out of the caller's record, or nothing when any of them is
- * missing or of a kind the portal does not know.
+ * THE SIX FACTS OF A MEMBER'S RECORD that both his data screen and his profile are drawn from, or
+ * nothing when any of them is missing or of a kind the portal does not know.
  *
- * <p>The conditions are the profile's own for the first six - a name that says nothing, a gender
- * that is not one of the two words, a band the portal does not know, a flag that merely reads as
- * one - and they end the whole reading, because a screen showing a member his own category
- * made up is a lie about him to himself (`profileIn` says it for the profile). The address is
- * text that says something, like a name; the telephone is text or nothing at all, and nothing
- * at all is a member who has none.
+ * <p>The conditions are the profile's own - a name that says nothing, a gender that is not one of
+ * the two words, a band the portal does not know, a flag that merely reads as one - and they end the
+ * whole reading, because a screen showing a member his own category made up is a lie about him to
+ * himself (`profileIn` says it for the profile).
  */
-function dataIn(mine: object | null): MyData | null {
+function sixFactsIn(
+  mine: object | null,
+): Pick<Competitor, 'firstName' | 'lastName' | 'gender' | 'city' | 'ageBand' | 'firstSeason2027'> | null {
   if (mine === null) {
     return null
   }
@@ -732,8 +738,6 @@ function dataIn(mine: object | null): MyData | null {
   const city = nameIn(mine, 'city')
   const ageBand = ageBandIn(mine)
   const firstSeason2027 = flagIn(mine, 'firstSeason2027')
-  const address = nameIn(mine, 'address')
-  const phone = phoneIn(mine)
 
   if (
     firstName === null ||
@@ -741,14 +745,37 @@ function dataIn(mine: object | null): MyData | null {
     gender === null ||
     city === null ||
     ageBand === null ||
-    firstSeason2027 === null ||
-    address === null ||
-    phone === null
+    firstSeason2027 === null
   ) {
     return null
   }
 
-  return { firstName, lastName, gender, city, ageBand, firstSeason2027, address, phone }
+  return { firstName, lastName, gender, city, ageBand, firstSeason2027 }
+}
+
+/**
+ * THE EIGHT FACTS OF {@link MyData} out of the caller's record, or nothing when any of them is
+ * missing or of a kind the portal does not know: the six of {@link sixFactsIn}, and the two that
+ * are his alone.
+ *
+ * <p>The address is text that says something, like a name; the telephone is text or nothing at
+ * all, and nothing at all is a member who has none.
+ */
+function dataIn(mine: object | null): MyData | null {
+  const six = sixFactsIn(mine)
+
+  if (mine === null || six === null) {
+    return null
+  }
+
+  const address = nameIn(mine, 'address')
+  const phone = phoneIn(mine)
+
+  if (address === null || phone === null) {
+    return null
+  }
+
+  return { ...six, address, phone }
 }
 
 /**

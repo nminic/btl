@@ -671,6 +671,11 @@ const HIS_PAGE: Record<string, unknown> = {
   bio: '',
   profileHidden: false,
   birthdayShown: 'none',
+  /* HIS POSTAL ADDRESS, which is his alone (`MeApi.MyOwnRecord`, since 18.10.2026) and is NOT a fact
+     about his PAGE: a profile neither needs it nor may carry it (it is left out of
+     `WHAT_A_PAGE_NEEDS`, and `the page of the caller himself` asks that it is not in the page). The
+     sample has no telephone, which is how the server says a member has none. */
+  address: 'Mihajla Pupina 10',
 }
 
 /** What the answer is when somebody signed in with a member behind the account says this. */
@@ -680,12 +685,13 @@ function aMemberSaying(member: Record<string, unknown>): string {
 
 /**
  * THE FACTS A PAGE CANNOT BE DRAWN WITHOUT, which are the sample's keys less the four that are
- * about his fee and not about his page: the basis he pays on, whether it stands, his referral code
- * and his count.
+ * about his fee and not about his page (the basis he pays on, whether it stands, his referral code
+ * and his count) and the one that is about neither: his postal address, which is his own to read on
+ * his data screen and no part of a profile.
  * Derived from the sample, so a fact added to it tomorrow is measured here on the day it arrives.
  */
 const WHAT_A_PAGE_NEEDS = Object.keys(HIS_PAGE).filter(
-  (key) => !['membershipBasis', 'active', 'referralCode', 'referredCount'].includes(key),
+  (key) => !['membershipBasis', 'active', 'referralCode', 'referredCount', 'address'].includes(key),
 )
 
 /** The three of those that are ALSO who he is, and so are read by the session as well. */
@@ -951,8 +957,12 @@ const A_NEWCOMERS_RECORD: Record<string, unknown> = (() => {
  *  besides them. Derived from the reader's own sample, never from a list of the page. */
 const THE_SIX = ['firstName', 'lastName', 'gender', 'city', 'ageBand', 'firstSeason2027']
 
+/** And the two that are his alone, since 18.10.2026: where a shirt is sent and how he is called. The
+ *  data screen draws them in boxes, and the page does not draw them at all. */
+const THE_TWO_THAT_ARE_HIS_ALONE = ['address', 'phone']
+
 describe('the data of the caller himself', () => {
-  it('is the six facts and no number, for somebody who has registered and has not paid', async () => {
+  it('is the six facts and his address and no number, for somebody who has registered and has not paid', async () => {
     server = serverThat(() => saying(aMemberSaying(A_NEWCOMERS_RECORD)))
 
     expect(await whatTheServerSaysOfMyData()).toEqual({
@@ -962,8 +972,72 @@ describe('the data of the caller himself', () => {
       city: 'Zaječar',
       ageBand: '40-54',
       firstSeason2027: false,
+      address: 'Mihajla Pupina 10',
+      phone: '',
     })
     expect(server.asked.map((one) => one.path)).toEqual(['/api/me'])
+  })
+
+  /* **A MEMBER WITH NO TELEPHONE IS ANSWERED NO KEY AT ALL, AND THE PORTAL READS THAT AS THE EMPTY
+     BOX** (`MeApi.MyOwnRecord.phone`, `@JsonInclude(NON_NULL)`). The case above has none; this one
+     has one, and the two together are what tell „absent" from „whatever the key holds". */
+  it('reads the telephone the answer carries, and an absent one as the empty box', async () => {
+    server = serverThat(() =>
+      saying(aMemberSaying({ ...A_NEWCOMERS_RECORD, phone: '+381 60 123 456' })),
+    )
+
+    expect(await whatTheServerSaysOfMyData()).toMatchObject({ phone: '+381 60 123 456' })
+  })
+
+  /* **AND THE TELEPHONE IS THE ONE FACT OF THE EIGHT THAT MAY BE MISSING, SO ONLY A KEY OF ANOTHER
+     SORT ENDS THE READING.** A server that sent a number, a flag or a null for it is saying something
+     the portal has no box for, and a telephone drawn as the empty box over a number the server
+     holds is the very fault of 18.10.2026 in a new place. */
+  it.each([7, true, null, { digits: '065' }])('does not believe a telephone sent as %j', async (sent) => {
+    server = serverThat(() => saying(aMemberSaying({ ...A_NEWCOMERS_RECORD, phone: sent })))
+
+    expect(await whatTheServerSaysOfMyData()).toBeNull()
+  })
+
+  /* **THE ADDRESS IS NEVER EMPTY AND IS NEVER MISSING**: the column is NOT NULL and V8 refuses a
+     blank one, so an answer without it, or with a blank or a non-text one, is a server saying
+     something the portal cannot draw a box from. */
+  it.each([['missing', undefined], ['blank', '   '], ['a number', 7], ['null', null]])(
+    'does not believe an address that is %s',
+    async (_what, sent) => {
+      const { address: _left, ...without } = A_NEWCOMERS_RECORD
+
+      server = serverThat(() =>
+        saying(aMemberSaying(sent === undefined ? without : { ...without, address: sent })),
+      )
+
+      expect(await whatTheServerSaysOfMyData()).toBeNull()
+    },
+  )
+
+  /* **AND THE PAGE DOES NOT CARRY EITHER, which is the half of the split of 18.10.2026 that a data
+     reader cannot show.** `profileIn` reads the six through the same function the data is read
+     through, and spread into a page the address would have travelled to every screen that draws a
+     member. A member whose record has an address and a telephone is handed a page with neither. */
+  it('keeps the address and the telephone out of the page', async () => {
+    server = serverThat(() =>
+      saying(aMemberSaying({ ...HIS_PAGE, phone: '+381 60 123 456' })),
+    )
+
+    const page = must(await whatTheServerSaysOfMyProfile(), 'the page is readable')
+
+    expect(Object.keys(page)).not.toContain('address')
+    expect(Object.keys(page)).not.toContain('phone')
+  })
+
+  /* **AND THE PAGE DOES NOT NEED THEM**: a record without an address is still a profile, because a
+     profile is not drawn from it. */
+  it('draws a page for a record with no address in it', async () => {
+    const { address: _left, ...without } = HIS_PAGE
+
+    server = serverThat(() => saying(aMemberSaying(without)))
+
+    expect(await whatTheServerSaysOfMyProfile()).not.toBeNull()
   })
 
   /* **THE PROPERTY THE READER EXISTS FOR, asked on its own**: the profile is nothing without a
@@ -978,7 +1052,7 @@ describe('the data of the caller himself', () => {
     server = serverThat(() => saying(aMemberSaying(HIS_PAGE)))
 
     expect(Object.keys(must(await whatTheServerSaysOfMyData(), 'a member has data too')).toSorted()).toEqual(
-      THE_SIX.toSorted(),
+      [...THE_SIX, ...THE_TWO_THAT_ARE_HIS_ALONE].toSorted(),
     )
   })
 
