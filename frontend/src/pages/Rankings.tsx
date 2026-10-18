@@ -297,7 +297,7 @@ function Standing({
                       </span>
                     </NamePlate>
                   </td>
-                  <td>{categoryLabel(categoryOfMember(row.competitor), t)}</td>
+                  <td className="table__category">{categoryLabel(categoryOfMember(row.competitor), t)}</td>
                   <td className="table__hide-phone">{row.races}</td>
                   <td className="table__hide-phone">{formatNumber(row.kilometers, locale, 2)}</td>
                   <td className="table__hide-phone">{formatNumber(row.ascent, locale)}</td>

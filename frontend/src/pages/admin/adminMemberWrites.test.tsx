@@ -221,6 +221,7 @@ describe('the members screen', () => {
        band, with the space (owner, 18.10.2026) and without, so the case does not go quiet the
        day the space is written differently. */
     expect(row.getByText('Početnice')).toBeVisible()
+    expect(row.getByText('Početnice')).toHaveClass('table__category')
     expect(row.queryByText('Ž 25-39')).not.toBeInTheDocument()
     expect(row.queryByText('Ž25-39')).not.toBeInTheDocument()
     expect(row.getByText('Kraljevo')).toBeVisible()

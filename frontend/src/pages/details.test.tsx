@@ -55,12 +55,15 @@ describe('TeamDetail', () => {
 
     expect(column, 'the table has no column of categories').toBeGreaterThan(-1)
 
-    const said = within(table)
+    const cells = within(table)
       .getAllByRole('row')
       .slice(1)
-      .map((row) => must(at(within(row).getAllByRole('cell'), column).textContent, 'text'))
+      .map((row) => at(within(row).getAllByRole('cell'), column))
+    const said = cells.map((one) => must(one.textContent, 'text'))
 
     expect(said.length).toBeGreaterThan(1)
+    /* On one line (`styles/table.css`, `.table__category`): the cell has to carry the class. */
+    expect(cells.filter((one) => !one.classList.contains('table__category'))).toEqual([])
     expect(said.filter((one) => /^(M|Ž) (24-|25-39|40-54|55\+)$/.test(one)).length).toBeGreaterThan(0)
     expect(said.filter((one) => !/^((M|Ž) (24-|25-39|40-54|55\+)|Početnici|Početnice)$/.test(one))).toEqual([])
   })
