@@ -246,17 +246,22 @@ describe('what a decision about a picture names', () => {
         seenPhotoId: 12,
         seenCrop: MIRA_CROP,
       })
-      /* NOTHING NAMED beside the biography, neither a key nor the `WHOLE` that stands in for its
+      /* NO PICTURE NAMED beside the biography, neither a key nor the `WHOLE` that stands in for its
          circle: the route answers 400 to either where the row holds no picture, so a sweep that
-         named them for every card would settle two of the three. */
-      expect(bodyOf(decisionPath('22'))).toEqual({ approved: true, reason: '' })
+         named them for every card would settle two of the three. It names its WORDS instead
+         (`decidingOnTheTextHeRead.test.tsx` holds that side), which the route asks of a text. */
+      expect(bodyOf(decisionPath('22'))).toEqual({
+        approved: true,
+        reason: '',
+        seenText: 'Trčim od malena, najviše volim brdske staze.',
+      })
     } finally {
       confirm.mockRestore()
       stop()
     }
   }, SLOW)
 
-  it('is nothing at all for a card that drew no picture, whichever answer', async () => {
+  it('is no picture at all for a card that drew none, whichever answer, and the words it drew instead', async () => {
     const { asked, stop } = serverThat((path) =>
       path === '/api/verification'
         ? asTheList([aBiography])
@@ -280,6 +285,7 @@ describe('what a decision about a picture names', () => {
       expect(JSON.parse(String(sent?.init?.body))).toEqual({
         approved: false,
         reason: 'Prekratko.',
+        seenText: 'Trčim od malena, najviše volim brdske staze.',
       })
     } finally {
       stop()
@@ -624,16 +630,24 @@ describe('when the route says the picture is not the one the card drew', () => {
     }
   }, SLOW)
 
-  it('leaves the list as it was when the refusal is about a card that drew no picture', async () => {
-    /* THE EXTENT OF WHAT WAS ASKED: a refusal about a biography says what it says over a card that
-       stays where it was, and nothing is read again. Asserted by waiting for the sentence and then
-       for the macrotask a read would have taken, since „no second read" cannot be waited for. */
+  it('leaves the list as it was when the refusal is about a card that drew neither a picture nor a biography', async () => {
+    /* THE EXTENT OF WHAT WAS ASKED: a refusal about a card of the comments says what it says over a
+       card that stays where it was, and nothing is read again. (A biography is read again since
+       18.10.2026, when a decision began to name the words it read: `decidingOnTheTextHeRead.test.tsx`.)
+       Asserted by waiting for the sentence and then for the macrotask a read would have taken, since
+       „no second read" cannot be waited for. */
     let reads = 0
+    const aComment = {
+      ...aBiography,
+      queue: 'comments' as const,
+      kind: '' as const,
+      subject: 'Trka na Ovčaru',
+    }
     const { stop } = serverThat((path) => {
       if (path === '/api/verification') {
         reads += 1
 
-        return asTheList([aBiography])
+        return asTheList([aComment])
       }
 
       return path === decisionPath('22') ? refused(SOMEBODY_ANSWERED_IT_ALREADY, 409) : null
@@ -642,12 +656,12 @@ describe('when the route says the picture is not the one the card drew', () => {
     try {
       const user = setupUser()
 
-      openQueue()
+      renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin')
       await screen.findByRole('list', { name: /Čeka/ })
 
-      await user.click(cardOf('Petar Petrović').getByRole('button', { name: 'Odobri' }))
+      await user.click(cardOf('Trka na Ovčaru').getByRole('button', { name: 'Odobri' }))
 
-      expect(await cardOf('Petar Petrović').findByRole('alert')).toHaveTextContent(
+      expect(await cardOf('Trka na Ovčaru').findByRole('alert')).toHaveTextContent(
         SOMEBODY_ANSWERED_IT_ALREADY,
       )
       await new Promise((resolve) => setTimeout(resolve, 50))

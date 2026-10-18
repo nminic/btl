@@ -293,6 +293,14 @@ class MeApiTest {
 
 	private static final String HIS_TELEPHONE = "+381 60 123 456";
 
+	/**
+	 * THE WORDS OF THE CALLER'S THAT WAIT FOR A MODERATOR, and of nobody else's: another member's
+	 * text waits too, with other words, so "his" is never "the first" and never "any".
+	 */
+	private static final String HIS_WAITING_WORDS = "Ispravljene reci koje cekaju moderatora.";
+
+	private static final String ANOTHERS_WAITING_WORDS = "Tudje reci koje takodje cekaju.";
+
 	/** And the lapsed member's address, so an address answered to him is his and not the caller's. */
 	private static final String THE_LAPSED_MEMBERS_ADDRESS = "Vojvode Stepe 5";
 
@@ -1207,6 +1215,69 @@ class MeApiTest {
 	}
 
 	/**
+	 * THE WORDS HE HAS SENT AND A MODERATOR HAS NOT DECIDED ARE HANDED TO HIM, AS A FIELD OF THEIR OWN.
+	 *
+	 * <p>PDL P11, 18.10.2026: „Dok tekst o sebi čeka odobrenje, član ga vidi u Podešavanjima sa
+	 * oznakom da čeka"; the profile keeps the approved words. So {@code bio} is the biography a
+	 * moderator approved and {@code bioWaiting} is what waits, and the two are different strings here.
+	 * The cases that follow tell the clause apart from its wrong versions: a text that was DECIDED,
+	 * a picture that waits, a row of another tab and another member's text are each a row of the same
+	 * table that must not be his words that wait.
+	 */
+	@Test
+	void theWordsThatWaitAreHandedToHimAndAreNotTheApprovedOnes() throws Exception {
+		JsonNode mine = answerFor(MY_ACCOUNT).path("member");
+
+		assertThat(mine.path("bioWaiting").asString())
+				.as("the words he sent and nobody has decided are not what his own record hands him")
+				.isEqualTo(HIS_WAITING_WORDS);
+		assertThat(mine.path("bio").asString())
+				.as("the words that wait took the place of the approved ones")
+				.isEqualTo(HIS_BIOGRAPHY).isNotEqualTo(HIS_WAITING_WORDS);
+		assertThat(answerFor(HER_ACCOUNT).path("member").path("bioWaiting").asString())
+				.as("somebody else's words that wait are handed to the wrong member")
+				.isEqualTo(ANOTHERS_WAITING_WORDS);
+		assertThat(answerFor(THE_LAPSED_ACCOUNT).path("member").has("bioWaiting"))
+				.as("a member with nothing waiting is handed words that wait")
+				.isFalse();
+
+		for (String email : sessions.keySet()) {
+			if (!email.equals(MY_ACCOUNT)) {
+				assertThat(whole(email))
+						.as("the words he sent left through the door of %s", email)
+						.doesNotContain(HIS_WAITING_WORDS);
+			}
+		}
+	}
+
+	/**
+	 * A TEXT THAT WAS DECIDED, A PICTURE THAT WAITS AND A ROW OF ANOTHER TAB ARE NOT HIS WORDS THAT WAIT.
+	 *
+	 * <p>Each is written for a member who has no text waiting, so the wrong clause (any row of his, any
+	 * waiting row, any row of the tab) answers a value where the right one answers nothing.
+	 */
+	@Test
+	void onlyAWaitingTextIsHisWordsThatWait() throws Exception {
+		long lapsed = competitorIdOf(LAPSED);
+
+		db.sql("insert into verification (queue, competitor_id, subject, body, state, decided_at,"
+						+ " decided_by_name) values ('profiles', ?, 'Nenad Ilic', 'Odlucen tekst.',"
+						+ " 'approved', timestamptz '2026-09-01 10:00:00+00', 'Moderator')")
+				.param(lapsed).update();
+		db.sql("insert into verification (queue, competitor_id, subject, body, photo_id)"
+						+ " values ('profiles', ?, 'Nenad Ilic', 'Slika koja ceka.', ?)")
+				.params(lapsed, aPortrait("ef".repeat(32), "0.1", "0.1", "0.5")).update();
+		db.sql("insert into verification (queue, competitor_id, subject, body)"
+						+ " values ('teams', ?, 'Nenad Ilic', 'Red drugog taba.')")
+				.param(lapsed).update();
+
+		assertThat(answerFor(THE_LAPSED_ACCOUNT).path("member").has("bioWaiting"))
+				.as("a text decided, a picture that waits or a row of another tab was handed back as"
+						+ " the words that wait")
+				.isFalse();
+	}
+
+	/**
 	 * AND A TOWN THAT WAS TYPED ANSWERS ITS OWN NAME, with the keys that belong to a member who
 	 * has no portrait and no team left out altogether.
 	 *
@@ -1395,14 +1466,12 @@ class MeApiTest {
 	 * then the text sits in {@code verification} (ADL A60 makes only the first public). A query that
 	 * read the queue's text, or took it when the member's own was empty, would answer HER words
 	 * nobody has looked at and would answer HIM the wrong ones. <b>Both members have a text waiting
-	 * here</b>: she has written nothing approved and so must be answered the empty text, and he has
-	 * a biography and so must be answered that one.
+	 * here</b>, written by the fixture ({@link #giveTheCallerWhatNoOtherRowHas}): she has written nothing
+	 * approved and so must be answered the empty text, and he has a biography and so must be answered
+	 * that one.
 	 */
 	@Test
 	void aBiographyThatWaitsIsNotHisBiographyAndDoesNotReplaceTheOneHeHas() throws Exception {
-		isWaitingWithText(ABROAD, "Ovo je tekst koji je poslala a koji niko nije odobrio.");
-		isWaitingWithText(ME, "Ovo je tekst koji ceka umesto onog koji je odobren.");
-
 		JsonNode hers = answerFor(HER_ACCOUNT).path("member");
 		JsonNode mine = answerFor(MY_ACCOUNT).path("member");
 
@@ -1652,14 +1721,14 @@ class MeApiTest {
 				.as("one of the names this case excuses is not on this record at all, so the"
 						+ " excuse is for nothing")
 				.containsAll(Set.of("referralCode", "referredCount", "membershipBasis", "active",
-						"address", "phone"));
+						"address", "phone", "bioWaiting"));
 		/* THE PUBLIC LIST CARRIES NEITHER OF THE LAST TWO, and that is a decision and not a gap:
 		   PDL „Uvek privatno: mejl, telefon i adresa". Asked of the record's components so that a
 		   field added to it tomorrow under either name is a red case on the day it is written. */
 		assertThat(theirs)
-				.as("the public list carries a member's postal address or telephone, which is"
-						+ " private (PDL) and is handed to him alone through this route")
-				.doesNotContain("address", "phone");
+				.as("the public list carries a member's postal address, telephone or words that"
+						+ " wait, which are private (PDL) and are handed to him alone through this route")
+				.doesNotContain("address", "phone", "bioWaiting");
 		/* `active` IS THE FOURTH, since 11.10.2026, AND ITS TWIN IS THE ROW ITSELF. The public
 		   list is `where c.active`, so on it the fact is not a field but the presence of the
 		   member (`frontend/src/data/types.ts`: "it is the PRESENCE OF THE ROW"), and a lapsed
@@ -1669,7 +1738,7 @@ class MeApiTest {
 				.as("a fact this record carries has no twin on the public list and is not one of the"
 						+ " four named for it: give it a twin, or name it here with its reason")
 				.containsExactlyInAnyOrder("referralCode", "referredCount", "active", "address",
-						"phone");
+						"phone", "bioWaiting");
 		shared.remove("membershipBasis");
 
 		assertThat(shared)
@@ -1839,6 +1908,11 @@ class MeApiTest {
 						+ " birthday_shown = 'full', birth_date = date '" + HIS_DATE_OF_BIRTH + "',"
 						+ " photo_id = ?, address = ?, phone = ? where member_number = ?")
 				.params(HIS_BIOGRAPHY, portrait, HIS_ADDRESS, HIS_TELEPHONE, ME).update();
+
+		/* HIS WORDS THAT WAIT, and another member's beside them (PDL P11, 18.10.2026). Written by the
+		   statement `MeWriteApi` queues a text with, so the fixture is the state the portal writes. */
+		isWaitingWithText(ME, HIS_WAITING_WORDS);
+		isWaitingWithText(ABROAD, ANOTHERS_WAITING_WORDS);
 	}
 
 	/**

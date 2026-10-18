@@ -6,7 +6,7 @@ import { inputElement } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
-import { aCompetitor } from '../../test/theAnswer'
+import { aCompetitor, myOwnRecordFromMe } from '../../test/theAnswer'
 import { setupUser } from '../../test/user'
 
 /**
@@ -24,12 +24,13 @@ import { setupUser } from '../../test/user'
  * session of the visit that saved (an overlay the panel writes to) and the list the server serves, and
  * they are told apart by tearing down everything that is held in memory in between.
  *
- * <p><b>What this file does NOT claim, and it is the part that was measured and is not fixed:</b> a
- * biography that WAITS for a moderator is not drawn after a refresh. Nothing serves it on a read
- * (`ProfileBio.tsx` says so in as many words), and no decision says a member sees it on the profile or
- * on the screen for sending; the picture has such a decision and the biography does not. The case below
- * holds the half that is decided: after a refresh the box carries the words that STAND on the profile,
- * never the ones that wait.
+ * <p><b>The words that WAIT for a moderator are drawn after a refresh</b> (PDL P11, owner, 18.10.2026: „Dok
+ * tekst o sebi čeka odobrenje, član ga vidi u Podešavanjima sa oznakom da čeka i može da ga ispravi pre
+ * odluke; na profilu se do odobrenja vidi stari, odobren tekst"). This file held the opposite until that
+ * day - after a refresh the box carried the words that STAND and a text that waited was not shown - and
+ * that was the boundary measured and written down, not a decision. It is the decision now, so the cases
+ * below hold both halves: the box and the mark carry the words that wait, and the profile carries the
+ * words that stand, until somebody decides.
  */
 
 const ME = '000009'
@@ -59,6 +60,7 @@ function aServerThatKeepsTheProfile(opening: { hidden: boolean; bio: string }): 
   asked: Asked[]
   stop: () => void
   held: () => { hidden: boolean; bio: string; waiting: string | null }
+  decide: (approved: boolean) => void
 } {
   let hidden = opening.hidden
   let bio = opening.bio
@@ -67,6 +69,31 @@ function aServerThatKeepsTheProfile(opening: { hidden: boolean; bio: string }): 
   const { asked, stop } = serverThat((path, init) => {
     if (path === '/api/competitors') {
       return json([SOMEBODY_ELSE, { ...HIM, profileHidden: hidden, bio }])
+    }
+
+    if (path === '/api/me' && init?.method === undefined) {
+      const withoutTheTemplatesOwn = Object.fromEntries(
+        Object.entries(myOwnRecordFromMe).filter(([name]) => name !== 'bioWaiting'),
+      )
+
+      return json({
+        role: 'competitor',
+        account: 1,
+        member: {
+          ...withoutTheTemplatesOwn,
+          memberNumber: ME,
+          firstName: HIM.firstName,
+          lastName: HIM.lastName,
+          gender: HIM.gender,
+          city: HIM.city,
+          ageBand: HIM.ageBand,
+          firstSeason2027: HIM.firstSeason2027,
+          profileHidden: hidden,
+          bio,
+          ...(waiting === null ? {} : { bioWaiting: waiting }),
+        },
+        mailLanguage: 'sr',
+      })
     }
 
     if (path === '/api/me' && init?.method === 'PUT') {
@@ -92,7 +119,20 @@ function aServerThatKeepsTheProfile(opening: { hidden: boolean; bio: string }): 
     return null
   })
 
-  return { asked, stop, held: () => ({ hidden, bio, waiting }) }
+  return {
+    asked,
+    stop,
+    held: () => ({ hidden, bio, waiting }),
+    /* A MODERATOR DECIDING THE ROW, which is another browser's act: approved, the words that waited
+       are what stands; refused, nothing waits and what stood still stands. */
+    decide: (approved) => {
+      if (approved && waiting !== null) {
+        bio = waiting
+      }
+
+      waiting = null
+    },
+  }
 }
 
 /** A refresh: nothing of the old screen survives, and neither does anything the visit had fetched. */
@@ -164,13 +204,13 @@ describe('the words about himself', () => {
   })
 
   const theBox = async () =>
-    within(await screen.findByRole('region', { name: sr.bio.title })).getByRole('textbox', {
+    within(await screen.findByRole('region', { name: sr.bio.title })).findByRole('textbox', {
       name: new RegExp(sr.profile.bio),
     })
 
   const pressSend = async (user: ReturnType<typeof setupUser>) => {
     await user.click(
-      within(await screen.findByRole('region', { name: sr.bio.title })).getByRole('button', {
+      await within(await screen.findByRole('region', { name: sr.bio.title })).findByRole('button', {
         name: sr.bio.send,
       }),
     )
@@ -207,13 +247,15 @@ describe('the words about himself', () => {
   }, SLOW)
 
   /**
-   * <p><b>A new text waits for a moderator, and a refresh shows what STANDS.</b> The profile keeps the
-   * approved words until somebody approves the new ones, so the box opens with them, and never with the
-   * words that have not been approved (PDL P11, 12.08.2026 for the picture and 19.09.2026 for the text:
-   * "Nov neprazan tekst i dalje ide kroz verifikaciju i ne stupa odmah"). The server holds the new words
-   * in its queue and says so.
+   * <p><b>A new text waits for a moderator, and a refresh shows it with the mark that it waits, while
+   * the profile keeps what STANDS.</b> The box holds the words that wait (the member can correct them
+   * before the decision), the sentence over it says they wait, and the profile list - which is what
+   * everybody else reads - still carries the approved words. A decision then moves them: approved, the
+   * next refresh shows them as what stands and nothing waits; refused, nothing waits and the old words
+   * stand. Both decisions, because the mark that went on after either of them is the fault the other
+   * would hide.
    */
-  it('are shown after a refresh as the words that stand, never the ones that wait', async () => {
+  it.each([true, false])('are shown after a refresh as the words that wait, and as the words that stand once approved is %s', async (approved) => {
     const user = setupUser()
 
     clearResourceCache()
@@ -233,7 +275,54 @@ describe('the words about himself', () => {
     refresh()
     renderAt('/sr/podesavanja', 'competitor', ME)
 
-    expect(await theBox()).toHaveValue('Trčim dugo.')
+    expect(await theBox()).toHaveValue('Nove reči.')
+    expect(screen.getByText(sr.bio.waitingNote)).toBeVisible()
     expect(server.held().bio, 'unapproved words reached the profile').toBe('Trčim dugo.')
+
+    server.decide(approved)
+    refresh()
+    renderAt('/sr/podesavanja', 'competitor', ME)
+
+    expect(await theBox()).toHaveValue(approved ? 'Nove reči.' : 'Trčim dugo.')
+    expect(screen.queryByText(sr.bio.waitingNote), 'a text that was decided is still shown as waiting').toBeNull()
+  }, SLOW)
+
+  /**
+   * <p><b>A correction made after a refresh overwrites, and the mark stays.</b> The refresh is the
+   * point: the member comes back to words that wait, mends a sentence, and the server holds the mended
+   * words as the ones that wait.
+   */
+  it('can be corrected after a refresh, and the corrected words are the ones that wait', async () => {
+    const user = setupUser()
+
+    clearResourceCache()
+
+    const server = aServerThatKeepsTheProfile({ hidden: false, bio: 'Trčim dugo.' })
+
+    stop = server.stop
+    renderAt('/sr/podesavanja', 'competitor', ME)
+
+    await user.clear(await theBox())
+    await user.type(await theBox(), 'Prva verzija.')
+    await pressSend(user)
+    await waitFor(() => {
+      expect(server.held().waiting).toBe('Prva verzija.')
+    })
+
+    refresh()
+    renderAt('/sr/podesavanja', 'competitor', ME)
+
+    await user.clear(await theBox())
+    await user.type(await theBox(), 'Druga verzija.')
+    await pressSend(user)
+    await waitFor(() => {
+      expect(server.held().waiting).toBe('Druga verzija.')
+    })
+
+    refresh()
+    renderAt('/sr/podesavanja', 'competitor', ME)
+
+    expect(await theBox()).toHaveValue('Druga verzija.')
+    expect(screen.getByText(sr.bio.waitingNote)).toBeVisible()
   }, SLOW)
 })

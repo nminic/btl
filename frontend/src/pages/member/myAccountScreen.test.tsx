@@ -7,7 +7,6 @@ import { at, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { answeredWith, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { myOwnRecordFromMe } from '../../test/theAnswer'
-import { ruleFor } from '../../test/stylesheet'
 import { setupUser } from '../../test/user'
 import en from '../../i18n/en.json'
 import sr from '../../i18n/sr.json'
@@ -48,19 +47,6 @@ const ME = must(
 const SOMEBODY_ELSE = must(
   members.find((one) => one.memberNumber !== ME.memberNumber && one.firstName !== ME.firstName),
   'the seed still has a second member with another name',
-)
-
-/**
- * AND A MEMBER OF THE OTHER GENDER, because gender is an axis with two states and a screen
- * measured on one of them is measured on half of itself.
- *
- * <p>Taken out of the file rather than named, like the rest: the word beside „Pol" and the
- * letter the category starts with both come off this one field, so a screen that had it
- * written in would pass every case above and say „Muškarci" to every woman in the league.
- */
-const HER = must(
-  members.find((one) => one.gender === 'F'),
-  'the seed still has a member whose gender is the other one',
 )
 
 /** The panel a case is talking about, so a query cannot wander into the one below it. */
@@ -240,16 +226,30 @@ describe('a member’s own data', () => {
     expect(theBox(panel, /Adresa za slanje/)).toHaveValue('Vojvode Stepa 5')
   })
 
-  it('has nothing to save until something is changed', async () => {
+  /**
+   * <p><b>The button is told off while nothing has changed, and it says nothing about why</b> (PDL P11,
+   * owner, 18.10.2026, "Strana Podešavanja, sa snimaka": the sentence "Izmeni nešto da bi imao šta da
+   * sačuvaš." is gone and the buttons stay told off). So it is reachable and pressing it sends nothing,
+   * and it points at no sentence: an `aria-describedby` left naming an element that is not there is a
+   * description a screen reader announces as nothing.
+   */
+  it('has nothing to save until something is changed, and says nothing about it', async () => {
+    const user = setupUser()
+    const { asked, stop: put } = serverThat(() => null)
+
+    stop = put
     renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
+    const save = within(panel).getByRole('button', { name: sr.account.save })
 
-    expect(within(panel).getByRole('button', { name: sr.account.save })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    expect(within(panel).getByText(sr.account.changeFirst)).toBeInTheDocument()
+    expect(save).toHaveAttribute('aria-disabled', 'true')
+    expect(save).not.toHaveAttribute('aria-describedby')
+    expect(panel.querySelector('[role="status"]'), 'a sentence about the button stands on the panel').toBeNull()
+
+    await user.click(save)
+
+    expect(asked.filter((one) => one.init?.method === 'PUT')).toEqual([])
   })
 
   /**
@@ -496,13 +496,6 @@ describe('a member’s own data', () => {
   })
 })
 
-/** The sheet the account screen's own classes are written in, read as text because jsdom applies none. */
-const MEMBER_CSS = readFileSync(join(process.cwd(), 'src/pages/member/Member.css'), 'utf-8')
-
-/** The class the list of what a member may read and not change carries: the join between the
- *  markup and the rule that lets a long fact break. */
-const THE_FACTS = 'member__facts'
-
 /** Where the server's own source lives, spelled the way `myAccount.test.ts` spells it. */
 const WEB = join(process.cwd(), '..', 'backend', 'src', 'main', 'java', 'com', 'btl', 'portal', 'web')
 
@@ -640,116 +633,75 @@ describe('which boxes of a member’s own data are asked for', () => {
   })
 })
 
-describe('the things a member may not change himself', () => {
-  it('shows the gender and the category, and offers no box for either', async () => {
+/**
+ * WHAT THE OWNER TOOK OFF THE SCREEN, ASKED OF THE SCREEN AND OF THE DICTIONARIES (PDL P11, owner,
+ * 18.10.2026, "Strana Podešavanja, sa snimaka").
+ *
+ * <p>The words below are the sentences of that entry, copied from it and not read from the dictionary,
+ * because the keys that carried them are gone: a case that read `sr.account.lockedTitle` could not
+ * fail on the day somebody wrote the sentence back under another name. Each is asked of the drawn
+ * panel AND of both dictionaries, because a sentence put back as a new key on a screen that did not draw
+ * it yet would pass the first and be a sentence the next screen draws.
+ */
+const WHAT_THE_OWNER_TOOK_OFF = [
+  'Izmena ovde stupa odmah, bez odobrenja.',
+  'Izmeni nešto da bi imao šta da sačuvaš.',
+  'Pomeri krug ili izaberi novu sliku da bi mogao da pošalješ.',
+  'Napiši nešto da bi mogao da pošalješ.',
+  'Mejlovi koje ti portal šalje stižu na jeziku koji ovde izabereš.',
+  /* Under the box of what he may not change: its three explanations and the field for the address
+     of post with its reason. */
+  'Pol i datum rođenja menja samo administracija, jer se iz njih izvode',
+  'Datum rođenja se ovde ne prikazuje',
+  'Mesto se bira iz šifarnika naselja',
+  'Adresu elektronske pošte menjaš sam, ali novu moraš da potvrdiš',
+] as const
+
+/** Every string a dictionary holds, however deep. */
+function everyWordOf(node: unknown): string[] {
+  if (typeof node === 'string') {
+    return [node]
+  }
+
+  if (typeof node === 'object' && node !== null) {
+    return Object.values(node).flatMap(everyWordOf)
+  }
+
+  return []
+}
+
+describe('what the owner took off the settings screen', () => {
+  it.each(WHAT_THE_OWNER_TOOK_OFF)('is not a sentence of either dictionary: %s', (sentence) => {
+    expect(everyWordOf(sr).filter((one) => one.includes(sentence))).toEqual([])
+    expect(everyWordOf(en).filter((one) => one.includes(sentence))).toEqual([])
+  })
+
+  it('is not on the screen of a member whose fee stands, and the box of what he may not change is gone', async () => {
     renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
-    await screen.findByRole('heading', { level: 2, name: sr.account.lockedTitle })
 
-    const panel = panelOf(sr.account.lockedTitle)
+    await personalPanel()
+    await screen.findByRole('region', { name: sr.settings.mail })
 
-    expect(within(panel).getByText(sr.rankings.men)).toBeInTheDocument()
-    expect(within(panel).getByText(`M ${ME.ageBand}`)).toBeInTheDocument()
-    expect(within(panel).queryByRole('textbox', { name: /Pol/ })).not.toBeInTheDocument()
-    expect(within(panel).queryByRole('textbox', { name: /Datum rođenja/ })).not.toBeInTheDocument()
-    expect(within(panel).getByText(sr.account.lockedNote)).toBeInTheDocument()
-  })
-
-  /** The other state of the same axis, and both words come off the one field. */
-  it('says the other gender, and the other category letter, to a member who is one', async () => {
-    renderAt('/sr/podesavanja', 'competitor', HER.memberNumber)
-    await screen.findByRole('heading', { level: 2, name: sr.account.lockedTitle })
-
-    const panel = panelOf(sr.account.lockedTitle)
-
-    expect(within(panel).getByText(sr.rankings.women)).toBeInTheDocument()
-    expect(within(panel).getByText(`Ž ${HER.ageBand}`)).toBeInTheDocument()
-    expect(within(panel).queryByText(sr.rankings.men)).not.toBeInTheDocument()
-  })
-
-  /** The same two members in English: the women's letter follows the language and the men's does
-   *  not (owner, 18.10.2026), so a member of each sex is read, and the Serbian letter is refused. */
-  it('writes the category with the letter of the language', async () => {
-    for (const [member, mark] of [
-      [ME, 'M'],
-      [HER, 'F'],
-    ] as const) {
-      renderAt('/en/podesavanja', 'competitor', member.memberNumber)
-      await screen.findByRole('heading', { level: 2, name: en.account.lockedTitle })
-
-      const panel = panelOf(en.account.lockedTitle)
-
-      expect(within(panel).getByText(`${mark} ${member.ageBand}`)).toBeInTheDocument()
-      expect(within(panel).queryByText(`Ž ${member.ageBand}`)).not.toBeInTheDocument()
-
-      cleanup()
+    for (const sentence of WHAT_THE_OWNER_TOOK_OFF) {
+      expect(screen.queryByText(new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))), sentence).toBeNull()
     }
+
+    expect(screen.queryByRole('heading', { name: 'Podaci koji se ne menjaju ovde' })).toBeNull()
+    expect(screen.queryByRole('textbox', { name: /Adresa elektronske pošte/ })).toBeNull()
+    expect(screen.queryByText(`M ${ME.ageBand}`), 'the category of the box that is gone').toBeNull()
   })
 
-  /**
-   * <p>The date of birth is not on this screen at all and the sentence says why: the portal
-   * does not hold it beside the public record, and it is shown neither in full nor in short.
-   * What IS shown is the category it produces, which is the owner's own reason for locking it.
-   *
-   * <p>And the sentence names no source (PDL P32, 18.10.2026: „rečenica uz datum rođenja
-   * (`birthDateNote`, oba jezika) više ne navodi izvor"), in either language.
-   */
-  it('explains where the date of birth went rather than drawing an empty row for it', async () => {
+  it('leaves no control of the screen naming a sentence that is not there', async () => {
     renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
-    await screen.findByRole('heading', { level: 2, name: sr.account.lockedTitle })
 
-    expect(within(panelOf(sr.account.lockedTitle)).getByText(sr.account.birthDateNote)).toBeInTheDocument()
-    expect(sr.account.birthDateNote).not.toMatch(/Statut/i)
-    expect(en.account.birthDateNote).not.toMatch(/Statute/i)
-  })
+    await personalPanel()
+    await screen.findByRole('region', { name: sr.settings.mail })
 
-  /**
-   * A LONG FACT BREAKS INSIDE ITS OWN BOX (PENDING 217.6).
-   *
-   * <p>The list of what a member may read and not change was a bare `<dl>`: it took the SHAPE of
-   * the list `admin/EntityEditor.tsx` draws for the same thing and none of what holds that shape
-   * in place, which is the rule on the value that lets a long word break. The town is typed text of
-   * up to 80 characters (`city.maxLength`), so it can be one word, and measured in Chrome at 360 a
-   * word of 57 letters sent the whole page 119 pixels sideways (the review measured 131 with its
-   * own word), which PDL P24 does not allow.
-   *
-   * <p>jsdom lays nothing out (ADL A18, A33), so what is held here is the TWO HALVES AND THE JOIN
-   * BETWEEN THEM: the rule is written, and the list carries the class the rule is written for.
-   * Either half alone is satisfied by the other going missing, and a class on the list with no rule
-   * behind it is exactly what the bare list was avoiding by having no class at all. That the rule
-   * wins the cascade is not asked here; it was measured in the browser, at 360, 768 and 1280.
-   */
-  it('lets a long fact break inside its own box rather than push the page sideways', async () => {
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
-    await screen.findByRole('heading', { level: 2, name: sr.account.lockedTitle })
-
-    const facts = within(panelOf(sr.account.lockedTitle)).getAllByRole('definition')
-    const list = must(at(facts, 0).closest('dl'), 'the list the facts stand in')
-
-    expect(list).toHaveClass(THE_FACTS)
-    expect(
-      ruleFor(MEMBER_CSS, `.${THE_FACTS} dd`, 'Member.css').getPropertyValue('overflow-wrap'),
-    ).toBe('anywhere')
-    /* And every fact stands in that one list, so the rule reaches all of them. */
-    expect(facts.filter((one) => one.closest('dl') !== list)).toEqual([])
-  })
-
-  /**
-   * THE ONE CONTROL ON THIS SCREEN THAT IS SWITCHED OFF ON PURPOSE.
-   *
-   * <p>The owner decided a member changes this himself and must confirm the new one, because
-   * the address is also how he signs in. Nothing confirms one, so the screen does not invent
-   * it: the box stands, disabled, and names the sentence that says why.
-   */
-  it('leaves the address of electronic post switched off, with its reason attached', async () => {
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
-    await screen.findByRole('heading', { level: 2, name: sr.account.lockedTitle })
-
-    const box = within(panelOf(sr.account.lockedTitle)).getByRole('textbox', {
-      name: /Adresa elektronske pošte/,
-    })
-
-    expect(box).toBeDisabled()
-    expect(box).toHaveAccessibleDescription(sr.account.emailNote)
+    for (const one of document.querySelectorAll('[aria-describedby]')) {
+      for (const id of (one.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean)) {
+        expect(document.getElementById(id), `${id} is named by a control and is not on the page`).not.toBeNull()
+      }
+    }
   })
 })
 
