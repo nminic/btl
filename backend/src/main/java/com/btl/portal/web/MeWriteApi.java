@@ -175,7 +175,11 @@ import java.util.function.Function;
  * tekst") and confirmed it when he was shown what it costs: a new text overwrites the one that waits,
  * on the same row and at the same place in the queue, as a picture does (27.09.2026, „Ponovno slanje
  * pregazi red koji čeka, ne pravi drugi"). The cost he accepted is the one the earlier entry named
- * as the reason to refuse: the moderator's text changes under his hand while he reads. <b>That entry
+ * as the reason to refuse: the moderator's text changes under his hand while he reads. A decision
+ * he takes about the words he read is then refused, „Tekst je promenjen, pogledaj ga ponovo.", and
+ * the row stays waiting with the new ones ({@code VerificationWriteApi.Answered#seenText}); the row
+ * is taken before it is looked at, so a correction that lands while the decision waits for the row
+ * is refused too. <b>That entry
  * - 19.09.2026, a second text answered 409 and the first left untouched - is struck in PDL as
  * OBORENO 18.10.2026, and so is the reason {@code aTextAlreadyWaits} existed: the constant, the
  * guard and the sentence a screen drew for it are gone, and nothing on this route answers 409 for

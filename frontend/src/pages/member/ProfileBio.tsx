@@ -36,7 +36,10 @@ import { useMyWaitingText } from './useMyWaitingText'
  * oznakom da čeka i može da ga ispravi pre odluke; na profilu se do odobrenja vidi stari, odobren
  * tekst." Confirmed when he was shown what it costs: a new text overwrites the one that waits, on
  * the same row and at the same place in the queue, as a picture does (27.09.2026), and the moderator's
- * text changes under his hand while he reads.
+ * text changes under his hand while he reads. A decision he takes about the words he read is then
+ * refused and the row stays with the new ones (`VerificationWriteApi.Answered.seenText`, PDL P11), so
+ * what a correction costs the moderator is a card read again, and what it costs the member is nothing:
+ * the sentence below, that the moderator sees only the last text, stays true.
  *
  * <p>So the box opens holding the words that WAIT where some wait, and the words that STAND where none
  * do, and the sentence over it says which. Both come from the server on every visit
