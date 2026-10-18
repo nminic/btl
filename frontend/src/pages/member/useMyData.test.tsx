@@ -52,7 +52,7 @@ function theServer() {
 }
 
 describe('his own data', () => {
-  it('is loading until the server answers, and then the six facts of the account it was asked for', async () => {
+  it('is loading until the server answers, and then the facts of the account it was asked for', async () => {
     const server = theServer()
     const { result } = renderHook(() => useMyData(7))
 
@@ -78,6 +78,8 @@ describe('his own data', () => {
         city: 'Beograd',
         ageBand: '25-39',
         firstSeason2027: false,
+        address: 'Ulica Nova 3',
+        phone: '',
       },
     })
   }, SLOW)
@@ -237,6 +239,32 @@ describe('his own data', () => {
        what the hook says is that it is waiting - not the first man's data, which is what a hook that
        kept its answer without the account it was for would hand the screen. */
     rerender({ asked: 8 })
+    expect(result.current.status).toBe('loading')
+  }, SLOW)
+
+  /* **A MEMBER IS ASKED FOR UNDER HIS NUMBER AND SOMEBODY WHO HAS NONE UNDER HIS ACCOUNT**
+     (`Settings.tsx`, since 18.10.2026), and the two keys are never the same key: an account `7` and a
+     member number `'7'` would be one reader if the hook compared them loosely, and the answer held for
+     the first would be drawn under the second. */
+  it('holds an answer against a member number, and never against an account that looks like it', async () => {
+    const server = theServer()
+    const { result, rerender } = renderHook<
+      ReturnType<typeof useMyData>,
+      { asked: number | string }
+    >(({ asked }) => useMyData(asked), { initialProps: { asked: '7' } })
+
+    await waitFor(() => {
+      expect(server.count()).toBe(1)
+    })
+    await act(async () => {
+      server.answer(0, aNewcomerSaying())
+      await Promise.resolve()
+    })
+    await waitFor(() => {
+      expect(result.current.status).toBe('ready')
+    })
+
+    rerender({ asked: 7 })
     expect(result.current.status).toBe('loading')
   }, SLOW)
 

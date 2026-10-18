@@ -210,7 +210,19 @@ function whatMeAnswers(): Response {
        the cookie naming nobody, answered 401 above. */
     ...(mine === undefined
       ? { member: { memberNumber: whoTheCookieNames.memberNumber } }
-      : { member: { ...asAnswered(mine, myOwnRecordFromMe), referredCount: broughtIn(members, mine) } }),
+      : {
+          member: {
+            ...asAnswered(mine, myOwnRecordFromMe),
+            referredCount: broughtIn(members, mine),
+            /* THE TWO COLUMNS THE PUBLIC FILE DOES NOT HAVE, BY DECISION (PDL „Uvek privatno: mejl,
+               telefon i adresa"), so `asAnswered` cannot copy them off the row. They are the sample's
+               own, the same for every member of the file, which is the arrangement
+               `referredCount` has just above for the reason that one has: a case about a pair of
+               values puts its own server in front. */
+            address: myOwnRecordFromMe.address,
+            phone: myOwnRecordFromMe.phone,
+          },
+        }),
   }
 
   return new Response(JSON.stringify(asAnswered(answered, whoIAm)), {
@@ -476,6 +488,18 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
 
   if (asked === '/api/me') {
     return whatMeAnswers()
+  }
+
+  /* `GET /api/me/photo` (`MePhotoApi.mine`), READ ONLY: the same address takes the picture itself as a
+     `POST`, and that one is not answered here. A member the harness signs in has no picture waiting
+     and none standing under a public address - the generated files keep their pictures under `/mock`,
+     which is not an address the server hands out - so both halves are null, which is what the server
+     says of a member with none. A case about a picture puts its own server in front. */
+  if (asked === '/api/me/photo' && init?.method === undefined) {
+    return new Response(JSON.stringify({ waiting: null, standing: null }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
   }
 
   if (init?.method === 'POST' && WRITES_THAT_QUEUE.has(asked)) {

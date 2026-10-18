@@ -416,10 +416,17 @@ export async function whatTheServerSaysOfMyProfile(): Promise<Competitor | null>
 }
 
 /**
- * WHAT A MEMBER'S OWN DATA SCREEN IS DRAWN FROM: who he is, in the six facts it shows.
+ * WHAT A MEMBER'S OWN DATA SCREEN IS DRAWN FROM: who he is, in the six facts it shows and the two
+ * he can change.
  *
  * <p>His first and last name, his gender, his town, the band he races in and whether he runs in
- * the beginners' category - and nothing else, in particular **no member number**. That is what
+ * the beginners' category, and **since 18.10.2026 his postal address and his telephone**
+ * (`MeApi.MyOwnRecord.address`, `.phone`): the owner saved both on QA, was told so, refreshed, and
+ * found both boxes empty, because nothing served them. They are the one place the portal ever
+ * reads them back, and they are his alone; the public record (`Competitor`) still carries neither,
+ * which is why they are added to THIS type and not to the one it is picked from.
+ *
+ * <p>Nothing else, in particular **no member number**. That is what
  * parts it from {@link Competitor}: somebody who registered and has not paid has no number, so
  * there is no profile to draw (the profile is headed by a number and stands on a page nobody may
  * open for him yet), and he still has a name to correct and a town and a category to read
@@ -432,16 +439,25 @@ export async function whatTheServerSaysOfMyProfile(): Promise<Competitor | null>
 export type MyData = Pick<
   Competitor,
   'firstName' | 'lastName' | 'gender' | 'city' | 'ageBand' | 'firstSeason2027'
->
+> & {
+  /** Where a shirt and a medal are sent. Never empty: the server takes no blank one. */
+  address: string
+  /**
+   * His telephone, and the EMPTY STRING for a member who has none. The server leaves the key out
+   * for him (`@JsonInclude(NON_NULL)`, V8: "no phone is NULL"), and the box a member types into
+   * has no other way to say "none" than to be empty.
+   */
+  phone: string
+}
 
 /**
- * THE SAME RECORD AS {@link whatTheServerSaysOfMyProfile}, read for the six facts above, or
+ * THE SAME RECORD AS {@link whatTheServerSaysOfMyProfile}, read for the eight facts above, or
  * nothing.
  *
  * <p>Its own reader for the reason that one has: a fault in it must never sign him out, and it
- * shares the request and nothing it returned ({@link whatTheServerAnswersMe}). The six are read
- * by the very functions the profile is read with (`dataIn`), so the two cannot disagree about what
- * a name is or what makes a record unreadable.
+ * shares the request and nothing it returned ({@link whatTheServerAnswersMe}). The first six are
+ * read by the very functions the profile is read with (`dataIn`), so the two cannot disagree about
+ * what a name is or what makes a record unreadable.
  */
 export async function whatTheServerSaysOfMyData(): Promise<MyData | null> {
   const body = await whatTheServerAnswersMe()
@@ -465,6 +481,85 @@ export async function whatTheServerSaysOfMyMailLanguage(): Promise<MailLanguage 
   const body = await whatTheServerAnswersMe()
 
   return body === null ? null : mailLanguageOfMe(body)
+}
+
+/**
+ * ONE PICTURE OF A MEMBER'S, as an address to fetch it from and the circle over it.
+ *
+ * <p>`photo` is an address and never a key (`MePhotoApi.Picture`): `/api/photos/<digest>` for the
+ * one that stands on the profile, which is public, and `/api/me/photo/<digest>` for the one that
+ * waits, which is nobody's address but his.
+ */
+export type HeldPicture = { photo: string; crop: Crop }
+
+/**
+ * WHAT THIS MEMBER'S PORTRAIT IS DOING, BOTH HALVES OF IT, and either may be nothing.
+ *
+ * <p>`GET /api/me/photo` (`MePhotoApi.mine`), the answer a reload needs. PDL P11, the entry of
+ * 27.09.2026 „Na ekranu za slanje slike vidi se slika koja čeka, sa krugom i oznakom da čeka
+ * odobrenje" (the owner: „ukoliko udjem da posaljem ponovo, vidim da je trenutno slika u statusu
+ * cekanja i tu vidim trenutno azuriranu sliku sa krugom"). The route has served it since PR 531 and
+ * until 18.10.2026 nothing on this side asked: a picture sent in one visit was gone from the screen
+ * in the next, and the circle with it.
+ */
+export type MyPictures = { waiting: HeldPicture | null; standing: HeldPicture | null }
+
+/**
+ * THE PICTURES A MEMBER HAS, or nothing when the answer cannot be believed.
+ *
+ * <p>Both keys are always there on the server and each is null for a member who has no such
+ * picture, so a missing key is not "none" but a server saying something this portal does not
+ * know, and it ends the reading as it does for every other fact of a record. Each picture is
+ * believed only under the address that belongs to it: a waiting picture under a public address
+ * would be drawn from a route that refuses it.
+ */
+export async function whatTheServerSaysOfMyPictures(): Promise<MyPictures | null> {
+  let answer: Response
+
+  try {
+    answer = await fetch('/api/me/photo')
+  } catch {
+    return null
+  }
+
+  if (!answer.ok) {
+    return null
+  }
+
+  let body: unknown
+
+  try {
+    body = await answer.json()
+  } catch {
+    return null
+  }
+
+  if (typeof body !== 'object' || body === null) {
+    return null
+  }
+
+  const waiting = heldIn(body, 'waiting', '/api/me/photo/')
+  const standing = heldIn(body, 'standing', '/api/photos/')
+
+  return waiting === undefined || standing === undefined ? null : { waiting, standing }
+}
+
+/** One of the two pictures: `null` where there is none, `undefined` where the answer is not believed. */
+function heldIn(body: object, name: 'waiting' | 'standing', under: string): HeldPicture | null | undefined {
+  const said: unknown = Reflect.get(body, name)
+
+  if (said === null) {
+    return null
+  }
+
+  if (typeof said !== 'object') {
+    return undefined
+  }
+
+  const photo: unknown = Reflect.get(said, 'photo')
+  const crop = squareIn(said)
+
+  return typeof photo === 'string' && photo.startsWith(under) && crop !== null ? { photo, crop } : undefined
 }
 
 /**
@@ -653,10 +748,16 @@ function profileIn(mine: object | null): Competitor | null {
     return null
   }
 
-  /* THE SIX THAT A DATA SCREEN IS DRAWN FROM ARE READ BY `dataIn`, and are not read a second
+  /* THE SIX THAT A DATA SCREEN IS DRAWN FROM ARE READ BY `sixFactsIn`, and are not read a second
      time here: two readers of the same name are two answers to „is this a name", and the
-     profile used to be the only one. Its own conditions are exactly what they were. */
-  const data = dataIn(mine)
+     profile used to be the only one. Its own conditions are exactly what they were.
+
+     **AND ONLY THE SIX, which is the point of the split of 18.10.2026.** `dataIn` also reads the
+     postal address and the telephone, which are his alone (`MeApi.MyOwnRecord`) and which a
+     profile neither needs nor may carry: spread into this record they would have travelled to every
+     screen that draws a member, and a profile of a member who has none to read would have gone
+     unreadable. */
+  const data = sixFactsIn(mine)
   const memberNumber = numberIn(mine)
   const country = countryIn(mine)
   const firstSeason = wholeIn(mine, 'firstSeason')
@@ -695,15 +796,17 @@ function profileIn(mine: object | null): Competitor | null {
 }
 
 /**
- * THE SIX FACTS OF {@link MyData} out of the caller's record, or nothing when any of them is
- * missing or of a kind the portal does not know.
+ * THE SIX FACTS OF A MEMBER'S RECORD that both his data screen and his profile are drawn from, or
+ * nothing when any of them is missing or of a kind the portal does not know.
  *
- * <p>The conditions are the profile's own for these six - a name that says nothing, a gender
- * that is not one of the two words, a band the portal does not know, a flag that merely reads as
- * one - and they end the whole reading, because a screen showing a member his own category
- * made up is a lie about him to himself (`profileIn` says it for the profile).
+ * <p>The conditions are the profile's own - a name that says nothing, a gender that is not one of
+ * the two words, a band the portal does not know, a flag that merely reads as one - and they end the
+ * whole reading, because a screen showing a member his own category made up is a lie about him to
+ * himself (`profileIn` says it for the profile).
  */
-function dataIn(mine: object | null): MyData | null {
+function sixFactsIn(
+  mine: object | null,
+): Pick<Competitor, 'firstName' | 'lastName' | 'gender' | 'city' | 'ageBand' | 'firstSeason2027'> | null {
   if (mine === null) {
     return null
   }
@@ -730,6 +833,31 @@ function dataIn(mine: object | null): MyData | null {
 }
 
 /**
+ * THE EIGHT FACTS OF {@link MyData} out of the caller's record, or nothing when any of them is
+ * missing or of a kind the portal does not know: the six of {@link sixFactsIn}, and the two that
+ * are his alone.
+ *
+ * <p>The address is text that says something, like a name; the telephone is text or nothing at
+ * all, and nothing at all is a member who has none.
+ */
+function dataIn(mine: object | null): MyData | null {
+  const six = sixFactsIn(mine)
+
+  if (mine === null || six === null) {
+    return null
+  }
+
+  const address = nameIn(mine, 'address')
+  const phone = phoneIn(mine)
+
+  if (address === null || phone === null) {
+    return null
+  }
+
+  return { ...six, address, phone }
+}
+
+/**
  * Whether the caller's fee stands, out of the answer, or nothing.
  *
  * **Looked for and never asserted**: a yes or a no and nothing that merely reads as one. Null for
@@ -741,11 +869,31 @@ function feeStandsIn(mine: object | null): boolean | null {
   return mine === null ? null : flagIn(mine, 'active')
 }
 
-/** A name or a town: text that says something. A blank one is a server saying nothing. */
-function nameIn(mine: object, name: 'firstName' | 'lastName' | 'city'): string | null {
+/**
+ * A name, a town or a postal address: text that says something. A blank one is a server saying
+ * nothing.
+ */
+function nameIn(mine: object, name: 'firstName' | 'lastName' | 'city' | 'address'): string | null {
   const said: unknown = Reflect.get(mine, name)
 
   return typeof said === 'string' && said.trim() !== '' ? said : null
+}
+
+/**
+ * The telephone: text, or nothing at all for a member who has none.
+ *
+ * <p>The server leaves the key OUT for him (`MeApi.MyOwnRecord.phone`), so absence is read as the
+ * empty box. Anything else that is not text is a server saying something the portal does not know,
+ * and ends the reading like every other fact of the record.
+ */
+function phoneIn(mine: object): string | null {
+  const said: unknown = Reflect.get(mine, 'phone')
+
+  if (said === undefined) {
+    return ''
+  }
+
+  return typeof said === 'string' ? said : null
 }
 
 /** Text that may be empty: what a member has written about himself, when he has written nothing. */

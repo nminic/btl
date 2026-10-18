@@ -123,6 +123,16 @@ export function Settings() {
           three are drawn from carries nobody else, and the server answers nobody else the
           writes behind the picture and the biography. Somebody who has not paid is drawn his
           data below instead, from the one answer that has a row for him. */}
+      {/* **HIS OWN DATA ARE READ OFF `GET /api/me`, NOT OFF THE PUBLIC LIST**, since 18.10.2026.
+          The list carries a name and a town and by ADL A8 nothing else, so a panel drawn from it
+          opened the postal address and the telephone empty after every refresh, and a member who
+          had just saved them read that as the portal having lost them. It is the read the member
+          who has not paid is drawn his data from (below), here under the number he has, for the
+          reason `useMyData` gives: an answer is believed for the reader it was asked for and no
+          other. It stands before the list is drawn, so the order of the panels is the one this
+          screen always had. */}
+      {who.standing === 'standing' && <HisOwnData whose={who.memberNumber} />}
+
       {who.standing === 'standing' && (
         <Resource state={competitors} inline>
           {(competitors) => {
@@ -136,7 +146,6 @@ export function Settings() {
                each going for review on its own (owner, 15.08.2026). */
             return (
               <>
-                <PersonalData me={me} />
                 <ProfilePicture me={me} />
                 {/* KEYED BY THE MEMBER, BECAUSE EVERYTHING THAT PANEL HOLDS BELONGS TO ONE
                     PERSON: what he typed, what stands on his profile, what of his is waiting,
@@ -299,14 +308,32 @@ function WhatOpensWhenTheFeeIsRenewed() {
  */
 function TheDataOfSomebodyWhoHasNotPaid({ account }: { account: number }) {
   const { t } = useI18n()
-  const mine = useMyData(account)
 
   return (
     <>
-      <Resource state={mine} inline>
-        {(data) => <PersonalData me={data} />}
-      </Resource>
+      <HisOwnData whose={account} />
       <p className="member__note">{t('settings.opensWithTheFee')}</p>
     </>
+  )
+}
+
+/**
+ * THE PANEL OF A MEMBER'S OWN DATA, drawn from what the server says of him on `GET /api/me`.
+ *
+ * <p>One component for the two readers who have the panel, a member whose fee stands and somebody
+ * who has not paid, so the two cannot be drawn from two different reads. A component of its own
+ * and not part of {@link Settings} because it is a hook, and a hook cannot be called under the
+ * condition that decides who is drawn it.
+ *
+ * <p>`whose` is the account for somebody who has no number and the number for a member: it is only
+ * what the answer is held against (`useMyData`), and the cookie decides whose record it is.
+ */
+function HisOwnData({ whose }: { whose: number | string }) {
+  const mine = useMyData(whose)
+
+  return (
+    <Resource state={mine} inline>
+      {(data) => <PersonalData me={data} />}
+    </Resource>
   )
 }

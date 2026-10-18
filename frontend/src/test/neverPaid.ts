@@ -11,7 +11,8 @@ import { serverThat, type Asked } from './serverAnswers'
  * one he does not have ({@link WHAT_HE_DOES_NOT_HAVE_YET}). His fee does not stand
  * (`active: false`), his basis is the one registration writes (`payment`, because
  * `feeExempt` is honorary membership and the owner's to grant), and his first season is the one
- * being paid for.
+ * being paid for. He has an address, which registration requires, and no telephone, which it does
+ * not ({@link WHAT_HE_DOES_NOT_HAVE_YET}).
  *
  * <p><b>Written out here, and not read off the generated members</b>, for the reason
  * `test/hisPage.ts` gives about the lapsed member: a case about what a body is BELIEVED as must
@@ -38,14 +39,23 @@ export const aNeverPaidRecord = {
   bio: '',
   profileHidden: false,
   birthdayShown: 'none',
+  address: 'Ulica Nova 3',
 }
 
 /**
- * THE FIVE NAMES `MeApi.MyOwnRecord` LEAVES OUT RATHER THAN CARRY AS NULL (`@JsonInclude
- * (NON_NULL)`), all five of them absent for him: the number he has not been given, and the team,
- * the year in it, the portrait and its square, none of which he has.
+ * THE SIX NAMES `MeApi.MyOwnRecord` LEAVES OUT RATHER THAN CARRY AS NULL (`@JsonInclude
+ * (NON_NULL)`), all six of them absent for him: the number he has not been given, the team, the
+ * year in it, the portrait and its square, none of which he has, and the telephone, which
+ * registration does not ask for.
  */
-export const WHAT_HE_DOES_NOT_HAVE_YET = ['memberNumber', 'teamId', 'teamSince', 'photo', 'crop']
+export const WHAT_HE_DOES_NOT_HAVE_YET = [
+  'memberNumber',
+  'teamId',
+  'teamSince',
+  'photo',
+  'crop',
+  'phone',
+]
 
 /**
  * `GET /api/me` AS THE SERVER ANSWERS SOMEBODY WHO HAS NOT PAID, for the length of one case.

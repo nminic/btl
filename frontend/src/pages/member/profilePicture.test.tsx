@@ -398,26 +398,57 @@ describe('the picture on a profile, changed later', () => {
    *
      The two are taken from the served file by number and the case says which is which, so a
      seed that gives `000007` a portrait fails here rather than passing quietly. */
-  it('tells a member the portal has no photograph only when HIS record has none', async () => {
+  it('tells a member the portal has no photograph only when the SERVER says he has none', async () => {
     /* „Portal još nema fotografije, pa u krugu pored tvog imena stoje tvoji inicijali."
-       True of `000007`, who has sent nothing. */
-    const { unmount } = renderAt('/sr/podesavanja', 'competitor', '000007')
+       True of a member the server holds no picture for, in either half. */
+    const none = serverThat((path, init) =>
+      path === '/api/me/photo' && init?.method === undefined
+        ? new Response(JSON.stringify({ waiting: null, standing: null }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
 
-    expect(await (await panelFor()).findByText(sr.picture.none)).toBeVisible()
+    try {
+      const { unmount } = renderAt('/sr/podesavanja', 'competitor', '000007')
 
-    unmount()
+      expect(await (await panelFor()).findByText(sr.picture.none)).toBeVisible()
 
-    /* And false of `000003`, whose portrait is approved and served. Until this branch the
-       sentence was drawn unconditionally, so this member was told the portal had no
-       photograph while his own was in the header of the same page - the shape PDL P11
-       rejected once already, „u istom dahu kaže ,Nemaš sliku' i ,čeka odobrenje'". */
-    renderAt('/sr/podesavanja', 'competitor', '000003')
+      unmount()
+    } finally {
+      none.stop()
+    }
 
-    const mine = await panelFor()
+    /* And false of a member whose portrait is approved and served. Until this branch the sentence
+       was drawn unconditionally, so this member was told the portal had no photograph while his own
+       was in the header of the same page - the shape PDL P11 rejected once already, „u istom dahu
+       kaže ,Nemaš sliku' i ,čeka odobrenje'". Since 18.10.2026 it is the SERVER's answer that decides,
+       and the picture that stands is DRAWN here, with the sentence that says what it is. */
+    const has = serverThat((path, init) =>
+      path === '/api/me/photo' && init?.method === undefined
+        ? new Response(
+            JSON.stringify({
+              waiting: null,
+              standing: { photo: '/api/photos/' + 'ab'.repeat(32), crop: { x: 0.3, y: 0.15, size: 0.55 } },
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
 
-    expect(mine.queryByText(sr.picture.none)).not.toBeInTheDocument()
-    /* And the panel is still a panel: he can choose and send a new one, which is the whole
-       reason it is drawn for him at all (owner, 12.08.2026). */
-    expect(mine.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
+    try {
+      renderAt('/sr/podesavanja', 'competitor', '000003')
+
+      const mine = await panelFor()
+
+      expect(await mine.findByText(sr.picture.standingNote)).toBeVisible()
+      expect(mine.queryByText(sr.picture.none)).not.toBeInTheDocument()
+      /* And the panel is still a panel: he can choose and send a new one, which is the whole
+         reason it is drawn for him at all (owner, 12.08.2026). */
+      expect(mine.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
+    } finally {
+      has.stop()
+    }
   })
 })

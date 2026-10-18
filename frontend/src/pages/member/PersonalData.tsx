@@ -28,14 +28,13 @@ import {
  * <p><b>What it deliberately does NOT do, written here rather than left to be found.</b>
  *
  * <ul>
- * <li><b>It does not show what the postal address and the telephone are today.</b> Nothing
- * serves them: {@code GET /api/me} answers a role, an account and the member's own record
- * (eight facts about his membership, and since 10.10.2026 the twelve his own page is drawn
- * from), and {@code /api/competitors} answers the PUBLIC record, which by ADL A8 is
- * public to anybody who asks. So those two boxes open empty and say so beside themselves,
- * rather than opening empty and reading as „you have given none". They are sent only when
- * something is typed into them ({@code whatChanged}), so an untouched empty box changes
- * nothing.</li>
+ * <li><b>It shows what the postal address and the telephone are today, since 18.10.2026.</b>
+ * It did not before: nothing served them, so those two boxes opened empty after every refresh
+ * and said so beside themselves. The owner saved both on QA, was told „Sačuvano", refreshed and
+ * found them empty, which read as the portal having lost them. They were never lost - the route
+ * has written both since 24.09.2026 - but a screen that cannot show a saved value is, to the
+ * person who saved it, the same as one that did not keep it. {@code GET /api/me} carries both now
+ * (`MeApi.MyOwnRecord`), to him alone, and the public record still carries neither.</li>
  * <li><b>It does not carry the town.</b> A town is chosen out of a codebook of every
  * settlement in the world and reaches the route as either a key or a typed name with its
  * country, never both and never neither. That is a picker and two roads rather than a box,
@@ -62,20 +61,24 @@ export function PersonalData({ me }: { me: MyData }) {
   const { t } = useI18n()
 
   /* WHAT THE SERVER HOLDS, held here and not read off `me` on every render, because a
-     successful save moves it and nothing refetches the resource. After the first save the
-     address and the telephone are no longer unknown - the portal put them there - so the
-     sentence about not knowing them goes at the moment it stops being true. */
+     successful save moves it and nothing refetches the resource. It starts as what the server
+     said a moment ago (`me`, which is read fresh every time this panel is drawn - a visit to
+     another screen and back asks again), and a save moves it by exactly what was sent.
+
+     The boxes START as the same four values, which is the whole of the fault of 18.10.2026: they
+     used to open empty for the address and the telephone and the member who had saved them read
+     that as the portal having lost them. */
   const [standing, setStanding] = useState<Standing>({
     firstName: me.firstName,
     lastName: me.lastName,
-    address: null,
-    phone: null,
+    address: me.address,
+    phone: me.phone,
   })
   const [typed, setTyped] = useState<Typed>({
     firstName: me.firstName,
     lastName: me.lastName,
-    address: '',
-    phone: '',
+    address: me.address,
+    phone: me.phone,
   })
   const [asking, setAsking] = useState(false)
   const [answer, setAnswer] = useState<Answer | null>(null)
@@ -138,16 +141,14 @@ export function PersonalData({ me }: { me: MyData }) {
           }}
         >
           {WHAT_THIS_SCREEN_SENDS.map((name) => {
-            const unknown = standing[name] === null
-            const noteId = `account-${name}-unknown`
-            /* **ASKED FOR WHERE THE SERVER WILL NOT TAKE IT EMPTY AND THE PORTAL KNOWS WHAT IT
-               HOLDS** (PENDING 217.5). One fact decides all three things a box says about itself,
-               the star, `aria-required` and the word „neobavezno", and it is the fact the sentence
-               under the box is drawn from: an address the portal cannot see is a box a member may
-               leave alone („Ako ostaviš prazno, ništa se ne menja"), so it is not obligatory; once
-               one is written it is known, and the server takes no empty one, so it is. The telephone
-               is optional either way, because a blank one is how it is removed. */
-            const asked = NEVER_EMPTIED.includes(name) && !unknown
+            /* **ASKED FOR WHERE THE SERVER WILL NOT TAKE IT EMPTY** (PENDING 217.5). One fact
+               decides all three things a box says about itself, the star, `aria-required` and the
+               word „neobavezno". It used to be that fact AND whether the portal could see what the
+               server held in the box, because an address the portal could not see was a box a
+               member could leave alone; the portal sees all four now, so the server's own list is
+               the whole answer. The telephone is optional, because a blank one is how it is
+               removed. */
+            const asked = NEVER_EMPTIED.includes(name)
 
             return (
               <div className="rankings__field" key={name}>
@@ -160,7 +161,6 @@ export function PersonalData({ me }: { me: MyData }) {
                   value={typed[name]}
                   maxLength={AS_LONG_AS_THE_FORM_ALLOWS[name]}
                   aria-required={asked ? 'true' : undefined}
-                  aria-describedby={unknown ? noteId : undefined}
                   onChange={(event) => {
                     /* The answer goes the moment anything moves: a „saved" left standing
                        over a box being edited says the thing on the screen is what the
@@ -169,13 +169,6 @@ export function PersonalData({ me }: { me: MyData }) {
                     setTyped((before) => ({ ...before, [name]: event.target.value }))
                   }}
                 />
-                {/* Only while it is true. It stops being true the moment a save lands,
-                    because then the portal does know what is there: it put it there. */}
-                {unknown && (
-                  <p className="rate__hint" id={noteId}>
-                    {t('account.notShown')}
-                  </p>
-                )}
               </div>
             )
           })}

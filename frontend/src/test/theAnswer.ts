@@ -407,7 +407,15 @@ export const readAsFee: Price = aProcessingFee
  * requires the two to be the same set - so a name added here that the server has not got
  * fails by name, and a name the server has that is missing here fails the same way.
  *
- * **Twelve of its twenty names are the page his own profile is drawn from, since
+ * **AND TWO OF ITS TWENTY-TWO ARE HIS OWN POSTAL ADDRESS AND TELEPHONE, since 18.10.2026**
+ * (`MeApi.MyOwnRecord.address` and `.phone`): the owner saved both on QA, was told so, refreshed and
+ * found both boxes empty, because nothing served them. Neither is in `test/mock/competitors.json`,
+ * which is the PUBLIC record and carries neither by decision (PDL „Uvek privatno: mejl, telefon i
+ * adresa"), so the harness adds them to every member's answer from this sample
+ * (`test/setup.ts`, `whatMeAnswers`) and a case that means to measure a particular pair puts its
+ * own server in front.
+ *
+ * **Twelve of its twenty-two names are the page his own profile is drawn from, since
  * 10.10.2026** (PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god
  * postoji"): a member whose fee has lapsed is on no row of `/api/competitors`, so his name,
  * his town, his category, his biography and his portrait reach the screen through this
@@ -451,6 +459,8 @@ export const myOwnRecordFromMe = {
   birthdayShown: aCompetitor.birthdayShown,
   photo: aCompetitor.photo,
   crop: aCompetitor.crop,
+  address: 'Bulevar Pupina 10',
+  phone: '+381 60 123 456',
 }
 
 /**

@@ -1624,6 +1624,172 @@ class MeWriteApiTest {
 	}
 
 	/**
+	 * WHAT A MEMBER SAVED IS WHAT HE IS HANDED THE NEXT TIME HE ASKS WHO HE IS.
+	 *
+	 * <p><b>The round trip, which is the case the fault of 18.10.2026 was invisible without.</b>
+	 * The owner typed his postal address and his telephone on QA, pressed save, read „Sacuvano",
+	 * refreshed the page and found both boxes empty. Every case above reads the ROW back after a
+	 * write, and the row was always right: the write has been correct since 24.09.2026. What
+	 * nothing asked was whether the route the screen draws itself from on its next visit
+	 * ({@code GET /api/me}) hands those two values back, and it did not - they were stored and
+	 * never served by any route at all.
+	 *
+	 * <p><b>Two sources of one value, and the case separates them.</b> The member who asks is
+	 * written THIRD and another member also saves an address and a telephone of his own, so
+	 * „his own values", „the first row's" and „whoever saved last" are three different answers.
+	 * The value compared is the one the member TYPED with spaces around it, so an answer that
+	 * echoed a request (which this case cannot do, it reads a second request) and an answer
+	 * read off the row are not mistaken for each other; and it is compared with the column, so
+	 * the case does not rest on the fixture's own address.
+	 */
+	@Test
+	void whatAMemberSavedIsWhatHisNextVisitIsHanded() throws Exception {
+		JsonNode before = hisOwnRecord(ME);
+
+		assertThat(before.path("address").asString())
+				.as("the address already on his row is not handed back, so the boxes open empty over a"
+						+ " row that holds something")
+				.isEqualTo(personalOf(ME).get(2)).isEqualTo("Ulica 1");
+		assertThat(before.has("phone"))
+				.as("a member with no telephone was handed one, or a null where the key is meant to be"
+						+ " absent")
+				.isFalse();
+
+		assertThat(changeAs(ME, changing(
+				"address", "  Bulevar oslobodjenja 12  ", "phone", "  +381641234567  "))
+				.getStatus()).isEqualTo(200);
+		assertThat(changeAs(SOMEONE_ELSE, changing(
+				"address", "Kneza Milosa 1", "phone", "0601112223")).getStatus()).isEqualTo(200);
+
+		JsonNode mine = hisOwnRecord(ME);
+
+		assertThat(mine.path("address").asString())
+				.as("the postal address he saved is not what the next visit is handed")
+				.isEqualTo("Bulevar oslobodjenja 12").isEqualTo(personalOf(ME).get(2));
+		assertThat(mine.path("phone").asString())
+				.as("the telephone he saved is not what the next visit is handed")
+				.isEqualTo("+381641234567").isEqualTo(personalOf(ME).get(3));
+
+		JsonNode his = hisOwnRecord(SOMEONE_ELSE);
+
+		assertThat(his.path("address").asString())
+				.as("somebody else's address left through this member's door, or his own did not come"
+						+ " out of his row")
+				.isEqualTo("Kneza Milosa 1");
+		assertThat(his.path("phone").asString()).isEqualTo("0601112223");
+	}
+
+	/**
+	 * AND A TELEPHONE HE REMOVED IS GONE FROM THE NEXT VISIT TOO, while the address beside it
+	 * stands.
+	 *
+	 * <p>A blank telephone is a removal (V8: „no phone is NULL"), and the record says so by
+	 * leaving the key out, as {@code teamId} does for a member in no team. A box that opened
+	 * with the old number after a removal would be the same fault the other way round.
+	 */
+	@Test
+	void aTelephoneHeRemovedIsGoneFromHisNextVisit() throws Exception {
+		assertThat(changeAs(ME, changing("phone", "0641112223")).getStatus()).isEqualTo(200);
+		assertThat(hisOwnRecord(ME).path("phone").asString()).isEqualTo("0641112223");
+
+		assertThat(changeAs(ME, changing("phone", "   ")).getStatus()).isEqualTo(200);
+
+		JsonNode afterwards = hisOwnRecord(ME);
+
+		assertThat(afterwards.has("phone"))
+				.as("a telephone he removed is still handed back on his next visit")
+				.isFalse();
+		assertThat(afterwards.path("address").asString())
+				.as("removing the telephone moved the address as well")
+				.isEqualTo("Ulica 1");
+	}
+
+	/**
+	 * THE SWITCH THAT HIDES HIS PROFILE IS WHAT THE NEXT VISIT IS HANDED, both ways, on the two routes a
+	 * screen draws it from: his own record and the list.
+	 *
+	 * <p>Owner, 18.10.2026: „budi siguran da se cuvaju i ostala polja". The row is read back by the
+	 * cases above; this reads the ROUTES. Ticked and unticked, because a switch that only ever came
+	 * back "on" passes the first, and the second member's answer beside his, so an answer read off the
+	 * wrong row is told by the value.
+	 */
+	@Test
+	void theSwitchThatHidesHisProfileIsWhatTheNextVisitIsHanded() throws Exception {
+		assertThat(hisOwnRecord(ME).path("profileHidden").asBoolean()).isFalse();
+		assertThat(hisOwnRecord(SOMEONE_ELSE).path("profileHidden").asBoolean()).isTrue();
+
+		assertThat(changeAs(ME, change(null, true)).getStatus()).isEqualTo(200);
+
+		assertThat(hisOwnRecord(ME).path("profileHidden").asBoolean())
+				.as("the switch he ticked is not what the next visit is handed")
+				.isTrue();
+		assertThat(rowOnTheList(ME).path("profileHidden").asBoolean())
+				.as("the list the screen draws the switch from does not carry what he ticked")
+				.isTrue();
+
+		assertThat(changeAs(ME, change(null, false)).getStatus()).isEqualTo(200);
+
+		assertThat(hisOwnRecord(ME).path("profileHidden").asBoolean()).isFalse();
+		assertThat(rowOnTheList(ME).path("profileHidden").asBoolean()).isFalse();
+		assertThat(hisOwnRecord(SOMEONE_ELSE).path("profileHidden").asBoolean())
+				.as("somebody else's switch moved with his")
+				.isTrue();
+	}
+
+	/**
+	 * THE WORDS HE TOOK DOWN ARE GONE FROM THE NEXT VISIT, AND THE WORDS HE SENT ARE NOT YET THERE.
+	 *
+	 * <p>An empty text removes what stands, at once (PDL P11, 19.09.2026), so the next visit is handed
+	 * an empty biography. A new text waits for a moderator and the profile keeps the approved words, so
+	 * the next visit is handed those and never the new ones - which is the half of "what he saved is what
+	 * he sees" that the decisions leave to a moderator. What the next visit is NOT handed is the fact that
+	 * a text of his waits, because no route serves it; that is a boundary and is written as one in
+	 * {@code ProfileBio.tsx}.
+	 */
+	@Test
+	void theWordsHeTookDownAreGoneAndTheWordsHeSentAreNotYetThere() throws Exception {
+		assertThat(hisOwnRecord(ME).path("bio").asString()).isEqualTo(THE_TEXT_ON_MY_PROFILE);
+
+		assertThat(changeAs(ME, change("Nove reci koje cekaju.", null)).getStatus()).isEqualTo(200);
+
+		assertThat(hisOwnRecord(ME).path("bio").asString())
+				.as("words nobody approved are what the next visit is handed")
+				.isEqualTo(THE_TEXT_ON_MY_PROFILE);
+		assertThat(rowOnTheList(ME).path("bio").asString()).isEqualTo(THE_TEXT_ON_MY_PROFILE);
+
+		/* Taken down while the new text still waits: the removal is his right and stands at once. */
+		assertThat(changeAs(ME, change("", null)).getStatus()).isEqualTo(200);
+
+		assertThat(hisOwnRecord(ME).path("bio").asString())
+				.as("words he took down are still what the next visit is handed")
+				.isEmpty();
+		assertThat(rowOnTheList(ME).path("bio").asString()).isEmpty();
+		assertThat(hisOwnRecord(SOMEONE_ELSE).path("bio").asString())
+				.as("somebody else's words went with his")
+				.isNotEmpty();
+	}
+
+	/** HIS ROW on {@code GET /api/competitors}, which is what the settings screen draws the switch and the words from. */
+	private JsonNode rowOnTheList(String memberNumber) throws Exception {
+		for (JsonNode one : mapper.readTree(http.perform(get("/api/competitors")
+						.cookie(new Cookie(SessionCookie.NAME, cookieOf(memberNumber))))
+				.andReturn().getResponse().getContentAsString())) {
+			if (memberNumber.equals(one.path("memberNumber").asString())) {
+				return one;
+			}
+		}
+
+		throw new AssertionError("the list does not carry " + memberNumber);
+	}
+
+	/** HIS OWN RECORD as {@code GET /api/me} hands it to him, read with his own session. */
+	private JsonNode hisOwnRecord(String memberNumber) throws Exception {
+		return mapper.readTree(http.perform(get("/api/me")
+						.cookie(new Cookie(SessionCookie.NAME, cookieOf(memberNumber))))
+				.andReturn().getResponse().getContentAsString()).path("member");
+	}
+
+	/**
 	 * THE DATE OF BIRTH AND THE GENDER ARE REFUSED, AND THE ANSWER SAYS WHICH ARRIVED.
 	 *
 	 * <p>Owner, PDL P28b, 2, 24.09.2026: „Datum rodjenja i pol menja samo administrator, jer

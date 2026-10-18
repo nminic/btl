@@ -102,10 +102,31 @@ const decisionsIn = (asked: Asked[]): Asked[] =>
  * from the start, because a list that already held it would let „the queue shows one row"
  * pass off a read taken before the member had sent anything.
  */
-const theServer = (answers: unknown = THE_ROUTE_NAMES_THE_ROW) => {
+const theServer = (answers: unknown = THE_ROUTE_NAMES_THE_ROW, asking = { who: '000007' }) => {
   let uploaded = false
+  let decided = false
 
   return serverThat((path, init) => {
+    /* `GET /api/me/photo` (`MePhotoApi.mine`), WHICH IS WHAT THE SENDING SCREEN IS DRAWN FROM SINCE
+       18.10.2026: the picture that waits, and the one that stands once the row is approved. It follows
+       the row like the server does, so a member who walks away and comes back is shown what the
+       server holds and not what this visit remembers. */
+    if (path === '/api/me/photo' && init?.method === undefined) {
+      return new Response(
+        JSON.stringify({
+          /* HIS picture and nobody else's: the cookie names the member on the server, and a visit that
+             changes the reader (`SignInAs`) is a visit whose next question is about the next reader. */
+          waiting: uploaded && !decided && asking.who === '000007'
+            ? { photo: '/api/me/photo/abc', crop: THE_SERVER_ROW.crop }
+            : null,
+          standing: uploaded && decided && asking.who === '000007'
+            ? { photo: '/api/photos/abc', crop: THE_SERVER_ROW.crop }
+            : null,
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      )
+    }
+
     if (path === '/api/me/photo' && init?.method === 'POST') {
       uploaded = true
 
@@ -123,6 +144,8 @@ const theServer = (answers: unknown = THE_ROUTE_NAMES_THE_ROW) => {
     }
 
     if (init?.method === 'POST' && path.includes('/decision')) {
+      decided = decided || path.includes('/verification/2/')
+
       return new Response(JSON.stringify({ id: 2, state: 'decided' }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -148,13 +171,14 @@ const panelFor = async () => within(await screen.findByRole('region', { name: 'P
  * above the router so it never comes down, and the sign in screen can be walked to while
  * somebody is signed in. A shared laptop at a race is the ordinary case.
  */
-function SignInAs({ memberNumber }: { memberNumber: string }) {
+function SignInAs({ memberNumber, asking }: { memberNumber: string; asking: { who: string } }) {
   const { theServerSignedMeIn } = useSession()
 
   return (
     <button
       type="button"
       onClick={() => {
+        asking.who = memberNumber
         theServerSignedMeIn({
           account: 2,
           memberNumber,
@@ -323,7 +347,8 @@ describe('a picture sent for a decision', () => {
 
       const stillWaiting = await panelFor()
 
-      expect(stillWaiting.getByText(/čeka odobrenje/)).toBeVisible()
+      /* Waited for: the panel is drawn from the server's answer and the heading is there before it. */
+      expect(await stillWaiting.findByText(/čeka odobrenje/)).toBeVisible()
 
       await router.navigate(THE_QUEUE)
       /* Waited for by the heading of THIS card rather than by the list around it: the list is
@@ -355,11 +380,12 @@ describe('a picture sent for a decision', () => {
        fault rather than a symptom: what it reads by is the alt of the frame, so it fails on a
        picture drawn to the wrong person even if the sentence beside it were right. */
     const user = setupUser()
-    const server = theServer()
+    const asking = { who: '000007' }
+    const server = theServer(THE_ROUTE_NAMES_THE_ROW, asking)
 
     try {
       renderAt('/sr/podesavanja', 'superadmin', '000007', undefined, null, (
-        <SignInAs memberNumber="000002" />
+        <SignInAs memberNumber="000002" asking={asking} />
       ))
 
       const mine = await panelFor()
@@ -401,7 +427,12 @@ describe('a picture sent for a decision', () => {
       const panel = await panelFor()
 
       expect(panel.getByText(/čeka odobrenje/)).toBeVisible()
-      expect(panel.queryByRole('button', { name: 'Pošalji na odobrenje' })).toBeNull()
+      /* The button is there since 18.10.2026 (PDL P11, 27.09.2026: sending again overwrites the row that
+         waits), and it is told off because nothing has changed since the picture went. */
+      expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
     } finally {
       server.stop()
     }

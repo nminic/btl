@@ -42,20 +42,29 @@ function reasonsIn(file: string): string[] {
 }
 
 /**
- * A screen nobody has touched: two fields the portal can see, holding what it sees, and two
- * it cannot, holding nothing.
+ * A screen nobody has touched: four fields, holding what the server holds, with a box under each
+ * that holds the same.
  *
  * <p>A case says only what it moves, so what it is measuring is the one line it writes rather
  * than four lines of setup it has to be read past.
+ *
+ * <p><b>Every field holds something, the telephone included.</b> Until 18.10.2026 the address and
+ * the telephone were `null` here, "the portal cannot say what the server holds", because nothing
+ * served them. The owner saved both on QA, refreshed, and found both boxes empty; they are served
+ * now, so a field is a string and the empty one is a member with no telephone.
  */
 function asOpened(moved: { standing?: Partial<Standing>; typed?: Partial<Typed> } = {}): [
   Standing,
   Typed,
 ] {
-  return [
-    { firstName: 'Strahinja', lastName: 'Vukićević', address: null, phone: null, ...moved.standing },
-    { firstName: 'Strahinja', lastName: 'Vukićević', address: '', phone: '', ...moved.typed },
-  ]
+  const held = {
+    firstName: 'Strahinja',
+    lastName: 'Vukićević',
+    address: 'Kneza Miloša 1',
+    phone: '+381 60 123 456',
+  }
+
+  return [{ ...held, ...moved.standing }, { ...held, ...moved.typed }]
 }
 
 describe('what of the member’s own form actually travels', () => {
@@ -86,48 +95,72 @@ describe('what of the member’s own form actually travels', () => {
   })
 
   /**
-   * THE ONE THE PORTAL CANNOT SEE, WHICH IS THE OTHER HALF OF THE SAME RULE.
+   * THE TWO THAT USED TO BE UNSEEN, ASKED THE SAME WAY AS A NAME.
    *
-   * Nothing serves a postal address or a telephone, so an empty box here means „I do not
-   * know what is there and I am not changing it". Sent as an empty string it would ask the
-   * server to CLEAR a column the form requires, which is its own refusal.
+   * <p>A new address and a new telephone travel, trimmed, and nothing travels beside them. Written
+   * with the rule the two had until 18.10.2026 ("send it when something was typed"), both of these
+   * still pass: what tells the two rules apart is the cases that follow.
    */
-  it('leaves out an unseen field that was never typed into', () => {
-    expect(whatChanged(...asOpened({ typed: { address: '   ' } }))).toEqual({})
+  it('carries a new address and a new telephone, trimmed', () => {
+    expect(
+      whatChanged(...asOpened({ typed: { address: ' Bulevar 12 ', phone: ' 065 1234 ' } })),
+    ).toEqual({ address: 'Bulevar 12', phone: '065 1234' })
   })
 
-  it('carries an unseen field the moment something is typed into it', () => {
-    expect(whatChanged(...asOpened({ typed: { phone: ' 065 1234 ' } }))).toEqual({
-      phone: '065 1234',
+  /**
+   * **A TELEPHONE EMPTIED ON PURPOSE IS A CHANGE AND TRAVELS, AS THE EMPTY STRING.** The route reads
+   * a blank telephone as a removal (V8, and `MeWriteApi`: a blank telephone is a removal while one
+   * left out is not touched), and a screen that dropped it would let a member press Save, be told nothing
+   * was wrong, and find the number still there after a refresh - the same fault the owner reported,
+   * the other way round.
+   *
+   * <p>This is the case that tells the new rule from the old one. Under the old rule an empty box
+   * meant „I do not know what is there and I am not changing it", so this sent nothing.
+   */
+  it('carries a telephone that was emptied, so the number can be removed', () => {
+    expect(whatChanged(...asOpened({ typed: { phone: '' } }))).toEqual({ phone: '' })
+  })
+
+  /**
+   * **And an address emptied on purpose travels too**, exactly as a name does, so the server is the
+   * one that refuses it by name (`aFieldIsBlank`). The rule is the server's; this only makes sure
+   * the question reaches it.
+   */
+  it('carries an address and a name that were emptied, so the server is the one that refuses them', () => {
+    expect(whatChanged(...asOpened({ typed: { address: '', lastName: '' } }))).toEqual({
+      address: '',
+      lastName: '',
     })
   })
 
-  /**
-   * **Emptying a box the portal CAN see is a change and travels**, and this is the case that
-   * keeps the two knowledge states from being folded into one rule.
-   *
-   * Written as „send it when something was typed" for both, a name deliberately cleared would
-   * be silently dropped and the member would press Save, be told nothing was wrong, and find
-   * his name still there. What happens instead is that the empty string travels and the server
-   * answers `aFieldIsBlank`, which this screen says in words. The rule is the server's; this
-   * only makes sure the question reaches it.
-   */
-  it('carries a seen field that was emptied, so the server is the one that refuses it', () => {
-    expect(whatChanged(...asOpened({ typed: { lastName: '' } }))).toEqual({ lastName: '' })
-  })
-
   it('reads what is typed as trimmed, so spaces alone are not a change', () => {
-    expect(whatChanged(...asOpened({ typed: { firstName: '  Strahinja  ' } }))).toEqual({})
+    expect(
+      whatChanged(
+        ...asOpened({ typed: { firstName: '  Strahinja  ', address: ' Kneza Miloša 1 ' } }),
+      ),
+    ).toEqual({})
   })
 
   /**
-   * <p>AND THE OTHER DIRECTION OF THE SAME KNOWLEDGE, which nothing above measures: once a
-   * save has happened the portal DOES know what is in an address, so from then on that field
-   * behaves like a name and an unchanged box sends nothing. Without this, a rule reading „a
-   * field that was ever unseen always travels" would pass every case above and send the same
-   * address again on every press.
+   * A MEMBER WITH NO TELEPHONE HOLDS THE EMPTY STRING, AND SPACES TYPED INTO THE BOX ARE NOT A
+   * CHANGE.
+   *
+   * <p>The server leaves the key out for him and the portal reads that as the empty box
+   * (`session/theServer.ts`, `phoneIn`), so „none" and „an empty box" are one fact and the box does
+   * not send a removal of nothing.
    */
-  it('stops treating a once-unseen field as unseen after something was written to it', () => {
+  it('does not send a removal for a member who had no telephone', () => {
+    expect(
+      whatChanged(...asOpened({ standing: { phone: '' }, typed: { phone: '   ' } })),
+    ).toEqual({})
+  })
+
+  /**
+   * <p>AND WHAT STANDS AFTER A SAVE is what the screen then compares with: an unchanged box sends
+   * nothing the second time. Without this, a rule that always sent the two private fields would pass
+   * every case above that moves one of them and send the same address again on every press.
+   */
+  it('sends nothing for a box that holds what was just written', () => {
     expect(
       whatChanged(...asOpened({ standing: { phone: '065 1234' }, typed: { phone: '065 1234' } })),
     ).toEqual({})
