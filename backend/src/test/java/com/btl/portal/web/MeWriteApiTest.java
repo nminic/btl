@@ -1704,6 +1704,84 @@ class MeWriteApiTest {
 				.isEqualTo("Ulica 1");
 	}
 
+	/**
+	 * THE SWITCH THAT HIDES HIS PROFILE IS WHAT THE NEXT VISIT IS HANDED, both ways, on the two routes a
+	 * screen draws it from: his own record and the list.
+	 *
+	 * <p>Owner, 18.10.2026: „budi siguran da se cuvaju i ostala polja". The row is read back by the
+	 * cases above; this reads the ROUTES. Ticked and unticked, because a switch that only ever came
+	 * back "on" passes the first, and the second member's answer beside his, so an answer read off the
+	 * wrong row is told by the value.
+	 */
+	@Test
+	void theSwitchThatHidesHisProfileIsWhatTheNextVisitIsHanded() throws Exception {
+		assertThat(hisOwnRecord(ME).path("profileHidden").asBoolean()).isFalse();
+		assertThat(hisOwnRecord(SOMEONE_ELSE).path("profileHidden").asBoolean()).isTrue();
+
+		assertThat(changeAs(ME, change(null, true)).getStatus()).isEqualTo(200);
+
+		assertThat(hisOwnRecord(ME).path("profileHidden").asBoolean())
+				.as("the switch he ticked is not what the next visit is handed")
+				.isTrue();
+		assertThat(rowOnTheList(ME).path("profileHidden").asBoolean())
+				.as("the list the screen draws the switch from does not carry what he ticked")
+				.isTrue();
+
+		assertThat(changeAs(ME, change(null, false)).getStatus()).isEqualTo(200);
+
+		assertThat(hisOwnRecord(ME).path("profileHidden").asBoolean()).isFalse();
+		assertThat(rowOnTheList(ME).path("profileHidden").asBoolean()).isFalse();
+		assertThat(hisOwnRecord(SOMEONE_ELSE).path("profileHidden").asBoolean())
+				.as("somebody else's switch moved with his")
+				.isTrue();
+	}
+
+	/**
+	 * THE WORDS HE TOOK DOWN ARE GONE FROM THE NEXT VISIT, AND THE WORDS HE SENT ARE NOT YET THERE.
+	 *
+	 * <p>An empty text removes what stands, at once (PDL P11, 19.09.2026), so the next visit is handed
+	 * an empty biography. A new text waits for a moderator and the profile keeps the approved words, so
+	 * the next visit is handed those and never the new ones - which is the half of "what he saved is what
+	 * he sees" that the decisions leave to a moderator. What the next visit is NOT handed is the fact that
+	 * a text of his waits, because no route serves it; that is a boundary and is written as one in
+	 * {@code ProfileBio.tsx}.
+	 */
+	@Test
+	void theWordsHeTookDownAreGoneAndTheWordsHeSentAreNotYetThere() throws Exception {
+		assertThat(hisOwnRecord(ME).path("bio").asString()).isEqualTo(THE_TEXT_ON_MY_PROFILE);
+
+		assertThat(changeAs(ME, change("Nove reci koje cekaju.", null)).getStatus()).isEqualTo(200);
+
+		assertThat(hisOwnRecord(ME).path("bio").asString())
+				.as("words nobody approved are what the next visit is handed")
+				.isEqualTo(THE_TEXT_ON_MY_PROFILE);
+		assertThat(rowOnTheList(ME).path("bio").asString()).isEqualTo(THE_TEXT_ON_MY_PROFILE);
+
+		/* Taken down while the new text still waits: the removal is his right and stands at once. */
+		assertThat(changeAs(ME, change("", null)).getStatus()).isEqualTo(200);
+
+		assertThat(hisOwnRecord(ME).path("bio").asString())
+				.as("words he took down are still what the next visit is handed")
+				.isEmpty();
+		assertThat(rowOnTheList(ME).path("bio").asString()).isEmpty();
+		assertThat(hisOwnRecord(SOMEONE_ELSE).path("bio").asString())
+				.as("somebody else's words went with his")
+				.isNotEmpty();
+	}
+
+	/** HIS ROW on {@code GET /api/competitors}, which is what the settings screen draws the switch and the words from. */
+	private JsonNode rowOnTheList(String memberNumber) throws Exception {
+		for (JsonNode one : mapper.readTree(http.perform(get("/api/competitors")
+						.cookie(new Cookie(SessionCookie.NAME, cookieOf(memberNumber))))
+				.andReturn().getResponse().getContentAsString())) {
+			if (memberNumber.equals(one.path("memberNumber").asString())) {
+				return one;
+			}
+		}
+
+		throw new AssertionError("the list does not carry " + memberNumber);
+	}
+
 	/** HIS OWN RECORD as {@code GET /api/me} hands it to him, read with his own session. */
 	private JsonNode hisOwnRecord(String memberNumber) throws Exception {
 		return mapper.readTree(http.perform(get("/api/me")

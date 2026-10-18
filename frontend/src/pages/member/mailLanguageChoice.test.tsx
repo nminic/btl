@@ -1,4 +1,4 @@
-import { configure, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, configure, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { clearResourceCache } from '../../data/client'
 import sr from '../../i18n/sr.json'
@@ -665,5 +665,37 @@ describe('the keyboard', () => {
     await (await panel()).findByText(sr.account.saved)
 
     expect(sentIn(must(server.writes()[0], 'the one write'))).toEqual({ language: 'en' })
+  }, SLOW)
+})
+
+describe('the language of the mail, after a refresh', () => {
+  /**
+   * WHAT HE CHOSE IS WHAT THE NEXT VISIT HOLDS (owner, 18.10.2026: „budi siguran da se cuvaju i ostala
+   * polja").
+   *
+   * <p>The server above keeps what it is told and answers the next `GET /api/me` out of the same place.
+   * The screen is torn down as a refresh does it (`cleanup`, and the visit's cached lists with it) and
+   * drawn again; the radio that is chosen can then come from the server and from nowhere else. Both
+   * directions, because a panel that only ever opened on one language passes the first.
+   */
+  it.each([
+    ['sr', 'en', 'English'],
+    ['en', 'sr', 'Srpski'],
+  ] as const)('opens on %s, is changed to %s, and opens on %s after a refresh', async (from, to, name) => {
+    const user = setupUser()
+    const server = theServer('member', from)
+
+    renderAt('/sr/podesavanja', 'visitor', null)
+    await user.click(await radio(name))
+    await waitFor(() => {
+      expect(server.held()).toBe(to)
+    })
+
+    cleanup()
+    clearResourceCache()
+    renderAt('/sr/podesavanja', 'visitor', null)
+
+    expect(isChosen(await radio(name))).toBe(true)
+    expect(isChosen(await radio(name === 'English' ? 'Srpski' : 'English'))).toBe(false)
   }, SLOW)
 })

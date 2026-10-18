@@ -113,3 +113,63 @@ describe('the category I choose, in the two states a screen cannot reach', () =>
     }
   })
 })
+
+describe('the category I choose, after a refresh', () => {
+  /**
+   * WHAT HE CHOSE IS WHAT THE NEXT VISIT HOLDS (owner, 18.10.2026: „budi siguran da se cuvaju i ostala
+   * polja"). The server keeps what it is told, so a hook drawn afresh can know the beginners' category
+   * was chosen only by asking, and the second hook shares nothing with the first.
+   */
+  it('keeps the beginners category once it has been chosen, and the age band once it has been chosen back', async () => {
+    let firstSeason = false
+
+    const state = () => ({
+      season: 2028,
+      firstSeason,
+      firstSeasonAllowed: true,
+      category: firstSeason ? 'M-P' : 'M40-54',
+      open: true,
+    })
+
+    const { stop } = serverThat((path, init) => {
+      if (path !== '/api/me/category') {
+        return null
+      }
+
+      if (init?.method === 'PUT') {
+        const said: unknown = JSON.parse(String(init.body))
+
+        firstSeason = typeof said === 'object' && said !== null && Reflect.get(said, 'firstSeason') === true
+      }
+
+      return new Response(JSON.stringify(state()), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+
+    try {
+      for (const chosen of [true, false]) {
+        const first = renderHook(() => useMyCategory())
+
+        await waitFor(() => {
+          expect(first.result.current.standing).not.toBeNull()
+        })
+        await act(async () => {
+          await first.result.current.choose(chosen)
+        })
+        first.unmount()
+
+        const second = renderHook(() => useMyCategory())
+
+        await waitFor(() => {
+          expect(second.result.current.standing?.firstSeason).toBe(chosen)
+        })
+        expect(second.result.current.standing?.category).toBe(chosen ? 'M-P' : 'M40-54')
+        second.unmount()
+      }
+    } finally {
+      stop()
+    }
+  })
+})

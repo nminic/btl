@@ -28,6 +28,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
@@ -192,6 +193,36 @@ class MeMailLanguageApiTest {
 				.isEqualTo("en");
 	}
 
+	/**
+	 * WHAT HE CHOSE IS WHAT THE NEXT VISIT IS HANDED, through the route the settings screen draws the
+	 * choice from (owner, 18.10.2026: „budi siguran da se cuvaju i ostala polja").
+	 *
+	 * <p>The case above reads the column, which is the row and not the route: the screen opens on
+	 * {@code GET /api/me}, so that is what is asked. Both directions, and the other member's answer
+	 * beside his, so an answer read off the wrong account is told from the right one by the value.
+	 */
+	@Test
+	void whatHeChoseIsWhatTheNextVisitIsHanded() throws Exception {
+		String him = HE_CHOOSES + "@primer.rs";
+		String other = ALREADY_ENGLISH + "@primer.rs";
+
+		assertThat(mailLanguageHandedTo(him)).isEqualTo("sr");
+
+		sentBy(him, PATH, choosing("en"));
+
+		assertThat(mailLanguageHandedTo(him))
+				.as("the next visit is not handed the language he chose")
+				.isEqualTo("en");
+		assertThat(mailLanguageHandedTo(FIRST_BY_KEY + "@primer.rs"))
+				.as("somebody else's visit was handed the language he chose")
+				.isEqualTo("sr");
+
+		sentBy(him, PATH, choosing("sr"));
+
+		assertThat(mailLanguageHandedTo(him)).isEqualTo("sr");
+		assertThat(mailLanguageHandedTo(other)).isEqualTo("en");
+	}
+
 	@Test
 	void theChoiceIsChangedAsOftenAsHeLikesAndTheAnswerIsTheRow() throws Exception {
 		for (String language : List.of("en", "sr", "en")) {
@@ -263,6 +294,13 @@ class MeMailLanguageApiTest {
 		return http.perform(email == null ? asking
 						: asking.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret())))
 				.andReturn().getResponse();
+	}
+
+	/** The language {@code GET /api/me} hands this account, which is what the settings screen opens on. */
+	private String mailLanguageHandedTo(String email) throws Exception {
+		return mapper.readTree(http.perform(get("/api/me")
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret())))
+				.andReturn().getResponse().getContentAsString()).path("mailLanguage").asString();
 	}
 
 	private MockHttpServletResponse untyped(String path) throws Exception {
