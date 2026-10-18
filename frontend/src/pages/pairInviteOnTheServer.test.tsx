@@ -47,7 +47,9 @@ const MEMBERS_ON_FILE: FileMember[] = JSON.parse(
 /** The reader: a man with no pair, 000002 Relja Momčilović. */
 const READER = '000002'
 
-const HIS_OWN = '/sr/takmicar/000002-relja-momcilovic'
+/* His own pairs and questions stand on „Moja članarina” since 18.10.2026 (PDL P11, owner: „Dugme
+   „Raskini” i pozivi u par koji čekaju sele na „Moja članarina”, ispod prelaznog roka”). */
+const HIS_OWN = '/sr/moja-clanarina'
 
 /** The member on the page: a woman with no pair, 000015 Katarina Novaković. */
 const HER = '000015'
@@ -911,10 +913,9 @@ describe('the questions still standing on the reader’s own page', () => {
 
       const rows = pairRows()
 
-      expect(rows).toHaveLength(2)
-      expect(rows[0]).toBe(sr.pair.none)
+      expect(rows).toHaveLength(1)
 
-      const standing = must(rows[1], 'the line of questions')
+      const standing = must(rows[0], 'the line of questions')
       const spans = [...document.querySelectorAll('.profile__pair-waiting')].map((one) =>
         (one.textContent ?? '').trim(),
       )
@@ -932,7 +933,7 @@ describe('the questions still standing on the reader’s own page', () => {
       expect(standing).not.toContain('Relja')
       expect(standing).not.toContain('Ivona')
       expect(standing).not.toMatch(/2026|10\./)
-      expect(must(document.querySelectorAll('.profile__pair')[1], 'the line').querySelector('img')).toBeNull()
+      expect(must(document.querySelectorAll('.profile__pair')[0], 'the line').querySelector('img')).toBeNull()
     } finally {
       server.stop()
     }

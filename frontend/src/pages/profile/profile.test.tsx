@@ -925,7 +925,7 @@ describe('who the profile is about, above everything else', () => {
        and pinned here; a change to any of it is a change somebody meant to make. */
     const SAID: Record<string, string> = {
       '000008': 'Članski broj 000008 · M 55+ · Sarajevo · U ligi od 2016. · Bez tima',
-      '000007': 'Članski broj 000007 · M 24- · Banja Luka · U ligi od 2015. · U klubu Dunavski trkači od 2021.',
+      '000007': 'Članski broj 000007 · M 24- · Banja Luka · U ligi od 2015. · U timu Dunavski trkači od 2021.',
     }
 
     for (const number of ['000008', '000007']) {

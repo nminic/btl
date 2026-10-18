@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { must } from '../test/at'
+import { SLOW } from '../test/slow'
 import { clearResourceCache, loadResource } from './client'
 import { renderAt } from '../test/render'
 import { theCookieNames } from '../test/setup'
@@ -525,22 +526,23 @@ describe('the balance, on a count the server gives', () => {
 })
 
 describe('a racing pair, on the answer the server gives', () => {
-  it('says which season it is for, and asks the answer for no day', async () => {
+  it('says which season it is for, and asks the answer for no day', { timeout: SLOW }, async () => {
     /* The day a pair was made „se ne prikazuje nikome" (owner, 13.09.2026) and
        `/api/pairs` does not answer it, so a screen that drew it would print
        „Invalid Date" over every pair on the portal. Answered without it here, which
        the generated file cannot do because it still carries one. */
     /* A season that has not been run yet, read on a day inside the one before it: a
        pair of a season already over is history and this line does not draw one at all
-       (`RacingPairLine`), so a pair of 2019 read on today's date would be measuring
-       nothing. */
+       (`member/MyRacingPairs.tsx`), so a pair of 2019 read on today's date would be measuring
+       nothing. Read on „Moja članarina” since 18.10.2026, where the season is said beside the
+       pair (PDL P11: the line under the name on the profile carries no season). */
     const pairs = [{ id: 1, season: 2027, memberNumbers: [stillAMember, '000009'] }]
     const { stop } = answering(pairs, '/api/pairs')
 
     try {
-      renderAt(`/sr/takmicar/${stillAMember}`, 'competitor', stillAMember, undefined, '2026-11-01')
+      renderAt('/sr/moja-clanarina', 'competitor', stillAMember, undefined, '2026-11-01')
 
-      const said = await screen.findByText('Za sezonu 2027.')
+      const said = await screen.findByText('Za sezonu 2027.', {}, { timeout: SLOW / 2 })
 
       expect(said).toBeVisible()
 

@@ -841,10 +841,15 @@ describe('membership', () => {
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
 
     const written = screen.getByRole('heading', { level: 3, name: 'Uplatnica' })
-    const withCode = screen.getByRole('heading', { level: 4, name: 'Uplatnica sa QR kodom' })
 
     expect(written).toBeVisible()
-    expect(withCode).toBeVisible()
+    /* ONE HEADING AND NOT TWO SINCE 18.10.2026 (PDL P8, owner: „obriši naslov Uplatnica sa QR
+       kodom, nepotreban je”): the code's title is gone, in its words and in its level. */
+    expect(screen.queryByRole('heading', { name: 'Uplatnica sa QR kodom' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 4 })).not.toBeInTheDocument()
+    /* And the sentence under the details went the same day (owner: „Ovo obriši, ne služi
+       ničemu”). */
+    expect(screen.queryByText(/Poziv na broj je ono po čemu se uplata prepoznaje/)).not.toBeInTheDocument()
 
     /* THE TWO HALVES SHARE ONE WRAPPER, which is what „sa desne strane u nivou detalja
        za uplatu" (owner, 26.09.2026) means and `styles/membershipPaySlip.test.ts` cannot
@@ -860,17 +865,14 @@ describe('membership', () => {
       'the wrapper the written half and the QR code are meant to share',
     )
 
-    expect(within(slip).getByRole('heading', { level: 4, name: 'Uplatnica sa QR kodom' })).toBe(
-      withCode,
-    )
+    const code = within(slip).getByRole('img', { name: /QR/ })
+    const half = must(code.closest<HTMLElement>('.pay__qr'), 'the half that holds the code')
 
     /* AND THE CODE IS WHAT STANDS UNDER ITS TITLE, with no sentence between (PDL P8, 18.10.2026,
        „Blok „Uplatnica sa QR kodom”: bez rečenice ispod naslova"). The element right after the
        title is the one that holds the code, so a sentence put back under the title - in either
        of its two old forms - is the element that takes its place and fails here. */
-    expect(
-      must(withCode.nextElementSibling, 'what stands under the title of the code'),
-    ).toContainElement(within(slip).getByRole('img', { name: /QR/ }))
+    expect(half.textContent).toBe('')
     expect(within(slip).queryByText(/Skeniraj kod/)).not.toBeInTheDocument()
 
     /* AND ITS HALF DRAWS NO LINE OF ITS OWN: the line over the slip is the wrapper's, and the class
@@ -878,8 +880,7 @@ describe('membership', () => {
        again, under the wrapper's line (owner, 18.10.2026, „linija ... celom sirinom strane"). The
        sheet is read in `styles/membershipPaySlip.test.ts`; what only a rendered page can say is
        which class this element wears. */
-    expect(must(withCode.parentElement, 'the half that holds the code')).toHaveClass('pay__qr')
-    expect(must(withCode.parentElement, 'the half that holds the code')).not.toHaveClass('pay')
+    expect(half).not.toHaveClass('pay')
 
     expect(screen.queryByRole('heading', { name: /[Kk]artic/ })).not.toBeInTheDocument()
     // Paying between residents of Serbia through PayPal is not allowed.
@@ -935,9 +936,7 @@ describe('membership', () => {
 
     expect(await screen.findByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: /[Kk]artic/ })).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('heading', { name: 'Uplatnica sa QR kodom' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
     expect(screen.queryByText(/QR/)).not.toBeInTheDocument()
   })
 
@@ -974,9 +973,8 @@ describe('membership', () => {
     renderMembershipOn('2026-07-30')
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
-    expect(
-      screen.queryByRole('heading', { name: 'Uplatnica sa QR kodom' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
     /* And nothing about what a payment costs, because on that day nothing is on
        sale: the panel says so a line above. What a payment carries belongs
        beside a price, and there is no price yet. */
@@ -2510,6 +2508,16 @@ describe('the transfer window and renewal', () => {
       expect(
         screen.queryByText(/nijednu zvaničnu sezonu nisi završio sa 12 i više bodova/),
       ).not.toBeInTheDocument()
+
+      /* **WHAT HE ACTUALLY RUNS IN, AND NOT WHAT HE TICKED** (PDL P7, owner, 18.10.2026: „strana
+         članarine kaže koju kategoriju član zaista dobija za tu sezonu (izvedenu: želja i pravo)").
+         The wish stays on the beginners - the radio is still on it, which is the journal's „čuva se
+         ŽELJA" - and the right is gone, so the sentence names the age band the route worked out.
+         Read off the wish instead, it would say „Početnici" here, and this is the one state in which
+         the two differ. */
+      expect(screen.getByRole('radio', { name: 'U početničkoj kategoriji' })).toBeChecked()
+      expect(screen.getByText('U sezoni 2028 takmičiš se u kategoriji: M 40-54')).toBeVisible()
+      expect(screen.queryByText(/takmičiš se u kategoriji: Početnici/)).not.toBeInTheDocument()
     } finally {
       category.stop()
     }

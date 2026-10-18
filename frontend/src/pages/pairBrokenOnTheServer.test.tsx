@@ -45,8 +45,11 @@ import sr from '../i18n/sr.json'
    `pages/racingPair.test.tsx` states: 000015 Katarina Novaković is a woman, 000002 Relja
    Momčilović and 000004 Časlav Radenković are men, and 000005 and 000006 are two more members who
    have nothing to do with either. */
-const HER = '/sr/takmicar/000015-katarina-novakovic'
-const HIS = '/sr/takmicar/000002-relja-momcilovic'
+/* „Raskini" stands on „Moja članarina" since 18.10.2026 (PDL P11, owner: „Dugme „Raskini” i pozivi
+   u par koji čekaju sele na „Moja članarina”, ispod prelaznog roka”), so both halves press it from
+   their own page there, which is one address read as whoever is signed in. */
+const HER = '/sr/moja-clanarina'
+const HIS = '/sr/moja-clanarina'
 
 /** A day on which both of the seasons below are still ahead, so `pairsFrom` draws both of her
  *  pairs and neither is history. */
@@ -174,7 +177,7 @@ const THE_OTHERS = (
 async function herProfile(probe: ReactNode = null): Promise<void> {
   renderAt(HER, 'competitor', '000015', undefined, TODAY, probe)
 
-  await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+  await screen.findByRole('heading', { level: 1, name: 'Moja članarina' })
   await waitFor(() => {
     expect(breakButtons().length).toBe(2)
   })
@@ -257,7 +260,7 @@ describe('„Raskini" on a pair the server is keeping', () => {
       aServerWhere()
       renderAt(HIS, 'competitor', '000002', undefined, TODAY)
 
-      await screen.findByRole('heading', { level: 1, name: /Relja/ })
+      await screen.findByRole('heading', { level: 1, name: 'Moja članarina' })
       await waitFor(() => {
         expect(breakButtons().length).toBe(1)
       })
@@ -270,9 +273,12 @@ describe('„Raskini" on a pair the server is keeping', () => {
         expect(sentBy('DELETE')).toEqual([THE_EARLIER_PAIR])
       })
 
+      /* Gone from his page, and with no sentence in its place (PDL P11, 18.10.2026: „Nije u
+         trkačkom paru” ne postoji). */
       await waitFor(() => {
-        expect(pairRows().join(' ')).toContain(sr.pair.none)
+        expect(breakButtons()).toEqual([])
       })
+      expect(pairRows().join(' ')).not.toContain('Katarina Novaković')
     },
     SLOW,
   )
@@ -425,8 +431,9 @@ describe('„Raskini" on a pair the server is keeping', () => {
 
       await user.click(at(screen.getAllByRole('link', { name: 'Takmičari' }), 0))
       await screen.findByRole('heading', { level: 1, name: /Takmičari/ })
-      await user.click(await screen.findByRole('link', { name: /Katarina Novaković/ }))
-      await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+      await user.click(await screen.findByRole('button', { name: 'Otvori nalog' }))
+      await user.click(await screen.findByRole('link', { name: 'Moja članarina' }))
+      await screen.findByRole('heading', { level: 1, name: 'Moja članarina' })
 
       await waitFor(() => {
         expect(asked().filter((one) => one === '/api/pairs').length).toBeGreaterThan(readsBefore)
@@ -580,6 +587,59 @@ describe('„Raskini" on a pair the server is keeping', () => {
          so starting this attempt clears the earlier one before this attempt even reaches the
          server. */
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    },
+    SLOW,
+  )
+
+  it(
+    'names a hidden partner in words, and leads nowhere, to a reader who may not read a hidden profile',
+    async () => {
+      /* **WHERE THE NAME LEADS IS `useProfileLink`'S AND NOT THIS PANEL'S** (security review,
+         08.09.2026, carried with the panel to „Moja članarina" on 18.10.2026). The two answers are
+         made to disagree on purpose: the list carries her and her partner, and her own session says
+         her fee has lapsed, so she is a reader who may not read a hidden profile, and 000004 hides
+         his. The pair is still said, by his name, with no way in. */
+      aServerWhere()
+      const below = globalThis.fetch
+
+      globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const answer = await below(input, init)
+        const path = String(input)
+
+        if ((init?.method ?? 'GET') !== 'GET' || (path !== '/api/me' && path !== '/api/competitors')) {
+          return answer
+        }
+
+        const body: unknown = await answer.json()
+        const member: unknown = typeof body === 'object' && body !== null ? Reflect.get(body, 'member') : null
+        const changed =
+          path === '/api/me' && typeof body === 'object' && body !== null && typeof member === 'object'
+            ? { ...body, member: { ...member, active: false } }
+            : Array.isArray(body)
+              ? body.map((one: unknown) =>
+                  typeof one === 'object' && one !== null && Reflect.get(one, 'memberNumber') === '000004'
+                    ? { ...one, profileHidden: true }
+                    : one,
+                )
+              : body
+
+        return new Response(JSON.stringify(changed), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
+      try {
+        renderAt(HER, 'competitor', '000015', undefined, TODAY)
+
+        const him = await screen.findByText('Časlav Radenković', {}, { timeout: SLOW / 2 })
+
+        expect(him.closest('a')).toBeNull()
+        /* And the partner who does not hide is still a way in, so the absence above is his. */
+        expect(screen.getByRole('link', { name: 'Relja Momčilović' })).toBeVisible()
+      } finally {
+        globalThis.fetch = below
+      }
     },
     SLOW,
   )

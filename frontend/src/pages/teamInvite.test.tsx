@@ -386,7 +386,7 @@ describe('what the invitation does', () => {
        half: read as October 2026, a member taken in runs for the club from 2027 (PDL,
        05.09.2026). Read off the line rather than off the page, so „2027" cannot be answered by
        a result, a season control or the invitation still sitting in the header panel. */
-    expect(clubLine()).toContain('U klubu Dunavski trkači od 2027.')
+    expect(clubLine()).toContain('U timu Dunavski trkači od 2027.')
   }, SEVERAL_SCREENS)
 
   /**
@@ -813,7 +813,7 @@ describe('the third door writes the season the other two write', () => {
     await router.navigate(FREE)
 
     expect(await screen.findByRole('heading', { level: 1, name: /Relja Momčilović/ })).toBeVisible()
-    expect(clubLine()).toContain('U klubu Trkači Morave od 2028.')
+    expect(clubLine()).toContain('U timu Trkači Morave od 2028.')
   }, SEVERAL_SCREENS)
 })
 
@@ -852,7 +852,7 @@ describe('which day the answer is read off', () => {
     await router.navigate(FREE)
 
     expect(await screen.findByRole('heading', { level: 1, name: /Relja Momčilović/ })).toBeVisible()
-    expect(clubLine()).toContain('U klubu Dunavski trkači od 2028.')
+    expect(clubLine()).toContain('U timu Dunavski trkači od 2028.')
   }, SEVERAL_SCREENS)
 
   it('dates the notice by the day it is sent, not by the day the invitation was', async () => {

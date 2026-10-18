@@ -363,6 +363,10 @@ describe('a sentence with a value put into it', () => {
       'leagues.countingOf',
       'leagues.season',
       'membership.active',
+      /* What the member actually runs in, since 18.10.2026 (PDL P7): the season is a figure
+         after a noun in the locative and has no case to be wrong in, and the category is a name
+         after a colon, in the nominative, which is the form `categoryLabel` gives. */
+      'membership.categoryYouRunIn',
       'membership.chooseCategory',
       /* The same fee said to the member, and the same move on the same day: it was
          `PROCESSING_FEE_EUR` written straight into the sentence and it is the served row
@@ -415,7 +419,7 @@ describe('a sentence with a value put into it', () => {
       'pair.sent',
       'profile.allDucats',
       'profile.allResults',
-      'profile.inClub',
+      'profile.inTeam',
       'profile.memberNumberLabel',
       'profile.memberSince',
       'profile.noneInSeason',

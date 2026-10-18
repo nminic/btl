@@ -1,85 +1,95 @@
 import { Fragment, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useToday } from '../../clock/useClock'
+import { Resource } from '../../components/Resource'
 import { Unreadable } from '../../components/Unreadable'
-import { pairsFrom } from '../../data/derive'
-import { useWhatIsWaiting } from '../../data/useResource'
+import { pairsFrom, pairsNow } from '../../data/derive'
+import { combinePair, useCompetitors, usePairs, useWhatIsWaiting } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
-import { useProfileLink } from './useProfileLink'
+import { useProfileLink } from '../profile/useProfileLink'
 import { useSession } from '../../session/useSession'
 import { ServerSaid } from '../account/ServerSaid'
 import type { Answer } from '../account/askTheServer'
-import { theServerWasToldToBreakUp } from '../member/pairWrites'
+import { MEMBERS, recordsOf } from '../admin/entityForms'
+import { useOverlay } from '../admin/overlay'
+import { theServerWasToldToBreakUp } from './pairWrites'
 import type { Competitor, RacingPair } from '../../data/types'
 
 /**
- * „Trkački par" on a profile: who they are paired with, and, on your own page, how to end it and
- * what questions are still standing.
+ * THE MEMBER'S OWN RACING PAIRS ON „MOJA ČLANARINA", with the way to end each and the questions still
+ * standing, read for him and drawn to nobody else.
  *
- * PDL says a profile shows „tim i par sa linkovima", and until 07.09.2026 it showed only the team,
- * because nothing made a pair.
+ * <p><b>Here since 18.10.2026, and moved rather than written anew.</b> PDL P11, owner, 18.10.2026:
+ * „Dugme „Raskini" i pozivi u par koji čekaju sele na „Moja članarina", ispod prelaznog roka", and
+ * „Na profilu ostaje samo „Trkački par: [ime]" u liniji" (`profile/ProfileHead.tsx`). Everything below
+ * was `profile/RacingPairLine.tsx` on the reader's own profile, behaviour for behaviour; what changed
+ * is that the page is always his own, so the `mine` it asked on every row is gone, and that „Nije u
+ * trkačkom paru." went with the profile's half (same decision: „Na profilnoj strani ne treba da piše
+ * Nije u trkačkom paru"). With no pair and no question the panel is not drawn at all.
+ *
+ * <p><b>Every pair that still counts, the next season's too</b>: the line under the name carries only
+ * the running season's (PDL P11, „Samo tekući"), and this is where a pair made for the season after is
+ * seen and can be ended, the owner's 24.09.2026 „Par sme da raskine svaka strana, bilo kad" standing as
+ * it was. The partner's name is said on each row, because here it is in no line above.
+ *
+ * <p>Reads the list of members and the pairs for itself: `Membership.tsx` reads neither (its own row
+ * comes off `GET /api/me`), and a member whose fee has lapsed is on no list and in no pair
+ * (`PairApi`, both halves active), so for him this draws nothing.
+ */
+export function MyRacingPairs({ memberNumber }: { memberNumber: string }) {
+  const { pairsMade, pairsBroken } = useSession()
+  const overlay = useOverlay()
+  const state = combinePair(useCompetitors(), usePairs())
+
+  return (
+    <Resource state={state} inline>
+      {([everybody, fromFile]) => {
+        const competitors = recordsOf(MEMBERS, everybody, overlay)
+        const me = competitors.find((one) => one.memberNumber === memberNumber)
+
+        return me === undefined ? null : (
+          <PairsOf
+            competitor={me}
+            competitors={competitors}
+            pairs={pairsNow(fromFile, pairsMade, pairsBroken)}
+          />
+        )
+      }}
+    </Resource>
+  )
+}
+
+/**
+ * The panel itself: who he is paired with, how to end it, and what questions are still standing.
  *
  * **Every pair that still counts, and not the one of the furthest season** (review, 07.09.2026). A
  * member can hold two at once: on 2 January, the pair they are running this season in, and one made
  * for the season after. Answered with one of them, the other vanished from their own page and there
  * was no way left to end it, while the person on the far side of it went on being told they were
- * paired. „The furthest wins" was a rule I invented while fixing something else and wrote into no
- * journal, which is how it survived three rounds. A season that is over is history and is not drawn
- * here at all.
- *
- * **Ending one is only ever your own.** „Raskini" stands on the reader's own page and nowhere else:
- * a pair is two people confirming each other, so a third person ending it would be somebody else's
- * decision, and the person being read has their own page to end it from.
- *
- * **The questions still standing are the reader's own, and only on their own page.** Whether
- * somebody else has been asked, and by whom, is their business (odluka 07.09.2026). Since P2
- * (10.10.2026) they are the server's: `GET /api/me/applications`, which answers the reader's own
- * questions and nobody else's ({@link QuestionsStanding}).
+ * paired. A season that is over is history and is not drawn here at all.
  *
  * **„RASKINI" REACHES THE SERVER SINCE 28.09.2026, AND IT CHOOSES WHICH STORE BY ASKING WHICH ONE
  * HOLDS THE PAIR.** Owner, PDL, 24.09.2026: „Par sme da raskine **svaka strana, bilo kad**", and
- * `DELETE /api/pairs/{id}` was written for it on that day. Nothing called it: this line wrote
- * `breakPair` into `session/SessionProvider.tsx`, which is a `useState` in the browser, so the
- * pair came back on the next reload and the other half was told inside the presser's own tab.
- *
- * **The two stores are real and the choice between them is not a precaution.** A pair drawn here
- * comes from one of exactly two places, by the construction of `data/derive.ts`'s `pairsNow`: the
- * file the server served, or `pairsMade`, what this visit confirmed through
- * `member/PairInviteAnswer.tsx`. The second has no row on the server at all - `admin/raceIds.ts`
- * numbers it counting DOWN from nought so that nothing it hands out can collide with a
- * `bigserial` - so a „Raskini" that always sent would send `DELETE /api/pairs/-1`, be answered 404,
- * and leave the pair on the screen. That is the fault `admin/teamWrites.ts#standsOnTheServer` was
- * written for one resource along, in its own words: „a delete pressed on its row without this would
- * send `DELETE /api/teams/-1`".
- *
- * **It is asked of `pairsMade` and not of the sign of the number, which is the stronger of the two
- * and the reason is a mutation.** The numeric test infers the answer from a convention about how
- * identities are minted; this one reads the list that actually knows. `nextIdentity` changed to
- * count upwards would break the inference silently and leave this reading true. <b>The one home for
- * the numeric form is `admin/teamWrites.ts`, and it is not imported here because that file is held
- * by another branch in flight</b>, so widening its javadoc - which says „WHETHER THIS TEAM IS ONE
- * THE DATABASE HANDED OUT" - would be an edit to a file in somebody else's diff. The day it lands,
- * these two are one question in two shapes and the cheaper one wins.
+ * `DELETE /api/pairs/{id}` was written for it on that day. A pair drawn here comes from one of
+ * exactly two places, by the construction of `data/derive.ts`'s `pairsNow`: the file the server
+ * served, or `pairsMade`, what this visit confirmed through `member/PairInviteAnswer.tsx`. The second
+ * has no row on the server at all - `admin/raceIds.ts` numbers it counting DOWN from nought - so a
+ * „Raskini" that always sent would send `DELETE /api/pairs/-1`, be answered 404, and leave the pair
+ * on the screen. **It is asked of `pairsMade` and not of the sign of the number**: the numeric test
+ * infers the answer from a convention about how identities are minted, this one reads the list that
+ * actually knows.
  *
  * **AND THE MESSAGE TO THE OTHER HALF IS THE SERVER'S ON ONE PATH AND THIS SCREEN'S ON THE OTHER,
  * which is one message either way rather than two.** PDL, 07.09.2026: „„Raskini" obaveštava drugu
- * polovinu... Bez toga je portal javljao kroz jedna vrata a ćutao kroz druga." `PairWriteApi.end`
- * pays that itself, with `tell(...)`, in the same transaction as the delete, and the sentence it
- * writes is this portal's own `pair.endedBody` read out of the dictionary
- * (`PairWriteApi.theBrokenPairReads`). So a `notify` beside the send would be the same fact in two
- * homes: one durable row and one copy that dies with the tab. On the session path nothing else
- * writes it, so there it stays.
+ * polovinu". `PairWriteApi.end` pays that itself, with `tell(...)`, in the same transaction as the
+ * delete, and the sentence it writes is this portal's own `pair.endedBody` read out of the dictionary.
+ * On the session path nothing else writes it, so there it stays.
  *
- * **Where the partner's name leads is not decided here** (security review, 08.09.2026). It was, for
- * one commit: the address was spelt out by hand, and a visitor reading somebody's profile got a
- * live link to their partner even when that partner had hidden their profile, or had let their fee
- * run out. What the visitor got out of it is exactly what P23 hides: a full name, a member number,
- * and the knowledge that the page is there to be hidden. `profile/useProfileLink.ts` is the one
- * place that turns „may this reader reach this member" into an address, and it reads the member
- * again through this visit's overlay, because hiding is chosen during a visit. When it answers with
- * nothing the name stays, as words.
+ * **Where the partner's name leads is not decided here** (security review, 08.09.2026):
+ * `profile/useProfileLink.ts` is the one place that turns „may this reader reach this member" into an
+ * address, and when it answers with nothing the name stays, as words.
  */
-export function RacingPairLine({
+function PairsOf({
   competitor,
   competitors,
   pairs,
@@ -92,7 +102,8 @@ export function RacingPairLine({
   const { t } = useI18n()
   const today = useToday()
   const linkTo = useProfileLink()
-  const { memberNumber: reader, pairsMade, breakPair, notify } = useSession()
+  const { pairsMade, breakPair, notify } = useSession()
+  const waiting = useWhatIsWaiting(competitor.memberNumber)
   /**
    * WHAT THE SERVER SAID ABOUT ONE ROW, AND WHICH ROW, because a member may hold two.
    *
@@ -119,7 +130,6 @@ export function RacingPairLine({
    * rather than on the one pressed, so the button that will refuse says so beforehand.
    */
   const outstanding = useRef(false)
-  const mine = reader === competitor.memberNumber
   const named = (who: string) =>
     competitors
       .filter((one) => one.memberNumber === who)
@@ -132,14 +142,13 @@ export function RacingPairLine({
    * ENDING ONE, WHEREVER IT IS KEPT.
    *
    * <p><b>Nothing is written anywhere until the store that holds the pair has agreed</b>, which
-   * is `member/inboxRead.ts`'s rule in its own words and the axis this function cannot get
-   * wrong: a portal that dropped the row on the asking would draw a member out of a pair the
-   * server still has him in, and he would have no button left to try again with.
+   * is `member/inboxRead.ts`'s rule in its own words: a portal that dropped the row on the asking
+   * would draw a member out of a pair the server still has him in, and he would have no button
+   * left to try again with.
    *
    * <p><b>The break is written into the visit LAST and on both paths</b>, because the drop of
    * the `pairs` cache inside `theServerWasToldToBreakUp` is for the next mount and this screen
    * is already mounted (`data/useResource.ts`: „dropped without the bump, nothing re-reads").
-   * `admin/AdminTeams.tsx` pairs the same two writes for the same reason.
    *
    * @param pair  the row „Raskini" stands beside
    * @param other the half who is told, which is read off the pair rather than off the reader
@@ -186,33 +195,26 @@ export function RacingPairLine({
     breakPair(pair.id)
   }
 
-  /* The questions still standing, on the reader's own page and on no other. Passed the number of
-     the member on the page, which on this page is the reader's own, so the reader is handed to the
-     read as a string and nobody's „no number" can reach it. */
-  const standing = mine ? (
-    <QuestionsStanding mine={competitor.memberNumber} competitors={competitors} />
-  ) : null
+  /* THE QUESTIONS STILL STANDING, read off the server (P2, 10.10.2026). A question whose other
+     member is no longer named is not drawn (see `QuestionsStanding`), so what is counted here is
+     what would be drawn: a panel with no pair and nothing to draw is no panel at all. While the
+     read is out nothing of it is drawn, and a read that failed says so. */
+  const asked =
+    waiting.status === 'ready'
+      ? waiting.data.pairInvites.flatMap(({ id, memberNumber, sentByMe }) =>
+          memberNumber === null ? [] : [{ id, other: memberNumber, sentByMe }],
+        )
+      : []
 
-  if (held.length === 0) {
-    /* On somebody else's page, nothing at all. On the reader's own, that there is no pair and what
-       is still standing: an empty space answers nothing.
-     *
-       THE QUESTIONS ARE A PARAGRAPH OF THEIR OWN SINCE P2 (10.10.2026), as they already were beside
-       a pair: they are read off the server now, and what a read that failed says
-       (`components/Unreadable.tsx`) is a block that cannot stand inside a `<p>`, which the parser
-       would close around it. */
-    return mine ? (
-      <>
-        <p className="profile__pair">
-          <span>{t('pair.none')}</span>
-        </p>
-        {standing}
-      </>
-    ) : null
+  if (held.length === 0 && asked.length === 0 && waiting.status !== 'error') {
+    return null
   }
 
   return (
-    <>
+    <section className="member__panel" aria-labelledby="membership-pair">
+      <h2 className="profile__section" id="membership-pair">
+        {t('pair.mine')}
+      </h2>
       {held.map((pair) => {
         const other = pair.memberNumbers.filter((one) => one !== competitor.memberNumber).join('')
         const partner = competitors.find((one) => one.memberNumber === other)
@@ -223,12 +225,9 @@ export function RacingPairLine({
         return (
           /* A FRAGMENT AROUND THE ROW SINCE 28.09.2026, BECAUSE WHAT THE SERVER SAID CANNOT STAND
              INSIDE IT. `ServerSaid` draws `<p class="field__error" role="alert">`, and a `<p>`
-             inside a `<p>` is closed by the parser rather than nested, so the alert would land
-             outside the row it belongs to and the rest of the line after it. The row's own markup
-             and its class are untouched. */
+             inside a `<p>` is closed by the parser rather than nested. */
           <Fragment key={pair.id}>
             <p className="profile__pair">
-              <span className="profile__pair-label">{t('pair.mine')}: </span>
               {partner === undefined ? (
                 /* A member the portal no longer has: the pair is still a fact and is still said,
                    but there is nothing to open. */
@@ -243,32 +242,22 @@ export function RacingPairLine({
                 </Link>
               )}{' '}
               {/* THE SEASON AND NOT THE DAY, SINCE 21.09.2026. Owner, 13.09.2026, of the day a
-                  pair was made: it „se ne prikazuje nikome", and when the mock was switched off it
-                  „sklanja se i sa ekrana". `/api/pairs` answers `id`, `season` and the two member
-                  numbers, so there is no day here to draw even if anybody wanted one. What the
-                  sentence said besides the day it still says: which season this pair runs in. */}
+                  pair was made: it „se ne prikazuje nikome". */}
               <span className="profile__pair-since">
                 {t('pair.forSeason', { season: pair.season })}
               </span>
               {/* NO „RASKINI" WHERE THE OTHER HALF IS NOT IN THE ROSTER, BECAUSE THE SERVER ANSWERS
-                  IT 404 EVERY TIME (PENDING stavka 316). The roster is what `GET /api/competitors`
-                  serves and `CompetitorApi` ends it `where c.active`, so a half who is not in it is a
-                  member whose fee has lapsed; `PairWriteApi.pairHeIsHalfOf` asks BOTH halves to be
-                  active, so `DELETE /api/pairs/{id}` answers this pair with a 404 that names no
-                  reason, whoever presses and however often. The pair is still drawn and still said, as it was, with
-                  the number where the name would be: what is not offered is a press that cannot
-                  work. **This is the reasoning of the author of this branch, not a recorded
-                  decision**; the owner's own words about such a pair are P13, 11.08.2026, „Ne
-                  postoji par onda, raskida se.", which says that it is not the member's to end. */}
-              {mine && partner !== undefined && (
+                  IT 404 EVERY TIME (PENDING stavka 316): `PairWriteApi.pairHeIsHalfOf` asks BOTH
+                  halves to be active. **The reasoning of the author of the branch that wrote it, not
+                  a recorded decision**; the owner's own words about such a pair are P13,
+                  11.08.2026, „Ne postoji par onda, raskida se." */}
+              {partner !== undefined && (
                 <>
                   {' '}
-                  {/* **`aria-disabled` AND NEVER `disabled`**, which is the portal's own answer
-                      given with its reason in `member/ProfilePicture.tsx` and again in
-                      `event/RateEvent.tsx`: `disabled` takes the button out of the tab order, so a
-                      member ending a pair by keyboard has focus ON it in the instant it is switched
-                      off and the browser drops him to the top of the document. Told off instead, he
-                      stays where he is and `endIt` refuses the press off the ref. */}
+                  {/* **`aria-disabled` AND NEVER `disabled`** (`member/ProfilePicture.tsx`,
+                      `event/RateEvent.tsx`): `disabled` takes the button out of the tab order, so a
+                      member ending a pair by keyboard would be dropped to the top of the document
+                      in the instant it is switched off. */}
                   <button
                     type="button"
                     className="button button--secondary"
@@ -283,15 +272,8 @@ export function RacingPairLine({
               )}
             </p>
             {/* WHAT THE SERVER SAID, UNDER THE ROW IT IS ABOUT AND UNDER NO OTHER. The pair stays
-                drawn beside it: a break the server refused has not happened, so a line that went
-                anyway would tell the member the opposite of what the server holds.
-
-                AND ONLY ON THE READER'S OWN PAGE, guarded by `mine` same as the button above it
-                (review, 28.09.2026). `refused` is keyed by `pair.id` and not remounted between
-                profiles (`app/routeObjects.tsx` carries no `key` on this route), so a refusal from
-                the reader's own „Raskini" outlived a navigation to the held pair's OTHER half and
-                read out on arrival there, about a press that page never made. */}
-            {mine && refused !== null && refused.id === pair.id && (
+                drawn beside it: a break the server refused has not happened. */}
+            {refused !== null && refused.id === pair.id && (
               <ServerSaid
                 answer={refused.answer}
                 refusals={WHEN_BREAKING_A_PAIR}
@@ -301,8 +283,12 @@ export function RacingPairLine({
           </Fragment>
         )
       })}
-      {standing}
-    </>
+      {waiting.status === 'error' ? (
+        <Unreadable said={t('data.error')} reading={waiting.reading} onRetry={waiting.readAgain} />
+      ) : (
+        <QuestionsStanding asked={asked} competitors={competitors} />
+      )}
+    </section>
   )
 }
 
@@ -312,77 +298,60 @@ export function RacingPairLine({
  * <p><b>Read off the route rather than remembered, and empty is what it really answers.</b>
  * `PairWriteApi.end` reaches for `nothingIsHere()` and never for `no(...)`, so the only two
  * answers that route gives are 204 and a 404 with no reason in it - and the 404 is deliberately
- * four callers at once (a pair
- * that is not there, one that is not his, one of a season that is over, one whose half has
- * lapsed), because telling them apart would answer which pairs exist and who is in them to
- * anybody walking the keys.
+ * four callers at once (a pair that is not there, one that is not his, one of a season that is
+ * over, one whose half has lapsed), because telling them apart would answer which pairs exist and
+ * who is in them to anybody walking the keys.
  *
  * <p><b>Named as a constant rather than written `{}` at the call site</b>, so that the day the
- * route does name one there is a place for its sentence to go, and so that the reason it is empty
- * is written once beside the emptiness instead of being a puzzle at the call site.
+ * route does name one there is a place for its sentence to go.
  */
 const WHEN_BREAKING_A_PAIR: Record<string, string> = {}
 
 /**
  * WHAT THAT 404 MEANS, SAID IN THE ROUTE'S OWN WORDS (PENDING stavka 316).
  *
- * <p><b>The 404 is the whole of what this route says when it refuses, and it is four callers at
- * once</b>: a pair that is not there, one that is not his, one of a season that is over, and one
- * whose half has stopped paying. None of the four is answered by pressing again. Said with the
- * portal's general sentence for a 404 it told her „pokusaj ponovo za koji minut", which is advice
- * a member who has just pressed this button can never use, so `ServerSaid` is handed this table
- * and says `pair.breakRefused.notHeld` instead.
+ * <p>None of the four causes is answered by pressing again, so the portal's general sentence for a
+ * 404 („pokusaj ponovo za koji minut") is advice a member who has just pressed this button can never
+ * use; `ServerSaid` is handed this table and says `pair.breakRefused.notHeld` instead.
  *
- * <p><b>THE WORDS OF THAT SENTENCE ARE A PROPOSAL OF THE AUTHOR OF THIS BRANCH AND NOT THE
- * OWNER'S.</b> What was asked of it is that it may not promise that a second try will work. It is
- * one sentence for all four causes on purpose, saying only what holds for every one of them: a
- * sentence that named the cause would be the answer to „which pairs exist and who is in them" that
- * the bare 404 is written not to give (`PairWriteApi.end`). It names the one thing that does
- * help, which is to read the page again.
+ * <p><b>THE WORDS OF THAT SENTENCE ARE A PROPOSAL OF THE AUTHOR OF THE BRANCH THAT WROTE IT AND NOT
+ * THE OWNER'S.</b> It is one sentence for all four causes on purpose: a sentence that named the cause
+ * would be the answer to „which pairs exist and who is in them" that the bare 404 is written not to
+ * give (`PairWriteApi.end`).
  */
 const WHAT_THE_NUMBER_SAYS_WHEN_BREAKING_A_PAIR: Record<number, string> = {
   404: 'pair.breakRefused.notHeld',
 }
 
 /**
- * THE QUESTIONS STILL STANDING ON THE READER'S OWN PAGE, SENT AND RECEIVED, read off the server.
+ * THE QUESTIONS STILL STANDING, SENT AND RECEIVED, read off the server by the panel above.
  *
  * <p>PDL, 07.09.2026: „Sopstveni profil nosi stanje: tekući trkački par sa linkom, pozive koji
- * čekaju (i poslate i primljene) i dugme „Raskini"". Until P2 (10.10.2026) these were the session's
- * questions, so a question asked of the member never reached this page and one he asked was gone
- * after a reload. `GET /api/me/applications` answers both directions with `sentByMe`, names the
- * OTHER member of each by number (`MyApplicationsApi.pairInvites`), and lists them oldest first.
+ * čekaju (i poslate i primljene) i dugme „Raskini"" - which since 18.10.2026 stands on „Moja
+ * članarina" (PDL P11). `GET /api/me/applications` answers both directions with `sentByMe`, names
+ * the OTHER member of each by number (`MyApplicationsApi.pairInvites`), and lists them oldest first.
  *
- * <p><b>Nothing while it is read, and a read that failed says so</b>, with the way to ask again
- * (decision of 02.10.2026, PENDING stavka 368, in the PDL's words: „Spisak koji ne moze da se
- * ucita KAZE to, umesto da izgleda prazan"). The pairs drawn above it are this page's own read and
- * stand either way.
- *
- * <p><b>A question whose other member has let the fee lapse is not drawn.</b> Derived on
- * 10.10.2026, not the owner's word, and put to him among that day's derivations: „poziv u par koji
- * čeka, a drugom članu je istekla članarina, ne crta se na sopstvenom profilu". The server already
- * names nobody there (`MyApplicationsApi`: „the person behind it stops being named"), and a row
- * standing without a name would tell the member who asked that the fee of the one he asked has
- * lapsed, which Article 74 shuts; PDL, 13.09.2026 („ni posredno") says it of public answers, and
- * this is my reading of it for a private one. Not drawn, it reads like an answered question.
+ * <p><b>A question whose other member has let the fee lapse is not drawn</b> (derived on 10.10.2026,
+ * not the owner's word, and put to him among that day's derivations): the server names nobody there,
+ * and a row standing without a name would tell the member who asked that the fee of the one he asked
+ * has lapsed, which Article 74 shuts. The panel drops those before they reach here.
  *
  * <p><b>A number the list of members does not carry is said as the number</b>, which is
- * `TeamQueue.tsx`'s answer: the two reads are made at different moments, and the number is what
- * the route already handed this reader.
+ * `TeamQueue.tsx`'s answer: the two reads are made at different moments.
  *
- * <p><b>And no day</b>: PDL, 02.10.2026, „Poziv u par ne nosi datum", so the `date` the route
- * still answers is drawn nowhere.
+ * <p><b>And no day</b>: PDL, 02.10.2026, „Poziv u par ne nosi datum".
  */
-function QuestionsStanding({ mine, competitors }: { mine: string; competitors: Competitor[] }) {
+function QuestionsStanding({
+  asked,
+  competitors,
+}: {
+  asked: { id: number; other: string; sentByMe: boolean }[]
+  competitors: Competitor[]
+}) {
   const { t } = useI18n()
-  const state = useWhatIsWaiting(mine)
 
-  if (state.status === 'loading') {
+  if (asked.length === 0) {
     return null
-  }
-
-  if (state.status === 'error') {
-    return <Unreadable said={t('data.error')} reading={state.reading} onRetry={state.readAgain} />
   }
 
   const said = (number: string): string => {
@@ -391,17 +360,9 @@ function QuestionsStanding({ mine, competitors }: { mine: string; competitors: C
     return found === undefined ? number : `${found.firstName} ${found.lastName}`
   }
 
-  const standing = state.data.pairInvites.flatMap(({ id, memberNumber, sentByMe }) =>
-    memberNumber === null ? [] : [{ id, other: memberNumber, sentByMe }],
-  )
-
-  if (standing.length === 0) {
-    return null
-  }
-
   return (
     <p className="profile__pair">
-      {standing.map((one) => (
+      {asked.map((one) => (
         <span key={one.id} className="profile__pair-waiting">
           {' '}
           {one.sentByMe

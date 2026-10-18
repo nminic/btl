@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest'
+import type { ReactNode } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { SessionProvider } from '../../session/SessionProvider'
 import { serverThat } from '../../test/serverAnswers'
 import { useMyCategory } from './useMyCategory'
+
+/* Inside a session since 18.10.2026, because a choice that went through is written into this
+   visit's overlay under the member's number (PDL P7, „Izbor kategorije se vidi odmah i svuda"). */
+const inASession = ({ children }: { children: ReactNode }) => (
+  <SessionProvider initialMemberNumber="000009">{children}</SessionProvider>
+)
 
 /**
  * THE TWO STATES OF THIS HOOK THAT NO SCREEN CAN REACH.
@@ -38,7 +46,7 @@ describe('the category I choose, in the two states a screen cannot reach', () =>
     const { stop } = serverThat((path) => (path === '/api/me/category' ? waiting : null))
 
     try {
-      const { result, unmount } = renderHook(() => useMyCategory())
+      const { result, unmount } = renderHook(() => useMyCategory(), { wrapper: inASession })
 
       expect(result.current.standing).toBeNull()
 
@@ -91,7 +99,7 @@ describe('the category I choose, in the two states a screen cannot reach', () =>
     })
 
     try {
-      const { result } = renderHook(() => useMyCategory())
+      const { result } = renderHook(() => useMyCategory(), { wrapper: inASession })
 
       await waitFor(() => {
         expect(result.current.standing).toEqual(COMPLETE)

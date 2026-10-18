@@ -4,10 +4,13 @@ import { Link } from 'react-router'
 import { PartsNav } from '../../components/PartsNav'
 import { Portrait } from '../../components/Portrait'
 import { SeasonPicker } from '../../components/SeasonPicker'
-import { categoryOfMember } from '../../data/derive'
-import type { Competitor, Team } from '../../data/types'
+import { useToday } from '../../clock/useClock'
+import { categoryOfMember, pairsFrom } from '../../data/derive'
+import { seasonShown } from '../../data/season'
+import type { Competitor, RacingPair, Team } from '../../data/types'
 import { Sentence } from '../../i18n/Sentence'
 import { useI18n } from '../../i18n/useI18n'
+import { useProfileLink } from './useProfileLink'
 
 /**
  * Who the person is, above everything else, and the same on every part of the
@@ -22,13 +25,23 @@ import { useI18n } from '../../i18n/useI18n'
  *
  * A club is never named without the year, and never the year without the club:
  * `teamSince` is null exactly when there is no club, so the two travel together.
+ *
+ * **„U timu", not „U klubu", and the racing pair after it** (PDL P11, owner, 18.10.2026: „I ne
+ * treba da piše npr. U klubu HTEC nego u timu HTEC", and „Ukoliko nije, ništa se ne prikazuje,
+ * ukoliko jeste, prikazuje se u gornjoj opisnoj liniji nakon tima"). See `RacingPartner` below.
  */
 export function ProfileHead({
   competitor,
   team,
+  competitors,
+  pairs,
 }: {
   competitor: Competitor
   team: Team | undefined
+  /** Whom a partner's number names, read through this visit's overlay by the caller. */
+  competitors: Competitor[]
+  /** The pairs that hold now, the file and this visit together (`data/derive.ts`, `pairsNow`). */
+  pairs: RacingPair[]
 }) {
   const { locale, t } = useI18n()
 
@@ -95,14 +108,82 @@ export function ProfileHead({
                so a screen reader hears where the link goes without an
                aria-label having to repeat what the sentence already says. */
             <span className="profile__club">
-              <Sentence text={t('profile.inClub', { season: competitor.teamSince })} slot="team">
+              <Sentence text={t('profile.inTeam', { season: competitor.teamSince })} slot="team">
                 <Link to={`/${locale}/tim/${team.slug}`}>{team.name}</Link>
               </Sentence>
             </span>
           )}
+          <RacingPartner competitor={competitor} competitors={competitors} pairs={pairs} />
         </p>
       </div>
     </header>
+  )
+}
+
+/**
+ * „TRKAČKI PAR: [IME I PREZIME]" AT THE END OF THE LINE, OR NOTHING AT ALL.
+ *
+ * <p>PDL P11, owner, 18.10.2026: „Na profilnoj strani ne treba da piše Nije u trkačkom paru. Ukoliko
+ * nije, ništa se ne prikazuje, ukoliko jeste, prikazuje se u gornjoj opisnoj liniji nakon tima."
+ * The shape is the one he chose with the recommendation: „Trkački par: [ime i prezime]", the name a
+ * link to the partner's profile, and no season in it. And of which pair (same day, „Samo tekući"):
+ * **only the pair of the season shown as the running one**, `seasonShown(today)` - which is 2027
+ * until 2027 is over, the same season the table opens on (PDL P7, „Važi za sezonu koja se prikazuje
+ * kao tekuća"). A pair made for the season after is not in the line; it is the member's own business
+ * and stands on „Moja članarina" with the way to end it (`member/MyRacingPairs.tsx`).
+ *
+ * <p><b>Where the name leads is not decided here</b>, for the reason the old line gave (security
+ * review, 08.09.2026): `useProfileLink` is the one place that turns „may this reader reach this
+ * member" into an address, and where it answers nothing the name stays as words. A partner the list
+ * does not carry - which `GET /api/pairs` never serves (`PairApi`, both halves active), and which a
+ * pair made during this visit could still name for a moment - is said by number, as it was.
+ */
+function RacingPartner({
+  competitor,
+  competitors,
+  pairs,
+}: {
+  competitor: Competitor
+  competitors: Competitor[]
+  pairs: RacingPair[]
+}) {
+  const { t } = useI18n()
+  const today = useToday()
+  const linkTo = useProfileLink()
+  const running = seasonShown(today)
+  const pair = pairsFrom(pairs, competitor.memberNumber, running).find(
+    (one) => one.season === running,
+  )
+
+  if (pair === undefined) {
+    return null
+  }
+
+  const other = pair.memberNumbers.filter((one) => one !== competitor.memberNumber).join('')
+  const partner = competitors.find((one) => one.memberNumber === other)
+  const to = partner === undefined ? undefined : linkTo(partner)
+
+  return (
+    <>
+      {' · '}
+      <span className="profile__pair">
+        <Sentence text={t('profile.racingPair')} slot="partner">
+          {/* The name in an element of its own either way, so it is one thing to whoever reads
+              it, linked or not, which is how the row it replaces drew it. */}
+          {partner === undefined ? (
+            <span>{other}</span>
+          ) : to === undefined ? (
+            <span>
+              {partner.firstName} {partner.lastName}
+            </span>
+          ) : (
+            <Link to={to}>
+              {partner.firstName} {partner.lastName}
+            </Link>
+          )}
+        </Sentence>
+      </span>
+    </>
   )
 }
 
@@ -185,11 +266,15 @@ export function ProfileParts({ competitor }: { competitor: Competitor }) {
 export function ProfileTop({
   competitor,
   team,
+  competitors,
+  pairs,
   seasons,
   season,
 }: {
   competitor: Competitor
   team: Team | undefined
+  competitors: Competitor[]
+  pairs: RacingPair[]
   /** The seasons the control offers. It governs both parts of the profile, not one
    *  of them (owner, 31.07.2026), which is why it stands with them rather than
    *  inside either. */
@@ -200,7 +285,7 @@ export function ProfileTop({
 }) {
   return (
     <div className="profile__top">
-      <ProfileHead competitor={competitor} team={team} />
+      <ProfileHead competitor={competitor} team={team} competitors={competitors} pairs={pairs} />
       {/* Named and shaped like a field, as on the teams and the top boards (owner,
           05.08.2026). It was a pill with its name hidden from 04.08.2026, on the
           reasoning that beside a name a labelled field reads as a second heading;

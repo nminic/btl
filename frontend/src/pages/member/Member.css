@@ -270,15 +270,18 @@
   padding-top: var(--space-10);
 }
 
-/* The code's half: its title at the height of the written half's, and the
-   code starting where the details do (the same gap as `.pay__slipText`), so
-   the two read as one slip and the code stands to the right of the details
-   (owner, 18.10.2026: "QR kod treba da bude alignovan desno u odnosu na
-   tekstualne podatke za uplatu"). */
-.pay__qr {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-10);
+/* THE SLIP'S ONE HEADING, OVER BOTH HALVES, SINCE 18.10.2026. The code had a
+   title of its own at the height of this one, and the owner had it struck while
+   keeping the code where it stood (PDL P8: "obriši naslov Uplatnica sa QR kodom,
+   nepotreban je, a QR kod ostavi u nivou gde jeste, ne diži gore na mesto
+   naslova"). So the heading takes the whole first row and the details and the
+   code share the second, which starts the code exactly where the details start,
+   as it did. The margin under it is what keeps the distance to the details what
+   it was: 2 and the slip's gap of 16 are the 8 of `.profile__section` and the 10
+   the written half used to put between the two. */
+.pay__heading {
+  grid-column: 1 / -1;
+  margin-bottom: var(--space-2);
 }
 
 /* THE CODE AT THE RIGHT EDGE OF THE PANEL, NOT BESIDE THE DETAILS (owner,
@@ -299,16 +302,27 @@
      the title is the wider (about 189px against 180), so a code left at the
      start of it would stop short of the edge by the difference. Both go to
      the end of the track instead. */
-  .pay__qr {
-    align-items: flex-end;
-  }
-
   .pay__qr .pay__code {
     align-items: flex-end;
   }
 
-  .pay__qr h4 {
-    text-align: end;
+  /* NO TALLER THAN THE DETAILS BESIDE IT, AND SQUARE (PDL P8, owner, 18.10.2026:
+     "A QR kod ne treba da pređe vertikalnu visinu stupca teksta sa leve strane u
+     Uplatnici", and "Kod ostaje kvadrat i poravnat po vrhu sa podacima"). The
+     height of the details is what `pages/member/PaySlip.tsx` writes on the slip as
+     `--slip-details`, read where the browser laid it out; the width follows it and
+     the height follows the width (`components/QrCode.css`, `height: auto`), so the
+     code stays square. 180 where the details are taller than that, and 180 where
+     nothing was measured at all.
+
+     NEVER UNDER 120, AND THAT IS NOT THE OWNER'S NUMBER: under it a banking app is
+     not trusted to read the code (the coordinator's reasoning of 18.10.2026), and
+     the owner is asked before anything goes there. Measured the same day at 820
+     and 1280: the details are 159px tall with a reference and 130px without one,
+     so neither reaches it. Only here, where the two stand side by side: on a
+     telephone the code stands under the details at its own size. */
+  .pay__qr .qr {
+    width: min(180px, max(120px, var(--slip-details, 180px)));
   }
 }
 
