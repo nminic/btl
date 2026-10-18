@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, configure, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { renderAt } from '../../test/render'
 import {
@@ -13,6 +13,14 @@ import { setupUser } from '../../test/user'
 import { arrivedResource, clearResourceCache } from '../../data/client'
 import { SLOW } from '../../test/slow'
 import sr from '../../i18n/sr.json'
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, the arrangement
+   `pages/teamInviteOnTheServer.test.tsx` holds and for its reason: `test/setup.ts` gives a wait and
+   a case the same `SLOW`, so a sentence that is never drawn ended the case in `Test timed out`
+   and not in the wait's own words, which a series of mutations cannot tell from a fault of the
+   machine. Measured 18.10.2026 on the cases that choose the word by the reader's sex: seven
+   mutations that changed the sentence ended in a timeout and not in a missing text. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * ANSWERING A SERVED INVITATION INTO A TEAM, BY PRESSING A BUTTON.
