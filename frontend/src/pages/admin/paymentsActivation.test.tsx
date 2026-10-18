@@ -1659,7 +1659,7 @@ describe('activating a membership from the payments screen', () => {
 
       /** The same list once Petar has a number and Nikola has the season being paid for. */
       const AFTER: Member[] = [
-        BEFORE[0],
+        must(BEFORE[0], 'Jovana'),
         {
           ...first,
           memberNumber: '000019',
