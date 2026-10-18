@@ -696,7 +696,11 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 					.isEqualTo("waiting");
 		}
 
-		assertThat(send(post(where), PROFILES, body("approved", false, "reason", "Slika je mutna")).getStatus())
+		/* The item is a text, and a decision about one names the words it read (PDL P11, 18.10.2026),
+		   so the control names them: without them it would be the 400 of a form not filled in, which
+		   is the same status as the refusals above for a different reason. */
+		assertThat(send(post(where), PROFILES, body("approved", false, "reason", "Slika je mutna",
+				"seenText", "Tekst koji ceka odluku.")).getStatus())
 				.as("the same decision without a zero was not carried out, so the cases above refused a body"
 						+ " for some other reason")
 				.isEqualTo(200);

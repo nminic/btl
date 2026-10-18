@@ -304,7 +304,8 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 
 			/* V53. One text of one member waits for a moderator at a time: a partial unique index on the
 			   queue, under the condition MeWriteApi already asked in Java (PDL, „Nov tekst o sebi se ODBIJA
-			   dok prethodni ceka odluku moderatora", 19.09.2026). No data.
+			   dok prethodni ceka odluku moderatora", 19.09.2026, struck 18.10.2026: the index is now the
+			   conflict target of the overwrite, `MeWriteApi.queued`). No data.
 
 			   53 because it is the next free number, and that was MEASURED rather than taken: every local
 			   and remote ref was searched on 02.10.2026 after PR 468 merged, origin/main stands at V52, and

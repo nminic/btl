@@ -498,6 +498,31 @@ export async function whatTheServerSaysOfMyMailLanguage(): Promise<MailLanguage 
 }
 
 /**
+ * THE WORDS OF HIS THAT WAIT FOR A MODERATOR, or nothing when the record cannot be believed.
+ *
+ * <p>`bioWaiting` on the caller's own record (`MeApi.MyOwnRecord`, PDL P11, 18.10.2026), which the
+ * server leaves OUT for a member whose words do not wait, so absence is read as the empty string - the
+ * empty box - and anything that is not text is a server saying something the portal does not know.
+ * A member without a record is nothing, like every other reader of the record.
+ */
+export async function whatTheServerSaysOfMyWaitingText(): Promise<string | null> {
+  const body = await whatTheServerAnswersMe()
+  const mine = body === null ? null : recordIn(body)
+
+  if (mine === null) {
+    return null
+  }
+
+  const said: unknown = Reflect.get(mine, 'bioWaiting')
+
+  if (said === undefined) {
+    return ''
+  }
+
+  return typeof said === 'string' ? said : null
+}
+
+/**
  * ONE PICTURE OF A MEMBER'S, as an address to fetch it from and the circle over it.
  *
  * <p>`photo` is an address and never a key (`MePhotoApi.Picture`): `/api/photos/<digest>` for the

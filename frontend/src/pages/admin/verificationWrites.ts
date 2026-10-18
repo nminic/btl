@@ -96,6 +96,22 @@ export type Answered = {
    */
   seenCrop?: Crop
   /**
+   * The words of the text the card DREW, on a decision about a biography and nowhere else
+   * (`VerificationWriteApi.Answered.seenText`; PDL P11, 18.10.2026, derived from „isto kao za sliku"
+   * and from the owner's answer of 10.10.2026 about the picture: „Odluka moderatora o tekstu važi
+   * samo za tekst koji je video").
+   *
+   * <p>It is `PendingItem.body`, the text the queue served with the card, sent back exactly as it
+   * arrived. A new text overwrites the one that waits (the row keeps its key), so the key cannot be
+   * the print as it is for a picture: the words are. The route compares them with what the row holds
+   * when it takes the row and answers 409 „Tekst je promenjen, pogledaj ga ponovo." when they differ,
+   * for the refusal as much as for the approval. Beside a card that is not a biography the route
+   * answers 400, and a biography cannot be decided without it, so it is written by
+   * {@link anApprovalOfTheText} and {@link aRefusalOfTheText} and by nothing else. The empty string is
+   * words and not a field left out.
+   */
+  seenText?: string
+  /**
    * The runner's figures as the moderator sets them, on an approved run and nowhere else
    * (`VerificationWriteApi.Amended`, R1 of the results flows). LEFT OUT means „do not
    * touch": the run is counted at the figures it was sent with (ADL A8, 19.09.2026,
@@ -217,6 +233,19 @@ export function anApproval(): Answered {
 }
 
 /**
+ * Yes, to the words this card drew: one request that names them, so the route can tell a text the
+ * moderator read from one a member wrote after he did.
+ *
+ * <p>Its own function for the reason {@link anApprovalOfThePicture} gives: a card of a biography and
+ * a card of anything else are two different things to press on, and an optional argument to
+ * {@link anApproval} would let a caller leave the words out of a decision that cannot be taken
+ * without them - the route answers a form not filled in - or write them where there is no text.
+ */
+export function anApprovalOfTheText(seenText: string): Answered {
+  return { approved: true, reason: '', seenText }
+}
+
+/**
  * Yes, to the picture this card drew and the circle over it: one request that names both, so the
  * route can tell a picture the moderator looked at from one a member sent after he did, and a
  * circle he looked at from one the member moved after.
@@ -280,6 +309,17 @@ export function anApprovalOnTheRace(raceId: number, amended: Amended): Answered 
  */
 export function aRefusal(reason: string): Answered {
   return { approved: false, reason }
+}
+
+/**
+ * No, to the words this card drew, and here is why.
+ *
+ * <p>The refusal names the words as the approval does, and for the picture's reason (PDL P11,
+ * 18.10.2026, derived from 10.10.2026: „I odbijanje slike traži viđenu sliku."): a reason typed about
+ * one text reaches the member as the verdict on another otherwise.
+ */
+export function aRefusalOfTheText(reason: string, seenText: string): Answered {
+  return { approved: false, reason, seenText }
 }
 
 /**

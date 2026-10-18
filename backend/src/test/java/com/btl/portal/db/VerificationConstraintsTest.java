@@ -326,8 +326,9 @@ class VerificationConstraintsTest extends DatabaseTest {
 				Violation.of("verification_only_the_comments_queue_carries_a_submission",
 						pointingAtCommentSubmission("teams", A_COMMENT_SUBMISSION)),
 
-				/* AND ONE TEXT OF ONE MEMBER WAITS AT A TIME, WHICH V53 ADDS. PDL, „Nov tekst o sebi
-				   se ODBIJA dok prethodni ceka odluku moderatora" (19.09.2026). Two texts of one
+				/* AND ONE TEXT OF ONE MEMBER WAITS AT A TIME, WHICH V53 ADDS. It was written for PDL
+				   „Nov tekst o sebi se ODBIJA dok prethodni ceka odluku moderatora" (19.09.2026), struck
+				   18.10.2026; what remains true is that a moderator faces one text per member. Two texts of one
 				   member waiting at once, written by one statement the way the run and the proposal
 				   above are written twice: the index is the only thing that can refuse them. What it
 				   lets stand beside a waiting text is

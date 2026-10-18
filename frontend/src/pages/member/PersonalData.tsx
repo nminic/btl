@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { categoryCodeFor, categoryLabel } from '../../data/categories'
 import { AskedLabel } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 import type { MyData } from '../../session/theServer'
@@ -43,19 +42,17 @@ import {
  * 24.09.2026 that a member changes it himself „ali mora da potvrdi novu", because that
  * address is also how he signs in and an unconfirmed change is somebody taking the account.
  * <b>No route confirms one</b> - measured against every {@code @...Mapping} the backend
- * declares - so this screen does not invent one: the field stands, disabled, with the reason
- * beside it.</li>
+ * declares - so this screen does not invent one, and since 18.10.2026 it does not draw the
+ * disabled field that used to stand for it either (below).</li>
  * </ul>
  *
- * <p><b>And the two it shows without letting anybody move them.</b> PDL P28b, 2: the date of
- * birth and the gender are an administrator's, because the CATEGORY and the age band are
- * worked out from them, so a member who could edit them could choose which category he races
- * in and change a table of a season already run. The gender is shown, because the public
- * record carries it. <b>The date of birth is not shown at all</b>, and that is not this
- * screen being shy: the portal does not hold it. Član 74 and the privacy policy both say it
- * „se nikada ne prikazuje, ni u punom ni u skraćenom obliku. Javna je samo kategorija koja
- * iz njega proizlazi", so what the record carries is the age band, and the band is what is
- * drawn - beside the category, which is the very thing the owner's reason names.
+ * <p><b>And the box of what he may read and not change is gone</b> (PDL P11, owner, 18.10.2026,
+ * „Strana Podešavanja, sa snimaka": „Izlazi ceo boks „Podaci koji se ne menjaju ovde" (pol, kategorija,
+ * mesto, njihova objašnjenja i zaključano polje za adresu elektronske pošte)"). It drew the gender, the
+ * category and the town, three sentences about why they are not moved here and the disabled field for the
+ * address of post. The decisions they explained stand (PDL P28b, 2: the date of birth and the gender are an
+ * administrator's), and the server still refuses them by name (`notYoursToChange`); what is gone is the
+ * screen saying so. The date of birth is not shown anywhere, as before.
  */
 export function PersonalData({ me }: { me: MyData }) {
   const { t } = useI18n()
@@ -115,18 +112,12 @@ export function PersonalData({ me }: { me: MyData }) {
     setAsking(false)
   }
 
-  const category = categoryLabel(
-    categoryCodeFor(me.gender, me.ageBand, me.firstSeason2027),
-    t,
-  )
-
   return (
     <>
       <section className="member__panel" aria-labelledby="account-personal">
         <h2 className="profile__section" id="account-personal">
           {t('account.personalTitle')}
         </h2>
-        <p className="member__note">{t('account.personalNote')}</p>
 
         <form
           className="member__form"
@@ -175,23 +166,17 @@ export function PersonalData({ me }: { me: MyData }) {
 
           <p className="member__actions">
             {/* Told off rather than switched off, as everywhere else on the portal:
-                `disabled` takes the button out of the tab order and takes the reason it
-                stands for with it. */}
+                `disabled` takes the button out of the tab order. Since 18.10.2026 it says nothing
+                about why (PDL P11, owner: the sentences under the buttons are gone), so nothing
+                points at a sentence. */}
             <button
               type="submit"
               className="button button--primary"
               aria-disabled={nothing || asking}
-              aria-describedby={nothing ? 'account-personal-waits' : undefined}
             >
               {t('account.save')}
             </button>
           </p>
-
-          {nothing && (
-            <p id="account-personal-waits" className="rate__hint" role="status">
-              {t('account.changeFirst')}
-            </p>
-          )}
         </form>
 
         {saved && (
@@ -201,61 +186,6 @@ export function PersonalData({ me }: { me: MyData }) {
         )}
 
         {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_CHANGING_MY_DATA} />}
-      </section>
-
-      <section className="member__panel" aria-labelledby="account-locked">
-        <h2 className="profile__section" id="account-locked">
-          {t('account.lockedTitle')}
-        </h2>
-
-        {/* The list `admin/EntityEditor.tsx` draws for the same thing - pairs of „what it is
-            called" and „what it says" - together with what holds it in place there: the rule on
-            the value that lets a long word break (`.member__facts dd`, `Member.css`). It was a
-            bare `<dl>` until 02.10.2026, which took the shape and none of that, and a town typed
-            as one long word sent the page sideways (PENDING 217.6). */}
-        <dl className="member__facts">
-          <div>
-            <dt>{t('registration.gender')}</dt>
-            <dd>{t(me.gender === 'M' ? 'rankings.men' : 'rankings.women')}</dd>
-          </div>
-          <div>
-            {/* The consequence rather than the cause, and it is the owner's own reason for
-                locking the two: the category is worked out from them. */}
-            <dt>{t('account.category')}</dt>
-            <dd>{category}</dd>
-          </div>
-          <div>
-            <dt>{t('registration.city')}</dt>
-            <dd>{me.city}</dd>
-          </div>
-        </dl>
-
-        <p className="member__note">{t('account.lockedNote')}</p>
-        <p className="member__note">{t('account.birthDateNote')}</p>
-        <p className="member__note">{t('account.cityNote')}</p>
-
-        {/* THE FIELD THAT STANDS AND DOES NOTHING, AND IT IS THE ONE THING ON THIS SCREEN
-            DRAWN THAT WAY ON PURPOSE. The owner decided a member changes this himself and
-            confirms the new one; no route confirms one yet. Drawn disabled rather than left
-            out, so that what is missing is the confirming and not the decision - and
-            `disabled` rather than `aria-disabled` here precisely because there is nothing
-            to press: the reason is in the sentence beside it, which the control names. */}
-        <div className="rankings__field">
-          <AskedLabel id="account-email" asked={false}>
-            {t('registration.email')}
-          </AskedLabel>
-          <input
-            id="account-email"
-            type="email"
-            value=""
-            disabled
-            readOnly
-            aria-describedby="account-email-why"
-          />
-          <p className="rate__hint" id="account-email-why">
-            {t('account.emailNote')}
-          </p>
-        </div>
       </section>
     </>
   )

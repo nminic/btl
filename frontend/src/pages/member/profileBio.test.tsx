@@ -7,7 +7,7 @@ import { must } from '../../test/at'
 import { measurePicture } from '../../test/picture'
 import { renderAt } from '../../test/render'
 import { refused, serverThat, type Asked } from '../../test/serverAnswers'
-import { aCompetitor } from '../../test/theAnswer'
+import { aCompetitor, myOwnRecordFromMe } from '../../test/theAnswer'
 import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
 import { SLOW } from '../../test/slow'
@@ -91,6 +91,83 @@ const answering = (body: { bio: string | null; waiting: number | null }): Respon
     headers: { 'content-type': 'application/json' },
   })
 
+const json = (body: object): Response =>
+  new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
+
+/**
+ * `GET /api/me` AS THE SERVER ANSWERS A MEMBER, with the words of his that wait or without them.
+ *
+ * <p>`bioWaiting` is ABSENT for a member whose words do not wait (`MeApi.MyOwnRecord`, PDL P11,
+ * 18.10.2026), which is how the server says "none". The record is the sample's own with this member's
+ * name and category over it, so the session and the panel agree about who is reading.
+ */
+function hisRecord(who: Competitor, waiting: string | null): Record<string, unknown> {
+  const withoutTheTemplatesOwn = Object.fromEntries(
+    Object.entries(myOwnRecordFromMe).filter(([name]) => name !== 'bioWaiting'),
+  )
+
+  return {
+    ...withoutTheTemplatesOwn,
+    memberNumber: who.memberNumber,
+    firstName: who.firstName,
+    lastName: who.lastName,
+    gender: who.gender,
+    city: who.city,
+    ageBand: who.ageBand,
+    firstSeason2027: who.firstSeason2027,
+    bio: who.bio ?? '',
+    ...(waiting === null ? {} : { bioWaiting: waiting }),
+  }
+}
+
+/**
+ * A SERVER THAT KEEPS THE WORDS IT IS TOLD, the way `MeWriteApi` does: an empty text removes what
+ * stands at once, any other text overwrites the one that waits (one row, never two), and a later
+ * `GET /api/me` is answered out of the same place.
+ *
+ * @param opening what stands on the profile and what waits before the visit
+ * @param asking  whose cookie the server is asked with, which a case may change in the middle of a visit
+ */
+function aServerHoldingTheWords(
+  opening: { member: Competitor; standing: string; waiting: string | null },
+  asking: { who: string } = { who: opening.member.memberNumber },
+): { asked: Asked[]; stop: () => void; held: () => { standing: string; waiting: string | null } } {
+  let standing = opening.standing
+  let waiting = opening.waiting
+
+  const { asked, stop } = serverThat((path, init) => {
+    if (path === '/api/me' && init?.method === 'PUT') {
+      const said: unknown = JSON.parse(String(init.body))
+      const text: unknown = typeof said === 'object' && said !== null ? Reflect.get(said, 'bio') : undefined
+
+      if (typeof text === 'string') {
+        if (text.trim() === '') {
+          standing = ''
+        } else {
+          waiting = text.trim()
+        }
+      }
+
+      return answering({ bio: standing, waiting: waiting === null ? null : THE_ROW })
+    }
+
+    if (path === '/api/me' && init?.method === undefined) {
+      const mine = asking.who === opening.member.memberNumber
+
+      return json({
+        role: 'competitor',
+        account: 1,
+        member: hisRecord(mine ? opening.member : somebodyElse, mine ? waiting : null),
+        mailLanguage: 'sr',
+      })
+    }
+
+    return null
+  })
+
+  return { asked, stop, held: () => ({ standing, waiting }) }
+}
+
 /** Only what this panel sent, so a count is a count of writes and not of the reads the shell
  *  makes while a screen is mounted. */
 const writes = (asked: Asked[]): Asked[] =>
@@ -99,7 +176,22 @@ const writes = (asked: Asked[]): Asked[] =>
 /** What the body of one of those really carried, read rather than assumed. */
 const sentIn = (one: Asked): unknown => JSON.parse(String(one.init?.body))
 
-const panelFor = async () => within(await screen.findByRole('region', { name: 'Tekst o sebi' }))
+/**
+ * THE PANEL, WAITED FOR UNTIL IT HAS READ WHAT WAITS.
+ *
+ * <p>Since 18.10.2026 the box is drawn after `GET /api/me` has said whether words of his wait
+ * (`ProfileBio.tsx`, `bioWaiting`), so the heading is there a moment before the box is. The loader
+ * is what stands in between.
+ */
+const panelFor = async () => {
+  const region = await screen.findByRole('region', { name: 'Tekst o sebi' })
+
+  await waitFor(() => {
+    expect(region.querySelector('.loader')).toBeNull()
+  })
+
+  return within(region)
+}
 
 const box = async () => (await panelFor()).getByLabelText(/Svojim rečima|Tekst o sebi/)
 
@@ -111,13 +203,17 @@ const box = async () => (await panelFor()).getByLabelText(/Svojim rečima|Tekst 
  * built a session object by hand would be measuring its own object. Reachable without a
  * reload, because `SessionProvider` is mounted above the router and never comes down.
  */
-function SignInAs({ memberNumber }: { memberNumber: string }) {
+function SignInAs({ memberNumber, asking }: { memberNumber: string; asking?: { who: string } }) {
   const { theServerSignedMeIn } = useSession()
 
   return (
     <button
       type="button"
       onClick={() => {
+        if (asking !== undefined) {
+          asking.who = memberNumber
+        }
+
         theServerSignedMeIn({
           account: 2,
           memberNumber,
@@ -159,7 +255,8 @@ describe('the words a member wrote about themselves, changed later', () => {
 
       expect(send).toHaveAttribute('aria-disabled', 'true')
       expect(send).not.toBeDisabled()
-      expect(send).toHaveAccessibleDescription('Izmeni tekst da bi imao šta da pošalješ.')
+      /* Told off and silent about it (PDL P11, owner, 18.10.2026): no sentence under the button. */
+      expect(send).not.toHaveAttribute('aria-describedby')
 
       /* Pressed anyway, because reachable means pressable: the refusal lives in
          the handler as well as in the attribute. */
@@ -229,14 +326,16 @@ describe('the words a member wrote about themselves, changed later', () => {
     expect(field).not.toHaveAccessibleDescription(/360/)
   })
 
-  it('asks somebody with nothing on their profile to write rather than to change', async () => {
+  it('opens empty for somebody with nothing on their profile, and says there is nothing yet', async () => {
     renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
 
     const panel = await panelFor()
 
     expect(await box()).toHaveValue('')
-    expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toHaveAccessibleDescription(
-      'Napiši nešto da bi mogao da pošalješ.',
+    /* Told off and silent about it (PDL P11, owner, 18.10.2026: "Napiši nešto da bi mogao da
+       pošalješ." is gone). */
+    expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).not.toHaveAttribute(
+      'aria-describedby',
     )
     /* And the sentence above the box says there is nothing yet, rather than
        „this is what stands on your profile" over an empty box. Both sentences
@@ -324,42 +423,32 @@ describe('the words a member wrote about themselves, changed later', () => {
 
   it('goes on saying the profile carries nothing while the new words wait for a moderator', async () => {
     /* PDL P11, 12.08.2026: what a member proposes is not his profile until somebody says so,
-       and `MeWriteApi.Changed` answers the text STANDING rather than the one just sent.
+       and `MeWriteApi.Changed` answers the text STANDING rather than the one just sent. Since
+       18.10.2026 the words that wait are on this screen with a mark that they wait (PDL P11, owner),
+       and the sentence over the box is that mark and not "this stands on your profile".
      *
        Measured on a member whose profile carries NOTHING, which is the one setting in which
-       the two readings differ on the screen: fold in what was sent and the panel says „ovo
-       sada stoji na tvom profilu" over words nobody has approved; read the answer and it
-       goes on saying there is nothing there. On a member who already had one, both readings
-       draw the same sentence and the case would measure nothing. */
+       the two readings differ: fold in what was sent as what stands, and the panel says „ovo
+       sada stoji na tvom profilu" over words nobody has approved. */
     const user = setupUser()
-    const { stop } = serverThat((path, init) =>
-      path === '/api/me' && init?.method === 'PUT'
-        ? answering({ bio: '', waiting: THE_ROW })
-        : null,
-    )
+    const server = aServerHoldingTheWords({ member: withNone, standing: '', waiting: null })
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber, undefined, undefined, (
-        <Decide row={String(THE_ROW)} />
-      ))
+      renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
 
       await panelFor()
       await user.type(await box(), 'Prvi put pišem nešto o sebi.')
       await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
 
-      expect((await panelFor()).getByText(sr.bio.waitingNote)).toBeVisible()
-
-      /* Decided in this same visit, so the box comes back and the sentence above it can be
-         read: while the text waits there is no sentence at all, and a case that stopped at
-         the waiting note could not tell the two readings apart. */
-      await user.click(screen.getByRole('button', { name: 'odluči' }))
-
       const panel = await panelFor()
 
-      expect(panel.getByText(sr.bio.none)).toBeVisible()
+      expect(await panel.findByText(sr.bio.waitingNote)).toBeVisible()
       expect(panel.queryByText(sr.bio.standing)).not.toBeInTheDocument()
+      expect(panel.queryByText(sr.bio.none)).not.toBeInTheDocument()
+      expect(await box()).toHaveValue('Prvi put pišem nešto o sebi.')
+      expect(server.held().standing, 'unapproved words reached the profile').toBe('')
     } finally {
-      stop()
+      server.stop()
     }
   }, SLOW)
 
@@ -410,7 +499,7 @@ describe('the words a member wrote about themselves, changed later', () => {
        behind its server. What it must NOT do is fall back on what was sent: that is the one
        reading `MeWriteApi.Changed` exists to prevent, and it would put a member's unapproved
        words on his own profile page through the screen instead of through the table. So the
-       sentence above the box goes on saying exactly what it said before he pressed. */
+       profile is not claimed to carry anything it did not before he pressed. */
     const user = setupUser()
     const { stop } = serverThat((path, init) =>
       path === '/api/me' && init?.method === 'PUT'
@@ -422,85 +511,66 @@ describe('the words a member wrote about themselves, changed later', () => {
     )
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber, undefined, undefined, (
-        <Decide row={String(THE_ROW)} />
-      ))
+      renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
 
       await panelFor()
       await user.type(await box(), 'Nešto o sebi, prvi put.')
       await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
 
-      expect((await panelFor()).getByText(sr.bio.waitingNote)).toBeVisible()
-
-      await user.click(screen.getByRole('button', { name: 'odluči' }))
-
       const panel = await panelFor()
 
-      expect(panel.getByText(sr.bio.none)).toBeVisible()
+      expect(await panel.findByText(sr.bio.waitingNote)).toBeVisible()
       expect(panel.queryByText(sr.bio.standing)).not.toBeInTheDocument()
     } finally {
       stop()
     }
   }, SLOW)
 
-  it('tells him a text of his still waits after a removal, without inventing its words', async () => {
-    /* THE ONE PLACE THE TWO ROADS MEET, and it is reachable rather than a curiosity: after a
-       reload this panel cannot know a text of his is with a moderator (nothing serves that),
-       so he is met by the box, empties it, and the removal takes effect while the older
-       proposal is still undecided. `MeWriteApi.Changed` answers the key of whatever of his is
-       standing in the queue, „read the same way whether or not THIS request put it there".
+  it('says "saved" for a removal and goes on saying a text of his waits, which the removal does not withdraw', async () => {
+    /* THE ONE PLACE THE TWO ROADS MEET. A text of his is with a moderator and he empties the box: the
+       removal takes effect (it takes down what STANDS, PDL P11, 19.09.2026) and it withdraws nothing
+       that waits. `MeWriteApi.Changed` answers the key of whatever of his is standing in the queue, „read
+       the same way whether or not THIS request put it there".
      *
-       So the wait is said, and the words are NOT drawn: this visit never carried them, and an
-       empty paragraph would say the text had been lost rather than that it was never here. */
+       So both are said: „Sačuvano." for the removal, and the mark that a text waits, over a box he has
+       emptied. The words that wait are not drawn a second time as a paragraph of their own. */
     const user = setupUser()
-    const { stop } = serverThat((path, init) =>
-      path === '/api/me' && init?.method === 'PUT'
-        ? answering({ bio: '', waiting: THE_ROW })
-        : null,
-    )
+    const server = aServerHoldingTheWords({
+      member: withOne,
+      standing: must(withOne.bio, 'his standing words'),
+      waiting: 'Stariji tekst koji čeka odluku.',
+    })
 
     try {
       renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
 
       await panelFor()
+      expect(await box()).toHaveValue('Stariji tekst koji čeka odluku.')
+
       await user.clear(await box())
       await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
 
       const panel = await panelFor()
 
-      expect(await panel.findByText(sr.bio.waitingNote)).toBeVisible()
-      expect(panel.queryByText(must(withOne.bio, 'his standing words'))).not.toBeInTheDocument()
-      expect(panel.queryByText(sr.account.saved)).not.toBeInTheDocument()
-
-      /* NO PARAGRAPH AT ALL UNDER THE SENTENCE, and that is the half a question about TEXT
-         cannot ask. Measured: with the guard removed the panel draws the paragraph with
-         nothing in it, and every assertion above goes on passing - „his old words are not
-         there" is exactly what an EMPTY paragraph says too. An empty frame reads as „the
-         text was lost" rather than „it was never here", which is `ProfilePicture.tsx`'s own
-         reason for the same guard over the picture.
-       *
-         Counted by role rather than by class, which the portal already does in two places
-         (`i18n/Sentence.test.tsx`, `pages/details.test.tsx`): the waiting sentence carries
-         `role="status"`, so an explicit role takes it out of this count and what is left is
-         the body paragraph and nothing else. */
-      expect(panel.queryAllByRole('paragraph')).toEqual([])
+      expect(await panel.findByText(sr.account.saved)).toBeVisible()
+      expect(panel.getByText(sr.bio.waitingNote)).toBeVisible()
+      expect(server.held().waiting, 'a removal of what stands withdrew the text that waits').toBe(
+        'Stariji tekst koji čeka odluku.',
+      )
+      expect(sentIn(must(writes(server.asked)[0], 'the one write'))).toEqual({ bio: '' })
     } finally {
-      stop()
+      server.stop()
     }
   }, SLOW)
 
   it('says what the server refused, keeps the words, and puts nothing in front of a moderator', async () => {
-    /* The route refuses a second text while one of his waits (PDL, owner 19.09.2026: „Nov
-       tekst o sebi se ODBIJA dok prethodni ceka odluku moderatora. Odgovor je 409"), and
-       after a reload this panel cannot know one waits - so this is the road a real member
-       takes, not a curiosity. The reason is said in its own words rather than folded into
-       „nešto je puklo", and the words stay in the box, because clearing them would take away
-       the thing he is being told about. */
+    /* A text longer than the portal takes is refused with its reason, and the reason is said in
+       its own words rather than folded into „nešto je puklo". The words stay in the box, because
+       clearing them would take away the thing he is being told about. (The refusal that used to stand
+       here, a second text while one waits, went with the decision it carried out on 18.10.2026.) */
     const user = setupUser()
     const { stop } = serverThat((path, init) =>
-      path === '/api/me' && init?.method === 'PUT'
-        ? refused('aTextAlreadyWaits', 409)
-        : null,
+      path === '/api/me' && init?.method === 'PUT' ? refused('theTextIsTooLong') : null,
     )
 
     try {
@@ -508,14 +578,14 @@ describe('the words a member wrote about themselves, changed later', () => {
 
       await panelFor()
       await user.clear(await box())
-      await user.type(await box(), 'Drugi pokušaj istog dana.')
+      await user.type(await box(), 'Predugačak pokušaj.')
       await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
 
-      expect(await screen.findByText(sr.account.textAlreadyWaits)).toBeVisible()
+      expect(await screen.findByText(sr.account.textIsTooLong)).toBeVisible()
 
       const panel = await panelFor()
 
-      expect(await box()).toHaveValue('Drugi pokušaj istog dana.')
+      expect(await box()).toHaveValue('Predugačak pokušaj.')
       expect(panel.queryByText(sr.bio.waitingNote)).not.toBeInTheDocument()
       expect(panel.queryByText(sr.account.saved)).not.toBeInTheDocument()
     } finally {
@@ -554,7 +624,9 @@ describe('the words a member wrote about themselves, changed later', () => {
       await user.click(send)
       await user.click(send)
 
-      expect(writes(asked)).toHaveLength(1)
+      await waitFor(() => {
+        expect(writes(asked)).toHaveLength(1)
+      })
 
       release(answering({ bio: withOne.bio, waiting: THE_ROW }))
 
@@ -568,13 +640,18 @@ describe('the words a member wrote about themselves, changed later', () => {
     }
   }, SLOW)
 
-  it('offers nothing more while one is waiting, and says what was sent', async () => {
+  it('keeps the box with the words that were sent, and lets them be corrected before the decision', async () => {
+    /* PDL P11, owner, 18.10.2026: „Dok tekst o sebi čeka odobrenje, član ga vidi u Podešavanjima sa
+       oznakom da čeka i može da ga ispravi pre odluke", and the correction overwrites the text that
+       waits (one row, the same place in the queue). So the box is NOT taken away while one waits: it
+       holds what was sent, the mark says it waits, the button is told off until the words change, and a
+       second send is a second write that replaces the first. */
     const user = setupUser()
-    const { stop } = serverThat((path, init) =>
-      path === '/api/me' && init?.method === 'PUT'
-        ? answering({ bio: withOne.bio, waiting: THE_ROW })
-        : null,
-    )
+    const server = aServerHoldingTheWords({
+      member: withOne,
+      standing: must(withOne.bio, 'his standing words'),
+      waiting: null,
+    })
 
     try {
       renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
@@ -588,111 +665,30 @@ describe('the words a member wrote about themselves, changed later', () => {
       const told = await panel.findByText(sr.bio.waitingNote)
 
       expect(told).toBeVisible()
-      /* The reader is taken to what replaced the control they pressed, rather than
-         dropped on the body with nothing announced (WCAG 2.2 SC 4.1.3, 2.4.3). */
+      /* The reader is taken to what answered the press, rather than dropped on the body with
+         nothing announced (WCAG 2.2 SC 4.1.3, 2.4.3). */
       expect(told).toHaveFocus()
-      expect(panel.queryByRole('button', { name: 'Pošalji na odobrenje' })).not.toBeInTheDocument()
-      /* And what was sent is on screen, so somebody who cannot remember what they
-         wrote does not have to guess while it is out of their hands. */
-      expect(panel.getByText('Nešto sasvim drugo o sebi.')).toBeVisible()
+      expect(panel.getByText(sr.bio.waitingCorrect)).toBeVisible()
+      expect(await box()).toHaveValue('Nešto sasvim drugo o sebi.')
+      expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+
+      /* Corrected before anybody decides: a second write, and it is the second text that waits. */
+      await user.type(await box(), ' I još nešto.')
+      await user.click(panel.getByRole('button', { name: 'Pošalji na odobrenje' }))
+
+      await waitFor(() => {
+        expect(writes(server.asked)).toHaveLength(2)
+      })
+
+      expect(sentIn(must(writes(server.asked)[1], 'the correction'))).toEqual({
+        bio: 'Nešto sasvim drugo o sebi. I još nešto.',
+      })
+      expect(server.held().waiting).toBe('Nešto sasvim drugo o sebi. I još nešto.')
     } finally {
-      stop()
-    }
-  }, SLOW)
-
-  it('hands the box straight back once THAT text is decided, and not when another is', async () => {
-    /* The panel reads decisions as well as the key the route answered with, so somebody whose
-       text is decided while they are still on the portal is not left told to wait. That was
-       written down in a comment and nothing measured it: a review made the filter ignore
-       decisions altogether and all 1935 tests stayed green.
-     *
-       **AND THE DECISION HAS TO BE ON HIS OWN ROW.** A panel that cleared on any decision at
-       all passes a case with one row in it, which is why somebody else's is decided first and
-       the wait is asserted to be still standing. The key is the SERVER'S: `settle` files a
-       decision under the id of the row the server made, and this panel reads that same id.
-       Under a key of the browser's own the two never met.
-     *
-       **AND THE BOX COMES BACK WITHOUT „Sačuvano." OVER IT (review, 28.09.2026, HIGH).** An
-       approval is not a removal: nothing was taken down, so nothing was „saved" by this visit.
-       `removed` used to read `waiting === undefined`, which an approval clears exactly the way
-       a removal does, and the panel said so - the twin of this case with `status: 'rejected'`
-       proves the identical fault for a refusal. */
-    const user = setupUser()
-    const { stop } = serverThat((path, init) =>
-      path === '/api/me' && init?.method === 'PUT'
-        ? answering({ bio: withOne.bio, waiting: THE_ROW })
-        : null,
-    )
-
-    try {
-      renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber, undefined, undefined, (
-        <>
-          <Decide row={String(THE_ROW + 1)} label="odluči tuđe" />
-          <Decide row={String(THE_ROW)} />
-        </>
-      ))
-
-      await panelFor()
-      await user.clear(await box())
-      await user.type(await box(), 'Trčim jer volim šumu.')
-      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
-
-      expect((await panelFor()).getByText(sr.bio.waitingNote)).toBeVisible()
-
-      await user.click(screen.getByRole('button', { name: 'odluči tuđe' }))
-
-      expect((await panelFor()).getByText(sr.bio.waitingNote)).toBeVisible()
-
-      await user.click(screen.getByRole('button', { name: 'odluči' }))
-
-      const panel = await panelFor()
-
-      expect(panel.queryByText(sr.bio.waitingNote)).not.toBeInTheDocument()
-      expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
-      expect(panel.queryByText(sr.account.saved)).not.toBeInTheDocument()
-    } finally {
-      stop()
-    }
-  }, SLOW)
-
-  it('hands the box straight back once THAT text is REFUSED, without claiming it was saved', async () => {
-    /* THE HIGH FINDING THIS CASE PROVES ON ITS OWN (review, 28.09.2026). A member (or a
-       moderator over his own row, which is the same visit) writes a new text, it goes to a
-       moderator, and the SAME moderator refuses it while he is still on this very screen.
-       `waiting` clears exactly as it does on an approval or on a removal, and the panel used
-       to fold all three into „Sačuvano." - telling him his words were saved over a text a
-       moderator had just sent back. Copied from the approval case above, which proves the
-       identical fault for the other decision; between the two, `waiting` cannot tell a
-       removal from a settled row at all, so each decision gets its own case rather than one
-       standing for both. */
-    const user = setupUser()
-    const { stop } = serverThat((path, init) =>
-      path === '/api/me' && init?.method === 'PUT'
-        ? answering({ bio: withOne.bio, waiting: THE_ROW })
-        : null,
-    )
-
-    try {
-      renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber, undefined, undefined, (
-        <Decide row={String(THE_ROW)} status="rejected" />
-      ))
-
-      await panelFor()
-      await user.clear(await box())
-      await user.type(await box(), 'Trčim jer volim šumu.')
-      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
-
-      expect((await panelFor()).getByText(sr.bio.waitingNote)).toBeVisible()
-
-      await user.click(screen.getByRole('button', { name: 'odluči' }))
-
-      const panel = await panelFor()
-
-      expect(panel.queryByText(sr.bio.waitingNote)).not.toBeInTheDocument()
-      expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
-      expect(panel.queryByText(sr.account.saved)).not.toBeInTheDocument()
-    } finally {
-      stop()
+      server.stop()
     }
   }, SLOW)
 
@@ -700,18 +696,19 @@ describe('the words a member wrote about themselves, changed later', () => {
     /* A VISIT IS NOT A MEMBER. `SessionProvider` sits above the router so it never comes
        down, and the sign in screen is walkable while somebody is signed in, so one visit can
        hold two people - a shared laptop at a race is the ordinary case. The identical fault
-       was measured on the picture panel and cost it a round of review: the second man was
-       told a picture of his was waiting and was shown the first man's photograph. */
+       was measured on the picture panel and cost it a round of review. Since 18.10.2026 what
+       waits is read from the server for the member the cookie names, so the second man is asked
+       for and is answered his own: nothing waits for him. */
     const user = setupUser()
-    const { stop } = serverThat((path, init) =>
-      path === '/api/me' && init?.method === 'PUT'
-        ? answering({ bio: withOne.bio, waiting: THE_ROW })
-        : null,
+    const asking = { who: withOne.memberNumber }
+    const server = aServerHoldingTheWords(
+      { member: withOne, standing: must(withOne.bio, 'his standing words'), waiting: null },
+      asking,
     )
 
     try {
       renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber, undefined, undefined, (
-        <SignInAs memberNumber={somebodyElse.memberNumber} />
+        <SignInAs memberNumber={somebodyElse.memberNumber} asking={asking} />
       ))
 
       await panelFor()
@@ -719,17 +716,17 @@ describe('the words a member wrote about themselves, changed later', () => {
       await user.type(await box(), 'Ovo je moj tekst i ničiji drugi.')
       await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
 
-      expect((await panelFor()).getByText(sr.bio.waitingNote)).toBeVisible()
+      expect(await (await panelFor()).findByText(sr.bio.waitingNote)).toBeVisible()
 
       await user.click(screen.getByRole('button', { name: 'prijavi drugog' }))
 
       const panel = await panelFor()
 
       expect(panel.queryByText(sr.bio.waitingNote)).not.toBeInTheDocument()
-      expect(panel.queryByText('Ovo je moj tekst i ničiji drugi.')).not.toBeInTheDocument()
+      expect(panel.queryByDisplayValue('Ovo je moj tekst i ničiji drugi.')).not.toBeInTheDocument()
       expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
     } finally {
-      stop()
+      server.stop()
     }
   }, SLOW)
 

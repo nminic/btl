@@ -512,8 +512,10 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("comment_submission_event_idx", "the waiting comments about one event"),
 			new Index("comment_submission_competitor_idx", "the waiting comments one member has sent in"),
 			new Index("verification_comment_submission_idx", "the queue row a waiting comment is standing in"),
-			/* V53. The owner's „nov tekst o sebi se ODBIJA dok prethodni ceka" said by the database,
-			   so two requests that both asked before either wrote cannot both be told yes. */
+			/* V53. At most one text of one member waits, said by the database. It was written for the
+			   owner's 409 of 19.09.2026, which he struck on 18.10.2026 (PDL P11, OBORENO): a text sent
+			   over one that waits overwrites it. The index stays because it is the conflict target of that
+			   overwrite (`MeWriteApi.queued`) and what makes "one row" a fact of the table. */
 			new Index("verification_one_text_waits_per_member",
 					"one text of one member waits for a moderator at a time; a partial index because a"
 							+ " unique constraint takes no WHERE"),

@@ -42,10 +42,11 @@ export const aLapsedMembersPage = {
 }
 
 /**
- * THE FIVE NAMES `MeApi.MyOwnRecord` LEAVES OUT RATHER THAN CARRY AS NULL (`@JsonInclude
+ * THE SIX NAMES `MeApi.MyOwnRecord` LEAVES OUT RATHER THAN CARRY AS NULL (`@JsonInclude
  * (NON_NULL)`), because a member may honestly have none of what they say: no club, and with it
- * no year in it, and no portrait, and with it no square, and no telephone. `memberNumber` is the
- * sixth annotated component and is present in the sample, because a member has one.
+ * no year in it, and no portrait, and with it no square, no telephone, and no words waiting for a
+ * moderator. `memberNumber` is the seventh annotated component and is present in the sample, because a
+ * member has one.
  */
 export const WHAT_MAY_BE_LEFT_OUT = [
   'teamId',
@@ -53,6 +54,7 @@ export const WHAT_MAY_BE_LEFT_OUT = [
   'photo',
   'crop',
   'phone',
+  'bioWaiting',
   /* And the basis of the season on sale with its season, which a member whose fee has lapsed holds
      no membership of (`MeApi.MyOwnRecord`, since V62; PDL P8, 18.10.2026). Until that day he was
      answered the per-person word `payment`. */

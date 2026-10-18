@@ -106,7 +106,8 @@ describe('the picture on a profile, changed later', () => {
       /* Told off rather than switched off: reachable, and saying why. */
       expect(send).toHaveAttribute('aria-disabled', 'true')
       expect(send).not.toBeDisabled()
-      expect(send).toHaveAccessibleDescription('Izaberi sliku da bi mogao da je pošalješ.')
+      /* Told off and silent about it (PDL P11, 18.10.2026): no sentence under the button. */
+      expect(send).not.toHaveAttribute('aria-describedby')
 
       /* Pressed with nothing chosen: reachable means pressable, so the refusal
          lives in the handler too. */

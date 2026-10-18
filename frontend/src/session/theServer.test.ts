@@ -10,6 +10,7 @@ import {
   whatTheServerSaysOfMyMailLanguage,
   whatTheServerSaysOfMyPictures,
   whatTheServerSaysOfMyProfile,
+  whatTheServerSaysOfMyWaitingText,
   whoTheServerSaysIAm,
 } from './theServer'
 
@@ -1299,5 +1300,60 @@ describe('the pictures of the caller himself', () => {
     })
 
     expect(await whatTheServerSaysOfMyPictures()).toBeNull()
+  })
+})
+
+/**
+ * THE WORDS OF THE CALLER'S THAT WAIT FOR A MODERATOR, which `GET /api/me` carries as `bioWaiting`
+ * (`MeApi.MyOwnRecord`, PDL P11, 18.10.2026).
+ *
+ * <p>The server leaves the key OUT for a member whose words do not wait, so absence is the empty box;
+ * a key of another sort is a server saying something the portal does not know, and a caller with no
+ * record at all (a moderator who does not race) has nothing to read it from.
+ */
+describe('the words of the caller himself that wait for a moderator', () => {
+  it('are read as they are said', async () => {
+    server = serverThat(() =>
+      saying(aMemberSaying({ ...HIS_PAGE, bioWaiting: 'Reči koje čekaju moderatora.' })),
+    )
+
+    expect(await whatTheServerSaysOfMyWaitingText()).toBe('Reči koje čekaju moderatora.')
+    expect(server.asked.map((one) => one.path)).toEqual(['/api/me'])
+  })
+
+  it('are the empty box where the answer carries none', async () => {
+    server = serverThat(() => saying(aMemberSaying(HIS_PAGE)))
+
+    expect(await whatTheServerSaysOfMyWaitingText()).toBe('')
+  })
+
+  it.each([7, true, null, { words: 'x' }])('are not believed when sent as %j', async (sent) => {
+    server = serverThat(() => saying(aMemberSaying({ ...HIS_PAGE, bioWaiting: sent })))
+
+    expect(await whatTheServerSaysOfMyWaitingText()).toBeNull()
+  })
+
+  it.each([
+    ['an account that races for nobody', JSON.stringify({ role: 'moderator', account: 41 })],
+    ['a record that is null', JSON.stringify({ role: 'competitor', account: 41, member: null })],
+    ['nothing but the word for it', '"competitor"'],
+    ['something that is not JSON', '<!doctype html><title>ne ovo</title>'],
+  ])('are nothing for %s', async (_what, body) => {
+    server = serverThat(() => saying(body))
+
+    expect(await whatTheServerSaysOfMyWaitingText()).toBeNull()
+  })
+
+  it('are nothing when the chain refuses, and when there is no server to reach', async () => {
+    server = serverThat(() => new Response(null, { status: 401 }))
+
+    expect(await whatTheServerSaysOfMyWaitingText()).toBeNull()
+
+    server.stop()
+    server = serverThat(() => {
+      throw new Error('nema veze')
+    })
+
+    expect(await whatTheServerSaysOfMyWaitingText()).toBeNull()
   })
 })

@@ -408,7 +408,7 @@ export const readAsFee: Price = aProcessingFee
  * requires the two to be the same set - so a name added here that the server has not got
  * fails by name, and a name the server has that is missing here fails the same way.
  *
- * **AND TWO OF ITS TWENTY-THREE ARE HIS OWN POSTAL ADDRESS AND TELEPHONE, since 18.10.2026**
+ * **AND THREE OF ITS TWENTY-THREE ARE HIS OWN POSTAL ADDRESS, TELEPHONE AND WAITING WORDS, since 18.10.2026**
  * (`MeApi.MyOwnRecord.address` and `.phone`): the owner saved both on QA, was told so, refreshed and
  * found both boxes empty, because nothing served them. Neither is in `test/mock/competitors.json`,
  * which is the PUBLIC record and carries neither by decision (PDL „Uvek privatno: mejl, telefon i
@@ -467,6 +467,12 @@ export const myOwnRecordFromMe = {
   crop: aCompetitor.crop,
   address: 'Bulevar Pupina 10',
   phone: '+381 60 123 456',
+  /* The words of his that wait for a moderator (`MeApi.MyOwnRecord.bioWaiting`, PDL P11, 18.10.2026).
+     The harness does NOT answer it for the members of the generated file (`test/setup.ts`): the server
+     leaves it out for a member whose words do not wait, which is nearly every one, and a screen drawn
+     over a harness that said otherwise would show every member a text that waits. A case about the
+     words that wait puts its own server in front. */
+  bioWaiting: 'Reči koje čekaju moderatora.',
 }
 
 /**

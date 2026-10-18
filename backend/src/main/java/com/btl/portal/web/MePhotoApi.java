@@ -117,9 +117,9 @@ import java.util.Optional;
  * only once this member's turn is held</b> (the section below), because for a FIRST send there is
  * no row for {@code for update} to lock. <b>The
  * 409 that used to stand here is what PDL 21c removed</b>, and the pair it was derived from
- * (the owner's 409 for the TEXT, 19.09.2026) is untouched: {@link MeWriteApi} still refuses a
- * second biography, because a text and a picture are two sorts on one tab and „razlikuje se
- * samo sta moderator pise".
+ * (the owner's 409 for the TEXT, 19.09.2026) went the same way on 18.10.2026: {@link MeWriteApi}
+ * overwrites the text that waits too, on the same row, as this class overwrites the picture
+ * (PDL P11, the entry struck as OBORENO 18.10.2026).
  * <li><b>Did a picture arrive at all?</b> If not, this is 21c's second half - „ili da
  * pomerim krug da gadja drugi deo slike" - and it is legal exactly when something is
  * waiting to be re-cropped. With nothing waiting there is no picture to move a circle over,

@@ -36,21 +36,24 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
- * A MEMBER WHO PRESSES „POSALJI" TWICE LEAVES ONE TEXT WAITING, AND THE SECOND PRESS IS TOLD SO.
+ * A MEMBER WHO PRESSES „POSALJI" TWICE LEAVES ONE TEXT WAITING, AND BOTH PRESSES ARE ANSWERED.
  *
- * <p><b>The owner's decision, PDL, „Nov tekst o sebi se ODBIJA dok prethodni ceka odluku
- * moderatora" (19.09.2026):</b> „Odgovor je 409, i prvi tekst ostaje u redu netaknut." Every
- * sequential case in {@code MeWriteApiTest} already held that, and none of them could see the hole
- * this file is about: {@code MeWriteApi} asked „does a text of his wait" and then wrote one, in two
- * statements under READ COMMITTED, so two requests that both asked before either wrote were both
- * told yes. The moderator then held two texts of one person and no question he could answer.
+ * <p><b>The owner's decisions, PDL P11.</b> On 19.09.2026 a second text was refused with 409 and the
+ * first left untouched; on 18.10.2026 that entry was struck (OBORENO), because „Dok tekst o sebi čeka
+ * odobrenje, član ga vidi u Podešavanjima sa oznakom da čeka i može da ga ispravi pre odluke": a text
+ * sent over one that waits overwrites it, on the same row and at the same place in the queue, as a
+ * picture does. What the first decision protected is still wanted - a moderator faces exactly one
+ * text per member - and it is the thing this file holds across a race: {@code MeWriteApi} used to ask
+ * „does a text of his wait" and then write one, in two statements under READ COMMITTED, so two
+ * requests that both asked before either wrote were both told yes and the moderator held two texts of
+ * one person. It is one statement now, an upsert against {@code verification_one_text_waits_per_member},
+ * and what is measured is that two presses make ONE row and that nothing is refused.
  *
  * <p><b>THE FLOOR IS THE DATABASE's, and the precedent is the portal's own:</b> „pita se jednom" is
  * an index or a key in four places already ({@code team_application_asked_once},
  * {@code team_invitation_sent_once}, {@code pair_invite_asked_once} and, on this very table,
- * {@code verification_team_proposal_unique}). V53 adds {@code verification_one_text_waits_per_member}
- * and the route meets it with {@code on conflict do nothing}, so the second press is refused with the
- * owner's 409 and not with a fault.
+ * {@code verification_team_proposal_unique}). V53 added {@code verification_one_text_waits_per_member}
+ * and the route meets it with {@code on conflict ... do update}.
  *
  * <p><b>NOT {@code @Transactional}</b>, for the reason {@code VerificationDecisionConcurrencyTest}
  * sets out: a test managed transaction is bound to the calling thread, so the two requests below each
@@ -145,46 +148,61 @@ class ATextSentTwiceAtOnceTest {
 	}
 
 	/**
-	 * THE SAME BUTTON PRESSED TWICE: ONE TEXT WAITS, ONE PRESS IS TOLD IT ALREADY DOES.
+	 * THE SAME BUTTON PRESSED TWICE: ONE TEXT WAITS, AND BOTH PRESSES ARE TOLD IT WENT.
 	 *
 	 * <p>Measured on the code before V53, with this case written first: both presses were answered
-	 * 200 - and on that code a 200 for a text is a row written, so the queue held two.
+	 * 200 and the queue held two rows. Measured on the code that answered 409 to the second press:
+	 * 200 and 409, one row. Now both are 200 and still one row, because the second write meets the
+	 * first's row and writes over it.
 	 */
 	@Test
-	void theSameTextSentTwiceAtOnceLeavesOneWaitingAndTheOtherPressIsTold() throws Exception {
+	void theSameTextSentTwiceAtOnceLeavesOneWaitingAndBothPressesAreAnswered() throws Exception {
 		List<MockHttpServletResponse> both = atOnceBehindTheHeldRow(
 				() -> change(Map.of("bio", "Trcim od 2019. i ovo saljem dvaput.")),
 				() -> change(Map.of("bio", "Trcim od 2019. i ovo saljem dvaput.")));
 
 		assertThat(statusesOf(both))
-				.as("both presses were told their text went to a moderator")
-				.containsExactly(200, 409);
-
-		assertThat(reasonOfTheRefusalIn(both))
-				.as("the second press was refused with something other than the owner's answer")
-				.isEqualTo(MeWriteApi.A_TEXT_ALREADY_WAITS);
+				.as("a press was refused, which nothing may do for a text any more")
+				.containsExactly(200, 200);
 
 		assertThat(textsWaiting())
-				.as("a moderator now holds two texts of one member and no question he can answer")
+				.as("a moderator holds two texts of one member and no question he can answer")
 				.containsExactly("Trcim od 2019. i ovo saljem dvaput.");
+	}
+
+	/**
+	 * TWO DIFFERENT TEXTS AT ONCE: ONE ROW, AND IT HOLDS ONE OF THE TWO WHOLE.
+	 *
+	 * <p>Which request writes last is not a thing a case may claim, so the invariant is that the row
+	 * holds exactly one of the two texts, never a mixture and never both.
+	 */
+	@Test
+	void twoDifferentTextsAtOnceLeaveOneRowHoldingOneOfThem() throws Exception {
+		List<MockHttpServletResponse> both = atOnceBehindTheHeldRow(
+				() -> change(Map.of("bio", "Prvi tekst, poslat prvi.")),
+				() -> change(Map.of("bio", "Drugi tekst, poslat drugi.")));
+
+		assertThat(statusesOf(both)).containsExactly(200, 200);
+		assertThat(textsWaiting())
+				.hasSize(1)
+				.first()
+				.isIn("Prvi tekst, poslat prvi.", "Drugi tekst, poslat drugi.");
 	}
 
 	/**
 	 * TWO DIFFERENT REQUESTS, EACH WITH A TEXT AND A NAME: THE NAME THAT STANDS CAME WITH THE TEXT
 	 * THAT WAITS.
 	 *
-	 * <p>The name takes effect at once (PDL P28b, 1) and is written BEFORE the text, so the request
-	 * that loses the race at the text has already renamed the member by the time it loses. The owner's
-	 * „prvi tekst ostaje u redu netaknut" is about the queue; that the loser's other half goes back
-	 * with it is the route's own rule that a refusal commits nothing, met here for the one refusal the
-	 * database decides.
+	 * <p>The name takes effect at once (PDL P28b, 1) and is written BEFORE the text, in one
+	 * transaction, so the request that writes second has waited for the first on the member's row and
+	 * then writes both over it. The pair that stands is therefore one request's, never a name of one
+	 * and a text of the other.
 	 *
-	 * <p><b>Two names and neither is the one he had</b>, so „nothing was rolled back" (the loser's
-	 * name), „everything was rolled back" (his old name) and the right answer are three different
-	 * strings.
+	 * <p><b>Two names and neither is the one he had</b>, so „nothing was written" (his old name), „a
+	 * mixture" and the right answer are different strings.
 	 */
 	@Test
-	void whatTheLosingRequestWroteBeforeItsTextGoesBackWithIt() throws Exception {
+	void theNameThatStandsCameWithTheTextThatWaits() throws Exception {
 		Map<String, Object> first = new LinkedHashMap<>();
 		first.put("bio", "Prvi tekst, poslat sa imenom Prvoslava.");
 		first.put("firstName", "Prvoslav");
@@ -196,9 +214,7 @@ class ATextSentTwiceAtOnceTest {
 		List<MockHttpServletResponse> both = atOnceBehindTheHeldRow(
 				() -> change(first), () -> change(second));
 
-		assertThat(statusesOf(both))
-				.as("both requests were told they went through")
-				.containsExactly(200, 409);
+		assertThat(statusesOf(both)).containsExactly(200, 200);
 
 		List<String> waiting = textsWaiting();
 
@@ -208,8 +224,8 @@ class ATextSentTwiceAtOnceTest {
 
 		assertThat(db.sql("select first_name from competitor where id = ?").param(me)
 				.query(String.class).single())
-				.as("the name that stands did not come with the text that waits, so the request"
-						+ " that was refused renamed the member anyway")
+				.as("the name that stands did not come with the text that waits, so the two requests"
+						+ " were interleaved instead of one writing over the other")
 				.isEqualTo(expectedName);
 	}
 
@@ -270,12 +286,6 @@ class ATextSentTwiceAtOnceTest {
 
 	private static List<Integer> statusesOf(List<MockHttpServletResponse> both) {
 		return both.stream().map(MockHttpServletResponse::getStatus).sorted().toList();
-	}
-
-	private String reasonOfTheRefusalIn(List<MockHttpServletResponse> both) throws Exception {
-		MockHttpServletResponse refused = both.get(0).getStatus() == 409 ? both.get(0) : both.get(1);
-
-		return mapper.readTree(refused.getContentAsString()).path("reason").asString();
 	}
 
 	private List<String> textsWaiting() {

@@ -60,7 +60,6 @@ function stand<T extends { stop: () => void }>(server: T): T {
 /** The headings of the panels, by what they are called on the screen. */
 const PANELS = {
   data: 'Lični podaci',
-  locked: 'Podaci koji se ne menjaju ovde',
   picture: 'Profilna slika',
   biography: 'Tekst o sebi',
   password: 'Lozinka',
@@ -136,8 +135,6 @@ describe('the settings of somebody who registered and has not paid', () => {
     expect(await screen.findByRole('heading', { level: 2, name: PANELS.data })).toBeVisible()
     expect(screen.getByDisplayValue('Tek')).toBeVisible()
     expect(screen.getByDisplayValue('Stigao')).toBeVisible()
-    expect(screen.getByRole('heading', { level: 2, name: PANELS.locked })).toBeVisible()
-    expect(screen.getByText('Beograd')).toBeVisible()
     expect(screen.getByRole('heading', { level: 2, name: PANELS.password })).toBeVisible()
 
     /* What it does not: „sliku, biografiju, skrivanje profila". */
@@ -306,7 +303,6 @@ describe('the settings of a member whose fee has lapsed', () => {
 
     for (const panel of [
       PANELS.data,
-      PANELS.locked,
       PANELS.picture,
       PANELS.biography,
       PANELS.password,
@@ -356,7 +352,6 @@ describe('the settings of a member the list still carries and the answer about h
 
     for (const panel of [
       PANELS.data,
-      PANELS.locked,
       PANELS.picture,
       PANELS.biography,
       PANELS.password,
@@ -425,7 +420,6 @@ describe('the settings of a member whose fee stands', () => {
 
     for (const panel of [
       PANELS.data,
-      PANELS.locked,
       PANELS.picture,
       PANELS.biography,
       PANELS.password,
@@ -440,7 +434,7 @@ describe('the settings of a member whose fee stands', () => {
     expectNoSentenceAboutRenewal()
   }, SLOW)
 
-  it('draws them in the order of how much each is his own, with the password before the theme', async () => {
+  it('draws them in the order of how much each is his own, with the password beside the personal data', async () => {
     renderAt('/sr/podesavanja', 'competitor', '000001')
 
     await drawn()
@@ -452,14 +446,94 @@ describe('the settings of a member whose fee stands', () => {
         .map((one) => one.textContent),
     ).toEqual([
       PANELS.data,
-      PANELS.locked,
+      PANELS.password,
       PANELS.picture,
       PANELS.biography,
-      PANELS.password,
       PANELS.appearance,
       PANELS.mail,
       PANELS.privacy,
     ])
+  }, SLOW)
+})
+
+/**
+ * WHICH PANELS STAND BESIDE WHICH (PDL P11, owner, 18.10.2026, „Strana Podešavanja, sa snimaka":
+ * „Boksovi „Tema" i „Jezik pošte" stoje jedan pored drugog u istom redu; boks za promenu lozinke
+ * stoji pored boksa za lične podatke").
+ *
+ * <p>jsdom lays nothing out, so "beside" is asked in the only terms it can answer: two panels share a
+ * `.member__pair`, the one element the stylesheet turns into two columns from 51.25em
+ * (`styles/settingsLayout.test.ts` holds the rule, and `geometry/settings.geometry.ts` asks Chrome
+ * where they then LAND). Asked of each of the four ways of being signed in, because the panels of each
+ * are different: the pair a member is drawn is not the pair somebody who has not paid is, and an
+ * administration account has its password with no neighbour at all.
+ */
+describe('which panels of the settings stand beside which', () => {
+  const pairOf = (name: string): Element | null =>
+    screen.getByRole('heading', { level: 2, name }).closest('.member__pair')
+
+  /** The panels in a pair, by their headings, in the order they stand in. */
+  const panelsIn = (pair: Element | null): (string | null)[] =>
+    [...(pair?.querySelectorAll(':scope > section > h2') ?? [])].map((one) => one.textContent)
+
+  it('puts the password beside the personal data and the theme beside the language of the mail, for a member whose fee stands', async () => {
+    renderAt('/sr/podesavanja', 'competitor', '000001')
+
+    await drawn()
+    await screen.findByRole('heading', { level: 2, name: PANELS.privacy })
+
+    expect(panelsIn(pairOf(PANELS.data))).toEqual([PANELS.data, PANELS.password])
+    expect(panelsIn(pairOf(PANELS.appearance))).toEqual([PANELS.appearance, PANELS.mail])
+    expect(pairOf(PANELS.data), 'the two pairs are one').not.toBe(pairOf(PANELS.appearance))
+
+    /* And the panels that are not in a pair are not: the picture, the words about himself and the
+       switch each take a row of their own. */
+    for (const panel of [PANELS.picture, PANELS.biography, PANELS.privacy]) {
+      expect(pairOf(panel), panel).toBeNull()
+    }
+  }, SLOW)
+
+  it('puts them beside each other for somebody who has not paid too', async () => {
+    stand(neverPaidAsServed())
+    renderAt('/sr/podesavanja', 'visitor', null)
+
+    await drawn()
+    await screen.findByRole('heading', { level: 2, name: PANELS.data })
+
+    expect(panelsIn(pairOf(PANELS.data))).toEqual([PANELS.data, PANELS.password])
+    expect(panelsIn(pairOf(PANELS.appearance))).toEqual([PANELS.appearance, PANELS.mail])
+  }, SLOW)
+
+  it('puts the theme beside the language of the mail for a member whose fee has lapsed, who has neither the data nor the password', async () => {
+    renderAt('/sr/podesavanja', 'competitor', '000032')
+
+    await drawn()
+
+    expect(panelsIn(pairOf(PANELS.appearance))).toEqual([PANELS.appearance, PANELS.mail])
+    expect(screen.queryByRole('heading', { level: 2, name: PANELS.data })).toBeNull()
+    expect(screen.queryByRole('heading', { level: 2, name: PANELS.password })).toBeNull()
+  }, SLOW)
+
+  it('leaves the password alone in its row for an administration account, which has no personal data to stand beside', async () => {
+    stand(
+      serverThat((path) => {
+        if (path === '/api/me') {
+          return new Response(JSON.stringify({ role: 'moderator', account: 11, mailLanguage: 'sr' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        }
+
+        return path.startsWith('/api') && !isResource(path) ? answeredWith(404) : null
+      }),
+    )
+    renderAt('/sr/podesavanja', 'visitor', null)
+
+    await drawn()
+    expect(await screen.findByRole('group', { name: 'Jezik pošte' })).toBeVisible()
+
+    expect(panelsIn(pairOf(PANELS.password))).toEqual([PANELS.password])
+    expect(panelsIn(pairOf(PANELS.appearance))).toEqual([PANELS.appearance, PANELS.mail])
   }, SLOW)
 })
 

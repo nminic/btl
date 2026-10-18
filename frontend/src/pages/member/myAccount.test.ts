@@ -322,15 +322,16 @@ describe('telling the server to change something', () => {
     })
   })
 
-  /** 409 is what a biography already waiting is answered with, and it carries a name too. */
+  /** 409 is what a shut choice of category is answered with, and it carries a name too. (It was a text
+   *  that already waited until 18.10.2026, when that refusal went.) */
   it('carries the reason a 409 named, exactly as it carries a 400’s', async () => {
     ;({ stop } = serverThat((path) =>
-      path === '/api/me' ? refused('aTextAlreadyWaits', 409) : null,
+      path === '/api/me' ? refused('theChoiceIsShut', 409) : null,
     ))
 
     expect(await askTheServer('/api/me', {}, 'PUT')).toEqual({
       got: 'refused',
-      reason: 'aTextAlreadyWaits',
+      reason: 'theChoiceIsShut',
     })
   })
 
