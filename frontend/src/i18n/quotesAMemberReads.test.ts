@@ -105,10 +105,11 @@ function offendersIn(literals: { at: string; text: string }[]): string[] {
 function jsonFilesIn(folder: string): { file: string; value: unknown }[] {
   return readdirSync(folder)
     .filter((name) => name.endsWith('.json'))
-    .map((name) => ({
-      file: name,
-      value: JSON.parse(readFileSync(join(folder, name), 'utf-8')) as unknown,
-    }))
+    .map((name) => {
+      const value: unknown = JSON.parse(readFileSync(join(folder, name), 'utf-8'))
+
+      return { file: name, value }
+    })
 }
 
 describe('the text a reader meets on a screen', () => {
