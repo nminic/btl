@@ -23,6 +23,12 @@ import java.util.Objects;
  * at the SMTP level rather than swallowing it, because silence is worse than a
  * refusal - somebody who replies has to learn that nobody is reading.
  *
+ * <p><b>And every message asks that a reply go to {@code info@}.</b> Refusing what comes
+ * back is the last line of defence and not the first: ADL A4c, 29.07.2026, puts a
+ * {@code Reply-To} naming the league on every message the portal sends, so that a member
+ * who answers writes to a mailbox a person reads. The address is the one configured as
+ * {@code btl.mail.league}, the same one a blind copy goes to.
+ *
  * <p><b>And the hyphen is the whole address.</b> The relay lets through only a
  * sender it has verified and rewrites every other one, so a portal configured
  * with {@code noreply@} does not send late mail, it sends mail that arrives from
@@ -48,16 +54,22 @@ public class Postman {
 
 	private final String from;
 
+	private final String league;
+
 	/**
 	 * @param from        the address the portal writes from. Configured rather than
 	 *                    written here, because QA and production are two
 	 *                    installations of one portal and the day they must differ
 	 *                    is not this class's business
+	 * @param league      the address a reply is asked to go to, which is the league's own
+	 *                    ({@code btl.mail.league}) and never {@code from}: that one refuses
+	 *                    everything that comes back to it
 	 * @param name        the name the relay is given, empty when there is none
 	 * @param key         the key that goes with it
 	 * @param insistsOnTls whether STARTTLS is required rather than merely offered
 	 */
 	Postman(JavaMailSender relay, @Value("${btl.mail.from}") String from,
+			@Value("${btl.mail.league}") String league,
 			@Value("${spring.mail.username:}") String name,
 			@Value("${spring.mail.password:}") String key,
 			@Value("${spring.mail.properties.mail.smtp.starttls.required:false}") boolean insistsOnTls) {
@@ -107,6 +119,7 @@ public class Postman {
 
 		this.relay = relay;
 		this.from = from;
+		this.league = league;
 	}
 
 	/** Sends what was said to one address, with nobody copied in. */
@@ -148,6 +161,15 @@ public class Postman {
 
 		message.setFrom(from);
 		message.setTo(to);
+
+		/* EVERY MESSAGE ASKS THAT A REPLY GO TO THE LEAGUE, with a blind copy or without
+		   one. ADL A4c, 29.07.2026: the address this writes from refuses everything that
+		   comes back, and „Prva odbrana je `Reply-To: info@` na svakoj poruci koju portal
+		   šalje". It is set before the branch below and not inside it: the blind copy goes
+		   to the same address for the messages that are the league's record, and a
+		   `Reply-To` set only there would leave every other message - the confirmation
+		   link, the new password - with a sender that rejects the answer. */
+		message.setReplyTo(league);
 
 		/* NOT `setBcc(null)`, and that is measured rather than defensive:
 		   `SimpleMailMessage.setBcc(String)` wraps whatever it is given in a one element
