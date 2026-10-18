@@ -35,6 +35,9 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * (PDL, the entry "Datum Poslednja izmena se pomera", owner, 16.10.2026). The terms of use are NOT edited and keep
  * 10.10.2026. Three things are held, each in its own case, because each is a different way to be wrong: the date
  * left old on one of the two documents, the date moved on the terms too, and the date moved in one language only.
+ * Since V60 the privacy policy's sign-off has moved on to 18.10.2026 (owner, 17.10.2026), so the cases that read the
+ * finished text hold the policy at V60's day and the rulebook at V58's; what V58 itself does to the dates is held by
+ * the case that puts the text back to before V58 and runs it.
  *
  * <p><b>The words are the owner's and are written out here in full, not as phrases.</b> The usual rule against a
  * second copy of a legal text does not hold for one sentence of one line, and a phrase would let a changed word
@@ -66,6 +69,12 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 	private static final String ENGLISH_SIGN_OFF_BEFORE = "Last amended: 10.10.2026.";
 	private static final String ENGLISH_SIGN_OFF_AFTER = "Last amended: 16.10.2026.";
 
+	/* The day the privacy policy stands signed off on NOW: V60 moved it from V58's day to 18.10.2026 with the row that
+	   names Zoho (owner, 17.10.2026). The rulebook did not move and keeps V58's. What V60 holds of that day is its own
+	   guard, TheWrittenPagesNameZohoAsAProcessorTest. */
+	private static final String SERBIAN_POLICY_SIGN_OFF_NOW = "Poslednja izmena: 18.10.2026.";
+	private static final String ENGLISH_POLICY_SIGN_OFF_NOW = "Last amended: 18.10.2026.";
+
 	/** A section by the page it belongs to and its place in it; the order is the one they are sorted into. */
 	record Place(String slug, int position) {
 	}
@@ -88,6 +97,10 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 
 	private static String signOffAfter(String language) {
 		return language.equals("sr") ? SERBIAN_SIGN_OFF_AFTER : ENGLISH_SIGN_OFF_AFTER;
+	}
+
+	private static String policySignOffNow(String language) {
+		return language.equals("sr") ? SERBIAN_POLICY_SIGN_OFF_NOW : ENGLISH_POLICY_SIGN_OFF_NOW;
 	}
 
 	private static String anchorIn(String language) {
@@ -193,14 +206,53 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 				.doesNotContain(signOffAfter(language));
 	}
 
-	@Test
-	void theSerbianSignOffIsMovedOnThePolicyAndTheRulebookAndNotOnTheTerms() {
-		theSignOffIsMovedOnTheTwoDocumentsAndOnlyOnThem("sr");
+	/**
+	 * THE SIGN-OFFS AS THEY STAND NOW, which is not how V58 left them: V60 moved the privacy policy's on to
+	 * 18.10.2026. The rulebook's is still V58's day and the terms' is still V57's, and those two are held here exactly
+	 * as before. What V58 itself does to the dates is held by
+	 * {@link #v58AddsTheSentenceAndMovesTheSignOffInEightSectionsAndChangesNothingElse}, which puts the text back to
+	 * before V58 and runs it.
+	 */
+	private void theSignOffsStandAsTheyDoNow(String language) {
+		Place rulebookSignOff = new Place(RULEBOOK, 19);
+		Place policySignOff = new Place(POLICY, 7);
+
+		assertThat(placesWhichCarry(language, signOffAfter(language)))
+				.as("the %s sign-off of 16.10.2026 must stand on the rulebook alone, the policy having moved on",
+						language)
+				.containsExactly(rulebookSignOff);
+		assertThat(placesWhichCarry(language, policySignOffNow(language)))
+				.as("the %s sign-off of 18.10.2026 must stand on the privacy policy alone", language)
+				.containsExactly(policySignOff);
+		assertThat(placesWhichCarry(language, signOffBefore(language)))
+				.as("the %s sign-off of 10.10.2026 must stand on the terms of use alone", language)
+				.containsExactly(THE_TERMS_SIGN_OFF);
+
+		assertThat(bodyOf(language, policySignOff))
+				.as("the privacy policy must be signed off once, on the day of the row that names Zoho")
+				.containsOnlyOnce(policySignOffNow(language))
+				.doesNotContain(signOffAfter(language))
+				.doesNotContain(signOffBefore(language));
+		assertThat(bodyOf(language, rulebookSignOff))
+				.as("the rulebook must keep the day V58 signed it off on")
+				.containsOnlyOnce(signOffAfter(language))
+				.doesNotContain(signOffBefore(language))
+				.doesNotContain(policySignOffNow(language));
+		assertThat(bodyOf(language, THE_TERMS_SIGN_OFF))
+				.as("the terms of use must keep the day they were signed off on")
+				.containsOnlyOnce(signOffBefore(language))
+				.doesNotContain(signOffAfter(language))
+				.doesNotContain(policySignOffNow(language));
 	}
 
 	@Test
-	void theEnglishSignOffIsMovedOnThePolicyAndTheRulebookAndNotOnTheTerms() {
-		theSignOffIsMovedOnTheTwoDocumentsAndOnlyOnThem("en");
+	void theSerbianSignOffsStandOnTheirDaysAndThePolicyHasMovedOn() {
+		theSignOffsStandAsTheyDoNow("sr");
+	}
+
+	@Test
+	void theEnglishSignOffsStandOnTheirDaysAndThePolicyHasMovedOn() {
+		theSignOffsStandAsTheyDoNow("en");
 	}
 
 	/**
@@ -282,11 +334,14 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 		assertThat(error.getServerErrorMessage().getMessage()).contains("the written pages were not edited");
 		assertThat(error.getServerErrorMessage().getMessage()).contains("8 of 8 edits");
 		assertThat(reportOf(error))
-				.as("the sign-off is already moved and V58 did not say so")
-				.contains("BR date @ politika-privatnosti #7 sr: found 0 times, and its new text is already there")
-				.contains("BR date @ politika-privatnosti #7 en: found 0 times, and its new text is already there")
+				.as("the rulebook's sign-off is already moved and V58 did not say so")
 				.contains("BR date @ pravilnik #19 sr: found 0 times, and its new text is already there")
 				.contains("BR date @ pravilnik #19 en: found 0 times, and its new text is already there");
+		assertThat(reportOf(error).lines().toList())
+				.as("the policy's sign-off has moved on to V60's day, so V58's day is not there and V58 must say"
+						+ " only that its old text is missing")
+				.contains("BR date @ politika-privatnosti #7 sr: found 0 times",
+						"BR date @ politika-privatnosti #7 en: found 0 times");
 		assertThat(reportOf(error))
 				.as("the anchor stands once and the sentence is already there, and V58 did not say so")
 				.contains("BR @ politika-privatnosti #3 sr: found once, and its new text is already there")
@@ -310,8 +365,10 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 
 		for (Place place : SIGNED_OFF_ON_THE_SIXTEENTH) {
 			for (String language : List.of("sr", "en")) {
-				setBody(language, place,
-						bodyOf(language, place).replace(signOffAfter(language), signOffBefore(language)));
+				/* The policy's sign-off stands at V60's day now, the rulebook's at V58's: both go back to V57's. */
+				setBody(language, place, bodyOf(language, place)
+						.replace(policySignOffNow(language), signOffBefore(language))
+						.replace(signOffAfter(language), signOffBefore(language)));
 			}
 		}
 	}
