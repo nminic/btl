@@ -1624,6 +1624,94 @@ class MeWriteApiTest {
 	}
 
 	/**
+	 * WHAT A MEMBER SAVED IS WHAT HE IS HANDED THE NEXT TIME HE ASKS WHO HE IS.
+	 *
+	 * <p><b>The round trip, which is the case the fault of 18.10.2026 was invisible without.</b>
+	 * The owner typed his postal address and his telephone on QA, pressed save, read „Sacuvano",
+	 * refreshed the page and found both boxes empty. Every case above reads the ROW back after a
+	 * write, and the row was always right: the write has been correct since 24.09.2026. What
+	 * nothing asked was whether the route the screen draws itself from on its next visit
+	 * ({@code GET /api/me}) hands those two values back, and it did not - they were stored and
+	 * never served by any route at all.
+	 *
+	 * <p><b>Two sources of one value, and the case separates them.</b> The member who asks is
+	 * written THIRD and another member also saves an address and a telephone of his own, so
+	 * „his own values", „the first row's" and „whoever saved last" are three different answers.
+	 * The value compared is the one the member TYPED with spaces around it, so an answer that
+	 * echoed a request (which this case cannot do, it reads a second request) and an answer
+	 * read off the row are not mistaken for each other; and it is compared with the column, so
+	 * the case does not rest on the fixture's own address.
+	 */
+	@Test
+	void whatAMemberSavedIsWhatHisNextVisitIsHanded() throws Exception {
+		JsonNode before = hisOwnRecord(ME);
+
+		assertThat(before.path("address").asString())
+				.as("the address already on his row is not handed back, so the boxes open empty over a"
+						+ " row that holds something")
+				.isEqualTo(personalOf(ME).get(2)).isEqualTo("Ulica 1");
+		assertThat(before.has("phone"))
+				.as("a member with no telephone was handed one, or a null where the key is meant to be"
+						+ " absent")
+				.isFalse();
+
+		assertThat(changeAs(ME, changing(
+				"address", "  Bulevar oslobodjenja 12  ", "phone", "  +381641234567  "))
+				.getStatus()).isEqualTo(200);
+		assertThat(changeAs(SOMEONE_ELSE, changing(
+				"address", "Kneza Milosa 1", "phone", "0601112223")).getStatus()).isEqualTo(200);
+
+		JsonNode mine = hisOwnRecord(ME);
+
+		assertThat(mine.path("address").asString())
+				.as("the postal address he saved is not what the next visit is handed")
+				.isEqualTo("Bulevar oslobodjenja 12").isEqualTo(personalOf(ME).get(2));
+		assertThat(mine.path("phone").asString())
+				.as("the telephone he saved is not what the next visit is handed")
+				.isEqualTo("+381641234567").isEqualTo(personalOf(ME).get(3));
+
+		JsonNode his = hisOwnRecord(SOMEONE_ELSE);
+
+		assertThat(his.path("address").asString())
+				.as("somebody else's address left through this member's door, or his own did not come"
+						+ " out of his row")
+				.isEqualTo("Kneza Milosa 1");
+		assertThat(his.path("phone").asString()).isEqualTo("0601112223");
+	}
+
+	/**
+	 * AND A TELEPHONE HE REMOVED IS GONE FROM THE NEXT VISIT TOO, while the address beside it
+	 * stands.
+	 *
+	 * <p>A blank telephone is a removal (V8: „no phone is NULL"), and the record says so by
+	 * leaving the key out, as {@code teamId} does for a member in no team. A box that opened
+	 * with the old number after a removal would be the same fault the other way round.
+	 */
+	@Test
+	void aTelephoneHeRemovedIsGoneFromHisNextVisit() throws Exception {
+		assertThat(changeAs(ME, changing("phone", "0641112223")).getStatus()).isEqualTo(200);
+		assertThat(hisOwnRecord(ME).path("phone").asString()).isEqualTo("0641112223");
+
+		assertThat(changeAs(ME, changing("phone", "   ")).getStatus()).isEqualTo(200);
+
+		JsonNode afterwards = hisOwnRecord(ME);
+
+		assertThat(afterwards.has("phone"))
+				.as("a telephone he removed is still handed back on his next visit")
+				.isFalse();
+		assertThat(afterwards.path("address").asString())
+				.as("removing the telephone moved the address as well")
+				.isEqualTo("Ulica 1");
+	}
+
+	/** HIS OWN RECORD as {@code GET /api/me} hands it to him, read with his own session. */
+	private JsonNode hisOwnRecord(String memberNumber) throws Exception {
+		return mapper.readTree(http.perform(get("/api/me")
+						.cookie(new Cookie(SessionCookie.NAME, cookieOf(memberNumber))))
+				.andReturn().getResponse().getContentAsString()).path("member");
+	}
+
+	/**
 	 * THE DATE OF BIRTH AND THE GENDER ARE REFUSED, AND THE ANSWER SAYS WHICH ARRIVED.
 	 *
 	 * <p>Owner, PDL P28b, 2, 24.09.2026: „Datum rodjenja i pol menja samo administrator, jer
