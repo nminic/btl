@@ -389,7 +389,7 @@ const STATUTE = '/BTL%20Statut.pdf'
        today; the day its diacritics are put back and it is exported again, a guard that
        knows only the first form fails on a statute that is perfectly correct. */
     const named = 'Statut Sportskog udru'
-    const plain = Buffer.from(`/Title(${named}`, 'latin1')
+    const plain = Buffer.from(named, 'latin1')
     /* Anchored to `/Title(` in this alphabet too. Looked for as bare bytes, the name
        counted wherever it stood, so a document whose title says it is the minutes and
        whose `/Subject` happens to carry the name of the statute passed all three
@@ -399,13 +399,38 @@ const STATUTE = '/BTL%20Statut.pdf'
        invisible in the source and in a diff, it sits on a branch that does not run while
        the document has no diacritics, and deleting it turns the guard loose without a
        single test going red. Measured. */
-    const wide = Buffer.concat([
-      Buffer.from('/Title(', 'latin1'),
-      Buffer.from(`\uFEFF${named}`, 'utf16le').swap16(),
-    ])
+    const wide = Buffer.from(`\uFEFF${named}`, 'utf16le').swap16()
+
+    /* And `/Title` is followed by the string the way PDF allows it: whitespace between a name
+       and its string is optional, and the tools that write the info dictionary differ. Word
+       writes none (`/Title(`), the tool that made the copy of 18.10.2026 writes one
+       (`/Title (`). Looked for as the exact bytes `/Title(`, the second was refused as a
+       document that does not call itself the statute, though it is the statute's own title:
+       measured on that copy. The opening parenthesis and the name stay anchored to `/Title`,
+       so a `/Subject` carrying the name still does not count. */
+    const titles = (): Buffer[] => {
+      const found: Buffer[] = []
+      let from = carried.indexOf('/Title', 0, 'latin1')
+
+      while (from !== -1) {
+        let at = from + '/Title'.length
+
+        while (at < carried.length && [0x00, 0x09, 0x0a, 0x0c, 0x0d, 0x20].includes(carried[at] ?? -1)) {
+          at += 1
+        }
+
+        if (carried[at] === 0x28) {
+          found.push(carried.subarray(at + 1, at + 1 + wide.length))
+        }
+
+        from = carried.indexOf('/Title', from + 1, 'latin1')
+      }
+
+      return found
+    }
 
     expect(
-      carried.includes(plain) || carried.includes(wide),
+      titles().some((one) => one.subarray(0, plain.length).equals(plain) || one.equals(wide)),
       'what is served does not call itself the statute, in either alphabet',
     ).toBe(true)
   })
