@@ -239,6 +239,7 @@ function SignInAsSomebodyWhoHasNotPaid({ account }: { account: number }) {
           firstSeason: 2027,
           teamId: null,
           membershipBasis: 'payment',
+          membershipSeason: null,
           referralCode: '3d6b1f0a9c2e4478',
           referredCount: 0,
           hasARecord: true,

@@ -125,6 +125,7 @@ function SignInAs({ memberNumber }: { memberNumber: string }) {
           firstSeason: null,
           teamId: null,
           membershipBasis: null,
+          membershipSeason: null,
           referralCode: null,
           referredCount: null,
           hasARecord: true,

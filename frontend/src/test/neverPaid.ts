@@ -9,8 +9,9 @@ import { serverThat, type Asked } from './serverAnswers'
  * league gives it when the payment is recorded. What `MeApi.MyOwnRecord` therefore leaves out for
  * him is not four names but five - the number is the fifth annotated component, and it is the
  * one he does not have ({@link WHAT_HE_DOES_NOT_HAVE_YET}). His fee does not stand
- * (`active: false`), his basis is the one registration writes (`payment`, because
- * `feeExempt` is honorary membership and the owner's to grant), and his first season is the one
+ * (`active: false`), he holds no basis of the season on sale and no season with it, because since
+ * V62 a basis is a membership of a season and he holds none (PDL P8, 18.10.2026; until that day he
+ * was answered the per-person word `payment` registration wrote), and his first season is the one
  * being paid for. He has an address, which registration requires, and no telephone, which it does
  * not ({@link WHAT_HE_DOES_NOT_HAVE_YET}).
  *
@@ -26,7 +27,6 @@ import { serverThat, type Asked } from './serverAnswers'
 export const aNeverPaidRecord = {
   country: 'RS',
   firstSeason: 2027,
-  membershipBasis: 'payment',
   active: false,
   referralCode: '3d6b1f0a9c2e4478',
   referredCount: 0,
@@ -50,6 +50,10 @@ export const aNeverPaidRecord = {
  */
 export const WHAT_HE_DOES_NOT_HAVE_YET = [
   'memberNumber',
+  /* The basis of the season on sale and that season, absent together for somebody who holds no
+     membership of it (`MeApi.MyOwnRecord`, since V62). */
+  'membershipBasis',
+  'membershipSeason',
   'teamId',
   'teamSince',
   'photo',

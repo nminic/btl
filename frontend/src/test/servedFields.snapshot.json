@@ -33,6 +33,7 @@
     "lastName",
     "memberNumber",
     "membershipBasis",
+    "membershipSeason",
     "photo",
     "profileHidden",
     "referralCode",

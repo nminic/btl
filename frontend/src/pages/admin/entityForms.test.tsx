@@ -426,6 +426,17 @@ describe('a record that is entered rather than changed', () => {
       }
     }
 
+    /* AND A FIELD SOME SERVED RECORD LEAVES OUT ALTOGETHER IS ONE A RECORD MAY LEAVE OUT, since
+       18.10.2026: the basis of the season on sale and its season are absent from a member who
+       holds no membership of that season (PDL P8, „Osnov članstva ima jedan dom”), which is the
+       first field of a served member that is sometimes not there rather than sometimes null. The
+       fields every served record carries are asked exactly as before. */
+    for (const field of shapes.keys()) {
+      if (served.some((one) => !(field in one))) {
+        shapes.get(field)?.add('undefined')
+      }
+    }
+
     const wrong = [...shapes]
       .filter(([field, seen]) => !seen.has(shapeOf(made[field])))
       .map(([field, seen]) => `${field}: ${shapeOf(made[field])}, served ${[...seen].join('/')}`)

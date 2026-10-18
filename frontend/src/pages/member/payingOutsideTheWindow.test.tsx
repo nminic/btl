@@ -279,7 +279,9 @@ describe('whoever owes nothing for the running season is told what he was told',
     ['whose fee has lapsed', LAPSED],
     ['whose fee stands', STANDING],
   ])('a member %s who is freed of the fee is asked for nothing', async (_what, record) => {
-    openHisPage({ ...record, membershipBasis: 'feeExempt' }, '2027-03-01')
+    /* Freed of the season on sale, which on 1 March 2027 is 2027 (PDL P8, 18.10.2026): the basis
+       comes with the season it is the basis of, as the server answers it. */
+    openHisPage({ ...record, membershipBasis: 'feeExempt', membershipSeason: 2027 }, '2027-03-01')
 
     expect(await screen.findByText('Oslobođen si plaćanja članarine, pa nema šta da uplatiš.')).toBeVisible()
     expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()

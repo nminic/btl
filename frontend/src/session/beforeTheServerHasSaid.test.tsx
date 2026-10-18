@@ -266,6 +266,7 @@ describe('the sentence under the comments of a race that has been run', { timeou
           firstSeason: null,
           teamId: null,
           membershipBasis: null,
+          membershipSeason: null,
           referralCode: null,
           referredCount: null,
           hasARecord: false,

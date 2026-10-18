@@ -128,6 +128,7 @@ function SignInAs({ memberNumber, label }: { memberNumber: string; label: string
           firstSeason: null,
           teamId: null,
           membershipBasis: null,
+          membershipSeason: null,
           referralCode: null,
           referredCount: null,
           hasARecord: true,

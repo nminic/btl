@@ -35,6 +35,7 @@ const A_MEMBER = {
   firstSeason: null,
   teamId: null,
   membershipBasis: null,
+  membershipSeason: null,
   referralCode: null,
   referredCount: null,
   hasARecord: true,

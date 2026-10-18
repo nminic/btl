@@ -136,11 +136,16 @@ function answering(rows: Record<string, unknown>[], at: string) {
 function meAnswering({
   memberNumber,
   membershipBasis,
+  membershipSeason,
   referralCode,
   referredCount,
 }: {
   memberNumber: string
   membershipBasis: string
+  /* The season that basis is the basis of, which the server answers exactly when he holds a
+     membership of the season on sale (PDL P8, 18.10.2026). Absent where the case names a basis
+     of no season he holds. */
+  membershipSeason?: number
   /* Absent where the case is not about them, which is what a `?` means here and not a
      default: the record is then answered WITHOUT the key, which is a state a real server
      sends (a person registered who has no number yet) and is the one that used to be
@@ -159,6 +164,7 @@ function meAnswering({
               country: 'RS',
               firstSeason: 2016,
               membershipBasis,
+              membershipSeason,
               ...(referralCode === undefined ? {} : { referralCode }),
               ...(referredCount === undefined ? {} : { referredCount }),
             },
@@ -323,16 +329,25 @@ describe('a member freed of the fee, on the answer the server gives', () => {
       (generated.find((one) => one.memberNumber === memberNumber) ?? {}).membershipBasis ?? '',
     )
 
+  /* A member whose fee stands and whom the file gives NO basis of the season on sale, which since
+     18.10.2026 is what a member who has not renewed yet is answered (PDL P8, „Osnov članstva ima
+     jedan dom”): it was the per-person word „payment" until that day. */
   const whoPaysInTheFile = String(
-    (generated.find((one) => one.membershipBasis === 'payment' && one.active === true) ?? {})
+    (generated.find((one) => one.membershipBasis === undefined && one.active === true) ?? {})
       .memberNumber ?? '',
   )
 
   it('is asked for nothing at all, although the list says he pays', async () => {
-    /* A member the generated file calls a PAYER, told by the answer that he is freed. */
-    expect(generatedBasis(whoPaysInTheFile)).toBe('payment')
+    /* A member the generated file holds no season for, told by the answer that he is freed of
+       the season on sale, which on 1 November 2026 is 2027. */
+    expect(generatedBasis(whoPaysInTheFile)).toBe('')
+    expect(whoPaysInTheFile).not.toBe('')
 
-    const { stop } = meAnswering({ memberNumber: whoPaysInTheFile, membershipBasis: 'feeExempt' })
+    const { stop } = meAnswering({
+      memberNumber: whoPaysInTheFile,
+      membershipBasis: 'feeExempt',
+      membershipSeason: 2027,
+    })
 
     try {
       renderAt('/sr/moja-clanarina', 'competitor', whoPaysInTheFile, undefined, '2026-11-01')

@@ -8,7 +8,7 @@ import { CopyField } from '../../components/CopyField'
 import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
 import { FIRST_SEASON_POINTS, categoryLabel } from '../../data/categories'
-import { inYearlyWindow, seasonRunning } from '../../data/season'
+import { inYearlyWindow } from '../../data/season'
 import { useResults } from '../../data/useResource'
 import {
   ipsPayload,
@@ -192,6 +192,7 @@ export function Membership() {
      everybody except the one man this screen exists for (P8a). */
   const {
     myMembershipBasis,
+    myMembershipSeason,
     myCountry,
     myFirstSeason,
     myTeamId,
@@ -520,8 +521,24 @@ export function Membership() {
            The owner's decision has both halves in one sentence, 20.09.2026: „Clan vidi
            SVOJ osnov clanstva; tudj ne vidi niko osim administracije." `/api/me` is
            where the first half lives, and the session remembers what it said
-           (`session/context.ts`). */
-        const feeExempt = myMembershipBasis === 'feeExempt'
+           (`session/context.ts`).
+
+           **AND IT IS THE BASIS OF THE SEASON ON SALE, since 18.10.2026** (owner, PDL P8, „Osnov
+           članstva ima jedan dom, zapis po sezoni"): „do 14.10. je osnova 2027, od 15.10 je osnova
+           2028." The server answers the basis of its season on sale with that season beside it,
+           off his membership row of it. This screen takes it as the basis of ITS season on sale
+           only when the two name the same year, so a basis the server gave about another season
+           never stands in for the one being sold here. Until that day the basis came off a
+           per-person column, so a member freed of 2027 was asked to pay and one let in on his
+           balance was told nothing; both are now one row of one season.
+
+           `held` is whether he holds the season on sale AT ALL, on whichever basis: a member who
+           holds it is offered no payment for it. It is read off the season rather than off the
+           word, so a word the portal does not know is still a season he holds and is never
+           turned into „you pay" (`session/theServer.ts`). */
+        const held = myMembershipSeason !== null && myMembershipSeason === payingSeason
+        const heldOn = held ? myMembershipBasis : null
+        const feeExempt = heldOn === 'feeExempt'
         /* THE LIST OF MEMBERS USED TO BE READ HERE AND IS NOT ANY MORE, and the
            reason it was is worth keeping: the credit was counted off it, and counted
            straight off the FILE somebody an administrator had deleted went on earning
@@ -635,20 +652,34 @@ export function Membership() {
                        and what follows from it (`membership.notPaidYet`). */
                     t('membership.notPaidYet')
                   : feeExempt
-                  ? /* **The season they are in, not the one being sold.** This line stands in
-                       „Stanje", which says what is true of a member now, and the panel below it
-                       is the one that talks about renewal. Handed the renewal season it named
-                       2028 from January to September of 2027 while the season the member was
-                       actually running had no mention anywhere on the screen (review,
-                       06.09.2026, measured on four days).
+                  ? /* **The season being sold, since 18.10.2026, and no longer the one he is in.**
+                       The owner on that day (PDL P8, „Koja sezona se prikazuje"): „do 14.10. je
+                       osnova 2027, od 15.10 je osnova 2028", in the moderation and in „Stanje"
+                       alike, with the year. That overturns the reading of 06.09.2026 that stood
+                       here, by which this line named the season running and the panel below the
+                       one being renewed.
 
-                       Before the league's first season there is none running, and then it is
-                       the one being prepared: that is the whole of 2026, where the sentence
-                       used to carry a typed 2027 and was right. Read from the clock either way,
-                       never from the constant (ADL, 31.07.2026). */
-                    t('membership.feeExempt', { season: seasonRunning(today) ?? nextSeason })
+                       The year is the season on sale, which `held` has already required the
+                       server's answer to name, so it is read from the clock and never typed
+                       (ADL, 31.07.2026): before the league's first season that is 2027, inside
+                       the window the season after the one running. */
+                    t('membership.feeExempt', { season: payingSeason })
                   : t('membership.active', { season: myFirstSeason })}
               </p>
+              {/* AND THE OTHER TWO BASES OF THE SEASON ON SALE, said with its year (PDL P8,
+                  18.10.2026, „u „Stanje” na „Moja članarina” stoji osnov sezone koja se tog
+                  dana prodaje, uz godinu"). A member freed of it is told so in the line above,
+                  in place of the line about since when he is a member; these two stand under
+                  that line instead of replacing it, because paying is the ordinary way to be
+                  one. The words are the agent's and the owner changes them on QA. */}
+              {heldOn === 'payment' && (
+                <p className="member__note">{t('membership.paidFor', { season: payingSeason })}</p>
+              )}
+              {heldOn === 'balance' && (
+                <p className="member__note">
+                  {t('membership.paidFromBalance', { season: payingSeason })}
+                </p>
+              )}
               {/* Both amounts, side by side, and no choice between them (PDL
                   P8, owner 31.07.2026): the price follows from where a member
                   lives, the portal works it out, and what the older rule
@@ -838,7 +869,7 @@ export function Membership() {
                      is the next season: measured on 120 renderings, every one of those read
                      „2028" before this branch and read „2027" when this was `payingSeason`
                      alone. */
-                  season: !feeExempt && payable ? payingSeason : nextSeason,
+                  season: !held && payable ? payingSeason : nextSeason,
                 })}
               </h2>
 
@@ -851,6 +882,14 @@ export function Membership() {
                   only thing this screen ever showed. */}
               {feeExempt ? (
                 <p className="member__note">{t('membership.feeExemptNoRenewal')}</p>
+              ) : held ? (
+                /* HE HOLDS THE SEASON ON SALE ALREADY, on a payment or on his balance, so there
+                   is nothing to pay for it and no slip, no QR code and no reference are drawn
+                   (PDL P8, 18.10.2026). Until that day only an exemption shut this panel, and a
+                   member who had paid for next season was shown the slip for it again. */
+                <p className="member__note">
+                  {t('membership.alreadyPaid', { season: payingSeason })}
+                </p>
               ) : payable ? (
                 <>
                   <p className="member__note">

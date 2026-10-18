@@ -374,43 +374,94 @@ describe('membership', () => {
      level below it (PDL P28a puts the slip inside renewal). As third level
      headings they read as four more sections of the renewal, which they are
      not. */
-  it('names the season a member is in, not the one being sold', async () => {
-    /* **Two readings on one screen, which is the only way to tell them apart.** „Stanje" says
-       what is true of a member now; the panel under it is about renewal. Fed the renewal season
-       the line named 2028 through the whole of 2027, while the season the member was actually
-       running had no mention anywhere on the page (review, 06.09.2026).
-     *
-       Counted rather than guessed: the two answers differ on **every** day from 1 January 2027
-       on, and agree through the whole of 2026, when nothing is running yet and the one being
-       prepared is the only one there is. So the walk takes one day from each of the three
-       states. */
-    const inSeason = renderMembershipOn('2027-06-15', '000001')
+  /**
+   * WHAT „STANJE" SAYS IS THE BASIS OF THE SEASON BEING SOLD, WITH ITS YEAR, AND A SEASON HE
+   * HOLDS IS NOT SOLD TO HIM AGAIN.
+   *
+   * <p>The owner, 18.10.2026 (PDL P8, „Koja sezona se prikazuje"): „do 14.10. je osnova 2027, od
+   * 15.10 je osnova 2028." Until that day this case held the opposite reading of 06.09.2026, that
+   * the line names the season the member is IN, and the decision overturns it in as many words.
+   *
+   * <p><b>Each state is what the server answers and the file is never asked</b>: the generated row
+   * of 000032 holds no season at all, so a screen that read anything but the answer draws the slip
+   * on every one of these days. The days are chosen so that the season on sale and the season
+   * running are different years on the three inside the window, and one number before the league
+   * has a season.
+   */
+  function meSays(member: Record<string, unknown>) {
+    return serverThat((path) =>
+      path === '/api/me'
+        ? new Response(
+            JSON.stringify({
+              role: 'competitor',
+              account: 1,
+              member: { memberNumber: '000032', country: 'RS', firstSeason: 2016, ...member },
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
+  }
 
-    expect(
-      await screen.findByText(/Oslobođen si plaćanja članarine za sezonu 2027, odlukom/),
-    ).toBeVisible()
-    /* And the renewal panel on the same screen says the other year, which is what makes this a
-       reading and not a coincidence. */
-    expect(screen.getByText(/Obnova članarine za 2028/)).toBeVisible()
+  it.each([
+    ['freed of 2028, in the window', '2027-11-01', 'feeExempt', 2028,
+      /Oslobođen si plaćanja članarine za sezonu 2028, odlukom/, /Oslobođen si plaćanja članarine, pa nema/],
+    ['paid for 2028, in the window', '2027-11-01', 'payment', 2028,
+      /^Članarina za sezonu 2028 je plaćena\.$/, /^Članarina za 2028 je već plaćena, pa nema šta da uplatiš\.$/],
+    ['let into 2028 on his balance', '2027-11-01', 'balance', 2028,
+      /^Članarina za sezonu 2028 je plaćena iz balansa\.$/, /^Članarina za 2028 je već plaćena/],
+    ['freed of 2027, on the last day it is sold', '2027-10-14', 'feeExempt', 2027,
+      /Oslobođen si plaćanja članarine za sezonu 2027, odlukom/, /Oslobođen si plaćanja članarine, pa nema/],
+    ['freed of 2027 before the league has a season', '2026-11-01', 'feeExempt', 2027,
+      /Oslobođen si plaćanja članarine za sezonu 2027, odlukom/, /Oslobođen si plaćanja članarine, pa nema/],
+  ])('names the basis of the season on sale for a member %s, and sells it to him no more',
+    async (_who, today, basis, season, inTheState, inTheRenewal) => {
+      const { stop } = meSays({ membershipBasis: basis, membershipSeason: season })
 
-    inSeason.unmount()
+      try {
+        renderMembershipOn(today, '000032')
 
-    const later = renderMembershipOn('2028-03-01', '000001')
+        expect(await screen.findByText(inTheState)).toBeVisible()
+        expect(screen.getByText(inTheRenewal)).toBeVisible()
+        expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
+      } finally {
+        stop()
+      }
+    }, SLOW)
 
-    expect(
-      await screen.findByText(/Oslobođen si plaćanja članarine za sezonu 2028, odlukom/),
-    ).toBeVisible()
+  /* AND A BASIS OF ANOTHER SEASON NEVER STANDS IN FOR THE ONE BEING SOLD: inside the window the
+     season on sale is 2028, so a record that names 2027 is a season he no longer buys, and he is
+     sold 2028 like anybody who has not renewed. The other direction of the case above, and the one
+     a screen that read the basis without its season gets wrong. */
+  it('sells the season on sale to a member whose basis is of another season', async () => {
+    const { stop } = meSays({ membershipBasis: 'feeExempt', membershipSeason: 2027 })
 
-    later.unmount()
+    try {
+      renderMembershipOn('2027-11-01', '000032')
 
-    /* And before the league has a season at all, the one being prepared is the answer: that is
-       the whole of 2026, where the sentence carried a typed 2027 and was right. */
-    renderMembershipOn('2026-11-01', '000001')
+      expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
+      expect(screen.queryByText(/Oslobođen si plaćanja/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/je već plaćena/)).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  }, SLOW)
 
-    expect(
-      await screen.findByText(/Oslobođen si plaćanja članarine za sezonu 2027, odlukom/),
-    ).toBeVisible()
-  })
+  /* AND A MEMBER WHO HOLDS NO SEASON ON SALE IS SOLD IT, which is the state of everybody who has
+     not renewed yet: the answer carries neither field. */
+  it('sells the season on sale to a member who holds none', async () => {
+    const { stop } = meSays({})
+
+    try {
+      renderMembershipOn('2027-11-01', '000032')
+
+      expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
+      expect(screen.queryByText(/je plaćena|je već plaćena|Oslobođen si/)).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  }, SLOW)
 
   it('asks a member freed of the fee for nothing at all', async () => {
     /* Pravilnik član 15 and PDL P16: a member freed of the fee never has a payment.
@@ -431,14 +482,16 @@ describe('membership', () => {
        away: written as a number with a sentence beside it, moving that member to
        `feeExempt` in the seed would let the swap of sources pass again, with nothing but
        prose saying why it should not. */
+    /* SINCE 18.10.2026 a member the file holds no season on sale for, which is what „a payer"
+       was in the file until the per-person basis went (PDL P8, „Osnov članstva ima jedan dom”). */
     const payerInTheFile: { memberNumber: string; country: string; firstSeason: number } = must(
       JSON.parse(
         readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
       ).find(
-        (one: { membershipBasis: string; active: boolean }) =>
-          one.membershipBasis === 'payment' && one.active,
+        (one: { membershipBasis?: string; active: boolean }) =>
+          one.membershipBasis === undefined && one.active,
       ),
-      'a member the generated file calls a payer',
+      'a member the generated file holds no season on sale for',
     )
     const whoPaysInTheFile = payerInTheFile.memberNumber
     /* **AND THE ANSWER NAMES HIM, since 24.09.2026.** The record used to carry the basis
@@ -471,6 +524,7 @@ describe('membership', () => {
                 country: payerInTheFile.country,
                 firstSeason: payerInTheFile.firstSeason,
                 membershipBasis: 'feeExempt',
+                membershipSeason: 2027,
               },
             }),
             { status: 200, headers: { 'content-type': 'application/json' } },
@@ -1474,7 +1528,10 @@ describe('membership', () => {
     const category = categoryAsServed(OPEN_TO_HIM)
 
     try {
-      renderMembershipOn('2027-11-01', '000001')
+      /* 1 November 2026, when the season on sale is 2027: the file frees 000001 of 2027, and since
+         18.10.2026 an exemption is of one season (PDL P8), so a year later he would be a member
+         who has not renewed rather than one freed of the fee. */
+      renderMembershipOn('2026-11-01', '000001')
 
       expect(
         await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
