@@ -1,6 +1,8 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.balance.Balance;
+import com.btl.portal.domain.balance.BookLine;
+import com.btl.portal.domain.balance.ReversingAMembership;
 import com.btl.portal.domain.pricing.Currency;
 import com.btl.portal.domain.pricing.MembershipPrice;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -385,24 +387,61 @@ class BalanceBook {
 	 * told about the line that exists rather than about a restatement of it, and the restatement is its
 	 * own pair of lines with its own reason.
 	 *
-	 * <p><b>Grouped by currency, and at most one group can ever come back.</b> One season has at most
-	 * one {@code membership} row ({@code membership_pk}, V22) and therefore at most one spend, so the
-	 * grouping is how the currency is read off the line rather than a way of adding several up. Empty
-	 * is the ordinary case - most bookings take nothing off a book - and is answered in the currency
-	 * the caller offers, because „nothing" still has to be said in some money.
+	 * <p><b>THE MEMBERSHIP THAT STANDS NOW, and not every spend the season ever had.</b> One season has
+	 * at most one {@code membership} row at a time ({@code membership_pk}, V22), but since V63 a season
+	 * can be cancelled and paid for again (PDL P8, 18.10.2026), and the book keeps the lines of every
+	 * pass. A sum over every {@code membership} line of the season would then answer what two
+	 * memberships took. So the season's lines are read as {@link ReversingAMembership#whatTheSeasonHolds}
+	 * reads them: the ones written after its last reversal. Empty is the ordinary case - most bookings
+	 * take nothing off a book - and is answered in the currency the caller offers, because „nothing"
+	 * still has to be said in some money.
 	 *
 	 * @param ifItTookNothing the currency to answer nothing in, which is his today
 	 */
 	Balance.Money whatAMembershipTook(long competitorId, int season, Currency ifItTookNothing) {
-		List<Balance.Money> taken = db.sql("select currency, coalesce(sum(-amount), 0)"
-						+ " from balance_entry where competitor_id = ? and season = ?"
-						+ " and reason = 'membership' group by currency")
-				.params(competitorId, season)
-				.query((row, i) -> new Balance.Money(row.getBigDecimal(2),
-						Currency.valueOf(row.getString(1))))
-				.list();
+		return ReversingAMembership.whatItTook(linesOf(competitorId), season, ifItTookNothing);
+	}
 
-		return taken.isEmpty() ? Balance.Money.nothingIn(ifItTookNothing) : taken.get(0);
+	/**
+	 * AND WHAT ONE SEASON'S MEMBERSHIP HELD IS REVERSED, by a new line and never by touching one.
+	 *
+	 * <p>The owner, 18.10.2026 (PDL P8): „Knjiga balansa pri stornu i pri promeni "uplata" u
+	 * oslobodjenje: protivstavka." What the line is, given back or taken back and in which money, is
+	 * {@link ReversingAMembership}'s to decide from the book as it stands; this writes it. Nothing is
+	 * written when the season holds nothing, because {@code balance_entry_a_reversal_moves_something}
+	 * (V63) refuses a line of nought.
+	 *
+	 * <p>No route calls this yet: the options on the member's row are the next piece of work, and they
+	 * are where the seasons that may be acted on are enforced.
+	 *
+	 * @param today the money he is billed in today, which the line is written in
+	 * @return the line written, or empty when the season held nothing
+	 */
+	Optional<ReversingAMembership.Reversal> reversed(long competitorId, int season, Currency today,
+			Long account, String accountName) {
+
+		Optional<ReversingAMembership.Reversal> reversal =
+				ReversingAMembership.reversal(linesOf(competitorId), season, today);
+
+		reversal.ifPresent(line -> db.sql("insert into balance_entry (competitor_id, amount, currency,"
+						+ " reason, season, occurred_at, recorded_by, recorded_by_name)"
+						+ " values (?, ?, ?, 'reversal', ?, ?, ?, ?)")
+				.params(competitorId, line.amount(), line.currency().name(), season,
+						Timestamp.from(clock.instant()), account, accountName)
+				.update());
+
+		return reversal;
+	}
+
+	/** Every line of one member's book, as it stands. The order is the domain's to impose. */
+	private List<BookLine> linesOf(long competitorId) {
+		return db.sql("select id, reason, season, amount, currency from balance_entry"
+						+ " where competitor_id = ?")
+				.param(competitorId)
+				.query((row, i) -> new BookLine(row.getLong(1), BookLine.Reason.of(row.getString(2)),
+						row.getObject(3, Integer.class), row.getBigDecimal(4),
+						Currency.valueOf(row.getString(5))))
+				.list();
 	}
 
 	/**

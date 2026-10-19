@@ -103,6 +103,13 @@ class BalanceConstraintsTest extends DatabaseTest {
 	private static final String GOOD_A_MEMBERSHIP = entry(A_MEMBER + ", -35, 'EUR', 'membership',"
 			+ " null, 2028, " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Blagajnik'");
 
+	/** A reversal giving back what a season took, and one taking back a credit: both signs (V63). */
+	private static final String GOOD_A_REVERSAL_GIVING_BACK = entry(A_MEMBER + ", 35, 'EUR', 'reversal',"
+			+ " null, 2028, " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Blagajnik'");
+
+	private static final String GOOD_A_REVERSAL_TAKING_BACK = entry(A_MEMBER + ", -5, 'EUR', 'reversal',"
+			+ " null, 2028, " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Blagajnik'");
+
 	/** A code shown to him for a season nothing else in this fixture promises. */
 	private static final String GOOD_A_PROMISE = promise(A_MEMBER + ", 2029, 5, 'EUR', " + AN_INSTANT);
 
@@ -228,6 +235,18 @@ class BalanceConstraintsTest extends DatabaseTest {
 				   would be two facts about money that never moved. */
 				Violation.of("balance_entry_a_conversion_moves_something",
 						entry(A_MEMBER + ", 0, 'EUR', 'conversion', null, null, " + AN_INSTANT + ", "
+								+ AN_ACCOUNT + ", 'Blagajnik'")),
+
+				/* A REVERSAL NAMES ITS SEASON, and it MOVES SOMETHING, either way (V63, PDL P8,
+				   18.10.2026). It is always about one season's membership, which is the only thing that
+				   ties it to the lines it reverses; and it gives back what was taken (positive) or takes
+				   back a credit (negative), so what is refused is nought. Each row breaks one rule: the
+				   first moves money and names no season, the second names a season and moves nothing. */
+				Violation.of("balance_entry_what_names_the_season",
+						entry(A_MEMBER + ", 35, 'EUR', 'reversal', null, null, " + AN_INSTANT + ", "
+								+ AN_ACCOUNT + ", 'Blagajnik'")),
+				Violation.of("balance_entry_a_reversal_moves_something",
+						entry(A_MEMBER + ", 0, 'EUR', 'reversal', null, 2028, " + AN_INSTANT + ", "
 								+ AN_ACCOUNT + ", 'Blagajnik'")),
 
 				/* ONE REWARD PER PERSON BROUGHT IN, however many seasons he goes on to pay for. The
@@ -359,7 +378,8 @@ class BalanceConstraintsTest extends DatabaseTest {
 	}
 
 	static List<String> legitimateRows() {
-		return List.of(GOOD_A_REFERRAL, GOOD_A_MEMBERSHIP, GOOD_A_PROMISE);
+		return List.of(GOOD_A_REFERRAL, GOOD_A_MEMBERSHIP, GOOD_A_PROMISE, GOOD_A_REVERSAL_GIVING_BACK,
+				GOOD_A_REVERSAL_TAKING_BACK);
 	}
 
 	/**

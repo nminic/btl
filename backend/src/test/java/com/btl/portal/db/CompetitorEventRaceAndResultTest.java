@@ -547,6 +547,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   else (PDL P23), and the exemption stays given. */
 				"membership.membership_decided_by_fk set null",
 				"membership.membership_payment_fk cascade",
+				/* V63. The trail of a change on a member's row goes with the member, the direction his
+				   seasons and his book take (PDL P23); the account that did it may go and the name it was
+				   done under stays, the same sentence V35 wrote for an exemption. */
+				"membership_change.membership_change_competitor_fk cascade",
+				"membership_change.membership_change_decided_by_fk set null",
 				"message.message_from_fk set null",
 				"message.message_pair_invite_fk cascade",
 				"message.message_team_invitation_fk cascade",
