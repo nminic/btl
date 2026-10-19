@@ -1689,17 +1689,30 @@ describe('membership', () => {
 
       fireEvent.click(await screen.findByRole('radio', { name: 'U početničkoj kategoriji' }))
 
-      /* Found by ROLE and not by text alone, because what makes this sentence do its job is
-         that it is announced: `role="status"` is a live region, so a reader who has just
-         pressed a radio hears why it sprang back without the focus moving (WCAG 2.2 SC
-         4.1.3). Queried by text alone, a version that dropped the role would pass. */
-      expect(await screen.findByRole('status')).toHaveTextContent(/rok istekao 1\. januara/i)
+      /* WAITED FOR BY ITS WORDS, THEN ASKED FOR ITS ROLE. `findByRole('status')` alone took the
+         first live region the page had, and the page has more than one: `MyRacingPairs` draws
+         its own inline `Loader` (`role="status"`, „Učitavanje") for as long as the list of
+         members and the pairs are on their way, which is a separate read from the category
+         box and can still be out when the radio is pressed. Measured with that
+         list held back for 1,5 s: the case read „Učitavanje" where the refusal was due. The
+         sentence is what is waited for; that it is announced is what is asked of it after,
+         because what makes it do its job is that `role="status"` is a live region, so a
+         reader who has just pressed a radio hears why it sprang back without the focus
+         moving (WCAG 2.2 SC 4.1.3). A version that dropped the role fails the second line. */
+      const said = await screen.findByText(/rok istekao 1\. januara/i)
+
+      expect(said).toHaveAttribute('role', 'status')
       expect(screen.getByRole('radio', { name: 'U svojoj starosnoj kategoriji' })).toBeChecked()
     } finally {
       category.stop()
       stop()
     }
-  })
+    /* The clock of a case that waits for a second screen's worth of reads, which is the one
+       `SEVERAL_SCREENS` names. With the default five seconds the wait for the sentence (`SLOW`,
+       `test/setup.ts`) outlived the case, so a refusal that never came was reported as
+       `Test timed out in 5000ms` and named nothing; on this clock the wait ends first and
+       says „Unable to find an element with the text". */
+  }, SEVERAL_SCREENS)
 
   /**
    * PAST THE DEADLINE THE BOX IS DRAWN AND NOTHING IN IT CAN BE PRESSED.
