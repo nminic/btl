@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.season.SeasonClock;
+import com.btl.portal.domain.verification.DecidingOnASubmission;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -140,10 +141,24 @@ import java.util.Optional;
  * zamenjuje staru"). A rating with no words replaces the member's published one AT ONCE, in the
  * same transaction ({@link #publishAtOnce}). A rating with words goes to the moderator and the old
  * one stands until he approves it; on approval the approved one replaces the old
- * ({@link VerificationWriteApi#publishTheComment}). <b>Not decided, and so not done here:</b> what a
- * rating with no words does to a rating with words of the same member that still waits in the queue
- * (it leaves it there, and the later approval then replaces the one published at once), and whether
- * the database refuses a second published row (it does not; nothing but these two writers makes one).
+ * ({@link VerificationWriteApi#publishTheComment}).
+ *
+ * <p><b>THE NEWEST ONE SENT WINS, WHICH IS DERIVED FROM THE OWNER'S RULE AND IS NOT HIS WORDS</b> (19.10.2026): from „jedna ocena po članu po događaju; nova zamenjuje staru" it follows
+ * that a rating with no words, which replaces at once, also withdraws the same member's rating of the
+ * same event that still waits for a moderator, and the cascade of {@code comment_submission} removes
+ * its queue row. Only a WAITING one: a decided submission stays, because ADL A36 O11 forbids deleting
+ * a decided row. It is taken {@code for update of v skip locked}: a card a moderator is deciding
+ * at this very instant is not waited for (he decided first, and waiting for it while holding the
+ * member's row would be a lock order opposite to the approval's, which takes the card first and the
+ * member second).
+ *
+ * <p><b>THE MEMBER'S ROW IS LOCKED FIRST</b>, {@code for update}, at the top of the transaction, the
+ * shape {@code MyMembershipWriteApi} and {@code PaymentApi} keep. Two ratings of one member at one
+ * instant would otherwise both delete nothing, both insert, and leave him two published ratings of one
+ * event with no rule in the database to refuse the second. Held, the second reads what the first
+ * committed and replaces it. The approval takes the same row ({@code publishTheComment}). There is
+ * no unique index (the lock was chosen over one, 19.10.2026), so duplicates already in
+ * {@code event_comment} are cleared by the next write of that member, not by a migration.
  *
  * <p><b>WHAT IS NOT HERE, EACH NAMED RATHER THAN DISCOVERED.</b>
  *
@@ -315,6 +330,13 @@ class CommentWriteApi {
 	 * could be made to disagree.
 	 */
 	private ResponseEntity<?> write(long me, Rated typed) {
+		/* THE MEMBER'S ROW, FIRST (see the class note): of two ratings of this member at one instant the
+		   second waits here and then reads what the first committed. */
+		db.sql("select id from competitor where id = ? for update")
+				.param(me)
+				.query(Long.class)
+				.single();
+
 		String body = orEmpty(typed.body());
 
 		/* THE OWNER'S QUESTION, 19.10.2026: „samo ako ima tekst". Read off the stripped text that is
@@ -358,10 +380,9 @@ class CommentWriteApi {
 	 * THIS STATEMENT, and {@code published_at} is the database's {@code now()}. ADL A64 A5 reads
 	 * „published" as the moment the name is taken, and this is that moment.
 	 *
-	 * <p><b>The member's published rating of this event is deleted first, in the same
-	 * transaction</b> (one per member per event, the new one replaces the old; see the class note).
-	 * Not decided and so not done: a waiting rating with words of the same member is left in the
-	 * queue.
+	 * <p><b>The member's published rating of this event is deleted first, and so is his rating of it
+	 * that still waits, in the same transaction</b> (one per member per event, the newest one sent
+	 * wins; see the class note).
 	 *
 	 * <p>{@code me} came out of {@link ActiveMemberOrAdministration#activeMember}, so the
 	 * {@code competitor} row exists and {@code single()} always has its one row. The body is the
@@ -373,6 +394,15 @@ class CommentWriteApi {
 		   already has two (an approval used to be able to make a second) ends with one. */
 		db.sql("delete from event_comment where competitor_id = ? and event_id = ?")
 				.params(me, typed.eventId())
+				.update();
+
+		/* AND HIS RATING OF THIS EVENT THAT STILL WAITS GOES TOO: the newest one sent wins (class note).
+		   Only a waiting one, and not a card somebody is deciding this instant. */
+		db.sql("delete from comment_submission where id in (select cs.id from comment_submission cs"
+						+ " join verification v on v.comment_submission_id = cs.id"
+						+ " where cs.competitor_id = ? and cs.event_id = ? and v.state = ?"
+						+ " for update of v skip locked)")
+				.params(me, typed.eventId(), DecidingOnASubmission.WAITING)
 				.update();
 
 		long comment = db.sql("insert into event_comment (event_id, competitor_id, who, published_at,"

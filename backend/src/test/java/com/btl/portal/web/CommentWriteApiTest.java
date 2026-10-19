@@ -301,7 +301,7 @@ class CommentWriteApiTest {
 	}
 
 	/** Somebody else's own submission, queued exactly the way this route itself queues one. */
-	private void submissionWaitingFor(String memberNumber, long eventId, int organisation, int value,
+	private long submissionWaitingFor(String memberNumber, long eventId, int organisation, int value,
 			int ambience, String body) {
 		long submission = db.sql("insert into comment_submission (event_id, competitor_id,"
 						+ " rating_organisation, rating_value, rating_ambience, body)"
@@ -316,6 +316,8 @@ class CommentWriteApiTest {
 						+ " from competitor c, btl_event e"
 						+ " where c.member_number = ? and e.id = ?")
 				.params(body, submission, memberNumber, eventId).update();
+
+		return submission;
 	}
 
 	/** A result of this member on a race of this event, the race made for it: what the form's
@@ -790,7 +792,10 @@ class CommentWriteApiTest {
 
 		assertThat(waitingIn(first)).isTrue();
 		assertThat(waitingIn(second)).isFalse();
-		assertThat(howManyWaitingInTheCommentsQueue()).as("the fixture's own, plus the first").isEqualTo(2);
+		assertThat(howManyWaitingInTheCommentsQueue())
+				.as("the fixture's own only: the newest one sent wins, so the stars-only rating withdrew"
+						+ " the one with words that was still waiting")
+				.isEqualTo(1);
 		assertThat(db.sql("select rating_organisation from event_comment where id = ?")
 				.param(idIn(second)).query(Integer.class).single()).isEqualTo(5);
 	}
@@ -1052,6 +1057,57 @@ class CommentWriteApiTest {
 				.as("another member's rating of the same event is not touched")
 				.isEqualTo(theOtherMemberOnRun);
 		assertThat(howManyPublished()).as("one went, one came").isEqualTo(publishedBefore);
+	}
+
+	/**
+	 * THE NEWEST ONE SENT WINS: a rating with no words also withdraws the same member's WAITING rating of
+	 * the same event, and its queue row with it. Four things stand around it and none may move: another
+	 * member's waiting rating of the same event, this member's waiting rating of ANOTHER event, and his
+	 * rating of the same event that a moderator has already DECIDED (a decided row is never deleted,
+	 * ADL A36 O11).
+	 */
+	@Test
+	void aRatingWithNoWordsWithdrawsTheMembersWaitingOneOfThatEventAndNoOtherCard() throws Exception {
+		long hers = waitingCardOf(submissionWaitingFor(ME, run, 1, 1, 1, "Moje, čeka"));
+		long hersElsewhere = waitingCardOf(
+				submissionWaitingFor(ME, runOtherEdition, 1, 1, 1, "Moje, drugi događaj"));
+		long someoneElses = waitingCardOf(submissionWaitingFor(SOMEONE_ELSE, run, 2, 2, 2, "Tuđe, čeka"));
+		long decided = waitingCardOf(submissionWaitingFor(ME, run, 3, 3, 3, "Moje, već odlučeno"));
+
+		db.sql("update verification set state = 'approved', decided_at = now(), decided_by_name = 'Mod'"
+				+ " where id = ?").param(decided).update();
+
+		long submissionsBefore = howManySubmissions();
+
+		MockHttpServletResponse answer = rateAs(ME, form(run, 5, 5, 5, ""));
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided))
+				.as("his waiting card of the event is gone, the other three stand")
+				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided);
+		assertThat(howManySubmissions())
+				.as("exactly one submission went with its card")
+				.isEqualTo(submissionsBefore - 1);
+	}
+
+	/** A rating with WORDS withdraws nothing: it is itself one more waiting rating (the pair above). */
+	@Test
+	void aRatingWithWordsWithdrawsNothingThatWaits() throws Exception {
+		long hers = waitingCardOf(submissionWaitingFor(ME, run, 1, 1, 1, "Moje, čeka"));
+
+		assertThat(waitingIn(rateAs(ME, form(run, 5, 5, 5, "Novo, s rečima.")))).isTrue();
+		assertThat(cardsStanding(hers)).containsExactly(hers);
+	}
+
+	private long waitingCardOf(long submission) {
+		return db.sql("select id from verification where comment_submission_id = ?").param(submission)
+				.query(Long.class).single();
+	}
+
+	private List<Long> cardsStanding(long... cards) {
+		return db.sql("select id from verification where id = any(?)")
+				.param(java.util.Arrays.stream(cards).boxed().toArray(Long[]::new))
+				.query(Long.class).list();
 	}
 
 	/** A member who already has two (an approval used to be able to make a second) ends with one. */

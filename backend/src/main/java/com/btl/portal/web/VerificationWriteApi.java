@@ -1593,6 +1593,16 @@ class VerificationWriteApi {
 	 * so not done: a waiting submission of the same member is not touched.
 	 */
 	private void publishTheComment(Item item) {
+		/* THE MEMBER'S ROW, FIRST, the lock `CommentWriteApi.write` takes: an approval and a rating of
+		   the same member at one instant meet here and not in two published rows. The card was claimed
+		   (its row updated, which locks it) before this is reached, so the order is card, then member, and
+		   `CommentWriteApi` never waits for a card while it holds the member. */
+		db.sql("select id from competitor where id = (select cs.competitor_id from comment_submission cs"
+						+ " where cs.id = ?) for update")
+				.param(item.commentSubmissionId())
+				.query(Long.class)
+				.single();
+
 		db.sql("delete from event_comment where (competitor_id, event_id) ="
 						+ " (select cs.competitor_id, cs.event_id from comment_submission cs"
 						+ " where cs.id = ?)")
