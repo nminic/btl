@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { Stars } from '../../components/Stars'
+import { clearResourceCache } from '../../data/client'
 import { NO_RATING, RATING_MARKS, type EventRating } from '../../data/types'
 import { combineResources, useEvents, useRaces, useResults } from '../../data/useResource'
 import { ran } from './ran'
@@ -164,6 +165,13 @@ function RateOne() {
             setSending(false)
 
             if (answer.got === 'done') {
+              /* SO THAT THE ROW JUST MADE IS ON THE QUEUE THIS VISIT, and not only on the next
+                 one. `data/client.ts` fetches a resource once per visit and the shell asks for
+                 `verification` on every admin screen (the header counter), so a moderator who
+                 is also a member - the owner is exactly this - held the list from before this
+                 comment was sent and never saw it in the queue at all. Dropped only on 201:
+                 a refusal queued nothing, so there is nothing to read again. */
+              clearResourceCache('verification')
               confirm(`/${locale}/kalendar/${slug}`, true)
 
               return
