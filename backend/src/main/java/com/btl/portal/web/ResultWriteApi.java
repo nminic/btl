@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
@@ -222,6 +223,19 @@ class ResultWriteApi {
 	 * race the moderator chooses.
 	 */
 	static final String HE_HAS_A_RESULT_ON_THIS_RACE = "heHasAResultOnThisRace";
+
+	/**
+	 * A RUN OF A SEASON THAT IS NOT OPEN FOR A REPORT AT THIS MOMENT, on either road.
+	 *
+	 * <p>PDL P9, owner, 19.10.2026, „Član prijavljuje samo rezultate aktuelne sezone; istoriju šalje ligi
+	 * kao popunjen CSV šablon", and „Pre 2027 forma i predlozi ne nude ništa, a server odbija svaku
+	 * prijavu" („NIŠTA! NE POSTOJI LIGA PRE 2027 GODINE..."). Which seasons are open is
+	 * {@code SeasonClock.seasonsOpenForAReport}'s answer and nobody else's: the year he is in, and until
+	 * 10:00 on 1 January the year just ended. The sentence is the owner's approved one (PDL, „Reči forme
+	 * člana i moderatorovog ekrana"). Asked after the race that has not been run yet, which keeps its own
+	 * truer sentence for a race of next year.
+	 */
+	static final String THE_RACE_IS_OUTSIDE_THE_SEASON = "theRaceIsOutsideTheSeason";
 
 	/**
 	 * A TOWN TYPED BY HAND THAT IS LONGER THAN THE BOX THE MEMBER TYPES IT INTO.
@@ -595,6 +609,10 @@ class ResultWriteApi {
 			return no(THE_RACE_HAS_NOT_BEEN_RUN);
 		}
 
+		if (!SeasonClock.aRunMayBeSentFor(race.day().getYear(), now())) {
+			return no(THE_RACE_IS_OUTSIDE_THE_SEASON);
+		}
+
 		/* HIS RESULT ON THIS RACE, if there is one (see HE_HAS_A_RESULT_ON_THIS_RACE). A result the
 		   league writes after this question is not seen here, and the approval refuses the run then:
 		   this is the member being told early, and V65 is the rule. */
@@ -691,6 +709,10 @@ class ResultWriteApi {
 
 		if (typed.day().isAfter(today())) {
 			return no(THE_RACE_HAS_NOT_BEEN_RUN);
+		}
+
+		if (!SeasonClock.aRunMayBeSentFor(typed.day().getYear(), now())) {
+			return no(THE_RACE_IS_OUTSIDE_THE_SEASON);
 		}
 
 		boolean fromTheCodebook = typed.placeId() != null;
@@ -1007,6 +1029,11 @@ class ResultWriteApi {
 	 *  race run this morning in Belgrade a race in the future for the first hour of the day. */
 	private LocalDate today() {
 		return LocalDate.now(clock.withZone(SeasonClock.ZONE));
+	}
+
+	/** The moment the window of the seasons is asked at; the window reads it in the league's zone. */
+	private ZonedDateTime now() {
+		return ZonedDateTime.now(clock);
 	}
 
 	/** Absent, blank and a run of spaces are one state, {@link TeamWriteApi#isNothing}'s own

@@ -10,6 +10,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -26,8 +29,10 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -108,6 +113,25 @@ class EveryRouteFindsATownByItsMarkTest {
 
 	@Autowired
 	private MockMvc http;
+
+	/**
+	 * A CLOCK INSIDE THE FIRST SEASON. A run is sent only for a season that is open (PDL P9, 19.10.2026,
+	 * `SeasonClock.seasonsOpenForAReport`), and none is before 2027, so a case that sends one cannot
+	 * stand on the machine's own date: in 2026 every run is refused, which is the decision and not this
+	 * case's subject.
+	 */
+	@TestConfiguration(proxyBeanMethods = false)
+	static class AClockInsideTheFirstSeason {
+
+		@Bean
+		@Primary
+		Clock aClockInsideTheFirstSeason() {
+			return Clock.fixed(Instant.parse("2027-07-01T10:00:00Z"), ZoneOffset.UTC);
+		}
+	}
+
+	@Autowired
+	private Clock clock;
 
 	@Autowired
 	private JdbcClient db;
@@ -323,7 +347,7 @@ class EveryRouteFindsATownByItsMarkTest {
 		form.put("raceName", "Trka u " + town.name());
 		/* On an event he typed, which is the one road that still names a town (V67). */
 		form.put("eventName", "Dogadjaj u " + town.name());
-		form.put("day", LocalDate.now(SeasonClock.ZONE).minusDays(1).toString());
+		form.put("day", LocalDate.now(clock.withZone(SeasonClock.ZONE)).minusDays(1).toString());
 		form.put("raceKind", "free");
 		form.put(THE_TOWN, town.mark());
 		form.put("distanceKm", "12.00");
@@ -506,7 +530,7 @@ class EveryRouteFindsATownByItsMarkTest {
 				.param(email).update();
 
 		SecretToken token = SecretToken.fresh();
-		Instant now = Instant.now();
+		Instant now = Instant.now(clock);
 
 		db.sql("insert into account_session (account_id, token_hash, created_at, last_used_at,"
 						+ " expires_at) values ((select id from account where email = ?), ?, ?, ?, ?)")

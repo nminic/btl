@@ -8,6 +8,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -22,7 +25,9 @@ import tools.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Duration;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -144,6 +149,24 @@ class MyResultSubmissionsApiTest {
 
 	@Autowired
 	private MockMvc http;
+
+	/**
+	 * A CLOCK INSIDE THE FIRST SEASON, for the one case that sends a run through its route: a run is sent
+	 * only for an open season (PDL P9, 19.10.2026), and in 2026 every run is refused, which is the
+	 * decision and not this file's subject. Every other case reads, and reading asks no clock.
+	 */
+	@TestConfiguration(proxyBeanMethods = false)
+	static class AClockInsideTheFirstSeason {
+
+		@Bean
+		@Primary
+		Clock aClockInsideTheFirstSeason() {
+			return Clock.fixed(Instant.parse("2027-07-01T10:00:00Z"), ZoneOffset.UTC);
+		}
+	}
+
+	@Autowired
+	private Clock clock;
 
 	@Autowired
 	private JdbcClient db;
@@ -569,7 +592,11 @@ class MyResultSubmissionsApiTest {
 	@Test
 	void aRunAndACorrectionSentThroughTheirOwnRoutesComeBackHereAsTheyWereSent()
 			throws Exception {
-		Map<String, Object> run = Map.of("raceId", timeRace, "distanceKm", "61.2500", "ascentM", 310,
+		/* A race of the season the clock stands in: a run is sent only for an open season, and the
+		   fixture's races are of 2026, before the league (PDL P9, 19.10.2026). */
+		long thisSeasonsRace = race(eventInATypedTown("Letnja noc", "2027-06-12", "Futog", "RS"),
+				"Letnji krug", "2027-06-12", "time", 43200, "0", 0, 0);
+		Map<String, Object> run = Map.of("raceId", thisSeasonsRace, "distanceKm", "61.2500", "ascentM", 310,
 				"descentM", 300, "link", "https://rezultati.rs/kroz-rutu", "comment", "Poslato kroz rutu");
 
 		assertThat(sent(post("/api/results").contentType(MediaType.APPLICATION_JSON)
@@ -605,8 +632,8 @@ class MyResultSubmissionsApiTest {
 
 		assertThat(theRun.get("state").asString()).isEqualTo("waiting");
 		assertThat(amendsOf(theRun)).isNull();
-		assertThat(raceIdOf(theRun)).isEqualTo(timeRace);
-		assertThat(theRun.get("raceName").asString()).isEqualTo("Dvanaest sati");
+		assertThat(raceIdOf(theRun)).isEqualTo(thisSeasonsRace);
+		assertThat(theRun.get("raceName").asString()).isEqualTo("Letnji krug");
 		assertThat(figuresOf(theRun)).containsExactly("61.25", "310", "300", "43200");
 		assertThat(theRun.get("comment").asString()).isEqualTo("Poslato kroz rutu");
 	}
@@ -869,7 +896,7 @@ class MyResultSubmissionsApiTest {
 
 	private void openSession(String email) {
 		SecretToken session = SecretToken.fresh();
-		Instant issuedAt = Instant.now();
+		Instant issuedAt = Instant.now(clock);
 
 		db.sql("insert into account_session (account_id, token_hash, created_at, last_used_at,"
 						+ " expires_at) values ((select id from account where email = ?), ?, ?, ?, ?)")
