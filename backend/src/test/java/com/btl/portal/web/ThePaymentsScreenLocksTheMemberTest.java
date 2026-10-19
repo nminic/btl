@@ -53,20 +53,26 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * ordered either.
  *
  * <p><b>NOT {@code @Transactional}, and the order is taken from the lock manager and not from the
- * scheduler</b>: the case holds the member's row itself, submits the FIRST request, waits until the
- * lock manager shows it stopped, only then submits the SECOND, waits for that, and lets go. Postgres
- * queues row-lock waiters first come, first served, so the order in which they are let through is the
- * order they were submitted in and the case names which order it measures. The rows are real commits
- * and {@link #andNothingOfItIsLeftBehind} takes them back out.
+ * scheduler</b>: the case holds a lock itself, submits the FIRST request, waits until the lock manager
+ * shows it stopped, and only then submits the SECOND. The rows are real commits and {@link
+ * #andNothingOfItIsLeftBehind} takes them back out.
  *
- * <p><b>WHY THE BALANCE CASES HOLD {@code FOR NO KEY UPDATE} AND THE ROW CASES HOLD {@code FOR
- * UPDATE}.</b> The row cases need the booking stopped at its first statement against the member, and
- * {@code for update} stops every statement that touches him. The balance cases need the opposite for
- * the screen as it stood: stopped only at its LAST statement, {@code update competitor set active =
- * true}, with the spend already written and not yet committed. A {@code for no key update} hold stops
- * that update and lets the inserts (which only take {@code for key share} on the member) through, so
- * the member's change of country, queued first, reads a book from which the spend is still invisible.
- * That is the interleaving the review reasoned about, forced and not hoped for.
+ * <p><b>THE ROW CASES HOLD THE MEMBER'S ROW {@code FOR UPDATE}</b> and queue the two presses behind
+ * it in the named order; either order ends in one payment and one harmless repeat.
+ *
+ * <p><b>THE BALANCE CASE DOES NOT HOLD HIS ROW AND THAT IS MEASURED, NOT CHOSEN.</b> A first draft
+ * held the row {@code FOR NO KEY UPDATE} and queued his change of country and the booking behind it,
+ * expecting the one queued first to be let through first. Postgres does not promise that: over six runs
+ * of the unguarded screen the failing book came out in some and a clean one in others. What is
+ * deterministic is a stop that does not involve his row at all. The member was brought in by somebody,
+ * so a booking ends by writing the referrer's reward ({@link BalanceBook#aReferralWasActivated}), and
+ * that {@code insert} waits for any other transaction holding the same {@code referred_competitor_id}.
+ * The case holds exactly that, so the unguarded screen has spent his five euro and sits uncommitted
+ * one statement before its end, while his change of country, which needs nothing the case holds, runs
+ * to its commit and reads a book from which the spend is invisible. Only then is the hold let go. The
+ * guarded screen is stopped at its FIRST statement instead, because its {@code for update} meets the
+ * {@code for key share} that the held {@code insert} took on his row, and takes his money as the
+ * change of country left it.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -83,6 +89,8 @@ class ThePaymentsScreenLocksTheMemberTest {
 	private static final String THE_NUMBER = "000991";
 
 	private static final String HE_BROUGHT_IN_THE_NUMBER = "000992";
+
+	private static final String THE_REFERRER_NUMBER = "000993";
 
 	@TestConfiguration(proxyBeanMethods = false)
 	static class TheClockThisFileUses {
@@ -115,6 +123,8 @@ class ThePaymentsScreenLocksTheMemberTest {
 
 	private long heBroughtIn;
 
+	private long referrer;
+
 	@BeforeEach
 	void aModeratorAndAMemberRenewingWithFiveEuroOnHisBook() {
 		db.sql("insert into account (first_name, last_name, email, role_id) values"
@@ -133,6 +143,9 @@ class ThePaymentsScreenLocksTheMemberTest {
 
 		himself = aMember(THE_NUMBER, "0011aabbccdd9e91", "Probni", true);
 		heBroughtIn = aMember(HE_BROUGHT_IN_THE_NUMBER, "0011aabbccdd9e92", "Doveden", false);
+		referrer = aMember(THE_REFERRER_NUMBER, "0011aabbccdd9e93", "Zavodnik", true);
+
+		db.sql("update competitor set referred_by = ? where id = ?").params(referrer, himself).update();
 
 		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id) values"
 						+ " ('Probni', 'Zakljucan', ?, (select id from role where code = 'competitor'), ?)")
@@ -178,7 +191,7 @@ class ThePaymentsScreenLocksTheMemberTest {
 	/** Real commits, so a real delete, children before parents. */
 	@AfterEach
 	void andNothingOfItIsLeftBehind() {
-		for (long member : new long[] { himself, heBroughtIn }) {
+		for (long member : new long[] { himself, heBroughtIn, referrer }) {
 			db.sql("delete from message where to_id = ?").param(member).update();
 			db.sql("delete from membership where competitor_id = ?").param(member).update();
 			db.sql("delete from payment where competitor_id = ?").param(member).update();
@@ -189,42 +202,71 @@ class ThePaymentsScreenLocksTheMemberTest {
 		db.sql("delete from account_session where account_id in (?, ?)").params(moderator, hisAccount).update();
 		db.sql("delete from account_admin_right where account_id = ?").param(moderator).update();
 		db.sql("delete from account where id in (?, ?)").params(moderator, hisAccount).update();
-		db.sql("delete from competitor where id in (?, ?)").params(himself, heBroughtIn).update();
+		db.sql("delete from competitor where id in (?, ?, ?)").params(himself, heBroughtIn, referrer).update();
 	}
 
 	/**
-	 * HE CHANGES COUNTRY FIRST AND THE SCREEN BOOKS SECOND, queued in that order behind a hold that
-	 * lets the screen write everything but its last statement.
+	 * HIS CHANGE OF COUNTRY RUNS TO ITS COMMIT WHILE THE SCREEN'S BOOKING STANDS ONE STATEMENT FROM ITS
+	 * END, and the book must still come out right.
 	 *
-	 * <p>This is the order that left the euro book below nought: the screen spent out of five euro that
-	 * the change of country had already read as five euro and moved to dinars, so the euro side summed
-	 * to minus what the screen spent and the dinar side held all of it. With the screen's lock the
-	 * screen waits for the change of country to commit, reads that he is billed in dinars now, and
-	 * spends out of the six hundred dinars it finds.
+	 * <p>This is the interleaving that left the euro book below nought: the unguarded screen has spent
+	 * his five euro and not committed, the change of country reads five euro, moves it to six hundred
+	 * dinars and commits, and the screen then commits its spend. The euro side sums to minus what the
+	 * screen spent and the dinar side holds all of it. With the screen's lock the screen is stopped
+	 * before it reads anything, the change of country runs first, and the screen then finds him billed
+	 * in dinars and spends out of the six hundred it finds there.
 	 */
 	@Test
-	void aChangeOfCountryQueuedFirstLeavesNoCurrencyOfHisBookBelowNought() throws Exception {
-		List<MockHttpServletResponse> both = inThisOrder("for no key update",
-				this::movesToSerbia, this::theScreenBooksHimWithHisBalance);
-
-		assertThat(both.get(0).getStatus()).as("his change of country").isEqualTo(200);
-		assertThat(both.get(1).getStatus()).as("the screen's booking").isEqualTo(201);
-
-		assertNoCurrencyOfHisBookIsBelowNought();
-	}
-
-	/** The other order, which was never wrong and is here so that a lock that only helps one is seen. */
-	@Test
-	void theScreenQueuedFirstAndTheChangeOfCountrySecondLeavesNoCurrencyBelowNoughtEither()
+	void aChangeOfCountryThatCommitsInTheMiddleOfABookingLeavesNoCurrencyOfHisBookBelowNought()
 			throws Exception {
 
-		List<MockHttpServletResponse> both = inThisOrder("for no key update",
-				this::theScreenBooksHimWithHisBalance, this::movesToSerbia);
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+		MockHttpServletResponse changed;
 
-		assertThat(both.get(0).getStatus()).as("the screen's booking").isEqualTo(201);
-		assertThat(both.get(1).getStatus()).as("his change of country").isEqualTo(200);
+		try {
+			changed = holdingTheRow.execute(held -> {
+				/* THE REFERRER'S REWARD FOR HIM, written and not committed: the booking's last write is
+				   the same row, so it waits for this transaction (on conflict do nothing waits for the
+				   holder of a conflicting key). Nothing here touches his own row except the key share that
+				   the foreign key takes, which stops a `for update` on it and nothing else. */
+				db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
+								+ " referred_competitor_id, occurred_at, recorded_by_name) values"
+								+ " (?, 5, 'EUR', 'referral', ?, timestamptz '2027-10-02 09:00:00+00',"
+								+ " 'Neko Ko Je Knjizio')")
+						.params(referrer, himself).update();
 
-		assertNoCurrencyOfHisBookIsBelowNought();
+				assertThat(BlockedBehindThisHold.count(db))
+						.as("the reward is written and nothing has been submitted yet")
+						.isZero();
+
+				try {
+					submitted.add(pool.submit(this::theScreenBooksHimWithHisBalance));
+					untilThisManyAreStopped(1, submitted);
+
+					Future<MockHttpServletResponse> hisChange = pool.submit(this::movesToSerbia);
+					MockHttpServletResponse answered = hisChange.get(30, TimeUnit.SECONDS);
+
+					assertThat(submitted.get(0).isDone())
+							.as("the booking was answered although the reward it waits for is not settled")
+							.isFalse();
+
+					held.setRollbackOnly();
+					return answered;
+				} catch (Exception e) {
+					throw new IllegalStateException(e);
+				}
+			});
+
+			MockHttpServletResponse booked = submitted.get(0).get(30, TimeUnit.SECONDS);
+
+			assertThat(changed.getStatus()).as("his change of country").isEqualTo(200);
+			assertThat(booked.getStatus()).as("the screen's booking").isEqualTo(201);
+
+			assertNoCurrencyOfHisBookIsBelowNought();
+		} finally {
+			pool.shutdownNow();
+		}
 	}
 
 	/**
