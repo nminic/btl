@@ -201,6 +201,10 @@
       "title": "Predlog tima",
       "description": "Predloži tim Balkanskoj trkačkoj ligi. Moderator odlučuje o svakom predlogu pre nego što tim uđe u ligu."
     },
+    "leagueResults": {
+      "title": "Unos rezultata",
+      "description": "Moderator unosi rezultate članova sa trke Balkanske trkačke lige."
+    },
     "reportResult": {
       "title": "Prijava rezultata",
       "description": "Prijavi svoj rezultat sa trke Balkanske trkačke lige. Moderator proverava svaku prijavu pre nego što uđe u tabelu."

@@ -37,6 +37,7 @@ import {
   WHEN_INVITING_INTO_A_TEAM,
 } from '../joiningThisTeam'
 import { WHEN_WRITING_AN_EVENT, WHEN_WRITING_A_RACE } from '../admin/eventWrites'
+import { WHEN_THE_LEAGUE_ENTERS_RESULTS } from '../event/leagueResultWrites'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -181,6 +182,11 @@ const NOT_A_REASON: Record<string, string[]> = {
      it is `private static final String THE_LEAGUE = PairWriteApi.THE_LEAGUE`, a name rather
      than a literal, so the pattern above never matched it and the count of six says so. */
   'TeamJoiningWriteApi.java': ['Poziv u tim je ostao bez odgovora'],
+  /* `ResultsByTheLeagueApi` declares two that are not refusals, both shapes this table holds
+     already: `queue:results`, the RIGHT its routes ask for (a word of the matrix, like a queue's name
+     on `MePhotoApi`), and `Rezultati`, the name the portal writes a member's inbox line under, like
+     `PairWriteApi`'s `Balkanska trkačka liga`. */
+  'ResultsByTheLeagueApi.java': ['queue:results', 'Rezultati'],
 }
 
 /**
@@ -545,6 +551,12 @@ describe('the reasons the server can name', () => {
        the owner's answer that a race carrying an approved result keeps its kind (PDL P4). */
     ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 11],
     ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 13],
+    /* THE LEAGUE'S OWN ENTRY OF RESULTS FROM THE EVENT PAGE, added 19.10.2026 with the screen that
+       meets it (`event/EnterResults.tsx`, PDL P9, 18.10.2026). Eight constants and six reasons; the two
+       that are not are in `NOT_A_REASON`. The route also answers with three words it borrows by name
+       from `CompetitorWriteApi` and `ResultWriteApi` (the empty save, the save of too many rows, the run
+       that is not whole), which the screen answers too and which are counted on those files' lines. */
+    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 8],
   ]
 
   /** What a file declares that really is a refusal AND has a screen today, which is every

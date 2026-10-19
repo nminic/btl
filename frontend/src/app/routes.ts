@@ -182,6 +182,9 @@ export const EXTRA_ADDRESSES: Address[] = [
   /* Before the event for the same reason the day is: /kalendar/x/prijava must
      not be read as an event whose address is "x/prijava". */
   { path: 'kalendar/:slug/prijava', seoKey: 'reportResult' },
+  /* The league's own entry of results from the event page (PDL P9, 18.10.2026), before the event
+     for the reason the report stands there. */
+  { path: 'kalendar/:slug/rezultati', seoKey: 'leagueResults' },
   { path: 'kalendar/:slug/ocena', seoKey: 'rateEvent' },
   { path: 'kalendar/:slug', seoKey: 'event' },
   /* Before the team's own address, as the report of a result stands before the

@@ -367,6 +367,16 @@ describe('a sentence with a value put into it', () => {
          chosen out of two keys until 16.10.2026, the other one „Sezona {season}, probni
          podaci", and so stood among the calls whose key is not written out. */
       'home.season',
+      /* THE LEAGUE'S OWN ENTRY OF RESULTS ON THE EVENT PAGE (19.10.2026). Every value stands after a
+         colon or as a figure, so none has a case to be wrong in: „Unos rezultata: {race}" and
+         „Izmena rezultata: {name}" name a race and a member in the nominative, „Izmeni rezultat:
+         {name}" names whose run a pencil changes, and „{which}. red" and „Ukloni {which}. red" are
+         ordinal figures. */
+      'leagueResults.editNamed',
+      'leagueResults.editTitle',
+      'leagueResults.removeRow',
+      'leagueResults.rowNumber',
+      'leagueResults.title',
       /* The name of the competition inside the name of the control that opens its list of events
          and races, and inside the wait under it. Nominative, because the competition is what the
          box is about and nothing governs it: „Događaji i trke, RunTrace liga 2027". */
