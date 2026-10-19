@@ -264,10 +264,9 @@ describe('rating an event', () => {
 
     await user.click(send)
 
-    /* Nothing is published on the spot. It goes to the queue a moderator reads,
-       which is the route every comment has taken since the queues were written
-       (PDL P22). */
-    expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
+    /* Three marks and no words are published on the spot (owner, 19.10.2026): the box was left
+       empty, so there is no comment for a moderator to read. */
+    expect(await screen.findByText('Ocena je objavljena.')).toBeVisible()
   })
 
   it('says how much room the comment has, and what a paste lost', async () => {
@@ -354,7 +353,7 @@ describe('rating an event', () => {
       await rateAll(user, 3)
       await user.click(screen.getByRole('button', { name: 'Pošalji' }))
 
-      expect(await screen.findByText('Ocena je poslata na odobrenje.')).toBeVisible()
+      expect(await screen.findByText('Ocena je objavljena.')).toBeVisible()
     } finally {
       /* Put back whatever happens: a stub left standing is every later test in
          the file reading an empty list of members. */
@@ -409,11 +408,12 @@ describe('rating an event', () => {
     await screen.findByRole('radiogroup', { name: 'Organizacija' })
     await rateAll(user, 5)
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
-    await screen.findByText('Ocena je poslata na odobrenje.')
+    await screen.findByText('Ocena je objavljena.')
 
     await router.navigate(`/sr/kalendar/${OTHER}/ocena`)
 
     expect(await screen.findByRole('radiogroup', { name: 'Organizacija' })).toBeVisible()
+    expect(screen.queryByText('Ocena je objavljena.')).toBeNull()
     expect(screen.queryByText('Ocena je poslata na odobrenje.')).toBeNull()
   })
 
@@ -468,6 +468,8 @@ describe('rating an event', () => {
     const { router } = await startFromTheQueue()
 
     await screen.findByRole('radiogroup', { name: 'Organizacija' })
+    /* WITH WORDS, because only a comment with words reaches a queue (owner, 19.10.2026). */
+    await user.type(screen.getByLabelText(/^Komentar/), 'Sve tri ocene su pet.')
     await rateAll(user, 5)
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
     await screen.findByText('Ocena je poslata na odobrenje.')
@@ -499,12 +501,92 @@ describe('rating an event', () => {
     const user = setupUser()
 
     await startFromTheQueue()
+    await loadResource<EventComment[]>('comments')
+    expect(arrivedResource('comments'), 'the comments were never held').toBeDefined()
     await screen.findByRole('radiogroup', { name: 'Organizacija' })
+    await user.type(screen.getByLabelText(/^Komentar/), 'Ima reči, pa ide moderatoru.')
     await rateAll(user, 5)
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
     await screen.findByText('Ocena je poslata na odobrenje.')
 
     expect(arrivedResource('verification')).toBeUndefined()
+    expect(
+      arrivedResource('comments'),
+      'a comment that waits publishes nothing, so the event page has nothing new to read',
+    ).toBeDefined()
+  })
+
+  it('says a rating with no words is published, and drops what the server changed so it shows this visit', async () => {
+    /* Owner, 19.10.2026: three marks and no words are published at once. WHICH sentence is the
+       server's answer (`waiting: false`), the comments the event page reads are dropped so the
+       new rating is under the event this visit, and the queue is dropped as well because the
+       newest rating a member sends also withdraws his waiting one. */
+    const user = setupUser()
+    const { router } = await startFromTheQueue()
+
+    const before = (await loadResource<EventComment[]>('comments')).length
+
+    expect(
+      arrivedResource('comments'),
+      'the comments were never held, so nothing is measured',
+    ).toBeDefined()
+
+    await screen.findByRole('radiogroup', { name: 'Organizacija' })
+    await rateAll(user, 5)
+    await user.click(screen.getByRole('button', { name: 'Pošalji' }))
+
+    expect(await screen.findByText('Ocena je objavljena.')).toBeVisible()
+    expect(screen.queryByText('Ocena je poslata na odobrenje.')).toBeNull()
+    expect(arrivedResource('comments')).toBeUndefined()
+    expect(arrivedResource('verification')).toBeUndefined()
+
+    await router.navigate(`/sr/kalendar/${EVENT}`)
+
+    const after = await loadResource<EventComment[]>('comments')
+
+    expect(after).toHaveLength(before + 1)
+    expect(first(after).body).toBe('')
+    expect(first(after).rating).toEqual({ organisation: 5, value: 5, ambience: 5 })
+  })
+
+  it('says what the server said and not what the box holds: the answer decides the sentence', async () => {
+    /* The crossed cases. A screen that read the box would say the opposite of the server in the
+       first two, and the third is a body that says nothing, which is promised nothing. */
+    const crossed = [
+      { typed: 'Ima reči.', answered: { id: 1, waiting: false }, said: 'Ocena je objavljena.' },
+      { typed: '', answered: { id: 1, waiting: true }, said: 'Ocena je poslata na odobrenje.' },
+      { typed: '', answered: { id: 1 }, said: 'Ocena je poslata na odobrenje.' },
+    ]
+
+    for (const one of crossed) {
+      cleanup()
+      const server = serverThat((path, init) =>
+        path === '/api/comments' && init?.method === 'POST'
+          ? new Response(JSON.stringify(one.answered), {
+              status: 201,
+              headers: { 'content-type': 'application/json' },
+            })
+          : null,
+      )
+
+      try {
+        const user = setupUser()
+        renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
+
+        await screen.findByRole('radiogroup', { name: 'Organizacija' })
+
+        if (one.typed !== '') {
+          await user.type(screen.getByLabelText(/^Komentar/), one.typed)
+        }
+
+        await rateAll(user, 4)
+        await user.click(screen.getByRole('button', { name: 'Pošalji' }))
+
+        expect(await screen.findByText(one.said)).toBeVisible()
+      } finally {
+        server.stop()
+      }
+    }
   })
 
   it("keeps the moderator's queue when the server refuses the rating, because nothing was queued", async () => {
