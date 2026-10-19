@@ -47,7 +47,7 @@ import java.util.regex.Pattern;
  * of it; it only reads the two facts off the database, asks, and carries out
  * whichever of the four answers comes back.
  *
- * <p><b>WHAT EACH OF THE FOUR OUTCOMES DOES HERE:</b>
+ * <p><b>WHAT EACH OF THE THREE OUTCOMES DOES HERE:</b>
  *
  * <ul>
  * <li>{@link Outcome#RECORD_IT_AND_NUMBER_HIM} - the payment is written
@@ -67,18 +67,15 @@ import java.util.regex.Pattern;
  * the same payment twice must be harmless", and a moderator's second click on a row
  * that no longer waits is the human shape of the same bank statement imported
  * twice.
- * <li>{@link Outcome#A_REVERSAL_IS_NOT_UNDONE_HERE} - refused, 409. A reversal is
- * its own decision with its own cost (PDL, 11.08.2026, „Stornirana uplata: clanski
- * broj propada, clan postaje neaktivan za tu sezonu"; PDL, 14.09.2026, the number
- * stays reserved for the same man and returns to him rather than going to whoever
- * asks next) and this route does not carry it out. Turning a reversal back is its
- * own screen, for the same reason {@link RecordingAPayment} gives for refusing it
- * quietly: „a reversal is turned back by a person, not by an import" - and a
- * generic confirm button is closer to the import than to the considered second
- * look a reversal asks for. It is not built here, because nothing in this
- * increment's brief asks for it and there is no case anywhere in the repository
- * that exercises un-reversing a payment.
  * </ul>
+ *
+ * <p><b>A FOURTH STOOD HERE UNTIL 18.10.2026</b>, refusing with 409 a payment whose row said
+ * {@code reversed}, on the ground that „a reversal is turned back by a person, not by an import".
+ * The owner overturned the state that refusal was about (PDL P8, „Kad se osnov promeni iz „uplata”
+ * ili se uplata stornira, zapis o uplati se BRIŠE.”, and the refusal „Storno vraća čovek, van ovog
+ * ekrana.” is deleted with it), so a cancelled payment leaves no row for this route to find and V64
+ * refuses the word. A member whose payment was cancelled is booked again as a renewal, keeping his
+ * number (PDL P8, 14.09.2026).
  *
  * <p><b>AND SINCE 26.09.2026 THIS IS ALSO THE MOMENT A BALANCE IS SPENT, AND THE
  * ONLY ONE ON THIS ROAD.</b> The owner that day: „QR se kuje na iznos minus balans,
@@ -159,9 +156,10 @@ import java.util.regex.Pattern;
  * <p><b>Refused rather than written over, and that is a decision with a named
  * loser.</b> An {@code on conflict do update} here would let a recorded payment
  * silently replace a membership the board granted, and nothing would be left saying
- * the exemption had ever been there. This class already refuses to undo a reversal
- * quietly for the same reason - „a reversal is turned back by a person, not by an
- * import" - and an exemption overturned by a fee is the same shape of fact.
+ * the exemption had ever been there. By the owner's decision of 18.10.2026 a change of basis is
+ * an option on the member's row in the moderation of the members (PDL P8, „Promene osnova na redu
+ * člana idu u oba smera”), with a table of its own for the trail ({@code membership_change}, V63),
+ * and never a side effect of booking money here.
  *
  * <p><b>WHAT IS DELIBERATELY NOT GUARDED HERE, EACH ONE NAMED RATHER THAN
  * DISCOVERED:</b>
@@ -312,8 +310,8 @@ class PaymentApi {
 	 * form is not wrong - he typed what the statement showed - so telling him the amount is not
 	 * money would send him to correct a field that is correct, which is the fault
 	 * {@link #THE_AMOUNT_IS_NOT_MONEY} names of its own. What refuses him is the state of the price
-	 * list, exactly as {@link #THE_MEMBERSHIP_IS_ALREADY_HELD} and {@link #THE_PAYMENT_WAS_REVERSED}
-	 * are refused by the state of his membership.
+	 * list, exactly as {@link #THE_MEMBERSHIP_IS_ALREADY_HELD} is refused by the state of his
+	 * membership.
 	 *
 	 * <p><b>And where he is meant to go instead is already decided.</b> PDL 19 point 5 sends „no
 	 * money is owed" to the exemption prompt and {@code POST /api/memberships} („Prazno polje i
@@ -331,8 +329,6 @@ class PaymentApi {
 	static final String THE_COMPETITOR_DOES_NOT_EXIST = "theCompetitorDoesNotExist";
 
 	static final String THE_REFERENCE_IS_TAKEN = "theReferenceIsTaken";
-
-	static final String THE_PAYMENT_WAS_REVERSED = "thePaymentWasReversed";
 
 	/**
 	 * THE SEASON IS ALREADY SOMEBODY'S, AND THE REASON SAYS NO MORE THAN THAT.

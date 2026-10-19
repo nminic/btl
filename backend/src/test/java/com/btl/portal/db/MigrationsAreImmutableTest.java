@@ -486,12 +486,28 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 					"V63__a_change_on_a_members_row_leaves_a_trail_and_the_book_reverses_what_a_season_held.sql",
 					635495128),
 
+			/* V64. A cancelled payment leaves no row, so `reversed` is not a state a payment can be in
+			   (owner, 18.10.2026, PDL P8, „zapis o uplati se BRIŠE”): `payment_state_known` narrowed to
+			   `awaited` and `recorded`, with the sentences of V16, V22 and V42 it overturns named in its
+			   header and the current one on the rule itself. No payment that stands is touched, and one
+			   reading `reversed` stops it rather than being cleared away, which
+			   `TheReversedStateGoesOverThePaymentsAlreadyThereTest` measures.
+
+			   64 because it is the next free number, measured on 18.10.2026 after a fetch: origin/main
+			   stands at V63 and the one open pull request (569) carries no migration.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
+			   read off this very assertion when it ran before the entry existed. */
+			new Applied("64", "V64__a_cancelled_payment_leaves_no_row_so_reversed_is_no_state.sql",
+					-1467614539),
+
 			/* V65. A member has at most one result on one race (owner, PDL P6, 09.09.2026, „Član ima
 			   najviše jedan rezultat na jednoj trci"): one unique key over (competitor_id, race_id), which
 			   the approval names in `on conflict`. No row is touched, and QA was measured to hold no pair
 			   (18.10.2026); `ResultOnePerRaceCarriedOverTest` runs the file over the rows a real table holds.
 
-			   65 because 64 is taken by the open pull request 570, measured on 19.10.2026 after a fetch.
+			   65 because 64 is taken by pull request 570, measured on 19.10.2026 after a fetch; 570 was
+			   merged before this one, so V64 stands before it here too.
 
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
 			   read off this very assertion when it ran before the entry existed. */

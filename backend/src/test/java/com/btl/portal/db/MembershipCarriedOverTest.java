@@ -74,6 +74,14 @@ class MembershipCarriedOverTest extends DatabaseTest {
 		jdbc.execute("alter table competitor add column membership_basis text not null default 'payment'"
 				+ " constraint competitor_membership_basis_known"
 				+ " check (membership_basis in ('payment', 'feeExempt'))");
+
+		/* AND THE THIRD STATE OF A PAYMENT, put back as V16 wrote it, for the same reason. V64 took
+		   `reversed` out of `payment_state_known` (PDL P8, 18.10.2026, „zapis o uplati se BRIŠE”),
+		   but the database V22 ran over could hold one, and the carry must still be measured
+		   against it: a reversed payment is the source the carry must NOT read. */
+		jdbc.execute("alter table payment drop constraint payment_state_known");
+		jdbc.execute("alter table payment add constraint payment_state_known"
+				+ " check (state in ('awaited', 'recorded', 'reversed'))");
 	}
 
 	private void competitor(String number, String last, String code, String basis, int firstSeason) {

@@ -76,7 +76,6 @@ describe('recording a payment on a member’s row', () => {
         'theMembershipCostsNothing',
         'theMembershipIsAlreadyHeld',
         'theMethodIsNotKnown',
-        'thePaymentWasReversed',
       ].sort(),
     )
 

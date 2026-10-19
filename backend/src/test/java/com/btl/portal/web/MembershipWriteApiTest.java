@@ -683,46 +683,17 @@ class MembershipWriteApiTest {
 	}
 
 	/**
-	 * AND A REVERSED PAYMENT IS NOT SETTLED HERE EITHER.
-	 *
-	 * <p>PDL, 11.08.2026: „Stornirana uplata: clanski broj propada, clan postaje neaktivan za
-	 * tu sezonu." There is no membership row in this fixture - a reversal leaves none - so
-	 * nothing but this guard stands between one click and a reversal that stops having
-	 * happened.
-	 */
-	@Test
-	void aReversedPaymentIsNotSettledHereEither() throws Exception {
-		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
-						+ " currency, fee, method, state, recorded_at, recorded_by, recorded_by_name,"
-						+ " received)"
-						+ " values (?, 2027, '20270092',"
-						+ " (select id from price_row where key = 'season'), 35.00, 'EUR', 3.00,"
-						/* A REVERSAL KEEPS WHAT ARRIVED, for the reason it keeps its day: the money did
-						   arrive, and then it went back. */
-						+ " 'paypal', 'reversed', ?, null, 'Blagajnik Probic', 38.00)")
-				.params(him, Timestamp.from(IN_JUNE_2027)).update();
-
-		MockHttpServletResponse answer = freeHim(him, cashierCookie);
-
-		assertThat(answer.getStatus()).isEqualTo(409);
-		assertThat(refusal(answer)).isEqualTo(MembershipWriteApi.THE_PAYMENT_WAS_REVERSED);
-
-		assertThat(db.sql("select count(*) from membership where competitor_id = ?").param(him)
-				.query(Long.class).single()).as("a reversal was settled by an exemption").isZero();
-		assertThat(competitorRow(him)).isEqualTo("none false none");
-	}
-
-	/**
-	 * AND AN AWAITED PAYMENT IS NOT A REVERSAL, which is the replacement of the SOURCE for the
-	 * case above.
+	 * AN AWAITED PAYMENT DOES NOT STAND IN THE WAY.
 	 *
 	 * <p>A man sitting in the queue with nobody having said the money came is exactly the man
 	 * this route exists for - {@code V16}'s {@code default 'awaited'} is that row. A guard
-	 * written as „is there a payment" rather than „was one reversed" would refuse him, which is
-	 * the whole population the screen is drawn for.
+	 * written as „is there a payment" would refuse him, which is the whole population the screen
+	 * is drawn for. Until 18.10.2026 this case stood beside one that refused a {@code reversed}
+	 * payment, as the replacement of its source; that state is gone (V64; PDL P8, „zapis o
+	 * uplati se BRIŠE”), and this half still says something on its own.
 	 */
 	@Test
-	void anAwaitedPaymentIsNotAReversalAndDoesNotStandInTheWay() throws Exception {
+	void anAwaitedPaymentDoesNotStandInTheWay() throws Exception {
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
 						+ " currency, fee, method, state) values (?, 2027, '20270093',"
 						+ " (select id from price_row where key = 'season'), 35.00, 'EUR', 3.00,"

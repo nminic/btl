@@ -109,11 +109,14 @@ import java.util.Optional;
  * <p><b>WHAT IS DELIBERATELY NOT BUILT HERE, NAMED RATHER THAN DISCOVERED:</b>
  *
  * <ul>
- * <li><b>Nothing takes an exemption back</b>, and that is the owner's decision of
- * 27.09.2026 with his reason: every season is granted separately (PDL:3427, „Ne jednom pa
- * dok se ne oduzme"), so one given by mistake lasts at most to the end of that season and is
- * never carried forward. A withdrawal is not refused here quietly - there is no route to
- * refuse.
+ * <li><b>Nothing on this route takes an exemption back</b>, and the reason changed on
+ * 18.10.2026. Until then it was the owner's decision of 27.09.2026 that an exemption given by
+ * mistake is not corrected through the portal at all. He overturned it that day (PDL P8,
+ * „Promene osnova na redu člana idu u oba smera. Oslobođenje se može povući (storno) i preko
+ * njega se može upisati uplata”), and the place he gave it is the member's row in the
+ * moderation of the members („opcije na redu clana u Moderaciji clana”), under the right over
+ * the members and with a trail of its own ({@code membership_change}, V63). So a withdrawal
+ * is that row's option and its own increment, never a branch of this route.
  * <li><b>No season may be named, so a PAST season cannot be granted.</b> Filling the gap in
  * somebody's history retroactively is a different act with a different question - whether a
  * lapsed member becomes {@code active} again by being given a season he has already lived
@@ -198,18 +201,6 @@ class MembershipWriteApi {
 	 * {@code membership_pk} is never met and neither act silently replaces the other.
 	 */
 	static final String THE_FEE_IS_ALREADY_RECORDED = "theFeeIsAlreadyRecorded";
-
-	/**
-	 * A payment for this season was reversed, so this route will not settle it either.
-	 *
-	 * <p>PDL 11.08.2026: „Stornirana uplata: clanski broj propada, clan postaje neaktivan za
-	 * tu sezonu." An exemption entered over that would make the reversal stop having
-	 * happened, in one click and with nothing left saying so - which is the same refusal
-	 * {@link RecordingAPayment} gives in its own words, „a reversal is turned back by a
-	 * person, not by an import". The name is deliberately the one {@link PaymentApi} uses,
-	 * because it is the same fact being reported.
-	 */
-	static final String THE_PAYMENT_WAS_REVERSED = "thePaymentWasReversed";
 
 	private final JdbcClient db;
 
@@ -401,8 +392,7 @@ class MembershipWriteApi {
 		boolean forgivesMoney = ground == GrantingAMembership.Ground.FREE_OF_THE_FEE
 				|| !settled.coveredByTheBalance();
 
-		GrantingAMembership.Asking question = new GrantingAMembership.Asking(ground, held,
-				aPaymentWasReversed(competitor.get().id(), season), offTheBook,
+		GrantingAMembership.Asking question = new GrantingAMembership.Asking(ground, held, offTheBook,
 				competitor.get().memberNumber() == null ? null
 						: new MemberNumber(competitor.get().memberNumber()));
 
@@ -420,7 +410,6 @@ class MembershipWriteApi {
 					season, competitor.get().memberNumber()));
 			case THE_FEE_IS_ALREADY_RECORDED -> no(HttpStatus.CONFLICT, THE_FEE_IS_ALREADY_RECORDED);
 			case THE_SEASON_IS_ALREADY_HELD -> no(HttpStatus.CONFLICT, THE_MEMBERSHIP_IS_ALREADY_HELD);
-			case THE_PAYMENT_WAS_REVERSED -> no(HttpStatus.CONFLICT, THE_PAYMENT_WAS_REVERSED);
 			case NOTHING_WOULD_COME_OFF_THE_BOOK ->
 					no(HttpStatus.CONFLICT, NOTHING_WOULD_COME_OFF_THE_BOOK);
 			case GRANT, GRANT_AND_NUMBER_HIM -> grant(season, competitor.get(), asking,
@@ -596,21 +585,6 @@ class MembershipWriteApi {
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 				.body(new Granted(competitor.id(), season, number.written()));
-	}
-
-	/**
-	 * Whether a payment for this season went back.
-	 *
-	 * <p>{@code payment_one_a_season} means there is at most one row to ask about, and
-	 * {@link RecordingAPayment#REVERSED} is asked for by name rather than by „not recorded":
-	 * a payment still {@code awaited} is the ordinary state of the man this route exists for,
-	 * sitting in the queue with nobody having said the money came.
-	 */
-	private boolean aPaymentWasReversed(long competitorId, int season) {
-		return Boolean.TRUE.equals(db.sql("select exists(select 1 from payment"
-						+ " where competitor_id = ? and season = ? and state = ?)")
-				.params(competitorId, season, RecordingAPayment.REVERSED)
-				.query(Boolean.class).single());
 	}
 
 	private static ResponseEntity<?> no(HttpStatus status, String reason) {

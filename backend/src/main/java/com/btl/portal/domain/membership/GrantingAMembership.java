@@ -73,14 +73,13 @@ public final class GrantingAMembership {
 	}
 
 	/**
-	 * The world as the route found it, reduced to the five things this decision turns on.
+	 * The world as the route found it, reduced to the four things this decision turns on.
 	 *
 	 * @param ground             which prompt was pressed
 	 * @param heldOn             the basis of the {@code membership} row already standing for
 	 *                           this person and this season, or {@code null} when none does.
 	 *                           The schema's own word, because the question „is it the ground
 	 *                           that was asked for" is asked of the column itself
-	 * @param aPaymentWasReversed a payment for this season went back, which is its own refusal
 	 * @param offTheBook         what this activation would take out of his book, which is
 	 *                           {@link Balance.Money#nothingIn} for {@link Ground#FREE_OF_THE_FEE}
 	 *                           because a man who owes nothing has nothing for a balance to pay.
@@ -90,8 +89,8 @@ public final class GrantingAMembership {
 	 *                           no longer does
 	 * @param numberHeAlreadyHas his member number, or {@code null} if he has never had one
 	 */
-	public record Asking(Ground ground, String heldOn, boolean aPaymentWasReversed,
-			Balance.Money offTheBook, MemberNumber numberHeAlreadyHas) {
+	public record Asking(Ground ground, String heldOn, Balance.Money offTheBook,
+			MemberNumber numberHeAlreadyHas) {
 
 		public Asking {
 			Objects.requireNonNull(ground, "ground");
@@ -99,7 +98,14 @@ public final class GrantingAMembership {
 		}
 	}
 
-	/** What the server does next, and the six are six different things. */
+	/**
+	 * What the server does next, and the five are five different things.
+	 *
+	 * <p>There were six until 18.10.2026. The sixth refused a season whose payment stood as
+	 * {@code reversed}; the owner overturned that state (PDL P8, „Kad se osnov promeni iz „uplata”
+	 * ili se uplata stornira, zapis o uplati se BRIŠE.”), so a cancelled payment leaves nothing
+	 * beside the season and V64 refuses the word.
+	 */
 	public enum Outcome {
 
 		/** Write it, and give him the number he has never had. */
@@ -150,15 +156,6 @@ public final class GrantingAMembership {
 		THE_SEASON_IS_ALREADY_HELD,
 
 		/**
-		 * Nothing. A payment for this season was reversed.
-		 *
-		 * <p>PDL 11.08.2026: „Stornirana uplata: clanski broj propada, clan postaje neaktivan
-		 * za tu sezonu." Activating over that on any ground would make the reversal stop
-		 * having happened, in one click and with nothing left saying so.
-		 */
-		THE_PAYMENT_WAS_REVERSED,
-
-		/**
 		 * Nothing. What would come off the book is not money at all, so there is no line
 		 * {@code balance_entry_a_membership_takes} (V42) would accept.
 		 *
@@ -203,13 +200,7 @@ public final class GrantingAMembership {
 	 * {@link Outcome#THE_SEASON_IS_ALREADY_HELD} - a refusal - instead of the 200 that writes
 	 * nothing, and the moderator reading a list aloud would be told the row he just did is broken.
 	 *
-	 * <p><b>A REVERSED PAYMENT IS ASKED AFTER THE MEMBERSHIP AND NOT BEFORE, the same order
-	 * {@code MembershipWriteApi} already had and for its reason:</b> a row standing beside a
-	 * reversed payment is reported as the membership it is, and a reversal with NO row beside it is
-	 * reported as the reversal it is, which is the only case where nothing else has settled the
-	 * season.
-	 *
-	 * <p><b>The book comes last of all, because it is the only one of the five that is about
+	 * <p><b>The book comes last of all, because it is the only one of the four that is about
 	 * MONEY rather than about the season.</b> A man whose season is already held must be told that
 	 * and not that his book happens to be empty: a book fills again and a settled season does not.
 	 */
@@ -224,10 +215,6 @@ public final class GrantingAMembership {
 			return ON_A_FEE.equals(asking.heldOn())
 					? Outcome.THE_FEE_IS_ALREADY_RECORDED
 					: Outcome.THE_SEASON_IS_ALREADY_HELD;
-		}
-
-		if (asking.aPaymentWasReversed()) {
-			return Outcome.THE_PAYMENT_WAS_REVERSED;
 		}
 
 		if (asking.ground() == Ground.THE_BALANCE && !asking.offTheBook().isMoney()) {

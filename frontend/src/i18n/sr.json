@@ -1630,7 +1630,6 @@
       "theMembershipIsAlreadyHeld": "Ovaj član već ima članstvo za ovu sezonu, pa nije upisano ponovo.",
       "theCompetitorDoesNotExist": "Ovog člana više nema, pa članstvo nije upisano. Osveži stranicu.",
       "theFeeIsAlreadyRecorded": "Članarina ovog člana je već proknjižena, pa oslobođenje nije upisano.",
-      "thePaymentWasReversed": "Uplata za ovu sezonu je stornirana, pa se članstvo ne upisuje odavde. Storno vraća čovek, van ovog ekrana.",
       "theAmountIsNotMoney": "Iznos uplate mora da bude veći od nule, pa uplata nije proknjižena i članstvo nije upisano.",
       "theAmountIsNotWhole": "Iznos uplate mora da bude ceo broj, bez tačaka i zareza, pa uplata nije proknjižena i članstvo nije upisano. Unesi iznos ponovo.",
       "theAmountIsNotKeptExactly": "Iznos je veći nego što portal može da zapiše, pa uplata nije proknjižena i članstvo nije upisano. Proveri iznos i unesi ga ponovo.",

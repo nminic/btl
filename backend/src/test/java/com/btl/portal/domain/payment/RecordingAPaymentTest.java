@@ -52,24 +52,26 @@ class RecordingAPaymentTest {
 	}
 
 	/**
-	 * A REVERSAL IS NOT TURNED BACK BY AN IMPORT.
+	 * A REVERSED PAYMENT IS NOT A STATE ANY MORE, AND IT IS REFUSED WHERE IT IS READ.
 	 *
-	 * <p>Both ways round, because the number is not what decides it: a reversal
-	 * stands whether the person has a number or not.
+	 * <p>It was a third state until 18.10.2026, with an outcome of its own that refused to
+	 * book over it. The owner overturned it that day (PDL P8, „Kad se osnov promeni iz
+	 * „uplata” ili se uplata stornira, zapis o uplati se BRIŠE.”), so a cancelled payment
+	 * leaves no row and V64 refuses the word in {@code payment_state_known}. Should the word
+	 * come back to {@link RecordingAPayment#STATES}, this is the case that says so on this
+	 * side, and {@code PaymentStatesMatchTheSchemaTest} the one that says it against the schema.
 	 */
 	@Test
-	void aReversalWaitsForAPerson() {
-		assertThat(RecordingAPayment.decide(new Payment(RecordingAPayment.REVERSED, ALREADY_A_MEMBER)))
-				.isEqualTo(Outcome.A_REVERSAL_IS_NOT_UNDONE_HERE);
-
-		assertThat(RecordingAPayment.decide(new Payment(RecordingAPayment.REVERSED, null)))
-				.as("a reversal was quietly turned back into a payment")
-				.isEqualTo(Outcome.A_REVERSAL_IS_NOT_UNDONE_HERE);
+	void aReversedPaymentIsNotAStateAnyMore() {
+		assertThatThrownBy(() -> new Payment("reversed", ALREADY_A_MEMBER))
+				.as("a payment may stand as reversed again, which 18.10.2026 overturned")
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("reversed");
 	}
 
 	/** Every state the class knows leads somewhere, and to somewhere different. */
 	@Test
-	void eachOfTheThreeStatesHasItsOwnAnswer() {
+	void eachOfTheTwoStatesHasItsOwnAnswer() {
 		assertThat(RecordingAPayment.STATES.stream()
 				.map(state -> RecordingAPayment.decide(new Payment(state, null)))
 				.collect(Collectors.toSet()))
