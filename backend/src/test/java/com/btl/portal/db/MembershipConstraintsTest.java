@@ -618,6 +618,14 @@ class MembershipConstraintsTest extends DatabaseTest {
 	 * carries a basis at all. It is asked of the catalogue over every column of the schema rather
 	 * than of the one name that went, so a per-person basis that comes back under another name, on
 	 * {@code competitor} or anywhere else, turns this red, and so does a rule about one.
+	 *
+	 * <p><b>ONE NAMED EXCEPTION, AND IT IS NOT A SECOND HOME: the trail of a change (V63).</b> The owner,
+	 * 18.10.2026 (PDL P8): „Trag storna i promene osnova zivi u posebnom zapisu koji se ne menja ...
+	 * Nosi clana, sezonu, radnju, osnov pre i posle, ko i kada." Its two columns say what a season
+	 * stood on before and after an act on the member's row, which is a fact about the ACT and is never
+	 * read as the basis a season stands on today; that is still {@code membership.basis} alone. They are
+	 * named here column by column and rule by rule, so anything else carrying a basis still turns this
+	 * red, and {@code MembershipBasisMatchesTheSchemaTest} holds their words to the same three.
 	 */
 	@Test
 	void theBasisStandsOnTheMembershipAndNowhereElse() {
@@ -625,16 +633,17 @@ class MembershipConstraintsTest extends DatabaseTest {
 						+ " where table_schema = current_schema() and column_name like '%basis%'"
 						+ " order by 1").query(String.class).list())
 				.as("a basis of a membership stands in a second home again")
-				.containsExactly("membership.basis");
+				.containsExactly("membership.basis", "membership_change.basis_after",
+						"membership_change.basis_before");
 
 		assertThat(db.sql("select con.conname from pg_constraint con"
 						+ " join pg_class rel on rel.oid = con.conrelid"
 						+ " join pg_namespace ns on ns.oid = rel.relnamespace"
 						+ " where ns.nspname = current_schema() and con.contype = 'c'"
 						+ " and pg_get_constraintdef(con.oid) like '%''feeExempt''%'"
-						+ " and rel.relname <> 'membership'").query(String.class).list())
+						+ " and rel.relname <> 'membership' order by 1").query(String.class).list())
 				.as("a rule outside the membership names a basis, so a second home holds the word")
-				.isEmpty();
+				.containsExactly("membership_change_basis_after_known", "membership_change_basis_before_known");
 	}
 
 	/**
