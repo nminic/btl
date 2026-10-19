@@ -8,6 +8,7 @@ import com.btl.portal.domain.pricing.MembershipPrice;
 import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -165,14 +166,14 @@ import java.util.regex.Pattern;
  * DISCOVERED:</b>
  *
  * <ul>
- * <li>Two requests confirming the identical (competitor, season) at the same
+ * <li><s>Two requests confirming the identical (competitor, season) at the same
  * instant, both reading no existing row before either writes: the second
- * {@code insert} loses to {@code payment_one_a_season} and answers 500. Nothing in
- * this increment's brief asks the SAME payment to be idempotent under true
- * simultaneity, only that two DIFFERENT people never receive the same number, which
- * is what {@code PaymentNumberConcurrencyTest} measures; catching that race and
- * folding it back into {@code ALREADY_RECORDED} is a real improvement and a separate
- * one.
+ * {@code insert} loses to {@code payment_one_a_season} and answers 500.</s> <b>Guarded
+ * since 19.10.2026</b> (security review of PR 568): {@code confirm} takes the member's row
+ * {@code for update} before it reads anything, as {@link MemberPaymentApi} does, so the second of
+ * two simultaneous presses, on this screen or on the member's row, waits for the first and is
+ * {@code ALREADY_RECORDED}'s harmless repeat. {@link #lockTheMember} says what else the lock
+ * orders, and {@code ThePaymentsScreenLocksTheMemberTest} measures both.
  * <li>A {@code payment} row already sitting as {@code awaited} for this
  * (competitor, season) - which nothing on this portal writes today, but which
  * V16's own {@code default 'awaited'} leaves room for - is read exactly like no
@@ -408,9 +409,12 @@ class PaymentApi {
 	 */
 	private final TransactionTemplate inOneTransaction;
 
-	PaymentApi(BookingAPayment booking, TransactionTemplate inOneTransaction) {
+	private final JdbcClient db;
+
+	PaymentApi(BookingAPayment booking, TransactionTemplate inOneTransaction, JdbcClient db) {
 		this.booking = booking;
 		this.inOneTransaction = inOneTransaction;
+		this.db = db;
 	}
 
 	/**
@@ -516,7 +520,46 @@ class PaymentApi {
 			return no(HttpStatus.BAD_REQUEST, THE_REFERENCE_IS_NOT_SHAPED);
 		}
 
-		return inOneTransaction.execute(committing -> booking.book(typed, reference, asking).answer());
+		return inOneTransaction.execute(committing -> {
+			lockTheMember(typed.competitorId());
+
+			return booking.book(typed, reference, asking).answer();
+		});
+	}
+
+	/**
+	 * THE MEMBER'S ROW IS TAKEN {@code FOR UPDATE} BEFORE ANYTHING ABOUT HIM IS READ, the first statement of
+	 * the transaction, the lock {@link MemberPaymentApi} takes on the same row and {@link MeWriteApi}
+	 * takes by writing it (security review of PR 568, 18.10.2026, measured in
+	 * {@code ThePaymentsScreenLocksTheMemberTest}).
+	 *
+	 * <p><b>What it closes is two things, and each was a measured failure and not an argument.</b>
+	 * <ul>
+	 * <li><b>His change of country.</b> {@link MeWriteApi} restates his book in the new money when his
+	 * country moves (PDL 26) and this route reads the money he is billed in first and his book
+	 * afterwards. With no lock on the row the restatement read five euro and moved it to six hundred
+	 * dinars while this route, stopped only at its last statement, had already spent that five euro
+	 * and not yet committed: the book came out {@code referral 5 EUR, membership -5 EUR, conversion
+	 * -5 EUR, conversion 600 RSD}, a euro side of minus five that {@code BalanceBook} cannot read back
+	 * and six hundred dinars that nobody paid. Held, the two take turns: whichever comes second reads
+	 * what the first committed, the money included.
+	 * <li><b>A press on his row at the same moment.</b> {@link MemberPaymentApi} locks the row and this
+	 * route did not, so a press there and a press here for one member and one season met in the lock
+	 * manager and the loser was answered 500 (measured: {@code deadlock detected}). Held, the second
+	 * waits for the first to commit, finds its payment, and is the harmless repeat
+	 * {@link BookingAPayment} already answers a second press with: 200, nothing written.
+	 * </ul>
+	 *
+	 * <p><b>The answer is not looked at.</b> A member who does not exist locks nothing, and
+	 * {@link BookingAPayment} answers that with the 400 it always did; this is a lock and not a question,
+	 * so nothing here decides anything and every answer of this route is the one it gave before. A
+	 * member number is not drawn here either: {@link MemberNumbers} stays the last thing a booking does.
+	 */
+	private void lockTheMember(long competitorId) {
+		db.sql("select id from competitor where id = ? for update")
+				.param(competitorId)
+				.query(Long.class)
+				.optional();
 	}
 
 	/**

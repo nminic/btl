@@ -67,14 +67,11 @@ import org.springframework.web.bind.annotation.RestController;
  * {@link PaymentApi} names its own:
  *
  * <ul>
- * <li><b>Two requests activating the identical season at the same instant</b>, both reading no
- * membership before either writes. The second loses to {@code membership_pk} (V22) and answers 500
- * rather than the 409 {@link Outcome#ALREADY_A_MEMBER} would give it. Nothing is written twice and
- * no balance is spent twice - the losing transaction rolls its entry back with it, which is what
- * the one transaction around all of this is for - so the cost is an ugly answer to a second click,
- * not money. Folding that race back into the refusal is real work with its own guard and nothing
- * in this brief asks for it. What IS spent for good is the member number the loser drew, for the
- * reason {@link MemberNumbers} gives about sequences.
+ * <li><s>Two requests activating the identical season at the same instant</s>, <b>guarded since
+ * 19.10.2026</b>: {@link #lockHim} takes his row first, so the second waits, finds the membership and
+ * is answered {@link Outcome#ALREADY_A_MEMBER}. It used to read no membership, lose to
+ * {@code membership_pk} (V22) and answer 500, and spend a member number for good, for the reason
+ * {@link MemberNumbers} gives about sequences.
  * <li><b>A code minted for one season and a code for another, both standing, and the balance gone
  * by the time the second is paid.</b> That is the boundary PDL leaves open, and it belongs to the
  * payments route rather than to this one.
@@ -144,6 +141,8 @@ class MyMembershipWriteApi {
 	}
 
 	private ResponseEntity<?> write(long me, WhoIsAsking.Member asking) {
+		lockHim(me);
+
 		MembershipInvoice.Invoice owed = invoice.forMember(me);
 
 		Outcome outcome = ActivatingFromBalance.decide(new ActivatingFromBalance.Asking(
@@ -156,6 +155,32 @@ class MyMembershipWriteApi {
 			case ACTIVATE, ACTIVATE_AND_NUMBER_HIM ->
 					letHimIn(me, asking, owed, outcome == Outcome.ACTIVATE_AND_NUMBER_HIM);
 		};
+	}
+
+	/**
+	 * HIS ROW IS TAKEN {@code FOR UPDATE} BEFORE THE INVOICE IS READ, the first statement of the
+	 * transaction, the lock {@link PaymentApi#lockTheMember} puts on the same row for the same reason
+	 * (review of PR 576, 19.10.2026, measured in {@code ThePaymentsScreenLocksTheMemberTest}).
+	 *
+	 * <p>The invoice is read from his country and his book, and {@link MeWriteApi} restates the book
+	 * when his country moves. With no lock he could race his own activation against his own change of
+	 * country: the activation spent out of 45 euro that the change of country had already read as 45
+	 * euro and moved to dinars, and the book came out {@code referral 5 EUR, referral 40 EUR,
+	 * membership -35 EUR, conversion -45 EUR, conversion 5400 RSD}, minus 35 euro and 5400 dinars from
+	 * nothing. Held, whichever comes second reads what the first committed.
+	 *
+	 * <p>It closes the race this class's heading used to list as deliberately unguarded as well: of two
+	 * activations of one season at one instant the second now waits, finds the membership and is
+	 * answered {@link Outcome#ALREADY_A_MEMBER}, not the 500 {@code membership_pk} used to give it.
+	 *
+	 * <p>The account names the member, so the row is there; the answer is not looked at and nothing here
+	 * decides anything.
+	 */
+	private void lockHim(long me) {
+		db.sql("select id from competitor where id = ? for update")
+				.param(me)
+				.query(Long.class)
+				.optional();
 	}
 
 	private ResponseEntity<?> letHimIn(long me, WhoIsAsking.Member asking, MembershipInvoice.Invoice owed,
