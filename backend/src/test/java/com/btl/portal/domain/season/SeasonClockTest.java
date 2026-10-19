@@ -917,4 +917,62 @@ class SeasonClockTest {
 		assertThat(SeasonClock.isAFrozenSeasonOfTheLeague(2026, SeasonClock.tablesFreeze(2026)))
 				.as("there is no season 2026, so it cannot be a frozen one").isFalse();
 	}
+
+	/**
+	 * THE SEASONS A MEMBER MAY SEND A RUN OF: THE YEAR HE IS IN, AND UNTIL TEN ON NEW YEAR'S MORNING THE
+	 * YEAR JUST ENDED AS WELL, IN THE LEAGUE'S HOUR.
+	 *
+	 * <p>PDL P9, owner, 19.10.2026: „Tih 10 sati sluzi samo da onaj ko je recimo poceo trku minut pre
+	 * ponoci ima vremena da unese rezultat pre zamrzavanja sezone." <b>The pair is written in UTC</b>, so
+	 * the instant that is ten in Belgrade is nine on the clock the case reads, and an answer that read
+	 * the hour off the instant's own zone moves the edge by one hour, measured in both directions.
+	 */
+	@Test
+	void aRunOfTheYearJustEndedMayBeSentUntilTenOnNewYearsMorningInTheLeaguesHour() {
+		ZonedDateTime oneSecondBeforeTen = ZonedDateTime.of(2028, 1, 1, 8, 59, 59, 0, UTC);
+		ZonedDateTime ten = ZonedDateTime.of(2028, 1, 1, 9, 0, 0, 0, UTC);
+
+		assertThat(SeasonClock.seasonsOpenForAReport(oneSecondBeforeTen))
+				.as("at 09:59:59 in Belgrade the run of New Year's Eve could not be sent")
+				.containsExactly(2027, 2028);
+		assertThat(SeasonClock.seasonsOpenForAReport(ten))
+				.as("at ten in Belgrade the year just ended was still open")
+				.containsExactly(2028);
+		assertThat(SeasonClock.aRunMayBeSentFor(2027, oneSecondBeforeTen)).isTrue();
+		assertThat(SeasonClock.aRunMayBeSentFor(2027, ten)).isFalse();
+
+		/* MIDNIGHT IN BELGRADE IS ELEVEN IN UTC, so the first second of the new year there is still the
+		   old year on a clock in UTC: the year he is in is the league's year, and both are open. */
+		ZonedDateTime midnightInBelgrade = ZonedDateTime.of(2027, 12, 31, 23, 0, 0, 0, UTC);
+
+		assertThat(SeasonClock.seasonsOpenForAReport(midnightInBelgrade)).containsExactly(2027, 2028);
+		assertThat(SeasonClock.seasonsOpenForAReport(midnightInBelgrade.minusSeconds(1)))
+				.as("before midnight in Belgrade only the year he is in is open")
+				.containsExactly(2027);
+
+		/* And the middle of a year, which is the ordinary state for 364 days: one season, and the
+		   following one is not open before it begins. */
+		ZonedDateTime midsummer = ZonedDateTime.of(2028, 7, 1, 12, 0, 0, 0, TOKYO);
+
+		assertThat(SeasonClock.seasonsOpenForAReport(midsummer)).containsExactly(2028);
+		assertThat(SeasonClock.aRunMayBeSentFor(2029, midsummer)).isFalse();
+		assertThat(SeasonClock.aRunMayBeSentFor(2027, midsummer)).isFalse();
+	}
+
+	/**
+	 * AND NOTHING BEFORE THE FIRST SEASON, EVER: before 1 January 2027 no season is open at all, and on
+	 * its first morning the year before it is not open either.
+	 *
+	 * <p>PDL P9, owner, 19.10.2026: „NIŠTA! NE POSTOJI LIGA PRE 2027 GODINE I REZULTATI SE ŠALJU PO
+	 * DOGOVORENOM CSV TEMPLATE ZA IMPORT!”
+	 */
+	@Test
+	void noSeasonBeforeTheFirstIsEverOpenForARun() {
+		assertThat(SeasonClock.seasonsOpenForAReport(ZonedDateTime.of(2026, 10, 19, 12, 0, 0, 0, UTC)))
+				.as("a run of 2026 could be sent, and there is no league before 2027")
+				.isEmpty();
+		assertThat(SeasonClock.seasonsOpenForAReport(ZonedDateTime.of(2027, 1, 1, 8, 0, 0, 0, UTC)))
+				.as("on the first morning of the league the year before it was open as the year just ended")
+				.containsExactly(2027);
+	}
 }

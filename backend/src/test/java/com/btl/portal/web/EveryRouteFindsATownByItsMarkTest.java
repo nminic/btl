@@ -321,6 +321,8 @@ class EveryRouteFindsATownByItsMarkTest {
 		Map<String, Object> form = new LinkedHashMap<>();
 
 		form.put("raceName", "Trka u " + town.name());
+		/* On an event he typed, which is the one road that still names a town (V67). */
+		form.put("eventName", "Dogadjaj u " + town.name());
 		form.put("day", LocalDate.now(SeasonClock.ZONE).minusDays(1).toString());
 		form.put("raceKind", "free");
 		form.put(THE_TOWN, town.mark());

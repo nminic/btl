@@ -1751,12 +1751,19 @@ class VerificationApiTest {
 			throws Exception {
 		runsWaitInTheResultsTab();
 
-		long chosenEvent = event("izabrani-dogadjaj-v66", "Izabrani dogadjaj", "2027-03-01");
+		long chosenEvent = db.sql("insert into btl_event (slug, name, date, city, country_id, kind,"
+						+ " featured, description, link) values ('izabrani-dogadjaj-v66', 'Izabrani"
+						+ " dogadjaj', date '2027-03-01', 'Ohrid', (select id from country where code ="
+						+ " 'MK'), 'race', false, '', '') returning id")
+				.query(Long.class).single();
+		/* No town of its own: a run on an event he chose has the event's (V67), which is a town
+		   typed in another country than anybody's here, so a town read off any other row is a
+		   different answer. */
 		long chosen = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
-						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
+						+ " race_name, race_kind, distance_km, ascent_m, descent_m, seconds,"
 						+ " link, comment, event_id) values ((select id from competitor where"
-						+ " member_number = ?), null, date '2027-03-07', 'Trka na izabranom', 'free', "
-						+ EVERYBODYS_TOWN + ", 7.0000, 10, 10, 2000, '', '', ?) returning id")
+						+ " member_number = ?), null, date '2027-03-07', 'Trka na izabranom', 'free',"
+						+ " 7.0000, 10, 10, 2000, '', '', ?) returning id")
 				.params(MEMBER_ONE, chosenEvent).query(Long.class).single();
 		queuedRun(MEMBER_ONE, "Trka na izabranom", "", "2027-03-12 09:00:00+00", chosen);
 		long typed = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
@@ -1794,6 +1801,9 @@ class VerificationApiTest {
 		assertThat(onTheChosen.path("eventName").asString())
 				.as("the chosen event answered with a name it no longer has")
 				.isEqualTo("Preimenovan dogadjaj");
+		assertThat(onTheChosen.path("city").asString() + " " + onTheChosen.path("country").asString())
+				.as("a run on a chosen event did not answer with the event's town (V67)")
+				.isEqualTo("Ohrid MK");
 
 		JsonNode onTheTyped = itemIn(THE_SUPERADMIN, RESULTS, 5);
 

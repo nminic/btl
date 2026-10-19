@@ -421,17 +421,50 @@ class ResultWriteApiTest {
 	 */
 	@Test
 	void aDescribedRunKeepsTheEventHeChoseByItsKey() throws Exception {
-		Map<String, Object> fields = aDescribedRun();
-
-		fields.put("eventId", anEventOfTheCalendar());
-
-		MockHttpServletResponse answered = reportedAs(ME, form(fields));
+		MockHttpServletResponse answered = reportedAs(ME, form(onAChosenEvent()));
 
 		assertThat(answered.getStatus()).isEqualTo(201);
 		assertThat(theSubmission(idIn(answered)))
 				.containsEntry("event_id", anEventOfTheCalendar())
 				.containsEntry("event_name", null)
-				.containsEntry("race_name", "Opisana trka");
+				.containsEntry("race_name", "Opisana trka")
+				/* V67: the town of a run on a chosen event is the event's and lives only there. */
+				.containsEntry("place_id", null)
+				.containsEntry("city", null)
+				.containsEntry("country_id", null);
+	}
+
+	/** The described run, on the event of the calendar chosen by its key and with no town of its own. */
+	private Map<String, Object> onAChosenEvent() {
+		Map<String, Object> fields = aDescribedRun();
+
+		fields.remove("eventName");
+		fields.remove("placeId");
+		fields.put("eventId", anEventOfTheCalendar());
+
+		return fields;
+	}
+
+	/**
+	 * A TOWN BESIDE AN EVENT HE CHOSE IS REFUSED, EACH OF ITS THREE FIELDS, and not dropped: the event
+	 * brings its own (V67, `result_submission_a_chosen_event_brings_its_town`), so a town beside it is a
+	 * second answer, and dropped it would tell him his town was kept. One row per field, because a
+	 * guard reading only the first would let the other two through to the table as a server fault.
+	 */
+	@ParameterizedTest(name = "{0}")
+	@CsvSource(delimiter = '|', value = {
+			"placeId | codebook",
+			"city    | Zaselak",
+			"country | RS"})
+	void aTownBesideAChosenEventIsRefused(String field, String value) throws Exception {
+		Map<String, Object> fields = onAChosenEvent();
+
+		fields.put(field, "codebook".equals(value) ? aTownFromTheCodebook() : value);
+
+		assertThat(reasonIn(reportedAs(ME, form(fields))))
+				.as("a town in %s beside a chosen event was taken", field)
+				.isEqualTo(ResultWriteApi.THE_RACE_IS_NAMED_TWICE);
+		assertThat(howManySubmissions()).isZero();
 	}
 
 	/** THE NAME HE TYPED IS KEPT AS HE TYPED IT, stripped, where the calendar has no such event. */
@@ -467,34 +500,39 @@ class ResultWriteApiTest {
 	}
 
 	/**
-	 * A NAME OF NOTHING BUT SPACES IS NO NAME, AND A KEY NO EVENT ANSWERS TO IS NO EVENT: the run goes
-	 * in naming none, which is the state V66's {@code on delete set null} leaves the same row in when
-	 * the event goes a second later ({@code ResultWriteApi.theEventHeNamed} says why it is not refused).
-	 * The spaces beside a chosen key are the same nothing, so they are not a second event either.
+	 * A DESCRIBED RUN THAT NAMES NO EVENT IS A FORM NOT FILLED IN, AND A KEY NO EVENT ANSWERS TO IS A
+	 * RACE THAT IS NOT KNOWN.
+	 *
+	 * <p>The first is the owner's form, which asks for the event first (PDL P9, 19.10.2026), required on
+	 * this road by the coordinator's derivation from it: neither key nor name, and a name of nothing but
+	 * spaces, are one state. The second was kept as „no event" until V67, beside the town such a run
+	 * carried; a run on a chosen event carries none now, so kept that way it would name nothing at all.
+	 * The spaces beside a gone key are still not a second event, so that row is the key's refusal and not
+	 * the twice-named one.
 	 */
 	@ParameterizedTest(name = "{0}")
 	@CsvSource(delimiter = '|', value = {
-			"a name of spaces              | '   ' | ",
-			"a key no event answers to     |       | 999999999",
-			"spaces beside a key gone      | '   ' | 999999999"})
-	void anEventThatIsNotThereIsKeptAsNoEvent(String what, String name, Long key) throws Exception {
+			"no event at all               | <out> |           | theFormIsNotComplete",
+			"a name of spaces              | '   ' |           | theFormIsNotComplete",
+			"a key no event answers to     | <out> | 999999999 | theRaceIsNotKnown",
+			"spaces beside a key gone      | '   ' | 999999999 | theRaceIsNotKnown"})
+	void anEventThatIsNotThereIsRefused(String what, String name, Long key, String reason)
+			throws Exception {
 		Map<String, Object> fields = aDescribedRun();
 
-		if (name != null) {
+		fields.remove("eventName");
+
+		if (!"<out>".equals(name)) {
 			fields.put("eventName", name);
 		}
 
 		if (key != null) {
 			fields.put("eventId", key);
+			fields.remove("placeId");
 		}
 
-		MockHttpServletResponse answered = reportedAs(ME, form(fields));
-
-		assertThat(answered.getStatus()).as(what).isEqualTo(201);
-		assertThat(theSubmission(idIn(answered)))
-				.as(what)
-				.containsEntry("event_id", null)
-				.containsEntry("event_name", null);
+		assertThat(reasonIn(reportedAs(ME, form(fields)))).as(what).isEqualTo(reason);
+		assertThat(howManySubmissions()).as(what).isZero();
 	}
 
 	/**
@@ -506,7 +544,7 @@ class ResultWriteApiTest {
 	 */
 	@Test
 	void aRaceTheCalendarDoesNotHoldIsDescribedInFull() throws Exception {
-		MockHttpServletResponse answered = reportedAs(ME, form(Map.of(
+		MockHttpServletResponse answered = reportedAs(ME, form(withAnEvent(Map.of(
 				"raceName", "  Trka kroz sumu  ",
 				"day", "2027-02-02",
 				"raceKind", "free",
@@ -516,7 +554,7 @@ class ResultWriteApiTest {
 				"descentM", 280,
 				"seconds", 7200,
 				"link", "https://rezultati.rs/kroz-sumu",
-				"comment", "Blatnjavo")));
+				"comment", "Blatnjavo"))));
 
 		assertThat(answered.getStatus()).isEqualTo(201);
 
@@ -526,10 +564,10 @@ class ResultWriteApiTest {
 				.containsEntry("race_kind", "free")
 				.containsEntry("race_date", LocalDate.of(2027, 2, 2))
 				.containsEntry("city", null)
-				/* Sent with no event, which is every run the form sends until it asks for one
-				   (V66), and it goes in naming none rather than being refused. */
+				/* On an event he typed, which keeps its own town (V67 takes the town away only
+				   from a run on an event he CHOSE). */
 				.containsEntry("event_id", null)
-				.containsEntry("event_name", null)
+				.containsEntry("event_name", AN_EVENT_HE_TYPED)
 				/* 21,0975 is the true half marathon, and PDL P5 says in as many words that it
 				   must NOT come out as one. Kept to four decimals it is stored as typed; at two
 				   it would be 21,10, which the portal calls a half. */
@@ -556,6 +594,8 @@ class ResultWriteApiTest {
 				"descentM", 0,
 				"seconds", 3600,
 				"link", "https://rezultati.rs/zlatibor"));
+
+		described.put("eventName", AN_EVENT_HE_TYPED);
 
 		assertThat(theSubmission(idIn(reportedAs(ME, form(described)))))
 				.containsEntry("city", "Zaselak")
@@ -751,6 +791,7 @@ class ResultWriteApiTest {
 
 		assertThat(reasonIn(reportedAs(ME, form(Map.of(
 				"raceName", "Sutrasnja",
+				"eventName", AN_EVENT_HE_TYPED,
 				"day", "2027-06-16",
 				"raceKind", "free",
 				"placeId", aTownFromTheCodebook(),
@@ -1095,9 +1136,25 @@ class ResultWriteApiTest {
 				.isEqualTo(3000);
 	}
 
+	/** The event a described run names where a case does not care which (PDL P9, 19.10.2026: the
+	 *  member's form asks for the event first, and the route requires one of the two ways). */
+	private static final String AN_EVENT_HE_TYPED = "Opisani dogadjaj";
+
+	/** A described form written inline, with the event every described run now names added to it:
+	 *  `Map.of` takes ten pairs, and the forms that need it already carry ten. */
+	private static Map<String, Object> withAnEvent(Map<String, Object> described) {
+		Map<String, Object> fields = new HashMap<>(described);
+
+		fields.put("eventName", AN_EVENT_HE_TYPED);
+
+		return fields;
+	}
+
 	/** The one described request that works, for a case to break one thing about. */
 	private Map<String, Object> aDescribedRun() {
 		Map<String, Object> fields = new HashMap<>();
+
+		fields.put("eventName", AN_EVENT_HE_TYPED);
 
 		fields.put("raceName", "Opisana trka");
 		fields.put("day", "2027-02-02");
@@ -1162,6 +1219,7 @@ class ResultWriteApiTest {
 	void aLengthWithMoreDecimalsThanTheColumnKeepsIsRefused() throws Exception {
 		assertThat(reasonIn(reportedAs(ME, form(Map.of(
 				"raceName", "Premerena trka",
+				"eventName", AN_EVENT_HE_TYPED,
 				"day", "2027-02-02",
 				"raceKind", "free",
 				"placeId", aTownFromTheCodebook(),

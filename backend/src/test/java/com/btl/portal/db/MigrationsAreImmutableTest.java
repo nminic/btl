@@ -523,7 +523,20 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
 			   read off this very assertion when it ran before the entry existed. */
-			new Applied("66", "V66__a_described_run_names_its_event.sql", 430932300));
+			new Applied("66", "V66__a_described_run_names_its_event.sql", 430932300),
+
+			/* V67. A run on an event the member chose carries no town of its own: the town lives on the
+			   event (Q4 of 7a, the coordinator's derivation from ADL A31, 19.10.2026). V10's „a described
+			   race names its town" goes, its other half stands as a rule of its own, and a run that
+			   carried a chosen event and a town loses the town, which is the one row it changes;
+			   `ARunOnAChosenEventCarriedOverTest` runs the file over every shape the table can hold.
+
+			   67 because it is the next free number, measured on 19.10.2026 after a fetch: origin/main
+			   stands at V66, and the three open pull requests (578, 579, 580) carry no migration.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
+			   read off this very assertion when it ran before the entry existed. */
+			new Applied("67", "V67__a_run_on_a_chosen_event_has_the_events_town.sql", -1056513802));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

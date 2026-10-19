@@ -351,10 +351,8 @@ class ResultWriteApi {
 	 *                   naziv događaja koji je autocomplete iz baze, ali mogu da unesem novu
 	 *                   vrednost", and „Prijava pamti događaj koji je član izabrao"). Never beside
 	 *                   {@code eventName}: chosen or typed, as the town is
-	 * @param eventName  the name he TYPED where the calendar has no such event. Left out with
-	 *                   {@code eventId}, the run names no event, which is every run sent before
-	 *                   V66 and every run the form sends until it asks for one (see
-	 *                   {@link #theEventHeNamed})
+	 * @param eventName  the name he TYPED where the calendar has no such event. One of the two is
+	 *                   asked for on this road; a run that names neither is a form not filled in
 	 */
 	record Ran(Long raceId, String raceName, LocalDate day, String raceKind, Long placeId,
 			String city, String country, BigDecimal distanceKm, Integer ascentM, Integer descentM,
@@ -643,21 +641,15 @@ class ResultWriteApi {
 		   was a 500: `WhatARaceCarries.KINDS` is a `Set.of(...)`, and an immutable set THROWS
 		   on `contains(null)` rather than answering false. So a form that never chose a kind
 		   answered a server fault instead of „the form is not complete". */
+		/* AND THE EVENT IS ASKED FOR WITH THE REST (PDL P9, 19.10.2026, the owner's form: „Prvo ima
+		   naziv događaja"; required on this road by the coordinator's derivation from it, Q8 of 7a):
+		   chosen by its key or typed, and a run that names neither is a form not filled in. */
 		if (isNothing(typed.raceName()) || typed.day() == null || typed.raceKind() == null
 				|| !WhatARaceCarries.KINDS.contains(typed.raceKind())
 				|| notADistance(typed.distanceKm()) || notAClimb(typed.ascentM())
-				|| notAClimb(typed.descentM()) || notATime(typed.seconds())) {
+				|| notAClimb(typed.descentM()) || notATime(typed.seconds())
+				|| (typed.eventId() == null && isNothing(typed.eventName()))) {
 			return no(THE_FORM_IS_NOT_COMPLETE);
-		}
-
-		ResponseEntity<?> town = whatIsWrongWithTheTown(typed);
-
-		if (town != null) {
-			return town;
-		}
-
-		if (typed.day().isAfter(today())) {
-			return no(THE_RACE_HAS_NOT_BEEN_RUN);
 		}
 
 		/* CHOSEN AND TYPED AT ONCE is a run naming two events, and V66 holds the row to one
@@ -665,6 +657,40 @@ class ResultWriteApi {
 		   ways get, for the same request one field along. */
 		if (typed.eventId() != null && !isNothing(typed.eventName())) {
 			return no(THE_RACE_IS_NAMED_TWICE);
+		}
+
+		boolean chosen = typed.eventId() != null;
+
+		if (chosen) {
+			/* AN EVENT HE CHOSE BRINGS ITS OWN TOWN (V67, `result_submission_a_chosen_event_brings_its_
+			   town`), so a town sent beside it is a second answer to a question the calendar has
+			   answered: refused with the reason a town beside a race of the calendar gets, and not
+			   dropped, for that reason's own reason. */
+			if (typed.placeId() != null || typed.city() != null || typed.country() != null) {
+				return no(THE_RACE_IS_NAMED_TWICE);
+			}
+
+			/* AND A KEY NO EVENT ANSWERS TO IS REFUSED, which until V67 it was not (it was kept as no
+			   event, beside the town the run then carried). A run on a chosen event carries no town
+			   now, so kept as no event it would name neither, and the approval could make no event of
+			   it. The reason is the one a race of the calendar that is gone gets, and its sentence
+			   sends him to choose again, which is what he has to do: my reading, since that sentence
+			   names the race and not the event (said in the PR, with words of its own to come with
+			   the member's form). */
+			if (!Boolean.TRUE.equals(db.sql("select exists(select 1 from btl_event where id = ?)")
+					.param(typed.eventId()).query(Boolean.class).single())) {
+				return no(THE_RACE_IS_NOT_KNOWN);
+			}
+		} else {
+			ResponseEntity<?> town = whatIsWrongWithTheTown(typed);
+
+			if (town != null) {
+				return town;
+			}
+		}
+
+		if (typed.day().isAfter(today())) {
+			return no(THE_RACE_HAS_NOT_BEEN_RUN);
 		}
 
 		boolean fromTheCodebook = typed.placeId() != null;
@@ -676,36 +702,11 @@ class ResultWriteApi {
 
 		return write(me, null, typed.day(), named, typed.raceKind(),
 				fromTheCodebook ? placeKey(typed.placeId()).orElseThrow() : null,
-				fromTheCodebook ? null : typed.city().strip(),
-				fromTheCodebook ? null : countryKey(typed.country()).orElseThrow(),
-				theEventHeNamed(typed), run, typed, named);
-	}
-
-	/**
-	 * THE EVENT HE NAMED, AS V66 KEEPS IT.
-	 *
-	 * <p><b>A name of nothing but spaces is no name</b>, the reading every optional text of this
-	 * route has ({@link #isNothing}): the field is not required until the member's form asks for it
-	 * (V66 says why), so an empty box is a run that names no event, never a refusal.
-	 *
-	 * <p><b>A key no event answers to is kept as no event, and not refused.</b> That is my reading
-	 * and not a sentence of the owner's, and it is the state V66's {@code on delete set null} puts
-	 * the very same row in when the event is deleted a second after the run is sent: the run waits,
-	 * names no event, and the moderator chooses one as he does for every run sent before V66. A
-	 * refusal would have to tell the member something the form he is looking at cannot show him,
-	 * and his run would be lost over an event nobody can see any longer. The moderator decides the
-	 * event at approval in every case (PDL P9, 19.10.2026: „moderator ga pri odobrenju sme
-	 * promeniti"), so nothing he is owed depends on it.
-	 */
-	private TheEvent theEventHeNamed(Ran typed) {
-		if (typed.eventId() != null) {
-			return Boolean.TRUE.equals(db.sql("select exists(select 1 from btl_event where id = ?)")
-					.param(typed.eventId()).query(Boolean.class).single())
-					? new TheEvent(typed.eventId(), null) : TheEvent.NONE;
-		}
-
-		return isNothing(typed.eventName()) ? TheEvent.NONE
-				: new TheEvent(null, typed.eventName().strip());
+				chosen || fromTheCodebook ? null : typed.city().strip(),
+				chosen || fromTheCodebook ? null : countryKey(typed.country()).orElseThrow(),
+				chosen ? new TheEvent(typed.eventId(), null)
+						: new TheEvent(null, typed.eventName().strip()),
+				run, typed, named);
 	}
 
 	/**

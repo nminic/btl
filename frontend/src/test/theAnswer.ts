@@ -473,6 +473,11 @@ export const myOwnRecordFromMe = {
      over a harness that said otherwise would show every member a text that waits. A case about the
      words that wait puts its own server in front. */
   bioWaiting: 'Reči koje čekaju moderatora.',
+  /* The seasons he may send a run of at this moment (`MeApi.MyOwnRecord.seasonsOpenForAReport`, PDL P9,
+     19.10.2026), the same for every member: the year he is in, and until ten on New Year's morning the
+     year just ended. The sample says the first season, which is the ordinary state of 2027; no screen
+     reads it yet (the member's form of 7a does). */
+  seasonsOpenForAReport: [2027],
 }
 
 /**

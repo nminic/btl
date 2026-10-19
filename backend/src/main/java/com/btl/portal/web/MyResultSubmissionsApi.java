@@ -136,8 +136,9 @@ class MyResultSubmissionsApi {
 	 *                       race the calendar does not hold
 	 * @param raceDate       the day it was run
 	 * @param raceKind       the calendar's kind of the race, or the member's for a described one
-	 * @param city           the town: the event's for a race in the calendar, the member's for a
-	 *                       described one
+	 * @param city           the town: the event's for a race in the calendar and for an event he
+	 *                       chose (V67: its town lives on the event), the member's own for a run
+	 *                       on an event he typed
 	 * @param country        that town's country, as its code
 	 * @param distanceKm     the four figures as an approval would count them now
 	 * @param link           the official results he pointed at, or empty
@@ -179,12 +180,14 @@ class MyResultSubmissionsApi {
 						+ " coalesce(ra.name, rs.race_name) as race_name,"
 						+ " rs.race_date,"
 						+ " coalesce(ra.kind, rs.race_kind) as race_kind,"
-						/* THE TOWN, decided by whether the run is described and never by which row
-						   happens to join: the event's town for a race in the calendar, the run's
-						   own for a described one. */
-						+ " case when rs.race_id is null then coalesce(town.name, rs.city, '')"
+						/* THE TOWN, decided by whether the run names a town of its own and never by
+						   which row happens to join: the run's own for a run he described on an event
+						   he typed, and the event's for every other - a race in the calendar, or an
+						   event he chose, whose town is the event's and lives only there (V67). */
+						+ " case when rs.race_id is null and rs.event_id is null"
+						+ "      then coalesce(town.name, rs.city, '')"
 						+ "      else coalesce(event_town.name, ev.city, '') end as city,"
-						+ " case when rs.race_id is null"
+						+ " case when rs.race_id is null and rs.event_id is null"
 						+ "      then coalesce(town_country.code, typed_country.code, '')"
 						+ "      else coalesce(event_town_country.code, event_typed_country.code, '')"
 						+ " end as country,"
@@ -198,8 +201,7 @@ class MyResultSubmissionsApi {
 						+ " rs.link, rs.comment, v.reason, rs.amends_result_id,"
 						/* THE EVENT THE RUN IS ON (see `Sent.eventId`): the race's for a run from the
 						   calendar, the one he chose or typed for a described run. */
-						+ " coalesce(ev.id, chosen_event.id) as event_id,"
-						+ " coalesce(ev.name, chosen_event.name, rs.event_name) as event_name"
+						+ " ev.id as event_id, coalesce(ev.name, rs.event_name) as event_name"
 						+ " from result_submission rs"
 						/* BY THE POINTER, never by whose run it is: two runs of one member are two
 						   items, and a join on the member would hand each the other's state. INNER,
@@ -207,8 +209,9 @@ class MyResultSubmissionsApi {
 						   produces (V10, one verification per submission). */
 						+ " join verification v on v.result_submission_id = rs.id"
 						+ " left join race ra on ra.id = rs.race_id"
-						+ " left join btl_event ev on ev.id = ra.event_id"
-						+ " left join btl_event chosen_event on chosen_event.id = rs.event_id"
+						/* The race's event, or the one he chose: V66 lets a run name one of the two
+						   and never both (`result_submission_only_a_described_run_names_its_event`). */
+						+ " left join btl_event ev on ev.id = coalesce(ra.event_id, rs.event_id)"
 						+ " left join place event_town on event_town.id = ev.place_id"
 						+ " left join country event_town_country on event_town_country.id = event_town.country_id"
 						+ " left join country event_typed_country on event_typed_country.id = ev.country_id"

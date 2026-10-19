@@ -236,8 +236,9 @@ class MyResultSubmissionsApiTest {
 		   the event of a race of the calendar that is not the race of any run beside it on that day. */
 		db.sql("update result_submission set event_name = 'Kotorski kros' where id = ?")
 				.param(waitingDescribed).update();
-		db.sql("update result_submission set event_id = (select event_id from race where id = ?)"
-						+ " where id = ?")
+		/* The chosen one carries no town of its own (V67): it is the event's, which is answered. */
+		db.sql("update result_submission set event_id = (select event_id from race where id = ?),"
+						+ " place_id = null, city = null, country_id = null where id = ?")
 				.params(freeRace, refusedDescribed).update();
 
 		refusedCorrection = fromTheCalendar(ME, freeRace, "2026-03-21", "14.0000", 400, 380, 7000,
@@ -449,16 +450,15 @@ class MyResultSubmissionsApiTest {
 	void theKindAndTheTownAreTheRacesOnTheCalendarAndTheMembersOnADescribedRun() throws Exception {
 		List<JsonNode> mine = mySix();
 		String first = nameOfTheBooksTown(1);
-		String second = nameOfTheBooksTown(2);
 
 		assertThat(mine.stream().map(one -> one.get("raceKind").asString()).toList())
 				.containsExactly("free", "length", "free", "time", "length", "length");
 		assertThat(mine.stream().map(one -> one.get("city").asString()).toList())
-				.as("a run answered with a town that is not its race's or its own")
-				.containsExactly("Kotor", first, first, "Futog", second, first);
+				.as("a run answered with a town that is not its race's, its event's or its own")
+				.containsExactly("Kotor", first, first, "Futog", first, first);
 		assertThat(mine.stream().map(one -> one.get("country").asString()).toList())
 				.containsExactly("ME", codeOfTheBooksTown(1), codeOfTheBooksTown(1), "RS",
-						codeOfTheBooksTown(2), codeOfTheBooksTown(1));
+						codeOfTheBooksTown(1), codeOfTheBooksTown(1));
 	}
 
 	/**
