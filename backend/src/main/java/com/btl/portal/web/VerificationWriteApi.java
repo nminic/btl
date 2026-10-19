@@ -484,6 +484,21 @@ class VerificationWriteApi {
 	private static final String THE_EVENT_WOULD_MOVE_ONTO_ANOTHER = "Trka bi pomerila događaj u"
 			+ " godinu u kojoj događaj sa istim nazivom već postoji. Izaberi taj događaj.";
 
+	/**
+	 * A NEW EVENT WOULD BE MADE OF A RUN THAT NAMES NO TOWN, and an event of the calendar stands in one
+	 * ({@code btl_event_town_is_from_the_codebook_or_typed}, V7).
+	 *
+	 * <p>Reachable in one state only: the run was sent on an event the member chose, which since V67
+	 * carries the town in its place, and that event has been deleted since ({@code on delete set null},
+	 * V66). Every other run names a town, its own or its chosen event's ({@link #submissionBehind}).
+	 * The moderator's screen will ask for the place of a new event (PDL P9, 19.10.2026: „Na moderatorovom
+	 * ekranu nov događaj traži naziv, datum i mesto”); until then this is refused before anything is
+	 * written, and the way out is an event that is there. 409 for the reason the head of this class
+	 * gives. The words are mine, and the owner changes them on QA.
+	 */
+	private static final String THE_RUN_NAMES_NO_TOWN = "Prijava ne nosi mesto, pa nov događaj ne može"
+			+ " da nastane. Izaberi postojeći događaj.";
+
 	/*
 	 * Here stood until 19.10.2026 the refusal of an approval whose event's address was taken:
 	 * „Događaj sa tim nazivom u toj godini već postoji. Trku u njemu dodaj kroz Administraciju, pa je
@@ -1661,9 +1676,17 @@ class VerificationWriteApi {
 		return db.sql("select rs.id, rs.race_id, rs.race_date, ra.name, rs.distance_km,"
 						+ " rs.ascent_m, rs.descent_m, rs.seconds, rs.amends_result_id, ra.kind,"
 						+ " ra.distance_km, ra.ascent_m, ra.descent_m, ra.limit_seconds,"
-						+ " rs.place_id, rs.city, rs.country_id"
+						/* THE TOWN: the run's own, or, on a run sent on an event the member chose, that
+						   event's, which since V67 is the only home a town has on such a run
+						   (`result_submission_a_chosen_event_brings_its_town`, so the two never both
+						   answer). An event the approval makes stands in it: the member said he ran
+						   there. That reading is mine, until the moderator's screen asks him for the
+						   place of a new event (PDL P9, 19.10.2026). */
+						+ " coalesce(rs.place_id, chosen.place_id), coalesce(rs.city, chosen.city),"
+						+ " coalesce(rs.country_id, chosen.country_id)"
 						+ " from result_submission rs"
 						+ " left join race ra on ra.id = rs.race_id"
+						+ " left join btl_event chosen on chosen.id = rs.event_id"
 						+ " where rs.id = ?")
 				.param(item.resultSubmissionId())
 				.query((row, one) -> new Submission(row.getLong(1), row.getObject(2, Long.class),
@@ -1778,6 +1801,13 @@ class VerificationWriteApi {
 
 			if (noRace != null) {
 				return Counting.notCounted(no(HttpStatus.CONFLICT, noRace));
+			}
+
+			/* A NEW EVENT NEEDS A TOWN, and a run whose chosen event is gone names none
+			   (`THE_RUN_NAMES_NO_TOWN` says when): asked here, before the row is claimed, so the
+			   refusal needs nothing undone and never reaches the insert as a server fault. */
+			if (there.isEmpty() && sent.placeId() == null && sent.city() == null) {
+				return Counting.notCounted(no(HttpStatus.CONFLICT, THE_RUN_NAMES_NO_TOWN));
 			}
 
 			on = new CountedOn(null, asked.raceName().strip(), sent.raceDate(), null,
@@ -2468,7 +2498,8 @@ class VerificationWriteApi {
 	 * @param race          what the race answers for as it stands now, and empty where the
 	 *                      calendar does not hold it
 	 * @param placeId       the town the member gave for a race he described, as the codebook's
-	 *                      key, and empty where he typed it or the race is the calendar's
+	 *                      key, and empty where he typed it or the race is the calendar's. On a run
+	 *                      sent on an event he chose, the three are that event's town (V67)
 	 * @param city          the town he typed instead, with {@code countryId} beside it
 	 * @param countryId     the typed town's country, as its key
 	 */
