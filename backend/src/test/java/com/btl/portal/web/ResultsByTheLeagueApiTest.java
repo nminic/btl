@@ -320,14 +320,18 @@ class ResultsByTheLeagueApiTest {
 				BtlScoreCalculator.calculate(61.25, 420, 380, SIX_HOURS)));
 	}
 
-	/** A FREE RACE: all six are the runner's, and a row missing one is refused. */
+	/** A FREE RACE: all six are the runner's, and a row missing any one of the four is refused. */
 	@Test
 	void aFreeRaceCountsAllSixAndRefusesARowMissingOne() throws Exception {
-		MockHttpServletResponse missing = entered(RESULTS_MODERATOR, theHill,
-				rows(row(VERA, "12.00", 300, null, 5000)));
+		MockHttpServletResponse missing = entered(RESULTS_MODERATOR, theHill, rows(
+				row(VERA, "12.00", 300, null, 5000),
+				row(BOJAN, null, 300, 250, 5000),
+				row(ANA, "12.00", null, 250, 5000),
+				row(MIRA, "12.00", 300, 250, null)));
 
 		assertThat(missing.getStatus()).isEqualTo(400);
-		assertThat(wrongRows(missing)).containsExactly("0 theFormIsNotComplete");
+		assertThat(wrongRows(missing)).containsExactly("0 theFormIsNotComplete",
+				"1 theFormIsNotComplete", "2 theFormIsNotComplete", "3 theFormIsNotComplete");
 
 		assertThat(entered(RESULTS_MODERATOR, theHill, rows(row(VERA, "12.00", 300, 250, 5000)))
 				.getStatus()).isEqualTo(201);
