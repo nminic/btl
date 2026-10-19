@@ -3,6 +3,7 @@ package com.btl.portal.web;
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.token.SecretToken;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
@@ -458,19 +460,34 @@ class ThePaymentsScreenLocksTheMemberTest {
 	}
 
 	private MockHttpServletResponse theScreenBooksHim(boolean withTheBalance) throws Exception {
-		return http.perform(post("/api/payments").with(csrf())
-						.cookie(new Cookie(SessionCookie.NAME, moderatorCookie))
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"competitorId\": " + himself + ", \"received\": 1,"
-								+ " \"useTheBalance\": " + withTheBalance + ", \"method\": \"paypal\"}"))
-				.andReturn().getResponse();
+		return answered(post("/api/payments").with(csrf())
+				.cookie(new Cookie(SessionCookie.NAME, moderatorCookie))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"competitorId\": " + himself + ", \"received\": 1,"
+						+ " \"useTheBalance\": " + withTheBalance + ", \"method\": \"paypal\"}"));
 	}
 
 	private MockHttpServletResponse theRowBooksHim() throws Exception {
-		return http.perform(post("/api/members/" + THE_NUMBER + "/payment").with(csrf())
-						.cookie(new Cookie(SessionCookie.NAME, moderatorCookie))
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"received\": 1, \"method\": \"paypal\"}"))
-				.andReturn().getResponse();
+		return answered(post("/api/members/" + THE_NUMBER + "/payment").with(csrf())
+				.cookie(new Cookie(SessionCookie.NAME, moderatorCookie))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"received\": 1, \"method\": \"paypal\"}"));
+	}
+
+	/**
+	 * WHAT THE REQUEST ANSWERED, A FAULT INCLUDED. MockMvc rethrows what no handler turned into an
+	 * answer, where the server answers 500, so a booking that lost to the database would otherwise end
+	 * the case with an exception instead of with the status the case asserts on.
+	 */
+	private MockHttpServletResponse answered(MockHttpServletRequestBuilder request) throws Exception {
+		try {
+			return http.perform(request).andReturn().getResponse();
+		} catch (ServletException fault) {
+			MockHttpServletResponse failed = new MockHttpServletResponse();
+			failed.setStatus(500);
+			failed.getWriter().write(String.valueOf(fault.getMostSpecificCause()));
+
+			return failed;
+		}
 	}
 }
