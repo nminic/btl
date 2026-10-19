@@ -224,8 +224,15 @@ class ThePaymentsScreenLocksTheMemberTest {
 	void aChangeOfCountryThatCommitsInTheMiddleOfABookingLeavesNoCurrencyOfHisBookBelowNought()
 			throws Exception {
 
+		/* THE REFERRER'S REWARD FOR HIM: the booking's last write is the same row, and `on conflict do
+		   nothing` waits for the holder of a conflicting key. */
 		List<MockHttpServletResponse> both = hisChangeOfCountryCommitsInTheMiddleOf(
-				this::theScreenBooksHimWithHisBalance);
+				this::theScreenBooksHimWithHisBalance,
+				() -> db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
+								+ " referred_competitor_id, occurred_at, recorded_by_name) values"
+								+ " (?, 5, 'EUR', 'referral', ?, timestamptz '2027-10-02 09:00:00+00',"
+								+ " 'Neko Ko Je Knjizio')")
+						.params(referrer, himself).update());
 
 		assertThat(both.get(0).getStatus()).as("the screen's booking").isEqualTo(201);
 		assertThat(both.get(1).getStatus()).as("his change of country").isEqualTo(200);
@@ -237,7 +244,7 @@ class ThePaymentsScreenLocksTheMemberTest {
 	 * THE SAME INTERLEAVING WITH HIS OWN ACTIVATION ON HIS BALANCE ({@code POST /api/me/membership}) in
 	 * the place of the screen, which review of PR 576 measured on this branch before
 	 * {@link MyMembershipWriteApi} took the lock: 45 euro on the book, the activation spent 35 and
-	 * waited on the reward, his change of country moved the 45, and the book ended {@code referral 5
+	 * waited on the membership key, his change of country moved the 45, and the book ended {@code referral 5
 	 * EUR, referral 40 EUR, membership -35 EUR, conversion -45 EUR, conversion 5400 RSD}.
 	 */
 	@Test
@@ -250,7 +257,14 @@ class ThePaymentsScreenLocksTheMemberTest {
 						+ " 'Neko Ko Je Knjizio')")
 				.params(himself, referrer).update();
 
-		List<MockHttpServletResponse> both = hisChangeOfCountryCommitsInTheMiddleOf(this::heActivatesHimself);
+		/* A MEMBERSHIP OF THE SAME SEASON, NOT COMMITTED: the activation reads his invoice and spends his
+		   euro first, and its own `insert into membership` then waits on this key. It cannot end on the
+		   referrer's reward the way the screen does, because it writes his row (`active = true`) before
+		   that, and his change of country would then wait for it instead of running to its commit. */
+		List<MockHttpServletResponse> both = hisChangeOfCountryCommitsInTheMiddleOf(this::heActivatesHimself,
+				() -> db.sql("insert into membership (competitor_id, season, basis, decided_by_name,"
+								+ " decided_at) values (?, 2028, 'feeExempt', 'Neko Ko Je Drzao', ?)")
+						.params(himself, Timestamp.from(AFTER_THE_FIFTEENTH)).update());
 
 		assertThat(both.get(0).getStatus()).as("his activation on his balance").isEqualTo(201);
 		assertThat(both.get(1).getStatus()).as("his change of country").isEqualTo(200);
@@ -305,7 +319,7 @@ class ThePaymentsScreenLocksTheMemberTest {
 	 * COMMIT; then the booking is let go. Answers the booking first and the change second.
 	 */
 	private List<MockHttpServletResponse> hisChangeOfCountryCommitsInTheMiddleOf(
-			Callable<MockHttpServletResponse> booking) throws Exception {
+			Callable<MockHttpServletResponse> booking, Runnable theRowItEndsOn) throws Exception {
 
 		ExecutorService pool = Executors.newFixedThreadPool(2);
 		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
@@ -313,15 +327,11 @@ class ThePaymentsScreenLocksTheMemberTest {
 
 		try {
 			changed = holdingTheRow.execute(held -> {
-				/* THE REFERRER'S REWARD FOR HIM, written and not committed: the booking's last write is
-				   the same row, so it waits for this transaction (on conflict do nothing waits for the
-				   holder of a conflicting key). Nothing here touches his own row except the key share that
-				   the foreign key takes, which stops a `for update` on it and nothing else. */
-				db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
-								+ " referred_competitor_id, occurred_at, recorded_by_name) values"
-								+ " (?, 5, 'EUR', 'referral', ?, timestamptz '2027-10-02 09:00:00+00',"
-								+ " 'Neko Ko Je Knjizio')")
-						.params(referrer, himself).update();
+				/* A ROW THE BOOKING ENDS ON, written and not committed, so the booking waits for this
+				   transaction one statement before its end (an insert that meets a conflicting key waits
+				   for the holder of it). Nothing here touches his own row except the key share that the
+				   foreign key takes, which stops a `for update` on it and nothing else. */
+				theRowItEndsOn.run();
 
 				assertThat(BlockedBehindThisHold.count(db))
 						.as("the reward is written and nothing has been submitted yet")
