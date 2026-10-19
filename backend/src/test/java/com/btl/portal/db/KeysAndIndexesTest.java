@@ -356,7 +356,12 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("balance_promise_pk", false,
 					"the member and the season, because he is looking at one screen showing one amount; the"
 							+ " next code REPLACES the last through an upsert onto this key, which is what"
-							+ " settles two codes minted for one season"));
+							+ " settles two codes minted for one season"),
+
+			/* V63. The trail of a cancelled membership and of a change of basis (PDL P8, 18.10.2026). */
+			new Key("membership_change_pk", false,
+					"a surrogate key nothing outside the portal sees; a line of the trail is written once and"
+							+ " never moved, so there is no order to maintain"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
