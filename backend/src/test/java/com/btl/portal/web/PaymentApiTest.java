@@ -440,38 +440,6 @@ class PaymentApiTest {
 	}
 
 	/**
-	 * A REVERSED PAYMENT IS NOT REVIVED BY THIS ROUTE.
-	 *
-	 * <p>PDL, 11.08.2026 and 14.09.2026: a reversal is its own decision, and the
-	 * number it cost stays reserved for the same man rather than returning to
-	 * circulation. {@code RecordingAPayment} refuses to turn it back "quietly", and
-	 * this route carries that refusal out as 409 rather than resurrecting the row.
-	 */
-	@Test
-	void aReversedPaymentIsRefusedNotRevived() throws Exception {
-		long id = competitor("a5", "007007", false, "1990-05-15");
-
-		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount, currency,"
-						+ " fee, method, state, recorded_at, recorded_by, recorded_by_name, received)"
-						+ " values"
-						+ " (?, 2028, '20280070', (select id from price_row where key = 'early'),"
-						+ " 35.00, 'EUR', 3.00, 'paypal', 'reversed', timestamptz '2027-10-02 09:00:00+00',"
-						+ " null, 'Blagajnik Probni', 38.00)")
-				.param(id).update();
-
-		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", null)), moderatorCookie);
-
-		assertThat(answer.getStatus()).isEqualTo(409);
-		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
-				.isEqualTo(PaymentApi.THE_PAYMENT_WAS_REVERSED);
-
-		assertThat(db.sql("select active from competitor where id = ?").param(id)
-				.query(Boolean.class).single()).as("a refused reversal changed the competitor").isFalse();
-		assertThat(membershipCount()).as("a refused reversal wrote a membership anyway").isZero();
-	}
-
-	/**
 	 * A SEASON ALREADY HELD WITHOUT A FEE IS REFUSED, AND THE KEY IS NEVER REACHED.
 	 *
 	 * <p>{@code membership_pk} is {@code (competitor_id, season)}, so the row the

@@ -39,16 +39,20 @@ import java.util.Set;
  * to somebody who has one, and the sequence only counts up, so the first one
  * would be gone for good.
  *
- * <p><b>A reversal is not undone here, and that is a decision with a cost.</b>
- * „Stornirana uplata: clanski broj propada, clan postaje neaktivan za tu sezonu"
- * (PDL P8, 11.08.2026) leaves that person, for that season, in the position of
- * somebody who never paid - and somebody who never paid may pay. But the schema
- * allows one payment per member per season ({@code payment_one_a_season}), so
- * paying again would have to be written over the reversed row, and the reversal
- * would stop having happened. A reversal is the one thing on this table that the
- * portal has to be able to say out loud. So this class refuses to do it quietly
- * and hands the case to a person, which is what P8 already asks for wherever
- * money does not line up: „uplata bez poziva na broj uvek trazi coveka".
+ * <p><b>THERE IS NO THIRD STATE, AND THERE WAS ONE UNTIL 18.10.2026.</b> A payment used to
+ * be able to stand as {@code reversed}, and this class refused to book over it, because
+ * „Stornirana uplata: clanski broj propada, clan postaje neaktivan za tu sezonu" (PDL P8,
+ * 11.08.2026) was taken to be a thing that HAPPENED and had to stay said on the row. The
+ * owner overturned that on 18.10.2026 (PDL P8, the section „Osnov clanstva ima jedan dom"),
+ * choosing between the outcomes put to him and against the recommendation: „Kad se osnov
+ * promeni iz „uplata” ili se uplata stornira, zapis o uplati se BRISE." And with it, with the
+ * recommendation: the refusal „Storno vraca covek, van ovog ekrana." is deleted „zajedno sa
+ * stanjem „stornirana uplata” koje je pisalo". So a cancelled payment leaves no row behind,
+ * the trail of a cancellation has a table of its own ({@code membership_change}, V63), V64 takes the word
+ * out of {@code payment_state_known}, and the outcome that refused it went with it. The
+ * member number is not touched by any of that: it stays his (PDL P8, 14.09.2026, „Posle
+ * storna clanski broj ostaje rezervisan za istog coveka i vraca mu se kad ponovo plati"),
+ * which is the {@link Outcome#RECORD_IT} a renewal already takes.
  */
 public final class RecordingAPayment {
 
@@ -58,18 +62,15 @@ public final class RecordingAPayment {
 	/** Somebody said it, and said who and when. */
 	public static final String RECORDED = "recorded";
 
-	/** It arrived and then went back. Its own state, because it HAPPENED. */
-	public static final String REVERSED = "reversed";
-
 	/**
-	 * The three, and the schema knows the same three.
+	 * The two, and the schema knows the same two.
 	 *
 	 * <p>{@code payment_state_known} is where they are enforced, and
 	 * {@code PaymentStatesMatchTheSchemaTest} is what keeps this list and that
 	 * constraint from drifting apart: it asks PostgreSQL what the constraint
 	 * actually says rather than comparing one written pattern against another.
 	 */
-	public static final Set<String> STATES = Set.of(AWAITED, RECORDED, REVERSED);
+	public static final Set<String> STATES = Set.of(AWAITED, RECORDED);
 
 	private RecordingAPayment() {
 	}
@@ -93,7 +94,7 @@ public final class RecordingAPayment {
 		}
 	}
 
-	/** What the server does next, and the four are four different things. */
+	/** What the server does next, and the three are three different things. */
 	public enum Outcome {
 
 		/** Write it down, and give him the number he has never had. */
@@ -103,10 +104,7 @@ public final class RecordingAPayment {
 		RECORD_IT,
 
 		/** Nothing. Somebody already said this money arrived. */
-		ALREADY_RECORDED,
-
-		/** Nothing automatic. A reversal is turned back by a person, not by an import. */
-		A_REVERSAL_IS_NOT_UNDONE_HERE
+		ALREADY_RECORDED
 	}
 
 	/**
@@ -118,7 +116,6 @@ public final class RecordingAPayment {
 
 		return switch (payment.state()) {
 			case RECORDED -> Outcome.ALREADY_RECORDED;
-			case REVERSED -> Outcome.A_REVERSAL_IS_NOT_UNDONE_HERE;
 			default -> payment.numberHeAlreadyHas() == null
 					? Outcome.RECORD_IT_AND_NUMBER_HIM
 					: Outcome.RECORD_IT;

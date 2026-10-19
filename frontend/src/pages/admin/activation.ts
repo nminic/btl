@@ -201,10 +201,15 @@ export const ON_THE_BALANCE = 'balance'
  */
 
 /**
- * THE SEVEN REFUSALS `POST /api/memberships` NAMES, and the sentence this screen turns each of
+ * THE SIX REFUSALS `POST /api/memberships` NAMES, and the sentence this screen turns each of
  * them into.
  *
- * <p><b>All seven are answered although this screen can only reach some of them, which is the
+ * <p><b>There were seven until 18.10.2026.</b> The seventh, `thePaymentWasReversed` („Storno vraća
+ * čovek, van ovog ekrana.”), is deleted by the owner's decision of that day together with the state
+ * it was about (PDL P8, „Kad se osnov promeni iz „uplata” ili se uplata stornira, zapis o uplati se
+ * BRIŠE.”), on both doors and in both dictionaries, and V64 takes the state out of the schema.
+ *
+ * <p><b>All six are answered although this screen can only reach some of them, which is the
  * shape `admin/priceWrites.ts` and `admin/memberWrites.ts` both keep and give the reason for:
  * the screen is the floor and the route decides.</b> An unmapped reason falls through to
  * `ServerSaid`'s honest branch and is printed with its camel-case code in it, so a moderator
@@ -228,13 +233,13 @@ export const WHEN_ACTIVATING: Record<string, string> = {
   theMembershipIsAlreadyHeld: 'verification.activationRefused.theMembershipIsAlreadyHeld',
   theCompetitorDoesNotExist: 'verification.activationRefused.theCompetitorDoesNotExist',
   theFeeIsAlreadyRecorded: 'verification.activationRefused.theFeeIsAlreadyRecorded',
-  thePaymentWasReversed: 'verification.activationRefused.thePaymentWasReversed',
 }
 
 /**
- * THE ELEVEN REFUSALS `POST /api/payments` NAMES, and the sentence this screen turns each into.
- * (Ten until 10.10.2026, when `theAmountIsNotWhole` was added; the counts below are rewritten
- * with it and not left standing.)
+ * THE TEN REFUSALS `POST /api/payments` NAMES, and the sentence this screen turns each into.
+ * (Ten until 10.10.2026, when `theAmountIsNotWhole` was added, and eleven until 18.10.2026, when
+ * `thePaymentWasReversed` went with the state it was about, as on {@link WHEN_ACTIVATING}; the
+ * counts below are rewritten with each and not left standing.)
  *
  * <p><b>ITS OWN MAP AND NOT AN ADDITION TO {@link WHEN_ACTIVATING}, because they are two routes
  * and `pages/account/refusals.test.ts` counts over the FILE.</b> That floor reads every
@@ -244,14 +249,14 @@ export const WHEN_ACTIVATING: Record<string, string> = {
  * precedent for the opposite arrangement - two acts of one class, two maps - and this is the same
  * question with the classes the other way round.
  *
- * <p><b>Four of the eleven point at the sentences {@link WHEN_ACTIVATING} already uses, and that is
- * deliberate rather than lazy.</b> `theFormIsNotComplete`, `theCompetitorDoesNotExist`,
- * `theMembershipIsAlreadyHeld` and `thePaymentWasReversed` mean the same thing whichever door
+ * <p><b>Three of the ten point at the sentences {@link WHEN_ACTIVATING} already uses, and that is
+ * deliberate rather than lazy.</b> `theFormIsNotComplete`, `theCompetitorDoesNotExist` and
+ * `theMembershipIsAlreadyHeld` mean the same thing whichever door
  * refused them, and the moderator is looking at one row either way. A second Serbian sentence
  * saying the same thing would be a second place to change when the wording changes, and the two
  * would drift.
  *
- * <p><b>THE SCREEN CANNOT REACH SIX OF THE ELEVEN AND ANSWERS THEM ANYWAY</b>, which is the shape
+ * <p><b>THE SCREEN CANNOT REACH SIX OF THE TEN AND ANSWERS THEM ANYWAY</b>, which is the shape
  * `admin/priceWrites.ts` and {@link WHEN_ACTIVATING} both keep and the reason they give: the
  * screen is the floor and the route decides. Counted, because „cannot reach" is a claim:
  *
@@ -294,7 +299,6 @@ export const WHEN_BOOKING_A_PAYMENT: Record<string, string> = {
   theReferenceIsNotShaped: 'verification.activationRefused.theReferenceIsNotShaped',
   theCompetitorDoesNotExist: 'verification.activationRefused.theCompetitorDoesNotExist',
   theReferenceIsTaken: 'verification.activationRefused.theReferenceIsTaken',
-  thePaymentWasReversed: 'verification.activationRefused.thePaymentWasReversed',
   theMembershipIsAlreadyHeld: 'verification.activationRefused.theMembershipIsAlreadyHeld',
   theMembershipCostsNothing: 'verification.activationRefused.theMembershipCostsNothing',
 }
