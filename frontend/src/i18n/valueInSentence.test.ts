@@ -334,6 +334,11 @@ describe('a sentence with a value put into it', () => {
          nominative would give „od 31. maj 2019.", which is the very fault
          `formatDayInSentence` was written for on 05.09.2026. */
       'calendar.spanDays <- formatDayInSentence',
+      /* NOT A SENTENCE either, and the same shape as `results` below: `useCompetitors` asks for the
+         resource `competitors` with the number that makes the moderation of the members ask again
+         once a payment is recorded on a row (`data/useResource.ts`, `{ revision }`, 18.10.2026), and
+         the dictionary has a branch of that very name. */
+      'competitors',
       'competitors.count',
       'crop.share <- formatNumber',
       'crop.tooSmall',

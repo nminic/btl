@@ -561,9 +561,21 @@ export function useComments(): ResourceState<EventComment[]> {
   }, [state, published, decisions])
 }
 
-export const useCompetitors = () => useResource<Competitor[]>('competitors')
-/** Everybody ever given a member number, for the moderation of the members (`MembersApi`). */
-export const useMembers = () => useResource<Member[]>('members')
+/**
+ * @param revision bumped by the moderation of the members once a payment recorded on a row has gone
+ *   through (`admin/AdminMembers.tsx`), beside dropping the cache, so the profile links it draws ask
+ *   again: the member it was recorded for may have just become active. Every other caller passes none.
+ */
+export const useCompetitors = (revision?: number) =>
+  useResource<Competitor[]>('competitors', { revision })
+/**
+ * Everybody ever given a member number, for the moderation of the members (`MembersApi`).
+ *
+ * @param revision bumped by that screen once a payment recorded on a row has gone through, so the row
+ *   it was recorded on is read again with its new season: the shape `HowToRead.revision` was written
+ *   for, and the one `useAttendance` keeps.
+ */
+export const useMembers = (revision?: number) => useResource<Member[]>('members', { revision })
 export const useEvents = () => useLive(useResource<BtlEvent[]>('events'), 'events', 'id')
 /**
  * Who has said they are going, as the server keeps it.

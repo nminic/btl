@@ -1462,7 +1462,9 @@
       "anonymisingIsNotWrittenYet": "Anonymising an account has not been written yet. For now a member can only be deleted.",
       "theAccountAdministers": "This member's account administers the portal, so the member cannot be deleted from here."
     },
-    "memberGone": "The member has been deleted."
+    "memberGone": "The member has been deleted.",
+    "recordPayment": "Record the payment",
+    "paymentRecorded": "The payment has been recorded."
   },
   "ducats": {
     "title": "Ducats",

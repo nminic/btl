@@ -406,6 +406,23 @@ export type Member = {
    * sa poslednjom sezonom u moderaciji broji svaki osnov”), so that fact has this one home.
    */
   seasons: MemberSeason[]
+  /**
+   * The season a payment recorded on this row buys, which is the season on sale that day (PDL P8,
+   * 18.10.2026, „do 14.10. samo tekuća, od 15.10. samo naredna”). The four figures below are about it.
+   */
+  seasonOnSale: number
+  /** The money he is billed in, from his country, as on the payments screen (`MembershipDue`). */
+  currency: string
+  /** What he sends for the season on sale, the processing fee included: „Očekivan iznos”. */
+  expected: number
+  /** The membership without the fee, which is what a balance is measured against. */
+  price: number
+  /**
+   * What his book holds, in his money. Answered to the administration over the members by the owner's
+   * decision of 18.10.2026 (PDL P8, „Moderator sa pravom nad članovima vidi balans i očekivani iznos
+   * svakog člana na redu u moderaciji, isto kao na ekranu Uplate”).
+   */
+  balance: number
 }
 
 /* ~~A race has no name of its own (owner, 11.08.2026).~~ **Overturned 23.08.2026

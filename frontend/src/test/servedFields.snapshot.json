@@ -134,7 +134,10 @@
   "members.json": [
     "active",
     "ageBand",
+    "balance",
     "city",
+    "currency",
+    "expected",
     "firstName",
     "firstSeason2027",
     "gender",
@@ -142,6 +145,8 @@
     "memberNumber",
     "membershipBasis",
     "membershipSeason",
+    "price",
+    "seasonOnSale",
     "seasons",
     "seasons.basis",
     "seasons.season"
