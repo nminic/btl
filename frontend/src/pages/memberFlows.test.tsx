@@ -2097,6 +2097,8 @@ function aServerThatKeepsWhatIsSent(): {
           comment: String(run.comment),
           reason: null,
           amendsResultId: null,
+          eventId: typeof run.eventId === 'number' ? run.eventId : null,
+          eventName: typeof run.eventName === 'string' ? run.eventName : null,
         },
         ...held,
       ]

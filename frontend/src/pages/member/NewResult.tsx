@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { unosRezultata } from '../../forms/definitions'
 
-import type { FormValues } from '../../forms/types'
+import type { FieldError, FormValues } from '../../forms/types'
 import { fieldDate } from '../../forms/dateField'
 import { raceKind } from '../../data/raceKind'
 import type { RaceKind, Result, SentRun } from '../../data/types'
@@ -20,7 +20,8 @@ import {
 import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
 import { fromBoxes, inBoxes, noTime } from '../../forms/clock'
-import { racesToOffer } from './racesToOffer'
+import { eventsToOffer, racesOfTheChosenEvent } from './eventsToOffer'
+import { useSeasonsOpenForAReport } from './useSeasonsOpenForAReport'
 import { figuresAsked } from '../admin/amendFields'
 import { useI18n } from '../../i18n/useI18n'
 import { useMemberScreen } from './memberScreen'
@@ -68,6 +69,8 @@ const NOTHING_TO_WAIT_FOR: ResourceState<unknown> = { status: 'ready', data: nul
  */
 function filledFromCounted(one: Result): FormValues {
   return {
+    /* The event the counted result is on, which a correction does not change: it is the race's. */
+    eventName: one.eventName,
     raceName: one.raceName,
     date: fieldDate(one.date),
     distanceKm: String(one.distanceKm),
@@ -96,6 +99,12 @@ function filledFromCounted(one: Result): FormValues {
  */
 function filledFrom(one: SentRun): FormValues {
   return {
+    /* The event the run named (V66): the name the server answers, and the key where he chose an
+       event of the calendar for a run it does not hold, so the run goes again on the same event and
+       carries no town of its own (V67). A run of the calendar has its event through its race, and
+       a run sent before V66 names none, so he names one now. */
+    eventName: one.eventName ?? '',
+    eventId: one.raceId === null && one.eventId !== null ? String(one.eventId) : '',
     raceName: one.raceName,
     date: fieldDate(one.raceDate),
     /* The kind and the place come back with everything else. Left out, they are
@@ -157,6 +166,17 @@ function isSentBack(one: SentRun): one is SentBack {
  * open here would take a number the server then throws away while telling the member it went in.
  * ADL A32's rule for every lock: it says what the reader may not change.
  */
+/**
+ * WHETHER THE DAY IN THE BOX IS IN NO SEASON OPEN FOR A REPORT, as the server holds it
+ * (`ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON`, PDL P9, 19.10.2026). A day that is not one yet is
+ * not refused here: an empty or half typed day is the box's own question (`validateForm`).
+ */
+function outsideTheSeasons(day: unknown, seasons: number[]): boolean {
+  const year = /(\d{4})/.exec(String(day ?? ''))?.[1]
+
+  return year !== undefined && !seasons.includes(Number(year))
+}
+
 function heldByTheRace(kind: RaceKind): string[] {
   const asked = new Set(figuresAsked(kind).map((one) => one.name))
 
@@ -237,18 +257,19 @@ function TheForm({ me }: { me: string }) {
   const results = useResults(revision)
   const races = useRaces()
   const sent = useMyResultSubmissions(me, revision)
+  /* THE SEASONS HE MAY SEND A RUN OF, which the server says (`/api/me`): the lists offer nothing of
+     any other, and the day is held to them (PDL P9, 19.10.2026). Waited for with the rest. */
+  const open = useSeasonsOpenForAReport(me)
+  const seasons = open.status === 'ready' ? open.data : []
   /* Built once for the data rather than on every letter typed: the list is the
      whole calendar read through one date, and it does not change while somebody
      is typing into the box above it. Empty until both files are here, which is
      what the form shows for the first moment it is on screen, and empty for good
      when one of them could not be read: that case is SAID (`offering` below) and
      not left to look like a calendar with no race in it. */
-  const offered = useMemo(
-    () =>
-      events.status === 'ready' && races.status === 'ready'
-        ? racesToOffer(events.data, races.data, today, locale)
-        : [],
-    [events, races, today, locale],
+  const offeredEvents = useMemo(
+    () => (events.status === 'ready' ? eventsToOffer(events.data, seasons, today) : []),
+    [events, seasons, today],
   )
   /* **THE TWO FILES THE LIST IS MADE FROM, AS ONE READ.** A race is offered only with its event
      (`racesToOffer`), so the list is as unreadable as the worse of the two, and one failure
@@ -306,8 +327,10 @@ function TheForm({ me }: { me: string }) {
   /* What this form has to wait for before it can be drawn, which is only what the road in names:
      the counted results and the runs sent (a correction must know whether one already waits),
      the runs sent alone, or nothing. */
-  const waitFor: ResourceState<unknown> =
-    fixing !== null ? combinePair(results, sent) : again !== null ? sent : NOTHING_TO_WAIT_FOR
+  const waitFor: ResourceState<unknown> = combinePair(
+    open,
+    fixing !== null ? combinePair(results, sent) : again !== null ? sent : NOTHING_TO_WAIT_FOR,
+  )
 
   /**
    * WHICH ROUTE TAKES IT, decided by the road in and never by what is in a box.
@@ -357,6 +380,29 @@ function TheForm({ me }: { me: string }) {
           : Number(values.raceId)
         : correcting.raceId
 
+    /* THE EVENT, ONE OF TWO WAYS (V66, `ResultWriteApi.Ran`): the key of an event of the calendar he
+       chose, which brings its own town, or the name he typed, which goes with the town he gave. A run
+       sent again names the event it named, read off the run and not off a box, like its race. */
+    const chosenEvent =
+      correcting !== undefined
+        ? correcting.raceId === null && correcting.eventId !== null
+          ? correcting.eventId
+          : null
+        : values.eventId === undefined || values.eventId === ''
+          ? null
+          : Number(values.eventId)
+    const theEvent =
+      chosenEvent !== null
+        ? { eventId: chosenEvent }
+        : {
+            eventName: correcting?.eventName ?? String(values.eventName),
+            /* The town by name and country, never a `placeId`: `PlaceField` writes those two
+               and has no GeoNames mark to give, which is `Registration.tsx`'s own decision
+               against the same rule. */
+            city: String(values.city),
+            country: String(values.country),
+          }
+
     return theRunWasSentIn(
       raceId === null
         ? {
@@ -367,11 +413,7 @@ function TheForm({ me }: { me: string }) {
                converted twice. */
             day: String(values.date),
             raceKind: String(values.raceKind),
-            /* The town by name and country, never a `placeId`: `PlaceField` writes those two
-               and has no GeoNames mark to give, which is `Registration.tsx`'s own decision
-               against the same rule. */
-            city: String(values.city),
-            country: String(values.country),
+            ...theEvent,
             ...figures,
             ...proof,
           }
@@ -557,12 +599,27 @@ function TheForm({ me }: { me: string }) {
                and its figures open, because there the member answers for all of it. */
             fixed={
               correctsACountedResult
-                ? ['raceName', 'date']
+                ? ['eventName', 'raceName', 'date']
                 : correcting === undefined
                   ? undefined
-                  : correcting.raceId === null
-                    ? ['raceName']
-                    : ['raceName', 'date', ...heldByTheRace(raceKind(correcting.raceKind))]
+                  : [
+                      /* The event goes with the race (`filledFrom`), unless the run named none
+                         because it was sent before V66: then he names one now. */
+                      ...(correcting.eventName === null ? [] : ['eventName']),
+                      ...(correcting.raceId === null
+                        ? ['raceName']
+                        : ['raceName', 'date', ...heldByTheRace(raceKind(correcting.raceKind))]),
+                    ]
+            }
+            /* THE DAY IS HELD TO THE SEASONS OPEN FOR A REPORT, on the screen as the server holds it
+               (`theRaceIsOutsideTheSeason`), in the owner's approved words (PDL P9, 19.10.2026,
+               „Reči forme člana i moderatorovog ekrana": „Datum mora da bude u tekućoj sezoni.").
+               Only a new run or a run sent again: a correction of a counted result keeps the day it
+               was counted on, which is not his to change. */
+            check={(values): Record<string, FieldError> =>
+              correctsACountedResult || !outsideTheSeasons(values.date, seasons)
+                ? {}
+                : { date: { key: 'newResult.outsideTheSeason' } }
             }
             /* And a counted result does not go back into the queue on somebody's
                word alone: „menja i dostavlja dokaz za tu izmenu" (owner,
@@ -617,11 +674,33 @@ function TheForm({ me }: { me: string }) {
                again and to correct a counted one, and both hold the name (`fixed` above), so the
                renderer says nothing there: a list is of no use to a box nothing is typed into. */
             suggests={{
+              /* THE EVENTS FIRST (owner, 19.10.2026: „Prvo ima naziv događaja koji je autocomplete iz
+                 baze, ali mogu da unesem novu vrednost"), or the way the calendar failed to come. */
+              eventName:
+                events.status === 'error'
+                  ? { said: t('data.error'), named: t('admin.events'), read: events }
+                  : offeredEvents,
+              /* AND THE RACES OF THE EVENT CHOSEN, which is why this one is a function of what the
+                 form holds: „ako je postojeća vrednost, polje trka postaje autocomplete u koji se
+                 ukucava postojeća ili nova trka". */
               raceName:
                 offering.status === 'error'
                   ? { said: t('data.error'), named: t('event.races'), read: offering }
-                  : offered,
+                  : (values) =>
+                      events.status === 'ready' && races.status === 'ready'
+                        ? racesOfTheChosenEvent(
+                            events.data,
+                            races.data,
+                            seasons,
+                            String(values.eventId ?? ''),
+                            today,
+                            locale,
+                          )
+                        : [],
             }}
+            /* „Ukoliko je nova vrednost, polje trka dobija identičan taj naziv i može da se menja"
+               (owner, 19.10.2026): the race follows the event (`FormRenderer`, `follows`). */
+            follows={{ raceName: 'eventName' }}
             onSubmit={onSubmit}
           />
         )}

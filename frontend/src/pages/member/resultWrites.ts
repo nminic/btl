@@ -178,7 +178,8 @@ export type ARunFromTheCalendar = Figures &
  * until 19.09.2026.
  */
 export type ARunDescribed = Figures &
-  Proof & {
+  Proof &
+  (OnAChosenEvent | OnATypedEvent) & {
     raceName: string
     /**
      * The day it was run, named `day` and not `date`.
@@ -193,9 +194,14 @@ export type ARunDescribed = Figures &
      *  server's set is `length`, `time`, `free`, which is `RACE_KINDS` exactly, so what the
      *  select holds goes over unchanged. */
     raceKind: string
-    city: string
-    country: string
   }
+
+/** A run on an event of the calendar he chose, by its key: the event brings its own town (V67), so
+ *  none is sent, and the route refuses one beside it (`theRaceIsNamedTwice`). */
+type OnAChosenEvent = { eventId: number }
+
+/** A run on an event he typed, which names its town, as a run away from the calendar always did. */
+type OnATypedEvent = { eventName: string; city: string; country: string }
 
 /**
  * A CORRECTION, WHICH IS THE NUMBERS AND THE PROOF AND NOTHING ELSE.

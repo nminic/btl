@@ -277,6 +277,7 @@ describe('where each of the three writes goes', () => {
     raceName: 'Trka kroz šumu',
     day: '2027-04-18',
     raceKind: 'length',
+    eventName: 'Valjevski kros',
     city: 'Valjevo',
     country: 'RS',
     ...FIGURES,

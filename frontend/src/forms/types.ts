@@ -77,6 +77,16 @@ export type Suggestion = {
   said: string
   /** What choosing it writes into the other fields, by field name. */
   fills: Record<string, string>
+  /**
+   * Which of `fills` choosing it LOCKS, where that is not all of them.
+   *
+   * Absent, every field it fills is locked, which is what a race chosen from the calendar does:
+   * what the race fixes is not the reader's to change. Present, only these are, and the rest are
+   * filled as a starting point the reader may change: an event chosen for a result fills the day
+   * of the race with its own day, which he may move (PDL P9, owner, 19.10.2026: „Povuce se datum
+   * dogadjaja po default-u, a onda se prepopuni i datum trke, ali ga mogu dalje menjati").
+   */
+  holds?: string[]
 }
 
 /**
@@ -229,6 +239,13 @@ export type FieldDef = {
    * programming language, and those grow teeth.
    */
   showWhenYoungerThan?: { field: string; years: number }
+  /**
+   * Shown only while the value named is empty. The one case is the town of a result: a run on an
+   * event the member chose has that event's town, and none of its own (V67), so the field goes
+   * the moment an event is chosen and comes back when the choice is broken. Named rather than
+   * general, for the reason the rule above gives.
+   */
+  showWhenEmpty?: string
   /**
    * Asked of everybody, and required of everybody except somebody younger than
    * `years`, who may leave it empty.

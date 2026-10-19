@@ -4,11 +4,20 @@
   "submitKey": "newResult.submit",
   "fields": [
     {
+      "name": "eventName",
+      "type": "text",
+      "labelKey": "newResult.eventName",
+      "hintKey": "newResult.eventHint",
+      "required": true,
+      "maxLength": 120
+    },
+    {
       "name": "raceName",
       "type": "text",
       "labelKey": "newResult.raceName",
       "required": true,
-      "maxLength": 120
+      "maxLength": 120,
+      "hintKey": "newResult.raceOfTheEventHint"
     },
     {
       "name": "date",
@@ -42,7 +51,8 @@
       "type": "place",
       "labelKey": "newResult.city",
       "required": true,
-      "maxLength": 80
+      "maxLength": 80,
+      "showWhenEmpty": "eventId"
     },
     {
       "name": "distanceKm",

@@ -1868,4 +1868,10 @@ export type SentRun = {
   comment: string
   reason: string | null
   amendsResultId: number | null
+  /** The event the run is on (`MyResultSubmissionsApi.Sent.eventId`): its race's for a run from the
+   *  calendar, the one he chose for a described one, and nothing where he typed one or named none. */
+  eventId: number | null
+  /** That event's name as it is now, or the name he typed; nothing where he named none (a run sent
+   *  before V66). */
+  eventName: string | null
 }

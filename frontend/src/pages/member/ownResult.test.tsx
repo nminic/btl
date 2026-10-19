@@ -80,6 +80,8 @@ function aRun(id: number, over: Partial<SentRun> = {}): SentRun {
     comment: '',
     reason: 'Link ne otvara rezultate.',
     amendsResultId: null,
+    eventId: null,
+    eventName: null,
     ...over,
   }
 }
