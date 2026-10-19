@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -231,6 +232,14 @@ class MyResultSubmissionsApiTest {
 				"Opisujem trku koje nema");
 		waiting(waitingDescribed, "Trka oko zaliva", "2026-06-09 09:00:00+00");
 
+		/* AND THE EVENT EACH DESCRIBED RUN NAMES (V66), one typed and one chosen, the chosen one being
+		   the event of a race of the calendar that is not the race of any run beside it on that day. */
+		db.sql("update result_submission set event_name = 'Kotorski kros' where id = ?")
+				.param(waitingDescribed).update();
+		db.sql("update result_submission set event_id = (select event_id from race where id = ?)"
+						+ " where id = ?")
+				.params(freeRace, refusedDescribed).update();
+
 		refusedCorrection = fromTheCalendar(ME, freeRace, "2026-03-21", "14.0000", 400, 380, 7000,
 				"https://rezultati.rs/ispravka-traila", "Bilo je krace", myOtherResult);
 		decided(refusedCorrection, "Fruskogorski trail", "2026-06-07 09:00:00+00", "rejected",
@@ -391,6 +400,34 @@ class MyResultSubmissionsApiTest {
 	}
 
 	/**
+	 * EACH RUN ANSWERS WITH THE EVENT IT IS ON: THE RACE'S FOR A RUN FROM THE CALENDAR, THE ONE HE
+	 * TYPED OR CHOSE FOR A DESCRIBED RUN (V66; PDL P9, owner, 19.10.2026: „Prijava pamti događaj koji
+	 * je član izabrao").
+	 *
+	 * <p>The chosen event is the free race's, and the refused correction beside it is on that same
+	 * race, so both name one event by two roads; the typed name is a name no event has, so it can
+	 * only have come from the run.
+	 */
+	@Test
+	void eachRunAnswersWithTheEventItIsOnWhetherItsRaceHasOneOrHeNamedIt() throws Exception {
+		List<JsonNode> mine = mySix();
+		long theFreeRacesEvent = db.sql("select event_id from race where id = ?").param(freeRace)
+				.query(Long.class).single();
+
+		assertThat(mine.get(0).path("eventId").isNull()).as("a typed event answered with a key")
+				.isTrue();
+		assertThat(mine.get(0).path("eventName").asString()).isEqualTo("Kotorski kros");
+
+		assertThat(mine.get(4).path("eventId").asLong()).as("the chosen event").isEqualTo(theFreeRacesEvent);
+		assertThat(mine.get(4).path("eventName").asString()).isEqualTo("Fruskogorski trail");
+
+		assertThat(mine.get(2).path("eventId").asLong()).as("a run from the calendar is not on its"
+				+ " race's event").isEqualTo(theFreeRacesEvent);
+		assertThat(mine.get(3).path("eventName").asString()).isEqualTo("Novosadska noc");
+		assertThat(mine.get(5).path("eventName").asString()).isEqualTo(THE_EVENT);
+	}
+
+	/**
 	 * THE DAY IS THE DAY THE RACE WAS RUN, AND NEVER THE DAY THE RUN WAS SENT.
 	 */
 	@Test
@@ -486,7 +523,7 @@ class MyResultSubmissionsApiTest {
 				.as("the answer carries a name nobody decided it should, or lost one")
 				.containsExactlyInAnyOrder("id", "state", "raceId", "raceName", "raceDate",
 						"raceKind", "city", "country", "distanceKm", "ascentM", "descentM",
-						"seconds", "link", "comment", "reason", "amendsResultId");
+						"seconds", "link", "comment", "reason", "amendsResultId", "eventId", "eventName");
 	}
 
 	/** NO FIELD OF IT IS THE SAME IN EVERY RECORD, so no field could be answered by a constant. */
@@ -505,7 +542,11 @@ class MyResultSubmissionsApiTest {
 	@Test
 	void everyFieldThePortalReadsIsOneThisRouteAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered(PATH,
-				mapper.readTree(asked(MY_ADDRESS).getContentAsString()), "me/result-submissions.json");
+				mapper.readTree(asked(MY_ADDRESS).getContentAsString()), "me/result-submissions.json",
+				/* V66, before the member's screen reads them: the event a run is on, which the one
+				   form for the event, the race and the result will start from (PDL P9, owner,
+				   19.10.2026). They leave this list with that screen. */
+				Set.of("eventId", "eventName"));
 	}
 
 	/*

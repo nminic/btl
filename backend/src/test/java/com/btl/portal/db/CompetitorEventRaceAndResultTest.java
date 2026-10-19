@@ -592,6 +592,10 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"result_submission.result_submission_amends_fk cascade",
 				"result_submission.result_submission_competitor_fk cascade",
 				"result_submission.result_submission_country_fk restrict",
+				/* V66. An event deleted while a member's run waits on it does not take the run: the run
+				   names no event any more, the shape of every run sent before V66, and the moderator
+				   chooses one for it (ResultSubmissionConstraintsTest measures it). */
+				"result_submission.result_submission_event_fk set null",
 				"result_submission.result_submission_place_fk restrict",
 				"result_submission.result_submission_race_fk cascade",
 				/* V30 gave a reported change of term the identical pair, cascade off both the
