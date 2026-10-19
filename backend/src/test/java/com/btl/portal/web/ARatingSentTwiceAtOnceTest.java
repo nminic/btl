@@ -43,6 +43,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * {@link CommentWriteApi} takes on the member's row first: the second request waits there, then
  * deletes what the first committed and inserts its own.
  *
+ * <p><b>The approval's side of the same lock is measured here as well</b>
+ * ({@link #anApprovalAndARatingWithNoWordsAtOnceLeaveOneRatingOfTheEvent}), and it needs another hold: the
+ * member's row is not what stops an approval, because without its lock the approval does not ask for it.
+ * What stops both requests is the EVENT row, held {@code FOR UPDATE}: the foreign key of their
+ * {@code event_comment} insert asks for it. The approval is sent first and waited for until it stands on
+ * the event row (it has claimed its card and holds nothing of the member's), the rating second and
+ * waited for in the same way, and only then is the hold let go. With the lock in the approval the
+ * rating waits for the member's row behind it; without it the two overlap and the member ends with two
+ * published ratings of one event. The first idea, that this order cannot be forced, was wrong
+ * (review of PR 578, round 2, measured).
+ *
  * <p><b>NOT {@code @Transactional}, and the order is taken from the scheduler</b>, the shape
  * {@code MemberPaymentTwiceAtOneInstantTest} sets out and {@link BlockedBehindThisHold} counts with:
  * the case holds the member's row {@code FOR UPDATE} before either request is sent, waits until both
@@ -77,6 +88,10 @@ class ARatingSentTwiceAtOnceTest {
 
 	private String cookie;
 
+	private String moderatorCookie;
+
+	private static final String MODERATOR_ADDRESS = "dve-ocene-odjednom-moderator@primer.rs";
+
 	@BeforeEach
 	void aMemberWhoRanAnEventAndHasRatedItOnce() {
 		him = db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
@@ -102,6 +117,21 @@ class ARatingSentTwiceAtOnceTest {
 				.update();
 
 		cookie = session.secret();
+
+		/* THE ONE WHO DECIDES, for the case about an approval: the superadmin sees every queue. */
+		db.sql("insert into account (first_name, last_name, email, role_id) values"
+						+ " ('Mod', 'Eratorka', ?, (select id from role where code = 'superadmin'))")
+				.param(MODERATOR_ADDRESS).update();
+
+		SecretToken deciding = SecretToken.fresh();
+
+		db.sql("insert into account_session (account_id, token_hash, created_at, last_used_at,"
+						+ " expires_at) values ((select id from account where email = ?), ?, ?, ?, ?)")
+				.params(MODERATOR_ADDRESS, deciding.hash(), Timestamp.from(now.minus(Duration.ofDays(1))),
+						Timestamp.from(now), Timestamp.from(now.plus(SessionLife.LASTS)))
+				.update();
+
+		moderatorCookie = deciding.secret();
 
 		event = db.sql("insert into btl_event (slug, name, date, place_id, kind, featured, description,"
 						+ " link) values ('dve-ocene-odjednom', 'Dvaput ocenjena trka', date '2026-05-01',"
@@ -133,9 +163,13 @@ class ARatingSentTwiceAtOnceTest {
 		db.sql("delete from result where competitor_id = ?").param(him).update();
 		db.sql("delete from race where event_id = ?").param(event).update();
 		db.sql("delete from btl_event where id = ?").param(event).update();
+		db.sql("delete from message where to_id = ?").param(him).update();
 		db.sql("delete from account_session where account_id = (select id from account where email = ?)")
 				.param(HIS_ADDRESS).update();
 		db.sql("delete from account where email = ?").param(HIS_ADDRESS).update();
+		db.sql("delete from account_session where account_id = (select id from account where email = ?)")
+				.param(MODERATOR_ADDRESS).update();
+		db.sql("delete from account where email = ?").param(MODERATOR_ADDRESS).update();
 		db.sql("delete from competitor where id = ?").param(him).update();
 	}
 
@@ -210,6 +244,97 @@ class ARatingSentTwiceAtOnceTest {
 				.query(Long.class).single())
 				.as("the card a moderator is deciding was withdrawn from under him")
 				.isOne();
+	}
+
+	/**
+	 * AN APPROVAL AND A RATING WITH NO WORDS FROM ONE MEMBER AT ONE INSTANT LEAVE HIM ONE PUBLISHED RATING
+	 * OF THE EVENT. His rating with words waits; the moderator approves it while the member sends a rating
+	 * with no words. The approval takes the member's row before it deletes his older ratings and inserts
+	 * the approved one ({@code VerificationWriteApi#publishTheComment}), the rating takes the same row
+	 * first; the second of the two waits for the first and then replaces it. Without the approval's lock
+	 * both read nothing, both insert, and the member holds the one with words and the one without.
+	 *
+	 * <p>Forced the way the class note says: the EVENT row is held, the approval is sent and waited for,
+	 * then the rating, and only then is the row let go. Which of the two ends up as the row is not
+	 * claimed; that it is one is.
+	 */
+	@Test
+	void anApprovalAndARatingWithNoWordsAtOnceLeaveOneRatingOfTheEvent() throws Exception {
+		long card = waitingCardWithWords("Sa rečima.");
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from btl_event where id = ? for update")
+						.param(event).query(Integer.class).single();
+
+				assertThat(BlockedBehindThisHold.count(db))
+						.as("the event row is locked and nothing has been submitted yet")
+						.isZero();
+
+				submitted.add(pool.submit(() -> approved(card)));
+				stoppedBehindTheHold(1, submitted);
+				submitted.add(pool.submit(() -> rated(5)));
+				stoppedBehindTheHold(2, submitted);
+
+				assertThat(submitted)
+						.as("a request was answered before it reached the database")
+						.hasSize(2).noneMatch(Future::isDone);
+
+				return null;
+			});
+
+			assertThat(List.of(submitted.get(0).get(30, TimeUnit.SECONDS).getStatus(),
+					submitted.get(1).get(30, TimeUnit.SECONDS).getStatus()))
+					.as("the approval and the rating are each taken")
+					.containsExactly(200, 201);
+		} finally {
+			pool.shutdownNow();
+		}
+
+		assertThat(db.sql("select body || ':' || rating_organisation from event_comment where event_id = ?"
+						+ " and competitor_id = ?").params(event, him).query(String.class).list())
+				.as("the member holds two published ratings of one event")
+				.hasSize(1);
+	}
+
+	/** A rating with words of his, waiting, and the card that carries it. */
+	private long waitingCardWithWords(String words) {
+		long submission = db.sql("insert into comment_submission (event_id, competitor_id,"
+						+ " rating_organisation, rating_value, rating_ambience, body)"
+						+ " values (?, ?, 2, 2, 2, ?) returning id")
+				.params(event, him, words).query(Long.class).single();
+
+		return db.sql("insert into verification (queue, competitor_id, subject, body,"
+						+ " comment_submission_id) values ('comments', ?, 'Dvaput ocenjena trka', ?, ?)"
+						+ " returning id")
+				.params(him, words, submission).query(Long.class).single();
+	}
+
+	private MockHttpServletResponse approved(long card) throws Exception {
+		return http.perform(post("/api/verification/" + card + "/decision").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, moderatorCookie))
+						.contentType(MediaType.APPLICATION_JSON).content("{\"approved\":true}"))
+				.andReturn().getResponse();
+	}
+
+	/** Waits until this many requests stand behind the hold, or fails the case saying how many did. */
+	private void stoppedBehindTheHold(int expected, List<Future<MockHttpServletResponse>> submitted) {
+		long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+
+		while (BlockedBehindThisHold.count(db) < expected && System.nanoTime() < deadline
+				&& submitted.stream().noneMatch(Future::isDone)) {
+			try {
+				Thread.sleep(20);
+			} catch (InterruptedException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+
+		assertThat(BlockedBehindThisHold.count(db))
+				.as("requests stopped behind the held event row")
+				.isEqualTo(expected);
 	}
 
 	/** {@code MemberPaymentTwiceAtOneInstantTest}'s shape, which says why each step is where it is. */
