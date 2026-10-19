@@ -25,16 +25,17 @@ import java.util.Optional;
  * That sentence is only true if there is one place the deriving happens, and this is it. Nothing else
  * in the portal names {@code balance_entry}.
  *
- * <p><b>WHY THIS IS A CLASS AND NOT A QUERY IN EACH CALLER.</b> Six callers need the book: what a
+ * <p><b>WHY THIS IS A CLASS AND NOT A QUERY IN EACH CALLER.</b> Many doors need the book: what a
  * member owes ({@link MembershipInvoice}, for {@link MyMembershipApi}), his activation out of it
- * ({@link MyMembershipWriteApi}), a moderator recognising a payment ({@link PaymentApi}, which spends
- * the payer's balance, credits him a surplus and earns the referrer's), the administration activating
- * him without a fee ({@link MembershipWriteApi}), the screen that offers that activation
- * ({@link PaymentsDueApi}, which only READS and is the one caller asking about many members at once),
- * and the member editing his own record ({@link MeWriteApi}, which translates the whole book when he
- * changes country). The same reasoning {@link MemberOfAccount} is written with: one lookup asked in
- * one place beats the identical {@code select} in six controllers, free to drift the day one is
- * edited.
+ * ({@link MyMembershipWriteApi}), a payment booked ({@link BookingAPayment}, which spends the payer's
+ * balance, credits him a surplus and earns the referrer's), a season granted without a fee
+ * ({@link GrantingASeason}), the screens that show a balance beside a row ({@link PaymentsDueApi} and
+ * {@link MembersApi}, which only READ), the member editing his own record ({@link MeWriteApi}, which
+ * translates the whole book when he changes country), and since 19.10.2026 the member's row cancelling
+ * a season or changing its basis ({@link MemberMembershipApi}, which reverses what the season held).
+ * Who they are is the compiler's to say and this list is an aid, not a count. The same reasoning
+ * {@link MemberOfAccount} is written with: one lookup asked in one place beats the identical
+ * {@code select} in every controller, free to drift the day one is edited.
  *
  * <p><b>AND SINCE V42 EVERY LINE IS ONE AMOUNT IN ONE CURRENCY, WHICH CHANGES WHAT „THE BALANCE"
  * MEANS AND THEREFORE EVERY SIGNATURE HERE.</b> The owner, 27.09.2026 (PDL, section 25): „balans je
@@ -411,8 +412,17 @@ class BalanceBook {
 	 * written when the season holds nothing, because {@code balance_entry_a_reversal_moves_something}
 	 * (V63) refuses a line of nought.
 	 *
-	 * <p>No route calls this yet: the options on the member's row are the next piece of work, and they
-	 * are where the seasons that may be acted on are enforced.
+	 * <p><b>THE CALLER MUST HOLD THE MEMBER'S ROW {@code FOR UPDATE} BEFORE CALLING THIS, in the same
+	 * transaction that deletes the season's payment or membership.</b> This reads the book and then
+	 * writes one line from what it read, so two calls for one season that both read before either
+	 * writes would both find the season holding something and write the reversal TWICE: the balance
+	 * given back twice over, in a book that may not be corrected afterwards. The lock on
+	 * {@code competitor} is what serialises them, and it reaches past the caller: every line of the
+	 * book names that row by a foreign key, and inserting one takes {@code FOR KEY SHARE} on it, which
+	 * {@code FOR UPDATE} stops. The second caller then finds the season already gone and does not get
+	 * here. {@link MemberMembershipApi} is the caller and the seasons it may act on are its to enforce
+	 * („do 14.10. samo tekuća, od 15.10. samo naredna”, PDL P8, 18.10.2026);
+	 * {@code MemberMembershipTwiceAtOneInstantTest} measures the two calls at one instant.
 	 *
 	 * @param today the money he is billed in today, which the line is written in
 	 * @return the line written, or empty when the season held nothing
@@ -431,6 +441,21 @@ class BalanceBook {
 				.update());
 
 		return reversal;
+	}
+
+	/**
+	 * AND THE PROMISE OF ONE SEASON IS TAKEN AWAY WHEN THAT SEASON IS CANCELLED.
+	 *
+	 * <p>The owner, 18.10.2026, with the recommendation (PDL P8): „Obećan popust iz balansa za
+	 * storniranu sezonu se briše; član pri sledećem otvaranju „Moje članarine” dobija nov QR po stanju
+	 * balansa posle protivstavke.” {@link #forgetEveryPromise} gives the reason this table may lose a
+	 * row while the book may not. ONE season and not every one, because the cancellation is about one
+	 * season and V38 says a promise for S and one for S+1 can both stand; the other stays pinned.
+	 */
+	void forgetThePromise(long competitorId, int season) {
+		db.sql("delete from balance_promise where competitor_id = ? and season = ?")
+				.params(competitorId, season)
+				.update();
 	}
 
 	/** Every line of one member's book, as it stands. The order is the domain's to impose. */

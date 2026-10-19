@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.Optional;
@@ -104,7 +103,7 @@ import java.util.Optional;
  * the book and ties the reward to activation, and this is the third of the three places a
  * {@code membership} row is written - so leaving it out would make a reward depend on which door
  * the newcomer came through, which no decision says, and here it would be lost for good because
- * nothing may settle the same season twice. See {@link #freeHim}.
+ * nothing may settle the same season twice. See {@link GrantingASeason}, where the write lives.
  *
  * <p><b>WHAT IS DELIBERATELY NOT BUILT HERE, NAMED RATHER THAN DISCOVERED:</b>
  *
@@ -116,7 +115,7 @@ import java.util.Optional;
  * njega se može upisati uplata”), and the place he gave it is the member's row in the
  * moderation of the members („opcije na redu clana u Moderaciji clana”), under the right over
  * the members and with a trail of its own ({@code membership_change}, V63). So a withdrawal
- * is that row's option and its own increment, never a branch of this route.
+ * is that row's option, {@link MemberMembershipApi}, and never a branch of this route.
  * <li><b>No season may be named, so a PAST season cannot be granted.</b> Filling the gap in
  * somebody's history retroactively is a different act with a different question - whether a
  * lapsed member becomes {@code active} again by being given a season he has already lived
@@ -206,8 +205,6 @@ class MembershipWriteApi {
 
 	private final Clock clock;
 
-	private final MemberNumbers numbers;
-
 	/**
 	 * Written by hand for the reason {@link PaymentApi} and {@link RegistrationApi} both
 	 * give: what happens to the competitor and to the membership is one thing that must all
@@ -217,11 +214,12 @@ class MembershipWriteApi {
 	private final TransactionTemplate inOneTransaction;
 
 	/**
-	 * The book, for the one thing this route owes it: whoever brought this member in is paid the
-	 * moment his membership becomes a fact, and an exemption is one of the three ways that happens.
-	 * See {@link #grant} for the decision and for what was measured before it was written.
+	 * What is written once the decision is to grant: the book, the membership with its trail, the
+	 * referrer's reward, the number and {@code active}. Its own class since 19.10.2026, because the
+	 * member's row writes the same exemption ({@link MemberMembershipApi}); every note that stood on
+	 * this route's {@code grant} stands there now.
 	 */
-	private final BalanceBook book;
+	private final GrantingASeason granting;
 
 	/**
 	 * What one member owes for the season, asked ONLY on the ground of a balance.
@@ -239,14 +237,12 @@ class MembershipWriteApi {
 	 */
 	private final CurrencyOfMember currencyOf;
 
-	MembershipWriteApi(JdbcClient db, Clock clock, MemberNumbers numbers,
-			TransactionTemplate inOneTransaction, BalanceBook book, MembershipInvoice invoice,
-			CurrencyOfMember currencyOf) {
+	MembershipWriteApi(JdbcClient db, Clock clock, TransactionTemplate inOneTransaction,
+			GrantingASeason granting, MembershipInvoice invoice, CurrencyOfMember currencyOf) {
 		this.db = db;
 		this.clock = clock;
-		this.numbers = numbers;
 		this.inOneTransaction = inOneTransaction;
-		this.book = book;
+		this.granting = granting;
 		this.invoice = invoice;
 		this.currencyOf = currencyOf;
 	}
@@ -412,8 +408,11 @@ class MembershipWriteApi {
 			case THE_SEASON_IS_ALREADY_HELD -> no(HttpStatus.CONFLICT, THE_MEMBERSHIP_IS_ALREADY_HELD);
 			case NOTHING_WOULD_COME_OFF_THE_BOOK ->
 					no(HttpStatus.CONFLICT, NOTHING_WOULD_COME_OFF_THE_BOOK);
-			case GRANT, GRANT_AND_NUMBER_HIM -> grant(season, competitor.get(), asking,
-					GrantingAMembership.groundIsWrittenAs(question), offTheBook, forgivesMoney);
+			case GRANT, GRANT_AND_NUMBER_HIM -> ResponseEntity.status(HttpStatus.CREATED)
+					.body(new Granted(competitor.get().id(), season, granting.grant(competitor.get().id(),
+							competitor.get().memberNumber(), season,
+							GrantingAMembership.groundIsWrittenAs(question), offTheBook, forgivesMoney,
+							asking.account()).written()));
 		};
 	}
 
@@ -444,147 +443,6 @@ class MembershipWriteApi {
 	 */
 	private Balance.Settlement hisBalanceAgainstTheFee(long competitorId) {
 		return invoice.forMember(competitorId).settled();
-	}
-
-	/**
-	 * WRITES THE MEMBERSHIP, AND THE TWO GROUNDS DIFFER IN TWO PLACES RATHER THAN BEING TWO
-	 * METHODS.
-	 *
-	 * <p>Everything that is the same is the same by construction - the number, {@code active}, the
-	 * referrer being paid, the one transaction around all of it - and what differs is named below
-	 * with what decided it. Two methods would let one of the four common things be edited in one of
-	 * them.
-	 *
-	 * <p><b>WHAT IS THE SAME ON BOTH GROUNDS SINCE V62, AND USED TO DIFFER:</b> the basis is
-	 * written in one place, the {@code membership} row. Until then an exemption also wrote the
-	 * per-person column {@code competitor.membership_basis} and a balance could not, because V7's
-	 * {@code competitor_membership_basis_known} knew two words and not three, so a man activated
-	 * on his balance was called a payer by every screen. The column and its check went with the
-	 * owner's decision of 18.10.2026 (PDL P8, „Osnov clanstva ima jedan dom").
-	 *
-	 * <p><b>1. THE TRAIL OF WHO DECIDED IT IS WRITTEN FOR EVERY ACT THAT FORGIVES MONEY, AND ON A
-	 * SHORT BALANCE IT STANDS IN TWO PLACES.</b> The owner's decision of 03.10.2026, chosen among the
-	 * options put to him (PDL P8, the entry „Trag (ko je odobrio i kada) ide uz svaku radnju koja
-	 * prasta novac"): an exemption from the fee, and „Odobri umanjen iznos iz balansa"; „Odobri iz
-	 * balansa" for the whole fee forgives nothing and goes without one. So the three columns
-	 * {@code V35} added ({@code decided_by}, {@code decided_by_name},
-	 * {@code decided_at}) are written when the ground is the fee being waived AND when the ground is
-	 * the balance and it did not cover the fee ({@code forgivesMoney}, worked out in {@code write}),
-	 * and are left empty otherwise. {@code membership_on_a_balance_carries_its_trail_whole_or_not_at_all}
-	 * (V56) holds the three together on a balance. It cannot hold „a trail exactly when the balance
-	 * fell short", because a row carries no price: deciding which of the two a row gets is this
-	 * method's work, and {@code MembershipWriteApiTest}'s to hold, on both sides of the fee.
-	 * <p><b>The book is the other place, and it is kept.</b> {@code balance_entry.recorded_by},
-	 * {@code recorded_by_name} and {@code occurred_at} (V38) name whoever spent the balance and when.
-	 * That is the record of the money, and it is written on a whole fee too, where the membership
-	 * carries nothing. On a short balance the same account, name and moment stand on the membership
-	 * as well, so „on which memberships was money forgiven, and by whom" is one question on one table
-	 * for an exemption and for a short balance alike (ADL, the entry of 09.10.2026 under the decision
-	 * of 03.10.2026).
-	 * <p><b>WHAT THIS PARAGRAPH SAID UNTIL 09.10.2026, written out because it was the premise and it
-	 * is overturned.</b> It said that for a balance the trail was {@code balance_entry.recorded_by} and
-	 * {@code recorded_by_name} and nothing else, „so the trail has one home per ground and the same act
-	 * is never recorded twice", and that filling the membership columns on a balance would make „who
-	 * activated this" answerable from two tables with nothing saying which is right. The owner's
-	 * decision of 03.10.2026 overturned it, and the fact is now recorded twice on purpose. What keeps
-	 * two homes one answer is not a sentence but a case: {@code theTrailOnTheRowIsTheTrailInTheBook}
-	 * reads both for one press and requires the same account, the same name and the same moment. Both
-	 * are written in this transaction, from this request's account and from this clock (two readings
-	 * of it, microseconds apart in production and one instant under the fixed clock of the cases).
-	 * <p><b>The member's own door writes no trail, and that is right rather than missing.</b>
-	 * {@link MyMembershipWriteApi} only ever spends a balance that covers the fee, so the act forgives
-	 * nothing there, exactly as a whole fee forgives nothing here.
-	 *
-	 * <p><b>2. THE BOOK IS WRITTEN FIRST, AND ONLY ON THE GROUND THAT SPENDS.</b> V38 gives
-	 * {@code membership} a {@code balance_entry_id} and
-	 * {@code membership_basis_says_whether_a_book_entry_is_named} refuses a {@code balance}
-	 * membership naming none, so the order is not a preference. An exemption takes nothing off
-	 * anybody: {@link BalanceBook} carries the reason and PDL 11.08.2026 is where it comes from.
-	 *
-	 * @param basis         the word {@code membership.basis} is to carry, as
-	 *                      {@link GrantingAMembership#groundIsWrittenAs} spells it
-	 * @param offTheBook    what this activation takes out of his book, already worked out and already
-	 *                      known not to be nothing on the ground that spends
-	 * @param forgivesMoney whether this act forgives money, which is what decides whether the trail
-	 *                      is written: an exemption always, a balance when it fell short of the fee.
-	 *                      Worked out once in {@code write}, from the settlement the amount came from
-	 */
-	private ResponseEntity<?> grant(int season, CompetitorRow competitor, WhoIsAsking.Member asking,
-			String basis, Balance.Money offTheBook, boolean forgivesMoney) {
-
-		String enteredByName = db.sql("select first_name || ' ' || last_name from account where id = ?")
-				.param(asking.account()).query(String.class).single();
-
-		boolean freeOfTheFee = FEE_EXEMPT.equals(basis);
-
-		/* THE LINE IN THE BOOK BEFORE THE MEMBERSHIP THAT NAMES IT, for the reason point 2 gives.
-		   `spentOnAMembership` is where the sign lives, so what is handed over is money he HAS and
-		   the minus is the book's business rather than this route's. */
-		Long entry = freeOfTheFee ? null
-				: book.spentOnAMembership(competitor.id(), season, offTheBook, asking.account(),
-						enteredByName);
-
-		/* THE TRAIL, THREE COLUMNS OR NONE, which is what V56 asks of a balance and V35 of an
-		   exemption: the account that is asking, the name it carries now (copied, because the name is
-		   what outlives the account), and this clock's instant. All three come from the request's own
-		   principal and never from the body or from the member being activated, so a moderator who
-		   activates himself is named, and is named because he asked. */
-		db.sql("insert into membership (competitor_id, season, basis, payment_id, balance_entry_id,"
-						+ " decided_by, decided_by_name, decided_at) values (?, ?, ?, null, ?, ?, ?, ?)")
-				.params(competitor.id(), season, basis, entry,
-						forgivesMoney ? asking.account() : null,
-						forgivesMoney ? enteredByName : null,
-						forgivesMoney ? Timestamp.from(clock.instant()) : null)
-				.update();
-
-		/* AND WHOEVER BROUGHT HIM IN IS PAID, HERE TOO, because the owner said so in as many words on
-		   13.08.2026: „OK je da se za preporuku dobije balans cak i ako je preporucen clan dobio
-		   pocasnu aktivaciju." PDL ties the reward to ACTIVATION („Iznos leze na balans automatski, u
-		   trenutku kad se novom clanu aktivira clanarina") and says nothing about how it was paid
-		   for, and an exemption is one of the three ways a `membership` row comes to exist.
-
-		   WHY THIS IS NOT A CONVENIENCE BUT THE ONLY MOMENT THERE IS. A member freed of the fee can
-		   never afterwards come through the paying door - `THE_FEE_IS_ALREADY_RECORDED` refuses a
-		   second act on a season already held, and `PaymentApi` refuses him likewise - so a reward
-		   not written here is a reward LOST FOR GOOD. Measured on this branch before it was written:
-		   the grant answered 201, the referrer's book stayed empty, and the same man through the
-		   payments door answered 409.
-
-		   V38's carry says of this exact case that it leaves such a referral „rewarded by whatever
-		   route records that exemption, the day it exists". This is that route and that day.
-
-		   `on conflict (referred_competitor_id) do nothing` inside `aReferralWasActivated` is what
-		   keeps it once per member brought in, so a man freed of the fee for a second season earns
-		   his referrer nothing further, and it is silent rather than an error. Inside the one
-		   transaction this route already opens, so the entry and the membership stand or fall
-		   together. */
-		book.aReferralWasActivated(competitor.id(), asking.account(), enteredByName);
-
-		/* AND ONLY NOW IS A NUMBER DRAWN, AFTER EVERY ROW THE DATABASE COULD STILL REFUSE, which is
-		   the order the two other doors to the same fact already keep: `PaymentApi.recordIt` draws
-		   last and `MyMembershipWriteApi.letHimIn` draws after its own `insert into membership`.
-		   `member_number_seq` is not transactional, so a number drawn ahead of a booking the
-		   database then refuses is spent for good, and the owner's rule is „Clanski broj se nikad ne
-		   dodeljuje dvaput" (PDL 31.07.2026). `MemberNumbers` used to record why this route alone
-		   drew first, and the reason it gave - that no case could fail on the move - is answered by
-		   `FreeingTwiceAtOneInstantTest.aBookingTheDatabaseRefusesDrawsNoNumber`.
-
-		   THE NUMBER AND THE FLAG, AND NOTHING ELSE ON `competitor`. `active` is what every public
-		   reader ends on (`where c.active`, ten of them), and PDL:3417 says an activation shows
-		   „odmah" exactly as a booked payment does. Both are written whether or not a number was
-		   drawn, so the facts cannot come apart, and on both grounds alike: the basis is the row
-		   written above and has no second home since V62. Nothing written above reads either of the
-		   two: the book and the referral touch `balance_entry`, and the only column of `competitor`
-		   they read is `referred_by`. */
-		MemberNumber number = competitor.memberNumber() == null
-				? numbers.draw()
-				: new MemberNumber(competitor.memberNumber());
-
-		db.sql("update competitor set member_number = ?, active = true where id = ?")
-				.params(number.written(), competitor.id()).update();
-
-		return ResponseEntity.status(HttpStatus.CREATED)
-				.body(new Granted(competitor.id(), season, number.written()));
 	}
 
 	private static ResponseEntity<?> no(HttpStatus status, String reason) {

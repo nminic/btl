@@ -100,6 +100,22 @@ class BookingAPayment {
 	}
 
 	Booked book(PaymentApi.Confirm typed, String reference, WhoIsAsking.Member asking) {
+		/* THE DAY THE MONEY IS BOOKED, NEVER A DAY ANYBODY TYPES: PDL, POTVRDJENO
+		   13.09.2026. Read once here so the lookup below and the row {@code recordIt}
+		   writes both name the same season {@link RegistrationApi} would compute for
+		   this same instant. */
+		return book(typed, reference, asking, SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock)));
+	}
+
+	/**
+	 * THE SAME BOOKING FOR A SEASON THE CALLER HAS ALREADY READ OFF THE CLOCK, for the one caller
+	 * that has to: {@link MemberMembershipApi} takes an exemption off a season and books a payment in
+	 * its place, in one transaction, and the two must be about one season. Two readings of the clock
+	 * would part across midnight of 15 October and delete the exemption of one year while booking the
+	 * next. The season is still the clock's, never the request's: that caller reads
+	 * {@link SeasonClock#seasonBeingPaidFor} too, once.
+	 */
+	Booked book(PaymentApi.Confirm typed, String reference, WhoIsAsking.Member asking, int season) {
 		Optional<CompetitorRow> competitor = db.sql(
 						"select id, birth_date, member_number from competitor where id = ?")
 				.param(typed.competitorId())
@@ -111,12 +127,6 @@ class BookingAPayment {
 			return new Booked(PaymentApi.no(HttpStatus.BAD_REQUEST,
 					PaymentApi.THE_COMPETITOR_DOES_NOT_EXIST), null);
 		}
-
-		/* THE DAY THE MONEY IS BOOKED, NEVER A DAY ANYBODY TYPES: PDL, POTVRDJENO
-		   13.09.2026. Read once here so the lookup below and the row {@code recordIt}
-		   writes both name the same season {@link RegistrationApi} would compute for
-		   this same instant. */
-		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
 
 		Optional<ExistingPayment> existing = db.sql(
 						"select id, state from payment where competitor_id = ? and season = ?")
