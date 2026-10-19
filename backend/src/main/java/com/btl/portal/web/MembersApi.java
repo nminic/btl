@@ -1,18 +1,25 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.balance.Balance;
 import com.btl.portal.domain.category.Category;
+import com.btl.portal.domain.pricing.Currency;
+import com.btl.portal.domain.pricing.MembershipPrice;
 import com.btl.portal.domain.season.SeasonClock;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.LocalDate;
+import java.time.MonthDay;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * THE MEMBERS AS THE MODERATION OF THE MEMBERS READS THEM: every one who was ever given a member
@@ -51,9 +58,15 @@ class MembersApi {
 
 	private final Clock clock;
 
-	MembersApi(JdbcClient db, Clock clock) {
+	private final PriceRows priceRows;
+
+	private final BalanceBook book;
+
+	MembersApi(JdbcClient db, Clock clock, PriceRows priceRows, BalanceBook book) {
 		this.db = db;
 		this.clock = clock;
+		this.priceRows = priceRows;
+		this.book = book;
 	}
 
 	/**
@@ -76,12 +89,34 @@ class MembersApi {
 	 *                         empty and never absent for a member who holds none. The screen's column
 	 *                         „Poslednja sezona" is the last of these, so the fact has this one home
 	 *                         (PDL P8, „Kolona sa poslednjom sezonom u moderaciji broji svaki osnov”)
+	 * @param seasonOnSale     the season the four figures below are about, which is the season a
+	 *                         payment recorded on this row buys ({@link SeasonClock#seasonBeingPaidFor};
+	 *                         PDL P8, „do 14.10. samo tekuća, od 15.10. samo naredna”), so a question
+	 *                         put about it names its year. One reading of the clock for the whole answer
+	 * @param currency         the money he is billed in, from his country ({@link Currency#of})
+	 * @param expected         what he sends for the season on sale, the processing fee included: the
+	 *                         payments screen's „Očekivan iznos”, worked out the same way
+	 *                         ({@link PaymentsDueApi})
+	 * @param price            the membership without the fee, which is what a balance is measured
+	 *                         against (PDL, „Članarina plaćena iz balansa ne nosi taksu”)
+	 * @param balance          what his book holds, in his money. The four are answered to the
+	 *                         administration over the members by the owner's decision of 18.10.2026
+	 *                         (PDL P8, „Moderator sa pravom nad članovima vidi balans i očekivani iznos
+	 *                         svakog člana na redu u moderaciji, isto kao na ekranu Uplate”), so that
+	 *                         recording a payment on the row asks „Prihvatam umanjen ukupan iznos?”
+	 *                         before anything is sent
 	 */
 	record Member(String memberNumber, String firstName, String lastName, String gender,
 			String city, String ageBand, boolean firstSeason2027, boolean active,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer membershipSeason,
-			List<Season> seasons) {
+			List<Season> seasons, int seasonOnSale, String currency, BigDecimal expected,
+			BigDecimal price, BigDecimal balance) {
+	}
+
+	private record Row(long id, String memberNumber, String firstName, String lastName, String gender,
+			String city, boolean firstSeason2027, boolean active, String basis, int birthYear,
+			String countryCode) {
 	}
 
 	@GetMapping("/api/members")
@@ -104,11 +139,16 @@ class MembersApi {
 						.add(new Season(row.getInt(2), row.getString(3))))
 				.list();
 
-		return db.sql("select c.id, c.member_number, c.first_name, c.last_name, c.gender,"
+		List<Row> rows = db.sql("select c.id, c.member_number, c.first_name, c.last_name, c.gender,"
 						+ " coalesce(town.name, c.city) as city, c.first_season_2027, c.active,"
-						+ " sold.basis, c.birth_year"
+						+ " sold.basis, c.birth_year,"
+						/* THE COUNTRY THROUGH BOTH OF ITS HOMES, the shape `PaymentsDueApi` reads the
+						   same column with: V7 makes exactly one of the two present. */
+						+ " coalesce(town_country.code, typed_country.code) as country_code"
 						+ " from competitor c"
 						+ " left join place town on town.id = c.place_id"
+						+ " left join country town_country on town_country.id = town.country_id"
+						+ " left join country typed_country on typed_country.id = c.country_id"
 						/* `membership_pk` is (competitor, season), so this joins at most one row. */
 						+ " left join membership sold on sold.competitor_id = c.id"
 						+ "  and sold.season = :sold"
@@ -116,16 +156,35 @@ class MembersApi {
 						+ " where c.member_number is not null"
 						+ " order by c.member_number")
 				.param("sold", sold)
-				.query((row, one) -> {
-					String basis = row.getString(9);
-
-					return new Member(row.getString(2), row.getString(3), row.getString(4),
-							row.getString(5), row.getString(6),
-							Category.ageBandFor(row.getInt(10), season).code(),
-							row.getBoolean(7), row.getBoolean(8),
-							basis, basis == null ? null : sold,
-							List.copyOf(held.getOrDefault(row.getLong(1), List.of())));
-				})
+				.query((row, one) -> new Row(row.getLong(1), row.getString(2), row.getString(3),
+						row.getString(4), row.getString(5), row.getString(6), row.getBoolean(7),
+						row.getBoolean(8), row.getString(9), row.getInt(10), row.getString(11)))
 				.list();
+
+		/* EVERY MEMBER'S MONEY, THEN THE BOOK AND THE PRICE LIST ONE READING EACH FOR THE WHOLE ANSWER,
+		   which is `PaymentsDueApi`'s order and its reason: read per row, the price list could cross an
+		   administrator's edit half way down one list. */
+		Map<Long, Currency> monies = rows.stream().collect(
+				Collectors.toMap(Row::id, one -> Currency.of(one.countryCode())));
+		Map<Long, Balance.Money> books = book.forEveryOneOf(monies);
+		List<MembershipPrice.Row> priceList = priceRows.all();
+		MonthDay today = MonthDay.from(LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE));
+
+		return rows.stream().map(one -> {
+			Currency his = monies.get(one.id());
+
+			/* THE SEASON ON SALE AND NOT THE SEASON THE BAND IS WORKED OUT FOR, which is the one read
+			   above for the band: from 15 October the two are different years, and the junior price
+			   follows the season paid for (`MembershipPrice.on`). */
+			MembershipPrice.Price price = MembershipPrice.on(priceList, today, one.birthYear(), sold, his);
+
+			return new Member(one.memberNumber(), one.firstName(), one.lastName(), one.gender(),
+					one.city(), Category.ageBandFor(one.birthYear(), season).code(),
+					one.firstSeason2027(), one.active(),
+					one.basis(), one.basis() == null ? null : sold,
+					List.copyOf(held.getOrDefault(one.id(), List.of())),
+					sold, his.name(), price.amount().add(price.fee()), price.amount(),
+					books.get(one.id()).amount());
+		}).toList();
 	}
 }

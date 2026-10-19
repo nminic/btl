@@ -309,6 +309,11 @@ describe('which fields the portal serves', () => {
        a person: his name, town and category, whether his fee stands, and every season he was a member
        of on its basis. Served to the administration over the members alone. Added to the snapshot
        by hand, as this file requires; the two seasons it carries are named in `MAY_HOLD_A_YEAR`.
+       Eighteen paths the same day, when a payment began to be recorded on the row: the season on
+       sale and what a payment for it would be, in his money (`seasonOnSale`, `currency`, `expected`,
+       `price`, `balance`; PDL P8, „Moderator sa pravom nad članovima vidi balans i očekivani iznos
+       svakog člana na redu u moderaciji”). The season is the third named in `MAY_HOLD_A_YEAR`; the
+       four amounts are money, and in the file they are 43, 40, 4800, 6000, 12.75 and 0.
 
        **Twenty files since 18.10.2026: `results/runners.json`, the list a moderator who checks
        results picks a member from on the event page (`ResultsByTheLeagueApi`, PDL P9, 18.10.2026,
@@ -419,6 +424,11 @@ describe('what the portal serves about how old somebody is', () => {
        člana”), which `membership` cannot hold before 2027. Served to the moderation of the members
        only. Their value in the file is 2027, the first season of the league. */
     'members.json:membershipSeason',
+    /* AND THE SEASON ON SALE ITSELF, since 18.10.2026, the same fact as `payments.json:season` below
+       and for the same reason: the year a payment recorded on the row is FOR, read once off the
+       clock (`SeasonClock.seasonBeingPaidFor`). It is not a year of birth and cannot become one; its
+       value in the file is 2027, the first season of the league. */
+    'members.json:seasonOnSale',
     'members.json:seasons.season',
     'pairs.json:season',
     /* THE THIRD SEASON ON THIS LIST, and it is a season in exactly the sense the two above

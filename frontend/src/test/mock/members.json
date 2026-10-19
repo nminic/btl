@@ -15,7 +15,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000002",
@@ -33,7 +38,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000003",
@@ -51,7 +61,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000004",
@@ -69,7 +84,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000005",
@@ -87,7 +107,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000006",
@@ -105,7 +130,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000007",
@@ -123,7 +153,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "EUR",
+    "expected": 43,
+    "price": 40,
+    "balance": 0
   },
   {
     "memberNumber": "000008",
@@ -141,7 +176,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "EUR",
+    "expected": 43,
+    "price": 40,
+    "balance": 0
   },
   {
     "memberNumber": "000009",
@@ -159,7 +199,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "EUR",
+    "expected": 43,
+    "price": 40,
+    "balance": 0
   },
   {
     "memberNumber": "000010",
@@ -170,7 +215,12 @@
     "ageBand": "25-39",
     "firstSeason2027": false,
     "active": true,
-    "seasons": []
+    "seasons": [],
+    "seasonOnSale": 2027,
+    "currency": "EUR",
+    "expected": 43,
+    "price": 40,
+    "balance": 12.75
   },
   {
     "memberNumber": "000011",
@@ -188,7 +238,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000012",
@@ -206,7 +261,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000013",
@@ -224,7 +284,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000014",
@@ -242,7 +307,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000015",
@@ -260,7 +330,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000016",
@@ -278,7 +353,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000017",
@@ -296,7 +376,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "EUR",
+    "expected": 43,
+    "price": 40,
+    "balance": 0
   },
   {
     "memberNumber": "000018",
@@ -314,7 +399,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "EUR",
+    "expected": 43,
+    "price": 40,
+    "balance": 0
   },
   {
     "memberNumber": "000019",
@@ -332,7 +422,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "EUR",
+    "expected": 43,
+    "price": 40,
+    "balance": 0
   },
   {
     "memberNumber": "000020",
@@ -350,7 +445,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "EUR",
+    "expected": 43,
+    "price": 40,
+    "balance": 0
   },
   {
     "memberNumber": "000021",
@@ -368,7 +468,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000022",
@@ -386,7 +491,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000023",
@@ -404,7 +514,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000024",
@@ -422,7 +537,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000025",
@@ -440,7 +560,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000026",
@@ -458,7 +583,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   },
   {
     "memberNumber": "000027",
@@ -476,7 +606,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "EUR",
+    "expected": 43,
+    "price": 40,
+    "balance": 0
   },
   {
     "memberNumber": "000028",
@@ -494,7 +629,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "EUR",
+    "expected": 43,
+    "price": 40,
+    "balance": 0
   },
   {
     "memberNumber": "000029",
@@ -512,7 +652,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "EUR",
+    "expected": 43,
+    "price": 40,
+    "balance": 0
   },
   {
     "memberNumber": "000030",
@@ -530,7 +675,12 @@
         "season": 2027,
         "basis": "feeExempt"
       }
-    ]
+    ],
+    "seasonOnSale": 2027,
+    "currency": "EUR",
+    "expected": 43,
+    "price": 40,
+    "balance": 0
   },
   {
     "memberNumber": "000031",
@@ -541,7 +691,12 @@
     "ageBand": "24-",
     "firstSeason2027": true,
     "active": true,
-    "seasons": []
+    "seasons": [],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 6000
   },
   {
     "memberNumber": "000032",
@@ -552,6 +707,11 @@
     "ageBand": "40-54",
     "firstSeason2027": false,
     "active": false,
-    "seasons": []
+    "seasons": [],
+    "seasonOnSale": 2027,
+    "currency": "RSD",
+    "expected": 4800,
+    "price": 4800,
+    "balance": 0
   }
 ]

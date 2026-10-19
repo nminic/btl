@@ -19,6 +19,7 @@ import { WHEN_WRITING_A_PRICE } from '../admin/priceWrites'
 import { must } from '../../test/at'
 import { WHEN_WRITING_A_MODERATOR } from '../admin/moderatorWrites'
 import { WHEN_ACTIVATING, WHEN_BOOKING_A_PAYMENT } from '../admin/activation'
+import { WHEN_RECORDING_ON_THE_ROW } from '../admin/memberPayment'
 import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
 import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_CHOOSING_THE_LANGUAGE_OF_MAIL } from '../member/mailLanguage'
@@ -406,7 +407,11 @@ describe('the reasons the server can name', () => {
        02.10.2026, „Iznosi se unose kao celi brojevi", and POTVRĐENO 03.10.2026 for the amount of a
        payment as well). The field takes digits only (`AN_AMOUNT`), so the screen cannot send one,
        and it is answered anyway for the reason every unreachable name on this list is. */
-    ['PaymentApi.java', [WHEN_BOOKING_A_PAYMENT], 11],
+    /* TWO SCREENS SINCE 18.10.2026 AND THE SAME ELEVEN NAMES: the member's row in the moderation of
+       the members books through the same class (`MemberPaymentApi`, which declares no reason of its
+       own and answers `PaymentApi`'s), so its map is registered here, for the direction that has
+       teeth: a reason added to it that this file cannot answer fails the second case. */
+    ['PaymentApi.java', [WHEN_BOOKING_A_PAYMENT, WHEN_RECORDING_ON_THE_ROW], 11],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A RACING PAIR.
        Seven constants, and the count splits three ways: three are not refusals at all
        (`NOT_A_REASON` above), two are real refusals of the act that ASKS rather than answers

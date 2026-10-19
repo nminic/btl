@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Resource } from '../../components/Resource'
 import { clearResourceCache } from '../../data/client'
 import type { Member } from '../../data/types'
-import { combinePair, useCompetitors, useMembers } from '../../data/useResource'
+import { combinePair, theInboxHasChanged, useCompetitors, useMembers } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { askTheServer, type Answer } from '../account/askTheServer'
@@ -13,6 +13,7 @@ import { DeleteRecord } from './EntityEditor'
 import { MEMBERS, recordsOf } from './entityForms'
 import { DELETE_THE_ACCOUNT, WHEN_DELETING_A_MEMBER } from './memberWrites'
 import { useOverlay } from './overlay'
+import { RowPayment } from './RowPayment'
 import '../member/Member.css'
 
 /** Where the focus goes once a row is gone, which on this screen is the one
@@ -61,8 +62,12 @@ function passes(one: Member, filter: MemberFilter): boolean {
  * Measured over `backend/src/main/java`, which declares three (verb, address)
  * pairs for a member and no `PUT` among them:
  *
- * 1. **Deleting sends `DELETE /api/competitors/{memberNumber}`** and is the whole
- *    of what this file has anything to say about.
+ * 1. **Deleting sends `DELETE /api/competitors/{memberNumber}`**, and was the whole
+ *    of what this file had anything to say about until 18.10.2026. Since that day a
+ *    row also records a payment, `POST /api/members/{memberNumber}/payment`
+ *    (`RowPayment.tsx`; PDL P8, „Na redu člana u moderaciji: upis uplate za sezonu”),
+ *    so the screen sends two verbs and the heading above is about the day it was
+ *    written.
  *
  * 2. **„Nov član" is gone, because the route that looks like its home is a
  *    different act.** `POST /api/competitors` is the GROUP entry that sends
@@ -112,7 +117,12 @@ export function AdminMembers() {
      REASONING, by analogy with the owner's rule for the tables of past years („Ime neaktivnog člana
      ostaje vidljivo u istorijskim tabelama te godine, ali kao običan tekst, bez linka”): his profile
      is shown to nobody, so a link to it would open „Ovog profila nema". */
-  const state = combinePair(useMembers(), useCompetitors())
+  /* HOW MANY PAYMENTS THIS VISIT HAS RECORDED ON A ROW, and nothing else moves it: a recorded
+     payment changes what both answers say about the member it was for, and `useResource` reads once
+     as it mounts, so the count is what asks again (`HowToRead.revision`). A remount would do the
+     same and would take the filter and the search with it. */
+  const [recorded, setRecorded] = useState(0)
+  const state = combinePair(useMembers(recorded), useCompetitors(recorded))
 
   /** What just happened, for whoever is not watching the list. */
   const [said, setSaid] = useState('')
@@ -200,6 +210,23 @@ export function AdminMembers() {
        early would free a number the database still holds and hand it to the next
        activated membership. */
     remove(MEMBERS.id, one.memberNumber)
+  }
+
+  /**
+   * A PAYMENT WAS RECORDED ON A ROW, and every answer that says something different about him now
+   * is dropped. The three names are `Payments.tsx#onActivated`'s, for its reason: the booking writes
+   * his season, his payment and his `active`, so the payments screen must no longer list him for that
+   * season, and this list and the public one must read him again. And his inbox, because the member
+   * is told there (PDL P8, „Upis uplate ... stižu članu kao poruka u portalskom sandučetu”) and the
+   * row may be the moderator's own (PDL P8, „smeju da rade na sopstvenom redu”).
+   */
+  function paymentRecorded(): void {
+    clearResourceCache('payments')
+    clearResourceCache('members')
+    clearResourceCache('competitors')
+    theInboxHasChanged()
+    setRecorded((was) => was + 1)
+    setSaid(t('admin.paymentRecorded'))
   }
 
   return (
@@ -352,6 +379,14 @@ export function AdminMembers() {
                           </td>
                           <td>{last?.season}</td>
                           <td>
+                            {/* „UPIS UPLATE" ONLY FOR A MEMBER WHO HOLDS NO SEASON ON SALE. A row that
+                                already carries a basis for it has nothing to book: a season held on a
+                                payment is the harmless repeat, and one held on an exemption or a
+                                balance is refused, because a payment over it arrives with the change of
+                                basis and not here. */}
+                            {one.membershipBasis === undefined && (
+                              <RowPayment one={one} onRecorded={paymentRecorded} />
+                            )}
                             <span className="entity-row-actions">
                               <DeleteRecord
                                 name={`${one.firstName} ${one.lastName}`}

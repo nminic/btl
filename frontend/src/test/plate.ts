@@ -69,6 +69,13 @@ export function asMember(competitor: Competitor, over: Partial<Member> = {}): Me
       membershipBasis === undefined || membershipSeason === undefined
         ? []
         : [{ season: membershipSeason, basis: membershipBasis }],
+    /* The figures of the season on sale as a member in Serbia with an empty book is answered them on
+       a day in the renewal window: 2027, 4.800 dinars, no fee. */
+    seasonOnSale: 2027,
+    currency: 'RSD',
+    expected: 4800,
+    price: 4800,
+    balance: 0,
     ...over,
   }
 }

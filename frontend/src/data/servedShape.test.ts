@@ -325,6 +325,11 @@ const aMember = {
     { season: 2027, basis: 'payment' as const },
     { season: 2028, basis: 'balance' as const },
   ],
+  seasonOnSale: 2028,
+  currency: 'RSD',
+  expected: 4200,
+  price: 4200,
+  balance: 120,
 }
 
 const aLapsedMember = {
@@ -337,6 +342,11 @@ const aLapsedMember = {
   firstSeason2027: true,
   active: false,
   seasons: [],
+  seasonOnSale: 2028,
+  currency: 'EUR',
+  expected: 38,
+  price: 35,
+  balance: 0,
 }
 
 const readAsMember: Member = aMember
