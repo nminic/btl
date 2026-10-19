@@ -53,7 +53,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * the book the restatement had already emptied or spend out of a book the restatement had already
  * read. {@link MemberPaymentApi} takes {@code select ... for update} on the row first; this screen
  * did not, so a press on the row and a press on the screen for one member and one season were not
- * ordered either.
+ * ordered either. The member's own activation on his balance ({@link MyMembershipWriteApi}) reads
+ * the same two facts and took no lock either (review of PR 576), so it is measured here the same way.
  *
  * <p><b>NOT {@code @Transactional}, and the order is taken from the lock manager and not from the
  * scheduler</b>: the case holds a lock itself, submits the FIRST request, waits until the lock manager
@@ -223,6 +224,89 @@ class ThePaymentsScreenLocksTheMemberTest {
 	void aChangeOfCountryThatCommitsInTheMiddleOfABookingLeavesNoCurrencyOfHisBookBelowNought()
 			throws Exception {
 
+		List<MockHttpServletResponse> both = hisChangeOfCountryCommitsInTheMiddleOf(
+				this::theScreenBooksHimWithHisBalance);
+
+		assertThat(both.get(0).getStatus()).as("the screen's booking").isEqualTo(201);
+		assertThat(both.get(1).getStatus()).as("his change of country").isEqualTo(200);
+
+		assertNoCurrencyOfHisBookIsBelowNought();
+	}
+
+	/**
+	 * THE SAME INTERLEAVING WITH HIS OWN ACTIVATION ON HIS BALANCE ({@code POST /api/me/membership}) in
+	 * the place of the screen, which review of PR 576 measured on this branch before
+	 * {@link MyMembershipWriteApi} took the lock: 45 euro on the book, the activation spent 35 and
+	 * waited on the reward, his change of country moved the 45, and the book ended {@code referral 5
+	 * EUR, referral 40 EUR, membership -35 EUR, conversion -45 EUR, conversion 5400 RSD}.
+	 */
+	@Test
+	void aChangeOfCountryThatCommitsInTheMiddleOfHisOwnActivationLeavesNoCurrencyBelowNoughtEither()
+			throws Exception {
+
+		db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
+						+ " referred_competitor_id, occurred_at, recorded_by_name) values"
+						+ " (?, 100, 'EUR', 'referral', ?, timestamptz '2027-10-03 09:00:00+00',"
+						+ " 'Neko Ko Je Knjizio')")
+				.params(himself, referrer).update();
+
+		List<MockHttpServletResponse> both = hisChangeOfCountryCommitsInTheMiddleOf(this::heActivatesHimself);
+
+		assertThat(both.get(0).getStatus()).as("his activation on his balance").isEqualTo(201);
+		assertThat(both.get(1).getStatus()).as("his change of country").isEqualTo(200);
+
+		assertNoCurrencyOfHisBookIsBelowNought();
+		assertThat(db.sql("select count(*) from membership where competitor_id = ? and season = 2028"
+						+ " and basis = 'balance'")
+				.param(himself).query(Long.class).single()).isOne();
+	}
+
+	/**
+	 * TWO PRESSES ON THE SCREEN ITSELF, queued behind a held row: one books and the other is the
+	 * harmless repeat. The case a lock weaker than {@code for update} fails on its status: with
+	 * {@code for share} the two take the share together and each waits on the other's upgrade, so the
+	 * second is answered 500 ({@code deadlock detected}).
+	 */
+	@Test
+	void twoPressesOnTheScreenAtOnceBookOnePaymentAndTheSecondIsTheRepeat() throws Exception {
+		List<MockHttpServletResponse> both = inThisOrder("for update",
+				this::theScreenBooksHimWithHisBalance, this::theScreenBooksHimWithHisBalance);
+
+		assertThat(both.stream().map(MockHttpServletResponse::getStatus).sorted().toList())
+				.as("the second press on the screen was answered with a fault, or both booked him")
+				.containsExactly(200, 201);
+
+		assertThat(db.sql("select count(*) from payment where competitor_id = ? and season = 2028")
+				.param(himself).query(Long.class).single()).isOne();
+	}
+
+	/** TWO ACTIVATIONS ON HIS OWN BALANCE AT ONCE: one lets him in and the other is told he is a member. */
+	@Test
+	void twoActivationsOnHisBalanceAtOnceLetHimInOnceAndTheSecondIsRefused() throws Exception {
+		db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
+						+ " referred_competitor_id, occurred_at, recorded_by_name) values"
+						+ " (?, 100, 'EUR', 'referral', ?, timestamptz '2027-10-03 09:00:00+00',"
+						+ " 'Neko Ko Je Knjizio')")
+				.params(himself, referrer).update();
+
+		List<MockHttpServletResponse> both = inThisOrder("for update",
+				this::heActivatesHimself, this::heActivatesHimself);
+
+		assertThat(both.stream().map(MockHttpServletResponse::getStatus).sorted().toList())
+				.as("the second activation was answered with a fault, or both let him in")
+				.containsExactly(201, 409);
+
+		assertThat(db.sql("select count(*) from membership where competitor_id = ? and season = 2028")
+				.param(himself).query(Long.class).single()).isOne();
+	}
+
+	/**
+	 * THE BOOKING IS STARTED, STOPPED ONE STATEMENT FROM ITS END, AND HIS CHANGE OF COUNTRY IS RUN TO ITS
+	 * COMMIT; then the booking is let go. Answers the booking first and the change second.
+	 */
+	private List<MockHttpServletResponse> hisChangeOfCountryCommitsInTheMiddleOf(
+			Callable<MockHttpServletResponse> booking) throws Exception {
+
 		ExecutorService pool = Executors.newFixedThreadPool(2);
 		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
 		MockHttpServletResponse changed;
@@ -244,7 +328,7 @@ class ThePaymentsScreenLocksTheMemberTest {
 						.isZero();
 
 				try {
-					submitted.add(pool.submit(this::theScreenBooksHimWithHisBalance));
+					submitted.add(pool.submit(booking));
 					untilThisManyAreStopped(1, submitted);
 
 					Future<MockHttpServletResponse> hisChange = pool.submit(this::movesToSerbia);
@@ -261,12 +345,7 @@ class ThePaymentsScreenLocksTheMemberTest {
 				}
 			});
 
-			MockHttpServletResponse booked = submitted.get(0).get(30, TimeUnit.SECONDS);
-
-			assertThat(changed.getStatus()).as("his change of country").isEqualTo(200);
-			assertThat(booked.getStatus()).as("the screen's booking").isEqualTo(201);
-
-			assertNoCurrencyOfHisBookIsBelowNought();
+			return List.of(submitted.get(0).get(30, TimeUnit.SECONDS), changed);
 		} finally {
 			pool.shutdownNow();
 		}
@@ -466,6 +545,11 @@ class ThePaymentsScreenLocksTheMemberTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"competitorId\": " + himself + ", \"received\": 1,"
 						+ " \"useTheBalance\": " + withTheBalance + ", \"method\": \"paypal\"}"));
+	}
+
+	private MockHttpServletResponse heActivatesHimself() throws Exception {
+		return answered(post("/api/me/membership").with(csrf())
+				.cookie(new Cookie(SessionCookie.NAME, memberCookie)));
 	}
 
 	private MockHttpServletResponse theRowBooksHim() throws Exception {
