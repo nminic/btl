@@ -2569,71 +2569,301 @@ class VerificationWriteApiTest {
 	}
 
 	/**
-	 * AN EVENT THAT IS IN THE CALENDAR ALREADY REFUSES THE APPROVAL, AND NOTHING IS WRITTEN.
+	 * A NAME AND A YEAR THAT ALREADY HAVE AN EVENT PUT THE NEW RACE ON THAT EVENT, AND NO EVENT IS
+	 * MADE.
 	 *
-	 * <p>PDL, the owner's answer of 10.10.2026: „ako događaj postoji a trke nema, odobrenje se
-	 * odbija, a moderator trku dodaje kroz Administraciju", the outcome worded „odbija se zbog
-	 * adrese događaja". So the event exists when its ADDRESS does, and two runs are refused here
+	 * <p>PDL P9, owner, 19.10.2026: „Isti naziv ne pravi drugi događaj: Pa ne moze da se desi jer ce
+	 * autocomplete odmah povezati sa postojecim dogadjajem [...] Ukoliko unesem naziv koji ne
+	 * postoji, pravi se novi", and, choosing among the outcomes offered: „Nova trka na postojećem
+	 * događaju: moderator pri odobrenju odlučuje vrstu i dužinu, i trka nastaje na postojećem
+	 * događaju zajedno sa rezultatom. Obara deo odluke od 10.10.2026 (odobrenje se tada odbijalo)."
+	 * Until that day this case was the refusal.
+	 *
+	 * <p><b>The event is found by its ADDRESS, the name and the year</b>, so the two runs meet it
 	 * along the two ways an address can be met: „Zimska trka" by the very name of an event of that
 	 * year, and „Trka Čačak" by a name spelt with letters the address does not keep, which is
-	 * „Trka Cacak"'s address. A numbered address of the same name stands beside the first, so a
-	 * check that asked whether the name had been NUMBERED would let it through.
+	 * „Trka Cacak"'s address. <b>A numbered address of the same name stands beside the first</b>, so
+	 * a lookup that took the first event whose name matched, or the last, could land on it.
 	 *
-	 * <p><b>Nothing is written, and the runs wait as they were sent</b>: no event, no race, no
-	 * result, the submissions still describing the race the members typed. The refusal comes
-	 * before the row is claimed, so the second case in the committing class
-	 * ({@code VerificationDecisionConcurrencyTest}) is the one about an address taken after it.
+	 * <p><b>The events have no race of their own</b>, so each now begins on the day of the one race
+	 * it holds, which is the member's day ({@code RaceWriteApi}'s rule, „Datum dogadjaja uvek postaje
+	 * datum prve od trka", asked of the same class); and <b>the event the member typed goes with the
+	 * description</b>, since the race the run is counted on has its own (V66).
 	 */
 	@Test
-	void anEventThatIsInTheCalendarAlreadyRefusesTheApprovalAndNothingIsWritten() throws Exception {
-		event("zimska-trka-2027", "Zimska trka", LocalDate.of(2027, 1, 16));
-		event("zimska-trka-2027-2", "Zimska trka", LocalDate.of(2027, 2, 13));
-		event("trka-cacak-2027", "Trka Cacak", LocalDate.of(2027, 2, 20));
+	void aNameAndAYearThatHaveAnEventPutTheNewRaceOnItAndNoEventIsMade() throws Exception {
+		long zimska = event("zimska-trka-2027", "Zimska trka", LocalDate.of(2027, 1, 16));
+		long numbered = event("zimska-trka-2027-2", "Zimska trka", LocalDate.of(2027, 2, 13));
+		long cacak = event("trka-cacak-2027", "Trka Cacak", LocalDate.of(2027, 2, 20));
 
 		long one = describedRun(ANA, "Zimska", "length", THE_DAY_HE_RAN, "8.0000", 30, 30, 2000);
 		long other = describedRun(BOJAN, "Čačak", "length", THE_DAY_HE_RAN, "9.0000", 35, 25, 2300);
+
+		theMemberNamed(one, null, "Zimska trka");
+
+		int events = howManyEvents();
+
+		assertThat(decideWith(THE_SUPERADMIN, one, makingTheRace("Zimska trka", "Zimska desetka",
+				"length", null)).getStatus()).isEqualTo(200);
+		assertThat(decideWith(THE_SUPERADMIN, other, makingTheRace("Trka Čačak", "Čačanska trka",
+				"length", null)).getStatus()).isEqualTo(200);
+
+		assertThat(howManyEvents()).as("an event was made beside the one that was there")
+				.isEqualTo(events);
+		assertThat(eventAt("zimska-trka-2027-3")).isEmpty();
+		assertThat(eventAt("trka-cacak-2027-2")).isEmpty();
+		assertThat(racesOf(numbered)).as("the race went on the numbered event of the same name")
+				.isEmpty();
+
+		ARace winter = theOneRaceOf(zimska);
+		ARace cacaks = theOneRaceOf(cacak);
+
+		assertThat(winter.name()).isEqualTo("Zimska desetka");
+		assertThat(cacaks.name()).isEqualTo("Čačanska trka");
+		assertThat(theResultOf(ANA).raceId()).isEqualTo(winter.id());
+		assertThat(theResultOf(BOJAN).raceId()).isEqualTo(cacaks.id());
+
+		AnEvent itsDay = theEventAt("zimska-trka-2027");
+
+		assertThat(itsDay.date()).as("the event does not begin on the day of its one race")
+				.isEqualTo(THE_DAY_HE_RAN);
+		assertThat(theEventTheSubmissionNames(one))
+				.as("the decided submission still names the event the member typed")
+				.isEqualTo("none none");
+
+		TheEndOfTheTransaction.broughtForward(db);
+	}
+
+	/**
+	 * A RACE ON A DAY BEFORE ITS EVENT'S MOVES THE EVENT BACK TO THAT DAY, AND INTO THAT YEAR'S
+	 * ADDRESS, AND THE EVENT IS THE ONE THE MODERATOR CHOSE AND NOT THE MEMBER.
+	 *
+	 * <p>PDL P9, owner, 19.10.2026: „ako pomerim datum trke unutar dogadjaja na ranije, menja se i
+	 * njemu datum. Ne moze poceti trka pre dogadjaja na kojem je". The event begins on 2 January 2027
+	 * with a race of its own and the member ran on New Year's Eve, so the event begins a day earlier
+	 * and in another year, and the address moves with the year, which is the administration's rule
+	 * for the same write ({@code RaceWriteApi}, „Adresa dogadjaja je naziv i godina").
+	 *
+	 * <p><b>The member had chosen another event</b> (V66), and the moderator chose this one by its
+	 * key: „Prijava pamti događaj koji je član izabrao, a moderator ga pri odobrenju sme promeniti"
+	 * (PDL P9, 19.10.2026). So a race written on the member's choice is a race on the wrong event.
+	 */
+	@Test
+	void aRaceOnAnEarlierDayMovesItsEventBackAndIntoThatYearsAddressOnTheEventTheModeratorChose()
+			throws Exception {
+		long newYear = event("novogodisnja-trka-2027", "Novogodišnja trka", LocalDate.of(2027, 1, 2));
+		long itsOwn = race(newYear, "Novogodišnja desetka", LocalDate.of(2027, 1, 2), "10.0000", 20, 20);
+		LocalDate theEve = LocalDate.of(2026, 12, 31);
+		long run = describedRun(ANA, "Silvestarska", "length", theEve, "5.0000", 10, 10, 1500);
+
+		theMemberNamed(run, theWeekendEvent, null);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceOn(newYear, "Silvestarska petica"))
+				.getStatus()).isEqualTo(200);
+
+		AnEvent moved = theEventAt("novogodisnja-trka-2026");
+
+		assertThat(moved.id()).isEqualTo(newYear);
+		assertThat(moved.date()).as("the event begins after the first of its races").isEqualTo(theEve);
+		assertThat(eventAt("novogodisnja-trka-2027")).as("the event kept the address of a year it no"
+				+ " longer begins in").isEmpty();
+
+		List<ARace> under = racesOf(newYear);
+
+		assertThat(under).extracting(ARace::id).contains(itsOwn).hasSize(2);
+		assertThat(theResultOf(ANA).raceId()).isNotEqualTo(itsOwn)
+				.isEqualTo(under.get(1).id());
+		assertThat(under.get(1).date()).isEqualTo(theEve);
+		assertThat(racesOf(theWeekendEvent)).extracting(ARace::name)
+				.as("the race went on the event the member chose and not the one the moderator did")
+				.doesNotContain("Silvestarska petica");
+
+		TheEndOfTheTransaction.broughtForward(db);
+	}
+
+	/**
+	 * A RACE ON A LATER DAY THAN THE EVENT'S OWN FIRST RACE LEAVES THE EVENT'S DAY AND ITS ADDRESS
+	 * WHERE THEY ARE, on the event the moderator chose: the other half of the rule the case above
+	 * holds the earlier half of.
+	 *
+	 * <p>PDL P9, owner, 19.10.2026: „ako pomerim datum trke unutar dogadjaja na ranije, menja se i
+	 * njemu datum. Ne moze poceti trka pre dogadjaja na kojem je". An event begins on the day of its
+	 * first race, so a race entered AFTER that day has nothing to say about the event's day, and an
+	 * approval that took the new race's day for the event's would move an event forward.
+	 *
+	 * <p><b>The event stands in the year BEFORE the run's</b>, so an event whose day followed the run
+	 * would also take the run's year into its address: the day and the address are asserted apart,
+	 * each its own sentence. <b>Two sources for the kept day, set apart</b>: the day of the event's
+	 * own race is none of the run's day, none of the days of the fixture's other events
+	 * ({@link #SATURDAY}, {@link #THE_OTHER_EVENTS_DAY}) and not the day the clock stands on
+	 * ({@link #IN_MARCH}), so "the event kept its day" cannot be satisfied by a day from anywhere
+	 * else. The member had chosen another event (V66), as in the case above.
+	 */
+	@Test
+	void aRaceOnALaterDayLeavesTheEventTheModeratorChoseOnItsOwnDayAndAtItsAddress() throws Exception {
+		LocalDate itsOwnDay = LocalDate.of(2026, 12, 20);
+		LocalDate theDayHeRan = LocalDate.of(2027, 3, 2);
+
+		long december = event("decembarska-trka-2026", "Decembarska trka", itsOwnDay);
+		long itsOwn = race(december, "Decembarska desetka", itsOwnDay, "10.0000", 20, 20);
+		long run = describedRun(ANA, "Martovska", "length", theDayHeRan, "5.0000", 10, 10, 1500);
+
+		theMemberNamed(run, theWeekendEvent, null);
+
+		int events = howManyEvents();
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceOn(december, "Martovska petica"))
+				.getStatus()).isEqualTo(200);
+
+		assertThat(eventAt("decembarska-trka-2027")).as("the event took the year of the later race"
+				+ " into its address").isEmpty();
+		assertThat(eventAt("decembarska-trka-2026")).as("the event no longer answers at its address")
+				.isPresent();
+
+		AnEvent kept = theEventAt("decembarska-trka-2026");
+
+		assertThat(kept.id()).isEqualTo(december);
+		assertThat(kept.date()).as("the event moved to the day of the race that came after its own")
+				.isEqualTo(itsOwnDay);
+		assertThat(racesOf(december)).hasSize(2).extracting(ARace::id).contains(itsOwn);
+		assertThat(racesOf(december)).extracting(ARace::date)
+				.containsExactlyInAnyOrder(itsOwnDay, theDayHeRan);
+		assertThat(howManyEvents()).as("an event was made beside the one that was there")
+				.isEqualTo(events);
+
+		TheEndOfTheTransaction.broughtForward(db);
+	}
+
+	/**
+	 * AND THE SAME FOR THE EVENT A TYPED NAME FINDS IN THE YEAR OF THE RUN: the second way an approval
+	 * meets an event (PDL P9, owner, 19.10.2026, „Isti naziv ne pravi drugi događaj"), and the race
+	 * goes on it, after the race it has, without moving its day.
+	 *
+	 * <p>The event's own day is a day of its own (none of the fixture's, none of the run's, not the
+	 * clock's), see the case above.
+	 */
+	@Test
+	void aRaceOnALaterDayLeavesTheEventATypedNameFindsOnItsOwnDayAndAtItsAddress() throws Exception {
+		LocalDate itsOwnDay = LocalDate.of(2027, 2, 20);
+		LocalDate theDayHeRan = LocalDate.of(2027, 3, 3);
+
+		long february = event("februarska-trka-2027", "Februarska trka", itsOwnDay);
+		long itsOwn = race(february, "Februarska desetka", itsOwnDay, "10.0000", 20, 20);
+		long run = describedRun(BOJAN, "Martovska", "length", theDayHeRan, "5.0000", 10, 10, 1500);
+		int events = howManyEvents();
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Februarska trka", "Martovska petica",
+				"length", null)).getStatus()).isEqualTo(200);
+
+		assertThat(eventAt("februarska-trka-2027")).as("the event no longer answers at its address")
+				.isPresent();
+
+		AnEvent kept = theEventAt("februarska-trka-2027");
+
+		assertThat(kept.id()).isEqualTo(february);
+		assertThat(kept.date()).as("the event moved to the day of the race that came after its own")
+				.isEqualTo(itsOwnDay);
+		assertThat(racesOf(february)).hasSize(2).extracting(ARace::id).contains(itsOwn);
+		assertThat(racesOf(february)).extracting(ARace::date)
+				.containsExactlyInAnyOrder(itsOwnDay, theDayHeRan);
+		assertThat(howManyEvents()).as("an event was made beside the one that was there")
+				.isEqualTo(events);
+
+		TheEndOfTheTransaction.broughtForward(db);
+	}
+
+	/**
+	 * AND WHERE THAT YEAR'S ADDRESS IS ANOTHER EVENT'S, THE APPROVAL IS REFUSED AND NOTHING IS
+	 * WRITTEN: the administration refuses the same move ({@code RaceWriteApi.THE_ADDRESS_IS_TAKEN}),
+	 * and the sentence names the way out, which is the other event.
+	 */
+	@Test
+	void aRaceThatWouldMoveItsEventOntoAnotherEventsAddressIsRefusedAndNothingIsWritten()
+			throws Exception {
+		long newYear = event("novogodisnja-trka-2027", "Novogodišnja trka", LocalDate.of(2027, 1, 2));
+		race(newYear, "Novogodišnja desetka", LocalDate.of(2027, 1, 2), "10.0000", 20, 20);
+		event("novogodisnja-trka-2026", "Novogodišnja trka", LocalDate.of(2026, 1, 2));
+
+		long run = describedRun(ANA, "Silvestarska", "length", LocalDate.of(2026, 12, 31), "5.0000",
+				10, 10, 1500);
+		int races = howManyRaces();
+
+		MockHttpServletResponse refused = decideWith(THE_SUPERADMIN, run,
+				makingTheRaceOn(newYear, "Silvestarska petica"));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).startsWith("Trka bi pomerila događaj u godinu u kojoj");
+		assertThat(howManyRaces()).isEqualTo(races);
+		assertThat(theEventAt("novogodisnja-trka-2027").date()).isEqualTo(LocalDate.of(2027, 1, 2));
+		assertThat(stateOf(run)).isEqualTo("waiting");
+		assertThat(howManyResults(ANA)).isZero();
+	}
+
+	/**
+	 * AN EVENT THAT IS NOT A RACE TAKES NO RACE, WHETHER IT IS CHOSEN BY ITS KEY OR MET BY THE NAME
+	 * AND THE YEAR (owner, 23.08.2026, the rule the administration answers with
+	 * {@code RaceWriteApi.THE_EVENT_HOLDS_NO_RACES}), and nothing is written. The name is not made
+	 * into a second event either: „Isti naziv ne pravi drugi događaj".
+	 */
+	@Test
+	void anEventThatIsNotARaceTakesNoRaceWhetherChosenOrNamedAndNothingIsWritten() throws Exception {
+		long training = aTraining("trening-na-adi-2027", "Trening na Adi", LocalDate.of(2027, 3, 1));
+		long run = describedRun(ANA, "Ada", "length", THE_DAY_HE_RAN, "6.0000", 0, 0, 1700);
 		int events = howManyEvents();
 		int races = howManyRaces();
 
 		for (MockHttpServletResponse refused : List.of(
-				decideWith(THE_SUPERADMIN, one, makingTheRace("Zimska trka", "Zimska trka", "length",
-						null)),
-				decideWith(THE_SUPERADMIN, other, makingTheRace("Trka Čačak", "Trka Čačak", "length",
-						null)))) {
+				decideWith(THE_SUPERADMIN, run, makingTheRaceOn(training, "Krug oko Ade")),
+				decideWith(THE_SUPERADMIN, run, makingTheRace("Trening na Adi", "Krug oko Ade",
+						"length", null)))) {
 			assertThat(refused.getStatus()).isEqualTo(409);
-			assertThat(reasonIn(refused)).startsWith("Događaj sa tim nazivom u toj godini već postoji.");
+			assertThat(reasonIn(refused)).startsWith("Taj događaj nije trka");
 		}
 
-		assertThat(howManyEvents()).as("an event was made beside the one that was there")
-				.isEqualTo(events);
+		assertThat(howManyEvents()).isEqualTo(events);
 		assertThat(howManyRaces()).isEqualTo(races);
-		assertThat(eventAt("zimska-trka-2027-3")).isEmpty();
-		assertThat(eventAt("trka-cacak-2027-2")).isEmpty();
+		assertThat(stateOf(run)).isEqualTo("waiting");
+	}
 
-		for (String member : List.of(ANA, BOJAN)) {
-			assertThat(howManyResults(member)).isZero();
-		}
+	/**
+	 * AN EVENT CHOSEN AND TYPED IN ONE ANSWER, OR CHOSEN BY A KEY NO EVENT ANSWERS TO, IS A FORM
+	 * FAULT (400), and nothing is written: the first is two events where a race goes on one, the
+	 * second an event that is not there to take it.
+	 */
+	@Test
+	void anEventChosenAndTypedOrChosenByAKeyNobodyHasIsAFormFaultAndNothingIsWritten()
+			throws Exception {
+		long run = describedRun(ANA, "Desetka", "length", THE_DAY_HE_RAN, "10.0000", 0, 0, 2600);
+		int events = howManyEvents();
 
-		assertThat(stateOf(one)).isEqualTo("waiting");
-		assertThat(stateOf(other)).isEqualTo("waiting");
-		assertThat(whatTheSubmissionSays(one).raceId())
-				.as("the refused approval pointed the submission at a race anyway")
-				.isNull();
+		MockHttpServletResponse twice = decideWith(THE_SUPERADMIN, run, "{\"approved\":true,"
+				+ "\"newRace\":{\"eventId\":" + theWeekendEvent + ",\"eventName\":\"Drugi\","
+				+ "\"raceName\":\"Desetka\",\"raceKind\":\"length\"}}");
+		MockHttpServletResponse gone = decideWith(THE_SUPERADMIN, run,
+				makingTheRaceOn(999_999_999L, "Desetka"));
+
+		assertThat(twice.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(twice)).isEqualTo("Događaj je zadat dvaput: ili postojeći ili nov.");
+		assertThat(gone.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(gone)).startsWith("Izabrani događaj više ne postoji u kalendaru.");
+		assertThat(howManyEvents()).isEqualTo(events);
+		assertThat(stateOf(run)).isEqualTo("waiting");
 	}
 
 	/**
 	 * AND THE SAME NAME IN ANOTHER YEAR IS ANOTHER EVENT, because the year is in the address, and
 	 * the year is the one the member ran in.
 	 *
-	 * <p>„Prolećna trka" of 2026 stands and a run of 2027 under that name is made, so a check that
-	 * asked about the NAME would refuse a run the owner's answer does not. And a run of December
-	 * 2026, approved in March 2027, is made under 2026 although „Zimska trka" of 2027 stands, so a
-	 * check that took the year from TODAY rather than from the day he ran would refuse it too.
+	 * <p>„Prolećna trka" of 2026 stands and a run of 2027 under that name is made, so a lookup that
+	 * asked about the NAME alone would put the race of 2027 on the event of 2026. And a run of
+	 * December 2026, approved in March 2027, is made under 2026 although „Zimska trka" of 2027
+	 * stands, so a lookup that took the year from TODAY rather than from the day he ran would put
+	 * it on the event of 2027.
 	 */
 	@Test
 	void theSameNameInAnotherYearIsAnotherEventAndIsMade() throws Exception {
 		event("prolecna-trka-2026", "Prolećna trka", LocalDate.of(2026, 4, 4));
-		event("zimska-trka-2027", "Zimska trka", LocalDate.of(2027, 1, 16));
+		long winterOf2027 = event("zimska-trka-2027", "Zimska trka", LocalDate.of(2027, 1, 16));
 
 		long spring = describedRun(ANA, "Prolećna", "length", THE_DAY_HE_RAN, "7.0000", 20, 20, 1900);
 		long winter = describedRun(BOJAN, "Zimska", "length", LocalDate.of(2026, 12, 12), "8.0000",
@@ -2648,6 +2878,13 @@ class VerificationWriteApiTest {
 		assertThat(theResultOf(BOJAN).raceId())
 				.as("the run of December was not counted on an event of the year he ran in")
 				.isEqualTo(theOneRaceOf(theEventAt("zimska-trka-2026").id()).id());
+
+		/* AND THE EVENT OF 2027 IS NOT THE ONE IT WENT ON. Found by a mutation: a lookup in the year of
+		   TODAY found the event of 2027, the race of December moved it back into 2026 and to the address
+		   of that year, and the line above read the same answer from the wrong event. */
+		assertThat(theEventAt("zimska-trka-2026").id()).isNotEqualTo(winterOf2027);
+		assertThat(theEventAt("zimska-trka-2027").date()).isEqualTo(LocalDate.of(2027, 1, 16));
+		assertThat(racesOf(winterOf2027)).as("the run of December went on the event of 2027").isEmpty();
 	}
 
 	/**
@@ -4406,6 +4643,37 @@ class VerificationWriteApiTest {
 		return "{\"approved\":true,\"newRace\":{\"eventName\":\"" + eventName + "\",\"raceName\":\""
 				+ raceName + "\",\"raceKind\":\"" + kind + "\"}"
 				+ (amended == null ? "" : ",\"amended\":" + amended) + "}";
+	}
+
+	/** An answer that puts a new race on an event of the calendar chosen by its key, as JSON. */
+	private static String makingTheRaceOn(long event, String raceName) {
+		return "{\"approved\":true,\"newRace\":{\"eventId\":" + event + ",\"raceName\":\""
+				+ raceName + "\",\"raceKind\":\"length\"}}";
+	}
+
+	/** An event of a kind that is not a race, which holds no races (owner, 23.08.2026). */
+	private long aTraining(String slug, String name, LocalDate date) {
+		return db.sql("insert into btl_event (slug, name, date, place_id, kind, featured,"
+						+ " description, link) values (?, ?, ?,"
+						+ " (select id from place where rank = 1), 'training', false, '', '')"
+						+ " returning id")
+				.params(slug, name, date)
+				.query(Long.class).single();
+	}
+
+	/** The event a waiting run names (V66), chosen or typed, written as the member's route would. */
+	private void theMemberNamed(long item, Long event, String typed) {
+		db.sql("update result_submission set event_id = ?, event_name = ? where id ="
+						+ " (select result_submission_id from verification where id = ?)")
+				.params(event, typed, item).update();
+	}
+
+	/** What a submission still says about the event the member named: the key and the name. */
+	private String theEventTheSubmissionNames(long item) {
+		return db.sql("select coalesce(rs.event_id::text, 'none') || ' ' || coalesce(rs.event_name,"
+						+ " 'none') from result_submission rs join verification v"
+						+ " on v.result_submission_id = rs.id where v.id = ?")
+				.param(item).query(String.class).single();
 	}
 
 	/** An answer that counts the run on a race of the calendar, as JSON. */

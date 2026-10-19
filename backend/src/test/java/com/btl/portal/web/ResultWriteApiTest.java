@@ -332,6 +332,9 @@ class ResultWriteApiTest {
 				   „everything came off the race". */
 				.containsEntry("seconds", 12345)
 				.containsEntry("race_date", LocalDate.of(2027, 5, 5))
+				/* V66: the race has its event, so the run names none of its own. */
+				.containsEntry("event_id", null)
+				.containsEntry("event_name", null)
 				.containsEntry("link", "https://rezultati.rs/moja-trka")
 				.containsEntry("comment", "Bilo je vruce.")
 				/* A fresh report corrects nothing (V31). */
@@ -400,6 +403,100 @@ class ResultWriteApiTest {
 				.containsEntry("descent_m", 70);
 	}
 
+	/*
+	 * THE EVENT A DESCRIBED RUN NAMES (V66; PDL P9, owner, 19.10.2026: „Prvo ima naziv događaja
+	 * koji je autocomplete iz baze, ali mogu da unesem novu vrednost", and „Prijava pamti događaj
+	 * koji je član izabrao").
+	 */
+
+	/** The event of the calendar the race of a length is on, which a member can choose. */
+	private long anEventOfTheCalendar() {
+		return db.sql("select event_id from race where id = ?").param(lengthRace)
+				.query(Long.class).single();
+	}
+
+	/**
+	 * THE EVENT HE CHOSE IS KEPT BY ITS KEY, and no name beside it: the event has its own, and a
+	 * copy would go on saying the old one after a rename.
+	 */
+	@Test
+	void aDescribedRunKeepsTheEventHeChoseByItsKey() throws Exception {
+		Map<String, Object> fields = aDescribedRun();
+
+		fields.put("eventId", anEventOfTheCalendar());
+
+		MockHttpServletResponse answered = reportedAs(ME, form(fields));
+
+		assertThat(answered.getStatus()).isEqualTo(201);
+		assertThat(theSubmission(idIn(answered)))
+				.containsEntry("event_id", anEventOfTheCalendar())
+				.containsEntry("event_name", null)
+				.containsEntry("race_name", "Opisana trka");
+	}
+
+	/** THE NAME HE TYPED IS KEPT AS HE TYPED IT, stripped, where the calendar has no such event. */
+	@Test
+	void aDescribedRunKeepsTheEventHeTyped() throws Exception {
+		Map<String, Object> fields = aDescribedRun();
+
+		fields.put("eventName", "  Kros kroz sumu  ");
+
+		MockHttpServletResponse answered = reportedAs(ME, form(fields));
+
+		assertThat(answered.getStatus()).isEqualTo(201);
+		assertThat(theSubmission(idIn(answered)))
+				.containsEntry("event_id", null)
+				.containsEntry("event_name", "Kros kroz sumu");
+	}
+
+	/**
+	 * CHOSEN AND TYPED AT ONCE IS TWO EVENTS, which V66 holds the row to never be
+	 * ({@code result_submission_event_is_chosen_or_typed}): refused before the row, so it reaches the
+	 * member as an answer and not as a server fault.
+	 */
+	@Test
+	void anEventChosenAndTypedAtOnceIsRefused() throws Exception {
+		Map<String, Object> fields = aDescribedRun();
+
+		fields.put("eventId", anEventOfTheCalendar());
+		fields.put("eventName", "Kros kroz sumu");
+
+		assertThat(reasonIn(reportedAs(ME, form(fields))))
+				.isEqualTo(ResultWriteApi.THE_RACE_IS_NAMED_TWICE);
+		assertThat(howManySubmissions()).isZero();
+	}
+
+	/**
+	 * A NAME OF NOTHING BUT SPACES IS NO NAME, AND A KEY NO EVENT ANSWERS TO IS NO EVENT: the run goes
+	 * in naming none, which is the state V66's {@code on delete set null} leaves the same row in when
+	 * the event goes a second later ({@code ResultWriteApi.theEventHeNamed} says why it is not refused).
+	 * The spaces beside a chosen key are the same nothing, so they are not a second event either.
+	 */
+	@ParameterizedTest(name = "{0}")
+	@CsvSource(delimiter = '|', value = {
+			"a name of spaces              | '   ' | ",
+			"a key no event answers to     |       | 999999999",
+			"spaces beside a key gone      | '   ' | 999999999"})
+	void anEventThatIsNotThereIsKeptAsNoEvent(String what, String name, Long key) throws Exception {
+		Map<String, Object> fields = aDescribedRun();
+
+		if (name != null) {
+			fields.put("eventName", name);
+		}
+
+		if (key != null) {
+			fields.put("eventId", key);
+		}
+
+		MockHttpServletResponse answered = reportedAs(ME, form(fields));
+
+		assertThat(answered.getStatus()).as(what).isEqualTo(201);
+		assertThat(theSubmission(idIn(answered)))
+				.as(what)
+				.containsEntry("event_id", null)
+				.containsEntry("event_name", null);
+	}
+
 	/**
 	 * A RACE THE CALENDAR DOES NOT HOLD IS DESCRIBED, AND EVERY COLUMN AN APPROVAL WILL NEED
 	 * IS COLLECTED.
@@ -429,6 +526,10 @@ class ResultWriteApiTest {
 				.containsEntry("race_kind", "free")
 				.containsEntry("race_date", LocalDate.of(2027, 2, 2))
 				.containsEntry("city", null)
+				/* Sent with no event, which is every run the form sends until it asks for one
+				   (V66), and it goes in naming none rather than being refused. */
+				.containsEntry("event_id", null)
+				.containsEntry("event_name", null)
 				/* 21,0975 is the true half marathon, and PDL P5 says in as many words that it
 				   must NOT come out as one. Kept to four decimals it is stored as typed; at two
 				   it would be 21,10, which the portal calls a half. */
@@ -823,7 +924,10 @@ class ResultWriteApiTest {
 			"raceKind | free",
 			"placeId  | 1",
 			"city     | Zaselak",
-			"country  | RS"})
+			"country  | RS",
+			/* V66: the event is the race's, so naming one beside it is the same request. */
+			"eventId  | 1",
+			"eventName| Neki dogadjaj"})
 	void everyFieldThatDescribesARaceIsRefusedBesideOneFromTheCalendar(String field, String value)
 			throws Exception {
 		Map<String, Object> fields = new HashMap<>();
@@ -1093,6 +1197,8 @@ class ResultWriteApiTest {
 				.as("the correction did not name the result it corrects")
 				.containsEntry("amends_result_id", myResult)
 				.containsEntry("race_id", lengthRaceIRan)
+				.containsEntry("event_id", null)
+				.containsEntry("event_name", null)
 				.containsEntry("race_date", LocalDate.of(2027, 5, 5))
 				.containsEntry("seconds", 11400)
 				/* NOT the 42,20 that was sent: a race of a length fixes the distance on a
@@ -1802,7 +1908,8 @@ class ResultWriteApiTest {
 	private Map<String, Object> theSubmission(long id) {
 		Map<String, Object> row = db.sql("select race_id, race_date, race_name, race_kind,"
 						+ " place_id, city, country_id, distance_km, ascent_m, descent_m, seconds,"
-						+ " link, comment, amends_result_id from result_submission where id = ?")
+						+ " link, comment, amends_result_id, event_id, event_name"
+						+ " from result_submission where id = ?")
 				.param(id)
 				.query()
 				.singleRow();
