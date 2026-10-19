@@ -59,7 +59,8 @@ import org.springframework.stereotype.Component;
  * {@code update} that writes it down, which nothing can refuse.
  * <li>{@link MyMembershipWriteApi#letHimIn} already drew after its own
  * {@code insert into membership}, and still does.
- * <li>{@link MembershipWriteApi#grant} draws LAST as well, after the line in the book, the
+ * <li>{@link GrantingASeason#grant} (until 19.10.2026 {@code MembershipWriteApi}'s own method, moved
+ * unchanged) draws LAST as well, after the line in the book, the
  * {@code insert into membership} and the referral, and the two halves of that came for two
  * different reasons. <b>Two presses at once</b> both decided to grant, both drew - the draw
  * stood ahead of the insert - and the second then lost to {@code membership_pk}: a 500,
