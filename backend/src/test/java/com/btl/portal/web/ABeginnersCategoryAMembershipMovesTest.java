@@ -97,11 +97,11 @@ class ABeginnersCategoryAMembershipMovesTest {
 
 	private static final String REOPENED = "Početnička kategorija vam je ponovo otvorena";
 
-	private static final String CLOSED_2027 = "Upisana vam je članarina za sezonu 2027, pa se vaši odobreni"
+	private static final String CLOSED_2027 = "Upisano vam je članstvo za sezonu 2027, pa se vaši odobreni"
 			+ " rezultati iz te sezone računaju u zvaničnu sezonu. Time ste prešli prag od 12 bodova, pa vam"
 			+ " je početnička kategorija zatvorena za sezonu 2028.\n\nBalkanska trkačka liga";
 
-	private static final String REOPENED_2027 = "Poništena vam je članarina za sezonu 2027, pa se vaši"
+	private static final String REOPENED_2027 = "Poništeno vam je članstvo za sezonu 2027, pa se vaši"
 			+ " rezultati iz te sezone više ne računaju u zvaničnu sezonu. Time ste pali ispod praga od 12"
 			+ " bodova, pa vam je početnička kategorija ponovo otvorena za sezonu 2028.\n\nBalkanska trkačka liga";
 
@@ -141,6 +141,9 @@ class ABeginnersCategoryAMembershipMovesTest {
 
 	/** Holds 2027 with 5,00 in it, and has 12,50 in 2028. */
 	private static final String CLOSED_BY_2028 = "000110";
+
+	/** Exactly 12,00 in 2027, over two runs, no membership of it. */
+	private static final String AT_THE_LINE = "000111";
 
 	@Autowired
 	private MockMvc http;
@@ -207,7 +210,7 @@ class ABeginnersCategoryAMembershipMovesTest {
 		clock.moveTo(SEPTEMBER_2027);
 
 		for (String number : List.of(TICKED, NOT_TICKED, JUST_UNDER, THE_TWIN, A_THIRD, HELD_ON_A_PAYMENT,
-				HELD_FREE, HELD_JUST_UNDER, CLOSED_BEFORE, CLOSED_BY_2028)) {
+				HELD_FREE, HELD_JUST_UNDER, CLOSED_BEFORE, CLOSED_BY_2028, AT_THE_LINE)) {
 			long id = competitor(number, !NOT_TICKED.equals(number));
 
 			account(number + "@primer.rs", "competitor", id);
@@ -236,6 +239,8 @@ class ABeginnersCategoryAMembershipMovesTest {
 		aRun(JUST_UNDER, "prolece-2027", "11.99");
 		aRun(HELD_JUST_UNDER, "prolece-2027", "11.99");
 		aRun(CLOSED_BY_2028, "prolece-2027", "5.00");
+		aRun(AT_THE_LINE, "prolece-2027", "7.00");
+		aRun(AT_THE_LINE, "leto-2027", "5.00");
 		aRun(CLOSED_BEFORE, "prolece-2028", "12.50");
 		aRun(CLOSED_BY_2028, "prolece-2028", "12.50");
 
@@ -290,7 +295,7 @@ class ABeginnersCategoryAMembershipMovesTest {
 		assertThat(written(Road.FREE_OF_THE_FEE, CLOSED_BEFORE).getStatus()).isEqualTo(201);
 
 		assertThat(linesTo(CLOSED_BY_2028)).containsExactly(CLOSED + "|"
-				+ "Upisana vam je članarina za sezonu 2028, pa se vaši odobreni rezultati iz te sezone računaju"
+				+ "Upisano vam je članstvo za sezonu 2028, pa se vaši odobreni rezultati iz te sezone računaju"
 				+ " u zvaničnu sezonu. Time ste prešli prag od 12 bodova, pa vam je početnička kategorija"
 				+ " zatvorena za sezonu 2029.\n\nBalkanska trkačka liga");
 		assertThat(linesTo(CLOSED_BEFORE)).isEmpty();
@@ -334,6 +339,26 @@ class ABeginnersCategoryAMembershipMovesTest {
 		assertThat(reopened.get("firstSeasonAllowed").asBoolean()).isTrue();
 		assertThat(category(THE_TWIN).get("firstSeasonAllowed").asBoolean()).isTrue();
 		assertThat(category(HELD_FREE).get("firstSeasonAllowed").asBoolean()).isFalse();
+	}
+
+	/**
+	 * EXACTLY TWELVE CLOSES IT, AND THE LINE AND THE SCREEN SAY SO TOGETHER. The threshold is reached at
+	 * twelve and not passed above it (PDL P7: a season finished „sa 12 ili vise bodova"), which is the
+	 * one value where a comparison written the wrong way round answers differently: 12,00 in 2027, over
+	 * two runs so that no single run is it, and no membership of 2027 until the exemption below.
+	 */
+	@Test
+	void exactlyTheThresholdClosesItAndTheScreenFromTheFifteenthAgrees() throws Exception {
+		assertThat(written(Road.FREE_OF_THE_FEE, AT_THE_LINE).getStatus()).isEqualTo(201);
+
+		assertThat(linesTo(AT_THE_LINE)).containsExactly(CLOSED + "|" + CLOSED_2027);
+
+		clock.moveTo(THE_FIFTEENTH);
+
+		JsonNode screen = category(AT_THE_LINE);
+
+		assertThat(screen.get("season").asInt()).isEqualTo(2028);
+		assertThat(screen.get("firstSeasonAllowed").asBoolean()).isFalse();
 	}
 
 	/* ------------------------------------------------------------------------------------
