@@ -261,6 +261,11 @@ describe('a sentence with a value put into it', () => {
          je", all in figures, so none has a case to be wrong in. */
       '? (RaceForTheRun.tsx)',
       '? (ReviewQueue.tsx)',
+      /* The question before a cancellation on the member's row, chosen by the basis
+         (`memberMembership.ts#askingToCancel`): „Storniraj uplatu / oslobođenje / aktivaciju iz
+         balansa za sezonu {season}?" (owner, 18.10.2026, PDL P8). The value is a bare year after „za
+         sezonu", which has no case to be wrong in. */
+      '? (RowMembership.tsx)',
       '? (SendBack.tsx)',
       /* The sentence a bare number gets from the decision route, chosen by
          `whatABareNumberSays` and handed the number: „Server je odgovorio brojem {status}".
@@ -285,6 +290,9 @@ describe('a sentence with a value put into it', () => {
          18.10.2026, „uz godinu"): „Oslobođen članarine za 2028". The basis is the dictionary's own
          label in the nominative, and the season is a bare year after „za", which has no case to be
          wrong in. */
+      /* „Promeni osnov u oslobođenje za sezonu {season}? Zapis o uplati se briše." (owner,
+         18.10.2026, PDL P8): a bare year after „za sezonu", as above. */
+      'admin.askChangeToExemption',
       'admin.basisOfTheSeason',
       'admin.dropRaceNamed',
       /* „Ovim brišeš i {count} rezultata.", asked before an event is deleted (owner,
