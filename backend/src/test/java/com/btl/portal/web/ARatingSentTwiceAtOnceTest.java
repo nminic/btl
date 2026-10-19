@@ -127,6 +127,8 @@ class ARatingSentTwiceAtOnceTest {
 	/** Real commits, so a real delete, children before parents. */
 	@AfterEach
 	void andNothingOfItIsLeftBehind() {
+		db.sql("delete from verification where competitor_id = ?").param(him).update();
+		db.sql("delete from comment_submission where competitor_id = ?").param(him).update();
 		db.sql("delete from event_comment where event_id = ?").param(event).update();
 		db.sql("delete from result where competitor_id = ?").param(him).update();
 		db.sql("delete from race where event_id = ?").param(event).update();
@@ -151,6 +153,63 @@ class ARatingSentTwiceAtOnceTest {
 				.hasSize(1)
 				.first()
 				.isIn(5, 1);
+	}
+
+	/**
+	 * A CARD A MODERATOR IS DECIDING THIS INSTANT IS NOT WAITED FOR. His rating with words waits in the
+	 * queue and the card's row is held {@code FOR UPDATE} from another connection, as a decision holds
+	 * it; his rating with no words must still be taken (201) and replace the published one, and the
+	 * card it could not withdraw stays. Waiting for it would hold the member's row while waiting for
+	 * the card, the order opposite to an approval's (card first, member second), and two such requests
+	 * are a deadlock.
+	 */
+	@Test
+	void aCardBeingDecidedIsNotWaitedForAndStaysInTheQueue() throws Exception {
+		long submission = db.sql("insert into comment_submission (event_id, competitor_id,"
+						+ " rating_organisation, rating_value, rating_ambience, body)"
+						+ " values (?, ?, 1, 1, 1, 'Čeka odluku.') returning id")
+				.params(event, him).query(Long.class).single();
+		long card = db.sql("insert into verification (queue, competitor_id, subject, body,"
+						+ " comment_submission_id) values ('comments', ?, 'Dvaput ocenjena trka',"
+						+ " 'Čeka odluku.', ?) returning id")
+				.params(him, submission).query(Long.class).single();
+
+		ExecutorService pool = Executors.newFixedThreadPool(1);
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from verification where id = ? for update")
+						.param(card).query(Integer.class).single();
+
+				Future<MockHttpServletResponse> rating = pool.submit(() -> rated(4));
+				long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+
+				while (!rating.isDone() && System.nanoTime() < deadline) {
+					try {
+						Thread.sleep(50);
+					} catch (InterruptedException e) {
+						throw new IllegalStateException(e);
+					}
+				}
+
+				assertThat(rating.isDone())
+						.as("the rating waited for a card that is being decided")
+						.isTrue();
+
+				return null;
+			});
+		} finally {
+			pool.shutdownNow();
+		}
+
+		assertThat(db.sql("select rating_organisation from event_comment where event_id = ?"
+						+ " and competitor_id = ?").params(event, him).query(Integer.class).list())
+				.as("the published rating was replaced although the card could not be withdrawn")
+				.containsExactly(4);
+		assertThat(db.sql("select count(*) from verification where id = ?").param(card)
+				.query(Long.class).single())
+				.as("the card a moderator is deciding was withdrawn from under him")
+				.isOne();
 	}
 
 	/** {@code MemberPaymentTwiceAtOneInstantTest}'s shape, which says why each step is where it is. */
