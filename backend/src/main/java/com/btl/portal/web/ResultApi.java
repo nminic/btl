@@ -276,10 +276,22 @@ class ResultApi {
 						   seasons before it stay „vidljivi u starim / zamrznutim sezonama kad
 						   je clanarina bila aktivna". The year is a parameter and not
 						   `current_date` so the boundary can be measured on a chosen night
-						   rather than once a year. */
+						   rather than once a year.
+
+						   AND NEVER A RUN BEFORE THE LEAGUE'S FIRST SEASON. PDL P9, 18.10.2026:
+						   „Rezultat za datum pre 2027 ... vidi se na profilu člana ... i na strani
+						   događaja", and the record's derivation the same day: „vidi se na strani
+						   događaja važi za prošle godine i pre 2027". Through 2026 the calendar year
+						   is no season at all (PDL P2), so without this clause the history the
+						   league enters for the year 2026 would be withheld from every member whose
+						   fee does not stand until New Year. Reading the hiding as one that applies
+						   only to a year of 2027 or later is the coordinator's derivation from that
+						   sentence, not the owner's words. */
 						+ " where c.active or extract(year from r.race_date) <> :theSeasonRunning"
+						+ " or extract(year from r.race_date) < :theFirstSeason"
 						+ " order by r.race_date, r.id")
 				.param("theSeasonRunning", theSeasonRunning())
+				.param("theFirstSeason", SeasonClock.FIRST_SEASON)
 				.query((row, one) -> {
 					String memberNumber = row.getString(2);
 					LocalDate day = row.getDate(7).toLocalDate();
