@@ -172,7 +172,7 @@ function isSentBack(one: SentRun): one is SentBack {
  * not refused here: an empty or half typed day is the box's own question (`validateForm`).
  */
 function outsideTheSeasons(day: unknown, seasons: number[]): boolean {
-  const year = /(\d{4})/.exec(String(day ?? ''))?.[1]
+  const year = /\b(\d{4})\b/.exec(String(day ?? ''))?.[1]
 
   return year !== undefined && !seasons.includes(Number(year))
 }

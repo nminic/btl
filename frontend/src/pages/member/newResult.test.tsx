@@ -4,7 +4,7 @@ import type { BtlEvent, Race } from '../../data/types'
 import { first, htmlElement, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { racesToOffer } from './racesToOffer'
-import { answeredWith, serverThat } from '../../test/serverAnswers'
+import { serverThat } from '../../test/serverAnswers'
 import { myOwnRecordFromMe, whoIAm } from '../../test/theAnswer'
 import { setupUser } from '../../test/user'
 import { SLOW } from '../../test/slow'
@@ -853,7 +853,8 @@ describe('the event a result is run at, which the form asks first', () => {
 
       expect(day).toHaveValue('10/01/2027')
       expect(day, 'the day of the race was locked to the event').not.toHaveAttribute('aria-disabled')
-      expect(eventName(), 'the event chosen is not held').toHaveAttribute('aria-disabled', 'true')
+      /* The event's own box is not held: typing into it breaks the choice, as a race's does. */
+      expect(eventName()).toHaveValue('Gradska liga')
       expect(screen.queryByLabelText('Mesto'), 'a run on a chosen event asks for a town').toBeNull()
       expect(raceName(), 'the race box kept a name the event did not give').toHaveValue('')
 
