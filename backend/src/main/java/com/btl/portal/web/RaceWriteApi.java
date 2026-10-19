@@ -698,10 +698,12 @@ class RaceWriteApi {
 	 *
 	 * <p><b>THE POINTS ARE NOT ASKED, and that is a measurement and not a shortcut.</b> They are a
 	 * function of the four figures and of nothing else, and the only statements that write a figure
-	 * of {@code result} are two: the approval ({@code VerificationWriteApi}, an insert and an update
-	 * of the row) and the recount below. Both work the points out with {@link BtlScoreCalculator}
-	 * from the very figures they store, no migration inserts into the table or updates it, and
-	 * {@code ResultWriteApi} only deletes from it. Every length that reaches either statement is one the column keeps
+	 * of {@code result} are three: the approval ({@code VerificationWriteApi}, an insert and an update
+	 * of the row), the league's own entry and change from the event page ({@code
+	 * ResultsByTheLeagueApi}, an insert and an update) and the recount below. All three work the
+	 * points out with {@link BtlScoreCalculator} from the very figures they store, no migration
+	 * inserts into the table or updates it, and {@code ResultWriteApi} only deletes from it. Every
+	 * length that reaches any of them is one the column keeps
 	 * exactly ({@link WhatARaceCarries#distanceIsKeptExactly}, asked for the race, for the member's
 	 * report and for the moderator's own figures), so the number the formula is handed is the number
 	 * the row holds. A row whose four figures are the counted ones therefore already carries the

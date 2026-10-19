@@ -308,8 +308,15 @@ describe('which fields the portal serves', () => {
        given a member number (`MembersApi`).** Thirteen paths, two of them nested, and they are about
        a person: his name, town and category, whether his fee stands, and every season he was a member
        of on its basis. Served to the administration over the members alone. Added to the snapshot
-       by hand, as this file requires; the two seasons it carries are named in `MAY_HOLD_A_YEAR`. */
-    expect(Object.keys(served)).toHaveLength(19)
+       by hand, as this file requires; the two seasons it carries are named in `MAY_HOLD_A_YEAR`.
+
+       **Twenty files since 18.10.2026: `results/runners.json`, the list a moderator who checks
+       results picks a member from on the event page (`ResultsByTheLeagueApi`, PDL P9, 18.10.2026,
+       „U padajućoj listi su svi članovi sa članskim brojem, aktivni i neaktivni").** Three paths,
+       none nested: the number and the two names, and nothing about his fee or his age. Served to
+       the administration over the results alone. Added to the snapshot by hand, as this file
+       requires; none of the three can be year-shaped. */
+    expect(Object.keys(served)).toHaveLength(20)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(
       10,

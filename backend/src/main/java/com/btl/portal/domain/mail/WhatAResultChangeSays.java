@@ -196,7 +196,33 @@ public final class WhatAResultChangeSays {
 		 * („razlog stize u sanduce onome ko je stavku poslao"), and no decision asks for it
 		 * by post.
 		 */
-		A_RESULT_WAS_APPROVED("resultApproved", 1);
+		A_RESULT_WAS_APPROVED("resultApproved", 1),
+
+		/**
+		 * THE LEAGUE ENTERED A RESULT FROM THE EVENT PAGE FOR A RACE RUN BEFORE 2027, and it counts
+		 * in no season. PDL P9, 18.10.2026: „Rezultat za datum pre 2027 ili za godinu kad čovek nije
+		 * bio član vidi se na profilu člana ... a ne ulazi ni u jednu sezonsku tabelu, Top listu ni
+		 * nagradu." The words of {@link #A_RESULT_WAS_APPROVED} say the opposite („ulazi u ... rang
+		 * liste i sezonsku tabelu"), so this run gets its own. The words are proposed and open:
+		 * „[OTVORENO 18.10.2026] Reči poruka za rezultat pre 2027, za godinu bez članstva i za izmenu:
+		 * predlog ide vlasniku sa PR-om."
+		 */
+		A_RESULT_WAS_ENTERED_BEFORE_THE_LEAGUE("resultEnteredBeforeTheLeague", 1),
+
+		/**
+		 * The same for a year of the league in which he holds no membership, and the year is the
+		 * second fact. Under the same decision and the same open question as the one above.
+		 */
+		A_RESULT_WAS_ENTERED_WITHOUT_A_MEMBERSHIP("resultEnteredWithoutAMembership", 2),
+
+		/**
+		 * „promenjen rezultat" when the LEAGUE changed it, from the event page, and the change
+		 * counts at once. PDL P9, 18.10.2026: „izmena i brisanje rade po P22 (mejl sa starom
+		 * vrednošću i skrivenom kopijom ligi)". {@link #A_RESULT_WAS_CHANGED} is the member's own
+		 * request and says the old result stays „dok izmena čeka", which is not true here. Same open
+		 * question about the words.
+		 */
+		A_RESULT_WAS_CHANGED_BY_THE_LEAGUE("resultChangedByTheLeague", 2);
 
 		private final String key;
 
@@ -274,6 +300,36 @@ public final class WhatAResultChangeSays {
 		Objects.requireNonNull(counted, "counted");
 
 		return said(Told.A_RESULT_WAS_APPROVED, in, inWords(counted, in));
+	}
+
+	/** THE LEAGUE ENTERED A RUN THAT WAS RUN BEFORE THE FIRST SEASON ({@link
+	 *  Told#A_RESULT_WAS_ENTERED_BEFORE_THE_LEAGUE}). */
+	public static Said enteredBeforeTheLeague(Run entered, MailLanguage in) {
+		Objects.requireNonNull(entered, "entered");
+
+		return said(Told.A_RESULT_WAS_ENTERED_BEFORE_THE_LEAGUE, in, inWords(entered, in));
+	}
+
+	/**
+	 * THE LEAGUE ENTERED A RUN OF A YEAR IN WHICH HE HOLDS NO MEMBERSHIP ({@link
+	 * Told#A_RESULT_WAS_ENTERED_WITHOUT_A_MEMBERSHIP}). The year is the run's own and is handed to
+	 * the words as a finished string: as a number {@link MessageFormat} would write it „2.027".
+	 */
+	public static Said enteredWithoutAMembership(Run entered, MailLanguage in) {
+		Objects.requireNonNull(entered, "entered");
+
+		return said(Told.A_RESULT_WAS_ENTERED_WITHOUT_A_MEMBERSHIP, in, inWords(entered, in),
+				String.valueOf(entered.day().getYear()));
+	}
+
+	/** THE LEAGUE CHANGED A RESULT, the old run first and the new one after it, exactly as
+	 *  {@link #changed} writes them ({@link Told#A_RESULT_WAS_CHANGED_BY_THE_LEAGUE}). */
+	public static Said changedByTheLeague(Run before, Run after, MailLanguage in) {
+		Objects.requireNonNull(before, "before");
+		Objects.requireNonNull(after, "after");
+
+		return said(Told.A_RESULT_WAS_CHANGED_BY_THE_LEAGUE, in, inWords(before, in),
+				inWords(after, in));
 	}
 
 	/** The words of one occasion, filled in. Package visible so the floor over the
