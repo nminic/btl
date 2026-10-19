@@ -589,6 +589,53 @@ class ResultApiTest {
 	 * way whatever the real date is, so one of the two goes red - this year, and every
 	 * year after it.
 	 */
+	/**
+	 * AND A RUN BEFORE THE LEAGUE'S FIRST SEASON IS SERVED WHILE THAT YEAR IS STILL RUNNING.
+	 *
+	 * <p>PDL P9, 18.10.2026: „Rezultat za datum pre 2027 ... vidi se ... na strani događaja", and
+	 * the record's derivation the same day: „vidi se na strani događaja važi za prošle godine i pre
+	 * 2027". In the autumn of 2026 the calendar year is the year of the run and is no season, so the
+	 * rule about the running season would withhold it from a member whose fee does not stand. Reading
+	 * the hiding as one for a year of 2027 or later is the coordinator's derivation, not the owner's
+	 * words.
+	 *
+	 * <p>Both of the lapsed member's runs, his 2026 one and his New Year's Eve of 2027, are asked
+	 * for, and the twin whose fee stands is asked too, so a server that answered nothing at all, or
+	 * dropped only the old run, fails here.
+	 */
+	@Test
+	void aRunBeforeTheFirstSeasonIsServedWhileItsYearIsStillRunning() throws Exception {
+		clock.moveTo(AUTUMN_2026);
+
+		event("jesenja-2026", "Jesenja trka", "2026-09-12");
+		race("jesenja-2026", "Jesenja desetka", "2026-09-12", 10.00);
+		run(THE_LAPSED_MEMBER, "Jesenja desetka", "2026-09-12", 10.00, 50, 50, 3600, 5.00);
+		run(A_MEMBER_WHOSE_FEE_IS_STANDING, "Jesenja desetka", "2026-09-12", 10.00, 50, 50, 3500, 5.50);
+
+		assertThat(AUTUMN_2026.atZone(SeasonClock.ZONE).getYear())
+				.as("the autumn of 2026 is no longer the year of the run, so the case measures nothing")
+				.isEqualTo(2026);
+		assertThat(daysServedFor(THE_LAPSED_MEMBER))
+				.as("the run of 2026 of a member whose fee has lapsed was withheld in 2026, although a"
+						+ " run before 2027 is to be seen on the event page")
+				.containsExactly("2026-09-12", NEW_YEARS_EVE, NEW_YEARS_DAY);
+		assertThat(daysServedFor(A_MEMBER_WHOSE_FEE_IS_STANDING)).contains("2026-09-12");
+	}
+
+	/**
+	 * AND THE FIRST SEASON ITSELF IS NOT „BEFORE THE LEAGUE": while 2027 is running, the 2027 run of
+	 * a member whose fee has lapsed is withheld as the rule of 13.09.2026 says, so the clause above
+	 * reaches the years before 2027 and not one year further.
+	 */
+	@Test
+	void theFirstSeasonItselfIsStillWithheldWhileItRuns() throws Exception {
+		clock.moveTo(Instant.parse("2027-06-15T12:00:00Z"));
+
+		assertThat(daysServedFor(THE_LAPSED_MEMBER))
+				.as("the run of 2027 of a member whose fee has lapsed was served while 2027 is running")
+				.containsExactly(NEW_YEARS_DAY);
+	}
+
 	@Test
 	void andTheSameRunComesBackOnceThatSeasonIsHistoryToo() throws Exception {
 		clock.moveTo(A_YEAR_LATER);
