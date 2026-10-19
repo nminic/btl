@@ -22,12 +22,29 @@ import java.util.Optional;
  * RATHER THAN IN THE THING IT IS ABOUT.
  *
  * <p>Owner, PDL P22/P28a, 06.08.2026: „Komentari idu kroz odobrenje pre objave" (PDL P18,
- * „Komentari idu kroz odobrenje pre objave"). So this route makes no {@code event_comment}. It makes a {@code
- * comment_submission} and the {@code verification} row that carries it to whoever
- * decides, and until that decision the rating and the words are visible to nobody but
- * the member who sent them - {@link CommentApi} reads {@code event_comment} alone and
- * names {@code verification} nowhere, „that has been a leak once already" in its own
- * words.
+ * „Komentari idu kroz odobrenje pre objave"), <b>PRECISED BY THE OWNER ON 19.10.2026</b>: „Komentar
+ * se salje na moderaciju samo ako ima tekst. Ako ima samo 3 ocene u zvezdicama, objavljuje se
+ * odmah." So this route makes one of TWO things, and which one is decided by one question - is
+ * there text - asked once in {@link #write}:
+ *
+ * <ul>
+ * <li><b>With text</b>, it makes no {@code event_comment}. It makes a {@code comment_submission}
+ * and the {@code verification} row that carries it to whoever decides, and until that decision
+ * the rating and the words are on nobody's page - {@link CommentApi} reads {@code event_comment}
+ * alone and names {@code verification} nowhere, „that has been a leak once already" in its own
+ * words. Answered {@code waiting: true}.
+ * <li><b>With three marks and no text</b>, it makes the {@code event_comment} itself, at once,
+ * and no submission and no queue row: there is nothing for a moderator to read, so a card
+ * for it would be a card with nothing on it. Answered {@code waiting: false}.
+ * </ul>
+ *
+ * <p><b>WHAT COUNTS AS TEXT is this route's own reasoning and not a recorded decision</b> - the
+ * owner's sentence says „ima tekst" and nothing in PDL or ADL says what a text is. It is the text
+ * after {@link String#strip()} (the same strip {@link #orEmpty} has always applied before storing),
+ * so spaces, tabs, line breaks and the Unicode space separators alone are not text. A comment of
+ * nothing but those would otherwise stand in a moderator's queue with an empty body to approve.
+ * The direction is the safe one for what it does not cover: a character that {@code strip} does not
+ * treat as white space (a no-break space, a zero-width space) counts as text and is moderated.
  *
  * <p><b>AND IT IS WRITTEN BY A MEMBER, WHICH IS WHY IT CARRIES NO {@link RightIsNeeded}
  * EITHER.</b> Rating an event is what every member may do, not a box the superadmin
@@ -83,7 +100,8 @@ import java.util.Optional;
  *
  * <p><b>THE COMMENT ITSELF MAY BE EMPTY.</b> PDL P6, „Komentar je fakultativan" - the
  * text is optional, the marks are not, and the two are asked apart rather than folded
- * into one completeness check.
+ * into one completeness check. And since 19.10.2026 an empty one is not queued at all but
+ * published (see the top of this note).
  *
  * <p><b>THE EVENT HAS TO HAVE BEEN RUN, AND THAT IS ANSWERED HERE AND NOT ONLY BY
  * HIDING A LINK.</b> PDL, 07.08.2026 („Ocena i komentar se ne primaju za trku koja nije
@@ -211,8 +229,16 @@ class CommentWriteApi {
 	record Refused(String reason) {
 	}
 
-	/** @param id the submission now standing in the queue. */
-	record Made(long id) {
+	/**
+	 * @param id      the submission now standing in the queue where {@code waiting} is true, and
+	 *                the {@code event_comment} just published where it is false - the same number
+	 *                {@code GET /api/comments} answers that comment with
+	 * @param waiting whether a moderator still has to read it (owner, 19.10.2026: only a comment
+	 *                with text is sent to moderation). Answered so a screen says which of the two
+	 *                happened from the server's own answer and does not decide "is there text" a
+	 *                second time
+	 */
+	record Made(long id, boolean waiting) {
 	}
 
 	@PostMapping(path = "/api/comments", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -261,6 +287,13 @@ class CommentWriteApi {
 	private ResponseEntity<?> write(long me, Rated typed) {
 		String body = orEmpty(typed.body());
 
+		/* THE OWNER'S QUESTION, 19.10.2026: „samo ako ima tekst". Read off the stripped text that is
+		   stored, never off the raw field, so a request of nothing but white space is the same
+		   state as an empty box and as a body left out of the request. */
+		if (body.isEmpty()) {
+			return publishAtOnce(me, typed);
+		}
+
 		/* `comment_submission_organisation_in_scale` and its two siblings (V30) bound this
 		   the same way the guard above does, 0 to 5; the guard above is stricter, 1 to 5,
 		   because a rating reaching this line has already passed `allThreeAreGiven`. */
@@ -285,7 +318,30 @@ class CommentWriteApi {
 				.params(me, body, submission, typed.eventId())
 				.update();
 
-		return ResponseEntity.status(HttpStatus.CREATED).body(new Made(submission));
+		return ResponseEntity.status(HttpStatus.CREATED).body(new Made(submission, true));
+	}
+
+	/**
+	 * THREE MARKS AND NO TEXT ARE PUBLISHED ON THE SPOT (owner, 19.10.2026), as the very row an
+	 * approval would have made and in the very shape {@link VerificationWriteApi#publishTheComment}
+	 * writes it: the name is {@code first_name || ' ' || last_name} read from {@code competitor} IN
+	 * THIS STATEMENT, and {@code published_at} is the database's {@code now()}. ADL A64 A5 reads
+	 * „published" as the moment the name is taken, and this is that moment.
+	 *
+	 * <p>{@code me} came out of {@link ActiveMemberOrAdministration#activeMember}, so the
+	 * {@code competitor} row exists and {@code single()} always has its one row. The body is the
+	 * empty string and not null, because {@code event_comment.body} is NOT NULL.
+	 */
+	private ResponseEntity<?> publishAtOnce(long me, Rated typed) {
+		long comment = db.sql("insert into event_comment (event_id, competitor_id, who, published_at,"
+						+ " rating_organisation, rating_value, rating_ambience, body)"
+						+ " select ?, c.id, c.first_name || ' ' || c.last_name, now(), ?, ?, ?, ''"
+						+ " from competitor c where c.id = ? returning id")
+				.params(typed.eventId(), typed.organisation(), typed.value(), typed.ambience(), me)
+				.query(Long.class)
+				.single();
+
+		return ResponseEntity.status(HttpStatus.CREATED).body(new Made(comment, false));
 	}
 
 	/** The day this event is on, or nothing where the id names no event at all. */
