@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
-import { clearResourceCache } from '../../data/client'
+import { arrivedResource } from '../../data/client'
 import { fakeQueue } from '../../test/fakeQueue'
 import { renderAt } from '../../test/render'
 import { answeredWith, refused, serverThat } from '../../test/serverAnswers'
@@ -12,23 +12,16 @@ import { setupUser } from '../../test/user'
 import type { Asked } from '../../test/serverAnswers'
 
 /**
- * A FRESH VISIT, SIMULATED IN PLACE, for a case that proposes and then reads the
- * moderator's queue in the same test.
+ * THE QUEUE IS READ AS THE SESSION LEAVES IT, NEVER AFTER A FRESH PAGE.
  *
- * <p><b>Why a case needs this at all.</b> `data/client.ts` caches a resource for the
- * length of a visit, and nothing in the application invalidates it after a write - that
- * is true today regardless of this file, and is not something a test screen should paper
- * over. A superadmin who also races (`MODERATE_AND_RACE` is exactly this person on the
- * Java side) proposing a team and then opening the queue WITHOUT a fresh page in between
- * would see this same staleness for real; what stands between them and it in production
- * is that nobody has yet decided whether or how the cache should be invalidated. A case
- * that wants to read the queue after proposing has to ask for that fresh page honestly,
- * the same way a reader would have to reload one - never by teaching the fake server to
- * invalidate a cache the real one does not.
+ * <p>Until 19.10.2026 this file simulated a reload (`clearResourceCache()`) between a
+ * proposal and the moderator's queue, because `ProposeTeam.tsx` never dropped
+ * `verification` and a superadmin who also proposes a team (`MODERATE_AND_RACE` on the Java
+ * side) would otherwise have read the queue from before the proposal. That was the bug the
+ * owner met on QA with a comment, and it was here with a team too. The drop is
+ * `ProposeTeam.tsx`'s now, and the two cases under „a proposal a member sends" that open
+ * the queue first are what holds it.
  */
-function asIfNewlyLoaded(): void {
-  clearResourceCache()
-}
 
 /* EVERY CASE HERE HAS A SERVER IN FRONT OF IT, BECAUSE SINCE 22.09.2026 THIS SCREEN
  * SPEAKS TO ONE.
@@ -268,6 +261,61 @@ describe('a proposal a member sends', () => {
 
     expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
     expect(screen.getByText(/"Trkači Morave" čeka odluku moderatora/)).toBeVisible()
+  })
+
+  it("drops the moderator's queue once the server has taken the proposal, so the next reading asks again", async () => {
+    /* The queue is held BEFORE the press, the way the shell holds it for a superadmin's
+       header counter on every admin screen, and gone after a 201. Without the first half
+       the case would pass with or without the drop. Owner, 19.10.2026: the same thing
+       happened to a comment he posted. */
+    const user = setupUser()
+    const { router } = renderAt(
+      '/sr/administracija/verifikacija/timovi',
+      'superadmin',
+      '000002',
+      undefined,
+      DAY,
+    )
+
+    await screen.findByRole('list', { name: /Čeka/ })
+
+    expect(arrivedResource('verification'), 'the queue was never held').toBeDefined()
+
+    await router.navigate('/sr/novi-tim')
+    await fill(user, 'Trkači Morave')
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+    expect(arrivedResource('verification')).toBeUndefined()
+
+    await router.navigate('/sr/administracija/verifikacija/timovi')
+
+    expect(await screen.findByRole('heading', { name: 'Trkači Morave' })).toBeVisible()
+  })
+
+  it("keeps the moderator's queue when the server refuses the proposal, because nothing was queued", async () => {
+    const server = serverThat((path, init) =>
+      path === '/api/teams' && init?.method === 'POST' ? refused('theCountryIsNotKnown') : null,
+    )
+
+    try {
+      const user = setupUser()
+      const { router } = renderAt(
+        '/sr/administracija/verifikacija/timovi',
+        'superadmin',
+        '000002',
+        undefined,
+        DAY,
+      )
+
+      await screen.findByRole('list', { name: /Čeka/ })
+      await router.navigate('/sr/novi-tim')
+      await fill(user, 'Trkači Morave')
+      await screen.findByText('Izabrana država nije prepoznata.')
+
+      expect(arrivedResource('verification')).toBeDefined()
+    } finally {
+      server.stop()
+    }
   })
 
   it('offers no way to attach a logo, and the request names none', async () => {
@@ -781,9 +829,6 @@ describe('a member who founds a team', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
-    /* A fresh page for the moderator half of this member, honestly asked for rather
-       than assumed: see `asIfNewlyLoaded`'s own note. */
-    asIfNewlyLoaded()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
@@ -820,7 +865,6 @@ describe('a member who has founded one team', () => {
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
-    asIfNewlyLoaded()
   }
 
   const approve = async (user: ReturnType<typeof setupUser>, name: string) => {
@@ -1229,8 +1273,6 @@ describe('a proposal from somebody the member list does not hold', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
-
-    asIfNewlyLoaded()
     await router.navigate('/sr/administracija/verifikacija/timovi')
     const waiting = await screen.findByRole('list', { name: /Čeka/ })
 
@@ -1252,8 +1294,6 @@ describe('the queue of new teams', () => {
     await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
-
-    asIfNewlyLoaded()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const waiting = await screen.findByRole('list', { name: /Čeka/ })
@@ -1296,8 +1336,6 @@ describe('the queue of new teams', () => {
     await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo Julijske Alpe.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
-
-    asIfNewlyLoaded()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const waiting = await screen.findByRole('list', { name: /Čeka/ })
@@ -1343,8 +1381,6 @@ describe('the queue of new teams', () => {
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
-
-    asIfNewlyLoaded()
     await router.navigate('/sr/administracija/verifikacija/timovi')
     await screen.findByRole('list', { name: /Čeka/ })
 
@@ -1361,7 +1397,6 @@ describe('a proposal a moderator accepts', () => {
     await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
-    asIfNewlyLoaded()
   }
 
   it('writes to the member who asked for it, in the inbox', async () => {

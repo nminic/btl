@@ -6,7 +6,7 @@ import { limitOf } from '../../forms/records'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { at, first, must } from '../../test/at'
-import { clearResourceCache, loadResource } from '../../data/client'
+import { arrivedResource, loadResource } from '../../data/client'
 import { fakeQueue } from '../../test/fakeQueue'
 import { Published } from '../../test/decided'
 import { membersAsServed, refused, serverThat } from '../../test/serverAnswers'
@@ -25,11 +25,13 @@ import { overall, rated } from './overall'
  * because it is a strict superset of the file it stands in front of, exactly as
  * `proposeTeam.test.tsx` installs it for the identical reason.
  *
- * A CASE THAT WALKS ON STILL HAS TO ASK FOR A FRESH PAGE, HONESTLY, BEFORE READING THE
- * QUEUE. `data/client.ts` caches a resource for the length of a visit and nothing in
- * the application invalidates it after a write - true regardless of this file - so
- * `clearResourceCache()` stands in for the reload a real reader would need, at exactly
- * the cases that need it and nowhere else. */
+ * A CASE THAT WALKS ON READS THE QUEUE AS A MODERATOR WOULD HAVE IT, WITHOUT ASKING FOR A
+ * FRESH PAGE. It did ask until 19.10.2026 (`clearResourceCache()`, „for the reload a real
+ * reader would need"), and that was the bug the owner met on QA: a comment sent by a
+ * superadmin was in no queue, because `RateEvent.tsx` never dropped `verification` and the
+ * shell had already loaded it for the header counter. A case that walks on now OPENS THE
+ * QUEUE FIRST (`startFromTheQueue`), so the answer from before the write is really held, and
+ * takes the cache as the send leaves it. */
 let queue: { asked: Asked[]; stop: () => void } | null = null
 
 beforeEach(() => {
@@ -40,6 +42,34 @@ afterEach(() => {
   queue?.stop()
   queue = null
 })
+
+/**
+ * Opens the moderator's queue of comments and only then goes to the form, the way the owner
+ * does it: a superadmin who is also a member has the shell ask for `verification` on every
+ * admin screen (the header counter), so by the time he rates an event the queue is already
+ * held from before the rating. The positive control is the assertion: a case that did not
+ * hold it would pass with or without `RateEvent.tsx` dropping it.
+ */
+async function startFromTheQueue(day?: string) {
+  const shown = renderAt(
+    '/sr/administracija/verifikacija/komentari',
+    'superadmin',
+    ME,
+    undefined,
+    day,
+  )
+
+  await screen.findByRole('list', { name: /Čeka/ })
+
+  expect(
+    arrivedResource('verification'),
+    'the queue was never held, so nothing is measured',
+  ).toBeDefined()
+
+  await shown.router.navigate(`/sr/kalendar/${EVENT}/ocena`)
+
+  return shown
+}
 
 /** The two letters a portrait draws for a name. */
 const initialsOf = (who: string) =>
@@ -435,17 +465,15 @@ describe('rating an event', () => {
     /* Signed in as a member and holding the rights, because this follows one
        rating from the form it is given on to the queue it lands in, and those
        are two screens with two doors. */
-    const { router } = renderAt(`/sr/kalendar/${EVENT}/ocena`, 'superadmin', ME)
+    const { router } = await startFromTheQueue()
 
     await screen.findByRole('radiogroup', { name: 'Organizacija' })
     await rateAll(user, 5)
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
     await screen.findByText('Ocena je poslata na odobrenje.')
 
-    /* A fresh page for the moderator half of this same superadmin, honestly asked
-       for rather than assumed - `data/client.ts` caches `verification` for the
-       length of a visit and nothing invalidates it after a write. */
-    clearResourceCache()
+    /* The queue the shell loaded before the form was opened, read again with nothing
+       asking for a fresh page: dropping it is `RateEvent.tsx`'s own job. */
     await router.navigate('/sr/administracija/verifikacija/komentari')
 
     const waiting = await screen.findByRole('list', { name: /Čeka/ })
@@ -461,6 +489,44 @@ describe('rating an event', () => {
       expect(within(mine).getByRole('img', { name: `${mark}: 5 od 5` })).toBeInTheDocument()
     }
     expect(within(mine).getByText('5,0')).toBeInTheDocument()
+  })
+
+  it("drops the moderator's queue once the server has taken the rating, so the next reading asks again", async () => {
+    /* The cheapest form of the same guard, without walking to the queue: the answer the
+       shell loaded for the header counter is held before the press and gone after a 201.
+       Read through `arrivedResource` because what is measured is the cache and not a screen.
+       Owner, 19.10.2026: a comment he posted as a superadmin was in no queue. */
+    const user = setupUser()
+
+    await startFromTheQueue()
+    await screen.findByRole('radiogroup', { name: 'Organizacija' })
+    await rateAll(user, 5)
+    await user.click(screen.getByRole('button', { name: 'Pošalji' }))
+    await screen.findByText('Ocena je poslata na odobrenje.')
+
+    expect(arrivedResource('verification')).toBeUndefined()
+  })
+
+  it("keeps the moderator's queue when the server refuses the rating, because nothing was queued", async () => {
+    /* The other arm of the same condition: a refusal made no row, so dropping the queue
+       would only send the next reader to fetch what has not moved. */
+    const server = serverThat((path) =>
+      path === '/api/comments' ? refused('theEventHasNotBeenRun') : null,
+    )
+
+    try {
+      const user = setupUser()
+
+      await startFromTheQueue()
+      await screen.findByRole('radiogroup', { name: 'Organizacija' })
+      await rateAll(user, 4)
+      await user.click(screen.getByRole('button', { name: 'Pošalji' }))
+      await screen.findByText('Rezultat i ocena se unose tek kad se trka istrči.')
+
+      expect(arrivedResource('verification')).toBeDefined()
+    } finally {
+      server.stop()
+    }
   })
 
   it('says why when the server refuses a rating, and changes nothing on the screen', async () => {
@@ -940,13 +1006,7 @@ describe('a comment a moderator lets out', () => {
        keeps and that date is the day the rating was written. Left to the
        machine, the walk compared one reading of the clock with another and
        agreed with itself whatever either said. */
-    const { router } = renderAt(
-      `/sr/kalendar/${EVENT}/ocena`,
-      'superadmin',
-      ME,
-      undefined,
-      THE_DAY_IT_WAS_WRITTEN,
-    )
+    const { router } = await startFromTheQueue(THE_DAY_IT_WAS_WRITTEN)
 
     await screen.findByRole('radiogroup', { name: 'Organizacija' })
     await user.type(screen.getByLabelText(/^Komentar/), 'Prva trka u sezoni i dobro postavljena.')
@@ -954,9 +1014,8 @@ describe('a comment a moderator lets out', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji' }))
     await screen.findByText('Ocena je poslata na odobrenje.')
 
-    /* A fresh page for the moderator half of this same superadmin - see the note
-       at the head of this file on why the cache needs asking rather than assuming. */
-    clearResourceCache()
+    /* The moderator half of this same superadmin, with the queue held from before the
+       rating - see `startFromTheQueue`. */
     await router.navigate('/sr/administracija/verifikacija/komentari')
 
     const mineHere = await cardFor('Prva trka u sezoni i dobro postavljena.')

@@ -1,6 +1,5 @@
 import { screen, within } from '@testing-library/react'
 import { must } from '../test/at'
-import { clearResourceCache } from '../data/client'
 import { fakeQueue } from '../test/fakeQueue'
 import { renderAt } from '../test/render'
 import { theCookieNames } from '../test/setup'
@@ -19,9 +18,9 @@ import type { Asked } from '../test/serverAnswers'
  * answers a bare 201 by default, which is enough for the thirty-odd cases in this file
  * that never touch `/sr/novi-tim` at all; `fakeQueue()` is the fuller stand-in for the
  * four that walk on, the identical shape `proposeTeam.test.tsx` installs for the
- * identical reason. Each of the four also asks for a fresh page before reading the
- * queue (`clearResourceCache()`), because `data/client.ts` caches `verification` for
- * the length of a visit and nothing invalidates it after a write. */
+ * identical reason. None of the four asks for a fresh page before reading the queue: they
+ * did (`clearResourceCache()`) until 19.10.2026, when `ProposeTeam.tsx` began to drop
+ * `verification` itself once the server took a proposal (`proposeTeam.test.tsx` holds that). */
 let queue: { asked: Asked[]; stop: () => void } | null = null
 
 beforeEach(() => {
@@ -803,7 +802,6 @@ describe('the third door writes the season the other two write', () => {
        What it writes now is the first season that has not begun, which is what the other two
        doors write and what the concept is called (`transfersTakeEffect`). */
     await user.click(screen.getByRole('button', { name: 'danas je 2027-01-05' }))
-    clearResourceCache()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
@@ -937,7 +935,6 @@ describe('the day the notice carries, on the other two doors', () => {
 
     await user.click(screen.getByRole('button', { name: 'danas je 2027-01-05' }))
     await user.click(screen.getByRole('button', { name: 'postani 000007' }))
-    clearResourceCache()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
@@ -993,7 +990,6 @@ describe('the third door, and the team that was joined', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
-    clearResourceCache()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
@@ -1058,7 +1054,6 @@ describe('the third door, and the team that was joined', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
-    clearResourceCache()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const heading = await screen.findByRole('heading', { name: 'Trkači Morave' })
@@ -1111,7 +1106,6 @@ describe('the third door, and the team that was joined', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
-    clearResourceCache()
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const heading = await screen.findByRole('heading', { name: 'Trkačice Morave' })
