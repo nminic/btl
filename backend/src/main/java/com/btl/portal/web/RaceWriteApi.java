@@ -21,8 +21,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
@@ -70,6 +68,11 @@ import java.util.Optional;
  * it". The same screen measured the other half the same day, „refuses the address it
  * would write, not the one on the form": a rebuilt address another event already answers
  * at is refused, because „a result finds its event by the address".
+ *
+ * <p><b>The three questions themselves live in {@link TheDayOfAnEvent} since 19.10.2026</b>,
+ * moved there word for word when the approval of a member's run began to put its race on an
+ * event that is already there (PDL P9, „Nova trka na postojećem događaju"): two writers of one
+ * rule ask it of one class. Every sentence above is still this class's reason for asking them.
  *
  * <p><b>AN EVENT LEFT WITH NO RACE AT ALL KEEPS THE DAY IT HAS, and that is a decision
  * with a boundary on each side.</b>
@@ -298,10 +301,6 @@ class RaceWriteApi {
 	record Written(long id, LocalDate eventDate, String eventSlug) {
 	}
 
-	/** The event a race hangs off, as it stands before the write decides its day. */
-	private record Standing(long id, String slug, String name, LocalDate date, String kind) {
-	}
-
 	/** A request that has already been judged good, with every default filled in. */
 	private record Checked(String name, boolean renamed, LocalDate date, String kind,
 			int limitSeconds, BigDecimal distanceKm, int ascentM, int descentM) {
@@ -325,7 +324,7 @@ class RaceWriteApi {
 		}
 
 		return inOneTransaction.execute(committing -> {
-			Optional<Standing> event = theEvent(typed.eventId());
+			Optional<TheDayOfAnEvent.Standing> event = TheDayOfAnEvent.theEvent(db, typed.eventId());
 
 			/* A key the form carries and no row answers to, which is the same shape
 			   `EventWriteApi` answers a town nobody has with: a 400 about the form and not
@@ -342,8 +341,9 @@ class RaceWriteApi {
 			}
 
 			Checked checked = checked(typed, event.get());
-			LocalDate beginning = theDayItWillBeginOn(event.get(), null, checked.date());
-			String address = addressFor(event.get(), beginning);
+			LocalDate beginning = TheDayOfAnEvent.theDayItWillBeginOn(db, event.get(), null,
+					checked.date());
+			String address = TheDayOfAnEvent.addressFor(event.get(), beginning);
 
 			if (EventWriteApi.addressIsTakenBySomebodyElse(db, address, event.get().id())) {
 				return no(HttpStatus.CONFLICT, THE_ADDRESS_IS_TAKEN);
@@ -357,7 +357,7 @@ class RaceWriteApi {
 							checked.ascentM(), checked.descentM())
 					.query(Long.class).single();
 
-			theEventNowBeginsOn(event.get(), beginning, address);
+			TheDayOfAnEvent.theEventNowBeginsOn(db, event.get(), beginning, address);
 
 			return ResponseEntity.status(HttpStatus.CREATED)
 					.body(new Written(written, beginning, address));
@@ -536,7 +536,7 @@ class RaceWriteApi {
 		}
 
 		return inOneTransaction.execute(committing -> {
-			Optional<Standing> event = theEventOfTheRace(id);
+			Optional<TheDayOfAnEvent.Standing> event = TheDayOfAnEvent.theEventOfTheRace(db, id);
 
 			/* THE SAME ANSWER SOMEBODY WITHOUT THE RIGHT GETS, and that is deliberate: a
 			   race that is not there and one he may not touch say the same thing, which is
@@ -589,8 +589,9 @@ class RaceWriteApi {
 				return no(HttpStatus.CONFLICT, THE_KIND_CANNOT_CHANGE_ONCE_RUNS_ARE_COUNTED);
 			}
 
-			LocalDate beginning = theDayItWillBeginOn(event.get(), id, checked.date());
-			String address = addressFor(event.get(), beginning);
+			LocalDate beginning = TheDayOfAnEvent.theDayItWillBeginOn(db, event.get(), id,
+					checked.date());
+			String address = TheDayOfAnEvent.addressFor(event.get(), beginning);
 
 			if (EventWriteApi.addressIsTakenBySomebodyElse(db, address, event.get().id())) {
 				return no(HttpStatus.CONFLICT, THE_ADDRESS_IS_TAKEN);
@@ -603,7 +604,7 @@ class RaceWriteApi {
 							checked.descentM(), id)
 					.update();
 
-			theEventNowBeginsOn(event.get(), beginning, address);
+			TheDayOfAnEvent.theEventNowBeginsOn(db, event.get(), beginning, address);
 
 			recountItsRunsIfWhatItFixesMoved(id, before, checked);
 
@@ -819,14 +820,14 @@ class RaceWriteApi {
 	@RightIsNeeded("entity:events")
 	ResponseEntity<?> remove(@PathVariable long id) {
 		return inOneTransaction.execute(committing -> {
-			Optional<Standing> event = theEventOfTheRace(id);
+			Optional<TheDayOfAnEvent.Standing> event = TheDayOfAnEvent.theEventOfTheRace(db, id);
 
 			if (event.isEmpty()) {
 				return no(HttpStatus.NOT_FOUND, null);
 			}
 
-			LocalDate beginning = theDayItWillBeginOn(event.get(), id, null);
-			String address = addressFor(event.get(), beginning);
+			LocalDate beginning = TheDayOfAnEvent.theDayItWillBeginOn(db, event.get(), id, null);
+			String address = TheDayOfAnEvent.addressFor(event.get(), beginning);
 
 			if (EventWriteApi.addressIsTakenBySomebodyElse(db, address, event.get().id())) {
 				return no(HttpStatus.CONFLICT, THE_ADDRESS_IS_TAKEN);
@@ -834,86 +835,17 @@ class RaceWriteApi {
 
 			db.sql("delete from race where id = ?").param(id).update();
 
-			theEventNowBeginsOn(event.get(), beginning, address);
+			TheDayOfAnEvent.theEventNowBeginsOn(db, event.get(), beginning, address);
 
 			return ResponseEntity.noContent().build();
 		});
 	}
 
 	/**
-	 * THE DAY THE EVENT WILL BEGIN ON ONCE THIS WRITE HAS LANDED.
-	 *
-	 * <p>Worked out BEFORE anything is written, which is the same order
-	 * {@link EventWriteApi#change} keeps and for the same reason: the address is built out
-	 * of this day and may be refused, and a refusal that had already written half of itself
-	 * would answer 409 and leave the calendar changed.
-	 *
-	 * <p>{@code exceptRace} is the race this request is changing or taking away, so what is
-	 * asked of the table is the races that will still be there. It is null for a race being
-	 * entered, since there is nothing yet to leave out - asked as
-	 * {@code id is distinct from null}, which every existing row satisfies, rather than
-	 * through a key no row is supposed to hold.
-	 *
-	 * @param andThisRace the day the race will run on, or null where it is being deleted
-	 */
-	private LocalDate theDayItWillBeginOn(Standing event, Long exceptRace, LocalDate andThisRace) {
-		/* The earliest morning as a ROW rather than as `min(date)`, so that "no race at
-		   all" is no row instead of one row holding null: the two read alike through a
-		   mapper and only one of them is a day. */
-		Optional<LocalDate> others = db.sql("select date from race"
-						+ " where event_id = ? and id is distinct from cast(? as bigint)"
-						+ " order by date limit 1")
-				.params(event.id(), exceptRace)
-				.query((row, one) -> row.getDate(1).toLocalDate())
-				.optional();
-
-		/* THE LAST RACE TAKEN AWAY LEAVES THE DAY WHERE IT IS, for the reason the class
-		   javadoc gives: „dan prve trke" has no answer where there is no race, the column
-		   is NOT NULL, and an event with no race and a day of its own is the ordinary shape
-		   a gathering already has. */
-		if (andThisRace == null) {
-			return others.orElse(event.date());
-		}
-
-		return others.filter(day -> day.isBefore(andThisRace)).orElse(andThisRace);
-	}
-
-	/**
-	 * The address that event answers at once it begins on that day.
-	 *
-	 * <p>The SAME NAME on both sides, which is the whole of it: a race cannot rename an
-	 * event, so the only thing that can move the address is the year. Asked this way the
-	 * rule keeps an imported address carrying a month ({@code gradska-liga-usce-2017-05}),
-	 * which no rule here could rebuild and everything joined to it is joined through.
-	 */
-	private String addressFor(Standing event, LocalDate beginning) {
-		return EventAddress.keptOrRebuilt(event.name(), beginning,
-				event.name(), event.date(), event.slug());
-	}
-
-	/** And writing that day and that address down, which is the one place either is set. */
-	private void theEventNowBeginsOn(Standing event, LocalDate beginning, String address) {
-		db.sql("update btl_event set date = ?, slug = ? where id = ?")
-				.params(beginning, address, event.id())
-				.update();
-	}
-
-	private Optional<Standing> theEvent(long id) {
-		return db.sql("select id, slug, name, date, kind from btl_event where id = ?")
-				.param(id).query(RaceWriteApi::standing).optional();
-	}
-
-	private Optional<Standing> theEventOfTheRace(long race) {
-		return db.sql("select e.id, e.slug, e.name, e.date, e.kind from race r"
-						+ " join btl_event e on e.id = r.event_id where r.id = ?")
-				.param(race).query(RaceWriteApi::standing).optional();
-	}
-
-	/**
 	 * THIS RACE AS IT STANDS RIGHT NOW, BEFORE THE WRITE: its name, its own day and what it
 	 * fixes.
 	 *
-	 * <p><b>The day is asked fresh for PDL P10b</b> rather than read off {@link Standing},
+	 * <p><b>The day is asked fresh for PDL P10b</b> rather than read off {@link TheDayOfAnEvent.Standing},
 	 * which carries the EVENT'S day and not this one race's - the two agree only when the race
 	 * being edited happens to be the first of its event, and a race entered second or third on
 	 * the calendar is exactly the ordinary case.
@@ -947,12 +879,6 @@ class RaceWriteApi {
 		return clock.instant().atZone(SeasonClock.ZONE);
 	}
 
-	/** One home for reading an event's standing, since two routes ask for it two ways. */
-	private static Standing standing(ResultSet row, int one) throws SQLException {
-		return new Standing(row.getLong(1), row.getString(2), row.getString(3),
-				row.getDate(4).toLocalDate(), row.getString(5));
-	}
-
 	/**
 	 * Whether this race is counted by a league of a season other than the one it would be
 	 * moved into.
@@ -979,7 +905,7 @@ class RaceWriteApi {
 	 * filled the form in, which is the fault {@code LinkShapeMatchesTheSchemaTest} exists
 	 * against one column along.
 	 */
-	private ResponseEntity<?> whatIsWrongWith(Upsert typed, Standing event) {
+	private ResponseEntity<?> whatIsWrongWith(Upsert typed, TheDayOfAnEvent.Standing event) {
 		/* AN EVENT THAT IS NOT A RACE HOLDS NO RACES (owner, 23.08.2026), and it is asked
 		   before anything about the race itself: what is wrong is the event it was aimed
 		   at, and answering about the kind of the RACE would send an administrator to the
@@ -1081,7 +1007,7 @@ class RaceWriteApi {
 	}
 
 	/** The request as it goes into the row, once nothing about it is wrong any more. */
-	private static Checked checked(Upsert typed, Standing event) {
+	private static Checked checked(Upsert typed, TheDayOfAnEvent.Standing event) {
 		String kind = kindOf(typed);
 
 		return new Checked(
