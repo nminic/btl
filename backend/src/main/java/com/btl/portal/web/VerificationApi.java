@@ -462,12 +462,21 @@ class VerificationApi {
 	 *                     {@code WhatARaceCarries.figuresOf}; nothing on the other tabs
 	 * @param link         the official results the member pointed at, and empty where he
 	 *                     sent none or the tab carries no run
+	 * @param eventId      THE EVENT THE RUN IS ON, as the moderator's screen starts from it (PDL P9,
+	 *                     owner, 19.10.2026: „Prijava pamti događaj koji je član izabrao, a
+	 *                     moderator ga pri odobrenju sme promeniti"): the race's own event for a run
+	 *                     from the calendar, the event the member chose for a described one (V66),
+	 *                     and nothing where he chose none or the tab carries no run
+	 * @param eventName    that event's name as it is now, or the name the member typed where the
+	 *                     calendar has no such event; nothing where neither is there. V66 keeps
+	 *                     the chosen key and the typed name exclusive, so this never chooses
+	 *                     between two names that are both there
 	 */
 	record Waiting(String queue, long id, LocalDate date, String memberNumber, String who,
 			String subject, String subjectId, String body, String kind, String city,
 			String country, Long photoId, Crop crop, Rating rating, Long raceId, LocalDate raceDate,
 			String raceKind, BigDecimal distanceKm, Integer ascentM, Integer descentM,
-			Integer seconds, String link) {
+			Integer seconds, String link, Long eventId, String eventName) {
 	}
 
 	/**
@@ -629,6 +638,10 @@ class VerificationApi {
 						+ " rs.distance_km as sent_distance, rs.ascent_m as sent_ascent,"
 						+ " rs.descent_m as sent_descent, rs.seconds as sent_seconds,"
 						+ " coalesce(rs.link, '') as link,"
+						/* THE EVENT THE RUN IS ON (see `Waiting.eventId`): the race's for a run from
+						   the calendar, the one the member chose or typed for a described run, and
+						   nothing on every other tab, where both columns join to nothing. */
+						+ " run_event.id as event_id, coalesce(run_event.name, rs.event_name) as event_name,"
 						/* THE CIRCLE OF THE PICTURE THIS ROW HOLDS, named and last so that nothing
 						   above it moves: the mapping reads the early columns by place. Off `shown`
 						   below, which is joined by the ROW's pointer and never by the member's
@@ -704,6 +717,7 @@ class VerificationApi {
 						   the figures of his run. */
 						+ " left join result_submission rs on rs.id = v.result_submission_id"
 						+ " left join race ra on ra.id = rs.race_id"
+						+ " left join btl_event run_event on run_event.id = coalesce(ra.event_id, rs.event_id)"
 						/* AND THE TOWN SUCH A RUN WAS GIVEN, the same three columns in the same two
 						   ways as on `team_proposal` and `competitor`
 						   (`result_submission_town_is_from_the_codebook_or_typed`), all LEFT: a run
@@ -743,7 +757,8 @@ class VerificationApi {
 							row.getObject("race_id", Long.class),
 							row.getObject("race_date", LocalDate.class),
 							row.getString("race_kind"), counted.distanceKm(), counted.ascentM(),
-							counted.descentM(), counted.seconds(), row.getString("link"));
+							counted.descentM(), counted.seconds(), row.getString("link"),
+							row.getObject("event_id", Long.class), row.getString("event_name"));
 				})
 				.list();
 	}
