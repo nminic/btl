@@ -592,6 +592,13 @@ describe('a read that failed', () => {
  * here and held in both directions, and a third box with a list to type against is a decision the day it
  * is written: whether its list says it cannot be read, as the races do, or is a boundary, as the towns are
  * (`UnreadableList`, `forms/types.ts`).
+ *
+ * <p><b>The third, since 19.10.2026: the league's own entry of results on the event page</b>
+ * (`pages/event/EnterResults.tsx`), whose box offers the members. Its answer to the decision is the
+ * whole screen rather than the box: the members are read together with the event, its races and its
+ * results, and the screen waits for all four (`components/Resource.tsx`), so a list that cannot be
+ * read is said by that sentence, with its „Pokušaj ponovo", before any box is drawn. There is never a
+ * box standing over a list that did not come.
  */
 describe('a form that is handed a list to type against', () => {
   /* **THE CLOCK OF ITS SIBLINGS, AND THE WALK MADE ONCE.** This case reads every production file on the
@@ -610,7 +617,7 @@ describe('a form that is handed a list to type against', () => {
     expect(
       handed,
       'a form is handed a list to type against: say what it does when the list cannot be read (UnreadableList), then add it here',
-    ).toEqual(['pages/admin/RaceForTheRun.tsx', 'pages/member/NewResult.tsx'])
+    ).toEqual(['pages/admin/RaceForTheRun.tsx', 'pages/event/EnterResults.tsx', 'pages/member/NewResult.tsx'])
     /* And the home is still where the lists meet the box, so leaving it out above excuses something. */
     expect(everyOne.filter((one) => LIST_HOMES.includes(one))).toEqual(LIST_HOMES)
   }, SLOW)

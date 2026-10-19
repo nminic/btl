@@ -63,8 +63,9 @@ import java.util.Optional;
  * {@link MembershipWriteApi#free} keeps and for its reason: two presses that arrive together both read
  * that no payment stands and the second loses to {@code payment_one_a_season} with a 500. Held here,
  * the second waits for the first to commit and then reads its row, which is the harmless repeat. The
- * payments screen takes no such lock and is left as it is; a press there racing a press here on the
- * same member and season is the 500 {@link PaymentApi}'s heading already names.
+ * payments screen takes the same lock since 19.10.2026 ({@link PaymentApi}'s {@code lockTheMember}),
+ * so a press there racing a press here on the same member and season is the same harmless repeat
+ * and no longer the 500 (a deadlock) it was measured to be.
  */
 @RestController
 class MemberPaymentApi {

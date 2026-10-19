@@ -104,6 +104,23 @@ const SCREENS: Screen[] = [
     ask: async () => screen.findByRole('button', { name: /^Obriši: Dunavski trkači/ }),
   },
   {
+    /* THE X ON A RESULT OF AN EVENT, since 19.10.2026: the league deletes a member's result from
+       the page of its event (PDL P9, 18.10.2026), through the same question. The second row of the
+       table and not the first, for the reason the member's own list below gives. */
+    name: 'a result on the page of its event',
+    source: 'EventDetail.tsx',
+    at: '/sr/kalendar/mrazijada-2020',
+    role: 'superadmin',
+    ask: async () => {
+      const table = within(await screen.findByRole('table', { name: 'Rezultati članova' }))
+      const rows = table.getAllByRole('row').slice(1)
+
+      expect(rows.length, 'one row cannot tell a row from the first row').toBeGreaterThan(1)
+
+      return within(must(rows[1], 'the second result')).getByRole('button', { name: /^Obriši: / })
+    },
+  },
+  {
     name: 'a member\'s own counted result',
     source: 'member/MyResults.tsx',
     at: '/sr/moji-rezultati',

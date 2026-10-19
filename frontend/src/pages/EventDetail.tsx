@@ -1,4 +1,5 @@
 import { ProfileLink } from './profile/ProfileLink'
+import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { useToday } from '../clock/useClock'
@@ -6,6 +7,7 @@ import { Markdown } from '../components/Markdown'
 import { Resource } from '../components/Resource'
 import {
   combinePair,
+  RESULTS,
   useCompetitors,
   useEvents,
   useRaces,
@@ -31,7 +33,20 @@ import { measureHeadingKey, measureKey } from './event/measureHeading'
 import { GoingToEvent } from './event/GoingToEvent'
 import { OverallMark } from './event/OverallMark'
 import { EventComments } from './event/EventComments'
+import { theLeagueDeleted, THE_LEAGUE_ENTERING } from './event/leagueResultWrites'
+import type { Answer } from './account/askTheServer'
+import { ServerSaid } from './account/ServerSaid'
+import { DeleteRecord } from './admin/EntityEditor'
+import { QUEUE } from './admin/queues'
+import { queueRight, useMay } from './admin/rights'
 import './Profile.css'
+
+/**
+ * THE RIGHT THAT CHECKS RESULTS, WHICH ALSO ENTERS, CHANGES AND DELETES THEM FROM THIS PAGE (PDL P9,
+ * 18.10.2026, „[izabrao uz moju preporuku] Unos rezultata sa strane događaja otvara pravo provere
+ * rezultata"). Asked of the one list of rights rather than spelt here.
+ */
+const ENTERS_RESULTS = queueRight(QUEUE.results).key
 
 /* The races load separately from the event on purpose: the name of the event is
  * useful the moment it arrives, and the race table is the heavier half. The date
@@ -42,6 +57,11 @@ function RaceTable({ event }: { event: BtlEvent }) {
   const races = useRaces()
   const today = useToday()
   const { memberNumber } = useSession()
+  /* A moderator who checks results enters them for others from this row (PDL P9, 18.10.2026, the
+     owner: „UKOLIKO SAM ULOGOVAN KAO MODERATOR / ADMINISTRATOR ... Klikom na unesi rezultat,
+     očekivano je da unosim rezultate za takmičare koje potvrđujem automatski"), whether or not he
+     races himself; his own run is one of the rows he may fill in. */
+  const forOthers = useMay()(ENTERS_RESULTS)
 
   return (
     <Resource state={races} inline label={t('event.races')}>
@@ -60,7 +80,7 @@ function RaceTable({ event }: { event: BtlEvent }) {
            a race carries its own day, so on the Saturday of a weekend the two
            Saturday races can be reported and the Sunday one cannot. A column of
            empty cells would say the opposite. */
-        const canEnter = (race: Race) => memberNumber !== null && race.date <= today
+        const canEnter = (race: Race) => (memberNumber !== null || forOthers) && race.date <= today
         const options = mine.some(canEnter)
 
         return (
@@ -224,7 +244,11 @@ function RaceTable({ event }: { event: BtlEvent }) {
                               aria-label={t('event.enterResultNamed', {
                                 race: raceLabel(race, mine, locale),
                               })}
-                              to={`/${locale}/kalendar/${event.slug}/prijava?trka=${race.id}`}
+                              to={
+                                forOthers
+                                  ? `/${locale}/kalendar/${event.slug}/rezultati?trka=${race.id}`
+                                  : `/${locale}/kalendar/${event.slug}/prijava?trka=${race.id}`
+                              }
                             >
                               {t('event.enterResult')}
                             </Link>
@@ -269,8 +293,15 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
   const today = useToday()
   /* Whoever is reading, so their own result is marked here as their row is in
      every standing (owner, 05.08.2026). Null for a visitor. */
-  const { memberNumber: mine } = useSession()
+  const { memberNumber: mine, remove } = useSession()
   const state = combinePair(useResults(), useCompetitors())
+  /* The pencil and the x on every row, for whoever checks results (PDL P9, 18.10.2026, the owner:
+     „Na nivou reda takmičara želim dva ekonomična dugmeta za edit (olovka) i brisanje (x)”). */
+  const manages = useMay()(ENTERS_RESULTS)
+  /* Why the last x was refused, beside the row it was pressed on, until the next press. */
+  const [refused, setRefused] = useState<{ id: number; answer: Exclude<Answer, { got: 'done' }> } | null>(
+    null,
+  )
 
   /* An event still to be run draws no section here at all, so while its data is
      on its way it must not hold a box open either: the reader would watch a
@@ -348,6 +379,7 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                     </th>
                     <th scope="col">{t('profile.columns.time')}</th>
                     <th scope="col">{t('profile.columns.points')}</th>
+                    {manages && <th scope="col">{t('event.options')}</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -369,6 +401,10 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                       person === undefined
                         ? result.memberNumber
                         : `${person.firstName} ${person.lastName}`
+                    /* What the pencil and the x are named by: the name, or the number, and for a run
+                       by somebody with no number the portal's own word for a member it cannot name
+                       (`event.someMember`), so neither control is named by nothing. */
+                    const named = name ?? t('event.someMember')
 
                     return (
                       /* The rows of whoever is reading, marked as they are in
@@ -401,6 +437,49 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                         <td className="table__hide-phone">{formatNumber(result.descentM, locale)}</td>
                         <td>{formatDuration(result.seconds)}</td>
                         <td className="table__points">{formatPoints(result.points, locale)}</td>
+                        {manages && (
+                          <td>
+                            <span className="entity-row-actions">
+                              {/* The pencil: the same screen as the entry, with this one row and its
+                                  member fixed (`event/EnterResults.tsx`). Named by whose run it is,
+                                  because a column of pencils is one control said many times over
+                                  (WCAG 2.2 SC 2.4.4). */}
+                              <Link
+                                className="button button--secondary button--compact"
+                                aria-label={t('leagueResults.editNamed', { name: named })}
+                                to={`/${locale}/kalendar/${slug}/rezultati?trka=${String(result.raceId)}&rezultat=${String(result.id)}`}
+                              >
+                                ✎
+                              </Link>
+                              {/* The x: asked twice, as every deletion on the portal is, and named
+                                  by the run it takes away. */}
+                              <DeleteRecord
+                                name={named}
+                                face="×"
+                                look="button button--secondary button--compact"
+                                onDelete={() =>
+                                  theLeagueDeleted(result.raceId, result.id).then((answer) => {
+                                    if (answer.got === 'done') {
+                                      /* Gone at once rather than on the next read; the served
+                                         list really has lost it (`leagueResultWrites.ts` drops it). */
+                                      remove(RESULTS, String(result.id))
+                                      setRefused(null)
+
+                                      return
+                                    }
+
+                                    setRefused({ id: result.id, answer })
+                                  })
+                                }
+                              />
+                            </span>
+                            {refused !== null && refused.id === result.id && (
+                              /* A 404 is said in the portal's own words for a number, as on every
+                                 screen that draws this question (`admin/deletionInFlight.test.tsx`). */
+                              <ServerSaid answer={refused.answer} refusals={THE_LEAGUE_ENTERING} />
+                            )}
+                          </td>
+                        )}
                       </tr>
                     )
                   })}

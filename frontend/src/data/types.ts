@@ -378,6 +378,18 @@ export type MemberSeason = {
 }
 
 /**
+ * Somebody a moderator who checks results may enter a run for, as `GET /api/results/runners`
+ * answers for one (`ResultsByTheLeagueApi`): every member ever given a number, active or not (PDL P9,
+ * 18.10.2026, „U padajućoj listi su svi članovi sa članskim brojem, aktivni i neaktivni"). Three fields:
+ * what the list shows and is searched by, and nothing about the fee.
+ */
+export type Runner = {
+  memberNumber: string
+  firstName: string
+  lastName: string
+}
+
+/**
  * A member as `GET /api/members` answers for one: the moderation of the members, and nobody else.
  *
  * **Not a `Competitor`, and the difference is the reason the route exists.** The public list answers

@@ -41,6 +41,7 @@ import type {
   Outstanding,
   Race,
   Result,
+  Runner,
   SentRun,
   ServedMessage,
   ServedTeamInvitation,
@@ -351,6 +352,15 @@ const aLapsedMember = {
 
 const readAsMember: Member = aMember
 const readAsLapsedMember: Member = aLapsedMember
+
+/** Somebody a moderator who checks results may pick (`ResultsByTheLeagueApi.runners`). */
+const aRunner = {
+  memberNumber: '000002',
+  firstName: 'Ana',
+  lastName: 'Babić',
+}
+
+const readAsRunner: Runner = aRunner
 
 /**
  * THE SIXTEENTH RESOURCE, whose answer is a record and not a list.
@@ -698,6 +708,7 @@ describe('the answer the backend gives', () => {
     expect(readAsModerator.id).toBe(4)
     expect(readAsMember.seasons.at(-1)?.season).toBe(2028)
     expect(readAsLapsedMember.membershipBasis).toBeUndefined()
+    expect(readAsRunner.memberNumber).toBe('000002')
     /* The four that had never been seen until 21.09.2026, and for each of them the
        state that is the whole reason it is written down twice or not at all. */
     /* THE ONE CONDITIONAL FIELD LEFT, in each of the states its condition puts it in:
@@ -805,6 +816,7 @@ describe('the answer the backend gives', () => {
       ['pricing', [aPricePeriod, aProcessingFee]],
       ['moderators', [aModerator]],
       ['members', [aMember, aLapsedMember]],
+      ['results/runners', [aRunner]],
       /* Both states of the inbox against the served file. The pair is what makes the two
          question ids measured as KEYS: one sample alone would say „a number" or „nothing", and
          the file may then hold either of those and nothing else. */
@@ -910,6 +922,7 @@ describe('the answer the backend gives', () => {
     expect(missing(aComment, servedRow('comments'))).toEqual([])
     expect(missing(aModerator, servedRow('moderators'))).toEqual([])
     expect(missing(aMember, servedRow('members'))).toEqual([])
+    expect(missing(aRunner, servedRow('results/runners'))).toEqual([])
     expect(missing(aSentRunThatWaits, servedRow('me/result-submissions'))).toEqual([])
 
     /* AND THE DUCATS, WHICH LEFT THIS LIST ON 20.09.2026 RATHER THAN SHRANK IN IT.
@@ -1114,6 +1127,9 @@ describe('the answer the backend gives', () => {
       /* THE TWENTIETH NAME, added 18.10.2026 with the moderation of the members, which reads it.
          Measured on the day it arrives, in both states of its optional fields. */
       'members',
+      /* THE TWENTY-FIRST, added 19.10.2026 with the league's own entry of results on the event page,
+         which reads it. Three fields, none optional. */
+      'results/runners',
     ]
 
     /* AND NOTHING IS EXCUSED ANY MORE. */

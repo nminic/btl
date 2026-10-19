@@ -182,6 +182,13 @@ const ALLOWED: Record<string, string[]> = {
   'competitor /sr/kalendar/fruskogorski-maraton-2010/ocena': [
     '/sr/kalendar/fruskogorski-maraton-2010',
   ],
+  /* NOT A WAY BACK FROM THIS SCREEN, BUT THE FRONT PAGE'S OWN LINK TO THE CALENDAR (19.10.2026). The
+     league's entry of results is opened only by the right that checks results, so a visitor and a
+     member are sent to the front page by the portal's guard (`admin/Guard.tsx`), and what this sweep
+     then reads is the front page, whose own body links the calendar. Read against this address, that
+     link is one level up from it; it is the same link every visitor of the front page meets. */
+  'visitor /sr/kalendar/fruskogorski-maraton-2010/rezultati?trka=396': ['/sr/kalendar'],
+  'competitor /sr/kalendar/fruskogorski-maraton-2010/rezultati?trka=396': ['/sr/kalendar'],
 }
 
 /** Which of the allowances were actually met, so the list cannot quietly go stale. */
@@ -282,7 +289,7 @@ describe('what administration and the member forms offer', () => {
 
        A count is a weak floor and it is written down as one: it cannot say a row is right, only
        that one went missing. Changing this number is a decision, not a formality. */
-    expect(BEHIND).toHaveLength(17)
+    expect(BEHIND).toHaveLength(18)
   })
 
   it.each(BEHIND)('offers no way of its own up a level on %s', async (
