@@ -2683,66 +2683,90 @@ class VerificationWriteApiTest {
 
 	/**
 	 * A RACE ON A LATER DAY THAN THE EVENT'S OWN FIRST RACE LEAVES THE EVENT'S DAY AND ITS ADDRESS
-	 * WHERE THEY ARE: the other half of the rule the case above holds the earlier half of.
+	 * WHERE THEY ARE, on the event the moderator chose: the other half of the rule the case above
+	 * holds the earlier half of.
 	 *
 	 * <p>PDL P9, owner, 19.10.2026: „ako pomerim datum trke unutar dogadjaja na ranije, menja se i
 	 * njemu datum. Ne moze poceti trka pre dogadjaja na kojem je". An event begins on the day of its
 	 * first race, so a race entered AFTER that day has nothing to say about the event's day, and an
 	 * approval that took the new race's day for the event's would move an event forward.
 	 *
-	 * <p><b>The two ways an approval meets an event, both here</b>: the event the moderator chose by
-	 * its key (the first run) and the event the typed name has in the year of the run (the second).
-	 * <b>The first stands in the year BEFORE the run's</b>, so an event whose day followed the run
-	 * would also take the run's year into its address, and the address is asserted beside the day.
-	 *
-	 * <p><b>Two sources for the kept day, set apart</b>: the day of each event's own race is none of
-	 * the run's day, none of the days of the fixture's other events ({@link #SATURDAY},
-	 * {@link #THE_OTHER_EVENTS_DAY}), not the day the clock stands on ({@link #IN_MARCH}), and not
-	 * the other event's, so "the event kept its day" cannot be satisfied by a day from anywhere else.
+	 * <p><b>The event stands in the year BEFORE the run's</b>, so an event whose day followed the run
+	 * would also take the run's year into its address: the day and the address are asserted apart,
+	 * each its own sentence. <b>Two sources for the kept day, set apart</b>: the day of the event's
+	 * own race is none of the run's day, none of the days of the fixture's other events
+	 * ({@link #SATURDAY}, {@link #THE_OTHER_EVENTS_DAY}) and not the day the clock stands on
+	 * ({@link #IN_MARCH}), so "the event kept its day" cannot be satisfied by a day from anywhere
+	 * else. The member had chosen another event (V66), as in the case above.
 	 */
 	@Test
-	void aRaceOnALaterDayLeavesItsEventOnTheDayOfItsOwnFirstRaceAndAtItsAddress() throws Exception {
-		LocalDate theDecemberDay = LocalDate.of(2026, 12, 20);
-		LocalDate theFebruaryDay = LocalDate.of(2027, 2, 20);
-		LocalDate ranOnTheSecond = LocalDate.of(2027, 3, 2);
-		LocalDate ranOnTheThird = LocalDate.of(2027, 3, 3);
+	void aRaceOnALaterDayLeavesTheEventTheModeratorChoseOnItsOwnDayAndAtItsAddress() throws Exception {
+		LocalDate itsOwnDay = LocalDate.of(2026, 12, 20);
+		LocalDate theDayHeRan = LocalDate.of(2027, 3, 2);
 
-		long december = event("decembarska-trka-2026", "Decembarska trka", theDecemberDay);
-		long itsDecemberRace = race(december, "Decembarska desetka", theDecemberDay, "10.0000", 20, 20);
-		long february = event("februarska-trka-2027", "Februarska trka", theFebruaryDay);
-		long itsFebruaryRace = race(february, "Februarska desetka", theFebruaryDay, "10.0000", 20, 20);
+		long december = event("decembarska-trka-2026", "Decembarska trka", itsOwnDay);
+		long itsOwn = race(december, "Decembarska desetka", itsOwnDay, "10.0000", 20, 20);
+		long run = describedRun(ANA, "Martovska", "length", theDayHeRan, "5.0000", 10, 10, 1500);
 
-		long chosen = describedRun(ANA, "Martovska", "length", ranOnTheSecond, "5.0000", 10, 10, 1500);
-		long typed = describedRun(BOJAN, "Martovska", "length", ranOnTheThird, "5.0000", 10, 10, 1500);
-
-		theMemberNamed(chosen, theWeekendEvent, null);
+		theMemberNamed(run, theWeekendEvent, null);
 
 		int events = howManyEvents();
 
-		assertThat(decideWith(THE_SUPERADMIN, chosen, makingTheRaceOn(december, "Martovska petica"))
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceOn(december, "Martovska petica"))
 				.getStatus()).isEqualTo(200);
-		assertThat(decideWith(THE_SUPERADMIN, typed, makingTheRace("Februarska trka",
-				"Martovska petica", "length", null)).getStatus()).isEqualTo(200);
 
-		AnEvent byKey = theEventAt("decembarska-trka-2026");
-		AnEvent byName = theEventAt("februarska-trka-2027");
-
-		assertThat(byKey.id()).isEqualTo(december);
-		assertThat(byKey.date()).as("the event moved to the day of the race that came after its own")
-				.isEqualTo(theDecemberDay);
 		assertThat(eventAt("decembarska-trka-2027")).as("the event took the year of the later race"
 				+ " into its address").isEmpty();
-		assertThat(byName.id()).isEqualTo(february);
-		assertThat(byName.date()).as("the event found by its name moved to the day of the later race")
-				.isEqualTo(theFebruaryDay);
+		assertThat(eventAt("decembarska-trka-2026")).as("the event no longer answers at its address")
+				.isPresent();
 
-		assertThat(racesOf(december)).hasSize(2).extracting(ARace::id).contains(itsDecemberRace);
-		assertThat(racesOf(february)).hasSize(2).extracting(ARace::id).contains(itsFebruaryRace);
+		AnEvent kept = theEventAt("decembarska-trka-2026");
+
+		assertThat(kept.id()).isEqualTo(december);
+		assertThat(kept.date()).as("the event moved to the day of the race that came after its own")
+				.isEqualTo(itsOwnDay);
+		assertThat(racesOf(december)).hasSize(2).extracting(ARace::id).contains(itsOwn);
 		assertThat(racesOf(december)).extracting(ARace::date)
-				.containsExactlyInAnyOrder(theDecemberDay, ranOnTheSecond);
+				.containsExactlyInAnyOrder(itsOwnDay, theDayHeRan);
+		assertThat(howManyEvents()).as("an event was made beside the one that was there")
+				.isEqualTo(events);
+
+		TheEndOfTheTransaction.broughtForward(db);
+	}
+
+	/**
+	 * AND THE SAME FOR THE EVENT A TYPED NAME FINDS IN THE YEAR OF THE RUN: the second way an approval
+	 * meets an event (PDL P9, owner, 19.10.2026, „Isti naziv ne pravi drugi događaj"), and the race
+	 * goes on it, after the race it has, without moving its day.
+	 *
+	 * <p>The event's own day is a day of its own (none of the fixture's, none of the run's, not the
+	 * clock's), see the case above.
+	 */
+	@Test
+	void aRaceOnALaterDayLeavesTheEventATypedNameFindsOnItsOwnDayAndAtItsAddress() throws Exception {
+		LocalDate itsOwnDay = LocalDate.of(2027, 2, 20);
+		LocalDate theDayHeRan = LocalDate.of(2027, 3, 3);
+
+		long february = event("februarska-trka-2027", "Februarska trka", itsOwnDay);
+		long itsOwn = race(february, "Februarska desetka", itsOwnDay, "10.0000", 20, 20);
+		long run = describedRun(BOJAN, "Martovska", "length", theDayHeRan, "5.0000", 10, 10, 1500);
+		int events = howManyEvents();
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Februarska trka", "Martovska petica",
+				"length", null)).getStatus()).isEqualTo(200);
+
+		assertThat(eventAt("februarska-trka-2027")).as("the event no longer answers at its address")
+				.isPresent();
+
+		AnEvent kept = theEventAt("februarska-trka-2027");
+
+		assertThat(kept.id()).isEqualTo(february);
+		assertThat(kept.date()).as("the event moved to the day of the race that came after its own")
+				.isEqualTo(itsOwnDay);
+		assertThat(racesOf(february)).hasSize(2).extracting(ARace::id).contains(itsOwn);
 		assertThat(racesOf(february)).extracting(ARace::date)
-				.containsExactlyInAnyOrder(theFebruaryDay, ranOnTheThird);
-		assertThat(howManyEvents()).as("an event was made beside the two that were there")
+				.containsExactlyInAnyOrder(itsOwnDay, theDayHeRan);
+		assertThat(howManyEvents()).as("an event was made beside the one that was there")
 				.isEqualTo(events);
 
 		TheEndOfTheTransaction.broughtForward(db);
