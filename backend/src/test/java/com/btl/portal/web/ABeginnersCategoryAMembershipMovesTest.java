@@ -258,9 +258,15 @@ class ABeginnersCategoryAMembershipMovesTest {
 	@ParameterizedTest
 	@EnumSource(Road.class)
 	void aSeasonWrittenOverTheThresholdClosesTheNextOneAndHeIsTold(Road road) throws Exception {
-		for (String number : List.of(TICKED, NOT_TICKED, JUST_UNDER)) {
-			assertThat(written(road, number).getStatus()).as("%s on %s", number, road).isIn(200, 201);
-		}
+		/* ONE AT A TIME AND READ BACK BETWEEN THEM: the two who are told get the same words, so with both
+		   written before anything is read, a line sent to the other one would read exactly the same. */
+		assertThat(written(road, TICKED).getStatus()).isIn(200, 201);
+
+		assertThat(linesTo(TICKED)).containsExactly(CLOSED + "|" + CLOSED_2027);
+		assertThat(linesTo(NOT_TICKED)).isEmpty();
+
+		assertThat(written(road, NOT_TICKED).getStatus()).isIn(200, 201);
+		assertThat(written(road, JUST_UNDER).getStatus()).isIn(200, 201);
 
 		assertThat(linesTo(TICKED)).containsExactly(CLOSED + "|" + CLOSED_2027);
 		assertThat(linesTo(NOT_TICKED)).containsExactly(CLOSED + "|" + CLOSED_2027);
@@ -340,7 +346,12 @@ class ABeginnersCategoryAMembershipMovesTest {
 	 */
 	@Test
 	void aSeasonCancelledOverTheThresholdOpensTheNextOneAgainAndHeIsTold() throws Exception {
+		/* One at a time, read back between them, for the reason the case above gives. */
 		assertThat(cancelled(HELD_ON_A_PAYMENT, "payment").getStatus()).isEqualTo(200);
+
+		assertThat(linesTo(HELD_ON_A_PAYMENT)).containsExactly(REOPENED + "|" + REOPENED_2027);
+		assertThat(linesTo(HELD_FREE)).isEmpty();
+
 		assertThat(cancelled(HELD_FREE, "feeExempt").getStatus()).isEqualTo(200);
 		assertThat(cancelled(HELD_JUST_UNDER, "payment").getStatus()).isEqualTo(200);
 
