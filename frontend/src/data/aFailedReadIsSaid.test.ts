@@ -594,25 +594,26 @@ describe('a read that failed', () => {
  * (`UnreadableList`, `forms/types.ts`).
  */
 describe('a form that is handed a list to type against', () => {
+  /* **THE CLOCK OF ITS SIBLINGS, AND THE WALK MADE ONCE.** This case reads every production file on the
+     disc and builds a syntax tree of each, synchronously, so there is nothing in it to wait for and
+     nothing to cut in half: what it spends is the time of a whole walk. Alone it takes about 0,3 s; on a
+     runner busy with the rest of the suite it ran past the five seconds Vitest gives a case by default
+     and was reported as `Test timed out in 5000ms`, in a file whose other whole-portal cases already
+     carry `SLOW` (above). It walked twice, once for each of the two assertions; it walks once now and
+     the second assertion asks the same list. */
   it('is one of these, and no other: a second one is a decision, not a thing that happens', () => {
-    const handed = sources()
+    const everyOne = sources()
       .filter(({ path, code }) => handsAListToAForm(named(path), code))
       .map(({ path }) => named(path))
-      .filter((one) => !LIST_HOMES.includes(one))
-      .sort()
+    const handed = everyOne.filter((one) => !LIST_HOMES.includes(one)).sort()
 
     expect(
       handed,
       'a form is handed a list to type against: say what it does when the list cannot be read (UnreadableList), then add it here',
     ).toEqual(['pages/admin/RaceForTheRun.tsx', 'pages/member/NewResult.tsx'])
     /* And the home is still where the lists meet the box, so leaving it out above excuses something. */
-    expect(
-      sources()
-        .filter(({ path, code }) => handsAListToAForm(named(path), code))
-        .map(({ path }) => named(path))
-        .filter((one) => LIST_HOMES.includes(one)),
-    ).toEqual(LIST_HOMES)
-  })
+    expect(everyOne.filter((one) => LIST_HOMES.includes(one))).toEqual(LIST_HOMES)
+  }, SLOW)
 
   it('sees a FormRenderer or the box itself given a list, and nothing else', () => {
     expect(handsAListToAForm('x.tsx', 'const A = () => <FormRenderer form={f} suggests={{ a: [] }} />')).toBe(true)

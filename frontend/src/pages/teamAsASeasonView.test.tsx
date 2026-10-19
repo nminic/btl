@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { formatPoints } from '../i18n/format'
 import sr from '../i18n/sr.json'
 import { must } from '../test/at'
+import { matchingMedia } from '../test/media'
 import { renderAt } from '../test/render'
 import { serverThat } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
@@ -114,6 +115,29 @@ function answering(results: unknown[], members: unknown[] = MEMBERS) {
 }
 
 const HALF = SLOW / 2
+
+/**
+ * THE COUNTERS READ WITH THE UNROLLING OFF, which is what makes a `not` beside them mean anything.
+ *
+ * `Counters` climbs every figure from nought to its target over 900 ms on `requestAnimationFrame`
+ * (`home/useCountUp.ts`), so every value below the target is a frame on the way there. A wait for
+ * the right figure is satisfied by a frame that merely passes through it on the way to a wrong one
+ * (10 on the road to 30, 30 on the road to 70), and the `not` that follows then asks the page
+ * BEFORE it has got to the wrong figure and passes too. Seen once on CI: the page read „Kilometara:
+ * -13,29 km" in one such frame. With less motion asked for the figure is nought and then its target
+ * and nothing between (`Home.test.tsx` reads its own counters the same way).
+ *
+ * @returns the way to put the media query back
+ */
+function withLessMotion(): () => void {
+  const previous = window.matchMedia
+
+  window.matchMedia = matchingMedia((query) => query.includes('reduced-motion'))
+
+  return () => {
+    window.matchMedia = previous
+  }
+}
 
 /** The rows of the roster, by the name each carries. */
 async function roster(): Promise<HTMLElement[]> {
@@ -232,6 +256,7 @@ describe('the page of a team, in 2027 and after', () => {
   }, SLOW)
 
   it('draws the counters, the ring and the roster of the season shown, and of no other', async () => {
+    const lessMotion = withLessMotion()
     const { stop } = answering([...BEFORE_THE_LEAGUE, ...IN_2027])
 
     try {
@@ -253,6 +278,7 @@ describe('the page of a team, in 2027 and after', () => {
       expect(racesInTheRing()).toBe('Zbirno2 trke')
     } finally {
       stop()
+      lessMotion()
     }
   }, SLOW)
 })
@@ -263,6 +289,7 @@ describe('the page of a team, and a run of 2027 that no season counts', () => {
      year he was no member of, so the team's 2027 is the first member's 10 km alone, and the ring holds
      one run. The same 2027 as the case above, so the season and the roster cannot be what differs. */
   it('leaves it out of the counters, the ring and the roster of that season', async () => {
+    const lessMotion = withLessMotion()
     const { stop } = answering([
       aResult(FIRST, '2027-05-02', 10, 10),
       aResult(SECOND, '2027-05-03', 6, 20, false),
@@ -282,6 +309,7 @@ describe('the page of a team, and a run of 2027 that no season counts', () => {
       expect(pointsOf(rows)).not.toContain(formatPoints(6, 'sr'))
     } finally {
       stop()
+      lessMotion()
     }
   }, SLOW)
 })
