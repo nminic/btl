@@ -256,6 +256,22 @@ class ReversingAMembershipTest {
 	}
 
 	/**
+	 * THE CREDIT WAS WRITTEN IN ONE MONEY AND HE IS BILLED IN ANOTHER TODAY: 500 dinars of surplus, moved
+	 * to euro by a change of country (-500 dinars, +4.17 euro). The balance the credit is taken from is
+	 * the one in HIS MONEY OF TODAY (4.17 euro), not the one in the money the season's line was written
+	 * in (nought dinars are left), so the whole credit, 4.17 euro, is taken back.
+	 */
+	@Test
+	void aCreditWrittenInAnotherMoneyIsTakenFromTheBalanceInHisMoneyOfToday() {
+		List<BookLine> book = List.of(
+				line(10, Reason.OVERPAYMENT, SEASON, "500.00", Currency.RSD),
+				line(11, Reason.CONVERSION, null, "-500.00", Currency.RSD),
+				line(12, Reason.CONVERSION, null, "4.17", Currency.EUR));
+
+		assertThat(ReversingAMembership.reversal(book, SEASON, Currency.EUR)).contains(reversal("-4.17"));
+	}
+
+	/**
 	 * NOTHING LEFT TO TAKE IT FROM IS NO LINE, because the schema refuses a line of nought: the credit
 	 * was spent on another season, so the balance is exactly nought; and a balance already below nought
 	 * (a book the portal does not write) is not made worse.
