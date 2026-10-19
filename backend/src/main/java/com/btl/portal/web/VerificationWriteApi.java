@@ -2071,7 +2071,18 @@ class VerificationWriteApi {
 			return;
 		}
 
-		Said said = WhatAResultChangeSays.approved(approved, to.get().language());
+		/* A RUN OF A SEASON THAT HAS FROZEN gets the owner's own sentence (PDL P9, 18.10.2026,
+		   „Rezultat u ZAMRZNUTOJ sezoni dobija posebnu rečenicu, i kad ga liga unese i kad ga
+		   moderator odobri posle zamrzavanja"): the result is written either way and a table that has
+		   frozen does not move, so „ulazi u ... sezonsku tabelu" would be untrue. THE SEASON ASKED
+		   ABOUT IS THE RUN'S AND NOT THE CLOCK'S: the year the clock stands in freezes on the
+		   1 January AFTER it, so it is never frozen at the clock's own moment, and asked of it the
+		   sentence could never be said. */
+		boolean frozen = SeasonClock.isAFrozenSeasonOfTheLeague(approved.day().getYear(),
+				clock.instant().atZone(SeasonClock.ZONE));
+		Said said = frozen
+				? WhatAResultChangeSays.approvedInAFrozenSeason(approved, to.get().language())
+				: WhatAResultChangeSays.approved(approved, to.get().language());
 
 		try {
 			postman.send(said, to.get().address(), theLeague);

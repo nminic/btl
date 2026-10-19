@@ -222,7 +222,26 @@ public final class WhatAResultChangeSays {
 		 * request and says the old result stays „dok izmena čeka", which is not true here. Same open
 		 * question about the words.
 		 */
-		A_RESULT_WAS_CHANGED_BY_THE_LEAGUE("resultChangedByTheLeague", 2);
+		A_RESULT_WAS_CHANGED_BY_THE_LEAGUE("resultChangedByTheLeague", 2),
+
+		/**
+		 * THE LEAGUE ENTERED A RESULT IN A FROZEN SEASON, and the season is the second fact (a
+		 * finished string, never a number: as a number {@link MessageFormat} would write it „2.027").
+		 * PDL P9, 18.10.2026: „Rezultat u ZAMRZNUTOJ sezoni dobija posebnu rečenicu, i kad ga liga
+		 * unese i kad ga moderator odobri posle zamrzavanja: „Liga vam je unela rezultat: {rezultat}.
+		 * Sezona {sezona} je zamrznuta, pa rezultat ostaje u vašoj istoriji, a tabela, plasmani i
+		 * nagrade te sezone se ne menjaju.”" The words of {@link #A_RESULT_WAS_APPROVED} say the
+		 * result counts in the season table, which is not true of a table that no longer changes.
+		 */
+		A_RESULT_WAS_ENTERED_IN_A_FROZEN_SEASON("resultEnteredInAFrozenSeason", 2),
+
+		/**
+		 * THE SAME SENTENCE FOR A RESULT A MODERATOR APPROVES AFTER THE FREEZE, „za odobrenje uz
+		 * odgovarajući glagol" (the same entry of the same decision). A run is reported until the
+		 * 1 January at 10:00 and approved until 16:00, but a moderator may decide a late report any
+		 * day after that, and the result then stays out of a table that is a constant.
+		 */
+		A_RESULT_WAS_APPROVED_IN_A_FROZEN_SEASON("resultApprovedInAFrozenSeason", 2);
 
 		private final String key;
 
@@ -330,6 +349,30 @@ public final class WhatAResultChangeSays {
 
 		return said(Told.A_RESULT_WAS_CHANGED_BY_THE_LEAGUE, in, inWords(before, in),
 				inWords(after, in));
+	}
+
+	/**
+	 * THE LEAGUE ENTERED A RUN OF A SEASON THAT HAS FROZEN ({@link
+	 * Told#A_RESULT_WAS_ENTERED_IN_A_FROZEN_SEASON}). The season is the run's own, as for
+	 * {@link #enteredWithoutAMembership}.
+	 */
+	public static Said enteredInAFrozenSeason(Run entered, MailLanguage in) {
+		Objects.requireNonNull(entered, "entered");
+
+		return said(Told.A_RESULT_WAS_ENTERED_IN_A_FROZEN_SEASON, in, inWords(entered, in),
+				String.valueOf(entered.day().getYear()));
+	}
+
+	/**
+	 * A MODERATOR APPROVED A RUN OF A SEASON THAT HAS FROZEN ({@link
+	 * Told#A_RESULT_WAS_APPROVED_IN_A_FROZEN_SEASON}), the verb of the approval where
+	 * {@link #enteredInAFrozenSeason} has the verb of the entry.
+	 */
+	public static Said approvedInAFrozenSeason(Run counted, MailLanguage in) {
+		Objects.requireNonNull(counted, "counted");
+
+		return said(Told.A_RESULT_WAS_APPROVED_IN_A_FROZEN_SEASON, in, inWords(counted, in),
+				String.valueOf(counted.day().getYear()));
 	}
 
 	/** The words of one occasion, filled in. Package visible so the floor over the

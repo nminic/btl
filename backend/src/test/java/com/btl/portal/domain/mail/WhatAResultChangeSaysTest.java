@@ -289,6 +289,62 @@ class WhatAResultChangeSaysTest {
 		}
 	}
 
+	/**
+	 * THE TWO MESSAGES FOR A FROZEN SEASON, WORD FOR WORD, IN BOTH LANGUAGES (PDL P9, 18.10.2026,
+	 * the owner's sentence: „Liga vam je unela rezultat: {rezultat}. Sezona {sezona} je zamrznuta,
+	 * pa rezultat ostaje u vašoj istoriji, a tabela, plasmani i nagrade te sezone se ne menjaju."
+	 * and „za odobrenje uz odgovarajući glagol").
+	 *
+	 * <p>Held as a snapshot of the whole text because it is the owner's own sentence. The season is
+	 * the run's own, written as four digits, and the verb is the entry's in one and the approval's
+	 * in the other: an approval that said „unela" would tell the member the league typed it in.
+	 */
+	@Test
+	void theTwoMessagesForAFrozenSeasonSayTheOwnersSentenceWithTheVerbOfTheirOccasion() {
+		for (MailLanguage in : MailLanguage.values()) {
+			String run = WhatAResultChangeSays.inWords(A_RUN, in);
+			boolean serbian = in == MailLanguage.SERBIAN;
+			String sentence = serbian
+					? "Sezona 2027 je zamrznuta, pa rezultat ostaje u vašoj istoriji, a tabela, plasmani"
+					+ " i nagrade te sezone se ne menjaju."
+					: "Season 2027 is frozen, so the result stays in your history, and the table,"
+					+ " rankings and awards of that season do not change.";
+
+			Said entered = WhatAResultChangeSays.enteredInAFrozenSeason(A_RUN, in);
+
+			assertThat(entered.subject()).isEqualTo(serbian ? "Unet vam je rezultat"
+					: "A result has been entered for you");
+			assertThat(entered.body())
+					.as("the message about a run entered in a frozen season, in %s", in)
+					.isEqualTo(lines(
+							serbian ? "Liga vam je unela rezultat:" : "The league has entered a result for you:",
+							"", run, "", sentence, "", "Balkanska trkačka liga"));
+
+			Said approved = WhatAResultChangeSays.approvedInAFrozenSeason(A_RUN, in);
+
+			assertThat(approved.subject()).isEqualTo(serbian ? "Odobren vam je rezultat"
+					: "A result has been approved for you");
+			assertThat(approved.body())
+					.as("the message about a run approved in a frozen season, in %s", in)
+					.isEqualTo(lines(
+							serbian ? "Moderator vam je odobrio rezultat:"
+									: "A moderator has approved a result for you:",
+							"", run, "", sentence, "", "Balkanska trkačka liga"));
+		}
+	}
+
+	/** THE SEASON IN BOTH IS THE RUN'S, never a constant and never „2.027". */
+	@Test
+	void theSeasonOfAFrozenSeasonMessageIsTheSeasonOfTheRun() {
+		Run ofTheNextYear = new Run("Zimska trka", LocalDate.of(2028, 2, 1), BigDecimal.TEN, 0, 0,
+				3600, BigDecimal.ONE);
+
+		assertThat(WhatAResultChangeSays.enteredInAFrozenSeason(ofTheNextYear, MailLanguage.SERBIAN)
+				.body()).contains("Sezona 2028 je zamrznuta").doesNotContain("2027").doesNotContain("2.028");
+		assertThat(WhatAResultChangeSays.approvedInAFrozenSeason(ofTheNextYear, MailLanguage.ENGLISH)
+				.body()).contains("Season 2028 is frozen").doesNotContain("2027");
+	}
+
 	/** THE YEAR IN THE SECOND IS THE RUN'S, not a constant: a run of another year names that one. */
 	@Test
 	void theYearWithoutAMembershipIsTheYearOfTheRun() {
@@ -457,6 +513,10 @@ class WhatAResultChangeSaysTest {
 				.isInstanceOf(NullPointerException.class);
 		assertThatThrownBy(() -> WhatAResultChangeSays.enteredWithoutAMembership(null, MailLanguage.SERBIAN))
 				.isInstanceOf(NullPointerException.class);
+		assertThatThrownBy(() -> WhatAResultChangeSays.enteredInAFrozenSeason(null, MailLanguage.SERBIAN))
+				.isInstanceOf(NullPointerException.class);
+		assertThatThrownBy(() -> WhatAResultChangeSays.approvedInAFrozenSeason(null, MailLanguage.SERBIAN))
+				.isInstanceOf(NullPointerException.class);
 		assertThatThrownBy(() -> WhatAResultChangeSays.changedByTheLeague(null, A_RUN, MailLanguage.SERBIAN))
 				.isInstanceOf(NullPointerException.class);
 		assertThatThrownBy(() -> WhatAResultChangeSays.changedByTheLeague(A_RUN, null, MailLanguage.SERBIAN))
@@ -488,6 +548,8 @@ class WhatAResultChangeSaysTest {
 				WhatAResultChangeSays.approved(A_RUN, in),
 				WhatAResultChangeSays.enteredBeforeTheLeague(A_RUN, in),
 				WhatAResultChangeSays.enteredWithoutAMembership(A_RUN, in),
-				WhatAResultChangeSays.changedByTheLeague(A_RUN, ANOTHER_RUN, in)};
+				WhatAResultChangeSays.changedByTheLeague(A_RUN, ANOTHER_RUN, in),
+				WhatAResultChangeSays.enteredInAFrozenSeason(A_RUN, in),
+				WhatAResultChangeSays.approvedInAFrozenSeason(A_RUN, in)};
 	}
 }

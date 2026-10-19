@@ -111,7 +111,13 @@ class EveryMailIsAMandatoryOneTest {
 			   run no season counts, and the change is „promenjen rezultat" made by the league. */
 			Map.entry("resultEnteredBeforeTheLeague", "a result entered by the league for a race run before 2027: the mail about a result entered"),
 			Map.entry("resultEnteredWithoutAMembership", "a result entered by the league for a year he holds no membership of: the mail about a result entered"),
-			Map.entry("resultChangedByTheLeague", "a result changed, by the league from the event page"));
+			Map.entry("resultChangedByTheLeague", "a result changed, by the league from the event page"),
+			/* THE SENTENCE OF A FROZEN SEASON (PDL P9, 18.10.2026: „Rezultat u ZAMRZNUTOJ sezoni dobija
+			   posebnu rečenicu, i kad ga liga unese i kad ga moderator odobri posle zamrzavanja"). The
+			   first is the mail about a result entered, the second the mail about a result approved,
+			   each for a season whose table no longer moves. */
+			Map.entry("resultEnteredInAFrozenSeason", "a result entered by the league in a season that has frozen: the mail about a result entered"),
+			Map.entry("resultApprovedInAFrozenSeason", "a result approved after its season froze: the mail about a result approved"));
 
 	@Test
 	void thePortalHasWordsForNoOccasionThatIsNotAMandatoryMail() {

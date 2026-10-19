@@ -64,8 +64,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <li><b>Who asks:</b> nobody, a competitor, a moderator of the events only, a moderator of the
  * results who does not race, a moderator of the results who races (Mira), the superadmin.
  * <li><b>Who the run is:</b> Ana (an account, Serbian, a membership of 2027), Bojan (an account,
- * English, no membership), Vera (no account, a membership), Mira (the moderator herself), Dragan (a
- * bystander nothing is about, written first), a competitor with no number.
+ * English, a membership of 2027 that the cases about a lack of one take away), Vera (no account, a
+ * membership), Mira (the moderator herself), Dragan (an account, Serbian, NO membership: the member
+ * the running season refuses), a competitor with no number.
+ * <li><b>The clock:</b> a day inside 2027 (2027 is running), the autumn of 2026 (no season runs),
+ * 10:00 on 1 January 2028 and the second before and the second of 16:00 (2027 is past and not yet
+ * frozen, then frozen), and 2 January 2028 (2027 frozen).
  * <li><b>The race:</b> one of each kind, two of them in one event (so „this race" is never „this
  * event"), a race of 2026, one in the future and one in another event.
  * <li><b>What waits:</b> his own report for this race, his own report for another race of the
@@ -92,6 +96,18 @@ class ResultsByTheLeagueApiTest {
 
 	/** 02.01.2028, after 2027 froze at 16:00 the day before. */
 	private static final Instant AFTER_THE_FREEZE = Instant.parse("2028-01-02T10:00:00Z");
+
+	/** 10:00 on 1 January 2028 in Belgrade: 2028 is the season being run and 2027 is past, not frozen. */
+	private static final Instant THE_MORNING_OF_THE_NEW_YEAR = Instant.parse("2028-01-01T09:00:00Z");
+
+	/** 15:59:59 in Belgrade on 1 January 2028, the last second 2027 is not frozen. */
+	private static final Instant A_SECOND_BEFORE_THE_FREEZE = Instant.parse("2028-01-01T14:59:59Z");
+
+	/** 16:00:00 in Belgrade on 1 January 2028, the second 2027 freezes. */
+	private static final Instant THE_SECOND_OF_THE_FREEZE = Instant.parse("2028-01-01T15:00:00Z");
+
+	/** 18.10.2026: no season is being run, and a race of 2026 is a race before the league. */
+	private static final Instant IN_THE_AUTUMN_OF_2026 = Instant.parse("2026-10-18T10:00:00Z");
 
 	private static final String DRAGAN = "000005";
 
@@ -214,6 +230,7 @@ class ResultsByTheLeagueApiTest {
 		db.sql("update account set mail_language = 'en' where email = ?").param(BOJANS_ADDRESS).update();
 
 		membership(ANA, 2027);
+		membership(BOJAN, 2027);
 		membership(VERA, 2027);
 		membership(MIRA, 2027);
 
@@ -491,9 +508,17 @@ class ResultsByTheLeagueApiTest {
 	/**
 	 * AN ENTRY FOR A YEAR HE HOLDS NO MEMBERSHIP OF says so, IN HIS LANGUAGE, and the moderator's
 	 * language is not read: the moderator kept Serbian and Bojan chose English.
+	 *
+	 * <p>Since the league enters the running season only for a member of it, a year without a
+	 * membership is a PAST year, and a past year that has not frozen is the sixteen hours of 1 January
+	 * between the end of the season and its freeze: the clock stands there. Any later moment is a
+	 * frozen season and has the owner's sentence for it ({@link #aRunOfAFrozenSeasonIsToldWithTheOwnersSentence}).
 	 */
 	@Test
 	void anEntryForAYearWithoutAMembershipIsToldSoInHisLanguage() throws Exception {
+		clock.moveTo(THE_MORNING_OF_THE_NEW_YEAR);
+		withoutAMembership(BOJAN, 2027);
+
 		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(BOJAN, null, null, null, AN_HOUR)))
 				.getStatus()).isEqualTo(201);
 
@@ -533,21 +558,20 @@ class ResultsByTheLeagueApiTest {
 	}
 
 	/**
-	 * THE MEMBERSHIP ASKED IS THE ONE OF THE RUN'S YEAR, and no other: Ana holds 2027 and not 2028,
-	 * so a run of 2028 counts in no season. In 2027 alone the two years are one value, which is why
-	 * this case moves the clock into 2028.
+	 * THE MEMBERSHIP ASKED IS THE ONE OF THE RUN'S YEAR, and no other: Dragan holds 2028 and not 2027,
+	 * so a run of 2027 counts in no season for him. At 10:00 on 1 January 2028 the season being run
+	 * is 2028, which is the membership he holds, and a route that asked the clock's season (or any
+	 * membership at all) would call him a member of 2027.
 	 */
 	@Test
 	void theMembershipAskedIsTheOneOfTheYearOfTheRun() throws Exception {
-		clock.moveTo(Instant.parse("2028-03-01T10:00:00Z"));
+		clock.moveTo(THE_MORNING_OF_THE_NEW_YEAR);
+		membership(DRAGAN, 2028);
 
-		long theNextYearsRace = race(event("dogadjaj-2028", "Dogadjaj 2028", LocalDate.of(2028, 2, 1)),
-				"Zimska desetka", LocalDate.of(2028, 2, 1), "length", 0, "10.00", 0, 0);
-
-		assertThat(entered(RESULTS_MODERATOR, theNextYearsRace, rows(row(ANA, null, null, null,
-				AN_HOUR))).getStatus()).isEqualTo(201);
-		assertThat(subjectsTo(ANA)).containsExactly("Unet vam je rezultat");
-		assertThat(bodiesTo(ANA).get(0)).contains("Za godinu 2028 nemate zapis o članstvu");
+		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(DRAGAN, null, null, null,
+			AN_HOUR))).getStatus()).isEqualTo(201);
+		assertThat(subjectsTo(DRAGAN)).containsExactly("Unet vam je rezultat");
+		assertThat(bodiesTo(DRAGAN).get(0)).contains("Za godinu 2027 nemate zapis o članstvu");
 	}
 
 	/** A MEMBER WITH NO ACCOUNT gets the line in his inbox, in Serbian, and no letter at all. */
@@ -585,6 +609,205 @@ class ResultsByTheLeagueApiTest {
 				.getStatus()).isEqualTo(201);
 		assertThat(resultsOf(ANA)).hasSize(1);
 		assertThat(subjectsTo(ANA)).contains("Vaš rezultat je odobren");
+	}
+
+	/* ===================================================================== the running season */
+
+	/**
+	 * THE RUNNING SEASON IS ENTERED ONLY FOR A MEMBER OF IT, AND ONE REFUSED ROW SAVES NOTHING (PDL P9,
+	 * 18.10.2026: „Za trku iz TEKUĆE sezone liga unosi rezultat samo članu koji ima članstvo za tu
+	 * sezonu; inače se red odbija uz rečenicu"). Dragan has no membership and stands between two
+	 * members: the answer names his row and no other, and neither member is written either.
+	 */
+	@Test
+	void theRunningSeasonIsEnteredOnlyForAMemberOfItAndOneRefusedRowSavesNothing() throws Exception {
+		MockHttpServletResponse answer = entered(RESULTS_MODERATOR, theTen, rows(
+			row(ANA, null, null, null, AN_HOUR),
+			row(DRAGAN, null, null, null, AN_HOUR),
+			row(VERA, null, null, null, AN_HOUR)));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(ResultsByTheLeagueApi.A_ROW_IS_WRONG);
+		assertThat(wrongRows(answer)).containsExactly("1 heHoldsNoMembershipOfTheRunningSeason");
+		assertThat(resultsOf(ANA)).isEmpty();
+		assertThat(resultsOf(VERA)).isEmpty();
+		assertThat(resultsOf(DRAGAN)).isEmpty();
+		assertThat(db.sql("select count(*) from message").query(Integer.class).single()).isZero();
+		assertThat(SMTP.getReceivedMessages()).isEmpty();
+
+		membership(DRAGAN, 2027);
+
+		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(DRAGAN, null, null, null, AN_HOUR)))
+			.getStatus()).as("the same row with the membership of the race's season").isEqualTo(201);
+	}
+
+	/**
+	 * THE MEMBERSHIP ASKED IS THE RACE'S SEASON, NOT ANY MEMBERSHIP, NOT THE CLOCK'S SEASON AND NOT HIS
+	 * LATEST. Three states of the member against the two seasons, each in a clock where the two
+	 * differ:
+	 * <ul>
+	 * <li>in June 2027, a member who holds only 2028 (any membership exists, the race's season is
+	 * not among them);
+	 * <li>in March 2028, a member who holds only 2027, the race being of 2028 (his latest membership
+	 * is not the season being run);
+	 * <li>in March 2028, a member who holds 2028 and a race of 2028 (the two years agree).
+	 * </ul>
+	 */
+	@Test
+	void theMembershipAskedIsTheRacesSeasonAndNotAnyMembershipNorTheLatest() throws Exception {
+		membership(DRAGAN, 2028);
+
+		assertThat(wrongRows(entered(RESULTS_MODERATOR, theTen, rows(row(DRAGAN, null, null, null,
+			AN_HOUR))))).containsExactly("0 heHoldsNoMembershipOfTheRunningSeason");
+
+		clock.moveTo(Instant.parse("2028-03-01T10:00:00Z"));
+
+		long theNextYearsRace = aRaceOf2028("dogadjaj-2028", LocalDate.of(2028, 2, 1));
+
+		assertThat(wrongRows(entered(RESULTS_MODERATOR, theNextYearsRace, rows(row(ANA, null, null,
+			null, AN_HOUR))))).containsExactly("0 heHoldsNoMembershipOfTheRunningSeason");
+		assertThat(resultsOfIds(ANA)).hasSize(1);
+
+		assertThat(entered(RESULTS_MODERATOR, theNextYearsRace, rows(row(DRAGAN, null, null, null,
+			AN_HOUR))).getStatus()).isEqualTo(201);
+		assertThat(subjectsTo(DRAGAN)).containsExactly("Vaš rezultat je odobren");
+	}
+
+	/**
+	 * A RACE OF A PAST SEASON ASKS NO MEMBERSHIP („Za prošle godine i pre 2027 ostaje unos svima sa
+	 * članskim brojem"), AND THE PAST IS DEFINED BY THE RACE'S YEAR AGAINST THE CLOCK. Dragan holds no
+	 * membership at all, and is entered for a race of 2027 once 2027 has frozen, for one of 2027 in
+	 * the sixteen hours before it freezes (2028 is running by then), and for a race of 2026.
+	 */
+	@Test
+	void aPastSeasonAndTheYearsBeforeTheLeagueAskForNoMembership() throws Exception {
+		assertThat(entered(RESULTS_MODERATOR, theOldRace, rows(row(DRAGAN, null, null, null, 4000)))
+			.getStatus()).as("a race of 2026, the clock inside 2027").isEqualTo(201);
+
+		clock.moveTo(THE_MORNING_OF_THE_NEW_YEAR);
+
+		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(DRAGAN, null, null, null, AN_HOUR)))
+			.getStatus()).as("a race of 2027 the morning after its last day").isEqualTo(201);
+
+		clock.moveTo(AFTER_THE_FREEZE);
+
+		assertThat(entered(RESULTS_MODERATOR, theHill, rows(row(DRAGAN, "12.00", 300, 250, 5000)))
+			.getStatus()).as("a race of 2027 once it has frozen").isEqualTo(201);
+	}
+
+	/**
+	 * IN THE AUTUMN OF 2026 NO SEASON IS BEING RUN, although {@code seasonBeingRun} names 2026: a race
+	 * of 2026 is a race before the league and asks no membership. A route that took „the season
+	 * being run" as it comes would call 2026 the running season and refuse Dragan.
+	 */
+	@Test
+	void aRaceOf2026IsNeverTheRunningSeasonEvenInTheAutumnOf2026() throws Exception {
+		clock.moveTo(IN_THE_AUTUMN_OF_2026);
+
+		assertThat(entered(RESULTS_MODERATOR, theOldRace, rows(row(DRAGAN, null, null, null, 4000)))
+			.getStatus()).isEqualTo(201);
+		assertThat(bodiesTo(DRAGAN).get(0)).contains("pre prve zvanične sezone lige (2027)");
+	}
+
+	/**
+	 * THE RUNNING SEASON TURNS AT THE NEW YEAR AND NOT AT THE FREEZE: at 10:00 on 1 January 2028 a race
+	 * of 2028 (run that morning) is of the running season, and Ana, who holds 2027 only, is refused.
+	 */
+	@Test
+	void theRunningSeasonTurnsAtTheNewYear() throws Exception {
+		clock.moveTo(THE_MORNING_OF_THE_NEW_YEAR);
+
+		long thisMorning = aRaceOf2028("novogodisnji-2028", LocalDate.of(2028, 1, 1));
+
+		assertThat(wrongRows(entered(RESULTS_MODERATOR, thisMorning, rows(row(ANA, null, null, null,
+			AN_HOUR))))).containsExactly("0 heHoldsNoMembershipOfTheRunningSeason");
+		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(ANA, null, null, null, AN_HOUR)))
+			.getStatus()).as("2027 is past by now and Ana holds it").isEqualTo(201);
+	}
+
+	/**
+	 * THE PENCIL AND THE X DO NOT ASK FOR THE MEMBERSHIP (see the class note, a reading and not a
+	 * decision): Dragan has a result on a race of the running season and no membership of it, which
+	 * is the state a membership struck out later leaves behind. The league can still correct it and
+	 * remove it.
+	 */
+	@Test
+	void thePencilAndTheXAskForNoMembershipOfTheRunningSeason() throws Exception {
+		long dragans = resultAlreadyCounted(DRAGAN, theTen, LocalDate.of(2027, 5, 8), 7200, "1.14",
+			"10.00", 100, 80);
+
+		assertThat(changed(RESULTS_MODERATOR, theTen, dragans, figuresBody(null, null, null, AN_HOUR))
+			.getStatus()).isEqualTo(204);
+		assertThat(removed(RESULTS_MODERATOR, theTen, dragans).getStatus()).isEqualTo(204);
+	}
+
+	/* ===================================================================== a season that has frozen */
+
+	/**
+	 * A RUN OF A FROZEN SEASON IS TOLD WITH THE OWNER'S SENTENCE, FOR A MEMBER AND A NON-MEMBER ALIKE
+	 * (PDL P9, 18.10.2026: „Rezultat u ZAMRZNUTOJ sezoni dobija posebnu rečenicu"), in each one's own
+	 * language: Ana holds 2027, Dragan does not, Bojan holds it and chose English. The season in the
+	 * sentence is the race's, 2027, while the clock stands in 2028. Nothing is said about a category.
+	 */
+	@Test
+	void aRunOfAFrozenSeasonIsToldWithTheOwnersSentence() throws Exception {
+		clock.moveTo(AFTER_THE_FREEZE);
+
+		assertThat(entered(RESULTS_MODERATOR, theTen, rows(
+			row(ANA, null, null, null, AN_HOUR),
+			row(DRAGAN, null, null, null, AN_HOUR),
+			row(BOJAN, null, null, null, AN_HOUR))).getStatus()).isEqualTo(201);
+
+		String sentence = "Sezona 2027 je zamrznuta, pa rezultat ostaje u vašoj istoriji, a tabela, plasmani"
+			+ " i nagrade te sezone se ne menjaju.";
+
+		for (String serbian : List.of(ANA, DRAGAN)) {
+			assertThat(subjectsTo(serbian)).containsExactly("Unet vam je rezultat");
+			assertThat(bodiesTo(serbian).get(0)).startsWith("Liga vam je unela rezultat:")
+				.contains(sentence).doesNotContain("ulazi u").doesNotContain("Za godinu");
+		}
+
+		assertThat(subjectsTo(BOJAN)).containsExactly("A result has been entered for you");
+		assertThat(bodiesTo(BOJAN).get(0)).startsWith("The league has entered a result for you:")
+			.contains("Season 2027 is frozen, so the result stays in your history, and the table,"
+				+ " rankings and awards of that season do not change.");
+		assertThat(SMTP.waitForIncomingEmail(5000, 3)).isTrue();
+		assertThat(envelope()).containsExactlyInAnyOrder(ANAS_ADDRESS, DRAGANS_ADDRESS, BOJANS_ADDRESS,
+			theLeague);
+	}
+
+	/**
+	 * THE FREEZE IS AT SIXTEEN HUNDRED AND NOT AT THE NEW YEAR: a second before it Vera's run is told
+	 * as an approval, and on the second itself Ana's is told with the sentence of a frozen season.
+	 */
+	@Test
+	void theSentenceOfAFrozenSeasonStartsOnTheSecondOfTheFreeze() throws Exception {
+		clock.moveTo(A_SECOND_BEFORE_THE_FREEZE);
+
+		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(VERA, null, null, null, AN_HOUR)))
+			.getStatus()).isEqualTo(201);
+		assertThat(subjectsTo(VERA).get(0)).isEqualTo("Vaš rezultat je odobren");
+
+		clock.moveTo(THE_SECOND_OF_THE_FREEZE);
+
+		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(ANA, null, null, null, AN_HOUR)))
+			.getStatus()).isEqualTo(201);
+		assertThat(subjectsTo(ANA)).containsExactly("Unet vam je rezultat");
+		assertThat(bodiesTo(ANA).get(0)).contains("Sezona 2027 je zamrznuta");
+	}
+
+	/**
+	 * A NON-MEMBER IN THE SIXTEEN HOURS BEFORE THE FREEZE is told he holds no membership of 2027 and not
+	 * that the season is frozen, which it is not yet.
+	 */
+	@Test
+	void aSeasonThatHasNotFrozenYetIsNotToldItHas() throws Exception {
+		clock.moveTo(THE_MORNING_OF_THE_NEW_YEAR);
+
+		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(DRAGAN, null, null, null, AN_HOUR)))
+			.getStatus()).isEqualTo(201);
+		assertThat(bodiesTo(DRAGAN).get(0)).contains("Za godinu 2027 nemate zapis o članstvu")
+			.doesNotContain("zamrznuta");
 	}
 
 	/* ===================================================================== the pencil and the x */
@@ -764,14 +987,14 @@ class ResultsByTheLeagueApiTest {
 
 		assertThat(entered(RESULTS_MODERATOR, theTen, rows(row(ANA, null, null, null, AN_HOUR)))
 				.getStatus()).isEqualTo(201);
-		assertThat(subjectsTo(ANA)).containsExactly("Vaš rezultat je odobren");
+		assertThat(subjectsTo(ANA)).containsExactly("Unet vam je rezultat");
 
 		long anas = resultsOfIds(ANA).get(1);
 
 		changed(RESULTS_MODERATOR, theTen, anas, figuresBody(null, null, null, 7200));
 		removed(RESULTS_MODERATOR, theTen, anas);
 
-		assertThat(subjectsTo(ANA)).containsExactly("Vaš rezultat je odobren",
+		assertThat(subjectsTo(ANA)).containsExactly("Unet vam je rezultat",
 				"Vaš rezultat je izmenjen", "Vaš rezultat je obrisan");
 	}
 
@@ -958,6 +1181,17 @@ class ResultsByTheLeagueApiTest {
 						+ " values ((select id from competitor where member_number = ?), ?, 'feeExempt',"
 						+ " 'Probni Probic', timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, season).update();
+	}
+
+	/** A membership taken away again, for the case that needs a member without the one the fixture gave. */
+	private void withoutAMembership(String number, int season) {
+		db.sql("delete from membership where competitor_id = (select id from competitor where"
+			+ " member_number = ?) and season = ?").params(number, season).update();
+	}
+
+	/** A race of 2028, which the clock has to be inside 2028 or later to enter a result for. */
+	private long aRaceOf2028(String slug, LocalDate day) {
+		return race(event(slug, "Dogadjaj " + slug, day), "Zimska desetka", day, "length", 0, "10.00", 0, 0);
 	}
 
 	private long event(String slug, String name, LocalDate date) {

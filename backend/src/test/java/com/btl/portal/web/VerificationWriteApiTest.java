@@ -3153,6 +3153,66 @@ class VerificationWriteApiTest {
 		assertThat(toTheSerbian.getContent().toString()).contains("uspon ").doesNotContain("ascent");
 	}
 
+	/**
+	 * AN APPROVAL AFTER THE FREEZE OF THE RUN'S SEASON CARRIES THE OWNER'S SENTENCE FOR A FROZEN
+	 * SEASON (PDL P9, 18.10.2026: „Rezultat u ZAMRZNUTOJ sezoni dobija posebnu rečenicu, i kad ga liga
+	 * unese i kad ga moderator odobri posle zamrzavanja ... (za odobrenje uz odgovarajući glagol)"),
+	 * in the language of the member and not of the moderator. The clock stands in 2028 and the run is
+	 * of 2027: the season asked about is the run's, since the year the clock stands in is not frozen
+	 * at its own moment.
+	 */
+	@Test
+	void anApprovalAfterTheFreezeOfItsSeasonCarriesTheSentenceOfAFrozenSeason() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-02T10:00:00Z"));
+
+		assertThat(answer(RESULTS_MODERATOR, anasMarathon, true, null)).isEqualTo(200);
+
+		MimeMessage toTheSerbian = theOneLetterTo(A_COMPETITOR);
+
+		assertThat(toTheSerbian.getSubject()).isEqualTo("Odobren vam je rezultat");
+		assertThat(toTheSerbian.getContent().toString()).startsWith("Moderator vam je odobrio rezultat:")
+			.contains("Sezona 2027 je zamrznuta, pa rezultat ostaje u vašoj istoriji, a tabela, plasmani"
+				+ " i nagrade te sezone se ne menjaju.")
+			.doesNotContain("Od ovog trenutka rezultat ulazi");
+	}
+
+	/** And the same sentence in English for a member who chose English, the moderator keeping Serbian. */
+	@Test
+	void anApprovalAfterTheFreezeIsInEnglishForAMemberWhoChoseEnglish() throws Exception {
+		db.sql("update account set mail_language = 'en' where email = ?").param(A_COMPETITOR).update();
+		clock.moveTo(Instant.parse("2028-01-02T10:00:00Z"));
+
+		assertThat(answer(RESULTS_MODERATOR, anasMarathon, true, null)).isEqualTo(200);
+
+		MimeMessage toTheEnglish = theOneLetterTo(A_COMPETITOR);
+
+		assertThat(toTheEnglish.getSubject()).isEqualTo("A result has been approved for you");
+		assertThat(toTheEnglish.getContent().toString()).startsWith("A moderator has approved a result for you:")
+			.contains("Season 2027 is frozen, so the result stays in your history, and the table,"
+				+ " rankings and awards of that season do not change.");
+	}
+
+	/**
+	 * THE FREEZE IS AT 16:00 ON 1 JANUARY AND NOT AT THE NEW YEAR, from both sides: a second before it the
+	 * approval is the ordinary one, and on the second itself it is the sentence of a frozen season.
+	 * Belgrade is on winter time then, so the two instants are 14:59:59 and 15:00:00 in UTC.
+	 */
+	@Test
+	void aSecondBeforeTheFreezeTheApprovalIsTheOrdinaryOne() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T14:59:59Z"));
+
+		assertThat(answer(RESULTS_MODERATOR, anasMarathon, true, null)).isEqualTo(200);
+		assertThat(theOneLetterTo(A_COMPETITOR).getSubject()).isEqualTo("Vaš rezultat je odobren");
+	}
+
+	@Test
+	void onTheSecondOfTheFreezeTheApprovalCarriesTheSentenceOfAFrozenSeason() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T15:00:00Z"));
+
+		assertThat(answer(RESULTS_MODERATOR, anasMarathon, true, null)).isEqualTo(200);
+		assertThat(theOneLetterTo(A_COMPETITOR).getSubject()).isEqualTo("Odobren vam je rezultat");
+	}
+
 	/** The one letter the member got, waited for: the league's blind copy is the same letter. */
 	private MimeMessage theOneLetterTo(String member) throws Exception {
 		assertThat(SMTP.waitForIncomingEmail(5000, 1)).as("no letter went out about the approval").isTrue();

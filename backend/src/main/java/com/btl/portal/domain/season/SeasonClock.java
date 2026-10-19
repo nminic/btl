@@ -364,6 +364,42 @@ public final class SeasonClock {
 	}
 
 	/**
+	 * WHETHER A SEASON OF THE LEAGUE IS THE ONE BEING RUN AT THIS MOMENT, and a year before the
+	 * first season is never one.
+	 *
+	 * <p>PDL P9, 18.10.2026 (the entry from the event page): the league enters a result of the
+	 * CURRENT season only for a member who holds the membership of that season, and for earlier
+	 * years and for those before 2027 it enters for everybody with a number. This is the question
+	 * that sentence asks, and it is {@link #seasonBeingRun} compared with the season, not a second
+	 * reading of the calendar year. The floor under it is needed because {@link #seasonBeingRun}
+	 * names 2026 in the autumn of 2026 on purpose, and 2026 is not a season (PDL P2): a race of
+	 * 2026 is a race before the league whatever the clock says.
+	 *
+	 * @param season the season (the calendar year of a race)
+	 * @param at     the moment being asked about, in any zone: it is read in the league's
+	 */
+	public static boolean isTheSeasonBeingRun(int season, ZonedDateTime at) {
+		return season >= FIRST_SEASON && season == seasonBeingRun(at);
+	}
+
+	/**
+	 * WHETHER A SEASON OF THE LEAGUE HAS FROZEN BY THIS MOMENT, and a year before the first season
+	 * has not, because it was never one.
+	 *
+	 * <p>{@link #isFrozen} alone answers yes for 2026 from 1 January 2027 at 16:00, which is the
+	 * arithmetic of a date and not a fact about a league that has no season 2026. The words a member
+	 * is told about a result in a frozen season (PDL P9, 18.10.2026: „Rezultat u ZAMRZNUTOJ sezoni
+	 * dobija posebnu rečenicu") are asked of this, so a race before 2027 keeps the words for a race
+	 * before the league.
+	 *
+	 * @param season the season of the run (the calendar year of its race)
+	 * @param at     the moment being asked about, in any zone: it is read in the league's
+	 */
+	public static boolean isAFrozenSeasonOfTheLeague(int season, ZonedDateTime at) {
+		return season >= FIRST_SEASON && isFrozen(season, at);
+	}
+
+	/**
 	 * THE SEASON A MEMBER'S AGE BAND IS WORKED OUT FOR, which is the one that is RUNNING and
 	 * never earlier than the first the league has.
 	 *
