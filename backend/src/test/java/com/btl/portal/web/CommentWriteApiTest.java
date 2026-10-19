@@ -244,6 +244,17 @@ class CommentWriteApiTest {
 		published(SOMEONE_ELSE, filterFirst, "2099-01-01T00:00:00Z", "Objavljeno kasnije");
 		published(FIRST_WRITTEN, run, "2020-01-01T00:00:00Z", "Objavljeno ranije");
 
+		/* WHO HAS A RESULT WHERE (owner, 19.10.2026: only a member with a result on the event rates
+		   it). ME ran `run` and `today`. SOMEONE_ELSE ran `run` too: ANOTHER MEMBER'S result on the
+		   very event, which must not open the door for a third. FIRST_WRITTEN ran only
+		   `runOtherEdition`, which has the same NAME as `run`: HIS OWN result on ANOTHER event. So
+		   "has a result on this event" can be told from "has a result", from "somebody has", and from
+		   "has one on an event of that name". */
+		ran(ME, run);
+		ran(ME, today);
+		ran(SOMEONE_ELSE, run);
+		ran(FIRST_WRITTEN, runOtherEdition);
+
 		/* A ROW IN THE QUEUE THAT IS NOT A COMMENT'S AT ALL, the identical precedent
 		   `TeamWriteApiTest` sets for its own tab, so „the comments tab" and „the whole
 		   queue" are two different counts and a statement that lost its queue can be seen. */
@@ -305,6 +316,20 @@ class CommentWriteApiTest {
 						+ " from competitor c, btl_event e"
 						+ " where c.member_number = ? and e.id = ?")
 				.params(body, submission, memberNumber, eventId).update();
+	}
+
+	/** A result of this member on a race of this event, the race made for it: what the form's
+	 *  {@code ran(results, races, event.id, mine)} counts. */
+	private void ran(String memberNumber, long eventId) {
+		long race = db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m) select id, 'Trka', false, date, 'length',"
+						+ " 0, 10, 0, 0 from btl_event where id = ? returning id")
+				.param(eventId).query(Long.class).single();
+
+		db.sql("insert into result (competitor_id, race_id, race_date, distance_km, ascent_m,"
+						+ " descent_m, seconds, points) select c.id, ra.id, ra.date, 10, 0, 0, 3600, 100"
+						+ " from competitor c, race ra where c.member_number = ? and ra.id = ?")
+				.params(memberNumber, race).update();
 	}
 
 	/** A comment a moderator has already let out, written the way an approval writes it. */
@@ -380,6 +405,13 @@ class CommentWriteApiTest {
 
 	private long howManySubmissions() {
 		return db.sql("select count(*) from comment_submission").query(Long.class).single();
+	}
+
+	/** The ids of what this member has published about this event. */
+	private List<Long> publishedBy(String memberNumber, long eventId) {
+		return db.sql("select id from event_comment where event_id = ? and competitor_id ="
+						+ " (select id from competitor where member_number = ?) order by id")
+				.params(eventId, memberNumber).query(Long.class).list();
 	}
 
 	private long howManyPublished() {
@@ -510,6 +542,18 @@ class CommentWriteApiTest {
 				.as("the member who writes has a name no other member has")
 				.isNotEqualTo(db.sql("select first_name || ' ' || last_name from competitor where"
 						+ " member_number = ?").param(FIRST_WRITTEN).query(String.class).single());
+
+		assertThat(db.sql("select count(*) from result r join race ra on ra.id = r.race_id"
+						+ " where ra.event_id = ?").param(run).query(Long.class).single())
+				.as("two members have a result on the event the cases rate: one of them is not the one"
+						+ " who rates, and the one who rates the event he did not run has one elsewhere")
+				.isEqualTo(2);
+		assertThat(db.sql("select count(*) from result r join race ra on ra.id = r.race_id"
+						+ " join competitor c on c.id = r.competitor_id where ra.event_id = ?"
+						+ " and c.member_number = ?").params(runOtherEdition, FIRST_WRITTEN)
+				.query(Long.class).single())
+				.as("the member with no result on the event has one on the event of the same name")
+				.isEqualTo(1);
 
 		assertThat(db.sql("select active from competitor where member_number = ?").param(LAPSED)
 						.query(Boolean.class).single())
@@ -903,6 +947,7 @@ class CommentWriteApiTest {
 	@Test
 	void theBoundaryIsMeasuredInBelgradeAndNotOnTheMachinesOwnZone() throws Exception {
 		long dayOfTheRace = event("Beogradski maraton", "2027-10-01");
+		ran(ME, dayOfTheRace);
 
 		clock.moveTo(Instant.parse("2027-09-30T22:30:00Z"));
 
@@ -913,14 +958,112 @@ class CommentWriteApiTest {
 	}
 
 	/**
-	 * THE FORM DOES NOT ASK WHETHER THIS MEMBER RAN THE EVENT, AND NEITHER DOES THIS
-	 * ROUTE - PDL P6, „forma je ne nudi kome ne pripada, a moderator vidi šta je stiglo"
-	 * names two places that do, the screen and the moderator, and this is
-	 * not a third.
+	 * A MEMBER WITH NO RESULT ON THE EVENT CANNOT RATE IT (owner, 19.10.2026: „ako clan nema rezultat,
+	 * ne moze uopste da da komentar"), with or without words, and NOTHING IS WRITTEN OR REMOVED.
+	 *
+	 * <p>{@link #FIRST_WRITTEN} has a result, but on {@link #runOtherEdition}, an event of the same
+	 * name; {@link #SOMEONE_ELSE} has one on {@link #run}, the very event, but is somebody else. Neither
+	 * opens the door. He also has a comment of his own already published on {@link #run}: a refusal
+	 * that had first deleted the old rating would leave him with none, so that row is read back.
+	 * The same member rating the event he DID run is the anchor, so what refuses him is the event and
+	 * not the member.
 	 */
 	@Test
-	void aMemberWithNoResultOnTheEventIsNotRefusedByTheServer() throws Exception {
-		assertThat(rateAs(FIRST_WRITTEN, form(run, 4, 4, 4, "")).getStatus()).isEqualTo(201);
+	void aMemberWithNoResultOnTheEventCannotRateItWithOrWithoutWords() throws Exception {
+		long submissionsBefore = howManySubmissions();
+		long queueBefore = howManyInTheQueue();
+		long publishedBefore = howManyPublished();
+		List<Long> hisOwnBefore = publishedBy(FIRST_WRITTEN, run);
+
+		assertThat(hisOwnBefore).as("he has a published rating of the event already").hasSize(1);
+
+		for (String words : new String[] {"", "Nisam bio tamo."}) {
+			MockHttpServletResponse answer = rateAs(FIRST_WRITTEN, form(run, 4, 4, 4, words));
+
+			assertThat(answer.getStatus()).isEqualTo(404);
+			assertThat(answer.getContentAsString())
+					.as("a refusal that says anything says that a write lives here")
+					.isEmpty();
+		}
+
+		assertThat(howManySubmissions()).isEqualTo(submissionsBefore);
+		assertThat(howManyInTheQueue()).isEqualTo(queueBefore);
+		assertThat(howManyPublished()).isEqualTo(publishedBefore);
+		assertThat(publishedBy(FIRST_WRITTEN, run))
+				.as("the refusal came before the old rating was replaced")
+				.isEqualTo(hisOwnBefore);
+
+		assertThat(rateAs(FIRST_WRITTEN, form(runOtherEdition, 4, 4, 4, "")).getStatus())
+				.as("the same member rating the event he did run is not refused")
+				.isEqualTo(201);
+	}
+
+	/**
+	 * ONE RATING PER MEMBER PER EVENT, AND A NEW ONE WITH NO WORDS REPLACES THE OLD AT ONCE (owner,
+	 * 19.10.2026). Four things stand around the old one and none of them may move: another member's
+	 * published rating of the SAME event ({@link #FIRST_WRITTEN}'s, in the fixture), this member's
+	 * published rating of ANOTHER event (the one of the same name), the count of everything else.
+	 */
+	@Test
+	void aRatingWithNoWordsReplacesTheMembersOldPublishedOneOfThatEventAndNoOtherRow() throws Exception {
+		published(ME, run, "2025-01-01T00:00:00Z", "Staro mišljenje");
+		published(ME, runOtherEdition, "2025-01-01T00:00:00Z", "Mišljenje o drugom izdanju");
+
+		List<Long> mineOnRun = publishedBy(ME, run);
+		List<Long> mineElsewhere = publishedBy(ME, runOtherEdition);
+		List<Long> theOtherMemberOnRun = publishedBy(FIRST_WRITTEN, run);
+		long publishedBefore = howManyPublished();
+
+		assertThat(mineOnRun).hasSize(1);
+		assertThat(mineElsewhere).hasSize(1);
+		assertThat(theOtherMemberOnRun).hasSize(1);
+
+		MockHttpServletResponse answer = rateAs(ME, form(run, 5, 5, 5, ""));
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(publishedBy(ME, run))
+				.as("he has ONE published rating of the event and it is the new one")
+				.containsExactly(idIn(answer));
+		assertThat(publishedBy(ME, run)).doesNotContainAnyElementsOf(mineOnRun);
+		assertThat(publishedBy(ME, runOtherEdition))
+				.as("his rating of another event, of the same name, is not touched")
+				.isEqualTo(mineElsewhere);
+		assertThat(publishedBy(FIRST_WRITTEN, run))
+				.as("another member's rating of the same event is not touched")
+				.isEqualTo(theOtherMemberOnRun);
+		assertThat(howManyPublished()).as("one went, one came").isEqualTo(publishedBefore);
+	}
+
+	/** A member who already has two (an approval used to be able to make a second) ends with one. */
+	@Test
+	void aRatingWithNoWordsLeavesAMemberWhoHadTwoWithOne() throws Exception {
+		published(ME, run, "2025-01-01T00:00:00Z", "Prvo");
+		published(ME, run, "2025-02-01T00:00:00Z", "Drugo");
+
+		assertThat(publishedBy(ME, run)).hasSize(2);
+
+		MockHttpServletResponse answer = rateAs(ME, form(run, 5, 5, 5, ""));
+
+		assertThat(publishedBy(ME, run)).containsExactly(idIn(answer));
+	}
+
+	/**
+	 * A RATING WITH WORDS REPLACES NOTHING YET: the old one stands until a moderator approves the new
+	 * one (that replacement is {@code VerificationWriteApiTest}'s). What this route must not do is
+	 * touch the old one or publish the new one.
+	 */
+	@Test
+	void aRatingWithWordsLeavesTheOldPublishedOneStandingUntilItIsApproved() throws Exception {
+		published(ME, run, "2025-01-01T00:00:00Z", "Staro mišljenje");
+
+		List<Long> before = publishedBy(ME, run);
+		long publishedBefore = howManyPublished();
+
+		MockHttpServletResponse answer = rateAs(ME, form(run, 1, 1, 1, "Novo mišljenje."));
+
+		assertThat(waitingIn(answer)).isTrue();
+		assertThat(publishedBy(ME, run)).isEqualTo(before);
+		assertThat(howManyPublished()).isEqualTo(publishedBefore);
 	}
 
 	/**

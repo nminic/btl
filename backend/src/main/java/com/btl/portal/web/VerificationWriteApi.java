@@ -1584,8 +1584,21 @@ class VerificationWriteApi {
 	 * left standing after their own decisions. Deleting it would in any case cascade the
 	 * {@code verification} row away with it ({@code verification_comment_submission_fk}),
 	 * which ADL A36 O11 forbids for a decided row regardless of which way it was decided.
+	 *
+	 * <p><b>What IS deleted is the member's earlier PUBLISHED rating of the same event</b> (owner,
+	 * 19.10.2026, chose with the recommendation: one rating per member per event, a new one replaces
+	 * the old; a rating with words waits for a moderator and the old one stands until he approves
+	 * it). Keyed by this submission's member AND its event, and by nothing else: another member's
+	 * rating of the event stays, and so does this member's rating of another event. Not decided and
+	 * so not done: a waiting submission of the same member is not touched.
 	 */
 	private void publishTheComment(Item item) {
+		db.sql("delete from event_comment where (competitor_id, event_id) ="
+						+ " (select cs.competitor_id, cs.event_id from comment_submission cs"
+						+ " where cs.id = ?)")
+				.param(item.commentSubmissionId())
+				.update();
+
 		db.sql("insert into event_comment (event_id, competitor_id, who, published_at,"
 						+ " rating_organisation, rating_value, rating_ambience, body)"
 						+ " select cs.event_id, cs.competitor_id,"

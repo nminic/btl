@@ -117,27 +117,37 @@ import java.util.Optional;
  * words, „Dan same trke se računa kao održan, jer se ocena daje na povratku sa nje" - so
  * the comparison is {@code date.isAfter(today)} and never {@code isBefore}.
  *
+ * <p><b>ONLY A MEMBER WHO HAS A RESULT ON THE EVENT MAY RATE IT, AND THIS ROUTE ASKS.</b> PDL P6,
+ * 11.08.2026: „članovi mogu da ocene samo događaje na kojima imaju upisan rezultat". Until
+ * 19.10.2026 the rule stood in two places, the form and the moderator who read what arrived, and this
+ * route was deliberately not a third. A rating with three marks and no words no longer reaches a
+ * moderator, so the second place was gone, and the owner, 19.10.2026, on a high finding of the review
+ * of PR 578: „Dakle ako clan nema rezultat, ne moze uopste da da komentar. To treba da odbije forma."
+ * That the SERVER refuses is derived (PDL, [IZVEDENO 19.10.2026]) from „ne moze uopste" and from the
+ * rule that all input is checked on the backend. <b>It asks what the form asks</b>
+ * ({@code ran(results, races, event.id, mine)}, {@code pages/event/ran.ts}): a row of {@code result}
+ * of this member on a race of this event. {@code result} holds only what was approved (a run still
+ * waiting is a {@code result_submission}), which is the form's own reading, and the one thing
+ * {@code GET /api/results} withholds - the running season of a member whose fee lapsed - cannot
+ * differ here, because a member whose fee has lapsed is turned away before this question. Asked
+ * AFTER the event is known and has been run, so those two refusals keep their sentences, and answered
+ * as {@link #nothingIsHere} and not as a reason of its own: the form never offers this rating to such a
+ * member, so there is no screen sentence for it, and ADL A8 asks that a request the server will not
+ * take say no more than an address that maps nothing.
+ *
+ * <p><b>ONE RATING PER MEMBER PER EVENT, AND A NEW ONE REPLACES THE OLD</b> (owner, 19.10.2026,
+ * chose among offered outcomes with the recommendation: „Jedna ocena po članu po događaju; nova
+ * zamenjuje staru"). A rating with no words replaces the member's published one AT ONCE, in the
+ * same transaction ({@link #publishAtOnce}). A rating with words goes to the moderator and the old
+ * one stands until he approves it; on approval the approved one replaces the old
+ * ({@link VerificationWriteApi#publishTheComment}). <b>Not decided, and so not done here:</b> what a
+ * rating with no words does to a rating with words of the same member that still waits in the queue
+ * (it leaves it there, and the later approval then replaces the one published at once), and whether
+ * the database refuses a second published row (it does not; nothing but these two writers makes one).
+ *
  * <p><b>WHAT IS NOT HERE, EACH NAMED RATHER THAN DISCOVERED.</b>
  *
  * <ul>
- * <li><b>Whether this member ran the event.</b> PDL P6, „forma je ne nudi kome ne
- * pripada, a moderator vidi šta je stiglo" names the two places that ask - the FORM (through
- * {@code ran(results, races, event.id, mine)}, checked before the screen ever draws a
- * star) and the MODERATOR reading the card. This route is not the third place, and it is
- * not added on the strength of a reading between those lines: PDL names two and this
- * stays at two. A member with no result at all can still reach this address by typing
- * it, and the answer he gets is 201 - the same boundary {@link TeamWriteApi} draws
- * around its own three refusals rather than inventing a fourth.
- * <li><b>A second comment on an event this member has already written one about.</b>
- * Nothing here refuses it, because nothing decided that it should: PDL P21, „Rezultate
- * prijavljuju samo ulogovani korisnici, pa se tu ne očekuje zloupotreba" says abuse
- * is not expected of somebody signed in, and {@link TeamWriteApi} already answers the
- * identical question about a second proposal the same way - „nothing decided that it
- * should be refused" - while {@link MyApplicationsApi}'s own one-at-a-time rule guards a
- * single profile rather than a per-event count. The moderator is the gate PDL P6, „forma
- * je ne nudi kome ne pripada, a moderator vidi šta je stiglo" names,
- * and he sees every waiting item on the tab, including two from one member about one
- * race.
  * <li><b>A length on the text.</b> The schema names none - {@code comment_submission.body}
  * is {@code text} with no check - and neither does any other writing route on this
  * server, {@link TeamWriteApi} says so of its own {@code bio}/{@code link}/{@code note}
@@ -273,7 +283,27 @@ class CommentWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_EVENT_HAS_NOT_BEEN_RUN);
 		}
 
+		/* A MEMBER WHO HAS NO RESULT ON THIS EVENT CANNOT RATE IT (owner, 19.10.2026), asked after the
+		   event is known and has been run so those two keep their own sentences. See the class note
+		   for why this is the 404 and not a reason of its own. */
+		if (!hasARunOn(me, typed.eventId())) {
+			throw nothingIsHere();
+		}
+
 		return inOneTransaction.execute(committing -> write(me, typed));
+	}
+
+	/**
+	 * Whether this member has a result on a race of this event: {@code pages/event/ran.ts}'s question,
+	 * asked of the table the form's data comes from. Both keys are bound, so another member's result
+	 * on this event, or this member's result on another event, is a different answer.
+	 */
+	private boolean hasARunOn(long member, long eventId) {
+		return db.sql("select exists (select 1 from result r join race ra on ra.id = r.race_id"
+						+ " where r.competitor_id = ? and ra.event_id = ?)")
+				.params(member, eventId)
+				.query(Boolean.class)
+				.single();
 	}
 
 	/**
@@ -328,11 +358,23 @@ class CommentWriteApi {
 	 * THIS STATEMENT, and {@code published_at} is the database's {@code now()}. ADL A64 A5 reads
 	 * „published" as the moment the name is taken, and this is that moment.
 	 *
+	 * <p><b>The member's published rating of this event is deleted first, in the same
+	 * transaction</b> (one per member per event, the new one replaces the old; see the class note).
+	 * Not decided and so not done: a waiting rating with words of the same member is left in the
+	 * queue.
+	 *
 	 * <p>{@code me} came out of {@link ActiveMemberOrAdministration#activeMember}, so the
 	 * {@code competitor} row exists and {@code single()} always has its one row. The body is the
 	 * empty string and not null, because {@code event_comment.body} is NOT NULL.
 	 */
 	private ResponseEntity<?> publishAtOnce(long me, Rated typed) {
+		/* THE NEW ONE REPLACES THE OLD, AT ONCE (owner, 19.10.2026): this member's published rating of
+		   THIS event goes, and nobody else's and no other event's. Every one of them, so a member who
+		   already has two (an approval used to be able to make a second) ends with one. */
+		db.sql("delete from event_comment where competitor_id = ? and event_id = ?")
+				.params(me, typed.eventId())
+				.update();
+
 		long comment = db.sql("insert into event_comment (event_id, competitor_id, who, published_at,"
 						+ " rating_organisation, rating_value, rating_ambience, body)"
 						+ " select ?, c.id, c.first_name || ' ' || c.last_name, now(), ?, ?, ?, ''"

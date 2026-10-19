@@ -1757,6 +1757,55 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * APPROVING A RATING WITH WORDS REPLACES THE MEMBER'S OLDER PUBLISHED RATING OF THAT EVENT (owner,
+	 * 19.10.2026: one rating per member per event, the new one replaces the old; the old one stands
+	 * until the moderator approves the new one), AND NOTHING ELSE.
+	 *
+	 * <p>Three published rows stand around the one that goes: BOJAN's of the SAME event (another member's
+	 * must stay), ANA's of ANOTHER event (the same member's other event must stay), and ANA's older one
+	 * on the weekend event, the only one that may go. The count is read as well, so a delete that took
+	 * too much or too little cannot agree by accident.
+	 */
+	@Test
+	void approvingARatingReplacesTheMembersOlderPublishedOneOfThatEventAndNoOtherRow() throws Exception {
+		long hers = publishedFor(ANA, theWeekendEvent, "Stari komentar Ane");
+		long hersElsewhere = publishedFor(ANA, anotherEvent, "Ana o drugom dogadjaju");
+		long bojans = publishedFor(BOJAN, theWeekendEvent, "Bojanov objavljeni");
+
+		assertThat(answer(COMMENTS_MODERATOR, anasComment, true, null)).isEqualTo(200);
+
+		assertThat(db.sql("select id from event_comment where event_id = ? and competitor_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.params(theWeekendEvent, ANA).query(Long.class).list())
+				.as("she has ONE published rating of the event, the approved one, and the old one is gone")
+				.hasSize(1)
+				.doesNotContain(hers);
+		assertThat(db.sql("select body from event_comment where event_id = ? and competitor_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.params(theWeekendEvent, ANA).query(String.class).single()).isEqualTo("Odlicna staza");
+		assertThat(db.sql("select count(*) from event_comment where id = ?").param(hersElsewhere)
+				.query(Integer.class).single())
+				.as("her rating of another event stays")
+				.isOne();
+		assertThat(db.sql("select count(*) from event_comment where id = ?").param(bojans)
+				.query(Integer.class).single())
+				.as("another member's rating of the same event stays")
+				.isOne();
+		assertThat(db.sql("select count(*) from event_comment").query(Integer.class).single())
+				.as("one went, one came")
+				.isEqualTo(3);
+	}
+
+	private long publishedFor(String memberNumber, long eventId, String body) {
+		return db.sql("insert into event_comment (event_id, competitor_id, who, published_at,"
+						+ " rating_organisation, rating_value, rating_ambience, body)"
+						+ " select ?, c.id, c.first_name || ' ' || c.last_name,"
+						+ " timestamptz '2025-01-01 10:00:00+00', 2, 2, 2, ?"
+						+ " from competitor c where c.member_number = ? returning id")
+				.params(eventId, body, memberNumber).query(Long.class).single();
+	}
+
+	/**
 	 * AND THE SUBMISSION A CASE APPROVES IS NEVER CONFUSED WITH WHICHEVER ROW HAPPENS TO
 	 * CARRY THE FIXTURE'S LOWEST OR HIGHEST {@code comment_submission.id} (PR 354 review,
 	 * round 4, blizanac visokog iz kruga 1 - jednu tabelu dalje; widened to guard both ends
