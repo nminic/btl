@@ -15,6 +15,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.core.NestedExceptionUtils;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -485,7 +486,7 @@ class ThePaymentsScreenLocksTheMemberTest {
 		} catch (ServletException fault) {
 			MockHttpServletResponse failed = new MockHttpServletResponse();
 			failed.setStatus(500);
-			failed.getWriter().write(String.valueOf(fault.getMostSpecificCause()));
+			failed.getWriter().write(String.valueOf(NestedExceptionUtils.getMostSpecificCause(fault)));
 
 			return failed;
 		}
