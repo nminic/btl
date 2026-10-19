@@ -369,8 +369,14 @@ describe('the reasons the server can name', () => {
        `WHEN_WRITING_A_PRICE` already keeps and gives the reason for: the screen is the floor and
        the route decides. One of the seven it could not predict even in principle -
        `nothingWouldComeOffTheBalance`, which the server settles on the PAIR of currencies while
-       the screen is served one - and that is set out on `admin/activation.ts`. */
-    ['MembershipWriteApi.java', [WHEN_ACTIVATING], 9],
+       the screen is served one - and that is set out on `admin/activation.ts`.
+
+       EIGHT CONSTANTS AND SIX REASONS since 18.10.2026. `thePaymentWasReversed` („Storno vraća
+       čovek, van ovog ekrana.”) is deleted by the owner's decision of that day together with the
+       state it was about (PDL P8, „Kad se osnov promeni iz „uplata” ili se uplata stornira, zapis o
+       uplati se BRIŠE.”), on this door and on `PaymentApi`'s below, and V64 takes the state out of
+       the schema. The two that are not refusals did not move. */
+    ['MembershipWriteApi.java', [WHEN_ACTIVATING], 8],
     /* THE ELEVENTH, ADDED 28.09.2026, AND IT IS HERE BECAUSE OF WHAT HAPPENED WITHOUT IT.
        `admin/activation.ts` carried two sentences saying `POST /api/payments` takes no amount and
        spends the balance by what a QR code promised. Both were true when written and both were
@@ -406,12 +412,16 @@ describe('the reasons the server can name', () => {
        numbers agree. `theAmountIsNotWhole` is an amount with a fraction in it (PDL, ODLUKA
        02.10.2026, „Iznosi se unose kao celi brojevi", and POTVRĐENO 03.10.2026 for the amount of a
        payment as well). The field takes digits only (`AN_AMOUNT`), so the screen cannot send one,
-       and it is answered anyway for the reason every unreachable name on this list is. */
-    /* TWO SCREENS SINCE 18.10.2026 AND THE SAME ELEVEN NAMES: the member's row in the moderation of
+       and it is answered anyway for the reason every unreachable name on this list is.
+
+       TEN CONSTANTS AND TEN REASONS since 18.10.2026: `thePaymentWasReversed` went with the state
+       it was about, the same day and for the same decision as on `MembershipWriteApi`'s line above,
+       and the four sentences shared with `WHEN_ACTIVATING` became three. */
+    /* TWO SCREENS SINCE 18.10.2026 AND THE SAME NAMES ON BOTH, ten of them since that same day: the member's row in the moderation of
        the members books through the same class (`MemberPaymentApi`, which declares no reason of its
        own and answers `PaymentApi`'s), so its map is registered here, for the direction that has
        teeth: a reason added to it that this file cannot answer fails the second case. */
-    ['PaymentApi.java', [WHEN_BOOKING_A_PAYMENT, WHEN_RECORDING_ON_THE_ROW], 11],
+    ['PaymentApi.java', [WHEN_BOOKING_A_PAYMENT, WHEN_RECORDING_ON_THE_ROW], 10],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A RACING PAIR.
        Seven constants, and the count splits three ways: three are not refusals at all
        (`NOT_A_REASON` above), two are real refusals of the act that ASKS rather than answers

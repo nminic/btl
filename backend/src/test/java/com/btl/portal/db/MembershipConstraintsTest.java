@@ -730,9 +730,10 @@ class MembershipConstraintsTest extends DatabaseTest {
 	/**
 	 * AND IT GOES WITH THE RECEIPT IT STANDS ON, which is the other end of the same rule.
 	 *
-	 * <p>A payment is never deleted on its own in the portal - a reversal is a state and not a
-	 * deletion (V16) - so this is what the rule means rather than what anybody will do: evidence
-	 * and the membership it evidences go together. A {@code set null} here would leave a row held
+	 * <p>Since 18.10.2026 this is also the road a cancellation takes: the owner decided that a
+	 * cancelled payment is DELETED rather than left standing as {@code reversed} (PDL P8, „Kad se osnov promeni
+	 * iz „uplata” ili se uplata stornira, zapis o uplati se BRIŠE.”; V64), so evidence and the
+	 * membership it evidences go together by this key. A {@code set null} here would leave a row held
 	 * on a payment naming none, which is exactly what A12 forbids and what
 	 * {@code membership_basis_says_whether_a_payment_is_named} would then refuse, turning the
 	 * deletion into a failure with a confusing name on it.

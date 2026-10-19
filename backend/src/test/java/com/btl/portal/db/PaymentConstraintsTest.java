@@ -110,10 +110,6 @@ class PaymentConstraintsTest extends DatabaseTest {
 	private static final String GOOD_RECORDED = payment(A_MEMBER + ", 2028, '20281000', " + A_PRICE_ROW
 			+ ", 4200.00, 'RSD', 0, 'ips', 'recorded', " + AN_INSTANT + ", " + AN_ACCOUNT
 			+ ", 'Blagajnik Probni'");
-	/** Reversed: it happened, it says so, and the season is his no longer. */
-	private static final String GOOD_REVERSED = payment(A_MEMBER + ", 2029, '20291000', " + A_PRICE_ROW
-			+ ", 40.00, 'EUR', 3.00, 'paypal', 'reversed', " + AN_INSTANT + ", " + AN_ACCOUNT
-			+ ", 'Blagajnik Probni'");
 
 	/**
 	 * A member with a number, somebody who has registered and has none, an account
@@ -238,11 +234,20 @@ class PaymentConstraintsTest extends DatabaseTest {
 				Violation.notNull("payment_state_not_null", "state",
 						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal', null,"
 								+ " null, null, null")),
-				/* A fourth state, written as a RECOGNISED row so that the two biconditionals
+				/* A third state, written as a RECOGNISED row so that the two biconditionals
 				   below are satisfied and this is the only thing it breaks. */
 				Violation.of("payment_state_known",
 						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'pending', " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Blagajnik Probni'")),
+				/* AND `reversed`, WHICH WAS A LEGITIMATE ROW OF THIS FILE UNTIL 18.10.2026, written
+				   exactly as it was accepted then. The owner overturned the state that day (PDL P8,
+				   „Kad se osnov promeni iz „uplata” ili se uplata stornira, zapis o uplati se
+				   BRIŠE.”), and V64 is what refuses it: a migration that left the word in place
+				   would leave this row standing and this case red. */
+				Violation.of("payment_state_known",
+						payment(A_MEMBER + ", 2029, '20291000', " + A_PRICE_ROW + ", 40.00, 'EUR', 3.00,"
+								+ " 'paypal', 'reversed', " + AN_INSTANT + ", " + AN_ACCOUNT
+								+ ", 'Blagajnik Probni'")),
 
 				/* RECOGNISED SAYS WHEN AND BY WHOM, both directions of each. */
 				Violation.of("payment_recognised_says_when",
@@ -346,7 +351,7 @@ class PaymentConstraintsTest extends DatabaseTest {
 	}
 
 	static List<String> legitimateRows() {
-		return List.of(GOOD_AWAITED, GOOD_RECORDED, GOOD_REVERSED);
+		return List.of(GOOD_AWAITED, GOOD_RECORDED);
 	}
 
 	@ParameterizedTest
