@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Navigate } from 'react-router'
 import { useToday } from '../../clock/useClock'
+import { clearResourceCache } from '../../data/client'
 import { teamOf } from '../../data/derive'
 import { inYearlyWindow } from '../../data/season'
 import { useSend, useSent } from '../sent'
@@ -173,6 +174,13 @@ export function ProposeTeam() {
             setSending(false)
 
             if (answer.got === 'done') {
+              /* SO THAT THE ROW JUST MADE IS ON THE QUEUE THIS VISIT, and not only on the next
+                 one: `data/client.ts` fetches a resource once per visit and the shell asks for
+                 `verification` on every admin screen, so a moderator who is also a member held
+                 the list from before this proposal and never saw it in the queue of teams.
+                 Dropped only on 201: a refusal queued nothing (`ProfilePicture.tsx` and
+                 `resultWrites.ts` do the same). */
+              clearResourceCache('verification')
               confirm(`/${locale}/timovi`, name)
 
               return
