@@ -81,19 +81,19 @@ class EveryMailIsAMandatoryOneTest {
 	 * because they are unwanted, and the day either is built it arrives in this table under
 	 * its own name rather than as an exception to it.
 	 */
-	private static final Map<String, String> MANDATORY = Map.of(
-			"confirmTheAddress", "creating an account and confirming the address",
-			"invitedAsAMember", "creating an account: the administration opens it and he takes it over",
-			"invitedAsAModerator", "creating an account: the same road, for somebody who moderates",
-			"setANewPassword", "changing the password, from the screen that says it is forgotten",
-			"thePasswordHasChanged", "changing the password, telling him it happened",
+	private static final Map<String, String> MANDATORY = Map.ofEntries(
+			Map.entry("confirmTheAddress", "creating an account and confirming the address"),
+			Map.entry("invitedAsAMember", "creating an account: the administration opens it and he takes it over"),
+			Map.entry("invitedAsAModerator", "creating an account: the same road, for somebody who moderates"),
+			Map.entry("setANewPassword", "changing the password, from the screen that says it is forgotten"),
+			Map.entry("thePasswordHasChanged", "changing the password, telling him it happened"),
 			/* WORDS, AND SINCE 09.10.2026 NO LETTER. A run sent in is told in the member's inbox and
 			   nowhere else (PDL P9, 09.10.2026, „Pri slanju rezultata član dobija samo red u
 			   sandučetu"), so these words stay in the dictionary for that line and no mail carries
 			   them; the mail „unet rezultat" is `resultApproved` below. This file reads words and not
 			   channels, so it cannot see the difference - the case that does is
 			   `ResultWriteApiTest.sendingOneInWritesTheLineInHisInboxAndPostsNoLetter`. */
-			"resultEntered", "a result entered: the line in his inbox when he sends it, and since 09.10.2026 no letter",
+			Map.entry("resultEntered", "a result entered: the line in his inbox when he sends it, and since 09.10.2026 no letter"),
 			/* Not on the list of mandatory mails by that name, and named by the owner all the same.
 			   PDL P22, an [ODLUKA] in the section that lists them: „Član dobija mejl kad mu je
 			   rezultat odobren." And the decision of 28.09.2026 that took the notification screen
@@ -102,9 +102,16 @@ class EveryMailIsAMandatoryOneTest {
 			   obaveznih". Which one of the list it is, the record now says by a derivation of
 			   03.10.2026 rather than in the owner's words: „Mejl o odobrenom rezultatu je mejl
 			   „unet rezultat" iz spiska". */
-			"resultApproved", "a result approved: the mandatory mail about a result entered, named by PDL P22 and by the decision of 28.09.2026",
-			"resultChanged", "a result changed",
-			"resultDeleted", "a result changed: deleting is the cheapest way to change one without a trace");
+			Map.entry("resultApproved", "a result approved: the mandatory mail about a result entered, named by PDL P22 and by the decision of 28.09.2026"),
+			Map.entry("resultChanged", "a result changed"),
+			Map.entry("resultDeleted", "a result changed: deleting is the cheapest way to change one without a trace"),
+			/* THE LEAGUE ENTERS, CHANGES AND DELETES FROM THE EVENT PAGE (PDL P9, 18.10.2026: „Za novi
+			   unos član dobija istu poruku kao kad mu moderator odobri rezultat, u sanduče i mejlom;
+			   izmena i brisanje rade po P22"). The two entries are the mandatory „unet rezultat" for a
+			   run no season counts, and the change is „promenjen rezultat" made by the league. */
+			Map.entry("resultEnteredBeforeTheLeague", "a result entered by the league for a race run before 2027: the mail about a result entered"),
+			Map.entry("resultEnteredWithoutAMembership", "a result entered by the league for a year he holds no membership of: the mail about a result entered"),
+			Map.entry("resultChangedByTheLeague", "a result changed, by the league from the event page"));
 
 	@Test
 	void thePortalHasWordsForNoOccasionThatIsNotAMandatoryMail() {
