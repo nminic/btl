@@ -144,11 +144,20 @@ class MyResultSubmissionsApi {
 	 * @param comment        what he wrote beside it, or empty
 	 * @param reason         why a moderator sent it back, and nothing while it waits
 	 * @param amendsResultId the counted result this run corrects, or nothing for a fresh run
+	 * @param eventId        THE EVENT THE RUN IS ON, as the member's own screen starts from it (PDL P9,
+	 *                       owner, 19.10.2026: „Prijava pamti događaj koji je član izabrao, a
+	 *                       moderator ga pri odobrenju sme promeniti"): the race's own event for a run
+	 *                       from the calendar, the event the member chose for a described one (V66),
+	 *                       and nothing where he chose none
+	 * @param eventName      that event's name as it is now, or the name the member typed where the
+	 *                       calendar has no such event; nothing where neither is there. V66 keeps
+	 *                       the chosen key and the typed name exclusive, so this never chooses
+	 *                       between two names that are both there
 	 */
 	record Sent(long id, String state, Long raceId, String raceName, LocalDate raceDate,
 			String raceKind, String city, String country, BigDecimal distanceKm, Integer ascentM,
 			Integer descentM, Integer seconds, String link, String comment, String reason,
-			Long amendsResultId) {
+			Long amendsResultId, Long eventId, String eventName) {
 	}
 
 	/**
@@ -186,7 +195,11 @@ class MyResultSubmissionsApi {
 						+ " ra.ascent_m as the_races_ascent, ra.descent_m as the_races_descent,"
 						+ " ra.limit_seconds as the_races_limit,"
 						+ " rs.distance_km, rs.ascent_m, rs.descent_m, rs.seconds,"
-						+ " rs.link, rs.comment, v.reason, rs.amends_result_id"
+						+ " rs.link, rs.comment, v.reason, rs.amends_result_id,"
+						/* THE EVENT THE RUN IS ON (see `Sent.eventId`): the race's for a run from the
+						   calendar, the one he chose or typed for a described run. */
+						+ " coalesce(ev.id, chosen_event.id) as event_id,"
+						+ " coalesce(ev.name, chosen_event.name, rs.event_name) as event_name"
 						+ " from result_submission rs"
 						/* BY THE POINTER, never by whose run it is: two runs of one member are two
 						   items, and a join on the member would hand each the other's state. INNER,
@@ -195,6 +208,7 @@ class MyResultSubmissionsApi {
 						+ " join verification v on v.result_submission_id = rs.id"
 						+ " left join race ra on ra.id = rs.race_id"
 						+ " left join btl_event ev on ev.id = ra.event_id"
+						+ " left join btl_event chosen_event on chosen_event.id = rs.event_id"
 						+ " left join place event_town on event_town.id = ev.place_id"
 						+ " left join country event_town_country on event_town_country.id = event_town.country_id"
 						+ " left join country event_typed_country on event_typed_country.id = ev.country_id"
@@ -215,7 +229,8 @@ class MyResultSubmissionsApi {
 							row.getString("city"), row.getString("country"), counted.distanceKm(),
 							counted.ascentM(), counted.descentM(), counted.seconds(),
 							row.getString("link"), row.getString("comment"), row.getString("reason"),
-							row.getObject("amends_result_id", Long.class));
+							row.getObject("amends_result_id", Long.class),
+							row.getObject("event_id", Long.class), row.getString("event_name"));
 				})
 				.list();
 	}

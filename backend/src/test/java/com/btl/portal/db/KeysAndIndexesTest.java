@@ -430,6 +430,8 @@ class KeysAndIndexesTest extends DatabaseTest {
 					+ "result_submission_race_fk, which is over two columns and so is this"),
 			new Index("result_submission_place_idx", "the waiting runs that name one town of the codebook"),
 			new Index("result_submission_country_idx", "the waiting runs that name one country of the codebook"),
+			// V66: the other end of result_submission_event_fk, which an event deleted reads to set it empty
+			new Index("result_submission_event_idx", "the waiting runs that name one event the member chose"),
 			/* V11. Every one of these is the other end of a key that points out of a team, a
 			   membership or a proposal, and two of them are also how the portal draws a page:
 			   the members of one team, and what one member has sent to moderation. */

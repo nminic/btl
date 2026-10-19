@@ -96,6 +96,32 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 		return "insert into result_submission (" + COLUMNS + ") values (" + values + ")";
 	}
 
+	/** The event V66 lets a described run choose, which is not the event of the calendar race. */
+	private static final String AN_EVENT = "(select id from btl_event where slug = 'izabrani-dogadjaj-v66')";
+
+	/**
+	 * A row that names an event the way V66 keeps it: {@code event} and {@code typed} are the two
+	 * columns, each written as SQL, so a case can put a key, a name or nothing in either.
+	 */
+	private static String naming(String event, String typed, String race) {
+		return "insert into result_submission (" + COLUMNS + ", event_id, event_name) values ("
+				+ race + ", " + event + ", " + typed + ")";
+	}
+
+	/** The described run of {@link #GOOD_DESCRIBED}, as {@link #naming} takes it. */
+	private static final String DESCRIBED = A_MEMBER + ", null, " + ANOTHER_DAY
+			+ ", 'Trka kroz sumu', 'free', " + A_TOWN + ", null, null, 21.50, 300, 280, 7200, '', ''";
+
+	/** The run from the calendar of {@link #GOOD_FROM_THE_CALENDAR}, as {@link #naming} takes it. */
+	private static final String FROM_THE_CALENDAR = A_MEMBER + ", " + A_RACE + ", " + RACE_DAY
+			+ ", null, null, null, null, null, 10.00, 100, 100, 3600, '', ''";
+
+	/** Described, on an event of the calendar the member chose (V66). */
+	private static final String GOOD_DESCRIBED_ON_A_CHOSEN_EVENT = naming(AN_EVENT, "null", DESCRIBED);
+	/** Described, on an event the member typed because the calendar has none of that name (V66). */
+	private static final String GOOD_DESCRIBED_ON_A_TYPED_EVENT =
+			naming("null", "'Kros kroz sumu'", DESCRIBED);
+
 	/**
 	 * A member, a race in the calendar to report from, and one submission already
 	 * waiting.
@@ -119,6 +145,10 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 		db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds, distance_km, ascent_m,"
 				+ " descent_m) values ((select id from btl_event where slug = 'probni-dogadjaj-v10'),"
 				+ " 'Probna trka', false, " + RACE_DAY + ", 'length', 0, 10.00, 100, 100)").update();
+
+		db.sql("insert into btl_event (slug, name, date, place_id, city, country_id, kind, featured,"
+				+ " description, link, copied_from) values ('izabrani-dogadjaj-v66', 'Izabrani dogadjaj', "
+				+ ANOTHER_DAY + ", " + A_TOWN + ", null, null, 'race', false, '', '', null)").update();
 
 		db.sql(GOOD_FROM_THE_CALENDAR).update();
 	}
@@ -279,7 +309,23 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 						correcting("999999", A_RACE + ", " + RACE_DAY + ", null, null, null, null, null")),
 				Violation.of("result_submission_a_correction_keeps_the_race_it_corrects",
 						correcting("999999", "null, " + ANOTHER_DAY + ", 'Trka kroz sumu', 'free', "
-								+ A_TOWN + ", null, null")));
+								+ A_TOWN + ", null, null")),
+
+				/* THE EVENT A DESCRIBED RUN NAMES (V66), chosen or typed, and only on a described run.
+				   The key first, against an event that is not there: the row is otherwise the good
+				   described one, so nothing but the key can be what fires. */
+				Violation.of("result_submission_event_fk", naming("999999", "null", DESCRIBED)),
+				/* A run from the calendar has its event through its race, so it names none here,
+				   chosen or typed - both rows, because a check over one column would let the other
+				   through. */
+				Violation.of("result_submission_only_a_described_run_names_its_event",
+						naming(AN_EVENT, "null", FROM_THE_CALENDAR)),
+				Violation.of("result_submission_only_a_described_run_names_its_event",
+						naming("null", "'Kros kroz sumu'", FROM_THE_CALENDAR)),
+				Violation.of("result_submission_event_is_chosen_or_typed",
+						naming(AN_EVENT, "'Kros kroz sumu'", DESCRIBED)),
+				Violation.of("result_submission_event_name_not_blank",
+						naming("null", "'   '", DESCRIBED)));
 	}
 
 	/** A row that names the result it corrects, which {@link #COLUMNS} does not carry. */
@@ -334,7 +380,8 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 	 * a town out of the codebook, and described with one typed by hand.
 	 */
 	static List<String> legitimateRows() {
-		return List.of(GOOD_FROM_THE_CALENDAR, GOOD_DESCRIBED, GOOD_DESCRIBED_TYPED_TOWN);
+		return List.of(GOOD_FROM_THE_CALENDAR, GOOD_DESCRIBED, GOOD_DESCRIBED_TYPED_TOWN,
+				GOOD_DESCRIBED_ON_A_CHOSEN_EVENT, GOOD_DESCRIBED_ON_A_TYPED_EVENT);
 	}
 
 	@ParameterizedTest
@@ -405,6 +452,31 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 	 *
 	 * <p>PDL P21, the same sentence `result` and `verification` already obey.
 	 */
+	/**
+	 * AN EVENT DELETED WHILE A RUN WAITS ON IT LEAVES THE RUN WAITING, naming no event.
+	 *
+	 * <p>V66's {@code on delete set null}, measured rather than read off the migration for the
+	 * reason {@link #deletingTheRaceTakesTheSubmissionWithIt} gives. The other half is the one a
+	 * cascade would get wrong: the run is still there, with everything the member described, so
+	 * the moderator chooses an event for it as for every run sent before V66.
+	 */
+	@Test
+	void deletingTheEventHeChoseLeavesHisRunWaitingOnNoEvent() {
+		assertThat(db.sql(GOOD_DESCRIBED_ON_A_CHOSEN_EVENT).update()).isOne();
+		assertThat(db.sql("select count(*) from result_submission where event_id is not null")
+				.query(Long.class).single())
+				.as("no run names the event before it is deleted, so what follows says nothing")
+				.isOne();
+
+		assertThat(db.sql("delete from btl_event where slug = 'izabrani-dogadjaj-v66'").update()).isOne();
+
+		assertThat(db.sql("select race_name || ' ' || coalesce(event_id::text, 'none') || ' '"
+						+ " || coalesce(event_name, 'none') from result_submission where race_id is null")
+				.query(String.class).single())
+				.as("the run went with the event, or kept pointing at it")
+				.isEqualTo("Trka kroz sumu none none");
+	}
+
 	@Test
 	void deletingTheMemberTakesTheSubmissionWithHim() {
 		assertThat(db.sql("select count(*) from result_submission").query(Long.class).single())
