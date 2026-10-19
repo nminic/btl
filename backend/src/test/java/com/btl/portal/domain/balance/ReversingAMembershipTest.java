@@ -119,6 +119,29 @@ class ReversingAMembershipTest {
 				.isEqualTo(new Balance.Money(new BigDecimal("20.00"), Currency.EUR));
 	}
 
+	/**
+	 * CANCELLED TWICE AND PAID FOR A THIRD TIME: the pass that stands starts after the LAST reversal and
+	 * not after the first. The season's spend is 30, 20 and 10, each of the first two reversed, so what
+	 * it took is 10; read from the first reversal it would be 20 + 10 = 30.
+	 *
+	 * <p>The second source this separates is WHICH reversal the reading starts from: the first or the
+	 * last. The reversal itself cannot tell them apart (the middle pass nets out either way, +10), which
+	 * is why {@code whatItTook} is asserted beside it.
+	 */
+	@Test
+	void aSeasonCancelledTwiceAndPaidForAThirdTimeStartsFromTheLastReversalAndNotTheFirst() {
+		List<BookLine> book = withTheRestOfHisBook(
+				line(10, Reason.MEMBERSHIP, SEASON, "-30.00", Currency.EUR),
+				line(11, Reason.REVERSAL, SEASON, "30.00", Currency.EUR),
+				line(12, Reason.MEMBERSHIP, SEASON, "-20.00", Currency.EUR),
+				line(13, Reason.REVERSAL, SEASON, "20.00", Currency.EUR),
+				line(14, Reason.MEMBERSHIP, SEASON, "-10.00", Currency.EUR));
+
+		assertThat(reversalOf(book)).contains(reversal("10.00"));
+		assertThat(ReversingAMembership.whatItTook(book, SEASON, Currency.EUR))
+				.isEqualTo(new Balance.Money(new BigDecimal("10.00"), Currency.EUR));
+	}
+
 	/** And a credit reversed earlier is not the spend of the pass that stands. */
 	@Test
 	void aCreditReversedEarlierIsNotPartOfThePassThatStands() {

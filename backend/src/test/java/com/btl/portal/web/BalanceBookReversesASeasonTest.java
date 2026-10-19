@@ -169,6 +169,28 @@ class BalanceBookReversesASeasonTest {
 	}
 
 	/**
+	 * CANCELLED TWICE, PAID FOR A THIRD TIME, AND ASKED WHAT THE MEMBERSHIP TOOK: the membership that stands
+	 * took 10. The second source this separates is which reversal the reading starts from, the first or the
+	 * last: from the first it would be 20 + 10 = 30, and the reversal would still be 10 (the middle pass
+	 * nets out), so what it took is asserted beside it.
+	 */
+	@Test
+	void whatAMembershipTookStartsFromTheLastReversalAndNotTheFirst() {
+		Balance.Money twenty = new Balance.Money(new BigDecimal("20.00"), Currency.EUR);
+		Balance.Money ten = new Balance.Money(new BigDecimal("10.00"), Currency.EUR);
+
+		line(member, "-30.00", "EUR", "membership", null, SEASON);
+		book.reversed(member, SEASON, Currency.EUR, moderator, "Moderator Probni");
+		book.spentOnAMembership(member, SEASON, twenty, moderator, "Moderator Probni");
+		book.reversed(member, SEASON, Currency.EUR, moderator, "Moderator Probni");
+		book.spentOnAMembership(member, SEASON, ten, moderator, "Moderator Probni");
+
+		assertThat(book.whatAMembershipTook(member, SEASON, Currency.EUR)).isEqualTo(ten);
+		assertThat(book.reversed(member, SEASON, Currency.EUR, moderator, "Moderator Probni"))
+				.contains(new Reversal(new BigDecimal("10.00"), Currency.EUR));
+	}
+
+	/**
 	 * PAID IN DINARS PARTLY FROM THE BALANCE, MOVED ABROAD, THEN CANCELLED: given back in euro, the money
 	 * his balance is read in now, translated as the change of country translated (a derivation from PDL
 	 * 26, not a decision of the owner's).
