@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Clock;
@@ -41,6 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
@@ -181,6 +183,13 @@ class MemberMembershipApiTest {
 						+ " season, occurred_at, recorded_by_name) values (?, ?::numeric, 'EUR', ?, ?, ?,"
 						+ " timestamptz '2027-01-10 10:00:00+00', 'Blagajnik Probni')")
 				.params(competitor, amount, reason, referred, season).update();
+	}
+
+	private void lineIn(long competitor, String amount, String currency, String reason, Integer season) {
+		db.sql("insert into balance_entry (competitor_id, amount, currency, reason, season, occurred_at,"
+						+ " recorded_by_name) values (?, ?::numeric, ?, ?, ?,"
+						+ " timestamptz '2027-01-10 10:00:00+00', 'Blagajnik Probni')")
+				.params(competitor, amount, currency, reason, season).update();
 	}
 
 	private void promise(long competitor, int season) {
@@ -362,6 +371,9 @@ class MemberMembershipApiTest {
 		HeldOn.season(db, member, 2028, "payment");
 		line(member, "-10.00", "membership", null, 2028);
 		promise(member, 2028);
+		/* ANOTHER MEMBER'S PROMISE FOR THE SAME SEASON, which a cancellation of THIS member's season must
+		   leave alone: the delete is by member and by season, and either half dropped takes it. */
+		promise(somebodyElse, 2028);
 		List<String> theReferrersBook = bookOf(referrer);
 
 		MockHttpServletResponse answer = cancelled("000005", "payment", OVER_THE_MEMBERS);
@@ -382,9 +394,16 @@ class MemberMembershipApiTest {
 		/* THE PROMISE OF 2028 GOES, the one of 2027 stays. */
 		assertThat(db.sql("select season from balance_promise where competitor_id = ? order by season")
 				.param(member).query(Integer.class).list()).containsExactly(2027);
+		assertThat(db.sql("select season from balance_promise where competitor_id = ? order by season")
+				.param(somebodyElse).query(Integer.class).list())
+				.as("a cancellation took another member's promise for the same season").containsExactly(2028);
 
-		/* ACTIVE, because the season being run is still his; and his number is his. */
+		/* ACTIVE, because the season being run is still his; and his number is his. Nobody else's
+		   `active` is recomputed: the two members below hold no season at all, so a recompute that
+		   reached them would switch them off. */
 		assertThat(active(member)).isTrue();
+		assertThat(active(somebodyElse)).as("a cancellation recomputed another member's active").isTrue();
+		assertThat(active(referrer)).as("a cancellation recomputed his referrer's active").isTrue();
 		assertThat(db.sql("select member_number from competitor where id = ?").param(member)
 				.query(String.class).single()).isEqualTo("000005");
 
@@ -557,6 +576,72 @@ class MemberMembershipApiTest {
 
 		assertThat(bookOf(member)).containsExactly("referral 5.00 -", "overpayment 4.00 2027",
 				"overpayment 5.00 2028", "reversal -5.00 2028");
+	}
+
+	/**
+	 * A SURPLUS TAKEN BACK NEVER TAKES MORE THAN THE BALANCE HOLDS (PDL P8, 19.10.2026, my derivation,
+	 * told to the owner: „Protivstavka viška pri stornu nikad ne skida više nego što je u tom
+	 * trenutku na balansu člana").
+	 *
+	 * <p>A member in dinars is credited 100 dinars of surplus for 2028, moves abroad (100 dinars become
+	 * 0.83 euro) and back (0.83 euro become 99.60 dinars: the rounding of each move is the portal's own,
+	 * {@code Balance#translated}), and is then cancelled, or freed of the fee. The credit the season
+	 * holds is 100, the balance is 99.60: taking back 100 would write a balance of -0.40, which
+	 * {@code Balance.Money} refuses, and with it the whole members list and the payments list for every
+	 * moderator. The line takes back 99.60 and the member keeps the 0.40 the rounding cost him.
+	 *
+	 * <p><b>The money is moved by his own record</b> ({@code PUT /api/me}) and not written into the
+	 * book, so the 99.60 is what the portal's own conversion leaves and not a number this case chose.
+	 */
+	@ParameterizedTest
+	@CsvSource({"cancelled", "madeAnExemption"})
+	void aSurplusTakenBackAfterAnAbroadAndBackStopsAtWhatTheBalanceHolds(String door) throws Exception {
+		String his = "clan-dinari-storno@primer.rs";
+		long dinars = competitor("000014", "d1", true, null);
+		db.sql("update competitor set place_id = (select id from place where country_id ="
+						+ " (select id from country where code = 'RS') order by rank limit 1) where id = ?")
+				.param(dinars).update();
+		account(his, "competitor", dinars, "Dinar", "Clan");
+		HeldOn.season(db, dinars, 2027, "feeExempt");
+		HeldOn.season(db, dinars, 2028, "payment");
+		lineIn(dinars, "100.00", "RSD", "overpayment", 2028);
+
+		long abroad = count("select geonames_id from place where country_id <>"
+				+ " (select id from country where code = 'RS') order by rank limit 1");
+		long home = count("select geonames_id from place where country_id ="
+				+ " (select id from country where code = 'RS') order by rank limit 1");
+
+		assertThat(sent(put("/api/me"), "{\"placeId\": " + abroad + "}", his).getStatus()).isEqualTo(200);
+		assertThat(sent(put("/api/me"), "{\"placeId\": " + home + "}", his).getStatus()).isEqualTo(200);
+
+		assertThat(bookOf(dinars)).containsExactly("overpayment 100.00 2028", "conversion -100.00 -",
+				"conversion 0.83 -", "conversion -0.83 -", "conversion 99.60 -");
+
+		MockHttpServletResponse answer = "cancelled".equals(door)
+				? cancelled("000014", "payment", OVER_THE_MEMBERS)
+				: changed("000014", "{\"from\": \"payment\", \"to\": \"feeExempt\"}", OVER_THE_MEMBERS);
+
+		assertThat(answer.getStatus()).isEqualTo(200);
+		assertThat(bookOf(dinars)).as("the counter-entry took back more than the balance held")
+				.endsWith("reversal -99.60 2028");
+		assertThat(db.sql("select sum(amount) from balance_entry where competitor_id = ? and currency = 'RSD'")
+				.param(dinars).query(BigDecimal.class).single()).isEqualByComparingTo("0.00");
+
+		/* AND THE LISTS THAT READ EVERY BOOK STILL ANSWER, which is what a balance below nothing took away. */
+		MockHttpServletResponse members = http.perform(get("/api/members")
+				.cookie(new Cookie(SessionCookie.NAME, cookies.get(OVER_THE_MEMBERS)))).andReturn().getResponse();
+
+		assertThat(members.getStatus()).isEqualTo(200);
+		JsonNode hers = null;
+
+		for (JsonNode one : body(members)) {
+			if ("000014".equals(one.path("memberNumber").asString())) {
+				hers = one;
+			}
+		}
+
+		assertThat(hers).as("the member is not on the list").isNotNull();
+		assertThat(hers.path("balance").decimalValue()).isEqualByComparingTo("0.00");
 	}
 
 	/**

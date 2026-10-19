@@ -410,7 +410,8 @@ class BalanceBook {
 	 * oslobodjenje: protivstavka." What the line is, given back or taken back and in which money, is
 	 * {@link ReversingAMembership}'s to decide from the book as it stands; this writes it. Nothing is
 	 * written when the season holds nothing, because {@code balance_entry_a_reversal_moves_something}
-	 * (V63) refuses a line of nought.
+	 * (V63) refuses a line of nought. A credit taken back never takes more than the balance holds at
+	 * that moment (PDL P8, 19.10.2026), so the line this writes cannot leave the balance below nothing.
 	 *
 	 * <p><b>THE CALLER MUST HOLD THE MEMBER'S ROW {@code FOR UPDATE} BEFORE CALLING THIS, in the same
 	 * transaction that deletes the season's payment or membership.</b> This reads the book and then
