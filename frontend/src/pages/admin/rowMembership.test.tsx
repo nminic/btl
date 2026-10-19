@@ -286,6 +286,8 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     expect(
       await within(paid).findByText(sr.admin.membershipRefused.thisChangeIsNotOffered),
     ).toBeInTheDocument()
+    /* A REFUSED CHANGE CHANGED NOTHING, so nothing is asked again: the list was read once. */
+    expect(reads(server.asked, '/api/members')).toBe(1)
 
     const exempt = await rowOf(EXEMPT)
 
@@ -295,6 +297,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     expect(
       await within(exempt).findByText(sr.admin.membershipRefused.theBasisHasChanged),
     ).toBeInTheDocument()
+    expect(reads(server.asked, '/api/members')).toBe(1)
 
     server.stop()
   }, SLOW)
@@ -362,6 +365,53 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
       inboxReads,
     )
     expect(await screen.findByText('Članstvo je stornirano.')).toBeInTheDocument()
+
+    server.stop()
+  }, SLOW)
+
+  /**
+   * AND THE SAME FOR BOTH CHANGES OF BASIS, each through its own door: the change from a payment on
+   * `RowMembership`, and the payment over the exemption on `RowPayment`. Each must drop the six
+   * answers, read the list again, say that the basis changed, and leave the inbox of another row alone,
+   * which is what tells it apart from `paymentRecorded`.
+   */
+  it.each([
+    [PAID, 'the change to the exemption'],
+    [EXEMPT, 'the payment over the exemption'],
+  ])('asks again for every answer after %s (%s), and leaves the inbox of another row alone', async (number) => {
+    const server = serving(() => Response.json({ season: 2028, basis: 'changed' }))
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin', AN_OLDER_SEASON)
+
+    const row = await rowOf(number)
+    const dropped: ResourceName[] = ['payments', 'results', 'teams', 'pairs']
+
+    for (const name of dropped) {
+      await loadResource(name)
+    }
+
+    await waitFor(() => expect(reads(server.asked, '/api/inbox')).toBeGreaterThan(0))
+    const inboxReads = reads(server.asked, '/api/inbox')
+
+    if (number === PAID) {
+      await user.click(within(row).getByRole('button', { name: 'Promeni osnov u oslobođenje' }))
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+    } else {
+      await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '3200')
+      await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+    }
+
+    await waitFor(() => expect(reads(server.asked, '/api/members')).toBe(2))
+    expect(reads(server.asked, '/api/competitors')).toBe(2)
+
+    for (const name of dropped) {
+      expect(arrivedResource(name), name).toBeUndefined()
+    }
+
+    expect(reads(server.asked, '/api/inbox'), 'the inbox was asked again for somebody else’s row').toBe(
+      inboxReads,
+    )
+    expect(await screen.findByText('Osnov članstva je promenjen.')).toBeInTheDocument()
 
     server.stop()
   }, SLOW)
