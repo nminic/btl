@@ -469,7 +469,22 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
 			   read off this very assertion when it ran before the entry existed. */
-			new Applied("62", "V62__the_basis_of_a_membership_has_one_home.sql", -777830705));
+			new Applied("62", "V62__the_basis_of_a_membership_has_one_home.sql", -777830705),
+
+			/* V63. A change on a member's row leaves a trail and the book reverses what a season held
+			   (owner, 18.10.2026, PDL P8, „Osnov clanstva ima jedan dom, zapis po sezoni"): the table
+			   `membership_change`, written once and without an amount, and the reason `reversal` in the
+			   book, with the two rules it joins widened and one sign rule of its own. No line that stood
+			   is touched, which `ReversalArrivesOverTheBookAlreadyThereTest` measures.
+
+			   63 because it is the next free number, measured on 18.10.2026 after a fetch: origin/main
+			   stands at V62 and the one open pull request (564) carries no migration.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
+			   read off this very assertion when it ran before the entry existed. */
+			new Applied("63",
+					"V63__a_change_on_a_members_row_leaves_a_trail_and_the_book_reverses_what_a_season_held.sql",
+					635495128));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
