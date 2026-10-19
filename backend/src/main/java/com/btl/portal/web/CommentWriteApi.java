@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.season.SeasonClock;
+import com.btl.portal.domain.verification.DecidingOnASubmission;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,12 +23,29 @@ import java.util.Optional;
  * RATHER THAN IN THE THING IT IS ABOUT.
  *
  * <p>Owner, PDL P22/P28a, 06.08.2026: „Komentari idu kroz odobrenje pre objave" (PDL P18,
- * „Komentari idu kroz odobrenje pre objave"). So this route makes no {@code event_comment}. It makes a {@code
- * comment_submission} and the {@code verification} row that carries it to whoever
- * decides, and until that decision the rating and the words are visible to nobody but
- * the member who sent them - {@link CommentApi} reads {@code event_comment} alone and
- * names {@code verification} nowhere, „that has been a leak once already" in its own
- * words.
+ * „Komentari idu kroz odobrenje pre objave"), <b>PRECISED BY THE OWNER ON 19.10.2026</b>: „Komentar
+ * se salje na moderaciju samo ako ima tekst. Ako ima samo 3 ocene u zvezdicama, objavljuje se
+ * odmah." So this route makes one of TWO things, and which one is decided by one question - is
+ * there text - asked once in {@link #write}:
+ *
+ * <ul>
+ * <li><b>With text</b>, it makes no {@code event_comment}. It makes a {@code comment_submission}
+ * and the {@code verification} row that carries it to whoever decides, and until that decision
+ * the rating and the words are on nobody's page - {@link CommentApi} reads {@code event_comment}
+ * alone and names {@code verification} nowhere, „that has been a leak once already" in its own
+ * words. Answered {@code waiting: true}.
+ * <li><b>With three marks and no text</b>, it makes the {@code event_comment} itself, at once,
+ * and no submission and no queue row: there is nothing for a moderator to read, so a card
+ * for it would be a card with nothing on it. Answered {@code waiting: false}.
+ * </ul>
+ *
+ * <p><b>WHAT COUNTS AS TEXT is this route's own reasoning and not a recorded decision</b> - the
+ * owner's sentence says „ima tekst" and nothing in PDL or ADL says what a text is. It is the text
+ * after {@link String#strip()} (the same strip {@link #orEmpty} has always applied before storing),
+ * so spaces, tabs, line breaks and the Unicode space separators alone are not text. A comment of
+ * nothing but those would otherwise stand in a moderator's queue with an empty body to approve.
+ * The direction is the safe one for what it does not cover: a character that {@code strip} does not
+ * treat as white space (a no-break space, a zero-width space) counts as text and is moderated.
  *
  * <p><b>AND IT IS WRITTEN BY A MEMBER, WHICH IS WHY IT CARRIES NO {@link RightIsNeeded}
  * EITHER.</b> Rating an event is what every member may do, not a box the superadmin
@@ -83,7 +101,8 @@ import java.util.Optional;
  *
  * <p><b>THE COMMENT ITSELF MAY BE EMPTY.</b> PDL P6, „Komentar je fakultativan" - the
  * text is optional, the marks are not, and the two are asked apart rather than folded
- * into one completeness check.
+ * into one completeness check. And since 19.10.2026 an empty one is not queued at all but
+ * published (see the top of this note).
  *
  * <p><b>THE EVENT HAS TO HAVE BEEN RUN, AND THAT IS ANSWERED HERE AND NOT ONLY BY
  * HIDING A LINK.</b> PDL, 07.08.2026 („Ocena i komentar se ne primaju za trku koja nije
@@ -99,27 +118,51 @@ import java.util.Optional;
  * words, „Dan same trke se računa kao održan, jer se ocena daje na povratku sa nje" - so
  * the comparison is {@code date.isAfter(today)} and never {@code isBefore}.
  *
+ * <p><b>ONLY A MEMBER WHO HAS A RESULT ON THE EVENT MAY RATE IT, AND THIS ROUTE ASKS.</b> PDL P6,
+ * 11.08.2026: „članovi mogu da ocene samo događaje na kojima imaju upisan rezultat". Until
+ * 19.10.2026 the rule stood in two places, the form and the moderator who read what arrived, and this
+ * route was deliberately not a third. A rating with three marks and no words no longer reaches a
+ * moderator, so the second place was gone, and the owner, 19.10.2026, on a high finding of the review
+ * of PR 578: „Dakle ako clan nema rezultat, ne moze uopste da da komentar. To treba da odbije forma."
+ * That the SERVER refuses is derived (PDL, [IZVEDENO 19.10.2026]) from „ne moze uopste" and from the
+ * rule that all input is checked on the backend. <b>It asks what the form asks</b>
+ * ({@code ran(results, races, event.id, mine)}, {@code pages/event/ran.ts}): a row of {@code result}
+ * of this member on a race of this event. {@code result} holds only what was approved (a run still
+ * waiting is a {@code result_submission}), which is the form's own reading, and the one thing
+ * {@code GET /api/results} withholds - the running season of a member whose fee lapsed - cannot
+ * differ here, because a member whose fee has lapsed is turned away before this question. Asked
+ * AFTER the event is known and has been run, so those two refusals keep their sentences, and answered
+ * as {@link #nothingIsHere} and not as a reason of its own: the form never offers this rating to such a
+ * member, so there is no screen sentence for it, and ADL A8 asks that a request the server will not
+ * take say no more than an address that maps nothing.
+ *
+ * <p><b>ONE RATING PER MEMBER PER EVENT, AND A NEW ONE REPLACES THE OLD</b> (owner, 19.10.2026,
+ * chose among offered outcomes with the recommendation: „Jedna ocena po članu po događaju; nova
+ * zamenjuje staru"). A rating with no words replaces the member's published one AT ONCE, in the
+ * same transaction ({@link #publishAtOnce}). A rating with words goes to the moderator and the old
+ * one stands until he approves it; on approval the approved one replaces the old
+ * ({@link VerificationWriteApi#publishTheComment}).
+ *
+ * <p><b>THE NEWEST ONE SENT WINS, WHICH IS DERIVED FROM THE OWNER'S RULE AND IS NOT HIS WORDS</b> (19.10.2026): from „jedna ocena po članu po događaju; nova zamenjuje staru" it follows
+ * that a rating with no words, which replaces at once, also withdraws the same member's rating of the
+ * same event that still waits for a moderator, and the cascade of {@code comment_submission} removes
+ * its queue row. Only a WAITING one: a decided submission stays, because ADL A36 O11 forbids deleting
+ * a decided row. It is taken {@code for update of v skip locked}: a card a moderator is deciding
+ * at this very instant is not waited for (he decided first, and waiting for it while holding the
+ * member's row would be a lock order opposite to the approval's, which takes the card first and the
+ * member second).
+ *
+ * <p><b>THE MEMBER'S ROW IS LOCKED FIRST</b>, {@code for update}, at the top of the transaction, the
+ * shape {@code MyMembershipWriteApi} and {@code PaymentApi} keep. Two ratings of one member at one
+ * instant would otherwise both delete nothing, both insert, and leave him two published ratings of one
+ * event with no rule in the database to refuse the second. Held, the second reads what the first
+ * committed and replaces it. The approval takes the same row ({@code publishTheComment}). There is
+ * no unique index (the lock was chosen over one, 19.10.2026), so duplicates already in
+ * {@code event_comment} are cleared by the next write of that member, not by a migration.
+ *
  * <p><b>WHAT IS NOT HERE, EACH NAMED RATHER THAN DISCOVERED.</b>
  *
  * <ul>
- * <li><b>Whether this member ran the event.</b> PDL P6, „forma je ne nudi kome ne
- * pripada, a moderator vidi šta je stiglo" names the two places that ask - the FORM (through
- * {@code ran(results, races, event.id, mine)}, checked before the screen ever draws a
- * star) and the MODERATOR reading the card. This route is not the third place, and it is
- * not added on the strength of a reading between those lines: PDL names two and this
- * stays at two. A member with no result at all can still reach this address by typing
- * it, and the answer he gets is 201 - the same boundary {@link TeamWriteApi} draws
- * around its own three refusals rather than inventing a fourth.
- * <li><b>A second comment on an event this member has already written one about.</b>
- * Nothing here refuses it, because nothing decided that it should: PDL P21, „Rezultate
- * prijavljuju samo ulogovani korisnici, pa se tu ne očekuje zloupotreba" says abuse
- * is not expected of somebody signed in, and {@link TeamWriteApi} already answers the
- * identical question about a second proposal the same way - „nothing decided that it
- * should be refused" - while {@link MyApplicationsApi}'s own one-at-a-time rule guards a
- * single profile rather than a per-event count. The moderator is the gate PDL P6, „forma
- * je ne nudi kome ne pripada, a moderator vidi šta je stiglo" names,
- * and he sees every waiting item on the tab, including two from one member about one
- * race.
  * <li><b>A length on the text.</b> The schema names none - {@code comment_submission.body}
  * is {@code text} with no check - and neither does any other writing route on this
  * server, {@link TeamWriteApi} says so of its own {@code bio}/{@code link}/{@code note}
@@ -211,8 +254,16 @@ class CommentWriteApi {
 	record Refused(String reason) {
 	}
 
-	/** @param id the submission now standing in the queue. */
-	record Made(long id) {
+	/**
+	 * @param id      the submission now standing in the queue where {@code waiting} is true, and
+	 *                the {@code event_comment} just published where it is false - the same number
+	 *                {@code GET /api/comments} answers that comment with
+	 * @param waiting whether a moderator still has to read it (owner, 19.10.2026: only a comment
+	 *                with text is sent to moderation). Answered so a screen says which of the two
+	 *                happened from the server's own answer and does not decide "is there text" a
+	 *                second time
+	 */
+	record Made(long id, boolean waiting) {
 	}
 
 	@PostMapping(path = "/api/comments", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -247,7 +298,27 @@ class CommentWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_EVENT_HAS_NOT_BEEN_RUN);
 		}
 
+		/* A MEMBER WHO HAS NO RESULT ON THIS EVENT CANNOT RATE IT (owner, 19.10.2026), asked after the
+		   event is known and has been run so those two keep their own sentences. See the class note
+		   for why this is the 404 and not a reason of its own. */
+		if (!hasARunOn(me, typed.eventId())) {
+			throw nothingIsHere();
+		}
+
 		return inOneTransaction.execute(committing -> write(me, typed));
+	}
+
+	/**
+	 * Whether this member has a result on a race of this event: {@code pages/event/ran.ts}'s question,
+	 * asked of the table the form's data comes from. Both keys are bound, so another member's result
+	 * on this event, or this member's result on another event, is a different answer.
+	 */
+	private boolean hasARunOn(long member, long eventId) {
+		return db.sql("select exists (select 1 from result r join race ra on ra.id = r.race_id"
+						+ " where r.competitor_id = ? and ra.event_id = ?)")
+				.params(member, eventId)
+				.query(Boolean.class)
+				.single();
 	}
 
 	/**
@@ -259,7 +330,21 @@ class CommentWriteApi {
 	 * could be made to disagree.
 	 */
 	private ResponseEntity<?> write(long me, Rated typed) {
+		/* THE MEMBER'S ROW, FIRST (see the class note): of two ratings of this member at one instant the
+		   second waits here and then reads what the first committed. */
+		db.sql("select id from competitor where id = ? for update")
+				.param(me)
+				.query(Long.class)
+				.single();
+
 		String body = orEmpty(typed.body());
+
+		/* THE OWNER'S QUESTION, 19.10.2026: „samo ako ima tekst". Read off the stripped text that is
+		   stored, never off the raw field, so a request of nothing but white space is the same
+		   state as an empty box and as a body left out of the request. */
+		if (body.isEmpty()) {
+			return publishAtOnce(me, typed);
+		}
 
 		/* `comment_submission_organisation_in_scale` and its two siblings (V30) bound this
 		   the same way the guard above does, 0 to 5; the guard above is stricter, 1 to 5,
@@ -285,7 +370,50 @@ class CommentWriteApi {
 				.params(me, body, submission, typed.eventId())
 				.update();
 
-		return ResponseEntity.status(HttpStatus.CREATED).body(new Made(submission));
+		return ResponseEntity.status(HttpStatus.CREATED).body(new Made(submission, true));
+	}
+
+	/**
+	 * THREE MARKS AND NO TEXT ARE PUBLISHED ON THE SPOT (owner, 19.10.2026), as the very row an
+	 * approval would have made and in the very shape {@link VerificationWriteApi#publishTheComment}
+	 * writes it: the name is {@code first_name || ' ' || last_name} read from {@code competitor} IN
+	 * THIS STATEMENT, and {@code published_at} is the database's {@code now()}. ADL A64 A5 reads
+	 * „published" as the moment the name is taken, and this is that moment.
+	 *
+	 * <p><b>The member's published rating of this event is deleted first, and so is his rating of it
+	 * that still waits, in the same transaction</b> (one per member per event, the newest one sent
+	 * wins; see the class note).
+	 *
+	 * <p>{@code me} came out of {@link ActiveMemberOrAdministration#activeMember}, so the
+	 * {@code competitor} row exists and {@code single()} always has its one row. The body is the
+	 * empty string and not null, because {@code event_comment.body} is NOT NULL.
+	 */
+	private ResponseEntity<?> publishAtOnce(long me, Rated typed) {
+		/* THE NEW ONE REPLACES THE OLD, AT ONCE (owner, 19.10.2026): this member's published rating of
+		   THIS event goes, and nobody else's and no other event's. Every one of them, so a member who
+		   already has two (an approval used to be able to make a second) ends with one. */
+		db.sql("delete from event_comment where competitor_id = ? and event_id = ?")
+				.params(me, typed.eventId())
+				.update();
+
+		/* AND HIS RATING OF THIS EVENT THAT STILL WAITS GOES TOO: the newest one sent wins (class note).
+		   Only a waiting one, and not a card somebody is deciding this instant. */
+		db.sql("delete from comment_submission where id in (select cs.id from comment_submission cs"
+						+ " join verification v on v.comment_submission_id = cs.id"
+						+ " where cs.competitor_id = ? and cs.event_id = ? and v.state = ?"
+						+ " for update of v skip locked)")
+				.params(me, typed.eventId(), DecidingOnASubmission.WAITING)
+				.update();
+
+		long comment = db.sql("insert into event_comment (event_id, competitor_id, who, published_at,"
+						+ " rating_organisation, rating_value, rating_ambience, body)"
+						+ " select ?, c.id, c.first_name || ' ' || c.last_name, now(), ?, ?, ?, ''"
+						+ " from competitor c where c.id = ? returning id")
+				.params(typed.eventId(), typed.organisation(), typed.value(), typed.ambience(), me)
+				.query(Long.class)
+				.single();
+
+		return ResponseEntity.status(HttpStatus.CREATED).body(new Made(comment, false));
 	}
 
 	/** The day this event is on, or nothing where the id names no event at all. */

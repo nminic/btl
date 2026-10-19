@@ -613,7 +613,7 @@
     "place": "Mesto",
     "addComment": "Dodaj komentar",
     "commentTitle": "Ocena i komentar",
-    "commentIntro": "Ocene i komentar se objavljuju kad ih moderator odobri.",
+    "commentIntro": "Ocene bez komentara se objavljuju odmah, a komentar kad ga moderator odobri.",
     "rating": {
       "organisation": "Organizacija",
       "value": "Vrednost za novac",
@@ -628,6 +628,7 @@
     "commentSending": "Šalje se",
     "commentCancel": "Odustani",
     "commentSent": "Ocena je poslata na odobrenje.",
+    "commentPublished": "Ocena je objavljena.",
     "comments": "Komentari",
     "noComments": "Za ovaj događaj još nema odobrenih komentara.",
     "organiserPage": "Strana organizatora",
@@ -1469,7 +1470,23 @@
     },
     "memberGone": "Član je obrisan.",
     "recordPayment": "Upiši uplatu",
-    "paymentRecorded": "Uplata je upisana."
+    "paymentRecorded": "Uplata je upisana.",
+    "cancelMembership": "Storniraj",
+    "changeToExemption": "Promeni osnov u oslobođenje",
+    "askCancel": {
+      "payment": "Storniraj uplatu za sezonu {season}?",
+      "feeExempt": "Storniraj oslobođenje za sezonu {season}?",
+      "balance": "Storniraj aktivaciju iz balansa za sezonu {season}?"
+    },
+    "askChangeToExemption": "Promeni osnov u oslobođenje za sezonu {season}? Zapis o uplati se briše.",
+    "membershipCancelled": "Članstvo je stornirano.",
+    "basisChanged": "Osnov članstva je promenjen.",
+    "membershipRefused": {
+      "theFormIsNotComplete": "Zahtev nije poslat do kraja, pa ništa nije urađeno. Osveži stranicu i pokušaj ponovo.",
+      "theBasisIsNotKnown": "Portal ne poznaje osnov članstva koji je poslat, pa ništa nije urađeno. Osveži stranicu i pokušaj ponovo.",
+      "thisChangeIsNotOffered": "Ova promena osnova se na redu člana ne nudi, pa ništa nije urađeno. Aktivacija iz balansa se prvo stornira, pa se upisuje nova.",
+      "theBasisHasChanged": "Osnov za ovu sezonu se u međuvremenu promenio, pa ništa nije urađeno. Osveži stranicu."
+    }
   },
   "ducats": {
     "title": "Dukati",

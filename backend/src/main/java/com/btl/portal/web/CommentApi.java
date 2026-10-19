@@ -65,7 +65,12 @@ import java.util.List;
  * event_comment} the record of what WAS published - the row is written when the approval happens,
  * and what is still waiting is a row in {@code verification} and nothing else. So „only the
  * approved ones" is the table this query names, and an unapproved comment is not filtered out
- * here: it was never in what this reads.
+ * here: it was never in what this reads. <b>Since 19.10.2026 there is a second way into the
+ * table</b>: the owner, „Komentar se salje na moderaciju samo ako ima tekst. Ako ima samo 3 ocene u
+ * zvezdicama, objavljuje se odmah" (PDL P18, „Komentari idu kroz odobrenje pre objave"), so
+ * {@link CommentWriteApi} writes the row itself for a rating with no text. Nothing here changes
+ * for that: a row in {@code event_comment} is published, however it got there, and the query
+ * still names no queue.
  *
  * <p><b>NOTHING IN THIS QUERY TOUCHES THE QUEUE FOR APPROVAL, and that has been a leak
  * once already.</b> The owner, 07.08.2026: „Javne strane ne smeju da preuzimaju red za

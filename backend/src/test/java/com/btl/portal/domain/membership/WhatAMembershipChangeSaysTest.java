@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * THE WORDS OF THE THREE LINES A MEMBER GETS ABOUT HIS MEMBERSHIP, AND WHAT EACH SAYS.
+ * THE WORDS OF THE LINES A MEMBER GETS ABOUT HIS MEMBERSHIP, AND WHAT EACH SAYS.
  *
  * <p>Every floor here sweeps {@link Told#values()}, {@link Basis#values()} or the dictionary's own key
  * set, so a fourth occasion, a fourth basis, or a set of words nothing sends fails the day it is
@@ -61,7 +61,7 @@ class WhatAMembershipChangeSaysTest {
 	}
 
 	/**
-	 * WHAT EACH OF THE THREE SAYS, word for word, so the texts the owner reviews are the texts held.
+	 * WHAT EACH OF THEM SAYS, word for word, so the texts the owner reviews are the texts held.
 	 * The season is written as the year and never grouped („2,028"), which is what handing it to
 	 * {@code MessageFormat} as a number would do.
 	 */
@@ -85,6 +85,36 @@ class WhatAMembershipChangeSaysTest {
 				"Za sezonu 2028 stornirano je vaše članstvo.\n\n"
 						+ "Za sezonu 2028 više niste član lige.\n\n"
 						+ "Balkanska trkačka liga"));
+
+		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(false, SEASON, 2029)).isEqualTo(new Said(
+				"Početnička kategorija vam je zatvorena",
+				"Upisano vam je članstvo za sezonu 2028, pa se vaši odobreni rezultati iz te sezone računaju"
+						+ " u zvaničnu sezonu. Time ste prešli prag od 12 bodova, pa vam je početnička kategorija"
+						+ " zatvorena za sezonu 2029.\n\n"
+						+ "Balkanska trkačka liga"));
+
+		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(true, SEASON, 2029)).isEqualTo(new Said(
+				"Početnička kategorija vam je ponovo otvorena",
+				"Poništeno vam je članstvo za sezonu 2028, pa se vaši rezultati iz te sezone više ne računaju"
+						+ " u zvaničnu sezonu. Time ste pali ispod praga od 12 bodova, pa vam je početnička"
+						+ " kategorija ponovo otvorena za sezonu 2029.\n\n"
+						+ "Balkanska trkačka liga"));
+	}
+
+	/**
+	 * THE TWO SEASONS OF A LINE ABOUT THE CATEGORY ARE TWO FACTS, and each lands where it is said: the
+	 * membership's season where the membership is named, the other where the category is. Given two
+	 * years that are not one apart, so a line that worked the second out of the first, or swapped them,
+	 * reads differently.
+	 */
+	@Test
+	void theSeasonOfTheMembershipAndTheSeasonOfTheCategoryAreTwoFacts() {
+		for (boolean open : new boolean[] {false, true}) {
+			String body = WhatAMembershipChangeSays.beginnersCategoryMoved(open, 2031, 2035).body();
+
+			assertThat(body).contains("članstvo za sezonu 2031,").contains("za sezonu 2035.")
+					.doesNotContain("sezonu 2032").doesNotContain("sezonu 2036").doesNotContain("2,03");
+		}
 	}
 
 	/** The season given is the season said, in every one of them, and no other year. */
@@ -151,7 +181,9 @@ class WhatAMembershipChangeSaysTest {
 	private static List<Said> everyOneOfThem() {
 		return Stream.concat(
 				Stream.of(WhatAMembershipChangeSays.paymentRecorded(SEASON),
-						WhatAMembershipChangeSays.cancelled(SEASON)),
+						WhatAMembershipChangeSays.cancelled(SEASON),
+						WhatAMembershipChangeSays.beginnersCategoryMoved(false, SEASON, SEASON + 1),
+						WhatAMembershipChangeSays.beginnersCategoryMoved(true, SEASON, SEASON + 1)),
 				Arrays.stream(Basis.values()).map(one -> WhatAMembershipChangeSays.basisChanged(SEASON, one)))
 				.toList();
 	}

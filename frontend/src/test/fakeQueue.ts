@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { NO_RATING } from '../data/types'
-import type { ServedPendingItem, WaitingRunFields } from '../data/types'
+import type { EventComment, ServedPendingItem, WaitingRunFields } from '../data/types'
 import { refused, serverThat, type Asked } from './serverAnswers'
 import { whoTheCookieCurrentlyNames } from './setup'
 
@@ -39,6 +39,11 @@ export function fakeQueue(): { asked: Asked[]; stop: () => void } {
   const members = fileOf<FileMember[]>('competitors')
   const events = fileOf<FileEvent[]>('events')
   const seeded = fileOf<ServedPendingItem[]>('verification')
+  /* What `CommentWriteApi` publishes at once (owner, 19.10.2026: three marks and no words), which
+     `GET /api/comments` then serves beside the generated file. Newest first, as the real route
+     answers it. */
+  const published: EventComment[] = []
+  const seededComments = fileOf<EventComment[]>('comments')
 
   const nameOf = (memberNumber: string): string => {
     const found = members.find((one) => one.memberNumber === memberNumber)
@@ -53,6 +58,13 @@ export function fakeQueue(): { asked: Asked[]; stop: () => void } {
 
     if (path === '/api/comments' && init?.method === 'POST') {
       return rateEvent(String(init.body))
+    }
+
+    if (path === '/api/comments' && (init?.method ?? 'GET') === 'GET') {
+      return new Response(JSON.stringify([...published, ...seededComments]), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
     }
 
     if (path === '/api/verification') {
@@ -130,6 +142,36 @@ export function fakeQueue(): { asked: Asked[]; stop: () => void } {
 
     nextId += 1
 
+    /* NO WORDS: PUBLISHED AT ONCE, NEVER QUEUED, and the answer says so (`waiting: false`). The
+       words are the box's text without its white space, the server's `strip`. The newest rating
+       a member sends wins, so it also takes his waiting one of the same event out of the queue. */
+    if (sent.body.trim() === '') {
+      const number = who?.memberNumber ?? ''
+
+      for (let at = added.length - 1; at >= 0; at -= 1) {
+        const card = added[at]
+
+        if (card?.queue === 'comments' && card.memberNumber === number && card.subjectId === String(sent.eventId)) {
+          added.splice(at, 1)
+        }
+      }
+
+      published.unshift({
+        id,
+        eventId: sent.eventId,
+        memberNumber: number,
+        who: nameOf(number),
+        date: TODAY,
+        rating: { organisation: sent.organisation, value: sent.value, ambience: sent.ambience },
+        body: '',
+      })
+
+      return new Response(JSON.stringify({ id, waiting: false }), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
     added.push({
       queue: 'comments',
       kind: '',
@@ -148,7 +190,7 @@ export function fakeQueue(): { asked: Asked[]; stop: () => void } {
       ...NO_RUN,
     })
 
-    return new Response(JSON.stringify({ id }), {
+    return new Response(JSON.stringify({ id, waiting: true }), {
       status: 201,
       headers: { 'content-type': 'application/json' },
     })

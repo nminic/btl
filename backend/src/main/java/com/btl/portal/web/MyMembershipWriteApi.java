@@ -107,14 +107,18 @@ class MyMembershipWriteApi {
 
 	private final TransactionTemplate inOneTransaction;
 
+	private final ABeginnersCategoryAMembershipMoves category;
+
 	MyMembershipWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, MembershipInvoice invoice,
-			BalanceBook book, MemberNumbers numbers, TransactionTemplate inOneTransaction) {
+			BalanceBook book, MemberNumbers numbers, TransactionTemplate inOneTransaction,
+			ABeginnersCategoryAMembershipMoves category) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.invoice = invoice;
 		this.book = book;
 		this.numbers = numbers;
 		this.inOneTransaction = inOneTransaction;
+		this.category = category;
 	}
 
 	/** Why an activation was refused. */
@@ -148,13 +152,22 @@ class MyMembershipWriteApi {
 		Outcome outcome = ActivatingFromBalance.decide(new ActivatingFromBalance.Asking(
 				owed.alreadyAMember(), owed.exemptFromTheFee(), owed.settled(), owed.numberHeAlreadyHas()));
 
-		return switch (outcome) {
+		/* WHETHER THE BEGINNERS' CATEGORY WAS OPEN TO HIM FOR THE SEASON AFTER THE ONE ON SALE, asked
+		   of the season the invoice was read for, before anything is written, and again after
+		   ({@link ABeginnersCategoryAMembershipMoves}). */
+		ABeginnersCategoryAMembershipMoves.Before before = category.before(me, owed.season());
+
+		ResponseEntity<?> answer = switch (outcome) {
 			case ALREADY_A_MEMBER -> no(ALREADY_A_MEMBER);
 			case HE_OWES_NOTHING -> no(HE_OWES_NOTHING);
 			case THE_BALANCE_IS_NOT_ENOUGH -> no(NOT_ENOUGH);
 			case ACTIVATE, ACTIVATE_AND_NUMBER_HIM ->
 					letHimIn(me, asking, owed, outcome == Outcome.ACTIVATE_AND_NUMBER_HIM);
 		};
+
+		category.tellHimIfItMoved(before);
+
+		return answer;
 	}
 
 	/**

@@ -237,14 +237,18 @@ class MembershipWriteApi {
 	 */
 	private final CurrencyOfMember currencyOf;
 
+	private final ABeginnersCategoryAMembershipMoves category;
+
 	MembershipWriteApi(JdbcClient db, Clock clock, TransactionTemplate inOneTransaction,
-			GrantingASeason granting, MembershipInvoice invoice, CurrencyOfMember currencyOf) {
+			GrantingASeason granting, MembershipInvoice invoice, CurrencyOfMember currencyOf,
+			ABeginnersCategoryAMembershipMoves category) {
 		this.db = db;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
 		this.granting = granting;
 		this.invoice = invoice;
 		this.currencyOf = currencyOf;
+		this.category = category;
 	}
 
 	/**
@@ -345,6 +349,11 @@ class MembershipWriteApi {
 		String held = db.sql("select basis from membership where competitor_id = ? and season = ?")
 				.params(competitor.get().id(), season).query(String.class).optional().orElse(null);
 
+		/* WHETHER THE BEGINNERS' CATEGORY WAS OPEN TO HIM FOR THE SEASON AFTER THIS ONE, asked before
+		   anything is written and answered again after the last write below
+		   ({@link ABeginnersCategoryAMembershipMoves}). */
+		ABeginnersCategoryAMembershipMoves.Before before = category.before(competitor.get().id(), season);
+
 		/* WHAT WOULD COME OFF THE BOOK, and NOTHING AT ALL for a man being freed of the fee.
 		   `BalanceBook` says why in its own words: he owes nothing, so there is nothing for his
 		   balance to pay, and spending it on a season he was going to get free „would be the portal
@@ -392,7 +401,7 @@ class MembershipWriteApi {
 				competitor.get().memberNumber() == null ? null
 						: new MemberNumber(competitor.get().memberNumber()));
 
-		return switch (GrantingAMembership.decide(question)) {
+		ResponseEntity<?> answer = switch (GrantingAMembership.decide(question)) {
 			/* 200 AND NOTHING WRITTEN, for the reason `RecordingAPayment` gives about its own
 			   repeat: „Recording the same payment twice must be harmless." A moderator working a
 			   list somebody reads to him clicks the same row twice, and a second write would draw a
@@ -414,6 +423,10 @@ class MembershipWriteApi {
 							GrantingAMembership.groundIsWrittenAs(question), offTheBook, forgivesMoney,
 							asking.account()).written()));
 		};
+
+		category.tellHimIfItMoved(before);
+
+		return answer;
 	}
 
 	/**

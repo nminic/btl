@@ -613,7 +613,7 @@
     "place": "Town",
     "addComment": "Add a comment",
     "commentTitle": "Rating and comment",
-    "commentIntro": "Ratings and comments are published once a moderator approves them.",
+    "commentIntro": "Ratings without a comment are published at once, and a comment once a moderator approves it.",
     "rating": {
       "organisation": "Organisation",
       "value": "Value for money",
@@ -628,6 +628,7 @@
     "commentSending": "Sending",
     "commentCancel": "Cancel",
     "commentSent": "The rating has been sent for approval.",
+    "commentPublished": "The rating has been published.",
     "comments": "Comments",
     "noComments": "There is no approved comment for this event yet.",
     "organiserPage": "The organiser's page",
@@ -1469,7 +1470,23 @@
     },
     "memberGone": "The member has been deleted.",
     "recordPayment": "Record the payment",
-    "paymentRecorded": "The payment has been recorded."
+    "paymentRecorded": "The payment has been recorded.",
+    "cancelMembership": "Cancel",
+    "changeToExemption": "Change the basis to an exemption",
+    "askCancel": {
+      "payment": "Cancel the payment for the {season} season?",
+      "feeExempt": "Cancel the exemption for the {season} season?",
+      "balance": "Cancel the activation from the balance for the {season} season?"
+    },
+    "askChangeToExemption": "Change the basis to an exemption for the {season} season? The record of the payment is deleted.",
+    "membershipCancelled": "The membership has been cancelled.",
+    "basisChanged": "The basis of the membership has been changed.",
+    "membershipRefused": {
+      "theFormIsNotComplete": "The request did not arrive whole, so nothing was done. Refresh the page and try again.",
+      "theBasisIsNotKnown": "The portal does not know the basis of membership that was sent, so nothing was done. Refresh the page and try again.",
+      "thisChangeIsNotOffered": "This change of basis is not offered on a member's row, so nothing was done. An activation from the balance is cancelled first, and a new one is recorded after.",
+      "theBasisHasChanged": "The basis for this season has changed in the meantime, so nothing was done. Refresh the page."
+    }
   },
   "ducats": {
     "title": "Ducats",

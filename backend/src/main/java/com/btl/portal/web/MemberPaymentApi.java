@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 import com.btl.portal.domain.membership.WhatAMembershipChangeSays;
+import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -13,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 
 /**
@@ -76,10 +79,17 @@ class MemberPaymentApi {
 
 	private final TransactionTemplate inOneTransaction;
 
-	MemberPaymentApi(JdbcClient db, BookingAPayment booking, TransactionTemplate inOneTransaction) {
+	private final Clock clock;
+
+	private final ABeginnersCategoryAMembershipMoves category;
+
+	MemberPaymentApi(JdbcClient db, BookingAPayment booking, TransactionTemplate inOneTransaction, Clock clock,
+			ABeginnersCategoryAMembershipMoves category) {
 		this.db = db;
 		this.booking = booking;
 		this.inOneTransaction = inOneTransaction;
+		this.clock = clock;
+		this.category = category;
 	}
 
 	/**
@@ -129,16 +139,23 @@ class MemberPaymentApi {
 			return PaymentApi.no(HttpStatus.BAD_REQUEST, PaymentApi.THE_METHOD_IS_NOT_KNOWN);
 		}
 
+		/* THE SEASON IS READ HERE, ONCE, and it is the one the booking writes, the beginners' category is
+		   asked about and the message names, so none of the three can be about another year across
+		   midnight of 15 October. */
+		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
+		ABeginnersCategoryAMembershipMoves.Before before = category.before(member.get(), season);
+
 		BookingAPayment.Booked booked = booking.book(
 				new PaymentApi.Confirm(member.get(), typed.received(), true, typed.method(), null), null,
-				asking);
+				asking, season);
 
 		/* 201 IS THE ONE ANSWER THAT WROTE ANYTHING, so it is the one he is told about. The season is
-		   the one the booking itself read off the clock, never read a second time here, so the message
-		   cannot name a different year from the row across midnight of 15 October. */
+		   the one the booking wrote, never read a second time here. */
 		if (booked.answer().getStatusCode() == HttpStatus.CREATED) {
 			tell(member.get(), WhatAMembershipChangeSays.paymentRecorded(booked.season()));
 		}
+
+		category.tellHimIfItMoved(before);
 
 		return booked.answer();
 	}
