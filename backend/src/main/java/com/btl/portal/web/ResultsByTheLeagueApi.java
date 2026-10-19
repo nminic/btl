@@ -175,17 +175,25 @@ import java.util.Optional;
  * {@code competitor}, in the order of the key) before anything is judged, so of two saves naming one
  * member on one race one writes and the other meets the result it wrote.
  *
- * <p><b>AND EVERY OTHER WRITER OF HIS RESULT TAKES TURNS WITH THAT LOCK WITHOUT TAKING IT.</b> A row
- * of {@code result} checks {@code result_competitor_fk}, which takes his {@code competitor} row
- * {@code for key share}, and {@code for update} waits for that and makes it wait. So an approval of
- * his run ({@link VerificationWriteApi}) that writes his result in the same instant either commits
- * before this save takes its lock, and the save's own question meets its row, or waits for this save
- * to commit and then meets V65's key, which it answers with the owner's sentence. Measured by
- * {@code ResultsByTheLeagueConcurrencyTest} with the other writer's row held uncommitted: the save
- * waits at the lock and then names the row. That is why the insert below carries no
+ * <p><b>AND THE ONLY OTHER WRITER OF HIS RESULT TAKES TURNS WITH THAT LOCK BY ASKING FOR THE SAME
+ * ROW FIRST.</b> A row of {@code result} checks {@code result_competitor_fk}, which takes his
+ * {@code competitor} row {@code for key share}, and {@code for update} waits for that and makes it
+ * wait. That check is an AFTER ROW trigger: an insert puts its row into V65's unique index first and
+ * asks for the share second. So an approval of his run ({@link VerificationWriteApi}) that simply
+ * inserted would, with this save holding his row, stand in the index while it waited, and this
+ * save's own insert would wait on it: a deadlock, which was measured (the approval answered 500).
+ * The approval therefore takes {@code for key share} on his row BEFORE its insert
+ * ({@code VerificationWriteApi#countTheResult}), and the two meet in one of two orders. If it
+ * commits before this save takes its lock, the save's own question meets its row. If this save has
+ * the lock, the approval waits for it before it writes anything and, once the save has committed,
+ * meets V65's key and answers with the owner's sentence. Measured by
+ * {@code ResultsByTheLeagueConcurrencyTest} (the approval's row held uncommitted: the save waits at
+ * the lock and then names the row) and by {@code VerificationDecisionConcurrencyTest} (the save
+ * holding the lock, a run he described and a moderator who approves it onto this race: the save
+ * is written and the approval is refused, no deadlock). That is why the insert below carries no
  * {@code on conflict}: no writer of his result can get past this lock unseen, so the clause would be
- * a branch nothing reaches. The key is the floor under the lock: without the lock, the same case is
- * answered 500 (a duplicate key) rather than with a second row.
+ * a branch nothing reaches. The key is the floor under the lock: without the lock, the first of
+ * those cases is answered 500 (a duplicate key) rather than with a second row.
  *
  * <p>The member's own report writes no result, so it does not meet this lock; a report sent while
  * the league enters the same run is refused later, at its approval.

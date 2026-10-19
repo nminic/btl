@@ -1886,6 +1886,21 @@ class VerificationWriteApi {
 				counted.descentM(), counted.seconds(), points);
 
 		if (sent.amendsResultId() == null) {
+			/* HIS COMPETITOR ROW IS TAKEN FIRST, FOR KEY SHARE, AND THAT ORDER IS WHAT KEEPS THE
+			   INSERT BELOW FROM DEADLOCKING WITH THE LEAGUE'S SAVE ({@link ResultsByTheLeagueApi}).
+			   PostgreSQL checks `result_competitor_fk` as an AFTER ROW trigger, so an insert puts its
+			   row into V65's unique index first and only then asks for key share on his competitor
+			   row. The save holds that row `for update` from the start, so an insert that went in
+			   without this line would write first and wait second: its row stands in the index, the
+			   save's own insert for the same member and race waits on it, and this one waits on the
+			   save. Measured, not argued: a run he DESCRIBED (it names no race, so the save's question
+			   about a submission waiting on the race cannot see it) approved onto an existing race
+			   with the save holding his row answered 500, deadlock detected, until this line stood
+			   before the insert; with it the approval waits here, before it has written anything,
+			   and once the save has committed the insert below meets the save's row and answers 409. */
+			db.sql("select 1 from competitor where id = ? for key share")
+					.param(item.competitorId()).query(Integer.class).single();
+
 			/* ONE RESULT OF HIS ON ONE RACE, said by the database (V65) and answered here
 			   ({@link #HE_HAS_A_RESULT_ON_THIS_RACE} says whose decision that is). `do nothing`
 			   and not a fault: a row he already has, or one another request is writing at this

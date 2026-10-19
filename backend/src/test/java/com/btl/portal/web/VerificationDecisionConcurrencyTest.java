@@ -115,6 +115,8 @@ class VerificationDecisionConcurrencyTest {
 
 	private static final String THE_FOUNDER = "000931";
 
+	private static final String THE_OTHER_MEMBER = "000933";
+
 	private static final String THE_TEAM = "Istovremeni trkacki klub";
 
 	private static final String THE_SLUG = "istovremeni-trkacki-klub";
@@ -184,6 +186,9 @@ class VerificationDecisionConcurrencyTest {
 
 	private long runItem;
 
+	/* THE SECOND MEMBER OF THE ONE CASE IN WHICH THE LEAGUE'S SAVE NAMES TWO, nought until it makes him. */
+	private long another;
+
 	private final java.util.Map<String, String> sessions = new java.util.HashMap<>();
 
 	@BeforeEach
@@ -233,6 +238,8 @@ class VerificationDecisionConcurrencyTest {
 		db.sql("delete from verification where id in (?, ?, ?)")
 				.params(teamItem, profileItem, runItem).update();
 		db.sql("delete from result where competitor_id = ?").param(founder).update();
+		db.sql("delete from result where competitor_id = ?").param(another).update();
+		db.sql("delete from message where to_id = ?").param(another).update();
 		db.sql("delete from result_submission where id = ?").param(theRun).update();
 		db.sql("delete from race where id = ?").param(theRace).update();
 		db.sql("delete from btl_event where id = ?").param(theEvent).update();
@@ -242,6 +249,7 @@ class VerificationDecisionConcurrencyTest {
 		db.sql("delete from btl_event where slug like ?").param(MADE_BY_THESE_CASES).update();
 		db.sql("delete from team_proposal where id = ?").param(proposal).update();
 		db.sql("delete from competitor where id = ?").param(founder).update();
+		db.sql("delete from competitor where id = ?").param(another).update();
 
 		for (String email : sessions.keySet()) {
 			db.sql("delete from account where email = ?").param(email).update();
@@ -982,6 +990,168 @@ class VerificationDecisionConcurrencyTest {
 					.isEqualTo("20.0000 200 100 6600");
 		} finally {
 			pool.shutdownNow();
+		}
+	}
+
+	/**
+	 * THE LEAGUE'S SAVE HOLDS HIS ROW AND AN APPROVAL OF A RUN HE DESCRIBED IS MADE ONTO THE SAME
+	 * RACE: THE APPROVAL WAITS BEFORE IT WRITES, IS REFUSED WITH THE OWNER'S SENTENCE, AND THERE IS NO
+	 * DEADLOCK.
+	 *
+	 * <p>PDL P6, 18.10.2026, the owner: an approval is refused with the sentence while he has a result
+	 * on the race, and the run waits. {@code result_competitor_fk} is an AFTER ROW trigger, so an
+	 * insert into {@code result} writes its row into V65's unique index first and only then asks for
+	 * {@code for key share} on his {@code competitor} row. The league's save ({@link
+	 * ResultsByTheLeagueApi}) holds that row {@code for update} from its first step. An approval that
+	 * simply inserted would therefore stand in the index while it waited for the save, and the save's
+	 * own insert for the same member and race would wait on it: PostgreSQL detects the deadlock and
+	 * the approval answers 500.
+	 *
+	 * <p><b>Only a run he DESCRIBED can do it</b>, and that is why the setup is one: the save asks
+	 * whether a submission of his waits for the race ({@code hisSubmissionWaits}), and a described run
+	 * names no race, so it is invisible there until the moderator chooses one at approval.
+	 *
+	 * <p><b>The order is forced from three connections, not left to the scheduler.</b> This one holds
+	 * the SECOND member's row, so the save locks the founder's and stops at the other's; the approval
+	 * is sent only once the lock manager shows the save stopped
+	 * ({@link BlockedBehindThisHold#count}), and the hold is released only once it shows the approval
+	 * stopped as well, behind the save. Then the save is written and the approval is refused with the
+	 * owner's sentence, one result of his stands, and the row is waiting with the submission as he
+	 * described it. The outcome of the approval is kept apart from the exception a deadlock would
+	 * raise, so that the case fails on its own assertion about the status and not on a clock.
+	 */
+	@Test
+	void anApprovalOntoARaceTheLeagueIsEnteringHimOnWaitsForItAndIsRefusedAndNeverDeadlocks()
+			throws Exception {
+		another = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
+						+ " shirt_size, health_statement_at)"
+						+ " values (?, 'Drugi', 'Clan', 'F', date '1990-01-01', " + A_TOWN
+						+ ", 2027, false, true, '0011223344558a42', '', false, 'none', 'Otac',"
+						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
+				.param(THE_OTHER_MEMBER).query(Long.class).single();
+
+		theEvent = db.sql("insert into btl_event (slug, name, date, place_id, kind, featured,"
+						+ " description, link) values ('istovremena-odluka-liga', 'Istovremena liga',"
+						+ " date '2026-05-01', " + A_TOWN + ", 'race', false, '', '') returning id")
+				.query(Long.class).single();
+
+		theRace = db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m) values (?, 'Istovremena desetka', false,"
+						+ " date '2026-05-01', 'length', 0, 10.00, 50, 50) returning id")
+				.param(theEvent).query(Long.class).single();
+
+		theRun = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
+						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
+						+ " link, comment) values (?, null, date '2026-05-01', 'Opisana', 'length', "
+						+ A_TOWN + ", 10.0000, 50, 50, 3300, 'https://primer.rs/rezultati', '')"
+						+ " returning id")
+				.param(founder).query(Long.class).single();
+
+		runItem = db.sql("insert into verification (queue, competitor_id, subject, body,"
+						+ " result_submission_id) values ('results', ?, 'Opisana', '', ?)"
+						+ " returning id")
+				.params(founder, theRun).query(Long.class).single();
+
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		List<Future<Outcome>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from competitor where id = ? for update")
+						.param(another).query(Integer.class).single();
+
+				assertThat(BlockedBehindThisHold.count(db))
+						.as("the row is held and nothing has been sent yet, so a count that is not"
+								+ " nought is counting something other than the two requests below")
+						.isZero();
+
+				submitted.add(pool.submit(() -> outcomeOf(() -> http.perform(
+								post("/api/races/" + theRace + "/results").with(csrf())
+										.cookie(new Cookie(SessionCookie.NAME, sessions.get(ONE_MODERATOR)))
+										.contentType(MediaType.APPLICATION_JSON)
+										.content("{\"rows\":[{\"memberNumber\":\"" + THE_FOUNDER
+												+ "\",\"seconds\":3600},{\"memberNumber\":\""
+												+ THE_OTHER_MEMBER + "\",\"seconds\":4000}]}"))
+						.andReturn().getResponse())));
+
+				Instant deadline = Instant.now().plusSeconds(10);
+
+				while (BlockedBehindThisHold.count(db) < 1) {
+					assertThat(Instant.now()).as("the save never stopped at the second member's row")
+							.isBefore(deadline);
+
+					try {
+						Thread.sleep(20);
+					} catch (InterruptedException e) {
+						throw new RuntimeException(e);
+					}
+				}
+
+				submitted.add(pool.submit(() -> outcomeOf(() -> answerWith(THE_OTHER_MODERATOR,
+						runItem, "{\"approved\":true,\"raceId\":" + theRace + "}"))));
+
+				try {
+					BlockedBehindThisHold.untilBothArrive(db, submitted);
+				} catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+
+				assertThat(submitted).as("a request went through without waiting").noneMatch(Future::isDone);
+
+				return null;
+			});
+
+			Outcome save = submitted.get(0).get(30, TimeUnit.SECONDS);
+			Outcome approval = submitted.get(1).get(30, TimeUnit.SECONDS);
+
+			assertThat(save.status()).as("the league's save: " + save.body()).isEqualTo(201);
+			assertThat(approval.status())
+					.as("the approval, which a deadlock answers 500: " + approval.body())
+					.isEqualTo(409);
+			assertThat(approval.body())
+					.contains("Član već ima rezultat na toj trci, pa prijava ne može da se odobri."
+							+ " Odbij je uz razlog.");
+
+			assertThat(db.sql("select count(*) from result where competitor_id = ? and race_id = ?")
+					.params(founder, theRace).query(Integer.class).single())
+					.as("one result of his on the race, the save's").isEqualTo(1);
+			assertThat(db.sql("select count(*) from result where competitor_id = ? and race_id = ?")
+					.params(another, theRace).query(Integer.class).single())
+					.as("the save wrote the other member as well").isEqualTo(1);
+			assertThat(db.sql("select state from verification where id = ?").param(runItem)
+					.query(String.class).single())
+					.as("the row the refused approval had claimed was left decided")
+					.isEqualTo("waiting");
+			assertThat(db.sql("select coalesce(race_name, '-') || ' ' || coalesce(race_id::text, '-')"
+							+ " from result_submission where id = ?")
+					.param(theRun).query(String.class).single())
+					.as("the submission was written over by an approval that did not happen")
+					.isEqualTo("Opisana -");
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
+	/** What a request answered, or the fault it ended in as a 500, so a case asserts on a status. */
+	private record Outcome(int status, String body) {
+	}
+
+	private Outcome outcomeOf(Callable<MockHttpServletResponse> request) {
+		try {
+			MockHttpServletResponse answered = request.call();
+
+			return new Outcome(answered.getStatus(),
+					answered.getContentAsString(StandardCharsets.UTF_8));
+		} catch (Exception fault) {
+			StringBuilder chain = new StringBuilder();
+
+			for (Throwable cause = fault; cause != null; cause = cause.getCause()) {
+				chain.append(cause).append(" | ");
+			}
+
+			return new Outcome(500, chain.toString());
 		}
 	}
 
