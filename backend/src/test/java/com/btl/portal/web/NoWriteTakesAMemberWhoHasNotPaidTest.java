@@ -899,7 +899,7 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 	long ownResult(String owner) {
 		return once("result", owner, () -> db.sql("insert into result (competitor_id, race_id,"
 						+ " race_date, distance_km, ascent_m, descent_m, seconds, points) values (?, ?,"
-						+ " date '2026-05-01', 10.00, 50, 50, 3700, 12.34) returning id")
+						+ " date '2027-05-01', 10.00, 50, 50, 3700, 12.34) returning id")
 				.params(memberOf.get(owner), pastRace).query(Long.class).single());
 	}
 

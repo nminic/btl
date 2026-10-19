@@ -1067,6 +1067,7 @@
       "theRaceHasNotBeenRun": "A result cannot be sent before the day of the race itself.",
       "theRaceIsNamedTwice": "The result was not sent: the race is both chosen from the calendar and described by hand. Only one of the two is allowed.",
       "heHasAResultOnThisRace": "You already have a result on this race. If its figures are wrong, send a correction of it.",
+      "theRaceIsOutsideTheSeason": "The result was not sent: only races of the current season are reported through the portal. For results of earlier seasons, contact the league.",
       "theTownIsNotSaidOnce": "The town must be given exactly once: either chosen from the codebook or typed in by hand.",
       "theTownIsNotKnown": "That town is not in the codebook.",
       "theCountryIsNotKnown": "That country is not in the codebook.",

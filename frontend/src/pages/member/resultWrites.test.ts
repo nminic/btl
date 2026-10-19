@@ -125,26 +125,27 @@ describe('every reason the result routes can name', () => {
    *
    * <p>A regular expression that stopped matching answers „nothing is missing" to both
    * directions at once, which is the shape that reads as though it works. So each of the
-   * three is asked for a count, and the counts are written out: seven declared, five borrowed
+   * three is asked for a count, and the counts are written out: eight declared, five borrowed
    * for the town, three for the proof. The declared went up from four to six on 10.10.2026, when
    * a town typed by hand was held to its box and to the characters anybody can see
    * (`theTownIsTooLong`, `theTownHoldsAnInvisibleCharacter`), and to seven on 18.10.2026, when a
    * run on a race he already has a result on was refused at once (`heHasAResultOnThisRace`, PDL
-   * P6). A sixteenth reason added to that class fails here with the number in the message, and
+   * P6), and to eight on 19.10.2026, when a run of a season that is not open was refused
+   * (`theRaceIsOutsideTheSeason`, PDL P9). A seventeenth reason added to that class fails here with the number in the message, and
    * somebody decides once what its sentence is.
    */
   it('is found by all three readers, and none of them has gone quiet', () => {
     const ours = declaredIn(java('ResultWriteApi.java'))
 
-    expect([...ours.values()], 'ResultWriteApi declares no constant at all').toHaveLength(9)
+    expect([...ours.values()], 'ResultWriteApi declares no constant at all').toHaveLength(10)
     expect(
       [...ours.values()].filter((one) => !NOT_A_REASON.includes(one)),
       'the declared refusals of ResultWriteApi',
-    ).toHaveLength(7)
-    expect(declaredHere(), 'the declared refusals').toHaveLength(7)
+    ).toHaveLength(8)
+    expect(declaredHere(), 'the declared refusals').toHaveLength(8)
     expect(borrowedForTheTown(), 'the town reasons borrowed from EventWriteApi').toHaveLength(5)
     expect(forTheProof(), 'the reasons the proof rule names').toHaveLength(3)
-    expect(everyReasonTheRouteCanName(), 'every reason across the three readers').toHaveLength(15)
+    expect(everyReasonTheRouteCanName(), 'every reason across the three readers').toHaveLength(16)
   })
 
   /**

@@ -781,6 +781,77 @@ class ResultWriteApiTest {
 	 */
 
 	/** PDL, owner, 11.08.2026: „Ne sme, ne moze biti rezultata u buducnosti." */
+	/**
+	 * A RUN OF A SEASON THAT IS NOT OPEN IS REFUSED ON BOTH ROADS, AND THE YEAR JUST ENDED STAYS OPEN UNTIL
+	 * TEN ON NEW YEAR'S MORNING IN THE LEAGUE'S HOUR.
+	 *
+	 * <p>PDL P9, owner, 19.10.2026: „Član prijavljuje samo rezultate aktuelne sezone", „Tih 10 sati sluzi
+	 * samo da onaj ko je recimo poceo trku minut pre ponoci ima vremena da unese rezultat pre
+	 * zamrzavanja sezone", and „NIŠTA! NE POSTOJI LIGA PRE 2027 GODINE". <b>The pair is written in
+	 * UTC</b>, so the instant that is ten in Belgrade is nine on the clock, and a route that read the hour
+	 * in the server's zone moves the edge by an hour. A run of New Year's Eve is sent on both roads at
+	 * 09:59:59 in Belgrade and refused on both at ten.
+	 */
+	@Test
+	void aRunOfASeasonThatIsNotOpenIsRefusedOnBothRoads() throws Exception {
+		long newYearsEve = race("Silvestarska", "2027-12-31", "length", 0, new BigDecimal("5.00"), 0, 0);
+		Map<String, Object> described = aDescribedRun();
+
+		described.put("day", "2027-12-31");
+
+		clock.moveTo(Instant.parse("2028-01-01T08:59:59Z"));
+
+		assertThat(reportedAs(ME, form(Map.of("raceId", newYearsEve, "seconds", 1500,
+				"link", "https://rezultati.rs/silvestarska"))).getStatus())
+				.as("a run of New Year's Eve was refused at 09:59:59 in Belgrade, from the calendar")
+				.isEqualTo(201);
+		assertThat(reportedAs(ME, form(described)).getStatus())
+				.as("and described").isEqualTo(201);
+
+		clock.moveTo(Instant.parse("2028-01-01T09:00:00Z"));
+
+		assertThat(reasonIn(reportedAs(ME, form(Map.of("raceId", newYearsEve, "seconds", 1500,
+				"link", "https://rezultati.rs/silvestarska-kasno")))))
+				.as("a run of the year just ended went in at ten in Belgrade, from the calendar")
+				.isEqualTo(ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON);
+		assertThat(reasonIn(reportedAs(ME, form(described))))
+				.as("and described").isEqualTo(ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON);
+		assertThat(howManySubmissions()).isEqualTo(2L);
+	}
+
+	/**
+	 * AND NOTHING BEFORE THE LEAGUE: in the autumn of 2026 a run of 2026 is refused on both roads,
+	 * although it is a run of the year he is in.
+	 */
+	@Test
+	void aRunBeforeTheLeagueIsRefusedOnBothRoads() throws Exception {
+		long ofTwentySix = race("Jesenja 2026", "2026-10-01", "length", 0, new BigDecimal("5.00"), 0, 0);
+		Map<String, Object> described = aDescribedRun();
+
+		described.put("day", "2026-10-01");
+		clock.moveTo(Instant.parse("2026-10-19T10:00:00Z"));
+
+		assertThat(reasonIn(reportedAs(ME, form(Map.of("raceId", ofTwentySix, "seconds", 1500,
+				"link", "https://rezultati.rs/jesenja")))))
+				.isEqualTo(ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON);
+		assertThat(reasonIn(reportedAs(ME, form(described))))
+				.isEqualTo(ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON);
+		assertThat(howManySubmissions()).isZero();
+	}
+
+	/**
+	 * AND A RACE OF NEXT YEAR keeps the sentence that it has not been run: the truer of the two, and the
+	 * one it is asked first ({@code ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON} says why).
+	 */
+	@Test
+	void aRaceOfNextYearIsARaceNotRunYet() throws Exception {
+		long nextYear = race("Sledece godine", "2028-03-03", "length", 0, new BigDecimal("5.00"), 0, 0);
+
+		assertThat(reasonIn(reportedAs(ME, form(Map.of("raceId", nextYear, "seconds", 1500,
+				"link", "https://rezultati.rs/sledece")))))
+				.isEqualTo(ResultWriteApi.THE_RACE_HAS_NOT_BEEN_RUN);
+	}
+
 	@Test
 	void aRaceStillToBeRunIsRefusedOnBothRoads() throws Exception {
 		assertThat(reasonIn(reportedAs(ME, form(Map.of(

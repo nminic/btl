@@ -97,6 +97,10 @@ export const WHEN_A_RESULT_IS_WRITTEN: Record<string, string> = {
      kojoj već ima rezultat se odbija odmah"). The owner's own sentence. Reachable only from the
      road where the race comes out of the calendar: a described race names no race to ask about. */
   heHasAResultOnThisRace: 'results.refused.heHasAResultOnThisRace',
+  /* A run of a season that is not open for a report (PDL P9, 19.10.2026: „Član prijavljuje samo
+     rezultate aktuelne sezone", and nothing before 2027). The owner's approved words. Reachable on both
+     roads: which seasons are open is the server's answer (`/api/me`, `seasonsOpenForAReport`). */
+  theRaceIsOutsideTheSeason: 'results.refused.theRaceIsOutsideTheSeason',
   /* The town, borrowed from `EventWriteApi` so that one rule answers in one voice all over
      the portal (owner, 11.08.2026: „Jedna kontrola i jedno pravilo za ceo portal, ne dva
      slična"). Reachable only from the road where the member describes a race. */
