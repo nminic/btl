@@ -528,6 +528,24 @@ class ResultsByTheLeagueApiTest {
 		assertThat(envelope()).containsExactlyInAnyOrder(ANAS_ADDRESS, theLeague);
 	}
 
+	/**
+	 * THE MEMBERSHIP ASKED IS THE ONE OF THE RUN'S YEAR, and no other: Ana holds 2027 and not 2028,
+	 * so a run of 2028 counts in no season. In 2027 alone the two years are one value, which is why
+	 * this case moves the clock into 2028.
+	 */
+	@Test
+	void theMembershipAskedIsTheOneOfTheYearOfTheRun() throws Exception {
+		clock.moveTo(Instant.parse("2028-03-01T10:00:00Z"));
+
+		long theNextYearsRace = race(event("dogadjaj-2028", "Dogadjaj 2028", LocalDate.of(2028, 2, 1)),
+				"Zimska desetka", LocalDate.of(2028, 2, 1), "length", 0, "10.00", 0, 0);
+
+		assertThat(entered(RESULTS_MODERATOR, theNextYearsRace, rows(row(ANA, null, null, null,
+				AN_HOUR))).getStatus()).isEqualTo(201);
+		assertThat(subjectsTo(ANA)).containsExactly("Unet vam je rezultat");
+		assertThat(bodiesTo(ANA).get(0)).contains("Za godinu 2028 nemate zapis o članstvu");
+	}
+
 	/** A MEMBER WITH NO ACCOUNT gets the line in his inbox, in Serbian, and no letter at all. */
 	@Test
 	void aMemberWithNoAccountGetsTheLineAndNoLetter() throws Exception {
