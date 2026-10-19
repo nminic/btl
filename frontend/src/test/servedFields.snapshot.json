@@ -221,6 +221,11 @@
     "raceName",
     "seconds"
   ],
+  "results/runners.json": [
+    "firstName",
+    "lastName",
+    "memberNumber"
+  ],
   "teams.json": [
     "alsoInTheTeam",
     "bio",
