@@ -77,6 +77,14 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
     'Za ovo treba prijava',
     'Prijava rezultata',
   ],
+  /* The league's own entry of results (PDL P9, 18.10.2026), which only the right that checks
+     results opens: a visitor and a member are both sent to the front page, as from every other
+     screen they may not open. Drawn for the superadmin in `BEHIND`. */
+  [
+    '/sr/kalendar/fruskogorski-maraton-2010/rezultati?trka=396',
+    'Balkanska trkačka liga',
+    'Balkanska trkačka liga',
+  ],
   ['/sr/takmicari', 'Takmičari', 'Takmičari'],
   ['/sr/takmicar/000001', 'Vladan Đurišić', 'Vladan Đurišić', 'Svojim rečima'],
   /* Nought since 17.10.2026: every place he took is in the imported history, and no season before
@@ -191,6 +199,13 @@ export const BEHIND: [string, Role, string | null, string][] = [
   ['/sr/novi-tim', 'competitor', '000002', 'Predlog tima'],
   /* And the one who administers this team, likewise. */
   ['/sr/tim/dunavski-trkaci/izmena', 'competitor', '000001', 'Izmena tima'],
+  /* The league's own entry of results on the one race of that event, as whoever checks results. */
+  [
+    '/sr/kalendar/fruskogorski-maraton-2010/rezultati?trka=396',
+    'superadmin',
+    ADMIN,
+    'Unos rezultata: Fruškogorski maraton 2010. (57,7 km)',
+  ],
 ]
 
 

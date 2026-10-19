@@ -24,6 +24,7 @@ import type {
   Race,
   RacingPair,
   Result,
+  Runner,
   SentRun,
   ServedMessage,
   StaticPage,
@@ -576,6 +577,11 @@ export const useCompetitors = (revision?: number) =>
  *   for, and the one `useAttendance` keeps.
  */
 export const useMembers = (revision?: number) => useResource<Member[]>('members', { revision })
+/**
+ * Everybody a moderator who checks results may pick on the event page, for the rows of a save
+ * (`ResultsByTheLeagueApi.runners`). Read only on that screen; nothing else draws it.
+ */
+export const useRunners = () => useResource<Runner[]>('results/runners')
 export const useEvents = () => useLive(useResource<BtlEvent[]>('events'), 'events', 'id')
 /**
  * Who has said they are going, as the server keeps it.

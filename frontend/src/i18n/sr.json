@@ -187,6 +187,10 @@
       "title": "Predlog tima",
       "description": "Predloži tim Balkanskoj trkačkoj ligi. Moderator odlučuje o svakom predlogu pre nego što tim uđe u ligu."
     },
+    "leagueResults": {
+      "title": "Unos rezultata",
+      "description": "Moderator unosi rezultate članova sa trke Balkanske trkačke lige."
+    },
     "reportResult": {
       "title": "Prijava rezultata",
       "description": "Prijavi svoj rezultat sa trke Balkanske trkačke lige. Moderator proverava svaku prijavu pre nego što uđe u tabelu."
@@ -1771,5 +1775,30 @@
     "passwordFormIsNotComplete": "Sva tri polja moraju da budu popunjena, a dve nove iste i duge najmanje {count} znakova.",
     "oldPasswordIsWrong": "Trenutna lozinka nije tačna. Pokušaj ponovo.",
     "passwordHasLeaked": "Ova lozinka se već našla u javno objavljenim provalama, pa je portal ne prima. Izaberi drugu."
+  },
+  "leagueResults": {
+    "title": "Unos rezultata: {race}",
+    "editTitle": "Izmena rezultata: {name}",
+    "member": "Član",
+    "rowNumber": "{which}. red",
+    "addRow": "Dodaj člana",
+    "removeRow": "Ukloni {which}. red",
+    "save": "Sačuvaj",
+    "saving": "Čuva se",
+    "chooseMember": "Izaberi člana sa spiska.",
+    "figuresMissing": "Upiši sve tražene vrednosti.",
+    "editNamed": "Izmeni rezultat: {name}",
+    "notThere": "Taj rezultat više ne postoji. Osveži stranu događaja.",
+    "refused": {
+      "aRowIsWrong": "Ništa nije sačuvano. Ispravi redove označene ispod pa sačuvaj ponovo.",
+      "theMemberIsNotKnown": "Izaberi člana sa spiska.",
+      "theMemberIsNamedTwice": "Isti član je unet u više redova.",
+      "heHasAResultOnThisRace": "Član već ima rezultat na ovoj trci. Izmeni ga olovkom u tabeli rezultata.",
+      "hisSubmissionWaits": "Član već ima prijavu koja čeka za ovu trku. Prvo je odobri ili odbij u redu za proveru.",
+      "heHoldsNoMembershipOfTheRunningSeason": "Član nema članstvo za sezonu ove trke, pa mu liga ne unosi rezultat.",
+      "theFormIsNotComplete": "Nedostaje vreme ili mera, ili je upisana vrednost izvan dozvoljene.",
+      "theGroupIsEmpty": "Dodaj bar jednog člana.",
+      "theGroupIsTooBig": "Previše redova za jedno čuvanje. Podeli ih na dva čuvanja."
+    }
   }
 }

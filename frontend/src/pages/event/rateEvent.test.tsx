@@ -3,7 +3,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { formatDate } from '../../i18n/format'
 import { prijava } from '../../forms/definitions'
 import { limitOf } from '../../forms/records'
-import { renderAt } from '../../test/render'
+import { moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { at, first, must } from '../../test/at'
 import { arrivedResource, loadResource } from '../../data/client'
@@ -1387,14 +1387,34 @@ describe('what an event nobody has run yet offers', () => {
      member of the league has nothing to report and nothing to rate. Held because
      the whole condition could be deleted with the rest of the suite still
      green: the visitor case is answered earlier, by the row drawing nothing at
-     all. */
-  it('offers neither to an administrator who is not a member', async () => {
+     all.
+
+     SINCE 19.10.2026 HE ENTERS RESULTS FOR OTHERS FROM THE SAME ROW, and nothing of his own: the
+     superadmin holds the right that checks results, and „Unesi rezultat" opens the league's entry of
+     several members (PDL P9, 18.10.2026, the owner: „UKOLIKO SAM ULOGOVAN KAO MODERATOR /
+     ADMINISTRATOR ... Klikom na unesi rezultat, očekivano je da unosim rezultate za takmičare koje
+     potvrđujem automatski"), never the member's own report. Rating is still not his. */
+  it('offers him no rating and no report of his own, only the entry of results for others', async () => {
     renderAt(`/sr/kalendar/${EVENT}`, 'superadmin')
 
     /* The row is there: an administrator has the three buttons that change an
        event, so this is not the empty row a visitor gets. */
     expect(await screen.findByRole('button', { name: 'Kopiranje' })).toBeVisible()
     expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).toBeNull()
+
+    const ways = screen.getAllByRole('link', { name: /^Unesi rezultat/ })
+
+    expect(ways.length).toBeGreaterThan(0)
+    expect(ways.map((one) => one.getAttribute('href') ?? '').filter((href) => !href.includes('/rezultati?trka=')))
+      .toEqual([])
+  })
+
+  /* And a moderator who holds rights but not the one that checks results, and races for nobody:
+     the row offers him nothing, because the server would answer him 404 (ADL A8). */
+  it('offers a moderator without the right that checks results no way in', async () => {
+    renderAt(`/sr/kalendar/${EVENT}`, 'moderator', null, moderatorWith(['entity:events']))
+
+    expect(await screen.findByRole('button', { name: 'Kopiranje' })).toBeVisible()
     expect(screen.queryByRole('link', { name: /^Unesi rezultat/ })).toBeNull()
   })
 })
