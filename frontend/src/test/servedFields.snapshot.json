@@ -121,6 +121,8 @@
     "country",
     "descentM",
     "distanceKm",
+    "eventId",
+    "eventName",
     "id",
     "link",
     "raceDate",

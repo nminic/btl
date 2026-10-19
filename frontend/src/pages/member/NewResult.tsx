@@ -258,26 +258,31 @@ function TheForm({ me }: { me: string }) {
   const races = useRaces()
   const sent = useMyResultSubmissions(me, revision)
   /* THE SEASONS HE MAY SEND A RUN OF, which the server says (`/api/me`): the lists offer nothing of
-     any other, and the day is held to them (PDL P9, 19.10.2026). Waited for with the rest. */
+     any other, and the day is held to them (PDL P9, 19.10.2026). Not waited for: the form is drawn
+     without them, the box for the event says it when they could not be read (`offeringEvents`), and
+     the day is held to them only once they are known - the server holds it either way
+     (`theRaceIsOutsideTheSeason`). */
   const open = useSeasonsOpenForAReport(me)
-  const seasons = open.status === 'ready' ? open.data : []
+  const seasons = open.status === 'ready' ? open.data : null
+  /* The two reads the list of events is made from, as one: a failure of either says so. */
+  const offeringEvents = combinePair(events, open)
   /* Built once for the data rather than on every letter typed: the list is the
      whole calendar read through one date, and it does not change while somebody
-     is typing into the box above it. Empty until both files are here, which is
+     is typing into the box above it. Empty until both reads are here, which is
      what the form shows for the first moment it is on screen, and empty for good
-     when one of them could not be read: that case is SAID (`offering` below) and
-     not left to look like a calendar with no race in it. */
+     when one of them could not be read: that case is SAID (`offeringEvents` above)
+     and not left to look like a calendar with no event in it. */
   const offeredEvents = useMemo(
-    () => (events.status === 'ready' ? eventsToOffer(events.data, seasons, today) : []),
+    () =>
+      events.status === 'ready' && seasons !== null ? eventsToOffer(events.data, seasons, today) : [],
     [events, seasons, today],
   )
-  /* **THE TWO FILES THE LIST IS MADE FROM, AS ONE READ.** A race is offered only with its event
-     (`racesToOffer`), so the list is as unreadable as the worse of the two, and one failure
-     asks again for every file that failed (`combinePair`, `theFailure`): a press that asked
-     for the races alone would leave the events saying they could not be read beside a list
-     that had just come. Only its failure is used here; what it reads when it is ready is
-     `offered`'s business. */
-  const offering = combinePair(events, races)
+  /* **THE RACES ARE SAID UNREADABLE BY THEIR OWN BOX, AND THE EVENTS BY THEIRS.** Since the event is
+     asked first (PDL P9, 19.10.2026), the list of races is the races of the event chosen, and no event
+     can be chosen out of a calendar that could not be read: the box for the event says that, with its
+     button, and the box for the race has nothing to offer either way. So each box says the read it is
+     made of, and one press asks again for what that box needs. Until 19.10.2026 the box for the race
+     said both files, as one read, because it was the only box with a list. */
   const again = params.get('ponovo')
   /* The other way in: a result that has already been counted, which a member may
      change by sending it back through the queue with new proof (owner,
@@ -327,10 +332,8 @@ function TheForm({ me }: { me: string }) {
   /* What this form has to wait for before it can be drawn, which is only what the road in names:
      the counted results and the runs sent (a correction must know whether one already waits),
      the runs sent alone, or nothing. */
-  const waitFor: ResourceState<unknown> = combinePair(
-    open,
-    fixing !== null ? combinePair(results, sent) : again !== null ? sent : NOTHING_TO_WAIT_FOR,
-  )
+  const waitFor: ResourceState<unknown> =
+    fixing !== null ? combinePair(results, sent) : again !== null ? sent : NOTHING_TO_WAIT_FOR
 
   /**
    * WHICH ROUTE TAKES IT, decided by the road in and never by what is in a box.
@@ -617,7 +620,7 @@ function TheForm({ me }: { me: string }) {
                Only a new run or a run sent again: a correction of a counted result keeps the day it
                was counted on, which is not his to change. */
             check={(values): Record<string, FieldError> =>
-              correctsACountedResult || !outsideTheSeasons(values.date, seasons)
+              correctsACountedResult || seasons === null || !outsideTheSeasons(values.date, seasons)
                 ? {}
                 : { date: { key: 'newResult.outsideTheSeason' } }
             }
@@ -677,17 +680,17 @@ function TheForm({ me }: { me: string }) {
               /* THE EVENTS FIRST (owner, 19.10.2026: „Prvo ima naziv događaja koji je autocomplete iz
                  baze, ali mogu da unesem novu vrednost"), or the way the calendar failed to come. */
               eventName:
-                events.status === 'error'
-                  ? { said: t('data.error'), named: t('admin.events'), read: events }
+                offeringEvents.status === 'error'
+                  ? { said: t('data.error'), named: t('admin.events'), read: offeringEvents }
                   : offeredEvents,
               /* AND THE RACES OF THE EVENT CHOSEN, which is why this one is a function of what the
                  form holds: „ako je postojeća vrednost, polje trka postaje autocomplete u koji se
                  ukucava postojeća ili nova trka". */
               raceName:
-                offering.status === 'error'
-                  ? { said: t('data.error'), named: t('event.races'), read: offering }
+                races.status === 'error'
+                  ? { said: t('data.error'), named: t('event.races'), read: races }
                   : (values) =>
-                      events.status === 'ready' && races.status === 'ready'
+                      events.status === 'ready' && races.status === 'ready' && seasons !== null
                         ? racesOfTheChosenEvent(
                             events.data,
                             races.data,

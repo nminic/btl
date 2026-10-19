@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -565,11 +564,7 @@ class MyResultSubmissionsApiTest {
 	@Test
 	void everyFieldThePortalReadsIsOneThisRouteAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered(PATH,
-				mapper.readTree(asked(MY_ADDRESS).getContentAsString()), "me/result-submissions.json",
-				/* V66, before the member's screen reads them: the event a run is on, which the one
-				   form for the event, the race and the result will start from (PDL P9, owner,
-				   19.10.2026). They leave this list with that screen. */
-				Set.of("eventId", "eventName"));
+				mapper.readTree(asked(MY_ADDRESS).getContentAsString()), "me/result-submissions.json");
 	}
 
 	/*

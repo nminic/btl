@@ -48,7 +48,8 @@ import { setupUser } from '../../test/user'
 const ME = '000007'
 const NEW = '/sr/rezultat/novi'
 /** A day inside the data, so what the list offers is the same list every time this runs. */
-const TODAY = '2026-08-23'
+/* In the first season, where the box for the event offers the calendar (PDL P9, 19.10.2026). */
+const TODAY = '2027-08-23'
 const THE_EVENT_PAGE_FORM = '/sr/kalendar/maraton-maratona-2015/prijava?trka=683'
 
 /**
@@ -121,6 +122,16 @@ const fieldOf = (box: HTMLElement) => htmlElement(must(box.closest('.field'), 't
 const offeredRaces = () => screen.queryAllByRole('button', { name: /Maraton maratona/ })
 
 const RETRY = `${sr.data.retry}: ${sr.event.races}`
+const RETRY_EVENTS = `${sr.data.retry}: ${sr.admin.events}`
+
+/** The box the event is named in, which the form asks first (PDL P9, 19.10.2026). */
+const eventBox = () => inputElement(screen.getByLabelText(/^Događaj/))
+
+/** Chooses an event of the generated calendar, which is what opens the list of its races. */
+async function onTheEvent(user: ReturnType<typeof setupUser>): Promise<void> {
+  await user.type(await screen.findByLabelText(/^Događaj/), 'beogradski maraton')
+  await user.click(must(screen.getAllByRole('button', { name: /Beogradski maraton – / })[0], 'the event offered'))
+}
 const retryButtons = () => screen.queryAllByRole('button', { name: new RegExp(sr.data.retry) })
 
 /** The statuses that say the word of a wait. The form says nothing else in that role while it is not
@@ -129,33 +140,48 @@ const loadingWords = () =>
   screen.queryAllByRole('status').filter((one) => one.textContent === sr.data.loading)
 
 describe('the list of races under the name of a race, on the form a result is entered on', () => {
-  it.each([
-    ['the races', { '/api/races': failing }],
-    ['the events', { '/api/events': failing }],
-    ['both of them', { '/api/races': failing, '/api/events': failing }],
-  ])(
-    'says it cannot be read, beside the name and after it, with a button named after the list, when %s could not be read',
-    async (_which, who) => {
-      theServerAnswers(who)
-      renderAt(NEW, 'competitor', ME, undefined, TODAY)
+  it('says the races cannot be read beside the name of the race and after it, with a button named after the list', async () => {
+    theServerAnswers({ '/api/races': failing })
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
-      const box = nameBox()
-      const field = within(fieldOf(box))
-      const said = await field.findByRole('alert', undefined, SOON)
+    const box = nameBox()
+    const field = within(fieldOf(box))
+    const said = await field.findByRole('alert', undefined, SOON)
 
-      expect(said).toHaveTextContent(sr.data.error)
-      expect(field.getByRole('button', { name: RETRY })).toBeVisible()
-      /* Beside the box and after it, and not the box or anything inside it: a sentence drawn above
-         the form would be in the document before the box, and one drawn by the whole screen
-         failing would not be in this field at all. */
-      expect(box.contains(said)).toBe(false)
-      expect(box.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
-      /* One sentence and one button on the whole page: the places and every other box are quiet. */
-      expect(screen.getAllByRole('alert')).toHaveLength(1)
-      expect(retryButtons()).toHaveLength(1)
-    },
-    SLOW,
-  )
+    expect(said).toHaveTextContent(sr.data.error)
+    expect(field.getByRole('button', { name: RETRY })).toBeVisible()
+    /* Beside the box and after it, and not the box or anything inside it. */
+    expect(box.contains(said)).toBe(false)
+    expect(box.compareDocumentPosition(said) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
+    /* One sentence and one button on the whole page: the box for the event, the places and every
+       other box are quiet, because the calendar of events was read. */
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(retryButtons()).toHaveLength(1)
+  }, SLOW)
+
+  it('says the events cannot be read beside the box for the event, and the box for the race says nothing', async () => {
+    /* PDL P9, 19.10.2026: the event is asked first and the races are the races of the event chosen,
+       so a calendar that could not be read is said where an event is chosen, with its own button. */
+    theServerAnswers({ '/api/events': failing })
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+
+    const field = within(fieldOf(eventBox()))
+    const said = await field.findByRole('alert', undefined, SOON)
+
+    expect(said).toHaveTextContent(sr.data.error)
+    expect(field.getByRole('button', { name: RETRY_EVENTS })).toBeVisible()
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(within(fieldOf(nameBox())).queryByRole('alert')).toBeNull()
+  }, SLOW)
+
+  it('says each of the two beside its own box when both could not be read', async () => {
+    theServerAnswers({ '/api/races': failing, '/api/events': failing })
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+
+    expect(await within(fieldOf(eventBox())).findByRole('alert', undefined, SOON)).toHaveTextContent(sr.data.error)
+    expect(await within(fieldOf(nameBox())).findByRole('alert', undefined, SOON)).toHaveTextContent(sr.data.error)
+    expect(screen.getAllByRole('alert')).toHaveLength(2)
+  }, SLOW)
 
   it('says nothing, and offers nothing to ask again, when both files were read, and the list works', async () => {
     theServerAnswers({})
@@ -163,9 +189,10 @@ describe('the list of races under the name of a race, on the form a result is en
 
     const user = setupUser()
 
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Maraton maratona')
+    await onTheEvent(user)
+    await user.type(nameBox(), 'Beogradski')
 
-    expect((await screen.findAllByRole('button', { name: /Maraton maratona/ }, SOON)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByRole('button', { name: /Beogradski maraton – / }, SOON)).length).toBeGreaterThan(0)
     expect(screen.queryByRole('alert')).toBeNull()
     expect(retryButtons()).toHaveLength(0)
   }, SLOW)
@@ -182,12 +209,13 @@ describe('the list of races under the name of a race, on the form a result is en
     expect(box).not.toHaveAttribute('readonly')
     expect(box).not.toHaveAttribute('aria-disabled')
 
-    await user.type(box, 'Maraton maratona')
+    /* A new event typed, and its race takes its name (PDL P9, 19.10.2026). */
+    await user.type(eventBox(), 'Maraton maratona')
 
     expect(box).toHaveValue('Maraton maratona')
     expect(offeredRaces(), 'a race was offered by a list that could not be read').toHaveLength(0)
 
-    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(screen.getByLabelText(/Datum trke/), '10052027')
     await user.type(screen.getByLabelText('Mesto'), 'Niš')
     await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
     await user.type(screen.getByLabelText(/Dužina/), '21.1')
@@ -208,6 +236,7 @@ describe('the list of races under the name of a race, on the form a result is en
     /* The name as it was typed and no race: the absence of `raceId` is what tells verification it
        has to make the race (owner, 31.08.2026). */
     expect(body.raceName).toBe('Maraton maratona')
+    expect(body.eventName).toBe('Maraton maratona')
     expect(Object.hasOwn(body, 'raceId')).toBe(false)
   }, SLOW)
 })
@@ -237,28 +266,40 @@ describe('the list of races, asked for again', () => {
     expect(timesAsked('/api/races')).toBe(2)
     expect(timesAsked('/api/events'), 'the file that had been read was asked for again').toBe(events)
 
-    await user.type(nameBox(), 'Maraton maratona')
+    await onTheEvent(user)
+    await user.type(nameBox(), 'Beogradski')
 
-    expect((await screen.findAllByRole('button', { name: /Maraton maratona/ }, SOON)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByRole('button', { name: /Beogradski maraton – / }, SOON)).length).toBeGreaterThan(0)
   }, SLOW)
 
-  it('asks again for every file that failed with ONE press', async () => {
+  it('asks again with each box for the read that box is made of, the events and the races apart', async () => {
+    /* Each box says its own read since the event is asked first (PDL P9, 19.10.2026), so each press
+       asks again for that read and leaves the other one standing until its own box is pressed. */
     theServerAnswers({ '/api/races': failing, '/api/events': failing })
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
-    const field = within(fieldOf(nameBox()))
+    const user = setupUser()
+    const theEvents = within(fieldOf(eventBox()))
+    const theRaces = within(fieldOf(nameBox()))
 
-    await field.findByRole('alert', undefined, SOON)
+    await theEvents.findByRole('alert', undefined, SOON)
+    await theRaces.findByRole('alert', undefined, SOON)
     answers.set('/api/races', read)
     answers.set('/api/events', read)
-    await setupUser().click(field.getByRole('button', { name: RETRY }))
+    await user.click(theEvents.getByRole('button', { name: RETRY_EVENTS }))
 
     await waitFor(() => {
-      expect(retryButtons(), 'one press left the second file saying it could not be read').toHaveLength(0)
+      expect(timesAsked('/api/events')).toBe(2)
+    }, SOON)
+    expect(timesAsked('/api/races'), 'the press for the events asked for the races').toBe(1)
+
+    await user.click(theRaces.getByRole('button', { name: RETRY }))
+
+    await waitFor(() => {
+      expect(retryButtons()).toHaveLength(0)
     }, SOON)
     expect(screen.queryByRole('alert')).toBeNull()
     expect(timesAsked('/api/races')).toBe(2)
-    expect(timesAsked('/api/events')).toBe(2)
   }, SLOW)
 
   it('says it is asking while the request is out, and says it again as a NEW alert if it still cannot be read', async () => {
@@ -437,8 +478,8 @@ describe('the town on the form a result is entered on, which is the boundary of 
 
     const user = setupUser()
 
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Trka kroz šumu')
-    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(await screen.findByLabelText(/^Događaj/), 'Trka kroz šumu')
+    await user.type(screen.getByLabelText(/Datum trke/), '10052027')
     await user.type(screen.getByLabelText('Mesto'), 'Ča')
     /* The request goes out on the second letter, so seeing it asked for is seeing the refusal on its
        way. The rest of the name is typed AFTER that, so there is a drawing once the refusal has
