@@ -116,7 +116,7 @@ class ThePaymentsScreenLocksTheMemberTest {
 	private long heBroughtIn;
 
 	@BeforeEach
-	void aModeratorAndALapsedMemberWithFiveEuroOnHisBook() {
+	void aModeratorAndAMemberRenewingWithFiveEuroOnHisBook() {
 		db.sql("insert into account (first_name, last_name, email, role_id) values"
 						+ " ('Mira', 'Zakljucana', ?, (select id from role where code = 'moderator'))")
 				.param(MODERATOR).update();
@@ -131,8 +131,8 @@ class ThePaymentsScreenLocksTheMemberTest {
 
 		moderatorCookie = openedSession(moderator);
 
-		himself = aMember(THE_NUMBER, "0011aabbccdd9e91", "Probni");
-		heBroughtIn = aMember(HE_BROUGHT_IN_THE_NUMBER, "0011aabbccdd9e92", "Doveden");
+		himself = aMember(THE_NUMBER, "0011aabbccdd9e91", "Probni", true);
+		heBroughtIn = aMember(HE_BROUGHT_IN_THE_NUMBER, "0011aabbccdd9e92", "Doveden", false);
 
 		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id) values"
 						+ " ('Probni', 'Zakljucan', ?, (select id from role where code = 'competitor'), ?)")
@@ -151,15 +151,15 @@ class ThePaymentsScreenLocksTheMemberTest {
 				.params(himself, heBroughtIn).update();
 	}
 
-	private long aMember(String number, String code, String first) {
+	private long aMember(String number, String code, String first, boolean active) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, first_season, first_season_2027, active, referral_code, bio,"
 						+ " profile_hidden, birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at) values (?, ?, 'Zakljucan', 'M', date '1990-05-15',"
-						+ " (select id from place where rank = 1), 2027, false, false, ?, '',"
+						+ " (select id from place where rank = 1), 2027, false, ?, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
-				.params(number, first, code).query(Long.class).single();
+				.params(number, first, active, code).query(Long.class).single();
 	}
 
 	private String openedSession(long account) {
@@ -254,6 +254,24 @@ class ThePaymentsScreenLocksTheMemberTest {
 				.param(himself).query(Long.class).single())
 				.as("the member was told twice about one payment")
 				.isOne();
+	}
+
+	/**
+	 * THE SAME PRESS ON THE SCREEN WITH THE BOX CLEARED, because the lock is about the member's row and
+	 * not about whether his balance pays: a lock taken only for a press that spends the balance would
+	 * leave this one a 500.
+	 */
+	@Test
+	void aPressOnTheRowAndThenOneOnTheScreenWithTheBoxClearedIsTheRepeatToo() throws Exception {
+		List<MockHttpServletResponse> both = inThisOrder("for update",
+				this::theRowBooksHim, () -> theScreenBooksHim(false));
+
+		assertThat(both.get(0).getStatus()).as("the press on his row").isEqualTo(201);
+		assertThat(both.get(1).getStatus()).as("the press on the screen, a repeat of the first")
+				.isEqualTo(200);
+
+		assertThat(db.sql("select count(*) from payment where competitor_id = ? and season = 2028")
+				.param(himself).query(Long.class).single()).isOne();
 	}
 
 	/** The other order: the screen books and the row is the repeat, which is the row door's own lock. */
@@ -351,7 +369,7 @@ class ThePaymentsScreenLocksTheMemberTest {
 		}
 	}
 
-	private void untilThisManyAreStopped(int expected, List<? extends Future<?>> submitted)
+	private void untilThisManyAreStopped(int expected, List<Future<MockHttpServletResponse>> submitted)
 			throws InterruptedException {
 
 		Instant deadline = Instant.now().plusSeconds(10);
@@ -360,10 +378,24 @@ class ThePaymentsScreenLocksTheMemberTest {
 			if (Instant.now().isAfter(deadline)) {
 				throw new IllegalStateException(expected + " request(s) should have been stopped behind"
 						+ " the held row within ten seconds. Futures: "
-						+ submitted.stream().map(f -> "done=" + f.isDone()).toList());
+						+ submitted.stream().map(ThePaymentsScreenLocksTheMemberTest::whatBecameOf).toList());
 			}
 
 			Thread.sleep(20);
+		}
+	}
+
+	/** What a request that was not stopped answered, because „done” alone does not say which way. */
+	private static String whatBecameOf(Future<MockHttpServletResponse> request) {
+		if (!request.isDone()) {
+			return "still running";
+		}
+
+		try {
+			MockHttpServletResponse answered = request.get();
+			return answered.getStatus() + " " + answered.getContentAsString();
+		} catch (Exception e) {
+			return "failed: " + e;
 		}
 	}
 
@@ -380,11 +412,15 @@ class ThePaymentsScreenLocksTheMemberTest {
 	}
 
 	private MockHttpServletResponse theScreenBooksHimWithHisBalance() throws Exception {
+		return theScreenBooksHim(true);
+	}
+
+	private MockHttpServletResponse theScreenBooksHim(boolean withTheBalance) throws Exception {
 		return http.perform(post("/api/payments").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, moderatorCookie))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"competitorId\": " + himself + ", \"received\": 1,"
-								+ " \"useTheBalance\": true, \"method\": \"paypal\"}"))
+								+ " \"useTheBalance\": " + withTheBalance + ", \"method\": \"paypal\"}"))
 				.andReturn().getResponse();
 	}
 

@@ -40,8 +40,10 @@ import java.util.Optional;
  * {@link PaymentApi} as well, because the screen's map of them is held against that file
  * ({@code frontend/src/pages/account/refusals.test.ts}).
  *
- * <p><b>Opens no transaction of its own</b>: each door opens the one it books in, so the door that
- * locks the member first ({@link MemberPaymentApi}) holds that lock across all of this.
+ * <p><b>Opens no transaction of its own</b>: each door opens the one it books in, and each door that
+ * books here ({@link MemberPaymentApi}, {@link PaymentApi}, {@link MemberMembershipApi}) takes the
+ * member's row {@code for update} first and holds that lock across all of this. The method does not
+ * take it itself, so a fourth caller must.
  */
 @Component
 class BookingAPayment {
