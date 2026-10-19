@@ -999,6 +999,26 @@ class CommentWriteApiTest {
 	}
 
 	/**
+	 * A RUN THAT STILL WAITS FOR A MODERATOR IS NOT A RESULT: the form counts the results the portal
+	 * serves, which are the approved ones (a waiting run is a {@code result_submission}), and so does
+	 * this route. {@link #FIRST_WRITTEN} has one waiting on a race of {@link #run} and is refused.
+	 */
+	@Test
+	void aRunStillWaitingForApprovalDoesNotMakeAMemberAbleToRate() throws Exception {
+		db.sql("insert into result_submission (competitor_id, race_id, race_date, distance_km,"
+						+ " ascent_m, descent_m, seconds, link, comment)"
+						+ " select c.id, ra.id, ra.date, 10, 0, 0, 3600, 'https://primer.rs/rezultati', ''"
+						+ " from competitor c, race ra where c.member_number = ? and ra.event_id = ?"
+						+ " limit 1")
+				.params(FIRST_WRITTEN, run).update();
+
+		assertThat(db.sql("select count(*) from result_submission").query(Long.class).single())
+				.as("the waiting run really is in the table")
+				.isEqualTo(1);
+		assertThat(rateAs(FIRST_WRITTEN, form(run, 4, 4, 4, "")).getStatus()).isEqualTo(404);
+	}
+
+	/**
 	 * ONE RATING PER MEMBER PER EVENT, AND A NEW ONE WITH NO WORDS REPLACES THE OLD AT ONCE (owner,
 	 * 19.10.2026). Four things stand around the old one and none of them may move: another member's
 	 * published rating of the SAME event ({@link #FIRST_WRITTEN}'s, in the fixture), this member's
