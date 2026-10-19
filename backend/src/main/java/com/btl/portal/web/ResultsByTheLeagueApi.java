@@ -87,8 +87,10 @@ import java.util.Optional;
  * <li>The same member twice in one save. Both rows are named.
  * <li>A result he already has on this race, by PDL P6, 09.09.2026: „Član ima najviše jedan rezultat
  * na jednoj trci, ali sme imati više rezultata na istom događaju." Derived, not a decision about
- * this route; a result of his on another race of the same event refuses nothing. The schema does
- * not hold this rule and neither do the member's two roads, which is a separate job.
+ * this route; a result of his on another race of the same event refuses nothing. The schema holds
+ * the same rule since V65 ({@code result_one_per_member_on_a_race}), and the member's two roads
+ * refuse it too (PDL P6, 18.10.2026: his run is refused when he sends it, and its approval is
+ * refused while he has a result on the race).
  * <li>A report or a correction of his that waits for this race: „[izabrao uz moju preporuku,
  * 18.10.2026] Kad za tu trku član već ima prijavu ili ispravku koja čeka, unos se odbija uz
  * rečenicu da član već ima prijavu koja čeka i da je prvo treba odobriti ili odbiti u redu za
@@ -171,9 +173,30 @@ import java.util.Optional;
  *
  * <p><b>TWO MODERATORS AT ONCE.</b> Every member the request names is locked ({@code for update} on
  * {@code competitor}, in the order of the key) before anything is judged, so of two saves naming one
- * member on one race one writes and the other meets the result it wrote. A member sending in his
- * own run does not take that lock ({@code ResultWriteApi}), so his report and an entry can still
- * meet in the same instant: a boundary of the separate job named above.
+ * member on one race one writes and the other meets the result it wrote.
+ *
+ * <p><b>AND THE ONLY OTHER WRITER OF HIS RESULT TAKES TURNS WITH THAT LOCK BY ASKING FOR THE SAME
+ * ROW FIRST.</b> A row of {@code result} checks {@code result_competitor_fk}, which takes his
+ * {@code competitor} row {@code for key share}, and {@code for update} waits for that and makes it
+ * wait. That check is an AFTER ROW trigger: an insert puts its row into V65's unique index first and
+ * asks for the share second. So an approval of his run ({@link VerificationWriteApi}) that simply
+ * inserted would, with this save holding his row, stand in the index while it waited, and this
+ * save's own insert would wait on it: a deadlock, which was measured (the approval answered 500).
+ * The approval therefore takes {@code for key share} on his row BEFORE its insert
+ * ({@code VerificationWriteApi#countTheResult}), and the two meet in one of two orders. If it
+ * commits before this save takes its lock, the save's own question meets its row. If this save has
+ * the lock, the approval waits for it before it writes anything and, once the save has committed,
+ * meets V65's key and answers with the owner's sentence. Measured by
+ * {@code ResultsByTheLeagueConcurrencyTest} (the approval's row held uncommitted: the save waits at
+ * the lock and then names the row) and by {@code VerificationDecisionConcurrencyTest} (the save
+ * holding the lock, a run he described and a moderator who approves it onto this race: the save
+ * is written and the approval is refused, no deadlock). That is why the insert below carries no
+ * {@code on conflict}: no writer of his result can get past this lock unseen, so the clause would be
+ * a branch nothing reaches. The key is the floor under the lock: without the lock, the first of
+ * those cases is answered 500 (a duplicate key) rather than with a second row.
+ *
+ * <p>The member's own report writes no result, so it does not meet this lock; a report sent while
+ * the league enters the same run is refused later, at its approval.
  */
 @RestController
 class ResultsByTheLeagueApi {

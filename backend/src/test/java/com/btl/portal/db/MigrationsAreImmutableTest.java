@@ -499,7 +499,19 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
 			   read off this very assertion when it ran before the entry existed. */
 			new Applied("64", "V64__a_cancelled_payment_leaves_no_row_so_reversed_is_no_state.sql",
-					-1467614539));
+					-1467614539),
+
+			/* V65. A member has at most one result on one race (owner, PDL P6, 09.09.2026, „Član ima
+			   najviše jedan rezultat na jednoj trci"): one unique key over (competitor_id, race_id), which
+			   the approval names in `on conflict`. No row is touched, and QA was measured to hold no pair
+			   (18.10.2026); `ResultOnePerRaceCarriedOverTest` runs the file over the rows a real table holds.
+
+			   65 because 64 is taken by pull request 570, measured on 19.10.2026 after a fetch; 570 was
+			   merged before this one, so V64 stands before it here too.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
+			   read off this very assertion when it ran before the entry existed. */
+			new Applied("65", "V65__a_member_has_one_result_on_one_race.sql", 847671403));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

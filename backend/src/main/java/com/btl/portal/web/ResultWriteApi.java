@@ -206,6 +206,24 @@ class ResultWriteApi {
 	static final String THE_RACE_IS_NAMED_TWICE = "theRaceIsNamedTwice";
 
 	/**
+	 * HE ALREADY HAS A RESULT ON THE RACE HE CHOSE, so the run is refused at once.
+	 *
+	 * <p>PDL P6, 18.10.2026, the owner choosing among the outcomes offered: „Članova prijava za trku
+	 * na kojoj već ima rezultat se odbija odmah: „Za ovu trku već imaš rezultat. Ako vrednosti nisu
+	 * tačne, pošalji ispravku tog rezultata.” Prijava koja je bila odbijena pa ponovo poslata ostaje
+	 * dozvoljena." It follows from P6, 09.09.2026, „Član ima najviše jedan rezultat na jednoj trci":
+	 * such a run could never be approved ({@link VerificationWriteApi} refuses it).
+	 *
+	 * <p><b>Asked of {@code result} and never of {@code result_submission}</b>, which is the second
+	 * half of the same decision: a run sent and refused, or one still waiting, is not a result, so
+	 * sending it again is open ({@code ResultSubmissionConstraintsTest} holds the schema to the same:
+	 * „The same member may report the same race twice"). A run he
+	 * DESCRIBES names no race of the calendar, so nothing here can ask it; the approval does, of the
+	 * race the moderator chooses.
+	 */
+	static final String HE_HAS_A_RESULT_ON_THIS_RACE = "heHasAResultOnThisRace";
+
+	/**
 	 * A TOWN TYPED BY HAND THAT IS LONGER THAN THE BOX THE MEMBER TYPES IT INTO.
 	 *
 	 * <p>The owner, 10.10.2026, in his words: „Stavi samo validaciju "Predugačak naziv grada"."
@@ -550,6 +568,15 @@ class ResultWriteApi {
 
 		if (race.day().isAfter(today())) {
 			return no(THE_RACE_HAS_NOT_BEEN_RUN);
+		}
+
+		/* HIS RESULT ON THIS RACE, if there is one (see HE_HAS_A_RESULT_ON_THIS_RACE). A result the
+		   league writes after this question is not seen here, and the approval refuses the run then:
+		   this is the member being told early, and V65 is the rule. */
+		if (Boolean.TRUE.equals(db.sql("select exists(select 1 from result where competitor_id = ?"
+						+ " and race_id = ?)")
+				.params(me, race.id()).query(Boolean.class).single())) {
+			return no(HE_HAS_A_RESULT_ON_THIS_RACE);
 		}
 
 		Figures figures = WhatARaceCarries.figuresOf(race.fixes(), new Figures(typed.distanceKm(),

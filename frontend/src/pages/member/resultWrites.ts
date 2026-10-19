@@ -93,6 +93,10 @@ export const WHEN_A_RESULT_IS_WRITTEN: Record<string, string> = {
      construction now that each door builds its body by road, and answered because that
      construction is exactly what a later hand could undo. */
   theRaceIsNamedTwice: 'results.refused.theRaceIsNamedTwice',
+  /* He already has a result on the race he chose (PDL P6, 18.10.2026: „Članova prijava za trku na
+     kojoj već ima rezultat se odbija odmah"). The owner's own sentence. Reachable only from the
+     road where the race comes out of the calendar: a described race names no race to ask about. */
+  heHasAResultOnThisRace: 'results.refused.heHasAResultOnThisRace',
   /* The town, borrowed from `EventWriteApi` so that one rule answers in one voice all over
      the portal (owner, 11.08.2026: „Jedna kontrola i jedno pravilo za ceo portal, ne dva
      slična"). Reachable only from the road where the member describes a race. */
