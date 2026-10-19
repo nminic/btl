@@ -467,6 +467,13 @@ describe('how tall a control in a form is', () => {
          race has one height wherever it stands. What holds it is that the wrapper is a `.field`, which
          is why this screen is on the list and not outside it. */
       'pages/admin/EventRaces.tsx',
+      /* THE LEAGUE'S OWN ENTRY OF RESULTS ON THE EVENT PAGE (PDL P9, 18.10.2026), a group of fields per
+         member in the dress of the races of an event (`.race`, `.race__row`, `.field`). Measured in
+         Chrome over the built package at 360, 768 and 1280 on 19.10.2026, a race of each of the three
+         kinds with two rows on the page: every box, the member's included, is 48px tall (8, 8 and 14
+         boxes), and nothing scrolls sideways. The first draft drew the member's box without the dress
+         of a box and it came out 21px tall; that is what this list is for. */
+      'pages/event/EnterResults.tsx',
       'pages/event/GoingToEvent.tsx',
       /* THE GROUP OF TWO RADIOS FOR THE LANGUAGE OF A MEMBER'S MAIL (JM-B, 17.10.2026), written as
          the theme beside it on the settings screen is: a `.field--radio` with a `.field__confirm` a

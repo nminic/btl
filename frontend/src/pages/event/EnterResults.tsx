@@ -262,6 +262,9 @@ function Rows({
                     {editing === null ? (
                       <Suggesting
                         shared={{
+                          /* The dress of every box of a form (`forms/held.ts`), as the renderer
+                             puts it on the box it hands this same component. */
+                          className: heldControl(false),
                           id: `league-row-${which}-member`,
                           name: `member-${which}`,
                           'aria-required': true,
@@ -332,7 +335,9 @@ function Rows({
             )
           })}
         </div>
-        <p className="member__actions">
+        {/* Side by side and always the same distance apart, wrapping on a narrow page: the row of
+            controls the administration already draws (`admin/Entity.css`). */}
+        <p className="entity-row-actions">
           {editing === null && (
             <button
               type="button"

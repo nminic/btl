@@ -438,39 +438,41 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                         <td>{formatDuration(result.seconds)}</td>
                         <td className="table__points">{formatPoints(result.points, locale)}</td>
                         {manages && (
-                          <td className="event-results__options">
-                            {/* The pencil: the same screen as the entry, with this one row and its
-                                member fixed (`event/EnterResults.tsx`). Named by whose run it is,
-                                because a column of pencils is one control said many times over
-                                (WCAG 2.2 SC 2.4.4). */}
-                            <Link
-                              className="button button--secondary button--compact"
-                              aria-label={t('leagueResults.editNamed', { name: named })}
-                              to={`/${locale}/kalendar/${slug}/rezultati?trka=${String(result.raceId)}&rezultat=${String(result.id)}`}
-                            >
-                              ✎
-                            </Link>
-                            {/* The x: asked twice, as every deletion on the portal is, and named
-                                by the run it takes away. */}
-                            <DeleteRecord
-                              name={named}
-                              face="×"
-                              look="button button--secondary button--compact"
-                              onDelete={() =>
-                                theLeagueDeleted(result.raceId, result.id).then((answer) => {
-                                  if (answer.got === 'done') {
-                                    /* Gone at once rather than on the next read; the served
-                                       list really has lost it (`leagueResultWrites.ts` drops it). */
-                                    remove(RESULTS, String(result.id))
-                                    setRefused(null)
+                          <td>
+                            <span className="entity-row-actions">
+                              {/* The pencil: the same screen as the entry, with this one row and its
+                                  member fixed (`event/EnterResults.tsx`). Named by whose run it is,
+                                  because a column of pencils is one control said many times over
+                                  (WCAG 2.2 SC 2.4.4). */}
+                              <Link
+                                className="button button--secondary button--compact"
+                                aria-label={t('leagueResults.editNamed', { name: named })}
+                                to={`/${locale}/kalendar/${slug}/rezultati?trka=${String(result.raceId)}&rezultat=${String(result.id)}`}
+                              >
+                                ✎
+                              </Link>
+                              {/* The x: asked twice, as every deletion on the portal is, and named
+                                  by the run it takes away. */}
+                              <DeleteRecord
+                                name={named}
+                                face="×"
+                                look="button button--secondary button--compact"
+                                onDelete={() =>
+                                  theLeagueDeleted(result.raceId, result.id).then((answer) => {
+                                    if (answer.got === 'done') {
+                                      /* Gone at once rather than on the next read; the served
+                                         list really has lost it (`leagueResultWrites.ts` drops it). */
+                                      remove(RESULTS, String(result.id))
+                                      setRefused(null)
 
-                                    return
-                                  }
+                                      return
+                                    }
 
-                                  setRefused({ id: result.id, answer })
-                                })
-                              }
-                            />
+                                    setRefused({ id: result.id, answer })
+                                  })
+                                }
+                              />
+                            </span>
                             {refused !== null && refused.id === result.id && (
                               /* A 404 is said in the portal's own words for a number, as on every
                                  screen that draws this question (`admin/deletionInFlight.test.tsx`). */
