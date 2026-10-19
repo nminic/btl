@@ -217,15 +217,16 @@ class WhatAResultChangeSaysTest {
 	}
 
 	/**
-	 * THE THREE MESSAGES OF THE EVENT PAGE, WORD FOR WORD, IN BOTH LANGUAGES (PDL P9, 18.10.2026).
+	 * THE TWO MESSAGES OF THE EVENT PAGE, WORD FOR WORD, IN BOTH LANGUAGES (PDL P9, 18.10.2026).
 	 *
 	 * <p>The words are a proposal the owner reviews with the pull request („[OTVORENO 18.10.2026]
 	 * Reči poruka za rezultat pre 2027, za godinu bez članstva i za izmenu"), so they are held as a
-	 * snapshot of the whole text, for the reason the case above gives. The year in the second is the
-	 * run's own and is written as four digits, never as „2.027".
+	 * snapshot of the whole text, for the reason the case above gives. The third words of that
+	 * decision, for a year without a membership, were approved and then made unreachable by the
+	 * owner's later answers, and are gone.
 	 */
 	@Test
-	void theThreeMessagesOfTheEventPageSayExactlyWhatTheyWereProposedToSay() {
+	void theTwoMessagesOfTheEventPageSayExactlyWhatTheyWereProposedToSay() {
 		for (MailLanguage in : MailLanguage.values()) {
 			String run = WhatAResultChangeSays.inWords(A_RUN, in);
 			String other = WhatAResultChangeSays.inWords(ANOTHER_RUN, in);
@@ -248,23 +249,6 @@ class WhatAResultChangeSaysTest {
 									: "The race was run before the first official season of the league (2027),"
 									+ " so the result stays in your history and counts in no season table, Top"
 									+ " list or award.",
-							"",
-							"Balkanska trkačka liga"));
-
-			Said without = WhatAResultChangeSays.enteredWithoutAMembership(A_RUN, in);
-
-			assertThat(without.subject()).isEqualTo(before.subject());
-			assertThat(without.body())
-					.as("the message about a run of a year without a membership, in %s", in)
-					.isEqualTo(lines(
-							serbian ? "Liga vam je unela rezultat:" : "The league has entered a result for you:",
-							"",
-							run,
-							"",
-							serbian ? "Za godinu 2027 nemate zapis o članstvu u ligi, pa rezultat ne ulazi ni u"
-									+ " jednu sezonsku tabelu, Top listu ni nagradu."
-									: "You hold no record of membership of the league for 2027, so the result"
-									+ " counts in no season table, Top list or award.",
 							"",
 							"Balkanska trkačka liga"));
 
@@ -343,13 +327,6 @@ class WhatAResultChangeSaysTest {
 				.body()).contains("Sezona 2028 je zamrznuta").doesNotContain("2027").doesNotContain("2.028");
 		assertThat(WhatAResultChangeSays.approvedInAFrozenSeason(ofTheNextYear, MailLanguage.ENGLISH)
 				.body()).contains("Season 2028 is frozen").doesNotContain("2027");
-	}
-
-	/** THE YEAR IN THE SECOND IS THE RUN'S, not a constant: a run of another year names that one. */
-	@Test
-	void theYearWithoutAMembershipIsTheYearOfTheRun() {
-		assertThat(WhatAResultChangeSays.enteredWithoutAMembership(ANOTHER_RUN, MailLanguage.SERBIAN)
-				.body()).contains("Za godinu 2026 nemate").doesNotContain("2027 nemate");
 	}
 
 	/**
@@ -511,8 +488,6 @@ class WhatAResultChangeSaysTest {
 				.isInstanceOf(NullPointerException.class);
 		assertThatThrownBy(() -> WhatAResultChangeSays.enteredBeforeTheLeague(null, MailLanguage.SERBIAN))
 				.isInstanceOf(NullPointerException.class);
-		assertThatThrownBy(() -> WhatAResultChangeSays.enteredWithoutAMembership(null, MailLanguage.SERBIAN))
-				.isInstanceOf(NullPointerException.class);
 		assertThatThrownBy(() -> WhatAResultChangeSays.enteredInAFrozenSeason(null, MailLanguage.SERBIAN))
 				.isInstanceOf(NullPointerException.class);
 		assertThatThrownBy(() -> WhatAResultChangeSays.approvedInAFrozenSeason(null, MailLanguage.SERBIAN))
@@ -547,7 +522,6 @@ class WhatAResultChangeSaysTest {
 				WhatAResultChangeSays.deleted(A_RUN, in),
 				WhatAResultChangeSays.approved(A_RUN, in),
 				WhatAResultChangeSays.enteredBeforeTheLeague(A_RUN, in),
-				WhatAResultChangeSays.enteredWithoutAMembership(A_RUN, in),
 				WhatAResultChangeSays.changedByTheLeague(A_RUN, ANOTHER_RUN, in),
 				WhatAResultChangeSays.enteredInAFrozenSeason(A_RUN, in),
 				WhatAResultChangeSays.approvedInAFrozenSeason(A_RUN, in)};

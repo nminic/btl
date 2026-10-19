@@ -514,10 +514,10 @@ class ResultsByTheLeagueApi {
 	 * <p>Three states and no fourth: a run before 2027 is a run before the league, a run of a season
 	 * that has frozen has the owner's sentence for it, and every other run counts in its season. There
 	 * is no „entered without a membership" state left to tell, and that is a consequence of the
-	 * owner's decision of 18.10.2026 and not a gap: a season is current until its freeze, a race is
+	 * owner's decisions of 18.10.2026 and not a gap: a season is current until its freeze, a race is
 	 * never entered before it is run, so a season that has not frozen and has begun is current, and
-	 * for it the league enters only a member ({@link #aMemberTheRunningSeasonDoesNotHave}); the words
-	 * {@link WhatAResultChangeSays#enteredWithoutAMembership} are left in the dictionary, unused here.
+	 * for it the league enters only a member ({@link #aMemberTheRunningSeasonDoesNotHave}). The words
+	 * for it, which the owner had approved, are gone from the dictionary.
 	 * „Counts in its season" is the join {@link ResultApi} serves as {@code inItsSeason} and
 	 * {@link BestOfficialSeason} sums over: a {@code membership} of the year of the run.
 	 */

@@ -208,12 +208,11 @@ public final class WhatAResultChangeSays {
 		 * predlog ide vlasniku sa PR-om."
 		 */
 		A_RESULT_WAS_ENTERED_BEFORE_THE_LEAGUE("resultEnteredBeforeTheLeague", 1),
-
-		/**
-		 * The same for a year of the league in which he holds no membership, and the year is the
-		 * second fact. Under the same decision and the same open question as the one above.
-		 */
-		A_RESULT_WAS_ENTERED_WITHOUT_A_MEMBERSHIP("resultEnteredWithoutAMembership", 2),
+		/* There is no occasion for „a year of the league in which he holds no membership". The owner
+		   approved its words on 18.10.2026 („Može ovako") and his later answers of the same day made
+		   it unreachable: a season is current until its freeze and the league enters a non-member
+		   there nowhere, a non-member of a frozen season is told the frozen sentence below, and a
+		   run before 2027 has the occasion above. */
 
 		/**
 		 * „promenjen rezultat" when the LEAGUE changed it, from the event page, and the change
@@ -329,18 +328,6 @@ public final class WhatAResultChangeSays {
 		return said(Told.A_RESULT_WAS_ENTERED_BEFORE_THE_LEAGUE, in, inWords(entered, in));
 	}
 
-	/**
-	 * THE LEAGUE ENTERED A RUN OF A YEAR IN WHICH HE HOLDS NO MEMBERSHIP ({@link
-	 * Told#A_RESULT_WAS_ENTERED_WITHOUT_A_MEMBERSHIP}). The year is the run's own and is handed to
-	 * the words as a finished string: as a number {@link MessageFormat} would write it „2.027".
-	 */
-	public static Said enteredWithoutAMembership(Run entered, MailLanguage in) {
-		Objects.requireNonNull(entered, "entered");
-
-		return said(Told.A_RESULT_WAS_ENTERED_WITHOUT_A_MEMBERSHIP, in, inWords(entered, in),
-				String.valueOf(entered.day().getYear()));
-	}
-
 	/** THE LEAGUE CHANGED A RESULT, the old run first and the new one after it, exactly as
 	 *  {@link #changed} writes them ({@link Told#A_RESULT_WAS_CHANGED_BY_THE_LEAGUE}). */
 	public static Said changedByTheLeague(Run before, Run after, MailLanguage in) {
@@ -353,8 +340,8 @@ public final class WhatAResultChangeSays {
 
 	/**
 	 * THE LEAGUE ENTERED A RUN OF A SEASON THAT HAS FROZEN ({@link
-	 * Told#A_RESULT_WAS_ENTERED_IN_A_FROZEN_SEASON}). The season is the run's own, as for
-	 * {@link #enteredWithoutAMembership}.
+	 * Told#A_RESULT_WAS_ENTERED_IN_A_FROZEN_SEASON}). The season is the run's own, handed to the
+	 * words as a finished string: as a number {@link MessageFormat} would write it „2.027".
 	 */
 	public static Said enteredInAFrozenSeason(Run entered, MailLanguage in) {
 		Objects.requireNonNull(entered, "entered");

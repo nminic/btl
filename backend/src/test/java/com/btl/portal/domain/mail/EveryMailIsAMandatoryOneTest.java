@@ -107,10 +107,9 @@ class EveryMailIsAMandatoryOneTest {
 			Map.entry("resultDeleted", "a result changed: deleting is the cheapest way to change one without a trace"),
 			/* THE LEAGUE ENTERS, CHANGES AND DELETES FROM THE EVENT PAGE (PDL P9, 18.10.2026: „Za novi
 			   unos član dobija istu poruku kao kad mu moderator odobri rezultat, u sanduče i mejlom;
-			   izmena i brisanje rade po P22"). The two entries are the mandatory „unet rezultat" for a
+			   izmena i brisanje rade po P22"). The first is the mandatory „unet rezultat" for a
 			   run no season counts, and the change is „promenjen rezultat" made by the league. */
 			Map.entry("resultEnteredBeforeTheLeague", "a result entered by the league for a race run before 2027: the mail about a result entered"),
-			Map.entry("resultEnteredWithoutAMembership", "a result entered by the league for a year he holds no membership of: the mail about a result entered"),
 			Map.entry("resultChangedByTheLeague", "a result changed, by the league from the event page"),
 			/* THE SENTENCE OF A FROZEN SEASON (PDL P9, 18.10.2026: „Rezultat u ZAMRZNUTOJ sezoni dobija
 			   posebnu rečenicu, i kad ga liga unese i kad ga moderator odobri posle zamrzavanja"). The
