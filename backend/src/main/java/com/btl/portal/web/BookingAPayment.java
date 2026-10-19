@@ -34,7 +34,9 @@ import java.util.Optional;
  *
  * <p><b>Moved, not rewritten.</b> Every statement below is the one {@link PaymentApi} ran until this
  * class existed, in the same order, and {@link PaymentApi}'s own heading still describes what each of
- * the four outcomes of {@link RecordingAPayment} does. The words a refusal is answered with stay on
+ * the three outcomes of {@link RecordingAPayment} does. There were four, and the one that refused a
+ * reversed payment went on 18.10.2026 with the state it was about (V64; PDL P8, „zapis o uplati se
+ * BRIŠE”). The words a refusal is answered with stay on
  * {@link PaymentApi} as well, because the screen's map of them is held against that file
  * ({@code frontend/src/pages/account/refusals.test.ts}).
  *
@@ -134,8 +136,6 @@ class BookingAPayment {
 		Currency his = currencyOf.of(competitor.get().id());
 
 		ResponseEntity<?> answer = switch (outcome) {
-			case A_REVERSAL_IS_NOT_UNDONE_HERE ->
-					PaymentApi.no(HttpStatus.CONFLICT, PaymentApi.THE_PAYMENT_WAS_REVERSED);
 			case ALREADY_RECORDED -> alreadyRecorded(existing.orElseThrow(), competitor.get(), his);
 			case RECORD_IT, RECORD_IT_AND_NUMBER_HIM -> {
 				/* THE REFERENCE IS CHECKED HERE, ONLY ONCE THE OUTCOME IS KNOWN, AND
