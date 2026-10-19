@@ -1,11 +1,10 @@
 import { ProfileLink } from '../profile/ProfileLink'
-import { categoryLabel } from '../../data/categories'
+import { categoryCodeFor, categoryLabel } from '../../data/categories'
 import { useState } from 'react'
 import { Resource } from '../../components/Resource'
 import { clearResourceCache } from '../../data/client'
-import { categoryOfMember } from '../../data/derive'
-import type { Competitor } from '../../data/types'
-import { useCompetitors } from '../../data/useResource'
+import type { Member } from '../../data/types'
+import { combinePair, useCompetitors, useMembers } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { askTheServer, type Answer } from '../account/askTheServer'
@@ -21,6 +20,23 @@ import '../member/Member.css'
  *  „Nov …" (`EntityEditor.NEW_RECORD_ID`); this one has no such button any
  *  more, so the search field is the anchor and carries an id for it. */
 const SEARCH_ID = 'members-search'
+
+/**
+ * THE THREE VALUES OF THE FILTER, and the first is what the screen opens on.
+ *
+ * Owner, 21.09.2026 (PDL, „Spisak članova u administraciji”): „Po defaultu je ukljucena Aktivne
+ * clanove, ali moze da se promeni u Neaktivne i Sve.” And 18.10.2026 (PDL P8): „Aktivni default
+ * filter, mogu ukljuciti i neaktivne ako tako izaberem”. „Svi" is everybody ever given a member
+ * number, which is exactly what `GET /api/members` answers, so the filter narrows that list and
+ * never widens it; an account never given a number is under none of the three.
+ */
+const MEMBER_FILTERS = ['active', 'inactive', 'all'] as const
+
+type MemberFilter = (typeof MEMBER_FILTERS)[number]
+
+function passes(one: Member, filter: MemberFilter): boolean {
+  return filter === 'all' || one.active === (filter === 'active')
+}
 
 /* The list of members, with the one thing that is not public about them: on what
  * basis their membership is active, which is kept off every public screen and
@@ -88,7 +104,15 @@ export function AdminMembers() {
   const overlay = useOverlay()
   const { remove } = useSession()
   const [search, setSearch] = useState('')
-  const state = useCompetitors()
+  const [filter, setFilter] = useState<MemberFilter>('active')
+  /* TWO ANSWERS, AND EACH IS READ FOR ONE THING. The rows are `members`, everybody ever given a
+     number with his seasons (`MembersApi`). The link to a profile is `competitors`, the public list:
+     a member is linked exactly when that list has him, which is the one place the portal says a
+     profile can be opened, so a lapsed member's name is plain text here. That last part is MY
+     REASONING, by analogy with the owner's rule for the tables of past years („Ime neaktivnog člana
+     ostaje vidljivo u istorijskim tabelama te godine, ali kao običan tekst, bez linka”): his profile
+     is shown to nobody, so a link to it would open „Ovog profila nema". */
+  const state = combinePair(useMembers(), useCompetitors())
 
   /** What just happened, for whoever is not watching the list. */
   const [said, setSaid] = useState('')
@@ -113,7 +137,7 @@ export function AdminMembers() {
    * was its last member - and a screen that refused first would be a second rule
    * over a decision already taken.
    */
-  async function deleteOne(one: Competitor): Promise<void> {
+  async function deleteOne(one: Member): Promise<void> {
     const answer = await askTheServer(
       `/api/competitors/${one.memberNumber}?account=${DELETE_THE_ACCOUNT}`,
       {},
@@ -159,6 +183,7 @@ export function AdminMembers() {
        rather than an oversight: `GET /api/ducats` serves the catalogue of tiers
        (`DucatApi:152`, `from ducat`), never `ducat_award`, so nothing a competitor's
        deletion changes is in it. */
+    clearResourceCache('members')
     clearResourceCache('competitors')
     clearResourceCache('teams')
     clearResourceCache('results')
@@ -185,13 +210,18 @@ export function AdminMembers() {
       <h1 className="visually-hidden">{t('admin.members')}</h1>
 
       <Resource state={state}>
-        {(competitors) => {
-          const all = recordsOf(MEMBERS, competitors, overlay)
+        {([members, competitors]) => {
+          const all = recordsOf(MEMBERS, members, overlay)
+          const onTheList = new Map(
+            recordsOf(MEMBERS, competitors, overlay).map((one) => [one.memberNumber, one]),
+          )
           const needle = search.trim().toLowerCase()
-          const rows = all.filter((one) =>
-            `${one.firstName} ${one.lastName} ${one.memberNumber} ${one.city}`
-              .toLowerCase()
-              .includes(needle),
+          const rows = all.filter(
+            (one) =>
+              passes(one, filter) &&
+              `${one.firstName} ${one.lastName} ${one.memberNumber} ${one.city}`
+                .toLowerCase()
+                .includes(needle),
           )
 
           return (
@@ -202,6 +232,25 @@ export function AdminMembers() {
               <div className="entity-bar">
                 <div className="entity-bar__filters">
                   <div className="rankings__filters">
+                    <label className="rankings__field">
+                      <span>{t('admin.memberFilter')}</span>
+                      <select
+                        value={filter}
+                        onChange={(event) => {
+                          const chosen = MEMBER_FILTERS.find((one) => one === event.target.value)
+
+                          if (chosen !== undefined) {
+                            setFilter(chosen)
+                          }
+                        }}
+                      >
+                        {MEMBER_FILTERS.map((one) => (
+                          <option key={one} value={one}>
+                            {t(`admin.memberFilterValue.${one}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                     <label className="rankings__field rankings__field--wide" htmlFor={SEARCH_ID}>
                       <span>{t('competitors.search')}</span>
                       <input
@@ -232,71 +281,108 @@ export function AdminMembers() {
                       <th scope="col">{t('competitors.columns.category')}</th>
                       <th scope="col">{t('competitors.columns.city')}</th>
                       <th scope="col">{t('admin.basis')}</th>
+                      <th scope="col">{t('admin.seasons')}</th>
+                      <th scope="col">{t('admin.lastSeason')}</th>
                       <th scope="col">{t('admin.form.record')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((one) => (
-                      <tr key={one.memberNumber}>
-                        <td>
-                          <ProfileLink competitor={one}>
-                            {one.firstName} {one.lastName}
-                          </ProfileLink>{' '}
-                          <span className="table__member-number">{one.memberNumber}</span>
-                        </td>
-                        <td className="table__category">{categoryLabel(categoryOfMember(one), t)}</td>
-                        {/* Read, not edited in place - see the note at the top of
-                            this file for why there is no route to write it back. */}
-                        <td>{one.city}</td>
-                        {/* THE BASIS OF THE SEASON ON SALE, WITH ITS YEAR, and nothing for a
-                            member who holds no membership of it (owner, 18.10.2026, PDL P8:
-                            „do 14.10. je osnova 2027, od 15.10 je osnova 2028"). Until that day
-                            this drew the per-person column, so a member freed of 2027 was
-                            tagged „Uplata" and one let in on his balance was drawn with a
-                            word the screen did not know. The two fields travel together on
-                            the answer (`CompetitorApi`), and the tag is drawn only when both
-                            are there. */}
-                        <td>
-                          {one.membershipBasis !== undefined && one.membershipSeason !== undefined && (
-                            <span className={`tag tag--${one.membershipBasis}`}>
-                              {t('admin.basisOfTheSeason', {
-                                basis: t(`admin.basisValue.${one.membershipBasis}`),
-                                season: one.membershipSeason,
-                              })}
+                    {rows.map((one) => {
+                      const listed = onTheList.get(one.memberNumber)
+                      /* THE LAST SEASON IS THE LAST OF HIS SEASONS, whatever its basis (PDL P8,
+                         18.10.2026, „Kolona sa poslednjom sezonom u moderaciji broji svaki osnov”),
+                         and NOT the season on sale beside the basis: a member of 2027 who has not
+                         renewed by November has a last season and no basis of 2028. */
+                      const last = one.seasons.at(-1)
+
+                      return (
+                        <tr key={one.memberNumber}>
+                          <td>
+                            {listed === undefined ? (
+                              <span>
+                                {one.firstName} {one.lastName}
+                              </span>
+                            ) : (
+                              <ProfileLink competitor={listed}>
+                                {one.firstName} {one.lastName}
+                              </ProfileLink>
+                            )}{' '}
+                            <span className="table__member-number">{one.memberNumber}</span>
+                          </td>
+                          <td className="table__category">
+                            {categoryLabel(
+                              categoryCodeFor(one.gender, one.ageBand, one.firstSeason2027),
+                              t,
+                            )}
+                          </td>
+                          {/* Read, not edited in place - see the note at the top of
+                              this file for why there is no route to write it back. */}
+                          <td>{one.city}</td>
+                          {/* THE BASIS OF THE SEASON ON SALE, WITH ITS YEAR, and nothing for a
+                              member who holds no membership of it (owner, 18.10.2026, PDL P8:
+                              „do 14.10. je osnova 2027, od 15.10 je osnova 2028"). Until that day
+                              this drew the per-person column, so a member freed of 2027 was
+                              tagged „Uplata" and one let in on his balance was drawn with a
+                              word the screen did not know. The two fields travel together on
+                              the answer (`CompetitorApi`), and the tag is drawn only when both
+                              are there. */}
+                          <td>
+                            {one.membershipBasis !== undefined && one.membershipSeason !== undefined && (
+                              <span className={`tag tag--${one.membershipBasis}`}>
+                                {t('admin.basisOfTheSeason', {
+                                  basis: t(`admin.basisValue.${one.membershipBasis}`),
+                                  season: one.membershipSeason,
+                                })}
+                              </span>
+                            )}
+                          </td>
+                          {/* EVERY SEASON HE WAS A MEMBER OF, oldest first, each on its own basis
+                              (owner, 18.10.2026: „bitno mi je da kao admin / moderator vidim na nivou
+                              clana kojih sve godina je on bio clan"). Read only: this screen writes
+                              no season. */}
+                          <td>
+                            {one.seasons.map((held) => (
+                              <span key={held.season} className={`tag tag--${held.basis}`}>
+                                {t('admin.basisOfTheSeason', {
+                                  basis: t(`admin.basisValue.${held.basis}`),
+                                  season: held.season,
+                                })}
+                              </span>
+                            ))}
+                          </td>
+                          <td>{last?.season}</td>
+                          <td>
+                            <span className="entity-row-actions">
+                              <DeleteRecord
+                                name={`${one.firstName} ${one.lastName}`}
+                                onDelete={() => {
+                                  /* The row about to go is where the focus is, moved
+                                     before the answer is back exactly as
+                                     `RowActions.deleteRow` moves it for the entities
+                                     that still use it. A refusal is said in the row
+                                     and closes the question, and the row's own
+                                     „Obriši" takes the focus back from where it was
+                                     moved (`DeleteRecord`, owner 02.10.2026).
+
+                                     HANDED BACK, so the question can wait for the answer
+                                     (`DeleteRecord`, owner 02.10.2026): it tells „Odustani" off
+                                     for as long as the promise is pending. */
+                                  document.getElementById(SEARCH_ID)?.focus()
+
+                                  return deleteOne(one)
+                                }}
+                              />
                             </span>
-                          )}
-                        </td>
-                        <td>
-                          <span className="entity-row-actions">
-                            <DeleteRecord
-                              name={`${one.firstName} ${one.lastName}`}
-                              onDelete={() => {
-                                /* The row about to go is where the focus is, moved
-                                   before the answer is back exactly as
-                                   `RowActions.deleteRow` moves it for the entities
-                                   that still use it. A refusal is said in the row
-                                   and closes the question, and the row's own
-                                   „Obriši" takes the focus back from where it was
-                                   moved (`DeleteRecord`, owner 02.10.2026).
-
-                                   HANDED BACK, so the question can wait for the answer
-                                   (`DeleteRecord`, owner 02.10.2026): it tells „Odustani" off
-                                   for as long as the promise is pending. */
-                                document.getElementById(SEARCH_ID)?.focus()
-
-                                return deleteOne(one)
-                              }}
-                            />
-                          </span>
-                          {refused !== null && refused.memberNumber === one.memberNumber && (
-                            <ServerSaid
-                              answer={refused.answer}
-                              refusals={WHEN_DELETING_A_MEMBER}
-                            />
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                            {refused !== null && refused.memberNumber === one.memberNumber && (
+                              <ServerSaid
+                                answer={refused.answer}
+                                refusals={WHEN_DELETING_A_MEMBER}
+                              />
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

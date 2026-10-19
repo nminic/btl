@@ -371,6 +371,43 @@ export type Competitor = {
   crop: Crop | null
 }
 
+/** One season a member was a member of, on that season's own basis (`MembersApi.Season`). */
+export type MemberSeason = {
+  season: number
+  basis: MembershipBasis
+}
+
+/**
+ * A member as `GET /api/members` answers for one: the moderation of the members, and nobody else.
+ *
+ * **Not a `Competitor`, and the difference is the reason the route exists.** The public list answers
+ * only the members whose fee stands, and twenty screens read the PRESENCE of a row on it as „active"
+ * (see `Competitor`). This list answers everybody who was ever given a member number (PDL, 21.09.2026,
+ * „„Svi" znači aktivni plus neaktivni”), so it says which are active in a field of its own, and it is
+ * read by the one screen that filters on it (`pages/admin/AdminMembers.tsx`).
+ */
+export type Member = {
+  memberNumber: string
+  firstName: string
+  lastName: string
+  gender: Gender
+  city: string
+  ageBand: AgeBand
+  firstSeason2027: boolean
+  /** Whether his fee stands, as `competitor.active` says it: the flag behind the public list. */
+  active: boolean
+  /** The basis of the season ON SALE, the same field and rule as on `Competitor`. */
+  membershipBasis?: MembershipBasis
+  /** The season `membershipBasis` is the basis of, present exactly when it is. */
+  membershipSeason?: number
+  /**
+   * Every season he holds a membership of, oldest first, each on its own basis; empty for a member
+   * who holds none. The column „Poslednja sezona" is the LAST of these (PDL P8, 18.10.2026: „Kolona
+   * sa poslednjom sezonom u moderaciji broji svaki osnov”), so that fact has this one home.
+   */
+  seasons: MemberSeason[]
+}
+
 /* ~~A race has no name of its own (owner, 11.08.2026).~~ **Overturned 23.08.2026
    by the owner**, and this note was left behind saying the opposite of the field
    two lines below it: „ja mogu da u okviru Beogradskog maratona imam dve trke, od

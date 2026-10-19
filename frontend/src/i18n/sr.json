@@ -1214,6 +1214,14 @@
       "balance": "Balans"
     },
     "basisOfTheSeason": "{basis} za {season}",
+    "memberFilter": "Članstvo",
+    "memberFilterValue": {
+      "active": "Aktivni",
+      "inactive": "Neaktivni",
+      "all": "Svi"
+    },
+    "seasons": "Sezone članstva",
+    "lastSeason": "Poslednja sezona",
     "pricing": "Cenovnik",
     "ranking": "Pravo rangiranja",
     "rankingByPeriod": "Prema periodu uplate",

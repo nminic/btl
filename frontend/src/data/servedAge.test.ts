@@ -302,8 +302,14 @@ describe('which fields the portal serves', () => {
        land in the band below on the served file: the days leave as DAYS, the keys are a
        sequence's, and the four times it holds are all past 2040 seconds. On the server the time
        can be anything a person runs, which is the same open question the line above names for
-       the queue's run, and the case after this one is what would name the path. */
-    expect(Object.keys(served)).toHaveLength(18)
+       the queue's run, and the case after this one is what would name the path.
+
+       **Nineteen files since 18.10.2026: `members.json`, the moderation's list of everybody ever
+       given a member number (`MembersApi`).** Thirteen paths, two of them nested, and they are about
+       a person: his name, town and category, whether his fee stands, and every season he was a member
+       of on its basis. Served to the administration over the members alone. Added to the snapshot
+       by hand, as this file requires; the two seasons it carries are named in `MAY_HOLD_A_YEAR`. */
+    expect(Object.keys(served)).toHaveLength(19)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(
       10,
@@ -400,6 +406,13 @@ describe('what the portal serves about how old somebody is', () => {
     'competitors.json:membershipSeason',
     'competitors.json:teamSince',
     'leagues.json:season',
+    /* TWO SEASONS AND NOT A YEAR OF BIRTH, since 18.10.2026, and both are the seasons of a membership
+       (`MembersApi`): `membershipSeason` is the season on sale, the same field as in `competitors.json`
+       above, and `seasons.season` is every season a member holds a row of (PDL P8, „spisak svih sezona
+       člana”), which `membership` cannot hold before 2027. Served to the moderation of the members
+       only. Their value in the file is 2027, the first season of the league. */
+    'members.json:membershipSeason',
+    'members.json:seasons.season',
     'pairs.json:season',
     /* THE THIRD SEASON ON THIS LIST, and it is a season in exactly the sense the two above
        it are: the year membership is being paid FOR, which `GET /api/payments` answers once
