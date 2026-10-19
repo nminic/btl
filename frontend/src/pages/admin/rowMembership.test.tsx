@@ -264,10 +264,15 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     server.stop()
   }, SLOW)
 
-  it('says a refused change in its words, and a refused payment over the exemption in the booking’s', async () => {
+  /**
+   * EACH ACT IN THE WORDS OF ITS OWN ROUTE: the change meets a reason a cancellation cannot, and the
+   * payment over the exemption meets one the row's own payment never does, which only the map of a
+   * change of basis answers.
+   */
+  it('says a refused change, and a refused payment over the exemption, in the words of the change', async () => {
     const server = serving((path, init) =>
       init?.method === 'PUT' && path.includes(EXEMPT)
-        ? refused('theMembershipCostsNothing', 409)
+        ? refused('theBasisHasChanged', 409)
         : refused('thisChangeIsNotOffered', 400),
     )
     const user = setupUser()
@@ -288,7 +293,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     await user.click(within(exempt).getByRole('button', { name: 'Upiši uplatu' }))
 
     expect(
-      await within(exempt).findByText(sr.verification.activationRefused.theMembershipCostsNothing),
+      await within(exempt).findByText(sr.admin.membershipRefused.theBasisHasChanged),
     ).toBeInTheDocument()
 
     server.stop()
