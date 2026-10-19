@@ -2772,7 +2772,7 @@ class VerificationWriteApiTest {
 	@Test
 	void theSameNameInAnotherYearIsAnotherEventAndIsMade() throws Exception {
 		event("prolecna-trka-2026", "Prolećna trka", LocalDate.of(2026, 4, 4));
-		event("zimska-trka-2027", "Zimska trka", LocalDate.of(2027, 1, 16));
+		long winterOf2027 = event("zimska-trka-2027", "Zimska trka", LocalDate.of(2027, 1, 16));
 
 		long spring = describedRun(ANA, "Prolećna", "length", THE_DAY_HE_RAN, "7.0000", 20, 20, 1900);
 		long winter = describedRun(BOJAN, "Zimska", "length", LocalDate.of(2026, 12, 12), "8.0000",
@@ -2787,6 +2787,13 @@ class VerificationWriteApiTest {
 		assertThat(theResultOf(BOJAN).raceId())
 				.as("the run of December was not counted on an event of the year he ran in")
 				.isEqualTo(theOneRaceOf(theEventAt("zimska-trka-2026").id()).id());
+
+		/* AND THE EVENT OF 2027 IS NOT THE ONE IT WENT ON. Found by a mutation: a lookup in the year of
+		   TODAY found the event of 2027, the race of December moved it back into 2026 and to the address
+		   of that year, and the line above read the same answer from the wrong event. */
+		assertThat(theEventAt("zimska-trka-2026").id()).isNotEqualTo(winterOf2027);
+		assertThat(theEventAt("zimska-trka-2027").date()).isEqualTo(LocalDate.of(2027, 1, 16));
+		assertThat(racesOf(winterOf2027)).as("the run of December went on the event of 2027").isEmpty();
 	}
 
 	/**
