@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { arrivedResource, clearResourceCache, loadResource } from '../../data/client'
 import type { Competitor, Member } from '../../data/types'
 import { asMember, person } from '../../test/plate'
@@ -22,6 +22,12 @@ import { SLOW } from '../../test/slow'
  * the season on sale, who is drawn first. All three are members of 2027 on 20 October, so all three
  * are active and under the filter the screen opens on.
  */
+/* EVERY WAIT IN THIS FILE IS GIVEN HALF OF WHAT A CASE IS GIVEN, the shape and the reason of
+   `saveWhileSaving.test.tsx`: a request that never leaves, or a list that is never read again, is then
+   told by the wait's own assertion and not by the clock of the case, so a series of mutations can tell
+   a case that failed from a case that ran out of time (CLAUDE.md, section 25). */
+configure({ asyncUtilTimeout: SLOW / 2 })
+
 describe('recording a payment on a member’s row', () => {
   const HOLDS_IT = '000002'
   const IN_DINARS = '000004'
@@ -274,4 +280,10 @@ describe('recording a payment on a member’s row', () => {
 
     server.stop()
   }, SLOW)
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
 })
