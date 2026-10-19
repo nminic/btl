@@ -845,4 +845,76 @@ class SeasonClockTest {
 						+ " sixteen hours before its tables freeze")
 				.isFalse();
 	}
+
+	/**
+	 * A SEASON IS „CURRENT" FOR ENTERING A RESULT FROM ITS 1 JANUARY UNTIL ITS TABLES FREEZE (PDL P9,
+	 * 18.10.2026, the owner's decision of the same day: „Sezona je „tekuća" za unos rezultata do svog
+	 * zamrzavanja, 1.1. sledeće godine u 16:00, ne do ponoći"), and 2026 is never one.
+	 *
+	 * <p>Four clocks for the year 2027 and the floor under all of them: 2026 is not current although
+	 * {@code seasonBeingRun} names it in the autumn of 2026, because 2026 is not a season. The edge
+	 * that parts „until midnight" from „until the freeze" is the New Year: at its first second 2027
+	 * is still current, and so is 2028 from the same second, for sixteen hours, until 2027 freezes.
+	 */
+	@Test
+	void aSeasonIsCurrentFromItsFirstDayUntilItsTablesFreezeAndNeverBeforeTheFirstSeason() {
+		ZonedDateTime inJune2027 = ZonedDateTime.of(2027, 6, 15, 12, 0, 0, 0, SeasonClock.ZONE);
+		ZonedDateTime inTheAutumnOf2027 = ZonedDateTime.of(2027, 11, 1, 12, 0, 0, 0, SeasonClock.ZONE);
+		ZonedDateTime inTheAutumnOf2026 = ZonedDateTime.of(2026, 10, 18, 12, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(SeasonClock.isTheSeasonBeingRun(2027, inJune2027)).isTrue();
+		assertThat(SeasonClock.isTheSeasonBeingRun(2027, inTheAutumnOf2027))
+				.as("after 15 October the season on sale is the next one, but the one being run is not")
+				.isTrue();
+		assertThat(SeasonClock.isTheSeasonBeingRun(2028, inTheAutumnOf2027))
+				.as("2028 has not begun in the autumn of 2027, though it is on sale").isFalse();
+		assertThat(SeasonClock.isTheSeasonBeingRun(2026, inTheAutumnOf2026))
+				.as("2026 is not a season, so a race of it is a race before the league").isFalse();
+		assertThat(SeasonClock.isTheSeasonBeingRun(2027, inTheAutumnOf2026))
+				.as("2027 has not begun in the autumn of 2026").isFalse();
+
+		ZonedDateTime newYear2028 = ZonedDateTime.of(2028, 1, 1, 0, 0, 0, 0, SeasonClock.ZONE);
+		ZonedDateTime freeze2027 = SeasonClock.tablesFreeze(2027);
+
+		assertThat(SeasonClock.isTheSeasonBeingRun(2027, newYear2028.minusSeconds(1))).isTrue();
+		assertThat(SeasonClock.isTheSeasonBeingRun(2028, newYear2028.minusSeconds(1)))
+				.as("the last second of 2027 is not yet a second of 2028").isFalse();
+		assertThat(SeasonClock.isTheSeasonBeingRun(2027, newYear2028))
+				.as("2027 is still current at the first second of 2028: it freezes at 16:00 and not at midnight")
+				.isTrue();
+		assertThat(SeasonClock.isTheSeasonBeingRun(2028, newYear2028))
+				.as("and 2028 is current from that same second: for sixteen hours both are").isTrue();
+		assertThat(SeasonClock.isTheSeasonBeingRun(2027, freeze2027.minusSeconds(1))).isTrue();
+		assertThat(SeasonClock.isTheSeasonBeingRun(2028, freeze2027.minusSeconds(1))).isTrue();
+		assertThat(SeasonClock.isTheSeasonBeingRun(2027, freeze2027))
+				.as("the second 2027 freezes it stops being current").isFalse();
+		assertThat(SeasonClock.isTheSeasonBeingRun(2028, freeze2027)).isTrue();
+		assertThat(SeasonClock.isTheSeasonBeingRun(2027, ZonedDateTime.of(2029, 3, 1, 12, 0, 0, 0,
+				SeasonClock.ZONE))).as("a season long frozen").isFalse();
+		assertThat(SeasonClock.isTheSeasonBeingRun(2028, newYear2028.minusSeconds(1)
+				.withZoneSameInstant(TOKYO)))
+				.as("read in the league's zone and not in the one the moment arrives in: in Tokyo it is"
+						+ " already 2028, in Belgrade it is not").isFalse();
+		assertThat(SeasonClock.isTheSeasonBeingRun(2027, freeze2027.minusSeconds(1)
+				.withZoneSameInstant(TOKYO))).isTrue();
+	}
+
+	/**
+	 * A FROZEN SEASON OF THE LEAGUE: the arithmetic of {@code isFrozen} from the first season on and
+	 * never for a year that is not one. {@code isFrozen(2026, ...)} is true from 1 January 2027 at
+	 * 16:00, and that must not turn a race of 2026 into a frozen season of the league.
+	 */
+	@Test
+	void aFrozenSeasonOfTheLeagueIsFrozenFromItsMomentAndNeverBeforeTheFirstSeason() {
+		ZonedDateTime theMoment = SeasonClock.tablesFreeze(2027);
+
+		assertThat(SeasonClock.isAFrozenSeasonOfTheLeague(2027, theMoment)).isTrue();
+		assertThat(SeasonClock.isAFrozenSeasonOfTheLeague(2027, theMoment.minusSeconds(1)))
+				.as("the freeze is at 16:00 and not at the New Year").isFalse();
+		assertThat(SeasonClock.isAFrozenSeasonOfTheLeague(2028, theMoment)).isFalse();
+		assertThat(SeasonClock.isFrozen(2026, SeasonClock.tablesFreeze(2026)))
+				.as("the arithmetic alone would call 2026 frozen").isTrue();
+		assertThat(SeasonClock.isAFrozenSeasonOfTheLeague(2026, SeasonClock.tablesFreeze(2026)))
+				.as("there is no season 2026, so it cannot be a frozen one").isFalse();
+	}
 }
