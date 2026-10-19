@@ -202,6 +202,28 @@ describe('the entry of several members', () => {
     server.stop()
   }, SLOW)
 
+  it('offers the members the route for this screen answers, and no other list', async () => {
+    /* Two lists answer the same people in the served files (`members.json` for the moderation of the
+       members, `results/runners.json` for this screen), so a screen that read the wrong one would offer
+       the same names. This list is told apart by a member only it holds. */
+    const user = setupUser()
+    const server = serving()
+    const served = globalThis.fetch
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).endsWith('/api/results/runners')
+        ? new Response(JSON.stringify([{ memberNumber: '000777', firstName: 'Jedini', lastName: 'Ovde' }]), {
+            status: 200,
+          })
+        : served(input, init)
+
+    renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'superadmin')
+
+    await user.type(await screen.findByLabelText(/^Član/), 'Ovde')
+    expect(await screen.findByRole('button', { name: 'Jedini Ovde (000777)' })).toBeVisible()
+    server.stop()
+  }, SLOW)
+
   it('sends every row with the figures its race takes, in one save, and goes back to the event', async () => {
     const user = setupUser()
     const server = serving()
@@ -221,6 +243,15 @@ describe('the entry of several members', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Maraton maratona' })).toBeVisible()
+
+    /* AND EVERY READER OF A RESULT ASKS AGAIN: the results, and the races and the events, which carry
+       the lengths run at a race (`leagueResultWrites.ts`). Asked after the write, by the order of the
+       requests, so a read made before it does not count. */
+    const after = server.asked.slice(server.asked.findIndex((one) => one.init?.method === 'POST') + 1)
+
+    await waitFor(() => {
+      expect(after.map((one) => one.path)).toEqual(expect.arrayContaining(['/api/results', '/api/races', '/api/events']))
+    })
     expect(writes(server.asked)).toEqual([
       {
         method: 'POST',
