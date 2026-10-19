@@ -366,6 +366,20 @@ function fileFor(path: string): string {
 const WRITES_THAT_QUEUE = new Set(['/api/teams', '/api/comments', '/api/results'])
 
 /**
+ * WHETHER A POSTED RATING HAS WORDS, which is what `CommentWriteApi` answers `waiting` by (owner,
+ * 19.10.2026): „Komentar se salje na moderaciju samo ako ima tekst". Only for the default answer
+ * above: a case that reads what the screen does with either answer puts its own server in front
+ * (`test/fakeQueue.ts`, `serverThat`). The words are the box's text with its white space taken away,
+ * the server's `strip`.
+ */
+function wordsIn(init: RequestInit): boolean {
+  const sent: unknown = JSON.parse(typeof init.body === 'string' ? init.body : '{}')
+  const body: unknown = Reflect.get(Object(sent), 'body')
+
+  return typeof body === 'string' && body.trim() !== ''
+}
+
+/**
  * AND THE WRITE THAT TAKES A ROW OUT OF A QUEUE, standing in for
  * `VerificationWriteApi.decide` when a case installs no server of its own.
  *
@@ -503,7 +517,7 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
   }
 
   if (init?.method === 'POST' && WRITES_THAT_QUEUE.has(asked)) {
-    return new Response(JSON.stringify({ id: 1 }), {
+    return new Response(JSON.stringify(asked === '/api/comments' ? { id: 1, waiting: wordsIn(init) } : { id: 1 }), {
       status: 201,
       headers: { 'content-type': 'application/json' },
     })

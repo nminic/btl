@@ -196,8 +196,15 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 	 */
 	static final Map<String, Act> AN_ACT_OF_HIS_OWN = Map.ofEntries(
 			/* „komentare" */
-			entry("POST /api/comments", (f, owner) -> json(post("/api/comments"), "{\"eventId\":"
-					+ f.pastEvent + ",\"organisation\":5,\"value\":4,\"ambience\":3,\"body\":\"Lepo\"}")),
+			/* Only a member with a result on the event may rate it (owner, 19.10.2026), so each caller
+			   has one on the past event. The members turned away have one too, which is the point:
+			   with none they would be refused for that, and the case would measure it and not the fee. */
+			entry("POST /api/comments", (f, owner) -> {
+				f.ownResult(owner);
+
+				return json(post("/api/comments"), "{\"eventId\":"
+						+ f.pastEvent + ",\"organisation\":5,\"value\":4,\"ambience\":3,\"body\":\"Lepo\"}");
+			}),
 			/* „najave" */
 			entry("PUT /api/attendance/{id}", (f, owner) -> put("/api/attendance/" + f.futureEvent)),
 			entry("DELETE /api/attendance/{id}", (f, owner) -> delete("/api/attendance/"

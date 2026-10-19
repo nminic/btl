@@ -613,7 +613,7 @@
     "place": "Mesto",
     "addComment": "Dodaj komentar",
     "commentTitle": "Ocena i komentar",
-    "commentIntro": "Ocene i komentar se objavljuju kad ih moderator odobri.",
+    "commentIntro": "Ocene bez komentara se objavljuju odmah, a komentar kad ga moderator odobri.",
     "rating": {
       "organisation": "Organizacija",
       "value": "Vrednost za novac",
@@ -628,6 +628,7 @@
     "commentSending": "Šalje se",
     "commentCancel": "Odustani",
     "commentSent": "Ocena je poslata na odobrenje.",
+    "commentPublished": "Ocena je objavljena.",
     "comments": "Komentari",
     "noComments": "Za ovaj događaj još nema odobrenih komentara.",
     "organiserPage": "Strana organizatora",

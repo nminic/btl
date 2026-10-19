@@ -613,7 +613,7 @@
     "place": "Town",
     "addComment": "Add a comment",
     "commentTitle": "Rating and comment",
-    "commentIntro": "Ratings and comments are published once a moderator approves them.",
+    "commentIntro": "Ratings without a comment are published at once, and a comment once a moderator approves it.",
     "rating": {
       "organisation": "Organisation",
       "value": "Value for money",
@@ -628,6 +628,7 @@
     "commentSending": "Sending",
     "commentCancel": "Cancel",
     "commentSent": "The rating has been sent for approval.",
+    "commentPublished": "The rating has been published.",
     "comments": "Comments",
     "noComments": "There is no approved comment for this event yet.",
     "organiserPage": "The organiser's page",

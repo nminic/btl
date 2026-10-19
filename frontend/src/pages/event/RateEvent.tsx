@@ -33,9 +33,12 @@ import '../member/Member.css'
  * anybody: "ocenite Beogradski maraton" has to lead to a page, and a window that
  * only exists once somebody has pressed a button on another screen is not one.
  *
- * Nothing here is published on the spot. The rating and the comment go to the
- * queue a moderator reads (PDL P22), which is the same route a comment has taken
- * since the queues were written.
+ * What happens to it depends on whether there are words (owner, 19.10.2026): „Komentar se salje na
+ * moderaciju samo ako ima tekst. Ako ima samo 3 ocene u zvezdicama, objavljuje se odmah." A comment
+ * goes to the queue a moderator reads (PDL P22), which is the route a comment has taken since the
+ * queues were written; three marks and no words are published on the spot. WHICH of the two happened
+ * is the server's answer (`waiting` in the 201), never this screen's own reading of the box: the
+ * rule for what counts as words lives in one place, `CommentWriteApi`.
  */
 /**
  * The screen, keyed by the event it is about.
@@ -70,7 +73,8 @@ function RateOne() {
   /* Held by the address rather than by the screen, so that the way back from this
      confirmation is the event and not the form that has already been sent (PDL,
      05.09.2026). */
-  const sent = useSent() !== undefined
+  const said = useSent()
+  const sent = said !== undefined
   const confirm = useSend()
   /* What the server answered, where it has answered anything that is not „done". A
      rating that succeeded leaves this screen altogether (`confirm` below), so the
@@ -97,7 +101,11 @@ function RateOne() {
     return (
       <div className="member" role="status">
         <h1>{t('event.commentTitle')}</h1>
-        <p>{t('event.commentSent')}</p>
+        {/* THE SENTENCE IS THE SERVER'S ANSWER CARRIED ACROSS THE NAVIGATION (`confirm` below), so
+            it is read off what was kept and not off the box, which is gone by now. Anything but
+            'published' is the cautious one: a rating that was not said to be published is not
+            promised to be. */}
+        <p>{t(said === 'published' ? 'event.commentPublished' : 'event.commentSent')}</p>
       </div>
     )
   }
@@ -165,14 +173,30 @@ function RateOne() {
             setSending(false)
 
             if (answer.got === 'done') {
-              /* SO THAT THE ROW JUST MADE IS ON THE QUEUE THIS VISIT, and not only on the next
+              /* WHICH OF THE TWO HAPPENED is what the server said (`waiting` in the 201), read the way
+                 this portal reads a body, by looking (ADL A14). Only an explicit `false` is
+                 „published"; a body that says nothing, or says it otherwise, is the cautious sentence. */
+              const published = Reflect.get(Object(answer.body), 'waiting') === false
+
+              /* SO THAT WHAT THE SERVER JUST DID IS ON THE SCREENS THIS VISIT, and not only on the next
                  one. `data/client.ts` fetches a resource once per visit and the shell asks for
                  `verification` on every admin screen (the header counter), so a moderator who
                  is also a member - the owner is exactly this - held the list from before this
                  comment was sent and never saw it in the queue at all. Dropped only on 201:
-                 a refusal queued nothing, so there is nothing to read again. */
+                 a refusal changed nothing, so there is nothing to read again.
+
+                 A rating that waits is a card in the queue and nothing on the event page. A rating
+                 that is published is on the event page (`comments`, the list and the overall mark),
+                 and it may also have taken a card out of the queue: the newest rating a member sends
+                 wins, so a published one withdraws his waiting one of the same event (owner's rule of
+                 19.10.2026, one rating per member per event). So it drops both. */
               clearResourceCache('verification')
-              confirm(`/${locale}/kalendar/${slug}`, true)
+
+              if (published) {
+                clearResourceCache('comments')
+              }
+
+              confirm(`/${locale}/kalendar/${slug}`, published ? 'published' : 'waiting')
 
               return
             }
