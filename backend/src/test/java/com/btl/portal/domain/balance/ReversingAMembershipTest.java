@@ -24,6 +24,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * another season of the same member, his own reward and a conversion (no season), and an earlier pass
  * of the same season already reversed. The season under test is never the only thing in the book and
  * never its last line, so a reading that took „the last line" or „every line" gives a different number.
+ * His euro balance outside the season is 69 (a reward of 100, another season's spend of 30 and a
+ * conversion of 1), so a credit of the season under test is taken back whole unless a case says the
+ * balance is smaller.
  */
 class ReversingAMembershipTest {
 
@@ -38,7 +41,7 @@ class ReversingAMembershipTest {
 	/** What does not belong to the season: his own reward, a conversion, and the next season. */
 	private static List<BookLine> withTheRestOfHisBook(BookLine... ofTheSeason) {
 		List<BookLine> rest = List.of(
-				line(1, Reason.REFERRAL, null, "5.00", Currency.EUR),
+				line(1, Reason.REFERRAL, null, "100.00", Currency.EUR),
 				line(90, Reason.MEMBERSHIP, ANOTHER_SEASON, "-30.00", Currency.EUR),
 				line(91, Reason.CONVERSION, null, "-1.00", Currency.EUR),
 				line(92, Reason.CONVERSION, null, "120.00", Currency.RSD));
@@ -65,9 +68,15 @@ class ReversingAMembershipTest {
 				.contains(reversal("10.00"));
 	}
 
+	/**
+	 * The balance is EXACTLY nought after the spend, so a cap applied to what is given back as well as to
+	 * what is taken back would find nothing to give back and write no line.
+	 */
 	@Test
 	void aPaymentThatTookTheBalanceToTheEndGetsAllOfItBack() {
-		assertThat(reversalOf(withTheRestOfHisBook(line(10, Reason.MEMBERSHIP, SEASON, "-25.50", Currency.EUR))))
+		assertThat(reversalOf(List.of(
+				line(1, Reason.REFERRAL, null, "25.50", Currency.EUR),
+				line(10, Reason.MEMBERSHIP, SEASON, "-25.50", Currency.EUR))))
 				.contains(reversal("25.50"));
 	}
 
@@ -199,8 +208,82 @@ class ReversingAMembershipTest {
 	void theRoundingIsTheRoundingOfAChangeOfCountry() {
 		assertThat(reversalOf(List.of(line(2, Reason.MEMBERSHIP, SEASON, "-500.00", Currency.RSD))))
 				.contains(reversal("4.17"));
-		assertThat(reversalOf(List.of(line(2, Reason.OVERPAYMENT, SEASON, "500.00", Currency.RSD))))
+		assertThat(reversalOf(List.of(
+				line(1, Reason.REFERRAL, null, "10.00", Currency.EUR),
+				line(2, Reason.OVERPAYMENT, SEASON, "500.00", Currency.RSD))))
 				.contains(reversal("-4.17"));
+	}
+
+	/**
+	 * A CREDIT IS TAKEN BACK ONLY AS FAR AS THE BALANCE REACHES (PDL P8, 19.10.2026). A surplus of 100
+	 * dinars, a move abroad (0.83 euro) and back (99.60 dinars): the season holds 100 and the balance
+	 * 99.60, and a reversal of 100 would leave -0.40, which the book cannot be read with.
+	 */
+	@Test
+	void aCreditLargerThanTheBalanceIsTakenBackOnlyAsFarAsTheBalanceReaches() {
+		List<BookLine> book = List.of(
+				line(10, Reason.OVERPAYMENT, SEASON, "100.00", Currency.RSD),
+				line(11, Reason.CONVERSION, null, "-100.00", Currency.RSD),
+				line(12, Reason.CONVERSION, null, "0.83", Currency.EUR),
+				line(13, Reason.CONVERSION, null, "-0.83", Currency.EUR),
+				line(14, Reason.CONVERSION, null, "99.60", Currency.RSD));
+
+		assertThat(ReversingAMembership.reversal(book, SEASON, Currency.RSD))
+				.contains(new Reversal(new BigDecimal("-99.60"), Currency.RSD));
+	}
+
+	/** And a balance that holds the credit exactly is taken back whole: the cap is the smaller of the two. */
+	@Test
+	void aCreditTheBalanceHoldsExactlyIsTakenBackWhole() {
+		assertThat(reversalOf(List.of(
+				line(10, Reason.OVERPAYMENT, SEASON, "7.00", Currency.EUR))))
+				.contains(reversal("-7.00"));
+	}
+
+	/**
+	 * THE BALANCE IS THE MONEY OF TODAY'S AND NOT THE WHOLE BOOK: 500 euro in his book are not what the
+	 * 10 dinars of credit can be taken from when the dinars he has left are 4.
+	 */
+	@Test
+	void theBalanceTheCreditIsTakenFromIsOnlyInHisMoneyOfToday() {
+		List<BookLine> book = List.of(
+				line(1, Reason.REFERRAL, null, "500.00", Currency.EUR),
+				line(10, Reason.OVERPAYMENT, SEASON, "10.00", Currency.RSD),
+				line(11, Reason.MEMBERSHIP, ANOTHER_SEASON, "-6.00", Currency.RSD));
+
+		assertThat(ReversingAMembership.reversal(book, SEASON, Currency.RSD))
+				.contains(new Reversal(new BigDecimal("-4.00"), Currency.RSD));
+	}
+
+	/**
+	 * THE CREDIT WAS WRITTEN IN ONE MONEY AND HE IS BILLED IN ANOTHER TODAY: 500 dinars of surplus, moved
+	 * to euro by a change of country (-500 dinars, +4.17 euro). The balance the credit is taken from is
+	 * the one in HIS MONEY OF TODAY (4.17 euro), not the one in the money the season's line was written
+	 * in (nought dinars are left), so the whole credit, 4.17 euro, is taken back.
+	 */
+	@Test
+	void aCreditWrittenInAnotherMoneyIsTakenFromTheBalanceInHisMoneyOfToday() {
+		List<BookLine> book = List.of(
+				line(10, Reason.OVERPAYMENT, SEASON, "500.00", Currency.RSD),
+				line(11, Reason.CONVERSION, null, "-500.00", Currency.RSD),
+				line(12, Reason.CONVERSION, null, "4.17", Currency.EUR));
+
+		assertThat(ReversingAMembership.reversal(book, SEASON, Currency.EUR)).contains(reversal("-4.17"));
+	}
+
+	/**
+	 * NOTHING LEFT TO TAKE IT FROM IS NO LINE, because the schema refuses a line of nought: the credit
+	 * was spent on another season, so the balance is exactly nought; and a balance already below nought
+	 * (a book the portal does not write) is not made worse.
+	 */
+	@Test
+	void aCreditWithNothingLeftOnTheBalanceWritesNoLine() {
+		assertThat(reversalOf(List.of(
+				line(10, Reason.OVERPAYMENT, SEASON, "7.00", Currency.EUR),
+				line(11, Reason.MEMBERSHIP, ANOTHER_SEASON, "-7.00", Currency.EUR)))).isEmpty();
+		assertThat(reversalOf(List.of(
+				line(10, Reason.OVERPAYMENT, SEASON, "7.00", Currency.EUR),
+				line(11, Reason.MEMBERSHIP, ANOTHER_SEASON, "-9.00", Currency.EUR)))).isEmpty();
 	}
 
 	/** What a membership took is said in the money it was written in, never restated. */

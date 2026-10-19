@@ -43,12 +43,21 @@ import java.util.Optional;
  * of the original line would never reach the balance he sees once he has moved. Each line is
  * translated on its own, with the same rounding a change of country uses.
  *
- * <p><b>WHAT THIS DOES NOT CHECK: that the balance stays above nothing afterwards.</b> Taking back a
- * credit lowers the balance, and {@link Balance.Money} refuses a negative amount. It cannot go below
- * nothing while the seasons that may be acted on are „do 14.10. samo tekuca, od 15.10. samo naredna"
- * (PDL P8, 18.10.2026): a credit of season S can only be spent on another season's membership, and
- * that season is sold only once S may no longer be touched. The route that writes a reversal enforces
- * those seasons; this class does not repeat the rule.
+ * <p><b>A CREDIT IS TAKEN BACK ONLY AS FAR AS THE BALANCE REACHES, and never below nothing.</b> Taking
+ * back a credit lowers the balance, and {@link Balance.Money} refuses a negative amount, so a reversal
+ * that left the balance below nothing would not be one wrong line but a book that
+ * {@code BalanceBook.of} and {@code forEveryOneOf} can no longer read: the whole list of members and the
+ * payments list would answer 500 to every moderator. The balance is NOT guaranteed to hold the credit,
+ * and that is measured rather than argued: a surplus of 100 dinars, a move abroad (0.83 euro) and back
+ * (99.60 dinars) leaves the season holding 100 against a balance of 99.60. The seasons that may be acted
+ * on („do 14.10. samo tekuca, od 15.10. samo naredna", PDL P8, 18.10.2026) keep a credit from being
+ * spent on another season, but they do nothing about the rounding of a change of country. So the
+ * reversal of a credit is the smaller of what the season holds and what the member's balance in
+ * today's money holds at that moment (PDL P8, 19.10.2026, my derivation, told to the owner:
+ * „Protivstavka viška pri stornu nikad ne skida više nego što je u tom trenutku na balansu člana"); he
+ * keeps the difference the rounding cost him (0.40 dinars above). <b>Only a credit is capped.</b>
+ * Giving back what a season spent adds to the balance and cannot take it below nothing, so that side
+ * is never reduced.
  */
 public final class ReversingAMembership {
 
@@ -102,7 +111,8 @@ public final class ReversingAMembership {
 	/**
 	 * THE REVERSAL OF ONE SEASON, or nothing when the season holds nothing against the balance - a
 	 * membership on a payment that took nothing and credited nothing, an exemption, or a season
-	 * already reversed.
+	 * already reversed - or when it holds a credit and the balance has nothing left to take it from.
+	 * A credit is taken back only as far as the balance reaches (see the head of this class).
 	 *
 	 * @param book  every line of ONE member's book
 	 * @param today the money he is billed in today
@@ -116,7 +126,29 @@ public final class ReversingAMembership {
 			held = held.add(inHisMoney(line, today));
 		}
 
-		return held.signum() == 0 ? Optional.empty() : Optional.of(new Reversal(held.negate(), today));
+		if (held.signum() <= 0) {
+			return held.signum() == 0 ? Optional.empty() : Optional.of(new Reversal(held.negate(), today));
+		}
+
+		/* A CREDIT: TAKEN BACK AS FAR AS THE BALANCE REACHES (see the head of this class). The balance is
+		   the sum of his lines in his money of today, which is what `BalanceBook.of` answers. Nothing or
+		   less left to take is no line at all: a line of nought is refused by the schema. */
+		BigDecimal taken = held.min(balanceIn(book, today));
+
+		return taken.signum() <= 0 ? Optional.empty() : Optional.of(new Reversal(taken.negate(), today));
+	}
+
+	/** What the book adds up to in one money: his balance, as {@code BalanceBook.of} sums it. */
+	private static BigDecimal balanceIn(List<BookLine> book, Currency money) {
+		BigDecimal sum = BigDecimal.ZERO;
+
+		for (BookLine line : book) {
+			if (line.currency() == money) {
+				sum = sum.add(line.amount());
+			}
+		}
+
+		return sum;
 	}
 
 	/**

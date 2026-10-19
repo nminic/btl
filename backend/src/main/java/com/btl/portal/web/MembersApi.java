@@ -47,9 +47,11 @@ import java.util.stream.Collectors;
  * this answers all of them once and says which are active.
  *
  * <p><b>Active is {@code competitor.active}</b>, the column every other door reads, so the
- * moderation's „Aktivni" is exactly the public list. A boundary rather than an oversight: nothing in
- * the portal writes {@code active = false} today, so „Neaktivni" stays empty on a real database until
- * the flag is derived from the rows of {@code membership}, which is its own increment (V22).
+ * moderation's „Aktivni" is exactly the public list. Since 19.10.2026 one door writes it from the rows
+ * of {@code membership}: a season cancelled on the member's row ({@link MemberMembershipApi}) leaves him
+ * active exactly when a row remains for the season being run, or in the window for the next one (PDL
+ * P8, 13.09.2026). Nothing else lowers it yet, so a member whose fee simply lapsed at a New Year is
+ * still on „Aktivni" until the flag is derived for everybody, which is its own increment (V22).
  */
 @RestController
 class MembersApi {
