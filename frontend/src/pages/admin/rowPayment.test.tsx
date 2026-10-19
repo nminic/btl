@@ -1,4 +1,4 @@
-import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { arrivedResource, clearResourceCache, loadResource } from '../../data/client'
 import type { Competitor, Member } from '../../data/types'
 import { asMember, person } from '../../test/plate'
@@ -250,6 +250,43 @@ describe('recording a payment on a member’s row', () => {
 
     await waitFor(() => expect(reads(server.asked, '/api/members')).toBe(2))
     expect(sent(server.asked)).toHaveLength(1)
+
+    server.stop()
+  }, SLOW)
+
+  it('sends one request for two presses on „Da” with nothing awaited between them', async () => {
+    /* `paymentsActivation.test.tsx`'s race: two raw clicks inside one `act`, so the second is handled
+       by the closure the first was, before anything has been drawn again. Only the ref can tell. */
+    let answer: (value: Response) => void = () => {}
+    const server = serving(
+      () =>
+        new Promise<Response>((resolve) => {
+          answer = resolve
+        }),
+    )
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const row = await rowOf(IN_EURO)
+
+    await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '30')
+    await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+
+    const da = within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' })
+
+    act(() => {
+      da.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      da.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    })
+
+    /* The request leaves a few turns of the loop after the press, so the answer waits for it. */
+    await waitFor(() => expect(sent(server.asked)).toHaveLength(1))
+    answer(new Response('{}', { status: 201 }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    expect(sent(server.asked)).toEqual([
+      { path: `/api/members/${IN_EURO}/payment`, body: { received: 30, method: 'paypal' } },
+    ])
 
     server.stop()
   }, SLOW)
