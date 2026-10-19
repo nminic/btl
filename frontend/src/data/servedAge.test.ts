@@ -313,8 +313,15 @@ describe('which fields the portal serves', () => {
        sale and what a payment for it would be, in his money (`seasonOnSale`, `currency`, `expected`,
        `price`, `balance`; PDL P8, „Moderator sa pravom nad članovima vidi balans i očekivani iznos
        svakog člana na redu u moderaciji”). The season is the third named in `MAY_HOLD_A_YEAR`; the
-       four amounts are money, and in the file they are 43, 40, 4800, 6000, 12.75 and 0. */
-    expect(Object.keys(served)).toHaveLength(19)
+       four amounts are money, and in the file they are 43, 40, 4800, 6000, 12.75 and 0.
+
+       **Twenty files since 18.10.2026: `results/runners.json`, the list a moderator who checks
+       results picks a member from on the event page (`ResultsByTheLeagueApi`, PDL P9, 18.10.2026,
+       „U padajućoj listi su svi članovi sa članskim brojem, aktivni i neaktivni").** Three paths,
+       none nested: the number and the two names, and nothing about his fee or his age. Served to
+       the administration over the results alone. Added to the snapshot by hand, as this file
+       requires; none of the three can be year-shaped. */
+    expect(Object.keys(served)).toHaveLength(20)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(
       10,
