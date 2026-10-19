@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Clock;
@@ -250,6 +251,25 @@ class MemberPaymentApiTest {
 			assertThat(paid("000005", "38", "paypal", refused).getStatus()).as(refused).isEqualTo(404);
 		}
 
+		assertThat(count("select count(*) from payment where season = 2028")).isZero();
+		assertThat(messages()).isEmpty();
+	}
+
+	/**
+	 * A ZERO IN THE NUMBER OF THE ADDRESS IS A 400 BEFORE THE HANDLER IS REACHED, for somebody who holds
+	 * the right too. {@code NoTextHoldsAZeroTest} lists {@code memberNumber} among the texts the
+	 * dispatcher binds outside a body with that reason, and this is the measurement for this route:
+	 * the same moderator is told 404 for a number nobody has (the case below) and 400 for a zero, so
+	 * the refusal is not the handler's own, and nothing is written or said.
+	 */
+	@Test
+	void aZeroInTheNumberOfTheAddressIsRefusedBeforeTheHandlerIsReached() throws Exception {
+		MockHttpServletResponse answer = http.perform(post(URI.create("/api/members/%00/payment")).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"received\": 38, \"method\": \"paypal\"}")
+				.cookie(new Cookie(SessionCookie.NAME, cookies.get(THE_SUPERADMIN)))).andReturn().getResponse();
+
+		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(count("select count(*) from payment where season = 2028")).isZero();
 		assertThat(messages()).isEmpty();
 	}
