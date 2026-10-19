@@ -3662,27 +3662,36 @@ class VerificationWriteApiTest {
 
 	// ----- one result of one member on one race (PDL P6) ---------------------------------
 
+	/*
+	 * WHAT THESE CASES CAN SEE AND WHAT THEY CANNOT. The refusal is met at the result, after the row
+	 * is claimed, and what takes the claim back is the exception rolling the route's transaction back.
+	 * This class is @Transactional, so the route JOINS the case's transaction instead of owning one:
+	 * the exception marks it for rollback and the claim stays visible to the case until the end. So the
+	 * cases here assert what is written AFTER the result and therefore never was - no second result,
+	 * the one he had untouched, the submission as he sent it, nobody told - and leave „the row waits
+	 * again" and the refusal he is then owed to VerificationDecisionConcurrencyTest, which commits.
+	 */
+
 	/** The owner's sentence for it, PDL P6, 18.10.2026, written out here so a change of the words
 	 *  is a change of this case too. */
 	private static final String HE_HAS_A_RESULT_ON_THIS_RACE =
 			"Član već ima rezultat na toj trci, pa prijava ne može da se odobri. Odbij je uz razlog.";
 
 	/**
-	 * A RUN ON A RACE HE ALREADY HAS A RESULT ON IS NOT APPROVED, IT WAITS, AND THE MODERATOR REFUSES
-	 * IT WITH HIS OWN REASON.
+	 * A RUN ON A RACE HE ALREADY HAS A RESULT ON IS NOT APPROVED.
 	 *
 	 * <p>PDL P6, 09.09.2026: „Član ima najviše jedan rezultat na jednoj trci". And PDL P6, 18.10.2026,
 	 * the owner choosing among the outcomes offered: the approval is refused with this sentence, the
 	 * run waits, and the moderator refuses it himself, with his own reason.
 	 *
-	 * <p><b>Nothing of the answer is left</b>: the row waits, the result he had keeps its figures, the
-	 * submission keeps what he sent, and nothing is said to him. Then the refusal he is owed goes
-	 * through as any other. The other direction of „whose result" is in the fixture: {@code DETE} has a
+	 * <p><b>Nothing of the answer is written</b>: the result he had keeps its figures, the submission
+	 * keeps what he sent, and nothing is said to him. That the row waits again and his refusal then
+	 * goes through is {@code VerificationDecisionConcurrencyTest}'s (see the note above). The other direction of „whose result" is in the fixture: {@code DETE} has a
 	 * result on the same marathon, so {@link #anApprovedRunBecomesAResultAndTheExactLengthSurvives} is
 	 * the second member on one race and must pass.
 	 */
 	@Test
-	void aRunOnARaceHeAlreadyHasAResultOnIsNotApprovedAndWaitsForTheModeratorsOwnReason()
+	void aRunOnARaceHeAlreadyHasAResultOnIsNotApprovedAndNothingOfTheAnswerIsWritten()
 			throws Exception {
 		long his = resultAlreadyCounted(ANA, theMarathon, SATURDAY, "42.1950", 300, 300,
 				FOUR_HOURS + 900, "20.00");
@@ -3697,8 +3706,6 @@ class VerificationWriteApiTest {
 
 		assertThat(refused.getStatus()).isEqualTo(409);
 		assertThat(reasonIn(refused)).isEqualTo(HE_HAS_A_RESULT_ON_THIS_RACE);
-		assertThat(stateOf(anasMarathon)).as("the row the refused approval had claimed was left decided")
-				.isEqualTo("waiting");
 		assertThat(onlyResultOf(ANA)).as("a second result, or the first replaced by another row")
 				.isEqualTo(his);
 		assertThat(fourFiguresOf(counted(his).orElseThrow()))
@@ -3710,10 +3717,6 @@ class VerificationWriteApiTest {
 		assertThat(db.sql("select count(*) from message").query(Integer.class).single())
 				.as("somebody was told something about an approval that did not happen")
 				.isEqualTo(messages);
-
-		assertThat(answer(THE_SUPERADMIN, anasMarathon, false, THE_REASON)).isEqualTo(200);
-		assertThat(stateOf(anasMarathon)).isEqualTo("rejected");
-		assertThat(onlyResultOf(ANA)).isEqualTo(his);
 	}
 
 	/**
@@ -3725,7 +3728,7 @@ class VerificationWriteApiTest {
 	 * second is about the row the first answer wrote.
 	 */
 	@Test
-	void ofTwoRunsOfHisOnOneRaceTheFirstIsCountedAndTheSecondWaits() throws Exception {
+	void ofTwoRunsOfHisOnOneRaceTheFirstIsCountedAndTheSecondIsNot() throws Exception {
 		long again = runWaitingFor(ANA, theMarathon, SATURDAY, "42.1950", 300, 300,
 				FOUR_HOURS - 600, null);
 
@@ -3736,7 +3739,6 @@ class VerificationWriteApiTest {
 
 		assertThat(refused.getStatus()).isEqualTo(409);
 		assertThat(reasonIn(refused)).isEqualTo(HE_HAS_A_RESULT_ON_THIS_RACE);
-		assertThat(stateOf(again)).isEqualTo("waiting");
 		assertThat(counted(onlyResultOf(ANA)).orElseThrow().seconds())
 				.as("the second run replaced the first, or was counted beside it")
 				.isEqualTo(FOUR_HOURS);
@@ -3773,7 +3775,8 @@ class VerificationWriteApiTest {
 	 *
 	 * <p>The submission names no race, so the race the rule is about is the one the answer names
 	 * ({@code raceId}). A rule asked of the submission's race would ask about nothing and let this
-	 * through.
+	 * through. And the submission still describes the race he typed: the approval did not get as far
+	 * as writing the chosen race into it.
 	 */
 	@Test
 	void aRunOffTheCalendarIsRefusedOnAChosenRaceHeAlreadyHasAResultOn() throws Exception {
@@ -3785,8 +3788,13 @@ class VerificationWriteApiTest {
 
 		assertThat(refused.getStatus()).isEqualTo(409);
 		assertThat(reasonIn(refused)).isEqualTo(HE_HAS_A_RESULT_ON_THIS_RACE);
-		assertThat(stateOf(aRunOnARaceNobodyHasEnteredYet)).isEqualTo("waiting");
 		assertThat(onlyResultOf(ANA)).isEqualTo(his);
+		assertThat(db.sql("select rs.race_id is null and rs.race_name is not null from result_submission rs"
+						+ " join verification v on v.result_submission_id = rs.id where v.id = ?")
+				.param(aRunOnARaceNobodyHasEnteredYet).query(Boolean.class).single())
+				.as("the submission was written over with the chosen race by an approval that did not"
+						+ " happen")
+				.isTrue();
 	}
 
 	/*

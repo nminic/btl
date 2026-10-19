@@ -484,7 +484,18 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   read off this very assertion when it ran before the entry existed. */
 			new Applied("63",
 					"V63__a_change_on_a_members_row_leaves_a_trail_and_the_book_reverses_what_a_season_held.sql",
-					635495128));
+					635495128),
+
+			/* V65. A member has at most one result on one race (owner, PDL P6, 09.09.2026, „Član ima
+			   najviše jedan rezultat na jednoj trci"): one unique key over (competitor_id, race_id), which
+			   the approval names in `on conflict`. No row is touched, and QA was measured to hold no pair
+			   (18.10.2026); `ResultOnePerRaceCarriedOverTest` runs the file over the rows a real table holds.
+
+			   65 because 64 is taken by the open pull request 570, measured on 19.10.2026 after a fetch.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
+			   read off this very assertion when it ran before the entry existed. */
+			new Applied("65", "V65__a_member_has_one_result_on_one_race.sql", 847671403));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

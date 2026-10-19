@@ -882,6 +882,46 @@ class VerificationDecisionConcurrencyTest {
 	}
 
 	/**
+	 * A RUN ON A RACE HE ALREADY HAS A RESULT ON WAITS AGAIN AFTER THE REFUSED APPROVAL, AND THE
+	 * MODERATOR'S OWN REFUSAL OF IT THEN GOES THROUGH.
+	 *
+	 * <p>PDL P6, 18.10.2026, the owner choosing among the outcomes offered: „Odobrenje prijave kad član
+	 * već ima rezultat na toj trci se odbija, a prijava čeka: moderator dobija rečenicu [...] i prijavu
+	 * odbija sam, svojim razlogom." Here and not in {@code VerificationWriteApiTest}, because the
+	 * refusal is met after the row is claimed and only a transaction the route owns rolls the claim
+	 * back; that class runs every route inside its own transaction and cannot see it.
+	 */
+	@Test
+	void aRunOnARaceHeAlreadyHasAResultOnWaitsAgainAndHisRefusalThenGoesThrough() throws Exception {
+		aRunWaitsInTheResultsTab();
+
+		long his = db.sql("insert into result (competitor_id, race_id, race_date, distance_km,"
+						+ " ascent_m, descent_m, seconds, points) values (?, ?, date '2026-09-05',"
+						+ " 19.0000, 150, 150, 7000, 9.99) returning id")
+				.params(founder, theRace).query(Long.class).single();
+
+		MockHttpServletResponse refused = answer(ONE_MODERATOR, runItem, true, null);
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(refused.getContentAsString(StandardCharsets.UTF_8))
+				.contains("Član već ima rezultat na toj trci, pa prijava ne može da se odobri."
+						+ " Odbij je uz razlog.");
+		assertThat(db.sql("select state from verification where id = ?").param(runItem)
+				.query(String.class).single())
+				.as("the row the refused approval had claimed was left decided")
+				.isEqualTo("waiting");
+		assertThat(db.sql("select id from result where competitor_id = ?").param(founder)
+				.query(Long.class).list()).containsExactly(his);
+
+		assertThat(answer(ONE_MODERATOR, runItem, false, THE_REASON).getStatus()).isEqualTo(200);
+		assertThat(db.sql("select state || ' ' || reason from verification where id = ?")
+				.param(runItem).query(String.class).single())
+				.isEqualTo("rejected " + THE_REASON);
+		assertThat(db.sql("select id from result where competitor_id = ?").param(founder)
+				.query(Long.class).list()).containsExactly(his);
+	}
+
+	/**
 	 * A RESULT OF HIS WRITTEN ON THE SAME RACE WHILE THE APPROVAL WRITES ITS OWN REFUSES THE APPROVAL,
 	 * AND THE ROW IT HAD CLAIMED WAITS AGAIN.
 	 *
