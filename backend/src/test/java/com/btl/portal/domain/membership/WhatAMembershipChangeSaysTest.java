@@ -88,14 +88,14 @@ class WhatAMembershipChangeSaysTest {
 
 		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(false, SEASON, 2029)).isEqualTo(new Said(
 				"Početnička kategorija vam je zatvorena",
-				"Upisana vam je članarina za sezonu 2028, pa se vaši odobreni rezultati iz te sezone računaju"
+				"Upisano vam je članstvo za sezonu 2028, pa se vaši odobreni rezultati iz te sezone računaju"
 						+ " u zvaničnu sezonu. Time ste prešli prag od 12 bodova, pa vam je početnička kategorija"
 						+ " zatvorena za sezonu 2029.\n\n"
 						+ "Balkanska trkačka liga"));
 
 		assertThat(WhatAMembershipChangeSays.beginnersCategoryMoved(true, SEASON, 2029)).isEqualTo(new Said(
 				"Početnička kategorija vam je ponovo otvorena",
-				"Poništena vam je članarina za sezonu 2028, pa se vaši rezultati iz te sezone više ne računaju"
+				"Poništeno vam je članstvo za sezonu 2028, pa se vaši rezultati iz te sezone više ne računaju"
 						+ " u zvaničnu sezonu. Time ste pali ispod praga od 12 bodova, pa vam je početnička"
 						+ " kategorija ponovo otvorena za sezonu 2029.\n\n"
 						+ "Balkanska trkačka liga"));
@@ -112,7 +112,7 @@ class WhatAMembershipChangeSaysTest {
 		for (boolean open : new boolean[] {false, true}) {
 			String body = WhatAMembershipChangeSays.beginnersCategoryMoved(open, 2031, 2035).body();
 
-			assertThat(body).contains("članarina za sezonu 2031,").contains("za sezonu 2035.")
+			assertThat(body).contains("članstvo za sezonu 2031,").contains("za sezonu 2035.")
 					.doesNotContain("sezonu 2032").doesNotContain("sezonu 2036").doesNotContain("2,03");
 		}
 	}
