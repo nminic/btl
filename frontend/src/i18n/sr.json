@@ -1061,6 +1061,7 @@
       "theRaceIsNotKnown": "Trka koju si izabrao više ne stoji u kalendaru. Osveži stranu i izaberi je ponovo.",
       "theRaceHasNotBeenRun": "Rezultat ne može da se pošalje pre dana same trke.",
       "theRaceIsNamedTwice": "Rezultat nije poslat: trka je i izabrana iz kalendara i opisana rukom. Može samo jedno od toga.",
+      "heHasAResultOnThisRace": "Za ovu trku već imaš rezultat. Ako vrednosti nisu tačne, pošalji ispravku tog rezultata.",
       "theTownIsNotSaidOnce": "Mesto mora da se navede tačno jednom: ili izabrano iz šifarnika ili upisano rukom.",
       "theTownIsNotKnown": "To mesto ne stoji u šifarniku.",
       "theCountryIsNotKnown": "Ta država ne stoji u šifarniku.",

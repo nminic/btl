@@ -173,6 +173,75 @@ class ResultsByTheLeagueConcurrencyTest {
 		}
 	}
 
+	/**
+	 * A RESULT OF HIS THAT ANOTHER WRITER IS PUTTING ON THE SAME RACE MAKES THE SAVE WAIT, AND THE SAVE
+	 * THEN MEETS IT.
+	 *
+	 * <p>The other writer is this connection, standing for the approval of his run
+	 * ({@code VerificationWriteApi}), which does not take the save's lock on {@code competitor}: it
+	 * writes his result and holds it uncommitted. Every row of {@code result} checks
+	 * {@code result_competitor_fk}, which takes his {@code competitor} row {@code for key share}, and the
+	 * save's {@code for update} on that row waits for it. So the save is stopped before it judges a row,
+	 * the lock manager says so, and once this connection commits the save's own question finds the
+	 * result and names the row (PDL P6, 09.09.2026). That is why the save's insert needs no
+	 * {@code on conflict}: no writer of his result can get past this lock unseen.
+	 *
+	 * <p>Without the lock the save does not wait at the lock but at the insert, behind V65's key, and
+	 * answers 500 (a duplicate key) once this connection commits; without the key as well, 201 and two
+	 * results. Either fails here.
+	 */
+	@Test
+	void aResultOfHisBeingWrittenElsewhereMakesTheSaveWaitAndThenRefusesTheRow() throws Exception {
+		ExecutorService pool = Executors.newFixedThreadPool(1);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			long theOneThatGotThere = holdingTheRow.execute(heldOpen -> {
+				long written = db.sql("insert into result (competitor_id, race_id, race_date,"
+								+ " distance_km, ascent_m, descent_m, seconds, points) values (?, ?,"
+								+ " date '2026-05-01', 10.00, 50, 50, 3300, 9.99) returning id")
+						.params(member, race).query(Long.class).single();
+
+				assertThat(BlockedBehindThisHold.count(db))
+						.as("nothing has been sent yet, so a count that is not nought is counting"
+								+ " something other than the save below")
+						.isZero();
+
+				submitted.add(pool.submit(() -> entered(ONE_MODERATOR, 3600)));
+
+				Instant deadline = Instant.now().plusSeconds(10);
+
+				while (BlockedBehindThisHold.count(db) < 1) {
+					assertThat(Instant.now()).as("the save never waited for the result being written")
+							.isBefore(deadline);
+
+					try {
+						Thread.sleep(20);
+					} catch (InterruptedException e) {
+						throw new RuntimeException(e);
+					}
+				}
+
+				assertThat(submitted.get(0)).as("the save went through without waiting").isNotDone();
+
+				return written;
+			});
+
+			MockHttpServletResponse refused = submitted.get(0).get(30, TimeUnit.SECONDS);
+
+			assertThat(refused.getStatus()).isEqualTo(400);
+			assertThat(new ObjectMapper().readTree(refused.getContentAsString()).path("rows").get(0)
+					.path("reason").asString())
+					.isEqualTo(ResultsByTheLeagueApi.HE_HAS_A_RESULT_ON_THIS_RACE);
+			assertThat(db.sql("select id from result where competitor_id = ? and race_id = ?")
+					.params(member, race).query(Long.class).list())
+					.as("the save wrote a result of its own beside the one already there")
+					.containsExactly(theOneThatGotThere);
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
 	private MockHttpServletResponse entered(String email, int seconds) throws Exception {
 		return http.perform(post("/api/races/" + race + "/results").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, sessions.get(email)))

@@ -142,6 +142,10 @@ class KeysAndIndexesTest extends DatabaseTest {
 					"it exists only to be pointed at: result_race_fk names (id, date) so a race that moves carries "
 							+ "the day on its results with it, and a deferrable key may be named by nothing"),
 			new Key("result_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
+			/* V65. The one key on `result` that IS the fact: a member has at most one result on
+			   one race (PDL P6, 09.09.2026), and the approval names it in `on conflict`. */
+			new Key("result_one_per_member_on_a_race", false,
+					"one member, one race, one result; a pair is looked up as it is written and carries no order"),
 			new Key("attending_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
 			new Key("attending_said_once", false,
 					"one member says once that he is going to one event; a pair is looked up, and it carries no order"),

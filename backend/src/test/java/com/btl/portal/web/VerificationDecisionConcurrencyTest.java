@@ -882,6 +882,70 @@ class VerificationDecisionConcurrencyTest {
 	}
 
 	/**
+	 * A RESULT OF HIS WRITTEN ON THE SAME RACE WHILE THE APPROVAL WRITES ITS OWN REFUSES THE APPROVAL,
+	 * AND THE ROW IT HAD CLAIMED WAITS AGAIN.
+	 *
+	 * <p>PDL P6, 09.09.2026, „Član ima najviše jedan rezultat na jednoj trci", and what the approval
+	 * does about it, PDL P6, 18.10.2026: refused with the owner's sentence, and the run waits. A result
+	 * nobody has committed yet is seen by nothing but V65's key, so this connection is the other writer
+	 * (the league entering the same run, or a second approval): it writes the founder's result on the
+	 * race and holds it uncommitted. The request claims the row and stops at its own insert, behind this
+	 * connection, and the lock manager says when it is there ({@link BlockedBehindThisHold}). Then this
+	 * connection commits.
+	 *
+	 * <p>What has to be left is a refusal in the owner's words and nothing of the answer: the row
+	 * waiting, one result and it is the one this connection wrote, the submission as he sent it. Written
+	 * with a plain insert, the same request answers 500 (a duplicate key); without the key, 200 and two
+	 * results.
+	 */
+	@Test
+	void aResultOfHisWrittenWhileTheApprovalWritesItsOwnRefusesItAndTheRowWaitsAgain()
+			throws Exception {
+		aRunWaitsInTheResultsTab();
+
+		ExecutorService pool = Executors.newFixedThreadPool(1);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			long theOneThatGotThere = holdingTheRow.execute(heldOpen -> {
+				long written = db.sql("insert into result (competitor_id, race_id, race_date,"
+								+ " distance_km, ascent_m, descent_m, seconds, points) values (?, ?,"
+								+ " date '2026-09-05', 19.0000, 150, 150, 7000, 9.99) returning id")
+						.params(founder, theRace).query(Long.class).single();
+
+				submitted.add(pool.submit(() -> answer(ONE_MODERATOR, runItem, true, null)));
+
+				theOneStoppedBehindThisHold();
+
+				return written;
+			});
+
+			MockHttpServletResponse refused = submitted.get(0).get(30, TimeUnit.SECONDS);
+
+			assertThat(refused.getStatus()).isEqualTo(409);
+			assertThat(refused.getContentAsString(StandardCharsets.UTF_8))
+					.contains("Član već ima rezultat na toj trci, pa prijava ne može da se odobri."
+							+ " Odbij je uz razlog.");
+
+			assertThat(db.sql("select id from result where competitor_id = ?").param(founder)
+					.query(Long.class).list())
+					.as("the refused approval wrote a result of its own beside the one already there")
+					.containsExactly(theOneThatGotThere);
+			assertThat(db.sql("select state from verification where id = ?").param(runItem)
+					.query(String.class).single())
+					.as("the row the refused approval had claimed was left decided")
+					.isEqualTo("waiting");
+			assertThat(db.sql("select distance_km || ' ' || ascent_m || ' ' || descent_m || ' '"
+							+ " || seconds from result_submission where id = ?")
+					.param(theRun).query(String.class).single())
+					.as("the submission was written over by an approval that did not happen")
+					.isEqualTo("20.0000 200 100 6600");
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
+	/**
 	 * A RUN OF THE FOUNDER'S WAITING IN THE RESULTS TAB ON A RACE THE CALENDAR DOES NOT HOLD,
 	 * described the way the member's own route writes one, on a day this clock - the real one - has
 	 * long passed.

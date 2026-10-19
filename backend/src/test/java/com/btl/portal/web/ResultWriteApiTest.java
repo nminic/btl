@@ -178,7 +178,14 @@ class ResultWriteApiTest {
 
 	private long futureRace;
 
-	/** The result the cases act on: {@link #ME}'s SECOND, on {@link #lengthRace}. */
+	/** The race {@link #myResult} and {@link #somebodyElsesResult} are on: {@link #lengthRace}'s
+	 *  twin, so the runs the cases send to {@link #lengthRace} meet no result of mine. */
+	private long lengthRaceIRan;
+
+	/** And {@link #myOtherResult}'s, {@link #freeRace}'s twin for the same reason. */
+	private long freeRaceIRan;
+
+	/** The result the cases act on: {@link #ME}'s SECOND, on {@link #lengthRaceIRan}. */
 	private long myResult;
 
 	/** His first, on another race, so „his result" is never „his only result". */
@@ -255,11 +262,18 @@ class ResultWriteApiTest {
 		freeRace = race("Slobodna trka", "2027-03-03", "free", 0, BigDecimal.ZERO, 0, 0);
 		futureRace = race("Buduca trka", "2027-09-09", "length", 0, new BigDecimal("10.00"), 5, 5);
 
+		/* THE RACES MY TWO RESULTS ARE ON ARE NOT THE ONES I SEND RUNS FOR. A run of mine on a race
+		   I have a result on is refused at once (PDL P6, 18.10.2026), so the races the cases send to
+		   are kept free of my results, and these two carry the same name, day and figures so every
+		   letter and every figure a correction reads is what it was. */
+		lengthRaceIRan = race("Dugi maraton", "2027-05-05", "length", 0, MEASURED_EXACTLY, 350, 410);
+		freeRaceIRan = race("Slobodna trka", "2027-03-03", "free", 0, BigDecimal.ZERO, 0, 0);
+
 		/* Somebody else's first, so the lowest id in `result` is not mine. */
-		somebodyElsesResult = ran(SOMEONE_ELSE, lengthRace, "2027-05-05", "42.20", 350, 410, 11000,
-				"130.00");
-		myOtherResult = ran(ME, freeRace, "2027-03-03", "12.00", 10, 20, 3000, "45.60");
-		myResult = ran(ME, lengthRace, "2027-05-05", "42.20", 350, 410, 12000, "123.45");
+		somebodyElsesResult = ran(SOMEONE_ELSE, lengthRaceIRan, "2027-05-05", "42.20", 350, 410,
+				11000, "130.00");
+		myOtherResult = ran(ME, freeRaceIRan, "2027-03-03", "12.00", 10, 20, 3000, "45.60");
+		myResult = ran(ME, lengthRaceIRan, "2027-05-05", "42.20", 350, 410, 12000, "123.45");
 		timedResult = ran(FIRST_WRITTEN, timeRace, "2027-04-04", "63.75", 120, 130, 21600,
 				"210.00");
 
@@ -669,6 +683,92 @@ class ResultWriteApiTest {
 				.isEqualTo(201);
 	}
 
+	/**
+	 * A RUN ON A RACE HE ALREADY HAS A RESULT ON IS REFUSED AT ONCE, AND NOTHING IS WRITTEN.
+	 *
+	 * <p>PDL P6, 18.10.2026, the owner choosing among the outcomes offered: „Članova prijava za trku
+	 * na kojoj već ima rezultat se odbija odmah". {@link #lengthRaceIRan} holds {@link #myResult}, and
+	 * {@link #somebodyElsesResult} too, so the refusal is about MY result and the other member's on the
+	 * same race is beside it. Nothing reaches the queue or the inbox.
+	 */
+	@Test
+	void aRunOnARaceHeAlreadyHasAResultOnIsRefusedAtOnceAndNothingIsWritten() throws Exception {
+		long queued = db.sql("select count(*) from verification").query(Long.class).single();
+		long told = db.sql("select count(*) from message").query(Long.class).single();
+
+		MockHttpServletResponse refused = reportedAs(ME, form(Map.of(
+				"raceId", lengthRaceIRan,
+				"seconds", 11000,
+				"link", "https://rezultati.rs/opet")));
+
+		assertThat(refused.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(refused)).isEqualTo(ResultWriteApi.HE_HAS_A_RESULT_ON_THIS_RACE);
+		assertThat(howManySubmissions()).isZero();
+		assertThat(db.sql("select count(*) from verification").query(Long.class).single())
+				.isEqualTo(queued);
+		assertThat(db.sql("select count(*) from message").query(Long.class).single())
+				.isEqualTo(told);
+	}
+
+	/**
+	 * AND THE THREE THINGS THAT ARE NOT HIS RESULT ON THAT RACE REFUSE NOTHING: another member's
+	 * result on it, his result on another race of the same event and the same morning, and a run of
+	 * his on it that was refused or still waits.
+	 *
+	 * <p>The first is {@link #timeRace}, where {@link #FIRST_WRITTEN} has a result and I have none.
+	 * The second is PDL P6, 09.09.2026, „ali sme imati više rezultata na istom događaju": a second race
+	 * of the event {@link #lengthRaceIRan} stands in, on its day. The third is the other half of the
+	 * decision of 18.10.2026, „Prijava koja je bila odbijena pa ponovo poslata ostaje dozvoljena": the
+	 * question is asked of {@code result} and never of {@code result_submission}, so a run he sent and
+	 * had refused, and the run he sent again that is now waiting, leave the race open to him.
+	 */
+	@Test
+	void aRunIsRefusedOnlyByHisOwnResultOnThatVeryRace() throws Exception {
+		assertThat(reportedAs(ME, form(Map.of(
+				"raceId", timeRace,
+				"distanceKm", "60.00",
+				"ascentM", 100,
+				"descentM", 100,
+				"link", "https://rezultati.rs/tudja-trka"))).getStatus())
+				.as("another member's result on the race refused my run")
+				.isEqualTo(201);
+
+		long theHalf = db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m) select event_id, 'Polumaraton', false, date,"
+						+ " 'length', 0, 21.0975, 100, 100 from race where id = ? returning id")
+				.param(lengthRaceIRan).query(Long.class).single();
+
+		assertThat(reportedAs(ME, form(Map.of(
+				"raceId", theHalf,
+				"seconds", 6000,
+				"link", "https://rezultati.rs/polumaraton"))).getStatus())
+				.as("my result on another race of the same event and the same day refused my run")
+				.isEqualTo(201);
+
+		long refusedOnce = idIn(reportedAs(ME, form(Map.of(
+				"raceId", lengthRace,
+				"seconds", 13000,
+				"link", "https://rezultati.rs/prvi-put"))));
+
+		db.sql("update verification set state = 'rejected', decided_at = now(),"
+						+ " decided_by_name = 'Moderator Probni', reason = 'Pogresan link'"
+						+ " where result_submission_id = ?")
+				.param(refusedOnce).update();
+
+		assertThat(reportedAs(ME, form(Map.of(
+				"raceId", lengthRace,
+				"seconds", 12900,
+				"link", "https://rezultati.rs/drugi-put"))).getStatus())
+				.as("a run of mine that was refused refused the run sent again")
+				.isEqualTo(201);
+		assertThat(reportedAs(ME, form(Map.of(
+				"raceId", lengthRace,
+				"seconds", 12800,
+				"link", "https://rezultati.rs/treci-put"))).getStatus())
+				.as("a run of mine that waits refused the next one")
+				.isEqualTo(201);
+	}
+
 	/** NOTHING SHOWS THE RUN HAPPENED, which is {@link ProofThatTheRunHappened}'s own
 	 *  sentence and the one refusal the forms already make. */
 	@Test
@@ -992,7 +1092,7 @@ class ResultWriteApiTest {
 		assertThat(theSubmission(idIn(answered)))
 				.as("the correction did not name the result it corrects")
 				.containsEntry("amends_result_id", myResult)
-				.containsEntry("race_id", lengthRace)
+				.containsEntry("race_id", lengthRaceIRan)
 				.containsEntry("race_date", LocalDate.of(2027, 5, 5))
 				.containsEntry("seconds", 11400)
 				/* NOT the 42,20 that was sent: a race of a length fixes the distance on a

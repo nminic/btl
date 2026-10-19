@@ -87,8 +87,10 @@ import java.util.Optional;
  * <li>The same member twice in one save. Both rows are named.
  * <li>A result he already has on this race, by PDL P6, 09.09.2026: „Član ima najviše jedan rezultat
  * na jednoj trci, ali sme imati više rezultata na istom događaju." Derived, not a decision about
- * this route; a result of his on another race of the same event refuses nothing. The schema does
- * not hold this rule and neither do the member's two roads, which is a separate job.
+ * this route; a result of his on another race of the same event refuses nothing. The schema holds
+ * the same rule since V65 ({@code result_one_per_member_on_a_race}), and the member's two roads
+ * refuse it too (PDL P6, 18.10.2026: his run is refused when he sends it, and its approval is
+ * refused while he has a result on the race).
  * <li>A report or a correction of his that waits for this race: „[izabrao uz moju preporuku,
  * 18.10.2026] Kad za tu trku član već ima prijavu ili ispravku koja čeka, unos se odbija uz
  * rečenicu da član već ima prijavu koja čeka i da je prvo treba odobriti ili odbiti u redu za
@@ -171,9 +173,22 @@ import java.util.Optional;
  *
  * <p><b>TWO MODERATORS AT ONCE.</b> Every member the request names is locked ({@code for update} on
  * {@code competitor}, in the order of the key) before anything is judged, so of two saves naming one
- * member on one race one writes and the other meets the result it wrote. A member sending in his
- * own run does not take that lock ({@code ResultWriteApi}), so his report and an entry can still
- * meet in the same instant: a boundary of the separate job named above.
+ * member on one race one writes and the other meets the result it wrote.
+ *
+ * <p><b>AND EVERY OTHER WRITER OF HIS RESULT TAKES TURNS WITH THAT LOCK WITHOUT TAKING IT.</b> A row
+ * of {@code result} checks {@code result_competitor_fk}, which takes his {@code competitor} row
+ * {@code for key share}, and {@code for update} waits for that and makes it wait. So an approval of
+ * his run ({@link VerificationWriteApi}) that writes his result in the same instant either commits
+ * before this save takes its lock, and the save's own question meets its row, or waits for this save
+ * to commit and then meets V65's key, which it answers with the owner's sentence. Measured by
+ * {@code ResultsByTheLeagueConcurrencyTest} with the other writer's row held uncommitted: the save
+ * waits at the lock and then names the row. That is why the insert below carries no
+ * {@code on conflict}: no writer of his result can get past this lock unseen, so the clause would be
+ * a branch nothing reaches. The key is the floor under the lock: without the lock, the same case is
+ * answered 500 (a duplicate key) rather than with a second row.
+ *
+ * <p>The member's own report writes no result, so it does not meet this lock; a report sent while
+ * the league enters the same run is refused later, at its approval.
  */
 @RestController
 class ResultsByTheLeagueApi {

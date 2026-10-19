@@ -3660,6 +3660,135 @@ class VerificationWriteApiTest {
 		assertThat(howManyResults(MIRA)).isEqualTo(1);
 	}
 
+	// ----- one result of one member on one race (PDL P6) ---------------------------------
+
+	/** The owner's sentence for it, PDL P6, 18.10.2026, written out here so a change of the words
+	 *  is a change of this case too. */
+	private static final String HE_HAS_A_RESULT_ON_THIS_RACE =
+			"Član već ima rezultat na toj trci, pa prijava ne može da se odobri. Odbij je uz razlog.";
+
+	/**
+	 * A RUN ON A RACE HE ALREADY HAS A RESULT ON IS NOT APPROVED, IT WAITS, AND THE MODERATOR REFUSES
+	 * IT WITH HIS OWN REASON.
+	 *
+	 * <p>PDL P6, 09.09.2026: „Član ima najviše jedan rezultat na jednoj trci". And PDL P6, 18.10.2026,
+	 * the owner choosing among the outcomes offered: the approval is refused with this sentence, the
+	 * run waits, and the moderator refuses it himself, with his own reason.
+	 *
+	 * <p><b>Nothing of the answer is left</b>: the row waits, the result he had keeps its figures, the
+	 * submission keeps what he sent, and nothing is said to him. Then the refusal he is owed goes
+	 * through as any other. The other direction of „whose result" is in the fixture: {@code DETE} has a
+	 * result on the same marathon, so {@link #anApprovedRunBecomesAResultAndTheExactLengthSurvives} is
+	 * the second member on one race and must pass.
+	 */
+	@Test
+	void aRunOnARaceHeAlreadyHasAResultOnIsNotApprovedAndWaitsForTheModeratorsOwnReason()
+			throws Exception {
+		long his = resultAlreadyCounted(ANA, theMarathon, SATURDAY, "42.1950", 300, 300,
+				FOUR_HOURS + 900, "20.00");
+		String hisFigures = fourFiguresOf(counted(his).orElseThrow());
+		String whatHeSent = fourFiguresOf(submitted(anasMarathon));
+		int messages = db.sql("select count(*) from message").query(Integer.class).single();
+
+		assertThat(whatHeSent).as("the run and the result are the same figures, so a run written over"
+				+ " the result would change nothing anybody could see").isNotEqualTo(hisFigures);
+
+		MockHttpServletResponse refused = decide(THE_SUPERADMIN, anasMarathon, true, null);
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(HE_HAS_A_RESULT_ON_THIS_RACE);
+		assertThat(stateOf(anasMarathon)).as("the row the refused approval had claimed was left decided")
+				.isEqualTo("waiting");
+		assertThat(onlyResultOf(ANA)).as("a second result, or the first replaced by another row")
+				.isEqualTo(his);
+		assertThat(fourFiguresOf(counted(his).orElseThrow()))
+				.as("the result he had took the figures of the run that was refused")
+				.isEqualTo(hisFigures);
+		assertThat(fourFiguresOf(submitted(anasMarathon)))
+				.as("the submission was written over by an approval that did not happen")
+				.isEqualTo(whatHeSent);
+		assertThat(db.sql("select count(*) from message").query(Integer.class).single())
+				.as("somebody was told something about an approval that did not happen")
+				.isEqualTo(messages);
+
+		assertThat(answer(THE_SUPERADMIN, anasMarathon, false, THE_REASON)).isEqualTo(200);
+		assertThat(stateOf(anasMarathon)).isEqualTo("rejected");
+		assertThat(onlyResultOf(ANA)).isEqualTo(his);
+	}
+
+	/**
+	 * TWO RUNS OF HIS ON ONE RACE, BOTH WAITING: THE FIRST IS COUNTED AND THE SECOND IS NOT.
+	 *
+	 * <p>Two waiting runs of one race are open on purpose ({@code ResultSubmissionConstraintsTest},
+	 * „The same member may report the same race twice"), so the queue may hold both; what the rule
+	 * stops is the second RESULT. Here no result stands before the first answer, so the refusal of the
+	 * second is about the row the first answer wrote.
+	 */
+	@Test
+	void ofTwoRunsOfHisOnOneRaceTheFirstIsCountedAndTheSecondWaits() throws Exception {
+		long again = runWaitingFor(ANA, theMarathon, SATURDAY, "42.1950", 300, 300,
+				FOUR_HOURS - 600, null);
+
+		assertThat(howManyResults(ANA)).isZero();
+		assertThat(answer(THE_SUPERADMIN, anasMarathon, true, null)).isEqualTo(200);
+
+		MockHttpServletResponse refused = decide(THE_SUPERADMIN, again, true, null);
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(HE_HAS_A_RESULT_ON_THIS_RACE);
+		assertThat(stateOf(again)).isEqualTo("waiting");
+		assertThat(counted(onlyResultOf(ANA)).orElseThrow().seconds())
+				.as("the second run replaced the first, or was counted beside it")
+				.isEqualTo(FOUR_HOURS);
+	}
+
+	/**
+	 * HIS RUNS ON TWO RACES OF ONE EVENT, ON ONE MORNING, ARE BOTH COUNTED.
+	 *
+	 * <p>The other half of PDL P6, 09.09.2026: „ali sme imati više rezultata na istom događaju", and the
+	 * owner's reason for it, „maraton i polumaraton istog jutra daju dva rezultata istom članu". The
+	 * marathon and the hill race of this fixture are one event and one day, which is asserted first,
+	 * so a rule over the day or over the event instead of over the race refuses the second here.
+	 */
+	@Test
+	void hisRunsOnTwoRacesOfOneEventOnOneMorningAreBothCounted() throws Exception {
+		assertThat(db.sql("select count(distinct event_id) || ' ' || count(distinct date) from race"
+						+ " where id in (?, ?)").params(theMarathon, theTrail).query(String.class).single())
+				.as("the two races are not of one event on one day, so this measures nothing about"
+						+ " the race against the day or the event")
+				.isEqualTo("1 1");
+
+		assertThat(answer(THE_SUPERADMIN, anasMarathon, true, null)).isEqualTo(200);
+		assertThat(answer(THE_SUPERADMIN, anasTrailRun, true, null)).isEqualTo(200);
+
+		assertThat(db.sql("select race_id from result where competitor_id ="
+						+ " (select id from competitor where member_number = ?) order by race_id")
+				.param(ANA).query(Long.class).list())
+				.containsExactlyInAnyOrder(theMarathon, theTrail);
+	}
+
+	/**
+	 * A RUN ON A RACE THE CALENDAR DID NOT HOLD IS REFUSED ON THE RACE THE MODERATOR CHOOSES, WHEN HE
+	 * HAS A RESULT THERE.
+	 *
+	 * <p>The submission names no race, so the race the rule is about is the one the answer names
+	 * ({@code raceId}). A rule asked of the submission's race would ask about nothing and let this
+	 * through.
+	 */
+	@Test
+	void aRunOffTheCalendarIsRefusedOnAChosenRaceHeAlreadyHasAResultOn() throws Exception {
+		long his = resultAlreadyCounted(ANA, theShortRace, THE_OTHER_EVENTS_DAY, "10.00", 50, 50,
+				AN_HOUR, "3.73");
+
+		MockHttpServletResponse refused = decideWith(THE_SUPERADMIN, aRunOnARaceNobodyHasEnteredYet,
+				onTheRace(theShortRace, null));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(HE_HAS_A_RESULT_ON_THIS_RACE);
+		assertThat(stateOf(aRunOnARaceNobodyHasEnteredYet)).isEqualTo("waiting");
+		assertThat(onlyResultOf(ANA)).isEqualTo(his);
+	}
+
 	/*
 	 * SIX CASES STOOD HERE, FROM V30 UNTIL PDL P10a, 22.09.2026 (ADL A64 A2, A3): approving
 	 * moved an event and its races together, by the same number of days and reading the

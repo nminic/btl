@@ -510,6 +510,35 @@ class VerificationWriteApi {
 	private static final String AN_AMENDMENT_GOES_WITH_AN_APPROVED_RUN =
 			"Izmena vrednosti ide samo uz odobrenje rezultata.";
 
+	/**
+	 * THE MEMBER ALREADY HAS A RESULT ON THE RACE THIS RUN WOULD BE COUNTED ON: THE APPROVAL IS
+	 * REFUSED AND THE RUN WAITS.
+	 *
+	 * <p>PDL P6, 09.09.2026, the owner: „Član ima najviše jedan rezultat na jednoj trci, ali sme imati
+	 * više rezultata na istom događaju." And what an approval does about it, PDL P6, 18.10.2026, the
+	 * owner choosing among the outcomes offered: „Odobrenje prijave kad član već ima rezultat na toj
+	 * trci se odbija, a prijava čeka: moderator dobija rečenicu [this one] i prijavu odbija sam,
+	 * svojim razlogom. Odbijeno: automatsko odbijanje i odobrenje kao ispravka postojećeg." The words
+	 * are the owner's.
+	 *
+	 * <p><b>Asked once, by the database, when the result is written</b> ({@link #countTheResult}),
+	 * and not before the row is claimed as the refusals above are. A question asked first could not
+	 * see a result another request is writing at the same moment, so the insert would have to ask
+	 * again; and asked twice, the first asking changes nothing anybody can see, because the second
+	 * one gives the same answer with the same sentence after rolling the claim back. So the rule has
+	 * one home on this road, V65's {@code result_one_per_member_on_a_race}.
+	 *
+	 * <p><b>The race is the one the run is COUNTED on</b>, which for a run on a race the calendar did
+	 * not hold is the one the moderator chose ({@link Answered#raceId}), not the race the submission
+	 * names (none). A race this approval makes is new and holds nobody's result. A correction writes
+	 * over the result it amends and never meets this.
+	 *
+	 * <p>409 for the reason the head of this class gives: he can see the row, and what he asked for
+	 * cannot happen.
+	 */
+	private static final String HE_HAS_A_RESULT_ON_THIS_RACE =
+			"Član već ima rezultat na toj trci, pa prijava ne može da se odobri. Odbij je uz razlog.";
+
 	/* PDL P10b, owner 22.09.2026: an event with a result already written may not be moved
 	   across 1 January on the race that result was run at. This route asked that question
 	   of its own approvals, over a schedule proposal's move, from V30 until PDL P10a,
@@ -1002,6 +1031,13 @@ class VerificationWriteApi {
 					   had written, so the row waits as it did and nothing of the answer is left. The
 					   sentence is the one the same refusal gets before the claim. */
 					yield no(HttpStatus.CONFLICT, THE_EVENT_IS_IN_THE_CALENDAR_ALREADY);
+				}
+				catch (HeHasAResultOnThisRace already) {
+					/* AND THE ONE MET AT THE RESULT ITSELF, the same way and for the same reason: the
+					   result is written after the claim, so a refusal there is thrown out of the
+					   transaction and takes the claim back with it, and the run waits for the
+					   moderator to refuse it with his own reason (PDL P6, 18.10.2026). */
+					yield no(HttpStatus.CONFLICT, HE_HAS_A_RESULT_ON_THIS_RACE);
 				}
 
 				/* AND THE POST GOES AFTER THE TRANSACTION HAS COMMITTED, never inside it.
@@ -1850,13 +1886,22 @@ class VerificationWriteApi {
 				counted.descentM(), counted.seconds(), points);
 
 		if (sent.amendsResultId() == null) {
-			db.sql("insert into result (competitor_id, race_id, race_date, distance_km,"
+			/* ONE RESULT OF HIS ON ONE RACE, said by the database (V65) and answered here
+			   ({@link #HE_HAS_A_RESULT_ON_THIS_RACE} says whose decision that is). `do nothing`
+			   and not a fault: a row he already has, or one another request is writing at this
+			   moment, leaves nothing written, and the exception takes the claim back. */
+			int written = db.sql("insert into result (competitor_id, race_id, race_date, distance_km,"
 							+ " ascent_m, descent_m, seconds, points)"
-							+ " values (?, ?, ?, ?, ?, ?, ?, ?)")
+							+ " values (?, ?, ?, ?, ?, ?, ?, ?)"
+							+ " on conflict (competitor_id, race_id) do nothing")
 					.params(item.competitorId(), race, on.day(),
 							counted.distanceKm(), counted.ascentM(), counted.descentM(),
 							counted.seconds(), points)
 					.update();
+
+			if (written == 0) {
+				throw new HeHasAResultOnThisRace();
+			}
 		} else {
 			db.sql("update result set distance_km = ?, ascent_m = ?, descent_m = ?, seconds = ?,"
 							+ " points = ? where id = ?")
@@ -2309,6 +2354,24 @@ class VerificationWriteApi {
 
 		AnEventTookTheAddressMeanwhile() {
 			super(THE_EVENT_IS_IN_THE_CALENDAR_ALREADY, null, false, false);
+		}
+	}
+
+	/**
+	 * A RESULT OF HIS ON THE RACE THIS RUN WOULD BE COUNTED ON, met by V65's constraint when the
+	 * result is written ({@link #countTheResult}).
+	 *
+	 * <p>An exception and not an answer carried back, for {@link AnEventTookTheAddressMeanwhile}'s
+	 * reason: the row is claimed by then, and only a throw rolls the claim back with everything else
+	 * the answer wrote. {@link #decide} answers it with {@link #HE_HAS_A_RESULT_ON_THIS_RACE}. No stack:
+	 * it is a refusal, not a fault.
+	 */
+	private static final class HeHasAResultOnThisRace extends RuntimeException {
+
+		private static final long serialVersionUID = 1L;
+
+		HeHasAResultOnThisRace() {
+			super(HE_HAS_A_RESULT_ON_THIS_RACE, null, false, false);
 		}
 	}
 
