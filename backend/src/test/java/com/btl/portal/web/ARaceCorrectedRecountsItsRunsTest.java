@@ -63,12 +63,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * is corrected; {@link #itsHalf} runs under the same event and {@link #anotherEventsTen}
  * under another, and both carry runs whose points the formula would never give
  * ({@link #NOT_WHAT_THE_FORMULA_GIVES}), so a recount that reached them shows.
- * <li><b>The runs at the marathon are four and none is the only one of its kind:</b> one
- * runner twice, at two different times, a second runner whose fee has lapsed, and a fourth
- * whose run already stands at the course the correction writes. A recount that took one run
- * per member, or the first run's time for all, or only active members, answers differently
- * from one that took every row; and a line about a run the correction did not move is a line
- * about nothing.
+ * <li><b>The runs at the marathon are four and none is the only one of its kind:</b> two
+ * runners at two different times, a third whose fee has lapsed, and a fourth whose run already
+ * stands at the course the correction writes. A recount that took the first run's time for all,
+ * or only active members, answers differently from one that took every row; and a line about a
+ * run the correction did not move is a line about nothing. Until V65 the first two were ONE
+ * runner twice, which PDL P6 (09.09.2026, „Član ima najviše jedan rezultat na jednoj trci") says
+ * cannot be and the schema now refuses, so „one run per member" and „every row" are one answer.
  * <li><b>A figure the race fixes and a figure the runner brings are never the same
  * number.</b> The marathon's climb is unlike its fall, before and after, so a recount that
  * swapped them shows; six hours carry a climb and a fall of their own that are unlike both
@@ -166,8 +167,11 @@ class ARaceCorrectedRecountsItsRunsTest {
 	/** What a line in the inbox about a run counted again is called. */
 	private static final String RECOUNTED = "Vaš rezultat je preračunat";
 
-	/** The member who runs the marathon twice. */
+	/** A member who runs the marathon, and the half and six hours as well. */
 	private static final String RUNNER = "000901";
+
+	/** The second member at the marathon, at a time of his own (see the class note). */
+	private static final String SECOND_RUNNER = "000906";
 
 	/** The member whose fee has lapsed, which takes nothing away from his record. */
 	private static final String LAPSED = "000902";
@@ -209,6 +213,8 @@ class ARaceCorrectedRecountsItsRunsTest {
 	private long aRaceOfHistory;
 
 	private long runner;
+
+	private long secondRunner;
 
 	private long lapsed;
 
@@ -329,6 +335,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 		third = competitor(A_THIRD, "0011223344556603");
 		alreadyThere = competitor(ALREADY_THERE, "0011223344556604");
 		rookie = competitor(ROOKIE, "0011223344556605");
+		secondRunner = competitor(SECOND_RUNNER, "0011223344556606");
 
 		/* THE MEMBER WHOSE FEE HAS LAPSED, the precedent's own statement
 		   (`PairWriteApiTest`, `CommentApiTest`): his record stays his and a correction of the
@@ -336,7 +343,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 		db.sql("update competitor set active = false where member_number = ?").param(LAPSED).update();
 
 		runnersFirst = result(runner, theMarathon, "42.2", 300, 280, 12600, counted("42.2", 300, 280, 12600));
-		runnersSecond = result(runner, theMarathon, "42.2", 300, 280, 13800, counted("42.2", 300, 280, 13800));
+		runnersSecond = result(secondRunner, theMarathon, "42.2", 300, 280, 13800, counted("42.2", 300, 280, 13800));
 		lapsedRun = result(lapsed, theMarathon, "42.2", 300, 280, 15000, counted("42.2", 300, 280, 15000));
 		alreadyThereRun = result(alreadyThere, theMarathon, "42.195", 520, 310, 16000,
 				counted("42.195", 520, 310, 16000));
@@ -449,15 +456,15 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 *
 	 * <p>The marathon is corrected to 42,195 km with a climb of 520 m and a fall of 310 m, and
 	 * renamed and moved a day in the same request. Each of its three runs at the old course -
-	 * the same runner's two and the lapsed member's one - comes back at the race's new course,
+	 * the two runners' and the lapsed member's - comes back at the race's new course,
 	 * its own time, the points the formula gives for those four, and the category 42,195 is
 	 * (PDL P5: not a marathon but a longer race). The run already at the new course stays as it
 	 * was. The half under the same event, the ten under another, and the two submissions at the
 	 * marathon itself stay exactly as they were.
 	 *
 	 * <p>PDL P4, the owner's answer of 10.10.2026, in the journal's wording: „red u sandučetu sa
-	 * starom i novom vrednošću", „mejl ne ide". One line per run that moved, to its member: the
-	 * runner reads two, the lapsed member one, the member whose run did not move none, the member
+	 * starom i novom vrednošću", „mejl ne ide". One line per run that moved, to its member: each
+	 * runner reads one, the lapsed member one, the member whose run did not move none, the member
 	 * with only a waiting run at the marathon none, and no line is addressed to everybody.
 	 *
 	 * <p>And each line ENDS with the new value (PDL P18, 18.10.2026): the sentence that used to
@@ -480,7 +487,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 
 		assertThat(rowOf(runnersFirst)).as("the runner's first run").isEqualTo(
 				countedAt("42.195", 520, 310, 12600, "long"));
-		assertThat(rowOf(runnersSecond)).as("the runner's second run, at a time of its own")
+		assertThat(rowOf(runnersSecond)).as("the second runner's run, at a time of its own")
 				.isEqualTo(countedAt("42.195", 520, 310, 13800, "long"));
 		assertThat(rowOf(lapsedRun)).as("the run of the member whose fee has lapsed")
 				.isEqualTo(countedAt("42.195", 520, 310, 15000, "long"));
@@ -491,10 +498,12 @@ class ARaceCorrectedRecountsItsRunsTest {
 		assertThat(List.of(submitted(waitingSubmission), submitted(decidedSubmission)))
 				.as("a submission at the race was written over").isEqualTo(submissionsBefore);
 
-		assertThat(linesTo(runner)).as("the runner reads one line for each of his two runs")
-				.extracting(Line::subject).containsExactly(RECOUNTED, RECOUNTED);
+		assertThat(linesTo(runner)).as("the runner reads one line for his run")
+				.extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(runner).get(0).body()).endsWith(asItWasAndAsItIs(12600));
-		assertThat(linesTo(runner).get(1).body()).endsWith(asItWasAndAsItIs(13800));
+		assertThat(linesTo(secondRunner)).as("the second runner reads one line for his run")
+				.extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(linesTo(secondRunner).get(0).body()).endsWith(asItWasAndAsItIs(13800));
 		assertThat(linesTo(lapsed)).extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(lapsed).get(0).body()).endsWith(asItWasAndAsItIs(15000));
 		assertThat(linesTo(alreadyThere)).as("a line about a run the correction did not move")
@@ -540,7 +549,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 * the climb moves the fall and the length with it, so a run that differs from the new course
 	 * in the climb and nothing else was never in front of it. Here the marathon's climb goes from
 	 * 300 m to 520 m and its length ({@code 42.2}), its fall, its name and its day are sent as they
-	 * were. The runner's two runs and the lapsed member's one agree with the new course on every
+	 * were. The two runners' runs and the lapsed member's one agree with the new course on every
 	 * figure but that one, and each of them has to come back at the new climb, at its own time and
 	 * with the points the formula gives, with its line in the inbox.
 	 */
@@ -962,7 +971,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 	}
 
 	/**
-	 * The runner's two runs and the lapsed member's one, after the marathon was corrected to 42.2 km
+	 * The two runners' runs and the lapsed member's one, after the marathon was corrected to 42.2 km
 	 * with this climb and this fall, its name and its day as they were: each is at the new course
 	 * and at the time it was run in, each of its members reads the line with the run as it was and
 	 * as it is, the member with only a waiting run at the marathon reads nothing, and no line is addressed
@@ -972,16 +981,18 @@ class ARaceCorrectedRecountsItsRunsTest {
 	private void theMarathonsRunsStandAt(int ascent, int descent) {
 		assertThat(rowOf(runnersFirst)).as("the runner's first run")
 				.isEqualTo(countedAt("42.2", ascent, descent, 12600, "marathon"));
-		assertThat(rowOf(runnersSecond)).as("the runner's second run, at a time of its own")
+		assertThat(rowOf(runnersSecond)).as("the second runner's run, at a time of its own")
 				.isEqualTo(countedAt("42.2", ascent, descent, 13800, "marathon"));
 		assertThat(rowOf(lapsedRun)).as("the run of the member whose fee has lapsed")
 				.isEqualTo(countedAt("42.2", ascent, descent, 15000, "marathon"));
 
-		assertThat(linesTo(runner)).as("the runner reads one line for each of his two runs")
-				.extracting(Line::subject).containsExactly(RECOUNTED, RECOUNTED);
+		assertThat(linesTo(runner)).as("the runner reads one line for his run")
+				.extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(runner).get(0).body())
 				.endsWith(theMarathonsRunAsItWasAndAsItIs(ascent, descent, 12600));
-		assertThat(linesTo(runner).get(1).body())
+		assertThat(linesTo(secondRunner)).as("the second runner reads one line for his run")
+				.extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(linesTo(secondRunner).get(0).body())
 				.endsWith(theMarathonsRunAsItWasAndAsItIs(ascent, descent, 13800));
 		assertThat(linesTo(lapsed)).extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(lapsed).get(0).body())

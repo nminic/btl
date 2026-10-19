@@ -590,6 +590,13 @@ class AxisConstraintsTest extends DatabaseTest {
 				Violation.of("result_pk",
 						"insert into result (id, " + RESULT_COLUMNS + ") select id, competitor_id, race_id,"
 								+ " race_date, distance_km, ascent_m, descent_m, seconds, points from result"),
+				/* V65: the probe's member a second time on the probe's race, with other figures, so
+				   what is refused is the second result and not a copy of the first. The other
+				   direction is GOOD_RESULT, the second member on the same race, which the key must
+				   let through (PDL P6, 09.09.2026: one result of one member on one race). */
+				Violation.of("result_one_per_member_on_a_race",
+						result(PROBE_COMPETITOR + ", " + PROBE_RACE + ", " + PROBE_RACE_DAY
+								+ ", 10.00, 100, 100, 4000, 9.87")),
 				Violation.of("result_competitor_fk",
 						result("(select max(id) + 1 from competitor), " + PROBE_RACE + ", " + PROBE_RACE_DAY
 								+ ", 10.00, 100, 100, 3600, 12.34")),
