@@ -98,8 +98,13 @@ import java.util.Optional;
  * <li>A race of the CURRENT season and a member who holds no membership of that season:
  * „[izabrao uz moju preporuku, 18.10.2026] Za trku iz TEKUĆE sezone liga unosi rezultat samo članu
  * koji ima članstvo za tu sezonu; inače se red odbija uz rečenicu. Za prošle godine i pre 2027
- * ostaje unos svima sa članskim brojem." The season is the RACE's year, the current one is
- * {@link SeasonClock#isTheSeasonBeingRun}, and the membership asked is the row of {@code membership}
+ * ostaje unos svima sa članskim brojem." The season is the RACE's year, and the current one is
+ * {@link SeasonClock#isTheSeasonBeingRun}: <b>THE OWNER'S DECISION OF 18.10.2026, chosen against my
+ * recommendation, makes a season current from its 1 January until its freeze</b> („Sezona je „tekuća"
+ * za unos rezultata do svog zamrzavanja, 1.1. sledeće godine u 16:00, ne do ponoći. Do 16:00 unos za
+ * trku iz te sezone i dalje traži članstvo za nju. Odbijena moja preporuka da sezona prestane da
+ * bude tekuća u ponoć."), so between 00:00 and 16:00 on 1 January both the season that ended and the
+ * one that began are current. The membership asked is the row of {@code membership}
  * for exactly that member and exactly that season, never his latest. The owner's reason: for the
  * result of a member whose fee had lapsed in the running season he said „To ne moze da se desi".
  * </ul>
@@ -494,7 +499,7 @@ class ResultsByTheLeagueApi {
 
 		Reader reader = readerOf(member);
 
-		tellAndKeep(member, reader, enteredWords(member, run, reader.language()), letters);
+		tellAndKeep(member, reader, enteredWords(run, reader.language()), letters);
 
 		if (asks) {
 			tellIfTheCategoryMoved(member, season, wasOpen, Act.ENTERED, run);
@@ -506,13 +511,17 @@ class ResultsByTheLeagueApi {
 	/**
 	 * THE WORDS OF AN ENTRY, BY WHETHER A SEASON COUNTS IT.
 	 *
-	 * <p>The year is asked first and the membership after it, and the order is the point: a run
-	 * before 2027 has no membership either, so asked the other way round it would be told it lacked
-	 * one, which is not what it lacks. „Counts in its season" is the join {@link ResultApi} serves as
-	 * {@code inItsSeason} and {@link BestOfficialSeason} sums over: a {@code membership} of the year of
-	 * the run.
+	 * <p>Three states and no fourth: a run before 2027 is a run before the league, a run of a season
+	 * that has frozen has the owner's sentence for it, and every other run counts in its season. There
+	 * is no „entered without a membership" state left to tell, and that is a consequence of the
+	 * owner's decision of 18.10.2026 and not a gap: a season is current until its freeze, a race is
+	 * never entered before it is run, so a season that has not frozen and has begun is current, and
+	 * for it the league enters only a member ({@link #aMemberTheRunningSeasonDoesNotHave}); the words
+	 * {@link WhatAResultChangeSays#enteredWithoutAMembership} are left in the dictionary, unused here.
+	 * „Counts in its season" is the join {@link ResultApi} serves as {@code inItsSeason} and
+	 * {@link BestOfficialSeason} sums over: a {@code membership} of the year of the run.
 	 */
-	private Said enteredWords(long member, Run run, MailLanguage in) {
+	private Said enteredWords(Run run, MailLanguage in) {
 		int year = run.day().getYear();
 
 		if (year < SeasonClock.FIRST_SEASON) {
@@ -523,8 +532,7 @@ class ResultsByTheLeagueApi {
 			return WhatAResultChangeSays.enteredInAFrozenSeason(run, in);
 		}
 
-		return holdsMembershipOf(member, year) ? WhatAResultChangeSays.approved(run, in)
-				: WhatAResultChangeSays.enteredWithoutAMembership(run, in);
+		return WhatAResultChangeSays.approved(run, in);
 	}
 
 	/**
