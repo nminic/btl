@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import type { Race, Result } from '../../data/types'
 import { must } from '../../test/at'
-import { moderatorWith, renderAt } from '../../test/render'
+import { expectFrontPage, moderatorWith, renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
@@ -107,6 +107,22 @@ function writes(asked: Asked[]): { method: string; path: string; body: unknown }
     }))
 }
 
+/**
+ * The addresses asked of the server AFTER the first write of one method, in the order they went out.
+ *
+ * <p>Taken at the moment it is called and not once at the top of a case, so that a wait around it
+ * reads the requests that have come in since: a slice made before the wait would be the same slice
+ * on every retry.
+ */
+function askedAfterTheWrite(asked: Asked[], method: string): string[] {
+  const at = asked.findIndex((one) => one.init?.method === method)
+
+  return at === -1 ? [] : asked.slice(at + 1).map((one) => one.path)
+}
+
+/** The readers of a result that are asked again once the league has written one (`leagueResultWrites.ts`). */
+const EVERY_READER_OF_A_RESULT = ['/api/results', '/api/races', '/api/events']
+
 /** The box of one figure in one row. */
 const box = (label: string, row: number): HTMLElement =>
   must(screen.getAllByLabelText(label)[row], `${label} of row ${String(row + 1)}`)
@@ -130,6 +146,21 @@ describe('the ways in, on the page of an event', () => {
     expect(ways).toHaveLength(4)
     /* As a set: the rows stand in the owner's order of races (`data/raceOrder.ts`), which is not
        this case's question. */
+    expect(ways.map((one) => one.getAttribute('href')).sort()).toEqual(
+      OWN.map((race) => `/sr/kalendar/${EVENT}/rezultati?trka=${String(race)}`).sort(),
+    )
+  }, SLOW)
+
+  it.each([
+    ['a moderator who is a member too', 'moderator' as const, CHECKS_RESULTS],
+    ['the superadmin who is a member too', 'superadmin' as const, undefined],
+  ])('lead %s to the entry of several members and not to his own report', async (_, role, moderator) => {
+    renderAt(`/sr/kalendar/${EVENT}`, role, '000001', moderator)
+
+    const table = await screen.findByRole('table', { name: 'Trke' })
+    const ways = within(table).getAllByRole('link', { name: /^Unesi rezultat/ })
+
+    expect(ways).toHaveLength(4)
     expect(ways.map((one) => one.getAttribute('href')).sort()).toEqual(
       OWN.map((race) => `/sr/kalendar/${EVENT}/rezultati?trka=${String(race)}`).sort(),
     )
@@ -176,6 +207,20 @@ describe('the entry of several members', () => {
     renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'competitor', '000001')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Balkanska trkačka liga' })).toBeVisible()
+  }, SLOW)
+
+  it('opens for a moderator who holds the right that checks results, and for no other right', async () => {
+    renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'moderator', null, CHECKS_RESULTS)
+
+    expect(await screen.findByRole('heading', { level: 1, name: /^Unos rezultata: / })).toBeVisible()
+    expect(screen.getAllByRole('group', { name: /\. red$/ })).toHaveLength(1)
+  }, SLOW)
+
+  it('sends a moderator who holds another right only to the front page, with no row drawn', async () => {
+    renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'moderator', null, ANOTHER_RIGHT)
+
+    await expectFrontPage()
+    expect(screen.queryAllByRole('group', { name: /\. red$/ })).toEqual([])
   }, SLOW)
 
   it.each([
@@ -259,10 +304,8 @@ describe('the entry of several members', () => {
     /* AND EVERY READER OF A RESULT ASKS AGAIN: the results, and the races and the events, which carry
        the lengths run at a race (`leagueResultWrites.ts`). Asked after the write, by the order of the
        requests, so a read made before it does not count. */
-    const after = server.asked.slice(server.asked.findIndex((one) => one.init?.method === 'POST') + 1)
-
     await waitFor(() => {
-      expect(after.map((one) => one.path)).toEqual(expect.arrayContaining(['/api/results', '/api/races', '/api/events']))
+      expect(askedAfterTheWrite(server.asked, 'POST')).toEqual(expect.arrayContaining(EVERY_READER_OF_A_RESULT))
     })
     expect(writes(server.asked)).toEqual([
       {
@@ -276,6 +319,31 @@ describe('the entry of several members', () => {
         },
       },
     ])
+    server.stop()
+  }, SLOW)
+
+  it('asks the inbox again once a save is written, which may be the inbox of the moderator himself', async () => {
+    /* A moderator who is also a member has an inbox, drawn in the header on every screen, and the
+       route writes the member a line. Read once while the header is drawn, and again only if the
+       write said that it changed. */
+    const user = setupUser()
+    const server = serving()
+    const inboxReads = (asked: string[]) => asked.filter((one) => one === '/api/inbox').length
+
+    renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'moderator', '000002', CHECKS_RESULTS)
+
+    await screen.findByRole('heading', { level: 1, name: /^Unos rezultata: / })
+    await waitFor(() => {
+      expect(inboxReads(server.asked.map((one) => one.path))).toBeGreaterThan(0)
+    })
+    await choose(user, 0, 'Momčilo', /Relja Momčilović \(000002\)/)
+    await user.type(box('Sati', 0), '3')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Maraton maratona' })).toBeVisible()
+    await waitFor(() => {
+      expect(inboxReads(askedAfterTheWrite(server.asked, 'POST'))).toBeGreaterThan(0)
+    })
     server.stop()
   }, SLOW)
 
@@ -530,6 +598,11 @@ describe('the pencil and the x', () => {
         },
       },
     ])
+    /* AND EVERY READER OF A RESULT ASKS AGAIN after the pencil, as after the entry: the page it goes
+       back to is drawn from what was read before the change unless the three were dropped. */
+    await waitFor(() => {
+      expect(askedAfterTheWrite(server.asked, 'PUT')).toEqual(expect.arrayContaining(EVERY_READER_OF_A_RESULT))
+    })
     server.stop()
   }, SLOW)
 
@@ -599,7 +672,7 @@ describe('the pencil and the x', () => {
     const user = setupUser()
     const server = serving(() => new Response(null, { status: 204 }))
 
-    renderAt(`/sr/kalendar/${WITH_RESULTS}`, 'superadmin')
+    const { router } = renderAt(`/sr/kalendar/${WITH_RESULTS}`, 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Rezultati članova' })
     const row = must(within(table).getAllByRole('row').slice(1)[1], 'the second row')
@@ -621,6 +694,17 @@ describe('the pencil and the x', () => {
         body: {},
       },
     ])
+
+    /* AND EVERY READER OF A RESULT ASKS AGAIN after the x. The page stays where it is, so nothing
+       is read at once: the three are dropped from the cache, and that shows when the event is
+       opened again from another screen, which has to go to the server for each of them. */
+    await router.navigate('/sr/kalendar')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Kalendar' })).toBeVisible()
+    await router.navigate(`/sr/kalendar/${WITH_RESULTS}`)
+    await screen.findByRole('table', { name: 'Rezultati članova' })
+    await waitFor(() => {
+      expect(askedAfterTheWrite(server.asked, 'DELETE')).toEqual(expect.arrayContaining(EVERY_READER_OF_A_RESULT))
+    })
     server.stop()
   }, SLOW)
 
