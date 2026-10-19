@@ -174,6 +174,30 @@ describe('what one answer is taken to mean', () => {
     }
   })
 
+  it('carries the rows a group was refused for, by their place and their word', async () => {
+    /* `ResultsByTheLeagueApi` refuses a save of several rows with one word for the whole of it and
+       a row for each one to blame (19.10.2026). The rows are what the screen names each row by. */
+    const body = { reason: 'aRowIsWrong', rows: [{ row: 1, reason: 'theMemberIsNamedTwice' }, { row: 0, reason: 'theFormIsNotComplete' }] }
+
+    server = serverThat(() => new Response(JSON.stringify(body), { status: 400 }))
+
+    expect(await askTheServer('/api/races/1/results', {})).toEqual({ got: 'refused', ...body })
+  })
+
+  it('carries no rows where the body has none, or has a list of something else', async () => {
+    /* The second and third: a list with one entry of another shape is not a list of rows and is
+       answered as none rather than half read, so a screen never draws a sentence under a row the
+       server did not name. The refusal itself still stands. */
+    for (const rows of [undefined, [null], [5], [{ row: 1 }], [{ row: '1', reason: 'x' }], 'rows']) {
+      server?.stop()
+      server = serverThat(
+        () => new Response(JSON.stringify({ reason: 'aRowIsWrong', rows }), { status: 400 }),
+      )
+
+      expect(await askTheServer('/api/races/1/results', {})).toEqual({ got: 'refused', reason: 'aRowIsWrong' })
+    }
+  })
+
   it('answers with the number for anything else, so the screen can say it', async () => {
     server = serverThat(() => answeredWith(500))
 

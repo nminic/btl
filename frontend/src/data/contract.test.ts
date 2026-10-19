@@ -94,6 +94,11 @@ describe('the list of resources', () => {
       'pricing',
       'races',
       'results',
+      /* Twenty-one since 19.10.2026, with the league's own entry of results on the event page: the
+         members a moderator who checks results may pick (`ResultsByTheLeagueApi.runners`), declared
+         at `/api/results/runners`. The first name with a slash under a name that is itself a
+         resource, which `test/setup.ts` answers off `mock/results/runners.json`. */
+      'results/runners',
       'teams',
       'verification',
     ])

@@ -190,6 +190,13 @@ export const RESOURCE_NAMES = [
   'pricing',
   'races',
   'results',
+  /* WHOEVER A MODERATOR WHO CHECKS RESULTS MAY ENTER A RUN FOR (`ResultsByTheLeagueApi`, PDL P9,
+     18.10.2026): every member ever given a number, active or not, three fields each. Not `members`,
+     which answers the same people with their fees and seasons under `entity:members`, a right a
+     moderator of the results need not hold. Not answered to the reader either: it is the same list
+     to everybody who may read it, and 404 to the rest, so it is not among the names a change of
+     reader drops (`session/theCachesFollowTheReader.ts`). */
+  'results/runners',
   'teams',
   'verification',
 ] as const

@@ -69,6 +69,9 @@ const A_READ_THAT_HANDS_OUT_THE_TOKEN = '/api/countries'
  * them into "something went wrong" hands the reader a form to press again with no
  * idea what to change.
  */
+/** One row of a group a route refused, by its place in what was sent and the word for why. */
+export type RowRefused = { row: number; reason: string }
+
 export type Answer =
   /**
    * 204, which is what signing in, signing out and registering answer when they did
@@ -89,7 +92,7 @@ export type Answer =
    * races to `/api/leagues/-1/races`.
    *
    * <p><b>It is `unknown` and is never claimed to be anything</b> (ADL A14). What comes
-   * off the wire is narrowed by looking at it, which is the same rule `reasonIn` below
+   * off the wire is narrowed by looking at it, which is the same rule `refusalIn` below
    * reads a refusal by and `admin/leagueCounted.ts` reads a served field by. A body of
    * some other shape therefore answers „nothing of the kind is there" rather than being
    * asserted into a type.
@@ -103,8 +106,13 @@ export type Answer =
    * keeping a fact the reason already carries. `/api/registration` answers 409 for one
    * refusal of its three (`theAddressIsTaken`) and 400 for the other two, and all three
    * end in the same place: a sentence chosen by name.
+   *
+   * <p><b>And the rows, where a route refused a group and named the row to blame</b>
+   * (`ResultsByTheLeagueApi`'s `NotEntered`, `CompetitorWriteApi`'s shape: `{reason, rows: [{row,
+   * reason}]}`). Present only where the body carries such a list, so every refusal that never
+   * did reads exactly as before. A row is its place in what was sent, counted from nought.
    */
-  | { got: 'refused'; reason: string }
+  | { got: 'refused'; reason: string; rows?: RowRefused[] }
   /** 403: the token did not match, or there was none to send. */
   | { got: 'rejected' }
   /** Any other answer, carrying the number so the screen can say it rather than
@@ -156,7 +164,7 @@ async function beHandedTheToken(): Promise<string | null> {
  * narrowed by looking at it, so a body of some other shape answers "no reason" rather
  * than being claimed to hold one.
  */
-async function reasonIn(answer: Response): Promise<string | null> {
+async function refusalIn(answer: Response): Promise<{ reason: string; rows?: RowRefused[] } | null> {
   let body: unknown
 
   try {
@@ -171,13 +179,50 @@ async function reasonIn(answer: Response): Promise<string | null> {
 
   const reason: unknown = Reflect.get(body, 'reason')
 
-  return typeof reason === 'string' && reason !== '' ? reason : null
+  if (typeof reason !== 'string' || reason === '') {
+    return null
+  }
+
+  const rows = rowsIn(Reflect.get(body, 'rows'))
+
+  return rows === undefined ? { reason } : { reason, rows }
+}
+
+/**
+ * THE ROWS A GROUP WAS REFUSED FOR, or nothing where the body carries no such list. Narrowed by
+ * looking, like the reason above: a list with one entry of another shape is not a list of rows,
+ * and is answered as none rather than half read.
+ */
+function rowsIn(said: unknown): RowRefused[] | undefined {
+  if (!Array.isArray(said)) {
+    return undefined
+  }
+
+  const items: unknown[] = said
+  const rows: RowRefused[] = []
+
+  for (const one of items) {
+    if (typeof one !== 'object' || one === null) {
+      return undefined
+    }
+
+    const row: unknown = Reflect.get(one, 'row')
+    const reason: unknown = Reflect.get(one, 'reason')
+
+    if (typeof row !== 'number' || typeof reason !== 'string') {
+      return undefined
+    }
+
+    rows.push({ row, reason })
+  }
+
+  return rows
 }
 
 /**
  * Whatever the answer carried, or nothing at all.
  *
- * <p>The same read `reasonIn` makes and for the same reason: 204 carries no body, a 201
+ * <p>The same read `refusalIn` makes and for the same reason: 204 carries no body, a 201
  * may carry one, and `json()` throws on both an empty body and a body that is not JSON.
  * Caught rather than guarded by a header, because a route that answers 200 with nothing
  * and a route that answers 200 with a record are the same outcome to every caller but
@@ -332,11 +377,11 @@ export async function askTheServer(
      zauzeta." He was shown the price before choosing it - anybody can then test whether
      an address is a member of the league - and took it. */
   if (answer.status === 400 || answer.status === 409) {
-    const reason = await reasonIn(answer)
+    const refusal = await refusalIn(answer)
 
-    return reason === null
+    return refusal === null
       ? { got: 'wrong', status: answer.status }
-      : { got: 'refused', reason }
+      : { got: 'refused', ...refusal }
   }
 
   return { got: 'wrong', status: answer.status }

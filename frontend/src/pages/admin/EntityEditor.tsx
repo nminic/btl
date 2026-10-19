@@ -766,7 +766,7 @@ export function OpenRecord({
  * is not out with anyone: the row leaves in the same render, and the question behaves as it
  * always did. Nothing here handles Escape, so there is no key to refuse.
  */
-export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', asksWith }: {
+export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', asksWith, face }: {
   name: string
   /**
    * What the second press does, and whether the reader has to wait for it.
@@ -820,6 +820,13 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    * the three carrying the name of what is being deleted.
    */
   look?: string
+  /**
+   * WHAT THE FIRST BUTTON SHOWS, where a row has no room for the word: the event page draws an x
+   * beside the pencil on every result (PDL P9, 18.10.2026, the owner: „dva ekonomična dugmeta za edit
+   * (olovka) i brisanje (x)"). Only what is drawn changes: the button is still named by the record
+   * („Obriši: …"), so a screen reader hears what it always heard. Left out, the word „Obriši" stands.
+   */
+  face?: string
 }) {
   const { t } = useI18n()
   const [asking, setAsking] = useState(false)
@@ -890,7 +897,7 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
           setAsking(true)
         }}
       >
-        {t('admin.form.delete')}
+        {face ?? t('admin.form.delete')}
       </button>
     )
   }

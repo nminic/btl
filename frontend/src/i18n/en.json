@@ -187,6 +187,10 @@
       "title": "Proposing a team",
       "description": "Propose a team to BTL. A moderator decides on every proposal before the team enters the League."
     },
+    "leagueResults": {
+      "title": "Entering results",
+      "description": "A moderator enters the results of members from a BTL race."
+    },
     "reportResult": {
       "title": "Reporting a result",
       "description": "Report your result from a BTL race. A moderator checks every report before it enters the table."
@@ -1771,5 +1775,30 @@
     "passwordFormIsNotComplete": "All three fields must be filled in, and the two new ones the same and at least {count} characters long.",
     "oldPasswordIsWrong": "The current password is not right. Try again.",
     "passwordHasLeaked": "This password has already appeared in publicly published breaches, so the portal does not take it. Choose another."
+  },
+  "leagueResults": {
+    "title": "Entering results: {race}",
+    "editTitle": "Changing a result: {name}",
+    "member": "Member",
+    "rowNumber": "Row {which}",
+    "addRow": "Add a member",
+    "removeRow": "Remove row {which}",
+    "save": "Save",
+    "saving": "Saving",
+    "chooseMember": "Choose a member from the list.",
+    "figuresMissing": "Fill in every value asked for.",
+    "editNamed": "Change the result: {name}",
+    "notThere": "That result is no longer there. Reload the page of the event.",
+    "refused": {
+      "aRowIsWrong": "Nothing was saved. Correct the rows marked below and save again.",
+      "theMemberIsNotKnown": "Choose a member from the list.",
+      "theMemberIsNamedTwice": "The same member is entered on more than one row.",
+      "heHasAResultOnThisRace": "The member already has a result on this race. Change it with the pencil in the table of results.",
+      "hisSubmissionWaits": "The member already has a report waiting for this race. Approve or refuse it in the review queue first.",
+      "heHoldsNoMembershipOfTheRunningSeason": "The member holds no membership of the season of this race, so the league does not enter a result for him.",
+      "theFormIsNotComplete": "A time or a measure is missing, or a value is outside what is allowed.",
+      "theGroupIsEmpty": "Add at least one member.",
+      "theGroupIsTooBig": "Too many rows for one save. Split them into two saves."
+    }
   }
 }
