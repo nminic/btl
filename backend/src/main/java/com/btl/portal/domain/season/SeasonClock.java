@@ -364,6 +364,52 @@ public final class SeasonClock {
 	}
 
 	/**
+	 * WHETHER A SEASON OF THE LEAGUE IS „CURRENT" FOR ENTERING A RESULT AT THIS MOMENT: from 1 January
+	 * of the season until its tables freeze, and never a year before the first season.
+	 *
+	 * <p>PDL P9, 18.10.2026, the owner's decision, chosen against my recommendation: „Sezona je
+	 * „tekuća" za unos rezultata do svog zamrzavanja, 1.1. sledeće godine u 16:00, ne do ponoći. Do
+	 * 16:00 unos za trku iz te sezone i dalje traži članstvo za nju. Odbijena moja preporuka da
+	 * sezona prestane da bude tekuća u ponoć." The end of „current" is therefore
+	 * {@link #tablesFreeze} of the season itself, the instant {@link #isFrozen} already asks, and not
+	 * the New Year at midnight that {@link #seasonBeingRun} changes on.
+	 *
+	 * <p><b>Between 00:00 and 16:00 on 1 January of S+1 BOTH S (not yet frozen) and S+1 (running)
+	 * are current for this rule</b>, which is the owner's sentence and not a slip: a run of S is
+	 * still entered against the membership of S while the one of S+1 is already asked about.
+	 *
+	 * <p>The start is {@link #seasonBeingRun}: a season later than it has not begun, and one
+	 * earlier than it is current only while it has not frozen. The floor is needed because
+	 * {@link #seasonBeingRun} names 2026 in the autumn of 2026 on purpose and 2026 is not a season
+	 * (PDL P2): a race of 2026 is a race before the league whatever the clock says. The freeze is
+	 * asked of the RACE's season and never of the year the clock stands in, which is never frozen at
+	 * its own moment.
+	 *
+	 * @param season the season (the calendar year of a race)
+	 * @param at     the moment being asked about, in any zone: it is read in the league's
+	 */
+	public static boolean isTheSeasonBeingRun(int season, ZonedDateTime at) {
+		return season >= FIRST_SEASON && season <= seasonBeingRun(at) && !isFrozen(season, at);
+	}
+
+	/**
+	 * WHETHER A SEASON OF THE LEAGUE HAS FROZEN BY THIS MOMENT, and a year before the first season
+	 * has not, because it was never one.
+	 *
+	 * <p>{@link #isFrozen} alone answers yes for 2026 from 1 January 2027 at 16:00, which is the
+	 * arithmetic of a date and not a fact about a league that has no season 2026. The words a member
+	 * is told about a result in a frozen season (PDL P9, 18.10.2026: „Rezultat u ZAMRZNUTOJ sezoni
+	 * dobija posebnu rečenicu") are asked of this, so a race before 2027 keeps the words for a race
+	 * before the league.
+	 *
+	 * @param season the season of the run (the calendar year of its race)
+	 * @param at     the moment being asked about, in any zone: it is read in the league's
+	 */
+	public static boolean isAFrozenSeasonOfTheLeague(int season, ZonedDateTime at) {
+		return season >= FIRST_SEASON && isFrozen(season, at);
+	}
+
+	/**
 	 * THE SEASON A MEMBER'S AGE BAND IS WORKED OUT FOR, which is the one that is RUNNING and
 	 * never earlier than the first the league has.
 	 *

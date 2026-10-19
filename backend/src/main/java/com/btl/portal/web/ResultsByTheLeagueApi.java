@@ -95,7 +95,26 @@ import java.util.Optional;
  * proveru." One condition answers both, because a correction names the race of the result it
  * corrects (V32, {@code result_submission_a_correction_keeps_the_race_it_corrects}). A run he
  * described off the calendar names no race and refuses nothing: that is a boundary.
+ * <li>A race of the CURRENT season and a member who holds no membership of that season:
+ * „[izabrao uz moju preporuku, 18.10.2026] Za trku iz TEKUĆE sezone liga unosi rezultat samo članu
+ * koji ima članstvo za tu sezonu; inače se red odbija uz rečenicu. Za prošle godine i pre 2027
+ * ostaje unos svima sa članskim brojem." The season is the RACE's year, and the current one is
+ * {@link SeasonClock#isTheSeasonBeingRun}: <b>THE OWNER'S DECISION OF 18.10.2026, chosen against my
+ * recommendation, makes a season current from its 1 January until its freeze</b> („Sezona je „tekuća"
+ * za unos rezultata do svog zamrzavanja, 1.1. sledeće godine u 16:00, ne do ponoći. Do 16:00 unos za
+ * trku iz te sezone i dalje traži članstvo za nju. Odbijena moja preporuka da sezona prestane da
+ * bude tekuća u ponoć."), so between 00:00 and 16:00 on 1 January both the season that ended and the
+ * one that began are current. The membership asked is the row of {@code membership}
+ * for exactly that member and exactly that season, never his latest. The owner's reason: for the
+ * result of a member whose fee had lapsed in the running season he said „To ne moze da se desi".
  * </ul>
+ *
+ * <p><b>THE PENCIL DOES NOT ASK FOR THAT MEMBERSHIP, and this is a reading rather than a
+ * decision.</b> The owner's sentence is about entering. The pencil changes the figures of a result
+ * that is already on the race and can neither name another member nor another race, so it cannot
+ * put a non-member into the running season; and a member whose membership was struck out after his
+ * result was written would otherwise be left with a row only the X could touch. The X is open to
+ * everybody for the same reason. The owner may object.
  *
  * <p><b>THE PENCIL AND THE X ARE REFUSED BY THE SAME WAITING SUBMISSION</b> (409, the same reason).
  * That is the coordinator's derivation by analogy with the decision above, not the owner's words:
@@ -127,8 +146,13 @@ import java.util.Optional;
  * <li>An entry is told with the words of an approval where the season counts it, and with words of
  * its own where it does not: before 2027, or in a year he holds no membership of („Rezultat za datum
  * pre 2027 ili za godinu kad čovek nije bio član ... ne ulazi ni u jednu sezonsku tabelu, Top
- * listu ni nagradu"). A change has words of its own. The three new texts are proposals:
- * „[OTVORENO 18.10.2026] Reči poruka ... predlog ide vlasniku sa PR-om."
+ * listu ni nagradu"). A change has words of its own. A run of a season that has FROZEN is told
+ * with the owner's sentence for it (PDL P9, 18.10.2026: „Rezultat u ZAMRZNUTOJ sezoni dobija
+ * posebnu rečenicu"), asked after the year (a race before 2027 is a race before the league, never
+ * a frozen season) and BEFORE the membership: the sentence is true of a member and of a non-member
+ * alike, and the owner names no second sentence for the non-member of a frozen season, which is my
+ * reading of one decision. The three texts of 18.10.2026 were approved by the owner
+ * („Može ovako"), the frozen one is his own sentence set out in lines.
  * </ul>
  *
  * <p><b>THE BEGINNERS' CATEGORY, BOTH WAYS.</b> Whether the category was open to him for the season
@@ -176,6 +200,13 @@ class ResultsByTheLeagueApi {
 
 	/** A report or a correction of his waits in the queue for this race (PDL P9, 18.10.2026). */
 	static final String HIS_SUBMISSION_WAITS = "hisSubmissionWaits";
+
+	/**
+	 * The race is of the season being run and he holds no membership of it (PDL P9, 18.10.2026,
+	 * „Za trku iz TEKUĆE sezone liga unosi rezultat samo članu koji ima članstvo za tu sezonu").
+	 */
+	static final String HE_HOLDS_NO_MEMBERSHIP_OF_THE_RUNNING_SEASON =
+			"heHoldsNoMembershipOfTheRunningSeason";
 
 	private final JdbcClient db;
 
@@ -318,6 +349,8 @@ class ResultsByTheLeagueApi {
 						: times.get(member) > 1 ? THE_MEMBER_IS_NAMED_TWICE
 						: hasAResultOn(member, race.id()) ? HE_HAS_A_RESULT_ON_THIS_RACE
 						: hisSubmissionWaits(member, race.id()) ? HIS_SUBMISSION_WAITS
+						: aMemberTheRunningSeasonDoesNotHave(member, race)
+								? HE_HOLDS_NO_MEMBERSHIP_OF_THE_RUNNING_SEASON
 						: null;
 
 				if (why != null) {
@@ -466,7 +499,7 @@ class ResultsByTheLeagueApi {
 
 		Reader reader = readerOf(member);
 
-		tellAndKeep(member, reader, enteredWords(member, run, reader.language()), letters);
+		tellAndKeep(member, reader, enteredWords(run, reader.language()), letters);
 
 		if (asks) {
 			tellIfTheCategoryMoved(member, season, wasOpen, Act.ENTERED, run);
@@ -478,30 +511,54 @@ class ResultsByTheLeagueApi {
 	/**
 	 * THE WORDS OF AN ENTRY, BY WHETHER A SEASON COUNTS IT.
 	 *
-	 * <p>The year is asked first and the membership after it, and the order is the point: a run
-	 * before 2027 has no membership either, so asked the other way round it would be told it lacked
-	 * one, which is not what it lacks. „Counts in its season" is the join {@link ResultApi} serves as
-	 * {@code inItsSeason} and {@link BestOfficialSeason} sums over: a {@code membership} of the year of
-	 * the run.
+	 * <p>Three states and no fourth: a run before 2027 is a run before the league, a run of a season
+	 * that has frozen has the owner's sentence for it, and every other run counts in its season. There
+	 * is no „entered without a membership" state left to tell, and that is a consequence of the
+	 * owner's decisions of 18.10.2026 and not a gap: a season is current until its freeze, a race is
+	 * never entered before it is run, so a season that has not frozen and has begun is current, and
+	 * for it the league enters only a member ({@link #aMemberTheRunningSeasonDoesNotHave}). The words
+	 * for it, which the owner had approved, are gone from the dictionary.
+	 * „Counts in its season" is the join {@link ResultApi} serves as {@code inItsSeason} and
+	 * {@link BestOfficialSeason} sums over: a {@code membership} of the year of the run.
 	 */
-	private Said enteredWords(long member, Run run, MailLanguage in) {
+	private Said enteredWords(Run run, MailLanguage in) {
 		int year = run.day().getYear();
 
 		if (year < SeasonClock.FIRST_SEASON) {
 			return WhatAResultChangeSays.enteredBeforeTheLeague(run, in);
 		}
 
-		boolean aMemberThatYear = Boolean.TRUE.equals(db.sql("select exists(select 1 from membership"
-						+ " where competitor_id = ? and season = ?)")
-				.params(member, year).query(Boolean.class).single());
+		if (SeasonClock.isAFrozenSeasonOfTheLeague(year, now())) {
+			return WhatAResultChangeSays.enteredInAFrozenSeason(run, in);
+		}
 
-		return aMemberThatYear ? WhatAResultChangeSays.approved(run, in)
-				: WhatAResultChangeSays.enteredWithoutAMembership(run, in);
+		return WhatAResultChangeSays.approved(run, in);
+	}
+
+	/**
+	 * THE ROW OF {@code membership} FOR THIS MEMBER AND THIS SEASON, the one fact both questions
+	 * here ask: whether a season counts a run, and whether the league may enter one in the running
+	 * season. Not his latest membership and not the season the clock is in.
+	 */
+	private boolean holdsMembershipOf(long member, int season) {
+		return Boolean.TRUE.equals(db.sql("select exists(select 1 from membership"
+						+ " where competitor_id = ? and season = ?)")
+				.params(member, season).query(Boolean.class).single());
+	}
+
+	/**
+	 * THE RULE OF THE RUNNING SEASON (see the class note): the race is of the season being run, and
+	 * he holds no membership of it. Every other year, earlier ones and those before 2027, asks nothing.
+	 */
+	private boolean aMemberTheRunningSeasonDoesNotHave(long member, TheRace race) {
+		int season = race.day().getYear();
+
+		return SeasonClock.isTheSeasonBeingRun(season, now()) && !holdsMembershipOf(member, season);
 	}
 
 	/** A frozen season is not asked about its category at all (see the class note). */
 	private boolean asksTheCategory(TheRace race) {
-		return !SeasonClock.isFrozen(race.day().getYear(), clock.instant().atZone(SeasonClock.ZONE));
+		return !SeasonClock.isFrozen(race.day().getYear(), now());
 	}
 
 	private boolean beginnersCategoryIsOpenFor(long member, int season) {
@@ -636,6 +693,11 @@ class ResultsByTheLeagueApi {
 				figures.descentM(), figures.seconds(), BtlScoreCalculator.calculate(
 						figures.distanceKm().doubleValue(), figures.ascentM(), figures.descentM(),
 						figures.seconds()));
+	}
+
+	/** The moment, in the league's zone, which is the zone every season question is asked in. */
+	private ZonedDateTime now() {
+		return clock.instant().atZone(SeasonClock.ZONE);
 	}
 
 	private LocalDate today() {

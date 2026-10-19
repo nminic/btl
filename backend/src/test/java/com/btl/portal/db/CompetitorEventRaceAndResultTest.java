@@ -531,8 +531,10 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   one does as well, and that is not a preference: deleting a member takes his
 				   payments and his memberships in the same statement, so a RESTRICT towards the
 				   payment would make that delete succeed or fail depending on which of the two
-				   cascades PostgreSQL walked first. Nothing else deletes a payment - a reversal is
-				   a state (V16) - so the two go together or not at all.
+				   cascades PostgreSQL walked first. By the owner's decision of 18.10.2026 a cancelled
+				   payment is deleted as well (PDL P8, „zapis o uplati se BRIŠE”; V64 took the state
+				   `reversed` away), and the same CASCADE is what takes its membership with it, so the
+				   two go together or not at all.
 				   What survives a deleted member is the frozen season, and it survives WITHOUT
 				   him: those four keys are `set null` below and the trigger of V17 empties the
 				   name beside them (FrozenSeasonConstraintsTest). */
