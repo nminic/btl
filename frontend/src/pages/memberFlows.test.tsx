@@ -1698,10 +1698,21 @@ describe('membership', () => {
          sentence is what is waited for; that it is announced is what is asked of it after,
          because what makes it do its job is that `role="status"` is a live region, so a
          reader who has just pressed a radio hears why it sprang back without the focus
-         moving (WCAG 2.2 SC 4.1.3). A version that dropped the role fails the second line. */
+         moving (WCAG 2.2 SC 4.1.3).
+
+         **The announcing is asked through the ROLE QUERY and not through an attribute on the
+         element found by its words.** `getByText` does not leave out what the accessibility
+         tree leaves out, so a sentence under `aria-hidden` or `hidden` is found by it and
+         announced to nobody; `getAllByRole` leaves such an element out, which is what
+         `findByRole('status')` did before this case waited for words. „Some live region
+         CONTAINS the sentence" rather than „the sentence IS the live region", so the words
+         wrapped in a span inside the `<p role="status">` are still accepted. */
       const said = await screen.findByText(/rok istekao 1\. januara/i)
 
-      expect(said).toHaveAttribute('role', 'status')
+      expect(
+        screen.getAllByRole('status').some((region) => region.contains(said)),
+        'the refusal is not inside any live region that is announced',
+      ).toBe(true)
       expect(screen.getByRole('radio', { name: 'U svojoj starosnoj kategoriji' })).toBeChecked()
     } finally {
       category.stop()
