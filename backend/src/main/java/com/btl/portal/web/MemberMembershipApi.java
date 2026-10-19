@@ -134,9 +134,11 @@ class MemberMembershipApi {
 
 	private final MemberOfAccount memberOfAccount;
 
+	private final ABeginnersCategoryAMembershipMoves category;
+
 	MemberMembershipApi(JdbcClient db, Clock clock, TransactionTemplate inOneTransaction, BalanceBook book,
 			BookingAPayment booking, GrantingASeason granting, CurrencyOfMember currencyOf,
-			MemberOfAccount memberOfAccount) {
+			MemberOfAccount memberOfAccount, ABeginnersCategoryAMembershipMoves category) {
 		this.db = db;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
@@ -145,6 +147,7 @@ class MemberMembershipApi {
 		this.granting = granting;
 		this.currencyOf = currencyOf;
 		this.memberOfAccount = memberOfAccount;
+		this.category = category;
 	}
 
 	/** @param basis the basis the screen showed for the season, which is the one cancelled */
@@ -226,6 +229,12 @@ class MemberMembershipApi {
 
 		String name = memberOfAccount.nameOf(asking.account());
 
+		/* WHETHER THE BEGINNERS' CATEGORY WAS OPEN TO HIM FOR THE SEASON AFTER THIS ONE, asked before the
+		   rows go: the results of the season stay („Storno jedine sezone: rezultati se ne brišu") and
+		   stop counting, so the cancellation can open it again
+		   ({@link ABeginnersCategoryAMembershipMoves}). */
+		ABeginnersCategoryAMembershipMoves.Before before = category.before(member.get(), season);
+
 		/* THE ROWS GO, „zapis o uplati i zapis o članstvu za tu sezonu". A payment takes its membership
 		   with it by `membership_payment_fk` (V22, ON DELETE CASCADE), so the payment is what is
 		   deleted; the other two bases have no payment and the membership itself goes. */
@@ -250,6 +259,7 @@ class MemberMembershipApi {
 
 		trail(member.get(), season, "cancelled", held.get().basis(), null, asking.account(), name);
 		tell(member.get(), WhatAMembershipChangeSays.cancelled(season));
+		category.tellHimIfItMoved(before);
 
 		return ResponseEntity.ok(new Changed(season, null));
 	}
@@ -286,6 +296,13 @@ class MemberMembershipApi {
 			return no(HttpStatus.CONFLICT, THE_BASIS_HAS_CHANGED);
 		}
 
+		/* NOTHING IS ASKED ABOUT THE BEGINNERS' CATEGORY HERE, ON PURPOSE. The season stands before the
+		   change and after it, on either basis (a booking that refuses goes back to the savepoint and
+		   leaves the exemption standing), and `BestOfficialSeason` reads no basis, so the right cannot
+		   move. The row is deleted and written again on the way, and a question asked between the two
+		   would tell him his category closed when nothing moved; that is why
+		   `ABeginnersCategoryAMembershipMoves` is asked by the routes and not by `BookingAPayment` or
+		   `GrantingASeason`. `ABeginnersCategoryAMembershipMovesTest` holds it. */
 		return Basis.PAYMENT.word().equals(typed.to())
 				? aPaymentOverTheExemption(member.get(), season, held.get(), typed, asking)
 				: anExemptionOverThePayment(member.get(), season, held.get(), asking);
