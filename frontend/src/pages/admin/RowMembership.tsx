@@ -77,10 +77,12 @@ export function RowMembership({
     setWorking(true)
 
     try {
-      const answer =
+      /* One await, on a request chosen before it, for the reason `RowPayment.send` gives. */
+      const asked =
         act === 'cancel'
-          ? await askTheServer(membershipOnTheRow(one.memberNumber), cancelling(held), 'DELETE')
-          : await askTheServer(membershipOnTheRow(one.memberNumber), TO_THE_EXEMPTION, 'PUT')
+          ? askTheServer(membershipOnTheRow(one.memberNumber), cancelling(held), 'DELETE')
+          : askTheServer(membershipOnTheRow(one.memberNumber), TO_THE_EXEMPTION, 'PUT')
+      const answer = await asked
 
       setAsking(null)
 

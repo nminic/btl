@@ -87,9 +87,14 @@ export function RowPayment({
     setWorking(true)
 
     try {
-      const answer = replacingTheExemption
-        ? await askTheServer(membershipOnTheRow(one.memberNumber), overTheExemption(body), 'PUT')
-        : await askTheServer(paymentOnTheRow(one.memberNumber), body)
+      /* ONE AWAIT, ON A REQUEST CHOSEN BEFORE IT, and not an await in each arm of the choice: V8 counts
+         the code after an await inside a conditional as blocks of their own, and with the two arms
+         run by two test files the merged count lost the refusal below although both files reach it
+         (measured on the gate of PR 579, 19.10.2026). The behaviour is the same either way. */
+      const asked = replacingTheExemption
+        ? askTheServer(membershipOnTheRow(one.memberNumber), overTheExemption(body), 'PUT')
+        : askTheServer(paymentOnTheRow(one.memberNumber), body)
+      const answer = await asked
 
       setAsking(null)
 
