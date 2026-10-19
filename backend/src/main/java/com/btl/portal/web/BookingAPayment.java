@@ -17,7 +17,6 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.MonthDay;
-import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -101,21 +100,21 @@ class BookingAPayment {
 		this.currencyOf = currencyOf;
 	}
 
-	Booked book(PaymentApi.Confirm typed, String reference, WhoIsAsking.Member asking) {
-		/* THE DAY THE MONEY IS BOOKED, NEVER A DAY ANYBODY TYPES: PDL, POTVRDJENO
-		   13.09.2026. Read once here so the lookup below and the row {@code recordIt}
-		   writes both name the same season {@link RegistrationApi} would compute for
-		   this same instant. */
-		return book(typed, reference, asking, SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock)));
-	}
-
 	/**
-	 * THE SAME BOOKING FOR A SEASON THE CALLER HAS ALREADY READ OFF THE CLOCK, for the one caller
-	 * that has to: {@link MemberMembershipApi} takes an exemption off a season and books a payment in
-	 * its place, in one transaction, and the two must be about one season. Two readings of the clock
-	 * would part across midnight of 15 October and delete the exemption of one year while booking the
-	 * next. The season is still the clock's, never the request's: that caller reads
-	 * {@link SeasonClock#seasonBeingPaidFor} too, once.
+	 * THE BOOKING, FOR A SEASON THE CALLER HAS ALREADY READ OFF THE CLOCK.
+	 *
+	 * <p><b>The day the money is booked, never a day anybody types</b> (PDL, POTVRDJENO 13.09.2026):
+	 * every caller reads {@link SeasonClock#seasonBeingPaidFor} once, the same call
+	 * {@link RegistrationApi} makes for the same instant, and hands it here, so the lookup below and the
+	 * row {@code recordIt} writes name one season. The season is still the clock's, never the request's.
+	 *
+	 * <p><b>Read by the caller and not here, since 19.10.2026</b>, because every caller asks something
+	 * else about the same season around the booking. {@link MemberMembershipApi} takes an exemption off a
+	 * season and books a payment in its place, and the two must be about one season. The two payment
+	 * doors ({@link PaymentApi}, {@link MemberPaymentApi}) ask whether the beginners' category was open
+	 * before the booking and after it ({@link ABeginnersCategoryAMembershipMoves}). Two readings of the
+	 * clock would part across midnight of 15 October. Until that day this class also had an overload
+	 * that read the clock itself, for the two payment doors; it went when they stopped needing it.
 	 */
 	Booked book(PaymentApi.Confirm typed, String reference, WhoIsAsking.Member asking, int season) {
 		Optional<CompetitorRow> competitor = db.sql(

@@ -1,5 +1,6 @@
 package com.btl.portal.domain.membership;
 
+import com.btl.portal.domain.category.Category;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 
 import java.text.MessageFormat;
@@ -8,7 +9,8 @@ import java.util.Objects;
 import java.util.ResourceBundle;
 
 /**
- * THE THREE LINES A MEMBER GETS IN HIS INBOX WHEN HIS MEMBERSHIP IS CHANGED ON HIS ROW.
+ * THE LINES A MEMBER GETS IN HIS INBOX WHEN HIS MEMBERSHIP IS CHANGED: THE THREE ABOUT HIS ROW, AND THE
+ * TWO ABOUT THE BEGINNERS' CATEGORY THAT A MEMBERSHIP CAN CLOSE OR OPEN AGAIN.
  *
  * <p><b>The decision.</b> The owner, 18.10.2026 (PDL P8, the section „Osnov clanstva ima jedan dom,
  * zapis po sezoni"), chosen with the recommendation: „Upis uplate, promena osnova i storno stizu
@@ -23,7 +25,7 @@ import java.util.ResourceBundle;
  * <p><b>NOT IN {@code domain/mail}, and the reason is a floor there.</b>
  * {@code EveryMailIsAMandatoryOneTest} walks that package, asks each class for the dictionaries it
  * loads through {@code words(MailLanguage)}, and requires every occasion found to be one of the
- * mandatory mails of PDL P22. These three are, by the decision above, not mails at all; written there
+ * mandatory mails of PDL P22. None of these is a mail, by the decision above; written there
  * they would fail that floor, and rightly. So they live with the membership they are about, read one
  * dictionary through {@link #words()}, and hand over the same {@link Said} pair the inbox writers
  * take.
@@ -49,7 +51,7 @@ public final class WhatAMembershipChangeSays {
 	}
 
 	/**
-	 * THE THREE OCCASIONS, and each says how many facts its words take, because {@code MessageFormat}
+	 * THE OCCASIONS, and each says how many facts its words take, because {@code MessageFormat}
 	 * renders a hole nobody fills as the literal „{1}" and drops a value nobody asked for without a
 	 * word.
 	 */
@@ -62,7 +64,16 @@ public final class WhatAMembershipChangeSays {
 		THE_BASIS_WAS_CHANGED("basisChanged", 2),
 
 		/** A season's membership cancelled, the owner's „storno": the season. */
-		THE_MEMBERSHIP_WAS_CANCELLED("membershipCancelled", 1);
+		THE_MEMBERSHIP_WAS_CANCELLED("membershipCancelled", 1),
+
+		/**
+		 * A membership written for a season closed his beginners' category for the season after it:
+		 * the season of the membership, the threshold, and the season the category is closed for.
+		 */
+		THE_BEGINNERS_CATEGORY_WAS_CLOSED("beginnersCategoryClosed", 3),
+
+		/** A membership cancelled opened it again: the same three facts. */
+		THE_BEGINNERS_CATEGORY_WAS_REOPENED("beginnersCategoryReopened", 3);
 
 		private final String key;
 
@@ -103,6 +114,31 @@ public final class WhatAMembershipChangeSays {
 	/** His membership of this season was cancelled, and he is no member of it now. */
 	public static Said cancelled(int season) {
 		return said(Told.THE_MEMBERSHIP_WAS_CANCELLED, aSeason(season));
+	}
+
+	/**
+	 * A MEMBERSHIP WRITTEN OR CANCELLED MOVED HIS BEGINNERS' CATEGORY, and the line says which way, what
+	 * moved it, the threshold and which season (PDL P7, 27.09.2026, the member is told „sa razlogom").
+	 * Both ways, the shape PDL P4 gave the line a correction of a race writes (10.10.2026, „u oba
+	 * smera"): a cancellation can open what a membership closed. The words are the owner's choice of
+	 * 19.10.2026 among the ones put to him.
+	 *
+	 * <p><b>Two seasons and never one</b>, because they are two facts: the season whose membership was
+	 * written or cancelled, and the season whose category that closes or opens, which is always a later
+	 * one ({@code BestOfficialSeason} counts a season only toward the seasons after it). Both are handed
+	 * in by the one caller that worked them out, so the season the right was asked for and the season
+	 * the line names are one number.
+	 *
+	 * <p>The threshold is {@link Category#FIRST_SEASON_POINTS}, written as the whole number it is, the
+	 * way every other line about the category writes it.
+	 *
+	 * @param open          whether the category is open to him now
+	 * @param season        the season of the membership
+	 * @param theSeasonAfter the season the category is closed or opened for
+	 */
+	public static Said beginnersCategoryMoved(boolean open, int season, int theSeasonAfter) {
+		return said(open ? Told.THE_BEGINNERS_CATEGORY_WAS_REOPENED : Told.THE_BEGINNERS_CATEGORY_WAS_CLOSED,
+				aSeason(season), Integer.toString(Category.FIRST_SEASON_POINTS), aSeason(theSeasonAfter));
 	}
 
 	/** One basis in the words a member reads. */

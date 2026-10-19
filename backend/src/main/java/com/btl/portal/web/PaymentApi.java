@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.ZonedDateTime;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -411,10 +413,17 @@ class PaymentApi {
 
 	private final JdbcClient db;
 
-	PaymentApi(BookingAPayment booking, TransactionTemplate inOneTransaction, JdbcClient db) {
+	private final Clock clock;
+
+	private final ABeginnersCategoryAMembershipMoves category;
+
+	PaymentApi(BookingAPayment booking, TransactionTemplate inOneTransaction, JdbcClient db, Clock clock,
+			ABeginnersCategoryAMembershipMoves category) {
 		this.booking = booking;
 		this.inOneTransaction = inOneTransaction;
 		this.db = db;
+		this.clock = clock;
+		this.category = category;
 	}
 
 	/**
@@ -523,7 +532,18 @@ class PaymentApi {
 		return inOneTransaction.execute(committing -> {
 			lockTheMember(typed.competitorId());
 
-			return booking.book(typed, reference, asking).answer();
+			/* THE SEASON IS READ HERE, ONCE, and handed to the booking, because the beginners' category
+			   is asked about the same season before the booking and after it: two readings of the clock
+			   would part across midnight of 15 October. Still the clock's and never the request's
+			   (see the note on `Confirm`). */
+			int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
+			ABeginnersCategoryAMembershipMoves.Before before = category.before(typed.competitorId(), season);
+
+			ResponseEntity<?> answer = booking.book(typed, reference, asking, season).answer();
+
+			category.tellHimIfItMoved(before);
+
+			return answer;
 		});
 	}
 
