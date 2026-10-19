@@ -519,12 +519,17 @@ class MyResultSubmissionsApiTest {
 	 * rows by hand would hold the reader to a shape the writer does not produce. Both are sent in
 	 * the one transaction the case runs in, so both are raised at one instant and the later key,
 	 * the correction, comes first.
+	 *
+	 * <p>The run is sent on the race to a limit and not on the race of a length, because he has a
+	 * result on that one ({@code myResult}) and a run of his on a race he has a result on is refused
+	 * at once (PDL P6, 18.10.2026). The limit was raised after the fixture's runs were sent, so the
+	 * time that comes back is the race's as it stands now and not one he typed.
 	 */
 	@Test
 	void aRunAndACorrectionSentThroughTheirOwnRoutesComeBackHereAsTheyWereSent()
 			throws Exception {
-		Map<String, Object> run = Map.of("raceId", lengthRace, "seconds", 4321,
-				"link", "https://rezultati.rs/kroz-rutu", "comment", "Poslato kroz rutu");
+		Map<String, Object> run = Map.of("raceId", timeRace, "distanceKm", "61.2500", "ascentM", 310,
+				"descentM", 300, "link", "https://rezultati.rs/kroz-rutu", "comment", "Poslato kroz rutu");
 
 		assertThat(sent(post("/api/results").contentType(MediaType.APPLICATION_JSON)
 				.content(mapper.writeValueAsString(run)), MY_ADDRESS).getStatus())
@@ -559,9 +564,9 @@ class MyResultSubmissionsApiTest {
 
 		assertThat(theRun.get("state").asString()).isEqualTo("waiting");
 		assertThat(amendsOf(theRun)).isNull();
-		assertThat(raceIdOf(theRun)).isEqualTo(lengthRace);
-		assertThat(theRun.get("raceName").asString()).isEqualTo(THE_RACE_NOW);
-		assertThat(figuresOf(theRun)).containsExactly("21.0975", "125", "115", "4321");
+		assertThat(raceIdOf(theRun)).isEqualTo(timeRace);
+		assertThat(theRun.get("raceName").asString()).isEqualTo("Dvanaest sati");
+		assertThat(figuresOf(theRun)).containsExactly("61.25", "310", "300", "43200");
 		assertThat(theRun.get("comment").asString()).isEqualTo("Poslato kroz rutu");
 	}
 
