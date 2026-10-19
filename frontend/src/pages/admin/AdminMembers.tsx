@@ -13,6 +13,8 @@ import { DeleteRecord } from './EntityEditor'
 import { MEMBERS, recordsOf } from './entityForms'
 import { DELETE_THE_ACCOUNT, WHEN_DELETING_A_MEMBER } from './memberWrites'
 import { useOverlay } from './overlay'
+import { offeredFor } from './memberMembership'
+import { RowMembership } from './RowMembership'
 import { RowPayment } from './RowPayment'
 import '../member/Member.css'
 
@@ -107,7 +109,7 @@ function passes(one: Member, filter: MemberFilter): boolean {
 export function AdminMembers() {
   const { t } = useI18n()
   const overlay = useOverlay()
-  const { remove } = useSession()
+  const { remove, memberNumber: mine } = useSession()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<MemberFilter>('active')
   /* TWO ANSWERS, AND EACH IS READ FOR ONE THING. The rows are `members`, everybody ever given a
@@ -227,6 +229,37 @@ export function AdminMembers() {
     theInboxHasChanged()
     setRecorded((was) => was + 1)
     setSaid(t('admin.paymentRecorded'))
+  }
+
+  /**
+   * A SEASON WAS CANCELLED OR ITS BASIS CHANGED ON A ROW (PDL P8, 18.10.2026), and every answer that
+   * says something different about him now is dropped.
+   *
+   * <p>`paymentRecorded`'s three, for its reason, and three more, because a cancellation can make him
+   * inactive: `MemberMembershipApi` writes `active` from the rows that remain, and a member whose fee no
+   * longer stands leaves the public list, the results of the season being run, his team's roster and
+   * his pair (`where c.active` on each of them). `results` also carries `inItsSeason`, which a cancelled
+   * season stops being. A change of basis keeps him a member of the season, and the same six are dropped
+   * for it all the same: one road for both is one road to keep right.
+   *
+   * <p>**His inbox only when the row is the moderator's own**, which is when the inbox this visit holds
+   * is the member's („Moderator i superadmin smeju da rade na sopstvenom redu”). The message goes to the
+   * member, so on any other row nothing this visit holds about the inbox has changed.
+   */
+  function seasonChanged(one: Member, said: string): void {
+    clearResourceCache('payments')
+    clearResourceCache('members')
+    clearResourceCache('competitors')
+    clearResourceCache('results')
+    clearResourceCache('teams')
+    clearResourceCache('pairs')
+
+    if (one.memberNumber === mine) {
+      theInboxHasChanged()
+    }
+
+    setRecorded((was) => was + 1)
+    setSaid(said)
   }
 
   return (
@@ -379,14 +412,30 @@ export function AdminMembers() {
                           </td>
                           <td>{last?.season}</td>
                           <td>
-                            {/* „UPIS UPLATE" ONLY FOR A MEMBER WHO HOLDS NO SEASON ON SALE. A row that
-                                already carries a basis for it has nothing to book: a season held on a
-                                payment is the harmless repeat, and one held on an exemption or a
-                                balance is refused, because a payment over it arrives with the change of
-                                basis and not here. */}
+                            {/* „UPIS UPLATE" FOR A MEMBER WHO HOLDS NO SEASON ON SALE. A row that
+                                already carries a basis for it has nothing to book this way: a season
+                                held on a payment is the harmless repeat, and one held on an exemption or
+                                a balance is refused. */}
                             {one.membershipBasis === undefined && (
                               <RowPayment one={one} onRecorded={paymentRecorded} />
                             )}
+                            {/* AND OVER AN EXEMPTION, as a change of basis: „preko njega se može upisati
+                                uplata" (PDL P8, 18.10.2026). Never over a balance: „storno ..., pa nova
+                                radnja". */}
+                            {offeredFor(one.membershipBasis).paymentOverTheExemption && (
+                              <RowPayment
+                                one={one}
+                                overTheExemption
+                                onRecorded={() => seasonChanged(one, t('admin.basisChanged'))}
+                              />
+                            )}
+                            {/* „STORNIRAJ" ON EVERY SEASON ON SALE THAT IS HELD, and „Promeni osnov u
+                                oslobođenje" on one held on a payment; nothing on a row that holds none. */}
+                            <RowMembership
+                              one={one}
+                              onCancelled={() => seasonChanged(one, t('admin.membershipCancelled'))}
+                              onChanged={() => seasonChanged(one, t('admin.basisChanged'))}
+                            />
                             <span className="entity-row-actions">
                               <DeleteRecord
                                 name={`${one.firstName} ${one.lastName}`}

@@ -20,6 +20,11 @@ import { must } from '../../test/at'
 import { WHEN_WRITING_A_MODERATOR } from '../admin/moderatorWrites'
 import { WHEN_ACTIVATING, WHEN_BOOKING_A_PAYMENT } from '../admin/activation'
 import { WHEN_RECORDING_ON_THE_ROW } from '../admin/memberPayment'
+import {
+  WHEN_CANCELLING,
+  WHEN_CHANGING_TO_THE_EXEMPTION,
+  WHEN_PAYING_OVER_THE_EXEMPTION,
+} from '../admin/memberMembership'
 import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
 import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_CHOOSING_THE_LANGUAGE_OF_MAIL } from '../member/mailLanguage'
@@ -427,7 +432,18 @@ describe('the reasons the server can name', () => {
        the members books through the same class (`MemberPaymentApi`, which declares no reason of its
        own and answers `PaymentApi`'s), so its map is registered here, for the direction that has
        teeth: a reason added to it that this file cannot answer fails the second case. */
-    ['PaymentApi.java', [WHEN_BOOKING_A_PAYMENT, WHEN_RECORDING_ON_THE_ROW], 10],
+    /* THE THIRD SCREEN ON THIS FILE SINCE 19.10.2026: a payment written over an exemption on the
+       member's row (`MemberMembershipApi`, PUT) is booked by the same booking and refused in these
+       words, so its map is registered here as well, for the direction that has teeth. */
+    ['PaymentApi.java',
+      [WHEN_BOOKING_A_PAYMENT, WHEN_RECORDING_ON_THE_ROW, WHEN_PAYING_OVER_THE_EXEMPTION], 10],
+    /* ADDED 19.10.2026 WITH THE OPTIONS ON THE MEMBER'S ROW (PDL P8, 18.10.2026): a season cancelled,
+       or its basis changed. Four constants and four reasons, and three acts on one address, each with
+       the map of what it can meet: `DELETE` cannot name a change, so `thisChangeIsNotOffered` is not on
+       the cancellation's; a payment over the exemption meets the booking's reasons as well, and is on
+       `PaymentApi`'s line above for those. */
+    ['MemberMembershipApi.java',
+      [WHEN_CANCELLING, WHEN_CHANGING_TO_THE_EXEMPTION, WHEN_PAYING_OVER_THE_EXEMPTION], 4],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A RACING PAIR.
        Seven constants, and the count splits three ways: three are not refusals at all
        (`NOT_A_REASON` above), two are real refusals of the act that ASKS rather than answers
