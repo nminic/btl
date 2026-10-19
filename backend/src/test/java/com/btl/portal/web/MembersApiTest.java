@@ -105,6 +105,12 @@ class MembersApiTest {
 		long lapsedWithNone = member("000011", "Dara", "Filic", "F", false, false, "11aa22bb33cc44d5");
 		long neverAMember = member(null, "Zoran", "Gajic", "M", false, false, "11aa22bb33cc44d6");
 
+		/* A BOOK NEVER GOES BELOW NOUGHT, because a balance only ever pays what it holds, so a season
+		   held on a balance stands on money that was credited first. Two different amounts, so what
+		   is left on one book cannot be read off the other: 000002 keeps 12.00, 000009 nothing. */
+		credited(both, "42.00");
+		credited(lapsedWithARow, "30.00");
+
 		/* 2028 FIRST, so a list in the order the rows were written is the wrong order. */
 		HeldOn.season(db, both, 2028, "balance");
 		HeldOn.season(db, both, 2027, "payment");
@@ -134,6 +140,14 @@ class MembersApiTest {
 						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, first, last, gender, active, referralCode, hidden)
 				.query(Long.class).single();
+	}
+
+	/** A credit on his book: what an earlier season sent too much of (V42's `overpayment`). */
+	private void credited(long competitor, String amount) {
+		db.sql("insert into balance_entry (competitor_id, amount, currency, reason, season, occurred_at,"
+						+ " recorded_by_name) values (?, ?::numeric, 'EUR', 'overpayment', 2027,"
+						+ " timestamptz '2026-10-19 10:00:00+00', 'Blagajnik Probni')")
+				.params(competitor, amount).update();
 	}
 
 	private void account(String email, String role, Long competitor) {
@@ -295,6 +309,61 @@ class MembersApiTest {
 		assertThat(basisOf(members())).containsExactly(Map.entry("000002", "payment 2027"),
 				Map.entry("000005", "payment 2027"), Map.entry("000007", ""),
 				Map.entry("000009", "balance 2027"), Map.entry("000011", ""));
+	}
+
+	/** Each member's figures for the season on sale as „2028 EUR 38.00 35.00 12.00". */
+	private static Map<String, String> figuresOf(JsonNode answer) {
+		Map<String, String> figures = new LinkedHashMap<>();
+
+		for (JsonNode one : answer) {
+			figures.put(one.path("memberNumber").asString(), one.path("seasonOnSale").asInt() + " "
+					+ one.path("currency").asString() + " "
+					+ one.path("expected").decimalValue().setScale(2) + " "
+					+ one.path("price").decimalValue().setScale(2) + " "
+					+ one.path("balance").decimalValue().setScale(2));
+		}
+
+		return figures;
+	}
+
+	@Test
+	void eachRowCarriesWhatAPaymentForTheSeasonOnSaleWouldBeInHisOwnMoney() throws Exception {
+		/* A BOY BORN IN 2012 WHO LIVES IN SERBIA, which is what separates the three readings of one
+		   price that could stand in for each other. He is a junior in 2027 (15) and is not in 2028
+		   (16), so a price worked out for the season being run instead of the season on sale reads
+		   the junior row from 15 October; he pays in dinars and the others in euro, so a currency
+		   taken from anybody else's country reads the other column; and he has no book at all. */
+		long junior = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+						+ " birth_date, place_id, first_season, first_season_2027, active, referral_code,"
+						+ " bio, profile_hidden, birthday_shown, father_name, address, shirt_size,"
+						+ " health_statement_at) values ('000013', 'Mali', 'Hadzic', 'M', date '2012-06-01',"
+						+ " (select id from place where country_id = (select id from country where code = 'RS')"
+						+ " order by rank limit 1), 2027, false, false, '11aa22bb33cc44d7', '', false, 'none',"
+						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
+				.query(Long.class).single();
+
+		assertThat(junior).isPositive();
+
+		/* 20 October 2027: 2028 on sale at „15. do 31. oktobra", 35 EUR and 4.200 RSD, and the euro
+		   side carries the processing fee of 3 EUR (V4) where the dinar side carries none. */
+		assertThat(figuresOf(members())).containsExactly(
+				Map.entry("000002", "2028 EUR 38.00 35.00 12.00"),
+				Map.entry("000005", "2028 EUR 38.00 35.00 0.00"),
+				Map.entry("000007", "2028 EUR 38.00 35.00 0.00"),
+				Map.entry("000009", "2028 EUR 38.00 35.00 0.00"),
+				Map.entry("000011", "2028 EUR 38.00 35.00 0.00"),
+				Map.entry("000013", "2028 RSD 4200.00 4200.00 0.00"));
+
+		/* 10 October 2027: 2027 on sale at „1. januara do 14. oktobra", and he is a junior of 2027. */
+		clock.moveTo(BEFORE_THE_FIFTEENTH);
+
+		assertThat(figuresOf(members())).containsExactly(
+				Map.entry("000002", "2027 EUR 43.00 40.00 12.00"),
+				Map.entry("000005", "2027 EUR 43.00 40.00 0.00"),
+				Map.entry("000007", "2027 EUR 43.00 40.00 0.00"),
+				Map.entry("000009", "2027 EUR 43.00 40.00 0.00"),
+				Map.entry("000011", "2027 EUR 43.00 40.00 0.00"),
+				Map.entry("000013", "2027 RSD 2400.00 2400.00 0.00"));
 	}
 
 	@Test
