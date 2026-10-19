@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { clearResourceCache } from '../../data/client'
-import type { MembershipDue, Outstanding } from '../../data/types'
+import type { Member, MembershipDue, Outstanding } from '../../data/types'
+import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
@@ -1608,6 +1609,190 @@ describe('activating a membership from the payments screen', () => {
       expect(await rowOf('Petar Marko')).toBeVisible()
 
       server.stop()
+    })
+
+    /**
+     * <p><b>AND THE MODERATION OF THE MEMBERS READS ITS ROWS AGAIN, whichever door the activation
+     * went through</b> (review of PR 564, high). `Payments.tsx` used to drop `payments` and
+     * `competitors` after a write, which was every resource an activation spoilt until the rows of
+     * `admin/AdminMembers.tsx` moved to `members`; the drop was never added for the new name, so a
+     * moderator who had opened „Članovi", activated somebody, and came back was shown the list he
+     * had before: the new member missing under every value of the filter, and a renewal with the
+     * seasons he held before it.
+     *
+     * <p><b>Two doors, because the drop is one line serving both and a case through one door says
+     * nothing about the other:</b> Petar is a new member booked through `POST /api/payments` (an
+     * amount typed), Nikola a renewal granted through `POST /api/memberships` (the ground question).
+     * Neither is the first on any list, and Nikola holds a season already, so „the seasons he holds"
+     * can only be 2031 from the second reading.
+     *
+     * <p><b>Measured on what the screen draws, and the reading count beside it.</b> The served list
+     * of members changes its mind only once a write has gone through, so a screen drawing the first
+     * answer again cannot show the new member or the new season whatever it counts. The public list
+     * is not served here (the shared mock answers it), because what this measures is the row.
+     */
+    describe('the moderation of the members, in the same visit', () => {
+      const first = {
+        gender: 'M' as const,
+        ageBand: '40-54' as const,
+        firstSeason2027: false,
+        active: true,
+        city: 'Beograd',
+      }
+
+      const BEFORE: Member[] = [
+        {
+          ...first,
+          memberNumber: '000031',
+          firstName: 'Jovana',
+          lastName: 'Ilić',
+          seasons: [{ season: 2027, basis: 'payment' }],
+        },
+        {
+          ...first,
+          memberNumber: '000019',
+          firstName: 'Nikola',
+          lastName: 'Zorić',
+          seasons: [{ season: 2027, basis: 'payment' }],
+        },
+      ]
+
+      /** The same list once Petar has a number and Nikola has the season being paid for. */
+      const AFTER: Member[] = [
+        must(BEFORE[0], 'Jovana'),
+        {
+          ...first,
+          memberNumber: '000019',
+          firstName: 'Nikola',
+          lastName: 'Zorić',
+          seasons: [
+            { season: 2027, basis: 'payment' },
+            { season: 2031, basis: 'balance' },
+          ],
+        },
+        {
+          ...first,
+          memberNumber: '000099',
+          firstName: 'Petar',
+          lastName: 'Marko',
+          seasons: [{ season: 2031, basis: 'payment' }],
+        },
+      ]
+
+      function servingTheMembersToo() {
+        const reads = { members: 0, written: 0 }
+
+        clearResourceCache()
+
+        const server = serverThat((path, init) => {
+          const method = init?.method ?? 'GET'
+          const json = (body: unknown) =>
+            new Response(JSON.stringify(body), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            })
+
+          if (path === '/api/members' && method === 'GET') {
+            reads.members += 1
+
+            return json(reads.written > 0 ? AFTER : BEFORE)
+          }
+
+          if (path === '/api/payments' && method === 'GET') {
+            return json(OUTSTANDING)
+          }
+
+          if ((path === '/api/memberships' || path === '/api/payments') && method === 'POST') {
+            reads.written += 1
+
+            return new Response(null, { status: 201 })
+          }
+
+          return null
+        })
+
+        return { server, reads }
+      }
+
+      /** The cell of one column in the row of one member of the table of „Članovi". */
+      function cellOf(drawn: HTMLElement, memberNumber: string, header: string): HTMLElement {
+        const column = within(drawn)
+          .getAllByRole('columnheader')
+          .findIndex((one) => one.textContent === header)
+
+        expect(column, `a column called ${header}`).toBeGreaterThan(-1)
+
+        const row = must(
+          within(drawn).getByText(memberNumber).closest('tr'),
+          `the row of ${memberNumber}`,
+        )
+
+        return must(row.querySelectorAll('td')[column], `the cell ${header} of ${memberNumber}`)
+      }
+
+      it('shows the man booked through the payment door, who was not there before', async () => {
+        const { server, reads } = servingTheMembersToo()
+        const user = setupUser()
+        const { router } = renderAt('/sr/administracija/clanovi', 'superadmin')
+
+        const before = await screen.findByRole('table', { name: 'Članovi' })
+
+        expect(within(before).queryByText('000099')).toBeNull()
+        expect(reads.members).toBe(1)
+
+        await act(() => router.navigate(ADDRESS))
+
+        const row = await rowOf('Petar Marko')
+
+        await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '43')
+        await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+        await waitFor(() => expect(reads.written).toBe(1))
+
+        await act(() => router.navigate('/sr/administracija/clanovi'))
+
+        const again = await screen.findByRole('table', { name: 'Članovi' })
+
+        /* ASKED AT ONCE AND NOT WAITED FOR, which is what makes this fail on its own assertion
+           rather than on the clock of the case: the table is only drawn once the list has arrived,
+           so a screen that read the list again has the new man in the table the instant it
+           exists, and one that drew the cached list has it without him. */
+        expect(within(again).getByText('000099')).toBeVisible()
+        expect(reads.members).toBe(2)
+
+        server.stop()
+      })
+
+      it('shows the season of the man renewed through the membership door', async () => {
+        const { server, reads } = servingTheMembersToo()
+        const user = setupUser()
+        const { router } = renderAt('/sr/administracija/clanovi', 'superadmin')
+
+        const before = await screen.findByRole('table', { name: 'Članovi' })
+
+        expect(cellOf(before, '000019', 'Poslednja sezona').textContent).toBe('2027')
+        expect(reads.members).toBe(1)
+
+        await act(() => router.navigate(ADDRESS))
+
+        const row = await rowOf('Nikola Zorić')
+
+        await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+        await user.click(
+          within(await screen.findByRole('dialog')).getByRole('button', { name: 'Odobri iz balansa' }),
+        )
+        await waitFor(() => expect(reads.written).toBe(1))
+
+        await act(() => router.navigate('/sr/administracija/clanovi'))
+
+        const again = await screen.findByRole('table', { name: 'Članovi' })
+
+        /* AT ONCE, for the reason written in the case above. */
+        expect(cellOf(again, '000019', 'Poslednja sezona').textContent).toBe('2031')
+        expect(cellOf(again, '000019', 'Sezone članstva').querySelectorAll('.tag')).toHaveLength(2)
+        expect(reads.members).toBe(2)
+
+        server.stop()
+      })
     })
   })
 

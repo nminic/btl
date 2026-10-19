@@ -1,4 +1,4 @@
-import type { Competitor } from '../data/types'
+import type { Competitor, Member } from '../data/types'
 
 /**
  * The plate as two test files need it: somebody to draw, and the classes the drawing wears.
@@ -42,6 +42,33 @@ export function person(
     bio: '',
     photo: null,
     crop: null,
+    ...over,
+  }
+}
+
+/**
+ * The same competitor as the moderation of the members is answered him (`MembersApi`): active, and
+ * holding exactly the one season his basis names, or none where he holds no basis. A case that cares
+ * about another state passes it in `over`.
+ */
+export function asMember(competitor: Competitor, over: Partial<Member> = {}): Member {
+  const { membershipBasis, membershipSeason } = competitor
+
+  return {
+    memberNumber: competitor.memberNumber,
+    firstName: competitor.firstName,
+    lastName: competitor.lastName,
+    gender: competitor.gender,
+    city: competitor.city,
+    ageBand: competitor.ageBand,
+    firstSeason2027: competitor.firstSeason2027,
+    active: true,
+    membershipBasis,
+    membershipSeason,
+    seasons:
+      membershipBasis === undefined || membershipSeason === undefined
+        ? []
+        : [{ season: membershipSeason, basis: membershipBasis }],
     ...over,
   }
 }

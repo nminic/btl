@@ -17,6 +17,7 @@ import type {
   EventComment,
   InboxLine,
   League,
+  Member,
   Moderator,
   Outstanding,
   Price,
@@ -561,6 +562,8 @@ export function useComments(): ResourceState<EventComment[]> {
 }
 
 export const useCompetitors = () => useResource<Competitor[]>('competitors')
+/** Everybody ever given a member number, for the moderation of the members (`MembersApi`). */
+export const useMembers = () => useResource<Member[]>('members')
 export const useEvents = () => useLive(useResource<BtlEvent[]>('events'), 'events', 'id')
 /**
  * Who has said they are going, as the server keeps it.

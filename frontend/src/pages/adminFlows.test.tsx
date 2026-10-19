@@ -5,7 +5,7 @@ import { formatShortDate } from '../i18n/format'
 import sr from '../i18n/sr.json'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
-import servedMembers from '../test/mock/competitors.json'
+import servedMembers from '../test/mock/members.json'
 import servedPrices from '../test/mock/pricing.json'
 import { did, refused, serverThat } from '../test/serverAnswers'
 import { translate } from '../i18n/translate'
@@ -229,10 +229,24 @@ describe('members', () => {
     renderAt('/sr/administracija/clanovi', 'superadmin', null, undefined, '2027-11-01')
 
     const table = await screen.findByRole('table', { name: 'Članovi' })
-    const freed = servedMembers.filter((one) => one.membershipBasis === 'feeExempt')
+    /* The rows this screen draws (`members.json`) under the filter it opens on, „Aktivni". */
+    const freed = servedMembers.filter((one) => one.active && one.membershipBasis === 'feeExempt')
 
     expect(freed.length).toBeGreaterThan(0)
-    expect(within(table).getAllByText('Oslobođen članarine za 2027')).toHaveLength(freed.length)
+    /* Read in the column of the basis alone, since 18.10.2026: the column of every season beside it
+       draws the same words for each season held on that basis (`MembersApi`), so a count over the
+       whole table would count each freed member twice. */
+    const basisColumn = within(table)
+      .getAllByRole('columnheader')
+      .findIndex((one) => one.textContent === 'Osnov članstva')
+    expect(basisColumn).toBeGreaterThan(-1)
+    const basisCells = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => row.querySelectorAll('td')[basisColumn]?.textContent)
+    expect(basisCells.filter((one) => one === 'Oslobođen članarine za 2027')).toHaveLength(
+      freed.length,
+    )
     expect(within(table).queryByText('Oslobođen članarine')).not.toBeInTheDocument()
     expect(within(table).queryByText(/za 2028/)).not.toBeInTheDocument()
   })

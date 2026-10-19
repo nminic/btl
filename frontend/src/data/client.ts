@@ -151,6 +151,11 @@ export const RESOURCE_NAMES = [
      `me/applications`, for the reason written over `inbox`: signing out and back in happen in
      place. That is `theSubmissionsNowBelongTo` in `data/useResource.ts`. */
   'me/result-submissions',
+  /* THE MODERATION'S LIST OF MEMBERS (`MembersApi`, 18.10.2026), and not a second `competitors`:
+     everybody ever given a member number, active or not, with every season of his. Its own name
+     because a row on `competitors` means „active" to twenty screens, and the lapsed members this
+     answers must not reach any of them (PDL P8, „javni spisak ostaje samo aktivni”). */
+  'members',
   'moderators',
   'pages',
   'pairs',
