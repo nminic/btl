@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import type { Race, Result } from '../../data/types'
 import { must } from '../../test/at'
 import { moderatorWith, renderAt } from '../../test/render'
@@ -21,6 +21,11 @@ import { setupUser } from '../../test/user'
  * a sentence under the wrong member. The results: an event with many rows (`mrazijada-2020`), and the
  * SECOND row is the one acted on, so a pencil or an x that reached for the first is caught.
  */
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, the precedent of
+   `admin/saveWhileSaving.test.tsx` (CLAUDE.md, section 25): a wait that never comes then fails on its
+   own assertion, and never on the clock of the case, which a mutation series reads as „not measured". */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 const EVENT = 'maraton-maratona-2015'
 const WITH_RESULTS = 'mrazijada-2020'
@@ -140,6 +145,13 @@ describe('the ways in, on the page of an event', () => {
     const rows = within(table).getAllByRole('row').slice(1)
 
     expect(within(must(rows[1], 'the second row')).getAllByRole('link', { name: /^Izmeni rezultat: / })).toHaveLength(1)
+    /* The pencil of the second row names that result and the race it is on, which are two different
+       keys: the screen it opens finds the race by the first and the result by the second. */
+    expect(within(must(rows[1], 'the second row')).getByRole('link', { name: /^Izmeni rezultat: / })).toHaveAttribute(
+      'href',
+      `/sr/kalendar/${WITH_RESULTS}/rezultati?trka=${String(SECOND.raceId)}&rezultat=${String(SECOND.id)}`,
+    )
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
     expect(within(must(rows[1], 'the second row')).getAllByRole('button', { name: /^Obriši: / })).toHaveLength(1)
     expect(within(table).getAllByRole('link', { name: /^Izmeni rezultat: / })).toHaveLength(ITS_RESULTS.length)
   }, SLOW)
@@ -413,6 +425,23 @@ describe('the entry of several members', () => {
     server.stop()
   }, SLOW)
 
+  it('lets go of a chosen member the moment his name is typed over', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'superadmin')
+
+    await screen.findByRole('heading', { level: 1, name: /^Unos rezultata: / })
+    await choose(user, 0, 'Momčilo', /Relja Momčilović \(000002\)/)
+    await user.type(must(screen.getAllByLabelText(/^Član/)[0], 'the box of the member'), 'x')
+    await user.type(box('Sati', 0), '3')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText('Izaberi člana sa spiska.')).toBeVisible()
+    expect(writes(server.asked)).toEqual([])
+    server.stop()
+  }, SLOW)
+
   it('sends nothing while a row names nobody, and says so in that row', async () => {
     const user = setupUser()
     const server = serving()
@@ -444,8 +473,13 @@ describe('the entry of several members', () => {
     await user.click(screen.getByRole('button', { name: /Dodaj člana/ }))
     expect(screen.getAllByRole('group', { name: /\. red$/ })).toHaveLength(3)
 
+    await user.type(box('Sati', 0), '1')
+    await user.type(box('Sati', 1), '2')
+    await user.type(box('Sati', 2), '3')
     await user.click(screen.getByRole('button', { name: 'Ukloni 2. red' }))
     expect(screen.getAllByRole('group', { name: /\. red$/ })).toHaveLength(2)
+    /* The second went, and the first and the third stand, in their order. */
+    expect(screen.getAllByLabelText('Sati').map((one) => one.getAttribute('value'))).toEqual(['1', '3'])
     server.stop()
   }, SLOW)
 })
@@ -610,11 +644,11 @@ describe('the pencil and the x', () => {
     await user.click(ask)
     await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
 
-    expect(
-      await within(row).findByText(
-        'Član već ima prijavu koja čeka za ovu trku. Prvo je odobri ili odbij u redu za proveru.',
-      ),
-    ).toBeVisible()
+    const said = 'Član već ima prijavu koja čeka za ovu trku. Prvo je odobri ili odbij u redu za proveru.'
+
+    expect(await within(row).findByText(said)).toBeVisible()
+    /* Beside that row and no other. */
+    expect(within(table).getAllByText(said)).toHaveLength(1)
     expect(within(table).getAllByRole('row').slice(1)).toHaveLength(ITS_RESULTS.length)
     server.stop()
   }, SLOW)
