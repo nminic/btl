@@ -511,7 +511,19 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
 			   read off this very assertion when it ran before the entry existed. */
-			new Applied("65", "V65__a_member_has_one_result_on_one_race.sql", 847671403));
+			new Applied("65", "V65__a_member_has_one_result_on_one_race.sql", 847671403),
+
+			/* V66. A run on a race the calendar does not hold names its event, chosen by its key or
+			   typed (owner, PDL P9, 19.10.2026: „Prijava pamti događaj koji je član izabrao"): two empty
+			   columns and four rules any row with both empty satisfies, so no waiting run is touched;
+			   `ResultSubmissionEventCarriedOverTest` runs the file over the shapes the table holds.
+
+			   66 because it is the next free number, measured on 19.10.2026 after a fetch: origin/main
+			   stands at V65, and the two open pull requests (575, 576) carry no migration.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
+			   read off this very assertion when it ran before the entry existed. */
+			new Applied("66", "V66__a_described_run_names_its_event.sql", 430932300));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

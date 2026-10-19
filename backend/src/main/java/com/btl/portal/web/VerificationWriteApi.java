@@ -161,10 +161,11 @@ import java.util.Set;
  * the owner's choice of 21.09.2026, in the record's wording, „u transakciji su rezultat, rang
  * liste, trka i događaj ako nastaju". Duplicates are not prevented - ADL, owner, 11.09.2026, the
  * cost he accepted, in the record's wording: „kalendar dobija trke koje niko nije planirao, i
- * duplikati se ne sprečavaju" - <b>but an event whose address is taken is not made a second
- * time: the approval is refused</b>, and the moderator adds the race to the event that is there
- * and chooses it ({@link #THE_EVENT_IS_IN_THE_CALENDAR_ALREADY} says whose decision that is and
- * what it narrows).
+ * duplikati se ne sprečavaju" - <b>but an event is not made a second time: a name and a year
+ * that already have an event put the new race on that event</b>, and so does an event the
+ * moderator chooses (PDL P9, owner, 19.10.2026, „Isti naziv ne pravi drugi događaj" and „Nova trka
+ * na postojećem događaju"; {@link NewRace} carries his words). Until that decision the approval
+ * was refused there instead, by his answer of 10.10.2026, which the new one overturns.
  *
  * <p><b>THE CONTRADICTION BESIDE {@code comments} IS SETTLED, NOT STILL OPEN.</b> PDL („ne
  * odbija nego brise, a napomena je neobavezna") and V9's {@code verification_refusal_says_why}
@@ -445,32 +446,52 @@ class VerificationWriteApi {
 			"Trka je zadata dvaput: ili nova ili postojeća.";
 
 	/**
-	 * AN EVENT WHOSE ADDRESS IS TAKEN IS NOT MADE AT APPROVAL: THE APPROVAL IS REFUSED.
-	 *
-	 * <p>PDL, the owner's answer of 10.10.2026 to the question about an event that exists while
-	 * the race in it does not, choosing between the outcomes offered and in the record's wording:
-	 * „ako događaj postoji a trke nema, odobrenje se odbija, a moderator trku dodaje kroz
-	 * Administraciju". The outcome he chose was worded „odbija se zbog adrese događaja", so the
-	 * event exists when its ADDRESS does ({@link EventAddress#of}, the name and the year): the
-	 * same name in another year is another event, and a name spelt with letters the address does
-	 * not keep is the same one. It narrows his decision of 19.09.2026 for this road alone („Adresa
-	 * događaja je naziv i godina, a isti naziv dvaput u istoj godini dobija redni broj"): numbering
-	 * stays the rule for an event the administration makes ({@code EventWriteApi}, a separate
-	 * increment, which until then refuses the same name twice as a known state). So the moderator
-	 * adds the race to the event that is there and chooses it here ({@link Answered#raceId}).
-	 *
-	 * <p><b>Asked twice, and both answer with this sentence.</b> Before the row is claimed, like
-	 * every refusal here ({@link #howTheRunIsCounted}); and by the unique index itself when the
-	 * event is written, for an address another approval took in between
-	 * ({@link #makeTheEventAndTheRace}), where the whole answer is rolled back and nothing of it is
-	 * left. 409 for the reason the head of this class gives: he can see the row, and what he asked
-	 * for cannot happen as he asked it.
-	 *
-	 * <p>The words are mine, and the owner changes them on QA: the road he chose for the sentences
-	 * of T5 and P2 the same day.
+	 * THE ANSWER CHOOSES AN EVENT AND TYPES ONE AT ONCE ({@link NewRace}), which no event could be:
+	 * {@link #THE_RACE_IS_NAMED_TWICE} one level up. 400, a form that said two things.
 	 */
-	private static final String THE_EVENT_IS_IN_THE_CALENDAR_ALREADY = "Događaj sa tim nazivom u"
-			+ " toj godini već postoji. Trku u njemu dodaj kroz Administraciju, pa je izaberi ovde.";
+	private static final String THE_EVENT_IS_NAMED_TWICE =
+			"Događaj je zadat dvaput: ili postojeći ili nov.";
+
+	/**
+	 * THE EVENT THE ANSWER CHOSE IS NOT IN THE CALENDAR ANY MORE, by the key no event answers to:
+	 * a form fault about what the form carries, the shape {@link #THE_RACE_IS_NOT_KNOWN} has for a
+	 * race. 400 before the row is claimed. Met after the claim, when the event went in between, the
+	 * same sentence comes back as 409 ({@link TheCalendarMovedMeanwhile}).
+	 */
+	private static final String THE_EVENT_IS_NOT_KNOWN =
+			"Izabrani događaj više ne postoji u kalendaru. Osveži stranu i izaberi ga ponovo.";
+
+	/**
+	 * THE EVENT THE RACE WOULD GO ON IS NOT A RACE, and an event that is not a race holds no races
+	 * (owner, 23.08.2026, {@code RaceWriteApi.THE_EVENT_HOLDS_NO_RACES}, the administration's own
+	 * refusal of the same thing). Reached by an event the moderator chose, or by the name and year
+	 * he typed when they already belong to such an event (PDL P9, 19.10.2026: „Isti naziv ne pravi
+	 * drugi događaj"). 409 for the reason the head of this class gives.
+	 */
+	private static final String THE_EVENT_HOLDS_NO_RACES = "Taj događaj nije trka, pa se na njemu"
+			+ " ne može upisati trka. Izaberi drugi događaj ili upiši nov naziv.";
+
+	/**
+	 * THE RACE WOULD MOVE ITS EVENT TO AN ADDRESS ANOTHER EVENT HOLDS.
+	 *
+	 * <p>A race on an earlier day moves its event to that day (PDL P9, owner, 19.10.2026: „ako
+	 * pomerim datum trke unutar dogadjaja na ranije, menja se i njemu datum"), and an event moved
+	 * into another year moves to that year's address ({@link TheDayOfAnEvent#addressFor}). Where
+	 * another event answers there already, {@code RaceWriteApi} refuses the same move with
+	 * {@code THE_ADDRESS_IS_TAKEN}, and so does this. The sentence names the way out, which is the
+	 * other event: it is the one that name has in that year. 409.
+	 */
+	private static final String THE_EVENT_WOULD_MOVE_ONTO_ANOTHER = "Trka bi pomerila događaj u"
+			+ " godinu u kojoj događaj sa istim nazivom već postoji. Izaberi taj događaj.";
+
+	/*
+	 * Here stood until 19.10.2026 the refusal of an approval whose event's address was taken:
+	 * „Događaj sa tim nazivom u toj godini već postoji. Trku u njemu dodaj kroz Administraciju, pa je
+	 * izaberi ovde." It carried the owner's answer of 10.10.2026, „ako događaj postoji a trke nema,
+	 * odobrenje se odbija, a moderator trku dodaje kroz Administraciju", and that answer is overturned
+	 * by his choice of 19.10.2026 (PDL P9, „Nova trka na postojećem događaju", in the record's words:
+	 * „Obara deo odluke od 10.10.2026 (odobrenje se tada odbijalo)").
+	 */
 
 	/**
 	 * A race of the calendar named by a key no race answers to: a form fault about the race the
@@ -734,16 +755,31 @@ class VerificationWriteApi {
 	 * here</b>: they are what the member gave (V10 collects them „at the moment somebody knows
 	 * them"), and that decision does not name them among what verification changes.
 	 *
-	 * <p><b>All three are asked for, and none of them falls back on what the member typed.</b> A
-	 * blank one is a form not filled in. A default here would be the second meaning of an omitted
+	 * <p><b>The race's name and kind and one way to the event are asked for, and none of them falls
+	 * back on what the member typed.</b> A blank one is a form not filled in. A default here would be the second meaning of an omitted
 	 * field that ADL A8 forbids, „vrati na podrazumevano". What the moderator is offered to start
 	 * from is the screen's to show, because the screen is the one place that knows what he saw.
 	 *
+	 * <p><b>THE EVENT, CHOSEN OR TYPED, AND NEVER MADE TWICE.</b> PDL P9, owner, 19.10.2026: „Nova
+	 * trka na postojećem događaju: moderator pri odobrenju odlučuje vrstu i dužinu, i trka nastaje
+	 * na postojećem događaju zajedno sa rezultatom" (the outcome he chose, with my recommendation),
+	 * and of a name typed: „Isti naziv ne pravi drugi događaj: Pa ne moze da se desi jer ce
+	 * autocomplete odmah povezati sa postojecim dogadjajem [...] Ukoliko unesem naziv koji ne
+	 * postoji, pravi se novi." So the race goes on the event {@code eventId} names, or on the event
+	 * the typed name already has in the year of the run (its address, {@link EventAddress#of}), and
+	 * only where it has none is an event made. The member's own choice is not read here: what he
+	 * chose is what the moderator's screen starts from, and this is what the moderator decided
+	 * („moderator ga pri odobrenju sme promeniti").
+	 *
+	 * @param eventId  the event of the calendar the race goes on, by its key, and never beside
+	 *                 {@code eventName} ({@link #THE_EVENT_IS_NAMED_TWICE})
+	 * @param eventName the event's name where none was chosen: the event it already names in the
+	 *                 year of the run, or a new one
 	 * @param raceKind one of {@link WhatARaceCarries#KINDS}: the member's choice was a hint, and
 	 *                 this is the decision (PDL P9, 30.08.2026, „član nagoveštava vrstu,
 	 *                 administrator odlučuje")
 	 */
-	record NewRace(String eventName, String raceName, String raceKind) {
+	record NewRace(Long eventId, String eventName, String raceName, String raceKind) {
 	}
 
 	/**
@@ -1025,12 +1061,12 @@ class VerificationWriteApi {
 				try {
 					carried = inOneTransaction.execute(committing -> write(item, answer, asking, typed));
 				}
-				catch (AnEventTookTheAddressMeanwhile taken) {
-					/* THE ONE REFUSAL MET AFTER THE ROW WAS CLAIMED, and the exception is what took the
-					   claim back: thrown out of the transaction, it rolled back everything the answer
-					   had written, so the row waits as it did and nothing of the answer is left. The
+				catch (TheCalendarMovedMeanwhile moved) {
+					/* A REFUSAL MET AFTER THE ROW WAS CLAIMED, and the exception is what took the claim
+					   back: thrown out of the transaction, it rolled back everything the answer had
+					   written, so the row waits as it did and nothing of the answer is left. The
 					   sentence is the one the same refusal gets before the claim. */
-					yield no(HttpStatus.CONFLICT, THE_EVENT_IS_IN_THE_CALENDAR_ALREADY);
+					yield no(HttpStatus.CONFLICT, moved.getMessage());
 				}
 				catch (HeHasAResultOnThisRace already) {
 					/* AND THE ONE MET AT THE RESULT ITSELF, the same way and for the same reason: the
@@ -1653,7 +1689,7 @@ class VerificationWriteApi {
 	 * RACE IS MADE OF FOR ONE THAT DOES NOT YET.</b> A race of the calendar, chosen or the run's
 	 * own, is asked through {@link WhatARaceCarries#figuresOf} as it stands now, and the runner's
 	 * figures are the moderator's where he set any. A race this approval makes is made OF the run
-	 * ({@link #makeTheEventAndTheRace} puts on it exactly the figures its kind fixes), so the run
+	 * ({@link #theRaceThisApprovalMakes} puts on it exactly the figures its kind fixes), so the run
 	 * is counted at the four figures as sent or as amended - which is what {@code figuresOf} would
 	 * answer about that race once it existed. Judged either way by the same three checks the
 	 * member's own report is judged by, because these numbers go into the same columns; a figure
@@ -1692,23 +1728,38 @@ class VerificationWriteApi {
 			   `WhatARaceCarries.KINDS` is a `Set.of(...)` and an immutable set THROWS on
 			   `contains(null)` rather than answering false - `ResultWriteApi.described` measured it
 			   as a 500 where the form was owed a sentence. */
-			if (isNothing(asked.eventName()) || isNothing(asked.raceName()) || asked.raceKind() == null
-					|| !WhatARaceCarries.KINDS.contains(asked.raceKind())) {
+			if (asked.eventId() != null && !isNothing(asked.eventName())) {
+				return Counting.notCounted(no(HttpStatus.BAD_REQUEST, THE_EVENT_IS_NAMED_TWICE));
+			}
+
+			if ((asked.eventId() == null && isNothing(asked.eventName())) || isNothing(asked.raceName())
+					|| asked.raceKind() == null || !WhatARaceCarries.KINDS.contains(asked.raceKind())) {
 				return Counting.notCounted(no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE));
 			}
 
-			/* AN EVENT THAT IS THERE ALREADY IS NOT MADE AGAIN, asked of its ADDRESS
-			   (`THE_EVENT_IS_IN_THE_CALENDAR_ALREADY` says whose decision that is). Asked here,
-			   before the row is claimed, so the refusal needs nothing undone; an address taken
-			   after this question is the unique index's to refuse (`makeTheEventAndTheRace`). */
-			if (Boolean.TRUE.equals(db.sql("select exists(select 1 from btl_event where slug = ?)")
-					.param(EventAddress.of(asked.eventName().strip(), sent.raceDate()))
-					.query(Boolean.class).single())) {
-				return Counting.notCounted(no(HttpStatus.CONFLICT, THE_EVENT_IS_IN_THE_CALENDAR_ALREADY));
+			/* THE EVENT THE RACE GOES ON, IF THERE IS ONE ALREADY: the one chosen, or the one the
+			   name has in the year of the run (`NewRace` carries the owner's words). Asked here,
+			   before the row is claimed, so a refusal needs nothing undone; the same questions are
+			   asked again after the claim (`aRaceOnTheEvent`), where only a change made in between
+			   can answer differently. */
+			Optional<TheDayOfAnEvent.Standing> there = asked.eventId() != null
+					? TheDayOfAnEvent.theEvent(db, asked.eventId())
+					: TheDayOfAnEvent.theEventAt(db, EventAddress.of(asked.eventName().strip(),
+							sent.raceDate()));
+
+			if (asked.eventId() != null && there.isEmpty()) {
+				return Counting.notCounted(no(HttpStatus.BAD_REQUEST, THE_EVENT_IS_NOT_KNOWN));
+			}
+
+			String noRace = there.map(event -> whyNoRaceGoesOn(event, sent.raceDate())).orElse(null);
+
+			if (noRace != null) {
+				return Counting.notCounted(no(HttpStatus.CONFLICT, noRace));
 			}
 
 			on = new CountedOn(null, asked.raceName().strip(), sent.raceDate(), null,
-					new Made(asked.eventName().strip(), asked.raceKind()));
+					new Made(there.map(TheDayOfAnEvent.Standing::id).orElse(null),
+							there.isPresent() ? null : asked.eventName().strip(), asked.raceKind()));
 		} else {
 			return Counting.notCounted(no(HttpStatus.CONFLICT, THE_RACE_IS_NOT_IN_THE_CALENDAR));
 		}
@@ -1872,7 +1923,7 @@ class VerificationWriteApi {
 		   30.08.2026, the cost the owner accepted in the record's wording: „prevezivanje mora da
 		   bude atomsko sa upisom trke, inače nastane trka bez rezultata ili rezultat koji pokazuje
 		   na trku koje nema"). */
-		long race = on.made() == null ? on.raceId() : makeTheEventAndTheRace(sent, on, counted);
+		long race = on.made() == null ? on.raceId() : theRaceThisApprovalMakes(sent, on, counted);
 
 		BigDecimal points = BtlScoreCalculator.calculate(counted.distanceKm().doubleValue(),
 				counted.ascentM(), counted.descentM(), counted.seconds());
@@ -1929,9 +1980,12 @@ class VerificationWriteApi {
 		   method). After the claim and never before it, so a moderator who lost the race to decide
 		   this row writes nothing here either. On a run from the calendar the race and its day are
 		   the ones the row already names and the four described columns are already empty, so the
-		   one statement serves every road rather than a second one written for one of them. */
+		   one statement serves every road rather than a second one written for one of them. The
+		   event the member named goes with the description (V66: only a described run names one),
+		   since the race the run is now counted on has its own. */
 		db.sql("update result_submission set race_id = ?, race_date = ?, race_name = null,"
 						+ " race_kind = null, place_id = null, city = null, country_id = null,"
+						+ " event_id = null, event_name = null,"
 						+ " distance_km = ?, ascent_m = ?, descent_m = ?, seconds = ? where id = ?")
 				.params(race, on.day(), counted.distanceKm(), counted.ascentM(), counted.descentM(),
 						counted.seconds(), sent.id())
@@ -1945,8 +1999,8 @@ class VerificationWriteApi {
 	}
 
 	/**
-	 * THE EVENT AND THE RACE A RUN ON A RACE THE CALENDAR DOES NOT HOLD IS COUNTED ON, WRITTEN INTO
-	 * THE CALENDAR BY THE APPROVAL ITSELF.
+	 * THE RACE A RUN ON A RACE THE CALENDAR DOES NOT HOLD IS COUNTED ON, WRITTEN INTO THE CALENDAR BY
+	 * THE APPROVAL ITSELF: ON THE EVENT THAT IS THERE, OR ON ONE THIS APPROVAL MAKES.
 	 *
 	 * <p>PDL P9, in the record's wording: „Član sme da unese trku koje nema u kalendaru. Tada
 	 * administrator kreira događaj i trku uz rezultat, i sve troje nastaje istovremeno." And ADL,
@@ -1955,24 +2009,25 @@ class VerificationWriteApi {
 	 * it as having grown out of a run; whoever may moderate the results tab writes it, the way an
 	 * approved team proposal makes a team ({@link #makeTheTeam}) for whoever may moderate that one.
 	 *
-	 * <p><b>THE EVENT.</b> The moderator's name for it, the day the member ran, the town the
-	 * member gave, kind {@code race} (a member reports a run, and only an event that is a race
-	 * holds races, {@code RaceWriteApi}), not featured, and an empty description and link - the
-	 * event's link is the organiser's page (V7), and the address the member sent is proof of his
-	 * run, not that. Its day is its one race's, which is V29's rule as well, asked on commit.
+	 * <p><b>AN EVENT THAT IS THERE TAKES THE RACE, AND ONE IS MADE ONLY WHERE THERE IS NONE.</b> The
+	 * owner, 19.10.2026 ({@link NewRace} carries his words): a race goes on the event the moderator
+	 * chose, or on the event the name he typed already has in the year of the run, and a new event is
+	 * made only for a name that has none. {@link #howTheRunIsCounted} found which before the row was
+	 * claimed ({@link Made#eventId}); what this meets is only what changed in between. An address
+	 * another writer took after that question is met by the unique index ({@code on conflict do
+	 * nothing}), and the event that took it is the one the name now has, so the race goes on it -
+	 * which is the same answer the question would have given a moment later. Until 19.10.2026 such an
+	 * address refused the approval instead (the owner's answer of 10.10.2026, which that day
+	 * overturned).
 	 *
-	 * <p><b>ITS ADDRESS IS THE NAME AND THE YEAR ({@link EventAddress#of}), AND AN ADDRESS TAKEN
-	 * REFUSES THE APPROVAL RATHER THAN BEING NUMBERED.</b> The owner's answer of 10.10.2026, which
-	 * {@link #THE_EVENT_IS_IN_THE_CALENDAR_ALREADY} quotes along with the decision of 19.09.2026 it
-	 * narrows for this road. {@link #howTheRunIsCounted} asks before the row is claimed; what this
-	 * insert meets is an address another approval took after that question, which only the unique
-	 * index can see. So the insert writes nothing on a conflict and says so, and the whole answer -
-	 * the claim of the row among it - is rolled back ({@link AnEventTookTheAddressMeanwhile}).
-	 * Until R3b of the results flows this road numbered a taken address instead
-	 * ({@code naziv-godina-2}), by the decision of 19.09.2026 before the answer narrowed it.
+	 * <p><b>THE EVENT IT MAKES.</b> The moderator's name for it, the day the member ran, the town the
+	 * member gave, kind {@code race} (a member reports a run, and only an event that is a race holds
+	 * races, {@code RaceWriteApi}), not featured, and an empty description and link - the event's
+	 * link is the organiser's page (V7), and the address the member sent is proof of his run, not
+	 * that. Its day is its one race's, which is V29's rule as well, asked on commit.
 	 *
 	 * <p><b>THE RACE.</b> The moderator's name for it, given by hand ({@code renamed}, V7: „says the
-	 * name was given by hand"), the same day, and the kind the moderator decided. <b>What it
+	 * name was given by hand"), the day the member ran, and the kind the moderator decided. <b>What it
 	 * carries is exactly what its kind fixes, out of the four figures the run is counted at</b>,
 	 * and nought for the rest, which is V7's pair of biconditionals said from the writing side: a
 	 * race of a length fixes the distance, the climb and the fall, a race to a limit fixes the time
@@ -1988,16 +2043,84 @@ class VerificationWriteApi {
 	 *                made of
 	 * @return the race's key
 	 */
-	private long makeTheEventAndTheRace(Submission sent, CountedOn on, Figures counted) {
-		long event = db.sql("insert into btl_event (slug, name, date, place_id, city, country_id, kind,"
-						+ " featured, description, link) values (?, ?, ?, ?, ?, ?, ?, false, '', '')"
-						+ " on conflict (slug) do nothing returning id")
-				.params(EventAddress.of(on.made().eventName(), on.day()), on.made().eventName(),
-						on.day(), sent.placeId(), sent.city(), sent.countryId(), WhatAnEventCarries.A_RACE)
-				.query(Long.class)
-				.optional()
-				.orElseThrow(AnEventTookTheAddressMeanwhile::new);
+	private long theRaceThisApprovalMakes(Submission sent, CountedOn on, Figures counted) {
+		Long there = on.made().eventId();
 
+		if (there == null) {
+			String address = EventAddress.of(on.made().eventName(), on.day());
+			Optional<Long> made = db.sql("insert into btl_event (slug, name, date, place_id, city,"
+							+ " country_id, kind, featured, description, link)"
+							+ " values (?, ?, ?, ?, ?, ?, ?, false, '', '')"
+							+ " on conflict (slug) do nothing returning id")
+					.params(address, on.made().eventName(), on.day(), sent.placeId(), sent.city(),
+							sent.countryId(), WhatAnEventCarries.A_RACE)
+					.query(Long.class)
+					.optional();
+
+			if (made.isPresent()) {
+				return theRace(made.get(), on, counted);
+			}
+
+			there = db.sql("select id from btl_event where slug = ?")
+					.param(address).query(Long.class).single();
+		}
+
+		return aRaceOnTheEvent(there, on, counted);
+	}
+
+	/**
+	 * A RACE ON AN EVENT THAT IS THERE ALREADY, which is {@code RaceWriteApi.add} said from the
+	 * approval's side and asked of the same class ({@link TheDayOfAnEvent}): the event must be a
+	 * race, it begins on the earliest day of its races once this one is among them, and its address
+	 * moves with the year of that day unless another event answers there.
+	 *
+	 * <p>PDL P9, owner, 19.10.2026: „ako pomerim datum trke unutar dogadjaja na ranije, menja se i
+	 * njemu datum. Ne moze poceti trka pre dogadjaja na kojem je". So a run on a day before the
+	 * event's moves the event back to it, and the event never begins after its first race.
+	 *
+	 * <p>Asked again here, after the claim and with the event held until this commits
+	 * ({@link TheDayOfAnEvent#theEventHeldForThisWrite} says why), because the event may have
+	 * changed since {@link #howTheRunIsCounted} asked: what answers differently now is thrown out
+	 * of the transaction ({@link TheCalendarMovedMeanwhile}) and takes the claim back with it.
+	 */
+	private long aRaceOnTheEvent(long id, CountedOn on, Figures counted) {
+		TheDayOfAnEvent.Standing event = TheDayOfAnEvent.theEventHeldForThisWrite(db, id)
+				.orElseThrow(() -> new TheCalendarMovedMeanwhile(THE_EVENT_IS_NOT_KNOWN));
+		String noRace = whyNoRaceGoesOn(event, on.day());
+
+		if (noRace != null) {
+			throw new TheCalendarMovedMeanwhile(noRace);
+		}
+
+		LocalDate beginning = TheDayOfAnEvent.theDayItWillBeginOn(db, event, null, on.day());
+		long race = theRace(event.id(), on, counted);
+
+		TheDayOfAnEvent.theEventNowBeginsOn(db, event, beginning,
+				TheDayOfAnEvent.addressFor(event, beginning));
+
+		return race;
+	}
+
+	/**
+	 * WHY NO RACE CAN GO ON THIS EVENT ON THAT DAY, or nothing where one can: the two refusals
+	 * {@code RaceWriteApi.add} answers the administration with for the same write, in this route's
+	 * own sentences ({@link #THE_EVENT_HOLDS_NO_RACES}, {@link #THE_EVENT_WOULD_MOVE_ONTO_ANOTHER}).
+	 * One home for the question, asked before the claim and again after it.
+	 */
+	private String whyNoRaceGoesOn(TheDayOfAnEvent.Standing event, LocalDate day) {
+		if (!WhatAnEventCarries.A_RACE.equals(event.kind())) {
+			return THE_EVENT_HOLDS_NO_RACES;
+		}
+
+		LocalDate beginning = TheDayOfAnEvent.theDayItWillBeginOn(db, event, null, day);
+
+		return EventWriteApi.addressIsTakenBySomebodyElse(db,
+				TheDayOfAnEvent.addressFor(event, beginning), event.id())
+				? THE_EVENT_WOULD_MOVE_ONTO_ANOTHER : null;
+	}
+
+	/** The race itself, on the event that takes it (see {@link #theRaceThisApprovalMakes}). */
+	private long theRace(long event, CountedOn on, Figures counted) {
 		boolean course = WhatARaceCarries.fixesTheCourse(on.made().kind());
 		boolean time = WhatARaceCarries.fixesTheTime(on.made().kind());
 
@@ -2340,7 +2463,7 @@ class VerificationWriteApi {
 	 * @param day      the day it is run on, which is the result's day and, for a race this
 	 *                 approval makes, its event's day as well
 	 * @param race     what it fixes as it stands now, and empty for the race this approval makes,
-	 *                 which is made of the run (see {@link #makeTheEventAndTheRace})
+	 *                 which is made of the run (see {@link #theRaceThisApprovalMakes})
 	 * @param made     what this approval writes into the calendar, and empty where the race is
 	 *                 there already
 	 */
@@ -2348,27 +2471,34 @@ class VerificationWriteApi {
 			WhatARaceCarries.ARace race, Made made) {
 	}
 
-	/** What an approval writes into the calendar besides the race's name: its event's name, and
-	 *  the kind of race the moderator decided. */
-	private record Made(String eventName, String kind) {
+	/**
+	 * What an approval writes into the calendar besides the race's name.
+	 *
+	 * @param eventId   the event that is there already and takes the race, or empty where one is made
+	 * @param eventName the name of the event this approval makes, and empty where {@code eventId} is
+	 *                  not
+	 * @param kind      the kind of race the moderator decided
+	 */
+	private record Made(Long eventId, String eventName, String kind) {
 	}
 
 	/**
-	 * AN ADDRESS ANOTHER APPROVAL TOOK AFTER THIS ONE ASKED ABOUT IT, met by the unique index when
-	 * the event is written ({@link #makeTheEventAndTheRace}).
+	 * THE CALENDAR CHANGED BETWEEN THE QUESTION AND THE WRITE, so the race cannot go on the event as
+	 * it was asked: the event went, or it turned out not to be a race, or its day would now move it
+	 * onto another event's address ({@link #aRaceOnTheEvent}).
 	 *
 	 * <p><b>An exception and not an answer carried back</b>, because by then the row is claimed:
 	 * an answer carried back would leave the claim committed and the run decided with nothing
 	 * counted. Thrown out of the transaction it rolls the claim back with everything else, and
-	 * {@link #decide} answers it with the sentence the same refusal gets before the claim. No
-	 * stack: it is a refusal, not a fault.
+	 * {@link #decide} answers it with the sentence the same refusal gets before the claim, as 409:
+	 * what changed is the calendar and not the form. No stack: it is a refusal, not a fault.
 	 */
-	private static final class AnEventTookTheAddressMeanwhile extends RuntimeException {
+	private static final class TheCalendarMovedMeanwhile extends RuntimeException {
 
 		private static final long serialVersionUID = 1L;
 
-		AnEventTookTheAddressMeanwhile() {
-			super(THE_EVENT_IS_IN_THE_CALENDAR_ALREADY, null, false, false);
+		TheCalendarMovedMeanwhile(String why) {
+			super(why, null, false, false);
 		}
 	}
 
@@ -2376,7 +2506,7 @@ class VerificationWriteApi {
 	 * A RESULT OF HIS ON THE RACE THIS RUN WOULD BE COUNTED ON, met by V65's constraint when the
 	 * result is written ({@link #countTheResult}).
 	 *
-	 * <p>An exception and not an answer carried back, for {@link AnEventTookTheAddressMeanwhile}'s
+	 * <p>An exception and not an answer carried back, for {@link TheCalendarMovedMeanwhile}'s
 	 * reason: the row is claimed by then, and only a throw rolls the claim back with everything else
 	 * the answer wrote. {@link #decide} answers it with {@link #HE_HAS_A_RESULT_ON_THIS_RACE}. No stack:
 	 * it is a refusal, not a fault.

@@ -13,6 +13,7 @@ import {
   type RowBooking,
   type RowPress,
 } from './memberPayment'
+import { membershipOnTheRow, overTheExemption, WHEN_PAYING_OVER_THE_EXEMPTION } from './memberMembership'
 import './Activation.css'
 
 /**
@@ -32,10 +33,26 @@ import './Activation.css'
  * Drawn only for a member who holds no season on sale: the screen beside it hides the option when the
  * row already carries a basis for that season, and the server answers a second press of a payment
  * already booked 200 and writes nothing.
+ *
+ * **AND OVER AN EXEMPTION, SINCE 19.10.2026, with `overTheExemption`.** The owner, 18.10.2026 (PDL P8):
+ * „Oslobođenje se može povući (storno) i preko njega se može upisati uplata.” It is the same field, the
+ * same money and the same question about a shortfall, because the route books it through the same
+ * booking (`MemberMembershipApi`, which calls `BookingAPayment`), so it is this row with one difference
+ * said once: the request is a change of basis, `PUT /api/members/{broj}/membership` naming the
+ * exemption it replaces, and its refusals are that route's as well as the booking's.
  */
 type Question = Extract<RowPress, { press: 'asksAboutTheShortfall' }>
 
-export function RowPayment({ one, onRecorded }: { one: Member; onRecorded: () => void }) {
+export function RowPayment({
+  one,
+  onRecorded,
+  overTheExemption: replacingTheExemption = false,
+}: {
+  one: Member
+  onRecorded: () => void
+  /** The season on sale stands on an exemption, and the payment replaces it. */
+  overTheExemption?: boolean
+}) {
   const { locale, t } = useI18n()
   const [typed, setTyped] = useState('')
   const [asking, setAsking] = useState<Question | null>(null)
@@ -70,7 +87,14 @@ export function RowPayment({ one, onRecorded }: { one: Member; onRecorded: () =>
     setWorking(true)
 
     try {
-      const answer = await askTheServer(paymentOnTheRow(one.memberNumber), body)
+      /* ONE AWAIT, ON A REQUEST CHOSEN BEFORE IT, and not an await in each arm of the choice: V8 counts
+         the code after an await inside a conditional as blocks of their own, and with the two arms
+         run by two test files the merged count lost the refusal below although both files reach it
+         (measured on the gate of PR 579, 19.10.2026). The behaviour is the same either way. */
+      const asked = replacingTheExemption
+        ? askTheServer(membershipOnTheRow(one.memberNumber), overTheExemption(body), 'PUT')
+        : askTheServer(paymentOnTheRow(one.memberNumber), body)
+      const answer = await asked
 
       setAsking(null)
 
@@ -141,7 +165,10 @@ export function RowPayment({ one, onRecorded }: { one: Member; onRecorded: () =>
 
       <div className="activate__said" role="status">
         {refused === null ? null : (
-          <ServerSaid answer={refused} refusals={WHEN_RECORDING_ON_THE_ROW} />
+          <ServerSaid
+            answer={refused}
+            refusals={replacingTheExemption ? WHEN_PAYING_OVER_THE_EXEMPTION : WHEN_RECORDING_ON_THE_ROW}
+          />
         )}
       </div>
 

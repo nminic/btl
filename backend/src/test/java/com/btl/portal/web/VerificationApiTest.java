@@ -1736,6 +1736,78 @@ class VerificationApiTest {
 		}
 	}
 
+	/**
+	 * A RUN ANSWERS WITH THE EVENT IT IS ON: THE RACE'S FOR A RUN FROM THE CALENDAR, THE ONE THE MEMBER
+	 * CHOSE OR TYPED FOR A DESCRIBED RUN, AND NONE WHERE NONE IS NAMED OR THE TAB CARRIES NO RUN.
+	 *
+	 * <p>PDL P9, owner, 19.10.2026: „Prijava pamti događaj koji je član izabrao, a moderator ga pri
+	 * odobrenju sme promeniti". <b>The chosen event is renamed after the run chose it</b>, so a name
+	 * copied at the moment of choosing is a different answer from the event's name as it is now; and
+	 * <b>the comment item is Ana's, who also has runs here</b>, so a join on the member would hand her
+	 * comment the event of her run.
+	 */
+	@Test
+	void aRunAnswersWithTheEventItIsOnWhetherTheRaceHasItOrTheMemberChoseOrTypedIt()
+			throws Exception {
+		runsWaitInTheResultsTab();
+
+		long chosenEvent = event("izabrani-dogadjaj-v66", "Izabrani dogadjaj", "2027-03-01");
+		long chosen = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
+						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
+						+ " link, comment, event_id) values ((select id from competitor where"
+						+ " member_number = ?), null, date '2027-03-07', 'Trka na izabranom', 'free', "
+						+ EVERYBODYS_TOWN + ", 7.0000, 10, 10, 2000, '', '', ?) returning id")
+				.params(MEMBER_ONE, chosenEvent).query(Long.class).single();
+		queuedRun(MEMBER_ONE, "Trka na izabranom", "", "2027-03-12 09:00:00+00", chosen);
+		long typed = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
+						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
+						+ " link, comment, event_name) values ((select id from competitor where"
+						+ " member_number = ?), null, date '2027-03-07', 'Krug oko jezera', 'free', "
+						+ EVERYBODYS_TOWN + ", 6.0000, 10, 10, 1900, '', '', 'Kros oko jezera')"
+						+ " returning id")
+				.param(MEMBER_ONE).query(Long.class).single();
+		queuedRun(MEMBER_ONE, "Krug oko jezera", "", "2027-03-13 09:00:00+00", typed);
+
+		db.sql("update btl_event set name = 'Preimenovan dogadjaj' where id = ?").param(chosenEvent)
+				.update();
+
+		long theRacesEvent = db.sql("select event_id from race where id = ?").param(aRaceOfALength)
+				.query(Long.class).single();
+
+		for (int calendar : List.of(0, 1, 3)) {
+			JsonNode run = itemIn(THE_SUPERADMIN, RESULTS, calendar);
+
+			assertThat(run.path("eventId").asLong()).as("item %d is not on its race's event", calendar)
+					.isEqualTo(theRacesEvent);
+			assertThat(run.path("eventName").asString()).isEqualTo("Trke za proveru");
+		}
+
+		JsonNode none = itemIn(THE_SUPERADMIN, RESULTS, 2);
+
+		assertThat(none.path("eventId").isNull()).as("a run that names no event answered with one")
+				.isTrue();
+		assertThat(none.path("eventName").isNull()).isTrue();
+
+		JsonNode onTheChosen = itemIn(THE_SUPERADMIN, RESULTS, 4);
+
+		assertThat(onTheChosen.path("eventId").asLong()).isEqualTo(chosenEvent);
+		assertThat(onTheChosen.path("eventName").asString())
+				.as("the chosen event answered with a name it no longer has")
+				.isEqualTo("Preimenovan dogadjaj");
+
+		JsonNode onTheTyped = itemIn(THE_SUPERADMIN, RESULTS, 5);
+
+		assertThat(onTheTyped.path("eventId").isNull()).isTrue();
+		assertThat(onTheTyped.path("eventName").asString()).isEqualTo("Kros oko jezera");
+
+		JsonNode hersButNotARun = itemIn(THE_SUPERADMIN, COMMENTS, 0);
+
+		assertThat(hersButNotARun.path("memberNumber").asString()).isEqualTo(MEMBER_ONE);
+		assertThat(hersButNotARun.path("eventId").isNull())
+				.as("a comment answered with the event of a run").isTrue();
+		assertThat(hersButNotARun.path("eventName").isNull()).isTrue();
+	}
+
 	/** The four figures of a served run as one value, the distance compared by its value. */
 	private static String figuresIn(JsonNode run) {
 		return run.path("distanceKm").decimalValue().stripTrailingZeros().toPlainString()
@@ -1803,6 +1875,13 @@ class VerificationApiTest {
 	 * <p><b>And one name is answered that the portal does not read</b>, {@code photoId}, which
 	 * is V9's own column. It is the one thing there will be to revisit the day A60 is.
 	 *
+	 * <p><b>Two more since V66, {@code eventId} and {@code eventName}</b>, the event a waiting run
+	 * is on, which the moderator's screen of one form for the event, the race and the result will
+	 * start from (PDL P9, owner, 19.10.2026: „Jedan ekran za sve"). The server answers them before
+	 * the portal reads them, as it did the eight of a run below, and they leave this list with that
+	 * screen ({@link #aRunAnswersWithTheEventItIsOnWhetherTheRaceHasItOrTheMemberChoseOrTypedIt}
+	 * holds what they say).
+	 *
 	 * <p><b>The eight a waiting run answers with stood beside it for one increment</b>
 	 * ({@code raceId}, {@code raceDate}, {@code raceKind}, the four figures and {@code link}; the
 	 * class note on {@code VerificationApi} says what each is). The server answered them before the
@@ -1822,7 +1901,7 @@ class VerificationApiTest {
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered(PATH, everyItemServedTo(THE_SUPERADMIN),
-				"verification.json", Set.of("photoId"),
+				"verification.json", Set.of("photoId", "eventId", "eventName"),
 				"picture", "email");
 	}
 

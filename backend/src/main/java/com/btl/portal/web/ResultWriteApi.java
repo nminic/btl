@@ -346,10 +346,31 @@ class ResultWriteApi {
 	 * @param link       the official results, required unless a photograph stands in for it
 	 *                   ({@link ProofThatTheRunHappened})
 	 * @param comment    his own note, which may be empty
+	 * @param eventId    THE EVENT HE CHOSE for a race the calendar does not hold, by its key, and
+	 *                   only on the described road (V66; PDL P9, owner, 19.10.2026: „Prvo ima
+	 *                   naziv događaja koji je autocomplete iz baze, ali mogu da unesem novu
+	 *                   vrednost", and „Prijava pamti događaj koji je član izabrao"). Never beside
+	 *                   {@code eventName}: chosen or typed, as the town is
+	 * @param eventName  the name he TYPED where the calendar has no such event. Left out with
+	 *                   {@code eventId}, the run names no event, which is every run sent before
+	 *                   V66 and every run the form sends until it asks for one (see
+	 *                   {@link #theEventHeNamed})
 	 */
 	record Ran(Long raceId, String raceName, LocalDate day, String raceKind, Long placeId,
 			String city, String country, BigDecimal distanceKm, Integer ascentM, Integer descentM,
-			Integer seconds, String link, String comment) {
+			Integer seconds, String link, String comment, Long eventId, String eventName) {
+	}
+
+	/**
+	 * THE EVENT A DESCRIBED RUN NAMES, CHOSEN OR TYPED, AND {@link #NONE} WHERE IT NAMES NONE.
+	 *
+	 * @param chosen the key of the event he chose, which V66 writes into {@code event_id}
+	 * @param typed  the name he typed, stripped, which V66 writes into {@code event_name}
+	 */
+	record TheEvent(Long chosen, String typed) {
+
+		/** A run that names no event: one from the calendar, a correction, or one sent without. */
+		static final TheEvent NONE = new TheEvent(null, null);
 	}
 
 	/**
@@ -476,7 +497,8 @@ class ResultWriteApi {
 
 		Long made = inOneTransaction.execute(committing -> {
 			long submission = writeTheSubmission(me, before.raceId(), before.day(), null, null,
-					null, null, null, after, typed.link(), typed.comment(), id.value());
+					null, null, null, TheEvent.NONE, after, typed.link(), typed.comment(),
+					id.value());
 
 			queue(me, submission, before.raceName(), typed.comment());
 			tell(me, said);
@@ -553,8 +575,13 @@ class ResultWriteApi {
 	 * be a 500 where an answer belongs.
 	 */
 	private ResponseEntity<?> fromTheCalendar(long me, Ran typed) {
+		/* AN EVENT BESIDE A RACE OF THE CALENDAR is the same request as a town beside one: the race
+		   has its event already, and V66 (`result_submission_only_a_described_run_names_its_event`)
+		   holds the row to that. Refused with the same reason and not dropped, for the reason that
+		   reason gives for the race's own description. */
 		if (typed.raceName() != null || typed.raceKind() != null || typed.placeId() != null
-				|| typed.city() != null || typed.country() != null) {
+				|| typed.city() != null || typed.country() != null || typed.eventId() != null
+				|| typed.eventName() != null) {
 			return no(THE_RACE_IS_NAMED_TWICE);
 		}
 
@@ -591,8 +618,8 @@ class ResultWriteApi {
 				figures.descentM(), figures.seconds(), pointsFor(figures.distanceKm(),
 						figures.ascentM(), figures.descentM(), figures.seconds()));
 
-		return write(me, typed.raceId(), race.day(), null, null, null, null, null, run, typed,
-				race.name());
+		return write(me, typed.raceId(), race.day(), null, null, null, null, null, TheEvent.NONE,
+				run, typed, race.name());
 	}
 
 	/*
@@ -633,6 +660,13 @@ class ResultWriteApi {
 			return no(THE_RACE_HAS_NOT_BEEN_RUN);
 		}
 
+		/* CHOSEN AND TYPED AT ONCE is a run naming two events, and V66 holds the row to one
+		   (`result_submission_event_is_chosen_or_typed`). The reason is the one the race's own two
+		   ways get, for the same request one field along. */
+		if (typed.eventId() != null && !isNothing(typed.eventName())) {
+			return no(THE_RACE_IS_NAMED_TWICE);
+		}
+
 		boolean fromTheCodebook = typed.placeId() != null;
 		String named = typed.raceName().strip();
 
@@ -644,7 +678,34 @@ class ResultWriteApi {
 				fromTheCodebook ? placeKey(typed.placeId()).orElseThrow() : null,
 				fromTheCodebook ? null : typed.city().strip(),
 				fromTheCodebook ? null : countryKey(typed.country()).orElseThrow(),
-				run, typed, named);
+				theEventHeNamed(typed), run, typed, named);
+	}
+
+	/**
+	 * THE EVENT HE NAMED, AS V66 KEEPS IT.
+	 *
+	 * <p><b>A name of nothing but spaces is no name</b>, the reading every optional text of this
+	 * route has ({@link #isNothing}): the field is not required until the member's form asks for it
+	 * (V66 says why), so an empty box is a run that names no event, never a refusal.
+	 *
+	 * <p><b>A key no event answers to is kept as no event, and not refused.</b> That is my reading
+	 * and not a sentence of the owner's, and it is the state V66's {@code on delete set null} puts
+	 * the very same row in when the event is deleted a second after the run is sent: the run waits,
+	 * names no event, and the moderator chooses one as he does for every run sent before V66. A
+	 * refusal would have to tell the member something the form he is looking at cannot show him,
+	 * and his run would be lost over an event nobody can see any longer. The moderator decides the
+	 * event at approval in every case (PDL P9, 19.10.2026: „moderator ga pri odobrenju sme
+	 * promeniti"), so nothing he is owed depends on it.
+	 */
+	private TheEvent theEventHeNamed(Ran typed) {
+		if (typed.eventId() != null) {
+			return Boolean.TRUE.equals(db.sql("select exists(select 1 from btl_event where id = ?)")
+					.param(typed.eventId()).query(Boolean.class).single())
+					? new TheEvent(typed.eventId(), null) : TheEvent.NONE;
+		}
+
+		return isNothing(typed.eventName()) ? TheEvent.NONE
+				: new TheEvent(null, typed.eventName().strip());
 	}
 
 	/**
@@ -756,8 +817,8 @@ class ResultWriteApi {
 	 * to, so with the letter gone neither road that ends here carries it.
 	 */
 	private ResponseEntity<?> write(long me, Long raceId, LocalDate day, String raceName,
-			String raceKind, Long theTownsKey, String city, Long theCountrysKey, Run run, Ran typed,
-			String subject) {
+			String raceKind, Long theTownsKey, String city, Long theCountrysKey, TheEvent event,
+			Run run, Ran typed, String subject) {
 		/* IN HIS LANGUAGE, which is the account's (owner, 10.10.2026, Q3: the inbox copy of the
 		   messages about a result follows the language of the letter). There is no letter for a
 		   run sent in, and so no address to read the language beside; it is read off the account
@@ -768,7 +829,7 @@ class ResultWriteApi {
 
 		Long made = inOneTransaction.execute(committing -> {
 			long submission = writeTheSubmission(me, raceId, day, raceName, raceKind, theTownsKey,
-					city, theCountrysKey, run, typed.link(), typed.comment(), null);
+					city, theCountrysKey, event, run, typed.link(), typed.comment(), null);
 
 			queue(me, submission, subject, typed.comment());
 			tell(me, said);
@@ -792,18 +853,21 @@ class ResultWriteApi {
 	 *                       reason: the number that ARRIVES under that name is a mark, and a
 	 *                       parameter sharing its name is an invitation to hand one on
 	 * @param theCountrysKey the same, one column along
+	 * @param event          the event a described run names (V66), and {@link TheEvent#NONE}
+	 *                       everywhere else
 	 */
 	private long writeTheSubmission(long me, Long raceId, LocalDate day, String raceName,
-			String raceKind, Long theTownsKey, String city, Long theCountrysKey, Run run,
-			String link, String comment, Long amends) {
+			String raceKind, Long theTownsKey, String city, Long theCountrysKey, TheEvent event,
+			Run run, String link, String comment, Long amends) {
 		return db.sql("insert into result_submission (competitor_id, race_id, race_date,"
 						+ " race_name, race_kind, place_id, city, country_id, distance_km,"
-						+ " ascent_m, descent_m, seconds, link, comment, amends_result_id)"
-						+ " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id")
+						+ " ascent_m, descent_m, seconds, link, comment, amends_result_id,"
+						+ " event_id, event_name)"
+						+ " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) returning id")
 				.params(me, raceId, day, raceName, raceKind, theTownsKey, city, theCountrysKey,
 						run.distanceKm(), run.ascentM(), run.descentM(), run.seconds(),
 						ProofThatTheRunHappened.linkAsItGoesIn(report(link, comment)),
-						orEmpty(comment), amends)
+						orEmpty(comment), amends, event.chosen(), event.typed())
 				.query(Long.class)
 				.single();
 	}
