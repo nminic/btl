@@ -193,3 +193,111 @@ for (const at of WIDTHS) {
     })
   }
 }
+
+/**
+ * THE FIGURES OF THE TABLE ARE ONE WIDTH, AND THEY TAKE NO MORE THAN THEY NEED (owner, 20.10.2026).
+ *
+ * „U ovoj tabelici umesto distance zelim da pise naziv trke. Ove ostale kolone desno od toga slozi
+ * ekonomicno i jednakih sirina." The member and the race are the two columns of words; the length, the
+ * climb, the fall, the time, the points and, for whoever checks results, the pencil and the x are the
+ * figures, and each has a `col` that says so (`EventDetail.tsx`, `.results__figure`).
+ *
+ * **Asked in Chrome**, because jsdom lays nothing out: the width of the head of every figure column the
+ * screen draws, at 360 (a telephone, three figures or two), at 700 (the narrowest a table is drawn whole,
+ * where a share of the table is smallest), at 768, at 1000 (where the share is handed over to a width in
+ * rem) and at 1280. They agree to within one pixel, none is wider than 6,5rem (104px) and so none takes
+ * more than it needs, and the table's own box is not wider inside than outside. **Both readers**, a
+ * visitor (five figures on a wide screen) and whoever checks results (six, the buttons among them), and
+ * the long names of a family beside them.
+ *
+ * The question of the x open is not asked here: the column grows to hold its widest button for as long as
+ * it is open, which is the question's doing and not the table's, and its box is asked about above.
+ */
+const EQUAL: At[] = [
+  { width: 360, text: 100 },
+  { width: 700, text: 100 },
+  { width: 768, text: 100 },
+  { width: 1000, text: 100 },
+  { width: 1280, text: 100 },
+]
+
+/** The widest a figure column may be: 6,5rem at the ordinary size, which is what the wide layout caps it at. */
+const CAP = 104 + 1
+
+const READERS = [
+  ['a visitor', { ...ANSWERS, '/api/me': undefined }],
+  ['whoever checks results', ANSWERS],
+  ['whoever checks results, with long names', LONG],
+] as const
+
+for (const at of EQUAL) {
+  for (const [who, given] of READERS) {
+    test(`every figure of the table of results is one width, with ${who}, at ${label(at)}`, async ({ open }) => {
+      const answers: Answers = Object.fromEntries(Object.entries(given).filter(([, value]) => value !== undefined))
+      const { page, probe } = await open(at, `/sr/kalendar/${SLUG}`, 'tbody td.table__points', answers)
+
+      const seen = await page.evaluate(() => {
+        const results = document.querySelector('td.table__points')?.closest('table')
+
+        if (results === null || results === undefined) {
+          throw new Error('the table of results is not on the page')
+        }
+
+        const box = results.closest('.table-scroll')
+
+        if (box === null) {
+          throw new Error('the table of results is not in its own box')
+        }
+
+        const heads = [...results.querySelectorAll('thead th')]
+        const columns = [...results.querySelectorAll('colgroup > col')]
+        const drawn = (one: Element) => getComputedStyle(one).display !== 'none'
+
+        return {
+          table: results.getBoundingClientRect().width,
+          inside: box.scrollWidth,
+          outside: box.clientWidth,
+          columns: columns.length,
+          heads: heads.length,
+          figures: heads
+            .map((head, index) => ({
+              name: (head.textContent ?? '').trim(),
+              figure: columns[index]?.classList.contains('results__figure') === true,
+              drawn: drawn(head),
+              width: head.getBoundingClientRect().width,
+            }))
+            .filter((one) => one.figure && one.drawn),
+          words: heads
+            .filter((head, index) => columns[index]?.classList.contains('results__figure') !== true && drawn(head))
+            .map((head) => head.getBoundingClientRect().width),
+        }
+      })
+
+      expect(probe.sideways).toBe(0)
+      expect(seen.columns).toBe(seen.heads)
+
+      /* Measured is not assumed: a screen that drew none, or one, would agree with itself. */
+      const mod = who !== 'a visitor'
+      const phone = at.width < 700
+
+      expect(seen.figures.map((one) => one.name), JSON.stringify(seen.figures)).toHaveLength(
+        phone ? (mod ? 3 : 2) : mod ? 6 : 5,
+      )
+
+      const widths = seen.figures.map((one) => one.width)
+
+      expect(Math.max(...widths) - Math.min(...widths), JSON.stringify(seen.figures)).toBeLessThanOrEqual(AGREE)
+      expect(Math.max(...widths), JSON.stringify(seen.figures)).toBeLessThanOrEqual(CAP)
+
+      /* And the words take what is left: each of the two is wider than one figure on a wide screen. */
+      if (!phone) {
+        expect(seen.words, JSON.stringify(seen.words)).toHaveLength(2)
+        expect(Math.min(...seen.words)).toBeGreaterThan(Math.max(...widths))
+      }
+
+      expect(seen.inside, `the table's box scrolls: ${String(seen.inside)} inside ${String(seen.outside)}`).toBeLessThanOrEqual(
+        seen.outside,
+      )
+    })
+  }
+}
