@@ -177,8 +177,8 @@ import java.util.Optional;
  * recommendation: „brisanje je odmah ... i briše i onu koja čeka"). The id is the one
  * {@code GET /api/comments} answers his published rating with, which is the card the screen puts
  * „Obriši" beside. It deletes every published rating of his of THAT event (an approval used to be able
- * to make a second) and his rating of it that still waits, by {@link #withdrawWhatWaits}, under the lock
- * on his row, and answers 204. <b>„Uvek" is read as: no result on the event, no day of the event and no
+ * to make a second) and his rating of it that still waits, holding his waiting cards of the event and
+ * then his row (see below for why in that order and why without skipping), and answers 204. <b>„Uvek" is read as: no result on the event, no day of the event and no
  * season is asked</b> - a member whose result was deleted since, or who rated an event of an earlier
  * season, deletes his rating all the same. <b>What „uvek" is NOT read as, derived and not the owner's
  * words:</b> a member whose fee does not stand is answered 404 like an account naming no member, because
@@ -186,9 +186,22 @@ import java.util.Optional;
  * whose decision says the member deletes „ima pravo na to, iako je verifikovan", is closed to him the
  * same way; he does not see the comments at all (03.10.2026). An id that is not his rating - another
  * member's, a deleted member's (its {@code competitor_id} is null and matches nobody), one that names no
- * row or is not a key - is 404 as well, the answer of an address that maps nothing (ADL A8). A card a
- * moderator is deciding at that very instant is not waited for and stays ({@code skip locked}, above):
- * if he approves it, it is published after the deletion, because he decided first.
+ * row or is not a key - is 404 as well, the answer of an address that maps nothing (ADL A8).
+ *
+ * <p><b>AFTER A 204 NOTHING OF HIS ABOUT THAT EVENT IS EVER PUBLISHED</b> (the coordinator's decision of
+ * 20.10.2026, derived from the owner's „brisanje je odmah ... i briše i onu koja čeka" and „član uvek sme
+ * da obriše svoju ocenu"; corrected after the review of PR 584 measured the opposite: a 204, and his
+ * rating with words published by an approval a moment later). So the deletion, unlike the two roads
+ * above, does NOT skip a card somebody holds: it WAITS for it. If the approval commits first, its rating
+ * is published and the deletion then takes it with the rest; if the deletion commits first, the card is
+ * gone and the approval finds nothing to claim. Either way the member who was told 204 has no rating of
+ * that event. <b>The lock order is the approval's</b>, cards first and the member second, so the two
+ * never wait for each other the opposite way round; the two other roads keep the member first and skip
+ * a held card, so they never wait for a card at all. <b>What is left, named rather than discovered:</b> a
+ * rating with words whose card is sent, committed and claimed by a moderator in the instant between the
+ * deletion taking his cards and taking his row is a card the deletion never locked; the deletion then
+ * waits for it while holding the row the approval wants, the database breaks the deadlock, and one of
+ * the two is answered 500. Neither publishes what the other's answer denies.
  *
  * <p><b>THE MEMBER'S ROW IS LOCKED FIRST</b>, {@code for update}, at the top of the transaction, the
  * shape {@code MyMembershipWriteApi} and {@code PaymentApi} keep. Two ratings of one member at one
@@ -456,8 +469,8 @@ class CommentWriteApi {
 	/**
 	 * THIS MEMBER'S RATING OF THIS EVENT THAT STILL WAITS FOR A MODERATOR, AND NOTHING ELSE, GOES; the
 	 * cascade of {@code comment_submission} takes its queue row with it. The one home of that statement,
-	 * for the three roads that take it: a rating with no words, a rating with words, and the member's
-	 * own deletion.
+	 * for the two roads that take it: a rating with no words and a rating with words. The member's own
+	 * deletion does NOT take it, because it must not skip a held card ({@link #takeBack}).
 	 *
 	 * <p>Keyed by the member AND the event, so another member's card and his card of another event stay;
 	 * only a WAITING card, so a decided one stays (ADL A36 O11); and {@code skip locked}, so a card a
@@ -502,17 +515,18 @@ class CommentWriteApi {
 	 * Whether this rating was his, having deleted it, his other published ones of the same event and his
 	 * one of it that waits. Nothing is deleted where it was not his.
 	 *
-	 * <p><b>His row is locked FIRST and the rating is read under the lock</b>, the order every write of
-	 * his rating keeps (class note): a new rating of the same event committed while this waited has
-	 * already replaced the one the screen named, and the answer is then the 404 of a rating that is not
-	 * there, never the deletion of the new one through the old one's id.
+	 * <p><b>The named rating decides only WHICH EVENT, and whether it is his.</b> Everything after that
+	 * is keyed by the event and read under the locks: an approval, or a new rating of his, that committed
+	 * while this waited has replaced the named row, and what it put there is his rating of that event all
+	 * the same, so it goes too (class note: after a 204 nothing of his about the event is published).
+	 *
+	 * <p><b>His waiting cards of the event are locked FIRST, and WAITED FOR, and his row second</b>: the
+	 * approval's order (it claims the card, then takes the member), so the two never wait for each other
+	 * the opposite way round. A card a moderator is deciding is waited for; once he commits it is no
+	 * longer waiting and drops out of the lock, and his published rating is deleted below. Ordered by id,
+	 * so two deletions of one member take his cards in one order.
 	 */
 	private boolean takeBack(long me, long comment) {
-		db.sql("select id from competitor where id = ? for update")
-				.param(me)
-				.query(Long.class)
-				.single();
-
 		/* WHOSE IT IS STANDS IN THIS `where`: another member's rating, a deleted member's (no
 		   `competitor_id` at all), and an id that names nothing are one answer, no event. */
 		Optional<Long> event = db.sql("select event_id from event_comment where id = ? and competitor_id = ?")
@@ -524,12 +538,32 @@ class CommentWriteApi {
 			return false;
 		}
 
-		/* EVERY PUBLISHED RATING OF HIS OF THAT EVENT, the named one among them, and nobody else's. */
+		/* HIS WAITING CARDS OF THE EVENT, FIRST, AND NOT SKIPPED (see above). */
+		db.sql("select v.id from verification v join comment_submission cs on cs.id = v.comment_submission_id"
+						+ " where cs.competitor_id = ? and cs.event_id = ? and v.state = ?"
+						+ " order by v.id for update of v")
+				.params(me, event.get(), DecidingOnASubmission.WAITING)
+				.query(Long.class)
+				.list();
+
+		/* HIS ROW, SECOND: a rating of his that was being written commits before this goes on. */
+		db.sql("select id from competitor where id = ? for update")
+				.param(me)
+				.query(Long.class)
+				.single();
+
+		/* EVERY PUBLISHED RATING OF HIS OF THAT EVENT, read now and not when the request came: the named
+		   one, a second one, and one an approval or a new rating put there while this waited. */
 		db.sql("delete from event_comment where competitor_id = ? and event_id = ?")
 				.params(me, event.get())
 				.update();
 
-		withdrawWhatWaits(me, event.get());
+		/* AND EVERY ONE OF HIS THAT WAITS, without skipping: the ones above are held by this transaction. */
+		db.sql("delete from comment_submission where id in (select cs.id from comment_submission cs"
+						+ " join verification v on v.comment_submission_id = cs.id"
+						+ " where cs.competitor_id = ? and cs.event_id = ? and v.state = ?)")
+				.params(me, event.get(), DecidingOnASubmission.WAITING)
+				.update();
 
 		return true;
 	}

@@ -394,17 +394,16 @@ class ARatingSentTwiceAtOnceTest {
 	}
 
 	/**
-	 * A DELETION THAT WAITED BEHIND A NEWER RATING DOES NOT DELETE THE NEWER ONE THROUGH THE OLD ONE'S ID
-	 * (7d, owner, PDL P6, 20.10.2026). The member's row is held; his rating with no words is sent and
-	 * stops behind it, then his deletion of the rating the screen showed him, which stops behind the
-	 * rating. Let go, the rating replaces the old one and the deletion, reading under the same lock,
-	 * finds the old id gone: 404, and the new rating stands. Without the deletion's lock it would not stop
-	 * at all, and the count of requests behind the hold says so before the outcome does.
+	 * A DELETION THAT WAITED BEHIND A NEWER RATING OF HIS TAKES THE NEWER ONE TOO (7d; after a 204 nothing of
+	 * his about the event is published, CommentWriteApi's class note). The member's row is held; his rating
+	 * with no words is sent and stops behind it, then his deletion of the rating the screen showed him,
+	 * which stops behind the rating. Let go, the rating replaces the old one, and the deletion, reading by
+	 * the EVENT under the lock, deletes what the rating put there. Without the deletion's lock on his row it
+	 * would not stop at all, and the count of requests behind the hold says so before the outcome does.
 	 */
 	@Test
-	void aDeletionThatWaitedBehindANewerRatingLeavesTheNewerOneStanding() throws Exception {
-		long shown = db.sql("select id from event_comment where event_id = ? and competitor_id = ?")
-				.params(event, him).query(Long.class).single();
+	void aDeletionThatWaitedBehindANewerRatingOfHisTakesTheNewerOneToo() throws Exception {
+		long shown = theRatingHeIsShown();
 		ExecutorService pool = Executors.newFixedThreadPool(2);
 		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
 
@@ -423,16 +422,146 @@ class ARatingSentTwiceAtOnceTest {
 
 			assertThat(List.of(submitted.get(0).get(30, TimeUnit.SECONDS).getStatus(),
 					submitted.get(1).get(30, TimeUnit.SECONDS).getStatus()))
-					.as("the rating is taken and the deletion finds the rating it named gone")
-					.containsExactly(201, 404);
+					.as("the rating is taken and so is the deletion")
+					.containsExactly(201, 204);
 		} finally {
 			pool.shutdownNow();
 		}
 
-		assertThat(db.sql("select rating_organisation from event_comment where event_id = ?"
-						+ " and competitor_id = ?").params(event, him).query(Integer.class).list())
-				.as("the newer rating was deleted through the id of the one it replaced")
-				.containsExactly(5);
+		assertThat(hisPublishedRatings())
+				.as("the member was told 204 and a rating of his of the event is published")
+				.isEmpty();
+	}
+
+	/**
+	 * A DELETION AND AN APPROVAL OF HIS WAITING RATING AT ONE INSTANT, THE DELETION FIRST: nothing of his is
+	 * published after the 204 (the review of PR 584 measured the opposite, probe A). His row is held; the
+	 * deletion takes his waiting card and stops on his row; the approval stops on the card the deletion
+	 * holds. Let go, the deletion takes the card with it, and the approval finds nothing waiting to claim:
+	 * the answer a moderator who lost a race always gets. No deadlock: both take the card before the member.
+	 */
+	@Test
+	void aDeletionThenAnApprovalAtOnceLeaveNothingOfHisPublished() throws Exception {
+		long shown = theRatingHeIsShown();
+		long card = waitingCardWithWords("Sa rečima, obrisano.");
+		List<MockHttpServletResponse> both = theFirstThenTheSecondBehindHisRow(
+				() -> deleted(shown), () -> approved(card));
+
+		assertThat(both.stream().map(MockHttpServletResponse::getStatus).toList())
+				.as("the deletion is taken and the approval finds the card gone")
+				.containsExactly(204, 409);
+		assertThat(hisPublishedRatings())
+				.as("the member was told 204 and his rating with words was published after it")
+				.isEmpty();
+		assertThat(db.sql("select count(*) from verification where id = ?").param(card)
+				.query(Long.class).single())
+				.as("the card he deleted is still in the queue")
+				.isZero();
+	}
+
+	/**
+	 * THE SAME TWO THE OTHER WAY ROUND, THE APPROVAL FIRST: it claims the card and stops on his row; the
+	 * deletion stops on the card the approval holds, and is NOT let past it. Let go, the approval publishes
+	 * his rating with words and the deletion, reading by the event, deletes it: 200 and 204, and nothing of
+	 * his is published. No deadlock in this order either.
+	 */
+	@Test
+	void anApprovalThenADeletionAtOnceLeaveNothingOfHisPublished() throws Exception {
+		long shown = theRatingHeIsShown();
+		long card = waitingCardWithWords("Sa rečima, obrisano.");
+		List<MockHttpServletResponse> both = theFirstThenTheSecondBehindHisRow(
+				() -> approved(card), () -> deleted(shown));
+
+		assertThat(both.stream().map(MockHttpServletResponse::getStatus).toList())
+				.as("the approval is taken and so is the deletion after it")
+				.containsExactly(200, 204);
+		assertThat(hisPublishedRatings())
+				.as("the member was told 204 and the approved rating stands")
+				.isEmpty();
+		assertThat(db.sql("select state from verification where id = ?").param(card)
+				.query(String.class).list())
+				.as("the decided card stays, as every decided row does (ADL A36 O11)")
+				.containsExactly("approved");
+	}
+
+	/**
+	 * A DELETION WAITS FOR A CARD A MODERATOR IS OPENING, AND THEN TAKES IT (probe B of the review of PR
+	 * 584). Taking a hold on a card inserts a row that points at it, which holds the card FOR KEY SHARE until
+	 * it commits; that is held here. The deletion must stop on it rather than skip it, and once it is let go
+	 * the card is gone, a later approval has nothing to claim, and nothing of his is published.
+	 */
+	@Test
+	void aDeletionWaitsForACardAModeratorIsOpeningAndTakesIt() throws Exception {
+		long shown = theRatingHeIsShown();
+		long card = waitingCardWithWords("Sa rečima, obrisano.");
+		ExecutorService pool = Executors.newFixedThreadPool(1);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from verification where id = ? for key share")
+						.param(card).query(Integer.class).single();
+
+				submitted.add(pool.submit(() -> deleted(shown)));
+				stoppedBehindTheHold(1, submitted);
+
+				return null;
+			});
+
+			assertThat(submitted.get(0).get(30, TimeUnit.SECONDS).getStatus()).isEqualTo(204);
+		} finally {
+			pool.shutdownNow();
+		}
+
+		assertThat(db.sql("select count(*) from verification where id = ?").param(card)
+				.query(Long.class).single())
+				.as("the card being opened was skipped and is still in the queue")
+				.isZero();
+		assertThat(approved(card).getStatus())
+				.as("an approval after the deletion found a card to claim")
+				.isNotEqualTo(200);
+		assertThat(hisPublishedRatings()).isEmpty();
+	}
+
+	/** The rating {@code GET /api/comments} shows him, the one his screen would name. */
+	private long theRatingHeIsShown() {
+		return db.sql("select id from event_comment where event_id = ? and competitor_id = ?")
+				.params(event, him).query(Long.class).single();
+	}
+
+	private List<String> hisPublishedRatings() {
+		return db.sql("select body from event_comment where event_id = ? and competitor_id = ?")
+				.params(event, him).query(String.class).list();
+	}
+
+	/**
+	 * His row held, the first request sent and waited for until it stops, then the second, then let go: the
+	 * order both reach the database in is the order they are sent in, and the count of requests behind the
+	 * hold (recursive, {@link BlockedBehindThisHold}) proves the second stopped too.
+	 */
+	private List<MockHttpServletResponse> theFirstThenTheSecondBehindHisRow(
+			Callable<MockHttpServletResponse> first, Callable<MockHttpServletResponse> second) throws Exception {
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from competitor where id = ? for update")
+						.param(him).query(Integer.class).single();
+
+				submitted.add(pool.submit(first));
+				stoppedBehindTheHold(1, submitted);
+				submitted.add(pool.submit(second));
+				stoppedBehindTheHold(2, submitted);
+
+				return null;
+			});
+
+			return List.of(submitted.get(0).get(30, TimeUnit.SECONDS),
+					submitted.get(1).get(30, TimeUnit.SECONDS));
+		} finally {
+			pool.shutdownNow();
+		}
 	}
 
 	private MockHttpServletResponse deleted(long comment) throws Exception {

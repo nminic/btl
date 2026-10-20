@@ -1418,8 +1418,10 @@ class CommentWriteApiTest {
 	}
 
 	/**
-	 * A RATING REPLACED SINCE THE SCREEN READ IT IS NOT THERE ANY MORE, and the new one is not deleted
-	 * through the old one's id: the id names a row, not „his rating of the event".
+	 * A RATING REPLACED BEFORE THE DELETION WAS SENT IS NOT THERE ANY MORE: the named id is what says the
+	 * request is about one of his ratings, and it names nothing now, so 404 and the new one stands. A
+	 * replacement that commits WHILE the deletion waits is the other case, and the deletion takes it
+	 * ({@code ARatingSentTwiceAtOnceTest}).
 	 */
 	@Test
 	void aRatingReplacedSinceIsNotThereAndTheNewOneStands() throws Exception {
