@@ -87,11 +87,14 @@ function WithWhatHeGave() {
  * His published rating of this event, the newest where an approval of the past left him two, or nothing.
  * By the event AND his number, so another member's rating of it and his own of another event (another
  * running of the same race included) are never what the form opens with.
+ *
+ * <p><b>The newest is the FIRST, because the server answers newest first</b> (`CommentApi`: „order by
+ * c.published_at desc, c.id desc"), to the instant it was published. Sorted again here it was sorted by
+ * the DAY the answer carries, which is coarser than the server's order and needed a second key for two
+ * ratings of one day: a second home of one order, and a less exact one.
  */
 function hisRatingOf(given: EventComment[], eventId: number, mine: string): EventComment | undefined {
-  return given
-    .filter((one) => one.eventId === eventId && one.memberNumber === mine)
-    .sort((left, right) => right.date.localeCompare(left.date) || right.id - left.id)[0]
+  return given.find((one) => one.eventId === eventId && one.memberNumber === mine)
 }
 
 function RateOne({ given }: { given: EventComment[] }) {
