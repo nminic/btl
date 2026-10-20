@@ -412,15 +412,17 @@ class ResultsByTheLeagueApi {
 	 * coordinator's derivation, PDL „[IZVEDENO 19.10.2026, moje, PR za 7b]”, (4), the same power the
 	 * approval already has when it makes an event and a race of a run.
 	 *
-	 * <p><b>Nothing new before 2027</b> ({@link #THE_DAY_IS_BEFORE_THE_LEAGUE}); a race of an earlier
-	 * year that is in the calendar takes rows here as it does on the event page, by the owner's decision
-	 * of 18.10.2026 („Za prošle godine i pre 2027 ostaje unos svima sa članskim brojem”).
+	 * <p><b>Only the seasons open for a report</b> („NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE! ONI SE
+	 * UNOSE IMPORTOM.”, owner, 20.10.2026, which overturns the coordinator's derivation that this screen
+	 * offers every season from 2027): a race of any other season is refused, new or of the calendar
+	 * ({@link #whatIsWrongWithTheSeasonOf}). The event page's own entry of rows on a race of the
+	 * calendar is not this route and keeps the owner's decision of 18.10.2026 („Za prošle godine i pre
+	 * 2027 ostaje unos svima sa članskim brojem”); that boundary is the coordinator's to put to him.
 	 *
 	 * <p><b>What has no sentence of its own is a form not filled in</b> ({@code theFormIsNotComplete}):
 	 * a key beside a name, a race of the calendar on a new event, an event that is not a race, a town
 	 * too long or with an invisible character or a country nobody has, a figure the kind fixes missing,
-	 * and a race that would move its event into a year where its name is taken. The screen builds none
-	 * of them; that reading is mine.
+	 * and a new race on an event of another year. The screen builds none of them; that reading is mine.
 	 */
 	@PostMapping("/api/results/on-a-race-of-an-event")
 	@RightIsNeeded(THE_RIGHT)
@@ -477,8 +479,12 @@ class ResultsByTheLeagueApi {
 
 		LocalDate day = newEvent ? event.date() : race.date();
 
-		if (newRace && day.getYear() < SeasonClock.FIRST_SEASON) {
-			return no(HttpStatus.BAD_REQUEST, THE_DAY_IS_BEFORE_THE_LEAGUE);
+		if (newRace) {
+			ResponseEntity<?> season = whatIsWrongWithTheSeasonOf(day);
+
+			if (season != null) {
+				return season;
+			}
 		}
 
 		if (newRace && day.isAfter(today())) {
@@ -486,6 +492,25 @@ class ResultsByTheLeagueApi {
 		}
 
 		return null;
+	}
+
+	/**
+	 * A RACE OUTSIDE THE SEASONS OPEN FOR A REPORT, which this screen does not take: PDL P9, owner,
+	 * 20.10.2026, „NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE! ONI SE UNOSE IMPORTOM.” The seasons
+	 * are {@link SeasonClock#seasonsOpenForAReport}'s, the one home the member's report asks too, and
+	 * the words are the two the owner approved: before the league the CSV sentence
+	 * ({@link #THE_DAY_IS_BEFORE_THE_LEAGUE}), after it the member's own
+	 * ({@code ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON}).
+	 *
+	 * @return the refusal, or nothing where the race's season is open
+	 */
+	private ResponseEntity<?> whatIsWrongWithTheSeasonOf(LocalDate day) {
+		if (day.getYear() < SeasonClock.FIRST_SEASON) {
+			return no(HttpStatus.BAD_REQUEST, THE_DAY_IS_BEFORE_THE_LEAGUE);
+		}
+
+		return SeasonClock.aRunMayBeSentFor(day.getYear(), now()) ? null
+				: no(HttpStatus.BAD_REQUEST, ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON);
 	}
 
 	/** A town typed, of the length and the characters a typed town may hold, in a country there is
@@ -536,6 +561,12 @@ class ResultsByTheLeagueApi {
 				return Done.only(no(HttpStatus.CONFLICT, THE_RACE_IS_NOT_KNOWN));
 			}
 
+			ResponseEntity<?> season = whatIsWrongWithTheSeasonOf(found.get().day());
+
+			if (season != null) {
+				return Done.only(season);
+			}
+
 			if (found.get().day().isAfter(today())) {
 				return Done.only(no(HttpStatus.BAD_REQUEST, ResultWriteApi.THE_RACE_HAS_NOT_BEEN_RUN));
 			}
@@ -544,6 +575,17 @@ class ResultsByTheLeagueApi {
 		}
 
 		LocalDate day = named.id() == null ? named.date() : race.date();
+
+		/* A NEW RACE GOES ON AN EVENT OF ITS OWN YEAR, and on no other: an event of another year is an
+		   event of another season, which this screen does not offer (owner, 20.10.2026, „NE NUDE SE
+		   STARIJI DOGAĐAJI VAN TEKUĆE SEZONE!”), so only a request the screen never builds names one, and
+		   it is answered as a form not filled in. That reading is mine (the coordinator's answer of
+		   20.10.2026). It is also why the race never moves its event into another year's address: the
+		   event begins on its earliest race, and every race of it is of one year. */
+		if (event.isPresent() && event.get().date().getYear() != day.getYear()) {
+			return Done.only(notComplete());
+		}
+
 		/* THE ROWS FIRST, on the race as it will be: a race nobody has made yet has no result and no
 		   report on it, which is what its key nought answers (keys start at one). */
 		Judged judged = judged(new TheRace(0, race.name().strip(), day, race.kind(),
@@ -563,10 +605,6 @@ class ResultsByTheLeagueApi {
 			TheDayOfAnEvent.Standing there = event.get();
 			LocalDate beginning = TheDayOfAnEvent.theDayItWillBeginOn(db, there, null, day);
 			String address = TheDayOfAnEvent.addressFor(there, beginning);
-
-			if (EventWriteApi.addressIsTakenBySomebodyElse(db, address, there.id())) {
-				return Done.only(notComplete());
-			}
 
 			made = aNewRace(there.id(), race, day);
 			on = there.id();
