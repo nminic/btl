@@ -350,23 +350,45 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
             <div className="table-scroll">
               <table className="table table--results">
                 <caption className="visually-hidden">{t('event.results')}</caption>
+                {/* THE WIDTHS OF THE FIGURES (owner, 20.10.2026: „U ovoj tabelici umesto
+                    distance zelim da pise naziv trke. Ove ostale kolone desno od toga slozi
+                    ekonomicno i jednakih sirina"). Two columns of words, the member and the race,
+                    take what is left; every column to the right of them is one of these and they
+                    are all the same width (`Profile.css`, `.results__figure`). Said on a `col`
+                    and not on the heads, so that a head cannot be given a width of its own and
+                    the cells under it do not need a class. The three that a telephone does not
+                    draw are named as such here too, because a column the table does not draw
+                    must not be a column the browser still gives a share to. */}
+                <colgroup>
+                  <col />
+                  <col className="table__hide-phone" />
+                  <col className="results__figure table__hide-phone" />
+                  <col className="results__figure table__hide-phone" />
+                  <col className="results__figure table__hide-phone" />
+                  <col className="results__figure" />
+                  <col className="results__figure" />
+                  {manages && <col className="results__figure" />}
+                </colgroup>
                 <thead>
                   <tr>
                     <th scope="col">{t('event.competitor')}</th>
-                    {/* Four heads since 16.10.2026, in the owner's order: „Distanca,
-                        Dužina (km), Uspon (m), Spust (m)". The first is the group a
-                        run falls in (Kraća trka ... Ultramaraton), which he named
-                        „Distanca" because „Ultramaraton nije dužina"; the other
-                        three are the figures, each with its unit in brackets. They
-                        were „Dužina" and „d (km)" beside one another before, and the
-                        climb and the fall were not here at all.
+                    {/* The race, by its name, and no longer the group it falls in (owner,
+                        20.10.2026). Since 16.10.2026 this was „Distanca" (Kraća trka ...
+                        Ultramaraton, which he named so because „Ultramaraton nije dužina"),
+                        and on an event of several races that told the reader which length a
+                        run was but not which race; the length is the next column in any case.
+                        The word is the one the lists of results of a member already put over
+                        the race (`profile.columns.race`), and the name is the one the result
+                        carries (`raceName`, `data/types.ts`), so nothing is asked of the
+                        server that the page did not already have.
 
-                        All four go with the phone columns. Left in, the table was
-                        three hundred and thirty six pixels inside a box of three
-                        hundred and twenty eight, which is the horizontal scroll PDL
-                        P24 forbids on a table. */}
+                        Like the column it replaces it goes with the phone columns, with the
+                        three figures after it. Left in, the table was three hundred and
+                        thirty six pixels inside a box of three hundred and twenty eight, which
+                        is the horizontal scroll PDL P24 forbids on a table, and a name of a
+                        race is the widest thing in the row. */}
                     <th scope="col" className="table__hide-phone">
-                      {t('profile.columns.category')}
+                      {t('profile.columns.race')}
                     </th>
                     <th scope="col" className="table__hide-phone">
                       {t('profile.columns.length')}
@@ -427,9 +449,7 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                             <span className="visually-hidden"> {t('rankings.myRow')}</span>
                           )}
                         </td>
-                        <td className="table__hide-phone">
-                          {t(`category.${result.category}`)}
-                        </td>
+                        <td className="table__hide-phone">{result.raceName}</td>
                         <td className="table__hide-phone">
                           {formatNumber(result.distanceKm, locale, 2)}
                         </td>

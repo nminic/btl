@@ -905,6 +905,55 @@
   inline-size: 4.25rem;
 }
 
+/* **THE FIGURES OF THE TABLE OF RESULTS ARE ONE WIDTH, AND THE TWO COLUMNS OF WORDS TAKE WHAT IS LEFT**
+   (owner, 20.10.2026, from the screenshot of „Rezultati članova": „U ovoj tabelici umesto distance
+   zelim da pise naziv trke. Ove ostale kolone desno od toga slozi ekonomicno i jednakih sirina").
+   The member and the race are the two columns of words; the length, the climb, the fall, the time, the
+   points and, for whoever checks results, the pencil and the x are the figures, and the markup says so
+   on a `col` for each (`EventDetail.tsx`, `.results__figure`). A width on the `col` and not on a head
+   or on a cell, so that nothing in the table can be given a width of its own by a class it happens to
+   carry, and the rule cannot be read as being about the table of races above it.
+
+   **A share of the table and not a number of pixels, which is the whole of the decision.** Measured in
+   Chrome on 20.10.2026, with a fixed width the six figures of a moderator (the pencil and the x take
+   99px side by side, the longest head „Dužina (km)" 95) cannot stand beside two columns of words at
+   768px: 6 x 99 leaves 142px for the member and the race, less than the longest words of the two
+   (about 72 and 101), and the table scrolls sideways inside its own box, which PDL P24 forbids on a
+   table. A share keeps the same split at every width, and 11% of the table at 768px is 81px, which is
+   what the eight columns it replaces took between them (485px for the figures and the buttons at 768).
+   The member and the race get the other 34% (a visitor, with one column fewer, 45%): 250px at 768,
+   and the 251px the member and the old „Distanca" had.
+
+   **The head may wrap**, which `.table th` forbids everywhere else (`white-space: nowrap`): at 81px
+   the head „Dužina (km)" does not fit on a line (79px of letters and 16 of padding) and a column that
+   cannot be as narrow as its head is a column wider than its neighbours, which is the one thing asked
+   not to happen. It wraps onto a second line only where it must, and the head of a table is not a row
+   of results (`styles/resultsRow.test.tsx` holds it at the top of its row all the same).
+
+   **And the buttons stack where the column cannot hold them side by side**, as they already did on a
+   telephone: `.entity-row-actions` wraps (`pages/admin/Entity.css`), and below about 900px the share is
+   narrower than the pencil and the x together. From 62.5em the share is capped in rem, below. */
+.table--results .results__figure {
+  width: 11%;
+}
+
+.table--results thead th {
+  white-space: normal;
+}
+
+/* Where a share of the table is more than the figures need. 6,5rem is the pencil and the x side by side
+   (99px) and the head „Dužina (km)" on one line (95px) with a few pixels to spare for a font that is not
+   the one measured on, and a share of 11% is 104px at 953px, the width of the table on a screen 1000px
+   wide, so the two meet there and nothing jumps. In `em` and not in pixels like the query for a
+   telephone, so that at enlarged text, when `rem` has doubled, the cap does not hold six columns of
+   208px in a table that did not grow: the share is what applies until the screen is wide enough for the
+   cap again (ADL A34). */
+@media (min-width: 62.5em) {
+  .table--results .results__figure {
+    width: 6.5rem;
+  }
+}
+
 /* On a telephone the name of an event is cut rather than allowed to push the
    table wider than the screen at the ordinary text size (PDL P24: a table there
    has no horizontal scroll). Enlarged text is the one case where the table does
@@ -922,6 +971,17 @@
    što je gubitak sadržaja po WCAG 2.2 SC 1.4.4". The scroll box is what pays for
    the width here, not the ellipsis. */
 @media (max-width: 699.98px) {
+  /* A telephone draws three figures of the table of results, not six (the time, the points and the
+     buttons), and a share is the wrong measure for them: 11% of 328 is 36px, under the time itself,
+     and any share large enough for 328 is 147px each at 667, on a screen with nothing for them to
+     share. So here the figure is a width, 4,5rem: 72px, against the 66px the time needs at its widest
+     in the sample and the 80px the pair of buttons took before they were stacked. The member keeps
+     112px of 328 where it had 119 (a visitor, with one figure fewer, 184px against 174). See
+     `.results__figure` above for why the wider layouts use a share. */
+  .table--results .results__figure {
+    width: 4.5rem;
+  }
+
   /* The coloured dot goes, and the length column narrows by exactly what it and
      its space were taking. It is decoration: `aria-hidden`, with the name of the
      length beside it in words for a reader (CompetitorProfile.tsx), and the
