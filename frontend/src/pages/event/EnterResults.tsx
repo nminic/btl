@@ -30,7 +30,9 @@ import {
   emptyBlock,
   eventAndRaceOf,
   figuresOfANewRace,
+  hintOf,
   kindOfTheRows,
+  theEventPageAfter,
   typingTheEvent,
   typingTheRace,
   whatIsWrongWithTheBlock,
@@ -474,12 +476,17 @@ function TheBlockAndTheRows() {
         : [],
     [events, races, linked, today, locale],
   )
+  /* What a choice is looked up in: the files as they were read, and nothing while they are not, when no
+     list stands under either box to choose from (the boxes say why, `unreadable`). */
+  const calendar = events.status === 'ready' ? events.data : []
+  const run = races.status === 'ready' ? races.data : []
   const wrong = pressed ? whatIsWrongWithTheBlock(block, today) : []
   const said = (box: string) => wrong.find((one) => one.box === box)
   const kind = kindOfTheRows(block)
 
   /* A box of the block, with its label, its sentence when it is wrong, and the control the caller draws. */
-  const box = (name: string, label: string, control: (described: string | undefined) => ReactNode, hint?: string) => {
+  const box = (name: string, label: string, control: (described: string | undefined) => ReactNode, hintKey?: string) => {
+    const hint = hintKey === undefined ? undefined : t(hintKey)
     const words = said(name)
     const hintId = `league-block-${name}-hint`
     const described =
@@ -532,15 +539,11 @@ function TheBlockAndTheRows() {
                 unreadable={
                   events.status === 'error' ? { said: t('data.error'), named: t('admin.events'), read: events } : undefined
                 }
-                onType={(next) =>
-                  setBlock((now) => typingTheEvent(now, next, offeredEvents, events.status === 'ready' ? events.data : []))
-                }
-                onChoose={(one) =>
-                  setBlock((now) => choosingTheEvent(now, one, events.status === 'ready' ? events.data : []))
-                }
+                onType={(next) => setBlock((now) => typingTheEvent(now, next, offeredEvents, calendar))}
+                onChoose={(one) => setBlock((now) => choosingTheEvent(now, one, calendar))}
               />
             ),
-            EVENT_BOX.flatMap((one) => (one.hintKey === undefined ? [] : [t(one.hintKey)]))[0],
+            hintOf(EVENT_BOX),
           )}
           {/* A new event's one date, and a new race's own day on an event of the calendar, which starts
               as the event's; a race of the calendar has its day, so none is asked. */}
@@ -591,10 +594,10 @@ function TheBlockAndTheRows() {
                   races.status === 'error' ? { said: t('data.error'), named: t('event.races'), read: races } : undefined
                 }
                 onType={(next) => setBlock((now) => typingTheRace(now, next))}
-                onChoose={(one) => setBlock((now) => choosingTheRace(now, one, races.status === 'ready' ? races.data : []))}
+                onChoose={(one) => setBlock((now) => choosingTheRace(now, one, run))}
               />
             ),
-            RACE_BOX.flatMap((one) => (one.hintKey === undefined ? [] : [t(one.hintKey)]))[0],
+            hintOf(RACE_BOX),
           )}
           {block.race === null &&
             box('raceKind', t('newResult.raceKind'), () => (
@@ -663,7 +666,7 @@ function TheBlockAndTheRows() {
                   )
                 : theLeagueEnteredOnAnEvent({ ...eventAndRaceOf(block), rows: rows.map((one) => bodyOf(one, asked)) })
             }
-            after={(answer) => `/${locale}/kalendar/${theEventSavedOn(answer) ?? block.event?.slug ?? ''}`}
+            after={(answer) => theEventPageAfter(block, theEventSavedOn(answer), locale)}
           />
         )}
       </Resource>

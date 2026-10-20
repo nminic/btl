@@ -4,7 +4,7 @@ import { fromBoxes } from '../../forms/clock'
 import { fieldDate, isoDate } from '../../forms/dateField'
 import { theOneNamedExactly } from '../../forms/exactName'
 import { parseNumber } from '../../forms/numberField'
-import type { Suggestion } from '../../forms/types'
+import type { FieldDef, Suggestion } from '../../forms/types'
 import { REQUIRED_KEY } from '../../forms/validate'
 import { FIRST_SEASON } from '../../data/season'
 
@@ -223,25 +223,42 @@ export function whatIsWrongWithTheBlock(block: TheBlock, today: string): BlockWr
   return wrong
 }
 
+/**
+ * WHERE THE SCREEN GOES ONCE THE SAVE IS WRITTEN: the page of the event it is on („posle čuvanja ekran
+ * vodi na stranu događaja”, approved 19.10.2026), by the address the answer names where the save made
+ * or moved the event, and by the chosen event's own where it went over the event page's route, which
+ * names none.
+ */
+export function theEventPageAfter(block: TheBlock, answered: string | null, locale: string): string {
+  return `/${locale}/kalendar/${answered ?? (block.event === null ? '' : block.event.slug)}`
+}
+
+/** The help a box of a definition carries, or nothing: the first `hintKey` of the fields given. */
+export function hintOf(fields: readonly FieldDef[]): string | undefined {
+  return fields.map((one) => one.hintKey).find((one) => one !== undefined)
+}
+
 /** The limit of a race to a limit, out of its three boxes, read as every clock of the portal is. */
 function theLimitOf(block: TheBlock): number {
   return fromBoxes({ hours: block.hours, minutes: block.minutes, seconds: block.seconds })
 }
 
-/** What the save sends of the event and the race (`ResultsByTheLeagueApi.OnARaceOfAnEvent`). */
+/**
+ * What the save sends of the event and the race (`ResultsByTheLeagueApi.OnARaceOfAnEvent`), on the
+ * road that makes something: a race of the calendar takes the rows over the event page's own route
+ * (`EnterResults.tsx`), so the race here is always a new one.
+ */
 export type EventAndRaceSent = {
   event: { id: number } | { name: string; date: string; city: string; country: string }
-  race:
-    | { id: number }
-    | {
-        name: string
-        date?: string
-        kind: RaceKind
-        distanceKm: number | null
-        ascentM: number | null
-        descentM: number | null
-        limitSeconds: number | null
-      }
+  race: {
+    name: string
+    date?: string
+    kind: RaceKind
+    distanceKm: number | null
+    ascentM: number | null
+    descentM: number | null
+    limitSeconds: number | null
+  }
 }
 
 /**
@@ -256,10 +273,6 @@ export function eventAndRaceOf(block: TheBlock): EventAndRaceSent {
     block.event === null
       ? { name: block.eventName.trim(), date: isoDate(block.date), city: block.city.trim(), country: block.country }
       : { id: block.event.eventId }
-
-  if (block.race !== null) {
-    return { event, race: { id: block.race.raceId } }
-  }
 
   return {
     event,

@@ -63,7 +63,7 @@ type ServerRefusal = { id: string; answer: Exclude<Answer, { got: 'done' }> }
  * not one. Asked in one place, because the mark in the corner of the row, the buttons it
  * offers and the sentence that counts what a sweep stepped over are about the same rows.
  */
-function onARaceNotInTheCalendar(one: WaitingRun): boolean {
+function onARaceNotInTheCalendar(one: WaitingRun): one is WaitingRun & { raceDate: string } {
   return one.raceId === null && one.raceDate !== null
 }
 
@@ -642,17 +642,17 @@ export function ReviewQueue() {
                                       setFixing(null)
                                       setPlacing({
                                         id: one.id,
-                                        day: one.raceDate ?? '',
+                                        day: one.raceDate,
                                         raceName: one.subject,
                                         chosen: null,
                                         /* THE EVENT THE MEMBER NAMED (V66): the one he chose, linked by
                                            its key, or the name he typed; a run sent before V66 named
                                            none, and its race's name stands in, as it did. */
                                         eventName: one.eventName ?? one.subject,
+                                        /* A run that names its event by its key names it by its name as
+                                           well, the name it has now (`VerificationApi.Waiting`). */
                                         event:
-                                          one.eventId === null
-                                            ? null
-                                            : { eventId: one.eventId, said: one.eventName ?? one.subject },
+                                          one.eventId === null ? null : { eventId: one.eventId, said: String(one.eventName) },
                                         /* The run's own town, to start a new event's place from
                                            (approved 19.10.2026: „popunjeno mestom prijave”). */
                                         city: one.city,

@@ -901,6 +901,61 @@ describe('the event the panel names first', () => {
   })
 })
 
+describe('what the panel says of a calendar and a place it cannot use', () => {
+  it('says beside the event’s box that the calendar could not be read, and still takes a new event typed into it', async () => {
+    const user = setupUser()
+    const server = serverWith({ events: () => new Response('nema', { status: 500 }) })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000060')
+
+      /* Beside the event's box, and beside the race's too, whose list is made of both files. */
+      expect(await panel().findAllByText('Podaci se ne mogu učitati.')).toHaveLength(2)
+
+      await typeIntoTheEventName(user, 'Strušku noć')
+
+      expect(panel().getByLabelText(sr.newResult.raceName)).toHaveValue('Strušku noć')
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('asks a run that names no town at all for the new event’s place and its country, and sends nothing until both are there', async () => {
+    /* The state a run is left in when the event it was chosen on is deleted (V67): no town of its
+       own and no event, so the place starts empty. A town typed by hand that the codebook does not
+       know leaves the country to be chosen, and the panel says so on the town. */
+    const user = setupUser()
+    const server = serverWith({ queue: () => [{ ...TYPED, city: '', country: '' }] })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000060')
+
+      expect(panel().getByLabelText(sr.review.placeTown)).toHaveValue('')
+
+      await user.type(panel().getByLabelText(sr.review.placeTown), 'Xqzrtgrad')
+
+      const save = panel().getByRole('button', { name: sr.review.placeSave })
+
+      expect(save).toHaveAccessibleDescription(`${sr.review.placeTown}: ${sr.form.errors.countryMissing}`)
+
+      await user.click(save)
+      await user.selectOptions(panel().getByLabelText(sr.form.country), 'MK')
+      await user.click(save)
+      await untilItHasAnswered()
+
+      expect(bodyOf(decisionsIn(server.asked)[0])).toMatchObject({
+        newRace: { eventName: 'Noćna desetka', city: 'Xqzrtgrad', country: 'MK' },
+      })
+    } finally {
+      server.stop()
+    }
+  })
+})
+
 describe('what the route answers to the panel', () => {
   it('closes with the route’s refusal, says it on the run’s row, and reads the queue and the races again', async () => {
     const user = setupUser()

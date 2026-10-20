@@ -388,6 +388,29 @@ describe('what the block says before anything is sent', () => {
     }
   })
 
+  it('says beside the race’s box that the races could not be read, and still takes a new race typed into it', async () => {
+    const user = setupUser()
+    const server = serverThat((path, init) =>
+      (init?.method ?? 'GET') === 'GET' && path === '/api/races'
+        ? new Response('nema', { status: 500 })
+        : (init?.method ?? 'GET') === 'GET' && path === '/api/events'
+          ? answering(CALENDAR)
+          : null,
+    )
+
+    try {
+      await open(user)
+
+      expect(await screen.findByText('Podaci se ne mogu učitati.')).toBeVisible()
+
+      await user.type(raceBox(), 'Nova staza')
+
+      expect(raceBox()).toHaveValue('Nova staza')
+    } finally {
+      server.stop()
+    }
+  })
+
   it('says beside the box that the calendar could not be read, and still takes a new event typed into it', async () => {
     const user = setupUser()
     const server = serving(undefined, () => new Response('nema', { status: 500 }))
