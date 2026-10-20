@@ -79,21 +79,6 @@ export function emptyBlock(): TheBlock {
   }
 }
 
-/**
- * THE BLOCK OPENED ON A RACE OF THE CALENDAR, from the event page's „Unesi rezultat”: both are known,
- * so both are linked from the start.
- */
-export function onTheRace(event: BtlEvent, race: Race, said: { event: string; race: string }): TheBlock {
-  return {
-    ...emptyBlock(),
-    eventName: said.event,
-    event: { eventId: event.id, slug: event.slug, date: event.date },
-    date: fieldDate(event.date),
-    raceName: said.race,
-    race: { raceId: race.id, kind: raceKind(race.kind) },
-  }
-}
-
 /** THE EVENTS OFFERED: races, from the first season of the league to today, newest first. Before 2027
  *  nothing (PDL P9, owner, 19.10.2026: „NIŠTA! NE POSTOJI LIGA PRE 2027 GODINE”), and every year after
  *  it, since a result may be entered after a season froze (the coordinator's derivation, PDL
