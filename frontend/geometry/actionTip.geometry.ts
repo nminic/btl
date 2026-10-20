@@ -382,3 +382,112 @@ for (const one of NEIGHBOURS) {
     expect(await pressedOne?.getAttribute('data-pressed'), 'the clicks the neighbour got').toBe('1')
   })
 }
+
+/**
+ * EVERY SYMBOL STANDS ON THE LINE OF THE WORDS AROUND IT (review of PR 593, round 3).
+ *
+ * The symbol is out of the flow, so the square needs a baseline of its own (the line of nothing in
+ * `ActionButton.css`). Without it a container that lines its children up by their baselines put the
+ * square about ten pixels too high: the chevron beside the heading of a card in the three queues
+ * (`.submissions__head`, `align-items: baseline`), measured −9.5px at 360 and −10px at 768, where `main`
+ * stood at +1.0. Asked here of every symbol on every screen, so that no container can repeat it: the
+ * vertical centre of the symbol against the centre of the nearest words on its line in its own
+ * surroundings, climbing at most three boxes up from it and never out of a cell of a table (the row of
+ * a table is `resultsRow.geometry.ts`'s question). Words that wrap count as one block, since a symbol
+ * lined up with them is lined up with the block. A symbol with no words on its line around it is not
+ * asked, and the queues below make sure the ones the review found always are.
+ *
+ * **Two pixels**, measured: every symbol that has words around it stands within one pixel of them
+ * today, and the two states this was written against stand 2,5px (the row of a
+ * table, with the symbol out of the flow and no line of its own) and ten pixels off.
+ */
+const ON_THE_LINE = 2
+
+/** For every drawn symbol, how far the centre of the nearest words on its line stands from its own. */
+function offTheLine(): { name: string | null; words: string | null; off: number | null }[] {
+  const wordsIn = (scope: Element) => {
+    const found: { text: string; top: number; bottom: number; left: number; right: number }[] = []
+    const walk = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT)
+
+    for (let node = walk.nextNode(); node !== null; node = walk.nextNode()) {
+      const holder = node.parentElement
+
+      if (
+        holder === null ||
+        (node.textContent ?? '').trim() === '' ||
+        holder.closest('.action, .action-tip, .visually-hidden') !== null ||
+        getComputedStyle(holder).visibility === 'hidden'
+      ) {
+        continue
+      }
+
+      const range = document.createRange()
+
+      range.selectNodeContents(node)
+
+      const rect = range.getBoundingClientRect()
+
+      if (rect.width > 0 && rect.height > 0) {
+        found.push({ text: (node.textContent ?? '').trim().slice(0, 30), top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right })
+      }
+    }
+
+    return found
+  }
+
+  return [...document.querySelectorAll('.action')]
+    .filter((one) => one.getBoundingClientRect().width > 0)
+    .map((one) => {
+      const box = one.getBoundingClientRect()
+      let scope = one.parentElement
+      let near: { text: string; top: number; bottom: number } | undefined
+
+      for (let step = 0; step < 3 && scope !== null && near === undefined; step += 1) {
+        near = wordsIn(scope)
+          .filter((line) => line.bottom > box.top && line.top < box.bottom)
+          .map((line) => ({ ...line, gap: Math.max(0, line.left - box.right, box.left - line.right) }))
+          .sort((left, right) => left.gap - right.gap)[0]
+
+        if (scope.matches('td, th')) {
+          break
+        }
+
+        scope = scope.parentElement
+      }
+
+      return {
+        name: one.getAttribute('aria-label') ?? one.textContent,
+        words: near === undefined ? null : near.text,
+        off: near === undefined ? null : (near.top + near.bottom) / 2 - (box.top + box.height / 2),
+      }
+    })
+}
+
+for (const at of WIDTHS) {
+  for (const screen of SCREENS) {
+    test(`every symbol stands on the line of the words around it on ${screen.path}, at ${label(at)}`, async ({ open }) => {
+      const { page } = await open(at, screen.path, '.action:visible', { ...SAMPLE, ...screen.extra, '/api/me': screen.me })
+      const seen = await page.evaluate(offTheLine)
+
+      expect(seen.filter((one) => one.off !== null && Math.abs(one.off) > ON_THE_LINE)).toEqual([])
+    })
+  }
+}
+
+for (const path of QUEUES) {
+  for (const width of [360, 768]) {
+    test(`the toggle of a card stands on the line of its heading on ${path} at ${String(width)}px`, async ({ open }) => {
+      const { page } = await open({ width, text: 100 }, path, '.action:visible', { ...SAMPLE, '/api/me': SUPERADMIN })
+      const seen = (await page.evaluate(offTheLine)).filter((one) => one.name?.startsWith('Prikaži') === true)
+
+      /* Measured, not assumed: at least one toggle stands beside words, so the case is never passed
+         for having nothing to ask. Not every one does: at 360 a long heading takes the line and the
+         head wraps (`flex-wrap`, Member.css), and the toggle then stands on a line of its own. */
+      const measured = seen.filter((one) => one.off !== null)
+
+      expect(seen.length, 'the toggles drawn').toBeGreaterThan(0)
+      expect(measured.length, 'toggles with words on their line').toBeGreaterThan(0)
+      expect(measured.filter((one) => Math.abs(one.off ?? 0) > ON_THE_LINE)).toEqual([])
+    })
+  }
+}

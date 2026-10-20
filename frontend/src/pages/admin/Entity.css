@@ -158,20 +158,11 @@
 }
 
 /* Open and delete, side by side at the end of every row, always in that order
-   and always the same distance apart.
-
-   Centred on the line it stands in, and not standing on its baseline. Since
-   20.10.2026 the buttons are drawn symbols with no line of words in them
-   (`components/ActionButton.css` places the symbol out of the flow, so no padding a
-   screen gives can move it), so the row of them has no baseline of its own: one is
-   made up from the bottom edge, and the row stood on the line of words around it
-   2,5px higher than the words in the cells beside it (measured in Chrome,
-   `geometry/resultsRow.geometry.ts`). */
+   and always the same distance apart. */
 .entity-row-actions {
   display: inline-flex;
   flex-wrap: wrap;
   gap: var(--space-6);
-  vertical-align: middle;
 }
 
 /* And what the question says goes with the record. Quiet, because it is not a

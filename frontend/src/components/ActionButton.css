@@ -44,6 +44,27 @@
   cursor: pointer;
 }
 
+/* A LINE OF NOTHING IN THE MIDDLE OF THE SQUARE, so the square has a baseline of its own.
+ *
+   The symbol is out of the flow (above), and a box with nothing in the flow has no baseline: one is
+   made up from its bottom edge, and wherever a container lines its children up by their baselines the
+   square stood about ten pixels too high (review of PR 593: the chevron beside the heading of a card,
+   `.submissions__head`, `align-items: baseline`, Member.css; and the row of symbols in a table stood
+   2,5px above the words beside it). Fixed here and not in each container, so that no container can
+   repeat it: with this line the row of a table needs nothing of its own (measured, `resultsRow`).
+ *
+   A zero-width space, a line of text that draws nothing and takes no width, in a box as tall as the
+   square's content with its one line centred (`align-content`). That holds whether the look lays
+   the button out as a block (`.button`, `.entity-open`) or as a flex box (`.button--compact`), and
+   whatever padding a screen gives, since the padding is the same above and below. Its text is given
+   an empty alternative (`/ ''`), so nothing is added to the name a screen reader hears. */
+.action.action::before {
+  content: '\200b' / '';
+  display: inline-block;
+  block-size: 100%;
+  align-content: center;
+}
+
 /* The drawing, a little over half the square, in whatever colour the button's
    text is: the ink of `.button--secondary` on the page, the light ink of
    `.button--primary` on its blue. Both reach 3:1 against what they stand on in

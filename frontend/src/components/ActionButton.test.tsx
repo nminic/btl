@@ -194,6 +194,20 @@ describe('how it is laid out', () => {
     expect(drawing.getPropertyValue('margin')).toBe('auto')
   })
 
+  it('has a baseline of its own, a line of nothing centred in the square', () => {
+    /* Review of PR 593, round 3, measured in Chrome: with the symbol out of the flow the square had no
+       baseline, and a container lining up baselines (`.submissions__head`) put the chevron ten pixels
+       above its heading. Read as text, since jsdom drops `content`; where it lands is asked of Chrome
+       on every screen (geometry/actionTip.geometry.ts). The empty alternative after the slash keeps the
+       character out of the name a screen reader hears. */
+    const strut = bodyOf(sheet('components/ActionButton.css'), '.action.action::before')
+
+    expect(strut).toMatch(/content:\s*'\\200b'\s*\/\s*'';/)
+    expect(strut).toMatch(/display:\s*inline-block;/)
+    expect(strut).toMatch(/block-size:\s*100%;/)
+    expect(strut).toMatch(/align-content:\s*center;/)
+  })
+
   it('stands the box over the page, against the window', () => {
     const rule = ruleFor(sheet('components/ActionButton.css'), '.action-tip', 'ActionButton.css')
 
