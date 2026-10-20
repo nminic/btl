@@ -435,6 +435,30 @@ describe('the box with the word', () => {
     expect(must(boxes[0], 'the one box').textContent).toBe('Obriši')
   })
 
+  it('lets go when the pointer leaves for the box of another button', () => {
+    /* Two boxes can be open at once, one on the keyboard and one on the pointer.
+       Asked about boxes in general, the pointer going from the second button into
+       the first box was still "here", and the second box stayed with nothing
+       holding it. */
+    render(
+      <>
+        <ActionButton symbol={SYMBOL.pencil} word="Izmeni" />
+        <ActionButton symbol={SYMBOL.cross} word="Obriši" />
+      </>,
+    )
+
+    aFocusTheReaderSees(screen.getByRole('button', { name: 'Izmeni' }))
+    const first = shown()
+    const drop = screen.getByRole('button', { name: 'Obriši' })
+
+    fireEvent.pointerOver(drop, { pointerType: 'mouse' })
+    expect(document.querySelectorAll('.action-tip')).toHaveLength(2)
+
+    fireEvent.pointerOut(drop, { pointerType: 'mouse', relatedTarget: first })
+
+    expect([...document.querySelectorAll('.action-tip')].map((one) => one.textContent)).toEqual(['Izmeni'])
+  })
+
   it('is not held open by a finger touching it', async () => {
     const user = userEvent.setup()
 
