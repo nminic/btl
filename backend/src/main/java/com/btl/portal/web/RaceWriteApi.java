@@ -324,7 +324,10 @@ class RaceWriteApi {
 		}
 
 		return inOneTransaction.execute(committing -> {
-			Optional<TheDayOfAnEvent.Standing> event = TheDayOfAnEvent.theEvent(db, typed.eventId());
+			/* THE EVENT, HELD FOR THIS WRITE FROM THE FIRST QUESTION; `theEventOfTheRaceHeldForThisWrite`
+			   says why, and that an addition does the same. */
+			Optional<TheDayOfAnEvent.Standing> event =
+					TheDayOfAnEvent.theEventHeldForThisWrite(db, typed.eventId());
 
 			/* A key the form carries and no row answers to, which is the same shape
 			   `EventWriteApi` answers a town nobody has with: a 400 about the form and not
@@ -536,7 +539,7 @@ class RaceWriteApi {
 		}
 
 		return inOneTransaction.execute(committing -> {
-			Optional<TheDayOfAnEvent.Standing> event = TheDayOfAnEvent.theEventOfTheRace(db, id);
+			Optional<TheDayOfAnEvent.Standing> event = theEventOfTheRaceHeldForThisWrite(id);
 
 			/* THE SAME ANSWER SOMEBODY WITHOUT THE RIGHT GETS, and that is deliberate: a
 			   race that is not there and one he may not touch say the same thing, which is
@@ -820,7 +823,7 @@ class RaceWriteApi {
 	@RightIsNeeded("entity:events")
 	ResponseEntity<?> remove(@PathVariable long id) {
 		return inOneTransaction.execute(committing -> {
-			Optional<TheDayOfAnEvent.Standing> event = TheDayOfAnEvent.theEventOfTheRace(db, id);
+			Optional<TheDayOfAnEvent.Standing> event = theEventOfTheRaceHeldForThisWrite(id);
 
 			if (event.isEmpty()) {
 				return no(HttpStatus.NOT_FOUND, null);
@@ -839,6 +842,39 @@ class RaceWriteApi {
 
 			return ResponseEntity.noContent().build();
 		});
+	}
+
+	/**
+	 * THE EVENT OF THIS RACE, HELD FOR THIS WRITE UNTIL IT COMMITS, AND ASKED AGAIN ONCE IT IS HELD.
+	 *
+	 * <p><b>Every write of a race holds its event first</b> ({@code for update}, as the approval of a member's
+	 * run does: {@link TheDayOfAnEvent#theEventHeldForThisWrite}), and this is the one road the two that
+	 * start from a race's own key take to it. Three questions are answered from what the event holds
+	 * (its day, its address, the races it has), and the write that follows sets the day and the address from
+	 * the answers. Read plainly, they are answers about the moment the request began: another writer that
+	 * committed while this one waited at its first write had put a race on the event, or changed this very
+	 * race, and this one then wrote a day and a recount that its own questions could not have known about.
+	 * The schema refuses the first at commit (V29, a 500), and the second goes through unnoticed: a form
+	 * that put a measure back was „nothing moved" against the race as it had been, and the runs stayed at the
+	 * measure the other change left them on (PENDING, review of PR 504, S1).
+	 *
+	 * <p><b>The lock is taken on the event and not on the race, and the race is read AFTER it.</b> The
+	 * event is the row every writer of a race of it already meets (the approval, the league's entry, a
+	 * change of the event itself), so it is the one lock that orders them all; a lock on this race alone
+	 * would leave an addition and a change of two races of one event free to set the event's day each from
+	 * what it had read. It is the same order {@link EventWriteApi#change} keeps (the event, then its
+	 * races), so the two never wait for each other the opposite way round.
+	 *
+	 * <p><b>The first question only says which event to hold</b>, and what it answers is not used: the
+	 * race may have been deleted, or the event with it, while this waited. So the race is looked for again
+	 * once the lock is ours, in a statement of its own that sees what the other writer committed, and a
+	 * race that is gone is the same 404 as a race that never was.
+	 */
+	private Optional<TheDayOfAnEvent.Standing> theEventOfTheRaceHeldForThisWrite(long race) {
+		TheDayOfAnEvent.theEventOfTheRace(db, race)
+				.ifPresent(seen -> TheDayOfAnEvent.theEventHeldForThisWrite(db, seen.id()));
+
+		return TheDayOfAnEvent.theEventOfTheRace(db, race);
 	}
 
 	/**

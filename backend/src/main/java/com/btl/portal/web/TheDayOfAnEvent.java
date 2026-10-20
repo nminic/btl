@@ -116,13 +116,14 @@ final class TheDayOfAnEvent {
 	 * THE EVENT, AND HELD FOR THIS WRITE UNTIL IT COMMITS ({@code for update}), for a writer that
 	 * asked about the event before it began to write and must not write over a change made since.
 	 *
-	 * <p>Asked by {@link VerificationWriteApi} and not by {@link RaceWriteApi}, which reads the
-	 * event plainly and writes in the same breath. The approval asks its questions before it
-	 * claims the row and writes after, so between the two another writer can delete the event, or
-	 * put a race on it that moves its day: held, the event is read again after that writer has
-	 * committed, and what it reads is what the day and the address are worked out from. Unheld, a
-	 * deleted event would reach the approval as {@code race_event_fk} and a 500, and two races put
-	 * on one event at once would each set its day without seeing the other's.
+	 * <p>Asked by {@link VerificationWriteApi}, by {@link ResultsByTheLeagueApi} and, since the
+	 * reviews of PR 504 and PR 577, by {@link RaceWriteApi} too, which used to read the event plainly and
+	 * write in the same breath. A writer asks its questions before it writes, so between the two another
+	 * writer can delete the event, or put a race on it that moves its day: held, the event is read again
+	 * after that writer has committed, and what it reads is what the day and the address are worked out
+	 * from. Unheld, a deleted event would reach the writer as {@code race_event_fk} and a 500, and two
+	 * races put on one event at once would each set its day without seeing the other's, which the schema
+	 * refuses at commit (V29) as a 500 as well.
 	 */
 	static Optional<Standing> theEventHeldForThisWrite(JdbcClient db, long id) {
 		return db.sql("select id, slug, name, date, kind from btl_event where id = ? for update")
