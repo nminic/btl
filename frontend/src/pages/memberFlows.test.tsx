@@ -2135,8 +2135,8 @@ describe('a result from entry to decision', () => {
   }
 
   async function enterResult(user: ReturnType<typeof setupUser>) {
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
-    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(await screen.findByLabelText(/^Događaj/), 'Probna trka')
+    await user.type(screen.getByLabelText(/Datum trke/), '10052027')
     await user.type(screen.getByLabelText('Mesto'), 'Niš')
     await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
     await user.type(screen.getByLabelText(/Dužina/), '21.1')
@@ -2160,9 +2160,9 @@ describe('a result from entry to decision', () => {
 
   it('refuses a result with no link to official results', async () => {
     const user = setupUser()
-    renderAt('/sr/rezultat/novi', 'competitor', '000007')
+    renderAt('/sr/rezultat/novi', 'competitor', '000007', undefined, '2027-08-23')
 
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
+    await user.type(await screen.findByLabelText(/^Događaj/), 'Probna trka')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
     expect(screen.getByRole('alert')).toBeVisible()
@@ -2174,7 +2174,7 @@ describe('a result from entry to decision', () => {
     const server = aServerThatKeepsWhatIsSent()
 
     try {
-      const { unmount } = renderAt('/sr/rezultat/novi', 'superadmin', '000007')
+      const { unmount } = renderAt('/sr/rezultat/novi', 'superadmin', '000007', undefined, '2027-08-23')
 
       await enterResult(user)
 
@@ -2225,10 +2225,10 @@ describe('a result from entry to decision', () => {
     const user = setupUser()
     const server = serverThat(() => null)
 
-    renderAt('/sr/rezultat/novi', 'superadmin', '000007')
+    renderAt('/sr/rezultat/novi', 'superadmin', '000007', undefined, '2027-08-23')
 
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Trka sa pričom')
-    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(await screen.findByLabelText(/^Događaj/), 'Trka sa pričom')
+    await user.type(screen.getByLabelText(/Datum trke/), '10052027')
     await user.type(screen.getByLabelText('Mesto'), 'Niš')
     await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
     await user.type(screen.getByLabelText(/Dužina/), '10')
@@ -2264,10 +2264,10 @@ describe('a result from entry to decision', () => {
        gone a caveat would stand beside nothing, and with only the caveat gone the
        number the owner objected to would stay. */
     const user = setupUser()
-    renderAt('/sr/rezultat/novi', 'competitor', '000007')
+    renderAt('/sr/rezultat/novi', 'competitor', '000007', undefined, '2027-08-23')
 
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
-    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(await screen.findByLabelText(/^Događaj/), 'Probna trka')
+    await user.type(screen.getByLabelText(/Datum trke/), '10052027')
     await user.type(screen.getByLabelText('Mesto'), 'Niš')
     await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
     await user.type(screen.getByLabelText(/Dužina/), '21.1')
@@ -2289,10 +2289,10 @@ describe('a result from entry to decision', () => {
 
   it('refuses a result run in no time at all', async () => {
     const user = setupUser()
-    renderAt('/sr/rezultat/novi', 'competitor', '000007')
+    renderAt('/sr/rezultat/novi', 'competitor', '000007', undefined, '2027-08-23')
 
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Trka bez vremena')
-    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(await screen.findByLabelText(/^Događaj/), 'Trka bez vremena')
+    await user.type(screen.getByLabelText(/Datum trke/), '10052027')
     await user.type(screen.getByLabelText('Mesto'), 'Niš')
     await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
     await user.type(screen.getByLabelText(/Dužina/), '10')
@@ -2356,7 +2356,7 @@ describe('a result from entry to decision', () => {
     const server = aServerThatKeepsWhatIsSent()
 
     try {
-      renderAt('/sr/rezultat/novi', 'superadmin', '000007')
+      renderAt('/sr/rezultat/novi', 'superadmin', '000007', undefined, '2027-08-23')
 
       await enterResult(user)
 
@@ -2371,8 +2371,8 @@ describe('a result from entry to decision', () => {
          press.** `POST /api/results` is what really puts the run in the queue, so the screen
          stays on the form until the route has answered. */
       await user.click(await screen.findByRole('link', { name: 'Unesi još jedan' }))
-      await user.type(await screen.findByLabelText(/^Naziv trke/), 'Druga trka')
-      await user.type(screen.getByLabelText(/Datum trke/), '11052026')
+      await user.type(await screen.findByLabelText(/^Događaj/), 'Druga trka')
+      await user.type(screen.getByLabelText(/Datum trke/), '11052027')
       await user.type(screen.getByLabelText('Mesto'), 'Niš')
       await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
       await user.type(screen.getByLabelText(/Dužina/), '10')
@@ -2457,8 +2457,10 @@ describe('a result from entry to decision', () => {
          u oktobru"). */
       expect(server.posted().at(-1)).toEqual({
         raceName: 'Probna trka',
-        day: '2026-05-10',
+        day: '2027-05-10',
         raceKind: 'length',
+        /* The event the run named, typed: a new one, whose name its race took (PDL P9, 19.10.2026). */
+        eventName: 'Probna trka',
         city: 'Niš',
         country: 'RS',
         distanceKm: 21.1,

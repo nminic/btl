@@ -1488,16 +1488,16 @@ export function FormRenderer({
         setLed(unlinked([field.name, ...followers]))
       },
       onChoose: (one: Suggestion) => {
-        const emptied = brokenBy([field.name, ...followers])
-
+        /* Nothing of an earlier entry is left to empty here: a list opens only on what is typed, and
+           typing has already broken this field's link and its followers' (`onType`). What a chosen
+           entry does to its followers is empty them, since their list is now this entry's. */
         setValues((current) => ({
           ...current,
-          ...Object.fromEntries(emptied.map((name) => [name, ''])),
           ...Object.fromEntries(followers.map((name) => [name, ''])),
           [field.name]: one.value,
           ...one.fills,
         }))
-        setErrors(without([field.name, ...emptied, ...Object.keys(one.fills)]))
+        setErrors(without([field.name, ...followers, ...Object.keys(one.fills)]))
         setLed({
           ...unlinked([field.name, ...followers]),
           [field.name]: { filled: Object.keys(one.fills), held: one.holds ?? Object.keys(one.fills) },

@@ -11,6 +11,7 @@ import {
   whatTheServerSaysOfMyPictures,
   whatTheServerSaysOfMyProfile,
   whatTheServerSaysOfMyWaitingText,
+  whatTheServerSaysOfTheSeasonsOpenForAReport,
   whoTheServerSaysIAm,
 } from './theServer'
 
@@ -1355,5 +1356,43 @@ describe('the words of the caller himself that wait for a moderator', () => {
     })
 
     expect(await whatTheServerSaysOfMyWaitingText()).toBeNull()
+  })
+})
+
+describe('the seasons the server says he may send a run of', () => {
+  /* `MeApi.MyOwnRecord.seasonsOpenForAReport` (PDL P9, 19.10.2026): read off the answer and not worked
+     out, because the window's one home is the server's clock. */
+  const answering = (seasons: unknown) =>
+    serverThat(() => saying(JSON.stringify({ role: 'competitor', account: 7, member: { ...myOwnRecordFromMe, seasonsOpenForAReport: seasons } })))
+
+  it.each([
+    ['the first season', [2027], [2027]],
+    ['the morning of New Year, before ten', [2027, 2028], [2027, 2028]],
+    ['before the league, which is no season at all', [], []],
+  ])('is the list it says on %s', async (_when, said, read) => {
+    server = answering(said)
+
+    expect(await whatTheServerSaysOfTheSeasonsOpenForAReport()).toEqual(read)
+  })
+
+  it.each([
+    ['a list holding something that is not a whole number', [2027, '2028']],
+    ['a year that is not a whole one', [2027.5]],
+    ['a word in place of a list', 'sve'],
+  ])('is not believed at all when it is %s', async (_what, said) => {
+    server = answering(said)
+
+    expect(await whatTheServerSaysOfTheSeasonsOpenForAReport()).toBeNull()
+  })
+
+  it('is nothing where nobody is signed in, or the caller races for nobody', async () => {
+    server = serverThat(() => new Response(null, { status: 401 }))
+
+    expect(await whatTheServerSaysOfTheSeasonsOpenForAReport()).toBeNull()
+
+    server.stop()
+    server = serverThat(() => saying(JSON.stringify({ role: 'moderator', account: 9 })))
+
+    expect(await whatTheServerSaysOfTheSeasonsOpenForAReport()).toBeNull()
   })
 })
