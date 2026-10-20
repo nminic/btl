@@ -23,13 +23,12 @@ import './EventComments.css'
  * Only what a moderator has approved (owner, 06.08.2026, and PDL P22 for every
  * queue): a comment goes out onto the portal or it does not.
  *
- * Two sources, one rule. What the record carries was approved before this visit;
- * what the queue carries is approved during it, and `useComments` is the one
- * place that decides which of the waiting ones count (data/useResource.ts). That
- * the rule is written down once rather than remembered at each screen is the
- * whole of the guard here, and it is held by a test that approves one comment
- * and looks for it under its event, and by another that deletes one and looks
- * for its absence.
+ * One source: what the server holds (`useComments`, data/useResource.ts). An
+ * approval on the queue drops the answer this visit holds, so the next read is the
+ * server's, with the rating published and the member's older one of that event gone
+ * (PDL, 19.10.2026). That is held by the cases that approve one comment and look for
+ * it under its event, with one rating per member per event and the overall mark worked
+ * out over that, and by the one that deletes one and looks for its absence.
  *
  * A comment shows who wrote it, so it carries their face and their name, and the
  * name leads to their profile the way every name on the portal does (PDL P11).
