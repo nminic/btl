@@ -1014,6 +1014,51 @@ describe('the event a result is run at, which the form asks first', () => {
     }
   }, SLOW)
 
+  it('links an event typed exactly, in any case, as if it had been chosen', async () => {
+    /* „Tačno otkucan naziv postojećeg događaja vezuje taj događaj i bez klika, bez obzira na velika i
+       mala slova, kao da je izabran predlog; polje trke tada postaje predlog nad njegovim trkama"
+       (PDL P9, owner, 19.10.2026). The town is the event's, so it is not asked; the day is the
+       event's own; the race box offers the event's races; and what goes is the event's key. */
+    const user = setupUser()
+    const held = calendar()
+    const route = recording()
+
+    try {
+      renderAt(NEW, 'competitor', ME, undefined, TODAY)
+      await user.type(await screen.findByLabelText(/^Događaj/), 'GRADSKA LIGA')
+
+      expect(screen.queryByLabelText('Mesto'), 'an event typed exactly still asks for a town').toBeNull()
+      expect(screen.getByLabelText(/Datum trke/)).toHaveValue('10/01/2027')
+
+      await user.type(raceName(), 'kolo 1')
+
+      expect(offered().length, 'the race box offers none of the event\'s races').toBeGreaterThan(0)
+
+      await user.clear(raceName())
+      await user.type(raceName(), 'Nova staza')
+      await user.type(screen.getByLabelText(/^Dužina/), '10')
+      await user.type(screen.getByLabelText(/Uspon/), '20')
+      await user.type(screen.getByLabelText(/Spust/), '20')
+      await user.type(screen.getByLabelText('Sati'), '0')
+      await user.type(screen.getByLabelText('Minuti'), '45')
+      await user.type(screen.getByLabelText('Sekunde'), '0')
+      await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/gradska')
+      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
+
+      const sent = must(route.sent()[0], 'what was sent')
+
+      expect(sent.eventId).toBe(9001)
+      for (const beside of ['eventName', 'city', 'country']) {
+        expect(Object.keys(sent), `${beside} went beside the event typed exactly`).not.toContain(beside)
+      }
+    } finally {
+      route.stop()
+      held.stop()
+    }
+  }, SLOW)
+
   it('refuses a day in no season open for a report, in the owner\'s words, and sends nothing', async () => {
     const user = setupUser()
     const route = recording()

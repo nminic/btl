@@ -2226,3 +2226,151 @@ describe('a field that is two columns wide', () => {
     expect(document.querySelectorAll('.field--full').length).toBe(1)
   })
 })
+
+/* An event and its race, the block the member's form and the moderator's screens share (PDL P9,
+   19.10.2026). `kljuc` is the event's key, which rides in the values beside the boxes the way
+   `eventId` does on `unos-rezultata`, and `dan` is the day an event fills. */
+const anEventAndItsRace: FormDef = {
+  id: 'proba',
+  titleKey: 'proba.naslov',
+  submitKey: 'form.submit',
+  fields: [
+    { name: 'dogadjaj', type: 'text', labelKey: 'proba.dogadjaj' },
+    { name: 'trka', type: 'text', labelKey: 'proba.trka' },
+    { name: 'dan', type: 'text', labelKey: 'proba.dan' },
+  ],
+}
+
+function anEvent(id: string, name: string, day: string) {
+  return { id, value: name, said: `${name} – ${day}`, fills: { kljuc: id, dan: day }, holds: ['kljuc'] }
+}
+
+function drawnWith(
+  events: ReturnType<typeof anEvent>[],
+  sent: FormValues[],
+  more: { linksWhenTyped?: string[]; fixed?: string[]; initial?: FormValues } = {},
+) {
+  renderWithI18n(
+    <FormRenderer
+      form={anEventAndItsRace}
+      suggests={{ dogadjaj: events }}
+      follows={{ trka: 'dogadjaj' }}
+      linksWhenTyped={more.linksWhenTyped ?? ['dogadjaj']}
+      {...(more.fixed === undefined ? {} : { fixed: more.fixed })}
+      {...(more.initial === undefined ? {} : { initial: more.initial })}
+      onSubmit={(values) => {
+        sent.push(values)
+      }}
+    />,
+  )
+}
+
+describe('a name typed exactly, in a field whose list links it', () => {
+  /* „Tačno otkucan naziv postojećeg događaja vezuje taj događaj i bez klika, bez obzira na velika i
+     mala slova, kao da je izabran predlog" (PDL P9, owner, 19.10.2026). */
+  const event = () => screen.getByLabelText(/proba.dogadjaj/)
+  const day = () => screen.getByLabelText(/proba.dan/)
+
+  it('links the entry it names in any case, and keeps what was typed', async () => {
+    const sent: FormValues[] = []
+    const user = setupUser()
+
+    drawnWith([anEvent('9001', 'Gradska liga', '10.01.2027.'), anEvent('9002', 'Gradska jesen', '10.10.2027.')], sent)
+    await user.type(event(), 'gRADSKA LIGA')
+
+    expect(day()).toHaveValue('10.01.2027.')
+    expect(event()).toHaveValue('gRADSKA LIGA')
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(must(sent[0], 'what was sent').kljuc).toBe('9001')
+  })
+
+  it('links nothing on a name that only begins an entry, and lets go when a letter follows', async () => {
+    const sent: FormValues[] = []
+    const user = setupUser()
+
+    drawnWith([anEvent('9001', 'Gradska liga', '10.01.2027.')], sent)
+    await user.type(event(), 'Gradska lig')
+
+    expect(day(), 'the beginning of a name linked its entry').toHaveValue('')
+
+    await user.type(event(), 'a')
+
+    expect(day()).toHaveValue('10.01.2027.')
+
+    await user.type(event(), 's')
+
+    expect(day(), 'a letter more kept the link').toHaveValue('')
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(must(sent[0], 'what was sent').kljuc ?? '').toBe('')
+  })
+
+  it('links neither of two entries of one name', async () => {
+    /* Between midnight and ten on 1 January two seasons are open and a name may stand in both
+       (the coordinator's proposal P1 A for 7b): the reader chooses, the form does not guess. */
+    const sent: FormValues[] = []
+    const user = setupUser()
+
+    drawnWith([anEvent('9001', 'Gradska liga', '10.01.2027.'), anEvent('9301', 'Gradska liga', '01.01.2028.')], sent)
+    await user.type(event(), 'Gradska liga')
+
+    expect(day()).toHaveValue('')
+  })
+
+  it('links nothing in a field whose list is not told to', async () => {
+    const sent: FormValues[] = []
+    const user = setupUser()
+
+    drawnWith([anEvent('9001', 'Gradska liga', '10.01.2027.')], sent, { linksWhenTyped: [] })
+    await user.type(event(), 'Gradska liga')
+
+    expect(day()).toHaveValue('')
+  })
+
+  it('empties the follower as a choice from the list does', async () => {
+    const sent: FormValues[] = []
+    const user = setupUser()
+
+    drawnWith([anEvent('9001', 'Gradska liga', '10.01.2027.')], sent)
+    await user.type(event(), 'Gradska lig')
+
+    expect(screen.getByLabelText(/proba.trka/), 'the race did not follow the name typed').toHaveValue('Gradska lig')
+
+    await user.type(event(), 'a')
+
+    expect(screen.getByLabelText(/proba.trka/)).toHaveValue('')
+  })
+})
+
+describe('a follower the form holds', () => {
+  /* A run sent again before V66 holds its race and named no event, and choosing an event for it
+     emptied the race nobody could type into again (review of PR 581). A held follower follows
+     nothing: neither a choice nor a name typed empties it or writes over it. */
+  const race = () => screen.getByLabelText(/proba.trka/)
+
+  it('keeps what it holds when an entry is chosen, and when a name is typed', async () => {
+    const sent: FormValues[] = []
+    const user = setupUser()
+
+    drawnWith([anEvent('9001', 'Gradska liga', '10.01.2027.')], sent, {
+      fixed: ['trka'],
+      initial: { trka: 'Stara staza' },
+    })
+    await user.type(screen.getByLabelText(/proba.dogadjaj/), 'Grad')
+    await user.click(screen.getByRole('button', { name: /Gradska liga – / }))
+
+    expect(race()).toHaveValue('Stara staza')
+
+    await user.clear(screen.getByLabelText(/proba.dogadjaj/))
+    await user.type(screen.getByLabelText(/proba.dogadjaj/), 'Seoska')
+
+    expect(race()).toHaveValue('Stara staza')
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(must(sent[0], 'what was sent').trka).toBe('Stara staza')
+  })
+})
