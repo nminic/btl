@@ -1173,6 +1173,72 @@ class ResultsByTheLeagueApiTest {
 	}
 
 	/**
+	 * THE SAVE'S OWN TWO REFUSALS OF THE GROUP, on this road as on the event page's: rows left out, and
+	 * none at all.
+	 */
+	@Test
+	void aSaveWithNoRowsIsRefusedAsTheEventPagesIs() throws Exception {
+		long theEvent = db.sql("select event_id from race where id = ?").param(theTen)
+				.query(Long.class).single();
+
+		for (String body : List.of("{\"event\":{\"id\":" + theEvent + "},\"race\":{\"id\":" + theTen + "}}",
+				onTheEvent(theEvent, "{\"id\":" + theTen + "}"))) {
+			MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, body);
+
+			assertThat(refused.getStatus()).isEqualTo(400);
+			assertThat(reasonIn(refused)).isEqualTo("theGroupIsEmpty");
+		}
+	}
+
+	/**
+	 * A RACE OF THE CALENDAR STILL TO COME takes no rows here either, and a row refused on a race of the
+	 * calendar is said as the event page says it, with no address beside it.
+	 */
+	@Test
+	void aRaceToComeAndARowRefusedOnARaceOfTheCalendarAreAnsweredAsTheEventPageAnswersThem()
+			throws Exception {
+		long toCome = db.sql("select event_id from race where id = ?").param(theRaceToCome)
+				.query(Long.class).single();
+		long theEvent = db.sql("select event_id from race where id = ?").param(theTen)
+				.query(Long.class).single();
+
+		assertThat(reasonIn(onAnEvent(RESULTS_MODERATOR, onTheEvent(toCome, "{\"id\":" + theRaceToCome + "}",
+				row(VERA, null, null, null, AN_HOUR))))).isEqualTo("theRaceHasNotBeenRun");
+
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				"{\"id\":" + theTen + "}", row(NOBODY_HOLDS_THIS, null, null, null, AN_HOUR)));
+
+		assertThat(wrongRows(refused)).containsExactly("0 theMemberIsNotKnown");
+		assertThat(new ObjectMapper().readTree(refused.getContentAsString()).has("event")).isFalse();
+	}
+
+	/**
+	 * A NEW RACE THAT WOULD MOVE ITS EVENT INTO A YEAR WHERE ITS NAME IS TAKEN is refused before anything
+	 * is written: a race on an earlier day moves its event back, and with it into that year's address
+	 * ({@link TheDayOfAnEvent}), which another event of that name already holds. The screen cannot build
+	 * it, so it has no sentence of its own (`theFormIsNotComplete`); that reading is mine.
+	 */
+	@Test
+	void aNewRaceThatWouldMoveItsEventOntoAnotherIsRefusedAndWritesNothing() throws Exception {
+		clock.moveTo(AFTER_THE_FREEZE);
+
+		long theNewYears = event("novogodisnja-2028", "Novogodisnja", LocalDate.of(2028, 1, 1));
+
+		event("novogodisnja-2027", "Novogodisnja", LocalDate.of(2027, 6, 1));
+
+		int races = howMany("race");
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onTheEvent(theNewYears,
+				newRace("Silvestarska", "2027-12-31", "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(refused.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(refused)).isEqualTo("theFormIsNotComplete");
+		assertThat(howMany("race")).isEqualTo(races);
+		assertThat(db.sql("select date from btl_event where id = ?").param(theNewYears)
+				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2028, 1, 1));
+	}
+
+	/**
 	 * A ROW REFUSED TAKES THE EVENT AND THE RACE WITH IT: one save, and nothing of it written if one
 	 * part is refused, which is the event page's rule for its rows carried to the two it now makes.
 	 */
@@ -1204,9 +1270,46 @@ class ResultsByTheLeagueApiTest {
 		String aRow = row(VERA, "5.00", 1, 1, AN_HOUR);
 		int events = howMany("btl_event");
 
+		long aTraining = db.sql("insert into btl_event (slug, name, date, place_id, kind, featured,"
+						+ " description, link) values ('trening-2027', 'Trening', date '2027-05-01',"
+						+ " (select id from place where rank = 1), 'training', false, '', '') returning id")
+				.query(Long.class).single();
+		String free = newRace("Nova", "2027-05-01", "free", null, null, null, null);
+
 		for (String body : List.of(
 				"{\"event\":{\"id\":" + theEvent + ",\"name\":\"Prvi dogadjaj\"},\"race\":{\"id\":" + theTen
 						+ "},\"rows\":[" + aRow + "]}",
+				/* A key beside a day, and a race's key beside a figure: neither is a name. */
+				"{\"event\":{\"id\":" + theEvent + ",\"date\":\"2027-05-08\"},\"race\":{\"id\":" + theTen
+						+ "},\"rows\":[" + aRow + "]}",
+				"{\"event\":{\"id\":" + theEvent + "},\"race\":{\"id\":" + theTen
+						+ ",\"distanceKm\":5},\"rows\":[" + aRow + "]}",
+				/* No event, and no race. */
+				"{\"race\":" + free + ",\"rows\":[" + aRow + "]}",
+				"{\"event\":{\"id\":" + theEvent + "},\"rows\":[" + aRow + "]}",
+				/* A new event with no name, and with no day. */
+				"{\"event\":{\"name\":\" \",\"date\":\"2027-06-01\",\"city\":\"Ohrid\",\"country\":\"MK\"},"
+						+ "\"race\":" + newRace("Nova", null, "free", null, null, null, null) + ",\"rows\":[" + aRow + "]}",
+				"{\"event\":{\"name\":\"Jezerska trka\",\"city\":\"Ohrid\",\"country\":\"MK\"},"
+						+ "\"race\":" + newRace("Nova", null, "free", null, null, null, null) + ",\"rows\":[" + aRow + "]}",
+				/* A new race with no name, with no kind, and of a kind nobody has. */
+				onTheEvent(theEvent, "{\"name\":\"\",\"date\":\"2027-05-01\",\"kind\":\"free\"}", aRow),
+				onTheEvent(theEvent, "{\"name\":\"Nova\",\"date\":\"2027-05-01\"}", aRow),
+				onTheEvent(theEvent, "{\"name\":\"Nova\",\"date\":\"2027-05-01\",\"kind\":\"relay\"}", aRow),
+				/* A town too long, a town with a character nobody sees, and a town with no country. */
+				onANewEvent("Jezerska trka", "2027-06-01", "O".repeat(ResultWriteApi.A_TYPED_TOWN_HOLDS_AT_MOST + 1),
+						"MK", newRace("Nova", null, "free", null, null, null, null), aRow),
+				onANewEvent("Jezerska trka", "2027-06-01", "Oh\u200brid", "MK",
+						newRace("Nova", null, "free", null, null, null, null), aRow),
+				onANewEvent("Jezerska trka", "2027-06-01", "Ohrid", " ",
+						newRace("Nova", null, "free", null, null, null, null), aRow),
+				/* A length whose climb is below nought, and one with no drop. */
+				onANewEvent("Jezerska trka", "2027-06-01", "Ohrid", "MK",
+						newRace("Nova", null, "length", "10.00", -1, 0, null), aRow),
+				onANewEvent("Jezerska trka", "2027-06-01", "Ohrid", "MK",
+						newRace("Nova", null, "length", "10.00", 0, null, null), aRow),
+				/* An event of the calendar that is not a race, which holds no races. */
+				onTheEvent(aTraining, free, aRow),
 				onANewEvent("Jezerska trka", "2027-06-01", "Ohrid", "MK", "{\"id\":" + theTen + "}", aRow),
 				onANewEvent("Jezerska trka", "2027-06-01", "Ohrid", "MK",
 						newRace("Nova", "2027-06-01", "free", null, null, null, null), aRow),
@@ -1227,7 +1330,8 @@ class ResultsByTheLeagueApiTest {
 				"2027-09-01", "Ohrid", "MK", newRace("Nova", null, "free", null, null, null, null), aRow));
 
 		assertThat(reasonIn(toCome)).isEqualTo("theRaceHasNotBeenRun");
-		assertThat(howMany("btl_event")).isEqualTo(events);
+		/* The training this case wrote itself, and nothing a refused save wrote. */
+		assertThat(howMany("btl_event")).isEqualTo(events + 1);
 	}
 
 	/* ===================================================================== helpers */

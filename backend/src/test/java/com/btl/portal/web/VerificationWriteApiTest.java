@@ -2846,6 +2846,13 @@ class VerificationWriteApiTest {
 		assertThat(twice.getStatus()).isEqualTo(400);
 		assertThat(reasonIn(twice)).startsWith("Događaj je zadat dvaput");
 
+		/* A country alone beside the key says as much as a town would. */
+		MockHttpServletResponse aCountry = decideWith(THE_SUPERADMIN, run,
+				"{\"approved\":true,\"newRace\":{\"eventId\":" + theirs + ",\"raceName\":\"Neka\","
+						+ "\"raceKind\":\"length\",\"country\":\"HR\"}}");
+
+		assertThat(reasonIn(aCountry)).startsWith("Događaj je zadat dvaput");
+
 		for (String[] place : new String[][] { { "Vukovar", "XX" }, { "Vukovar", "" }, { "", "HR" },
 				{ "V".repeat(ResultWriteApi.A_TYPED_TOWN_HOLDS_AT_MOST + 1), "HR" },
 				{ "Vuko\u200bvar", "HR" } }) {

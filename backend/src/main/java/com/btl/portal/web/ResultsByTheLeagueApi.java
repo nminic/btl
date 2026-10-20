@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * THE LEAGUE ENTERS, CHANGES AND DELETES MEMBERS' RESULTS FROM THE EVENT PAGE, AND WHAT IT
@@ -449,11 +450,10 @@ class ResultsByTheLeagueApi {
 	private ResponseEntity<?> whatIsWrongWith(NamedEvent event, NamedRace race) {
 		boolean newEvent = event.id() == null;
 		boolean newRace = race.id() == null;
-		boolean namedBesideTheKey = !newEvent && (!isNothing(event.name()) || event.date() != null
-				|| !isNothing(event.city()) || !isNothing(event.country()));
-		boolean raceNamedBesideTheKey = !newRace && (!isNothing(race.name()) || race.date() != null
-				|| race.kind() != null || race.distanceKm() != null || race.ascentM() != null
-				|| race.descentM() != null || race.limitSeconds() != null);
+		boolean namedBesideTheKey = !newEvent
+				&& !nothingIn(event.name(), event.date(), event.city(), event.country());
+		boolean raceNamedBesideTheKey = !newRace && !nothingIn(race.name(), race.date(), race.kind(),
+				race.distanceKm(), race.ascentM(), race.descentM(), race.limitSeconds());
 
 		if (namedBesideTheKey || raceNamedBesideTheKey || (newEvent && !newRace)
 				|| (newEvent && (isNothing(event.name()) || event.date() == null || race.date() != null))
@@ -593,20 +593,21 @@ class ResultsByTheLeagueApi {
 	}
 
 	/** The event, in the town typed, on the day of its first race, at its address; one made by
-	 *  another save at that address in between is that event. */
+	 *  another save at that address in between is that event, which is why the insert gives way and
+	 *  the row is then read by its address whichever of the two wrote it. */
 	private long aNewEvent(NamedEvent named) {
 		String address = EventAddress.of(named.name().strip(), named.date());
 		Long country = db.sql("select id from country where code = ?").param(named.country())
 				.query(Long.class).single();
 
-		return db.sql("insert into btl_event (slug, name, date, place_id, city, country_id, kind,"
+		db.sql("insert into btl_event (slug, name, date, place_id, city, country_id, kind,"
 						+ " featured, description, link) values (?, ?, ?, null, ?, ?, ?, false, '', '')"
-						+ " on conflict (slug) do nothing returning id")
+						+ " on conflict (slug) do nothing")
 				.params(address, named.name().strip(), named.date(), named.city().strip(), country,
 						WhatAnEventCarries.A_RACE)
-				.query(Long.class).optional()
-				.orElseGet(() -> db.sql("select id from btl_event where slug = ?").param(address)
-						.query(Long.class).single());
+				.update();
+
+		return db.sql("select id from btl_event where slug = ?").param(address).query(Long.class).single();
 	}
 
 	/** The race, with what its kind fixes and nought for the rest, as the approval writes one. */
@@ -649,6 +650,11 @@ class ResultsByTheLeagueApi {
 
 	private static boolean isNothing(String value) {
 		return value == null || value.isBlank();
+	}
+
+	/** Whether none of these says anything: each is absent, or a text with nothing in it. */
+	private static boolean nothingIn(Object... values) {
+		return Stream.of(values).allMatch(one -> one == null || one instanceof String text && text.isBlank());
 	}
 
 	/**
