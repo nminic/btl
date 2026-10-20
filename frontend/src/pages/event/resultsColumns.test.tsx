@@ -1,10 +1,11 @@
 import { screen, within } from '@testing-library/react'
-import { loadResource } from '../../data/client'
+import { clearResourceCache, loadResource } from '../../data/client'
 import type { Result } from '../../data/types'
-import { formatNumber } from '../../i18n/format'
+import { formatNumber, formatPoints } from '../../i18n/format'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
+import { serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 
 /**
@@ -88,5 +89,40 @@ describe('the table of results on an event', () => {
     expect(climbs).not.toEqual(falls)
     expect(climbs).toContain('15')
     expect(falls).toContain('209')
+  }, SLOW)
+
+  it('says under Trka the name of the race of that very run, not of the event and not of another row', async () => {
+    /* The sample names every race of an event after the event, so a column that read the event
+       (`eventName`), or the race of the first row, would say the same words and pass. Served here
+       with a race of its own for every run, spelt like neither the event nor the others. */
+    const real = (await loadResource<Result[]>('results')).filter((one) => one.eventSlug === EVENT)
+    const served = real.map((one) => ({ ...one, raceName: `Race number ${String(one.id)} of the day` }))
+
+    expect(real.length, 'an event nobody ran measures nothing').toBeGreaterThan(1)
+
+    /* Read once above, so the page would be handed the sample from the cache and never ask. */
+    clearResourceCache('results')
+
+    const server = serverThat((path) =>
+      path.endsWith('/api/results') ? new Response(JSON.stringify(served), { status: 200 }) : null,
+    )
+
+    try {
+      const table = await openResults()
+      const rows = within(table).getAllByRole('row').slice(1)
+      const said = rows.map((row) => {
+        const cells = within(row).getAllByRole('cell').map((one) => one.textContent)
+
+        return `${String(cells[1])}|${String(cells[6])}`
+      })
+      const ran = served.map((one) => `${one.raceName}|${formatPoints(one.points, 'sr')}`)
+
+      /* The race and the points of one run, together: a name taken from another row is a pair
+         nobody ran, even where two runs scored the same. */
+      expect(new Set(served.map((one) => one.raceName)).size).toBe(served.length)
+      expect(said.sort()).toEqual(ran.sort())
+    } finally {
+      server.stop()
+    }
   }, SLOW)
 })

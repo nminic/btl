@@ -4,7 +4,7 @@ import { configure, screen, within } from '@testing-library/react'
 import { must } from '../test/at'
 import { moderatorWith, renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
-import { ruleFor, unconditionalRules } from '../test/stylesheet'
+import { ruleFor, ruleInMedia, unconditionalRules } from '../test/stylesheet'
 
 /**
  * THE ROW OF A MEMBER'S RESULT ON THE PAGE OF AN EVENT: WHAT PUTS EVERY CELL OF IT ON ONE CENTRE, HELD
@@ -52,10 +52,15 @@ describe('the sheet of the event page', () => {
       'middle',
     )
 
-    /* And no second rule for the head: the head cells keep the shared „top", one line of words each. */
+    /* And no rule that places the head: the head cells keep the shared „top", one line of words each.
+       The head does have a rule of its own since 20.10.2026 (it may wrap, below), so what is asked is
+       that none of them says where in the row a head stands. */
     expect(
       unconditionalRules(PROFILE, 'Profile.css').filter(
-        (rule) => /\.table--results/.test(rule.selectorText) && /\bth\b|thead/.test(rule.selectorText),
+        (rule) =>
+          /\.table--results/.test(rule.selectorText) &&
+          /\bth\b|thead/.test(rule.selectorText) &&
+          rule.style.getPropertyValue('vertical-align') !== '',
       ),
     ).toEqual([])
   })
@@ -75,6 +80,40 @@ describe('the sheet of the event page', () => {
         (rule) => /\.table--results/.test(rule.selectorText) && rule.style.getPropertyValue('flex-wrap') !== '',
       ),
     ).toEqual([])
+  })
+
+  it('gives every figure of the table one width, in a share of the table where there is room to share', () => {
+    /* Owner, 20.10.2026: „Ove ostale kolone desno od toga slozi ekonomicno i jednakih sirina". One
+       width for the length, the climb, the fall, the time, the points and the buttons, said once, on
+       the `col` every one of them has (`EventDetail.tsx`). A share of the table from the narrowest
+       tablet up, because a number of pixels cannot stand beside two columns of words at 768px for
+       whoever checks results (measured in Chrome, `geometry/resultsRow.geometry.ts`); a number of rem
+       from 62.5em, where a share is more than the figures need; and a number of rem on a telephone,
+       where a share would be under the time itself. */
+    expect(ruleFor(PROFILE, '.table--results .results__figure', 'Profile.css').getPropertyValue('width')).toBe('11%')
+    expect(
+      ruleInMedia(PROFILE, '(min-width: 62.5em)', '.table--results .results__figure', 'Profile.css').getPropertyValue(
+        'width',
+      ),
+    ).toBe('6.5rem')
+    expect(
+      ruleInMedia(PROFILE, '(max-width: 699.98px)', '.table--results .results__figure', 'Profile.css').getPropertyValue(
+        'width',
+      ),
+    ).toBe('4.5rem')
+
+    /* The only width this table is given, so no column of it has a second one. */
+    expect(
+      unconditionalRules(PROFILE, 'Profile.css')
+        .filter((rule) => /\.table--results/.test(rule.selectorText) && rule.style.getPropertyValue('width') !== '')
+        .map((rule) => rule.selectorText),
+    ).toEqual(['.table--results .results__figure'])
+
+    /* And the head may wrap: at 81px (11% of 736) „Dužina (km)" is wider than its column, and a column
+       that cannot be as narrow as its head is wider than the others. */
+    expect(
+      ruleFor(PROFILE, '.table--results thead th', 'Profile.css').getPropertyValue('white-space'),
+    ).toBe('normal')
   })
 
   it('leaves every other table at the top of its row', () => {
@@ -105,11 +144,43 @@ describe('the table of results on the page of an event', () => {
 
   }, SLOW)
 
+  it('has one column for each head, and a figure for every one of them but the member and the race', async () => {
+    for (const [who, rights] of [
+      ['moderator', CHECKS_RESULTS],
+      ['visitor', undefined],
+    ] as const) {
+      const view = renderAt(`/sr/kalendar/${WITH_RESULTS}`, who, null, rights)
+      const table = await screen.findByRole('table', { name: 'Rezultati članova' })
+      const heads = [...table.querySelectorAll('thead th')]
+      const columns = [...table.querySelectorAll('colgroup > col')]
+
+      /* A `col` for every head: one fewer and the widths slide onto the wrong column. */
+      expect(columns, who).toHaveLength(heads.length)
+
+      /* The member and the race are columns of words and take what is left; every other one is a
+         figure and carries the width (the pencil and the x included, when the column is there). */
+      expect(
+        columns.map((one) => one.matches('.table--results .results__figure')),
+        who,
+      ).toEqual(heads.map((_, index) => index >= 2))
+
+      /* And a column the phone does not draw is not drawn there as a column either: the same
+         columns as the heads and the cells that carry `table__hide-phone`. */
+      expect(
+        columns.map((one) => one.classList.contains('table__hide-phone')),
+        who,
+      ).toEqual(heads.map((one) => one.classList.contains('table__hide-phone')))
+
+      view.unmount()
+    }
+  }, SLOW)
+
   it('is not the table of races above it', async () => {
     renderAt(`/sr/kalendar/${WITH_RESULTS}`, 'moderator', null, CHECKS_RESULTS)
 
     const races = await screen.findByRole('table', { name: 'Trke' })
 
     expect(races.matches('.table--results')).toBe(false)
+    expect(races.querySelector('.results__figure')).toBeNull()
   }, SLOW)
 })
