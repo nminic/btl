@@ -7,7 +7,6 @@ import { clearResourceCache } from '../../data/client'
 import { NO_RATING, RATING_MARKS, type EventRating } from '../../data/types'
 import { combineResources, useComments, useEvents, useRaces, useResults } from '../../data/useResource'
 import type { EventComment } from '../../data/types'
-import { Loader } from '../../components/Loader'
 import { useSession } from '../../session/useSession'
 import { isActiveMember } from '../../roles/activeMemberOrAdministration'
 import { ran } from './ran'
@@ -69,23 +68,19 @@ export function RateEvent() {
  * THE FORM, ONCE THE COMMENTS ARE IN, so it can open with what he gave (owner, PDL P6, 20.10.2026:
  * „izmena otvara formu sa starim zvezdicama i tekstom").
  *
- * <p>A comments read that fails opens an empty form rather than an alarm: the rating is what this
- * screen is for, and it can be given without them. Waited for while it is out, so the marks he gave do
- * not arrive under a reader who has started choosing new ones.
+ * <p>Waited for while it is out, so the marks he gave do not arrive under a reader who has started
+ * choosing new ones. A read that fails is said, with the way to ask again, the way every read on the
+ * portal is (`Resource`), and NOT opened as an empty form: an empty form over a rating he has would
+ * tell him it is gone, and what he sent from it would replace the rating he could not see.
  */
 function WithWhatHeGave() {
   const { t } = useI18n()
-  const comments = useComments()
 
-  if (comments.status === 'loading') {
-    return (
-      <div className="member">
-        <Loader inline={false} label={t('event.commentTitle')} />
-      </div>
-    )
-  }
-
-  return <RateOne given={comments.status === 'ready' ? comments.data : []} />
+  return (
+    <Resource state={useComments()} label={t('event.commentTitle')}>
+      {(comments) => <RateOne given={comments} />}
+    </Resource>
+  )
 }
 
 /**

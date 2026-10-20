@@ -9,7 +9,7 @@ import { RATING_MARKS } from '../../data/types'
 import type { Competitor, EventComment } from '../../data/types'
 import { editionsOf } from '../../data/editions'
 import { overall, rated } from './overall'
-import { combineResources, useCompetitors, useEvents, useResource } from '../../data/useResource'
+import { combineResources, useComments, useCompetitors, useEvents } from '../../data/useResource'
 import { Loader } from '../../components/Loader'
 import { Resource } from '../../components/Resource'
 import { formatDate, formatNumber } from '../../i18n/format'
@@ -132,15 +132,9 @@ export function EventComments({ eventId, date }: { eventId: number; date: string
 function TheComments({ eventId, date }: { eventId: number; date: string }) {
   const { t } = useI18n()
   const today = useToday()
-  /* READ AGAIN WHEN HIS DELETION IS ANSWERED, and only then: the number the read is asked with
-     changes, which is what makes a mounted reader ask the server again (`useResource`, `revision`);
-     dropping the cache alone does not (`commentWrites.ts` drops it for the next mount). */
-  const [revision, setRevision] = useState(0)
-  const state = combineResources(
-    useResource<EventComment[]>('comments', { revision }),
-    useCompetitors(),
-    useEvents(),
-  )
+  /* Read again, here and beside the name of the event alike, when his deletion is answered
+     (`theCommentsHaveChanged`, `commentWrites.ts`). */
+  const state = combineResources(useComments(), useCompetitors(), useEvents())
 
   /* An event still to be run draws no section here at all, so while its data is
      on its way it must not hold a box open either: the reader would watch a
@@ -222,14 +216,7 @@ function TheComments({ eventId, date }: { eventId: number; date: string }) {
                  the list again. Without it React keeps the same component
                  across a change of address and the next race opens grown to
                  wherever the last one was left. */
-              <CommentList
-                key={eventId}
-                written={mine}
-                competitors={competitors}
-                onChanged={() => {
-                  setRevision((was) => was + 1)
-                }}
-              />
+              <CommentList key={eventId} written={mine} competitors={competitors} />
             )}
           </>
         )
@@ -251,14 +238,11 @@ function TheComments({ eventId, date }: { eventId: number; date: string }) {
 function CommentList({
   written,
   competitors,
-  onChanged,
 }: {
   /** Each comment beside the year of the running it was written about, empty
    *  where that is the one being read. */
   written: { comment: EventComment; slug: string; from: string }[]
   competitors: Competitor[]
-  /** Told when the server's comments are no longer what this list was drawn from. */
-  onChanged: () => void
 }) {
   const { t } = useI18n()
   const { shown, whole, asked, more } = useGrowing(written.length, AT_FIRST)
@@ -294,10 +278,7 @@ function CommentList({
             who={competitors.find((one) => one.memberNumber === comment.memberNumber)}
             from={from}
             his={me !== null && comment.memberNumber === me ? slug : null}
-            onGone={(id) => {
-              setGone(id)
-              onChanged()
-            }}
+            onGone={setGone}
           />
         ))}
       </ol>

@@ -1,4 +1,5 @@
 import { clearResourceCache } from '../../data/client'
+import { theCommentsHaveChanged } from '../../data/useResource'
 import { askTheServer, type Answer } from '../account/askTheServer'
 
 /**
@@ -27,13 +28,14 @@ export async function theRatingDeleted(comment: number): Promise<Answer> {
 }
 
 /**
- * WHAT IS NO LONGER TRUE ONCE HIS RATING IS GONE, OR WAS ALREADY GONE: the comments (the list under the
- * event and the mark beside its name, which are worked out of the same answer), and the moderator's
- * queue, because the deletion took his rating that waited as well and the header counts it.
+ * WHAT IS NO LONGER TRUE ONCE HIS RATING IS GONE, OR WAS ALREADY GONE: the comments, read again at once
+ * by both their readers on the page (the list under the event and the mark beside its name,
+ * `theCommentsHaveChanged`), and the moderator's queue, dropped for its next read, because the deletion
+ * took his rating that waited as well and the header counts it.
  */
 function whatADeletionChanges(): void {
   clearResourceCache('verification')
-  clearResourceCache('comments')
+  theCommentsHaveChanged()
 }
 
 /** Whether an answer to a deletion is one the screen says nothing about: done, or no longer there. */

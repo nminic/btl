@@ -52,6 +52,18 @@ type Screen = {
   day?: string
   /** The button that asks the question about the record to be deleted. */
   ask: () => Promise<HTMLElement>
+  /**
+   * What the three buttons are called, where the screen does not call them by a record's name
+   * (`DeleteRecord`'s `words`): a member's own rating, „Obriši svoju ocenu". Left out, they are the
+   * portal's own words around the name the first button carries.
+   */
+  words?: { open: string; sure: string; keep: string }
+  /**
+   * The number a refusal is answered with here, where a 404 is not a refusal on this screen: the event
+   * page reads a 404 to a member's deletion of his rating as „no longer there" and says nothing (the
+   * coordinator's decision of 20.10.2026, `event/commentWrites.ts`). Left out, 404.
+   */
+  refusal?: number
 }
 
 /** The first record on the screen: the first button that offers to delete one. */
@@ -121,6 +133,22 @@ const SCREENS: Screen[] = [
     },
   },
   {
+    /* A MEMBER'S OWN RATING ON THE PAGE OF ITS EVENT, since 20.10.2026 (PDL P6, „Član uvek sme da
+       obriše svoju ocenu ili da je izmeni"), in the owner's words for the question. */
+    name: 'a member\'s own rating on the page of its event',
+    source: 'event/EventComments.tsx',
+    at: '/sr/kalendar/fruskogorski-maraton-2010',
+    role: 'competitor',
+    member: '000021',
+    ask: async () => screen.findByRole('button', { name: sr.event.deleteOwnRating }),
+    words: {
+      open: sr.event.deleteOwnRating,
+      sure: sr.event.deleteOwnRatingSure,
+      keep: sr.event.keepOwnRating,
+    },
+    refusal: 500,
+  },
+  {
     name: 'a member\'s own counted result',
     source: 'member/MyResults.tsx',
     at: '/sr/moji-rezultati',
@@ -184,18 +212,23 @@ describe('a deletion that is out with the server', () => {
         'Obriši: ',
         '',
       )
+      const named = one.words ?? {
+        open: `Obriši: ${name}`,
+        sure: `Potvrdi brisanje: ${name}`,
+        keep: `Odustani od brisanja: ${name}`,
+      }
       const here = within(must(ask.parentElement, 'a place the buttons are drawn in'))
 
       await user.click(ask)
-      await user.click(await here.findByRole('button', { name: `Potvrdi brisanje: ${name}` }))
+      await user.click(await here.findByRole('button', { name: named.sure }))
 
-      return { ...held, user, name, here }
+      return { ...held, user, named, here, refusal: one.refusal ?? 404 }
     }
 
     it('tells „Odustani" off, and keeps the question when it is pressed', async () => {
-      const { server, settle, user, name, here } = await leaveItOut()
+      const { server, settle, user, named, here } = await leaveItOut()
 
-      const keep = here.getByRole('button', { name: `Odustani od brisanja: ${name}` })
+      const keep = here.getByRole('button', { name: named.keep })
 
       /* TOLD OFF AND NOT SWITCHED OFF: the portal's own answer, and the one `Potvrdi brisanje`
          beside it gives too. */
@@ -205,8 +238,8 @@ describe('a deletion that is out with the server', () => {
       await user.click(keep)
 
       /* THE QUESTION IS STILL ASKED, which is what putting it away would have undone. */
-      expect(here.getByRole('button', { name: `Potvrdi brisanje: ${name}` })).toBeInTheDocument()
-      expect(here.queryByRole('button', { name: `Obriši: ${name}` })).not.toBeInTheDocument()
+      expect(here.getByRole('button', { name: named.sure })).toBeInTheDocument()
+      expect(here.queryByRole('button', { name: named.open })).not.toBeInTheDocument()
 
       /* AND WHEN THE ANSWER COMES THE QUESTION GOES WITH THE RECORD, which is the owner's „list se
          zatvara sam kad stigne odgovor": nothing was pressed to close it, and nothing is left
@@ -214,7 +247,7 @@ describe('a deletion that is out with the server', () => {
       settle(did)
       await waitFor(() => {
         expect(
-          here.queryByRole('button', { name: `Potvrdi brisanje: ${name}` }),
+          here.queryByRole('button', { name: named.sure }),
         ).not.toBeInTheDocument()
       })
 
@@ -241,7 +274,7 @@ describe('a deletion that is out with the server', () => {
          screen's own and is said in an alert, and the focus goes where the activation puts it after
          a 409 - to the button of the row (`admin/Payments.tsx`), because the one that had it left
          with the question. */
-      const { server, settle, user, name, here } = await leaveItOut()
+      const { server, settle, user, named, here, refusal } = await leaveItOut()
 
       /* THE FOCUS IS MOVED ON BEFORE THE ANSWER, and on four of the screens it had been already
          (`RowActions` and the members' list move it ahead of the answer). React gives the button that
@@ -249,20 +282,20 @@ describe('a deletion that is out with the server', () => {
          the code does about it - which is how an `autoFocus` that does nothing read as working. */
       await user.tab()
 
-      settle(() => answeredWith(404))
+      settle(() => answeredWith(refusal))
 
       await waitFor(() => {
         expect(
-          here.queryByRole('button', { name: `Potvrdi brisanje: ${name}` }),
+          here.queryByRole('button', { name: named.sure }),
         ).not.toBeInTheDocument()
       })
 
       expect(
-        here.queryByRole('button', { name: `Odustani od brisanja: ${name}` }),
+        here.queryByRole('button', { name: named.keep }),
       ).not.toBeInTheDocument()
-      expect(here.getByRole('button', { name: `Obriši: ${name}` })).toHaveFocus()
+      expect(here.getByRole('button', { name: named.open })).toHaveFocus()
       expect(sending()).toHaveLength(0)
-      expect(await screen.findByText(/Server je odgovorio brojem 404/)).toBeInTheDocument()
+      expect(await screen.findByText(new RegExp(`Server je odgovorio brojem ${String(refusal)}`))).toBeInTheDocument()
 
       server.stop()
     }, SLOW)
@@ -270,24 +303,24 @@ describe('a deletion that is out with the server', () => {
     it('can be asked again after a refusal, and the second asking is sent', async () => {
       /* The guard that refuses a second press while one is out is a ref, and one left standing after
          the answer would answer every press with nothing beside a question that looks live. */
-      const { server, settle, user, name, here } = await leaveItOut()
+      const { server, settle, user, named, here, refusal } = await leaveItOut()
 
-      settle(() => answeredWith(404))
+      settle(() => answeredWith(refusal))
 
       await waitFor(() => {
         expect(
-          here.queryByRole('button', { name: `Potvrdi brisanje: ${name}` }),
+          here.queryByRole('button', { name: named.sure }),
         ).not.toBeInTheDocument()
       })
 
-      await user.click(here.getByRole('button', { name: `Obriši: ${name}` }))
+      await user.click(here.getByRole('button', { name: named.open }))
 
-      const again = await here.findByRole('button', { name: `Potvrdi brisanje: ${name}` })
+      const again = await here.findByRole('button', { name: named.sure })
 
       /* AND NOTHING OF THE FIRST ATTEMPT IS LEFT ON IT: not told off, and no sentence about sending. */
       expect(again).not.toHaveAttribute('aria-disabled')
       expect(
-        here.getByRole('button', { name: `Odustani od brisanja: ${name}` }),
+        here.getByRole('button', { name: named.keep }),
       ).not.toHaveAttribute('aria-disabled')
       expect(sending()).toHaveLength(0)
 
@@ -303,10 +336,10 @@ describe('a deletion that is out with the server', () => {
          raised again by the second without changing, so nothing would bring it back. */
       await waitFor(() => {
         expect(
-          here.queryByRole('button', { name: `Potvrdi brisanje: ${name}` }),
+          here.queryByRole('button', { name: named.sure }),
         ).not.toBeInTheDocument()
       })
-      expect(here.getByRole('button', { name: `Obriši: ${name}` })).toHaveFocus()
+      expect(here.getByRole('button', { name: named.open })).toHaveFocus()
 
       server.stop()
     }, SLOW)
@@ -314,22 +347,22 @@ describe('a deletion that is out with the server', () => {
     it('puts a question asked again after a refusal away', async () => {
       /* Whatever the first attempt raised is let go of, so the way out of the second question is
          open: a flag that stayed raised would leave two buttons that do nothing. */
-      const { server, settle, user, name, here } = await leaveItOut()
+      const { server, settle, user, named, here, refusal } = await leaveItOut()
 
-      settle(() => answeredWith(404))
+      settle(() => answeredWith(refusal))
 
       await waitFor(() => {
         expect(
-          here.queryByRole('button', { name: `Potvrdi brisanje: ${name}` }),
+          here.queryByRole('button', { name: named.sure }),
         ).not.toBeInTheDocument()
       })
 
-      await user.click(here.getByRole('button', { name: `Obriši: ${name}` }))
-      await user.click(here.getByRole('button', { name: `Odustani od brisanja: ${name}` }))
+      await user.click(here.getByRole('button', { name: named.open }))
+      await user.click(here.getByRole('button', { name: named.keep }))
 
-      expect(here.getByRole('button', { name: `Obriši: ${name}` })).toBeInTheDocument()
+      expect(here.getByRole('button', { name: named.open })).toBeInTheDocument()
       expect(
-        here.queryByRole('button', { name: `Potvrdi brisanje: ${name}` }),
+        here.queryByRole('button', { name: named.sure }),
       ).not.toBeInTheDocument()
 
       server.stop()

@@ -201,7 +201,7 @@
     },
     "rateEvent": {
       "title": "Rating an event",
-      "description": "Rate the organisation, the value for money and the atmosphere, and leave a comment for other members. Ratings without a comment are published at once, and a comment once a moderator approves it."
+      "description": "Rate the organisation, the value for money and the atmosphere. Ratings without a comment are published at once, and a comment once a moderator approves it."
     }
   },
   "shell": {

@@ -6,7 +6,7 @@ import { limitOf } from '../../forms/records'
 import { moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { at, first, must } from '../../test/at'
-import { arrivedResource, loadResource } from '../../data/client'
+import { arrivedResource, clearResourceCache, loadResource } from '../../data/client'
 import { aWaitingRating, fakeQueue } from '../../test/fakeQueue'
 import { membersAsServed, refused, serverThat } from '../../test/serverAnswers'
 import type { Asked } from '../../test/serverAnswers'
@@ -147,6 +147,36 @@ async function eventWithId(id: string): Promise<BtlEvent> {
     `an event with the id ${id}`,
   )
 }
+/**
+ * THE COMMENTS AS THE SERVER WOULD HOLD THEM IF HE HAD NOT RATED THE EVENT YET: every one the generated
+ * file carries except his of `EVENT`. Since 20.10.2026 the form opens with the rating he already gave
+ * (owner, PDL P6, „izmena otvara formu sa starim zvezdicama i tekstom"), and he has one in the generated
+ * data, so a case about an EMPTY form stands this in front. Taken away after the case, whatever it ended in.
+ */
+let notRatedYet: (() => void) | null = null
+
+afterEach(() => {
+  notRatedYet?.()
+  notRatedYet = null
+})
+
+async function andHeHasNotRatedItYet(): Promise<void> {
+  const event = await eventAt(EVENT)
+  const all = await loadResource<EventComment[]>('comments')
+  const without = all.filter((one) => !(one.eventId === event.id && one.memberNumber === ME))
+
+  expect(without.length, 'he had no rating of the event to take away').toBeLessThan(all.length)
+
+  const server = serverThat((path, init) =>
+    path === '/api/comments' && (init?.method ?? 'GET') === 'GET'
+      ? new Response(JSON.stringify(without), { status: 200 })
+      : null,
+  )
+
+  clearResourceCache('comments')
+  notRatedYet = server.stop
+}
+
 /** A second event that has been run, for the step from one rating to another. */
 const OTHER = 'ironman-70-3-st-polten-2010'
 const OTHER_NAME = 'Ironman 70.3 - St Polten'
@@ -234,6 +264,7 @@ describe('rating an event', () => {
   })
 
   it('sends nothing until there is a mark, and then says it is waiting', async () => {
+    await andHeHasNotRatedItYet()
     const user = setupUser()
     renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
 
@@ -421,6 +452,7 @@ describe('rating an event', () => {
        and gave one mark used to face a button that did nothing and said nothing.
        The reason is on the screen and tied to the button, the way the queue next
        door answers the same question. */
+    await andHeHasNotRatedItYet()
     const user = setupUser()
     renderAt(`/sr/kalendar/${EVENT}/ocena`, 'competitor', ME)
 
@@ -591,8 +623,9 @@ describe('rating an event', () => {
   it("keeps the moderator's queue when the server refuses the rating, because nothing was queued", async () => {
     /* The other arm of the same condition: a refusal made no row, so dropping the queue
        would only send the next reader to fetch what has not moved. */
-    const server = serverThat((path) =>
-      path === '/api/comments' ? refused('theEventHasNotBeenRun') : null,
+    /* The POST alone: the form reads the comments first, to open with what he gave (20.10.2026). */
+    const server = serverThat((path, init) =>
+      path === '/api/comments' && init?.method === 'POST' ? refused('theEventHasNotBeenRun') : null,
     )
 
     try {
@@ -616,8 +649,9 @@ describe('rating an event', () => {
        can really make `CommentWriteApi` answer `theEventHasNotBeenRun` here (the form
        would already have refused to open), so the server is told to say it anyway: this
        is testing what the screen does with a refusal, not which refusals are real. */
-    const server = serverThat((path) =>
-      path === '/api/comments' ? refused('theEventHasNotBeenRun') : null,
+    /* The POST alone: the form reads the comments first, to open with what he gave (20.10.2026). */
+    const server = serverThat((path, init) =>
+      path === '/api/comments' && init?.method === 'POST' ? refused('theEventHasNotBeenRun') : null,
     )
 
     try {
@@ -868,10 +902,19 @@ describe('a comment a moderator lets out', () => {
 
     await user.click(screen.getByRole('button', { name: 'Učitaj još komentara' }))
     expect(within(list).getAllByRole('listitem')).toHaveLength(20)
+    /* Said after a step, with no number in it. */
+    expect(screen.getAllByRole('status').map((one) => one.textContent)).toContain('Učitano još komentara.')
 
     await user.click(screen.getByRole('button', { name: 'Učitaj još komentara' }))
     expect(within(list).getAllByRole('listitem')).toHaveLength(23)
-    expect(screen.getByText('To je sav sadržaj, 23 komentara')).toBeVisible()
+    /* NOTHING COUNTED, SEEN OR SPOKEN (owner, PDL P6, 20.10.2026: „Treba da bude infinite scroll. Dakle
+       brise se sve to na dnu", and „Čitač ekrana ne čuje brojanje"): the end is said in words with no
+       number in them, and said to a screen reader only (`endShown`), and the button is gone. */
+    const end = screen.getByText('Nema više komentara.')
+
+    expect(end).toHaveClass('visually-hidden')
+    expect(screen.queryByRole('button', { name: 'Učitaj još komentara' })).toBeNull()
+    expect(screen.queryByText(/sav sadržaj|Prikazano/)).toBeNull()
 
     globalThis.fetch = real
   })
