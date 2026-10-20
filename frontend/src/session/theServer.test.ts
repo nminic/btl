@@ -1360,10 +1360,20 @@ describe('the words of the caller himself that wait for a moderator', () => {
 })
 
 describe('the seasons the server says he may send a run of', () => {
-  /* `MeApi.MyOwnRecord.seasonsOpenForAReport` (PDL P9, 19.10.2026): read off the answer and not worked
-     out, because the window's one home is the server's clock. */
+  /* `MeApi.WhoIAm.seasonsOpenForAReport` (PDL P9, 19.10.2026): read off the answer and not worked
+     out, because the window's one home is the server's clock. Off the ACCOUNT, since 20.10.2026; a copy
+     left in `member` is no answer, so the member here carries one that the reader must not take. */
   const answering = (seasons: unknown) =>
-    serverThat(() => saying(JSON.stringify({ role: 'competitor', account: 7, member: { ...myOwnRecordFromMe, seasonsOpenForAReport: seasons } })))
+    serverThat(() =>
+      saying(
+        JSON.stringify({
+          role: 'competitor',
+          account: 7,
+          member: { ...myOwnRecordFromMe, seasonsOpenForAReport: [1999] },
+          seasonsOpenForAReport: seasons,
+        }),
+      ),
+    )
 
   it.each([
     ['the first season', [2027], [2027]],
@@ -1385,11 +1395,19 @@ describe('the seasons the server says he may send a run of', () => {
     expect(await whatTheServerSaysOfTheSeasonsOpenForAReport()).toBeNull()
   })
 
-  it('is nothing where nobody is signed in, or the caller races for nobody', async () => {
+  it('is nothing where nobody is signed in, and the list where the caller races for nobody', async () => {
     server = serverThat(() => new Response(null, { status: 401 }))
 
     expect(await whatTheServerSaysOfTheSeasonsOpenForAReport()).toBeNull()
 
+    /* A moderator who races for nobody has no `member` and still enters results, so the seasons are
+       his as well (the moderator's screen, 20.10.2026). */
+    server.stop()
+    server = serverThat(() => saying(JSON.stringify({ role: 'moderator', account: 9, seasonsOpenForAReport: [2027] })))
+
+    expect(await whatTheServerSaysOfTheSeasonsOpenForAReport()).toEqual([2027])
+
+    /* And an answer that names none is no answer. */
     server.stop()
     server = serverThat(() => saying(JSON.stringify({ role: 'moderator', account: 9 })))
 

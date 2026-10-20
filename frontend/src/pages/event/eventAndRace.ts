@@ -79,16 +79,6 @@ export function emptyBlock(): TheBlock {
   }
 }
 
-/** THE EVENTS OFFERED: races, from the first season of the league to today, newest first. Before 2027
- *  nothing (PDL P9, owner, 19.10.2026: „NIŠTA! NE POSTOJI LIGA PRE 2027 GODINE”), and every year after
- *  it, since a result may be entered after a season froze (the coordinator's derivation, PDL
- *  „[IZVEDENO 19.10.2026, moje, PR za 7b]”, (2)). */
-export function yearsOffered(today: string): number[] {
-  const now = Number(today.slice(0, 4))
-
-  return Array.from({ length: Math.max(0, now - FIRST_SEASON + 1) }, (_, at) => FIRST_SEASON + at)
-}
-
 /**
  * A NAME TYPED INTO THE EVENT'S BOX: an event it names exactly is linked, as if chosen; anything else
  * lets go of the event and of a race chosen under it, and the race takes the new name while it is empty
@@ -172,10 +162,16 @@ export type BlockWrong = { box: keyof TheBlock & string; key: string }
 
 /**
  * BOX BY BOX, IN THE ORDER THEY ARE DRAWN, what is wrong with the block: a name left empty, a day that
- * is not a day, before the league or still to come (in the words the route answers the same with), a
- * new event's town, and what the kind of a new race fixes.
+ * is not a day, before the league, of a season not open for a report or still to come, a new event's
+ * town, and what the kind of a new race fixes.
+ *
+ * <p><b>The day is held to the seasons open for a report</b> (owner, 20.10.2026: „NE NUDE SE STARIJI
+ * DOGAĐAJI VAN TEKUĆE SEZONE! ONI SE UNOSE IMPORTOM.”), as the server holds it, in the approved words of
+ * the member's form for the same box („Datum mora da bude u tekućoj sezoni.”); before the league in the
+ * CSV sentence. Where the seasons could not be read (`open` is nothing) the box says nothing of them and
+ * the server answers.
  */
-export function whatIsWrongWithTheBlock(block: TheBlock, today: string): BlockWrong[] {
+export function whatIsWrongWithTheBlock(block: TheBlock, today: string, open: readonly number[] | null): BlockWrong[] {
   const wrong: BlockWrong[] = []
   const asksTheDay = block.race === null
   const day = isoDate(block.date)
@@ -188,6 +184,8 @@ export function whatIsWrongWithTheBlock(block: TheBlock, today: string): BlockWr
     wrong.push({ box: 'date', key: REQUIRED_KEY })
   } else if (asksTheDay && Number(day.slice(0, 4)) < FIRST_SEASON) {
     wrong.push({ box: 'date', key: 'leagueResults.refused.theDayIsBeforeTheLeague' })
+  } else if (asksTheDay && open !== null && !open.includes(Number(day.slice(0, 4)))) {
+    wrong.push({ box: 'date', key: 'newResult.outsideTheSeason' })
   } else if (asksTheDay && day > today) {
     wrong.push({ box: 'date', key: 'results.refused.theRaceHasNotBeenRun' })
   }

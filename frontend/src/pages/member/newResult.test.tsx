@@ -834,7 +834,7 @@ describe('the event a result is run at, which the form asks first', () => {
     const none = serverThat((path) =>
       path === '/api/me'
         ? new Response(
-            JSON.stringify({ ...whoIAm, member: { ...myOwnRecordFromMe, memberNumber: ME, seasonsOpenForAReport: [] } }),
+            JSON.stringify({ ...whoIAm, member: { ...myOwnRecordFromMe, memberNumber: ME }, seasonsOpenForAReport: [] }),
             { status: 200, headers: { 'content-type': 'application/json' } },
           )
         : null,
@@ -861,7 +861,8 @@ describe('the event a result is run at, which the form asks first', () => {
         ? new Response(
             JSON.stringify({
               ...whoIAm,
-              member: { ...myOwnRecordFromMe, memberNumber: ME, seasonsOpenForAReport: 'sve' },
+              member: { ...myOwnRecordFromMe, memberNumber: ME },
+              seasonsOpenForAReport: 'sve',
             }),
             { status: 200, headers: { 'content-type': 'application/json' } },
           )

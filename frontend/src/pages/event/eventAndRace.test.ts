@@ -12,7 +12,6 @@ import {
   theEventPageAfter,
   typingTheEvent,
   whatIsWrongWithTheBlock,
-  yearsOffered,
   type TheBlock,
 } from './eventAndRace'
 import { theEventSavedOn } from './leagueResultWrites'
@@ -70,15 +69,9 @@ const filled = (over: Partial<TheBlock> = {}): TheBlock => ({
   ...over,
 })
 
-const boxes = (block: TheBlock) => whatIsWrongWithTheBlock(block, TODAY).map((one) => `${one.box} ${one.key}`)
-
-describe('the years offered', () => {
-  it('are none before the league, and every year from 2027 to today', () => {
-    expect(yearsOffered('2026-12-31')).toEqual([])
-    expect(yearsOffered('2027-01-01')).toEqual([2027])
-    expect(yearsOffered('2029-05-05')).toEqual([2027, 2028, 2029])
-  })
-})
+/** What is wrong with the block, in the first season open, the ordinary state of 2027. */
+const boxes = (block: TheBlock, open: readonly number[] | null = [2027]) =>
+  whatIsWrongWithTheBlock(block, TODAY, open).map((one) => `${one.box} ${one.key}`)
 
 describe('the event and the race of the block', () => {
   it('links an event typed exactly, and lets go of it on any other name, the race following a new one', () => {
@@ -133,6 +126,19 @@ describe('what is wrong with the block', () => {
     expect(boxes(filled({ date: '24/08/2027' }))).toEqual(['date results.refused.theRaceHasNotBeenRun'])
     expect(boxes(filled({ date: TODAY.split('-').reverse().join('/') }))).toEqual([])
     expect(boxes(filled({ country: '' }))).toEqual(['city form.errors.countryMissing'])
+  })
+
+  it('holds the day to the seasons open for a report, and says nothing of them where they were not read', () => {
+    /* Owner, 20.10.2026: „NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE! ONI SE UNOSE IMPORTOM.” A day
+       of 2027 when only 2028 is open is a season not open, said in the member's own words for the box;
+       read as the year of the race and never of today. */
+    expect(boxes(filled(), [2028])).toEqual(['date newResult.outsideTheSeason'])
+    expect(boxes(filled(), [2027, 2028])).toEqual([])
+    expect(boxes(filled(), null)).toEqual([])
+    /* Read on a day of 2028 while 2027 is still open (the morning of New Year is the one such day):
+       the race's year is open, whatever year today is in. */
+    expect(whatIsWrongWithTheBlock(filled({ date: '31/12/2027' }), '2028-01-01', [2027, 2028])).toEqual([])
+    expect(whatIsWrongWithTheBlock(filled({ date: '31/12/2027' }), '2028-01-01', [2027])).toEqual([])
   })
 
   it('holds a course to a length above nought and whole climbs from nought up, and a limit above nought', () => {

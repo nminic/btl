@@ -15,7 +15,7 @@ import { racesToOffer } from './racesToOffer'
  * <li>it is a race - an event of another kind holds no races (owner, 23.08.2026), and a run is on a
  * race (the coordinator's answer Q9 of 7a, 19.10.2026);
  * <li>its year is a season open for a report at this moment, which the server says
- * (`MeApi.MyOwnRecord.seasonsOpenForAReport`, the window's one home) and this does not work out;
+ * (`MeApi.WhoIAm.seasonsOpenForAReport`, the window's one home) and this does not work out;
  * <li>it has begun by today: its day is its first race's, and a run is on a race already run.
  * </ul>
  *

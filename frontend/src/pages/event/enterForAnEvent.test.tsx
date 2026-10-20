@@ -87,14 +87,24 @@ const TO_A_LIMIT = aRace({
 const answering = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
-/** The calendar above, and every write answered with `write`. */
+/**
+ * The calendar above, the seasons open for a report as the server says them, and every write answered
+ * with `write`. The seasons are the account's (`MeApi.WhoIAm.seasonsOpenForAReport`), answered here to
+ * a moderator who races for nobody, which is the moderator this screen is mostly for; the first season
+ * unless a case says another.
+ */
 function serving(
   write: (path: string) => Response = (path) =>
     answering(path.endsWith('/on-a-race-of-an-event') ? { results: [1], event: 'jezerska-trka-2027' } : { results: [1] }, 201),
   events: () => Response = () => answering(CALENDAR),
+  open: number[] = [2027],
 ): { asked: Asked[]; stop: () => void } {
   return serverThat((path, init) => {
     const method = init?.method ?? 'GET'
+
+    if (method === 'GET' && path === '/api/me') {
+      return answering({ role: 'moderator', account: 1, mailLanguage: 'sr', seasonsOpenForAReport: open })
+    }
 
     if (method === 'GET' && path === '/api/events') {
       return events()
@@ -202,19 +212,49 @@ describe('the event and the race the screen names first', () => {
     }
   })
 
-  it('offers every season of the league, and not only the year today is in', async () => {
-    /* Read in the spring of 2028: the event of 2027 is still offered, since a result may be entered
-       after its season froze (the coordinator's derivation, PDL „[IZVEDENO 19.10.2026, moje, PR za
-       7b]”, (2)). */
+  it('offers no event of a season not open, and an exact name of one links nothing (review of PR 585)', async () => {
+    /* THE REVIEW'S PROBE: in 2028 „Gradska liga” of 2027 was linked by its exact name and the race of
+       2028 went onto it. The owner, 20.10.2026: „NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE! ONI SE
+       UNOSE IMPORTOM.” So with 2028 the one season the server says is open, neither event of 2027 is
+       offered, and the name typed exactly is a new event, which asks its town. */
     const user = setupUser()
-    const server = serving()
+    const server = serving(undefined, undefined, [2028])
 
     try {
       renderAt(PATH, 'moderator', null, CHECKS_RESULTS, '2028-03-01')
       await screen.findByRole('heading', { level: 1, name: sr.leagueResults.forAnEvent })
       await user.type(eventBox(), 'Grad')
 
-      await waitFor(() => expect(offered()).toEqual([eventSaid({ ...AN_EVENT, id: 9504, slug: 'gradska-zima-2027', name: 'Gradska zima', date: '2027-12-01' }), eventSaid(AN_EVENT)]))
+      expect(offered()).toEqual([])
+
+      await user.clear(eventBox())
+      await user.type(eventBox(), 'Gradska liga')
+
+      expect(screen.getByLabelText(/^Mesto/)).toBeVisible()
+      expect(screen.getByLabelText(/^Datum$/)).toHaveValue('')
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('offers the events of a season the server says is open, read on a day of the next year', async () => {
+    /* On New Year's morning 2028 both seasons are open, and the event of 2027 is offered: the list is
+       the server's seasons and never the year today is in. */
+    const user = setupUser()
+    const server = serving(undefined, undefined, [2027, 2028])
+
+    try {
+      renderAt(PATH, 'moderator', null, CHECKS_RESULTS, '2028-01-01')
+      await screen.findByRole('heading', { level: 1, name: sr.leagueResults.forAnEvent })
+      await user.type(eventBox(), 'Grad')
+
+      /* Both events of 2027 begun by that morning, the newest first. */
+      await waitFor(() =>
+        expect(offered()).toEqual([
+          eventSaid({ ...AN_EVENT, id: 9504, slug: 'gradska-zima-2027', name: 'Gradska zima', date: '2027-12-01' }),
+          eventSaid(AN_EVENT),
+        ]),
+      )
     } finally {
       server.stop()
     }
@@ -413,7 +453,9 @@ describe('what the block says before anything is sent', () => {
         ? new Response('nema', { status: 500 })
         : (init?.method ?? 'GET') === 'GET' && path === '/api/events'
           ? answering(CALENDAR)
-          : null,
+          : path === '/api/me'
+            ? answering({ role: 'moderator', account: 1, mailLanguage: 'sr', seasonsOpenForAReport: [2027] })
+            : null,
     )
 
     try {

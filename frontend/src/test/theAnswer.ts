@@ -475,11 +475,6 @@ export const myOwnRecordFromMe = {
      over a harness that said otherwise would show every member a text that waits. A case about the
      words that wait puts its own server in front. */
   bioWaiting: 'Reči koje čekaju moderatora.',
-  /* The seasons he may send a run of at this moment (`MeApi.MyOwnRecord.seasonsOpenForAReport`, PDL P9,
-     19.10.2026), the same for every member: the year he is in, and until ten on New Year's morning the
-     year just ended. The sample says the first season, which is the ordinary state of 2027; no screen
-     reads it yet (the member's form of 7a does). */
-  seasonsOpenForAReport: [2027],
 }
 
 /**
@@ -508,6 +503,11 @@ export const whoIAm = {
   member: myOwnRecordFromMe,
   /* The language of the account's mail (V59), which the screen that changes it starts from. */
   mailLanguage: 'sr',
+  /* The seasons a run may be reported for at this moment (`MeApi.WhoIAm.seasonsOpenForAReport`, PDL
+     P9), the same for every account: the year he is in, and until ten on New Year's morning the year
+     just ended. The sample says the first season, which is the ordinary state of 2027. On the account
+     since 20.10.2026, so the moderator's screen reads it as the member's form does. */
+  seasonsOpenForAReport: [2027],
 }
 
 /**
