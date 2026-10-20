@@ -201,7 +201,7 @@
     },
     "rateEvent": {
       "title": "Rating an event",
-      "description": "Rate the organisation, the value for money and the atmosphere, and leave a comment for other members. A moderator approves every rating."
+      "description": "Rate the organisation, the value for money and the atmosphere, and leave a comment for other members. Ratings without a comment are published at once, and a comment once a moderator approves it."
     }
   },
   "shell": {
@@ -671,12 +671,12 @@
       "gathering": "Gathering"
     },
     "moreComments": "Load more comments",
-    "showingComments": "Showing {shown} of {total}",
-    "allComments": {
-      "one": "That is everything, {count} comment",
-      "few": "That is everything, {count} comments",
-      "other": "That is everything, {count} comments"
-    },
+    "moreCommentsLoaded": "More comments loaded.",
+    "noMoreComments": "No more comments.",
+    "editOwnRating": "Edit your rating",
+    "deleteOwnRating": "Delete your rating",
+    "deleteOwnRatingSure": "Delete your rating?",
+    "keepOwnRating": "Cancel deleting your rating",
     "ratedBy": {
       "one": "out of {count} rating",
       "few": "out of {count} ratings",

@@ -5,7 +5,11 @@ import { Resource } from '../../components/Resource'
 import { Stars } from '../../components/Stars'
 import { clearResourceCache } from '../../data/client'
 import { NO_RATING, RATING_MARKS, type EventRating } from '../../data/types'
-import { combineResources, useEvents, useRaces, useResults } from '../../data/useResource'
+import { combineResources, useComments, useEvents, useRaces, useResults } from '../../data/useResource'
+import type { EventComment } from '../../data/types'
+import { Loader } from '../../components/Loader'
+import { useSession } from '../../session/useSession'
+import { isActiveMember } from '../../roles/activeMemberOrAdministration'
 import { ran } from './ran'
 import { prijava } from '../../forms/definitions'
 import { LongBox } from '../../forms/LongBox'
@@ -53,11 +57,49 @@ import '../member/Member.css'
  */
 export function RateEvent() {
   const { slug } = useParams()
+  const { signedIn } = useSession()
 
-  return <RateOne key={slug} />
+  /* HIS RATINGS ARE ASKED FOR ONLY WHERE HE READS THEM: an active member (`readsComments.ts`). Anybody
+     else is answered 404 by `CommentApi`, and a request that can only fail is not sent; such a reader
+     has nothing of his own to be filled in either, because the server takes no rating from him. */
+  return isActiveMember(signedIn) ? <WithWhatHeGave key={slug} /> : <RateOne key={slug} given={[]} />
 }
 
-function RateOne() {
+/**
+ * THE FORM, ONCE THE COMMENTS ARE IN, so it can open with what he gave (owner, PDL P6, 20.10.2026:
+ * „izmena otvara formu sa starim zvezdicama i tekstom").
+ *
+ * <p>A comments read that fails opens an empty form rather than an alarm: the rating is what this
+ * screen is for, and it can be given without them. Waited for while it is out, so the marks he gave do
+ * not arrive under a reader who has started choosing new ones.
+ */
+function WithWhatHeGave() {
+  const { t } = useI18n()
+  const comments = useComments()
+
+  if (comments.status === 'loading') {
+    return (
+      <div className="member">
+        <Loader inline={false} label={t('event.commentTitle')} />
+      </div>
+    )
+  }
+
+  return <RateOne given={comments.status === 'ready' ? comments.data : []} />
+}
+
+/**
+ * His published rating of this event, the newest where an approval of the past left him two, or nothing.
+ * By the event AND his number, so another member's rating of it and his own of another event (another
+ * running of the same race included) are never what the form opens with.
+ */
+function hisRatingOf(given: EventComment[], eventId: number, mine: string): EventComment | undefined {
+  return given
+    .filter((one) => one.eventId === eventId && one.memberNumber === mine)
+    .sort((left, right) => right.date.localeCompare(left.date) || right.id - left.id)[0]
+}
+
+function RateOne({ given }: { given: EventComment[] }) {
   const { locale, t } = useI18n()
   const { slug } = useParams()
   const today = useToday()
@@ -68,8 +110,11 @@ function RateOne() {
      `VerificationApi` at the moment the queue is drawn - never a copy this screen
      carries in the request. One fewer resource this screen waits on. */
   const state = combineResources(useEvents(), useResults(), useRaces())
-  const [rating, setRating] = useState<EventRating>(NO_RATING)
-  const [comment, setComment] = useState('')
+  /* NOTHING CHOSEN YET IS `null`, and then the form shows what he gave before (`hisRatingOf`), or
+     nothing. Kept apart rather than seeded, because the event his rating is about is known only once
+     the calendar has arrived, after this state is made. */
+  const [chosen, setChosen] = useState<EventRating | null>(null)
+  const [written, setWritten] = useState<string | null>(null)
   /* Held by the address rather than by the screen, so that the way back from this
      confirmation is the event and not the form that has already been sent (PDL,
      05.09.2026). */
@@ -138,6 +183,9 @@ function RateOne() {
 
           /* Nothing to send until all three are given: the overall is their
              average, so a mark left out is published as a nought. */
+          const before = hisRatingOf(given, event.id, mine)
+          const rating = chosen ?? before?.rating ?? NO_RATING
+          const comment = written ?? before?.body ?? ''
           const waiting = RATING_MARKS.some((mark) => rating[mark] === 0)
 
           /**
@@ -232,7 +280,7 @@ function RateOne() {
                     name={mark}
                     label={t(`event.rating.${mark}`)}
                     value={rating[mark]}
-                    onChange={(value) => setRating({ ...rating, [mark]: value })}
+                    onChange={(value) => setChosen({ ...rating, [mark]: value })}
                   />
                 ))}
 
@@ -261,7 +309,7 @@ function RateOne() {
                     maxLength={limitOf(prijava, 'comment')}
                     leftId="comment-left"
                     aria-describedby="comment-left"
-                    onChange={setComment}
+                    onChange={setWritten}
                   />
                 </div>
               </div>
