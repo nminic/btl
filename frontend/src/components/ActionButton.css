@@ -5,18 +5,37 @@
  * worn by the same element; this sheet only makes it a square with the symbol in
  * the middle.
  *
- * Written on the class twice so it wins over any one class of those looks by
- * weight and not by which sheet the bundle happens to put last: `.button` and
- * `.entity-open` give a button a padding of their own and `.button--compact` a
- * height, and a square that lost that contest would be a wide pill again.
+ * THE TWO THINGS A SCREEN MAY STILL SAY ABOUT IT, AND THE TWO IT MAY NOT (review of
+ * PR 593, both measured in Chrome):
+ *
+ * - **Whether it is drawn at all is the screen's.** The square sets no `display` of
+ *   any weight that could beat one: the queues hide „Prikaži" on a wide screen with
+ *   `display: none` on one class (`Verification.css`, `.pending__toggle`), and a
+ *   `display` written here at two classes drew the chevron on the desktop over cards
+ *   that were all open. The one `display` below is inside `:where()`, which weighs
+ *   nothing, so it only stands in for a look that names none (an `<a>` is inline).
+ * - **The size is the square's**, written on the class twice so it outweighs any one
+ *   class of a look (`.button--compact` gives a height of its own).
+ * - **Where the symbol stands is the square's, and padding has no say in it.** A
+ *   screen dresses its buttons with rules of two classes (`.review__decide .button`,
+ *   `.my-results__own .button`, Member.css) that are as heavy as anything here and come
+ *   later in the bundle, and with their padding the symbol stood 6px off the centre.
+ *   So the symbol is not laid out in the flow at all: it is placed in the middle of
+ *   the button's padding box (`position: absolute`, `inset: 0`, `margin: auto`), which
+ *   is the same place whatever padding a look gives. The size does not move either,
+ *   because every box on the portal is `border-box` (index.css).
  *
  * Two rem a side, which is 32 pixels at the size the browser starts from and never
  * under the 24 WCAG 2.2 SC 2.5.8 asks of a target. jsdom lays nothing out, so the
  * size is held where it is written (ActionButton.test.tsx, as the stars are held in
- * styles/goldBand.test.ts). */
+ * styles/goldBand.test.ts), and where it lands is asked of Chrome on every screen
+ * that draws one (geometry/actionTip.geometry.ts). */
+:where(.action) {
+  display: inline-block;
+}
+
 .action.action {
-  display: inline-grid;
-  place-items: center;
+  position: relative;
   inline-size: 2rem;
   block-size: 2rem;
   padding: 0;
@@ -28,8 +47,13 @@
 /* The drawing, a little over half the square, in whatever colour the button's
    text is: the ink of `.button--secondary` on the page, the light ink of
    `.button--primary` on its blue. Both reach 3:1 against what they stand on in
-   both themes (WCAG 2.2 SC 1.4.11), which ActionButton.test.tsx measures. */
+   both themes (WCAG 2.2 SC 1.4.11), which ActionButton.test.tsx measures.
+
+   In the middle of the button whatever its padding (see the head of this sheet). */
 .action__symbol {
+  position: absolute;
+  inset: 0;
+  margin: auto;
   inline-size: 1.125rem;
   block-size: 1.125rem;
 }

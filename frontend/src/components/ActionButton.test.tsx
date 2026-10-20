@@ -175,6 +175,25 @@ describe('how it is laid out', () => {
     expect(rule.getPropertyValue('padding')).toBe('0px')
   })
 
+  it('leaves to the screen whether it is drawn, and puts the symbol in the middle whatever the padding', () => {
+    /* Review of PR 593, both measured in Chrome. A `display` on the square at two classes beat the
+       queues' own `display: none` for „Prikaži" on a wide screen; and a screen's padding at two classes
+       (Member.css) moved a symbol laid out in the flow 6px off the centre. So the square names no
+       `display` of any weight (the fallback is inside `:where()`), and the symbol is placed in the
+       middle of the padding box, which no padding moves. Where it lands on every screen is asked of
+       Chrome (geometry/actionTip.geometry.ts). */
+    const css = sheet('components/ActionButton.css')
+    const square = ruleFor(css, '.action.action', 'ActionButton.css')
+    const drawing = ruleFor(css, '.action__symbol', 'ActionButton.css')
+
+    expect(square.getPropertyValue('display')).toBe('')
+    expect(square.getPropertyValue('position')).toBe('relative')
+    expect(ruleFor(css, ':where(.action)', 'ActionButton.css').getPropertyValue('display')).toBe('inline-block')
+    expect(drawing.getPropertyValue('position')).toBe('absolute')
+    expect(drawing.getPropertyValue('inset')).toBe('0px')
+    expect(drawing.getPropertyValue('margin')).toBe('auto')
+  })
+
   it('stands the box over the page, against the window', () => {
     const rule = ruleFor(sheet('components/ActionButton.css'), '.action-tip', 'ActionButton.css')
 

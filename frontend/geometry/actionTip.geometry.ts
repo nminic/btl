@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect } from '@playwright/test'
 import { label, test } from './support/harness.ts'
@@ -141,4 +142,161 @@ for (const at of WIDTHS) {
 
     expect(probe.sideways).toBe(0)
   })
+}
+
+/**
+ * EVERY SYMBOL STANDS IN THE MIDDLE OF ITS SQUARE, ON EVERY SCREEN THAT DRAWS ONE (review of PR 593).
+ *
+ * The square is laid out by `components/ActionButton.css`, but the look it wears is each screen's, and
+ * a screen's rule of two classes is as heavy as the square's: `.review__decide .button` and
+ * `.my-results__own .button` (Member.css) gave Odobri, Odbij, Ispravi and a member's pencil and cross a
+ * padding of 6px by 12px, and the symbol stood 6px off the centre. So this is asked of every screen,
+ * with every answer the sample has (`src/test/mock`), at three widths: every symbol that is drawn is a
+ * square of 32px with its drawing within one pixel of its centre, and each screen draws at least the
+ * symbols named for it, so a screen that failed to draw passes nothing.
+ */
+const MOCK = fileURLToPath(new URL('../src/test/mock/', import.meta.url))
+
+/** Every answer of the sample, under the address it answers (`/api/results/runners` from `results/runners.json`). */
+function everyAnswer(dir = MOCK, prefix = ''): Record<string, unknown> {
+  return Object.fromEntries(
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry): [string, unknown][] => {
+      const at = join(dir, entry.name)
+
+      if (entry.isDirectory()) {
+        return Object.entries(everyAnswer(at, `${prefix}${entry.name}/`))
+      }
+
+      return entry.name.endsWith('.json')
+        ? [[`/api/${prefix}${entry.name.slice(0, -'.json'.length)}`, JSON.parse(readFileSync(at, 'utf-8'))]]
+        : []
+    }),
+  )
+}
+
+const SAMPLE = everyAnswer()
+const SUPERADMIN = { role: 'superadmin', account: 41, membershipBasis: null }
+
+/** A member of the sample, answering `/api/me` with his own record. */
+function member(number: string) {
+  const record = sample<Record<string, unknown>[]>('competitors').find((one) => one.memberNumber === number)
+
+  return { role: 'competitor', account: 1, mailLanguage: 'sr', seasonsOpenForAReport: [2027], member: record }
+}
+
+/** The queue of runs to check has nothing in the sample, so three are put in it, on a race that exists. */
+const RACE = sample<Record<string, unknown>[]>('races')[0] ?? {}
+const WAITING = sample<Record<string, unknown>[]>('verification')[0] ?? {}
+const RUNS = [1, 2, 3].map((one) => ({
+  ...WAITING,
+  id: `ver-run-${String(one)}`,
+  queue: 'results',
+  memberNumber: '000021',
+  who: 'Ksenija Vasiljević',
+  subject: String(RACE.name),
+  raceId: RACE.id,
+  raceDate: RACE.date,
+  raceKind: RACE.kind,
+  distanceKm: RACE.distanceKm,
+  ascentM: RACE.ascentM,
+  descentM: RACE.descentM,
+  seconds: 3600 + one,
+  link: 'https://rezultati.rs/primer',
+  eventId: RACE.eventId,
+  eventName: 'Primer',
+}))
+
+const SCREENS: { path: string; me: unknown; least: number; extra?: Record<string, unknown> }[] = [
+  { path: '/sr/administracija/clanovi', me: SUPERADMIN, least: 30 },
+  { path: '/sr/administracija/dogadjaji', me: SUPERADMIN, least: 20 },
+  { path: '/sr/administracija/cenovnik', me: SUPERADMIN, least: 3 },
+  { path: '/sr/administracija/timovi', me: SUPERADMIN, least: 4 },
+  { path: '/sr/administracija/lige', me: SUPERADMIN, least: 4 },
+  { path: '/sr/administracija/moderatori', me: SUPERADMIN, least: 4 },
+  {
+    path: '/sr/administracija/verifikacija/rezultati',
+    me: SUPERADMIN,
+    least: 9,
+    extra: { '/api/verification': [...sample<unknown[]>('verification'), ...RUNS] },
+  },
+  { path: '/sr/administracija/verifikacija/uplate', me: SUPERADMIN, least: 2 },
+  { path: '/sr/administracija/verifikacija/timovi', me: SUPERADMIN, least: 3 },
+  { path: '/sr/administracija/verifikacija/trkacki-profil', me: SUPERADMIN, least: 3 },
+  { path: '/sr/administracija/verifikacija/komentari', me: SUPERADMIN, least: 3 },
+  { path: '/sr/kalendar/zimski-nocni-polumaraton-2020', me: SUPERADMIN, least: 20 },
+  { path: '/sr/lige', me: SUPERADMIN, least: 2 },
+  { path: '/sr/tim/dunavski-trkaci', me: member('000001'), least: 1 },
+  { path: '/sr/moji-rezultati', me: member('000021'), least: 30 },
+  { path: '/sr/moja-clanarina', me: member('000021'), least: 1 },
+]
+
+for (const at of WIDTHS) {
+  for (const screen of SCREENS) {
+    test(`every symbol stands in the middle of its square on ${screen.path}, at ${label(at)}`, async ({ open }) => {
+      const { page, probe } = await open(at, screen.path, '.action:visible', {
+        ...SAMPLE,
+        ...screen.extra,
+        '/api/me': screen.me,
+      })
+
+      const seen = await page.evaluate(() =>
+        [...document.querySelectorAll('.action')]
+          .filter((one) => one.getBoundingClientRect().width > 0)
+          .map((one) => {
+            const square = one.getBoundingClientRect()
+            const drawing = one.querySelector('svg')?.getBoundingClientRect()
+
+            return {
+              name: one.getAttribute('aria-label') ?? one.textContent,
+              size: [Math.round(square.width), Math.round(square.height)],
+              off:
+                drawing === undefined
+                  ? Number.POSITIVE_INFINITY
+                  : Math.max(
+                      Math.abs(drawing.left + drawing.width / 2 - (square.left + square.width / 2)),
+                      Math.abs(drawing.top + drawing.height / 2 - (square.top + square.height / 2)),
+                    ),
+            }
+          }),
+      )
+
+      expect(seen.length, 'the symbols this screen draws').toBeGreaterThanOrEqual(screen.least)
+      expect(seen.filter((one) => one.size[0] !== 32 || one.size[1] !== 32)).toEqual([])
+      expect(seen.filter((one) => one.off > 1)).toEqual([])
+      expect(probe.sideways).toBe(0)
+    })
+  }
+}
+
+/**
+ * „PRIKAŽI" IS NOT DRAWN ON A WIDE SCREEN, WHERE EVERY CARD IS OPEN (review of PR 593; the owner's
+ * decision of 06.08.2026, written over the control in `pages/admin/PendingQueue.tsx`).
+ *
+ * The queues hide it with `display: none` on one class inside a query of width (`Verification.css`,
+ * `.pending__toggle`), and a `display` written by the square at two classes drew it again: four
+ * chevrons at 1280px over cards that were all open, each saying `aria-expanded="false"`. Asked on all
+ * three queues that draw it: not drawn at 1280, drawn at 360, and present in the document at both.
+ */
+const QUEUES = [
+  '/sr/administracija/verifikacija/timovi',
+  '/sr/administracija/verifikacija/trkacki-profil',
+  '/sr/administracija/verifikacija/komentari',
+]
+
+for (const path of QUEUES) {
+  for (const [width, drawn] of [
+    [360, true],
+    [1280, false],
+  ] as const) {
+    test(`the toggle of a card is ${drawn ? '' : 'not '}drawn on ${path} at ${String(width)}px`, async ({ open }) => {
+      const { page } = await open({ width, text: 100 }, path, '.action:visible', { ...SAMPLE, '/api/me': SUPERADMIN })
+
+      const toggles = await page.evaluate(() =>
+        [...document.querySelectorAll('.pending__toggle')].map((one) => getComputedStyle(one).display !== 'none'),
+      )
+
+      expect(toggles.length, 'the toggles in the document').toBeGreaterThan(0)
+      expect(toggles.every((one) => one === drawn)).toBe(true)
+    })
+  }
 }
