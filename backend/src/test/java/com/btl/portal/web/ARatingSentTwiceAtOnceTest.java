@@ -17,6 +17,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import javax.sql.DataSource;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -82,6 +83,9 @@ class ARatingSentTwiceAtOnceTest {
 
 	@Autowired
 	private TransactionTemplate holdingTheRow;
+
+	@Autowired
+	private DataSource pool;
 
 	private long him;
 
@@ -309,12 +313,17 @@ class ARatingSentTwiceAtOnceTest {
 
 	/** A rating with words of his, waiting, and the card that carries it. */
 	private long waitingCardWithWords(String words) {
-		long submission = db.sql("insert into comment_submission (event_id, competitor_id,"
+		return waitingCardWithWords(db, words);
+	}
+
+	/** The same, written through the connection of a transaction the case is holding open. */
+	private long waitingCardWithWords(JdbcClient through, String words) {
+		long submission = through.sql("insert into comment_submission (event_id, competitor_id,"
 						+ " rating_organisation, rating_value, rating_ambience, body)"
 						+ " values (?, ?, 2, 2, 2, ?) returning id")
 				.params(event, him, words).query(Long.class).single();
 
-		return db.sql("insert into verification (queue, competitor_id, subject, body,"
+		return through.sql("insert into verification (queue, competitor_id, subject, body,"
 						+ " comment_submission_id) values ('comments', ?, 'Dvaput ocenjena trka', ?, ?)"
 						+ " returning id")
 				.params(him, words, submission).query(Long.class).single();
@@ -568,6 +577,141 @@ class ARatingSentTwiceAtOnceTest {
 		assertThat(hisPublishedRatings())
 				.as("the member was told 204 and the approved rating stands")
 				.isEmpty();
+	}
+
+	/**
+	 * A REFUSAL THAT LANDS WHILE A DELETION IS BETWEEN ITS LOCKS DOES NOT TAKE THE DECIDED CARD WITH IT
+	 * (PENDING, review of PR 584, round 2; the owner's rule is ADL A36 O11, a decided row is never
+	 * deleted). The deletion first locks his waiting cards of the event, then his row, and only then deletes
+	 * the cards that still wait. A rating with words sent in between is a card the first step never saw, so
+	 * the last statement meets it, and if a moderator is deciding it at that instant the statement used to
+	 * read it as waiting (its snapshot predates his commit), wait for him inside the cascade, and then
+	 * delete it all the same: 204 for the member, a 200 for the moderator, and the row he decided gone.
+	 *
+	 * <p>Forced, in the order the hazard needs, with a transaction of its own for each lock (see
+	 * {@link AHeldTransaction}): his published rating is held, so the deletion is stopped AFTER it has taken
+	 * his row; his row is held first, so the deletion is stopped BEFORE it, having looked for his cards and
+	 * found none. While it waits for his row the rating with words is made and committed, which frees the
+	 * row and lets the deletion on to the published rating, where it stops again. Then the moderator's
+	 * refusal is written and not committed, the published rating is let go, and the deletion's last
+	 * statement meets a card that was waiting when it began and is being refused now.
+	 *
+	 * <p>The statement must stop on the refusal (the third count below) and, once it is committed, find the
+	 * card no longer waiting and leave it. It fails on the card and not on a timeout: without the lock in
+	 * the sub-select the deletion is stopped by the card's row anyway, inside the cascade, and takes it as
+	 * soon as the refusal commits.
+	 */
+	@Test
+	void aRefusalThatLandsWhileADeletionIsBetweenItsLocksDoesNotTakeTheDecidedCardWithIt() throws Exception {
+		long shown = theRatingHeIsShown();
+		ExecutorService requests = Executors.newFixedThreadPool(1);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+		long card;
+
+		try (AHeldTransaction thePublishedRating = new AHeldTransaction(pool);
+				AHeldTransaction hisRow = new AHeldTransaction(pool);
+				AHeldTransaction theModerator = new AHeldTransaction(pool)) {
+			thePublishedRating.db().sql("select 1 from event_comment where id = ? for update")
+					.param(shown).query(Integer.class).single();
+			hisRow.db().sql("select 1 from competitor where id = ? for update")
+					.param(him).query(Integer.class).single();
+
+			assertThat(List.of(thePublishedRating.behind(), hisRow.behind(), theModerator.behind()))
+					.as("three locks are held (or about to be) and nothing has been submitted yet")
+					.containsOnly(0);
+
+			submitted.add(requests.submit(() -> deleted(shown)));
+			hisRow.untilBehind(1, submitted);
+
+			/* HE SENDS A RATING WITH WORDS WHILE THE DELETION WAITS FOR HIS ROW: the card is made under his
+			   row and committed, which hands the row to the deletion. */
+			card = waitingCardWithWords(hisRow.db(), "Sa rečima, stiglo dok je brisanje čekalo.");
+			hisRow.commit();
+
+			/* THE DELETION HAS HIS ROW NOW, AND IS STOPPED ON THE PUBLISHED RATING: this is the instant
+			   between its locks. The count was 0 behind this hold until his row was let go. */
+			thePublishedRating.untilBehind(1, submitted);
+
+			theModerator.db().sql("update verification set state = 'rejected', decided_at = now(),"
+							+ " decided_by_name = 'Mod Eratorka', reason = 'Ne.' where id = ?")
+					.param(card).update();
+			thePublishedRating.commit();
+
+			/* THE LAST STATEMENT STOPS ON THE CARD THE MODERATOR IS REFUSING. Not a timeout: a statement
+			   that does not wait for it has finished before the refusal and the count never rises. */
+			theModerator.untilBehind(1, submitted);
+			theModerator.commit();
+
+			assertThat(submitted.get(0).get(30, TimeUnit.SECONDS).getStatus())
+					.as("the member is told his rating is gone")
+					.isEqualTo(204);
+		} finally {
+			requests.shutdownNow();
+		}
+
+		assertThat(db.sql("select state from verification where id = ?").param(card)
+				.query(String.class).list())
+				.as("the card the moderator refused went with the member's deletion (ADL A36 O11)")
+				.containsExactly("rejected");
+		assertThat(db.sql("select count(*) from comment_submission where competitor_id = ?").param(him)
+				.query(Long.class).single())
+				.as("the rating that card carries went with it")
+				.isOne();
+		assertThat(hisPublishedRatings())
+				.as("the published rating he named is gone")
+				.isEmpty();
+	}
+
+	/**
+	 * HIS WAITING CARDS ARE LOCKED LOWEST FIRST (the deletion's own sentence: „ordered by id, so two
+	 * deletions of one member take his cards in one order"). The lock is the point of the ordering and so
+	 * the lock is what is measured: the HIGHER card is held, the deletion is sent, and when it stops the
+	 * LOWER card must be held by it already. Taken in any other order it would be stopped on the higher
+	 * card before it had touched the lower, and a second transaction that takes the same two the other way
+	 * round would be a deadlock.
+	 *
+	 * <p>The lower card is rewritten first, so that its rows stand AFTER the higher one's on the pages and a
+	 * scan that is not told to sort meets them the other way round: without that the plan would hand them
+	 * back in id order whether or not anything asked for it, and removing the {@code order by} would pass.
+	 */
+	@Test
+	void hisWaitingCardsAreLockedLowestFirst() throws Exception {
+		long shown = theRatingHeIsShown();
+		long lower = waitingCardWithWords("Prva, niži ključ.");
+		long higher = waitingCardWithWords("Druga, viši ključ.");
+
+		db.sql("update verification set body = body || '' where id = ?").param(lower).update();
+		db.sql("update comment_submission set body = body || '' where id = (select"
+				+ " comment_submission_id from verification where id = ?)").param(lower).update();
+
+		assertThat(lower).isLessThan(higher);
+
+		ExecutorService requests = Executors.newFixedThreadPool(1);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try (AHeldTransaction theHigherCard = new AHeldTransaction(pool)) {
+			theHigherCard.db().sql("select 1 from verification where id = ? for update")
+					.param(higher).query(Integer.class).single();
+
+			submitted.add(requests.submit(() -> deleted(shown)));
+			theHigherCard.untilBehind(1, submitted);
+
+			assertThat(db.sql("select id from verification where id = ? for update skip locked")
+					.param(lower).query(Long.class).list())
+					.as("the lower card is free while the deletion waits for the higher: it took the higher first")
+					.isEmpty();
+
+			theHigherCard.commit();
+
+			assertThat(submitted.get(0).get(30, TimeUnit.SECONDS).getStatus()).isEqualTo(204);
+		} finally {
+			requests.shutdownNow();
+		}
+
+		assertThat(db.sql("select count(*) from verification where id in (?, ?)").params(lower, higher)
+				.query(Long.class).single())
+				.as("both of his waiting cards went with the deletion")
+				.isZero();
 	}
 
 	/** The rating {@code GET /api/comments} shows him, the one his screen would name. */
