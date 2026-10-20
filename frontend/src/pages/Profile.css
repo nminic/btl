@@ -905,6 +905,79 @@
   inline-size: 4.25rem;
 }
 
+/* **THE FIGURES OF THE TABLE OF RESULTS ARE ONE WIDTH, AND THE TWO COLUMNS OF WORDS TAKE WHAT IS LEFT**
+   (owner, 20.10.2026, from the screenshot of „Rezultati članova": „U ovoj tabelici umesto distance
+   zelim da pise naziv trke. Ove ostale kolone desno od toga slozi ekonomicno i jednakih sirina").
+   The member and the race are the two columns of words; the length, the climb, the fall, the time, the
+   points and, for whoever checks results, the pencil and the x are the figures, and the markup says so
+   on a `col` for each (`EventDetail.tsx`, `.results__figure`). A width on the `col` and not on a head
+   or on a cell, so that nothing in the table can be given a width of its own by a class it happens to
+   carry, and the rule cannot be read as being about the table of races above it.
+
+   **A share of the table and not a number of pixels, and a small one, which is the whole of the
+   decision.** Measured in Chrome on 20.10.2026: a fixed 6,2rem (99px, the pencil and the x side by side)
+   failed the geometry case at 700 and at 768px for whoever checks results, the figures stopped being one
+   width or the table scrolled sideways inside its own box, which PDL P24 forbids on a table. And the
+   words need room that no figure may take: the real names of the review of PR 591 are „Weihnachtsmarathon"
+   (18 letters) in the race and „Hadživukašinović" (16) in the member, neither of which may be broken
+   inside the word (owner, 20.10.2026), and with them the member and the race together need about
+   300px, so at 700 (a table of 668px) six figures have 360px between them, 60px each. 9% of the table
+   is 60,1px there and 66,2px at 768; the member and the race get the other 55% (a visitor, with one
+   column fewer, 64%).
+
+   **So the figures are tight, and three things make them fit.** The buttons stack where the column
+   cannot hold the pencil and the x side by side, as they already did on a telephone: `.entity-row-actions`
+   wraps (`pages/admin/Entity.css`). The head may wrap, which `.table th`
+   forbids everywhere else (`white-space: nowrap`): „Dužina (km)" is 79px of letters and wraps onto a
+   second line where it must. The figures keep 4px at each side instead of the 8 of every table
+   (`--space-4`), which is what lets a time of under ten hours (50px) stand in 60.
+
+   **The column of times is the one exception, and the owner decided it so** (20.10.2026, round 3 of the
+   review: „samo kolona vremena sme da bude šira kad joj vremena to traže"). A time of ten hours or more
+   is eight characters and the longest in the sample, 144:00:00, is nine; they do not stand in 9% of
+   a table of 668px, and the column of times then takes what they need, 75,3px for 144:00:00 at 700, 768
+   and 360, from the two columns of words, while the other figures stay one width (60,1px at 700). 168
+   of the 3528 results in the sample run ten hours or more. The geometry case serves such times at every
+   width, asks that the others are still equal and that every figure fits its cell.
+
+   **No cap for a wide screen.** The content of the portal is at most 1100px wide, so the table is at most
+   1068px and 9% of it is at most 96px, which is 6rem: the pencil and the x side by side (83px and 8 of
+   padding) and „Dužina (km)" on one line (79px) with a few pixels to spare. A cap in rem was written
+   and taken out again, because with it removed the geometry case still passed at 1000, 1280 and 1920px.
+   The share also keeps its meaning at enlarged text, where a cap in rem would have held six columns
+   twice as wide in a table that did not grow. */
+.table--results .results__figure {
+  width: 9%;
+}
+
+.table--results thead th:nth-child(n + 3),
+.table--results tbody td:nth-child(n + 3) {
+  padding-inline: var(--space-4);
+  /* Every figure reads from the right, the length too (owner, 20.10.2026: „Dužina (km)" right-aligned like
+     the others, head and cells). `styles/table.css` left-aligns the first three columns of every table
+     as words (`.table th:nth-child(-n + 3)`, weight (0,2,1)); in this table the third is a figure, and
+     this selector (0,2,2) is the heavier by one element, so it wins wherever the bundler puts the sheet,
+     and only for `.table--results`. */
+  text-align: right;
+}
+
+.table--results thead th {
+  white-space: normal;
+}
+
+/* **WHAT THIS DOES NOT PROMISE, written where it can be found** (owner, 20.10.2026: names and races stay
+   whole, they never break inside a word). The figures are one width because the two columns of words can
+   give up room, and a word that does not break is the one thing a column of words cannot give up. A name
+   or a race is wrapped at its spaces and hyphens and nowhere else, so: for a visitor, and for whoever
+   checks results from 700px up, the figures are one width for the names of the sample and the real ones
+   of the review (`geometry/resultsRow.geometry.ts`, within a pixel); for whoever checks results on a
+   telephone they were within 0,2px with those names, and a surname longer than the real ones makes the
+   column of words take what it needs from the three figures, which then differ (the case allows 6px);
+   and a single unbroken word wider than the column of words can push the box of the table wider than
+   the screen, as it can in every table of this portal. `overflow-wrap: anywhere` on these two columns
+   would hold the figures exactly and was measured breaking real words mid-letter („Konstantinovi/ć" at
+   360px, „polumarat/on" at 768px), which the owner refused. */
+
 /* On a telephone the name of an event is cut rather than allowed to push the
    table wider than the screen at the ordinary text size (PDL P24: a table there
    has no horizontal scroll). Enlarged text is the one case where the table does
@@ -922,6 +995,18 @@
    što je gubitak sadržaja po WCAG 2.2 SC 1.4.4". The scroll box is what pays for
    the width here, not the ellipsis. */
 @media (max-width: 699.98px) {
+  /* A telephone draws three figures of the table of results, not six (the time, the points and the
+     buttons), and a share is the wrong measure for them: 9% of 328 is 30px, under the time itself,
+     and any share large enough for 328 is far too much at 667, on a screen with nothing for them to
+     share. So here the figure is a width, 4rem: 64px (56 of content: a time of under ten hours needs 50, and one of ten hours or more makes the
+     column of times wider, see `.results__figure` above), against the 80px
+     the pair of buttons took before they were stacked. The member keeps 137px of 328 where it had 119
+     (a visitor, with one figure fewer, 200px against 174): room for „Hadživukašinović" whole. See
+     `.results__figure` above for why the wider layouts use a share. */
+  .table--results .results__figure {
+    width: 4rem;
+  }
+
   /* The coloured dot goes, and the length column narrows by exactly what it and
      its space were taking. It is decoration: `aria-hidden`, with the name of the
      length beside it in words for a reader (CompetitorProfile.tsx), and the
