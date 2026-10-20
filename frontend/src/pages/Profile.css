@@ -1144,12 +1144,9 @@
   vertical-align: middle;
 }
 
-/* The pencil and the x stay side by side. `.entity-row-actions` wraps (`pages/admin/Entity.css`), which
-   is right where a sentence stands beside them, and in this column it put the x UNDER the pencil as soon
-   as the table was squeezed: measured at 360px and at 768px the two stood 44px apart, so there was no
-   single centre for the buttons to share with the words. The column takes the width of both instead and
-   the other columns give way, or the table scrolls inside its own box (`.table-scroll`), which is what
-   that box is for. */
-.table--results .entity-row-actions {
-  flex-wrap: nowrap;
-}
+/* The pencil and the x are NOT held on one line here. `.entity-row-actions` wraps (`pages/admin/Entity.css`)
+   and has to: the question that opens when the x is pressed puts two more buttons and a sentence in the
+   same box (`DeleteRecord`, `.entity-row-note`), and with `flex-wrap: nowrap` on it the table scrolled
+   sideways inside its own box at 360px and at 768px, which a table on a telephone does not do (PDL P24,
+   „Tabele na telefonu nemaju horizontalni skrol"). When the pair does wrap, the middle rule above centres
+   the words on the centre of the whole group of buttons, which is the centre of the cell's content. */

@@ -5,8 +5,8 @@ import { label, test } from './support/harness.ts'
 import type { Answers, At } from './support/harness.ts'
 
 /**
- * THE ROW OF A MEMBER'S RESULT ON THE PAGE OF AN EVENT: ONE VERTICAL CENTRE FOR THE WORDS AND THE TWO
- * BUTTONS.
+ * THE ROW OF A MEMBER'S RESULT ON THE PAGE OF AN EVENT: ONE VERTICAL CENTRE FOR THE WORDS AND THE
+ * BUTTONS, AND NO SIDEWAYS SCROLL OF THE TABLE ON A TELEPHONE.
  *
  * Owner, 20.10.2026, with a screenshot of QA: „Red sa rezultatom člana nije centriran, ikonice su niže
  * nego vrednosti u redu". For whoever checks results the last cell of every row of „Rezultati članova"
@@ -17,13 +17,20 @@ import type { Answers, At } from './support/harness.ts'
  * and the buttons, being taller, stood lower.
  *
  * **Asked in Chrome and not in jsdom**, which lays nothing out: for each row, the vertical centre of the
- * text of every cell the width shows, and of each of the two buttons, and the distance between the
- * highest and the lowest of them. The same question the owner answered with his eyes.
+ * text of every cell the width shows, and the centre of the GROUP of buttons (the box `.entity-row-actions`
+ * draws, which is the content of the last cell), and the distance between the highest and the lowest of
+ * them. The group and not each button, because the pair is allowed to wrap onto two lines where the cell is
+ * narrow, and then there is no one centre for two buttons, only one for the cell's content.
+ *
+ * **And the same three rows of cases ask the second half of PDL P24, „Tabele na telefonu nemaju
+ * horizontalni skrol"**: the table's own box (`.table-scroll`) is not wider inside than outside, at 360 and
+ * at 768px at the ordinary text size, with the long names of the sample, and with the question that the x
+ * opens drawn in the row. A rule that keeps the pair on one line fixes the centres and breaks this, which
+ * is why the two are asked together (PR 586, review: `flex-wrap: nowrap` measured 345 against 328 at
+ * 360px with long names and 491 against 347 with the question open).
  *
  * **Three widths, 360, 768 and 1280**, because the cells that are shown change with the width (the
- * phone keeps the name, the time and the points and the buttons; `table__hide-phone` takes the rest) and
- * because a cell that wraps to two lines on a phone is the case the shared „top" rule was written for.
- * No width may move the page sideways: the table scrolls inside its own `.table-scroll` or not at all.
+ * phone keeps the name, the time and the points and the buttons; `table__hide-phone` takes the rest).
  */
 
 /** A day after the event was run, so the results are drawn. */
@@ -39,13 +46,25 @@ function sample(name: string): unknown {
   return JSON.parse(readFileSync(fileURLToPath(new URL(`../src/test/mock/${name}.json`, import.meta.url)), 'utf-8'))
 }
 
+const COMPETITORS = sample('competitors') as Record<string, unknown>[]
+
 /** Somebody who checks results: a superadmin, who may do everything (`useMay`). */
 const ANSWERS: Answers = {
   '/api/me': { role: 'superadmin', account: 41, membershipBasis: null },
   '/api/events': sample('events'),
   '/api/races': sample('races'),
   '/api/results': sample('results'),
-  '/api/competitors': sample('competitors'),
+  '/api/competitors': COMPETITORS,
+}
+
+/** The same members with the longest names a family has: a name that wraps is a taller cell in the row. */
+const LONG: Answers = {
+  ...ANSWERS,
+  '/api/competitors': COMPETITORS.map((one) => ({
+    ...one,
+    firstName: 'Aleksandar Konstantin',
+    lastName: 'Papadopulos-Karamanlis',
+  })),
 }
 
 const WIDTHS: At[] = [
@@ -54,68 +73,98 @@ const WIDTHS: At[] = [
   { width: 1280, text: 100 },
 ]
 
+const CASES = [
+  ['the names of the sample', ANSWERS, false],
+  ['long names', LONG, false],
+  ['the question of the x open in the first row', ANSWERS, true],
+] as const
+
 for (const at of WIDTHS) {
-  test(`every cell of a result's row shares one vertical centre at ${label(at)}`, async ({ open }) => {
-    const { page, probe } = await open(at, `/sr/kalendar/${SLUG}`, 'tbody td.table__points', ANSWERS)
+  for (const [what, answers, asking] of CASES) {
+    test(`every cell of a result's row shares one vertical centre, with ${what}, at ${label(at)}`, async ({
+      open,
+    }) => {
+      const { page, probe } = await open(at, `/sr/kalendar/${SLUG}`, 'tbody td.table__points', answers)
 
-    const rows = await page.evaluate(() => {
-      const results = document.querySelector('td.table__points')?.closest('table')
-
-      if (results === null || results === undefined) {
-        throw new Error('the table of results is not on the page')
+      if (asking) {
+        await page.getByRole('button', { name: /^Obriši: / }).first().click()
+        await page.getByRole('button', { name: /^Potvrdi brisanje/ }).first().waitFor({ state: 'visible' })
       }
 
-      return [...results.querySelectorAll('tbody tr')].map((row) => {
-        const centres: { what: string; centre: number }[] = []
+      const seen = await page.evaluate(() => {
+        const results = document.querySelector('td.table__points')?.closest('table')
 
-        for (const cell of row.querySelectorAll('td')) {
-          if (getComputedStyle(cell).display === 'none') {
-            continue
-          }
-
-          const controls = cell.querySelectorAll('a.button, button.button')
-
-          if (controls.length > 0) {
-            for (const control of controls) {
-              const { top, height } = control.getBoundingClientRect()
-
-              centres.push({ what: `button ${control.textContent ?? ''}`, centre: top + height / 2 })
-            }
-
-            continue
-          }
-
-          /* The words of the cell, as the browser set them: the line they stand on and not the box of
-             the cell they stand in. */
-          const range = document.createRange()
-
-          range.selectNodeContents(cell)
-
-          const { top, height } = range.getBoundingClientRect()
-
-          centres.push({ what: `text ${(cell.textContent ?? '').trim()}`, centre: top + height / 2 })
+        if (results === null || results === undefined) {
+          throw new Error('the table of results is not on the page')
         }
 
-        return centres
+        const box = results.closest('.table-scroll')
+
+        if (box === null) {
+          throw new Error('the table of results is not in its own box')
+        }
+
+        const rows = [...results.querySelectorAll('tbody tr')].map((row) => {
+          const centres: { what: string; centre: number }[] = []
+
+          for (const cell of row.querySelectorAll('td')) {
+            if (getComputedStyle(cell).display === 'none') {
+              continue
+            }
+
+            const group = cell.querySelector('.entity-row-actions')
+
+            if (group !== null) {
+              const { top, height } = group.getBoundingClientRect()
+
+              centres.push({
+                what: `buttons ${String(group.querySelectorAll('a.button, button.button').length)}`,
+                centre: top + height / 2,
+              })
+
+              continue
+            }
+
+            /* The words of the cell, as the browser set them: the lines they stand on and not the box
+               of the cell they stand in. */
+            const range = document.createRange()
+
+            range.selectNodeContents(cell)
+
+            const { top, height } = range.getBoundingClientRect()
+
+            centres.push({ what: `text ${(cell.textContent ?? '').trim()}`, centre: top + height / 2 })
+          }
+
+          return centres
+        })
+
+        return { rows, inside: box.scrollWidth, outside: box.clientWidth }
       })
+
+      expect(probe.sideways).toBe(0)
+      expect(seen.rows.length).toBeGreaterThanOrEqual(10)
+
+      for (const row of seen.rows) {
+        const group = row.filter((one) => one.what.startsWith('buttons'))
+        const words = row.filter((one) => one.what.startsWith('text'))
+
+        /* Measured is not assumed: a row with no buttons would pass the spread below for the wrong
+           reason, and a width that showed only one cell of words would pass it for none. */
+        expect(group, JSON.stringify(row)).toHaveLength(1)
+        expect(words.length, JSON.stringify(row)).toBeGreaterThanOrEqual(3)
+
+        const all = row.map((one) => one.centre)
+        const spread = Math.max(...all) - Math.min(...all)
+
+        expect(spread, JSON.stringify(row)).toBeLessThanOrEqual(AGREE)
+      }
+
+      /* PDL P24: no sideways scroll of a table on a telephone. The box may be exactly as wide inside as
+         outside, and not wider. */
+      expect(seen.inside, `the table's box scrolls: ${String(seen.inside)} inside ${String(seen.outside)}`).toBeLessThanOrEqual(
+        seen.outside,
+      )
     })
-
-    expect(probe.sideways).toBe(0)
-    expect(rows.length).toBeGreaterThanOrEqual(10)
-
-    for (const row of rows) {
-      const buttons = row.filter((one) => one.what.startsWith('button'))
-      const words = row.filter((one) => one.what.startsWith('text'))
-
-      /* Measured is not assumed: a row with no buttons would pass the spread below for the wrong
-         reason, and a width that showed only one cell of words would pass it for none. */
-      expect(buttons, JSON.stringify(row)).toHaveLength(2)
-      expect(words.length, JSON.stringify(row)).toBeGreaterThanOrEqual(3)
-
-      const all = row.map((one) => one.centre)
-      const spread = Math.max(...all) - Math.min(...all)
-
-      expect(spread, JSON.stringify(row)).toBeLessThanOrEqual(AGREE)
-    }
-  })
+  }
 }

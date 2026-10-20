@@ -22,9 +22,9 @@ import { ruleFor, unconditionalRules } from '../test/stylesheet'
  * all three, and no width moves the page sideways. What this file holds is the two halves that
  * measurement stands on and that a browser run cannot tell apart from a coincidence of widths:
  *
- * - **the rules are written** in the sheet of the event page, for exactly the selectors that reach the
- *   cells of the BODY (the head is not a row of results and stays where the shared rule puts it) and
- *   the pair of buttons;
+ * - **the rule is written** in the sheet of the event page, for exactly the selector that reaches the
+ *   cells of the BODY (the head is not a row of results and stays where the shared rule puts it), and
+ *   nothing in it holds the pair of buttons on one line (PDL P24);
  * - **the table they are written for is the table the page draws**, asked of the rendered tree with
  *   `matches`, so a class taken off the markup, or a rule moved onto the head, fails here although every
  *   word of the sheet is still in place.
@@ -60,12 +60,21 @@ describe('the sheet of the event page', () => {
     ).toEqual([])
   })
 
-  it('keeps the pencil and the x side by side, so that there is one centre for them to share', () => {
-    /* Measured at 360 and at 768px: `.entity-row-actions` wraps, and with the table squeezed the x
-       went under the pencil, 44px lower, so two buttons had two centres. */
+  it('does not hold the pencil and the x on one line, so the question of the x has room and the table does not scroll', () => {
+    /* PDL P24, „Tabele na telefonu nemaju horizontalni skrol". The box wraps (`pages/admin/Entity.css`)
+       and has to: the question the x opens puts two more buttons in it. Measured in Chrome in PR 586,
+       with `flex-wrap: nowrap` on it the table's own box was 345 inside 328 at 360px with long names,
+       491 inside 347 with the question open, and 851 inside 736 at 768px. Held two ways, because either
+       alone is a coincidence of one sheet: the shared rule still wraps, and no rule written for this
+       table says otherwise. */
+    const entity = readFileSync(join(process.cwd(), 'src/pages/admin/Entity.css'), 'utf-8')
+
+    expect(ruleFor(entity, '.entity-row-actions', 'Entity.css').getPropertyValue('flex-wrap')).toBe('wrap')
     expect(
-      ruleFor(PROFILE, '.table--results .entity-row-actions', 'Profile.css').getPropertyValue('flex-wrap'),
-    ).toBe('nowrap')
+      unconditionalRules(PROFILE, 'Profile.css').filter(
+        (rule) => /\.table--results/.test(rule.selectorText) && rule.style.getPropertyValue('flex-wrap') !== '',
+      ),
+    ).toEqual([])
   })
 
   it('leaves every other table at the top of its row', () => {
@@ -94,12 +103,6 @@ describe('the table of results on the page of an event', () => {
 
     expect([...table.querySelectorAll('thead th')].some((cell) => cell.matches('.table--results tbody td'))).toBe(false)
 
-    /* And the pair of buttons is in a box the second rule reaches. */
-    const pencil = within(table).getAllByRole('link', { name: /^Izmeni rezultat: / })[0]
-
-    expect(must(pencil, 'the first pencil').closest('.entity-row-actions')?.matches('.table--results .entity-row-actions')).toBe(
-      true,
-    )
   }, SLOW)
 
   it('is not the table of races above it', async () => {
