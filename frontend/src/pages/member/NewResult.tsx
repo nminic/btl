@@ -690,11 +690,10 @@ function TheForm({ me }: { me: string }) {
                 races.status === 'error'
                   ? { said: t('data.error'), named: t('event.races'), read: races }
                   : (values) =>
-                      events.status === 'ready' && races.status === 'ready' && seasons !== null
+                      events.status === 'ready' && races.status === 'ready'
                         ? racesOfTheChosenEvent(
                             events.data,
                             races.data,
-                            seasons,
                             String(values.eventId ?? ''),
                             today,
                             locale,
