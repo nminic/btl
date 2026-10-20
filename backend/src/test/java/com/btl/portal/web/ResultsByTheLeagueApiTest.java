@@ -1118,18 +1118,21 @@ class ResultsByTheLeagueApiTest {
 	/**
 	 * „ISTI NAZIV NE PRAVI DRUGI DOGAĐAJ” (owner, 19.10.2026): a new event named as an event the calendar
 	 * has in that year is that event, and the town typed is not read, since it stands where it stands.
+	 * <b>On a day before the event's</b>, so it is that event's own rule that takes the race („Ne moze
+	 * poceti trka pre dogadjaja na kojem je”) and moves it back, which a second event at the same address
+	 * would not.
 	 */
 	@Test
 	void aNewEventNamedAsOneOfThatYearIsThatEvent() throws Exception {
 		int events = howMany("btl_event");
 
-		assertThat(onAnEvent(RESULTS_MODERATOR, onANewEvent("Prvi dogadjaj", "2027-05-08", "Ohrid", "MK",
+		assertThat(onAnEvent(RESULTS_MODERATOR, onANewEvent("Prvi dogadjaj", "2027-04-01", "Ohrid", "MK",
 				newRace("Druga desetka", null, "length", "10.00", 0, 0, null),
 				row(VERA, null, null, null, AN_HOUR))).getStatus()).isEqualTo(201);
 
 		assertThat(howMany("btl_event")).isEqualTo(events);
-		assertThat(db.sql("select city is null and place_id is not null from btl_event"
-						+ " where slug = 'prvi-dogadjaj-2027'")
+		assertThat(db.sql("select city is null and place_id is not null and date = date '2027-04-01'"
+						+ " from btl_event where slug = 'prvi-dogadjaj-2027'")
 				.query(Boolean.class).single()).isTrue();
 		assertThat(db.sql("select count(*) from race r join btl_event e on e.id = r.event_id"
 						+ " where e.slug = 'prvi-dogadjaj-2027' and r.name = 'Druga desetka'")
