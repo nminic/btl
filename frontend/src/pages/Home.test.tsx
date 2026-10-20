@@ -1,7 +1,7 @@
 import { SLOW } from '../test/slow'
 import { matchingMedia } from '../test/media'
 import { must } from '../test/at'
-import { configure, getConfig, screen, within } from '@testing-library/react'
+import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { renderAt } from '../test/render'
 import { membersAsServed } from '../test/serverAnswers'
 import { setupUser } from '../test/user'
@@ -384,11 +384,34 @@ describe('the season the front page counts', () => {
     })
   }
 
-  /** What the row of results says, read the way a screen reader hears it. */
-  async function resultsRow(): Promise<string> {
-    const label = await screen.findByText('Prijavljenih rezultata:', { exact: false })
+  /** What a row of the counters says, read the way a screen reader hears it. */
+  function rowOf(label: string): string {
+    const found = screen.getByText(label, { exact: false })
 
-    return must(label.parentElement?.textContent, 'the row of results').trim()
+    return must(found.parentElement?.textContent, `the row of ${label}`).trim()
+  }
+
+  /**
+   * What the row of results says, ONCE THE COUNTERS HAVE LANDED ON THEIR TARGETS.
+   *
+   * With less motion asked for a counter is not at its target when it first stands on the page:
+   * `useCountUp` starts every figure at nought and sets the target in an effect, which runs after
+   * the commit that drew the row. A read that only waits for the row to EXIST can therefore get the
+   * nought of that first commit, on a machine busy enough to run it before the effect (CI, three
+   * times on 19. and 20.10.2026: „0 rezultata" for 2). Nought is also the right answer for a season
+   * with no results in it, so waiting for the row's own value would pass on the first commit
+   * exactly when it should not.
+   *
+   * What settles it is a row that is never nought in this suite: the members of the league. Its
+   * effect runs in the same flush as the effect of the row of results, so the two figures land in
+   * one render, and once the members stand on theirs the results stand on theirs too.
+   */
+  async function resultsRow(): Promise<string> {
+    await waitFor(() => {
+      expect(rowOf('Članova lige:')).toMatch(/[1-9]/)
+    })
+
+    return rowOf('Prijavljenih rezultata:')
   }
 
   let waits = getConfig().asyncUtilTimeout
