@@ -207,6 +207,13 @@ const IN_PIXELS = new Map([
        and the surname was cut. */
     'shrinks the circle so the name in the frozen column keeps its letters',
   ],
+  [
+    'pages/admin/AdminMembers.css 1099.98',
+    /* Owner, 20.10.2026, chosen with my recommendation: „Poslednja sezona" is drawn from 1100px, because
+       below it the seven columns of the moderation of the members do not fit their box (668 at 700, 681
+       at 1000, where the navigation stands beside the page). In pixels because it takes a column away. */
+    'drops „Poslednja sezona", whose year is the last of the pills under „Sezone članstva" on the same row',
+  ],
 ])
 
 describe('space and corners are chosen from the scale, not typed', () => {
@@ -361,6 +368,9 @@ describe('space and corners are chosen from the scale, not typed', () => {
       // Set by their own content, each said where it is written: the front page
       // at 860, the rights table and the Top liste at 900.
       860, 900, 1000,
+      // The moderation of the members draws „Poslednja sezona" from here (owner, 20.10.2026): below it
+      // the seven columns do not fit the box beside the navigation.
+      1099.98,
     ])
   })
 

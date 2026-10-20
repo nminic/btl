@@ -1,0 +1,78 @@
+/*
+ * THE TABLE OF THE MODERATION OF THE MEMBERS FITS ITS BOX AT EVERY WIDTH (PDL P24, „Tabele na
+ * telefonu nemaju horizontalni skrol"; owner, 20.10.2026: „Tabela članova u moderaciji članova (klizi
+ * bočno u svom okviru na svim širinama, protiv P24) popravlja se pre puštanja").
+ *
+ * Measured before this, in Chrome, over the sample: the table stood at its narrowest everywhere, 936px,
+ * in a box of 328 at 360, 736 at 768 and 796 at 1280. Three things held it there, and none was a word
+ * of the table: the pills of the basis and of the seasons, 188px each, because `.tag` keeps its words on
+ * one line (`pages/member/Member.css`); the head „Poslednja sezona", 135px over a cell of 51, because
+ * `.table th` does (`styles/table.css`); and the record's „Promeni osnov u oslobođenje", which stays a
+ * word (owner, 20.10.2026) and is the narrowest the record can be.
+ *
+ * Every rule here is under `.members-table`, so the pills and the heads of every other table are as
+ * they were. Words break BETWEEN words only: nothing here allows a break inside one, and the names of
+ * the members never break inside a word (owner, 20.10.2026), which `geometry/membersTable.geometry.ts`
+ * asks of Chrome at every width.
+ */
+
+/* The heads of this table break between their words („POSLEDNJA / SEZONA"). Written against `.table th`
+   with one class more, because the two are otherwise equal and `styles/table.css` comes later. */
+.table.members-table th {
+  white-space: normal;
+}
+
+/* And so do the pills of the basis and of the seasons („Oslobođen članarine / za 2027"). */
+.members-table .tag {
+  white-space: normal;
+}
+
+/* „POSLEDNJA SEZONA" IS DRAWN FROM 1100px (owner, 20.10.2026, chosen with my recommendation). With
+   the two rules above the seven columns need about 690px with long names, and the box is narrower than
+   that from 700 to about 722 (668 at 700) and from 1000, where the navigation stands beside the page,
+   to about 1025 (681 at 1000). Of the seven, this is the one whose fact is on the row anyway: the last
+   of the pills under „Sezone članstva", oldest first. In pixels, because it takes a column away
+   (`styles/scale.test.ts`). */
+@media (max-width: 1099.98px) {
+  .members-table__last {
+    display: none;
+  }
+}
+
+/* The basis and the seasons under the name, on a telephone, each under the name of its column: the
+   shape of `.review__figures` (`pages/admin/Verification.css`). Whether it is drawn at all is
+   `table__phone-only`'s on the box around it, never this rule's. */
+.members-table__held {
+  margin: var(--space-4) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  font-size: 0.85rem;
+}
+
+.members-table__held div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.members-table__held dt {
+  color: var(--text-muted);
+}
+
+.members-table__held dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+/* The search beside the filter may be narrower than its own field (PDL P24: „Skrol je unutar kutije
+   tabele, a sama strana se ne pomera bočno"). At 360 with the text at 200% it ended at 392 and moved
+   the page 32px sideways: `.rankings__field--wide` grows from 14rem and, as a flex item, would not
+   shrink below its field. Only this screen's, so the six other screens that draw the class are as
+   they were. */
+.members__search {
+  min-inline-size: 0;
+}
