@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -389,6 +390,54 @@ class ARatingSentTwiceAtOnceTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"eventId\":" + event + ",\"organisation\":" + stars + ",\"value\":"
 								+ stars + ",\"ambience\":" + stars + ",\"body\":\"\"}"))
+				.andReturn().getResponse();
+	}
+
+	/**
+	 * A DELETION THAT WAITED BEHIND A NEWER RATING DOES NOT DELETE THE NEWER ONE THROUGH THE OLD ONE'S ID
+	 * (7d, owner, PDL P6, 20.10.2026). The member's row is held; his rating with no words is sent and
+	 * stops behind it, then his deletion of the rating the screen showed him, which stops behind the
+	 * rating. Let go, the rating replaces the old one and the deletion, reading under the same lock,
+	 * finds the old id gone: 404, and the new rating stands. Without the deletion's lock it would not stop
+	 * at all, and the count of requests behind the hold says so before the outcome does.
+	 */
+	@Test
+	void aDeletionThatWaitedBehindANewerRatingLeavesTheNewerOneStanding() throws Exception {
+		long shown = db.sql("select id from event_comment where event_id = ? and competitor_id = ?")
+				.params(event, him).query(Long.class).single();
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from competitor where id = ? for update")
+						.param(him).query(Integer.class).single();
+
+				submitted.add(pool.submit(() -> rated(5)));
+				stoppedBehindTheHold(1, submitted);
+				submitted.add(pool.submit(() -> deleted(shown)));
+				stoppedBehindTheHold(2, submitted);
+
+				return null;
+			});
+
+			assertThat(List.of(submitted.get(0).get(30, TimeUnit.SECONDS).getStatus(),
+					submitted.get(1).get(30, TimeUnit.SECONDS).getStatus()))
+					.as("the rating is taken and the deletion finds the rating it named gone")
+					.containsExactly(201, 404);
+		} finally {
+			pool.shutdownNow();
+		}
+
+		assertThat(db.sql("select rating_organisation from event_comment where event_id = ?"
+						+ " and competitor_id = ?").params(event, him).query(Integer.class).list())
+				.as("the newer rating was deleted through the id of the one it replaced")
+				.containsExactly(5);
+	}
+
+	private MockHttpServletResponse deleted(long comment) throws Exception {
+		return http.perform(delete("/api/comments/" + comment).with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, cookie)))
 				.andReturn().getResponse();
 	}
 }

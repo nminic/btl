@@ -436,6 +436,14 @@ class RightsAtTheDoorTest {
 					"GET /api/me/result-submissions",
 					"POST /api/email-confirmation/resend", "POST /api/password-reset",
 					"POST /api/password-reset/request", "POST /api/teams", "POST /api/comments",
+					/* A MEMBER DELETING HIS OWN RATING, ADDED WITH 7D (owner, PDL P6, 20.10.2026,
+					   „Član uvek sme da obriše svoju ocenu ili da je izmeni"). His own data, not a box
+					   the superadmin ticks, the sentence `DELETE /api/results/{id}` below is here
+					   for. Whose rating it is stands in the `where` that reads it, so somebody else's
+					   is answered 404 by CommentWriteApi rather than by a right (ADL A8), and a
+					   visitor is answered 401 by the chain: `/api/comments` is not on
+					   `READ_BY_ANYBODY` for any verb. CommentWriteApiTest holds both. */
+					"DELETE /api/comments/{id}",
 					/* A MEMBER'S OWN RUN, ALL THREE VERBS. Sending in a result, correcting it and
 					   taking it back are what every member does with his own data, not a box the
 					   superadmin ticks: PDL, owner, 27.08.2026, „clan ga ili brise (ima pravo na

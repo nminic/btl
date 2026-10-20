@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -151,6 +153,42 @@ import java.util.Optional;
  * at this very instant is not waited for (he decided first, and waiting for it while holding the
  * member's row would be a lock order opposite to the approval's, which takes the card first and the
  * member second).
+ *
+ * <p><b>AND SINCE 20.10.2026 A RATING WITH WORDS WITHDRAWS HIS OLDER WAITING ONE TOO</b>, which is
+ * derived and not the owner's words: from the same „nova zamenjuje staru" and from the shape the owner
+ * chose for an edit (PDL P6, 20.10.2026, „Član uvek sme da obriše svoju ocenu ili da je izmeni": an
+ * edit with text goes to the moderator and the old PUBLISHED one stays until he approves it), the newest
+ * one SENT wins among the waiting ones. Until then two edits with words left two cards of one member
+ * about one event in the queue, and whichever a moderator approved LAST was published, the older one
+ * included. Only the waiting card goes; the published one stands until an approval replaces it, which
+ * is exactly the half the owner rejected the opposite of („Odbijeno: da izmena sa tekstom odmah skine
+ * staru"). The same statement, {@link #withdrawWhatWaits}, for both roads.
+ *
+ * <p><b>EDITING IS THIS ROUTE AND NOTHING ELSE.</b> The owner's edit (20.10.2026) opens the form with the
+ * old marks and text and sends it: without text it is published at once, with text it goes to the
+ * moderator and the old one stays published until he approves it. That is, measured case by case,
+ * what a new rating already does here, so there is no second door for it. It keeps every gate a rating
+ * has, the result on the event included: that is the reading of 20.10.2026 against „Dakle ako clan nema
+ * rezultat, ne moze uopste da da komentar" (19.10.2026), derived and not decided in words - an edit
+ * makes a new rating, and a member whose result has gone since may delete his rating and not rewrite it.
+ *
+ * <p><b>DELETING HIS OWN RATING, {@code DELETE /api/comments/{id}}</b> (owner, PDL P6, 20.10.2026:
+ * „zelim funkcionalnost da clan moze uvek da obrise svoj komentar"; the shape he chose with the
+ * recommendation: „brisanje je odmah ... i briše i onu koja čeka"). The id is the one
+ * {@code GET /api/comments} answers his published rating with, which is the card the screen puts
+ * „Obriši" beside. It deletes every published rating of his of THAT event (an approval used to be able
+ * to make a second) and his rating of it that still waits, by {@link #withdrawWhatWaits}, under the lock
+ * on his row, and answers 204. <b>„Uvek" is read as: no result on the event, no day of the event and no
+ * season is asked</b> - a member whose result was deleted since, or who rated an event of an earlier
+ * season, deletes his rating all the same. <b>What „uvek" is NOT read as, derived and not the owner's
+ * words:</b> a member whose fee does not stand is answered 404 like an account naming no member, because
+ * PDL P8 (10.10.2026) lists „komentare" among what he may not do and {@code DELETE /api/results/{id}},
+ * whose decision says the member deletes „ima pravo na to, iako je verifikovan", is closed to him the
+ * same way; he does not see the comments at all (03.10.2026). An id that is not his rating - another
+ * member's, a deleted member's (its {@code competitor_id} is null and matches nobody), one that names no
+ * row or is not a key - is 404 as well, the answer of an address that maps nothing (ADL A8). A card a
+ * moderator is deciding at that very instant is not waited for and stays ({@code skip locked}, above):
+ * if he approves it, it is published after the deletion, because he decided first.
  *
  * <p><b>THE MEMBER'S ROW IS LOCKED FIRST</b>, {@code for update}, at the top of the transaction, the
  * shape {@code MyMembershipWriteApi} and {@code PaymentApi} keep. Two ratings of one member at one
@@ -346,6 +384,11 @@ class CommentWriteApi {
 			return publishAtOnce(me, typed);
 		}
 
+		/* HIS OLDER RATING OF THIS EVENT THAT STILL WAITS GOES, AND THE PUBLISHED ONE STAYS (class note,
+		   20.10.2026): the newest one sent wins among the waiting ones. Before the insert, so the card
+		   this request makes is never among what it withdraws. */
+		withdrawWhatWaits(me, typed.eventId());
+
 		/* `comment_submission_organisation_in_scale` and its two siblings (V30) bound this
 		   the same way the guard above does, 0 to 5; the guard above is stricter, 1 to 5,
 		   because a rating reaching this line has already passed `allThreeAreGiven`. */
@@ -396,14 +439,8 @@ class CommentWriteApi {
 				.params(me, typed.eventId())
 				.update();
 
-		/* AND HIS RATING OF THIS EVENT THAT STILL WAITS GOES TOO: the newest one sent wins (class note).
-		   Only a waiting one, and not a card somebody is deciding this instant. */
-		db.sql("delete from comment_submission where id in (select cs.id from comment_submission cs"
-						+ " join verification v on v.comment_submission_id = cs.id"
-						+ " where cs.competitor_id = ? and cs.event_id = ? and v.state = ?"
-						+ " for update of v skip locked)")
-				.params(me, typed.eventId(), DecidingOnASubmission.WAITING)
-				.update();
+		/* AND HIS RATING OF THIS EVENT THAT STILL WAITS GOES TOO: the newest one sent wins (class note). */
+		withdrawWhatWaits(me, typed.eventId());
 
 		long comment = db.sql("insert into event_comment (event_id, competitor_id, who, published_at,"
 						+ " rating_organisation, rating_value, rating_ambience, body)"
@@ -414,6 +451,87 @@ class CommentWriteApi {
 				.single();
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(new Made(comment, false));
+	}
+
+	/**
+	 * THIS MEMBER'S RATING OF THIS EVENT THAT STILL WAITS FOR A MODERATOR, AND NOTHING ELSE, GOES; the
+	 * cascade of {@code comment_submission} takes its queue row with it. The one home of that statement,
+	 * for the three roads that take it: a rating with no words, a rating with words, and the member's
+	 * own deletion.
+	 *
+	 * <p>Keyed by the member AND the event, so another member's card and his card of another event stay;
+	 * only a WAITING card, so a decided one stays (ADL A36 O11); and {@code skip locked}, so a card a
+	 * moderator is deciding this instant is not waited for while this transaction holds the member's row
+	 * (class note).
+	 */
+	private void withdrawWhatWaits(long me, long eventId) {
+		db.sql("delete from comment_submission where id in (select cs.id from comment_submission cs"
+						+ " join verification v on v.comment_submission_id = cs.id"
+						+ " where cs.competitor_id = ? and cs.event_id = ? and v.state = ?"
+						+ " for update of v skip locked)")
+				.params(me, eventId, DecidingOnASubmission.WAITING)
+				.update();
+	}
+
+	/**
+	 * THE MEMBER DELETES HIS OWN RATING (owner, PDL P6, 20.10.2026), the published one and the one that
+	 * waits: see the class note for what „uvek" is read as, and what it is not.
+	 *
+	 * @param asking read off the session; whoever has none never reaches this, the chain answers 401
+	 * @param id     his published rating, as {@code GET /api/comments} answers it
+	 */
+	@DeleteMapping("/api/comments/{id}")
+	ResponseEntity<?> delete(@AuthenticationPrincipal WhoIsAsking.Member asking,
+			@PathVariable AKey id) {
+		Long me = readers.activeMember(asking).orElse(null);
+
+		/* AN ACCOUNT THAT NAMES NO MEMBER, OR A MEMBER WHOSE FEE DOES NOT STAND (PDL P8, 10.10.2026,
+		   „komentare"): the answer of an address that maps nothing, before any row is read. */
+		if (me == null) {
+			throw nothingIsHere();
+		}
+
+		if (!Boolean.TRUE.equals(inOneTransaction.execute(committing -> takeBack(me, id.value())))) {
+			throw nothingIsHere();
+		}
+
+		return ResponseEntity.noContent().build();
+	}
+
+	/**
+	 * Whether this rating was his, having deleted it, his other published ones of the same event and his
+	 * one of it that waits. Nothing is deleted where it was not his.
+	 *
+	 * <p><b>His row is locked FIRST and the rating is read under the lock</b>, the order every write of
+	 * his rating keeps (class note): a new rating of the same event committed while this waited has
+	 * already replaced the one the screen named, and the answer is then the 404 of a rating that is not
+	 * there, never the deletion of the new one through the old one's id.
+	 */
+	private boolean takeBack(long me, long comment) {
+		db.sql("select id from competitor where id = ? for update")
+				.param(me)
+				.query(Long.class)
+				.single();
+
+		/* WHOSE IT IS STANDS IN THIS `where`: another member's rating, a deleted member's (no
+		   `competitor_id` at all), and an id that names nothing are one answer, no event. */
+		Optional<Long> event = db.sql("select event_id from event_comment where id = ? and competitor_id = ?")
+				.params(comment, me)
+				.query(Long.class)
+				.optional();
+
+		if (event.isEmpty()) {
+			return false;
+		}
+
+		/* EVERY PUBLISHED RATING OF HIS OF THAT EVENT, the named one among them, and nobody else's. */
+		db.sql("delete from event_comment where competitor_id = ? and event_id = ?")
+				.params(me, event.get())
+				.update();
+
+		withdrawWhatWaits(me, event.get());
+
+		return true;
 	}
 
 	/** The day this event is on, or nothing where the id names no event at all. */
