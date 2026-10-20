@@ -256,12 +256,29 @@ const REAL: Answers = {
   })),
 }
 
+/**
+ * THE LONGEST TIMES THE SAMPLE HAS (round 3 of the review of PR 591): 29:21:31, one of 168 results of
+ * 3528 that run ten hours or more and eight characters long, and 144:00:00, the longest, nine. Served on
+ * every result, alternately, so a row of the table carries each wherever it is read. **Only the column of
+ * times may be wider than the others, and only as far as its times need it** (owner, 20.10.2026); the
+ * case asks that the others are still one width, that the times fit, and that nothing scrolls sideways.
+ */
+const LONG_TIMES: Answers = {
+  ...ANSWERS,
+  '/api/results': sample<Record<string, unknown>[]>('results').map((one, index) => ({
+    ...one,
+    seconds: index % 2 === 0 ? 105691 : 518400,
+  })),
+}
+
 const READERS = [
   ['a visitor', { ...ANSWERS, '/api/me': undefined }],
   ['a visitor, with real names', { ...REAL, '/api/me': undefined }],
   ['whoever checks results', ANSWERS],
   ['whoever checks results, with long names', LONG],
   ['whoever checks results, with real names', REAL],
+  ['a visitor, with long times', { ...LONG_TIMES, '/api/me': undefined }],
+  ['whoever checks results, with long times', LONG_TIMES],
 ] as const
 
 /** Up to this much, and only for whoever checks results on a telephone (owner, 20.10.2026): there the
@@ -356,9 +373,17 @@ for (const at of EQUAL) {
 
               const style = getComputedStyle(cell)
 
+              const box = cell.getBoundingClientRect()
+              const words = range.getBoundingClientRect()
+              const left = box.left + Number.parseFloat(style.paddingLeft)
+              const right = box.right - Number.parseFloat(style.paddingRight)
+
               return {
                 what: (cell.textContent ?? '').trim().slice(0, 14),
-                gap: cell.getBoundingClientRect().right - Number.parseFloat(style.paddingRight) - range.getBoundingClientRect().right,
+                gap: right - words.right,
+                /* How far the words stand outside the content of their cell, either way: a time that
+                   does not fit is wider than the column it is in, whatever the column says. */
+                over: Math.max(0, left - words.left, words.right - right),
               }
             }),
         }
@@ -377,10 +402,32 @@ for (const at of EQUAL) {
 
       const widths = seen.figures.map((one) => one.width)
 
-      expect(Math.max(...widths) - Math.min(...widths), JSON.stringify(seen.figures)).toBeLessThanOrEqual(
+      /* Every figure column but the time is one width. The time is the one column that may be wider, and
+         only when its times need it (owner, 20.10.2026): a time of ten hours or more is eight characters
+         and the longest in the sample, 144:00:00, is nine, and neither stands in 9% of a table of 668px.
+         So the others are asked to agree among themselves, and the time is asked to be at least as wide
+         as they are and to hold its widest time. */
+      const others = seen.figures.filter((one) => one.name !== 'Vreme').map((one) => one.width)
+      const times = seen.figures.find((one) => one.name === 'Vreme')
+
+      if (times === undefined) {
+        throw new Error('the column of times is not on the screen')
+      }
+
+      const time = times.width
+
+      expect(Math.max(...others) - Math.min(...others), JSON.stringify(seen.figures)).toBeLessThanOrEqual(
         mod && phone ? THE_TELEPHONE_OF_WHOEVER_CHECKS : AGREE,
       )
-      expect(Math.max(...widths), JSON.stringify(seen.figures)).toBeLessThanOrEqual(CAP)
+      expect(time, JSON.stringify(seen.figures)).toBeGreaterThanOrEqual(Math.max(...others) - AGREE)
+      expect(Math.max(...others), JSON.stringify(seen.figures)).toBeLessThanOrEqual(CAP)
+
+      /* And the widest time fits its cell, in every reader: no word of any figure stands outside the
+         content of its cell. */
+      expect(
+        seen.reach.filter((one) => one.over > 0.5),
+        'figures wider than their cell',
+      ).toEqual([])
 
       /* And the words take what is left: each of the two is wider than one figure on a wide screen. */
       if (!phone) {
