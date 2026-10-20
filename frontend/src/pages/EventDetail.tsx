@@ -348,7 +348,7 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
             </h2>
 
             <div className="table-scroll">
-              <table className="table">
+              <table className="table table--results">
                 <caption className="visually-hidden">{t('event.results')}</caption>
                 <thead>
                   <tr>

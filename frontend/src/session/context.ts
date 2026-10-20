@@ -1,7 +1,6 @@
 import { createContext } from 'react'
 import type {
   Crop,
-  EventComment,
   MembershipBasis,
   PendingItem,
   RacingPair,
@@ -882,28 +881,6 @@ export type SessionValue = {
    *  `decisions` rather than a second list to keep in step. Called with `null` only
    *  where a visit has to forget it without one, which nothing does today. */
   sendPicture: (one: PictureSent | null) => void
-
-  /**
-   * Comments a moderator has let out during this visit, carrying the id of the
-   * queue item they came from.
-   *
-   * Written down here rather than read back off the queue, because the event
-   * page is public and the queue is not: it holds addresses of people who are
-   * not members yet and the words of comments nobody has approved, and a public
-   * screen that reads it hands all of that to every visitor's browser. The
-   * administration is the only side that reads the queue, so the administration
-   * is what writes down what came out of it.
-   *
-   * Whether one is actually on the portal is still `decisions`, not this list.
-   * A comment let out and then taken down again is a decision changed, and one
-   * list of "what is out" would have to be kept in step with the decisions by
-   * hand, which is how two answers to one question start.
-   */
-  published: { from: string; comment: EventComment }[]
-  /** `from` is the queue item, which is what a decision is filed under; the
-   *  comment is handed over without an identity, because the session gives it
-   *  one (`SessionProvider`, `publish`). */
-  publish: (from: string, comment: Omit<EventComment, 'id'>) => void
 }
 
 export const SessionContext = createContext<SessionValue | null>(null)
