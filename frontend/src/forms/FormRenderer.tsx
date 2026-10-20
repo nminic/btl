@@ -181,9 +181,10 @@ type Props = {
    * postojećeg događaja vezuje taj događaj i bez klika, bez obzira na velika i mala slova, kao da je
    * izabran predlog; polje trke tada postaje predlog nad njegovim trkama.” Exactly is the whole name,
    * letter for letter in any case, and nothing more: a name that is the beginning of an entry links
-   * nothing. <b>Two entries of one name link neither</b> (the coordinator's proposal P1 A for 7b, put
-   * to the owner, not yet his decision): between midnight and ten on 1 January two seasons are open
-   * and a name may stand in both, and choosing one of them is the reader's, not a guess's.
+   * nothing. <b>Two entries of one name link neither</b> (the coordinator's derivation, not the
+   * owner's decision: PDL „[IZVEDENO 19.10.2026, moje, PR za 7b]”): between midnight and ten on
+   * 1 January two seasons are open and a name may stand in both, and choosing one of them is the
+   * reader's, not a guess's.
    *
    * <p>What he typed stays as he typed it; only the link is made, which is what the entry was for.
    */

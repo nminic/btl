@@ -2310,7 +2310,7 @@ describe('a name typed exactly, in a field whose list links it', () => {
 
   it('links neither of two entries of one name', async () => {
     /* Between midnight and ten on 1 January two seasons are open and a name may stand in both
-       (the coordinator's proposal P1 A for 7b): the reader chooses, the form does not guess. */
+       (the coordinator's derivation, PDL „[IZVEDENO 19.10.2026, moje, PR za 7b]”): the reader chooses, the form does not guess. */
     const sent: FormValues[] = []
     const user = setupUser()
 
