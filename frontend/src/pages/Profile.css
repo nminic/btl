@@ -917,9 +917,9 @@
    **A share of the table and not a number of pixels, which is the whole of the decision.** Measured in
    Chrome on 20.10.2026, with a fixed width the six figures of a moderator (the pencil and the x take
    99px side by side, the longest head „Dužina (km)" 95) cannot stand beside two columns of words at
-   768px: 6 x 99 leaves 142px for the member and the race, and a name that does not break and a word of a
-   race that does not break need more than that between them, so the table would scroll sideways inside
-   its own box, which PDL P24 forbids on a table. A share keeps the same split at every width, and 11% of the table at 768px is 81px, which is
+   768px: 6 x 99 leaves 142px for the member and the race, and with a fixed 6,2rem (99px) the geometry case
+   failed at 700 and at 768px for whoever checks results: the figures stopped being one width, or the
+   table scrolled sideways inside its own box, which PDL P24 forbids on a table. A share keeps the same split at every width, and 11% of the table at 768px is 81px, which is
    what the eight columns it replaces took between them (485px for the figures and the buttons at 768).
    The member and the race get the other 34% (a visitor, with one column fewer, 45%): 250px at 768,
    and the 251px the member and the old „Distanca" had.
