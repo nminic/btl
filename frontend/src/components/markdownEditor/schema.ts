@@ -114,9 +114,9 @@ export const schema = new Schema({
         {
           tag: 'a[href]',
           getAttrs: (dom) => {
-            const href = dom.getAttribute('href')
+            const href = String(dom.getAttribute('href'))
 
-            return href !== null && linkableAddress(href) ? { href } : false
+            return linkableAddress(href) ? { href } : false
           },
         },
       ],
