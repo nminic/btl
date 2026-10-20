@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
 import { ProfileLink } from '../profile/ProfileLink'
 import { useGrowing } from '../../components/growing'
 import { LoadMore } from '../../components/LoadMore'
@@ -15,6 +17,12 @@ import { useToday } from '../../clock/useClock'
 import { useI18n } from '../../i18n/useI18n'
 import { useServerIsStillBeingAsked } from '../../session/useServerIsStillBeingAsked'
 import { useReadsComments } from './readsComments'
+import { useSession } from '../../session/useSession'
+import { isActiveMember } from '../../roles/activeMemberOrAdministration'
+import { DeleteRecord } from '../admin/EntityEditor'
+import { ServerSaid } from '../account/ServerSaid'
+import type { Answer } from '../account/askTheServer'
+import { saysNothing, theRatingDeleted } from './commentWrites'
 import './EventComments.css'
 
 /**
@@ -124,6 +132,8 @@ export function EventComments({ eventId, date }: { eventId: number; date: string
 function TheComments({ eventId, date }: { eventId: number; date: string }) {
   const { t } = useI18n()
   const today = useToday()
+  /* Read again, here and beside the name of the event alike, when his deletion is answered
+     (`theCommentsHaveChanged`, `commentWrites.ts`). */
   const state = combineResources(useComments(), useCompetitors(), useEvents())
 
   /* An event still to be run draws no section here at all, so while its data is
@@ -160,6 +170,10 @@ function TheComments({ eventId, date }: { eventId: number; date: string }) {
               .filter((one) => one.eventId === edition.id)
               .map((comment) => ({
                 comment,
+                /* The address of the running it was written under, which is where his pencil
+                   leads: a rating belongs to the event it was given for, and that is where he
+                   has the result the form asks about (owner, 11.08.2026). */
+                slug: edition.slug,
                 /* Which running it was written about, where that is not this
                    one. Without it the page of the 2027 race carries a
                    paragraph about the 2024 one with nothing saying so, and a
@@ -189,7 +203,9 @@ function TheComments({ eventId, date }: { eventId: number; date: string }) {
 
         return (
           <>
-            <h2 className="profile__section" id="comments">
+            {/* Focusable by the page and not a stop on the way through: it is where the focus goes when
+                the reader's own rating, and the button he pressed with it, leave the list. */}
+            <h2 className="profile__section" id="comments" tabIndex={-1}>
               {t('event.comments')}
             </h2>
 
@@ -225,11 +241,29 @@ function CommentList({
 }: {
   /** Each comment beside the year of the running it was written about, empty
    *  where that is the one being read. */
-  written: { comment: EventComment; from: string }[]
+  written: { comment: EventComment; slug: string; from: string }[]
   competitors: Competitor[]
 }) {
   const { t } = useI18n()
   const { shown, whole, asked, more } = useGrowing(written.length, AT_FIRST)
+  /* WHOSE RATINGS ARE HIS (owner, PDL P6, 20.10.2026: „uz svoju ocenu na strani događaja član vidi
+     Izmeni i Obriši"). His number, and only while his fee stands: the server deletes for an active
+     member alone and answers anybody else 404 (`CommentWriteApi`, derived from PDL P8). The served
+     list carries an author's number only while that author is active, so the two halves agree; asked
+     here as well because a screen must not offer what the server refuses, whatever a file says. */
+  const { memberNumber, signedIn } = useSession()
+  const me = isActiveMember(signedIn) ? memberNumber : null
+  /* THE RATING HE HAS JUST DELETED, until it has left the list: the button that had the focus goes with
+     its card, so the focus is put on the heading of the comments rather than dropped on the document
+     (WCAG 2.2 SC 2.4.3). Asked of the list as drawn, so it moves when the card is really gone. */
+  const [gone, setGone] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (gone !== null && !written.some(({ comment }) => comment.id === gone)) {
+      document.getElementById('comments')?.focus()
+      setGone(null)
+    }
+  }, [gone, written])
 
   return (
     <>
@@ -237,24 +271,33 @@ function CommentList({
           what the list is and does not have to have read the heading on the way
           past. */}
       <ol className="comments" aria-labelledby="comments">
-        {written.slice(0, shown).map(({ comment, from }) => (
+        {written.slice(0, shown).map(({ comment, slug, from }) => (
           <Comment
             key={comment.id}
             comment={comment}
             who={competitors.find((one) => one.memberNumber === comment.memberNumber)}
             from={from}
+            his={me !== null && comment.memberNumber === me ? slug : null}
+            onGone={setGone}
           />
         ))}
       </ol>
 
+      {/* NOTHING SEEN AT THE FOOT OF THEM (owner, PDL P6, 20.10.2026: „Treba da bude infinite scroll.
+          Dakle brise se sve to na dnu"), and nothing counted out loud either („Čitač ekrana ne čuje
+          brojanje"). The list grows as it is scrolled; the button stays for the keyboard and a screen
+          reader and is seen only with the focus on it, and the end is said and not drawn, as on the
+          results and the ducats (`endShown`). */}
       <LoadMore
         whole={whole}
         asked={asked}
         onMore={more}
+        endShown={false}
+        buttonOnFocusOnly
         words={{
           more: t('event.moreComments'),
-          showing: t('event.showingComments', { shown, total: written.length }),
-          whole: t('event.allComments', { count: written.length }),
+          showing: t('event.moreCommentsLoaded'),
+          whole: t('event.noMoreComments'),
         }}
       />
     </>
@@ -265,14 +308,24 @@ function Comment({
   comment,
   who,
   from,
+  his,
+  onGone,
 }: {
   comment: EventComment
   who: Competitor | undefined
   /** The year of the running it was written about, or empty where that is the
    *  one being read. */
   from: string
+  /** Where this is the reader's own rating, the address of the event it was given for; nothing
+   *  where it is somebody else's. */
+  his: string | null
+  /** Told the id of a rating the server no longer holds, once his deletion is answered. */
+  onGone: (id: number) => void
 }) {
   const { locale, t } = useI18n()
+  /* What the server said to his deletion where it is something the page has words for: neither done
+     nor „no longer there" (`commentWrites.ts`). */
+  const [refused, setRefused] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
 
   return (
     <li className="comments__one">
@@ -361,6 +414,51 @@ function Comment({
       </dl>
 
       {comment.body !== '' && <p className="comments__text">{comment.body}</p>}
+
+      {his !== null && (
+        <div className="comments__his">
+          <span className="entity-row-actions">
+            {/* The pencil: the rating form of the event it was given for, filled in with what he gave
+                (`RateEvent.tsx`). Sent again, it replaces this one (owner, 19.10.2026), at once without
+                words and after a moderator with them, and this one stands until then (20.10.2026). */}
+            <Link
+              className="button button--secondary button--compact"
+              aria-label={t('event.editOwnRating')}
+              to={`/${locale}/kalendar/${his}/ocena`}
+            >
+              ✎
+            </Link>
+            {/* The x, asked twice as every deletion on the portal is, in the owner's words
+                („Obriši svoju ocenu?"). */}
+            <DeleteRecord
+              name={t('event.deleteOwnRating')}
+              face="×"
+              look="button button--secondary button--compact"
+              words={{
+                named: t('event.deleteOwnRating'),
+                sure: t('event.deleteOwnRatingSure'),
+                keepNamed: t('event.keepOwnRating'),
+              }}
+              onKeep={() => {
+                setRefused(null)
+              }}
+              onDelete={() =>
+                theRatingDeleted(comment.id).then((answer) => {
+                  if (answer.got !== 'done' && !saysNothing(answer)) {
+                    setRefused(answer)
+
+                    return
+                  }
+
+                  setRefused(null)
+                  onGone(comment.id)
+                })
+              }
+            />
+          </span>
+          {refused !== null && <ServerSaid answer={refused} refusals={{}} />}
+        </div>
+      )}
     </li>
   )
 }
