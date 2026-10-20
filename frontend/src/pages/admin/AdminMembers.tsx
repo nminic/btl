@@ -334,8 +334,8 @@ export function AdminMembers() {
                   before release). Until that day the box scrolled 608px at 360, 200 at 768 and 140 at 1280.
                   What makes it fit is in `AdminMembers.css`: the heads and the pills break between words,
                   on a telephone the table keeps the member and the record and carries the basis and the
-                  seasons under the name, and „Poslednja sezona" is drawn from 1100px (owner, 20.10.2026,
-                  both chosen with my recommendation). */}
+                  seasons under the name, Kategorija and Mesto are drawn from 1000px and „Poslednja sezona"
+                  from 1100px (owner, 20.10.2026, each chosen with my recommendation). */}
               <div className="table-scroll">
                 <table className="table members-table">
                   <caption className="visually-hidden">{t('admin.members')}</caption>
@@ -348,10 +348,10 @@ export function AdminMembers() {
                           reads (ADL A8): administration was where it was shown, not
                           where it was kept. Član 74 allows the category and nothing
                           finer, so the category is the whole of what stands here. */}
-                      <th scope="col" className="table__hide-phone">
+                      <th scope="col" className="members-table__wide">
                         {t('competitors.columns.category')}
                       </th>
-                      <th scope="col" className="table__hide-phone">
+                      <th scope="col" className="members-table__wide">
                         {t('competitors.columns.city')}
                       </th>
                       <th scope="col" className="table__hide-phone">
@@ -415,8 +415,8 @@ export function AdminMembers() {
                                 328px, and the seasons are what the owner named as needed on the row
                                 (18.10.2026, „kojih sve godina je on bio clan"). Each under the name of
                                 its column, the shape of the figures under a race's name in the queue of
-                                results (`ReviewQueue.tsx`). The category and the town are not drawn on
-                                a telephone. */}
+                                results (`ReviewQueue.tsx`). The category and the town are not drawn
+                                below 1000px at all (owner, 20.10.2026). */}
                             <div className="table__phone-only">
                               <dl className="members-table__held">
                                 {basisTag !== null && (
@@ -434,7 +434,7 @@ export function AdminMembers() {
                               </dl>
                             </div>
                           </td>
-                          <td className="table__category table__hide-phone">
+                          <td className="table__category members-table__wide">
                             {categoryLabel(
                               categoryCodeFor(one.gender, one.ageBand, one.firstSeason2027),
                               t,
@@ -442,7 +442,7 @@ export function AdminMembers() {
                           </td>
                           {/* Read, not edited in place - see the note at the top of
                               this file for why there is no route to write it back. */}
-                          <td className="table__hide-phone">{one.city}</td>
+                          <td className="members-table__wide">{one.city}</td>
                           {/* THE BASIS OF THE SEASON ON SALE, WITH ITS YEAR, and nothing for a
                               member who holds no membership of it (owner, 18.10.2026, PDL P8:
                               „do 14.10. je osnova 2027, od 15.10 je osnova 2028"). Until that day

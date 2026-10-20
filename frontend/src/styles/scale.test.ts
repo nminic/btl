@@ -210,9 +210,19 @@ const IN_PIXELS = new Map([
   [
     'pages/admin/AdminMembers.css 1099.98',
     /* Owner, 20.10.2026, chosen with my recommendation: „Poslednja sezona" is drawn from 1100px, because
-       below it the seven columns of the moderation of the members do not fit their box (668 at 700, 681
-       at 1000, where the navigation stands beside the page). In pixels because it takes a column away. */
+       below it the seven columns of the moderation of the members do not fit their box (668 at 700; and
+       from 820, where the navigation stands beside the page, 516 at 820 and 681 at 1000). In pixels
+       because it takes a column away. */
     'drops „Poslednja sezona", whose year is the last of the pills under „Sezone članstva" on the same row',
+  ],
+  [
+    'pages/admin/AdminMembers.css 1000',
+    /* Owner, 20.10.2026, chosen with my recommendation, after the review of PR 594: Kategorija and Mesto
+       of the moderation of the members are drawn from 1000px, because from 820, where the navigation
+       stands beside the page, the box is 516 to 596 and six columns need about 606. Hidden outside every
+       query and shown from here, the width the list already has. In pixels because it decides whether a
+       column is drawn: in em it would take both columns off a 1280 screen at 200% text. */
+    'draws Kategorija and Mesto, which below it are not drawn at all (owner, 20.10.2026)',
   ],
 ])
 

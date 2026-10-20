@@ -27,15 +27,34 @@
   white-space: normal;
 }
 
-/* „POSLEDNJA SEZONA" IS DRAWN FROM 1100px (owner, 20.10.2026, chosen with my recommendation). With
-   the two rules above the seven columns need about 690px with long names, and the box is narrower than
-   that from 700 to about 722 (668 at 700) and from 1000, where the navigation stands beside the page,
-   to about 1025 (681 at 1000). Of the seven, this is the one whose fact is on the row anyway: the last
-   of the pills under „Sezone članstva", oldest first. In pixels, because it takes a column away
-   (`styles/scale.test.ts`). */
+/* WHERE THE BOX IS NARROW, AND IT IS NOT ONLY ON A TELEPHONE. The navigation stands beside the page
+   from 820px (`app/Shell.css`, the closed list in `styles/scale.test.ts`: „the navigation stops folding
+   away"), so the box is 516px at 820, 596 at 900 and 681 at 1000, narrower than at 768 (736). With the
+   two rules above the seven columns need about 690px with long names, and six about 606.
+
+   „POSLEDNJA SEZONA" IS DRAWN FROM 1100px (owner, 20.10.2026, chosen with my recommendation): of the
+   seven it is the one whose fact is on the row anyway, the last of the pills under „Sezone članstva",
+   oldest first. In pixels, because it takes a column away (`styles/scale.test.ts`). */
 @media (max-width: 1099.98px) {
   .members-table__last {
     display: none;
+  }
+}
+
+/* KATEGORIJA AND MESTO ARE DRAWN FROM 1000px (owner, 20.10.2026, chosen with my recommendation, after
+   the review of PR 594 measured every width from 820 to 910 overflowing the box with the six columns:
+   607 inside 516 at 820, 607 inside 596 at 900). Below it the table is the member, the basis, the
+   seasons and the record, which need about 450px; on a telephone the basis and the seasons go under
+   the name as well (below). Hidden outside every query and shown from the width the closed list
+   already has, 1000, so no new width is added; in pixels, because what it decides is whether a column
+   is drawn (`styles/scale.test.ts`). */
+.members-table__wide {
+  display: none;
+}
+
+@media (min-width: 1000px) {
+  .members-table__wide {
+    display: table-cell;
   }
 }
 

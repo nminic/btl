@@ -24,10 +24,10 @@ import type { Answers, At } from './support/harness.ts'
  *
  * The members' table because it is the longest row of symbols the portal draws (a payment, a
  * cancellation or an exemption, and the deletion), and the one the owner named to be no worse than
- * before. Measured on 20.10.2026 against `main` (b9c6c411) with the same answers: the table is as
- * wide inside its box as it was (936px at all three widths, which the same day's fix of the table
- * brought within its box) and its rows are lower (5628px for the whole table against 5904px), so
- * nothing here pins a width that the symbols could make worse.
+ * before. Measured on 20.10.2026 against `main` (b9c6c411) with the same answers, before the table
+ * was fitted to its box later that day: the symbols left it as wide as it was and made its rows lower
+ * (5628px for the whole table against 5904px). The table's width and its box are asked of Chrome in
+ * `geometry/membersTable.geometry.ts`, so nothing here pins a width.
  */
 
 /** The day the moderation of the members is read on. */
