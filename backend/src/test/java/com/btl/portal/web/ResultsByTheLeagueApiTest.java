@@ -1020,12 +1020,245 @@ class ResultsByTheLeagueApiTest {
 				"Vaš rezultat je izmenjen", "Vaš rezultat je obrisan");
 	}
 
+	/* ============================================ „Unos rezultata za događaj”: one save of all three */
+
+	/**
+	 * THE SAME DOOR AS THE EVENT PAGE'S (the coordinator's derivation, PDL „[IZVEDENO 19.10.2026, moje,
+	 * PR za 7b]”, (4)): the right that checks results, and not the calendar's, so a moderator of the
+	 * events alone is answered as if the route were not there, and nothing is written for him.
+	 */
+	@Test
+	void theScreensSaveOpensToTheRightThatChecksResultsAndNotToTheCalendars() throws Exception {
+		String body = onANewEvent("Jezerska trka", "2027-06-01", "Ohrid", "MK",
+				newRace("Jezerska desetka", null, "length", "10.00", 20, 20, null),
+				row(VERA, null, null, null, AN_HOUR));
+		int events = howMany("btl_event");
+
+		assertThat(onAnEvent(null, body).getStatus()).isEqualTo(401);
+		assertThat(onAnEvent(ANAS_ADDRESS, body).getStatus()).isEqualTo(404);
+		assertThat(onAnEvent(EVENTS_MODERATOR, body).getStatus()).isEqualTo(404);
+		assertThat(howMany("btl_event")).isEqualTo(events);
+		assertThat(resultsOf(VERA)).isEmpty();
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, body).getStatus()).isEqualTo(201);
+		assertThat(howMany("btl_event")).isEqualTo(events + 1);
+	}
+
+	/**
+	 * A NEW EVENT, ITS RACE AND THE ROWS IN ONE SAVE: the event in the town typed, on its one date
+	 * („nov događaj ima jedno polje „Datum” (isti dan kao njegova prva trka)”), at the address of its
+	 * name and year; the race with what its kind fixes; and the row counted on it.
+	 */
+	@Test
+	void aNewEventItsRaceAndTheRowsAreWrittenTogether() throws Exception {
+		assertThat(onAnEvent(RESULTS_MODERATOR, onANewEvent("Jezerska trka", "2027-06-01", "Ohrid", "MK",
+				newRace("Jezerska desetka", null, "length", "10.00", 20, 30, null),
+				row(VERA, "99.00", 1, 1, AN_HOUR))).getStatus()).isEqualTo(201);
+
+		assertThat(db.sql("select name || ' ' || date || ' ' || coalesce(place_id::text, '-') || ' ' || city"
+						+ " || ' ' || (select code from country where id = country_id) || ' ' || kind"
+						+ " from btl_event where slug = 'jezerska-trka-2027'")
+				.query(String.class).single()).isEqualTo("Jezerska trka 2027-06-01 - Ohrid MK race");
+
+		long made = db.sql("select r.id from race r join btl_event e on e.id = r.event_id"
+						+ " where e.slug = 'jezerska-trka-2027' and r.name = 'Jezerska desetka'"
+						+ " and r.date = date '2027-06-01' and r.kind = 'length'")
+				.query(Long.class).single();
+
+		assertThat(resultsOf(VERA)).containsExactly(figures(made, "10", 20, 30, AN_HOUR,
+				BtlScoreCalculator.calculate(10.0, 20, 30, AN_HOUR)));
+	}
+
+	/**
+	 * A NEW RACE ON AN EVENT OF THE CALENDAR, ON A DAY BEFORE THE EVENT'S, MOVES THE EVENT BACK TO IT
+	 * („ako pomerim datum trke unutar dogadjaja na ranije, menja se i njemu datum”), and the event's
+	 * own town is not touched. The day is the race's, which is a different day from the event's here.
+	 */
+	@Test
+	void aNewRaceOnAnEventOfTheCalendarMovesTheEventBackToAnEarlierDay() throws Exception {
+		long theEvent = db.sql("select event_id from race where id = ?").param(theTen)
+				.query(Long.class).single();
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				newRace("Jutarnja petica", "2027-05-01", "time", null, null, null, AN_HOUR),
+				row(VERA, "5.00", 10, 10, null))).getStatus()).isEqualTo(201);
+
+		assertThat(db.sql("select date from btl_event where id = ?").param(theEvent)
+				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2027, 5, 1));
+		assertThat(db.sql("select count(*) from race where event_id = ? and name = 'Jutarnja petica'"
+						+ " and date = date '2027-05-01' and limit_seconds = ?")
+				.params(theEvent, AN_HOUR).query(Integer.class).single()).isEqualTo(1);
+		assertThat(resultsOf(VERA)).hasSize(1);
+	}
+
+	/** A RACE OF THE CALENDAR ON ITS EVENT takes the rows exactly as the event page enters them. */
+	@Test
+	void aRaceOfTheCalendarOnItsEventTakesTheRowsAsTheEventPageDoes() throws Exception {
+		long theEvent = db.sql("select event_id from race where id = ?").param(theTen)
+				.query(Long.class).single();
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent, "{\"id\":" + theTen + "}",
+				row(VERA, "50.00", 9, 9, AN_HOUR))).getStatus()).isEqualTo(201);
+
+		assertThat(resultsOf(VERA)).containsExactly(figures(theTen, "10", 100, 80, AN_HOUR,
+				BtlScoreCalculator.calculate(10.0, 100, 80, AN_HOUR)));
+	}
+
+	/**
+	 * „ISTI NAZIV NE PRAVI DRUGI DOGAĐAJ” (owner, 19.10.2026): a new event named as an event the calendar
+	 * has in that year is that event, and the town typed is not read, since it stands where it stands.
+	 */
+	@Test
+	void aNewEventNamedAsOneOfThatYearIsThatEvent() throws Exception {
+		int events = howMany("btl_event");
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onANewEvent("Prvi dogadjaj", "2027-05-08", "Ohrid", "MK",
+				newRace("Druga desetka", null, "length", "10.00", 0, 0, null),
+				row(VERA, null, null, null, AN_HOUR))).getStatus()).isEqualTo(201);
+
+		assertThat(howMany("btl_event")).isEqualTo(events);
+		assertThat(db.sql("select city is null and place_id is not null from btl_event"
+						+ " where slug = 'prvi-dogadjaj-2027'")
+				.query(Boolean.class).single()).isTrue();
+		assertThat(db.sql("select count(*) from race r join btl_event e on e.id = r.event_id"
+						+ " where e.slug = 'prvi-dogadjaj-2027' and r.name = 'Druga desetka'")
+				.query(Integer.class).single()).isEqualTo(1);
+	}
+
+	/**
+	 * THE FOUR SENTENCES OF THE SCREEN (approved 19.10.2026), each where it belongs, and NOTHING
+	 * WRITTEN BY ANY OF THEM: an event chosen by a key nobody answers to, a race chosen by a key that is
+	 * not that event's, a new event with no town, and a new event or a new race before 2027.
+	 */
+	@Test
+	void theScreensFourRefusalsWriteNothing() throws Exception {
+		long theEvent = db.sql("select event_id from race where id = ?").param(theTen)
+				.query(Long.class).single();
+		int events = howMany("btl_event");
+		int races = howMany("race");
+
+		MockHttpServletResponse gone = onAnEvent(RESULTS_MODERATOR, onTheEvent(999_999L,
+				newRace("Nova", "2027-05-01", "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+		MockHttpServletResponse notItsRace = onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				"{\"id\":" + theOtherEventsRace + "}", row(VERA, null, null, null, AN_HOUR)));
+		MockHttpServletResponse noTown = onAnEvent(RESULTS_MODERATOR, onANewEvent("Bez mesta",
+				"2027-06-01", " ", "MK", newRace("Nova", null, "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+		MockHttpServletResponse before = onAnEvent(RESULTS_MODERATOR, onANewEvent("Stara trka",
+				"2026-12-31", "Ohrid", "MK", newRace("Nova", null, "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+		long theOldEvent = db.sql("select event_id from race where id = ?").param(theOldRace)
+				.query(Long.class).single();
+		MockHttpServletResponse beforeOnTheCalendar = onAnEvent(RESULTS_MODERATOR,
+				onTheEvent(theOldEvent, newRace("Nova", "2026-09-12", "free", null, null, null, null),
+						row(VERA, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(List.of(gone.getStatus(), notItsRace.getStatus(), noTown.getStatus(), before.getStatus(),
+				beforeOnTheCalendar.getStatus())).containsExactly(409, 409, 400, 400, 400);
+		assertThat(List.of(reasonIn(gone), reasonIn(notItsRace), reasonIn(noTown), reasonIn(before),
+				reasonIn(beforeOnTheCalendar))).containsExactly("theEventIsNotKnown", "theRaceIsNotKnown",
+						"theTownIsMissing", "theDayIsBeforeTheLeague", "theDayIsBeforeTheLeague");
+		assertThat(List.of(howMany("btl_event"), howMany("race"))).containsExactly(events, races);
+		assertThat(resultsOf(VERA)).isEmpty();
+	}
+
+	/**
+	 * A ROW REFUSED TAKES THE EVENT AND THE RACE WITH IT: one save, and nothing of it written if one
+	 * part is refused, which is the event page's rule for its rows carried to the two it now makes.
+	 */
+	@Test
+	void aRowRefusedLeavesNoEventAndNoRaceBehind() throws Exception {
+		int events = howMany("btl_event");
+		int races = howMany("race");
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onANewEvent("Jezerska trka",
+				"2027-06-01", "Ohrid", "MK", newRace("Jezerska desetka", null, "length", "10.00", 20, 20,
+						null),
+				row(VERA, null, null, null, AN_HOUR), row(NOBODY_HOLDS_THIS, null, null, null, AN_HOUR)));
+
+		assertThat(refused.getStatus()).isEqualTo(400);
+		assertThat(wrongRows(refused)).containsExactly("1 theMemberIsNotKnown");
+		assertThat(List.of(howMany("btl_event"), howMany("race"))).containsExactly(events, races);
+		assertThat(resultsOf(VERA)).isEmpty();
+	}
+
+	/**
+	 * WHAT THE SCREEN NEVER BUILDS IS A FORM NOT FILLED IN, and still writes nothing: a key beside a
+	 * name, a race of the calendar on a new event, a race's day on a new event (whose day is the
+	 * event's), a figure its kind fixes left out, a town in a country nobody has, and a race still to
+	 * come.
+	 */
+	@Test
+	void whatTheScreenNeverBuildsIsRefusedAsAFormNotFilledIn() throws Exception {
+		long theEvent = db.sql("select event_id from race where id = ?").param(theTen)
+				.query(Long.class).single();
+		String aRow = row(VERA, "5.00", 1, 1, AN_HOUR);
+		int events = howMany("btl_event");
+
+		for (String body : List.of(
+				"{\"event\":{\"id\":" + theEvent + ",\"name\":\"Prvi dogadjaj\"},\"race\":{\"id\":" + theTen
+						+ "},\"rows\":[" + aRow + "]}",
+				onANewEvent("Jezerska trka", "2027-06-01", "Ohrid", "MK", "{\"id\":" + theTen + "}", aRow),
+				onANewEvent("Jezerska trka", "2027-06-01", "Ohrid", "MK",
+						newRace("Nova", "2027-06-01", "free", null, null, null, null), aRow),
+				onANewEvent("Jezerska trka", "2027-06-01", "Ohrid", "MK",
+						newRace("Nova", null, "length", null, 20, 20, null), aRow),
+				onANewEvent("Jezerska trka", "2027-06-01", "Ohrid", "MK",
+						newRace("Nova", null, "time", null, null, null, null), aRow),
+				onANewEvent("Jezerska trka", "2027-06-01", "Ohrid", "XX",
+						newRace("Nova", null, "free", null, null, null, null), aRow),
+				onTheEvent(theEvent, newRace("Nova", null, "free", null, null, null, null), aRow))) {
+			MockHttpServletResponse answer = onAnEvent(RESULTS_MODERATOR, body);
+
+			assertThat(answer.getStatus()).as(body).isEqualTo(400);
+			assertThat(reasonIn(answer)).as(body).isEqualTo("theFormIsNotComplete");
+		}
+
+		MockHttpServletResponse toCome = onAnEvent(RESULTS_MODERATOR, onANewEvent("Jesenja trka",
+				"2027-09-01", "Ohrid", "MK", newRace("Nova", null, "free", null, null, null, null), aRow));
+
+		assertThat(reasonIn(toCome)).isEqualTo("theRaceHasNotBeenRun");
+		assertThat(howMany("btl_event")).isEqualTo(events);
+	}
+
 	/* ===================================================================== helpers */
 
 	private MockHttpServletResponse entered(String email, long race, String body) throws Exception {
 		return http.perform(asking(email, post("/api/races/" + race + "/results"))
 						.contentType(MediaType.APPLICATION_JSON).content(body))
 				.andReturn().getResponse();
+	}
+
+	private MockHttpServletResponse onAnEvent(String email, String body) throws Exception {
+		return http.perform(asking(email, post("/api/results/on-a-race-of-an-event"))
+						.contentType(MediaType.APPLICATION_JSON).content(body))
+				.andReturn().getResponse();
+	}
+
+	/** A save on a new event, by its name, its one date and the town typed with its country. */
+	private static String onANewEvent(String name, String date, String city, String country, String race,
+			String... each) {
+		return "{\"event\":{\"name\":\"" + name + "\",\"date\":\"" + date + "\",\"city\":\"" + city
+				+ "\",\"country\":\"" + country + "\"},\"race\":" + race + ",\"rows\":["
+				+ String.join(",", each) + "]}";
+	}
+
+	/** A save on an event of the calendar, by its key. */
+	private static String onTheEvent(long event, String race, String... each) {
+		return "{\"event\":{\"id\":" + event + "},\"race\":" + race + ",\"rows\":["
+				+ String.join(",", each) + "]}";
+	}
+
+	/** A new race, with its day where it has one of its own and what its kind fixes. */
+	private static String newRace(String name, String date, String kind, String km, Integer up,
+			Integer down, Integer limit) {
+		return "{\"name\":\"" + name + "\"," + (date == null ? "" : "\"date\":\"" + date + "\",")
+				+ "\"kind\":\"" + kind + "\",\"distanceKm\":" + km + ",\"ascentM\":" + up
+				+ ",\"descentM\":" + down + ",\"limitSeconds\":" + limit + "}";
+	}
+
+	private int howMany(String table) {
+		return db.sql("select count(*) from " + table).query(Integer.class).single();
 	}
 
 	private MockHttpServletResponse changed(String email, long race, long result, String body)
