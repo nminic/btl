@@ -307,8 +307,11 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
   {
     file: 'pages/admin/RaceForTheRun.tsx',
     how: 'says',
-    why: 'THE DECISION OF 03.10.2026 FOR THE RACES (PDL: the races yes, the towns no), carried to the second box that offers them, and held by `pages/admin/raceForTheRun.test.tsx`: when either of the two files the list is made from could not be read, the box for the race\'s name says so beside itself, with the button that asks again, and goes on taking the name typed into it (`offering`, the shape `pages/member/NewResult.tsx` has). MY REASONING for the call below: `known` is not drawn as a list. It is read to find the race already CHOSEN from a list that was read, and to ask what that race leaves to the runner, so a read that failed, which offers nothing to choose, leaves nothing chosen to look up.',
-    calls: [{ shape: 'condition', call: "races.status === 'ready' ? races.data : []" }],
+    why: 'THE DECISION OF 03.10.2026 FOR THE RACES (PDL: the races yes, the towns no), carried to the second box that offers them, and held by `pages/admin/raceForTheRun.test.tsx`: when either of the two files the list is made from could not be read, the box for the race\'s name says so beside itself, with the button that asks again, and goes on taking the name typed into it (`offering`, the shape `pages/member/NewResult.tsx` has). MY REASONING for the call below: `known` is not drawn as a list. It is read to find the race already CHOSEN from a list that was read, and to ask what that race leaves to the runner, so a read that failed, which offers nothing to choose, leaves nothing chosen to look up. And since 19.10.2026 (PDL P9, the event asked first) the box for the event says the same of the calendar beside itself, with its own button that asks again (`unreadable` on the box for the event), so the empty list it is handed while the calendar failed is never drawn as a calendar with no event in it.',
+    calls: [
+      { shape: 'condition', call: "races.status === 'ready' ? races.data : []" },
+      { shape: 'condition', call: "events.status === 'ready' ? eventsToOffer(events.data, [year], today) : []" },
+    ],
   },
   {
     file: 'pages/event/EventComments.tsx',

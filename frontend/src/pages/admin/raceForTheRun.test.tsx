@@ -86,6 +86,8 @@ const FROM_THE_BOOK: ServedPendingItem = {
   descentM: 90,
   seconds: 3000,
   link: '',
+  eventId: null,
+  eventName: null,
 }
 
 /** Another, at a town typed in another country, sent as a race of a length. */
@@ -106,6 +108,8 @@ const TYPED: ServedPendingItem = {
   descentM: 35,
   seconds: 2700,
   link: '',
+  eventId: null,
+  eventName: null,
 }
 
 /** A run from the calendar, which names no town. */
@@ -125,6 +129,8 @@ const FROM_THE_CALENDAR: ServedPendingItem = {
   descentM: 40,
   seconds: 3300,
   link: '',
+  eventId: null,
+  eventName: null,
 }
 
 /** A results row naming no submission, which V10 permits: no day, no race, no figures. */
@@ -145,6 +151,8 @@ const NAMING_NO_RUN: ServedPendingItem = {
   descentM: null,
   seconds: null,
   link: '',
+  eventId: null,
+  eventName: null,
 }
 
 const RUNS = [FROM_THE_BOOK, TYPED, FROM_THE_CALENDAR, NAMING_NO_RUN]
@@ -187,10 +195,28 @@ const THE_OTHER_TABS: unknown[] = JSON.parse(
   readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'verification.json'), 'utf-8'),
 )
 
-/** The events as the served file holds them, so a race stands under an event that is really there. */
-const THE_EVENTS: BtlEvent[] = JSON.parse(
+/** The events as the served file holds them, so a race stands under an event that is really there, with
+ *  the three the races here stand under moved to the day of their first race: the panel offers the events
+ *  of the YEAR THE RUN WAS RUN IN (`RaceForTheRun.tsx`), and the served file keeps those three in 2014. */
+const IN_THE_RUNS_YEAR: Record<number, string> = { 53: '2026-09-12', 54: '2026-06-20', 55: '2026-08-02' }
+const SERVED_EVENTS: BtlEvent[] = JSON.parse(
   readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'events.json'), 'utf-8'),
 )
+const THE_EVENTS: BtlEvent[] = SERVED_EVENTS.map((one) => ({ ...one, date: IN_THE_RUNS_YEAR[one.id] ?? one.date }))
+
+/** The event the races of the calendar stand under, by name, and the line its list says it in. */
+const EVENT_53 = must(
+  THE_EVENTS.find((one) => one.id === 53),
+  'the event the races of the calendar stand under',
+)
+const EVENT_54 = must(
+  THE_EVENTS.find((one) => one.id === 54),
+  'the event the night race stands under',
+)
+
+/** What an event is offered as over the box, built the way the list builds it (`eventsToOffer`). */
+const eventOfferedAs = (event: BtlEvent): string =>
+  [event.name, formatNumericDate(event.date), event.city].filter((one) => one !== '').join(' – ')
 
 /**
  * THE CALENDAR THE FIRST APPROVAL WRITES INTO, as the route serves it before that approval and after it.
@@ -264,7 +290,7 @@ function serverWith({
   queue = () => RUNS,
   decided = taken,
   races = () => answering(THE_CALENDAR),
-  events = () => null,
+  events = () => answering(THE_EVENTS),
 }: {
   queue?: (read: number) => ServedPendingItem[]
   decided?: (id: string) => Response | Promise<Response>
@@ -340,6 +366,18 @@ const offeredStartingWith = (prefix: string): (string | null)[] =>
     .map((one) => one.textContent)
     .filter((one) => one?.startsWith(prefix) === true)
 
+/** What is typed into the event's box, over what stands there. */
+async function typeIntoTheEventName(user: ReturnType<typeof setupUser>, text: string): Promise<void> {
+  await user.clear(panel().getByLabelText(sr.newResult.eventName))
+  await user.type(panel().getByLabelText(sr.newResult.eventName), text)
+}
+
+/** The event of the calendar, chosen from the list over its box by the line the list says it in. */
+async function chooseTheEvent(user: ReturnType<typeof setupUser>, event: BtlEvent): Promise<void> {
+  await typeIntoTheEventName(user, event.name.slice(0, 6))
+  await user.click(await panel().findByRole('button', { name: eventOfferedAs(event) }))
+}
+
 /** What is typed into the race's box, over what stands there. */
 async function typeIntoTheRaceName(user: ReturnType<typeof setupUser>, text: string): Promise<void> {
   await user.clear(panel().getByLabelText(sr.newResult.raceName))
@@ -351,8 +389,10 @@ async function typeIntoTheRaceName(user: ReturnType<typeof setupUser>, text: str
  * after it, so waiting for it is waiting for the files and never for the race a case is asking about: the
  * assertion that follows is made at once, and a race that is not offered fails it in its own words.
  */
-async function untilTheListHasCome(): Promise<void> {
-  await waitFor(() => expect(offeredStartingWith('Noćna')).toContain(offeredAs(A_NIGHT_BEFORE)))
+async function untilTheListHasCome(user: ReturnType<typeof setupUser>): Promise<void> {
+  await chooseTheEvent(user, EVENT_54)
+  await typeIntoTheRaceName(user, 'Noćna')
+  await waitFor(() => expect(offeredStartingWith('Noćna')).toEqual([offeredAs(A_NIGHT_BEFORE)]))
 }
 
 /**
@@ -362,8 +402,7 @@ async function untilTheListHasCome(): Promise<void> {
  */
 async function makeTheNightRace(user: ReturnType<typeof setupUser>): Promise<void> {
   await openThePanelOver(user, '000060')
-  await user.clear(panel().getByLabelText(sr.admin.field.eventName))
-  await user.type(panel().getByLabelText(sr.admin.field.eventName), MADE_EVENT.name)
+  await typeIntoTheEventName(user, MADE_EVENT.name)
   await typeIntoTheRaceName(user, MADE_RACE.name)
   await user.click(panel().getByRole('button', { name: sr.review.placeSave }))
 }
@@ -484,7 +523,11 @@ describe('the panel that names the race', () => {
       await openThePanelOver(user, '000060')
 
       expect(panel().getByLabelText(sr.newResult.raceName)).toHaveValue('Noćna desetka')
-      expect(panel().getByLabelText(sr.admin.field.eventName)).toHaveValue('Noćna desetka')
+      /* A run sent before V66 names no event, so his name for the race stands in for it, as it did;
+         and a new event is asked its place, which starts from the town he gave (approved 19.10.2026). */
+      expect(panel().getByLabelText(sr.newResult.eventName)).toHaveValue('Noćna desetka')
+      expect(panel().getByLabelText(sr.review.placeTown)).toHaveValue('Struga')
+      expect(panel().getByLabelText(sr.form.country)).toHaveValue('MK')
       expect(panel().getByLabelText(sr.newResult.raceKind)).toHaveValue('length')
       expect(panel().getByLabelText(sr.newResult.distanceKm)).toHaveValue('10.05')
       expect(panel().getByLabelText(sr.newResult.ascentM)).toHaveValue('40')
@@ -510,10 +553,11 @@ describe('the panel that names the race', () => {
       openTheQueue()
 
       await openThePanelOver(user, '000060')
-      await user.clear(panel().getByLabelText(sr.admin.field.eventName))
-      await user.type(panel().getByLabelText(sr.admin.field.eventName), 'Strušku noć')
+      await typeIntoTheEventName(user, 'Strušku noć')
       await user.clear(panel().getByLabelText(sr.newResult.raceName))
       await user.type(panel().getByLabelText(sr.newResult.raceName), 'Desetka uz jezero ')
+      await user.clear(panel().getByLabelText(sr.review.placeTown))
+      await user.type(panel().getByLabelText(sr.review.placeTown), 'Ohrid')
       await user.selectOptions(panel().getByLabelText(sr.newResult.raceKind), 'time')
       await user.clear(panel().getByLabelText(sr.newResult.hours))
       await user.type(panel().getByLabelText(sr.newResult.hours), '1')
@@ -529,7 +573,13 @@ describe('the panel that names the race', () => {
         approved: true,
         reason: '',
         amended: { distanceKm: 10.05, ascentM: 40, descentM: 35, seconds: 3600 },
-        newRace: { eventName: 'Strušku noć', raceName: 'Desetka uz jezero', raceKind: 'time' },
+        newRace: {
+          eventName: 'Strušku noć',
+          raceName: 'Desetka uz jezero',
+          raceKind: 'time',
+          city: 'Ohrid',
+          country: 'MK',
+        },
       })
       /* The run leaves with the answer that took it, the panel with it, and the others wait. */
       expect(screen.queryByText('000060')).toBeNull()
@@ -572,6 +622,10 @@ describe('the panel that names the race', () => {
       openTheQueue()
 
       await openThePanelOver(user, '000040')
+      await chooseTheEvent(user, EVENT_53)
+
+      expect(panel().getByText(`Izabran događaj: ${eventOfferedAs(EVENT_53)}`)).toBeVisible()
+
       await user.clear(panel().getByLabelText(sr.newResult.raceName))
       await user.type(panel().getByLabelText(sr.newResult.raceName), 'Jesenji')
 
@@ -587,8 +641,8 @@ describe('the panel that names the race', () => {
       await user.click(panel().getByRole('button', { name: offeredAs(TO_A_LIMIT) }))
 
       expect(panel().getByText(`Izabrana trka: ${offeredAs(TO_A_LIMIT)}`)).toBeVisible()
-      /* A race of the calendar brings its event and its kind, so neither is asked. */
-      expect(panel().queryByLabelText(sr.admin.field.eventName)).toBeNull()
+      /* A race of the calendar brings its event's place and its kind, so neither is asked. */
+      expect(panel().queryByLabelText(sr.review.placeTown)).toBeNull()
       expect(panel().queryByLabelText(sr.newResult.raceKind)).toBeNull()
       /* And it fixes the time, so the time is not asked and the rest is his. */
       expect(panel().queryByLabelText(sr.newResult.hours)).toBeNull()
@@ -617,16 +671,17 @@ describe('the panel that names the race', () => {
       openTheQueue()
 
       await openThePanelOver(user, '000040')
+      await chooseTheEvent(user, EVENT_53)
       await user.clear(panel().getByLabelText(sr.newResult.raceName))
       await user.type(panel().getByLabelText(sr.newResult.raceName), 'Jesenji')
       await user.click(panel().getByRole('button', { name: offeredAs(OF_A_LENGTH) }))
-
-      expect(panel().queryByLabelText(sr.admin.field.eventName)).toBeNull()
-
       await user.type(panel().getByLabelText(sr.newResult.raceName), ' 2')
 
       expect(panel().queryByText(/^Izabrana trka/)).toBeNull()
-      expect(panel().getByLabelText(sr.admin.field.eventName)).toHaveValue('Trka uz Nišavu')
+      /* The race goes, the event stays: a new race on the event of the calendar, which stands where
+         it stands, so no place is asked (PDL P9, 19.10.2026, „Nova trka na postojećem događaju”). */
+      expect(panel().getByText(`Izabran događaj: ${eventOfferedAs(EVENT_53)}`)).toBeVisible()
+      expect(panel().queryByLabelText(sr.review.placeTown)).toBeNull()
 
       await user.click(panel().getByRole('button', { name: sr.review.placeSave }))
       await untilItHasAnswered()
@@ -635,7 +690,7 @@ describe('the panel that names the race', () => {
         approved: true,
         reason: '',
         amended: { distanceKm: 12, ascentM: 100, descentM: 90, seconds: 3000 },
-        newRace: { eventName: 'Trka uz Nišavu', raceName: 'Jesenji kros 2', raceKind: 'free' },
+        newRace: { eventId: 53, raceName: 'Jesenji kros 2', raceKind: 'free' },
       })
     } finally {
       server.stop()
@@ -650,16 +705,22 @@ describe('the panel that names the race', () => {
       openTheQueue()
 
       await openThePanelOver(user, '000060')
-      await user.clear(panel().getByLabelText(sr.admin.field.eventName))
+      await user.clear(panel().getByLabelText(sr.newResult.eventName))
 
       const save = panel().getByRole('button', { name: sr.review.placeSave })
 
-      expect(panel().getByLabelText(sr.admin.field.eventName)).toHaveAttribute('aria-invalid', 'true')
+      expect(panel().getByLabelText(sr.newResult.eventName)).toHaveAttribute('aria-invalid', 'true')
       expect(save).toHaveAttribute('aria-disabled', 'true')
-      expect(save).toHaveAccessibleDescription(`${sr.admin.field.eventName}: Ovo polje je obavezno.`)
+      expect(save).toHaveAccessibleDescription(`${sr.newResult.eventName}: Ovo polje je obavezno.`)
 
       await user.click(save)
-      await user.type(panel().getByLabelText(sr.admin.field.eventName), 'Strušku noć')
+      await user.type(panel().getByLabelText(sr.newResult.eventName), 'Strušku noć')
+      await user.clear(panel().getByLabelText(sr.review.placeTown))
+
+      expect(save).toHaveAccessibleDescription(`${sr.review.placeTown}: Ovo polje je obavezno.`)
+
+      await user.click(save)
+      await user.type(panel().getByLabelText(sr.review.placeTown), 'Ohrid')
       await user.clear(panel().getByLabelText(sr.newResult.minutes))
       await user.type(panel().getByLabelText(sr.newResult.minutes), '0')
 
@@ -714,6 +775,126 @@ describe('the panel that names the race', () => {
       expect(await panel().findByText('Podaci se ne mogu učitati.')).toBeVisible()
       /* And the box stays a box: a race the approval makes can still be named in it. */
       expect(panel().getByLabelText(sr.newResult.raceName)).toBeEnabled()
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+describe('the event the panel names first', () => {
+  /* PDL P9, owner, 19.10.2026: „Jedan ekran za sve”, „Na moderatorovom ekranu nov događaj traži naziv,
+     datum i mesto”, and „Tačno otkucan naziv postojećeg događaja vezuje taj događaj i bez klika”. */
+
+  it('opens on the event the member chose, says it, asks no place, and puts a new race on it by its key', async () => {
+    /* His run names the event by its key (V66), and its town is the event's, which the queue serves
+       as the run's (V67): a town that is not the event's here, so a panel that drew the place box over
+       a chosen event would start it from a town nobody named. */
+    const user = setupUser()
+    const server = serverWith({
+      queue: () => [{ ...FROM_THE_BOOK, eventId: 53, eventName: EVENT_53.name, city: 'Banja Luka', country: 'BA' }],
+    })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000040')
+
+      expect(panel().getByLabelText(sr.newResult.eventName)).toHaveValue(EVENT_53.name)
+      expect(panel().getByText(`Izabran događaj: ${EVENT_53.name}`)).toBeVisible()
+      expect(panel().queryByLabelText(sr.review.placeTown)).toBeNull()
+      expect(panel().getByLabelText(sr.newResult.raceName)).toHaveValue('Trka uz Nišavu')
+
+      await user.click(panel().getByRole('button', { name: sr.review.placeSave }))
+      await untilItHasAnswered()
+
+      expect(bodyOf(decisionsIn(server.asked)[0])).toEqual({
+        approved: true,
+        reason: '',
+        amended: { distanceKm: 12, ascentM: 100, descentM: 90, seconds: 3000 },
+        newRace: { eventId: 53, raceName: 'Trka uz Nišavu', raceKind: 'free' },
+      })
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('links an event typed exactly, in any case, and lets go of it a letter later, with the run’s town back', async () => {
+    const user = setupUser()
+    const server = serverWith()
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000060')
+      await waitFor(() => expect(reads(server.asked, '/api/events')).toBe(1))
+      await typeIntoTheEventName(user, EVENT_53.name.toUpperCase())
+
+      expect(panel().getByText(`Izabran događaj: ${eventOfferedAs(EVENT_53)}`)).toBeVisible()
+      expect(panel().queryByLabelText(sr.review.placeTown)).toBeNull()
+      /* Linked as if chosen, so its race is one of its races or a new one: the box is emptied. */
+      expect(panel().getByLabelText(sr.newResult.raceName)).toHaveValue('')
+
+      await user.type(panel().getByLabelText(sr.newResult.eventName), 'x')
+
+      expect(panel().queryByText(/^Izabran događaj/)).toBeNull()
+      expect(panel().getByLabelText(sr.review.placeTown)).toHaveValue('Struga')
+      expect(panel().getByLabelText(sr.form.country)).toHaveValue('MK')
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('gives a new event’s name to its race until the race is named for itself', async () => {
+    const user = setupUser()
+    const server = serverWith()
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000060')
+      await typeIntoTheEventName(user, 'Strušku noć')
+
+      expect(panel().getByLabelText(sr.newResult.raceName)).toHaveValue('Strušku noć')
+
+      await typeIntoTheRaceName(user, 'Desetka')
+      await user.type(panel().getByLabelText(sr.newResult.eventName), ' 2')
+
+      expect(panel().getByLabelText(sr.newResult.raceName)).toHaveValue('Desetka')
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('offers the events of the year the run was run in, and links the one of that year by its name', async () => {
+    /* Two events of one name, one a year before the run and one in its year: a list of every year
+       would offer both, and a name typed exactly would then link neither (`exactName.ts`). */
+    const user = setupUser()
+    const winter = (id: number, date: string): BtlEvent => ({
+      ...EVENT_53,
+      id,
+      slug: `zimski-kros-${date.slice(0, 4)}`,
+      name: 'Zimski kros',
+      date,
+      city: 'Kragujevac',
+      country: 'RS',
+    })
+    const server = serverWith({
+      events: () => answering([...THE_EVENTS, winter(9401, '2025-12-20'), winter(9402, '2026-02-01')]),
+    })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000040')
+      await typeIntoTheEventName(user, 'Zimski')
+
+      await waitFor(() =>
+        expect(offeredStartingWith('Zimski kros')).toEqual([eventOfferedAs(winter(9402, '2026-02-01'))]),
+      )
+
+      await user.type(panel().getByLabelText(sr.newResult.eventName), ' kros')
+
+      expect(panel().getByText(`Izabran događaj: ${eventOfferedAs(winter(9402, '2026-02-01'))}`)).toBeVisible()
     } finally {
       server.stop()
     }
@@ -903,10 +1084,11 @@ describe('what the panel offers once an approval has made a race', () => {
       await openThePanelOver(user, '000040')
       await waitFor(() => expect(reads(server.asked, '/api/races')).toBe(1))
       expect(reads(server.asked, '/api/events')).toBe(1)
-      await typeIntoTheRaceName(user, 'Noćna')
-      await untilTheListHasCome()
+      await untilTheListHasCome(user)
+      /* And the event the approval is to make is not there to be chosen yet. */
+      await typeIntoTheEventName(user, MADE_EVENT.name.slice(0, 6))
 
-      expect(offeredStartingWith('Noćna')).toEqual([offeredAs(A_NIGHT_BEFORE)])
+      expect(offeredStartingWith(MADE_EVENT.name)).toEqual([])
 
       await user.click(panel().getByRole('button', { name: sr.review.cancel }))
       await makeTheNightRace(user)
@@ -917,7 +1099,13 @@ describe('what the panel offers once an approval has made a race', () => {
         approved: true,
         reason: '',
         amended: { distanceKm: 10.05, ascentM: 40, descentM: 35, seconds: 2700 },
-        newRace: { eventName: MADE_EVENT.name, raceName: MADE_RACE.name, raceKind: 'length' },
+        newRace: {
+          eventName: MADE_EVENT.name,
+          raceName: MADE_RACE.name,
+          raceKind: 'length',
+          city: 'Struga',
+          country: 'MK',
+        },
       })
       expect(screen.queryByText('000060')).toBeNull()
 
@@ -927,10 +1115,11 @@ describe('what the panel offers once an approval has made a race', () => {
       expect(reads(server.asked, '/api/races')).toBe(2)
       expect(reads(server.asked, '/api/events')).toBe(2)
 
+      await untilTheListHasCome(user)
+      await chooseTheEvent(user, MADE_EVENT)
       await typeIntoTheRaceName(user, 'Noćna')
-      await untilTheListHasCome()
 
-      expect(offeredStartingWith('Noćna')).toEqual([offeredAs(MADE_RACE), offeredAs(A_NIGHT_BEFORE)])
+      expect(offeredStartingWith('Noćna')).toEqual([offeredAs(MADE_RACE)])
     } finally {
       server.stop()
     }
@@ -984,10 +1173,11 @@ describe('what the panel offers once an approval has made a race', () => {
       expect(reads(server.asked, '/api/races')).toBe(2)
       expect(reads(server.asked, '/api/events')).toBe(2)
 
+      await untilTheListHasCome(user)
+      await chooseTheEvent(user, MADE_EVENT)
       await typeIntoTheRaceName(user, 'Noćna')
-      await untilTheListHasCome()
 
-      expect(offeredStartingWith('Noćna')).toEqual([offeredAs(MADE_RACE), offeredAs(A_NIGHT_BEFORE)])
+      expect(offeredStartingWith('Noćna')).toEqual([offeredAs(MADE_RACE)])
     } finally {
       server.stop()
     }
@@ -1034,6 +1224,7 @@ describe('what the panel offers once an approval has made a race', () => {
       await openThePanelOver(user, '000040')
       stillOnce('a refusal')
 
+      await chooseTheEvent(user, EVENT_53)
       await typeIntoTheRaceName(user, 'Jesenji')
       await user.click(panel().getByRole('button', { name: offeredAs(OF_A_LENGTH) }))
       await user.click(panel().getByRole('button', { name: sr.review.placeSave }))

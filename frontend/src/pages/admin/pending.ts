@@ -253,10 +253,11 @@ export function useWaitingRuns(revision?: number): ResourceState<WaitingRun[]> {
   )
 }
 
-/** One waiting run: the item as every tab reads it, and the eight names of its run taken
+/** One waiting run: the item as every tab reads it, and the ten names of its run taken
  *  across by name rather than by a spread, so the type says what the screen holds. */
 function runFrom(served: ServedPendingItem): WaitingRun {
-  const { raceId, raceDate, raceKind, distanceKm, ascentM, descentM, seconds, link } = served
+  const { raceId, raceDate, raceKind, distanceKm, ascentM, descentM, seconds, link, eventId, eventName } =
+    served
 
   return {
     ...itemFrom(served),
@@ -268,6 +269,8 @@ function runFrom(served: ServedPendingItem): WaitingRun {
     descentM,
     seconds,
     link,
+    eventId,
+    eventName,
   }
 }
 

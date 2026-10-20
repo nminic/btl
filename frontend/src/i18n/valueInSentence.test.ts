@@ -472,6 +472,10 @@ describe('a sentence with a value put into it', () => {
          constant, the call would leave this list, and so would a real sentence written the same
          way, which is the blind spot the note over this file already names. */
       'results',
+      /* „Izabran događaj: {event}" (approved 19.10.2026): the event as the list over the box offered
+         it, its name, day and town joined by dashes (`member/eventsToOffer.ts`), or the name the
+         member chose it by, after a colon, where nothing asks a case of it. */
+      'review.chosenEvent',
       /* „Izabrana trka: {race}": the race as the list under the box offered it, its name, day and
          measure joined by dashes (`member/racesToOffer.ts`), after a colon, where nothing asks a
          case of it. */

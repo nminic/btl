@@ -642,9 +642,21 @@ export function ReviewQueue() {
                                       setFixing(null)
                                       setPlacing({
                                         id: one.id,
+                                        day: one.raceDate ?? '',
                                         raceName: one.subject,
                                         chosen: null,
-                                        eventName: one.subject,
+                                        /* THE EVENT THE MEMBER NAMED (V66): the one he chose, linked by
+                                           its key, or the name he typed; a run sent before V66 named
+                                           none, and its race's name stands in, as it did. */
+                                        eventName: one.eventName ?? one.subject,
+                                        event:
+                                          one.eventId === null
+                                            ? null
+                                            : { eventId: one.eventId, said: one.eventName ?? one.subject },
+                                        /* The run's own town, to start a new event's place from
+                                           (approved 19.10.2026: „popunjeno mestom prijave”). */
+                                        city: one.city,
+                                        country: one.country,
                                         kind: raceKind(one.raceKind),
                                         written: writtenFrom(counted),
                                       })

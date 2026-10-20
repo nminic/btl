@@ -145,11 +145,12 @@ export type Answered = {
  * decision and the member's was a hint (PDL P9, 30.08.2026, in the record's wording: „član
  * nagoveštava vrstu, administrator odlučuje").
  */
-export type NewRace = {
-  eventName: string
-  raceName: string
-  raceKind: RaceKind
-}
+export type NewRace = { raceName: string; raceKind: RaceKind } & (
+  | { eventId: number }
+  /* A new event, with the place it stands in (PDL P9, 19.10.2026: „nov događaj traži naziv, datum i
+     mesto”); the day is the run's. */
+  | { eventName: string; city: string; country: string }
+)
 
 /**
  * THE FOUR FIGURES OF A RUN AS THE MODERATOR SETS THEM, under the names

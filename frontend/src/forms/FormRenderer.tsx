@@ -33,6 +33,7 @@ import type {
 } from './types'
 import { CountryOptions } from './CountryOptions'
 import { DatePicker } from './DatePicker'
+import { theOneNamedExactly } from './exactName'
 import { PlaceField } from './PlaceField'
 import { Suggesting } from './Suggesting'
 import { optionsFor, storedDates, storedNumbers } from './records'
@@ -179,12 +180,8 @@ type Props = {
    *
    * <p>PDL P9, owner, 19.10.2026 (he chose the coordinator's recommendation): „Tačno otkucan naziv
    * postojećeg događaja vezuje taj događaj i bez klika, bez obzira na velika i mala slova, kao da je
-   * izabran predlog; polje trke tada postaje predlog nad njegovim trkama.” Exactly is the whole name,
-   * letter for letter in any case, and nothing more: a name that is the beginning of an entry links
-   * nothing. <b>Two entries of one name link neither</b> (the coordinator's derivation, not the
-   * owner's decision: PDL „[IZVEDENO 19.10.2026, moje, PR za 7b]”): between midnight and ten on
-   * 1 January two seasons are open and a name may stand in both, and choosing one of them is the
-   * reader's, not a guess's.
+   * izabran predlog; polje trke tada postaje predlog nad njegovim trkama.” What exactly means, and
+   * what two entries of one name do, is `exactName.ts`'s, the rule's one home.
    *
    * <p>What he typed stays as he typed it; only the link is made, which is what the entry was for.
    */
@@ -1479,14 +1476,9 @@ export function FormRenderer({
     const unlinked = (names: string[]) =>
       Object.fromEntries(Object.entries(led).filter(([name]) => !names.includes(name)))
 
-    /* The entry a name typed exactly links (`linksWhenTyped`), where there is exactly one. */
-    const exactly = (typed: string): Suggestion | undefined => {
-      const named = linksWhenTyped.includes(field.name) && Array.isArray(list)
-        ? list.filter((one) => one.value.toLocaleLowerCase() === typed.toLocaleLowerCase())
-        : []
-
-      return named.length === 1 ? named[0] : undefined
-    }
+    /* The entry a name typed exactly links (`linksWhenTyped`, `exactName.ts`). */
+    const exactly = (typed: string): Suggestion | undefined =>
+      linksWhenTyped.includes(field.name) && Array.isArray(list) ? theOneNamedExactly(list, typed) : undefined
     /* What choosing an entry does, under the value the box is to hold: the entry's own when it is
        chosen from the list, what he typed when he typed it exactly. Everything an earlier link of
        this field or its followers filled is emptied first, which choosing from a list that opened on

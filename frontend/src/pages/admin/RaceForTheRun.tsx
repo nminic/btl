@@ -4,17 +4,22 @@ import { raceKind } from '../../data/raceKind'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { AskedLabel } from '../../forms/AskedLabel'
 import { dogadjaj, unosRezultata } from '../../forms/definitions'
+import { PlaceField } from '../../forms/PlaceField'
 import { limitOf, optionsFor } from '../../forms/records'
 import { Suggesting } from '../../forms/Suggesting'
 import { useI18n } from '../../i18n/useI18n'
+import { eventsToOffer } from '../member/eventsToOffer'
 import { racesToOffer } from '../member/racesToOffer'
 import {
+  choosingTheEvent,
   EVENT_NAME,
   figuresFor,
+  NEW_EVENT_PLACE,
   RACE_KIND,
   RACE_NAME,
   theApproval,
   timeIsNought,
+  typingTheEvent,
   whatIsWrong,
   type Placing,
 } from './placingTheRace'
@@ -32,10 +37,16 @@ import type { Answered } from './verificationWrites'
  * kind are asked as well, and all four figures, because the race is made of them. What `decide`
  * decides is in `placingTheRace.ts`; this draws it.
  *
- * <p><b>The day and the town are the member's and are not asked</b>: the decision of 30.08.2026
- * names what verification changes, „naziv događaja, naziv trke, vrstu i vreme", and they are not
- * among it (the derivation recorded for the owner with R3, item 13). The town stands on the row,
- * which is where the owner asked the moderator to see it.
+ * <p><b>The event first, since 19.10.2026</b> (PDL P9, „Jedan ekran za sve”, and the block it shares
+ * with the member's form, `placingTheRace.ts`): an event of the calendar of the run's year, chosen or
+ * typed exactly, and then one of its races or a new one on it; or a new event, which is asked its
+ * place under „Mesto novog događaja”, the run's own town to start from (approved 19.10.2026). The
+ * events offered are those of the YEAR THE RUN WAS RUN IN, because that is the year the route looks a
+ * typed name up in (`EventAddress.of(name, the run's day)`): that reading is mine.
+ *
+ * <p><b>The day is the member's and is not asked</b>: the decision of 30.08.2026 names what
+ * verification changes, „naziv događaja, naziv trke, vrstu i vreme", and the day is not among it
+ * (PDL „[IZVEDENO 19.10.2026, moje, PR za 7b]”, (3)).
  *
  * <p><b>„Odustani" answers nothing while the approval is out</b>, and the portal's own sentence for
  * a request that is out stands under the buttons: the owner's decision of 02.10.2026 for every box
@@ -62,14 +73,26 @@ export function RaceForTheRun({
   const today = useToday()
   const events = useEvents()
   const races = useRaces()
-  /* The list as the member's form builds it, once for the data and not on every letter typed,
-     and empty until both files are here (`member/NewResult.tsx` says why both). */
+  /* The events of the run's year, as the member's form offers events, and the races of the event
+     linked, as it offers races: once for the data and not on every letter typed, and empty until
+     both files are here (`member/NewResult.tsx` says why both). */
+  const year = Number(placing.day.slice(0, 4))
+  const offeredEvents = useMemo(
+    () => (events.status === 'ready' ? eventsToOffer(events.data, [year], today) : []),
+    [events, year, today],
+  )
+  const linked = placing.event?.eventId
   const offered = useMemo(
     () =>
-      events.status === 'ready' && races.status === 'ready'
-        ? racesToOffer(events.data, races.data, today, locale)
+      events.status === 'ready' && races.status === 'ready' && linked !== undefined
+        ? racesToOffer(
+            events.data.filter((one) => one.id === linked),
+            races.data,
+            today,
+            locale,
+          )
         : [],
-    [events, races, today, locale],
+    [events, races, linked, today, locale],
   )
   /* The two files as one read, so a list that could not be read SAYS so under the box, with the
      way to ask again, rather than passing for a calendar with no race in it (decision of
@@ -86,6 +109,31 @@ export function RaceForTheRun({
   return (
     <div className="review__reason" role="group" aria-label={t('review.placeTitle')}>
       <p className="profile__empty">{t('review.placeNote')}</p>
+
+      {EVENT_NAME.map((field) => (
+        <div className="rankings__field" key={field.name}>
+          <AskedLabel id="place-eventName">{t(field.labelKey)}</AskedLabel>
+          <Suggesting
+            shared={{
+              id: 'place-eventName',
+              name: 'eventName',
+              maxLength: limitOf(dogadjaj, field.name),
+              'aria-required': true,
+              'aria-invalid': errors.has('eventName'),
+            }}
+            value={placing.eventName}
+            suggestions={offeredEvents}
+            unreadable={
+              events.status === 'error' ? { said: t('data.error'), named: t('admin.events'), read: events } : undefined
+            }
+            onType={(next) => onChange(typingTheEvent(placing, next, offeredEvents))}
+            onChoose={(one) => onChange(choosingTheEvent(placing, one))}
+          />
+        </div>
+      ))}
+
+      {/* Which event it is, in the words the list chose it by, as the race below is said. */}
+      {placing.event !== null && <p className="rate__hint">{t('review.chosenEvent', { event: placing.event.said })}</p>}
 
       {RACE_NAME.map((field) => (
         <div className="rankings__field" key={field.name}>
@@ -118,22 +166,6 @@ export function RaceForTheRun({
       {placing.chosen !== null && <p className="rate__hint">{t('review.chosenRace', { race: placing.chosen.said })}</p>}
 
       {placing.chosen === null &&
-        EVENT_NAME.map((field) => (
-          <div className="rankings__field" key={field.name}>
-            <AskedLabel id="place-eventName">{t(field.labelKey)}</AskedLabel>
-            <input
-              id="place-eventName"
-              type="text"
-              maxLength={limitOf(dogadjaj, field.name)}
-              aria-required="true"
-              aria-invalid={errors.has('eventName')}
-              value={placing.eventName}
-              onChange={(event) => onChange({ ...placing, eventName: event.target.value })}
-            />
-          </div>
-        ))}
-
-      {placing.chosen === null &&
         RACE_KIND.map((field) => (
           <div className="rankings__field" key={field.name}>
             <AskedLabel id="place-raceKind">{t(field.labelKey)}</AskedLabel>
@@ -156,6 +188,26 @@ export function RaceForTheRun({
           in the record's wording: „polja za vreme znače ograničenje trke, ne vreme koje je član
           istrčao"), said where the boxes are, because nothing else about them changes. */}
       {placing.chosen === null && placing.kind === 'time' && <p className="rate__hint">{t('review.limitNote')}</p>}
+
+      {/* THE PLACE OF A NEW EVENT, and only of a new one: an event of the calendar stands where it
+          stands. */}
+      {placing.event === null &&
+        NEW_EVENT_PLACE.map((field) => (
+          <div className="rankings__field" key={field.name}>
+            <AskedLabel id="place-city">{t(field.labelKey)}</AskedLabel>
+            <PlaceField
+              id="place-city"
+              name="city"
+              required
+              value={placing.city}
+              country={placing.country}
+              invalid={errors.has('city')}
+              countryInvalid={errors.has('country')}
+              describedBy={undefined}
+              onChange={(city, country) => onChange({ ...placing, city, country })}
+            />
+          </div>
+        ))}
 
       {asked.map(({ name, field }) => (
         <div className="rankings__field" key={name}>
