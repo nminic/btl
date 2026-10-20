@@ -945,6 +945,12 @@
 .table--results thead th:nth-child(n + 3),
 .table--results tbody td:nth-child(n + 3) {
   padding-inline: var(--space-4);
+  /* Every figure reads from the right, the length too (owner, 20.10.2026: „Dužina (km)" right-aligned like
+     the others, head and cells). `styles/table.css` left-aligns the first three columns of every table
+     as words (`.table th:nth-child(-n + 3)`, weight (0,2,1)); in this table the third is a figure, and
+     this selector (0,2,2) is the heavier by one element, so it wins wherever the bundler puts the sheet,
+     and only for `.table--results`. */
+  text-align: right;
 }
 
 .table--results thead th {

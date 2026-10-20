@@ -343,6 +343,24 @@ for (const at of EQUAL) {
             .filter((head, index) => columns[index]?.classList.contains('results__figure') !== true && drawn(head))
             .map((head) => head.getBoundingClientRect().width),
           ...whole(results),
+          /* How far the words of every figure cell, the head's and the body's, stand from the right edge of
+             the content of the cell (the edge less its padding): the length reads from the right like the
+             others (owner, 20.10.2026), which the shared rule for the first three columns undoes. */
+          reach: [...results.querySelectorAll('thead th, tbody td')]
+            .map((cell, index) => ({ cell, column: index % (cell.parentElement?.children.length ?? 1) }))
+            .filter(({ cell, column }) => drawn(cell) && columns[column]?.classList.contains('results__figure') === true)
+            .map(({ cell }) => {
+              const range = document.createRange()
+
+              range.selectNodeContents(cell)
+
+              const style = getComputedStyle(cell)
+
+              return {
+                what: (cell.textContent ?? '').trim().slice(0, 14),
+                gap: cell.getBoundingClientRect().right - Number.parseFloat(style.paddingRight) - range.getBoundingClientRect().right,
+              }
+            }),
         }
       })
 
@@ -385,6 +403,14 @@ for (const at of EQUAL) {
       }
 
       expect(seen.broken, 'words broken inside the word').toEqual([])
+
+      /* Every figure, the length included, ends at the right of its cell. Measured is not assumed: at
+         least a head and a row of each figure were read. */
+      expect(seen.reach.length).toBeGreaterThanOrEqual(widths.length * 2)
+      expect(
+        seen.reach.filter((one) => Math.abs(one.gap) > AGREE),
+        'figures that do not end at the right of their cell',
+      ).toEqual([])
 
       expect(seen.inside, `the table's box scrolls: ${String(seen.inside)} inside ${String(seen.outside)}`).toBeLessThanOrEqual(
         seen.outside,

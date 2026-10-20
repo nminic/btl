@@ -119,11 +119,33 @@ describe('the sheet of the event page', () => {
     expect(padded).toHaveLength(1)
     expect(must(padded[0], 'the padding rule').style.getPropertyValue('padding-inline')).toBe('var(--space-4)')
 
+    /* And every figure reads from the right, the third column too, which the shared rule leaves at the left
+       as a word: this rule has to outweigh `.table th:nth-child(-n + 3)`, (0,2,1), so it is one element
+       heavier, (0,2,2), and it is the only place this table says where its figures stand. */
+    expect(must(padded[0], 'the alignment rule').style.getPropertyValue('text-align')).toBe('right')
+
     /* And the head may wrap: at 66px (9% of 736) „Dužina (km)" is wider than its column, and a column
        that cannot be as narrow as its head is wider than the others. */
     expect(
       ruleFor(PROFILE, '.table--results thead th', 'Profile.css').getPropertyValue('white-space'),
     ).toBe('normal')
+  })
+
+  it('right-aligns the length without touching the other tables, which keep their first three columns at the left', () => {
+    const shared = unconditionalRules(SHARED, 'table.css').filter((rule) =>
+      rule.selectorText.split(',').some((one) => one.trim() === '.table th:nth-child(-n + 3)'),
+    )
+
+    expect(shared).toHaveLength(1)
+    expect(must(shared[0], 'the shared rule').style.getPropertyValue('text-align')).toBe('left')
+
+    /* Nothing outside this table says anything about the third column's alignment: the override is in
+       `Profile.css`, scoped by `.table--results`, and no other sheet of the portal was touched. */
+    for (const rule of unconditionalRules(PROFILE, 'Profile.css')) {
+      if (rule.style.getPropertyValue('text-align') === 'right' && /nth-child\((n \+ )?3\)/.test(rule.selectorText)) {
+        expect(rule.selectorText, 'a right-aligned third column outside the table of results').toMatch(/\.table--results/)
+      }
+    }
   })
 
   it('leaves every other table at the top of its row', () => {
