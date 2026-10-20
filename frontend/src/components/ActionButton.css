@@ -1,0 +1,69 @@
+/* A button that acts on one thing, drawn as a symbol (ActionButton.tsx).
+ *
+ * Its colours, its hover and its look when it cannot act are the portal's own
+ * `.button` and `.button--secondary` or `.button--primary` (pages/Home.css), worn
+ * by the same element; this sheet only makes it a square with the symbol in the
+ * middle.
+ *
+ * Written on both classes so it wins over `.button` by weight and not by which
+ * sheet the bundle happens to put last: `.button` gives every button a padding of
+ * its own, and a square that lost that contest would be a wide pill again.
+ *
+ * Two rem a side, which is 32 pixels at the size the browser starts from and never
+ * under the 24 WCAG 2.2 SC 2.5.8 asks of a target. jsdom lays nothing out, so the
+ * size is held where it is written (ActionButton.test.tsx, as the stars are held in
+ * styles/goldBand.test.ts). */
+.button.action {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 2rem;
+  block-size: 2rem;
+  padding: 0;
+  line-height: 1;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+/* The drawing, a little over half the square, in whatever colour the button's
+   text is: the ink of `.button--secondary` on the page, the light ink of
+   `.button--primary` on its blue. Both reach 3:1 against what they stand on in
+   both themes (WCAG 2.2 SC 1.4.11), which ActionButton.test.tsx measures. */
+.action__symbol {
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+}
+
+/* The box with the word, over the page and not in it, drawn into the body and
+   placed against the window by ActionButton.tsx.
+ *
+   The box is two things on purpose. This outer one is invisible and touches the
+   button; its padding is the gap a reader sees between the button and the words.
+   So the way from the button into the words never crosses bare page, and the
+   pointer is never for one moment on something that is neither, which would close
+   the box under it a few pixels short of the words it opened for (WCAG 2.2 SC
+   1.4.13, hoverable; forms/FieldHint.css paid for that lesson first).
+ *
+   Above the sheet a question opens in (components/Prompt.css, 50) and under the
+   loader that covers the whole page (components/Loader.css, 100). */
+.action-tip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  inline-size: max-content;
+  padding-block: var(--space-4);
+}
+
+/* Small print, as the hint of a field is (forms/FieldHint.css), on the surface the
+   page draws its cards on, so it reads in both themes. */
+.action-tip__words {
+  display: block;
+  padding: var(--space-2) var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-6);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
