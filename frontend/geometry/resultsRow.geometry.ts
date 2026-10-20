@@ -204,8 +204,8 @@ for (const at of WIDTHS) {
  *
  * **Asked in Chrome**, because jsdom lays nothing out: the width of the head of every figure column the
  * screen draws, at 360 (a telephone, three figures or two), at 700 (the narrowest a table is drawn whole,
- * where a share of the table is smallest), at 768, at 1000 (where the share is handed over to a width in
- * rem) and at 1280. They agree to within one pixel (for whoever checks results on a telephone, to within
+ * where a share of the table is smallest), at 768, at 1000, at 1280 and at 1920 (the widest table the
+ * portal draws, 1068px, where 9% of it is the 96px the figures need and no more). They agree to within one pixel (for whoever checks results on a telephone, to within
  * six: see `THE_TELEPHONE_OF_WHOEVER_CHECKS`), none is wider than 6rem (96px) and so none takes
  * more than it needs, and the table's own box is not wider inside than outside. **Both readers**, a
  * visitor (five figures on a wide screen) and whoever checks results (six, the buttons among them), with the
@@ -221,9 +221,10 @@ const EQUAL: At[] = [
   { width: 768, text: 100 },
   { width: 1000, text: 100 },
   { width: 1280, text: 100 },
+  { width: 1920, text: 100 },
 ]
 
-/** The widest a figure column may be: 6rem at the ordinary size, which is what the wide layout caps it at. */
+/** The widest a figure column may be: 6rem at the ordinary size, which is 9% of the widest table the portal draws. */
 const CAP = 96 + 1
 
 /**

@@ -930,7 +930,14 @@
    second line where it must. The figures keep 4px at each side instead of the 8 of every table
    (`--space-4`), which is what lets the time (50px) stand in 60. And the buttons stack where the column
    cannot hold the pencil and the x side by side, as they already did on a telephone: `.entity-row-actions`
-   wraps (`pages/admin/Entity.css`). From 62.5em the share is capped in rem, below. */
+   wraps (`pages/admin/Entity.css`).
+
+   **No cap for a wide screen.** The content of the portal is at most 1100px wide, so the table is at most
+   1068px and 9% of it is at most 96px, which is 6rem: the pencil and the x side by side (83px and 8 of
+   padding) and „Dužina (km)" on one line (79px) with a few pixels to spare. A cap in rem was written
+   and taken out again, because with it removed the geometry case still passed at 1000, 1280 and 1920px.
+   The share also keeps its meaning at enlarged text, where a cap in rem would have held six columns
+   twice as wide in a table that did not grow. */
 .table--results .results__figure {
   width: 9%;
 }
@@ -956,19 +963,6 @@
    the screen, as it can in every table of this portal. `overflow-wrap: anywhere` on these two columns
    would hold the figures exactly and was measured breaking real words mid-letter („Konstantinovi/ć" at
    360px, „polumarat/on" at 768px), which the owner refused. */
-
-/* Where a share of the table is more than the figures need. 6rem is the pencil and the x side by side
-   (83px, and 8px of padding) and the head „Dužina (km)" on one line (79px) with a few pixels to
-   spare for a font that is not the one measured on, and a share of 9% is 86px at 953px, the width of
-   the table on a screen 1000px wide, so the two nearly meet there and nothing jumps. In `em` and not in
-   pixels like the query for a telephone, so that at enlarged text, when `rem` has doubled, the cap does
-   not hold six columns of 192px in a table that did not grow: the share is what applies until the screen
-   is wide enough for the cap again (ADL A34). */
-@media (min-width: 62.5em) {
-  .table--results .results__figure {
-    width: 6rem;
-  }
-}
 
 /* On a telephone the name of an event is cut rather than allowed to push the
    table wider than the screen at the ordinary text size (PDL P24: a table there

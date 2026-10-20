@@ -82,20 +82,15 @@ describe('the sheet of the event page', () => {
     ).toEqual([])
   })
 
-  it('gives every figure of the table one width, in a share of the table where there is room to share', () => {
+  it('gives every figure of the table one width, in a share of the table, and in rem on a telephone', () => {
     /* Owner, 20.10.2026: „Ove ostale kolone desno od toga slozi ekonomicno i jednakih sirina". One
        width for the length, the climb, the fall, the time, the points and the buttons, said once, on
        the `col` every one of them has (`EventDetail.tsx`). A share of the table from the narrowest
        tablet up, because a number of pixels cannot stand beside two columns of words at 768px for
-       whoever checks results (measured in Chrome, `geometry/resultsRow.geometry.ts`); a number of rem
-       from 62.5em, where a share is more than the figures need; and a number of rem on a telephone,
-       where a share would be under the time itself. */
+       whoever checks results (measured in Chrome, `geometry/resultsRow.geometry.ts`); and a number of rem
+       on a telephone, where a share would be under the time itself. No cap for a wide screen: 9% of the
+       widest table the portal draws (1068px) is 96px, which is all the figures need. */
     expect(ruleFor(PROFILE, '.table--results .results__figure', 'Profile.css').getPropertyValue('width')).toBe('9%')
-    expect(
-      ruleInMedia(PROFILE, '(min-width: 62.5em)', '.table--results .results__figure', 'Profile.css').getPropertyValue(
-        'width',
-      ),
-    ).toBe('6rem')
     expect(
       ruleInMedia(PROFILE, '(max-width: 699.98px)', '.table--results .results__figure', 'Profile.css').getPropertyValue(
         'width',
