@@ -36,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
  * TWO CANCELLATIONS OF ONE SEASON AT ONE INSTANT GIVE THE BALANCE BACK ONCE AND TELL THE MEMBER ONCE.
@@ -200,6 +201,37 @@ class MemberMembershipTwiceAtOneInstantTest {
 		} finally {
 			pool.shutdownNow();
 		}
+	}
+
+	/**
+	 * AND TWO GRANTS OF AN EXEMPTION AT ONCE WRITE ONE SEASON AND TELL HIM ONCE: the second waits behind
+	 * the lock, finds the season free of the fee, and is the second press.
+	 */
+	@Test
+	void twoGrantsAtOnceWriteOneSeasonAndTellHimOnce() throws Exception {
+		/* NOTHING ON SALE IS HELD for this case: the fixture's season and its line go first. */
+		db.sql("delete from membership where competitor_id = ?").param(him).update();
+		db.sql("delete from balance_entry where competitor_id = ?").param(him).update();
+
+		List<MockHttpServletResponse> both = atOnceBehindTheHeldRow(this::granted, this::granted);
+
+		assertThat(both.stream().map(MockHttpServletResponse::getStatus).sorted().toList())
+				.as("the second grant was answered with a fault, or both were told they wrote it")
+				.containsExactly(200, 201);
+		assertThat(db.sql("select count(*) from membership where competitor_id = ?")
+				.param(him).query(Long.class).single()).isOne();
+		assertThat(db.sql("select count(*) from message where to_id = ?")
+				.param(him).query(Long.class).single())
+				.as("the member was told twice about one exemption")
+				.isOne();
+	}
+
+	private MockHttpServletResponse granted() throws Exception {
+		return http.perform(post("/api/members/" + THE_NUMBER + "/membership").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, cookie))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"basis\": \"feeExempt\"}"))
+				.andReturn().getResponse();
 	}
 
 	private MockHttpServletResponse cancelled() throws Exception {
