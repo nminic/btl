@@ -491,10 +491,10 @@ class VerificationWriteApi {
 	 * <p>Reachable in one state only: the run was sent on an event the member chose, which since V67
 	 * carries the town in its place, and that event has been deleted since ({@code on delete set null},
 	 * V66). Every other run names a town, its own or its chosen event's ({@link #submissionBehind}).
-	 * The moderator's screen will ask for the place of a new event (PDL P9, 19.10.2026: „Na moderatorovom
-	 * ekranu nov događaj traži naziv, datum i mesto”); until then this is refused before anything is
-	 * written, and the way out is an event that is there. 409 for the reason the head of this class
-	 * gives. The words are mine, and the owner changes them on QA.
+	 * The moderator's panel asks for the place of a new event (PDL P9, 19.10.2026: „Na moderatorovom
+	 * ekranu nov događaj traži naziv, datum i mesto”), so this answers only an approval that names no
+	 * place either ({@link NewRace#city}); it is refused before anything is written. 409 for the reason
+	 * the head of this class gives. The words are the owner's choice of 19.10.2026.
 	 */
 	private static final String THE_RUN_NAMES_NO_TOWN = "Prijava ne nosi mesto, pa nov događaj ne može"
 			+ " da nastane. Izaberi postojeći događaj.";
@@ -766,9 +766,11 @@ class VerificationWriteApi {
 	 * <p>PDL P9, the owner's decision of 30.08.2026 in the record's wording: „Verifikacija menja
 	 * naziv događaja, naziv trke, vrstu i vreme, i upisuje događaj i trku u kalendar." The names
 	 * and the kind are here; the time is the amendment's ({@link Answered#amended}), because it
-	 * is one of the four figures and they travel together. <b>The day and the town are not
-	 * here</b>: they are what the member gave (V10 collects them „at the moment somebody knows
-	 * them"), and that decision does not name them among what verification changes.
+	 * is one of the four figures and they travel together. <b>The day is not here</b>: it is what
+	 * the member gave (V10 collects it „at the moment somebody knows it"), and that decision does not
+	 * name it among what verification changes (PDL „[IZVEDENO 19.10.2026, moje, PR za 7b]”, (3)).
+	 * <b>The place of a NEW event is</b> ({@link #city}), since 19.10.2026: „Na moderatorovom ekranu
+	 * nov događaj traži naziv, datum i mesto”.
 	 *
 	 * <p><b>The race's name and kind and one way to the event are asked for, and none of them falls
 	 * back on what the member typed.</b> A blank one is a form not filled in. A default here would be the second meaning of an omitted
@@ -793,8 +795,18 @@ class VerificationWriteApi {
 	 * @param raceKind one of {@link WhatARaceCarries#KINDS}: the member's choice was a hint, and
 	 *                 this is the decision (PDL P9, 30.08.2026, „član nagoveštava vrstu,
 	 *                 administrator odlučuje")
+	 * @param city     THE PLACE OF A NEW EVENT, typed, as the moderator's panel names it (PDL P9,
+	 *                 19.10.2026: „Na moderatorovom ekranu nov događaj traži naziv, datum i mesto”,
+	 *                 and the panel's field „Mesto novog događaja”, approved the same day). Only
+	 *                 beside a typed event: an event chosen by its key stands where it stands, and a
+	 *                 place beside it is {@link #THE_EVENT_IS_NAMED_TWICE}. Left out, the new event
+	 *                 stands in the run's town, or in the town of the event the member chose
+	 *                 ({@link #submissionBehind}), which is how an approval read it before the panel
+	 *                 asked (PDL „[IZVEDENO 19.10.2026, moje, PR 581]”).
+	 * @param country  the code of the country of {@code city}, which a typed town names (V7)
 	 */
-	record NewRace(Long eventId, String eventName, String raceName, String raceKind) {
+	record NewRace(Long eventId, String eventName, String raceName, String raceKind, String city,
+			String country) {
 	}
 
 	/**
@@ -1679,9 +1691,10 @@ class VerificationWriteApi {
 						/* THE TOWN: the run's own, or, on a run sent on an event the member chose, that
 						   event's, which since V67 is the only home a town has on such a run
 						   (`result_submission_a_chosen_event_brings_its_town`, so the two never both
-						   answer). An event the approval makes stands in it: the member said he ran
-						   there. That reading is mine, until the moderator's screen asks him for the
-						   place of a new event (PDL P9, 19.10.2026). */
+						   answer). An event the approval makes stands in it where the moderator names
+						   no place of his own (`NewRace.city`): the member said he ran there. That
+						   fallback is the coordinator's reading (PDL „[IZVEDENO 19.10.2026, moje, PR
+						   581]”). */
 						+ " coalesce(rs.place_id, chosen.place_id), coalesce(rs.city, chosen.city),"
 						+ " coalesce(rs.country_id, chosen.country_id)"
 						+ " from result_submission rs"
@@ -1774,7 +1787,8 @@ class VerificationWriteApi {
 			   `WhatARaceCarries.KINDS` is a `Set.of(...)` and an immutable set THROWS on
 			   `contains(null)` rather than answering false - `ResultWriteApi.described` measured it
 			   as a 500 where the form was owed a sentence. */
-			if (asked.eventId() != null && !isNothing(asked.eventName())) {
+			if (asked.eventId() != null && (!isNothing(asked.eventName()) || !isNothing(asked.city())
+					|| !isNothing(asked.country()))) {
 				return Counting.notCounted(no(HttpStatus.BAD_REQUEST, THE_EVENT_IS_NAMED_TWICE));
 			}
 
@@ -1803,16 +1817,42 @@ class VerificationWriteApi {
 				return Counting.notCounted(no(HttpStatus.CONFLICT, noRace));
 			}
 
-			/* A NEW EVENT NEEDS A TOWN, and a run whose chosen event is gone names none
-			   (`THE_RUN_NAMES_NO_TOWN` says when): asked here, before the row is claimed, so the
-			   refusal needs nothing undone and never reaches the insert as a server fault. */
-			if (there.isEmpty() && sent.placeId() == null && sent.city() == null) {
+			/* THE PLACE THE MODERATOR NAMED, judged before the row is claimed. A town typed is a town
+			   of the length and the characters a typed town may hold, beside a country there is
+			   (`ResultWriteApi`'s own rules for a typed town); anything else is a form not filled in. */
+			Optional<Long> namedCountry = Optional.empty();
+
+			if (!isNothing(asked.city()) || !isNothing(asked.country())) {
+				String town = isNothing(asked.city()) ? "" : asked.city().strip();
+
+				namedCountry = isNothing(asked.country()) ? Optional.empty()
+						: db.sql("select id from country where code = ?").param(asked.country())
+								.query(Long.class).optional();
+
+				if (town.isEmpty() || town.length() > ResultWriteApi.A_TYPED_TOWN_HOLDS_AT_MOST
+						|| town.codePoints().anyMatch(ResultWriteApi::nobodySees)
+						|| namedCountry.isEmpty()) {
+					return Counting.notCounted(no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE));
+				}
+			}
+
+			/* A NEW EVENT NEEDS A TOWN: the one the moderator named, or else the run's or its chosen
+			   event's, and a run whose chosen event is gone names none (`THE_RUN_NAMES_NO_TOWN` says
+			   when). Asked here, before the row is claimed, so the refusal needs nothing undone and
+			   never reaches the insert as a server fault. */
+			if (there.isEmpty() && namedCountry.isEmpty() && sent.placeId() == null
+					&& sent.city() == null) {
 				return Counting.notCounted(no(HttpStatus.CONFLICT, THE_RUN_NAMES_NO_TOWN));
 			}
 
+			Town where = namedCountry.isPresent()
+					? new Town(null, asked.city().strip(), namedCountry.get())
+					: new Town(sent.placeId(), sent.city(), sent.countryId());
+
 			on = new CountedOn(null, asked.raceName().strip(), sent.raceDate(), null,
 					new Made(there.map(TheDayOfAnEvent.Standing::id).orElse(null),
-							there.isPresent() ? null : asked.eventName().strip(), asked.raceKind()));
+							there.isPresent() ? null : asked.eventName().strip(), asked.raceKind(),
+							where));
 		} else {
 			return Counting.notCounted(no(HttpStatus.CONFLICT, THE_RACE_IS_NOT_IN_THE_CALENDAR));
 		}
@@ -2105,8 +2145,9 @@ class VerificationWriteApi {
 							+ " country_id, kind, featured, description, link)"
 							+ " values (?, ?, ?, ?, ?, ?, ?, false, '', '')"
 							+ " on conflict (slug) do nothing returning id")
-					.params(address, on.made().eventName(), on.day(), sent.placeId(), sent.city(),
-							sent.countryId(), WhatAnEventCarries.A_RACE)
+					.params(address, on.made().eventName(), on.day(), on.made().town().placeId(),
+							on.made().town().city(), on.made().town().countryId(),
+							WhatAnEventCarries.A_RACE)
 					.query(Long.class)
 					.optional();
 
@@ -2532,8 +2573,13 @@ class VerificationWriteApi {
 	 * @param eventName the name of the event this approval makes, and empty where {@code eventId} is
 	 *                  not
 	 * @param kind      the kind of race the moderator decided
+	 * @param town      where an event this approval makes stands ({@link NewRace#city} says which)
 	 */
-	private record Made(Long eventId, String eventName, String kind) {
+	private record Made(Long eventId, String eventName, String kind, Town town) {
+	}
+
+	/** A town as an event keeps it: a row of the codebook, or a name typed with its country (V7). */
+	private record Town(Long placeId, String city, Long countryId) {
 	}
 
 	/**

@@ -30,7 +30,9 @@
     "ascentM": null,
     "descentM": null,
     "seconds": null,
-    "link": ""
+    "link": "",
+    "eventId": null,
+    "eventName": null
   },
   {
     "id": "ver-upl-2",
@@ -63,7 +65,9 @@
     "ascentM": null,
     "descentM": null,
     "seconds": null,
-    "link": ""
+    "link": "",
+    "eventId": null,
+    "eventName": null
   },
   {
     "id": "ver-upl-3",
@@ -96,7 +100,9 @@
     "ascentM": null,
     "descentM": null,
     "seconds": null,
-    "link": ""
+    "link": "",
+    "eventId": null,
+    "eventName": null
   },
   {
     "id": "ver-tim-1",
@@ -129,7 +135,9 @@
     "ascentM": null,
     "descentM": null,
     "seconds": null,
-    "link": ""
+    "link": "",
+    "eventId": null,
+    "eventName": null
   },
   {
     "id": "ver-tim-3",
@@ -162,7 +170,9 @@
     "ascentM": null,
     "descentM": null,
     "seconds": null,
-    "link": ""
+    "link": "",
+    "eventId": null,
+    "eventName": null
   },
   {
     "id": "ver-tim-2",
@@ -195,7 +205,9 @@
     "ascentM": null,
     "descentM": null,
     "seconds": null,
-    "link": ""
+    "link": "",
+    "eventId": null,
+    "eventName": null
   },
   {
     "id": "ver-bio-1",
@@ -228,7 +240,9 @@
     "ascentM": null,
     "descentM": null,
     "seconds": null,
-    "link": ""
+    "link": "",
+    "eventId": null,
+    "eventName": null
   },
   {
     "id": "ver-bio-2",
@@ -261,7 +275,9 @@
     "ascentM": null,
     "descentM": null,
     "seconds": null,
-    "link": ""
+    "link": "",
+    "eventId": null,
+    "eventName": null
   },
   {
     "id": "ver-sli-1",
@@ -294,7 +310,9 @@
     "ascentM": null,
     "descentM": null,
     "seconds": null,
-    "link": ""
+    "link": "",
+    "eventId": null,
+    "eventName": null
   },
   {
     "id": "ver-sli-2",
@@ -327,7 +345,9 @@
     "ascentM": null,
     "descentM": null,
     "seconds": null,
-    "link": ""
+    "link": "",
+    "eventId": null,
+    "eventName": null
   },
   {
     "id": "ver-kom-1",
@@ -360,7 +380,9 @@
     "ascentM": null,
     "descentM": null,
     "seconds": null,
-    "link": ""
+    "link": "",
+    "eventId": null,
+    "eventName": null
   },
   {
     "id": "ver-kom-2",
@@ -393,7 +415,9 @@
     "ascentM": null,
     "descentM": null,
     "seconds": null,
-    "link": ""
+    "link": "",
+    "eventId": null,
+    "eventName": null
   },
   {
     "id": "ver-kom-3",
@@ -426,7 +450,9 @@
     "ascentM": null,
     "descentM": null,
     "seconds": null,
-    "link": ""
+    "link": "",
+    "eventId": null,
+    "eventName": null
   },
   {
     "id": "ver-kom-4",
@@ -459,6 +485,8 @@
     "ascentM": null,
     "descentM": null,
     "seconds": null,
-    "link": ""
+    "link": "",
+    "eventId": null,
+    "eventName": null
   }
 ]

@@ -205,6 +205,10 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 				return json(post("/api/comments"), "{\"eventId\":"
 						+ f.pastEvent + ",\"organisation\":5,\"value\":4,\"ambience\":3,\"body\":\"Lepo\"}");
 			}),
+			/* „komentare" too, and DERIVED rather than a word for this route: the owner's „clan moze uvek
+			   da obrise svoj komentar" (PDL P6, 20.10.2026) is read as not reaching a member whose fee
+			   does not stand, as `DELETE /api/results/{id}` below does not (see CommentWriteApi). */
+			entry("DELETE /api/comments/{id}", (f, owner) -> delete("/api/comments/" + f.ownComment(owner))),
 			/* „najave" */
 			entry("PUT /api/attendance/{id}", (f, owner) -> put("/api/attendance/" + f.futureEvent)),
 			entry("DELETE /api/attendance/{id}", (f, owner) -> delete("/api/attendance/"
@@ -894,6 +898,15 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 			return futureEvent;
 		});
 		return futureEvent;
+	}
+
+	/** His own published rating of the past event, written the way an approval writes one. */
+	long ownComment(String owner) {
+		return once("comment", owner, () -> db.sql("insert into event_comment (event_id, competitor_id,"
+						+ " who, published_at, rating_organisation, rating_value, rating_ambience, body)"
+						+ " values (?, ?, 'Probni Probic', timestamptz '2027-05-02 10:00:00+00', 4, 4, 4, '')"
+						+ " returning id")
+				.params(pastEvent, memberOf.get(owner)).query(Long.class).single());
 	}
 
 	long ownResult(String owner) {

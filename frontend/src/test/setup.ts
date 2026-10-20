@@ -190,6 +190,10 @@ function whatMeAnswers(): Response {
        a row the owner has never touched holds. A case that means to measure another language puts
        its own server in front (`member/mailLanguageChoice.test.tsx`). */
     mailLanguage: 'sr',
+    /* AND THE SEASONS OPEN FOR A REPORT, which are the clock's and the same for every account
+       (`MeApi.WhoIAm.seasonsOpenForAReport`), so no row of the file carries them. A case about another
+       window puts its own server in front. */
+    seasonsOpenForAReport: whoIAm.seasonsOpenForAReport,
     /* **THE COOKIE NAMING A MEMBER IS THE RECORD EXISTING, and the generated file only
        fills the rest of it in.** This answered NO RECORD AT ALL for a number the file has
        no row for until 24.09.2026, and that conflated two things `MeApi` exists to keep
@@ -221,10 +225,6 @@ function whatMeAnswers(): Response {
                values puts its own server in front. */
             address: myOwnRecordFromMe.address,
             phone: myOwnRecordFromMe.phone,
-            /* AND THE SEASONS OPEN FOR A REPORT, which are the clock's and the same for every member
-               (`MeApi.MyOwnRecord.seasonsOpenForAReport`), so no row of the file carries them either. A
-               case about another window puts its own server in front. */
-            seasonsOpenForAReport: myOwnRecordFromMe.seasonsOpenForAReport,
           },
         }),
   }

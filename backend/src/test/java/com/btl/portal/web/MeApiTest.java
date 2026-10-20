@@ -863,12 +863,6 @@ class MeApiTest {
 				if (field.getName().equals("membershipSeason")) {
 					continue;
 				}
-				/* AND THE SEASONS HE MAY SEND A RUN OF, which are the clock's and the same for every
-				   member by the decision itself (PDL P9, 19.10.2026): no row can differ on them, and
-				   `theSeasonsHeMaySendARunOfAreTheClocksInTheLeaguesHour` asks them of the clock. */
-				if (field.getName().equals("seasonsOpenForAReport")) {
-					continue;
-				}
 				assertThat(his.path(field.getName()).toString())
 						.as("the record behind %s carries the very value the caller was answered"
 								+ " for %s, so on that field his own record and somebody else's"
@@ -1631,7 +1625,7 @@ class MeApiTest {
 	 * answer worked out in the server's zone names one season there.
 	 */
 	@Test
-	void theSeasonsHeMaySendARunOfAreTheClocksInTheLeaguesHour() throws Exception {
+	void theSeasonsARunMayBeReportedForAreTheClocksInTheLeaguesHourForEveryAccount() throws Exception {
 		Object[][] moments = {
 				{AUTUMN_2026, List.of()},
 				{DURING_2027, List.of(2027)},
@@ -1641,12 +1635,22 @@ class MeApiTest {
 		for (Object[] moment : moments) {
 			clock.moveTo((Instant) moment[0]);
 
-			List<Integer> open = new ArrayList<>();
+			/* ON THE ACCOUNT, for a member and for a moderator who races for nobody alike, since
+			   20.10.2026: the moderator's screen „Unos rezultata za događaj” offers the same seasons
+			   (owner, „NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE!"). And NOT in `member` any
+			   more, so the answer has one home for it. */
+			for (String account : List.of(MY_ACCOUNT, RACES_FOR_NOBODY)) {
+				JsonNode answer = answerFor(account);
+				List<Integer> open = new ArrayList<>();
 
-			answerFor(MY_ACCOUNT).path("member").path("seasonsOpenForAReport")
-					.forEach(one -> open.add(one.asInt()));
+				answer.path("seasonsOpenForAReport").forEach(one -> open.add(one.asInt()));
 
-			assertThat(open).as("at %s", moment[0]).isEqualTo(moment[1]);
+				assertThat(answer.path("seasonsOpenForAReport").isArray()).as("%s at %s", account, moment[0])
+						.isTrue();
+				assertThat(open).as("%s at %s", account, moment[0]).isEqualTo(moment[1]);
+				assertThat(answer.path("member").has("seasonsOpenForAReport"))
+						.as("a second home for the seasons in the member's record").isFalse();
+			}
 		}
 	}
 
@@ -1783,9 +1787,6 @@ class MeApiTest {
 						+ " excuse is for nothing")
 				.containsAll(Set.of("referralCode", "referredCount", "membershipBasis",
 						"membershipSeason", "active", "address", "phone", "bioWaiting"));
-		/* `seasonsOpenForAReport` HAS NO TWIN EITHER, and for another reason than the four: it is not
-		   a fact about him but the window his form is drawn from (PDL P9, 19.10.2026), answered to the
-		   one who sends a run. */
 		/* THE PUBLIC LIST CARRIES NEITHER OF THE LAST TWO, and that is a decision and not a gap:
 		   PDL „Uvek privatno: mejl, telefon i adresa". Asked of the record's components so that a
 		   field added to it tomorrow under either name is a red case on the day it is written. */
@@ -1802,7 +1803,7 @@ class MeApiTest {
 				.as("a fact this record carries has no twin on the public list and is not one of the"
 						+ " four named for it: give it a twin, or name it here with its reason")
 				.containsExactlyInAnyOrder("referralCode", "referredCount", "active", "address",
-						"phone", "bioWaiting", "seasonsOpenForAReport");
+						"phone", "bioWaiting");
 		shared.remove("membershipBasis");
 		/* And the season beside it, which leaves with the basis and is withheld with it. */
 		shared.remove("membershipSeason");

@@ -1,6 +1,7 @@
 import { clearResourceCache } from '../../data/client'
 import { theInboxHasChanged } from '../../data/useResource'
 import { askTheServer, type Answer } from '../account/askTheServer'
+import type { EventAndRaceSent } from './eventAndRace'
 import type { FiguresSent } from './leagueResultRows'
 
 /**
@@ -34,6 +35,12 @@ export const WHEN_THE_LEAGUE_ENTERS_RESULTS: Record<string, string> = {
   theFormIsNotComplete: 'leagueResults.refused.theFormIsNotComplete',
   theGroupIsEmpty: 'leagueResults.refused.theGroupIsEmpty',
   theGroupIsTooBig: 'leagueResults.refused.theGroupIsTooBig',
+  /* The four of the moderator's own screen, „Unos rezultata za događaj”, in the words the owner
+     approved on 19.10.2026 (PDL P9, „Reči ekrana „Unos rezultata za događaj” i panela”). */
+  theEventIsNotKnown: 'leagueResults.refused.theEventIsNotKnown',
+  theRaceIsNotKnown: 'leagueResults.refused.theRaceIsNotKnown',
+  theTownIsMissing: 'leagueResults.refused.theTownIsMissing',
+  theDayIsBeforeTheLeague: 'leagueResults.refused.theDayIsBeforeTheLeague',
 }
 
 /**
@@ -46,6 +53,10 @@ export const WHEN_THE_LEAGUE_ENTERS_RESULTS: Record<string, string> = {
 export const THE_LEAGUE_ENTERING: Record<string, string> = {
   ...WHEN_THE_LEAGUE_ENTERS_RESULTS,
   theRaceHasNotBeenRun: 'results.refused.theRaceHasNotBeenRun',
+  /* And the member's own approved sentence for a race of a season not open for a report, which the
+     moderator's screen is held to as well (owner, 20.10.2026, „NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE
+     SEZONE!”). Borrowed by name from `ResultWriteApi`, as the one above. */
+  theRaceIsOutsideTheSeason: 'results.refused.theRaceIsOutsideTheSeason',
 }
 
 /**
@@ -76,6 +87,29 @@ export async function theLeagueEntered(
   whatAWriteChanges(answer)
 
   return answer
+}
+
+/**
+ * `POST /api/results/on-a-race-of-an-event`: the event, the race and the rows of the moderator's own
+ * screen in one save, the event and the race by their keys where the calendar has them.
+ */
+export async function theLeagueEnteredOnAnEvent(
+  sent: EventAndRaceSent & { rows: (FiguresSent & { memberNumber: string })[] },
+): Promise<Answer> {
+  const answer = await askTheServer('/api/results/on-a-race-of-an-event', sent)
+
+  whatAWriteChanges(answer)
+
+  return answer
+}
+
+/** The address of the event a save of that screen is on, which the answer carries
+ *  (`ResultsByTheLeagueApi.EnteredOn`), or nothing where the answer carried none. */
+export function theEventSavedOn(answer: Answer): string | null {
+  const body = answer.got === 'done' ? answer.body : undefined
+  const event: unknown = typeof body === 'object' && body !== null ? Reflect.get(body, 'event') : undefined
+
+  return typeof event === 'string' && event !== '' ? event : null
 }
 
 /** `PUT /api/races/{race}/results/{result}`: the pencil, the figures and nothing else. */

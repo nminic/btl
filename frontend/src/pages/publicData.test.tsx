@@ -288,8 +288,10 @@ describe('what administration and the member forms offer', () => {
        those addresses before the form is drawn.
 
        A count is a weak floor and it is written down as one: it cannot say a row is right, only
-       that one went missing. Changing this number is a decision, not a formality. */
-    expect(BEHIND).toHaveLength(18)
+       that one went missing. Changing this number is a decision, not a formality: nineteen since
+       19.10.2026, with the moderator's own screen „Unos rezultata za događaj” (PDL P9), which the route
+       table asks for. */
+    expect(BEHIND).toHaveLength(19)
   })
 
   it.each(BEHIND)('offers no way of its own up a level on %s', async (

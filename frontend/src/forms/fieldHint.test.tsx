@@ -41,6 +41,10 @@ import { setupUser } from '../test/user'
  *  kalendara ili upiši naziv novog. Novi događaj i trka ulaze u kalendar kad liga potvrdi rezultat.”
  *  and „Izaberi trku ovog događaja ili upiši novu.”). */
 const KEPT = [
+  /* The moderator's own help beside the event on „Unos rezultata za događaj” (PDL P9, approved
+     19.10.2026: „Izaberi događaj iz kalendara ili upiši naziv novog. Novi događaj i trka ulaze u
+     kalendar kad sačuvaš rezultate.”). */
+  'leagueResults.eventHint',
   'newPassword.passwordHint',
   'newResult.eventHint',
   'newResult.linkHint',
@@ -121,8 +125,10 @@ describe('the rules that were kept', () => {
 
        ~~Ten and eight.~~ The biography's rule went on 28.09.2026 with the field it stood
        beside, which is one field and one rule fewer. Eleven and nine since 19.10.2026: the
-       event and the race of the member's form each got one (PDL P9). */
-    expect(carried).toHaveLength(11)
+       event and the race of the member's form each got one (PDL P9). Twelve and ten the same day:
+       the moderator's own event box on „Unos rezultata za događaj” carries his sentence of its own
+       (`event/EnterResults.tsx`, `EVENT_BOX`), while his race box is the member's form's, rule and all. */
+    expect(carried).toHaveLength(12)
   })
 
   it('are never written into a screen by hand, under any name they have had', () => {

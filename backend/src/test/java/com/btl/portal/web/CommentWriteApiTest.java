@@ -38,6 +38,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -1090,13 +1091,44 @@ class CommentWriteApiTest {
 				.isEqualTo(submissionsBefore - 1);
 	}
 
-	/** A rating with WORDS withdraws nothing: it is itself one more waiting rating (the pair above). */
+	/**
+	 * AND SO DOES A RATING WITH WORDS (20.10.2026, derived from „nova zamenjuje staru" and the owner's shape
+	 * of an edit): the newest one SENT wins among the waiting ones. The same four cards stand around his
+	 * and none of them may move, and the card this request makes is the one left waiting.
+	 */
 	@Test
-	void aRatingWithWordsWithdrawsNothingThatWaits() throws Exception {
+	void aRatingWithWordsWithdrawsTheMembersOlderWaitingOneOfThatEventAndNoOtherCard() throws Exception {
 		long hers = waitingCardOf(submissionWaitingFor(ME, run, 1, 1, 1, "Moje, čeka"));
+		long hersElsewhere = waitingCardOf(
+				submissionWaitingFor(ME, runOtherEdition, 1, 1, 1, "Moje, drugi događaj"));
+		long someoneElses = waitingCardOf(submissionWaitingFor(SOMEONE_ELSE, run, 2, 2, 2, "Tuđe, čeka"));
+		long decided = waitingCardOf(submissionWaitingFor(ME, run, 3, 3, 3, "Moje, već odlučeno"));
 
-		assertThat(waitingIn(rateAs(ME, form(run, 5, 5, 5, "Novo, s rečima.")))).isTrue();
-		assertThat(cardsStanding(hers)).containsExactly(hers);
+		db.sql("update verification set state = 'approved', decided_at = now(), decided_by_name = 'Mod'"
+				+ " where id = ?").param(decided).update();
+
+		long submissionsBefore = howManySubmissions();
+
+		MockHttpServletResponse answer = rateAs(ME, form(run, 5, 5, 5, "Novo, s rečima."));
+
+		assertThat(waitingIn(answer)).isTrue();
+		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided))
+				.as("his older waiting card of the event is gone, the other three stand")
+				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided);
+		assertThat(waitingOf(ME, run))
+				.as("the one rating of his of this event that waits is the one this request made")
+				.containsExactly(idIn(answer));
+		assertThat(howManySubmissions())
+				.as("one submission went with its card and one came")
+				.isEqualTo(submissionsBefore);
+	}
+
+	/** The submissions of this member about this event whose card still waits. */
+	private List<Long> waitingOf(String memberNumber, long eventId) {
+		return db.sql("select cs.id from comment_submission cs join verification v"
+						+ " on v.comment_submission_id = cs.id where cs.event_id = ? and v.state = 'waiting'"
+						+ " and cs.competitor_id = (select id from competitor where member_number = ?) order by cs.id")
+				.params(eventId, memberNumber).query(Long.class).list();
 	}
 
 	private long waitingCardOf(long submission) {
@@ -1168,28 +1200,236 @@ class CommentWriteApiTest {
 	}
 
 	/**
-	 * A SECOND RATING OF ONE EVENT BY ONE MEMBER IS ACCEPTED WHILE THE FIRST STILL WAITS -
-	 * PDL P21, „Rezultate prijavljuju samo ulogovani korisnici, pa se tu ne očekuje
-	 * zloupotreba" says abuse is not expected of somebody signed in, and the moderator is
-	 * the gate PDL P6, „forma je ne nudi kome ne pripada, a moderator vidi šta je stiglo"
-	 * already names, not this route.
+	 * A SECOND RATING OF ONE EVENT BY ONE MEMBER IS ACCEPTED WHILE THE FIRST STILL WAITS, AND REPLACES IT
+	 * IN THE QUEUE - PDL P21, „Rezultate prijavljuju samo ulogovani korisnici, pa se tu ne očekuje
+	 * zloupotreba" says abuse is not expected of somebody signed in, so the second is taken rather than
+	 * refused; and since 20.10.2026 the newest one sent wins among the waiting ones (see the case above),
+	 * so the moderator is left one card of his about the event and not two.
 	 */
 	@Test
-	void aSecondRatingOfOneEventByOneMemberIsAcceptedWhileTheFirstStillWaits() throws Exception {
+	void aSecondRatingOfOneEventByOneMemberIsAcceptedWhileTheFirstStillWaitsAndReplacesIt() throws Exception {
 		assertThat(rateAs(ME, form(run, 3, 3, 3, "Prvi put")).getStatus()).isEqualTo(201);
 		assertThat(rateAs(ME, form(run, 5, 5, 5, "Drugi put")).getStatus()).isEqualTo(201);
 
-		assertThat(db.sql("select count(*) from comment_submission where event_id = ?"
+		assertThat(db.sql("select body from comment_submission where event_id = ?"
 						+ " and competitor_id = ?")
-				.params(run, competitorId(ME)).query(Long.class).single())
-				.isEqualTo(2);
+				.params(run, competitorId(ME)).query(String.class).list())
+				.containsExactly("Drugi put");
 		assertThat(howManyWaitingInTheCommentsQueue())
-				.as("someone else's row from the fixture, plus these two")
-				.isEqualTo(3);
+				.as("someone else's row from the fixture, plus the second of these two")
+				.isEqualTo(2);
 	}
 
 	private long competitorId(String memberNumber) {
 		return db.sql("select id from competitor where member_number = ?").param(memberNumber)
 				.query(Long.class).single();
+	}
+
+	/* ------------------------------------------------------------------------------------
+	   HIS OWN RATING, DELETED (owner, PDL P6, 20.10.2026: „Član uvek sme da obriše svoju ocenu ili
+	   da je izmeni"; the shape he chose: deleting is at once and takes the waiting one too)
+	   ------------------------------------------------------------------------------------ */
+
+	private MockHttpServletResponse deleteAs(String memberNumber, String id) throws Exception {
+		return deleteWith(new Cookie(SessionCookie.NAME, cookieOf(memberNumber)), id);
+	}
+
+	private MockHttpServletResponse deleteWith(Cookie carrying, String id) throws Exception {
+		MockHttpServletRequestBuilder asking = delete("/api/comments/" + id).with(csrf());
+
+		return http.perform(carrying == null ? asking : asking.cookie(carrying))
+				.andReturn().getResponse();
+	}
+
+	/** Every published rating, by id, so „nothing else moved" is one comparison. */
+	private List<Long> everyPublished() {
+		return db.sql("select id from event_comment order by id").query(Long.class).list();
+	}
+
+	/**
+	 * DELETING HIS RATING TAKES EVERY PUBLISHED ONE OF HIS OF THAT EVENT AND HIS ONE THAT WAITS, AND
+	 * NOTHING ELSE. Around it stand: another member's published rating of the SAME event (the fixture's
+	 * {@link #FIRST_WRITTEN}), another member's waiting one of it, his own published and waiting ratings
+	 * of ANOTHER event of the same name, and his rating of the same event a moderator has already DECIDED
+	 * (never deleted, ADL A36 O11). He has two published of the event (an approval used to be able to
+	 * make a second), and the one the screen names is the OLDER, so „the newest" cannot stand in for it.
+	 */
+	@Test
+	void aMemberDeletesHisRatingOfAnEventPublishedAndWaitingAndNothingElse() throws Exception {
+		published(ME, run, "2025-01-01T00:00:00Z", "Staro");
+		published(ME, run, "2025-02-01T00:00:00Z", "Novije");
+		published(ME, runOtherEdition, "2025-01-01T00:00:00Z", "Drugo izdanje");
+
+		List<Long> mineOnRun = publishedBy(ME, run);
+		long named = mineOnRun.get(0);
+		List<Long> mineElsewhere = publishedBy(ME, runOtherEdition);
+		List<Long> theOtherMemberOnRun = publishedBy(FIRST_WRITTEN, run);
+
+		long hers = waitingCardOf(submissionWaitingFor(ME, run, 1, 1, 1, "Moje, čeka"));
+		long hersElsewhere = waitingCardOf(
+				submissionWaitingFor(ME, runOtherEdition, 1, 1, 1, "Moje, drugi događaj"));
+		long someoneElses = waitingCardOf(submissionWaitingFor(SOMEONE_ELSE, run, 2, 2, 2, "Tuđe, čeka"));
+		long decided = waitingCardOf(submissionWaitingFor(ME, run, 3, 3, 3, "Moje, već odlučeno"));
+
+		db.sql("update verification set state = 'approved', decided_at = now(), decided_by_name = 'Mod'"
+				+ " where id = ?").param(decided).update();
+
+		assertThat(mineOnRun).hasSize(2);
+		assertThat(theOtherMemberOnRun).hasSize(1);
+		assertThat(named)
+				.as("the rating's id is also an event's id, so a statement that took one for the other"
+						+ " could read as right")
+				.isNotIn(run, runOtherEdition, filterFirst, today, future, filterLast);
+
+		List<Long> theRestBefore = new ArrayList<>(everyPublished());
+		theRestBefore.removeAll(mineOnRun);
+		long submissionsBefore = howManySubmissions();
+
+		MockHttpServletResponse answer = deleteAs(ME, String.valueOf(named));
+
+		assertThat(answer.getStatus()).isEqualTo(204);
+		assertThat(publishedBy(ME, run)).as("both of his published ratings of the event are gone").isEmpty();
+		assertThat(publishedBy(ME, runOtherEdition))
+				.as("his rating of another event, of the same name, is not touched")
+				.isEqualTo(mineElsewhere);
+		assertThat(everyPublished())
+				.as("nothing but his ratings of the event went")
+				.isEqualTo(theRestBefore);
+		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided))
+				.as("his waiting card of the event is gone, the other three stand")
+				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided);
+		assertThat(howManySubmissions())
+				.as("exactly one submission went with its card")
+				.isEqualTo(submissionsBefore - 1);
+	}
+
+	/**
+	 * ANOTHER MEMBER'S RATING IS AN ADDRESS THAT IS NOT THERE FOR HIM (ADL A8), AND NOTHING MOVES - his own
+	 * ratings of that very event included, which is the half that tells „whose it is" from „which event".
+	 */
+	@Test
+	void anotherMembersRatingIsNotThereForHimAndNothingMoves() throws Exception {
+		published(ME, run, "2025-01-01T00:00:00Z", "Moje");
+		long hers = waitingCardOf(submissionWaitingFor(ME, run, 1, 1, 1, "Moje, čeka"));
+		long theirs = publishedBy(FIRST_WRITTEN, run).get(0);
+		List<Long> before = everyPublished();
+
+		MockHttpServletResponse answer = deleteAs(ME, String.valueOf(theirs));
+
+		assertThat(answer.getStatus()).isEqualTo(404);
+		assertThat(answer.getContentAsString()).isEmpty();
+		assertThat(everyPublished()).isEqualTo(before);
+		assertThat(cardsStanding(hers)).containsExactly(hers);
+	}
+
+	/**
+	 * „UVEK": a member with no result on the event, and an event of a season long gone, deletes his rating
+	 * all the same. {@link #FIRST_WRITTEN} rated {@link #run} (2010) in the fixture and ran only the other
+	 * edition, so a route that asked the rating's own gates of a deletion would refuse him.
+	 */
+	@Test
+	void aMemberWithNoResultOnTheEventOfAnEarlierSeasonDeletesHisRatingAllTheSame() throws Exception {
+		assertThat(db.sql("select count(*) from result r join race ra on ra.id = r.race_id"
+						+ " where ra.event_id = ? and r.competitor_id = ?")
+				.params(run, competitorId(FIRST_WRITTEN)).query(Long.class).single())
+				.as("he has a result on the event, so this measures nothing about one")
+				.isZero();
+		assertThat(rateAs(FIRST_WRITTEN, form(run, 5, 5, 5, "")).getStatus())
+				.as("the same member may not RATE the event, which is what makes the deletion a measure")
+				.isEqualTo(404);
+
+		long his = publishedBy(FIRST_WRITTEN, run).get(0);
+
+		assertThat(deleteAs(FIRST_WRITTEN, String.valueOf(his)).getStatus()).isEqualTo(204);
+		assertThat(publishedBy(FIRST_WRITTEN, run)).isEmpty();
+	}
+
+	/**
+	 * A MEMBER WHOSE FEE HAS LAPSED IS TOLD THE ADDRESS IS NOT THERE, AND HIS RATING STAYS - derived from
+	 * PDL P8 (10.10.2026, „komentare"), see the class note. {@link #ME}, whose fee stands, deleting his own
+	 * is the anchor.
+	 */
+	@Test
+	void aMemberWhoseFeeHasLapsedDoesNotDeleteHisRating() throws Exception {
+		published(LAPSED, run, "2025-01-01T00:00:00Z", "Isteklo");
+		published(ME, run, "2025-01-01T00:00:00Z", "Moje");
+		long his = publishedBy(LAPSED, run).get(0);
+
+		MockHttpServletResponse answer = deleteWith(new Cookie(SessionCookie.NAME,
+				sessions.get("isteklo@primer.rs").secret()), String.valueOf(his));
+
+		assertThat(answer.getStatus()).isEqualTo(404);
+		assertThat(answer.getContentAsString()).isEmpty();
+		assertThat(publishedBy(LAPSED, run)).containsExactly(his);
+
+		assertThat(deleteAs(ME, String.valueOf(publishedBy(ME, run).get(0))).getStatus())
+				.as("the member whose fee stands was turned away too, so it is not the fee that refused")
+				.isEqualTo(204);
+	}
+
+	/** An account that names no member has no rating to delete, and is told so the way ADL A8 says. */
+	@Test
+	void anAccountThatNamesNoMemberIsToldTheAddressIsNotThere() throws Exception {
+		long theirs = publishedBy(FIRST_WRITTEN, run).get(0);
+		List<Long> before = everyPublished();
+
+		MockHttpServletResponse answer = deleteWith(new Cookie(SessionCookie.NAME,
+				sessions.get(MODERATOR_WHO_DOES_NOT_RACE).secret()), String.valueOf(theirs));
+
+		assertThat(answer.getStatus()).isEqualTo(404);
+		assertThat(everyPublished()).isEqualTo(before);
+	}
+
+	/**
+	 * A DELETED MEMBER'S RATING IS NOBODY'S: V33 empties its {@code competitor_id} and it stays, under the
+	 * replacement name, and no member who is alive deletes it.
+	 */
+	@Test
+	void aDeletedMembersRatingIsNobodysToDelete() throws Exception {
+		long tombstone = db.sql("insert into event_comment (event_id, competitor_id, who, published_at,"
+						+ " rating_organisation, rating_value, rating_ambience, body)"
+						+ " values (?, null, '<Obrisani član>', timestamptz '2025-01-01 00:00:00+00', 2, 2, 2, '')"
+						+ " returning id")
+				.param(run).query(Long.class).single();
+
+		assertThat(deleteAs(ME, String.valueOf(tombstone)).getStatus()).isEqualTo(404);
+		assertThat(everyPublished()).contains(tombstone);
+	}
+
+	/** A visitor is answered by the chain, before anything here runs (ADL A8). */
+	@Test
+	void aVisitorWhoIsNotSignedInIsAnswered401() throws Exception {
+		long theirs = publishedBy(FIRST_WRITTEN, run).get(0);
+
+		assertThat(deleteWith(null, String.valueOf(theirs)).getStatus()).isEqualTo(401);
+		assertThat(everyPublished()).contains(theirs);
+	}
+
+	/** A number no rating has and a word in the key's place are one answer (AKey). */
+	@Test
+	void aKeyNoRatingHasAndAWordAreTheSameAnswer() throws Exception {
+		published(ME, run, "2025-01-01T00:00:00Z", "Moje");
+		List<Long> before = everyPublished();
+		long none = before.stream().mapToLong(Long::longValue).max().orElseThrow() + 1000;
+
+		assertThat(deleteAs(ME, String.valueOf(none)).getStatus()).isEqualTo(404);
+		assertThat(deleteAs(ME, "nije-broj").getStatus()).isEqualTo(404);
+		assertThat(everyPublished()).isEqualTo(before);
+	}
+
+	/**
+	 * A RATING REPLACED BEFORE THE DELETION WAS SENT IS NOT THERE ANY MORE: the named id is what says the
+	 * request is about one of his ratings, and it names nothing now, so 404 and the new one stands. A
+	 * replacement that commits WHILE the deletion waits is the other case, and the deletion takes it
+	 * ({@code ARatingSentTwiceAtOnceTest}).
+	 */
+	@Test
+	void aRatingReplacedSinceIsNotThereAndTheNewOneStands() throws Exception {
+		published(ME, run, "2025-01-01T00:00:00Z", "Staro");
+		long old = publishedBy(ME, run).get(0);
+		long fresh = idIn(rateAs(ME, form(run, 5, 5, 5, "")));
+
+		assertThat(deleteAs(ME, String.valueOf(old)).getStatus()).isEqualTo(404);
+		assertThat(publishedBy(ME, run)).containsExactly(fresh);
 	}
 }

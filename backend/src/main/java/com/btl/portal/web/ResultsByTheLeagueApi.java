@@ -1,6 +1,8 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.category.Category;
+import com.btl.portal.domain.event.EventAddress;
+import com.btl.portal.domain.event.WhatAnEventCarries;
 import com.btl.portal.domain.event.WhatARaceCarries;
 import com.btl.portal.domain.event.WhatARaceCarries.Figures;
 import com.btl.portal.domain.mail.MailLanguage;
@@ -37,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * THE LEAGUE ENTERS, CHANGES AND DELETES MEMBERS' RESULTS FROM THE EVENT PAGE, AND WHAT IT
@@ -231,6 +234,26 @@ class ResultsByTheLeagueApi {
 	static final String HE_HOLDS_NO_MEMBERSHIP_OF_THE_RUNNING_SEASON =
 			"heHoldsNoMembershipOfTheRunningSeason";
 
+	/*
+	 * THE FOUR REFUSALS OF THE MODERATOR'S SCREEN „UNOS REZULTATA ZA DOGAĐAJ”, whose words the owner
+	 * approved on 19.10.2026 (PDL P9, „Reči ekrana „Unos rezultata za događaj” i panela”).
+	 */
+
+	/** The event chosen by its key is not in the calendar any more: „Taj događaj više nije u
+	 *  kalendaru. Izaberi ga ponovo ili upiši nov.” */
+	static final String THE_EVENT_IS_NOT_KNOWN = "theEventIsNotKnown";
+
+	/** The race chosen by its key is not one of that event's any more: „Ta trka više nije u
+	 *  kalendaru. Izaberi je ponovo ili upiši novu.” */
+	static final String THE_RACE_IS_NOT_KNOWN = "theRaceIsNotKnown";
+
+	/** A new event names no town: „Upiši mesto novog događaja.” */
+	static final String THE_TOWN_IS_MISSING = "theTownIsMissing";
+
+	/** A new event or race before the league: „Liga počinje 2027. godine; raniji rezultati se unose
+	 *  CSV šablonom.” (PDL P9, owner, 19.10.2026: „NIŠTA! NE POSTOJI LIGA PRE 2027 GODINE”). */
+	static final String THE_DAY_IS_BEFORE_THE_LEAGUE = "theDayIsBeforeTheLeague";
+
 	private final JdbcClient db;
 
 	private final TransactionTemplate inOneTransaction;
@@ -272,6 +295,31 @@ class ResultsByTheLeagueApi {
 	record Rows(List<Row> rows) {
 	}
 
+	/**
+	 * THE EVENT A SAVE OF „UNOS REZULTATA ZA DOGAĐAJ” IS ON: one of the calendar by its {@code id},
+	 * or a new one by everything else, „Na moderatorovom ekranu nov događaj traži naziv, datum i
+	 * mesto” (PDL P9, owner's choice of 19.10.2026). The date is the day of its first race, which is
+	 * this one („nov događaj ima jedno polje „Datum” (isti dan kao njegova prva trka)”, approved the
+	 * same day). The town is typed, with its country, as {@code PlaceField} writes it.
+	 */
+	record NamedEvent(Long id, String name, LocalDate date, String city, String country) {
+	}
+
+	/**
+	 * THE RACE THE ROWS ARE ON: one of the event's by its {@code id}, or a new one on it, with its
+	 * kind and what that kind fixes (a length its course, a race to a limit its limit, a free race
+	 * nothing, {@link WhatARaceCarries}). A figure the kind does not fix is not read, the rule a row's
+	 * figures have. Its {@code date} is asked on an event of the calendar only („postojeći nudi „Datum
+	 * trke” popunjen datumom događaja”); on a new event the event's date is the race's.
+	 */
+	record NamedRace(Long id, String name, LocalDate date, String kind, BigDecimal distanceKm,
+			Integer ascentM, Integer descentM, Integer limitSeconds) {
+	}
+
+	/** One save of the moderator's screen: the event, the race, and the rows on it. */
+	record OnARaceOfAnEvent(NamedEvent event, NamedRace race, List<Row> rows) {
+	}
+
 	/** What the pencil sends: the figures and nothing else. */
 	record Changed(BigDecimal distanceKm, Integer ascentM, Integer descentM, Integer seconds) {
 	}
@@ -286,6 +334,14 @@ class ResultsByTheLeagueApi {
 
 	/** The results a save wrote, in the order of its rows. */
 	record Entered(List<Long> results) {
+	}
+
+	/**
+	 * What the moderator's screen is answered: the results, and the ADDRESS of the event they are on,
+	 * which the screen goes to after saving („posle čuvanja ekran vodi na stranu događaja”, approved
+	 * 19.10.2026) and cannot know of an event the save made.
+	 */
+	record EnteredOn(List<Long> results, String event) {
 	}
 
 	record Refused(String reason) {
@@ -315,15 +371,10 @@ class ResultsByTheLeagueApi {
 	@RightIsNeeded(THE_RIGHT)
 	ResponseEntity<?> enter(@PathVariable long id, @RequestBody Rows typed) {
 		List<Row> rows = typed.rows() == null ? List.of() : typed.rows();
+		ResponseEntity<?> group = whatIsWrongWithTheGroup(rows);
 
-		if (rows.isEmpty()) {
-			return ResponseEntity.badRequest()
-					.body(new NotEntered(CompetitorWriteApi.THE_GROUP_IS_EMPTY, List.of()));
-		}
-
-		if (rows.size() > CompetitorWriteApi.THE_MOST_IN_ONE_GROUP) {
-			return ResponseEntity.badRequest()
-					.body(new NotEntered(CompetitorWriteApi.THE_GROUP_IS_TOO_BIG, List.of()));
+		if (group != null) {
+			return group;
 		}
 
 		Done done = inOneTransaction.execute(committing -> {
@@ -339,67 +390,389 @@ class ResultsByTheLeagueApi {
 				return Done.only(no(HttpStatus.BAD_REQUEST, ResultWriteApi.THE_RACE_HAS_NOT_BEEN_RUN));
 			}
 
-			Map<String, Long> members = keysOf(rows);
-
-			/* LOCKED BEFORE ANYTHING IS JUDGED, in the order of the key so two saves cannot hold
-			   each other's members (see the class note). */
-			if (!members.isEmpty()) {
-				db.sql("select id from competitor where id in (:ids) order by id for update")
-						.param("ids", members.values()).query(Long.class).list();
-			}
-
-			Map<Long, Integer> times = new HashMap<>();
-
-			for (Row row : rows) {
-				Long member = row == null ? null : members.get(row.memberNumber());
-
-				if (member != null) {
-					times.merge(member, 1, Integer::sum);
-				}
-			}
-
-			List<Wrong> wrong = new ArrayList<>();
-			List<Long> whose = new ArrayList<>();
-			List<Figures> counted = new ArrayList<>();
-
-			for (int at = 0; at < rows.size(); at++) {
-				Row row = rows.get(at);
-				Long member = row == null ? null : members.get(row.memberNumber());
-				Figures figures = row == null ? null : WhatARaceCarries.figuresOf(race.fixes(),
-						new Figures(row.distanceKm(), row.ascentM(), row.descentM(), row.seconds()));
-				String why = member == null ? THE_MEMBER_IS_NOT_KNOWN
-						: notARun(figures) ? ResultWriteApi.THE_FORM_IS_NOT_COMPLETE
-						: times.get(member) > 1 ? THE_MEMBER_IS_NAMED_TWICE
-						: hasAResultOn(member, race.id()) ? HE_HAS_A_RESULT_ON_THIS_RACE
-						: hisSubmissionWaits(member, race.id()) ? HIS_SUBMISSION_WAITS
-						: aMemberTheRunningSeasonDoesNotHave(member, race)
-								? HE_HOLDS_NO_MEMBERSHIP_OF_THE_RUNNING_SEASON
-						: null;
-
-				if (why != null) {
-					wrong.add(new Wrong(at, why));
-				}
-
-				whose.add(member);
-				counted.add(figures);
-			}
-
-			if (!wrong.isEmpty()) {
-				return Done.only(ResponseEntity.badRequest().body(new NotEntered(A_ROW_IS_WRONG, wrong)));
-			}
-
-			List<Long> written = new ArrayList<>();
-			List<Letter> letters = new ArrayList<>();
-
-			for (int at = 0; at < rows.size(); at++) {
-				written.add(enterOne(whose.get(at), race, counted.get(at), letters));
-			}
-
-			return new Done(ResponseEntity.status(HttpStatus.CREATED).body(new Entered(written)),
-					letters);
+			return theRows(race, rows);
 		});
 
 		return postAfterwards(done);
+	}
+
+	/**
+	 * „UNOS REZULTATA ZA DOGAĐAJ”: THE EVENT, THE RACE AND THE ROWS IN ONE SAVE, AND NOTHING OF IT
+	 * WRITTEN IF ONE PART IS REFUSED.
+	 *
+	 * <p>PDL P9, owner, 19.10.2026: „Događaj, trka i rezultat u jednoj formi, i za člana na „Mojim
+	 * rezultatima” i za moderatora”, „Jedan ekran za sve”, and of what it writes: „Na moderatorovom
+	 * ekranu nov događaj traži naziv, datum i mesto; ostalo (opis, slika, veze) dopisuje se kasnije kroz
+	 * Administraciju → Događaji” and „Isti naziv ne pravi drugi događaj”, so a new event's name that the
+	 * calendar already has in that year is that event. A race on an event of the calendar moves the
+	 * event back to its day when it is earlier („Ne moze poceti trka pre dogadjaja na kojem je”),
+	 * {@link TheDayOfAnEvent}'s rule, which {@code RaceWriteApi} and the approval keep.
+	 *
+	 * <p><b>The right is {@link #THE_RIGHT} and not the calendar's</b> ({@code entity:events}): the
+	 * coordinator's derivation, PDL „[IZVEDENO 19.10.2026, moje, PR za 7b]”, (4), the same power the
+	 * approval already has when it makes an event and a race of a run.
+	 *
+	 * <p><b>Only the seasons open for a report</b> („NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE! ONI SE
+	 * UNOSE IMPORTOM.”, owner, 20.10.2026, which overturns the coordinator's derivation that this screen
+	 * offers every season from 2027): a race of any other season is refused, new or of the calendar
+	 * ({@link #whatIsWrongWithTheSeasonOf}). The event page's own entry of rows on a race of the
+	 * calendar is not this route and keeps the owner's decision of 18.10.2026 („Za prošle godine i pre
+	 * 2027 ostaje unos svima sa članskim brojem”); that boundary is the coordinator's to put to him.
+	 *
+	 * <p><b>What has no sentence of its own is a form not filled in</b> ({@code theFormIsNotComplete}):
+	 * a key beside a name, a race of the calendar on a new event, an event that is not a race, a town
+	 * too long or with an invisible character or a country nobody has, a figure the kind fixes missing,
+	 * and a new race on an event of another year. The screen builds none of them; that reading is mine.
+	 */
+	@PostMapping("/api/results/on-a-race-of-an-event")
+	@RightIsNeeded(THE_RIGHT)
+	ResponseEntity<?> enterOnARaceOfAnEvent(@RequestBody OnARaceOfAnEvent typed) {
+		List<Row> rows = typed.rows() == null ? List.of() : typed.rows();
+		ResponseEntity<?> group = whatIsWrongWithTheGroup(rows);
+
+		if (group != null) {
+			return group;
+		}
+
+		NamedEvent event = typed.event();
+		NamedRace race = typed.race();
+		ResponseEntity<?> wrong = event == null || race == null ? notComplete()
+				: whatIsWrongWith(event, race);
+
+		if (wrong != null) {
+			return wrong;
+		}
+
+		Done done = inOneTransaction.execute(committing -> theRaceAndItsRows(event, race, rows));
+
+		return postAfterwards(done);
+	}
+
+	/** The event and the race as the body names them, judged before anything is read or written. */
+	private ResponseEntity<?> whatIsWrongWith(NamedEvent event, NamedRace race) {
+		boolean newEvent = event.id() == null;
+		boolean newRace = race.id() == null;
+		boolean namedBesideTheKey = !newEvent
+				&& !nothingIn(event.name(), event.date(), event.city(), event.country());
+		boolean raceNamedBesideTheKey = !newRace && !nothingIn(race.name(), race.date(), race.kind(),
+				race.distanceKm(), race.ascentM(), race.descentM(), race.limitSeconds());
+
+		if (namedBesideTheKey || raceNamedBesideTheKey || (newEvent && !newRace)
+				|| (newEvent && (isNothing(event.name()) || event.date() == null || race.date() != null))
+				|| (newRace && (isNothing(race.name()) || race.kind() == null
+						|| !WhatARaceCarries.KINDS.contains(race.kind())))
+				|| (newRace && !newEvent && race.date() == null)) {
+			return notComplete();
+		}
+
+		if (newEvent && isNothing(event.city())) {
+			return no(HttpStatus.BAD_REQUEST, THE_TOWN_IS_MISSING);
+		}
+
+		if (newEvent && !aTownTyped(event.city(), event.country())) {
+			return notComplete();
+		}
+
+		if (newRace && figuresOfANewRaceAreWrong(race)) {
+			return notComplete();
+		}
+
+		LocalDate day = newEvent ? event.date() : race.date();
+
+		if (newRace) {
+			ResponseEntity<?> season = whatIsWrongWithTheSeasonOf(day);
+
+			if (season != null) {
+				return season;
+			}
+		}
+
+		if (newRace && day.isAfter(today())) {
+			return no(HttpStatus.BAD_REQUEST, ResultWriteApi.THE_RACE_HAS_NOT_BEEN_RUN);
+		}
+
+		return null;
+	}
+
+	/**
+	 * A RACE OUTSIDE THE SEASONS OPEN FOR A REPORT, which this screen does not take: PDL P9, owner,
+	 * 20.10.2026, „NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE! ONI SE UNOSE IMPORTOM.” The seasons
+	 * are {@link SeasonClock#seasonsOpenForAReport}'s, the one home the member's report asks too, and
+	 * the words are the two the owner approved: before the league the CSV sentence
+	 * ({@link #THE_DAY_IS_BEFORE_THE_LEAGUE}), after it the member's own
+	 * ({@code ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON}).
+	 *
+	 * @return the refusal, or nothing where the race's season is open
+	 */
+	private ResponseEntity<?> whatIsWrongWithTheSeasonOf(LocalDate day) {
+		if (day.getYear() < SeasonClock.FIRST_SEASON) {
+			return no(HttpStatus.BAD_REQUEST, THE_DAY_IS_BEFORE_THE_LEAGUE);
+		}
+
+		return SeasonClock.aRunMayBeSentFor(day.getYear(), now()) ? null
+				: no(HttpStatus.BAD_REQUEST, ResultWriteApi.THE_RACE_IS_OUTSIDE_THE_SEASON);
+	}
+
+	/** A town typed, of the length and the characters a typed town may hold, in a country there is
+	 *  ({@code ResultWriteApi}'s rules for a typed town). */
+	private boolean aTownTyped(String city, String country) {
+		String town = city.strip();
+
+		return town.length() <= ResultWriteApi.A_TYPED_TOWN_HOLDS_AT_MOST
+				&& town.codePoints().noneMatch(ResultWriteApi::nobodySees)
+				&& !isNothing(country)
+				&& db.sql("select id from country where code = ?").param(country).query(Long.class)
+						.optional().isPresent();
+	}
+
+	/** What the kind of a new race fixes, missing or outside what the columns keep. */
+	private static boolean figuresOfANewRaceAreWrong(NamedRace race) {
+		boolean course = WhatARaceCarries.fixesTheCourse(race.kind());
+		boolean time = WhatARaceCarries.fixesTheTime(race.kind());
+
+		return (course && (ResultWriteApi.notADistance(race.distanceKm())
+				|| ResultWriteApi.notAClimb(race.ascentM()) || ResultWriteApi.notAClimb(race.descentM())))
+				|| (time && ResultWriteApi.notATime(race.limitSeconds()));
+	}
+
+	/**
+	 * INSIDE THE TRANSACTION: the event (held, or made, or found at its address), the race (found on
+	 * it, or made), and then the rows exactly as the event page enters them ({@link #theRows}).
+	 */
+	private Done theRaceAndItsRows(NamedEvent named, NamedRace race, List<Row> rows) {
+		Optional<TheDayOfAnEvent.Standing> event = named.id() != null
+				? TheDayOfAnEvent.theEventHeldForThisWrite(db, named.id())
+				: TheDayOfAnEvent.theEventAt(db, EventAddress.of(named.name().strip(), named.date()))
+						.flatMap(there -> TheDayOfAnEvent.theEventHeldForThisWrite(db, there.id()));
+
+		if (named.id() != null && event.isEmpty()) {
+			return Done.only(no(HttpStatus.CONFLICT, THE_EVENT_IS_NOT_KNOWN));
+		}
+
+		if (event.isPresent() && !WhatAnEventCarries.A_RACE.equals(event.get().kind())) {
+			return Done.only(notComplete());
+		}
+
+		if (race.id() != null) {
+			Optional<TheRace> found = raceOf(race.id())
+					.filter(one -> raceIsOn(one.id(), event.orElseThrow().id()));
+
+			if (found.isEmpty()) {
+				return Done.only(no(HttpStatus.CONFLICT, THE_RACE_IS_NOT_KNOWN));
+			}
+
+			ResponseEntity<?> season = whatIsWrongWithTheSeasonOf(found.get().day());
+
+			if (season != null) {
+				return Done.only(season);
+			}
+
+			if (found.get().day().isAfter(today())) {
+				return Done.only(no(HttpStatus.BAD_REQUEST, ResultWriteApi.THE_RACE_HAS_NOT_BEEN_RUN));
+			}
+
+			return onTheEvent(theRows(found.get(), rows), event.orElseThrow().id());
+		}
+
+		LocalDate day = named.id() == null ? named.date() : race.date();
+
+		/* A NEW RACE GOES ON AN EVENT OF ITS OWN YEAR, and on no other: an event of another year is an
+		   event of another season, which this screen does not offer (owner, 20.10.2026, „NE NUDE SE
+		   STARIJI DOGAĐAJI VAN TEKUĆE SEZONE!”), so only a request the screen never builds names one, and
+		   it is answered as a form not filled in. That reading is mine (the coordinator's answer of
+		   20.10.2026). It is also why the race never moves its event into another year's address: the
+		   event begins on its earliest race, and every race of it is of one year. */
+		if (event.isPresent() && event.get().date().getYear() != day.getYear()) {
+			return Done.only(notComplete());
+		}
+
+		/* THE ROWS FIRST, on the race as it will be: a race nobody has made yet has no result and no
+		   report on it, which is what its key nought answers (keys start at one). */
+		Judged judged = judged(new TheRace(0, race.name().strip(), day, race.kind(),
+				WhatARaceCarries.fixesTheTime(race.kind()) ? race.limitSeconds() : 0,
+				WhatARaceCarries.fixesTheCourse(race.kind()) ? race.distanceKm() : BigDecimal.ZERO,
+				WhatARaceCarries.fixesTheCourse(race.kind()) ? race.ascentM() : 0,
+				WhatARaceCarries.fixesTheCourse(race.kind()) ? race.descentM() : 0), rows);
+
+		if (judged.refused() != null) {
+			return Done.only(judged.refused());
+		}
+
+		long made;
+		long on;
+
+		if (event.isPresent()) {
+			TheDayOfAnEvent.Standing there = event.get();
+			LocalDate beginning = TheDayOfAnEvent.theDayItWillBeginOn(db, there, null, day);
+			String address = TheDayOfAnEvent.addressFor(there, beginning);
+
+			made = aNewRace(there.id(), race, day);
+			on = there.id();
+			TheDayOfAnEvent.theEventNowBeginsOn(db, there, beginning, address);
+		} else {
+			on = aNewEvent(named);
+			made = aNewRace(on, race, day);
+		}
+
+		return onTheEvent(written(raceOf(made).orElseThrow(), judged), on);
+	}
+
+	/** A save written, answered with the address of the event it is on as that event now stands. */
+	private Done onTheEvent(Done done, long event) {
+		if (!(done.answer().getBody() instanceof Entered entered)) {
+			return done;
+		}
+
+		String address = db.sql("select slug from btl_event where id = ?").param(event)
+				.query(String.class).single();
+
+		return new Done(ResponseEntity.status(HttpStatus.CREATED)
+				.body(new EnteredOn(entered.results(), address)), done.letters());
+	}
+
+	/** The event, in the town typed, on the day of its first race, at its address; one made by
+	 *  another save at that address in between is that event, which is why the insert gives way and
+	 *  the row is then read by its address whichever of the two wrote it. */
+	private long aNewEvent(NamedEvent named) {
+		String address = EventAddress.of(named.name().strip(), named.date());
+		Long country = db.sql("select id from country where code = ?").param(named.country())
+				.query(Long.class).single();
+
+		db.sql("insert into btl_event (slug, name, date, place_id, city, country_id, kind,"
+						+ " featured, description, link) values (?, ?, ?, null, ?, ?, ?, false, '', '')"
+						+ " on conflict (slug) do nothing")
+				.params(address, named.name().strip(), named.date(), named.city().strip(), country,
+						WhatAnEventCarries.A_RACE)
+				.update();
+
+		return db.sql("select id from btl_event where slug = ?").param(address).query(Long.class).single();
+	}
+
+	/** The race, with what its kind fixes and nought for the rest, as the approval writes one. */
+	private long aNewRace(long event, NamedRace race, LocalDate day) {
+		boolean course = WhatARaceCarries.fixesTheCourse(race.kind());
+		boolean time = WhatARaceCarries.fixesTheTime(race.kind());
+
+		return db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m) values (?, ?, true, ?, ?, ?, ?, ?, ?)"
+						+ " returning id")
+				.params(event, race.name().strip(), day, race.kind(), time ? race.limitSeconds() : 0,
+						course ? race.distanceKm() : BigDecimal.ZERO, course ? race.ascentM() : 0,
+						course ? race.descentM() : 0)
+				.query(Long.class).single();
+	}
+
+	private boolean raceIsOn(long race, long event) {
+		return db.sql("select count(*) from race where id = ? and event_id = ?").params(race, event)
+				.query(Integer.class).single() == 1;
+	}
+
+	/** The save's own two refusals of the group as a whole, before any row is judged. */
+	private static ResponseEntity<?> whatIsWrongWithTheGroup(List<Row> rows) {
+		if (rows.isEmpty()) {
+			return ResponseEntity.badRequest()
+					.body(new NotEntered(CompetitorWriteApi.THE_GROUP_IS_EMPTY, List.of()));
+		}
+
+		if (rows.size() > CompetitorWriteApi.THE_MOST_IN_ONE_GROUP) {
+			return ResponseEntity.badRequest()
+					.body(new NotEntered(CompetitorWriteApi.THE_GROUP_IS_TOO_BIG, List.of()));
+		}
+
+		return null;
+	}
+
+	private static ResponseEntity<?> notComplete() {
+		return no(HttpStatus.BAD_REQUEST, ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
+	}
+
+	private static boolean isNothing(String value) {
+		return value == null || value.isBlank();
+	}
+
+	/** Whether none of these says anything: each is absent, or a text with nothing in it. */
+	private static boolean nothingIn(Object... values) {
+		return Stream.of(values).allMatch(one -> one == null || one instanceof String text && text.isBlank());
+	}
+
+	/**
+	 * THE ROWS OF ONE SAVE ON ONE RACE, judged all before the first is written, inside the caller's
+	 * transaction: the event page's save and the moderator's screen's are this one method.
+	 */
+	private Done theRows(TheRace race, List<Row> rows) {
+		Judged judged = judged(race, rows);
+
+		return judged.refused() != null ? Done.only(judged.refused()) : written(race, judged);
+	}
+
+	/**
+	 * EVERY ROW JUDGED ON THE RACE, and nothing written: the refusal, or whose each row is and the
+	 * figures it is counted at. Asked of a race the save is about to make as well, before the event
+	 * and the race are written ({@link #theRaceAndItsRows}), so a refused row leaves nothing of the
+	 * save behind without the transaction having to take anything back.
+	 */
+	private Judged judged(TheRace race, List<Row> rows) {
+		Map<String, Long> members = keysOf(rows);
+
+		/* LOCKED BEFORE ANYTHING IS JUDGED, in the order of the key so two saves cannot hold
+		   each other's members (see the class note). */
+		if (!members.isEmpty()) {
+			db.sql("select id from competitor where id in (:ids) order by id for update")
+					.param("ids", members.values()).query(Long.class).list();
+		}
+
+		Map<Long, Integer> times = new HashMap<>();
+
+		for (Row row : rows) {
+			Long member = row == null ? null : members.get(row.memberNumber());
+
+			if (member != null) {
+				times.merge(member, 1, Integer::sum);
+			}
+		}
+
+		List<Wrong> wrong = new ArrayList<>();
+		List<Long> whose = new ArrayList<>();
+		List<Figures> counted = new ArrayList<>();
+
+		for (int at = 0; at < rows.size(); at++) {
+			Row row = rows.get(at);
+			Long member = row == null ? null : members.get(row.memberNumber());
+			Figures figures = row == null ? null : WhatARaceCarries.figuresOf(race.fixes(),
+					new Figures(row.distanceKm(), row.ascentM(), row.descentM(), row.seconds()));
+			String why = member == null ? THE_MEMBER_IS_NOT_KNOWN
+					: notARun(figures) ? ResultWriteApi.THE_FORM_IS_NOT_COMPLETE
+					: times.get(member) > 1 ? THE_MEMBER_IS_NAMED_TWICE
+					: hasAResultOn(member, race.id()) ? HE_HAS_A_RESULT_ON_THIS_RACE
+					: hisSubmissionWaits(member, race.id()) ? HIS_SUBMISSION_WAITS
+					: aMemberTheRunningSeasonDoesNotHave(member, race)
+							? HE_HOLDS_NO_MEMBERSHIP_OF_THE_RUNNING_SEASON
+					: null;
+
+			if (why != null) {
+				wrong.add(new Wrong(at, why));
+			}
+
+			whose.add(member);
+			counted.add(figures);
+		}
+
+		return wrong.isEmpty() ? new Judged(null, whose, counted)
+				: new Judged(ResponseEntity.badRequest().body(new NotEntered(A_ROW_IS_WRONG, wrong)),
+						whose, counted);
+	}
+
+	/** The rows judged, written on the race as it now stands in the calendar. */
+	private Done written(TheRace race, Judged judged) {
+		List<Long> written = new ArrayList<>();
+		List<Letter> letters = new ArrayList<>();
+
+		for (int at = 0; at < judged.whose().size(); at++) {
+			written.add(enterOne(judged.whose().get(at), race, judged.counted().get(at), letters));
+		}
+
+		return new Done(ResponseEntity.status(HttpStatus.CREATED).body(new Entered(written)),
+				letters);
 	}
 
 	/**
@@ -782,6 +1155,10 @@ class ResultsByTheLeagueApi {
 	}
 
 	private record Letter(long member, String address, Said said) {
+	}
+
+	/** The rows of a save as judged: the refusal, or whose each is and what it is counted at. */
+	private record Judged(ResponseEntity<?> refused, List<Long> whose, List<Figures> counted) {
 	}
 
 	/** The answer, and the letters that leave only once it has committed. */
