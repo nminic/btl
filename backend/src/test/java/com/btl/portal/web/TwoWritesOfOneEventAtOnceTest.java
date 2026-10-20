@@ -260,6 +260,26 @@ class TwoWritesOfOneEventAtOnceTest {
 	}
 
 	/**
+	 * AND THE SAME FOR CHANGING A RACE: the marathon is saved with a new name, on its own day, while the
+	 * earlier race is being put on its event. Its write works out the day from the races it read (none but
+	 * itself, which it leaves out) and would keep the day it read for the event. This is the case that a
+	 * lock on the RACE alone cannot answer: the other writer never touches the marathon's row.
+	 */
+	@Test
+	void aRaceChangedWhileAnEarlierOneIsBeingPutOnTheEventLeavesTheEventOnTheEarlierDay() throws Exception {
+		List<Integer> answers = oneRequestBehindAnApprovalOfAnEarlierRace(
+				() -> change(marathon, ofALength("Maraton, preimenovan", THE_MARATHONS_DAY, "42.2")));
+
+		assertThat(answers)
+				.as("the race is changed; what the database said otherwise: " + thrown)
+				.containsExactly(200);
+		assertThat(db.sql("select name from race where id = ?").param(marathon).query(String.class).single())
+				.as("and it is the change that was asked for")
+				.isEqualTo("Maraton, preimenovan");
+		assertThat(theEventsDay()).isEqualTo(THE_EARLIER_DAY);
+	}
+
+	/**
 	 * A CHANGE OF A RACE THAT IS DELETED WHILE IT WAITS IS A 404, NOT A 500. The change takes the event first
 	 * and reads the race after, so a race gone in the meantime is a race that is not there, the answer of an
 	 * address that maps nothing.

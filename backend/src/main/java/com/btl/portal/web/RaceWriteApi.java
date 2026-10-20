@@ -871,8 +871,9 @@ class RaceWriteApi {
 	 * race that is gone is the same 404 as a race that never was.
 	 */
 	private Optional<TheDayOfAnEvent.Standing> theEventOfTheRaceHeldForThisWrite(long race) {
-		TheDayOfAnEvent.theEventOfTheRace(db, race)
-				.ifPresent(seen -> TheDayOfAnEvent.theEventHeldForThisWrite(db, seen.id()));
+		Optional<TheDayOfAnEvent.Standing> seen = TheDayOfAnEvent.theEventOfTheRace(db, race);
+
+		seen.ifPresent(there -> TheDayOfAnEvent.theEventHeldForThisWrite(db, there.id()));
 
 		return TheDayOfAnEvent.theEventOfTheRace(db, race);
 	}
