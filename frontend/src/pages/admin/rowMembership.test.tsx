@@ -121,7 +121,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     return must(within(table).getByText(memberNumber).closest('tr'), `the row of ${memberNumber}`)
   }
 
-  it('offers on each row exactly what its basis on sale allows, and nothing on a row that holds none', async () => {
+  it('offers on each row exactly what its basis on sale allows, and the exemption on a row that holds none', async () => {
     const server = serving()
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
@@ -132,6 +132,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
     for (const row of [paid, exempt, balance]) {
       expect(within(row).getByRole('button', { name: 'Storniraj' })).toBeInTheDocument()
+      expect(within(row).queryByRole('button', { name: 'Odobri oslobođenje' })).toBeNull()
     }
 
     expect(within(paid).getByRole('button', { name: 'Promeni osnov u oslobođenje' })).toBeInTheDocument()
@@ -143,10 +144,12 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     expect(within(balance).queryByRole('button', { name: 'Promeni osnov u oslobođenje' })).toBeNull()
     expect(within(balance).queryByRole('button', { name: 'Upiši uplatu' })).toBeNull()
 
-    /* AN OLDER SEASON ON A PAYMENT OFFERS NOTHING OF THIS: only the payment of the season on sale. */
+    /* AN OLDER SEASON ON A PAYMENT OFFERS NOTHING OF THAT SEASON: the payment of the season on sale, and
+       since 20.10.2026 its exemption. */
     expect(within(older).queryByRole('button', { name: 'Storniraj' })).toBeNull()
     expect(within(older).queryByRole('button', { name: 'Promeni osnov u oslobođenje' })).toBeNull()
     expect(within(older).getByRole('button', { name: 'Upiši uplatu' })).toBeInTheDocument()
+    expect(within(older).getByRole('button', { name: 'Odobri oslobođenje' })).toBeInTheDocument()
 
     server.stop()
   })
@@ -412,6 +415,77 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
       inboxReads,
     )
     expect(await screen.findByText('Osnov članstva je promenjen.')).toBeInTheDocument()
+
+    server.stop()
+  }, SLOW)
+
+  /**
+   * THE EXEMPTION OF A ROW THAT HOLDS NONE, in the window the owner chose on 20.10.2026: the year is the
+   * season on sale and not his last season (2027 here), „Ne” sends nothing, „Da” sends the one basis a
+   * grant may name, and the six answers are asked again while the inbox of another row is left alone.
+   */
+  it('asks before granting the exemption, for the season on sale, and asks every answer again once it is written', async () => {
+    const server = serving(() => Response.json({ season: 2028, basis: 'feeExempt' }, { status: 201 }))
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin', PAID)
+
+    const row = await rowOf(AN_OLDER_SEASON)
+    const dropped: ResourceName[] = ['payments', 'results', 'teams', 'pairs']
+
+    for (const name of dropped) {
+      await loadResource(name)
+    }
+
+    await waitFor(() => expect(reads(server.asked, '/api/inbox')).toBeGreaterThan(0))
+    const inboxReads = reads(server.asked, '/api/inbox')
+
+    await user.click(within(row).getByRole('button', { name: 'Odobri oslobođenje' }))
+
+    const sheet = await screen.findByRole('dialog', { name: 'Odobri oslobođenje od članarine za sezonu 2028?' })
+
+    expect(within(sheet).getByText('Ivan Jović, sezona 2028.')).toBeInTheDocument()
+
+    await user.click(within(sheet).getByRole('button', { name: 'Ne' }))
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(sent(server.asked)).toEqual([])
+
+    await user.click(within(row).getByRole('button', { name: 'Odobri oslobođenje' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+
+    await waitFor(() =>
+      expect(sent(server.asked)).toEqual([
+        { how: 'POST', path: `/api/members/${AN_OLDER_SEASON}/membership`, body: { basis: 'feeExempt' } },
+      ]),
+    )
+    await waitFor(() => expect(reads(server.asked, '/api/members')).toBe(2))
+    expect(reads(server.asked, '/api/competitors')).toBe(2)
+
+    for (const name of dropped) {
+      expect(arrivedResource(name), name).toBeUndefined()
+    }
+
+    expect(reads(server.asked, '/api/inbox'), 'the inbox was asked again for somebody else’s row').toBe(
+      inboxReads,
+    )
+    expect(await screen.findByText('Oslobođenje je upisano.')).toBeInTheDocument()
+
+    server.stop()
+  }, SLOW)
+
+  it('says a refused grant beside its row in the words of a grant, and asks nothing again', async () => {
+    const server = serving(() => refused('thisChangeIsNotOffered', 400))
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const row = await rowOf(AN_OLDER_SEASON)
+
+    await user.click(within(row).getByRole('button', { name: 'Odobri oslobođenje' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+
+    expect(await within(row).findByText(sr.admin.membershipRefused.thisChangeIsNotOffered)).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(reads(server.asked, '/api/members')).toBe(1)
 
     server.stop()
   }, SLOW)

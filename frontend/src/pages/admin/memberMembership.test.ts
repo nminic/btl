@@ -3,12 +3,14 @@ import { MEMBERSHIP_BASES } from '../../data/types'
 import {
   askingToCancel,
   cancelling,
+  GRANTING,
   membershipOnTheRow,
   offeredFor,
   overTheExemption,
   TO_THE_EXEMPTION,
   WHEN_CANCELLING,
   WHEN_CHANGING_TO_THE_EXEMPTION,
+  WHEN_GRANTING_AN_EXEMPTION,
   WHEN_PAYING_OVER_THE_EXEMPTION,
 } from './memberMembership'
 import { WHEN_RECORDING_ON_THE_ROW } from './memberPayment'
@@ -33,6 +35,7 @@ describe('the options on a member’s row', () => {
     }
 
     expect(TO_THE_EXEMPTION).toEqual({ from: 'payment', to: 'feeExempt' })
+    expect(GRANTING).toEqual({ basis: 'feeExempt' })
     expect(overTheExemption({ received: 3200, method: 'ips' })).toEqual({
       from: 'feeExempt',
       to: 'payment',
@@ -56,6 +59,9 @@ describe('the options on a member’s row', () => {
   it('answers what each act can meet, and the cancellation never a change it cannot name', () => {
     expect(Object.keys(WHEN_CANCELLING).sort()).toEqual(
       ['theBasisHasChanged', 'theBasisIsNotKnown', 'theFormIsNotComplete'].sort(),
+    )
+    expect(Object.keys(WHEN_GRANTING_AN_EXEMPTION).sort()).toEqual(
+      ['theBasisHasChanged', 'theBasisIsNotKnown', 'theFormIsNotComplete', 'thisChangeIsNotOffered'].sort(),
     )
     expect(Object.keys(WHEN_CHANGING_TO_THE_EXEMPTION).sort()).toEqual(
       ['theBasisHasChanged', 'theBasisIsNotKnown', 'theFormIsNotComplete', 'thisChangeIsNotOffered'].sort(),

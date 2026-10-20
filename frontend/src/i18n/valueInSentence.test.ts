@@ -298,6 +298,9 @@ describe('a sentence with a value put into it', () => {
       /* „Promeni osnov u oslobođenje za sezonu {season}? Zapis o uplati se briše." (owner,
          18.10.2026, PDL P8): a bare year after „za sezonu", as above. */
       'admin.askChangeToExemption',
+      /* „Odobri oslobođenje od članarine za sezonu {season}?" (owner, 20.10.2026, chosen with the
+         recommendation): a bare year after „za sezonu", as above. */
+      'admin.askGrantExemption',
       'admin.basisOfTheSeason',
       'admin.dropRaceNamed',
       /* „Ovim brišeš i {count} rezultata.", asked before an event is deleted (owner,

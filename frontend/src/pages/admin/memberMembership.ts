@@ -17,13 +17,18 @@ import { WHEN_RECORDING_ON_THE_ROW, type RowBooking } from './memberPayment'
  * **THE BASIS IS THE ONE OF THE SEASON ON SALE, `membershipBasis`, AND NOTHING ELSE.** PDL P8, „Koje
  * sezone: do 14.10. samo tekuća, od 15.10. samo naredna”: `GET /api/members` answers the basis of exactly
  * that season, and `seasons` carries every season he ever held, the last of which need not be it. So
- * an older season on a payment offers nothing here, and a member who holds no season on sale is offered
- * the payment of `RowPayment` and nothing of this file.
+ * an older season on a payment offers nothing of that season here. A member who holds no season on sale
+ * is offered the payment of `RowPayment` and, since 20.10.2026, the exemption of this file: „Oslobođenje
+ * ostaje izbor na redu člana” (PDL P8, 18.10.2026), with a window the owner chose on 20.10.2026 between
+ * the outcomes put to him, with the recommendation: „Odobri oslobođenje od članarine za sezonu
+ * [godina]?”.
  */
 
 /**
  * What the row offers BESIDE „Storniraj”, worked out from the basis of the season on sale. „Storniraj”
  * itself needs no field: every basis may be cancelled, and a row with no basis has nothing to cancel.
+ * Nor does „Odobri oslobođenje”: it is offered exactly where no basis is held, which is the one
+ * question `RowMembership` asks of the basis before it draws anything.
  */
 export type Offered = {
   /** „Promeni osnov u oslobođenje”: from a payment only. */
@@ -39,7 +44,7 @@ export function offeredFor(basis: MembershipBasis | undefined): Offered {
   }
 }
 
-/** The address of both acts, built in one place so a test cannot agree with a typo. */
+/** The address of every act of this file, built in one place so a test cannot agree with a typo. */
 export function membershipOnTheRow(memberNumber: string): string {
   return `/api/members/${memberNumber}/membership`
 }
@@ -52,6 +57,9 @@ export function membershipOnTheRow(memberNumber: string): string {
 export function cancelling(basis: MembershipBasis): { basis: MembershipBasis } {
   return { basis }
 }
+
+/** `MemberMembershipApi.Granting`: the one basis a row that holds none may be granted. */
+export const GRANTING: { basis: 'feeExempt' } = { basis: 'feeExempt' }
 
 /** `MemberMembershipApi.Changing` from a payment to the exemption. */
 export const TO_THE_EXEMPTION: { from: 'payment'; to: 'feeExempt' } = { from: 'payment', to: 'feeExempt' }
@@ -88,6 +96,13 @@ export const WHEN_CANCELLING: Record<string, string> = Object.fromEntries(
 
 /** WHAT A CHANGE TO THE EXEMPTION CAN BE REFUSED WITH: all four, and nothing of a booking. */
 export const WHEN_CHANGING_TO_THE_EXEMPTION: Record<string, string> = THE_ROWS_OWN
+
+/**
+ * WHAT A GRANT CAN BE REFUSED WITH: all four as well, because `POST` names a basis and refuses any
+ * but the exemption with `thisChangeIsNotOffered`, and a season that stands by then on another basis
+ * with `theBasisHasChanged`.
+ */
+export const WHEN_GRANTING_AN_EXEMPTION: Record<string, string> = THE_ROWS_OWN
 
 /**
  * WHAT A PAYMENT OVER THE EXEMPTION CAN BE REFUSED WITH: the four, and every reason the row's own

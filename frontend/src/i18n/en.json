@@ -1491,6 +1491,9 @@
     },
     "askChangeToExemption": "Change the basis to an exemption for the {season} season? The record of the payment is deleted.",
     "membershipCancelled": "The membership has been cancelled.",
+    "grantExemption": "Grant the exemption",
+    "askGrantExemption": "Grant the exemption from the fee for the {season} season?",
+    "exemptionGranted": "The exemption has been recorded.",
     "basisChanged": "The basis of the membership has been changed.",
     "membershipRefused": {
       "theFormIsNotComplete": "The request did not arrive whole, so nothing was done. Refresh the page and try again.",
