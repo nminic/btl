@@ -499,3 +499,84 @@ describe('the columns of a wall', () => {
     expect(screen.getByText('kolona: 1')).toBeVisible()
   })
 })
+
+/**
+ * THE COMMENTS' FOOT SINCE 20.10.2026 (owner, PDL P6): nothing seen at the bottom of the list, the button
+ * kept for the keyboard and a screen reader and seen only with the focus on it, and what is said after a
+ * step carries no number - so it is put in the region as a new element each time, or a second step would
+ * add nothing a screen reader hears.
+ */
+function Quiet({ total, step }: { total: number; step: number }) {
+  const { shown, whole, asked, more } = useGrowing(total, step)
+
+  return (
+    <>
+      <ol aria-label="stvari">
+        {Array.from({ length: shown }, (_, at) => (
+          <li key={at}>{`stvar ${String(at + 1)}`}</li>
+        ))}
+      </ol>
+      <LoadMore
+        whole={whole}
+        asked={asked}
+        onMore={more}
+        endShown={false}
+        buttonOnFocusOnly
+        words={{ more: 'Učitaj još', showing: 'Učitano još.', whole: 'Nema više.' }}
+      />
+    </>
+  )
+}
+
+describe('a list whose foot shows nothing', () => {
+  it('keeps the button for the keyboard, dressed to be seen only with the focus on it', () => {
+    render(<Quiet total={25} step={10} />)
+
+    const button = screen.getByRole('button', { name: 'Učitaj još' })
+
+    expect(button).toHaveClass('load-more__button', 'load-more__button--on-focus')
+  })
+
+  it('and the rule that dresses it shows it again with the focus, and hides it otherwise', () => {
+    const css = readFileSync(join(process.cwd(), 'src', 'components', 'LoadMore.css'), 'utf-8')
+
+    /* Hidden by clipping and never by `display: none`, which would take it out of the order of the
+       page, and only while it does NOT have the focus. */
+    expect(css).toMatch(/\.load-more__button--on-focus:not\(:focus\)\s*\{[^}]*clip-path: inset\(50%\)/)
+    expect(css).not.toMatch(/\.load-more__button--on-focus[^{]*\{[^}]*display:\s*none/)
+  })
+
+  it('leaves a list that does not ask for it as it always was', () => {
+    render(<Growing total={25} step={10} />)
+
+    expect(screen.getByRole('button', { name: 'Učitaj još' })).not.toHaveClass('load-more__button--on-focus')
+  })
+
+  it('says each step again, in a new element, though the words are the same', async () => {
+    const user = setupUser()
+    render(<Quiet total={35} step={10} />)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+
+    const firstSaid = must(screen.getByRole('status').firstElementChild, 'what the first step said')
+
+    expect(firstSaid).toHaveTextContent('Učitano još.')
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+
+    const secondSaid = must(screen.getByRole('status').firstElementChild, 'what the second step said')
+
+    expect(secondSaid).toHaveTextContent('Učitano još.')
+    expect(secondSaid).not.toBe(firstSaid)
+  })
+
+  it('says the end without drawing it, and says no number anywhere', async () => {
+    const user = setupUser()
+    render(<Quiet total={15} step={10} />)
+
+    await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+
+    expect(screen.getByText('Nema više.')).toHaveClass('visually-hidden')
+    expect(screen.queryByRole('button', { name: 'Učitaj još' })).toBeNull()
+  })
+})

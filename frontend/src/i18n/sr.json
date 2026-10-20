@@ -201,7 +201,7 @@
     },
     "rateEvent": {
       "title": "Ocena događaja",
-      "description": "Oceni organizaciju, vrednost za novac i ambijent, i ostavi komentar drugim članovima. Moderator odobrava svaku ocenu pre objave."
+      "description": "Oceni organizaciju, vrednost za novac i ambijent. Ocene bez komentara se objavljuju odmah, a komentar kad ga moderator odobri."
     }
   },
   "shell": {
@@ -671,12 +671,12 @@
       "gathering": "Skup"
     },
     "moreComments": "Učitaj još komentara",
-    "showingComments": "Prikazano {shown} od {total}",
-    "allComments": {
-      "one": "To je sav sadržaj, {count} komentar",
-      "few": "To je sav sadržaj, {count} komentara",
-      "other": "To je sav sadržaj, {count} komentara"
-    },
+    "moreCommentsLoaded": "Učitano još komentara.",
+    "noMoreComments": "Nema više komentara.",
+    "editOwnRating": "Izmeni svoju ocenu",
+    "deleteOwnRating": "Obriši svoju ocenu",
+    "deleteOwnRatingSure": "Obriši svoju ocenu?",
+    "keepOwnRating": "Odustani od brisanja svoje ocene",
     "ratedBy": {
       "one": "iz {count} ocene",
       "few": "iz {count} ocene",

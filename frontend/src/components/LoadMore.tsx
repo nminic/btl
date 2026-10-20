@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import './LoadMore.css'
 
 /* The foot of a list that grows as it is read. What it holds is a button, a
@@ -12,6 +12,7 @@ export function LoadMore({
   onMore,
   words,
   endShown = true,
+  buttonOnFocusOnly = false,
 }: {
   whole: boolean
   /** Whether the reader has asked for more at least once. */
@@ -41,9 +42,35 @@ export function LoadMore({
    * to walk again (WCAG 2.2 SC 2.4.3).
    */
   endShown?: boolean
+  /**
+   * WHETHER THE BUTTON IS SEEN ONLY WHILE IT HAS THE FOCUS.
+   *
+   * <p>The comments since 20.10.2026: the owner wants nothing at the foot of them, „Treba da bude
+   * infinite scroll. Dakle brise se sve to na dnu", and chose that the button stays for the keyboard
+   * and a screen reader and is seen when it gets the focus (PDL P6, „Čitač ekrana ne čuje brojanje";
+   * derived from ADL A7). It is NOT taken away, because it is the only way on for somebody whose
+   * screen reader reads the page without moving it: the observer never sees the foot come into view
+   * for him. So it stays in the order of the page, is spoken, and shows itself the moment the focus
+   * lands on it, the way „Preskoči na sadržaj" does (`app/Shell.css`), and nothing about it is visible
+   * to a reader who scrolls. Left out, the button is seen as it always was.
+   */
+  buttonOnFocusOnly?: boolean
 }) {
   const foot = useRef<HTMLDivElement>(null)
   const end = useRef<HTMLParagraphElement>(null)
+  /**
+   * HOW MANY TIMES MORE WAS ASKED FOR, so that what the status says is said again each time.
+   *
+   * <p>The sentence used to carry the numbers („Prikazano 20 od 25"), so it changed with every step
+   * and a screen reader read the change. Without them (the comments, „Učitano još komentara.") two
+   * steps would put the same words in the region and the second would be heard by nobody: a live
+   * region speaks what is ADDED to it. So the words are put in a new element each time, keyed by this.
+   */
+  const [steps, setSteps] = useState(0)
+  const askedForMore = useCallback(() => {
+    setSteps((were) => were + 1)
+    onMore()
+  }, [onMore])
 
   useEffect(() => {
     /* Only where somebody had asked: `whole` is true from the first render on a
@@ -66,7 +93,7 @@ export function LoadMore({
 
     const watching = new IntersectionObserver((entries) => {
       if (entries.some((entry) => entry.isIntersecting)) {
-        onMore()
+        askedForMore()
       }
     })
 
@@ -75,7 +102,7 @@ export function LoadMore({
     return () => {
       watching.disconnect()
     }
-  }, [whole, onMore])
+  }, [whole, askedForMore])
 
   return (
     <div className="load-more" ref={foot}>
@@ -85,7 +112,7 @@ export function LoadMore({
           is a region a screen reader has not been watching (WCAG 2.2 SC
           4.1.3). */}
       <p className="visually-hidden" role="status">
-        {asked ? words.showing : ''}
+        {asked ? <span key={steps}>{words.showing}</span> : ''}
       </p>
 
       {whole ? (
@@ -104,7 +131,11 @@ export function LoadMore({
           {words.whole}
         </p>
       ) : (
-        <button type="button" className="load-more__button" onClick={onMore}>
+        <button
+          type="button"
+          className={buttonOnFocusOnly ? 'load-more__button load-more__button--on-focus' : 'load-more__button'}
+          onClick={askedForMore}
+        >
           {words.more}
         </button>
       )}
