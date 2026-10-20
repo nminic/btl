@@ -1102,8 +1102,10 @@ class ResultsByTheLeagueApiTest {
 		long theEvent = db.sql("select event_id from race where id = ?").param(theTen)
 				.query(Long.class).single();
 
-		MockHttpServletResponse saved = onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
-				"{\"id\":" + theTen + "}", row(VERA, "50.00", 9, 9, AN_HOUR)));
+		/* An empty name beside the key says nothing, as a form that sent its empty box would. */
+		MockHttpServletResponse saved = onAnEvent(RESULTS_MODERATOR, "{\"event\":{\"id\":" + theEvent
+				+ ",\"name\":\" \"},\"race\":{\"id\":" + theTen + "},\"rows\":["
+				+ row(VERA, "50.00", 9, 9, AN_HOUR) + "]}");
 
 		assertThat(saved.getStatus()).isEqualTo(201);
 		assertThat(new ObjectMapper().readTree(saved.getContentAsString()).path("event").asString())
@@ -1154,6 +1156,9 @@ class ResultsByTheLeagueApiTest {
 		MockHttpServletResponse noTown = onAnEvent(RESULTS_MODERATOR, onANewEvent("Bez mesta",
 				"2027-06-01", " ", "MK", newRace("Nova", null, "free", null, null, null, null),
 				row(VERA, "5.00", 1, 1, AN_HOUR)));
+		MockHttpServletResponse noTownAtAll = onAnEvent(RESULTS_MODERATOR, "{\"event\":{\"name\":\"Bez mesta\","
+				+ "\"date\":\"2027-06-01\"},\"race\":" + newRace("Nova", null, "free", null, null, null, null)
+				+ ",\"rows\":[" + row(VERA, "5.00", 1, 1, AN_HOUR) + "]}");
 		MockHttpServletResponse before = onAnEvent(RESULTS_MODERATOR, onANewEvent("Stara trka",
 				"2026-12-31", "Ohrid", "MK", newRace("Nova", null, "free", null, null, null, null),
 				row(VERA, "5.00", 1, 1, AN_HOUR)));
@@ -1163,11 +1168,12 @@ class ResultsByTheLeagueApiTest {
 				onTheEvent(theOldEvent, newRace("Nova", "2026-09-12", "free", null, null, null, null),
 						row(VERA, "5.00", 1, 1, AN_HOUR)));
 
-		assertThat(List.of(gone.getStatus(), notItsRace.getStatus(), noTown.getStatus(), before.getStatus(),
-				beforeOnTheCalendar.getStatus())).containsExactly(409, 409, 400, 400, 400);
-		assertThat(List.of(reasonIn(gone), reasonIn(notItsRace), reasonIn(noTown), reasonIn(before),
-				reasonIn(beforeOnTheCalendar))).containsExactly("theEventIsNotKnown", "theRaceIsNotKnown",
-						"theTownIsMissing", "theDayIsBeforeTheLeague", "theDayIsBeforeTheLeague");
+		assertThat(List.of(gone.getStatus(), notItsRace.getStatus(), noTown.getStatus(), noTownAtAll.getStatus(),
+				before.getStatus(), beforeOnTheCalendar.getStatus())).containsExactly(409, 409, 400, 400, 400, 400);
+		assertThat(List.of(reasonIn(gone), reasonIn(notItsRace), reasonIn(noTown), reasonIn(noTownAtAll),
+				reasonIn(before), reasonIn(beforeOnTheCalendar))).containsExactly("theEventIsNotKnown",
+						"theRaceIsNotKnown", "theTownIsMissing", "theTownIsMissing", "theDayIsBeforeTheLeague",
+						"theDayIsBeforeTheLeague");
 		assertThat(List.of(howMany("btl_event"), howMany("race"))).containsExactly(events, races);
 		assertThat(resultsOf(VERA)).isEmpty();
 	}
