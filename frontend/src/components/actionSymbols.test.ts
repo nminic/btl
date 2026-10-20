@@ -88,6 +88,10 @@ const SYMBOL_OF = new Map<string, { symbol: ActionSymbol; word: string }>([
   ['event.copy', { symbol: SYMBOL.copy, word: 'Kopiranje' }],
   ['event.delete', { symbol: SYMBOL.cross, word: 'Brisanje' }],
   ['event.edit', { symbol: SYMBOL.pencil, word: 'Izmena' }],
+  /* The pencil on every result of the event page (PDL P9, 18.10.2026), named by whose run it is. */
+  ['leagueResults.edit', { symbol: SYMBOL.pencil, word: 'Izmeni' }],
+  /* Taking a row out of the entry of results, as a race is taken out of the form of an event. */
+  ['leagueResults.remove', { symbol: SYMBOL.cross, word: 'Ukloni' }],
   /* Beside a member's own rating on the page of its event (owner, 20.10.2026). */
   ['event.editOwnRating', { symbol: SYMBOL.pencil, word: 'Izmeni svoju ocenu' }],
   ['form.clearPhoto', { symbol: SYMBOL.cross, word: 'Obriši' }],
@@ -210,8 +214,8 @@ const HANDED_DOWN = new Map([
 /** Where something was found, as a person reading the failure would look for it. */
 type Place = { path: string; line: number }
 
-/** A bare button, and the keys its text can be. */
-export type BareButton = Place & { keys: string[] }
+/** A bare button, the keys its text can be, and any character it draws as a symbol. */
+export type BareButton = Place & { keys: string[]; glyphs: string[] }
 
 /**
  * An `ActionButton` or `ActionLink`, and what it carries: one pair per branch of a
@@ -386,6 +390,19 @@ export function buttonsIn(path: string, code: string): { bare: BareButton[]; act
         classes !== undefined && classes.values.some((one) => one.split(/\s+/).includes('button'))
 
       if (tag === 'button' || ((tag === 'Link' || tag === 'a') && styled)) {
+        /* A text with no letter and no digit in it is a symbol drawn as a character: „✎" and „×"
+           stood on the result row of the event page until 20.10.2026. Only where the character is the
+           whole of the text: „+ Dodaj člana" is a word with a sign in front of it and keeps it. */
+        const glyphs = node.children.every((child) => ts.isJsxText(child))
+          ? node.children
+              .map((child) => child.getText(source).trim())
+              .filter((text) => text !== '' && !/[\p{L}\p{N}]/u.test(text))
+          : []
+
+        if (glyphs.length > 0) {
+          bare.push({ ...placeOf(node), keys: [], glyphs })
+        }
+
         for (const child of node.children) {
           const keys =
             ts.isJsxExpression(child) && child.expression !== undefined
@@ -393,7 +410,7 @@ export function buttonsIn(path: string, code: string): { bare: BareButton[]; act
               : undefined
 
           if (keys !== undefined) {
-            bare.push({ ...placeOf(node), keys: keys.values })
+            bare.push({ ...placeOf(node), keys: keys.values, glyphs: [] })
           }
         }
       }
@@ -479,6 +496,13 @@ describe('the buttons that act on one thing', () => {
     )
 
     expect(undecided).toEqual([])
+  })
+
+  it('draw no symbol as a character of text', () => {
+    /* A character is not a drawn symbol: it carries no box with its word, and a screen reader
+       may read it out by its own name, „multiplication sign". The symbols are drawn
+       (`app/icons.tsx`). */
+    expect(bare.filter((one) => one.glyphs.length > 0).map((one) => `${where(one)}: ${one.glyphs.join(' ')}`)).toEqual([])
   })
 
   it('keep the words that stay to what the portal draws today', () => {
@@ -580,15 +604,23 @@ describe('reading a button out of the source', () => {
         "const f = <button>{t(shown ? 'verification.foldCard' : 'verification.openCard')}</button>",
         "const g = <button>{label}{t(key)}{t()}</button>",
         '<button>{}</button>',
+        '<button aria-label="x">×</button>',
+        '<Link className="button" to="/">✎</Link>',
+        '<button>2</button>',
+        "<button>+ {t('leagueResults.addRow')}</button>",
+        '<Link className="nav" to="/">›</Link>',
       ].join('\n'),
     )
 
-    expect(bare.map((one) => ({ line: one.line, keys: one.keys }))).toEqual([
-      { line: 1, keys: ['event.edit'] },
-      { line: 2, keys: ['teams.edit'] },
-      { line: 3, keys: ['event.copy'] },
-      { line: 6, keys: ['shell.signIn'] },
-      { line: 7, keys: ['verification.foldCard', 'verification.openCard'] },
+    expect(bare.map((one) => ({ line: one.line, keys: one.keys, glyphs: one.glyphs }))).toEqual([
+      { line: 1, keys: ['event.edit'], glyphs: [] },
+      { line: 2, keys: ['teams.edit'], glyphs: [] },
+      { line: 3, keys: ['event.copy'], glyphs: [] },
+      { line: 6, keys: ['shell.signIn'], glyphs: [] },
+      { line: 7, keys: ['verification.foldCard', 'verification.openCard'], glyphs: [] },
+      { line: 10, keys: [], glyphs: ['×'] },
+      { line: 11, keys: [], glyphs: ['✎'] },
+      { line: 13, keys: ['leagueResults.addRow'], glyphs: [] },
     ])
   })
 })

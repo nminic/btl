@@ -1816,11 +1816,13 @@
     "member": "Član",
     "rowNumber": "{which}. red",
     "addRow": "Dodaj člana",
+    "remove": "Ukloni",
     "removeRow": "Ukloni {which}. red",
     "save": "Sačuvaj",
     "saving": "Čuva se",
     "chooseMember": "Izaberi člana sa spiska.",
     "figuresMissing": "Upiši sve tražene vrednosti.",
+    "edit": "Izmeni",
     "editNamed": "Izmeni rezultat: {name}",
     "notThere": "Taj rezultat više ne postoji. Osveži stranu događaja.",
     "refused": {

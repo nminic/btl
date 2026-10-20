@@ -825,13 +825,6 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    */
   look?: string
   /**
-   * NOTHING ANY MORE, and it goes with the last screen that passes it. It was what the first button
-   * showed where a row had no room for the word (an x beside the pencil on every result of the
-   * event page, PDL P9, 18.10.2026); since 20.10.2026 every first button here is the cross, so it
-   * is read nowhere. `pages/EventDetail.tsx` still passes it and stops in the same branch.
-   */
-  face?: string
-  /**
    * THE WORDS OF THE QUESTION, WHERE THE THING DELETED IS NOT A RECORD WITH A NAME: a member's own rating
    * of an event (PDL P6, 20.10.2026, the owner's confirmation „Obriši svoju ocenu?"). Left out, every word
    * stays the portal's own („Obriši: {name}", „Sigurno?", „Potvrdi brisanje: {name}", „Odustani od
@@ -844,7 +837,7 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    * something else cannot be pressed by somebody who says what he sees to a speech program. `sure` is
    * then the whole of it.
    *
-   * @param named     what the first button is called, beside whatever `face` shows
+   * @param named     what the first button is called, and the word its cross shows on the pointer
    * @param sure      what the confirming button shows
    * @param sureNamed what it is called, where it is called something else than it shows
    * @param keepNamed what the button that puts the question away is called; it shows „Odustani"

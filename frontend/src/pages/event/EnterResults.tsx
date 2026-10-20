@@ -61,6 +61,8 @@ import {
 } from './leagueResultWrites'
 import '../admin/Entity.css'
 import '../member/Member.css'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 
 /**
  * THE LEAGUE ENTERS THE RESULTS OF SEVERAL MEMBERS ON ONE RACE, OR CHANGES ONE, FROM THE EVENT PAGE.
@@ -369,18 +371,17 @@ function Rows({
                 )}
                 {editing === null && rows.length > 1 && (
                   <div className="race__actions">
-                    <button
-                      type="button"
+                    <ActionButton
+                      symbol={SYMBOL.cross}
+                      word={t('leagueResults.remove')}
                       className="entity-open entity-delete"
-                      aria-label={t('leagueResults.removeRow', { which })}
+                      name={t('leagueResults.removeRow', { which })}
                       onClick={() => {
                         setRows((were) => were.filter((_, one) => one !== at))
                         setChecked([])
                         setRefusal(null)
                       }}
-                    >
-                      ×
-                    </button>
+                    />
                   </div>
                 )}
               </fieldset>
