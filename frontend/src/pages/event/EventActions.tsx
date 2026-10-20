@@ -12,6 +12,8 @@ import { WHEN_WRITING_AN_EVENT } from '../admin/eventWrites'
 import { EVENTS } from '../admin/entityForms'
 import { ran } from './ran'
 import { useMay } from '../admin/rights'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 
 /**
  * What can be done with an event, from the event's own page.
@@ -205,15 +207,9 @@ export function EventActions({
     <div className="rankings__head-tool event__actions">
       {mayEdit && (
         <>
-          <button type="button" className="button button--secondary" onClick={change}>
-            {t('event.edit')}
-          </button>
-          <button type="button" className="button button--secondary" onClick={copy}>
-            {t('event.copy')}
-          </button>
-          <button type="button" className="button button--secondary" onClick={() => void erase()}>
-            {t('event.delete')}
-          </button>
+          <ActionButton symbol={SYMBOL.pencil} word={t('event.edit')} className="button button--secondary" onClick={change} />
+          <ActionButton symbol={SYMBOL.copy} word={t('event.copy')} className="button button--secondary" onClick={copy} />
+          <ActionButton symbol={SYMBOL.cross} word={t('event.delete')} className="button button--secondary" onClick={() => void erase()} />
           {/* What the route said instead of doing it. The reader is still on the
               event's own page when a deletion is refused - nothing navigated - so
               the sentence belongs here, beside the button he pressed. */}

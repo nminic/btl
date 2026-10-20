@@ -7,6 +7,8 @@ import { recordKey } from '../../session/context'
 import { MEMBERS } from '../admin/entityForms'
 import { useToday } from '../../clock/useClock'
 import type { Competitor, Team } from '../../data/types'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 
 /**
  * The two buttons under an invitation, and the sentence that stands where they
@@ -146,8 +148,9 @@ export function InvitationAnswer({
       {shut ? (
         <span className="messages__answered">{t('teams.inviteWaits')}</span>
       ) : (
-      <button
-        type="button"
+      <ActionButton
+        symbol={SYMBOL.check}
+        word={t('teams.inviteAccept')}
         className="button button--secondary"
         onClick={() => {
           /* What the team's own page writes when it takes somebody in, and what
@@ -190,19 +193,16 @@ export function InvitationAnswer({
             })
           }
         }}
-      >
-        {t('teams.inviteAccept')}
-      </button>
+      />
       )}{' '}
-      <button
-        type="button"
+      <ActionButton
+        symbol={SYMBOL.cross}
+        word={t('teams.inviteRefuse')}
         className="button button--quiet"
         onClick={() => {
           close(invitation.id)
         }}
-      >
-        {t('teams.inviteRefuse')}
-      </button>
+      />
     </p>
   )
 }

@@ -19,15 +19,15 @@ import { sources, WHOLE_PORTAL } from '../test/sources'
  *    that key carries. That table is the only list written by hand here; the same
  *    key therefore carries the same symbol on every screen, and a key nobody has
  *    given a symbol fails until somebody does.
- * 2. **Every bare button whose text is a word of the dictionary has been decided
- *    about.** Its key is either owed a symbol (then it is on `NOT_YET_CONVERTED`
- *    until the screen is converted, and fails once it is not), or it keeps its word
- *    (`STAYS_A_WORD`, each with the reason). A button that is neither fails, so a
- *    new one is decided about the day it is written and not found by a review.
+ * 2. **Every bare button whose text is a word of the dictionary keeps its word on
+ *    purpose.** Its key is on `STAYS_A_WORD`, with the reason. A key owed a symbol
+ *    fails there and names the symbol, and a key on neither list fails until it is
+ *    decided about, so a new button is decided about the day it is written and not
+ *    found by a review.
  *
- * **Both tables are held in both directions.** A key left on `NOT_YET_CONVERTED`
- * or `STAYS_A_WORD` that no bare button carries any more fails as well, so the
- * tables say what the portal draws and nothing it used to.
+ * **`STAYS_A_WORD` is held in both directions.** A key on it that no bare button
+ * carries any more fails as well, so it says what the portal draws and nothing it
+ * used to.
  *
  * **What it reads, and what it does not.** A bare button is a `<button>`, or a
  * `<Link>` or `<a>` whose `className` names the class `button`, written out or as a
@@ -88,6 +88,8 @@ const SYMBOL_OF = new Map<string, { symbol: ActionSymbol; word: string }>([
   ['event.copy', { symbol: SYMBOL.copy, word: 'Kopiranje' }],
   ['event.delete', { symbol: SYMBOL.cross, word: 'Brisanje' }],
   ['event.edit', { symbol: SYMBOL.pencil, word: 'Izmena' }],
+  /* Beside a member's own rating on the page of its event (owner, 20.10.2026). */
+  ['event.editOwnRating', { symbol: SYMBOL.pencil, word: 'Izmeni svoju ocenu' }],
   ['form.clearPhoto', { symbol: SYMBOL.cross, word: 'Obriši' }],
   ['myResults.change', { symbol: SYMBOL.pencil, word: 'Izmeni' }],
   ['myResults.sendAgain', { symbol: SYMBOL.again, word: 'Ispravi i pošalji ponovo' }],
@@ -108,40 +110,6 @@ const SYMBOL_OF = new Map<string, { symbol: ActionSymbol; word: string }>([
   ['verification.delete', { symbol: SYMBOL.cross, word: 'Obriši' }],
   ['verification.openCard', { symbol: SYMBOL.down, word: 'Prikaži' }],
   ['verification.foldCard', { symbol: SYMBOL.up, word: 'Sakrij' }],
-])
-
-/**
- * THE BUTTONS STILL DRAWN AS WORDS THAT ARE OWED A SYMBOL. Emptied screen by
- * screen; the day it is empty, every key of `SYMBOL_OF` on a bare button fails.
- */
-const NOT_YET_CONVERTED = new Set([
-  'admin.cancelMembership',
-  'admin.change',
-  'admin.dropRace',
-  'admin.form.delete',
-  'admin.grantExemption',
-  'admin.recordPayment',
-  'event.copy',
-  'event.delete',
-  'event.edit',
-  'form.clearPhoto',
-  'myResults.change',
-  'myResults.sendAgain',
-  'pair.accept',
-  'pair.refuse',
-  'review.amend',
-  'review.approve',
-  'review.sendBack',
-  'teams.edit',
-  'teams.inviteAccept',
-  'teams.inviteRefuse',
-  'teams.inviteWithdraw',
-  'teams.joinRefused',
-  'teams.joinTaken',
-  'verification.activate',
-  'verification.delete',
-  'verification.openCard',
-  'verification.foldCard',
 ])
 
 /* Why a button keeps its word, said once each. */
@@ -443,7 +411,8 @@ describe('the buttons that act on one thing', () => {
   it('are looked for over the whole portal, and found', () => {
     /* A sweep that read nothing passes every question below. */
     expect(portal.length).toBeGreaterThan(WHOLE_PORTAL)
-    expect(bare.length, 'the bare buttons that carry a word of the dictionary').toBeGreaterThan(80)
+    expect(bare.length, 'the bare buttons that carry a word of the dictionary').toBeGreaterThan(60)
+    expect(actions.length, 'the buttons drawn as a symbol').toBeGreaterThan(30)
   })
 
   it('name each word by the word the owner’s map gives it', () => {
@@ -483,7 +452,7 @@ describe('the buttons that act on one thing', () => {
   it('leave no word drawn as a word that has not been decided about', () => {
     const undecided = bare.flatMap((one) =>
       one.keys
-        .filter((key) => !STAYS_A_WORD.has(key) && !NOT_YET_CONVERTED.has(key))
+        .filter((key) => !STAYS_A_WORD.has(key))
         .map((key) =>
           SYMBOL_OF.has(key)
             ? `${where(one)}: ${key} is owed ${String(SYMBOL_OF.get(key)?.symbol)}, draw it with ActionButton`
@@ -494,13 +463,11 @@ describe('the buttons that act on one thing', () => {
     expect(undecided).toEqual([])
   })
 
-  it('keep the two tables to what the portal draws today', () => {
+  it('keep the words that stay to what the portal draws today', () => {
     const drawn = new Set(bare.flatMap((one) => one.keys))
 
-    expect([...NOT_YET_CONVERTED].filter((key) => !drawn.has(key)), 'converted, so off the list').toEqual([])
     expect([...STAYS_A_WORD.keys()].filter((key) => !drawn.has(key)), 'no bare button carries it').toEqual([])
     /* And a key is on one side only. */
-    expect([...NOT_YET_CONVERTED].filter((key) => !SYMBOL_OF.has(key))).toEqual([])
     expect([...STAYS_A_WORD.keys()].filter((key) => SYMBOL_OF.has(key))).toEqual([])
   })
 })

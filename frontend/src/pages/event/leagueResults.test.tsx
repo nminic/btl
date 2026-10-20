@@ -679,7 +679,10 @@ describe('the pencil and the x', () => {
     const ask = within(row).getByRole('button', { name: /^Obriši: / })
     const name = must(ask.getAttribute('aria-label'), 'a name').replace('Obriši: ', '')
 
-    expect(ask).toHaveTextContent('×')
+    /* The cross every deletion on the portal is drawn with since 20.10.2026, and its word for a
+       reader is the one it always had. */
+    expect(ask.querySelector('svg')?.getAttribute('data-symbol')).toBe('cross')
+    expect(ask).toHaveTextContent('Obriši')
 
     await user.click(ask)
     await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${name}` }))

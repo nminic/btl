@@ -15,6 +15,8 @@ import {
 } from './memberPayment'
 import { membershipOnTheRow, overTheExemption, WHEN_PAYING_OVER_THE_EXEMPTION } from './memberMembership'
 import './Activation.css'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 
 /**
  * „UPIS UPLATE" ON ONE ROW OF THE MODERATION OF THE MEMBERS.
@@ -141,8 +143,9 @@ export function RowPayment({
         </p>
       )}
 
-      <button
-        type="button"
+      <ActionButton
+        symbol={SYMBOL.plus}
+        word={t('admin.recordPayment')}
         className="button"
         disabled={press.press === 'nothing'}
         aria-disabled={working ? true : undefined}
@@ -159,9 +162,7 @@ export function RowPayment({
 
           setAsking(question)
         }}
-      >
-        {t('admin.recordPayment')}
-      </button>
+      />
 
       <div className="activate__said" role="status">
         {refused === null ? null : (

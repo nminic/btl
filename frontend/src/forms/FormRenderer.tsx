@@ -46,6 +46,8 @@ import {
   validateForm,
 } from './validate'
 import './FormRenderer.css'
+import { SYMBOL } from '../app/actionSymbol'
+import { ActionButton } from '../components/ActionButton'
 
 type Props = {
   form: FormDef
@@ -844,8 +846,9 @@ const Field = memo(function Field({
           />
 
           {String(value) !== '' && (
-            <button
-              type="button"
+            <ActionButton
+              symbol={SYMBOL.cross}
+              word={t('form.clearPhoto')}
               className="button button--secondary button--compact field__clear"
               onClick={() => {
                 /* The box is remounted in the same stroke (`key` above) and the
@@ -859,9 +862,7 @@ const Field = memo(function Field({
                 setCleared((was) => was + 1)
                 change('')
               }}
-            >
-              {t('form.clearPhoto')}
-            </button>
+            />
           )}
         </span>
       )}

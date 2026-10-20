@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router'
 import { ProfileLink } from '../profile/ProfileLink'
 import { useGrowing } from '../../components/growing'
 import { LoadMore } from '../../components/LoadMore'
@@ -19,6 +18,8 @@ import { useServerIsStillBeingAsked } from '../../session/useServerIsStillBeingA
 import { useReadsComments } from './readsComments'
 import { useSession } from '../../session/useSession'
 import { isActiveMember } from '../../roles/activeMemberOrAdministration'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionLink } from '../../components/ActionButton'
 import { DeleteRecord } from '../admin/EntityEditor'
 import { ServerSaid } from '../account/ServerSaid'
 import type { Answer } from '../account/askTheServer'
@@ -421,18 +422,16 @@ function Comment({
             {/* The pencil: the rating form of the event it was given for, filled in with what he gave
                 (`RateEvent.tsx`). Sent again, it replaces this one (owner, 19.10.2026), at once without
                 words and after a moderator with them, and this one stands until then (20.10.2026). */}
-            <Link
+            <ActionLink
+              symbol={SYMBOL.pencil}
+              word={t('event.editOwnRating')}
               className="button button--secondary button--compact"
-              aria-label={t('event.editOwnRating')}
               to={`/${locale}/kalendar/${his}/ocena`}
-            >
-              ✎
-            </Link>
+            />
             {/* The x, asked twice as every deletion on the portal is, in the owner's words
                 („Obriši svoju ocenu?"). */}
             <DeleteRecord
               name={t('event.deleteOwnRating')}
-              face="×"
               look="button button--secondary button--compact"
               words={{
                 named: t('event.deleteOwnRating'),

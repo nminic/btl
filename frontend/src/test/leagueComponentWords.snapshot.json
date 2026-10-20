@@ -130,6 +130,8 @@
   "src/pages/admin/LeagueRaceModeration.tsx": [
     "-event",
     "-race",
+    "../../app/actionSymbol",
+    "../../components/ActionButton",
     "../../components/Resource",
     "../../data/raceLabel",
     "../../data/raceOrder",
@@ -185,6 +187,8 @@
   "src/pages/league/EditableText.tsx": [
     "-left",
     "-text",
+    "../../app/actionSymbol",
+    "../../components/ActionButton",
     "../../components/Markdown",
     "../../components/TextEditor",
     "../../forms/definitions",
@@ -192,7 +196,6 @@
     "../../i18n/useI18n",
     "../admin/leagueWrites",
     "admin.change",
-    "button",
     "button button--secondary",
     "leagues.notWritten",
     "profile__section",

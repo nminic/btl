@@ -261,8 +261,8 @@ const PRICE_LIST = `
           <h2 id="panel-name">Cenovnik</h2>
           <div class="table-scroll">
             <table class="table"><tbody><tr>
-              <td><button type="button" class="entity-open" aria-disabled="true" aria-label="Otvori" aria-describedby="note" id="refused">Otvori</button><span id="note" hidden>zatvoreno</span></td>
-              <td><button type="button" class="entity-open" aria-disabled="false" aria-label="Otvori" id="live">Otvori</button></td>
+              <td><button type="button" class="entity-open action" aria-disabled="true" aria-label="Otvori" aria-describedby="note" id="refused"><svg class="action__symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-symbol="pencil"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg><span class="visually-hidden">Otvori</span></button><span id="note" hidden>zatvoreno</span></td>
+              <td><button type="button" class="entity-open action" aria-disabled="false" aria-label="Otvori" id="live"><svg class="action__symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" data-symbol="pencil"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"></path></svg><span class="visually-hidden">Otvori</span></button></td>
             </tr></tbody></table>
           </div>
         </section>

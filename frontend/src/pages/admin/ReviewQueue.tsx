@@ -28,6 +28,8 @@ import '../member/Member.css'
    without the import; the import is what says where the class comes from, so
    deleting the sheet breaks the build rather than the screen (ADL A7). */
 import './Verification.css'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 
 /* Every result that has been sent in and not yet decided, as one table, READ FROM THE
  * SERVER AND DECIDED ON IT (R1 of the results flows).
@@ -665,21 +667,21 @@ export function ReviewQueue() {
                                     {t('review.placeRace')}
                                   </button>
                                 ) : (
-                                  <button
-                                    type="button"
+                                  <ActionButton
+                                    symbol={SYMBOL.check}
+                                    word={t('review.approve')}
                                     className="button button--primary"
                                     aria-disabled={deciding}
                                     onClick={() => {
                                       void decide(one, anApproval())
                                     }}
-                                  >
-                                    {t('review.approve')}
-                                  </button>
+                                  />
                                 )}
                                 {/* Opening a box decides nothing, so it is never told off; what
                                     the box sends is, while a decision is out (`decide`). */}
-                                <button
-                                  type="button"
+                                <ActionButton
+                                  symbol={SYMBOL.back}
+                                  word={t('review.sendBack')}
                                   className="button button--secondary"
                                   onClick={() => {
                                     setFixing(null)
@@ -687,26 +689,23 @@ export function ReviewQueue() {
                                     setOpen({ id: one.id, memberNumber: one.memberNumber })
                                     setNote('')
                                   }}
-                                >
-                                  {t('review.sendBack')}
-                                </button>
+                                />
                                 {/* The figures alone are set only on a race the calendar holds: there
                                     the race answers which of them it fixes, and the route counts
                                     the rest at the moderator's numbers. On a race it does not hold
                                     they are set in the panel that names the race, and a row naming
                                     no run has no figures to set. */}
                                 {one.raceId !== null && counted !== null && (
-                                  <button
-                                    type="button"
+                                  <ActionButton
+                                    symbol={SYMBOL.pencil}
+                                    word={t('review.amend')}
                                     className="button button--secondary"
                                     onClick={() => {
                                       setOpen(null)
                                       setPlacing(null)
                                       setFixing({ id: one.id, kind: raceKind(one.raceKind), written: writtenFrom(counted) })
                                     }}
-                                  >
-                                    {t('review.amend')}
-                                  </button>
+                                  />
                                 )}
                               </div>
                               {said?.id === one.id && <WhatTheServerSaid answer={said.answer} />}

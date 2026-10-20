@@ -5,6 +5,8 @@ import { liga } from '../../forms/definitions'
 import { limitOf } from '../../forms/records'
 import { useI18n } from '../../i18n/useI18n'
 import type { LeagueWords } from '../admin/leagueWrites'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 
 /**
  * A piece of what an organiser has written about a competition, read where it is written.
@@ -169,9 +171,7 @@ export function EditableText({
       )}
 
       {canEdit && !editing && (
-        <button type="button" className="button button--secondary" onClick={() => setEditing(true)}>
-          {t('admin.change')}
-        </button>
+        <ActionButton symbol={SYMBOL.pencil} word={t('admin.change')} className="button button--secondary" onClick={() => setEditing(true)} />
       )}
 
       {said}
