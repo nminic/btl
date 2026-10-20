@@ -42,11 +42,15 @@ const SLUG = 'zimski-nocni-polumaraton-2020'
 /** One pixel, which is what „agree" means in the owner's report: the centres of a row's cells. */
 const AGREE = 1
 
-function sample(name: string): unknown {
-  return JSON.parse(readFileSync(fileURLToPath(new URL(`../src/test/mock/${name}.json`, import.meta.url)), 'utf-8'))
+function sample<T>(name: string): T {
+  const read: T = JSON.parse(
+    readFileSync(fileURLToPath(new URL(`../src/test/mock/${name}.json`, import.meta.url)), 'utf-8'),
+  )
+
+  return read
 }
 
-const COMPETITORS = sample('competitors') as Record<string, unknown>[]
+const COMPETITORS = sample<Record<string, unknown>[]>('competitors')
 
 /** Somebody who checks results: a superadmin, who may do everything (`useMay`). */
 const ANSWERS: Answers = {
