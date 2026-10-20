@@ -116,6 +116,19 @@ describe('the sheet of the event page', () => {
     ).toBe('normal')
   })
 
+  it('lets the two columns of words break inside a word, so that a deficit lands on them and not on the figures', () => {
+    /* CI, 20.10.2026: with long names at 360px the time, the points and the buttons were 71,67, 70,97 and
+       70,61px. `table-layout: auto` shaves a column that has a width of its own by what its content can
+       give up, and an unbreakable word is what a column of words cannot give up. `anywhere`, unlike
+       `break-word`, counts a break inside a word in the narrowest the column can be (measured in Chrome in
+       `geometry/resultsRow.geometry.ts`). On the first two cells of a row of the body and nowhere else. */
+    expect(
+      ruleFor(PROFILE, '.table--results tbody td:nth-child(-n + 2)', 'Profile.css').getPropertyValue(
+        'overflow-wrap',
+      ),
+    ).toBe('anywhere')
+  })
+
   it('leaves every other table at the top of its row', () => {
     const shared = unconditionalRules(SHARED, 'table.css').filter((rule) => {
       const parts = rule.selectorText.split(',').map((one) => one.trim())

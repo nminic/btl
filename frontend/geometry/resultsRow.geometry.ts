@@ -224,10 +224,29 @@ const EQUAL: At[] = [
 /** The widest a figure column may be: 6,5rem at the ordinary size, which is what the wide layout caps it at. */
 const CAP = 104 + 1
 
+/**
+ * A family name that is one word, as long as the runner's fonts can make a hyphenated one look: nothing in it
+ * to break at. CI measured the figures at 71,67, 70,97 and 70,61px with LONG at 360px (20.10.2026), a spread
+ * of 1,06px, and the cause is this: `table-layout: auto` shaves a column with a width of its own by what its
+ * content can give up, and the longest word of a name is what the column of words cannot give up. Here on
+ * this machine 24 letters shaved the figures to 66, 63 and 60px and 36 letters made the table 476px inside a
+ * box of 328, so the case does not depend on which font the runner has.
+ */
+const UNBREAKABLE = (letters: number): Answers => ({
+  ...ANSWERS,
+  '/api/competitors': COMPETITORS.map((one) => ({
+    ...one,
+    firstName: 'Aleksandar',
+    lastName: 'Karamanlisopulosovicevicnikolopoulos'.slice(0, letters),
+  })),
+})
+
 const READERS = [
   ['a visitor', { ...ANSWERS, '/api/me': undefined }],
   ['whoever checks results', ANSWERS],
   ['whoever checks results, with long names', LONG],
+  ['whoever checks results, with a name of 24 letters in one word', UNBREAKABLE(24)],
+  ['whoever checks results, with a name of 36 letters in one word', UNBREAKABLE(36)],
 ] as const
 
 for (const at of EQUAL) {

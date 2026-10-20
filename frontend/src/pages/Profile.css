@@ -941,6 +941,22 @@
   white-space: normal;
 }
 
+/* **The two columns of words give way to the figures, never the other way round** (CI, 20.10.2026: with
+   long names at 360px the time, the points and the buttons came out 71,67, 70,97 and 70,61px on the
+   runner's fonts, a spread of 1,06px). `table-layout: auto` hands a deficit to every column in
+   proportion to what it can give up, and a column with a width of its own can be shaved down to the
+   narrowest its content allows. The content of a name or of a race is the longest word in it, and a word
+   that does not break is as wide as it is: a family name of 24 letters took 196px of the 328 and
+   shaved the three figures to 66, 63 and 60px; one of 36 letters made the table 476px inside a box of
+   328. `overflow-wrap: anywhere`, unlike `break-word`, counts a break inside a word in the narrowest the
+   column can be, so the two columns of words can always be made narrower than the figures need and the
+   deficit lands on them. The figures are then exactly what `.results__figure` says, by construction.
+   Only the body: a head is a word of the portal's own. A word breaks mid-letter only when the column
+   cannot hold it whole, which at the ordinary size is a name longer than the column. */
+.table--results tbody td:nth-child(-n + 2) {
+  overflow-wrap: anywhere;
+}
+
 /* Where a share of the table is more than the figures need. 6,5rem is the pencil and the x side by side
    (99px) and the head „Dužina (km)" on one line (95px) with a few pixels to spare for a font that is not
    the one measured on, and a share of 11% is 104px at 953px, the width of the table on a screen 1000px
