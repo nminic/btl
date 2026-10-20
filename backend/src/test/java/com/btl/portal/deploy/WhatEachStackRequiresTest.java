@@ -1071,6 +1071,12 @@ class WhatEachStackRequiresTest {
 	 * needs: the folder comes off the rendered stack, so a stack that moves its pictures to
 	 * another tree leaves the Dockerfile naming a parent that no longer contains them, and a
 	 * recursive chown of the old parent would still be a chown naming the right user.
+	 *
+	 * <p><b>And it is the stage that SHIPS, not the file.</b> {@code backend/Dockerfile} has two
+	 * {@code FROM}s and only the part after the last is the image that is pushed. The commands
+	 * are taken from there ({@link #shippedStageOf}); taken from the first line of the file, a
+	 * {@code chown} moved up into the build stage left this case green on an image without the
+	 * folder or its owner (measured twice, 21 of 21).
 	 */
 	@Test
 	@SuppressWarnings("unchecked")
@@ -1078,26 +1084,16 @@ class WhatEachStackRequiresTest {
 		List<String> dockerfile = Files.readAllLines(Path.of("..", "backend", "Dockerfile"),
 				StandardCharsets.UTF_8);
 
-		int dropsPrivilege = -1;
+		ShippedStage shipped = shippedStageOf(dockerfile);
 
-		for (int at = 0; at < dockerfile.size(); at++) {
-			if (dockerfile.get(at).strip().startsWith("USER ")) {
-				dropsPrivilege = at;
-			}
-		}
-
-		assertThat(dropsPrivilege)
-				.as("backend/Dockerfile no longer drops privilege at all, so the image runs as"
-						+ " root and this case is asking about a problem that has been replaced"
-						+ " by a larger one")
+		assertThat(shipped.dropsPrivilege())
+				.as("the stage of backend/Dockerfile that is shipped, the one after its last FROM,"
+						+ " no longer drops privilege at all, so the image runs as root and this"
+						+ " case is asking about a problem that has been replaced by a larger one")
 				.isNotNegative();
 
-		String whoItRunsAs = dockerfile.get(dropsPrivilege).strip().substring("USER ".length())
-				.strip();
-
-		List<String> commandsBeforeThat = dockerfile.subList(0, dropsPrivilege).stream()
-				.filter(line -> !line.strip().startsWith("#"))
-				.toList();
+		String whoItRunsAs = shipped.whoItRunsAs();
+		List<String> commandsBeforeThat = shipped.commandsBeforeThat();
 
 		for (Path stack : everyStackThisRunbookGivesARecipeFor().toList()) {
 			Map<String, String> distinct = new LinkedHashMap<>();
@@ -1134,6 +1130,113 @@ class WhatEachStackRequiresTest {
 							whoItRunsAs)
 					.anyMatch(line -> owning.matcher(line).find());
 		}
+	}
+
+	/**
+	 * The stage of a Dockerfile that is SHIPPED: where the last {@code FROM} begins, the user that
+	 * stage drops to, and the commands (comments left out) between those two lines.
+	 *
+	 * <p>{@code backend/Dockerfile} has two {@code FROM}s, and only what follows the last one is
+	 * the image that is pushed; the first is the stage that builds the jar and is thrown away.
+	 * <b>The commands used to be taken from the first line of the file</b>, so the only condition
+	 * on a {@code chown} was „before {@code USER}", not „in the stage that ships". Measured: the
+	 * command moved up into the build stage left this case 21 of 21 green, and the image that
+	 * ships had neither the folder nor its owner, so the first picture a member uploaded would
+	 * have fallen. {@code dropsPrivilege} is -1 when the shipped stage has no {@code USER} of its
+	 * own; a {@code USER} in an earlier stage does not count for the image that ships.
+	 *
+	 * <p>{@code FROM} is a keyword and a Dockerfile takes it in any case, so it is found
+	 * case-insensitively. A Dockerfile with no {@code FROM} at all is read from its first line.
+	 */
+	static ShippedStage shippedStageOf(List<String> dockerfile) {
+		int stageStarts = 0;
+
+		for (int at = 0; at < dockerfile.size(); at++) {
+			if (FROM_LINE.matcher(dockerfile.get(at)).find()) {
+				stageStarts = at;
+			}
+		}
+
+		int dropsPrivilege = -1;
+
+		for (int at = stageStarts; at < dockerfile.size(); at++) {
+			if (dockerfile.get(at).strip().startsWith("USER ")) {
+				dropsPrivilege = at;
+			}
+		}
+
+		if (dropsPrivilege < 0) {
+			return new ShippedStage(-1, "", List.of());
+		}
+
+		return new ShippedStage(dropsPrivilege,
+				dockerfile.get(dropsPrivilege).strip().substring("USER ".length()).strip(),
+				dockerfile.subList(stageStarts, dropsPrivilege).stream()
+						.filter(line -> !line.strip().startsWith("#"))
+						.toList());
+	}
+
+	private static final Pattern FROM_LINE = Pattern.compile("^\\s*(?i:FROM)\\s");
+
+	/** The shipped stage of a Dockerfile: see {@link #shippedStageOf}. */
+	record ShippedStage(int dropsPrivilege, String whoItRunsAs, List<String> commandsBeforeThat) {
+	}
+
+	/**
+	 * THE JUDGE OF THE CASE ABOVE, HELD ON THE TWO PLACES A COMMAND CAN STAND: in the stage that
+	 * is thrown away, which must not be listened to, and in the stage that ships, which must.
+	 * The real Dockerfile has its command in the right place, so the case above never sees this
+	 * half refuse anything; it is held here, and it is the half that failed silently.
+	 */
+	@Test
+	void aCommandInTheStageThatIsThrownAwayIsNotOneOfTheImageThatShips() {
+		List<String> dockerfile = List.of(
+				"FROM eclipse-temurin:21-jdk AS build",
+				"RUN mkdir -p /var/lib/btl/photos && chown -R btl:btl /var/lib/btl/photos",
+				"",
+				"FROM eclipse-temurin:21-jre",
+				"RUN useradd --system --uid 1001 btl",
+				"USER btl");
+
+		ShippedStage shipped = shippedStageOf(dockerfile);
+
+		assertThat(shipped.whoItRunsAs()).isEqualTo("btl");
+		assertThat(shipped.commandsBeforeThat())
+				.as("the chown stands in the build stage, which is not the image that ships")
+				.noneMatch(line -> line.contains("chown"))
+				.containsExactly("FROM eclipse-temurin:21-jre", "RUN useradd --system --uid 1001 btl");
+	}
+
+	@Test
+	void aCommandInTheStageThatShipsIsHeard() {
+		List<String> dockerfile = List.of(
+				"FROM eclipse-temurin:21-jdk AS build",
+				"USER root",
+				"from eclipse-temurin:21-jre",
+				"# chown btl:btl /commented",
+				"RUN mkdir -p /var/lib/btl/photos && chown -R btl:btl /var/lib/btl/photos",
+				"USER btl",
+				"ENTRYPOINT [\"java\"]");
+
+		ShippedStage shipped = shippedStageOf(dockerfile);
+
+		assertThat(shipped.dropsPrivilege()).isEqualTo(5);
+		assertThat(shipped.commandsBeforeThat())
+				.containsExactly("from eclipse-temurin:21-jre",
+						"RUN mkdir -p /var/lib/btl/photos && chown -R btl:btl /var/lib/btl/photos");
+	}
+
+	@Test
+	void aUserOfAnEarlierStageIsNotTheOneTheImageThatShipsRunsAs() {
+		List<String> dockerfile = List.of(
+				"FROM eclipse-temurin:21-jdk AS build",
+				"USER builder",
+				"FROM eclipse-temurin:21-jre",
+				"RUN chown -R btl:btl /var/lib/btl/photos");
+
+		assertThat(shippedStageOf(dockerfile).dropsPrivilege())
+				.as("the stage that ships never drops privilege, so the image runs as root")
+				.isNegative();
 	}
 
 	/**
