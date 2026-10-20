@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { categoryLabel } from '../data/categories'
-import { Link, useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { Resource } from '../components/Resource'
@@ -40,6 +40,8 @@ import './Profile.css'
 import { CompetitorName } from '../components/CompetitorName'
 import { AskingThisTeam } from './AskingThisTeam'
 import { TeamQueue } from './TeamQueue'
+import { SYMBOL } from '../app/actionSymbol'
+import { ActionLink } from '../components/ActionButton'
 
 /* A team is the only entity besides a competitor that carries a standing, so
  * its page is built the same way. Three of one width across the top (owner,
@@ -344,12 +346,12 @@ export function TeamDetail() {
                             everybody who is not signed in. */}
                         {mineToRun && (
                           <>
-                            <Link
+                            <ActionLink
+                              symbol={SYMBOL.pencil}
+                              word={t('teams.edit')}
                               className="button button--secondary"
                               to={`/${locale}/tim/${team.slug}/izmena`}
-                            >
-                              {t('teams.edit')}
-                            </Link>
+                            />
                             {/* Asked twice before it happens, and asked by the portal's one
                                 way of asking about something nothing brings back
                                 (`DeleteRecord`), dressed as the button beside it. Not a

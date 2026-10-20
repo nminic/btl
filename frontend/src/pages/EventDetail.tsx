@@ -36,6 +36,8 @@ import { EventComments } from './event/EventComments'
 import { theLeagueDeleted, THE_LEAGUE_ENTERING } from './event/leagueResultWrites'
 import type { Answer } from './account/askTheServer'
 import { ServerSaid } from './account/ServerSaid'
+import { SYMBOL } from '../app/actionSymbol'
+import { ActionLink } from '../components/ActionButton'
 import { DeleteRecord } from './admin/EntityEditor'
 import { QUEUE } from './admin/queues'
 import { queueRight, useMay } from './admin/rights'
@@ -464,18 +466,17 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                                   member fixed (`event/EnterResults.tsx`). Named by whose run it is,
                                   because a column of pencils is one control said many times over
                                   (WCAG 2.2 SC 2.4.4). */}
-                              <Link
+                              <ActionLink
+                                symbol={SYMBOL.pencil}
+                                word={t('leagueResults.edit')}
                                 className="button button--secondary button--compact"
-                                aria-label={t('leagueResults.editNamed', { name: named })}
+                                name={t('leagueResults.editNamed', { name: named })}
                                 to={`/${locale}/kalendar/${slug}/rezultati?trka=${String(result.raceId)}&rezultat=${String(result.id)}`}
-                              >
-                                ✎
-                              </Link>
+                              />
                               {/* The x: asked twice, as every deletion on the portal is, and named
                                   by the run it takes away. */}
                               <DeleteRecord
                                 name={named}
-                                face="×"
                                 look="button button--secondary button--compact"
                                 onDelete={() =>
                                   theLeagueDeleted(result.raceId, result.id).then((answer) => {

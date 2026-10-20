@@ -1816,11 +1816,13 @@
     "member": "Member",
     "rowNumber": "Row {which}",
     "addRow": "Add a member",
+    "remove": "Remove",
     "removeRow": "Remove row {which}",
     "save": "Save",
     "saving": "Saving",
     "chooseMember": "Choose a member from the list.",
     "figuresMissing": "Fill in every value asked for.",
+    "edit": "Change",
     "editNamed": "Change the result: {name}",
     "notThere": "That result is no longer there. Reload the page of the event.",
     "refused": {

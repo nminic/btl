@@ -20,6 +20,8 @@ import {
   type RaceRow,
 } from './raceRows'
 import './Entity.css'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 
 /**
  * The id of the sentence that says what is wrong with ONE cell, which that cell is described by.
@@ -545,10 +547,11 @@ export function EventRaces({
               )}
 
               <div className="race__actions">
-                <button
-                  type="button"
+                <ActionButton
+                  symbol={SYMBOL.cross}
+                  word={t('admin.form.delete')}
                   className="entity-open entity-delete"
-                  aria-label={t('admin.form.removeRow', {
+                  name={t('admin.form.removeRow', {
                     which: String(at + 1),
                   })}
                   /* Told off while the save is out, and refused in the handler as well:
@@ -561,9 +564,7 @@ export function EventRaces({
 
                     onRows(rows.filter((_, index) => index !== at))
                   }}
-                >
-                  {t('admin.form.delete')}
-                </button>
+                />
               </div>
             </fieldset>
           ))}

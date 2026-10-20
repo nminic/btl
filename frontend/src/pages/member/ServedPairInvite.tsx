@@ -3,6 +3,8 @@ import { useI18n } from '../../i18n/useI18n'
 import { ServerSaid } from '../account/ServerSaid'
 import type { Answer } from '../account/askTheServer'
 import { WHEN_ANSWERING_A_PAIR_INVITE, theServerWasAnswered } from './pairWrites'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 
 /**
  * „PRIHVATI" AND „ODBIJ", UNDER A MESSAGE THE SERVER IS KEEPING, AND THEY REACH THE SERVER.
@@ -143,26 +145,24 @@ export function ServedPairInvite({ invite }: { invite: number }) {
             focus to the top of the document, so the one person who cannot see where he landed
             is the one it happens to. Told off instead, he stays where he is and the press is
             refused by `answer` above. */}
-        <button
-          type="button"
+        <ActionButton
+          symbol={SYMBOL.check}
+          word={t('pair.accept')}
           className="button"
           aria-disabled={sending}
           onClick={() => {
             void answer(true)
           }}
-        >
-          {t('pair.accept')}
-        </button>{' '}
-        <button
-          type="button"
+        />{' '}
+        <ActionButton
+          symbol={SYMBOL.cross}
+          word={t('pair.refuse')}
           className="button button--secondary"
           aria-disabled={sending}
           onClick={() => {
             void answer(false)
           }}
-        >
-          {t('pair.refuse')}
-        </button>
+        />
       </p>
       {said !== null && <ServerSaid answer={said} refusals={WHEN_ANSWERING_A_PAIR_INVITE} />}
     </>

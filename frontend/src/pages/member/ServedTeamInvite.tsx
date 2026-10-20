@@ -12,6 +12,8 @@ import {
   theInvitationStanding,
   theServerWasAnswered,
 } from './teamWrites'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 
 /**
  * „PRIHVATI" AND „ODBIJ", UNDER A TEAM'S INVITATION THE SERVER IS KEEPING, AND THEY REACH
@@ -206,16 +208,15 @@ function TheAnswer({
              in that instant, the element leaves the tab order under his feet and the browser
              drops focus to the top of the document, so the one person who cannot see where
              he landed is the one it happens to. */
-          <button
-            type="button"
+          <ActionButton
+            symbol={SYMBOL.check}
+            word={t('teams.inviteAccept')}
             className="button"
             aria-disabled={sending}
             onClick={() => {
               void answer(team, true)
             }}
-          >
-            {t('teams.inviteAccept')}
-          </button>
+          />
         ) : (
           /* The sentence where the button was, which is `member/InvitationAnswer.tsx`'s own
              arrangement for the identical state: a `span` inside the same paragraph, beside
@@ -226,16 +227,15 @@ function TheAnswer({
             {t(words[standing.accept])}
           </span>
         )}{' '}
-        <button
-          type="button"
+        <ActionButton
+          symbol={SYMBOL.cross}
+          word={t('teams.inviteRefuse')}
           className="button button--secondary"
           aria-disabled={sending}
           onClick={() => {
             void answer(team, false)
           }}
-        >
-          {t('teams.inviteRefuse')}
-        </button>
+        />
       </p>
       {said !== null && <ServerSaid answer={said} refusals={words} />}
     </>

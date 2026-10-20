@@ -16,6 +16,8 @@ import { ServerSaid } from '../account/ServerSaid'
 import { aCorrectionWaitsOn } from './correctionWaits'
 import { saysTheResultIsGone, theResultWasTakenBack, WHEN_A_RESULT_IS_WRITTEN } from './resultWrites'
 import './Member.css'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionLink } from '../../components/ActionButton'
 
 /* Everything a member has sent in, in one place: what is still waiting, what
  * was sent back and why, and what has been counted. A result does not appear
@@ -243,13 +245,13 @@ function Mine({ me }: { me: string }) {
                             otherwise tell apart. */}
                         {one.state === 'rejected' && !aCorrectionWaitsOn(mine, one.amendsResultId) && (
                           <p className="submissions__again">
-                            <Link
+                            <ActionLink
+                              symbol={SYMBOL.again}
+                              word={t('myResults.sendAgain')}
                               className="button button--secondary"
-                              aria-label={t('myResults.sendAgainNamed', { name: one.raceName })}
+                              name={t('myResults.sendAgainNamed', { name: one.raceName })}
                               to={`/${locale}/rezultat/novi?ponovo=${String(one.id)}`}
-                            >
-                              {t('myResults.sendAgain')}
-                            </Link>
+                            />
                           </p>
                         )}
                       </li>
@@ -379,13 +381,13 @@ function Mine({ me }: { me: string }) {
                                   The way on is not lost while one waits: the correction is in the
                                   list above, and the moderator is the one deciding it. */}
                               {!aCorrectionWaitsOn(mine, result.id) && (
-                                <Link
+                                <ActionLink
+                                  symbol={SYMBOL.pencil}
+                                  word={t('myResults.change')}
                                   className="button button--secondary"
-                                  aria-label={t('myResults.changeNamed', { name: result.raceName })}
+                                  name={t('myResults.changeNamed', { name: result.raceName })}
                                   to={`/${locale}/rezultat/novi?ispravka=${String(result.id)}`}
-                                >
-                                  {t('myResults.change')}
-                                </Link>
+                                />
                               )}
                               <DeleteRecord
                                 name={result.raceName}

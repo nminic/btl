@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { SYMBOL } from '../app/actionSymbol'
+import { ActionButton } from './ActionButton'
 
 /**
  * A labelled value with a button that copies it, and a confirmation that says whether
@@ -70,24 +72,17 @@ export function CopyField({
       {label !== undefined && <p className="member__note">{label}</p>}
       <p className="pay__payload">
         <span className="pay__link">{value}</span>
-        <button
-          type="button"
+        {/* The two sheets it has always drawn, now the portal's own symbol for copying, and
+            with the same box on the pointer and on the keyboard as every other symbol (owner,
+            20.10.2026). The name says which value it copies, so it is the word as well. */}
+        <ActionButton
+          symbol={SYMBOL.copy}
+          word={copyButtonLabel}
           className="copyLink"
-          aria-label={copyButtonLabel}
           onClick={() => {
             void copy()
           }}
-        >
-          <svg
-            className="copyLink__icon"
-            viewBox="0 0 20 20"
-            aria-hidden="true"
-            focusable="false"
-          >
-            <rect x="7.5" y="7.5" width="9" height="9" rx="1.5" />
-            <path d="M4.5 12.5h-1a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1" />
-          </svg>
-        </button>
+        />
       </p>
       <p aria-live="polite" className="member__note">
         {status}

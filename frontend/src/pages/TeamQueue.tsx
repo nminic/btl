@@ -8,6 +8,8 @@ import { useI18n } from '../i18n/useI18n'
 import { ServerSaid } from './account/ServerSaid'
 import { WHEN_DECIDING_AN_APPLICATION } from './joiningThisTeam'
 import { useTeamQueue, type QueueRefusal, type QueueRow } from './useTeamQueue'
+import { SYMBOL } from '../app/actionSymbol'
+import { ActionButton } from '../components/ActionButton'
 
 /**
  * WHAT IS WAITING ON THIS TEAM, AND THE TEAM'S ANSWER TO IT, BOTH ON THE SERVER.
@@ -172,10 +174,11 @@ export function TeamQueue({
                         screen, and a reader who arrives at „Primi u tim" is answered „about
                         whom" by nothing (WCAG 2.2 AA, SC 2.4.6; review, 06.09.2026). */}
                     {mayTakeHimIn && (
-                      <button
-                        type="button"
+                      <ActionButton
+                        symbol={SYMBOL.check}
+                        word={t('teams.joinTaken')}
                         className="button button--secondary"
-                        aria-label={t('teams.joinTakenNamed', { name: said })}
+                        name={t('teams.joinTakenNamed', { name: said })}
                         /* Told off rather than switched off, which is `member/Membership.tsx`'s
                            own reason: a control that goes away takes the keyboard focus with
                            it. The press is refused in the handler, because `aria-disabled`
@@ -184,21 +187,18 @@ export function TeamQueue({
                         onClick={() => {
                           void decide(one.id, true)
                         }}
-                      >
-                        {t('teams.joinTaken')}
-                      </button>
+                      />
                     )}{' '}
-                    <button
-                      type="button"
+                    <ActionButton
+                      symbol={SYMBOL.cross}
+                      word={t('teams.joinRefused')}
                       className="button button--secondary"
-                      aria-label={t('teams.joinRefusedNamed', { name: said })}
+                      name={t('teams.joinRefusedNamed', { name: said })}
                       aria-disabled={busy(row) ? true : undefined}
                       onClick={() => {
                         void decide(one.id, false)
                       }}
-                    >
-                      {t('teams.joinRefused')}
-                    </button>
+                    />
                   </p>
                   {why(row)}
                 </li>
@@ -247,17 +247,16 @@ export function TeamQueue({
                         („[IZVEDENO, ne pitano] Povlacenje poziva takodje sme samo
                         administrator."). The missing window is reasoning by analogy with
                         „Odbij", and is written down as such. */}
-                    <button
-                      type="button"
+                    <ActionButton
+                      symbol={SYMBOL.back}
+                      word={t('teams.inviteWithdraw')}
                       className="button button--secondary"
-                      aria-label={t('teams.inviteWithdrawNamed', { name: said })}
+                      name={t('teams.inviteWithdrawNamed', { name: said })}
                       aria-disabled={busy(row) ? true : undefined}
                       onClick={() => {
                         void takeBack(one.id)
                       }}
-                    >
-                      {t('teams.inviteWithdraw')}
-                    </button>
+                    />
                   </p>
                   {why(row)}
                 </li>

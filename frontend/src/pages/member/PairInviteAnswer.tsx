@@ -4,6 +4,8 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { useToday } from '../../clock/useClock'
 import type { Competitor, RacingPair } from '../../data/types'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 
 /**
  * „Prihvati" and „Odbij", under the message that asks somebody into a racing pair.
@@ -106,8 +108,9 @@ export function PairInviteAnswer({
 
   return (
     <p className="messages__answer">
-      <button
-        type="button"
+      <ActionButton
+        symbol={SYMBOL.check}
+        word={t('pair.accept')}
         className="button"
         onClick={() => {
           takeOutOf(theirs)
@@ -127,18 +130,15 @@ export function PairInviteAnswer({
           })
           closePairInvite(id)
         }}
-      >
-        {t('pair.accept')}
-      </button>{' '}
-      <button
-        type="button"
+      />{' '}
+      <ActionButton
+        symbol={SYMBOL.cross}
+        word={t('pair.refuse')}
         className="button button--secondary"
         onClick={() => {
           closePairInvite(id)
         }}
-      >
-        {t('pair.refuse')}
-      </button>
+      />
     </p>
   )
 }

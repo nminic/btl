@@ -23,6 +23,8 @@ import { QUEUE } from './queues'
 import '../member/Member.css'
 import './Activation.css'
 import './Verification.css'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 
 /** Where the search box is, so its label points at it. */
 const SEARCH_ID = 'payments-search'
@@ -359,8 +361,9 @@ function Row({
           `position: fixed`, so where it sits in the markup decides nothing about where it is
           drawn. */}
       <td>
-        <button
-          type="button"
+        <ActionButton
+          symbol={SYMBOL.check}
+          word={t('verification.activate')}
           className="button"
           /* DISABLED FOR THE ONE CASE THAT SENDS NOTHING, which since 28.09.2026 is no longer
              four of the owner's seven but the eighth that is not his: a field that cannot be read
@@ -406,9 +409,7 @@ function Row({
                arriving some other way closes a sheet that was not open and does nothing else. */
             setAsking(question)
           }}
-        >
-          {t('verification.activate')}
-        </button>
+        />
 
         {/* A LIVE REGION ALWAYS ON THE PAGE, with only its content changing. The shape is
             `Statement` above and the reason it gives: a region added to the page together with

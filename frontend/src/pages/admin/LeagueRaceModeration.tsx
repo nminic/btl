@@ -10,6 +10,8 @@ import { countedDaysOf } from './leagueCounted'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { WHEN_MODERATING_LEAGUE_RACES } from './leagueWrites'
 import '../Leagues.css'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 
 /**
  * WHICH RACES COUNT TOWARDS ONE COMPETITION, AND THE `+` THAT PUTS ONE THERE.
@@ -244,16 +246,15 @@ export function LeagueRaceModeration({
                                   race, which is how this portal already names a control that
                                   repeats - and the visible words are the first part of the
                                   name, which is what SC 2.5.3 asks. */}
-                              <button
-                                type="button"
+                              <ActionButton
+                                symbol={SYMBOL.cross}
+                                word={t('admin.dropRace')}
                                 className="button button--secondary"
-                                aria-label={t('admin.dropRaceNamed', {
+                                name={t('admin.dropRaceNamed', {
                                   race: raceLabel(race, run, locale),
                                 })}
                                 onClick={() => void takeOutOfTheLeague(race)}
-                              >
-                                {t('admin.dropRace')}
-                              </button>
+                              />
                             </li>
                           ))}
                         </ul>

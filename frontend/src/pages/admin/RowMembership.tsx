@@ -16,6 +16,8 @@ import {
   WHEN_GRANTING_AN_EXEMPTION,
 } from './memberMembership'
 import './Activation.css'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 
 /** Which act a question is about: a cancellation, the change of a payment to the exemption, or a grant. */
 type Act = 'cancel' | 'toTheExemption' | 'grant'
@@ -112,8 +114,9 @@ export function RowMembership({
   return (
     <div>
       {basis === undefined ? (
-        <button
-          type="button"
+        <ActionButton
+          symbol={SYMBOL.shieldCheck}
+          word={t('admin.grantExemption')}
           className="button"
           onClick={() =>
             setAsking({
@@ -123,12 +126,11 @@ export function RowMembership({
               how: 'POST',
             })
           }
-        >
-          {t('admin.grantExemption')}
-        </button>
+        />
       ) : (
-        <button
-          type="button"
+        <ActionButton
+          symbol={SYMBOL.undo}
+          word={t('admin.cancelMembership')}
           className="button"
           onClick={() =>
             setAsking({
@@ -138,9 +140,7 @@ export function RowMembership({
               how: 'DELETE',
             })
           }
-        >
-          {t('admin.cancelMembership')}
-        </button>
+        />
       )}
       {offered.toTheExemption && (
         <button

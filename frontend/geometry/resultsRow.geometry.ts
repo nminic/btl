@@ -374,7 +374,13 @@ for (const at of EQUAL) {
               const style = getComputedStyle(cell)
 
               const box = cell.getBoundingClientRect()
-              const words = range.getBoundingClientRect()
+              /* The cell of the pencil and the x holds no words since 20.10.2026: two drawn symbols, each
+                 with its word as text clipped to a pixel for a screen reader (`visually-hidden`). A range
+                 over that text answers where the letters WOULD stand unclipped, 40px past the pixel they
+                 are cut to, so the cell is measured by the group of buttons it draws, as the case of the
+                 centres above measures it. */
+              const group = cell.querySelector('.entity-row-actions')
+              const words = group === null ? range.getBoundingClientRect() : group.getBoundingClientRect()
               const left = box.left + Number.parseFloat(style.paddingLeft)
               const right = box.right - Number.parseFloat(style.paddingRight)
 

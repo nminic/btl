@@ -1,0 +1,128 @@
+/* A button that acts on one thing, drawn as a symbol (ActionButton.tsx).
+ *
+ * Its colours, its hover and its look when it cannot act are the look the button
+ * had before (`.button--secondary`, `.button--primary`, `.entity-open`, `.copyLink`),
+ * worn by the same element; this sheet only makes it a square with the symbol in
+ * the middle.
+ *
+ * THE TWO THINGS A SCREEN MAY STILL SAY ABOUT IT, AND THE TWO IT MAY NOT (review of
+ * PR 593, both measured in Chrome):
+ *
+ * - **Whether it is drawn at all is the screen's.** The square sets no `display` of
+ *   any weight that could beat one: the queues hide „Prikaži" on a wide screen with
+ *   `display: none` on one class (`Verification.css`, `.pending__toggle`), and a
+ *   `display` written here at two classes drew the chevron on the desktop over cards
+ *   that were all open. The one `display` below is inside `:where()`, which weighs
+ *   nothing, so it only stands in for a look that names none (an `<a>` is inline).
+ * - **The size is the square's**, written on the class twice so it outweighs any one
+ *   class of a look (`.button--compact` gives a height of its own).
+ * - **Where the symbol stands is the square's, and padding has no say in it.** A
+ *   screen dresses its buttons with rules of two classes (`.review__decide .button`,
+ *   `.my-results__own .button`, Member.css) that are as heavy as anything here and come
+ *   later in the bundle, and with their padding the symbol stood 6px off the centre.
+ *   So the symbol is not laid out in the flow at all: it is placed in the middle of
+ *   the button's padding box (`position: absolute`, `inset: 0`, `margin: auto`), which
+ *   is the same place whatever padding a look gives. The size does not move either,
+ *   because every box on the portal is `border-box` (index.css).
+ *
+ * Two rem a side, which is 32 pixels at the size the browser starts from and never
+ * under the 24 WCAG 2.2 SC 2.5.8 asks of a target. jsdom lays nothing out, so the
+ * size is held where it is written (ActionButton.test.tsx, as the stars are held in
+ * styles/goldBand.test.ts), and where it lands is asked of Chrome on every screen
+ * that draws one (geometry/actionTip.geometry.ts). */
+:where(.action) {
+  display: inline-block;
+}
+
+.action.action {
+  position: relative;
+  inline-size: 2rem;
+  block-size: 2rem;
+  padding: 0;
+  line-height: 1;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+/* A LINE OF NOTHING IN THE MIDDLE OF THE SQUARE, so the square has a baseline of its own.
+ *
+   The symbol is out of the flow (above), and a box with nothing in the flow has no baseline: one is
+   made up from its bottom edge, and wherever a container lines its children up by their baselines the
+   square stood about ten pixels too high (review of PR 593: the chevron beside the heading of a card,
+   `.submissions__head`, `align-items: baseline`, Member.css; and the row of symbols in a table stood
+   2,5px above the words beside it). Fixed here and not in each container, so that no container can
+   repeat it: with this line the row of a table needs nothing of its own (measured, `resultsRow`).
+ *
+   A zero-width space, a line of text that draws nothing and takes no width, in a box as tall as the
+   square's content with its one line centred (`align-content`). That holds whether the look lays
+   the button out as a block (`.button`, `.entity-open`) or as a flex box (`.button--compact`), and
+   whatever padding a screen gives, since the padding is the same above and below. Its text is given
+   an empty alternative (`/ ''`), so nothing is added to the name a screen reader hears. */
+.action.action::before {
+  content: '\200b' / '';
+  display: inline-block;
+  block-size: 100%;
+  align-content: center;
+}
+
+/* The drawing, a little over half the square, in whatever colour the button's
+   text is: the ink of `.button--secondary` on the page, the light ink of
+   `.button--primary` on its blue. Both reach 3:1 against what they stand on in
+   both themes (WCAG 2.2 SC 1.4.11), which ActionButton.test.tsx measures.
+
+   In the middle of the button whatever its padding (see the head of this sheet). */
+.action__symbol {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  inline-size: 1.125rem;
+  block-size: 1.125rem;
+}
+
+/* The box with the word, over the page and not in it, drawn into the body and
+   placed against the window by ActionButton.tsx.
+ *
+   The box is two things on purpose. This outer one is invisible and touches the
+   button; its padding is the gap a reader sees between the button and the words.
+   So the way from the button into the words never crosses bare page, and the
+   pointer is never for one moment on neither, which would close the box under it a
+   few pixels short of the words it opened for (WCAG 2.2 SC 1.4.13, hoverable;
+   forms/FieldHint.css paid for that lesson first).
+ *
+   IT TAKES NO POINTER (owner, 20.10.2026: the box must not get in the way). A press
+   anywhere on it goes to what is under it, a neighbour it happens to stand over
+   included; measured in review, a box that took presses swallowed the first press on
+   its neighbour three times in six. Whether the pointer is over it is asked of its
+   geometry instead (ActionButton.tsx, `stillHere`).
+ *
+   Above the sheet a question opens in (components/Prompt.css, 50) and under the
+   loader that covers the whole page (components/Loader.css, 100). */
+.action-tip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  inline-size: max-content;
+  padding-block: var(--space-4);
+  pointer-events: none;
+}
+
+/* Small print, as the hint of a field is (forms/FieldHint.css), on the surface the
+   page draws its cards on, so it reads in both themes. */
+.action-tip__words {
+  display: block;
+  padding: var(--space-2) var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-6);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+/* The word itself, out of the attribute the component writes it in
+   (ActionButton.tsx says why it is not text). */
+.action-tip__words::before {
+  content: attr(data-word);
+}

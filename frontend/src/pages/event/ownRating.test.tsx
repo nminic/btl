@@ -147,6 +147,24 @@ describe('the pencil and the x', () => {
     expect(his).toBeLessThan(cards.length - 1)
   }, LONGER_THAN_A_MISS)
 
+  it('are a pencil and a cross, each carrying its own words as the word it shows', async () => {
+    /* Owner, 20.10.2026: the pencil „Izmeni svoju ocenu" and the cross „Obriši svoju ocenu", and the
+       question it opens keeps its words. The word a symbol shows on the pointer is its text
+       (`components/ActionButton.tsx`), so the text is what is asked: the cross handed the words of
+       the question instead would still be NAMED right and would show the wrong thing. */
+    server = holding(served())
+    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
+
+    const list = await theList()
+    const pencil = at(await within(list).findAllByRole('link', { name: sr.event.editOwnRating }), 0)
+    const cross = at(within(list).getAllByRole('button', { name: sr.event.deleteOwnRating }), 0)
+
+    expect(pencil.querySelector('svg')?.getAttribute('data-symbol')).toBe('pencil')
+    expect(pencil.textContent).toBe(sr.event.editOwnRating)
+    expect(cross.querySelector('svg')?.getAttribute('data-symbol')).toBe('cross')
+    expect(cross.textContent).toBe(sr.event.deleteOwnRating)
+  }, LONGER_THAN_A_MISS)
+
   it('stand nowhere for the administration, nor for a member whose fee has lapsed', async () => {
     /* A moderator who is the member whose fee lapsed reads the comments as the administration, and
        his number is on one of them: the server would refuse him the deletion (`CommentWriteApi`,

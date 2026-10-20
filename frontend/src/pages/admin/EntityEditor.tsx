@@ -2,6 +2,8 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } f
 import { FormRenderer } from '../../forms/FormRenderer'
 import { fieldValue, shownValue, textFrom, valuesFor } from '../../forms/records'
 import type { FieldError, FieldOption, FormDef, FormValues } from '../../forms/types'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 import { useI18n } from '../../i18n/useI18n'
 import { plainWords } from '../../forms/worded'
 import { useSession } from '../../session/useSession'
@@ -701,11 +703,15 @@ export function OpenRecord({
 }) {
   const { t } = useI18n()
 
+  /* A pencil since 20.10.2026 (owner: „nego da budu simboli nalik krstiću, olovci, dva
+     dokumenta i sl."), named by the record as before; the word is shown on the pointer and
+     on the keyboard (`components/ActionButton.tsx`). */
   return (
-    <button
-      type="button"
+    <ActionButton
+      symbol={SYMBOL.pencil}
+      word={t('admin.form.open')}
       className="entity-open"
-      aria-label={t('admin.form.openNamed', { name })}
+      name={t('admin.form.openNamed', { name })}
       aria-disabled={settled}
       aria-describedby={describedBy}
       onClick={() => {
@@ -718,9 +724,7 @@ export function OpenRecord({
 
         onOpen()
       }}
-    >
-      {t('admin.form.open')}
-    </button>
+    />
   )
 }
 
@@ -766,7 +770,7 @@ export function OpenRecord({
  * is not out with anyone: the row leaves in the same render, and the question behaves as it
  * always did. Nothing here handles Escape, so there is no key to refuse.
  */
-export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', asksWith, face, words }: {
+export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', asksWith, words }: {
   name: string
   /**
    * What the second press does, and whether the reader has to wait for it.
@@ -821,13 +825,6 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    */
   look?: string
   /**
-   * WHAT THE FIRST BUTTON SHOWS, where a row has no room for the word: the event page draws an x
-   * beside the pencil on every result (PDL P9, 18.10.2026, the owner: „dva ekonomična dugmeta za edit
-   * (olovka) i brisanje (x)"). Only what is drawn changes: the button is still named by the record
-   * („Obriši: …"), so a screen reader hears what it always heard. Left out, the word „Obriši" stands.
-   */
-  face?: string
-  /**
    * THE WORDS OF THE QUESTION, WHERE THE THING DELETED IS NOT A RECORD WITH A NAME: a member's own rating
    * of an event (PDL P6, 20.10.2026, the owner's confirmation „Obriši svoju ocenu?"). Left out, every word
    * stays the portal's own („Obriši: {name}", „Sigurno?", „Potvrdi brisanje: {name}", „Odustani od
@@ -840,7 +837,7 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    * something else cannot be pressed by somebody who says what he sees to a speech program. `sure` is
    * then the whole of it.
    *
-   * @param named     what the first button is called, beside whatever `face` shows
+   * @param named     what the first button is called, and the word its cross shows on the pointer
    * @param sure      what the confirming button shows
    * @param sureNamed what it is called, where it is called something else than it shows
    * @param keepNamed what the button that puts the question away is called; it shows „Odustani"
@@ -906,18 +903,21 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
 
   if (!asking) {
     return (
-      <button
-        type="button"
+      /* A cross since 20.10.2026, on every row the question is asked from (owner: „nego da budu
+         simboli nalik krstiću, olovci, dva dokumenta i sl."). Named as it always was: by the
+         record, or by the words a screen hands over, which are then the word on the pointer as
+         well („Obriši svoju ocenu"). The question it opens keeps its words. */
+      <ActionButton
+        symbol={SYMBOL.cross}
+        word={words === undefined ? t('admin.form.delete') : words.named}
+        name={words === undefined ? t('admin.form.deleteNamed', { name }) : words.named}
         className={`${look} entity-delete`}
-        aria-label={words === undefined ? t('admin.form.deleteNamed', { name }) : words.named}
         ref={opener}
         onClick={() => {
           setAfterAnAnswer(false)
           setAsking(true)
         }}
-      >
-        {face ?? t('admin.form.delete')}
-      </button>
+      />
     )
   }
 

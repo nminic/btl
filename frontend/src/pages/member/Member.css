@@ -244,18 +244,14 @@
   overflow-wrap: anywhere;
 }
 
-/* The copy graphic at the end of the link box (owner, 26.09.2026). Sized above
-   the 24px WCAG 2.2 AA minimum target even though it looks small, and never
-   the only carrier of what it does - the name is on the button (`aria-label`),
-   not on the icon. */
+/* The copy graphic at the end of the link box (owner, 26.09.2026), and since
+   20.10.2026 the portal's symbol for copying (`components/CopyField.tsx`). Its
+   size and the symbol in the middle are every symbol's (`components/ActionButton.css`,
+   two rem a side, above the 24px WCAG 2.2 AA minimum target); what is written here
+   is only how this one is dressed. Never the only carrier of what it does - the
+   name is on the button, not on the drawing. */
 .copyLink {
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  inline-size: 1.75rem;
-  block-size: 1.75rem;
-  padding: 0;
   border: 1px solid var(--control-border);
   border-radius: var(--radius-6);
   background: var(--surface);
@@ -266,16 +262,6 @@
 .copyLink:hover {
   color: var(--accent);
   border-color: var(--accent);
-}
-
-.copyLink__icon {
-  inline-size: 1rem;
-  block-size: 1rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .pay__code {

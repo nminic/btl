@@ -304,12 +304,6 @@ describe('what a screen says in its own voice', () => {
          (`pages/league/linkDirection.test.tsx` holds that every such link carries it). Same kind
          of name as `aria-modal` above and `role` below. */
       'dir',
-      /* WHAT THE FIRST BUTTON OF A DELETION SHOWS WHERE A ROW HAS NO ROOM FOR THE WORD, 19.10.2026, and it
-         is machinery rather than speech. It carries the x the owner asked for beside the pencil on every
-         result of an event (PDL P9, 18.10.2026, „dva ekonomična dugmeta za edit (olovka) i brisanje
-         (x)"), and a reader never meets it: the button is named by its `aria-label`, „Obriši: …", which
-         is the dictionary's (`pages/admin/EntityEditor.tsx`, `DeleteRecord`). */
-      'face',
       'field',
       'fill',
       'focusable',

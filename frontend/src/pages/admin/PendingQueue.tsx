@@ -59,6 +59,8 @@ import { SendBack } from './SendBack'
 import { Swept } from './Swept'
 import '../member/Member.css'
 import './Verification.css'
+import { SYMBOL } from '../../app/actionSymbol'
+import { ActionButton } from '../../components/ActionButton'
 
 /* One screen for three queues: new teams, racing profiles and comments. Four
  * until PDL P10a, 22.09.2026 took the reported changes of date away, „Redova je
@@ -1538,8 +1540,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                               this control is not drawn and every card is open,
                               exactly as the sectors of the navigation work
                               (SectionNav). */}
-                          <button
-                            type="button"
+                          <ActionButton
+                            symbol={shown === one.id ? SYMBOL.up : SYMBOL.down}
+                            word={t(shown === one.id ? 'verification.foldCard' : 'verification.openCard')}
                             className="pending__toggle"
                             aria-expanded={shown === one.id}
                             aria-controls={`${one.id}-card`}
@@ -1547,16 +1550,14 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                "Prikaži" are five controls a screen reader cannot
                                tell apart, which is the rule the rest of the
                                portal keeps. */
-                            aria-label={t(
+                            name={t(
                               shown === one.id
                                 ? 'verification.foldCardNamed'
                                 : 'verification.openCardNamed',
                               { name: one.subject },
                             )}
                             onClick={() => setShown(shown === one.id ? null : one.id)}
-                          >
-                            {t(shown === one.id ? 'verification.foldCard' : 'verification.openCard')}
-                          </button>
+                          />
                         </div>
 
                         <div
@@ -1741,8 +1742,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           />
                         ) : (
                           <div className="member__links">
-                            <button
-                              type="button"
+                            <ActionButton
+                              symbol={SYMBOL.check}
+                              word={t('review.approve')}
                               className="button button--primary"
                               /* Not switched off: a control that leaves the row
                                  takes the keyboard with it, and this one is meant
@@ -1816,9 +1818,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                   void approveAll([one], teams)
                                 }
                               }}
-                            >
-                              {t('review.approve')}
-                            </button>
+                            />
 
                             {/* Deleting opens the same box the refusals open,
                                 and asks for a note that may be left empty
@@ -1831,8 +1831,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 that records nothing about itself cannot be
                                 answered for. */}
                             {outcomeFor(queue, one) === 'delete' && (
-                              <button
-                                type="button"
+                              <ActionButton
+                                symbol={SYMBOL.cross}
+                                word={t('verification.delete')}
                                 className="button button--secondary"
                                 /* The visible word is inside the name it is
                                    read by, which is what speech input works
@@ -1841,12 +1842,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                    contain the word on the button. Every other
                                    named control on the portal is written this
                                    way. */
-                                aria-label={t('verification.deleteNamed', { name: one.subject })}
+                                name={t('verification.deleteNamed', { name: one.subject })}
                                 autoFocus={one.id === closed}
                                 onClick={() => setOpen(one.id)}
-                              >
-                                {t('verification.delete')}
-                              </button>
+                              />
                             )}
 
                             {/* The focus comes back to this button with it, on the
@@ -1857,8 +1856,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 goes back, directly above the code drawing the
                                 button that hands it back. */}
                             {handsBack(queue, one) && canSendBack(queue, one) && (
-                              <button
-                                type="button"
+                              <ActionButton
+                                symbol={SYMBOL.back}
+                                word={t('review.sendBack')}
                                 className="button button--secondary"
                                 /* THE OTHER BUTTON THAT WAITS FOR THE PICTURE (PDL,
                                    11.10.2026: „Dok se slika učitava, oba dugmeta su
@@ -1881,9 +1881,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                     setOpen(one.id)
                                   }
                                 }}
-                              >
-                                {t('review.sendBack')}
-                              </button>
+                              />
                             )}
 
                             {/* Why approving would do nothing, said on the card
