@@ -215,7 +215,7 @@
     },
     "rateEvent": {
       "title": "Ocena događaja",
-      "description": "Oceni organizaciju, vrednost za novac i ambijent, i ostavi komentar drugim članovima. Moderator odobrava svaku ocenu pre objave."
+      "description": "Oceni organizaciju, vrednost za novac i ambijent. Ocene bez komentara se objavljuju odmah, a komentar kad ga moderator odobri."
     }
   },
   "pager": {
