@@ -6,7 +6,6 @@ import { Resource } from '../../components/Resource'
 import { combinePair, dataOr, failed, useCompetitors, useTeams } from '../../data/useResource'
 import { Stars } from '../../components/Stars'
 import { CropWindow } from '../../components/CropWindow'
-import { commentFrom } from '../../data/comment'
 import { afterJoining } from '../../data/afterJoining'
 import { transfersTakeEffect } from '../../data/season'
 import { RATING_MARKS } from '../../data/types'
@@ -468,7 +467,7 @@ function TeamFields({ item }: { item: PendingItem }) {
 
 export function PendingQueue({ queue }: { queue: Queue }) {
   const { locale, t } = useI18n()
-  const { close, create, creations, decisions, editRecord, edits, invitations, notify, publish, settle } =
+  const { close, create, creations, decisions, editRecord, edits, invitations, notify, settle } =
     useSession()
   const overlay = useOverlay()
   /* The message carries the day the portal is being read as, so a walk through
@@ -890,7 +889,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          *
          * So the order is the order: ask, and write locally only in the branch that
          * ran because the answer said it did. `settle` and everything under it -
-         * the team, the membership, the message, the published comment - are
+         * the team, the membership, the message - are
          * consequences of a decision that has been RECORDED, and a consequence of
          * something that did not happen is the fault this replaces.
          *
@@ -931,13 +930,15 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
         done += 1
 
-        /* What an approval on this queue actually does: the comment goes onto the
-           event. Written down at the moment it is let out, because the event page
-           is public and must never read this queue to find out (session/context,
-           `published`). */
-        if (queue.id === 'comments') {
-          publish(one.id, commentFrom(one))
-        }
+        /* What an approval on the queue of comments does - the comment goes onto the
+           event, and the member's older one of that event goes out (PDL, 19.10.2026:
+           „Jedna ocena po članu po događaju; nova zamenjuje staru") - is the server's,
+           and nothing is written down here for it. The event page reads it from there
+           (`useComments`): the cache is dropped after the walk, below. A copy drawn
+           from this card was kept here until 20.10.2026 and the owner met what it
+           costs on QA: the card's own number and day, laid beside the list the page
+           already held, so a moderator saw two ratings by one member where the server
+           held one. */
 
         /* The queue of dates used to move the event here on approval, in the same
            overlay the administration writes an edited event into (owner,
@@ -1086,6 +1087,16 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          away an answer it still has every reason to trust. */
       if (done > 0) {
         clearResourceCache('verification')
+
+        /* AND THE COMMENTS, once the walk is on the queue of them, so the event page asks the
+           server for what it holds now: a rating published, the member's older one gone, and
+           the overall mark worked out over that. The shape `RateEvent.tsx` has when its rating
+           is published at once. Only on this queue: the others publish nothing under an event,
+           and a reader handed an answer it still has every reason to trust would only ask again
+           for nothing. */
+        if (queue.id === 'comments') {
+          clearResourceCache('comments')
+        }
       }
 
       /* AND READ AGAIN WHERE THE ROUTE REFUSED A DECISION ABOUT A PICTURE OR A TEXT, once for the

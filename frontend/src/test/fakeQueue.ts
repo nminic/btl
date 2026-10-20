@@ -32,18 +32,23 @@ import { whoTheCookieCurrentlyNames } from './setup'
  * them equal. The one refusal this file DOES answer, a blank name, is the one every case
  * that reaches this helper needs refused to stay off the queue at all - without it, a
  * case proving the form empties the box would still see a card.
+ *
+ * @param waiting cards the queue holds beside the generated file's own, for a case that needs a
+ *   member who already has a rating published on the event the card is about (`aWaitingRating`).
  */
-export function fakeQueue(): { asked: Asked[]; stop: () => void } {
+export function fakeQueue(waiting: ServedPendingItem[] = []): { asked: Asked[]; stop: () => void } {
   let nextId = 900001
   const added: ServedPendingItem[] = []
   const members = fileOf<FileMember[]>('competitors')
   const events = fileOf<FileEvent[]>('events')
-  const seeded = fileOf<ServedPendingItem[]>('verification')
+  const seeded = [...fileOf<ServedPendingItem[]>('verification'), ...waiting]
   /* What `CommentWriteApi` publishes at once (owner, 19.10.2026: three marks and no words), which
      `GET /api/comments` then serves beside the generated file. Newest first, as the real route
      answers it. */
   const published: EventComment[] = []
   const seededComments = fileOf<EventComment[]>('comments')
+  /* The cards of the comments a moderator has decided, which the queue no longer answers. */
+  const decided = new Set<string>()
 
   const nameOf = (memberNumber: string): string => {
     const found = members.find((one) => one.memberNumber === memberNumber)
@@ -68,14 +73,71 @@ export function fakeQueue(): { asked: Asked[]; stop: () => void } {
     }
 
     if (path === '/api/verification') {
-      return new Response(JSON.stringify([...seeded, ...added]), {
+      return new Response(JSON.stringify([...seeded, ...added].filter((one) => !decided.has(String(one.id)))), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       })
     }
 
+    const deciding = init?.method === 'POST' ? A_DECISION.exec(path) : null
+
+    if (deciding !== null) {
+      return decide(deciding[1] ?? '', String(init?.body ?? '{}'))
+    }
+
     return null
   })
+
+  /**
+   * THE DECISION ON A CARD OF THE COMMENTS, standing in for `VerificationWriteApi.decide` and
+   * `publishTheComment` and for nothing else: a card of any other queue is answered by the floor
+   * in `test/setup.ts` (null here), which is all those cases ever needed.
+   *
+   * <p><b>An approval does what the route does and what the screen then reads.</b> The card leaves
+   * the queue, and the comment goes into what `GET /api/comments` answers - REPLACING every comment
+   * the same member already has published on the same event, because that is the route's own
+   * statement („Jedna ocena po članu po događaju; nova zamenjuje staru", PDL, 19.10.2026) and the
+   * reason the event page must read the server's answer again after an approval and not draw a copy
+   * of its own beside it. A refusal deletes the card and publishes nothing, as the route does.
+   */
+  function decide(id: string, sentBody: string): Response | null {
+    const card = [...seeded, ...added].find(
+      (one) => String(one.id) === id && one.queue === 'comments' && !decided.has(id),
+    )
+
+    if (card === undefined) {
+      return null
+    }
+
+    const approved = Reflect.get(Object(JSON.parse(sentBody)), 'approved') === true
+
+    decided.add(id)
+
+    if (approved) {
+      const same = (one: EventComment) =>
+        one.memberNumber === card.memberNumber && String(one.eventId) === card.subjectId
+
+      for (const list of [published, seededComments]) {
+        list.splice(0, list.length, ...list.filter((one) => !same(one)))
+      }
+
+      published.unshift({
+        id: nextId,
+        eventId: Number(card.subjectId),
+        memberNumber: card.memberNumber ?? '',
+        who: card.who,
+        date: card.date,
+        rating: card.rating,
+        body: card.body,
+      })
+      nextId += 1
+    }
+
+    return new Response(JSON.stringify({ id, state: approved ? 'approved' : 'rejected' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
 
   function proposeTeam(sentBody: string): Response {
     const sent: {
@@ -197,6 +259,42 @@ export function fakeQueue(): { asked: Asked[]; stop: () => void } {
   }
 
   return { asked, stop }
+}
+
+/** `POST /api/verification/{id}/decision`, the address `test/setup.ts` matches the same way. */
+const A_DECISION = /^\/api\/verification\/([\w-]+)\/decision$/
+
+/**
+ * A rating with words in it that is waiting for a moderator, as `GET /api/verification` serves it.
+ *
+ * <p>Its own function so a case states only the three things it is about - who, which event, which
+ * words and marks - and not the eight names of a run and the other fields of a card that are empty
+ * on every queue but one.
+ */
+export function aWaitingRating(
+  id: number,
+  member: { memberNumber: string; who: string },
+  eventId: number,
+  body: string,
+  rating: EventComment['rating'],
+): ServedPendingItem {
+  return {
+    queue: 'comments',
+    kind: '',
+    date: TODAY,
+    who: member.who,
+    subject: fileOf<FileEvent[]>('events').find((one) => one.id === eventId)?.name ?? '',
+    subjectId: String(eventId),
+    body,
+    rating,
+    city: '',
+    country: '',
+    id,
+    memberNumber: member.memberNumber,
+    photoId: null,
+    crop: null,
+    ...NO_RUN,
+  }
 }
 
 /** Read once per call, off the same generated files the disc reader answers a GET

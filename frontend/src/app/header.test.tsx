@@ -541,8 +541,6 @@ function renderInbox(
     propose: vi.fn(),
     pictureSent: null,
     sendPicture: vi.fn(),
-    published: [],
-    publish: vi.fn(),
   }
 
   return render(
