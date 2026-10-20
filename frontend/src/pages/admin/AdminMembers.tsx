@@ -17,6 +17,7 @@ import { offeredFor } from './memberMembership'
 import { RowMembership } from './RowMembership'
 import { RowPayment } from './RowPayment'
 import '../member/Member.css'
+import './AdminMembers.css'
 
 /** Where the focus goes once a row is gone, which on this screen is the one
  *  control that cannot be the row just deleted. The other six lists anchor on
@@ -313,7 +314,7 @@ export function AdminMembers() {
                         ))}
                       </select>
                     </label>
-                    <label className="rankings__field rankings__field--wide" htmlFor={SEARCH_ID}>
+                    <label className="rankings__field rankings__field--wide members__search" htmlFor={SEARCH_ID}>
                       <span>{t('competitors.search')}</span>
                       <input
                         id={SEARCH_ID}
@@ -328,8 +329,15 @@ export function AdminMembers() {
 
               <p className="rankings__count">{t('competitors.count', { count: rows.length })}</p>
 
+              {/* NO SIDEWAYS SCROLL OF THE TABLE AT ANY WIDTH (PDL P24, „Tabele na telefonu nemaju
+                  horizontalni skrol"; owner, 20.10.2026: the table that scrolled at every width is fixed
+                  before release). Until that day the box scrolled 608px at 360, 200 at 768 and 140 at 1280.
+                  What makes it fit is in `AdminMembers.css`: the heads and the pills break between words,
+                  on a telephone the table keeps the member and the record and carries the basis and the
+                  seasons under the name, Kategorija and Mesto are drawn from 1000px and „Poslednja sezona"
+                  from 1100px (owner, 20.10.2026, each chosen with my recommendation). */}
               <div className="table-scroll">
-                <table className="table">
+                <table className="table members-table">
                   <caption className="visually-hidden">{t('admin.members')}</caption>
                   <thead>
                     <tr>
@@ -340,11 +348,21 @@ export function AdminMembers() {
                           reads (ADL A8): administration was where it was shown, not
                           where it was kept. Član 74 allows the category and nothing
                           finer, so the category is the whole of what stands here. */}
-                      <th scope="col">{t('competitors.columns.category')}</th>
-                      <th scope="col">{t('competitors.columns.city')}</th>
-                      <th scope="col">{t('admin.basis')}</th>
-                      <th scope="col">{t('admin.seasons')}</th>
-                      <th scope="col">{t('admin.lastSeason')}</th>
+                      <th scope="col" className="members-table__wide">
+                        {t('competitors.columns.category')}
+                      </th>
+                      <th scope="col" className="members-table__wide">
+                        {t('competitors.columns.city')}
+                      </th>
+                      <th scope="col" className="table__hide-phone">
+                        {t('admin.basis')}
+                      </th>
+                      <th scope="col" className="table__hide-phone">
+                        {t('admin.seasons')}
+                      </th>
+                      <th scope="col" className="members-table__last">
+                        {t('admin.lastSeason')}
+                      </th>
                       <th scope="col">{t('admin.form.record')}</th>
                     </tr>
                   </thead>
@@ -356,6 +374,27 @@ export function AdminMembers() {
                          and NOT the season on sale beside the basis: a member of 2027 who has not
                          renewed by November has a last season and no basis of 2028. */
                       const last = one.seasons.at(-1)
+                      /* THE BASIS AND THE SEASONS ARE DRAWN IN TWO PLACES, and only one of them at any
+                         width: their columns from 700px, and the box under the name below it
+                         (`table__hide-phone` and `table__phone-only`, the two halves of one query in
+                         `styles/table.css`). One pill each, so both places draw the same thing. */
+                      const basisTag =
+                        one.membershipBasis !== undefined && one.membershipSeason !== undefined ? (
+                          <span className={`tag tag--${one.membershipBasis}`}>
+                            {t('admin.basisOfTheSeason', {
+                              basis: t(`admin.basisValue.${one.membershipBasis}`),
+                              season: one.membershipSeason,
+                            })}
+                          </span>
+                        ) : null
+                      const seasonTags = one.seasons.map((held) => (
+                        <span key={held.season} className={`tag tag--${held.basis}`}>
+                          {t('admin.basisOfTheSeason', {
+                            basis: t(`admin.basisValue.${held.basis}`),
+                            season: held.season,
+                          })}
+                        </span>
+                      ))
 
                       return (
                         <tr key={one.memberNumber}>
@@ -370,8 +409,32 @@ export function AdminMembers() {
                               </ProfileLink>
                             )}{' '}
                             <span className="table__member-number">{one.memberNumber}</span>
+                            {/* THE BASIS AND THE SEASONS UNDER THE NAME, ON A TELEPHONE ONLY (owner,
+                                20.10.2026, chosen with my recommendation): the two columns that carry
+                                them on a wider screen do not fit beside the name and the record in
+                                328px, and the seasons are what the owner named as needed on the row
+                                (18.10.2026, „kojih sve godina je on bio clan"). Each under the name of
+                                its column, the shape of the figures under a race's name in the queue of
+                                results (`ReviewQueue.tsx`). The category and the town are not drawn
+                                below 1000px at all (owner, 20.10.2026). */}
+                            <div className="table__phone-only">
+                              <dl className="members-table__held">
+                                {basisTag !== null && (
+                                  <div>
+                                    <dt>{t('admin.basis')}</dt>
+                                    <dd>{basisTag}</dd>
+                                  </div>
+                                )}
+                                {seasonTags.length > 0 && (
+                                  <div>
+                                    <dt>{t('admin.seasons')}</dt>
+                                    <dd>{seasonTags}</dd>
+                                  </div>
+                                )}
+                              </dl>
+                            </div>
                           </td>
-                          <td className="table__category">
+                          <td className="table__category members-table__wide">
                             {categoryLabel(
                               categoryCodeFor(one.gender, one.ageBand, one.firstSeason2027),
                               t,
@@ -379,7 +442,7 @@ export function AdminMembers() {
                           </td>
                           {/* Read, not edited in place - see the note at the top of
                               this file for why there is no route to write it back. */}
-                          <td>{one.city}</td>
+                          <td className="members-table__wide">{one.city}</td>
                           {/* THE BASIS OF THE SEASON ON SALE, WITH ITS YEAR, and nothing for a
                               member who holds no membership of it (owner, 18.10.2026, PDL P8:
                               „do 14.10. je osnova 2027, od 15.10 je osnova 2028"). Until that day
@@ -388,31 +451,13 @@ export function AdminMembers() {
                               word the screen did not know. The two fields travel together on
                               the answer (`CompetitorApi`), and the tag is drawn only when both
                               are there. */}
-                          <td>
-                            {one.membershipBasis !== undefined && one.membershipSeason !== undefined && (
-                              <span className={`tag tag--${one.membershipBasis}`}>
-                                {t('admin.basisOfTheSeason', {
-                                  basis: t(`admin.basisValue.${one.membershipBasis}`),
-                                  season: one.membershipSeason,
-                                })}
-                              </span>
-                            )}
-                          </td>
+                          <td className="table__hide-phone">{basisTag}</td>
                           {/* EVERY SEASON HE WAS A MEMBER OF, oldest first, each on its own basis
                               (owner, 18.10.2026: „bitno mi je da kao admin / moderator vidim na nivou
                               clana kojih sve godina je on bio clan"). Read only: this screen writes
                               no season. */}
-                          <td>
-                            {one.seasons.map((held) => (
-                              <span key={held.season} className={`tag tag--${held.basis}`}>
-                                {t('admin.basisOfTheSeason', {
-                                  basis: t(`admin.basisValue.${held.basis}`),
-                                  season: held.season,
-                                })}
-                              </span>
-                            ))}
-                          </td>
-                          <td>{last?.season}</td>
+                          <td className="table__hide-phone">{seasonTags}</td>
+                          <td className="members-table__last">{last?.season}</td>
                           <td>
                             {/* „UPIS UPLATE" FOR A MEMBER WHO HOLDS NO SEASON ON SALE. A row that
                                 already carries a basis for it has nothing to book this way: a season

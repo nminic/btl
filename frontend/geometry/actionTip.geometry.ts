@@ -16,15 +16,18 @@ import type { Answers, At } from './support/harness.ts'
  * 1. **The word is drawn**, out of the attribute the component writes (`::before`), and it is the
  *    word the button carries as its text.
  * 2. **The box stands inside the window, eight pixels from every edge, and the page does not scroll
- *    sideways**, with the button at the far right of a table that scrolls on its own: the cross of
- *    the last column of the members' table, scrolled to its end (PDL P24).
+ *    sideways**, with the button at the far right of a table: the cross of the last column of the
+ *    members' table, its box scrolled to its end (PDL P24). Since 20.10.2026 that box no longer
+ *    scrolls at the ordinary text size (`geometry/membersTable.geometry.ts`), so the scroll is a
+ *    no-op there and the cross is simply at the right edge of the table.
  * 3. **It opens on the keyboard as well as on the pointer, and Escape puts it away.**
  *
  * The members' table because it is the longest row of symbols the portal draws (a payment, a
  * cancellation or an exemption, and the deletion), and the one the owner named to be no worse than
- * before. Measured on 20.10.2026 against `main` (b9c6c411) with the same answers: the table is as
- * wide inside its box as it was (936px at all three widths) and its rows are lower (5628px for the
- * whole table against 5904px), so nothing here pins a width that the symbols could make worse.
+ * before. Measured on 20.10.2026 against `main` (b9c6c411) with the same answers, before the table
+ * was fitted to its box later that day: the symbols left it as wide as it was and made its rows lower
+ * (5628px for the whole table against 5904px). The table's width and its box are asked of Chrome in
+ * `geometry/membersTable.geometry.ts`, so nothing here pins a width.
  */
 
 /** The day the moderation of the members is read on. */
