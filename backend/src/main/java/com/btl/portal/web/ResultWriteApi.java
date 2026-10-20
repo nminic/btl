@@ -810,7 +810,7 @@ class ResultWriteApi {
 	}
 
 	/** A control character or a format character, by Unicode's own category (`Cc`, `Cf`). */
-	private static boolean nobodySees(int character) {
+	static boolean nobodySees(int character) {
 		int category = Character.getType(character);
 
 		return category == Character.CONTROL || category == Character.FORMAT;
