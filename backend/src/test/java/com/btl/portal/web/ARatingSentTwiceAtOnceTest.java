@@ -523,6 +523,53 @@ class ARatingSentTwiceAtOnceTest {
 		assertThat(hisPublishedRatings()).isEmpty();
 	}
 
+	/**
+	 * AN APPROVAL THAT HAS CLAIMED HIS CARD BUT NOT YET TAKEN HIS ROW, AND A DELETION IN BETWEEN: the deletion
+	 * must wait for the CARD, and not slip past it to his row. The moderator holds the card (his hold row, as
+	 * the hold route writes it) and that hold row is locked here, so the approval claims the card and stops
+	 * where it lets the hold go - after the claim and before the member. The deletion is sent then. Waiting
+	 * for the card, it lets the approval finish: 200, then 204, and nothing of his published. Had it skipped
+	 * the card, it would take his row first and then wait for the card while the approval waits for the row:
+	 * the order opposite to the approval's, which the database ends as a deadlock.
+	 */
+	@Test
+	void aDeletionMeetingAnApprovalBetweenItsClaimAndHisRowWaitsForTheCard() throws Exception {
+		long shown = theRatingHeIsShown();
+		long card = waitingCardWithWords("Sa rečima, obrisano.");
+
+		db.sql("insert into verification_lock (verification_id, held_by, held_until)"
+						+ " select ?, id, now() + interval '15 minutes' from account where email = ?")
+				.params(card, MODERATOR_ADDRESS).update();
+
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from verification_lock where verification_id = ? for update")
+						.param(card).query(Integer.class).single();
+
+				submitted.add(pool.submit(() -> approved(card)));
+				stoppedBehindTheHold(1, submitted);
+				submitted.add(pool.submit(() -> deleted(shown)));
+				stoppedBehindTheHold(2, submitted);
+
+				return null;
+			});
+
+			assertThat(List.of(submitted.get(0).get(30, TimeUnit.SECONDS).getStatus(),
+					submitted.get(1).get(30, TimeUnit.SECONDS).getStatus()))
+					.as("the approval and then the deletion are each taken")
+					.containsExactly(200, 204);
+		} finally {
+			pool.shutdownNow();
+		}
+
+		assertThat(hisPublishedRatings())
+				.as("the member was told 204 and the approved rating stands")
+				.isEmpty();
+	}
+
 	/** The rating {@code GET /api/comments} shows him, the one his screen would name. */
 	private long theRatingHeIsShown() {
 		return db.sql("select id from event_comment where event_id = ? and competitor_id = ?")
