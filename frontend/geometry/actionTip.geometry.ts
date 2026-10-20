@@ -99,6 +99,13 @@ for (const at of WIDTHS) {
 
     expect(word, 'the cross carries its word as text').toBe('Obriši')
 
+    /* A square of two rem, 32px at the size the browser starts from, whatever the look it wears
+       gives a button of padding or height: the rule that makes it one has to win, and only a
+       browser says whether it does. */
+    const square = await cross.boundingBox()
+
+    expect(square === null ? null : [Math.round(square.width), Math.round(square.height)]).toEqual([32, 32])
+
     for (const how of ['the pointer', 'the keyboard'] as const) {
       if (how === 'the pointer') {
         await cross.hover()

@@ -223,6 +223,8 @@ export type Action = Place & {
   unread: boolean
   /** The symbols drawn, read on their own, so a word handed down can still be held to one. */
   symbols: string[] | undefined
+  /** The classes it is dressed in, where they are written out. */
+  look: string[] | undefined
 }
 
 /** The shape of a choice between written values, and the values in its order. */
@@ -367,6 +369,11 @@ export function buttonsIn(path: string, code: string): { bare: BareButton[]; act
         ...placeOf(node),
         unread: !read,
         symbols: drawn?.values,
+        look: (() => {
+          const dressed = valueOf(opening.attributes, 'className')
+
+          return dressed === undefined ? undefined : written(dressed, source)?.values
+        })(),
         pairs: read ? keys.values.map((key, at) => ({ key, symbol: drawn.values[at] ?? '' })) : [],
       })
     }
@@ -439,6 +446,17 @@ describe('the buttons that act on one thing', () => {
     )
 
     expect(astray).toEqual([])
+  })
+
+  it('keep „Odobri" in the filled look it had', () => {
+    /* PDL 20.10.2026 (derived, and the owner's answer the same day): „Odobri" in a queue
+       keeps today's filled look, so the one action a row leads with still stands out. */
+    const approving = actions.filter((one) => one.pairs.some(({ key }) => key === 'review.approve'))
+
+    expect(approving.length, 'the queues no longer draw „Odobri"').toBeGreaterThan(0)
+    expect(
+      approving.filter((one) => !(one.look ?? []).some((classes) => classes.split(/\s+/).includes('button--primary'))).map(where),
+    ).toEqual([])
   })
 
   it('take a word handed down only where it is named, and every one named is there', () => {
