@@ -865,6 +865,65 @@ describe('the event the panel names first', () => {
     }
   })
 
+  it('offers the events of the run’s year when it is not the year today is in', async () => {
+    /* A run of the last days of 2025 read in 2026: the event of its own year is offered and the one of
+       the year today is in is not, so a list of today's year is a different list. */
+    const user = setupUser()
+    const winter = (id: number, date: string): BtlEvent => ({
+      ...EVENT_53,
+      id,
+      slug: `zimski-kros-${date.slice(0, 4)}`,
+      name: 'Zimski kros',
+      date,
+      city: 'Kragujevac',
+      country: 'RS',
+    })
+    const server = serverWith({
+      queue: () => [{ ...FROM_THE_BOOK, raceDate: '2025-12-30' }],
+      events: () => answering([...THE_EVENTS, winter(9401, '2025-12-20'), winter(9402, '2026-02-01')]),
+    })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000040')
+      await typeIntoTheEventName(user, 'Zimski')
+
+      await waitFor(() =>
+        expect(offeredStartingWith('Zimski kros')).toEqual([eventOfferedAs(winter(9401, '2025-12-20'))]),
+      )
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('asks no place once an event of the calendar is linked, whatever the place box held', async () => {
+    /* A town typed by hand with no country, and then an event of the calendar chosen: the event stands
+       where it stands, so the half place left in the box is nobody's question. */
+    const user = setupUser()
+    const server = serverWith({ queue: () => [{ ...FROM_THE_BOOK, city: '', country: '' }] })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000040')
+      await user.type(panel().getByLabelText(sr.review.placeTown), 'Xqzrtgrad')
+      await chooseTheEvent(user, EVENT_53)
+      await typeIntoTheRaceName(user, 'Nova staza')
+
+      const save = panel().getByRole('button', { name: sr.review.placeSave })
+
+      expect(save).not.toHaveAttribute('aria-describedby')
+
+      await user.click(save)
+      await untilItHasAnswered()
+
+      expect(bodyOf(decisionsIn(server.asked)[0])).toMatchObject({ newRace: { eventId: 53, raceName: 'Nova staza' } })
+    } finally {
+      server.stop()
+    }
+  })
+
   it('offers the events of the year the run was run in, and links the one of that year by its name', async () => {
     /* Two events of one name, one a year before the run and one in its year: a list of every year
        would offer both, and a name typed exactly would then link neither (`exactName.ts`). */

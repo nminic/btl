@@ -2846,6 +2846,14 @@ class VerificationWriteApiTest {
 		assertThat(twice.getStatus()).isEqualTo(400);
 		assertThat(reasonIn(twice)).startsWith("Događaj je zadat dvaput");
 
+		/* A town alone beside the key, with no country, is the event named twice as well, and is not
+		   judged as a town first. */
+		MockHttpServletResponse aTown = decideWith(THE_SUPERADMIN, run,
+				"{\"approved\":true,\"newRace\":{\"eventId\":" + theirs + ",\"raceName\":\"Neka\","
+						+ "\"raceKind\":\"length\",\"city\":\"Vukovar\"}}");
+
+		assertThat(reasonIn(aTown)).startsWith("Događaj je zadat dvaput");
+
 		/* A country alone beside the key says as much as a town would. */
 		MockHttpServletResponse aCountry = decideWith(THE_SUPERADMIN, run,
 				"{\"approved\":true,\"newRace\":{\"eventId\":" + theirs + ",\"raceName\":\"Neka\","

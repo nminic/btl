@@ -202,6 +202,24 @@ describe('the event and the race the screen names first', () => {
     }
   })
 
+  it('offers every season of the league, and not only the year today is in', async () => {
+    /* Read in the spring of 2028: the event of 2027 is still offered, since a result may be entered
+       after its season froze (the coordinator's derivation, PDL „[IZVEDENO 19.10.2026, moje, PR za
+       7b]”, (2)). */
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      renderAt(PATH, 'moderator', null, CHECKS_RESULTS, '2028-03-01')
+      await screen.findByRole('heading', { level: 1, name: sr.leagueResults.forAnEvent })
+      await user.type(eventBox(), 'Grad')
+
+      await waitFor(() => expect(offered()).toEqual([eventSaid({ ...AN_EVENT, id: 9504, slug: 'gradska-zima-2027', name: 'Gradska zima', date: '2027-12-01' }), eventSaid(AN_EVENT)]))
+    } finally {
+      server.stop()
+    }
+  })
+
   it('makes a new event, its race and the rows in one save, the race taking the event’s name, and goes to its page', async () => {
     const user = setupUser()
     /* The calendar holds the event once the save has made it, under the address the answer names, so
