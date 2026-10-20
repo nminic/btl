@@ -155,6 +155,10 @@ const UNLISTED_ROUTES: RouteDef[] = [
   /* An entity like the six beside it, reached from the same list,
      and shown there to the superadmin alone (PDL P21, P28a). */
   { path: 'administracija/moderatori', labelKey: 'admin.moderators', seoKey: 'adminModerators' },
+  /* „Unos rezultata za događaj”, the moderator's own screen (PDL P9, 19.10.2026), reached from the
+     navigation beside the queues for whoever checks results; named for the search as the event page's
+     entry is, since it is the same work. */
+  { path: 'administracija/unos-rezultata', labelKey: 'leagueResults.menu', seoKey: 'leagueResultsForAnEvent' },
 ]
 
 /* Addresses the router serves that the navigation never names: the home page,

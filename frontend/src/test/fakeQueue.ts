@@ -323,7 +323,7 @@ const TODAY = '2026-01-01'
 
 /**
  * The run a result waits with, as the server answers it on every item that is not one:
- * all eight names empty (`data/types.ts`, `WaitingRunFields`). A team proposed or an event
+ * all ten names empty (`data/types.ts`, `WaitingRunFields`). A team proposed or an event
  * rated here is never a run, so both rows carry this and nothing else.
  */
 const NO_RUN: WaitingRunFields = {
@@ -335,4 +335,6 @@ const NO_RUN: WaitingRunFields = {
   descentM: null,
   seconds: null,
   link: '',
+  eventId: null,
+  eventName: null,
 }

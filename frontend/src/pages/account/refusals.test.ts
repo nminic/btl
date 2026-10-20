@@ -568,11 +568,13 @@ describe('the reasons the server can name', () => {
     ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 11],
     ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 13],
     /* THE LEAGUE'S OWN ENTRY OF RESULTS FROM THE EVENT PAGE, added 19.10.2026 with the screen that
-       meets it (`event/EnterResults.tsx`, PDL P9, 18.10.2026). Eight constants and six reasons; the two
+       meets it (`event/EnterResults.tsx`, PDL P9, 18.10.2026). Eight constants and six reasons then, ten reasons now; the two
        that are not are in `NOT_A_REASON`. The route also answers with three words it borrows by name
        from `CompetitorWriteApi` and `ResultWriteApi` (the empty save, the save of too many rows, the run
-       that is not whole), which the screen answers too and which are counted on those files' lines. */
-    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 8],
+       that is not whole), which the screen answers too and which are counted on those files' lines.
+       Twelve since 19.10.2026: the four of the moderator's own screen, „Unos rezultata za događaj”
+       (`EnterForAnEvent`), whose words the owner approved that day. */
+    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 12],
   ]
 
   /** What a file declares that really is a refusal AND has a screen today, which is every

@@ -228,6 +228,8 @@ function aRunWith(link: string): ServedPendingItem {
     descentM: 540,
     seconds: 6730,
     link,
+    eventId: null,
+    eventName: null,
   }
 }
 

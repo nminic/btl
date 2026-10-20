@@ -965,6 +965,36 @@ describe('a run sent back, sent again', () => {
     }
   }, SLOW)
 
+  it('takes an event chosen from the list for a run sent before there was one, and keeps its race', async () => {
+    /* A run sent before V66 names no event and holds its race. Choosing an event for it emptied the
+       race nobody could type into again, and the event chosen was not sent, since only the run was
+       read (review of PR 581). Now the race stays and the event's key goes. */
+    const user = setupUser()
+
+    listeningWith([aRun(83, { raceId: null, raceName: 'Stara staza', raceDate: '2027-06-02', raceKind: 'free', eventName: null })])
+    renderAt('/sr/rezultat/novi?ponovo=83', 'competitor', ME, undefined, '2027-08-23')
+
+    await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
+    await user.type(screen.getByLabelText(/^Događaj/), 'beogradski')
+    await user.click(must(screen.getAllByRole('button', { name: /Beogradski maraton – / })[0], 'the event'))
+
+    expect(screen.getByLabelText(/^Naziv trke/), 'the held race was emptied').toHaveValue('Stara staza')
+
+    await send(user)
+
+    await waitFor(() => {
+      expect(writes()).toHaveLength(1)
+    }, SOON)
+
+    const body = bodyOf(must(writes()[0], 'the request'))
+
+    expect(typeof body.eventId, 'the event he chose did not go').toBe('number')
+    expect(body.raceName).toBe('Stara staza')
+    for (const beside of ['eventName', 'city', 'country']) {
+      expect(Object.hasOwn(body, beside), `${beside} went beside a chosen event`).toBe(false)
+    }
+  }, SLOW)
+
   it('asks for the event of a run sent before there was one, and sends the one he names', async () => {
     /* A run sent before V66 names no event, and the event is asked on the road a run is described
        on (Q8 of 7a): so its box is not held, and what he types goes, with the town the run gave. */

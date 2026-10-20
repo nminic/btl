@@ -1885,12 +1885,12 @@ class VerificationApiTest {
 	 * <p><b>And one name is answered that the portal does not read</b>, {@code photoId}, which
 	 * is V9's own column. It is the one thing there will be to revisit the day A60 is.
 	 *
-	 * <p><b>Two more since V66, {@code eventId} and {@code eventName}</b>, the event a waiting run
-	 * is on, which the moderator's screen of one form for the event, the race and the result will
-	 * start from (PDL P9, owner, 19.10.2026: „Jedan ekran za sve"). The server answers them before
-	 * the portal reads them, as it did the eight of a run below, and they leave this list with that
-	 * screen ({@link #aRunAnswersWithTheEventItIsOnWhetherTheRaceHasItOrTheMemberChoseOrTypedIt}
-	 * holds what they say).
+	 * <p><b>Two more stood here from V66 to 7b, {@code eventId} and {@code eventName}</b>, the event a
+	 * waiting run is on. They left this list with the moderator's panel that starts from them (PDL P9,
+	 * owner, 19.10.2026: „Jedan ekran za sve"), when {@code verification.json} began to carry both on
+	 * every item, so they are required now, as the eight of a run below
+	 * ({@link #aRunAnswersWithTheEventItIsOnWhetherTheRaceHasItOrTheMemberChoseOrTypedIt} holds what
+	 * they say).
 	 *
 	 * <p><b>The eight a waiting run answers with stood beside it for one increment</b>
 	 * ({@code raceId}, {@code raceDate}, {@code raceKind}, the four figures and {@code link}; the
@@ -1911,7 +1911,7 @@ class VerificationApiTest {
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered(PATH, everyItemServedTo(THE_SUPERADMIN),
-				"verification.json", Set.of("photoId", "eventId", "eventName"),
+				"verification.json", Set.of("photoId"),
 				"picture", "email");
 	}
 

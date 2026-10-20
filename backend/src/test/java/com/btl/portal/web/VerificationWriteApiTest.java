@@ -2773,6 +2773,121 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * THE PLACE THE MODERATOR NAMES FOR A NEW EVENT IS WHERE IT STANDS (PDL P9, 19.10.2026: „Na
+	 * moderatorovom ekranu nov događaj traži naziv, datum i mesto”, the panel's „Mesto novog
+	 * događaja”), and not the run's own town nor the town of the event the member chose. The three
+	 * are three different towns here, so none of them can answer for another.
+	 */
+	@Test
+	void aNewEventStandsInThePlaceTheModeratorNamesAndNotInTheRunsOrTheChosenEventsTown()
+			throws Exception {
+		long ownTown = describedRun(ANA, "Uz reku", "length", THE_DAY_HE_RAN, "7.0000", 10, 10, 2100);
+		long chosen = db.sql("insert into btl_event (slug, name, date, city, country_id, kind,"
+						+ " featured, description, link) values ('izabran-u-ohridu-2027', 'Izabran u"
+						+ " Ohridu', date '2027-03-01', 'Ohrid', (select id from country where code ="
+						+ " 'MK'), 'race', false, '', '') returning id")
+				.query(Long.class).single();
+		long onTheChosen = describedRun(ANA, "Uz jezero", "length", THE_DAY_HE_RAN, "7.0000", 10, 10,
+				2100);
+
+		theMemberNamed(onTheChosen, chosen, null);
+
+		assertThat(decideWith(THE_SUPERADMIN, ownTown, makingTheRaceIn("Recna trka", "Recna desetka",
+				"Vukovar", "HR")).getStatus()).isEqualTo(200);
+		assertThat(decideWith(THE_SUPERADMIN, onTheChosen, makingTheRaceIn("Jezerska trka",
+				"Jezerska desetka", "Struga", "MK")).getStatus()).isEqualTo(200);
+
+		AnEvent river = theEventAt("recna-trka-2027");
+		AnEvent lake = theEventAt("jezerska-trka-2027");
+
+		assertThat(List.of(String.valueOf(river.placeId()), river.city(),
+				String.valueOf(river.countryId()))).containsExactly("null", "Vukovar",
+						String.valueOf(countryCoded("HR")));
+		assertThat(List.of(String.valueOf(lake.placeId()), lake.city(),
+				String.valueOf(lake.countryId()))).containsExactly("null", "Struga",
+						String.valueOf(countryCoded("MK")));
+	}
+
+	/**
+	 * AND A RUN THAT NAMES NO TOWN AT ALL TAKES A NEW EVENT IN THE PLACE THE MODERATOR NAMES, where
+	 * without one it is refused ({@code aRunWithNoTownIsRefusedANewEventAndTakesOneThatIsThere}).
+	 */
+	@Test
+	void aRunWithNoTownTakesANewEventInThePlaceTheModeratorNames() throws Exception {
+		long run = describedRun(ANA, "Bez mesta", "length", THE_DAY_HE_RAN, "7.0000", 10, 10, 2100);
+
+		db.sql("update result_submission set place_id = null, city = null, country_id = null where id ="
+						+ " (select result_submission_id from verification where id = ?)")
+				.param(run).update();
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceIn("Planinska trka", "Planinska",
+				"Žabljak", "ME")).getStatus()).isEqualTo(200);
+		assertThat(theEventAt("planinska-trka-2027").city()).isEqualTo("Žabljak");
+	}
+
+	/**
+	 * A PLACE IS A NEW EVENT'S, so beside an event chosen by its key it is the event named twice, and
+	 * a place that is not a typed town with a country there is is a form not filled in; neither
+	 * writes anything. Beside a NAME the calendar already holds in that year, the race goes on that
+	 * event and the place is not read, since the event stands where it stands („Isti naziv ne pravi
+	 * drugi događaj”, owner, 19.10.2026).
+	 */
+	@Test
+	void aPlaceBesideAChosenEventOrNotATownIsRefusedAndBesideANameThatIsThereIsNotRead()
+			throws Exception {
+		long theirs = event("postojeci-sa-mestom-2027", "Postojeci sa mestom", LocalDate.of(2027, 3, 1));
+		long run = describedRun(ANA, "Neko mesto", "length", THE_DAY_HE_RAN, "7.0000", 10, 10, 2100);
+		int events = howManyEvents();
+
+		MockHttpServletResponse twice = decideWith(THE_SUPERADMIN, run,
+				"{\"approved\":true,\"newRace\":{\"eventId\":" + theirs + ",\"raceName\":\"Neka\","
+						+ "\"raceKind\":\"length\",\"city\":\"Vukovar\",\"country\":\"HR\"}}");
+
+		assertThat(twice.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(twice)).startsWith("Događaj je zadat dvaput");
+
+		/* A town alone beside the key, with no country, is the event named twice as well, and is not
+		   judged as a town first. */
+		MockHttpServletResponse aTown = decideWith(THE_SUPERADMIN, run,
+				"{\"approved\":true,\"newRace\":{\"eventId\":" + theirs + ",\"raceName\":\"Neka\","
+						+ "\"raceKind\":\"length\",\"city\":\"Vukovar\"}}");
+
+		assertThat(reasonIn(aTown)).startsWith("Događaj je zadat dvaput");
+
+		/* A country alone beside the key says as much as a town would. */
+		MockHttpServletResponse aCountry = decideWith(THE_SUPERADMIN, run,
+				"{\"approved\":true,\"newRace\":{\"eventId\":" + theirs + ",\"raceName\":\"Neka\","
+						+ "\"raceKind\":\"length\",\"country\":\"HR\"}}");
+
+		assertThat(reasonIn(aCountry)).startsWith("Događaj je zadat dvaput");
+
+		for (String[] place : new String[][] { { "Vukovar", "XX" }, { "Vukovar", "" }, { "", "HR" },
+				{ "V".repeat(ResultWriteApi.A_TYPED_TOWN_HOLDS_AT_MOST + 1), "HR" },
+				{ "Vuko\u200bvar", "HR" } }) {
+			MockHttpServletResponse wrong = decideWith(THE_SUPERADMIN, run, makingTheRaceIn("Nova",
+					"Nova", place[0], place[1]));
+
+			assertThat(wrong.getStatus()).as("%s / %s", place[0], place[1]).isEqualTo(400);
+			assertThat(reasonIn(wrong)).isEqualTo("Forma nije popunjena.");
+		}
+
+		assertThat(howManyEvents()).isEqualTo(events);
+		assertThat(stateOf(run)).isEqualTo("waiting");
+
+		AnEvent before = theEventAt("postojeci-sa-mestom-2027");
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceIn("Postojeci sa mestom", "Neka",
+				"Vukovar", "HR")).getStatus()).isEqualTo(200);
+		assertThat(howManyEvents()).isEqualTo(events);
+
+		AnEvent after = theEventAt("postojeci-sa-mestom-2027");
+
+		assertThat(List.of(String.valueOf(after.placeId()), String.valueOf(after.city()),
+				String.valueOf(after.countryId()))).containsExactly(String.valueOf(before.placeId()),
+						String.valueOf(before.city()), String.valueOf(before.countryId()));
+	}
+
+	/**
 	 * A RACE ON A DAY BEFORE ITS EVENT'S MOVES THE EVENT BACK TO THAT DAY, AND INTO THAT YEAR'S
 	 * ADDRESS, AND THE EVENT IS THE ONE THE MODERATOR CHOSE AND NOT THE MEMBER.
 	 *
@@ -4781,6 +4896,14 @@ class VerificationWriteApiTest {
 		return "{\"approved\":true,\"newRace\":{\"eventName\":\"" + eventName + "\",\"raceName\":\""
 				+ raceName + "\",\"raceKind\":\"" + kind + "\"}"
 				+ (amended == null ? "" : ",\"amended\":" + amended) + "}";
+	}
+
+	/** An answer that makes a new race on a typed event in the place the moderator names, as JSON. */
+	private static String makingTheRaceIn(String eventName, String raceName, String city,
+			String country) {
+		return "{\"approved\":true,\"newRace\":{\"eventName\":\"" + eventName + "\",\"raceName\":\""
+				+ raceName + "\",\"raceKind\":\"length\",\"city\":\"" + city + "\",\"country\":\""
+				+ country + "\"}}";
 	}
 
 	/** An answer that puts a new race on an event of the calendar chosen by its key, as JSON. */

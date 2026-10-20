@@ -1433,9 +1433,12 @@ describe('verification', () => {
        addresses against the whole list of queues, in order. It fails on a
        missing row, an extra one, a wrong address and a wrong order alike, and
        when it fails it prints both lists instead of one href. */
-    expect(rows.map((row) => within(row).getByRole('link').getAttribute('href'))).toEqual(
-      QUEUES.map((queue) => `/sr/${queue.path}`),
-    )
+    expect(rows.map((row) => within(row).getByRole('link').getAttribute('href'))).toEqual([
+      ...QUEUES.map((queue) => `/sr/${queue.path}`),
+      /* And under them the moderator's own screen, which the right of the results opens (PDL P9,
+         „Unos rezultata za događaj”, 19.10.2026), with no number beside it. */
+      '/sr/administracija/unos-rezultata',
+    ])
 
     // Nought is shown as well, unlike the ducat in the header: here it is the
     // answer to "is there anything left", and nothing is not an answer.
@@ -1614,7 +1617,8 @@ describe('verification', () => {
         await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }),
       )
 
-      expect(nav.getAllByRole('link')).toHaveLength(QUEUES.length)
+      /* The queues, and the moderator's own screen under them (`SectionNav.tsx`). */
+      expect(nav.getAllByRole('link')).toHaveLength(QUEUES.length + 1)
       for (const queue of QUEUES) {
         expect(
           nav.getByRole('link', {
@@ -1712,7 +1716,7 @@ describe('verification', () => {
 
       const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }))
 
-      expect(nav.getAllByRole('link')).toHaveLength(QUEUES.length)
+      expect(nav.getAllByRole('link')).toHaveLength(QUEUES.length + 1)
     } finally {
       vi.stubGlobal('fetch', served)
     }

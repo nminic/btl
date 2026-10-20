@@ -1,6 +1,6 @@
 import { isStaff, type Role } from '../../roles/context'
 import { ENTITY_FORMS, type EntityDef } from './entityForms'
-import { QUEUES, type Queue } from './queues'
+import { QUEUE, QUEUES, type Queue } from './queues'
 import { entityRight, queueRight, type Right } from './rights'
 
 /**
@@ -82,6 +82,8 @@ export const NEEDS: Record<string, Need> = {
   ...HUB_NEEDS,
   ...Object.fromEntries(ENTITY_FORMS.map((entity) => [entity.path, needForEntity(entity)])),
   ...Object.fromEntries(QUEUES.map((queue) => [queue.path, needForQueue(queue)])),
+  /* „Unos rezultata za događaj” asks what the queue of results asks (`ResultsByTheLeagueApi`). */
+  'administracija/unos-rezultata': needForQueue(QUEUE.results),
 }
 
 /** What an address asks for, or nothing where it asks for nothing: every screen

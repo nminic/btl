@@ -39,8 +39,6 @@ export const aLapsedMembersPage = {
   profileHidden: false,
   birthdayShown: 'none',
   address: 'Ulica Stara 7',
-  /* The seasons open for a report, the clock's and the same for every member (PDL P9, 19.10.2026). */
-  seasonsOpenForAReport: [2027],
 }
 
 /**
@@ -84,7 +82,8 @@ export function hisPageAsServed(
   return serverThat((path) =>
     path === '/api/me'
       ? new Response(
-          JSON.stringify({ role, account: 1, member: { ...aLapsedMembersPage, ...changes } }),
+          /* With the seasons open for a report, which are the account's (`MeApi.WhoIAm`). */
+          JSON.stringify({ role, account: 1, member: { ...aLapsedMembersPage, ...changes }, seasonsOpenForAReport: [2027] }),
           { status: 200, headers: { 'content-type': 'application/json' } },
         )
       : null,

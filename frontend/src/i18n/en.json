@@ -191,6 +191,10 @@
       "title": "Entering results",
       "description": "A moderator enters the results of members from a BTL race."
     },
+    "leagueResultsForAnEvent": {
+      "title": "Results entry for an event",
+      "description": "A moderator enters an event, a race and the results of members of the Balkan Running League."
+    },
     "reportResult": {
       "title": "Reporting a result",
       "description": "Report your result from a BTL race. A moderator checks every report before it enters the table."
@@ -1201,7 +1205,9 @@
     "cancel": "Cancel",
     "placeRace": "Enter or choose the race",
     "placeTitle": "The race for this report",
-    "placeNote": "The race is not in the calendar. Choose a race that is, or enter a new one, which goes into the calendar with its event when you approve. The day and the town stay as the member sent them.",
+    "placeNote": "The race is not in the calendar. Choose an existing event or enter a new one, then choose or enter the race. Whatever is new goes into the calendar when you approve.",
+    "chosenEvent": "Chosen event: {event}",
+    "placeTown": "Place of the new event",
     "chosenRace": "Chosen race: {race}",
     "limitNote": "On a race by time, the time is the race's limit.",
     "placeSave": "Approve with this race",
@@ -1800,6 +1806,9 @@
   },
   "leagueResults": {
     "title": "Entering results: {race}",
+    "forAnEvent": "Results entry for an event",
+    "menu": "Results entry for an event",
+    "eventHint": "Choose an event from the calendar or enter the name of a new one. A new event and race go into the calendar when you save the results.",
     "editTitle": "Changing a result: {name}",
     "member": "Member",
     "rowNumber": "Row {which}",
@@ -1820,7 +1829,11 @@
       "heHoldsNoMembershipOfTheRunningSeason": "The member holds no membership of the season of this race, so the league does not enter a result for him.",
       "theFormIsNotComplete": "A time or a measure is missing, or a value is outside what is allowed.",
       "theGroupIsEmpty": "Add at least one member.",
-      "theGroupIsTooBig": "Too many rows for one save. Split them into two saves."
+      "theGroupIsTooBig": "Too many rows for one save. Split them into two saves.",
+      "theEventIsNotKnown": "That event is no longer in the calendar. Choose it again or enter a new one.",
+      "theRaceIsNotKnown": "That race is no longer in the calendar. Choose it again or enter a new one.",
+      "theTownIsMissing": "Enter the place of the new event.",
+      "theDayIsBeforeTheLeague": "The league begins in 2027; earlier results are entered with the CSV template."
     }
   }
 }
