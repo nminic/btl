@@ -7,8 +7,7 @@ import { moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { at, first, must } from '../../test/at'
 import { arrivedResource, loadResource } from '../../data/client'
-import { fakeQueue } from '../../test/fakeQueue'
-import { Published } from '../../test/decided'
+import { aWaitingRating, fakeQueue } from '../../test/fakeQueue'
 import { membersAsServed, refused, serverThat } from '../../test/serverAnswers'
 import type { Asked } from '../../test/serverAnswers'
 import type { BtlEvent, Competitor, EventComment, PendingItem } from '../../data/types'
@@ -1198,13 +1197,14 @@ describe('a comment a moderator lets out', () => {
    * 1..4) and `events.json` carries ids in the same range, so the very case below is
    * still writable, and `queue.id === 'comments'` swapped for `true` left the whole
    * frontend package green, 3030/3030, while it stood deleted - a regression nothing
-   * would have seen. Rewritten rather than restored, against `published` itself
-   * (`session/context.ts`, the same probe `app/header.test.tsx` builds by hand) instead
-   * of the event page: `commentFrom` (data/comment.ts) would file a team edit's approval
-   * under `eventId: Number(item.subjectId)` with an EMPTY body, and a page that renders
-   * comments by body text is the wrong place to look for one that carries none.
+   * would have seen. Rewritten rather than restored, and again on 20.10.2026 when the copy
+   * of a let-out comment the session used to keep was removed (`data/useResource.ts`,
+   * `useComments`): what an approval on the queue of comments now does is drop the held
+   * `comments` answer so the event page asks the server again, and what is held here is that
+   * an approval on a queue that is not about comments leaves that answer where it was. The
+   * condition is `queue.id === 'comments'` and nothing else holds it.
    */
-  it('publishes nothing when a team edit is approved, which is not about comments', async () => {
+  it('leaves the comments the page holds alone when a team edit is approved', async () => {
     const teamEdit: PendingItem = {
       id: 'ver-team-edit-1',
       queue: 'teams',
@@ -1249,14 +1249,12 @@ describe('a comment a moderator lets out', () => {
     try {
       const user = setupUser()
 
-      renderAt(
-        `/sr/${QUEUE.teams.path}`,
-        'moderator',
-        null,
-        undefined,
-        null,
-        <Published />,
-      )
+      renderAt(`/sr/${QUEUE.teams.path}`, 'moderator')
+
+      /* Held first, so that its staying is something this case can see: an answer that was
+         never held is absent whether or not the approval dropped it. */
+      await loadResource<EventComment[]>('comments')
+      expect(arrivedResource('comments')).toBeDefined()
 
       await user.click(await screen.findByRole('button', { name: 'Odobri' }))
 
@@ -1264,7 +1262,7 @@ describe('a comment a moderator lets out', () => {
          the only sign this test would otherwise have that anything happened
          at all - before the absence beside it means something. */
       await waitFor(() => expect(screen.queryByRole('button', { name: 'Odobri' })).toBeNull())
-      expect(screen.getByRole('list', { name: 'session published' })).toBeEmptyDOMElement()
+      expect(arrivedResource('comments')).toBeDefined()
     } finally {
       globalThis.fetch = served
     }
@@ -1327,6 +1325,169 @@ describe('a comment a moderator lets out', () => {
     await router.navigate(`/sr/kalendar/${(await eventWithId(sent.subjectId)).slug}`)
 
     expect(await underEvent(sent.body)).toBe(true)
+  })
+})
+
+/* AN APPROVED RATING IS THE ONE RATING THE MEMBER HAS ON THAT EVENT (PDL, 19.10.2026: „Jedna ocena po
+ * članu po događaju; nova zamenjuje staru"), AND THE EVENT PAGE SHOWS WHAT THE SERVER HOLDS.
+ *
+ * Measured on QA on 20.10.2026: a moderator approved a rating, opened the event in the same visit and
+ * saw two identical ratings by one member, one dated 19.10 and one 20.10. The database held one. The
+ * second was a copy the queue drew into the session (`publish`), numbered by the card and dated by
+ * the card, laid beside the list the event page had already read and still held, because approving
+ * never dropped it. Every case below holds that list FIRST (`seenBefore`): a page that has not read
+ * the comments before the approval reads them after it, and a copy kept in the session cannot be told
+ * from the server's answer.
+ *
+ * Members and events are the generated file's own: 000007 has a rating on event 1 and another on
+ * event 1120, 000020 has one on event 2 and none on event 1, and 000021 and the others have theirs on
+ * event 1 beside him. */
+describe('an approved rating on an event', () => {
+  const STRAHINJA = { memberNumber: '000007', who: 'Strahinja Vukićević' }
+  const SLOBODAN = { memberNumber: '000020', who: 'Slobodan Ristić' }
+  const THE_OLD_WORDS = 'Odlična organizacija, staza je bila jasno obeležena'
+  const NEW_WORDS = 'Ove godine slabije nego pre dve godine.'
+  const NEW_MARKS = { organisation: 3, value: 3, ambience: 2 }
+
+  /** Every rating drawn under the event, as the words on it, once the list has settled. */
+  async function ratingsUnder(): Promise<string[]> {
+    await underEvent('')
+
+    return within(screen.getByRole('list', { name: 'Komentari' }))
+      .getAllByRole('listitem')
+      .map((one) => one.textContent ?? '')
+  }
+
+  /** The overall mark of the event as the head of the page says it: the figure and what it is out of. */
+  function theMark(): { figure: string; of: string } {
+    return {
+      figure: must(document.querySelector('.comments__mark-figure'), 'the figure').textContent ?? '',
+      of: must(document.querySelector('.comments__mark-count'), 'what it is out of').textContent ?? '',
+    }
+  }
+
+  /** What the figure says for these ratings, worked out the way the page works it out. */
+  const meanOf = (ratings: { rating: EventComment['rating'] }[]) => {
+    const marked = ratings.filter((one) => rated(one.rating))
+
+    return (marked.reduce((so, one) => so + overall(one.rating), 0) / marked.length)
+      .toFixed(1)
+      .replace('.', ',')
+  }
+
+  /**
+   * Holds the event page, then decides the card from the queue, then reads the event page again, in
+   * the one visit: the walk the owner took on QA.
+   *
+   * @returns the ratings of the event as the server held them before the decision, and what the page
+   *   showed before and after it
+   */
+  async function decide(card: ReturnType<typeof aWaitingRating>, how: 'approve' | 'delete') {
+    queue?.stop()
+    queue = fakeQueue([card])
+
+    const user = setupUser()
+    const { router } = renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
+    const held = (await loadResource<EventComment[]>('comments')).filter(
+      (one) => one.eventId === Number(card.subjectId),
+    )
+
+    await router.navigate(`/sr/kalendar/${EVENT}`)
+
+    const seenBefore = await ratingsUnder()
+    const markBefore = theMark()
+
+    await router.navigate('/sr/administracija/verifikacija/komentari')
+
+    const waiting = await cardFor(card.body)
+
+    if (how === 'approve') {
+      await user.click(within(waiting).getByRole('button', { name: 'Odobri' }))
+    } else {
+      await user.click(within(waiting).getByRole('button', { name: /^Obriši: / }))
+      await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
+    }
+
+    /* The card leaving is the sign the decision went through: nothing is read before it has. */
+    await waitFor(() => expect(screen.queryByText(card.body)).toBeNull())
+    await router.navigate(`/sr/kalendar/${EVENT}`)
+
+    return { held, seenBefore, markBefore, seenAfter: await ratingsUnder(), markAfter: theMark(), router }
+  }
+
+  it('is the only rating its member has on the event once it is approved, and the older one is gone', async () => {
+    const card = aWaitingRating(800001, STRAHINJA, 1, NEW_WORDS, NEW_MARKS)
+    const { held, seenBefore, seenAfter, markBefore, markAfter } = await decide(card, 'approve')
+
+    /* The positive control: he HAD one, drawn, with the words the file carries. */
+    expect(seenBefore.filter((one) => one.includes(STRAHINJA.who))).toHaveLength(1)
+    expect(seenBefore.join('\n')).toContain(THE_OLD_WORDS)
+    expect(markBefore).toEqual({ figure: meanOf(held), of: 'iz 4 ocene' })
+
+    /* Afterwards: one, and it is the new one. */
+    const his = seenAfter.filter((one) => one.includes(STRAHINJA.who))
+
+    expect(his).toHaveLength(1)
+    expect(his[0]).toContain(NEW_WORDS)
+    expect(seenAfter.join('\n')).not.toContain(THE_OLD_WORDS)
+
+    /* Nobody else's moved: the same number of ratings, and every other member's still there. */
+    expect(seenAfter).toHaveLength(seenBefore.length)
+
+    for (const other of held.filter((one) => one.memberNumber !== STRAHINJA.memberNumber)) {
+      expect(
+        seenAfter.some((one) => one.includes(other.who)),
+        other.who,
+      ).toBe(true)
+    }
+
+    /* And the overall mark is worked out over that: four ratings, the new one in place of the old. */
+    const worked = [
+      ...held.filter((one) => one.memberNumber !== STRAHINJA.memberNumber),
+      { rating: NEW_MARKS },
+    ]
+
+    expect(markAfter).toEqual({ figure: meanOf(worked), of: 'iz 4 ocene' })
+    expect(markAfter.figure).not.toBe(markBefore.figure)
+  })
+
+  it('leaves the rating the same member has on another event where it was', async () => {
+    const card = aWaitingRating(800002, STRAHINJA, 1, NEW_WORDS, NEW_MARKS)
+    const { router } = await decide(card, 'approve')
+
+    await router.navigate('/sr/kalendar/sidski-novogodisnji-maraton-2027')
+    await screen.findByRole('heading', { level: 1, name: 'Šidski novogodišnji maraton' })
+
+    expect((await ratingsUnder()).join('\n')).toContain('Komentar sa ranijeg izdanja')
+  })
+
+  it('adds a rating where its member has none on the event, and takes nobody else away', async () => {
+    const card = aWaitingRating(800003, SLOBODAN, 1, NEW_WORDS, NEW_MARKS)
+    const { held, seenBefore, seenAfter, markAfter, router } = await decide(card, 'approve')
+
+    expect(seenBefore.some((one) => one.includes(SLOBODAN.who))).toBe(false)
+    expect(seenAfter).toHaveLength(seenBefore.length + 1)
+    expect(seenAfter.filter((one) => one.includes(SLOBODAN.who))).toHaveLength(1)
+    expect(markAfter).toEqual({
+      figure: meanOf([...held, { rating: NEW_MARKS }]),
+      of: 'iz 5 ocena',
+    })
+
+    /* His rating on the other event is his, and stays. */
+    await router.navigate('/sr/kalendar/ironman-70-3-st-polten-2010')
+    await screen.findByRole('heading', { level: 1, name: /Ironman 70\.3/ })
+
+    expect((await ratingsUnder()).join('\n')).toContain('Lepa trka, ali startni paket')
+  })
+
+  it('changes nothing for a member whose waiting rating is deleted instead of approved', async () => {
+    const card = aWaitingRating(800004, STRAHINJA, 1, NEW_WORDS, NEW_MARKS)
+    const { seenBefore, seenAfter, markBefore, markAfter } = await decide(card, 'delete')
+
+    expect(seenAfter).toEqual(seenBefore)
+    expect(seenAfter.join('\n')).toContain(THE_OLD_WORDS)
+    expect(seenAfter.join('\n')).not.toContain(NEW_WORDS)
+    expect(markAfter).toEqual(markBefore)
   })
 })
 

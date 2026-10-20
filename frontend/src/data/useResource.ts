@@ -509,58 +509,28 @@ function useLive<T>(state: ResourceState<T[]>, entity: string, idField: keyof T)
 
 export const useDucats = () => useResource<DucatFamily[]>('ducats')
 /**
- * What is published under an event: what the file carries, and what a moderator
- * has let out during this visit.
+ * What is published under an event: what the server holds, and nothing laid beside it.
  *
- * Merged here rather than at the screen, for the reason `usePending` gives about
- * proposals: one place decides what "published" means, so the event page cannot
- * disagree with the queue that published it. Without this a moderator approved a
- * comment and nothing appeared anywhere, which is the whole of what approving one
- * is for (owner, 06.08.2026).
+ * **There is no overlay here, and that is a decision and not an omission.** Until 20.10.2026
+ * this merged what the server held with a copy of every comment a moderator had let out during
+ * the visit (`publish`, `SessionProvider`), drawn from the queue card: the card's number, the
+ * card's day. It was written when approving a comment wrote to the browser alone (owner,
+ * 06.08.2026: „approved a comment and nothing appeared anywhere"), and it stopped being true
+ * when `VerificationWriteApi.decide` began publishing it. From then the server held the comment
+ * under a number of its own, and held ONE rating per member per event: his older one is deleted
+ * when the new one is published (PDL, 19.10.2026, „Jedna ocena po članu po događaju; nova zamenjuje
+ * staru"). A copy kept here was a second comment by the same member, dated by the card, and the
+ * overall mark counted both. The owner met it on QA.
  *
- * What it reads is the session and not the queue. Reading the queue here worked
- * and was wrong: the event page is public, so every visitor's browser fetched
- * the whole moderation queue, which carries pending members' addresses and the
- * bodies of comments nobody has approved. The queue is administration's to read;
- * what comes out of it is written down when it comes out (`publish`), and this
- * side only ever sees what was let out.
+ * The reason the overlay existed is met the way `RateEvent.tsx` meets it for a rating published
+ * at once: whoever changes what is published drops the cache (`PendingQueue.tsx`, after the
+ * walk), so the next read of the event page is the server's answer.
+ *
+ * What it reads is the server and not the queue, for the reason this had from the start: the
+ * event page is public, so every visitor's browser would fetch the whole moderation queue, which
+ * carries pending members' addresses and the bodies of comments nobody has approved.
  */
-export function useComments(): ResourceState<EventComment[]> {
-  const state = useResource<EventComment[]>('comments')
-  const { decisions, published } = useSession()
-
-  return useMemo(() => {
-    if (state.status !== 'ready') {
-      return state
-    }
-
-    /* Read through the decisions rather than trusted as a list of what is out:
-       a comment let out and then taken down again is a decision changed, and
-       the screen must follow the change without the moderator having to be
-       standing on it. */
-    const letOut = published
-      /* By the QUEUE ITEM it came out of and not by the comment's own identity.
-         The two were one value until 20.09.2026, when a comment became something
-         identified by a number (`/api/comments`) while a queue item is still
-         identified by the text the file gives it; read by the comment's number
-         this finds no decision at all and nothing a moderator let out is ever
-         drawn. */
-      .filter((one) => decisions[one.from]?.status === 'approved')
-      .map((one) => one.comment)
-    /* By id, because the two sides can name the same comment. Nothing does
-       today: what the session hands out is numbered below nought and a
-       `bigserial` never is (`SessionProvider`, `publish`). It stands for the day
-       a backend hands back an approved comment under an id the file also holds,
-       which the event page would otherwise draw twice with a repeated React key
-       underneath. */
-    const already = new Set(state.data.map((one) => one.id))
-
-    return {
-      status: 'ready',
-      data: [...state.data, ...letOut.filter((one) => !already.has(one.id))],
-    }
-  }, [state, published, decisions])
-}
+export const useComments = () => useResource<EventComment[]>('comments')
 
 /**
  * @param revision bumped by the moderation of the members once a payment recorded on a row has gone

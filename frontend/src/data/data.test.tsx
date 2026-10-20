@@ -2,24 +2,20 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { render, screen, waitFor } from '@testing-library/react'
 import { SessionProvider } from '../session/SessionProvider'
-import { useSession } from '../session/useSession'
 import { aFailedRead } from '../test/failedRead'
-import { setupUser } from '../test/user'
 import { first, must } from '../test/at'
 import { eventSlug } from '../pages/admin/entityForms'
 import { loadResource, type ResourceName } from './client'
-import { commentFrom } from './comment'
 import countries from './countries.json'
 import { nameBeforeItsBracket, plainly, type Place } from './places'
 import { EVENT_KINDS, ITEM_KINDS, RACE_KINDS } from './types'
-import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
+import type { BtlEvent, Competitor, PendingItem, Result } from './types'
 import {
   combinePair,
   combineFour,
   combineResources,
   dataOr,
   failed,
-  useComments,
   useCompetitors,
   useEvents,
   useLeagues,
@@ -713,192 +709,6 @@ describe('the generated data', () => {
     expect(featured.filter((one) => typeof one !== 'boolean')).toEqual([])
     /* And both answers stand in the fixture, so neither goes untried on a screen. */
     expect([...new Set(featured)].sort()).toEqual([false, true])
-  })
-})
-
-/* A comment that has been let out and then taken down again.
- *
- * Not reachable from the queue today: a settled item leaves the list of waiting
- * ones, so no screen offers a second decision on it. The rule is written where
- * the reading is, because a list of "what is out" that ignored the decisions
- * would be a second answer to a question `decisions` already answers, and the
- * two would go out of step the day the queue is rebuilt around exactly this
- * (owner, 06.08.2026, no section of settled items).
- */
-function LetOut() {
-  const state = useComments()
-  const { publish, settle } = useSession()
-  const item = 'ver-kom-1'
-  const one: Omit<EventComment, 'id'> = {
-    eventId: 1,
-    memberNumber: '000007',
-    who: 'Ime Prezime',
-    date: '2026-08-06',
-    rating: { organisation: 5, value: 4, ambience: 5 },
-    body: 'Reci koje su izasle.',
-  }
-  const said = (status: 'approved' | 'rejected') => () => {
-    publish(item, one)
-    settle(item, { status, note: '', basis: '', memberNumber: '' })
-  }
-
-  /* The FIRST comment the file carries, which the event page draws already. What
-     the session hands out is numbered below nought and a `bigserial` never is
-     (`SessionProvider`, `publish`), so the two sides cannot name one comment by
-     accident today; this stands for the day a backend answers with an approved
-     comment under an id the file also holds. */
-  const already = 1
-
-  return (
-    <>
-      <span data-testid="mine">
-        {state.status !== 'ready'
-          ? state.status
-          : state.data.filter((each) => each.eventId === one.eventId && each.body === one.body)
-              .length}
-      </span>
-      <span data-testid="twice">
-        {state.status !== 'ready'
-          ? state.status
-          : state.data.filter((each) => each.id === already).length}
-      </span>
-      <button type="button" onClick={said('approved')}>
-        pusti
-      </button>
-      <button type="button" onClick={said('rejected')}>
-        skini
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          publish('ver-kom-2', one)
-          settle('ver-kom-2', { status: 'approved', note: '', basis: '', memberNumber: '' })
-        }}
-      >
-        pusti isti
-      </button>
-    </>
-  )
-}
-
-describe('useComments', () => {
-  it('drops a comment whose approval is changed to a deletion', async () => {
-    const user = setupUser()
-
-    render(
-      <SessionProvider>
-        <LetOut />
-      </SessionProvider>,
-    )
-
-    await waitFor(() => expect(screen.getByTestId('mine')).toHaveTextContent('0'))
-
-    await user.click(screen.getByRole('button', { name: 'pusti' }))
-    expect(screen.getByTestId('mine')).toHaveTextContent('1')
-
-    await user.click(screen.getByRole('button', { name: 'skini' }))
-    expect(screen.getByTestId('mine')).toHaveTextContent('0')
-  })
-
-  it('draws a comment once when both sides name it', async () => {
-    const user = setupUser()
-
-    render(
-      <SessionProvider>
-        <LetOut />
-      </SessionProvider>,
-    )
-
-    await waitFor(() => expect(screen.getByTestId('twice')).toHaveTextContent('1'))
-
-    await user.click(screen.getByRole('button', { name: 'pusti isti' }))
-
-    expect(screen.getByTestId('twice')).toHaveTextContent('1')
-  })
-})
-
-/* What an approval turns a waiting comment into.
- *
- * Held field by field, and as a unit, because the screens cannot hold all of
- * it: the name is drawn off the member's record while they are still in the
- * league, so a name dropped here is invisible everywhere until the day that
- * member leaves, and then the card is blank with nothing to say why (PDL P11).
- */
-describe('commentFrom', () => {
-  it('carries every field of the waiting comment, and nothing of its own', () => {
-    const waiting: PendingItem = {
-      id: 'ver-kom-9',
-      queue: 'comments',
-      kind: '',
-      date: '2026-08-06',
-      memberNumber: '000007',
-      who: 'Ime Prezime',
-      subject: 'Fruškogorski maraton',
-      subjectId: '1',
-      body: 'Reci koje je clan napisao.',
-      picture: '',
-      crop: { x: 0.5, y: 0.5, size: 1 },
-      photoId: null,
-      currentDate: '',
-      proposedDate: '',
-      email: '',
-      city: '',
-      country: '',
-      rating: { organisation: 5, value: 4, ambience: 3 },
-    }
-
-    expect(commentFrom(waiting)).toEqual({
-      eventId: 1,
-      memberNumber: '000007',
-      who: 'Ime Prezime',
-      date: '2026-08-06',
-      rating: { organisation: 5, value: 4, ambience: 3 },
-      body: 'Reci koje je clan napisao.',
-    })
-  })
-
-  it('files a comment whose row cannot say which event it is about under no event at all', () => {
-    /* **THIS WAS A CLAIM ABOUT `/api/verification` UNTIL 22.09.2026, AND IS NOW A CLAIM
-       ABOUT `commentFrom` ALONE (ADL A64 A1).** The route used to answer `subjectId`
-       blank on every comments row, because `verification` had no pointer to `btl_event`
-       and none to `event_comment` - the only two V10 and V11 had given it being
-       `result_submission_id` and `team_proposal_id` - so this case measured the real,
-       then-unavoidable shape of the server's answer. V30 closed that: a waiting comment
-       answers with the key of its event now (`comment_submission.event_id`), and
-       `VerificationApiTest.aWaitingCommentAnswersWithTheKeyOfTheEventItIsAbout` is what
-       measures the route's side of it.
-
-       **`commentFrom` itself is untouched, and the type it reads still allows a blank
-       `subjectId`**, so what a blank one does to the arithmetic is still worth knowing.
-       `Number('')` is NOUGHT: this fixture is a deliberately built edge case and not a
-       row the server answers with any more, and the claim below is about the function
-       alone, not about what `/api/verification` sends. */
-    const withNoEvent: PendingItem = {
-      id: 'ver-kom-9',
-      queue: 'comments',
-      kind: '',
-      date: '2026-08-06',
-      memberNumber: '000007',
-      who: 'Ime Prezime',
-      subject: 'Fruškogorski maraton',
-      subjectId: '',
-      body: 'Reci koje je clan napisao.',
-      picture: '',
-      crop: { x: 0.5, y: 0.5, size: 1 },
-      photoId: null,
-      currentDate: '',
-      proposedDate: '',
-      email: '',
-      city: '',
-      country: '',
-      rating: { organisation: 0, value: 0, ambience: 0 },
-    }
-
-    expect(commentFrom(withNoEvent).eventId).toBe(0)
-    /* And the name of the event is still on the record, which is what makes the nought
-       a lost LINK rather than a lost comment: everything a reader would need is there
-       except the one thing that files it. */
-    expect(commentFrom(withNoEvent).who).toBe('Ime Prezime')
   })
 })
 

@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import type {
-  EventComment,
   MembershipBasis,
   PendingItem,
   RacingPair,
@@ -120,7 +119,6 @@ export function SessionProvider({
      picture itself, so putting one here as well drew the member twice on one queue
      (`context.ts#pictureSent`). */
   const [pictureSent, setPictureSent] = useState<PictureSent | null>(null)
-  const [published, setPublished] = useState<{ from: string; comment: EventComment }[]>([])
 
   /* An id of its own shape, so nothing can collide with the ids in the file the
      rest of the queue is read from, and so a decision written against it is
@@ -134,36 +132,6 @@ export function SessionProvider({
      (`context.ts#pictureSent`). */
   const sendPicture = useCallback((one: PictureSent | null) => {
     setPictureSent(one)
-  }, [])
-
-  /**
-   * The number the next comment let out in this visit is given.
-   *
-   * **Counted downwards from nought, and that is the prototype saying out loud
-   * that it has no sequence.** `/api/comments` answers with a `bigserial`, which
-   * starts at one and never goes below it, so nothing numbered here can collide
-   * with the file or with anything a server ever hands out, whatever either
-   * grows to.
-   *
-   * A ref and not the length of the list, because a moderator settles a whole
-   * queue in one press and `published` is state: read there, every comment of
-   * that press is handed the same number and the event page draws one of them.
-   */
-  const letOut = useRef(0)
-
-  /* Kept once, by the QUEUE ITEM and not by the comment. A moderator can settle
-     the same item twice (approve, take down, approve again), and a list that
-     grew each time would draw the comment twice on the event page. */
-  const publish = useCallback((from: string, comment: Omit<EventComment, 'id'>) => {
-    setPublished((current) => {
-      if (current.some((one) => one.from === from)) {
-        return current
-      }
-
-      letOut.current -= 1
-
-      return [...current, { from, comment: { ...comment, id: letOut.current } }]
-    })
   }, [])
 
   const markRead = useCallback((id: string) => {
@@ -474,8 +442,6 @@ export function SessionProvider({
       propose,
       pictureSent,
       sendPicture,
-      published,
-      publish,
     }),
     [
       memberNumber,
@@ -538,8 +504,6 @@ export function SessionProvider({
       propose,
       pictureSent,
       sendPicture,
-      published,
-      publish,
     ],
   )
 
