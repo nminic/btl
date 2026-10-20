@@ -232,15 +232,17 @@ export function AdminMembers() {
   }
 
   /**
-   * A SEASON WAS CANCELLED OR ITS BASIS CHANGED ON A ROW (PDL P8, 18.10.2026), and every answer that
-   * says something different about him now is dropped.
+   * A SEASON WAS CANCELLED, ITS BASIS CHANGED OR AN EXEMPTION GRANTED ON A ROW (PDL P8, 18.10.2026),
+   * and every answer that says something different about him now is dropped.
    *
    * <p>`paymentRecorded`'s three, for its reason, and three more, because a cancellation can make him
    * inactive: `MemberMembershipApi` writes `active` from the rows that remain, and a member whose fee no
    * longer stands leaves the public list, the results of the season being run, his team's roster and
    * his pair (`where c.active` on each of them). `results` also carries `inItsSeason`, which a cancelled
    * season stops being. A change of basis keeps him a member of the season, and the same six are dropped
-   * for it all the same: one road for both is one road to keep right.
+   * for it all the same: one road for both is one road to keep right. A grant makes him a member of the
+   * season, active again if he had lapsed, and off the payments screen: the same six, for the same
+   * reasons the other way round.
    *
    * <p>**His inbox only when the row is the moderator's own**, which is when the inbox this visit holds
    * is the member's („Moderator i superadmin smeju da rade na sopstvenom redu”). The message goes to the
@@ -429,12 +431,14 @@ export function AdminMembers() {
                                 onRecorded={() => seasonChanged(one, t('admin.basisChanged'))}
                               />
                             )}
-                            {/* „STORNIRAJ" ON EVERY SEASON ON SALE THAT IS HELD, and „Promeni osnov u
-                                oslobođenje" on one held on a payment; nothing on a row that holds none. */}
+                            {/* „STORNIRAJ" ON EVERY SEASON ON SALE THAT IS HELD, „Promeni osnov u oslobođenje" on one
+                                held on a payment, and „Odobri oslobođenje" on a row that holds none
+                                (PDL P8, 18.10.2026, „Oslobođenje ostaje izbor na redu člana"). */}
                             <RowMembership
                               one={one}
                               onCancelled={() => seasonChanged(one, t('admin.membershipCancelled'))}
                               onChanged={() => seasonChanged(one, t('admin.basisChanged'))}
+                              onGranted={() => seasonChanged(one, t('admin.exemptionGranted'))}
                             />
                             <span className="entity-row-actions">
                               <DeleteRecord

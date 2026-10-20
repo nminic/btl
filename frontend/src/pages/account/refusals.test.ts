@@ -23,6 +23,7 @@ import { WHEN_RECORDING_ON_THE_ROW } from '../admin/memberPayment'
 import {
   WHEN_CANCELLING,
   WHEN_CHANGING_TO_THE_EXEMPTION,
+  WHEN_GRANTING_AN_EXEMPTION,
   WHEN_PAYING_OVER_THE_EXEMPTION,
 } from '../admin/memberMembership'
 import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
@@ -441,9 +442,14 @@ describe('the reasons the server can name', () => {
        or its basis changed. Four constants and four reasons, and three acts on one address, each with
        the map of what it can meet: `DELETE` cannot name a change, so `thisChangeIsNotOffered` is not on
        the cancellation's; a payment over the exemption meets the booking's reasons as well, and is on
-       `PaymentApi`'s line above for those. */
+       `PaymentApi`'s line above for those.
+
+       A FOURTH ACT SINCE 20.10.2026 AND THE SAME FOUR CONSTANTS: the exemption granted on a row that
+       holds no season on sale (`POST`), which can meet all four, so its map is registered here and the
+       count does not move. */
     ['MemberMembershipApi.java',
-      [WHEN_CANCELLING, WHEN_CHANGING_TO_THE_EXEMPTION, WHEN_PAYING_OVER_THE_EXEMPTION], 4],
+      [WHEN_CANCELLING, WHEN_CHANGING_TO_THE_EXEMPTION, WHEN_PAYING_OVER_THE_EXEMPTION,
+        WHEN_GRANTING_AN_EXEMPTION], 4],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A RACING PAIR.
        Seven constants, and the count splits three ways: three are not refusals at all
        (`NOT_A_REASON` above), two are real refusals of the act that ASKS rather than answers

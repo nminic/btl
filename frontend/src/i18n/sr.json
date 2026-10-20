@@ -1491,6 +1491,9 @@
     },
     "askChangeToExemption": "Promeni osnov u oslobođenje za sezonu {season}? Zapis o uplati se briše.",
     "membershipCancelled": "Članstvo je stornirano.",
+    "grantExemption": "Odobri oslobođenje",
+    "askGrantExemption": "Odobri oslobođenje od članarine za sezonu {season}?",
+    "exemptionGranted": "Oslobođenje je upisano.",
     "basisChanged": "Osnov članstva je promenjen.",
     "membershipRefused": {
       "theFormIsNotComplete": "Zahtev nije poslat do kraja, pa ništa nije urađeno. Osveži stranicu i pokušaj ponovo.",
