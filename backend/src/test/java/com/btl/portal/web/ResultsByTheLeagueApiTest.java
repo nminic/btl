@@ -1051,9 +1051,14 @@ class ResultsByTheLeagueApiTest {
 	 */
 	@Test
 	void aNewEventItsRaceAndTheRowsAreWrittenTogether() throws Exception {
-		assertThat(onAnEvent(RESULTS_MODERATOR, onANewEvent("Jezerska trka", "2027-06-01", "Ohrid", "MK",
-				newRace("Jezerska desetka", null, "length", "10.00", 20, 30, null),
-				row(VERA, "99.00", 1, 1, AN_HOUR))).getStatus()).isEqualTo(201);
+		MockHttpServletResponse saved = onAnEvent(RESULTS_MODERATOR, onANewEvent("Jezerska trka",
+				"2027-06-01", "Ohrid", "MK", newRace("Jezerska desetka", null, "length", "10.00", 20, 30, null),
+				row(VERA, "99.00", 1, 1, AN_HOUR)));
+
+		assertThat(saved.getStatus()).isEqualTo(201);
+		/* The address of the event the save made, which the screen goes to and cannot work out. */
+		assertThat(new ObjectMapper().readTree(saved.getContentAsString()).path("event").asString())
+				.isEqualTo("jezerska-trka-2027");
 
 		assertThat(db.sql("select name || ' ' || date || ' ' || coalesce(place_id::text, '-') || ' ' || city"
 						+ " || ' ' || (select code from country where id = country_id) || ' ' || kind"
@@ -1097,8 +1102,12 @@ class ResultsByTheLeagueApiTest {
 		long theEvent = db.sql("select event_id from race where id = ?").param(theTen)
 				.query(Long.class).single();
 
-		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent, "{\"id\":" + theTen + "}",
-				row(VERA, "50.00", 9, 9, AN_HOUR))).getStatus()).isEqualTo(201);
+		MockHttpServletResponse saved = onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				"{\"id\":" + theTen + "}", row(VERA, "50.00", 9, 9, AN_HOUR)));
+
+		assertThat(saved.getStatus()).isEqualTo(201);
+		assertThat(new ObjectMapper().readTree(saved.getContentAsString()).path("event").asString())
+				.isEqualTo("prvi-dogadjaj-2027");
 
 		assertThat(resultsOf(VERA)).containsExactly(figures(theTen, "10", 100, 80, AN_HOUR,
 				BtlScoreCalculator.calculate(10.0, 100, 80, AN_HOUR)));

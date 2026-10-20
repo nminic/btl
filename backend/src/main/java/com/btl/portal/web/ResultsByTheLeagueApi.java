@@ -335,6 +335,14 @@ class ResultsByTheLeagueApi {
 	record Entered(List<Long> results) {
 	}
 
+	/**
+	 * What the moderator's screen is answered: the results, and the ADDRESS of the event they are on,
+	 * which the screen goes to after saving („posle čuvanja ekran vodi na stranu događaja”, approved
+	 * 19.10.2026) and cannot know of an event the save made.
+	 */
+	record EnteredOn(List<Long> results, String event) {
+	}
+
 	record Refused(String reason) {
 	}
 
@@ -532,7 +540,7 @@ class ResultsByTheLeagueApi {
 				return Done.only(no(HttpStatus.BAD_REQUEST, ResultWriteApi.THE_RACE_HAS_NOT_BEEN_RUN));
 			}
 
-			return theRows(found.get(), rows);
+			return onTheEvent(theRows(found.get(), rows), event.orElseThrow().id());
 		}
 
 		LocalDate day = named.id() == null ? named.date() : race.date();
@@ -549,6 +557,7 @@ class ResultsByTheLeagueApi {
 		}
 
 		long made;
+		long on;
 
 		if (event.isPresent()) {
 			TheDayOfAnEvent.Standing there = event.get();
@@ -560,12 +569,27 @@ class ResultsByTheLeagueApi {
 			}
 
 			made = aNewRace(there.id(), race, day);
+			on = there.id();
 			TheDayOfAnEvent.theEventNowBeginsOn(db, there, beginning, address);
 		} else {
-			made = aNewRace(aNewEvent(named), race, day);
+			on = aNewEvent(named);
+			made = aNewRace(on, race, day);
 		}
 
-		return written(raceOf(made).orElseThrow(), judged);
+		return onTheEvent(written(raceOf(made).orElseThrow(), judged), on);
+	}
+
+	/** A save written, answered with the address of the event it is on as that event now stands. */
+	private Done onTheEvent(Done done, long event) {
+		if (!(done.answer().getBody() instanceof Entered entered)) {
+			return done;
+		}
+
+		String address = db.sql("select slug from btl_event where id = ?").param(event)
+				.query(String.class).single();
+
+		return new Done(ResponseEntity.status(HttpStatus.CREATED)
+				.body(new EnteredOn(entered.results(), address)), done.letters());
 	}
 
 	/** The event, in the town typed, on the day of its first race, at its address; one made by
