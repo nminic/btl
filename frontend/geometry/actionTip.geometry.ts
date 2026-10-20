@@ -300,3 +300,85 @@ for (const path of QUEUES) {
     })
   }
 }
+
+/**
+ * A PRESS ALWAYS REACHES THE CONTROL UNDER THE POINTER (owner, 20.10.2026: the box must not get in the
+ * way), replaying the moves the review of PR 593 measured.
+ *
+ * The pointer rests on one symbol, its box opens, the pointer goes to the symbol beside it, and that
+ * one is pressed. With a box that took presses, the press landed on the words of the first box
+ * (`elementFromPoint` answered `SPAN.action-tip__words`) and the neighbour got nothing, three times in
+ * six: the members' cross and „Storniraj" above it at 360 and at 1280, and the teams' cross and
+ * „Otvori" beside it at 360. Asked here: the neighbour is what stands under the pointer, and it gets
+ * the click on the first press.
+ */
+const NEIGHBOURS: { path: string; width: number; from: RegExp; to: RegExp; answers: Answers }[] = [
+  { path: '/sr/administracija/clanovi', width: 360, from: /^Obriši: /, to: /^Storniraj$/, answers: ANSWERS },
+  { path: '/sr/administracija/clanovi', width: 1280, from: /^Obriši: /, to: /^Storniraj$/, answers: ANSWERS },
+  {
+    path: '/sr/administracija/timovi',
+    width: 360,
+    from: /^Obriši: /,
+    to: /^Otvori: /,
+    answers: { ...SAMPLE, '/api/me': SUPERADMIN },
+  },
+]
+
+for (const one of NEIGHBOURS) {
+  test(`the neighbour of a symbol gets the first press, on ${one.path} at ${String(one.width)}px`, async ({ open }) => {
+    const { page } = await open({ width: one.width, text: 100 }, one.path, '.action:visible', one.answers)
+    const row = page.locator('tbody tr').filter({ has: page.getByRole('button', { name: one.to }) }).first()
+    const from = row.getByRole('button', { name: one.from })
+    const to = row.getByRole('button', { name: one.to })
+
+    await from.scrollIntoViewIfNeeded()
+    await page.evaluate(() => {
+      const box = document.querySelector('.table-scroll')
+
+      if (box !== null) {
+        box.scrollLeft = box.scrollWidth
+      }
+    })
+
+    /* Held as the element itself and not as a query: pressing „Otvori" opens the record in place of
+       the list, and the row the query names is gone by the time it is asked again. */
+    const pressedOne = await to.elementHandle()
+
+    await to.evaluate((button) => {
+      button.addEventListener('click', (pressed) => {
+        pressed.preventDefault()
+        button.dataset.pressed = String(Number(button.dataset.pressed ?? '0') + 1)
+      })
+    })
+
+    const start = await from.boundingBox()
+    const end = await to.boundingBox()
+
+    expect(start, 'the symbol the pointer rests on').not.toBeNull()
+    expect(end, 'its neighbour').not.toBeNull()
+
+    if (start === null || end === null) {
+      return
+    }
+
+    await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2)
+    await page.locator('.action-tip').first().waitFor({ state: 'visible' })
+    await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2, { steps: 8 })
+
+    const under = await page.evaluate(
+      ([x, y]) => {
+        const hit = document.elementFromPoint(x ?? 0, y ?? 0)
+
+        return hit?.closest('button, a')?.getAttribute('aria-label') ?? hit?.closest('button, a')?.textContent ?? hit?.className
+      },
+      [end.x + end.width / 2, end.y + end.height / 2],
+    )
+
+    expect(String(under), 'what stands under the pointer').toMatch(one.to)
+
+    await page.mouse.down()
+    await page.mouse.up()
+
+    expect(await pressedOne?.getAttribute('data-pressed'), 'the clicks the neighbour got').toBe('1')
+  })
+}

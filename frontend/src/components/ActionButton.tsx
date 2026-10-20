@@ -39,6 +39,19 @@ import './ActionButton.css'
  * on the button puts it away; and the pointer can travel from the button into the
  * box without the box closing under it.
  *
+ * **A PRESS ALWAYS REACHES THE CONTROL UNDER THE POINTER** (owner, 20.10.2026: the box
+ * must not get in the way). Measured in review: these buttons stand side by side and
+ * one above another in a cell, the box of one stood over its neighbour, and a press
+ * on the neighbour landed on the words and did nothing, three times in six. So the
+ * box takes no pointer at all (`pointer-events: none`, ActionButton.css): every press
+ * goes to what is under it, and the press itself puts the box away. What the box no
+ * longer hears, whether the pointer is over it, is asked of geometry instead: the
+ * pointer is still with this button while it is on the button, or over the box where
+ * the box covers nothing that can be pressed. Over a control under the box it is with
+ * that control, which opens its own box, and this one goes. So SC 1.4.13 holds
+ * wherever the box covers bare page (hoverable, dismissible, persistent), and gives
+ * way exactly where keeping it would cost a press.
+ *
  * **Where it differs from FieldHint, and why.** The words of a hint are read
  * through `aria-describedby`, so they stay in the document. These are not: the
  * name already says them, so the box is `aria-hidden` and is drawn only while it
@@ -79,6 +92,9 @@ type Answered = 'children' | 'aria-label' | 'onFocus' | 'onBlur' | 'onPointerOve
 /** How far from the edge of the window the box is held, as `forms/DatePicker.tsx`
  *  holds its calendar. */
 const EDGE = 8
+
+/** What a press is meant for: a pointer over one of these is with it, even under a box. */
+const PRESSABLE = 'a[href], button, input, select, textarea, summary, label, [role="button"], [tabindex]:not([tabindex="-1"])'
 
 export function ActionButton({
   symbol,
@@ -201,10 +217,48 @@ function useTip(word: string): {
     }
   }, [anchor])
 
-  /** Whether the pointer went somewhere that is still this button or this box. */
-  function stillHere(going: EventTarget | null, from: HTMLElement): boolean {
-    return going instanceof Node && (from.contains(going) || drawn?.contains(going) === true)
+  /**
+   * Whether a pointer at this point, over this element, is still with the button: on
+   * it, or over its box where the box covers nothing a press is meant for. The box
+   * takes no pointer, so what is under it is what the event names.
+   */
+  function stillHere(button: HTMLElement, x: number, y: number, under: EventTarget | null): boolean {
+    if (under instanceof Node && button.contains(under)) {
+      return true
+    }
+
+    if (drawn === null || (under instanceof Element && under.closest(PRESSABLE) !== null)) {
+      return false
+    }
+
+    const box = drawn.getBoundingClientRect()
+
+    /* A box with no area covers nowhere: one not yet laid out is not one the pointer is over. */
+    return box.width > 0 && box.height > 0 && x >= box.left && x <= box.right && y >= box.top && y <= box.bottom
   }
+
+  /* While the pointer holds it, every move is asked where it went: over the box nothing
+     says so any more, since the box hears no pointer. A finger is not a pointer that
+     rests anywhere, so its moves are not asked. */
+  useEffect(() => {
+    if (hovered === null) {
+      return
+    }
+
+    const button = hovered
+
+    function onMove(moved: globalThis.PointerEvent) {
+      if (moved.pointerType !== 'touch' && !stillHere(button, moved.clientX, moved.clientY, moved.target)) {
+        setHovered(null)
+      }
+    }
+
+    document.addEventListener('pointermove', onMove, true)
+
+    return () => {
+      document.removeEventListener('pointermove', onMove, true)
+    }
+  })
 
   return {
     held: {
@@ -218,14 +272,14 @@ function useTip(word: string): {
 
         /* And what Escape put away comes back only on a new arrival, not on the
            pointer moving inside the button over the drawing in it. */
-        if (!stillHere(coming.relatedTarget, coming.currentTarget)) {
+        if (!(coming.relatedTarget instanceof Node && coming.currentTarget.contains(coming.relatedTarget))) {
           setDismissed(false)
         }
 
         setHovered(coming.currentTarget)
       },
       onPointerOut(going) {
-        if (!stillHere(going.relatedTarget, going.currentTarget)) {
+        if (!stillHere(going.currentTarget, going.clientX, going.clientY, going.relatedTarget)) {
           setHovered(null)
         }
       },
@@ -247,8 +301,6 @@ function useTip(word: string): {
           word={word}
           drawn={drawn}
           draw={setDrawn}
-          hold={() => setHovered(anchor)}
-          release={() => setHovered(null)}
         />
       ),
   }
@@ -269,15 +321,11 @@ function Tip({
   word,
   drawn,
   draw,
-  hold,
-  release,
 }: {
   anchor: HTMLElement
   word: string
   drawn: HTMLElement | null
   draw: (box: HTMLElement | null) => void
-  hold: () => void
-  release: () => void
 }) {
   useLayoutEffect(() => {
     /* The first pass after the box is drawn comes before the box has been handed
@@ -319,11 +367,6 @@ function Tip({
     }
   }, [anchor, drawn, word])
 
-  /** Whether the pointer left the box for the button or for somewhere inside it. */
-  function stillHere(going: EventTarget | null, box: HTMLElement): boolean {
-    return going instanceof Node && (anchor.contains(going) || box.contains(going))
-  }
-
   return createPortal(
     /* Hidden from the tree: the button's name already says these words, and said
        twice they would be said once too often. */
@@ -331,18 +374,6 @@ function Tip({
       className="action-tip"
       aria-hidden="true"
       ref={draw}
-      /* Held open under the pointer, so the words can be read to the end (SC
-         1.4.13, hoverable). */
-      onPointerOver={(coming) => {
-        if (coming.pointerType !== 'touch') {
-          hold()
-        }
-      }}
-      onPointerOut={(going) => {
-        if (!stillHere(going.relatedTarget, going.currentTarget)) {
-          release()
-        }
-      }}
     >
       {/* The word is drawn by the sheet out of this attribute and is not text in
           the document: the button already holds the same word as its text, and a

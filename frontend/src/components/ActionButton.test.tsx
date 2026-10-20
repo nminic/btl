@@ -211,11 +211,15 @@ describe('how it is laid out', () => {
     )
   })
 
-  it('never lets a pointer pass through the box', () => {
-    /* `pointer-events: none` anywhere in this sheet is a box the pointer cannot
-       be over, so it closes the moment the pointer leaves the button for it (WCAG
-       2.2 SC 1.4.13, hoverable). jsdom does not apply it, so it is held here. */
-    expect(unremarked(sheet('components/ActionButton.css'))).not.toMatch(/pointer-events/)
+  it('lets every press through the box to what is under it, and nothing else', () => {
+    /* Owner, 20.10.2026: the box must not get in the way. A box that took presses stood over the
+       neighbouring button and swallowed its first press, three times in six (review of PR 593,
+       measured in Chrome). jsdom does not apply it, so it is held here, and where it lands is asked
+       of Chrome (geometry/actionTip.geometry.ts). Only the box: the button itself takes the pointer. */
+    const css = sheet('components/ActionButton.css')
+
+    expect(ruleFor(css, '.action-tip', 'ActionButton.css').getPropertyValue('pointer-events')).toBe('none')
+    expect([...unremarked(css).matchAll(/pointer-events/g)]).toHaveLength(1)
   })
 })
 
@@ -437,81 +441,117 @@ describe('the box with the word', () => {
     expect(tip()).toBeNull()
   })
 
-  it('holds open while the pointer travels into the words, and only for its own button', () => {
+  /**
+   * The box takes no pointer, so whether the pointer is over it is its rectangle's to say; jsdom lays
+   * nothing out, so the rectangle is said here. Over the button, at 100 to 132 across and 200 to 232
+   * down, the box stands from 80 to 152 across and 170 to 200 down.
+   */
+  function theBoxAt(rect: { left: number; top: number; right: number; bottom: number }) {
+    const real = HTMLElement.prototype.getBoundingClientRect
+
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('action-tip')
+        ? { ...rect, width: rect.right - rect.left, height: rect.bottom - rect.top, x: rect.left, y: rect.top, toJSON: () => ({}) }
+        : real.call(this)
+    })
+  }
+
+  const OVER_THE_BOX = { clientX: 120, clientY: 180 }
+  const ELSEWHERE = { clientX: 400, clientY: 500 }
+
+  it('holds open while the pointer is over its words, where they cover bare page', () => {
     render(
       <>
+        <p>Strana</p>
         <ActionButton symbol={SYMBOL.pencil} word="Izmeni" />
-        <ActionButton symbol={SYMBOL.cross} word="Obriši" />
       </>,
     )
+    theBoxAt({ left: 80, top: 170, right: 152, bottom: 200 })
 
     const edit = screen.getByRole('button', { name: 'Izmeni' })
-    const drop = screen.getByRole('button', { name: 'Obriši' })
+    const page = screen.getByText('Strana')
 
     fireEvent.pointerOver(edit, { pointerType: 'mouse' })
     const box = shown()
-    const words = must(box.firstElementChild, 'the words')
 
-    fireEvent.pointerOut(edit, { pointerType: 'mouse', relatedTarget: box })
-    fireEvent.pointerOver(box, { pointerType: 'mouse', relatedTarget: edit })
+    /* Off the button and onto the words, which stand over the page: the event names the page,
+       since the box takes no pointer, and the point is inside the box. */
+    fireEvent.pointerOut(edit, { pointerType: 'mouse', relatedTarget: page, ...OVER_THE_BOX })
+    fireEvent.pointerMove(page, { pointerType: 'mouse', ...OVER_THE_BOX })
     expect(tip()).toBe(box)
 
-    /* From the box into the words inside it, and back to the button. */
-    fireEvent.pointerOut(box, { pointerType: 'mouse', relatedTarget: words })
-    fireEvent.pointerOut(words, { pointerType: 'mouse', relatedTarget: edit })
-    fireEvent.pointerOver(edit, { pointerType: 'mouse', relatedTarget: words })
+    /* A finger moving somewhere else says nothing about where a pointer rests. */
+    fireEvent.pointerMove(page, { pointerType: 'touch', ...ELSEWHERE })
     expect(tip()).toBe(box)
 
-    fireEvent.pointerOut(edit, { pointerType: 'mouse', relatedTarget: box })
-
-    /* Out of this box and into the neighbour: this one has nothing left holding
-       it, and the neighbour opens its own. */
-    fireEvent.pointerOut(box, { pointerType: 'mouse', relatedTarget: drop })
-    fireEvent.pointerOver(drop, { pointerType: 'mouse', relatedTarget: box })
-
-    const boxes = document.querySelectorAll('.action-tip')
-
-    expect(boxes).toHaveLength(1)
-    expect(wordIn(must(boxes[0], 'the one box'))).toBe('Obriši')
+    /* And off the words, onto the page: it goes. */
+    fireEvent.pointerMove(page, { pointerType: 'mouse', ...ELSEWHERE })
+    expect(tip()).toBeNull()
   })
 
-  it('lets go when the pointer leaves for the box of another button', () => {
-    /* Two boxes can be open at once, one on the keyboard and one on the pointer.
-       Asked about boxes in general, the pointer going from the second button into
-       the first box was still "here", and the second box stayed with nothing
-       holding it. */
+  it('lets go where its words stand over a control, which opens its own box', () => {
+    /* The neighbour under the words is what the pointer is with: kept open there, the box stood
+       over the button a press was meant for (review of PR 593). */
     render(
       <>
+        <ActionButton symbol={SYMBOL.cross} word="Obriši" />
+        <ActionButton symbol={SYMBOL.undo} word="Storniraj" />
+      </>,
+    )
+    theBoxAt({ left: 80, top: 170, right: 152, bottom: 200 })
+
+    const drop = screen.getByRole('button', { name: 'Obriši' })
+    const undo = screen.getByRole('button', { name: 'Storniraj' })
+
+    fireEvent.pointerOver(drop, { pointerType: 'mouse' })
+    fireEvent.pointerOut(drop, { pointerType: 'mouse', relatedTarget: undo, ...OVER_THE_BOX })
+    fireEvent.pointerOver(undo, { pointerType: 'mouse', relatedTarget: drop, ...OVER_THE_BOX })
+
+    expect([...document.querySelectorAll('.action-tip')].map((one) => wordIn(one))).toEqual(['Storniraj'])
+  })
+
+  it('is held only by its own box, not by the box of another button', () => {
+    /* Two boxes can be open at once, one on the keyboard and one on the pointer. Asked about boxes
+       in general, the pointer leaving the second button over the first one's box was still "here",
+       and the second box stayed with nothing holding it. */
+    render(
+      <>
+        <p>Strana</p>
         <ActionButton symbol={SYMBOL.pencil} word="Izmeni" />
         <ActionButton symbol={SYMBOL.cross} word="Obriši" />
       </>,
     )
 
+    const real = HTMLElement.prototype.getBoundingClientRect
+
+    /* The first box over the page where the pointer goes, the second one nowhere near it. */
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const word = this.querySelector('.action-tip__words')?.getAttribute('data-word')
+      const at = word === 'Izmeni' ? 80 : word === 'Obriši' ? 1000 : undefined
+
+      return at === undefined
+        ? real.call(this)
+        : { left: at, right: at + 72, top: 170, bottom: 200, width: 72, height: 30, x: at, y: 170, toJSON: () => ({}) }
+    })
+
     aFocusTheReaderSees(screen.getByRole('button', { name: 'Izmeni' }))
-    const first = shown()
     const drop = screen.getByRole('button', { name: 'Obriši' })
 
     fireEvent.pointerOver(drop, { pointerType: 'mouse' })
     expect(document.querySelectorAll('.action-tip')).toHaveLength(2)
 
-    fireEvent.pointerOut(drop, { pointerType: 'mouse', relatedTarget: first })
+    fireEvent.pointerOut(drop, { pointerType: 'mouse', relatedTarget: screen.getByText('Strana'), ...OVER_THE_BOX })
 
     expect([...document.querySelectorAll('.action-tip')].map((one) => wordIn(one))).toEqual(['Izmeni'])
   })
 
-  it('is not held open by a finger touching it', async () => {
-    const user = userEvent.setup()
+  it('lets go when the pointer leaves the window', () => {
+    render(<ActionButton symbol={SYMBOL.pencil} word="Izmeni" />)
 
-    render(
-      <>
-        <ActionButton symbol={SYMBOL.pencil} word="Izmeni" />
-        <button type="button">Posle</button>
-      </>,
-    )
+    const edit = screen.getByRole('button', { name: 'Izmeni' })
 
-    aFocusTheReaderSees(screen.getByRole('button', { name: 'Izmeni' }))
-    fireEvent.pointerOver(shown(), { pointerType: 'touch' })
-    await user.tab()
+    fireEvent.pointerOver(edit, { pointerType: 'mouse' })
+    fireEvent.pointerOut(edit, { pointerType: 'mouse', relatedTarget: null, ...ELSEWHERE })
 
     expect(tip()).toBeNull()
   })

@@ -64,9 +64,15 @@
    The box is two things on purpose. This outer one is invisible and touches the
    button; its padding is the gap a reader sees between the button and the words.
    So the way from the button into the words never crosses bare page, and the
-   pointer is never for one moment on something that is neither, which would close
-   the box under it a few pixels short of the words it opened for (WCAG 2.2 SC
-   1.4.13, hoverable; forms/FieldHint.css paid for that lesson first).
+   pointer is never for one moment on neither, which would close the box under it a
+   few pixels short of the words it opened for (WCAG 2.2 SC 1.4.13, hoverable;
+   forms/FieldHint.css paid for that lesson first).
+ *
+   IT TAKES NO POINTER (owner, 20.10.2026: the box must not get in the way). A press
+   anywhere on it goes to what is under it, a neighbour it happens to stand over
+   included; measured in review, a box that took presses swallowed the first press on
+   its neighbour three times in six. Whether the pointer is over it is asked of its
+   geometry instead (ActionButton.tsx, `stillHere`).
  *
    Above the sheet a question opens in (components/Prompt.css, 50) and under the
    loader that covers the whole page (components/Loader.css, 100). */
@@ -77,6 +83,7 @@
   z-index: 60;
   inline-size: max-content;
   padding-block: var(--space-4);
+  pointer-events: none;
 }
 
 /* Small print, as the hint of a field is (forms/FieldHint.css), on the surface the
