@@ -47,6 +47,8 @@ describe('a link in a piece of a page', () => {
     '//zlo.example',
     'https://www.runtrace.net@zlo.example',
     'https://primer.rs/a b',
+    '/pravilnik za',
+    '/pravilnik)',
     'mailto:nije mejl',
     '',
   ]
