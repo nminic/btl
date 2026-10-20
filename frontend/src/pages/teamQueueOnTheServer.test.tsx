@@ -259,11 +259,14 @@ const A_QUEUE = /^\/api\/teams\/\d+\/(applications|invitations)$/
 
 const THE_APPLICATIONS = /^\/api\/teams\/\d+\/applications$/
 
-const waitingList = async () =>
-  within(await screen.findByRole('list', { name: sr.teams.joinWaiting }, { timeout: SLOW }))
+/* `SLOW` unless a case says otherwise: a case that holds an answer back and so has a wait that can
+   fail for real gives it half of the case's clock (see „says nothing while the first read is still
+   on its way"), so that the wait fails with its own words and not with the clock of the case. */
+const waitingList = async (timeout = SLOW) =>
+  within(await screen.findByRole('list', { name: sr.teams.joinWaiting }, { timeout }))
 
-const sentList = async () =>
-  within(await screen.findByRole('list', { name: sr.teams.inviteSent }, { timeout: SLOW }))
+const sentList = async (timeout = SLOW) =>
+  within(await screen.findByRole('list', { name: sr.teams.inviteSent }, { timeout }))
 
 const at = (slug: string) => `/sr/tim/${slug}`
 
@@ -1452,6 +1455,26 @@ describe('a queue that could not be read', () => {
       /* The page has arrived, and neither list has: the two are one question in two routes and
          are drawn together, so nothing of either is on the screen while one is still out. */
       expect(await screen.findByRole('heading', { name: MINE.name }, { timeout: SLOW })).toBeVisible()
+
+      /* THE READ IS OUT BEFORE IT IS HELD, AND THAT IS WAITED FOR. `letGo` is only set when the
+         server is asked, and the queue asks from an effect, which React runs after the page that
+         holds it has been committed and not with it. A case that let go the moment the heading was
+         there let go of nothing whenever the effect had not run yet (measured under load: 1 run in
+         14 had no read of either list asked at that moment), and the read that came after it was
+         held for good, so the list was waited for until the clock of the case ended it
+         (`Test timed out in 20000ms`, PR 579 and PR 590). Half of that clock, so that a read that
+         is never asked fails here with the words below and the `finally` below still runs: a case
+         that ends by the clock never reaches it, and leaves its server standing in the way of the
+         next case, which is how the case after this one fell with it. */
+      await waitFor(
+        () => {
+          expect(
+            reads(server.asked).filter((one) => THE_APPLICATIONS.test(one)),
+            'the applications are asked for before the answer is let go of',
+          ).not.toHaveLength(0)
+        },
+        { timeout: SLOW / 2 },
+      )
       expect(screen.queryByText(sr.teams.applicationsUnreadable)).toBeNull()
       expect(screen.queryByText(sr.teams.invitationsUnreadable)).toBeNull()
       expect(screen.queryByRole('heading', { name: sr.teams.joinWaiting })).toBeNull()
@@ -1459,8 +1482,8 @@ describe('a queue that could not be read', () => {
 
       letGo()
 
-      expect((await waitingList()).getAllByRole('listitem')).toHaveLength(3)
-      expect((await sentList()).getAllByRole('listitem')).toHaveLength(3)
+      expect((await waitingList(SLOW / 2)).getAllByRole('listitem')).toHaveLength(3)
+      expect((await sentList(SLOW / 2)).getAllByRole('listitem')).toHaveLength(3)
       expect(screen.queryByText(sr.teams.applicationsUnreadable)).toBeNull()
     } finally {
       server.stop()
@@ -1487,17 +1510,26 @@ describe('a queue that could not be read', () => {
       /* Until the asking again has really come back and failed: a second press made while it is
          still out is refused, which is the other case's business and would make this one wait for
          a read that was never sent. */
-      await waitFor(() => {
-        expect(applicationsAsked()).toBe(2)
-      })
-      await waitFor(() => {
-        expect(retryOf(sr.teams.joinWaiting)).not.toHaveAttribute('aria-disabled', 'true')
-      })
+      await waitFor(
+        () => {
+          expect(applicationsAsked()).toBe(2)
+        },
+        { timeout: SLOW / 2 },
+      )
+      await waitFor(
+        () => {
+          expect(retryOf(sr.teams.joinWaiting)).not.toHaveAttribute('aria-disabled', 'true')
+        },
+        { timeout: SLOW / 2 },
+      )
 
       failing.applications = null
       await user.click(must(retryOf(sr.teams.joinWaiting), 'the button of the applications'))
 
-      expect((await waitingList()).getAllByRole('listitem')).toHaveLength(3)
+      /* HALF OF THE CASE'S CLOCK for every wait after the press, as the case above has it: a
+         press that is refused for good (the guard never turned back) leaves the list to be waited
+         for, and with the whole clock the case would end by the clock and not by this line. */
+      expect((await waitingList(SLOW / 2)).getAllByRole('listitem')).toHaveLength(3)
       expect(applicationsAsked()).toBe(3)
     } finally {
       server.stop()
