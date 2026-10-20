@@ -12,6 +12,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,7 +25,8 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * A SEASON CANCELLED, OR ITS BASIS CHANGED, FROM THE MEMBER'S ROW IN THE MODERATION OF THE MEMBERS.
+ * A SEASON CANCELLED, ITS BASIS CHANGED, OR AN EXEMPTION GRANTED, FROM THE MEMBER'S ROW IN THE
+ * MODERATION OF THE MEMBERS.
  *
  * <p><b>The owner, 18.10.2026</b> (PDL P8, the section „Osnov članstva ima jedan dom”): „Osnov se
  * menja i uplata stornira opcijama na redu člana u moderaciji članova, ne posebnim ekranom.” And,
@@ -47,13 +49,19 @@ import java.util.Set;
  * <li>„Obećan popust iz balansa za storniranu sezonu se briše”.
  * <li>„Nagrada preporučiocu ostaje kad se članstvo preporučenog stornira; preporučilac se ne
  * obaveštava”.
+ * <li>„Oslobođenje ostaje izbor na redu člana.” (the decision on recording a payment on the row,
+ * 18.10.2026), and the words of the message it sends, approved by the owner that day („Može ovako”):
+ * „Oslobođeni ste članarine” / „Za sezonu {sezona} oslobođeni ste plaćanja članarine i član ste
+ * lige.”
  * </ul>
  *
- * <p><b>TWO ROUTES ON ONE ADDRESS</b>, the membership of the season on sale: {@code DELETE} cancels it
- * (the owner's „storno”), {@code PUT} changes its basis. The two changes there are are the two the
- * owner named, {@code payment} to {@code feeExempt} and back; anything else is
- * {@link #THIS_CHANGE_IS_NOT_OFFERED}, a balance included by his decision above, and a balance is
- * never the basis a change leads to („balans se ne bira ručno kao osnov”).
+ * <p><b>THREE ROUTES ON ONE ADDRESS</b>, the membership of the season on sale: {@code DELETE} cancels it
+ * (the owner's „storno”), {@code PUT} changes its basis, and {@code POST} grants it free of the fee to a
+ * member who holds none, since 20.10.2026. The two changes there are are the two the owner named,
+ * {@code payment} to {@code feeExempt} and back; anything else is {@link #THIS_CHANGE_IS_NOT_OFFERED},
+ * a balance included by his decision above, and a balance is never the basis a change leads to („balans
+ * se ne bira ručno kao osnov”). The one basis {@code POST} writes is the exemption, for the same
+ * reason and because a payment on a row that holds none is {@link MemberPaymentApi}'s.
  *
  * <p><b>THE SEASON IS THE CLOCK'S, READ ONCE.</b> PDL P8, „Koje sezone: do 14.10. samo tekuća, od
  * 15.10. samo naredna. Tekuća sezona se posle 14.10. na redu člana ne dira”: that is
@@ -63,7 +71,9 @@ import java.util.Set;
  * ({@link BookingAPayment#book(PaymentApi.Confirm, String, WhoIsAsking.Member, int)}), so nothing here
  * can be about two years across midnight of 15 October.
  *
- * <p><b>THE REQUEST SAYS WHAT THE SCREEN SHOWED, AND THE ROUTE ACTS ONLY ON THAT.</b> PDL P8, recorded
+ * <p><b>THE REQUEST SAYS WHAT THE SCREEN SHOWED, AND THE ROUTE ACTS ONLY ON THAT.</b> A grant is sent
+ * from a row that showed no basis, so a season that stands on one by then is refused the same way, and
+ * a season already free of the fee is the second press, answered as done. PDL P8, recorded
  * as a derivation and told to the owner, who may object: „Zahtev za storno ili promenu nosi osnov koji
  * je ekran pokazao; ako se razlikuje od stanja u bazi, odbija se uz rečenicu (409), a ako nema ničega
  * za storno, odgovor je uspeh bez upisa.” So a season standing on another basis than the one sent is
@@ -164,6 +174,10 @@ class MemberMembershipApi {
 	record Changing(String from, String to, BigDecimal received, String method) {
 	}
 
+	/** @param basis the basis the season is to stand on, of which there is one: {@code feeExempt} */
+	record Granting(String basis) {
+	}
+
 	/**
 	 * What the season stands on now, and which season it is.
 	 *
@@ -177,6 +191,14 @@ class MemberMembershipApi {
 
 	/** What the season holds, read under the lock. */
 	private record Held(String basis, Long paymentId) {
+	}
+
+	@PostMapping("/api/members/{memberNumber}/membership")
+	@RightIsNeeded(CompetitorApi.OVER_THE_MEMBERS)
+	ResponseEntity<?> grant(@PathVariable String memberNumber, @RequestBody Granting typed,
+			@AuthenticationPrincipal WhoIsAsking.Member asking) {
+
+		return inOneTransaction.execute(committing -> grantingTheExemption(memberNumber, typed, asking));
 	}
 
 	@DeleteMapping("/api/members/{memberNumber}/membership")
@@ -262,6 +284,66 @@ class MemberMembershipApi {
 		category.tellHimIfItMoved(before);
 
 		return ResponseEntity.ok(new Changed(season, null));
+	}
+
+	/**
+	 * AN EXEMPTION GRANTED TO A MEMBER WHO HOLDS NO SEASON ON SALE, by the statements the payments screen
+	 * grants one with ({@link GrantingASeason}): the row free of the fee with the trail of who and when,
+	 * because the act forgives money (PDL P8, 03.10.2026, „Trag (ko je odobrio i kada) ide uz svaku
+	 * radnju koja prašta novac”), nothing off his balance, because a man who owes nothing has nothing for
+	 * a balance to pay ({@link BalanceBook#spentOnAMembership}), the referrer's reward, paid once
+	 * („OK je da se za preporuku dobije balans čak i ako je preporučen član dobio počasnu aktivaciju”,
+	 * 13.08.2026), and {@code active}. His number is the one he has: only a member who was ever given
+	 * one is on the row.
+	 *
+	 * <p><b>No row in {@code membership_change}</b>, for V63's own reason: that table is the trail of a
+	 * cancellation and of a change of basis, and a season written where none stood is neither; the
+	 * trail of this act is on the row it writes, as a payment's is on the payment.
+	 *
+	 * <p><b>The member is told</b> in the words approved for it, and his beginners' category is asked
+	 * about before the write and after it ({@link ABeginnersCategoryAMembershipMoves}), as every route
+	 * that writes a season asks it.
+	 */
+	private ResponseEntity<?> grantingTheExemption(String memberNumber, Granting typed, WhoIsAsking.Member asking) {
+		Optional<Long> member = locked(memberNumber);
+
+		if (member.isEmpty()) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+		}
+
+		if (typed.basis() == null || typed.basis().isBlank()) {
+			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
+		}
+
+		if (!known(typed.basis())) {
+			return no(HttpStatus.BAD_REQUEST, THE_BASIS_IS_NOT_KNOWN);
+		}
+
+		if (!Basis.FEE_EXEMPT.word().equals(typed.basis())) {
+			return no(HttpStatus.BAD_REQUEST, THIS_CHANGE_IS_NOT_OFFERED);
+		}
+
+		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
+		Optional<Held> held = heldIn(member.get(), season);
+
+		if (held.isPresent()) {
+			return held.get().basis().equals(typed.basis())
+					? ResponseEntity.ok(new Changed(season, typed.basis()))
+					: no(HttpStatus.CONFLICT, THE_BASIS_HAS_CHANGED);
+		}
+
+		String number = db.sql("select member_number from competitor where id = ?")
+				.param(member.get()).query(String.class).single();
+
+		ABeginnersCategoryAMembershipMoves.Before before = category.before(member.get(), season);
+
+		granting.grant(member.get(), number, season, Basis.FEE_EXEMPT.word(),
+				Balance.Money.nothingIn(currencyOf.of(member.get())), true, asking.account());
+
+		tell(member.get(), WhatAMembershipChangeSays.exemptionGranted(season));
+		category.tellHimIfItMoved(before);
+
+		return ResponseEntity.status(HttpStatus.CREATED).body(new Changed(season, Basis.FEE_EXEMPT.word()));
 	}
 
 	private ResponseEntity<?> changing(String memberNumber, Changing typed, WhoIsAsking.Member asking) {

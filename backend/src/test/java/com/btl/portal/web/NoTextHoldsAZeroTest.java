@@ -117,6 +117,8 @@ class NoTextHoldsAZeroTest {
 					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("MemberMembershipApi#change:memberNumber (path)",
 					"a zero in a path is a 400 before any handler is reached"),
+			Map.entry("MemberMembershipApi#grant:memberNumber (path)",
+					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("MemberPaymentApi#record:memberNumber (path)",
 					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("PhotoApi#photo:name (path)",

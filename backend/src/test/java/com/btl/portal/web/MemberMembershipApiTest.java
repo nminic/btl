@@ -43,6 +43,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
@@ -239,6 +240,10 @@ class MemberMembershipApiTest {
 
 	private MockHttpServletResponse changed(String number, String json, String email) throws Exception {
 		return sent(put("/api/members/" + number + "/membership"), json, email);
+	}
+
+	private MockHttpServletResponse granted(String number, String basis, String email) throws Exception {
+		return sent(post("/api/members/" + number + "/membership"), "{\"basis\": \"" + basis + "\"}", email);
 	}
 
 	private JsonNode body(MockHttpServletResponse answer) throws Exception {
@@ -742,6 +747,138 @@ class MemberMembershipApiTest {
 		assertThat(body(answer).path("reason").asString()).isEqualTo("theBasisHasChanged");
 		assertThat(trail()).isEmpty();
 		assertThat(messages()).isEmpty();
+	}
+
+	/* ------------------------------------------------------------------------------------
+	   AN EXEMPTION GRANTED ON A ROW THAT HOLDS NO SEASON ON SALE (20.10.2026)
+	   ------------------------------------------------------------------------------------ */
+
+	private static final String GRANTED = "Oslobođeni ste članarine";
+
+	@Test
+	void aGrantIsRefusedToAVisitorAndToAnybodyWithoutTheRight() throws Exception {
+		assertThat(granted("000005", "feeExempt", null).getStatus()).isEqualTo(401);
+
+		for (String refused : List.of(THE_MEMBERS_OWN, OVER_THE_PAYMENTS_ONLY)) {
+			assertThat(granted("000005", "feeExempt", refused).getStatus()).as(refused).isEqualTo(404);
+		}
+
+		assertThat(granted("009999", "feeExempt", THE_SUPERADMIN).getStatus()).isEqualTo(404);
+		assertThat(seasonsOf(member)).containsExactly("2027 payment 2027");
+		assertThat(messages()).isEmpty();
+	}
+
+	/**
+	 * THE EXEMPTION OF THE SEASON ON SALE, with the trail of who and when on the row, nothing off a book
+	 * that would cover the whole fee, no second reward for his referrer, his number kept, and one message
+	 * to him in the approved words. No row in the trail of changes: nothing stood to be changed.
+	 */
+	@Test
+	void anExemptionIsGrantedForTheSeasonOnSaleWithItsTrailAndHeIsToldOnce() throws Exception {
+		lineIn(member, "100.00", "EUR", "overpayment", 2027);
+		List<String> hisBook = bookOf(member);
+		long seqBefore = count("select last_value from member_number_seq");
+
+		MockHttpServletResponse answer = granted("000005", "feeExempt", OVER_THE_MEMBERS);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(body(answer).path("season").asInt()).isEqualTo(2028);
+		assertThat(body(answer).path("basis").asString()).isEqualTo("feeExempt");
+
+		assertThat(seasonsOf(member)).containsExactly("2027 payment 2027", "2028 feeExempt -");
+		assertThat(db.sql("select decided_by || ' ' || decided_by_name || ' ' || (decided_at is not null)"
+						+ " from membership where competitor_id = ? and season = 2028")
+				.param(member).query(String.class).single())
+				.isEqualTo(accountOf(OVER_THE_MEMBERS) + " Mira Clanovic true");
+
+		assertThat(bookOf(member)).as("the exemption spent his balance").isEqualTo(hisBook);
+		assertThat(count("select count(*) from balance_entry where competitor_id = ?", referrer))
+				.as("the referrer was rewarded a second time").isOne();
+		assertThat(count("select last_value from member_number_seq")).isEqualTo(seqBefore);
+		assertThat(db.sql("select member_number from competitor where id = ?").param(member)
+				.query(String.class).single()).isEqualTo("000005");
+		assertThat(active(member)).isTrue();
+
+		assertThat(trail()).isEmpty();
+		assertThat(messages()).containsExactly(member + " " + GRANTED);
+		assertThat(db.sql("select body from message").query(String.class).single())
+				.isEqualTo("Za sezonu 2028 oslobođeni ste plaćanja članarine i član ste lige.\n\nBalkanska trkačka liga");
+
+		verifyNoInteractions(postman);
+	}
+
+	/** A lapsed member is made active again, and a referrer never rewarded for him is rewarded now. */
+	@Test
+	void aLapsedMemberIsMadeActiveAndHisReferrerRewardedTheFirstTime() throws Exception {
+		long lapsed = competitor("000014", "c4", false, referrer);
+
+		assertThat(granted("000014", "feeExempt", OVER_THE_MEMBERS).getStatus()).isEqualTo(201);
+
+		assertThat(active(lapsed)).isTrue();
+		assertThat(count("select count(*) from balance_entry where competitor_id = ? and reason = 'referral'"
+				+ " and referred_competitor_id = ?", referrer, lapsed)).isOne();
+		assertThat(messages()).containsExactly(lapsed + " " + GRANTED);
+	}
+
+	/** The season is the clock's: before 15 October the one run, at 00:30 of 1 January the new one, in 2026 the first. */
+	@ParameterizedTest
+	@CsvSource({"2027-09-10T09:00:00Z, 2027", "2027-12-31T23:30:00Z, 2028", "2026-10-18T09:00:00Z, 2027"})
+	void theSeasonGrantedIsTheOneOnSaleThatDay(Instant when, int season) throws Exception {
+		clock.moveTo(when);
+		long fresh = competitor("000015", "c5", false, null);
+
+		MockHttpServletResponse answer = granted("000015", "feeExempt", OVER_THE_MEMBERS);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(body(answer).path("season").asInt()).isEqualTo(season);
+		assertThat(seasonsOf(fresh)).containsExactly(season + " feeExempt -");
+	}
+
+	@ParameterizedTest
+	@CsvSource(delimiter = '|', value = {
+			"{}                              | theFormIsNotComplete",
+			"{\"basis\": \"\"}              | theFormIsNotComplete",
+			"{\"basis\": \"honorary\"}      | theBasisIsNotKnown",
+			"{\"basis\": \"payment\"}       | thisChangeIsNotOffered",
+			"{\"basis\": \"balance\"}       | thisChangeIsNotOffered"})
+	void aGrantOfAnythingButTheExemptionIsRefused(String json, String reason) throws Exception {
+		MockHttpServletResponse answer = sent(post("/api/members/000005/membership"), json.strip(), OVER_THE_MEMBERS);
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(body(answer).path("reason").asString()).isEqualTo(reason);
+		assertThat(seasonsOf(member)).containsExactly("2027 payment 2027");
+		assertThat(messages()).isEmpty();
+	}
+
+	/** A season already free of the fee is the second press; one on another basis is what the screen did not show. */
+	@ParameterizedTest
+	@CsvSource({"feeExempt, 200", "payment, 409", "balance, 409"})
+	void aSeasonThatStandsAlreadyIsNotGrantedAgain(String held, int status) throws Exception {
+		HeldOn.season(db, member, 2028, held);
+
+		MockHttpServletResponse answer = granted("000005", "feeExempt", OVER_THE_MEMBERS);
+
+		assertThat(answer.getStatus()).isEqualTo(status);
+		if (status == 409) {
+			assertThat(body(answer).path("reason").asString()).isEqualTo("theBasisHasChanged");
+		}
+		assertThat(seasonsOf(member)).containsExactly("2027 payment 2027", "2028 " + held + " "
+				+ ("payment".equals(held) ? "2028" : "-"));
+		assertThat(messages()).isEmpty();
+	}
+
+	/** On his own row, and the row names him; the message goes to the member, who is him. */
+	@Test
+	void aModeratorGrantsOnHisOwnRowAndTheRowNamesHim() throws Exception {
+		db.sql("delete from payment where competitor_id = ? and season = 2028").param(theModeratorHimself).update();
+
+		assertThat(granted("000003", "feeExempt", A_MODERATOR_WHO_IS_A_MEMBER).getStatus()).isEqualTo(201);
+
+		assertThat(db.sql("select decided_by || ' ' || decided_by_name from membership"
+						+ " where competitor_id = ? and season = 2028")
+				.param(theModeratorHimself).query(String.class).single())
+				.isEqualTo(accountOf(A_MODERATOR_WHO_IS_A_MEMBER) + " Pera Sopstveni");
+		assertThat(messages()).containsExactly(theModeratorHimself + " " + GRANTED);
 	}
 
 	static final class AClockTheCaseMoves extends Clock {
