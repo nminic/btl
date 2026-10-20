@@ -899,6 +899,11 @@ describe('a comment a moderator lets out', () => {
 
     const list = await screen.findByRole('list', { name: 'Komentari' })
     expect(within(list).getAllByRole('listitem')).toHaveLength(10)
+    /* Kept for the keyboard and a screen reader, and dressed to be seen only with the focus on it
+       (`LoadMore`'s `buttonOnFocusOnly`; the rule itself is held in `components/loadMore.test.tsx`). */
+    expect(screen.getByRole('button', { name: 'Učitaj još komentara' })).toHaveClass(
+      'load-more__button--on-focus',
+    )
 
     await user.click(screen.getByRole('button', { name: 'Učitaj još komentara' }))
     expect(within(list).getAllByRole('listitem')).toHaveLength(20)

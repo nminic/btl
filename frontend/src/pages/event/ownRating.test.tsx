@@ -1,4 +1,5 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
+import { arrivedResource, loadResource } from '../../data/client'
 import type { EventComment } from '../../data/types'
 import { at, must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -218,6 +219,13 @@ describe('the deletion', () => {
   }
 
   it('asks in the owner\'s words, sends the id of the rating it stands beside, and the rating is gone', async () => {
+    /* The moderator's queue held, as the header of a member who is also a moderator holds it: the
+       deletion took his rating that waited too, so what is held is no longer true. */
+    await act(async () => {
+      await loadResource('verification')
+    })
+    expect(arrivedResource('verification')).toBeDefined()
+
     const { list } = await deleted(204)
 
     await waitFor(() => {
@@ -241,6 +249,7 @@ describe('the deletion', () => {
       expect(screen.getByRole('heading', { name: 'Komentari' })).toHaveFocus()
     })
     expect(screen.queryByRole('alert')).toBeNull()
+    expect(arrivedResource('verification'), 'the queue held from before the deletion is still held').toBeUndefined()
   }, SLOW)
 
   it('says nothing to a 404 and draws what the server now has', async () => {
