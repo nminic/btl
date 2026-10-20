@@ -405,7 +405,9 @@ class VerificationApi {
 	 *                     town the member gave for it, because the moderator is to see it
 	 *                     (the owner's answer of 10.10.2026, „moderator u redu vidi mesto
 	 *                     koje je član upisao") and the event an approval makes stands there.
-	 *                     A run from the calendar names no town and answers blank. So the
+	 *                     A run from the calendar names no town and answers blank. A run on an event the member
+	 *                     CHOSE answers with that event's town, which since V67 lives on the
+	 *                     event and not on the run. So the
 	 *                     three tabs read it from three different places and the SAME
 	 *                     {@code coalesce} {@link TeamApi} and {@link CompetitorApi} already
 	 *                     make is made three times: off {@code team_proposal} for a proposal,
@@ -608,12 +610,21 @@ class VerificationApi {
 						+ " case when v.queue = 'payments'"
 						+ "      then coalesce(his_town.name, c.city, '')"
 						+ "      when v.queue = 'results'"
-						+ "      then coalesce(run_town.name, rs.city, '')"
+						/* A RUN ON AN EVENT HE CHOSE NAMES NO TOWN OF ITS OWN (V67): the town lives on
+						   the event, so it is read there, and only for that run - a run from the
+						   calendar still answers blank, as the owner's sentence is about the town the
+						   member gave. */
+						+ "      then coalesce(run_town.name, rs.city,"
+						+ "           case when rs.event_id is not null"
+						+ "                then coalesce(run_event_town.name, run_event.city) end, '')"
 						+ "      else coalesce(town.name, tp.city, '') end as city,"
 						+ " case when v.queue = 'payments'"
 						+ "      then coalesce(his_towns_country.code, his_typed_country.code, '')"
 						+ "      when v.queue = 'results'"
-						+ "      then coalesce(run_towns_country.code, run_typed_country.code, '')"
+						+ "      then coalesce(run_towns_country.code, run_typed_country.code,"
+						+ "           case when rs.event_id is not null"
+						+ "                then coalesce(run_event_towns_country.code, run_event_typed_country.code)"
+						+ "           end, '')"
 						+ "      else coalesce(town_country.code, typed_country.code, '') end"
 						+ "      as country,"
 						+ " v.photo_id,"
@@ -718,6 +729,11 @@ class VerificationApi {
 						+ " left join result_submission rs on rs.id = v.result_submission_id"
 						+ " left join race ra on ra.id = rs.race_id"
 						+ " left join btl_event run_event on run_event.id = coalesce(ra.event_id, rs.event_id)"
+						+ " left join place run_event_town on run_event_town.id = run_event.place_id"
+						+ " left join country run_event_towns_country"
+						+ "   on run_event_towns_country.id = run_event_town.country_id"
+						+ " left join country run_event_typed_country"
+						+ "   on run_event_typed_country.id = run_event.country_id"
 						/* AND THE TOWN SUCH A RUN WAS GIVEN, the same three columns in the same two
 						   ways as on `team_proposal` and `competitor`
 						   (`result_submission_town_is_from_the_codebook_or_typed`), all LEFT: a run

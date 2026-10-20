@@ -80,6 +80,10 @@ function aRun(id: number, over: Partial<SentRun> = {}): SentRun {
     comment: '',
     reason: 'Link ne otvara rezultate.',
     amendsResultId: null,
+    /* The event it was sent on, typed (V66). A run of the calendar is answered its race's event and
+       never nothing (`MyResultSubmissionsApi`), so a run with no event is a run sent before V66. */
+    eventId: null,
+    eventName: 'Prijavljeni događaj',
     ...over,
   }
 }
@@ -358,7 +362,12 @@ describe('a run a moderator sent back', () => {
        and this screen, which reads whatever is held when it is drawn. */
     const user = setupUser()
     let held: SentRun[] = [
-      aRun(40, { raceName: 'Trka oko Palićkog jezera', reason: 'Na stranici rezultata nema tvog imena.' }),
+      aRun(40, {
+        raceName: 'Trka oko Palićkog jezera',
+        /* Of the first season: a run is sent again only for a season open for a report (PDL P9). */
+        raceDate: '2027-05-10',
+        reason: 'Na stranici rezultata nema tvog imena.',
+      }),
     ]
 
     server = serverThat((path, init) => {
@@ -379,7 +388,7 @@ describe('a run a moderator sent back', () => {
       return path.replace(/\?.*$/, '') === '/api/me/result-submissions' ? served(held) : null
     })
 
-    renderAt(MINE, 'competitor', ME, undefined, '2026-08-23')
+    renderAt(MINE, 'competitor', ME, undefined, '2027-08-23')
 
     expect(await sentRows()).toHaveLength(1)
 

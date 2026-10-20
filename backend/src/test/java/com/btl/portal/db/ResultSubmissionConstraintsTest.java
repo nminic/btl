@@ -116,8 +116,13 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 	private static final String FROM_THE_CALENDAR = A_MEMBER + ", " + A_RACE + ", " + RACE_DAY
 			+ ", null, null, null, null, null, 10.00, 100, 100, 3600, '', ''";
 
-	/** Described, on an event of the calendar the member chose (V66). */
-	private static final String GOOD_DESCRIBED_ON_A_CHOSEN_EVENT = naming(AN_EVENT, "null", DESCRIBED);
+	/** The same described run with no town of its own, which is what a run on a chosen event is (V67). */
+	private static final String DESCRIBED_WITHOUT_A_TOWN = A_MEMBER + ", null, " + ANOTHER_DAY
+			+ ", 'Trka kroz sumu', 'free', null, null, null, 21.50, 300, 280, 7200, '', ''";
+
+	/** Described, on an event of the calendar the member chose (V66), whose town is the event's (V67). */
+	private static final String GOOD_DESCRIBED_ON_A_CHOSEN_EVENT =
+			naming(AN_EVENT, "null", DESCRIBED_WITHOUT_A_TOWN);
 	/** Described, on an event the member typed because the calendar has none of that name (V66). */
 	private static final String GOOD_DESCRIBED_ON_A_TYPED_EVENT =
 			naming("null", "'Kros kroz sumu'", DESCRIBED);
@@ -217,16 +222,18 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 						row(A_MEMBER + ", null, " + ANOTHER_DAY + ", '   ', 'free', " + A_TOWN
 								+ ", null, null, 10.00, 100, 100, 3600, '', ''")),
 
-				/* THE TOWN, IN BOTH DIRECTIONS AND IN BOTH FORMS. A described race with no
-				   town cannot be put in the calendar on approval, and a race from the
-				   calendar that carries one is a second answer to a question the calendar
-				   has already answered. */
-				Violation.of("result_submission_described_race_names_its_town",
-						row(A_MEMBER + ", null, " + ANOTHER_DAY + ", 'Trka kroz sumu', 'free', null, null,"
-								+ " null, 10.00, 100, 100, 3600, '', ''")),
-				Violation.of("result_submission_described_race_names_its_town",
+				/* THE TOWN OF A RACE FROM THE CALENDAR IS ITS EVENT'S, so a run from the calendar
+				   that carries one is a second answer to a question the calendar has already
+				   answered. The other half of V10's biconditional, „a described race names its
+				   town", is the route's since V67 and not the schema's: a run on an event he chose
+				   names none, and one whose chosen event was deleted names neither (V67 says why the
+				   schema cannot require one of the two). */
+				Violation.of("result_submission_a_calendar_run_names_no_town",
 						row(A_MEMBER + ", " + A_RACE + ", " + RACE_DAY + ", null, null, " + A_TOWN
 								+ ", null, null, 10.00, 100, 100, 3600, '', ''")),
+				Violation.of("result_submission_a_calendar_run_names_no_town",
+						row(A_MEMBER + ", " + A_RACE + ", " + RACE_DAY + ", null, null, null, 'Zaselak', "
+								+ A_COUNTRY + ", 10.00, 100, 100, 3600, '', ''")),
 				/* From the codebook or typed, never both. */
 				Violation.of("result_submission_town_is_from_the_codebook_or_typed",
 						row(A_MEMBER + ", null, " + ANOTHER_DAY + ", 'Trka kroz sumu', 'free', " + A_TOWN
@@ -314,7 +321,7 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 				/* THE EVENT A DESCRIBED RUN NAMES (V66), chosen or typed, and only on a described run.
 				   The key first, against an event that is not there: the row is otherwise the good
 				   described one, so nothing but the key can be what fires. */
-				Violation.of("result_submission_event_fk", naming("999999", "null", DESCRIBED)),
+				Violation.of("result_submission_event_fk", naming("999999", "null", DESCRIBED_WITHOUT_A_TOWN)),
 				/* A run from the calendar has its event through its race, so it names none here,
 				   chosen or typed - both rows, because a check over one column would let the other
 				   through. */
@@ -323,9 +330,17 @@ class ResultSubmissionConstraintsTest extends DatabaseTest {
 				Violation.of("result_submission_only_a_described_run_names_its_event",
 						naming("null", "'Kros kroz sumu'", FROM_THE_CALENDAR)),
 				Violation.of("result_submission_event_is_chosen_or_typed",
-						naming(AN_EVENT, "'Kros kroz sumu'", DESCRIBED)),
+						naming(AN_EVENT, "'Kros kroz sumu'", DESCRIBED_WITHOUT_A_TOWN)),
 				Violation.of("result_submission_event_name_not_blank",
-						naming("null", "'   '", DESCRIBED)));
+						naming("null", "'   '", DESCRIBED)),
+
+				/* V67: A RUN ON AN EVENT HE CHOSE HAS THE EVENT'S TOWN AND NONE OF ITS OWN, either way
+				   a town can be held. */
+				Violation.of("result_submission_a_chosen_event_brings_its_town",
+						naming(AN_EVENT, "null", DESCRIBED)),
+				Violation.of("result_submission_a_chosen_event_brings_its_town",
+						naming(AN_EVENT, "null", A_MEMBER + ", null, " + ANOTHER_DAY + ", 'Trka kroz sumu',"
+								+ " 'free', null, 'Zaselak', " + A_COUNTRY + ", 21.50, 300, 280, 7200, '', ''")));
 	}
 
 	/** A row that names the result it corrects, which {@link #COLUMNS} does not carry. */

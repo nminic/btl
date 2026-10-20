@@ -421,9 +421,13 @@ describe('a race that fixes no length', () => {
     globalThis.fetch = servingRaces(real, asTimed)
 
     try {
-      renderAt('/sr/rezultat/novi', 'competitor', '000001')
+      /* In the first season, where the event of the race is offered, and the event first (PDL P9,
+         19.10.2026). */
+      renderAt('/sr/rezultat/novi', 'competitor', '000001', undefined, '2027-08-23')
 
-      await user.type(await screen.findByLabelText(/^Naziv trke/), 'beogradski maraton')
+      await user.type(await screen.findByLabelText(/^Događaj/), 'beogradski maraton')
+      await user.click(must(screen.getAllByRole('button', { name: /Beogradski maraton – / })[0], 'the event'))
+      await user.type(screen.getByLabelText(/^Naziv trke/), 'beogradski maraton')
 
       /* The suggestions are buttons in the list the box owns, not options: a round
          of this asked for options, was handed the role switch in the header, chose

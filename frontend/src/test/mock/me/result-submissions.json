@@ -15,7 +15,9 @@
     "link": "https://rezultati.rs/mala-sveta-gora-2026",
     "comment": "Startni broj 512",
     "reason": null,
-    "amendsResultId": null
+    "amendsResultId": null,
+    "eventId": 1118,
+    "eventName": "Mala Sveta gora"
   },
   {
     "id": 40,
@@ -33,7 +35,9 @@
     "link": "https://trkapalic.rs/rezultati",
     "comment": "Vreme je mereno ručno, čipa nije bilo.",
     "reason": "Na stranici rezultata nema tvog imena.",
-    "amendsResultId": null
+    "amendsResultId": null,
+    "eventId": null,
+    "eventName": "Palićki krug"
   },
   {
     "id": 38,
@@ -51,7 +55,9 @@
     "link": "https://tron.ba/rezultati-2017",
     "comment": "Vreme sa sata.",
     "reason": "Zvanično vreme je 2:05:01, kako i stoji.",
-    "amendsResultId": 2
+    "amendsResultId": 2,
+    "eventId": 291,
+    "eventName": "Tron polumaraton"
   },
   {
     "id": 37,
@@ -69,6 +75,8 @@
     "link": "https://krusevac.rs/polumaraton/rezultati",
     "comment": "",
     "reason": null,
-    "amendsResultId": 3
+    "amendsResultId": 3,
+    "eventId": 301,
+    "eventName": "Kruševački polumaraton"
   }
 ]

@@ -221,6 +221,10 @@ function whatMeAnswers(): Response {
                values puts its own server in front. */
             address: myOwnRecordFromMe.address,
             phone: myOwnRecordFromMe.phone,
+            /* AND THE SEASONS OPEN FOR A REPORT, which are the clock's and the same for every member
+               (`MeApi.MyOwnRecord.seasonsOpenForAReport`), so no row of the file carries them either. A
+               case about another window puts its own server in front. */
+            seasonsOpenForAReport: myOwnRecordFromMe.seasonsOpenForAReport,
           },
         }),
   }

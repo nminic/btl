@@ -469,6 +469,8 @@ const aSentRunThatWaits = {
   comment: 'Startni broj 512',
   reason: null,
   amendsResultId: null,
+  eventId: 1118,
+  eventName: 'Mala Sveta gora',
 }
 
 /** A run on a race the calendar does not hold, sent back: no race, and the kind and the town
@@ -490,6 +492,9 @@ const aDescribedRunSentBack = {
   comment: '',
   reason: 'Na stranici rezultata nema tvog imena.',
   amendsResultId: null,
+  /* An event he typed: a name and no key (V66). */
+  eventId: null,
+  eventName: 'Palićki krug',
 }
 
 /** A correction of a counted result, sent back: the race is the counted result's, and
@@ -511,6 +516,8 @@ const aCorrectionSentBack = {
   comment: 'Vreme sa sata.',
   reason: 'Zvanično vreme je 2:05:01, kako i stoji.',
   amendsResultId: 2,
+  eventId: 291,
+  eventName: 'Tron polumaraton',
 }
 
 const readAsSentRunThatWaits: SentRun = aSentRunThatWaits

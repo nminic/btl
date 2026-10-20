@@ -159,7 +159,21 @@ type Props = {
    * it and a button that asks for one would offer something that cannot be used. That is the
    * coordinator's reading and not a recorded decision.
    */
-  suggests?: Record<string, Suggestion[] | UnreadableList>
+  suggests?: Record<string, Suggestion[] | UnreadableList | ((values: FormValues) => Suggestion[])>
+  /**
+   * A field whose list FOLLOWS another field's, keyed by the follower: `{ raceName: 'eventName' }`.
+   *
+   * <p>PDL P9, owner, 19.10.2026, of the member's form: „Prvo ima naziv događaja koji je autocomplete
+   * iz baze, ali mogu da unesem novu vrednost. Ukoliko je nova vrednost, polje trka dobija identičan
+   * taj naziv i može da se menja, a ako je postojeća vrednost, polje trka postaje autocomplete u koji
+   * se ukucava postojeća ili nova trka.” So whatever is typed into or chosen in the followed field
+   * breaks the follower's own link (what its entry filled is emptied and handed back). A name typed
+   * into the followed field is copied into the follower while the follower is empty or still says
+   * what the followed field said a letter earlier, so a race the reader has named for himself is not
+   * written over; an entry chosen in the followed field empties the follower, whose list is now that
+   * entry's.
+   */
+  follows?: Record<string, string>
   /**
    * Fields this form must not let anybody change, whatever they do.
    *
@@ -985,6 +999,7 @@ export function FormRenderer({
   title,
   options = {},
   suggests = {},
+  follows = {},
   fixed = [],
   sendIsHeld = false,
   sendIsOut,
@@ -1063,7 +1078,11 @@ export function FormRenderer({
   /* The fields that were filled from a chosen entry, and are therefore not this
      reader's to change. Names and not a flag per field, because what is locked is
      decided by the entry that was chosen and differs from one list to the next. */
-  const [led, setLed] = useState<string[]>([])
+  const [led, setLed] = useState<Record<string, { filled: string[]; held: string[] }>>({})
+  /* Locked is what any entry chosen in any list holds; emptied when a link breaks is everything
+     that entry filled. Kept per field, so typing into one list breaks that list's link and not
+     another's: a race named for himself on an event he chose keeps the event. */
+  const locked = Object.values(led).flatMap((one) => one.held)
   /* One day for showing a field and for validating it. They used to read the
      clock separately, one on every draw and one on submit, so a form filled in
      across midnight could show a field it then refused to validate. */
@@ -1426,11 +1445,20 @@ export function FormRenderer({
    * changes, which is what keeps a form of twelve hundred options usable.
    */
   function suggestingOn(field: FieldDef) {
-    const list = suggests[field.name]
+    const given = suggests[field.name]
 
-    if (list === undefined) {
+    if (given === undefined) {
       return undefined
     }
+
+    const list = typeof given === 'function' ? given(filled) : given
+    /* The fields whose lists follow this one (`follows`), and everything their own entries filled. */
+    const followers = Object.entries(follows)
+      .filter(([, followed]) => followed === field.name)
+      .map(([follower]) => follower)
+    const brokenBy = (names: string[]) => names.flatMap((name) => led[name]?.filled ?? [])
+    const unlinked = (names: string[]) =>
+      Object.fromEntries(Object.entries(led).filter(([name]) => !names.includes(name)))
 
     return {
       list: Array.isArray(list) ? list : [],
@@ -1440,19 +1468,40 @@ export function FormRenderer({
            what was filled from the chosen entry is emptied and handed back, so a
            name typed freely cannot stand over somebody else's date and distance.
            Emptied and not merely unlocked, because the four are then a record
-           this form is no longer describing. */
+           this form is no longer describing. The same for every field that follows
+           this one, whose list was this entry's. */
+        const emptied = brokenBy([field.name, ...followers])
+
         setValues((current) => ({
           ...current,
-          ...Object.fromEntries(led.map((name) => [name, ''])),
+          ...Object.fromEntries(emptied.map((name) => [name, ''])),
+          ...Object.fromEntries(
+            /* Both are fields of this form, which every value is seeded for (`emptyValues`), so
+               neither is ever missing and no fallback is read. */
+            followers
+              .filter((name) => [String(current[field.name]), ''].includes(String(current[name])))
+              .map((name) => [name, next]),
+          ),
           [field.name]: next,
         }))
-        setErrors(without([field.name, ...led]))
-        setLed([])
+        setErrors(without([field.name, ...emptied]))
+        setLed(unlinked([field.name, ...followers]))
       },
       onChoose: (one: Suggestion) => {
-        setValues((current) => ({ ...current, [field.name]: one.value, ...one.fills }))
-        setErrors(without([field.name, ...Object.keys(one.fills)]))
-        setLed(Object.keys(one.fills))
+        /* Nothing of an earlier entry is left to empty here: a list opens only on what is typed, and
+           typing has already broken this field's link and its followers' (`onType`). What a chosen
+           entry does to its followers is empty them, since their list is now this entry's. */
+        setValues((current) => ({
+          ...current,
+          ...Object.fromEntries(followers.map((name) => [name, ''])),
+          [field.name]: one.value,
+          ...one.fills,
+        }))
+        setErrors(without([field.name, ...followers, ...Object.keys(one.fills)]))
+        setLed({
+          ...unlinked([field.name, ...followers]),
+          [field.name]: { filled: Object.keys(one.fills), held: one.holds ?? Object.keys(one.fills) },
+        })
       },
     }
   }
@@ -1516,7 +1565,7 @@ export function FormRenderer({
               choices={optionsFor(field, options)}
               onChange={handleChange}
               open={field.name === openAt}
-              locked={led.includes(field.name) || fixed.includes(field.name)}
+              locked={locked.includes(field.name) || fixed.includes(field.name)}
               steps={field.type === 'date' ? steps : undefined}
               suggesting={suggestingOn(field)}
             />

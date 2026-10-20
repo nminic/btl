@@ -142,6 +142,10 @@ export function validateField(field: FieldDef, value: string | boolean): FieldEr
  * parent signature they cannot see.
  */
 export function isVisible(field: FieldDef, values: FormValues, today: Date): boolean {
+  if (field.showWhenEmpty !== undefined && String(values[field.showWhenEmpty] ?? '') !== '') {
+    return false
+  }
+
   const rule = field.showWhenYoungerThan
 
   if (rule === undefined) {

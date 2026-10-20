@@ -40,6 +40,8 @@ export const aNeverPaidRecord = {
   profileHidden: false,
   birthdayShown: 'none',
   address: 'Ulica Nova 3',
+  /* The seasons open for a report, the clock's and the same for every member (PDL P9, 19.10.2026). */
+  seasonsOpenForAReport: [2027],
 }
 
 /**

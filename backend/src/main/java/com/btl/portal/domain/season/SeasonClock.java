@@ -4,6 +4,8 @@ import java.time.LocalDate;
 import java.time.MonthDay;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.List;
+import java.util.stream.IntStream;
 
 /**
  * The moments a season turns on, all of them in Central European time.
@@ -407,6 +409,49 @@ public final class SeasonClock {
 	 */
 	public static boolean isAFrozenSeasonOfTheLeague(int season, ZonedDateTime at) {
 		return season >= FIRST_SEASON && isFrozen(season, at);
+	}
+
+	/**
+	 * THE SEASONS A MEMBER MAY SEND A RUN OF AT THIS MOMENT: THE CALENDAR YEAR HE IS IN, AND FROM
+	 * 1 JANUARY 00:00 UNTIL 10:00 THE YEAR BEFORE IT AS WELL, AND NEVER A YEAR BEFORE THE FIRST
+	 * SEASON.
+	 *
+	 * <p>PDL P9, owner, 19.10.2026, „Član prijavljuje samo rezultate aktuelne sezone": „autocomplete ne
+	 * treba da vuce dogadjaje van aktuelne sezone (1.1.2027 00:00 do 31.12.2027 23:59). 1.1. nije datum
+	 * za 2027 nego za 2028, tako da svaka trka koja pocne tog dana i pre 10 ujutru pripada novoj
+	 * sezoni. Tih 10 sati sluzi samo da onaj ko je recimo poceo trku minut pre ponoci ima vremena da
+	 * unese rezultat pre zamrzavanja sezone." The record derives the window from that and from the
+	 * decision of 31.07.2026 (rezultati te sezone moraju biti prijavljeni do 10h): the year he is in,
+	 * and until 10:00 on 1 January the year just ended too. And the same day, of the years before the
+	 * league: „NIŠTA! NE POSTOJI LIGA PRE 2027 GODINE" (PDL P9, „Pre 2027 forma i predlozi ne nude
+	 * ništa"), so nothing before {@link #FIRST_SEASON} is ever in the answer, and before 1 January 2027
+	 * the answer is empty.
+	 *
+	 * <p><b>The ten o'clock is {@link #reportingEnds} and not a second {@code plusHours(10)}</b>, for the
+	 * reason {@link #categoryMayBeChosenFor} gives: the owner named it as the moment every member
+	 * input stops, and it has one home.
+	 *
+	 * <p><b>One home for the window, and the screen reads it from here</b> ({@code MeApi.MyOwnRecord}),
+	 * rather than working out the hour in Belgrade for itself: the portal's own clock knows only a day
+	 * (`frontend/src/clock/context.ts` says so), and two clocks for one window would come to disagree
+	 * in exactly the ten hours it exists for.
+	 *
+	 * @param at the moment being asked about, in any zone: it is read in the league's
+	 * @return the seasons in ascending order, possibly none
+	 */
+	public static List<Integer> seasonsOpenForAReport(ZonedDateTime at) {
+		int year = at.withZoneSameInstant(ZONE).getYear();
+
+		return IntStream.rangeClosed(year - 1, year)
+				.filter(season -> season >= FIRST_SEASON)
+				.filter(season -> season == year || at.isBefore(reportingEnds(season)))
+				.boxed()
+				.toList();
+	}
+
+	/** Whether a run of that season may be sent at this moment ({@link #seasonsOpenForAReport}). */
+	public static boolean aRunMayBeSentFor(int season, ZonedDateTime at) {
+		return seasonsOpenForAReport(at).contains(season);
 	}
 
 	/**

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 /**
  * WHO THE PORTAL THINKS IS ASKING, AND WHAT IT HAS ON HIM, said back to whoever
@@ -425,6 +426,15 @@ class MeApi {
 	 *                     and not an empty string: V8 says „no phone is NULL" and refuses a blank
 	 *                     one ({@code competitor_phone_not_blank}), so a missing key is the one way
 	 *                     this record says „he has none", as {@code teamId} says it for a team
+	 * @param seasonsOpenForAReport the seasons he may send a run of at this moment, oldest first, and
+	 *                     possibly none: the year he is in, and from 1 January 00:00 until 10:00 the
+	 *                     year just ended too, and never a year before 2027 (PDL P9, owner,
+	 *                     19.10.2026, „Član prijavljuje samo rezultate aktuelne sezone" and „Pre 2027
+	 *                     forma i predlozi ne nude ništa"). The member's form offers events and races
+	 *                     of these seasons and no other, and reads them from here because the window
+	 *                     has one home, {@code SeasonClock.seasonsOpenForAReport}, and the portal's
+	 *                     own clock knows only a day. The same for every member: it is answered here
+	 *                     because only a member sends a run, and his form is drawn from this answer
 	 */
 	record MyOwnRecord(@JsonInclude(JsonInclude.Include.NON_NULL) String memberNumber,
 			String country, int firstSeason,
@@ -439,7 +449,8 @@ class MeApi {
 			@JsonInclude(JsonInclude.Include.NON_NULL) String photo,
 			@JsonInclude(JsonInclude.Include.NON_NULL) CompetitorApi.Crop crop,
 			String address, @JsonInclude(JsonInclude.Include.NON_NULL) String phone,
-			@JsonInclude(JsonInclude.Include.NON_NULL) String bioWaiting) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) String bioWaiting,
+			List<Integer> seasonsOpenForAReport) {
 	}
 
 	/**
@@ -625,7 +636,10 @@ class MeApi {
 							across == null ? null
 									: new CompetitorApi.Crop(across, row.getBigDecimal(20),
 											row.getBigDecimal(21)),
-							row.getString(22), row.getString(23), row.getString(24));
+							row.getString(22), row.getString(23), row.getString(24),
+							/* Off the same instant the band and the season on sale are read off,
+							   so the answer names one moment. */
+							SeasonClock.seasonsOpenForAReport(now));
 				})
 				.single();
 	}

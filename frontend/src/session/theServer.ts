@@ -480,6 +480,33 @@ export async function whatTheServerSaysOfMyData(): Promise<MyData | null> {
 }
 
 /**
+ * THE SEASONS HE MAY SEND A RUN OF AT THIS MOMENT, oldest first, or nothing when the answer cannot be
+ * believed.
+ *
+ * <p>`MeApi.MyOwnRecord.seasonsOpenForAReport`: the year he is in, and from 1 January 00:00 until
+ * 10:00 the year just ended too, never a year before 2027 (PDL P9, owner, 19.10.2026). Read here and
+ * not worked out, because the window has one home and it is the server's clock; the portal's own knows
+ * only a day. An empty list is an answer - before 2027 no season is open, „NIŠTA!" - and not a failure.
+ *
+ * <p>Its own reader for the reason the others have: a fault in it must never sign him out
+ * ({@link whatTheServerAnswersMe} is shared and nothing it returns is). A list holding anything but
+ * whole numbers is not believed at all, rather than believed in part.
+ */
+export async function whatTheServerSaysOfTheSeasonsOpenForAReport(): Promise<number[] | null> {
+  const body = await whatTheServerAnswersMe()
+  const mine = body === null ? null : recordIn(body)
+  const said: unknown = mine === null ? undefined : Reflect.get(mine, 'seasonsOpenForAReport')
+
+  if (!Array.isArray(said)) {
+    return null
+  }
+
+  const seasons = said.filter((one): one is number => Number.isInteger(one))
+
+  return seasons.length === said.length ? seasons : null
+}
+
+/**
  * THE LANGUAGE THE ACCOUNT'S MAIL IS WRITTEN IN, or nothing.
  *
  * <p>The fourth reader of the request the second of the three things above makes, and the first

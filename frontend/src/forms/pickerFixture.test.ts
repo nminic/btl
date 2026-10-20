@@ -39,7 +39,8 @@ import { setupUser } from '../test/user'
 const ME = '000007'
 /** A day inside the data, so the list of races is the same list every time this runs
  *  rather than the same list until the calendar catches up (`newResult.test.tsx`). */
-const TODAY = '2026-08-23'
+/* In the first season, where the event of the race is offered (PDL P9, 19.10.2026). */
+const TODAY = '2027-08-23'
 
 /** The classes of an element, in an order neither document chose. */
 function classesOf(one: Element): string {
@@ -86,6 +87,8 @@ describe('the calendar button a browser measures', () => {
        because a moment later this very form will lock it. */
     const freeBox = classesOf(screen.getByLabelText(/^Datum/))
 
+    await user.type(screen.getByLabelText(/^Događaj/), 'beogradski maraton')
+    await user.click(first(within(screen.getByRole('list', { name: '' })).getAllByRole('button')))
     await user.type(screen.getByLabelText(/^Naziv trke/), 'beogradski maraton')
     await user.click(first(within(screen.getByRole('list', { name: '' })).getAllByRole('button')))
 

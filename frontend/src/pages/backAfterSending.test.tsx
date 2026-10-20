@@ -104,11 +104,13 @@ describe('the way back from a confirmation', () => {
        was this form, sent and filled in (review, 06.09.2026). Both confirmations draw the
        same words, so the portal had two of them and only one was true. */
     const user = setupUser()
-    const { router } = renderAt('/sr/rezultat/novi', 'competitor', '000007')
+    /* In the first season, where a run may be sent (PDL P9, 19.10.2026), on a new event whose race
+       takes its name. */
+    const { router } = renderAt('/sr/rezultat/novi', 'competitor', '000007', undefined, '2027-08-23')
     const form = router.state.location.pathname
 
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
-    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+    await user.type(await screen.findByLabelText(/^Događaj/), 'Probna trka')
+    await user.type(screen.getByLabelText(/Datum trke/), '10052027')
     await user.type(screen.getByLabelText('Mesto'), 'Niš')
     await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
     await user.type(screen.getByLabelText(/Dužina/), '21.1')

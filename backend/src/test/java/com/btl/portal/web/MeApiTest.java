@@ -32,6 +32,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -862,6 +863,12 @@ class MeApiTest {
 				if (field.getName().equals("membershipSeason")) {
 					continue;
 				}
+				/* AND THE SEASONS HE MAY SEND A RUN OF, which are the clock's and the same for every
+				   member by the decision itself (PDL P9, 19.10.2026): no row can differ on them, and
+				   `theSeasonsHeMaySendARunOfAreTheClocksInTheLeaguesHour` asks them of the clock. */
+				if (field.getName().equals("seasonsOpenForAReport")) {
+					continue;
+				}
 				assertThat(his.path(field.getName()).toString())
 						.as("the record behind %s carries the very value the caller was answered"
 								+ " for %s, so on that field his own record and somebody else's"
@@ -1614,6 +1621,36 @@ class MeApiTest {
 	}
 
 	/**
+	 * THE SEASONS HE MAY SEND A RUN OF ARE ANSWERED OFF THE CLOCK, IN THE LEAGUE'S HOUR: NONE BEFORE THE
+	 * LEAGUE, THE YEAR HE IS IN, AND ON NEW YEAR'S NIGHT UNTIL TEN THE YEAR JUST ENDED AS WELL.
+	 *
+	 * <p>PDL P9, owner, 19.10.2026, „Član prijavljuje samo rezultate aktuelne sezone" and „Pre 2027
+	 * forma i predlozi ne nude ništa". The window's own edges are {@code SeasonClockTest}'s; what this
+	 * holds is that the answer is read off the clock the route is handed, at the moment it is asked, and
+	 * in the league's zone: the night the year turns is a year apart in UTC and in Belgrade, so an
+	 * answer worked out in the server's zone names one season there.
+	 */
+	@Test
+	void theSeasonsHeMaySendARunOfAreTheClocksInTheLeaguesHour() throws Exception {
+		Object[][] moments = {
+				{AUTUMN_2026, List.of()},
+				{DURING_2027, List.of(2027)},
+				{NEW_YEARS_NIGHT_INTO_2028, List.of(2027, 2028)},
+				{Instant.parse("2028-01-01T09:00:00Z"), List.of(2028)}};
+
+		for (Object[] moment : moments) {
+			clock.moveTo((Instant) moment[0]);
+
+			List<Integer> open = new ArrayList<>();
+
+			answerFor(MY_ACCOUNT).path("member").path("seasonsOpenForAReport")
+					.forEach(one -> open.add(one.asInt()));
+
+			assertThat(open).as("at %s", moment[0]).isEqualTo(moment[1]);
+		}
+	}
+
+	/**
 	 * THE BAND MOVES WITH THE SEASON THAT IS RUNNING, ON THIS DOOR AS ON THE OTHER, and at no other
 	 * moment.
 	 *
@@ -1746,6 +1783,9 @@ class MeApiTest {
 						+ " excuse is for nothing")
 				.containsAll(Set.of("referralCode", "referredCount", "membershipBasis",
 						"membershipSeason", "active", "address", "phone", "bioWaiting"));
+		/* `seasonsOpenForAReport` HAS NO TWIN EITHER, and for another reason than the four: it is not
+		   a fact about him but the window his form is drawn from (PDL P9, 19.10.2026), answered to the
+		   one who sends a run. */
 		/* THE PUBLIC LIST CARRIES NEITHER OF THE LAST TWO, and that is a decision and not a gap:
 		   PDL „Uvek privatno: mejl, telefon i adresa". Asked of the record's components so that a
 		   field added to it tomorrow under either name is a red case on the day it is written. */
@@ -1762,7 +1802,7 @@ class MeApiTest {
 				.as("a fact this record carries has no twin on the public list and is not one of the"
 						+ " four named for it: give it a twin, or name it here with its reason")
 				.containsExactlyInAnyOrder("referralCode", "referredCount", "active", "address",
-						"phone", "bioWaiting");
+						"phone", "bioWaiting", "seasonsOpenForAReport");
 		shared.remove("membershipBasis");
 		/* And the season beside it, which leaves with the basis and is withheld with it. */
 		shared.remove("membershipSeason");

@@ -1,11 +1,11 @@
 import { RACE_KINDS } from '../../data/types'
 import { fireEvent, screen, within } from '@testing-library/react'
-import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, htmlElement, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { racesToOffer } from './racesToOffer'
 import { serverThat } from '../../test/serverAnswers'
+import { myOwnRecordFromMe, whoIAm } from '../../test/theAnswer'
 import { setupUser } from '../../test/user'
 import { SLOW } from '../../test/slow'
 
@@ -22,7 +22,9 @@ const ME = '000007'
 const NEW = '/sr/rezultat/novi'
 /** A day inside the data, so what the list offers is the same list every time
  *  this runs rather than the same list until the calendar catches up. */
-const TODAY = '2026-08-23'
+/* In the first season: a run is sent only for a season open for a report, and none is before 2027
+   (PDL P9, 19.10.2026). The harness answers the seasons open as [2027] (`test/theAnswer.ts`). */
+const TODAY = '2027-08-23'
 
 /**
  * A WAIT SHORTER THAN THE CASE'S OWN CLOCK, for the cases about a run sent back.
@@ -66,6 +68,10 @@ function recording(mine?: unknown[]): { sent: () => Record<string, unknown>[]; s
 /** The box the name of the event is typed into. */
 function raceName(): HTMLElement {
   return screen.getByLabelText(/^Naziv trke/)
+}
+
+function eventName(): HTMLElement {
+  return screen.getByLabelText(/^Događaj/)
 }
 
 /** What the list under it offers, in the order it offers it. */
@@ -115,6 +121,68 @@ const shaped = (over: Partial<Race>): Race => ({
   ...over,
 })
 
+/* A CALENDAR OF ITS OWN FOR THE CASES ABOUT THE TWO LISTS, so each axis has a row on both sides of it:
+   - „Gradska liga” of 2027 with ten rounds run by today, each named apart from the event (so a list
+     that wrote the event's name is a different row), and a closing round still to come;
+   - „Gradska liga” of 2026, the same name in a year before the league, whose season is not open;
+   - „Gradski trening”, an event of 2027 that is not a race;
+   - „Gradska jesen”, a race of 2027 that has not begun yet. */
+const LEAGUE: BtlEvent = { ...held, id: 9001, slug: 'gradska-liga-2027', name: 'Gradska liga', date: '2027-01-10', city: 'Novi Sad' }
+const CALENDAR: BtlEvent[] = [
+  LEAGUE,
+  { ...held, id: 9002, slug: 'gradska-liga-2026', name: 'Gradska liga', date: '2026-03-10' },
+  { ...held, id: 9003, slug: 'gradski-trening-2027', name: 'Gradski trening', date: '2027-02-01', kind: 'training' },
+  { ...held, id: 9004, slug: 'gradska-jesen-2027', name: 'Gradska jesen', date: '2027-10-10' },
+]
+const ROUND_DAYS = [
+  '2027-01-10', '2027-02-07', '2027-03-07', '2027-04-04', '2027-05-02',
+  '2027-05-30', '2027-06-27', '2027-07-11', '2027-07-25', '2027-08-08',
+]
+const RACES: Race[] = [
+  ...ROUND_DAYS.map((date, round) =>
+    shaped({ id: 9100 + round, eventId: 9001, name: `Gradska liga, kolo ${round + 1}`, renamed: true, date, distanceKm: 10.5, ascentM: 40, descentM: 40 }),
+  ),
+  shaped({ id: 9120, eventId: 9001, name: 'Gradska liga, završno kolo', renamed: true, date: '2027-11-07', distanceKm: 10.5 }),
+  shaped({ id: 9130, eventId: 9002, name: 'Gradska liga, kolo 1', renamed: true, date: '2026-03-10', distanceKm: 10.5 }),
+  shaped({ id: 9140, eventId: 9004, name: 'Gradska jesen', date: '2027-10-10', distanceKm: 10.5 }),
+]
+
+/** The calendar above in place of the generated one, for as long as a case holds it. */
+function calendar(): { stop: () => void } {
+  const answer = (body: unknown) =>
+    new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
+
+  return serverThat((path) =>
+    path === '/api/events' ? answer(CALENDAR) : path === '/api/races' ? answer(RACES) : null,
+  )
+}
+
+/** Everything a run on an event he typed still asks for, once the event and the race are named. */
+async function theRestOfANewRun(user: ReturnType<typeof setupUser>): Promise<void> {
+  await user.clear(screen.getByLabelText(/Datum trke/))
+  await user.type(screen.getByLabelText(/Datum trke/), '01082027')
+  await user.type(screen.getByLabelText('Mesto'), 'Niš')
+  await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+  await user.clear(screen.getByLabelText(/^Dužina/))
+  await user.type(screen.getByLabelText(/^Dužina/), '10')
+  await user.clear(screen.getByLabelText(/Uspon/))
+  await user.type(screen.getByLabelText(/Uspon/), '20')
+  await user.clear(screen.getByLabelText(/Spust/))
+  await user.type(screen.getByLabelText(/Spust/), '20')
+  await user.type(screen.getByLabelText('Sati'), '0')
+  await user.type(screen.getByLabelText('Minuti'), '45')
+  await user.type(screen.getByLabelText('Sekunde'), '0')
+  await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/seoska')
+  await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+}
+
+/** Opens the form and chooses an event out of the box „Događaj”, which is what a member does first. */
+async function onTheEvent(user: ReturnType<typeof setupUser>, typed = 'gradska'): Promise<void> {
+  renderAt(NEW, 'competitor', ME, undefined, TODAY)
+  await user.type(await screen.findByLabelText(/^Događaj/), typed)
+  await user.click(first(within(screen.getByRole('list', { name: '' })).getAllByRole('button')))
+}
+
 
 /* Every field a race fills in for the member was worked out here, to hold the
    sentence over the name box to naming none of them. The sentence went out on
@@ -155,98 +223,83 @@ describe('a race chosen from the list', () => {
   it('travels with the request, so verification knows there is nothing to make', async () => {
     /* The one thing that tells a run from a run: a member who chose a race sends its id, and a
        member who typed a name the calendar does not hold sends none. Verification reads that
-       absence to know it has to make the event and the race first (owner, 31.08.2026), and the
-       queue marks such a row.
-
-       Chosen through the screen and not through `racesToOffer`, because what is measured is
-       that the value survives the choosing and reaches the route: the list hands it over in
-       `fills`, the renderer writes `fills` into the values, and the page reads the values when
-       it sends. Read off the request since R2 of the results flows, because nothing about a
-       run sent is written into the browser any more. */
+       absence to know it has to make the event and the race first (owner, 31.08.2026). Chosen
+       through the screen, the event first and then its race (PDL P9, 19.10.2026), and read off
+       the request: a race of the calendar has its event, so nothing about the event goes with it
+       either, and no town (`ResultWriteApi.fromTheCalendar` refuses both as `theRaceIsNamedTwice`). */
     const user = setupUser()
     const route = recording()
+    const held = calendar()
 
     try {
-      renderAt(NEW, 'competitor', ME, undefined, TODAY)
-
-      await user.type(await screen.findByLabelText(/^Naziv trke/), 'Maraton maratona')
-
-      const offered = await screen.findAllByRole('button', { name: /Maraton maratona/ })
-
-      await user.click(must(offered[0], 'the first race offered'))
+      await onTheEvent(user)
+      await user.type(raceName(), 'kolo')
+      await user.click(first(within(screen.getByRole('list', { name: '' })).getAllByRole('button')))
 
       /* The race answered for its own measures, which is what choosing one does. */
       expect(screen.getByLabelText(/^Dužina/)).not.toHaveValue('')
 
-      await user.type(screen.getByLabelText('Mesto'), 'Niš')
-      await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
-      await user.type(screen.getByLabelText('Sati'), '3')
-      await user.type(screen.getByLabelText('Minuti'), '30')
+      await user.type(screen.getByLabelText('Sati'), '0')
+      await user.type(screen.getByLabelText('Minuti'), '50')
       await user.type(screen.getByLabelText('Sekunde'), '0')
       await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
       await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
-      await screen.findByRole('heading', { name: 'Rezultat je poslat' })
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
 
-      /* A real id, a number above nought, and not the word „undefined" or an empty text: a check
-         that only asked for something there took that word for an answer (measured 31.08.2026,
-         with the list handing over an empty id). And nothing about the race beside it, which
-         `ResultWriteApi.fromTheCalendar` would refuse as `theRaceIsNamedTwice`. */
       const sent = must(route.sent()[0], 'what was sent')
 
       expect(route.sent()).toHaveLength(1)
-      expect(typeof sent.raceId).toBe('number')
-      expect(Number(sent.raceId)).toBeGreaterThan(0)
-      expect(Object.keys(sent)).not.toContain('raceName')
-      expect(Object.keys(sent)).not.toContain('city')
+      expect(sent.raceId).toBe(9109)
+      for (const name of ['raceName', 'eventId', 'eventName', 'city', 'country']) {
+        expect(Object.keys(sent), `${name} went beside a race of the calendar`).not.toContain(name)
+      }
     } finally {
+      held.stop()
       route.stop()
     }
   }, SLOW)
 
   it('is gone the moment the name is typed over, and the request carries none', async () => {
     /* The link breaks when the name is edited (owner, 23.08.2026), and the race goes with the
-       measures. What the request must then carry is NO race and not an empty one: the queue asks
-       whether the race is absent, so a run holding „" is not marked „NOVO", the sweep takes it,
-       and no event and no race are ever made for the very member the promise was written for
-       (measured in review, 31.08.2026). Read off the request since R2 of the results flows. */
+       measures. What the request must then carry is NO race and not an empty one (measured in
+       review, 31.08.2026). The EVENT he chose stays chosen: a race named for himself on an event of
+       the calendar is a new race on that event (PDL P9, 19.10.2026), so the key of the event goes
+       and no town of its own (V67). */
     const user = setupUser()
     const route = recording()
+    const held = calendar()
 
     try {
-      renderAt(NEW, 'competitor', ME, undefined, TODAY)
+      await onTheEvent(user)
+      await user.type(raceName(), 'kolo')
+      await user.click(first(within(screen.getByRole('list', { name: '' })).getAllByRole('button')))
+      await user.type(raceName(), ' po svome')
 
-      await user.type(await screen.findByLabelText(/^Naziv trke/), 'Maraton maratona')
-
-      const offered = await screen.findAllByRole('button', { name: /Maraton maratona/ })
-
-      await user.click(must(offered[0], 'the first race offered'))
-      await user.type(screen.getByLabelText(/^Naziv trke/), ' po svome')
-
-      /* The measures were emptied with it, which is the rule this follows. A number
-         box that has been cleared reads as nothing at all rather than as an empty
-         string, which is what jsdom answers for a numeric input with no value. */
       expect(inputElement(screen.getByLabelText(/^Dužina/)).value).toBe('')
+      expect(screen.queryByLabelText('Mesto'), 'a run on a chosen event asks for a town').toBeNull()
 
-      await user.type(screen.getByLabelText(/Datum trke/), '10052026')
-      await user.type(screen.getByLabelText('Mesto'), 'Niš')
-      await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
-      await user.type(screen.getByLabelText(/^Dužina/), '21.1')
+      await user.type(screen.getByLabelText(/Datum trke/), '08082027')
+      await user.type(screen.getByLabelText(/^Dužina/), '10.5')
       await user.type(screen.getByLabelText(/Uspon/), '0')
       await user.type(screen.getByLabelText(/Spust/), '0')
-      await user.type(screen.getByLabelText('Sati'), '1')
+      await user.type(screen.getByLabelText('Sati'), '0')
       await user.type(screen.getByLabelText('Minuti'), '52')
       await user.type(screen.getByLabelText('Sekunde'), '10')
       await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
       await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
-      await screen.findByRole('heading', { name: 'Rezultat je poslat' })
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
 
       const sent = must(route.sent()[0], 'what was sent')
 
       expect(Object.keys(sent), 'a race went where the name was typed over').not.toContain('raceId')
-      expect(sent.raceName).toBe('Maraton maratona po svome')
+      expect(sent.raceName).toBe('Gradska liga, kolo 10 po svome')
+      expect(sent.eventId, 'the event he chose went with the race').toBe(9001)
+      expect(Object.keys(sent)).not.toContain('city')
+      expect(Object.keys(sent)).not.toContain('eventName')
     } finally {
+      held.stop()
       route.stop()
     }
   }, SLOW)
@@ -283,74 +336,69 @@ describe('the kind of race the member says it was', () => {
 
 describe('the list of races under the name of an event', () => {
   it('says nothing until two letters have been typed', async () => {
-    /* Owner, 23.08.2026: „posle dva slova treba da krene autocomplete". Both
-       sides of the boundary, because a list that opens on the first letter is a
-       list of everything the league has ever run. */
+    /* Owner, 23.08.2026: „posle dva slova treba da krene autocomplete". Both sides of the
+       boundary, on the races of the event chosen. */
     const user = setupUser()
+    const held = calendar()
 
-    renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'b')
+    try {
+      await onTheEvent(user)
+      await user.type(raceName(), 'k')
 
-    expect(offered()).toEqual([])
+      expect(offered()).toEqual([])
 
-    await user.type(raceName(), 'e')
+      await user.type(raceName(), 'o')
 
-    expect(offered().length).toBeGreaterThan(0)
+      expect(offered().length).toBeGreaterThan(0)
+    } finally {
+      held.stop()
+    }
   })
 
   it('offers the name of the race, not the name of the event it is run at', async () => {
-    /* Owner, 23.08.2026: „sad je postalo logičnije da se pretražuje zapravo naziv
-       trke sa datumom i dužinom." Measured against the one race in the data with a
-       name of its own; with every other one named after its event the two are the
-       same string, and a round measured that putting the event's name back walks
-       through the whole package. */
+    /* Owner, 23.08.2026: „sad je postalo logičnije da se pretražuje zapravo naziv trke sa datumom
+       i dužinom." Every round of the calendar's league is named apart from its event, so a list
+       that wrote the event's name is a different row; and what the press puts INTO THE BOX is a
+       second fact (`value` beside `said`, measured 23.08.2026). */
     const user = setupUser()
+    const held = calendar()
 
-    renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'mrazijada')
+    try {
+      await onTheEvent(user)
+      await user.type(raceName(), 'kolo 3')
 
-    const said = offered()
+      const said = offered()
 
-    expect(said.length).toBeGreaterThan(0)
-    expect(
-      said.some((one) => one.startsWith('Mrazijada, polumaraton')),
-      said.join(' | '),
-    ).toBe(true)
+      expect(said.length).toBeGreaterThan(0)
+      expect(said.every((one) => one.startsWith('Gradska liga, kolo 3')), said.join(' | ')).toBe(true)
 
-    /* And what the press puts **into the field**, which is a second fact and not the
-       same one: a suggestion carries `said` for the row and `value` for the box.
-       Measured 23.08.2026 by a round: with `value` alone put back to the event's
-       name, the row still read „Mrazijada, polumaraton" and the box took
-       „Mrazijada", so the member sent the event's name under the race's label and
-       every screen the owner named showed the wrong one. */
-    const row = must(
-      within(must(screen.queryByRole('list'), 'the list of races')).getAllByRole('button')[0],
-      'the first race offered',
-    )
+      await user.click(first(within(screen.getByRole('list', { name: '' })).getAllByRole('button')))
 
-    await user.click(row)
-
-    expect(raceName(), 'the box took a name the row never showed').toHaveValue(
-      'Mrazijada, polumaraton',
-    )
+      expect(raceName(), 'the box took a name the row never showed').toHaveValue('Gradska liga, kolo 3')
+    } finally {
+      held.stop()
+    }
   })
 
   it('writes each race as its event, its day and its length', async () => {
-    /* „Beogradski maraton – 19.04.2026. – 42.2" (owner). The day is the one
-       numeric date shape on the portal, and it is here because he named it
-       twice; the length is written the way every other screen writes one. */
+    /* „Beogradski maraton – 19.04.2026. – 42.2" (owner). */
     const user = setupUser()
+    const held = calendar()
 
-    renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'beogradski maraton')
+    try {
+      await onTheEvent(user)
+      await user.type(raceName(), 'kolo')
 
-    for (const row of offered()) {
-      expect(row, 'a row of the list is not written the way the owner asked').toMatch(
-        /^.+ – \d{2}\.\d{2}\.\d{4}\. – \d+,\d km$/,
-      )
+      for (const row of offered()) {
+        expect(row, 'a row of the list is not written the way the owner asked').toMatch(
+          /^.+ – \d{2}\.\d{2}\.\d{4}\. – \d+,\d km$/,
+        )
+      }
+
+      expect(offered().length).toBeGreaterThan(0)
+    } finally {
+      held.stop()
     }
-
-    expect(offered().length).toBeGreaterThan(0)
   })
 
   it('offers a race by what it is measured by, which is not always a length', () => {
@@ -413,20 +461,19 @@ describe('the list of races under the name of an event', () => {
   })
 
   it('promises nothing over the box about what choosing a race fills in', async () => {
-    /* There was a sentence over this box until 31.08.2026, and holding it was a
-       round of work: drawn before any race is chosen it cannot know the kind, and
-       the three kinds fill in different fields, so every field it named was a
-       claim false for two kinds out of three (measured 30.08.2026).
-
-       The owner read the whole list of sixty one explanations and kept seven; this
-       is not one of them. What is held now is that the box promises nothing at
-       all, which is the only thing that is true before a race is picked. */
+    /* There was a sentence over this box until 31.08.2026 about what choosing a race fills in, and
+       it was false for two kinds out of three. What stands beside it since 19.10.2026 is the
+       owner's approved hint about WHICH race (PDL P9, „Reči forme člana i moderatorovog ekrana"), and
+       nothing about what a race fills in. */
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
     const box = await screen.findByLabelText(/^Naziv trke/)
+    const said = (box.getAttribute('aria-describedby') ?? '')
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent ?? '')
+      .join(' ')
 
-    expect(box.getAttribute('aria-describedby')).toBeNull()
-
+    expect(said).toBe('Izaberi trku ovog događaja ili upiši novu.')
   })
   it('hands over exactly what each kind of race fixes, and locks exactly that', () => {
     /* Choosing a race fills the fields under the box. A timed race and a free one
@@ -505,89 +552,115 @@ describe('the list of races under the name of an event', () => {
   })
 
   it('offers what has been run, newest first, and never what is still to come', async () => {
-    /* Owner: „U autocomplete se navode samo događaji koji su u prošlosti ili na
-       taj dan, ne ubuduće", „sortiranih po datumu od poslednje prema ranijim".
-
-       Read against the data rather than against a written list, so the day the
-       calendar changes this says what the screen says. The day itself counts as
-       past, which is the boundary the whole portal keeps (PDL P9). */
-    const races = await loadResource<Race[]>('races')
-    const events = await loadResource<BtlEvent[]>('events')
-    const named = new Map(events.map((one) => [one.id, one.name]))
+    /* Owner: „U autocomplete se navode samo događaji koji su u prošlosti ili na taj dan, ne ubuduće",
+       „sortiranih po datumu od poslednje prema ranijim". The closing round of the league is still to
+       come and is not offered; the day itself counts as run. */
     const user = setupUser()
+    const held = calendar()
 
-    renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'trka')
+    try {
+      await onTheEvent(user)
+      await user.type(raceName(), 'gradska')
 
-    const rows = offered()
-    const days = rows.map((row) => must(/(\d{2})\.(\d{2})\.(\d{4})\./.exec(row), 'the day in a row'))
-    const asIso = days.map((found) => `${found[3] ?? ''}-${found[2] ?? ''}-${found[1] ?? ''}`)
+      const rows = offered()
+      const asIso = rows.map((row) => {
+        const found = must(/(\d{2})\.(\d{2})\.(\d{4})\./.exec(row), 'the day in a row')
 
-    expect(rows.length).toBeGreaterThan(1)
-    expect([...asIso].sort().reverse(), 'the list is not newest first').toEqual(asIso)
-    for (const day of asIso) {
-      expect(day <= TODAY, `${day} has not been run yet`).toBe(true)
+        return `${found[3] ?? ''}-${found[2] ?? ''}-${found[1] ?? ''}`
+      })
+
+      expect(rows.length).toBeGreaterThan(1)
+      expect([...asIso].sort().reverse(), 'the list is not newest first').toEqual(asIso)
+      expect(asIso[0]).toBe('2027-08-08')
+      expect(rows.some((row) => row.includes('završno')), 'a round still to come was offered').toBe(false)
+    } finally {
+      held.stop()
     }
+  })
 
-    /* And every row is a race this league has, rather than a row built out of
-       whatever was typed. */
-    const matching = races.filter(
-      (race) => race.date <= TODAY && (named.get(race.eventId) ?? '').toLocaleLowerCase().includes('trka'),
-    )
+  it('offers only the races of the event he chose', async () => {
+    /* The calendar holds another event of the same name with a race of the same name already run
+       (`9130`, „Gradska liga, kolo 1”, 2026), so a list of every event's races would answer this
+       case by its name alike; typed narrowly enough that the list's ceiling of eight does not hide
+       it (two rounds of the chosen event match, and that one). */
+    const user = setupUser()
+    const held = calendar()
 
-    expect(matching.length).toBeGreaterThan(rows.length)
+    try {
+      await onTheEvent(user)
+      await user.type(raceName(), 'kolo 1')
+
+      const rows = offered()
+
+      expect(rows.length, 'the chosen event offered none of its own').toBeGreaterThan(0)
+      expect(rows.filter((row) => row.includes('.2026.')), 'a race of another event was offered').toEqual([])
+    } finally {
+      held.stop()
+    }
   })
 
   it('offers no more than eight at once', async () => {
-    /* Every row is a stop on the way through the form with a keyboard
-       (forms/Suggesting.tsx). Held with a search that matches far more than
-       eight, so this is a cap and not a coincidence. */
+    /* Every row is a stop on the way through the form with a keyboard (forms/Suggesting.tsx). The
+       league has ten rounds run, so this is a cap and not a coincidence. */
     const user = setupUser()
+    const held = calendar()
 
-    renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'ka')
+    try {
+      await onTheEvent(user)
+      await user.type(raceName(), 'kolo')
 
-    expect(offered()).toHaveLength(8)
+      expect(offered()).toHaveLength(8)
+    } finally {
+      held.stop()
+    }
   })
 
   it('says out loud that the list opened, and how long it is', async () => {
     /* For a reader who cannot see it appear under the box. */
     const user = setupUser()
+    const held = calendar()
 
-    renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'ka')
+    try {
+      await onTheEvent(user)
+      await user.type(raceName(), 'kolo')
 
-    /* One of the live regions on the screen and not the only one: a form has its
-       own and so does every list that grows. What is held is that this sentence
-       is said in one of them. */
-    expect(screen.getAllByRole('status').map((one) => one.textContent)).toContain(
-      '8 trka iz kalendara odgovara',
-    )
+      expect(screen.getAllByRole('status').map((one) => one.textContent)).toContain(
+        '8 trka iz kalendara odgovara',
+      )
+    } finally {
+      held.stop()
+    }
   })
 
   it('closes on Escape and opens again on the next letter', async () => {
     const user = setupUser()
+    const held = calendar()
 
-    renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'ka')
+    try {
+      await onTheEvent(user)
+      await user.type(raceName(), 'ko')
 
-    expect(offered().length).toBeGreaterThan(0)
+      expect(offered().length).toBeGreaterThan(0)
 
-    await user.keyboard('{Escape}')
+      await user.keyboard('{Escape}')
 
-    expect(offered()).toEqual([])
+      expect(offered()).toEqual([])
 
-    await user.type(raceName(), 'l')
+      await user.type(raceName(), 'l')
 
-    expect(offered().length).toBeGreaterThan(0)
+      expect(offered().length).toBeGreaterThan(0)
+    } finally {
+      held.stop()
+    }
   })
 })
 
 describe('a race chosen out of that list', () => {
-  /** Types two letters and presses the first row, which is what a member does. */
+  /** Chooses the event of the generated calendar, types two letters of its race and presses the
+   *  first row, which is what a member does. */
   async function choose(user: ReturnType<typeof setupUser>, said = 'beogradski maraton') {
-    renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/^Naziv trke/), said)
+    await onTheEvent(user, 'beogradski maraton')
+    await user.type(raceName(), said)
 
     const list = screen.getByRole('list', { name: '' })
     const row = first(within(list).getAllByRole('button'))
@@ -690,8 +763,8 @@ describe('a race chosen out of that list', () => {
        inside the list is cancelled, so the focus never leaves the box. */
     const user = setupUser()
 
-    renderAt(NEW, 'competitor', ME, undefined, TODAY)
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'beogradski maraton')
+    await onTheEvent(user, 'beogradski maraton')
+    await user.type(raceName(), 'beogradski maraton')
 
     const list = screen.getByRole('list', { name: '' })
 
@@ -728,6 +801,271 @@ describe('a race chosen out of that list', () => {
       expect(box, `${String(asked)} is still locked`).toBeEnabled()
     }
   })
+})
+
+describe('the event a result is run at, which the form asks first', () => {
+  /* PDL P9, owner, 19.10.2026: „Prvo ima naziv događaja koji je autocomplete iz baze, ali mogu da
+     unesem novu vrednost. Ukoliko je nova vrednost, polje trka dobija identičan taj naziv i može da se
+     menja, a ako je postojeća vrednost, polje trka postaje autocomplete u koji se ukucava postojeća
+     ili nova trka.” */
+
+  it('offers only a race of a season open for a report that has begun by today', async () => {
+    /* The calendar holds the same name in 2026, an event of 2027 that is not a race, and a race of
+       2027 still to come, and only the one that is all three is offered (owner, 19.10.2026:
+       „autocomplete ne treba da vuce dogadjaje van aktuelne sezone"; Q9 of 7a: only a race). */
+    const user = setupUser()
+    const held = calendar()
+
+    try {
+      renderAt(NEW, 'competitor', ME, undefined, TODAY)
+      await user.type(await screen.findByLabelText(/^Događaj/), 'grad')
+
+      expect(offered()).toEqual(['Gradska liga – 10.01.2027. – Novi Sad'])
+    } finally {
+      held.stop()
+    }
+  })
+
+  it('offers nothing in a season that is not open, which before 2027 is every season', async () => {
+    /* „NIŠTA! NE POSTOJI LIGA PRE 2027 GODINE" (owner, 19.10.2026): the server answers no season
+       open, and the box offers nothing although the calendar has the event. */
+    const user = setupUser()
+    const held = calendar()
+    const none = serverThat((path) =>
+      path === '/api/me'
+        ? new Response(
+            JSON.stringify({ ...whoIAm, member: { ...myOwnRecordFromMe, memberNumber: ME, seasonsOpenForAReport: [] } }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
+
+    try {
+      renderAt(NEW, 'competitor', ME, undefined, TODAY)
+      await user.type(await screen.findByLabelText(/^Događaj/), 'grad')
+
+      expect(offered()).toEqual([])
+    } finally {
+      none.stop()
+      held.stop()
+    }
+  })
+
+  it('says beside the box that it cannot offer the events when the seasons could not be read', async () => {
+    /* The seasons are half of what the list is made of, so a read of them that cannot be believed is
+       said where the list would be, with its button, and is not drawn as a calendar with nothing in
+       it (decision of 03.10.2026, carried to the second list). */
+    const held = calendar()
+    const unreadable = serverThat((path) =>
+      path === '/api/me'
+        ? new Response(
+            JSON.stringify({
+              ...whoIAm,
+              member: { ...myOwnRecordFromMe, memberNumber: ME, seasonsOpenForAReport: 'sve' },
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
+
+    try {
+      renderAt(NEW, 'competitor', ME, undefined, TODAY)
+
+      const field = within(htmlElement(must((await screen.findByLabelText(/^Događaj/)).closest('.field'), 'the field')))
+
+      expect(await field.findByRole('alert', undefined, SOON)).toHaveTextContent('Podaci se ne mogu učitati')
+    } finally {
+      unreadable.stop()
+      held.stop()
+    }
+  })
+
+  it('fills the day of the race with the event\'s own day, leaves it his to change, and takes the town away', async () => {
+    /* „Povuce se datum dogadjaja po default-u, a onda se prepopuni i datum trke, ali ga mogu dalje
+       menjati" (owner, 19.10.2026), and the town of a run on a chosen event is the event's (V67). */
+    const user = setupUser()
+    const held = calendar()
+
+    try {
+      await onTheEvent(user)
+
+      const day = screen.getByLabelText(/Datum trke/)
+
+      expect(day).toHaveValue('10/01/2027')
+      expect(day, 'the day of the race was locked to the event').not.toHaveAttribute('aria-disabled')
+      /* The event's own box is not held: typing into it breaks the choice, as a race's does. */
+      expect(eventName()).toHaveValue('Gradska liga')
+      expect(screen.queryByLabelText('Mesto'), 'a run on a chosen event asks for a town').toBeNull()
+      expect(raceName(), 'the race box kept a name the event did not give').toHaveValue('')
+
+      await user.clear(day)
+      await user.type(day, '07022027')
+
+      expect(day).toHaveValue('07/02/2027')
+    } finally {
+      held.stop()
+    }
+  })
+
+  it('gives a new event\'s name to its race until he names the race for himself', async () => {
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await user.type(await screen.findByLabelText(/^Događaj/), 'Seoska trka')
+
+    expect(raceName()).toHaveValue('Seoska trka')
+    expect(screen.getByLabelText('Mesto'), 'a new event asks for its town').toBeVisible()
+
+    await user.type(raceName(), ' na 10 km')
+    await user.type(eventName(), ' Vranje')
+
+    expect(raceName(), 'the race he named was written over by the event').toHaveValue('Seoska trka na 10 km')
+  })
+
+  it('sends a run on a new event with the event\'s name and its town, and no key of any event or race', async () => {
+    const user = setupUser()
+    const route = recording()
+
+    try {
+      renderAt(NEW, 'competitor', ME, undefined, TODAY)
+      await user.type(await screen.findByLabelText(/^Događaj/), 'Seoska trka')
+      await user.type(screen.getByLabelText(/Datum trke/), '01082027')
+      await user.type(screen.getByLabelText('Mesto'), 'Niš')
+      await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+      await user.type(screen.getByLabelText(/^Dužina/), '10')
+      await user.type(screen.getByLabelText(/Uspon/), '20')
+      await user.type(screen.getByLabelText(/Spust/), '20')
+      await user.type(screen.getByLabelText('Sati'), '0')
+      await user.type(screen.getByLabelText('Minuti'), '45')
+      await user.type(screen.getByLabelText('Sekunde'), '0')
+      await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/seoska')
+      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
+
+      const sent = must(route.sent()[0], 'what was sent')
+
+      expect([sent.eventName, sent.raceName, sent.city, sent.country]).toEqual(['Seoska trka', 'Seoska trka', 'Niš', 'RS'])
+      expect(Object.keys(sent)).not.toContain('eventId')
+      expect(Object.keys(sent)).not.toContain('raceId')
+    } finally {
+      route.stop()
+    }
+  }, SLOW)
+
+  it('lets go of the race of the event he leaves, when he names a new event over a chosen one', async () => {
+    /* `FormRenderer.onType` empties what the event's FOLLOWERS were filled with, not only the event's
+       own: a race of the calendar chosen under „Gradska liga” is a race of that event, and once he
+       types a new event over it the run is no longer on that race. Left linked, the body would go
+       on the old event's race by its key (review of PR 581, F13). */
+    const user = setupUser()
+    const held = calendar()
+    const route = recording()
+
+    try {
+      await onTheEvent(user)
+      await user.type(raceName(), 'kolo 8')
+      await user.click(first(within(screen.getByRole('list', { name: '' })).getAllByRole('button')))
+      await user.clear(eventName())
+      await user.type(eventName(), 'Seoska trka')
+      await theRestOfANewRun(user)
+
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
+
+      const sent = must(route.sent()[0], 'what was sent')
+
+      expect(Object.keys(sent), 'the run went on a race of the event he left').not.toContain('raceId')
+      expect(Object.keys(sent)).not.toContain('eventId')
+      expect([sent.eventName, sent.city, sent.country]).toEqual(['Seoska trka', 'Niš', 'RS'])
+    } finally {
+      route.stop()
+      held.stop()
+    }
+  }, SLOW)
+
+  it('lets go of the event he chose when he names a new one, after typing a race of his own', async () => {
+    /* Typing a race of his own unlinks the RACE and keeps the event's link (`unlinked` in `onType`),
+       so that a new event typed after it still finds the chosen event's key to empty. Wiped there
+       instead, the event's key would ride on under a name he typed, and the town would stay hidden
+       (review of PR 581, F12). */
+    const user = setupUser()
+    const held = calendar()
+    const route = recording()
+
+    try {
+      await onTheEvent(user)
+      await user.type(raceName(), 'Nova staza')
+      await user.clear(eventName())
+      await user.type(eventName(), 'Seoska trka')
+
+      expect(screen.queryByLabelText('Mesto'), 'a new event asks for its town').not.toBeNull()
+
+      await theRestOfANewRun(user)
+
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
+
+      const sent = must(route.sent()[0], 'what was sent')
+
+      expect(Object.keys(sent), 'the key of the event he left went with the run').not.toContain('eventId')
+      expect([sent.eventName, sent.raceName, sent.city]).toEqual(['Seoska trka', 'Nova staza', 'Niš'])
+    } finally {
+      route.stop()
+      held.stop()
+    }
+  }, SLOW)
+
+  it('refuses a day in no season open for a report, in the owner\'s words, and sends nothing', async () => {
+    const user = setupUser()
+    const route = recording()
+
+    try {
+      renderAt(NEW, 'competitor', ME, undefined, TODAY)
+      await user.type(await screen.findByLabelText(/^Događaj/), 'Stara trka')
+      await user.type(screen.getByLabelText(/Datum trke/), '01082026')
+      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+      expect(await screen.findByText('Datum mora da bude u tekućoj sezoni.', undefined, SOON)).toBeVisible()
+      expect(route.sent()).toEqual([])
+    } finally {
+      route.stop()
+    }
+  }, SLOW)
+
+  it('says the server\'s refusal of a run outside the season in the owner\'s words', async () => {
+    /* The day on the screen is held to the seasons the server said; the server holds it again when
+       the run arrives, and its refusal has its own approved sentence (`theRaceIsOutsideTheSeason`). */
+    const user = setupUser()
+    const refusing = serverThat((path, init) =>
+      path === '/api/results' && init?.method === 'POST'
+        ? new Response(JSON.stringify({ reason: 'theRaceIsOutsideTheSeason' }), {
+            status: 400,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      renderAt(NEW, 'competitor', ME, undefined, TODAY)
+      await user.type(await screen.findByLabelText(/^Događaj/), 'Seoska trka')
+      await user.type(screen.getByLabelText(/Datum trke/), '01082027')
+      await user.type(screen.getByLabelText('Mesto'), 'Niš')
+      await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+      await user.type(screen.getByLabelText(/^Dužina/), '10')
+      await user.type(screen.getByLabelText(/Uspon/), '20')
+      await user.type(screen.getByLabelText(/Spust/), '20')
+      await user.type(screen.getByLabelText('Sati'), '0')
+      await user.type(screen.getByLabelText('Minuti'), '45')
+      await user.type(screen.getByLabelText('Sekunde'), '0')
+      await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/seoska')
+      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+      expect(
+        await screen.findByText(/Rezultat nije poslat: preko portala se prijavljuju samo trke tekuće sezone/, undefined, SOON),
+      ).toBeVisible()
+    } finally {
+      refusing.stop()
+    }
+  }, SLOW)
 })
 
 describe('a picture attached to a result', () => {
@@ -785,9 +1123,9 @@ describe('where the cursor stands after a press that takes the control away', ()
        say this. */
     const user = setupUser()
 
-    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await onTheEvent(user, 'beogradski maraton')
 
-    const box = await screen.findByLabelText(/^Naziv trke/)
+    const box = raceName()
 
     await user.type(box, 'Be')
     await user.tab()
@@ -801,7 +1139,7 @@ describe('where the cursor stands after a press that takes the control away', ()
     expect(document.activeElement, 'the cursor fell out of the form').toBe(box)
     /* And the press did what it was for, so this is not a guard over a button that
        does nothing. */
-    expect(box).toHaveValue('10K Belgrade')
+    expect(box).toHaveValue('Beogradski maraton')
   })
 
   it('puts it back in the box when the picture is taken away', async () => {

@@ -2684,6 +2684,95 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * A RUN ON AN EVENT THE MEMBER CHOSE, APPROVED ONTO A NEW EVENT, MAKES THAT EVENT IN THE TOWN OF THE
+	 * EVENT HE CHOSE.
+	 *
+	 * <p>Found by review of PR 581 as a 500: since V67 such a run carries no town of its own (the town
+	 * lives on the event he chose), and the event an approval makes was built of the run's town, which
+	 * `btl_event_town_is_from_the_codebook_or_typed` refused. The moderator's screen will ask for the
+	 * place of a new event (PDL P9, 19.10.2026: „Na moderatorovom ekranu nov događaj traži naziv, datum i
+	 * mesto”); until it does, the run's town is the one its chosen event has, which is where the member
+	 * said he ran. That reading is mine.
+	 *
+	 * <p><b>The chosen event stands in a town typed in another country than every other row of the
+	 * fixture</b>, so an event made in any other town is a different row.
+	 */
+	@Test
+	void aRunOnAChosenEventApprovedOntoANewEventMakesItInTheTownOfTheEventHeChose() throws Exception {
+		long chosen = db.sql("insert into btl_event (slug, name, date, city, country_id, kind,"
+						+ " featured, description, link) values ('izabran-u-strugi-2027', 'Izabran u"
+						+ " Strugi', date '2027-03-01', 'Struga', (select id from country where code ="
+						+ " 'MK'), 'race', false, '', '') returning id")
+				.query(Long.class).single();
+		long run = describedRun(ANA, "Uz jezero", "length", THE_DAY_HE_RAN, "7.0000", 10, 10, 2100);
+
+		theMemberNamed(run, chosen, null);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Jezerska trka", "Jezerska desetka",
+				"length", null)).getStatus()).isEqualTo(200);
+
+		AnEvent made = theEventAt("jezerska-trka-2027");
+
+		assertThat(made.city() + " " + made.countryId()).isEqualTo("Struga " + countryCoded("MK"));
+		assertThat(made.placeId()).isNull();
+		assertThat(racesOf(chosen)).as("the race went on the event he chose, not the new one").isEmpty();
+	}
+
+	/**
+	 * THE SAME, ON AN EVENT HE CHOSE THAT STANDS IN A TOWN OF THE CODEBOOK: the new event stands in
+	 * that very place. The case above gives the chosen event a typed town only, so the place half of
+	 * the town the approval reads off the chosen event is measured here and nowhere else; the place is
+	 * not the first of the codebook, which other rows of this class stand in.
+	 */
+	@Test
+	void aRunOnAChosenEventInATownOfTheCodebookMakesTheNewEventInThatPlace() throws Exception {
+		long place = placeOfRank(2);
+		long chosen = db.sql("insert into btl_event (slug, name, date, place_id, kind, featured,"
+						+ " description, link) values ('izabran-u-sifarniku-2027', 'Izabran u sifarniku',"
+						+ " date '2027-03-01', ?, 'race', false, '', '') returning id")
+				.param(place).query(Long.class).single();
+		long run = describedRun(ANA, "Kroz grad", "length", THE_DAY_HE_RAN, "7.0000", 10, 10, 2100);
+
+		theMemberNamed(run, chosen, null);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Gradska trka", "Gradska desetka",
+				"length", null)).getStatus()).isEqualTo(200);
+
+		AnEvent made = theEventAt("gradska-trka-2027");
+
+		assertThat(made.placeId()).isEqualTo(place);
+		assertThat(made.city()).isNull();
+		assertThat(racesOf(chosen)).as("the race went on the event he chose, not the new one").isEmpty();
+	}
+
+	/**
+	 * AND A RUN THAT NAMES NEITHER A TOWN NOR AN EVENT - the state a run is left in when the event it was
+	 * chosen on is deleted (V67) - IS REFUSED BEFORE ANYTHING IS WRITTEN WHEN THE APPROVAL WOULD MAKE A
+	 * NEW EVENT OF IT, and goes through onto an event that is there.
+	 */
+	@Test
+	void aRunWithNoTownIsRefusedANewEventAndTakesOneThatIsThere() throws Exception {
+		long theirs = event("postojeci-bez-mesta-2027", "Postojeci", LocalDate.of(2027, 3, 1));
+		long run = describedRun(ANA, "Bez mesta", "length", THE_DAY_HE_RAN, "7.0000", 10, 10, 2100);
+
+		db.sql("update result_submission set place_id = null, city = null, country_id = null where id ="
+						+ " (select result_submission_id from verification where id = ?)")
+				.param(run).update();
+
+		int events = howManyEvents();
+		MockHttpServletResponse refused = decideWith(THE_SUPERADMIN, run, makingTheRace("Nigde",
+				"Nigde", "length", null));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).startsWith("Prijava ne nosi mesto");
+		assertThat(howManyEvents()).isEqualTo(events);
+		assertThat(stateOf(run)).isEqualTo("waiting");
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceOn(theirs, "Bez mesta"))
+				.getStatus()).isEqualTo(200);
+	}
+
+	/**
 	 * A RACE ON A DAY BEFORE ITS EVENT'S MOVES THE EVENT BACK TO THAT DAY, AND INTO THAT YEAR'S
 	 * ADDRESS, AND THE EVENT IS THE ONE THE MODERATOR CHOSE AND NOT THE MEMBER.
 	 *
@@ -4712,9 +4801,14 @@ class VerificationWriteApiTest {
 
 	/** The event a waiting run names (V66), chosen or typed, written as the member's route would. */
 	private void theMemberNamed(long item, Long event, String typed) {
-		db.sql("update result_submission set event_id = ?, event_name = ? where id ="
-						+ " (select result_submission_id from verification where id = ?)")
-				.params(event, typed, item).update();
+		/* A chosen event brings its own town, so the run's own goes with the choice (V67,
+		   `result_submission_a_chosen_event_brings_its_town`); a typed one keeps it. */
+		db.sql("update result_submission set event_id = ?, event_name = ?,"
+						+ " place_id = case when ? then null else place_id end,"
+						+ " city = case when ? then null else city end,"
+						+ " country_id = case when ? then null else country_id end"
+						+ " where id = (select result_submission_id from verification where id = ?)")
+				.params(event, typed, event != null, event != null, event != null, item).update();
 	}
 
 	/** What a submission still says about the event the member named: the key and the name. */

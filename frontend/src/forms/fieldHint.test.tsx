@@ -34,12 +34,19 @@ import { setupUser } from '../test/user'
  *  declared as a `hintKey` on the screen that draws it, so the sweep below counts it,
  *  and the day somebody adds an eighth without being asked this fails. A rule that
  *  reached a screen WITHOUT a `hintKey` is the shape three of them outlived the
- *  deletion in, and that is what the second case refuses. */
+ *  deletion in, and that is what the second case refuses.
+ *
+ *  **Nine since 19.10.2026**: the two the owner approved for the member's form of a result, which
+ *  names its event first (PDL P9, „Reči forme člana i moderatorovog ekrana": „Izaberi događaj iz
+ *  kalendara ili upiši naziv novog. Novi događaj i trka ulaze u kalendar kad liga potvrdi rezultat.”
+ *  and „Izaberi trku ovog događaja ili upiši novu.”). */
 const KEPT = [
   'newPassword.passwordHint',
+  'newResult.eventHint',
   'newResult.linkHint',
   'newResult.photoHint',
   'newResult.raceKindHint',
+  'newResult.raceOfTheEventHint',
   'registration.fatherNameHint',
   'registration.idNumberHint',
   'registration.parentConsentHint',
@@ -113,8 +120,9 @@ describe('the rules that were kept', () => {
        to the sweep above at all.
 
        ~~Ten and eight.~~ The biography's rule went on 28.09.2026 with the field it stood
-       beside, which is one field and one rule fewer. */
-    expect(carried).toHaveLength(9)
+       beside, which is one field and one rule fewer. Eleven and nine since 19.10.2026: the
+       event and the race of the member's form each got one (PDL P9). */
+    expect(carried).toHaveLength(11)
   })
 
   it('are never written into a screen by hand, under any name they have had', () => {

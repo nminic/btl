@@ -80,8 +80,10 @@ function listening(answering: () => Response | Promise<Response> = did) {
 
 /** The form away from the calendar, filled in for a race the calendar does not hold. */
 async function describeARace(user: ReturnType<typeof setupUser>, name = 'Trka kroz šumu') {
-  await user.type(await screen.findByLabelText(/^Naziv trke/), name)
-  await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+  /* The event first, a new one, and its race takes its name (PDL P9, 19.10.2026); in the first
+     season, the one the harness answers open (`test/theAnswer.ts`). */
+  await user.type(await screen.findByLabelText(/^Događaj/), name)
+  await user.type(screen.getByLabelText(/Datum trke/), '10052027')
   await user.type(screen.getByLabelText('Mesto'), 'Niš')
   await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
   await user.type(screen.getByLabelText(/Dužina/), '21.1')
@@ -145,7 +147,7 @@ describe('a run entered away from the calendar', () => {
       const user = setupUser()
 
       listening()
-      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2027-08-23')
 
       await describeARace(user)
       await send(user)
@@ -168,7 +170,7 @@ describe('a run entered away from the calendar', () => {
       expect(body.raceKind).toBe('length')
       /* `day` and not `date`, which is what the record on the server calls it. Sent under
          the other name it arrives null and is refused about a date the member filled in. */
-      expect(body.day).toBe('2026-05-10')
+      expect(body.day).toBe('2027-05-10')
       expect(Object.hasOwn(body, 'date')).toBe(false)
       /* The town by name and country. `PlaceField` has no GeoNames mark to give, and the
          route refuses a body that names the town both ways at once. */
@@ -208,7 +210,7 @@ describe('a run entered away from the calendar', () => {
       const user = setupUser()
 
       listening()
-      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2027-08-23')
 
       await describeARace(user)
       await user.clear(screen.getByLabelText(/Dužina/))
@@ -239,7 +241,7 @@ describe('a run entered away from the calendar', () => {
       const user = setupUser()
 
       listening()
-      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2027-08-23')
 
       await describeARace(user)
       await user.clear(screen.getByLabelText('Sekunde'))
@@ -262,7 +264,7 @@ describe('a run entered away from the calendar', () => {
       const user = setupUser()
 
       listening(() => refused('theRaceHasNotBeenRun'))
-      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2027-08-23')
 
       await describeARace(user)
       await send(user)
@@ -309,7 +311,7 @@ describe('a run entered away from the calendar', () => {
       const user = setupUser()
 
       listening(() => refused(reason))
-      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2027-08-23')
 
       await describeARace(user)
       await send(user)
@@ -325,7 +327,7 @@ describe('a run entered away from the calendar', () => {
       const user = setupUser()
 
       listening(() => refused('somethingNobodyHasNamedYet'))
-      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2027-08-23')
 
       await describeARace(user)
       await send(user)
@@ -355,7 +357,7 @@ describe('a run entered away from the calendar', () => {
         path.startsWith('/api/results') && init?.method !== undefined ? held : null,
       )
 
-      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2027-08-23')
 
       await describeARace(user)
       await send(user)
@@ -380,7 +382,7 @@ describe('a run entered away from the calendar', () => {
       const user = setupUser()
 
       listening(() => refused('theRaceHasNotBeenRun'))
-      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2027-08-23')
 
       await describeARace(user)
       await send(user)
@@ -410,31 +412,28 @@ describe('a run entered away from the calendar', () => {
 
 describe('a run picked from the calendar, on the form away from the event page', () => {
   it(
-    'sends the raceId and not one word about the race, though the form still asks for the town',
+    'sends the raceId and not one word about the race or its event, and asks no town',
     async () => {
       const user = setupUser()
 
       listening()
-      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2027-08-23')
 
-      await user.type(await screen.findByLabelText(/^Naziv trke/), 'Maraton maratona')
+      /* The event first (PDL P9, 19.10.2026), then its race. */
+      await user.type(await screen.findByLabelText(/^Događaj/), 'beogradski maraton')
+      await user.click(must(screen.getAllByRole('button', { name: /Beogradski maraton – / })[0], 'the event'))
+      await user.type(screen.getByLabelText(/^Naziv trke/), 'Beogradski')
 
-      const rows = await screen.findAllByRole('button', { name: /Maraton maratona/ })
+      const rows = await screen.findAllByRole('button', { name: /Beogradski maraton – / })
 
-      /* NEVER THE FIRST ROW OF THE LIST, the same discipline `reportable()` above keeps and
-         for the same reason: a body built out of `races[0]` or out of the list's own first
-         entry would answer this case by coincidence rather than by carrying the race that
-         was really chosen. */
+      /* NEVER THE FIRST ROW OF THE LIST: a body built out of the list's own first entry would
+         answer this case by coincidence rather than by carrying the race that was really chosen. */
       expect(rows.length, 'one race cannot tell a row from the first row').toBeGreaterThan(1)
 
       await user.click(must(rows[1], 'the second race offered'))
 
-      /* NOT LOCKED, AND STILL THE MEMBER'S TO FILL IN: `racesToOffer.ts` hands over only
-         what the race fixes - the length, the climb and the fall for a race of a length -
-         and never the town or the kind, which is exactly why this body cannot be built out
-         of `said` (`NewResult.tsx`'s own comment on `tellTheServer`). */
-      await user.type(screen.getByLabelText('Mesto'), 'Niš')
-      await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+      /* The town of a run on an event of the calendar is the event's (V67), so it is not asked. */
+      expect(screen.queryByLabelText('Mesto')).toBeNull()
       await user.type(screen.getByLabelText('Sati'), '3')
       await user.type(screen.getByLabelText('Minuti'), '30')
       await user.type(screen.getByLabelText('Sekunde'), '0')
@@ -452,21 +451,14 @@ describe('a run picked from the calendar, on the form away from the event page',
 
       const body = bodyOf(sent)
 
-      expect(Object.hasOwn(body, 'raceId')).toBe(true)
-      expect(typeof body.raceId).toBe('number')
+      /* The older of the event's two races, the second row of a list that is newest first. */
+      expect(body.raceId).toBe(125)
 
-      /* AND NOT ONE WORD ABOUT THE RACE BESIDE ITS NUMBER, the same rule the door from the
-         event page keeps (`resultToTheServer.test.tsx`, „a run reported from the event it
-         was run at"): `ResultWriteApi.fromTheCalendar` refuses `theRaceIsNamedTwice` when
-         any of these five arrives beside a `raceId`, and City and Country are filled in
-         above precisely because this road, unlike the door from the event page, still asks
-         the member for them. */
-      for (const beside of ['raceName', 'raceKind', 'placeId', 'city', 'country', 'day', 'date']) {
+      /* AND NOT ONE WORD ABOUT THE RACE OR ITS EVENT BESIDE ITS NUMBER: `ResultWriteApi.fromTheCalendar`
+         refuses `theRaceIsNamedTwice` when any of them arrives beside a `raceId`. */
+      for (const beside of ['raceName', 'raceKind', 'placeId', 'city', 'country', 'day', 'date', 'eventId', 'eventName']) {
         expect(Object.hasOwn(body, beside), `${beside} travelled beside a raceId`).toBe(false)
       }
-
-      expect(typeof body.distanceKm).toBe('number')
-      expect(body.link).toBe('https://primer.rs/rezultati')
     },
     SLOW,
   )
@@ -880,7 +872,7 @@ function aRun(id: number, over: Partial<SentRun> = {}): SentRun {
     state: 'rejected',
     raceId: null,
     raceName: `Trka ${String(id)}`,
-    raceDate: '2026-05-10',
+    raceDate: '2027-05-10',
     raceKind: 'length',
     city: 'Niš',
     country: 'RS',
@@ -892,6 +884,10 @@ function aRun(id: number, over: Partial<SentRun> = {}): SentRun {
     comment: '',
     reason: 'Link ne otvara rezultate.',
     amendsResultId: null,
+    /* The event it was sent on, typed (V66): a run sent before V66 names none, and then the form
+       asks for one before it sends again, which a case about another thing would trip over. */
+    eventId: null,
+    eventName: 'Prijavljeni događaj',
     ...over,
   }
 }
@@ -928,6 +924,75 @@ describe('a run sent back, sent again', () => {
      does not open one either (`newResult.test.tsx`, „does not open a run that is still
      waiting"). */
 
+  it('goes again on the event he chose, by its key, and with no town of its own', async () => {
+    /* A run sent on an event of the calendar he chose carries the event's key and no town (V66, V67),
+       and sent again it names the same event, read off the run like its race and not off a box. The
+       served town is the EVENT's, which the form holds but must not send: the route refuses a town
+       beside a chosen event (`theRaceIsNamedTwice`). */
+    const user = setupUser()
+
+    listeningWith([
+      aRun(81, {
+        raceId: null,
+        raceName: 'Krug oko tvrđave',
+        raceDate: '2027-06-01',
+        raceKind: 'free',
+        city: 'Novi Sad',
+        country: 'RS',
+        eventId: 1118,
+        eventName: 'Mala Sveta gora',
+      }),
+    ])
+    renderAt('/sr/rezultat/novi?ponovo=81', 'competitor', ME, undefined, '2027-08-23')
+
+    await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
+    expect(screen.getByLabelText(/^Događaj/)).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByLabelText('Mesto'), 'a run on a chosen event asks for a town').toBeNull()
+
+    await user.clear(screen.getByLabelText(/Link/))
+    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/ispravno')
+    await send(user)
+
+    await waitFor(() => {
+      expect(writes()).toHaveLength(1)
+    }, SOON)
+
+    const body = bodyOf(must(writes()[0], 'the request'))
+
+    expect(body.eventId).toBe(1118)
+    for (const beside of ['eventName', 'city', 'country', 'raceId']) {
+      expect(Object.hasOwn(body, beside), `${beside} went with a run on a chosen event`).toBe(false)
+    }
+  }, SLOW)
+
+  it('asks for the event of a run sent before there was one, and sends the one he names', async () => {
+    /* A run sent before V66 names no event, and the event is asked on the road a run is described
+       on (Q8 of 7a): so its box is not held, and what he types goes, with the town the run gave. */
+    const user = setupUser()
+
+    listeningWith([aRun(82, { raceId: null, raceName: 'Stara staza', raceDate: '2027-06-02', raceKind: 'free', eventName: null })])
+    renderAt('/sr/rezultat/novi?ponovo=82', 'competitor', ME, undefined, '2027-08-23')
+
+    await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
+
+    const event = screen.getByLabelText(/^Događaj/)
+
+    expect(event).not.toHaveAttribute('aria-disabled')
+    expect(event).toHaveValue('')
+
+    await user.type(event, 'Nov događaj')
+    await send(user)
+
+    await waitFor(() => {
+      expect(writes()).toHaveLength(1)
+    }, SOON)
+
+    const body = bodyOf(must(writes()[0], 'the request'))
+
+    expect([body.eventName, body.raceName]).toEqual(['Nov događaj', 'Stara staza'])
+    expect(Object.hasOwn(body, 'eventId')).toBe(false)
+  }, SLOW)
+
   it(
     'goes again as the race of the calendar it was run in, and not one word about the race beside it',
     async () => {
@@ -942,7 +1007,8 @@ describe('a run sent back, sent again', () => {
           one.id !== 90 &&
           one.id !== 91 &&
           one.kind === 'length' &&
-          one.date <= '2026-08-23',
+          one.date >= '2027-01-01' &&
+          one.date <= '2027-08-23',
       )
       const ran = must(race, 'a race of a length that has been run')
       const other = must(elsewhere, 'a second one')
@@ -959,7 +1025,7 @@ describe('a run sent back, sent again', () => {
           descentM: ran.descentM,
         }),
       ])
-      renderAt('/sr/rezultat/novi?ponovo=90', 'competitor', ME, undefined, '2026-08-23')
+      renderAt('/sr/rezultat/novi?ponovo=90', 'competitor', ME, undefined, '2027-08-23')
 
       await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
 
@@ -1015,13 +1081,13 @@ describe('a run sent back, sent again', () => {
       listeningWith([
         aRun(81, {
           raceName: 'Neka druga trka',
-          raceDate: '2026-04-04',
+          raceDate: '2027-04-04',
           city: 'Banja Luka',
           country: 'BA',
         }),
         aRun(80, {
           raceName: 'Trka oko Palićkog jezera',
-          raceDate: '2026-08-01',
+          raceDate: '2027-08-01',
           raceKind: 'free',
           city: 'Subotica',
           country: 'RS',
@@ -1032,7 +1098,7 @@ describe('a run sent back, sent again', () => {
           comment: 'Startni broj 7',
         }),
       ])
-      renderAt('/sr/rezultat/novi?ponovo=80', 'competitor', ME, undefined, '2026-08-23')
+      renderAt('/sr/rezultat/novi?ponovo=80', 'competitor', ME, undefined, '2027-08-23')
 
       await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
 
@@ -1058,8 +1124,10 @@ describe('a run sent back, sent again', () => {
          `placeId` or a number the screen worked out has nowhere to hide. */
       expect(bodyOf(sent)).toEqual({
         raceName: 'Trka oko Palićkog jezera',
-        day: '2026-08-01',
+        day: '2027-08-01',
         raceKind: 'free',
+        /* The event the run named, read off the run like its race (V66). */
+        eventName: 'Prijavljeni događaj',
         city: 'Subotica',
         country: 'RS',
         distanceKm: 15.5,
@@ -1101,7 +1169,7 @@ describe('a run sent back, sent again', () => {
           amendsResultId: corrected.id,
         }),
       ])
-      renderAt('/sr/rezultat/novi?ponovo=77', 'competitor', HIS, undefined, '2026-08-23')
+      renderAt('/sr/rezultat/novi?ponovo=77', 'competitor', HIS, undefined, '2027-08-23')
 
       await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
       await user.clear(screen.getByLabelText(/Link/))
@@ -1174,7 +1242,7 @@ describe('a run sent back, sent again', () => {
         }),
         aRun(76),
       ])
-      renderAt('/sr/rezultat/novi?ponovo=77', 'competitor', HIS, undefined, '2026-08-23')
+      renderAt('/sr/rezultat/novi?ponovo=77', 'competitor', HIS, undefined, '2027-08-23')
 
       await screen.findByLabelText(/^Naziv trke/, undefined, SOON)
 

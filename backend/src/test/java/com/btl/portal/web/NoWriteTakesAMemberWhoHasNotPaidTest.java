@@ -102,7 +102,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *
  * <ul>
  * <li><b>Who is asking:</b> a member who never paid (no number, V16), one whose fee has lapsed and who
- * holds a {@code membership} row for 2027 anyway (so a gate reading „has a membership row" instead of
+ * holds a {@code membership} row for 2028 anyway (so a gate reading „has a membership row" instead of
  * the fee lets him through), one whose fee has lapsed and who holds no row at all (so a rule that
  * tells him from a member who never paid by a row gives him back what PDL P8 of 11.10.2026 takes
  * from him: it goes by the member number), a moderator whose own member has not paid (being the
@@ -140,8 +140,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @Transactional
 class NoWriteTakesAMemberWhoHasNotPaidTest {
 
-	/** Inside the transfer window (it opens on 15 October), so the season being formed is 2027. */
-	private static final Instant NOW = Instant.parse("2026-11-02T10:00:00Z");
+	/** Inside the transfer window (it opens on 15 October), so the season being formed is 2028. */
+	private static final Instant NOW = Instant.parse("2027-11-02T10:00:00Z");
 
 	private static final String PASSWORD = "lozinka-koja-je-dovoljno-duga";
 
@@ -384,7 +384,7 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 	/**
 	 * SIX CALLERS, FOUR MEMBERS WHO STAND BESIDE THEM, AND A CALENDAR.
 	 *
-	 * <p>The member whose fee lapsed holds a {@code membership} row for 2027, given free of the fee:
+	 * <p>The member whose fee lapsed holds a {@code membership} row for 2028, given free of the fee:
 	 * a gate that read „he has a membership row" would let him through. The other member whose fee
 	 * lapsed holds a number and no row at all, which is the one a gate that told him from somebody
 	 * who never paid BY A ROW would take for somebody who never paid. The moderator's own member
@@ -400,8 +400,8 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 		memberOf.put(A_MODERATOR_WHO_HAS_NOT_PAID, member("993070", "M", false));
 
 		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
-						+ " values (?, 2027, 'feeExempt', 'Probni Probic',"
-						+ " timestamptz '2026-10-20 10:00:00+00')")
+						+ " values (?, 2028, 'feeExempt', 'Probni Probic',"
+						+ " timestamptz '2027-10-20 10:00:00+00')")
 				.param(memberOf.get(LAPSED)).update();
 
 		member(ADDRESSEE, "M", true);
@@ -415,12 +415,12 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 		account(A_MODERATOR_WHO_HAS_NOT_PAID, "moderator", memberOf.get(A_MODERATOR_WHO_HAS_NOT_PAID));
 		account(NAMES_NO_MEMBER, "moderator", null);
 
-		pastEvent = event("p8u-prosli", "2026-05-01");
+		pastEvent = event("p8u-prosli", "2027-05-01");
 		pastRace = db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
 						+ " distance_km, ascent_m, descent_m) values (?, 'Prosla trka', false,"
-						+ " date '2026-05-01', 'length', 0, 10.00, 50, 50) returning id")
+						+ " date '2027-05-01', 'length', 0, 10.00, 50, 50) returning id")
 				.param(pastEvent).query(Long.class).single();
-		futureEvent = event("p8u-buduci", "2027-06-06");
+		futureEvent = event("p8u-buduci", "2028-06-06");
 	}
 
 	/* ------------------------------------------------------------------------------------
@@ -899,7 +899,7 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 	long ownResult(String owner) {
 		return once("result", owner, () -> db.sql("insert into result (competitor_id, race_id,"
 						+ " race_date, distance_km, ascent_m, descent_m, seconds, points) values (?, ?,"
-						+ " date '2026-05-01', 10.00, 50, 50, 3700, 12.34) returning id")
+						+ " date '2027-05-01', 10.00, 50, 50, 3700, 12.34) returning id")
 				.params(memberOf.get(owner), pastRace).query(Long.class).single());
 	}
 
@@ -916,7 +916,7 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 
 	long ownPair(String owner) {
 		return once("pair", owner, () -> db.sql("insert into racing_pair (season, man_id, woman_id,"
-						+ " made_at) values (2027, ?, ?, timestamptz '2026-10-20 10:00:00+00') returning id")
+						+ " made_at) values (2028, ?, ?, timestamptz '2027-10-20 10:00:00+00') returning id")
 				.params(memberOf.get(owner), womanOf(owner)).query(Long.class).single());
 	}
 
@@ -940,25 +940,25 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 
 	long applicationToHisTeam(String owner) {
 		return once("application-in", owner, () -> db.sql("insert into team_application"
-						+ " (competitor_id, team_id, season) values (?, ?, 2027) returning id")
+						+ " (competitor_id, team_id, season) values (?, ?, 2028) returning id")
 				.params(applicantOf(owner), ownTeam(owner)).query(Long.class).single());
 	}
 
 	long ownApplication(String owner) {
 		return once("application-out", owner, () -> db.sql("insert into team_application"
-						+ " (competitor_id, team_id, season) values (?, ?, 2027) returning id")
+						+ " (competitor_id, team_id, season) values (?, ?, 2028) returning id")
 				.params(memberOf.get(owner), anotherTeam()).query(Long.class).single());
 	}
 
 	long invitationToHim(String owner) {
 		return once("invitation-in", owner, () -> db.sql("insert into team_invitation"
-						+ " (team_id, competitor_id, season) values (?, ?, 2027) returning id")
+						+ " (team_id, competitor_id, season) values (?, ?, 2028) returning id")
 				.params(anotherTeam(), memberOf.get(owner)).query(Long.class).single());
 	}
 
 	long invitationFromHisTeam(String owner) {
 		return once("invitation-out", owner, () -> db.sql("insert into team_invitation"
-						+ " (team_id, competitor_id, season) values (?, ?, 2027) returning id")
+						+ " (team_id, competitor_id, season) values (?, ?, 2028) returning id")
 				.params(ownTeam(owner), idOf(INVITED_EARLIER)).query(Long.class).single());
 	}
 
@@ -1007,7 +1007,7 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 						+ " (select id from place where rank = 1), null, null, null, 2027, ?) returning id")
 				.params(slug, "Tim " + slug, admin).query(Long.class).single();
 
-		db.sql("insert into team_membership (competitor_id, team_id, season_from) values (?, ?, 2027)")
+		db.sql("insert into team_membership (competitor_id, team_id, season_from) values (?, ?, 2028)")
 				.params(admin, team).update();
 
 		return team;
