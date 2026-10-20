@@ -1476,10 +1476,10 @@ export function FormRenderer({
           ...current,
           ...Object.fromEntries(emptied.map((name) => [name, ''])),
           ...Object.fromEntries(
+            /* Both are fields of this form, which every value is seeded for (`emptyValues`), so
+               neither is ever missing and no fallback is read. */
             followers
-              .filter((name) =>
-                [String(current[field.name] ?? ''), ''].includes(String(current[name] ?? '')),
-              )
+              .filter((name) => [String(current[field.name]), ''].includes(String(current[name])))
               .map((name) => [name, next]),
           ),
           [field.name]: next,
