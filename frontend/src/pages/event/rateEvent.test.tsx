@@ -1480,6 +1480,40 @@ describe('an approved rating on an event', () => {
     expect((await ratingsUnder()).join('\n')).toContain('Lepa trka, ali startni paket')
   })
 
+  it('keeps what the page holds when the route refuses the approval, which changed nothing', async () => {
+    /* The comments are asked for again only because the server's answer changed, and a refusal
+       changed nothing: dropping them over it is a screen throwing away an answer it still has
+       every reason to trust (the same reason `verification` is dropped only on `done > 0`). */
+    queue?.stop()
+
+    /* The refusing server stands IN FRONT of the one that remembers, and is taken down first. */
+    const inner = fakeQueue([aWaitingRating(800005, STRAHINJA, 1, NEW_WORDS, NEW_MARKS)])
+    const refusing = serverThat((path, init) =>
+      init?.method === 'POST' && path.endsWith('/decision')
+        ? refused('O stavci je već odlučeno.', 409)
+        : null,
+    )
+
+    queue = {
+      asked: refusing.asked,
+      stop: () => {
+        refusing.stop()
+        inner.stop()
+      },
+    }
+
+    const user = setupUser()
+
+    renderAt('/sr/administracija/verifikacija/komentari', 'superadmin')
+
+    await loadResource<EventComment[]>('comments')
+
+    await user.click(within(await cardFor(NEW_WORDS)).getByRole('button', { name: 'Odobri' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
+    expect(arrivedResource('comments')).toBeDefined()
+  })
+
   it('changes nothing for a member whose waiting rating is deleted instead of approved', async () => {
     const card = aWaitingRating(800004, STRAHINJA, 1, NEW_WORDS, NEW_MARKS)
     const { seenBefore, seenAfter, markBefore, markAfter } = await decide(card, 'delete')
