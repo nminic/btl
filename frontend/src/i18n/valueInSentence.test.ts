@@ -212,7 +212,10 @@ describe('a sentence with a value put into it', () => {
    * arrives as a value, and `valueInSentence` above is where somebody then has to write it down.
    *
    * A year that is genuinely part of the words — the name of a rulebook, a season in a title —
-   * would fall here and ask the question once, which is the point. There is none today.
+   * would fall here and ask the question once, which is the point. There is one: the year the league
+   * begins, in the owner's approved refusal of 19.10.2026 (PDL P9, „Liga počinje 2027. godine; raniji
+   * rezultati se unose CSV šablonom.”), which is a fact of the league and never moves
+   * (`data/season.ts`, `FIRST_SEASON`).
    */
   it('carries no year of its own', () => {
     const every = wordsOf(sr, '')
@@ -223,7 +226,9 @@ describe('a sentence with a value put into it', () => {
 
     const carried = every.filter(({ text }) => /(?<!\d)(19|20)\d\d(?!\d)/.test(text))
 
-    expect(carried.map(({ key, text }) => `${key}: ${text}`)).toEqual([])
+    expect(carried.map(({ key, text }) => `${key}: ${text}`)).toEqual([
+      'leagueResults.refused.theDayIsBeforeTheLeague: Liga počinje 2027. godine; raniji rezultati se unose CSV šablonom.',
+    ])
   })
 
   it('is one of exactly these, and nothing arrives among them unasked', () => {

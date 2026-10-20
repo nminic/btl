@@ -9,7 +9,7 @@ import { CalendarDay } from '../pages/CalendarDay'
 import { EventDetail } from '../pages/EventDetail'
 import { RateEvent } from '../pages/event/RateEvent'
 import { ReportResult } from '../pages/event/ReportResult'
-import { EnterResults } from '../pages/event/EnterResults'
+import { EnterForAnEvent, EnterResults } from '../pages/event/EnterResults'
 import { LeagueDetail } from '../pages/LeagueDetail'
 import { TeamDetail } from '../pages/TeamDetail'
 import { EditTeam } from '../pages/member/EditTeam'
@@ -86,6 +86,7 @@ const SCREENS: Record<string, ReactElement> = {
   'administracija/lige': <AdminLeagues />,
   'administracija/strane': <AdminPages />,
   'administracija/moderatori': <AdminModerators />,
+  'administracija/unos-rezultata': <EnterForAnEvent />,
   pravilnik: <Rulebook />,
   'politika-privatnosti': <StaticPage slug="politika-privatnosti" />,
   'uslovi-koriscenja': <StaticPage slug="uslovi-koriscenja" />,

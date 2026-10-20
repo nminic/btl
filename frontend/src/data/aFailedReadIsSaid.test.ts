@@ -314,6 +314,17 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     ],
   },
   {
+    file: 'pages/event/EnterResults.tsx',
+    how: 'says',
+    why: 'THE DECISION OF 03.10.2026 FOR THE RACES (PDL: the races yes, the towns no), carried to the third screen that offers them, „Unos rezultata za događaj” (PDL P9, 19.10.2026), and held by `pages/event/enterForAnEvent.test.tsx`: when the calendar or the races could not be read, the box for the event and the box for the race each say so beside themselves, with the button that asks again (`unreadable`), and go on taking a name typed into them, which is a new event or a new race. MY REASONING for the calls below: the first is the list that box is handed, and its failure is the one said beside it; the other three are read only to find the event or the race already CHOSEN from a list that was read, so a read that failed, which offered nothing to choose, leaves nothing chosen to look up. The road from the event page waits for all four files through `<Resource>`, which says it.',
+    calls: [
+      { shape: 'condition', call: "events.status === 'ready' ? eventsToOffer(events.data, yearsOffered(today), today) : []" },
+      { shape: 'condition', call: "events.status === 'ready' ? events.data : []" },
+      { shape: 'condition', call: "events.status === 'ready' ? events.data : []" },
+      { shape: 'condition', call: "races.status === 'ready' ? races.data : []" },
+    ],
+  },
+  {
     file: 'pages/event/EventComments.tsx',
     how: 'boundary',
     why: 'THE FILE\'S OWN, and held by `pages/event/eventWaiting.test.tsx`: for an event still to be run the part is drawn by nothing at all, and an alert about a part nobody was going to be shown is worse than the silence. An event that has been run goes through `<Resource>` and says it.',

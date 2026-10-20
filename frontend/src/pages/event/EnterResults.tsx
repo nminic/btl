@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useFilterParams } from '../../app/useFilterParams'
 import { useToday } from '../../clock/useClock'
@@ -7,9 +7,13 @@ import { raceKind } from '../../data/raceKind'
 import { raceLabel } from '../../data/raceLabel'
 import { inEventOrder } from '../../data/raceOrder'
 import { combineFour, useEvents, useRaces, useResults, useRunners } from '../../data/useResource'
-import type { BtlEvent, Race, RaceKind, Result, Runner } from '../../data/types'
+import type { RaceKind, Result, Runner } from '../../data/types'
 import { AskedLabel } from '../../forms/AskedLabel'
+import { DatePicker } from '../../forms/DatePicker'
+import { dogadjaj, unosRezultata } from '../../forms/definitions'
 import { heldControl } from '../../forms/held'
+import { PlaceField } from '../../forms/PlaceField'
+import { limitOf, optionsFor } from '../../forms/records'
 import { Suggesting } from '../../forms/Suggesting'
 import { useI18n } from '../../i18n/useI18n'
 import type { Answer, RowRefused } from '../account/askTheServer'
@@ -18,6 +22,21 @@ import { wordsFor as wordsOfTheServer } from '../account/serverWords'
 import { Guard } from '../admin/Guard'
 import { QUEUE } from '../admin/queues'
 import { queueRight } from '../admin/rights'
+import { eventsToOffer } from '../member/eventsToOffer'
+import { racesToOffer } from '../member/racesToOffer'
+import {
+  choosingTheEvent,
+  choosingTheRace,
+  emptyBlock,
+  eventAndRaceOf,
+  figuresOfANewRace,
+  kindOfTheRows,
+  typingTheEvent,
+  typingTheRace,
+  whatIsWrongWithTheBlock,
+  yearsOffered,
+  type TheBlock,
+} from './eventAndRace'
 import {
   bodyOf,
   figuresAskedOn,
@@ -31,7 +50,13 @@ import {
   type Figure,
   type LeagueRow,
 } from './leagueResultRows'
-import { theLeagueChanged, theLeagueEntered, THE_LEAGUE_ENTERING } from './leagueResultWrites'
+import {
+  theEventSavedOn,
+  theLeagueChanged,
+  theLeagueEntered,
+  theLeagueEnteredOnAnEvent,
+  THE_LEAGUE_ENTERING,
+} from './leagueResultWrites'
 import '../admin/Entity.css'
 import '../member/Member.css'
 
@@ -71,7 +96,7 @@ export function EnterResults() {
 const problemId = (at: number) => `league-row-${String(at)}-problem`
 
 function TheRows() {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const { slug } = useParams()
   const [params] = useFilterParams()
   const today = useToday()
@@ -105,8 +130,24 @@ function TheRows() {
 
           const asked = params.get('rezultat')
 
+          const back = `/${locale}/kalendar/${event.slug}`
+
           if (asked === null) {
-            return <Rows event={event} race={race} among={run} runners={runners} editing={null} />
+            return (
+              <Rows
+                heading={t('leagueResults.title', { race: raceLabel(race, run, locale) })}
+                kind={raceKind(race.kind)}
+                runners={runners}
+                editing={null}
+                save={(rows, kind) =>
+                  theLeagueEntered(
+                    race.id,
+                    rows.map((one) => bodyOf(one, kind)),
+                  )
+                }
+                after={() => back}
+              />
+            )
           }
 
           const result = results.find((one) => String(one.id) === asked && one.raceId === race.id)
@@ -126,7 +167,14 @@ function TheRows() {
           const name = runner === undefined ? String(result.memberNumber) : runnerLabel(runner)
 
           return (
-            <Rows event={event} race={race} among={run} runners={runners} editing={{ result, name }} />
+            <Rows
+              heading={t('leagueResults.editTitle', { name })}
+              kind={raceKind(race.kind)}
+              runners={runners}
+              editing={{ result, name }}
+              save={(rows, kind) => theLeagueChanged(race.id, result.id, figuresOf(theOnlyRow(rows), kind))}
+              after={() => back}
+            />
           )
         }}
       </Resource>
@@ -134,24 +182,36 @@ function TheRows() {
   )
 }
 
+/**
+ * THE ROWS OF MEMBERS AND THEIR FIGURES, AND THE ONE PRESS THAT SAVES THEM, which the event page's
+ * entry and the moderator's own screen share („Jedan ekran za sve”, PDL P9, 19.10.2026): the caller
+ * names the heading, the kind the rows are asked under, what the press sends and where it goes after.
+ * What stands `above` the rows is the caller's too, and the press asks it first (`blockIsWrong`).
+ */
 function Rows({
-  event,
-  race,
-  among,
+  heading,
+  kind,
   runners,
   editing,
+  save,
+  after,
+  above,
+  blockIsWrong,
 }: {
-  event: BtlEvent
-  race: Race
-  among: Race[]
+  heading: string
+  /** Read through the one function that knows the three words (`data/raceKind.ts`) by the caller. */
+  kind: RaceKind
   runners: Runner[]
   editing: { result: Result; name: string } | null
+  save: (rows: LeagueRow[], kind: RaceKind) => Promise<Answer>
+  /** Where the screen goes once the save is written. */
+  after: (answer: Answer) => string
+  above?: ReactNode
+  /** Asked before the rows on every press, and the save waits while it says something is wrong. */
+  blockIsWrong?: () => boolean
 }) {
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
   const navigate = useNavigate()
-  /* Read through the one function that knows the three words (`data/raceKind.ts`): the record comes
-     out of a file nothing checks, and a word that is not one of the three would draw no boxes. */
-  const kind: RaceKind = raceKind(race.kind)
   const [rows, setRows] = useState<LeagueRow[]>(() =>
     editing === null ? [newLeagueRow()] : [rowOf(editing.result, String(editing.result.memberNumber), editing.name)],
   )
@@ -164,7 +224,6 @@ function Rows({
      member already has. */
   const outstanding = useRef(false)
   const offered = runnersToOffer(runners)
-  const back = `/${locale}/kalendar/${event.slug}`
 
   /* The server's word for each row it refused, by the row's place in what was sent. */
   const refusedRows: RowRefused[] = refusal !== null && refusal.got === 'refused' ? (refusal.rows ?? []) : []
@@ -191,25 +250,20 @@ function Rows({
 
   async function send() {
     const wrong = rows.map((one) => whatIsWrongWith(one, kind))
+    /* Both asked on every press, so the block and the rows say what is wrong with them together. */
+    const blockWrong = blockIsWrong?.() === true
 
     setChecked(wrong)
     setRefusal(null)
 
-    if (wrong.some((one) => one !== undefined)) {
+    if (blockWrong || wrong.some((one) => one !== undefined)) {
       return
     }
 
     outstanding.current = true
     setSending(true)
 
-    const asking =
-      editing === null
-        ? theLeagueEntered(
-            race.id,
-            rows.map((one) => bodyOf(one, kind)),
-          )
-        : theLeagueChanged(race.id, editing.result.id, figuresOf(theOnlyRow(rows), kind))
-    const answer = await asking
+    const answer = await save(rows, kind)
 
     outstanding.current = false
     setSending(false)
@@ -220,7 +274,7 @@ function Rows({
       return
     }
 
-    void navigate(back)
+    void navigate(after(answer))
   }
 
   function onSubmit(submitted: FormEvent<HTMLFormElement>) {
@@ -233,15 +287,11 @@ function Rows({
     void send()
   }
 
-  const title =
-    editing === null
-      ? t('leagueResults.title', { race: raceLabel(race, among, locale) })
-      : t('leagueResults.editTitle', { name: editing.name })
-
   return (
     <>
-      <h1>{title}</h1>
+      <h1>{heading}</h1>
       <form noValidate onSubmit={onSubmit}>
+        {above}
         <div className="races">
           {rows.map((row, at) => {
             const words = wordsFor(at)
@@ -357,5 +407,266 @@ function Rows({
         {refusal !== null && <ServerSaid answer={refusal} refusals={THE_LEAGUE_ENTERING} />}
       </form>
     </>
+  )
+}
+
+/**
+ * „UNOS REZULTATA ZA DOGAĐAJ”: THE MODERATOR'S OWN SCREEN, the event, the race and the members' results
+ * in one save (PDL P9, owner, 19.10.2026: „Događaj, trka i rezultat u jednoj formi, i za člana na
+ * „Mojim rezultatima” i za moderatora”, „Jedan ekran za sve”; the title and the words are the owner's
+ * choice of the same day).
+ *
+ * <p><b>Who may open it</b> is who may open the event page's entry: the right that checks results, asked
+ * by the portal's guard and again by the server on the save (`ResultsByTheLeagueApi`). The rows below
+ * the block are that screen's own rows (`Rows`), so a member, his figures and the refusal of a row read
+ * the same on both.
+ *
+ * <p><b>Where the save goes</b>: an event and a race of the calendar take the rows over the event page's
+ * own route; anything new goes over `POST /api/results/on-a-race-of-an-event`, which makes it with the
+ * rows in one transaction. After the save the screen goes to the event's page, with no sentence of its
+ * own („posle čuvanja ekran vodi na stranu događaja, bez nove rečenice”).
+ */
+export function EnterForAnEvent() {
+  return (
+    <Guard need={{ of: 'right', right: queueRight(QUEUE.results) }}>
+      <TheBlockAndTheRows />
+    </Guard>
+  )
+}
+
+/**
+ * THE TWO BOXES OF THE BLOCK THAT CARRY HELP, as definitions declare a hint (`hintKey`), so the help is
+ * counted with every other help of the portal (`forms/fieldHint.test.tsx`) and never typed into a call:
+ * the race's box is the member's form's own, help and all, and the event's carries the moderator's own
+ * sentence („kad sačuvaš rezultate”, approved 19.10.2026) under the member's word for it.
+ */
+const RACE_BOX = unosRezultata.fields.filter((one) => one.name === 'raceName')
+const EVENT_BOX = unosRezultata.fields
+  .filter((one) => one.name === 'eventName')
+  .map((one) => ({ ...one, hintKey: 'leagueResults.eventHint' }))
+
+/** The id of the sentence under one box of the block, which that box is described by. */
+const blockProblemId = (box: string) => `league-block-${box}-problem`
+
+function TheBlockAndTheRows() {
+  const { locale, t } = useI18n()
+  const today = useToday()
+  const events = useEvents()
+  const races = useRaces()
+  const runners = useRunners()
+  const [block, setBlock] = useState<TheBlock>(emptyBlock)
+  /* Whether a press has asked the block yet: its sentences are said after the first, as the rows' are. */
+  const [pressed, setPressed] = useState(false)
+  const offeredEvents = useMemo(
+    () => (events.status === 'ready' ? eventsToOffer(events.data, yearsOffered(today), today) : []),
+    [events, today],
+  )
+  const linked = block.event?.eventId
+  const offeredRaces = useMemo(
+    () =>
+      events.status === 'ready' && races.status === 'ready' && linked !== undefined
+        ? racesToOffer(
+            events.data.filter((one) => one.id === linked),
+            races.data,
+            today,
+            locale,
+          )
+        : [],
+    [events, races, linked, today, locale],
+  )
+  const wrong = pressed ? whatIsWrongWithTheBlock(block, today) : []
+  const said = (box: string) => wrong.find((one) => one.box === box)
+  const kind = kindOfTheRows(block)
+
+  /* A box of the block, with its label, its sentence when it is wrong, and the control the caller draws. */
+  const box = (name: string, label: string, control: (described: string | undefined) => ReactNode, hint?: string) => {
+    const words = said(name)
+    const hintId = `league-block-${name}-hint`
+    const described =
+      [hint === undefined ? '' : hintId, words === undefined ? '' : blockProblemId(name)]
+        .filter((one) => one !== '')
+        .join(' ') || undefined
+
+    return (
+      <div className="field" key={name}>
+        <AskedLabel id={`league-block-${name}`} className="field__label">
+          {label}
+        </AskedLabel>
+        {control(described)}
+        {/* The help under the box, read out with it, as the member's form says the same two sentences. */}
+        {hint !== undefined && (
+          <p className="rate__hint" id={hintId}>
+            {hint}
+          </p>
+        )}
+        {words !== undefined && (
+          <p className="field__error" id={blockProblemId(name)}>
+            {t(words.key)}
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  const above = (
+    <div className="races">
+      <fieldset className="race">
+        <legend className="race__legend">{t('newResult.eventName')}</legend>
+        <div className="race__row">
+          {box(
+            'eventName',
+            t('newResult.eventName'),
+            (described) => (
+              <Suggesting
+                shared={{
+                  className: heldControl(false),
+                  id: 'league-block-eventName',
+                  name: 'eventName',
+                  maxLength: limitOf(dogadjaj, 'name'),
+                  'aria-required': true,
+                  'aria-invalid': said('eventName') !== undefined,
+                  'aria-describedby': described,
+                }}
+                value={block.eventName}
+                suggestions={offeredEvents}
+                unreadable={
+                  events.status === 'error' ? { said: t('data.error'), named: t('admin.events'), read: events } : undefined
+                }
+                onType={(next) =>
+                  setBlock((now) => typingTheEvent(now, next, offeredEvents, events.status === 'ready' ? events.data : []))
+                }
+                onChoose={(one) =>
+                  setBlock((now) => choosingTheEvent(now, one, events.status === 'ready' ? events.data : []))
+                }
+              />
+            ),
+            EVENT_BOX.flatMap((one) => (one.hintKey === undefined ? [] : [t(one.hintKey)]))[0],
+          )}
+          {/* A new event's one date, and a new race's own day on an event of the calendar, which starts
+              as the event's; a race of the calendar has its day, so none is asked. */}
+          {block.race === null &&
+            box('date', t(block.event === null ? 'admin.field.date' : 'newResult.date'), (described) => (
+              <DatePicker
+                id="league-block-date"
+                name="date"
+                required
+                value={block.date}
+                invalid={said('date') !== undefined}
+                describedBy={described}
+                onChange={(next) => setBlock((now) => ({ ...now, date: next }))}
+              />
+            ))}
+          {block.event === null &&
+            box('city', t('newResult.city'), (described) => (
+              <PlaceField
+                id="league-block-city"
+                name="city"
+                required
+                value={block.city}
+                country={block.country}
+                invalid={said('city') !== undefined}
+                describedBy={described}
+                onChange={(city, country) => setBlock((now) => ({ ...now, city, country }))}
+              />
+            ))}
+        </div>
+        <div className="race__row">
+          {box(
+            'raceName',
+            t('newResult.raceName'),
+            (described) => (
+              <Suggesting
+                shared={{
+                  className: heldControl(false),
+                  id: 'league-block-raceName',
+                  name: 'raceName',
+                  maxLength: limitOf(unosRezultata, 'raceName'),
+                  'aria-required': true,
+                  'aria-invalid': said('raceName') !== undefined,
+                  'aria-describedby': described,
+                }}
+                value={block.raceName}
+                suggestions={offeredRaces}
+                unreadable={
+                  races.status === 'error' ? { said: t('data.error'), named: t('event.races'), read: races } : undefined
+                }
+                onType={(next) => setBlock((now) => typingTheRace(now, next))}
+                onChoose={(one) => setBlock((now) => choosingTheRace(now, one, races.status === 'ready' ? races.data : []))}
+              />
+            ),
+            RACE_BOX.flatMap((one) => (one.hintKey === undefined ? [] : [t(one.hintKey)]))[0],
+          )}
+          {block.race === null &&
+            box('raceKind', t('newResult.raceKind'), () => (
+              <select
+                id="league-block-raceKind"
+                className={heldControl(false)}
+                aria-required="true"
+                value={block.kind}
+                onChange={(chosen) => setBlock((now) => ({ ...now, kind: raceKind(chosen.target.value) }))}
+              >
+                {unosRezultata.fields
+                  .filter((one) => one.name === 'raceKind')
+                  .flatMap((field) => optionsFor(field, {}))
+                  .map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {t(option.labelKey)}
+                    </option>
+                  ))}
+              </select>
+            ))}
+        </div>
+        {block.race === null && block.kind === 'time' && <p className="rate__hint">{t('review.limitNote')}</p>}
+        {block.race === null && figuresOfANewRace(block.kind).length > 0 && (
+          <div className="race__row">
+            {figuresOfANewRace(block.kind).map((figure) =>
+              box(figure, t(`newResult.${figure}`), (described) => (
+                <input
+                  id={`league-block-${figure}`}
+                  className={heldControl(false)}
+                  type="text"
+                  inputMode={figure === 'distanceKm' ? 'decimal' : 'numeric'}
+                  aria-required="true"
+                  aria-invalid={said(figure) !== undefined}
+                  aria-describedby={described}
+                  value={block[figure]}
+                  onChange={(typed) => setBlock((now) => ({ ...now, [figure]: typed.target.value }))}
+                />
+              )),
+            )}
+          </div>
+        )}
+      </fieldset>
+    </div>
+  )
+
+  return (
+    <div className="member">
+      <Resource state={runners}>
+        {(listed) => (
+          <Rows
+            heading={t('leagueResults.forAnEvent')}
+            kind={kind}
+            runners={listed}
+            editing={null}
+            above={above}
+            blockIsWrong={() => {
+              setPressed(true)
+
+              return whatIsWrongWithTheBlock(block, today).length > 0
+            }}
+            save={(rows, asked) =>
+              block.race !== null
+                ? theLeagueEntered(
+                    block.race.raceId,
+                    rows.map((one) => bodyOf(one, asked)),
+                  )
+                : theLeagueEnteredOnAnEvent({ ...eventAndRaceOf(block), rows: rows.map((one) => bodyOf(one, asked)) })
+            }
+            after={(answer) => `/${locale}/kalendar/${theEventSavedOn(answer) ?? block.event?.slug ?? ''}`}
+          />
+        )}
+      </Resource>
+    </div>
   )
 }
