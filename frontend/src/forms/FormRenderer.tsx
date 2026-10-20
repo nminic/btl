@@ -33,6 +33,7 @@ import type {
 } from './types'
 import { CountryOptions } from './CountryOptions'
 import { DatePicker } from './DatePicker'
+import { theOneNamedExactly } from './exactName'
 import { PlaceField } from './PlaceField'
 import { Suggesting } from './Suggesting'
 import { optionsFor, storedDates, storedNumbers } from './records'
@@ -174,6 +175,17 @@ type Props = {
    * entry's.
    */
   follows?: Record<string, string>
+  /**
+   * Fields whose list LINKS A NAME TYPED EXACTLY, as if its entry had been chosen.
+   *
+   * <p>PDL P9, owner, 19.10.2026 (he chose the coordinator's recommendation): „Tačno otkucan naziv
+   * postojećeg događaja vezuje taj događaj i bez klika, bez obzira na velika i mala slova, kao da je
+   * izabran predlog; polje trke tada postaje predlog nad njegovim trkama.” What exactly means, and
+   * what two entries of one name do, is `exactName.ts`'s, the rule's one home.
+   *
+   * <p>What he typed stays as he typed it; only the link is made, which is what the entry was for.
+   */
+  linksWhenTyped?: string[]
   /**
    * Fields this form must not let anybody change, whatever they do.
    *
@@ -1000,6 +1012,7 @@ export function FormRenderer({
   options = {},
   suggests = {},
   follows = {},
+  linksWhenTyped = [],
   fixed = [],
   sendIsHeld = false,
   sendIsOut,
@@ -1452,18 +1465,53 @@ export function FormRenderer({
     }
 
     const list = typeof given === 'function' ? given(filled) : given
-    /* The fields whose lists follow this one (`follows`), and everything their own entries filled. */
+    /* The fields whose lists follow this one (`follows`), and everything their own entries filled.
+       A follower the form holds (`fixed`) is not one: nothing typed or chosen here may empty or
+       write over a box nobody can type into, which left a run sent again with its race held and
+       emptied, and no way to send it (review of PR 581). */
     const followers = Object.entries(follows)
-      .filter(([, followed]) => followed === field.name)
+      .filter(([follower, followed]) => followed === field.name && !fixed.includes(follower))
       .map(([follower]) => follower)
     const brokenBy = (names: string[]) => names.flatMap((name) => led[name]?.filled ?? [])
     const unlinked = (names: string[]) =>
       Object.fromEntries(Object.entries(led).filter(([name]) => !names.includes(name)))
 
+    /* The entry a name typed exactly links (`linksWhenTyped`, `exactName.ts`). */
+    const exactly = (typed: string): Suggestion | undefined =>
+      linksWhenTyped.includes(field.name) && Array.isArray(list) ? theOneNamedExactly(list, typed) : undefined
+    /* What choosing an entry does, under the value the box is to hold: the entry's own when it is
+       chosen from the list, what he typed when he typed it exactly. Everything an earlier link of
+       this field or its followers filled is emptied first, which choosing from a list that opened on
+       typing has already done (`onType`) and a name typed exactly has not. */
+    const linkTo = (one: Suggestion, shown: string) => {
+      const emptied = brokenBy([field.name, ...followers])
+
+      setValues((current) => ({
+        ...current,
+        ...Object.fromEntries(emptied.map((name) => [name, ''])),
+        ...Object.fromEntries(followers.map((name) => [name, ''])),
+        [field.name]: shown,
+        ...one.fills,
+      }))
+      setErrors(without([field.name, ...followers, ...emptied, ...Object.keys(one.fills)]))
+      setLed({
+        ...unlinked([field.name, ...followers]),
+        [field.name]: { filled: Object.keys(one.fills), held: one.holds ?? Object.keys(one.fills) },
+      })
+    }
+
     return {
       list: Array.isArray(list) ? list : [],
       unreadable: Array.isArray(list) ? undefined : list,
       onType: (next: string) => {
+        const linked = exactly(next)
+
+        if (linked !== undefined) {
+          linkTo(linked, next)
+
+          return
+        }
+
         /* The link breaks the moment the name is edited (owner, 23.08.2026):
            what was filled from the chosen entry is emptied and handed back, so a
            name typed freely cannot stand over somebody else's date and distance.
@@ -1488,20 +1536,9 @@ export function FormRenderer({
         setLed(unlinked([field.name, ...followers]))
       },
       onChoose: (one: Suggestion) => {
-        /* Nothing of an earlier entry is left to empty here: a list opens only on what is typed, and
-           typing has already broken this field's link and its followers' (`onType`). What a chosen
-           entry does to its followers is empty them, since their list is now this entry's. */
-        setValues((current) => ({
-          ...current,
-          ...Object.fromEntries(followers.map((name) => [name, ''])),
-          [field.name]: one.value,
-          ...one.fills,
-        }))
-        setErrors(without([field.name, ...followers, ...Object.keys(one.fills)]))
-        setLed({
-          ...unlinked([field.name, ...followers]),
-          [field.name]: { filled: Object.keys(one.fills), held: one.holds ?? Object.keys(one.fills) },
-        })
+        /* What a chosen entry does to its followers is empty them, since their list is now this
+           entry's (`linkTo`). */
+        linkTo(one, one.value)
       },
     }
   }

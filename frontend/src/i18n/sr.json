@@ -191,6 +191,10 @@
       "title": "Unos rezultata",
       "description": "Moderator unosi rezultate članova sa trke Balkanske trkačke lige."
     },
+    "leagueResultsForAnEvent": {
+      "title": "Unos rezultata za događaj",
+      "description": "Moderator unosi događaj, trku i rezultate članova Balkanske trkačke lige."
+    },
     "reportResult": {
       "title": "Prijava rezultata",
       "description": "Prijavi svoj rezultat sa trke Balkanske trkačke lige. Moderator proverava svaku prijavu pre nego što uđe u tabelu."
@@ -1201,7 +1205,9 @@
     "cancel": "Odustani",
     "placeRace": "Upiši ili izaberi trku",
     "placeTitle": "Trka za ovu prijavu",
-    "placeNote": "Trke nema u kalendaru. Izaberi postojeću trku ili upiši novu, koja sa svojim događajem ulazi u kalendar kad odobriš. Datum i mesto ostaju onakvi kako ih je član poslao.",
+    "placeNote": "Trke nema u kalendaru. Izaberi postojeći događaj ili upiši nov, pa izaberi ili upiši trku. Šta je novo ulazi u kalendar kad odobriš.",
+    "chosenEvent": "Izabran događaj: {event}",
+    "placeTown": "Mesto novog događaja",
     "chosenRace": "Izabrana trka: {race}",
     "limitNote": "Na vremenskoj trci vreme je ograničenje trke.",
     "placeSave": "Odobri sa ovom trkom",
@@ -1800,6 +1806,9 @@
   },
   "leagueResults": {
     "title": "Unos rezultata: {race}",
+    "forAnEvent": "Unos rezultata za događaj",
+    "menu": "Unos rezultata za događaj",
+    "eventHint": "Izaberi događaj iz kalendara ili upiši naziv novog. Novi događaj i trka ulaze u kalendar kad sačuvaš rezultate.",
     "editTitle": "Izmena rezultata: {name}",
     "member": "Član",
     "rowNumber": "{which}. red",
@@ -1820,7 +1829,11 @@
       "heHoldsNoMembershipOfTheRunningSeason": "Član nema članstvo za sezonu ove trke, pa mu liga ne unosi rezultat.",
       "theFormIsNotComplete": "Nedostaje vreme ili mera, ili je upisana vrednost izvan dozvoljene.",
       "theGroupIsEmpty": "Dodaj bar jednog člana.",
-      "theGroupIsTooBig": "Previše redova za jedno čuvanje. Podeli ih na dva čuvanja."
+      "theGroupIsTooBig": "Previše redova za jedno čuvanje. Podeli ih na dva čuvanja.",
+      "theEventIsNotKnown": "Taj događaj više nije u kalendaru. Izaberi ga ponovo ili upiši nov.",
+      "theRaceIsNotKnown": "Ta trka više nije u kalendaru. Izaberi je ponovo ili upiši novu.",
+      "theTownIsMissing": "Upiši mesto novog događaja.",
+      "theDayIsBeforeTheLeague": "Liga počinje 2027. godine; raniji rezultati se unose CSV šablonom."
     }
   }
 }

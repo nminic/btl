@@ -7,7 +7,7 @@ import { useSession } from '../../session/useSession'
 import { usePermittedEntities, usePermittedQueues } from './mayOpen'
 import { usePending } from './pending'
 import { usePaymentsDue } from '../../data/useResource'
-import { countFor, notMembersYetIn } from './queues'
+import { countFor, notMembersYetIn, QUEUE } from './queues'
 import './SectionNav.css'
 
 /* The two administrative sections are worked through rather than visited: the
@@ -285,15 +285,23 @@ function QueuesSector() {
          the moderator is already looking, and it says it without moving
          anything. Nothing is filtered here now, which is the shape the records
          beside it always had (RecordsSector). */
-      items={queues.map((queue) => ({
-        path: queue.path,
-        label: t(queue.labelKey),
-        /* Counted for this queue rather than looked up in a record of counts.
-           The lookup answered `number | undefined`, and the prop takes an
-           optional number, so a queue missing from the record drew no counter at
-           all, which is the one thing the note below says must not happen. */
-        count: countFor(waiting, queue),
-      }))}
+      items={[
+        ...queues.map((queue) => ({
+          path: queue.path,
+          label: t(queue.labelKey),
+          /* Counted for this queue rather than looked up in a record of counts.
+             The lookup answered `number | undefined`, and the prop takes an
+             optional number, so a queue missing from the record drew no counter at
+             all, which is the one thing the note below says must not happen. */
+          count: countFor(waiting, queue),
+        })),
+        /* AND THE MODERATOR'S OWN SCREEN, „Unos rezultata za događaj” (PDL P9, the item approved
+           19.10.2026), under the queue whose right opens it and with no number, since nothing waits
+           behind it. */
+        ...(queues.includes(QUEUE.results)
+          ? [{ path: 'administracija/unos-rezultata', label: t('leagueResults.menu') }]
+          : []),
+      ]}
       /* With the numbers, because that is where the numbers are now. A file that
          failed counts every queue it feeds as nought, and five quiet noughts read
          as an afternoon's work already done. This used to be said on the hub,

@@ -240,9 +240,22 @@ class MeApi {
 	 *               in {@code member}, because it is the account's setting and every account has
 	 *               one, a moderator who does not race included (PDL, „Odgovori vlasnika
 	 *               17.10.2026, jezik pošte": „Jezik pošte sme da promeni svako ko ima nalog")
+	 * @param seasonsOpenForAReport the seasons a run may be reported for at this moment, oldest first,
+	 *               and possibly none: the year he is in, and from 1 January 00:00 until 10:00 the year
+	 *               just ended too, and never a year before 2027 (PDL P9, owner, 19.10.2026, „Član
+	 *               prijavljuje samo rezultate aktuelne sezone" and „Pre 2027 forma i predlozi ne nude
+	 *               ništa"; 20.10.2026, of the moderator's screen, „NE NUDE SE STARIJI DOGAĐAJI VAN
+	 *               TEKUĆE SEZONE! ONI SE UNOSE IMPORTOM."). The member's form and the moderator's
+	 *               screen offer events and races of these seasons and no other, and read them from
+	 *               here because the window has one home, {@code SeasonClock.seasonsOpenForAReport},
+	 *               and the portal's own clock knows only a day. <b>On the account and not in
+	 *               {@code member}</b>, for the reason {@code mailLanguage} gives: a moderator who does
+	 *               not race has no {@code member} and still enters results. Until 20.10.2026 it was
+	 *               in {@code member}, and the move leaves no copy there (one served home)
 	 */
 	record WhoIAm(String role, long account,
-			@JsonInclude(JsonInclude.Include.NON_NULL) MyOwnRecord member, String mailLanguage) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) MyOwnRecord member, String mailLanguage,
+			List<Integer> seasonsOpenForAReport) {
 	}
 
 	/**
@@ -426,15 +439,6 @@ class MeApi {
 	 *                     and not an empty string: V8 says „no phone is NULL" and refuses a blank
 	 *                     one ({@code competitor_phone_not_blank}), so a missing key is the one way
 	 *                     this record says „he has none", as {@code teamId} says it for a team
-	 * @param seasonsOpenForAReport the seasons he may send a run of at this moment, oldest first, and
-	 *                     possibly none: the year he is in, and from 1 January 00:00 until 10:00 the
-	 *                     year just ended too, and never a year before 2027 (PDL P9, owner,
-	 *                     19.10.2026, „Član prijavljuje samo rezultate aktuelne sezone" and „Pre 2027
-	 *                     forma i predlozi ne nude ništa"). The member's form offers events and races
-	 *                     of these seasons and no other, and reads them from here because the window
-	 *                     has one home, {@code SeasonClock.seasonsOpenForAReport}, and the portal's
-	 *                     own clock knows only a day. The same for every member: it is answered here
-	 *                     because only a member sends a run, and his form is drawn from this answer
 	 */
 	record MyOwnRecord(@JsonInclude(JsonInclude.Include.NON_NULL) String memberNumber,
 			String country, int firstSeason,
@@ -449,8 +453,7 @@ class MeApi {
 			@JsonInclude(JsonInclude.Include.NON_NULL) String photo,
 			@JsonInclude(JsonInclude.Include.NON_NULL) CompetitorApi.Crop crop,
 			String address, @JsonInclude(JsonInclude.Include.NON_NULL) String phone,
-			@JsonInclude(JsonInclude.Include.NON_NULL) String bioWaiting,
-			List<Integer> seasonsOpenForAReport) {
+			@JsonInclude(JsonInclude.Include.NON_NULL) String bioWaiting) {
 	}
 
 	/**
@@ -472,7 +475,7 @@ class MeApi {
 				.param(member.account()).query(String.class).single();
 
 		return new WhoIAm(member.role(), member.account(), me == null ? null : recordOf(me),
-				mailLanguage);
+				mailLanguage, SeasonClock.seasonsOpenForAReport(ZonedDateTime.now(clock)));
 	}
 
 	/**
@@ -636,10 +639,7 @@ class MeApi {
 							across == null ? null
 									: new CompetitorApi.Crop(across, row.getBigDecimal(20),
 											row.getBigDecimal(21)),
-							row.getString(22), row.getString(23), row.getString(24),
-							/* Off the same instant the band and the season on sale are read off,
-							   so the answer names one moment. */
-							SeasonClock.seasonsOpenForAReport(now));
+							row.getString(22), row.getString(23), row.getString(24));
 				})
 				.single();
 	}

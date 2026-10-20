@@ -195,6 +195,8 @@ export const BEHIND: [string, Role, string | null, string][] = [
   ['/sr/administracija/lige', 'superadmin', ADMIN, 'Lige'],
   ['/sr/administracija/strane', 'superadmin', ADMIN, 'Statične strane'],
   ['/sr/administracija/moderatori', 'superadmin', ADMIN, 'Moderatori'],
+  /* The moderator's own screen, „Unos rezultata za događaj” (PDL P9, 19.10.2026). */
+  ['/sr/administracija/unos-rezultata', 'superadmin', ADMIN, 'Unos rezultata za događaj'],
   /* A member with no team, inside the window, so the form is really drawn. */
   ['/sr/novi-tim', 'competitor', '000002', 'Predlog tima'],
   /* And the one who administers this team, likewise. */

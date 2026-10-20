@@ -480,13 +480,17 @@ export async function whatTheServerSaysOfMyData(): Promise<MyData | null> {
 }
 
 /**
- * THE SEASONS HE MAY SEND A RUN OF AT THIS MOMENT, oldest first, or nothing when the answer cannot be
- * believed.
+ * THE SEASONS A RUN MAY BE REPORTED FOR AT THIS MOMENT, oldest first, or nothing when the answer cannot
+ * be believed.
  *
- * <p>`MeApi.MyOwnRecord.seasonsOpenForAReport`: the year he is in, and from 1 January 00:00 until
- * 10:00 the year just ended too, never a year before 2027 (PDL P9, owner, 19.10.2026). Read here and
- * not worked out, because the window has one home and it is the server's clock; the portal's own knows
- * only a day. An empty list is an answer - before 2027 no season is open, „NIŠTA!" - and not a failure.
+ * <p>`MeApi.WhoIAm.seasonsOpenForAReport`: the year he is in, and from 1 January 00:00 until 10:00 the
+ * year just ended too, never a year before 2027 (PDL P9, owner, 19.10.2026). Read here and not worked
+ * out, because the window has one home and it is the server's clock; the portal's own knows only a day.
+ * An empty list is an answer - before 2027 no season is open, „NIŠTA!" - and not a failure.
+ *
+ * <p><b>Off the account and not off `member`, since 20.10.2026</b>: the moderator's screen „Unos
+ * rezultata za događaj” offers the same seasons („NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE!”), and
+ * a moderator who races for nobody has no `member`.
  *
  * <p>Its own reader for the reason the others have: a fault in it must never sign him out
  * ({@link whatTheServerAnswersMe} is shared and nothing it returns is). A list holding anything but
@@ -494,8 +498,7 @@ export async function whatTheServerSaysOfMyData(): Promise<MyData | null> {
  */
 export async function whatTheServerSaysOfTheSeasonsOpenForAReport(): Promise<number[] | null> {
   const body = await whatTheServerAnswersMe()
-  const mine = body === null ? null : recordIn(body)
-  const said: unknown = mine === null ? undefined : Reflect.get(mine, 'seasonsOpenForAReport')
+  const said: unknown = body === null ? undefined : Reflect.get(body, 'seasonsOpenForAReport')
 
   if (!Array.isArray(said)) {
     return null

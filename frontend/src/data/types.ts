@@ -1384,6 +1384,10 @@ export type ServedPendingItem = Omit<
  * - the four figures AS AN APPROVAL WOULD COUNT THEM TODAY, worked out by the server
  *   (`WhatARaceCarries.figuresOf`): a figure the race fixes is the race's as it stands now.
  * - `link`: the official results the member pointed at, or empty.
+ * - `eventId` and `eventName`: the event the run is on, which the moderator's panel starts from
+ *   (V66, `VerificationApi.Waiting`): the race's for a run from the calendar; on a run the calendar
+ *   does not hold, the event the member chose, by its key and its name as it is now, or the name he
+ *   typed with no key; nothing on a run sent before V66 named one.
  */
 export type WaitingRunFields = {
   raceId: number | null
@@ -1394,6 +1398,8 @@ export type WaitingRunFields = {
   descentM: number | null
   seconds: number | null
   link: string
+  eventId: number | null
+  eventName: string | null
 }
 
 /** One run waiting in the results tab, as the screen reads it: a waiting item and its run. */

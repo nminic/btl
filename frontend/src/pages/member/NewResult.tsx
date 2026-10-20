@@ -385,12 +385,12 @@ function TheForm({ me }: { me: string }) {
 
     /* THE EVENT, ONE OF TWO WAYS (V66, `ResultWriteApi.Ran`): the key of an event of the calendar he
        chose, which brings its own town, or the name he typed, which goes with the town he gave. A run
-       sent again names the event it named, read off the run and not off a box, like its race. */
+       sent again that named an event names it again, read off the run and not off a box, like its
+       race; one sent before V66 named none, so the event is the one he names now, chosen or typed
+       (review of PR 581: read off the run alone, a choice made now was dropped). */
     const chosenEvent =
-      correcting !== undefined
-        ? correcting.raceId === null && correcting.eventId !== null
-          ? correcting.eventId
-          : null
+      correcting !== undefined && correcting.eventName !== null
+        ? correcting.eventId
         : values.eventId === undefined || values.eventId === ''
           ? null
           : Number(values.eventId)
@@ -705,6 +705,8 @@ function TheForm({ me }: { me: string }) {
             /* „Ukoliko je nova vrednost, polje trka dobija identičan taj naziv i može da se menja"
                (owner, 19.10.2026): the race follows the event (`FormRenderer`, `follows`). */
             follows={{ raceName: 'eventName' }}
+            /* „Tačno otkucan naziv postojećeg događaja vezuje taj događaj i bez klika” (owner, 19.10.2026). */
+            linksWhenTyped={['eventName']}
             onSubmit={onSubmit}
           />
         )}
