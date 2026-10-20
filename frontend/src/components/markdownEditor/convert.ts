@@ -26,9 +26,8 @@ function nodesOf(pieces: Inline[], marks: readonly Mark[]): Node[] {
       return nodesOf(piece.children, schema.marks.link.create({ href: piece.url }).addToSet(marks))
     }
 
-    /* A value between backticks carries the code mark; a bare address is never met here, because
-       the editor reads a text without asking for them (it holds what was typed, and the page makes
-       the links). */
+    /* A value between backticks carries the code mark; a mailbox is words like any other, because
+       the editor holds what was typed and the page makes the link (`mails.ts` shows it as one). */
     const own = piece.kind === 'code' ? schema.marks.code.create().addToSet(marks) : marks
 
     return piece.text.split('\n').flatMap((line, index) => [
@@ -38,8 +37,28 @@ function nodesOf(pieces: Inline[], marks: readonly Mark[]): Node[] {
   })
 }
 
+/**
+ * A line of a text, read as the page reads it, and not as a reader of the characters alone would.
+ *
+ * The editor does not know which of the texts it holds, so it reads as the strictest of those it
+ * writes, and both are asked with a third argument that does not follow the second, so neither
+ * stands in for the other:
+ *
+ * - **The mailboxes are asked for** (`'mail'`), because the page makes them before it reads italic:
+ *   in `pera_peric@gmail.com ili mika_mikic@gmail.com` the underscores are in the names of two
+ *   mailboxes and not the ends of an italic piece, and the editor that read them as one showed an
+ *   italic the page does not draw and no link where the page draws two (PR 546). The sites are not
+ *   asked for, which is what the description of an event does.
+ * - **The host of the address under the words of a link is asked** (`true`), because the terms and
+ *   the prizes of a competition and the description of an event ask it (PDL P15, 03.10.2026, and the
+ *   answer of 17.10.2026), as the box for a link does (`linkableAddress`).
+ *   `[x](https://www.runtrace.net@zlo.example)` is the words it was typed as, and not a link whose
+ *   words say one host and whose address opens another. A written page asks nothing of its links,
+ *   so a link of one that this refuses is words in the editor: the stricter of the two, as the box
+ *   for a link already is.
+ */
 function line(text: string): Node[] {
-  return nodesOf(inlineOf(text, false), [])
+  return nodesOf(inlineOf(text, 'mail', true), [])
 }
 
 /** What the editor holds for a text. Never empty: a document holds at least one paragraph. */
@@ -190,6 +209,23 @@ function wordsOf(block: Node): string {
   return out
 }
 
+/** The words of a block as one line, which is how a heading and an item of a list hold them. */
+function oneLine(block: Node): string {
+  return wordsOf(block).replace(/\n/g, ' ').trim()
+}
+
+/**
+ * Whether a block of words writes as nothing: no word in it, whatever it holds (blanks, a line
+ * break, marks around nothing).
+ *
+ * What the text that is written skips (`blockOf` writes no heading and no item for it), so what asks
+ * whether a piece of the editor is empty asks this and not how much it holds: a piece with a blank
+ * in it is not empty by its size and is written as nothing.
+ */
+export function isBlank(block: Node): boolean {
+  return oneLine(block) === ''
+}
+
 /** A block of words written out, every line of it escaped where it begins. */
 function paragraphOf(block: Node): string {
   return wordsOf(block)
@@ -202,7 +238,7 @@ function paragraphOf(block: Node): string {
 
 function blockOf(block: Node): string {
   if (block.type === schema.nodes.heading) {
-    const words = wordsOf(block).replace(/\n/g, ' ').trim()
+    const words = oneLine(block)
 
     return words === '' ? '' : `${'#'.repeat(hashesOf(block))} ${words}`
   }
@@ -214,7 +250,7 @@ function blockOf(block: Node): string {
     let number = block.type === schema.nodes.ordered_list ? startOfList(block) : 0
 
     block.forEach((item) => {
-      const words = wordsOf(item.child(0)).replace(/\n/g, ' ').trim()
+      const words = oneLine(item.child(0))
 
       if (words !== '') {
         number = numberOfItem(item) ?? number

@@ -1,4 +1,5 @@
 import { Schema, type Mark, type Node } from 'prosemirror-model'
+import { addressOf } from '../markdownText'
 
 /**
  * WHAT THE EDITOR CAN HOLD, which is exactly what a written text can say (`markdownText.ts`) and
@@ -105,7 +106,20 @@ export const schema = new Schema({
     link: {
       attrs: { href: {} },
       inclusive: false,
-      parseDOM: [{ tag: 'a[href]', getAttrs: (dom) => ({ href: dom.getAttribute('href') }) }],
+      /* A link that is dropped or pasted is asked what a link made in the box is asked
+         (`linkableAddress`): where the answer is no, the rule does not match and the words of the
+         link come in as the words they are. Without it a `javascript:` address, or one the page
+         would draw as words, went into the text that is kept. */
+      parseDOM: [
+        {
+          tag: 'a[href]',
+          getAttrs: (dom) => {
+            const href = dom.getAttribute('href')
+
+            return href !== null && linkableAddress(href) ? { href } : false
+          },
+        },
+      ],
       toDOM: (mark) => ['a', { href: hrefOf(mark) }, 0],
     },
     strong: {
@@ -122,6 +136,26 @@ export const schema = new Schema({
     },
   },
 })
+
+/**
+ * Which address a link may lead to: one of this portal, written with one slash, or one of another
+ * site, written with `https://`, `http://` or `mailto:`, and no blank and no closing bracket in it,
+ * which a written link cannot hold.
+ *
+ * Whether the page will draw it is asked of the page's own list (`addressOf`), so the editor never
+ * makes a link the page would show as words. It is asked with the host check (PDL P15, 03.10.2026:
+ * an address with an „@" or with letters outside ASCII in its host is text), which the terms and the
+ * prizes of a competition make of every link. The editor does not know which text it writes, so a
+ * link the page of a description would still draw is refused here too: the stricter of the two.
+ *
+ * Here and not with the commands because the schema asks it too, of every link a drop or a paste
+ * brings in (`link.parseDOM`), and the commands import the schema and not the other way round.
+ */
+const LINKABLE = /^(?:https?:\/\/|mailto:|\/(?![/\\]))[^\s)]+$/
+
+export function linkableAddress(address: string): boolean {
+  return LINKABLE.test(address) && addressOf(address, true) !== undefined
+}
 
 /** A number as a pasted list says it (`start` of an `ol`, `value` of an `li`), or nothing where it
  *  says none or says what a written text cannot (`NUMBERED` in `markdownText.ts` reads nine digits
