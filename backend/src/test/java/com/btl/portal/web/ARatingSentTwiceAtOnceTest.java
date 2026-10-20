@@ -617,7 +617,7 @@ class ARatingSentTwiceAtOnceTest {
 					.param(him).query(Integer.class).single();
 
 			assertThat(List.of(thePublishedRating.behind(), hisRow.behind(), theModerator.behind()))
-					.as("three locks are held (or about to be) and nothing has been submitted yet")
+					.as("two rows are locked, the moderator holds nothing yet, and nothing has been submitted")
 					.containsOnly(0);
 
 			submitted.add(requests.submit(() -> deleted(shown)));
