@@ -9,7 +9,8 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router'
-import { ActionSymbolIcon, type ActionSymbol } from '../app/icons'
+import type { ActionSymbol } from '../app/actionSymbol'
+import { ActionSymbolIcon } from '../app/icons'
 import './ActionButton.css'
 
 /**
@@ -58,7 +59,7 @@ import './ActionButton.css'
  */
 
 type Says = {
-  /** What is drawn in place of the word, one of the closed set in `app/icons.tsx`,
+  /** What is drawn in place of the word, one of the closed set in `app/actionSymbol.ts`,
    *  named through `SYMBOL` and never by a string of the screen's own. */
   symbol: ActionSymbol
   /** The word the button carried until now, already in the reader's language:
@@ -173,6 +174,8 @@ function useTip(word: string): {
       return
     }
 
+    const on = anchor
+
     /* On the document and on the way down, so every box hears it, and NOT
        stopped: the calendar, the menus in the header and the list of towns wait
        for the same Escape further along (forms/FieldHint.tsx says why). */
@@ -186,7 +189,7 @@ function useTip(word: string): {
        words and holds nothing to press, and it may stand over a control that a
        press was meant for. */
     function onPress(pressed: globalThis.PointerEvent) {
-      if (!(pressed.target instanceof Node && anchor.contains(pressed.target))) {
+      if (!(pressed.target instanceof Node && on.contains(pressed.target))) {
         setDismissed(true)
       }
     }
