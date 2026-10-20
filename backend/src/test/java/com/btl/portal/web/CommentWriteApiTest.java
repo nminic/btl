@@ -1078,14 +1078,16 @@ class CommentWriteApiTest {
 		db.sql("update verification set state = 'approved', decided_at = now(), decided_by_name = 'Mod'"
 				+ " where id = ?").param(decided).update();
 
+		long refused = aRefusedCardOfHis(run, 4, "Moje, odbijeno");
+
 		long submissionsBefore = howManySubmissions();
 
 		MockHttpServletResponse answer = rateAs(ME, form(run, 5, 5, 5, ""));
 
 		assertThat(answer.getStatus()).isEqualTo(201);
-		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided))
-				.as("his waiting card of the event is gone, the other three stand")
-				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided);
+		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided, refused))
+				.as("his waiting card of the event is gone, the other four stand: both decided states stay")
+				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided, refused);
 		assertThat(howManySubmissions())
 				.as("exactly one submission went with its card")
 				.isEqualTo(submissionsBefore - 1);
@@ -1107,14 +1109,16 @@ class CommentWriteApiTest {
 		db.sql("update verification set state = 'approved', decided_at = now(), decided_by_name = 'Mod'"
 				+ " where id = ?").param(decided).update();
 
+		long refused = aRefusedCardOfHis(run, 4, "Moje, odbijeno");
+
 		long submissionsBefore = howManySubmissions();
 
 		MockHttpServletResponse answer = rateAs(ME, form(run, 5, 5, 5, "Novo, s rečima."));
 
 		assertThat(waitingIn(answer)).isTrue();
-		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided))
-				.as("his older waiting card of the event is gone, the other three stand")
-				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided);
+		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided, refused))
+				.as("his older waiting card of the event is gone, the other four stand: both decided states stay")
+				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided, refused);
 		assertThat(waitingOf(ME, run))
 				.as("the one rating of his of this event that waits is the one this request made")
 				.containsExactly(idIn(answer));
@@ -1134,6 +1138,21 @@ class CommentWriteApiTest {
 	private long waitingCardOf(long submission) {
 		return db.sql("select id from verification where comment_submission_id = ?").param(submission)
 				.query(Long.class).single();
+	}
+
+	/**
+	 * A RATING OF HIS THAT A MODERATOR HAS REFUSED, the second decided state beside the approved one the
+	 * cases above write: a decided card stays whichever way it was decided (ADL A36 O11), and a statement
+	 * that asks for „not approved" instead of „waiting" takes this one and leaves the other, so a fixture
+	 * with only the approved one cannot tell the two statements apart (PENDING, review of PR 584).
+	 */
+	private long aRefusedCardOfHis(long eventId, int stars, String words) {
+		long card = waitingCardOf(submissionWaitingFor(ME, eventId, stars, stars, stars, words));
+
+		db.sql("update verification set state = 'rejected', decided_at = now(), decided_by_name = 'Mod',"
+				+ " reason = 'Ne.' where id = ?").param(card).update();
+
+		return card;
 	}
 
 	private List<Long> cardsStanding(long... cards) {
@@ -1274,6 +1293,8 @@ class CommentWriteApiTest {
 		db.sql("update verification set state = 'approved', decided_at = now(), decided_by_name = 'Mod'"
 				+ " where id = ?").param(decided).update();
 
+		long refused = aRefusedCardOfHis(run, 4, "Moje, odbijeno");
+
 		assertThat(mineOnRun).hasSize(2);
 		assertThat(theOtherMemberOnRun).hasSize(1);
 		assertThat(named)
@@ -1295,9 +1316,9 @@ class CommentWriteApiTest {
 		assertThat(everyPublished())
 				.as("nothing but his ratings of the event went")
 				.isEqualTo(theRestBefore);
-		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided))
-				.as("his waiting card of the event is gone, the other three stand")
-				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided);
+		assertThat(cardsStanding(hers, hersElsewhere, someoneElses, decided, refused))
+				.as("his waiting card of the event is gone, the other four stand: both decided states stay")
+				.containsExactlyInAnyOrder(hersElsewhere, someoneElses, decided, refused);
 		assertThat(howManySubmissions())
 				.as("exactly one submission went with its card")
 				.isEqualTo(submissionsBefore - 1);
