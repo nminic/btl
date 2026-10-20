@@ -635,6 +635,168 @@ class PouringFromQaScriptTest {
 	}
 
 	/**
+	 * Every expansion of {@code PROD_VOLUME}, with or without braces: the name of the volume as the
+	 * script hands it on.
+	 */
+	private static final Pattern PROD_VOLUME_EXPANDED = Pattern.compile("\\$\\{?PROD_VOLUME\\b");
+
+	/**
+	 * An expansion of {@code PROD_VOLUME} handed to Docker as {@code NAME:target:ro}: the name,
+	 * optionally closed by a brace and a quote, then a target and the option {@code ro} on its
+	 * own. Anything else after the name, {@code :rw}, {@code :ro,z}, no option at all or a
+	 * {@code --mount} spelling, is read as a mount that can be written to, which is the safe
+	 * way round for a rule whose whole point is to count writers.
+	 */
+	private static final Pattern PROD_VOLUME_READ_ONLY = Pattern.compile(
+			"\\$\\{?PROD_VOLUME\\}?\"?:[^\\s\"']+:ro(?=[\\s\"']|$)");
+
+	/** An expansion of {@code PROD_BACKEND}: the production backend container, by its id. */
+	private static final Pattern PROD_BACKEND_EXPANDED = Pattern.compile("\\$\\{?PROD_BACKEND\\b");
+
+	/** Characters that make one quoted string more than one command. */
+	private static final Pattern MORE_THAN_ONE_COMMAND = Pattern.compile("[;&|`\\n]|\\$\\(");
+
+	/**
+	 * The logical lines of a script that put {@code PROD_VOLUME} into a Docker command without
+	 * the read-only option: every line that names Docker and expands the volume more times than
+	 * it expands it as {@code :ro}. A line that expands the volume without naming Docker is not a
+	 * mount ({@code say}, {@code [ -n ... ]}) and is not counted.
+	 */
+	static List<String> linesMountingTheProductionVolumeForWriting(List<String> code) {
+		return code.stream()
+				.filter(one -> one.contains("docker"))
+				.filter(one -> count(PROD_VOLUME_EXPANDED, one) > count(PROD_VOLUME_READ_ONLY, one))
+				.toList();
+	}
+
+	/**
+	 * The logical lines that hand the production backend container to a Docker command: the only
+	 * other way, besides a volume, into the folder the photographs are poured into. Today it
+	 * is handed on only to {@code photos_of}, a shell function, whose line names no Docker.
+	 */
+	static List<String> linesHandingTheProductionBackendToDocker(List<String> code) {
+		return code.stream()
+				.filter(one -> one.contains("docker"))
+				.filter(one -> PROD_BACKEND_EXPANDED.matcher(one).find())
+				.toList();
+	}
+
+	private static int count(Pattern pattern, String in) {
+		Matcher found = pattern.matcher(in);
+		int n = 0;
+
+		while (found.find()) {
+			n++;
+		}
+
+		return n;
+	}
+
+	/**
+	 * THE ONLY WRITER INTO THE PRODUCTION PHOTOGRAPH VOLUME IS THE COPY THAT KEEPS NO TIME.
+	 *
+	 * <p>The case above reads the options of THE line that holds {@code cp}, and it passes as long
+	 * as that line is unchanged. It cannot see a SECOND command that writes into the same volume
+	 * and leaves the {@code cp} alone: a {@code tar cf - . | tar xf -} or an {@code rsync -a}
+	 * after it hands the files back the times QA gave them, which is exactly the danger the copy
+	 * is written to avoid (the backend deletes a file no row names that is older than ten
+	 * minutes), and the guard stays green because it never asked who else writes. Measured in the
+	 * review of 468: either command, added after the {@code cp}, 11 of 11.
+	 *
+	 * <p>So the question is turned round and asked of the volume: exactly one logical line of the
+	 * script mounts {@code "$PROD_VOLUME"} without {@code :ro}, and it is the line that holds
+	 * {@code cp}. The other mounts of it, the count of what was copied, are read-only. And the
+	 * command that line hands to {@code sh -c} is one command: a {@code && tar ...} inside the
+	 * same quoted string would otherwise be a second writer on the one line that is allowed.
+	 *
+	 * <p><b>What it does not see, written down:</b> a writer that reaches the folder some other
+	 * way than a volume or the container id, which the second assertion also refuses, and a
+	 * volume whose name is held under another variable.
+	 */
+	@Test
+	void theCopyIsTheOnlyLineThatMountsTheProductionVolumeForWriting() {
+		List<String> code = scriptCode();
+
+		List<String> writers = linesMountingTheProductionVolumeForWriting(code);
+
+		assertThat(writers)
+				.as("exactly one line may mount the production photograph volume without :ro, and it"
+						+ " is the cp that keeps no time: a second writer (tar, rsync, a second cp)"
+						+ " can give the files QA's times back")
+				.hasSize(1);
+		assertThat(CP_THE_COMMAND.matcher(writers.get(0)).find())
+				.as("the one line that mounts the production volume for writing is not the cp: %s",
+						writers.get(0))
+				.isTrue();
+
+		Matcher handed = CP_HANDED_TO_SH.matcher(writers.get(0));
+
+		assertThat(handed.find()).as("the cp is not one single quoted string: %s", writers.get(0)).isTrue();
+		assertThat(handed.group(1))
+				.as("the one command handed to sh -c is more than one command, so what follows the"
+						+ " cp inside the quotes is a second writer on the one line that may write")
+				.doesNotContainPattern(MORE_THAN_ONE_COMMAND);
+
+		assertThat(linesHandingTheProductionBackendToDocker(code))
+				.as("the production backend container is handed to a Docker command, which is a way"
+						+ " into its photograph folder besides the volume")
+				.isEmpty();
+	}
+
+	/**
+	 * THE JUDGE OF THE CASE ABOVE, HELD ON THE SHAPES IT HAS TO TELL APART. The script this
+	 * repository ships has one writer, so the case above never sees its judge refuse a second.
+	 */
+	@Test
+	void aSecondWriterIntoTheProductionVolumeIsFoundHoweverItIsWritten() {
+		String copy = "docker run --rm --entrypoint sh -v \"$QA_VOLUME\":/from:ro -v \"$PROD_VOLUME\":/to \"$IMAGE\""
+				+ " -c 'cp -R --preserve=mode,ownership /from/. /to/'";
+
+		assertThat(linesMountingTheProductionVolumeForWriting(List.of(copy))).containsExactly(copy);
+
+		for (String second : List.of(
+				"docker run --rm -v \"$QA_VOLUME\":/from:ro -v \"$PROD_VOLUME\":/to alpine sh -c 'tar cf - . | tar xf -'",
+				"docker run --rm -v \"$QA_VOLUME\":/from:ro -v \"$PROD_VOLUME\":/to alpine rsync -a /from/ /to/",
+				"docker run --rm -v $PROD_VOLUME:/to alpine touch /to/x",
+				"docker run --rm -v \"${PROD_VOLUME}\":/to alpine touch /to/x",
+				"docker run --rm -v \"$PROD_VOLUME:/to\" alpine touch /to/x",
+				"docker run --rm -v \"$PROD_VOLUME\":/to:rw alpine touch /to/x",
+				"docker run --rm --mount type=volume,source=\"$PROD_VOLUME\",target=/to alpine touch /to/x",
+				"docker run --rm -v \"$PROD_VOLUME\":/to:ro -v \"$PROD_VOLUME\":/again alpine touch /again/x")) {
+			assertThat(linesMountingTheProductionVolumeForWriting(List.of(copy, second)))
+					.as("a second writer, written as%n%s", second)
+					.containsExactly(copy, second);
+		}
+	}
+
+	@Test
+	void aReadOfTheProductionVolumeIsNotAWriter() {
+		for (String reading : List.of(
+				"to_count=$(docker run --rm --entrypoint sh -v \"$PROD_VOLUME\":/to:ro \"$IMAGE\" -c 'ls -A /to | wc -l')",
+				"docker run --rm -v \"${PROD_VOLUME}\":/to:ro alpine ls /to",
+				"docker run --rm -v \"$PROD_VOLUME:/to:ro\" alpine ls /to",
+				"say \"from $QA_VOLUME to $PROD_VOLUME\"",
+				"[ -n \"$PROD_VOLUME\" ] || fail 'no volume'",
+				"PROD_VOLUME=$(photos_of \"$PROD_BACKEND\" 'the production backend')")) {
+			assertThat(linesMountingTheProductionVolumeForWriting(List.of(reading)))
+					.as("a read, written as%n%s", reading)
+					.isEmpty();
+		}
+	}
+
+	@Test
+	void theProductionBackendHandedToDockerIsFound() {
+		assertThat(linesHandingTheProductionBackendToDocker(List.of(
+				"docker exec \"$PROD_BACKEND\" tar xf - -C /var/lib/btl/photos",
+				"docker cp /tmp/x \"${PROD_BACKEND}\":/var/lib/btl/photos")))
+				.hasSize(2);
+		assertThat(linesHandingTheProductionBackendToDocker(List.of(
+				"PROD_BACKEND=$(docker compose -f \"$PROD_COMPOSE\" ps -q backend)",
+				"PROD_VOLUME=$(photos_of \"$PROD_BACKEND\" 'the production backend')")))
+				.isEmpty();
+	}
+
+	/**
 	 * THE RUNBOOK NAMES THE TOOL, AND THE POUR COMES BEFORE THE SUPERADMIN'S REGISTRATION.
 	 *
 	 * <p>The README said the tool "is not in this file" after it had been written, and nowhere
