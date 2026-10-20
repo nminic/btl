@@ -530,7 +530,49 @@ export const useDucats = () => useResource<DucatFamily[]>('ducats')
  * event page is public, so every visitor's browser would fetch the whole moderation queue, which
  * carries pending members' addresses and the bodies of comments nobody has approved.
  */
-export const useComments = () => useResource<EventComment[]>('comments')
+/**
+ * THE COMMENTS, READ AGAIN BY EVERY READER ON THE PAGE WHEN THEY CHANGE ON THE SERVER DURING A VISIT
+ * (`theCommentsHaveChanged`). Two parts of one event page read them, the list under the event and the
+ * mark beside its name, and the mark is worked out of the list, so it „deli sudbinu" (PDL P6,
+ * 11.08.2026): a member who deletes his own rating (20.10.2026) is shown both without it, at once.
+ */
+export const useComments = () =>
+  useResource<EventComment[]>('comments', {
+    revision: useSyncExternalStore(whileDrawingTheComments, theCommentsRevisionNow),
+  })
+
+/** How many times the comments have changed on the server during this visit; see `theCommentsHaveChanged`. */
+let commentsRevision = 0
+
+const whoIsDrawingTheComments = new Set<() => void>()
+
+/**
+ * THE COMMENTS HAVE CHANGED ON THE SERVER, SAID BY WHOEVER CHANGED THEM, once the route has answered:
+ * `theInboxHasChanged`'s shape, and for its reason - the cache is dropped and the number bumped in one
+ * breath, because dropped without the bump nothing mounted reads again, and bumped without the drop
+ * everything reads again and is handed the answer that is no longer true.
+ */
+export function theCommentsHaveChanged(): void {
+  clearResourceCache('comments')
+  commentsRevision += 1
+
+  for (const listener of whoIsDrawingTheComments) {
+    listener()
+  }
+}
+
+/** `useSyncExternalStore`'s two halves, module-level so they stay the same across renders. */
+function whileDrawingTheComments(listener: () => void): () => void {
+  whoIsDrawingTheComments.add(listener)
+
+  return () => {
+    whoIsDrawingTheComments.delete(listener)
+  }
+}
+
+function theCommentsRevisionNow(): number {
+  return commentsRevision
+}
 
 /**
  * @param revision bumped by the moderation of the members once a payment recorded on a row has gone

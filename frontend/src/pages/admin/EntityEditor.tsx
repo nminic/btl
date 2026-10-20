@@ -766,7 +766,7 @@ export function OpenRecord({
  * is not out with anyone: the row leaves in the same render, and the question behaves as it
  * always did. Nothing here handles Escape, so there is no key to refuse.
  */
-export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', asksWith, face }: {
+export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', asksWith, face, words }: {
   name: string
   /**
    * What the second press does, and whether the reader has to wait for it.
@@ -827,6 +827,25 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    * („Obriši: …"), so a screen reader hears what it always heard. Left out, the word „Obriši" stands.
    */
   face?: string
+  /**
+   * THE WORDS OF THE QUESTION, WHERE THE THING DELETED IS NOT A RECORD WITH A NAME: a member's own rating
+   * of an event (PDL P6, 20.10.2026, the owner's confirmation „Obriši svoju ocenu?"). Left out, every word
+   * stays the portal's own („Obriši: {name}", „Sigurno?", „Potvrdi brisanje: {name}", „Odustani od
+   * brisanja: {name}"), so the other screens that ask this question hear what they always heard. Written
+   * as one general prop and not as a rating's own, because the owner decided the same day that every
+   * action on a row becomes a symbol with a name, which is this.
+   *
+   * <p><b>`sureNamed` may be left out, and then the confirming button is named by what it SHOWS.</b>
+   * WCAG 2.2 SC 2.5.3 (Label in Name, ADL A7): a button that shows „Obriši svoju ocenu?" and is called
+   * something else cannot be pressed by somebody who says what he sees to a speech program. `sure` is
+   * then the whole of it.
+   *
+   * @param named     what the first button is called, beside whatever `face` shows
+   * @param sure      what the confirming button shows
+   * @param sureNamed what it is called, where it is called something else than it shows
+   * @param keepNamed what the button that puts the question away is called; it shows „Odustani"
+   */
+  words?: { named: string; sure: string; sureNamed?: string; keepNamed: string }
 }) {
   const { t } = useI18n()
   const [asking, setAsking] = useState(false)
@@ -890,7 +909,7 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
       <button
         type="button"
         className={`${look} entity-delete`}
-        aria-label={t('admin.form.deleteNamed', { name })}
+        aria-label={words === undefined ? t('admin.form.deleteNamed', { name }) : words.named}
         ref={opener}
         onClick={() => {
           setAfterAnAnswer(false)
@@ -914,7 +933,7 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
       <button
         type="button"
         className={`${look} entity-delete entity-delete--sure`}
-        aria-label={t('admin.form.deleteSureNamed', { name })}
+        aria-label={words === undefined ? t('admin.form.deleteSureNamed', { name }) : words.sureNamed}
         /* So whoever arrives here by keyboard is told what goes with it. Named
            through the element rather than folded into the label, because the label
            is what tells twenty of these buttons apart and a number in it would make
@@ -957,12 +976,12 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
           })
         }}
       >
-        {t('admin.form.deleteSure')}
+        {words === undefined ? t('admin.form.deleteSure') : words.sure}
       </button>
       <button
         type="button"
         className={look}
-        aria-label={t('admin.form.keepNamed', { name })}
+        aria-label={words === undefined ? t('admin.form.keepNamed', { name }) : words.keepNamed}
         aria-disabled={working ? true : undefined}
         onClick={() => {
           /* PUT AWAY ONLY WHEN NOTHING IS OUT (owner, 02.10.2026): with the deletion on its way

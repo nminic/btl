@@ -114,3 +114,9 @@
 .comments__edition {
   margin-inline-start: var(--space-8);
 }
+
+/* His own rating's pencil and x, under the words, apart from them as the marks are apart from the
+   name above (owner, PDL P6, 20.10.2026). */
+.comments__his {
+  margin-block-start: var(--space-12);
+}
