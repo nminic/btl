@@ -398,7 +398,9 @@ function TheForm({ me }: { me: string }) {
       chosenEvent !== null
         ? { eventId: chosenEvent }
         : {
-            eventName: correcting?.eventName ?? String(values.eventName),
+            /* Off the box, sent again as well: a run that named an event holds the box to that
+               name (`fixed`), and one sent before V66 named none, so what he types is the name. */
+            eventName: String(values.eventName),
             /* The town by name and country, never a `placeId`: `PlaceField` writes those two
                and has no GeoNames mark to give, which is `Registration.tsx`'s own decision
                against the same rule. */

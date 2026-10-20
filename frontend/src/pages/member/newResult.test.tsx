@@ -554,6 +554,10 @@ describe('the list of races under the name of an event', () => {
       expect([...asIso].sort().reverse(), 'the list is not newest first').toEqual(asIso)
       expect(asIso[0]).toBe('2027-08-08')
       expect(rows.some((row) => row.includes('završno')), 'a round still to come was offered').toBe(false)
+      /* AND ONLY THE RACES OF THE EVENT HE CHOSE: the calendar holds another event of the same name,
+         with a race of the same name already run (`9130`, 2026), so a list of every event's races
+         would answer this case by its name and its day alike. */
+      expect(rows.some((row) => row.includes('.2026.')), 'a race of another event was offered').toBe(false)
     } finally {
       held.stop()
     }
