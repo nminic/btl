@@ -26,6 +26,13 @@ import sr from '../../i18n/sr.json'
  * screen sends and what it draws after each answer.
  */
 
+/**
+ * How long a case is given: twice what a wait inside it is (`asyncUtilTimeout` is `SLOW`), so a part
+ * that is owed and never drawn fails on the wait, naming what it waited for, and not as a bare
+ * `Test timed out` (the shape `commentsAreReadByActiveMembers.test.tsx` gives, and CLAUDE.md section 25).
+ */
+const LONGER_THAN_A_MISS = SLOW * 2
+
 /** The event, run in 2010, on which the member below has a result. */
 const EVENT = 'fruskogorski-maraton-2010'
 const EVENT_ID = 1
@@ -138,7 +145,7 @@ describe('the pencil and the x', () => {
 
     expect(his).toBeGreaterThan(0)
     expect(his).toBeLessThan(cards.length - 1)
-  }, SLOW)
+  }, LONGER_THAN_A_MISS)
 
   it('stand nowhere for the administration, nor for a member whose fee has lapsed', async () => {
     /* A moderator who is the member whose fee lapsed reads the comments as the administration, and
@@ -154,7 +161,7 @@ describe('the pencil and the x', () => {
     await within(list).findByText('Isteklo.')
     expect(within(list).queryAllByRole('link', { name: sr.event.editOwnRating })).toHaveLength(0)
     expect(within(list).queryAllByRole('button', { name: sr.event.deleteOwnRating })).toHaveLength(0)
-  }, SLOW)
+  }, LONGER_THAN_A_MISS)
 
   it('lead, from a rating of an earlier running, to the form of THAT running', async () => {
     /* The 2027 race is a copy of the 2024 one (`copiedFrom`), so its page lists the 2024 ratings too;
@@ -165,7 +172,7 @@ describe('the pencil and the x', () => {
     const pencil = await within(await theList()).findByRole('link', { name: sr.event.editOwnRating })
 
     expect(pencil).toHaveAttribute('href', '/sr/kalendar/sidski-novogodisnji-maraton-2024/ocena')
-  }, SLOW)
+  }, LONGER_THAN_A_MISS)
 })
 
 describe('the form the pencil opens', () => {
@@ -183,7 +190,7 @@ describe('the form the pencil opens', () => {
     expect(screen.getByLabelText(/^Komentar/)).toHaveValue('Moje mišljenje.')
     /* Filled, so it sends at once: the marks are all there. */
     expect(screen.getByRole('button', { name: 'Pošalji' })).toHaveAttribute('aria-disabled', 'false')
-  }, SLOW)
+  }, LONGER_THAN_A_MISS)
 
   it('opens empty where he has given this event no rating', async () => {
     server = holding(served().filter((one) => !(one.memberNumber === ME && one.eventId === EVENT_ID)))
@@ -193,7 +200,7 @@ describe('the form the pencil opens', () => {
 
     expect(within(group).getAllByRole('radio').filter((one) => one instanceof HTMLInputElement && one.checked)).toHaveLength(0)
     expect(screen.getByLabelText(/^Komentar/)).toHaveValue('')
-  }, SLOW)
+  }, LONGER_THAN_A_MISS)
 })
 
 describe('the deletion', () => {
@@ -250,7 +257,7 @@ describe('the deletion', () => {
     })
     expect(screen.queryByRole('alert')).toBeNull()
     expect(arrivedResource('verification'), 'the queue held from before the deletion is still held').toBeUndefined()
-  }, SLOW)
+  }, LONGER_THAN_A_MISS)
 
   it('says nothing to a 404 and draws what the server now has', async () => {
     const { list } = await deleted(404)
@@ -261,12 +268,12 @@ describe('the deletion', () => {
 
     expect(screen.queryByRole('alert')).toBeNull()
     expect(screen.queryByText(/Server je odgovorio brojem 404/)).toBeNull()
-  }, SLOW)
+  }, LONGER_THAN_A_MISS)
 
   it('says any other answer beside his rating, which stays', async () => {
     const { list } = await deleted(500)
 
     expect(await screen.findByText(/Server je odgovorio brojem 500/)).toBeInTheDocument()
     expect(within(list).getByText(HIS.body)).toBeInTheDocument()
-  }, SLOW)
+  }, LONGER_THAN_A_MISS)
 })
