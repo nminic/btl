@@ -554,10 +554,27 @@ describe('the list of races under the name of an event', () => {
       expect([...asIso].sort().reverse(), 'the list is not newest first').toEqual(asIso)
       expect(asIso[0]).toBe('2027-08-08')
       expect(rows.some((row) => row.includes('završno')), 'a round still to come was offered').toBe(false)
-      /* AND ONLY THE RACES OF THE EVENT HE CHOSE: the calendar holds another event of the same name,
-         with a race of the same name already run (`9130`, 2026), so a list of every event's races
-         would answer this case by its name and its day alike. */
-      expect(rows.some((row) => row.includes('.2026.')), 'a race of another event was offered').toBe(false)
+    } finally {
+      held.stop()
+    }
+  })
+
+  it('offers only the races of the event he chose', async () => {
+    /* The calendar holds another event of the same name with a race of the same name already run
+       (`9130`, „Gradska liga, kolo 1”, 2026), so a list of every event's races would answer this
+       case by its name alike; typed narrowly enough that the list's ceiling of eight does not hide
+       it (two rounds of the chosen event match, and that one). */
+    const user = setupUser()
+    const held = calendar()
+
+    try {
+      await onTheEvent(user)
+      await user.type(raceName(), 'kolo 1')
+
+      const rows = offered()
+
+      expect(rows.length, 'the chosen event offered none of its own').toBeGreaterThan(0)
+      expect(rows.filter((row) => row.includes('.2026.')), 'a race of another event was offered').toEqual([])
     } finally {
       held.stop()
     }
