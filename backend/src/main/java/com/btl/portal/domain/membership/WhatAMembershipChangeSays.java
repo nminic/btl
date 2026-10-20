@@ -9,13 +9,16 @@ import java.util.Objects;
 import java.util.ResourceBundle;
 
 /**
- * THE LINES A MEMBER GETS IN HIS INBOX WHEN HIS MEMBERSHIP IS CHANGED: THE THREE ABOUT HIS ROW, AND THE
+ * THE LINES A MEMBER GETS IN HIS INBOX WHEN HIS MEMBERSHIP IS CHANGED: THE FOUR ABOUT HIS ROW, AND THE
  * TWO ABOUT THE BEGINNERS' CATEGORY THAT A MEMBERSHIP CAN CLOSE OR OPEN AGAIN.
  *
  * <p><b>The decision.</b> The owner, 18.10.2026 (PDL P8, the section „Osnov clanstva ima jedan dom,
  * zapis po sezoni"), chosen with the recommendation: „Upis uplate, promena osnova i storno stizu
  * clanu kao poruka u portalskom sanducetu, sa sezonom i novim stanjem, bez mejla." So there are three
- * occasions, each says the season and what the season stands on now, and none is a letter.
+ * occasions, each says the season and what the season stands on now, and none is a letter. A fourth
+ * since 20.10.2026: an exemption granted on the row to a member who held no season on sale, in the
+ * words the owner approved on 18.10.2026 („Može ovako”), „Oslobođeni ste članarine” / „Za sezonu
+ * {sezona} oslobođeni ste plaćanja članarine i član ste lige.”
  *
  * <p><b>IN SERBIAN ONLY, and that is a decision, not a gap.</b> The owner, 10.10.2026 (PDL, „Jezik
  * mejlova (JM)"): „u sanducetu kopija rezultatskih poruka prati jezik mejla, ostalo srpsko (potpuno
@@ -66,6 +69,9 @@ public final class WhatAMembershipChangeSays {
 		/** A season's membership cancelled, the owner's „storno": the season. */
 		THE_MEMBERSHIP_WAS_CANCELLED("membershipCancelled", 1),
 
+		/** A season granted free of the fee on the row, where none stood: the season. */
+		AN_EXEMPTION_WAS_GRANTED("exemptionGranted", 1),
+
 		/**
 		 * A membership written for a season closed his beginners' category for the season after it:
 		 * the season of the membership, the threshold, and the season the category is closed for.
@@ -114,6 +120,11 @@ public final class WhatAMembershipChangeSays {
 	/** His membership of this season was cancelled, and he is no member of it now. */
 	public static Said cancelled(int season) {
 		return said(Told.THE_MEMBERSHIP_WAS_CANCELLED, aSeason(season));
+	}
+
+	/** He was freed of the fee for this season, and is a member of it. */
+	public static Said exemptionGranted(int season) {
+		return said(Told.AN_EXEMPTION_WAS_GRANTED, aSeason(season));
 	}
 
 	/**

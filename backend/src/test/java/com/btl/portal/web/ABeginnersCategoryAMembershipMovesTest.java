@@ -202,7 +202,9 @@ class ABeginnersCategoryAMembershipMovesTest {
 
 	/** Every road that writes a season for a member, each the way its screen sends it. */
 	enum Road {
-		THE_PAYMENTS_SCREEN, A_PAYMENT_ON_HIS_ROW, FREE_OF_THE_FEE, FROM_HIS_BALANCE, HIS_OWN_ACTIVATION
+		THE_PAYMENTS_SCREEN, A_PAYMENT_ON_HIS_ROW, FREE_OF_THE_FEE, FROM_HIS_BALANCE, HIS_OWN_ACTIVATION,
+		/** The exemption granted on his row, where no season on sale stood (20.10.2026). */
+		AN_EXEMPTION_ON_HIS_ROW
 	}
 
 	@BeforeEach
@@ -480,6 +482,8 @@ class ABeginnersCategoryAMembershipMovesTest {
 			case FROM_HIS_BALANCE -> sent(post("/api/memberships"),
 					"{\"competitorId\": " + id + ", \"ground\": \"balance\"}", THE_SUPERADMIN);
 			case HIS_OWN_ACTIVATION -> sent(post("/api/me/membership"), "{}", number + "@primer.rs");
+			case AN_EXEMPTION_ON_HIS_ROW -> sent(post("/api/members/" + number + "/membership"),
+					"{\"basis\": \"feeExempt\"}", THE_SUPERADMIN);
 		};
 	}
 
