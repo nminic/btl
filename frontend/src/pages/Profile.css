@@ -1123,3 +1123,30 @@
     margin-block-end: var(--space-6);
   }
 }
+
+/* **THE ROW OF A MEMBER'S RESULT, EVERY CELL ON ONE CENTRE** (owner, 20.10.2026, from a screenshot of
+   QA: „Red sa rezultatom člana nije centriran, ikonice su niže nego vrednosti u redu"). For whoever
+   checks results the last cell of every row of „Rezultati članova" holds the pencil and the x, two
+   buttons 2,4rem high (`.button--compact`, `app/Shell.css`), and every other cell holds one line of
+   words. `styles/table.css` sets `.table th, .table td { vertical-align: top }` for every table on
+   the portal, deliberately: a table is read across, and top keeps every column on one shared line
+   while nothing in a row is taller than a line of text. This row is the place that stops being
+   true, so under the shared rule the words stood at the top of the row and the buttons, the taller
+   thing, stood lower. The one precedent the portal has is the main standing, whose rows hold a circle
+   taller than a line of words (`pages/Rankings.css`, `.rankings__table tbody td`), and this is its
+   rule on this table.
+
+   `.table--results tbody td` is one class and two elements, `(0,1,2)`, against `.table td` at
+   `(0,1,1)`, so it wins wherever the bundler leaves this sheet (`styles/cellSpecificity.test.ts`
+   weighs a selector the same way). The head is left where the shared rule puts it: its cells are a
+   line of words each, and the head is not a row of results. */
+.table--results tbody td {
+  vertical-align: middle;
+}
+
+/* The pencil and the x are NOT held on one line here. `.entity-row-actions` wraps (`pages/admin/Entity.css`)
+   and has to: the question that opens when the x is pressed puts two more buttons and a sentence in the
+   same box (`DeleteRecord`, `.entity-row-note`), and with `flex-wrap: nowrap` on it the table scrolled
+   sideways inside its own box at 360px and at 768px, which a table on a telephone does not do (PDL P24,
+   „Tabele na telefonu nemaju horizontalni skrol"). When the pair does wrap, the middle rule above centres
+   the words on the centre of the whole group of buttons, which is the centre of the cell's content. */
