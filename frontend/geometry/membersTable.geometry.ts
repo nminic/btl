@@ -160,11 +160,14 @@ async function readTheTable(open: Geometry['open'], at: At, answers: Answers) {
        pills of the columns of the basis and of the seasons in the same row, drawn or not: the box carries
        every one of them and nothing else. */
     const underTheName = rows.map((row) => {
-      const held = row.querySelector('td:first-child .table__phone-only')
+      /* Every pill the cell of the name draws, found by being in that cell and not by the class of the
+         box that holds them: a box that lost `table__phone-only` is drawn at every width, and a guard that
+         looked for the class would not see it. */
+      const under = [...row.querySelectorAll('td:first-child .tag')].filter(drawn)
       const columns = [...row.children].slice(3, 5).reduce((sum, cell) => sum + cell.querySelectorAll('.tag').length, 0)
 
       return {
-        under: held !== null && drawn(held) ? [...held.querySelectorAll('.tag')].map((one) => one.textContent).join(' | ') : '',
+        under: under.map((one) => one.textContent).join(' | '),
         columns: [...row.children].slice(3, 5).flatMap((cell) => [...cell.querySelectorAll('.tag')].map((one) => one.textContent)).join(' | '),
         count: columns,
       }
