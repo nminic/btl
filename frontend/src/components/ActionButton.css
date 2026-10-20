@@ -1,19 +1,20 @@
 /* A button that acts on one thing, drawn as a symbol (ActionButton.tsx).
  *
- * Its colours, its hover and its look when it cannot act are the portal's own
- * `.button` and `.button--secondary` or `.button--primary` (pages/Home.css), worn
- * by the same element; this sheet only makes it a square with the symbol in the
- * middle.
+ * Its colours, its hover and its look when it cannot act are the look the button
+ * had before (`.button--secondary`, `.button--primary`, `.entity-open`, `.copyLink`),
+ * worn by the same element; this sheet only makes it a square with the symbol in
+ * the middle.
  *
- * Written on both classes so it wins over `.button` by weight and not by which
- * sheet the bundle happens to put last: `.button` gives every button a padding of
- * its own, and a square that lost that contest would be a wide pill again.
+ * Written on the class twice so it wins over any one class of those looks by
+ * weight and not by which sheet the bundle happens to put last: `.button` and
+ * `.entity-open` give a button a padding of their own and `.button--compact` a
+ * height, and a square that lost that contest would be a wide pill again.
  *
  * Two rem a side, which is 32 pixels at the size the browser starts from and never
  * under the 24 WCAG 2.2 SC 2.5.8 asks of a target. jsdom lays nothing out, so the
  * size is held where it is written (ActionButton.test.tsx, as the stars are held in
  * styles/goldBand.test.ts). */
-.button.action {
+.action.action {
   display: inline-grid;
   place-items: center;
   inline-size: 2rem;
@@ -66,4 +67,10 @@
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.45;
+}
+
+/* The word itself, out of the attribute the component writes it in
+   (ActionButton.tsx says why it is not text). */
+.action-tip__words::before {
+  content: attr(data-word);
 }

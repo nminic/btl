@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SYMBOL } from '../app/actionSymbol'
 import { must } from '../test/at'
 import { contrast } from '../test/contrast'
-import { ruleFor, ruleInMedia, unremarked } from '../test/stylesheet'
+import { bodyOf, ruleFor, ruleInMedia, unremarked } from '../test/stylesheet'
 import { ActionButton, ActionLink } from './ActionButton'
 
 /**
@@ -27,6 +27,12 @@ function tip(): HTMLElement | null {
 
 function shown(): HTMLElement {
   return must(tip(), 'box with the word')
+}
+
+/** The word a box shows, which the sheet draws out of an attribute rather than
+ *  holding as text (ActionButton.tsx). */
+function wordIn(box: Element): string | null {
+  return must(box.querySelector('.action-tip__words'), 'the words of the box').getAttribute('data-word')
 }
 
 afterEach(() => {
@@ -114,7 +120,7 @@ describe('how it is laid out', () => {
     render(
       <>
         <ActionButton symbol={SYMBOL.pencil} word="Izmeni" />
-        <ActionButton symbol={SYMBOL.check} word="Odobri" tone="filled" className="queue__go" />
+        <ActionButton symbol={SYMBOL.check} word="Odobri" className="button button--primary" />
       </>,
     )
 
@@ -122,12 +128,12 @@ describe('how it is laid out', () => {
       'button button--secondary action',
     )
     expect(screen.getByRole('button', { name: 'Odobri' }).className).toBe(
-      'button button--primary action queue__go',
+      'button button--primary action',
     )
-    /* THE JOIN with the sheet below: the size is written for `.button.action`, and
+    /* THE JOIN with the sheet below: the size is written for `.action.action`, and
        the button is held to match that selector, so a class swept off one side
        fails here rather than leaving the rule painting nothing. */
-    expect(screen.getByRole('button', { name: 'Izmeni' }).matches('.button.action')).toBe(true)
+    expect(screen.getByRole('button', { name: 'Izmeni' }).matches('.action.action')).toBe(true)
   })
 
   it('passes on what the screen hands it', async () => {
@@ -162,7 +168,7 @@ describe('how it is laid out', () => {
   it('is a square of two rem, never under the 24 pixels a finger is owed', () => {
     /* jsdom lays nothing out, so the size is held where it is written, as the
        stars are (styles/goldBand.test.ts, `.stars__pick`). */
-    const rule = ruleFor(sheet('components/ActionButton.css'), '.button.action', 'ActionButton.css')
+    const rule = ruleFor(sheet('components/ActionButton.css'), '.action.action', 'ActionButton.css')
 
     expect(rule.getPropertyValue('inline-size')).toBe('2rem')
     expect(rule.getPropertyValue('block-size')).toBe('2rem')
@@ -173,6 +179,17 @@ describe('how it is laid out', () => {
     const rule = ruleFor(sheet('components/ActionButton.css'), '.action-tip', 'ActionButton.css')
 
     expect(rule.getPropertyValue('position')).toBe('fixed')
+  })
+
+  it('draws the word out of the very attribute the component writes it in', () => {
+    /* THE JOIN: the component writes the word into `data-word` and the sheet draws
+       that attribute. Renamed on one side only, the box opens empty and every case
+       above, which reads the attribute, goes on passing. */
+    /* Read as text: jsdom's parser drops `content` (measured 20.10.2026, it
+       answers an empty value), which is the exception `test/stylesheet.ts` allows. */
+    expect(bodyOf(sheet('components/ActionButton.css'), '.action-tip__words::before')).toMatch(
+      /content:\s*attr\(data-word\);/,
+    )
   })
 
   it('never lets a pointer pass through the box', () => {
@@ -267,8 +284,12 @@ describe('the box with the word', () => {
 
     fireEvent.pointerOver(button, { pointerType: 'mouse' })
 
-    expect(shown().textContent).toBe('Obriši')
+    expect(wordIn(shown())).toBe('Obriši')
     expect(shown().getAttribute('aria-hidden')).toBe('true')
+    /* And it holds no text: a search by text finds the button and only the
+       button while the pointer rests on it. */
+    expect(shown().textContent).toBe('')
+    expect(screen.getAllByText('Obriši')).toHaveLength(1)
     /* Into the body and not into the row: a box drawn inside a cell of a table
        that scrolls sideways is cut off by it. */
     expect(shown().parentElement).toBe(document.body)
@@ -295,7 +316,7 @@ describe('the box with the word', () => {
 
     await user.tab()
     expect(button).toHaveFocus()
-    expect(shown().textContent).toBe('Izmeni')
+    expect(wordIn(shown())).toBe('Izmeni')
 
     await user.tab({ shift: true })
     expect(tip()).toBeNull()
@@ -316,13 +337,13 @@ describe('the box with the word', () => {
     const button = screen.getByRole('button', { name: 'Odobri' })
 
     fireEvent.pointerOver(button, { pointerType: 'mouse' })
-    expect(shown().textContent).toBe('Odobri')
+    expect(wordIn(shown())).toBe('Odobri')
 
     fireEvent.pointerOut(button, { pointerType: 'mouse', relatedTarget: document.body })
     expect(tip()).toBeNull()
 
     aFocusTheReaderSees(button)
-    expect(shown().textContent).toBe('Odobri')
+    expect(wordIn(shown())).toBe('Odobri')
   })
 
   it('does not open for a finger', () => {
@@ -432,7 +453,7 @@ describe('the box with the word', () => {
     const boxes = document.querySelectorAll('.action-tip')
 
     expect(boxes).toHaveLength(1)
-    expect(must(boxes[0], 'the one box').textContent).toBe('Obriši')
+    expect(wordIn(must(boxes[0], 'the one box'))).toBe('Obriši')
   })
 
   it('lets go when the pointer leaves for the box of another button', () => {
@@ -456,7 +477,7 @@ describe('the box with the word', () => {
 
     fireEvent.pointerOut(drop, { pointerType: 'mouse', relatedTarget: first })
 
-    expect([...document.querySelectorAll('.action-tip')].map((one) => one.textContent)).toEqual(['Izmeni'])
+    expect([...document.querySelectorAll('.action-tip')].map((one) => wordIn(one))).toEqual(['Izmeni'])
   })
 
   it('is not held open by a finger touching it', async () => {
@@ -480,7 +501,7 @@ describe('the box with the word', () => {
     render(
       <MemoryRouter>
         <ActionLink symbol={SYMBOL.pencil} word="Izmeni" name="Izmeni: Tim 1" to="/sr/timovi/1" />
-        <ActionLink symbol={SYMBOL.pencil} word="Izmeni" to="/sr/timovi/2" className="row__go" tone="filled" />
+        <ActionLink symbol={SYMBOL.pencil} word="Izmeni" to="/sr/timovi/2" className="entity-open" />
       </MemoryRouter>,
     )
 
@@ -489,11 +510,11 @@ describe('the box with the word', () => {
     expect(link.getAttribute('href')).toBe('/sr/timovi/1')
     expect(link.textContent).toBe('Izmeni')
     expect(screen.getByRole('link', { name: 'Izmeni' }).className).toBe(
-      'button button--primary action row__go',
+      'entity-open action',
     )
 
     fireEvent.pointerOver(link, { pointerType: 'mouse' })
-    expect(shown().textContent).toBe('Izmeni')
+    expect(wordIn(shown())).toBe('Izmeni')
   })
 })
 

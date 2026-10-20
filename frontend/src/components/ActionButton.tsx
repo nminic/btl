@@ -51,11 +51,14 @@ import './ActionButton.css'
  * (`:focus-visible`). A button pressed with the pointer also takes the focus, and
  * a box opening on that would answer the pointer twice.
  *
- * **The button is laid out by the same classes as before**, `button` and
- * `button--secondary`, or `button--primary` for the one action a row leads with
- * („Odobri" keeps its filled look, PDL 20.10.2026), so colours, the hover and the
- * look of a control that says it cannot act are the portal's and not a second
- * copy of them. `action` only makes it a square (ActionButton.css).
+ * **The button keeps the look it had, and only its shape changes.** `className` is
+ * that look, the classes the button wore before it became a symbol: `entity-open`
+ * in a row of administration, `button button--primary` for „Odobri", which keeps its
+ * filled look (PDL 20.10.2026), `copyLink` for the copy button. Left out, it is the
+ * portal's ordinary `button button--secondary`. So colours, the hover and the look
+ * of a control that says it cannot act stay where they were written and are not
+ * copied here; `action`, which is always added, only makes it a square
+ * (ActionButton.css).
  */
 
 type Says = {
@@ -68,8 +71,6 @@ type Says = {
   /** The whole name, where the screen names the button by more than the word
    *  („Obriši: Trka 1"). Left out, the word is the name. */
   name?: string
-  /** `filled` for the action a row leads with, which keeps the filled look it had. */
-  tone?: 'filled'
 }
 
 /** What this component answers itself and so does not take from the screen. */
@@ -83,7 +84,6 @@ export function ActionButton({
   symbol,
   word,
   name,
-  tone,
   className,
   ...rest
 }: Says & Omit<ComponentProps<'button'>, Answered | 'type'>) {
@@ -94,7 +94,7 @@ export function ActionButton({
       <button
         {...rest}
         type="button"
-        className={look(tone, className)}
+        className={look(className)}
         aria-label={name}
         {...held}
       >
@@ -111,7 +111,6 @@ export function ActionLink({
   symbol,
   word,
   name,
-  tone,
   className,
   ...rest
 }: Says & Omit<ComponentProps<typeof Link>, Answered>) {
@@ -119,7 +118,7 @@ export function ActionLink({
 
   return (
     <>
-      <Link {...rest} className={look(tone, className)} aria-label={name} {...held}>
+      <Link {...rest} className={look(className)} aria-label={name} {...held}>
         <Face symbol={symbol} word={word} />
       </Link>
       {tip}
@@ -127,10 +126,9 @@ export function ActionLink({
   )
 }
 
-function look(tone: Says['tone'], className: string | undefined): string {
-  const filled = tone === 'filled' ? 'button button--primary action' : 'button button--secondary action'
-
-  return className === undefined ? filled : `${filled} ${className}`
+/** The look the button had, and the square. */
+function look(className: string | undefined): string {
+  return `${className ?? 'button button--secondary'} action`
 }
 
 function Face({ symbol, word }: { symbol: ActionSymbol; word: string }) {
@@ -346,7 +344,11 @@ function Tip({
         }
       }}
     >
-      <span className="action-tip__words">{word}</span>
+      {/* The word is drawn by the sheet out of this attribute and is not text in
+          the document: the button already holds the same word as its text, and a
+          second copy in the body is a second thing every search by text finds
+          while the pointer happens to rest on the button. */}
+      <span className="action-tip__words" data-word={word} />
     </span>,
     document.body,
   )

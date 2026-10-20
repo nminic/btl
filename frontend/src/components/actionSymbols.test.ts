@@ -119,7 +119,6 @@ const NOT_YET_CONVERTED = new Set([
   'admin.change',
   'admin.dropRace',
   'admin.form.delete',
-  'admin.form.open',
   'admin.grantExemption',
   'admin.recordPayment',
   'event.copy',
@@ -161,7 +160,6 @@ const STAYS_A_WORD = new Map([
   ['admin.addRace', FORM],
   ['admin.changeToExemption', LISTED],
   ['admin.form.back', NOT_AN_ACTION],
-  ['admin.form.deleteSure', ANSWER],
   ['admin.form.keep', ANSWER],
   ['admin.form.new.races', LISTED],
   ['admin.leagueRaces', NOT_AN_ACTION],
@@ -225,6 +223,22 @@ const STAYS_A_WORD = new Map([
   ['verification.approveAll', LISTED],
 ])
 
+/**
+ * THE TWO COMPONENTS WHOSE WORD IS HANDED DOWN TO THEM, with the one symbol each draws.
+ *
+ * Their word is a prop and not a key, so it cannot be read here; what can be held is
+ * that the symbol is the one the owner's map gives the thing they do, and that nothing
+ * else on the portal draws a symbol over a word this floor cannot read.
+ *
+ * - `DeleteRecord` (pages/admin/EntityEditor.tsx), the first button of every deletion:
+ *   „Obriši", or the words a screen hands over („Obriši svoju ocenu").
+ * - `CopyField` (components/CopyField.tsx): the name of the value it copies.
+ */
+const HANDED_DOWN = new Map([
+  ['pages/admin/EntityEditor.tsx', SYMBOL.cross],
+  ['components/CopyField.tsx', SYMBOL.copy],
+])
+
 /** Where something was found, as a person reading the failure would look for it. */
 type Place = { path: string; line: number }
 
@@ -236,7 +250,12 @@ export type BareButton = Place & { keys: string[] }
  * choice, and `unread` where the word or the symbol arrives in a way this does not
  * read.
  */
-export type Action = Place & { pairs: { key: string; symbol: string }[]; unread: boolean }
+export type Action = Place & {
+  pairs: { key: string; symbol: string }[]
+  unread: boolean
+  /** The symbols drawn, read on their own, so a word handed down can still be held to one. */
+  symbols: string[] | undefined
+}
 
 /** The shape of a choice between written values, and the values in its order. */
 type Leaves = { shape: string; values: string[] } | undefined
@@ -379,6 +398,7 @@ export function buttonsIn(path: string, code: string): { bare: BareButton[]; act
       actions.push({
         ...placeOf(node),
         unread: !read,
+        symbols: drawn?.values,
         pairs: read ? keys.values.map((key, at) => ({ key, symbol: drawn.values[at] ?? '' })) : [],
       })
     }
@@ -441,13 +461,23 @@ describe('the buttons that act on one thing', () => {
   it('carry the symbol their word is owed, the same one on every screen', () => {
     const astray = actions.flatMap((one) =>
       one.unread
-        ? [`${where(one)}: the word or the symbol is not read`]
+        ? HANDED_DOWN.get(named(one.path)) === (one.symbols ?? []).join(' ')
+          ? []
+          : [`${where(one)}: the word or the symbol is not read`]
         : one.pairs
             .filter(({ key, symbol }) => SYMBOL_OF.get(key)?.symbol !== symbol)
             .map(({ key, symbol }) => `${where(one)}: ${key} drawn as ${symbol}, owed ${String(SYMBOL_OF.get(key)?.symbol)}`),
     )
 
     expect(astray).toEqual([])
+  })
+
+  it('take a word handed down only where it is named, and every one named is there', () => {
+    const handing = new Map(
+      actions.filter((one) => one.unread).map((one) => [named(one.path), (one.symbols ?? []).join(' ')]),
+    )
+
+    expect(handing).toEqual(HANDED_DOWN)
   })
 
   it('leave no word drawn as a word that has not been decided about', () => {
