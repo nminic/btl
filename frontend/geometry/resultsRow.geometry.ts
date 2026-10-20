@@ -205,10 +205,12 @@ for (const at of WIDTHS) {
  * **Asked in Chrome**, because jsdom lays nothing out: the width of the head of every figure column the
  * screen draws, at 360 (a telephone, three figures or two), at 700 (the narrowest a table is drawn whole,
  * where a share of the table is smallest), at 768, at 1000 (where the share is handed over to a width in
- * rem) and at 1280. They agree to within one pixel, none is wider than 6,5rem (104px) and so none takes
+ * rem) and at 1280. They agree to within one pixel (for whoever checks results on a telephone, to within
+ * six: see `THE_TELEPHONE_OF_WHOEVER_CHECKS`), none is wider than 6rem (96px) and so none takes
  * more than it needs, and the table's own box is not wider inside than outside. **Both readers**, a
- * visitor (five figures on a wide screen) and whoever checks results (six, the buttons among them), and
- * the long names of a family beside them.
+ * visitor (five figures on a wide screen) and whoever checks results (six, the buttons among them), with the
+ * long names of a family and with the real names of the review of PR 591. **And no word of a name or of a
+ * race is broken inside the word** (owner, 20.10.2026), at every width, whatever it costs the figures.
  *
  * The question of the x open is not asked here: the column grows to hold its widest button for as long as
  * it is open, which is the question's doing and not the table's, and its box is asked about above.
@@ -221,33 +223,49 @@ const EQUAL: At[] = [
   { width: 1280, text: 100 },
 ]
 
-/** The widest a figure column may be: 6,5rem at the ordinary size, which is what the wide layout caps it at. */
-const CAP = 104 + 1
+/** The widest a figure column may be: 6rem at the ordinary size, which is what the wide layout caps it at. */
+const CAP = 96 + 1
 
 /**
- * A family name that is one word, as long as the runner's fonts can make a hyphenated one look: nothing in it
- * to break at. CI measured the figures at 71,67, 70,97 and 70,61px with LONG at 360px (20.10.2026), a spread
- * of 1,06px, and the cause is this: `table-layout: auto` shaves a column with a width of its own by what its
- * content can give up, and the longest word of a name is what the column of words cannot give up. Here on
- * this machine 24 letters shaved the figures to 66, 63 and 60px and 36 letters made the table 476px inside a
- * box of 328, so the case does not depend on which font the runner has.
+ * THE NAMES THE REVIEW OF PR 591 USED, which are real ones (20.10.2026): a race whose longest word is
+ * 23 letters, a German event with an 18-letter word, and three Serbian surnames of 16, 14 and 15 letters.
+ * Cycled over every member and every result, so that a row of the table carries one of each wherever it
+ * is read. **Whole words are the owner's decision** („imena ostaju cela"): nothing may break a name or a
+ * race inside a word, so a column of words that cannot give up room takes it from the figures instead
+ * (`Profile.css`, the note over `.results__figure`), and the case below asks both what the figures come
+ * to and that no word was broken.
  */
-const UNBREAKABLE = (letters: number): Answers => ({
+const REAL_NAMES = [
+  ['Ana', 'Hadživukašinović'],
+  ['Aleksandra', 'Konstantinović'],
+  ['Konstantin', 'Hadžiantonović'],
+] as const
+const REAL_RACES = ['Trka samoprevazilaženja', 'Langenzersdorfer Weihnachtsmarathon'] as const
+
+const REAL: Answers = {
   ...ANSWERS,
-  '/api/competitors': COMPETITORS.map((one) => ({
+  '/api/competitors': COMPETITORS.map((one, index) => {
+    const [firstName, lastName] = REAL_NAMES[index % REAL_NAMES.length] ?? REAL_NAMES[0]
+
+    return { ...one, firstName, lastName }
+  }),
+  '/api/results': sample<Record<string, unknown>[]>('results').map((one, index) => ({
     ...one,
-    firstName: 'Aleksandar',
-    lastName: 'Karamanlisopulosovicevicnikolopoulos'.slice(0, letters),
+    raceName: REAL_RACES[index % REAL_RACES.length],
   })),
-})
+}
 
 const READERS = [
   ['a visitor', { ...ANSWERS, '/api/me': undefined }],
+  ['a visitor, with real names', { ...REAL, '/api/me': undefined }],
   ['whoever checks results', ANSWERS],
   ['whoever checks results, with long names', LONG],
-  ['whoever checks results, with a name of 24 letters in one word', UNBREAKABLE(24)],
-  ['whoever checks results, with a name of 36 letters in one word', UNBREAKABLE(36)],
+  ['whoever checks results, with real names', REAL],
 ] as const
+
+/** Up to this much, and only for whoever checks results on a telephone (owner, 20.10.2026): there the
+ *  column of words takes what the longest surname needs from the time, the points and the buttons. */
+const THE_TELEPHONE_OF_WHOEVER_CHECKS = 6
 
 for (const at of EQUAL) {
   for (const [who, given] of READERS) {
@@ -272,6 +290,40 @@ for (const at of EQUAL) {
         const columns = [...results.querySelectorAll('colgroup > col')]
         const drawn = (one: Element) => getComputedStyle(one).display !== 'none'
 
+        /* Every word of the member and of the race, cut where the portal may cut it (a space, a hyphen),
+           and the ones whose letters stand on more than one line: those were broken inside the word. */
+        const whole = (table: Element) => {
+          const said: string[] = []
+          const broken: string[] = []
+
+          for (const cell of table.querySelectorAll('tbody td:nth-child(-n + 2)')) {
+            if (!drawn(cell)) {
+              continue
+            }
+
+            const walk = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT)
+
+            for (let node = walk.nextNode(); node !== null; node = walk.nextNode()) {
+              for (const word of (node.textContent ?? '').matchAll(/[^\s-]+/g)) {
+                const range = document.createRange()
+
+                range.setStart(node, word.index)
+                range.setEnd(node, word.index + word[0].length)
+
+                const lines = new Set([...range.getClientRects()].map((one) => Math.round(one.top / 4)))
+
+                said.push(word[0])
+
+                if (lines.size > 1) {
+                  broken.push(word[0])
+                }
+              }
+            }
+          }
+
+          return { said, broken }
+        }
+
         return {
           table: results.getBoundingClientRect().width,
           inside: box.scrollWidth,
@@ -289,6 +341,7 @@ for (const at of EQUAL) {
           words: heads
             .filter((head, index) => columns[index]?.classList.contains('results__figure') !== true && drawn(head))
             .map((head) => head.getBoundingClientRect().width),
+          ...whole(results),
         }
       })
 
@@ -296,7 +349,7 @@ for (const at of EQUAL) {
       expect(seen.columns).toBe(seen.heads)
 
       /* Measured is not assumed: a screen that drew none, or one, would agree with itself. */
-      const mod = who !== 'a visitor'
+      const mod = !who.startsWith('a visitor')
       const phone = at.width < 700
 
       expect(seen.figures.map((one) => one.name), JSON.stringify(seen.figures)).toHaveLength(
@@ -305,7 +358,9 @@ for (const at of EQUAL) {
 
       const widths = seen.figures.map((one) => one.width)
 
-      expect(Math.max(...widths) - Math.min(...widths), JSON.stringify(seen.figures)).toBeLessThanOrEqual(AGREE)
+      expect(Math.max(...widths) - Math.min(...widths), JSON.stringify(seen.figures)).toBeLessThanOrEqual(
+        mod && phone ? THE_TELEPHONE_OF_WHOEVER_CHECKS : AGREE,
+      )
       expect(Math.max(...widths), JSON.stringify(seen.figures)).toBeLessThanOrEqual(CAP)
 
       /* And the words take what is left: each of the two is wider than one figure on a wide screen. */
@@ -313,6 +368,22 @@ for (const at of EQUAL) {
         expect(seen.words, JSON.stringify(seen.words)).toHaveLength(2)
         expect(Math.min(...seen.words)).toBeGreaterThan(Math.max(...widths))
       }
+
+      /* Whole words, the owner's decision: measured is not assumed, so the words the table says are read
+         first, and the real names are among them wherever they were served. */
+      expect(seen.said.length).toBeGreaterThan(10)
+
+      if (who.includes('real names')) {
+        expect(seen.said).toContain('Hadživukašinović')
+        expect(seen.said).toContain('Konstantinović')
+
+        if (!phone) {
+          expect(seen.said).toContain('Weihnachtsmarathon')
+          expect(seen.said).toContain('samoprevazilaženja')
+        }
+      }
+
+      expect(seen.broken, 'words broken inside the word').toEqual([])
 
       expect(seen.inside, `the table's box scrolls: ${String(seen.inside)} inside ${String(seen.outside)}`).toBeLessThanOrEqual(
         seen.outside,
