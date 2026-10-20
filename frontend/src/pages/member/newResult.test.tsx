@@ -157,6 +157,25 @@ function calendar(): { stop: () => void } {
   )
 }
 
+/** Everything a run on an event he typed still asks for, once the event and the race are named. */
+async function theRestOfANewRun(user: ReturnType<typeof setupUser>): Promise<void> {
+  await user.clear(screen.getByLabelText(/Datum trke/))
+  await user.type(screen.getByLabelText(/Datum trke/), '01082027')
+  await user.type(screen.getByLabelText('Mesto'), 'Niš')
+  await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+  await user.clear(screen.getByLabelText(/^Dužina/))
+  await user.type(screen.getByLabelText(/^Dužina/), '10')
+  await user.clear(screen.getByLabelText(/Uspon/))
+  await user.type(screen.getByLabelText(/Uspon/), '20')
+  await user.clear(screen.getByLabelText(/Spust/))
+  await user.type(screen.getByLabelText(/Spust/), '20')
+  await user.type(screen.getByLabelText('Sati'), '0')
+  await user.type(screen.getByLabelText('Minuti'), '45')
+  await user.type(screen.getByLabelText('Sekunde'), '0')
+  await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/seoska')
+  await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+}
+
 /** Opens the form and chooses an event out of the box „Događaj”, which is what a member does first. */
 async function onTheEvent(user: ReturnType<typeof setupUser>, typed = 'gradska'): Promise<void> {
   renderAt(NEW, 'competitor', ME, undefined, TODAY)
@@ -931,6 +950,67 @@ describe('the event a result is run at, which the form asks first', () => {
       expect(Object.keys(sent)).not.toContain('raceId')
     } finally {
       route.stop()
+    }
+  }, SLOW)
+
+  it('lets go of the race of the event he leaves, when he names a new event over a chosen one', async () => {
+    /* `FormRenderer.onType` empties what the event's FOLLOWERS were filled with, not only the event's
+       own: a race of the calendar chosen under „Gradska liga” is a race of that event, and once he
+       types a new event over it the run is no longer on that race. Left linked, the body would go
+       on the old event's race by its key (review of PR 581, F13). */
+    const user = setupUser()
+    const held = calendar()
+    const route = recording()
+
+    try {
+      await onTheEvent(user)
+      await user.type(raceName(), 'kolo 8')
+      await user.click(first(within(screen.getByRole('list', { name: '' })).getAllByRole('button')))
+      await user.clear(eventName())
+      await user.type(eventName(), 'Seoska trka')
+      await theRestOfANewRun(user)
+
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
+
+      const sent = must(route.sent()[0], 'what was sent')
+
+      expect(Object.keys(sent), 'the run went on a race of the event he left').not.toContain('raceId')
+      expect(Object.keys(sent)).not.toContain('eventId')
+      expect([sent.eventName, sent.city, sent.country]).toEqual(['Seoska trka', 'Niš', 'RS'])
+    } finally {
+      route.stop()
+      held.stop()
+    }
+  }, SLOW)
+
+  it('lets go of the event he chose when he names a new one, after typing a race of his own', async () => {
+    /* Typing a race of his own unlinks the RACE and keeps the event's link (`unlinked` in `onType`),
+       so that a new event typed after it still finds the chosen event's key to empty. Wiped there
+       instead, the event's key would ride on under a name he typed, and the town would stay hidden
+       (review of PR 581, F12). */
+    const user = setupUser()
+    const held = calendar()
+    const route = recording()
+
+    try {
+      await onTheEvent(user)
+      await user.type(raceName(), 'Nova staza')
+      await user.clear(eventName())
+      await user.type(eventName(), 'Seoska trka')
+
+      expect(screen.queryByLabelText('Mesto'), 'a new event asks for its town').not.toBeNull()
+
+      await theRestOfANewRun(user)
+
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON)
+
+      const sent = must(route.sent()[0], 'what was sent')
+
+      expect(Object.keys(sent), 'the key of the event he left went with the run').not.toContain('eventId')
+      expect([sent.eventName, sent.raceName, sent.city]).toEqual(['Seoska trka', 'Nova staza', 'Niš'])
+    } finally {
+      route.stop()
+      held.stop()
     }
   }, SLOW)
 

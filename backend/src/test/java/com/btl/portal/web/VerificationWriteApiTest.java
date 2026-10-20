@@ -2719,6 +2719,33 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * THE SAME, ON AN EVENT HE CHOSE THAT STANDS IN A TOWN OF THE CODEBOOK: the new event stands in
+	 * that very place. The case above gives the chosen event a typed town only, so the place half of
+	 * the town the approval reads off the chosen event is measured here and nowhere else; the place is
+	 * not the first of the codebook, which other rows of this class stand in.
+	 */
+	@Test
+	void aRunOnAChosenEventInATownOfTheCodebookMakesTheNewEventInThatPlace() throws Exception {
+		long place = placeOfRank(2);
+		long chosen = db.sql("insert into btl_event (slug, name, date, place_id, kind, featured,"
+						+ " description, link) values ('izabran-u-sifarniku-2027', 'Izabran u sifarniku',"
+						+ " date '2027-03-01', ?, 'race', false, '', '') returning id")
+				.param(place).query(Long.class).single();
+		long run = describedRun(ANA, "Kroz grad", "length", THE_DAY_HE_RAN, "7.0000", 10, 10, 2100);
+
+		theMemberNamed(run, chosen, null);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Gradska trka", "Gradska desetka",
+				"length", null)).getStatus()).isEqualTo(200);
+
+		AnEvent made = theEventAt("gradska-trka-2027");
+
+		assertThat(made.placeId()).isEqualTo(place);
+		assertThat(made.city()).isNull();
+		assertThat(racesOf(chosen)).as("the race went on the event he chose, not the new one").isEmpty();
+	}
+
+	/**
 	 * AND A RUN THAT NAMES NEITHER A TOWN NOR AN EVENT - the state a run is left in when the event it was
 	 * chosen on is deleted (V67) - IS REFUSED BEFORE ANYTHING IS WRITTEN WHEN THE APPROVAL WOULD MAKE A
 	 * NEW EVENT OF IT, and goes through onto an event that is there.
