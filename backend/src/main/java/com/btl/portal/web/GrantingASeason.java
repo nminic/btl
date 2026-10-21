@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.sql.Timestamp;
 import java.time.Clock;
+import java.time.Instant;
 
 /**
  * A SEASON GRANTED WITHOUT A FEE ARRIVING, FOR THE TWO DOORS THAT GRANT ONE.
@@ -97,8 +98,11 @@ class GrantingASeason {
 	 * decision of 03.10.2026 overturned it, and the fact is now recorded twice on purpose. What keeps
 	 * two homes one answer is not a sentence but a case: {@code theTrailOnTheRowIsTheTrailInTheBook}
 	 * reads both for one press and requires the same account, the same name and the same moment. Both
-	 * are written in this transaction, from this request's account and from this clock (two readings
-	 * of it, microseconds apart in production and one instant under the fixed clock of the cases).
+	 * are written in this transaction, from this request's account and from ONE reading of this
+	 * clock, handed to both ({@link BalanceBook#spentOnAMembership}). Until the review of PR 505 each
+	 * home read the clock for itself, and the two moments were one only under the fixed clock of the
+	 * cases; the case now runs on a clock that moves at every reading, where two readings are two
+	 * moments.
 	 * <p><b>The member's own door writes no trail, and that is right rather than missing.</b>
 	 * {@link MyMembershipWriteApi} only ever spends a balance that covers the fee, so the act forgives
 	 * nothing there, exactly as a whole fee forgives nothing here.
@@ -129,12 +133,19 @@ class GrantingASeason {
 
 		boolean freeOfTheFee = FEE_EXEMPT.equals(basis);
 
+		/* THE MOMENT IS READ ONCE, and both homes of the trail are handed that reading (PENDING, review
+		   of PR 505, finding 1). Each home reading the clock for itself gave two instants,
+		   microseconds apart, and the only thing that made them one answer in the cases was a clock
+		   that does not move: `theTrailOnTheRowIsTheTrailInTheBook` could not tell one reading from
+		   two. `BalanceBook.translated` reads once for its pair of lines for the same reason. */
+		Instant when = clock.instant();
+
 		/* THE LINE IN THE BOOK BEFORE THE MEMBERSHIP THAT NAMES IT, for the reason point 2 gives.
 		   `spentOnAMembership` is where the sign lives, so what is handed over is money he HAS and
 		   the minus is the book's business rather than this route's. */
 		Long entry = freeOfTheFee ? null
 				: book.spentOnAMembership(competitorId, season, offTheBook, account,
-						enteredByName);
+						enteredByName, when);
 
 		/* THE TRAIL, THREE COLUMNS OR NONE, which is what V56 asks of a balance and V35 of an
 		   exemption: the account that is asking, the name it carries now (copied, because the name is
@@ -146,7 +157,7 @@ class GrantingASeason {
 				.params(competitorId, season, basis, entry,
 						forgivesMoney ? account : null,
 						forgivesMoney ? enteredByName : null,
-						forgivesMoney ? Timestamp.from(clock.instant()) : null)
+						forgivesMoney ? Timestamp.from(when) : null)
 				.update();
 
 		/* AND WHOEVER BROUGHT HIM IN IS PAID, HERE TOO, because the owner said so in as many words on

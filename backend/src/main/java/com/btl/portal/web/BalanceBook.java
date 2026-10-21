@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -185,12 +186,29 @@ class BalanceBook {
 	 */
 	long spentOnAMembership(long competitorId, int season, Balance.Money amount, Long account,
 			String accountName) {
+		return spentOnAMembership(competitorId, season, amount, account, accountName, clock.instant());
+	}
+
+	/**
+	 * THE SAME LINE AT A MOMENT THE CALLER HAS ALREADY READ, for the caller that writes the same moment
+	 * somewhere else as well (PENDING, review of PR 505, finding 1).
+	 *
+	 * <p>{@link GrantingASeason} writes who and when of a reduced amount in two homes, the line here and
+	 * the trail on the {@code membership} row, and the two have to be one moment. Each home reading the
+	 * clock for itself gives two readings, microseconds apart in production, and the only thing that made
+	 * them one answer in the cases was a clock that does not move. So the caller reads the clock once and
+	 * hands the instant to both, the shape {@link #translated} already has for its pair of lines.
+	 *
+	 * @param at the instant the line records, which the caller also writes elsewhere
+	 */
+	long spentOnAMembership(long competitorId, int season, Balance.Money amount, Long account,
+			String accountName, Instant at) {
 
 		return db.sql("insert into balance_entry (competitor_id, amount, currency, reason, season,"
 						+ " occurred_at, recorded_by, recorded_by_name)"
 						+ " values (?, ?, ?, 'membership', ?, ?, ?, ?) returning id")
 				.params(competitorId, amount.amount().negate(), amount.currency().name(), season,
-						Timestamp.from(clock.instant()), account, accountName)
+						Timestamp.from(at), account, accountName)
 				.query(Long.class)
 				.single();
 	}
@@ -516,11 +534,46 @@ class BalanceBook {
 	 * referral to nought through his own screen. V38's own backfill carries the identical condition and
 	 * the same sentence is why: a reward of nothing earns nobody a line.
 	 *
+	 * <p><b>THE REFERRER'S ROW IS HELD {@code for no key update} BEFORE HIS COUNTRY IS READ, AND HELD
+	 * UNTIL THE CALLER COMMITS (PENDING, review of PR 576, 19.10.2026).</b> The money of the reward is
+	 * worked out from his country, and his country is the one column {@link MeWriteApi} moves while it
+	 * restates his book ({@link #translated}). Read plainly, the two could cross: the reward is worked
+	 * out in the old money, the change of country commits and restates a book that does not yet hold the
+	 * reward, and the reward is written afterwards in a money he has left, where {@link #of} never sees
+	 * it. Held, the two take turns in either order. If the change is first, this waits for it and reads
+	 * the new country. If this is first, the change waits at its {@code update} for this transaction to
+	 * commit, and the book it restates already holds the reward.
+	 *
+	 * <p><b>The lock is asked first and the country in a statement of its own after it</b>, the order
+	 * {@code RaceWriteApi#theEventOfTheRaceHeldForThisWrite} keeps for the same reason: the statement
+	 * that follows the wait is a new one, and a statement of a transaction at {@code READ COMMITTED}
+	 * sees what the writer it waited for has committed. The reading is deliberately not folded into
+	 * the statement that locks. And it is {@code for no key update} and not {@code for update}, the difference
+	 * {@link TheDayOfAnEvent#theEventHeldForThisWrite} measured: {@code for update} also stops the
+	 * {@code FOR KEY SHARE} that every line of his book takes on his row, so a referrer who is himself
+	 * being activated, or whose own book is written, would wait for this and be waited for by it.
+	 *
+	 * <p><b>The order of locks, and it cannot be a cycle.</b> Every caller holds the new member's row
+	 * {@code for update} first ({@code PaymentApi}, {@link MyMembershipWriteApi}, {@link MembershipWriteApi}
+	 * through {@link GrantingASeason}); this takes his referrer's second. {@code referred_by} is written by
+	 * one statement only, the insert of the registration, and names a row that already exists, so the chain
+	 * of „member, then the one who brought him" only ever points at older rows and closes on nobody.
+	 * {@code AReferrerIsHeldWhileHisRewardIsWorkedOutTest} measures the turn-taking with a change of his
+	 * country, and with a grant and a payment for two members of one referrer, stopped behind a hold on
+	 * him.
+	 *
 	 * @param newMember {@code competitor.id} of the member whose membership has just been activated
 	 */
 	void aReferralWasActivated(long newMember, Long account, String accountName) {
 		record Referrer(long id, String countryCode) {
 		}
+
+		db.sql("select r.id from competitor r"
+						+ " where r.id = (select c.referred_by from competitor c where c.id = ?)"
+						+ " for no key update")
+				.param(newMember)
+				.query(Long.class)
+				.optional();
 
 		Optional<Referrer> referrer = db.sql("select referrer.id,"
 						+ " coalesce(town_country.code, typed_country.code)"
