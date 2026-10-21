@@ -268,8 +268,8 @@ class ANewEventAnotherSaveMadeTest {
 	 * save stops at the event, and once the writer commits it works its day out from the races that are
 	 * there, the earlier one among them, and leaves the event where it is. An event read plainly would not
 	 * stop, would set the request's day over the earlier one, and the schema would refuse that at the
-	 * commit (V29) as a 500. The collision branch asks this same question ({@code theEventAtTheAddressHeld}),
-	 * so it is held the same way.
+	 * commit (V29) as a 500. A save that meets an event at its insert is begun again from the top and asks this
+	 * same question there, so it is held the same way ({@code TwoLeagueSavesOnANewEventTest} holds that one).
 	 */
 	@Test
 	void anEventOfTheCalendarIsHeldAgainstAnEarlierRaceBeingPutOnIt() throws Exception {

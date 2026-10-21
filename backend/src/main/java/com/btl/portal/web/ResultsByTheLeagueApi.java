@@ -178,6 +178,17 @@ import java.util.stream.Stream;
  * {@code competitor}, in the order of the key) before anything is judged, so of two saves naming one
  * member on one race one writes and the other meets the result it wrote.
  *
+ * <p><b>THE EVENT IS TAKEN BEFORE THE MEMBERS, ON EVERY ROAD OF THE ROUTE.</b> A save that names an
+ * event, or whose new event's address already answers, holds that event ({@code for no key update},
+ * {@link TheDayOfAnEvent#theEventHeldForThisWrite}) and only then locks its members. A save whose new
+ * event does not exist yet locks its members first, because there is nothing to hold, and if its insert
+ * then gives way to an event another save made, it does not go on to hold that event with the members
+ * still in its hand: a second save on that event holds it and waits for a member this one has, and this
+ * one waits for the event, a deadlock which was measured (the second save answered 500). It writes
+ * nothing before that insert, so its transaction ends there, which lets its members go, and it is begun
+ * again from the top in a transaction of its own, where the event it met is the event it asks for first.
+ * {@code TwoLeagueSavesOnANewEventTest} holds the order in place.
+ *
  * <p><b>AND THE ONLY OTHER WRITER OF HIS RESULT TAKES TURNS WITH THAT LOCK BY ASKING FOR THE SAME
  * ROW FIRST.</b> A row of {@code result} checks {@code result_competitor_fk}, which takes his
  * {@code competitor} row {@code for key share}, and {@code for update} waits for that and makes it
@@ -443,7 +454,15 @@ class ResultsByTheLeagueApi {
 			return wrong;
 		}
 
-		Done done = inOneTransaction.execute(committing -> theRaceAndItsRows(event, race, rows));
+		Done done = inOneTransaction.execute(committing -> theRaceAndItsRows(event, race, rows, false));
+
+		if (done == THE_ADDRESS_WAS_TAKEN) {
+			/* A SAVE THAT FOUND NO EVENT AT THE TOP AND THEN MET ONE AT ITS INSERT IS BEGUN AGAIN FROM THE
+			   TOP, in a transaction of its own, so the event it meets is the event it asks for first (see
+			   the class note on the order of the locks). The first transaction wrote nothing and has
+			   ended, so the members it held are let go before this one asks for anything. */
+			done = inOneTransaction.execute(committing -> theRaceAndItsRows(event, race, rows, true));
+		}
 
 		return postAfterwards(done);
 	}
@@ -538,11 +557,16 @@ class ResultsByTheLeagueApi {
 	/**
 	 * INSIDE THE TRANSACTION: the event (held, or made, or found at its address), the race (found on
 	 * it, or made), and then the rows exactly as the event page enters them ({@link #theRows}).
+	 *
+	 * @param again whether this is the second time round, after the insert of a new event gave way once
+	 * @return {@link #THE_ADDRESS_WAS_TAKEN} where the insert of a new event gave way to one another save
+	 *         made, and nothing was written
 	 */
-	private Done theRaceAndItsRows(NamedEvent named, NamedRace race, List<Row> rows) {
+	private Done theRaceAndItsRows(NamedEvent named, NamedRace race, List<Row> rows, boolean again) {
 		Optional<TheDayOfAnEvent.Standing> event = named.id() != null
 				? TheDayOfAnEvent.theEventHeldForThisWrite(db, named.id())
-				: theEventAtTheAddressHeld(named);
+				: TheDayOfAnEvent.theEventAt(db, EventAddress.of(named.name().strip(), named.date()))
+						.flatMap(there -> TheDayOfAnEvent.theEventHeldForThisWrite(db, there.id()));
 
 		if (named.id() != null && event.isEmpty()) {
 			return Done.only(no(HttpStatus.CONFLICT, THE_EVENT_IS_NOT_KNOWN));
@@ -581,7 +605,7 @@ class ResultsByTheLeagueApi {
 		   it is answered as a form not filled in. That reading is mine (the coordinator's answer of
 		   20.10.2026). It is also why the race never moves its event into another year's address: the
 		   event begins on its earliest race, and every race of it is of one year. */
-		if (event.isPresent() && isOfAnotherYear(event.get(), day)) {
+		if (event.isPresent() && event.get().date().getYear() != day.getYear()) {
 			return Done.only(notComplete());
 		}
 
@@ -601,72 +625,34 @@ class ResultsByTheLeagueApi {
 		long on;
 
 		if (event.isPresent()) {
-			on = event.get().id();
-			made = aNewRaceOnTheEventThatIsThere(event.get(), race, day);
+			TheDayOfAnEvent.Standing there = event.get();
+			LocalDate beginning = TheDayOfAnEvent.theDayItWillBeginOn(db, there, null, day);
+			String address = TheDayOfAnEvent.addressFor(there, beginning);
+
+			made = aNewRace(there.id(), race, day);
+			on = there.id();
+			TheDayOfAnEvent.theEventNowBeginsOn(db, there, beginning, address);
 		} else {
 			Optional<Long> newEvent = aNewEvent(named);
 
-			if (newEvent.isPresent()) {
-				on = newEvent.get();
-				made = aNewRace(on, race, day);
-			} else {
-				/* AN EVENT ANOTHER SAVE MADE AT THIS ADDRESS AFTER THE QUESTION AT THE TOP IS AN EVENT OF
-				   THE CALENDAR, and the race goes on it the way it goes on any event that was there (PDL
-				   P9, owner, 19.10.2026, „Isti naziv ne pravi drugi događaj”): held for this write, an event
-				   that is a race and of the race's own year, and moved back to the race's day when that is
-				   earlier. This branch used to read the key and go on, so none of that was asked of it: a
-				   training got a race (201), and a race on an earlier day than the event's was refused only
-				   at the commit (V29) as a 500. The refusal is the sentence the same two questions have at
-				   the top, and nothing is left to take back, because the insert above gave way. The event
-				   cannot be gone but for a delete committed in this instant, which is a 500 as it was. */
-				TheDayOfAnEvent.Standing met = theEventAtTheAddressHeld(named).orElseThrow();
-
-				if (!WhatAnEventCarries.A_RACE.equals(met.kind()) || isOfAnotherYear(met, day)) {
-					return Done.only(notComplete());
+			if (newEvent.isEmpty()) {
+				if (again) {
+					/* THE ADDRESS WAS TAKEN TWICE IN ONE SAVE: the event the first time was gone (a delete
+					   committed in that instant) when the second began, and another save made one again
+					   in the same instant. Begun a third time it could be so forever; it is a 500, as
+					   an event gone under a save always was. */
+					throw new IllegalStateException("The address of the event was taken twice in one save: "
+							+ EventAddress.of(named.name().strip(), named.date()));
 				}
 
-				on = met.id();
-				made = aNewRaceOnTheEventThatIsThere(met, race, day);
+				return THE_ADDRESS_WAS_TAKEN;
 			}
+
+			on = newEvent.get();
+			made = aNewRace(on, race, day);
 		}
 
 		return onTheEvent(written(raceOf(made).orElseThrow(), judged), on);
-	}
-
-	/**
-	 * THE EVENT A NEW EVENT'S NAME AND DAY ANSWER TO IN THE CALENDAR, HELD FOR THIS WRITE
-	 * ({@link TheDayOfAnEvent#theEventHeldForThisWrite}: {@code for no key update}, the one lock mode a
-	 * writer of a race takes on its event, so a card or a recount that merely points at the event never
-	 * waits behind this save). Asked at the top, before anything is judged, and asked again where the
-	 * insert of a new event gave way to one another save had made; both ask this one question, so the
-	 * event the second finds is the event the first would have found.
-	 */
-	private Optional<TheDayOfAnEvent.Standing> theEventAtTheAddressHeld(NamedEvent named) {
-		return TheDayOfAnEvent.theEventAt(db, EventAddress.of(named.name().strip(), named.date()))
-				.flatMap(there -> TheDayOfAnEvent.theEventHeldForThisWrite(db, there.id()));
-	}
-
-	/** Whether the race's day is in another year than the event's, which is another season. */
-	private static boolean isOfAnotherYear(TheDayOfAnEvent.Standing event, LocalDate day) {
-		return event.date().getYear() != day.getYear();
-	}
-
-	/**
-	 * A NEW RACE ON AN EVENT THAT IS THERE: the race is written, and the event begins on the earlier of
-	 * its day and the race's, at the address that day gives it ({@link TheDayOfAnEvent}). One home for the
-	 * save that finds the event at the top and the save that meets it where its own insert gave way.
-	 *
-	 * @return the key of the race
-	 */
-	private long aNewRaceOnTheEventThatIsThere(TheDayOfAnEvent.Standing there, NamedRace race,
-			LocalDate day) {
-		LocalDate beginning = TheDayOfAnEvent.theDayItWillBeginOn(db, there, null, day);
-		String address = TheDayOfAnEvent.addressFor(there, beginning);
-		long made = aNewRace(there.id(), race, day);
-
-		TheDayOfAnEvent.theEventNowBeginsOn(db, there, beginning, address);
-
-		return made;
 	}
 
 	/** A save written, answered with the address of the event it is on as that event now stands. */
@@ -684,9 +670,9 @@ class ResultsByTheLeagueApi {
 
 	/**
 	 * The event, in the town typed, on the day of its first race, at its address, or nothing where
-	 * another save made an event at that address in between: the insert gives way to it, and the caller
-	 * meets that event as one of the calendar ({@link #theRaceAndItsRows}), because the checks of a race
-	 * on an event that is there are not this method's to make.
+	 * another save made an event at that address in between: the insert gives way to it, and the save is
+	 * begun again from the top ({@link #enterOnARaceOfAnEvent}), because the checks of a race on an event
+	 * that is there, and the order in which its locks are taken, are not this method's to make.
 	 *
 	 * @return the key of the event made, or nothing where the address was taken
 	 */
@@ -1223,4 +1209,9 @@ class ResultsByTheLeagueApi {
 			return new Done(answer, List.of());
 		}
 	}
+
+	/** Not an answer: the insert of a new event gave way, nothing was written, and the save begins again.
+	 *  It is compared by identity, and a 500 if it were ever sent. */
+	private static final Done THE_ADDRESS_WAS_TAKEN = Done.only(
+			ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
 }
