@@ -209,16 +209,16 @@ class BalanceCarriedOverTest extends DatabaseTest {
 		/* TWO PAYMENTS FOR ONE MAN, recognised on two different days by two different people, so
 		   „one line off the EARLIER payment" is a thing this fixture can tell from „one line off
 		   whichever row the planner returned first". */
-		payment(PAID_FOR_TWO_SEASONS, 2027, "20271001", "2026-10-02 09:00:00+00", AN_ACCOUNT,
+		payment(PAID_FOR_TWO_SEASONS, 2027, "2027001001", "2026-10-02 09:00:00+00", AN_ACCOUNT,
 				"Prvi Blagajnik");
-		payment(PAID_FOR_TWO_SEASONS, 2028, "20281001", "2027-10-02 09:00:00+00", ANOTHER_ACCOUNT,
+		payment(PAID_FOR_TWO_SEASONS, 2028, "2028001001", "2027-10-02 09:00:00+00", ANOTHER_ACCOUNT,
 				"Drugi Blagajnik");
-		membership(PAID_FOR_TWO_SEASONS, 2027, "payment", "20271001");
-		membership(PAID_FOR_TWO_SEASONS, 2028, "payment", "20281001");
+		membership(PAID_FOR_TWO_SEASONS, 2027, "payment", "2027001001");
+		membership(PAID_FOR_TWO_SEASONS, 2028, "payment", "2028001001");
 
-		payment(BROUGHT_IN_BY_THE_OTHER, 2027, "20271002", "2026-11-05 09:00:00+00", ANOTHER_ACCOUNT,
+		payment(BROUGHT_IN_BY_THE_OTHER, 2027, "2027001002", "2026-11-05 09:00:00+00", ANOTHER_ACCOUNT,
 				"Drugi Blagajnik");
-		membership(BROUGHT_IN_BY_THE_OTHER, 2027, "payment", "20271002");
+		membership(BROUGHT_IN_BY_THE_OTHER, 2027, "payment", "2027001002");
 
 		/* HE IS A MEMBER AND THERE IS NO PAYMENT ANYWHERE, which is what being let in free MEANS. */
 		membershipFreeOfTheFee(LET_IN_FREE, 2027);

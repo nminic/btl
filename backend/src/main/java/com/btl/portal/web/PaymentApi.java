@@ -365,47 +365,35 @@ class PaymentApi {
 	 */
 	static final Set<String> METHODS = Set.of("ips", "paypal");
 
-	/** {@code payment_reference_shape}, V16: digits and nothing else, off a bank statement. */
-	private static final Pattern A_REFERENCE = Pattern.compile("^[0-9]{7,}$");
-
 	/**
-	 * THE MOST DIGITS A REFERENCE MAY HAVE, and the limit is {@code payment_reference_unique}'s
-	 * and not {@code payment_reference_shape}'s.
+	 * {@code payment_reference_shape} (V68): EXACTLY TEN DIGITS AND NOTHING ELSE, the season and the six
+	 * digit member number with its leading noughts, {@code 2027000027} (owner, PDL P8, 20.10.2026,
+	 * {@code YYYYNNNNNN}; chosen among the outcomes offered to him: the server takes exactly ten digits,
+	 * on this route and in the database, and nine or eleven are refused).
 	 *
-	 * <p>The shape asks for seven digits at least and says nothing about the other end, and the
-	 * index has an end: a key longer than about a third of a page does not go into a B-tree,
-	 * PostgreSQL answers {@code index row size ... exceeds btree version 4 maximum} and, being an
-	 * error, aborts the transaction. Three thousand digits pass {@link #A_REFERENCE}, reach the
-	 * {@code insert} and come back to a moderator booking a payment as a 500, which is why the
-	 * answer for them is the sentence a misshapen reference already gets.
+	 * <p><b>The shape is the whole of the rule, and it is also the length bound.</b> Until V68 a second
+	 * number stood beside it, a cap of 2000 characters that existed because the shape then asked for
+	 * seven digits at least and said nothing of the other end, while {@code payment_reference_unique}
+	 * has one (a key longer than about a third of a page does not go into a B-tree, and PostgreSQL's
+	 * answer is an error that aborts the transaction, so three thousand digits came back to a moderator
+	 * as a 500). A text of exactly ten digits is far below any such limit, and anything longer fails the
+	 * shape first, so the cap had nothing left to guard and went with the decision: a bound that cannot
+	 * be reached is a branch that no case can tell from its absence.
 	 *
-	 * <p><b>Derived from the schema and decided by nobody.</b> It sits below what
-	 * {@code payment_reference_unique} can hold, with a margin of about a quarter, and
-	 * {@code WhatAnIndexHoldsTest} asks PostgreSQL what that is (2692 characters of text that cannot
-	 * be compressed on PostgreSQL 18.6) and fails the day this number rises above it. The text is
-	 * ASCII by the shape, so a digit is a byte in the index and the one number answers for both.
+	 * <p><b>It is two homes for one rule</b>, this pattern and the check constraint, and a rule written
+	 * twice is only as safe as the floor under the pair. {@code PaymentReferenceMatchesTheSchemaTest}
+	 * takes the constraint's own expression out of the catalogue and asks PostgreSQL to judge every
+	 * length from nought to sixteen and a handful of texts that are not digits, against this pattern's
+	 * answer; this field is package private for that and for nothing else.
 	 *
-	 * <p><b>And the bound is the same for a text that could be compressed</b>, which is the
-	 * deliberately stricter half: PostgreSQL keeps a hundred thousand copies of one digit in this
-	 * index because it compresses them, so a limit measured on what the database refuses would
-	 * depend on what was typed. This one does not.
-	 *
-	 * <p>A reference as the bank prints it is the season and the member number run together (V16),
-	 * ten digits since the owner's decision of 20.10.2026 (PDL P8, {@code YYYYNNNNNN}: the season,
-	 * then the six digit member number with its leading zeros); this is a floor and not a
-	 * description of one.
-	 *
-	 * <p><b>THIS ROUTE DOES NOT MATCH A REFERENCE TO ANYBODY, which is why that decision changed
-	 * nothing here.</b> The form it checks is {@link #A_REFERENCE} (seven digits or more, V16) and
-	 * whether another payment already carries it, and nothing reads the digits as a season or a
-	 * member (measured 20.10.2026: the only readers of {@code payment.reference} are the
-	 * uniqueness question and the insert in {@link BookingAPayment}). So a reference of the old
-	 * form (no noughts) is still accepted, and that is left as it is on purpose: QA holds no
-	 * payment (measured 18.10.2026), the screens never send a reference (first payments have none
-	 * and a booking from the members table sends none), and narrowing the shape to ten digits
-	 * would be a second home for what V16's check says, to be changed with it or not at all.
+	 * <p><b>THIS ROUTE DOES NOT MATCH A REFERENCE TO ANYBODY.</b> It checks the form and whether another
+	 * payment already carries it, and nothing reads the digits as a season or a member (measured
+	 * 20.10.2026: the only readers of {@code payment.reference} are the uniqueness question and the
+	 * insert in {@link BookingAPayment}). The screens never send a reference (a first payment has none
+	 * and a booking from the members table sends none), so what reaches this is a moderator typing the
+	 * one off a statement.
 	 */
-	static final int MOST_A_REFERENCE_CAN_BE = 2000;
+	static final Pattern A_REFERENCE = Pattern.compile("^[0-9]{10}$");
 
 	/**
 	 * WHAT HAPPENS ONCE THE FORM IS READ, which since 18.10.2026 is a class of its own, because the
@@ -531,12 +519,10 @@ class PaymentApi {
 
 		String reference = isNothing(typed.reference()) ? null : typed.reference().strip();
 
-		/* THE LENGTH OF WHAT IS KEPT, which is the reference with its spaces taken off, is asked
-		   before the shape and answered with the same sentence: a reference the index cannot hold
-		   is not one this route can book, and it is told so the way a misshapen one is.
-		   `MOST_A_REFERENCE_CAN_BE` says where the number comes from. */
-		if (reference != null && (reference.length() > MOST_A_REFERENCE_CAN_BE
-				|| !A_REFERENCE.matcher(reference).matches())) {
+		/* THE SHAPE OF WHAT IS KEPT, which is the reference with its spaces taken off: exactly ten
+		   digits, so nine, eleven and three thousand are all told the one sentence a misshapen
+		   reference gets. */
+		if (reference != null && !A_REFERENCE.matcher(reference).matches()) {
 
 			return no(HttpStatus.BAD_REQUEST, THE_REFERENCE_IS_NOT_SHAPED);
 		}

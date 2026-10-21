@@ -14,6 +14,7 @@ import {
   type RowPress,
 } from './memberPayment'
 import { membershipOnTheRow, overTheExemption, WHEN_PAYING_OVER_THE_EXEMPTION } from './memberMembership'
+import { useRowRefusal } from './useRowRefusal'
 import './Activation.css'
 import { SYMBOL } from '../../app/actionSymbol'
 import { ActionButton } from '../../components/ActionButton'
@@ -47,10 +48,14 @@ type Question = Extract<RowPress, { press: 'asksAboutTheShortfall' }>
 
 export function RowPayment({
   one,
+  settled,
   onRecorded,
   overTheExemption: replacingTheExemption = false,
 }: {
   one: Member
+  /** How many actions on this row have succeeded this visit: a refusal beside it goes when this moves
+   *  (`useRowRefusal`). */
+  settled: number
   onRecorded: () => void
   /** The season on sale stands on an exemption, and the payment replaces it. */
   overTheExemption?: boolean
@@ -58,7 +63,7 @@ export function RowPayment({
   const { locale, t } = useI18n()
   const [typed, setTyped] = useState('')
   const [asking, setAsking] = useState<Question | null>(null)
-  const [refused, setRefused] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+  const [refused, setRefused] = useRowRefusal<Exclude<Answer, { got: 'done' }>>(settled)
   const outstanding = useRef(false)
   const [working, setWorking] = useState(false)
 
@@ -101,7 +106,9 @@ export function RowPayment({
       setAsking(null)
 
       if (answer.got === 'done') {
-        setRefused(null)
+        /* THE SENTENCE OF AN EARLIER REFUSAL GOES WITH THE SUCCESS, and not from here: `onRecorded` moves
+           the count of this row, which `useRowRefusal` reads, and the same count clears what the row's
+           other controls said. Cleared here alone, a cancellation refused a moment ago would stay. */
         setTyped('')
         onRecorded()
 

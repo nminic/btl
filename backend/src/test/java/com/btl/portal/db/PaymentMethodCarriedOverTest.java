@@ -56,7 +56,7 @@ class PaymentMethodCarriedOverTest extends DatabaseTest {
 			+ " father_name, address, shirt_size, health_statement_at";
 
 	/** The man whose dinar payment was recorded under the old name, and has to come out renamed. */
-	private static final String PAID_ON_A_SLIP = "20271001";
+	private static final String PAID_ON_A_SLIP = "2027001001";
 
 	/**
 	 * A SECOND ROW UNDER THE OLD NAME, so that the one above is not the only row of its kind.
@@ -65,10 +65,10 @@ class PaymentMethodCarriedOverTest extends DatabaseTest {
 	 * lowest id - would be green, and {@code update ... where method = 'slip'} is a statement about
 	 * every such row rather than about one.
 	 */
-	private static final String ALSO_PAID_ON_A_SLIP = "20271002";
+	private static final String ALSO_PAID_ON_A_SLIP = "2027001002";
 
 	/** And one that was never called {@code slip}, which the migration must leave exactly as it is. */
-	private static final String PAID_THROUGH_PAYPAL = "20271003";
+	private static final String PAID_THROUGH_PAYPAL = "2027001003";
 
 	/**
 	 * V16's constraint, put back the way V16 wrote it, so that V39 has the schema it was written
@@ -192,7 +192,7 @@ class PaymentMethodCarriedOverTest extends DatabaseTest {
 		   over the member and the season, so the row would have been refused by the fixture and this
 		   case would have measured that instead of the migration. */
 		competitor("001004", "Kartica", "00112233445566a4");
-		payment("001004", "20271004", "card", "40.00", "EUR", "3.00");
+		payment("001004", "2027001004", "card", "40.00", "EUR", "3.00");
 
 		assertThatThrownBy(() -> jdbc.execute(migrationSql("39")))
 				.as("a card payment was quietly given one of the two new words, or the constraint was"

@@ -92,6 +92,12 @@ export const WHAT_THE_NUMBER_SAYS_WHEN_INVITING_INTO_A_PAIR: Record<number, stri
  * itself derived from the decisions of 06.09.2026 about a team. For a pair the decision it keeps
  * within one visit is PDL, 07.09.2026: the button is drawn only when no question stands between
  * the two „ni u jednom smeru" and neither of them holds a pair for the season being formed.
+ *
+ * <p><b>The same predicate is the team's.</b> `pages/joiningThisTeam.ts` drops the same list on the
+ * same answers for the two verbs a member sends about his application to a team (the application
+ * and the taking back), and `pages/AskingThisTeam.tsx` reads it again, which is the other half of
+ * the same remedy of PR 516: one home for the fact, so the two cannot come to disagree about
+ * which answers say a page was stale.
  */
 export function theServerSaysTheScreenIsStale(answer: Answer): boolean {
   return answer.got === 'refused' || (answer.got === 'wrong' && answer.status === 404)
