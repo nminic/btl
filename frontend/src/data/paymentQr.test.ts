@@ -38,7 +38,7 @@ describe('the PayPal link Layer 2 would press, prepared and not drawn', () => {
     const link = paypalPaymentLink({
       address: 'info@balkanskatrkackaliga.net',
       amountEur: 43,
-      note: '20271',
+      note: '2027000001',
     })
 
     const built = new URL(link)
@@ -46,7 +46,7 @@ describe('the PayPal link Layer 2 would press, prepared and not drawn', () => {
     expect(built.origin + built.pathname).toBe('https://www.paypal.com/cgi-bin/webscr')
     expect(built.searchParams.get('cmd')).toBe('_xclick')
     expect(built.searchParams.get('business')).toBe('info@balkanskatrkackaliga.net')
-    expect(built.searchParams.get('item_name')).toBe('20271')
+    expect(built.searchParams.get('item_name')).toBe('2027000001')
     expect(built.searchParams.get('amount')).toBe('43.00')
     expect(built.searchParams.get('currency_code')).toBe('EUR')
   })
@@ -57,7 +57,7 @@ describe('the PayPal link Layer 2 would press, prepared and not drawn', () => {
        and a PayPal amount field reads "38" as thirty-eight units of whatever currency
        code came with it - which is euro either way here - so the digits are what a
        human reads twice before sending real money. */
-    const link = paypalPaymentLink({ address: 'x@example.test', amountEur: 38, note: '20271' })
+    const link = paypalPaymentLink({ address: 'x@example.test', amountEur: 38, note: '2027000001' })
 
     expect(new URL(link).searchParams.get('amount')).toBe('38.00')
   })
@@ -146,6 +146,58 @@ describe('the way to pay, asked by the money instead of by the country', () => {
 })
 
 /**
+ * THE FORM OF THE REFERENCE, `YYYYNNNNNN` (owner, 20.10.2026, PDL P8, „Poziv na broj je
+ * YYYYNNNNNN": „neka sifra uplate bude formata YYYYNNNNNN gde ne YYYY godina, a NNNNNN clanski
+ * broj"). It overturns the 31.07.2026 form `[season][number without noughts]` (`202737`).
+ *
+ * Every row is a LITERAL, written out here and not computed by `paymentReference`, so a change to
+ * the function cannot move its own expectation. The two sources of the value are swapped in the
+ * rows: the season (the next one and the running one differ for a payment in the renewal window)
+ * and the member (another number, and a number whose leading figures are not noughts).
+ */
+describe('the reference is the season and the six digit member number, ten digits always', () => {
+  it.each([
+    [2027, '000027', '2027000027'],
+    [2027, '123456', '2027123456'],
+    [2027, '000001', '2027000001'],
+    [2027, '001234', '2027001234'],
+    [2028, '000027', '2028000027'],
+    [2027, '000028', '2027000028'],
+  ])('is %i and %s run together: %s', (season, number, expected) => {
+    expect(paymentReference(season, number)).toBe(expected)
+  })
+
+  it('is ten digits and nothing else, for a member with noughts and for one without', () => {
+    for (const number of ['000001', '000027', '001234', '099999', '123456']) {
+      expect(paymentReference(2027, number), number).toMatch(/^[0-9]{10}$/)
+    }
+  })
+
+  it('is not changed by the member number being read as a figure and written back', () => {
+    /* The 31.07.2026 form was `${season}${Number(number)}`; this pair is the one the two forms
+       disagree on, so the function cannot return the old one and pass. */
+    expect(paymentReference(2027, '000027')).not.toBe('202727')
+    expect(paymentReference(2027, '000027').slice(4)).toBe('000027')
+  })
+
+  it('is the very string the code carries as RO, which the screens also write out', () => {
+    const paying = {
+      account: RECIPIENT_ACCOUNT,
+      recipient: RECIPIENT_NAME,
+      amountRsd: 4800,
+      purpose: paymentPurpose(2027),
+    }
+
+    expect(ipsPayload({ ...paying, reference: paymentReference(2027, '000027') })).toMatch(
+      /\|RO:2027000027$/,
+    )
+    expect(ipsPayload({ ...paying, reference: paymentReference(2027, '123456') })).toMatch(
+      /\|RO:2027123456$/,
+    )
+  })
+})
+
+/**
  * THE REFERENCE OF SOMEBODY WHO MAY HAVE NO NUMBER YET.
  *
  * <p>PDL P8, the entry „Prvu članarinu nov član plaća bez poziva na broj" (10.10.2026, chosen by the
@@ -162,7 +214,7 @@ describe('the reference of somebody who may have no number yet', () => {
       expect(paymentReferenceOrNone(2027, number), number).toBe(paymentReference(2027, number))
     }
 
-    expect(paymentReferenceOrNone(2027, '000037')).toBe('202737')
+    expect(paymentReferenceOrNone(2027, '000037')).toBe('2027000037')
   })
 
   it('is nothing at all for somebody with no number, and not the season on its own', () => {
@@ -186,7 +238,7 @@ describe('the reference of somebody who may have no number yet', () => {
        makes the pair a measurement of the reference alone. */
     expect(ipsPayload({ ...paying, reference: paymentReferenceOrNone(2027, '000037') })).toBe(
       'K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD4800,00|SF:289' +
-        '|S:Članarina za 2027. godinu|RO:202737',
+        '|S:Članarina za 2027. godinu|RO:2027000037',
     )
   })
 })

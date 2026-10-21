@@ -50,20 +50,32 @@ export const PAYPAL_ADDRESS = CONTACT_ADDRESS
 
 /**
  * What the member writes in the reference field, and what the administrator
- * reads off the statement to know whose money this is (owner, 31.07.2026).
+ * reads off the statement to know whose money this is (owner, 31.07.2026; the
+ * form is the owner's of 20.10.2026, PDL P8, „Poziv na broj je YYYYNNNNNN": „neka
+ * sifra uplate bude formata YYYYNNNNNN gde ne YYYY godina, a NNNNNN clanski
+ * broj").
  *
- * The season and then the member number without its leading noughts, run
- * together: 202737. Digits and nothing else, because the field is read by a
- * machine off a bank statement and a separator is one more thing that can be
- * dropped, doubled or turned into a different character on the way.
+ * The season and then the member number exactly as the league printed it, six
+ * digits with their leading noughts, run together: 2027000037. Always ten
+ * digits. Digits and nothing else, because the field is read by a machine off a
+ * bank statement and a separator is one more thing that can be dropped, doubled
+ * or turned into a different character on the way.
  *
  * The season is in it because the same person pays every year and the number
- * alone would not say which year was paid; the noughts are out because nobody
- * copying a reference from a screen into a banking application types four of
- * them correctly.
+ * alone would not say which year was paid. THE NOUGHTS ARE IN IT TOO, which
+ * overturns the 31.07.2026 reasoning that took them out („nobody copying a
+ * reference types four of them correctly"): the owner wants one fixed width, so
+ * a reference is read the same way whoever it belongs to, and the member copies
+ * it from the screen with a button rather than typing it.
+ *
+ * The number is NOT converted to a figure and back and NOT padded here: the
+ * league serves it as six digits (`competitor_member_number_shape`, V7:
+ * `^[0-9]{6}$`), so a number that is not six digits is a fault in what was served, and
+ * it is meant to show as a reference that is not ten digits instead of being
+ * quietly made to look right.
  */
 export function paymentReference(season: number, memberNumber: string): string {
-  return `${season}${Number(memberNumber)}`
+  return `${season}${memberNumber}`
 }
 
 /**
@@ -80,7 +92,7 @@ export function paymentReference(season: number, memberNumber: string): string {
  * out for.
  *
  * <p>Kept beside {@link paymentReference} and not folded into it: that one is about how a number
- * becomes a reference and takes a number that is there, and every caller that already has one
+ * becomes a reference (ten digits, `YYYYNNNNNN`) and takes a number that is there, and every caller that already has one
  * goes on getting a string and nothing else.
  *
  * @param memberNumber the number the league gave him, or nothing for somebody who registered and
