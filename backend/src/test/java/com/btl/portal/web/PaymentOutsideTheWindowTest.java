@@ -217,7 +217,7 @@ class PaymentOutsideTheWindowTest {
 	void aMemberWhoseFeeHasLapsedPaysTheRunningSeasonAtTheRowThatCoversTheDay() throws Exception {
 		long id = competitor("c1", "005005", "1990-05-15", A_TOWN_IN_SERBIA);
 
-		MockHttpServletResponse answer = confirm(id, priceOf("season", "rsd"), "ips", "20275005");
+		MockHttpServletResponse answer = confirm(id, priceOf("season", "rsd"), "ips", "2027005005");
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 

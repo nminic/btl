@@ -199,7 +199,7 @@ class ModeratorWriteApiTest {
 	/** Named, so the two rows below are found by what they are and never by being the only ones. */
 	private static final String WHAT_HE_DECIDED = "Komentar o kome je odluceno";
 
-	private static final String THE_REFERENCE_HE_RECOGNISED = "20280070";
+	private static final String THE_REFERENCE_HE_RECOGNISED = "2028000070";
 
 	/**
 	 * The address the superadmin types when he makes somebody a moderator, and nobody in

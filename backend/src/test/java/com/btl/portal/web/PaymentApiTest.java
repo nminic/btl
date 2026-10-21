@@ -8,7 +8,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -325,7 +324,7 @@ class PaymentApiTest {
 		long id = competitor("a2", "005005", false, "1990-05-15", A_TOWN_IN_SERBIA);
 
 		MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
-				WHAT_A_SERBIAN_MEMBER_SENDS, false, "ips", "20280055")), moderatorCookie);
+				WHAT_A_SERBIAN_MEMBER_SENDS, false, "ips", "2028000055")), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 
@@ -339,7 +338,7 @@ class PaymentApiTest {
 				.query(Boolean.class).single()).isTrue();
 
 		assertThat(db.sql("select reference from payment where id = ?").param(body.paymentId())
-				.query(String.class).single()).isEqualTo("20280055");
+				.query(String.class).single()).isEqualTo("2028000055");
 	}
 
 	/** THE JUNIOR PRICE OVERRIDES THE PERIOD, whatever day it is paid on (V4, `MembershipPrice`). */
@@ -411,7 +410,7 @@ class PaymentApiTest {
 	void confirmingTheSamePaymentTwiceIsHarmlessWhenItCarriesAReference() throws Exception {
 		long id = competitor("b1", "005010", false, "1990-05-15", A_TOWN_IN_SERBIA);
 		PaymentApi.Confirm typed = new PaymentApi.Confirm(id, WHAT_A_SERBIAN_MEMBER_SENDS, false, "ips",
-				"20280051");
+				"2028000051");
 
 		MockHttpServletResponse first = confirm(json(typed), moderatorCookie);
 		PaymentApi.Confirmed firstBody =
@@ -563,7 +562,7 @@ class PaymentApiTest {
 
 		long awaited = db.sql("insert into payment (competitor_id, season, reference, price_row_id,"
 						+ " amount, currency, fee, method, state) values"
-						+ " (?, 2028, '20280077', (select id from price_row where key = 'early'),"
+						+ " (?, 2028, '2028000077', (select id from price_row where key = 'early'),"
 						+ " 35.00, 'EUR', 3.00, 'paypal', 'awaited') returning id")
 				.param(id).query(Long.class).single();
 
@@ -948,7 +947,7 @@ class PaymentApiTest {
 	 *
 	 * <p><b>The column is asserted and not only the status</b>, because the two say different things:
 	 * a 201 would also be given by a route that stored the empty string, and
-	 * {@code payment_reference_shape} (V16) reads {@code reference is null or reference ~ '^[0-9]{7,}$'},
+	 * {@code payment_reference_shape} (V16, narrowed by V68) reads {@code reference is null or reference ~ '^[0-9]{10}$'},
 	 * so an empty string on the row would be refused by the database rather than by anybody - a 500 one
 	 * layer down instead of a clean row.
 	 *
@@ -1041,56 +1040,86 @@ class PaymentApiTest {
 				.isEqualTo(PaymentApi.THE_METHOD_IS_NOT_KNOWN);
 	}
 
-	@Test
-	void aReferenceMustBeShapedLikeOne() throws Exception {
-		long id = competitor("ad", null, false, "1990-05-15");
+	/**
+	 * A REFERENCE IS EXACTLY TEN DIGITS, AND EVERY OTHER TEXT IS REFUSED WITH THE SENTENCE FOR A
+	 * MISSHAPEN ONE, AND NOTHING IS BOOKED.
+	 *
+	 * <p>Owner, PDL P8, 20.10.2026: the reference is {@code YYYYNNNNNN}, and the server takes exactly
+	 * ten digits, on this route and in the database; nine or eleven are refused. The sentence is the one
+	 * this route already gave for a text that was not digits ({@code theReferenceIsNotShaped}, 400), so
+	 * no sentence is added and no dictionary moves.
+	 *
+	 * <p><b>The texts are told apart by WHAT A WRONG RULE WOULD LET THROUGH</b>, each one a case of its
+	 * own so that a rule wrong in only some of the ways fails as exactly those:
+	 * <ul>
+	 * <li>{@code 202800007} and {@code 20280000701}, one digit either side: the two a pattern of
+	 * {@code {10,}}, {@code {9,10}} or {@code {7,}} lets through;
+	 * <li>{@code 20280070}, eight digits, which is what V16 accepted and a route left on its old rule
+	 * still would;
+	 * <li>{@code 202800007a}, ten characters of which one is not a digit, which a route that asks only
+	 * the length lets through to the database (the constraint refuses it there, and the person gets a
+	 * 500 instead of the sentence, which is why {@code answered} is used and not a bare request);
+	 * <li>a space inside, a leading letter, and ten digits of another script, which the
+	 * {@code [0-9]} of the pattern and of the constraint do not take;
+	 * <li>and three texts far past the old bound: 2693 digits that cannot be compressed (what the
+	 * unique index first refused on PostgreSQL 18.6, measured 10.10.2026), three thousand, and a
+	 * hundred thousand copies of one digit. They were the point of a cap of 2000 until V68, and the
+	 * shape refuses them now without one.
+	 * </ul>
+	 *
+	 * <p><b>What is read afterwards is the whole of what a booking would have written</b>: no payment,
+	 * no membership, and the member himself with the number he did not have and the activity he did not
+	 * get. The draw of a member number is the last thing a booking does, so a refusal at the door has no
+	 * number to leave behind, and the member row is what says so.
+	 */
+	@ParameterizedTest(name = "[{index}] {1}")
+	@CsvSource(delimiter = '|', value = {
+			"2028-070|the old misshapen example",
+			"202800007|nine digits, one short",
+			"20280000701|eleven digits, one over",
+			"20280070|eight digits, the shape V16 took",
+			"202800007a|ten characters, one of them a letter",
+			"a028000070|ten characters, a letter first",
+			"202800 0070|ten digits with a space inside",
+			"\uFF12\uFF10\uFF12\uFF18\uFF10\uFF10\uFF10\uFF10\uFF17\uFF10|ten digits of another script"})
+	void aReferenceThatIsNotExactlyTenDigitsIsRefusedAsMisshapenAndNothingIsBooked(String typedText,
+			String what) throws Exception {
 
-		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", "2028-070")), moderatorCookie);
-
-		assertThat(answer.getStatus()).isEqualTo(400);
-		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
-				.isEqualTo(PaymentApi.THE_REFERENCE_IS_NOT_SHAPED);
+		assertNothingIsBookedForAReferenceOf(typedText, "d1", what);
 	}
 
-	/**
-	 * A REFERENCE LONGER THAN THE INDEX CAN HOLD IS REFUSED WITH THE SENTENCE FOR A MISSHAPEN
-	 * ONE, AND NOTHING IS BOOKED.
-	 *
-	 * <p>{@code payment_reference_shape} asks for seven digits at least and says nothing of the
-	 * other end; {@code payment_reference_unique} has one. Three thousand digits walk through
-	 * {@code A_REFERENCE}, reach the {@code insert} and come back to a moderator booking a payment
-	 * as a 500 (see {@link WhatAnIndexHoldsTest}, which asks the database where the limit is). The
-	 * refusal is the one this route already gives for a reference of the wrong shape, so no
-	 * sentence is added and no dictionary moves.
-	 *
-	 * <p><b>One case for each of four texts</b>, and the four are told apart and explained in
-	 * {@link WhatAnIndexHoldsTest.TooLong}: a loop would end at the first text that is wrongly
-	 * accepted and leave the others unjudged.
-	 *
-	 * <p><b>What is read afterwards is the whole of what a booking would have written</b>: no
-	 * payment, no membership, and the member himself with the number he did not have and the
-	 * activity he did not get. The draw of a member number is the last thing a booking does, so a
-	 * refusal at the door has no number to leave behind, and the member row is what says so.
-	 */
-	@ParameterizedTest
-	@EnumSource(WhatAnIndexHoldsTest.TooLong.class)
-	void aReferenceLongerThanTheIndexCanHoldIsRefusedAsMisshapenAndNothingIsBooked(
-			WhatAnIndexHoldsTest.TooLong kind) throws Exception {
+	/** The texts that are too long for any bound there ever was, built here and not typed out. */
+	@Test
+	void aReferenceOfTwoThousandSixHundredAndNinetyThreeDigitsIsRefusedAsMisshapen() throws Exception {
+		assertNothingIsBookedForAReferenceOf("1234567890".repeat(269) + "123", "d4",
+				"2693 digits that cannot be compressed");
+	}
 
-		long id = competitor("d1", null, false, "1990-05-15");
-		String tooLong = kind.forAReference(PaymentApi.MOST_A_REFERENCE_CAN_BE);
+	@Test
+	void aReferenceOfThreeThousandDigitsIsRefusedAsMisshapen() throws Exception {
+		assertNothingIsBookedForAReferenceOf("1234567890".repeat(300), "d5", "three thousand digits");
+	}
+
+	@Test
+	void aHundredThousandCopiesOfOneDigitAreRefusedAsMisshapen() throws Exception {
+		assertNothingIsBookedForAReferenceOf("7".repeat(100_000), "d6",
+				"a hundred thousand copies of one digit");
+	}
+
+	private void assertNothingIsBookedForAReferenceOf(String typedText, String suffix, String what)
+			throws Exception {
+
+		long id = competitor(suffix, null, false, "1990-05-15");
 
 		MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(() -> confirm(json(
-				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", tooLong)),
+				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", typedText)),
 				moderatorCookie));
 
 		assertThat(answer.getStatus())
-				.as("%s was taken as a reference", kind)
+				.as("%s was taken as a reference", what)
 				.isEqualTo(400);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
-				.as("%s was refused with a sentence other than the one for a misshapen reference",
-						kind)
+				.as("%s was refused with a sentence other than the one for a misshapen reference", what)
 				.isEqualTo(PaymentApi.THE_REFERENCE_IS_NOT_SHAPED);
 
 		assertThat(paymentCount()).as("a payment was written for a reference the route refused")
@@ -1103,67 +1132,56 @@ class PaymentApiTest {
 	}
 
 	/**
-	 * AND THE LONGEST REFERENCE THE ROUTE TAKES IS BOOKED WHOLE.
+	 * AND TEN DIGITS ARE BOOKED, KEPT WHOLE, WHICH IS THE OTHER HALF OF THE RULE.
 	 *
-	 * <p>This is the other half of the bound, and the one a bound set too high fails: the
-	 * reference is noise (it does not compress), exactly as long as the bound allows, so if the
-	 * number were above what the index keeps this request would reach the {@code insert} and come
-	 * back as a fault instead of as a booking. {@link WhatAnIndexHoldsTest} is the file that says
-	 * where the index stops; this one says that the route's own largest reference is on the right
-	 * side of it, through the whole route and not through a bare table.
+	 * <p>The case a rule too narrow fails: a pattern of {@code {9,10}} would take this one and refuse
+	 * nothing above, a pattern of {@code {11}} would refuse it. The column is read back as well as the
+	 * status, because a 201 would also be given by a route that stored something other than what was
+	 * typed.
 	 */
 	@Test
-	void theLongestReferenceTheRouteTakesIsBookedWhole() throws Exception {
-		String longest = WhatAnIndexHoldsTest.aReferenceOf(PaymentApi.MOST_A_REFERENCE_CAN_BE);
+	void aReferenceOfExactlyTenDigitsIsBookedWhole() throws Exception {
 		long id = competitor("d2", null, false, "1990-05-15");
 
-		assertThat(longest).hasSize(PaymentApi.MOST_A_REFERENCE_CAN_BE);
-
 		MockHttpServletResponse booked = WhatAnIndexHoldsTest.answered(() -> confirm(json(
-				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", longest)),
+				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", "2028000070")),
 				moderatorCookie));
 
 		assertThat(booked.getStatus())
-				.as("the longest reference the route takes was refused: %s",
-						booked.getContentAsString())
+				.as("a reference of exactly ten digits was refused: %s", booked.getContentAsString())
 				.isEqualTo(201);
 		assertThat(db.sql("select reference from payment where competitor_id = ?").param(id)
 				.query(String.class).single())
 				.as("the reference was not kept whole")
-				.isEqualTo(longest);
+				.isEqualTo("2028000070");
 	}
 
 	/**
-	 * AND IT IS MEASURED AFTER THE SPACES ARE TAKEN OFF, which is what the index sees.
+	 * AND IT IS MEASURED AFTER THE SPACES ARE TAKEN OFF, which is what the unique key and the
+	 * constraint see.
 	 *
-	 * <p>The reference is typed with two spaces on each side, so what the route is asked is longer
-	 * than the bound and what it keeps is not. {@code reference.strip()} is what the route stores
-	 * and what the index holds, so it is the stripped text that is measured: a bound read off what
-	 * was typed would refuse a booking the index would have taken, and this is the case that says
-	 * so. It is a case of its own and not a second booking in the case above, so the two cannot hide
-	 * each other.
+	 * <p>The reference is typed with two spaces on each side, so what the route is asked is fourteen
+	 * characters and what it keeps is ten. {@code reference.strip()} is what the route stores, so it is
+	 * the stripped text that is measured: a shape read off what was typed would refuse a booking the
+	 * database would have taken, and this is the case that says so. A case of its own and not a second
+	 * booking in the case above, so the two cannot hide each other.
 	 */
 	@Test
-	void aReferenceAsLongAsTheBoundTypedWithSpacesAroundItIsMeasuredAfterTheyAreOff()
-			throws Exception {
-
-		String longest = "1" + WhatAnIndexHoldsTest.aReferenceOf(PaymentApi.MOST_A_REFERENCE_CAN_BE - 1);
+	void aTenDigitReferenceTypedWithSpacesAroundItIsMeasuredAfterTheyAreOff() throws Exception {
 		long id = competitor("d3", null, false, "1990-05-15");
-
-		assertThat(longest).hasSize(PaymentApi.MOST_A_REFERENCE_CAN_BE);
 
 		MockHttpServletResponse padded = WhatAnIndexHoldsTest.answered(() -> confirm(json(
 				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal",
-						"  " + longest + "  ")), moderatorCookie));
+						"  2028000071  ")), moderatorCookie));
 
 		assertThat(padded.getStatus())
-				.as("a reference as long as the bound, typed with spaces around it, was refused: %s",
+				.as("a ten digit reference typed with spaces around it was refused: %s",
 						padded.getContentAsString())
 				.isEqualTo(201);
 		assertThat(db.sql("select reference from payment where competitor_id = ?").param(id)
 				.query(String.class).single())
 				.as("the reference was kept with the spaces it was typed with, or cut")
-				.isEqualTo(longest);
+				.isEqualTo("2028000071");
 	}
 
 	@Test
@@ -1171,10 +1189,10 @@ class PaymentApiTest {
 		long first = competitor("ae", "009009", false, "1990-05-15");
 		long second = competitor("af", null, false, "1990-05-15");
 
-		confirm(json(new PaymentApi.Confirm(first, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", "20280090")), moderatorCookie);
+		confirm(json(new PaymentApi.Confirm(first, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", "2028000090")), moderatorCookie);
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(second, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", "20280090")), moderatorCookie);
+				new PaymentApi.Confirm(second, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", "2028000090")), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(409);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
@@ -2010,7 +2028,7 @@ class PaymentApiTest {
 
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
 						+ " currency, fee, method, state) values"
-						+ " (?, 2028, '20280099', (select id from price_row where key = 'early'),"
+						+ " (?, 2028, '2028000099', (select id from price_row where key = 'early'),"
 						+ " 35.00, 'EUR', 3.00, 'paypal', 'awaited')")
 				.param(id).update();
 
