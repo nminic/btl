@@ -1,9 +1,12 @@
-import { act, configure, getConfig, screen, waitFor } from '@testing-library/react'
+import { act, configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { clearResourceCache } from '../data/client'
 import { fakeQueue } from '../test/fakeQueue'
 import served from '../test/mock/verification.json'
 import { renderAt } from '../test/render'
+import sr from '../i18n/sr.json'
+import { translate } from '../i18n/translate'
+import { QUEUE } from '../pages/admin/queues'
 import { serverThat, type Asked } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
 import { typeATownTheCodebookKnows } from '../test/town'
@@ -49,6 +52,15 @@ async function headerCount(): Promise<number> {
   const said = /(\d+) na čekanju$/.exec(link.getAttribute('aria-label') ?? '')
 
   return Number(said?.[1])
+}
+
+/** The number beside the queue of the new teams in the navigation, which the section counts off the
+ *  same answer and draws as a digit that a reader hears in words. */
+async function tabCount(): Promise<number> {
+  const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }))
+  const link = nav.getByRole('link', { name: new RegExp(`^${translate(sr, 'sr', QUEUE.teams.labelKey)}, `) })
+
+  return Number((link.textContent ?? '').replace(/\D/g, ''))
 }
 
 /** How many times the server was asked for the queue. */
@@ -103,14 +115,22 @@ describe('the counter in the header', () => {
     renderAt('/sr/administracija/verifikacija/rezultati', 'superadmin', '000002', undefined, DAY)
 
     const before = await headerCount()
+    const tabBefore = await tabCount()
+
+    expect(tabBefore, 'the navigation counts no teams, so nothing is measured').toBe(teams.length)
 
     gone = true
     act(() => {
       clearResourceCache('verification')
     })
 
+    /* The header AND the number beside the queue in the navigation: both stand beside the outlet
+       and neither is unmounted, and they are counted off one answer. */
     await waitFor(async () => {
       expect(await headerCount()).toBe(before - teams.length)
+    })
+    await waitFor(async () => {
+      expect(await tabCount()).toBe(0)
     })
   }, SLOW)
 

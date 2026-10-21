@@ -206,18 +206,11 @@ function itemFrom(served: ServedPendingItem): PendingItem {
  *                 `readTheQueueAgain`): the shape `AskingThisTeam.tsx` reads its own list again in,
  *                 and the finding of the review of T5 it answers (PENDING, „Odbijanje koje dokazuje
  *                 da je ekran zastareo ostavlja zastareo crtež"). Left out, as every other caller
- *                 leaves it, it changes nothing of its own.
- *
- * <p><b>And the queue is read again whenever anybody drops it</b> (PENDING 29561), whether or not
- * this caller passes a revision: the header counts through this hook and never unmounts, so a
- * comment or a team proposal that drops `verification` after the server has taken the row left
- * the number over every screen where it was (`app/Shell.tsx`). Every reader of the queue follows
- * its drops - the header, the tabs and the cards - because they count off one answer and must not
- * be able to disagree.
+ *                 leaves it, it changes nothing: `undefined` on every render is a dependency that
+ *                 never moves.
  */
 export function usePending(revision?: number): ResourceState<PendingItem[]> {
-  const dropped = useHowManyTimesDropped('verification')
-  const state = useResource<ServedPendingItem[]>('verification', { revision: (revision ?? 0) + dropped })
+  const state = useResource<ServedPendingItem[]>('verification', { revision })
   const { proposals } = useSession()
 
   return useMemo(
@@ -227,6 +220,29 @@ export function usePending(revision?: number): ResourceState<PendingItem[]> {
         : state,
     [state, proposals],
   )
+}
+
+/**
+ * THE QUEUE AS THE NUMBERS OVER IT COUNT IT: the number in the header (`app/Shell.tsx`) and the number
+ * beside each queue in the navigation (`SectionNav.tsx`) (PENDING 29561).
+ *
+ * <p><b>It reads the queue again whenever anybody drops it, and the screens that work the queue do
+ * not.</b> Both of these stand beside the outlet and are not unmounted from one screen to the next, so
+ * a comment, a proposed team or a picture that drops `verification` once the server has taken the
+ * row left them holding the answer they had read on arriving: the header said „Administracija 15"
+ * before and after, and the card „Novi timovi" went from 3 to 4 while the number over it stayed
+ * (measured on 19.10.2026, from the review of the drop). Dropping the cache alone tells nobody who
+ * holds an answer from it (`HowToRead.revision`).
+ *
+ * <p><b>Only these two, and that is the boundary of the change rather than an oversight.</b>
+ * `PendingQueue` and `ReviewQueue` draw cards, and a screen that drew a different set of cards
+ * the moment a decision dropped the queue under it is a change to every moderating flow
+ * (`HowToRead.revision` states why a drop is not made to reach every reader). They keep what they
+ * were given and read again when they ask to, through the `revision` they already pass. The counts do
+ * not disagree for it: both subtract the session's decisions from whatever answer they hold.
+ */
+export function usePendingForTheCount(): ResourceState<PendingItem[]> {
+  return usePending(useHowManyTimesDropped('verification'))
 }
 
 /**
@@ -249,8 +265,7 @@ export function usePending(revision?: number): ResourceState<PendingItem[]> {
  *                 ekran zastareo ostavlja zastareo crtež")
  */
 export function useWaitingRuns(revision?: number): ResourceState<WaitingRun[]> {
-  const dropped = useHowManyTimesDropped('verification')
-  const state = useResource<ServedPendingItem[]>('verification', { revision: (revision ?? 0) + dropped })
+  const state = useResource<ServedPendingItem[]>('verification', { revision })
 
   return useMemo(
     () =>
