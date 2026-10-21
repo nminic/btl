@@ -32,9 +32,10 @@ import java.io.IOException;
  *
  * <p><b>Why {@code open} is answered here rather than worked out on the screen.</b> The
  * deadline is 1 January at 10:00 ({@link SeasonClock#categoryMayBeChosenFor}) and the front
- * end reads whole days off one clock with no notion of an hour or a zone
+ * end reads whole days off one clock with no notion of an hour
  * ({@code frontend/src/data/season.ts}: „The portal reads whole days off one clock with no
- * notion of a zone"). It therefore CANNOT answer this, and a screen that guessed would be
+ * notion of an hour"). The day it reads is Belgrade's, the server's own, since 20.10.2026 (ADL
+ * A7), but a day is all it reads. It therefore CANNOT answer this, and a screen that guessed would be
  * wrong for ten hours on the one morning of the year the answer changes. Measured while this
  * was written: the draft box was drawn under {@code inYearlyWindow(today)}, which is
  * {@code 10-01 .. 12-31}, so it vanished at midnight on 1 January and took ten hours of the
