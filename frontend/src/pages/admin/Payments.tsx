@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
 import { Prompt } from '../../components/Prompt'
 import { Resource } from '../../components/Resource'
-import { clearResourceCache } from '../../data/client'
 import type { MembershipDue, Outstanding } from '../../data/types'
 import { usePaymentsDue } from '../../data/useResource'
 import { money } from '../../i18n/format'
@@ -20,6 +19,7 @@ import {
 import { matching } from './paymentSearch'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
+import { dropWhatActiveMoves } from './whatActiveMoves'
 import '../member/Member.css'
 import './Activation.css'
 import './Verification.css'
@@ -674,7 +674,11 @@ export function Payments() {
          below, which is where the focus goes when a row has left the list. */
       afterAnActivation={readAgain > 0}
       onActivated={() => {
-        /* THREE NAMES, and the second and the third are not tidiness. An activation draws a member
+        /* EIGHT NAMES, ONE LIST (`whatActiveMoves.ts`, shared with `admin/AdminMembers.tsx`), and the
+           five after the first three were left off until PENDING 29656's sibling was measured: an
+           activation sets `competitor.active`, so `attendance`, `comments`, `pairs`, `teams` and
+           `results` (every route that reads the flag) say the man is still outside the league. The
+           first three are not tidiness either. An activation draws a member
            number and sets `competitor.active`, and the moderation of the members
            (`admin/AdminMembers.tsx`) reads that fact twice: the rows are `members`, which carry
            `active`, the seasons he holds and the basis of the one on sale, and the link to a
@@ -684,9 +688,7 @@ export function Payments() {
            with „Sezone članstva" and „Poslednja sezona" as they were for a renewal. Both doors of
            this screen end here (`POST /api/payments` and `POST /api/memberships`), so one place
            clears for both. */
-        clearResourceCache('payments')
-        clearResourceCache('members')
-        clearResourceCache('competitors')
+        dropWhatActiveMoves()
         setReadAgain((was) => was + 1)
       }}
     />

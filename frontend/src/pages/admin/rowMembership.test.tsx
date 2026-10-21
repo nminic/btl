@@ -1,11 +1,8 @@
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { act, configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import {
   arrivedResource,
   clearResourceCache,
   loadResource,
-  RESOURCE_NAMES,
   type ResourceName,
 } from '../../data/client'
 import type { Competitor, Member } from '../../data/types'
@@ -16,6 +13,8 @@ import { answeredWith, refused, serverThat, type Asked } from '../../test/server
 import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
 import { SLOW } from '../../test/slow'
+import { namesThatReadTheFlag, READS_THE_FLAG_AND_IS_NOT_DROPPED } from '../../test/readsTheFlag'
+import { WHAT_READS_OR_SHOWS_ACTIVE } from './whatActiveMoves'
 
 /**
  * „STORNIRAJ” AND THE CHANGE OF BASIS ON THE MEMBER'S ROW, AS THE MODERATOR MEETS THEM.
@@ -33,59 +32,6 @@ import { SLOW } from '../../test/slow'
  */
 /* Every wait is given half of what a case is given, for the reason `rowPayment.test.tsx` gives. */
 configure({ asyncUtilTimeout: SLOW / 2 })
-
-/**
- * THE FLOOR UNDER WHAT A CHANGE OF A SEASON DROPS (PENDING 29656), which is the backend's own SQL and
- * not a sentence.
- *
- * <p><b>Why it is read and not listed.</b> `AdminMembers#seasonChanged` is a list of cached names written
- * by hand, and the one it lacked for two days (`attendance`, `comments`) was a name nobody had to be
- * reminded of: the route reads `competitor.active`, the screen keeps drawing, and the fault is a list that
- * shows a member who is not one any more. A list that only knows what its author remembered is held
- * against something that knows more.
- *
- * <p><b>What is asked.</b> Every cached name has one route that answers a read at `/api/<name>`. A name
- * READS THE FLAG when the class that declares that route has a line of SQL, a string literal, that names
- * `active`: a javadoc or a comment line begins with `*` or `/` and is never one. Eight names did on
- * 20.10.2026. Every one of them must be dropped by a change of a season, bar the one exception below.
- *
- * <p><b>Where it stops.</b> It reads the class, not the route: a class that declares two routes would
- * lend the flag of one to the other, and none of the eight does. A name whose route reaches the flag
- * through a view or a function in the database would not be seen; no cached name does.
- */
-const JAVA = join(process.cwd(), '..', 'backend', 'src', 'main', 'java')
-
-function javaUnder(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const at = join(dir, entry.name)
-
-    if (entry.isDirectory()) {
-      return javaUnder(at)
-    }
-
-    return entry.name.endsWith('.java') ? [readFileSync(at, 'utf-8')] : []
-  })
-}
-
-function namesThatReadTheFlag(): ResourceName[] {
-  const sources = javaUnder(JAVA)
-  const aLineOfSqlNamingIt = /^\s*(?:\+\s*)?"[^"\n]*\bactive\b[^"\n]*"/m
-
-  return RESOURCE_NAMES.filter((name) =>
-    sources.some(
-      (code) => code.includes(`@GetMapping("/api/${name}")`) && aLineOfSqlNamingIt.test(code),
-    ),
-  )
-}
-
-/**
- * The one name that reads the flag and is not dropped by a change of a season. PENDING 29656 records it
- * as an edge („me/applications čita active samo za moderatorove sopstvene prijave"): it is the reader's
- * own list, dropped by its own hook when the member it is handed changes (`theWaitingNowBelongsTo`), and
- * this screen hands it no member. Written here so that it is a decision and not a gap, and checked in
- * the other direction too: the day it stops reading the flag this exception is dead and the case fails.
- */
-const READS_THE_FLAG_AND_IS_NOT_DROPPED = 'me/applications'
 
 /** The two the screen asks for again the moment they are dropped, so their landing back in the cache
  *  proves nothing: a drop of theirs is a second request, and that is what is counted. */
@@ -643,6 +589,32 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     expect(names).toContain('comments')
     expect(names).toContain(READS_THE_FLAG_AND_IS_NOT_DROPPED)
     expect(names).not.toContain('ducats')
+  })
+
+  /**
+   * THE ONE LIST THAT EVERY PATH MOVING THE FLAG DROPS (`whatActiveMoves.ts`) IS HELD TO THE BACKEND IN
+   * BOTH DIRECTIONS, and not only through the screens that happen to be driven in this file: every name
+   * the SQL reads the flag in is on it (bar the one exception), and nothing is on it that neither reads
+   * the flag nor is one of the two screens the write itself is made on. The three paths (this file's four
+   * doors, `rowPayment.test.tsx`'s payment and `paymentsActivation.test.tsx`'s activation) each drive it
+   * from the screen.
+   */
+  it('keeps one list for every path that moves the flag, and it is the backend’s', () => {
+    const reading = namesThatReadTheFlag().filter((name) => name !== READS_THE_FLAG_AND_IS_NOT_DROPPED)
+    const THE_WRITES_ARE_MADE_ON: ResourceName[] = ['payments', 'members']
+
+    for (const name of reading) {
+      expect(WHAT_READS_OR_SHOWS_ACTIVE, `${name} reads the flag and is not dropped`).toContain(name)
+    }
+
+    expect(WHAT_READS_OR_SHOWS_ACTIVE).not.toContain(READS_THE_FLAG_AND_IS_NOT_DROPPED)
+
+    for (const name of WHAT_READS_OR_SHOWS_ACTIVE) {
+      expect(
+        [...reading, ...THE_WRITES_ARE_MADE_ON],
+        `${name} is dropped though nothing about it depends on the flag`,
+      ).toContain(name)
+    }
   })
 
   /**

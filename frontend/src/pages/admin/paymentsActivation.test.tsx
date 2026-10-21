@@ -1,5 +1,6 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { clearResourceCache } from '../../data/client'
+import { arrivedResource, clearResourceCache, loadResource, type ResourceName } from '../../data/client'
+import { namesThatReadTheFlag, READS_THE_FLAG_AND_IS_NOT_DROPPED } from '../../test/readsTheFlag'
 import type { Member, MembershipDue, Outstanding } from '../../data/types'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -1631,6 +1632,97 @@ describe('activating a membership from the payments screen', () => {
      * answer again cannot show the new member or the new season whatever it counts. The public list
      * is not served here (the shared mock answers it), because what this measures is the row.
      */
+    /**
+     * <p><b>AND EVERY OTHER CACHED ANSWER THAT READS `active` IS ASKED AGAIN, through both doors</b>
+     * (the sibling of PENDING 29656, which `AdminMembers#seasonChanged` closed for a change of a
+     * season). An activation draws a number and sets `competitor.active`, so the public list, the
+     * results, his team, his pair, the list of who is going and the author's number on a comment all
+     * say something different about him afterwards. The names are the backend's own, read out of its
+     * SQL (`test/readsTheFlag.ts`), not a list written here; `members` is added by name for the reason
+     * written above. Each is loaded and confirmed in hand BEFORE the press, so that „gone afterwards"
+     * is a change this case can see. `payments` is the list on the screen itself and is read again at
+     * once by the remount, so its drop is a second request and is counted.
+     */
+    describe('every answer that reads the flag, in the same visit', () => {
+      function namesToLoad(): ResourceName[] {
+        return [
+          ...new Set<ResourceName>([
+            ...namesThatReadTheFlag().filter((name) => name !== READS_THE_FLAG_AND_IS_NOT_DROPPED),
+            'members',
+          ]),
+        ].filter((name) => name !== 'payments')
+      }
+
+      it.each([
+        ['the payment door', 'Petar Marko'],
+        ['the membership door', 'Nikola Zorić'],
+      ])('are dropped once the activation went through the %s', async (door, whose) => {
+        const server = serving()
+        const user = setupUser()
+        renderAt(ADDRESS, 'superadmin')
+
+        const row = await rowOf(whose)
+        const names = namesToLoad()
+
+        for (const name of names) {
+          await loadResource(name)
+          expect(arrivedResource(name), `${name} never landed, so nothing below was measured`).toBeDefined()
+        }
+
+        if (door === 'the payment door') {
+          await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '43')
+          await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+        } else {
+          await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+          await user.click(
+            within(await screen.findByRole('dialog')).getByRole('button', { name: 'Odobri iz balansa' }),
+          )
+        }
+
+        await waitFor(() => {
+          for (const name of names) {
+            expect(arrivedResource(name), `${name} was still cached after ${door}`).toBeUndefined()
+          }
+        })
+
+        await waitFor(() =>
+          expect(server.asked.filter((one) => one.path === '/api/payments' && (one.init?.method ?? 'GET') === 'GET')).toHaveLength(2),
+        )
+
+        server.stop()
+      })
+
+      it('drops nothing when the server refuses the activation', async () => {
+        const server = serving(OUTSTANDING, () =>
+          new Response(JSON.stringify({ reason: 'nothingWouldComeOffTheBalance' }), {
+            status: 409,
+            headers: { 'content-type': 'application/json' },
+          }),
+        )
+        const user = setupUser()
+        renderAt(ADDRESS, 'superadmin')
+
+        const row = await rowOf('Nikola Zorić')
+        const names = namesToLoad()
+
+        for (const name of names) {
+          await loadResource(name)
+        }
+
+        await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+        await user.click(
+          within(await screen.findByRole('dialog')).getByRole('button', { name: 'Odobri iz balansa' }),
+        )
+        await within(await rowOf('Nikola Zorić')).findByText(/Sa balansa ovog člana/)
+
+        for (const name of names) {
+          expect(arrivedResource(name), `${name} was dropped though nothing was written`).toBeDefined()
+        }
+
+        server.stop()
+      })
+    })
+
     describe('the moderation of the members, in the same visit', () => {
       const first = {
         gender: 'M' as const,
