@@ -11,6 +11,36 @@ export type ClockValue = {
 
 export const ClockContext = createContext<ClockValue | null>(null)
 
+/** The zone the league's days are counted in, which is the server's (`SeasonClock`). */
+const THE_LEAGUES_ZONE = 'Europe/Belgrade'
+
+/* Built once, and with the zone written out: a formatter given no zone formats in the
+ * zone of whichever machine is reading, which is a third answer to a question that has
+ * two already. Parts rather than a locale's own way of writing a date, so that the
+ * result does not depend on what a locale does with its separators. */
+const BELGRADE = new Intl.DateTimeFormat('en-US', {
+  timeZone: THE_LEAGUES_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+/**
+ * The calendar day an instant falls on in Belgrade, yyyy-mm-dd.
+ *
+ * The zone's own rules do the work, so winter (CET, UTC+1), summer (CEST, UTC+2) and the
+ * two nights a year the offset changes are all answered by the same line: a fixed
+ * one-hour offset would be right for half the year and wrong in the other half. Pure and
+ * given its instant, so a case can ask it about 23:30 UTC without moving the system
+ * clock.
+ */
+export function belgradeDay(instant: Date): string {
+  const parts = BELGRADE.formatToParts(instant)
+  const of = (kind: string): string => parts.find((part) => part.type === kind)?.value ?? ''
+
+  return `${of('year')}-${of('month')}-${of('day')}`
+}
+
 /**
  * The one place in the portal that reads the machine's clock.
  *
@@ -22,13 +52,13 @@ export const ClockContext = createContext<ClockValue | null>(null)
  * simulation. A test reads the source and fails on a second reader
  * (oneClock.test.ts).
  *
- * Known and deliberately left alone: this is the UTC day, which is what all
- * eleven callers computed before. In Belgrade that is the previous day between
- * midnight and 01:00 or 02:00, and the season runs on CET (PDL P4). The season
- * boundary belongs to the backend, which owns the freeze at 1 January 16:00,
- * and it must not be answered twice in two different zones. Written down here
- * so the day it matters, it is found at once.
+ * **The day is Belgrade's, not UTC's** (owner, 20.10.2026, ADL A7), the same day the
+ * server counts in. It was the UTC day until then, which in Belgrade is the previous
+ * day between midnight and 01:00 in winter or 02:00 in summer: in that hour an event's
+ * page still offered the arrival announcement for the event of the day before
+ * (PENDING 29202). One zone for the screen and the server, so the season boundary is
+ * answered on both sides at the same instant rather than twice in two zones.
  */
 export function realToday(): string {
-  return new Date().toISOString().slice(0, 10)
+  return belgradeDay(new Date())
 }

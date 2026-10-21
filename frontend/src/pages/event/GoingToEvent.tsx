@@ -54,11 +54,11 @@ import './GoingToEvent.css'
  *
  * **Only ahead of the race.** Saying you are going to something that has already
  * been run is not an intention, it is a memory, and the portal has results for
- * that. The day this page asks by is the browser's day in UTC and the server's is
- * Belgrade's, so for an hour or two after midnight the switch is still drawn on
- * the event of the day before and a press is refused in words
- * (`WHEN_SAYING_YOU_ARE_GOING`); the clock is shared by every screen, so that
- * boundary is named here rather than moved.
+ * that. The day this page asks by is Belgrade's, the server's own (`clock/context.ts`,
+ * owner, 20.10.2026; it was the UTC day until then, and for an hour or two after midnight
+ * the switch was still drawn on the event of the day before, PENDING 29202). What is left
+ * is a tab left open across midnight, where a press can still be refused in words
+ * (`WHEN_SAYING_YOU_ARE_GOING`) until the clock's next look.
  */
 export function GoingToEvent({ event }: { event: BtlEvent }) {
   const today = useToday()
