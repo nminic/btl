@@ -441,7 +441,8 @@ bounded by `/dev/shm` (half the host's memory by default). Today that is far mor
 5. **The Worker** `cloudflare/backup-watch.js`, pasted into the panel the way
    `cloudflare/no-reply-reject.js` was; its header lists the bindings and the hourly trigger.
 6. **The first real run, by hand, and watched** - see below - before the timers.
-7. **The timers**, which are persistent configuration on the host and so the owner's step:
+7. **The privacy policy row**, published now and not before: see "And the privacy policy" below.
+8. **The timers**, which are persistent configuration on the host and so the owner's step:
 
    ```bash
    cd /opt/btl/deploy
@@ -452,9 +453,13 @@ bounded by `/dev/shm` (half the host's memory by default). Today that is far mor
    systemctl list-timers 'btl-backup*'
    ```
 
-**And the privacy policy.** The owner decided (4) that its row about Cloudflare is amended in his
-own words and published with the first copy, the way V60 named Zoho. Those words are his, so they
-are not in this directory; the first copy waits for them.
+**And the privacy policy.** The owner decided (4) that its row about Cloudflare is amended and
+published with the first copy, not before, the way V60 named Zoho, and on 20.10.2026 he approved the
+words (PDL, the entry beginning "Red o Cloudflare-u u politici privatnosti postaje"). The row is
+changed by a migration, and a migration publishes on the next deploy, so it is NOT merged ahead of
+time: as with V60, which says it "does not publish a processor ahead of its use", the order of
+merging is the whole mechanism. It is merged and deployed in step 7, once step 6 has put the first
+copy under `daily/`.
 
 **The first real run, and what it measures that nothing here can.** Run from `/opt/btl/deploy`:
 
