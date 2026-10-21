@@ -319,7 +319,7 @@ export function EventRaces({
           )
 
     return (
-      <div className="field" key={`${row.id === '' ? 'nova' : row.id}-${cell}`}>
+      <div className="field" key={`${row.place}-${cell}`}>
         {asked === null ? (
           /* The kind always holds one of its three words, so it is neither asked for nor optional. */
           <label className="field__label" htmlFor={id}>
@@ -466,7 +466,7 @@ export function EventRaces({
            and a tablet every field stands on a line of its own, as everywhere else on the portal. */
         <div className="races">
           {rows.map((row, at) => (
-            <fieldset className="race" key={row.id === '' ? `nova-${String(at)}` : row.id}>
+            <fieldset className="race" key={row.place}>
               <legend className="race__legend">
                 {t('admin.form.raceNumber', { which: String(at + 1) })}
               </legend>
