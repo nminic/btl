@@ -561,9 +561,9 @@ describe('the reasons the server can name', () => {
     ['InboxWriteApi.java', [WHEN_WRITING_TO_A_MEMBER], 2],
     /* ADDED 03.10.2026 WITH THE SWITCH ON AN EVENT'S PAGE GOING TO THE SERVER (b212). One
        constant, a real refusal of `PUT` and `DELETE /api/attendance/{id}`, and reachable from
-       the screen: the page offers the switch by its day in UTC and the server refuses by its
-       day in Belgrade, so for an hour or two after midnight the two disagree about yesterday's
-       event (`WHEN_SAYING_YOU_ARE_GOING` gives the arithmetic). */
+       the screen: the page offers the switch by its day, which is Belgrade's since 20.10.2026
+       as the server's is, so the two disagree about yesterday's event only for a tab left open
+       across midnight (`WHEN_SAYING_YOU_ARE_GOING` gives the arithmetic). */
     ['AttendanceWriteApi.java', [WHEN_SAYING_YOU_ARE_GOING], 1],
     /* The two the calendar writes through, added 28.09.2026 when `admin/AdminEvents.tsx`
        and `event/EventActions.tsx` stopped writing into the session and began to send.

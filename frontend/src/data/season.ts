@@ -60,9 +60,10 @@ export const WINDOW_CLOSES = '12-31'
  * database (PENDING).
  *
  * **And the hour.** The decision names 00:00 CET. The portal reads whole days off
- * one clock with no notion of a zone (src/clock), so „the day 15 October has begun"
- * is what it can answer, and that is the same instant as long as the day it reads
- * turns over in CET. Written down rather than pretended away.
+ * one clock with no notion of an hour (src/clock), so „the day 15 October has begun"
+ * is what it can answer. Since 20.10.2026 that day is Belgrade's, the same one the
+ * server counts, so it turns over at Belgrade midnight and not an hour or two later.
+ * Written down rather than pretended away.
  */
 export function referralMayBeSet(today: string): boolean {
   return !inYearlyWindow(today)
@@ -134,10 +135,10 @@ export function seasonShown(today: string): number {
  * boards and merely coincides with the start of the first season.
  *
  * **Whole days, as everywhere in this file.** The owner's decision does not name an hour;
- * the portal reads the UTC day off its one clock (`clock/context.ts`), so for the first
- * hour or two of 1 January in Belgrade the boards are still filled. The server's
- * `SeasonClock` is not asked from here: no route hands this side a season, and a second
- * answer in a second zone would be worse than the hour.
+ * the portal reads the Belgrade day off its one clock (`clock/context.ts`, since
+ * 20.10.2026), so the boards stop being filled at Belgrade midnight on 1 January, the
+ * instant the server's day turns. The server's `SeasonClock` is not asked from here: no
+ * route hands this side a season.
  */
 export const BOARDS_ARE_FILLED_BEFORE = '2027-01-01'
 
