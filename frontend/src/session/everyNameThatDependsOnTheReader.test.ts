@@ -176,6 +176,16 @@ describe('the names whose answer depends on who is asking', () => {
     expect(ANSWERED_TO_THE_READER).toContain('verification')
   })
 
+  it('read code and not what the Java says about itself', () => {
+    /* A heading that NAMES a door (`ModeratorApi` says „WhatHeMayDo carries the same warning") is
+       not a handler that asks one, and a comment that quotes the chain is not a class that reads
+       it. Held on the helper itself, because no class in the source today is told apart by it:
+       what stays is the text of a string, which may hold the two characters that open a comment. */
+    expect(
+      withoutComments('a /* b.getAuthentication() */ "/api/**" // c\n/** d */ e \'"\' f'),
+    ).toBe('a  "/api/**" \n e \'"\' f')
+  })
+
   it('do not include a name the backend answers the same to everybody', () => {
     /* The other direction, on its own so that a name added to the list by mistake fails by its
        own name. Everything on the list asks the caller; nothing is dropped for nothing. */
