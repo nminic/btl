@@ -608,7 +608,8 @@ describe.each(THE_NAMES)('the answer to the previous caller of $name, arriving a
 
 describe('an answer that the cache dropped before it came', () => {
   it('is not handed to a reader that is showing a failure, and is not kept for the next reader', async () => {
-    const held = holding()
+    const dropped = holding()
+    const fresh = holding()
     let calls = 0
 
     server = serverThat((path) => {
@@ -619,44 +620,65 @@ describe('an answer that the cache dropped before it came', () => {
       calls += 1
 
       if (calls === 1) {
-        return held.answer()
+        return answeredWith(500)
       }
 
-      return calls === 2 ? answeredWith(500) : serving('Fresh')()
+      return calls === 2 ? dropped.answer() : fresh.answer()
     })
 
-    const { rerender } = render(<Reader name="leagues" label="X" />)
+    /* W is showing the failure of the address, and the next reader, X, asks for it again. */
+    const { rerender } = render(<Reader name="leagues" label="W" />)
 
-    await waitFor(() => expect(timesAsked(LEAGUES)).toBe(1))
+    await waitFor(() => expect(text('W')).toContain('failed'))
+    rerender(
+      <>
+        <Reader name="leagues" label="W" />
+        <Reader name="leagues" label="X" />
+      </>,
+    )
+    await waitFor(() => expect(timesAsked(LEAGUES)).toBe(2))
 
-    /* The visit drops the address while X's read is out, and the reader that comes next fails. */
+    /* The visit drops the address while X's read is out, and the reader that comes next, Y, asks
+       again: its read is the one the visit holds from here on, and it is out as well. */
     act(() => {
       clearResourceCache('leagues')
     })
     rerender(
       <>
+        <Reader name="leagues" label="W" />
         <Reader name="leagues" label="X" />
         <Reader name="leagues" label="Y" />
       </>,
     )
-    await waitFor(() => expect(text('Y')).toContain('failed'))
+    await waitFor(() => expect(timesAsked(LEAGUES)).toBe(3))
 
-    held.release(serving('Dropped')())
+    dropped.release(serving('Dropped')())
     await aMomentForTheOldAnswer()
 
-    expect(text('Y'), 'an answer the cache had dropped reached a reader showing a failure').toContain('failed')
+    expect(text('W'), 'an answer the cache had dropped reached a reader showing a failure').toContain('failed')
+    expect(text('Y')).toContain('loading')
 
-    /* And it was not put back into the cache: a reader that arrives now finds nothing there, asks the
-       server, and reads what the server answers, not the answer that was dropped. */
+    /* And it was not put back into the cache: a reader that arrives now finds nothing there and joins
+       the read the visit holds, instead of being handed the answer that was dropped. */
     rerender(
       <>
+        <Reader name="leagues" label="W" />
         <Reader name="leagues" label="X" />
         <Reader name="leagues" label="Y" />
         <Reader name="leagues" label="Z" />
       </>,
     )
+    await aMomentForTheOldAnswer()
+
+    expect(text('Z'), 'a dropped answer was kept and read by the next reader').toContain('loading')
+    expect(timesAsked(LEAGUES)).toBe(3)
+
+    act(() => {
+      fresh.release(serving('Fresh')())
+    })
+
     await waitFor(() => expect(text('Z')).toContain('ready: Fresh'))
-    expect(timesAsked(LEAGUES), 'a dropped answer was kept and read instead of asking').toBe(3)
-    expect(text('Y')).toContain('ready: Fresh')
+    await waitFor(() => expect(text('Y')).toContain('ready: Fresh'))
+    await waitFor(() => expect(text('W')).toContain('ready: Fresh'))
   })
 })
