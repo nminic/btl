@@ -383,6 +383,80 @@ describe('the sentence about ranking follows the row and not the date', () => {
   }, SLOW)
 })
 
+describe('the notes about a price follow what he owes for the season on sale, and the fee is said to everybody (PENDING 29388, review of PR 609 round 1)', () => {
+  /* The sentences under the state line: what it costs today, what a payment from abroad adds, and
+     the junior rate. The price line and the junior rate are the price of the season on sale, so
+     they are said to whoever is asked for it and to nobody who holds it already. The processing
+     fee is not behind that: PDL P8, owner 04.08.2026, „Taksa se prikazuje svima, samo je ne plaćaju
+     svi.": the screen has one sentence for everybody, and it says who pays it. */
+  const PRICE = /^Danas članarina košta/
+  const PROCESSING = /^Uz uplatu u evrima ide i taksa/
+  const JUNIOR = /^Ko u sezoni ima bar jedan dan 14 godina/
+
+  /* Held, or freed of the fee: no price line and no junior rate, and the fee sentence all the same. */
+  function theFeeAndNoPrice() {
+    expect(screen.queryByText(PRICE)).not.toBeInTheDocument()
+    expect(screen.queryByText(JUNIOR)).not.toBeInTheDocument()
+    expect(screen.getByText(PROCESSING)).toBeVisible()
+  }
+
+  /* **TWO SEASONS IN THE ARRANGEMENT, so that holding the one on sale and holding the one that is
+     running are not the same member.** On 1 November 2027 the season on sale is 2028 and the one
+     running is 2027; on 1 March 2027 both are 2027. */
+  it.each([
+    ['payment', 'Članarina za sezonu 2028 je plaćena.'],
+    ['balance', 'Članarina za sezonu 2028 je plaćena iz balansa.'],
+  ])('a member who holds the season on sale, 2028, on a %s, is told so, quoted no price and told the fee', async (basis, stated) => {
+    openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: 2028 }, '2027-11-01')
+
+    expect(await screen.findByText(stated)).toBeVisible()
+    expect(screen.getByText('Članarina za 2028 je već plaćena, pa nema šta da uplatiš.')).toBeVisible()
+    theFeeAndNoPrice()
+  }, SLOW)
+
+  it.each([
+    ['payment', 'Članarina za sezonu 2027 je plaćena.'],
+    ['balance', 'Članarina za sezonu 2027 je plaćena iz balansa.'],
+  ])('and, on 1 March 2027, holding the running one, which is then the one on sale, on a %s, he reads the fee and no price', async (basis, stated) => {
+    openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: 2027 }, '2027-03-01')
+
+    expect(await screen.findByText(stated)).toBeVisible()
+    theFeeAndNoPrice()
+  }, SLOW)
+
+  it.each([
+    ['payment', 2027],
+    ['balance', 2027],
+  ])('a member who holds only the RUNNING season, 2027, on 1 November 2027, is still quoted the price of 2028, on a %s', async (basis, season) => {
+    /* Holds a season, and not the one on sale: nothing is said of 2027 here (the running season is
+       not touched after 14 October), and the one thing he can still be asked for is the next. */
+    openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: season }, '2027-11-01')
+
+    expect(await screen.findByText(PRICE)).toBeVisible()
+    expect(screen.getByText(JUNIOR)).toBeVisible()
+    expect(screen.getByText(PROCESSING)).toBeVisible()
+    expect(screen.queryByText(/je plaćena/)).not.toBeInTheDocument()
+  }, SLOW)
+
+  it.each([
+    ['2028 on 1 November 2027', 2028, '2027-11-01'],
+    ['2027 on 1 March 2027', 2027, '2027-03-01'],
+  ])('a member freed of the fee for the season on sale, %s, is quoted no price and reads the fee all the same', async (_label, season, today) => {
+    openHisPage({ ...STANDING, membershipBasis: 'feeExempt', membershipSeason: season }, today)
+
+    expect(await screen.findByText('Oslobođen si plaćanja članarine, pa nema šta da uplatiš.')).toBeVisible()
+    theFeeAndNoPrice()
+  }, SLOW)
+
+  it('somebody who holds nothing is quoted all three, so the notes are still drawn where a price is owed', async () => {
+    openHisPage(LAPSED, '2027-11-01')
+
+    expect(await screen.findByText(PRICE)).toBeVisible()
+    expect(screen.getByText(JUNIOR)).toBeVisible()
+    expect(screen.getByText(PROCESSING)).toBeVisible()
+  }, SLOW)
+})
+
 describe('what a case of this file may end in', () => {
   it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
     expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)

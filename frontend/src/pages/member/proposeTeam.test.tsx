@@ -279,13 +279,25 @@ describe('a proposal a member sends', () => {
 
     await screen.findByRole('list', { name: /Čeka/ })
 
-    expect(arrivedResource('verification'), 'the queue was never held').toBeDefined()
+    const held = arrivedResource('verification')
+
+    expect(held, 'the queue was never held').toBeDefined()
 
     await router.navigate('/sr/novi-tim')
     await fill(user, 'Trkači Morave')
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
-    expect(arrivedResource('verification')).toBeUndefined()
+    /* The answer held before the press is GONE, which is all this case has ever asked. It is no
+       longer „nothing is held": the header counter of a superadmin is mounted all the while and
+       reads the queue again the moment it is dropped (PENDING 29561), so what is held a moment
+       later is the answer that has the proposal in it. Dropped and not re-read would be the same
+       object for ever, and this waits for it to change. */
+    await waitFor(
+      () => {
+        expect(arrivedResource('verification')).not.toBe(held)
+      },
+      { timeout: 3000 },
+    )
 
     await router.navigate('/sr/administracija/verifikacija/timovi')
 

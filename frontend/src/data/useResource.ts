@@ -7,6 +7,8 @@ import {
   arrivedResource,
   clearResourceCache,
   loadResource,
+  timesDropped,
+  watchTheDrops,
   type ResourceName,
 } from './client'
 import { useI18n } from '../i18n/useI18n'
@@ -338,6 +340,21 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
   }, [state, address, wake])
 
   return state
+}
+
+/**
+ * HOW MANY TIMES THIS NAME HAS BEEN DROPPED FROM THE CACHE, as a number that re-draws the component
+ * it is read in when it changes (PENDING 29561).
+ *
+ * <p>Meant to be put into a reader's `revision`, which is what makes a reader that is MOUNTED ask
+ * again once something dropped its name: dropping the cache alone throws the promise away and tells
+ * nobody who holds an answer from it (`HowToRead.revision`). It is asked of ONE name on purpose, so
+ * a screen that reads `verification` does not read again because `places` was dropped; the
+ * readers that follow a name this way are named where they do (`admin/pending.ts`), and the rest
+ * are as they were.
+ */
+export function useHowManyTimesDropped(name: ResourceName): number {
+  return useSyncExternalStore(watchTheDrops, () => timesDropped(name))
 }
 
 /** What this visit already holds for a resource, as a state a screen can draw. */
