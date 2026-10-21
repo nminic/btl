@@ -107,11 +107,13 @@ function modulesReaching(wanted: string): { walked: number; reaching: string[] }
 }
 
 describe('the circle a member is drawn in', () => {
-  it('is coloured in one module, reached by the face and by the team mark and by nothing else', () => {
+  it('is coloured in one module, reached by the team mark and by nothing else', () => {
     /* `hueFor` turns an identity into a hue, and a module that reaches it is a module drawing
-       somebody's own disc. Two may, and each is named with its reason:
+       somebody's own disc. **One may, and it is not a member's circle**: the colour derived from
+       a member number was abolished on 31.07.2026 (PDL P28, „Sve kartice takmičara su
+       identične"), and `components/Portrait.tsx`, which reached this module until 21.10.2026
+       (PENDING 29205), no longer does. Put back, it is listed here and this fails.
 
-       - `components/Portrait.tsx` IS the circle of a member, which is the point of this file.
        - `components/TeamMark.tsx` is a TEAM's mark, which is a different thing that happens
          to be the same shape: it takes its hue from the team's id and never from a member
          (`hueFor(String(team.id))`), it draws a team's logo and not anybody's portrait, and
@@ -128,7 +130,6 @@ describe('the circle a member is drawn in', () => {
       WHOLE_PORTAL,
     )
     expect(reaching, 'a second module has begun to colour a face').toEqual([
-      'components/Portrait.tsx',
       'components/TeamMark.tsx',
     ])
   })
