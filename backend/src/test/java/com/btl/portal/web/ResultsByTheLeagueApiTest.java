@@ -1141,12 +1141,14 @@ class ResultsByTheLeagueApiTest {
 	}
 
 	/**
-	 * THE FOUR SENTENCES OF THE SCREEN (approved 19.10.2026), each where it belongs, and NOTHING
-	 * WRITTEN BY ANY OF THEM: an event chosen by a key nobody answers to, a race chosen by a key that is
-	 * not that event's, a new event with no town, and a new event or a new race before 2027.
+	 * THE SENTENCES OF THE SCREEN THAT ARE ITS OWN (approved 19.10.2026), each where it belongs, and
+	 * NOTHING WRITTEN BY ANY OF THEM: an event chosen by a key nobody answers to, a race chosen by a key
+	 * that is not that event's, and a new event with no town. The fourth, a new event or a new race before
+	 * 2027, is gone (owner, 21.10.2026: any year up to today is taken; see
+	 * {@link #aModeratorEntersAResultOfAnyYearBeforeTheLeague}).
 	 */
 	@Test
-	void theScreensFourRefusalsWriteNothing() throws Exception {
+	void theScreensOwnRefusalsWriteNothing() throws Exception {
 		long theEvent = db.sql("select event_id from race where id = ?").param(theTen)
 				.query(Long.class).single();
 		int events = howMany("btl_event");
@@ -1163,21 +1165,12 @@ class ResultsByTheLeagueApiTest {
 		MockHttpServletResponse noTownAtAll = onAnEvent(RESULTS_MODERATOR, "{\"event\":{\"name\":\"Bez mesta\","
 				+ "\"date\":\"2027-06-01\"},\"race\":" + newRace("Nova", null, "free", null, null, null, null)
 				+ ",\"rows\":[" + row(VERA, "5.00", 1, 1, AN_HOUR) + "]}");
-		MockHttpServletResponse before = onAnEvent(RESULTS_MODERATOR, onANewEvent("Stara trka",
-				"2026-12-31", "Ohrid", "MK", newRace("Nova", null, "free", null, null, null, null),
-				row(VERA, "5.00", 1, 1, AN_HOUR)));
-		long theOldEvent = db.sql("select event_id from race where id = ?").param(theOldRace)
-				.query(Long.class).single();
-		MockHttpServletResponse beforeOnTheCalendar = onAnEvent(RESULTS_MODERATOR,
-				onTheEvent(theOldEvent, newRace("Nova", "2026-09-12", "free", null, null, null, null),
-						row(VERA, "5.00", 1, 1, AN_HOUR)));
 
-		assertThat(List.of(gone.getStatus(), notItsRace.getStatus(), noTown.getStatus(), noTownAtAll.getStatus(),
-				before.getStatus(), beforeOnTheCalendar.getStatus())).containsExactly(409, 409, 400, 400, 400, 400);
-		assertThat(List.of(reasonIn(gone), reasonIn(notItsRace), reasonIn(noTown), reasonIn(noTownAtAll),
-				reasonIn(before), reasonIn(beforeOnTheCalendar))).containsExactly("theEventIsNotKnown",
-						"theRaceIsNotKnown", "theTownIsMissing", "theTownIsMissing", "theDayIsBeforeTheLeague",
-						"theDayIsBeforeTheLeague");
+		assertThat(List.of(gone.getStatus(), notItsRace.getStatus(), noTown.getStatus(), noTownAtAll.getStatus()))
+				.containsExactly(409, 409, 400, 400);
+		assertThat(List.of(reasonIn(gone), reasonIn(notItsRace), reasonIn(noTown), reasonIn(noTownAtAll)))
+				.containsExactly("theEventIsNotKnown", "theRaceIsNotKnown", "theTownIsMissing",
+						"theTownIsMissing");
 		assertThat(List.of(howMany("btl_event"), howMany("race"))).containsExactly(events, races);
 		assertThat(resultsOf(VERA)).isEmpty();
 	}
@@ -1225,9 +1218,9 @@ class ResultsByTheLeagueApiTest {
 	/**
 	 * THE REVIEW'S PROBE OF PR 585, AS IT WAS MEASURED: in 2028 a race of 2028 sent onto the event of
 	 * 2027 by its key was written onto it („201 prvi-dogadjaj-2027 2027-05-08 2028-02-01”). A new race
-	 * goes on an event of its own year and no other, and is refused as a form not filled in, since the
-	 * screen offers no event of another season (owner, 20.10.2026, „NE NUDE SE STARIJI DOGAĐAJI VAN
-	 * TEKUĆE SEZONE!”). Nothing is written, and the event keeps its day.
+	 * goes on an event of its own year and no other, and is refused as a form not filled in (owner,
+	 * 21.10.2026, „NECE DE DESITI!!!!!! PREBACICE PRVO LICNO DOGADJAJ NA PRETHODNU GODINU!”). Nothing is
+	 * written, and the event keeps its day.
 	 */
 	@Test
 	void aNewRaceOfOneYearOnAnEventOfAnotherIsRefusedAndWritesNothing() throws Exception {
@@ -1335,9 +1328,12 @@ class ResultsByTheLeagueApiTest {
 	/**
 	 * THE WINDOW ENDS AT TEN O'CLOCK, and a minute either side of it answers differently, in both
 	 * directions of the two years. At 09:59:59 Belgrade the race goes on the event of the other year;
-	 * at 10:00:00 the season just ended is closed and the event of that year is not offered, so the
-	 * save is refused: the race of the year just ended in the season's own sentence (it is asked first),
-	 * the race of the new year, on the event of the old one, as a form not filled in. The boundary is
+	 * at 10:00:00 the season just ended is closed, so the two years are no longer both open and the save
+	 * is refused as a form not filled in in both directions: the race of the year just ended, on the event
+	 * of the new year, and the race of the new year, on the event of the old one. (Until 21.10.2026 the
+	 * first was refused in the season's own sentence, because this route refused a race of a season not
+	 * open; it takes any year now, so it is the year of the race that is asked beside the year of the
+	 * event.) The boundary is
 	 * {@code SeasonClock.reportingEnds}, read and not written again, and this holds that the route
 	 * reads it with the clock of the request and not with a clock a minute either side.
 	 */
@@ -1378,7 +1374,7 @@ class ResultsByTheLeagueApiTest {
 				row(DRAGAN, "5.00", 1, 1, AN_HOUR)));
 
 		assertThat(reasonIn(theYearJustEnded)).as("10:00:00, a race of the year just ended")
-				.isEqualTo("theRaceIsOutsideTheSeason");
+				.isEqualTo("theFormIsNotComplete");
 		assertThat(theNewYear.getStatus()).as("10:00:00, a race of the new year on an event of the old")
 				.isEqualTo(400);
 		assertThat(reasonIn(theNewYear)).isEqualTo("theFormIsNotComplete");
@@ -1392,7 +1388,7 @@ class ResultsByTheLeagueApiTest {
 	/**
 	 * AN EVENT OF A SEASON THAT IS NOT OPEN IS NOT PUT A RACE ON IN THOSE TEN HOURS EITHER, and a gap of
 	 * a year is not "another year" in the owner's sense: on the morning of 1 January 2028 the seasons open
-	 * are 2027 and 2028, so an event of 2026 (a season before the league, and not offered) is refused
+	 * are 2027 and 2028, so an event of 2026 (a season before the league, not open) is refused
 	 * whether the race is of 2027 or of 2028. Nothing is written and the event keeps its day.
 	 */
 	@Test
@@ -1446,13 +1442,15 @@ class ResultsByTheLeagueApiTest {
 	}
 
 	/**
-	 * ONLY THE SEASONS OPEN FOR A REPORT, new or of the calendar (owner, 20.10.2026: „NE NUDE SE STARIJI
-	 * DOGAĐAJI VAN TEKUĆE SEZONE! ONI SE UNOSE IMPORTOM.”): after ten on 1 January the season just ended
-	 * is closed, in the member's approved words, and a race before the league in the CSV sentence.
-	 * Nothing is written by any of them.
+	 * A SEASON THAT IS NO LONGER OPEN FOR A MEMBER IS OPEN FOR THE MODERATOR, new or of the calendar
+	 * (PDL P9, owner, 21.10.2026: „Moderator i admin smeju da unose rezultate za BILO KOJU prethodnu
+	 * godinu, jedan po jedan”, which overturns the refusal of 20.10.2026): at ten on 1 January the season
+	 * just ended is closed to the member, and the moderator still enters a race of it, one of the calendar
+	 * and one that is new, and a race before the league as well. Vera holds 2027, so none of them asks a
+	 * membership he lacks.
 	 */
 	@Test
-	void aRaceOfASeasonThatIsNotOpenIsRefusedNewOrOfTheCalendar() throws Exception {
+	void aSeasonClosedToTheMemberTakesTheModeratorsRaceNewOrOfTheCalendar() throws Exception {
 		clock.moveTo(Instant.parse("2028-01-01T09:00:00Z"));
 
 		long theEvent = db.sql("select event_id from race where id = ?").param(theTen)
@@ -1470,11 +1468,83 @@ class ResultsByTheLeagueApiTest {
 		MockHttpServletResponse beforeTheLeague = onAnEvent(RESULTS_MODERATOR, onTheEvent(theOldEvent,
 				"{\"id\":" + theOldRace + "}", row(VERA, null, null, null, AN_HOUR)));
 
-		assertThat(List.of(reasonIn(ofTheCalendar), reasonIn(aNewOne), reasonIn(beforeTheLeague)))
-				.containsExactly("theRaceIsOutsideTheSeason", "theRaceIsOutsideTheSeason",
-						"theDayIsBeforeTheLeague");
-		assertThat(List.of(howMany("btl_event"), howMany("race"))).containsExactly(events, races);
-		assertThat(resultsOf(VERA)).isEmpty();
+		assertThat(List.of(ofTheCalendar.getStatus(), aNewOne.getStatus(), beforeTheLeague.getStatus()))
+				.containsExactly(201, 201, 201);
+		assertThat(List.of(howMany("btl_event"), howMany("race"))).containsExactly(events + 1, races + 1);
+		assertThat(resultsOf(VERA)).hasSize(3);
+	}
+
+	/**
+	 * A RESULT OF ANY YEAR BEFORE THE LEAGUE IS TAKEN ON THIS SCREEN (PDL P9, owner, 21.10.2026), a new
+	 * event of 2015 with its race and the result, then a second race of the same year on that event and a
+	 * result on its first race by the calendar's key. The calendar gains the event and its profile gains
+	 * the result; the member is told that it counts in no season (the event page's own words) and nothing
+	 * of a category, and a race of ANOTHER year than its event's is still refused (the same-year rule,
+	 * owner, 21.10.2026), before the league included.
+	 */
+	@Test
+	void aModeratorEntersAResultOfAnyYearBeforeTheLeague()
+			throws Exception {
+		MockHttpServletResponse first = onAnEvent(RESULTS_MODERATOR, onANewEvent("Davna trka", "2015-06-06",
+				"Ohrid", "MK", newRace("Davna desetka", null, "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(first.getStatus()).isEqualTo(201);
+
+		String address = new ObjectMapper().readTree(first.getContentAsString()).path("event").asString();
+
+		assertThat(address).isEqualTo(EventAddress.of("Davna trka", LocalDate.of(2015, 6, 6)));
+
+		long theEvent = db.sql("select id from btl_event where slug = ?").param(address)
+				.query(Long.class).single();
+		long theFirstRace = db.sql("select id from race where event_id = ?").param(theEvent)
+				.query(Long.class).single();
+
+		assertThat(db.sql("select date from btl_event where id = ?").param(theEvent).query(LocalDate.class)
+				.single()).isEqualTo(LocalDate.of(2015, 6, 6));
+		assertThat(subjectsTo(VERA)).containsExactly("Unet vam je rezultat");
+		assertThat(bodiesTo(VERA).get(0)).contains("pre prve zvanične sezone lige (2027)");
+		assertThat(resultsOf(VERA)).hasSize(1);
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				newRace("Davna petnaestica", "2015-06-06", "free", null, null, null, null),
+				row(ANA, "5.00", 1, 1, AN_HOUR))).getStatus()).as("a second race of the same year").isEqualTo(201);
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent, "{\"id\":" + theFirstRace + "}",
+				row(DRAGAN, "5.00", 1, 1, AN_HOUR))).getStatus()).as("a race of the calendar").isEqualTo(201);
+		assertThat(subjectsTo(ANA)).as("only the line of this entry, none about a category")
+				.containsExactly("Unet vam je rezultat");
+		assertThat(subjectsTo(DRAGAN)).containsExactly("Unet vam je rezultat");
+
+		int races = howMany("race");
+		MockHttpServletResponse ofAnotherYear = onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				newRace("Davna iz druge godine", "2016-06-06", "free", null, null, null, null),
+				row(BOJAN, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(reasonIn(ofAnotherYear)).isEqualTo("theFormIsNotComplete");
+		assertThat(howMany("race")).isEqualTo(races);
+	}
+
+	/**
+	 * A SEASON THAT HAS FROZEN KEEPS ITS SENTENCE ON THIS SCREEN TOO: a race of 2027 entered once 2027 has
+	 * frozen, new on a new event and of the calendar, is told with the owner's sentence for a frozen season
+	 * (PDL P9, 18.10.2026), for a member of it and for one who is not, and nothing is said of a category
+	 * (owner, 21.10.2026: the same boundary the event page's entry has, no recount).
+	 */
+	@Test
+	void aFrozenSeasonIsTakenOnThisScreenWithTheSentenceOfAFrozenSeason() throws Exception {
+		clock.moveTo(AFTER_THE_FREEZE);
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onANewEvent("Zamrznuta trka", "2027-03-03", "Ohrid", "MK",
+				newRace("Zamrznuta desetka", null, "free", null, null, null, null),
+				row(ANA, "5.00", 1, 1, AN_HOUR))).getStatus()).isEqualTo(201);
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(db.sql("select event_id from race where id = ?")
+				.param(theHill).query(Long.class).single(), "{\"id\":" + theHill + "}",
+				row(DRAGAN, "12.00", 300, 250, 5000))).getStatus()).isEqualTo(201);
+
+		for (String who : List.of(ANA, DRAGAN)) {
+			assertThat(subjectsTo(who)).containsExactly("Unet vam je rezultat");
+			assertThat(bodiesTo(who).get(0)).contains("Sezona 2027 je zamrznuta").doesNotContain("Za godinu");
+		}
 	}
 
 	/**

@@ -30,8 +30,26 @@ import { racesToOffer } from './racesToOffer'
  * @param today the day the portal agrees on, as every screen compares days
  */
 export function eventsToOffer(events: BtlEvent[], open: number[], today: string): Suggestion[] {
+  return offered(events, today, (year) => open.includes(year))
+}
+
+/**
+ * THE EVENTS THE MODERATOR'S OWN SCREEN OFFERS, A RACE EVENT OF EVERY YEAR BEGUN BY TODAY, those before
+ * 2027 included (PDL P9, owner, 21.10.2026: „Moderator i admin smeju da unose rezultate za BILO KOJU
+ * prethodnu godinu”, which overturns „NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE!” of 20.10.2026 for
+ * this screen). The member's form keeps {@link eventsToOffer}.
+ *
+ * <p>The same name may stand in two years, and then both are offered with their days, and a name typed
+ * exactly links neither (`forms/exactName.ts`): choosing is the reader's.
+ */
+export function everyEventToOffer(events: BtlEvent[], today: string): Suggestion[] {
+  return offered(events, today, () => true)
+}
+
+/** The race events begun by today whose year is wanted, newest first, as the entries of the box. */
+function offered(events: BtlEvent[], today: string, wanted: (year: number) => boolean): Suggestion[] {
   return events
-    .filter((one) => one.kind === 'race' && open.includes(yearOf(one.date)) && one.date <= today)
+    .filter((one) => one.kind === 'race' && wanted(yearOf(one.date)) && one.date <= today)
     .toSorted((left, right) => right.date.localeCompare(left.date))
     .map((one) => ({
       id: String(one.id),

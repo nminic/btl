@@ -1826,7 +1826,6 @@
       "theEventIsNotKnown": "That event is no longer in the calendar. Choose it again or enter a new one.",
       "theRaceIsNotKnown": "That race is no longer in the calendar. Choose it again or enter a new one.",
       "theTownIsMissing": "Enter the place of the new event.",
-      "theDayIsBeforeTheLeague": "The league begins in 2027; earlier results are entered with the CSV template.",
       "theEventWouldMoveOntoAnother": "The race would move the event into a year in which an event with the same name already exists. Choose that event."
     }
   }

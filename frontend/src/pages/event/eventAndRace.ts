@@ -6,7 +6,6 @@ import { theOneNamedExactly } from '../../forms/exactName'
 import { parseNumber } from '../../forms/numberField'
 import type { FieldDef, Suggestion } from '../../forms/types'
 import { REQUIRED_KEY } from '../../forms/validate'
-import { FIRST_SEASON } from '../../data/season'
 
 /**
  * THE EVENT AND THE RACE AT THE TOP OF „UNOS REZULTATA ZA DOGAĐAJ”, the moderator's own screen.
@@ -167,16 +166,14 @@ export type BlockWrong = { box: keyof TheBlock & string; key: string }
 
 /**
  * BOX BY BOX, IN THE ORDER THEY ARE DRAWN, what is wrong with the block: a name left empty, a day that
- * is not a day, before the league, of a season not open for a report or still to come, a new event's
- * town, and what the kind of a new race fixes.
+ * is not a day or is still to come, a new event's town, and what the kind of a new race fixes.
  *
- * <p><b>The day is held to the seasons open for a report</b> (owner, 20.10.2026: „NE NUDE SE STARIJI
- * DOGAĐAJI VAN TEKUĆE SEZONE! ONI SE UNOSE IMPORTOM.”), as the server holds it, in the approved words of
- * the member's form for the same box („Datum mora da bude u tekućoj sezoni.”); before the league in the
- * CSV sentence. Where the seasons could not be read (`open` is nothing) the box says nothing of them and
- * the server answers.
+ * <p><b>The day is held to nothing but today</b> (PDL P9, owner, 21.10.2026: „Moderator i admin smeju da
+ * unose rezultate za BILO KOJU prethodnu godinu”), as the server holds it: a day of any year, those
+ * before 2027 too, is a day. Until that day this box also refused a day outside the seasons open for a
+ * report and a day before the league, and both refusals are gone with their words.
  */
-export function whatIsWrongWithTheBlock(block: TheBlock, today: string, open: readonly number[] | null): BlockWrong[] {
+export function whatIsWrongWithTheBlock(block: TheBlock, today: string): BlockWrong[] {
   const wrong: BlockWrong[] = []
   const asksTheDay = block.race === null
   const day = isoDate(block.date)
@@ -187,10 +184,6 @@ export function whatIsWrongWithTheBlock(block: TheBlock, today: string, open: re
 
   if (asksTheDay && day === '') {
     wrong.push({ box: 'date', key: REQUIRED_KEY })
-  } else if (asksTheDay && Number(day.slice(0, 4)) < FIRST_SEASON) {
-    wrong.push({ box: 'date', key: 'leagueResults.refused.theDayIsBeforeTheLeague' })
-  } else if (asksTheDay && open !== null && !open.includes(Number(day.slice(0, 4)))) {
-    wrong.push({ box: 'date', key: 'newResult.outsideTheSeason' })
   } else if (asksTheDay && day > today) {
     wrong.push({ box: 'date', key: 'results.refused.theRaceHasNotBeenRun' })
   }

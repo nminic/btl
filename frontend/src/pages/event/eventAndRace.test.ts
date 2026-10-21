@@ -69,9 +69,9 @@ const filled = (over: Partial<TheBlock> = {}): TheBlock => ({
   ...over,
 })
 
-/** What is wrong with the block, in the first season open, the ordinary state of 2027. */
-const boxes = (block: TheBlock, open: readonly number[] | null = [2027]) =>
-  whatIsWrongWithTheBlock(block, TODAY, open).map((one) => `${one.box} ${one.key}`)
+/** What is wrong with the block on the day the cases stand on. */
+const boxes = (block: TheBlock, today = TODAY) =>
+  whatIsWrongWithTheBlock(block, today).map((one) => `${one.box} ${one.key}`)
 
 describe('the event and the race of the block', () => {
   it('links an event typed exactly, and lets go of it on any other name, the race following a new one', () => {
@@ -121,24 +121,22 @@ describe('what is wrong with the block', () => {
     ])
   })
 
-  it('says a day before the league, a day still to come, and a town with no country, each in its own words', () => {
-    expect(boxes(filled({ date: '31/12/2026' }))).toEqual(['date leagueResults.refused.theDayIsBeforeTheLeague'])
+  it('says a day still to come, and a town with no country, each in its own words', () => {
     expect(boxes(filled({ date: '24/08/2027' }))).toEqual(['date results.refused.theRaceHasNotBeenRun'])
     expect(boxes(filled({ date: TODAY.split('-').reverse().join('/') }))).toEqual([])
     expect(boxes(filled({ country: '' }))).toEqual(['city form.errors.countryMissing'])
   })
 
-  it('holds the day to the seasons open for a report, and says nothing of them where they were not read', () => {
-    /* Owner, 20.10.2026: „NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE! ONI SE UNOSE IMPORTOM.” A day
-       of 2027 when only 2028 is open is a season not open, said in the member's own words for the box;
-       read as the year of the race and never of today. */
-    expect(boxes(filled(), [2028])).toEqual(['date newResult.outsideTheSeason'])
-    expect(boxes(filled(), [2027, 2028])).toEqual([])
-    expect(boxes(filled(), null)).toEqual([])
-    /* Read on a day of 2028 while 2027 is still open (the morning of New Year is the one such day):
-       the race's year is open, whatever year today is in. */
-    expect(whatIsWrongWithTheBlock(filled({ date: '31/12/2027' }), '2028-01-01', [2027, 2028])).toEqual([])
-    expect(whatIsWrongWithTheBlock(filled({ date: '31/12/2027' }), '2028-01-01', [2027])).toEqual([])
+  it('takes a day of any year up to today, those before the league and those of a season long closed too', () => {
+    /* Owner, 21.10.2026: „Moderator i admin smeju da unose rezultate za BILO KOJU prethodnu godinu”. The
+       year before the league (the refusal of 19.10.2026) and the season not open (the refusal of
+       20.10.2026) are neither said any more, on the day the year is nearest to and on a far one. */
+    expect(boxes(filled({ date: '31/12/2026' }))).toEqual([])
+    expect(boxes(filled({ date: '06/06/2015' }))).toEqual([])
+    expect(boxes(filled({ date: '31/12/2027' }), '2028-03-01')).toEqual([])
+    expect(boxes(filled({ date: '31/12/2027' }), '2031-03-01')).toEqual([])
+    /* And still a day that has not come, whatever year it is in. */
+    expect(boxes(filled({ date: '01/01/2028' }), '2027-12-31')).toEqual(['date results.refused.theRaceHasNotBeenRun'])
   })
 
   it('holds a course to a length above nought and whole climbs from nought up, and a limit above nought', () => {

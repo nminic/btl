@@ -35,12 +35,12 @@ export const WHEN_THE_LEAGUE_ENTERS_RESULTS: Record<string, string> = {
   theFormIsNotComplete: 'leagueResults.refused.theFormIsNotComplete',
   theGroupIsEmpty: 'leagueResults.refused.theGroupIsEmpty',
   theGroupIsTooBig: 'leagueResults.refused.theGroupIsTooBig',
-  /* The four of the moderator's own screen, „Unos rezultata za događaj”, in the words the owner
-     approved on 19.10.2026 (PDL P9, „Reči ekrana „Unos rezultata za događaj” i panela”). */
+  /* The three of the moderator's own screen, „Unos rezultata za događaj”, in the words the owner
+     approved on 19.10.2026 (PDL P9, „Reči ekrana „Unos rezultata za događaj” i panela”). The fourth, a
+     day before the league, is gone: the screen takes any year up to today (owner, 21.10.2026). */
   theEventIsNotKnown: 'leagueResults.refused.theEventIsNotKnown',
   theRaceIsNotKnown: 'leagueResults.refused.theRaceIsNotKnown',
   theTownIsMissing: 'leagueResults.refused.theTownIsMissing',
-  theDayIsBeforeTheLeague: 'leagueResults.refused.theDayIsBeforeTheLeague',
   /* PDL P9, 20.10.2026: on the morning of 1 January before ten a race of New Year's Eve may go on an
      event of the new year, which then moves back into the year before; where an event of that name
      stands there already, the save is refused with the sentence the approval of a run has for the same
@@ -50,7 +50,9 @@ export const WHEN_THE_LEAGUE_ENTERS_RESULTS: Record<string, string> = {
 
 /**
  * AND THE ONE IT BORROWS FROM THE MEMBER'S OWN ROUTE, with the member's own sentence, which is just as
- * true of a moderator: a race whose day has not come. Kept apart from the map above because
+ * true of a moderator: a race whose day has not come. (The member's sentence for a race of a season not
+ * open was borrowed here too, until the owner's decision of 21.10.2026 that a moderator enters any year;
+ * the route cannot give it any more.) Kept apart from the map above because
  * `ResultWriteApi.java` is not on the gate of `refusals.test.ts`, and a claim the gate cannot trace
  * to a file it reads would fail it. The button that leads here is not drawn for such a race
  * (`EventDetail.tsx`), so this is reached only by an address typed by hand.
@@ -58,10 +60,6 @@ export const WHEN_THE_LEAGUE_ENTERS_RESULTS: Record<string, string> = {
 export const THE_LEAGUE_ENTERING: Record<string, string> = {
   ...WHEN_THE_LEAGUE_ENTERS_RESULTS,
   theRaceHasNotBeenRun: 'results.refused.theRaceHasNotBeenRun',
-  /* And the member's own approved sentence for a race of a season not open for a report, which the
-     moderator's screen is held to as well (owner, 20.10.2026, „NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE
-     SEZONE!”). Borrowed by name from `ResultWriteApi`, as the one above. */
-  theRaceIsOutsideTheSeason: 'results.refused.theRaceIsOutsideTheSeason',
 }
 
 /**
