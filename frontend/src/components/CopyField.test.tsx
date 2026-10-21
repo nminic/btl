@@ -120,7 +120,7 @@ describe('a value with a button that copies it', () => {
       render(
         <CopyField
           label="Napomena"
-          value="20271"
+          value="2027000001"
           copyButtonLabel="Kopiraj napomenu"
           copiedMessage="Napomena je kopirana."
           failedMessage="Kopiranje nije uspelo. Kopiraj napomenu ručno."

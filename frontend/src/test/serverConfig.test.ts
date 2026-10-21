@@ -55,6 +55,35 @@ describe('what the server in front of the portal is told', () => {
   })
 
   /**
+   * AND CHANGING A PASSWORD IS LIMITED TOO, BY A ZONE OF ITS OWN.
+   *
+   * `PUT /api/me/password` hashes with BCrypt inside a transaction that holds a row lock, so ten
+   * parallel requests from ONE signed-in member hold the whole connection pool (a review of
+   * 470). The snapshot above would stop the day this limit is removed, but only to ask for a
+   * deliberate act; this case is what the act has to still satisfy: an exact-match location
+   * for the route, carrying a `limit_req` of a zone that is declared. Comments are removed
+   * first, so a commented-out line satisfies nothing.
+   */
+  it('limits changing a password with a zone that exists', () => {
+    const conf = readFileSync(join(process.cwd(), 'nginx.conf'), 'utf8')
+      .split(/\r?\n/)
+      .filter((line) => !line.trim().startsWith('#'))
+      .join('\n')
+    const block = /location\s+=\s+\/api\/me\/password\s*\{([^}]*)\}/.exec(conf)
+
+    expect(block, 'no exact-match location for /api/me/password').not.toBeNull()
+
+    const used = /limit_req\s+zone=(\w+)\s/.exec(String(block?.[1]))
+
+    expect(used, 'the location for /api/me/password carries no limit_req').not.toBeNull()
+    expect(
+      new RegExp(`limit_req_zone\\s+\\$binary_remote_addr\\s+zone=${String(used?.[1])}:\\d+m\\s+rate=\\d+r/m;`)
+        .test(conf),
+      `the zone ${String(used?.[1])} is not declared`,
+    ).toBe(true)
+  })
+
+  /**
    * AND NOTHING IN PRODUCTION PUBLISHES A PORT.
    *
    * The sentence this holds up is in `nginx.conf`: the address of a connection is always

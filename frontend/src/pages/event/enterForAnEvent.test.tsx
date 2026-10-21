@@ -413,6 +413,9 @@ describe('what the block says before anything is sent', () => {
 
       expect(event).toHaveAttribute('aria-invalid', 'true')
       expect(event).toHaveAccessibleDescription(/Ovo polje je obavezno/)
+      /* The row is whole, so it is the block alone that was refused, and the cursor is put on its first
+         box all the same (`event/EnterResults.tsx`, `owed`). */
+      expect(event).toHaveFocus()
 
       await user.type(event, 'Stara trka')
       await user.type(screen.getByLabelText(/^Datum/), '31122026')

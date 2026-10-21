@@ -391,7 +391,19 @@ class PaymentApi {
 	 * depend on what was typed. This one does not.
 	 *
 	 * <p>A reference as the bank prints it is the season and the member number run together (V16),
-	 * which is a handful of digits; this is a floor and not a description of one.
+	 * ten digits since the owner's decision of 20.10.2026 (PDL P8, {@code YYYYNNNNNN}: the season,
+	 * then the six digit member number with its leading zeros); this is a floor and not a
+	 * description of one.
+	 *
+	 * <p><b>THIS ROUTE DOES NOT MATCH A REFERENCE TO ANYBODY, which is why that decision changed
+	 * nothing here.</b> The form it checks is {@link #A_REFERENCE} (seven digits or more, V16) and
+	 * whether another payment already carries it, and nothing reads the digits as a season or a
+	 * member (measured 20.10.2026: the only readers of {@code payment.reference} are the
+	 * uniqueness question and the insert in {@link BookingAPayment}). So a reference of the old
+	 * form (no noughts) is still accepted, and that is left as it is on purpose: QA holds no
+	 * payment (measured 18.10.2026), the screens never send a reference (first payments have none
+	 * and a booking from the members table sends none), and narrowing the shape to ten digits
+	 * would be a second home for what V16's check says, to be changed with it or not at all.
 	 */
 	static final int MOST_A_REFERENCE_CAN_BE = 2000;
 
