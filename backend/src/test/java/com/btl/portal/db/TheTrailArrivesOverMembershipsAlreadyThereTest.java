@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -73,6 +74,25 @@ class TheTrailArrivesOverMembershipsAlreadyThereTest extends DatabaseTest {
 			/* And the same row names no moment either, so the pair goes together: validating either
 			   one alone refuses it. */
 			"membership_free_of_the_fee_says_when");
+
+	/**
+	 * THE ONE CONSTRAINT ON ANOTHER TABLE THAT IS UNVALIDATED ON PURPOSE, named once and here because
+	 * the whole-schema floor below is the place the next migration that reaches for {@code not valid}
+	 * has to come through (20.10.2026, V68).
+	 *
+	 * <p>It is a separate set and not a third name in the one above, because that one answers three
+	 * questions that are about {@code membership} (what must be unvalidated on it, what the rest of it
+	 * must not be, and which names its own floor must still cover) and a payment's rule is the answer
+	 * to none of them.
+	 */
+	private static final Set<String> NOT_VALIDATED_ON_PURPOSE_ELSEWHERE = Set.of(
+			/* A payment's reference is exactly ten digits (owner, PDL P8, 20.10.2026), and a payment
+			   recorded before that may hold one of the old shape ("seven or more"), which nobody can
+			   say how to rewrite: a reference is what a line of a bank statement is matched by, and a
+			   changed one is a payment nothing matches. A plain constraint would stop Flyway on the
+			   first such row. `PaymentReferenceCarriedOverTest` runs V68 over those rows and requires
+			   the rule to come out unvalidated, and over the new rows it must refuse. */
+			"payment_reference_shape");
 
 	private static final String A_TOWN = "(select id from place where rank = 1)";
 	private static final String A_PRICE_ROW = "(select id from price_row order by sort_order limit 1)";
@@ -164,7 +184,7 @@ class TheTrailArrivesOverMembershipsAlreadyThereTest extends DatabaseTest {
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
 						+ " currency, fee, method, state, recorded_at, recorded_by, recorded_by_name,"
 						+ " received)"
-						+ " values (" + A_PAYER + ", 2027, '20271001', " + A_PRICE_ROW + ", 4200.00,"
+						+ " values (" + A_PAYER + ", 2027, '2027001001', " + A_PRICE_ROW + ", 4200.00,"
 						+ " 'RSD', 0, 'ips', 'recorded', " + AN_INSTANT + ", " + THE_MODERATOR
 						+ ", 'Probni Probic', 4200.00)")
 				.update();
@@ -178,7 +198,7 @@ class TheTrailArrivesOverMembershipsAlreadyThereTest extends DatabaseTest {
 				+ EXEMPT_LONG_AGO + ", 2027, 'feeExempt', null)").update();
 
 		db.sql("insert into membership (competitor_id, season, basis, payment_id) values ("
-				+ A_PAYER + ", 2027, 'payment', (select id from payment where reference = '20271001'))")
+				+ A_PAYER + ", 2027, 'payment', (select id from payment where reference = '2027001001'))")
 				.update();
 	}
 
@@ -408,9 +428,13 @@ class TheTrailArrivesOverMembershipsAlreadyThereTest extends DatabaseTest {
 	 * <p>Only CHECK constraints are counted, and that is a boundary rather than an oversight: a
 	 * foreign key may also be {@code not valid}, and if one ever is, this case is where it will
 	 * show up as a name nobody wrote down.
+	 *
+	 * <p><b>The names are the two of V35 and, since V68, a payment's reference.</b> The set is a sum
+	 * of two lists written for two reasons, and each is checked from its own side: the membership's
+	 * pair above, and {@code payment_reference_shape} by {@code PaymentReferenceCarriedOverTest}.
 	 */
 	@Test
-	void everyUnvalidatedConstraintInTheSchemaIsOneOfTheTwoNamedHere() {
+	void everyUnvalidatedConstraintInTheSchemaIsOneNamedHere() {
 		List<String> unvalidated = db.sql("select con.conname from pg_constraint con"
 						+ " join pg_class rel on rel.oid = con.conrelid"
 						+ " join pg_namespace ns on ns.oid = rel.relnamespace"
@@ -422,7 +446,9 @@ class TheTrailArrivesOverMembershipsAlreadyThereTest extends DatabaseTest {
 				.as("a constraint somewhere in the schema is not validated and no decision here says"
 						+ " why; `not valid` is how a migration is made to stop failing without"
 						+ " anybody choosing that, so it is named once or it is not written")
-				.containsExactlyInAnyOrderElementsOf(NOT_VALIDATED_ON_PURPOSE);
+				.containsExactlyInAnyOrderElementsOf(
+						Stream.concat(NOT_VALIDATED_ON_PURPOSE.stream(),
+								NOT_VALIDATED_ON_PURPOSE_ELSEWHERE.stream()).toList());
 	}
 
 	/**

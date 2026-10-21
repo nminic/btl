@@ -1,7 +1,7 @@
 import { SLOW } from '../../test/slow'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { configure, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { livePage } from '../../data/pages'
 import { I18nProvider } from '../../i18n/I18nProvider'
@@ -16,6 +16,10 @@ import { Entities } from './Entities'
 import { TEAMS } from './entityForms'
 import { RowActions } from './EntityEditor'
 import { Verification } from './Verification'
+
+/* Every wait is given half of what a case is given, for the reason `rowMembership.test.tsx` gives: a
+   mutation then fails on its assertion and not on the clock of the case. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /* Deleting a record, and the two things it must not quietly do: leave the
  * identity behind, and leave the record behind. */
@@ -147,6 +151,30 @@ describe('the focus after a row is deleted', () => {
        the focus anywhere unexpected. */
     expect(sure).toHaveFocus()
   })
+})
+
+describe('the focus when the question is asked from the keyboard', () => {
+  it('goes to „Sigurno?" of the row that asked, which is the second of the list', async () => {
+    /* PENDING 28269 and 29822. Enter on „Obriši" took the opener out of the page, so the focus fell to
+       the document and the next Tab started the page from the top. A click does not show it, and the
+       row that asks is the SECOND, so a focus that went to the first control of the list is told
+       from the right one. */
+    const user = setupUser()
+    renderAt('/sr/administracija/timovi', 'superadmin')
+
+    const table = () => within(screen.getByRole('table', { name: 'Timovi' }))
+    await screen.findByRole('table', { name: 'Timovi' })
+
+    const openers = table().getAllByRole('button', { name: /^Obriši:/ })
+    const second = must(openers[1], 'the delete control of the second row')
+    const name = must(second.getAttribute('aria-label'), 'a name on the delete control').replace('Obriši: ', '')
+
+    second.focus()
+    await user.keyboard('{Enter}')
+
+    expect(table().getByRole('button', { name: `Potvrdi brisanje: ${name}` })).toHaveFocus()
+    expect(document.body).not.toHaveFocus()
+  }, SLOW)
 })
 
 describe('a deleted written page', () => {

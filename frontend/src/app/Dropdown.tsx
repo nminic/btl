@@ -56,7 +56,28 @@ export function Dropdown({
   }, [open])
 
   return (
-    <div className={open ? `${className} is-open` : className} ref={box}>
+    <div
+      className={open ? `${className} is-open` : className}
+      ref={box}
+      /* Shut when the focus goes somewhere outside the box. Escape and a press elsewhere
+         were the only ways out, so Tab past the last link, or Shift+Tab off the button,
+         left the panel open over whatever the focus had gone to (WCAG 2.2 SC 2.4.11).
+         The whole box is the question, the panel included, so Tab from one link to the
+         next is not leaving. The shape is the one `forms/Suggesting.tsx` uses for its list.
+         `relatedTarget` is where the focus is going. It is null when it goes nowhere an
+         element can be named: a press on text inside the panel, which cannot take focus,
+         blurs the button that opened it with a null `relatedTarget`, and the window losing
+         the focus does the same. Neither is the reader leaving the box, and a press outside
+         is the mousedown listener's. So null leaves it open. The focus is never put back:
+         it went where the reader sent it. */
+      onBlur={(event) => {
+        const to = event.relatedTarget
+
+        if (to !== null && !event.currentTarget.contains(to)) {
+          setOpen(false)
+        }
+      }}
+    >
       <button
         ref={button}
         type="button"

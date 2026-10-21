@@ -1,0 +1,13 @@
+# The nightly copy of production (deploy/backup.sh). Started by btl-backup.timer; installing both
+# is the owner's step, in deploy/README.md under "The backup".
+[Unit]
+Description=BTL nightly backup of production to R2
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/btl/deploy
+ExecStart=/bin/sh backup.sh
+# One copy at a time, and never longer than an hour: a run that hangs fails, and a failed run mails.
+TimeoutStartSec=1h

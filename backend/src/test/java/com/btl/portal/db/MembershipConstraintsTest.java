@@ -78,10 +78,10 @@ class MembershipConstraintsTest extends DatabaseTest {
 
 	/* The receipts, named by the reference a bank statement carries rather than by a row number:
 	   which payment a case means has to be readable off the case. */
-	private static final String HIS_2027 = "(select id from payment where reference = '20271000')";
-	private static final String HIS_2029 = "(select id from payment where reference = '20291000')";
+	private static final String HIS_2027 = "(select id from payment where reference = '2027001000')";
+	private static final String HIS_2029 = "(select id from payment where reference = '2029001000')";
 	private static final String ANOTHER_MEMBERS_2027 =
-			"(select id from payment where reference = '20271001')";
+			"(select id from payment where reference = '2027001001')";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
 			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
@@ -178,9 +178,9 @@ class MembershipConstraintsTest extends DatabaseTest {
 		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'blagajnik@primer.rs',"
 				+ " (select id from role where code = 'moderator'))").update();
 
-		payment("001000", 2027, "20271000");
-		payment("001000", 2029, "20291000");
-		payment("001001", 2027, "20271001");
+		payment("001000", 2027, "2027001000");
+		payment("001000", 2029, "2029001000");
+		payment("001001", 2027, "2027001001");
 
 		db.sql(membership(A_MEMBER + ", 2029, 'payment', " + HIS_2029)).update();
 
@@ -692,7 +692,7 @@ class MembershipConstraintsTest extends DatabaseTest {
 				.query(String.class).list())
 				.as("the same man could not hold two seasons on two bases, each with the evidence"
 						+ " A12 asks for")
-				.containsExactly("2028 feeExempt bez uplate", "2029 payment 20291000");
+				.containsExactly("2028 feeExempt bez uplate", "2029 payment 2029001000");
 	}
 
 	/**
@@ -742,7 +742,7 @@ class MembershipConstraintsTest extends DatabaseTest {
 	void theMembershipGoesWithTheReceipt() {
 		db.sql(GOOD_ANOTHER_MEMBER).update();
 
-		assertThat(db.sql("delete from payment where reference = '20291000'").update())
+		assertThat(db.sql("delete from payment where reference = '2029001000'").update())
 				.as("the receipt the probe's membership stands on was not there to delete")
 				.isOne();
 

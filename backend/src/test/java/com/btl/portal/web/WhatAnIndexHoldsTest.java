@@ -2,7 +2,6 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.WhatAnAddressLooksLike;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,18 +28,28 @@ import static org.assertj.core.api.Assertions.assertThat;
  * ... exceeds btree version 4 maximum ... for index "..."} (SQLSTATE 54000) and, being an
  * error, it aborts the transaction. Nothing in a shape rule says so, because a shape rule is
  * about what a text is made of, so a text of three thousand letters walks through
- * {@code league_slug_shape}, {@code account_email_shape} and {@code payment_reference_shape}
- * and meets the index at the {@code INSERT}. What the person typing it gets is a 500.
+ * {@code league_slug_shape} and {@code account_email_shape} (and, until V68,
+ * {@code payment_reference_shape}) and meets the index at the {@code INSERT}. What the person typing
+ * it gets is a 500.
  *
- * <p>{@code LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE} and {@code PaymentApi.MOST_A_REFERENCE_CAN_BE}
- * are two numbers that turn that 500 into the sentence each route already has for a value that is
- * not the right shape, and both are taken from the index. This file is what keeps them honest, in
- * the way ADL A45 asks for: it does not compare the numbers with a number written down, it asks
- * the database. For each of the three indexes it inserts a real row, through the real table and
- * the real constraints, and finds by halving the interval the longest text the index keeps; it
- * then requires the route's number not to be above that.
+ * <p>{@code LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE} is a number that turns that 500 into the sentence
+ * the route already has for a value that is not the right shape, and it is taken from the index. This
+ * file is what keeps it honest, in the way ADL A45 asks for: it does not compare the number with a
+ * number written down, it asks the database. For each of the two indexes it inserts a real row,
+ * through the real table and the real constraints, and finds by halving the interval the longest text
+ * the index keeps; it then requires the route's number not to be above that.
  *
- * <p><b>The third number, {@code WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE}, is not taken
+ * <p><b>THE PAYMENT REFERENCE'S KEY LEFT THIS LIST ON 20.10.2026, and it left because it no longer
+ * needs a bound, not because it was forgotten.</b> A bound was needed while
+ * {@code payment_reference_shape} asked for seven digits at least and said nothing of the other end
+ * ({@code PaymentApi.MOST_A_REFERENCE_CAN_BE}, 2000). V68 makes the shape exactly ten digits, in the
+ * route and in the constraint, so no text the index cannot hold ever reaches it: this probe could not
+ * even write one, the constraint refuses it first. What keeps that true is
+ * {@code PaymentConstraintsTest} (nine and eleven digits are refused by the database) and
+ * {@code PaymentReferenceMatchesTheSchemaTest} (the route's pattern and the constraint agree on every
+ * length).
+ *
+ * <p><b>The second number, {@code WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE}, is not taken
  * from the index but from the standard: 254, RFC 5321's 256 octets for a path less the two angle
  * brackets.</b> It is far below what {@code account_email_unique} keeps, so it closes the 500 as a
  * consequence and not as its reason, and this file still holds it to that: the same search is made
@@ -61,13 +70,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * that came back compressed would be measuring a limit that depends on what was typed, and fails.
  *
  * <p><b>Measured 10.10.2026 on PostgreSQL 18.6 with an 8192 byte page:</b> 2692 characters of such
- * text go into each of the three, and 2693 do not (the message is {@code row size 2712 exceeds ...
+ * text go into each of the indexes then measured, and 2693 do not (the message is {@code row size 2712 exceeds ...
  * maximum 2704}). The number is not written in any assertion below; it is what the search finds.
  *
  * <p><b>The probe is rolled back to a savepoint after every attempt</b>, whether the row went in or
  * not. A failed statement leaves a PostgreSQL transaction unable to answer anything else, and a
- * row that went in would collide with the next attempt (a payment is unique for a member and a
- * season). Only the refusal for the index's reason (SQLSTATE 54000) counts as "does not fit"; any
+ * row that went in would collide with the next attempt (a league's address and an account's are
+ * unique). Only the refusal for the index's reason (SQLSTATE 54000) counts as "does not fit"; any
  * other failure is the probe being wrong and is thrown, because a search that read a check
  * constraint's refusal as the limit would report a limit that is not there.
  *
@@ -76,8 +85,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * list is not in the catalogue: which unique indexes over text a route writes from typed input is
  * not something PostgreSQL can be asked, so there is no query that proves this list complete. It
  * was surveyed on 10.10.2026 by reading every statement in {@code main} that inserts into or
- * updates a table with a unique text key. Five are written from typed input: the three here, and
- * {@code team_slug_unique} and {@code btl_event_slug_unique}, which had no bound on that day. The
+ * updates a table with a unique text key. Five were written from typed input: the three then here
+ * (the payment reference's has since left, see above), and {@code team_slug_unique} and
+ * {@code btl_event_slug_unique}, which had no bound on that day. The
  * others hold a hash, a code or a number the portal generates, or reference data no route writes.
  * A key a route writes that is not on this list is a 500 waiting for a long enough text, and is
  * found by whoever writes the route; this class is where its number goes.
@@ -113,8 +123,6 @@ class WhatAnIndexHoldsTest {
 
 	static final String LETTERS_AND_DIGITS = "abcdefghijklmnopqrstuvwxyz0123456789";
 
-	static final String DIGITS = "0123456789";
-
 	/**
 	 * THE STANDARD'S LIMIT FOR AN ADDRESS OF ELECTRONIC MAIL, written here from RFC 5321 and read
 	 * from nothing in the portal.
@@ -139,9 +147,6 @@ class WhatAnIndexHoldsTest {
 
 	@Autowired
 	private JdbcClient db;
-
-	/** The member a probe payment is booked for, written before any savepoint is taken. */
-	private long payer;
 
 	/**
 	 * ONE INDEX, THE COLUMN IT IS OVER, THE NUMBER THE CODE REFUSES AT, AND THE WAY TO PUT A ROW
@@ -173,11 +178,7 @@ class WhatAnIndexHoldsTest {
 				new Key("league_slug_unique", "league", "slug",
 						LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE, 1,
 						WhatAnIndexHoldsTest::aSlugOf, WhatAnIndexHoldsTest::aRepeatedSlugOf,
-						this::aLeagueAt),
-				new Key("payment_reference_unique", "payment", "reference",
-						PaymentApi.MOST_A_REFERENCE_CAN_BE, 7,
-						WhatAnIndexHoldsTest::aReferenceOf,
-						WhatAnIndexHoldsTest::aRepeatedReferenceOf, this::aPaymentReferencedBy));
+						this::aLeagueAt));
 	}
 
 	/* ------------------------------------------------------------------------ the noise */
@@ -219,11 +220,6 @@ class WhatAnIndexHoldsTest {
 		return noise(LETTERS_AND_DIGITS, length);
 	}
 
-	/** A payment reference of exactly that many digits. */
-	static String aReferenceOf(int length) {
-		return noise(DIGITS, length);
-	}
-
 	/** An address of electronic mail of that many characters made of ONE repeated letter. */
 	static String aRepeatedMailAddressOf(int length) {
 		return "a@" + "a".repeat(length - 2);
@@ -232,11 +228,6 @@ class WhatAnIndexHoldsTest {
 	/** A league's typed address of that many characters made of ONE repeated letter. */
 	static String aRepeatedSlugOf(int length) {
 		return "a".repeat(length);
-	}
-
-	/** A payment reference of that many digits made of ONE repeated digit. */
-	static String aRepeatedReferenceOf(int length) {
-		return "7".repeat(length);
 	}
 
 	/**
@@ -249,10 +240,10 @@ class WhatAnIndexHoldsTest {
 	 * of the ways shows up as exactly those failing.
 	 *
 	 * <ul>
-	 * <li><b>One character past the bound</b>, which for the league and the reference the database
+	 * <li><b>One character past the bound</b>, which for the league the database
 	 * would still keep and which only a bound written as a number refuses; and for an address, one
 	 * past the standard's number, which the database would keep as well.
-	 * <li><b>Twice the bound</b>: for the league and the reference (2000) it is past what the index
+	 * <li><b>Twice the bound</b>: for the league (2000) it is past what the index
 	 * keeps (4000 against 2692); for an address (254) it is 508, which the index keeps.
 	 * <li><b>One repeated letter, one past the bound</b>, and <b>a hundred thousand copies of one
 	 * letter</b>: PostgreSQL compresses an index key that long and keeps them (measured in
@@ -307,11 +298,6 @@ class WhatAnIndexHoldsTest {
 					WhatAnIndexHoldsTest::aSlugOf);
 		}
 
-		String forAReference(int bound) {
-			return of(bound, WhatAnIndexHoldsTest::aReferenceOf,
-					WhatAnIndexHoldsTest::aRepeatedReferenceOf, WhatAnIndexHoldsTest::aReferenceOf);
-		}
-
 		/** What the case is called in a report, and in the message of an assertion. */
 		@Override
 		public String toString() {
@@ -364,27 +350,6 @@ class WhatAnIndexHoldsTest {
 		return db.sql("insert into league (slug, name, season, rules, prizes)"
 						+ " values (?, 'Probna liga', 2027, '', '') returning id")
 				.param(address).query(Long.class).single();
-	}
-
-	private long aPaymentReferencedBy(String reference) {
-		return db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
-						+ " currency, fee, method, state) values"
-						+ " (?, 2028, ?, (select id from price_row where key = 'early'),"
-						+ " 35.00, 'EUR', 3.00, 'paypal', 'awaited') returning id")
-				.params(payer, reference).query(Long.class).single();
-	}
-
-	@BeforeEach
-	void aMemberWhoCanPay() {
-		payer = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active,"
-						+ " referral_code, bio, profile_hidden, birthday_shown,"
-						+ " father_name, address, shirt_size, health_statement_at)"
-						+ " values (null, 'Probni', 'Platisa', 'M', date '1985-01-01',"
-						+ " (select id from place order by rank limit 1), 2027, false, false,"
-						+ " '00112233445566aa', '', false, 'none', 'Otac', 'Ulica 9', 'L',"
-						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.query(Long.class).single();
 	}
 
 	/* ------------------------------------------------------------------------- the probing */
@@ -559,7 +524,7 @@ class WhatAnIndexHoldsTest {
 	 * A REPEATED TEXT IS KEPT FAR BEYOND THAT LIMIT, WHICH IS WHY THE BOUND DOES NOT FOLLOW WHAT
 	 * THE DATABASE REFUSES.
 	 *
-	 * <p>A hundred thousand copies of one character go into each of the three indexes, because
+	 * <p>A hundred thousand copies of one character go into each of the indexes measured here, because
 	 * PostgreSQL compresses an index key that long and a run of one letter compresses to almost
 	 * nothing. The limit that the case above finds is therefore the limit for text that cannot be
 	 * compressed, and a bound written as "what the database refuses" would admit a text of any
@@ -568,8 +533,8 @@ class WhatAnIndexHoldsTest {
 	 * <p><b>So the routes refuse a repeated text too, deliberately, and it is stricter than the
 	 * database.</b> Each route case that sends one over the bound says so, and this is the
 	 * measurement behind the sentence: the database would have kept it. The day PostgreSQL stops
-	 * doing this, the case fails and the sentence in the javadoc of the league's and the
-	 * reference's constants about "the same bound for a text that could be compressed" is no longer
+	 * doing this, the case fails and the sentence in the javadoc of the league's
+	 * constant about "the same bound for a text that could be compressed" is no longer
 	 * a choice but a fact about every text, which is a reason to read it again and not a reason to
 	 * change a number. (The address of electronic mail is bounded at the standard's 254, far under
 	 * both, so for it the repeated text is refused for the standard's reason and the measurement
