@@ -1639,6 +1639,89 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * THE TEAMS THAT HAD ALREADY ASKED HIM ARE TOLD WHEN A MODERATOR MAKES HIM A FOUNDER, AS THEY ARE
+	 * TOLD WHEN A TEAM OR HE HIMSELF TAKES HIM IN (PDL 06.09.2026).
+	 *
+	 * <p>The entry: „Tim čiji je poziv ostao neodgovoren dobija poruku u sandučetu portala", and it
+	 * „javlja se bez obzira kojim putem je član ušao, jer je poziv koji je ostao bez odgovora isti
+	 * događaj u oba slučaja". An approval of the team he proposed is a third way in; until
+	 * PENDING 28866 (plans T5 and T6, 09.10.2026) only the two of {@link TeamJoiningWriteApi} wrote
+	 * the message. The words are that class's own, called and not copied, so the case reads them off
+	 * it: the subject, the sentence, and the sender the owner chose for a portal message about a team
+	 * (the league, PDL P13 19.09.2026, and not „Verifikacija" which signs the message to the founder).
+	 *
+	 * <p><b>The axes, each with a team that separates it from the others:</b> two teams that asked him
+	 * are both told; one of them asked for two seasons and is told once; a team that asked him and has
+	 * nobody in it is told nothing and, above all, nothing goes to the whole league (V13 reads an
+	 * addressee-less message as one to everybody); a team whose open question is about somebody else
+	 * is not told; and the word is HIS gender (he is a man here, the fixture's default is a woman, so
+	 * a word read off the leader instead would be „ušla").
+	 */
+	@Test
+	void approvingATeamTellsTheTeamsThatAskedTheFounderAndNoOtherAndNotTheLeague() throws Exception {
+		db.sql("update competitor set gender = 'M' where member_number = ?").param(BOJAN).update();
+
+		long leadByVera = aTeamLedBy(VERA, "Verin tim");
+		long leadByAna = aTeamLedBy(ANA, "Anin tim");
+		long leadByDete = aTeamLedBy(DETE, "Detetov tim");
+		long nobodyInIt = aTeamLedBy(null, "Prazan tim");
+
+		invitationOf(BOJAN, leadByVera, STARTS_IN);
+		invitationOf(BOJAN, leadByVera, STARTS_IN + 1);
+		invitationOf(BOJAN, leadByAna, STARTS_IN);
+		invitationOf(BOJAN, nobodyInIt, STARTS_IN);
+		invitationOf(VERA, leadByDete, STARTS_IN);
+
+		assertThat(answer(TEAMS_MODERATOR, bojansTeam, true, null)).isEqualTo(200);
+
+		String missed = TeamJoiningWriteApi.THE_INVITATION_WAS_MISSED + " | "
+				+ TeamJoiningWriteApi.theMissedInvitationReads("Bojan Bojic", "M", THE_TEAM);
+
+		assertThat(messagesTo(VERA)).as("a team that asked him twice is told once").containsExactly(missed);
+		assertThat(messagesTo(ANA)).containsExactly(missed);
+		assertThat(messagesTo(DETE))
+				.as("a team that asked somebody else was told about a man it never asked")
+				.isEmpty();
+		assertThat(db.sql("select count(*) from message where to_id is null")
+				.query(Integer.class).single())
+				.as("a team with nobody in it was written to, which reaches the whole league")
+				.isZero();
+		assertThat(db.sql("select distinct from_name from message where to_id in (?, ?)")
+				.params(memberId(VERA), memberId(ANA)).query(String.class).list())
+				.containsExactly(PairWriteApi.THE_LEAGUE);
+		assertThat(messagesTo(BOJAN))
+				.as("the founder is told his team was accepted and nothing about invitations")
+				.hasSize(1)
+				.allMatch(one -> one.startsWith("Tim je prihvaćen | "));
+	}
+
+	/** A team with {@code leader} as its only standing member, or with nobody in it where none is named. */
+	private long aTeamLedBy(String leader, String name) {
+		long team = db.sql("insert into team (slug, name, bio, link, place_id, first_season, admin_id)"
+						+ " values (?, ?, '', '', (select id from place where rank = 1), ?, ?) returning id")
+				.params(name.toLowerCase().replace(' ', '-'), name, STILL_RUNNING,
+						leader == null ? null : memberId(leader))
+				.query(Long.class).single();
+
+		if (leader != null) {
+			db.sql("insert into team_membership (competitor_id, team_id, season_from) values (?, ?, ?)")
+					.params(memberId(leader), team, STILL_RUNNING).update();
+		}
+
+		return team;
+	}
+
+	private void invitationOf(String member, long team, int season) {
+		db.sql("insert into team_invitation (team_id, competitor_id, season) values (?, ?, ?)")
+				.params(team, memberId(member), season).update();
+	}
+
+	private List<String> messagesTo(String member) {
+		return db.sql("select subject || ' | ' || body from message where to_id = ? order by id")
+				.param(memberId(member)).query(String.class).list();
+	}
+
+	/**
 	 * THE SEASON IS THE ONE TRANSFERS TAKE EFFECT IN, AND THE PORTAL HAS ALREADY GOT THIS
 	 * WRONG ONCE.
 	 *
