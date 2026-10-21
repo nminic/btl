@@ -1,5 +1,6 @@
 import { clearResourceCache } from '../data/client'
 import { askTheServer, type Answer } from './account/askTheServer'
+import { theServerSaysTheScreenIsStale } from './member/pairWrites'
 
 /**
  * WHAT IS WAITING ON A TEAM, READ OFF THE SERVER AND ANSWERED THERE.
@@ -479,16 +480,34 @@ export async function theInvitationWasTakenBack(
  * <p><b>No body</b>: `TeamJoiningWriteApi.apply` takes the member from the session and the team
  * from the path, and reads nothing else.
  *
- * <p><b>What it makes stale is the asker's own list of what he waits on, and only where the
- * server agreed</b> - the rule `member/teamWrites.ts` states for the same resource. Nothing else
- * this visit reads moves: the application is drawn to the team off its own route, read afresh by
- * whoever leads it, and the route writes no message (`TeamJoiningWriteApi.asking`, „NOBODY IS
- * WRITTEN TO"). The screen asks for the list again itself, because it is still mounted.
+ * <p><b>What it makes stale is the asker's own list of what he waits on</b> - the rule
+ * `member/teamWrites.ts` states for the same resource - <b>where the server agreed, and where it
+ * refused in a way that says the list the page was drawn from is no longer the server's answer</b>
+ * ({@link theServerSaysTheScreenIsStale}, the very predicate `member/pairWrites.ts` drops the same
+ * list on for a pair). `aQuestionAlreadyStands` is an application sent from another tab since the
+ * page read what was waiting, and the empty 404 is the route saying the question it was asked is
+ * not there; kept, the list would go on drawing „Prijavi se u tim" over a press the route refuses
+ * every time. Derived 10.10.2026 and not the owner's word, from the medium finding of the review
+ * of PR 516 (PENDING, „Odbijanje koje dokazuje da je ekran zastareo ostavlja zastareo crtež") and
+ * its remedy, „na odbijanje bilo koje od dve rute baciti `me/applications` i povećati `revision`",
+ * itself derived from the decisions of 06.09.2026 quoted over {@link WHEN_APPLYING_TO_A_TEAM}.
+ * <b>A 5xx, a refused token or no answer at all says nothing about any row</b>, and nothing is
+ * dropped for it: pressing again is what helps there.
+ *
+ * <p><b>And only that list.</b> `teams` and `competitors` are what the page itself was drawn from
+ * (`mayApply` reads „nema tim" off the member's record), and the pair's `pairs` was dropped on a
+ * refusal for the NEXT screen that reads it. My reading, and not a recorded decision, is that no
+ * screen reads either one differently after an application is refused, so neither is dropped
+ * here, and `joiningThisTeam.test.ts` holds that they are not.
+ *
+ * <p>Nothing else this visit reads moves: the application is drawn to the team off its own route,
+ * read afresh by whoever leads it, and the route writes no message (`TeamJoiningWriteApi.asking`,
+ * „NOBODY IS WRITTEN TO"). The screen asks for the list again itself, because it is still mounted.
  */
 export async function theApplicationWasSent(team: number): Promise<Answer> {
   const answer = await askTheServer(theApplicationsOf(team), {})
 
-  if (answer.got === 'done') {
+  if (answer.got === 'done' || theServerSaysTheScreenIsStale(answer)) {
     clearResourceCache('me/applications')
   }
 
@@ -507,6 +526,13 @@ export async function theApplicationWasSent(team: number): Promise<Answer> {
  * account naming no member"), so a refusal is said with its number and there is no dictionary for
  * it - the arrangement {@link theInvitationWasTakenBack} gives the reason for.
  *
+ * <p><b>But the 404 is not nothing: it is the route saying the application is not there</b>, which
+ * is what a team deciding about it in the meantime looks like to the one taking it back. The list
+ * of what he waits on is dropped for it as it is for 204 ({@link theServerSaysTheScreenIsStale},
+ * the rule {@link theApplicationWasSent} gives its reason for), and the screen reads it again, so
+ * the button that was just refused is not left standing over a row the server no longer holds and
+ * „Prijavi se u tim" is offered again where nothing stands. Any other number drops nothing.
+ *
  * @param team        the team the ROW names, which is the team of the page it is pressed on,
  *                    because the button stands only there
  * @param application `team_application.id`, as `GET /api/me/applications` carries it
@@ -517,7 +543,7 @@ export async function theApplicationWasTakenBack(
 ): Promise<Answer> {
   const answer = await askTheServer(theDecisionGoesTo(team, application), {}, 'DELETE')
 
-  if (answer.got === 'done') {
+  if (answer.got === 'done' || theServerSaysTheScreenIsStale(answer)) {
     clearResourceCache('me/applications')
   }
 

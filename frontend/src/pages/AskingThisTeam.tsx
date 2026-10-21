@@ -11,6 +11,7 @@ import {
   WHEN_A_WOMAN_APPLIES_TO_A_TEAM,
   WHEN_APPLYING_TO_A_TEAM,
 } from './joiningThisTeam'
+import { theServerSaysTheScreenIsStale } from './member/pairWrites'
 
 /**
  * THE MEMBER'S OWN HALF OF A TEAM'S PAGE: „Prijavi se u tim" AND „Povuci prijavu", BOTH ON THE
@@ -27,6 +28,19 @@ import {
  * and after a press the server agreed to that answer is asked for again (`useWhatIsWaiting`'s
  * `revision`). The shape is `event/GoingToEvent.tsx`'s, the other switch a member presses for
  * himself on a public page.
+ *
+ * <p><b>AND IT IS ASKED FOR AGAIN AFTER A REFUSAL THAT SAYS WHAT WAS DRAWN WAS STALE</b>
+ * (`member/pairWrites.ts`, `theServerSaysTheScreenIsStale`: a named refusal, or the empty 404). The
+ * list is read once for the whole visit (`data/client.ts`), so an application sent from another tab
+ * is refused `aQuestionAlreadyStands` over a button the route will refuse every time, and one the
+ * team has decided about in the meantime is refused 404 on the taking back over a button for a row
+ * that is gone, with „Prijavi se u tim" offered on no team. Derived 10.10.2026 and not the owner's
+ * word, from the medium finding of the review of PR 516 and the decisions of 06.09.2026 quoted
+ * below; the shape is `profile/InviteToPair.tsx`'s, which carries it out for a pair, with its
+ * guards: the refusal is HELD until the read has landed and is said only then (see `refusing`),
+ * and the press lets go only when the read has landed. A refusal that says nothing about any row (a
+ * 5xx, a refused token, no answer) reads nothing again and is said at once, because pressing again
+ * is what helps.
  *
  * <ul>
  * <li><b>„Prijavi se u tim"</b>: PDL 05.09.2026, „član vidi dugme 'Prijavi se u tim' na strani
@@ -112,6 +126,9 @@ export type MyQuestion = {
 /** Why the last press did not do what it said, and the dictionary of the verb that was sent. */
 type Refused = { answer: Exclude<Answer, { got: 'done' }>; refusals: Record<string, string> }
 
+/** A refusal waiting for the list to be read again, and the page it was drawn on. */
+type Held = { refused: Refused; on: string }
+
 function ForAMember({
   mine,
   woman,
@@ -154,6 +171,21 @@ function ForAMember({
    * a read that failed instead lets go as well, because then there is nothing left to wait for.
    */
   const replacing = useRef<WhatIsWaiting | null>(null)
+  /**
+   * THE REFUSAL THAT SENT THE LIST TO BE READ AGAIN, said only once the read has landed, and only
+   * on the page it was refused on.
+   *
+   * <p>Said at once, a refusal the list then answers would be said over buttons that are about to
+   * change, and the reader would hear „you already have an application" beside a „Prijavi se u
+   * tim" that the read is about to take away. Held until the read lands, it is drawn under the
+   * row the list then leaves (`profile/InviteToPair.tsx` holds its own the same way).
+   *
+   * <p><b>And it carries the page it was refused on</b>, which the pair screen has no need for: that
+   * one is keyed by the two members, and this half stays mounted across teams. A read that lands
+   * after the reader has walked to another team's page would otherwise put the refusal of the first
+   * team on the second, past the reset below.
+   */
+  const refusing = useRef<Held | null>(null)
   const join = useRef<HTMLButtonElement>(null)
   const withdraw = useRef<HTMLButtonElement>(null)
   /**
@@ -178,6 +210,11 @@ function ForAMember({
     outstanding.current = false
     setSending(false)
 
+    const held = refusing.current
+
+    refusing.current = null
+    setRefused(held !== null && held.on === here ? held.refused : null)
+
     /* AND THE KEYBOARD GOES TO THE BUTTON THAT REPLACED THE ONE PRESSED, which left the document
        with the focus on it. Only where the focus fell to the body: a reader who moved on while it
        was asked is not followed, which is `components/Resource.tsx`'s own reason. */
@@ -186,9 +223,10 @@ function ForAMember({
 
       standingNow?.focus()
     }
-    /* On every new answer and on nothing else: the read landing, or failing, is the one thing
-       that lets the press go, and a ref changing is not a render. */
-  }, [state])
+    /* On every new answer, and on the page changing because the refusal held above is compared with
+       it: the read landing, or failing, is the one thing that lets the press go, and a ref changing
+       is not a render. The page changing while nothing is out returns at the top. */
+  }, [state, here])
 
   async function press(
     ask: () => Promise<Answer>,
@@ -205,16 +243,22 @@ function ForAMember({
 
     const answer = await ask()
 
-    if (answer.got !== 'done') {
-      outstanding.current = false
-      setSending(false)
-      setRefused({ answer, refusals })
+    /* What the server agreed to, or refused in a way that says this page was drawn from something
+       stale (`member/pairWrites.ts`): the list was dropped by the write, and is asked for again
+       before the press lets go. */
+    if (answer.got === 'done' || theServerSaysTheScreenIsStale(answer)) {
+      refusing.current = answer.got === 'done' ? null : { refused: { answer, refusals }, on: here }
+      replacing.current = shown
+      setRevision((was) => was + 1)
 
       return
     }
 
-    replacing.current = shown
-    setRevision((was) => was + 1)
+    /* The server said nothing about any row - a 5xx, a refused token, no answer at all - so there
+       is nothing to read again, and pressing again is what helps. */
+    outstanding.current = false
+    setSending(false)
+    setRefused({ answer, refusals })
   }
 
   if (state.status === 'loading') {
