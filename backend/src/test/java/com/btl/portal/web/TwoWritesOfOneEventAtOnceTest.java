@@ -48,7 +48,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * TWO WRITES OF ONE EVENT'S RACES AT ONE INSTANT, EACH MEASURED WITH THE OTHER ALREADY IN THE DATABASE
  * (PENDING: review of PR 504, S1, and review of PR 577).
  *
- * <p><b>The rule they all keep.</b> A race is written under its event's row, held {@code FOR UPDATE} from the
+ * <p><b>The rule they all keep.</b> A race is written under its event's row, held {@code FOR NO KEY UPDATE} from the
  * first question to the commit, the way the approval of a member's run holds it
  * ({@code TheDayOfAnEvent#theEventHeldForThisWrite}). The event's day is the day of its first race
  * (owner, 10.08.2026), and the write that sets it works it out from the races it READ, so a writer that
@@ -307,9 +307,9 @@ class TwoWritesOfOneEventAtOnceTest {
 		}
 	}
 
-	/** The event row held {@code FOR UPDATE}, which is how an approval holds it. */
+	/** The event row held {@code FOR NO KEY UPDATE}, which is how an approval holds it. */
 	private void holdTheEvent(AHeldTransaction by) {
-		by.db().sql("select 1 from btl_event where id = ? for update").param(event)
+		by.db().sql("select 1 from btl_event where id = ? for no key update").param(event)
 				.query(Integer.class).single();
 	}
 

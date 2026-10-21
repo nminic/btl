@@ -847,7 +847,7 @@ class RaceWriteApi {
 	/**
 	 * THE EVENT OF THIS RACE, HELD FOR THIS WRITE UNTIL IT COMMITS, AND ASKED AGAIN ONCE IT IS HELD.
 	 *
-	 * <p><b>Every write of a race holds its event first</b> ({@code for update}, as the approval of a member's
+	 * <p><b>Every write of a race holds its event first</b> ({@code for no key update}, as the approval of a member's
 	 * run does: {@link TheDayOfAnEvent#theEventHeldForThisWrite}), and this is the one road the two that
 	 * start from a race's own key take to it. Three questions are answered from what the event holds
 	 * (its day, its address, the races it has), and the write that follows sets the day and the address from
@@ -860,10 +860,18 @@ class RaceWriteApi {
 	 *
 	 * <p><b>The lock is taken on the event and not on the race, and the race is read AFTER it.</b> The
 	 * event is the row every writer of a race of it already meets (the approval, the league's entry, a
-	 * change of the event itself), so it is the one lock that orders them all; a lock on this race alone
-	 * would leave an addition and a change of two races of one event free to set the event's day each from
-	 * what it had read. It is the same order {@link EventWriteApi#change} keeps (the event, then its
-	 * races), so the two never wait for each other the opposite way round.
+	 * change of the event itself), so it is the lock that orders THEM: each of them holds it the same way and
+	 * waits for the one before; a lock on this race alone would leave an addition and a change of two races
+	 * of one event free to set the event's day each from what it had read. It is the same order
+	 * {@link EventWriteApi#change} keeps (the event, then its races), so the two never wait for each other
+	 * the opposite way round.
+	 *
+	 * <p><b>It does not order everybody who touches the event, and that is chosen.</b> A row that only points
+	 * at the event takes {@code FOR KEY SHARE} on it, and {@code for no key update} lets that through.
+	 * {@link CommentWriteApi} is one: it holds the member's row first and then inserts the card, and a
+	 * recount here holds the event first and then writes the same member a message, so under
+	 * {@code for update} the two waited for each other and the database broke it with a 500
+	 * ({@code ARaceRecountAndARatingOfOneMemberAtOnceTest}).
 	 *
 	 * <p><b>The first question only says which event to hold</b>, and what it answers is not used: the
 	 * race may have been deleted, or the event with it, while this waited. So the race is looked for again
