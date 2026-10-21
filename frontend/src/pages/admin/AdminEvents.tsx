@@ -35,7 +35,7 @@ import type { FormDef, FormValues } from '../../forms/types'
 import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
 import { raceKind } from '../../data/raceKind'
-import { allFinished, rowsOf, storedRow, type RaceOfRow, type RaceRow } from './raceRows'
+import { allFinished, isChanged, rowsOf, storedRow, type RaceOfRow, type RaceRow } from './raceRows'
 import { nextSeason } from './nextSeason'
 import {
   WHEN_WRITING_AN_EVENT,
@@ -643,21 +643,36 @@ export function AdminEvents() {
                 }
               }
 
-              for (const row of kindOf(values) === 'race' ? current : []) {
+              /* ONLY THE RACES SOMEBODY CHANGED ARE SENT (owner, 20.10.2026, ADL „Čuvanje događaja
+                 šalje samo trke koje su promenjene": „Trka koju niko nije dirao ne šalje se, pa joj
+                 se ništa ne može obrisati", cause PENDING 29091). Every row used to be written back
+                 over its race, and a timed race's row does not draw its climb and its fall, so the
+                 write put nought where the server had them. A row is compared with the same race as
+                 the table opened it (`rowsOf` over `allRaces`, which holds what the server has
+                 accepted, this visit's writes included), so a race the first press wrote is not
+                 sent again by the retry. A new row has nothing to be compared with and is always
+                 sent; a race taken off the table is deleted above, as before. */
+              const served = new Map(
+                rowsOf(racesUnder(allRaces, eventId), fieldDate).map((one) => [one.id, one]),
+              )
+
+              const toSend = (kindOf(values) === 'race' ? current : []).filter(
+                (row) => row.id === '' || isChanged(row, served.get(row.id)),
+              )
+
+              for (const row of toSend) {
                 /* A row that never was a race is made, and one that is, is written over.
                    Read off the row's own identity rather than off anything counted here:
                    the numbers this screen used to hand out came from `admin/raceIds.ts`,
                    which counts DOWN from nought, and the whole of that is gone - a
                    `bigserial` is what a race is addressed by now. */
                 const filed = storedRow(row, eventId)
-                const answer =
-                  row.id === ''
-                    ? await askTheServer('/api/races', raceUpsertFrom(row, eventId))
-                    : await askTheServer(
-                        `/api/races/${row.id}`,
-                        raceUpsertFrom(row, eventId),
-                        'PUT',
-                      )
+                /* ONE `await`, on the promise of whichever door the row goes through: two awaits in the two
+                   arms of a conditional split the coverage of everything after them across two ranges, and
+                   the branch of the refusal below was then counted short (measured in the gate, 21.10.2026). */
+                const answer = await (row.id === ''
+                  ? askTheServer('/api/races', raceUpsertFrom(row, eventId))
+                  : askTheServer(`/api/races/${row.id}`, raceUpsertFrom(row, eventId), 'PUT'))
 
                 if (answer.got !== 'done') {
                   refusals.push({ row, answer })

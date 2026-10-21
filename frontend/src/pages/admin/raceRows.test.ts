@@ -1,6 +1,7 @@
 import {
   allFinished,
   boundsOf,
+  isChanged,
   isWrong,
   measuresOf,
   newRaceRow,
@@ -553,6 +554,74 @@ describe('the sentence that says what is wrong with a cell', () => {
     }
 
     expect(unresolved).toEqual([])
+  })
+
+  /**
+   * WHICH ROW IS A RACE SOMEBODY CHANGED (owner, 20.10.2026, ADL „Čuvanje događaja šalje samo trke koje
+   * su promenjene"), asked of the row against the same race as the table opens it.
+   */
+  describe('whether a row is a race somebody changed', () => {
+    const served = (over: Partial<Race> = {}) =>
+      first(rowsOf([{ ...race(7, '2026-10-17', 10), ...over }], fieldDate))
+
+    it('is not changed when it is the very row the table opened', () => {
+      expect(isChanged(served(), served())).toBe(false)
+    })
+
+    it('is changed when a cell the reader can edit differs, one cell at a time', () => {
+      const was = served()
+
+      for (const over of [
+        { name: 'Druga' },
+        { renamed: true },
+        { date: '18/10/2026' },
+        { kind: 'free' as const },
+        { distanceKm: '11' },
+        /* The served race climbs 120 and falls 140 (`race` above), so these differ from it by one. */
+        { ascentM: '121' },
+        { descentM: '141' },
+      ]) {
+        expect(isChanged({ ...was, ...over }, was), JSON.stringify(over)).toBe(true)
+      }
+
+      const timed = served({ kind: 'time', limitSeconds: 6 * 3600, distanceKm: 0 })
+
+      expect(isChanged({ ...timed, limitHours: '7' }, timed)).toBe(true)
+    })
+
+    it('is changed when only the kind differs, which is a change of its own and not a side of the length', () => {
+      /* Against a race of a length the kind cannot be changed alone: the length, the climb and the fall
+         are written as nought for the other two kinds, so they differ as well. A free race with none of
+         the three is the one where nothing but the kind is written differently. */
+      const free = served({ kind: 'free', distanceKm: 0, ascentM: 0, descentM: 0 })
+
+      expect(isChanged({ ...free, kind: 'length' }, free)).toBe(true)
+    })
+
+    it('is changed when the race it is a row of is not among the served ones, and when it is new', () => {
+      expect(isChanged(served(), undefined)).toBe(true)
+    })
+
+    it('does not count a spelling as a change: a comma for the dot, an empty climb for a nought', () => {
+      const was = served({ distanceKm: 10.5, ascentM: 0, descentM: 0 })
+
+      expect(isChanged({ ...was, distanceKm: '10,5', ascentM: '', descentM: '' }, was)).toBe(false)
+    })
+
+    it('does not count the climb a race on time holds but does not draw, which is what was being deleted', () => {
+      /* PENDING 29091. The table draws a timed race's limit and nothing else, so the climb and the fall
+         the row still carries are not a thing the reader can have changed; written, they are nought. */
+      const timed = served({
+        kind: 'time',
+        limitSeconds: 6 * 3600,
+        distanceKm: 0,
+        ascentM: 500,
+        descentM: 400,
+      })
+
+      expect(isChanged({ ...timed }, timed)).toBe(false)
+      expect(isChanged({ ...timed, ascentM: '0', descentM: '0' }, timed)).toBe(false)
+    })
   })
 
   /**

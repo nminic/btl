@@ -779,6 +779,150 @@ describe('a decision on a queue served by the pending screen', () => {
       }
     }, SLOW)
 
+    /**
+     * THE LINE OVER THE CARDS (owner, 20.10.2026, PDL „Red za proveru: kad server odbije odgovor na kartici A dok
+     * moderator čita karticu B": „B ostaje otvorena, a iznad kartica stoji jedan red koji imenuje odbijanje na A i
+     * najavljuje se čitaču ekrana"). Approved words, sr: „Odgovor za „{naziv}” nije prihvaćen. Otvori karticu." - written with the straight marks in the dictionary, as every text the portal writes is, on both languages (PDL P18, 18.10.2026, „Navodnici")
+     *
+     * <p>A is `ver-kom-2` and B is `ver-kom-4`, the later of the four, so a line that named "the open card" or "the
+     * first card" is told from one that named the refused one. The line is found by its place in the document, the one
+     * `<p role="status">` that is the only status of the page before anything has been sent.
+     */
+    const lineOverTheCards = () =>
+      must(document.querySelector('.pending__elsewhere'), 'the line over the cards')
+
+    const headingOfCard = (card: string) =>
+      must(
+        toggleOf(card).getAttribute('aria-label') ?? toggleOf(card).textContent,
+        `the name of ${card}`,
+      ).replace(/^(Prikaži|Sakrij): /, '')
+
+    it('stands in the document as a live region before it has anything to say', async () => {
+      /* A live region that arrives with its words is one nobody is told about (WCAG 2.2 SC 4.1.3), so the
+         element is there, announcing, and empty. A mutation that drew it only when it has words passes every
+         other case here and fails this one. */
+      const server = refusing({ ids: [] })
+
+      try {
+        renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+        await cardsIn()
+
+        expect(lineOverTheCards()).toHaveAttribute('role', 'status')
+        expect(lineOverTheCards()).toBeEmptyDOMElement()
+      } finally {
+        server.stop()
+      }
+    }, SLOW)
+
+    it('names the card that was refused, announced, while the moderator reads another one', async () => {
+      const user = setupUser()
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      const server = refusing({ ids: ['ver-kom-2', 'ver-kom-4'] })
+
+      try {
+        renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+        await cardsIn()
+
+        await user.click(toggleOf('ver-kom-4'))
+        await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+        await screen.findByRole('alert')
+
+        const refused = headingOfCard('ver-kom-2')
+        const reading = headingOfCard('ver-kom-4')
+
+        expect(refused).not.toBe(reading)
+        expect(lineOverTheCards()).toHaveAttribute('role', 'status')
+        expect(lineOverTheCards()).toHaveTextContent(
+          `Odgovor za "${refused}" nije prihvaćen. Otvori karticu.`,
+        )
+        /* B stays open and is not the one named. */
+        expect(lineOverTheCards()).not.toHaveTextContent(reading)
+        expect(toggleOf('ver-kom-4')).toHaveAttribute('aria-expanded', 'true')
+        /* ABOVE the cards: before the list in the document, not inside any card. */
+        expect(
+          lineOverTheCards().compareDocumentPosition(must(document.querySelector('.submissions'), 'the list')) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy()
+        expect(lineOverTheCards().closest('.submissions')).toBeNull()
+      } finally {
+        server.stop()
+        confirm.mockRestore()
+      }
+    }, SLOW)
+
+    it('goes away when the refused card is opened', async () => {
+      const user = setupUser()
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      const server = refusing({ ids: ['ver-kom-2', 'ver-kom-4'] })
+
+      try {
+        renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+        await cardsIn()
+
+        await user.click(toggleOf('ver-kom-4'))
+        await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+        await screen.findByRole('alert')
+        expect(lineOverTheCards()).not.toBeEmptyDOMElement()
+
+        await user.click(toggleOf('ver-kom-2'))
+
+        expect(toggleOf('ver-kom-2')).toHaveAttribute('aria-expanded', 'true')
+        expect(lineOverTheCards()).toBeEmptyDOMElement()
+      } finally {
+        server.stop()
+        confirm.mockRestore()
+      }
+    }, SLOW)
+
+    it('goes away when the refused card is answered again and settled', async () => {
+      const user = setupUser()
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      const refusedNow = { ids: ['ver-kom-2', 'ver-kom-4'] }
+      const server = refusing(refusedNow)
+
+      try {
+        renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+        await cardsIn()
+
+        await user.click(toggleOf('ver-kom-4'))
+        await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+        await screen.findByRole('alert')
+        expect(lineOverTheCards()).not.toBeEmptyDOMElement()
+
+        refusedNow.ids = []
+        await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+        await waitFor(() => {
+          expect(lineOverTheCards()).toBeEmptyDOMElement()
+        })
+      } finally {
+        server.stop()
+        confirm.mockRestore()
+      }
+    }, SLOW)
+
+    it('says nothing where the open card IS the refused one', async () => {
+      /* The moderator opened nothing, so the answer opens A and its sentence is in front of him: a line over
+         the cards would only say it a second time. */
+      const user = setupUser()
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      const server = refusing({ ids: ['ver-kom-2'] })
+
+      try {
+        renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+        await cardsIn()
+
+        await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+        await screen.findByRole('alert')
+
+        expect(toggleOf('ver-kom-2')).toHaveAttribute('aria-expanded', 'true')
+        expect(lineOverTheCards()).toBeEmptyDOMElement()
+      } finally {
+        server.stop()
+        confirm.mockRestore()
+      }
+    }, SLOW)
+
     it('opens the next refused card over one an earlier answer opened, because that sentence is replaced', async () => {
       /* THE OTHER SIDE OF THE BOUNDARY, so "never fold" does not become "never open": the first sweep
          refuses two cards and opens the first of them; the second sweep refuses only the later one, and

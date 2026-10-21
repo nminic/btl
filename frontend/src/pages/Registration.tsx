@@ -272,7 +272,6 @@ export function Registration() {
       <div className="registration-done" role="status">
         <h1>{t('registration.doneTitle')}</h1>
         <p>{t('registration.doneText', { email: sent.email })}</p>
-        <p>{t('registration.checkSpam')}</p>
         {/* Said only to somebody who arrived by a link, and it says both halves
             of the rule: the referral is recorded now, and it pays when this
             member's own fee is activated. Whoever brought them is not named,

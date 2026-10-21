@@ -9,6 +9,7 @@ import { refused, serverThat } from '../../test/serverAnswers'
 import { whereItWrote } from '../../test/sent'
 import { SLOW } from '../../test/slow'
 import { setupUser, type Pressing } from '../../test/user'
+import { touchEveryRace } from '../../test/touchEveryRace'
 
 /**
  * WHILE THE SAVE OF AN EVENT IS OUT, ITS FIELDS ARE HELD (owner, 04.10.2026, chosen between offered
@@ -64,8 +65,6 @@ const THE_LIST = '/sr/administracija/dogadjaji'
 const THE_COPY = `${THE_LIST}?kopija=32`
 
 const COPY_EVENT = 9401
-const COPY_FIRST = 9301
-const COPY_SECOND = 9302
 
 /** A write that is out: where it went, how, and the way to answer it. */
 type Out = { path: string; how: string; done: (one: Response) => void }
@@ -485,6 +484,10 @@ describe('an event whose save is out holds its fields', () => {
 
           renderAt(`${THE_LIST}?izmena=${String(event.id)}`, 'superadmin', '000001')
           await screen.findByRole('heading', { name: /^Trke na događaju/ })
+          /* Only the races somebody changed are sent (owner, 20.10.2026, ADL „Čuvanje događaja šalje
+             samo trke koje su promenjene"), so each is changed: the press is then one write for the
+             event and one for each of them, which is what this case holds the form through. */
+          await touchEveryRace(user)
 
           return { user, writes: races.length + 1 }
         },
@@ -561,7 +564,7 @@ describe('an event whose save is out holds its fields', () => {
     ]
 
     it.each(TRIES)(
-      'writes the three races once more and no more when $what',
+      'writes the refused race once more and no more when $what',
       async ({ tried }) => {
         const user = await theCopyWithThreeRaces()
         const open = expectOpen(sr.admin.form.copying)
@@ -578,21 +581,18 @@ describe('an event whose save is out holds its fields', () => {
         await answer(refused('theDistanceIsNotKeptExactly'), 'the end')
         await screen.findByText(sr.admin.eventSavedRacesRefused)
 
-        /* The press that sends only races is a press of its own, and it holds the table again. */
+        /* The press that sends only races is a press of its own, and it holds the table again. It
+           sends the one race that was refused and nothing for the two the first press made: nobody
+           touched them since (owner, 20.10.2026, ADL „Čuvanje događaja šalje samo trke koje su
+           promenjene"). Until that day it wrote all three, the two taken ones over their own address. */
         const before = watching.asked.length
 
         await press(user)
         expectHeld(sr.admin.form.copying, open)
-        await answer(null, 'another write')
-        await answer(null, 'another write')
         await answer(null, 'the end')
         await screen.findByRole('status', { name: 'Sačuvano' })
 
-        expect(whereItWrote(watching.asked.slice(before))).toEqual([
-          `PUT /api/races/${String(COPY_FIRST)}`,
-          `PUT /api/races/${String(COPY_SECOND)}`,
-          'POST /api/races',
-        ])
+        expect(whereItWrote(watching.asked.slice(before))).toEqual(['POST /api/races'])
       },
       SLOW,
     )
@@ -629,10 +629,6 @@ describe('an event whose save is out holds its fields', () => {
       expectTableLetGo(sr.admin.form.copying)
 
       await press(user)
-      expectHeld(sr.admin.form.copying, open)
-      await answer(null, 'another write')
-      expectHeld(sr.admin.form.copying, open)
-      await answer(null, 'another write')
       expectHeld(sr.admin.form.copying, open)
       await answer(refused('theDistanceIsNotKeptExactly'), 'the end')
       await waitFor(() => {

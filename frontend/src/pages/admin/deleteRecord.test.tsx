@@ -364,11 +364,12 @@ describe('the question about deleting a record', () => {
         expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).toBeVisible()
       })
 
-      /* WHAT THIS BRANCH DOES NOT CHANGE, written down as a boundary and not as a wish: the focus
-         goes to the button only where an ANSWER closed the question. Putting it away oneself is the
-         reader's own act and moved nothing before this branch either, which is a gap of its own and
-         not this change's. */
-      it('moves no focus where nothing was answered: not on the first draw, not on „Odustani"', async () => {
+      /* THE OWNER TURNED THIS AROUND ON 20.10.2026 (ADL, the addition to the decision on the focus of
+         a closed box: „posle „Odustani” fokus se vraća na „Obriši” u istom redu"). The case used to
+         hold the opposite - that putting the question away moved no focus - as a boundary, and called
+         it a gap of its own. It is a gap no longer: whoever puts the question away is put back on the
+         button that asked it. Nothing is focused when the page first draws, and that stays. */
+      it('puts the focus on „Obriši” again after „Odustani”, and moves none on the first draw', async () => {
         const user = setupUser()
 
         draw(vi.fn())
@@ -378,7 +379,26 @@ describe('the question about deleting a record', () => {
         await ask(user)
         await user.click(screen.getByRole('button', { name: 'Odustani od brisanja: Probni tim' }))
 
-        expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).not.toHaveFocus()
+        expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).toHaveFocus()
+      })
+
+      it('puts the focus on „Obriši” of the row whose „Odustani” was pressed, not on the first one', async () => {
+        /* TWO ROWS, THE RIGHT ONE NOT FIRST: with one row, „the first Obriši on the page" and „the
+           Obriši of this row" are the same button and the case says nothing about which was meant. */
+        const user = setupUser()
+
+        render(
+          <I18nProvider locale="sr">
+            <DeleteRecord name="Prvi tim" onDelete={vi.fn()} />
+            <DeleteRecord name="Drugi tim" onDelete={vi.fn()} />
+          </I18nProvider>,
+        )
+
+        await user.click(screen.getByRole('button', { name: 'Obriši: Drugi tim' }))
+        await user.click(screen.getByRole('button', { name: 'Odustani od brisanja: Drugi tim' }))
+
+        expect(screen.getByRole('button', { name: 'Obriši: Drugi tim' })).toHaveFocus()
+        expect(screen.getByRole('button', { name: 'Obriši: Prvi tim' })).not.toHaveFocus()
       })
 
       it('puts the focus on the button again after a second answer, wherever it had gone', async () => {
@@ -386,8 +406,10 @@ describe('the question about deleting a record', () => {
            the effect runs when the flag CHANGES, so a flag that stayed raised after the first answer
            would be raised again by the second without changing, and the focus would not come back the
            second time. Each answer is held on its own, and the focus is moved off the confirming button
-           before it, so that neither the element the opener shares with that button nor the first
-           answer's focus can stand in for the second. */
+           before it, so that the first answer's focus cannot stand in for the second. (Until 20.10.2026
+           this also named the element the opener shares with the confirming button; the opener has been an
+           `ActionButton` since that day, a different type from the confirming button, and the two are
+           never one element.) */
         const user = setupUser()
         const { onDelete, settle } = heldDeletions()
 

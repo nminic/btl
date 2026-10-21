@@ -583,3 +583,34 @@ export function storedRow(row: RaceRow, eventId: string): StoredRace {
     category: categoryOf(asksLength(row) ? distanceKm : 0),
   }
 }
+
+/**
+ * WHETHER A ROW IS A RACE SOMEBODY CHANGED, which is the only kind the save sends (owner,
+ * 20.10.2026, ADL „Čuvanje događaja šalje samo trke koje su promenjene": „Trka koju niko nije
+ * dirao ne šalje se, pa joj se ništa ne može obrisati", cause PENDING 29091: a timed race lost
+ * its climb and its fall each time the event was saved, because the record was written back
+ * from a row whose climb and fall the table does not draw, and `storedRow` writes nought where
+ * the table does not draw).
+ *
+ * <p>`served` is the same race read the way the table opens it (`rowsOf` over what the server
+ * has), found by its identity. A row that is new (no identity) or whose race is not among the
+ * served ones is always sent: there is nothing to say it is unchanged against.
+ *
+ * <p><b>Compared as what would be WRITTEN (`storedRow`), not as the text of the cells.</b> A cell
+ * typed with a comma against the served dot is the same number; an empty climb is nought; and the
+ * climb a timed race holds but does not draw is nought on the way out whichever it is. Compared as
+ * text, a race the reader never touched but that this very press had just made (its climb left
+ * empty, served back as „0") would be sent again by the retry. A field that differs in what it
+ * would write is a field somebody changed; one that differs only in how it is spelt is not. The
+ * identity and `place` are what the row is found by and are not compared.
+ */
+export function isChanged(row: RaceRow, served: RaceRow | undefined): boolean {
+  if (served === undefined) {
+    return true
+  }
+
+  const now = storedRow(row, '')
+  const was = storedRow(served, '')
+
+  return Object.entries(now).some(([key, value]) => value !== Reflect.get(was, key))
+}

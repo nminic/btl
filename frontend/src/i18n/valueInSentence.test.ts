@@ -657,6 +657,11 @@ describe('a sentence with a value put into it', () => {
          served from `GET /api/verification/{id}/photo` (PR 399), and the guard in
          `data/theRealAnswer.test.tsx` is written against exactly this literal call. */
       'verification.pictureAlt',
+      /* „Odgovor za "{name}" nije prihvaćen. Otvori karticu." (approved 20.10.2026): the heading of the
+         card the route refused, as the card shows it, between quotation marks - the name of a team or of
+         a subject, so there is nothing to format and no case to get wrong
+         (`pages/admin/PendingQueue.tsx`, `refusedElsewhere`). */
+      'verification.refusedCardNamed',
       'verification.sentBy',
       'verification.teamAccepted',
       'verification.teamAcceptedBody',

@@ -859,11 +859,12 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    */
   const outstanding = useRef(false)
   /**
-   * WHETHER THE QUESTION WAS LAST CLOSED BY AN ANSWER, so the button that asks it takes the focus the
-   * confirming button had. Raised by an answer and lowered by asking again, so it is true only from an
-   * answer to the next time the question is asked: the reader putting the question away himself is
-   * his own act and moves nothing, as it did before this branch (a gap of its own, and not this
-   * change's), and nothing is focused when the page first draws. The effect below depends on the flag,
+   * WHETHER THE QUESTION WAS LAST CLOSED, BY AN ANSWER OR BY „Odustani", so the button that asks it takes
+   * the focus the button that was pressed had. Raised by either and lowered by asking again, so it is
+   * true only from the closing to the next time the question is asked. Until 20.10.2026 the reader
+   * putting the question away himself moved nothing; the owner decided that the focus goes back to
+   * „Obriši" of the same row (ADL, 20.10.2026, the addition on the confirmation of a deletion). Nothing
+   * is focused when the page first draws. The effect below depends on the flag,
    * so it runs when the flag CHANGES: lowering it when the question is asked again is what lets the
    * next answer raise it again and run the effect again (`deleteRecord.test.tsx`, „puts the focus on
    * the button again after a second answer").
@@ -912,9 +913,8 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
   }, [afterAnAnswer])
 
   /* ASKING THE QUESTION TAKES THE FOCUS TO THE BUTTON THAT ANSWERS IT, and nothing else does: the
-     effect runs when the flag changes, so a question put away (`asking` false) moves nothing, which is
-     what the case „moves no focus where nothing was answered" holds, and a question that is open
-     while this is drawn again keeps the focus wherever the reader has taken it. */
+     effect runs when `asking` changes to true, so a question that is open while this is drawn again
+     keeps the focus wherever the reader has taken it. Closing it is the other effect's (above). */
   useLayoutEffect(() => {
     if (asking) {
       sure.current?.focus()
@@ -1015,6 +1015,13 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
             return
           }
 
+          /* AND THE FOCUS GOES BACK TO „Obriši" OF THIS ROW (owner, 20.10.2026, ADL, the addition
+             to the decision on the focus of a closed box: „posle „Odustani” fokus se vraća na „Obriši”
+             u istom redu"): the button the reader pressed goes with the question, so without this the
+             focus fell to the document. The same flag as an answer raises, and for the same reason
+             (see `afterAnAnswer`); it is this row's own opener it names, never the first „Obriši"
+             on the page. */
+          setAfterAnAnswer(true)
           setAsking(false)
           onKeep?.()
         }}

@@ -1389,6 +1389,22 @@ export function PendingQueue({ queue }: { queue: Queue }) {
               : null
           const waiting = waitingIn(items, decisions, queue.id)
 
+          /** What a card is called on the screen: the team's name as it will be if the card is taken,
+           *  the subject for every other queue. One home for the heading of a card and for the sentence
+           *  that names a card elsewhere (`refusedElsewhere`). */
+          const headingOf = (one: PendingItem) =>
+            queue.id === 'teams' ? teamFrom(one, edits).name : one.subject
+
+          /** THE CARD THE ROUTE REFUSED WHILE THE MODERATOR READS ANOTHER ONE (owner, 20.10.2026, PDL „Red za
+           *  proveru: kad server odbije odgovor na kartici A dok moderator čita karticu B"; PENDING 28270):
+           *  the card whose sentence is drawn in a card that is not the open one. Nothing where the open card
+           *  is the refused one (the sentence is in front of him), where nothing was refused, and where the
+           *  card has left the queue (the stray sentence below says that). */
+          const refusedElsewhere =
+            said === null || shown === said.id
+              ? undefined
+              : waiting.find((one) => one.id === said.id)
+
           return (
             <>
               <div className="pending__bar">
@@ -1487,6 +1503,24 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                 <Swept count={swept} />
               </div>
 
+              {/* THE REFUSAL ON A CARD THE MODERATOR IS NOT LOOKING AT, named over the cards (owner, 20.10.2026,
+                  PDL „Red za proveru: kad server odbije odgovor na kartici A dok moderator čita karticu B":
+                  „B ostaje otvorena, a iznad kartica stoji jedan red koji imenuje odbijanje na A i najavljuje
+                  se čitaču ekrana"). The sentence the route gave is drawn in A (`WhatTheServerSaid`), and
+                  below 51.25em A is folded (`display: none`), so on a telephone it was neither seen nor
+                  announced until A was opened. This line says only THAT A was refused and where to look, in
+                  the words the owner approved, and never repeats the reason: that is A's own.
+
+                  Standing in the document with nothing in it when there is nothing to say, the way `Refused`
+                  does and for its reason: a live region that arrives with its words is one nobody is told
+                  about (WCAG 2.2 SC 4.1.3). It goes when A is opened (`shown`), when A is answered and leaves
+                  (`waiting`), or when the next answer replaces the sentence (`said`). */}
+              <p className="pending__elsewhere" role="status">
+                {refusedElsewhere === undefined
+                  ? ''
+                  : t('verification.refusedCardNamed', { name: headingOf(refusedElsewhere) })}
+              </p>
+
               {/* A SENTENCE ABOUT A CARD THE LIST NO LONGER HOLDS, said over the list where the card
                   stood. It is what a refusal that read the list again leaves when the card it was
                   about was decided by somebody else (`readTheQueueAgain`): the card goes with the
@@ -1528,9 +1562,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                               arrived as. A moderator who has just corrected a name
                               in the field below should not read the old one at the
                               top of the same card. */}
-                          <h3 className="pending__subject">
-                            {queue.id === 'teams' ? teamFrom(one, edits).name : one.subject}
-                          </h3>
+                          <h3 className="pending__subject">{headingOf(one)}</h3>
                           {/* And which of the two decisions this is, said on the
                               card rather than left to be worked out from the name
                               (owner, 04.09.2026: „uz oznaku šta je šta"). A new
