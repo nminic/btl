@@ -207,6 +207,10 @@ function TheMessage({ lines, mine }: { lines: InboxLine[]; mine: string }) {
           {([everybody, allTeams]) => (
             <InvitationAnswer
               invitation={invitation}
+              /* Who is reading, handed down rather than read again from the session inside, so
+                 that "who is asking" has one home on this screen (see `TheMessageAsked`) and the
+                 record the sex is taken from is the record of the person the inbox was read for. */
+              reader={mine}
               /* Through the overlay, because the answer is held against where the
                  member is **now**: pressing „Prihvati" writes the team on their
                  record, and read off the file this screen would go on offering the
