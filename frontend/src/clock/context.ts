@@ -35,10 +35,11 @@ const BELGRADE = new Intl.DateTimeFormat('en-US', {
  * clock.
  */
 export function belgradeDay(instant: Date): string {
-  const parts = BELGRADE.formatToParts(instant)
-  const of = (kind: string): string => parts.find((part) => part.type === kind)?.value ?? ''
+  const part = Object.fromEntries(
+    BELGRADE.formatToParts(instant).map(({ type, value }) => [type, value]),
+  )
 
-  return `${of('year')}-${of('month')}-${of('day')}`
+  return `${part.year}-${part.month}-${part.day}`
 }
 
 /**
