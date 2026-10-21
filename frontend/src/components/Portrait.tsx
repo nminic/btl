@@ -1,12 +1,19 @@
 import type { Competitor } from '../data/types'
 import { cropIn, fittedTo } from './crop'
-import { hueFor } from '../pages/competitorFace'
 import './Crop.css'
 import './Portrait.css'
 
 /**
  * A competitor's face, in a circle: the approved photograph where there is one, and a
- * monogram on a colour of that member's own where there is not.
+ * monogram on the one blue every such circle has where there is not.
+ *
+ * **There is no colour of a member's own, and that was decided on 31.07.2026** (PDL P28, „Sve
+ * kartice takmičara su identične": „Boja izvedena iz članskog broja se ukida: lepo izgleda, ali
+ * ništa ne znači"). This drew one all the same until 21.10.2026, a hue computed off the member
+ * number and set on the circle, and it is gone (PENDING 29205). The blue is the sheet's own
+ * (`Portrait.css`, `.face-circle`), and nothing is set on a member's circle to move it from
+ * there: `components/portrait.test.tsx` holds that, and `components/oneFace.test.ts` holds that
+ * this module does not reach the one that computes a hue.
  *
  * Owner, 26.09.2026 (PDL P28f): „po odobravanju slike ona tog trenutka pocinje da se vidi
  * na svim avatar mestima (u rang listama, profilnoj sekciji, gornjem desnom zaglavlju
@@ -55,13 +62,6 @@ export function Portrait({ competitor }: { competitor?: Competitor }) {
     return <span className="face-circle portrait portrait--empty" aria-hidden="true" />
   }
 
-  /* The member's own colour, on BOTH forms of the circle and not only on the monogram.
-     Behind an opaque photograph nothing of it shows, and it is still needed twice: the card
-     of a competitor draws its ring in this colour (`pages/Competitors.css`), so without it a
-     member with a portrait would wear a ring in the fallback hue while the member beside him
-     wears his own; and a portrait sent as a PNG with transparency stands on it. */
-  const own = { '--face-hue': hueFor(competitor.memberNumber) }
-
   if (competitor.photo !== null) {
     return (
       /* The circle is the box around the picture and not the picture itself, which is the
@@ -70,7 +70,7 @@ export function Portrait({ competitor }: { competitor?: Competitor }) {
          it: applied to the picture, a face cropped close would grow out of its own circle
          and over the name beside it. The clipping belongs to something that is never
          scaled (components/Crop.css, `.crop-fitted`). */
-      <span className="face-circle portrait crop-fitted" aria-hidden="true" style={own}>
+      <span className="face-circle portrait crop-fitted" aria-hidden="true">
         <img
           src={competitor.photo}
           alt=""
@@ -95,7 +95,7 @@ export function Portrait({ competitor }: { competitor?: Competitor }) {
   }
 
   return (
-    <span className="face-circle portrait" aria-hidden="true" style={own}>
+    <span className="face-circle portrait" aria-hidden="true">
       {competitor.firstName.slice(0, 1)}
       {competitor.lastName.slice(0, 1)}
     </span>

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import sr from '../i18n/sr.json'
 import { must } from '../test/at'
@@ -269,6 +269,11 @@ const sentList = async (timeout = SLOW) =>
   within(await screen.findByRole('list', { name: sr.teams.inviteSent }, { timeout }))
 
 const at = (slug: string) => `/sr/tim/${slug}`
+
+/* Every wait is given half of what a case is given, for the reason `rowMembership.test.tsx` gives: a
+   mutation then fails on its assertion and not on the clock of the case. A wait that names its own
+   timeout keeps it. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 describe('the two queues on a team its reader leads', () => {
   it('draws every application with the man and the day, off the route', async () => {
@@ -1592,4 +1597,125 @@ describe('a queue that could not be read', () => {
       server.stop()
     }
   }, SLOW)
+
+  /**
+   * WHERE THE KEYBOARD GOES WHEN THE LIST IS READ AGAIN AND WORKS (PENDING 28785; WCAG 2.2 SC 2.4.3).
+   *
+   * <p>The button that asked is taken out of the page in the stroke that draws what it asked for, so a
+   * press with Enter that worked left `document.activeElement` on `<body>`. The axes are the list the
+   * button belonged to (two of them stand on one page, and the answer is the heading of THAT one, so
+   * the invitations' button is the case where "the first heading" is wrong), what came back (rows, or
+   * nothing, which draws no heading) and whether the reader was still there.
+   */
+  describe('the keyboard', () => {
+    const headingOf = (list: string) => screen.getByRole('heading', { name: list })
+
+    it('goes to the heading of the invitations when their button was pressed with Enter', async () => {
+      const failing: Failing = { applications: 500, invitations: 500 }
+      const server = aServerWithAQueue(did, failing)
+      const user = setupUser()
+
+      try {
+        renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+        await screen.findByText(sr.teams.invitationsUnreadable, undefined, { timeout: SLOW })
+
+        failing.applications = null
+        failing.invitations = null
+        must(retryOf(sr.teams.inviteSent), 'the button of the invitations').focus()
+        await user.keyboard('{Enter}')
+        await sentList()
+
+        expect(headingOf(sr.teams.inviteSent)).toHaveFocus()
+        expect(headingOf(sr.teams.joinWaiting)).not.toHaveFocus()
+      } finally {
+        server.stop()
+      }
+    }, SLOW)
+
+    it('goes to the heading of the applications when theirs was pressed', async () => {
+      const failing: Failing = { applications: 500, invitations: 500 }
+      const server = aServerWithAQueue(did, failing)
+      const user = setupUser()
+
+      try {
+        renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+        await screen.findByText(sr.teams.applicationsUnreadable, undefined, { timeout: SLOW })
+
+        failing.applications = null
+        failing.invitations = null
+        must(retryOf(sr.teams.joinWaiting), 'the button of the applications').focus()
+        await user.keyboard('{Enter}')
+        await waitingList()
+
+        expect(headingOf(sr.teams.joinWaiting)).toHaveFocus()
+        expect(headingOf(sr.teams.inviteSent)).not.toHaveFocus()
+      } finally {
+        server.stop()
+      }
+    }, SLOW)
+
+    it('goes to the page when the list that was asked for again holds nothing, and so has no heading', async () => {
+      /* A heading over an empty list announced applications that were not there (review of
+         06.09.2026), so none is drawn; the invitations are, and are not where the reader was. */
+      const failing: Failing = { applications: 500, invitations: null }
+      const server = aServerWithAQueue(did, failing)
+      const user = setupUser()
+
+      try {
+        renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+        await screen.findByText(sr.teams.applicationsUnreadable, undefined, { timeout: SLOW })
+
+        failing.applications = () => listOf([])
+        must(retryOf(sr.teams.joinWaiting), 'the button of the applications').focus()
+        await user.keyboard('{Enter}')
+        await waitFor(() => {
+          expect(screen.queryByText(sr.teams.applicationsUnreadable)).toBeNull()
+        })
+
+        expect(screen.queryByRole('heading', { name: sr.teams.joinWaiting })).toBeNull()
+        expect(screen.getByRole('main')).toHaveFocus()
+        expect(headingOf(sr.teams.inviteSent)).not.toHaveFocus()
+      } finally {
+        server.stop()
+      }
+    }, SLOW)
+
+    it('does not follow a reader who moved on while the lists were asked for', async () => {
+      let letGo: () => void = () => undefined
+      const failing: Failing = { applications: 500, invitations: null }
+      const server = aServerWithAQueue(did, failing)
+      const user = setupUser()
+
+      try {
+        renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+        await screen.findByText(sr.teams.applicationsUnreadable, undefined, { timeout: SLOW })
+
+        failing.applications = () =>
+          new Promise<Response>((resolve) => {
+            letGo = () => {
+              resolve(listOf(ASKING))
+            }
+          })
+        must(retryOf(sr.teams.joinWaiting), 'the button of the applications').focus()
+        await user.keyboard('{Enter}')
+        await screen.findByText(sr.data.loading)
+
+        /* He leaves the button while the answer is out: the page before it, which is not in the
+           queue and is not redrawn by it. */
+        await user.tab({ shift: true })
+
+        const elsewhere = document.activeElement
+
+        expect(elsewhere).not.toBe(document.body)
+        expect(elsewhere).not.toBe(retryOf(sr.teams.joinWaiting))
+
+        letGo()
+        await waitingList()
+
+        expect(document.activeElement, 'the reader was followed to a heading').toBe(elsewhere)
+      } finally {
+        server.stop()
+      }
+    }, SLOW)
+  })
 })

@@ -213,7 +213,7 @@ describe('asking for the message', () => {
     expect(sentToTheRoute()).toHaveLength(1)
 
     letGo()
-    await screen.findByText(/poruka sa vezom je poslata/)
+    await screen.findByText(/šaljemo poruku sa vezom/)
   })
 })
 
@@ -227,7 +227,7 @@ describe('what the screen says about the answer', () => {
     /* By a clause that stands in no other sentence on this screen. The heading and the
        opening line both speak of an account at an address, so a looser pattern would be
        satisfied by a screen that had answered nothing at all. */
-    expect(await screen.findByText(/poruka sa vezom je poslata/)).toBeVisible()
+    expect(await screen.findByText(/šaljemo poruku sa vezom/)).toBeVisible()
     expect(screen.queryByLabelText('Adresa elektronske pošte')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Prijava' })).toBeVisible()
   })
@@ -253,7 +253,7 @@ describe('what the screen says about the answer', () => {
 
       await ask(address)
 
-      said.push((await screen.findByText(/poruka sa vezom je poslata/)).textContent ?? '')
+      said.push((await screen.findByText(/šaljemo poruku sa vezom/)).textContent ?? '')
 
       /* Both really went, so this is two answers and not one measured twice. */
       expect(addressIn(at(sentToTheRoute(), 0))).toBe(address)

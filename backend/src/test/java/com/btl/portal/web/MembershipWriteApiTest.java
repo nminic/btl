@@ -132,17 +132,35 @@ class MembershipWriteApiTest {
 
 		private Instant now;
 
+		/** How far the clock moves AFTER each reading; nothing, unless a case asks for it. */
+		private Duration step = Duration.ZERO;
+
 		private AClockTheCaseMoves(Instant now) {
 			this.now = now;
 		}
 
 		void moveTo(Instant when) {
 			this.now = when;
+			this.step = Duration.ZERO;
+		}
+
+		/**
+		 * FROM NOW ON EVERY READING OF THE CLOCK IS A DIFFERENT MOMENT, for the case that must tell one
+		 * reading from two (PENDING, review of PR 505, finding 1). A clock that stands still gives two
+		 * homes of one moment the same answer whether they share a reading or take one each, so a
+		 * case on such a clock measures nothing about it.
+		 */
+		void ticksBy(Duration afterEachReading) {
+			this.step = afterEachReading;
 		}
 
 		@Override
 		public Instant instant() {
-			return now;
+			Instant read = now;
+
+			now = now.plus(step);
+
+			return read;
 		}
 
 		@Override
@@ -1146,8 +1164,9 @@ class MembershipWriteApiTest {
 	 *
 	 * <p>Read through the key that joins them: the membership NAMES its book entry
 	 * ({@code balance_entry_id}), so the line compared is the line that paid for this very row and not
-	 * the first one the member happens to have. The moment is equal because the clock these cases move
-	 * is one instant; in production the two readings of the clock are microseconds apart.
+	 * the first one the member happens to have. The moment is equal because the route reads the clock
+	 * ONCE and hands the instant to both homes; on this case's clock, which moves a millisecond at every
+	 * reading, a route that read it twice gives two moments and the comparison fails.
 	 *
 	 * <p>Both sides are required to be PRESENT as well as equal: two nulls are equal, and a pair of
 	 * empty homes would otherwise pass.
@@ -1155,6 +1174,16 @@ class MembershipWriteApiTest {
 	@Test
 	void theTrailOnTheRowIsTheTrailInTheBook() throws Exception {
 		earnedAReferral(him, whoPays, "5", "EUR");
+
+		/* THE TWO SOURCES OF THE MOMENT ARE MADE TO DIFFER, and the floor says they do. On a clock that
+		   stands still a membership row that reads the clock for itself and a book line that reads it
+		   for itself give the same instant, so this case could not tell one reading from two (PENDING,
+		   review of PR 505, finding 1). Here every reading is a millisecond after the one before. */
+		clock.ticksBy(Duration.ofMillis(1));
+
+		assertThat(clock.instant())
+				.as("two readings of the clock gave one moment, so the case measures nothing")
+				.isNotEqualTo(clock.instant());
 
 		assertThat(fromHisBalance(him, cashierCookie).getStatus()).isEqualTo(201);
 
@@ -1177,6 +1206,9 @@ class MembershipWriteApiTest {
 		assertThat(homes.rowName()).as("the membership and the book name two people").isEqualTo(homes.bookName());
 		assertThat(homes.rowAt()).as("the membership names no moment").isNotNull();
 		assertThat(homes.rowAt()).as("the membership and the book give two moments").isEqualTo(homes.bookAt());
+		assertThat(homes.rowAt().toInstant())
+				.as("the moment is not one the clock gave: it is a constant, or another source")
+				.isBetween(IN_JUNE_2027, IN_JUNE_2027.plusSeconds(60));
 	}
 
 	/**

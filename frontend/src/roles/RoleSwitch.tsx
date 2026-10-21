@@ -1,7 +1,7 @@
 import type { Moderator } from '../data/types'
 import { dataOr, useModerators } from '../data/useResource'
 import { devToolsEnabled } from '../dev/tools'
-import { useI18n } from '../i18n/useI18n'
+import { useDevWords } from '../dev/words'
 import { useSession } from '../session/useSession'
 import { ROLES } from './context'
 import { initialsOf } from './initials'
@@ -71,7 +71,7 @@ function optionFor(moderator: Moderator): string {
 }
 
 function RoleChooser() {
-  const { t } = useI18n()
+  const { t } = useDevWords()
   const { role, moderator, become } = useRole()
   /* Read for what it is worth rather than waited for: this sits in the header
      above every screen, and a development control must never be what holds a

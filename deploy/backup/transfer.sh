@@ -25,6 +25,14 @@
 # its ETag, and R2 says it follows S3 there; that too is a step of the first real run, because a
 # bucket that answered something else would make every run fail here, loudly, rather than pass.
 
+# NO CALL CAN WAIT FOR EVER. Every curl below has --connect-timeout, and either --max-time (the
+# calls whose answer is small: a HEAD, a listing) or --speed-limit with --speed-time (the calls
+# that carry the copy, whose size is not known here, so a total time would be a guess that either
+# cuts a good transfer or lets a stalled one stand: it ends when it has moved under 1 KB a second
+# for two minutes). Before 21.10.2026 none had either, and a connection that stopped answering
+# held the run, the work folder with the dump in it, and the failure mail, until systemd's hour
+# was up.
+
 set -eu
 umask 077
 
@@ -42,7 +50,7 @@ SIGN='aws:amz:auto:s3'
 # The ETag the bucket answered for a key, without its quotes, lower case. The headers go to a file
 # and are read from it: a status read through a pipe is the status of the last command in it.
 etag_of() {
-  if ! curl -sS --fail -K "$WORK/r2.curl" --aws-sigv4 "$SIGN" -I -o /dev/null -D "$WORK/head.txt" "$BASE/$1" 2> "$WORK/head.err"; then
+  if ! curl -sS --fail --connect-timeout 30 --max-time 120 -K "$WORK/r2.curl" --aws-sigv4 "$SIGN" -I -o /dev/null -D "$WORK/head.txt" "$BASE/$1" 2> "$WORK/head.err"; then
     fail "the bucket did not answer for $1: $(cat "$WORK/head.err")"
   fi
   tr -d '\r' < "$WORK/head.txt" | sed -n 's/^[Ee][Tt][Aa][Gg]: *"\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' | tail -1 | tr 'A-F' 'a-f'
@@ -56,7 +64,7 @@ case "$ACTION" in
     KEY=${4:?put needs a key}
     [ -s "$FILE" ] || fail "there is nothing to send at $FILE"
     digest=$(sha256sum "$FILE" | cut -c1-64)
-    if ! curl -sS --fail-with-body -K "$WORK/r2.curl" --aws-sigv4 "$SIGN" \
+    if ! curl -sS --fail-with-body --connect-timeout 30 --speed-limit 1024 --speed-time 120 -K "$WORK/r2.curl" --aws-sigv4 "$SIGN" \
          -H "x-amz-content-sha256: $digest" -T "$FILE" -o "$WORK/put.body" "$BASE/$KEY" 2> "$WORK/put.err"; then
       fail "the bucket refused $KEY: $(cat "$WORK/put.err") $(head -c 300 "$WORK/put.body" 2>/dev/null || true)"
     fi
@@ -71,7 +79,7 @@ case "$ACTION" in
     KEY=${3:?get needs a key}
     FILE=${4:?get needs a file}
     rm -f "$FILE"
-    if ! curl -sS --fail -K "$WORK/r2.curl" --aws-sigv4 "$SIGN" -o "$FILE" "$BASE/$KEY" 2> "$WORK/get.err"; then
+    if ! curl -sS --fail --connect-timeout 30 --speed-limit 1024 --speed-time 120 -K "$WORK/r2.curl" --aws-sigv4 "$SIGN" -o "$FILE" "$BASE/$KEY" 2> "$WORK/get.err"; then
       fail "the bucket did not give back $KEY: $(cat "$WORK/get.err")"
     fi
     got=$(md5_of "$FILE")
@@ -86,7 +94,7 @@ case "$ACTION" in
     # The slash of the prefix is written %2F: version 4 signs the query in its encoded form, and an
     # unencoded slash is one more thing a server may canonicalise differently.
     encoded=$(printf '%s' "$PREFIX" | sed 's,/,%2F,g')
-    if ! curl -sS --fail -K "$WORK/r2.curl" --aws-sigv4 "$SIGN" -o "$WORK/list.xml" \
+    if ! curl -sS --fail --connect-timeout 30 --max-time 120 -K "$WORK/r2.curl" --aws-sigv4 "$SIGN" -o "$WORK/list.xml" \
          "$BASE?list-type=2&prefix=$encoded" 2> "$WORK/list.err"; then
       fail "the bucket did not list $PREFIX: $(cat "$WORK/list.err")"
     fi

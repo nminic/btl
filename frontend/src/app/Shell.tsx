@@ -4,7 +4,7 @@ import { dataOr, usePaymentsDue } from '../data/useResource'
 import { DEV_TOOLS_IN_THIS_BUILD, loadTheDevControls } from '../dev/tools'
 import { useI18n } from '../i18n/useI18n'
 import { useMayOpen, usePermittedQueues } from '../pages/admin/mayOpen'
-import { usePending } from '../pages/admin/pending'
+import { usePendingForTheCount } from '../pages/admin/pending'
 import { notMembersYetIn, totalWaiting } from '../pages/admin/queues'
 import { useRole } from '../roles/useRole'
 import { useServerIsStillBeingAsked } from '../session/useServerIsStillBeingAsked'
@@ -85,7 +85,7 @@ const ADMIN = 'administracija'
  */
 function useWaiting(): number {
   const { decisions } = useSession()
-  const items = usePending()
+  const items = usePendingForTheCount()
   /* TWO reads and not one since 27.09.2026, because one of the five queues is no longer in
      the file: the Uplate tab is a derived list (`queues.ts`, `notMembersYet`). Left out, this
      total would be short by however many people owe a fee, and the number over every screen on
