@@ -530,6 +530,12 @@ describe('the members screen', () => {
         .toBeDefined()
     }
 
+    /* What was held before the deletion, name by name. „Forgotten" is asked as „the answer held
+       before is gone": the header counter and the navigation of a superadmin read `verification`
+       again the moment it is dropped (PENDING 29561), so that one name is held again a moment
+       later, as a NEW answer. A drop that never happened leaves the very same object. */
+    const heldBefore = ALSO_CLEARED.map((name) => arrivedResource(name))
+
     await deleteNamed(user, 'Ana Jovanović')
     await waitFor(() => {
       expect(writes(server.asked)).toHaveLength(1)
@@ -538,12 +544,15 @@ describe('the members screen', () => {
     /* `clearResourceCache` runs synchronously once `deleteOne` reads the answer back, but
        that answer is still a promise settling on its own schedule, so this is waited for
        rather than read straight after the write above. */
-    await waitFor(() => {
-      for (const name of ALSO_CLEARED) {
-        expect(arrivedResource(name), `${name} was still cached after the member left`)
-          .toBeUndefined()
-      }
-    })
+    await waitFor(
+      () => {
+        ALSO_CLEARED.forEach((name, index) => {
+          expect(arrivedResource(name), `${name} was still cached after the member left`)
+            .not.toBe(heldBefore[index])
+        })
+      },
+      { timeout: SLOW / 2 },
+    )
 
     await router.navigate('/sr/administracija/timovi')
     await screen.findByRole('table', { name: 'Timovi' })

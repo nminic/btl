@@ -71,6 +71,7 @@ function formsThatAskForADay(): string[] {
  * `admin/EventRaces.tsx` keeps and `raceUpsertFrom` takes.
  */
 const A_MORNING: RaceRow = {
+  place: 'entered-1',
   id: '',
   name: 'Polumaraton',
   renamed: true,

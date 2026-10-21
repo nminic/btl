@@ -98,7 +98,8 @@ const COLUMNS = ['grid-template-columns', 'grid-template', 'grid:', 'column-coun
  * the weight); the circle beside the words rather than above them; two lines in the standing of a
  * competition and one in the tables; a pair as two circles above one another with a name beside
  * each; the circle smaller where the frozen column is capped; the circle round, in white on
- * the member's own colour (PDL P13, and `styles/circle.test.ts` says the same in words); and the
+ * one blue for every member (PDL P13, and `styles/circle.test.ts` says the same in words; the
+ * colour per member number is abolished, PDL P28, 31.07.2026); and the
  * whole plate on the middle of its row rather than above it (28.09.2026, „Ceo taj boks treba
  * spustiti dodatno par piksela"), which is the `vertical-align` and is held in words by
  * `styles/plateInTheRow.test.ts`. **And one rule that follows from a decision and not from a

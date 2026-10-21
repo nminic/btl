@@ -10,7 +10,6 @@ import {
   topByKilometers,
   topByTimeOnCourse,
 } from '../data/derive'
-import { hueFor } from './competitorFace'
 import en from '../i18n/en.json'
 import sr from '../i18n/sr.json'
 import pages from '../test/mock/pages.json'
@@ -2052,13 +2051,18 @@ describe('Competitors', () => {
     expect(screen.getByText('Nema takmičara koji odgovara pretrazi.')).toBeVisible()
   })
 
-  it('gives the same person the same colour every time', async () => {
+  it('draws every card in the same colour, whoever the member is', async () => {
+    /* PDL P28 (31.07.2026, vlasnik): „Sve kartice takmičara su identične", and „Boja izvedena iz
+       članskog broja se ukida". This case asked for the opposite, one stable hue per member,
+       until 21.10.2026 (PENDING 29205). Asked of the property the circle used to set, since jsdom
+       applies no stylesheet: no card sets one, so every card falls back to the sheet's one blue. */
     renderAt('/sr/takmicari')
     await screen.findByRole('list')
 
-    expect(hueFor('000001')).toBe(hueFor('000001'))
-    expect(hueFor('000001')).not.toBe(hueFor('000002'))
-    expect(hueFor('000001')).toBeLessThan(360)
+    const faces = [...document.querySelectorAll<HTMLElement>('.cards .card .portrait')]
+
+    expect(faces.length).toBeGreaterThan(1)
+    expect(faces.filter((one) => one.style.getPropertyValue('--face-hue') !== '')).toEqual([])
   })
 
   it('does not carry anybody whose fee has not been recorded', async () => {

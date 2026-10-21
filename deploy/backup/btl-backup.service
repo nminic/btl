@@ -1,0 +1,21 @@
+# The nightly copy of production (deploy/backup.sh). Started by btl-backup.timer; installing both
+# is the owner's step, in deploy/README.md under "The backup".
+[Unit]
+Description=BTL nightly backup of production to R2
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/btl/deploy
+ExecStart=/bin/sh backup.sh
+# One copy at a time, and never longer than an hour: a run that hangs fails, and a failed run mails.
+TimeoutStartSec=1h
+# What stopping the run is allowed to take: its way out removes the work folder and the copy,
+# removes the containers of the run, and mails the superadmin (curl gives that mail 60 seconds at
+# most, backup/alert.sh). Without a number of its own systemd waits its default 90 seconds and then
+# SIGKILLs, and a SIGKILL leaves the work folder, with the dump and the passphrase in it, until the
+# next reboot. KillMode=mixed sends the SIGTERM to the script alone, which is what runs the way
+# out; everything still alive when the time is up gets the SIGKILL.
+TimeoutStopSec=2min
+KillMode=mixed

@@ -9,6 +9,8 @@ import { useToday } from '../../clock/useClock'
 import type { Competitor, Team } from '../../data/types'
 import { SYMBOL } from '../../app/actionSymbol'
 import { ActionButton } from '../../components/ActionButton'
+import { Resource } from '../../components/Resource'
+import { useHisOwnRecord } from '../profile/useHisOwnRecord'
 
 /**
  * The two buttons under an invitation, and the sentence that stands where they
@@ -31,19 +33,61 @@ import { ActionButton } from '../../components/ActionButton'
  * The message itself never goes away. Deleting somebody's mail would delete the
  * answer to „what happened to that invitation", which is the question this
  * screen exists to answer.
+ *
+ * **THE READER'S SEX COMES FROM THE READER'S OWN RECORD, AND THE WHOLE ANSWER WAITS FOR IT**
+ * (PDL, 20.10.2026, „Odgovor na poziv u tim čeka pol sa članovog naloga": „(1) Dok se nalog čitaoca
+ * još čita, ceo odgovor čeka: dugmad i rečenica se pojave zajedno kad nalog stigne, kao svuda drugde
+ * na portalu, pa članica nikad ne vidi muški oblik. (2) Ako nalog ne može da se pročita, ekran kaže da
+ * čitanje nije uspelo, uz ponovni pokušaj, kao svako drugo neuspelo čitanje; ništa se ne pogađa.").
+ * It was read off `competitors`, which is the public list and `where c.active`, so a woman whose fee
+ * has lapsed was on no row of it and read „Prihvatio" and „ušao" (PENDING, review of PR 604, read
+ * off the source). `GET /api/me` answers one row and that row is hers
+ * (`profile/useHisOwnRecord.ts`), and `member/ServedTeamInvite.tsx` has read it the same way since
+ * PR 604.
+ *
+ * **What `competitors` is still read for, and it is not the sex:** the reader's team and name, and
+ * the other teams' questions the acceptance closes (`data/afterJoining.ts`). Those are the
+ * prototype's own store and are held against the list the record is written to, so a list that
+ * cannot be read still takes this answer away (`member/MessageDetail.tsx`, one `Resource` over the
+ * three), and it says so.
  */
 export function InvitationAnswer({
-  invitation: id,
-  competitors,
-  teams,
+  reader,
+  ...rest
 }: {
   invitation: string
   competitors: Competitor[]
   teams: Team[]
+  /** The member number of whoever is reading, which `member/MessageDetail.tsx` already holds
+   *  (`useMemberScreen`) and which is the one home of that fact on the screen. */
+  reader: string
+}) {
+  /* Waited for as a whole, inline so the message above stays readable, and with the portal's own
+     sentence and button when it fails (`components/Resource`): no state of the record is looked at
+     below this line, so none can be guessed from. */
+  return (
+    <Resource state={useHisOwnRecord(reader)} inline>
+      {(him) => <TheInvitationAnswered reader={reader} woman={him.gender === 'F'} {...rest} />}
+    </Resource>
+  )
+}
+
+function TheInvitationAnswered({
+  invitation: id,
+  competitors,
+  teams,
+  reader: memberNumber,
+  woman: mineIsAWoman,
+}: {
+  invitation: string
+  competitors: Competitor[]
+  teams: Team[]
+  reader: string
+  woman: boolean
 }) {
   const { t } = useI18n()
   const today = useToday()
-  const { memberNumber, invitations, close, editRecord, notify } = useSession()
+  const { invitations, close, editRecord, notify } = useSession()
 
   const invitation = invitations.find((one) => one.id === id)
   /* The reader's team as the team itself rather than as its identity, so „they are
@@ -61,13 +105,10 @@ export function InvitationAnswer({
     .filter((one) => one.memberNumber === memberNumber)
     .map((one) => `${one.firstName} ${one.lastName}`)
     .join('')
-  /* And the word that notice says he did follows HIS sex ("ušao" or "ušla", PDL P18,
-     18.10.2026), never the sex of the team leader who reads it. Asked as a question with
-     two answers rather than read off the record, for the reason above: a member the portal
-     no longer has is simply not a woman. */
-  const mineIsAWoman = competitors.some(
-    (one) => one.memberNumber === memberNumber && one.gender === 'F',
-  )
+  /* `mineIsAWoman`, the word that notice says he did, and the two sentences below follow the
+     READER'S sex ("ušao" or "ušla", PDL P18, 18.10.2026), never the sex of the team leader who
+     reads the notice. It is handed in from the reader's own record (see the note over
+     `InvitationAnswer`), not worked out here from `competitors`. */
 
   if (invitation === undefined || mine !== undefined) {
     /* **Three sentences, and none of them is remembered.** An accepted invitation

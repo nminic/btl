@@ -147,11 +147,11 @@ class MembershipCarriedOverTest extends DatabaseTest {
 		/* Paid in October 2026 for 2027, and in October 2027 for 2028. Neither season is the year
 		   the money arrived in, which is what the transfer window means and what makes the two
 		   sources tellable apart. */
-		payment("001000", 2027, "recorded", "2026-10-05 09:00:00+00", "20271000");
-		payment("001000", 2028, "recorded", "2027-10-01 09:00:00+00", "20281000");
+		payment("001000", 2027, "recorded", "2026-10-05 09:00:00+00", "2027001000");
+		payment("001000", 2028, "recorded", "2027-10-01 09:00:00+00", "2028001000");
 
 		payment("001001", 2028, "awaited", null, null);
-		payment("001002", 2028, "reversed", "2027-10-02 09:00:00+00", "20281002");
+		payment("001002", 2028, "reversed", "2027-10-02 09:00:00+00", "2028001002");
 	}
 
 	/**
@@ -180,7 +180,7 @@ class MembershipCarriedOverTest extends DatabaseTest {
 		assertThat(membershipsWritten())
 				.as("the recognised payments did not come out of the migration as memberships of"
 						+ " the seasons they were paid for, each naming the receipt it came from")
-				.containsExactly("001000 2027 payment 20271000", "001000 2028 payment 20281000");
+				.containsExactly("001000 2027 payment 2027001000", "001000 2028 payment 2028001000");
 	}
 
 	/**

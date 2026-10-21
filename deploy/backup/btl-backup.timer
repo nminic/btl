@@ -1,0 +1,12 @@
+# Every night at 04:00 Belgrade time: the owner's decision (5) of 20.10.2026, ADL O19. The zone is
+# written out so that the hour does not move with the host's own zone, and systemd moves it with
+# summer time. Persistent: a night the host was down is made up for when it comes back.
+[Unit]
+Description=BTL nightly backup of production, at 04:00 Europe/Belgrade
+
+[Timer]
+OnCalendar=*-*-* 04:00:00 Europe/Belgrade
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import devSr from '../dev/words.sr.json'
 import sr from './sr.json'
 
 /**
@@ -83,10 +84,22 @@ const ASKED = new RegExp(
   'g',
 )
 
+/**
+ * A file that imports the words of the development controls (`dev/words.ts`) is answered by
+ * THEIR book and by no other, and every other file by the dictionary of the portal.
+ *
+ * Two books because the words of the two switches are kept out of the dictionary every
+ * screen imports whole (28869, ADL A15): a production bundle carried them for controls it
+ * does not draw. The split is read off the import and not off a list, so a third file that
+ * reads `useDevWords` is held to the same book, and a screen that asked for `role.label`
+ * through `useI18n` is told the portal does not have it.
+ */
+const ASKS_THE_BOOK_OF_THE_CONTROLS = /from '(?:\.\.\/dev\/|\.\/)words'/
+
 /** What the dictionary answers, or nothing. Read as the file is written: a leaf
  *  may be a sentence or the three forms of a plural. */
-function held(name: string): boolean {
-  let at: unknown = sr
+function held(name: string, book: unknown): boolean {
+  let at: unknown = book
 
   for (const step of name.split('.')) {
     if (typeof at !== 'object' || at === null || !(step in at)) {
@@ -104,6 +117,7 @@ describe('what the portal asks the dictionary for', () => {
     [...code.matchAll(ASKED)].map((one) => ({
       path,
       name: one[1] ?? one[2] ?? one[3] ?? one[4] ?? one[5] ?? '',
+      book: ASKS_THE_BOOK_OF_THE_CONTROLS.test(code) ? devSr : sr,
     })),
   )
 
@@ -112,8 +126,25 @@ describe('what the portal asks the dictionary for', () => {
     expect(asked.some((one) => one.name === 'home.results')).toBe(true)
   })
 
+  it('reads the two switches against their own book, which is not the portal’s', () => {
+    /* The floor under the split above: with no file answered by the book of the controls
+       the case after it would pass over nothing, and a pattern that stopped matching the
+       import would send the switches to the portal’s dictionary, which no longer has them,
+       and fail on every name - or, with the keys put back there, pass on none of this. */
+    const theirs = asked.filter((one) => one.book === devSr)
+
+    expect(new Set(theirs.map((one) => one.path))).toEqual(
+      new Set(['roles/RoleSwitch.tsx', 'clock/DateSwitch.tsx']),
+    )
+    expect(theirs.map((one) => one.name)).toContain('role.label')
+    expect(theirs.map((one) => one.name)).toContain('clock.reset')
+    expect(theirs.map((one) => one.name)).toContain('server.named')
+    expect(held('role.label', sr)).toBe(false)
+    expect(held('role.label', devSr)).toBe(true)
+  })
+
   it('has every one of them', () => {
-    const missing = [...new Set(asked.filter((one) => !held(one.name)).map(
+    const missing = [...new Set(asked.filter((one) => !held(one.name, one.book)).map(
       (one) => `${one.path}: ${one.name}`,
     ))]
 

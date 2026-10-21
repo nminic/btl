@@ -14,8 +14,10 @@ import './TeamMark.css'
  * same reason: a circle that is sometimes there and sometimes a grey hole makes
  * a table change height row by row, so the place is always held. What holds it
  * until a team uploads anything is the team's own initials on a colour of its
- * own, taken from the same recipe faces use, so one team wears one colour
- * wherever the portal draws them.
+ * own, computed off the team's id (`pages/competitorFace.ts`), so one team wears one
+ * colour wherever the portal draws it. **Faces do not**: the colour derived from a
+ * member number was abolished on 31.07.2026 (PDL P28) and a member's circle wears the
+ * sheet's one blue; whether a team keeps its colour is not decided by that.
  *
  * Cut where the team cut it (owner, 12.08.2026), which is the one thing this
  * has to get right that a plain `object-fit: cover` does not: a logo with a

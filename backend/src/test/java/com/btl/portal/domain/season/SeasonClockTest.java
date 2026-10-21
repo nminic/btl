@@ -2,6 +2,7 @@ package com.btl.portal.domain.season;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -823,6 +824,53 @@ class SeasonClockTest {
 						+ " year and the season after the first could not be prepared")
 				.isTrue();
 		assertThat(SeasonClock.aLeagueMayBeMadeFor(2029, beforeTheLeague)).isFalse();
+	}
+
+	/**
+	 * THE RUNNING YEAR OF A LEAGUE IS THE BAND'S YEAR, READ IN THE LEAGUE'S OWN ZONE WHATEVER ZONE THE
+	 * MOMENT ARRIVES IN (PENDING, review of PR 509, finding 1 and the unguarded zone beside it).
+	 *
+	 * <p>{@link SeasonClock#aLeagueMayBeMadeFor} asks {@link SeasonClock#seasonTheBandIsWorkedOutFor}
+	 * for the running year instead of working it out, and what holds it to asking is a pair of moments
+	 * either side of the New Year IN BELGRADE, each named in three zones that are not Belgrade:
+	 *
+	 * <ul>
+	 * <li>{@code 2027-12-31T23:30Z} is the first half hour of 2028 here, and still 2027 in UTC and in
+	 * New York. A copy that read the zone the moment arrived in would let a league be made for 2027
+	 * (already run) and refuse 2029 (the next one);
+	 * <li>{@code 2027-12-31T20:00Z} is still the evening of 2027 here, and already 2028 in Tokyo. A copy
+	 * that read Tokyo would let a league be made for 2029, two years ahead.
+	 * </ul>
+	 *
+	 * <p>Before this case two such copies, one in UTC and one in Tokyo, passed every other case of this
+	 * file, because every case of {@code aLeagueMayBeMadeFor} named a moment in the middle of a year.
+	 */
+	@Test
+	void theRunningYearOfALeagueIsTheBandsYearInTheLeaguesOwnZone() {
+		Instant firstHalfHourOfTwentyTwentyEight = Instant.parse("2027-12-31T23:30:00Z");
+		Instant lastEveningOfTwentyTwentySeven = Instant.parse("2027-12-31T20:00:00Z");
+
+		for (ZoneId arrivesIn : new ZoneId[] {UTC, TOKYO, ZoneId.of("America/New_York"), SeasonClock.ZONE}) {
+			ZonedDateTime newYear = firstHalfHourOfTwentyTwentyEight.atZone(arrivesIn);
+
+			assertThat(SeasonClock.aLeagueMayBeMadeFor(2027, newYear))
+					.as("2028 had begun in Belgrade and a league was made for 2027, read in " + arrivesIn)
+					.isFalse();
+			assertThat(SeasonClock.aLeagueMayBeMadeFor(2028, newYear)).as("read in " + arrivesIn).isTrue();
+			assertThat(SeasonClock.aLeagueMayBeMadeFor(2029, newYear))
+					.as("2028 had begun in Belgrade and the next season was refused, read in " + arrivesIn)
+					.isTrue();
+			assertThat(SeasonClock.aLeagueMayBeMadeFor(2030, newYear)).as("read in " + arrivesIn).isFalse();
+
+			ZonedDateTime theEvening = lastEveningOfTwentyTwentySeven.atZone(arrivesIn);
+
+			assertThat(SeasonClock.aLeagueMayBeMadeFor(2027, theEvening)).as("read in " + arrivesIn).isTrue();
+			assertThat(SeasonClock.aLeagueMayBeMadeFor(2028, theEvening)).as("read in " + arrivesIn).isTrue();
+			assertThat(SeasonClock.aLeagueMayBeMadeFor(2029, theEvening))
+					.as("2028 had not begun in Belgrade and a league was prepared two years ahead, read in "
+							+ arrivesIn)
+					.isFalse();
+		}
 	}
 
 	/**
