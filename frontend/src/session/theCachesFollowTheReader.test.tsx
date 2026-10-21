@@ -18,9 +18,13 @@ import { useSession } from './useSession'
  * are still held at the moment a case looks, so a mutation of the rule fails here by name
  * before it fails there by symptom.
  *
- * <p><b>Five names are warmed and only four may go</b>, because „all were dropped" is
+ * <p><b>Six names are warmed and only five may go</b>, because „all were dropped" is
  * satisfied by a rule that empties the whole cache, and that is a request more for every
  * screen of every visit for nothing. `events` is the one that must stay.
+ *
+ * <p><b>`verification` is the fifth that goes, since PENDING 28771</b>: the queues a moderator may
+ * work in are answered to HIM (`VerificationApi`, through `WhatHeMayDo`), so the list one
+ * moderator was answered may not be found by the next reader of the visit.
  *
  * <p><b>`comments` is the fourth that goes, since 03.10.2026</b>: every comment of every event is
  * answered to an active member and to the administration and refused to anybody else signed in
@@ -90,6 +94,7 @@ function AScreenThatMountsWithTheSignIn() {
   const [found] = useState(() => ({
     competitors: arrivedResource('competitors') !== undefined,
     teams: arrivedResource('teams') !== undefined,
+    verification: arrivedResource('verification') !== undefined,
   }))
 
   return <output aria-label="what the screen found when it mounted">{JSON.stringify(found)}</output>
@@ -158,7 +163,7 @@ afterEach(() => {
   server = null
 })
 
-/** Five names read and arrived, so there is something for each case to find held or gone. */
+/** Six names read and arrived, so there is something for each case to find held or gone. */
 async function warm(): Promise<void> {
   server = serverThat((path) =>
     isResource(path)
@@ -171,6 +176,19 @@ async function warm(): Promise<void> {
     loadResource('teams'),
     loadResource('attendance'),
     loadResource('comments'),
+    loadResource('verification'),
+    loadResource('events'),
+  ])
+}
+
+/** The six read again, on the server `warm` started, after something has dropped them. */
+async function refill(): Promise<void> {
+  await Promise.all([
+    loadResource('competitors'),
+    loadResource('teams'),
+    loadResource('attendance'),
+    loadResource('comments'),
+    loadResource('verification'),
     loadResource('events'),
   ])
 }
@@ -181,19 +199,29 @@ function held() {
     teams: arrivedResource('teams') !== undefined,
     attendance: arrivedResource('attendance') !== undefined,
     comments: arrivedResource('comments') !== undefined,
+    verification: arrivedResource('verification') !== undefined,
     events: arrivedResource('events') !== undefined,
   }
 }
 
-const ALL_HELD = { competitors: true, teams: true, attendance: true, comments: true, events: true }
+const ALL_HELD = {
+  competitors: true,
+  teams: true,
+  attendance: true,
+  comments: true,
+  verification: true,
+  events: true,
+}
 /* Four since 03.10.2026: who is going to an event and every comment on one are answered to an
    active member and to the administration and refused to anybody else, so they are a reader's
-   answers like the two before them. */
+   answers like the two before them. Five since PENDING 28771: the queues a moderator may work in
+   are answered to him and to nobody else. */
 const THE_READERS_ANSWERS_ARE_GONE = {
   competitors: false,
   teams: false,
   attendance: false,
   comments: false,
+  verification: false,
   events: true,
 }
 
@@ -235,6 +263,48 @@ describe('the first answer of a visit', () => {
   })
 })
 
+describe('somebody signing in BEFORE the first answer of the visit (PENDING 28766)', () => {
+  /* **The visitor the first screen was answered to, and the member who then signs in while
+     `GET /api/me` is still out.** The visit began with nobody named and no answer, so the reader
+     is not registered yet; registered without a drop, the lists below stay as the visitor was
+     answered them. Every other case here answers first, which is the order a quick server gives
+     and the one order in which this cannot happen. */
+  it.each([
+    ['a member', 'member signs in'],
+    ['an account that races for nobody', 'moderator signs in'],
+  ])('drops what the visitor was answered when %s signs in', async (_who, button) => {
+    const user = visit()
+
+    await warm()
+    await user.click(screen.getByRole('button', { name: button }))
+
+    expect(held()).toEqual(THE_READERS_ANSWERS_ARE_GONE)
+  })
+
+  it('does so in the render that names him, so the screen that mounts with it finds nothing', async () => {
+    const user = visit()
+
+    await warm()
+    await user.click(screen.getByRole('button', { name: 'member signs in' }))
+
+    expect(screen.getByLabelText('what the screen found when it mounted')).toHaveTextContent(
+      JSON.stringify({ competitors: false, teams: false, verification: false }),
+    )
+  })
+
+  it('registers him, so the answer that then names the same member drops nothing more', async () => {
+    const user = visit()
+
+    await warm()
+    await user.click(screen.getByRole('button', { name: 'member signs in' }))
+    /* What the member's own screens then asked for, answered to him. */
+    await refill()
+    await user.click(screen.getByRole('button', { name: 'server answered a member' }))
+
+    expect(held()).toEqual(ALL_HELD)
+  })
+})
+
 describe('somebody signing in', () => {
   it('drops competitors and teams, and nothing else', async () => {
     const user = visit()
@@ -273,7 +343,7 @@ describe('a screen that mounts in the render that changes the reader', () => {
     await user.click(screen.getByRole('button', { name: 'member signs in' }))
 
     expect(screen.getByLabelText('what the screen found when it mounted')).toHaveTextContent(
-      JSON.stringify({ competitors: false, teams: false }),
+      JSON.stringify({ competitors: false, teams: false, verification: false }),
     )
   })
 
@@ -287,7 +357,7 @@ describe('a screen that mounts in the render that changes the reader', () => {
     await user.click(screen.getByRole('button', { name: 'server answered a member' }))
 
     expect(screen.getByLabelText('what the screen found when it mounted')).toHaveTextContent(
-      JSON.stringify({ competitors: true, teams: true }),
+      JSON.stringify({ competitors: true, teams: true, verification: true }),
     )
   })
 })

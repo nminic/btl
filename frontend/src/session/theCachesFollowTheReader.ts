@@ -5,16 +5,29 @@ import { clearResourceCache, type ResourceName } from '../data/client'
  * THE NAMES WHOSE ANSWER DEPENDS ON WHO IS ASKING, and that nothing else drops when the
  * person asking changes.
  *
- * <p><b>Four names, and the other two that depend on the reader are not here on purpose.</b>
- * The backend answers six cached names by asking the caller (`CompetitorApi`, `TeamApi`,
- * `AttendanceApi`, `CommentApi`, `InboxApi`, `MyApplicationsApi` take the principal; no other
- * route behind a cached name does, which `session/everyNameThatDependsOnTheReader.test.ts` reads
- * out of the Java source rather than taking from this sentence). `inbox` and `me/applications`
- * are dropped by their own hooks, keyed by the member number the screen hands them
- * (`data/useResource.ts`, `theInboxNowBelongsTo` and `theWaitingNowBelongsTo`). The four here are
- * not asked for a member number by anybody: `competitors` and `teams` are read by twenty-two
- * components and by a visitor too, and `attendance` and `comments` are read by the event's page
- * for whoever is signed in.
+ * <p><b>Five names, and the other three that depend on the reader are not here on purpose.</b>
+ * The backend answers eight cached names by asking the caller: seven take the principal
+ * (`CompetitorApi`, `TeamApi`, `AttendanceApi`, `CommentApi`, `InboxApi`, `MyApplicationsApi`
+ * and `MyResultSubmissionsApi`), and one asks the session through `WhatHeMayDo` instead of
+ * taking a parameter (`VerificationApi`), which is why a floor that looked at the parameter
+ * alone left it off this list until PENDING 28771. Which routes those are,
+ * `session/everyNameThatDependsOnTheReader.test.ts` reads out of the Java source rather than
+ * taking from this sentence. `inbox`, `me/applications` and `me/result-submissions` are dropped
+ * by their own hooks, keyed by the member number the screen hands them (`data/useResource.ts`,
+ * `theInboxNowBelongsTo`, `theWaitingNowBelongsTo` and `theSubmissionsNowBelongTo`). The five
+ * here are not asked for a member number by anybody: `competitors` and `teams` are read by
+ * twenty-two components and by a visitor too, `attendance` and `comments` are read by the
+ * event's page for whoever is signed in, and `verification` is read by the header of every
+ * screen (`app/Shell.tsx`, `useWaiting`).
+ *
+ * <p><b>`verification` answers by shape, and by the RIGHTS of whoever asks (PENDING 28771).</b>
+ * `VerificationApi.verification` serves the queues the caller may work in and no others
+ * (`WhatHeMayDo.whichOf`), so one address answers a moderator of the teams queue and a
+ * moderator of the payments queue two different lists, and a member who may work in none is
+ * refused 404 (a failure is never cached, `data/client.ts`). The list one moderator was
+ * answered, kept in the visit after he has signed out, is a list the next moderator would
+ * draw: the count over every screen of the portal (`useWaiting`) and the queue itself, with
+ * the name and the member number of everybody who is waiting in it.
  *
  * <p><b>What they answer differently, and to whom.</b> PDL, section 16 (owner, 27.09.2026):
  * a member who hides his profile loses his team, his picture and his biography to a reader
@@ -47,6 +60,7 @@ export const ANSWERED_TO_THE_READER = [
   'teams',
   'attendance',
   'comments',
+  'verification',
 ] as const satisfies readonly ResourceName[]
 
 /**
@@ -104,6 +118,17 @@ export function readerOf(memberNumber: string | null, account: number | null): s
  * every returning member. The one thing that is a CHANGE is the one that happens after the
  * reader was known, and that is a sign in or a sign out.
  *
+ * <p><b>But a sign in that lands BEFORE the first answer is a change, and it drops (PENDING
+ * 28766).</b> The visit above begins with nobody known, and the screens under it may already
+ * have asked: a visitor opens the front page, the answer to `GET /api/me` is slow or never
+ * comes, and he signs in. Registered without a drop, `competitors` and `teams` stay as the
+ * visitor was answered them and the first screen he opens as a member draws them. What tells
+ * the two apart is that the render in which somebody is named, and the server has not
+ * answered, came AFTER a render in which nobody was named and it had not answered either: a
+ * returning member is named by the same render that carries the answer (`useTheServersSession`
+ * calls both together), and a case rendered as a member names him in the very first render, so
+ * neither has such a render behind it and both still only register.
+ *
  * <p><b>A ref of the provider and not a variable of the module</b>, so that a visit is the
  * only thing that carries a reader forward: a case that ended as one member does not start the
  * next as him, and a stale reader here could only drop a cache the next case had just filled.
@@ -142,6 +167,10 @@ export function useTheCachesFollowTheReader(reader: string | null, theServerHasA
      word is somebody. Folding the first into the second is the shape that drops everything a
      returning member's first screen asked for. */
   const answeredFor = useRef<string | null | undefined>(undefined)
+  /* Whether a render has already seen the visit with nobody named and no answer yet, which is
+     the only thing that makes „somebody is named and the server has not answered" a sign in and
+     not the way a visit began (28766). */
+  const sawNobodyBeforeTheAnswer = useRef(false)
 
   if (answeredFor.current === undefined) {
     /* Nobody has been registered yet, and until the server answers or somebody is named there is
@@ -149,8 +178,18 @@ export function useTheCachesFollowTheReader(reader: string | null, theServerHasA
        Once a reader is registered, a change to `null` is a sign out and it counts at once, whether
        or not the server has answered (a case rendered as a member has a reader before it has an
        answer). */
-    if (theServerHasAnswered || reader !== null) {
-      answeredFor.current = reader
+    if (!theServerHasAnswered && reader === null) {
+      sawNobodyBeforeTheAnswer.current = true
+
+      return
+    }
+
+    answeredFor.current = reader
+
+    /* A sign in that came before the first answer, behind a render that had nobody: whatever the
+       screens asked for in between was answered to the visitor, or to the cookie, and not to him. */
+    if (!theServerHasAnswered && sawNobodyBeforeTheAnswer.current) {
+      dropWhatDependsOnTheReader()
     }
 
     return
@@ -162,6 +201,10 @@ export function useTheCachesFollowTheReader(reader: string | null, theServerHasA
 
   answeredFor.current = reader
 
+  dropWhatDependsOnTheReader()
+}
+
+function dropWhatDependsOnTheReader(): void {
   for (const name of ANSWERED_TO_THE_READER) {
     clearResourceCache(name)
   }
