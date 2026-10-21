@@ -43,10 +43,13 @@
      more since a crop can magnify: a logo scaled to twice the circle spills
      over the name beside it without this (components/Crop.css). */
   overflow: hidden;
-  /* One recipe for both. A member's circle sets nothing and so wears the fallback blue
-     below; a team mark sets `--face-hue` from its id (components/TeamMark.tsx), so one
-     team wears one colour wherever the portal draws it, and every member the same. */
-  background: hsl(var(--face-hue, 214) 45% 32%);
+  /* One recipe for both, and ONE colour, written out and read off nothing: a member's circle and a
+     team mark wear the same blue (owner, 21.10.2026: team initials are flat like the cards of
+     members; 31.07.2026, PDL P28, for the members). It was `hsl(var(--face-hue, 214) ...)` until
+     then, a hue each circle could be given; nobody sets `--face-hue` any more, and the guards
+     that hold it so are `pages/publicScreens.test.tsx` (no element of the competitors or teams
+     screens sets it) and `styles/circle.test.ts` (no stylesheet does). */
+  background: hsl(214 45% 32%);
   /* White, bold, and spaced, because the initials stand on that colour and
      nothing else on the portal does. Left behind when the block was extracted,
      the team marks inherited the colour of a link and its ordinary weight, and

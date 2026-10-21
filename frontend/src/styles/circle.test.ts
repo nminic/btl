@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { must } from '../test/at'
 
@@ -94,7 +94,7 @@ describe('the circle a face and a team mark share', () => {
        colour. */
     expect(valueOf(portrait, '.face-circle', 'color')).toBe('var(--white)')
     expect(valueOf(portrait, '.face-circle', 'font-weight')).toBe('700')
-    expect(valueOf(portrait, '.face-circle', 'background')).toContain('hsl(var(--face-hue')
+    expect(valueOf(portrait, '.face-circle', 'background')).toContain('hsl(214 45% 32%')
   })
 
   it('carries every declaration neither mark can do without', () => {
@@ -106,6 +106,34 @@ describe('the circle a face and a team mark share', () => {
     expect(shared).toEqual(
       expect.arrayContaining(['border-radius', 'color', 'font-weight', 'background', 'overflow']),
     )
+  })
+
+  it('has no stylesheet that sets a hue, so every circle wears the one blue', () => {
+    /* Owner, 21.10.2026 (PDL: „Inicijali tima postaju jednobojni, kao kartice članova"), after
+       31.07.2026 for the cards of members (P28). `.face-circle` is one written-out blue and reads
+       no variable (`Portrait.css`), and `--face-hue` is set by nobody. The inline half of that is asked of the rendered
+       screens (`pages/publicScreens.test.tsx`, which sees an ancestor of a circle as much as the
+       circle); this is the other half, which jsdom cannot see because it applies no stylesheet:
+       a rule such as `.cards__item { --face-hue: ... }` is a hue written where a sheet that
+       read it would hand it to every circle inside, and sets nothing on a circle itself. Asked of EVERY stylesheet under `src` and of the
+       declaration, not of a selector, so there is no rule it can be written in that this
+       misses. A comment saying the name is not a declaration, so comments are blanked first. */
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+        entry.isDirectory()
+          ? walk(join(dir, entry.name))
+          : entry.name.endsWith('.css')
+            ? [join(dir, entry.name)]
+            : [],
+      )
+    const sheets = walk(join(process.cwd(), 'src'))
+    const setting = sheets.filter((path) =>
+      /--face-hue\s*:/.test(readFileSync(path, 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '')),
+    )
+
+    /* Measured and not assumed: a walk that found nothing would answer „no sheet sets it". */
+    expect(sheets.length).toBeGreaterThan(30)
+    expect(setting, 'a stylesheet gives circles a hue').toEqual([])
   })
 
   it('leaves each mark only what genuinely differs', () => {

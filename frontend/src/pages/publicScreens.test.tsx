@@ -1905,6 +1905,26 @@ function circleOf(card: HTMLElement): string {
   return must(card.querySelector('.portrait'), 'the circle of a card').textContent ?? ''
 }
 
+/**
+ * Every element of the document that sets `--face-hue`, the colour a circle once took from a number.
+ *
+ * **Asked of every element and not of the circle** (review of PR 613): the variable is inherited, so a
+ * card, a list or a row that sets it gives every circle inside it a colour while the circle's own
+ * `style` stays empty, and a guard that reads only the circle's style passes over exactly that. The
+ * document is walked, `html` and `body` included, and both the property and the text of the `style`
+ * attribute are read, since a hue written in a spelling the property reader does not know is still
+ * written.
+ */
+function settingAHue(): string[] {
+  return [...document.querySelectorAll<HTMLElement>('*')]
+    .filter(
+      (one) =>
+        one.style.getPropertyValue('--face-hue') !== '' ||
+        (one.getAttribute('style') ?? '').includes('--face-hue'),
+    )
+    .map((one) => `${one.tagName.toLowerCase()}.${one.className}`)
+}
+
 describe('Competitors', () => {
   /* Cards rather than a table (PDL P28a): the league is about people, and a row
      does not show a person. */
@@ -2051,18 +2071,23 @@ describe('Competitors', () => {
     expect(screen.getByText('Nema takmičara koji odgovara pretrazi.')).toBeVisible()
   })
 
-  it('draws every card in the same colour, whoever the member is', async () => {
+  it('sets no hue on any element, so every card is drawn in the same colour whoever the member is', async () => {
     /* PDL P28 (31.07.2026, vlasnik): „Sve kartice takmičara su identične", and „Boja izvedena iz
        članskog broja se ukida". This case asked for the opposite, one stable hue per member,
        until 21.10.2026 (PENDING 29205). Asked of the property the circle used to set, since jsdom
-       applies no stylesheet: no card sets one, so every card falls back to the sheet's one blue. */
+       applies no stylesheet: nothing sets one, so every card falls back to the sheet's one blue.
+
+       **Of every element of the screen, the card and the list that hold a circle included**
+       (review of PR 613, 21.10.2026): this read only the circle's own `style` while the variable is
+       inherited, so `cards__item` setting it would have coloured every circle inside it and passed.
+       The stylesheets are asked in `styles/circle.test.ts`. */
     renderAt('/sr/takmicari')
     await screen.findByRole('list')
 
-    const faces = [...document.querySelectorAll<HTMLElement>('.cards .card .portrait')]
-
-    expect(faces.length).toBeGreaterThan(1)
-    expect(faces.filter((one) => one.style.getPropertyValue('--face-hue') !== '')).toEqual([])
+    /* Measured and not assumed: the circles are drawn, and more than one. */
+    expect(document.querySelectorAll('.cards .card .portrait').length).toBeGreaterThan(1)
+    expect(document.querySelectorAll('.cards__item').length).toBeGreaterThan(1)
+    expect(settingAHue()).toEqual([])
   })
 
   it('does not carry anybody whose fee has not been recorded', async () => {
@@ -2608,6 +2633,20 @@ describe('Teams', () => {
 
     expect(rows.length).toBeGreaterThan(1)
     expect(first(rows).className).toBe('podium')
+  })
+
+  it('sets no hue on any element, so the initials of a team are drawn in the colour of every circle', async () => {
+    /* Owner, 21.10.2026 (PDL: „Inicijali tima postaju jednobojni, kao kartice članova"). A team mark
+       took a hue off the team's id until then (`hueFor`, `components/TeamMark.tsx`). Asked of every
+       element of the screen and not of the mark, since the variable is inherited (review of PR 613);
+       the stylesheets are asked in `styles/circle.test.ts`. */
+    renderAt('/sr/timovi', 'visitor', null, undefined, `${String(inLeague(2020))}-06-01`)
+    await standing()
+
+    /* Measured and not assumed: there are marks made of initials, and more than one, so a hue
+       derived from an id would be a different thing on each. */
+    expect(document.querySelectorAll('.team-mark:not(.team-mark--logo)').length).toBeGreaterThan(1)
+    expect(settingAHue()).toEqual([])
   })
 
   /* The drawer is gone (owner, 31.07.2026). Who is in a team and what each of

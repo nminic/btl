@@ -72,19 +72,19 @@ const LONG: Answers = {
 }
 
 /**
- * THE QUESTION OF THE X, OPEN AT 360px, IS ASKED ABOUT THE BOX LIKE EVERY OTHER CASE (owner, 20.10.2026,
- * PDL P24: „Na 360 px potvrda brisanja rezultata ne sme da širi tabelu: smanjuje se razmak između dugmadi,
- * reči ostaju iste"; finding PENDING 29736).
+ * THE QUESTION OF THE X, OPEN AT 360px, IS ASKED ABOUT THE BOX LIKE EVERY OTHER CASE.
  *
- * Until then this was the one case that was not asked: the table slid 332 inside 328 on a machine and 334
- * inside 328 on the CI runner, it breached P24, and the case let it through because the repair needed a
- * choice about the spacing or the words of a button. The choice is made: the space between the buttons of a
- * row is smaller on a telephone (`Profile.css`, `.table--results .entity-row-actions`) and the words stay.
- * So the box is asked here too, and **what the owner chose is asked as well**: the distance between two
- * buttons of the cell, and the words of the three buttons of the open question.
+ * It was once thought that the table slid there (332 inside 328 on one machine, 334 inside 328 on the CI
+ * runner, finding PENDING 29736) and that a smaller space between the two buttons would repair it (PR 610).
+ * The review of that PR measured it in Chrome and it is not so: on `main`, without that change, the box is
+ * 328 inside 328 at 360 in three fonts, with the gap the buttons always had. At 360 the pair of buttons
+ * stands one under the other, so the gap is a vertical one and does not touch the width of the table. The
+ * finding is closed as not reproducible (owner, PDL: „Manji razmak između dugmadi na 360 px (PR 610) se
+ * vraća na stari ... nalaz 29736 se zatvara kao neponovljiv"), and the gap is the old one again.
+ *
+ * What is asked here is the true thing: the table fits its box at 360, with the question open. **The gap
+ * does not decide that, and so it is not asked.**
  */
-const SPACE_BETWEEN_BUTTONS_ON_A_TELEPHONE = 2
-const SPACE_BETWEEN_BUTTONS_ELSEWHERE = 6
 
 const WIDTHS: At[] = [
   { width: 360, text: 100 },
@@ -158,22 +158,7 @@ for (const at of WIDTHS) {
           return centres
         })
 
-        /* The first row's pencil and the two buttons of the question: the words each shows (the pencil
-           shows a symbol, and its word is for a screen reader, which is what innerText reads), and
-           the distance between each button and the next, along whichever way the pair is laid out. */
-        const group = results.querySelector('.entity-row-actions')
-        const buttons = group === null ? [] : [...group.querySelectorAll('a.button, button.button')]
-        const asked = {
-          words: buttons.map((one) => (one instanceof HTMLElement ? one.innerText : '').trim()),
-          gaps: buttons.slice(1).map((one, index) => {
-            const before = (buttons[index] ?? one).getBoundingClientRect()
-            const after = one.getBoundingClientRect()
-
-            return Math.max(after.top - before.bottom, after.left - before.right)
-          }),
-        }
-
-        return { rows, inside: box.scrollWidth, outside: box.clientWidth, asked }
+        return { rows, inside: box.scrollWidth, outside: box.clientWidth }
       })
 
       expect(probe.sideways).toBe(0)
@@ -195,27 +180,11 @@ for (const at of WIDTHS) {
       }
 
       /* PDL P24: no sideways scroll of a table on a telephone. The box may be exactly as wide inside as
-         outside, and not wider, in every case. */
+         outside, and not wider, in every case, with the question of the x open at 360 among them. */
       expect(
         seen.inside,
         `the table's box scrolls: ${String(seen.inside)} inside ${String(seen.outside)}`,
       ).toBeLessThanOrEqual(seen.outside)
-
-      /* WHAT THE OWNER CHOSE, asked of the row with the question open: the words of the buttons are the
-         words they had, and the space between any two buttons of the cell is 2px on a telephone and the
-         6px it is everywhere else. Measured is not assumed: a cell with fewer than three buttons (the
-         pencil, „Sigurno?" and „Odustani") would pass the loop below for no reason. */
-      if (asking) {
-        expect(seen.asked.words, JSON.stringify(seen.asked)).toEqual(['Izmeni', 'Sigurno?', 'Odustani'])
-        expect(seen.asked.gaps, JSON.stringify(seen.asked)).toHaveLength(2)
-
-        for (const gap of seen.asked.gaps) {
-          expect(gap, JSON.stringify(seen.asked)).toBeCloseTo(
-            at.width < 700 ? SPACE_BETWEEN_BUTTONS_ON_A_TELEPHONE : SPACE_BETWEEN_BUTTONS_ELSEWHERE,
-            0,
-          )
-        }
-      }
     })
   }
 }
