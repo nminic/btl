@@ -294,7 +294,13 @@ function AwardsFor({
                 {awards.map((award) => (
                   <tr key={`${award.season}-${award.kind}`}>
                     <td>{award.season}</td>
-                    <td>
+                    {/* The label of a category board carries the category, written `M 55+`, and is held
+                        on one line like every other cell that draws one (`styles/table.css`,
+                        `.table__category`): measured at 360px on 18.10.2026, the new label broke
+                        in two ("Kategorija M" over "55+") on all five rows (PENDING 29125). The
+                        board of everybody has no category in it, so it is the cell of the other
+                        kind that wears the class and not the column. */}
+                    <td className={award.kind === 'overall' ? undefined : 'table__category'}>
                       {award.kind === 'overall'
                         ? t('awards.overall')
                         : t('awards.category', { category: categoryLabel(award.category, t) })}

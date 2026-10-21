@@ -685,12 +685,22 @@ export function Membership() {
                   lives, the portal works it out, and what the older rule
                   forbade was reading one as a conversion of the other. The ban
                   on showing them together was replaced by a ban on picking. */}
-              {/* Nothing about a price to somebody who owes none. The slip was
-                  taken away from a member freed of the fee and these three sentences
-                  were not, so the screen still quoted the fee, the processing
-                  charge and the junior rate to somebody it had just told they
-                  pay nothing. */}
-              {!feeExempt && (
+              {/* Nothing about a price to somebody who owes none for the season on sale. The slip
+                  was taken away from a member freed of the fee and these three sentences were not,
+                  so the screen still quoted the fee, the processing charge and the junior rate to
+                  somebody it had just told they pay nothing.
+
+                  **ON `held` AND NOT ON `feeExempt` ALONE, since the review of PR 562 (PENDING
+                  29388).** A member who holds the season on sale by a payment or on his balance owes
+                  nothing for it either, and the panel above tells him it is paid (`paidFor`,
+                  `paidFromBalance`) and then went on to quote what it costs today: measured on
+                  1 November 2027 for `payment 2028`, „Članarina za sezonu 2028 je plaćena." followed
+                  by „Danas članarina košta 40 EUR". `held` is the season on sale and that season
+                  only (PDL P8, 18.10.2026), so a member who holds the RUNNING season after 15
+                  October is still quoted the price of the next one, which is the one thing he can
+                  still be asked for; the running season is not touched anywhere (owner, from
+                  15.10: no payment, no basis, no cancellation on it). */}
+              {!held && (
               <>
               {registrationOpen(today) ? (
                 /* One walk of the list of none or one. The sentence carries two amounts
