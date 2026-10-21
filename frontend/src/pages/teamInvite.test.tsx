@@ -1,8 +1,11 @@
-import { screen, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { screen, waitFor, within } from '@testing-library/react'
 import { must } from '../test/at'
 import { fakeQueue } from '../test/fakeQueue'
+import { aLapsedMembersPage } from '../test/hisPage'
 import { renderAt } from '../test/render'
-import { theCookieNames } from '../test/setup'
+import { theCookieNames, whoTheCookieCurrentlyNames } from '../test/setup'
 import { SLOW } from '../test/slow'
 import { typeATownTheCodebookKnows } from '../test/town'
 import { setupUser } from '../test/user'
@@ -11,7 +14,7 @@ import sr from '../i18n/sr.json'
 import { recordKey } from '../session/context'
 import { MEMBERS } from './admin/entityForms'
 import { useSession } from '../session/useSession'
-import type { Asked } from '../test/serverAnswers'
+import { serverThat, type Asked } from '../test/serverAnswers'
 
 /* A SERVER IN FRONT OF `POST /api/teams`, THE FOUR CASES HERE THAT PROPOSE ONE THROUGH
  * THE FORM AND THEN OPEN THE MODERATOR'S QUEUE IN THE SAME VISIT. `test/setup.ts`
@@ -1311,4 +1314,226 @@ describe('what the invitation must not be confused with', () => {
     expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
   }, SEVERAL_SCREENS)
 
+})
+
+/**
+ * THE INVITATION THE BROWSER HOLDS TAKES THE READER'S SEX FROM THE READER'S OWN RECORD, AND THE WHOLE
+ * ANSWER WAITS FOR IT (PDL, 20.10.2026, „Odgovor na poziv u tim čeka pol sa članovog naloga": „(1) Dok se
+ * nalog čitaoca još čita, ceo odgovor čeka: dugmad i rečenica se pojave zajedno kad nalog stigne, kao
+ * svuda drugde na portalu, pa članica nikad ne vidi muški oblik. (2) Ako nalog ne može da se pročita, ekran
+ * kaže da čitanje nije uspelo, uz ponovni pokušaj, kao svako drugo neuspelo čitanje; ništa se ne
+ * pogađa.").
+ *
+ * <p>`member/InvitationAnswer.tsx` read the sex off the public list (`/api/competitors`, `where
+ * c.active`), so a woman whose fee has lapsed read „Prihvatio" and „ušao" (PENDING, review of PR 604).
+ * It is read off `GET /api/me` now, and every value an assertion here reads has somewhere ELSE it could
+ * have come from: the list is made to say the OPPOSITE of the reader's own record in both directions,
+ * and the inviter is of the other sex than the reader in the second.
+ */
+describe('the invitation answer reads the reader\'s own record', () => {
+  const ON_FILE: { memberNumber: string; gender: 'M' | 'F' }[] = JSON.parse(
+    readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
+  )
+
+  /** The public list with one member's sex changed to the opposite of what his record says. */
+  function listSaying(memberNumber: string, gender: 'M' | 'F') {
+    return serverThat((path) =>
+      path === '/api/competitors'
+        ? new Response(
+            JSON.stringify(
+              ON_FILE.map((one) => (one.memberNumber === memberNumber ? { ...one, gender } : one)),
+            ),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
+  }
+
+  /** `GET /api/me` as the server answers the member the cookie names now, whose sex is on file. */
+  function hisRecord(): Response {
+    const who = whoTheCookieCurrentlyNames()
+    const row = ON_FILE.find((one) => one.memberNumber === who?.memberNumber)
+
+    return who === null || row === undefined
+      ? new Response(null, { status: 401 })
+      : new Response(
+          JSON.stringify({
+            role: 'competitor',
+            account: 1,
+            member: {
+              ...aLapsedMembersPage,
+              memberNumber: row.memberNumber,
+              gender: row.gender,
+              active: true,
+            },
+            seasonsOpenForAReport: [2027],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+  }
+
+  /** The invitation opened, with `beforeOpening` run in the instant before the message is. */
+  async function openedAfter(user: ReturnType<typeof setupUser>, beforeOpening: () => void) {
+    const waiting = (await inbox(user)).filter((one) => /Poziv u tim/.test(one.textContent ?? ''))
+
+    beforeOpening()
+
+    await user.click(must(waiting[0], 'an invitation in the inbox'))
+  }
+
+  it('says "Prihvatila" to a woman the public list calls a man', async () => {
+    const user = setupUser()
+    const list = listSaying('000006', 'M')
+
+    try {
+      renderAt(
+        FREE,
+        'competitor',
+        '000007',
+        undefined,
+        IN_WINDOW,
+        <>
+          <Invite from={DUNAV} who="000006" />
+          <Become who="000006" />
+        </>,
+      )
+
+      await user.click(await screen.findByRole('button', { name: 'pozovi 000006 u tim 1' }))
+      await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+      await openTheInvitation(user)
+      await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
+
+      expect(await screen.findByText(/Prihvatila si ovaj poziv/)).toBeVisible()
+      expect(screen.queryByText(/Prihvatio si/)).toBeNull()
+    } finally {
+      list.stop()
+    }
+  }, SEVERAL_SCREENS)
+
+  it('says "Prihvatio" to a man the public list calls a woman, when a woman leads the team that asked', async () => {
+    const user = setupUser()
+    const list = listSaying('000004', 'F')
+
+    try {
+      renderAt(
+        FREE,
+        'competitor',
+        '000007',
+        undefined,
+        IN_WINDOW,
+        <>
+          <Invite from={VARDAR} who="000004" />
+          <Become who="000004" />
+        </>,
+      )
+
+      await user.click(await screen.findByRole('button', { name: 'pozovi 000004 u tim 3' }))
+      await user.click(screen.getByRole('button', { name: 'postani 000004' }))
+      await openTheInvitation(user)
+      await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
+
+      expect(await screen.findByText(/Prihvatio si ovaj poziv/)).toBeVisible()
+      expect(screen.queryByText(/Prihvatila si/)).toBeNull()
+    } finally {
+      list.stop()
+    }
+  }, SEVERAL_SCREENS)
+
+  it('draws neither button nor sentence while her record is read, and both when it lands', async () => {
+    const user = setupUser()
+    let release = (): void => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let holding = false
+    let asks = 0
+    const server = serverThat((path) => {
+      if (path !== '/api/me' || !holding) {
+        return null
+      }
+
+      asks += 1
+
+      return held.then(hisRecord)
+    })
+
+    try {
+      renderAt(
+        FREE,
+        'competitor',
+        '000007',
+        undefined,
+        IN_WINDOW,
+        <>
+          <Invite from={DUNAV} who="000006" />
+          <Become who="000006" />
+        </>,
+      )
+
+      await user.click(await screen.findByRole('button', { name: 'pozovi 000006 u tim 1' }))
+      await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+      await openedAfter(user, () => {
+        holding = true
+      })
+
+      await screen.findByRole('heading', { level: 1, name: /Poziv u tim/ })
+      /* That the read was really asked, so "nothing is drawn" is not "nothing has asked yet". */
+      await waitFor(() => {
+        expect(asks).toBe(1)
+      })
+
+      expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Odbij' })).toBeNull()
+      expect(screen.queryByText(sr.data.error)).toBeNull()
+
+      release()
+
+      expect(await screen.findByRole('button', { name: 'Prihvati' })).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Odbij' })).toBeVisible()
+    } finally {
+      release()
+      server.stop()
+    }
+  }, SEVERAL_SCREENS)
+
+  it('says the reading failed, draws no button and no word, and reads again', async () => {
+    const user = setupUser()
+    let failing = false
+    const server = serverThat((path) =>
+      path === '/api/me' && failing ? new Response(null, { status: 500 }) : null,
+    )
+
+    try {
+      renderAt(
+        FREE,
+        'competitor',
+        '000007',
+        undefined,
+        IN_WINDOW,
+        <>
+          <Invite from={DUNAV} who="000006" />
+          <Become who="000006" />
+        </>,
+      )
+
+      await user.click(await screen.findByRole('button', { name: 'pozovi 000006 u tim 1' }))
+      await user.click(screen.getByRole('button', { name: 'postani 000006' }))
+      await openedAfter(user, () => {
+        failing = true
+      })
+
+      expect(await screen.findByText(sr.data.error)).toBeVisible()
+      expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Odbij' })).toBeNull()
+
+      failing = false
+      await user.click(screen.getByRole('button', { name: sr.data.retry }))
+      await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
+
+      expect(await screen.findByText(/Prihvatila si ovaj poziv/)).toBeVisible()
+      expect(screen.queryByText(sr.data.error)).toBeNull()
+    } finally {
+      server.stop()
+    }
+  }, SEVERAL_SCREENS)
 })

@@ -10,6 +10,7 @@ import {
   outsideLink,
 } from '../../data/outsideLink'
 import { must } from '../../test/at'
+import { MISLEADING } from '../../test/misleadingAddresses'
 import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
 import { renderAt } from '../../test/render'
@@ -204,7 +205,7 @@ describe('the shape an address of somebody else’s page must have', () => {
  * reached the server by another road. Until R1 of the results flows it was written straight
  * into the session, which is where the queue read it from then.
  */
-function aRunWith(link: string): ServedPendingItem {
+function aRunWith(link: string, body = ''): ServedPendingItem {
   return {
     queue: 'results',
     id: 801,
@@ -214,7 +215,7 @@ function aRunWith(link: string): ServedPendingItem {
     who: 'Probni Član',
     subject: 'Probna trka',
     subjectId: '',
-    body: '',
+    body,
     city: '',
     country: '',
     photoId: null,
@@ -343,5 +344,93 @@ describe('the queue the moderator decides in', () => {
     expect(table.queryByRole('link', { name: /Probna trka/ })).toBeNull()
     expect(table.getByText(t('review.unusableLink'))).toBeVisible()
     expect(table.queryByText(/99999/)).toBeNull()
+  })
+})
+
+/**
+ * THE ADDRESSES IN THE WORDS OF THE MEMBER (PENDING 28904; PDL P9, 03.10.2026: „A u tekstu ako se
+ * nalazi link, da taj link moderator moze da klikne -> Dakle prepoznavanje linka kao u opisu lige").
+ *
+ * <p><b>Two axes, each stood on both sides.</b> What the word IS: an address `addressesIn` accepts,
+ * and a word that only looks like one (`http://`, a mailbox, an address whose host is not the host
+ * that opens, every one of which the league's own text refuses). Where it stands: inside a
+ * sentence, with the punctuation of the sentence around it, so the link is the address and not the
+ * comma behind it. The words of a member are the one place the moderator reads text somebody else
+ * typed, so a link made of a word that is not an address is the case that matters.
+ */
+describe('the words a member wrote beside the result', () => {
+  /** The queue with one run waiting in it that carries these words, and the line they are drawn on. */
+  async function said(body: string) {
+    clearResourceCache()
+    standing.push(
+      serverThat((path, init) =>
+        path === '/api/verification' && (init?.method ?? 'GET') === 'GET'
+          ? new Response(JSON.stringify([aRunWith('', body)]), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            })
+          : null,
+      ).stop,
+    )
+    renderAt(`/sr/${QUEUE.results.path}`, 'superadmin', ME)
+
+    const table = await screen.findByRole('table', { name: 'Čeka proveru' })
+
+    return { line: table.querySelector<HTMLElement>('.review__said') }
+  }
+
+  it('draws an address in them as a link the moderator may press, and every other word as it was typed', async () => {
+    const body = 'Sat se zaustavio na 12. km, snimak je na www.primer.rs/trka, pa i https://primer.rs/gpx.'
+    const { line } = await said(body)
+    const words = within(must(line, 'the line of his words'))
+    const links = words.getAllByRole('link')
+
+    expect(links.map((one) => one.getAttribute('href'))).toEqual([
+      'https://www.primer.rs/trka',
+      'https://primer.rs/gpx',
+    ])
+    /* The address as it was typed for its words, so the host is visible, and nothing but the
+       address: the full stop that closes the sentence is outside the link. */
+    expect(links.map((one) => one.textContent)).toEqual(['www.primer.rs/trka', 'https://primer.rs/gpx'])
+
+    for (const link of links) {
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noreferrer noopener')
+    }
+
+    /* And the text of what is drawn is the text that was sent, character for character. */
+    expect(must(line, 'the line of his words').textContent).toBe(body)
+  })
+
+  it('draws a word that only looks like an address as the word it is', async () => {
+    /* A browser opens `zlo.example` for the first and the league's own text refuses all of them
+       (`pages/league/addressesIn.ts`), so a moderator is never given a link to one host written
+       as another. `http://` and a mailbox are not the owner's two forms. */
+    const looks = [
+      'http://primer.rs/trka',
+      'ime@www.primer.rs',
+      'pogledaj:www.primer.rs',
+      'primer.rs/trka',
+      ...MISLEADING.map((one) => one.typed),
+    ]
+    const body = `Pogledaj ${looks.join(' i ')} hvala`
+    const { line } = await said(body)
+
+    expect(MISLEADING.length, 'no misleading address to measure').toBeGreaterThan(10)
+    expect(within(must(line, 'the line of his words')).queryAllByRole('link')).toEqual([])
+    expect(must(line, 'the line of his words').textContent).toBe(body)
+  })
+
+  it('draws a line with no address in it as one piece of text, and no line at all where he wrote nothing', async () => {
+    const { line } = await said('Startni broj 214, sat je stao.')
+
+    expect(must(line, 'the line of his words').textContent).toBe('Startni broj 214, sat je stao.')
+    expect(within(must(line, 'the line of his words')).queryAllByRole('link')).toEqual([])
+
+    cleanup()
+
+    const empty = await said('')
+
+    expect(empty.line).toBeNull()
   })
 })

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { devToolsEnabled } from '../dev/tools'
 import { DatePicker } from '../forms/DatePicker'
 import { fieldDate, isoDate } from '../forms/dateField'
-import { useI18n } from '../i18n/useI18n'
+import { useDevWords } from '../dev/words'
 import { realToday } from './context'
 import { useClock } from './useClock'
 import './DateSwitch.css'
@@ -22,7 +22,7 @@ import './DateSwitch.css'
  * header of every screen.
  */
 function DateChooser() {
-  const { t } = useI18n()
+  const { t } = useDevWords()
   const { today, simulated, simulate } = useClock()
   /* What is in the box, which is not the same thing as the day the portal is
      on. A date is typed one digit at a time and is not a date until the last

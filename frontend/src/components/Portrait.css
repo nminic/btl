@@ -1,6 +1,7 @@
 /* Faces.
-   The approved photograph in a circle, or a circle of the member's own colour
-   carrying their initials where there is none. Both shapes are permanent: most
+   The approved photograph in a circle, or a circle of the one blue every member's
+   circle has, carrying their initials where there is none (PDL P28, 31.07.2026:
+   the colour derived from a member number is abolished). Both shapes are permanent: most
    members have sent nothing, so the monogram is not a placeholder waiting for a
    picture (components/Portrait.tsx, and PDL P28f of 26.09.2026 for the day the
    picture arrived). The empty one holds a place the league has not filled yet,
@@ -22,8 +23,7 @@
 /* The circle itself, wherever the portal draws one.
  *
  * A face and a team mark are the same circle in two sizes, and the six
- * declarations that make it a circle of somebody`s own colour were written
- * twice. One decision in one place (ADL A7): what each of them adds is only
+ * declarations that make it a disc of one colour were written twice. One decision in one place (ADL A7): what each of them adds is only
  * what genuinely differs, which is the size, the type, and whether it stands in
  * a grid or in a line of text. */
 .face-circle {
@@ -43,8 +43,9 @@
      more since a crop can magnify: a logo scaled to twice the circle spills
      over the name beside it without this (components/Crop.css). */
   overflow: hidden;
-  /* The same recipe the competitor cards use, so one person, or one team,
-     wears one colour wherever the portal draws them. */
+  /* One recipe for both. A member's circle sets nothing and so wears the fallback blue
+     below; a team mark sets `--face-hue` from its id (components/TeamMark.tsx), so one
+     team wears one colour wherever the portal draws it, and every member the same. */
   background: hsl(var(--face-hue, 214) 45% 32%);
   /* White, bold, and spaced, because the initials stand on that colour and
      nothing else on the portal does. Left behind when the block was extracted,

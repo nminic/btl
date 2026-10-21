@@ -880,12 +880,26 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    * very element that became the opener. The effect says where the focus goes whichever way the
    * element came back.
    *
-   * <p>And a `key` on the opener would have made it a new element every time, which is the other
-   * thing that rides on the reuse: asking the question hands the focus from the opener to „Potvrdi
-   * brisanje" because they are one element (`admin/deleting.test.tsx`), and a key would drop it.
+   * <p><b>The reuse described above ended on 20.10.2026</b>, when the opener became an `ActionButton`:
+   * the two are different types now and are never one element, so asking the question no longer hands
+   * the focus over by itself. `sure` and the effect after it are what do (PENDING 28269, 29822).
    */
   const [afterAnAnswer, setAfterAnAnswer] = useState(false)
   const opener = useRef<HTMLButtonElement>(null)
+  /**
+   * THE BUTTON THAT ANSWERS THE QUESTION („Sigurno?"), so the keyboard goes to it when the question is
+   * asked (PENDING 28269 and 29822; WCAG 2.2 SC 2.4.3).
+   *
+   * <p><b>The opener and this button are no longer one element, and the focus used to depend on
+   * that.</b> The opener is an `ActionButton` since 20.10.2026 and the question is a fragment, so the
+   * two are different types at the root of this component's output: React takes the opener out and
+   * puts the question in, and the reader who pressed Enter on „Obriši" was left on the document
+   * (`admin/deleteRecord.test.tsx`, „takes the keyboard to „Sigurno?"", asks it on the component alone
+   * and `admin/deleting.test.tsx` on a list of two rows). A reader who is told „Sigurno?" has to be
+   * standing on it: it is the control that answers, and it is where the earlier arrangement left him
+   * when the two were one element.
+   */
+  const sure = useRef<HTMLButtonElement>(null)
 
   /* A LAYOUT EFFECT, so the focus is on the button in the very commit that draws it. A passive one
      runs a task later, after the paint: a reader would see a frame with the focus nowhere, and
@@ -896,6 +910,16 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
       opener.current?.focus()
     }
   }, [afterAnAnswer])
+
+  /* ASKING THE QUESTION TAKES THE FOCUS TO THE BUTTON THAT ANSWERS IT, and nothing else does: the
+     effect runs when the flag changes, so a question put away (`asking` false) moves nothing, which is
+     what the case „moves no focus where nothing was answered" holds, and a question that is open
+     while this is drawn again keeps the focus wherever the reader has taken it. */
+  useLayoutEffect(() => {
+    if (asking) {
+      sure.current?.focus()
+    }
+  }, [asking])
   /* One id per row. Sixty rows sharing one would point every confirming button at the
      first row's sentence, which is the same fault an `id` written out by hand always
      has on a list (`OpenRecord`, `describedBy`, says it one control along). */
@@ -931,6 +955,7 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
         </span>
       )}
       <button
+        ref={sure}
         type="button"
         className={`${look} entity-delete entity-delete--sure`}
         aria-label={words === undefined ? t('admin.form.deleteSureNamed', { name }) : words.sureNamed}

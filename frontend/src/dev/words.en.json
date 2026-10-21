@@ -1,0 +1,16 @@
+{
+  "role": {
+    "label": "Role",
+    "visitor": "Visitor",
+    "competitor": "Competitor",
+    "moderator": "Moderator",
+    "superadmin": "Superadmin"
+  },
+  "clock": {
+    "label": "Today's date",
+    "reset": "Back to the real date"
+  },
+  "server": {
+    "named": "from the server"
+  }
+}
