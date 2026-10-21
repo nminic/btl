@@ -244,11 +244,12 @@ class MeApi {
 	 *               and possibly none: the year he is in, and from 1 January 00:00 until 10:00 the year
 	 *               just ended too, and never a year before 2027 (PDL P9, owner, 19.10.2026, „Član
 	 *               prijavljuje samo rezultate aktuelne sezone" and „Pre 2027 forma i predlozi ne nude
-	 *               ništa"; 20.10.2026, of the moderator's screen, „NE NUDE SE STARIJI DOGAĐAJI VAN
-	 *               TEKUĆE SEZONE! ONI SE UNOSE IMPORTOM."). The member's form and the moderator's
-	 *               screen offer events and races of these seasons and no other, and read them from
-	 *               here because the window has one home, {@code SeasonClock.seasonsOpenForAReport},
-	 *               and the portal's own clock knows only a day. <b>On the account and not in
+	 *               ništa"). The member's form offers events and races of these seasons and no other, and
+	 *               reads them from here because the window has one home,
+	 *               {@code SeasonClock.seasonsOpenForAReport}, and the portal's own clock knows only a
+	 *               day. The moderator's screen „Unos rezultata za događaj” read them too from
+	 *               20.10.2026 („NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE!") until the owner's
+	 *               decision of 21.10.2026 that it takes any year up to today; it reads them no more. <b>On the account and not in
 	 *               {@code member}</b>, for the reason {@code mailLanguage} gives: a moderator who does
 	 *               not race has no {@code member} and still enters results. Until 20.10.2026 it was
 	 *               in {@code member}, and the move leaves no copy there (one served home)

@@ -1636,9 +1636,10 @@ class MeApiTest {
 			clock.moveTo((Instant) moment[0]);
 
 			/* ON THE ACCOUNT, for a member and for a moderator who races for nobody alike, since
-			   20.10.2026: the moderator's screen „Unos rezultata za događaj” offers the same seasons
-			   (owner, „NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE!"). And NOT in `member` any
-			   more, so the answer has one home for it. */
+			   20.10.2026: the moderator's screen „Unos rezultata za događaj” offered the same seasons
+			   (owner, „NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE!"; it takes any year up to
+			   today since 21.10.2026 and reads none). And NOT in `member` any more, so the answer
+			   has one home for it. */
 			for (String account : List.of(MY_ACCOUNT, RACES_FOR_NOBODY)) {
 				JsonNode answer = answerFor(account);
 				List<Integer> open = new ArrayList<>();
