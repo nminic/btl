@@ -79,9 +79,11 @@ export function LoadMore({
    * been replaced by it. A reader who SCROLLED was standing on nothing: the page loads the next step
    * under him as the foot approaches, and the closing sentence is a line he cannot see on the comments
    * (`endShown`), so moving the focus to it moved the viewport to a place he had not asked to go. So
-   * the flag is the LAST request's: raised by the button, lowered by the observer, and lowered again
-   * once the focus has been moved, so a step the button asked for ten steps ago does not claim the end
-   * of a list that scrolling reached.
+   * the flag is the LAST request's: raised by the button and lowered by the observer, so a step the
+   * button asked for ten steps ago does not claim the end of a list that scrolling reached. It is not
+   * lowered again once the focus has moved, and that is measured and not forgotten: `asked` is cleared
+   * whenever the list changes (`growing.ts`), so a list cannot become whole a second time on a request
+   * made for the first, and a line lowering it there is a mutation no case can tell from its absence.
    */
   const byTheButton = useRef(false)
 
@@ -90,7 +92,6 @@ export function LoadMore({
        on a list that never had a button, and taking the focus there would move it for a reader who
        never touched anything. */
     if (whole && asked && byTheButton.current) {
-      byTheButton.current = false
       end.current?.focus()
     }
   }, [whole, asked])
