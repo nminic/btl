@@ -159,7 +159,7 @@ for (const at of WIDTHS) {
         })
 
         /* The first row's pencil and the two buttons of the question: the words each shows (the pencil
-           shows a symbol, and its word is for a screen reader, so what it shows in words is empty), and
+           shows a symbol, and its word is for a screen reader, which is what innerText reads), and
            the distance between each button and the next, along whichever way the pair is laid out. */
         const group = results.querySelector('.entity-row-actions')
         const buttons = group === null ? [] : [...group.querySelectorAll('a.button, button.button')]
@@ -206,7 +206,7 @@ for (const at of WIDTHS) {
          6px it is everywhere else. Measured is not assumed: a cell with fewer than three buttons (the
          pencil, „Sigurno?" and „Odustani") would pass the loop below for no reason. */
       if (asking) {
-        expect(seen.asked.words, JSON.stringify(seen.asked)).toEqual(['', 'Sigurno?', 'Odustani'])
+        expect(seen.asked.words, JSON.stringify(seen.asked)).toEqual(['Izmeni', 'Sigurno?', 'Odustani'])
         expect(seen.asked.gaps, JSON.stringify(seen.asked)).toHaveLength(2)
 
         for (const gap of seen.asked.gaps) {
