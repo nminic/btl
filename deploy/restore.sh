@@ -71,7 +71,7 @@ backend_is_stopped
 . "$BACKUP/in-memory.sh"
 # shellcheck source=backup/stack.sh
 . "$BACKUP/stack.sh"
-say "work files, in memory: $WORK. Removed on exit; a SIGKILL leaves them, and then they are yours to remove."
+say "work files, in memory: $WORK. The encrypted copy, on disk: $SPOOL. Both removed on exit; a SIGKILL leaves them, and then they are yours to remove."
 
 say '--- 1. the settings and the stack ---'
 read_settings
@@ -80,10 +80,12 @@ find_stack
 say ''
 say '--- 2. the copy, brought back and opened ---'
 if [ -z "$KEY" ]; then
-  KEY=$(transfer newest daily/) || fail 'R2 could not say which copy is the newest'
+  # Into a file and not into $(...), for the reason deploy/backup.sh gives.
+  transfer newest daily/ > "$WORK/newest.key" || fail 'R2 could not say which copy is the newest'
+  KEY=$(cat "$WORK/newest.key")
 fi
 say "restoring $KEY"
-transfer get "$KEY" /work/copy.gpg || fail "$KEY could not be brought back whole"
+transfer get "$KEY" /copy/copy.gpg || fail "$KEY could not be brought back whole"
 check_copy
 case "$CHECKED" in
   0) ;;
@@ -94,7 +96,7 @@ esac
 say ''
 say '--- 3. the database, into the empty production database ---'
 backend_is_stopped
-if ! docker exec -i "$DB" sh -c "$(cat "$BACKUP/restore-database.sh")" \
+if ! step docker exec -i "$DB" sh -c "$(cat "$BACKUP/restore-database.sh")" \
      < "$WORK/check/btl.dump" > "$WORK/restore.log" 2>&1; then
   show_errors "$WORK/restore.log"
   fail "$KEY did not restore. It was one transaction, so the database is as it was; the photographs were not touched."
@@ -103,8 +105,8 @@ say 'restored'
 
 say ''
 say '--- 4. then the photographs, as young as the restore ---'
-docker run --rm --network none -v "$WORK":/work -v "$PHOTOS_VOLUME":/photos -v "$BACKUP":/backup:ro \
-  --entrypoint sh "$IMAGE" /backup/restore-photos.sh /work /work/copy.gpg /photos \
+container --network none -v "$WORK":/work -v "$SPOOL":/copy:ro -v "$PHOTOS_VOLUME":/photos -v "$BACKUP":/backup:ro \
+  --entrypoint sh "$IMAGE" /backup/restore-photos.sh /work /copy/copy.gpg /photos \
   || fail 'the photographs could not be put back; the database is restored, so run this again only after emptying it'
 
 say ''

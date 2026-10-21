@@ -382,12 +382,27 @@ heap from it.
 |---|---|
 | `deploy-postgres-1` | 512 MB |
 | `deploy-backend-1` | 640 MB (352 MB max heap) |
+| `btl-backup-proof`, the monthly proof's throwaway database (`--memory 1g`, its data in its own tmpfs), a few minutes on the 2nd at 05:00 | 1024 MB |
+| the nightly copy's work folder in `/dev/shm` (no container, no limit of its own) | twice the dump, see below |
 
 That is 1152 MB of ceiling here and another 1152 MB on QA, against roughly
 450 MB for the OS and Docker and some 55 MB for the edge proxy and the nginx
 containers: about 2.8 GB of 3.7 GB if every limit were reached at once, which they
 are not, since QA measured 350 MB at rest for the same pair. The limits are
 ceilings, not reservations.
+
+**The proof is the one ceiling that does not fit under the rest.** Its 1024 MB on top of the 2.8 GB
+is 3.8 GB, over the host's 3.7 GB, so the sum of the ceilings no longer proves that it cannot
+exhaust the host, and this paragraph says what does. *Measured 21.10.2026* (`postgres:18`, the
+proof's own flags, every migration applied, 47016 places, no member): the throwaway at rest peaks at
+96 MB and after a restore of the whole dump at 130 MB (the database itself is 21 MB; the rest is
+PostgreSQL's shared memory and the data folder, which is tmpfs, 106 MB of `shmem` in all). The members, the photograph rows and the sessions are not in that number and
+will grow it. *What bounds it is the container's own limit, measured:* a container with
+`--memory 64m` and a `--tmpfs` that is written past 64 MB has the writing process killed
+(`Killed`, 64.78 MB written) and the container, and the host, go on. So a restore that outgrows
+1 GB fails the proof loudly and mails, and does not take the site down; what it can still do is
+share a host with a QA stack and a build that are already near their own ceilings, which is why
+`free -h` during the first proof, with QA running, is the measurement this table still lacks.
 
 **If the host ever gets tight, QA is the one that shrinks.** Production is the
 site; QA is a rehearsal of it.
@@ -421,10 +436,34 @@ the way it is.
 
 **Nothing of it is in plain text outside memory.** The dump, the passphrase and the keys live in a
 folder under `/dev/shm`, which the script refuses to use unless the filesystem says tmpfs, and which
-it removes on every way out a shell can catch. **What is left open, named:** tmpfs can be swapped
-out on a host with unencrypted swap, and the copy being made is in memory too, so its size is
-bounded by `/dev/shm` (half the host's memory by default). Today that is far more than the copy;
-`df -h /dev/shm` beside the size the first run prints says how far.
+it removes on every way out a shell can catch. **The encrypted copy is the one thing that is on a
+disk**: a folder `/var/tmp/btl-backup-copy.*` (mode 700, mounted into the containers at `/copy`,
+removed with the work folder). It is ciphertext, so memory is not what protects it, and held in
+memory it was a whole second production in the host's RAM outside every limit above.
+**What is left open, named:** tmpfs can be swapped out on a host with unencrypted swap, and a run
+killed with SIGKILL leaves its two folders (the first holds plain text and is gone at the next
+reboot; both are yours to remove).
+
+**What the work folder costs, measured 21.10.2026** with the real `pack.sh` and `check.sh` on a
+109.5 MB dump and 30 MB of photographs: `/dev/shm` held 220.0 MB at the end, which is **twice the
+dump** (the one `pg_dump` wrote and the one the check opens) and a few kilobytes; the photographs
+are never in it, they go from the volume through `tar` into `gpg` and out to the disk; the copy on
+the disk was 139.5 MB. With the copy in `/dev/shm` as well the same run held 359.6 MB, 3.3 times the
+dump. So the nightly needs **twice the dump free in `/dev/shm`**, which is half the host's memory
+by default (about 1.85 GB here): a dump of up to about 900 MB fits, and a bigger one fails the run
+with a full tmpfs and a mail. Today's dump is far from that, but how far is not a thing to
+write down before it is measured: the schema with its reference data and no member is 1.3 MB, the
+members are on top, and the first run prints the real size (`dumped: N bytes`).
+
+**A stop is a way out too, and it is acted on at once.** `systemctl stop`, the hour of
+`TimeoutStartSec` running out and a reboot all arrive as a SIGTERM while a container is working, and a
+shell runs its trap only after the command it is waiting for. So every docker command of the scripts
+is run in the background and waited for (`step`, `container` in `backup/in-memory.sh`, which says
+what was measured), the containers carry `--init` and a label of the run, and the way out removes by
+label whatever is left, mails the superadmin, and removes both folders. Every `curl` has a connect
+timeout and a total time or a speed floor, so a connection that stops answering ends the step. The
+units say how long the way out may take (`TimeoutStopSec=2min`, longer than the mail's 60
+seconds) and send the SIGTERM to the script alone (`KillMode=mixed`).
 
 **What the owner does, once, and in this order:**
 

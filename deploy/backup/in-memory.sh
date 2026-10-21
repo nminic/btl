@@ -57,20 +57,100 @@ memory_kind=$(stat -f -c %T "$MEMORY" 2>/dev/null) || memory_kind=unknown
 
 WORK=$(mktemp -d "$MEMORY/btl-backup.XXXXXX")
 
+# Where the ENCRYPTED copy is kept, and nothing else: on a disk, outside memory (below says why).
+# Empty until the traps are set, so a failure to make it still removes the work folder.
+SPOOL_PARENT=/var/tmp
+SPOOL=
+
+# The label every container of this run carries, so that the way out can find and remove them
+# whatever state the docker client that started them is in (container, below).
+STEP_LABEL="btl-backup-run=$$"
+# The docker client of the step in flight, empty between steps (step, below).
+STEP=
+
 finish() {
   status=$?
   trap - EXIT
+  stop_the_step
   if [ "$status" -ne 0 ]; then
     alert "$status" || say "and the alert could not be sent either; nothing but this output says the run failed"
   fi
   docker rm -f "$THROWAWAY" >/dev/null 2>&1 || true
   rm -rf "$WORK"
+  if [ -n "$SPOOL" ]; then
+    rm -rf "$SPOOL"
+  fi
   exit "$status"
 }
 trap finish EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
+
+SPOOL=$(mktemp -d "$SPOOL_PARENT/btl-backup-copy.XXXXXX")
+
+# ---------------------------------------------------------------------------------------------
+# WHY THE ENCRYPTED COPY IS NOT IN MEMORY, and the plain text still is.
+#
+# The copy is the dump AND every photograph (a member's picture runs to several megabytes),
+# encrypted. Held in memory it was one more copy of the whole of production in the host's RAM,
+# outside every limit the stack declares, on a host of 3.7 GB that also carries the site
+# (deploy/README.md, "What production costs in memory"). It is ciphertext, so the reason the work
+# folder is in memory, plain text that must never reach a disk, does not apply to it. It goes to
+# SPOOL, which the containers that make, open, send and unpack it have at /copy, and which is
+# removed on every way out as the work folder is. The dump, the passphrase and every key stay in
+# the work folder, which is still refused unless the filesystem says tmpfs.
+#
+# WHY A STEP IS RUN IN THE BACKGROUND AND WAITED FOR.
+#
+# A shell that is running a command in the foreground runs a trap only after that command exits.
+# The copy spends nearly all of its time in such commands (the container that packs, the one that
+# sends), so a SIGTERM that arrived then did nothing until the step ended, and a step that hangs
+# does not end. Measured 21.10.2026 in dash with the docker client of the host: the trap had not
+# run after 6 seconds of waiting, and the work folder, with the dump and the passphrase in it, was
+# still there. `wait` is the built-in that a trapped signal interrupts at once.
+#
+# WHY A CONTAINER HAS --init AND IS REMOVED BY LABEL.
+#
+# The docker client forwards SIGTERM to the container, whose process 1 is `sh transfer.sh`, and a
+# process 1 ignores a signal it has no handler for. Measured the same day: the container was still
+# running after its client had been sent SIGTERM, and curl with it. `--init` puts a reaper in front
+# of it that passes the signal on (measured: the container then ended at once). That helps only
+# when somebody signals the client, so the way out also removes every container that carries this
+# run's label, which needs nothing from the client.
+
+# One docker command, in the foreground as far as its caller can tell: waits for it, returns its
+# status, takes its standard input from where the caller's comes from, and gives the shell back to
+# a trapped signal at once. The input goes through descriptor 4 because dash replaces the standard
+# input of a command started with & by /dev/null BEFORE it looks at that command's own
+# redirections (measured 21.10.2026: `cmd <&0 &` reads /dev/null as well), and the restore reads a
+# whole dump through this.
+step() {
+  { "$@" <&4 & } 4<&0
+  STEP=$!
+  step_status=0
+  wait "$STEP" || step_status=$?
+  STEP=
+  return "$step_status"
+}
+
+# A container of this run, in the foreground. --rm so that none is left by a run that ends
+# normally; --init and the label for the reasons above.
+container() {
+  step docker run --rm --init --label "$STEP_LABEL" "$@"
+}
+
+# What the way out does about a step that was still running: stops its docker client, and removes
+# every container that carries this run's label.
+stop_the_step() {
+  if [ -n "$STEP" ]; then
+    kill -TERM "$STEP" 2>/dev/null || true
+  fi
+  leftovers=$(docker ps -q --filter "label=$STEP_LABEL" 2>/dev/null) || leftovers=''
+  for one in $leftovers; do
+    docker rm -f "$one" >/dev/null 2>&1 || true
+  done
+}
 
 # The lines of a complaint that may be shown: the server's ERROR line and nothing around it. A
 # failed COPY in pg_restore prints the offending row on a CONTEXT line and in a DETAIL, and what

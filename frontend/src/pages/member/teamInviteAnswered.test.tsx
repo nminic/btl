@@ -820,12 +820,15 @@ describe('answering a served invitation into a team', () => {
     SLOW,
   )
 
-  /* **WHILE HER RECORD IS ON ITS WAY, THE BUTTONS ARE THERE AND THE ONE SENTENCE THAT CHANGES WITH THE
-     SEX IS NOT.** Drawn in the man's word for the moment it takes to be told otherwise, a woman would
-     read the wrong word and a screen reader would announce it. The held read is the SECOND ask of
-     `/api/me`: the first is the shell's own question of who is asking. */
+  /* **WHILE HER RECORD IS ON ITS WAY THE WHOLE ANSWER WAITS: NEITHER BUTTON, NEITHER SENTENCE, AND THEY
+     COME TOGETHER** (PDL, 20.10.2026, „Odgovor na poziv u tim čeka pol sa članovog naloga": „(1) Dok se
+     nalog čitaoca još čita, ceo odgovor čeka: dugmad i rečenica se pojave zajedno kad nalog stigne, kao
+     svuda drugde na portalu, pa članica nikad ne vidi muški oblik."). Until that day „Odbij" stood and
+     only the one sentence was withheld. The held read is the SECOND ask of `/api/me`: the first is the
+     shell's own question of who is asking, and that this one was really asked is what the count below
+     proves, so that "nothing is drawn" is not "nothing has been asked yet". */
   it(
-    'draws „Odbij" and neither word while her record is still being read, and her word when it lands',
+    'draws neither button nor either word while her record is still being read, and all of it together when it lands',
     async () => {
       let release = (): void => {}
       const held = new Promise<void>((resolve) => {
@@ -839,15 +842,62 @@ describe('answering a served invitation into a team', () => {
       renderAt(`/sr/poruke/${String(OPENED.id)}`, 'competitor', '000009', undefined, IN_THE_WINDOW)
 
       await screen.findByRole('heading', { level: 1, name: OPENED.subject })
-      await screen.findByRole('button', { name: sr.teams.inviteRefuse })
       await waitFor(() => {
         expect(arrivedResource('me/applications')).not.toBeUndefined()
+        expect(asked().filter((one) => one === '/api/me')).toHaveLength(2)
       })
 
+      expect(anyAcceptButton()).toBeNull()
+      expect(screen.queryByRole('button', { name: sr.teams.inviteRefuse })).toBeNull()
+      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
+      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeNull()
+      expect(screen.queryByText(sr.data.error)).toBeNull()
+
+      release()
+
+      expect(await screen.findByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeVisible()
+      /* In the same instant, and not one after the other. */
+      expect(theRefuseButton()).toBeVisible()
+      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
+    },
+    SLOW,
+  )
+
+  /* **THE PROBE OF THE REVIEW OF PR 604, AS A CASE.** Reader `000009`, a woman; the second ask of
+     `/api/me` held; „Prihvati" pressed; the route answers `heIsAlreadyInATeam` (409). The man's word
+     stood until her record landed. Now there is no „Prihvati" to press while it is held, so nothing is
+     sent and no refusal is drawn in either word; and when the record lands and she presses it, the
+     refusal is in hers. The member has no team here (`waitingWhere()`), so the sentence drawn before
+     anything is sent is not the one that is measured: the route's own answer is. */
+  it(
+    'offers nothing to press while her record is read, so the route cannot answer her in the man\'s word',
+    async () => {
+      const user = setupUser()
+      let release = (): void => {}
+      const held = new Promise<void>((resolve) => {
+        release = resolve
+      })
+
+      aServerWhere(waitingWhere(), () => refused('heIsAlreadyInATeam', 409), undefined, {
+        me: (n) => (n === 2 ? held.then(() => asJson(HER)) : null),
+      })
+      asking = HER
+      renderAt(`/sr/poruke/${String(OPENED.id)}`, 'competitor', '000009', undefined, IN_THE_WINDOW)
+
+      await screen.findByRole('heading', { level: 1, name: OPENED.subject })
+      await waitFor(() => {
+        expect(arrivedResource('me/applications')).not.toBeUndefined()
+        expect(asked().filter((one) => one === '/api/me')).toHaveLength(2)
+      })
+
+      expect(anyAcceptButton()).toBeNull()
+      expect(verbFor(THE_ADDRESS)).toEqual([])
       expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
       expect(screen.queryByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeNull()
 
       release()
+
+      await user.click(await screen.findByRole('button', { name: sr.teams.inviteAccept }))
 
       expect(await screen.findByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeVisible()
       expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
@@ -855,12 +905,17 @@ describe('answering a served invitation into a team', () => {
     SLOW,
   )
 
-  /* **AND WHEN HER RECORD CANNOT BE READ AT ALL, the portal's own word for a reader whose sex it was
-     not told, and the buttons all the same.** That the word is the man's is my reading of the
-     arrangement `member/InvitationAnswer.tsx` keeps for the same fact, not a recorded decision. */
+  /* **AND WHEN HER RECORD CANNOT BE READ, THE SCREEN SAYS SO AND OFFERS TO ASK AGAIN, AND GUESSES
+     NOTHING** (PDL, 20.10.2026: „(2) Ako nalog ne može da se pročita, ekran kaže da čitanje nije
+     uspelo, uz ponovni pokušaj, kao svako drugo neuspelo čitanje; ništa se ne pogađa."). Until that
+     day the buttons stood and the sentence was drawn in the man's word. No button, no word in either
+     sex, `data.error` and the button that reads again; and the second read, which works, gives her
+     everything at once and in her word. */
   it(
-    'keeps both buttons and draws the man\'s word when the reader\'s own record cannot be read',
+    'says the reading failed and draws nothing in either word when the reader\'s own record cannot be read, and reads again',
     async () => {
+      const user = setupUser()
+
       aServerWhere(waitingWhere(true), () => did(), undefined, {
         me: (n) => (n === 2 ? answeredWith(500) : null),
       })
@@ -869,9 +924,18 @@ describe('answering a served invitation into a team', () => {
 
       await screen.findByRole('heading', { level: 1, name: OPENED.subject })
 
-      expect(await screen.findByText(sr.teams.inviteOvertakenUnnamed)).toBeVisible()
+      expect(await screen.findByText(sr.data.error)).toBeVisible()
+      expect(anyAcceptButton()).toBeNull()
+      expect(screen.queryByRole('button', { name: sr.teams.inviteRefuse })).toBeNull()
+      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
+      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeNull()
+
+      await user.click(screen.getByRole('button', { name: sr.data.retry }))
+
+      expect(await screen.findByText(sr.teams.inviteOvertakenUnnamedFemale)).toBeVisible()
       expect(theRefuseButton()).toBeVisible()
       expect(screen.queryByText(sr.data.error)).toBeNull()
+      expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
     },
     SLOW,
   )

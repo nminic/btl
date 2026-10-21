@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './LoadMore.css'
 
 /* The foot of a list that grows as it is read. What it holds is a button, a
@@ -71,12 +71,36 @@ export function LoadMore({
     setSteps((were) => were + 1)
     onMore()
   }, [onMore])
+  /**
+   * WHETHER THE BUTTON HAD THE FOCUS WHEN IT LEFT (PENDING 29781; WCAG 2.2 SC 2.4.3 and 3.2.2).
+   *
+   * <p>The focus goes to the closing sentence because the button the reader was standing on has just
+   * been replaced by it. So the question is where the reader WAS, not how the last step was asked for.
+   * It used to be the second, a flag raised by a press and lowered by the observer, and that answered
+   * the wrong question (review of PR 608, round 1): a keyboard reader who Tabs to „Učitaj još" makes the
+   * browser scroll the foot into view, the observer fires and lowers the flag, and if that step finishes
+   * the list the button he is standing on is taken away and the focus falls to `body`. A reader who
+   * SCROLLED stood on nothing, or on something else: the page loads the next step under him as the foot
+   * approaches, and the closing sentence is a line he cannot see on the comments (`endShown`), so moving
+   * the focus to it moved the viewport to a place he had not asked to go.
+   *
+   * <p>Set by the button, from its own cleanup (`MoreButton`, the way `Unreadable` says it, which is the
+   * only moment the button is still in the document), and read and CLEARED by the effect below in the
+   * very commit in which `whole` turned true. Cleared there and not left, because the same list becomes
+   * a longer one when a filter is widened and the button comes back: a note that the last one left with
+   * the focus would then claim the end of a list the reader reached by scrolling, from a filter.
+   */
+  const heldTheFocus = useRef(false)
 
   useEffect(() => {
-    /* Only where somebody had asked: `whole` is true from the first render on a
-       list that never had a button, and taking the focus there would move it
-       for a reader who never touched anything. */
-    if (whole && asked) {
+    /* Only where somebody had asked, and was standing on the button: `whole` is true from the first
+       render on a list that never had a button, and taking the focus there would move it for a reader
+       who never touched anything. */
+    const held = heldTheFocus.current
+
+    heldTheFocus.current = false
+
+    if (whole && asked && held) {
       end.current?.focus()
     }
   }, [whole, asked])
@@ -131,14 +155,62 @@ export function LoadMore({
           {words.whole}
         </p>
       ) : (
-        <button
-          type="button"
+        <MoreButton
           className={buttonOnFocusOnly ? 'load-more__button load-more__button--on-focus' : 'load-more__button'}
           onClick={askedForMore}
+          onLeaveWithFocus={() => {
+            heldTheFocus.current = true
+          }}
         >
           {words.more}
-        </button>
+        </MoreButton>
       )}
     </div>
+  )
+}
+
+/**
+ * The button, as a component of its own for one reason: a cleanup is the only place that sees it
+ * leave. It says, once, when it is taken out of the document with the focus on it, and never
+ * otherwise - the shape and the guards of `Unreadable`, which is where the rule was first measured
+ * (PR 476).
+ *
+ * <p>A LAYOUT EFFECT, AND ITS CLEANUP: React runs the cleanup of a component that is going before it
+ * takes the elements out, so `document.activeElement` is still the button; an ordinary effect's
+ * cleanup runs after the paint, when the focus has already fallen to the body. Empty dependencies, so
+ * it runs when this goes and not when it is drawn again, and the caller's function is the one it has
+ * NOW (`leaving`), so a new function handed in does not make the cleanup again.
+ */
+function MoreButton({
+  className,
+  onClick,
+  onLeaveWithFocus,
+  children,
+}: {
+  className: string
+  onClick: () => void
+  onLeaveWithFocus: () => void
+  children: string
+}) {
+  const button = useRef<HTMLButtonElement>(null)
+  const leaving = useRef(onLeaveWithFocus)
+
+  useLayoutEffect(() => {
+    leaving.current = onLeaveWithFocus
+  })
+
+  useLayoutEffect(
+    () => () => {
+      if (document.activeElement === button.current) {
+        leaving.current()
+      }
+    },
+    [],
+  )
+
+  return (
+    <button ref={button} type="button" className={className} onClick={onClick}>
+      {children}
+    </button>
   )
 }

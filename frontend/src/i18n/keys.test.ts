@@ -13,7 +13,6 @@ import {
 } from '../data/types'
 import { SUBMISSION_STATUSES } from '../session/context'
 import { LOCALES } from './config'
-import { ROLES } from '../roles/context'
 import { DUCAT_KINDS } from '../data/ducatRule'
 import { JUNIOR, PRICES } from '../data/pricing'
 import { ENTITY_FORMS, RACES } from '../pages/admin/entityForms'
@@ -196,9 +195,10 @@ describe('the names the portal composes out of a list', () => {
        when the owner took the notification panel off Settings („Ekran za podesavanja
        obavestenja se sklanja u celini"). Both the family and the list it was built from
        are gone; `settings.test.tsx` is what keeps them from coming back by accident. */
-    /* The role switch, which is a thing of the workshop rather than of the
-       portal, and still a select somebody reads. */
-    { of: 'role', each: ROLES },
+    /* `role`, the words of the role switch, stood here until 28869: a thing of the workshop
+       rather than of the portal, they are in a book of their own now (`dev/words.ts`) so the
+       production bundle does not carry them, and the family is walked against that book in
+       `dev/words.test.tsx`. */
     { of: 'admin.basisValue', each: ['payment', 'feeExempt'] },
     { of: 'status', each: SUBMISSION_STATUSES },
     { of: 'topBoards.byLength', each: CATEGORIES },

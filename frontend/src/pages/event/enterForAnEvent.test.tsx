@@ -8,6 +8,7 @@ import { expectFrontPage, moderatorWith, renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
+import { typeATownTheCodebookKnows } from '../../test/town'
 
 /**
  * „UNOS REZULTATA ZA DOGAĐAJ”, THE MODERATOR'S OWN SCREEN (PDL P9, owner, 19.10.2026: „Događaj, trka i
@@ -486,6 +487,87 @@ describe('what the block says before anything is sent', () => {
       await user.type(eventBox(), 'Nova trka')
 
       expect(raceBox()).toHaveValue('Nova trka')
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+describe('the town of a new event on the moderator\'s own screen', () => {
+  it('empties the country the town wrote as soon as the name stops being a town the codebook knows', async () => {
+    /* Owner, 20.10.2026 (PDL, „Čim ukucano ime mesta prestane da odgovara šifarniku, država koju je
+       prepoznavanje upisalo se prazni i čeka izbor"; PENDING 29216): the same field as on every other
+       form, drawn here for an event typed by name that the calendar does not have. */
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await user.type(eventBox(), 'Jezerska trka')
+      await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
+      await user.type(screen.getByLabelText(/^Mesto/), ' pod brdom')
+
+      expect(screen.getByLabelText(/^Mesto/)).toHaveValue('Kranj pod brdom')
+      expect(screen.getByLabelText(/^Država/)).toHaveValue('')
+      expect(screen.getByLabelText(/^Država/)).toBeEnabled()
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('still takes the country back after the event of the calendar has taken the field away and given it back', async () => {
+    /* Review of PR 610, round 1. The field is drawn only while no event of the calendar is chosen,
+       and the town and the country stay in the block while it is not. What the field had written
+       was remembered by the field, and the field was gone: back again, it held „Kranj" and
+       Slovenia and no memory of having written them, so the hamlet that „Kranj pod brdom" is
+       kept a country nobody had chosen. The memory is the block's now. */
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await user.type(eventBox(), 'Jezerska trka')
+      await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
+
+      await user.clear(eventBox())
+      await user.type(eventBox(), 'Gradska liga')
+
+      expect(screen.queryByLabelText(/^Mesto/)).toBeNull()
+
+      await user.type(eventBox(), ' 2')
+
+      expect(screen.getByLabelText(/^Mesto/)).toHaveValue('Kranj')
+      expect(screen.getByLabelText(/^Država/)).toHaveValue('SI')
+
+      await user.type(screen.getByLabelText(/^Mesto/), ' pod brdom')
+
+      expect(screen.getByLabelText(/^Mesto/)).toHaveValue('Kranj pod brdom')
+      expect(screen.getByLabelText(/^Država/)).toHaveValue('')
+      expect(screen.getByLabelText(/^Država/)).toBeEnabled()
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('does not take back a country the moderator chose himself, however the event comes and goes', async () => {
+    /* The other side of the same decision: a country chosen by hand for a hamlet was never written
+       by the name, so neither the letters after it nor the field leaving and returning take it back. */
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await user.type(eventBox(), 'Jezerska trka')
+      await user.type(screen.getByLabelText(/^Mesto/), 'Xqzrtgrad')
+      await user.selectOptions(screen.getByLabelText(/^Država/), 'BA')
+
+      await user.clear(eventBox())
+      await user.type(eventBox(), 'Gradska liga')
+      await user.type(eventBox(), ' 2')
+      await user.type(screen.getByLabelText(/^Mesto/), ' pod brdom')
+
+      expect(screen.getByLabelText(/^Mesto/)).toHaveValue('Xqzrtgrad pod brdom')
+      expect(screen.getByLabelText(/^Država/)).toHaveValue('BA')
     } finally {
       server.stop()
     }

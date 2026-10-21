@@ -1007,6 +1007,21 @@
     width: 4rem;
   }
 
+  /* **THE SPACE BETWEEN THE BUTTONS OF A ROW IS SMALLER HERE, AND THE WORDS ARE THE SAME** (owner,
+     20.10.2026, PDL P24: „Na 360 px potvrda brisanja rezultata ne sme da širi tabelu: smanjuje se razmak
+     između dugmadi, reči ostaju iste"; finding PENDING 29736, where the table of results slid 332
+     inside 328px at 360 with the question of the x open: „Sigurno?" and „Odustani"). Said for this
+     table and for a telephone only: the pencil and the x, and the two buttons of the question, stand
+     `--space-6` apart everywhere else (`.entity-row-actions`, `pages/admin/Entity.css`), and the rule
+     of 700 and up is not touched.
+
+     What it moves, measured in Chrome (`geometry/resultsRow.geometry.ts`): the distance between two
+     buttons of the cell. Where they stand one under the other, as they do at 360, that is the
+     distance between the foot of the one and the head of the next. */
+  .table--results .entity-row-actions {
+    gap: var(--space-2);
+  }
+
   /* The coloured dot goes, and the length column narrows by exactly what it and
      its space were taking. It is decoration: `aria-hidden`, with the name of the
      length beside it in words for a reader (CompetitorProfile.tsx), and the

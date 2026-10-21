@@ -1,5 +1,5 @@
 import { act, configure, getConfig, screen, waitFor, within } from '@testing-library/react'
-import { arrivedResource, clearResourceCache, loadResource } from '../../data/client'
+import { arrivedResource, clearResourceCache, loadResource, type ResourceName } from '../../data/client'
 import type { Competitor, Member } from '../../data/types'
 import { asMember, person } from '../../test/plate'
 import { renderAt } from '../../test/render'
@@ -7,6 +7,7 @@ import { refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
 import { SLOW } from '../../test/slow'
+import { namesThatReadTheFlag, READS_THE_FLAG_AND_IS_NOT_DROPPED } from '../../test/readsTheFlag'
 
 /**
  * „UPIS UPLATE" ON THE MEMBER'S ROW, AS THE MODERATOR MEETS IT.
@@ -27,6 +28,11 @@ import { SLOW } from '../../test/slow'
    told by the wait's own assertion and not by the clock of the case, so a series of mutations can tell
    a case that failed from a case that ran out of time (CLAUDE.md, section 25). */
 configure({ asyncUtilTimeout: SLOW / 2 })
+
+/** The two the screen asks for again the moment they are dropped, so their landing back in the cache
+ *  proves nothing: a drop of theirs is a second request, and that is what is counted (as in
+ *  `rowMembership.test.tsx`). */
+const ASKED_AGAIN_AT_ONCE: ResourceName[] = ['members', 'competitors']
 
 describe('recording a payment on a member’s row', () => {
   const HOLDS_IT = '000002'
@@ -314,6 +320,72 @@ describe('recording a payment on a member’s row', () => {
     expect(arrivedResource('payments')).toBeUndefined()
     expect(arrivedResource('inbox')).toBeUndefined()
     expect(await screen.findByText('Uplata je upisana.')).toBeInTheDocument()
+
+    server.stop()
+  }, SLOW)
+
+  /**
+   * EVERY CACHED ANSWER THAT READS THE FLAG IS ASKED AGAIN AFTER A PAYMENT ON A ROW WITH NO SEASON ON
+   * SALE (the class of PENDING 29656), because the booking can make a lapsed member active. The names are
+   * the backend's own, read out of its SQL (`test/readsTheFlag.ts`, the reading `rowMembership.test.tsx`
+   * holds the other three doors to), and each is loaded and confirmed in hand BEFORE the press so that
+   * „gone afterwards" is a change this case can see. `members` and `competitors` are asked again at
+   * once, so their drop is counted as a second request.
+   */
+  it('drops every answer that reads the flag once the payment has gone through', async () => {
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const row = await rowOf(IN_DINARS)
+    const dropped = namesThatReadTheFlag().filter(
+      (name) => name !== READS_THE_FLAG_AND_IS_NOT_DROPPED && !ASKED_AGAIN_AT_ONCE.includes(name),
+    )
+
+    for (const name of dropped) {
+      await loadResource(name)
+      expect(arrivedResource(name), `${name} never landed, so nothing below was measured`).toBeDefined()
+    }
+
+    await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '4200')
+    await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+
+    await waitFor(() => {
+      for (const name of dropped) {
+        expect(arrivedResource(name), `${name} was still cached after the payment`).toBeUndefined()
+      }
+    })
+
+    for (const name of ASKED_AGAIN_AT_ONCE) {
+      await waitFor(() => expect(reads(server.asked, `/api/${name}`)).toBe(2))
+    }
+
+    server.stop()
+  }, SLOW)
+
+  it('drops nothing for a refused payment', async () => {
+    const server = serving(() => refused('theMembershipIsAlreadyHeld', 409))
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const row = await rowOf(IN_DINARS)
+    const names = namesThatReadTheFlag().filter(
+      (name) => name !== READS_THE_FLAG_AND_IS_NOT_DROPPED && !ASKED_AGAIN_AT_ONCE.includes(name),
+    )
+
+    for (const name of names) {
+      await loadResource(name)
+    }
+
+    await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '4200')
+    await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+    await within(row).findByText('Ovaj član već ima članstvo za ovu sezonu, pa nije upisano ponovo.')
+
+    for (const name of names) {
+      expect(arrivedResource(name), `${name} was dropped though nothing was written`).toBeDefined()
+    }
+
+    expect(reads(server.asked, '/api/members')).toBe(1)
 
     server.stop()
   }, SLOW)

@@ -10,3 +10,7 @@ Type=oneshot
 WorkingDirectory=/opt/btl/deploy
 ExecStart=/bin/sh backup.sh --prove
 TimeoutStartSec=2h
+# As in btl-backup.service, for the same reasons: the way out removes the work folder, the copy,
+# the containers of the run and the throwaway database, and mails the superadmin.
+TimeoutStopSec=2min
+KillMode=mixed

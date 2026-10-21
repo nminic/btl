@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { configure, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import sr from '../i18n/sr.json'
 import { must } from '../test/at'
@@ -26,6 +26,14 @@ import { setupUser } from '../test/user'
  * comes back with nothing in it), the moment (opened while it is unreadable, asked again, read
  * again) and whose mail it is (the member signed in; the number in the button is held across).
  */
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS (review of PR 618, round 1). The global
+   is `SLOW` for both (`test/setup.ts`), so a wait that never succeeds and the case that is waiting for
+   it had the same twenty seconds, and the clock of the case ended it (`Test timed out in 20000ms`) in
+   place of the sentence that says what is wrong - the case that holds „the panel read the messages the
+   screen of messages read" among them. The same measure as `pages/admin/saveWhileSaving.test.tsx` and
+   `pages/admin/rowMembership.test.tsx`. Set here, and so for this file alone. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 let server: { asked: { path: string }[]; stop: () => void } | null = null
 
@@ -161,5 +169,45 @@ describe('the inbox in the header when it could not be read', () => {
     expect(await panel.findByText(sr.shell.messagesUnreadable)).toBeVisible()
     expect(panel.queryByText(sr.data.loading)).toBeNull()
     expect(retry()).not.toHaveAttribute('aria-disabled', 'true')
+  }, SLOW)
+
+  it('shows the messages, with no request beyond the screen\'s own, once the screen of messages has read the inbox (PENDING 28745)', async () => {
+    theInboxAnswers(() => answeredWith(500))
+
+    const user = setupUser()
+    const panel = await openThePanel(user)
+
+    await panel.findByText(sr.shell.messagesUnreadable)
+
+    /* The server is back and the reader goes on to the screen of messages by the link at the foot of
+       the panel: that screen reads the inbox, successfully, and nobody presses the retry. */
+    inbox = mailAsServed
+    await user.click(panel.getByRole('link', { name: sr.shell.allMessages }))
+
+    expect(await screen.findByRole('link', { name: /Prevoz do Jadovnika/ })).toBeVisible()
+    /* The number in the name of the button follows a read nobody asked the panel to make. */
+    expect(await screen.findByRole('button', { name: 'Otvori poruke, 1 nepročitana' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Otvori poruke, 1 nepročitana' }))
+
+    const again = within(
+      must(
+        document.getElementById(
+          must(
+            screen.getByRole('button', { name: /Otvori poruke|Zatvori poruke/ }).getAttribute('aria-controls'),
+            'what the button controls',
+          ),
+        ),
+        'the panel the button controls',
+      ),
+    )
+
+    expect(await again.findByRole('link', { name: /Prevoz do Jadovnika/ })).toBeVisible()
+    expect(again.queryByText(sr.shell.messagesUnreadable), 'the panel went on saying it could not read').toBeNull()
+    expect(again.queryByRole('button', { name: new RegExp(sr.data.retry) })).toBeNull()
+    expect(
+      must(server, 'the server').asked.filter((one) => one.path === '/api/inbox').length,
+      'one for the failure and one for the screen that read it, and none for the panel',
+    ).toBe(2)
   }, SLOW)
 })

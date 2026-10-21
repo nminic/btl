@@ -5,10 +5,12 @@
 # gpg, tar and sha256sum, and the pg_restore check.sh needs), with no network, the work folder
 # mounted and the photograph volume mounted READ ONLY:
 #
-#   pack.sh <work folder> <photos folder>
+#   pack.sh <work folder> <photos folder> <encrypted copy>
 #
 # The work folder already holds `btl.dump`, which deploy/backup.sh took with `pg_dump -Fc` BEFORE
-# this runs, and `passphrase`, which write-settings.sh wrote. It ends holding `copy.gpg`.
+# this runs, and `passphrase`, which write-settings.sh wrote. The encrypted copy is written to the
+# path of the third argument, which is NOT in the work folder: ciphertext does not need memory, and
+# held there it was one more whole production in the host's RAM (in-memory.sh).
 #
 # THE DUMP CAME FIRST AND THE PHOTOGRAPHS COME NOW, and the order is the whole of what makes the copy
 # consistent without stopping the portal. A photograph's file is written once and never changed,
@@ -38,6 +40,7 @@ umask 077
 
 WORK=${1:?pack.sh needs the work folder}
 PHOTOS=${2:?pack.sh needs the photos folder}
+COPY=${3:?pack.sh needs the path the encrypted copy is written to}
 
 fail() { printf 'REFUSED: %s\n' "$*" >&2; exit 1; }
 
@@ -62,7 +65,7 @@ dump_digest=$(sha256sum "$WORK/btl.dump" | cut -c1-64)
   printf 'dump-bytes %s\n' "$(wc -c < "$WORK/btl.dump" | tr -d ' ')"
 } > "$WORK/manifest"
 
-rm -f "$WORK/copy.gpg" "$WORK/tar.status"
+rm -f "$COPY" "$WORK/tar.status"
 
 # `sh` has no pipefail, so tar's exit status is written to a file by the left side of the pipe and
 # read after it; the status of the pipeline itself is gpg's. --numeric-owner because the files are
@@ -74,10 +77,10 @@ if ! { if tar --numeric-owner -cf - -C "$WORK" manifest btl.dump -C "$(dirname "
          printf '%s\n' "$?" > "$WORK/tar.status"
        fi; } \
      | gpg --batch --quiet --pinentry-mode loopback --passphrase-file "$WORK/passphrase" \
-           --symmetric --cipher-algo AES256 -z 0 -o "$WORK/copy.gpg"; then
+           --symmetric --cipher-algo AES256 -z 0 -o "$COPY"; then
   fail 'gpg did not encrypt the copy'
 fi
 [ "$(cat "$WORK/tar.status")" = 0 ] || fail "tar did not read everything (exit $(cat "$WORK/tar.status")), so the copy is not whole"
-[ -s "$WORK/copy.gpg" ] || fail 'the encrypted copy is empty'
+[ -s "$COPY" ] || fail 'the encrypted copy is empty'
 
-printf 'packed: %s bytes\n' "$(wc -c < "$WORK/copy.gpg" | tr -d ' ')"
+printf 'packed: %s bytes\n' "$(wc -c < "$COPY" | tr -d ' ')"

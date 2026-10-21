@@ -7,6 +7,7 @@ import { I18nProvider } from '../i18n/I18nProvider'
 import { at, must } from '../test/at'
 import { setupUser } from '../test/user'
 import { PlaceField } from './PlaceField'
+import { withThePlace, type TheKeptPlace } from './withThePlace'
 
 /**
  * The town somebody enters a race in.
@@ -155,7 +156,13 @@ describe('the town on a form', () => {
        shown and the danger was an event edited from Beograd into Zagreb and
        filed in Serbia with nothing saying so. The country is a control beside
        the town since 11.08.2026, so what stands there is what will be saved and
-       whoever is typing can see it. */
+       whoever is typing can see it.
+
+       **What it leaves standing is a country the town did not write.** The field
+       opens on Serbia and Beograd is Serbian, so pressing the row changes nothing
+       and the Serbia that stays is the one the form opened on. The country that
+       recognition WROTE is the one that goes (owner, 20.10.2026), which is the
+       describe at the end of this file. */
     const user = setupUser()
     const { box, onCountry, country } = renderField()
 
@@ -1114,5 +1121,441 @@ describe('a place that is locked over what somebody was already typing in', () =
 
     expect(box).toHaveAttribute('aria-disabled', 'true')
     expect(country).toHaveValue('AT')
+  })
+})
+
+describe('a name that stops being a place takes back the country that recognition wrote', () => {
+  /* Owner, 20.10.2026 (PDL, „Čim ukucano ime mesta prestane da odgovara šifarniku, država koju je
+     prepoznavanje upisalo se prazni i čeka izbor"; finding PENDING 29216, where „Novi" wrote the United
+     States and the letters after it left it there). The decision of 11.08.2026 above it, „Prepoznatom
+     mestu se država ne menja", holds while the place is recognised, and the fifth case is that half.
+
+     **Boston is the town here, and not Bern or Beograd in most of them, because the field opens on
+     Serbia**: a town whose country is the one already standing there writes nothing, and a case built
+     on it could not tell a country that was written from one that was there. */
+  let stop = () => {}
+
+  beforeEach(() => {
+    stop = servingTheCodebook()
+  })
+
+  afterEach(() => {
+    stop()
+  })
+
+  it('empties the country the name wrote as soon as the name stops matching, and leaves the choice open', async () => {
+    const user = setupUser()
+    const { box, country, onCountry } = renderField()
+
+    await user.type(box, 'Boston')
+    await waitFor(() => {
+      expect(country).toHaveValue('US')
+    })
+    expect(country).toBeDisabled()
+
+    await user.type(box, ' x')
+
+    expect(box).toHaveValue('Boston x')
+    expect(country).toHaveValue('')
+    expect(onCountry).toHaveBeenLastCalledWith('')
+
+    /* Waiting for a choice and not switched off: the country is the only way left to say where the
+       race is run, and it answers. */
+    expect(country).not.toBeDisabled()
+
+    await user.selectOptions(country, 'HR')
+
+    expect(country).toHaveValue('HR')
+    expect(onCountry).toHaveBeenLastCalledWith('HR')
+  })
+
+  it('empties it on the very letter that breaks the name, and not a letter later', async () => {
+    const user = setupUser()
+    const { box, country } = renderField()
+
+    await user.type(box, 'Boston')
+    await waitFor(() => {
+      expect(country).toHaveValue('US')
+    })
+
+    await user.type(box, 's')
+
+    expect(box).toHaveValue('Bostons')
+    expect(country).toHaveValue('')
+  })
+
+  it('empties the country of a row that was pressed when the name is typed over', async () => {
+    const user = setupUser()
+    const { box, country } = renderField()
+
+    await user.type(box, 'ber')
+    await user.click(within(await screen.findByRole('listbox')).getByText(/Bern/))
+
+    expect(country).toHaveValue('CH')
+
+    await user.type(box, 'ovce')
+
+    expect(box).toHaveValue('Bernovce')
+    expect(country).toHaveValue('')
+  })
+
+  it('empties it when the name is deleted back to nothing a place answers to', async () => {
+    const user = setupUser()
+    const { box, country } = renderField()
+
+    await user.type(box, 'Boston')
+    await waitFor(() => {
+      expect(country).toHaveValue('US')
+    })
+
+    await user.type(box, '{Backspace}')
+
+    expect(box).toHaveValue('Bosto')
+    expect(country).toHaveValue('')
+  })
+
+  it('keeps the country for as long as the name is recognised, whatever is typed that still is', async () => {
+    /* „Bern" is Swiss and so is „Berne", its English spelling: the name goes on being a place through
+       the extra letter, and a country emptied there would be the 11.08.2026 decision undone. */
+    const user = setupUser()
+    const { box, country, onCountry } = renderField()
+
+    await user.type(box, 'Bern')
+    await waitFor(() => {
+      expect(country).toHaveValue('CH')
+    })
+
+    onCountry.mockClear()
+    await user.type(box, 'e')
+
+    expect(box).toHaveValue('Berne')
+    expect(country).toHaveValue('CH')
+    expect(country).toBeDisabled()
+    expect(onCountry).not.toHaveBeenCalledWith('')
+  })
+
+  it('does not empty a country the reader chose himself, however the name changes after', async () => {
+    /* A hamlet no codebook has heard of, and the country chosen beside it by hand. Nothing here wrote
+       the country, so no letter typed after takes it back. */
+    const user = setupUser()
+    const { box, country } = renderField()
+
+    await user.type(box, 'Divčibare')
+    await user.selectOptions(country, 'HR')
+    await user.type(box, ' x')
+
+    expect(box).toHaveValue('Divčibare x')
+    expect(country).toHaveValue('HR')
+  })
+
+  it('does not empty a country the reader chose even when the name later goes through a place of that country', async () => {
+    /* The hard form of the same case. The reader chose the United States for a hamlet, then the name
+       became „Boston", which is American: recognition finds the country already there and writes
+       nothing, so it is still the reader's, and the next letter does not take it back. A rule that
+       emptied „the country of the last recognised place" would empty it here. */
+    const user = setupUser()
+    const { box, country } = renderField()
+
+    await user.type(box, 'Xyzzy')
+    await user.selectOptions(country, 'US')
+    await user.clear(box)
+    await user.type(box, 'Boston')
+
+    expect(country).toHaveValue('US')
+    expect(country).toBeDisabled()
+
+    await user.type(box, 'x')
+
+    expect(box).toHaveValue('Bostonx')
+    expect(country).toHaveValue('US')
+  })
+
+  it('does not empty again a country the reader chose after it was emptied, even if it is the one the name had written', async () => {
+    /* The name wrote the United States, the next letter took it back, and the reader chose the United
+       States himself: from then on it is his. A field that remembered what it had once written, and
+       not what it wrote last and still stands, would empty it on the next letter. */
+    const user = setupUser()
+    const { box, country } = renderField()
+
+    await user.type(box, 'Boston')
+    await waitFor(() => {
+      expect(country).toHaveValue('US')
+    })
+
+    await user.type(box, ' x')
+    expect(country).toHaveValue('')
+
+    await user.selectOptions(country, 'US')
+    await user.type(box, 'y')
+
+    expect(box).toHaveValue('Boston xy')
+    expect(country).toHaveValue('US')
+  })
+
+  it('leaves alone the country the form opened on, which nothing wrote', async () => {
+    const user = setupUser()
+    const { box, country } = renderField()
+
+    await user.type(box, 'Divčibare')
+
+    expect(country).toHaveValue('RS')
+  })
+
+  it('leaves alone a country somebody else has moved since the name wrote it', async () => {
+    /* Written by recognition and then replaced, together with the town, by the form around the field,
+       as a record loaded over it would: what stands there is no longer what was written, so it is not
+       this field's to empty. (Moved alone, a recognised town's country is put back by the codebook.) */
+    const user = setupUser()
+
+    function Moved() {
+      const [town, setTown] = useState('')
+      const [country, setCountry] = useState('RS')
+
+      return (
+        <I18nProvider locale="sr">
+          <button
+            type="button"
+            onClick={() => {
+              setTown('Divčibare')
+              setCountry('AT')
+            }}
+          >
+            premesti
+          </button>
+          <PlaceField
+            id="mesto"
+            name="city"
+            value={town}
+            country={country}
+            invalid={false}
+            describedBy={undefined}
+            onChange={(next, chosen) => {
+              setTown(next)
+              setCountry(chosen)
+            }}
+          />
+        </I18nProvider>
+      )
+    }
+
+    render(<Moved />)
+
+    const box = screen.getByRole('combobox', { name: '' })
+    const country = screen.getByRole('combobox', { name: /^Država/ })
+
+    await user.type(box, 'Boston')
+    await waitFor(() => {
+      expect(country).toHaveValue('US')
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'premesti' }))
+
+    expect(box).toHaveValue('Divčibare')
+    expect(country).toHaveValue('AT')
+  })
+
+  it('does not empty the country of a place that is locked, which came off a record and not off this name', async () => {
+    /* The name wrote Switzerland, then the form around the field chose a race: a place the codebook
+       does not know, locked, in the same country. Nothing the reader typed is wrong, and the country
+       belongs to the record. */
+    const user = setupUser()
+
+    function Arriving() {
+      const [locked, setLocked] = useState(false)
+      const [town, setTown] = useState('')
+      const [country, setCountry] = useState('RS')
+
+      return (
+        <I18nProvider locale="sr">
+          <button
+            type="button"
+            onClick={() => {
+              setLocked(true)
+              setTown('Wengen')
+              setCountry('CH')
+            }}
+          >
+            izaberi trku
+          </button>
+          <PlaceField
+            id="mesto"
+            name="city"
+            value={town}
+            country={country}
+            invalid={false}
+            locked={locked}
+            describedBy={undefined}
+            onChange={(next, chosen) => {
+              setTown(next)
+              setCountry(chosen)
+            }}
+          />
+        </I18nProvider>
+      )
+    }
+
+    render(<Arriving />)
+
+    const box = screen.getByRole('combobox', { name: '' })
+    const country = screen.getByRole('combobox', { name: /^Država/ })
+
+    await user.type(box, 'Bern')
+    await waitFor(() => {
+      expect(country).toHaveValue('CH')
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'izaberi trku' }))
+
+    expect(box).toHaveValue('Wengen')
+    expect(box).toHaveAttribute('aria-disabled', 'true')
+    expect(country).toHaveValue('CH')
+  })
+})
+
+describe('a field that its screen takes away and draws again', () => {
+  /* Review of PR 610, round 1 (owner, 20.10.2026, the same decision). Two screens draw the field only
+     while no event of the calendar is chosen and keep the town and the country while it is away. What
+     the field had written was a note inside the field, so it went with the field: drawn again it held a
+     town and a country and no memory of having written either, and the letters after the town left the
+     country standing. The screen keeps the note now (`wrote` in, the third word of `onChange` out). */
+  let stop = () => {}
+
+  beforeEach(() => {
+    stop = servingTheCodebook()
+  })
+
+  afterEach(() => {
+    stop()
+  })
+
+  /** What a screen does with the field: keeps the town, the country and the note, and can take the field
+   *  away and give it back. The note is printed, so a case can say what the screen was told. */
+  function Keeper() {
+    const [here, setHere] = useState(true)
+    const [place, setPlace] = useState<TheKeptPlace>({ city: '', country: 'RS', countryWrote: null })
+
+    return (
+      <I18nProvider locale="sr">
+        <button
+          type="button"
+          onClick={() => {
+            setHere((was) => !was)
+          }}
+        >
+          događaj
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setPlace({ city: 'Divčibare', country: 'AT', countryWrote: place.countryWrote })
+          }}
+        >
+          premesti
+        </button>
+        <output aria-label="beleška">{place.countryWrote ?? ''}</output>
+        {here && (
+          <PlaceField
+            id="mesto"
+            name="city"
+            value={place.city}
+            country={place.country}
+            wrote={place.countryWrote}
+            invalid={false}
+            describedBy={undefined}
+            onChange={(city, country, wrote) => {
+              setPlace((now) => withThePlace(now, city, country, wrote))
+            }}
+          />
+        )}
+      </I18nProvider>
+    )
+  }
+
+  const away = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'događaj' }))
+  }
+  const town = () => screen.getByRole('combobox', { name: '' })
+  const country = () => screen.getByRole('combobox', { name: /^Država/ })
+
+  it('takes back the country the name wrote when the letters come after it was away and back', async () => {
+    const user = setupUser()
+
+    render(<Keeper />)
+    await user.type(town(), 'Boston')
+    await waitFor(() => {
+      expect(country()).toHaveValue('US')
+    })
+
+    away()
+
+    expect(screen.queryByRole('combobox', { name: '' })).toBeNull()
+
+    away()
+
+    expect(town()).toHaveValue('Boston')
+    expect(country()).toHaveValue('US')
+
+    await user.type(town(), ' x')
+
+    expect(town()).toHaveValue('Boston x')
+    expect(country()).toHaveValue('')
+    expect(country()).not.toBeDisabled()
+  })
+
+  it('does not take back a country the reader chose, away and back or not', async () => {
+    const user = setupUser()
+
+    render(<Keeper />)
+    await user.type(town(), 'Xqzrtgrad')
+    await user.selectOptions(country(), 'HR')
+
+    away()
+    away()
+    await user.type(town(), ' x')
+
+    expect(town()).toHaveValue('Xqzrtgrad x')
+    expect(country()).toHaveValue('HR')
+    expect(screen.getByLabelText('beleška')).toBeEmptyDOMElement()
+  })
+
+  it('judges nothing until somebody types, so the country of a pressed namesake survives the field being away', async () => {
+    /* „London" typed says nothing about which London, and the field drawn again has forgotten which row
+       was pressed. Nobody has typed since, so the name has not stopped being anything: the country stays,
+       and goes only with the first letter that does make it something else. */
+    const user = setupUser()
+
+    render(<Keeper />)
+    await user.type(town(), 'lond')
+    await user.click(at(await offered(), 1))
+
+    expect(country()).toHaveValue('US')
+
+    away()
+    away()
+
+    expect(town()).toHaveValue('London')
+    expect(country()).toHaveValue('US')
+
+    await user.type(town(), 'x')
+
+    expect(country()).toHaveValue('')
+  })
+
+  it('tells the screen that the note is spent when a country somebody else moved is left alone', async () => {
+    /* A note the screen went on keeping would be read against a country somebody chose later. */
+    const user = setupUser()
+
+    render(<Keeper />)
+    await user.type(town(), 'Boston')
+    await waitFor(() => {
+      expect(country()).toHaveValue('US')
+    })
+    expect(screen.getByLabelText('beleška')).toHaveTextContent('US')
+
+    fireEvent.click(screen.getByRole('button', { name: 'premesti' }))
+
+    expect(town()).toHaveValue('Divčibare')
+    expect(country()).toHaveValue('AT')
+    expect(screen.getByLabelText('beleška')).toBeEmptyDOMElement()
   })
 })
