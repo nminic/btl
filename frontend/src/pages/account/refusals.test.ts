@@ -579,8 +579,11 @@ describe('the reasons the server can name', () => {
        from `CompetitorWriteApi` and `ResultWriteApi` (the empty save, the save of too many rows, the run
        that is not whole), which the screen answers too and which are counted on those files' lines.
        Twelve since 19.10.2026: the four of the moderator's own screen, „Unos rezultata za događaj”
-       (`EnterForAnEvent`), whose words the owner approved that day. */
-    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 12],
+       (`EnterForAnEvent`), whose words the owner approved that day. The thirteenth arrived 21.10.2026
+       with the owner's answer that a race of New Year's Eve may go on an event of the new year before
+       ten on 1 January (PDL P9, 20.10.2026), which can move that event onto an address another event
+       holds (`theEventWouldMoveOntoAnother`, the sentence the approval of a run has for the same move). */
+    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 13],
   ]
 
   /** What a file declares that really is a refusal AND has a screen today, which is every

@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
+import type { Ref } from 'react'
 import { fromBoxes } from '../../forms/clock'
-import { parseNumber } from '../../forms/numberField'
+import { isWhole, parseNumber } from '../../forms/numberField'
 import { btlPoints } from '../../data/scoring'
 import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
@@ -115,6 +116,71 @@ function readBox(text: string): number {
   return text.trim() === '' ? 0 : (parseNumber(text) ?? Number.NaN)
 }
 
+/**
+ * THE FIVE BOXES THAT HOLD A WHOLE NUMBER: the climb, the fall, and the hours, minutes and
+ * seconds of the time. The length is the one box that takes a fraction.
+ *
+ * Owner, 20.10.2026 (`btl-produkt/PDL.md`, „Kalkulator bodova u poljima za uspon, spust i
+ * sate/minute/sekunde prima samo cele brojeve, isto kao forme"): the forms refuse a separator in
+ * these five („Unesi ceo broj."), and the calculator, which read „1,200" metres of climb as one
+ * point two, now refuses it the same way. The rule is the forms' own, `isWhole`, asked of the
+ * writing and not of the value (`forms/numberField.ts`), and the sentence is theirs
+ * (`form.errors.integer`): this file keeps neither a second pattern for „whole" nor a second
+ * sentence for „not whole". Which boxes are whole is held to the definitions of the forms by
+ * `calculatorWhole.test.tsx`.
+ */
+const WHOLE_BOXES: readonly (keyof Values)[] = ['ascent', 'descent', 'hours', 'minutes', 'seconds']
+
+/** Whether a box holds writing the forms would refuse in a whole-number field. An empty box is
+ *  nought and is not refused (`readBox`); `abc` is not whole and is refused with the same
+ *  sentence, and either way the answer waits. */
+function refusedAsNotWhole(text: string): boolean {
+  return text.trim() !== '' && !isWhole(text)
+}
+
+/** One box of the widget: the label with the box inside it, and under it the sentence that says
+ *  why the box is refused, when it is. The sentence is beside the label and not inside it, so it
+ *  is not part of the name of the box. */
+function Box({
+  name,
+  label,
+  inputMode,
+  refused,
+  said,
+  inputRef,
+}: {
+  name: keyof Values
+  label: string
+  inputMode: 'decimal' | 'numeric'
+  refused: boolean
+  said: string
+  inputRef?: Ref<HTMLInputElement>
+}) {
+  const sentence = useId()
+
+  return (
+    <div className="calc__cell">
+      <label className="calc__field">
+        <span>{label}</span>
+        <input
+          ref={inputRef}
+          name={name}
+          autoComplete="off"
+          type="text"
+          inputMode={inputMode}
+          aria-invalid={refused ? true : undefined}
+          aria-describedby={refused ? sentence : undefined}
+        />
+      </label>
+      {refused && (
+        <p className="calc__error" id={sentence}>
+          {said}
+        </p>
+      )}
+    </div>
+  )
+}
+
 /* The calculator is the same one the old portal had, and it is mostly a toy.
  * It is also the only explanation of the scoring there is: the formula is public
  * and the rulebook does not set it out, so this is where somebody sees how it
@@ -131,11 +197,17 @@ export function Calculator() {
   const widget = useRef<HTMLElement>(null)
   const first = useRef<HTMLInputElement>(null)
 
+  /* The boxes the forms would refuse, by name. An answer waits for as long as there is one: the
+     figure of a climb of „1,2" metres is not the figure of the climb somebody meant. */
+  const refused = new Set<keyof Values>(WHOLE_BOXES.filter((name) => refusedAsNotWhole(values[name])))
+  const notWhole = t('form.errors.integer')
+  const timeRefused = refused.has('hours') || refused.has('minutes') || refused.has('seconds')
+
   const points = btlPoints(
     readBox(values.length),
-    readBox(values.ascent),
-    readBox(values.descent),
-    fromBoxes(values),
+    refused.has('ascent') ? Number.NaN : readBox(values.ascent),
+    refused.has('descent') ? Number.NaN : readBox(values.descent),
+    timeRefused ? Number.NaN : fromBoxes(values),
   )
 
   /* The one listener, and `heldBy` above says why it is a listener of ours rather
@@ -222,6 +294,10 @@ export function Calculator() {
           the three boxes of the time would open the full keyboard on a telephone,
           which a box of type number never did.
 
+          **ONLY THE LENGTH TAKES A FRACTION since 20.10.2026**: the climb, the fall and the
+          three boxes of the time take whole numbers, as the forms do, and a separator in
+          one of them is refused in the forms' own words under that box (`WHOLE_BOXES`).
+
           ~~`min`, `max` and `step`~~ went with the type. On a text box they announce
           nothing to anybody and constrain nothing, and here they never constrained
           anything either: a figure outside them was read all the same.
@@ -229,40 +305,53 @@ export function Calculator() {
           WHO HOLDS THE BOXES IS UNCHANGED (ADL, 21.08.2026): no `value`, no
           `onChange`, one listener of the widget's own, and `autoComplete="off"`. */}
       <div className="calc calc--grid">
-        <label className="calc__field">
-          <span>{t('home.calcLength')}</span>
-          <input
-            ref={first}
-            name="length"
-            autoComplete="off"
-            type="text"
-            inputMode="decimal"
-          />
-        </label>
-        <label className="calc__field">
-          <span>{t('home.calcAscent')}</span>
-          <input name="ascent" autoComplete="off" type="text" inputMode="numeric" />
-        </label>
-        <label className="calc__field">
-          <span>{t('home.calcDescent')}</span>
-          <input name="descent" autoComplete="off" type="text" inputMode="numeric" />
-        </label>
+        <Box
+          inputRef={first}
+          name="length"
+          label={t('home.calcLength')}
+          inputMode="decimal"
+          refused={false}
+          said={notWhole}
+        />
+        <Box
+          name="ascent"
+          label={t('home.calcAscent')}
+          inputMode="numeric"
+          refused={refused.has('ascent')}
+          said={notWhole}
+        />
+        <Box
+          name="descent"
+          label={t('home.calcDescent')}
+          inputMode="numeric"
+          refused={refused.has('descent')}
+          said={notWhole}
+        />
       </div>
 
       <fieldset className="calc__time">
         <legend className="visually-hidden">{t('home.calcTime')}</legend>
-        <label className="calc__field">
-          <span>{t('home.hours')}</span>
-          <input name="hours" autoComplete="off" type="text" inputMode="numeric" />
-        </label>
-        <label className="calc__field">
-          <span>{t('home.minutes')}</span>
-          <input name="minutes" autoComplete="off" type="text" inputMode="numeric" />
-        </label>
-        <label className="calc__field">
-          <span>{t('home.seconds')}</span>
-          <input name="seconds" autoComplete="off" type="text" inputMode="numeric" />
-        </label>
+        <Box
+          name="hours"
+          label={t('home.hours')}
+          inputMode="numeric"
+          refused={refused.has('hours')}
+          said={notWhole}
+        />
+        <Box
+          name="minutes"
+          label={t('home.minutes')}
+          inputMode="numeric"
+          refused={refused.has('minutes')}
+          said={notWhole}
+        />
+        <Box
+          name="seconds"
+          label={t('home.seconds')}
+          inputMode="numeric"
+          refused={refused.has('seconds')}
+          said={notWhole}
+        />
       </fieldset>
 
       {/* The answer and the way back to an empty widget share the last row

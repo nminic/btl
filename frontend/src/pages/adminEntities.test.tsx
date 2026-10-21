@@ -2477,10 +2477,11 @@ describe('what the form for a new event asks for', () => {
     await user.clear(screen.getByLabelText(/^Mesto/))
     await user.type(screen.getByLabelText(/^Mesto/), 'Divčibare')
 
-    /* Left as it was, and on the screen: the country of a town the codebook does
-       not have is chosen by hand, and what stands there is what will be saved.
-       It used to be cleared here, back when it was written and never shown. */
-    expect(screen.getByLabelText(/^Država/)).toHaveValue('HR')
+    /* Emptied, and on the screen: the country of a town the codebook does not
+       have is chosen by hand, and nothing stands there for the form to save that
+       nobody chose (owner, 20.10.2026; it was left as it was from 11.08.2026). */
+    expect(screen.getByLabelText(/^Država/)).toHaveValue('')
+    expect(screen.getByLabelText(/^Država/)).toBeEnabled()
 
     await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
 

@@ -25,6 +25,10 @@ import { Calculator } from './Calculator'
  * What went is the premise of the first of those, a box that reports an empty value for writing it
  * will not read (`validity.badInput`): a text box says what is in it.
  *
+ * <p>**Since 20.10.2026 only the length reads a fraction.** The climb, the fall, the hours, the minutes
+ * and the seconds take whole numbers, as the forms do, and refuse a separator
+ * (`calculatorWhole.test.tsx`); what is written about the comma above holds for the length alone.
+ *
  * <p>**One race, chosen so that every box moves the answer at two decimals** when a fraction is
  * added to it. Measured before it was written down: with a race of 62,07 km, 7:28:31, a half
  * second in the seconds box leaves „79,03" exactly as it was, and a case built on it cannot tell a
@@ -56,7 +60,8 @@ const KEYBOARD: Record<Box, string> = {
 
 /** A fraction in each box, written both ways round, and the number it is. The numbers are written
  *  out and not read by the reader under test, so „the comma is read as a decimal point" is a claim
- *  about the box and not about the reader agreeing with itself. */
+ *  about the box and not about the reader agreeing with itself. Only the length reads them as
+ *  numbers; the other five refuse them (`calculatorWhole.test.tsx`). */
 const FRACTION: Record<Box, { comma: string; dot: string; number: number }> = {
   length: { comma: '10,9', dot: '10.9', number: 10.9 },
   ascent: { comma: '2000,9', dot: '2000.9', number: 2000.9 },
@@ -165,7 +170,11 @@ describe('the boxes of the calculator', () => {
     }
   })
 
-  it.each(BOXES)('read a comma and a dot alike in the %s box, and neither is cut short', (name) => {
+  /* THE LENGTH IS THE ONE BOX THAT TAKES A FRACTION (owner, 20.10.2026: the climb, the fall and the
+     hours, minutes and seconds take whole numbers only, as the forms do; `calculatorWhole.test.tsx`
+     holds the five). A comma and a dot are read alike here and nowhere else in the widget. */
+  it('read a comma and a dot alike in the length box, and neither is cut short', () => {
+    const name = 'length'
     const calc = mount()
     const fraction = FRACTION[name]
     const withIt = { ...RACE, [name]: fraction.number }

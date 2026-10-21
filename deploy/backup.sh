@@ -47,8 +47,14 @@
 # copy is.
 #
 # NOTHING IN PLAIN TEXT OUTSIDE MEMORY. The work folder is tmpfs, refused otherwise
-# (backup/in-memory.sh). The dump, the passphrase and the keys live there and nowhere else. Every
-# exit code is read from a redirect, never through a pipe: `sh` has no pipefail.
+# (backup/in-memory.sh). The dump, the passphrase and the keys live there and nowhere else. The
+# ENCRYPTED copy is the one thing that is on a disk (a folder under /var/tmp, mounted at /copy),
+# because it is ciphertext and because held in memory it was a whole second production in the
+# host's RAM. Every exit code is read from a redirect, never through a pipe: `sh` has no pipefail.
+#
+# NO COMMAND THAT CAN RUN LONG IS RUN BARE. A docker command goes through `step`, a container
+# through `container` (backup/in-memory.sh says why: a shell runs its traps only after the command
+# it is waiting for, so a SIGTERM during a step used to wait for the step).
 
 set -eu
 
@@ -86,7 +92,7 @@ THROWAWAY=btl-backup-proof
 alert() {
   [ -s "$WORK/mail.curl" ] || { say 'the relay is not configured, so nobody can be mailed about this'; return 1; }
   hostname > "$WORK/host" 2>/dev/null || true
-  docker run --rm -v "$WORK":/work -v "$BACKUP":/backup:ro --entrypoint sh "$TRANSFER_IMAGE" \
+  container -v "$WORK":/work -v "$BACKUP":/backup:ro --entrypoint sh "$TRANSFER_IMAGE" \
     /backup/alert.sh /work "$WHAT"
 }
 
@@ -94,7 +100,7 @@ alert() {
 . "$BACKUP/in-memory.sh"
 # shellcheck source=backup/stack.sh
 . "$BACKUP/stack.sh"
-say "work files, in memory: $WORK. Removed on exit; a SIGKILL leaves them, and then they are yours to remove."
+say "work files, in memory: $WORK. The encrypted copy, on disk: $SPOOL. Both removed on exit; a SIGKILL leaves them, and then they are yours to remove."
 
 say '--- 1. the settings ---'
 read_settings
@@ -104,7 +110,7 @@ say "database $DB, photographs in $PHOTOS_VOLUME"
 if [ "$MODE" = copy ]; then
   say ''
   say '--- 2. the database, first ---'
-  if ! docker exec "$DB" sh -c 'exec pg_dump --format=custom -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+  if ! step docker exec "$DB" sh -c 'exec pg_dump --format=custom -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
        > "$WORK/btl.dump" 2> "$WORK/dump.err"; then
     show_errors "$WORK/dump.err"
     fail 'pg_dump did not pass, and nothing was sent'
@@ -114,8 +120,8 @@ if [ "$MODE" = copy ]; then
 
   say ''
   say '--- 3. then the photographs, into one encrypted copy with the dump ---'
-  docker run --rm --network none -v "$WORK":/work -v "$PHOTOS_VOLUME":/photos:ro -v "$BACKUP":/backup:ro \
-    --entrypoint sh "$IMAGE" /backup/pack.sh /work /photos \
+  container --network none -v "$WORK":/work -v "$SPOOL":/copy -v "$PHOTOS_VOLUME":/photos:ro -v "$BACKUP":/backup:ro \
+    --entrypoint sh "$IMAGE" /backup/pack.sh /work /photos /copy/copy.gpg \
     || fail 'the copy could not be made, and nothing was sent'
 
   say ''
@@ -126,7 +132,7 @@ if [ "$MODE" = copy ]; then
   say ''
   say '--- 5. sent, and asked what arrived ---'
   KEY="daily/btl-$(date -u +%Y-%m-%dT%H%M%SZ).gpg"
-  transfer put /work/copy.gpg "$KEY" || fail "the copy did not reach R2 as $KEY"
+  transfer put /copy/copy.gpg "$KEY" || fail "the copy did not reach R2 as $KEY"
 
   [ "$CHECKED" = 0 ] \
     || fail "the copy was sent as $KEY, but some photo rows in it have no file that matches them (listed above); the database in it is good"
@@ -137,8 +143,12 @@ fi
 
 say ''
 say '--- 2. the newest copy, brought back ---'
-KEY=$(transfer newest daily/) || fail 'R2 could not say which copy is the newest'
-transfer get "$KEY" /work/copy.gpg || fail "$KEY could not be brought back whole"
+# Into a file and not into $(...): a command substitution is a foreground command to the shell
+# that runs it, and a signal would wait for it (backup/in-memory.sh, "WHY A STEP IS RUN IN THE
+# BACKGROUND").
+transfer newest daily/ > "$WORK/newest.key" || fail 'R2 could not say which copy is the newest'
+KEY=$(cat "$WORK/newest.key")
+transfer get "$KEY" /copy/copy.gpg || fail "$KEY could not be brought back whole"
 
 say ''
 say '--- 3. a throwaway database, with no network and its data in memory ---'
@@ -149,9 +159,9 @@ docker rm -f "$THROWAWAY" >/dev/null 2>&1 || true
 # from the site.
 docker run -d --name "$THROWAWAY" --network none --tmpfs /var/lib/postgresql --memory 1g \
   -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_USER=postgres -e POSTGRES_DB=proof \
-  -v "$WORK":/work -v "$BACKUP":/backup:ro "$IMAGE" > /dev/null
+  -v "$WORK":/work -v "$SPOOL":/copy:ro -v "$BACKUP":/backup:ro "$IMAGE" > /dev/null
 waited=0
-until docker exec "$THROWAWAY" pg_isready -q -h 127.0.0.1 -U postgres -d proof 2>/dev/null; do
+until step docker exec "$THROWAWAY" pg_isready -q -h 127.0.0.1 -U postgres -d proof 2>/dev/null; do
   waited=$((waited + 1))
   [ "$waited" -lt 90 ] || fail 'the throwaway database did not come up within 90 seconds'
   sleep 1
@@ -159,12 +169,12 @@ done
 
 say ''
 say '--- 4. the copy, opened ---'
-if docker exec "$THROWAWAY" sh /backup/check.sh /work /work/copy.gpg; then CHECKED=0; else CHECKED=$?; fi
+if step docker exec "$THROWAWAY" sh /backup/check.sh /work /copy/copy.gpg; then CHECKED=0; else CHECKED=$?; fi
 [ "$CHECKED" = 0 ] || fail "$KEY does not pass the check, so it does not prove a restore"
 
 say ''
 say '--- 5. restored, in one transaction ---'
-if ! docker exec -i "$THROWAWAY" sh -c "$(cat "$BACKUP/restore-database.sh")" \
+if ! step docker exec -i "$THROWAWAY" sh -c "$(cat "$BACKUP/restore-database.sh")" \
      < "$WORK/check/btl.dump" > "$WORK/restore.log" 2>&1; then
   show_errors "$WORK/restore.log"
   fail "$KEY did not restore"
@@ -172,16 +182,16 @@ fi
 
 say ''
 say '--- 6. and the restored database holds what the copy carries ---'
-docker exec "$THROWAWAY" sh /backup/prove.sh counts /work || fail "$KEY restored into something other than what it carries"
+step docker exec "$THROWAWAY" sh /backup/prove.sh counts /work || fail "$KEY restored into something other than what it carries"
 NOW=$(date -u +%s)
-docker exec "$THROWAWAY" sh /backup/prove.sh age /work "$NOW" || fail "$KEY is too old to prove that the nightly copy works"
-docker exec "$THROWAWAY" sh /backup/prove.sh record /work "$NOW" || fail 'the proof could not be written down'
+step docker exec "$THROWAWAY" sh /backup/prove.sh age /work "$NOW" || fail "$KEY is too old to prove that the nightly copy works"
+step docker exec "$THROWAWAY" sh /backup/prove.sh record /work "$NOW" || fail 'the proof could not be written down'
 printf 'copy %s\n' "$KEY" >> "$WORK/proof.txt"
 
 say ''
 say '--- 7. the proof, and the copy it proved, written to R2 ---'
 transfer put /work/proof.txt "proofs/btl-$(date -u +%Y-%m-%d).txt" || fail 'the proof could not be written to R2'
-transfer put /work/copy.gpg "monthly/btl-$(TZ=Europe/Belgrade date +%Y-%m).gpg" \
+transfer put /copy/copy.gpg "monthly/btl-$(TZ=Europe/Belgrade date +%Y-%m).gpg" \
   || fail 'the proven copy could not be kept under monthly/'
 
 say ''

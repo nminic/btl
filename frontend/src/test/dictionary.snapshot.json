@@ -262,19 +262,8 @@
     "sr": "Srpski",
     "en": "English"
   },
-  "role": {
-    "label": "Uloga",
-    "visitor": "Posetilac",
-    "competitor": "Takmičar",
-    "moderator": "Moderator",
-    "superadmin": "Superadmin"
-  },
   "notFound": {
     "title": "Ove strane nema"
-  },
-  "clock": {
-    "label": "Današnji datum",
-    "reset": "Vrati na stvarni datum"
   },
   "placeholder": {
     "title": "{name}",
@@ -429,9 +418,9 @@
     "doneTitle": "Prijava je zabeležena",
     "checkSpam": "Ako poruka ne stigne u roku od nekoliko minuta, pogledaj i neželjenu poštu.",
     "resend": "Pošalji potvrdu ponovo",
-    "resent": "Ako ova adresa još čeka potvrdu, nova poruka je poslata. Ako ni sada ne stigne za nekoliko minuta, javi nam se na info@balkanskatrkackaliga.net.",
+    "resent": "Ako ova adresa još čeka potvrdu, šaljemo novu poruku. Ako ne stigne za nekoliko minuta, javi nam se na info@balkanskatrkackaliga.net.",
     "resending": "Tražimo da se potvrda pošalje ponovo...",
-    "doneText": "Poslali smo poruku na {email}. Otvori je i potvrdi adresu, jer se nalog aktivira tek tada.",
+    "doneText": "Na {email} šaljemo poruku za potvrdu. Otvori je i potvrdi adresu, jer se nalog aktivira tek tada. Ako ne stigne za nekoliko minuta, javi nam se na info@balkanskatrkackaliga.net.",
     "sending": "Šaljemo prijavu...",
     "formIsNotComplete": "Server nije prihvatio prijavu, jer neki odgovor nije potpun ili ga ne prepoznaje. Proveri odgovore, posebno mesto i državu, pa pošalji ponovo.",
     "passwordHasLeaked": "Ova lozinka se već našla u javno objavljenim provalama, pa je portal ne prima. Izaberi drugu.",
@@ -998,7 +987,7 @@
     "submit": "Pošalji vezu",
     "sending": "Šalje se",
     "needsAddress": "Upiši adresu elektronske pošte da bi mogao da zatražiš vezu.",
-    "done": "Ako na toj adresi postoji nalog, poruka sa vezom je poslata. Pogledaj sanduče, pa i neželjenu poštu ako je nema."
+    "done": "Ako na toj adresi postoji nalog, šaljemo poruku sa vezom. Pogledaj sanduče, pa i neželjenu poštu ako je nema. Ako ne stigne za nekoliko minuta, javi nam se na info@balkanskatrkackaliga.net."
   },
   "confirmAddress": {
     "title": "Potvrda adrese",
@@ -1013,8 +1002,7 @@
     "rejected": "Portal nije uspeo da dokaže serveru da zahtev dolazi sa ove strane. Osveži stranu i pokušaj ponovo.",
     "wrong": "Server je odgovorio brojem {status} i ništa nije promenjeno. Pokušaj ponovo za koji minut.",
     "malformed": "Portal je poslao podatak u obliku koji server ne razume. Ništa nije promenjeno. Ovo je greška portala, javi nam.",
-    "nothing": "Portal nije uspeo da dođe do servera. Proveri vezu i pokušaj ponovo.",
-    "named": "sa servera"
+    "nothing": "Portal nije uspeo da dođe do servera. Proveri vezu i pokušaj ponovo."
   },
   "myProfile": {
     "signOut": "Odjavi se"
@@ -1838,7 +1826,8 @@
       "theEventIsNotKnown": "Taj događaj više nije u kalendaru. Izaberi ga ponovo ili upiši nov.",
       "theRaceIsNotKnown": "Ta trka više nije u kalendaru. Izaberi je ponovo ili upiši novu.",
       "theTownIsMissing": "Upiši mesto novog događaja.",
-      "theDayIsBeforeTheLeague": "Liga počinje 2027. godine; raniji rezultati se unose CSV šablonom."
+      "theDayIsBeforeTheLeague": "Liga počinje 2027. godine; raniji rezultati se unose CSV šablonom.",
+      "theEventWouldMoveOntoAnother": "Trka bi pomerila događaj u godinu u kojoj događaj sa istim nazivom već postoji. Izaberi taj događaj."
     }
   }
 }

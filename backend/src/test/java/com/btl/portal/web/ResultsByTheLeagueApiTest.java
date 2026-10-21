@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.event.EventAddress;
 import com.btl.portal.domain.scoring.BtlScoreCalculator;
 import com.btl.portal.domain.token.SecretToken;
 import com.icegreen.greenmail.junit5.GreenMailExtension;
@@ -1247,27 +1248,201 @@ class ResultsByTheLeagueApiTest {
 	}
 
 	/**
-	 * AND IN THE HOURS BOTH SEASONS ARE OPEN, on the morning of 1 January before ten: a run of New Year's
-	 * Eve onto the event of the new year is still of another year, and refused the same way, so the race
-	 * never moves its event into another year's address.
+	 * IN THE HOURS BOTH SEASONS ARE OPEN, on the morning of 1 January before ten, a race of New Year's
+	 * Eve goes on an event of the new year, and the event begins on that earlier day and answers at the
+	 * address of the year before (PDL P9, owner, 20.10.2026, „U prozoru 1. januara od 00:00 do 10:00 sme
+	 * se sastaviti trka na događaju druge godine”, chosen against the coordinator's recommendation).
+	 * The race, the result and the new day of the event are all written in the one save.
 	 */
 	@Test
-	void onNewYearsMorningARaceOfTheYearJustEndedGoesOnNoEventOfTheNewOne() throws Exception {
+	void onNewYearsMorningARaceOfTheYearJustEndedGoesOnAnEventOfTheNewOneAndTheEventMovesBack()
+			throws Exception {
 		clock.moveTo(Instant.parse("2028-01-01T08:00:00Z"));
 
 		long theNewYears = event("novogodisnja-2028", "Novogodisnja", LocalDate.of(2028, 1, 1));
-		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onTheEvent(theNewYears,
+		MockHttpServletResponse saved = onAnEvent(RESULTS_MODERATOR, onTheEvent(theNewYears,
 				newRace("Silvestarska", "2027-12-31", "free", null, null, null, null),
 				row(VERA, "5.00", 1, 1, AN_HOUR)));
 
-		assertThat(reasonIn(refused)).isEqualTo("theFormIsNotComplete");
+		assertThat(saved.getStatus()).isEqualTo(201);
 		assertThat(db.sql("select date from btl_event where id = ?").param(theNewYears)
-				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2028, 1, 1));
+				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2027, 12, 31));
+		assertThat(db.sql("select slug from btl_event where id = ?").param(theNewYears)
+				.query(String.class).single())
+				.as("the event answers at the address of the year its first race is of")
+				.isEqualTo(EventAddress.of("Novogodisnja", LocalDate.of(2027, 12, 31)))
+				.isNotEqualTo("novogodisnja-2028");
+		assertThat(db.sql("select count(*) from race where event_id = ? and date = date '2027-12-31'")
+				.param(theNewYears).query(Integer.class).single()).isEqualTo(1);
+		assertThat(resultsOf(VERA)).hasSize(1);
 
 		/* While a new event of that year, that morning, is a season still open. */
 		assertThat(onAnEvent(RESULTS_MODERATOR, onANewEvent("Silvestarska trka", "2027-12-31", "Ohrid", "MK",
 				newRace("Silvestarska", null, "free", null, null, null, null),
 				row(VERA, "5.00", 1, 1, AN_HOUR))).getStatus()).isEqualTo(201);
+	}
+
+	/**
+	 * OUTSIDE THE WINDOW AN EVENT OF THE NEXT YEAR TAKES NO RACE OF THIS ONE EITHER, and it is the one
+	 * direction that is an ordinary state of the calendar: in June 2027 the events of 2028 are already
+	 * there. Only the year of the event is asked here (the race of June 2027 is of an open season), and
+	 * the event keeps its day and its address.
+	 */
+	@Test
+	void outsideTheWindowAnEventOfTheNextYearTakesNoRaceOfThisOne() throws Exception {
+		long ofNextYear = event("jesenja-2028", "Jesenja", LocalDate.of(2028, 3, 1));
+		race(ofNextYear, "Prolecna", LocalDate.of(2028, 3, 1), "free", 0, "0", 0, 0);
+		int races = howMany("race");
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onTheEvent(ofNextYear,
+				newRace("Letnja", "2027-06-01", "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(refused.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(refused)).isEqualTo("theFormIsNotComplete");
+		assertThat(howMany("race")).isEqualTo(races);
+		assertThat(db.sql("select date from btl_event where id = ?").param(ofNextYear)
+				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2028, 3, 1));
+		assertThat(db.sql("select slug from btl_event where id = ?").param(ofNextYear)
+				.query(String.class).single()).isEqualTo("jesenja-2028");
+	}
+
+	/**
+	 * AND THE OTHER WAY ROUND, in the same ten hours: a race of the new year goes on an event of the year
+	 * just ended. The event began before the race, so its day and its address stay where they were.
+	 */
+	@Test
+	void onNewYearsMorningARaceOfTheNewYearGoesOnAnEventOfTheYearJustEndedAndTheEventStaysWhereItWas()
+			throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T08:00:00Z"));
+		membership(DRAGAN, 2028);
+
+		long theOldYears = event("novogodisnja-2027", "Novogodisnja", LocalDate.of(2027, 12, 31));
+		race(theOldYears, "Silvestarska", LocalDate.of(2027, 12, 31), "free", 0, "0", 0, 0);
+		MockHttpServletResponse saved = onAnEvent(RESULTS_MODERATOR, onTheEvent(theOldYears,
+				newRace("Prva u godini", "2028-01-01", "free", null, null, null, null),
+				row(DRAGAN, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(saved.getStatus()).isEqualTo(201);
+		assertThat(db.sql("select date from btl_event where id = ?").param(theOldYears)
+				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2027, 12, 31));
+		assertThat(db.sql("select slug from btl_event where id = ?").param(theOldYears)
+				.query(String.class).single()).isEqualTo("novogodisnja-2027");
+		assertThat(db.sql("select count(*) from race where event_id = ? and date = date '2028-01-01'")
+				.param(theOldYears).query(Integer.class).single()).isEqualTo(1);
+		assertThat(resultsOf(DRAGAN)).hasSize(1);
+	}
+
+	/**
+	 * THE WINDOW ENDS AT TEN O'CLOCK, and a minute either side of it answers differently, in both
+	 * directions of the two years. At 09:59:59 Belgrade the race goes on the event of the other year;
+	 * at 10:00:00 the season just ended is closed and the event of that year is not offered, so the
+	 * save is refused: the race of the year just ended in the season's own sentence (it is asked first),
+	 * the race of the new year, on the event of the old one, as a form not filled in. The boundary is
+	 * {@code SeasonClock.reportingEnds}, read and not written again, and this holds that the route
+	 * reads it with the clock of the request and not with a clock a minute either side.
+	 */
+	@Test
+	void theWindowEndsAtTenAndNotAMinuteBeforeOrAfter() throws Exception {
+		membership(DRAGAN, 2028);
+
+		Instant lastSecond = Instant.parse("2028-01-01T08:59:59Z");
+		Instant theTenth = Instant.parse("2028-01-01T09:00:00Z");
+
+		clock.moveTo(lastSecond);
+		long before = event("granica-2028-a", "Granica a", LocalDate.of(2028, 1, 1));
+		long beforeNew = event("granica-2027-b", "Granica b", LocalDate.of(2027, 12, 31));
+		race(beforeNew, "Silvestarska b", LocalDate.of(2027, 12, 31), "free", 0, "0", 0, 0);
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(before,
+				newRace("Silvestarska", "2027-12-31", "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR))).getStatus())
+				.as("09:59:59, a race of the year just ended on an event of the new year").isEqualTo(201);
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(beforeNew,
+				newRace("Prva u godini", "2028-01-01", "free", null, null, null, null),
+				row(DRAGAN, "5.00", 1, 1, AN_HOUR))).getStatus())
+				.as("09:59:59, a race of the new year on an event of the year just ended").isEqualTo(201);
+		assertThat(db.sql("select count(*) from race where event_id = ? and date = date '2028-01-01'")
+				.param(beforeNew).query(Integer.class).single()).isEqualTo(1);
+
+		clock.moveTo(theTenth);
+		long after = event("granica-2028-c", "Granica c", LocalDate.of(2028, 1, 1));
+		long afterNew = event("granica-2027-d", "Granica d", LocalDate.of(2027, 12, 31));
+		race(afterNew, "Silvestarska d", LocalDate.of(2027, 12, 31), "free", 0, "0", 0, 0);
+		int races = howMany("race");
+
+		MockHttpServletResponse theYearJustEnded = onAnEvent(RESULTS_MODERATOR, onTheEvent(after,
+				newRace("Silvestarska", "2027-12-31", "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+		MockHttpServletResponse theNewYear = onAnEvent(RESULTS_MODERATOR, onTheEvent(afterNew,
+				newRace("Prva u godini", "2028-01-01", "free", null, null, null, null),
+				row(DRAGAN, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(reasonIn(theYearJustEnded)).as("10:00:00, a race of the year just ended")
+				.isEqualTo("theRaceIsOutsideTheSeason");
+		assertThat(theNewYear.getStatus()).as("10:00:00, a race of the new year on an event of the old")
+				.isEqualTo(400);
+		assertThat(reasonIn(theNewYear)).isEqualTo("theFormIsNotComplete");
+		assertThat(howMany("race")).as("nothing written by either refusal").isEqualTo(races);
+		assertThat(db.sql("select date from btl_event where id = ?").param(after).query(LocalDate.class)
+				.single()).isEqualTo(LocalDate.of(2028, 1, 1));
+		assertThat(db.sql("select date from btl_event where id = ?").param(afterNew).query(LocalDate.class)
+				.single()).isEqualTo(LocalDate.of(2027, 12, 31));
+	}
+
+	/**
+	 * AN EVENT OF A SEASON THAT IS NOT OPEN IS NOT PUT A RACE ON IN THOSE TEN HOURS EITHER, and a gap of
+	 * a year is not "another year" in the owner's sense: on the morning of 1 January 2028 the seasons open
+	 * are 2027 and 2028, so an event of 2026 (a season before the league, and not offered) is refused
+	 * whether the race is of 2027 or of 2028. Nothing is written and the event keeps its day.
+	 */
+	@Test
+	void onNewYearsMorningAnEventOfASeasonThatIsNotOpenTakesNoRace() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T08:00:00Z"));
+		membership(DRAGAN, 2028);
+
+		long theOldOne = event("starija-2026", "Starija", LocalDate.of(2026, 6, 6));
+		int races = howMany("race");
+
+		MockHttpServletResponse ofTheYearJustEnded = onAnEvent(RESULTS_MODERATOR, onTheEvent(theOldOne,
+				newRace("Silvestarska", "2027-12-31", "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+		MockHttpServletResponse ofTheNewYear = onAnEvent(RESULTS_MODERATOR, onTheEvent(theOldOne,
+				newRace("Prva u godini", "2028-01-01", "free", null, null, null, null),
+				row(DRAGAN, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(List.of(reasonIn(ofTheYearJustEnded), reasonIn(ofTheNewYear)))
+				.containsExactly("theFormIsNotComplete", "theFormIsNotComplete");
+		assertThat(howMany("race")).isEqualTo(races);
+		assertThat(db.sql("select date from btl_event where id = ?").param(theOldOne).query(LocalDate.class)
+				.single()).isEqualTo(LocalDate.of(2026, 6, 6));
+	}
+
+	/**
+	 * THE RACE WOULD MOVE THE EVENT ONTO AN ADDRESS ANOTHER EVENT HOLDS, which the same morning makes
+	 * possible and no other time does: the event of the new year would begin on New Year's Eve and answer
+	 * where an event of the same name already stands. It is refused with its own sentence (409), as the
+	 * approval of a run and the administration refuse the same move, and nothing is written.
+	 */
+	@Test
+	void aRaceThatWouldMoveTheEventOntoTheAddressOfAnotherIsRefusedAndWritesNothing() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T08:00:00Z"));
+
+		long theNewYears = event("novogodisnja-2028", "Novogodisnja", LocalDate.of(2028, 1, 1));
+		event(EventAddress.of("Novogodisnja", LocalDate.of(2027, 12, 20)), "Novogodisnja",
+				LocalDate.of(2027, 12, 20));
+		int races = howMany("race");
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onTheEvent(theNewYears,
+				newRace("Silvestarska", "2027-12-31", "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo("theEventWouldMoveOntoAnother");
+		assertThat(howMany("race")).isEqualTo(races);
+		assertThat(db.sql("select date from btl_event where id = ?").param(theNewYears)
+				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2028, 1, 1));
+		assertThat(db.sql("select slug from btl_event where id = ?").param(theNewYears)
+				.query(String.class).single()).isEqualTo("novogodisnja-2028");
+		assertThat(resultsOf(VERA)).isEmpty();
 	}
 
 	/**

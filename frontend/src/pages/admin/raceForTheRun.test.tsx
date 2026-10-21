@@ -1357,6 +1357,127 @@ describe('what the panel offers once an approval has made a race', () => {
   })
 })
 
+describe('the place of a new event, once its name stops being a town the codebook knows', () => {
+  /* Owner, 20.10.2026 (PDL, „Čim ukucano ime mesta prestane da odgovara šifarniku, država koju je
+     prepoznavanje upisalo se prazni i čeka izbor"; PENDING 29216), on the panel that names the race. */
+
+  /** The town box and the country beside it, of a panel opened over a run that names no town. */
+  const placeBoxes = () => ({
+    town: panel().getByLabelText(sr.review.placeTown),
+    country: panel().getByLabelText(sr.form.country),
+  })
+
+  it('empties the country the town wrote when the letters after it make a hamlet, and asks for it', async () => {
+    const user = setupUser()
+    const server = serverWith({ queue: () => [{ ...TYPED, city: '', country: '' }] })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000060')
+      await user.type(placeBoxes().town, 'Kranj')
+      await waitFor(() => expect(placeBoxes().country).toHaveValue('SI'))
+      await user.type(placeBoxes().town, ' pod brdom')
+
+      expect(placeBoxes().town).toHaveValue('Kranj pod brdom')
+      expect(placeBoxes().country).toHaveValue('')
+      expect(placeBoxes().country).toBeEnabled()
+
+      await user.click(panel().getByRole('button', { name: sr.review.placeSave }))
+
+      expect(decisionsIn(server.asked)).toHaveLength(0)
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('takes the country back after the event of the calendar has taken the box away and given it back', async () => {
+    /* Review of PR 610, round 1: what the field had written was remembered by the field, and the field
+       is drawn only while no event of the calendar is chosen, so back again it held „Kranj" and
+       Slovenia with no memory of having written them. The memory is the panel's now. */
+    const user = setupUser()
+    const server = serverWith({ queue: () => [{ ...TYPED, city: '', country: '' }] })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000060')
+      await waitFor(() => expect(reads(server.asked, '/api/events')).toBe(1))
+      await user.type(placeBoxes().town, 'Kranj')
+      await waitFor(() => expect(placeBoxes().country).toHaveValue('SI'))
+
+      await chooseTheEvent(user, EVENT_53)
+
+      expect(panel().queryByLabelText(sr.review.placeTown)).toBeNull()
+
+      await user.type(panel().getByLabelText(sr.newResult.eventName), ' 2')
+
+      expect(placeBoxes().town).toHaveValue('Kranj')
+      expect(placeBoxes().country).toHaveValue('SI')
+
+      await user.type(placeBoxes().town, ' pod brdom')
+
+      expect(placeBoxes().town).toHaveValue('Kranj pod brdom')
+      expect(placeBoxes().country).toHaveValue('')
+      expect(placeBoxes().country).toBeEnabled()
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('does not take back a country chosen by hand, however the event comes and goes', async () => {
+    const user = setupUser()
+    const server = serverWith({ queue: () => [{ ...FROM_THE_BOOK, city: '', country: '' }] })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000040')
+      await waitFor(() => expect(reads(server.asked, '/api/events')).toBe(1))
+      await user.type(placeBoxes().town, 'Xqzrtgrad')
+      await user.selectOptions(placeBoxes().country, 'BA')
+
+      await chooseTheEvent(user, EVENT_53)
+      await user.type(panel().getByLabelText(sr.newResult.eventName), ' 2')
+      await user.type(placeBoxes().town, ' pod brdom')
+
+      expect(placeBoxes().town).toHaveValue('Xqzrtgrad pod brdom')
+      expect(placeBoxes().country).toHaveValue('BA')
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+describe('the country a run came with, under the panel that may take its town away', () => {
+  it('does not take back the country the member gave, whatever is typed after the town', async () => {
+    /* Nothing here wrote it: it came with the run, so the note the panel keeps starts empty and the
+       letters after the town leave it alone, with the event coming and going or not. */
+    const user = setupUser()
+    const server = serverWith({ queue: () => [TYPED] })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000060')
+      await waitFor(() => expect(reads(server.asked, '/api/events')).toBe(1))
+      await user.type(panel().getByLabelText(sr.review.placeTown), ' 2')
+
+      expect(panel().getByLabelText(sr.review.placeTown)).toHaveValue('Struga 2')
+      expect(panel().getByLabelText(sr.form.country)).toHaveValue('MK')
+
+      await chooseTheEvent(user, EVENT_53)
+      await user.type(panel().getByLabelText(sr.newResult.eventName), ' 2')
+      await user.type(panel().getByLabelText(sr.review.placeTown), '3')
+
+      expect(panel().getByLabelText(sr.review.placeTown)).toHaveValue('Struga 23')
+      expect(panel().getByLabelText(sr.form.country)).toHaveValue('MK')
+    } finally {
+      server.stop()
+    }
+  })
+})
+
 describe('what a case of this file may end in', () => {
   it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
     expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
