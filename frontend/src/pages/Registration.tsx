@@ -294,9 +294,10 @@ export function Registration() {
             somebody already confirmed or to somebody waiting on exactly this message, so the
             route is no oracle for which addresses are members). A 204 therefore says „received"
             and not „sent", and the sentence says what that is worth: IF this address is still
-            waiting, a message went out. It is `forgottenPassword.done`'s shape for the same
-            reason, and its words are a proposal of the author of this change (approved by the
-            coordinator), not the owner's.
+            waiting, a message is being sent (and since 21.10.2026 it does not say „sent" even then,
+            PDL P8, PENDING 28430). It is `forgottenPassword.done`'s shape for the same
+            reason. Its words were a proposal of the author of this change until 21.10.2026, when
+            the owner chose the pattern of all three sentences about a message (PDL P8).
 
             Asked once: the sentence replaces the button, which is what keeps one member from
             asking a mail relay for a letter per press. A refusal does not replace it, because

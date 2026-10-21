@@ -262,19 +262,8 @@
     "sr": "Srpski",
     "en": "English"
   },
-  "role": {
-    "label": "Role",
-    "visitor": "Visitor",
-    "competitor": "Competitor",
-    "moderator": "Moderator",
-    "superadmin": "Superadmin"
-  },
   "notFound": {
     "title": "No such page"
-  },
-  "clock": {
-    "label": "Today's date",
-    "reset": "Back to the real date"
   },
   "placeholder": {
     "title": "{name}",
@@ -429,9 +418,9 @@
     "doneTitle": "The application is recorded",
     "checkSpam": "If the message does not arrive within a few minutes, look in the junk mail as well.",
     "resend": "Send the confirmation again",
-    "resent": "If this address is still waiting to be confirmed, a new message has been sent. If it still does not arrive within a few minutes, write to us at info@balkanskatrkackaliga.net.",
+    "resent": "If this address is still waiting to be confirmed, we are sending a new message. If it does not arrive within a few minutes, write to us at info@balkanskatrkackaliga.net.",
     "resending": "Asking for the confirmation to be sent again...",
-    "doneText": "We have sent a message to {email}. Open it and confirm the address, because the account is activated only then.",
+    "doneText": "We are sending a message to {email} to confirm the address. Open it and confirm the address, because the account is activated only then. If it does not arrive within a few minutes, write to us at info@balkanskatrkackaliga.net.",
     "sending": "Sending the application...",
     "formIsNotComplete": "The server did not accept the application, because an answer is incomplete or unrecognised. Check the answers, the town and the country above all, then send again.",
     "passwordHasLeaked": "This password has already appeared in publicly published breaches, so the portal does not take it. Choose another.",
@@ -998,7 +987,7 @@
     "submit": "Send the link",
     "sending": "Sending",
     "needsAddress": "Enter an email address so that you can ask for the link.",
-    "done": "If there is an account at that address, the message with the link has been sent. Look in your mailbox, and in the junk mail if it is not there."
+    "done": "If there is an account at that address, we are sending the message with the link. Look in your mailbox, and in the junk mail if it is not there. If it does not arrive within a few minutes, write to us at info@balkanskatrkackaliga.net."
   },
   "confirmAddress": {
     "title": "Address confirmation",
@@ -1013,8 +1002,7 @@
     "rejected": "The portal did not manage to prove to the server that the request comes from this page. Refresh the page and try again.",
     "wrong": "The server answered with the number {status} and nothing was changed. Try again in a few minutes.",
     "malformed": "The portal sent data in a form the server cannot read. Nothing was changed. This is a fault of the portal, please tell us.",
-    "nothing": "The portal did not manage to reach the server. Check the connection and try again.",
-    "named": "from the server"
+    "nothing": "The portal did not manage to reach the server. Check the connection and try again."
   },
   "myProfile": {
     "signOut": "Sign out"

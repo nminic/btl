@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { ROUTES } from '../../app/routes'
+import devWords from '../../dev/words.sr.json'
 import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
 import { expectFrontPage, moderatorWith, renderAt } from '../../test/render'
@@ -193,7 +194,7 @@ describe('the role switch', () => {
     /* Four moderators, each with a different set, so the only way to see what a
        limited one runs into is to become one of them. Until this existed, the
        matrix had nobody to belong to. */
-    const chooser = await screen.findByLabelText(t('role.label'))
+    const chooser = await screen.findByLabelText(devWords.role.label)
     // By initials, so the widest choice does not push the rest of the header
     // onto a second line (owner, 30.07.2026).
     expect(within(chooser).getByRole('option', { name: 'N. V.' })).toBeInTheDocument()
@@ -244,7 +245,7 @@ describe('the role switch', () => {
        would: it unticking. */
     await waitFor(() => expect(box).not.toBeChecked())
 
-    await user.selectOptions(screen.getByLabelText(t('role.label')), 'moderator:1')
+    await user.selectOptions(screen.getByLabelText(devWords.role.label), 'moderator:1')
 
     /* The screen she was standing on is the one entity no moderator ever opens,
        so becoming her takes her off it and onto the front page. In through the

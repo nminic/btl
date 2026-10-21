@@ -218,11 +218,12 @@ describe('TopTen', () => {
 
   /* The circle of a member who has sent no photograph, which is thirty of the
      thirty two served members. Two things it has to do: carry that person's
-     initials, and carry a colour that is theirs and not everybody's. Both
-     survived being taken away. What the OTHER form of the circle does with an
-     approved portrait is measured where the circle is, in
+     initials, and carry NO colour that is theirs and not everybody's (PDL P28,
+     31.07.2026, „Sve kartice takmičara su identične"; this case asked for the
+     opposite until 21.10.2026, PENDING 29205). What the OTHER form of the circle
+     does with an approved portrait is measured where the circle is, in
      `components/portrait.test.tsx`. */
-  it('gives each face its own initials and its own colour', () => {
+  it('gives each face its own initials and the colour of all of them', () => {
     const { container } = renderWidget(
       <TopTen competitors={competitors} results={[]} season={2027} today={THE_DAY_BEFORE} gender="M" />,
     )
@@ -234,8 +235,10 @@ describe('TopTen', () => {
 
     // "Ime" and the member number, which is what the fixture calls people.
     expect(first(faces).textContent).toBe('I0')
-    expect(new Set(faces.map((one) => one.style.getPropertyValue('--face-hue'))).size).toBe(
-      competitors.length,
+    expect(faces).toHaveLength(competitors.length)
+    expect(faces.length).toBeGreaterThan(1)
+    expect(faces.map((one) => one.style.getPropertyValue('--face-hue'))).toEqual(
+      faces.map(() => ''),
     )
   })
 

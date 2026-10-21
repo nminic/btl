@@ -82,7 +82,8 @@ export function AccountMenu({ signedIn }: { signedIn: SignedIn }) {
              MEANS, and that decision is the owner's and has not been made.
 
              The accent keeps a second job because of this: filled with the accent it says
-             „an account", and filled with a colour of somebody's own it says „a person".
+             „an account", and filled with the blue every member's circle has (or with his
+             photograph) it says „a person".
 
              **And this arm also covers a MEMBER whose record has not arrived yet**, which is
              why the number handed over is still chosen the way it always was. `member` is
@@ -108,10 +109,11 @@ export function AccountMenu({ signedIn }: { signedIn: SignedIn }) {
              the import graph rather than a class name.
 
              **One thing about it changes look and is worth saying out loud:** the circle of a
-             signed in MEMBER is now his own colour rather than the accent, which is the rule
-             `Portrait.css` states for every other circle on the portal - „one person, or one
-             team, wears one colour wherever the portal draws them". The header was the one
-             place that disagreed. */
+             signed in MEMBER is now the one blue every member's circle has, or his photograph,
+             rather than the accent - the same circle wherever the portal draws him. (It was a
+             colour computed off his member number from 27.09.2026 until 21.10.2026, which the
+             owner had abolished on 31.07.2026, PDL P28, „Sve kartice takmičara su identične".)
+             The header was the one place that disagreed with the other circles. */
           <Portrait competitor={member} />
         )
       }
