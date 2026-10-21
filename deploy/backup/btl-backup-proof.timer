@@ -1,0 +1,11 @@
+# On the 2nd of every month at 05:00 Belgrade time: the owner's decision (5) of 20.10.2026, ADL O19.
+# An hour after that night's copy, so the copy it proves is the one made the same night.
+[Unit]
+Description=BTL monthly backup proof, on the 2nd at 05:00 Europe/Belgrade
+
+[Timer]
+OnCalendar=*-*-02 05:00:00 Europe/Belgrade
+Persistent=true
+
+[Install]
+WantedBy=timers.target
