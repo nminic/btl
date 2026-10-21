@@ -29,8 +29,28 @@ import './Shell.css'
 
    Awaited before this module is done rather than drawn lazily, because a control that
    arrived after the first paint would shift the row of tools under the reader's pointer, and
-   on QA, the one place they are drawn, that row is the header of every screen. */
-const DEV_CONTROLS = loadTheDevControls === null ? null : await loadTheDevControls()
+   on QA, the one place they are drawn, that row is the header of every screen.
+
+   AND A FAILURE TO LOAD THEM IS NOT A FAILURE OF THE PORTAL (PENDING 28870). This line is
+   a top-level `await`, so a module that is not done is a module that never runs: when the
+   import of either switch was refused (a chunk the server no longer holds after a deploy, a
+   connection that dropped while it was fetched) the rejection took `Shell` with it, and
+   `Shell` is the header of every screen, so the whole page stayed blank, on QA, the one
+   place this line is not `null`. A tool for whoever builds the portal must not be able to
+   take the portal down, so the failure is answered here with „no controls" and said once
+   in the console, the way `ErrorBoundary` says what it caught; the row they stand in is
+   drawn without them, which is how it already reads in a build that has none. The answer
+   is `null` for either switch failing, because the two come from one `Promise.all`
+   (`dev/tools.ts`) and a header with one of the two would be a row that changes shape
+   under the reader's pointer, which is what awaiting them was for. */
+const DEV_CONTROLS =
+  loadTheDevControls === null
+    ? null
+    : await loadTheDevControls().catch((failure: unknown) => {
+        console.error('The development controls did not load, so the header is drawn without them', failure)
+
+        return null
+      })
 
 function useRestOfPath(): string {
   const location = useLocation()
