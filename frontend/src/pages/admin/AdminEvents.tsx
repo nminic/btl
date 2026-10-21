@@ -656,25 +656,23 @@ export function AdminEvents() {
                 rowsOf(racesUnder(allRaces, eventId), fieldDate).map((one) => [one.id, one]),
               )
 
-              for (const row of kindOf(values) === 'race' ? current : []) {
-                if (row.id !== '' && !isChanged(row, served.get(row.id))) {
-                  continue
-                }
+              const toSend = (kindOf(values) === 'race' ? current : []).filter(
+                (row) => row.id === '' || isChanged(row, served.get(row.id)),
+              )
 
+              for (const row of toSend) {
                 /* A row that never was a race is made, and one that is, is written over.
                    Read off the row's own identity rather than off anything counted here:
                    the numbers this screen used to hand out came from `admin/raceIds.ts`,
                    which counts DOWN from nought, and the whole of that is gone - a
                    `bigserial` is what a race is addressed by now. */
                 const filed = storedRow(row, eventId)
-                const answer =
-                  row.id === ''
-                    ? await askTheServer('/api/races', raceUpsertFrom(row, eventId))
-                    : await askTheServer(
-                        `/api/races/${row.id}`,
-                        raceUpsertFrom(row, eventId),
-                        'PUT',
-                      )
+                /* ONE `await`, on the promise of whichever door the row goes through: two awaits in the two
+                   arms of a conditional split the coverage of everything after them across two ranges, and
+                   the branch of the refusal below was then counted short (measured in the gate, 21.10.2026). */
+                const answer = await (row.id === ''
+                  ? askTheServer('/api/races', raceUpsertFrom(row, eventId))
+                  : askTheServer(`/api/races/${row.id}`, raceUpsertFrom(row, eventId), 'PUT'))
 
                 if (answer.got !== 'done') {
                   refusals.push({ row, answer })
