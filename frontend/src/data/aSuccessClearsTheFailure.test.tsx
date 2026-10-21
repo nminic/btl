@@ -1,10 +1,19 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, configure, render, screen, waitFor } from '@testing-library/react'
 import { useRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { SessionProvider } from '../session/SessionProvider'
 import { answeredWith, serverThat } from '../test/serverAnswers'
 import { setupUser } from '../test/user'
 import { clearResourceCache, type ResourceName } from './client'
-import { useResource, type ResourceState } from './useResource'
+import { useInbox, useResource, useWhatIsWaiting, type ResourceState } from './useResource'
+
+/* EVERY WAIT OF THIS FILE IS SHORTER THAN THE CASE THAT IS WAITING (review of PR 618, round 1). The
+   global is `SLOW` (twenty seconds, `test/setup.ts`) and a case here has Vitest's own five, so a wait
+   that never succeeds was ended by the clock of the case and every mutation of this file failed as
+   `Test timed out in 5000ms` and not on the sentence that says what is wrong. Two seconds is room for a
+   runner several times slower than the one this was measured on, and leaves three for the rest of the
+   case. Set here, and so for this file alone: every file has a configuration of its own. */
+configure({ asyncUtilTimeout: 2_000 })
 
 /**
  * A SUCCESSFUL READ OF AN ADDRESS TAKES THE FAILURE OFF EVERY OTHER READER OF THE SAME ADDRESS
@@ -422,5 +431,232 @@ describe('what is told, and when', () => {
 
     await waitFor(() => expect(text('A')).toContain('ready: Liga'))
     expect(timesAsked(LEAGUES)).toBe(2)
+  })
+})
+
+/**
+ * AN ANSWER THAT WAS DROPPED BEFORE IT CAME TELLS NOBODY AND IS KEPT BY NOBODY (review of PR 618,
+ * round 1, a high finding, and a leak of one member's mail to the next).
+ *
+ * <p><b>What was measured.</b> A read started for the previous caller is still out when the caller
+ * changes. The new caller's own read fails, and then the old read arrives. `loadResource` wrote what
+ * arrived into the cache although `clearResourceCache` had already thrown that promise away (that half
+ * is older than the PR), and the reader's callback told every reader showing a failure of the address
+ * that the address had arrived - so the NEW caller's panel, showing its failure, took what the cache
+ * held, which was the PREVIOUS caller's mail. On the merge base the new caller stayed in his failure.
+ *
+ * <p><b>The rule is one sentence</b>: a read tells the others, and is kept, only while it is still the
+ * read the visit holds for its address. A read that was dropped is an answer to a question nobody is
+ * asking any more.
+ *
+ * <p><b>The axes are the answer.</b> <i>How the caller changed</i> (in place, under a panel that stays;
+ * through a panel that comes down and another that goes up). <i>Which name</i> (the two that depend on
+ * who is asking and are dropped by their own hooks: `inbox` and `me/applications`, each through the
+ * hook that real screens use, inside the provider they use). And a name that does not depend on anybody
+ * at all, dropped by a plain `clearResourceCache`, where the same two things are asked of a reader that
+ * is showing a failure beside the one whose read was dropped.
+ */
+
+const MINE = '000041'
+const HERS = '000042'
+
+const SECRET = 'A-SECRET'
+
+type TheNames = {
+  name: ResourceName
+  path: string
+  /** The hook a real screen calls, handed whose it is. */
+  use: (mine: string) => ResourceState<unknown>
+  /** What the server answers the member who asked first, with the secret in it. */
+  answer: () => Response
+}
+
+const json = (body: unknown): Response =>
+  new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
+
+const THE_NAMES: TheNames[] = [
+  {
+    name: 'inbox',
+    path: '/api/inbox',
+    use: (mine) => useInbox(mine),
+    answer: () =>
+      json([
+        {
+          id: 901,
+          from: 'Balkanska trkačka liga',
+          subject: SECRET,
+          body: 'Samo za prvog člana.',
+          date: '2026-10-01',
+          read: false,
+          teamInvitationId: null,
+          pairInviteId: null,
+        },
+      ]),
+  },
+  {
+    name: 'me/applications',
+    path: '/api/me/applications',
+    use: (mine) => useWhatIsWaiting(mine),
+    answer: () =>
+      json({
+        teamApplications: [],
+        teamInvitations: [],
+        teamProposals: [{ id: 902, teamId: null, name: SECRET, date: '2026-10-01' }],
+        pairInvites: [],
+        alreadyInATeam: false,
+      }),
+  },
+]
+
+/** The server that holds the FIRST read of an address and fails every one after it, which is the
+ *  order of the sequence being measured: the previous caller's read is out, the new caller's fails. */
+function theFirstReadIsHeldAndTheRestFail(path: string) {
+  const held = holding()
+  let calls = 0
+
+  server = serverThat((asked) => {
+    if (asked !== path) {
+      return null
+    }
+
+    calls += 1
+
+    return calls === 1 ? held.answer() : answeredWith(500)
+  })
+
+  return held
+}
+
+function wordsOfAnything(state: ResourceState<unknown>): string {
+  if (state.status === 'loading') {
+    return 'loading'
+  }
+
+  return state.status === 'ready' ? `ready: ${JSON.stringify(state.data)}` : `failed: ${state.error.message}`
+}
+
+function Panel({ mine, use }: { mine: string; use: (mine: string) => ResourceState<unknown> }) {
+  return (
+    <section aria-label="panel">
+      <p>{wordsOfAnything(use(mine))}</p>
+    </section>
+  )
+}
+
+/** Long enough for an answer that was released to have gone all the way through the data layer, which
+ *  is what makes a case that says „it did not reach the panel" mean it. The mutations of this file are
+ *  what show the wait is long enough: a panel that IS reached is reached inside it. */
+const aMomentForTheOldAnswer = () =>
+  act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 150))
+  })
+
+describe.each(THE_NAMES)('the answer to the previous caller of $name, arriving after the caller has changed', (one) => {
+  it('does not reach the new caller\'s panel when the caller is switched under a panel that stays', async () => {
+    const held = theFirstReadIsHeldAndTheRestFail(one.path)
+    const panel = () => screen.getByRole('region', { name: 'panel' }).textContent
+    const { rerender } = render(
+      <SessionProvider>
+        <Panel mine={MINE} use={one.use} />
+      </SessionProvider>,
+    )
+
+    await waitFor(() => expect(timesAsked(one.path)).toBe(1))
+
+    rerender(
+      <SessionProvider>
+        <Panel mine={HERS} use={one.use} />
+      </SessionProvider>,
+    )
+    await waitFor(() => expect(panel()).toContain('failed'))
+
+    held.release(one.answer())
+    await aMomentForTheOldAnswer()
+
+    expect(panel(), 'the previous caller\'s answer reached the new caller').not.toContain(SECRET)
+    expect(panel()).toContain('failed')
+  })
+
+  it('does not reach the new caller\'s panel when the first panel came down and another went up', async () => {
+    const held = theFirstReadIsHeldAndTheRestFail(one.path)
+    const panel = () => screen.getByRole('region', { name: 'panel' }).textContent
+    const { rerender } = render(
+      <SessionProvider>
+        <Panel mine={MINE} use={one.use} />
+      </SessionProvider>,
+    )
+
+    await waitFor(() => expect(timesAsked(one.path)).toBe(1))
+
+    /* Signed out: the panel is gone while its read is still out. */
+    rerender(<SessionProvider>{null}</SessionProvider>)
+    /* Signed in as somebody else: his read is the second, and it fails. */
+    rerender(
+      <SessionProvider>
+        <Panel mine={HERS} use={one.use} />
+      </SessionProvider>,
+    )
+    await waitFor(() => expect(panel()).toContain('failed'))
+
+    held.release(one.answer())
+    await aMomentForTheOldAnswer()
+
+    expect(panel(), 'the previous caller\'s answer reached the new caller').not.toContain(SECRET)
+    expect(panel()).toContain('failed')
+  })
+})
+
+describe('an answer that the cache dropped before it came', () => {
+  it('is not handed to a reader that is showing a failure, and is not kept for the next reader', async () => {
+    const held = holding()
+    let calls = 0
+
+    server = serverThat((path) => {
+      if (path !== LEAGUES) {
+        return null
+      }
+
+      calls += 1
+
+      if (calls === 1) {
+        return held.answer()
+      }
+
+      return calls === 2 ? answeredWith(500) : serving('Fresh')()
+    })
+
+    const { rerender } = render(<Reader name="leagues" label="X" />)
+
+    await waitFor(() => expect(timesAsked(LEAGUES)).toBe(1))
+
+    /* The visit drops the address while X's read is out, and the reader that comes next fails. */
+    act(() => {
+      clearResourceCache('leagues')
+    })
+    rerender(
+      <>
+        <Reader name="leagues" label="X" />
+        <Reader name="leagues" label="Y" />
+      </>,
+    )
+    await waitFor(() => expect(text('Y')).toContain('failed'))
+
+    held.release(serving('Dropped')())
+    await aMomentForTheOldAnswer()
+
+    expect(text('Y'), 'an answer the cache had dropped reached a reader showing a failure').toContain('failed')
+
+    /* And it was not put back into the cache: a reader that arrives now finds nothing there, asks the
+       server, and reads what the server answers, not the answer that was dropped. */
+    rerender(
+      <>
+        <Reader name="leagues" label="X" />
+        <Reader name="leagues" label="Y" />
+        <Reader name="leagues" label="Z" />
+      </>,
+    )
+    await waitFor(() => expect(text('Z')).toContain('ready: Fresh'))
+    expect(timesAsked(LEAGUES), 'a dropped answer was kept and read instead of asking').toBe(3)
+    expect(text('Y')).toContain('ready: Fresh')
   })
 })
