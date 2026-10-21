@@ -1,10 +1,18 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { act, configure, getConfig, screen, waitFor, within } from '@testing-library/react'
-import { arrivedResource, clearResourceCache, loadResource, type ResourceName } from '../../data/client'
+import {
+  arrivedResource,
+  clearResourceCache,
+  loadResource,
+  RESOURCE_NAMES,
+  type ResourceName,
+} from '../../data/client'
 import type { Competitor, Member } from '../../data/types'
 import sr from '../../i18n/sr.json'
 import { asMember, person } from '../../test/plate'
 import { renderAt } from '../../test/render'
-import { refused, serverThat, type Asked } from '../../test/serverAnswers'
+import { answeredWith, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
 import { SLOW } from '../../test/slow'
@@ -25,6 +33,63 @@ import { SLOW } from '../../test/slow'
  */
 /* Every wait is given half of what a case is given, for the reason `rowPayment.test.tsx` gives. */
 configure({ asyncUtilTimeout: SLOW / 2 })
+
+/**
+ * THE FLOOR UNDER WHAT A CHANGE OF A SEASON DROPS (PENDING 29656), which is the backend's own SQL and
+ * not a sentence.
+ *
+ * <p><b>Why it is read and not listed.</b> `AdminMembers#seasonChanged` is a list of cached names written
+ * by hand, and the one it lacked for two days (`attendance`, `comments`) was a name nobody had to be
+ * reminded of: the route reads `competitor.active`, the screen keeps drawing, and the fault is a list that
+ * shows a member who is not one any more. A list that only knows what its author remembered is held
+ * against something that knows more.
+ *
+ * <p><b>What is asked.</b> Every cached name has one route that answers a read at `/api/<name>`. A name
+ * READS THE FLAG when the class that declares that route has a line of SQL, a string literal, that names
+ * `active`: a javadoc or a comment line begins with `*` or `/` and is never one. Eight names did on
+ * 20.10.2026. Every one of them must be dropped by a change of a season, bar the one exception below.
+ *
+ * <p><b>Where it stops.</b> It reads the class, not the route: a class that declares two routes would
+ * lend the flag of one to the other, and none of the eight does. A name whose route reaches the flag
+ * through a view or a function in the database would not be seen; no cached name does.
+ */
+const JAVA = join(process.cwd(), '..', 'backend', 'src', 'main', 'java')
+
+function javaUnder(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const at = join(dir, entry.name)
+
+    if (entry.isDirectory()) {
+      return javaUnder(at)
+    }
+
+    return entry.name.endsWith('.java') ? [readFileSync(at, 'utf-8')] : []
+  })
+}
+
+function namesThatReadTheFlag(): ResourceName[] {
+  const sources = javaUnder(JAVA)
+  const aLineOfSqlNamingIt = /^\s*(?:\+\s*)?"[^"\n]*\bactive\b[^"\n]*"/m
+
+  return RESOURCE_NAMES.filter((name) =>
+    sources.some(
+      (code) => code.includes(`@GetMapping("/api/${name}")`) && aLineOfSqlNamingIt.test(code),
+    ),
+  )
+}
+
+/**
+ * The one name that reads the flag and is not dropped by a change of a season. PENDING 29656 records it
+ * as an edge („me/applications čita active samo za moderatorove sopstvene prijave"): it is the reader's
+ * own list, dropped by its own hook when the member it is handed changes (`theWaitingNowBelongsTo`), and
+ * this screen hands it no member. Written here so that it is a decision and not a gap, and checked in
+ * the other direction too: the day it stops reading the flag this exception is dead and the case fails.
+ */
+const READS_THE_FLAG_AND_IS_NOT_DROPPED = 'me/applications'
+
+/** The two the screen asks for again the moment they are dropped, so their landing back in the cache
+ *  proves nothing: a drop of theirs is a second request, and that is what is counted. */
+const ASKED_AGAIN_AT_ONCE: ResourceName[] = ['members', 'competitors']
 
 describe('cancelling a season or changing its basis on a member’s row', () => {
   const PAID = '000002'
@@ -92,7 +157,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
         return Response.json(ROWS)
       }
 
-      if (path.startsWith('/api/members/') && how !== 'GET') {
+      if ((path.startsWith('/api/members/') || path.startsWith('/api/competitors/')) && how !== 'GET') {
         return toTheRow(path, init)
       }
 
@@ -504,6 +569,246 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
 
     await waitFor(() => expect(reads(server.asked, '/api/inbox')).toBeGreaterThan(inboxReads))
+
+    server.stop()
+  }, SLOW)
+
+  /**
+   * EVERY CACHED ANSWER THAT READS THE FLAG IS ASKED AGAIN AFTER A CHANGE OF A SEASON (PENDING 29656),
+   * through each of the four doors that ends in `seasonChanged`: the cancellation, the change of a
+   * basis, the grant and the payment over the exemption. The names are the backend's, read out of its
+   * SQL above; each is loaded and confirmed in hand BEFORE the press, so „gone afterwards" is a change
+   * this case can see and not a guess about a resource nobody had asked for.
+   */
+  it.each([
+    ['the cancellation', PAID],
+    ['the change to the exemption', PAID],
+    ['the grant', AN_OLDER_SEASON],
+    ['the payment over the exemption', EXEMPT],
+  ])('drops every answer that reads the flag after %s', async (door, number) => {
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin', ON_THE_BALANCE)
+
+    const row = await rowOf(number)
+    const names = namesThatReadTheFlag().filter((name) => name !== READS_THE_FLAG_AND_IS_NOT_DROPPED)
+    const dropped = names.filter((name) => !ASKED_AGAIN_AT_ONCE.includes(name))
+
+    for (const name of dropped) {
+      await loadResource(name)
+      expect(arrivedResource(name), `${name} never landed, so nothing below was measured`).toBeDefined()
+    }
+
+    const before = ASKED_AGAIN_AT_ONCE.map((name) => reads(server.asked, `/api/${name}`))
+
+    if (door === 'the cancellation') {
+      await user.click(within(row).getByRole('button', { name: 'Storniraj' }))
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+    } else if (door === 'the change to the exemption') {
+      await user.click(within(row).getByRole('button', { name: 'Promeni osnov u oslobođenje' }))
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+    } else if (door === 'the grant') {
+      await user.click(within(row).getByRole('button', { name: 'Odobri oslobođenje' }))
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+    } else {
+      await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '3200')
+      await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+    }
+
+    await waitFor(() => {
+      for (const name of dropped) {
+        expect(arrivedResource(name), `${name} was still cached after ${door}`).toBeUndefined()
+      }
+    })
+
+    ASKED_AGAIN_AT_ONCE.forEach((name, at) => {
+      expect(reads(server.asked, `/api/${name}`), `${name} was not asked again after ${door}`).toBe(
+        (before[at] ?? 0) + 1,
+      )
+    })
+
+    server.stop()
+  }, SLOW)
+
+  /**
+   * THE FLOOR STANDS ON SOMETHING, and the exception stands on something. A derivation that found no
+   * name would make the case above pass over an empty list, and an exception for a name that no longer
+   * reads the flag would be a rule about nothing.
+   */
+  it('reads the flag off the backend: the names are found, and the one exception is still one', () => {
+    const names = namesThatReadTheFlag()
+
+    expect(names).toContain('competitors')
+    expect(names).toContain('attendance')
+    expect(names).toContain('comments')
+    expect(names).toContain(READS_THE_FLAG_AND_IS_NOT_DROPPED)
+    expect(names).not.toContain('ducats')
+  })
+
+  /**
+   * A REFUSAL DROPS NOTHING, AND NEITHER DOES A RE-DRAW OF THE SCREEN. The two ways to get the new lines
+   * wrong that the case above cannot see: dropping when the press is answered whatever the answer was, and
+   * dropping in the body of the screen, where it would run on every render. The first is a refused
+   * cancellation, the second a change of the filter, which draws the screen again with nothing written.
+   */
+  it('drops nothing for a refused cancellation, and nothing when the screen is only drawn again', async () => {
+    const server = serving(() => refused('theBasisHasChanged', 409))
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const row = await rowOf(ON_THE_BALANCE)
+    const names = namesThatReadTheFlag().filter(
+      (name) => name !== READS_THE_FLAG_AND_IS_NOT_DROPPED && !ASKED_AGAIN_AT_ONCE.includes(name),
+    )
+
+    for (const name of names) {
+      await loadResource(name)
+    }
+
+    await user.click(within(row).getByRole('button', { name: 'Storniraj' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+    await within(row).findByText(/u međuvremenu promenio/)
+
+    await user.selectOptions(screen.getByLabelText('Članstvo'), 'Svi')
+    await screen.findByRole('table', { name: 'Članovi' })
+
+    for (const name of names) {
+      expect(arrivedResource(name), `${name} was dropped though nothing was written`).toBeDefined()
+    }
+
+    expect(reads(server.asked, '/api/members')).toBe(1)
+    expect(reads(server.asked, '/api/competitors')).toBe(1)
+
+    server.stop()
+  }, SLOW)
+
+  /**
+   * THE SENTENCE OF A REFUSED CANCELLATION GOES WHEN A PAYMENT OVER THE EXEMPTION GOES THROUGH ON THE
+   * SAME ROW (PENDING 29660), AND NO OTHER ROW'S REFUSAL GOES WITH IT.
+   *
+   * <p>Three rows are refused first and the success is on the second, so that „the first row", „the last
+   * refused" and „every row" are three different answers: the first row (Ana) is refused a change, the
+   * third (Mila) a cancellation in the very words of the second's (Zoran), so the sentence is told from
+   * the other by the ROW it stands beside and not by its text. Asked of each row's own box.
+   */
+  it('takes the refusal of a row away when another control on that row goes through, and leaves the other rows’', async () => {
+    const server = serving((path, init) => {
+      if (init?.method === 'PUT' && path.includes(PAID)) {
+        return refused('thisChangeIsNotOffered', 400)
+      }
+
+      if (init?.method === 'PUT') {
+        return Response.json({ season: 2028, basis: 'payment' })
+      }
+
+      return refused('theBasisHasChanged', 409)
+    })
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const refusedCancel = /u međuvremenu promenio/
+    const paid = await rowOf(PAID)
+    const exempt = await rowOf(EXEMPT)
+    const balance = await rowOf(ON_THE_BALANCE)
+
+    await user.click(within(balance).getByRole('button', { name: 'Storniraj' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+    await within(balance).findByText(refusedCancel)
+
+    await user.click(within(paid).getByRole('button', { name: 'Promeni osnov u oslobođenje' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+    await within(paid).findByText(sr.admin.membershipRefused.thisChangeIsNotOffered)
+
+    await user.click(within(exempt).getByRole('button', { name: 'Storniraj' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+    await within(exempt).findByText(refusedCancel)
+
+    await user.type(within(exempt).getByLabelText('Uplaćeno (RSD)'), '3200')
+    await user.click(within(exempt).getByRole('button', { name: 'Upiši uplatu' }))
+
+    expect(await screen.findByText('Osnov članstva je promenjen.')).toBeInTheDocument()
+    expect(within(exempt).queryByText(refusedCancel)).toBeNull()
+    expect(within(balance).getByText(refusedCancel)).toBeInTheDocument()
+    expect(within(paid).getByText(sr.admin.membershipRefused.thisChangeIsNotOffered)).toBeInTheDocument()
+
+    /* AND A SCREEN DRAWN AGAIN WITH NOTHING WRITTEN LEAVES THEM STANDING. */
+    await user.type(screen.getByRole('searchbox'), 'Tomić')
+    expect(within(balance).getByText(refusedCancel)).toBeInTheDocument()
+
+    server.stop()
+  }, SLOW)
+
+  /**
+   * THE SAME ROW'S OWN NEXT SUCCESS, THROUGH THE CONTROLS THAT CANNOT SEE EACH OTHER'S STATE.
+   *
+   * <p>A refused payment is gone when the same control's next press goes through, which is the case the
+   * finding's mutation survived; a refused payment is gone when a GRANT goes through beside it, which is
+   * another control of the same row; and a refused deletion is gone when a payment goes through on its row
+   * while the refused deletion beside ANOTHER row stays.
+   */
+  it('clears a refused payment on its own success and on a grant, and a refused deletion on a payment', async () => {
+    let payments = 0
+    const server = serving((path, init) => {
+      if (init?.method === 'DELETE' && path.startsWith('/api/competitors/')) {
+        return answeredWith(404)
+      }
+
+      if (path.endsWith('/payment')) {
+        payments += 1
+
+        return payments === 1 || payments === 3
+          ? refused('theMembershipIsAlreadyHeld', 409)
+          : new Response('{}', { status: 201 })
+      }
+
+      return Response.json({ season: 2028, basis: 'feeExempt' }, { status: 201 })
+    })
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const refusedPayment = sr.verification.activationRefused.theMembershipIsAlreadyHeld
+    const refusedDeletion = /Server je odgovorio brojem 404/
+    const older = await rowOf(AN_OLDER_SEASON)
+    const balance = await rowOf(ON_THE_BALANCE)
+
+    /* A refused payment, then the same control's success. */
+    await user.type(within(older).getByLabelText('Uplaćeno (RSD)'), '4800')
+    await user.click(within(older).getByRole('button', { name: 'Upiši uplatu' }))
+    await within(older).findByText(refusedPayment)
+
+    await user.click(within(older).getByRole('button', { name: 'Upiši uplatu' }))
+    expect(await screen.findByText('Uplata je upisana.')).toBeInTheDocument()
+    expect(within(older).queryByText(refusedPayment)).toBeNull()
+
+    /* A refused payment, then another control's success on the same row. */
+    await user.type(within(older).getByLabelText('Uplaćeno (RSD)'), '4800')
+    await user.click(within(older).getByRole('button', { name: 'Upiši uplatu' }))
+    await within(older).findByText(refusedPayment)
+
+    await user.click(within(older).getByRole('button', { name: 'Odobri oslobođenje' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+    expect(await screen.findByText('Oslobođenje je upisano.')).toBeInTheDocument()
+    expect(within(older).queryByText(refusedPayment)).toBeNull()
+
+    /* A refused deletion is gone when a payment goes through on ITS row. The screen holds one refused
+       deletion at a time, so it is the row pressed last that carries it. */
+    async function refuseTheDeletionOf(row: HTMLElement, name: string) {
+      await user.click(within(row).getByRole('button', { name: `Obriši: ${name}` }))
+      await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
+      expect(await within(row).findByText(refusedDeletion)).toBeInTheDocument()
+    }
+
+    await refuseTheDeletionOf(older, 'Ivan Jović')
+    await user.type(within(older).getByLabelText('Uplaćeno (RSD)'), '4800')
+    await user.click(within(older).getByRole('button', { name: 'Upiši uplatu' }))
+    await waitFor(() => expect(within(older).queryByText(refusedDeletion)).toBeNull())
+
+    /* ...and stays when the payment goes through on ANOTHER row. */
+    await refuseTheDeletionOf(balance, 'Mila Tomić')
+    await user.type(within(older).getByLabelText('Uplaćeno (RSD)'), '4800')
+    await user.click(within(older).getByRole('button', { name: 'Upiši uplatu' }))
+    await waitFor(() => expect(payments).toBe(5))
+    expect(within(balance).getByText(refusedDeletion)).toBeInTheDocument()
 
     server.stop()
   }, SLOW)
