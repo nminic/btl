@@ -112,10 +112,12 @@ import java.util.concurrent.TimeUnit;
  * {@code PouringFromQaScriptTest} holds the options of that one line. <b>What stays open,
  * named:</b> a pour whose copy and transaction together last longer than ten minutes could
  * still lose its first files if a sweep fell in that time, and nothing here measures how long a
- * pour takes. A restore of the volume before the database is the same arrangement with no
- * script of ours to change. And a database restored from a dump older than the files makes the
- * files of later uploads strays in THAT database, so they go within the hour; they are files
- * nothing points at there.
+ * pour takes. A restore of the volume before the database would be the same arrangement, and
+ * {@code deploy/restore.sh} is written against it: it refuses while the backend runs, restores the
+ * database first and the photographs after it, and gives every file the time of the restore
+ * ({@code tar -m}), so no restored file looks old to this sweep. And a database restored from a
+ * dump older than the files makes the files of later uploads strays in THAT database, so they go
+ * within the hour; they are files nothing points at there.
  *
  * <p><b>WHAT IT DOES NOT DO.</b> It looks at files and never at rows: it deletes no
  * {@code photo} row, and a file whose row stands is a file it keeps. A row that nothing holds
