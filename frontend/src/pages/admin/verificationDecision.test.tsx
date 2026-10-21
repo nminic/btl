@@ -994,8 +994,8 @@ describe('a decision on a queue served by the pending screen', () => {
 
         /* B is the one he reads, and A is the one he sends back. */
         await user.click(toggleOf('ver-kom-4'))
-        await user.click(second.getByRole('button', { name: 'Odbij' }))
-        await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+        await user.click(second.getByRole('button', { name: /^Obriši: / }))
+        await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
         await screen.findByRole('alert')
 
         const sentence = `Odgovor za "${headingOfCard('ver-kom-2')}" nije prihvaćen. Otvori karticu.`
@@ -1004,8 +1004,8 @@ describe('a decision on a queue served by the pending screen', () => {
 
         const line = watchTheLine()
 
-        await user.click(second.getByRole('button', { name: 'Odbij' }))
-        await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+        await user.click(second.getByRole('button', { name: /^Obriši: / }))
+        await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
         await waitFor(() => {
           expect(line.seen.at(-1)).toBe(sentence)
         })
