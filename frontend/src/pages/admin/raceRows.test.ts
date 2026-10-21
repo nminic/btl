@@ -40,6 +40,7 @@ function race(id: number, date: string, distanceKm: number): Race {
 }
 
 const row = (over: Partial<RaceRow> = {}): RaceRow => ({
+  place: 'entered-1',
   id: '',
   name: 'Trka',
   renamed: false,
