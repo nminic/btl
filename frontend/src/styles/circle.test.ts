@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { must } from '../test/at'
 
@@ -94,7 +94,7 @@ describe('the circle a face and a team mark share', () => {
        colour. */
     expect(valueOf(portrait, '.face-circle', 'color')).toBe('var(--white)')
     expect(valueOf(portrait, '.face-circle', 'font-weight')).toBe('700')
-    expect(valueOf(portrait, '.face-circle', 'background')).toContain('hsl(var(--face-hue')
+    expect(valueOf(portrait, '.face-circle', 'background')).toContain('hsl(214 45% 32%')
   })
 
   it('carries every declaration neither mark can do without', () => {
@@ -106,6 +106,88 @@ describe('the circle a face and a team mark share', () => {
     expect(shared).toEqual(
       expect.arrayContaining(['border-radius', 'color', 'font-weight', 'background', 'overflow']),
     )
+  })
+
+  it('has no stylesheet that declares the old hue variable', () => {
+    /* Owner, 21.10.2026 (PDL: „Inicijali tima postaju jednobojni, kao kartice članova"), after
+       31.07.2026 for the cards of members (P28). `.face-circle` is one written-out blue and reads
+       no variable (`Portrait.css`), and `--face-hue` is set by nobody. The inline half of that is asked of the rendered
+       screens (`pages/publicScreens.test.tsx`, which sees an ancestor of a circle as much as the
+       circle); this is the other half, which jsdom cannot see because it applies no stylesheet:
+       a rule such as `.cards__item { --face-hue: ... }` is a hue written where a sheet that
+       read it would hand it to every circle inside, and sets nothing on a circle itself. Asked of EVERY stylesheet under `src` and of the
+       declaration, not of a selector. **That is all it holds: the one NAME `--face-hue`.** A hue
+       written under another name, or as a class per team, passes here (review of PR 619, measured),
+       and the decision itself is held in the next case, which asks what may select a team mark,
+       and in `pages/publicScreens.test.tsx`, which asks the drawn mark. A comment saying the name
+       is not a declaration, so comments are blanked first. */
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+        entry.isDirectory()
+          ? walk(join(dir, entry.name))
+          : entry.name.endsWith('.css')
+            ? [join(dir, entry.name)]
+            : [],
+      )
+    const sheets = walk(join(process.cwd(), 'src'))
+    const setting = sheets.filter((path) =>
+      /--face-hue\s*:/.test(readFileSync(path, 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '')),
+    )
+
+    /* Measured and not assumed: a walk that found nothing would answer „no sheet sets it". */
+    expect(sheets.length).toBeGreaterThan(30)
+    expect(setting, 'a stylesheet gives circles a hue').toEqual([])
+  })
+
+  it('lets no rule in any stylesheet pick a team mark out, so the initials of a team have no colour of their own', () => {
+    /* Owner, 21.10.2026 (PDL: „Inicijali tima postaju jednobojni, kao kartice članova"). The
+       decision is not a name: three ways of colouring initials by team id passed the guard on
+       `--face-hue` (review of PR 619, measured on 925 cases): an inline `background`, an inline
+       `--team-hue` read by a new rule here, and a class per team with a background each. The
+       first and the third are an attribute on the drawn mark and are asked of the screen
+       (`pages/publicScreens.test.tsx`). This is the half jsdom cannot see, a rule in a sheet.
+
+       Asked of EVERY stylesheet under `src`, of every selector (each one of a list, in or out of
+       an at-rule), and of the two classes that make the circle, not of a name that a colour
+       would be given: the selectors that name `face-circle` or `team-mark` are exactly the three
+       there are, the circle, the mark and the mark that is a logo. A fourth is a mark picked
+       out, whatever it is picked out by. And the mark's own rule declares no colour of any
+       kind and no custom property, since a value handed down by `var()` is the one thing a
+       selector cannot show.
+
+       **What this does not hold, said once:** a rule that reaches the mark without naming
+       either class (`tr:nth-child(3n) td > span`) is not asked here, and it is not asked of the
+       screen either, which sees no stylesheet. It would colour by row and not by team, but it
+       would be a colour the mark does not share with every other. */
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+        entry.isDirectory()
+          ? walk(join(dir, entry.name))
+          : entry.name.endsWith('.css')
+            ? [join(dir, entry.name)]
+            : [],
+      )
+    const sheets = walk(join(process.cwd(), 'src'))
+    const selectors = sheets.flatMap((path) =>
+      [...readFileSync(path, 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{/g)].flatMap(
+        (found) =>
+          (found[1] ?? '')
+            .split(';')
+            .slice(-1)
+            .flatMap((prelude) => prelude.split(','))
+            .map((one) => one.trim().replace(/\s+/g, ' '))
+            .filter((one) => /face-circle|team-mark/.test(one) && !one.startsWith('@')),
+      ),
+    )
+
+    /* Measured and not assumed: the walk found the sheets and found the three. */
+    expect(sheets.length).toBeGreaterThan(30)
+    expect(selectors.sort()).toEqual(['.face-circle', '.team-mark', '.team-mark.team-mark--logo'])
+
+    const own = declaredIn(bodyOf(teamMark, '.team-mark'))
+
+    expect(own.filter((property) => /color|background|^--/.test(property))).toEqual([])
+    expect(declaredIn(bodyOf(teamMark, '.team-mark.team-mark--logo'))).toEqual(['background'])
   })
 
   it('leaves each mark only what genuinely differs', () => {

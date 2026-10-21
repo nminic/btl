@@ -29,17 +29,26 @@ import { sources, WHOLE_PORTAL } from '../test/sources'
  * razlicita skupa, pa nijedan sam nije dovoljan: po komponenti 5 fajlova, po monogramu 5, po
  * CSS klasi `face-circle` 6, po `hueFor` 4."
  *
- * **So the two questions below are the two traces that DID find them**, asked of the module
- * graph rather than of any text:
+ * **So the questions below are the traces that DID find them**, asked of the module graph
+ * rather than of any text:
  *
- * - who reaches the module that makes a member's own COLOUR (`pages/competitorFace.ts`), and
  * - who reaches the module that makes the letters of a circle with no person behind it
- *   (`app/monogram.ts`).
+ *   (`app/monogram.ts`), and
+ * - whether the header reaches `Portrait`.
+ *
+ * **The third trace of P28f, who reaches the module that makes a COLOUR (`pages/competitorFace.ts`),
+ * is gone with the module** (owner, 21.10.2026, PDL: „Inicijali tima postaju jednobojni, kao
+ * kartice članova"). It had two readers until the member's circle lost its colour on 21.10.2026
+ * (PENDING 29205) and one, the team mark, until the same day; a graph of a module that does not
+ * exist answers „nothing reaches it" in the words of a portal with one home, so the question moved
+ * to what a colour IS on a screen: an element that sets `--face-hue`. That is asked of the rendered
+ * competitors and teams screens, ancestors of a circle included (`pages/publicScreens.test.tsx`,
+ * „sets no hue on any element"), and of every stylesheet (`styles/circle.test.ts`).
  *
  * Every `import`, `export … from`, `import(…)` and `require(…)` is read off the parser rather
  * than off the text (`ts.preProcessFile`), and each specifier is resolved the way the bundler
- * resolves it, so `'./competitorFace'`, `"./competitorFace.ts"` and
- * `'../pages/competitorFace'` are one answer and not three. Four drafts of one guard were
+ * resolves it, so `'./monogram'`, `"./monogram.ts"` and
+ * `'../app/monogram'` are one answer and not three. Four drafts of one guard were
  * lost to those spellings on 07.09.2026 (PDL, and `pages/member/oneQuestion.test.tsx` is the
  * precedent this copies whole).
  *
@@ -67,7 +76,7 @@ function named(path: string): string {
  * resolves it.
  *
  * `allowImportingTsExtensions` is not decoration: `tsconfig.app.json` turns it on, so
- * `'./competitorFace.ts'` is a spelling somebody may write tomorrow, and a reader that does
+ * `'./monogram.ts'` is a spelling somebody may write tomorrow, and a reader that does
  * not know it would answer „nothing reaches this module".
  */
 const AS_THE_BUNDLER_DOES: ts.CompilerOptions = {
@@ -107,33 +116,6 @@ function modulesReaching(wanted: string): { walked: number; reaching: string[] }
 }
 
 describe('the circle a member is drawn in', () => {
-  it('is coloured in one module, reached by the team mark and by nothing else', () => {
-    /* `hueFor` turns an identity into a hue, and a module that reaches it is a module drawing
-       somebody's own disc. **One may, and it is not a member's circle**: the colour derived from
-       a member number was abolished on 31.07.2026 (PDL P28, „Sve kartice takmičara su
-       identične"), and `components/Portrait.tsx`, which reached this module until 21.10.2026
-       (PENDING 29205), no longer does. Put back, it is listed here and this fails.
-
-       - `components/TeamMark.tsx` is a TEAM's mark, which is a different thing that happens
-         to be the same shape: it takes its hue from the team's id and never from a member
-         (`hueFor(String(team.id))`), it draws a team's logo and not anybody's portrait, and
-         its own sheet says at length why the two share the circle and nothing else (ADL A7).
-         It is an exception by name and with a reason, not a name on a list.
-
-       Anything else here is a second home of a member's face, and the two that were here
-       until 27.09.2026 are the reason this case exists: `pages/Competitors.tsx` reached this
-       module and `app/AccountMenu.tsx` reached the one below it, and a photograph taught to
-       `Portrait` would have arrived on neither. */
-    const { walked, reaching } = modulesReaching('pages/competitorFace.ts')
-
-    expect(walked, 'the sweep read fewer files than the portal has').toBeGreaterThan(
-      WHOLE_PORTAL,
-    )
-    expect(reaching, 'a second module has begun to colour a face').toEqual([
-      'components/TeamMark.tsx',
-    ])
-  })
-
   it('takes its letters from a member’s own record, so only an account asks for a monogram', () => {
     /* The other trace, and the one that found the header. `app/monogram.ts` answers the last
        two characters of whatever identifies somebody, which is what a circle holds when there
@@ -164,17 +146,17 @@ describe('the circle a member is drawn in', () => {
 
        Reverting `app/AccountMenu.tsx` alone leaves it the sole reacher of `app/monogram.ts`
        either way, because the account arm above needs that module whether the member arm
-       beside it draws through `Portrait` or draws its own circle again; and the reverted
-       header never had to reach `pages/competitorFace.ts` to draw a plain monogram with no
-       colour of its own. Neither list moves, so neither case notices - a member with an
+       beside it draws through `Portrait` or draws its own circle again, and a plain monogram
+       with no colour of its own needs nothing else. The list does not move, so the case
+       does not notice - a member with an
        approved photograph would have gone back to seeing his own initials in the header and
-       both cases above would still read exactly as they do here.
+       the case above would still read exactly as it does here.
 
        So this asks the one question that does move: whether the header's own module reaches
        `Portrait` at all. It is a question about REACH rather than about a class name or a
        kept branch, so unlike a sweep for text there is no spelling it can be incomplete in
        (`ts.preProcessFile` and module resolution read every `import`, `export … from`,
-       `import(…)` and `require(…)` alike, exactly as the two cases above already rely on). */
+       `import(…)` and `require(…)` alike, exactly as the case above already relies on). */
     const { walked, reaching } = modulesReaching('components/Portrait.tsx')
 
     expect(walked).toBeGreaterThan(WHOLE_PORTAL)

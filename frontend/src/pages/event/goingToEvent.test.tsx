@@ -590,9 +590,10 @@ describe('the switch that says you are going', () => {
   })
 
   it('keeps the switch as it was when the server refuses, and says why', async () => {
-    /* The page offers the switch by its own day, which is the day in UTC, and the server
-       refuses by Belgrade's: for an hour or two after midnight they disagree about yesterday's
-       event, and this is what the reader meets then (`AttendanceWriteApi`). */
+    /* The page offers the switch by its own day, which is Belgrade's since 20.10.2026 (the
+       server's own), so the two disagree about yesterday's event only for a tab left open
+       across midnight, and this is what the reader meets then (`AttendanceWriteApi`). The
+       real clock's hour after midnight is measured in `clock/belgradeDay.test.tsx`. */
     const user = setupUser()
     const { event, day } = await upcoming()
 
