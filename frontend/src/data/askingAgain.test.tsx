@@ -297,8 +297,10 @@ describe('a failure that is on more than one reader', () => {
     const { rerender } = render(<Reader name="leagues" label="A" />)
     await waitFor(() => expect(text('A')).toContain('failed'))
 
-    /* The server is back, and a reader that arrives now reads the answer. A is still showing the
-       failure it had: nothing told it. */
+    /* The server is back, and a reader that arrives now reads the answer. A was showing the failure
+       it had and is told by that read (decision of 20.10.2026, `data/aSuccessClearsTheFailure.test.tsx`
+       holds that half), so nothing is left to press; the other half, that a press asks only the
+       readers that are showing a failure, is held there too. */
     answers.set(LISTS, serving('Liga'))
     rerender(
       <>
@@ -307,14 +309,8 @@ describe('a failure that is on more than one reader', () => {
       </>,
     )
     await waitFor(() => expect(text('B')).toContain('ready: Liga'))
-    expect(text('A')).toContain('failed')
-
-    const handed = text('B')
-
-    await setupUser().click(ask('A'))
-
     await waitFor(() => expect(text('A')).toContain('ready: Liga'))
-    expect(text('B'), 'a reader that held the answer was handed another state').toBe(handed)
+
     expect(timesAsked(LISTS), 'A read what B had already read, and asked nobody').toBe(2)
   })
 

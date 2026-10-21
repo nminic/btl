@@ -189,12 +189,29 @@ export type HowToRead = {
  * in between, would ask the server for a list nobody is waiting for). A reader joins when its state
  * becomes a failure and leaves when it stops being one or when it goes.
  */
-const showingTheFailureOf = new Map<string, Set<() => void>>()
+const showingTheFailureOf = new Map<string, Set<AFailureShown>>()
+
+/**
+ * WHAT CAN BE DONE TO A READER THAT IS SHOWING A FAILURE, and there are exactly two things.
+ *
+ * <p>`again` is the press on a button: ask the server once more. `answered` is the other half
+ * (decision of 20.10.2026, `btl-produkt/ADL.md`, „Kad jedno mesto uspešno pročita istu adresu,
+ * greška nestaje svuda gde se ta adresa čita"): somebody else read this very address and it
+ * arrived, so the failure this reader is showing is no longer true and it takes the answer the
+ * visit now holds. **`answered` asks the server NOTHING**, which is what keeps a success from
+ * being able to start a loop: it moves a reader from a failure to the answer already in hand, and
+ * a reader that holds an answer is not in this registry any more, so there is nobody left for a
+ * second success to tell.
+ */
+type AFailureShown = {
+  again: () => void
+  answered: () => void
+}
 
 /** The readers showing the failure of one address, made on first use so that every caller can
  *  take it for granted (and so that no caller has a branch for „nobody has failed on this yet"
  *  that nothing could take). */
-function whoShowsTheFailureOf(address: string): Set<() => void> {
+function whoShowsTheFailureOf(address: string): Set<AFailureShown> {
   let readers = showingTheFailureOf.get(address)
 
   if (readers === undefined) {
@@ -213,8 +230,26 @@ function whoShowsTheFailureOf(address: string): Set<() => void> {
  * was behind the one that left.
  */
 function askEveryoneAgain(address: string): void {
-  for (const wake of [...whoShowsTheFailureOf(address)]) {
-    wake()
+  for (const reader of [...whoShowsTheFailureOf(address)]) {
+    reader.again()
+  }
+}
+
+/**
+ * Tells every reader that is showing the failure of this address that the address has arrived.
+ *
+ * <p><b>Said only by a SUCCESS and only to the readers of THE SAME ADDRESS</b>: a failure says
+ * nothing to anybody (a reader that fails must never be the reason another one asks the server),
+ * and a success on `/api/moderators` leaves the failure of `/api/leagues` where it is, because the
+ * two are two facts. It is called from the answer of a read, which is a promise's callback and so
+ * never inside a render, which is the one thing `clearResourceCache` could not promise when it
+ * was made to notify (PR 609).
+ *
+ * <p>Copied before it is walked, for the reason written over {@link askEveryoneAgain}.
+ */
+function tellEveryoneItArrived(address: string): void {
+  for (const reader of [...whoShowsTheFailureOf(address)]) {
+    reader.answered()
   }
 }
 
@@ -264,6 +299,12 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
         if (active) {
           setState({ status: 'ready', data })
         }
+
+        /* **Said even when THIS reader has gone**, because what it says is about the address and
+           not about the reader: the answer is in the visit's hands and every other reader that is
+           still showing the failure of it is showing a sentence that stopped being true. Told to
+           nobody when nobody failed, which is the whole of the cost to the names that never do. */
+        tellEveryoneItArrived(address)
       },
       (error: Error) => {
         if (active) {
@@ -321,12 +362,21 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
        reader and the failure it asks again for is on every reader of the address. It is the failure
        this very reader is showing, so nothing here reads state that could have moved since. */
     const failure = state
-    const woken = () => {
-      wake(failure)
+    const reader: AFailureShown = {
+      again: () => {
+        wake(failure)
+      },
+      /* Takes what the visit holds for the address, and only while this reader is still showing a
+         failure: one that has been answered in the meantime (its own asking again came first) is
+         left alone, so it is not handed a second state with the same words. Reads the cache and
+         asks nobody. */
+      answered: () => {
+        setState((were) => (were.status === 'error' ? atHand<T>(name, language) : were))
+      },
     }
     const alongside = whoShowsTheFailureOf(address)
 
-    alongside.add(woken)
+    alongside.add(reader)
 
     return () => {
       /* **NO CASE HOLDS THIS LINE, and that is measured and not forgotten** (02.10.2026): the line
@@ -335,9 +385,9 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
          closure per failure that ended in a screen being left, and a case that pretended to hold it
          would be measuring itself. The mutation that proves the absence is in the description of
          the change. */
-      alongside.delete(woken)
+      alongside.delete(reader)
     }
-  }, [state, address, wake])
+  }, [state, address, name, language, wake])
 
   return state
 }
