@@ -156,8 +156,14 @@ docker rm -f "$THROWAWAY" >/dev/null 2>&1 || true
 # trust and no password, for the reason the pour's reference database gives: nothing can reach it
 # but `docker exec`, because it has no network. --tmpfs over the image's data folder, so the
 # restored members are never on a disk; --memory so a large restore cannot take the host's memory
-# from the site.
-docker run -d --name "$THROWAWAY" --network none --tmpfs /var/lib/postgresql --memory 1g \
+# from the site. --log-driver none because a restore that fails on a constraint makes the SERVER
+# write the member's row into its log (DETAIL: Failing row contains (...), and the CONTEXT line with
+# the whole row of data), and the default driver keeps that log in a json file on a disk under
+# /var/lib/docker for as long as the container exists, which is for as long as a SIGKILL leaves it
+# standing. Measured 21.10.2026: `docker logs` showed the row with the default driver and nothing with
+# none, and what this script shows of a failed restore (show_errors, from what the client printed)
+# was the same in both.
+docker run -d --name "$THROWAWAY" --log-driver none --network none --tmpfs /var/lib/postgresql --memory 1g \
   -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_USER=postgres -e POSTGRES_DB=proof \
   -v "$WORK":/work -v "$SPOOL":/copy:ro -v "$BACKUP":/backup:ro "$IMAGE" > /dev/null
 waited=0

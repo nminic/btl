@@ -45,6 +45,19 @@
 # reads the status first - it is `$?` on entry and nothing else gives it - mails when it is not
 # zero, removes the throwaway container and the folder, and exits with that same status, so that
 # systemd records the run as failed.
+#
+# WHY THE WAY OUT IGNORES A SECOND SIGNAL. The way out is not instant: it mails through the relay,
+# which can take most of a minute (`wait`ed, like any step), and it removes containers. It runs
+# with the EXIT trap already cleared (`trap - EXIT`, so that it cannot run twice), and the traps
+# for HUP, INT and TERM were still set, so a second signal that arrived while it ran, a second
+# Ctrl-C, or a stop that follows a stop, ran `exit` from inside the way out: it ended at once and
+# the rest of it never ran, and what was left was the work folder, with the dump and the
+# passphrase in it, and the folder of the encrypted copy. Measured 21.10.2026 in dash, in
+# BackupLeavesNothingBehindTest, by sending a second signal while the mail was being sent. So the
+# first thing the way out does is ignore all three. It can no longer be ended from outside, and
+# what bounds it instead is that every step in it is finite (the mail by the time alert.sh gives
+# curl, the rest by the daemon), with systemd's `TimeoutStopSec` and its SIGKILL behind that, which
+# is the one thing no shell can ignore.
 
 umask 077
 
@@ -71,6 +84,8 @@ STEP=
 finish() {
   status=$?
   trap - EXIT
+  # A SECOND SIGNAL DURING THE WAY OUT IS IGNORED, see "WHY THE WAY OUT IGNORES A SECOND SIGNAL" above.
+  trap '' HUP INT TERM
   stop_the_step
   if [ "$status" -ne 0 ]; then
     alert "$status" || say "and the alert could not be sent either; nothing but this output says the run failed"
