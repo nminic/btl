@@ -348,6 +348,48 @@ class PouringFromQaScriptTest {
 	}
 
 	/**
+	 * EVERY DOCKER COMMAND THAT CAN RUN LONG GOES THROUGH {@code step} OR {@code container}, AND NO
+	 * COMMAND SUBSTITUTION RUNS ONE.
+	 *
+	 * <p>A shell runs a trap only after the foreground command it is waiting for has ended
+	 * ({@code PouringFromQaLeavesNothingBehindTest} measures that and the fix), and a command
+	 * substitution is a foreground command to the shell that runs it. So a bare {@code docker exec}
+	 * or {@code docker run} puts the SIGTERM of a stop behind the command it interrupts, and the
+	 * work directory with every table of the database in it stays for as long as that command does.
+	 * Read off every line of the script's code, as {@code BackupScriptTest} does for the backup. The
+	 * two that stay bare are the reference database, started detached, which returns at once, and
+	 * {@code printenv} in {@code photos_of}, one short question; both named in the helper.
+	 */
+	@Test
+	void everyDockerCommandThatCanRunLongGoesThroughAStepAndNoSubstitutionRunsOne() {
+		Pattern longRunning = Pattern.compile("docker\\s+(exec|run)\\s");
+		Pattern substitutionOfAStep = Pattern
+				.compile("\\$\\([^)]*(docker\\s+(exec|run)\\s|\\bcontainer\\s|\\bstep\\s|\\bapplied_by\\s|\\b(prod|qa|ref)_sql\\s)");
+		int steps = 0;
+		int containers = 0;
+
+		for (String line : scriptCode()) {
+			if (longRunning.matcher(line).find()
+					&& !line.contains("docker run -d ")
+					&& !line.contains("printenv")) {
+				assertThat(line).as("the script runs docker without step: %s", line).contains("step docker ");
+			}
+			assertThat(substitutionOfAStep.matcher(line).find() && !line.contains("printenv"))
+					.as("the script runs a step inside $(...), where a signal waits for it: %s", line)
+					.isFalse();
+			if (line.contains("step docker ")) {
+				steps++;
+			}
+			if (line.startsWith("container ")) {
+				containers++;
+			}
+		}
+
+		assertThat(steps).as("the pour runs docker in many places").isGreaterThanOrEqualTo(9);
+		assertThat(containers).as("the photographs are copied and counted by containers").isEqualTo(3);
+	}
+
+	/**
 	 * ALL OF QA IS READ IN ONE SESSION, INSIDE ONE REPEATABLE READ TRANSACTION.
 	 *
 	 * <p>Forty-nine tables read as forty-nine separate commands are forty-nine snapshots. A row

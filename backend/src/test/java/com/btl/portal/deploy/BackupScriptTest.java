@@ -181,6 +181,14 @@ class BackupScriptTest {
 		assertThat(throwaway.get(0))
 				.contains("--network none")
 				.contains("--tmpfs /var/lib/postgresql");
+		assertThat(throwaway.get(0))
+				.as("a restore that fails on a constraint makes the SERVER write the member's row to its log"
+						+ " (DETAIL: Failing row contains (...), and the CONTEXT line with the whole row), and the"
+						+ " default driver keeps that log in a file on a disk for as long as the container stands."
+						+ " Measured 21.10.2026 against postgres:18: `docker logs` showed the row by default and"
+						+ " nothing under `none`, and the ERROR line the script shows came from what the client"
+						+ " printed, so it was the same under both")
+				.contains("--log-driver none");
 	}
 
 	/**

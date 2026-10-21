@@ -129,6 +129,13 @@ sh pour-from-qa.sh --check   # proves everything and pours nothing
 sh pour-from-qa.sh           # pours
 ```
 
+A signal ends it the same way the backup's way out does (`pour-from-qa/leaves-nothing-behind.sh`,
+measured under signals in `PouringFromQaLeavesNothingBehindTest`): every docker command that can run
+long is run in the background and waited for (`step`, `container`), so a `kill` or a stop is acted on
+at once and not when a `psql` returns, the work directory in memory is removed, a second signal during
+the removal is ignored, and one line says which signal it was. The pour is one transaction, so a stop
+during it leaves production with all of the pour or none of it, and `--check` says which.
+
 **The order is: first the pour, then the superadmin's registration described
 below.** The tool refuses a production database in which any table holds a
 different number of rows than its migrations left, and a registration through
@@ -436,7 +443,8 @@ the way it is.
 
 **Nothing of it is in plain text outside memory.** The dump, the passphrase and the keys live in a
 folder under `/dev/shm`, which the script refuses to use unless the filesystem says tmpfs, and which
-it removes on every way out a shell can catch. **The encrypted copy is the one thing that is on a
+it removes on every way out a shell can catch, a second signal during the way out included (below).
+**The encrypted copy is the one thing that is on a
 disk**: a folder `/var/tmp/btl-backup-copy.*` (mode 700, mounted into the containers at `/copy`,
 removed with the work folder). It is ciphertext, so memory is not what protects it, and held in
 memory it was a whole second production in the host's RAM outside every limit above.
@@ -460,7 +468,16 @@ members are on top, and the first run prints the real size (`dumped: N bytes`).
 shell runs its trap only after the command it is waiting for. So every docker command of the scripts
 is run in the background and waited for (`step`, `container` in `backup/in-memory.sh`, which says
 what was measured), the containers carry `--init` and a label of the run, and the way out removes by
-label whatever is left, mails the superadmin, and removes both folders. Every `curl` has a connect
+label whatever is left, mails the superadmin, and removes both folders. **The way out ignores a second
+signal** (`trap '' HUP INT TERM` first thing in it): a second Ctrl-C, or a stop that follows a stop,
+used to end it from inside, after the mail and before the folders, and the work folder with the dump
+and the passphrase stayed (measured 21.10.2026, `BackupLeavesNothingBehindTest`). What ends it
+instead is that every step in it is bounded, and behind that `TimeoutStopSec` and SIGKILL, which
+nothing can ignore. **The proof's throwaway database has `--log-driver none`**: a restore that fails
+on a constraint makes the server write the member's row into its log, and the default driver keeps
+that log in a file on a disk for as long as the container stands (measured 21.10.2026: `docker logs`
+showed the row by default and nothing with `none`; what the script prints of a failed restore comes
+from the client and is the same). Every `curl` has a connect
 timeout and a total time or a speed floor, so a connection that stops answering ends the step. The
 units say how long the way out may take (`TimeoutStopSec=2min`, longer than the mail's 60
 seconds) and send the SIGTERM to the script alone (`KillMode=mixed`).

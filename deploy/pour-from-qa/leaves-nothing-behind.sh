@@ -39,9 +39,46 @@
 # remove the work files and let the pour go on without them. Each one therefore ends the script,
 # which runs the EXIT trap once, with the conventional status 128 plus the signal number.
 #
-# A shell runs a trap when the command it is waiting for has finished, so a TERM sent only to the
-# shell while psql is running is acted on when psql returns. A Ctrl-C reaches psql as well and
-# takes effect at once.
+# WHY A COMMAND THAT CAN RUN LONG IS RUN IN THE BACKGROUND AND WAITED FOR. A shell runs a trap only
+# after the command it is waiting for has ended, so a TERM sent to the shell while a `psql` is
+# running used to be acted on when that psql returned: for the pour, a read of QA or a transaction
+# that can last minutes, and for a command that hangs, never. Measured 21.10.2026 in dash, with a
+# foreground child that took eight seconds and a signal sent one second in: the way out ran at the
+# eighth second, for TERM and for INT alike (a Ctrl-C reaches the child as well, but a stop does
+# not, and neither does a `kill` of the script). `wait` is the built-in that a trapped signal
+# interrupts at once, so `step` runs the command in the background and waits for it. It is the same
+# arrangement as `step` in deploy/backup/in-memory.sh, where the reasons for each line of it are
+# written out; the one difference is that the pour has no mail to send.
+#
+# WHAT THE WAY OUT DOES ABOUT THE STEP: sends TERM to its docker client and removes every container
+# of this run by its label, which needs nothing from the client (`container`, below, labels the
+# ones this script starts with `docker run`). What it cannot do is reach the process a killed
+# `docker exec` client leaves running inside the container. For the pour that is the one psql that
+# is writing production, and it is safe by what the pour is: that psql reads the whole of the
+# pour from the client's standard input, which closes with the client, and one transaction that
+# lacks its commit is rolled back when the connection ends. A signal that arrives after the last
+# byte was sent and while the commit is being executed can still commit, and then production holds
+# all of the pour: that is the only other state there is, and `--check` tells the two apart, since
+# it refuses a database that holds rows its migrations did not leave.
+#
+# WHAT STAYS BARE, and is named rather than left to be found: the calls that ask the docker daemon
+# one short question (`ps`, `inspect`, `printenv`) and the ones that start or remove a container
+# and return at once. A daemon that hangs would hang them, and then a signal waits, as it would for
+# anything else that does not answer; the same boundary deploy/backup/stack.sh states.
+#
+# WHY A SECOND SIGNAL DURING THE WAY OUT IS IGNORED. A trap on a signal runs `exit`, which runs the
+# EXIT trap, and a signal that arrives while that trap runs ran `exit` again from inside it, so the
+# cleanup stopped where it was: after the reference container's removal had begun and before the
+# work directory's. Measured 21.10.2026 by sending a second signal while `docker rm` of the
+# way out was running: the work directory, with every table of the database in plain text, was
+# still there. The way out is the one place a signal must not end the script, so it is the first
+# thing the cleanup does to ignore them. It is the cleanup's and not the signal handler's, because
+# the cleanup also runs after `fail` and after a plain exit, and a signal during a way out that no
+# signal began is the same fault.
+#
+# WHAT THE TERMINAL IS TOLD when a signal ends the pour: one line, naming the signal and what is
+# true afterwards (the work directory is being removed, and which two states production can be in).
+# The status is 128 plus the signal number, as before.
 #
 # WHAT NO TRAP CAN DO is catch SIGKILL. What survives it is the work directory, which is in memory
 # and private, and the reference container, which has no network and holds nothing but what the
@@ -80,14 +117,66 @@ memory_kind=$(stat -f -c %T "$MEMORY" 2>/dev/null) || memory_kind=unknown
 
 WORK=$(mktemp -d "$MEMORY/btl-pour.XXXXXX")
 
+# The label every container of this run carries, so that the way out can find and remove them
+# whatever state the docker client that started them is in (container, below).
+STEP_LABEL="btl-pour-run=$$"
+# The docker client of the step in flight, empty between steps (step, below).
+STEP=
+
 cleanup() {
+  # The way out cannot be ended by a signal: see "WHY A SECOND SIGNAL DURING THE WAY OUT IS IGNORED".
+  trap '' HUP INT TERM
+  stop_the_step
   docker rm -f "$REFERENCE" >/dev/null 2>&1 || true
   rm -rf "$WORK"
 }
+
+# What a signal does: says what happened, and ends the script with 128 plus the signal's number,
+# which runs the EXIT trap once, and the EXIT trap is what ignores the others. $1 is the name and $2
+# the status.
+stopped_by() {
+  printf 'STOPPED: the pour was ended by %s. The work files in memory are being removed. If this came during\n'\
+'step 9, production holds either all of the pour or none of it, and `sh pour-from-qa.sh --check` says\n'\
+'which: it refuses a database that holds rows its migrations did not leave.\n' "$1" >&2
+  exit "$2"
+}
+
 trap cleanup EXIT
-trap 'exit 129' HUP
-trap 'exit 130' INT
-trap 'exit 143' TERM
+trap 'stopped_by HUP 129' HUP
+trap 'stopped_by INT 130' INT
+trap 'stopped_by TERM 143' TERM
+
+# One command, in the foreground as far as its caller can tell: waits for it, returns its status,
+# takes its standard input from where the caller's comes from, and gives the shell back to a trapped
+# signal at once. The input goes through descriptor 4 because dash replaces the standard input of a
+# command started with & by /dev/null BEFORE it looks at that command's own redirections (measured
+# 21.10.2026), and the pour feeds whole files to psql through this.
+step() {
+  { "$@" <&4 & } 4<&0
+  STEP=$!
+  step_status=0
+  wait "$STEP" || step_status=$?
+  STEP=
+  return "$step_status"
+}
+
+# A container of this run, in the foreground. --rm so that none is left by a run that ends
+# normally; --init and the label so that the way out can stop it whatever its client is doing.
+container() {
+  step docker run --rm --init --label "$STEP_LABEL" "$@"
+}
+
+# What the way out does about a step that was still running: stops its docker client, and removes
+# every container that carries this run's label.
+stop_the_step() {
+  if [ -n "$STEP" ]; then
+    kill -TERM "$STEP" 2>/dev/null || true
+  fi
+  leftovers=$(docker ps -q --filter "label=$STEP_LABEL" 2>/dev/null) || leftovers=''
+  for one in $leftovers; do
+    docker rm -f "$one" >/dev/null 2>&1 || true
+  done
+}
 
 # The lines of psql's complaint that may be shown: the server's ERROR line, which psql prefixes
 # with the script it was reading and the line it had reached when that script comes from a file or
