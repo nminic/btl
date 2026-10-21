@@ -359,6 +359,11 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     how: 'says',
     why: 'THE FILE\'S OWN, and held by `pages/pairInviteOnTheServer.test.tsx` („says so when what the reader waits on cannot be read, offers no button over it, and asks again"): what the reader waits on, read off `/api/me/applications` for „Pozovi u trkački par" on somebody else\'s profile, says `data.error` where the button would stand, through `Unreadable` with the button that asks again, and draws no button over it, because the button is a claim that no question stands between the two (decision of 02.10.2026, PENDING stavka 368). While it is read, nothing, which is `profile/InviteToTeam.tsx`\'s answer directly above it. Written 10.10.2026 with P2.',
   },
+  {
+    file: 'pages/member/ServedTeamInvite.tsx',
+    how: 'boundary',
+    why: 'MY REASONING, and held by `pages/member/teamInviteAnswered.test.tsx` („keeps both buttons and draws the man\'s word when the reader\'s own record cannot be read" and „draws „Odbij" and neither word while her record is still being read"): the reader\'s own record, read off `/api/me` through `useHisOwnRecord`, is the source of ONE WORD of ONE SENTENCE (the sex that picks `teams.inviteOvertakenUnnamed` or its feminine), and not a list. Saying „Podaci se ne mogu učitati" over „Prihvati" and „Odbij" for the sake of a word is the fault the review of PR 556 found in the version that read the public list, so a read that failed draws the portal\'s own word for a reader whose sex it was not told (not a woman, the arrangement of `member/InvitationAnswer.tsx`) and a read still on its way draws nothing in place of that one sentence. What she waits on, which the buttons are drawn from, goes through `<Resource>` and says it.',
+  },
 ]
 
 /**
