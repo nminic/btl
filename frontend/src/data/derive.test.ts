@@ -832,10 +832,11 @@ describe('membersOf', () => {
 
   it('counts a member once when both doors name him, and takes his record over the team', () => {
     /* One visit can still hold the list as somebody signed in and the teams as a visitor: a
-       screen that is open when the reader changes keeps what it read, and an answer already on its
-       way lands in the cache after the session has dropped it (`session/theCachesFollowTheReader.ts`
-       says where that stops). Signing in no longer does it on its own, which is what this said until
-       02.10.2026. Then the same member stands on both doors. The seasons differ here only so the
+       screen that is open when the reader changes keeps what it read (`session/theCachesFollowTheReader.ts`
+       says where that stops). An answer already on its way no longer lands in the cache after the
+       session has dropped it, which this said until PR 618; it reaches only the screen that asked.
+       Signing in no longer does it on its own, which is what this said until 02.10.2026. Then the
+       same member stands on both doors. The seasons differ here only so the
        case can say WHICH door was believed; on the server they are one membership and one number. */
     const competitors = [competitor('000002', { teamId: 7, teamSince: 2027 })]
 
