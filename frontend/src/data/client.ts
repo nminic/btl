@@ -358,7 +358,16 @@ export function loadResource<T>(name: ResourceName, language?: string): Promise<
       return data
     })
     .catch((error: unknown) => {
-      inFlight.delete(at)
+      /* **A PROMISE REMOVES ITS OWN ENTRY AND NOBODY ELSE'S** (review of PR 618, round 2, measured).
+         A read that `clearResourceCache` threw away and a newer read of the same address started can
+         be out at once; the older one failing late used to delete the entry of the newer, so its answer
+         was not kept, `isTheReadHeld` said no, and a reader showing the failure of the address was never
+         told that it had arrived (and the next reader asked the server a third time for what the visit
+         was already waiting for). The same identity the answer above is kept by. */
+      if (inFlight.get(at) === promise) {
+        inFlight.delete(at)
+      }
+
       throw error
     })
 
