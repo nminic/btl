@@ -486,6 +486,66 @@ describe('the foot of the list coming into view', () => {
     }, SLOW)
   })
 
+  /*
+   * WHERE THE READER WAS WHEN THE BUTTON LEFT, not how the last step was asked for (review of PR 608,
+   * round 1). The first answer to PENDING 29781 was a flag raised by the button and lowered by the
+   * observer, and a keyboard reader who Tabs to „Učitaj još" makes the browser scroll the foot into
+   * view: the observer fired, the flag went down, and the step that finished the list took away the
+   * button he stood on and left the focus on `body`.
+   */
+  describe('the focus, when the button the reader stood on is the one that went', () => {
+    const end = (total: number) => screen.getByText(`To je svih ${String(total)}`)
+
+    it('follows a keyboard reader whose reaching the button brought the foot into view', async () => {
+      render(<Growing total={15} step={10} />)
+
+      screen.getByRole('button', { name: 'Učitaj još' }).focus()
+      await comesIntoView(true)
+
+      expect(items()).toBe(15)
+      expect(end(15)).toHaveFocus()
+    }, SLOW)
+
+    it('does not follow a reader who stood on the button, left it, and was scrolled to the end', async () => {
+      /* Standing on the button is what is asked at the moment it goes, and not at any moment before. */
+      render(
+        <>
+          <button type="button">negde drugde</button>
+          <Growing total={15} step={10} />
+        </>,
+      )
+
+      screen.getByRole('button', { name: 'Učitaj još' }).focus()
+      screen.getByRole('button', { name: 'negde drugde' }).focus()
+      await comesIntoView(true)
+
+      expect(items()).toBe(15)
+      expect(screen.getByRole('button', { name: 'negde drugde' })).toHaveFocus()
+      expect(end(15)).not.toHaveFocus()
+    }, SLOW)
+
+    it('does not claim the end of a list reached by scrolling from a filter, because an earlier list ended on the button', async () => {
+      /* The note that the button left with the focus is spent by the end it was made for. Left, it
+         would be true again when the filter is widened and the same list is scrolled to its end. */
+      const user = setupUser()
+
+      render(<Filtering sizes={[15, 40]} step={10} />)
+
+      await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+      expect(end(15)).toHaveFocus()
+
+      await user.click(screen.getByRole('button', { name: 'filter 2' }))
+      expect(screen.getByRole('button', { name: 'Učitaj još' })).toBeVisible()
+
+      await comesIntoView(true)
+      await comesIntoView(true)
+
+      expect(items()).toBe(40)
+      expect(screen.getByRole('button', { name: 'filter 2' })).toHaveFocus()
+      expect(end(40)).not.toHaveFocus()
+    }, SLOW)
+  })
+
   it('holds up where the browser has no observer at all', () => {
     /* The button is the mechanism and the observer is laid over it, so a
        rendering without one is a list that still grows. */
