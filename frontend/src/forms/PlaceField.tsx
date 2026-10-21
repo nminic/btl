@@ -50,6 +50,7 @@ export function PlaceField({
   withoutError,
   errorOnly,
   onChange,
+  wrote = null,
   openAt = false,
   locked = false,
 }: {
@@ -71,7 +72,15 @@ export function PlaceField({
   /** The error alone, for the country to carry when the error is about it. */
   errorOnly?: string
   describedBy: string | undefined
-  onChange: (place: string, country: string) => void
+  /** The town and the country as they now stand, and a third word where the answer touches the note of
+   *  what this field wrote (`wrote` below): the country it has just written, or `null` when the note is
+   *  spent. Left out when somebody typed or chose a country, which do not touch it. */
+  onChange: (place: string, country: string, wrote?: string | null) => void
+  /** The country this field wrote in an earlier visit, which the screen kept for it. A screen that
+   *  draws the field only some of the time keeps the note beside the town and the country and hands it
+   *  back here, because a note kept in the field goes with the field (review of PR 610). Read once, when
+   *  the field is drawn. */
+  wrote?: string | null
   openAt?: boolean
   /** Whether both halves came off a record rather than from this reader, in which
    *  case neither takes anything (FormRenderer.tsx). */
@@ -96,8 +105,10 @@ export function PlaceField({
      CHANGED what stood there. Nothing else is ever in it. A country the reader chose
      himself, a default the form opened on and a country a record came with are never
      written down here, which is what lets the effect below tell the one it may take back
-     from the ones it may not. A ref for the reason `touched` is one. */
-  const written = useRef<string | null>(null)
+     from the ones it may not. A ref for the reason `touched` is one, and told to the screen with
+     every change of it (`onChange`, third word), which is what keeps it when the field is taken away:
+     it starts from what the screen kept. */
+  const written = useRef<string | null>(wrote)
   const box = useRef<HTMLDivElement>(null)
 
   const offered = open ? placesLike(places, value) : []
@@ -173,13 +184,26 @@ export function PlaceField({
        dropped there, so it cannot be read later against a country that is no longer the
        one it wrote. */
     if (known === undefined) {
-      const wrote = written.current
+      /* **Judged only once somebody has typed here this visit.** A field drawn again after an event of
+         the calendar took it away holds the name it was left with and the note the screen kept, and its
+         codebook is still on its way: nothing has been typed, so no name has stopped being a place, and
+         taking the country back now would empty it for a moment under a town that is one, or for good
+         under a namesake that was pressed off the list (which this visit has forgotten). */
+      if (!touched.current) {
+        return
+      }
+
+      const mine = written.current
+
+      if (mine === null) {
+        return
+      }
 
       written.current = null
 
-      if (wrote !== null && wrote === country && locked !== true) {
-        onChange(value, '')
-      }
+      /* Told to the screen either way: a note that is spent and still kept there would be read against
+         a country somebody chose later. */
+      onChange(value, mine === country && locked !== true ? '' : country, null)
 
       return
     }
@@ -237,7 +261,7 @@ export function PlaceField({
 
     if (known !== country) {
       written.current = known
-      onChange(value, known)
+      onChange(value, known, known)
     }
   }, [known, country, value, onChange, locked])
 
@@ -283,7 +307,7 @@ export function PlaceField({
       written.current = place[2]
     }
 
-    onChange(placeName(place, locale), place[2])
+    onChange(placeName(place, locale), place[2], place[2] !== country ? place[2] : undefined)
     setPicked(place)
     setOpen(false)
     setAt(-1)

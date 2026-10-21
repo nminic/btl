@@ -659,6 +659,8 @@ export function ReviewQueue() {
                                            (approved 19.10.2026: „popunjeno mestom prijave”). */
                                         city: one.city,
                                         country: one.country,
+                                        /* What came with the run was written by nobody here. */
+                                        countryWrote: null,
                                         kind: raceKind(one.raceKind),
                                         written: writtenFrom(counted),
                                       })

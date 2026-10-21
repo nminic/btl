@@ -47,6 +47,10 @@ export type TheBlock = {
   date: string
   city: string
   country: string
+  /** The country the place field wrote because the town was recognised, or nothing. Kept here and not in
+   *  the field, which is drawn only while no event of the calendar is chosen and takes what it remembers
+   *  with it when it goes (`forms/withThePlace.ts`). */
+  countryWrote: string | null
   raceName: string
   race: ChosenRace | null
   kind: RaceKind
@@ -67,6 +71,7 @@ export function emptyBlock(): TheBlock {
     date: '',
     city: '',
     country: '',
+    countryWrote: null,
     raceName: '',
     race: null,
     kind: 'length',

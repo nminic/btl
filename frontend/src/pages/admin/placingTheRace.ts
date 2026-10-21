@@ -59,6 +59,10 @@ export type Placing = {
   /** The place of a new event, the town and its country, as `PlaceField` writes them. */
   city: string
   country: string
+  /** The country the place field wrote because the town was recognised, or nothing. Kept here and not in
+   *  the field, which is drawn only while no event of the calendar is chosen and takes what it remembers
+   *  with it when it goes (`forms/withThePlace.ts`). */
+  countryWrote: string | null
   /** The kind the moderator decided, asked only of a race the approval makes. */
   kind: RaceKind
   /** The figures' boxes, as they are written. */

@@ -514,4 +514,62 @@ describe('the town of a new event on the moderator\'s own screen', () => {
       server.stop()
     }
   })
+
+  it('still takes the country back after the event of the calendar has taken the field away and given it back', async () => {
+    /* Review of PR 610, round 1. The field is drawn only while no event of the calendar is chosen,
+       and the town and the country stay in the block while it is not. What the field had written
+       was remembered by the field, and the field was gone: back again, it held „Kranj" and
+       Slovenia and no memory of having written them, so the hamlet that „Kranj pod brdom" is
+       kept a country nobody had chosen. The memory is the block's now. */
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await user.type(eventBox(), 'Jezerska trka')
+      await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
+
+      await user.clear(eventBox())
+      await user.type(eventBox(), 'Gradska liga')
+
+      expect(screen.queryByLabelText(/^Mesto/)).toBeNull()
+
+      await user.type(eventBox(), ' 2')
+
+      expect(screen.getByLabelText(/^Mesto/)).toHaveValue('Kranj')
+      expect(screen.getByLabelText(/^Država/)).toHaveValue('SI')
+
+      await user.type(screen.getByLabelText(/^Mesto/), ' pod brdom')
+
+      expect(screen.getByLabelText(/^Mesto/)).toHaveValue('Kranj pod brdom')
+      expect(screen.getByLabelText(/^Država/)).toHaveValue('')
+      expect(screen.getByLabelText(/^Država/)).toBeEnabled()
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('does not take back a country the moderator chose himself, however the event comes and goes', async () => {
+    /* The other side of the same decision: a country chosen by hand for a hamlet was never written
+       by the name, so neither the letters after it nor the field leaving and returning take it back. */
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await user.type(eventBox(), 'Jezerska trka')
+      await user.type(screen.getByLabelText(/^Mesto/), 'Xqzrtgrad')
+      await user.selectOptions(screen.getByLabelText(/^Država/), 'BA')
+
+      await user.clear(eventBox())
+      await user.type(eventBox(), 'Gradska liga')
+      await user.type(eventBox(), ' 2')
+      await user.type(screen.getByLabelText(/^Mesto/), ' pod brdom')
+
+      expect(screen.getByLabelText(/^Mesto/)).toHaveValue('Xqzrtgrad pod brdom')
+      expect(screen.getByLabelText(/^Država/)).toHaveValue('BA')
+    } finally {
+      server.stop()
+    }
+  })
 })
