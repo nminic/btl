@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { useLayoutEffect, useRef, type ReactElement } from 'react'
 import { CompetitorName } from '../components/CompetitorName'
 import { Unreadable } from '../components/Unreadable'
 import { inYearlyWindow } from '../data/season'
@@ -74,6 +74,49 @@ export function TeamQueue({
   const mayTakeHimIn = inYearlyWindow(today)
 
   /**
+   * WHERE THE KEYBOARD GOES WHEN A LIST THAT COULD NOT BE READ IS READ AGAIN AND WORKS (PENDING 28785;
+   * WCAG 2.2 SC 2.4.3). The button that asked is taken out in the same stroke that draws what it asked
+   * for, so a press with Enter that worked left `document.activeElement` on `<body>`.
+   *
+   * <p><b>This is `components/Resource.tsx`'s arrangement, with the same guards.</b> `Unreadable` says
+   * that its button left with the focus on it (`onLeaveWithFocus`) and which of the two lists it was
+   * the button of is remembered here; the focus is put back in the layout effect of the stroke that
+   * draws what replaced it, and only where it fell to the body: a reader who moved on while the lists
+   * were asked for is not followed.
+   *
+   * <p><b>Where it goes is the heading of the list that was asked for again</b>, which is what the
+   * reader was standing under: the applications' or the invitations', and not whichever comes first. A
+   * list that is read and holds nothing draws no heading at all (review of 06.09.2026: a heading over an
+   * empty list announced applications that were not there), so there the focus goes to the page's
+   * `main`, as `Resource` does for a whole screen. That is MY reading and not a recorded decision, and
+   * it is the cheaper of the two: the other would be a sentence for an empty list, which the review
+   * of 06.09.2026 took away. <b>The other list's heading is never the answer</b>, even when it is the
+   * one that is drawn: the reader pressed the button of THIS one.
+   */
+  const lostTheFocus = useRef<'applications' | 'invitations' | null>(null)
+  const waitingHeading = useRef<HTMLHeadingElement>(null)
+  const invitedHeading = useRef<HTMLHeadingElement>(null)
+
+  useLayoutEffect(() => {
+    const was = lostTheFocus.current
+
+    if (was === null) {
+      return
+    }
+
+    lostTheFocus.current = null
+
+    if (document.activeElement !== document.body) {
+      return
+    }
+
+    const heading = was === 'applications' ? waitingHeading.current : invitedHeading.current
+    const where = heading ?? document.querySelector<HTMLElement>('main')
+
+    where?.focus({ preventScroll: true })
+  })
+
+  /**
    * WHAT TO CALL THE MEMBER A ROW IS ABOUT, and the three answers are three different facts.
    *
    * <p><b>No number at all</b> is an invitation to somebody whose fee has lapsed, which the
@@ -134,7 +177,7 @@ export function TeamQueue({
           the two states of one list, and the case that holds it is „says both when both fail". */}
       {applications.got === 'unreadable' && (
         <>
-          <h2 className="profile__section" id="team-waiting">
+          <h2 className="profile__section" id="team-waiting" tabIndex={-1} ref={waitingHeading}>
             {t('teams.joinWaiting')}
           </h2>
           <Unreadable
@@ -143,6 +186,9 @@ export function TeamQueue({
             reading={reading}
             onRetry={() => {
               void readAgain()
+            }}
+            onLeaveWithFocus={() => {
+              lostTheFocus.current = 'applications'
             }}
           />
         </>
@@ -154,7 +200,7 @@ export function TeamQueue({
               reader arrives at and must be able to leave again (WCAG 2.2, 1.3.1). It also lets
               a case say „these three and no others" instead of counting every `li` on the
               page. */}
-          <h2 className="profile__section" id="team-waiting">
+          <h2 className="profile__section" id="team-waiting" tabIndex={-1} ref={waitingHeading}>
             {t('teams.joinWaiting')}
           </h2>
           <ul className="submissions" aria-labelledby="team-waiting">
@@ -210,7 +256,7 @@ export function TeamQueue({
 
       {invitations.got === 'unreadable' && (
         <>
-          <h2 className="profile__section" id="team-invited">
+          <h2 className="profile__section" id="team-invited" tabIndex={-1} ref={invitedHeading}>
             {t('teams.inviteSent')}
           </h2>
           <Unreadable
@@ -220,13 +266,16 @@ export function TeamQueue({
             onRetry={() => {
               void readAgain()
             }}
+            onLeaveWithFocus={() => {
+              lostTheFocus.current = 'invitations'
+            }}
           />
         </>
       )}
 
       {invitations.got === 'rows' && invitations.rows.length > 0 && (
         <>
-          <h2 className="profile__section" id="team-invited">
+          <h2 className="profile__section" id="team-invited" tabIndex={-1} ref={invitedHeading}>
             {t('teams.inviteSent')}
           </h2>
           <ul className="submissions" aria-labelledby="team-invited">
