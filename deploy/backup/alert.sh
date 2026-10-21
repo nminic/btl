@@ -14,6 +14,10 @@
 # WHAT THE MESSAGE SAYS is the line the script refused with and the host's name, and nothing that a
 # database said: a failed restore's complaint can carry a member's row, and a message is a copy of it
 # in somebody's mailbox. Where to look for the rest is in the message.
+#
+# IT ENDS: --connect-timeout and --max-time, because this runs on the way out of a run that is being
+# stopped, and the units give that way out TimeoutStopSec (btl-backup.service), which must be longer
+# than this takes at its worst. A relay that does not answer costs the mail, not the cleanup.
 
 set -eu
 umask 077
@@ -48,7 +52,7 @@ REASON='(the run gave no reason)'
   printf 'No copy was deleted; the copies already in the bucket are as they were.\r\n'
 } > "$WORK/alert.mail"
 
-if ! curl -sS --fail -K "$WORK/mail.curl" --upload-file "$WORK/alert.mail" 2> "$WORK/alert.err"; then
+if ! curl -sS --fail --connect-timeout 30 --max-time 60 -K "$WORK/mail.curl" --upload-file "$WORK/alert.mail" 2> "$WORK/alert.err"; then
   printf 'the relay refused the alert: %s\n' "$(cat "$WORK/alert.err")" >&2
   exit 1
 fi

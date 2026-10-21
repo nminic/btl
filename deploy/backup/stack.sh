@@ -1,6 +1,7 @@
 # WHAT deploy/backup.sh AND deploy/restore.sh BOTH NEED OF THE RUNNING STACK, SAID ONCE.
 #
-# SOURCED after deploy/backup/in-memory.sh, which gives WORK. It needs `fail`, `say`, COMPOSE (the
+# SOURCED after deploy/backup/in-memory.sh, which gives WORK, SPOOL, `step` and `container` (every
+# docker command that can run long goes through one of the two, and why is said there). It needs `fail`, `say`, COMPOSE (the
 # compose file), BACKUP (this folder, on the host) and TRANSFER_IMAGE from the shell that sources it.
 #
 # NOTHING HERE READS .env. The settings reach the work folder through the one-shot service
@@ -13,7 +14,7 @@
 # The settings, as files in the work folder. write-settings.sh prints names and never values, so
 # its output may be shown.
 read_settings() {
-  if docker compose -f "$COMPOSE" --profile backup run --rm -T -v "$WORK":/work backup-settings \
+  if step docker compose -f "$COMPOSE" --profile backup run --rm -T -v "$WORK":/work backup-settings \
        > "$WORK/settings.log" 2>&1; then
     return 0
   fi
@@ -32,26 +33,31 @@ find_stack() {
 
   BACKEND=$(docker compose -f "$COMPOSE" ps -a -q backend)
   [ -n "$BACKEND" ] || fail 'there is no backend container, and it is what says where the photographs are'
-  docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$BACKEND" > "$WORK/backend.env" \
-    || fail 'the backend container could not be read'
-  folder=$(sed -n 's/^BTL_PHOTOS_FOLDER=//p' "$WORK/backend.env")
-  [ -n "$folder" ] || fail 'the backend does not say where it keeps photographs'
+  # ONLY THE ONE LINE THAT IS NEEDED is taken out of the backend's environment, and it goes through
+  # a pipe and never to a file: the environment also carries SPRING_DATASOURCE_PASSWORD and the
+  # relay's key, and the work folder is mounted into the containers that have a network
+  # (transfer, below). This is the one place in these scripts where a pipe is allowed to hide a
+  # status, and the reason is that the status is not wanted: an inspect that failed gives an empty
+  # folder, and the next line refuses on exactly that.
+  folder=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$BACKEND" | sed -n 's/^BTL_PHOTOS_FOLDER=//p')
+  [ -n "$folder" ] || fail 'the backend does not say where it keeps photographs, or could not be read'
   PHOTOS_VOLUME=$(docker inspect -f "{{range .Mounts}}{{if eq .Destination \"$folder\"}}{{.Name}}{{end}}{{end}}" "$BACKEND")
   [ -n "$PHOTOS_VOLUME" ] || fail "the backend mounts no volume at $folder, so there is nothing to copy the photographs from or to"
 }
 
 # One call of transfer.sh, in the image that has curl. It has a network, because it talks to R2,
-# and it holds no secret but the files in the work folder.
+# and it holds no secret but the files in the work folder. The copy is at /copy/copy.gpg, in the
+# spool (in-memory.sh says why it is not in memory).
 transfer() {
-  docker run --rm -v "$WORK":/work -v "$BACKUP":/backup:ro --entrypoint sh "$TRANSFER_IMAGE" \
+  container -v "$WORK":/work -v "$SPOOL":/copy -v "$BACKUP":/backup:ro --entrypoint sh "$TRANSFER_IMAGE" \
     /backup/transfer.sh /work "$@"
 }
 
-# check.sh over /work/copy.gpg, in the database's own image and with no network. Sets CHECKED to
+# check.sh over /copy/copy.gpg, in the database's own image and with no network. Sets CHECKED to
 # its status: 0 whole, 3 whole but photographs that do not match their rows, anything else unusable.
 check_copy() {
-  if docker run --rm --network none -v "$WORK":/work -v "$BACKUP":/backup:ro --entrypoint sh "$IMAGE" \
-       /backup/check.sh /work /work/copy.gpg; then
+  if container --network none -v "$WORK":/work -v "$SPOOL":/copy:ro -v "$BACKUP":/backup:ro --entrypoint sh "$IMAGE" \
+       /backup/check.sh /work /copy/copy.gpg; then
     CHECKED=0
   else
     CHECKED=$?
