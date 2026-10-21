@@ -589,6 +589,15 @@ describe('the sentence that says what is wrong with a cell', () => {
       expect(isChanged({ ...timed, limitHours: '7' }, timed)).toBe(true)
     })
 
+    it('is changed when only the kind differs, which is a change of its own and not a side of the length', () => {
+      /* Against a race of a length the kind cannot be changed alone: the length, the climb and the fall
+         are written as nought for the other two kinds, so they differ as well. A free race with none of
+         the three is the one where nothing but the kind is written differently. */
+      const free = served({ kind: 'free', distanceKm: 0, ascentM: 0, descentM: 0 })
+
+      expect(isChanged({ ...free, kind: 'length' }, free)).toBe(true)
+    })
+
     it('is changed when the race it is a row of is not among the served ones, and when it is new', () => {
       expect(isChanged(served(), undefined)).toBe(true)
     })
