@@ -132,6 +132,28 @@ describe('the races a save of an event sends', () => {
     )
   }, SLOW)
 
+  it.each([
+    ['climb', 'Uspon (m)', 'ascentM'],
+    ['fall', 'Spust (m)', 'descentM'],
+  ] as const)(
+    'sends the race whose %s alone was changed, and not the race on time beside it',
+    async (_name, label, field) => {
+      const user = await open()
+      const cell = screen.getByLabelText(`${label}, ${String(rowOf(length))}. trka`)
+
+      /* Replaced by a number one above what was served, so the cell differs in this field and in no
+         other, and is inside the bounds the save holds it to. */
+      await user.clear(cell)
+      await user.type(cell, String(length[field] + 1))
+      await save(user)
+
+      expect(whereItWrote(server.asked).sort()).toEqual(
+        [`PUT /api/events/${String(event.id)}`, `PUT /api/races/${String(length.id)}`].sort(),
+      )
+    },
+    SLOW,
+  )
+
   it('sends the race on time when it is the one that was changed', async () => {
     const user = await open()
 

@@ -577,6 +577,9 @@ describe('the sentence that says what is wrong with a cell', () => {
         { date: '18/10/2026' },
         { kind: 'free' as const },
         { distanceKm: '11' },
+        /* The served race climbs 120 and falls 140 (`race` above), so these differ from it by one. */
+        { ascentM: '121' },
+        { descentM: '141' },
       ]) {
         expect(isChanged({ ...was, ...over }, was), JSON.stringify(over)).toBe(true)
       }
