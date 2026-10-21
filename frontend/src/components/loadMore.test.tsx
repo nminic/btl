@@ -1,12 +1,17 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, configure, render, screen, waitFor } from '@testing-library/react'
 import { useRef, useState } from 'react'
 import { must } from '../test/at'
 import { intersecting, watcher } from '../test/intersection'
+import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 import { useColumns, useGrowing } from './growing'
 import { LoadMore } from './LoadMore'
+
+/* Every wait is given half of what a case is given, for the reason `rowMembership.test.tsx` gives: a
+   mutation then fails on its assertion and not on the clock of the case. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * A list that grows as it is read (owner, 11.08.2026).
@@ -408,6 +413,76 @@ describe('the foot of the list coming into view', () => {
        view for as long as the reader stays there. */
     await waitFor(() => {
       expect(watching).toBe(0)
+    })
+  })
+
+  /*
+   * WHO ASKED FOR THE LAST STEP (PENDING 29781; WCAG 2.2 SC 2.4.3 and 3.2.2). The closing sentence
+   * takes the focus because the button the reader stood on was replaced by it; a list that grew
+   * because the foot came into view had nobody standing on anything, and on the comments the
+   * sentence is not even drawn, so the focus went to a line nobody could see and took the viewport
+   * with it.
+   */
+  describe('the focus, when the list became whole', () => {
+    const end = (total: number) => screen.getByText(`To je svih ${String(total)}`)
+
+    it('stays where the reader is when the foot coming into view made it whole', async () => {
+      render(
+        <>
+          <button type="button">negde drugde</button>
+          <Growing total={15} step={10} />
+        </>,
+      )
+
+      const elsewhere = screen.getByRole('button', { name: 'negde drugde' })
+
+      elsewhere.focus()
+      await comesIntoView(true)
+
+      expect(items()).toBe(15)
+      expect(end(15)).not.toHaveFocus()
+      expect(elsewhere).toHaveFocus()
+    })
+
+    it('stays where the reader is when scrolling finished a list he had begun with the button', async () => {
+      /* THE LAST REQUEST IS THE ONE THAT COUNTS: pressing the button once and then scrolling to the
+         end is a list the button did not finish. A flag raised by the button and never lowered by the
+         scroll would claim it. */
+      const user = setupUser()
+
+      render(
+        <>
+          <button type="button">negde drugde</button>
+          <Growing total={25} step={10} />
+        </>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+      expect(items()).toBe(20)
+
+      const elsewhere = screen.getByRole('button', { name: 'negde drugde' })
+
+      elsewhere.focus()
+      await comesIntoView(true)
+
+      expect(items()).toBe(25)
+      expect(end(25)).not.toHaveFocus()
+      expect(elsewhere).toHaveFocus()
+    })
+
+    it('follows the reader who finished a list that scrolling had begun, with the button', async () => {
+      /* AND THE OTHER WAY ROUND, so the case above is not a button that never moves the focus again:
+         the step that made it whole was the button's. */
+      const user = setupUser()
+
+      render(<Growing total={25} step={10} />)
+
+      await comesIntoView(true)
+      expect(items()).toBe(20)
+
+      await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+
+      expect(end(25)).toHaveFocus()
     })
   })
 

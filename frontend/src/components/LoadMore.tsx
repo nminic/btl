@@ -71,12 +71,26 @@ export function LoadMore({
     setSteps((were) => were + 1)
     onMore()
   }, [onMore])
+  /**
+   * WHETHER THE LAST STEP WAS ASKED FOR BY PRESSING THE BUTTON, and not by the foot coming into view
+   * (PENDING 29781; WCAG 2.2 SC 2.4.3 and 3.2.2).
+   *
+   * <p>The focus goes to the closing sentence because the button the reader was standing on has just
+   * been replaced by it. A reader who SCROLLED was standing on nothing: the page loads the next step
+   * under him as the foot approaches, and the closing sentence is a line he cannot see on the comments
+   * (`endShown`), so moving the focus to it moved the viewport to a place he had not asked to go. So
+   * the flag is the LAST request's: raised by the button, lowered by the observer, and lowered again
+   * once the focus has been moved, so a step the button asked for ten steps ago does not claim the end
+   * of a list that scrolling reached.
+   */
+  const byTheButton = useRef(false)
 
   useEffect(() => {
-    /* Only where somebody had asked: `whole` is true from the first render on a
-       list that never had a button, and taking the focus there would move it
-       for a reader who never touched anything. */
-    if (whole && asked) {
+    /* Only where somebody had asked, and asked with the button: `whole` is true from the first render
+       on a list that never had a button, and taking the focus there would move it for a reader who
+       never touched anything. */
+    if (whole && asked && byTheButton.current) {
+      byTheButton.current = false
       end.current?.focus()
     }
   }, [whole, asked])
@@ -93,6 +107,7 @@ export function LoadMore({
 
     const watching = new IntersectionObserver((entries) => {
       if (entries.some((entry) => entry.isIntersecting)) {
+        byTheButton.current = false
         askedForMore()
       }
     })
@@ -134,7 +149,10 @@ export function LoadMore({
         <button
           type="button"
           className={buttonOnFocusOnly ? 'load-more__button load-more__button--on-focus' : 'load-more__button'}
-          onClick={askedForMore}
+          onClick={() => {
+            byTheButton.current = true
+            askedForMore()
+          }}
         >
           {words.more}
         </button>
