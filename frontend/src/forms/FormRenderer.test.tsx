@@ -428,11 +428,11 @@ describe('FormRenderer', () => {
     renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
 
     const field = must(
-      screen.getByText(/zdravstveno sposoban/).closest<HTMLElement>('.field'),
+      screen.getByText(/zdravstveno stanje/).closest<HTMLElement>('.field'),
       'the field whose words carry a link',
     )
 
-    expect(within(field).getByRole('link', { name: 'pravilnikom' })).toHaveAttribute(
+    expect(within(field).getByRole('link', { name: 'pravilnik' })).toHaveAttribute(
       'href',
       '/sr/pravilnik',
     )
@@ -488,7 +488,7 @@ describe('FormRenderer', () => {
     )
 
     expect(said).toBe(
-      'Potvrđujem da sam upoznat sa pravilnikom i da sam zdravstveno sposoban za rekreativan sport.',
+      'Potvrđujem da poznajem pravilnik i da mi zdravstveno stanje dozvoljava bavljenje rekreativnim sportom.',
     )
     expect(said).not.toContain('{link}')
   })

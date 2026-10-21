@@ -185,7 +185,7 @@ async function fillEverythingExceptBirthDate(
   /* ~~The biography was typed here.~~ It left the form on 28.09.2026 with the picture,
      and is written afterwards on `member/ProfileBio.tsx`. */
   await user.selectOptions(screen.getByLabelText(/Veličina majice/), 'XXXL')
-  await user.click(screen.getByLabelText(/zdravstveno sposoban/))
+  await user.click(screen.getByLabelText(/zdravstveno stanje/))
 }
 
 describe('Registration is never shut', () => {
@@ -566,7 +566,7 @@ describe('Registration once it is open', () => {
   it('puts the confirmation box before the words it confirms', () => {
     renderForm()
 
-    const box = screen.getByLabelText(/zdravstveno sposoban/)
+    const box = screen.getByLabelText(/zdravstveno stanje/)
     const label = must(
       must(box.parentElement, 'a parent').querySelector('label'),
       'a label beside the box',
@@ -943,7 +943,7 @@ describe('the country a member lives in', () => {
     await user.type(screen.getByLabelText(/^Mesto$/), 'Zaseok pod brdom')
     await user.click(screen.getByRole('radio', { name: 'Starosna' }))
     await user.selectOptions(screen.getByLabelText(/Veličina majice/), 'XXXL')
-    await user.click(screen.getByLabelText(/zdravstveno sposoban/))
+    await user.click(screen.getByLabelText(/zdravstveno stanje/))
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
@@ -1029,8 +1029,8 @@ describe('an empty form', () => {
        `forms/FormRenderer.test.tsx` and on `pages/admin/EntityEditor.tsx`.
 
        WHAT SURVIVES IS THE HALF THAT IS ABOUT A VISITOR: the sentence carries `{link}`
-       where the link goes, and „Potvrđujem da sam upoznat sa {link} i da sam
-       zdravstveno sposoban" is what was really on the screen the day the first sentence
+       where the link goes, and „Potvrđujem da poznajem {link} i da mi
+       zdravstveno stanje dozvoljava" is what was really on the screen the day the first sentence
        carried one. Asserted over the whole form and not over one field, because the
        mark reaching the screen is a fault wherever it happens. */
     const user = setupUser()
@@ -1040,13 +1040,13 @@ describe('an empty form', () => {
 
     expect(screen.queryByText(/\{link\}/)).toBeNull()
 
-    const confirm = screen.getByLabelText(/zdravstveno sposoban/)
+    const confirm = screen.getByLabelText(/zdravstveno stanje/)
 
     /* And the confirmation is drawn as one link inside its words, rather than as words
        with a mark left in them: without this the case above passes on a form that lost
        the link altogether. */
     expect(within(must(confirm.closest<HTMLElement>('.field'), 'the field of the confirmation'))
-      .getByRole('link', { name: 'pravilnikom' })).toBeVisible()
+      .getByRole('link', { name: 'pravilnik' })).toBeVisible()
     /* And it is marked wrong, which is what the cursor is found by now that there is no
        list to follow (`forms/FormRenderer.tsx`, `owed`). */
     expect(confirm).toHaveAttribute('aria-invalid', 'true')

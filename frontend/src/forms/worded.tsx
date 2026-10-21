@@ -61,8 +61,8 @@ export function worded(
  * anything either. So the mark is replaced by the words it would have led with,
  * and the sentence reads whole.
  *
- * Left out, the mark itself reached the screen: „Potvrđujem da sam upoznat sa
- * {link} i da sam zdravstveno sposoban" is what the summary said the day the
+ * Left out, the mark itself reached the screen: „Potvrđujem da poznajem
+ * {link} i da mi zdravstveno stanje dozvoljava" is what the summary said the day the
  * first sentence carried one.
  */
 export function plainWords(words: string, field: FieldDef, t: (key: string) => string): string {
