@@ -553,14 +553,29 @@ class BalanceBook {
 	 * {@code FOR KEY SHARE} that every line of his book takes on his row, so a referrer who is himself
 	 * being activated, or whose own book is written, would wait for this and be waited for by it.
 	 *
-	 * <p><b>The order of locks, and it cannot be a cycle.</b> Every caller holds the new member's row
+	 * <p><b>THE HOLD IS TAKEN ONLY FOR A MEMBER NOBODY HAS BEEN REWARDED FOR YET (PENDING, review of PR 611,
+	 * round 1).</b> A member activated again, a renewal, has his line already, and then the statement below
+	 * falls to {@code on conflict do nothing} and touches nothing of the referrer. The hold is therefore
+	 * asked for in the same statement that finds him, {@code and not exists} a line for this member, and a
+	 * renewal behaves as it did before the hold existed. Taken on every activation it was measured to break
+	 * two writers that were not in the picture (see the order below). It is the member's line that is looked
+	 * for and not the referrer's book: a referrer rewarded for one member is still held for the next.
+	 *
+	 * <p><b>The order of locks, as measured and not as hoped.</b> Every caller holds the new member's row
 	 * {@code for update} first ({@code PaymentApi}, {@link MyMembershipWriteApi}, {@link MembershipWriteApi}
-	 * through {@link GrantingASeason}); this takes his referrer's second. {@code referred_by} is written by
-	 * one statement only, the insert of the registration, and names a row that already exists, so the chain
-	 * of „member, then the one who brought him" only ever points at older rows and closes on nobody.
-	 * {@code AReferrerIsHeldWhileHisRewardIsWorkedOutTest} measures the turn-taking with a change of his
-	 * country, and with a grant and a payment for two members of one referrer, stopped behind a hold on
-	 * him.
+	 * through {@link GrantingASeason}). A FIRST activation then takes his referrer's second: member, then
+	 * referrer. Two other writers take the pair the other way round. {@code ResultsByTheLeagueApi#judged} locks
+	 * every member a save names in one statement, {@code order by id for update}, and the referrer is the
+	 * older row, so referrer first and member second. {@code CompetitorWriteApi#deleting} deletes the referrer
+	 * and {@code competitor_referred_by_fk ... ON DELETE SET NULL} then updates his member: referrer first,
+	 * member second. So on a first activation these orders cross and the database can break a deadlock. That
+	 * crossing is not the hold's doing: before it, the reward line's own insert took {@code FOR KEY SHARE} on
+	 * the referrer's row, which a {@code for update} and a delete both wait for, and the same cycle was
+	 * there. It is a finding of its own and is not decided here. A RENEWAL takes nothing of the referrer and is
+	 * on neither side of it; {@code AReferrerIsHeldWhileHisRewardIsWorkedOutTest} measures that with the
+	 * save of results and with the real deletion, each stopped behind a hold on the referrer while his member
+	 * is renewed, and measures the turn-taking of the first activation with a change of his country, and with
+	 * a grant and a payment for two members of one referrer.
 	 *
 	 * @param newMember {@code competitor.id} of the member whose membership has just been activated
 	 */
@@ -570,8 +585,9 @@ class BalanceBook {
 
 		db.sql("select r.id from competitor r"
 						+ " where r.id = (select c.referred_by from competitor c where c.id = ?)"
+						+ " and not exists (select 1 from balance_entry line where line.referred_competitor_id = ?)"
 						+ " for no key update")
-				.param(newMember)
+				.params(newMember, newMember)
 				.query(Long.class)
 				.optional();
 
