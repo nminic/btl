@@ -326,7 +326,7 @@ describe('recording a payment on a member’s row', () => {
 
   /**
    * EVERY CACHED ANSWER THAT READS THE FLAG IS ASKED AGAIN AFTER A PAYMENT ON A ROW WITH NO SEASON ON
-   * SALE (PENDING 29137's sibling), because the booking can make a lapsed member active. The names are
+   * SALE (the class of PENDING 29656), because the booking can make a lapsed member active. The names are
    * the backend's own, read out of its SQL (`test/readsTheFlag.ts`, the reading `rowMembership.test.tsx`
    * holds the other three doors to), and each is loaded and confirmed in hand BEFORE the press so that
    * „gone afterwards" is a change this case can see. `members` and `competitors` are asked again at

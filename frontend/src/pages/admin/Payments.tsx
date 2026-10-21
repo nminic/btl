@@ -675,7 +675,7 @@ export function Payments() {
       afterAnActivation={readAgain > 0}
       onActivated={() => {
         /* EIGHT NAMES, ONE LIST (`whatActiveMoves.ts`, shared with `admin/AdminMembers.tsx`), and the
-           five after the first three were left off until PENDING 29656's sibling was measured: an
+           five after the first three were left off until the class of PENDING 29656 was measured here: an
            activation sets `competitor.active`, so `attendance`, `comments`, `pairs`, `teams` and
            `results` (every route that reads the flag) say the man is still outside the league. The
            first three are not tidiness either. An activation draws a member
