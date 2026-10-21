@@ -41,6 +41,11 @@ export const WHEN_THE_LEAGUE_ENTERS_RESULTS: Record<string, string> = {
   theRaceIsNotKnown: 'leagueResults.refused.theRaceIsNotKnown',
   theTownIsMissing: 'leagueResults.refused.theTownIsMissing',
   theDayIsBeforeTheLeague: 'leagueResults.refused.theDayIsBeforeTheLeague',
+  /* PDL P9, 20.10.2026: on the morning of 1 January before ten a race of New Year's Eve may go on an
+     event of the new year, which then moves back into the year before; where an event of that name
+     stands there already, the save is refused with the sentence the approval of a run has for the same
+     move (`VerificationWriteApi.THE_EVENT_WOULD_MOVE_ONTO_ANOTHER`). */
+  theEventWouldMoveOntoAnother: 'leagueResults.refused.theEventWouldMoveOntoAnother',
 }
 
 /**

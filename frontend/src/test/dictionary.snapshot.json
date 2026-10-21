@@ -1838,7 +1838,8 @@
       "theEventIsNotKnown": "Taj događaj više nije u kalendaru. Izaberi ga ponovo ili upiši nov.",
       "theRaceIsNotKnown": "Ta trka više nije u kalendaru. Izaberi je ponovo ili upiši novu.",
       "theTownIsMissing": "Upiši mesto novog događaja.",
-      "theDayIsBeforeTheLeague": "Liga počinje 2027. godine; raniji rezultati se unose CSV šablonom."
+      "theDayIsBeforeTheLeague": "Liga počinje 2027. godine; raniji rezultati se unose CSV šablonom.",
+      "theEventWouldMoveOntoAnother": "Trka bi pomerila događaj u godinu u kojoj događaj sa istim nazivom već postoji. Izaberi taj događaj."
     }
   }
 }
