@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, configure, render, screen, waitFor } from '@testing-library/react'
 import { useLayoutEffect, useRef } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { answeredWith, serverThat } from '../test/serverAnswers'
@@ -26,6 +26,14 @@ import { useResource, type ResourceState } from './useResource'
  * portal ASKED and not of what it drew: a reader that drew the right words by reading something it
  * already held would pass a case about the words and fail the one about the count.
  */
+
+/* EVERY WAIT OF THIS FILE IS SHORTER THAN THE CASE THAT IS WAITING (review of PR 618, round 1). The
+   global is `SLOW` (twenty seconds, `test/setup.ts`) and a case here has Vitest's own five, so a wait
+   that never succeeds was ended by the clock of the case and the case that holds „a reader that
+   already holds the answer is not handed another state" failed as `Test timed out in 5000ms` and not on
+   its sentence. Two seconds is room for a runner several times slower than the one this was measured
+   on. Set here, and so for this file alone: every file has a configuration of its own. */
+configure({ asyncUtilTimeout: 2_000 })
 
 const LISTS = '/api/leagues'
 const OTHER = '/api/moderators'

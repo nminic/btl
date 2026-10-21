@@ -6,6 +6,7 @@ import {
   addressOf,
   arrivedResource,
   clearResourceCache,
+  isTheReadHeld,
   loadResource,
   timesDropped,
   watchTheDrops,
@@ -294,17 +295,27 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
        is already holding, so what it costs is a render nobody sees. */
     let active = true
 
-    loadResource<T>(name, language).then(
+    const read = loadResource<T>(name, language)
+
+    read.then(
       (data) => {
         if (active) {
           setState({ status: 'ready', data })
         }
 
-        /* **Said even when THIS reader has gone**, because what it says is about the address and
-           not about the reader: the answer is in the visit's hands and every other reader that is
-           still showing the failure of it is showing a sentence that stopped being true. Told to
-           nobody when nobody failed, which is the whole of the cost to the names that never do. */
-        tellEveryoneItArrived(address)
+        /* **Said even when THIS reader has gone, but only while THIS read is still the one the visit
+           holds for the address** (review of PR 618, round 1, measured). What it says is about the
+           address and not about the reader: the answer is in the visit's hands and every other reader
+           that is still showing the failure of it is showing a sentence that stopped being true. But
+           a read that `clearResourceCache` has thrown away since it was started - the caller changed,
+           a write went through - is an answer to a question nobody is asking any more, and `atHand`
+           would give the readers either nothing or, worse, the answer of whoever asked before. A
+           caller who signed in as somebody else, whose own read failed, was handed the previous
+           caller's inbox that way. Told to nobody when nobody failed, which is the whole of the cost
+           to the names that never do. */
+        if (isTheReadHeld(read, name, language)) {
+          tellEveryoneItArrived(address)
+        }
       },
       (error: Error) => {
         if (active) {

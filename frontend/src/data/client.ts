@@ -345,7 +345,15 @@ export function loadResource<T>(name: ResourceName, language?: string): Promise<
 
   const promise = request<T>(name, language)
     .then((data) => {
-      arrived.set(at, data)
+      /* **KEPT ONLY WHILE THIS IS STILL THE READ THE VISIT HOLDS FOR THE ADDRESS** (review of PR 618,
+         round 1). `clearResourceCache` throws a promise away when the answer it will give has stopped
+         being the visit's: a caller that changed (`theInboxNowBelongsTo`), a write that went through. An
+         answer that arrives after that is an answer to a question nobody is asking any more, and
+         writing it down would put the previous caller's mail where the next one's screen looks first.
+         The promise is still handed to whoever holds it, which is their own read and their own business. */
+      if (inFlight.get(at) === promise) {
+        arrived.set(at, data)
+      }
 
       return data
     })
@@ -357,6 +365,18 @@ export function loadResource<T>(name: ResourceName, language?: string): Promise<
   inFlight.set(at, promise)
 
   return promise
+}
+
+/**
+ * WHETHER THIS READ IS STILL THE ONE THE VISIT HOLDS FOR ITS ADDRESS, as opposed to one that
+ * {@link clearResourceCache} has thrown away since it was started (review of PR 618, round 1).
+ *
+ * <p>Asked by a reader before it tells the others that its address has arrived: only an answer the
+ * cache itself kept is news to them. The promise is compared by identity, which is the one thing a
+ * newer read of the same address cannot share with an older one.
+ */
+export function isTheReadHeld(read: Promise<unknown>, name: ResourceName, language?: string): boolean {
+  return inFlight.get(addressOf(name, language)) === read
 }
 
 /**
