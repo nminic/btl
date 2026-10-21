@@ -685,10 +685,10 @@ export function Membership() {
                   lives, the portal works it out, and what the older rule
                   forbade was reading one as a conversion of the other. The ban
                   on showing them together was replaced by a ban on picking. */}
-              {/* Nothing about a price to somebody who owes none for the season on sale. The slip
-                  was taken away from a member freed of the fee and these three sentences were not,
-                  so the screen still quoted the fee, the processing charge and the junior rate to
-                  somebody it had just told they pay nothing.
+              {/* Nothing about a PRICE to somebody who owes none for the season on sale: the line
+                  that says what it costs today and the junior rate. The slip was taken away from a
+                  member freed of the fee and these sentences were not, so the screen still quoted
+                  the fee and the junior rate to somebody it had just told they pay nothing.
 
                   **ON `held` AND NOT ON `feeExempt` ALONE, since the review of PR 562 (PENDING
                   29388).** A member who holds the season on sale by a payment or on his balance owes
@@ -699,31 +699,41 @@ export function Membership() {
                   only (PDL P8, 18.10.2026), so a member who holds the RUNNING season after 15
                   October is still quoted the price of the next one, which is the one thing he can
                   still be asked for; the running season is not touched anywhere (owner, from
-                  15.10: no payment, no basis, no cancellation on it). */}
-              {!held && (
-              <>
-              {registrationOpen(today) ? (
-                /* One walk of the list of none or one. The sentence carries two amounts
-                   and there is no honest sentence with only one of them, so where the
-                   answer holds no period in force this says nothing rather than quoting
-                   a figure nobody sent. */
-                due.map((row) => (
-                  <p className="member__note" key={row.key}>
-                    {t('membership.priceNow', {
-                      eur: money(row.eur, locale),
-                      rsd: money(row.rsd, locale),
-                    })}
-                  </p>
-                ))
-              ) : (
-                <p className="member__note">{t('membership.notYetSold')}</p>
-              )}
-              {/* What a payment carries besides the fee, said to everybody and
-                  not only to whoever pays it (owner, 04.08.2026): the fee is
-                  something a member should be able to look up, the same way
-                  both prices are shown to everybody and only the choice between
-                  them is not offered. What differs is who pays it, and the
-                  sentence says that.
+                  15.10: no payment, no basis, no cancellation on it).
+
+                  **THE PROCESSING FEE IS NOT A PRICE IN THIS SENSE AND IS NOT BEHIND `held`** (the
+                  sentence below the price line; review of PR 609, round 1). */}
+              {!held &&
+                (registrationOpen(today) ? (
+                  /* One walk of the list of none or one. The sentence carries two amounts
+                     and there is no honest sentence with only one of them, so where the
+                     answer holds no period in force this says nothing rather than quoting
+                     a figure nobody sent. */
+                  due.map((row) => (
+                    <p className="member__note" key={row.key}>
+                      {t('membership.priceNow', {
+                        eur: money(row.eur, locale),
+                        rsd: money(row.rsd, locale),
+                      })}
+                    </p>
+                  ))
+                ) : (
+                  <p className="member__note">{t('membership.notYetSold')}</p>
+                ))}
+              {/* What a payment carries besides the fee, said to EVERY member on this screen,
+                  whatever he holds and whether he is freed of the fee or not (PDL P8, owner
+                  04.08.2026, „Taksa se prikazuje svima, samo je ne plaćaju svi.": „a ekran
+                  članarine ima jednu rečenicu za sve, koja kaže i ko je plaća"). The fee is
+                  something a member should be able to look up, the same way both prices are shown
+                  to everybody and only the choice between them is not offered. What differs is
+                  who pays it, and the sentence says that.
+
+                  So it is behind neither `feeExempt` nor `held`. It was behind `!feeExempt` with
+                  no decision recorded for it, and PR 609 first moved it behind `!held` with the
+                  price; both took it from somebody the decision says it is shown to (review of
+                  PR 609, round 1: on 1 March 2027 a member holding 2027 read it before and none
+                  after). Only the date gate stays, since before the sale opens there is nothing
+                  to carry it.
 
                   Beside the price rather than inside the renewal window: for
                   the nine months a season is running the price is quoted and
@@ -735,16 +745,15 @@ export function Membership() {
                     {t('membership.costs', { fee: money(fee.eur, locale) })}
                   </p>
                 ))}
-              {junior.map((row) => (
-                <p className="member__note" key={row.key}>
-                  {t('membership.junior', {
-                    eur: money(row.eur, locale),
-                    rsd: money(row.rsd, locale),
-                  })}
-                </p>
-              ))}
-              </>
-              )}
+              {!held &&
+                junior.map((row) => (
+                  <p className="member__note" key={row.key}>
+                    {t('membership.junior', {
+                      eur: money(row.eur, locale),
+                      rsd: money(row.rsd, locale),
+                    })}
+                  </p>
+                ))}
             </section>
 
             {/* THE CHOICE OF CATEGORY IS A SECTION OF ITS OWN, AND NOT PART OF RENEWING.

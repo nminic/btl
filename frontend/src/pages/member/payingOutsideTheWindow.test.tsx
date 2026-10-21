@@ -383,18 +383,21 @@ describe('the sentence about ranking follows the row and not the date', () => {
   }, SLOW)
 })
 
-describe('the notes about a price follow what he owes for the season on sale (PENDING 29388)', () => {
-  /* The three sentences under the state line: what it costs today, what a payment from abroad adds,
-     and the junior rate. They are the price of the season on sale, so they are said to whoever is
-     asked for it and to nobody who holds it already. */
+describe('the notes about a price follow what he owes for the season on sale, and the fee is said to everybody (PENDING 29388, review of PR 609 round 1)', () => {
+  /* The sentences under the state line: what it costs today, what a payment from abroad adds, and
+     the junior rate. The price line and the junior rate are the price of the season on sale, so
+     they are said to whoever is asked for it and to nobody who holds it already. The processing
+     fee is not behind that: PDL P8, owner 04.08.2026, „Taksa se prikazuje svima, samo je ne plaćaju
+     svi.": the screen has one sentence for everybody, and it says who pays it. */
   const PRICE = /^Danas članarina košta/
   const PROCESSING = /^Uz uplatu u evrima ide i taksa/
   const JUNIOR = /^Ko u sezoni ima bar jedan dan 14 godina/
 
-  function noPriceNote() {
+  /* Held, or freed of the fee: no price line and no junior rate, and the fee sentence all the same. */
+  function theFeeAndNoPrice() {
     expect(screen.queryByText(PRICE)).not.toBeInTheDocument()
-    expect(screen.queryByText(PROCESSING)).not.toBeInTheDocument()
     expect(screen.queryByText(JUNIOR)).not.toBeInTheDocument()
+    expect(screen.getByText(PROCESSING)).toBeVisible()
   }
 
   /* **TWO SEASONS IN THE ARRANGEMENT, so that holding the one on sale and holding the one that is
@@ -403,22 +406,22 @@ describe('the notes about a price follow what he owes for the season on sale (PE
   it.each([
     ['payment', 'Članarina za sezonu 2028 je plaćena.'],
     ['balance', 'Članarina za sezonu 2028 je plaćena iz balansa.'],
-  ])('a member who holds the season on sale, 2028, on a %s, is told so and quoted no price', async (basis, stated) => {
+  ])('a member who holds the season on sale, 2028, on a %s, is told so, quoted no price and told the fee', async (basis, stated) => {
     openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: 2028 }, '2027-11-01')
 
     expect(await screen.findByText(stated)).toBeVisible()
     expect(screen.getByText('Članarina za 2028 je već plaćena, pa nema šta da uplatiš.')).toBeVisible()
-    noPriceNote()
+    theFeeAndNoPrice()
   }, SLOW)
 
   it.each([
     ['payment', 'Članarina za sezonu 2027 je plaćena.'],
     ['balance', 'Članarina za sezonu 2027 je plaćena iz balansa.'],
-  ])('and, before the sale of the next season, holding the running one, which is then the one on sale, on a %s', async (basis, stated) => {
+  ])('and, on 1 March 2027, holding the running one, which is then the one on sale, on a %s, he reads the fee and no price', async (basis, stated) => {
     openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: 2027 }, '2027-03-01')
 
     expect(await screen.findByText(stated)).toBeVisible()
-    noPriceNote()
+    theFeeAndNoPrice()
   }, SLOW)
 
   it.each([
@@ -435,11 +438,14 @@ describe('the notes about a price follow what he owes for the season on sale (PE
     expect(screen.queryByText(/je plaćena/)).not.toBeInTheDocument()
   }, SLOW)
 
-  it('a member freed of the fee for the season on sale is quoted nothing either, as before', async () => {
-    openHisPage({ ...STANDING, membershipBasis: 'feeExempt', membershipSeason: 2028 }, '2027-11-01')
+  it.each([
+    ['2028 on 1 November 2027', 2028, '2027-11-01'],
+    ['2027 on 1 March 2027', 2027, '2027-03-01'],
+  ])('a member freed of the fee for the season on sale, %s, is quoted no price and reads the fee all the same', async (_label, season, today) => {
+    openHisPage({ ...STANDING, membershipBasis: 'feeExempt', membershipSeason: season }, today)
 
     expect(await screen.findByText('Oslobođen si plaćanja članarine, pa nema šta da uplatiš.')).toBeVisible()
-    noPriceNote()
+    theFeeAndNoPrice()
   }, SLOW)
 
   it('somebody who holds nothing is quoted all three, so the notes are still drawn where a price is owed', async () => {
