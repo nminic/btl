@@ -242,9 +242,75 @@ class TheDevelopmentControlsAreNeverBuiltForProductionTest {
 	}
 
 	/**
-	 * THE JUDGE OF THE CASE ABOVE, HELD ON THE SHAPES IT HAS TO TELL APART, for the same reason
-	 * as the one below it: the Dockerfile this repository ships never names the mode, so the case
-	 * above never sees the judge refuse anything.
+	 * AND THE BUILD COMMAND CARRIES THE MODE ITSELF.
+	 *
+	 * <p>The case above refuses a line that sets another mode; this one removes the question: the
+	 * {@code RUN} that builds the bundle is written {@code NODE_ENV=production npm run build}, so
+	 * no earlier line, base image or argument can put that one command in development. Every
+	 * line of every Dockerfile a stack builds that runs {@code npm run build} must have
+	 * {@code NODE_ENV=production} in front of it.
+	 */
+	@Test
+	void theBuildCommandNamesProductionInFrontOfItself() throws Exception {
+		boolean oneBuilds = false;
+
+		for (Map.Entry<Path, List<String>> built : everyDockerfileAStackBuilds().entrySet()) {
+			List<String> lines = Files.readAllLines(built.getKey(), StandardCharsets.UTF_8);
+
+			oneBuilds |= lines.stream().anyMatch(one -> !one.strip().startsWith("#") && one.contains("npm run build"));
+
+			assertThat(buildLinesNotPinnedToProduction(lines))
+					.as("%s, built by %s, runs the bundle build without `%s=production` in front of"
+							+ " it, so an earlier line could put the build in development", built.getKey(),
+							built.getValue(), MODE)
+					.isEmpty();
+		}
+
+		assertThat(oneBuilds)
+				.as("no Dockerfile a stack builds runs `npm run build`, so this case measured nothing")
+				.isTrue();
+	}
+
+	@ParameterizedTest(name = "pinned: {0}")
+	@MethodSource("buildLinesAndWhetherTheyArePinned")
+	void tellsAPinnedBuildFromAnUnpinnedOne(String way, String dockerfile, boolean pinned) {
+		assertThat(buildLinesNotPinnedToProduction(dockerfile.lines().toList()).isEmpty())
+				.as("%s, written as%n%s", way, dockerfile)
+				.isEqualTo(pinned);
+	}
+
+	static Stream<Arguments> buildLinesAndWhetherTheyArePinned() {
+		return Stream.of(
+				Arguments.of("the pin in front", "RUN " + MODE + "=production npm run build", true),
+				Arguments.of("no pin", "RUN npm run build", false),
+				Arguments.of("the pin on an earlier line only", "ENV " + MODE + "=production\nRUN npm run build", false),
+				Arguments.of("the pin after the command", "RUN npm run build " + MODE + "=production", false),
+				Arguments.of("development in front", "RUN " + MODE + "=development npm run build", false),
+				Arguments.of("a comment that says the command", "# RUN npm run build", true),
+				Arguments.of("no build at all", "FROM nginx:1.29-alpine", true));
+	}
+
+	/** Every line that runs {@code npm run build} without {@code NODE_ENV=production} before it. */
+	static List<String> buildLinesNotPinnedToProduction(List<String> dockerfile) {
+		List<String> refused = new ArrayList<>();
+
+		for (int at = 0; at < dockerfile.size(); at++) {
+			String line = dockerfile.get(at).strip();
+			int command = line.indexOf("npm run build");
+
+			if (!line.startsWith("#") && command >= 0
+					&& !Pattern.compile(MODE + "=production\\s").matcher(line.substring(0, command)).find()) {
+				refused.add("line " + (at + 1) + ": " + line);
+			}
+		}
+
+		return refused;
+	}
+
+	/**
+	 * THE JUDGE OF noDockerfileAStackBuildsPutsTheBuildInAnyModeButProduction, HELD ON THE SHAPES IT HAS TO TELL APART, for the same reason
+	 * as the one below it: the Dockerfile this repository ships names the mode only as production, so the case
+	 * of that name never sees the judge refuse anything.
 	 */
 	@ParameterizedTest(name = "refuses {0}")
 	@MethodSource("waysToPutTheBuildInAnotherMode")

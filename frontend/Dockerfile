@@ -8,7 +8,10 @@ COPY . .
 # nothing, and both are then absent from the bundle's behaviour.
 ARG VITE_DEV_TOOLS
 ENV VITE_DEV_TOOLS=$VITE_DEV_TOOLS
-RUN npm run build
+# The mode is written on the command itself, so that no earlier line of this file (or a base
+# image) can put the build in development: the build tool then treats the bundle as a
+# development one and draws both switches whatever the flag above says.
+RUN NODE_ENV=production npm run build
 
 FROM nginx:1.29-alpine
 COPY nginx-to-backend.conf /etc/nginx/nginx-to-backend.conf
