@@ -19,6 +19,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -899,15 +900,31 @@ class VerificationWriteApi {
 		 * other. This is the shape `JoiningATeam` already names: a question answered a moment
 		 * earlier for the sake of a sentence the caller can read, with the database behind it
 		 * as the one that actually decides. */
-		int taken = db.sql("insert into verification_lock (verification_id, held_by, held_until)"
-						+ " values (?, ?, ?)"
-						+ " on conflict (verification_id) do update"
-						+ " set held_by = excluded.held_by, held_until = excluded.held_until"
-						+ " where verification_lock.held_by = excluded.held_by"
-						+ "    or verification_lock.held_until <= ?")
-				.params(item.get().id(), asking.account(), Timestamp.from(until),
-						Timestamp.from(now))
-				.update();
+		int taken;
+
+		try {
+			taken = db.sql("insert into verification_lock (verification_id, held_by, held_until)"
+							+ " values (?, ?, ?)"
+							+ " on conflict (verification_id) do update"
+							+ " set held_by = excluded.held_by, held_until = excluded.held_until"
+							+ " where verification_lock.held_by = excluded.held_by"
+							+ "    or verification_lock.held_until <= ?")
+					.params(item.get().id(), asking.account(), Timestamp.from(until),
+							Timestamp.from(now))
+					.update();
+		}
+		catch (DataIntegrityViolationException theRowWasTakenBack) {
+			/* THE ROW IS GONE BETWEEN THE READ AT THE TOP AND THIS INSERT, and `verification_lock_verification_fk`
+			   is what says so. Since the removal of a waiting picture deletes its row (PDL 27.09.2026,
+			   „red odlazi zajedno sa njom") a member can do that to a moderator who has opened the card
+			   a moment before, and the insert then stops at the key of the row being taken and fails
+			   when the removal commits. A row somebody took out from under the hold is a row that is
+			   not waiting any more, which is the answer the check above gives for a row somebody
+			   decided, and the one a decision stopped behind the same removal is given
+			   (`APictureTakenBackWhileItIsBeingDecidedOrSentTest`). It is not a server fault: nothing
+			   is wrong with the moderator's request and nothing was written. */
+			return no(HttpStatus.CONFLICT, SOMEBODY_ANSWERED_IT_ALREADY);
+		}
 
 		if (taken == 0) {
 			return no(HttpStatus.CONFLICT, SOMEBODY_ELSE_IS_READING_IT);
@@ -2437,6 +2454,22 @@ class VerificationWriteApi {
 
 		tell(proposal.competitorId(), "Tim je prihvaćen",
 				"Vaš tim \"" + proposal.name() + "\" je prihvaćen i od sada ga vodite.");
+
+		/* AND THE TEAMS THAT HAD ALREADY ASKED HIM ARE TOLD, because the approval is the third door a
+		   member goes into a team by. PDL 06.09.2026: „Tim čiji je poziv ostao neodgovoren dobija poruku
+		   u sandučetu portala", and it „javlja se bez obzira kojim putem je član ušao, jer je poziv koji
+		   je ostao bez odgovora isti događaj u oba slučaja". Until now only the two doors of
+		   `TeamJoiningWriteApi` called it, so the team of a man a moderator made a founder never learnt
+		   he was no longer to be had. The same statement and the same sentences, called rather than
+		   copied, and inside the transaction the claim runs in. The team just made is the one he joined,
+		   which that statement leaves out. */
+		String[] him = db.sql("select first_name || ' ' || last_name, gender from competitor where id = ?")
+				.param(proposal.competitorId())
+				.query((row, number) -> new String[] { row.getString(1), row.getString(2) })
+				.single();
+
+		TeamJoiningWriteApi.theOtherTeamsThatAskedHim(db, proposal.competitorId(), team, him[0], him[1],
+				proposal.name());
 	}
 
 	/**

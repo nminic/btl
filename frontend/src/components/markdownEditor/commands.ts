@@ -11,10 +11,9 @@ import { Slice, type Mark, type MarkType, type Node } from 'prosemirror-model'
 import { liftListItem, splitListItem, wrapInList } from 'prosemirror-schema-list'
 import { EditorState, Plugin, type Command, type Transaction } from 'prosemirror-state'
 import { mailOf } from '../../pages/league/mailsIn'
-import { addressOf } from '../markdownText'
-import { fromMarkdown, toMarkdown } from './convert'
+import { fromMarkdown, isBlank, toMarkdown } from './convert'
 import { mailsShown } from './mails'
-import { schema } from './schema'
+import { linkableAddress, schema } from './schema'
 
 /*
  * WHAT THE BUTTONS AND THE KEYS OF THE EDITOR DO, without a screen, so each of them can be asked
@@ -108,7 +107,10 @@ export const splitItem: Command = (state, dispatch) =>
         const { $from } = tr.selection
         const second = $from.before(-1)
         const first = $from.node(-2).child($from.index(-2) - 1)
-        const atStart = first.child(0).content.size === 0
+        /* Asked of the thing the text that is written asks (`isBlank`): an item with no word in it is
+           written as nothing, so the words that are left are the start of the line however much
+           stands before the cursor, a blank or a line break among it. */
+        const atStart = isBlank(first.child(0))
 
         dispatch(tr.setNodeMarkup(atStart ? second - first.nodeSize : second, null, { number: null }))
       }),
@@ -164,23 +166,6 @@ export function aroundCursor(state: EditorState, link: Mark): { from: number; to
   })
 
   return found
-}
-
-/**
- * Which address a link may lead to: one of this portal, written with one slash, or one of another
- * site, written with `https://`, `http://` or `mailto:`, and no blank and no closing bracket in it,
- * which a written link cannot hold.
- *
- * Whether the page will draw it is asked of the page's own list (`addressOf`), so the editor never
- * makes a link the page would show as words. It is asked with the host check (PDL P15, 03.10.2026:
- * an address with an „@" or with letters outside ASCII in its host is text), which the terms and the
- * prizes of a competition make of every link. The editor does not know which text it writes, so a
- * link the page of a description would still draw is refused here too: the stricter of the two.
- */
-const LINKABLE = /^(?:https?:\/\/|mailto:|\/(?![/\\]))[^\s)]+$/
-
-export function linkableAddress(address: string): boolean {
-  return LINKABLE.test(address) && addressOf(address, true) !== undefined
 }
 
 /**

@@ -662,7 +662,7 @@ class TeamJoiningWriteApi {
 		tell(his.get().applicant(), heIsInTheTeamReads(his.get().teamName()),
 				theSeasonHeRunsFromReads(his.get().teamName()));
 
-		theOtherTeamsThatAskedHim(his.get().applicant(), team, his.get().applicantName(),
+		theOtherTeamsThatAskedHim(db, his.get().applicant(), team, his.get().applicantName(),
 				his.get().applicantGender(), his.get().teamName());
 
 		return ResponseEntity.noContent().build();
@@ -884,7 +884,7 @@ class TeamJoiningWriteApi {
 		takeHimIn(me, team, now);
 		theInvitationIsOver(invitation);
 
-		theOtherTeamsThatAskedHim(me, team, his.get().hisName(), his.get().hisGender(),
+		theOtherTeamsThatAskedHim(db, me, team, his.get().hisName(), his.get().hisGender(),
 				his.get().teamName());
 
 		return ResponseEntity.noContent().build();
@@ -1043,8 +1043,16 @@ class TeamJoiningWriteApi {
 	 * invitation: a team may hold one for 2028 and another for 2029, which the schema allows
 	 * even though this class refuses to write the second, and two identical lines in one inbox
 	 * would be the same news twice.
+	 *
+	 * <p><b>Static, because there are three doors into a team and this class owns two.</b> The
+	 * entry says it is told „bez obzira kojim putem je član ušao, jer je poziv koji je ostao bez
+	 * odgovora isti događaj u oba slučaja" (PDL.md, same entry): an application a team accepts and
+	 * an invitation the member accepts are the two here, and the third is a moderator approving the
+	 * team the member proposed, which makes him its founder ({@link VerificationWriteApi}, which
+	 * calls this inside its own transaction). One statement and one pair of sentences, so the
+	 * three cannot drift apart.
 	 */
-	private void theOtherTeamsThatAskedHim(long member, long joined, String hisName,
+	static void theOtherTeamsThatAskedHim(JdbcClient db, long member, long joined, String hisName,
 			String hisGender, String joinedTeam) {
 
 		List<Long> leaders = db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
@@ -1059,7 +1067,7 @@ class TeamJoiningWriteApi {
 				.list();
 
 		for (long leader : leaders) {
-			tell(leader, THE_INVITATION_WAS_MISSED,
+			tell(db, leader, THE_INVITATION_WAS_MISSED,
 					theMissedInvitationReads(hisName, hisGender, joinedTeam));
 		}
 	}
@@ -1127,6 +1135,11 @@ class TeamJoiningWriteApi {
 	 * for „a message with a name and no pointer".
 	 */
 	private void tell(long member, String subject, String body) {
+		tell(db, member, subject, body);
+	}
+
+	/** The same, for the one caller that is not a request of this class: see {@link #theOtherTeamsThatAskedHim}. */
+	private static void tell(JdbcClient db, long member, String subject, String body) {
 		db.sql("insert into message (to_id, from_id, from_name, subject, body)"
 						+ " values (?, null, ?, ?, ?)")
 				.params(member, THE_LEAGUE, subject, body)

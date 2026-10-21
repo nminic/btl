@@ -37,6 +37,38 @@ describe('a piece of a page, read into the editor', () => {
   })
 })
 
+describe('a link in a piece of a page', () => {
+  /* The address of a pasted link is asked what the address of a link made in the box is asked
+     (`linkableAddress`), so a drop brings in no link that the box would have refused. */
+  const REFUSED = [
+    'javascript:alert(1)',
+    'JaVaScRiPt:alert(1)',
+    'data:text/html,x',
+    '//zlo.example',
+    'https://www.runtrace.net@zlo.example',
+    'https://primer.rs/a b',
+    '/pravilnik za',
+    '/pravilnik)',
+    'mailto:nije mejl',
+    '',
+  ]
+  const KEPT = ['https://primer.rs/a_b', 'http://primer.rs', '/pravilnik', 'mailto:info@primer.rs']
+
+  it('is a link only where the address is one the box would have made a link to, and its words are kept either way', () => {
+    for (const href of REFUSED) {
+      expect(read(`<p><a href="${href}">klik</a></p>`), href).toBe('klik')
+    }
+
+    for (const href of KEPT) {
+      expect(read(`<p><a href="${href}">klik</a></p>`), href).toBe(`[klik](${href})`)
+    }
+  })
+
+  it('keeps the bold of the words of a refused link, which are words like any other', () => {
+    expect(read('<p><a href="javascript:alert(1)"><b>klik</b> ovde</a></p>')).toBe('**klik** ovde')
+  })
+})
+
 describe('the numbers of a pasted numbered list', () => {
   it('keeps the number a list counts from and the number of an item that jumps', () => {
     expect(read('<ol start="3"><li>prva</li><li>druga</li><li value="9">treća</li></ol>')).toBe(
