@@ -65,8 +65,6 @@ const THE_LIST = '/sr/administracija/dogadjaji'
 const THE_COPY = `${THE_LIST}?kopija=32`
 
 const COPY_EVENT = 9401
-const COPY_FIRST = 9301
-const COPY_SECOND = 9302
 
 /** A write that is out: where it went, how, and the way to answer it. */
 type Out = { path: string; how: string; done: (one: Response) => void }

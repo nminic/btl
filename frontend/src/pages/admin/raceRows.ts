@@ -612,5 +612,5 @@ export function isChanged(row: RaceRow, served: RaceRow | undefined): boolean {
   const now = storedRow(row, '')
   const was = storedRow(served, '')
 
-  return (Object.keys(now) as (keyof StoredRace)[]).some((key) => now[key] !== was[key])
+  return Object.entries(now).some(([key, value]) => value !== Reflect.get(was, key))
 }
