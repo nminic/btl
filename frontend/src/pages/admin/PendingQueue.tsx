@@ -508,9 +508,16 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * one at a time - which is how the moderator reads the rest of the reasons.
    */
   const [said, setSaid] = useState<ServerRefusal | null>(null)
-  /** Which card is open, on the width where they are folded. One at a time: two
-   *  open cards on a telephone are the scrolling this was meant to end. */
-  const [shown, setShown] = useState<string | null>(null)
+  /**
+   * Which card is open, on the width where they are folded, and WHO OPENED IT. One at a time: two
+   * open cards on a telephone are the scrolling this was meant to end.
+   *
+   * <p>The second half is what lets an answer open the card it is about without ever folding a card
+   * the moderator opened himself (`sayIt`, PENDING 28270): a card the moderator opened is his, and one
+   * an answer opened gives way to the next answer, whose sentence replaces the first one's.
+   */
+  const [unfolded, setUnfolded] = useState<{ card: string; by: 'moderator' | 'answer' } | null>(null)
+  const shown = unfolded?.card ?? null
   /**
    * Whether a walk is out with the route, so a second press before the first
    * has answered cannot start another one over the same items.
@@ -1140,13 +1147,28 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * <p>So the card the route refused is the one thing the moderator now has to look at,
    * and it opens.
    *
+   * <p><b>Unless the moderator opened a card himself, which an answer never folds</b> (PENDING 28270,
+   * measured at 360). One card is open at a time on a telephone, so opening the refused one closes the
+   * card he is reading: an answer for card A that arrives while he reads card B - a press on A still
+   * out, or a sweep that met a refusal - took B away from under him. The card he opened is his and the
+   * answer is not the one to take it. The sentence is then drawn in A, which stays folded, and it is
+   * there when he opens A. That is a boundary and it is written down as one: the alternative is a
+   * second open card, which is the scrolling the fold was written to end. It is MY reading and not a
+   * recorded decision.
+   *
+   * <p><b>A card an earlier ANSWER opened is not his</b>, and gives way: the sentence it was opened
+   * for is replaced by this one (`said` holds one), so leaving it open would show the old card with
+   * nothing to read in it and hide the new sentence in a card that is folded.
+   *
    * <p>Above that width nothing is folded and this changes nothing anybody can see.
    */
   const sayIt = (refusal: ServerRefusal | null): void => {
     setSaid(refusal)
 
     if (refusal !== null) {
-      setShown(refusal.id)
+      setUnfolded((now) =>
+        now === null || now.by === 'answer' ? { card: refusal.id, by: 'answer' } : now,
+      )
     }
   }
 
@@ -1556,7 +1578,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 : 'verification.openCardNamed',
                               { name: one.subject },
                             )}
-                            onClick={() => setShown(shown === one.id ? null : one.id)}
+                            onClick={() =>
+                              setUnfolded(shown === one.id ? null : { card: one.id, by: 'moderator' })
+                            }
                           />
                         </div>
 

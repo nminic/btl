@@ -137,6 +137,14 @@ export function AdminMembers() {
   } | null>(null)
 
   /**
+   * EVERY SUCCESS THIS VISIT HAS HAD ON A ROW, one entry per success and the member number in it, and
+   * nothing else is kept. What a row reads from it is how many are its own (`useRowRefusal`), so the
+   * success of one row moves that row's count and no other. A list of numbers and not a record of
+   * counts, so that a row nothing has succeeded on needs no „or nought" to be read.
+   */
+  const [succeededOn, setSucceededOn] = useState<string[]>([])
+
+  /**
    * TAKING A MEMBER AWAY, ACCOUNT AND ALL.
    *
    * PDL P23, 14.09.2026: „Prvo se odluci sta sa nalogom (anonimizuje se ili se
@@ -216,6 +224,18 @@ export function AdminMembers() {
   }
 
   /**
+   * AN ACTION ON A ROW WENT THROUGH (PENDING 29660), and the sentence of an earlier refusal beside that
+   * row is no longer true of it: the deletion that was refused is said here, the cancellation, the
+   * change, the grant and the payment that were refused are said by the row's own components, and the
+   * count handed to them moves with this call. <b>Only this row's</b>: a refusal beside another row says
+   * something nothing here has changed.
+   */
+  function settle(one: Member): void {
+    setSucceededOn((were) => [...were, one.memberNumber])
+    setRefused((was) => (was?.memberNumber === one.memberNumber ? null : was))
+  }
+
+  /**
    * A PAYMENT WAS RECORDED ON A ROW, and every answer that says something different about him now
    * is dropped. The three names are `Payments.tsx#onActivated`'s, for its reason: the booking writes
    * his season, his payment and his `active`, so the payments screen must no longer list him for that
@@ -223,7 +243,8 @@ export function AdminMembers() {
    * is told there (PDL P8, „Upis uplate ... stižu članu kao poruka u portalskom sandučetu”) and the
    * row may be the moderator's own (PDL P8, „smeju da rade na sopstvenom redu”).
    */
-  function paymentRecorded(): void {
+  function paymentRecorded(one: Member): void {
+    settle(one)
     clearResourceCache('payments')
     clearResourceCache('members')
     clearResourceCache('competitors')
@@ -236,26 +257,38 @@ export function AdminMembers() {
    * A SEASON WAS CANCELLED, ITS BASIS CHANGED OR AN EXEMPTION GRANTED ON A ROW (PDL P8, 18.10.2026),
    * and every answer that says something different about him now is dropped.
    *
-   * <p>`paymentRecorded`'s three, for its reason, and three more, because a cancellation can make him
+   * <p>`paymentRecorded`'s three, for its reason, and five more, because a cancellation can make him
    * inactive: `MemberMembershipApi` writes `active` from the rows that remain, and a member whose fee no
-   * longer stands leaves the public list, the results of the season being run, his team's roster and
-   * his pair (`where c.active` on each of them). `results` also carries `inItsSeason`, which a cancelled
-   * season stops being. A change of basis keeps him a member of the season, and the same six are dropped
+   * longer stands leaves the public list, the results of the season being run, his team's roster, his
+   * pair, the list of who is going to an event and the author's number on a comment (`where c.active` or
+   * `author.active` on each of them). `results` also carries `inItsSeason`, which a cancelled
+   * season stops being. A change of basis keeps him a member of the season, and the same eight are dropped
    * for it all the same: one road for both is one road to keep right. A grant makes him a member of the
-   * season, active again if he had lapsed, and off the payments screen: the same six, for the same
+   * season, active again if he had lapsed, and off the payments screen: the same eight, for the same
    * reasons the other way round.
+   *
+   * <p><b>`attendance` AND `comments` WERE LEFT OFF UNTIL 20.10.2026</b> (PENDING 29656, review of PR 579,
+   * measured), although the sentence above this one said that every answer is dropped: `deleteOne`, in
+   * this same file, drops both for the same member, and a cancellation that makes him inactive takes him
+   * off the one (`AttendanceApi`, `and c.active`) and his number off the other (`CommentApi`,
+   * `case when author.active then author.member_number end`). Which cached names read the flag is not
+   * this file's to remember: `rowMembership.test.tsx` reads it out of the backend's own SQL and holds
+   * this function to it, with `me/applications` the one exception and its reason written there.
    *
    * <p>**His inbox only when the row is the moderator's own**, which is when the inbox this visit holds
    * is the member's („Moderator i superadmin smeju da rade na sopstvenom redu”). The message goes to the
    * member, so on any other row nothing this visit holds about the inbox has changed.
    */
   function seasonChanged(one: Member, said: string): void {
+    settle(one)
     clearResourceCache('payments')
     clearResourceCache('members')
     clearResourceCache('competitors')
     clearResourceCache('results')
     clearResourceCache('teams')
     clearResourceCache('pairs')
+    clearResourceCache('attendance')
+    clearResourceCache('comments')
 
     if (one.memberNumber === mine) {
       theInboxHasChanged()
@@ -374,6 +407,9 @@ export function AdminMembers() {
                          and NOT the season on sale beside the basis: a member of 2027 who has not
                          renewed by November has a last season and no basis of 2028. */
                       const last = one.seasons.at(-1)
+                      /* HOW MANY ACTIONS ON THIS ROW HAVE GONE THROUGH, which is what ends a refusal
+                         beside it (`useRowRefusal`) and counts no other row's. */
+                      const succeeded = succeededOn.filter((number) => number === one.memberNumber).length
                       /* THE BASIS AND THE SEASONS ARE DRAWN IN TWO PLACES, and only one of them at any
                          width: their columns from 700px, and the box under the name below it
                          (`table__hide-phone` and `table__phone-only`, the two halves of one query in
@@ -464,7 +500,11 @@ export function AdminMembers() {
                                 held on a payment is the harmless repeat, and one held on an exemption or
                                 a balance is refused. */}
                             {one.membershipBasis === undefined && (
-                              <RowPayment one={one} onRecorded={paymentRecorded} />
+                              <RowPayment
+                                one={one}
+                                settled={succeeded}
+                                onRecorded={() => paymentRecorded(one)}
+                              />
                             )}
                             {/* AND OVER AN EXEMPTION, as a change of basis: „preko njega se može upisati
                                 uplata" (PDL P8, 18.10.2026). Never over a balance: „storno ..., pa nova
@@ -472,6 +512,7 @@ export function AdminMembers() {
                             {offeredFor(one.membershipBasis).paymentOverTheExemption && (
                               <RowPayment
                                 one={one}
+                                settled={succeeded}
                                 overTheExemption
                                 onRecorded={() => seasonChanged(one, t('admin.basisChanged'))}
                               />
@@ -481,6 +522,7 @@ export function AdminMembers() {
                                 (PDL P8, 18.10.2026, „Oslobođenje ostaje izbor na redu člana"). */}
                             <RowMembership
                               one={one}
+                              settled={succeeded}
                               onCancelled={() => seasonChanged(one, t('admin.membershipCancelled'))}
                               onChanged={() => seasonChanged(one, t('admin.basisChanged'))}
                               onGranted={() => seasonChanged(one, t('admin.exemptionGranted'))}

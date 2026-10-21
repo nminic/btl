@@ -1,12 +1,17 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, configure, render, screen, waitFor } from '@testing-library/react'
 import { useRef, useState } from 'react'
 import { must } from '../test/at'
 import { intersecting, watcher } from '../test/intersection'
+import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 import { useColumns, useGrowing } from './growing'
 import { LoadMore } from './LoadMore'
+
+/* Every wait is given half of what a case is given, for the reason `rowMembership.test.tsx` gives: a
+   mutation then fails on its assertion and not on the clock of the case. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * A list that grows as it is read (owner, 11.08.2026).
@@ -409,6 +414,136 @@ describe('the foot of the list coming into view', () => {
     await waitFor(() => {
       expect(watching).toBe(0)
     })
+  })
+
+  /*
+   * WHO ASKED FOR THE LAST STEP (PENDING 29781; WCAG 2.2 SC 2.4.3 and 3.2.2). The closing sentence
+   * takes the focus because the button the reader stood on was replaced by it; a list that grew
+   * because the foot came into view had nobody standing on anything, and on the comments the
+   * sentence is not even drawn, so the focus went to a line nobody could see and took the viewport
+   * with it.
+   */
+  describe('the focus, when the list became whole', () => {
+    const end = (total: number) => screen.getByText(`To je svih ${String(total)}`)
+
+    it('stays where the reader is when the foot coming into view made it whole', async () => {
+      render(
+        <>
+          <button type="button">negde drugde</button>
+          <Growing total={15} step={10} />
+        </>,
+      )
+
+      const elsewhere = screen.getByRole('button', { name: 'negde drugde' })
+
+      elsewhere.focus()
+      await comesIntoView(true)
+
+      expect(items()).toBe(15)
+      expect(end(15)).not.toHaveFocus()
+      expect(elsewhere).toHaveFocus()
+    }, SLOW)
+
+    it('stays where the reader is when scrolling finished a list he had begun with the button', async () => {
+      /* THE LAST REQUEST IS THE ONE THAT COUNTS: pressing the button once and then scrolling to the
+         end is a list the button did not finish. A flag raised by the button and never lowered by the
+         scroll would claim it. */
+      const user = setupUser()
+
+      render(
+        <>
+          <button type="button">negde drugde</button>
+          <Growing total={25} step={10} />
+        </>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+      expect(items()).toBe(20)
+
+      const elsewhere = screen.getByRole('button', { name: 'negde drugde' })
+
+      elsewhere.focus()
+      await comesIntoView(true)
+
+      expect(items()).toBe(25)
+      expect(end(25)).not.toHaveFocus()
+      expect(elsewhere).toHaveFocus()
+    }, SLOW)
+
+    it('follows the reader who finished a list that scrolling had begun, with the button', async () => {
+      /* AND THE OTHER WAY ROUND, so the case above is not a button that never moves the focus again:
+         the step that made it whole was the button's. */
+      const user = setupUser()
+
+      render(<Growing total={25} step={10} />)
+
+      await comesIntoView(true)
+      expect(items()).toBe(20)
+
+      await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+
+      expect(end(25)).toHaveFocus()
+    }, SLOW)
+  })
+
+  /*
+   * WHERE THE READER WAS WHEN THE BUTTON LEFT, not how the last step was asked for (review of PR 608,
+   * round 1). The first answer to PENDING 29781 was a flag raised by the button and lowered by the
+   * observer, and a keyboard reader who Tabs to „Učitaj još" makes the browser scroll the foot into
+   * view: the observer fired, the flag went down, and the step that finished the list took away the
+   * button he stood on and left the focus on `body`.
+   */
+  describe('the focus, when the button the reader stood on is the one that went', () => {
+    const end = (total: number) => screen.getByText(`To je svih ${String(total)}`)
+
+    it('follows a keyboard reader whose reaching the button brought the foot into view', async () => {
+      render(<Growing total={15} step={10} />)
+
+      screen.getByRole('button', { name: 'Učitaj još' }).focus()
+      await comesIntoView(true)
+
+      expect(items()).toBe(15)
+      expect(end(15)).toHaveFocus()
+    }, SLOW)
+
+    it('does not follow a reader who stood on the button, left it, and was scrolled to the end', async () => {
+      /* Standing on the button is what is asked at the moment it goes, and not at any moment before. */
+      render(
+        <>
+          <button type="button">negde drugde</button>
+          <Growing total={15} step={10} />
+        </>,
+      )
+
+      screen.getByRole('button', { name: 'Učitaj još' }).focus()
+      screen.getByRole('button', { name: 'negde drugde' }).focus()
+      await comesIntoView(true)
+
+      expect(items()).toBe(15)
+      expect(screen.getByRole('button', { name: 'negde drugde' })).toHaveFocus()
+      expect(end(15)).not.toHaveFocus()
+    }, SLOW)
+
+    it('does not claim the end of a list reached by scrolling from a filter, because an earlier list ended on the button', async () => {
+      /* The note that the button left with the focus is spent by the end it was made for. Left, it
+         would be true again when the filter is widened and the same list is scrolled to its end. */
+      const user = setupUser()
+
+      render(<Filtering sizes={[15, 40]} step={10} />)
+
+      await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
+      expect(end(15)).toHaveFocus()
+
+      await user.click(screen.getByRole('button', { name: 'filter 2' }))
+      expect(screen.getByRole('button', { name: 'Učitaj još' })).toBeVisible()
+
+      await comesIntoView(true)
+      await comesIntoView(true)
+
+      expect(items()).toBe(40)
+      expect(screen.getByRole('button', { name: 'filter 2' })).toHaveFocus()
+      expect(end(40)).not.toHaveFocus()
+    }, SLOW)
   })
 
   it('holds up where the browser has no observer at all', () => {

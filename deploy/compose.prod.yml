@@ -48,7 +48,7 @@
 # tables, among them the whole rulebook, the terms of use, the privacy policy and
 # the president's word in both languages, beside countries, places, the price
 # list and the ducat catalogue. What NOTHING seeds is the league: not one insert
-# into btl_event, race, result or competitor in any of the 46. So a production
+# into btl_event, race, result or competitor in any migration. So a production
 # database that has had every migration applied and nothing else is not an empty
 # portal; it is a portal with no league in it.
 #
@@ -246,10 +246,11 @@ services:
       # writable layer and goes with the next build, while the rows in `photo`
       # that describe them stay - which is a portal full of pictures that 404.
       #
-      # AND IT IS A JOB THAT COMES WITH IT: ADL A43, 2, "rezervna kopija mora da
-      # pokrije i volumen, a danas ne pokriva nista". The nightly pg_dump covers
-      # the database and nothing covers this, and on production that is a member's
-      # photograph rather than a test one.
+      # AND IT IS A JOB THAT CAME WITH IT: ADL A43, 2, "rezervna kopija mora da
+      # pokrije i volumen". deploy/backup.sh copies this volume every night in the
+      # same encrypted object as the database, AFTER the dump, and it mounts it for
+      # that one command and read only: it is declared on no other service here,
+      # so it stays "montiran samo u bekend".
       - photos:/var/lib/btl/photos
     mem_limit: 640m
     healthcheck:
@@ -266,6 +267,64 @@ services:
       # Flyway plus the Spring context take tens of seconds on a 2 vCPU host,
       # and failures inside this window do not count against retries.
       start_period: 90s
+
+  # THE BACKUP'S SETTINGS, and the only thing of the backup that lives in this
+  # file. deploy/backup.sh and deploy/restore.sh run it once per run:
+  #   docker compose -f compose.prod.yml --profile backup run --rm -T -v "$WORK":/work backup-settings
+  # and it does nothing but write the values below as files into that work
+  # folder, which is memory; deploy/backup/write-settings.sh says why it is a
+  # service and why it makes files.
+  #
+  # BEHIND A PROFILE, so that no `up` ever starts it: the deploy commands in the
+  # header name their services, and a plain `up -d` leaves a profiled service
+  # alone.
+  #
+  # EVERY SETTING IS `:-` AND NEVER `:?`, measured rather than argued, and it is
+  # the reason the mail credentials above are `:-` too: Compose interpolates the
+  # WHOLE file before it reads which services a command named, a profile
+  # included, so one `:?` here would turn down every command over this file -
+  # the frontend-only deploy as well - until the bucket existed (ADL A4a).
+  # write-settings.sh refuses each one that is empty, by name, and the run that
+  # needed it fails and mails.
+  #
+  # NO NETWORK, because writing files needs none, and NO PHOTOGRAPHS: the volume
+  # above is mounted by the backup's own commands for the length of one command,
+  # so it stays mounted only into the backend here (ADL A43, 2).
+  #
+  # The image is the one the backend is built on, so it is already on the host,
+  # and the one deploy/backup.sh runs curl in (BackupScriptTest compares them).
+  backup-settings:
+    profiles: [backup]
+    image: eclipse-temurin:21-jre
+    network_mode: none
+    restart: "no"
+    entrypoint: ["sh", "/backup/write-settings.sh", "/work"]
+    volumes:
+      - ./backup:/backup:ro
+    environment:
+      # The bucket, in R2's EU jurisdiction (owner, 20.10.2026), its account and
+      # the key the owner makes for it in the R2 panel. The account id is not a
+      # secret; the key pair is.
+      BTL_BACKUP_R2_ACCOUNT_ID: ${PROD_BACKUP_R2_ACCOUNT_ID:-}
+      BTL_BACKUP_R2_BUCKET: ${PROD_BACKUP_R2_BUCKET:-}
+      BTL_BACKUP_R2_ACCESS_KEY_ID: ${PROD_BACKUP_R2_ACCESS_KEY_ID:-}
+      BTL_BACKUP_R2_SECRET_ACCESS_KEY: ${PROD_BACKUP_R2_SECRET_ACCESS_KEY:-}
+      # The passphrase every copy is encrypted with: random, here, and in the
+      # owner's password manager (owner, 20.10.2026). Without the second copy, a
+      # lost server takes the ability to open every copy with it.
+      BTL_BACKUP_PASSPHRASE: ${PROD_BACKUP_PASSPHRASE:-}
+      # The relay and the recipient of a failure: the SAME settings the backend
+      # sends with and the superadmin's address (owner, 20.10.2026: "skripta
+      # salje mejl preko Breva", "prima je adresa superadmina"), so nothing new
+      # has to be made for the alert.
+      BTL_BACKUP_MAIL_HOST: ${PROD_MAIL_HOST:-smtp-relay.brevo.com}
+      BTL_BACKUP_MAIL_PORT: ${PROD_MAIL_PORT:-587}
+      BTL_BACKUP_MAIL_USERNAME: ${PROD_MAIL_USERNAME:-}
+      BTL_BACKUP_MAIL_PASSWORD: ${PROD_MAIL_PASSWORD:-}
+      BTL_BACKUP_MAIL_TO: ${BTL_SUPERADMIN_EMAIL:-}
+      # The sender the relay has verified, which is the portal's own
+      # btl.mail.from in application.properties (BackupScriptTest compares them).
+      BTL_BACKUP_MAIL_FROM: no-reply@balkanskatrkackaliga.net
 
 volumes:
   postgres-data:

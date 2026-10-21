@@ -21,6 +21,21 @@ import type { Race, RaceKind } from '../../data/types'
  * makes „0" and „nothing yet" the same thing.
  */
 export type RaceRow = {
+  /**
+   * WHAT THE ROW IS KNOWN BY ON THE SCREEN, AND IT NEVER CHANGES FOR THE LIFE OF THE ROW (PENDING
+   * 29316; WCAG 2.2 SC 2.4.3).
+   *
+   * <p>The race's own identity is not that: a row being entered has none, and the press that writes
+   * it hands one back onto the very row (`AdminEvents.tsx`, `writeTheRaces`). A table that keyed its
+   * rows by `id` therefore changed the key of a row in the middle of the press that saved it, and React
+   * took the race out of the page and drew it again - with the reader's focus in one of its boxes. So
+   * the key is this, given when the row is made and carried by every copy of it (`{ ...row }`).
+   *
+   * <p>Unique among the rows of one table, which is all a key has to be: `rowsOf` names a row after
+   * the race it is, `newRaceRow` counts. A copy of an event (`AdminEvents.tsx`, `copiedRows`) keeps the
+   * place of the race it was made from and blanks the identity, which is as unique as the races were.
+   */
+  place: string
   /** The race this row already is, as text, or an empty string for one being
    *  entered. Text and not the number the record keeps, because the one thing
    *  this field is read for is whether there is a race behind the row at all
@@ -78,6 +93,9 @@ export type RaceOfRow = Pick<
 > &
   Pick<Race, 'kind' | 'limitSeconds'>
 
+/** How many rows were opened in this visit, so that no two of them share a place (`RaceRow.place`). */
+let entered = 0
+
 /**
  * A row for a race being entered, as the table opens it.
  *
@@ -91,7 +109,10 @@ export type RaceOfRow = Pick<
  * answer comes from.
  */
 export function newRaceRow(eventName: string, eventDate: string): RaceRow {
+  entered += 1
+
   return {
+    place: `entered-${String(entered)}`,
     id: '',
     /* Named after the event it is entered under, which is what „po default-u naziv
        događaja" means; it follows the event until somebody types into it. */
@@ -111,6 +132,7 @@ export function rowsOf(races: RaceOfRow[], fieldDate: (iso: string) => string): 
      18.10.2026, `data/raceOrder.ts`). Only as the table opens: a row added afterwards stays
      where it was added, so nothing moves under the hand that is typing into it. */
   return inEventOrder(races).map((race) => ({
+      place: `race-${String(race.id)}`,
       id: String(race.id),
       name: race.name,
       renamed: race.renamed,

@@ -1,0 +1,12 @@
+# The monthly proof that the newest copy restores (deploy/backup.sh --prove). Started by
+# btl-backup-proof.timer; installing both is the owner's step, in deploy/README.md under "The backup".
+[Unit]
+Description=BTL monthly proof that the newest backup restores
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/btl/deploy
+ExecStart=/bin/sh backup.sh --prove
+TimeoutStartSec=2h

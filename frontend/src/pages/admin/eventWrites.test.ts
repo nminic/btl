@@ -72,6 +72,7 @@ describe('what an event being written carries', () => {
 
 describe('what a race being written carries', () => {
   const row: RaceRow = {
+    place: 'entered-1',
     id: '',
     name: 'Polumaraton',
     renamed: true,

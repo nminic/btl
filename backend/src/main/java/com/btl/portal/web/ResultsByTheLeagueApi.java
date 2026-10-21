@@ -178,6 +178,17 @@ import java.util.stream.Stream;
  * {@code competitor}, in the order of the key) before anything is judged, so of two saves naming one
  * member on one race one writes and the other meets the result it wrote.
  *
+ * <p><b>THE EVENT IS TAKEN BEFORE THE MEMBERS, ON EVERY ROAD OF THE ROUTE.</b> A save that names an
+ * event, or whose new event's address already answers, holds that event ({@code for no key update},
+ * {@link TheDayOfAnEvent#theEventHeldForThisWrite}) and only then locks its members. A save whose new
+ * event does not exist yet locks its members first, because there is nothing to hold, and if its insert
+ * then gives way to an event another save made, it does not go on to hold that event with the members
+ * still in its hand: a second save on that event holds it and waits for a member this one has, and this
+ * one waits for the event, a deadlock which was measured (the second save answered 500). It writes
+ * nothing before that insert, so its transaction ends there, which lets its members go, and it is begun
+ * again from the top in a transaction of its own, where the event it met is the event it asks for first.
+ * {@code TwoLeagueSavesOnANewEventTest} holds the order in place.
+ *
  * <p><b>AND THE ONLY OTHER WRITER OF HIS RESULT TAKES TURNS WITH THAT LOCK BY ASKING FOR THE SAME
  * ROW FIRST.</b> A row of {@code result} checks {@code result_competitor_fk}, which takes his
  * {@code competitor} row {@code for key share}, and {@code for update} waits for that and makes it
@@ -443,7 +454,15 @@ class ResultsByTheLeagueApi {
 			return wrong;
 		}
 
-		Done done = inOneTransaction.execute(committing -> theRaceAndItsRows(event, race, rows));
+		Done done = inOneTransaction.execute(committing -> theRaceAndItsRows(event, race, rows, false));
+
+		if (done == THE_ADDRESS_WAS_TAKEN) {
+			/* A SAVE THAT FOUND NO EVENT AT THE TOP AND THEN MET ONE AT ITS INSERT IS BEGUN AGAIN FROM THE
+			   TOP, in a transaction of its own, so the event it meets is the event it asks for first (see
+			   the class note on the order of the locks). The first transaction wrote nothing and has
+			   ended, so the members it held are let go before this one asks for anything. */
+			done = inOneTransaction.execute(committing -> theRaceAndItsRows(event, race, rows, true));
+		}
 
 		return postAfterwards(done);
 	}
@@ -538,8 +557,12 @@ class ResultsByTheLeagueApi {
 	/**
 	 * INSIDE THE TRANSACTION: the event (held, or made, or found at its address), the race (found on
 	 * it, or made), and then the rows exactly as the event page enters them ({@link #theRows}).
+	 *
+	 * @param again whether this is the second time round, after the insert of a new event gave way once
+	 * @return {@link #THE_ADDRESS_WAS_TAKEN} where the insert of a new event gave way to one another save
+	 *         made, and nothing was written
 	 */
-	private Done theRaceAndItsRows(NamedEvent named, NamedRace race, List<Row> rows) {
+	private Done theRaceAndItsRows(NamedEvent named, NamedRace race, List<Row> rows, boolean again) {
 		Optional<TheDayOfAnEvent.Standing> event = named.id() != null
 				? TheDayOfAnEvent.theEventHeldForThisWrite(db, named.id())
 				: TheDayOfAnEvent.theEventAt(db, EventAddress.of(named.name().strip(), named.date()))
@@ -610,7 +633,22 @@ class ResultsByTheLeagueApi {
 			on = there.id();
 			TheDayOfAnEvent.theEventNowBeginsOn(db, there, beginning, address);
 		} else {
-			on = aNewEvent(named);
+			Optional<Long> newEvent = aNewEvent(named);
+
+			if (newEvent.isEmpty()) {
+				if (again) {
+					/* THE ADDRESS WAS TAKEN TWICE IN ONE SAVE: the event the first time was gone (a delete
+					   committed in that instant) when the second began, and another save made one again
+					   in the same instant. Begun a third time it could be so forever; it is a 500, as
+					   an event gone under a save always was. */
+					throw new IllegalStateException("The address of the event was taken twice in one save: "
+							+ EventAddress.of(named.name().strip(), named.date()));
+				}
+
+				return THE_ADDRESS_WAS_TAKEN;
+			}
+
+			on = newEvent.get();
 			made = aNewRace(on, race, day);
 		}
 
@@ -630,22 +668,25 @@ class ResultsByTheLeagueApi {
 				.body(new EnteredOn(entered.results(), address)), done.letters());
 	}
 
-	/** The event, in the town typed, on the day of its first race, at its address; one made by
-	 *  another save at that address in between is that event, which is why the insert gives way and
-	 *  the row is then read by its address whichever of the two wrote it. */
-	private long aNewEvent(NamedEvent named) {
+	/**
+	 * The event, in the town typed, on the day of its first race, at its address, or nothing where
+	 * another save made an event at that address in between: the insert gives way to it, and the save is
+	 * begun again from the top ({@link #enterOnARaceOfAnEvent}), because the checks of a race on an event
+	 * that is there, and the order in which its locks are taken, are not this method's to make.
+	 *
+	 * @return the key of the event made, or nothing where the address was taken
+	 */
+	private Optional<Long> aNewEvent(NamedEvent named) {
 		String address = EventAddress.of(named.name().strip(), named.date());
 		Long country = db.sql("select id from country where code = ?").param(named.country())
 				.query(Long.class).single();
 
-		db.sql("insert into btl_event (slug, name, date, place_id, city, country_id, kind,"
+		return db.sql("insert into btl_event (slug, name, date, place_id, city, country_id, kind,"
 						+ " featured, description, link) values (?, ?, ?, null, ?, ?, ?, false, '', '')"
-						+ " on conflict (slug) do nothing")
+						+ " on conflict (slug) do nothing returning id")
 				.params(address, named.name().strip(), named.date(), named.city().strip(), country,
 						WhatAnEventCarries.A_RACE)
-				.update();
-
-		return db.sql("select id from btl_event where slug = ?").param(address).query(Long.class).single();
+				.query(Long.class).optional();
 	}
 
 	/** The race, with what its kind fixes and nought for the rest, as the approval writes one. */
@@ -1168,4 +1209,9 @@ class ResultsByTheLeagueApi {
 			return new Done(answer, List.of());
 		}
 	}
+
+	/** Not an answer: the insert of a new event gave way, nothing was written, and the save begins again.
+	 *  It is compared by identity, and a 500 if it were ever sent. */
+	private static final Done THE_ADDRESS_WAS_TAKEN = Done.only(
+			ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
 }

@@ -15,6 +15,7 @@ import {
   WHEN_CHANGING_TO_THE_EXEMPTION,
   WHEN_GRANTING_AN_EXEMPTION,
 } from './memberMembership'
+import { useRowRefusal } from './useRowRefusal'
 import './Activation.css'
 import { SYMBOL } from '../../app/actionSymbol'
 import { ActionButton } from '../../components/ActionButton'
@@ -64,21 +65,25 @@ const REFUSED_IN: Record<Act, Record<string, string>> = {
  */
 export function RowMembership({
   one,
+  settled,
   onCancelled,
   onChanged,
   onGranted,
 }: {
   one: Member
+  /** How many actions on this row have succeeded this visit: a refusal beside it goes when this moves
+   *  (`useRowRefusal`). */
+  settled: number
   onCancelled: () => void
   onChanged: () => void
   onGranted: () => void
 }) {
   const { t } = useI18n()
   const [asking, setAsking] = useState<Asking | null>(null)
-  const [refused, setRefused] = useState<{
+  const [refused, setRefused] = useRowRefusal<{
     act: Act
     answer: Exclude<Answer, { got: 'done' }>
-  } | null>(null)
+  }>(settled)
   const outstanding = useRef(false)
   const [working, setWorking] = useState(false)
 
@@ -98,7 +103,10 @@ export function RowMembership({
       setAsking(null)
 
       if (answer.got === 'done') {
-        setRefused(null)
+        /* THE SENTENCE OF AN EARLIER REFUSAL GOES WITH THE SUCCESS, and not from here: `done` moves the
+           count of this row, which `useRowRefusal` reads. It must go for a success of the row's OTHER
+           control as well (a payment over the exemption after a refused cancellation), which this
+           component cannot see. */
         done[question.act]()
 
         return
