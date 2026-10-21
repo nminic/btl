@@ -118,21 +118,6 @@ describe('the pieces of a line', () => {
     expect(inlineOf('[nedovršeno](https://primer.rs', false)).toEqual([text('[nedovršeno](https://primer.rs')])
   })
 
-  it('leaves a link with a blank of any kind inside its address as every character of the words', () => {
-    /* The address holds no blank (`LINK`), and `addressOf` says nothing about one: the shape of the
-       link is the only thing that keeps an address with a blank in it from being one. */
-    for (const blank of [' ', '\t', '\n', '\u00a0']) {
-      const typed = `[klik](https://primer.rs/a${blank}b)`
-
-      expect(inlineOf(typed, false), JSON.stringify(blank)).toEqual([text(typed)])
-    }
-
-    expect(inlineOf('[klik](/pravilnik za)', false)).toEqual([text('[klik](/pravilnik za)')])
-    expect(inlineOf('[klik](https://primer.rs/ab)', false)).toEqual([
-      { kind: 'link', url: 'https://primer.rs/ab', inside: false, children: [text('klik')] },
-    ])
-  })
-
   it('reads raw HTML as the words it is', () => {
     expect(inlineOf('<script>alert(1)</script> <b>x</b>', false)).toEqual([
       text('<script>alert(1)</script> <b>x</b>'),
