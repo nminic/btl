@@ -1,6 +1,5 @@
 import type { Team } from '../data/types'
 import { cropIn, fittedTo } from './crop'
-import { hueFor } from '../pages/competitorFace'
 import './Crop.css'
 import './TeamMark.css'
 
@@ -13,11 +12,13 @@ import './TeamMark.css'
  * The same shape as a competitor's face (components/Portrait.tsx) and for the
  * same reason: a circle that is sometimes there and sometimes a grey hole makes
  * a table change height row by row, so the place is always held. What holds it
- * until a team uploads anything is the team's own initials on a colour of its
- * own, computed off the team's id (`pages/competitorFace.ts`), so one team wears one
- * colour wherever the portal draws it. **Faces do not**: the colour derived from a
- * member number was abolished on 31.07.2026 (PDL P28) and a member's circle wears the
- * sheet's one blue; whether a team keeps its colour is not decided by that.
+ * until a team uploads anything is the team's own initials, on the one colour
+ * every circle of the portal wears (`.face-circle`, `components/Portrait.css`).
+ * **A team has no colour of its own** (owner, 21.10.2026, PDL: „Inicijali tima
+ * postaju jednobojni, kao kartice članova"): the colour derived from a member number
+ * was abolished on 31.07.2026 (PDL P28), and the one derived from a team's id went
+ * the same way. Nothing here sets `--face-hue`, and nothing on the competitors or
+ * teams screens does (`pages/publicScreens.test.tsx`).
  *
  * Cut where the team cut it (owner, 12.08.2026), which is the one thing this
  * has to get right that a plain `object-fit: cover` does not: a logo with a
@@ -62,7 +63,7 @@ export function TeamMark({ team }: { team: Team }) {
   }
 
   return (
-    <span className="face-circle team-mark" aria-hidden="true" style={{ '--face-hue': hueFor(String(team.id)) }}>
+    <span className="face-circle team-mark" aria-hidden="true">
       {initialsOf(team.name)}
     </span>
   )

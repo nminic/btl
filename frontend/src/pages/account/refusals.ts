@@ -178,11 +178,13 @@ export const WHEN_WRITING_TO_A_MEMBER: Record<string, string> = {
  * an event (`event/GoingToEvent.tsx`, PDL P6).
  *
  * <p><b>IT IS REACHABLE FROM THE SCREEN, AND THAT IS WHY IT HAS A SENTENCE.</b> The page hides
- * the switch once the event is past by its own day, and its day is the one in UTC
- * (`clock/context.ts`, `realToday`), while the server's is the one in Belgrade: for the first
- * hour of a Belgrade day in winter and the first two in summer the switch is still drawn on the
- * event of the day before, and a press meets `theEventHasBeenRun`. The sentence says what
- * happened and what is true of the event, and asks nothing of the reader he could change.
+ * the switch once the event is past by its own day, and its day is the Belgrade one
+ * (`clock/context.ts`, `realToday`, since 20.10.2026), the server's own. It was the day in UTC
+ * until then, and for the first hour of a Belgrade day in winter and the first two in summer
+ * the switch was still drawn on the event of the day before. It is still reachable by a tab
+ * left open across midnight, where the clock looks again only once a minute or on return to
+ * the tab, and a press meets `theEventHasBeenRun`. The sentence says what happened and what is
+ * true of the event, and asks nothing of the reader he could change.
  *
  * <p><b>Somebody the server does not let say it is not here, on purpose.</b> A member whose fee
  * has lapsed, or an account that races for nobody, is answered 404, the answer of an address

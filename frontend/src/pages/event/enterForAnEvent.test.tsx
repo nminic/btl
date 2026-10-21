@@ -19,7 +19,10 @@ import { typeATownTheCodebookKnows } from '../../test/town'
  * <li>„Gradska liga” of 2027 begun by today, with two races of two kinds and different days, neither on
  * the event's own day, so a new race's day that started from a race and not from the event is a
  * different answer;</li>
- * <li>„Gradska liga” once more in 2026, the same name in a year before the league;</li>
+ * <li>„Gradska liga” once more in 2026, the same name in a year before the league, which the screen
+ * offers as well (owner, 21.10.2026), so that name stands in two years and links neither;</li>
+ * <li>„Zimska liga”, an event of 2027 begun by today whose name stands in no other year, which is the
+ * one a name typed exactly links;</li>
  * <li>„Gradski trening”, an event of 2027 that is not a race;</li>
  * <li>„Gradska zima”, a race of 2027 that has not begun yet;</li>
  * <li>and the event's town is not the town typed for any new event here.</li>
@@ -54,6 +57,7 @@ const CALENDAR: BtlEvent[] = [
   { ...AN_EVENT, id: 9502, slug: 'gradska-liga-2026', date: '2026-03-01' },
   { ...AN_EVENT, id: 9503, slug: 'gradski-trening-2027', name: 'Gradski trening', date: '2027-04-01', kind: 'training' },
   { ...AN_EVENT, id: 9504, slug: 'gradska-zima-2027', name: 'Gradska zima', date: '2027-12-01' },
+  { ...AN_EVENT, id: 9505, slug: 'zimska-liga-2027', name: 'Zimska liga', date: '2027-02-01' },
 ]
 
 const aRace = (over: Partial<Race>): Race => ({
@@ -89,22 +93,22 @@ const answering = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
 /**
- * The calendar above, the seasons open for a report as the server says them, and every write answered
- * with `write`. The seasons are the account's (`MeApi.WhoIAm.seasonsOpenForAReport`), answered here to
- * a moderator who races for nobody, which is the moderator this screen is mostly for; the first season
- * unless a case says another.
+ * The calendar above, answered to a moderator who races for nobody, which is the moderator this screen
+ * is mostly for, and every write answered with `write`. The seasons open for a report are not asked of
+ * the server here any more: this screen takes any year up to today (owner, 21.10.2026), so what the
+ * account says of them is not read (`MeApi.WhoIAm.seasonsOpenForAReport`), and a screen that read it
+ * again would be told a season only a member is held to.
  */
 function serving(
   write: (path: string) => Response = (path) =>
     answering(path.endsWith('/on-a-race-of-an-event') ? { results: [1], event: 'jezerska-trka-2027' } : { results: [1] }, 201),
   events: () => Response = () => answering(CALENDAR),
-  open: number[] = [2027],
 ): { asked: Asked[]; stop: () => void } {
   return serverThat((path, init) => {
     const method = init?.method ?? 'GET'
 
     if (method === 'GET' && path === '/api/me') {
-      return answering({ role: 'moderator', account: 1, mailLanguage: 'sr', seasonsOpenForAReport: open })
+      return answering({ role: 'moderator', account: 1, mailLanguage: 'sr', seasonsOpenForAReport: [2027] })
     }
 
     if (method === 'GET' && path === '/api/events') {
@@ -199,7 +203,10 @@ describe('the door of the moderator’s own screen', () => {
 })
 
 describe('the event and the race the screen names first', () => {
-  it('offers races from 2027 to today, newest first, and nothing before the league, still to come or of another kind', async () => {
+  it('offers the races of every year begun by today, newest first, those before the league too, and nothing still to come or of another kind', async () => {
+    /* Owner, 21.10.2026: „Moderator i admin smeju da unose rezultate za BILO KOJU prethodnu godinu”. The
+       event of 2026 is offered beside the one of 2027, with its day, and neither the training of 2027
+       nor the winter event that has not begun is. */
     const user = setupUser()
     const server = serving()
 
@@ -207,55 +214,110 @@ describe('the event and the race the screen names first', () => {
       await open(user)
       await user.type(eventBox(), 'Grad')
 
-      await waitFor(() => expect(offered()).toEqual([eventSaid(AN_EVENT)]))
+      await waitFor(() =>
+        expect(offered()).toEqual([eventSaid(AN_EVENT), eventSaid(must(CALENDAR[1], 'the event of 2026'))]),
+      )
     } finally {
       server.stop()
     }
   })
 
-  it('offers no event of a season not open, and an exact name of one links nothing (review of PR 585)', async () => {
-    /* THE REVIEW'S PROBE: in 2028 „Gradska liga” of 2027 was linked by its exact name and the race of
-       2028 went onto it. The owner, 20.10.2026: „NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE! ONI SE
-       UNOSE IMPORTOM.” So with 2028 the one season the server says is open, neither event of 2027 is
-       offered, and the name typed exactly is a new event, which asks its town. */
+  it('offers the events of a season long closed, read on a day years after', async () => {
+    /* The list is every year the calendar holds up to the day the portal agrees on, and never a season
+       the server says is open: on a day of 2031 the events of 2026 and 2027 are all there, newest first,
+       the winter one that had not begun in 2027 among them. */
     const user = setupUser()
-    const server = serving(undefined, undefined, [2028])
+    const server = serving()
 
     try {
-      renderAt(PATH, 'moderator', null, CHECKS_RESULTS, '2028-03-01')
+      renderAt(PATH, 'moderator', null, CHECKS_RESULTS, '2031-03-01')
       await screen.findByRole('heading', { level: 1, name: sr.leagueResults.forAnEvent })
       await user.type(eventBox(), 'Grad')
 
-      expect(offered()).toEqual([])
+      await waitFor(() =>
+        expect(offered()).toEqual([
+          eventSaid(must(CALENDAR[3], 'the winter event')),
+          eventSaid(AN_EVENT),
+          eventSaid(must(CALENDAR[1], 'the event of 2026')),
+        ]),
+      )
+    } finally {
+      server.stop()
+    }
+  })
 
-      await user.clear(eventBox())
+  it('links a name that stands in two years to neither, and asks the town of a new event (rule (1) of 19.10.2026)', async () => {
+    /* „Gradska liga” is an event of 2027 and of 2026, and both are offered now. A name typed exactly
+       that names two events links neither, so it is a new event which asks its town and starts with no
+       day; the reader chooses from the list or writes the new event. */
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
       await user.type(eventBox(), 'Gradska liga')
 
       expect(screen.getByLabelText(/^Mesto/)).toBeVisible()
       expect(screen.getByLabelText(/^Datum$/)).toHaveValue('')
+
+      await waitFor(() =>
+        expect(offered()).toEqual([eventSaid(AN_EVENT), eventSaid(must(CALENDAR[1], 'the event of 2026'))]),
+      )
     } finally {
       server.stop()
     }
   })
 
-  it('offers the events of a season the server says is open, read on a day of the next year', async () => {
-    /* On New Year's morning 2028 both seasons are open, and the event of 2027 is offered: the list is
-       the server's seasons and never the year today is in. */
+  it('puts the rows of an event of a year before the league on a new race of that year, by the event’s key', async () => {
     const user = setupUser()
-    const server = serving(undefined, undefined, [2027, 2028])
+    const server = serving()
 
     try {
-      renderAt(PATH, 'moderator', null, CHECKS_RESULTS, '2028-01-01')
-      await screen.findByRole('heading', { level: 1, name: sr.leagueResults.forAnEvent })
-      await user.type(eventBox(), 'Grad')
+      await open(user)
+      await user.type(eventBox(), 'Gradska')
+      await user.click(await screen.findByRole('button', { name: eventSaid(must(CALENDAR[1], 'the event of 2026')) }))
 
-      /* Both events of 2027 begun by that morning, the newest first. */
-      await waitFor(() =>
-        expect(offered()).toEqual([
-          eventSaid({ ...AN_EVENT, id: 9504, slug: 'gradska-zima-2027', name: 'Gradska zima', date: '2027-12-01' }),
-          eventSaid(AN_EVENT),
-        ]),
-      )
+      expect(screen.getByLabelText(/^Datum trke/)).toHaveValue('01/03/2026')
+
+      await user.type(raceBox(), 'Stara staza')
+      await user.type(screen.getByLabelText(/^Dužina/), '8')
+      await user.type(screen.getByLabelText(/^Uspon/), '0')
+      await user.type(screen.getByLabelText(/^Spust/), '0')
+      await aRowFor(user)
+      await save(user)
+
+      await waitFor(() => expect(writes(server.asked)).toHaveLength(1))
+
+      expect(writes(server.asked)[0]?.body).toMatchObject({
+        event: { id: 9502 },
+        race: { name: 'Stara staza', date: '2026-03-01', kind: 'length', distanceKm: 8 },
+      })
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('sends a new event of a year before the league without a sentence of its own, and the server decides', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await user.type(eventBox(), 'Davna trka')
+      await user.type(screen.getByLabelText(/^Datum/), '06062015')
+      await user.type(screen.getByLabelText(/^Mesto/), 'Ohrid')
+      await user.selectOptions(screen.getByLabelText(/^Država/), 'MK')
+      await user.type(screen.getByLabelText(/^Dužina/), '10')
+      await user.type(screen.getByLabelText(/^Uspon/), '0')
+      await user.type(screen.getByLabelText(/^Spust/), '0')
+      await aRowFor(user)
+      await save(user)
+
+      await waitFor(() => expect(writes(server.asked)).toHaveLength(1))
+
+      expect(writes(server.asked)[0]?.body).toMatchObject({
+        event: { name: 'Davna trka', date: '2015-06-06', city: 'Ohrid', country: 'MK' },
+      })
     } finally {
       server.stop()
     }
@@ -321,10 +383,10 @@ describe('the event and the race the screen names first', () => {
 
     try {
       await open(user)
-      await user.type(eventBox(), 'GRADSKA LIGA')
+      await user.type(eventBox(), 'ZIMSKA LIGA')
 
       expect(screen.queryByLabelText(/^Mesto/)).toBeNull()
-      expect(screen.getByLabelText(/^Datum trke/)).toHaveValue('01/03/2027')
+      expect(screen.getByLabelText(/^Datum trke/)).toHaveValue('01/02/2027')
 
       await user.type(raceBox(), 'Noćni krug')
       await user.selectOptions(screen.getByLabelText(/^Vrsta trke/), 'time')
@@ -344,10 +406,10 @@ describe('the event and the race the screen names first', () => {
       await waitFor(() => expect(writes(server.asked)).toHaveLength(1))
 
       expect(writes(server.asked)[0]?.body).toEqual({
-        event: { id: AN_EVENT.id },
+        event: { id: 9505 },
         race: {
           name: 'Noćni krug',
-          date: '2027-03-01',
+          date: '2027-02-01',
           kind: 'time',
           distanceKm: null,
           ascentM: null,
@@ -419,10 +481,10 @@ describe('what the block says before anything is sent', () => {
       expect(event).toHaveFocus()
 
       await user.type(event, 'Stara trka')
-      await user.type(screen.getByLabelText(/^Datum/), '31122026')
+      await user.type(screen.getByLabelText(/^Datum/), '24082027')
       await save(user)
 
-      expect(screen.getByText(sr.leagueResults.refused.theDayIsBeforeTheLeague)).toBeVisible()
+      expect(screen.getByText(sr.results.refused.theRaceHasNotBeenRun)).toBeVisible()
       expect(screen.getByText(sr.leagueResults.refused.theTownIsMissing)).toBeVisible()
       expect(writes(server.asked)).toEqual([])
     } finally {
@@ -436,7 +498,7 @@ describe('what the block says before anything is sent', () => {
 
     try {
       await open(user)
-      await user.type(eventBox(), 'Gradska liga')
+      await user.type(eventBox(), 'Zimska liga')
       await user.type(raceBox(), 'Nova')
       await user.type(screen.getByLabelText(/^Dužina/), '10')
       await user.type(screen.getByLabelText(/^Uspon/), '0')
@@ -530,7 +592,7 @@ describe('the town of a new event on the moderator\'s own screen', () => {
       await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
 
       await user.clear(eventBox())
-      await user.type(eventBox(), 'Gradska liga')
+      await user.type(eventBox(), 'Zimska liga')
 
       expect(screen.queryByLabelText(/^Mesto/)).toBeNull()
 
@@ -562,7 +624,7 @@ describe('the town of a new event on the moderator\'s own screen', () => {
       await user.selectOptions(screen.getByLabelText(/^Država/), 'BA')
 
       await user.clear(eventBox())
-      await user.type(eventBox(), 'Gradska liga')
+      await user.type(eventBox(), 'Zimska liga')
       await user.type(eventBox(), ' 2')
       await user.type(screen.getByLabelText(/^Mesto/), ' pod brdom')
 

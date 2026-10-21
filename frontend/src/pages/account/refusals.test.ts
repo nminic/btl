@@ -561,9 +561,9 @@ describe('the reasons the server can name', () => {
     ['InboxWriteApi.java', [WHEN_WRITING_TO_A_MEMBER], 2],
     /* ADDED 03.10.2026 WITH THE SWITCH ON AN EVENT'S PAGE GOING TO THE SERVER (b212). One
        constant, a real refusal of `PUT` and `DELETE /api/attendance/{id}`, and reachable from
-       the screen: the page offers the switch by its day in UTC and the server refuses by its
-       day in Belgrade, so for an hour or two after midnight the two disagree about yesterday's
-       event (`WHEN_SAYING_YOU_ARE_GOING` gives the arithmetic). */
+       the screen: the page offers the switch by its day, which is Belgrade's since 20.10.2026
+       as the server's is, so the two disagree about yesterday's event only for a tab left open
+       across midnight (`WHEN_SAYING_YOU_ARE_GOING` gives the arithmetic). */
     ['AttendanceWriteApi.java', [WHEN_SAYING_YOU_ARE_GOING], 1],
     /* The two the calendar writes through, added 28.09.2026 when `admin/AdminEvents.tsx`
        and `event/EventActions.tsx` stopped writing into the session and began to send.
@@ -579,7 +579,13 @@ describe('the reasons the server can name', () => {
        from `CompetitorWriteApi` and `ResultWriteApi` (the empty save, the save of too many rows, the run
        that is not whole), which the screen answers too and which are counted on those files' lines.
        Twelve since 19.10.2026: the four of the moderator's own screen, „Unos rezultata za događaj”
-       (`EnterForAnEvent`), whose words the owner approved that day. */
+       (`EnterForAnEvent`), whose words the owner approved that day. The thirteenth arrived 20.10.2026
+       with the owner's answer that a race of New Year's Eve may go on an event of the new year before
+       ten on 1 January (PDL P9, 20.10.2026), which can move that event onto an address another event
+       holds (`theEventWouldMoveOntoAnother`, the sentence the approval of a run has for the same move).
+       Twelve again since 21.10.2026: the fourth of the screen's own, a day before the league
+       (`theDayIsBeforeTheLeague`), went with the owner's decision that the screen takes any year up to
+       today (PDL P9, 21.10.2026). */
     ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 12],
   ]
 

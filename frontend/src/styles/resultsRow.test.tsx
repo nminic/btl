@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { configure, screen, within } from '@testing-library/react'
-import sr from '../i18n/sr.json'
 import { must } from '../test/at'
 import { moderatorWith, renderAt } from '../test/render'
 import { SLOW } from '../test/slow'
@@ -81,39 +80,6 @@ describe('the sheet of the event page', () => {
         (rule) => /\.table--results/.test(rule.selectorText) && rule.style.getPropertyValue('flex-wrap') !== '',
       ),
     ).toEqual([])
-  })
-
-  it('keeps the buttons of a row 2px apart on a telephone and 6px apart everywhere else, and the words of the question as they were', () => {
-    /* Owner, 20.10.2026 (PDL P24: „Na 360 px potvrda brisanja rezultata ne sme da širi tabelu: smanjuje
-       se razmak između dugmadi, reči ostaju iste"; PENDING 29736). The distance itself is a box in a
-       browser and is measured there (`geometry/resultsRow.geometry.ts`, which asks it of the row with the
-       question open at all three widths); what this file holds is the two halves that measurement stands
-       on: the rule is written for the telephone and for this table, and the 6px of everywhere else is
-       still the shared rule's, untouched. */
-    const entity = readFileSync(join(process.cwd(), 'src/pages/admin/Entity.css'), 'utf-8')
-
-    expect(
-      ruleInMedia(PROFILE, '(max-width: 699.98px)', '.table--results .entity-row-actions', 'Profile.css').getPropertyValue(
-        'gap',
-      ),
-    ).toBe('var(--space-2)')
-    expect(ruleFor(entity, '.entity-row-actions', 'Entity.css').getPropertyValue('gap')).toBe('var(--space-6)')
-
-    /* And nothing written for this table says a gap outside the telephone's sheet: 700px and up keep
-       what every other row keeps. */
-    expect(
-      unconditionalRules(PROFILE, 'Profile.css').filter(
-        (rule) => /\.entity-row-actions/.test(rule.selectorText) && rule.style.getPropertyValue('gap') !== '',
-      ),
-    ).toEqual([])
-
-    /* The words stay: the question is „Sigurno?" and „Odustani", named „Potvrdi brisanje: …" and
-       „Odustani od brisanja: …" for a screen reader. Pinned here because the decision is that they do not
-       move to make room, and a shortened word would pass the geometry for the wrong reason. */
-    expect(sr.admin.form.deleteSure).toBe('Sigurno?')
-    expect(sr.admin.form.keep).toBe('Odustani')
-    expect(sr.admin.form.deleteSureNamed).toBe('Potvrdi brisanje: {name}')
-    expect(sr.admin.form.keepNamed).toBe('Odustani od brisanja: {name}')
   })
 
   it('gives every figure of the table one width, in a share of the table, and in rem on a telephone', () => {

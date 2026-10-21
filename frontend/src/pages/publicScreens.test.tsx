@@ -1905,6 +1905,26 @@ function circleOf(card: HTMLElement): string {
   return must(card.querySelector('.portrait'), 'the circle of a card').textContent ?? ''
 }
 
+/**
+ * Every element of the document that sets `--face-hue`, the colour a circle once took from a number.
+ *
+ * **Asked of every element and not of the circle** (review of PR 613): the variable is inherited, so a
+ * card, a list or a row that sets it gives every circle inside it a colour while the circle's own
+ * `style` stays empty, and a guard that reads only the circle's style passes over exactly that. The
+ * document is walked, `html` and `body` included, and both the property and the text of the `style`
+ * attribute are read, since a hue written in a spelling the property reader does not know is still
+ * written.
+ */
+function settingAHue(): string[] {
+  return [...document.querySelectorAll<HTMLElement>('*')]
+    .filter(
+      (one) =>
+        one.style.getPropertyValue('--face-hue') !== '' ||
+        (one.getAttribute('style') ?? '').includes('--face-hue'),
+    )
+    .map((one) => `${one.tagName.toLowerCase()}.${one.className}`)
+}
+
 describe('Competitors', () => {
   /* Cards rather than a table (PDL P28a): the league is about people, and a row
      does not show a person. */
@@ -2051,18 +2071,23 @@ describe('Competitors', () => {
     expect(screen.getByText('Nema takmičara koji odgovara pretrazi.')).toBeVisible()
   })
 
-  it('draws every card in the same colour, whoever the member is', async () => {
+  it('sets no hue on any element, so every card is drawn in the same colour whoever the member is', async () => {
     /* PDL P28 (31.07.2026, vlasnik): „Sve kartice takmičara su identične", and „Boja izvedena iz
        članskog broja se ukida". This case asked for the opposite, one stable hue per member,
        until 21.10.2026 (PENDING 29205). Asked of the property the circle used to set, since jsdom
-       applies no stylesheet: no card sets one, so every card falls back to the sheet's one blue. */
+       applies no stylesheet: nothing sets one, so every card falls back to the sheet's one blue.
+
+       **Of every element of the screen, the card and the list that hold a circle included**
+       (review of PR 613, 21.10.2026): this read only the circle's own `style` while the variable is
+       inherited, so `cards__item` setting it would have coloured every circle inside it and passed.
+       The stylesheets are asked in `styles/circle.test.ts`. */
     renderAt('/sr/takmicari')
     await screen.findByRole('list')
 
-    const faces = [...document.querySelectorAll<HTMLElement>('.cards .card .portrait')]
-
-    expect(faces.length).toBeGreaterThan(1)
-    expect(faces.filter((one) => one.style.getPropertyValue('--face-hue') !== '')).toEqual([])
+    /* Measured and not assumed: the circles are drawn, and more than one. */
+    expect(document.querySelectorAll('.cards .card .portrait').length).toBeGreaterThan(1)
+    expect(document.querySelectorAll('.cards__item').length).toBeGreaterThan(1)
+    expect(settingAHue()).toEqual([])
   })
 
   it('does not carry anybody whose fee has not been recorded', async () => {
@@ -2608,6 +2633,37 @@ describe('Teams', () => {
 
     expect(rows.length).toBeGreaterThan(1)
     expect(first(rows).className).toBe('podium')
+  })
+
+  it('draws the initials of every team as the same mark, with nothing on it that could say which team', async () => {
+    /* Owner, 21.10.2026 (PDL: „Inicijali tima postaju jednobojni, kao kartice članova"). A team mark
+       took a hue off the team's id until then (`hueFor`, `components/TeamMark.tsx`).
+
+       **The decision is held, and not a name** (review of PR 619, measured on 925 cases): asked only
+       for `--face-hue`, three ways of colouring initials by team id passed, an inline `background`, an
+       inline `--team-hue` and a class per team. So the drawn mark is asked what it IS: the one class
+       list it is born with and no attribute but the two it is born with, `class` and `aria-hidden`.
+       A `style` of any content, a `data-*`, a class that says which team, all of them are a thing the
+       mark carries that another mark does not need, and none is asked for by name. Every initials
+       mark and more than one, so a value derived from an id would be a different thing on each.
+
+       The ancestors are asked too, as before (review of PR 613): `--face-hue` is inherited, so a
+       card, a list or a row that sets it gives every circle inside it a colour while the circle's own
+       `style` stays empty. What is NOT held here: a colour that comes from a stylesheet by position
+       or by a class the mark does not carry, which jsdom cannot see (`styles/circle.test.ts` asks the
+       selectors that may name a mark, and says what it leaves). */
+    renderAt('/sr/timovi', 'visitor', null, undefined, `${String(inLeague(2020))}-06-01`)
+    await standing()
+
+    const marks = [...document.querySelectorAll<HTMLElement>('.team-mark:not(.team-mark--logo)')]
+
+    /* Measured and not assumed: there are marks made of initials, and more than one. */
+    expect(marks.length).toBeGreaterThan(1)
+    expect(marks.map((one) => one.className)).toEqual(marks.map(() => 'face-circle team-mark'))
+    expect(marks.map((one) => one.getAttributeNames().sort())).toEqual(
+      marks.map(() => ['aria-hidden', 'class']),
+    )
+    expect(settingAHue()).toEqual([])
   })
 
   /* The drawer is gone (owner, 31.07.2026). Who is in a team and what each of

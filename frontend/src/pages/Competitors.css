@@ -91,7 +91,7 @@
   /* The ring, which is the card's and not the circle's: it separates the disc from
      the card's own surface. Written with the hue rather than with a token because
      it is the same colour as the disc, at a third of its strength. */
-  box-shadow: inset 0 0 0 3px var(--surface), 0 0 0 4px hsl(var(--face-hue, 214) 45% 32% / 0.35);
+  box-shadow: inset 0 0 0 3px var(--surface), 0 0 0 4px hsl(214 45% 32% / 0.35);
 }
 
 .card__name {

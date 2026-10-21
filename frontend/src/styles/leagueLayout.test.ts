@@ -159,7 +159,7 @@ a.plate__faces {
   place-items: center;
   flex: none;
   overflow: hidden;
-  background: hsl(var(--face-hue, 214) 45% 32%);
+  background: hsl(214 45% 32%);
   color: var(--white);
   font-weight: 700;
   letter-spacing: 0.02em;
