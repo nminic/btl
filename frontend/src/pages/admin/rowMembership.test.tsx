@@ -735,6 +735,11 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     await user.type(screen.getByRole('searchbox'), 'Tomić')
     expect(within(balance).getByText(refusedCancel)).toBeInTheDocument()
 
+    /* AND A QUESTION ASKED AND TURNED DOWN IS NOT AN ACTION THAT WENT THROUGH. */
+    await user.click(within(balance).getByRole('button', { name: 'Storniraj' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Ne' }))
+    expect(within(balance).getByText(refusedCancel)).toBeInTheDocument()
+
     server.stop()
   }, SLOW)
 
