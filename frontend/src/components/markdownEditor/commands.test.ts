@@ -10,7 +10,6 @@ import {
   inHeading,
   inList,
   linkable,
-  linkableAddress,
   linkIn,
   lineBreak,
   list,
@@ -25,7 +24,7 @@ import {
 } from './commands'
 import { hrefOf, MISLEADING, STAYS_A_LINK } from '../../test/misleadingAddresses'
 import { toMarkdown } from './convert'
-import { schema } from './schema'
+import { linkableAddress, schema } from './schema'
 
 /* What the buttons and the keys of the editor do, asked of a state and answered by a state, with
    no screen in between: `MarkdownEditor.test.tsx` holds that the screen asks these. */
@@ -113,7 +112,11 @@ describe('the four buttons that switch something', () => {
 /** What a text is after Enter at `from` and then `typed`, which is how a writer meets a number:
  *  an empty item is written as nothing, so a number shows only once something is typed in it. */
 function pressed(text: string, from: number, typed: string, into?: number): string | null {
-  const state = at(text, from)
+  return pressedIn(at(text, from), typed, into)
+}
+
+/** The same, from a state that already holds something typed before the key. */
+function pressedIn(state: EditorState, typed: string, into?: number): string | null {
   const next: EditorState[] = []
 
   if (!splitItem(state, (tr) => next.push(state.apply(tr)))) {
@@ -144,6 +147,21 @@ describe('Enter in an item of a list', () => {
   it('keeps the number with the words where Enter is pressed at the start of the line, and gives the new item above it the next one', () => {
     /* The cursor stays with the words, so the new item above is entered by going up into it. */
     expect(pressed(PLACES, 21, 'novo', 21)).toBe('1. mesto\n2. mesto\n3. novo\n4. do 10. mesto')
+  })
+
+  it('treats an item that is only a blank, or only a line break, before the cursor as the start of the line, as the text that is written does', () => {
+    /* The item above is written as nothing when it holds no word (`blockOf`), so the words that are
+       left keep the number they were written with: asked of the same thing, not of its size. The
+       second item opens at 6 and its words begin at 8. */
+    const LIST = '1. a\n4. b\n9. c'
+    const blank = (state: EditorState) => state.apply(state.tr.insertText(' '))
+    const broken = (state: EditorState) => state.apply(state.tr.replaceSelectionWith(schema.nodes.hard_break.create()))
+    const word = (state: EditorState) => state.apply(state.tr.insertText('b '))
+
+    expect(pressedIn(blank(at(LIST, 8)), 'X')).toBe('1. a\n4. Xb\n9. c')
+    expect(pressedIn(broken(at(LIST, 8)), 'X')).toBe('1. a\n4. Xb\n9. c')
+    /* Where a word does stand before the cursor, the new item counts on from the one above. */
+    expect(pressedIn(word(at(LIST, 8)), 'X')).toBe('1. a\n4. b\n5. Xb\n9. c')
   })
 
   it('splits an item with words selected as one that begins where they were', () => {
