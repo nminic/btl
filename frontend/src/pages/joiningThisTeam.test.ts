@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { did, refused, serverThat, type Asked } from '../test/serverAnswers'
+import { answeredWith, did, refused, serverThat, type Asked } from '../test/serverAnswers'
 import { clearResourceCache, loadResource } from '../data/client'
 import en from '../i18n/en.json'
 import sr from '../i18n/sr.json'
@@ -489,10 +489,11 @@ describe('the member asking a team to take him', () => {
     }
   })
 
-  /* WHAT HE WAITS ON IS DROPPED WHERE THE SERVER AGREED AND NOWHERE ELSE, read off the cache: the
-     page asks it again after a press that went through, and a cache still holding the old answer
-     would hand it straight back. Dropped on the ASKING instead, a refusal would cost a read of a
-     list that did not change. */
+  /* WHAT HE WAITS ON IS DROPPED WHERE THE SERVER AGREED, AND WHERE IT REFUSED IN A WAY THAT SAYS THE
+     PAGE WAS STALE (`member/pairWrites.ts`, `theServerSaysTheScreenIsStale`), read off the cache: the
+     page asks it again after either, and a cache still holding the old answer would hand it straight
+     back. Dropped on the ASKING instead, a press that went nowhere would cost a read of a list that
+     did not change. */
   it('drops what he waits on when the server agreed', async () => {
     expect(
       await timesAskedFor('me/applications', async () => {
@@ -507,8 +508,48 @@ describe('the member asking a team to take him', () => {
     ).toBe(1)
   })
 
+  /* A refusal that says the page was stale: an application sent from another tab (the route names
+     it), or the empty 404 (the question is not there). The list he waits on is dropped, so that the
+     read the screen asks for next is a read and not the old answer handed back. */
   it.each([
-    ['me/applications'] as const,
+    ['a refusal the route named', () => refused('aQuestionAlreadyStands', 409)],
+    ['the empty 404', () => answeredWith(404)],
+  ])('drops what he waits on when the answer is %s', async (_what, answer) => {
+    expect(
+      await timesAskedFor('me/applications', async () => {
+        const server = serverThat((_path, init) => (init?.method === 'POST' ? answer() : null))
+
+        try {
+          await theApplicationWasSent(TEAM)
+        } finally {
+          server.stop()
+        }
+      }),
+    ).toBe(1)
+  })
+
+  /* An answer that says nothing about any row: a server error, a refused token. Nothing is dropped,
+     because pressing again is what helps and a read of a list that did not change is a read spent. */
+  it.each([
+    ['a server error', () => answeredWith(500)],
+    ['a refused token', () => answeredWith(403)],
+  ])('leaves what he waits on alone when the answer is %s', async (_what, answer) => {
+    expect(
+      await timesAskedFor('me/applications', async () => {
+        const server = serverThat((_path, init) => (init?.method === 'POST' ? answer() : null))
+
+        try {
+          await theApplicationWasSent(TEAM)
+        } finally {
+          server.stop()
+        }
+      }),
+    ).toBe(0)
+  })
+
+  /* And the two resources an application does not touch, whatever the answer: a refusal changes no
+     team and no member's team, and the screens that read them are not told otherwise. */
+  it.each([
     ['teams'] as const,
     ['competitors'] as const,
   ])('leaves %s alone when the route refused', async (name) => {
@@ -581,7 +622,7 @@ describe('the member taking his application back', () => {
     ).toBe(1)
   })
 
-  it('leaves what he waits on alone when the route answered a number', async () => {
+  it('drops what he waits on when the route answered the empty 404, which is the row not being there', async () => {
     expect(
       await timesAskedFor('me/applications', async () => {
         const server = serverThat((_path, init) =>
@@ -593,6 +634,23 @@ describe('the member taking his application back', () => {
             got: 'wrong',
             status: 404,
           })
+        } finally {
+          server.stop()
+        }
+      }),
+    ).toBe(1)
+  })
+
+  it.each([
+    ['a server error', () => answeredWith(500)],
+    ['a refused token', () => answeredWith(403)],
+  ])('leaves what he waits on alone when the answer is %s', async (_what, answer) => {
+    expect(
+      await timesAskedFor('me/applications', async () => {
+        const server = serverThat((_path, init) => (init?.method === 'DELETE' ? answer() : null))
+
+        try {
+          await theApplicationWasTakenBack(TEAM, APPLICATION)
         } finally {
           server.stop()
         }

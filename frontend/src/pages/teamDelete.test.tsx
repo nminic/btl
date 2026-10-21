@@ -1,12 +1,17 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, screen, waitFor, within } from '@testing-library/react'
+import sr from '../i18n/sr.json'
 import { must } from '../test/at'
 import { renderAt } from '../test/render'
 import { did, refused, serverThat, type Asked } from '../test/serverAnswers'
 import { playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
+
+/* Every wait is given half of what a case is given, for the reason `rowMembership.test.tsx` gives: a
+   mutation then fails on its assertion and not on the clock of the case. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /** A resource, answered the way the server answers one. */
 const listOf = (what: unknown): Response =>
@@ -728,6 +733,101 @@ describe('a refusal of the deletion of a team', () => {
 
     server.stop()
   }, SLOW)
+
+  /*
+   * A REFUSAL THAT ARRIVES AFTER THE READER HAS LEFT THE PAGE IT WAS REFUSED ON (PENDING 28009).
+   *
+   * <p>The reset above runs when the address changes, so by the time a held answer comes back it has
+   * already run, and the write that follows it drew the sentence about one team on another team's page
+   * (or on another season of the same one). The request is held in front of the recording server and
+   * the reader walks away while it is out, which is the only way to meet it: a refusal that comes back
+   * at once is always on the page it was asked on.
+   */
+  describe('that arrives after the reader has left the page it was refused on', () => {
+    /** The question asked and answered, with the answer held until the case lets it go. */
+    async function heldOnce(user: ReturnType<typeof setupUser>) {
+      const server = aServerThatDeletes(() => refused('theWindowIsShut', 409))
+      const view = renderAt(`/sr/tim/${VARDAR}`, 'competitor', '000003', undefined, DAY)
+
+      let letItAnswer = () => {}
+      const held = new Promise<void>((resolve) => {
+        letItAnswer = resolve
+      })
+      const answering = globalThis.fetch
+
+      globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === 'DELETE') {
+          await held
+        }
+
+        return answering(input, init)
+      }
+
+      await user.click(await screen.findByRole('button', { name: `Obriši: ${ITS_NAME}` }))
+      await user.click(screen.getByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }))
+      await screen.findByText(sr.results.sending)
+
+      return { server, router: view.router, letItAnswer }
+    }
+
+    /** Lets the answer go and waits until the page has said it is no longer sending, which is the end of
+     *  the refusal's journey: the sentence is on the page by then or it never will be. */
+    async function untilItIsAnswered(letItAnswer: () => void) {
+      letItAnswer()
+      await waitFor(() => {
+        expect(screen.queryByText(sr.results.sending)).not.toBeInTheDocument()
+      })
+    }
+
+    it('is not drawn on the page of another team', async () => {
+      const user = setupUser()
+      const { server, router, letItAnswer } = await heldOnce(user)
+
+      await router.navigate('/sr/tim/dunavski-trkaci')
+      expect(
+        await screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' }),
+      ).toBeVisible()
+
+      await untilItIsAnswered(letItAnswer)
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+      server.stop()
+    }, SLOW)
+
+    it('is not drawn on another season of the same team', async () => {
+      const user = setupUser()
+      const { server, letItAnswer } = await heldOnce(user)
+
+      const picker = screen.getByLabelText('Sezona')
+      const other = must(
+        within(picker)
+          .getAllByRole('option')
+          .find((one) => !(one instanceof HTMLOptionElement && one.selected)),
+        'a season other than the one shown',
+      )
+
+      await user.selectOptions(picker, must(other.getAttribute('value'), 'its value'))
+      await untilItIsAnswered(letItAnswer)
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+      server.stop()
+    }, SLOW)
+
+    it('is drawn when the reader has stayed, which is what the cases above are told apart from', async () => {
+      /* THE FLOOR OF THE TWO ABOVE. They ask that a sentence is NOT there, and a sentence that nothing
+         could ever draw would let them pass for ever: the same held answer, with nobody walking away. */
+      const user = setupUser()
+      const { server, letItAnswer } = await heldOnce(user)
+
+      letItAnswer()
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Prelazni rok je zatvoren.')
+
+      server.stop()
+    }, SLOW)
+  })
 
   /*
    * THE ENDS THAT ARE EVENTS, AFTER 02.10.2026 (PDL, „Odbijanje zatvara pitanje kao i uspeh"): the

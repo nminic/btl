@@ -486,9 +486,14 @@
 }
 
 /* What the member wrote in their own words, under the name of the event in the
-   queue. Text and never a link: it is a start number as often as an address, and
-   an unchecked sentence in an `href` is an address made of somebody's sentence
-   (ReviewQueue.tsx). */
+   queue. Text, with the addresses in it drawn as links the moderator may press
+   (owner, 03.10.2026, PDL P9) and only the ones `addressesIn` accepts: it is a
+   start number as often as an address, and an unchecked sentence in an `href` is
+   an address made of somebody's sentence (ReviewQueue.tsx,
+   components/AddressesAsLinks.tsx). A link keeps the line under it, which the
+   browser draws and no rule of the portal's sheets reaches (read on 20.10.2026,
+   not held by a case): the words are muted and the link is the accent, and colour
+   alone does not tell them apart (WCAG 2.2 SC 1.4.1). */
 .review__said {
   display: block;
   margin-block-start: var(--space-4);

@@ -36,9 +36,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * source text is answering a question about how something is written, and this
  * one is about what is there.</li>
  *
- * <li><b>The four roles have a floor</b>, the same dictionary, and since the
+ * <li><b>The four roles have a floor</b>, the words of the role switch, and since the
  * owner's decision of 08.09.2026 it covers the whole table rather than part of
- * it. The role switch names every role it can become, {@code role.<code>}
+ * it. Those words are in a book of their own since 28869 (frontend/src/dev/words.sr.json),
+ * kept out of the dictionary every screen imports so that the production bundle does
+ * not carry them. The role switch names every role it can become, {@code role.<code>}
  * (RoleSwitch.tsx), and the table carries exactly the four the portal shows, so
  * the two lists are one list read twice. That is what makes the seven this file
  * used to expect a failure rather than a longer list agreeing with a longer
@@ -59,6 +61,12 @@ class RolesAndRightsTest extends DatabaseTest {
 	/** The portal's dictionary, which is where every claim below that has a
 	 *  floor gets it from. */
 	private static final String DICTIONARY = "frontend/src/i18n/sr.json";
+
+	/** The words of the role switch, which are not in the portal's dictionary:
+	 *  they stand in a book that only the development controls import, so the
+	 *  production bundle does not carry them (28869). The names under
+	 *  {@code role} are the ones the switch offers. */
+	private static final String ROLE_WORDS = "frontend/src/dev/words.sr.json";
 
 	/** The one key under {@code role} that is not a role: the label over the
 	 *  switch itself. Named rather than skipped by shape, because there is no
@@ -111,7 +119,7 @@ class RolesAndRightsTest extends DatabaseTest {
 	void theRolesInTheSchemaAreTheOnesThePortalCanName() {
 		List<String> named = new ArrayList<>();
 
-		for (String key : read(DICTIONARY).get("role").propertyNames()) {
+		for (String key : read(ROLE_WORDS).get("role").propertyNames()) {
 			if (!NOT_A_ROLE.equals(key)) {
 				named.add(key);
 			}

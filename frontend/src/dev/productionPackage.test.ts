@@ -2,7 +2,12 @@ import { readFileSync } from 'node:fs'
 import { basename, dirname, extname, join, relative, sep } from 'node:path'
 import ts from 'typescript'
 import { build, type Rollup } from 'vite'
+import en from '../i18n/en.json'
+import sr from '../i18n/sr.json'
+import type { Dictionary } from '../i18n/translate'
+import { sources } from '../test/sources'
 import { SLOW } from '../test/slow'
+import { DEV_WORDS } from './words'
 
 /**
  * WHAT THE PRODUCTION PACKAGE CARRIES OF THE LIST IN ADL A15, ASKED OF THE BUNDLER ITSELF.
@@ -41,6 +46,16 @@ import { SLOW } from '../test/slow'
  * the same loader as the modules, so there is no list here to fall out of date, and each is
  * first found in the QA package, for the reason given above.
  *
+ * <p><b>And by WORDS, since 28869.</b> The switches' code was out of the production package
+ * and their sentences were not: `role.*`, `clock.*` and `server.named` stood in the two
+ * dictionaries every screen imports whole, so the package said „Današnji datum" and „Vrati na
+ * stvarni datum" for a control it does not draw. They are a module of their own now
+ * (`dev/words.ts`), reached by the switches and by nothing else. Asked three ways, each of them
+ * first found in QA: the modules, the names the switches ask for (`role.label`, as `grep`
+ * counts them) and the sentences, the last of them only for those the portal's own
+ * dictionaries do not say anywhere else, because „Moderator" in the package proves nothing
+ * about a switch when „Moderatori" is a sentence of the portal.
+ *
  * <p><b>What it does not see, written down rather than left to be found:</b> a development
  * control that is not loaded through `loadTheDevControls`, and anything under `public/`,
  * which the build copies as it is and does not bundle. And it does not ask for the four names
@@ -77,9 +92,9 @@ function importsOf(module: string): string[] {
   const at = join(SRC, module)
 
   return ts.preProcessFile(source(module), true, true).importedFiles.flatMap((ref) => {
-    /* A stylesheet has no declaration for the resolver to find, and it is resolved the one
-       way a relative path is. */
-    if (ref.fileName.endsWith('.css')) {
+    /* A stylesheet has no declaration for the resolver to find, nor has a book of words (the
+       project does not resolve JSON), and both are resolved the one way a relative path is. */
+    if (ref.fileName.endsWith('.css') || ref.fileName.endsWith('.json')) {
       return [named(join(dirname(at), ref.fileName))]
     }
 
@@ -158,6 +173,52 @@ const THEIR_PARTS = CONTROLS.flatMap((control) => [
 ])
 
 /**
+ * The words of the switches: the module they read them through, which each of them imports, and
+ * the two books that module imports. Read off the imports like the parts above, so a third book
+ * or a second reader is in the question the day it is written.
+ */
+const THEIR_WORDS = [
+  ...new Set(
+    CONTROLS.flatMap((control) => importsOf(control)).filter((one) => one.startsWith('dev/words')),
+  ),
+].flatMap((reader) => [reader, ...importsOf(reader).filter((one) => one.endsWith('.json'))])
+
+/** The names the switches ask their books for, written out in full as `t('role.label')`. */
+const THE_NAMES_THEY_ASK_FOR = [
+  ...new Set(
+    CONTROLS.flatMap((control) =>
+      [...source(control).matchAll(/\bt\('([a-z]+(?:\.[a-zA-Z]+)+)'\)/g)].map((one) => one[1] ?? ''),
+    ),
+  ),
+].sort()
+
+function sentencesOf(book: Dictionary): string[] {
+  return Object.values(book).flatMap((one) => (typeof one === 'string' ? [one] : sentencesOf(one)))
+}
+
+/** The files whose own text is the controls': the two switches and the module of their words. */
+const CONTROL_FILES = [...CONTROLS, ...THEIR_WORDS.filter((one) => one.endsWith('.ts'))]
+
+/**
+ * The sentences of the switches that nothing else of the portal says: not as a sentence and not
+ * inside one, in either of its two dictionaries. `Moderator` is the portal's own word in
+ * `Moderatori`, so its presence in a package says nothing about a switch, and counting it would
+ * fail production for the portal's own text.
+ */
+const THE_PORTALS_OWN_WORDS = [
+  JSON.stringify([sr, en]),
+  /* And its code, the switches' own files and their words excepted: a short word that is a
+     sentence of a switch is also the start of a name of the portal's (`Role` in `RoleProvider`),
+     and a package that carries that name carries the word. */
+  ...sources()
+    .filter((one) => !CONTROL_FILES.some((file) => named(one.path) === file))
+    .map((one) => one.code),
+].join('\n')
+const THEIR_OWN_SENTENCES = [
+  ...new Set([...sentencesOf(DEV_WORDS.sr), ...sentencesOf(DEV_WORDS.en)]),
+].filter((one) => !THE_PORTALS_OWN_WORDS.includes(one))
+
+/**
  * What each switch is called: the name of the file it is written in, which is also the name the
  * loader hands it out under and the shell reads it by (`dev/tools.ts`).
  */
@@ -206,6 +267,44 @@ describe('the production package (ADL A15)', () => {
 
     /* The floor first, as above: a name QA does not carry has gone out of date, and a count of
        none in production would then be a count over nothing. */
+    expect(standingIn(qa).filter((one) => one.times === 0)).toEqual([])
+    expect(standingIn(production).filter((one) => one.times > 0)).toEqual([])
+  })
+
+  it('carries no book of words of either switch, every one of which QA carries', () => {
+    /* The floor first: a reader and at least two books, or this is a question over nothing. */
+    expect(THEIR_WORDS.length).toBeGreaterThanOrEqual(3)
+    expect(THEIR_WORDS.filter((part) => !qa.modules.has(part))).toEqual([])
+    expect(THEIR_WORDS.filter((part) => production.modules.has(part))).toEqual([])
+  })
+
+  it('carries none of the names the switches ask their words for, which QA carries of all', () => {
+    expect(THE_NAMES_THEY_ASK_FOR).toEqual(
+      expect.arrayContaining(['clock.label', 'clock.reset', 'role.label', 'role.moderator', 'server.named']),
+    )
+
+    const standingIn = (one: Package) =>
+      THE_NAMES_THEY_ASK_FOR.map((name) => ({ name, times: timesIn(one.text, name) }))
+
+    expect(standingIn(qa).filter((one) => one.times === 0)).toEqual([])
+    expect(standingIn(production).filter((one) => one.times > 0)).toEqual([])
+  })
+
+  it('carries none of the sentences only the switches say, which QA carries of all', () => {
+    /* A floor of the four that were measured to stand in the production package on 09.10.2026
+       (one of them in each language), so a filter that came to keep nothing cannot pass. */
+    expect(THEIR_OWN_SENTENCES).toEqual(
+      expect.arrayContaining([
+        'Današnji datum',
+        'Vrati na stvarni datum',
+        "Today's date",
+        'Back to the real date',
+      ]),
+    )
+
+    const standingIn = (one: Package) =>
+      THEIR_OWN_SENTENCES.map((text) => ({ text, times: timesIn(one.text, text) }))
+
     expect(standingIn(qa).filter((one) => one.times === 0)).toEqual([])
     expect(standingIn(production).filter((one) => one.times > 0)).toEqual([])
   })

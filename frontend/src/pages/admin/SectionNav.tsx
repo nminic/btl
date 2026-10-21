@@ -5,7 +5,7 @@ import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { usePermittedEntities, usePermittedQueues } from './mayOpen'
-import { usePending } from './pending'
+import { usePendingForTheCount } from './pending'
 import { usePaymentsDue } from '../../data/useResource'
 import { countFor, notMembersYetIn, QUEUE } from './queues'
 import './SectionNav.css'
@@ -236,7 +236,7 @@ function usePathname(): string {
 function QueuesSector() {
   const { t } = useI18n()
   const { decisions } = useSession()
-  const items = usePending()
+  const items = usePendingForTheCount()
   /* The Uplate tab is counted off the derived list and not off the file, because nothing
      writes that queue any more (`queues.ts`, `notMembersYet`). Asked here beside the file so
      the number beside a queue, the number on the screen and the number beside Verification

@@ -222,29 +222,33 @@ describe('the circle of a member whose portrait was approved', () => {
     }
   })
 
-  it('still carries that member’s own colour, which something outside it reads', () => {
-    /* **Written because a mutation survived**: `style={own}` taken off the circle with a
-       picture in it left every case here green. Behind an opaque photograph the colour shows
-       nothing, so it reads as decoration - and it is not.
-   *
-       Two readers outside this component. The card of a competitor draws its ring in that
-       colour at a third of its strength (`pages/Competitors.css`), so without it a member
-       with a portrait wears a ring in the fallback hue of 214 while the member beside him
-       wears his own. And a portrait sent as a PNG with transparency stands on it.
-   *
-       Asked of the property and not of a pixel, because jsdom applies no stylesheet: what is
-       held is that the circle carries the variable the sheet reads, and that it carries THIS
-       member's value rather than the one above him on the list. */
+  it('carries no colour of its own, on either form of the circle', () => {
+    /* Owner, 31.07.2026 (PDL P28, „Sve kartice takmičara su identične"): „Boja izvedena iz
+       članskog broja se ukida: lepo izgleda, ali ništa ne znači". The circle drew one anyway
+       until 21.10.2026 (PENDING 29205): `--face-hue`, computed off the member number and set on
+       the circle, which `.face-circle` reads (`Portrait.css`) and the card of a competitor
+       reads for its ring (`pages/Competitors.css`).
+
+       **Asked of the property and not of a pixel, because jsdom applies no stylesheet**, and
+       asked of every circle on the list: the one with a picture, the one without, and the
+       subject's own, who is neither first nor last. All three are different members with
+       different numbers, so a circle that set anything off the number would set a different
+       thing on each. Taken off the sheet the circles fall back to its one blue.
+
+       **A circle with a picture counts as much as the monogram.** Behind an opaque photograph
+       nothing of the colour showed, so it read as decoration there - and it was not: the ring
+       of a card read it. */
     const { container } = theWholeList()
 
     const circles = [...container.querySelectorAll('.portrait')]
-    const hue = (at: number) =>
-      must(circles[at], `circle ${String(at)}`).getAttribute('style')
 
-    expect(hue(2), 'the subject’s circle carries no colour of its own').toContain('--face-hue')
-    /* And not the first record's, which is what makes this a statement about whose colour it
-       is rather than about whether there is one. */
-    expect(hue(2)).not.toBe(hue(0))
+    expect(circles).toHaveLength(3)
+    expect(container.querySelectorAll('.portrait img')).toHaveLength(2)
+
+    for (const circle of circles) {
+      expect(circle.getAttribute('style') ?? '').not.toContain('--face-hue')
+      expect(circle.getAttribute('style') ?? '').not.toContain('hsl')
+    }
   })
 
   it('is fetched when it comes near rather than with the page', () => {
