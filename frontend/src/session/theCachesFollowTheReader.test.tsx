@@ -292,6 +292,17 @@ describe('somebody signing in BEFORE the first answer of the visit (PENDING 2876
     )
   })
 
+  it('is not what a visit rendered as a member does, who is named by its very first render', async () => {
+    /* The other end of the case above, and what keeps it from being satisfied by a rule that drops
+       whenever somebody is named and the server has not answered: nothing has been seen with
+       nobody named, so nobody has signed IN. What is held when that first render happens was asked
+       for by this visit, for him. */
+    await warm()
+    visit('000101')
+
+    expect(held()).toEqual(ALL_HELD)
+  })
+
   it('registers him, so the answer that then names the same member drops nothing more', async () => {
     const user = visit()
 
