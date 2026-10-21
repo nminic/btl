@@ -271,7 +271,7 @@ export function asksLimit(row: Pick<RaceRow, 'kind'>): boolean {
  * Both questions have one home each, and every reader asks through them: the save
  * (`whatIsMissing`), the marking of a refused cell (`isWrong`), what the control
  * itself announces as required (`EventRaces.tsx`), and what the record is written with
- * (`storedRow`, which zeroes the measure the kind does not fix). They were three separate
+ * (`storedRow`, which writes nought for the length and the limit the kind does not fix). They were three separate
  * readings once and drifted; then a fourth was added and drifted again, announcing a
  * floor on a cell nothing checks. ~~The control announced the floor and the ceiling as
  * well~~, through `min` and `max`, until 02.10.2026: the cell became a text box that day
@@ -535,6 +535,34 @@ export type StoredRace = {
   category: string
 }
 
+/**
+ * THE CLIMB OR THE FALL A ROW IS WRITTEN WITH (owner, 21.10.2026, ADL „Trka na vreme zadržava upisan
+ * uspon i spust kad ih admin nije menjao, i onda kad je na njoj menjao nešto drugo", cause the
+ * review of PR 620: renaming a timed race wiped its climb and its fall).
+ *
+ * <p>A race of a length writes what its cell holds, an empty one as nought. <b>A timed race writes
+ * what its ROW holds as well</b>, and not nought as it did until that day: the table does not draw
+ * the two for a timed race (`measuresOf`), so a row read off a race (`rowsOf`) carries the served
+ * climb unchanged and that is what goes back, while one the administrator changed (through the kind,
+ * which is the only way to reach the cell) goes with the new number. Only a number the table would
+ * itself have accepted goes, since nothing checks a cell that is not drawn (`isBounded`): a text
+ * that is not a number or lies outside its bounds is nought, as it was for every timed race before.
+ * A free race carries none (PDL 17.10.2026, `measuresOf`).
+ */
+function climbOrFall(row: RaceRow, field: 'ascentM' | 'descentM'): number {
+  if (raceKind(row.kind) === 'free' || row[field] === '') {
+    return 0
+  }
+
+  const figure = read(row[field])
+
+  if (measuresOf(row).includes(field)) {
+    return figure
+  }
+
+  return figure >= BOUNDS[field].least && figure <= BOUNDS[field].most ? figure : 0
+}
+
 export function storedRow(row: RaceRow, eventId: string): StoredRace {
   /* Every measure through `read`, so a cell typed with a comma is written as the number it
      is, with the dot the server reads: this is the one door a row of this table leaves by,
@@ -572,14 +600,14 @@ export function storedRow(row: RaceRow, eventId: string): StoredRace {
        race turned into a timed one does not carry the kilometres somebody typed
        before they changed their mind. */
     distanceKm: asksLength(row) ? String(distanceKm) : '0',
-    /* Nought where the table does not draw the cell (`measuresOf`): a race turned into a timed or a
-       free one does not carry the climb somebody typed before they changed their mind, for the
-       reason the length above does not. Its course is the runner's own (PDL P9, 29.08.2026). The
-       route takes the two as numbers whichever kind the race is (`RaceWriteApi`, `whatTheEditLeftOut`),
-       and for a free race it does not read them (`WhatARaceCarries.figuresOf`), so nought is both
-       accepted and harmless. */
-    ascentM: String(measuresOf(row).includes('ascentM') && row.ascentM !== '' ? read(row.ascentM) : 0),
-    descentM: String(measuresOf(row).includes('descentM') && row.descentM !== '' ? read(row.descentM) : 0),
+    /* What the row holds for a race of a length or a timed one, and nought for a free one
+       (`climbOrFall`): a timed race keeps the climb and the fall it was stored with whenever it is
+       saved for something else (owner, 21.10.2026, ADL „Trka na vreme zadržava upisan uspon i spust").
+       The route takes the two as numbers whichever kind the race is (`RaceWriteApi`,
+       `whatTheEditLeftOut`), and for a free race it does not read them
+       (`WhatARaceCarries.figuresOf`), so nought is both accepted and harmless. */
+    ascentM: String(climbOrFall(row, 'ascentM')),
+    descentM: String(climbOrFall(row, 'descentM')),
     category: categoryOf(asksLength(row) ? distanceKm : 0),
   }
 }
@@ -589,7 +617,7 @@ export function storedRow(row: RaceRow, eventId: string): StoredRace {
  * 20.10.2026, ADL „Čuvanje događaja šalje samo trke koje su promenjene": „Trka koju niko nije
  * dirao ne šalje se, pa joj se ništa ne može obrisati", cause PENDING 29091: a timed race lost
  * its climb and its fall each time the event was saved, because the record was written back
- * from a row whose climb and fall the table does not draw, and `storedRow` writes nought where
+ * from a row whose climb and fall the table does not draw, and `storedRow` wrote nought where
  * the table does not draw).
  *
  * <p>`served` is the same race read the way the table opens it (`rowsOf` over what the server
@@ -598,7 +626,7 @@ export function storedRow(row: RaceRow, eventId: string): StoredRace {
  *
  * <p><b>Compared as what would be WRITTEN (`storedRow`), not as the text of the cells.</b> A cell
  * typed with a comma against the served dot is the same number; an empty climb is nought; and the
- * climb a timed race holds but does not draw is nought on the way out whichever it is. Compared as
+ * climb a timed race holds but does not draw is what it holds on the way out (`climbOrFall`). Compared as
  * text, a race the reader never touched but that this very press had just made (its climb left
  * empty, served back as „0") would be sent again by the retry. A field that differs in what it
  * would write is a field somebody changed; one that differs only in how it is spelt is not. The
