@@ -744,6 +744,34 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
   }, SLOW)
 
   /**
+   * THE OTHER DIRECTION OF THE SAME FAULT: the refusal is the payment's over the exemption and the success
+   * is the cancellation beside it. The payment over the exemption is a second `RowPayment` on the row,
+   * handed the count by its own line, and a screen that handed it to the first and forgot the second would
+   * pass every case above.
+   */
+  it('takes the refusal of a payment over the exemption away when the exemption is cancelled', async () => {
+    const server = serving((_path, init) =>
+      init?.method === 'PUT' ? refused('theBasisHasChanged', 409) : Response.json({ season: 2028, basis: null }),
+    )
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const exempt = await rowOf(EXEMPT)
+
+    await user.type(within(exempt).getByLabelText('Uplaćeno (RSD)'), '3200')
+    await user.click(within(exempt).getByRole('button', { name: 'Upiši uplatu' }))
+    expect(await within(exempt).findByText(sr.admin.membershipRefused.theBasisHasChanged)).toBeInTheDocument()
+
+    await user.click(within(exempt).getByRole('button', { name: 'Storniraj' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+
+    expect(await screen.findByText('Članstvo je stornirano.')).toBeInTheDocument()
+    expect(within(exempt).queryByText(sr.admin.membershipRefused.theBasisHasChanged)).toBeNull()
+
+    server.stop()
+  }, SLOW)
+
+  /**
    * THE SAME ROW'S OWN NEXT SUCCESS, THROUGH THE CONTROLS THAT CANNOT SEE EACH OTHER'S STATE.
    *
    * <p>A refused payment is gone when the same control's next press goes through, which is the case the
