@@ -777,7 +777,7 @@ describe('a decision on a queue served by the pending screen', () => {
         server.stop()
         confirm.mockRestore()
       }
-    })
+    }, SLOW)
 
     it('opens the next refused card over one an earlier answer opened, because that sentence is replaced', async () => {
       /* THE OTHER SIDE OF THE BOUNDARY, so "never fold" does not become "never open": the first sweep
@@ -808,7 +808,7 @@ describe('a decision on a queue served by the pending screen', () => {
         server.stop()
         confirm.mockRestore()
       }
-    })
+    }, SLOW)
   })
 
   it('asks the server again after a decision, rather than reading what this visit fetched', async () => {

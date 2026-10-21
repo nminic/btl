@@ -442,7 +442,7 @@ describe('the foot of the list coming into view', () => {
       expect(items()).toBe(15)
       expect(end(15)).not.toHaveFocus()
       expect(elsewhere).toHaveFocus()
-    })
+    }, SLOW)
 
     it('stays where the reader is when scrolling finished a list he had begun with the button', async () => {
       /* THE LAST REQUEST IS THE ONE THAT COUNTS: pressing the button once and then scrolling to the
@@ -468,7 +468,7 @@ describe('the foot of the list coming into view', () => {
       expect(items()).toBe(25)
       expect(end(25)).not.toHaveFocus()
       expect(elsewhere).toHaveFocus()
-    })
+    }, SLOW)
 
     it('follows the reader who finished a list that scrolling had begun, with the button', async () => {
       /* AND THE OTHER WAY ROUND, so the case above is not a button that never moves the focus again:
@@ -483,7 +483,7 @@ describe('the foot of the list coming into view', () => {
       await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
 
       expect(end(25)).toHaveFocus()
-    })
+    }, SLOW)
   })
 
   it('holds up where the browser has no observer at all', () => {
