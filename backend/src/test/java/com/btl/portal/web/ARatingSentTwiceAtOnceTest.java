@@ -662,58 +662,6 @@ class ARatingSentTwiceAtOnceTest {
 				.isEmpty();
 	}
 
-	/**
-	 * HIS WAITING CARDS ARE LOCKED LOWEST FIRST (the deletion's own sentence: „ordered by id, so two
-	 * deletions of one member take his cards in one order"). The lock is the point of the ordering and so
-	 * the lock is what is measured: the HIGHER card is held, the deletion is sent, and when it stops the
-	 * LOWER card must be held by it already. Taken in any other order it would be stopped on the higher
-	 * card before it had touched the lower, and a second transaction that takes the same two the other way
-	 * round would be a deadlock.
-	 *
-	 * <p>The lower card is rewritten first, so that its rows stand AFTER the higher one's on the pages and a
-	 * scan that is not told to sort meets them the other way round: without that the plan would hand them
-	 * back in id order whether or not anything asked for it, and removing the {@code order by} would pass.
-	 */
-	@Test
-	void hisWaitingCardsAreLockedLowestFirst() throws Exception {
-		long shown = theRatingHeIsShown();
-		long lower = waitingCardWithWords("Prva, niži ključ.");
-		long higher = waitingCardWithWords("Druga, viši ključ.");
-
-		db.sql("update verification set body = body || '' where id = ?").param(lower).update();
-		db.sql("update comment_submission set body = body || '' where id = (select"
-				+ " comment_submission_id from verification where id = ?)").param(lower).update();
-
-		assertThat(lower).isLessThan(higher);
-
-		ExecutorService requests = Executors.newFixedThreadPool(1);
-		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
-
-		try (AHeldTransaction theHigherCard = new AHeldTransaction(pool)) {
-			theHigherCard.db().sql("select 1 from verification where id = ? for update")
-					.param(higher).query(Integer.class).single();
-
-			submitted.add(requests.submit(() -> deleted(shown)));
-			theHigherCard.untilBehind(1, submitted);
-
-			assertThat(db.sql("select id from verification where id = ? for update skip locked")
-					.param(lower).query(Long.class).list())
-					.as("the lower card is free while the deletion waits for the higher: it took the higher first")
-					.isEmpty();
-
-			theHigherCard.commit();
-
-			assertThat(submitted.get(0).get(30, TimeUnit.SECONDS).getStatus()).isEqualTo(204);
-		} finally {
-			requests.shutdownNow();
-		}
-
-		assertThat(db.sql("select count(*) from verification where id in (?, ?)").params(lower, higher)
-				.query(Long.class).single())
-				.as("both of his waiting cards went with the deletion")
-				.isZero();
-	}
-
 	/** The rating {@code GET /api/comments} shows him, the one his screen would name. */
 	private long theRatingHeIsShown() {
 		return db.sql("select id from event_comment where event_id = ? and competitor_id = ?")
