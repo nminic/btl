@@ -923,6 +923,100 @@ describe('a decision on a queue served by the pending screen', () => {
       }
     }, SLOW)
 
+    /**
+     * THE SAME CARD REFUSED AGAIN IS ANNOUNCED AGAIN (owner, 21.10.2026, ADL „Red iznad kartica u redu za proveru
+     * najavljuje se čitaču ekrana pri svakom odbijanju, i kad je ista kartica odbijena ponovo (red se prazni kad
+     * pritisak krene)"; cause the review of PR 620).
+     *
+     * <p>A live region announces what changes in it, and the second refusal of A names A in the very words the first
+     * one did, so nothing in the document changed. Measured the way a reader's software measures it: an observer on
+     * the line, and the text of the line at every change it saw. The refusal is the one that kept the line the same,
+     * so the case asks for the line to have been EMPTY between the two, and for the second sentence to be there
+     * after.
+     */
+    function watchTheLine() {
+      const seen: string[] = []
+      const observer = new MutationObserver(() => {
+        seen.push(lineOverTheCards().textContent)
+      })
+
+      observer.observe(lineOverTheCards(), { childList: true, characterData: true, subtree: true })
+
+      return { seen, stop: () => observer.disconnect() }
+    }
+
+    it('announces the line again when the same card is refused again by the sweep', async () => {
+      const user = setupUser()
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      const server = refusing({ ids: ['ver-kom-2', 'ver-kom-4'] })
+
+      try {
+        renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+        await cardsIn()
+
+        await user.click(toggleOf('ver-kom-4'))
+        await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+        await screen.findByRole('alert')
+
+        const sentence = `Odgovor za "${headingOfCard('ver-kom-2')}" nije prihvaćen. Otvori karticu.`
+
+        expect(lineOverTheCards()).toHaveTextContent(sentence)
+
+        const line = watchTheLine()
+
+        await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+        await waitFor(() => {
+          expect(line.seen.at(-1)).toBe(sentence)
+        })
+        line.stop()
+
+        /* Emptied when the press started and said again when the answer came: two changes, and the second is the
+           announcement. A line that kept its words through the second press records nothing at all. */
+        expect(line.seen).toEqual(['', sentence])
+      } finally {
+        server.stop()
+        confirm.mockRestore()
+      }
+    }, SLOW)
+
+    it('announces the line again when the same card is refused again by its own box', async () => {
+      const user = setupUser()
+      const refusedNow = { ids: ['ver-kom-2'] }
+      const server = refusing(refusedNow)
+
+      try {
+        renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+        const waiting = within(await cardsIn())
+        const second = within(
+          must(waiting.getAllByRole('listitem')[1], 'the second card, which is ver-kom-2'),
+        )
+
+        /* B is the one he reads, and A is the one he sends back. */
+        await user.click(toggleOf('ver-kom-4'))
+        await user.click(second.getByRole('button', { name: /^Obriši: / }))
+        await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
+        await screen.findByRole('alert')
+
+        const sentence = `Odgovor za "${headingOfCard('ver-kom-2')}" nije prihvaćen. Otvori karticu.`
+
+        expect(lineOverTheCards()).toHaveTextContent(sentence)
+
+        const line = watchTheLine()
+
+        await user.click(second.getByRole('button', { name: /^Obriši: / }))
+        await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
+        await waitFor(() => {
+          expect(line.seen.at(-1)).toBe(sentence)
+        })
+        line.stop()
+
+        expect(line.seen).toEqual(['', sentence])
+      } finally {
+        server.stop()
+      }
+    }, SLOW)
+
     it('opens the next refused card over one an earlier answer opened, because that sentence is replaced', async () => {
       /* THE OTHER SIDE OF THE BOUNDARY, so "never fold" does not become "never open": the first sweep
          refuses two cards and opens the first of them; the second sweep refuses only the later one, and

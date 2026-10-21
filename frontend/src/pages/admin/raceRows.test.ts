@@ -482,15 +482,14 @@ describe('the measures a race draws on its second line', () => {
     expect(RACE_KINDS.map((kind) => measuresOf(row({ kind })).length)).toEqual([3, 1, 0])
   })
 
-  it('writes nought for a climb and a fall that the race does not draw, and what was typed where it does', () => {
+  it('writes nought for a free race, and what the row holds for a race of a length or a timed one', () => {
     const typed = { ascentM: '120', descentM: '90' }
 
-    /* A timed race: the climb somebody typed before they changed their mind about the kind is not
-       carried, for the reason the length of such a race is not (`storedRow`). Its course is the
-       runner's own (PDL P9, 29.08.2026). */
+    /* A timed race keeps the climb its row carries (owner, 21.10.2026, ADL „Trka na vreme zadržava upisan
+       uspon i spust"), the served one when nobody changed it and the new one when somebody did. */
     expect(storedRow(row({ kind: 'time', limitHours: '2', ...typed }), 'evt')).toMatchObject({
-      ascentM: '0',
-      descentM: '0',
+      ascentM: '120',
+      descentM: '90',
     })
     /* And a free one, which draws none of them since 17.10.2026: a climb that was typed, or that a
        free race stored before that day, is written as nought (the route does not read it for such a
@@ -503,11 +502,37 @@ describe('the measures a race draws on its second line', () => {
     })
     /* The one that draws them keeps them. */
     expect(storedRow(row(typed), 'evt')).toMatchObject({ ascentM: '120', descentM: '90' })
-    /* And a timed race whose hidden climb is not even a number is still written, because nothing
-       reads it: it would have been `NaN` on the wire. */
-    expect(
-      storedRow(row({ kind: 'time', limitHours: '2', ascentM: 'sto' }), 'evt'),
-    ).toMatchObject({ ascentM: '0' })
+  })
+
+  it('writes a timed race the climb it was served with, through the row and out again', () => {
+    const timed: Race = {
+      ...race(4, '2026-09-19', 0),
+      kind: 'time',
+      limitSeconds: 86_400,
+      ascentM: 500,
+      descentM: 400,
+    }
+
+    expect(storedRow(first(rowsOf([timed], (iso) => iso)), 'evt')).toMatchObject({
+      ascentM: '500',
+      descentM: '400',
+    })
+  })
+
+  it('writes nought for the climb of a timed race that is empty, or that the table would not have accepted', () => {
+    const timed = { kind: 'time' as const, limitHours: '2' }
+
+    /* Nothing checks a cell that is not drawn (`isBounded`), so what goes out is held to the bounds here:
+       it would have been `NaN` on the wire, or a number the route refuses, and it was nought before. */
+    expect(storedRow(row({ ...timed, ascentM: '', descentM: '' }), 'evt')).toMatchObject({
+      ascentM: '0',
+      descentM: '0',
+    })
+    expect(storedRow(row({ ...timed, ascentM: 'sto' }), 'evt')).toMatchObject({ ascentM: '0' })
+    expect(storedRow(row({ ...timed, ascentM: '-500' }), 'evt')).toMatchObject({ ascentM: '0' })
+    expect(storedRow(row({ ...timed, descentM: '30001' }), 'evt')).toMatchObject({ descentM: '0' })
+    expect(storedRow(row({ ...timed, descentM: '30000' }), 'evt')).toMatchObject({ descentM: '30000' })
+    expect(storedRow(row({ ...timed, ascentM: '0' }), 'evt')).toMatchObject({ ascentM: '0' })
   })
 })
 
@@ -591,7 +616,7 @@ describe('the sentence that says what is wrong with a cell', () => {
 
     it('is changed when only the kind differs, which is a change of its own and not a side of the length', () => {
       /* Against a race of a length the kind cannot be changed alone: the length, the climb and the fall
-         are written as nought for the other two kinds, so they differ as well. A free race with none of
+         are written as nought for a free race (the length for a timed one too), so they differ as well. A free race with none of
          the three is the one where nothing but the kind is written differently. */
       const free = served({ kind: 'free', distanceKm: 0, ascentM: 0, descentM: 0 })
 
@@ -608,9 +633,10 @@ describe('the sentence that says what is wrong with a cell', () => {
       expect(isChanged({ ...was, distanceKm: '10,5', ascentM: '', descentM: '' }, was)).toBe(false)
     })
 
-    it('does not count the climb a race on time holds but does not draw, which is what was being deleted', () => {
-      /* PENDING 29091. The table draws a timed race's limit and nothing else, so the climb and the fall
-         the row still carries are not a thing the reader can have changed; written, they are nought. */
+    it('does not count the climb a race on time holds but does not draw, and counts one that was changed', () => {
+      /* PENDING 29091. The table draws a timed race's limit and nothing else, so the climb and the fall the
+         row still carries are not a thing the reader can have changed; they go back as they were served
+         (owner, 21.10.2026), so the very row is no change and a different climb is one. */
       const timed = served({
         kind: 'time',
         limitSeconds: 6 * 3600,
@@ -620,7 +646,8 @@ describe('the sentence that says what is wrong with a cell', () => {
       })
 
       expect(isChanged({ ...timed }, timed)).toBe(false)
-      expect(isChanged({ ...timed, ascentM: '0', descentM: '0' }, timed)).toBe(false)
+      expect(isChanged({ ...timed, ascentM: '0', descentM: '0' }, timed)).toBe(true)
+      expect(isChanged({ ...timed, ascentM: '700' }, timed)).toBe(true)
     })
   })
 

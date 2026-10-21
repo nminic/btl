@@ -8,7 +8,7 @@ import type { BtlEvent, Race } from '../../data/types'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { serverThat } from '../../test/serverAnswers'
-import { whereItWrote } from '../../test/sent'
+import { whatWasSent, whereItWrote } from '../../test/sent'
 import { SLOW } from '../../test/slow'
 import { setupUser, type Pressing } from '../../test/user'
 
@@ -177,6 +177,60 @@ describe('the races a save of an event sends', () => {
 
     expect(whereItWrote(server.asked).sort()).toEqual(
       [`PUT /api/events/${String(event.id)}`, 'POST /api/races'].sort(),
+    )
+  }, SLOW)
+
+  /**
+   * A RACE ON TIME KEEPS THE CLIMB AND THE FALL IT WAS STORED WITH WHEN SOMETHING ELSE OF IT WAS CHANGED (owner,
+   * 21.10.2026, ADL „Trka na vreme zadržava upisan uspon i spust kad ih admin nije menjao, i onda kad je na njoj
+   * menjao nešto drugo"; cause the review of PR 620, which typed a mark into the name of this very race and saw
+   * `PUT /api/races/… | kind=time … ascentM=0 descentM=0` go out over a race that held 500 and 400).
+   *
+   * <p>The race on time of the setup holds 500 and 400 and draws neither, so the body is where it is read.
+   */
+  const bodyOfTheWriteTo = (race: Race): string =>
+    must(
+      whatWasSent(server.asked).find((one) => one.startsWith(`PUT /api/races/${String(race.id)} |`)),
+      `the write to race ${String(race.id)}`,
+    )
+
+  it('sends the climb and the fall the race on time was served with when only its name was changed', async () => {
+    const user = await open()
+
+    await user.type(screen.getByLabelText(`Trka, ${String(rowOf(timed))}. trka`), '!')
+    await save(user)
+
+    expect(bodyOfTheWriteTo(timed)).toContain('kind=time')
+    expect(bodyOfTheWriteTo(timed)).toContain('ascentM=500 descentM=400')
+  }, SLOW)
+
+  it('sends the climb the administrator changed, for a race on time that was changed through its kind', async () => {
+    const user = await open()
+    const at = String(rowOf(timed))
+
+    /* The only road to the cell of a race on time: the kind is made one of a length, the climb is changed and
+       the kind is put back. */
+    await user.selectOptions(screen.getByLabelText(`Vrsta, ${at}. trka`), 'length')
+
+    const climb = screen.getByLabelText(`Uspon (m), ${at}. trka`)
+
+    await user.clear(climb)
+    await user.type(climb, '700')
+    await user.selectOptions(screen.getByLabelText(`Vrsta, ${at}. trka`), 'time')
+    await save(user)
+
+    expect(bodyOfTheWriteTo(timed)).toContain('kind=time')
+    expect(bodyOfTheWriteTo(timed)).toContain('ascentM=700 descentM=400')
+  }, SLOW)
+
+  it('sends a race of a length with the climb and the fall it has, as it always did', async () => {
+    const user = await open()
+
+    await user.type(screen.getByLabelText(`Trka, ${String(rowOf(length))}. trka`), '!')
+    await save(user)
+
+    expect(bodyOfTheWriteTo(length)).toContain(
+      `ascentM=${String(length.ascentM)} descentM=${String(length.descentM)}`,
     )
   }, SLOW)
 

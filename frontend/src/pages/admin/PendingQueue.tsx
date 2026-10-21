@@ -785,6 +785,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
        that rejects outright still lets the next press in. */
     outstanding.current = true
     setDeciding(true)
+    /* THE SENTENCE OVER THE CARDS IS EMPTIED WHEN A PRESS STARTS (`putTheLineAway`). */
+    putTheLineAway()
 
     try {
       /* Everything already spoken for, growing as the walk hands more out. */
@@ -1132,6 +1134,25 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   }
 
   /**
+   * THE REFUSAL IS TAKEN OFF THE SCREEN WHEN THE NEXT PRESS STARTS, so that the line over the cards is
+   * said again when the same card is refused again (owner, 21.10.2026, ADL „Red iznad kartica u redu za
+   * proveru najavljuje se čitaču ekrana pri svakom odbijanju, i kad je ista kartica odbijena ponovo (red
+   * se prazni kad pritisak krene)"; cause the review of PR 620).
+   *
+   * <p>A live region announces what CHANGES in it. A card refused twice in a row left the line with
+   * the very words it already had (`refusedElsewhere` names the same card), so the second refusal
+   * changed nothing in the document and was never announced. Emptying `said` at the press brings the
+   * line down to nothing for the time the request is out, and the answer fills it again: the region
+   * changes twice, and the second change is the announcement. The sentence on the refused card goes
+   * with it, and comes back with the answer, which is the one that replaces it in any case (`said`
+   * holds one). Not `sayIt`: that also opens a card, and a press that has only started has not
+   * refused anything yet.
+   */
+  const putTheLineAway = (): void => {
+    setSaid(null)
+  }
+
+  /**
    * THE SENTENCE, AND THE CARD IT IS ABOUT OPENED SO THAT IT CAN BE READ.
    *
    * <p><b>The opening is not a nicety and it was measured against the stylesheet.</b>
@@ -1228,6 +1249,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * `leagueWrites.ts` names for the address of a competition.
    */
   const handBack = async (one: PendingItem, reason: string): Promise<void> => {
+    /* AND HERE, for the same reason as at the start of `approveAll` (`putTheLineAway`). */
+    putTheLineAway()
+
     /* THE SAME EXCEPTION `approveAll` MAKES, FOR THE SAME REASON: a row this visit
        made up itself (`isProposal`, above `handsBack`) has no server row to ask
        `POST /api/verification/{id}/decision` about, and the address cannot even
@@ -1514,7 +1538,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                   Standing in the document with nothing in it when there is nothing to say, the way `Refused`
                   does and for its reason: a live region that arrives with its words is one nobody is told
                   about (WCAG 2.2 SC 4.1.3). It goes when A is opened (`shown`), when A is answered and leaves
-                  (`waiting`), or when the next answer replaces the sentence (`said`). */}
+                  (`waiting`), when the next press starts (`putTheLineAway`, so that a card refused again is
+                  said again), or when the next answer replaces the sentence (`said`). */}
               <p className="pending__elsewhere" role="status">
                 {refusedElsewhere === undefined
                   ? ''
