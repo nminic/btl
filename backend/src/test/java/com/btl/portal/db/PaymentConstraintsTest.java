@@ -107,7 +107,7 @@ class PaymentConstraintsTest extends DatabaseTest {
 	private static final String GOOD_AWAITED = payment(AN_APPLICANT + ", 2028, null, " + A_PRICE_ROW
 			+ ", 35.00, 'EUR', 3.00, 'paypal', 'awaited', null, null, null");
 	/** Recognised: it says when, and under whose name. */
-	private static final String GOOD_RECORDED = payment(A_MEMBER + ", 2028, '20281000', " + A_PRICE_ROW
+	private static final String GOOD_RECORDED = payment(A_MEMBER + ", 2028, '2028001000', " + A_PRICE_ROW
 			+ ", 4200.00, 'RSD', 0, 'ips', 'recorded', " + AN_INSTANT + ", " + AN_ACCOUNT
 			+ ", 'Blagajnik Probni'");
 
@@ -130,7 +130,7 @@ class PaymentConstraintsTest extends DatabaseTest {
 		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'blagajnik@primer.rs',"
 				+ " (select id from role where code = 'moderator'))").update();
 
-		db.sql(payment(A_MEMBER + ", 2027, '20271000', " + A_PRICE_ROW + ", 35.00, 'EUR', 3.00, 'paypal',"
+		db.sql(payment(A_MEMBER + ", 2027, '2027001000', " + A_PRICE_ROW + ", 35.00, 'EUR', 3.00, 'paypal',"
 				+ " 'recorded', " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Blagajnik Probni'")).update();
 	}
 
@@ -167,8 +167,27 @@ class PaymentConstraintsTest extends DatabaseTest {
 				Violation.of("payment_reference_shape",
 						payment(A_MEMBER + ", 2028, '2028-1000', " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'awaited', null, null, null")),
+				/* AND ONE ROW FOR EACH WAY THE SHAPE EXACTLY TEN DIGITS (V68, owner, PDL P8,
+				   20.10.2026) CAN BE MISSED, which the floor below does not ask for: it wants ONE row per
+				   constraint, so the row above would satisfy it on its own and say nothing about the
+				   length. Nine and eleven digits are the decision itself; eight is what V16 took ("seven
+				   or more") and a new row may no longer have; a letter among ten characters is what a
+				   rule that only measured length would let in. Each breaks nothing else (a season nobody
+				   holds, no recogniser, awaited), so the failure names this constraint and not another. */
+				Violation.of("payment_reference_shape",
+						payment(A_MEMBER + ", 2028, '202810000', " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
+								+ " 'awaited', null, null, null")),
+				Violation.of("payment_reference_shape",
+						payment(A_MEMBER + ", 2028, '20281000000', " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
+								+ " 'awaited', null, null, null")),
+				Violation.of("payment_reference_shape",
+						payment(A_MEMBER + ", 2028, '20281000', " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
+								+ " 'awaited', null, null, null")),
+				Violation.of("payment_reference_shape",
+						payment(A_MEMBER + ", 2028, '202810000a', " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
+								+ " 'awaited', null, null, null")),
 				Violation.of("payment_reference_unique",
-						payment(A_MEMBER + ", 2028, '20271000', " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
+						payment(A_MEMBER + ", 2028, '2027001000', " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'awaited', null, null, null")),
 
 				Violation.notNull("payment_price_row_id_not_null", "price_row_id",
@@ -245,7 +264,7 @@ class PaymentConstraintsTest extends DatabaseTest {
 				   BRIŠE.”), and V64 is what refuses it: a migration that left the word in place
 				   would leave this row standing and this case red. */
 				Violation.of("payment_state_known",
-						payment(A_MEMBER + ", 2029, '20291000', " + A_PRICE_ROW + ", 40.00, 'EUR', 3.00,"
+						payment(A_MEMBER + ", 2029, '2029001000', " + A_PRICE_ROW + ", 40.00, 'EUR', 3.00,"
 								+ " 'paypal', 'reversed', " + AN_INSTANT + ", " + AN_ACCOUNT
 								+ ", 'Blagajnik Probni'")),
 

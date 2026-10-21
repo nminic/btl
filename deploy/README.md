@@ -35,7 +35,7 @@ below.
 
 ```bash
 ssh root@btl-prod
-cd /opt/btl && git pull
+cd /opt/btl && git checkout main && git pull
 cd deploy
 docker compose -f compose.prod.yml build backend
 docker compose -f compose.prod.yml up -d --build frontend backend
@@ -65,7 +65,7 @@ docker compose -f compose.prod.yml up -d --build frontend
 
 **The database starts empty, and the migrations then fill more of it than the
 word "empty" suggests.** Flyway builds the schema at backend startup, and the
-seed migrations put rows into **eleven tables**, counted over all 46 of them on
+seed migrations put rows into **eleven tables**, counted over every migration on
 29.09.2026: `country` 246, `place` 47016, `price_row` 7, `role` 4,
 `admin_right`, `ducat_kind` 11, `ducat` 15, `static_page` 4,
 `static_page_section` 39, and both translation tables. So a freshly migrated
@@ -75,7 +75,7 @@ the ducat catalogue. It is not an empty portal; it is a portal with no league in
 it.
 
 **What no migration seeds is the league**: there is not one
-`insert into btl_event`, `race`, `result` or `competitor` anywhere in the 46.
+`insert into btl_event`, `race`, `result` or `competitor` in any migration.
 Measured on the QA database on 29.09.2026, which is where the rows
 actually are: `btl_event` 321 rows (49 of them in 2027), `race` 467, `result`
 274, `competitor` 1, `league` 1, `league_race` 4, and `team`,
@@ -170,13 +170,13 @@ edge proxy is ever stopped first, the network really is removed and the edge the
 refuses to start with `network deploy_default declared as external, but could not
 be found`.
 
-**And `down -v` takes the production database with it, and since 20.09.2026 the
-pictures too.** The rows live in the named volume `deploy_postgres-data` and the
-uploaded files in `deploy_photos`, and `-v` deletes exactly those two. There is no
-backup of either yet (see "Known gaps"), so there is nothing to restore from - and
-the pictures are worse than the rows, because a schema can be rebuilt from the
-migrations and a photograph a member uploaded cannot be rebuilt from anything. A
-plain `down` leaves both alone; the flag is the difference between an outage and a
+**And `down -v` takes the production database with it, and the pictures too.** The
+rows live in the named volume `deploy_postgres-data` and the uploaded files in
+`deploy_photos`, and `-v` deletes exactly those two. What is left after it is the
+newest nightly copy in R2 (see "The nightly copy and the monthly proof" below), so at
+best a day of the portal is lost and the rest comes back through "Restoring production
+from a copy" - once the timers are installed and the first real run has passed. A plain
+`down` leaves both volumes alone; the flag is the difference between an outage and a
 loss.
 
 Everything an operator needs is reachable without it:
@@ -223,7 +223,7 @@ chose. Confirming proves somebody READS that mailbox, not that whoever holds the
 owns it.
 
 
-Eight names, and no value of any of them belongs in this repository or in any
+Thirteen names, and no value of any of them belongs in this repository or in any
 message:
 
 | name | what it is | required |
@@ -235,16 +235,23 @@ message:
 | `PROD_MAIL_PORT` | relay port | no, defaults to `587` |
 | `PROD_MAIL_USERNAME` | Brevo SMTP login | not to START, but see below |
 | `PROD_MAIL_PASSWORD` | Brevo SMTP key | not to START, but see below |
-| `BTL_SUPERADMIN_EMAIL` | address that carries the superadmin role (PDL P21) | not to START, but the portal has no superadmin without it |
+| `BTL_SUPERADMIN_EMAIL` | address that carries the superadmin role (PDL P21), and the one a failed backup is mailed to | not to START, but the portal has no superadmin without it |
+| `PROD_BACKUP_R2_ACCOUNT_ID` | the Cloudflare account the backup bucket is in | not to START; the backup refuses without it |
+| `PROD_BACKUP_R2_BUCKET` | the backup bucket, made in R2's EU jurisdiction | not to START; the backup refuses without it |
+| `PROD_BACKUP_R2_ACCESS_KEY_ID` | R2 key for that bucket only | not to START; the backup refuses without it |
+| `PROD_BACKUP_R2_SECRET_ACCESS_KEY` | its secret, shown once | not to START; the backup refuses without it |
+| `PROD_BACKUP_PASSPHRASE` | what every copy is encrypted with; ALSO in the owner's password manager | not to START; the backup refuses without it |
 
 **The two mail variables are the pair that fails quietly.** They are empty by default ON PURPOSE:
 a missing relay key must never keep the public site down, so the stack starts without them. What it
 does not do is send. No address is ever confirmed and no password is ever reset.
 
-**FOUR ENDPOINTS NOW SEND, so an empty key is no longer harmless.** This paragraph used to say
-`Postman` had no caller in `backend/src/main`; measured on 20.09.2026 it has **four** -
-`RegistrationApi`, `EmailConfirmationApi`, `PasswordResetApi` and `ModeratorWriteApi`. The
-sentence was true when it was written and is not any more.
+**THE PORTAL SENDS, so an empty key is not harmless.** This paragraph used to say `Postman` had
+no caller in `backend/src/main`, and later that it had four; both were true when written and
+neither is now. The number is not written here, for the reason the migrations count is not:
+`grep -rl 'postman\.' backend/src/main` lists the classes that send today, registration,
+confirmation and password reset among them. And the nightly backup mails its failures through
+the same two settings.
 
 What that changes for you: `RegistrationApi.send` catches `MailException` and writes
 `LOG.warn` rather than failing the request, so with the key blank a member registers,
@@ -388,6 +395,114 @@ site; QA is a rehearsal of it.
 The tight moment is not the running stack but the build, which is why the deploy
 above builds the backend on its own. Whether the host has any swap has not been
 checked; `free -h` on `btl-prod` answers it.
+
+### The nightly copy and the monthly proof
+
+**The decisions are the owner's** (ADL O19, and on 20.10.2026 its shape, each chosen between
+offered outcomes with my recommendation): a daily copy of the database AND of the photograph
+volume to a second place, which is Cloudflare R2 in its EU jurisdiction, encrypted with a random
+passphrase kept in `.env` and in the owner's password manager; 7 daily and 12 monthly copies,
+expired by lifecycle rules the owner sets in the R2 panel, so **the script deletes nothing**; a
+failure mailed to `BTL_SUPERADMIN_EMAIL` through the relay, and a Worker that mails when no new copy
+has arrived for 26 hours; the copy at 04:00 Belgrade time and a proven restore on the 2nd of every
+month at 05:00.
+
+**What runs, and in what order.** `backup.sh` takes the database with `pg_dump` FIRST, whole and
+with `flyway_schema_history`, THEN the photographs, and puts both with a manifest into one object
+encrypted with gpg (AES256, with an integrity check). It opens that object again the same night and
+checks every `photo` row read out of the dump against the file in the copy, by the row's size and
+the row's digest, and only then sends it to R2 under `daily/` and asks R2 what arrived.
+`backup.sh --prove` brings the newest copy back, restores it into a throwaway database with no
+network and its data in memory, and proves it: it decrypts, it restores in one transaction, every
+table holds what the DUMP says it holds, it is not the copy of an empty database, every photo row
+matches its file, and it is no older than 26 hours. It then writes a proof under `proofs/` (counts,
+no member) and keeps the proven copy under `monthly/`. The files in `backup/` say why each step is
+the way it is.
+
+**Nothing of it is in plain text outside memory.** The dump, the passphrase and the keys live in a
+folder under `/dev/shm`, which the script refuses to use unless the filesystem says tmpfs, and which
+it removes on every way out a shell can catch. **What is left open, named:** tmpfs can be swapped
+out on a host with unencrypted swap, and the copy being made is in memory too, so its size is
+bounded by `/dev/shm` (half the host's memory by default). Today that is far more than the copy;
+`df -h /dev/shm` beside the size the first run prints says how far.
+
+**What the owner does, once, and in this order:**
+
+1. **The bucket.** Cloudflare panel, R2, Create bucket, **jurisdiction EU**. Then R2, Manage API
+   tokens, a token with **Object Read & Write on that bucket only**. Its secret is shown once.
+2. **The passphrase.** `openssl rand -base64 48` on the host, pasted into the password manager
+   FIRST and into `.env` second. A copy is readable only with the passphrase it was made with.
+3. **`.env`.** The five `PROD_BACKUP_*` lines from the table above. The relay's two lines and
+   `BTL_SUPERADMIN_EMAIL` are the same ones the portal uses; without them a failure is mailed to
+   nobody, and only the Worker below notices.
+4. **The lifecycle rules**, in the bucket's settings: objects under `daily/` deleted after **7
+   days**, under `monthly/` after **365 days** (12 copies), and under `proofs/` whenever the owner
+   likes; they hold counts and no member.
+5. **The Worker** `cloudflare/backup-watch.js`, pasted into the panel the way
+   `cloudflare/no-reply-reject.js` was; its header lists the bindings and the hourly trigger.
+6. **The first real run, by hand, and watched** - see below - before the timers.
+7. **The privacy policy row**, published now and not before: see "And the privacy policy" below.
+8. **The timers**, which are persistent configuration on the host and so the owner's step:
+
+   ```bash
+   cd /opt/btl/deploy
+   cp backup/btl-backup.service backup/btl-backup.timer \
+      backup/btl-backup-proof.service backup/btl-backup-proof.timer /etc/systemd/system/
+   systemctl daemon-reload
+   systemctl enable --now btl-backup.timer btl-backup-proof.timer
+   systemctl list-timers 'btl-backup*'
+   ```
+
+**And the privacy policy.** The owner decided (4) that its row about Cloudflare is amended and
+published with the first copy, not before, the way V60 named Zoho, and on 20.10.2026 he approved the
+words (PDL, the entry beginning "Red o Cloudflare-u u politici privatnosti postaje"). The row is
+changed by a migration, and a migration publishes on the next deploy, so it is NOT merged ahead of
+time: as with V60, which says it "does not publish a processor ahead of its use", the order of
+merging is the whole mechanism. It is merged and deployed in step 7, once step 6 has put the first
+copy under `daily/`.
+
+**The first real run, and what it measures that nothing here can.** Run from `/opt/btl/deploy`:
+
+```bash
+sh backup.sh           # must end with DONE: daily/btl-<time>.gpg
+sh backup.sh --prove   # must end with PROVEN, and a proofs/ object appears in the bucket
+```
+
+These were measured locally, against a stand-in of R2 on a loopback and real gpg, tar and
+PostgreSQL 18 (`BackupCopyTest`, `BackupTransferTest`), and three things could not be:
+
+- **that R2 accepts the signature** curl makes (`--aws-sigv4 "aws:amz:auto:s3"`, with the body's
+  sha256 signed). A refusal reads `the bucket refused` and R2's own error after it;
+- **that R2's ETag for one PUT is the MD5 of the body**, which the script compares after every
+  send and every fetch. If R2 answers anything else, every run fails at that line, loudly;
+- **how big and how long a real copy is.** The run prints the dump's size and the copy's; the
+  proof restores the whole database into memory, so it is the run to watch with `free -h`.
+
+### Restoring production from a copy
+
+**Run by hand, in this order, and the order is the protection.** The backend deletes every hour
+each photograph no `photo` row names that is older than ten minutes, so the photographs go back
+AFTER the database and with the backend stopped, and `restore.sh` gives each one the time of the
+restore (`tar -m`), so that even a restore done out of order hands the sweep nothing that looks
+old.
+
+```bash
+cd /opt/btl/deploy
+docker compose -f compose.prod.yml stop backend
+# empty the production database: the copy brings its own schema and migration history
+docker compose -f compose.prod.yml exec -T postgres sh -c \
+  'dropdb -U "$POSTGRES_USER" "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
+sh restore.sh                           # the newest copy under daily/
+# or: sh restore.sh monthly/btl-2026-11.gpg
+docker compose -f compose.prod.yml up -d backend
+```
+
+`restore.sh` refuses while the backend runs, refuses a database that holds anything, opens and
+checks the copy before it writes anything, restores the database in one transaction, then the
+photographs, and says when to start the backend. It reads the same settings the backup does, so
+after a lost host it needs the stack raised (see "Deploying a new version") and `.env` refilled
+first - the passphrase from the password manager. On start the backend applies whatever migrations
+are newer than the copy.
 
 ## The contract with the edge proxy
 
@@ -616,8 +731,8 @@ docker exec qa-postgres psql -U btl_qa -d btl_qa -c '\dt'
 
 It must list **every table the migrations create**, plus Flyway's own
 `flyway_schema_history`. The number is not written here on purpose: `main` carried four migrations
-when this was first written and carries twenty one now, and a number in a runbook is wrong the
-first time somebody adds one. What the backend log says is `Migrating schema "public" to version
+when this was first written and has carried many more since, and a number in a runbook is wrong
+the first time somebody adds one. What the backend log says is `Migrating schema "public" to version
 "1"` and so on up to the highest `V` file in
 `backend/src/main/resources/db/migration`, which is where to look for the number rather than here.
 
@@ -697,32 +812,21 @@ is attached to.
 
 ## Known gaps
 
-- **The production database has no backup.** Decision O19 calls for a daily
-  `pg_dump` and there is none: `deploy_postgres-data` is a named volume on one
-  host, with no copy anywhere. Until that exists, the only thing standing between
-  the portal and a total loss of members, results and payments is that nobody
-  runs `docker compose down -v` and that the host does not die. This was a
-  sentence about something that did not exist yet; it is now a live risk and the
-  next thing this directory needs.
+- **The production backup is written and not yet running.** `backup.sh` and its
+  timers are in this directory (see "The nightly copy and the monthly proof"), and
+  until the owner has made the bucket, filled `.env`, installed the timers and watched
+  the first real run pass, `deploy_postgres-data` and `deploy_photos` are still two
+  volumes on one host with no copy anywhere. What the first real run measures that
+  nothing here can is listed in that section.
   QA is different and stays different: it holds nothing that needs restoring, so
-  `qa_postgres-data` is backed up by nothing on purpose and is rebuilt by
-  dropping it and letting Flyway run again. Pictures left in `qa_photos` then name no row,
+  `qa_postgres-data` and `qa_photos` are backed up by nothing on purpose and are rebuilt by
+  dropping them and letting Flyway run again. Pictures left in `qa_photos` then name no row,
   and the backend deletes such files once an hour when they are older than ten minutes.
-- **And the pictures are a second volume with the same gap.** `qa_photos` holds
-  the files `/api/photos/{name}` serves, which ADL A43, 2, decided should live in a
-  named volume beside the database rather than in a folder on the host: "rezervna
-  kopija mora da pokrije i volumen, a danas ne pokriva nista", written down there
-  on the day the arrangement was chosen and still true. On QA it is the same
-  sentence as the one above - nothing there needs restoring, and dropping the
-  volume loses pictures whose rows will then answer 404 until somebody uploads
-  again. **Production now has the same volume and the same setting**, added
-  20.09.2026 after a security round measured what their absence meant: with
-  neither, the backend falls back to `application.properties`, whose default is
-  `${java.io.tmpdir}`, so production would have kept members' photographs in the
-  container's `/tmp` - writable by everything in it, emptied by every build, and
-  in no backup at all. `deploy_photos` is therefore the **second** production
-  volume the nightly `pg_dump` above has to grow a target for, and unlike the
-  database it holds something no migration can rebuild.
+- **The R2 key on the host can delete the copies it wrote.** An R2 token with object write
+  can also delete, so someone who takes the host can take the copies with it, and the
+  script deleting nothing does not change that. R2 can lock a bucket's objects against
+  deletion for a time (bucket lock rules, in the same panel as the lifecycle rules); whether to
+  do that, and for how long, is the owner's to decide, and nothing here assumes it.
 - **`compose.prod.yml` is measured, and it took a hole to get there.** `PostmanTest`
   read `compose.qa.yml` BY NAME, so when this directory grew a second stack the new
   one was covered by nothing: measured, deleting
