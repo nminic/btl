@@ -1,7 +1,12 @@
-import { act, render, screen } from '@testing-library/react'
+import { act, configure, render, screen } from '@testing-library/react'
 import { I18nProvider } from '../../i18n/I18nProvider'
+import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
 import { DeleteRecord } from './EntityEditor'
+
+/* Every wait is given half of what a case is given, for the reason `rowMembership.test.tsx` gives: a
+   mutation then fails on its assertion and not on the clock of the case. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * THE QUESTION „OBRISI?" ON ITS OWN, WITHOUT ANY OF THE EIGHT PLACES THAT DRAW IT.
@@ -85,6 +90,67 @@ describe('the question about deleting a record', () => {
       expect(screen.getByRole('button', { name: 'Potvrdi brisanje: Probni tim' })).not.toHaveAttribute(
         'aria-disabled',
       )
+    })
+
+    describe('the keyboard, when the question is asked', () => {
+      /* PENDING 28269 and 29822. Pressing „Obriši" with Enter takes the opener out of the page and puts
+         the question in; the focus was on the opener, so it fell to the document and the next Tab
+         started the page from the top. A click does not show it: the pointer does not need the focus. */
+      it('goes to „Sigurno?", which is the control that answers', async () => {
+        const user = setupUser()
+
+        draw(vi.fn())
+        screen.getByRole('button', { name: 'Obriši: Probni tim' }).focus()
+        await user.keyboard('{Enter}')
+
+        expect(screen.getByRole('button', { name: 'Potvrdi brisanje: Probni tim' })).toHaveFocus()
+        expect(document.body).not.toHaveFocus()
+      })
+
+      it('goes to the „Sigurno?" of the row that asked, and not to the first one on the page', async () => {
+        /* TWO QUESTIONS OPEN AT ONCE, which the component allows (the question stays until it is
+           answered), and the row that asks last is the SECOND. A focus that went to the first
+           „Sigurno?" on the page would pass every case above. */
+        const user = setupUser()
+
+        render(
+          <I18nProvider locale="sr">
+            <DeleteRecord name="Prvi tim" onDelete={vi.fn()} />
+            <DeleteRecord name="Drugi tim" onDelete={vi.fn()} />
+          </I18nProvider>,
+        )
+
+        screen.getByRole('button', { name: 'Obriši: Prvi tim' }).focus()
+        await user.keyboard('{Enter}')
+        expect(screen.getByRole('button', { name: 'Potvrdi brisanje: Prvi tim' })).toHaveFocus()
+
+        screen.getByRole('button', { name: 'Obriši: Drugi tim' }).focus()
+        await user.keyboard('{Enter}')
+
+        expect(screen.getByRole('button', { name: 'Potvrdi brisanje: Drugi tim' })).toHaveFocus()
+        expect(screen.getByRole('button', { name: 'Potvrdi brisanje: Prvi tim' })).not.toHaveFocus()
+      })
+
+      it('is not taken back when the question is drawn again with the reader somewhere else', async () => {
+        /* The focus goes when the question is ASKED, not on every render while it stands: a reader
+           who has tabbed on to „Odustani" is not pulled back to „Sigurno?" by a screen that draws
+           again (a list that is searched, a refusal that arrives for another row). */
+        const user = setupUser()
+        const view = draw(vi.fn())
+
+        await ask(user)
+        await user.tab()
+
+        expect(screen.getByRole('button', { name: 'Odustani od brisanja: Probni tim' })).toHaveFocus()
+
+        view.rerender(
+          <I18nProvider locale="sr">
+            <DeleteRecord name="Probni tim" onDelete={vi.fn()} />
+          </I18nProvider>,
+        )
+
+        expect(screen.getByRole('button', { name: 'Odustani od brisanja: Probni tim' })).toHaveFocus()
+      })
     })
 
     it('puts the question away on „Odustani", and tells whoever asked', async () => {
