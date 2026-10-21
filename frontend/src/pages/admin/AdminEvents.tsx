@@ -35,7 +35,7 @@ import type { FormDef, FormValues } from '../../forms/types'
 import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
 import { raceKind } from '../../data/raceKind'
-import { allFinished, rowsOf, storedRow, type RaceOfRow, type RaceRow } from './raceRows'
+import { allFinished, isChanged, rowsOf, storedRow, type RaceOfRow, type RaceRow } from './raceRows'
 import { nextSeason } from './nextSeason'
 import {
   WHEN_WRITING_AN_EVENT,
@@ -643,7 +643,24 @@ export function AdminEvents() {
                 }
               }
 
+              /* ONLY THE RACES SOMEBODY CHANGED ARE SENT (owner, 20.10.2026, ADL „Čuvanje događaja
+                 šalje samo trke koje su promenjene": „Trka koju niko nije dirao ne šalje se, pa joj
+                 se ništa ne može obrisati", cause PENDING 29091). Every row used to be written back
+                 over its race, and a timed race's row does not draw its climb and its fall, so the
+                 write put nought where the server had them. A row is compared with the same race as
+                 the table opened it (`rowsOf` over `allRaces`, which holds what the server has
+                 accepted, this visit's writes included), so a race the first press wrote is not
+                 sent again by the retry. A new row has nothing to be compared with and is always
+                 sent; a race taken off the table is deleted above, as before. */
+              const served = new Map(
+                rowsOf(racesUnder(allRaces, eventId), fieldDate).map((one) => [one.id, one]),
+              )
+
               for (const row of kindOf(values) === 'race' ? current : []) {
+                if (row.id !== '' && !isChanged(row, served.get(row.id))) {
+                  continue
+                }
+
                 /* A row that never was a race is made, and one that is, is written over.
                    Read off the row's own identity rather than off anything counted here:
                    the numbers this screen used to hand out came from `admin/raceIds.ts`,

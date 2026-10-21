@@ -5,6 +5,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { at, first, inputElement, must } from '../../test/at'
 import { moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
+import { touchEveryRace } from '../../test/touchEveryRace'
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
 import { copiedRace } from './copiedRace'
@@ -1262,10 +1263,15 @@ describe('changing an event', () => {
     }
   }, SEVERAL_SCREENS)
 
-  it('saves as a change of that event: one write for it, one for each of its races', async () => {
+  it('saves as a change of that event: one write for it, one for each of its races that was changed', async () => {
     /* The form is open on a record that is already there, so saving writes over it and
        makes no other. Opened as a NEW event holding the same values it looks identical, and
-       differs only in this: it would make a second event, at the address of the first. */
+       differs only in this: it would make a second event, at the address of the first.
+
+       Every race is changed first (owner, 20.10.2026, ADL „Čuvanje događaja šalje samo trke koje su
+       promenjene"): a race nobody touched is not sent, and that is held in
+       `admin/onlyTheRacesThatChanged.test.tsx`. This case is about the writes of the races that ARE
+       sent: each one is a `PUT` at its own address, none is a `POST`, and none is for another event. */
     const user = setupUser()
     const mine = await eventAt(EVENT)
     const its = (await loadResource<Race[]>('races')).filter((one) => one.eventId === mine.id)
@@ -1280,6 +1286,8 @@ describe('changing an event', () => {
         TODAY,
       )
 
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+      expect(await touchEveryRace(user)).toBe(its.length)
       await user.click(await screen.findByRole('button', { name: 'Sačuvaj' }))
       await screen.findByRole('status', { name: 'Sačuvano' })
 

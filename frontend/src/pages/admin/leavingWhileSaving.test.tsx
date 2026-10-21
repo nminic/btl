@@ -13,6 +13,7 @@ import { answeredWith, refused, serverThat } from '../../test/serverAnswers'
 import { whereItWrote } from '../../test/sent'
 import { SLOW } from '../../test/slow'
 import { setupUser, type Pressing } from '../../test/user'
+import { touchEveryRace } from '../../test/touchEveryRace'
 
 /**
  * WHILE THE SAVE OF AN EVENT IS OUT, THE FORM CANNOT BE LEFT IN ANY WAY (owner, 04.10.2026, chosen
@@ -506,18 +507,15 @@ describe('an event whose save is out cannot be left', () => {
       await answer(refused('theDistanceIsNotKeptExactly'), 'the end')
       await screen.findByText(sr.admin.eventSavedRacesRefused)
 
-      /* The second press: the races only, the first written over by its identity and the other made. */
+      /* The second press: the races only, and only the one that was refused. The first the press made
+         is not written again, nobody touched it since (owner, 20.10.2026, ADL „Čuvanje događaja šalje
+         samo trke koje su promenjene"); until that day it was written over by its identity. */
       await press(user)
-      await expectHeld(user, router)
-      await answer(null, 'another write')
       await expectHeld(user, router)
       await answer(null, 'the end')
       await screen.findByRole('status', { name: 'Sačuvano' })
 
-      expect(whereItWrote(watching.asked).slice(3)).toEqual([
-        `PUT /api/races/${String(COPY_FIRST)}`,
-        'POST /api/races',
-      ])
+      expect(whereItWrote(watching.asked).slice(3)).toEqual(['POST /api/races'])
     }, SLOW)
   })
 
@@ -564,6 +562,8 @@ describe('an event whose save is out cannot be left', () => {
       const { router } = renderAt(address, 'superadmin', '000001')
 
       await screen.findByRole('heading', { name: /^Trke na događaju/ })
+      /* Each race is changed, because only the races somebody changed are sent. */
+      await touchEveryRace(user)
       await press(user)
 
       /* The event, then every race but the last, each answered in turn; the last is still out. */

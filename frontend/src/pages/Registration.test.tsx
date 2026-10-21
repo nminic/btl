@@ -587,6 +587,9 @@ describe('Registration once it is open', () => {
     /* The address the letter went to, what it is for, where to look if it does
        not arrive, and a way to ask for another one (PDL P22). */
     expect(screen.getByText(/vladan@primer\.rs/)).toBeVisible()
+    /* ONE place says it: inside the sentence about the letter (owner, 21.10.2026). It used to be a
+       line of its own under it, and `getByText` would then have found two. */
+    expect(screen.getAllByText(/neželjenu poštu/)).toHaveLength(1)
     expect(screen.getByText(/neželjenu poštu/)).toBeVisible()
     expect(screen.getByRole('button', { name: 'Pošalji potvrdu ponovo' })).toBeVisible()
 

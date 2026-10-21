@@ -37,6 +37,22 @@
   position: absolute;
 }
 
+/* The refusal on a card that is folded, named over the cards (PDL, 20.10.2026). In the colour of a
+   refusal like the sentence it points at (`.field__error`). Standing in the document with nothing in it,
+   for the reason `.pending__blocked` gives: a live region that arrives with its words is one nobody is
+   told about. Taken out of the flow while empty, so it takes no space between the bar and the cards. */
+.pending__elsewhere {
+  margin-block: var(--space-8);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--down);
+}
+
+.pending__elsewhere:empty {
+  position: absolute;
+  margin: 0;
+}
+
 /* The country under the town, so the cell stays narrow on a telephone. The way
    a member pays follows the country (PDL P8), so it belongs beside the fee. */
 .pending__country {

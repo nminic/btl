@@ -11,6 +11,13 @@ import sr from './sr.json'
  * had already said it was sent. So none of them says „sent": each says „we are sending", and
  * each ends with the way to reach the League when it does not arrive.
  *
+ * **The confirmation after registering also says where to look first** (owner, 21.10.2026, PDL
+ * P8: „Posle registracije stara rečenica „…pogledaj i neželjenu poštu” se briše, a rečenica
+ * postaje …"): the junk mail is named INSIDE the last sentence, before the address, and the
+ * separate line that used to say it (`registration.checkSpam`) is gone from the screen and from
+ * both dictionaries. The closing rule below is therefore about the LAST SENTENCE of each: it opens
+ * on the condition, and ends on the address.
+ *
  * **Read from the dictionaries, as a sentence is, and not drawn through a screen.** The
  * screens that show them (`Registration.test.tsx`, `forgottenPassword.test.tsx`) pin that the
  * sentence appears and when; what none of them pins is what the sentence SAYS, and a sentence
@@ -24,8 +31,20 @@ import sr from './sr.json'
  * what the route refuses to.
  */
 
-const SERBIAN_CLOSING = `Ako ne stigne za nekoliko minuta, javi nam se na ${CONTACT_ADDRESS}.`
-const ENGLISH_CLOSING = `If it does not arrive within a few minutes, write to us at ${CONTACT_ADDRESS}.`
+/** How the last sentence of every one of the three opens: on the condition that nothing arrived. */
+const SERBIAN_CLOSING_OPENS = 'Ako ne stigne za nekoliko minuta, '
+const ENGLISH_CLOSING_OPENS = 'If it does not arrive within a few minutes, '
+
+/** And how it ends: on the way to reach the League, written with the address the portal keeps. */
+const SERBIAN_CLOSING_ENDS = ` na ${CONTACT_ADDRESS}.`
+const ENGLISH_CLOSING_ENDS = ` at ${CONTACT_ADDRESS}.`
+
+/** The last sentence: whatever follows the final full stop that is followed by a space (the address has none). */
+function lastSentence(text: string): string {
+  const end = text.lastIndexOf('. ')
+
+  return end === -1 ? text : text.slice(end + 2)
+}
 
 /** A claim that the message has gone: the past of „to send", in either language. */
 const SERBIAN_CLAIM = /\bposla(ta|to|ti|li|o|la|lo)\b/i
@@ -62,14 +81,27 @@ describe('the sentences that speak of a message', () => {
   })
 
   it.each(SENTENCES)('%s ends with the way to reach the League', (_name, serbian, english) => {
-    expect(serbian.endsWith(SERBIAN_CLOSING)).toBe(true)
-    expect(english.endsWith(ENGLISH_CLOSING)).toBe(true)
+    const sr = lastSentence(serbian)
+    const en = lastSentence(english)
+
+    expect(sr.startsWith(SERBIAN_CLOSING_OPENS)).toBe(true)
+    expect(sr.endsWith(SERBIAN_CLOSING_ENDS)).toBe(true)
+    expect(en.startsWith(ENGLISH_CLOSING_OPENS)).toBe(true)
+    expect(en.endsWith(ENGLISH_CLOSING_ENDS)).toBe(true)
   })
 
   it('draws the confirmation after registering as the owner approved it', () => {
     expect(sr.registration.doneText).toBe(
-      `Na {email} šaljemo poruku za potvrdu. Otvori je i potvrdi adresu, jer se nalog aktivira tek tada. ${SERBIAN_CLOSING}`,
+      `Na {email} šaljemo poruku za potvrdu. Otvori je i potvrdi adresu, jer se nalog aktivira tek tada. Ako ne stigne za nekoliko minuta, pogledaj i neželjenu poštu, pa nam se javi na ${CONTACT_ADDRESS}.`,
     )
+    expect(en.registration.doneText).toBe(
+      `We are sending a message to {email} to confirm the address. Open it and confirm the address, because the account is activated only then. If it does not arrive within a few minutes, look in the junk mail as well, then write to us at ${CONTACT_ADDRESS}.`,
+    )
+  })
+
+  it('has no separate line about the junk mail any more: it is inside the sentence', () => {
+    expect('checkSpam' in sr.registration).toBe(false)
+    expect('checkSpam' in en.registration).toBe(false)
   })
 
   it('keeps the condition of the two that cannot know whether anything goes out', () => {

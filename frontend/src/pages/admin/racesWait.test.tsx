@@ -13,6 +13,7 @@ import { answeredWith, refused, serverThat } from '../../test/serverAnswers'
 import { whatWasSent, whereItWrote } from '../../test/sent'
 import { SLOW } from '../../test/slow'
 import { setupUser, type Pressing } from '../../test/user'
+import { touchEveryRace } from '../../test/touchEveryRace'
 
 /**
  * „DOGAĐAJ OSTAJE, TRKE ČEKAJU", AND EVERYTHING THAT SENTENCE IS MADE OF.
@@ -214,14 +215,15 @@ describe('an event whose races wait', () => {
     const second = writtenSince(before)
 
     expect(second.filter((one) => one.includes('/api/events'))).toEqual([])
-    /* The two races the first press made are written over by their own address, and the one it
-       did not make is made now. */
+    /* The one the first press did not make is made now, and the two it made are NOT written again:
+       nobody touched them since (owner, 20.10.2026, ADL „Čuvanje događaja šalje samo trke koje su
+       promenjene"). Until that day each was written over by its own address. */
     expect(
       second
         .filter((one) => one.includes('/api/races'))
         .map((one) => one.replace(/\d+$/, 'N'))
         .sort(),
-    ).toEqual(['POST /api/races', 'PUT /api/races/N', 'PUT /api/races/N'])
+    ).toEqual(['POST /api/races'])
 
     /* (e) and (a), over both presses. */
     expect(writtenSince(0).filter((one) => one === 'POST /api/events')).toHaveLength(1)
@@ -249,9 +251,12 @@ describe('an event whose races wait', () => {
         : refused('theAddressIsTaken', 409)
     }
 
+    /* Every race is changed first, by a character after its name: only the races somebody changed are
+       sent (owner, 20.10.2026, ADL „Čuvanje događaja šalje samo trke koje su promenjene"), and the list
+       names a race by the name the row holds. */
     const expected = races.map(
       (race, at) =>
-        `${String(at + 1)}. trka (${race.name}): ${
+        `${String(at + 1)}. trka (${race.name}!): ${
           at === 0
             ? sr.server.wrong.replace('{status}', '500')
             : sr.admin.raceSaveRefused.theAddressIsTaken
@@ -261,6 +266,7 @@ describe('an event whose races wait', () => {
 
     renderAt(`/sr/administracija/dogadjaji?izmena=${String(event.id)}`, 'superadmin')
     await user.type(await screen.findByLabelText(/^Opis događaja/), ' i još')
+    await touchEveryRace(user)
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await screen.findByText(sr.admin.eventSavedRacesRefused)
 
@@ -373,6 +379,7 @@ describe('an event whose races wait', () => {
     )
 
     await user.type(await screen.findByLabelText(/^Opis događaja/), ' i još')
+    await touchEveryRace(user)
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await screen.findByText(sr.admin.eventSavedRacesRefused)
     await act(async () => {
@@ -907,6 +914,7 @@ describe('an event whose races wait', () => {
 
     renderAt(`/sr/administracija/dogadjaji?izmena=${String(event.id)}`, 'superadmin')
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await touchEveryRace(user)
     await holdsExactlyWhatTheEventDraws(
       sr.admin.form.edit.events,
       async () => {

@@ -9,6 +9,7 @@ import { refused, serverThat } from '../../test/serverAnswers'
 import { whereItWrote } from '../../test/sent'
 import { SLOW } from '../../test/slow'
 import { setupUser, type Pressing } from '../../test/user'
+import { touchEveryRace } from '../../test/touchEveryRace'
 
 /**
  * WHILE THE SAVE OF AN EVENT IS OUT, THE BUTTON THAT SENDS WAITS (owner, 05.10.2026, chosen between
@@ -351,6 +352,10 @@ describe('the button that sends, while the save of an event is out', () => {
 
           renderAt(`${THE_LIST}?izmena=${String(event.id)}`, 'superadmin', '000001')
           await screen.findByRole('heading', { name: /^Trke na događaju/ })
+          /* Each race is changed, because only the races somebody changed are sent (owner, 20.10.2026,
+             ADL „Čuvanje događaja šalje samo trke koje su promenjene"); the press is then one write for
+             the event and one for each of them. */
+          await touchEveryRace(user)
 
           return { user, writes: races.length + 1 }
         },
@@ -394,17 +399,15 @@ describe('the button that sends, while the save of an event is out', () => {
 
       expectLetGo()
 
-      /* A press of its own: the first race is written over by its identity and the second is made. */
+      /* A press of its own: the second race is made, and the first is not written again, since
+         nobody touched it after the press made it (owner, 20.10.2026, ADL „Čuvanje događaja šalje
+         samo trke koje su promenjene"). It used to be written over by its identity. */
       await pressAgain(user)
-      await answer(null, 'another write')
       expectHeld()
       await answer(null, 'the end')
       await screen.findByRole('status', { name: 'Sačuvano' })
 
-      expect(whereItWrote(watching.asked).slice(3)).toEqual([
-        `PUT /api/races/${String(COPY_FIRST)}`,
-        'POST /api/races',
-      ])
+      expect(whereItWrote(watching.asked).slice(3)).toEqual(['POST /api/races'])
     }, SLOW)
 
     it('is let go of when the event itself is refused, and the next press sends it again', async () => {

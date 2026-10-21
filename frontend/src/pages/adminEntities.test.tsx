@@ -22,6 +22,7 @@ import type { BtlEvent, League, Race, Result } from '../data/types'
 import { fieldDate, isoDate, shiftDate } from '../forms/dateField'
 import { renderAt } from '../test/render'
 import { setupUser, type Pressing } from '../test/user'
+import { touchEveryRace } from '../test/touchEveryRace'
 
 /* The screens behind Podaci: the races inside their event, the teams, the
  * leagues and the written pages. Each is checked for what it is there to show,
@@ -207,6 +208,10 @@ describe('the races of an event', () => {
     await user.selectOptions(kind(), 'time')
     await user.type(inputElement(screen.getAllByLabelText(/^Trajanje \(h\),/)[0]), '24')
     await user.selectOptions(kind(), 'length')
+    /* AND THE NAME IS CHANGED, because the row is otherwise the race exactly as it was served, and a
+       race nobody changed is not sent (owner, 20.10.2026, ADL „Čuvanje događaja šalje samo trke koje
+       su promenjene"): without a change the case would be measuring a save that wrote no race. */
+    await user.type(inputElement(screen.getAllByLabelText(/^Trka, /)[0]), '!')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     /* By a field only a race has: the event is sent in the same press and its own
@@ -1392,6 +1397,10 @@ describe('the races of an event', () => {
 
     await user.click(within(row).getByRole('button', { name: `Otvori: ${mine.name}` }))
     await user.type(await screen.findByLabelText(/^Opis događaja/), 'jedna rečenica')
+    /* Every race is changed, because only the races somebody changed are sent (owner, 20.10.2026, ADL
+       „Čuvanje događaja šalje samo trke koje su promenjene"); one that was not touched has no write to
+       be refused. */
+    await touchEveryRace(user)
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     const said = await screen.findAllByRole('alert')
@@ -1807,7 +1816,7 @@ describe('the races of an event', () => {
     ).toBe(false)
   }, SLOW)
 
-  it('writes a PUT for the row a copy already made and a POST for the one it has not, not a DELETE, when the second press retries', async () => {
+  it('writes a POST for the row a copy has not made, nothing for the one it already made, and no DELETE, when the second press retries', async () => {
     /**
      * THE COPY MEETS `held` UNSEEDED, WHICH THE CASE BESIDE THIS ONE NEVER DOES.
      *
@@ -1827,9 +1836,12 @@ describe('the races of an event', () => {
      * (nezavisna recenzija, 28.09.2026, visok nalaz).
      *
      * <p>So this asks what the DELETE-shaped case above cannot: not only that
-     * nothing is deleted, but that the row already made is corrected by its OWN
-     * address (`PUT`) and the row not yet made is asked for by the one that makes
-     * one (`POST`) - the whole of what a correct retry writes, and no more.
+     * nothing is deleted, but that the row not yet made is asked for by the one that
+     * makes one (`POST`) and the row already made is NOT written again - nobody touched
+     * it after the press made it (owner, 20.10.2026, ADL „Čuvanje događaja šalje samo
+     * trke koje su promenjene"). Until that day the retry corrected it by its own
+     * address (`PUT`). A row the retry did not recognise as the race it had made would be
+     * sent again, or deleted, and both are told from this by the line below.
      */
     let racePosts = 0
     const THE_FIRST_RACE_MADE = 987654
@@ -1885,7 +1897,13 @@ describe('the races of an event', () => {
     expect(
       onRetry,
       `the retry over the races of a copy: ${onRetry.join(', ')}`,
-    ).toEqual(['POST /api/races', `PUT /api/races/${String(THE_FIRST_RACE_MADE)}`])
+    ).toEqual(['POST /api/races'])
+    expect(
+      whereItWrote(watching.asked.slice(beforeRetry)).some((one) =>
+        one.includes(String(THE_FIRST_RACE_MADE)),
+      ),
+      'the retry wrote the race the first press had just made',
+    ).toBe(false)
   }, SLOW)
 
   it('keeps the address the route filed it under, not the one the rule would build', async () => {
