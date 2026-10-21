@@ -36,7 +36,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * 10.10.2026. Three things are held, each in its own case, because each is a different way to be wrong: the date
  * left old on one of the two documents, the date moved on the terms too, and the date moved in one language only.
  * Since V60 and V70 the privacy policy's sign-off has moved on, to 18.10.2026 (owner, 17.10.2026) and then to
- * 21.10.2026 (owner, 20.10.2026), so the cases that read the finished text hold the policy at V70's day and the
+ * 22.10.2026 (owner, 20.10.2026), so the cases that read the finished text hold the policy at V70's day and the
  * rulebook at V58's; what V58 itself does to the dates is held by
  * the case that puts the text back to before V58 and runs it.
  *
@@ -71,11 +71,11 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 	private static final String ENGLISH_SIGN_OFF_AFTER = "Last amended: 16.10.2026.";
 
 	/* The day the privacy policy stands signed off on NOW: V60 moved it from V58's day to 18.10.2026 with the row that
-	   names Zoho (owner, 17.10.2026) and V70 moved it on to 21.10.2026 with the words about the backups in the row for
+	   names Zoho (owner, 17.10.2026) and V70 moved it on to 22.10.2026 with the words about the backups in the row for
 	   Cloudflare (owner, 20.10.2026). The rulebook did not move and keeps V58's. What V70 holds of that day is its own
 	   guard, TheWrittenPagesTheCloudflareRowNamesTheBackupsTest. */
-	private static final String SERBIAN_POLICY_SIGN_OFF_NOW = "Poslednja izmena: 21.10.2026.";
-	private static final String ENGLISH_POLICY_SIGN_OFF_NOW = "Last amended: 21.10.2026.";
+	private static final String SERBIAN_POLICY_SIGN_OFF_NOW = "Poslednja izmena: 22.10.2026.";
+	private static final String ENGLISH_POLICY_SIGN_OFF_NOW = "Last amended: 22.10.2026.";
 
 	/** A section by the page it belongs to and its place in it; the order is the one they are sorted into. */
 	record Place(String slug, int position) {
@@ -210,7 +210,7 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 
 	/**
 	 * THE SIGN-OFFS AS THEY STAND NOW, which is not how V58 left them: V60 and then V70 moved the privacy policy's on to
-	 * 21.10.2026. The rulebook's is still V58's day and the terms' is still V57's, and those two are held here exactly
+	 * 22.10.2026. The rulebook's is still V58's day and the terms' is still V57's, and those two are held here exactly
 	 * as before. What V58 itself does to the dates is held by
 	 * {@link #v58AddsTheSentenceAndMovesTheSignOffInEightSectionsAndChangesNothingElse}, which puts the text back to
 	 * before V58 and runs it.
@@ -224,7 +224,7 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 						language)
 				.containsExactly(rulebookSignOff);
 		assertThat(placesWhichCarry(language, policySignOffNow(language)))
-				.as("the %s sign-off of 21.10.2026 must stand on the privacy policy alone", language)
+				.as("the %s sign-off of 22.10.2026 must stand on the privacy policy alone", language)
 				.containsExactly(policySignOff);
 		assertThat(placesWhichCarry(language, signOffBefore(language)))
 				.as("the %s sign-off of 10.10.2026 must stand on the terms of use alone", language)

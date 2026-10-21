@@ -1,5 +1,5 @@
 /* THE ROW OF THE PRIVACY POLICY THAT NAMES CLOUDFLARE ALSO NAMES THE STORAGE OF THE ENCRYPTED BACKUPS, IN SERBIAN AND IN
-   ENGLISH, AND THE POLICY IS SIGNED OFF ON 21.10.2026.
+   ENGLISH, AND THE POLICY IS SIGNED OFF ON 22.10.2026.
 
    WHOSE DECISION, AND WHERE IT IS WRITTEN. PDL, the entry "Red o Cloudflare-u u politici privatnosti postaje" (owner,
    20.10.2026, who chose among the outcomes offered, on the assistant's recommendation, and approved the words). The
@@ -23,8 +23,8 @@
    whose text does not. V57 moved all three because the text of all three changed, V58 and V60 moved only the documents
    whose text they changed, and V61, which changed no word, moved nothing. The privacy policy is the
    only document whose text changes here, so only its "Poslednja izmena: 18.10.2026." (V60 wrote that date) becomes
-   "Poslednja izmena: 21.10.2026." and "Last amended: 18.10.2026." becomes "Last amended: 21.10.2026.". The terms of
-   use keep 10.10.2026 and the rulebook keeps 16.10.2026. 21.10.2026 is a day chosen by the person who asked for this
+   "Poslednja izmena: 22.10.2026." and "Last amended: 18.10.2026." becomes "Last amended: 22.10.2026.". The terms of
+   use keep 10.10.2026 and the rulebook keeps 16.10.2026. 22.10.2026 is a day chosen by the person who asked for this
    file as the day it reaches QA, as in V60; it is not the owner's own word, and it is moved before the merge if the
    file reaches QA on another day. Both languages carry their own date, and both are moved.
 
@@ -49,7 +49,7 @@
    writtenVerification.test.ts holds that fixture to in the other direction; the sign-off check of
    writtenPages.test.tsx, which names the day of each of the three documents; the guards that name the policy's date,
    TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest, TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest,
-   TheWrittenPagesNameZohoAsAProcessorTest and TheWrittenPagesUseTheEnglishQuotationMarkTest, which now say 21.10.2026
+   TheWrittenPagesNameZohoAsAProcessorTest and TheWrittenPagesUseTheEnglishQuotationMarkTest, which now say 22.10.2026
    for the policy; and, for both languages and for every edit, TheWrittenPagesTheCloudflareRowNamesTheBackupsTest. */
 
 do $edit$
@@ -74,10 +74,10 @@ begin
 
             ('Cloudflare date', 'politika-privatnosti', 7, 'sr',
              $old$Poslednja izmena: 18.10.2026.$old$,
-             $new$Poslednja izmena: 21.10.2026.$new$),
+             $new$Poslednja izmena: 22.10.2026.$new$),
             ('Cloudflare date', 'politika-privatnosti', 7, 'en',
              $old$Last amended: 18.10.2026.$old$,
-             $new$Last amended: 21.10.2026.$new$)
+             $new$Last amended: 22.10.2026.$new$)
 
         ) as edits (label, slug, section_position, in_language, old_text, new_text)
     loop

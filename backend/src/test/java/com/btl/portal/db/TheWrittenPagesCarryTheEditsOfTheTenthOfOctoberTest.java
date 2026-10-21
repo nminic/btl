@@ -80,7 +80,7 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 	}
 
 	/*
-	 * THE SIGN-OFF OF THE RULEBOOK (E rulebook) STANDS AT 16.10.2026 BELOW AND THE POLICY'S (E policy) AT 21.10.2026,
+	 * THE SIGN-OFF OF THE RULEBOOK (E rulebook) STANDS AT 16.10.2026 BELOW AND THE POLICY'S (E policy) AT 22.10.2026,
 	 * not at the 10.10.2026 V57 wrote: V58 moved both with the sentence it adds (owner, 16.10.2026), V60 moved the
 	 * policy's again with the row that names Zoho (owner, 17.10.2026) and V70 moved it once more with the words about
 	 * the backups in the row for Cloudflare (owner, 20.10.2026). The terms' (E terms) is still V57's. What V58, V60
@@ -238,10 +238,10 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 						"and private messages are never shown")),
 			new Edit("E policy", POLICY, 7, "sr",
 					List.of("Poslednja izmena: 28.09.2026."),
-					List.of("Poslednja izmena: 21.10.2026.")),
+					List.of("Poslednja izmena: 22.10.2026.")),
 			new Edit("E policy", POLICY, 7, "en",
 					List.of("Last amended: 28.09.2026."),
-					List.of("Last amended: 21.10.2026.")),
+					List.of("Last amended: 22.10.2026.")),
 			new Edit("E terms", TERMS, 12, "sr",
 					List.of("Poslednja izmena: 28.09.2026."),
 					List.of("Poslednja izmena: 10.10.2026.")),

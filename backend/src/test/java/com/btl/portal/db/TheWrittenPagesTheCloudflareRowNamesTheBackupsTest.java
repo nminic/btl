@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  *
  * <p><b>The sign-off.</b> The entry is silent about the date; it follows from the entry of 16.10.2026 (the date moves
  * on the documents whose text changes) the way V58 and V60 followed it. Only the policy's text changes, so only its
- * sign-off moves, from 18.10.2026 (V60) to 21.10.2026; the rulebook keeps V58's day and the terms of use keep V57's.
+ * sign-off moves, from 18.10.2026 (V60) to 22.10.2026; the rulebook keeps V58's day and the terms of use keep V57's.
  *
  * <p><b>The words are written out here in full, not as phrases.</b> One line of one table: a phrase would let a changed
  * word through.
@@ -79,9 +79,9 @@ class TheWrittenPagesTheCloudflareRowNamesTheBackupsTest extends DatabaseTest {
 			+ " outside the European Union we use the prescribed safeguard mechanisms.";
 
 	private static final String SERBIAN_SIGN_OFF_BEFORE = "Poslednja izmena: 18.10.2026.";
-	private static final String SERBIAN_SIGN_OFF_AFTER = "Poslednja izmena: 21.10.2026.";
+	private static final String SERBIAN_SIGN_OFF_AFTER = "Poslednja izmena: 22.10.2026.";
 	private static final String ENGLISH_SIGN_OFF_BEFORE = "Last amended: 18.10.2026.";
-	private static final String ENGLISH_SIGN_OFF_AFTER = "Last amended: 21.10.2026.";
+	private static final String ENGLISH_SIGN_OFF_AFTER = "Last amended: 22.10.2026.";
 
 	/** The days the other two documents keep. */
 	private static final String SERBIAN_RULEBOOK_SIGN_OFF = "Poslednja izmena: 16.10.2026.";
@@ -269,10 +269,10 @@ class TheWrittenPagesTheCloudflareRowNamesTheBackupsTest extends DatabaseTest {
 
 	private void theSignOffOfThePolicyIsMovedAndNoOtherDocumentMovesWithIt(String language) {
 		assertThat(placesWhichCarry(language, signOffAfter(language)))
-				.as("the %s sign-off of 21.10.2026 must stand on the privacy policy alone", language)
+				.as("the %s sign-off of 22.10.2026 must stand on the privacy policy alone", language)
 				.containsExactly(THE_POLICY_SIGN_OFF);
 		assertThat(bodyOf(language, THE_POLICY_SIGN_OFF))
-				.as("the privacy policy must be signed off once, on 21.10.2026, and no longer on 18.10.2026")
+				.as("the privacy policy must be signed off once, on 22.10.2026, and no longer on 18.10.2026")
 				.containsOnlyOnce(signOffAfter(language))
 				.doesNotContain(signOffBefore(language));
 		assertThat(placesWhichCarry(language, signOffBefore(language)))
@@ -509,7 +509,7 @@ class TheWrittenPagesTheCloudflareRowNamesTheBackupsTest extends DatabaseTest {
 
 		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 4 edits");
 		assertThat(reportOf(error))
-				.as("the policy is already signed off on 21.10.2026 and V70 did not say so")
+				.as("the policy is already signed off on 22.10.2026 and V70 did not say so")
 				.contains("Cloudflare date @ politika-privatnosti #7 sr: found 0 times,"
 						+ " and its new text is already there");
 	}

@@ -40,7 +40,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  *
  * <p><b>The sign-off.</b> The same entry moves "Poslednja izmena" of the privacy policy to the day the change reaches
  * QA. Only the policy's text changes, so only its sign-off moves, from 16.10.2026 (V58) to 18.10.2026 (since V70 it has
- * moved on again, to 21.10.2026, which {@link TheWrittenPagesTheCloudflareRowNamesTheBackupsTest} holds); the
+ * moved on again, to 22.10.2026, which {@link TheWrittenPagesTheCloudflareRowNamesTheBackupsTest} holds); the
  * rulebook keeps V58's day and the terms of use keep V57's. {@link
  * TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest} holds those two from its side.
  *
@@ -81,8 +81,8 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 
 	/* The day the policy stands signed off on NOW: V70 moved it on from V60's day with the words about the backups in
 	   the row for Cloudflare (owner, 20.10.2026). What V70 holds of that day is its own guard. */
-	private static final String SERBIAN_SIGN_OFF_NOW = "Poslednja izmena: 21.10.2026.";
-	private static final String ENGLISH_SIGN_OFF_NOW = "Last amended: 21.10.2026.";
+	private static final String SERBIAN_SIGN_OFF_NOW = "Poslednja izmena: 22.10.2026.";
+	private static final String ENGLISH_SIGN_OFF_NOW = "Last amended: 22.10.2026.";
 
 	/** A section by the page it belongs to and its place in it. */
 	record Place(String slug, int position) {
@@ -249,16 +249,16 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 
 	/**
 	 * THE SIGN-OFFS AS THEY STAND NOW, which is not how V60 left them: V70 moved the privacy policy's on to
-	 * 21.10.2026. The rulebook's is still V58's day, and the day V60 wrote stands nowhere any more. What V60 itself
+	 * 22.10.2026. The rulebook's is still V58's day, and the day V60 wrote stands nowhere any more. What V60 itself
 	 * does to the dates is held by {@link #v60AddsTheRowAndMovesTheSignOffInFourSectionsAndChangesNothingElse}, which
 	 * puts the text back to before V60 and runs it.
 	 */
 	private void theSignOffOfThePolicyHasMovedOnAndNoOtherDocumentMovedWithIt(String language) {
 		assertThat(placesWhichCarry(language, signOffNow(language)))
-				.as("the %s sign-off of 21.10.2026 must stand on the privacy policy alone", language)
+				.as("the %s sign-off of 22.10.2026 must stand on the privacy policy alone", language)
 				.containsExactly(THE_POLICY_SIGN_OFF);
 		assertThat(bodyOf(language, THE_POLICY_SIGN_OFF))
-				.as("the privacy policy must be signed off once, on 21.10.2026, and no longer on the day V60 wrote")
+				.as("the privacy policy must be signed off once, on 22.10.2026, and no longer on the day V60 wrote")
 				.containsOnlyOnce(signOffNow(language))
 				.doesNotContain(signOffAfter(language))
 				.doesNotContain(signOffBefore(language));
