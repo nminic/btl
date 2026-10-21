@@ -155,9 +155,10 @@ describe('the circle a face and a team mark share', () => {
        kind and no custom property, since a value handed down by `var()` is the one thing a
        selector cannot show.
 
-       **What this does not hold, said once:** a rule that reaches the circle through a third
-       class (`.row:nth-child(3n) .portrait`) names neither, and a mark coloured by its row is
-       not asked here. It is not asked of the screen either, which sees no stylesheet. */
+       **What this does not hold, said once:** a rule that reaches the mark without naming
+       either class (`tr:nth-child(3n) td > span`) is not asked here, and it is not asked of the
+       screen either, which sees no stylesheet. It would colour by row and not by team, but it
+       would be a colour the mark does not share with every other. */
     const walk = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
         entry.isDirectory()
