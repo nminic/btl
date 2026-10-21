@@ -13,6 +13,7 @@ import { DatePicker } from '../../forms/DatePicker'
 import { dogadjaj, unosRezultata } from '../../forms/definitions'
 import { heldControl } from '../../forms/held'
 import { PlaceField } from '../../forms/PlaceField'
+import { withThePlace } from '../../forms/withThePlace'
 import { limitOf, optionsFor } from '../../forms/records'
 import { Suggesting } from '../../forms/Suggesting'
 import { useI18n } from '../../i18n/useI18n'
@@ -621,9 +622,10 @@ function TheBlockAndTheRows() {
                 required
                 value={block.city}
                 country={block.country}
+                wrote={block.countryWrote}
                 invalid={said('city') !== undefined}
                 describedBy={described}
-                onChange={(city, country) => setBlock((now) => ({ ...now, city, country }))}
+                onChange={(city, country, wrote) => setBlock((now) => withThePlace(now, city, country, wrote))}
               />
             ))}
         </div>

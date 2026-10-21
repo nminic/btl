@@ -5,6 +5,7 @@ import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { AskedLabel } from '../../forms/AskedLabel'
 import { dogadjaj, unosRezultata } from '../../forms/definitions'
 import { PlaceField } from '../../forms/PlaceField'
+import { withThePlace } from '../../forms/withThePlace'
 import { limitOf, optionsFor } from '../../forms/records'
 import { Suggesting } from '../../forms/Suggesting'
 import { useI18n } from '../../i18n/useI18n'
@@ -201,10 +202,11 @@ export function RaceForTheRun({
               required
               value={placing.city}
               country={placing.country}
+              wrote={placing.countryWrote}
               invalid={errors.has('city')}
               countryInvalid={errors.has('country')}
               describedBy={undefined}
-              onChange={(city, country) => onChange({ ...placing, city, country })}
+              onChange={(city, country, wrote) => onChange(withThePlace(placing, city, country, wrote))}
             />
           </div>
         ))}
