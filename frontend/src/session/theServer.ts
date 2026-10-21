@@ -489,8 +489,9 @@ export async function whatTheServerSaysOfMyData(): Promise<MyData | null> {
  * An empty list is an answer - before 2027 no season is open, „NIŠTA!" - and not a failure.
  *
  * <p><b>Off the account and not off `member`, since 20.10.2026</b>: the moderator's screen „Unos
- * rezultata za događaj” offers the same seasons („NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE!”), and
- * a moderator who races for nobody has no `member`.
+ * rezultata za događaj” offered the same seasons („NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE SEZONE!”), and
+ * a moderator who races for nobody has no `member`. That screen takes any year up to today since
+ * 21.10.2026 and reads no season from here; the answer stays where it is, for the member's form.
  *
  * <p>Its own reader for the reason the others have: a fault in it must never sign him out
  * ({@link whatTheServerAnswersMe} is shared and nothing it returns is). A list holding anything but

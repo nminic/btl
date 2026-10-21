@@ -6,7 +6,7 @@ import { Resource } from '../../components/Resource'
 import { raceKind } from '../../data/raceKind'
 import { raceLabel } from '../../data/raceLabel'
 import { inEventOrder } from '../../data/raceOrder'
-import { combineFour, combinePair, useEvents, useRaces, useResults, useRunners } from '../../data/useResource'
+import { combineFour, useEvents, useRaces, useResults, useRunners } from '../../data/useResource'
 import type { RaceKind, Result, Runner } from '../../data/types'
 import { AskedLabel } from '../../forms/AskedLabel'
 import { DatePicker } from '../../forms/DatePicker'
@@ -23,8 +23,7 @@ import { wordsFor as wordsOfTheServer } from '../account/serverWords'
 import { Guard } from '../admin/Guard'
 import { QUEUE } from '../admin/queues'
 import { queueRight } from '../admin/rights'
-import { eventsToOffer } from '../member/eventsToOffer'
-import { useSeasonsOpenForAReport } from '../member/useSeasonsOpenForAReport'
+import { everyEventToOffer } from '../member/eventsToOffer'
 import { racesToOffer } from '../member/racesToOffer'
 import {
   choosingTheEvent,
@@ -506,17 +505,14 @@ function TheBlockAndTheRows() {
   const [block, setBlock] = useState<TheBlock>(emptyBlock)
   /* Whether a press has asked the block yet: its sentences are said after the first, as the rows' are. */
   const [pressed, setPressed] = useState(false)
-  /* THE SEASONS OPEN FOR A REPORT, AND NO OTHER (owner, 20.10.2026: „NE NUDE SE STARIJI DOGAĐAJI VAN
-     TEKUĆE SEZONE! ONI SE UNOSE IMPORTOM.”), read off the server as the member's form reads them, since
-     the window has one home (`MeApi.WhoIAm.seasonsOpenForAReport`). The two files as one read, so the
-     box says it when either could not be read rather than offering nothing. A name typed exactly links
-     only an event of this list (`exactName.ts`), so it never links one of another season. */
-  const open = useSeasonsOpenForAReport('moderator')
-  const offering = combinePair(events, open)
-  const seasons = open.status === 'ready' ? open.data : null
+  /* EVERY RACE EVENT BEGUN BY TODAY, OF ANY YEAR (owner, 21.10.2026: „Moderator i admin smeju da unose
+     rezultate za BILO KOJU prethodnu godinu”, which overturns „NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE
+     SEZONE!” of 20.10.2026 for this screen), so no season is read off the server here. A name typed
+     exactly links an event of this list only when it names one (`exactName.ts`): the same name in two
+     years links neither, and the reader chooses from the list. */
   const offeredEvents = useMemo(
-    () => (events.status === 'ready' && seasons !== null ? eventsToOffer(events.data, seasons, today) : []),
-    [events, seasons, today],
+    () => (events.status === 'ready' ? everyEventToOffer(events.data, today) : []),
+    [events, today],
   )
   const linked = block.event?.eventId
   const offeredRaces = useMemo(
@@ -535,7 +531,7 @@ function TheBlockAndTheRows() {
      list stands under either box to choose from (the boxes say why, `unreadable`). */
   const calendar = events.status === 'ready' ? events.data : []
   const run = races.status === 'ready' ? races.data : []
-  const wrong = pressed ? whatIsWrongWithTheBlock(block, today, seasons) : []
+  const wrong = pressed ? whatIsWrongWithTheBlock(block, today) : []
   const said = (box: string) => wrong.find((one) => one.box === box)
   const kind = kindOfTheRows(block)
 
@@ -592,7 +588,7 @@ function TheBlockAndTheRows() {
                 value={block.eventName}
                 suggestions={offeredEvents}
                 unreadable={
-                  offering.status === 'error' ? { said: t('data.error'), named: t('admin.events'), read: offering } : undefined
+                  events.status === 'error' ? { said: t('data.error'), named: t('admin.events'), read: events } : undefined
                 }
                 onType={(next) => setBlock((now) => typingTheEvent(now, next, offeredEvents, calendar))}
                 onChoose={(one) => setBlock((now) => choosingTheEvent(now, one, calendar))}
@@ -712,7 +708,7 @@ function TheBlockAndTheRows() {
             blockIsWrong={() => {
               setPressed(true)
 
-              return whatIsWrongWithTheBlock(block, today, seasons).length > 0
+              return whatIsWrongWithTheBlock(block, today).length > 0
             }}
             save={(rows, asked) =>
               block.race !== null
