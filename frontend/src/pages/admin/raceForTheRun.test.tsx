@@ -1449,6 +1449,35 @@ describe('the place of a new event, once its name stops being a town the codeboo
   })
 })
 
+describe('the country a run came with, under the panel that may take its town away', () => {
+  it('does not take back the country the member gave, whatever is typed after the town', async () => {
+    /* Nothing here wrote it: it came with the run, so the note the panel keeps starts empty and the
+       letters after the town leave it alone, with the event coming and going or not. */
+    const user = setupUser()
+    const server = serverWith({ queue: () => [TYPED] })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000060')
+      await waitFor(() => expect(reads(server.asked, '/api/events')).toBe(1))
+      await user.type(panel().getByLabelText(sr.review.placeTown), ' 2')
+
+      expect(panel().getByLabelText(sr.review.placeTown)).toHaveValue('Struga 2')
+      expect(panel().getByLabelText(sr.form.country)).toHaveValue('MK')
+
+      await chooseTheEvent(user, EVENT_53)
+      await user.type(panel().getByLabelText(sr.newResult.eventName), ' 2')
+      await user.type(panel().getByLabelText(sr.review.placeTown), '3')
+
+      expect(panel().getByLabelText(sr.review.placeTown)).toHaveValue('Struga 23')
+      expect(panel().getByLabelText(sr.form.country)).toHaveValue('MK')
+    } finally {
+      server.stop()
+    }
+  })
+})
+
 describe('what a case of this file may end in', () => {
   it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
     expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
