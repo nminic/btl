@@ -136,6 +136,55 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 			3_201_809L, "Dolga Vas (Kočevje)",
 			3_201_849L, "Dolenja vas (Kočevje)");
 
+	/**
+	 * THE TWO LABELS V69 CORRECTED BY HAND, by GeoNames mark, and why each one is here.
+	 *
+	 * <p>Stari Grad on Hvar (3189965) and the Stari Grad by Pag (3216885) were labelled Omiš and Gospić by
+	 * the rule, which took the nearest bigger town of more than five thousand inhabitants; a person from
+	 * either place would name the town beside it, and the owner chose that on 20.10.2026 ("ručno, po
+	 * presedanu Kočevja", PENDING 28046). V51 still says Omiš and Gospić, because an applied migration is
+	 * immutable (ADL A2), so {@link #renamedByTheDelta()} still reads those two and the questions about
+	 * what the rule gave stay true of what the rule gave; what the database holds now is V69's.
+	 *
+	 * <p>Held by MARK, since the name is what is asserted, and the two villages share a bare name: a label
+	 * given to the wrong one of them satisfies the key and every derived question, and fails here. The
+	 * way to remove an entry is to change this list in the same commit as the source file and the
+	 * migration that corrects it.
+	 */
+	private static final Map<Long, String> THE_STARI_GRADS = Map.of(
+			3_189_965L, "Stari Grad (Hvar)",
+			3_216_885L, "Stari Grad (Pag)");
+
+	@Test
+	void theTwoStariGradsCarryTheLabelsTheOwnerChoseAndNotTheOnesTheRuleGave() {
+		assertThat(namesOf(THE_STARI_GRADS.keySet())).containsExactlyInAnyOrderEntriesOf(THE_STARI_GRADS);
+	}
+
+	/**
+	 * AND A LABEL BY HAND IS STILL THE NAME OF A BIGGER TOWN OF THE SAME COUNTRY, which is what the
+	 * rule's own labels are asked ({@link #theBracketsHoldTheNameOfABiggerTownOfTheSameCountry}). It is
+	 * asked of V3 and not of the migration that corrects the label, so the answer is the codebook's.
+	 */
+	@Test
+	void theLabelOfEachStariGradIsABiggerTownOfCroatiaInTheCodebook() {
+		Map<Long, Town> before = byMark(loadedByV3());
+
+		THE_STARI_GRADS.forEach((mark, name) -> {
+			Town was = before.get(mark);
+
+			assertThat(was).as("V3 does not carry the town %s", mark).isNotNull();
+
+			String label = name.substring(was.name().length() + 2, name.length() - 1);
+
+			assertThat(name).startsWith(was.name() + " (");
+			assertThat(before.values().stream()
+					.filter(bigger -> bigger.country().equals(was.country()) && bigger.rank() < was.rank())
+					.map(Town::name))
+					.as("a town of %s that stands higher in the codebook than %s", was.country(), was.name())
+					.contains(label);
+		});
+	}
+
 	@Test
 	void theOwnersExamplesCarryTheNamesHeGave() {
 		assertThat(namesOf(THE_OWNERS_EXAMPLES.keySet())).containsExactlyInAnyOrderEntriesOf(THE_OWNERS_EXAMPLES);
