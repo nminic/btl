@@ -167,9 +167,9 @@ docker inspect -f '{{.State.Status}}' "$QA_POSTGRES" >/dev/null 2>&1 \
 docker inspect -f '{{.State.Status}}' "$QA_BACKEND" >/dev/null 2>&1 \
   || fail "the QA backend container '$QA_BACKEND' is not there, and it is what names the photo folder"
 
-prod_sql() { docker exec -i "$PROD_DB" psql -v ON_ERROR_STOP=1 -U "$PROD_ROLE" -d "$PROD_NAME" -tA "$@"; }
-qa_sql() { docker exec -i "$QA_POSTGRES" psql -v ON_ERROR_STOP=1 -U "$QA_ROLE" -d "$QA_NAME" -tA "$@"; }
-ref_sql() { docker exec -i "$REFERENCE" psql -v ON_ERROR_STOP=1 -U postgres -d ref -tA "$@"; }
+prod_sql() { step docker exec -i "$PROD_DB" psql -v ON_ERROR_STOP=1 -U "$PROD_ROLE" -d "$PROD_NAME" -tA "$@"; }
+qa_sql() { step docker exec -i "$QA_POSTGRES" psql -v ON_ERROR_STOP=1 -U "$QA_ROLE" -d "$QA_NAME" -tA "$@"; }
+ref_sql() { step docker exec -i "$REFERENCE" psql -v ON_ERROR_STOP=1 -U postgres -d ref -tA "$@"; }
 
 prod_sql -c 'select 1' > /dev/null 2>"$WORK/reach.err" \
   || fail "cannot read production as role '$PROD_ROLE' in database '$PROD_NAME'.
@@ -206,7 +206,7 @@ waited=0
 # Over TCP and not the unix socket: the socket exists during the image's own bootstrap phase,
 # while the temporary server is still refusing real connections. proveri-qa.sh measured two runs
 # in twelve getting through that window.
-until docker exec "$REFERENCE" pg_isready -q -h 127.0.0.1 -U postgres -d ref 2>/dev/null; do
+until step docker exec "$REFERENCE" pg_isready -q -h 127.0.0.1 -U postgres -d ref 2>/dev/null; do
   waited=$((waited + 1))
   [ "$waited" -lt 90 ] || fail 'the reference database did not come up within 90 seconds'
   sleep 1
@@ -217,7 +217,7 @@ for version in $want; do
   file=$(ls "$MIGRATIONS"/V"$version"__*.sql)
   [ "$(printf '%s\n' "$file" | wc -l)" = 1 ] \
     || fail "more than one file carries version $version, which Flyway would not take either: $file"
-  docker exec -i "$REFERENCE" psql -q -v ON_ERROR_STOP=1 -U postgres -d ref -1 -f - < "$file" \
+  step docker exec -i "$REFERENCE" psql -q -v ON_ERROR_STOP=1 -U postgres -d ref -1 -f - < "$file" \
     || fail "$file does not apply even to an empty database, so the checkout is not what was merged"
 done
 say "reference built from $(printf '%s' "$want" | wc -w) migrations"
@@ -225,24 +225,29 @@ say "reference built from $(printf '%s' "$want" | wc -w) migrations"
 say ''
 say '--- 3. both databases carry exactly the migrations this checkout does ---'
 
+# The answer goes to a file and not to standard output, so that nobody has to call this inside $(...),
+# which is a foreground command to the shell that runs it, and a signal would wait for it.
 applied_by() {
-  docker exec -i "$1" psql -v ON_ERROR_STOP=1 -U "$2" -d "$3" -tAc \
+  step docker exec -i "$1" psql -v ON_ERROR_STOP=1 -U "$2" -d "$3" -tAc \
     "select version from flyway_schema_history where success order by version::integer" \
     > "$WORK/applied" 2>"$WORK/applied.err" \
     || fail "$4 has no readable flyway_schema_history, so Flyway has not run there at all.
 $(cat "$WORK/applied.err")"
-  tr '\n' ' ' < "$WORK/applied" | sed 's/ *$//'
+  tr '\n' ' ' < "$WORK/applied" | sed 's/ *$//' > "$WORK/applied.list"
 }
 
-have=$(applied_by "$PROD_DB" "$PROD_ROLE" "$PROD_NAME" production)
+applied_by "$PROD_DB" "$PROD_ROLE" "$PROD_NAME" production
+have=$(cat "$WORK/applied.list")
 [ "$have" = "$want" ] || fail "production carries migrations [$have] and this checkout carries [$want].
 Its backend applies them on startup, so bring the stack up and let it finish before pouring."
 
-qa_have=$(applied_by "$QA_POSTGRES" "$QA_ROLE" "$QA_NAME" QA)
+applied_by "$QA_POSTGRES" "$QA_ROLE" "$QA_NAME" QA
+qa_have=$(cat "$WORK/applied.list")
 [ "$qa_have" = "$want" ] || fail "QA carries migrations [$qa_have] and /opt/btl carries [$want].
 The two checkouts are on different commits. Pull and redeploy both so they agree, then run again."
 
-failed=$(prod_sql -c "select count(*) from flyway_schema_history where not success")
+prod_sql -c "select count(*) from flyway_schema_history where not success" > "$WORK/failed.count"
+failed=$(cat "$WORK/failed.count")
 [ "$failed" = 0 ] || fail "$failed migrations are recorded on production as having failed"
 say "both carry all $(printf '%s' "$want" | wc -w)"
 
@@ -253,7 +258,7 @@ say '--- 4. and both schemas are what those migrations describe, line for line -
 clean() { grep -vE '^(\\restrict |\\unrestrict )' "$1"; }
 
 dump_into() {
-  docker exec "$1" pg_dump -U "$2" -d "$3" --schema-only --no-owner --no-acl \
+  step docker exec "$1" pg_dump -U "$2" -d "$3" --schema-only --no-owner --no-acl \
     --exclude-table=flyway_schema_history > "$4" || fail "pg_dump against $5 did not pass"
   [ -s "$4" ] || fail "the schema dump of $5 is empty, so the comparison below would claim nothing"
 }
@@ -356,11 +361,14 @@ say ''
 say '--- 8. copying the photographs, which are not in the database ---'
 
 # NOT `-a`, which keeps the files' times: see "AND THEY ARE COPIED WITHOUT THEIR TIMES" in the header.
-docker run --rm --entrypoint sh -v "$QA_VOLUME":/from:ro -v "$PROD_VOLUME":/to "$IMAGE" \
+container --entrypoint sh -v "$QA_VOLUME":/from:ro -v "$PROD_VOLUME":/to "$IMAGE" \
   -c 'cp -R --preserve=mode,ownership /from/. /to/' || fail 'copying the photographs did not pass'
 
-from_count=$(docker run --rm --entrypoint sh -v "$QA_VOLUME":/from:ro "$IMAGE" -c 'ls -A /from | wc -l')
-to_count=$(docker run --rm --entrypoint sh -v "$PROD_VOLUME":/to:ro "$IMAGE" -c 'ls -A /to | wc -l')
+# Into files and not into $(...), for the reason given at applied_by.
+container --entrypoint sh -v "$QA_VOLUME":/from:ro "$IMAGE" -c 'ls -A /from | wc -l' > "$WORK/from.count"
+container --entrypoint sh -v "$PROD_VOLUME":/to:ro "$IMAGE" -c 'ls -A /to | wc -l' > "$WORK/to.count"
+from_count=$(cat "$WORK/from.count")
+to_count=$(cat "$WORK/to.count")
 [ "$from_count" = "$to_count" ] \
   || fail "QA holds $from_count photographs and production now holds $to_count; nothing was poured into the database"
 say "$to_count photographs copied from $QA_VOLUME to $PROD_VOLUME"
@@ -409,7 +417,7 @@ EOF
 # -q so that the transaction's own BEGIN and COMMIT are not printed into what is poured. What psql
 # complains of goes to a file and is shown by report_failure, which leaves out the lines that can
 # carry a member's row.
-docker exec -i "$QA_POSTGRES" psql -q -v ON_ERROR_STOP=1 -U "$QA_ROLE" -d "$QA_NAME" -tA -f - \
+step docker exec -i "$QA_POSTGRES" psql -q -v ON_ERROR_STOP=1 -U "$QA_ROLE" -d "$QA_NAME" -tA -f - \
   < "$QA_SESSION" >> "$STREAM" 2> "$WORK/qa.err" \
   || { report_failure "$WORK/qa.err" 'QA'; fail 'reading QA did not pass; nothing has been written to production'; }
 
@@ -421,7 +429,7 @@ printf 'commit;\n' >> "$STREAM"
 
 # Into a file and then read, never through a pipe: `sh` has no pipefail, and through one the exit
 # code of psql is invisible.
-if ! docker exec -i "$PROD_DB" psql -v ON_ERROR_STOP=1 -U "$PROD_ROLE" -d "$PROD_NAME" \
+if ! step docker exec -i "$PROD_DB" psql -v ON_ERROR_STOP=1 -U "$PROD_ROLE" -d "$PROD_NAME" \
      -f - < "$STREAM" > "$WORK/pour.log" 2>&1; then
   report_failure "$WORK/pour.log" 'production'
   fail 'the pour did not pass. It was one transaction, so no row on production changed (a sequence

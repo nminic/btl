@@ -88,12 +88,14 @@ class BackupLeavesNothingBehindTest {
 			export PATH=/tmp/bkp-bin:$PATH
 			THROWAWAY=the-throwaway-database
 			: > /tmp/bkp-docker.calls
-			rm -f /tmp/bkp-alert /tmp/bkp-alert-at /tmp/bkp-client /tmp/bkp-started
+			rm -f /tmp/bkp-alert /tmp/bkp-alert-at /tmp/bkp-alert-count /tmp/bkp-client /tmp/bkp-started
 			alert() {
 			  if [ -d "$WORK" ]; then there=yes; else there=no; fi
 			  if [ -d "$SPOOL" ]; then kept=yes; else kept=no; fi
 			  printf '%s %s %s\\n' "$1" "$there" "$kept" > /tmp/bkp-alert
 			  date +%s > /tmp/bkp-alert-at
+			  echo sent >> /tmp/bkp-alert-count
+			  if [ "${ALERT_SLOW:-}" = yes ]; then step sleep 4; fi
 			}
 			scenario=$1
 			sig=${2:-}
@@ -121,6 +123,12 @@ class BackupLeavesNothingBehindTest {
 			    export SLOW=yes LEFTOVER=yes
 			    date +%s > /tmp/bkp-started
 			    ( sleep 1; kill -"$sig" $$ ) &
+			    container --network none an-image
+			    echo SURVIVED
+			    ;;
+			  second-signal)
+			    export SLOW=yes LEFTOVER=yes ALERT_SLOW=yes
+			    ( sleep 1; kill -TERM $$; sleep 1; kill -"$sig" $$ ) &
 			    container --network none an-image
 			    echo SURVIVED
 			    ;;
@@ -301,6 +309,47 @@ class BackupLeavesNothingBehindTest {
 
 			assertThat(exists(work)).as("the work folder after %s", way[0]).isEqualTo("no");
 			assertThat(exists(spool)).as("the folder of the encrypted copy after %s", way[0]).isEqualTo("no");
+		}
+	}
+
+	/**
+	 * A SECOND SIGNAL WHILE THE WAY OUT IS RUNNING DOES NOT END IT: BOTH FOLDERS ARE STILL REMOVED AND THE
+	 * MAIL IS SENT ONCE.
+	 *
+	 * <p>The way out is not instant, it mails and it removes containers, and it runs with the EXIT
+	 * trap already cleared. The traps for the three signals were still set, so a second Ctrl-C, or a
+	 * stop that follows a stop, ran {@code exit} from inside it: the rest of the way out never ran, and
+	 * what was left was the work folder, with the dump and the passphrase in it, and the folder of the
+	 * encrypted copy. The first signal here is a TERM that arrives while a container step runs; the
+	 * mail is a step that takes four seconds (the real one runs a container with curl), and the second
+	 * signal, a second later, arrives while it is being sent. What is held is what the way out has
+	 * left, not that the second signal was received: both folders gone, the throwaway database asked
+	 * to go after the mail, the mail sent once, and the status the first signal gave.
+	 */
+	@Test
+	void aSecondSignalWhileTheWayOutRunsDoesNotEndItAndTheMailIsSentOnce() {
+		for (String second : new String[] { "HUP", "INT", "TERM" }) {
+			ExecResult result = sh("sh /tmp/bkp-driver.sh second-signal " + second);
+			String work = workOf(result);
+			String spool = spoolOf(result);
+
+			assertThat(result.getStdout()).as("after a TERM and then a %s the script went on", second)
+					.doesNotContain("SURVIVED");
+			assertThat(exists(work)).as("the work folder after a TERM and then a %s", second).isEqualTo("no");
+			assertThat(exists(spool)).as("the folder of the encrypted copy after a TERM and then a %s", second)
+					.isEqualTo("no");
+			assertThat(result.getExitCode()).as("the status is the first signal's, after a second %s", second)
+					.isEqualTo(143);
+			assertThat(sh("cat /tmp/bkp-alert-count").getStdout().strip())
+					.as("the superadmin is mailed once, not once per signal, after a TERM and then a %s", second)
+					.isEqualTo("sent");
+			assertThat(sh("cat /tmp/bkp-alert").getStdout().strip())
+					.as("the mail goes with the first signal's status")
+					.isEqualTo("143 yes yes");
+			assertThat(sh("cat /tmp/bkp-docker.calls").getStdout())
+					.as("the throwaway database is asked to go after the mail, which is the part of the way out the"
+							+ " second signal used to skip")
+					.contains("docker rm -f the-throwaway-database");
 		}
 	}
 

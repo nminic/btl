@@ -2,6 +2,8 @@ package com.btl.portal.db;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.Container.ExecResult;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -58,6 +60,40 @@ class PouringFromQaLeavesNothingBehindTest extends DatabaseTest {
 
 	private static final String DOCKER_CALLS = "/tmp/b190-docker.calls";
 
+	private static final String CLIENT_TOLD = "/tmp/b190-client";
+
+	/**
+	 * The {@code docker} on the PATH of the driver, as a FILE and not a function, because what is
+	 * measured below is a shell waiting for a foreground command that is a separate process: a
+	 * function runs in the shell itself and has no such wait. It writes down what it was asked. When
+	 * {@code SLOW} is set, {@code exec} and {@code run} take eight seconds and, on a TERM, say so and
+	 * end, as a real docker client does; {@code SLOW_RM} makes {@code rm} take two, so that the way
+	 * out lasts long enough to be signalled; {@code LEFTOVER} makes {@code ps} name a container of
+	 * the run.
+	 */
+	private static final String FAKE_DOCKER = """
+			#!/bin/sh
+			printf 'docker %s\\n' "$*" >> /tmp/b190-docker.calls
+			case "$1" in
+			  exec|run)
+			    if [ "${SLOW:-}" = yes ]; then
+			      sleep 8 </dev/null >/dev/null 2>&1 &
+			      slept=$!
+			      trap 'echo CLIENT-TERM >> /tmp/b190-client; kill $slept 2>/dev/null; exit 143' TERM
+			      wait $slept
+			    fi
+			    ;;
+			  ps)
+			    if [ "${LEFTOVER:-}" = yes ]; then echo pour-left-1; fi
+			    ;;
+			  rm)
+			    if [ "${SLOW_RM:-}" = yes ]; then sleep 2; fi
+			    printf 'docker %s DONE\\n' "$*" >> /tmp/b190-docker.calls
+			    ;;
+			esac
+			exit 0
+			""";
+
 	/**
 	 * What the pour's script is to the helper: the three things it needs, a {@code docker} that
 	 * writes down what it was asked, and one named scenario to carry out after sourcing it.
@@ -67,8 +103,9 @@ class PouringFromQaLeavesNothingBehindTest extends DatabaseTest {
 			fail() { printf 'REFUSED: %s\\n' "$*"; exit 1; }
 			say() { printf '%s\\n' "$*"; }
 			REFERENCE=the-reference-database
+			export PATH=/tmp/b190-bin:$PATH
 			: > /tmp/b190-docker.calls
-			docker() { printf 'docker %s\\n' "$*" >> /tmp/b190-docker.calls; }
+			rm -f /tmp/b190-client
 			scenario=$1
 			if [ "$scenario" = not-memory ]; then
 			  stat() { echo ext4; }
@@ -85,6 +122,26 @@ class PouringFromQaLeavesNothingBehindTest extends DatabaseTest {
 			    printf 'KIND=%s\\n' "$(stat -f -c %T "$WORK")"
 			    : > "$WORK/a-file"
 			    printf 'FILEMODE=%s\\n' "$(stat -c %a "$WORK/a-file")"
+			    ;;
+			  step-signal)
+			    export SLOW=yes LEFTOVER=yes
+			    ( sleep 1; kill -"$2" $$ ) &
+			    step docker exec -i the-database psql
+			    echo SURVIVED
+			    ;;
+			  second-signal)
+			    export SLOW=yes LEFTOVER=yes SLOW_RM=yes
+			    ( sleep 1; kill -TERM $$; sleep 1; kill -"$2" $$ ) &
+			    step docker exec -i the-database psql
+			    echo SURVIVED
+			    ;;
+			  refused-then-signal)
+			    export SLOW_RM=yes
+			    ( sleep 1; kill -TERM $$ ) &
+			    fail 'something refused'
+			    ;;
+			  container)
+			    container --entrypoint sh an-image -c x
 			    ;;
 			  report)
 			    PGPASSWORD=$4 psql -h 127.0.0.1 -U "$2" -d "$3" -v ON_ERROR_STOP=1 -f - \\
@@ -139,6 +196,8 @@ class PouringFromQaLeavesNothingBehindTest extends DatabaseTest {
 				Transferable.of(DRIVER.getBytes(StandardCharsets.UTF_8)), DRIVER_THERE);
 		postgres.copyFileToContainer(
 				Transferable.of(PROBE.getBytes(StandardCharsets.UTF_8)), PROBE_THERE);
+		postgres.copyFileToContainer(
+				Transferable.of(FAKE_DOCKER.getBytes(StandardCharsets.UTF_8), 0755), "/tmp/b190-bin/docker");
 
 		String command = "sh " + DRIVER_THERE + " " + scenario + " " + String.join(" ", more);
 		return sh(command);
@@ -193,6 +252,138 @@ class PouringFromQaLeavesNothingBehindTest extends DatabaseTest {
 					.as("the reference container was not removed after %s", way[0])
 					.contains("docker rm -f the-reference-database");
 		}
+	}
+
+	/**
+	 * Runs a scenario and says how long it took and with what status, which {@code run} cannot.
+	 *
+	 * <p>The cases that use it are {@code NOT_SUPPORTED}: they run no SQL, and the transaction every
+	 * case of {@link DatabaseTest} holds would sit idle for as long as they last, which is more than
+	 * twenty seconds for the longest. Measured 21.10.2026 on Docker Desktop for Windows: after a case
+	 * that long the connection came back from its transaction unusable, and the FIRST statement of the
+	 * next class that used the pool, {@code PouringFromQaTest}, failed with an I/O error sending to the
+	 * backend. A case that holds no connection has nothing to lose.
+	 */
+	private ExecResult timed(String scenario, String... more) throws Exception {
+		run("exit");
+		String command = "start=$(date +%s); sh " + DRIVER_THERE + " " + scenario + " " + String.join(" ", more)
+				+ "; echo RC=$?; echo ELAPSED=$(( $(date +%s) - start ))";
+		return sh(command);
+	}
+
+	private static long numberOf(String name, ExecResult result) {
+		Matcher line = Pattern.compile("^" + name + "=(\\d+)$", Pattern.MULTILINE).matcher(result.getStdout());
+		assertThat(line.find()).as("no %s= line: %s %s", name, result.getStdout(), result.getStderr()).isTrue();
+		return Long.parseLong(line.group(1));
+	}
+
+	/**
+	 * A SIGNAL THAT ARRIVES WHILE A COMMAND IS RUNNING IS ACTED ON AT ONCE, AND THE WAY OUT SAYS SO: THE
+	 * CASE THE ONE ABOVE DOES NOT HAVE, BECAUSE IT SENDS ITS SIGNAL FROM A SCRIPT WITH NO FOREGROUND CHILD.
+	 *
+	 * <p>A shell runs a trap only after the foreground command it is waiting for has ended, and the
+	 * pour spends nearly all of its time in such a command (a {@code docker exec} of a
+	 * {@code psql}, for a read of QA or for the transaction on production). A TERM from a stop, or a
+	 * {@code kill} of the script, reaches the shell and not the child, so it used to wait for the
+	 * child, and a child that hangs does not end. Measured 21.10.2026 in dash: with a client that
+	 * takes eight seconds and a signal sent one second in, the work directory was removed at the
+	 * eighth second, for TERM and for INT alike. The command here is that client, a separate
+	 * process, and the signal is sent by another process one second in, so what is measured is the
+	 * time to the end of the script: well under the eight seconds of the step.
+	 *
+	 * <p>And the rest of the way out is held: the client of the step was told to stop, the containers
+	 * that carry the run's label were looked up and removed, the work directory is gone, the status
+	 * is 128 plus the signal, and the terminal was told, once, which signal ended it.
+	 */
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void aSignalWhileACommandRunsIsActedOnAtOnceAndTheRunsContainersAreRemoved() throws Exception {
+		String[][] ways = { { "HUP", "129" }, { "INT", "130" }, { "TERM", "143" } };
+
+		for (String[] way : ways) {
+			ExecResult result = timed("step-signal", way[0]);
+			String work = workOf(result);
+
+			assertThat(result.getStdout()).as("after %s the script went on", way[0]).doesNotContain("SURVIVED");
+			assertThat(numberOf("RC", result)).as("the status after %s", way[0]).isEqualTo(Long.parseLong(way[1]));
+			assertThat(numberOf("ELAPSED", result))
+					.as("seconds from the start to the end of the script after %s, while the step takes eight", way[0])
+					.isLessThan(5);
+			assertThat(exists(work)).as("the work directory %s after %s", work, way[0]).isFalse();
+
+			assertThat(sh("cat " + CLIENT_TOLD + " 2>/dev/null || echo none").getStdout())
+					.as("the docker client of the step was told to stop, after %s", way[0]).contains("CLIENT-TERM");
+			assertThat(dockerCalls())
+					.as("the containers of the run are looked up by its label and removed, after %s", way[0])
+					.containsPattern("(?m)^docker ps -q --filter label=btl-pour-run=\\d+$")
+					.contains("docker rm -f pour-left-1 DONE")
+					.contains("docker rm -f the-reference-database DONE");
+
+			assertThat(result.getStderr().split("STOPPED: the pour was ended by ", -1))
+					.as("the terminal is told once which signal ended the pour, after %s", way[0])
+					.hasSize(2)
+					.satisfies(parts -> assertThat(parts[1]).startsWith(way[0] + ".").contains("--check"));
+		}
+	}
+
+	/**
+	 * A SECOND SIGNAL WHILE THE WAY OUT IS RUNNING DOES NOT END IT: THE WORK DIRECTORY IS STILL
+	 * REMOVED, THE REFERENCE CONTAINER IS STILL ASKED TO GO, AND THE TERMINAL IS TOLD ONCE.
+	 *
+	 * <p>A signal handler runs {@code exit}, which runs the cleanup, and a signal that arrived while
+	 * the cleanup ran used to run {@code exit} again from inside it, so the cleanup stopped where it
+	 * was and the work directory, with every table of the database in plain text, stayed.
+	 * Measured 21.10.2026 in dash. The first signal is a TERM during a step; the removal of a
+	 * container takes two seconds here; the second signal, a second later, arrives while it runs.
+	 */
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void aSecondSignalWhileTheWayOutRunsDoesNotEndItAndTheWorkDirectoryIsStillRemoved() throws Exception {
+		for (String second : new String[] { "HUP", "INT", "TERM" }) {
+			ExecResult result = timed("second-signal", second);
+			String work = workOf(result);
+
+			assertThat(result.getStdout()).as("after a TERM and then a %s the script went on", second)
+					.doesNotContain("SURVIVED");
+			assertThat(exists(work)).as("the work directory %s after a TERM and then a %s", work, second).isFalse();
+			assertThat(numberOf("RC", result)).as("the status is the first signal's, after a second %s", second)
+					.isEqualTo(143);
+			assertThat(dockerCalls())
+					.as("the reference container is asked to go and does, after a TERM and then a %s", second)
+					.contains("docker rm -f the-reference-database DONE");
+			assertThat(result.getStderr().split("STOPPED: the pour was ended by ", -1))
+					.as("the terminal is told once, not once per signal, after a TERM and then a %s", second)
+					.hasSize(2);
+		}
+	}
+
+	/**
+	 * A SIGNAL DURING A WAY OUT THAT NO SIGNAL BEGAN IS IGNORED TOO: A REFUSAL IS THE WAY OUT HERE.
+	 *
+	 * <p>The cleanup also runs after {@code fail} and after a plain exit, and what ignores a signal
+	 * during it has to be the cleanup and not the signal handler, or a stop that arrives while a
+	 * refused pour is being cleaned up ends the cleanup halfway. The status is the refusal's, the work
+	 * directory is gone, and the terminal is not told the pour was stopped, because it was not.
+	 */
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void aSignalWhileARefusalIsBeingCleanedUpDoesNotEndTheCleanup() throws Exception {
+		ExecResult result = timed("refused-then-signal");
+		String work = workOf(result);
+
+		assertThat(numberOf("RC", result)).as("the refusal's status, not the signal's").isEqualTo(1);
+		assertThat(exists(work)).as("the work directory %s after a refusal and then a TERM", work).isFalse();
+		assertThat(dockerCalls()).contains("docker rm -f the-reference-database DONE");
+		assertThat(result.getStderr()).doesNotContain("STOPPED:");
+	}
+
+	/** A CONTAINER THE POUR STARTS HAS AN INIT AND THE RUN'S LABEL, so that the way out can find it. */
+	@Test
+	void aContainerOfThePourHasAnInitAndTheRunsLabel() throws Exception {
+		run("container");
+
+		assertThat(dockerCalls())
+				.containsPattern("(?m)^docker run --rm --init --label btl-pour-run=\\d+ --entrypoint sh an-image -c x$");
 	}
 
 	/**
