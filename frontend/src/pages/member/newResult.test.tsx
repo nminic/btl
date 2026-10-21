@@ -8,6 +8,7 @@ import { serverThat } from '../../test/serverAnswers'
 import { myOwnRecordFromMe, whoIAm } from '../../test/theAnswer'
 import { setupUser } from '../../test/user'
 import { SLOW } from '../../test/slow'
+import { typeATownTheCodebookKnows } from '../../test/town'
 
 /**
  * The form a result is entered on from a profile, away from the calendar.
@@ -1504,5 +1505,23 @@ describe('the measures of a result entered away from the calendar', () => {
     for (const stands of [/^Naziv trke/, /^Datum trke/, /^Link ka zvaničnim/, /^Komentar/]) {
       expect(screen.getByLabelText(stands).closest('.form__row')).toBeNull()
     }
+  })
+})
+
+describe('the town of a run on an event he typed', () => {
+  it('empties the country the town wrote as soon as the name stops being a town the codebook knows', async () => {
+    /* Owner, 20.10.2026 (PDL, „Čim ukucano ime mesta prestane da odgovara šifarniku, država koju je
+       prepoznavanje upisalo se prazni i čeka izbor"; PENDING 29216): the same field as on every other
+       form, drawn here for an event the calendar does not have. */
+    const user = setupUser()
+
+    renderAt(NEW, 'competitor', ME, undefined, TODAY)
+    await user.type(await screen.findByLabelText(/^Događaj/), 'Seoska trka')
+    await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
+    await user.type(screen.getByLabelText('Mesto'), ' pod brdom')
+
+    expect(screen.getByLabelText('Mesto')).toHaveValue('Kranj pod brdom')
+    expect(screen.getByLabelText(/^Država/)).toHaveValue('')
+    expect(screen.getByLabelText(/^Država/)).toBeEnabled()
   })
 })

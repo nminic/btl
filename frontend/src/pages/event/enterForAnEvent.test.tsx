@@ -8,6 +8,7 @@ import { expectFrontPage, moderatorWith, renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
+import { typeATownTheCodebookKnows } from '../../test/town'
 
 /**
  * „UNOS REZULTATA ZA DOGAĐAJ”, THE MODERATOR'S OWN SCREEN (PDL P9, owner, 19.10.2026: „Događaj, trka i
@@ -486,6 +487,29 @@ describe('what the block says before anything is sent', () => {
       await user.type(eventBox(), 'Nova trka')
 
       expect(raceBox()).toHaveValue('Nova trka')
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+describe('the town of a new event on the moderator\'s own screen', () => {
+  it('empties the country the town wrote as soon as the name stops being a town the codebook knows', async () => {
+    /* Owner, 20.10.2026 (PDL, „Čim ukucano ime mesta prestane da odgovara šifarniku, država koju je
+       prepoznavanje upisalo se prazni i čeka izbor"; PENDING 29216): the same field as on every other
+       form, drawn here for an event typed by name that the calendar does not have. */
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await user.type(eventBox(), 'Jezerska trka')
+      await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
+      await user.type(screen.getByLabelText(/^Mesto/), ' pod brdom')
+
+      expect(screen.getByLabelText(/^Mesto/)).toHaveValue('Kranj pod brdom')
+      expect(screen.getByLabelText(/^Država/)).toHaveValue('')
+      expect(screen.getByLabelText(/^Država/)).toBeEnabled()
     } finally {
       server.stop()
     }

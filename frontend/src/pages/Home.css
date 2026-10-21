@@ -418,6 +418,26 @@
   min-inline-size: 0;
 }
 
+/* One box of the widget with the sentence that says why it is refused under it (a whole number
+   is asked of five of the six, owner 20.10.2026). The cell is what the grid and the fieldset
+   lay out, so a sentence under one box widens neither the column nor the card sideways: it
+   wraps inside the third it is under. */
+.calc__cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* In the colour and at the size the other small print of the widget has, and in the colour of a
+   refusal everywhere else on the portal (`.field__error`). */
+.calc__error {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--down);
+}
+
 .calc__field {
   display: flex;
   flex-direction: column;

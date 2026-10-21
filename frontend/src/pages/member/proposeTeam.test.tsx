@@ -739,11 +739,15 @@ describe('the town a member proposes a team in', () => {
     expect(proposalSent()).toMatchObject({ city: 'Kranj', country: 'SI' })
   })
 
-  it('leaves the country standing when the town is typed over by one the codebook does not know', async () => {
-    /* Left as it was, and on the screen, and open to be changed (owner, 11.08.2026): it used
-       to be cleared back when it was written and never shown, and what stands there now is
-       what will be sent. The other way to read this form is a country that empties itself
-       under a member who is correcting a typo. */
+  it('empties the country the town wrote when the town is typed over by one the codebook does not know', async () => {
+    /* Owner, 20.10.2026 (PDL, „Čim ukucano ime mesta prestane da odgovara šifarniku, država koju je
+       prepoznavanje upisalo se prazni i čeka izbor"; PENDING 29216): the country that came with
+       Kranj is Kranj's, and a name that is no longer Kranj does not keep it. It stayed from
+       11.08.2026 until then, and what stood there was sent: a team in a hamlet filed under a
+       country nobody had chosen, with the form saying nothing because a country was there.
+
+       Open to be chosen and not switched off, and refused at the door until it is, which is what the
+       country standing there used to hide. */
     const user = setupUser()
     renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
@@ -757,8 +761,14 @@ describe('the town a member proposes a team in', () => {
 
     const country = screen.getByLabelText(/^Država/)
 
-    expect(country).toHaveValue('SI')
+    expect(country).toHaveValue('')
     expect(country).toBeEnabled()
+
+    await send(user)
+
+    expect(screen.getByText('Izaberi državu uz mesto.')).toBeVisible()
+    expect(country).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
 
     await user.selectOptions(country, 'BA')
     await send(user)
