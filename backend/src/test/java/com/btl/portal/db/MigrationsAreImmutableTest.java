@@ -566,7 +566,24 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
 			   read off this very assertion when it ran before the entry existed. */
-			new Applied("69", "V69__the_two_stari_grads_carry_the_town_they_stand_by.sql", -1305469360));
+			new Applied("69", "V69__the_two_stari_grads_carry_the_town_they_stand_by.sql", -1305469360),
+
+			/* V70. The row of the privacy policy that names Cloudflare also names the storage of the encrypted
+			   backups of the database and photos, in Serbian and in English (the words the owner approved on
+			   20.10.2026, PDL, the entry "Red o Cloudflare-u u politici privatnosti postaje"), and the policy's
+			   sign-off moves from 18.10.2026 to 22.10.2026 in both languages by the entry of 16.10.2026 (the
+			   documents whose text changes), the rulebook and the terms of use keeping theirs. Four edits, each of
+			   which stops the migration unless its old text stands exactly once where it is written and its new
+			   text is not already there. No schema, no row.
+
+			   70 because it is the next free number, and that was MEASURED rather than taken: every remote ref,
+			   every worktree and the open pull requests were searched on 21.10.2026 and none held a migration at
+			   V70 or above, and origin/main stands at V69.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read off
+			   this very assertion when it ran before the entry existed and then confirmed by it. */
+			new Applied("70", "V70__the_cloudflare_row_names_the_backups_of_the_database_and_photos.sql",
+					-1597104966));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

@@ -2789,15 +2789,17 @@ describe('what the written pages say the fee buys', () => {
        an older category between two seasons reveals the year of birth (owner,
        16.10.2026); the terms of use did not change that day and keep the day
        they were signed off on. The privacy policy moved again, to 18.10.2026,
-       with the row that names Zoho as a processor (V60; owner, 17.10.2026);
-       the rulebook did not change that day and keeps 16.10.2026. Written per
+       with the row that names Zoho as a processor (V60; owner, 17.10.2026),
+       and once more, to 22.10.2026, with the words about the backups in the row
+       for Cloudflare (V70; owner, 20.10.2026); the rulebook did not change on
+       either day and keeps 16.10.2026. Written per
        document and not as one day for all three, so a date moved on the terms,
        or left behind on one of the other two, is a failure that names the
        document. */
     const SIGNED_OFF = {
       pravilnik: '16.10.2026',
       'uslovi-koriscenja': '10.10.2026',
-      'politika-privatnosti': '18.10.2026',
+      'politika-privatnosti': '22.10.2026',
     } as const
 
     for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {

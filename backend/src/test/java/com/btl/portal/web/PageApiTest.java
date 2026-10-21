@@ -466,8 +466,9 @@ class PageApiTest {
 	}
 
 	/**
-	 * THE ROW V60 ADDS (Zoho as a processor) AND THE DAY THE POLICY IS SIGNED OFF ON REACH THE VISITOR, in section 5
-	 * and section 7 of the privacy policy, in the language he asks for.
+	 * THE ROW V60 ADDS (Zoho as a processor) AND THE DAY THE POLICY IS SIGNED OFF ON (V70's, 22.10.2026, which moved
+	 * it on from V60's) REACH THE VISITOR, in section 5 and section 7 of the privacy policy, in the language he asks
+	 * for.
 	 *
 	 * <p>{@code TheWrittenPagesNameZohoAsAProcessorTest} holds the rows; this holds that the route serves them, which
 	 * is the one thing it cannot see. Asked in Serbian and in real English.
@@ -478,11 +479,11 @@ class PageApiTest {
 				{ "sr", "| Brevo (Sendinblue SAS) | Vaša adresa i sadržaj poruke | Francuska |\n"
 						+ "| Zoho Corporation | Prepiska sa adresom info@: vaša adresa i sadržaj poruka | SAD |\n"
 						+ "| Poslovna banka Udruženja |",
-						"Poslednja izmena: 18.10.2026." },
+						"Poslednja izmena: 22.10.2026." },
 				{ "en", "| Brevo (Sendinblue SAS) | Your address and the content of the message | France |\n"
 						+ "| Zoho Corporation | Correspondence with info@: your address and the content of the messages"
 						+ " | USA |\n| The Association's business bank |",
-						"Last amended: 18.10.2026." } };
+						"Last amended: 22.10.2026." } };
 
 		for (String[] each : asked) {
 			JsonNode served = answerIn(each[0]);
@@ -493,6 +494,36 @@ class PageApiTest {
 			assertThat(fieldOf(served, "politika-privatnosti", "body").get(6))
 					.as("section 7 of the privacy policy asked in %s", each[0])
 					.containsOnlyOnce(each[2]);
+		}
+	}
+
+	/**
+	 * THE ROW OF CLOUDFLARE THAT V70 CHANGES (it also stores the encrypted backups of the database and the photos)
+	 * REACHES THE VISITOR, in section 5 of the privacy policy, in the language he asks for, between the rows for
+	 * Hetzner and PayPal, and the old row is not served.
+	 *
+	 * <p>{@code TheWrittenPagesTheCloudflareRowNamesTheBackupsTest} holds the rows; this holds that the route serves
+	 * them, which is the one thing it cannot see. Asked in Serbian and in real English.
+	 */
+	@Test
+	void theRowOfCloudflareThatNamesTheBackupsIsServedInBothLanguages() throws Exception {
+		String[][] asked = {
+				{ "sr", "| Hetzner Online GmbH | Smeštaj portala | Nemačka |\n"
+						+ "| Cloudflare | Saobraćaj i IP adrese, zaštita i domen; čuvanje šifrovanih rezervnih kopija baze"
+						+ " i slika | SAD i EU |\n| PayPal (Europe)",
+						"| Cloudflare | Saobraćaj i IP adrese, zaštita i domen | SAD i EU |" },
+				{ "en", "| Hetzner Online GmbH | Portal hosting | Germany |\n"
+						+ "| Cloudflare | Traffic and IP addresses, protection, and the domain; storage of encrypted backups"
+						+ " of the database and photos | USA and EU |\n| PayPal (Europe)",
+						"| Cloudflare | Traffic and IP addresses, protection, and the domain | USA and EU |" } };
+
+		for (String[] each : asked) {
+			String section = fieldOf(answerIn(each[0]), "politika-privatnosti", "body").get(4);
+
+			assertThat(section)
+					.as("section 5 of the privacy policy asked in %s", each[0])
+					.containsOnlyOnce(each[1])
+					.doesNotContain(each[2]);
 		}
 	}
 
