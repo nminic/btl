@@ -1,5 +1,6 @@
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { Decided, Inbox } from '../../test/decided'
@@ -8,6 +9,11 @@ import { QUEUE } from './queues'
 import { useSession } from '../../session/useSession'
 import { useEffect } from 'react'
 import sr from '../../i18n/sr.json'
+import { SLOW } from '../../test/slow'
+
+/* Every wait is given half of what a case is given, for the reason `rowMembership.test.tsx` gives: a
+   mutation then fails on its assertion and not on the clock of the case. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * ONE MESSAGE THIS READER REALLY HAS, so that „the refusal wrote nothing" is read off a list
@@ -708,6 +714,101 @@ describe('a decision on a queue served by the pending screen', () => {
       server.stop()
       confirm.mockRestore()
     }
+  })
+
+  /**
+   * AN ANSWER FOR ONE CARD DOES NOT FOLD THE CARD THE MODERATOR HAS OPEN (PENDING 28270, measured at 360).
+   *
+   * <p>One card is open at a time, so opening the refused one closed the one he was reading. The sweep is
+   * the road the answer comes by in a case: it refuses TWO cards, the first of which (`ver-kom-2`) the
+   * sentence is drawn on and the second (`ver-kom-4`) he opened before he pressed it. <b>The card he
+   * opened is the SECOND refused and the later one of the four</b>, so an answer that opened "the
+   * first card" or "the refused card" is told from one that left his alone.
+   */
+  describe('a card the moderator opened, and an answer about another one', () => {
+    const toggleOf = (card: string) =>
+      must(
+        screen
+          .getAllByRole('button', { name: /^(Prikaži|Sakrij): / })
+          .find((one) => one.getAttribute('aria-controls') === `${card}-card`),
+        `the button that opens ${card}`,
+      )
+
+    /** A server that refuses the cards `refusedNow` holds and approves every other. */
+    function refusing(refusedNow: { ids: string[] }) {
+      return serverThat((path, init) =>
+        init?.method !== 'POST' || !path.includes('/decision')
+          ? null
+          : refusedNow.ids.some((id) => path.includes(id))
+            ? refused('Stavku trenutno drži drugi moderator.', 409)
+            : new Response(JSON.stringify({ id: 1, state: 'approved' }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+              }),
+      )
+    }
+
+    it('leaves the card he opened open, and says the sentence on the card it is about', async () => {
+      const user = setupUser()
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      const server = refusing({ ids: ['ver-kom-2', 'ver-kom-4'] })
+
+      try {
+        renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+        await cardsIn()
+
+        await user.click(toggleOf('ver-kom-4'))
+        expect(toggleOf('ver-kom-4')).toHaveAttribute('aria-expanded', 'true')
+
+        await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+        await screen.findByRole('alert')
+
+        expect(
+          toggleOf('ver-kom-4'),
+          'the answer about another card folded the one he was reading',
+        ).toHaveAttribute('aria-expanded', 'true')
+        expect(toggleOf('ver-kom-2')).toHaveAttribute('aria-expanded', 'false')
+        expect(screen.getAllByRole('button', { expanded: true })).toHaveLength(1)
+        /* AND THE SENTENCE IS STILL THE REFUSED CARD'S, drawn in it though it is folded. */
+        expect(
+          within(must(document.getElementById('ver-kom-2-card'), 'the refused card')).getByRole('alert'),
+        ).toHaveTextContent('Stavku trenutno drži drugi moderator.')
+      } finally {
+        server.stop()
+        confirm.mockRestore()
+      }
+    }, SLOW)
+
+    it('opens the next refused card over one an earlier answer opened, because that sentence is replaced', async () => {
+      /* THE OTHER SIDE OF THE BOUNDARY, so "never fold" does not become "never open": the first sweep
+         refuses two cards and opens the first of them; the second sweep refuses only the later one, and
+         the sentence it says is on that card. A card an answer opened is nobody's choice, so it gives
+         way, or the sentence would be in a folded card beside an open one with nothing in it. */
+      const user = setupUser()
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+      const refusedNow = { ids: ['ver-kom-2', 'ver-kom-4'] }
+      const server = refusing(refusedNow)
+
+      try {
+        renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+        await cardsIn()
+
+        await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+        await screen.findByRole('alert')
+        expect(toggleOf('ver-kom-2')).toHaveAttribute('aria-expanded', 'true')
+
+        refusedNow.ids = ['ver-kom-4']
+        await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+        await waitFor(() => {
+          expect(toggleOf('ver-kom-4')).toHaveAttribute('aria-expanded', 'true')
+        })
+        expect(screen.getAllByRole('button', { expanded: true })).toHaveLength(1)
+      } finally {
+        server.stop()
+        confirm.mockRestore()
+      }
+    }, SLOW)
   })
 
   it('asks the server again after a decision, rather than reading what this visit fetched', async () => {

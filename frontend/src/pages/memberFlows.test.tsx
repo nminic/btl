@@ -552,12 +552,14 @@ describe('membership', () => {
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/^K:PR\|V:01/)).not.toBeInTheDocument()
 
-    /* And not a word about a price either. The slip was taken away and these
-       three sentences were not, so the screen went on quoting the fee, the
-       processing charge and the junior rate to somebody it had just told pays
-       nothing. */
+    /* And not a word about a PRICE either. The slip was taken away and the price line and the
+       junior rate were not, so the screen went on quoting them to somebody it had just told
+       pays nothing. The processing fee is not a price he is quoted but a fact the screen states
+       to everybody (PDL P8, owner 04.08.2026, „Taksa se prikazuje svima, samo je ne plaćaju
+       svi.": „ekran članarine ima jednu rečenicu za sve, koja kaže i ko je plaća"); this case
+       held the opposite for it until the review of PR 609, with no decision recorded behind it. */
     expect(screen.queryByText(/Danas članarina košta/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/taksa za obradu plaćanja/)).not.toBeInTheDocument()
+    expect(screen.getByText(/taksa za obradu plaćanja/)).toBeVisible()
     expect(screen.queryByText(/bar jedan dan 14 godina/)).not.toBeInTheDocument()
 
     /* The disc reader goes back in front, or every case after this one in the file reads

@@ -47,6 +47,7 @@ const UNDER = '713'
 const ROWS: Record<RaceKind, RaceRow> = {
   /* What „Nova trka" opens and the owner fills in: a length with a comma, nothing else. */
   length: {
+    place: 'entered-1',
     id: '',
     name: 'BBKT',
     renamed: false,
@@ -58,6 +59,7 @@ const ROWS: Record<RaceKind, RaceRow> = {
     descentM: '',
   },
   time: {
+    place: 'entered-1',
     id: '',
     name: 'BBKT 6 h',
     renamed: true,
@@ -73,6 +75,7 @@ const ROWS: Record<RaceKind, RaceRow> = {
      those of any row, and it goes over with the climb and the fall as nought: the route takes the
      two as numbers whatever the kind (`RaceWriteApi`) and does not read them for a free race. */
   free: {
+    place: 'entered-1',
     id: '',
     name: 'BBKT slobodna',
     renamed: true,
