@@ -33,7 +33,8 @@ const SEARCH_ID = 'payments-search'
  * The bank statement, as the way a hundred payments are reconciled at once
  * (owner, 31.07.2026).
  *
- * Every slip carries a reference of the form 2027-37, so a statement can say
+ * Every slip carries a reference of the form 2027000037 (`YYYYNNNNNN`, owner,
+ * 20.10.2026: the season, then the six digit member number), so a statement can say
  * whose money each line is without anybody reading names. Turning the file into
  * decisions is the server's work and the server does not exist yet, so what this
  * does today is take the file and say so; the row by row confirmation below it
