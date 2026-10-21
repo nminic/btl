@@ -78,11 +78,14 @@ export function TeamQueue({
    * WCAG 2.2 SC 2.4.3). The button that asked is taken out in the same stroke that draws what it asked
    * for, so a press with Enter that worked left `document.activeElement` on `<body>`.
    *
-   * <p><b>This is `components/Resource.tsx`'s arrangement, with the same guards.</b> `Unreadable` says
-   * that its button left with the focus on it (`onLeaveWithFocus`) and which of the two lists it was
-   * the button of is remembered here; the focus is put back in the layout effect of the stroke that
-   * draws what replaced it, and only where it fell to the body: a reader who moved on while the lists
-   * were asked for is not followed.
+   * <p><b>This is `components/Resource.tsx`'s arrangement.</b> `Unreadable` says that its button left
+   * with the focus on it (`onLeaveWithFocus`) and which of the two lists it was the button of is
+   * remembered here; the focus is put back in the layout effect of the stroke that draws what replaced
+   * it. A reader who moved on while the lists were asked for is not followed, and that guard is
+   * `Unreadable`'s own: it says nothing unless the focus was on its button. `Resource` also checks that
+   * the focus is on the body before it moves it; here nothing else takes the focus in that stroke, and a
+   * check no case could fail is a branch that hides what it would have done
+   * (`app/MessagesMenu.tsx` says the same of its own).
    *
    * <p><b>Where it goes is the heading of the list that was asked for again</b>, which is what the
    * reader was standing under: the applications' or the invitations', and not whichever comes first. A
@@ -105,10 +108,6 @@ export function TeamQueue({
     }
 
     lostTheFocus.current = null
-
-    if (document.activeElement !== document.body) {
-      return
-    }
 
     const heading = was === 'applications' ? waitingHeading.current : invitedHeading.current
     const where = heading ?? document.querySelector<HTMLElement>('main')
