@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useFilterParams } from '../../app/useFilterParams'
 import { useToday } from '../../clock/useClock'
@@ -166,9 +166,11 @@ function TheRows() {
           }
 
           /* Whose run the pencil was pressed on, off the list of everybody ever given a number, which
-             is every member a result can name; his number where the list does not know it. */
+             is every member a result can name; his number where the list does not know it, and where a
+             run has no number at all the portal's own word for a member it cannot name
+             (`event.someMember`, as the pencil on the event page is named), never the word `null`. */
           const runner = runners.find((one) => one.memberNumber === result.memberNumber)
-          const name = runner === undefined ? String(result.memberNumber) : runnerLabel(runner)
+          const name = runner === undefined ? (result.memberNumber ?? t('event.someMember')) : runnerLabel(runner)
 
           return (
             <Rows
@@ -217,7 +219,12 @@ function Rows({
   const { t } = useI18n()
   const navigate = useNavigate()
   const [rows, setRows] = useState<LeagueRow[]>(() =>
-    editing === null ? [newLeagueRow()] : [rowOf(editing.result, String(editing.result.memberNumber), editing.name)],
+    editing === null
+      ? [newLeagueRow()]
+      : /* A row names somebody or the press is refused (`whatIsWrongWith`), and the pencil's row is
+           the member the result already has: his number, and for a run with no number the name the
+           screen shows for him, never the word `null`. The pencil sends the figures alone. */
+        [rowOf(editing.result, editing.result.memberNumber ?? editing.name, editing.name)],
   )
   /* What the screen found wrong with each row before sending, by row, after the last press. */
   const [checked, setChecked] = useState<(string | undefined)[]>([])
@@ -228,6 +235,40 @@ function Rows({
      member already has. */
   const outstanding = useRef(false)
   const offered = runnersToOffer(runners)
+  /** The form itself, so the cursor can be put on a control inside it without asking the whole
+   *  document for an address (`forms/FormRenderer.tsx` keeps the same ref). */
+  const sheet = useRef<HTMLFormElement>(null)
+  /** Whether the last press was refused by this screen's own check, and the cursor is therefore owed
+   *  to the first control that is wrong. Set on the press and spent by the effect below, so a redraw
+   *  for any other reason (typing, a row taken away, the server's refusal) never moves the cursor. */
+  const owed = useRef(false)
+
+  /**
+   * THE CURSOR GOES TO THE FIRST CONTROL THAT IS WRONG, AFTER A PRESS THIS SCREEN REFUSED ITSELF.
+   *
+   * <p>The precedent is `forms/FormRenderer.tsx` (`owed`, and the effect that spends it). The list of
+   * errors above its forms was taken away on 28.09.2026 and the cursor took over its job: the sentences
+   * of the fields are announced by the cursor being put on the first of them, and `role="alert"` is
+   * kept only for a sentence with no field to stand beside. A sentence drawn into a row says nothing
+   * to a keyboard or a screen reader by itself: the press that was refused otherwise leaves the
+   * cursor on the button, as if it had done something.
+   *
+   * <p>Every control of a wrong row, and every box of a wrong block, already carries
+   * `aria-invalid="true"` and is described by its sentence, and the document holds them in the order
+   * the screen draws them (the block first, then the rows). So the first one found is the first
+   * thing that is wrong, and the document is asked rather than a row index worked out again here. No
+   * dependency list, on purpose: it must run after the draw that carries the new sentences, whichever
+   * draw that is, and `owed` decides whether it does anything. The server's refusal never sets it,
+   * because that one is announced as an alert under the form (`ServerSaid`).
+   */
+  useEffect(() => {
+    if (!owed.current) {
+      return
+    }
+
+    owed.current = false
+    sheet.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+  })
 
   /* The server's word for each row it refused, by the row's place in what was sent. */
   const refusedRows: RowRefused[] = refusal !== null && refusal.got === 'refused' ? (refusal.rows ?? []) : []
@@ -260,7 +301,11 @@ function Rows({
     setChecked(wrong)
     setRefusal(null)
 
-    if (blockWrong || wrong.some((one) => one !== undefined)) {
+    const refused = blockWrong || wrong.some((one) => one !== undefined)
+
+    owed.current = refused
+
+    if (refused) {
       return
     }
 
@@ -294,7 +339,7 @@ function Rows({
   return (
     <>
       <h1>{heading}</h1>
-      <form noValidate onSubmit={onSubmit}>
+      <form noValidate onSubmit={onSubmit} ref={sheet}>
         {above}
         <div className="races">
           {rows.map((row, at) => {

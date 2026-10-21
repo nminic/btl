@@ -113,19 +113,40 @@ final class TheDayOfAnEvent {
 	}
 
 	/**
-	 * THE EVENT, AND HELD FOR THIS WRITE UNTIL IT COMMITS ({@code for update}), for a writer that
+	 * THE EVENT, AND HELD FOR THIS WRITE UNTIL IT COMMITS ({@code for no key update}), for a writer that
 	 * asked about the event before it began to write and must not write over a change made since.
 	 *
-	 * <p>Asked by {@link VerificationWriteApi} and not by {@link RaceWriteApi}, which reads the
-	 * event plainly and writes in the same breath. The approval asks its questions before it
-	 * claims the row and writes after, so between the two another writer can delete the event, or
-	 * put a race on it that moves its day: held, the event is read again after that writer has
-	 * committed, and what it reads is what the day and the address are worked out from. Unheld, a
-	 * deleted event would reach the approval as {@code race_event_fk} and a 500, and two races put
-	 * on one event at once would each set its day without seeing the other's.
+	 * <p>Asked by {@link VerificationWriteApi}, by {@link ResultsByTheLeagueApi} and, since the
+	 * reviews of PR 504 and PR 577, by {@link RaceWriteApi} too, which used to read the event plainly and
+	 * write in the same breath. A writer asks its questions before it writes, so between the two another
+	 * writer can delete the event, or put a race on it that moves its day: held, the event is read again
+	 * after that writer has committed, and what it reads is what the day and the address are worked out
+	 * from. Unheld, a deleted event would reach the writer as {@code race_event_fk} and a 500, and two
+	 * races put on one event at once would each set its day without seeing the other's, which the schema
+	 * refuses at commit (V29) as a 500 as well.
+	 *
+	 * <p><b>{@code for no key update} AND NOT {@code for update}, and the difference is one lock mode.</b>
+	 * {@code for update} also stops {@code FOR KEY SHARE}, which a row that points at the event takes on it
+	 * through its foreign key. {@code CommentWriteApi#write} is that row: it takes the member's
+	 * {@code competitor} row {@code for update} first and then inserts the card, which wants the event
+	 * {@code FOR KEY SHARE}; a race change holds the event first and its recount then writes the member a
+	 * {@code message}, which wants his {@code competitor} row {@code FOR KEY SHARE}. Each waits for what the
+	 * other holds, and the database breaks it with a 500 (measured on the review of PR 597, two runs in two,
+	 * and not on {@code main}, which locked the event only through its {@code update}). Held {@code for no
+	 * key update} the event still stops every writer that holds it the same way (two of those, an event's
+	 * delete, and a change of its address, which is a key update), and no longer stops a row that merely
+	 * points at it: the card and the recount cannot wait for each other.
+	 *
+	 * <p><b>Where a card still waits for the event.</b> {@link #theEventNowBeginsOn} rewrites the address,
+	 * and where the year moved that is a key update, which stops {@code FOR KEY SHARE} again from that
+	 * statement to the commit. It comes before the recount in {@link RaceWriteApi#change}, but a recount
+	 * only writes to members who have a run at the race, and a race with a run is not moved into another
+	 * year (P10b, {@code EventWriteApi#wouldStrandAResultInAnotherYear}, asked before anything is written;
+	 * a scratch change that moved a marathon with a counted run into 2028 was answered at once, without
+	 * standing behind any lock), so the two are not in one transaction.
 	 */
 	static Optional<Standing> theEventHeldForThisWrite(JdbcClient db, long id) {
-		return db.sql("select id, slug, name, date, kind from btl_event where id = ? for update")
+		return db.sql("select id, slug, name, date, kind from btl_event where id = ? for no key update")
 				.param(id).query(TheDayOfAnEvent::standing).optional();
 	}
 

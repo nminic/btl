@@ -467,6 +467,71 @@ class APictureTakenBackWhileItIsBeingDecidedOrSentTest {
 	}
 
 	/* ------------------------------------------------------------------------------------------
+	   A HOLD IS ASKED FOR AS THE REMOVAL COMMITS
+	   ------------------------------------------------------------------------------------------ */
+
+	/**
+	 * A HOLD THAT READ THE ROW JUST BEFORE THE REMOVAL TOOK IT IS TOLD THE ROW WAS ALREADY ANSWERED,
+	 * THE SENTENCE A DECISION IN THE SAME PLACE IS TOLD, AND NOT A SERVER FAULT (PENDING, review of
+	 * PR 531, 16.10.2026).
+	 *
+	 * <p>The removal's own delete of the row is made from the test and left uncommitted: the hold
+	 * reads the item (a plain read, which still sees the row), and its insert into
+	 * {@code verification_lock} then stops at the foreign key to the row the removal is taking, which
+	 * is the lock manager showing it stopped. When the removal commits the key is gone and the insert
+	 * fails on {@code verification_lock_verification_fk}. Unhandled that was a 500 for a moderator
+	 * whose only fault was to open a card a moment before its member took the picture back.
+	 *
+	 * <p>The status and the sentence are the claim, as for {@code aDecisionStoppedBehindTheRemoval}:
+	 * a row somebody took out from under the hold is a row that is not waiting any more, which is the
+	 * answer this route already gives at its own check for a row somebody decided. Nothing is held and
+	 * nothing is written about the member.
+	 */
+	@Test
+	void aHoldStoppedBehindTheRemovalIsToldTheRowWasAlreadyAnsweredAndNothingIsHeld() throws Exception {
+		Member he = aMember();
+		Waiting waiting = aPictureWaitsFor(he);
+		ExecutorService pool = Executors.newFixedThreadPool(1);
+		List<Future<Answer>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(removing -> {
+				db.sql("delete from verification where id = ?").param(waiting.row()).update();
+
+				assertThat(BlockedBehindThisHold.count(db)).as("nothing has been submitted yet").isZero();
+
+				submitted.add(pool.submit(() -> hold(waiting)));
+
+				untilStopped(1);
+
+				assertThat(submitted)
+						.as("the hold was answered while the removal was uncommitted, so it never met"
+								+ " the row this case is written to make it meet")
+						.hasSize(1).noneMatch(Future::isDone);
+
+				return null;
+			});
+
+			Answer held = submitted.get(0).get(30, TimeUnit.SECONDS);
+
+			assertThat(held.status())
+					.as("a hold on a row taken back a moment after it was read: %s", held)
+					.isEqualTo(409);
+			assertThat(mapper.readTree(held.body()).path("reason").asString())
+					.isEqualTo(SOMEBODY_ANSWERED_IT_ALREADY);
+
+			assertThat(db.sql("select count(*) from verification_lock where verification_id = ?")
+					.param(waiting.row()).query(Long.class).single())
+					.as("a hold stands on a row that is not there")
+					.isZero();
+			nothingWasWrittenAboutHim(he);
+		}
+		finally {
+			pool.shutdownNow();
+		}
+	}
+
+	/* ------------------------------------------------------------------------------------------
 	   WHAT NOTHING MAY HAVE LEFT
 	   ------------------------------------------------------------------------------------------ */
 
@@ -542,6 +607,13 @@ class APictureTakenBackWhileItIsBeingDecidedOrSentTest {
 							.cookie(new Cookie(SessionCookie.NAME, who.session().secret())))
 					.andReturn().getResponse();
 		});
+	}
+
+	private Answer hold(Waiting waiting) {
+		return asked(() -> http.perform(post("/api/verification/" + waiting.row() + "/hold")
+						.with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, theModerator())))
+				.andReturn().getResponse());
 	}
 
 	private Answer decide(Waiting waiting, boolean approved) {

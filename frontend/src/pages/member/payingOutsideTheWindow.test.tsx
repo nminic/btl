@@ -139,7 +139,7 @@ describe('a member whose fee has lapsed, outside the window', () => {
         'the slip',
       )
 
-      expect(within(slip).getByText(`${season}50`)).toBeVisible()
+      expect(within(slip).getByText(`${season}000050`)).toBeVisible()
       expect(within(slip).getByText(`Članarina za ${season}. godinu`)).toBeVisible()
       expect(readQr(within(slip).getByRole('img', { name: /QR/ }))).toBe(
         ipsPayload({
@@ -147,7 +147,7 @@ describe('a member whose fee has lapsed, outside the window', () => {
           recipient: RECIPIENT_NAME,
           amountRsd: must(rowOf('season').rsd, 'the dinar amount'),
           purpose: paymentPurpose(season),
-          reference: `${season}50`,
+          reference: `${season}000050`,
         }),
       )
       expect(screen.getByText(/Ne registruješ se ponovo/)).toBeVisible()
@@ -210,7 +210,7 @@ describe('a member whose fee has lapsed, outside the window', () => {
     const sends = rowOf('season').eur + rowOf('processing').eur
 
     expect(screen.getByText(sends.toFixed(2).replace('.', ','))).toBeVisible()
-    expect(screen.getByText('202750')).toBeVisible()
+    expect(screen.getByText('2027000050')).toBeVisible()
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
     expect(screen.getByText(NO_RANKING)).toBeVisible()
   }, SLOW)
@@ -244,7 +244,7 @@ describe('the edges of the window, from both sides', () => {
       'the slip',
     )
 
-    expect(within(slip).getByText(`${season}50`)).toBeVisible()
+    expect(within(slip).getByText(`${season}000050`)).toBeVisible()
     expect(within(slip).getByText(dinars(rowOf(key).rsd))).toBeVisible()
     expect(screen.queryAllByText(NO_RANKING)).toHaveLength(ranking ? 1 : 0)
   }, SLOW)
