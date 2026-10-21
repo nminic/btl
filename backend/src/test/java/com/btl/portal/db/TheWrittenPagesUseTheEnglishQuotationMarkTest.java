@@ -100,12 +100,12 @@ class TheWrittenPagesUseTheEnglishQuotationMarkTest extends DatabaseTest {
 	private static final Map<String, String> THE_SIGN_OFFS_IN_SERBIAN = Map.of(
 			"pravilnik", "Poslednja izmena: 16.10.2026.",
 			"uslovi-koriscenja", "Poslednja izmena: 10.10.2026.",
-			"politika-privatnosti", "Poslednja izmena: 18.10.2026.");
+			"politika-privatnosti", "Poslednja izmena: 21.10.2026.");
 
 	private static final Map<String, String> THE_SIGN_OFFS_IN_ENGLISH = Map.of(
 			"pravilnik", "Last amended: 16.10.2026.",
 			"uslovi-koriscenja", "Last amended: 10.10.2026.",
-			"politika-privatnosti", "Last amended: 18.10.2026.");
+			"politika-privatnosti", "Last amended: 21.10.2026.");
 
 	@Autowired
 	JdbcTemplate jdbc;
@@ -283,7 +283,7 @@ class TheWrittenPagesUseTheEnglishQuotationMarkTest extends DatabaseTest {
 	}
 
 	@Test
-	void theSignOffsAreWhereV57V58AndV60LeftThem() {
+	void theSignOffsAreWhereV57V58AndV70LeftThem() {
 		for (Map.Entry<String, String> signOff : THE_SIGN_OFFS_IN_SERBIAN.entrySet()) {
 			int position = signOff.getKey().equals("pravilnik") ? 19 : signOff.getKey().equals("politika-privatnosti") ? 7 : 12;
 
