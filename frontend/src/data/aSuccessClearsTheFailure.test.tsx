@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SessionProvider } from '../session/SessionProvider'
 import { answeredWith, serverThat } from '../test/serverAnswers'
 import { setupUser } from '../test/user'
-import { clearResourceCache, type ResourceName } from './client'
+import { arrivedResource, clearResourceCache, type ResourceName } from './client'
 import { useInbox, useResource, useWhatIsWaiting, type ResourceState } from './useResource'
 
 /* EVERY WAIT OF THIS FILE IS SHORTER THAN THE CASE THAT IS WAITING (review of PR 618, round 1). The
@@ -680,5 +680,185 @@ describe('an answer that the cache dropped before it came', () => {
     await waitFor(() => expect(text('Z')).toContain('ready: Fresh'))
     await waitFor(() => expect(text('Y')).toContain('ready: Fresh'))
     await waitFor(() => expect(text('W')).toContain('ready: Fresh'))
+  })
+})
+
+/**
+ * A READ THAT WAS DROPPED AND FAILS LATE REMOVES NOTHING BUT ITS OWN ENTRY (review of PR 618, round 2,
+ * a high finding, measured).
+ *
+ * <p><b>What was measured.</b> The `.catch` of `loadResource` deleted the entry of its address
+ * unconditionally. A read thrown away by `clearResourceCache` is not the one the visit holds, but a
+ * newer read of the same address is, and when the OLD one failed after the newer had become the held
+ * entry, it deleted the newer's entry. The newer read's answer was then not kept (`inFlight.get(at)`
+ * is not it), `isTheReadHeld` said no, and a reader that was showing a failure of the address was never
+ * told it had arrived: the decision of 20.10.2026 („Kad jedno mesto uspešno pročita istu adresu, greška
+ * nestaje svuda gde se ta adresa čita") broke on the one order of events the guard of round 1 had not
+ * been tried on. The same deletion also left the address with no read the visit held, so the NEXT
+ * reader of it asked the server a third time for what the visit was already waiting for.
+ *
+ * <p><b>The axes are the answer.</b> <i>Who is hurt</i> by the deletion: a reader that shows a failure
+ * and must be told (leagues, which depend on nobody), and a reader that arrives later and must JOIN the
+ * read that is out instead of starting one (the inbox, through the hook a real screen calls, inside the
+ * provider it uses, with the caller changed under the first panel). The old read ends the one way these
+ * cases are about, by FAILING; its answering is held by the cases above.
+ */
+
+const FRESH = 'B-FRESH'
+
+const INBOX_LINE = {
+  id: 903,
+  from: 'Balkanska trkačka liga',
+  subject: 'placeholder',
+  body: 'Samo za drugog člana.',
+  date: '2026-10-02',
+  read: false,
+  teamInvitationId: null,
+  pairInviteId: null,
+}
+
+const useTheInbox = (mine: string) => useInbox(mine)
+
+/** A panel with a name of its own, for the cases that draw two of them side by side. */
+function NamedPanel({ label, mine, use }: { label: string; mine: string; use: (mine: string) => ResourceState<unknown> }) {
+  return (
+    <section aria-label={label}>
+      <p>{wordsOfAnything(use(mine))}</p>
+    </section>
+  )
+}
+
+describe('a dropped read that fails after a newer read of the same address is the one the visit holds', () => {
+  it('does not take the newer read away: its answer is kept and told to the reader that shows a failure', async () => {
+    const dropped = holding()
+    const fresh = holding()
+    let calls = 0
+
+    server = serverThat((path) => {
+      if (path !== LEAGUES) {
+        return null
+      }
+
+      calls += 1
+
+      if (calls === 1) {
+        return answeredWith(500)
+      }
+
+      return calls === 2 ? dropped.answer() : fresh.answer()
+    })
+
+    /* W shows the failure of the address; X asks again, and its read is the second. */
+    const { rerender } = render(<Reader name="leagues" label="W" />)
+
+    await waitFor(() => expect(text('W')).toContain('failed'))
+    rerender(
+      <>
+        <Reader name="leagues" label="W" />
+        <Reader name="leagues" label="X" />
+      </>,
+    )
+    await waitFor(() => expect(timesAsked(LEAGUES)).toBe(2))
+
+    /* The visit drops the address while X's read is out, and Y's read, the third, is the one it holds. */
+    act(() => {
+      clearResourceCache('leagues')
+    })
+    rerender(
+      <>
+        <Reader name="leagues" label="W" />
+        <Reader name="leagues" label="X" />
+        <Reader name="leagues" label="Y" />
+      </>,
+    )
+    await waitFor(() => expect(timesAsked(LEAGUES)).toBe(3))
+
+    /* The dropped read FAILS now, while Y's read is still out. */
+    act(() => {
+      dropped.release(answeredWith(500))
+    })
+    await aMomentForTheOldAnswer()
+
+    expect(text('Y')).toContain('loading')
+    expect(timesAsked(LEAGUES), 'the failure of a dropped read made somebody ask the server').toBe(3)
+
+    act(() => {
+      fresh.release(serving(FRESH)())
+    })
+
+    await waitFor(() => expect(text('Y')).toContain(`ready: ${FRESH}`))
+    await aMomentForTheOldAnswer()
+
+    expect(text('W'), 'the reader showing the failure was never told the address had arrived').toContain(
+      `ready: ${FRESH}`,
+    )
+    expect(text('X')).toContain(`ready: ${FRESH}`)
+    expect(arrivedResource('leagues'), 'the answer of the read the visit held was not kept').toEqual([FRESH])
+    expect(timesAsked(LEAGUES)).toBe(3)
+  })
+
+  it('leaves the address with a read the next reader joins, and the server is asked twice and no more', async () => {
+    const old = holding()
+    const fresh = holding()
+    let calls = 0
+
+    server = serverThat((path) => {
+      if (path !== '/api/inbox') {
+        return null
+      }
+
+      calls += 1
+
+      if (calls === 1) {
+        return old.answer()
+      }
+
+      /* Whoever asks a third time is refused, which is what makes a third request show on the screen
+         of the reader that made it and not only in a count. */
+      return calls === 2 ? fresh.answer() : answeredWith(500)
+    })
+
+    const inbox = (labels: string[]) => (
+      <SessionProvider>
+        {labels.map((label) => (
+          <NamedPanel key={label} label={label} mine={HERS} use={useTheInbox} />
+        ))}
+      </SessionProvider>
+    )
+    const { rerender } = render(
+      <SessionProvider>
+        <NamedPanel label="P1" mine={MINE} use={useTheInbox} />
+      </SessionProvider>,
+    )
+
+    await waitFor(() => expect(timesAsked('/api/inbox')).toBe(1))
+
+    /* The caller changes under the panel: the previous caller's read is dropped and the new caller's
+       is the second, the one the visit holds. */
+    rerender(inbox(['P1']))
+    await waitFor(() => expect(timesAsked('/api/inbox')).toBe(2))
+
+    /* The previous caller's read FAILS, late. */
+    act(() => {
+      old.release(answeredWith(500))
+    })
+    await aMomentForTheOldAnswer()
+
+    /* A second panel of the new caller opens. The read the visit holds is out: it joins it. */
+    rerender(inbox(['P1', 'P2']))
+    await aMomentForTheOldAnswer()
+
+    expect(timesAsked('/api/inbox'), 'the second panel asked the server for what the visit was waiting for').toBe(2)
+
+    act(() => {
+      fresh.release(json([{ ...INBOX_LINE, subject: FRESH }]))
+    })
+
+    await waitFor(() => expect(text('P1')).toContain(FRESH))
+    await waitFor(() => expect(text('P2')).toContain(FRESH))
+    expect(text('P2'), 'the second panel stayed in a failure beside the new caller\'s own mail').not.toContain(
+      'failed',
+    )
+    expect(timesAsked('/api/inbox')).toBe(2)
   })
 })

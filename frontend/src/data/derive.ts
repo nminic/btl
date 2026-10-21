@@ -608,9 +608,10 @@ export type InTheTeam = { competitor: Competitor; since: number | null }
  * both names when the reader changes (`session/theCachesFollowTheReader.ts`) - this said that only
  * some screens drop `competitors` after a write, which was how a list read as somebody signed in
  * came to stand beside teams read as a visitor on every sign in after the front page. What is left
- * is smaller and is not closed: a screen that is open when the reader changes keeps what it read,
- * and an answer already on its way lands in the cache afterwards (`loadResource` writes it; the
- * boundary is written in `session/theCachesFollowTheReader.ts`). Then both doors name the same
+ * is smaller and is not closed: a screen that is open when the reader changes keeps what it read
+ * (the boundary is written in `session/theCachesFollowTheReader.ts`). An answer already on its way
+ * no longer lands in the cache afterwards: `loadResource` keeps it only while its promise is still
+ * the read the visit holds, and only the screen that asked gets it. Then both doors name the same
  * member, and he is still one member. The record is taken over the team's word because it is his
  * own door.
  *

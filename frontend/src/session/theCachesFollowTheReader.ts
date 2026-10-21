@@ -150,12 +150,13 @@ export function readerOf(memberNumber: string | null, account: number | null): s
  * that request reaches the server before the session row is deleted (`SignOutApi`) it is
  * answered as the member and fills the cache again. Reasoned from those two files; not measured
  * against a real server.</li>
- * <li>An answer already on its way when the reader changes still lands in the cache:
- * `loadResource` writes what arrived after `clearResourceCache` has thrown the promise away.
- * That needs a request in flight at exactly that moment, which a sign in (a form to fill in)
- * all but rules out and a sign out meets only by being pressed while the screen is still
- * loading. Closing it is a change to the cache every screen goes through, and it is its own
- * change.</li>
+ * <li>An answer already on its way when the reader changes reaches the screen that asked for
+ * it and nothing else (review of PR 618): `loadResource` writes what arrived into the cache, and
+ * tells the readers that show a failure of the address, only while its promise is still the one
+ * the visit holds, and `clearResourceCache` has thrown that promise away. A read of the same
+ * address started after the drop is not undone by an older one that fails late either: a promise
+ * removes only its own entry. What is left is the first item, a screen that is open and keeps
+ * what it read.</li>
  * </ul>
  *
  * @param reader who is asking, from {@link readerOf}
