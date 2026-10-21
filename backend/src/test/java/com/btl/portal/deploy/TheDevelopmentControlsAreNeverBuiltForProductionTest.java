@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.TreeMap;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -90,6 +91,23 @@ class TheDevelopmentControlsAreNeverBuiltForProductionTest {
 	private static final Pattern ONLY_WHAT_THE_STACK_HANDS_ON = Pattern.compile(
 			"(?i:ARG)\\s+" + FLAG
 					+ "|(?i:ENV)\\s+" + FLAG + "=\\$(\\{" + FLAG + "\\}|" + FLAG + ")");
+
+	/**
+	 * The mode the build tool reads, and the one value of it a Dockerfile may write. See
+	 * {@link #linesSettingTheBuildModeToAnythingButProduction}.
+	 */
+	private static final String MODE = "NODE_ENV";
+
+	/** The name as a name: not the end of a longer one, not the start of one. */
+	private static final Pattern THE_MODE_AS_A_NAME = Pattern.compile("(?<![A-Za-z0-9_])" + MODE + "(?![A-Za-z0-9_])");
+
+	/**
+	 * What may follow the mode's name for the line to be harmless: the one literal value
+	 * {@code production}, after {@code =} or after whitespace (the old two-word {@code ENV}),
+	 * optionally quoted, and not the start of a longer word.
+	 */
+	private static final Pattern PRODUCTION_AND_NOTHING_LONGER = Pattern.compile(
+			"^(=|\\s+)[\"']?production[\"']?(?![\\w-])");
 
 	@Test
 	void onlyAStackWhoseBackendIsToldAnAddressOfItsOwnHandsTheFlagToItsScreens() throws Exception {
@@ -172,6 +190,206 @@ class TheDevelopmentControlsAreNeverBuiltForProductionTest {
 						+ " measured over nothing, and the argument a stack hands on reaches no"
 						+ " build; if the controls are gone for good, this class goes with them", FLAG)
 				.isTrue();
+	}
+
+	/**
+	 * NO DOCKERFILE A STACK BUILDS PUTS THE BUILD IN ANY MODE BUT PRODUCTION.
+	 *
+	 * <p><b>The flag is not the only way in.</b> {@code frontend/src/dev/tools.ts} switches the
+	 * development controls on when {@code import.meta.env.DEV || VITE_DEV_TOOLS === '1'}, and
+	 * {@code DEV} is true whenever the build tool is run with {@code NODE_ENV} set to
+	 * {@code development}. A Dockerfile that said {@code ENV NODE_ENV=development} in front of
+	 * {@code RUN npm run build} was passed by every case above (measured 20.10.2026, a review
+	 * of the guard: {@code Tests run: 19, Failures: 0}), while {@code NODE_ENV=development vite
+	 * build} with no flag at all gave a production bundle with {@code DateSwitch} 8 times,
+	 * {@code RoleSwitch} 8 times and the development build of React. The frontend gate does not
+	 * see it either: it builds with {@code NODE_ENV} forced to {@code production}.
+	 *
+	 * <p>So every line of every Dockerfile a stack builds that names {@code NODE_ENV}, comments
+	 * left out, has to give it the one value {@code production}, and an {@code ARG} that names it
+	 * is refused outright: a build argument is visible to every {@code RUN}, so a stack could hand
+	 * it a value of its own whatever default the line carries. A Dockerfile that never names the
+	 * mode is the normal case and passes: the build tool then defaults to production. One line at
+	 * a time, as with the flag, so a line can be refused wrongly but never passed wrongly.
+	 *
+	 * <p><b>What it does not see, written down:</b> {@code --mode development}, which is
+	 * measured harmless (it selects which {@code .env.<mode>} file is read, and none is tracked);
+	 * the name assembled so that it never stands whole on a line; and a {@code .env} file under
+	 * {@code frontend/}, which is the limit the flag's case already records.
+	 */
+	@Test
+	void noDockerfileAStackBuildsPutsTheBuildInAnyModeButProduction() throws Exception {
+		assertThat(everyDockerfileAStackBuilds())
+				.as("no stack builds a Dockerfile at all, so the rule above was measured over nothing")
+				.isNotEmpty();
+
+		for (Map.Entry<Path, List<String>> built : everyDockerfileAStackBuilds().entrySet()) {
+			assertThat(built.getKey())
+					.as("%s builds %s, which is not a file this case can read", built.getValue(),
+							built.getKey())
+					.isRegularFile();
+
+			assertThat(linesSettingTheBuildModeToAnythingButProduction(
+					Files.readAllLines(built.getKey(), StandardCharsets.UTF_8)))
+					.as("%s, built by %s, puts the build in a mode other than production, or leaves"
+							+ " the mode to a build argument: with %s at development the build tool"
+							+ " draws the role switch and the switch of the day into the bundle"
+							+ " whatever %s says (ADL A7). Leave the mode unnamed, or write exactly"
+							+ " `ENV %s=production`", built.getKey(), built.getValue(), MODE, FLAG,
+							MODE)
+					.isEmpty();
+		}
+	}
+
+	/**
+	 * AND THE BUILD COMMAND CARRIES THE MODE ITSELF.
+	 *
+	 * <p>The case above refuses a line that sets another mode; this one removes the question: the
+	 * {@code RUN} that builds the bundle is written {@code NODE_ENV=production npm run build}, so
+	 * no earlier line, base image or argument can put that one command in development. Every
+	 * line of every Dockerfile a stack builds that runs {@code npm run build} must have
+	 * {@code NODE_ENV=production} in front of it.
+	 */
+	@Test
+	void theBuildCommandNamesProductionInFrontOfItself() throws Exception {
+		boolean oneBuilds = false;
+
+		for (Map.Entry<Path, List<String>> built : everyDockerfileAStackBuilds().entrySet()) {
+			List<String> lines = Files.readAllLines(built.getKey(), StandardCharsets.UTF_8);
+
+			oneBuilds |= lines.stream().anyMatch(one -> !one.strip().startsWith("#") && one.contains("npm run build"));
+
+			assertThat(buildLinesNotPinnedToProduction(lines))
+					.as("%s, built by %s, runs the bundle build without `%s=production` in front of"
+							+ " it, so an earlier line could put the build in development", built.getKey(),
+							built.getValue(), MODE)
+					.isEmpty();
+		}
+
+		assertThat(oneBuilds)
+				.as("no Dockerfile a stack builds runs `npm run build`, so this case measured nothing")
+				.isTrue();
+	}
+
+	@ParameterizedTest(name = "pinned: {0}")
+	@MethodSource("buildLinesAndWhetherTheyArePinned")
+	void tellsAPinnedBuildFromAnUnpinnedOne(String way, String dockerfile, boolean pinned) {
+		assertThat(buildLinesNotPinnedToProduction(dockerfile.lines().toList()).isEmpty())
+				.as("%s, written as%n%s", way, dockerfile)
+				.isEqualTo(pinned);
+	}
+
+	static Stream<Arguments> buildLinesAndWhetherTheyArePinned() {
+		return Stream.of(
+				Arguments.of("the pin in front", "RUN " + MODE + "=production npm run build", true),
+				Arguments.of("no pin", "RUN npm run build", false),
+				Arguments.of("the pin on an earlier line only", "ENV " + MODE + "=production\nRUN npm run build", false),
+				Arguments.of("the pin after the command", "RUN npm run build " + MODE + "=production", false),
+				Arguments.of("development in front", "RUN " + MODE + "=development npm run build", false),
+				Arguments.of("a comment that says the command", "# RUN npm run build", true),
+				Arguments.of("no build at all", "FROM nginx:1.29-alpine", true));
+	}
+
+	/** Every line that runs {@code npm run build} without {@code NODE_ENV=production} before it. */
+	static List<String> buildLinesNotPinnedToProduction(List<String> dockerfile) {
+		List<String> refused = new ArrayList<>();
+
+		for (int at = 0; at < dockerfile.size(); at++) {
+			String line = dockerfile.get(at).strip();
+			int command = line.indexOf("npm run build");
+
+			if (!line.startsWith("#") && command >= 0
+					&& !Pattern.compile(MODE + "=production\\s").matcher(line.substring(0, command)).find()) {
+				refused.add("line " + (at + 1) + ": " + line);
+			}
+		}
+
+		return refused;
+	}
+
+	/**
+	 * THE JUDGE OF noDockerfileAStackBuildsPutsTheBuildInAnyModeButProduction, HELD ON THE SHAPES IT HAS TO TELL APART, for the same reason
+	 * as the one below it: the Dockerfile this repository ships names the mode only as production, so the case
+	 * of that name never sees the judge refuse anything.
+	 */
+	@ParameterizedTest(name = "refuses {0}")
+	@MethodSource("waysToPutTheBuildInAnotherMode")
+	void refusesAnotherModeHoweverTheLineIsWritten(String way, String dockerfile) {
+		assertThat(linesSettingTheBuildModeToAnythingButProduction(dockerfile.lines().toList()))
+				.as("%s, written as%n%s", way, dockerfile)
+				.isNotEmpty();
+	}
+
+	static Stream<Arguments> waysToPutTheBuildInAnotherMode() {
+		return Stream.of(
+				Arguments.of("development on the environment variable", "ENV " + MODE + "=development"),
+				Arguments.of("the old two-word form", "ENV " + MODE + " development"),
+				Arguments.of("a value in front of the build command",
+						"RUN " + MODE + "=development npm run build"),
+				Arguments.of("the instruction in lower case", "env " + MODE + "=development"),
+				Arguments.of("an empty value", "ENV " + MODE + "="),
+				Arguments.of("a value taken from a build argument", "ENV " + MODE + "=$" + MODE),
+				Arguments.of("a default taken in the expansion", "ENV " + MODE + "=${" + MODE + ":-development}"),
+				Arguments.of("a longer word that starts with production", "ENV " + MODE + "=production-like"),
+				Arguments.of("the name among others on a continued line",
+						"ENV OTHER=1 \\\n    " + MODE + "=development"),
+				Arguments.of("an argument with no value", "ARG " + MODE),
+				Arguments.of("an argument whose default is production, which a stack can still replace",
+						"ARG " + MODE + "=production"),
+				Arguments.of("a quoted development", "ENV " + MODE + "=\"development\""));
+	}
+
+	@ParameterizedTest(name = "leaves alone {0}")
+	@MethodSource("waysToLeaveTheBuildModeAlone")
+	void leavesAloneWhatPutsTheBuildInProduction(String way, String dockerfile) {
+		assertThat(linesSettingTheBuildModeToAnythingButProduction(dockerfile.lines().toList()))
+				.as("%s, written as%n%s", way, dockerfile)
+				.isEmpty();
+	}
+
+	static Stream<Arguments> waysToLeaveTheBuildModeAlone() {
+		return Stream.of(
+				Arguments.of("a Dockerfile that never names the mode", "FROM nginx:1.29-alpine"),
+				Arguments.of("production on the environment variable", "ENV " + MODE + "=production"),
+				Arguments.of("production quoted", "ENV " + MODE + "='production'"),
+				Arguments.of("production in the two-word form", "env " + MODE + " production"),
+				Arguments.of("production in front of the build command",
+						"RUN " + MODE + "=production npm run build"),
+				Arguments.of("a comment that says the refused thing",
+						"# ENV " + MODE + "=development would draw the switches"),
+				Arguments.of("a longer name that merely contains the mode", "ENV MY_" + MODE + "_X=development"));
+	}
+
+	/**
+	 * Every line that names the build mode and gives it anything but the literal {@code production},
+	 * each with its number, and every {@code ARG} that names it at all. A comment is a line whose
+	 * first character is {@code #}. A line that names the mode twice is judged on each.
+	 */
+	static List<String> linesSettingTheBuildModeToAnythingButProduction(List<String> dockerfile) {
+		List<String> refused = new ArrayList<>();
+
+		for (int at = 0; at < dockerfile.size(); at++) {
+			String line = dockerfile.get(at).strip();
+
+			if (line.startsWith("#")) {
+				continue;
+			}
+
+			Matcher name = THE_MODE_AS_A_NAME.matcher(line);
+			boolean refusedHere = false;
+
+			while (name.find() && !refusedHere) {
+				refusedHere = line.regionMatches(true, 0, "ARG", 0, 3) && line.length() > 3
+						&& Character.isWhitespace(line.charAt(3))
+						|| !PRODUCTION_AND_NOTHING_LONGER.matcher(line.substring(name.end())).find();
+			}
+
+			if (refusedHere) {
+				refused.add("line " + (at + 1) + ": " + line);
+			}
+		}
+
+		return refused;
 	}
 
 	/**

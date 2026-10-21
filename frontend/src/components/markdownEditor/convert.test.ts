@@ -20,15 +20,15 @@ const { nodes, marks } = schema
 function said(text: string): unknown {
   return blocksOf(text).map((block) => {
     if (block.kind === 'heading') {
-      return { ...block, text: inlineOf(block.text, false) }
+      return { ...block, text: inlineOf(block.text, 'mail') }
     }
 
     if (block.kind === 'paragraph') {
-      return { kind: 'paragraph', pieces: inlineOf(block.lines.join('\n'), false) }
+      return { kind: 'paragraph', pieces: inlineOf(block.lines.join('\n'), 'mail') }
     }
 
     if (block.kind === 'list') {
-      return { ...block, items: block.items.map((item) => inlineOf(item, false)) }
+      return { ...block, items: block.items.map((item) => inlineOf(item, 'mail')) }
     }
 
     return block
@@ -56,6 +56,53 @@ describe('a text opened in the editor and left as it is', () => {
     expect(doc.childCount).toBe(1)
     expect(doc.child(0).type).toBe(nodes.paragraph)
     expect(toMarkdown(doc.content)).toBe('')
+  })
+})
+
+/** Whether any of the words of a document carry a mark of this kind. */
+function carries(doc: Node, name: 'em' | 'link'): boolean {
+  return doc.rangeHasMark(0, doc.content.size, marks[name])
+}
+
+describe('a text opened in the editor shows what the page draws for it', () => {
+  /* The editor does not know which text it holds, so it reads as the strictest of the texts it
+     writes: the host of the address under the words of a link is asked (PDL P15, 03.10.2026, with
+     its addition of 17.10.2026), and the mailboxes of a line are the links the page makes of them
+     (`mails.ts`). */
+  it('shows the words of a link whose address the page refuses as the words they are, every character of them', () => {
+    const typed = '[x](https://www.runtrace.net@zlo.example)'
+    const doc = fromMarkdown(typed)
+
+    expect(carries(doc, 'link')).toBe(false)
+    expect(doc.textContent).toBe(typed)
+    expect(said(toMarkdown(doc.content))).toEqual(said(typed))
+  })
+
+  it('shows a link to an address the page accepts as a link, which is what the check is for', () => {
+    const doc = fromMarkdown('[x](https://www.runtrace.net) i [y](/pravilnik)')
+
+    expect(carries(doc, 'link')).toBe(true)
+    expect(doc.textContent).toBe('x i y')
+  })
+
+  it('shows two mailboxes with an underscore in one paragraph as two mailboxes and not as an italic piece between them', () => {
+    const typed = 'pera_peric@gmail.com ili mika_mikic@gmail.com'
+    const doc = fromMarkdown(typed)
+
+    /* The page asks for the mailboxes before it asks for italic, so each name keeps its underscore. */
+    expect(inlineOf(typed, 'mail').filter((piece) => piece.kind === 'address')).toHaveLength(2)
+    expect(carries(doc, 'em')).toBe(false)
+    expect(doc.textContent).toBe(typed)
+    /* Written out, the underscores are escaped words, and the page still finds the two mailboxes. */
+    expect(toMarkdown(doc.content)).toBe(String.raw`pera\_peric@gmail.com ili mika\_mikic@gmail.com`)
+    expect(inlineOf(toMarkdown(doc.content), 'mail').filter((piece) => piece.kind === 'address')).toHaveLength(2)
+  })
+
+  it('still reads italic where no mailbox is, and inside a mailbox nothing is', () => {
+    const doc = fromMarkdown('_koso_ i _pera_peric@gmail.com_')
+
+    expect(carries(doc, 'em')).toBe(true)
+    expect(doc.textContent).toBe('koso i pera_peric@gmail.com')
   })
 })
 
