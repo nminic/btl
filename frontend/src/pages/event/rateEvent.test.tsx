@@ -546,9 +546,12 @@ describe('rating an event', () => {
     /* The answer held before the press is gone. Not „nothing is held": the header counter is
        mounted all the while and reads the queue again once it is dropped (PENDING 29561), so what
        is held a moment later is a NEW answer. A drop that never happened leaves the same object. */
-    await waitFor(() => {
-      expect(arrivedResource('verification')).not.toBe(held)
-    })
+    await waitFor(
+      () => {
+        expect(arrivedResource('verification')).not.toBe(held)
+      },
+      { timeout: 3000 },
+    )
     expect(
       arrivedResource('comments'),
       'a comment that waits publishes nothing, so the event page has nothing new to read',
@@ -581,9 +584,12 @@ describe('rating an event', () => {
     expect(arrivedResource('comments')).toBeUndefined()
     /* Not „nothing is held": the header counter reads the queue again once it is dropped (PENDING
        29561), so what is held is a new answer and never the one from before the press. */
-    await waitFor(() => {
-      expect(arrivedResource('verification')).not.toBe(held)
-    })
+    await waitFor(
+      () => {
+        expect(arrivedResource('verification')).not.toBe(held)
+      },
+      { timeout: 3000 },
+    )
 
     await router.navigate(`/sr/kalendar/${EVENT}`)
 

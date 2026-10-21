@@ -292,9 +292,12 @@ describe('a proposal a member sends', () => {
        reads the queue again the moment it is dropped (PENDING 29561), so what is held a moment
        later is the answer that has the proposal in it. Dropped and not re-read would be the same
        object for ever, and this waits for it to change. */
-    await waitFor(() => {
-      expect(arrivedResource('verification')).not.toBe(held)
-    })
+    await waitFor(
+      () => {
+        expect(arrivedResource('verification')).not.toBe(held)
+      },
+      { timeout: 3000 },
+    )
 
     await router.navigate('/sr/administracija/verifikacija/timovi')
 

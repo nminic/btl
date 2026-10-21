@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, configure, getConfig, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { clearResourceCache } from '../data/client'
 import { fakeQueue } from '../test/fakeQueue'
@@ -28,6 +28,10 @@ import { setupUser } from '../test/user'
  * (the readers of every other name are as they were, `data/useResource.ts`). Where the drop came
  * from: a real write (a team proposed through the form) and the drop alone.
  */
+
+/* Every wait is given less time than a case has, so a counter that never moves fails on its own
+   assertion and not on the clock of the case, which says nothing about what was wrong. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 const stops: (() => void)[] = []
 
@@ -147,4 +151,10 @@ describe('the counter in the header', () => {
       expect(timesAskedForTheQueue(server.asked)).toBe(held + 2)
     })
   }, SLOW)
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
 })
