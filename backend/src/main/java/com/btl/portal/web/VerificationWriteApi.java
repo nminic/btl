@@ -2454,6 +2454,22 @@ class VerificationWriteApi {
 
 		tell(proposal.competitorId(), "Tim je prihvaćen",
 				"Vaš tim \"" + proposal.name() + "\" je prihvaćen i od sada ga vodite.");
+
+		/* AND THE TEAMS THAT HAD ALREADY ASKED HIM ARE TOLD, because the approval is the third door a
+		   member goes into a team by. PDL 06.09.2026: „Tim čiji je poziv ostao neodgovoren dobija poruku
+		   u sandučetu portala", and it „javlja se bez obzira kojim putem je član ušao, jer je poziv koji
+		   je ostao bez odgovora isti događaj u oba slučaja". Until now only the two doors of
+		   `TeamJoiningWriteApi` called it, so the team of a man a moderator made a founder never learnt
+		   he was no longer to be had. The same statement and the same sentences, called rather than
+		   copied, and inside the transaction the claim runs in. The team just made is the one he joined,
+		   which that statement leaves out. */
+		String[] him = db.sql("select first_name || ' ' || last_name, gender from competitor where id = ?")
+				.param(proposal.competitorId())
+				.query((row, number) -> new String[] { row.getString(1), row.getString(2) })
+				.single();
+
+		TeamJoiningWriteApi.theOtherTeamsThatAskedHim(db, proposal.competitorId(), team, him[0], him[1],
+				proposal.name());
 	}
 
 	/**
