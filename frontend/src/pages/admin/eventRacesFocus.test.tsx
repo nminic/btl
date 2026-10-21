@@ -131,6 +131,28 @@ describe('the box of a race the reader pressed Enter in, while the press makes t
     await untilTheEnd()
   }, SLOW)
 
+  it('is still the box of the second race when the first race is taken away', async () => {
+    /* A KEY THAT DOES NOT FOLLOW THE ROW: by the place of the row in the table, the second race
+       would be drawn in the first race's box and its own box would be taken out of the page with the
+       reader's focus in it, and two rows sharing one place would be told apart by nothing. The row is
+       found by the box it has been typed into, which is the same node before and after. */
+    const user = setupUser()
+
+    renderAt(THE_LIST, 'superadmin', '000001')
+    await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    const [, second] = screen.getAllByLabelText(/^Dužina/)
+    const box = must(second, 'the length of the second race')
+
+    await user.type(box, '5')
+    await user.click(screen.getByRole('button', { name: 'Obriši 1. trku' }))
+
+    expect(box.isConnected, 'the second race was drawn again when the first was taken away').toBe(true)
+    expect(box).toHaveValue('5')
+  }, SLOW)
+
   it('stays the box he is in, on the first row of a new event of two', async () => {
     const user = setupUser()
 

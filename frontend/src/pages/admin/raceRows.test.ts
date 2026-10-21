@@ -221,6 +221,17 @@ describe('the races of an event while they are being entered', () => {
     expect(fresh.limitHours).toBe('')
   })
 
+  it('gives every row a place of its own, which a copy of the row keeps and a saved identity does not change', () => {
+    /* `place` is what the table keys a row by (`EventRaces.tsx`), so the press that hands a row its
+       identity must not move it, and two rows of one table must not share it. */
+    const one = newRaceRow('Događaj', '17/10/2026')
+    const other = newRaceRow('Događaj', '17/10/2026')
+    const served = rowsOf([race(3, '2026-10-17', 5), race(1, '2026-10-18', 21.1)], fieldDate)
+
+    expect(new Set([one.place, other.place, ...served.map((each) => each.place)]).size).toBe(4)
+    expect({ ...one, id: '77', name: 'Drugo' }.place).toBe(one.place)
+  })
+
   it('asks a length only of a race that fixes one', () => {
     /* A timed race and a free race carry nought, which is outside the bounds on
        purpose. Without this the table would refuse a length neither of them has,
