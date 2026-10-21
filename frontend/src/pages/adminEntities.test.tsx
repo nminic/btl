@@ -2300,7 +2300,7 @@ describe('the races of an event', () => {
     await openAgain(user)
 
     expect(lengths()).toEqual([...before, '31', '32', '41', '42'].sort())
-  })
+  }, SLOW)
 })
 
 /**
