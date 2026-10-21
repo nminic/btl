@@ -2,10 +2,11 @@ import { useRef, useState } from 'react'
 import { useI18n } from '../../i18n/useI18n'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
-import { combinePair, useCompetitors, useWhatIsWaiting } from '../../data/useResource'
+import { useWhatIsWaiting } from '../../data/useResource'
 import type { WhatIsWaiting } from '../../data/types'
 import { ServerSaid } from '../account/ServerSaid'
 import type { Answer } from '../account/askTheServer'
+import { useHisOwnRecord } from '../profile/useHisOwnRecord'
 import {
   WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE,
   WHEN_ANSWERING_A_TEAM_INVITE,
@@ -65,6 +66,28 @@ import { ActionButton } from '../../components/ActionButton'
  * telling of what the reader is already looking at.
  * </ul>
  *
+ * <p><b>THE READER'S OWN SEX COMES FROM `GET /api/me`, NEVER FROM THE PUBLIC LIST, AND THE BUTTONS DO
+ * NOT WAIT FOR IT.</b> The one sentence this screen changes with the sex says what the READER did
+ * (PDL P18, 18.10.2026: „Pol je onog člana o kome rečenica govori"), and the list of members is the
+ * wrong place to look it up: `/api/competitors` is `where c.active`, so a woman whose fee has lapsed
+ * is on no row of it and read „ušao" (PENDING, review of PR 556, measured by drawing the screen).
+ * `GET /api/me` answers one row and that row is hers, which is the door `profile/useHisOwnRecord.ts`
+ * opens for her own profile. Two things follow, both measured in `member/teamInviteAnswered.test.tsx`:
+ *
+ * <ul>
+ * <li><b>The buttons depend on what she waits on and on nothing else.</b> They used to stand inside a
+ * `Resource` over BOTH reads, so a list of members that could not be read (a 500) took „Prihvati" and
+ * „Odbij" away and put „Podaci se ne mogu učitati" in their place, over a question the server still
+ * held, for the sake of one word (PENDING, same review). The sex is read beside the list, not under
+ * it, and a read that has not landed or has failed draws the buttons all the same.
+ * <li><b>The word is the portal's own for a reader whose sex it was not told</b>: not a woman, which
+ * is the arrangement `member/InvitationAnswer.tsx` keeps for the same fact and was this screen's
+ * before the move (my reading that it carries over to a read that failed, not a recorded decision).
+ * <b>While it is still being read</b> the one sentence that changes with it is not drawn at all,
+ * so a woman is never shown the man's word for the moment it takes to be told otherwise. „Odbij"
+ * stands beside the gap, and so does everything else on the screen.
+ * </ul>
+ *
  * <p><b>The loader carries no label, and that is a refusal to invent a word.</b>
  * `components/Resource` names a part when the dictionary has a name for it
  * (`event.races`, `event.results`); there is no name for „what you are waiting on" and one
@@ -73,19 +96,24 @@ import { ActionButton } from '../../components/ActionButton'
  * the middle of.
  */
 export function ServedTeamInvite({ invitation, mine }: { invitation: number; mine: string }) {
+  /* HER sex, the reader's, because the one sentence this changes says what the reader did (PDL
+     P18, 18.10.2026, „I tri rečenice na ekranima sa „ušao/la” biraju reč po polu"). Read off her
+     own record and not off the public list, and read BESIDE what she waits on rather than under
+     it, so that the buttons never wait for it (see above). Asked as a question with two answers
+     rather than read off the record: a record that has not come, or could not be read, is simply
+     not a woman here. */
+  const him = useHisOwnRecord(mine)
+
   return (
-    <Resource state={combinePair(useWhatIsWaiting(mine), useCompetitors())} inline>
-      {([waiting, everybody]) => (
+    <Resource state={useWhatIsWaiting(mine)} inline>
+      {(waiting) => (
         <TheAnswer
           invitation={invitation}
           waiting={waiting}
-          /* HER sex, the reader's, because the one sentence this changes says what the reader did
-             (PDL P18, 18.10.2026, „I tri rečenice na ekranima sa „ušao/la” biraju reč po polu").
-             Asked as a question with two answers rather than read off the record: a reader the
-             public list does not carry (a member whose fee has lapsed is not on it) is simply
-             not a woman here, which is the arrangement `member/InvitationAnswer.tsx` keeps for
-             the same fact. */
-          woman={everybody.some((one) => one.memberNumber === mine && one.gender === 'F')}
+          woman={him.status === 'ready' && him.data.gender === 'F'}
+          /* Whether the answer to „is she a woman" is still on its way, which is the one case in
+             which the sentence it chooses is not drawn yet. */
+          askingHerSex={him.status === 'loading'}
         />
       )}
     </Resource>
@@ -96,10 +124,12 @@ function TheAnswer({
   invitation,
   waiting,
   woman,
+  askingHerSex,
 }: {
   invitation: number
   waiting: WhatIsWaiting
   woman: boolean
+  askingHerSex: boolean
 }) {
   const { t } = useI18n()
   const today = useToday()
@@ -223,9 +253,11 @@ function TheAnswer({
              the button that has not gone anywhere. The KEY is read out of the same map the
              route's refusals are read out of, so the sentence a member gets before he
              presses and the one he gets if the server refuses him cannot come apart. */
-          <span className="messages__answered">
-            {t(words[standing.accept])}
-          </span>
+          askingHerSex && standing.accept === 'heIsAlreadyInATeam' ? null : (
+            <span className="messages__answered">
+              {t(words[standing.accept])}
+            </span>
+          )
         )}{' '}
         <ActionButton
           symbol={SYMBOL.cross}

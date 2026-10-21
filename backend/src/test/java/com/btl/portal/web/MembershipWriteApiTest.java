@@ -661,7 +661,7 @@ class MembershipWriteApiTest {
 	void aRecordedFeeIsNotForgivenQuietly() throws Exception {
 		long paymentId = db.sql("insert into payment (competitor_id, season, reference, price_row_id,"
 						+ " amount, currency, fee, method, state, recorded_at, recorded_by,"
-						+ " recorded_by_name, received) values (?, 2027, '20270091',"
+						+ " recorded_by_name, received) values (?, 2027, '2027000091',"
 						+ " (select id from price_row where key = 'season'), 35.00, 'EUR', 3.00,"
 						+ " 'paypal', 'recorded', ?, (select id from account where email = ?),"
 						+ " 'Blagajnik Probic', 38.00) returning id")
@@ -695,7 +695,7 @@ class MembershipWriteApiTest {
 	@Test
 	void anAwaitedPaymentDoesNotStandInTheWay() throws Exception {
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
-						+ " currency, fee, method, state) values (?, 2027, '20270093',"
+						+ " currency, fee, method, state) values (?, 2027, '2027000093',"
 						+ " (select id from price_row where key = 'season'), 35.00, 'EUR', 3.00,"
 						+ " 'paypal', 'awaited')")
 				.param(him).update();

@@ -552,6 +552,131 @@ describe('the entry of several members', () => {
   }, SLOW)
 })
 
+describe('a press the screen refuses itself', () => {
+  /* The precedent is the cursor `forms/FormRenderer.tsx` puts on the first control that is wrong: a
+     sentence drawn into a row is heard by nobody whose cursor is still on the button. Every case below
+     has TWO rows, so „the first row" and „the row that is wrong" are two different sources. */
+  const SAID = 'Upiši sve tražene vrednosti.'
+
+  async function twoRowsTheSecondWithNoFigures(user: ReturnType<typeof setupUser>) {
+    await screen.findByRole('heading', { level: 1, name: /^Unos rezultata: / })
+    await choose(user, 0, 'Momčilo', /Relja Momčilović \(000002\)/)
+    await user.type(box('Sati', 0), '3')
+    await user.click(screen.getByRole('button', { name: /Dodaj člana/ }))
+    await choose(user, 1, 'Đuriš', /Vladan Đurišić \(000001\)/)
+  }
+
+  it('puts the cursor on the first control of the row that is wrong, when only the second is, and reads its sentence', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'superadmin')
+
+    await twoRowsTheSecondWithNoFigures(user)
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText(SAID)).toBeVisible()
+
+    const second = must(screen.getAllByLabelText(/^Član/)[1], 'the member box of the second row')
+
+    expect(second).toHaveFocus()
+    /* What is read when the cursor arrives: the sentence, through the description of the control. */
+    expect(second).toHaveAccessibleDescription(SAID)
+    expect(box('Sati', 0)).toHaveAttribute('aria-invalid', 'false')
+    expect(writes(server.asked)).toEqual([])
+    server.stop()
+  }, SLOW)
+
+  it('puts it on the first row when both are wrong, and not on the last', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'superadmin')
+
+    await screen.findByRole('heading', { level: 1, name: /^Unos rezultata: / })
+    await user.click(screen.getByRole('button', { name: /Dodaj člana/ }))
+    await choose(user, 1, 'Đuriš', /Vladan Đurišić \(000001\)/)
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findAllByText('Izaberi člana sa spiska.')).toHaveLength(1)
+    expect(must(screen.getAllByLabelText(/^Član/)[0], 'the member box of the first row')).toHaveFocus()
+    server.stop()
+  }, SLOW)
+
+  it('moves the cursor on the press and on no draw after it, so typing in another row is not taken from the reader', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'superadmin')
+
+    await twoRowsTheSecondWithNoFigures(user)
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    expect(await screen.findByText(SAID)).toBeVisible()
+    expect(must(screen.getAllByLabelText(/^Član/)[1], 'the member box of the second row')).toHaveFocus()
+
+    /* The sentence is still there, so the second row is still wrong while the reader fixes the first. */
+    await user.type(box('Sati', 0), '1')
+
+    expect(box('Sati', 0)).toHaveFocus()
+    expect(box('Sati', 0)).toHaveValue('31')
+    expect(screen.getByText(SAID)).toBeVisible()
+    server.stop()
+  }, SLOW)
+
+  it('leaves the cursor on the button when it is the server that refuses a row, which its alert announces', async () => {
+    const user = setupUser()
+    const server = serving(
+      () =>
+        new Response(
+          JSON.stringify({
+            reason: 'aRowIsWrong',
+            rows: [{ row: 1, reason: 'heHoldsNoMembershipOfTheRunningSeason' }],
+          }),
+          { status: 400, headers: { 'content-type': 'application/json' } },
+        ),
+    )
+
+    renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'superadmin')
+
+    await twoRowsTheSecondWithNoFigures(user)
+    await user.type(box('Sati', 1), '4')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ništa nije sačuvano.')
+    expect(
+      within(must(screen.getAllByRole('group', { name: /\. red$/ })[1], 'the second row')).getByText(
+        'Član nema članstvo za sezonu ove trke, pa mu liga ne unosi rezultat.',
+      ),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Sačuvaj' })).toHaveFocus()
+    server.stop()
+  }, SLOW)
+
+  it('puts the sentences down with a row taken away, and moves the cursor again on the next refused press', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    renderAt(`/sr/kalendar/${EVENT}/rezultati?trka=${String(OF_A_LENGTH)}`, 'superadmin')
+
+    await twoRowsTheSecondWithNoFigures(user)
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    expect(await screen.findByText(SAID)).toBeVisible()
+
+    /* Taking the first row away puts the sentences down, and the cursor is not put anywhere on
+       account of the earlier press. */
+    await user.click(screen.getByRole('button', { name: 'Ukloni 1. red' }))
+    expect(screen.queryByText(SAID)).toBeNull()
+    expect(screen.getAllByRole('group', { name: /\. red$/ })).toHaveLength(1)
+    expect(screen.getByLabelText(/^Član/)).not.toHaveFocus()
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText(SAID)).toBeVisible()
+    expect(must(screen.getAllByLabelText(/^Član/)[0], 'the member box of the row left')).toHaveFocus()
+    server.stop()
+  }, SLOW)
+})
+
 describe('the pencil and the x', () => {
   it('opens one row with the member fixed and the figures filled, and sends the figures alone', async () => {
     const user = setupUser()
@@ -666,6 +791,45 @@ describe('the pencil and the x', () => {
     expect(within(table).getByRole('link', { name: 'Izmeni rezultat: Član lige' })).toBeVisible()
     expect(within(table).getByRole('button', { name: 'Obriši: Član lige' })).toBeVisible()
     globalThis.fetch = real
+  }, SLOW)
+
+  it('names the edit screen and its member box of a run by somebody with no number by the word for a member, and still saves', async () => {
+    /* The heading and the member box are named from the result, and a result of somebody with no number
+       has none: the word „null" is what a number of nothing read as before. The pencil's row is
+       refused when it names nobody, so it must keep a name to name, and it sends the figures alone. */
+    const user = setupUser()
+    const server = serving(() => new Response(null, { status: 204 }))
+    const served = globalThis.fetch
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (!String(input).endsWith('/api/results') || (init?.method ?? 'GET') !== 'GET') {
+        return served(input, init)
+      }
+
+      const all: Result[] = await (await served(input)).json()
+
+      return new Response(
+        JSON.stringify(all.map((one) => (one.id === SECOND.id ? { ...one, memberNumber: null } : one))),
+        { status: 200 },
+      )
+    }
+
+    renderAt(
+      `/sr/kalendar/${WITH_RESULTS}/rezultati?trka=${String(SECOND.raceId)}&rezultat=${String(SECOND.id)}`,
+      'superadmin',
+    )
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Izmena rezultata: Član lige' })).toBeVisible()
+    expect(screen.getByLabelText(/^Član/)).toHaveDisplayValue('Član lige')
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    await waitFor(() => {
+      expect(writes(server.asked)).toHaveLength(1)
+    })
+    expect(writes(server.asked)[0]?.path).toBe(`/api/races/${String(SECOND.raceId)}/results/${String(SECOND.id)}`)
+    globalThis.fetch = served
+    server.stop()
   }, SLOW)
 
   it('deletes the result of its own row through the race it is on, and takes the row away at once', async () => {

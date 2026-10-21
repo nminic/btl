@@ -201,7 +201,11 @@ import java.util.Optional;
  * rating with words whose card is sent, committed and claimed by a moderator in the instant between the
  * deletion taking his cards and taking his row is a card the deletion never locked; the deletion then
  * waits for it while holding the row the approval wants, the database breaks the deadlock, and one of
- * the two is answered 500. Neither publishes what the other's answer denies.
+ * the two is answered 500. Neither publishes what the other's answer denies. <b>A REFUSAL in that instant
+ * is not that case</b> (a refusal publishes nothing and does not take his row, so nothing waits for the
+ * deletion): the deletion waits for the moderator, and what it then finds is a card that is no longer
+ * waiting, which stays (the last statement of {@link #takeBack} takes the lock for this). Measured on the
+ * review of PR 584, round 2: before the lock the deletion answered 204 and the refused card was gone.
  *
  * <p><b>THE MEMBER'S ROW IS LOCKED FIRST</b>, {@code for update}, at the top of the transaction, the
  * shape {@code MyMembershipWriteApi} and {@code PaymentApi} keep. Two ratings of one member at one
@@ -558,10 +562,17 @@ class CommentWriteApi {
 				.params(me, event.get())
 				.update();
 
-		/* AND EVERY ONE OF HIS THAT WAITS, without skipping: the ones above are held by this transaction. */
+		/* AND EVERY ONE OF HIS THAT WAITS, without skipping: the ones above are held by this transaction.
+		   `for update of v` is what keeps this from deleting a card that is no longer one: a rating with
+		   words sent while this waited for his row is a card the first lock never saw, and a moderator may
+		   be refusing it this instant. Without the lock the statement reads it as waiting (its snapshot
+		   predates his commit), is stopped on it inside the cascade, and takes it when he commits; with
+		   it the statement waits for him and then reads the card again, finds it decided and leaves it
+		   (ADL A36 O11). */
 		db.sql("delete from comment_submission where id in (select cs.id from comment_submission cs"
 						+ " join verification v on v.comment_submission_id = cs.id"
-						+ " where cs.competitor_id = ? and cs.event_id = ? and v.state = ?)")
+						+ " where cs.competitor_id = ? and cs.event_id = ? and v.state = ?"
+						+ " for update of v)")
 				.params(me, event.get(), DecidingOnASubmission.WAITING)
 				.update();
 

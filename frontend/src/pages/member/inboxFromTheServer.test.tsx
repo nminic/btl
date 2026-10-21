@@ -377,6 +377,21 @@ function theEnvelope(): Promise<HTMLElement> {
 }
 
 /**
+ * WAITS FOR THE SCREEN THE SIGN IN LEADS TO TO HAVE TAKEN THE FOCUS (`app/useNewScreen.ts`).
+ *
+ * The envelope is in the header the moment the session is set, which is a step before the
+ * navigation lands. An inbox opened in that gap is opened for a reader whose focus is then
+ * taken to the new screen's landmark, and a menu shuts when the focus leaves it (PENDING 28508),
+ * so the panel these cases read from was gone by the time they looked. The reader of the portal
+ * does not press the envelope inside that gap; the case should not either.
+ */
+async function afterTheSignInHasLanded(): Promise<void> {
+  await waitFor(() => {
+    expect(screen.getByRole('main')).toHaveFocus()
+  })
+}
+
+/**
  * WHAT THIS VISIT WRITES INTO THE BROWSER'S OWN HALF OF THE INBOX.
  *
  * <p><b>Four cases here are about the two halves TOGETHER, and until 28.09.2026 the second half
@@ -869,6 +884,7 @@ describe('the inbox across signing out and signing back in', () => {
     await waitFor(() => {
       expect(asksFor('/api/sign-in')).toBe(1)
     })
+    await afterTheSignInHasLanded()
 
     await user.click(await theEnvelope())
 
@@ -908,6 +924,7 @@ describe('the inbox across signing out and signing back in', () => {
     await user.type(await screen.findByLabelText('Adresa elektronske pošte'), HER_ADDRESS)
     await user.type(screen.getByLabelText('Lozinka'), TYPED_PASSWORD)
     await user.click(screen.getByRole('button', { name: 'Prijavi se' }))
+    await afterTheSignInHasLanded()
 
     await user.click(await theEnvelope())
 

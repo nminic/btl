@@ -136,6 +136,89 @@ describe('a panel that opens under a button', () => {
 
     expect(button).toHaveAttribute('aria-expanded', 'true')
   })
+
+  /* THE FOCUS LEAVING (28508, WCAG 2.2 SC 2.4.11). Escape and a press elsewhere used to be the
+     only ways out, so Tab past the last item left the panel open over the page. Every case
+     below reads where the focus ended up as well as whether the panel is shut: a panel that
+     shuts by throwing the focus back on its button, or onto the body, has not let the reader
+     go where they were going. */
+  function focusIsOnThePageOutsideThePanel(panel: HTMLElement | null) {
+    const on = document.activeElement
+
+    expect(on).not.toBe(document.body)
+    expect(on).not.toBeNull()
+    expect(panel).not.toContainElement(htmlElement(on))
+  }
+
+  it('closes when Tab takes the focus past its last item, and leaves the focus where it went', async () => {
+    const user = setupUser()
+    renderAt('/sr', 'competitor', '000007')
+
+    const button = await screen.findByRole('button', { name: OPEN })
+    await user.click(button)
+    panelOf(OPEN).getByRole('button', { name: 'Odjavi se' }).focus()
+
+    await user.tab()
+
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(button).not.toHaveFocus()
+    focusIsOnThePageOutsideThePanel(document.getElementById('account-menu'))
+  })
+
+  it('closes when Shift+Tab takes the focus off its button, and leaves the focus where it went', async () => {
+    const user = setupUser()
+    renderAt('/sr', 'competitor', '000007')
+
+    const button = await screen.findByRole('button', { name: OPEN })
+    await user.click(button)
+    expect(button).toHaveFocus()
+
+    await user.tab({ shift: true })
+
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(button).not.toHaveFocus()
+    focusIsOnThePageOutsideThePanel(document.getElementById('account-menu'))
+  })
+
+  it('stays open while the focus moves from the button into the panel and between its items', async () => {
+    const user = setupUser()
+    renderAt('/sr', 'competitor', '000007')
+
+    const button = await screen.findByRole('button', { name: OPEN })
+    await user.click(button)
+    const links = panelOf(OPEN).getAllByRole('link')
+    expect(links.length).toBeGreaterThan(1)
+
+    await user.tab()
+    expect(links[0]).toHaveFocus()
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+
+    await user.tab()
+    expect(links[1]).toHaveFocus()
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+
+    await user.tab({ shift: true })
+    await user.tab({ shift: true })
+    expect(button).toHaveFocus()
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('stays open when the focus goes nowhere an element can be named', async () => {
+    const user = setupUser()
+    renderAt('/sr', 'competitor', '000007')
+
+    const button = await screen.findByRole('button', { name: OPEN })
+    await user.click(button)
+    expect(button).toHaveFocus()
+
+    // Text in the panel cannot take focus: the press blurs the button with a null
+    // relatedTarget. That is not the reader leaving the box (and it is also what the
+    // window losing the focus looks like), so it stays open.
+    await user.click(await panelOf(OPEN).findByText('Strahinja Vukićević'))
+
+    expect(button).not.toHaveFocus()
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+  })
 })
 
 describe('monogramFor', () => {

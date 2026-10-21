@@ -92,7 +92,7 @@ class TheReversedStateGoesOverThePaymentsAlreadyThereTest extends DatabaseTest {
 		long member = competitor("008001", "00112233445566f2");
 
 		payment(waiting, 2027, null, "awaited");
-		long recorded = payment(member, 2027, "20278001", "recorded");
+		long recorded = payment(member, 2027, "2027008001", "recorded");
 		db.sql("insert into membership (competitor_id, season, basis, payment_id) values (?, 2027, 'payment', ?)")
 				.params(member, recorded).update();
 
@@ -122,8 +122,8 @@ class TheReversedStateGoesOverThePaymentsAlreadyThereTest extends DatabaseTest {
 		long somebody = competitor("008002", "00112233445566f3");
 		long member = competitor("008003", "00112233445566f4");
 
-		payment(somebody, 2027, "20278002", "recorded");
-		payment(member, 2027, "20278003", "reversed");
+		payment(somebody, 2027, "2027008002", "recorded");
+		payment(member, 2027, "2027008003", "reversed");
 
 		/* THE ROOT CAUSE AND NOT THE MESSAGE, because the message Spring builds quotes the whole script,
 		   and the script names the rule: a message test would pass over a migration that never ran into
