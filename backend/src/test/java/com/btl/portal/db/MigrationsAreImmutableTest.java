@@ -536,7 +536,22 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
 			   read off this very assertion when it ran before the entry existed. */
-			new Applied("67", "V67__a_run_on_a_chosen_event_has_the_events_town.sql", -1056513802));
+			new Applied("67", "V67__a_run_on_a_chosen_event_has_the_events_town.sql", -1056513802),
+
+			/* V68. A payment's reference is exactly ten digits (owner, PDL P8, 20.10.2026,
+			   `YYYYNNNNNN`: the server takes exactly ten, on the route and in the database, and nine or
+			   eleven are refused). The rule is added `not valid`, so a reference of the old shape that a
+			   database may hold is neither checked nor changed; `PaymentReferenceCarriedOverTest` runs
+			   the file over rows of eight, seven and ten digits and over none, and over the new rows the
+			   database must refuse.
+
+			   68 because it is the next free number, measured on 20.10.2026 after a fetch: origin/main
+			   stands at V67, and the five open pull requests (597, 599, 600, 601, 602) carry no
+			   migration.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
+			   read off this very assertion when it ran before the entry existed. */
+			new Applied("68", "V68__a_payment_reference_is_exactly_ten_digits.sql", 601235041));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

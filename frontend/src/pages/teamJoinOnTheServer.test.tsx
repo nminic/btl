@@ -132,6 +132,19 @@ type TheAsker = {
   post?: () => Response
   remove?: () => Response
   keeps?: boolean
+  /**
+   * Rows that reach his list at the moment the application is answered, whatever the answer: an
+   * application sent in the meantime from another tab, which is what a refusal of
+   * `aQuestionAlreadyStands` is the route saying. The same arrangement `pairInviteOnTheServer.test.tsx`
+   * gives its `meanwhile`.
+   */
+  meanwhile?: Application[]
+  /**
+   * Keys that leave his list at the moment the taking back is answered, whatever the answer: a team
+   * that has decided about the application in the meantime, which is what the empty 404 of the
+   * taking back is the route saying.
+   */
+  goneMeanwhile?: number[]
   reading?: HowItIsRead
 }
 
@@ -142,6 +155,8 @@ function aServerForTheAsker({
   post = (): Response => json({ id: NEW_KEY, teamId: THIS.id }, 201),
   remove = did,
   keeps = true,
+  meanwhile = [],
+  goneMeanwhile = [],
   reading = null,
 }: TheAsker = {}) {
   let standing = [...rows]
@@ -173,6 +188,8 @@ function aServerForTheAsker({
     if (how === 'POST' && asking !== null) {
       const answer = post()
 
+      standing = [...standing, ...meanwhile]
+
       if (answer.status === 201 && keeps) {
         standing = [...standing, { id: NEW_KEY, teamId: Number(asking[1]), date: DAY_IN }]
       }
@@ -184,6 +201,8 @@ function aServerForTheAsker({
 
     if (how === 'DELETE' && one !== null) {
       const answer = remove()
+
+      standing = standing.filter((row) => !goneMeanwhile.includes(row.id))
 
       if (answer.status === 204) {
         standing = standing.filter((row) => row.id !== Number(one[2]))
@@ -366,7 +385,10 @@ describe('„Prijavi se u tim", sent to the server', () => {
     }
   }, SLOW)
 
-  it('keeps the button as it was when the server refuses, says why under the row, and asks nothing again', async () => {
+  it('says why under the row when the server refuses, and keeps the button where the list it reads again leaves it', async () => {
+    /* The list does not move: the refusal is true of the server and the list is true of the
+       server, so the button stays and the sentence is the only thing that changed. The case below
+       is the one where the list does move. */
     const server = aServerForTheAsker({ post: () => refused('aQuestionAlreadyStands', 409) })
     const user = setupUser()
 
@@ -380,19 +402,66 @@ describe('„Prijavi se u tim", sent to the server', () => {
         sr.teams.applyRefused.aQuestionAlreadyStandsFemale,
       )
       expect(applyButton()).toBeVisible()
-      expect(applyButton()).not.toHaveAttribute('aria-disabled')
+      await waitFor(() => {
+        expect(applyButton()).not.toHaveAttribute('aria-disabled')
+      })
       /* Under the row of controls, not among them: the sentence is a child of the head itself, so
          `Rankings.css` gives it the whole width (`TeamDetail.tsx`). */
       expect(screen.getByRole('alert').parentElement).toHaveClass('rankings--tooled')
-      /* Read once, when the page opened, and not again: a refusal is a thing that did not happen. */
-      expect(readsOfWhatHeWaitsOn(server.asked)).toBe(1)
+      /* Read again, and not once: the route said what the page was drawn from is stale, whatever
+         the list then turns out to say (PENDING, PR 516, derived 10.10.2026). */
+      expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
     } finally {
       server.stop()
     }
   }, SLOW)
 
-  it('says a bare number out loud, because the route refuses everything else with an empty 404', async () => {
-    const server = aServerForTheAsker({ post: () => answeredWith(404) })
+  it('stops offering the press once the refusal has sent the list to be read again, and that application is on ANOTHER team\'s page', async () => {
+    /* He asked ANOTHER team from a second tab after this page had read what he waits on. The route
+       refuses a second application anywhere, and the page was drawn from a list that did not know:
+       left alone it offers the press again and again, and the refusal is the same each time. The
+       member's application is on the SECOND of the two teams in this fixture and not the first, and
+       the page is the other one: a screen that took whatever application came first for this page's
+       own would draw „Povuci prijavu" here. */
+    const server = aServerForTheAsker({
+      post: () => refused('aQuestionAlreadyStands', 409),
+      meanwhile: [TO_ANOTHER],
+    })
+    const user = setupUser()
+
+    try {
+      const { router } = renderAt(at(THIS.slug), 'competitor', ASKER, undefined, DAY_IN)
+
+      await user.click(await screen.findByRole('button', { name: sr.teams.join }))
+
+      /* Said, and said where the list leaves nothing: the sentence names the team to take it back
+         on, which is the one thing this page cannot draw. */
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        sr.teams.applyRefused.aQuestionAlreadyStandsFemale,
+      )
+      await waitFor(() => {
+        expect(whatIsDrawn()).toEqual(NEITHER)
+      })
+      expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
+      /* One write, and nothing sent again behind the reader's back. */
+      expect(writes(server.asked)).toEqual([
+        { path: `/api/teams/${String(THIS.id)}/applications`, how: 'POST' },
+      ])
+
+      /* And the team it stands on offers the way back, read off the list that was read again. */
+      await act(async () => {
+        await router.navigate(at(ANOTHER.slug))
+      })
+
+      expect(await screen.findByRole('button', { name: sr.teams.joinWithdraw })).toBeVisible()
+      expect(screen.queryByRole('alert')).toBeNull()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('says a bare number out loud, because the route refuses everything else with an empty 404, and reads again', async () => {
+    const server = aServerForTheAsker({ post: () => answeredWith(404), meanwhile: [TO_ANOTHER] })
     const user = setupUser()
 
     try {
@@ -401,7 +470,148 @@ describe('„Prijavi se u tim", sent to the server', () => {
       await user.click(await screen.findByRole('button', { name: sr.teams.join }))
 
       expect(await screen.findByRole('alert')).toHaveTextContent('404')
+      /* The empty 404 is the route saying the question it was asked is not there, so it is the
+         same kind of refusal as the named one: the list is read again, and an application on
+         another team takes the press away. */
+      expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
+      await waitFor(() => {
+        expect(whatIsDrawn()).toEqual(NEITHER)
+      })
     } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it.each([
+    ['a server error', 500],
+    ['a refused token', 403],
+  ])('says %s at once, reads nothing again, and leaves the button live', async (_what, status) => {
+    /* The server said nothing about any row, so there is nothing to read again and pressing again
+       is what helps (`member/pairWrites.ts`, `theServerSaysTheScreenIsStale`). */
+    const server = aServerForTheAsker({ post: () => answeredWith(status), meanwhile: [TO_ANOTHER] })
+    const user = setupUser()
+
+    try {
+      renderAt(at(THIS.slug), 'competitor', ASKER, undefined, DAY_IN)
+
+      await user.click(await screen.findByRole('button', { name: sr.teams.join }))
+
+      expect(await screen.findByRole('alert')).toBeVisible()
+      await waitFor(() => {
+        expect(applyButton()).not.toHaveAttribute('aria-disabled')
+      })
+      await settled()
+
+      /* The application that reached the list in the meantime is NOT drawn: nothing asked for it. */
+      expect(applyButton()).toBeVisible()
+      expect(readsOfWhatHeWaitsOn(server.asked)).toBe(1)
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('says the refusal only once the list has been read again, and tells the button off until then', async () => {
+    /* The read that follows the refusal is held, so what the page says WHILE it is out can be read.
+       Said at once, the reader would hear „you already have an application" over a „Prijavi se u
+       tim" that the read is about to take away. */
+    let posted = false
+    let release = (): void => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const server = aServerForTheAsker({
+      post: () => {
+        posted = true
+
+        return refused('aQuestionAlreadyStands', 409)
+      },
+      meanwhile: [TO_ANOTHER],
+    })
+    const answering = globalThis.fetch
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await answering(input, init)
+
+      return posted && String(input) === '/api/me/applications' ? held.then(() => response) : response
+    }
+
+    const user = setupUser()
+
+    try {
+      renderAt(at(THIS.slug), 'competitor', ASKER, undefined, DAY_IN)
+
+      const button = await screen.findByRole('button', { name: sr.teams.join })
+
+      await user.click(button)
+      await waitFor(() => {
+        expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
+      })
+      await settled()
+
+      expect(screen.queryByRole('alert')).toBeNull()
+      expect(button).toHaveAttribute('aria-disabled', 'true')
+
+      release()
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        sr.teams.applyRefused.aQuestionAlreadyStandsFemale,
+      )
+      expect(whatIsDrawn()).toEqual(NEITHER)
+    } finally {
+      globalThis.fetch = answering
+      server.stop()
+    }
+  }, SLOW)
+
+  it('does not put the refusal of one team on the page of another when the read lands after the reader has walked there', async () => {
+    /* This half stays mounted across teams (`app/routeObjects.tsx` carries no `key` on that route),
+       and a refusal held for the read to land is drawn when it lands. Walked to another team's
+       page in between, it would be drawn there, past the reset that clears a refusal when the page
+       changes. */
+    let posted = false
+    let release = (): void => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const server = aServerForTheAsker({
+      post: () => {
+        posted = true
+
+        return refused('aQuestionAlreadyStands', 409)
+      },
+    })
+    const answering = globalThis.fetch
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await answering(input, init)
+
+      return posted && String(input) === '/api/me/applications' ? held.then(() => response) : response
+    }
+
+    const user = setupUser()
+
+    try {
+      const { router } = renderAt(at(THIS.slug), 'competitor', ASKER, undefined, DAY_IN)
+
+      await user.click(await screen.findByRole('button', { name: sr.teams.join }))
+      await waitFor(() => {
+        expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
+      })
+
+      await act(async () => {
+        await router.navigate(at(ANOTHER.slug))
+      })
+      await heading(ANOTHER.name)
+
+      release()
+      await settled()
+      await waitFor(() => {
+        expect(applyButton()).not.toHaveAttribute('aria-disabled')
+      })
+
+      expect(screen.queryByRole('alert')).toBeNull()
+    } finally {
+      globalThis.fetch = answering
       server.stop()
     }
   }, SLOW)
@@ -826,7 +1036,8 @@ describe('„Povuci prijavu", sent to the server', () => {
     }
   }, SLOW)
 
-  it('says the number when the route refuses, since it names no reason', async () => {
+  it('says the number when the route refuses, since it names no reason, and reads again', async () => {
+    /* The list still holds the row (the server says nothing moved), so the button stands. */
     const server = aServerForTheAsker({ rows: [TO_THIS], remove: () => answeredWith(404) })
     const user = setupUser()
 
@@ -837,6 +1048,74 @@ describe('„Povuci prijavu", sent to the server', () => {
 
       expect(await screen.findByRole('alert')).toHaveTextContent('404')
       expect(withdrawButton()).toBeVisible()
+      expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('takes the button away and offers the way in again when the 404 is a team that has decided in the meantime', async () => {
+    /* The team answered the application while this page was open, and the row left the list. The
+       taking back is refused 404 because the row is not there, and a page that left it alone would
+       go on drawing „Povuci prijavu" over it, with „Prijavi se u tim" offered on no team at all
+       until the page was loaded again (PENDING, PR 516). Two teams, and the member's is the SECOND
+       of them, so a read of the wrong row cannot pass. */
+    const server = aServerForTheAsker({
+      rows: [TO_THIS],
+      remove: () => answeredWith(404),
+      goneMeanwhile: [TO_THIS.id],
+    })
+    const user = setupUser()
+
+    try {
+      const { router } = renderAt(at(THIS.slug), 'competitor', ASKER, undefined, DAY_IN)
+
+      await user.click(await screen.findByRole('button', { name: sr.teams.joinWithdraw }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('404')
+      await waitFor(() => {
+        expect(whatIsDrawn()).toEqual(THE_WAY_IN_ONLY)
+      })
+      expect(applyButton()).not.toHaveAttribute('aria-disabled')
+      expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
+      /* One write: the taking back, and nothing sent on the reader's behalf after it. */
+      expect(writes(server.asked)).toEqual([
+        { path: `/api/teams/${String(THIS.id)}/applications/${String(TO_THIS.id)}`, how: 'DELETE' },
+      ])
+
+      /* And no other team offers less than this one does: the list is one list for the visit. */
+      await act(async () => {
+        await router.navigate(at(ANOTHER.slug))
+      })
+      await heading(ANOTHER.name)
+
+      expect(await screen.findByRole('button', { name: sr.teams.join })).toBeVisible()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('reads nothing again when the taking back is refused with a number that says nothing about any row', async () => {
+    const server = aServerForTheAsker({
+      rows: [TO_THIS],
+      remove: () => answeredWith(500),
+      goneMeanwhile: [TO_THIS.id],
+    })
+    const user = setupUser()
+
+    try {
+      renderAt(at(THIS.slug), 'competitor', ASKER, undefined, DAY_IN)
+
+      await user.click(await screen.findByRole('button', { name: sr.teams.joinWithdraw }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('500')
+      await waitFor(() => {
+        expect(withdrawButton()).not.toHaveAttribute('aria-disabled')
+      })
+      await settled()
+
+      expect(withdrawButton()).toBeVisible()
+      expect(readsOfWhatHeWaitsOn(server.asked)).toBe(1)
     } finally {
       server.stop()
     }

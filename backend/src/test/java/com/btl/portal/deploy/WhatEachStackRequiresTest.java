@@ -177,21 +177,36 @@ class WhatEachStackRequiresTest {
 		/* The name, the role and the password each reach the postgres container AND the
 		   backend that dials it, which is why the counts are not all one; the name and the
 		   role reach the healthcheck as well. */
-		table.put("compose.prod.yml", Map.of(
-				"PROD_POSTGRES_DB", asked(Asking.DEPLOYS_WITHOUT_IT, 3),
-				"PROD_POSTGRES_USER", asked(Asking.DEPLOYS_WITHOUT_IT, 3),
-				"PROD_POSTGRES_PASSWORD", asked(Asking.REFUSES_UNSET_OR_EMPTY, 2),
-				"PROD_MAIL_HOST", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
-				"PROD_MAIL_PORT", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
-				"PROD_MAIL_USERNAME", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
-				"PROD_MAIL_PASSWORD", asked(Asking.DEPLOYS_WITHOUT_IT, 1),
+		/* The relay's four reach two values each: the backend that sends, and the one-shot
+		   service backup-settings, which hands them to the backup so that a failed run is
+		   mailed through the same relay (ADL O19, owner 20.10.2026). */
+		table.put("compose.prod.yml", Map.ofEntries(
+				Map.entry("PROD_POSTGRES_DB", asked(Asking.DEPLOYS_WITHOUT_IT, 3)),
+				Map.entry("PROD_POSTGRES_USER", asked(Asking.DEPLOYS_WITHOUT_IT, 3)),
+				Map.entry("PROD_POSTGRES_PASSWORD", asked(Asking.REFUSES_UNSET_OR_EMPTY, 2)),
+				Map.entry("PROD_MAIL_HOST", asked(Asking.DEPLOYS_WITHOUT_IT, 2)),
+				Map.entry("PROD_MAIL_PORT", asked(Asking.DEPLOYS_WITHOUT_IT, 2)),
+				Map.entry("PROD_MAIL_USERNAME", asked(Asking.DEPLOYS_WITHOUT_IT, 2)),
+				Map.entry("PROD_MAIL_PASSWORD", asked(Asking.DEPLOYS_WITHOUT_IT, 2)),
 				/* The superadmin's address, and the only setting here that is not
 				   stack-prefixed: it names the same person on both stacks, so the files
 				   share the NAME while their .env files keep their own values. It
 				   deploys without it on purpose - a portal with no superadmin is a
 				   smaller failure than a portal that will not come up - and it reaches
-				   exactly one value, the backend that reads it. */
-				"BTL_SUPERADMIN_EMAIL", asked(Asking.DEPLOYS_WITHOUT_IT, 1)));
+				   two values: the backend that reads it, and backup-settings, because the
+				   owner decided a failed backup is mailed to the superadmin. */
+				Map.entry("BTL_SUPERADMIN_EMAIL", asked(Asking.DEPLOYS_WITHOUT_IT, 2)),
+				/* THE BACKUP'S OWN FIVE, each reaching only backup-settings, and each
+				   deploying without a value ON PURPOSE: that service sits behind a profile,
+				   and a `:?` in an inactive profile still turns down every command over
+				   the file (ADL A4a), so the public site would not deploy until the bucket
+				   existed. deploy/backup/write-settings.sh refuses each empty one by name,
+				   and the run that needed it fails and mails. */
+				Map.entry("PROD_BACKUP_R2_ACCOUNT_ID", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
+				Map.entry("PROD_BACKUP_R2_BUCKET", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
+				Map.entry("PROD_BACKUP_R2_ACCESS_KEY_ID", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
+				Map.entry("PROD_BACKUP_R2_SECRET_ACCESS_KEY", asked(Asking.DEPLOYS_WITHOUT_IT, 1)),
+				Map.entry("PROD_BACKUP_PASSPHRASE", asked(Asking.DEPLOYS_WITHOUT_IT, 1))));
 
 		table.put("compose.qa.yml", Map.of(
 				"QA_POSTGRES_DB", asked(Asking.DEPLOYS_WITHOUT_IT, 3),
@@ -824,11 +839,12 @@ class WhatEachStackRequiresTest {
 	 * the word rather than the word being trusted to have kept up with the count.
 	 */
 	private static final List<String> NUMBER_WORDS = List.of("zero", "one", "two", "three",
-			"four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve");
+			"four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen",
+			"fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty");
 
 	private static String numberWord(int count) {
 		assertThat(count)
-				.as("this case only knows how to spell counts up to twelve in words; %d is"
+				.as("this case only knows how to spell counts up to twenty in words; %d is"
 						+ " outside that range, so extend NUMBER_WORDS rather than trust a"
 						+ " mismatch it cannot report", count)
 				.isLessThan(NUMBER_WORDS.size());
