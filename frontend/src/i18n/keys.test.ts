@@ -69,7 +69,7 @@ describe('translation keys used in code', () => {
 
       /* And the words of a link inside a label, which is the third kind of text
          a field carries (forms/types.ts, `linkKey`). Left out, deleting the word
-         „pravilnikom" would have left a link whose text is the key itself, on
+         „pravilnik" would have left a link whose text is the key itself, on
          the sentence somebody agrees to. */
       if (field.linkKey !== undefined) {
         keys.push(field.linkKey)

@@ -414,7 +414,7 @@
       "other": "Dosta je, granica je {count} znakova."
     },
     "shirtSize": "Veličina majice",
-    "healthStatement": "Potvrđujem da sam upoznat sa {link} i da sam zdravstveno sposoban za rekreativan sport.",
+    "healthStatement": "Potvrđujem da poznajem {link} i da mi zdravstveno stanje dozvoljava bavljenje rekreativnim sportom.",
     "doneTitle": "Prijava je zabeležena",
     "resend": "Pošalji potvrdu ponovo",
     "resent": "Ako ova adresa još čeka potvrdu, šaljemo novu poruku. Ako ne stigne za nekoliko minuta, javi nam se na info@balkanskatrkackaliga.net.",
@@ -432,7 +432,7 @@
     "category": "Kategorija",
     "categoryFirstSeason": "Početnička",
     "categoryByAge": "Starosna",
-    "healthStatementLink": "pravilnikom",
+    "healthStatementLink": "pravilnik",
     "serbianBinds": "U slučaju neslaganja između srpske i engleske verzije ove izjave, važi srpski tekst.",
     "parentRelation": "Srodstvo",
     "mother": "Majka",

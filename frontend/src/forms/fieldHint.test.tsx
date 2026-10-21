@@ -833,7 +833,7 @@ describe('a link inside the words of a field', () => {
        it is added here, from the page (ADL A2). */
     renderForm()
 
-    const toRules = screen.getByRole('link', { name: 'pravilnikom' })
+    const toRules = screen.getByRole('link', { name: 'pravilnik' })
 
     expect(toRules).toHaveAttribute('href', '/sr/pravilnik')
     /* In a tab of its own, or following it would throw away a form that is half
@@ -907,7 +907,7 @@ describe('an answer chosen from buttons', () => {
     renderForm()
 
     const confirm = must(
-      screen.getByLabelText(/zdravstveno sposoban/).closest<HTMLElement>('.field'),
+      screen.getByLabelText(/zdravstveno stanje/).closest<HTMLElement>('.field'),
       'the field of the confirmation',
     )
 
