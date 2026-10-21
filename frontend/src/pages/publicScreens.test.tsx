@@ -2635,17 +2635,34 @@ describe('Teams', () => {
     expect(first(rows).className).toBe('podium')
   })
 
-  it('sets no hue on any element, so the initials of a team are drawn in the colour of every circle', async () => {
+  it('draws the initials of every team as the same mark, with nothing on it that could say which team', async () => {
     /* Owner, 21.10.2026 (PDL: „Inicijali tima postaju jednobojni, kao kartice članova"). A team mark
-       took a hue off the team's id until then (`hueFor`, `components/TeamMark.tsx`). Asked of every
-       element of the screen and not of the mark, since the variable is inherited (review of PR 613);
-       the stylesheets are asked in `styles/circle.test.ts`. */
+       took a hue off the team's id until then (`hueFor`, `components/TeamMark.tsx`).
+
+       **The decision is held, and not a name** (review of PR 619, measured on 925 cases): asked only
+       for `--face-hue`, three ways of colouring initials by team id passed, an inline `background`, an
+       inline `--team-hue` and a class per team. So the drawn mark is asked what it IS: the one class
+       list it is born with and no attribute but the two it is born with, `class` and `aria-hidden`.
+       A `style` of any content, a `data-*`, a class that says which team, all of them are a thing the
+       mark carries that another mark does not need, and none is asked for by name. Every initials
+       mark and more than one, so a value derived from an id would be a different thing on each.
+
+       The ancestors are asked too, as before (review of PR 613): `--face-hue` is inherited, so a
+       card, a list or a row that sets it gives every circle inside it a colour while the circle's own
+       `style` stays empty. What is NOT held here: a colour that comes from a stylesheet by position
+       or by a class the mark does not carry, which jsdom cannot see (`styles/circle.test.ts` asks the
+       selectors that may name a mark, and says what it leaves). */
     renderAt('/sr/timovi', 'visitor', null, undefined, `${String(inLeague(2020))}-06-01`)
     await standing()
 
-    /* Measured and not assumed: there are marks made of initials, and more than one, so a hue
-       derived from an id would be a different thing on each. */
-    expect(document.querySelectorAll('.team-mark:not(.team-mark--logo)').length).toBeGreaterThan(1)
+    const marks = [...document.querySelectorAll<HTMLElement>('.team-mark:not(.team-mark--logo)')]
+
+    /* Measured and not assumed: there are marks made of initials, and more than one. */
+    expect(marks.length).toBeGreaterThan(1)
+    expect(marks.map((one) => one.className)).toEqual(marks.map(() => 'face-circle team-mark'))
+    expect(marks.map((one) => one.getAttributeNames().sort())).toEqual(
+      marks.map(() => ['aria-hidden', 'class']),
+    )
     expect(settingAHue()).toEqual([])
   })
 
