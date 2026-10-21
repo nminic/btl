@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react'
 import { join, relative, sep } from 'node:path'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
+import { AddressesAsLinks } from '../../components/AddressesAsLinks'
 import { renderWithI18n } from '../../test/render'
 import { SLOW } from '../../test/slow'
 import { sources, WHOLE_PORTAL } from '../../test/sources'
@@ -130,6 +131,12 @@ const SEATS: Record<string, (text: string) => void> = {
         onSave={() => Promise.resolve(true)}
       />,
     )
+  },
+  /* The words a member sent beside a result, drawn in the moderator's queue (PDL P9, 03.10.2026,
+     PENDING 28904). The seat draws the component and not the queue around it, which is where the
+     text is handed over (`pages/admin/reviewLink.test.tsx` holds that it is). */
+  'components/AddressesAsLinks.tsx': (text) => {
+    renderWithI18n(<AddressesAsLinks text={text} />)
   },
 }
 
