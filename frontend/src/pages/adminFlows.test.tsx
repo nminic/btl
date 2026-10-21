@@ -1328,7 +1328,7 @@ describe('payment payloads', () => {
       }),
     ).toBe(
       'K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD4800,00|SF:289' +
-        '|S:Članarina za 2027. godinu|RO:202737',
+        '|S:Članarina za 2027. godinu|RO:2027000037',
     )
   })
 
@@ -1355,21 +1355,21 @@ describe('payment payloads', () => {
       recipient: 'x',
       amountRsd: 100,
       purpose: 'y',
-      reference: '202737',
+      reference: '2027000037',
     })
 
-    expect(payload).toContain('RO:202737')
+    expect(payload).toContain('RO:2027000037')
   })
 
-  it('writes the reference as the season and the member number, digits only', () => {
+  it('writes the reference as the season and the six digit member number, digits only', () => {
     /* Whose money it is, in the one field a bank statement carries through
-       (owner, 31.07.2026). The season is in it because the same person pays
-       every year; the noughts are out because nobody copies four of them
-       correctly; and there is no separator, because the field is read by a
-       machine and a separator is one more thing that can go missing. */
-    expect(paymentReference(2027, '000037')).toBe('202737')
-    expect(paymentReference(2027, '000001')).toBe('20271')
-    expect(paymentReference(2027, '001234')).toBe('20271234')
+       (owner, 31.07.2026; the form `YYYYNNNNNN` is the owner's of 20.10.2026). The season is
+       in it because the same person pays every year; the noughts are IN, one fixed width of
+       ten digits, which the 31.07.2026 form left out; and there is no separator, because the
+       field is read by a machine and a separator is one more thing that can go missing. */
+    expect(paymentReference(2027, '000037')).toBe('2027000037')
+    expect(paymentReference(2027, '000001')).toBe('2027000001')
+    expect(paymentReference(2027, '001234')).toBe('2027001234')
     expect(paymentPurpose(2027)).toBe('Članarina za 2027. godinu')
   })
 

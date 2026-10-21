@@ -659,6 +659,9 @@ describe('membership', () => {
        computed a second time by this test, so the two cannot silently disagree
        about what „isti oblik" (owner) means. */
     expect(screen.getByText(paymentReference(2027, '000010'))).toBeVisible()
+    /* AND THE WHOLE STRING, written out: `YYYYNNNNNN`, the season and the six digit number with
+       its noughts (owner, 20.10.2026), so the function and this screen cannot move together. */
+    expect(screen.getByText('2027000010')).toBeVisible()
   })
 
   it('quotes a different PayPal amount as the selling period changes, fee included', async () => {
@@ -1184,6 +1187,9 @@ describe('membership', () => {
 
       await user.click(screen.getByRole('button', { name: 'Kopiraj napomenu za uplatu' }))
       expect(writeText).toHaveBeenLastCalledWith(paymentReference(2027, '000010'))
+      /* The note is the reference of the slip, ten digits (owner, 20.10.2026: „isti oblik kao
+         poziv na broj" of 27.09.2026 follows it), written out here too. */
+      expect(writeText).toHaveBeenLastCalledWith('2027000010')
       expectSeen(await screen.findByText('Napomena je kopirana.'))
     })
   })
