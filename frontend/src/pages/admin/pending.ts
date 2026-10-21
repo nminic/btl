@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { PendingItem, ServedPendingItem, WaitingRun } from '../../data/types'
 import { NO_RATING } from '../../data/types'
 import { WHOLE } from '../../components/crop'
-import { useResource, type ResourceState } from '../../data/useResource'
+import { useHowManyTimesDropped, useResource, type ResourceState } from '../../data/useResource'
 import type { Decisions } from '../../session/context'
 import { useSession } from '../../session/useSession'
 
@@ -220,6 +220,29 @@ export function usePending(revision?: number): ResourceState<PendingItem[]> {
         : state,
     [state, proposals],
   )
+}
+
+/**
+ * THE QUEUE AS THE NUMBERS OVER IT COUNT IT: the number in the header (`app/Shell.tsx`) and the number
+ * beside each queue in the navigation (`SectionNav.tsx`) (PENDING 29561).
+ *
+ * <p><b>It reads the queue again whenever anybody drops it, and the screens that work the queue do
+ * not.</b> Both of these stand beside the outlet and are not unmounted from one screen to the next, so
+ * a comment, a proposed team or a picture that drops `verification` once the server has taken the
+ * row left them holding the answer they had read on arriving: the header said „Administracija 15"
+ * before and after, and the card „Novi timovi" went from 3 to 4 while the number over it stayed
+ * (measured on 19.10.2026, from the review of the drop). Dropping the cache alone tells nobody who
+ * holds an answer from it (`HowToRead.revision`).
+ *
+ * <p><b>Only these two, and that is the boundary of the change rather than an oversight.</b>
+ * `PendingQueue` and `ReviewQueue` draw cards, and a screen that drew a different set of cards
+ * the moment a decision dropped the queue under it is a change to every moderating flow
+ * (`HowToRead.revision` states why a drop is not made to reach every reader). They keep what they
+ * were given and read again when they ask to, through the `revision` they already pass. The counts do
+ * not disagree for it: both subtract the session's decisions from whatever answer they hold.
+ */
+export function usePendingForTheCount(): ResourceState<PendingItem[]> {
+  return usePending(useHowManyTimesDropped('verification'))
 }
 
 /**

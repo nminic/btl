@@ -50,6 +50,7 @@ export function PlaceField({
   withoutError,
   errorOnly,
   onChange,
+  wrote = null,
   openAt = false,
   locked = false,
 }: {
@@ -71,7 +72,15 @@ export function PlaceField({
   /** The error alone, for the country to carry when the error is about it. */
   errorOnly?: string
   describedBy: string | undefined
-  onChange: (place: string, country: string) => void
+  /** The town and the country as they now stand, and a third word where the answer touches the note of
+   *  what this field wrote (`wrote` below): the country it has just written, or `null` when the note is
+   *  spent. Left out when somebody typed or chose a country, which do not touch it. */
+  onChange: (place: string, country: string, wrote?: string | null) => void
+  /** The country this field wrote in an earlier visit, which the screen kept for it. A screen that
+   *  draws the field only some of the time keeps the note beside the town and the country and hands it
+   *  back here, because a note kept in the field goes with the field (review of PR 610). Read once, when
+   *  the field is drawn. */
+  wrote?: string | null
   openAt?: boolean
   /** Whether both halves came off a record rather than from this reader, in which
    *  case neither takes anything (FormRenderer.tsx). */
@@ -91,6 +100,15 @@ export function PlaceField({
      and not state: nothing on the screen changes with it, and it must not cause
      a redraw of its own. */
   const touched = useRef(false)
+  /* The country the codebook put there, and only that one: the country this field wrote
+     because the name recognised a place, or because a row was pressed, at the moment it
+     CHANGED what stood there. Nothing else is ever in it. A country the reader chose
+     himself, a default the form opened on and a country a record came with are never
+     written down here, which is what lets the effect below tell the one it may take back
+     from the ones it may not. A ref for the reason `touched` is one, and told to the screen with
+     every change of it (`onChange`, third word), which is what keeps it when the field is taken away:
+     it starts from what the screen kept. */
+  const written = useRef<string | null>(wrote)
   const box = useRef<HTMLDivElement>(null)
 
   const offered = open ? placesLike(places, value) : []
@@ -141,6 +159,55 @@ export function PlaceField({
   const known = picked?.[2] ?? (only.length === 1 ? only[0] : undefined)
 
   useEffect(() => {
+    /* **A NAME THAT STOPS BEING A PLACE TAKES BACK THE COUNTRY IT HAD WRITTEN** (owner,
+       20.10.2026: as soon as the typed name stops matching the codebook, the country that
+       recognition wrote is emptied and waits to be chosen). „Novi" is one place in the
+       codebook, in the United States, so typing it wrote the United States, and the next
+       letters (`Novi Sad`, `Novi Selo pod brdom`) left that country standing under a
+       name nothing recognised any more: the form did not complain, since a country was
+       there, and a proposal or a registration went to a country nobody had chosen
+       (PENDING 29216).
+     *
+       **Only while the name is not recognised, which is the other half of the same
+       decision.** A recognised place keeps its country (owner, 11.08.2026: „Prepoznatom
+       mestu se država ne menja"), so nothing here runs on that side: `known` is defined
+       and this returns below it.
+     *
+       **And only the country recognition wrote.** `written` holds it and holds nothing
+       else, so a country somebody chose for a hamlet is not taken back by the next letter
+       typed into the name, and neither is one a form opened on. It is compared with the
+       country standing NOW, so a country somebody else has moved since is left alone as
+       well.
+     *
+       **And not on a form that is locked**, where the country came off a record with the
+       place (`forms/FormRenderer.tsx`) and is not this field's to empty: the marker is
+       dropped there, so it cannot be read later against a country that is no longer the
+       one it wrote. */
+    if (known === undefined) {
+      /* **Judged only once somebody has typed here this visit.** A field drawn again after an event of
+         the calendar took it away holds the name it was left with and the note the screen kept, and its
+         codebook is still on its way: nothing has been typed, so no name has stopped being a place, and
+         taking the country back now would empty it for a moment under a town that is one, or for good
+         under a namesake that was pressed off the list (which this visit has forgotten). */
+      if (!touched.current) {
+        return
+      }
+
+      const mine = written.current
+
+      if (mine === null) {
+        return
+      }
+
+      written.current = null
+
+      /* Told to the screen either way: a note that is spent and still kept there would be read against
+         a country somebody chose later. */
+      onChange(value, mine === country && locked !== true ? '' : country, null)
+
+      return
+    }
+
     /* And a town typed out in full, letter by letter, ends in the same place as
        one picked off the list. Otherwise „Beograd" typed by somebody who never
        looked at the suggestions kept whatever country the field opened on, and
@@ -192,8 +259,9 @@ export function PlaceField({
       return
     }
 
-    if (known !== undefined && known !== country) {
-      onChange(value, known)
+    if (known !== country) {
+      written.current = known
+      onChange(value, known, known)
     }
   }, [known, country, value, onChange, locked])
 
@@ -231,7 +299,15 @@ export function PlaceField({
     }
 
     touched.current = true
-    onChange(placeName(place, locale), place[2])
+
+    /* Written down only where the press CHANGES the country: a row that says what already
+       stood there wrote nothing, and a country the reader had chosen is not recognition's
+       to take back later. */
+    if (place[2] !== country) {
+      written.current = place[2]
+    }
+
+    onChange(placeName(place, locale), place[2], place[2] !== country ? place[2] : undefined)
     setPicked(place)
     setOpen(false)
     setAt(-1)
@@ -346,7 +422,12 @@ export function PlaceField({
              hand and its country chosen beside it. It used to be cleared here,
              because the country was written and never shown and the danger was a
              race in Beograd edited into Zagreb and filed in Serbia with nothing
-             saying so. There is something saying so now. */
+             saying so. There is something saying so now.
+           *
+             **The one country that does not stay is the one recognition wrote**, once
+             the name stops being a place (owner, 20.10.2026), and that is the effect
+             above and not this handler: whether the new text is a place is answered
+             by the codebook, which this handler has not read. */
           /* And the same refusal beneath the lock, because a lock is a courtesy
              to whoever is filling the form in: `readOnly` is what a browser
              honours, and this is what holds whatever else reaches the component.

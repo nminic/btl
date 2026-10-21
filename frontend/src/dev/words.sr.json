@@ -1,0 +1,16 @@
+{
+  "role": {
+    "label": "Uloga",
+    "visitor": "Posetilac",
+    "competitor": "Takmičar",
+    "moderator": "Moderator",
+    "superadmin": "Superadmin"
+  },
+  "clock": {
+    "label": "Današnji datum",
+    "reset": "Vrati na stvarni datum"
+  },
+  "server": {
+    "named": "sa servera"
+  }
+}

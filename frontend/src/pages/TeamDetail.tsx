@@ -91,8 +91,22 @@ export function TeamDetail() {
   const overlay = useOverlay()
   const state = combineResources(useTeams(), useCompetitors(), useResults())
 
-  /** Why a deletion did not happen, for the one person who pressed it. */
-  const [refused, setRefused] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+  /**
+   * Why a deletion did not happen, for the one person who pressed it, and THE PAGE IT WAS REFUSED ON
+   * (`on`, a team and a season: `here` below; PENDING 28009).
+   *
+   * <p>The refusal is written when the answer comes back, and the answer comes back after a wait the
+   * reader can spend on another page: a change of season, or a walk to another team's page, which is
+   * this same component with another team in it. The reset below runs when the address changes, so it
+   * had already happened by the time the refusal arrived, and the write after it put the sentence about
+   * the first team on the second. <b>The page is therefore kept WITH the refusal and the refusal is
+   * drawn only on that page</b> - `pages/AskingThisTeam.tsx` holds its own the same way (`Held`), and it
+   * is the same fault one half of this screen along.
+   */
+  const [refused, setRefused] = useState<{
+    answer: Exclude<Answer, { got: 'done' }>
+    on: string
+  } | null>(null)
   /**
    * THE PAGE THE REFUSAL ABOVE WAS DRAWN ON, which is a team and a season (registry item 311).
    *
@@ -186,7 +200,9 @@ export function TeamDetail() {
     const answer = await askTheServer(`/api/teams/${team.id}`, {}, 'DELETE')
 
     if (answer.got !== 'done') {
-      setRefused(answer)
+      /* The page this press was made on, which is the one `here` is in THIS closure: the press is
+         dispatched from the render that drew the button, and the render the answer finds is another. */
+      setRefused({ answer, on: here })
 
       return
     }
@@ -393,8 +409,8 @@ export function TeamDetail() {
                           focus is on „Obriši", the button the sentence stands beside
                           (`DeleteRecord`, owner 02.10.2026). */}
                       {said}
-                      {refused !== null && (
-                        <ServerSaid answer={refused} refusals={WHEN_DELETING_A_TEAM} />
+                      {refused !== null && refused.on === here && (
+                        <ServerSaid answer={refused.answer} refusals={WHEN_DELETING_A_TEAM} />
                       )}
                     </div>
                   )}

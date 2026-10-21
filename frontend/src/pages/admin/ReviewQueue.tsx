@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { AddressesAsLinks } from '../../components/AddressesAsLinks'
 import { Resource } from '../../components/Resource'
 import { clearResourceCache } from '../../data/client'
 import { countryName } from '../../data/countryName'
@@ -560,9 +561,17 @@ export function ReviewQueue() {
                                 <span className="tag tag--corrected">{t('admin.corrected')}</span>
                               )}
                               {/* What the member wrote in his own words: a start number, a watch
-                                  that stopped. Its own line and never the link, which it once
-                                  was, and became an address made of his sentence. */}
-                              {one.body !== '' && <span className="review__said">{one.body}</span>}
+                                  that stopped. Its own line and never the link under the name,
+                                  which it once was, and became an address made of his sentence.
+                                  An address IN the words is a link the moderator may press, and
+                                  only one that `addressesIn` accepts (owner, 03.10.2026, PDL P9:
+                                  „prepoznavanje linka kao u opisu lige"); every other word stays
+                                  as it was typed. */}
+                              {one.body !== '' && (
+                                <span className="review__said">
+                                  <AddressesAsLinks text={one.body} />
+                                </span>
+                              )}
                               {/* WHERE THE MEMBER SAID THE RACE WAS RUN, on a run on a race the
                                   calendar does not hold, and its country: the owner's answer of
                                   10.10.2026, „moderator u redu vidi mesto koje je član upisao", the
@@ -659,6 +668,8 @@ export function ReviewQueue() {
                                            (approved 19.10.2026: „popunjeno mestom prijave”). */
                                         city: one.city,
                                         country: one.country,
+                                        /* What came with the run was written by nobody here. */
+                                        countryWrote: null,
                                         kind: raceKind(one.raceKind),
                                         written: writtenFrom(counted),
                                       })

@@ -16,6 +16,7 @@ import { useOverlay } from './overlay'
 import { offeredFor } from './memberMembership'
 import { RowMembership } from './RowMembership'
 import { RowPayment } from './RowPayment'
+import { dropWhatActiveMoves } from './whatActiveMoves'
 import '../member/Member.css'
 import './AdminMembers.css'
 
@@ -237,17 +238,17 @@ export function AdminMembers() {
 
   /**
    * A PAYMENT WAS RECORDED ON A ROW, and every answer that says something different about him now
-   * is dropped. The three names are `Payments.tsx#onActivated`'s, for its reason: the booking writes
-   * his season, his payment and his `active`, so the payments screen must no longer list him for that
-   * season, and this list and the public one must read him again. And his inbox, because the member
+   * is dropped. The names are `whatActiveMoves.ts`'s, the one list that `Payments.tsx#onActivated` and
+   * `seasonChanged` below drop as well: the booking writes his season, his payment and his `active`
+   * (a payment can make a lapsed member active), so the payments screen must no longer list him for
+   * that season, and this list, the public one, his team, his pair, the results, the list of who is
+   * going and the comments must read him again. And his inbox, because the member
    * is told there (PDL P8, „Upis uplate ... stižu članu kao poruka u portalskom sandučetu”) and the
    * row may be the moderator's own (PDL P8, „smeju da rade na sopstvenom redu”).
    */
   function paymentRecorded(one: Member): void {
     settle(one)
-    clearResourceCache('payments')
-    clearResourceCache('members')
-    clearResourceCache('competitors')
+    dropWhatActiveMoves()
     theInboxHasChanged()
     setRecorded((was) => was + 1)
     setSaid(t('admin.paymentRecorded'))
@@ -257,7 +258,7 @@ export function AdminMembers() {
    * A SEASON WAS CANCELLED, ITS BASIS CHANGED OR AN EXEMPTION GRANTED ON A ROW (PDL P8, 18.10.2026),
    * and every answer that says something different about him now is dropped.
    *
-   * <p>`paymentRecorded`'s three, for its reason, and five more, because a cancellation can make him
+   * <p>`paymentRecorded`'s names (one list, `whatActiveMoves.ts`), because a cancellation can make him
    * inactive: `MemberMembershipApi` writes `active` from the rows that remain, and a member whose fee no
    * longer stands leaves the public list, the results of the season being run, his team's roster, his
    * pair, the list of who is going to an event and the author's number on a comment (`where c.active` or
@@ -273,7 +274,8 @@ export function AdminMembers() {
    * off the one (`AttendanceApi`, `and c.active`) and his number off the other (`CommentApi`,
    * `case when author.active then author.member_number end`). Which cached names read the flag is not
    * this file's to remember: `rowMembership.test.tsx` reads it out of the backend's own SQL and holds
-   * this function to it, with `me/applications` the one exception and its reason written there.
+   * the list to it, with `me/applications` the one exception and its reason written there. Since the
+   * list is shared with `paymentRecorded` and `Payments.tsx#onActivated`, so is the floor.
    *
    * <p>**His inbox only when the row is the moderator's own**, which is when the inbox this visit holds
    * is the member's („Moderator i superadmin smeju da rade na sopstvenom redu”). The message goes to the
@@ -281,14 +283,7 @@ export function AdminMembers() {
    */
   function seasonChanged(one: Member, said: string): void {
     settle(one)
-    clearResourceCache('payments')
-    clearResourceCache('members')
-    clearResourceCache('competitors')
-    clearResourceCache('results')
-    clearResourceCache('teams')
-    clearResourceCache('pairs')
-    clearResourceCache('attendance')
-    clearResourceCache('comments')
+    dropWhatActiveMoves()
 
     if (one.memberNumber === mine) {
       theInboxHasChanged()

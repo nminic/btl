@@ -196,7 +196,7 @@ class BackupCopyTest extends DatabaseTest {
 		String work = aFolder("/dev/shm/bkp-work.XXXXXX");
 		ok("printf '%s' '" + PASSPHRASE + "' > " + work + "/passphrase");
 		ok("pg_dump --format=custom -U " + postgres.getUsername() + " -d " + database + " > " + work + "/btl.dump");
-		ok("sh " + SCRIPTS + "/pack.sh " + work + " " + photos);
+		ok("sh " + SCRIPTS + "/pack.sh " + work + " " + photos + " " + work + "/copy.gpg");
 		return work;
 	}
 
@@ -267,6 +267,40 @@ class BackupCopyTest extends DatabaseTest {
 				.doesNotContain("Rezervni")
 				.doesNotContain("009001")
 				.doesNotContain("@");
+	}
+
+	/**
+	 * THE ENCRYPTED COPY IS WRITTEN WHERE IT IS TOLD, ON A DISK, AND IS THE ONLY THING THERE; THE PLAIN
+	 * TEXT IS IN MEMORY AND THE COPY IS NOT.
+	 *
+	 * <p>Held in memory the copy was one more whole production in the host's RAM (deploy/README.md,
+	 * "What production costs in memory"). Ciphertext does not need memory; the dump and the passphrase
+	 * do, and stay. Measured on the filesystems themselves, not on their names: the work folder says
+	 * tmpfs and holds the dump, the passphrase and the manifest; the folder of the copy does not say
+	 * tmpfs and holds {@code copy.gpg} and nothing else; and the copy opens from where it is.
+	 */
+	@Test
+	void theEncryptedCopyIsWrittenOnADiskAndOnlyItIsThereWhileThePlainTextStaysInMemory() {
+		String work = aFolder("/dev/shm/bkp-work.XXXXXX");
+		String spool = aFolder("/var/tmp/bkp-spool.XXXXXX");
+		ok("printf '%s' '" + PASSPHRASE + "' > " + work + "/passphrase");
+		ok("pg_dump --format=custom -U " + postgres.getUsername() + " -d " + SOURCE + " > " + work + "/btl.dump");
+
+		ok("sh " + SCRIPTS + "/pack.sh " + work + " " + PHOTOS + " " + spool + "/copy.gpg");
+
+		assertThat(ok("stat -f -c %T " + work + "/btl.dump")).as("the plain text dump is in memory").isEqualTo("tmpfs");
+		assertThat(ok("stat -f -c %T " + work + "/passphrase")).as("the passphrase is in memory").isEqualTo("tmpfs");
+		assertThat(ok("ls " + work).lines().toList())
+				.as("the work folder holds the plain text and not the copy")
+				.contains("btl.dump", "manifest", "passphrase")
+				.doesNotContain("copy.gpg");
+
+		assertThat(ok("stat -f -c %T " + spool)).as("the folder of the copy is not memory").isNotEqualTo("tmpfs");
+		assertThat(ok("ls -A " + spool).lines().toList()).as("nothing but the copy is in it").containsExactly("copy.gpg");
+		assertThat(ok("stat -c %s " + spool + "/copy.gpg")).as("and it is the copy").isNotEqualTo("0");
+
+		ExecResult checked = sh("sh " + SCRIPTS + "/check.sh " + work + " " + spool + "/copy.gpg");
+		assertThat(checked.getExitCode()).as("it opens from where it is: %s", checked.getStderr()).isZero();
 	}
 
 	/**

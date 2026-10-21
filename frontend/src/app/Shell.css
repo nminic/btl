@@ -423,7 +423,7 @@
    A signed in member wears the shared circle instead, at the size below
    (`app/AccountMenu.tsx` names the boundary and why it is drawn here at all).
    Filled with the accent because that is now what it says: an account, as against
-   a person, who wears a colour of their own. */
+   a person, who wears the blue of a member's circle or a photograph. */
 .account__monogram {
   display: grid;
   place-items: center;
@@ -440,7 +440,7 @@
 }
 
 /* And a signed in member's own circle, at the header's size. Everything that makes
-   it a circle of somebody's own colour, and everything that cuts a photograph to
+   it a circle of the member's blue, and everything that cuts a photograph to
    the square he chose, comes from the shared sheet (`components/Portrait.css`,
    `components/Crop.css`); what is said here is only the size and the step this
    header gives it, which is how `Portrait.css` asks to be resized.
@@ -461,8 +461,8 @@
 
    **The reason that decision gives for a ring rather than a border was „krug je
    već ispunjen tom plavom, pa se okvir ne bi ni video", and that half of it stopped
-   being true of a MEMBER on 27.09.2026.** His circle is now his own colour, or his
-   photograph, so a border would in fact be visible on it. What the decision ASKS
+   being true of a MEMBER on 27.09.2026.** His circle is now the blue of every member's
+   circle, or his photograph, so a border would in fact be visible on it. What the decision ASKS
    for is unchanged and is what stands here: the same blue as the rectangles beside
    it, as a ring. The ring form is the one that works on any fill, which is why it
    survives the change that undid its own justification - and it had to be undone by

@@ -455,6 +455,24 @@ describe('the address stays as short as it can be', () => {
     expect(boards.some((one) => one === 'Generalni plasman')).toBe(true)
     expect(boards.some((one) => one?.startsWith('Kategorija'))).toBe(true)
   })
+
+  it('holds the label of a category board on one line', async () => {
+    /* The label reads „Kategorija M 55+" since 18.10.2026 and broke in two at 360px on every row
+       (PENDING 29125): `styles/table.css` says `.table__category` is `nowrap` (held by
+       `styles/categoryCell.test.ts`) and the cell has to wear it, which neither the sheet nor the
+       text can say. Asked of the rows that name a category, which is what the label is of. */
+    renderAt('/sr/takmicar/000005/priznanja?sezona=sve')
+
+    const table = await screen.findByRole('table', { name: 'Pehari' })
+    const boards = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      .map((row) => at(within(row).getAllByRole('cell'), 1))
+    const ofACategory = boards.filter((one) => one.textContent?.startsWith('Kategorija') === true)
+
+    expect(ofACategory.length, 'no category board is drawn, so nothing is measured').toBeGreaterThan(0)
+    expect(ofACategory.filter((one) => !one.classList.contains('table__category'))).toEqual([])
+  })
 })
 
 describe('an empty table says which of the four kinds of nothing it is', () => {

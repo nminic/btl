@@ -600,6 +600,16 @@ public final class SeasonClock {
 	 * named as the one that cannot be prepared yet is <b>2029</b>, which is true of this
 	 * shape and not of the other.
 	 *
+	 * <p><b>THE RUNNING YEAR IS ASKED OF {@link #seasonTheBandIsWorkedOutFor} AND NOT WORKED OUT
+	 * AGAIN HERE (PENDING, review of PR 509, finding 1).</b> „The year that is running, never earlier
+	 * than the first season" is one fact, and this method used to hold its own copy of it: the
+	 * {@code Math.max} and the league's zone, written out beside the band's. Two homes of one fact
+	 * are free to part company, and they had: a zone swapped in the copy here passed every case of
+	 * {@code SeasonClockTest}, because no case asked about the first hours of a New Year. The copy
+	 * is gone, so the zone and the floor have one home, and the cases of
+	 * {@code theRunningYearOfALeagueIsTheBandsYearInTheLeaguesOwnZone} hold this method to reading
+	 * it.
+	 *
 	 * <p><b>THIS IS NOT {@link #seasonBeingPaidFor} AND MUST NOT BE WRITTEN AS IT.</b>
 	 * That one answers what is on SALE and steps into next year on 15 October, so from the
 	 * middle of October to December it would refuse a league for the year that is still
@@ -617,7 +627,7 @@ public final class SeasonClock {
 	 *           which is ADL A36 O2
 	 */
 	public static boolean aLeagueMayBeMadeFor(int season, ZonedDateTime at) {
-		int running = Math.max(at.withZoneSameInstant(ZONE).getYear(), FIRST_SEASON);
+		int running = seasonTheBandIsWorkedOutFor(at);
 
 		return season == running || season == running + 1;
 	}

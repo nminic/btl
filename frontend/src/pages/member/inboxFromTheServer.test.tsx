@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { aLapsedMembersPage } from '../../test/hisPage'
 import { renderAt } from '../../test/render'
 import {
   answeredWith,
@@ -319,6 +320,26 @@ let whoseMailIsBeingServed = HIS_ADDRESS
 /** Him, as `GET /api/me` answers him. */
 function him(): { role: string; account: number; member: { memberNumber: string } } {
   return { role: 'competitor', account: 1, member: { memberNumber: '000007' } }
+}
+
+/**
+ * Him, as `GET /api/me` answers him when the screen reads HIS RECORD and not only who he is: the
+ * whole record, because the portal believes an answer only when it is a whole one
+ * (`session/theServer.ts`, `profileIn`). The answer to a question about a team is drawn from it
+ * since 20.10.2026 (PDL, „Odgovor na poziv u tim čeka pol sa članovog naloga": the whole answer
+ * waits for the reader's record, and a record the portal cannot believe is a failed read), so a
+ * bare `{ memberNumber }` is a reader whose record could not be read and the buttons are not drawn.
+ */
+function hisWholeRecord(): {
+  role: string
+  account: number
+  member: { memberNumber: string; gender: string; active: boolean }
+} {
+  return {
+    role: 'competitor',
+    account: 1,
+    member: { ...aLapsedMembersPage, memberNumber: '000007', gender: 'M', active: true },
+  }
 }
 
 /**
@@ -730,7 +751,7 @@ describe('what the portal may not claim about a message the server keeps', () =>
   })
 
   it('does offer an answer to a question about a team, and claims nothing it cannot keep', async () => {
-    aServerWhere(him(), { [HIS_ADDRESS]: [A_QUESTION] })
+    aServerWhere(hisWholeRecord(), { [HIS_ADDRESS]: [A_QUESTION] })
 
     renderAt(`/sr/poruke/${String(A_QUESTION.id)}`, 'competitor', '000007')
 

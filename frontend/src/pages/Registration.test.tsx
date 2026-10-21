@@ -19,6 +19,7 @@ import { setupUser } from '../test/user'
 import { NewResult } from './member/NewResult'
 import { SessionProvider } from '../session/SessionProvider'
 import { Registration } from './Registration'
+import { typeATownTheCodebookKnows } from '../test/town'
 
 /** After registration opens, so the form itself is on screen. */
 const OPEN = '2026-10-02'
@@ -1753,4 +1754,24 @@ describe('a registration the server refuses', () => {
 
     expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   }, SLOW)
+})
+
+describe('the town of the registration, once it stops being a town the codebook knows', () => {
+  it('empties the country the town wrote and asks for it, where it used to keep sending it', async () => {
+    /* Owner, 20.10.2026 (PDL, „Čim ukucano ime mesta prestane da odgovara šifarniku, država koju je
+       prepoznavanje upisalo se prazni i čeka izbor"; PENDING 29216). The registration opens on no
+       country, so „Kranj" writes Slovenia, and the letters after it used to leave Slovenia under a
+       hamlet. Nothing here submits: what is measured is the field, on the form the decision names. */
+    const user = setupUser()
+    renderForm()
+
+    await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
+    await user.type(screen.getByLabelText(/^Mesto$/), ' pod brdom')
+
+    const country = screen.getByRole('combobox', { name: /^Država/ })
+
+    expect(screen.getByLabelText(/^Mesto$/)).toHaveValue('Kranj pod brdom')
+    expect(country).toHaveValue('')
+    expect(country).toBeEnabled()
+  })
 })

@@ -279,13 +279,25 @@ describe('a proposal a member sends', () => {
 
     await screen.findByRole('list', { name: /Čeka/ })
 
-    expect(arrivedResource('verification'), 'the queue was never held').toBeDefined()
+    const held = arrivedResource('verification')
+
+    expect(held, 'the queue was never held').toBeDefined()
 
     await router.navigate('/sr/novi-tim')
     await fill(user, 'Trkači Morave')
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
-    expect(arrivedResource('verification')).toBeUndefined()
+    /* The answer held before the press is GONE, which is all this case has ever asked. It is no
+       longer „nothing is held": the header counter of a superadmin is mounted all the while and
+       reads the queue again the moment it is dropped (PENDING 29561), so what is held a moment
+       later is the answer that has the proposal in it. Dropped and not re-read would be the same
+       object for ever, and this waits for it to change. */
+    await waitFor(
+      () => {
+        expect(arrivedResource('verification')).not.toBe(held)
+      },
+      { timeout: 3000 },
+    )
 
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
@@ -739,11 +751,15 @@ describe('the town a member proposes a team in', () => {
     expect(proposalSent()).toMatchObject({ city: 'Kranj', country: 'SI' })
   })
 
-  it('leaves the country standing when the town is typed over by one the codebook does not know', async () => {
-    /* Left as it was, and on the screen, and open to be changed (owner, 11.08.2026): it used
-       to be cleared back when it was written and never shown, and what stands there now is
-       what will be sent. The other way to read this form is a country that empties itself
-       under a member who is correcting a typo. */
+  it('empties the country the town wrote when the town is typed over by one the codebook does not know', async () => {
+    /* Owner, 20.10.2026 (PDL, „Čim ukucano ime mesta prestane da odgovara šifarniku, država koju je
+       prepoznavanje upisalo se prazni i čeka izbor"; PENDING 29216): the country that came with
+       Kranj is Kranj's, and a name that is no longer Kranj does not keep it. It stayed from
+       11.08.2026 until then, and what stood there was sent: a team in a hamlet filed under a
+       country nobody had chosen, with the form saying nothing because a country was there.
+
+       Open to be chosen and not switched off, and refused at the door until it is, which is what the
+       country standing there used to hide. */
     const user = setupUser()
     renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
@@ -757,8 +773,14 @@ describe('the town a member proposes a team in', () => {
 
     const country = screen.getByLabelText(/^Država/)
 
-    expect(country).toHaveValue('SI')
+    expect(country).toHaveValue('')
     expect(country).toBeEnabled()
+
+    await send(user)
+
+    expect(screen.getByText('Izaberi državu uz mesto.')).toBeVisible()
+    expect(country).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
 
     await user.selectOptions(country, 'BA')
     await send(user)
