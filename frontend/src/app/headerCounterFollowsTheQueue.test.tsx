@@ -136,5 +136,15 @@ describe('the counter in the header', () => {
     await waitFor(() => {
       expect(timesAskedForTheQueue(server.asked)).toBe(held + 1)
     })
+
+    /* And a full clear, which is how the tests start a visit and how nothing in production drops: it
+       drops the queue as well, and a counter that did not hear of it would hold the old number. */
+    act(() => {
+      clearResourceCache()
+    })
+
+    await waitFor(() => {
+      expect(timesAskedForTheQueue(server.asked)).toBe(held + 2)
+    })
   }, SLOW)
 })

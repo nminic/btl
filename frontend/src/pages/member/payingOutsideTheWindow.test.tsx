@@ -383,6 +383,74 @@ describe('the sentence about ranking follows the row and not the date', () => {
   }, SLOW)
 })
 
+describe('the notes about a price follow what he owes for the season on sale (PENDING 29388)', () => {
+  /* The three sentences under the state line: what it costs today, what a payment from abroad adds,
+     and the junior rate. They are the price of the season on sale, so they are said to whoever is
+     asked for it and to nobody who holds it already. */
+  const PRICE = /^Danas članarina košta/
+  const PROCESSING = /^Uz uplatu u evrima ide i taksa/
+  const JUNIOR = /^Ko u sezoni ima bar jedan dan 14 godina/
+
+  function noPriceNote() {
+    expect(screen.queryByText(PRICE)).not.toBeInTheDocument()
+    expect(screen.queryByText(PROCESSING)).not.toBeInTheDocument()
+    expect(screen.queryByText(JUNIOR)).not.toBeInTheDocument()
+  }
+
+  /* **TWO SEASONS IN THE ARRANGEMENT, so that holding the one on sale and holding the one that is
+     running are not the same member.** On 1 November 2027 the season on sale is 2028 and the one
+     running is 2027; on 1 March 2027 both are 2027. */
+  it.each([
+    ['payment', 'Članarina za sezonu 2028 je plaćena.'],
+    ['balance', 'Članarina za sezonu 2028 je plaćena iz balansa.'],
+  ])('a member who holds the season on sale, 2028, on a %s, is told so and quoted no price', async (basis, stated) => {
+    openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: 2028 }, '2027-11-01')
+
+    expect(await screen.findByText(stated)).toBeVisible()
+    expect(screen.getByText('Članarina za 2028 je već plaćena, pa nema šta da uplatiš.')).toBeVisible()
+    noPriceNote()
+  }, SLOW)
+
+  it.each([
+    ['payment', 'Članarina za sezonu 2027 je plaćena.'],
+    ['balance', 'Članarina za sezonu 2027 je plaćena iz balansa.'],
+  ])('and, before the sale of the next season, holding the running one, which is then the one on sale, on a %s', async (basis, stated) => {
+    openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: 2027 }, '2027-03-01')
+
+    expect(await screen.findByText(stated)).toBeVisible()
+    noPriceNote()
+  }, SLOW)
+
+  it.each([
+    ['payment', 2027],
+    ['balance', 2027],
+  ])('a member who holds only the RUNNING season, 2027, on 1 November 2027, is still quoted the price of 2028, on a %s', async (basis, season) => {
+    /* Holds a season, and not the one on sale: nothing is said of 2027 here (the running season is
+       not touched after 14 October), and the one thing he can still be asked for is the next. */
+    openHisPage({ ...STANDING, membershipBasis: basis, membershipSeason: season }, '2027-11-01')
+
+    expect(await screen.findByText(PRICE)).toBeVisible()
+    expect(screen.getByText(JUNIOR)).toBeVisible()
+    expect(screen.getByText(PROCESSING)).toBeVisible()
+    expect(screen.queryByText(/je plaćena/)).not.toBeInTheDocument()
+  }, SLOW)
+
+  it('a member freed of the fee for the season on sale is quoted nothing either, as before', async () => {
+    openHisPage({ ...STANDING, membershipBasis: 'feeExempt', membershipSeason: 2028 }, '2027-11-01')
+
+    expect(await screen.findByText('Oslobođen si plaćanja članarine, pa nema šta da uplatiš.')).toBeVisible()
+    noPriceNote()
+  }, SLOW)
+
+  it('somebody who holds nothing is quoted all three, so the notes are still drawn where a price is owed', async () => {
+    openHisPage(LAPSED, '2027-11-01')
+
+    expect(await screen.findByText(PRICE)).toBeVisible()
+    expect(screen.getByText(JUNIOR)).toBeVisible()
+    expect(screen.getByText(PROCESSING)).toBeVisible()
+  }, SLOW)
+})
+
 describe('what a case of this file may end in', () => {
   it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
     expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
