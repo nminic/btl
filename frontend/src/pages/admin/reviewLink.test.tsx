@@ -376,7 +376,7 @@ describe('the words a member wrote beside the result', () => {
 
     const table = await screen.findByRole('table', { name: 'Čeka proveru' })
 
-    return { line: table.querySelector('.review__said') }
+    return { line: table.querySelector<HTMLElement>('.review__said') }
   }
 
   it('draws an address in them as a link the moderator may press, and every other word as it was typed', async () => {
