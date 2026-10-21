@@ -1,10 +1,11 @@
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, fireEvent, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { arrivedResource, clearResourceCache, loadResource, type ResourceName } from '../../data/client'
 import { namesThatReadTheFlag, READS_THE_FLAG_AND_IS_NOT_DROPPED } from '../../test/readsTheFlag'
 import type { Member, MembershipDue, Outstanding } from '../../data/types'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
+import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
 import { QUEUE } from './queues'
 
@@ -1644,6 +1645,21 @@ describe('activating a membership from the payments screen', () => {
      * once by the remount, so its drop is a second request and is counted.
      */
     describe('every answer that reads the flag, in the same visit', () => {
+      /* EVERY WAIT IN THIS BLOCK IS GIVEN HALF OF WHAT A CASE IS GIVEN (CLAUDE.md, section 25), the shape of
+         `rowPayment.test.tsx`: the setup gives each wait the whole of the case's clock, so a drop that never
+         comes would end the case by running out of time and not on its own assertion, and a series of
+         mutations could not tell the two apart. Scoped to this block, so the rest of the file keeps what
+         it had. */
+      const waitsOf = getConfig().asyncUtilTimeout
+
+      beforeAll(() => {
+        configure({ asyncUtilTimeout: SLOW / 2 })
+      })
+
+      afterAll(() => {
+        configure({ asyncUtilTimeout: waitsOf })
+      })
+
       function namesToLoad(): ResourceName[] {
         return [
           ...new Set<ResourceName>([
@@ -1656,7 +1672,7 @@ describe('activating a membership from the payments screen', () => {
       it.each([
         ['the payment door', 'Petar Marko'],
         ['the membership door', 'Nikola Zorić'],
-      ])('are dropped once the activation went through the %s', async (door, whose) => {
+      ])('are dropped once the activation went through %s', async (door, whose) => {
         const server = serving()
         const user = setupUser()
         renderAt(ADDRESS, 'superadmin')
@@ -1690,7 +1706,7 @@ describe('activating a membership from the payments screen', () => {
         )
 
         server.stop()
-      })
+      }, SLOW)
 
       it('drops nothing when the server refuses the activation', async () => {
         const server = serving(OUTSTANDING, () =>
@@ -1720,6 +1736,10 @@ describe('activating a membership from the payments screen', () => {
         }
 
         server.stop()
+      }, SLOW)
+
+      it('is given waits shorter than a case, so that a drop that never comes is told by its own assertion', () => {
+        expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
       })
     })
 
