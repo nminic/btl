@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { PendingItem, ServedPendingItem, WaitingRun } from '../../data/types'
 import { NO_RATING } from '../../data/types'
 import { WHOLE } from '../../components/crop'
-import { useResource, type ResourceState } from '../../data/useResource'
+import { useHowManyTimesDropped, useResource, type ResourceState } from '../../data/useResource'
 import type { Decisions } from '../../session/context'
 import { useSession } from '../../session/useSession'
 
@@ -206,11 +206,18 @@ function itemFrom(served: ServedPendingItem): PendingItem {
  *                 `readTheQueueAgain`): the shape `AskingThisTeam.tsx` reads its own list again in,
  *                 and the finding of the review of T5 it answers (PENDING, „Odbijanje koje dokazuje
  *                 da je ekran zastareo ostavlja zastareo crtež"). Left out, as every other caller
- *                 leaves it, it changes nothing: `undefined` on every render is a dependency that
- *                 never moves.
+ *                 leaves it, it changes nothing of its own.
+ *
+ * <p><b>And the queue is read again whenever anybody drops it</b> (PENDING 29561), whether or not
+ * this caller passes a revision: the header counts through this hook and never unmounts, so a
+ * comment or a team proposal that drops `verification` after the server has taken the row left
+ * the number over every screen where it was (`app/Shell.tsx`). Every reader of the queue follows
+ * its drops - the header, the tabs and the cards - because they count off one answer and must not
+ * be able to disagree.
  */
 export function usePending(revision?: number): ResourceState<PendingItem[]> {
-  const state = useResource<ServedPendingItem[]>('verification', { revision })
+  const dropped = useHowManyTimesDropped('verification')
+  const state = useResource<ServedPendingItem[]>('verification', { revision: (revision ?? 0) + dropped })
   const { proposals } = useSession()
 
   return useMemo(
@@ -242,7 +249,8 @@ export function usePending(revision?: number): ResourceState<PendingItem[]> {
  *                 ekran zastareo ostavlja zastareo crtež")
  */
 export function useWaitingRuns(revision?: number): ResourceState<WaitingRun[]> {
-  const state = useResource<ServedPendingItem[]>('verification', { revision })
+  const dropped = useHowManyTimesDropped('verification')
+  const state = useResource<ServedPendingItem[]>('verification', { revision: (revision ?? 0) + dropped })
 
   return useMemo(
     () =>

@@ -396,6 +396,8 @@ export function clearResourceCache(name?: ResourceName, language?: string): void
   if (name === undefined) {
     inFlight.clear()
     arrived.clear()
+    RESOURCE_NAMES.forEach(wasDropped)
+    tellWhoWatchesTheDrops()
 
     return
   }
@@ -404,4 +406,58 @@ export function clearResourceCache(name?: ResourceName, language?: string): void
 
   inFlight.delete(at)
   arrived.delete(at)
+  wasDropped(name)
+  tellWhoWatchesTheDrops()
+}
+
+/**
+ * HOW MANY TIMES THE CACHE OF A NAME HAS BEEN DROPPED DURING THIS VISIT, and who is told when it
+ * is (PENDING 29561, measured on 18.10.2026 on the header of every administrative screen).
+ *
+ * <p><b>Why a count lives beside the cache.</b> {@link clearResourceCache} throws a promise away
+ * and says nothing to a component that already put the answer it gave into its own state. The
+ * counter in the header (`app/Shell.tsx`) is such a component: it stands beside the outlet and
+ * never comes down while a moderator is signed in, so a member who sent a comment or proposed a
+ * team (both drop `verification` once the server has taken the row) saw the queue grow under the
+ * screen and the number over it stay where it was: „Administracija 15" before and after.
+ *
+ * <p><b>Not every reader of every name is made to read again, and that is still the boundary
+ * `HowToRead.revision` states</b> (`data/useResource.ts`): `admin/AdminMembers.tsx` alone drops
+ * eight names in one breath. This only COUNTS, and a reader that wants to follow a name asks the
+ * count (`useHowManyTimesDropped`) and puts it into its own `revision`. The only readers that do
+ * are those of the queue (`admin/pending.ts`), which the header, the tabs and the cards count
+ * through.
+ *
+ * <p>A full clear (the tests' own, which every case starts with) counts for every name, and a
+ * clear narrowed to a language counts for its name: nothing that is dropped goes uncounted.
+ */
+const drops = new Map<ResourceName, number>()
+
+/** Everybody who wants to know that something was dropped. A `Set`, so that unsubscribing is by
+ *  identity and the same listener twice is one. */
+const whoWatchesTheDrops = new Set<() => void>()
+
+function wasDropped(name: ResourceName): void {
+  drops.set(name, (drops.get(name) ?? 0) + 1)
+}
+
+function tellWhoWatchesTheDrops(): void {
+  for (const listener of [...whoWatchesTheDrops]) {
+    listener()
+  }
+}
+
+/** How many times this name has been dropped; the snapshot half of `useSyncExternalStore`. */
+export function timesDropped(name: ResourceName): number {
+  return drops.get(name) ?? 0
+}
+
+/** Calls `listener` after every drop of anything, and returns the way to stop. The subscribe half
+ *  of `useSyncExternalStore`; a listener that wants one name asks {@link timesDropped} for it. */
+export function watchTheDrops(listener: () => void): () => void {
+  whoWatchesTheDrops.add(listener)
+
+  return () => {
+    whoWatchesTheDrops.delete(listener)
+  }
 }
