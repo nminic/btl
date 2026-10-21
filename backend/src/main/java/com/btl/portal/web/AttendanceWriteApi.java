@@ -61,8 +61,9 @@ import java.util.function.BiConsumer;
  * league's own time, the very words the list is filtered by, so a member can never take or drop
  * an announcement for an event the list would not show him. Refused by name,
  * {@link #THE_EVENT_HAS_BEEN_RUN}, as {@code CommentWriteApi} refuses a rating for an event not
- * yet run: the screen offers the switch by a day of its own in another zone (see
- * {@link AttendanceApi}), so this refusal is reachable from the screen and is said in words there.
+ * yet run: the screen offers the switch by the same Belgrade day the server counts (see
+ * {@link AttendanceApi}), so this refusal is reachable from the screen only by a page left open
+ * across midnight, before the clock's next look, and is said in words there.
  *
  * <p><b>THE ORDER OF THE QUESTIONS IS PART OF THE ANSWER.</b> The member first, so somebody this
  * address is not for learns nothing about any event from it; then whether the event exists, which

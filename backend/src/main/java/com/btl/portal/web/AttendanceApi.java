@@ -72,17 +72,20 @@ import java.util.List;
  * is edited. {@code >=}, so an event running today is still ahead for this purpose - a member
  * can still say they are coming to something that has not finished being run.
  *
- * <p><b>THE SCREEN DRAWS THE SAME COMPARISON IN ANOTHER ZONE, AND THAT IS A BOUNDARY RATHER
- * THAN AN AGREEMENT.</b> This said until 03.10.2026 that the frontend „already draws this exact
- * boundary, one field away", and the field is right and the day is not: {@code GoingToEvent.tsx}
- * hides the section when {@code event.date < today}, and the screen's {@code today} is
- * {@code realToday()} in {@code clock/context.ts}, {@code new Date().toISOString().slice(0, 10)},
- * which is the day in UTC. At the instant {@code AttendanceApiTest} is fixed on,
- * 2026-09-14T22:30Z, that expression answers {@code 2026-09-14} while Belgrade is already on the
- * 15th. So for the first hour of a Belgrade day in winter, and the first two in summer, the
- * screen still offers the switch on the event of the day before, and this server refuses it with
- * {@link AttendanceWriteApi#THE_EVENT_HAS_BEEN_RUN}, which the screen says in words. The clock is
- * a part every screen shares, so moving it is not this increment's; the server is what decides.
+ * <p><b>THE SCREEN DRAWS THE SAME COMPARISON ON THE SAME DAY, SINCE 20.10.2026.</b> This said
+ * until then that the frontend „already draws this exact boundary, one field away", and the
+ * field was right and the day was not: {@code GoingToEvent.tsx} hides the section when
+ * {@code event.date < today}, and the screen's {@code today} was then the day in UTC, so at the
+ * instant {@code AttendanceApiTest} is fixed on, 2026-09-14T22:30Z, the screen answered the 14th
+ * while Belgrade was already on the 15th. The owner struck that day with „Zajednički sat ekrana
+ * vraća beogradski dan" (ADL A7, 20.10.2026): the shared clock, {@code realToday()} in
+ * {@code clock/context.ts}, now reads the day in {@code Europe/Belgrade}, winter and summer
+ * alike, so the screen and this server count the same day at the same instant. What is left is a
+ * boundary of time and not of zone: the clock looks again once a minute and on return to the
+ * tab, so a page left open across Belgrade midnight can still offer the switch on the event of
+ * the day before until its next look, and this server then refuses it with
+ * {@link AttendanceWriteApi#THE_EVENT_HAS_BEEN_RUN}, which the screen says in words. The server
+ * is what decides.
  *
  * <p><b>AND WITHOUT A MEMBERSHIP IN GOOD STANDING, AN INTENTION DOES NOT COME OUT OF
  * HERE EITHER - the fourth time this exact class of leak has been named, after pairs,

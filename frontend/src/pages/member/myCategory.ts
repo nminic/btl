@@ -11,8 +11,8 @@ export const MY_CATEGORY = '/api/me/category'
  *
  * - `open` depends on an HOUR. The choice shuts at 10:00 on 1 January of its season
  *   (`SeasonClock.categoryMayBeChosenFor`), and this portal's clock reads whole days
- *   with no notion of an hour or a zone (`data/season.ts`: „The portal reads whole
- *   days off one clock with no notion of a zone"). A screen guessing it is wrong for
+ *   with no notion of an hour (`data/season.ts`: „The portal reads whole
+ *   days off one clock with no notion of an hour"). A screen guessing it is wrong for
  *   ten hours on the one morning of the year the answer changes - which is exactly
  *   what the draft box did, drawn under `inYearlyWindow`, a window that shuts at the
  *   end of 31 December.

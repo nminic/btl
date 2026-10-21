@@ -551,7 +551,22 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
 			   read off this very assertion when it ran before the entry existed. */
-			new Applied("68", "V68__a_payment_reference_is_exactly_ten_digits.sql", 601235041));
+			new Applied("68", "V68__a_payment_reference_is_exactly_ten_digits.sql", 601235041),
+
+			/* V69. The two Stari Grads of Croatia carry the town they stand by (owner, PDL, 20.10.2026,
+			   „Stari Grad (Omiš)” i „Stari Grad (Gospić)” postaju „Stari Grad (Hvar)” i „Stari Grad
+			   (Pag)”, ručno, po presedanu Kočevja; PENDING 28046). An UPDATE of one column over a VALUES
+			   list keyed by the GeoNames mark and guarded by the old name, so no row that points at a town
+			   moves and no constraint is added; `StariGradIsRenamedCarriedOverTest` runs the file over a
+			   member and an event in each town, and `SameNamedTownsAreToldApartTest` pins both names by
+			   mark. The source file `frontend/src/test/mock/places.json` carries the same two names.
+
+			   69 because it is the next free number, measured on 21.10.2026 after a fetch: origin/main
+			   stands at V68.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
+			   read off this very assertion when it ran before the entry existed. */
+			new Applied("69", "V69__the_two_stari_grads_carry_the_town_they_stand_by.sql", -1305469360));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
