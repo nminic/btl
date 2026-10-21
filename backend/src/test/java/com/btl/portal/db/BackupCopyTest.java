@@ -222,7 +222,7 @@ class BackupCopyTest extends DatabaseTest {
 	 *
 	 * <p>The measurement btl/CLAUDE.md section 11 asks for. pg_dump writes a constraint that is not
 	 * valid AFTER the data, with the words NOT VALID; this is where that is measured rather than
-	 * assumed, on the real table, with the real row. And {@code flyway_schema_history} comes back
+	 * assumed, on the real table, with the real row. And Flyway's own table comes back
 	 * with every migration and its checksum, so the backend that starts on it migrates nothing twice.
 	 * The proof that is written down afterwards carries counts and no member.
 	 */
@@ -251,7 +251,7 @@ class BackupCopyTest extends DatabaseTest {
 				.contains("membership.");
 
 		String history = "select count(*) || ' ' || string_agg(version || ':' || coalesce(checksum, 0), ',' order by installed_rank)"
-				+ " from flyway_schema_history";
+				+ " from " + flywayTable();
 		assertThat(psql(into, history)).as("the copy carries Flyway's history whole").isEqualTo(psql(SOURCE, history));
 
 		String now = ok("date +%s");
@@ -364,7 +364,7 @@ class BackupCopyTest extends DatabaseTest {
 	void aCopyOfADatabaseNobodyMigratedProvesNothing() {
 		String hollow = aDatabase("bkp_hollow");
 		psql(hollow, "create table photo (id bigint primary key, media_type text, byte_size integer, digest text);"
-				+ " create table flyway_schema_history (installed_rank integer primary key)");
+				+ " create table " + flywayTable() + " (installed_rank integer primary key)");
 		String empty = aFolder("/tmp/bkp-empty.XXXXXX");
 		ok("mkdir " + empty + "/photos");
 

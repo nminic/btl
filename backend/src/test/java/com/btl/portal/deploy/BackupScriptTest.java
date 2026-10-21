@@ -107,7 +107,7 @@ class BackupScriptTest {
 	 * is taken still exists when tar reads it a moment later; the other order would leave rows in the
 	 * dump whose files tar passed before they were written, which after a restore is a picture that
 	 * 404s. Held by position, which is what an order is. And the dump is WHOLE: custom format, which
-	 * is what pg_restore and check.sh read, and no table left out - flyway_schema_history above all,
+	 * is what pg_restore and check.sh read, and no table left out - Flyway's own history above all,
 	 * without which a restored database would be migrated again on the next start.
 	 */
 	@Test
