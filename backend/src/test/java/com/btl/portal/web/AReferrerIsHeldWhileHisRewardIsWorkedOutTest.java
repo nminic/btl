@@ -67,16 +67,27 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * holds its own member's row first and wants the referrer's second, and both must be let through in turn,
  * with a reward line for each and without the database breaking a deadlock.
  *
- * <p><b>A RENEWAL TAKES NOTHING OF THE REFERRER (review of PR 611, round 1).</b> The hold above is for the day the
- * reward is first worked out. A member who is activated again, a renewal, has his line already, and then the
- * statement that writes it falls to {@code on conflict do nothing} and touches nothing of the referrer, which is
- * all the two other writers that take the referrer before his member rely on: the save of results over both
+ * <p><b>AN ACTIVATION THAT WRITES NO LINE TAKES NOTHING OF THE REFERRER (review of PR 611, rounds 1 and 2).</b> The
+ * hold above is for the day a line is written. A member who is activated again and has his line already is
+ * answered by {@code on conflict do nothing} and touches nothing of the referrer; so does a member whose reward
+ * is worth nothing, because the price row {@code referral} may be nought ({@code PUT /api/pricing} has no lower
+ * bound) and then no line is ever written, on his first activation or on his hundredth. That is all the two
+ * other writers that take the referrer before his member rely on: the save of results over both
  * ({@code ResultsByTheLeagueApi}, {@code select ... where id in (...) order by id for update}, the older row
  * first) and the deletion of the referrer ({@code CompetitorWriteApi}, whose {@code ON DELETE SET NULL} then
  * updates the member). A hold taken on every activation put the grant between those two orders and the database
- * broke a deadlock, measured as a 500 on the grant. {@link #aResultsSaveOverTheReferrerAndAMemberRenewingBreaksNoDeadlock}
+ * broke a deadlock, measured as a 500 on the grant, first on a renewal that had its line and then, in round 2, on
+ * a renewal and on a first activation whose reward was nought. {@link #aResultsSaveOverTheReferrerAndAMemberRenewingBreaksNoDeadlock}
  * and {@link #theDeletionOfTheReferrerAndTheRenewalOfAMemberOfHisBreakNoDeadlock} stop the other writer behind a hold
- * on the referrer, send the renewal, and ask that the renewal is answered while the hold is still kept.
+ * on the referrer, send the renewal, and ask that the renewal is answered while the hold is still kept;
+ * {@link #aRenewalWhoseRewardIsNoughtAsksNothingOfTheReferrer} and
+ * {@link #aFirstActivationWhoseRewardIsNoughtAsksNothingOfTheReferrer} do the same with the price at nought. The
+ * price is nought in both currencies or in neither, never in one alone ({@code price_row_free_in_both_or_priced_in_both},
+ * V40, PDL 20b), so there is no case of a reward that is nought in the referrer's money and something in the other.
+ *
+ * <p><b>THE WORTH IS ASKED BEFORE THE HOLD AND AFTER IT.</b> Before, to decide whether to wait. After, to decide the
+ * line. {@link #aRewardThatFallsToNoughtWhileTheGrantWaitsForTheReferrerIsNotWritten} is the order that tells the two
+ * apart: the price is nought by the time the hold is granted, and the line is not written.
  *
  * <p><b>NOT {@code @Transactional}</b>: the writers are different connections and their rows are real commits,
  * taken back out by {@link #andNothingOfItIsLeftBehind}.
@@ -324,7 +335,7 @@ class AReferrerIsHeldWhileHisRewardIsWorkedOutTest {
 	void aResultsSaveOverTheReferrerAndAMemberRenewingBreaksNoDeadlock() throws Exception {
 		aMemberHoldingTheLastSeasonAndAlreadyRewardedFor();
 
-		Outcome outcome = theRenewalMeetsAWriterOfTheReferrer(this::aResultsSaveOverTheReferrerAndTheMember);
+		Outcome outcome = theMemberMeetsAWriterOfTheReferrer(renewing, () -> aResultsSaveOver(renewing));
 
 		outcome.assertNoDeadlock();
 		assertThat(outcome.otherSaid()).as(outcome.said()).isEqualTo("locked both");
@@ -346,7 +357,7 @@ class AReferrerIsHeldWhileHisRewardIsWorkedOutTest {
 	void theDeletionOfTheReferrerAndTheRenewalOfAMemberOfHisBreakNoDeadlock() throws Exception {
 		aMemberHoldingTheLastSeasonAndAlreadyRewardedFor();
 
-		Outcome outcome = theRenewalMeetsAWriterOfTheReferrer(this::theReferrerDeleted);
+		Outcome outcome = theMemberMeetsAWriterOfTheReferrer(renewing, this::theReferrerDeleted);
 
 		outcome.assertNoDeadlock();
 		assertThat(outcome.otherSaid()).as(outcome.said()).startsWith("DELETE 2");
@@ -358,6 +369,77 @@ class AReferrerIsHeldWhileHisRewardIsWorkedOutTest {
 		assertThat(db.sql("select count(*) from competitor where id = ? and referred_by is null")
 				.param(renewing).query(Long.class).single())
 				.as("the member stays, brought in by no one").isEqualTo(1L);
+	}
+
+	/**
+	 * A RENEWAL WHOSE REWARD IS NOUGHT AND A SAVE OF RESULTS OVER THE REFERRER AND THE MEMBER: no deadlock.
+	 *
+	 * <p>{@code PUT /api/pricing} has no lower bound, so the price row {@code referral} can be nought in both
+	 * currencies. The member holds the last season and the referrer has no line for him, because there never
+	 * was a reward to write. With a hold taken whenever there is no line, the renewal took the referrer's row
+	 * behind the save and the database broke a deadlock; nothing of the referrer is asked for a line that is
+	 * not written, and the renewal is answered while the hold is still kept.
+	 */
+	@Test
+	void aRenewalWhoseRewardIsNoughtAsksNothingOfTheReferrer() throws Exception {
+		aMemberHoldingTheLastSeason();
+
+		Outcome outcome = whileTheReferralIsNought(
+				() -> theMemberMeetsAWriterOfTheReferrer(renewing, () -> aResultsSaveOver(renewing)));
+
+		assertNothingWasAskedOfTheReferrer(outcome);
+	}
+
+	/**
+	 * THE FIRST ACTIVATION OF A MEMBER WHOSE REWARD IS NOUGHT AND THE SAME SAVE: no deadlock.
+	 *
+	 * <p>The same, for a member nobody has been rewarded for yet and who is activated for the first time: the
+	 * grant answers 201 while the referrer is held by the writer in front of it, and the book stays empty.
+	 */
+	@Test
+	void aFirstActivationWhoseRewardIsNoughtAsksNothingOfTheReferrer() throws Exception {
+		Outcome outcome = whileTheReferralIsNought(
+				() -> theMemberMeetsAWriterOfTheReferrer(firstNewcomer, () -> aResultsSaveOver(firstNewcomer)));
+
+		assertNothingWasAskedOfTheReferrer(outcome);
+	}
+
+	/**
+	 * A REWARD THAT FALLS TO NOUGHT WHILE THE GRANT WAITS FOR THE REFERRER IS NOT WRITTEN.
+	 *
+	 * <p>The administrator holds the referrer and sets the price {@code referral} to nought in the same
+	 * transaction, which nobody else can see until it commits. The grant reads five euro, takes its place behind
+	 * the hold, and when the administrator commits it is let through and asks again: the reward is nothing, the
+	 * answer is 201 and no line is written. A grant that kept the answer it had before the hold would write a
+	 * line of nought, which {@code balance_entry_a_referral_adds} refuses with a 500, or the old amount into a
+	 * book whose price has gone.
+	 */
+	@Test
+	void aRewardThatFallsToNoughtWhileTheGrantWaitsForTheReferrerIsNotWritten() throws Exception {
+		BigDecimal[] was = theReferralPrice();
+		ExecutorService requests = Executors.newFixedThreadPool(1);
+		List<Future<Integer>> submitted = new ArrayList<>();
+		int answer;
+
+		try (AHeldTransaction theAdministrator = new AHeldTransaction(pool)) {
+			theAdministrator.db().sql("select id from competitor where id = ? for update")
+					.param(referrer).query(Long.class).single();
+			theAdministrator.db().sql("update price_row set eur = 0, rsd = 0 where key = 'referral'").update();
+
+			Future<Integer> grant = requests.submit(() -> granted(firstNewcomer));
+			submitted.add(grant);
+
+			theAdministrator.untilBehind(1, submitted);
+			theAdministrator.commit();
+
+			answer = grant.get(30, TimeUnit.SECONDS);
+		} finally {
+			requests.shutdownNow();
+			db.sql("update price_row set eur = ?, rsd = ? where key = 'referral'").params(was[0], was[1]).update();
+		}
+
+		assertThat(answer).as("the grant was refused; what the database said: " + thrown).isEqualTo(201);
+		assertThat(bookOf(referrer)).as("a reward worked out before the hold was written after it").isEqualTo("no lines");
 	}
 
 	/** What one meeting of a renewal and a writer of the referrer came to. */
@@ -374,11 +456,11 @@ class AReferrerIsHeldWhileHisRewardIsWorkedOutTest {
 	}
 
 	/**
-	 * A hold on the referrer, the other writer stopped behind it, the renewal sent behind that, the hold let go.
-	 * Whether the renewal was answered before the hold went is measured and not assumed: it is polled for, and a
-	 * renewal that stands in the referrer's queue is seen as a second request behind the hold.
+	 * A hold on the referrer, the other writer stopped behind it, the activation of the member sent behind that,
+	 * the hold let go. Whether the activation was answered before the hold went is measured and not assumed: it is
+	 * polled for, and one that stands in the referrer's queue is seen as a second request behind the hold.
 	 */
-	private Outcome theRenewalMeetsAWriterOfTheReferrer(Callable<String> theOtherWriter) throws Exception {
+	private Outcome theMemberMeetsAWriterOfTheReferrer(long member, Callable<String> theOtherWriter) throws Exception {
 		ExecutorService requests = Executors.newFixedThreadPool(2);
 		String otherSaid;
 		int grantAnswer;
@@ -391,7 +473,7 @@ class AReferrerIsHeldWhileHisRewardIsWorkedOutTest {
 			Future<String> other = requests.submit(theOtherWriter);
 			theHold.untilBehind(1, List.of(other));
 
-			Future<Integer> grant = requests.submit(() -> granted(renewing));
+			Future<Integer> grant = requests.submit(() -> granted(member));
 			Instant deadline = Instant.now().plusSeconds(15);
 
 			while (!grant.isDone() && theHold.behind() < 2 && Instant.now().isBefore(deadline)) {
@@ -415,23 +497,51 @@ class AReferrerIsHeldWhileHisRewardIsWorkedOutTest {
 	 * the window of October 2027 meets.
 	 */
 	private void aMemberHoldingTheLastSeasonAndAlreadyRewardedFor() {
-		renewing = member("000962", "0011aabbccddee64", true, referrer);
+		aMemberHoldingTheLastSeason();
 
-		db.sql("insert into membership (competitor_id, season, basis, decided_by, decided_by_name, decided_at)"
-						+ " values (?, 2027, 'feeExempt', ?, 'Drzan Blagajnik', timestamptz '2027-01-10 10:00:00+00')")
-				.params(renewing, cashier).update();
 		db.sql("insert into balance_entry (competitor_id, amount, currency, reason, referred_competitor_id,"
 						+ " occurred_at, recorded_by, recorded_by_name) values (?, 600, 'RSD', 'referral', ?,"
 						+ " timestamptz '2027-01-10 10:00:00+00', ?, 'Drzan Blagajnik')")
 				.params(referrer, renewing, cashier).update();
 	}
 
+	/** The same member with no line on the referrer's book: what a reward of nothing leaves behind. */
+	private void aMemberHoldingTheLastSeason() {
+		renewing = member("000962", "0011aabbccddee64", true, referrer);
+
+		db.sql("insert into membership (competitor_id, season, basis, decided_by, decided_by_name, decided_at)"
+						+ " values (?, 2027, 'feeExempt', ?, 'Drzan Blagajnik', timestamptz '2027-01-10 10:00:00+00')")
+				.params(renewing, cashier).update();
+	}
+
+	/**
+	 * Runs the work with the price row {@code referral} at nought in both currencies, and puts the row back as it
+	 * was whatever the work did: the row is shared by every case that runs after this one. Both columns together
+	 * and not one alone, because V40 refuses nought in one currency only.
+	 */
+	private <T> T whileTheReferralIsNought(Callable<T> work) throws Exception {
+		BigDecimal[] was = theReferralPrice();
+
+		try {
+			db.sql("update price_row set eur = 0, rsd = 0 where key = 'referral'").update();
+
+			return work.call();
+		} finally {
+			db.sql("update price_row set eur = ?, rsd = ? where key = 'referral'").params(was[0], was[1]).update();
+		}
+	}
+
+	private BigDecimal[] theReferralPrice() {
+		return db.sql("select eur, rsd from price_row where key = 'referral'")
+				.query((row, i) -> new BigDecimal[] {row.getBigDecimal(1), row.getBigDecimal(2)}).single();
+	}
+
 	/** The exact statement of {@code ResultsByTheLeagueApi#judged}, in a transaction of its own. */
-	private String aResultsSaveOverTheReferrerAndTheMember() throws Exception {
+	private String aResultsSaveOver(long member) throws Exception {
 		try (AHeldTransaction save = new AHeldTransaction(pool)) {
 			try {
 				save.db().sql("select id from competitor where id in (:ids) order by id for update")
-						.param("ids", List.of(referrer, renewing)).query(Long.class).list();
+						.param("ids", List.of(referrer, member)).query(Long.class).list();
 				save.commit();
 
 				return "locked both";
@@ -439,6 +549,16 @@ class AReferrerIsHeldWhileHisRewardIsWorkedOutTest {
 				return failure.toString();
 			}
 		}
+	}
+
+	/** What every activation that writes no line is asked: answered while the referrer is held, and nothing written. */
+	private void assertNothingWasAskedOfTheReferrer(Outcome outcome) {
+		outcome.assertNoDeadlock();
+		assertThat(outcome.otherSaid()).as(outcome.said()).isEqualTo("locked both");
+		assertThat(outcome.grant()).as(outcome.said()).isEqualTo(201);
+		assertThat(outcome.grantWasAnsweredWhileTheReferrerWasHeld())
+				.as("an activation worth nothing asked something of the referrer: " + outcome.said()).isTrue();
+		assertThat(bookOf(referrer)).as("a reward of nothing wrote a line").isEqualTo("no lines");
 	}
 
 	private String theReferrerDeleted() {

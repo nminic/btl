@@ -553,34 +553,56 @@ class BalanceBook {
 	 * {@code FOR KEY SHARE} that every line of his book takes on his row, so a referrer who is himself
 	 * being activated, or whose own book is written, would wait for this and be waited for by it.
 	 *
-	 * <p><b>THE HOLD IS TAKEN ONLY FOR A MEMBER NOBODY HAS BEEN REWARDED FOR YET (PENDING, review of PR 611,
-	 * round 1).</b> A member activated again, a renewal, has his line already, and then the statement below
-	 * falls to {@code on conflict do nothing} and touches nothing of the referrer. The hold is therefore
-	 * asked for in the same statement that finds him, {@code and not exists} a line for this member, and a
-	 * renewal behaves as it did before the hold existed. Taken on every activation it was measured to break
-	 * two writers that were not in the picture (see the order below). It is the member's line that is looked
-	 * for and not the referrer's book: a referrer rewarded for one member is still held for the next.
+	 * <p><b>THE HOLD IS TAKEN ONLY WHEN A LINE IS ABOUT TO BE WRITTEN: NO LINE FOR THIS MEMBER YET, AND A
+	 * REWARD THAT IS WORTH SOMETHING (PENDING, review of PR 611, rounds 1 and 2).</b> Two kinds of activation
+	 * take nothing of the referrer. A member activated again whose reward was written has his line already, and
+	 * the statement below falls to {@code on conflict do nothing}. A member whose reward is worth nothing has no
+	 * line, now or after the next activation, for as long as the price row stays at nought: there is nothing
+	 * to write, so nothing to protect, no line's insert takes {@code FOR KEY SHARE} on the referrer, and the
+	 * activation behaves as it did before the hold existed. Taken on every activation the hold was measured to
+	 * break two writers that were not in the picture (see the order below), once on a renewal that had its line
+	 * and once on a renewal, and on a first activation, that had none because the reward was nought. A member
+	 * activated again who has NO line yet while the reward is worth something (the price was raised after his
+	 * first activation) is held, because his line is written now.
+	 *
+	 * <p><b>The worth is asked twice, and the two answers do different work.</b> Before the hold it is asked
+	 * as the referrer stands this instant, read without holding him ({@link #theRewardOf}), and a nought ends
+	 * the call with nothing taken. That is a legitimate order of events - the activation came before whatever
+	 * changed the price - and it decides only whether to wait, never a line. After the hold it is asked again,
+	 * and THAT answer decides the line: the country is the one he has once the hold is granted, and the price
+	 * is the one in force then, so a reward that fell to nought while this waited is not written, and every line
+	 * that IS written had the referrer's country read under the hold. It is asked in HIS money, not in a
+	 * currency chosen for him. The price row is nought in both currencies or in neither ({@code V40}, PDL 20b),
+	 * so which of the two is asked does not change the answer today; asking in his keeps this right on the day
+	 * that rule is lifted. The no-line test is the member's and not the referrer's book, in the statement that
+	 * holds: a referrer rewarded for one member is still held for the next.
 	 *
 	 * <p><b>The order of locks, as measured and not as hoped.</b> Every caller holds the new member's row
 	 * {@code for update} first ({@code PaymentApi}, {@link MyMembershipWriteApi}, {@link MembershipWriteApi}
-	 * through {@link GrantingASeason}). A FIRST activation then takes his referrer's second: member, then
-	 * referrer. Two other writers take the pair the other way round. {@code ResultsByTheLeagueApi#judged} locks
-	 * every member a save names in one statement, {@code order by id for update}, and the referrer is the
-	 * older row, so referrer first and member second. {@code CompetitorWriteApi#deleting} deletes the referrer
-	 * and {@code competitor_referred_by_fk ... ON DELETE SET NULL} then updates his member: referrer first,
-	 * member second. So on a first activation these orders cross and the database can break a deadlock. That
-	 * crossing is not the hold's doing: before it, the reward line's own insert took {@code FOR KEY SHARE} on
-	 * the referrer's row, which a {@code for update} and a delete both wait for, and the same cycle was
-	 * there. It is a finding of its own and is not decided here. A RENEWAL takes nothing of the referrer and is
-	 * on neither side of it; {@code AReferrerIsHeldWhileHisRewardIsWorkedOutTest} measures that with the
-	 * save of results and with the real deletion, each stopped behind a hold on the referrer while his member
-	 * is renewed, and measures the turn-taking of the first activation with a change of his country, and with
-	 * a grant and a payment for two members of one referrer.
+	 * through {@link GrantingASeason}). An activation that writes a line then takes his referrer's second:
+	 * member, then referrer. Two other writers take the pair the other way round.
+	 * {@code ResultsByTheLeagueApi#judged} locks every member a save names in one statement,
+	 * {@code order by id for update}, and the referrer is the older row, so referrer first and member second.
+	 * {@code CompetitorWriteApi#deleting} deletes the referrer and
+	 * {@code competitor_referred_by_fk ... ON DELETE SET NULL} then updates his member: referrer first, member
+	 * second. So where a line is written these orders cross and the database can break a deadlock. That
+	 * crossing is not the hold's doing: before it, the line's own insert took {@code FOR KEY SHARE} on the
+	 * referrer's row, which a {@code for update} and a delete both wait for, and the same cycle was there. It is
+	 * a finding of its own and is not decided here. Where no line is written there is no insert and no hold, and
+	 * the activation is on neither side of it: a renewal that has its line, a renewal whose reward is nought
+	 * and a first activation whose reward is nought.
+	 * {@code AReferrerIsHeldWhileHisRewardIsWorkedOutTest} measures each of those three with the save of results
+	 * (and the first two with the real deletion), stopped behind a hold on the referrer while the member is
+	 * activated, and measures the turn-taking of the activation that writes with a change of his country, and
+	 * with a grant and a payment for two members of one referrer.
 	 *
 	 * @param newMember {@code competitor.id} of the member whose membership has just been activated
 	 */
 	void aReferralWasActivated(long newMember, Long account, String accountName) {
-		record Referrer(long id, String countryCode) {
+		/* Asked without the hold, and only to decide whether to wait for him: a reward worth nothing in
+		   the referrer's money writes no line, so there is nothing to hold him for. */
+		if (theRewardOf(newMember).isEmpty()) {
+			return;
 		}
 
 		db.sql("select r.id from competitor r"
@@ -590,6 +612,37 @@ class BalanceBook {
 				.params(newMember, newMember)
 				.query(Long.class)
 				.optional();
+
+		/* And asked again once he is held: this answer is the one a line is written from. */
+		Optional<Reward> reward = theRewardOf(newMember);
+
+		if (reward.isEmpty()) {
+			return;
+		}
+
+		db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
+						+ " referred_competitor_id, occurred_at, recorded_by, recorded_by_name)"
+						+ " values (?, ?, ?, 'referral', ?, ?, ?, ?)"
+						+ " on conflict (referred_competitor_id) do nothing")
+				.params(reward.orElseThrow().referrer(), reward.orElseThrow().money().amount(),
+						reward.orElseThrow().money().currency().name(), newMember,
+						Timestamp.from(clock.instant()), account, accountName)
+				.update();
+	}
+
+	/** Who brought a member in, and what that is worth to him in his own money. */
+	private record Reward(long referrer, Balance.Money money) {
+	}
+
+	/**
+	 * The man who brought a member in and the reward he earns, read from his country as it stands this
+	 * instant and WITHOUT holding him. Empty when nobody brought the member in, and empty when the reward is
+	 * worth nothing in the referrer's money. Called before the hold to decide whether to wait and after it to
+	 * decide the line, and what each answer is for is said at {@link #aReferralWasActivated}.
+	 */
+	private Optional<Reward> theRewardOf(long newMember) {
+		record Referrer(long id, String countryCode) {
+		}
 
 		Optional<Referrer> referrer = db.sql("select referrer.id,"
 						+ " coalesce(town_country.code, typed_country.code)"
@@ -604,7 +657,7 @@ class BalanceBook {
 				.optional();
 
 		if (referrer.isEmpty()) {
-			return;
+			return Optional.empty();
 		}
 
 		Currency his = Currency.of(referrer.orElseThrow().countryCode());
@@ -615,15 +668,9 @@ class BalanceBook {
 		Balance.Money reward = new Balance.Money(worth, his);
 
 		if (!reward.isMoney()) {
-			return;
+			return Optional.empty();
 		}
 
-		db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
-						+ " referred_competitor_id, occurred_at, recorded_by, recorded_by_name)"
-						+ " values (?, ?, ?, 'referral', ?, ?, ?, ?)"
-						+ " on conflict (referred_competitor_id) do nothing")
-				.params(referrer.orElseThrow().id(), reward.amount(), his.name(), newMember,
-						Timestamp.from(clock.instant()), account, accountName)
-				.update();
+		return Optional.of(new Reward(referrer.orElseThrow().id(), reward));
 	}
 }
