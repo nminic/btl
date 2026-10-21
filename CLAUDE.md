@@ -162,11 +162,7 @@ prazan.
 **Jedina opasnost, i zato stoji ovde a ne u fusnoti:** `git checkout -- <put>` **briše svaki
 neupisan rad nad tim fajlom**. Zato se pušta **isključivo nad putanjom koju je serija sama
 mutirala** i nikad nad fajlom u kom stoji nešto što nije commitovano. Ko to ne može da garantuje,
-commituje pre serije. **`<put>` je pathspec, pa mora da bude FAJL, nikad direktorijum:** direktorijum
-kao argument briše neupisan rad i u fajlovima koje serija nikad nije dirnula (izmereno: 43 bajta
-neupisanog rada u susednom fajlu nestalo je bez traga, izlazni kod 0, `git status` posle toga
-prazan). Zato se komanda piše po jedan imenovan fajl, nikad `.`, `*` ni folder. I još jedna razlika
-koja ume da iznenadi: `git checkout --` vadi iz
+commituje pre serije. I još jedna razlika koja ume da iznenadi: `git checkout --` vadi iz
 **indeksa**, a ne iz `HEAD`; ako je nešto stejdžovano, to su dve različite stvari.
 
 **Sadržaj i dalje dolazi iz gita a ne sa diska**, i sada je to isto merenje: komanda iznad ne gleda
