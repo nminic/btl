@@ -238,9 +238,10 @@ describe('an event whose races wait', () => {
 
   it('says the site is locked beside each race the proxy answered, and offers the new tab once under the list', async () => {
     /* The tab slept between the press that saved the event and the races: the event is saved, the
-       second and the third race meet the lock, and the first is taken. Owner, 22.10.2026 (ADL,
-       „portal to kaže i nudi novu karticu"): the sentence is his, the button is „Otvori u novoj
-       kartici", and a link per race would be two controls with one name. */
+       second and the third race meet the lock, the first is taken and the fourth is refused by name.
+       Owner, 22.10.2026 (ADL, „portal to kaže i nudi novu karticu"): the sentence is his, the button
+       is „Otvori u novoj kartici", and a link per race would be two controls with one name. The
+       fourth is there so that “some refusal was the lock” and “every refusal was” are two answers. */
     let racePosts = 0
 
     answering = (path, init) => {
@@ -250,8 +251,12 @@ describe('an event whose races wait', () => {
 
       racePosts += 1
 
-      return racePosts === 1
-        ? null
+      if (racePosts === 1) {
+        return null
+      }
+
+      return racePosts === 4
+        ? refused('theDistanceIsNotKeptExactly')
         : new Response(null, { status: 401, headers: { 'www-authenticate': 'Basic realm="restricted"' } })
     }
 
@@ -262,6 +267,7 @@ describe('an event whose races wait', () => {
       { name: 'Prva trka', km: '10' },
       { name: 'Druga trka', km: '15' },
       { name: 'Treća trka', km: '21,1' },
+      { name: 'Četvrta trka', km: '42,2' },
     ])
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
@@ -270,6 +276,7 @@ describe('an event whose races wait', () => {
     expect(notSaved()).toEqual([
       `2. trka (Druga trka): ${sr.server.locked}`,
       `3. trka (Treća trka): ${sr.server.locked}`,
+      `4. trka (Četvrta trka): ${sr.admin.raceSaveRefused.theDistanceIsNotKeptExactly}`,
     ])
 
     const link = screen.getByRole('link', { name: 'Otvori u novoj kartici' })

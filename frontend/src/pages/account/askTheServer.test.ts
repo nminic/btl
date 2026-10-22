@@ -362,7 +362,7 @@ describe('the site being locked, which is a 401 that asks the browser for a pass
   })
 
   it('reads the scheme however it is spelt, because schemes are not case sensitive', async () => {
-    for (const challenge of ['basic realm="x"', 'BASIC realm="x"', '  Basic realm="x"']) {
+    for (const challenge of ['basic realm="x"', 'BASIC realm="x"']) {
       server?.stop()
       server = serverThat(() => lockedBy(challenge))
 

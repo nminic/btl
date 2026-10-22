@@ -152,7 +152,7 @@ export type Answer =
  * reader can type into a new tab and have the browser keep. Schemes are not case sensitive.
  */
 function isTheLock(answer: Response): boolean {
-  return answer.status === 401 && /^\s*basic\b/i.test(answer.headers.get('www-authenticate') ?? '')
+  return answer.status === 401 && /^basic\b/i.test(answer.headers.get('www-authenticate') ?? '')
 }
 
 /**
