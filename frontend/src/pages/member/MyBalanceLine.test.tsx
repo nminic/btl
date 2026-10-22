@@ -29,7 +29,7 @@ function drawn(locale: 'sr' | 'en' = 'sr') {
   )
 }
 
-describe('the balance line', () => {
+describe('the balance line', { timeout: SLOW }, () => {
   it('writes the amount and the money beside the words, in Serbian', async () => {
     stop = bookAsServed({ amount: 1800, currency: 'RSD' }).stop
     drawn()

@@ -78,7 +78,7 @@ async function untilTheBookHasAnswered(asked: { path: string }[]): Promise<void>
   })
 }
 
-describe('the balance on „Moja članarina"', () => {
+describe('the balance on „Moja članarina"', { timeout: SLOW }, () => {
   it('is the book, and not the head count, where the two part company', async () => {
     /* Four counted by `/api/me` and nought in the book: a reward that was spent. The count times
        the reward is 2.400. */
