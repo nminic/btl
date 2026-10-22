@@ -257,3 +257,30 @@ export function answeringCategory(said: CategoryAnswered | null): Response {
         headers: { 'content-type': 'application/json' },
       })
 }
+
+/** What the book holds, in the money it is kept in: `Balance.Money` on the wire. */
+export type BookAnswered = { amount: number; currency: 'RSD' | 'EUR' }
+
+/**
+ * `GET /api/me/balance`, and the book it reports.
+ *
+ * <p><b>The route answers the money and nothing else</b> (`MyBalanceApi`: `{amount, currency}`), so
+ * that is the whole body here. It is served to every member, one the Managing Board freed of the
+ * fee included, and it writes nothing.
+ *
+ * @param book what the book holds, or null for a route that answers 404: an account that races for
+ *             nobody, or a visitor (401 on the real route). Both are „no figure" on the screen.
+ */
+export function bookAsServed(book: BookAnswered | null): { asked: Asked[]; stop: () => void } {
+  return serverThat((path) => (path === '/api/me/balance' ? answeringBook(book) : null))
+}
+
+/** The body of a 200 for a book that holds `book`, or the 404 for no figure. */
+export function answeringBook(book: BookAnswered | null): Response {
+  return book === null
+    ? new Response(null, { status: 404 })
+    : new Response(JSON.stringify(book), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+}

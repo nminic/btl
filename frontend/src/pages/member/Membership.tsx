@@ -41,6 +41,7 @@ import { useMyCategory } from './useMyCategory'
 import { theServerWasToldILeft } from './teamExit'
 import { MyRacingPairs } from './MyRacingPairs'
 import { PaySlip } from './PaySlip'
+import { MyBalanceLine } from './MyBalanceLine'
 import './Member.css'
 
 /* The account, the name and the seat are the association's own and live with the
@@ -75,11 +76,8 @@ function inTheirCurrency(
      with no period, since it holds „bez obzira na datum". */
   row: { eur: number; rsd: number },
   locale: string,
-  times = 1,
 ): string {
-  return paysInDinars(country)
-    ? `${money(row.rsd * times, locale)} RSD`
-    : `${money(row.eur * times, locale)} EUR`
+  return paysInDinars(country) ? `${money(row.rsd, locale)} RSD` : `${money(row.eur, locale)} EUR`
 }
 
 /* HOW MANY MEMBERS THIS ONE BROUGHT IN USED TO BE COUNTED HERE, AND SINCE
@@ -118,6 +116,17 @@ function inTheirCurrency(
  * `session/context.ts`), which answers ONE row and that row is his whether or not his
  * fee is standing. It is the road `membershipBasis` already takes, for a reason of
  * the same shape, and this screen therefore reads all three the same way.
+ *
+ * **AND SINCE 22.10.2026 THE COUNT IS NOT READ HERE AT ALL, which is a correction and not a
+ * move.** This whole paragraph is about where the count of members he brought in can be had,
+ * and it was had to be multiplied by the amount of a referral and drawn as his BALANCE. That
+ * was never what a balance is (`MeApi`, on `referredCount`: „AND IT IS NOT HIS BALANCE"): measured on 22.10.2026, an
+ * administrator activated a member the owner had brought in, the book held 600 RSD, and the
+ * screen said „0 RSD". The balance is the book's, and `MyBalanceLine` reads it off
+ * `GET /api/me/balance`. `referredCount` stays on `GET /api/me` and in the session
+ * (`myReferredCount`), where nothing reads it any more; the server's field is not removed by
+ * the branch that stopped reading it, because the count has a meaning of its own („you have
+ * brought in six people") that somebody may yet want to show.
  *
  * **AND THE RECORD ITSELF FOLLOWED THEM THE SAME DAY, WHICH IS THE DECISION THIS
  * PARAGRAPH USED TO SAY NOBODY HAD TAKEN.**
@@ -182,14 +191,16 @@ export function Membership() {
   const { locale, t } = useI18n()
   const who = useScreenForTheUnpaidToo()
   /* ALL SIX OFF THE ONE ANSWER THAT KNOWS WHO IS ASKING, and it was three until
-     25.09.2026 and one until the day before that.
+     25.09.2026 and one until the day before that. (The count of members he brought in
+     was read here too until 22.10.2026: it was never his balance, and the balance is drawn
+     by `MyBalanceLine` off the book.)
 
      **The six are here for two different reasons and the difference is worth keeping.**
-     The basis, the link and the count are here because they have NO OTHER DOOR: P26a
-     took the last two off the public list outright, and the basis was never on it for a
-     member. The country, the season and the team DO have another door, and are read here
-     anyway because that door answers `where c.active` - which is to say it answers
-     everybody except the one man this screen exists for (P8a). */
+     The basis and the link are here because they have NO OTHER DOOR: P26a took the link
+     off the public list outright, and the basis was never on it for a member. The
+     country, the season and the team DO have another door, and are read here anyway
+     because that door answers `where c.active` - which is to say it answers everybody
+     except the one man this screen exists for (P8a). */
   const {
     myMembershipBasis,
     myMembershipSeason,
@@ -197,7 +208,6 @@ export function Membership() {
     myFirstSeason,
     myTeamId,
     myReferralCode,
-    myReferredCount,
     theServerSignedMeIn,
   } = useSession()
   /* THE PRICE LIST AS THE SERVER HAS IT, SINCE 26.09.2026, AND UNTIL THAT DAY AS THE
@@ -1391,6 +1401,19 @@ export function Membership() {
                 balance underneath used to be „0 EUR" for everybody, under a
                 sentence promising dinars.
 
+                **The balance underneath is the book's and not a sum worked out here.** It
+                was the amount of a referral times how many he had brought in whose fee
+                stands, until 22.10.2026, and that is not a balance: it knows nothing of
+                what was spent, moves with the price list, falls to nought when the member
+                he brought lapses, and does not see one whose link was taken off or whose
+                profile was deleted, though the money in the book stays. Measured: an
+                administrator activated a member the owner had brought in, the book held 600
+                RSD, and this line said „0 RSD". `MyBalanceLine` reads it off
+                `GET /api/me/balance`, in the currency the server keeps it in, and that route answers every
+                member (the owner is freed of the fee) and writes nothing.
+                The sentence above it, about what ONE referral brings, is still the price
+                list's and still drawn from it.
+
                 Read off `GET /api/pricing` since 26.09.2026, because that is where an
                 administrator sets it (owner, 12.08.2026) and what is typed there has to
                 be what is promised here. It used to be the bundled row with the
@@ -1448,14 +1471,9 @@ export function Membership() {
                 copiedMessage={t('membership.linkCopied')}
                 failedMessage={t('membership.copyFailed')}
               />
-              {credited.map((row) => (
-                <p className="membership__balance" key={row.key}>
-                  <strong>
-                    {inTheirCurrency(myCountry, row, locale, myReferredCount ?? 0)}
-                  </strong>{' '}
-                  <span>{t('membership.balance')}</span>
-                </p>
-              ))}
+              {/* Keyed by whose it is, which is the number of a member and the account of
+                  somebody who has not paid: the screen above has already told the two apart. */}
+              <MyBalanceLine asked={who.standing === 'neverPaid' ? who.account : who.memberNumber} />
               <p className="member__note">{t('membership.balanceNote')}</p>
             </section>
           </div>

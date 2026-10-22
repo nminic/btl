@@ -350,6 +350,11 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     ],
   },
   {
+    file: 'pages/member/MyBalanceLine.tsx',
+    how: 'boundary',
+    why: 'MY REASONING, not a recorded decision: a NUMBER under a heading and not a list, so the decision of 02.10.2026 (a list that cannot be read says so) is not its question. A read that gave no balance draws no line, and above all not a nought, which is what the line said over a book of 600 on 22.10.2026; it is the box of `useMyCategory` beside it. It cannot tell a failure from the route\'s own 404 (an account with no member behind it), so a sentence with a button that asks again would be false for the second. What to say for a failure alone is the owner\'s, and is in PENDING.',
+  },
+  {
     file: 'pages/member/NewResult.tsx',
     how: 'says',
     why: 'THE FILE\'S OWN, and held by `pages/member/racesUnreadable.test.tsx` (the screen) and `forms/suggestingUnreadable.test.tsx` (the form): when the races could not be read, the box for the race says so beside itself, with the button that asks again, and goes on taking the name typed into it (decision of 03.10.2026, PDL: the races yes, the towns no); and since 19.10.2026 (PDL P9, the event asked first) the box for the event says the same of the calendar and of the seasons open for a report (`offeringEvents`). When a read failed, the list handed to the form for that field is the failure (`suggests`), and not the empty rows held then. The road in with `?ispravka=` waits through `<Resource>`, which says it and offers to ask again. MY REASONING: the two roads that hold the name (`?ponovo=`, `?ispravka=`) say nothing about the list, because nothing is typed into a held box, and `behind` reads the same two files for hint fields of a record kept in the browser and draws nothing from them, so a failure there is not a list that looks empty.',
