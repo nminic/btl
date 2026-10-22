@@ -19,7 +19,7 @@ describe('AGE_BANDS', () => {
    *
    * Both are still the rule (PDL P7) and neither is measured here any more, because
    * the function is gone: it took a year of birth, and the portal is not allowed one
-   * (Član 74, `data/types.ts`). The arithmetic belongs with whoever still has the
+   * (section 3 of the privacy policy, `data/types.ts`). The arithmetic belongs with whoever still has the
    * date, which is the backend and the tool that writes the served file.
    *
    * **This is written down rather than left to be noticed.** The bands are now data

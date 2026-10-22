@@ -187,26 +187,41 @@ class RulebookPenaltyIsGoneTest extends DatabaseTest {
 	 * team's rule (owner, 24.09.2026, "Par sme da raskine svaka strana, bilo kad").
 	 */
 	/**
-	 * And the same for Article 9, so that DELETING it does not pass the sweep above either.
+	 * And the same for what Article 9 said, so that DELETING it does not pass the sweep above either.
 	 *
 	 * <p>Both halves are asserted because the correction has two: the deadline is still stated, and
 	 * it is now the TEAM's; and the pair is said to have none. A change that dropped either half
 	 * would leave the sweep green while the rulebook went quiet about one of them.
+	 *
+	 * <p><b>Since V71 both halves are said once, in the article on changes of team and pair</b>
+	 * (Article 56 before V71, in section 12 either way), and Article 9, which repeated them almost
+	 * word for word, is gone (owner, 22.10.2026, PDL "Uprošćavanje pravnih tekstova (22.10.2026)").
+	 * So the halves are asked of section 12, and section 2 is asked to say neither again.
 	 */
 	@Test
-	void articleNineGivesTheDeadlineToTheTeamAndFreesThePairOfIt() {
-		String body = db
+	void theRulebookGivesTheDeadlineToTheTeamAndFreesThePairOfIt() {
+		String changes = db
+				.sql("select s.body from static_page_section s join static_page p on p.id = s.page_id"
+						+ " where p.slug = 'pravilnik' and s.position = 12")
+				.query(String.class)
+				.single();
+		String seasonAndDeadlines = db
 				.sql("select s.body from static_page_section s join static_page p on p.id = s.page_id"
 						+ " where p.slug = 'pravilnik' and s.position = 2")
 				.query(String.class)
 				.single();
 
-		assertThat(body)
-				.as("Article 9 no longer states the 31 December deadline as the team's")
-				.contains("Promene tima moraju biti završene do 31. decembra");
-		assertThat(body)
-				.as("Article 9 no longer says the pair is bound by no deadline")
-				.contains("Trkački par nije vezan nijednim rokom");
+		assertThat(changes)
+				.as("the rulebook no longer states the 31 December deadline as the team's")
+				.contains("Promena tima stupa na snagu 1. januara naredne sezone")
+				.contains("Sve promene moraju biti završene do 31. decembra");
+		assertThat(changes)
+				.as("the rulebook no longer says the pair is bound by no deadline")
+				.contains("Na raskid para se ne odnosi nijedan rok iz ovog člana");
+		assertThat(seasonAndDeadlines)
+				.as("section 2 says the deadlines of team and pair again, which V71 left to section 12 alone")
+				.doesNotContain("Promene tima moraju biti završene do 31. decembra")
+				.doesNotContain("Trkački par nije vezan nijednim rokom");
 	}
 
 	@Test

@@ -508,7 +508,7 @@ export function Membership() {
            dinar side - there is no intermediary there to pay (PDL, owner 04.08.2026) - so
            it is read off the whole answer and never off `inBoth`. */
         const processing = ofKind(prices, A_FEE)
-        /* A member freed of the fee owes nothing at all (Pravilnik član 15, PDL P16),
+        /* A member freed of the fee owes nothing at all (the rulebook's article „Cena, rokovi i oslobađanje od članarine", PDL P16),
            and twenty nine of the thirty two members in the data are freed of the fee. */
         /* **OFF THE ANSWER THAT CARRIES IT TO HIM, AND NOT OFF THE PUBLIC LIST**
            (21.09.2026). This read `me.membershipBasis`, and `/api/competitors` decides
@@ -567,7 +567,7 @@ export function Membership() {
 
            That fault is back, for whoever is a junior, and it is back on purpose.
            The year of birth has left the record because this record is served
-           publicly and Član 74 forbids it (`data/types.ts`). What the record now
+           publicly and section 3 of the privacy policy forbids it (`data/types.ts`). What the record now
            carries is the age band, and a band cannot answer this: `24-` runs from
            a newborn to somebody of twenty four, and the junior fee stops at
            fifteen. Nothing else on the record narrows it.
@@ -892,7 +892,7 @@ export function Membership() {
                 })}
               </h2>
 
-              {/* A member freed of the fee owes nothing, ever (Pravilnik član 15, PDL
+              {/* A member freed of the fee owes nothing, ever (the rulebook's article „Cena, rokovi i oslobađanje od članarine", PDL
                   P16). Only the line about their status said so, while the
                   whole of the renewal underneath went on being drawn: a price,
                   „Uplati sada", the recipient, a reference number and a QR code

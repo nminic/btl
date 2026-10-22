@@ -99,7 +99,7 @@ import java.util.List;
  * member's row to survive as. Leaving the bare number in would do exactly what
  * {@code PairApi} already refuses: a number that leaves THIS answer and not
  * {@code /api/competitors} names, through the DIFFERENCE between the two rather than
- * through any field in either, the one thing Article 74 puts beside the date of birth -
+ * through any field in either, the one thing section 3 of the privacy policy puts beside the date of birth -
  * „sve u vezi sa članarinom" ({@code ADL.md} P-javno, 13.09.2026, naming „prisustvo"
  * among the seven resources that rule covers by name). So the row is left out whole,
  * not half-answered: there is no partial shape between "in" and "out" for a pair this

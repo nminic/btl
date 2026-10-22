@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * THE RACING PAIRS, and only what the rulebook makes public about them.
  *
- * <p>Article 73 lists what is public and the racing pair is on it in as many
+ * <p>Section 3 of the privacy policy lists what is public and the racing pair is on it in as many
  * words: „Liga je javno takmičenje, pa su javni: ... Tim, trkački par i klub."
  * The member number is on the same list („Ime i prezime, članski broj i
  * kategorija"), so who the two of them are is public too. That is the whole of
@@ -22,12 +22,12 @@ import java.util.List;
  * here and the reason this class carries a note as long as the query.</b> Until
  * 21.09.2026, what the portal served ({@code mock/pairs.json}) carried {@code since},
  * and {@code profile/RacingPairLine.tsx} drew it on a profile - anybody's profile,
- * not only the member's own. Article 73 names a day exactly once, and it is the
+ * not only the member's own. Section 3 of the privacy policy names a day exactly once, and it is the
  * day of a verified RESULT („Svi verifikovani rezultati sa duzinom, usponom,
  * spustom, vremenom i datumom"). The day two people became a pair is not on the
  * list. It is also, by the portal's own definition, the day the second of them
  * ANSWERED an invitation ({@code data/types.ts}: „`since` is the day the second
- * of the two confirmed"), and Article 74 puts private messages among the things
+ * of the two confirmed"), and section 3 of the privacy policy puts private messages among the things
  * that are never public. Two readings, and they point the same way; where they
  * did not, the owner's rule of 13.09.2026 settles it anyway: „Kad je sporno,
  * polje se IZOSTAVLJA, izostavljanje se imenuje sa razlogom." It is named in
@@ -53,7 +53,7 @@ import java.util.List;
  *
  * <p><b>AND THAT IS WHY THIS RESOURCE DOES NOT ASK WHO IS ASKING, while
  * {@code CompetitorApi} and {@code TeamApi} began to on 20.09.2026.</b> P-javno
- * (ADL, 13.09.2026) sends everything Article 73 does not list „iza resursa koji zna
+ * (ADL, 13.09.2026) sends everything section 3 of the privacy policy does not list „iza resursa koji zna
  * ko pita", and the one field this resource holds back is not waiting behind that
  * door - it is shut to everybody by a decision of its own. A parameter naming the
  * caller would be a promise that something here depends on him, and nothing does.
@@ -122,7 +122,7 @@ import java.util.List;
  * <p><b>And leaving it in would name, by subtraction, whoever has not paid.</b> A
  * member whose fee has lapsed is not on {@code /api/competitors} at all (owner,
  * 13.09.2026, choosing that shape over serving the flag). So a member number that
- * leaves HERE and not THERE says the one thing Article 74 puts beside the date of
+ * leaves HERE and not THERE says the one thing section 3 of the privacy policy puts beside the date of
  * birth - „sve u vezi sa clanarinom" - through the DIFFERENCE between two
  * answers rather than through any field in either. That is why the case in
  * {@code PairApiTest} reads the whole answer as text: it is the number leaving at

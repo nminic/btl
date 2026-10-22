@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * What is held here is the SOURCE: the six names the repository ships in its other half against
  * the seven rows this one loads. The drift that actually reaches a visitor happens at RUN TIME -
  * an administrator renames a row through {@code PUT /api/pricing/{key}}, the column moves, and
- * the bundled dictionary does not, so the table published under Clan 14 of the rulebook still
+ * the bundled dictionary does not, so the table published under the rulebook's article „Cena, rokovi i oslobađanje od članarine" still
  * prints the old name. Every test here starts from a database V34 has just written, so that state
  * cannot be reached from this side at all. It closes when {@code PriceTable} reads
  * {@code GET /api/pricing} instead of {@code pricing.rows.*}, and that is the pricing screen's own
@@ -159,7 +159,7 @@ class TheRowNameHasOneHomeTest extends DatabaseTest {
 	void everyNameThePortalPrintsIsTheNameTheTableHolds() {
 		assertThat(namesTheTableHolds())
 				.as("what frontend/src/i18n/sr.json prints under pricing.rows - the first column of"
-						+ " the price table a visitor reads under Clan 14 - is not what price_row.label"
+						+ " the price table a visitor reads under the article „Cena, rokovi i oslobađanje od članarine\" - is not what price_row.label"
 						+ " holds, so the name has two homes that disagree")
 				.containsAllEntriesOf(namesThePortalShips());
 	}

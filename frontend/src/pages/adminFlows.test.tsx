@@ -341,7 +341,7 @@ describe('the price list', () => {
        The public list stopped saying `Da` for the junior band on 20.08.2026 and this one
        went on saying it, read rather than ignored, for another day: an administrator
        entering a June payment for a thirteen year old read that they are ranked, against
-       član 11 of the rulebook. Held on the cell, because the constant was what was wrong
+       the article „Pravo rangiranja" of the rulebook. Held on the cell, because the constant was what was wrong
        and both tables now read it from `data/pricing.ts`. */
     renderAt('/sr/administracija/cenovnik', 'superadmin')
 
@@ -1080,7 +1080,7 @@ describe('the price list', () => {
    * <p><b>What it costs here is worse than it was there.</b> `data/client.ts` caches a
    * resource for the whole visit, and the PUBLIC price table reads the very same entry
    * (`components/PriceTable.tsx`). Left uncleared, a price raised in the administration
-   * would have gone on being published under Član 14 of the rulebook, in that same browser,
+   * would have gone on being published under the rulebook's article „Cena, rokovi i oslobađanje od članarine", in that same browser,
    * for the rest of the visit - and the member's own „Moja članarina" with it, IPS QR code
    * included.
    *

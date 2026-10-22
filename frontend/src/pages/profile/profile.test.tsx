@@ -916,8 +916,8 @@ describe('who the profile is about, above everything else', () => {
   })
 
   it('never draws a date of birth, not even for a member whose record asks for it', async () => {
-    /* **THE EXCEPTION IS GONE, AND THIS IS WHAT HOLDS IT** (12.09.2026). Article 74 and
-       the privacy policy carried one: a member could publish a birthday „radi liste
+    /* **THE EXCEPTION IS GONE, AND THIS IS WHAT HOLDS IT** (12.09.2026). The rulebook (then its
+       Article 74) and the privacy policy carried one: a member could publish a birthday „radi liste
        rođendana". The owner abolished the birthday list on 06.09.2026, so the exception
        named a thing that did not exist, and on 12.09.2026 he had the sentence struck
        from both documents rather than rewritten. What stands is the rule with nothing

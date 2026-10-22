@@ -334,7 +334,7 @@ const WHAT_THE_NUMBER_SAYS_WHEN_BREAKING_A_PAIR: Record<number, string> = {
  * <p><b>A question whose other member has let the fee lapse is not drawn</b> (derived on 10.10.2026,
  * not the owner's word, and put to him among that day's derivations): the server names nobody there,
  * and a row standing without a name would tell the member who asked that the fee of the one he asked
- * has lapsed, which Article 74 shuts. The panel drops those before they reach here.
+ * has lapsed, which section 3 of the privacy policy shuts. The panel drops those before they reach here.
  *
  * <p><b>A number the list of members does not carry is said as the number</b>, which is
  * `TeamQueue.tsx`'s answer: the two reads are made at different moments.

@@ -635,7 +635,7 @@ class RegistrationApi {
 						   is the administration's to grant and not a thing a form can claim. `profile_hidden` is false because hiding a profile is the
 						   member's own later choice, and `birthday_shown` is left out
 						   altogether so that V7's default - none unless he chooses otherwise,
-						   which is what the privacy policy and article 74 already say - is what
+						   which is what section 3 of the privacy policy already says - is what
 						   decides it.
 
 						   `referred_by` IS A KEY THIS ROUTE LOOKED UP, never the code that

@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 /**
  * THE TEAMS OF THE LEAGUE, and only what the rulebook publishes about them.
  *
- * <p><b>Article 73 is the measure and nothing else is.</b> It lists what a public
+ * <p><b>Section 3 of the privacy policy is the measure and nothing else is.</b> It lists what a public
  * competition publishes - „Ime i prezime, clanski broj i kategorija, Mesto i
  * zemlja, Profilna fotografija, Svi verifikovani rezultati..., Bodovi, plasman,
  * statistika, dukati i priznanja, <b>Tim, trkacki par i klub</b>" - and the team
@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  * three reasons, each of which would be enough on its own.
  *
  * <ul>
- * <li>Article 73 makes „Tim" public, which is WHICH team a member runs for. It
+ * <li>Section 3 of the privacy policy makes „Tim" public, which is WHICH team a member runs for. It
  * makes no role inside a team public, and administering one is a right and not a
  * standing: the same sentence lists points, placings and awards, and stops there.
  * PDL P13, 13.09.2026, draws the boundary in as many words: „Sa druge strane
@@ -205,7 +205,7 @@ import java.util.stream.Collectors;
  * is a guard that refuses the page to anybody but the administrator, after which the
  * name it draws is the READER's own off the reader's own record. So no screen wants
  * to know who founded a team; every screen wants to know whether the reader did.
- * {@code foundedByMe} is that, and it is the number reduced to what Article 73 lets
+ * {@code foundedByMe} is that, and it is the number reduced to what section 3 of the privacy policy lets
  * the reader have - nothing about anybody else at all.
  *
  * <p><b>AND SINCE 21.09.2026 THE STANDING RULE IS ANSWERED TOO, WHICH IS THIS PARAGRAPH
@@ -244,7 +244,7 @@ import java.util.stream.Collectors;
  * had to lose one of those two sentences.
  *
  * <p><b>AND NEITHER DO THE MEMBERS OF THE TEAM</b>, although they are public.
- * Article 73 does make them public and this resource still does not carry them,
+ * Section 3 of the privacy policy does make them public and this resource still does not carry them,
  * and that is a decision about where one fact lives rather than about whether it
  * may be read. Who is in which team is already answered, once, by
  * {@code /api/competitors} as {@code teamId} and {@code teamSince}; two homes for
@@ -312,7 +312,7 @@ import java.util.stream.Collectors;
  * sentence): „tim nosi bodove kroz sezonu, pa bi izlazak usred nje značio da tabela u januaru i
  * tabela u junu govore različito o istoj sezoni". What PDL records as the content of the decision of
  * 25.09.2026 (a record, not a quotation): „član po toj odluci ostaje u timu do 31.12". And what the
- * published rulebook says, Član 56 in V46, whose header names its clause „doprinos koji je član dao
+ * published rulebook says, the article „Promene tima i trkačkog para" as V46 wrote it, whose header names its clause „doprinos koji je član dao
  * timu u toj sezoni ostaje" as the agent's derivation, put to the owner before he chose. Together:
  * the team has the member for the season he leaves in, and not from the next. THAT READING IS
  * DERIVED. Saying it HERE narrowed the boundary quoted at the top of this note a second time (the

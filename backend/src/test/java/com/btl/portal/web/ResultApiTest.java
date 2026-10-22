@@ -710,7 +710,7 @@ class ResultApiTest {
 	/**
 	 * AND A VISITOR READS IT WITHOUT SIGNING IN.
 	 *
-	 * <p>Article 73 of the rulebook lists every verified result among the things
+	 * <p>Section 3 of the privacy policy lists every verified result among the things
 	 * that are public, and a league whose record cannot be checked is not a league.
 	 */
 	@Test
@@ -788,7 +788,7 @@ class ResultApiTest {
 	 * <p>The names are the first name, the last name, the sex, the age band and whether he runs
 	 * as a beginner (PDL P11, 03.10.2026, and the note on {@code ResultApi}). A sixth would be a
 	 * fact about a member answered to everybody because nobody was asked: the year of birth
-	 * (Article 74), whether his fee stands (PDL P34 took {@code active} off the public list for
+	 * (section 3 of the privacy policy), whether his fee stands (PDL P34 took {@code active} off the public list for
 	 * being a fact about somebody else's payment), or one of the three things a profile page
 	 * carries that hiding takes away (portrait, biography, team).
 	 *
@@ -815,7 +815,7 @@ class ResultApiTest {
 	/**
 	 * NO YEAR OF BIRTH LEAVES THE SERVER, and nobody's date of it either.
 	 *
-	 * <p>Article 74: „Datum rođenja se nikada ne prikazuje, ni u punom ni u skraćenom obliku." The
+	 * <p>Section 3 of the privacy policy: „Datum rođenja se nikada ne prikazuje, ni u punom ni u skraćenom obliku." The
 	 * year is read here to be turned into a band, so it passes through the one place that could
 	 * let it out, and the band is the only thing that is allowed to come of it.
 	 *
@@ -960,7 +960,7 @@ class ResultApiTest {
 	/**
 	 * A RESULT OF SOMEBODY WITH NO MEMBER NUMBER CARRIES NO RUNNER, AND NOTHING ELSE ABOUT HIM.
 	 *
-	 * <p>Article 73 makes the name and the number of a MEMBER public, and an applicant is not one
+	 * <p>Section 3 of the privacy policy makes the name and the number of a MEMBER public, and an applicant is not one
 	 * (V16). The owner's measure for what is not clear is PDL 13.09.2026: „Kad je sporno, polje se
 	 * izostavlja i izostavljanje se imenuje sa razlogom, pa se vlasniku javi". So the key is there
 	 * and the value is null, and the name is in the answer nowhere else.
@@ -1296,7 +1296,7 @@ class ResultApiTest {
 	/**
 	 * THE ANSWER IS THE SAME TO EVERY READER, to the byte.
 	 *
-	 * <p>Article 73 makes the record public, and the runner is part of it; nothing in it depends on
+	 * <p>Section 3 of the privacy policy makes the record public, and the runner is part of it; nothing in it depends on
 	 * who asks. Whether a name is drawn as a link is decided on the screen, by the reader and the
 	 * record ({@code frontend/src/pages/profile/visible.ts}), and not by this answer. The readers are the
 	 * visitor, a member whose fee stands, the member whose fee has lapsed (who reads as a visitor

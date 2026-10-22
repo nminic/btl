@@ -48,6 +48,13 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  *
  * <p><b>The floors are asked of the migrations.</b> The old text of each sentence stands in a migration before V61, so
  * "put back as it stood" is the text that really was published; the new text stands in none, so V61 is what wrote it.
+ *
+ * <p><b>Since V71 the ten sentences are held on the pages as V70 left them.</b> V71 rewrote the rulebook's sections
+ * and took out the article on how a result is submitted, which carried two of the ten ("Unesi rezultat" and "Submit
+ * result"), and signed all three documents off on 22.10.2026 (owner, 22.10.2026). The cases about the ten places, the
+ * pins and the sign-offs V61 did not move therefore first put the pages back to the text V71 found
+ * ({@link TheWrittenPagesBeforeV71}); the sweep for the Serbian mark is still asked of the text as it stands, and
+ * {@link TheWrittenPagesSayEachThingInOnePlaceTest} holds what V71 left.
  */
 class TheWrittenPagesUseTheEnglishQuotationMarkTest extends DatabaseTest {
 
@@ -221,6 +228,8 @@ class TheWrittenPagesUseTheEnglishQuotationMarkTest extends DatabaseTest {
 
 	@Test
 	void everyOfTheTenSentencesStandsInItsPlaceOnceWithTheEnglishMarkAndNeverWithTheSerbianOne() {
+		TheWrittenPagesBeforeV71.putBack(db, migrationSql("71"));
+
 		for (Sentence sentence : THE_TEN) {
 			assertThat(bodyOf(sentence.place()))
 					.as("%s", sentence.place())
@@ -272,6 +281,8 @@ class TheWrittenPagesUseTheEnglishQuotationMarkTest extends DatabaseTest {
 	 */
 	@Test
 	void theTenSectionsAreExactlyTheTextV61WasMeantToLeave() throws Exception {
+		TheWrittenPagesBeforeV71.putBack(db, migrationSql("71"));
+
 		for (Pinned pinned : THE_TEN_AS_V61_LEFT_THEM) {
 			byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(
 					bodyOf(pinned.place()).replace("\r", "").getBytes(java.nio.charset.StandardCharsets.UTF_8));
@@ -284,6 +295,8 @@ class TheWrittenPagesUseTheEnglishQuotationMarkTest extends DatabaseTest {
 
 	@Test
 	void theSignOffsAreWhereV57V58AndV70LeftThem() {
+		TheWrittenPagesBeforeV71.putBack(db, migrationSql("71"));
+
 		for (Map.Entry<String, String> signOff : THE_SIGN_OFFS_IN_SERBIAN.entrySet()) {
 			int position = signOff.getKey().equals("pravilnik") ? 19 : signOff.getKey().equals("politika-privatnosti") ? 7 : 12;
 
@@ -329,8 +342,14 @@ class TheWrittenPagesUseTheEnglishQuotationMarkTest extends DatabaseTest {
 		return text.toString();
 	}
 
-	/** The text as it stood BEFORE V61: the ten sentences put back with the Serbian mark, nothing else touched. */
+	/** The text as it stood BEFORE V61: the pages as V70 left them, with the ten sentences put back. */
 	private void putBackTheTextAsItStoodBeforeV61() {
+		TheWrittenPagesBeforeV71.putBack(db, migrationSql("71"));
+		putBackTheTenSentencesWithTheSerbianMark();
+	}
+
+	/** The ten sentences put back with the Serbian mark, nothing else touched. */
+	private void putBackTheTenSentencesWithTheSerbianMark() {
 		for (Sentence sentence : THE_TEN) {
 			setBody(sentence.place(), bodyOf(sentence.place()).replace(sentence.now(), sentence.before()));
 		}
@@ -342,9 +361,12 @@ class TheWrittenPagesUseTheEnglishQuotationMarkTest extends DatabaseTest {
 	 */
 	@Test
 	void v61ChangesTenSectionsByTheMarkAndNothingElse() {
+		/* "Finished" is the text as V70 left it, the last text V61's sentences stood in. */
+		TheWrittenPagesBeforeV71.putBack(db, migrationSql("71"));
+
 		Map<String, String> finished = everyText();
 
-		putBackTheTextAsItStoodBeforeV61();
+		putBackTheTenSentencesWithTheSerbianMark();
 
 		Map<String, String> before = everyText();
 

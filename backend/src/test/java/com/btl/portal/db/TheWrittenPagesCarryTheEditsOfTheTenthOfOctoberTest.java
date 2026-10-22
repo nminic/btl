@@ -299,7 +299,16 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 		}
 	}
 
+	/**
+	 * Asked of the pages as V70 left them ({@link TheWrittenPagesBeforeV71}): V71 took out or rewrote several of the
+	 * sentences V57 put in (the terms' sections 5 and 8, the rulebook's Articles 10 and 74 among them) and moved the
+	 * sections of the terms after the eighth up by one, by the owner's decision of 22.10.2026. What V71 holds of the
+	 * text it leaves is its own guard, {@link TheWrittenPagesSayEachThingInOnePlaceTest}; what V57 took out is held
+	 * gone on the finished text above, since V71 puts none of it back.
+	 */
 	private void whatWasPutInStandsOnceWhereItWasWritten(String language) {
+		TheWrittenPagesBeforeV71.putBack(db, migrationSql("71"));
+
 		int phrasesChecked = 0;
 
 		for (Edit edit : EDITS) {

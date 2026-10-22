@@ -111,7 +111,7 @@ class StandingTest {
 	}
 
 	/**
-	 * TIME ON COURSE IS NOT A RUNG, and that is the principle of Član 49 rather
+	 * TIME ON COURSE IS NOT A RUNG, and that is the principle of the article „Izjednačenje" rather
 	 * than an omission.
 	 *
 	 * <p>"Nagrađuje se veći obim, nikad efikasnost." Two seasons identical but for

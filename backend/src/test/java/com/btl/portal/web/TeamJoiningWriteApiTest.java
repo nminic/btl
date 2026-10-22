@@ -101,7 +101,7 @@ class TeamJoiningWriteApiTest {
 	 *
 	 * <p><b>He used to be the axis of the opposite pair</b> - „may invite, may not decide" -
 	 * which was the owner's parenthesis „(bilo koji clan)" of 05.09.2026, and he
-	 * <b>overturned it on 27.09.2026</b> in favour of Article 53 of the rulebook. Both halves
+	 * <b>overturned it on 27.09.2026</b> in favour of the rulebook's article „Osnivanje tima". Both halves
 	 * are now one rule read twice, and what this member measures is that the rule is asked on
 	 * both routes rather than on one: {@code aMemberOfTheTeamWhoDoesNotLeadItDecidesNothing}
 	 * and {@link #aMemberOfTheTeamWhoDoesNotLeadItAsksNobodyIn} demand 404 from him on either
@@ -1128,7 +1128,7 @@ class TeamJoiningWriteApiTest {
 	 *
 	 * <p>PDL.md ("samo administrator tog tima"), the owner of 27.09.2026: „Poziv u tim salje
 	 * **samo administrator
-	 * tog tima**", taken off Article 53 of the rulebook ({@code V24__static_pages.sql:811}) and
+	 * tog tima**", taken off the rulebook's article „Osnivanje tima" ({@code V24__static_pages.sql:811}) and
 	 * overturning his own decision of 05.09.2026.
 	 *
 	 * <p><b>This case USED TO RUN TWICE - as the leader and as a member who is not - and demanded
@@ -1177,7 +1177,7 @@ class TeamJoiningWriteApiTest {
 	 * <p>PDL.md ("samo administrator tog tima"). Until that day PDL.md
 	 * ("obara pretpostavku da poziv šalje administrator") said the opposite in as many
 	 * words, with his parenthesis „(bilo koji clan)" recorded as explicitly overturning the
-	 * obvious reading. The conflict was found by reading Article 53 of the rulebook in order to
+	 * obvious reading. The conflict was found by reading the rulebook's article „Osnivanje tima" in order to
 	 * translate it, and he chose the rulebook.
 	 *
 	 * <p><b>Both non-administrators of the team are asked, which is why the fixture has
@@ -1273,8 +1273,8 @@ class TeamJoiningWriteApiTest {
 	 * <p><b>That the reason is allowed to say so plainly, rather than staying vague, is derived
 	 * here and is not itself a decision - marked as such rather than quoted as one.</b> ADL.md
 	 * ("Za svih sedam preostalih resursa") is the owner's rule that a team is public exactly to
-	 * the extent Article 73 lists it, and PDL.md ("O timu su javni i naziv, i grad, i zemlja") is
-	 * what Article 73 lists for a team. Put together: whether this member already stands in a
+	 * the extent section 3 of the privacy policy lists it, and PDL.md ("O timu su javni i naziv, i grad, i zemlja") is
+	 * what section 3 of the privacy policy lists for a team. Put together: whether this member already stands in a
 	 * team is not a fact this route would be the first to reveal, so the refusal may name that
 	 * fact instead of hiding behind a generic 409.
 	 *

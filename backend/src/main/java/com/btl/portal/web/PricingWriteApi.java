@@ -241,7 +241,7 @@ class PricingWriteApi {
 	 * no length at all ... Left out here rather than invented, so that the day it is enforced it
 	 * is enforced in one place with a number somebody decided." What tips it here rather than
 	 * there is where the text lands: a team's name is drawn on the team's own page, and this one
-	 * is the first column of the price table published under Clan 14 of the rulebook, which
+	 * is the first column of the price table published under the rulebook's article „Cena, rokovi i oslobađanje od članarine", which
 	 * {@code PricingApi} serves to a visitor who is not signed in. {@code text} in PostgreSQL has
 	 * no length of its own (nothing in this schema does), so with no refusal here an
 	 * administrator past the screen puts a paragraph in a table cell a visitor reads.

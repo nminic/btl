@@ -583,7 +583,22 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read off
 			   this very assertion when it ran before the entry existed and then confirmed by it. */
 			new Applied("70", "V70__the_cloudflare_row_names_the_backups_of_the_database_and_photos.sql",
-					-1597104966));
+					-1597104966),
+
+			/* V71. The three legal pages say each thing in one place, in Serbian and in English (the owner approved
+			   the proposal on 22.10.2026, PDL, the entry "Uprošćavanje pravnih tekstova (22.10.2026)"): the rulebook
+			   loses ten articles into the ones that already said the same and is renumbered from 78 to 68, the terms
+			   of use lose their section on awards and the four after it move up, the privacy policy names the session
+			   cookie, and all three are signed off on 22.10.2026. Every edit stops the migration unless its old text
+			   stands exactly once and its new text is not already there; the section of the terms is removed only if
+			   it is word for word the one this file was written for. No schema.
+
+			   71 because it is the next free number, MEASURED on 22.10.2026: no remote ref, no worktree and no open
+			   pull request held a migration at V71 or above, and origin/main stands at V70.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read off
+			   this very assertion when it ran before the entry existed. */
+			new Applied("71", "V71__the_legal_pages_say_each_thing_in_one_place.sql", -1120675458));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

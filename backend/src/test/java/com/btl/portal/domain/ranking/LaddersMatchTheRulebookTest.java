@@ -15,6 +15,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * THE LADDER IN THE CODE IS THE LADDER THE PORTAL PUBLISHES, read out of the
  * published text rather than remembered.
  *
- * <p>Član 49 of the rulebook is a table of seven ladders, and PDL P12 says of its
+ * <p>The rulebook's article „Izjednačenje" is a table of seven ladders, and PDL P12 says of its
  * own copy: "Tabela u pravilniku je izvor; ova je njena kopija i mora da se menja
  * sa njom." A third copy now lives in {@link Standing}, and a list written out
  * three places is a list that moves in one of them. This is the floor under it.
@@ -45,10 +47,15 @@ class LaddersMatchTheRulebookTest {
 
 	private static final Path PUBLISHED = Path.of("..", "frontend", "src", "test", "mock", "pages.json");
 
-	private static final String ARTICLE = "### Član 49.";
+	/**
+	 * The article on ties, found by its heading and not by its number: the rulebook is written anew every season
+	 * and its articles are renumbered with it (V71 moved this one from 49 to 42), while the heading says what the
+	 * article is about.
+	 */
+	private static final Pattern ARTICLE = Pattern.compile("^### Član \\d+\\. Izjednačenje$", Pattern.MULTILINE);
 
 	/**
-	 * The ladders Član 49 publishes that the server does not order by yet, and
+	 * The ladders the article on ties publishes that the server does not order by yet, and
 	 * what each of them is waiting for.
 	 *
 	 * <p>Written out, and that is the point of it: this is the list somebody has
@@ -82,7 +89,7 @@ class LaddersMatchTheRulebookTest {
 				.forEach(section -> {
 					String body = section.path("body").asString();
 
-					if (body.contains(ARTICLE)) {
+					if (ARTICLE.matcher(body).find()) {
 						holding.add(body);
 					}
 				}));
@@ -94,11 +101,15 @@ class LaddersMatchTheRulebookTest {
 		return holding.get(0);
 	}
 
-	/** Every ladder Član 49 publishes, in the order of its own rows, with its
+	/** Every ladder the article on ties publishes, in the order of its own rows, with its
 	 *  rungs split on the word the article joins them with. */
 	private static Map<String, List<String>> published() throws IOException {
 		String article = rulebook();
-		String fromHere = article.substring(article.indexOf(ARTICLE));
+		Matcher heading = ARTICLE.matcher(article);
+
+		assertThat(heading.find()).as("the article on ties has no heading").isTrue();
+
+		String fromHere = article.substring(heading.start());
 
 		Map<String, List<String>> ladders = new LinkedHashMap<>();
 

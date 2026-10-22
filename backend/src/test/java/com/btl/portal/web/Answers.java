@@ -170,7 +170,7 @@ final class Answers {
 	 * The subset was chosen on 12.09.2026 over an equality, and the reason written down
 	 * was that „a name the server answers with and no screen reads costs nothing". A
 	 * review measured that it can cost everything: the competitors' resource had just
-	 * removed `membershipBasis` because Article 74 puts the fee beside the date of birth,
+	 * removed `membershipBasis` because section 3 of the privacy policy puts the fee beside the date of birth,
 	 * and answering instead with a boolean `exempt` - a name no screen reads - published
 	 * exactly the same fact and passed all 1493 cases.
 	 *

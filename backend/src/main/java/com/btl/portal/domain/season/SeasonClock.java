@@ -491,7 +491,7 @@ public final class SeasonClock {
 	 * minus the year of birth, so a member who crossed 25, 40 or 55 between two seasons he ran in
 	 * gives away his EXACT year of birth (25-39 in 2027 and 40-54 in 2028 means 1988). The same is
 	 * had without this door, from the list read before and after a New Year and from the frozen
-	 * tables, and the published text (Article 74 of the rulebook and section 3 of the privacy policy)
+	 * tables, and the published text (section 3 of the privacy policy)
 	 * says so, in Serbian and in English, since migration V58 (item BR, the owner's words of
 	 * 16.10.2026). This method is still the list's, and still one season.
 	 *
