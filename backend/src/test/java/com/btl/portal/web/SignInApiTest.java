@@ -155,6 +155,12 @@ class SignInApiTest {
 			assertThat(answer.getStatus()).as("'%s' was answered differently", way[0]).isEqualTo(401);
 			assertThat(answer.getContentAsString()).isEmpty();
 			assertThat(answer.getCookie(SessionCookie.NAME)).isNull();
+			/* AND NO CHALLENGE, which is what tells this 401 from the one the edge proxy gives while
+			   the site is locked (ADL 22.10.2026, "portal to kaže i nudi novu karticu"). The screen
+			   reads a 401 that carries a Basic challenge as "the browser forgot the access word"
+			   and a 401 that does not as "that was not the password"; a challenge here would turn
+			   every wrong password into the first. */
+			assertThat(answer.getHeader("WWW-Authenticate")).as("'%s' was challenged", way[0]).isNull();
 		}
 	}
 
