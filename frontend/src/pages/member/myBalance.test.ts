@@ -60,6 +60,10 @@ describe('what the server says the book holds', () => {
     ['a portal that is broken', () => new Response(null, { status: 500 })],
     ['a body that is not JSON', () => new Response('not json', { status: 200 })],
     [
+      'a refusal whose body is shaped like an answer anyway',
+      () => new Response(JSON.stringify({ balance: { amount: 600, currency: 'RSD' } }), { status: 500 }),
+    ],
+    [
       'no server at all',
       () => {
         throw new TypeError('failed to fetch')
