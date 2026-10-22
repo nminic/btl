@@ -3,6 +3,7 @@ import { AskedLabel } from '../../forms/AskedLabel'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateField'
 import { heldControl } from '../../forms/held'
+import { NewTabForTheAccess } from '../account/TheSiteIsLocked'
 import { useI18n } from '../../i18n/useI18n'
 import { RACE_KINDS } from '../../data/types'
 import { raceKind } from '../../data/raceKind'
@@ -55,9 +56,15 @@ export type NotSaved = {
   rows: ReadonlyMap<RaceRow, string>
   /** And the races the press meant to take away and the route kept, already named. */
   kept: readonly { named: string; words: string }[]
+  /**
+   * Whether ANY of those refusals was the proxy saying the site is locked (owner, 22.10.2026,
+   * `account/TheSiteIsLocked.tsx`). Each item then carries the owner's sentence, and the way to a new
+   * tab is drawn ONCE under the list: a link per race would be as many controls with one name.
+   */
+  locked: boolean
 }
 
-const NOTHING_REFUSED: NotSaved = { rows: new Map(), kept: [] }
+const NOTHING_REFUSED: NotSaved = { rows: new Map(), kept: [], locked: false }
 
 /**
  * The races of one event, entered in the table itself.
@@ -410,22 +417,25 @@ export function EventRaces({
    */
   const refusals =
     refusedHere.length === 0 && notSaved.kept.length === 0 ? null : (
-      <ul className="races__problems" aria-label={t('admin.race.notSaved')}>
-        {refusedHere.map(({ at, row, words }) => (
-          <li key={`refused-${String(at)}`}>
-            <span>
-              {t('admin.form.raceNumber', { which: String(at + 1) })} ({row.name}):{' '}
-            </span>
-            <span id={refusalId(at)}>{words}</span>
-          </li>
-        ))}
-        {notSaved.kept.map(({ named, words }, at) => (
-          <li key={`kept-${String(at)}`}>
-            <span>{named}: </span>
-            <span>{words}</span>
-          </li>
-        ))}
-      </ul>
+      <>
+        <ul className="races__problems" aria-label={t('admin.race.notSaved')}>
+          {refusedHere.map(({ at, row, words }) => (
+            <li key={`refused-${String(at)}`}>
+              <span>
+                {t('admin.form.raceNumber', { which: String(at + 1) })} ({row.name}):{' '}
+              </span>
+              <span id={refusalId(at)}>{words}</span>
+            </li>
+          ))}
+          {notSaved.kept.map(({ named, words }, at) => (
+            <li key={`kept-${String(at)}`}>
+              <span>{named}: </span>
+              <span>{words}</span>
+            </li>
+          ))}
+        </ul>
+        {notSaved.locked && <NewTabForTheAccess />}
+      </>
     )
 
   /* Nothing on the screen for an event that has no races, and yet still here: the

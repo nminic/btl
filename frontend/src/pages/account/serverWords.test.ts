@@ -5,7 +5,7 @@ import en from '../../i18n/en.json'
 import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
 import { sources, WHOLE_PORTAL } from '../../test/sources'
-import { whatABareNumberSays } from './serverWords'
+import { whatABareNumberSays, wordsFor } from './serverWords'
 
 /**
  * WHICH SENTENCE A BARE NUMBER GETS, AND THAT THERE IS ONE PLACE THAT DECIDES IT.
@@ -110,6 +110,24 @@ describe('which sentence a bare number gets', () => {
   })
 })
 
+describe('the sentence for a site that is locked', () => {
+  it.each([
+    ['sr', sr],
+    ['en', en],
+  ] as const)('is the same in %s whatever the screen’s own route could say', (locale, dictionary) => {
+    const t = (key: string, params?: Record<string, string | number>): string =>
+      translate(dictionary, locale, key, params)
+
+    /* Owner, 22.10.2026. It was never the route that answered, so neither the refusals nor the
+       numbers it gave a meaning to are consulted - the same two tables that make a 404 mean something
+       on the screens of the pairs. */
+    expect(wordsFor({ got: 'locked' }, {}, t)).toBe(dictionary.server.locked)
+    expect(
+      wordsFor({ got: 'locked' }, { locked: 'server.nothing' }, t, { 401: 'server.nothing' }),
+    ).toBe(dictionary.server.locked)
+  })
+})
+
 describe('the one place that decides it', () => {
   it('reads the whole portal', () => {
     /* The floor under the two cases below: a sweep narrowed by accident answers with nothing, and
@@ -123,5 +141,12 @@ describe('the one place that decides it', () => {
 
   it('is the only module that says the sentence about the portal’s own fault', () => {
     expect(holders('server.malformed')).toEqual([THE_ONE_PLACE])
+  })
+
+  it('is the only module that says the sentence about the site being locked, and the new tab is drawn in one', () => {
+    /* Owner, 22.10.2026. The sentence is chosen here like every other, and drawn by `ServerSaid` and
+       `WhatTheServerSaid` through the one component that also holds the words of the link. */
+    expect(holders('server.locked')).toEqual([THE_ONE_PLACE])
+    expect(holders('server.lockedOpen')).toEqual(['pages/account/TheSiteIsLocked.tsx'])
   })
 })

@@ -183,6 +183,12 @@ const STAYS_A_WORD = new Map([
   ['review.placeRace', LISTED],
   ['review.placeSave', FORM],
   ['rulebook.openSections', NOT_AN_ACTION],
+  /* The way out of a locked site: a link to the front page in a new tab, and the button is NAMED in the
+     decision, so the word is the owner's and not a candidate for a symbol. */
+  [
+    'server.lockedOpen',
+    'a link to the front page in a new tab, whose button the owner named „Otvori u novoj kartici" (ADL 22.10.2026, „portal to kaže i nudi novu karticu"): a way about the portal and not an action on one thing',
+  ],
   ['shell.closeMenu', NOT_AN_ACTION],
   ['shell.home', NOT_AN_ACTION],
   ['shell.openMenu', NOT_AN_ACTION],

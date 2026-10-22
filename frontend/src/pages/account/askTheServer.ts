@@ -115,12 +115,45 @@ export type Answer =
   | { got: 'refused'; reason: string; rows?: RowRefused[] }
   /** 403: the token did not match, or there was none to send. */
   | { got: 'rejected' }
+  /**
+   * 401 WITH A BASIC CHALLENGE ON IT: the proxy in front of the portal asked for an access word the
+   * browser no longer holds, and the request never reached the portal.
+   *
+   * <p>Owner, 22.10.2026 (`btl-produkt/ADL.md`, „portal to kaže i nudi novu karticu"). While the
+   * site is locked (`basic_auth` at the edge, outside this repository) a browser asks for the word
+   * when a PAGE loads and then sends it with every request, but it opens no window for a `fetch`:
+   * a tab brought back after a long rest has forgotten it, and the first write is answered 401 by
+   * the proxy, not by the portal. Measured from outside on 22.10.2026: that answer carries
+   * `WWW-Authenticate: Basic realm="restricted"` and no body. <b>The number alone cannot tell it from
+   * the portal's own 401</b> (a wrong password, `SignInApi`), so the challenge does, and the portal
+   * never sends one (`ApiSecurityTest`, `SignInApiTest` hold that half). Carries nothing: no status,
+   * no header, no text of the answer.
+   */
+  | { got: 'locked' }
   /** Any other answer, carrying the number so the screen can say it rather than
    *  guess at it. A 400 whose body holds no reason lands here too, because a
    *  refusal nobody can name is not one of the three the screens know. */
   | { got: 'wrong'; status: number }
   /** The request never got an answer at all. */
   | { got: 'nothing' }
+
+/**
+ * WHETHER THIS ANSWER IS THE PROXY SAYING THE SITE IS LOCKED, and not the portal saying no.
+ *
+ * <p>A 401 that carries a `Basic` challenge, and nothing else. <b>The status alone is the portal's
+ * too</b> (a wrong password is 401 with no challenge), and <b>a challenge on any other status is
+ * not read</b>: the proxy asks for its word with 401 and with nothing else, so a 500 that happens to
+ * carry the header is a 500.
+ *
+ * <p><b>The scheme is read and the realm is not.</b> The realm is a word in a proxy configuration
+ * that lives outside this repository (`restricted` on 22.10.2026), so a copy of it here would be a
+ * second home for a fact the proxy owns, and would stop recognising the lock the day somebody
+ * renamed it. The scheme is what makes the sentence true: only a `Basic` word is something the
+ * reader can type into a new tab and have the browser keep. Schemes are not case sensitive.
+ */
+function isTheLock(answer: Response): boolean {
+  return answer.status === 401 && /^basic\b/i.test(answer.headers.get('www-authenticate') ?? '')
+}
 
 /**
  * The token the browser is holding, or nothing.
@@ -363,6 +396,12 @@ export async function askTheServer(
 
   if (answer.status === 403) {
     return { got: 'rejected' }
+  }
+
+  /* BEFORE THE BARE NUMBER BELOW, which is where this answer went until 22.10.2026 and said „Server
+     je odgovorio brojem 401 i ništa nije promenjeno" about a request the portal never saw. */
+  if (isTheLock(answer)) {
+    return { got: 'locked' }
   }
 
   /* 409 READ EXACTLY AS 400 IS, and it is one route's one refusal that puts it here.
