@@ -1,7 +1,7 @@
 import { configure, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { BtlEvent, Race } from '../../data/types'
-import { formatNumericDate } from '../../i18n/format'
+import { formatMonth, formatNumericDate } from '../../i18n/format'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../../test/render'
@@ -94,21 +94,23 @@ const answering = (body: unknown, status = 200): Response =>
 
 /**
  * The calendar above, answered to a moderator who races for nobody, which is the moderator this screen
- * is mostly for, and every write answered with `write`. The seasons open for a report are not asked of
- * the server here any more: this screen takes any year up to today (owner, 21.10.2026), so what the
- * account says of them is not read (`MeApi.WhoIAm.seasonsOpenForAReport`), and a screen that read it
- * again would be told a season only a member is held to.
+ * is mostly for, and every write answered with `write`. The seasons open for a report are read again
+ * since 22.10.2026, for one question only: whether a new race on an event of the calendar may be of the
+ * other year, which it may on the morning of 1 January (owner, the exception kept beside „Ekran 7b: dan
+ * trke mora biti u godini izabranog događaja”). They are `open`, the season of the day the cases stand on
+ * unless a case says otherwise.
  */
 function serving(
   write: (path: string) => Response = (path) =>
     answering(path.endsWith('/on-a-race-of-an-event') ? { results: [1], event: 'jezerska-trka-2027' } : { results: [1] }, 201),
   events: () => Response = () => answering(CALENDAR),
+  open: number[] = [2027],
 ): { asked: Asked[]; stop: () => void } {
   return serverThat((path, init) => {
     const method = init?.method ?? 'GET'
 
     if (method === 'GET' && path === '/api/me') {
-      return answering({ role: 'moderator', account: 1, mailLanguage: 'sr', seasonsOpenForAReport: [2027] })
+      return answering({ role: 'moderator', account: 1, mailLanguage: 'sr', seasonsOpenForAReport: open })
     }
 
     if (method === 'GET' && path === '/api/events') {
@@ -549,6 +551,208 @@ describe('what the block says before anything is sent', () => {
       await user.type(eventBox(), 'Nova trka')
 
       expect(raceBox()).toHaveValue('Nova trka')
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+/**
+ * THE DAY OF A NEW RACE ON AN EVENT OF THE CALENDAR IS OF THAT EVENT'S YEAR, ON THE SCREEN (owner, 22.10.2026,
+ * PDL „Ekran 7b: dan trke mora biti u godini izabranog događaja”: „Polje datuma ne nudi dane van godine
+ * događaja; ako zahtev ipak stigne, server odbija rečenicom „Dan trke nije u godini izabranog događaja.””).
+ *
+ * <p>The event is „Gradska liga” of 2026 on a day of 2027, so the year of the event and the year today is in
+ * are two different years.
+ */
+describe('the day of a new race on an event of the calendar', () => {
+  const OF_2026 = must(CALENDAR[1], 'the event of 2026')
+
+  async function onTheEventOf2026(user: ReturnType<typeof setupUser>): Promise<void> {
+    await user.type(eventBox(), 'Gradska')
+    await user.click(await screen.findByRole('button', { name: eventSaid(OF_2026) }))
+    await user.type(raceBox(), 'Stara staza')
+    await user.type(screen.getByLabelText(/^Dužina/), '8')
+    await user.type(screen.getByLabelText(/^Uspon/), '0')
+    await user.type(screen.getByLabelText(/^Spust/), '0')
+    await aRowFor(user)
+  }
+
+  it('says a day of another year under the day, in the server’s words, and sends nothing', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await onTheEventOf2026(user)
+
+      const day = screen.getByLabelText(/^Datum trke/)
+
+      await user.clear(day)
+      await user.type(day, '01062027')
+      await save(user)
+
+      expect(day).toHaveAttribute('aria-invalid', 'true')
+      expect(day).toHaveAccessibleDescription(sr.leagueResults.refused.theDayIsNotInTheEventsYear)
+      expect(writes(server.asked)).toEqual([])
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('opens the calendar in the event’s year and does not leave it either way', async () => {
+    const user = setupUser()
+    const server = serving()
+    const shown = () => screen.getByText(/2026|2025|2027/, { selector: '.datepicker__bar strong' }).textContent
+
+    try {
+      await open(user)
+      await onTheEventOf2026(user)
+      /* The day's own calendar: the screen draws another picker elsewhere. */
+      await user.click(
+        within(must(screen.getByLabelText(/^Datum trke/).closest('.datepicker'), 'the day’s picker')).getByRole('button', {
+          name: sr.form.openCalendar,
+        }),
+      )
+
+      expect(shown()).toBe(formatMonth('2026-03', 'sr'))
+
+      for (let press = 0; press < 12; press += 1) {
+        await user.click(screen.getByRole('button', { name: sr.calendar.nextMonth }))
+      }
+
+      expect(shown()).toBe(formatMonth('2026-12', 'sr'))
+      expect(screen.getByRole('button', { name: sr.calendar.nextMonth })).toHaveAttribute('aria-disabled', 'true')
+
+      for (let press = 0; press < 13; press += 1) {
+        await user.click(screen.getByRole('button', { name: sr.calendar.previousMonth }))
+      }
+
+      expect(shown()).toBe(formatMonth('2026-01', 'sr'))
+      expect(screen.getByRole('button', { name: sr.calendar.previousMonth })).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('button', { name: sr.calendar.nextMonth })).not.toHaveAttribute('aria-disabled')
+
+      /* And a day typed in a year after the event's opens it on the last month it may show. */
+      await user.keyboard('{Escape}')
+
+      const day = screen.getByLabelText(/^Datum trke/)
+
+      await user.clear(day)
+      await user.type(day, '01062027')
+      await user.click(
+        within(must(day.closest('.datepicker'), 'the day’s picker')).getByRole('button', { name: sr.form.openCalendar }),
+      )
+
+      expect(shown()).toBe(formatMonth('2026-12', 'sr'))
+
+      /* And one typed in a year before it, on the first month. */
+      await user.keyboard('{Escape}')
+      await user.clear(day)
+      await user.type(day, '01062025')
+      await user.click(
+        within(must(day.closest('.datepicker'), 'the day’s picker')).getByRole('button', { name: sr.form.openCalendar }),
+      )
+
+      expect(shown()).toBe(formatMonth('2026-01', 'sr'))
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('takes a day of the other year on the morning of 1 January, while the server says both are open', async () => {
+    /* The event of 2027, on the first day of 2028, with 2027 and 2028 open: New Year's Day on the event of the
+       year just ended is the owner's exception, and the calendar shows both years. */
+    const user = setupUser()
+    const server = serving(undefined, undefined, [2027, 2028])
+
+    try {
+      renderAt(PATH, 'moderator', null, CHECKS_RESULTS, '2028-01-01')
+      await screen.findByRole('heading', { level: 1, name: sr.leagueResults.forAnEvent })
+      await user.type(eventBox(), 'Gradska')
+      await user.click(await screen.findByRole('button', { name: eventSaid(AN_EVENT) }))
+      await user.type(raceBox(), 'Novogodišnja')
+      await user.type(screen.getByLabelText(/^Dužina/), '8')
+      await user.type(screen.getByLabelText(/^Uspon/), '0')
+      await user.type(screen.getByLabelText(/^Spust/), '0')
+      await aRowFor(user)
+
+      const day = screen.getByLabelText(/^Datum trke/)
+
+      await user.clear(day)
+      await user.type(day, '01012028')
+      await save(user)
+
+      await waitFor(() => expect(writes(server.asked)).toHaveLength(1))
+
+      expect(writes(server.asked)[0]?.body).toMatchObject({ event: { id: AN_EVENT.id }, race: { date: '2028-01-01' } })
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('says the server’s refusal in its own words where a request got past the box', async () => {
+    const user = setupUser()
+    const server = serving(() => answering({ reason: 'theDayIsNotInTheEventsYear' }, 409))
+
+    try {
+      await open(user)
+      await onTheEventOf2026(user)
+      await save(user)
+
+      expect(await screen.findByText(sr.leagueResults.refused.theDayIsNotInTheEventsYear)).toBeVisible()
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+/**
+ * A NAME OF TWO EDITIONS AND A DAY IN THE YEAR OF ONE OF THEM IS NOT SENT AS A NEW EVENT (owner, 22.10.2026,
+ * answering the author's question before the code: „dugme ne pušta dok godina nije izabrana sa spiska,
+ * rečenicom „Izaberi godinu sa spiska.” … godina bez izdanja i dalje pravi nov događaj”). „Gradska liga” is of
+ * 2027 and of 2026 in the calendar above.
+ */
+describe('a name of several editions on the moderator’s own screen', () => {
+  async function aNewEventNamed(user: ReturnType<typeof setupUser>, day: string): Promise<void> {
+    await user.type(eventBox(), 'Gradska liga')
+    await user.type(screen.getByLabelText(/^Datum/), day)
+    await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
+    await user.type(screen.getByLabelText(/^Dužina/), '10')
+    await user.type(screen.getByLabelText(/^Uspon/), '0')
+    await user.type(screen.getByLabelText(/^Spust/), '0')
+    await aRowFor(user)
+  }
+
+  it('asks for the year to be chosen from the list where the day is in the year of an edition, and sends nothing', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await aNewEventNamed(user, '01062026')
+      await save(user)
+
+      expect(eventBox()).toHaveAttribute('aria-invalid', 'true')
+      expect(eventBox()).toHaveAccessibleDescription(new RegExp(sr.leagueResults.chooseTheYear.replace('.', '\\.')))
+      expect(eventBox()).toHaveFocus()
+      expect(writes(server.asked)).toEqual([])
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('sends a new event where the day is in a year with no edition', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await aNewEventNamed(user, '01062025')
+      await save(user)
+
+      await waitFor(() => expect(writes(server.asked)).toHaveLength(1))
+
+      expect(writes(server.asked)[0]?.body).toMatchObject({ event: { name: 'Gradska liga', date: '2025-06-01' } })
     } finally {
       server.stop()
     }

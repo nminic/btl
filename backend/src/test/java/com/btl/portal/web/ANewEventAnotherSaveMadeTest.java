@@ -244,16 +244,17 @@ class ANewEventAnotherSaveMadeTest {
 
 	/**
 	 * THE EVENT MET IS OF ANOTHER YEAR than the request's day, under this year's address (an address an
-	 * administrator kept when the event moved): another season, which this screen does not offer, so a
-	 * form not filled in, as on an event of the calendar.
+	 * administrator kept when the event moved): refused as on an event of the calendar, with the owner's
+	 * sentence for a day outside the event's year (PDL, 22.10.2026, „Ekran 7b: dan trke mora biti u godini
+	 * izabranog događaja”), which until then was a form not filled in.
 	 */
 	@Test
 	void anEventMadeMeanwhileOfAnotherYearTakesNoRace() throws Exception {
 		MockHttpServletResponse answer = whileAnotherSaveMakes(
 				by -> anEvent(by, THE_ADDRESS, THE_NAME, LocalDate.parse("2028-03-01"), "race"));
 
-		assertThat(answer.getStatus()).as("what the database said otherwise: " + thrown).isEqualTo(400);
-		assertThat(reasonIn(answer)).isEqualTo(ResultWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(answer.getStatus()).as("what the database said otherwise: " + thrown).isEqualTo(409);
+		assertThat(reasonIn(answer)).isEqualTo(ResultsByTheLeagueApi.THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR);
 		assertThat(racesOn(THE_ADDRESS)).isZero();
 		assertThat(racesOn(A_SIMILAR_ADDRESS)).isZero();
 		assertThat(theDayOf(THE_ADDRESS)).isEqualTo(LocalDate.parse("2028-03-01"));

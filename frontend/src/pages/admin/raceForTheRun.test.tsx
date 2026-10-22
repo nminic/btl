@@ -1478,6 +1478,94 @@ describe('the country a run came with, under the panel that may take its town aw
   })
 })
 
+describe('the panel opened again over a run, while it stands open', () => {
+  /* Review of PR 610, round 2 (PENDING): the panel was drawn with no key, so pressing „Postavi trku” on
+     a second run while it stood open kept the place field of the first, and with it the town picked
+     off its list and the country it wrote, which the field holds for itself (`forms/PlaceField.tsx`,
+     `picked`, `touched`, `written`). The country the server sent with the second run was then
+     overwritten or emptied. Each opening is a panel of its own (`ReviewQueue.tsx`, the key), which is
+     also what a second press on the SAME run is: it opens the panel on what the run says again.
+   *
+     The two countries are never the same here, so a country carried over from the first run is a
+     different answer from the one the second run came with. */
+
+  /** A run whose town the codebook does not know, in Austria, so nothing recognises its country. */
+  const IN_AUSTRIA = { ...FROM_THE_BOOK, city: 'Xqzrtgrad', country: 'AT' }
+
+  /** A run whose town the codebook does not know, in Slovenia, the country „Kranj" writes. */
+  const IN_SLOVENIA = { ...FROM_THE_BOOK, city: 'Xqzrtgrad', country: 'SI' }
+
+  const town = () => panel().getByLabelText(sr.review.placeTown)
+  const country = () => panel().getByLabelText(sr.form.country)
+
+  /** „Kranj" picked off the list of places, so the field holds the town it picked and the country it wrote. */
+  async function pickKranj(user: ReturnType<typeof setupUser>): Promise<void> {
+    await user.type(town(), 'Kranj')
+    await user.click(await panel().findByRole('option', { name: /^Kranj \(/ }))
+    await waitFor(() => expect(country()).toHaveValue('SI'))
+  }
+
+  it('keeps the country the next run came with, over a town picked off the list for the run before', async () => {
+    const user = setupUser()
+    const server = serverWith({ queue: () => [{ ...TYPED, city: '', country: '' }, IN_AUSTRIA] })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000060')
+      await waitFor(() => expect(reads(server.asked, '/api/events')).toBe(1))
+      await pickKranj(user)
+      await openThePanelOver(user, '000040')
+
+      expect(town()).toHaveValue('Xqzrtgrad')
+      expect(country()).toHaveValue('AT')
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('keeps the country the next run came with, over a country the town typed for the run before wrote', async () => {
+    const user = setupUser()
+    const server = serverWith({ queue: () => [{ ...TYPED, city: '', country: '' }, IN_SLOVENIA] })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000060')
+      await waitFor(() => expect(reads(server.asked, '/api/events')).toBe(1))
+      await user.type(town(), 'Kranj')
+      await waitFor(() => expect(country()).toHaveValue('SI'))
+      await openThePanelOver(user, '000040')
+
+      expect(town()).toHaveValue('Xqzrtgrad')
+      expect(country()).toHaveValue('SI')
+      expect(country()).toBeEnabled()
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('opens on what the run says again when it is pressed a second time over the same run', async () => {
+    const user = setupUser()
+    const server = serverWith({ queue: () => [IN_AUSTRIA] })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000040')
+      await waitFor(() => expect(reads(server.asked, '/api/events')).toBe(1))
+      await user.clear(town())
+      await pickKranj(user)
+      await openThePanelOver(user, '000040')
+
+      expect(town()).toHaveValue('Xqzrtgrad')
+      expect(country()).toHaveValue('AT')
+    } finally {
+      server.stop()
+    }
+  })
+})
+
 describe('what a case of this file may end in', () => {
   it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
     expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)

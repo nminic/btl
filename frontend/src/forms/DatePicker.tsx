@@ -22,6 +22,24 @@ function monthOf(value: string, today: string): string {
 }
 
 /**
+ * The month the calendar opens on, moved inside the years it may show where it is given any: the first
+ * month of the first year when it would open before them, the last month of the last when after.
+ */
+function inside(month: string, within: Years | undefined): string {
+  if (within === undefined) {
+    return month
+  }
+
+  const first = `${String(within.first)}-01`
+  const last = `${String(within.last)}-12`
+
+  return month < first ? first : month > last ? last : month
+}
+
+/** The years a calendar may show, the first and the last, both whole. */
+export type Years = { first: number; last: number }
+
+/**
  * The days a picker offers and its calendar button, in one group where there are days and
  * loose where there are none.
  *
@@ -58,6 +76,7 @@ export function DatePicker({
   locked = false,
   steps = [],
   label,
+  within,
 }: {
   id: string
   name: string
@@ -92,6 +111,18 @@ export function DatePicker({
    * them are twenty controls nothing tells apart (admin/EventRaces.tsx).
    */
   label?: string
+  /**
+   * The years the calendar may show, where the screen holds the day to them, and nothing everywhere else.
+   *
+   * <p>One screen gives it: „Unos rezultata za događaj”, whose new race on an event of the calendar must
+   * be run in that event's year (PDL, owner, 22.10.2026, „Ekran 7b: dan trke mora biti u godini izabranog
+   * događaja”: „Polje datuma ne nudi dane van godine događaja”), or on the morning of 1 January in either
+   * of the two years then open. The calendar opens inside them and its two arrows refuse to leave them,
+   * told off rather than switched off, as the calendar button is for a held box. The box still takes
+   * whatever is typed, as it does everywhere: what the screen says of a day typed outside them is the
+   * screen's (`pages/event/eventAndRace.ts`).
+   */
+  within?: Years
 }) {
   const { locale, t } = useI18n()
   const today = useToday()
@@ -170,7 +201,7 @@ export function DatePicker({
     drawn.style.top = `${String(top)}px`
     drawn.style.bottom = 'auto'
   }, [open])
-  const [month, setMonth] = useState(() => monthOf(value, today))
+  const [month, setMonth] = useState(() => inside(monthOf(value, today), within))
   const box = useRef<HTMLDivElement>(null)
   /** The button the calendar is opened from, so a focus inside a calendar that is
    *  closed out from under it has somewhere of its own to land. */
@@ -250,6 +281,9 @@ export function DatePicker({
   }, [open])
 
   const { year, index } = monthNumbers(month)
+  /* Whether the arrows would leave the years given, and so refuse: nothing refuses where none are. */
+  const atTheFirst = within !== undefined && month <= `${String(within.first)}-01`
+  const atTheLast = within !== undefined && month >= `${String(within.last)}-12`
   const chosen = parseDate(value)
 
   function pick(day: number) {
@@ -358,7 +392,7 @@ export function DatePicker({
                last drew. A field draws again only when something about that field
                changed (src/forms/FormRenderer.tsx), so a form filled in across
                midnight would otherwise open the calendar on yesterday's month. */
-            setMonth(monthOf(value, today))
+            setMonth(inside(monthOf(value, today), within))
             setOpen((was) => !was)
           }}
         >
@@ -395,7 +429,12 @@ export function DatePicker({
           <div className="datepicker__bar">
             <button
               type="button"
-              onClick={() => setMonth(shiftMonth(month, -1))}
+              aria-disabled={atTheFirst ? true : undefined}
+              onClick={() => {
+                if (!atTheFirst) {
+                  setMonth(shiftMonth(month, -1))
+                }
+              }}
               aria-label={t('calendar.previousMonth')}
             >
               {'‹'}
@@ -403,7 +442,12 @@ export function DatePicker({
             <strong>{formatMonth(month, locale)}</strong>
             <button
               type="button"
-              onClick={() => setMonth(shiftMonth(month, 1))}
+              aria-disabled={atTheLast ? true : undefined}
+              onClick={() => {
+                if (!atTheLast) {
+                  setMonth(shiftMonth(month, 1))
+                }
+              }}
               aria-label={t('calendar.nextMonth')}
             >
               {'›'}

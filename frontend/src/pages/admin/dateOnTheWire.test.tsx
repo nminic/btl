@@ -81,6 +81,7 @@ const A_MORNING: RaceRow = {
   distanceKm: '21.1',
   ascentM: '120',
   descentM: '110',
+  copied: false,
 }
 
 /**
