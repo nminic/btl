@@ -75,7 +75,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *     owner's decision of 26.09.2026 creates on purpose: his wish stays as he left it and his
  *     category is his age band. A resource that stored the category instead of the wish cannot
  *     produce this row at all.
- * <li><b>{@link #FREED_OF_THE_FEE} pays nothing, ever</b> (Pravilnik član 15), and is answered
+ * <li><b>{@link #FREED_OF_THE_FEE} pays nothing, ever</b> (the rulebook's article „Cena, rokovi i oslobađanje od članarine"), and is answered
  *     exactly as everybody else. Twenty nine of the thirty two members in the shipped data are
  *     freed of the fee, and the draft box this route replaces was drawn only for members who
  *     are not - so this is the case that would have been the whole portal.

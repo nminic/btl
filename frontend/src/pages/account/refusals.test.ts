@@ -585,8 +585,10 @@ describe('the reasons the server can name', () => {
        holds (`theEventWouldMoveOntoAnother`, the sentence the approval of a run has for the same move).
        Twelve again since 21.10.2026: the fourth of the screen's own, a day before the league
        (`theDayIsBeforeTheLeague`), went with the owner's decision that the screen takes any year up to
-       today (PDL P9, 21.10.2026). */
-    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 12],
+       today (PDL P9, 21.10.2026). Thirteen since 22.10.2026: a new race on an event of the calendar whose
+       day is not in that event's year (`theDayIsNotInTheEventsYear`, PDL „Ekran 7b: dan trke mora biti u
+       godini izabranog događaja”), which until then was answered as a form not filled in. */
+    ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 13],
   ]
 
   /** What a file declares that really is a refusal AND has a screen today, which is every

@@ -294,9 +294,9 @@ class PageApiTest {
 		}
 
 		assertThat(sectionsCompared)
-				.as("the thirty-nine sections of the four pages were not all compared, so this case"
+				.as("the thirty-eight sections of the four pages were not all compared, so this case"
 						+ " measures less than it says")
-				.isEqualTo(39);
+				.isEqualTo(38);
 	}
 
 	/**
@@ -433,19 +433,22 @@ class PageApiTest {
 				.as("uslovi-koriscenja's real English title did not reach the route")
 				.isEqualTo("Terms of use");
 		assertThat(fieldOf(ours, "uslovi-koriscenja", "heading"))
-				.as("the terms of use did not come back whole - twelve real English headings")
-				.hasSize(12);
+				.as("the terms of use did not come back whole - eleven real English headings")
+				.hasSize(11);
 	}
 
 	/**
-	 * THE SENTENCE V58 ADDS (item BR) REACHES THE VISITOR, in Article 74 of the rulebook and in section 3 of the
-	 * privacy policy, in the language he asks for.
+	 * THE SENTENCE V58 ADDS (item BR) REACHES THE VISITOR in section 3 of the privacy policy, in the language he asks
+	 * for, AND NO SECTION OF THE RULEBOOK SERVES IT.
 	 *
-	 * <p>{@code TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest} holds the rows; this holds that the
-	 * route serves them, which is the one thing it cannot see. Asked in Serbian and in real English.
+	 * <p>V58 put it into Article 74 of the rulebook and into section 3 of the policy. V71 made the policy the one home
+	 * of what is public (PDL, "Uprošćavanje pravnih tekstova (22.10.2026)", and the decision of 16.10.2026 amended the
+	 * same day in its part "Član 74 Pravilnika"), so the rulebook no longer carries it and must not start carrying it
+	 * again quietly. {@code TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest} holds the rows; this holds that
+	 * the route serves them, which is the one thing it cannot see. Asked in Serbian and in real English.
 	 */
 	@Test
-	void theSentenceThatTheCategoryRevealsTheYearOfBirthIsServedInBothArticlesInBothLanguages() throws Exception {
+	void theSentenceThatTheCategoryRevealsTheYearOfBirthIsServedInThePolicyAloneInBothLanguages() throws Exception {
 		String serbian = "Javna je uvek kategorija koja iz njega proizlazi, bez obzira na vaš izbor. Iz prelaska u"
 				+ " stariju uzrasnu kategoriju između dve sezone vidi se tačna godina rođenja, i kad datum rođenja"
 				+ " nije prikazan.";
@@ -456,9 +459,12 @@ class PageApiTest {
 		for (String[] asked : new String[][] { { "sr", serbian }, { "en", english } }) {
 			JsonNode served = answerIn(asked[0]);
 
-			assertThat(fieldOf(served, "pravilnik", "body").get(16))
-					.as("Article 74 asked in %s", asked[0])
-					.containsOnlyOnce(asked[1]);
+			String revealsTheYear = asked[1].substring(asked[1].indexOf(". ") + 2);
+
+			assertThat(fieldOf(served, "pravilnik", "body"))
+					.as("the rulebook asked in %s", asked[0])
+					.isNotEmpty()
+					.noneMatch(body -> body.contains(revealsTheYear));
 			assertThat(fieldOf(served, "politika-privatnosti", "body").get(2))
 					.as("section 3 of the privacy policy asked in %s", asked[0])
 					.containsOnlyOnce(asked[1]);
@@ -528,8 +534,9 @@ class PageApiTest {
 	}
 
 	/**
-	 * NO TEXT THE ROUTE SERVES CARRIES A SERBIAN QUOTATION MARK, AND THE TEN SENTENCES V61 CHANGED CARRY THE ENGLISH ONE
-	 * (owner, PDL P18, the section "Navodnici", 18.10.2026).
+	 * NO TEXT THE ROUTE SERVES CARRIES A SERBIAN QUOTATION MARK, AND THE SENTENCES V61 CHANGED CARRY THE ENGLISH ONE
+	 * (owner, PDL P18, the section "Navodnici", 18.10.2026). V61 changed ten; V71 took out the rulebook's article on
+	 * how a result is submitted, which carried two of them ("Unesi rezultat" and "Submit result"), so eight are left.
 	 *
 	 * <p>{@code TheWrittenPagesUseTheEnglishQuotationMarkTest} holds the columns; this holds that the route serves the
 	 * result, in Serbian and in real English, which is the one thing it cannot see. The sweep reads every title, every
@@ -537,16 +544,14 @@ class PageApiTest {
 	 * is swept too.
 	 */
 	@Test
-	void noServedTextCarriesASerbianQuotationMarkAndTheTenSentencesCarryTheEnglishOne() throws Exception {
-		String[][] ten = {
+	void noServedTextCarriesASerbianQuotationMarkAndTheSentencesV61ChangedCarryTheEnglishOne() throws Exception {
+		String[][] changed = {
 				{ "sr", "uslovi-koriscenja", "6", "na vašoj strani \"Moja članarina\", uz sam link." },
 				{ "sr", "rec-predsednika", "1", "Sportsko udruženje \"BTL\", pod popularnim imenom" },
 				{ "sr", "pravilnik", "5", "na primer \"Beogradski maraton, štafeta 1\", sa dužinom" },
-				{ "sr", "pravilnik", "9", "dugmetom \"Unesi rezultat\" u redu te trke." },
 				{ "sr", "pravilnik", "12", "- \"Zajednička trka\" znači ista trka" },
 				{ "sr", "pravilnik", "16", "Oznake \"arhiviran takmičar\" nema" },
 				{ "en", "pravilnik", "5", "for example \"Beogradski maraton, relay leg 1\", with the length" },
-				{ "en", "pravilnik", "9", "with the \"Submit result\" button on that race" },
 				{ "en", "pravilnik", "12", "- A \"shared race\" means the same race" },
 				{ "en", "pravilnik", "16", "There is no \"archived competitor\" marker" } };
 
@@ -575,7 +580,7 @@ class PageApiTest {
 					.isPositive();
 		}
 
-		for (String[] each : ten) {
+		for (String[] each : changed) {
 			assertThat(fieldOf(answerIn(each[0]), each[1], "body").get(Integer.parseInt(each[2]) - 1))
 					.as("%s #%s asked in %s", each[1], each[2], each[0])
 					.containsOnlyOnce(each[3]);
@@ -805,10 +810,10 @@ class PageApiTest {
 	@Test
 	void aPageAnswersInEnglishOnlyWhenItIsWholeInEnglish() throws Exception {
 		englishTitleFor("uslovi-koriscenja");
-		assertThat(englishBlocksFor("uslovi-koriscenja", 12))
-				.as("the terms of use no longer hold twelve blocks, so this fixture translated"
+		assertThat(englishBlocksFor("uslovi-koriscenja", 11))
+				.as("the terms of use no longer hold eleven blocks, so this fixture translated"
 						+ " something other than a whole page and the case below says nothing")
-				.isEqualTo(12);
+				.isEqualTo(11);
 
 		JsonNode ours = answerIn(A_LANGUAGE_THESE_FIXTURES_OWN);
 
@@ -832,10 +837,10 @@ class PageApiTest {
 				.isEqualTo(ENGLISH_TITLE + "uslovi-koriscenja");
 		assertThat(fieldOf(ours, "uslovi-koriscenja", "heading"))
 				.as("the English page came back with Serbian headings, or with them out of order")
-				.isEqualTo(expected(ENGLISH_HEADING, 12));
+				.isEqualTo(expected(ENGLISH_HEADING, 11));
 		assertThat(fieldOf(ours, "uslovi-koriscenja", "body"))
 				.as("the English page came back with Serbian bodies")
-				.isEqualTo(expected(ENGLISH_BODY, 12));
+				.isEqualTo(expected(ENGLISH_BODY, 11));
 
 		/* AND THE THREE PAGES NOBODY TRANSLATED ARE WORD FOR WORD WHAT THEY ARE WITHOUT THE
 		   PARAMETER. Compared as whole records and not title by title: a server that served
@@ -868,7 +873,7 @@ class PageApiTest {
 	@Test
 	void theOriginalComesBackWhenNoLanguageIsAskedForAndWhenItIsAskedForByName() throws Exception {
 		englishTitleFor("uslovi-koriscenja");
-		assertThat(englishBlocksFor("uslovi-koriscenja", 12)).isEqualTo(12);
+		assertThat(englishBlocksFor("uslovi-koriscenja", 11)).isEqualTo(11);
 
 		String serbianTitle = pageNamed(mock(), "uslovi-koriscenja").path("title").asString();
 
@@ -907,7 +912,7 @@ class PageApiTest {
 	@ValueSource(strings = { "de", "cnr" })
 	void aTagThisPortalHasNoWordsInIsServedTheOriginalRatherThanRefused(String tag) throws Exception {
 		englishTitleFor("uslovi-koriscenja");
-		assertThat(englishBlocksFor("uslovi-koriscenja", 12)).isEqualTo(12);
+		assertThat(englishBlocksFor("uslovi-koriscenja", 11)).isEqualTo(11);
 
 		assertThat(reply(tag).getStatus())
 				.as("%s is shaped like a language tag and was refused rather than served the"
@@ -930,8 +935,8 @@ class PageApiTest {
 	 * ON THE BLOCK THAT COMPLETES IT.
 	 *
 	 * <p><b>Both directions of the boundary, with a concrete case on each side</b>, which is
-	 * what a decision about the meaning of a word owes (`CLAUDE.md`, 28.08.2026). Eleven of
-	 * the twelve blocks written in English is Serbian; the twelfth makes it English. Nothing
+	 * what a decision about the meaning of a word owes (`CLAUDE.md`, 28.08.2026). Ten of
+	 * the eleven blocks written in English is Serbian; the eleventh makes it English. Nothing
 	 * in between.
 	 *
 	 * <p><b>Why the rule is the page and not the block.</b> Eighteen articles of the
@@ -948,10 +953,10 @@ class PageApiTest {
 	@Test
 	void aPageWithOneBlockStillUntranslatedComesBackWholeInTheOriginal() throws Exception {
 		englishTitleFor("uslovi-koriscenja");
-		assertThat(englishBlocksFor("uslovi-koriscenja", 11))
-				.as("eleven of the twelve blocks were not written, so neither side of this"
+		assertThat(englishBlocksFor("uslovi-koriscenja", 10))
+				.as("ten of the eleven blocks were not written, so neither side of this"
 						+ " boundary is where the case says it is")
-				.isEqualTo(11);
+				.isEqualTo(10);
 
 		JsonNode shortOfOne = answerIn(A_LANGUAGE_THESE_FIXTURES_OWN);
 
@@ -961,11 +966,11 @@ class PageApiTest {
 						+ " another")
 				.containsEntry("uslovi-koriscenja", PageApi.THE_ORIGINAL);
 		assertThat(fieldOf(shortOfOne, "uslovi-koriscenja", "heading"))
-				.as("the eleven blocks that DO have words in it were served in it while the page"
+				.as("the ten blocks that DO have words in it were served in it while the page"
 						+ " as a whole could not be")
 				.doesNotContain(ENGLISH_HEADING + "1");
 
-		/* AND THE TWELFTH TURNS IT. Written by position rather than by „the rest", so what
+		/* AND THE ELEVENTH TURNS IT. Written by position rather than by „the rest", so what
 		   completes the page is one named row and not a repeat of the insert above. Written
 		   under A_LANGUAGE_THESE_FIXTURES_OWN directly, like englishBlocksFor itself, rather
 		   than through real "en" - see that constant for why. */
@@ -976,9 +981,9 @@ class PageApiTest {
 						+ "   '" + ENGLISH_BODY + "' || s.position"
 						+ " from static_page_section s"
 						+ " join static_page p on p.id = s.page_id"
-						+ " where p.slug = 'uslovi-koriscenja' and s.position = 12")
+						+ " where p.slug = 'uslovi-koriscenja' and s.position = 11")
 				.update())
-				.as("the twelfth block of the terms of use was not found by its position")
+				.as("the eleventh block of the terms of use was not found by its position")
 				.isOne();
 
 		assertThat(languagesOf(answerIn(A_LANGUAGE_THESE_FIXTURES_OWN)))
@@ -986,7 +991,7 @@ class PageApiTest {
 						+ " the original, so nothing can ever complete a translation")
 				.containsEntry("uslovi-koriscenja", A_LANGUAGE_THESE_FIXTURES_OWN);
 		assertThat(fieldOf(answerIn(A_LANGUAGE_THESE_FIXTURES_OWN), "uslovi-koriscenja", "heading"))
-				.isEqualTo(expected(ENGLISH_HEADING, 12));
+				.isEqualTo(expected(ENGLISH_HEADING, 11));
 	}
 
 	/**
@@ -1067,7 +1072,7 @@ class PageApiTest {
 	@Test
 	void twoTranslationsOfOnePageDoNotAnswerForEachOther() throws Exception {
 		englishTitleFor("uslovi-koriscenja");
-		assertThat(englishBlocksFor("uslovi-koriscenja", 12)).isEqualTo(12);
+		assertThat(englishBlocksFor("uslovi-koriscenja", 11)).isEqualTo(11);
 
 		/* A SECOND LANGUAGE, WHOLE, with words of its own. */
 		assertThat(db.sql("insert into static_page_translation (page_id, language, title)"
@@ -1081,7 +1086,7 @@ class PageApiTest {
 						+ " from static_page_section s"
 						+ " join static_page p on p.id = s.page_id"
 						+ " where p.slug = 'uslovi-koriscenja'")
-				.update()).isEqualTo(12);
+				.update()).isEqualTo(11);
 
 		/* A THIRD LANGUAGE THAT IS A TITLE AND NOTHING ELSE. */
 		assertThat(db.sql("insert into static_page_translation (page_id, language, title)"
@@ -1101,21 +1106,21 @@ class PageApiTest {
 			assertThat(fieldOf(ours, "uslovi-koriscenja", "heading"))
 					.as("the page came back with more blocks than it has, so its blocks arrived"
 							+ " once per language rather than once")
-					.hasSize(12);
+					.hasSize(11);
 		}
 
 		assertThat(pageNamed(english, "uslovi-koriscenja").path("title").asString())
 				.isEqualTo(ENGLISH_TITLE + "uslovi-koriscenja");
 		assertThat(fieldOf(english, "uslovi-koriscenja", "heading"))
 				.as("asked in English the page answered with another language's blocks")
-				.isEqualTo(expected(ENGLISH_HEADING, 12));
+				.isEqualTo(expected(ENGLISH_HEADING, 11));
 
 		assertThat(pageNamed(german, "uslovi-koriscenja").path("title").asString())
 				.as("asked in German the page answered with the English title")
 				.isEqualTo("Deutscher Titel");
 		assertThat(fieldOf(german, "uslovi-koriscenja", "heading"))
 				.as("asked in German the page answered with the English blocks")
-				.isEqualTo(expected("Deutsche Ueberschrift ", 12));
+				.isEqualTo(expected("Deutsche Ueberschrift ", 11));
 
 		/* AND THE TAG THAT HAS ONLY A TITLE FALLS BACK WHOLE, rather than being called
 		   complete because some OTHER language has the blocks. */

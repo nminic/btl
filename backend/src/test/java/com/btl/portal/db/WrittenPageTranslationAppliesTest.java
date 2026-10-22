@@ -68,8 +68,14 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 	 * may run this method against a database where an earlier page's rows already stand, and all
 	 * that matters here is that the two tables are empty before {@code migrationSql} runs, exactly
 	 * as they are the moment before V43 first applies.
+	 *
+	 * <p>The pages are first put back to the text V71 found ({@link TheWrittenPagesBeforeV71}), which still has the
+	 * twelve sections of the terms of use V43 writes a translation for, one per position. V71 took the eighth out
+	 * (owner, 22.10.2026), and V43 run over eleven would find no section to put its twelfth under.
 	 */
 	private void reapply() {
+		TheWrittenPagesBeforeV71.putBack(db, migrationSql("71"));
+
 		db.sql("delete from static_page_section_translation").update();
 		db.sql("delete from static_page_translation").update();
 

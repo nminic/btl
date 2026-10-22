@@ -39,7 +39,7 @@ export type TheForm = {
    * <p><b>Null and not `Number('')`, which is the one thing that had to be got right
    * here.</b> `Number('')` is `0`, and nought is a PRICE this route accepts -
    * `price_row_eur_not_negative` reads `eur >= 0`, and a membership the league gives away
-   * is a real state of the product (Pravilnik član 15). So a form that lost its euro field
+   * is a real state of the product (the rulebook's article „Cena, rokovi i oslobađanje od članarine"). So a form that lost its euro field
    * on the way would have set the fee to nothing at all, silently, where a null gets
    * `theFormIsNotComplete` back and the administrator is told.
    *

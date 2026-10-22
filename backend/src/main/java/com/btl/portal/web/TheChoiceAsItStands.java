@@ -103,7 +103,7 @@ class TheChoiceAsItStands {
 
 	/**
 	 * <p>Not a record anybody outside sees: {@code birth_year} is the short form of a date of
-	 * birth and Article 74 forbids showing it (ADL A8), so it goes into a band here and never
+	 * birth and section 3 of the privacy policy forbids showing it (ADL A8), so it goes into a band here and never
 	 * into an answer.
 	 */
 	private record Member(String gender, int birthYear, boolean firstSeason) {

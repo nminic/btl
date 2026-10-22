@@ -265,7 +265,7 @@ export type FieldDef = {
    * Required of everybody, and not of somebody who has answered `field`.
    *
    * The one case is the link to the official results, and the field that lets it
-   * go is the picture (Član 37, owner 22.08.2026): a photograph of the watch or
+   * go is the picture (the rulebook's article „Dokazi", owner 22.08.2026): a photograph of the watch or
    * of the diploma is a proof of its own, so a member who has one is not asked
    * for a link as well.
    *

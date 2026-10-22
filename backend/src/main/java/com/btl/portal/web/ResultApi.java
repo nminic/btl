@@ -15,7 +15,7 @@ import java.util.List;
  * WHAT WAS RUN, BY WHOM, AND WHAT IT WAS WORTH.
  *
  * <p>This is the portal's record and the thing the league exists to keep. It is
- * public and says so in its own words: Article 73 of the rulebook lists the name,
+ * public and says so in its own words: section 3 of the privacy policy lists the name,
  * the member number and every verified result with its length, climb, descent,
  * time and day among the things that are public, and the privacy policy repeats
  * it. Nothing here is anybody's to hide, and a result nobody can read is a league
@@ -59,7 +59,7 @@ import java.util.List;
  * lapsed goes to nobody, because {@code /api/competitors} already leaves him off
  * the list of members (PDL P11), and the difference between two public answers
  * would then be the exact list of who has not paid - which is „sve u vezi sa
- * clanarinom" and Article 74 puts it beside the date of birth. The other way: his
+ * clanarinom" and section 3 of the privacy policy puts it beside the date of birth. The other way: his
  * result from a season he WAS a member in is served WITH HIS NAME (below), and the
  * fact that a reader can tell from his absence today that he has not renewed is
  * not a leak but this same decision's own consequence.
@@ -82,11 +82,11 @@ import java.util.List;
  * whether he runs as a beginner.</b> That is what a table of an earlier season needs to
  * place a row - the tables are by sex and by category, and the screen builds the category out
  * of exactly these three ({@code categoryCodeFor}, {@code frontend/src/data/categories.ts}) -
- * and Article 73 lists the name and the category among what is public. They are the names
+ * and section 3 of the privacy policy lists the name and the category among what is public. They are the names
  * {@code /api/competitors} answers, under the same keys, so one member is the same member on
  * both doors, and in the season that is being run the band is the same on both;
  * {@code aRunnersBandIsTheBandTheListGaveHimInTheSeasonOfTheResult} holds the two to each other.
- * Left out on purpose, each for its own decision: the year of birth as a field (Article 74:
+ * Left out on purpose, each for its own decision: the year of birth as a field (section 3 of the privacy policy:
  * „Datum rođenja se nikada ne prikazuje, ni u punom ni u skraćenom obliku", and below is what a
  * band per season gives back of it anyway); whether his fee
  * stands (PDL P34, 21.09.2026 took {@code active} off the public list for being „činjenica o
@@ -120,7 +120,7 @@ import java.util.List;
  * {@link SeasonClock#seasonTheBandIsWorkedOutFor} counted (25 of 32 members), and this door is
  * not the only one that makes it: the list read before and after a New Year gives the same, and
  * so do the frozen tables, which carry the category of their season. The owner kept the season's
- * band with that cost in view, and the published text, Article 74 of the rulebook and the privacy
+ * band with that cost in view, and the published text, section 3 of the privacy
  * policy, says since migration V58 (item BR) that a change of category between seasons shows the
  * year of birth; that is not this class's job. The second cost is a
  * beginner's band, which the frozen table hides behind its „R" and which stands here beside the
@@ -166,7 +166,7 @@ import java.util.List;
  *
  * <p><b>A result whose competitor has no member number carries {@code "runner": null}</b> -
  * the key there and the value null, the shape the portal already uses for a fact that is
- * withheld (the portrait, PDL P28f) - and nothing else about him. Article 73 makes the name
+ * withheld (the portrait, PDL P28f) - and nothing else about him. Section 3 of the privacy policy makes the name
  * and the number of a MEMBER public, and a registration without a number is not one (V16: a
  * member is a row whose number is there); PDL 13.09.2026, „Kad je sporno, polje se izostavlja i
  * izostavljanje se imenuje sa razlogom, pa se vlasniku javi; nikad se ne servira „za svaki

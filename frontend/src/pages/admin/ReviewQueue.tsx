@@ -163,6 +163,18 @@ export function ReviewQueue() {
    * approval itself, so nothing is half written when the route refuses it.
    */
   const [placing, setPlacing] = useState<Placing | null>(null)
+  /**
+   * WHICH OPENING OF THAT PANEL IS DRAWN, counted on every press of „Postavi trku”, and the panel's key.
+   *
+   * <p>The panel's boxes are the panel's state above, but the place field under them holds some of its
+   * own: the town picked off its list, whether it has been typed in, and the country it wrote
+   * (`forms/PlaceField.tsx`). Drawn with no key, a press over another run while the panel stood open
+   * kept the field of the first, and the country the server sent with the second run was overwritten
+   * or emptied (review of PR 610, round 2, PENDING). A press over the SAME run opens the panel on what
+   * the run says again, so it is a new opening too, and the run's id alone would not tell the two
+   * apart. Typing in the panel never moves this, so the panel is drawn again only when it is opened.
+   */
+  const [opening, setOpening] = useState(0)
   /** How many the last sweep settled, and null until there has been one. */
   const [swept, setSwept] = useState<number | null>(null)
   /** The one row the route last refused, and what it said. */
@@ -651,6 +663,7 @@ export function ReviewQueue() {
                                     onClick={() => {
                                       setOpen(null)
                                       setFixing(null)
+                                      setOpening((was) => was + 1)
                                       setPlacing({
                                         id: one.id,
                                         day: one.raceDate,
@@ -746,6 +759,7 @@ export function ReviewQueue() {
                   its row: a run another moderator decided leaves no panel open over nothing. */}
               {placing !== null && placingRow !== undefined && (
                 <RaceForTheRun
+                  key={opening}
                   placing={placing}
                   deciding={deciding}
                   working={placingIsWorking}

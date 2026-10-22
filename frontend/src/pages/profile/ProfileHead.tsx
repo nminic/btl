@@ -86,7 +86,7 @@ export function ProfileHead({
           {' · '}
           {/* **THE BIRTHDAY IS NOT HERE, and that is a decision and not an omission**
               (12.09.2026). It was drawn here from 06.09.2026, for a member who chose to show
-              it, on the strength of one sentence in Član 74 and in the privacy policy: an
+              it, on the strength of one sentence in section 3 of the privacy policy: an
               exception „ako sami izaberete da objavite svoj rođendan radi liste rođendana".
               The owner abolished the birthday list on 06.09.2026, so the exception named a
               thing that no longer existed, and on 12.09.2026 he had the sentence struck from

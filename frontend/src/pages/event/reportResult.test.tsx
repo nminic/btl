@@ -286,7 +286,7 @@ describe('a result reported this way', () => {
      answer is `pages/admin/resultsQueue.test.tsx`'s (the heading, the comment, the link). */
 
   it('sends no address at all where a picture stands in for one', async () => {
-    /* Član 37, and the rule the form keeps on both ways in since 23.08.2026: a
+    /* The rulebook's article „Dokazi", and the rule the form keeps on both ways in since 23.08.2026: a
        picture makes the link optional and the comment obligatory. What reaches
        the moderator then has no address, and the queue draws the name of the
        race as a name rather than as a link, because a sentence in an `href` is
@@ -331,7 +331,7 @@ describe('a result reported this way', () => {
     /* Four boxes and not three since 23.08.2026: the address of the official
        results is asked for here exactly as it is asked for on the form outside
        the calendar, and it is obligatory unless a picture stands in its place
-       (Član 37, forms/validate.ts). */
+       (the rulebook's article „Dokazi", forms/validate.ts). */
     const { races } = await racesOf(EVENT)
     const user = setupUser()
 

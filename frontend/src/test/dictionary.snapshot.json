@@ -1809,6 +1809,7 @@
     "save": "Sačuvaj",
     "saving": "Čuva se",
     "chooseMember": "Izaberi člana sa spiska.",
+    "chooseTheYear": "Izaberi godinu sa spiska.",
     "figuresMissing": "Upiši sve tražene vrednosti.",
     "edit": "Izmeni",
     "editNamed": "Izmeni rezultat: {name}",
@@ -1826,7 +1827,8 @@
       "theEventIsNotKnown": "Taj događaj više nije u kalendaru. Izaberi ga ponovo ili upiši nov.",
       "theRaceIsNotKnown": "Ta trka više nije u kalendaru. Izaberi je ponovo ili upiši novu.",
       "theTownIsMissing": "Upiši mesto novog događaja.",
-      "theEventWouldMoveOntoAnother": "Trka bi pomerila događaj u godinu u kojoj događaj sa istim nazivom već postoji. Izaberi taj događaj."
+      "theEventWouldMoveOntoAnother": "Trka bi pomerila događaj u godinu u kojoj događaj sa istim nazivom već postoji. Izaberi taj događaj.",
+      "theDayIsNotInTheEventsYear": "Dan trke nije u godini izabranog događaja."
     }
   }
 }

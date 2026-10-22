@@ -93,7 +93,7 @@ export function awardsOf(
 
          P7 says the band belongs to one year alone, and that stays true. What
          changed is that the portal cannot honour it: the band is worked out from a
-         date of birth, Član 74 forbids the portal a date of birth, and a band per
+         date of birth, section 3 of the privacy policy forbids the portal a date of birth, and a band per
          season hands the year straight back (measured: 25 of 32 members, see
          `data/types.ts`). This is the half a public file can have. */
       const category = categoryOfMember(competitor)

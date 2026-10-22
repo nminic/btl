@@ -9,14 +9,14 @@ import java.util.Objects;
  * the portal is ordered by.
  *
  * <p>The general standing is computed from EVERY race of the season and never
- * from a chosen best few (Pravilnik, Član 46), so this is a running sum with
+ * from a chosen best few (the rulebook's article „Kako se računa generalni plasman"), so this is a running sum with
  * nothing thrown away. It is the same six numbers the main table draws as its
  * columns, in the same meaning: races, kilometres, ascent, descent, time on
  * course, points.
  *
  * <p><b>Time is a total and not a rung.</b> {@code seconds} is added up and
  * shown, but the general standing does not order by it, and that is the whole
- * principle of Član 49 written into one field: volume is rewarded, efficiency
+ * principle of the article „Izjednačenje" written into one field: volume is rewarded, efficiency
  * never. Ordering a standing by time would hand a place to whoever was slower
  * over the same course. It becomes a rung only on the board that is ABOUT time,
  * "najduže na stazi", and there more of it is better as well.
@@ -75,7 +75,7 @@ public record Totals(int races, BigDecimal kilometers, int ascent, int descent, 
 	}
 
 	/**
-	 * Ascent and descent together, which is what Član 49 calls "vertikala".
+	 * Ascent and descent together, which is what the article „Izjednačenje" calls "vertikala".
 	 *
 	 * <p>A {@code long} rather than an {@code int} because the two are summed: a
 	 * season of climbing fits an {@code int} comfortably and the sum of two of

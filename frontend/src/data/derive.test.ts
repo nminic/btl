@@ -322,7 +322,7 @@ describe('categoriesOf', () => {
    *
      It cannot be asked any more, and not because it stopped mattering. The band is
      now read off the record instead of worked out from a year of birth, because the
-     record is served publicly and a year of birth may not be (Član 74,
+     record is served publicly and a year of birth may not be (section 3 of the privacy policy,
      `data/types.ts`). `categoriesOf` takes no season, so there is no second season
      to hand it. What the portal gives up by that is written where the field is. */
   it('takes no season, so nothing it answers can turn on one', () => {
@@ -1106,7 +1106,7 @@ describe('topByKilometers', () => {
    * all the way down.
    *
    * Points moved from the fourth rung to the second on 22.08.2026, in the
-   * owner's fourth reading of Article 49. The fixture is unchanged and the order
+   * owner's fourth reading of the article „Izjednačenje". The fixture is unchanged and the order
    * it produces is not, which is the point of leaving it alone: the same six
    * members come out in a different order because the rule changed, not because
    * the data did. */
@@ -1159,7 +1159,7 @@ describe('topByKilometers', () => {
   })
 
   it('gives the place to whoever got there first, before sharing it', () => {
-    /* The rung under all the measures, from PDL P12 and Article 49 of the
+    /* The rung under all the measures, from PDL P12 and the article „Izjednačenje" of the
        rulebook: two rows level on kilometres, points, races and vertical are
        settled by who reached the count earlier. The board of races by length already had it and this one did
        not, so the two were left in whatever order they came in and shared a place
@@ -1241,7 +1241,7 @@ describe('topByTimeOnCourse', () => {
       // Two races, 6000 seconds in all.
       ['000001', 1],
       /* Level on time, and nine points beat one. This is the whole of the
-         owner's fourth reading of Article 49 on this board: before 22.08.2026
+         owner's fourth reading of the article „Izjednačenje" on this board: before 22.08.2026
          points were not a measure here at all, and 000008 came fourth on the
          member number behind three members it out-scored nine to one. */
       ['000008', 2],
@@ -1270,7 +1270,7 @@ describe('bestSingleRaces', () => {
   ]
 
   it('settles two level races by the season behind them, points before kilometres', () => {
-    /* The third rung, rewritten by the owner on 22.08.2026 (Article 49): what a
+    /* The third rung, rewritten by the owner on 22.08.2026 (the article „Izjednačenje"): what a
        member took in the whole season, and only then their kilometres in it. The
        count of races in the season was a rung until that day and is not one now.
 
@@ -1302,7 +1302,7 @@ describe('bestSingleRaces', () => {
   it('takes the kilometres of the season under the points of it, and counts no races', () => {
     /* The two rungs under the season's points, and both were unmeasured. Taking
        the kilometres out left the member number to settle a pair the article
-       separates, and putting the count of races back — which Article 49 struck on
+       separates, and putting the count of races back — which the article „Izjednačenje" struck on
        22.08.2026 — sent three small races ahead of two large ones. Whole suite
        green either way.
 

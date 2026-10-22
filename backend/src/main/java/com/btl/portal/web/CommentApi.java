@@ -115,7 +115,7 @@ import java.util.List;
  * link would be. What does not come back is his NUMBER, and that half is not a nicety.
  * It is the subtraction {@code PairApi} names: a number that is in this answer and not
  * in {@code /api/competitors} says, through the DIFFERENCE between two answers rather
- * than through any field in either, the one thing Article 74 puts beside the date of
+ * than through any field in either, the one thing section 3 of the privacy policy puts beside the date of
  * birth - „sve u vezi sa clanarinom". The two readings point the same way here, which is
  * why this was not a question for the owner: the number is the profile link, and there
  * is no profile.

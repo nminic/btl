@@ -70,7 +70,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * (his choice of 24.09.2026, between offered outcomes; the reason is not his sentence) was that „tim
  * nosi bodove kroz sezonu, pa bi izlazak usred nje značio da tabela u januaru i tabela u junu govore
  * različito o istoj sezoni". PDL's own record of the decision of 25.09.2026 says „član po toj odluci
- * ostaje u timu do 31.12" (a record, not a quotation), and Član 56 of the rulebook as published
+ * ostaje u timu do 31.12" (a record, not a quotation), and the rulebook's article „Promene tima i trkačkog para" as published
  * (V46) says the member's contribution to the team in that season stays, which V46's header names
  * as the agent's derivation, put to the owner before he chose. Read together: the team has him for
  * the season he leaves in and not from the next. THAT READING IS DERIVED. HOW FAR IT IS PUBLISHED ON

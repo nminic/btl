@@ -152,7 +152,7 @@ describe('who pays the junior fee', () => {
   /* **Tested here directly since 13.09.2026, and nowhere else.** Until then no case
      named this function: the only thing that ran it was the renewal screen, which
      read a member's year of birth off their record and reached it that way. The year
-     has left the record because the record is served publicly and Clan 74 forbids one
+     has left the record because the record is served publicly and section 3 of the privacy policy forbids one
      on it (`data/types.ts`), so the screen no longer calls this and the rule would
      have gone untested at the moment it stopped being applied.
 

@@ -18,7 +18,7 @@ import java.util.List;
  *
  * <p><b>The year of birth does not leave this server, and that is the whole
  * reason this resource was written before the easier ones.</b> The published
- * privacy policy and Article 74 of the rulebook say it in one sentence: „Datum
+ * privacy policy says it in one sentence, in its section 3: „Datum
  * rođenja se nikada ne prikazuje, ni u punom ni u skraćenom obliku. Javna je
  * samo kategorija koja iz njega proizlazi." The year IS the shortened form. The
  * portal served {@code birthYear} for all thirty two members until 13.09.2026,
@@ -28,7 +28,7 @@ import java.util.List;
  * fact, and it was shut first.
  *
  * <p><b>AND SINCE 21.09.2026 WHAT REPLACES IT IS ANSWERED: the age band, which is
- * the one thing Article 74 says IS public.</b> „Datum rodjenja se nikada ne
+ * the one thing section 3 of the privacy policy says IS public.</b> „Datum rodjenja se nikada ne
  * prikazuje, ni u punom ni u skraćenom obliku. Javna je samo kategorija koja iz
  * njega proizlazi." The year is the shortened form and stays; the category that
  * comes out of it is the sentence's second half and it had been owed since
@@ -85,7 +85,7 @@ import java.util.List;
  * istekla članarina"). Neither is this resource, which stays what it was: the
  * members whose fee is standing.
  *
- * <p><b>And neither the referral code nor who handed it out.</b> Article 73
+ * <p><b>And neither the referral code nor who handed it out.</b> Section 3 of the privacy policy
  * lists what is public and neither is on it. This one is worth the extra
  * sentence, because the name hides it: the portal reads {@code referredBy} as the
  * CODE of whoever brought the member in ({@code data/types.ts}: „Not the member
@@ -97,7 +97,7 @@ import java.util.List;
  *
  * <p><b>TWO OF THEM CAME BACK HERE ON 20.09.2026 AND LEFT AGAIN ON 25.09.2026, and
  * the round trip is worth keeping because of what the second half measured.</b>
- * P-javno (ADL, 13.09.2026) put everything Article 73 does not list „iza resursa
+ * P-javno (ADL, 13.09.2026) put everything section 3 of the privacy policy does not list „iza resursa
  * koji zna ko pita"; this route knows, so his own referral link
  * ({@code referralCode}) and his count of whom he brought in ({@code referredCount})
  * were answered here on the caller's own row and on nobody else's.
@@ -112,7 +112,7 @@ import java.util.List;
  *
  * <p><b>OWNER, 25.09.2026 (PDL P26a): the link „se sklanja sa javne liste takmicara"
  * and stays only on „Moja clanarina".</b> Both fields are the caller's OWN business
- * rather than anything Article 73 makes public, so the answer everybody may read is
+ * rather than anything section 3 of the privacy policy makes public, so the answer everybody may read is
  * not where they belong under any condition. They are answered by {@link MeApi},
  * which reads ONE row and that row is his, whether or not his fee is standing - and
  * that class had already named the two homes as a boundary waiting for this word.
@@ -187,7 +187,7 @@ import java.util.List;
  *
  * <p><b>There were five of these names until 21.09.2026 and there are four, because
  * the age band was never one of them.</b> It stood in that list as a DEBT rather
- * than a refusal - the one name there that Article 74 makes public - and the list
+ * than a refusal - the one name there that section 3 of the privacy policy makes public - and the list
  * is checked both ways, so answering the band is what took it out. The four that
  * are left are withheld for good.
  *
@@ -487,7 +487,7 @@ class CompetitorApi {
 	 *                       portal needs in order to draw the card at all
 	 * @param ageBand        the band alone and never the finished code, so the sex is
 	 *                       not written twice: see the note on this class. Answered on
-	 *                       every record to everybody, because Article 74 makes it the
+	 *                       every record to everybody, because section 3 of the privacy policy makes it the
 	 *                       one thing about a date of birth that IS public, and it does
 	 *                       not depend on {@code birthdayShown} - that choice hides the
 	 *                       date, not the category it produces (PDL, 06.09.2026)
@@ -671,7 +671,7 @@ class CompetitorApi {
 						   the link to, on exactly the page he opens to renew.
 
 						   ONE FACT, ONE HOME, AND THE HOME IS THE ONE THAT ANSWERS HIM. Both
-						   facts are a caller's own business rather than anything Article 73
+						   facts are a caller's own business rather than anything section 3 of the privacy policy
 						   makes public, so a list anybody may read is not where they belong at
 						   any condition. What is left of the caller below is the basis, and its
 						   condition is the CALLER rather than the row - which is the difference

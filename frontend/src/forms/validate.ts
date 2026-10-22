@@ -192,7 +192,7 @@ function answered(values: FormValues, name: string): boolean {
 
 /**
  * The field as another field's answer makes it: the link the picture lets go,
- * and the comment the picture demands (Član 37, owner 22.08.2026).
+ * and the comment the picture demands (the rulebook's article „Dokazi", owner 22.08.2026).
  *
  * One pass and not two rules chained, because no field carries both and a field
  * that did would be a question about what wins.

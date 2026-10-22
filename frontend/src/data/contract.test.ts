@@ -40,7 +40,7 @@ describe('the list of resources', () => {
        in, and all three screens that quote a price read a constant compiled into the
        bundle instead. So an administrator who changed a price through
        `PUT /api/pricing/{key}` changed what the next member was CHARGED and none of what
-       he was SHOWN - the public table under Član 14, his own „Moja članarina", and the IPS
+       he was SHOWN - the public table under the article „Cena, rokovi i oslobađanje od članarine", his own „Moja članarina", and the IPS
        QR code he scans to pay.
 
        Sixteen since 27.09.2026, when the screen of payments stopped being a queue. Owner,

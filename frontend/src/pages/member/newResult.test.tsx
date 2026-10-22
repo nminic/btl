@@ -1215,7 +1215,7 @@ describe('where the cursor stands after a press that takes the control away', ()
 
 describe('a message about a field the form has stopped asking for', () => {
   it('goes when the picture that freed it goes, and when one arrives', async () => {
-    /* Both directions of Član 37, and the „Obriši" button of this batch is what
+    /* Both directions of the rulebook's article „Dokazi", and the „Obriši" button of this batch is what
        makes the first of them a thing a member can do in one press.
 
        Attach a picture and the comment becomes obligatory while the link stops
@@ -1359,7 +1359,7 @@ describe('the foot of the form', () => {
   it('asks for the link, then the picture, then the comment', async () => {
     /* Owner, 23.08.2026: „Slika kao dokaz treba da se nađe iznad komentara, a
        ispod linka ka zvaničnim rezultatima". The picture is the reason the
-       comment becomes obligatory (Član 37), so it stands before it. */
+       comment becomes obligatory (the rulebook's article „Dokazi"), so it stands before it. */
     renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
     await screen.findByLabelText(/^Naziv trke/)

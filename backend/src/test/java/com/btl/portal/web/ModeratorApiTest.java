@@ -434,7 +434,7 @@ class ModeratorApiTest {
 		int visitor = statusOf(null);
 
 		assertThat(visitor)
-				.as("a visitor was served the moderators, and Article 73 lists nothing about them")
+				.as("a visitor was served the moderators, and section 3 of the privacy policy lists nothing about them")
 				.isEqualTo(401);
 		assertThat(visitor)
 				.as("a visitor cannot tell an ended session from a wrong address, so nothing can"

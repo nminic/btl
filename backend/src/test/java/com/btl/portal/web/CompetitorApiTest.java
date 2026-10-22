@@ -69,7 +69,7 @@ class CompetitorApiTest {
 	 * LIST BELOW.
 	 *
 	 * <p><b>It stood there as a DEBT rather than a refusal</b>, worded „served but not
-	 * answered yet": the one name in that list that Article 74 makes public („Javna je
+	 * answered yet": the one name in that list that section 3 of the privacy policy makes public („Javna je
 	 * samo kategorija koja iz njega proizlazi") rather than keeps off a public answer
 	 * for ever. The portal began serving it on 13.09.2026 (B52) and this resource owed
 	 * it.
@@ -772,7 +772,7 @@ class CompetitorApiTest {
 	 * member's own screens and the administration at once. This is that backend.
 	 *
 	 * <ul>
-	 * <li><b>How the membership is held</b>: Article 74 goes on „Isto vazi za adresu
+	 * <li><b>How the membership is held</b>: the rulebook's old Article 74 went on „Isto vazi za adresu
 	 * elektronske poste, adresu, sve u vezi sa clanarinom i privatne poruke", and the
 	 * basis says who is exempt from paying. The year of birth stood beside it here until
 	 * 13.09.2026, when the portal stopped serving it at all (B52); the constant at the
@@ -781,7 +781,7 @@ class CompetitorApiTest {
 	 * while it was: named here as owed rather than withheld. It is answered since
 	 * 21.09.2026, so it left this list the only way it could - by failing it. See the
 	 * constant that names it.</li>
-	 * <li><b>The referral code</b> and <b>who handed it out</b>: Article 73 lists what
+	 * <li><b>The referral code</b> and <b>who handed it out</b>: section 3 of the privacy policy lists what
 	 * is public and neither is on it. The second one hides behind its name: the portal
 	 * reads `referredBy` as the CODE, not as a member number, so answering with either
 	 * is wrong in its own way.</li>
@@ -854,7 +854,7 @@ class CompetitorApiTest {
 					.contains("000007", "000012", "000045");
 
 			for (String code : codes) {
-				assertThat(whole).as("a referral code (%s) left the server to %s, which Clan 73"
+				assertThat(whole).as("a referral code (%s) left the server to %s, which section 3 of the privacy policy"
 						+ " does not make public: it is the member's to hand out, not the"
 						+ " portal's to publish, and since P26a it leaves through /api/me and"
 						+ " nowhere else", code, caller)
@@ -921,7 +921,7 @@ class CompetitorApiTest {
 
 			for (String basis : everyBasis) {
 				assertThat(whole).as("the basis a membership is held on (%s) left the server to"
-						+ " %s, who is not the administration; Clan 74 puts everything to do with"
+						+ " %s, who is not the administration; section 3 of the privacy policy puts everything to do with"
 						+ " the fee beside the date of birth, and PDL P8 names the two who may"
 						+ " read it", basis, nobody)
 						.doesNotContain(basis);
@@ -979,7 +979,7 @@ class CompetitorApiTest {
 	 * refuses the four digit year and the whole date. It does NOT refuse the age as a
 	 * number, nor a two digit year, both of which name the year of birth to within a
 	 * year. The next increment answers with the age CATEGORY, which is a band of fifteen
-	 * years and is what Article 74 makes public in the same sentence; the difference
+	 * years and is what section 3 of the privacy policy makes public in the same sentence; the difference
 	 * between that band and an age is one character in a query, so whoever writes it
 	 * must say which of the two they are writing.
 	 */
@@ -1004,8 +1004,8 @@ class CompetitorApiTest {
 
 		for (String year : years) {
 			assertThat(whole)
-					.as("a year of birth (%s) left the server, which Clan 74 and the privacy policy"
-							+ " both forbid in full and in short", year)
+					.as("a year of birth (%s) left the server, which section 3 of the privacy policy"
+							+ " forbids in full and in short", year)
 					.doesNotContain(year);
 		}
 
@@ -1030,7 +1030,7 @@ class CompetitorApiTest {
 	 *
 	 * <p>PDL P23 hides the profile PAGE from a reader who is neither an active member nor the
 	 * administration. The member
-	 * number, the name and the standing stay public (Article 73), and the portal needs
+	 * number, the name and the standing stay public (section 3 of the privacy policy), and the portal needs
 	 * the flag in order to know what to draw. Taking him off here would empty a league
 	 * table instead of hiding a page.
 	 */
@@ -1820,7 +1820,7 @@ class CompetitorApiTest {
 	 * signed in - was never asked. The rule of 14.09.2026 applies one level down from where the
 	 * class already applied it to raw text: an excuse a comparison grants everywhere is not an
 	 * excuse, it is a missing case. {@code other.path("profileHidden")} names the row, read off the
-	 * visitor's record because the flag is Article 73 public and does not itself move with the
+	 * visitor's record because the flag is public under section 3 of the privacy policy and does not itself move with the
 	 * reader.
 	 */
 	private static void answersAgreeExceptForWhatHidingOrTheBasisMayChange(JsonNode one,
@@ -2689,7 +2689,7 @@ class CompetitorApiTest {
 	/**
 	 * AND EVERYBODY IS ANSWERED THE SAME BANDS, whoever they are.
 	 *
-	 * <p>Article 74 makes the category public, so it is not one of the fields this
+	 * <p>Section 3 of the privacy policy makes the category public, so it is not one of the fields this
 	 * resource hands to some callers and withholds from others. All seven ways of asking
 	 * in this fixture - the visitor, three members, an account that races for nobody, a
 	 * moderator over the members and the superadmin - must come back with one and the
@@ -2716,7 +2716,7 @@ class CompetitorApiTest {
 		assertThat(asAVisitor.values())
 				.as("a record came back carrying something that is not a band of the rulebook's,"
 						+ " so what the callers below are compared against is an absence rather"
-						+ " than the category Clan 74 makes public")
+						+ " than the category section 3 of the privacy policy makes public")
 				.isNotEmpty()
 				.allSatisfy(band -> assertThat(THE_BANDS_THE_RULEBOOK_HAS).contains(band));
 
@@ -2732,7 +2732,7 @@ class CompetitorApiTest {
 		for (String email : everybody) {
 			assertThat(bandsIn(answerFor(email)))
 					.as("%s is answered different bands from a visitor, and the category is public"
-							+ " to everybody (Clan 74)", email)
+							+ " to everybody (section 3 of the privacy policy)", email)
 					.isEqualTo(asAVisitor);
 		}
 	}

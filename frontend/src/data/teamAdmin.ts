@@ -28,7 +28,7 @@ import type { Competitor, Team } from './types'
  * two questions and one of them it cannot.** This is „who administers this team",
  * a fact about the TEAM, and it is answered off the seat the ANSWER carries.
  * `/api/teams` gives `organizerMemberNumber` to the administration alone, because a
- * member number is not a thing Article 73 makes public (P-javno, 13.09.2026). So
+ * member number is not a thing section 3 of the privacy policy makes public (P-javno, 13.09.2026). So
  * this is whole for the administration, and for everybody else it is the standing
  * rule alone - which is the right answer to „is there anybody here to decide" and
  * the WRONG answer to „may I decide".

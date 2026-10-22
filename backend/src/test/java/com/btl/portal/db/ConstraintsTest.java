@@ -277,7 +277,7 @@ class ConstraintsTest extends DatabaseTest {
 				/* A row with no name at all, and a row whose name is spaces. Both directions of
 				   what V34 says a name is, and they are two different faults: NOT NULL alone
 				   would take „   ", which draws as an empty cell in the table a visitor reads
-				   under Clan 14 and reads as a column nobody filled in. */
+				   under the article „Cena, rokovi i oslobađanje od članarine" and reads as a column nobody filled in. */
 				Violation.of("price_row_label_not_blank",
 						named("'probe', 'period', '02-01', '02-02', 1, 120, true, 9001", "'   '")),
 				Violation.notNull("price_row_label_not_null", "label",

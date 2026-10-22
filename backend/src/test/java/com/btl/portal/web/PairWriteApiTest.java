@@ -866,7 +866,7 @@ class PairWriteApiTest {
 						+ " from racing_pair where id = ?").param(idIn(made))
 				.query(String.class).single();
 
-		assertThat(whole).as("the day the pair was made (%s) left the server, and Clan 73 names a"
+		assertThat(whole).as("the day the pair was made (%s) left the server, and section 3 of the privacy policy names a"
 				+ " day only for a verified result", day).doesNotContain(day);
 		assertThat(whole).as("the day the pair was made left the server as an instant (%s), which"
 				+ " is what a timestamp answers with when nobody asks it for a shape", instant)

@@ -34,14 +34,15 @@ import './Markdown.css'
  * that cost once the route existed is the boundary `PricingWriteApi` names in its own
  * heading: an administrator raised a price, the next member was CHARGED the new one, and
  * this table - the one the rulebook publishes - went on showing the old. Read from the
- * route, the page under Član 14 says what the association really decided.
+ * route, the page under the article „Cena, rokovi i oslobađanje od članarine" says what
+ * the association really decided.
  *
  * The figures and nothing else. Three notes stood around this table until
  * 21.08.2026, saying who sets the fee, what a payment from abroad costs to
  * process, and that the board may free a member of the fee. All three were
  * sentences the rulebook already carries, and while the table stood at the foot
  * of the whole section they read as a summary of it. Since the owner moved the
- * table up under Član 14 they stand a line away from the prose they copy: the
+ * table up under the article on the price they stand a line away from the prose they copy: the
  * first was word for word the sentence above it. The words are the article's,
  * the figures are this table's, and neither says the other's part.
  *

@@ -184,7 +184,7 @@ class PriceListRowsTest extends DatabaseTest {
 				.hasSize(7);
 		assertThat(names)
 				.as("a row of the price list with no name is the state V34 was written to end:"
-						+ " the table a visitor reads under Clan 14 would draw an empty first column")
+						+ " the table a visitor reads under the article „Cena, rokovi i oslobađanje od članarine\" would draw an empty first column")
 				.allSatisfy(name -> assertThat(name).isNotNull().isNotBlank());
 	}
 

@@ -1,4 +1,5 @@
 import {
+  aKindChosen,
   allFinished,
   boundsOf,
   isChanged,
@@ -51,6 +52,7 @@ const row = (over: Partial<RaceRow> = {}): RaceRow => ({
   distanceKm: '10',
   ascentM: '',
   descentM: '',
+  copied: false,
   ...over,
 })
 
@@ -469,6 +471,56 @@ describe('what is wrong with one cell of a row', () => {
  * <p>Asked of the one function the screen, the marking and the writing all ask, over every kind
  * the portal has: a fourth kind arrives here as a red gate and not as a race that draws nothing.
  */
+/**
+ * A NEW ROW MADE A RACE ON TIME LOSES WHAT WAS TYPED INTO ITS CLIMB AND ITS FALL, AND NO OTHER ROW DOES
+ * (owner, 22.10.2026, PDL „Nov red prebačen u trku na vreme: uspon i spust idu na 0", and his answers of
+ * the same day on a copy and on a climb changed over a written race; review of PR 622).
+ *
+ * <p>The three places a row comes from are each a row here, and the climb and the fall are never the same
+ * number, nor the number a race of the setup was served with, so a climb taken from the wrong place is a
+ * different answer.
+ */
+describe('the climb and the fall of a row whose kind is chosen', () => {
+  const typed = { ascentM: '300', descentM: '200' }
+  /** Read off a race of the server: served with 120 and 140 (`race`), then changed to what was typed. */
+  const served = first(rowsOf([race(7, '2026-09-19', 10)], fieldDate))
+  /** Added with „Nova trka". */
+  const fresh = row({ id: '', copied: false, ...typed })
+  /** A copy of a race of another event: no identity yet, and what it copied. */
+  const copy = { ...served, id: '', copied: true }
+
+  const writtenAfter = (one: RaceRow, kind: 'length' | 'time' | 'free') =>
+    storedRow({ ...one, ...aKindChosen(one, kind), limitHours: '2' }, 'evt')
+
+  it('writes nought for a new row made a race on time, and keeps nothing of it in the row', () => {
+    expect(aKindChosen(fresh, 'time')).toEqual({ kind: 'time', ascentM: '', descentM: '' })
+    expect(writtenAfter(fresh, 'time')).toMatchObject({ ascentM: '0', descentM: '0' })
+  })
+
+  it('keeps what the server holds for a row read off a race, and what was typed over it', () => {
+    expect(aKindChosen(served, 'time')).toEqual({ kind: 'time' })
+    expect(writtenAfter(served, 'time')).toMatchObject({ ascentM: '120', descentM: '140' })
+    expect(writtenAfter({ ...served, ...typed }, 'time')).toMatchObject({ ascentM: '300', descentM: '200' })
+  })
+
+  it('keeps what a copy copied, as written', () => {
+    expect(aKindChosen(copy, 'time')).toEqual({ kind: 'time' })
+    expect(writtenAfter(copy, 'time')).toMatchObject({ ascentM: '120', descentM: '140' })
+  })
+
+  it('leaves the cells of a new row as they stand when it is made a race of a length or a free one', () => {
+    expect(aKindChosen(fresh, 'length')).toEqual({ kind: 'length' })
+    expect(aKindChosen(fresh, 'free')).toEqual({ kind: 'free' })
+    expect(writtenAfter(fresh, 'length')).toMatchObject({ ascentM: '300', descentM: '200' })
+  })
+
+  it('takes a row that was written as a race of the server, once it has its identity', () => {
+    /* The press that writes a new row hands it the identity the database gave (`AdminEvents.tsx`), and from
+       then on what it holds is what the server holds. */
+    expect(aKindChosen({ ...fresh, id: '41' }, 'time')).toEqual({ kind: 'time' })
+  })
+})
+
 describe('the measures a race draws on its second line', () => {
   it.each([
     ['length', ['distanceKm', 'ascentM', 'descentM']],

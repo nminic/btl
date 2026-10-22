@@ -46,6 +46,11 @@ export const WHEN_THE_LEAGUE_ENTERS_RESULTS: Record<string, string> = {
      stands there already, the save is refused with the sentence the approval of a run has for the same
      move (`VerificationWriteApi.THE_EVENT_WOULD_MOVE_ONTO_ANOTHER`). */
   theEventWouldMoveOntoAnother: 'leagueResults.refused.theEventWouldMoveOntoAnother',
+  /* PDL, owner, 22.10.2026, „Ekran 7b: dan trke mora biti u godini izabranog događaja”: a new race on an
+     event of the calendar whose day is not in that event's year, outside the morning of 1 January. The
+     block says the same words under the day before it sends anything (`eventAndRace.ts`); this is the
+     answer to a request that got past it. */
+  theDayIsNotInTheEventsYear: 'leagueResults.refused.theDayIsNotInTheEventsYear',
 }
 
 /**
