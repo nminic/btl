@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * THE DUCATS AND WHAT EACH OF THEM IS EARNED FOR.
  *
- * <p>Article 73 of the rulebook lists what a public competition publishes, and
+ * <p>Section 3 of the privacy policy lists what a public competition publishes, and
  * this resource is one line of it: „Bodovi, plasman, statistika, <b>dukati i
  * priznanja</b>". The rulebook's own section on ducats is written for the reader
  * of it - „Dodeljuje se automatski, onog trenutka kad ono što ste istrčali pređe
@@ -60,13 +60,13 @@ import java.util.List;
  *
  * <p><b>AND WHO HOLDS WHICH DUCAT IS NOT HERE.</b> V15 has the table -
  * {@code ducat_award}, with the snapshot of what the member had when he won it -
- * and Article 73 does make a recognition public. It is left out all the same,
+ * and section 3 of the privacy policy does make a recognition public. It is left out all the same,
  * because no screen reads it: the portal serves fifteen definitions under this
  * name and nothing else, and a server that answers with more than the portal asks
  * for is a server publishing on the chance it will be wanted. When a screen needs
  * it, it is its own increment with its own decision about the ORDER those
  * recognitions come back in - and the field that names the holder will be the
- * MEMBER NUMBER, which is what Article 73 makes public, never a name beside
+ * MEMBER NUMBER, which is what section 3 of the privacy policy makes public, never a name beside
  * anything else off the member's row. {@code DucatApiTest} measures that nothing
  * about a member who holds a ducat leaves through this route today.
  *

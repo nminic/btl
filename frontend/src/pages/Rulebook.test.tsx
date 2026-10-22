@@ -22,7 +22,7 @@ describe('the rulebook', () => {
     await openRulebook()
 
     expect(screen.getByRole('heading', { level: 2, name: '5. Šta se boduje' })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 3, name: /Član 26. Bodovanje/ })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 3, name: /Član 22. Bodovanje/ })).toBeVisible()
   })
 
   /* What is left in the rulebook is what the scoring does, in words: longer and

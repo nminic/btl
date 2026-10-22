@@ -10,7 +10,7 @@ import java.util.function.ToLongFunction;
 /**
  * Where somebody stands in the general standing of a season, and why.
  *
- * <p>The ladder is Pravilnik Član 49 and PDL P12, and its principle is one
+ * <p>The ladder is the rulebook's article „Izjednačenje" and PDL P12, and its principle is one
  * sentence: volume is rewarded, efficiency never. Nothing on the portal hands a
  * place to whoever did less of something.
  *
@@ -32,7 +32,7 @@ public final class Standing {
 	 * here is what lets {@code LaddersMatchTheRulebookTest} ask whether the two
 	 * still say the same thing, instead of somebody remembering that they do.
 	 *
-	 * <p>Every rung is "more is better", which is the principle of Član 49 rather
+	 * <p>Every rung is "more is better", which is the principle of the article „Izjednačenje" rather
 	 * than a coincidence of these four: a rung where less wins would be a rung
 	 * rewarding efficiency.
 	 */

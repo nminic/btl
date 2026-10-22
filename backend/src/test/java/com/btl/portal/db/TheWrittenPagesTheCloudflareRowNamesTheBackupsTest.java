@@ -40,6 +40,9 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * <p><b>The sign-off.</b> The entry is silent about the date; it follows from the entry of 16.10.2026 (the date moves
  * on the documents whose text changes) the way V58 and V60 followed it. Only the policy's text changes, so only its
  * sign-off moves, from 18.10.2026 (V60) to 22.10.2026; the rulebook keeps V58's day and the terms of use keep V57's.
+ * Since V71 the rulebook and the terms stand at 22.10.2026 too (owner, 22.10.2026), so the cases on the finished
+ * text hold all three there, and the cases that run V70 again first put the pages back to the text V71 found
+ * ({@link TheWrittenPagesBeforeV71}).
  *
  * <p><b>The words are written out here in full, not as phrases.</b> One line of one table: a phrase would let a changed
  * word through.
@@ -286,14 +289,32 @@ class TheWrittenPagesTheCloudflareRowNamesTheBackupsTest extends DatabaseTest {
 				.containsExactly(THE_TERMS_SIGN_OFF);
 	}
 
-	@Test
-	void theSerbianSignOffOfThePolicyIsMovedAndNoOtherDocumentMovesWithIt() {
-		theSignOffOfThePolicyIsMovedAndNoOtherDocumentMovesWithIt("sr");
+	/**
+	 * THE SIGN-OFFS AS THEY STAND NOW, which is not how V70 left them: V71 moved the rulebook's and the terms' to the
+	 * day V70 moved the policy to (owner, 22.10.2026), and moved the terms' section up by one. None of the earlier days
+	 * stands anywhere. What V70 itself does to the dates is held by
+	 * {@link #v70ChangesTheRowAndMovesTheSignOffInFourSectionsAndChangesNothingElse}.
+	 */
+	private void theSignOffsStandAsTheyDoNow(String language) {
+		assertThat(placesWhichCarry(language, signOffAfter(language)))
+				.as("the %s sign-off of 22.10.2026 must stand on the three documents and nowhere else", language)
+				.containsExactlyInAnyOrder(THE_POLICY_SIGN_OFF, THE_RULEBOOK_SIGN_OFF, new Place("uslovi-koriscenja", 11));
+
+		for (String gone : List.of(signOffBefore(language), rulebookSignOffIn(language), termsSignOffIn(language))) {
+			assertThat(placesWhichCarry(language, gone))
+					.as("the %s sign-off \"%s\" must stand nowhere", language, gone)
+					.isEmpty();
+		}
 	}
 
 	@Test
-	void theEnglishSignOffOfThePolicyIsMovedAndNoOtherDocumentMovesWithIt() {
-		theSignOffOfThePolicyIsMovedAndNoOtherDocumentMovesWithIt("en");
+	void theSerbianSignOffsStandAsTheyDoNow() {
+		theSignOffsStandAsTheyDoNow("sr");
+	}
+
+	@Test
+	void theEnglishSignOffsStandAsTheyDoNow() {
+		theSignOffsStandAsTheyDoNow("en");
 	}
 
 	/**
@@ -395,6 +416,9 @@ class TheWrittenPagesTheCloudflareRowNamesTheBackupsTest extends DatabaseTest {
 	 * the same reason and one edit's own check could be taken away without any case noticing.
 	 */
 	private void putBackTheTextAsItStoodBeforeV70() {
+		/* First the text V71 found, which is the pages as V70 left them. */
+		TheWrittenPagesBeforeV71.putBack(db, migrationSql("71"));
+
 		for (String language : List.of("sr", "en")) {
 			setBody(language, THE_TABLE, bodyOf(language, THE_TABLE).replace(rowIn(language), oldRowIn(language)));
 			setBody(language, THE_POLICY_SIGN_OFF,

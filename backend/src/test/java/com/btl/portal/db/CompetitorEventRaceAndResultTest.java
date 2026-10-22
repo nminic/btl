@@ -721,8 +721,8 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 	 * The schema chooses one default and it is the one O17 wrote.
 	 *
 	 * A member shows nothing of his birthday unless he chooses otherwise, which is
-	 * what the published privacy policy and article 74 of the rulebook already
-	 * say, so the column carries it. Nothing else here does: a default nobody
+	 * what section 3 of the published privacy policy already
+	 * says, so the column carries it. Nothing else here does: a default nobody
 	 * wrote down is a decision taken quietly, in a file that cannot be edited once
 	 * it is merged.
 	 *

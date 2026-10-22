@@ -1039,7 +1039,7 @@ describe('TopBoards', () => {
 
   it('leaves the best team to the page the teams have of their own', async () => {
     /* Owner, 04.08.2026: "Top timove ne prezentovati uopšte, jer timovi imaju
-       svoju zasebnu stranu." It is still one of the lists of Article 48 and
+       svoju zasebnu stranu." It is still one of the lists of the article „Top liste" and
        still worked out; it is not drawn here. */
     renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
@@ -3248,7 +3248,7 @@ describe('Leagues', () => {
     expect(said(sr.seo).filter((one) => /grupi[sš]/i.test(one))).toEqual([])
 
     /* **And the written pages, which are the fifth home and the last one found.**
-       Član 57 said „Podela na kategorije zadaje se na nivou svake Lige" — the
+       The article „Liga kao pojam" said „Podela na kategorije zadaje se na nivou svake Lige" — the
        overturned rule itself, in the prose a member accepts on joining, standing while
        the field was gone from the model and the code. The owner had it deleted
        (31.08.2026).
@@ -3260,15 +3260,18 @@ describe('Leagues', () => {
        **competitor** is in, and still let the rule back because the rulebook writes
        „lige" in lower case in thirty-five of the forty-six sentences that mention one.
        The third froze the article and stopped at its last sentence, so the same rule
-       put one line further down — still under Član 57, before Član 58 — passed with
-       the whole gate green (all three measured in review, 31.08.2026).
+       put one line further down — still under the article on a league, before the one
+       on Round 'n' Around — passed with the whole gate green (all three measured in
+       review, 31.08.2026). The four articles were renumbered on 22.10.2026 (owner, PDL
+       "Uprošćavanje pravnih tekstova (22.10.2026)"), and the section is held as it now
+       stands, numbers included.
 
        So the unit is the section, which is what a reader meets as one piece, and there
        is no edge left inside it. This is the first passage in this repo held word for
        word; the neighbouring guards read prose with patterns, and that is exactly why
        they kept missing this. The cost is the point: changing any of these four
        articles is a deliberate act that comes here too. */
-    const SECTION_13 = `### Član 57. Liga kao pojam
+    const SECTION_13 = `### Član 50. Liga kao pojam
 
 Pored glavnog takmičenja postoje i Lige, zasebna takmičenja sa sopstvenim spiskom događaja koji tokom godine ulaze u njih. Spisak događaja sme da se menja tokom godine.
 
@@ -3278,7 +3281,7 @@ Pored glavnog takmičenja postoje i Lige, zasebna takmičenja sa sopstvenim spis
 
 Šta se u pojedinoj Ligi osvaja određuje njen organizator i to nije predmet ovog pravilnika.
 
-### Član 58. BTL Round 'n' Around
+### Član 51. BTL Round 'n' Around
 
 Ultramaraton u obliku slobodne trke: prati se ukupna kilometraža i ukupno vreme. Posebnog prikaza za višestruke polumaratone i maratone nema.
 
@@ -3286,11 +3289,11 @@ Trka može trajati nekoliko minuta ili nekoliko dana, a broj BTL bodova koji se 
 
 Detalji će biti objavljeni na raspisu samog događaja u BTL kalendaru.
 
-### Član 59. BTL dezorijentiring
+### Član 52. BTL dezorijentiring
 
 Nije cilj stići prvi, cilj je tokom sat vremena sakupiti što više BTL bodova. Detalji će biti objavljeni na raspisu samog događaja u BTL kalendaru.
 
-### Član 60. BTL sreda
+### Član 53. BTL sreda
 
 Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tabelu.`
 
@@ -3299,7 +3302,7 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
     )
     const held = written.filter((one) => one.slug === 'pravilnik' && one.heading === "13. Prateća takmičenja i lige")
 
-    expect(held, 'the section that carries Član 57 stands once').toHaveLength(1)
+    expect(held, 'the section that carries the article on a league stands once').toHaveLength(1)
     expect(held[0]?.body).toBe(SECTION_13)
 
     /* **And the words the portal says about a competition, held as they stand**

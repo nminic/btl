@@ -1266,7 +1266,7 @@ class CommentApiTest {
 	 * <p><b>And leaving it in would name, by subtraction, whoever has not paid.</b> That is
 	 * the sentence {@code PairApi} carries from the same day: a number that is in this answer
 	 * and not in that one says, through the DIFFERENCE between two answers rather than through
-	 * any field in either, the one thing Article 74 puts beside the date of birth - „sve u
+	 * any field in either, the one thing section 3 of the privacy policy puts beside the date of birth - „sve u
 	 * vezi sa clanarinom". Which is why the refusal below is asked of the whole answer as
 	 * TEXT: the leak is the number leaving at all, not the shape it leaves in.
 	 *

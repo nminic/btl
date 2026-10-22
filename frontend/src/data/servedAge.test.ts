@@ -12,8 +12,8 @@ import served from '../test/servedFields.snapshot.json'
  * **Why this exists, and why it is a guard rather than a note.** Everything under
  * `public/mock` is a static file handed to anybody who asks for its address, signed
  * in or not (ADL A8). Until 13.09.2026 `competitors.json` carried `birthYear` for all
- * thirty two members, one of them a minor. Član 74 and the published privacy policy
- * both say the date of birth „se nikada ne prikazuje, ni u punom ni u skraćenom
+ * thirty two members, one of them a minor. Section 3 of the published privacy policy
+ * says the date of birth „se nikada ne prikazuje, ni u punom ni u skraćenom
  * obliku. Javna je samo kategorija koja iz njega proizlazi", and a year is the short
  * form. The field is gone and the age band is served in its place.
  *

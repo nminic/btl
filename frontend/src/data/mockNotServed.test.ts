@@ -12,7 +12,7 @@ import { inside } from '../test/sources'
  * `dist/` verbatim: `curl` against the built site answered `mock/competitors.json`
  * with 200, in full, to anybody, signed in or not (ADL A8). `competitors.json`
  * carries a member's age band and the privacy policy is specific that nothing
- * about age is ever shown (Član 74). The portal has read `/api/*` and not `/mock/*`
+ * about age is ever shown (section 3 of the privacy policy). The portal has read `/api/*` and not `/mock/*`
  * since 21.09.2026 (`data/client.ts`, `BASE`), so nothing was reading these files
  * for what they answer any more; they were only still being served. PDL „Mock
  * fajlovi izlaze iz isporuke odmah" [ODLUKA 26.09.2026, vlasnik]: the files move to

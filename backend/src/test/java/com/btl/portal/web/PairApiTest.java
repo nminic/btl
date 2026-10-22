@@ -184,10 +184,10 @@ class PairApiTest {
 	 * EVERY FIELD THE PORTAL READS IS ANSWERED, EXCEPT THE DAY THE PAIR WAS MADE, and
 	 * that one is named here with the reason.
 	 *
-	 * <p>Article 73 lists what is public and names a day exactly once, for a verified
+	 * <p>Section 3 of the privacy policy lists what is public and names a day exactly once, for a verified
 	 * result: „Svi verifikovani rezultati sa duzinom, usponom, spustom, vremenom i
 	 * datumom." The day two people became a pair is not on that list. It is also the day
-	 * the second of them ANSWERED an invitation ({@code data/types.ts}), and Article 74
+	 * the second of them ANSWERED an invitation ({@code data/types.ts}), and section 3 of the privacy policy
 	 * puts private messages among the things that are never public. The owner's rule of
 	 * 13.09.2026 settles what to do when the two readings might have disagreed: „Kad je
 	 * sporno, polje se IZOSTAVLJA, izostavljanje se imenuje sa razlogom."
@@ -242,7 +242,7 @@ class PairApiTest {
 		assertThat(instants).as("no instant was read out of the database").hasSize(5);
 
 		for (String day : days) {
-			assertThat(whole).as("the day a pair was made (%s) left the server, and Clan 73 names a"
+			assertThat(whole).as("the day a pair was made (%s) left the server, and section 3 of the privacy policy names a"
 					+ " day only for a verified result", day).doesNotContain(day);
 		}
 
@@ -445,7 +445,7 @@ class PairApiTest {
 	 * {@code /api/competitors} keeps such a member off its list altogether (owner,
 	 * 13.09.2026), so a number that is in this answer and not in that one says, through the
 	 * DIFFERENCE between two answers rather than through any field in either, the one thing
-	 * Article 74 puts beside the date of birth. That is why the refusal below is asked of
+	 * section 3 of the privacy policy puts beside the date of birth. That is why the refusal below is asked of
 	 * the whole answer as TEXT: the leak is the number leaving at all, not the shape it
 	 * leaves in.
 	 *

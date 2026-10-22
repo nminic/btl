@@ -29,7 +29,7 @@ import { useSession } from '../session/useSession'
 import './Rankings.css'
 import './TopBoards.css'
 
-/* The Top liste: the lists the rulebook counts out in Article 48, which stand
+/* The Top liste: the lists the rulebook counts out in the article „Top liste", which stand
  * beside the season table rather than inside it. They keep ten places and no
  * more, except the best progress, which keeps five (owner, 04.08.2026), and they
  * all read the same season, which is chosen once at the top of the page (PDL P12
@@ -45,7 +45,7 @@ import './TopBoards.css'
  *
  * The board of the best teams went off this page entirely: the teams have a page
  * of their own, and that is where a standing of teams belongs. It stays one of
- * the lists Article 48 counts out, and the standing on that page is worked out
+ * the lists the article „Top liste" counts out, and the standing on that page is worked out
  * per season by the same `rankTeams`; what is gone is this page's own view of
  * it, not the ranking.
  *
@@ -288,7 +288,7 @@ function Boards({
   const seasons = useMemo(() => seasonsOnOffer(results, today), [results, today])
   const fallback = seasonShown(today)
   const season = Number(offeredSeason(seasonParam ?? '', seasons, String(fallback)))
-  /* Who the boards of this season are drawn from (PDL P11). Article 48 is the
+  /* Who the boards of this season are drawn from (PDL P11). The article „Top liste" is the
      standing of a season in several shapes, so the rule that holds for the table
      holds here.
 

@@ -310,7 +310,7 @@ class MeApiTest {
 
 	/**
 	 * THE CALLER'S DATE OF BIRTH, which is the one datum on the table that must not leave in any
-	 * spelling (Clan 74, and the privacy policy: „Datum rodjenja se nikada ne prikazuje, ni u
+	 * spelling (section 3 of the privacy policy: „Datum rodjenja se nikada ne prikazuje, ni u
 	 * punom ni u skracenom obliku"). Every other row is born on {@code 1990-01-01}, so the two
 	 * years in the table are far apart and neither is a season in this fixture.
 	 */
@@ -510,7 +510,7 @@ class MeApiTest {
 	/**
 	 * A MEMBER IS HANDED HIS OWN RECORD.
 	 *
-	 * <p>The four fields Article 73 makes public at once and each compared with what the
+	 * <p>The four fields section 3 of the privacy policy makes public at once and each compared with what the
 	 * database has for HIM, never with a value typed here twice: the member number, the
 	 * country his town is in, the season he started in and the team he is in now. Every one
 	 * of them is a value no other row in this fixture carries, so a query that answered off
@@ -1569,7 +1569,7 @@ class MeApiTest {
 	/**
 	 * AND NO DATE OF BIRTH LEAVES THIS DOOR EITHER, in any spelling.
 	 *
-	 * <p>Clan 74 and the privacy policy: „Datum rodjenja se nikada ne prikazuje, ni u punom ni u
+	 * <p>Section 3 of the privacy policy: „Datum rodjenja se nikada ne prikazuje, ni u punom ni u
 	 * skracenom obliku." {@link CompetitorApiTest#noYearOfBirthLeavesTheServer} holds it for the
 	 * public list and this holds it for the door that answers a member his own page. Asked of the
 	 * answer as TEXT and not of a field name, because a year is a year whatever it is called.

@@ -1127,7 +1127,7 @@ export function FormRenderer({
    *
    * An error that says a field is obligatory is dropped the moment the form stops
    * asking for that field. A member who sends the form without a link is told the
-   * link is obligatory, and then attaches a picture, which by Član 37 makes the
+   * link is obligatory, and then attaches a picture, which by the rulebook's article „Dokazi" makes the
    * link optional: the star beside the name goes, `aria-required` goes, and until
    * 23.08.2026 the red line under the box and the entry in the summary above it
    * stayed. The screen said in one breath that the field need not be answered and

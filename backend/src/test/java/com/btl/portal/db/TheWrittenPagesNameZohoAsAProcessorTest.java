@@ -249,14 +249,16 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 
 	/**
 	 * THE SIGN-OFFS AS THEY STAND NOW, which is not how V60 left them: V70 moved the privacy policy's on to
-	 * 22.10.2026. The rulebook's is still V58's day, and the day V60 wrote stands nowhere any more. What V60 itself
-	 * does to the dates is held by {@link #v60AddsTheRowAndMovesTheSignOffInFourSectionsAndChangesNothingElse}, which
-	 * puts the text back to before V60 and runs it.
+	 * 22.10.2026, and V71 moved the rulebook's and the terms' to the same day (owner, 22.10.2026). Neither the day V60
+	 * wrote nor the day it moved the policy from stands anywhere any more. What V60 itself does to the dates is held by
+	 * {@link #v60AddsTheRowAndMovesTheSignOffInFourSectionsAndChangesNothingElse}, which puts the text back to before
+	 * V60 and runs it.
 	 */
 	private void theSignOffOfThePolicyHasMovedOnAndNoOtherDocumentMovedWithIt(String language) {
 		assertThat(placesWhichCarry(language, signOffNow(language)))
-				.as("the %s sign-off of 22.10.2026 must stand on the privacy policy alone", language)
-				.containsExactly(THE_POLICY_SIGN_OFF);
+				.as("the %s sign-off of 22.10.2026 must stand on the three documents, the policy among them", language)
+				.containsExactlyInAnyOrder(THE_POLICY_SIGN_OFF, new Place("pravilnik", 19),
+						new Place("uslovi-koriscenja", 11));
 		assertThat(bodyOf(language, THE_POLICY_SIGN_OFF))
 				.as("the privacy policy must be signed off once, on 22.10.2026, and no longer on the day V60 wrote")
 				.containsOnlyOnce(signOffNow(language))
@@ -266,9 +268,8 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 				.as("the %s sign-off of 18.10.2026 must stand nowhere, the policy having moved on", language)
 				.isEmpty();
 		assertThat(placesWhichCarry(language, signOffBefore(language)))
-				.as("the %s sign-off of 16.10.2026 must stand on the rulebook alone, the policy having moved on",
-						language)
-				.containsExactly(new Place("pravilnik", 19));
+				.as("the %s sign-off of 16.10.2026 must stand nowhere, the rulebook having moved on with V71", language)
+				.isEmpty();
 	}
 
 	@Test
@@ -379,6 +380,9 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 	 * reason (the row is already there) and one edit's own check could be taken away without any case noticing.
 	 */
 	private void putBackTheTextAsItStoodBeforeV60() {
+		/* First the text V71 found, which is the pages as V70 left them: V71 moved the rulebook's sign-off too. */
+		TheWrittenPagesBeforeV71.putBack(db, migrationSql("71"));
+
 		for (String language : List.of("sr", "en")) {
 			setBody(language, THE_TABLE, bodyOf(language, THE_TABLE).replace("\n" + zohoIn(language), ""));
 			/* The policy's sign-off stands at V70's day now, V60's day being gone: both go back to V58's. */

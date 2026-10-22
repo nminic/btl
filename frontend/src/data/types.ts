@@ -137,8 +137,8 @@ export type Competitor = {
    * right way round for a database and the wrong way round here: every field on
    * this record that is not behind the question of who is asking is public to
    * anybody who asks for the address, signed in or not (ADL A8), and the band is
-   * not one of the three that are (`/api/competitors`). Član 74 and
-   * the privacy policy both say the date of birth „se nikada ne prikazuje, ni u
+   * not one of the three that are (`/api/competitors`). Section 3 of the privacy policy
+   * says the date of birth „se nikada ne prikazuje, ni u
    * punom ni u skraćenom obliku. Javna je samo kategorija koja iz njega
    * proizlazi", and a year is the short form. So the portal now carries the
    * thing that is public and not the thing it was derived from.
@@ -252,12 +252,12 @@ export type Competitor = {
    * Owner, 06.09.2026: „Izbor privatnosti da li član želi da prikaže ceo datum rođenja, samo
    * godinu ili ništa služi za to šta će biti vidljivo na njegovom / njenom profilu, i ni za šta
    * više." One field with three values rather than two switches, because that is the shape of
-   * the question, and the default is „none" because both the policy and Član 74 already say the
+   * the question, and the default is „none" because section 3 of the policy already says the
    * exception is off unless chosen.
    *
    * **No value of this shows anything at all, and since 13.09.2026 there is nothing left for
    * one to show.** It was already so on the 12th, when the owner had the exception struck from
-   * Član 74 and from the privacy policy rather than rewritten: the birthday list it existed for
+   * the rulebook (then its Article 74) and from the privacy policy rather than rewritten: the birthday list it existed for
    * was abolished on 06.09.2026, so the exception named a thing that did not exist. What stands
    * is the rule with nothing beside it, „Datum rođenja se nikada ne prikazuje, ni u punom ni u
    * skraćenom obliku", and `profile/profile.test.tsx` holds the card to it.
@@ -274,7 +274,7 @@ export type Competitor = {
    * something. What it must never become is a reason to put the data back.
    *
    * It hid the day, never the category: „Javna je samo kategorija koja iz njega proizlazi"
-   * (Član 74). That half is now the whole of what the record carries — see `ageBand`.
+   * (section 3 of the privacy policy). That half is now the whole of what the record carries — see `ageBand`.
    */
   birthdayShown: BirthdayShown
   /**
@@ -709,7 +709,7 @@ export type Team = {
    * does. JSON `null` is „somebody holds it and he is not a member, so there is no number to give
    * you" - a row in `competitor` may have no member number since V16, and it may hold a seat.
    *
-   * **A member is answered `foundedByMe` instead**, which is this reduced to what Article 73 lets
+   * **A member is answered `foundedByMe` instead**, which is this reduced to what section 3 of the privacy policy lets
    * a reader have: nothing about anybody else at all.
    */
   organizerMemberNumber?: string | null
@@ -933,7 +933,7 @@ export type PageSection = {
    *
    * **Where those figures come from moved on 26.09.2026** and this sentence used to
    * name `data/pricing.ts`. `components/PriceTable.tsx` reads `GET /api/pricing` now,
-   * so the table under Član 14 shows what the administration really set rather than
+   * so the table under the article „Cena, rokovi i oslobađanje od članarine" shows what the administration really set rather than
    * what this build shipped. See {@link Price}.
    */
   gallery?: 'ducats' | 'prices' | null

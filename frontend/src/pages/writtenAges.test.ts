@@ -35,9 +35,11 @@ const ABOUT_A_PARENT = BODIES.filter((one) =>
 describe('what the written pages say about age', () => {
   it('names the same threshold the registration form uses', () => {
     expect(YEARS).toBe(16)
-    /* Three passages: the privacy policy, the terms and the rulebook. Without
-       this the loop below passes on an empty list. */
-    expect(ABOUT_A_PARENT.length).toBeGreaterThanOrEqual(3)
+    /* Two passages, the privacy policy and the terms, named so the loop below cannot
+       pass on an empty list. The rulebook said it too until 22.10.2026, when its article
+       on age went and the terms became the home of the rules for a minor (owner, PDL
+       "Uprošćavanje pravnih tekstova (22.10.2026)"). */
+    expect(ABOUT_A_PARENT.map((one) => one.slug)).toEqual(['politika-privatnosti', 'uslovi-koriscenja'])
 
     for (const one of ABOUT_A_PARENT) {
       expect(one.body, `${one.slug} / ${one.heading}`).toMatch(

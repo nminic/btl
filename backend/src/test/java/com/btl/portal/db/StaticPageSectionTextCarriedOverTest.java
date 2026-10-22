@@ -423,9 +423,13 @@ Poslednja izmena: 28.09.2026.\
 	/**
 	 * Every row this migration touches, set back to what V41 found immediately before it ran - V24's
 	 * own wording for the five it is the first to touch, V26's already-rewritten wording for the one
-	 * (position 2) it touches for the second time (see the class comment).
+	 * (position 2) it touches for the second time (see the class comment). The pages are first put back to the text
+	 * V71 found ({@link TheWrittenPagesBeforeV71}): V71 took section 8 of the terms out, so their sign-off stands at
+	 * position 11 since, and the positions below are the ones V41 was written for.
 	 */
 	private void everyRowV41TouchesSetBackToWhatItFoundThere() {
+		TheWrittenPagesBeforeV71.putBack(db, migrationSql("71"));
+
 		db.sql("update static_page_section set body = ?"
 						+ " where page_id = (select id from static_page where slug = 'uslovi-koriscenja')"
 						+ "   and position = 4")

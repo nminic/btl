@@ -142,7 +142,7 @@ import java.util.Optional;
  * on exactly this. <b>This refusal DOES carry a reason, unlike the ones above it, and the
  * line between them is what the answer would give away.</b> An empty 404 is for a caller who
  * must not learn that anything is there at all; here the conflict is a RACING PAIR, and a
- * racing pair is public - Article 73 names it, {@code GET /api/pairs} serves it to a visitor,
+ * racing pair is public - section 3 of the privacy policy names it, {@code GET /api/pairs} serves it to a visitor,
  * and since the condition now counts only pairs that still hold, the ones it can be about are
  * exactly the ones already on that list. Naming it reveals nothing the portal does not answer
  * anyway, and refusing without a word would leave a member pressing a button nothing explains.
