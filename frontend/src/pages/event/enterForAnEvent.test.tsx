@@ -631,6 +631,19 @@ describe('the day of a new race on an event of the calendar', () => {
       expect(shown()).toBe(formatMonth('2026-01', 'sr'))
       expect(screen.getByRole('button', { name: sr.calendar.previousMonth })).toHaveAttribute('aria-disabled', 'true')
       expect(screen.getByRole('button', { name: sr.calendar.nextMonth })).not.toHaveAttribute('aria-disabled')
+
+      /* And a day typed in a year after the event's opens it on the last month it may show. */
+      await user.keyboard('{Escape}')
+
+      const day = screen.getByLabelText(/^Datum trke/)
+
+      await user.clear(day)
+      await user.type(day, '01062027')
+      await user.click(
+        within(must(day.closest('.datepicker'), 'the day’s picker')).getByRole('button', { name: sr.form.openCalendar }),
+      )
+
+      expect(shown()).toBe(formatMonth('2026-12', 'sr'))
     } finally {
       server.stop()
     }
