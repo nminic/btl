@@ -36,9 +36,16 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * 10.10.2026. Three things are held, each in its own case, because each is a different way to be wrong: the date
  * left old on one of the two documents, the date moved on the terms too, and the date moved in one language only.
  * Since V60 and V70 the privacy policy's sign-off has moved on, to 18.10.2026 (owner, 17.10.2026) and then to
- * 22.10.2026 (owner, 20.10.2026), so the cases that read the finished text hold the policy at V70's day and the
- * rulebook at V58's; what V58 itself does to the dates is held by
+ * 22.10.2026 (owner, 20.10.2026), and V71 signed all three documents off on 22.10.2026 (owner, 22.10.2026), so the
+ * cases that read the finished text hold all three at V71's day; what V58 itself does to the dates is held by
  * the case that puts the text back to before V58 and runs it.
+ *
+ * <p><b>Since V71 the sentence has one home, the privacy policy.</b> V71 made the policy the one place that says
+ * what is public (PDL, "Uprošćavanje pravnih tekstova (22.10.2026)"; the decision of 16.10.2026 was amended the same
+ * day in its part "Član 74 Pravilnika"), so Article 74 is gone and the sentence stands in section 3 of the policy
+ * alone. The cases on the finished text hold that it stands there and NOWHERE in the rulebook, so that it cannot come
+ * back to the rulebook quietly. The cases that run V58 again first put the pages back to the text V71 found
+ * ({@link TheWrittenPagesBeforeV71}), which is where V58's two homes still stand.
  *
  * <p><b>The words are the owner's and are written out here in full, not as phrases.</b> The usual rule against a
  * second copy of a legal text does not hold for one sentence of one line, and a phrase would let a changed word
@@ -70,10 +77,10 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 	private static final String ENGLISH_SIGN_OFF_BEFORE = "Last amended: 10.10.2026.";
 	private static final String ENGLISH_SIGN_OFF_AFTER = "Last amended: 16.10.2026.";
 
-	/* The day the privacy policy stands signed off on NOW: V60 moved it from V58's day to 18.10.2026 with the row that
-	   names Zoho (owner, 17.10.2026) and V70 moved it on to 22.10.2026 with the words about the backups in the row for
-	   Cloudflare (owner, 20.10.2026). The rulebook did not move and keeps V58's. What V70 holds of that day is its own
-	   guard, TheWrittenPagesTheCloudflareRowNamesTheBackupsTest. */
+	/* The day the privacy policy stands signed off on as V70 left it: V60 moved it from V58's day to 18.10.2026 with
+	   the row that names Zoho (owner, 17.10.2026) and V70 moved it on to 22.10.2026 with the words about the backups in
+	   the row for Cloudflare (owner, 20.10.2026). Since V71 all three documents stand at that day; what V71 holds of it
+	   is its own guard, TheWrittenPagesSayEachThingInOnePlaceTest. */
 	private static final String SERBIAN_POLICY_SIGN_OFF_NOW = "Poslednja izmena: 22.10.2026.";
 	private static final String ENGLISH_POLICY_SIGN_OFF_NOW = "Last amended: 22.10.2026.";
 
@@ -81,14 +88,20 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 	record Place(String slug, int position) {
 	}
 
-	/** Where the sentence belongs, in either language. */
+	/** Where V58 put the sentence, in either language. */
 	private static final List<Place> WHERE_IT_STANDS = List.of(new Place(POLICY, 3), new Place(RULEBOOK, 17));
+
+	/** Where it stands since V71, which took the rulebook's Article 74 out: the policy alone. */
+	private static final Place WHERE_IT_STANDS_NOW = new Place(POLICY, 3);
 
 	/** The sign-offs this migration moves: the privacy policy's and the rulebook's. */
 	private static final List<Place> SIGNED_OFF_ON_THE_SIXTEENTH = List.of(new Place(POLICY, 7), new Place(RULEBOOK, 19));
 
-	/** The sign-off it does not move. */
+	/** The sign-off it does not move, at the place it stood before V71 moved the section up by one. */
 	private static final Place THE_TERMS_SIGN_OFF = new Place(TERMS, 12);
+
+	/** The same sign-off since V71, which took section 8 of the terms out. */
+	private static final Place THE_TERMS_SIGN_OFF_NOW = new Place(TERMS, 11);
 
 	@Autowired
 	JdbcTemplate jdbc;
@@ -148,32 +161,33 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 						.param("language", language).query(String.class).single();
 	}
 
-	private void theSentenceStandsInThoseTwoSectionsAndNowhereElse(String language) {
+	private void theSentenceStandsInThePolicyAloneAndNowhereInTheRulebook(String language) {
 		List<Place> carrying = placesWhichCarry(language, sentenceIn(language));
 
 		assertThat(carrying)
-				.as("the %s sentence must stand in Article 74 and in section 3 of the policy, and in no other section",
+				.as("the %s sentence must stand in section 3 of the policy, and in no other section", language)
+				.containsExactly(WHERE_IT_STANDS_NOW);
+		assertThat(carrying)
+				.as("the %s sentence must stand in no section of the rulebook, which V71 sent to the policy for it",
 						language)
-				.containsExactlyInAnyOrderElementsOf(WHERE_IT_STANDS);
+				.noneMatch(place -> place.slug().equals(RULEBOOK));
 	}
 
 	private void theSentenceFollowsItsAnchorDirectlyAndStandsOnceThere(String language) {
-		for (Place place : WHERE_IT_STANDS) {
-			assertThat(bodyOf(language, place))
-					.as("%s #%s %s: the sentence must come directly after the sentence that says the category is public,"
-							+ " and once", place.slug(), place.position(), language)
-					.containsOnlyOnce(anchorIn(language) + " " + sentenceIn(language));
-		}
+		assertThat(bodyOf(language, WHERE_IT_STANDS_NOW))
+				.as("%s #%s %s: the sentence must come directly after the sentence that says the category is public,"
+						+ " and once", WHERE_IT_STANDS_NOW.slug(), WHERE_IT_STANDS_NOW.position(), language)
+				.containsOnlyOnce(anchorIn(language) + " " + sentenceIn(language));
 	}
 
 	@Test
-	void theSerbianSentenceStandsInThoseTwoSectionsAndNowhereElse() {
-		theSentenceStandsInThoseTwoSectionsAndNowhereElse("sr");
+	void theSerbianSentenceStandsInThePolicyAloneAndNowhereInTheRulebook() {
+		theSentenceStandsInThePolicyAloneAndNowhereInTheRulebook("sr");
 	}
 
 	@Test
-	void theEnglishSentenceStandsInThoseTwoSectionsAndNowhereElse() {
-		theSentenceStandsInThoseTwoSectionsAndNowhereElse("en");
+	void theEnglishSentenceStandsInThePolicyAloneAndNowhereInTheRulebook() {
+		theSentenceStandsInThePolicyAloneAndNowhereInTheRulebook("en");
 	}
 
 	@Test
@@ -210,8 +224,8 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 
 	/**
 	 * THE SIGN-OFFS AS THEY STAND NOW, which is not how V58 left them: V60 and then V70 moved the privacy policy's on to
-	 * 22.10.2026. The rulebook's is still V58's day and the terms' is still V57's, and those two are held here exactly
-	 * as before. What V58 itself does to the dates is held by
+	 * 22.10.2026, and V71 moved the rulebook's and the terms' to the same day. Neither of V58's days and neither of
+	 * V57's stands anywhere. What V58 itself does to the dates is held by
 	 * {@link #v58AddsTheSentenceAndMovesTheSignOffInEightSectionsAndChangesNothingElse}, which puts the text back to
 	 * before V58 and runs it.
 	 */
@@ -219,32 +233,21 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 		Place rulebookSignOff = new Place(RULEBOOK, 19);
 		Place policySignOff = new Place(POLICY, 7);
 
-		assertThat(placesWhichCarry(language, signOffAfter(language)))
-				.as("the %s sign-off of 16.10.2026 must stand on the rulebook alone, the policy having moved on",
-						language)
-				.containsExactly(rulebookSignOff);
 		assertThat(placesWhichCarry(language, policySignOffNow(language)))
-				.as("the %s sign-off of 22.10.2026 must stand on the privacy policy alone", language)
-				.containsExactly(policySignOff);
+				.as("the %s sign-off of 22.10.2026 must stand on the three documents and nowhere else", language)
+				.containsExactlyInAnyOrder(policySignOff, rulebookSignOff, THE_TERMS_SIGN_OFF_NOW);
+		assertThat(placesWhichCarry(language, signOffAfter(language)))
+				.as("the %s sign-off of 16.10.2026 must stand nowhere, the rulebook having moved on", language)
+				.isEmpty();
 		assertThat(placesWhichCarry(language, signOffBefore(language)))
-				.as("the %s sign-off of 10.10.2026 must stand on the terms of use alone", language)
-				.containsExactly(THE_TERMS_SIGN_OFF);
+				.as("the %s sign-off of 10.10.2026 must stand nowhere, the terms having moved on", language)
+				.isEmpty();
 
-		assertThat(bodyOf(language, policySignOff))
-				.as("the privacy policy must be signed off once, on the day of V70, the last migration that edited it")
-				.containsOnlyOnce(policySignOffNow(language))
-				.doesNotContain(signOffAfter(language))
-				.doesNotContain(signOffBefore(language));
-		assertThat(bodyOf(language, rulebookSignOff))
-				.as("the rulebook must keep the day V58 signed it off on")
-				.containsOnlyOnce(signOffAfter(language))
-				.doesNotContain(signOffBefore(language))
-				.doesNotContain(policySignOffNow(language));
-		assertThat(bodyOf(language, THE_TERMS_SIGN_OFF))
-				.as("the terms of use must keep the day they were signed off on")
-				.containsOnlyOnce(signOffBefore(language))
-				.doesNotContain(signOffAfter(language))
-				.doesNotContain(policySignOffNow(language));
+		for (Place place : List.of(policySignOff, rulebookSignOff, THE_TERMS_SIGN_OFF_NOW)) {
+			assertThat(bodyOf(language, place))
+					.as("%s #%s %s: signed off once, on the day of V71", place.slug(), place.position(), language)
+					.containsOnlyOnce(policySignOffNow(language));
+		}
 	}
 
 	@Test
@@ -329,8 +332,11 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 		return error.getServerErrorMessage().getDetail();
 	}
 
+	/** Over the text as V70 left it, which is where V58's two homes of the sentence still stand. */
 	@Test
 	void v58RunAgainOverTheFinishedTextStopsAndSaysTheSentenceIsAlreadyThere() {
+		TheWrittenPagesBeforeV71.putBack(db, migrationSql("71"));
+
 		PSQLException error = v58RunAgain();
 
 		assertThat(error.getServerErrorMessage().getMessage()).contains("the written pages were not edited");
@@ -359,6 +365,8 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 	 * and one edit's own check could be taken away without any case noticing.
 	 */
 	private void putBackTheTextAsItStoodBeforeV58() {
+		TheWrittenPagesBeforeV71.putBack(db, migrationSql("71"));
+
 		for (Place place : WHERE_IT_STANDS) {
 			for (String language : List.of("sr", "en")) {
 				setBody(language, place, bodyOf(language, place).replace(" " + sentenceIn(language), ""));
