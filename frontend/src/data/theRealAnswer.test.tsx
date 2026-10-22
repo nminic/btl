@@ -463,12 +463,11 @@ describe('the referral link, on the answer the server gives', () => {
       expect(
         await screen.findByText(new RegExp(`registracija\\?preporuka=${onTheWire}$`)),
       ).toBeVisible()
-      /* AND THE COUNT OFF THE SAME DOOR, separated from its own second source the same
-         way: three is not what this member brought in in the generated file, so a screen
-         that went on counting off the list draws a different sum. Three referrals at six
-         hundred dinars is 1.800, and the figure is the portal's own arithmetic rather
-         than one written here twice. */
-      expect(screen.getByText('1.800 RSD')).toBeVisible()
+      /* AND THE COUNT ON THE SAME WIRE IS NOT A BALANCE ANY MORE (22.10.2026). Three
+         referrals at six hundred dinars would be 1.800, which is what this line drew when
+         it multiplied the count; the balance is the book's (`balanceFromTheBook.test.tsx`)
+         and the book is not asked here, so nothing is drawn. */
+      expect(screen.queryByText('1.800 RSD')).not.toBeInTheDocument()
     } finally {
       stop()
     }
@@ -520,30 +519,32 @@ describe('the referral link, on the answer the server gives', () => {
 })
 
 describe('the balance, on a count the server gives', () => {
-  it('draws nought for a count below nought, and never a sum below nought', async () => {
-    /* **A WHOLE NUMBER THAT IS NOT A COUNT** (PENDING 227). `Number.isInteger(-3)` is true, so a reader
-       that asked only that handed it on, and the screen multiplied the price by it: minus three at six
-       hundred dinars is „-1.800 RSD", printed as what a member is owed. The reader now believes a whole
-       number of nought or more (`session/theServer.ts`, `wholeIn`), so a count below nought is „I was not
-       told", which this page draws as nought like every other count it was not told.
-
-       Asked on the screen as well as on the reader, because the finding was a sum on a page and not a
-       number in a session: the reader can be right and the page still read the count off somewhere else. */
+  it.each([
+    ['a count below nought', -3, '-1.800 RSD'],
+    ['a count of three', 3, '1.800 RSD'],
+  ])('is not worked out of %s', async (_what, counted, sum) => {
+    /* **THIS WAS A CASE ABOUT A SUM BELOW NOUGHT UNTIL 22.10.2026** (PENDING 227): the screen
+       multiplied the count by the price of a referral, so minus three at six hundred dinars was
+       „-1.800 RSD", printed as what a member is owed. The reader still believes only a whole
+       number of nought or more (`session/theServer.ts`, `wholeIn`; its own cases are in
+       `session/theServer.test.ts`), but the screen no longer draws a sum of the count at all:
+       the balance is the book's, so no count, in range or out of it, is multiplied into a line.
+       Kept as a case on the page rather than deleted, because the fault it guarded (a sum drawn
+       out of a count) is exactly the one that would come back by reading the count again. */
     const { stop } = meAnswering({
       memberNumber: stillAMember,
       membershipBasis: 'payment',
       referralCode: 'aaaaaaaaaaaaaaaa',
-      referredCount: -3,
+      referredCount: counted,
     })
 
     try {
       renderAt('/sr/moja-clanarina', 'competitor', stillAMember)
 
       /* Waited for through the address under the sentence, which comes off the same answer, so „nothing
-         is drawn about a balance yet" cannot pass for „the balance is drawn and is not below nought". */
+         is drawn about a balance yet" cannot pass for „the sum is not drawn". */
       expect(await screen.findByText(/registracija\?preporuka=aaaaaaaaaaaaaaaa$/)).toBeVisible()
-      expect(screen.getByText('0 RSD')).toBeVisible()
-      expect(screen.queryByText(/1\.800/)).not.toBeInTheDocument()
+      expect(screen.queryByText(sum)).not.toBeInTheDocument()
     } finally {
       stop()
     }

@@ -28,6 +28,7 @@ import { AsksTheServerWhoIAm, expectFrontPage, renderAt } from '../test/render'
 import { setupUser, type Pressing } from '../test/user'
 import {
   answeringCategory,
+  bookAsServed,
   categoryAsServed,
   membersAsServed,
   refused,
@@ -818,44 +819,34 @@ describe('membership', () => {
     expect(amount).toMatch(/RSD$/)
   })
 
-  it('shows the balance the answer carries, and does not recount it here', async () => {
-    /* **THIS CASE MEASURED THE OPPOSITE UNTIL 21.09.2026, AND THE CHANGE IS A COST THE
-       SWITCH TO `/api` BROUGHT WITH IT RATHER THAN A DECISION TAKEN HERE.**
+  it('shows the balance the book holds, and not what a referral is worth times the head count', async () => {
+    /* **THE BALANCE WAS COUNTED ON THIS SCREEN UNTIL 22.10.2026, AND THAT WAS NOT A BALANCE.**
+       It multiplied the amount of a referral by `referredCount` (members he brought in whose
+       fee stands, `GET /api/me`) and called the product his balance. Measured that day: an
+       administrator activated a member the owner had brought in, the book held 600 RSD
+       (`BalanceBook.of` said 600), and the line said „0 RSD". The product knows nothing of what
+       was spent, moves with the price list, falls to nought when a member he brought lapses,
+       and does not see one whose link was taken off, though the money stays in the book.
 
-       What it used to hold: the credit was counted on this screen off the generated file,
-       so a member an administrator had deleted was gone from every list and still in this
-       sum, six hundred dinars a year for somebody who does not exist. ADL A8 says deleting
-       a record frees the identity from everything and not only from a list, so the screen
-       was made to count through the overlay and this case walked the deletion.
+       The balance is `balance` of `GET /api/me/membership`, so this case hands the screen two
+       sources that DISAGREE, which is the only setup in which the old count and the book
+       can be told apart: four members counted (4 x 600 = 2.400) and a book of 600. A screen
+       that went back to the count draws 2.400 here, and a case in which both said the same
+       number would have gone on passing.
 
-       What changed: the count cannot be worked out on this side any more. It needed two
-       fields, whose code brought whom and whether a fee is standing, and `/api/competitors`
-       answers NEITHER - `referred_by` holds a KEY and never a code (V7), and a member whose
-       fee has lapsed is not on the list at all (owner, 13.09.2026). So the server counts it,
-       over the same two halves, and hands the number over as `referredCount`.
-
-       **The rule ADL A8 states is not weakened; the moment it takes effect is.** A deletion
-       is written into the overlay, which is a stand-in for a database that does not take
-       writes yet, and a number that was added up before the deletion cannot hear about it.
-       The day the deletion reaches the server the next answer carries the smaller count.
-       That is written down here, and in `PENDING.md`, rather than left for somebody to meet
-       on QA. What this case holds meanwhile is the half that IS this screen's: the balance is
-       the answer's number and this screen does not invent one. */
+       And the deletion the case used to walk is kept: it is a thing done to the list, and the
+       book is the server's, so it does not move. */
     const user = setupUser()
     const { stop } = membersAsServed('000001')
+    const book = bookAsServed({ amount: 600, currency: 'RSD' })
 
     try {
-      const credited = 4
+      const counted = 4
 
-      /* **AND THE COOKIE NAMES HIM AND THE SHELL'S OWN QUESTION IS ASKED, both of which
-         this case needs since 25.09.2026.** The count was on the caller's own row of
-         `/api/competitors` until that day and `membersAsServed` put it there; P26a moved
-         it to `GET /api/me`, which nothing asks for outside `Shell`
-         (`session/useTheServersSession.ts`) and which the harness answers off the
-         generated file for whoever the cookie names (`test/setup.ts`). Without either
-         half the session holds null and this screen draws a balance of nought - which is
-         exactly the state the sum below exists to tell apart, so the case would have gone
-         on passing for the wrong reason if the number were smaller. */
+      /* **AND THE COOKIE NAMES HIM AND THE SHELL'S OWN QUESTION IS ASKED**, because the count
+         the book is set against comes off `GET /api/me` (`test/setup.ts`, `broughtIn`) and
+         nothing asks for that outside `Shell`. Without the count the two sources would not
+         disagree and the case would measure nothing. */
       theCookieNames({ role: 'competitor', memberNumber: '000001' })
 
       render(
@@ -876,18 +867,17 @@ describe('membership', () => {
         </ClockProvider>,
       )
 
+      expect(await screen.findByText('600 RSD')).toBeVisible()
       expect(
-        await screen.findByText(`${(credited * 600).toLocaleString('sr-Latn')} RSD`),
-      ).toBeVisible()
+        screen.queryByText(`${(counted * 600).toLocaleString('sr-Latn')} RSD`),
+        'the head count times the reward is not a balance',
+      ).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'obriši člana' }))
 
-      /* Unchanged, and that is the boundary above said as a measurement: the overlay cannot
-         reach a sum that was worked out on the far side of the wire. */
-      expect(
-        screen.getByText(`${(credited * 600).toLocaleString('sr-Latn')} RSD`),
-      ).toBeVisible()
+      expect(screen.getByText('600 RSD')).toBeVisible()
     } finally {
+      book.stop()
       stop()
     }
   })
@@ -1070,6 +1060,7 @@ describe('membership', () => {
        place that knows the difference, and it works the count out over that same file the way
        the server's own SQL does rather than writing a figure down here. */
     const { stop } = membersAsServed('000001')
+    const book = bookAsServed({ amount: 600, currency: 'RSD' })
 
     try {
       renderAt('/sr/moja-clanarina', 'competitor', '000001')
@@ -1080,25 +1071,21 @@ describe('membership', () => {
       expect(await screen.findByText(/registracija\?preporuka=7f07b38ff7ee7543/)).toBeVisible()
       expect(screen.queryByText(/preporuka=000001/)).not.toBeInTheDocument()
       expect(screen.getByText(/donosi ti 600 RSD na balans/)).toBeVisible()
-      /* And the balance is the count the answer carries. This member brought five, and four
-         of them have had their membership activated: 4 × 600. The fifth registered through
-         the link and never went active, and pays nobody, which is the whole of the
-         „prvi naredni put" half of the rule. Written out as the string „0 RSD" for
-         everybody, no arrangement of the data could ever have shown this.
-
-         **Which half of the rule this can still hold, said exactly.** That a member freed of
-         the fee counts all the same (owner, 13.08.2026, „OK je da se za preporuku dobije
-         balans čak i ako je preporučen član oslobođen članarine") used to be read off the
-         records here. It is the server's condition now - it counts on `brought.active` and
-         asks nothing about the basis - so it is measured where it lives, in
-         `CompetitorApiTest`, and this case holds that the screen draws the number it is
-         given rather than one of its own. */
-      expect(screen.getByText('2.400 RSD')).toBeVisible()
+      /* And the balance is the BOOK's, 600, in dinars because the server keeps it in dinars.
+         This member brought five and four of them are active, which counted at the price of a
+         referral would be 2.400, the figure this line drew until 22.10.2026; the case that
+         holds the two apart is the one above, and this one holds that the line is drawn at all
+         beside the link. What the rule credits and when (4 of the 5, the fifth never went
+         active, a member freed of the fee counts all the same, owner 13.08.2026) is the
+         server's, measured where it lives, in `CompetitorApiTest` and the tests of the
+         referral credit. */
+      expect(await screen.findByText('600 RSD')).toBeVisible()
       /* And when it lands, which is the half that keeps anybody from being paid
          for an account that was opened and left. */
       expect(screen.getByText(/kad članarina bude aktivirana/)).toBeVisible()
       expect(screen.getByText('na balansu')).toBeVisible()
     } finally {
+      book.stop()
       stop()
     }
   })
@@ -1319,10 +1306,19 @@ describe('membership', () => {
     /* 000007 is in Banja Luka, and pays in euro like everyone outside Serbia
        (data/paymentQr.ts). The same country decides both, so the promise and the
        way of paying can never fall out of step. */
-    renderAt('/sr/moja-clanarina', 'competitor', '000007')
+    const book = bookAsServed({ amount: 5, currency: 'EUR' })
 
-    expect(await screen.findByText(/donosi ti 5 EUR na balans/)).toBeVisible()
-    expect(screen.getByText('0 EUR')).toBeVisible()
+    try {
+      renderAt('/sr/moja-clanarina', 'competitor', '000007')
+
+      expect(await screen.findByText(/donosi ti 5 EUR na balans/)).toBeVisible()
+      /* The balance is the book's, and 000007 has brought nobody in: the reward is in the
+         book all the same (the incident of 22.10.2026 was exactly a book of 600 beside a head
+         count of nought). */
+      expect(await screen.findByText('5 EUR')).toBeVisible()
+    } finally {
+      book.stop()
+    }
   })
 
   it('tells a paying member since when they have been one', async () => {
