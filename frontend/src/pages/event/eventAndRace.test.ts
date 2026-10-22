@@ -237,6 +237,7 @@ describe('the day of a new race on an event of the calendar', () => {
  * that only begins an entry, a name of one edition and a year with no edition are each a different answer.
  */
 describe('a name that stands for several editions', () => {
+  const entry = (id: string, value: string, fills: Record<string, string>) => ({ id, value, said: value, fills })
   const edition = (id: string, value: string, date: string) => ({ id, value, said: `${value} – ${date}`, fills: { eventId: id, date } })
   const EDITIONS = [
     edition('1', 'Beogradski maraton', '12/04/2026'),
@@ -264,6 +265,14 @@ describe('a name that stands for several editions', () => {
     expect(named('Beogradski maraton noću', '01/06/2026')).toEqual([])
     expect(named('Beogradski', '01/06/2026')).toEqual([])
     expect(named('Beogradski maraton', '')).toEqual(['date form.errors.required'])
+  })
+
+  it('reads an entry that carries no day as of no year, so it holds nothing', () => {
+    /* The type lets an entry fill nothing (`forms/types.ts`, `fills`), and the event's list always fills the
+       day; an entry without one is not an edition of any year the block could be asked about. */
+    const dayless = { open: [2027], offered: [entry('9', 'Bez dana', {}), entry('8', 'Bez dana', {})] }
+
+    expect(boxes(filled({ eventName: 'Bez dana', date: '01/06/2026' }), TODAY, dayless)).toEqual([])
   })
 
   it('asks nothing once an edition is chosen', () => {

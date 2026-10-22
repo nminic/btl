@@ -644,6 +644,16 @@ describe('the day of a new race on an event of the calendar', () => {
       )
 
       expect(shown()).toBe(formatMonth('2026-12', 'sr'))
+
+      /* And one typed in a year before it, on the first month. */
+      await user.keyboard('{Escape}')
+      await user.clear(day)
+      await user.type(day, '01062025')
+      await user.click(
+        within(must(day.closest('.datepicker'), 'the day’s picker')).getByRole('button', { name: sr.form.openCalendar }),
+      )
+
+      expect(shown()).toBe(formatMonth('2026-01', 'sr'))
     } finally {
       server.stop()
     }
