@@ -1,6 +1,6 @@
 import { htmlElement, must } from '../test/at'
 import { intersecting, watcher } from '../test/intersection'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
@@ -16,6 +16,34 @@ async function openRulebook() {
 function sideNavigation(): HTMLElement {
   return screen.getByRole('navigation', { name: 'Na ovoj strani' })
 }
+
+const FIRST = '1. Uvodne odredbe'
+const SEVENTEENTH = '17. Objavljivanje podataka i fotografije'
+const EIGHTEENTH = '18. Dukati'
+const LAST = '19. Izmene pravilnika i završne odredbe'
+
+function marked(): HTMLElement {
+  return within(sideNavigation()).getByRole('link', { current: 'location' })
+}
+
+/* jsdom lays nothing out and scrolls nothing, so where the reader stands is said by hand: how far
+ * the page is scrolled, how much of it the window shows, and how long it is. The page scrolls, as
+ * a real one does, and the scroll event is sent. */
+function standAt(scrolled: number, { shown = 800, whole = 5000 } = {}) {
+  Object.defineProperty(window, 'scrollY', { value: scrolled, writable: true, configurable: true })
+  Object.defineProperty(window, 'innerHeight', { value: shown, writable: true, configurable: true })
+  Object.defineProperty(document.documentElement, 'scrollHeight', { value: whole, configurable: true })
+
+  act(() => {
+    window.dispatchEvent(new Event('scroll'))
+  })
+}
+
+afterEach(() => {
+  Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true })
+  Object.defineProperty(window, 'innerHeight', { value: 768, writable: true, configurable: true })
+  Reflect.deleteProperty(document.documentElement, 'scrollHeight')
+})
 
 describe('the rulebook', () => {
   it('writes out the rulebook of the season, not an announcement of one', async () => {
@@ -123,6 +151,16 @@ describe('the rulebook', () => {
       '1. Uvodne odredbe',
     )
   })
+
+  it('marks the last section at the end of the page even where the browser cannot say which one is on screen', async () => {
+    await openRulebook()
+
+    expect(marked()).toHaveAccessibleName(FIRST)
+
+    standAt(4200)
+
+    expect(marked()).toHaveAccessibleName(LAST)
+  })
 })
 
 /* The reading position comes from an observer the browser provides and jsdom
@@ -201,6 +239,143 @@ describe('the section being read', () => {
     expect(screen.getByRole('link', { current: 'location' })).toHaveAccessibleName(
       '2. Sezona i rokovi',
     )
+  })
+
+  it('marks the last section when the page has been read to its end, whichever one is at the line', async () => {
+    await openRulebook()
+
+    await announce([{ target: htmlElement(document.getElementById('17-objavljivanje-podataka-i-fotografije')), isIntersecting: true }])
+    expect(marked()).toHaveAccessibleName(SEVENTEENTH)
+
+    // The last section is shorter than the window, so the page runs out before it reaches the line.
+    standAt(4200)
+    expect(marked()).toHaveAccessibleName(LAST)
+
+    // And the reader who goes back up is led by the line again.
+    standAt(3000)
+    expect(marked()).toHaveAccessibleName(SEVENTEENTH)
+  })
+
+  it('does not take a page that was never scrolled for one read to its end', async () => {
+    await openRulebook()
+    await announce([{ target: htmlElement(document.getElementById('2-sezona-i-rokovi')), isIntersecting: true }])
+
+    // A rulebook as tall as the window is at its end from the first moment, and has been read to none.
+    standAt(0, { shown: 800, whole: 800 })
+
+    expect(marked()).toHaveAccessibleName('2. Sezona i rokovi')
+  })
+
+  it('takes the end of the page to be two pixels short of it, and no further', async () => {
+    await openRulebook()
+    await announce([{ target: htmlElement(document.getElementById('2-sezona-i-rokovi')), isIntersecting: true }])
+
+    // A browser at a zoom that is not a whole number stops a fraction short of the last pixel.
+    standAt(4198)
+    expect(marked()).toHaveAccessibleName(LAST)
+
+    standAt(4197)
+    expect(marked()).toHaveAccessibleName('2. Sezona i rokovi')
+  })
+
+  describe('after a link was pressed', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    /* The page cannot bring the last sections to the line, so the line says one thing and the
+       press another; the press is what the reader did. The observer says the third is at the line. */
+    async function pressWhileThirdIsAtTheLine(name: string) {
+      await openRulebook()
+      await announce([{ target: htmlElement(document.getElementById('3-ko-se-takmici')), isIntersecting: true }])
+
+      /* The clock is faked after the screen is drawn, which waits on timers of its own, and the
+         press is sent as an event: a typed click would wait on the faked clock as well. */
+      vi.useFakeTimers()
+      press(name)
+    }
+
+    function press(name: string) {
+      fireEvent.click(within(sideNavigation()).getByRole('link', { name }))
+    }
+
+    it('marks the section it names, also where the page cannot bring that section to the line', async () => {
+      await pressWhileThirdIsAtTheLine(EIGHTEENTH)
+
+      expect(marked()).toHaveAccessibleName(EIGHTEENTH)
+    })
+
+    it('marks the one pressed last', async () => {
+      await pressWhileThirdIsAtTheLine(EIGHTEENTH)
+
+      press(LAST)
+
+      expect(marked()).toHaveAccessibleName(LAST)
+    })
+
+    it('holds through the glide to the section, which scrolls too', async () => {
+      await pressWhileThirdIsAtTheLine(EIGHTEENTH)
+
+      standAt(300)
+      act(() => {
+        vi.advanceTimersByTime(150)
+      })
+      standAt(900)
+
+      expect(marked()).toHaveAccessibleName(EIGHTEENTH)
+    })
+
+    it('waits for the page to stand still, not for a fixed time after the press', async () => {
+      await pressWhileThirdIsAtTheLine(EIGHTEENTH)
+
+      // Each scroll of the glide starts the wait again: 150 + 150 is more than 200 since the press.
+      act(() => {
+        vi.advanceTimersByTime(150)
+      })
+      standAt(300)
+      act(() => {
+        vi.advanceTimersByTime(150)
+      })
+      standAt(900)
+
+      expect(marked()).toHaveAccessibleName(EIGHTEENTH)
+    })
+
+    it('gives the marking back to the line when the reader scrolls on, once the page has stood still', async () => {
+      await pressWhileThirdIsAtTheLine(EIGHTEENTH)
+
+      act(() => {
+        vi.advanceTimersByTime(200)
+      })
+      standAt(1500)
+
+      expect(marked()).toHaveAccessibleName('3. Ko se takmiči')
+    })
+
+    it('stops listening and waiting when the screen closes', async () => {
+      const removed = vi.spyOn(window, 'removeEventListener')
+      const view = await openRulebook()
+
+      vi.useFakeTimers()
+
+      const started = vi.spyOn(globalThis, 'setTimeout')
+      const cleared = vi.spyOn(globalThis, 'clearTimeout')
+
+      press(EIGHTEENTH)
+
+      // The wait for the glide to be over, found among whatever else the faked clock was asked for.
+      const wait = started.mock.calls.findIndex(([, delay]) => delay === 200)
+      const waitId = started.mock.results[wait]?.value
+
+      expect(wait, 'the press starts a wait of 200ms').toBeGreaterThanOrEqual(0)
+
+      view.unmount()
+
+      expect(cleared).toHaveBeenCalledWith(waitId)
+      // The list of sections listens for the end of the page, and the press for the end of the glide.
+      expect(removed.mock.calls.filter(([type]) => type === 'scroll')).toHaveLength(2)
+      removed.mockRestore()
+    })
   })
 
   it('stops watching when the screen closes', async () => {

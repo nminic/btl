@@ -16,59 +16,127 @@ const SLUG = 'pravilnik'
  * peeking in from the bottom would count as the one being read. */
 const READING_BAND = '0px 0px -66% 0px'
 
+/* How near the end of the page counts as the end of it. A browser at a zoom that is
+ * not a whole number stops a fraction of a pixel short of the last pixel. */
+const BOTTOM_SLACK = 2
+
+/* How long the page has to stand still after a link was pressed before a scroll is the
+ * reader's and not the glide to the section that was pressed (`Rulebook.css` smooths it). */
+const GLIDE_ENDS_AFTER = 200
+
+/* Whether the reader has come to the end of the page. Not true on a page that has not been
+ * scrolled at all: a rulebook short enough to fit the window would otherwise stand at its end
+ * from the first moment and have its last section marked before a word was read. */
+function atTheEnd(): boolean {
+  return (
+    window.scrollY > 0 &&
+    window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - BOTTOM_SLACK
+  )
+}
+
 /**
- * Which section is on screen, so the side navigation can say so.
+ * Which section the side navigation marks.
  *
- * The observer is the only way to know this without measuring on every scroll
- * event. Where it is missing, the first section stands as the current one:
- * a marker that never moves is better than no marker at all.
+ * Three things say it, in this order:
+ *
+ * 1. **The link the reader pressed**, until the reader scrolls on their own. The page cannot bring
+ *    every section to the line the reading is judged by: the last ones are shorter than the
+ *    window, so pressing „Dukati" takes the page to its end and stops there, with the section
+ *    still under the line. Reading it off the scroll position then marked the one below it, or
+ *    nothing, and the reader had pressed a link and been told he was elsewhere (owner,
+ *    22.10.2026). The glide to the section also scrolls, so the first scrolls after the press are
+ *    not the reader's: the pressed link holds until the page has stood still for a moment and
+ *    then moves again.
+ * 2. **The last section, when the page has been read to its end.** The same reason from the other
+ *    side: the last section is the one that cannot rise to the line, so the line alone never
+ *    marked it however far the reader went.
+ * 3. **The section at the line**, from the observer. Where it is missing, the first section
+ *    stands as the current one, and the end of the page still marks the last: a marker that never
+ *    moves is better than no marker at all.
  */
-function useCurrentSection(ids: string[]): string {
-  const [current, setCurrent] = useState('')
+function useCurrentSection(ids: string[]): { current: string; choose: (id: string) => void } {
+  const [reading, setReading] = useState(() => ids.slice(0, 1).join(''))
+  const [chosen, setChosen] = useState<string | undefined>(undefined)
 
   useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') {
-      /* A page with no sections has none to stand as the current one, and the
-         marker stays where it started, which is nowhere. Written as a walk over
-         at most one id rather than as a fallback, because the fallback could not
-         be reached and an unreachable branch is a claim nothing checks. */
-      ids.slice(0, 1).forEach(setCurrent)
-      return
-    }
-
     const onScreen = new Set<string>()
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            onScreen.add(entry.target.id)
-          } else {
-            onScreen.delete(entry.target.id)
-          }
-        }
+    /* The last section when the end of the page has been reached, else the first of those in the
+       band. Between two sections nothing is in the band, and the marker then stays where it was
+       rather than blinking off and back on. A list of at most one id rather than a lookup that
+       may find nothing, so that a page with no sections is a list with nothing in it. */
+    const update = () => {
+      const picked = atTheEnd() ? ids.slice(-1) : ids.filter((id) => onScreen.has(id)).slice(0, 1)
 
-        const first = ids.find((id) => onScreen.has(id))
+      setReading((previous) => picked[0] ?? previous)
+    }
 
-        // Between two sections nothing is in the band. The marker then stays
-        // where it was rather than blinking off and back on.
-        setCurrent((previous) => first ?? previous)
-      },
-      { rootMargin: READING_BAND },
-    )
+    const observer =
+      typeof IntersectionObserver === 'undefined'
+        ? undefined
+        : new IntersectionObserver(
+            (entries) => {
+              for (const entry of entries) {
+                if (entry.isIntersecting) {
+                  onScreen.add(entry.target.id)
+                } else {
+                  onScreen.delete(entry.target.id)
+                }
+              }
+
+              update()
+            },
+            { rootMargin: READING_BAND },
+          )
 
     const sections = ids
       .map((id) => document.getElementById(id))
       .filter((section): section is HTMLElement => section !== null)
 
     for (const section of sections) {
-      observer.observe(section)
+      observer?.observe(section)
     }
 
-    return () => observer.disconnect()
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('scroll', update)
+    }
   }, [ids])
 
-  return current
+  useEffect(() => {
+    if (chosen === undefined) {
+      return undefined
+    }
+
+    let gliding = true
+    const endGlide = () => {
+      gliding = false
+    }
+    let timer = setTimeout(endGlide, GLIDE_ENDS_AFTER)
+
+    const onScroll = () => {
+      if (!gliding) {
+        setChosen(undefined)
+
+        return
+      }
+
+      clearTimeout(timer)
+      timer = setTimeout(endGlide, GLIDE_ENDS_AFTER)
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('scroll', onScroll)
+    }
+  }, [chosen])
+
+  return { current: chosen ?? reading, choose: setChosen }
 }
 
 /* The rulebook is a written page like every other, so it is drawn through the
@@ -88,7 +156,7 @@ function RulebookPage({ pages, page }: { pages: StaticPage[]; page: StaticPage }
      nothing said the two lists were the same length. */
   const sections = useMemo(() => withIds(sectionsOf(pages, page)), [pages, page])
   const ids = useMemo(() => sections.map((section) => section.id), [sections])
-  const current = useCurrentSection(ids)
+  const { current, choose } = useCurrentSection(ids)
 
   return (
     /* The language of the words, the page's own and not the address's - the same attribute
@@ -128,7 +196,10 @@ function RulebookPage({ pages, page }: { pages: StaticPage[]; page: StaticPage }
                     /* Colour alone would leave the reader who cannot see it
                        without the answer, so the state is in the markup too. */
                     aria-current={current === section.id ? 'location' : undefined}
-                    onClick={() => setOpen(false)}
+                    onClick={() => {
+                      choose(section.id)
+                      setOpen(false)
+                    }}
                   >
                     {section.heading}
                   </a>
