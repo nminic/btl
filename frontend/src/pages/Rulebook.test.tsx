@@ -339,6 +339,14 @@ describe('the section being read', () => {
       standAt(900)
 
       expect(marked()).toHaveAccessibleName(EIGHTEENTH)
+
+      // And the wait that was started again does end: the next scroll after it is the reader's.
+      act(() => {
+        vi.advanceTimersByTime(200)
+      })
+      standAt(1500)
+
+      expect(marked()).toHaveAccessibleName('3. Ko se takmiči')
     })
 
     it('gives the marking back to the line when the reader scrolls on, once the page has stood still', async () => {
