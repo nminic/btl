@@ -1809,6 +1809,7 @@
     "save": "Save",
     "saving": "Saving",
     "chooseMember": "Choose a member from the list.",
+    "chooseTheYear": "Choose the year from the list.",
     "figuresMissing": "Fill in every value asked for.",
     "edit": "Change",
     "editNamed": "Change the result: {name}",
@@ -1826,7 +1827,8 @@
       "theEventIsNotKnown": "That event is no longer in the calendar. Choose it again or enter a new one.",
       "theRaceIsNotKnown": "That race is no longer in the calendar. Choose it again or enter a new one.",
       "theTownIsMissing": "Enter the place of the new event.",
-      "theEventWouldMoveOntoAnother": "The race would move the event into a year in which an event with the same name already exists. Choose that event."
+      "theEventWouldMoveOntoAnother": "The race would move the event into a year in which an event with the same name already exists. Choose that event.",
+      "theDayIsNotInTheEventsYear": "The day of the race is not in the year of the chosen event."
     }
   }
 }

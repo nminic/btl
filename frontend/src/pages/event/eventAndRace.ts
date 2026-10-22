@@ -2,7 +2,8 @@ import { raceKind } from '../../data/raceKind'
 import type { BtlEvent, Race, RaceKind } from '../../data/types'
 import { fromBoxes } from '../../forms/clock'
 import { fieldDate, isoDate } from '../../forms/dateField'
-import { theOneNamedExactly } from '../../forms/exactName'
+import type { Years } from '../../forms/DatePicker'
+import { everyOneNamedExactly, theOneNamedExactly } from '../../forms/exactName'
 import { parseNumber } from '../../forms/numberField'
 import type { FieldDef, Suggestion } from '../../forms/types'
 import { REQUIRED_KEY } from '../../forms/validate'
@@ -164,28 +165,50 @@ export function figuresOfANewRace(kind: RaceKind): readonly NewRaceBox[] {
 /** What is wrong with one box of the block: the box, and the words that say it. */
 export type BlockWrong = { box: keyof TheBlock & string; key: string }
 
+/** What the block is asked against besides itself: the seasons the server says are open, or nothing
+ *  until they are known, and the events offered under the event's box. */
+export type TheBlockIsAsked = { open: readonly number[] | null; offered: readonly Suggestion[] }
+
 /**
- * BOX BY BOX, IN THE ORDER THEY ARE DRAWN, what is wrong with the block: a name left empty, a day that
- * is not a day or is still to come, a new event's town, and what the kind of a new race fixes.
+ * BOX BY BOX, IN THE ORDER THEY ARE DRAWN, what is wrong with the block: a name left empty or one that
+ * names several editions without one being chosen, a day that is not a day or is still to come or is
+ * not in the year of the chosen event, a new event's town, and what the kind of a new race fixes.
  *
- * <p><b>The day is held to nothing but today</b> (PDL P9, owner, 21.10.2026: „Moderator i admin smeju da
- * unose rezultate za BILO KOJU prethodnu godinu”), as the server holds it: a day of any year, those
- * before 2027 too, is a day. Until that day this box also refused a day outside the seasons open for a
- * report and a day before the league, and both refusals are gone with their words.
+ * <p><b>The day is held to today</b> (PDL P9, owner, 21.10.2026: „Moderator i admin smeju da unose
+ * rezultate za BILO KOJU prethodnu godinu”), as the server holds it: a day of any year, those before 2027
+ * too, is a day. Until that day this box also refused a day outside the seasons open for a report and a
+ * day before the league, and both refusals are gone with their words.
+ *
+ * <p><b>And a new race on an event of the calendar to that event's year</b> (owner, 22.10.2026, „Ekran 7b:
+ * dan trke mora biti u godini izabranog događaja”), in the server's words, with the exception the owner
+ * kept the same day: on the morning of 1 January, while two seasons are open, either of them (`aDayOf`).
+ * Asked only once the open seasons are known, so the box is never stricter than the server, which asks
+ * the same either way (`ResultsByTheLeagueApi.THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR`).
+ *
+ * <p><b>And a name of several editions to one of them chosen</b>, where the day typed is in the year of
+ * one of them (owner, 22.10.2026, answering the author's question before the code: „dugme ne pušta dok
+ * godina nije izabrana sa spiska, rečenicom „Izaberi godinu sa spiska.” … godina bez izdanja i dalje pravi
+ * nov događaj”). Such a name links none of them (`forms/exactName.ts`), so the save went out as a new
+ * event, the server found the edition of that year at its address, and a race typed under it was made
+ * again beside the one it already had.
  */
-export function whatIsWrongWithTheBlock(block: TheBlock, today: string): BlockWrong[] {
+export function whatIsWrongWithTheBlock(block: TheBlock, today: string, asked: TheBlockIsAsked): BlockWrong[] {
   const wrong: BlockWrong[] = []
   const asksTheDay = block.race === null
   const day = isoDate(block.date)
 
   if (block.eventName.trim() === '') {
     wrong.push({ box: 'eventName', key: REQUIRED_KEY })
+  } else if (block.event === null && day !== '' && anEditionOfTheYearIsNotChosen(block, day, asked.offered)) {
+    wrong.push({ box: 'eventName', key: 'leagueResults.chooseTheYear' })
   }
 
   if (asksTheDay && day === '') {
     wrong.push({ box: 'date', key: REQUIRED_KEY })
   } else if (asksTheDay && day > today) {
     wrong.push({ box: 'date', key: 'results.refused.theRaceHasNotBeenRun' })
+  } else if (asksTheDay && block.event !== null && asked.open !== null && !aDayOf(block.event.date, day, asked.open)) {
+    wrong.push({ box: 'date', key: 'leagueResults.refused.theDayIsNotInTheEventsYear' })
   }
 
   if (block.event === null && block.city.trim() === '') {
@@ -232,6 +255,48 @@ export function theEventPageAfter(block: TheBlock, answered: string | null, loca
 /** The help a box of a definition carries, or nothing: the first `hintKey` of the fields given. */
 export function hintOf(fields: readonly FieldDef[]): string | undefined {
   return fields.map((one) => one.hintKey).find((one) => one !== undefined)
+}
+
+/** The year of a day kept as `yyyy-MM-dd`. */
+function yearOf(day: string): number {
+  return Number(day.slice(0, 4))
+}
+
+/**
+ * Whether a new race of this day may go on an event of that day: in its year, or, while two seasons are
+ * open, in either of them. The server's own condition (`ResultsByTheLeagueApi`, „A NEW RACE GOES ON AN
+ * EVENT OF ITS OWN YEAR”), asked of the seasons the server says are open rather than of a window worked
+ * out here.
+ */
+function aDayOf(eventDay: string, day: string, open: readonly number[]): boolean {
+  const theEvents = yearOf(eventDay)
+  const theDays = yearOf(day)
+
+  return theEvents === theDays || (open.includes(theEvents) && open.includes(theDays))
+}
+
+/** Whether the name typed names several editions offered, one of them in the year of the day typed. */
+function anEditionOfTheYearIsNotChosen(block: TheBlock, day: string, offered: readonly Suggestion[]): boolean {
+  const editions = everyOneNamedExactly(offered, block.eventName.trim())
+
+  return editions.length > 1 && editions.some((one) => yearOf(isoDate(one.fills.date ?? '')) === yearOf(day))
+}
+
+/**
+ * THE YEARS THE DAY'S CALENDAR SHOWS, where the day is a new race's on an event of the calendar: that
+ * event's year, and on the morning of 1 January both seasons then open, where the event is of one of them
+ * (the rule of `aDayOf`). Nothing where the day is a new event's own or no day is asked. Before the
+ * seasons are known, the event's year alone: the calendar refuses nothing, it only does not offer.
+ */
+export function yearsOfTheDay(block: TheBlock, open: readonly number[] | null): Years | undefined {
+  if (block.event === null || block.race !== null) {
+    return undefined
+  }
+
+  const theEvents = yearOf(block.event.date)
+  const years = open !== null && open.includes(theEvents) ? [theEvents, ...open] : [theEvents]
+
+  return { first: Math.min(...years), last: Math.max(...years) }
 }
 
 /** The limit of a race to a limit, out of its three boxes, read as every clock of the portal is. */

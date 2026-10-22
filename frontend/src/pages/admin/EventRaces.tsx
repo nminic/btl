@@ -7,6 +7,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { RACE_KINDS } from '../../data/types'
 import { raceKind } from '../../data/raceKind'
 import {
+  aKindChosen,
   asksFor,
   BOUNDS,
   boundsOf,
@@ -521,7 +522,7 @@ export function EventRaces({
                        like every other reader of a kind (`data/raceKind.ts`): a
                        select can only offer what is drawn above, but nothing in
                        the type of a change event says so. */
-                    onChange={(event) => change(at, { kind: raceKind(event.target.value) })}
+                    onChange={(event) => change(at, aKindChosen(row, raceKind(event.target.value)))}
                   >
                     {RACE_KINDS.map((one) => (
                       <option key={one} value={one}>

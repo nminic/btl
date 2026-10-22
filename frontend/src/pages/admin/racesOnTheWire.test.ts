@@ -57,6 +57,7 @@ const ROWS: Record<RaceKind, RaceRow> = {
     distanceKm: '21,1',
     ascentM: '',
     descentM: '',
+    copied: false,
   },
   time: {
     place: 'entered-1',
@@ -69,6 +70,7 @@ const ROWS: Record<RaceKind, RaceRow> = {
     distanceKm: '',
     ascentM: '',
     descentM: '',
+    copied: false,
   },
   /* On the second morning. A free race draws no measure since 17.10.2026 (owner: „Zapravo za
      slobodnu onda ne treba ukucavati ni jedno od tih polja"), so its cells are empty here like
@@ -85,6 +87,7 @@ const ROWS: Record<RaceKind, RaceRow> = {
     distanceKm: '',
     ascentM: '',
     descentM: '',
+    copied: false,
   },
 }
 

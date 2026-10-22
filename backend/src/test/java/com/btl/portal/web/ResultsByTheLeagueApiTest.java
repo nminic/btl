@@ -1218,9 +1218,10 @@ class ResultsByTheLeagueApiTest {
 	/**
 	 * THE REVIEW'S PROBE OF PR 585, AS IT WAS MEASURED: in 2028 a race of 2028 sent onto the event of
 	 * 2027 by its key was written onto it („201 prvi-dogadjaj-2027 2027-05-08 2028-02-01”). A new race
-	 * goes on an event of its own year and no other, and is refused as a form not filled in (owner,
-	 * 21.10.2026, „NECE DE DESITI!!!!!! PREBACICE PRVO LICNO DOGADJAJ NA PRETHODNU GODINU!”). Nothing is
-	 * written, and the event keeps its day.
+	 * goes on an event of its own year and no other (owner, 21.10.2026, „NECE DE DESITI!!!!!! PREBACICE PRVO
+	 * LICNO DOGADJAJ NA PRETHODNU GODINU!”), and is refused with the owner's sentence for it, „Dan trke nije u
+	 * godini izabranog događaja.” (PDL, 22.10.2026), not as a form not filled in. Nothing is written, and the
+	 * event keeps its day.
 	 */
 	@Test
 	void aNewRaceOfOneYearOnAnEventOfAnotherIsRefusedAndWritesNothing() throws Exception {
@@ -1233,8 +1234,40 @@ class ResultsByTheLeagueApiTest {
 				newRace("Zimska desetka", "2028-02-01", "free", null, null, null, null),
 				row(VERA, "5.00", 1, 1, AN_HOUR)));
 
-		assertThat(refused.getStatus()).isEqualTo(400);
-		assertThat(reasonIn(refused)).isEqualTo("theFormIsNotComplete");
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(ResultsByTheLeagueApi.THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR);
+		assertThat(howMany("race")).isEqualTo(races);
+		assertThat(db.sql("select date from btl_event where id = ?").param(theEvent)
+				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2027, 5, 8));
+	}
+
+	/**
+	 * THE YEAR ASKED IS THE EVENT'S AND NEVER TODAY'S, IN BOTH DIRECTIONS (PDL, owner, 22.10.2026, „Ekran 7b:
+	 * dan trke mora biti u godini izabranog događaja”). In 2028, on the event of 2027: a race of another day of
+	 * 2027 is taken, though 2027 is not the year today is in, and a race of the year BEFORE the event, which
+	 * would also move the event back a year, is refused with the owner's sentence and writes nothing. Today's
+	 * year and the event's are two different years here, so a rule that read today's would answer the first
+	 * the other way round.
+	 */
+	@Test
+	void theYearOfTheEventDecidesAndNotTheYearTodayIsIn() throws Exception {
+		clock.moveTo(Instant.parse("2028-02-01T10:00:00Z"));
+
+		long theEvent = db.sql("select event_id from race where id = ?").param(theTen)
+				.query(Long.class).single();
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				newRace("Jesenja desetka", "2027-09-01", "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR))).getStatus()).as("another day of the event's own year")
+				.isEqualTo(201);
+
+		int races = howMany("race");
+		MockHttpServletResponse before = onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				newRace("Silvestarska", "2026-12-31", "free", null, null, null, null),
+				row(ANA, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(before.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(before)).isEqualTo(ResultsByTheLeagueApi.THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR);
 		assertThat(howMany("race")).isEqualTo(races);
 		assertThat(db.sql("select date from btl_event where id = ?").param(theEvent)
 				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2027, 5, 8));
@@ -1290,8 +1323,8 @@ class ResultsByTheLeagueApiTest {
 				newRace("Letnja", "2027-06-01", "free", null, null, null, null),
 				row(VERA, "5.00", 1, 1, AN_HOUR)));
 
-		assertThat(refused.getStatus()).isEqualTo(400);
-		assertThat(reasonIn(refused)).isEqualTo("theFormIsNotComplete");
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(ResultsByTheLeagueApi.THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR);
 		assertThat(howMany("race")).isEqualTo(races);
 		assertThat(db.sql("select date from btl_event where id = ?").param(ofNextYear)
 				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2028, 3, 1));
@@ -1329,7 +1362,7 @@ class ResultsByTheLeagueApiTest {
 	 * THE WINDOW ENDS AT TEN O'CLOCK, and a minute either side of it answers differently, in both
 	 * directions of the two years. At 09:59:59 Belgrade the race goes on the event of the other year;
 	 * at 10:00:00 the season just ended is closed, so the two years are no longer both open and the save
-	 * is refused as a form not filled in in both directions: the race of the year just ended, on the event
+	 * is refused with the sentence for a day outside the event's year in both directions: the race of the year just ended, on the event
 	 * of the new year, and the race of the new year, on the event of the old one. (Until 21.10.2026 the
 	 * first was refused in the season's own sentence, because this route refused a race of a season not
 	 * open; it takes any year now, so it is the year of the race that is asked beside the year of the
@@ -1374,10 +1407,10 @@ class ResultsByTheLeagueApiTest {
 				row(DRAGAN, "5.00", 1, 1, AN_HOUR)));
 
 		assertThat(reasonIn(theYearJustEnded)).as("10:00:00, a race of the year just ended")
-				.isEqualTo("theFormIsNotComplete");
+				.isEqualTo(ResultsByTheLeagueApi.THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR);
 		assertThat(theNewYear.getStatus()).as("10:00:00, a race of the new year on an event of the old")
-				.isEqualTo(400);
-		assertThat(reasonIn(theNewYear)).isEqualTo("theFormIsNotComplete");
+				.isEqualTo(409);
+		assertThat(reasonIn(theNewYear)).isEqualTo(ResultsByTheLeagueApi.THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR);
 		assertThat(howMany("race")).as("nothing written by either refusal").isEqualTo(races);
 		assertThat(db.sql("select date from btl_event where id = ?").param(after).query(LocalDate.class)
 				.single()).isEqualTo(LocalDate.of(2028, 1, 1));
@@ -1407,7 +1440,7 @@ class ResultsByTheLeagueApiTest {
 				row(DRAGAN, "5.00", 1, 1, AN_HOUR)));
 
 		assertThat(List.of(reasonIn(ofTheYearJustEnded), reasonIn(ofTheNewYear)))
-				.containsExactly("theFormIsNotComplete", "theFormIsNotComplete");
+				.containsExactly(ResultsByTheLeagueApi.THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR, ResultsByTheLeagueApi.THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR);
 		assertThat(howMany("race")).isEqualTo(races);
 		assertThat(db.sql("select date from btl_event where id = ?").param(theOldOne).query(LocalDate.class)
 				.single()).isEqualTo(LocalDate.of(2026, 6, 6));
@@ -1520,7 +1553,7 @@ class ResultsByTheLeagueApiTest {
 				newRace("Davna iz druge godine", "2016-06-06", "free", null, null, null, null),
 				row(BOJAN, "5.00", 1, 1, AN_HOUR)));
 
-		assertThat(reasonIn(ofAnotherYear)).isEqualTo("theFormIsNotComplete");
+		assertThat(reasonIn(ofAnotherYear)).isEqualTo(ResultsByTheLeagueApi.THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR);
 		assertThat(howMany("race")).isEqualTo(races);
 	}
 
