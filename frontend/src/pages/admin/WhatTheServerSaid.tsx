@@ -1,6 +1,7 @@
 import { useI18n } from '../../i18n/useI18n'
 import type { Answer } from '../account/askTheServer'
 import { whatABareNumberSays } from '../account/serverWords'
+import { TheSiteIsLocked } from '../account/TheSiteIsLocked'
 
 /**
  * WHAT THE SERVER SAID WHEN IT WOULD NOT RECORD THE DECISION.
@@ -40,6 +41,14 @@ import { whatABareNumberSays } from '../account/serverWords'
  */
 export function WhatTheServerSaid({ answer }: { answer: Exclude<Answer, { got: 'done' }> }) {
   const { t } = useI18n()
+
+  /* THE SITE IS LOCKED: the proxy in front of the portal answered, not the route (owner, 22.10.2026).
+     Said as everywhere else on the portal, with the way to a new tab beside it, and not as the bare
+     number or as „nothing came back" - which is what this switch would otherwise have made of an
+     answer it has no branch for. */
+  if (answer.got === 'locked') {
+    return <TheSiteIsLocked />
+  }
 
   const said = (): string => {
     if (answer.got === 'refused') {

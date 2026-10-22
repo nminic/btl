@@ -124,4 +124,11 @@ describe('the one place that decides it', () => {
   it('is the only module that says the sentence about the portal’s own fault', () => {
     expect(holders('server.malformed')).toEqual([THE_ONE_PLACE])
   })
+
+  it('is the only module that says the sentence about the site being locked, and the new tab is drawn in one', () => {
+    /* Owner, 22.10.2026. The sentence is chosen here like every other, and drawn by `ServerSaid` and
+       `WhatTheServerSaid` through the one component that also holds the words of the link. */
+    expect(holders('server.locked')).toEqual([THE_ONE_PLACE])
+    expect(holders('server.lockedOpen')).toEqual(['pages/account/TheSiteIsLocked.tsx'])
+  })
 })

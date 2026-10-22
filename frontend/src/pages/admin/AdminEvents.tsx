@@ -1141,7 +1141,11 @@ export function AdminEvents() {
                            without a table is the races the route would not take away
                            (`notSaved`, below), which have nowhere else to be named. */
                         hasRaces={kindOf(values) === 'race'}
-                        notSaved={{ rows: refusedRows, kept: keptRaces }}
+                        notSaved={{
+                          rows: refusedRows,
+                          kept: keptRaces,
+                          locked: notSaved.some((one) => one.answer.got === 'locked'),
+                        }}
                       />
                     )}
                     /* One press writes the event and every one of its mornings, so
