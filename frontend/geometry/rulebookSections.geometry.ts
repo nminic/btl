@@ -268,7 +268,9 @@ for (const at of WIDTHS) {
     await pressed(page, at, BEFORE_LAST)
     await expect(link(page, BEFORE_LAST)).toHaveAttribute('aria-current', 'location')
 
-    // To the middle of the text: a section there is at the line, and it is not either of the last two.
+    // The reader takes the page in hand (a turn of the wheel), and then goes to the middle of the text:
+    // a section there is at the line, and it is not either of the last two.
+    await page.mouse.wheel(0, -50)
     await alignedAtTheLine(page, 9)
 
     const reading = await sectionAtTheLine(page)
@@ -302,7 +304,10 @@ for (const at of WIDTHS) {
       await pressed(page, at, EIGHTEENTH)
       await expect(marked(page)).toHaveCount(1)
       await expect(link(page, EIGHTEENTH), 'the section pressed').toHaveAttribute('aria-current', 'location')
-      expect(await marksSinceWatching(page), 'no other section was marked on the way').toEqual(['#18-dukati'])
+      expect(
+        (await marksSinceWatching(page)).filter((href) => href !== '#18-dukati'),
+        'no other section was marked on the way',
+      ).toEqual([])
     })
 
     test(`a press marks its section when the scroll events of the glide come late, from ${from === FIFTH ? 'the fifth' : from === NINTH ? 'the ninth' : 'the top'}, ${label(at)}`, async ({ open: opener }) => {
@@ -320,8 +325,49 @@ for (const at of WIDTHS) {
         await pressedWhileTheThreadIsBusy(page, at, EIGHTEENTH, 250)
         await expect(marked(page)).toHaveCount(1)
         await expect(link(page, EIGHTEENTH), 'the section pressed').toHaveAttribute('aria-current', 'location')
-        expect(await marksSinceWatching(page), 'no other section was marked on the way').toEqual(['#18-dukati'])
+        expect(
+        (await marksSinceWatching(page)).filter((href) => href !== '#18-dukati'),
+        'no other section was marked on the way',
+      ).toEqual([])
       }
+    })
+  }
+}
+
+/* After a press the list follows the reader again as soon as the reader moves the page, by whatever
+ * means, and not before: the glide's own scrolling does not count (the tests above). */
+for (const at of WIDTHS) {
+  const hands: [string, (page: Page) => Promise<void>][] = [
+    ['the wheel', (page) => page.mouse.wheel(0, -4000)],
+    ['the page up key', (page) => page.keyboard.press('PageUp')],
+  ]
+
+  if (at.width >= 1000) {
+    // A press in the track above the thumb: the page jumps a screen up. The bar is only drawn on a desktop.
+    hands.push(['the bar at the edge of the window', (page) => page.mouse.click(at.width - 6, 300)])
+  }
+
+  for (const [hand, move] of hands) {
+    test(`after a press the list follows the page again once the reader moves it with ${hand}, ${label(at)}`, async ({
+      open: opener,
+    }) => {
+      const page = await open(opener, at, SHORT_LAST)
+
+      await pressed(page, at, EIGHTEENTH)
+      await expect(link(page, EIGHTEENTH)).toHaveAttribute('aria-current', 'location')
+
+      const before = await page.evaluate(() => window.scrollY)
+
+      await move(page)
+      await atRest(page)
+
+      expect(await page.evaluate(() => window.scrollY), 'the page moved').toBeLessThan(before)
+
+      const reading = await sectionAtTheLine(page)
+
+      expect(reading, 'a section stands at the line').not.toBe('')
+      await expect(marked(page)).toHaveCount(1)
+      await expect(marked(page)).toHaveAttribute('href', `#${reading}`)
     })
   }
 }

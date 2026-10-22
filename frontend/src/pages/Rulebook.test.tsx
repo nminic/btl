@@ -313,75 +313,78 @@ describe('the section being read', () => {
       expect(marked()).toHaveAccessibleName(LAST)
     })
 
-    it('holds through the glide to the section, which scrolls too', async () => {
+    it('holds through the scrolling of the glide, however long it pauses', async () => {
       await pressWhileThirdIsAtTheLine(EIGHTEENTH)
 
+      // The glide scrolls, stops for longer than any limit a time could be given, and scrolls again.
       standAt(300)
       act(() => {
-        vi.advanceTimersByTime(150)
+        vi.advanceTimersByTime(60_000)
       })
       standAt(900)
+      standAt(1500)
 
       expect(marked()).toHaveAccessibleName(EIGHTEENTH)
     })
 
-    it('waits for the page to stand still, not for a fixed time after the press', async () => {
-      await pressWhileThirdIsAtTheLine(EIGHTEENTH)
+    describe('and the reader moves the page himself', () => {
+      /* Each of these is the reader's own hand on the page, and none of them is a scroll event: the
+         glide makes those as well. */
+      const byHand: [string, () => void][] = [
+        ['the wheel', () => fireEvent.wheel(window)],
+        ['a finger drawn across the screen', () => fireEvent.touchMove(window)],
+        ['the arrow down', () => fireEvent.keyDown(window, { key: 'ArrowDown' })],
+        ['the arrow up', () => fireEvent.keyDown(window, { key: 'ArrowUp' })],
+        ['the page down key', () => fireEvent.keyDown(window, { key: 'PageDown' })],
+        ['the page up key', () => fireEvent.keyDown(window, { key: 'PageUp' })],
+        ['the home key', () => fireEvent.keyDown(window, { key: 'Home' })],
+        ['the end key', () => fireEvent.keyDown(window, { key: 'End' })],
+        ['the space bar', () => fireEvent.keyDown(window, { key: ' ' })],
+        ['a press on the bar at the edge of the window', () => fireEvent.pointerDown(document.documentElement)],
+      ]
 
-      // Each scroll of the glide starts the wait again: 150 + 150 is more than 200 since the press.
-      act(() => {
-        vi.advanceTimersByTime(150)
+      it.each(byHand)('gives the marking back to the line at %s', async (_hand, move) => {
+        await pressWhileThirdIsAtTheLine(EIGHTEENTH)
+
+        act(() => {
+          move()
+        })
+
+        expect(marked()).toHaveAccessibleName('3. Ko se takmiči')
       })
-      standAt(300)
-      act(() => {
-        vi.advanceTimersByTime(150)
+
+      const notByHand: [string, () => void][] = [
+        ['a scroll event, which the glide makes as well', () => standAt(900)],
+        ['the tab key, which moves the focus and not the page', () => fireEvent.keyDown(window, { key: 'Tab' })],
+        ['a letter', () => fireEvent.keyDown(window, { key: 'a' })],
+        ['a press on the text', () => fireEvent.pointerDown(screen.getByRole('heading', { level: 1 }))],
+      ]
+
+      it.each(notByHand)('keeps the pressed link through %s', async (_what, move) => {
+        await pressWhileThirdIsAtTheLine(EIGHTEENTH)
+
+        act(() => {
+          move()
+        })
+
+        expect(marked()).toHaveAccessibleName(EIGHTEENTH)
       })
-      standAt(900)
-
-      expect(marked()).toHaveAccessibleName(EIGHTEENTH)
-
-      // And the wait that was started again does end: the next scroll after it is the reader's.
-      act(() => {
-        vi.advanceTimersByTime(200)
-      })
-      standAt(1500)
-
-      expect(marked()).toHaveAccessibleName('3. Ko se takmiči')
     })
 
-    it('gives the marking back to the line when the reader scrolls on, once the page has stood still', async () => {
-      await pressWhileThirdIsAtTheLine(EIGHTEENTH)
-
-      act(() => {
-        vi.advanceTimersByTime(200)
-      })
-      standAt(1500)
-
-      expect(marked()).toHaveAccessibleName('3. Ko se takmiči')
-    })
-
-    it('stops listening and waiting when the screen closes', async () => {
+    it('stops listening when the screen closes', async () => {
       const removed = vi.spyOn(window, 'removeEventListener')
       const view = await openRulebook()
 
-      vi.useFakeTimers()
-
-      const started = vi.spyOn(globalThis, 'setTimeout')
-      const cleared = vi.spyOn(globalThis, 'clearTimeout')
-
       press(EIGHTEENTH)
-
-      // The wait for the glide to be over, found among whatever else the faked clock was asked for.
-      const wait = started.mock.calls.findIndex(([, delay]) => delay === 200)
-      const waitId = started.mock.results[wait]?.value
-
-      expect(wait, 'the press starts a wait of 200ms').toBeGreaterThanOrEqual(0)
-
       view.unmount()
 
-      expect(cleared).toHaveBeenCalledWith(waitId)
-      // The list of sections listens for the end of the page, and the press for the end of the glide.
-      expect(removed.mock.calls.filter(([type]) => type === 'scroll')).toHaveLength(2)
+      const types = removed.mock.calls.map(([type]) => type)
+
+      // The list of sections listens for the end of the page, and the press for the reader's hand.
+      for (const type of ['scroll', 'wheel', 'touchmove', 'keydown', 'pointerdown']) {
+        expect(types, `the listener for ${type} is taken off`).toContain(type)
+      }
+
       removed.mockRestore()
     })
   })

@@ -20,9 +20,9 @@ const READING_BAND = '0px 0px -66% 0px'
  * not a whole number stops a fraction of a pixel short of the last pixel. */
 const BOTTOM_SLACK = 2
 
-/* How long the page has to stand still after a link was pressed before a scroll is the
- * reader's and not the glide to the section that was pressed (`Rulebook.css` smooths it). */
-const GLIDE_ENDS_AFTER = 200
+/* The keys that move a page: the arrows, the page keys, the ends and the space bar. Tab and the
+ * letters move nothing, and a reader who tabs from the link he pressed has not left the section. */
+const KEYS_THAT_SCROLL = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '])
 
 /* Whether the reader has come to the end of the page. Not true on a page that has not been
  * scrolled at all: a rulebook short enough to fit the window would otherwise stand at its end
@@ -44,9 +44,11 @@ function atTheEnd(): boolean {
  *    window, so pressing „Dukati" takes the page to its end and stops there, with the section
  *    still under the line. Reading it off the scroll position then marked the one below it, or
  *    nothing, and the reader had pressed a link and been told he was elsewhere (owner,
- *    22.10.2026). The glide to the section also scrolls, so the first scrolls after the press are
- *    not the reader's: the pressed link holds until the page has stood still for a moment and
- *    then moves again.
+ *    22.10.2026). The glide to the section scrolls too, with pauses between its scroll events that
+ *    no time limit can tell from the end of it (a busy page held them up 216 to 433ms in review,
+ *    and the link let go in the middle of the glide), so the page's own scrolling is not read at
+ *    all: the pressed link holds until the reader moves the page himself, by wheel, touch, a key
+ *    that scrolls, or the bar at the edge of the window.
  * 2. **The last section, when the page has been read to its end.** The same reason from the other
  *    side: the last section is the one that cannot rise to the line, so the line alone never
  *    marked it however far the reader went.
@@ -111,28 +113,30 @@ function useCurrentSection(ids: string[]): { current: string; choose: (id: strin
       return undefined
     }
 
-    let gliding = true
-    const endGlide = () => {
-      gliding = false
-    }
-    let timer = setTimeout(endGlide, GLIDE_ENDS_AFTER)
-
-    const onScroll = () => {
-      if (!gliding) {
-        setChosen(undefined)
-
-        return
+    const release = () => setChosen(undefined)
+    const onKey = (event: KeyboardEvent) => {
+      if (KEYS_THAT_SCROLL.has(event.key)) {
+        release()
       }
-
-      clearTimeout(timer)
-      timer = setTimeout(endGlide, GLIDE_ENDS_AFTER)
+    }
+    /* The bar at the edge of the window answers a press as the page itself (`html`), as nothing the
+       page draws does; a press on the text or on a link is not the reader moving the page. */
+    const onPointer = (event: PointerEvent) => {
+      if (event.target === document.documentElement) {
+        release()
+      }
     }
 
-    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('wheel', release, { passive: true })
+    window.addEventListener('touchmove', release, { passive: true })
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('pointerdown', onPointer)
 
     return () => {
-      clearTimeout(timer)
-      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('wheel', release)
+      window.removeEventListener('touchmove', release)
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('pointerdown', onPointer)
     }
   }, [chosen])
 
