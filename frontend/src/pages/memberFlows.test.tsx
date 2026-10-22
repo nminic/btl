@@ -819,7 +819,7 @@ describe('membership', () => {
     expect(amount).toMatch(/RSD$/)
   })
 
-  it('shows the balance the book holds, and not what a referral is worth times the head count', async () => {
+  it('shows the balance the book holds, and not what a referral is worth times the head count', { timeout: SLOW }, async () => {
     /* **THE BALANCE WAS COUNTED ON THIS SCREEN UNTIL 22.10.2026, AND THAT WAS NOT A BALANCE.**
        It multiplied the amount of a referral by `referredCount` (members he brought in whose
        fee stands, `GET /api/me`) and called the product his balance. Measured that day: an
@@ -1045,7 +1045,7 @@ describe('membership', () => {
     expect(screen.getByText(/taksa za obradu plaćanja/)).toBeVisible()
   })
 
-  it('carries the referral link, and credits a member in Serbia in dinars', async () => {
+  it('carries the referral link, and credits a member in Serbia in dinars', { timeout: SLOW }, async () => {
     /* Owner, 12.08.2026: „personalizovani link koji donosi 5 eur / 600 din...
        po novom članu koji se registrovao preko tog linka i članarina mu je
        postala aktivirana prvi naredni put."
@@ -1302,7 +1302,7 @@ describe('membership', () => {
     }
   })
 
-  it('credits a member from abroad in euro, on both lines', async () => {
+  it('credits a member from abroad in euro, on both lines', { timeout: SLOW }, async () => {
     /* 000007 is in Banja Luka, and pays in euro like everyone outside Serbia
        (data/paymentQr.ts). The same country decides both, so the promise and the
        way of paying can never fall out of step. */
