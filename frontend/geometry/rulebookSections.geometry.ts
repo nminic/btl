@@ -48,6 +48,9 @@ if (RULEBOOK === undefined) {
 const SECTIONS = RULEBOOK.sections
 const LAST = SECTIONS[SECTIONS.length - 1]?.heading ?? ''
 const BEFORE_LAST = SECTIONS[SECTIONS.length - 2]?.heading ?? ''
+const FIFTH = SECTIONS[4]?.heading ?? ''
+const EIGHTEENTH = '18. Dukati'
+const NINTH = SECTIONS[8]?.heading ?? ''
 
 /** The sample as it is: a last section a good deal shorter than a window. */
 const SHORT_LAST: Answers = { '/api/pages': PAGES }
@@ -117,6 +120,69 @@ async function pressed(page: Page, at: At, name: string): Promise<void> {
   }
 
   await link(page, name).click()
+  await atRest(page)
+}
+
+/** Starts writing down every link of the list that is marked from now on, in the order it happens. */
+async function watchTheMarker(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const gained: string[] = []
+
+    new MutationObserver((changes) => {
+      for (const change of changes) {
+        const target = change.target
+
+        if (
+          target instanceof HTMLAnchorElement &&
+          target.hasAttribute('aria-current') &&
+          target.closest('nav[aria-label="Na ovoj strani"]') !== null
+        ) {
+          gained.push(target.getAttribute('href') ?? '')
+        }
+      }
+    }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['aria-current'] })
+    Object.assign(window, { gainedTheMark: gained })
+  })
+}
+
+/** Every link marked since `watchTheMarker`, without repeats: a section that was passed on the way and
+ *  marked for an instant is in it, which the mark a page ends on does not say. */
+async function marksSinceWatching(page: Page): Promise<string[]> {
+  const gained = await page.evaluate(() => {
+    const seen: unknown = Reflect.get(window, 'gainedTheMark')
+
+    return Array.isArray(seen) ? seen.map(String) : null
+  })
+
+  if (gained === null) {
+    throw notMeasured('the marks were not being written down')
+  }
+
+  return [...new Set(gained)]
+}
+
+/** The same press, with the page's own thread held for `stall` milliseconds, six times, as soon as it is made:
+ *  the glide goes on in the browser, and the scroll events it makes arrive late, which is what a
+ *  slow phone or a busy page does to them. A pause between two scroll events is not the end of a glide. */
+async function pressedWhileTheThreadIsBusy(page: Page, at: At, name: string, stall: number): Promise<void> {
+  if (at.width < BEHIND_A_BUTTON) {
+    await page.getByRole('button', { name: 'Sekcije pravilnika' }).click()
+  }
+
+  await link(page, name).click()
+
+  // Held and let go again a few times: the glide is long, and one pause is easily the one before it starts.
+  for (let round = 0; round < 6; round += 1) {
+    await page.evaluate((hold) => {
+      const until = performance.now() + hold
+
+      while (performance.now() < until) {
+        // held
+      }
+    }, stall)
+    await page.waitForTimeout(60)
+  }
+
   await atRest(page)
 }
 
@@ -215,4 +281,47 @@ for (const at of WIDTHS) {
     await alignedAtTheLine(page, 0)
     await expect(marked(page)).toHaveAttribute('href', `#${await sectionAtTheLine(page)}`)
   })
+}
+
+/* The second press is the one that was not asked at first: from the top the glide starts at rest, and
+ * from another section it starts moving, and a reader presses links one after another. */
+for (const at of WIDTHS) {
+  for (const [from, name] of [
+    ['the top', undefined],
+    [FIFTH, FIFTH],
+    [NINTH, NINTH],
+  ] as const) {
+    test(`a press marks its section whether it was made from ${from === FIFTH ? 'the fifth' : from === NINTH ? 'the ninth' : 'the top'}, ${label(at)}`, async ({ open: opener }) => {
+      const page = await open(opener, at, SHORT_LAST)
+
+      if (name !== undefined) {
+        await pressed(page, at, name)
+      }
+
+      await watchTheMarker(page)
+      await pressed(page, at, EIGHTEENTH)
+      await expect(marked(page)).toHaveCount(1)
+      await expect(link(page, EIGHTEENTH), 'the section pressed').toHaveAttribute('aria-current', 'location')
+      expect(await marksSinceWatching(page), 'no other section was marked on the way').toEqual(['#18-dukati'])
+    })
+
+    test(`a press marks its section when the scroll events of the glide come late, from ${from === FIFTH ? 'the fifth' : from === NINTH ? 'the ninth' : 'the top'}, ${label(at)}`, async ({ open: opener }) => {
+      const page = await open(opener, at, SHORT_LAST)
+
+      // Whether the glide is held up depends on when the browser draws, so it is asked four times.
+      for (let again = 0; again < 4; again += 1) {
+        await scrollTo(page, 0)
+
+        if (name !== undefined) {
+          await pressed(page, at, name)
+        }
+
+        await watchTheMarker(page)
+        await pressedWhileTheThreadIsBusy(page, at, EIGHTEENTH, 250)
+        await expect(marked(page)).toHaveCount(1)
+        await expect(link(page, EIGHTEENTH), 'the section pressed').toHaveAttribute('aria-current', 'location')
+        expect(await marksSinceWatching(page), 'no other section was marked on the way').toEqual(['#18-dukati'])
+      }
+    })
+  }
 }
