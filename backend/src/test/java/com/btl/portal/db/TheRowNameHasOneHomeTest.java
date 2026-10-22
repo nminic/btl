@@ -159,7 +159,7 @@ class TheRowNameHasOneHomeTest extends DatabaseTest {
 	void everyNameThePortalPrintsIsTheNameTheTableHolds() {
 		assertThat(namesTheTableHolds())
 				.as("what frontend/src/i18n/sr.json prints under pricing.rows - the first column of"
-						+ " the price table a visitor reads under the article „Cena, rokovi i oslobađanje od članarine" - is not what price_row.label"
+						+ " the price table a visitor reads under the article „Cena, rokovi i oslobađanje od članarine\" - is not what price_row.label"
 						+ " holds, so the name has two homes that disagree")
 				.containsAllEntriesOf(namesThePortalShips());
 	}
