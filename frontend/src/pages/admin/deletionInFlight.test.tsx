@@ -106,10 +106,10 @@ const SCREENS: Screen[] = [
     role: 'superadmin',
     ask: first,
     /* THE MEMBERS' OWN QUESTION since 22.10.2026 (PDL „Brisanje člana na ekranu članova": „potvrda umesto
-       „Sigurno?" kaže „Obriši člana?""), with the name of the row in the confirming button's name. */
+       „Sigurno?" kaže „Obriši člana?" uz dugmad „Obriši" i „Odustani""): the confirming button is named by whom it deletes. */
     words: {
       open: 'Obriši: {name}',
-      sure: 'Obriši člana? {name}',
+      sure: 'Obriši člana: {name}',
       keep: 'Odustani od brisanja: {name}',
     },
   },

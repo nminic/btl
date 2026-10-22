@@ -19,7 +19,8 @@ import type { Answers, At } from './support/harness.ts'
  * 2. **A press three pixels under the lowest of the other actions of a row lands on nothing of the
  *    deletion**, found by what Chrome says stands at that point and not by the numbers above.
  * 3. **The question, once asked, fits**: the page does not scroll sideways at any width, and the two
- *    buttons are inside the window. It says „Obriši člana?" and „Odustani".
+ *    buttons are inside the window. The question is a sentence, „Obriši člana?", beside the two buttons
+ *    „Obriši" and „Odustani" (the review the owner chose).
  * 4. **After the deletion the sentence is on the screen**, in a box of its own that is not clipped to a
  *    pixel (`visually-hidden`), inside the window.
  */
@@ -134,12 +135,15 @@ for (const at of WIDTHS) {
     await cross.scrollIntoViewIfNeeded()
     await cross.click()
 
-    const sure = page.getByRole('button', { name: `Obriši člana? ${name}` })
+    const sure = page.getByRole('button', { name: `Obriši člana: ${name}` })
     const keep = page.getByRole('button', { name: `Odustani od brisanja: ${name}` })
 
     await sure.waitFor({ state: 'visible' })
 
-    expect(await sure.textContent()).toBe('Obriši člana?')
+    expect(await sure.textContent()).toBe('Obriši')
+    /* The question is a sentence of its own beside them, and not on a button. */
+    await expect(page.getByText('Obriši člana?')).toBeVisible()
+    expect(await page.getByText('Obriši člana?').evaluate((one) => one.closest('button') === null)).toBe(true)
     expect(await keep.textContent()).toBe('Odustani')
     await expect(page.getByRole('button', { name: /^Potvrdi brisanje/ })).toHaveCount(0)
 
@@ -150,24 +154,34 @@ for (const at of WIDTHS) {
         return box === undefined ? false : box.left >= 0 && box.right <= document.documentElement.clientWidth
       }
       const root = document.documentElement
-      const buttons = [...document.querySelectorAll('table.members-table button')].filter(
-        (one) => (one.textContent ?? '').trim() === 'Obriši člana?' || (one.textContent ?? '').trim() === 'Odustani',
+      /* Only the row that asks: every other row still has its cross, whose word is „Obriši" too. */
+      const asking = [...document.querySelectorAll('table.members-table .entity-row-note')]
+        .find((one) => (one.textContent ?? '').trim() === 'Obriši člana?')
+        ?.closest('tr')
+      const buttons = [...(asking?.querySelectorAll('button') ?? [])].filter(
+        (one) => (one.textContent ?? '').trim() === 'Obriši' || (one.textContent ?? '').trim() === 'Odustani',
+      )
+      const sentence = [...document.querySelectorAll('table.members-table .entity-row-note')].filter(
+        (one) => (one.textContent ?? '').trim() === 'Obriši člana?',
       )
 
       return {
         sideways: Math.max(0, root.scrollWidth - root.clientWidth),
         buttons: buttons.length,
-        inside: buttons.every((one) => inside(one)),
+        inside: buttons.every((one) => inside(one)) && sentence.every((one) => inside(one)),
+        sentences: sentence.length,
       }
     })
 
     expect(asked.buttons).toBe(2)
+    expect(asked.sentences).toBe(1)
+
+    /* The page does not scroll sideways at any text size; the buttons and the sentence stand inside the
+       window at the ordinary one (at 200% the table's box may scroll, PDL P24). */
+    expect(asked.sideways).toBe(0)
 
     if (at.text === 100) {
-      expect(asked.sideways).toBe(0)
-      expect(asked.inside, 'both buttons are inside the window').toBe(true)
-    } else {
-      expect(asked.sideways).toBe(0)
+      expect(asked.inside, 'the sentence and both buttons are inside the window').toBe(true)
     }
 
     await sure.click()

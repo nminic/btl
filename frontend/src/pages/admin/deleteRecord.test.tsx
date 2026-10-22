@@ -476,15 +476,15 @@ describe('the question about deleting a record', () => {
 
     const SAYS = {
       named: 'Obriši: Probni tim',
-      sure: 'Obriši člana?',
-      sureNamed: 'Obriši člana? Probni tim',
+      sure: 'Obriši',
+      sureNamed: 'Obriši člana: Probni tim',
       keepNamed: 'Odustani od brisanja: Probni tim',
     }
 
-    function drawWith(words: Parameters<typeof DeleteRecord>[0]['words']) {
+    function drawWith(words: Parameters<typeof DeleteRecord>[0]['words'], asksWith?: string) {
       return render(
         <I18nProvider locale="sr">
-          <DeleteRecord name="Probni tim" onDelete={vi.fn()} words={words} />
+          <DeleteRecord name="Probni tim" onDelete={vi.fn()} words={words} asksWith={asksWith} />
         </I18nProvider>,
       )
     }
@@ -505,15 +505,18 @@ describe('the question about deleting a record', () => {
       )
     })
 
-    it('asks in the words it is given, the confirming button called by what it is given', async () => {
+    it('asks in the words it is given: a sentence beside two buttons, the confirming one called by what it is given', async () => {
       const user = setupUser()
 
-      drawWith({ ...SAYS, word: 'Obriši' })
+      drawWith({ ...SAYS, word: 'Obriši' }, 'Obriši člana?')
       await user.click(screen.getByRole('button', { name: 'Obriši: Probni tim' }))
 
-      expect(screen.getByRole('button', { name: 'Obriši člana? Probni tim' })).toHaveTextContent(
-        /^Obriši člana\?$/,
-      )
+      const sure = screen.getByRole('button', { name: 'Obriši člana: Probni tim' })
+
+      /* The question is the sentence, and the button says only the word. */
+      expect(sure).toHaveTextContent(/^Obriši$/)
+      expect(screen.getByText('Obriši člana?').closest('button')).toBeNull()
+      expect(sure).toHaveAccessibleDescription('Obriši člana?')
       expect(screen.getByRole('button', { name: 'Odustani od brisanja: Probni tim' })).toBeVisible()
     })
   })

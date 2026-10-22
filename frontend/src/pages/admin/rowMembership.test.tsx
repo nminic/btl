@@ -358,7 +358,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     const deleted = await rowOf(PAID)
 
     await user.click(within(deleted).getByRole('button', { name: 'Obriši: Ana Držić' }))
-    await user.click(within(deleted).getByRole('button', { name: 'Obriši člana? Ana Držić' }))
+    await user.click(within(deleted).getByRole('button', { name: 'Obriši člana: Ana Držić' }))
 
     expect(await screen.findByText('Član je obrisan.')).toBeInTheDocument()
 
@@ -825,7 +825,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
        deletion at a time, so it is the row pressed last that carries it. */
     async function refuseTheDeletionOf(row: HTMLElement, name: string) {
       await user.click(within(row).getByRole('button', { name: `Obriši: ${name}` }))
-      await user.click(within(row).getByRole('button', { name: `Obriši člana? ${name}` }))
+      await user.click(within(row).getByRole('button', { name: `Obriši člana: ${name}` }))
       expect(await within(row).findByText(refusedDeletion)).toBeInTheDocument()
     }
 

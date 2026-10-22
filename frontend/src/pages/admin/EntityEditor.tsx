@@ -810,6 +810,11 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    * other three lists take nothing else with them: a moderator, a team and a competition
    * are one row each, and a sentence saying „and nothing else" on every one of them is
    * noise on three screens to be honest on a fourth.
+   *
+   * <p>**The members' list says its question here as well** (owner, 22.10.2026, PDL „Brisanje člana na
+   * ekranu članova": „potvrda ... kaže „Obriši člana?" uz dugmad „Obriši" i „Odustani""): the question is
+   * the sentence and the confirming button says only „Obriši", so the sentence is what a reader is
+   * told before the button that cannot be undone, and it is read with it (`aria-describedby`).
    */
   asksWith?: string
   /**

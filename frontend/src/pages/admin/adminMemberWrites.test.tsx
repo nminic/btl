@@ -118,7 +118,7 @@ describe('the members screen', () => {
     const row = must(button.closest('tr'), `the row of ${name}`)
 
     await user.click(button)
-    await user.click(within(row).getByRole('button', { name: `Obriši člana? ${name}` }))
+    await user.click(within(row).getByRole('button', { name: `Obriši člana: ${name}` }))
 
     return row
   }
@@ -382,7 +382,7 @@ describe('the members screen', () => {
 
       await user.click(button)
       await user.click(
-        within(row).getByRole('button', { name: 'Delete the member? Ana Jovanović' }),
+        within(row).getByRole('button', { name: 'Delete the member: Ana Jovanović' }),
       )
 
       const alert = await within(row).findByRole('alert')
@@ -646,7 +646,7 @@ describe('the members screen', () => {
    * competitor appears in, so no later screen reads a row the server has forgotten - is held by
    * the cases above, one per resource, against the seven foreign keys `AdminMembers.tsx` names.
    */
-  it('asks „Obriši člana?" and not „Sigurno?", beside „Odustani", from a cross whose word is „Obriši"',
+  it('asks „Obriši člana?" as a sentence beside two buttons, „Obriši" and „Odustani", and not „Sigurno?"',
     async () => {
       const server = serving()
       const user = setupUser()
@@ -660,9 +660,15 @@ describe('the members screen', () => {
 
       await user.click(cross)
 
-      expect(within(row).getByRole('button', { name: 'Obriši člana? Ana Jovanović' })).toHaveTextContent(
-        /^Obriši člana\?$/,
-      )
+      /* THE QUESTION IS TEXT AND THE BUTTON SAYS ONLY „Obriši" (owner, 22.10.2026: „Potvrda: „Obriši
+         člana?" [Obriši] [Odustani]"). A button that carried the question and no sentence beside it
+         was the first reading and is the one this holds out. */
+      const sentence = within(row).getByText('Obriši člana?')
+      const sure = within(row).getByRole('button', { name: 'Obriši člana: Ana Jovanović' })
+
+      expect(sentence.closest('button')).toBeNull()
+      expect(sure).toHaveTextContent(/^Obriši$/)
+      expect(sure).toHaveAccessibleDescription('Obriši člana?')
       expect(within(row).getByRole('button', { name: 'Odustani od brisanja: Ana Jovanović' })).toHaveTextContent(
         /^Odustani$/,
       )

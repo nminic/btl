@@ -111,6 +111,17 @@
   margin-block-start: var(--space-20);
 }
 
+/* THE QUESTION BESIDE „Obriši" AND „Odustani" is a sentence and not a note: `.entity-row-note` is quiet,
+   as the events' „and N results with it" is, and this is what the reader answers. Under the deletion's own
+   block, so no other list's note changes. It takes a line of its own where the buttons need the room
+   (`.entity-row-actions` wraps). */
+.members-table__delete .entity-row-note {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+  align-self: center;
+}
+
 /* „Član je obrisan.", drawn while it is true and nothing at all while it is not: the box is on the page
    all the time so the words, when they arrive, are read (`AdminMembers.tsx`), and an empty one takes no
    room. */

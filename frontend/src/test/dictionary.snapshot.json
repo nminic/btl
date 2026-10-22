@@ -1469,8 +1469,8 @@
       "theAccountAdministers": "Nalog ovog člana administrira portal, pa se član ne može obrisati odavde."
     },
     "memberGone": "Član je obrisan.",
-    "memberDeleteSure": "Obriši člana?",
-    "memberDeleteSureNamed": "Obriši člana? {name}",
+    "memberDeleteAsk": "Obriši člana?",
+    "memberDeleteSureNamed": "Obriši člana: {name}",
     "recordPayment": "Upiši uplatu",
     "paymentRecorded": "Uplata je upisana.",
     "cancelMembership": "Storniraj",

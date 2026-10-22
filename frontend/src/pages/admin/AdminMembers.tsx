@@ -555,12 +555,16 @@ export function AdminMembers() {
                             <span className="entity-row-actions members-table__delete">
                               <DeleteRecord
                                 name={`${one.firstName} ${one.lastName}`}
+                                /* THE QUESTION IS A SENTENCE BESIDE THE TWO BUTTONS (owner, 22.10.2026, the
+                                   review he chose: „Potvrda: „Obriši člana?" [Obriši] [Odustani]"), and the
+                                   confirming button says „Obriši", named by whom it deletes. */
+                                asksWith={t('admin.memberDeleteAsk')}
                                 words={{
                                   named: t('admin.form.deleteNamed', {
                                     name: `${one.firstName} ${one.lastName}`,
                                   }),
                                   word: t('admin.form.delete'),
-                                  sure: t('admin.memberDeleteSure'),
+                                  sure: t('admin.form.delete'),
                                   sureNamed: t('admin.memberDeleteSureNamed', {
                                     name: `${one.firstName} ${one.lastName}`,
                                   }),
