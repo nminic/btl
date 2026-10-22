@@ -223,6 +223,57 @@ describe('the races a save of an event sends', () => {
     expect(bodyOfTheWriteTo(timed)).toContain('ascentM=700 descentM=400')
   }, SLOW)
 
+  /**
+   * A NEW RACE MADE A RACE ON TIME GOES OUT WITH NO CLIMB AND NO FALL, WHATEVER WAS TYPED INTO THEM FIRST (owner,
+   * 22.10.2026, PDL „Nov red prebačen u trku na vreme: uspon i spust idu na 0"; review of PR 622, which typed a
+   * climb into a new row of a length, made it a race on time and saw the climb go out). Typed as 300 and 200,
+   * which nothing of the setup holds, so a number carried out of sight is a different answer from nought.
+   */
+  it('sends nought for the climb and the fall typed into a new race before it was made a race on time', async () => {
+    const user = await open()
+
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    /* The new row is the last of the table, and every row has a kind, the race on time included. */
+    const at = String(screen.getAllByLabelText(/^Vrsta, /).length)
+
+    await user.type(screen.getByLabelText(`Dužina (km), ${at}. trka`), '10')
+    await user.type(screen.getByLabelText(`Uspon (m), ${at}. trka`), '300')
+    await user.type(screen.getByLabelText(`Spust (m), ${at}. trka`), '200')
+    await user.selectOptions(screen.getByLabelText(`Vrsta, ${at}. trka`), 'time')
+    await user.type(screen.getByLabelText(`Trajanje (h), ${at}. trka`), '6')
+    await save(user)
+
+    const made = must(
+      whatWasSent(server.asked).find((one) => one.startsWith('POST /api/races |')),
+      'the new race',
+    )
+
+    expect(made).toContain('kind=time')
+    expect(made).toContain('ascentM=0 descentM=0')
+  }, SLOW)
+
+  /**
+   * AND A COPY OF AN EVENT KEEPS THE CLIMB AND THE FALL OF ITS RACE ON TIME, which it copied and which the
+   * owner counts as written (22.10.2026: „Trka iz kopije događaja čuva prepisan uspon i spust kao upisan, i kad
+   * se sačuva kao trka na vreme"). A copy has no identity either, so this is the case that tells it from a new
+   * row.
+   */
+  it('sends the climb and the fall a race on time was copied with, in a copy of its event', async () => {
+    const user = setupUser()
+
+    renderAt(`${THE_LIST}?kopija=${String(event.id)}`, 'superadmin', '000001')
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await save(user)
+
+    const copied = must(
+      whatWasSent(server.asked).find((one) => one.startsWith('POST /api/races |') && one.includes('kind=time')),
+      'the copy of the race on time',
+    )
+
+    expect(copied).toContain('ascentM=500 descentM=400')
+  }, SLOW)
+
   it('sends a race of a length with the climb and the fall it has, as it always did', async () => {
     const user = await open()
 

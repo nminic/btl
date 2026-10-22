@@ -82,6 +82,7 @@ describe('what a race being written carries', () => {
     distanceKm: '21.1',
     ascentM: '120',
     descentM: '110',
+    copied: false,
   }
 
   it('reads the numbers back out of the text the row keeps, and names its event', () => {

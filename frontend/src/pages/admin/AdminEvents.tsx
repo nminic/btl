@@ -541,6 +541,7 @@ export function AdminEvents() {
               return rowsOf(racesUnder(allRaces, String(source.id)), fieldDate).map((row) => ({
                 ...row,
                 id: '',
+                copied: true,
                 date: fieldDate(shiftDate(isoDate(row.date), by)),
               }))
             }

@@ -81,6 +81,19 @@ export type RaceRow = {
   distanceKm: string
   ascentM: string
   descentM: string
+  /**
+   * WHETHER THE ROW IS A COPY OF A RACE OF ANOTHER EVENT (`AdminEvents.tsx`, `copiedRows`), which has no
+   * identity until it is written and yet carries what a race on the server holds.
+   *
+   * <p>One of the three places a row comes from, and the only one its identity does not tell apart: a
+   * row read off a race has the race's identity (`rowsOf`), a row added with „Nova trka" has none
+   * (`newRaceRow`), and a copy has none either. What it decides is the climb and the fall of a row
+   * that becomes a race on time (`aKindChosen`): the owner's decision of 22.10.2026 (PDL „Nov red
+   * prebačen u trku na vreme: uspon i spust idu na 0") keeps what the server holds and empties what was
+   * typed into a new row, and his answer of the same day, „Trka iz kopije događaja čuva prepisan uspon
+   * i spust kao upisan, i kad se sačuva kao trka na vreme", puts the copy with the server.
+   */
+  copied: boolean
 }
 
 /** The rows an event opens with: its races, in the order they are run. */
@@ -124,6 +137,7 @@ export function newRaceRow(eventName: string, eventDate: string): RaceRow {
     distanceKm: '',
     ascentM: '',
     descentM: '',
+    copied: false,
   }
 }
 
@@ -142,7 +156,32 @@ export function rowsOf(races: RaceOfRow[], fieldDate: (iso: string) => string): 
       distanceKm: String(race.distanceKm),
       ascentM: String(race.ascentM),
       descentM: String(race.descentM),
+      copied: false,
     }))
+}
+
+/**
+ * WHAT A ROW BECOMES WHEN ITS KIND IS CHOSEN, which is the kind and, for a NEW row made a race on time,
+ * an empty climb and fall.
+ *
+ * <p>The owner, 22.10.2026 (PDL „Nov red prebačen u trku na vreme: uspon i spust idu na 0", chosen
+ * between the outcomes offered): „Odluka od 21.10.2026 (trka na vreme čuva upisan uspon) važi samo za
+ * uspon već upisan na serveru; ono što je otkucano u novom redu pre promene vrste se briše." A race on
+ * time does not draw its climb and its fall (`measuresOf`) and writes what its row holds
+ * (`climbOrFall`), so a number typed into a new row of a length stayed in the row out of sight and went
+ * out with the race on time (review of PR 622). It is emptied here, at the change of the kind, so the
+ * row holds what the race will hold and nothing else: written once as nought, and a row that is
+ * written learns its identity and from then on keeps what it holds like any other race on the server.
+ *
+ * <p><b>A new row is one with no identity that is not a copy.</b> A row read off a race keeps its climb
+ * (ADL „Trka na vreme zadržava upisan uspon i spust"), and so does one whose climb the administrator
+ * changed through the kind (owner, 22.10.2026: „Upisanoj trci kojoj admin promeni uspon pa je prebaci u
+ * trku na vreme čuva se otkucani uspon (kao danas)"); a copy keeps what it copied (`copied`). Only the
+ * change to a race on time empties: a free race draws and writes neither, and one of a length draws
+ * both, so on either the cells are left as they stand.
+ */
+export function aKindChosen(row: Pick<RaceRow, 'id' | 'copied'>, kind: RaceKind): Partial<RaceRow> {
+  return row.id === '' && !row.copied && kind === 'time' ? { kind, ascentM: '', descentM: '' } : { kind }
 }
 
 /** Every measure a row carries, in the order the table draws them. A list rather
@@ -544,7 +583,10 @@ export type StoredRace = {
  * what its ROW holds as well</b>, and not nought as it did until that day: the table does not draw
  * the two for a timed race (`measuresOf`), so a row read off a race (`rowsOf`) carries the served
  * climb unchanged and that is what goes back, while one the administrator changed (through the kind,
- * which is the only way to reach the cell) goes with the new number. Only a number the table would
+ * which is the only way to reach the cell) goes with the new number. A NEW row holds no climb by then:
+ * what was typed into it is emptied when it is made a race on time (`aKindChosen`, owner, 22.10.2026),
+ * so what a row on time holds is what the server holds, what a copy copied, or what was typed over a
+ * race that is written. Only a number the table would
  * itself have accepted goes, since nothing checks a cell that is not drawn (`isBounded`): a text
  * that is not a number or lies outside its bounds is nought, as it was for every timed race before.
  * A free race carries none (PDL 17.10.2026, `measuresOf`).
