@@ -71,7 +71,7 @@ for (const at of WIDTHS) {
         const over = buttons.filter((one) => one !== own)
 
         if (own === undefined) {
-          return { name: row.textContent ?? '', over: over.length, gap: null, landsOnIt: null }
+          return { name: row.textContent ?? '', over: over.length, gap: null, landsOnIt: null, shift: null }
         }
 
         const lowest = over.reduce<HTMLElement | null>(
@@ -80,7 +80,7 @@ for (const at of WIDTHS) {
         )
 
         if (lowest === null) {
-          return { name: row.textContent ?? '', over: 0, gap: null, landsOnIt: null }
+          return { name: row.textContent ?? '', over: 0, gap: null, landsOnIt: null, shift: null }
         }
 
         const above = lowest.getBoundingClientRect()
@@ -93,6 +93,9 @@ for (const at of WIDTHS) {
           over: over.length,
           gap: below.top - above.bottom,
           landsOnIt: hit !== null && (hit === own || own.contains(hit)),
+          /* Where the two stand across: the deletion ends where the actions over it end, as it did when
+             it stood in their line, and does not start at the other side of the cell. */
+          shift: Math.abs(below.right - above.right),
         }
       })
     })
@@ -105,6 +108,7 @@ for (const at of WIDTHS) {
     for (const one of seen) {
       expect(one.gap, `the distance over the deletion of ${one.name}`).toBeGreaterThanOrEqual(LEAST_APART)
       expect(one.landsOnIt, `a press 3px under the action over ${one.name} lands on its deletion`).toBe(false)
+      expect(one.shift, `the deletion of ${one.name} stands under the actions over it, not across from them`).toBeLessThanOrEqual(1)
     }
   })
 }

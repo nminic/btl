@@ -459,6 +459,21 @@ describe('the question about deleting a record', () => {
      „Brisanje člana na ekranu članova"): the pointer's box says „Obriši" and the button is called „Obriši:
      {name}". Left out, the box says what the button is called, as it did for the rating. */
   describe('the words of the question', () => {
+    /* WHERE NO WORDS ARE GIVEN the question is the portal's own, and says „Sigurno?": the members' list
+       is the one screen whose confirmation changed on 22.10.2026, and the seven others that draw this
+       component (four lists of the administration, the team's page, a result on the page of its event
+       and a member's own results) hear what they always heard. The owner will decide on them later. */
+    it('says „Sigurno?" on the confirming button where no words are given', async () => {
+      const user = setupUser()
+
+      draw(vi.fn())
+      await ask(user)
+
+      expect(screen.getByRole('button', { name: 'Potvrdi brisanje: Probni tim' })).toHaveTextContent(
+        /^Sigurno\?$/,
+      )
+    })
+
     const SAYS = {
       named: 'Obriši: Probni tim',
       sure: 'Obriši člana?',

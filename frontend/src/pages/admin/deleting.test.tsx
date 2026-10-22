@@ -66,6 +66,13 @@ describe('a record entered during this visit and then deleted', () => {
     expect(table().getAllByRole('row')).toHaveLength(before + 1)
 
     await user.click(table().getByRole('button', { name: 'Obriši: Probni tim' }))
+
+    /* The teams' list is one of the seven screens that keep the portal's „Sigurno?" (the members' list
+       changed on 22.10.2026, PDL „Brisanje člana na ekranu članova", and only it). */
+    expect(table().getByRole('button', { name: 'Potvrdi brisanje: Probni tim' })).toHaveTextContent(
+      /^Sigurno\?$/,
+    )
+
     await user.click(table().getByRole('button', { name: 'Potvrdi brisanje: Probni tim' }))
 
     expect(table().queryByText('Probni tim')).not.toBeInTheDocument()

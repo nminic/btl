@@ -646,6 +646,31 @@ describe('the members screen', () => {
    * competitor appears in, so no later screen reads a row the server has forgotten - is held by
    * the cases above, one per resource, against the seven foreign keys `AdminMembers.tsx` names.
    */
+  it('asks „Obriši člana?" and not „Sigurno?", beside „Odustani", from a cross whose word is „Obriši"',
+    async () => {
+      const server = serving()
+      const user = setupUser()
+      renderAt('/sr/administracija/clanovi', 'superadmin')
+
+      const cross = await screen.findByRole('button', { name: 'Obriši: Ana Jovanović' })
+      const row = must(cross.closest('tr'), 'the row of Ana Jovanović')
+
+      /* The word the cross shows on the pointer is „Obriši", the name is the longer one. */
+      expect(cross).toHaveTextContent(/^Obriši$/)
+
+      await user.click(cross)
+
+      expect(within(row).getByRole('button', { name: 'Obriši člana? Ana Jovanović' })).toHaveTextContent(
+        /^Obriši člana\?$/,
+      )
+      expect(within(row).getByRole('button', { name: 'Odustani od brisanja: Ana Jovanović' })).toHaveTextContent(
+        /^Odustani$/,
+      )
+      expect(screen.queryByText('Sigurno?')).toBeNull()
+
+      server.stop()
+    }, SLOW)
+
   it('says one sentence out loud once a member is gone, and moves the focus off the row',
     async () => {
       const server = serving()
