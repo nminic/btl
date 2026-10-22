@@ -111,15 +111,25 @@
   margin-block-start: var(--space-20);
 }
 
-/* THE QUESTION BESIDE „Obriši" AND „Odustani" is a sentence and not a note: `.entity-row-note` is quiet,
-   as the events' „and N results with it" is, and this is what the reader answers. Under the deletion's own
-   block, so no other list's note changes. It takes a line of its own where the buttons need the room
-   (`.entity-row-actions` wraps). */
+/* THE QUESTION TAKES THE PLACE OF THE CROSS, AND THE TWO BUTTONS STAND UNDER IT (review of PR 632, high:
+   „dvoklik na krstić briše člana na 768, 560 i 900"). The first press of a double press opens the question
+   and the second lands where the pointer is, so what stands on the cross's place after the first must
+   do nothing when it is pressed. The sentence is a line of its own as tall as the cross (`2rem`, the
+   square's own height, `components/ActionButton.css`) and as wide as the block, set to the right where
+   the cross was, so the buttons start on the row under it at every width and never where the pointer is:
+   „Obriši" to the left of „Odustani", which takes the right edge where the cross stood. A press on the
+   sentence does nothing, it being text. Under the deletion's own block, so no other list's note changes.
+   `.entity-row-note` is quiet where the events' „and N results with it" is, and this is what the reader
+   answers, so it is as loud as the words of the table. */
 .members-table__delete .entity-row-note {
+  flex: 0 0 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-block-size: 2rem;
   color: var(--text);
   font-size: 1rem;
   font-weight: 700;
-  align-self: center;
 }
 
 /* „Član je obrisan.", drawn while it is true and nothing at all while it is not: the box is on the page

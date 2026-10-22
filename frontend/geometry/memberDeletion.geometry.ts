@@ -215,3 +215,136 @@ for (const at of WIDTHS) {
     await expect(page.getByRole('button', { name: `Obriši: ${name}` })).toHaveCount(0)
   })
 }
+
+/**
+ * A DOUBLE PRESS ON THE CROSS DELETES NOBODY, AT ANY WIDTH (review of PR 632, high; measured: at 768, 560
+ * and 900 the confirming „Obriši" stood exactly under the cross after the first press, so a real
+ * `dblclick` sent `DELETE /api/competitors/000001?account=delete` and said „Član je obrisan.").
+ *
+ * The first press of a double press opens the question; the second lands where the pointer is. So the
+ * place of the cross must be taken by something that does nothing when pressed (the sentence), at EVERY
+ * width and on every shape of the record, because the widths where the question wrapped differently were
+ * found between the ones that were asked: every 40px from 360 to 1280, and 360 at 200% text. Four
+ * shapes of the record (the exemption, a payment, the balance, nothing), and the two a moderator makes
+ * (the record after a cancellation, and after the exemption is granted again), each pressed twice in
+ * quick succession by `dblclick` and by two presses one after the other.
+ *
+ * Asked of Chrome by what really happens: the requests that left the page and the sentence on it, never
+ * by where the two buttons stand.
+ */
+const SHAPES = (() => {
+  const members = sample<Record<string, unknown>[]>('members')
+
+  return members.map((one, index) => {
+    if (index === 1) {
+      return { ...one, membershipBasis: 'payment', seasons: [{ season: 2027, basis: 'payment' }] }
+    }
+
+    if (index === 2) {
+      return { ...one, membershipBasis: 'balance', seasons: [{ season: 2027, basis: 'balance' }] }
+    }
+
+    return one
+  })
+})()
+
+const SWEEP: At[] = [
+  ...Array.from({ length: 24 }, (_, step): At => ({ width: 360 + step * 40, text: 100 })),
+  { width: 360, text: 200 },
+]
+
+for (const at of SWEEP) {
+  test(`a double press on the cross deletes nobody, on every shape of the record, at ${label(at)}`, async ({
+    open,
+  }) => {
+    let members: Record<string, unknown>[] = SHAPES.map((one) => ({ ...one }))
+    const { page } = await open(at, '/sr/administracija/clanovi', 'table.members-table tbody tr', ANSWERS)
+    const deletions: string[] = []
+
+    await page.route('**/api/competitors/*', (route) => {
+      if (route.request().method() === 'DELETE') {
+        deletions.push(route.request().url())
+
+        return route.fulfill({ status: 200, json: {} })
+      }
+
+      return route.fallback()
+    })
+    await page.route('**/api/members', (route) =>
+      route.request().method() === 'GET' ? route.fulfill({ status: 200, json: members }) : route.fallback(),
+    )
+    await page.route('**/api/members/*', (route) => route.fulfill({ status: 200, json: {} }))
+
+    /* Read the list again under the routes above, so that the screen shows what they serve. */
+    await page.reload()
+    await page.locator('table.members-table tbody tr').first().waitFor({ state: 'visible' })
+    await page.getByRole('combobox').first().selectOption('all')
+
+    const numbers = SHAPES.map((one) => String(one.memberNumber))
+    const rowOf = (number: string) => page.locator('table.members-table tbody tr', { hasText: number }).first()
+
+    /* The cross of a row pressed twice, two ways, and the question put away after each. */
+    async function pressTwice(number: string, what: string) {
+      for (const how of ['dblclick', 'two presses'] as const) {
+        const cross = rowOf(number).getByRole('button', { name: /^Obriši: / })
+
+        await cross.scrollIntoViewIfNeeded()
+
+        if (how === 'dblclick') {
+          await cross.dblclick()
+        } else {
+          const box = await cross.boundingBox()
+
+          if (box === null) {
+            throw new Error(`the cross of ${number} has no box`)
+          }
+
+          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+          await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+        }
+
+        await page.waitForTimeout(150)
+
+        expect(deletions, `${how} on the cross of ${number} (${what}) sent a deletion`).toEqual([])
+        await expect(page.getByText('Član je obrisan.')).toHaveCount(0)
+
+        /* Measured is not assumed: the question really was asked by the first press. */
+        await expect(rowOf(number).getByText('Obriši člana?')).toBeVisible()
+
+        await rowOf(number).getByRole('button', { name: /^Odustani/ }).click()
+        await expect(rowOf(number).getByText('Obriši člana?')).toHaveCount(0)
+      }
+    }
+
+    for (const [index, number] of numbers.slice(0, 4).entries()) {
+      await pressTwice(number, ['the exemption', 'a payment', 'the balance', 'the exemption'][index] ?? '')
+    }
+
+    /* A row that holds nothing: the first of the sample that does not. */
+    const empty = numbers.find((number, index) => SHAPES[index]?.membershipBasis === undefined)
+
+    if (empty !== undefined) {
+      await pressTwice(empty, 'nothing')
+    }
+
+    /* AFTER A CANCELLATION: the record of the first row loses its season, which is what the screen
+       draws once the route has answered, and the row is laid out again. */
+    const first = numbers[0] ?? ''
+    const was = { ...(SHAPES[0] ?? {}) }
+
+    members = members.map((one) =>
+      one.memberNumber === first ? { ...one, membershipBasis: undefined, membershipSeason: undefined, seasons: [] } : one,
+    )
+    await rowOf(first).getByRole('button', { name: 'Storniraj' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Da' }).click()
+    await rowOf(first).getByRole('button', { name: 'Odobri oslobođenje' }).waitFor({ state: 'visible' })
+    await pressTwice(first, 'after a cancellation')
+
+    /* AND AFTER THE EXEMPTION IS GRANTED AGAIN. */
+    members = members.map((one) => (one.memberNumber === first ? { ...was } : one))
+    await rowOf(first).getByRole('button', { name: 'Odobri oslobođenje' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Da' }).click()
+    await rowOf(first).getByRole('button', { name: 'Storniraj' }).waitFor({ state: 'visible' })
+    await pressTwice(first, 'after the exemption was granted again')
+  })
+}
