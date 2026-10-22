@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, configure, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Locale } from '../../i18n/config'
@@ -12,6 +12,7 @@ import {
   serverThat,
   type Asked,
 } from '../../test/serverAnswers'
+import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
 import { WhatTheServerSaid } from '../admin/WhatTheServerSaid'
 import { ServerSaid } from './ServerSaid'
@@ -38,6 +39,11 @@ const SENTENCE =
 const OPEN = 'Otvori u novoj kartici'
 
 const CHALLENGE = 'Basic realm="restricted"'
+
+/* HALF OF A CASE'S CLOCK FOR EVERY WAIT, as `pages/admin/saveWhileSaving.test.tsx` does it: a sentence
+   that is never drawn then fails as „Unable to find" on the assertion, with the case's own `SLOW`
+   still to spare, and not as a case that ran out of time having said nothing. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 let server: { asked: Asked[]; stop: () => void } | null = null
 
@@ -186,7 +192,7 @@ describe('on the screens', () => {
     } finally {
       vi.restoreAllMocks()
     }
-  })
+  }, SLOW)
 
   it('says the site is locked and not that the password was wrong, when it is the sign-in that was answered', async () => {
     server = serverThat((path) => (path === '/api/sign-in' ? theProxyAnswer() : null))
@@ -200,7 +206,7 @@ describe('on the screens', () => {
 
     expect(await screen.findByText(SENTENCE)).toBeInTheDocument()
     expect(screen.queryByText(sr.signIn.refused)).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('still says the password was wrong when the portal itself answered 401, which carries no challenge', async () => {
     /* The cell beside the one above, and the reason the challenge is read: the number is the same. */
@@ -215,5 +221,5 @@ describe('on the screens', () => {
 
     expect(await screen.findByText(sr.signIn.refused)).toBeInTheDocument()
     expect(screen.queryByText(SENTENCE)).not.toBeInTheDocument()
-  })
+  }, SLOW)
 })

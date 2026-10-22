@@ -5,7 +5,7 @@ import en from '../../i18n/en.json'
 import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
 import { sources, WHOLE_PORTAL } from '../../test/sources'
-import { whatABareNumberSays } from './serverWords'
+import { whatABareNumberSays, wordsFor } from './serverWords'
 
 /**
  * WHICH SENTENCE A BARE NUMBER GETS, AND THAT THERE IS ONE PLACE THAT DECIDES IT.
@@ -107,6 +107,24 @@ describe('which sentence a bare number gets', () => {
       expect(dictionary.server.wrong).toContain('{status}')
       expect(dictionary.server.malformed).not.toContain('{status}')
     }
+  })
+})
+
+describe('the sentence for a site that is locked', () => {
+  it.each([
+    ['sr', sr],
+    ['en', en],
+  ] as const)('is the same in %s whatever the screen’s own route could say', (locale, dictionary) => {
+    const t = (key: string, params?: Record<string, string | number>): string =>
+      translate(dictionary, locale, key, params)
+
+    /* Owner, 22.10.2026. It was never the route that answered, so neither the refusals nor the
+       numbers it gave a meaning to are consulted - the same two tables that make a 404 mean something
+       on the screens of the pairs. */
+    expect(wordsFor({ got: 'locked' }, {}, t)).toBe(dictionary.server.locked)
+    expect(
+      wordsFor({ got: 'locked' }, { locked: 'server.nothing' }, t, { 401: 'server.nothing' }),
+    ).toBe(dictionary.server.locked)
   })
 })
 
