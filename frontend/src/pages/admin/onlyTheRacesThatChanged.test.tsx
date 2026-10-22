@@ -74,9 +74,11 @@ describe('the races a save of an event sends', () => {
       ascentM: 500,
       descentM: 400,
     }
-    length = must(its[1], 'its second race')
+    /* And the second given a climb and a fall of its own, which nought is not, so a copy of it made a race on
+       time that lost them is a different answer from one that kept them. */
+    length = { ...must(its[1], 'its second race'), ascentM: 120, descentM: 90 }
 
-    const served = real.map((one) => (one.id === timed.id ? timed : one))
+    const served = real.map((one) => (one.id === timed.id ? timed : one.id === length.id ? length : one))
     const inTheTable = inEventOrder(served.filter((one) => one.eventId === event.id))
 
     rowOf = (race) => inTheTable.findIndex((one) => one.id === race.id) + 1
@@ -254,24 +256,30 @@ describe('the races a save of an event sends', () => {
   }, SLOW)
 
   /**
-   * AND A COPY OF AN EVENT KEEPS THE CLIMB AND THE FALL OF ITS RACE ON TIME, which it copied and which the
+   * AND A COPY OF AN EVENT KEEPS THE CLIMB AND THE FALL IT COPIED WHEN ITS RACE IS MADE A RACE ON TIME, which the
    * owner counts as written (22.10.2026: „Trka iz kopije događaja čuva prepisan uspon i spust kao upisan, i kad
    * se sačuva kao trka na vreme"). A copy has no identity either, so this is the case that tells it from a new
-   * row.
+   * row: the race of a length is copied with 120 and 90, made a race on time of three hours, and saved.
    */
-  it('sends the climb and the fall a race on time was copied with, in a copy of its event', async () => {
+  it('sends the climb and the fall a copied race was copied with, when the copy is made a race on time', async () => {
     const user = setupUser()
 
     renderAt(`${THE_LIST}?kopija=${String(event.id)}`, 'superadmin', '000001')
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const at = String(rowOf(length))
+
+    await user.selectOptions(screen.getByLabelText(`Vrsta, ${at}. trka`), 'time')
+    await user.type(screen.getByLabelText(`Trajanje (h), ${at}. trka`), '3')
     await save(user)
 
     const copied = must(
-      whatWasSent(server.asked).find((one) => one.startsWith('POST /api/races |') && one.includes('kind=time')),
-      'the copy of the race on time',
+      whatWasSent(server.asked).find((one) => one.startsWith('POST /api/races |') && one.includes('limitSeconds=10800')),
+      'the copy of the race of a length, made a race on time',
     )
 
-    expect(copied).toContain('ascentM=500 descentM=400')
+    expect(copied).toContain('kind=time')
+    expect(copied).toContain('ascentM=120 descentM=90')
   }, SLOW)
 
   it('sends a race of a length with the climb and the fall it has, as it always did', async () => {
