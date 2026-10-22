@@ -233,11 +233,15 @@ describe('the written pages', () => {
     expect(screen.queryByText(/Ovaj ekran dolazi u sledećoj fazi/)).not.toBeInTheDocument()
   })
 
-  it('says what the terms say about correcting a result', async () => {
+  it('says in the terms where a result is submitted and checked', async () => {
+    /* Since 22.10.2026 the terms no longer repeat how a result is checked and
+       corrected: they send the reader to the rulebook, which is that rule's one home
+       (owner, PDL "Uprošćavanje pravnih tekstova (22.10.2026)"). The section that
+       does the sending is still there, under its own name. */
     renderAt('/sr/uslovi-koriscenja')
 
     await screen.findByRole('heading', { level: 1 })
-    expect(screen.getByRole('heading', { name: /Verifikacija rezultata/ })).toBeVisible()
+    expect(screen.getByRole('heading', { name: /Unos i verifikacija rezultata/ })).toBeVisible()
   })
 
   it('says the page is not there when the slug is unknown', async () => {
@@ -551,11 +555,12 @@ describe('the fee schedule in the rulebook', () => {
 
     /* What each reference is about, taken from the sentence that makes it. One
        entry per reference the terms carry; a new one that nobody writes here
-       fails the count below rather than passing unread. */
-    const meant = [
-      { from: 'razlog za meru', to: 'Pravila ponašanja' },
-      { from: 'Mere prema članu', to: 'Pravila ponašanja' },
-    ]
+       fails the count below rather than passing unread. None since 22.10.2026:
+       the two sentences that sent the reader to the rules of conduct went with
+       the repetitions of the rulebook they stood in (owner, PDL "Uprošćavanje
+       pravnih tekstova (22.10.2026)"), so a reference written into the terms
+       from now on fails the count and has to be named here first. */
+    const meant: { from: string; to: string }[] = []
     /* Every case of the word and not only the genitive: written as „sekcije"
        alone, a reference put in as „u sekciji 3" was never seen, and a wrong one
        passed unread through the very test written to catch it. */
@@ -658,7 +663,10 @@ describe('a drawing a written section names', () => {
        somewhere in it": at the foot of the section it was also somewhere in it,
        and that is the arrangement this replaces. The last line of it is the
        other half of what the owner asked for the same day, that nothing stand
-       after the list in Član 17. */
+       after the list in the article „Šta članstvo donosi". The two articles on
+       the price became one on 22.10.2026 (owner, PDL "Uprošćavanje pravnih
+       tekstova (22.10.2026)"), and the table still stands right under the
+       sentence that names the decision. */
     renderAt('/sr/pravilnik')
 
     const heading = await screen.findByRole('heading', { name: /^4. Članarina$/ })
@@ -674,14 +682,13 @@ describe('a drawing a written section names', () => {
     )
 
     expect(order).toEqual([
-      'Član 14. Cena i rokovi',
+      'Član 11. Cena, rokovi i oslobađanje od članarine',
       'the price table',
-      'Član 15. Dinarska cena i oslobađanje od članarine',
-      'Član 16. Povraćaj',
-      'Član 17. Šta članstvo donosi',
+      'Član 12. Povraćaj',
+      'Član 13. Šta članstvo donosi',
     ])
 
-    /* And nothing at all after the list in Član 17, which is the other half of
+    /* And nothing at all after the list in „Šta članstvo donosi", which is the other half of
        what the owner asked for. Read as the last words of the section rather
        than off the order above: that order is headings and tables, so a sentence
        added under the list would not appear in it and the claim would have been
@@ -1510,8 +1517,11 @@ describe('the rulebook', () => {
         .map((part) => `${slug}: ${part.slice(-30)}`),
     )
 
+    /* Three and not five since 22.10.2026: the rulebook's article on liability and the
+       terms' section on awards, which repeated what the rulebook says elsewhere, went
+       with the owner's simplification of the three documents. */
     expect(mentions.length, 'the prose has stopped naming the competition').toBeGreaterThanOrEqual(
-      5,
+      3,
     )
     expect(
       mentions.filter((one) => !one.endsWith('BTL ')),
@@ -1591,8 +1601,9 @@ describe('the rulebook', () => {
     /* A floor and not a count, so striking an article does not fail this on its
        own: what it catches is a rulebook that has lost most of itself. It stood
        at eighty while there were eighty-seven articles; the owner has since
-       struck nine, and seventy-eight remain. */
-    expect(numbers.length).toBeGreaterThan(70)
+       struck nine, and on 22.10.2026 ten more went into the articles that already
+       said the same thing, so sixty-eight remain. */
+    expect(numbers.length).toBeGreaterThan(60)
     expect(numbers).toEqual(numbers.map((_, index) => index + 1))
   })
 
@@ -1615,33 +1626,37 @@ describe('the rulebook', () => {
        same words into the rulebook's own Član 74 left the policy pointing
        nobody anywhere, the rulebook pointing at itself, and the suite green. */
     const expected: [string, string, number, RegExp][] = [
-      ['pravilnik', 'članski broj i pravo rangiranja pod uslovima iz', 11, /Pravo rangiranja/],
-      ['pravilnik', 'steklo pravo rangiranja govori', 11, /Pravo rangiranja/],
-      ['pravilnik', '- Pravo rangiranja pod uslovima iz', 11, /Pravo rangiranja/],
-      ['pravilnik', 'taksa za obradu plaćanja iz', 14, /Cena i rokovi/],
-      ['pravilnik', 'ne donosi nikakvo pravo iz', 17, /Šta članstvo donosi/],
+      ['pravilnik', 'članski broj i pravo rangiranja pod uslovima iz', 10, /Pravo rangiranja/],
+      ['pravilnik', 'steklo pravo rangiranja govori', 10, /Pravo rangiranja/],
+      ['pravilnik', '- Pravo rangiranja pod uslovima iz', 10, /Pravo rangiranja/],
+      ['pravilnik', 'ne donosi nikakvo pravo iz', 13, /Šta članstvo donosi/],
+      /* What the shirt and the medal take is said once, in the table of awards, since
+         22.10.2026 (owner, PDL "Uprošćavanje pravnih tekstova (22.10.2026)"); the list
+         of what membership brings points there instead of saying it a second time. */
+      ['pravilnik', 'finišersku medalju, pod uslovima iz', 54, /Šta se osvaja/],
       /* The article the ethics section points at for what a race has to be.
          It pointed at a section until 21.08.2026, and that section is gone:
          the owner struck the article on official timing and the one on who
          verifies, and what was left of the section is one article, which now
          closes the section on what is scored. */
-      ['pravilnik', 'Prijava trke koja ne ispunjava uslove iz', 25, /Zvaničan događaj/],
-      /* Where the climb comes from, pointed at by the article that says the
-         values are typed rather than read out of a track file (16.08.2026). */
-      ['pravilnik', 'prednost ima podatak organizatora', 29, /Uspon i spust/],
-      ['pravilnik', 'izaberete trku iz ponuđenog spiska', 37, /Ko prijavljuje i šta/],
-      ['pravilnik', 'Prijava rezultata posle roka iz', 38, /^Rok$/],
+      ['pravilnik', 'Prijava trke koja ne ispunjava uslove iz', 21, /Zvaničan događaj/],
+      /* The two references the article on length and gradient made (to where the
+         climb comes from, and to the list a race is picked from) went with that
+         article on 22.10.2026: what it said now stands in the article on how a
+         result is submitted, and the organiser's figure is the article on climb's
+         own sentence. */
+      ['pravilnik', 'Prijava rezultata posle roka iz', 34, /^Rok$/],
       /* „Top liste iz Člana 48" stood in the list of what is kept per sex until
          22.08.2026, and the owner struck it: the top boards are combined and the
          code has always built them that way, with no gender filter anywhere in
          `topByKilometers`, `topByTimeOnCourse`, `topByCategory` or the progress
          board. The article named a reference that the portal did not honour. */
-      ['pravilnik', 'posebna priznanja iz', 62, /Posebna priznanja/],
-      ['pravilnik', 'može pokrenuti postupak iz', 71, /Postupak/],
+      ['pravilnik', 'posebna priznanja iz', 55, /Posebna priznanja/],
+      ['pravilnik', 'može pokrenuti postupak iz', 64, /Postupak/],
       /* The one exception to a rulebook that does not change inside a season,
          added by the owner on 22.08.2026: the article on sponsors' prizes, which
          is filled in as sponsorship is secured. */
-      ['pravilnik', 'U toku sezone se ne menja, osim', 65, /Sponzorske nagrade/],
+      ['pravilnik', 'U toku sezone se ne menja, osim', 58, /Sponzorske nagrade/],
       /* Named from the privacy policy and not from the rulebook: the
          exception for a birthday published on purpose. It is the only
          reference to the rulebook written on another page, and reading
@@ -1765,12 +1780,17 @@ describe('the rulebook', () => {
        a watch can file a result with no official list behind it, which is the
        hole P17 named. What holds the line instead is that a picture never stands
        by itself: the comment beside it is required, and it has to say what the
-       picture shows. The three documents and the form now say one thing. */
-    expect(rulebook).toMatch(
-      /Link ka zvaničnim rezultatima je dokaz koji tražimo i sam po sebi je dovoljan/,
-    )
-    expect(rulebook).toMatch(/Slika je drugi dokaz i sme da stane umesto linka, ali nikad sama/)
-    expect(rulebook).toMatch(/uz nju je komentar obavezan/)
+       picture shows. The three documents and the form now say one thing.
+
+       **[22.10.2026] One home and fewer words.** The rule lives in the rulebook's
+       article on proof alone, and the terms send the reader there (owner, PDL
+       "Uprošćavanje pravnih tekstova (22.10.2026)"). It still says the same three
+       things: the link is enough, a picture stands in for it, and a picture never
+       stands alone, because it comes with a few words on why there is no link and
+       what it shows. */
+    expect(rulebook).toMatch(/Link ka zvaničnim rezultatima je sasvim dovoljan\./)
+    expect(rulebook).toMatch(/Ako ga nemate, pošaljite sliku, recimo snimak sata ili diplomu/)
+    expect(rulebook).toMatch(/u par reči napišite zašto linka nema i šta se na slici vidi/)
     /* And nowhere the other way round, in any of the three documents: this rule
        lived in four homes and one of them was rewritten while three went on
        saying the opposite, which is what a round of review found. */
@@ -1802,9 +1822,9 @@ describe('the rulebook', () => {
     )
 
     /* Empty, and that is the whole claim. Since 22.08.2026 no sentence of either
-       document refuses a picture at all: what the terms say is the positive
-       form, „prihvata se kao dokaz samo uz komentar", which does not read as a
-       refusal and does not have to be excepted from one. A list rather than a
+       document refuses a picture at all: what the rulebook says is the positive
+       form, „Ako ga nemate, pošaljite sliku", which does not read as a refusal
+       and does not have to be excepted from one. A list rather than a
        count, so a sentence that arrives is printed in the failure and a person
        decides whether the picture is still proof. */
     expect(refusing).toEqual([])
@@ -1863,10 +1883,18 @@ describe('the rulebook', () => {
        plasmanu, ali je mala šansa da je osvoje." So the rulebook was the wrong
        one of the two, and the sentence is held here in the negative as well, so
        it cannot come back without this failing. */
+    /* Since 22.10.2026 the article says it as the member meets it (owner, PDL
+       "Uprošćavanje pravnih tekstova (22.10.2026)"): the member chooses one category
+       or the other, stays in it until the end of the year, moves to the age category
+       from the season after crossing the threshold, and a beginner is in the general
+       standing like everybody else. */
     expect(rulebook).not.toMatch(/ne konkuriše u generalnom plasmanu/)
-    expect(rulebook).toMatch(/Početnik ne konkuriše u uzrasnoj kategoriji/)
-    expect(rulebook).toMatch(/Nastupa u dve kategorije istovremeno nema/)
-    expect(rulebook).toMatch(/promena stupa na snagu od naredne sezone/)
+    expect(rulebook).toMatch(
+      /birate da li ćete se takmičiti u početničkoj kategoriji \(Početnici, Početnice\) ili u svojoj uzrasnoj/,
+    )
+    expect(rulebook).toMatch(/Tokom sezone ste u jednoj kategoriji i ona se ne menja do kraja godine/)
+    expect(rulebook).toMatch(/od sledeće sezone prelazite u svoju uzrasnu kategoriju i tu ostajete/)
+    expect(rulebook).toMatch(/kao i svi ostali ulaze i u generalni plasman/)
   })
 
   it('awards a trophy and nothing else, and says once when a trophy is not given', () => {
@@ -1899,7 +1927,7 @@ describe('the rulebook', () => {
        rulebook is not where a competition beside the main one is described. What
        a league is, and that the league itself runs two of its own, stays. */
     expect(rulebook).not.toMatch(/RunTrace liga|U RunTrace ligu/)
-    expect(rulebook).toMatch(/### Član 57\. Liga kao pojam/)
+    expect(rulebook).toMatch(/### Član \d+\. Liga kao pojam/)
   })
 
   it('cannot be changed inside a season', () => {
@@ -1907,23 +1935,22 @@ describe('the rulebook', () => {
        04.08.2026: the article that asked the question is gone and the answer is
        one sentence in the article about writing a new one each season. */
     expect(rulebook).toMatch(
-      /U toku sezone se ne menja, osim člana 65 koji objavljuje specifikaciju/,
+      /U toku sezone se ne menja, osim člana 58 koji objavljuje specifikaciju/,
     )
     expect(rulebook).not.toMatch(/Izmene u toku sezone/)
   })
 
   it('asks for the same result the forms ask for', () => {
-    /* The picture and the comment, both optional, on the article that lists what
-       a competitor sends in (owner, 03.08.2026). The forms are held to the same
-       thing in src/forms/definitions.test.ts. */
-    expect(rulebook).toMatch(/Sliku, neobavezno/)
-    expect(rulebook).toMatch(/Komentar, neobavezno/)
-    /* Both optional as fields, and the article says in the next breath what a
-       picture does to the other two (owner, 22.08.2026). Written out here as
-       well, because „neobavezno" on its own reads as the whole rule and stopped
-       being it. */
+    /* What a competitor sends in, said in one sentence since 22.10.2026 instead of a
+       list of fields (owner, PDL "Uprošćavanje pravnih tekstova (22.10.2026)"), and
+       what a picture does to the link, said in the article on proof (owner,
+       22.08.2026). The forms are held to the same thing in src/forms/definitions.test.ts
+       and in the case on the picture further down. */
     expect(rulebook).toMatch(
-      /Ukoliko podignete sliku, link ka zvaničnim rezultatima postaje neobavezan, ali polje Komentar postaje obavezno/,
+      /Upisujete događaj i trku, dužinu, uspon i spust, vreme i link ka zvaničnim rezultatima/,
+    )
+    expect(rulebook).toMatch(
+      /Ako ga nemate, pošaljite sliku, recimo snimak sata ili diplomu, i u par reči napišite zašto linka nema/,
     )
   })
 })
@@ -2030,13 +2057,14 @@ describe('how a written page is set', () => {
        numbers and both still pass: „Detalji su u sekciji 12" and „sopstvena
        takmičenja lige iz sekcije 13" swapped sends the reader after teams to
        the accompanying competitions and the other way round, and the suite
-       stayed green. Measured 21.08.2026. */
+       stayed green. Measured 21.08.2026.
+
+       Four of these went on 22.10.2026, with the sentences that carried them (owner,
+       PDL "Uprošćavanje pravnih tekstova (22.10.2026)"): the terms' two pointers to the
+       rules of conduct, and the rulebook's „Detalji su u sekciji 12" and „sopstvena
+       takmičenja lige iz sekcije 13", whose articles repeated what other articles say. */
     const inProse: [string, string, number, RegExp][] = [
       ['politika-privatnosti', 'pristanak ne traži', 4, /Kolačići/],
-      ['uslovi-koriscenja', 'razlog za meru iz', 7, /Pravila ponašanja i mere/],
-      ['uslovi-koriscenja', 'izriču se po postupku iz', 7, /Pravila ponašanja i mere/],
-      ['pravilnik', 'Detalji su u', 12, /Timovi, trkački parovi i klubovi/],
-      ['pravilnik', 'sopstvena takmičenja lige iz', 13, /Prateća takmičenja i lige/],
       ['pravilnik', 'priznanja po broju trka iz', 14, /Nagrade i priznanja/],
       ['pravilnik', 'može dovesti do mera iz', 16, /Sankcije i diskvalifikacija/],
     ]
@@ -2410,7 +2438,9 @@ function escaped(text: string): string {
  *  purpose. */
 const OFFERED = /GPX|TCX|\bFIT\b|zapis staze|trag sa sata|GPS trag/i
 const INVITES = /priloz|priloži|prilaž|prilog|dodajte|učitaj|pošaljite|prihvata|čita/i
-const REFUSAL = 'Portal ne prima zapis staze'
+/* The sentence as the rulebook says it since 22.10.2026, in the article on how a
+   result is submitted (owner, PDL "Uprošćavanje pravnih tekstova (22.10.2026)"). */
+const REFUSAL = 'portal ne učitava zapis staze sa sata'
 
 /**
  * Every line that offers a track file, with where it was found.
@@ -2460,7 +2490,7 @@ describe('the guard over the written pages', () => {
     ['the letters GPS', 'Dodajte GPS trag, portal ga čita.'],
     [
       'a refusal and an offer in one breath',
-      'Portal ne prima zapis staze u obliku GPX, ali možete da priložite zapis uz komentar.',
+      'Dužinu upisujete sami, jer portal ne učitava zapis staze sa sata, ali možete da priložite GPX uz komentar.',
     ],
   ])('catches an offer written as %s', (_case, line) => {
     expect(offersTrack([['sr.json', line]])).toHaveLength(1)
@@ -2469,7 +2499,7 @@ describe('the guard over the written pages', () => {
   it('lets the one sentence that refuses one through', () => {
     expect(
       offersTrack([
-        ['pravilnik', 'Portal ne prima zapis staze u obliku GPX, FIT ili TCX i ne izvodi te vrednosti iz njega.'],
+        ['pravilnik', 'Dužinu, uspon i spust upisujete sami, jer portal ne učitava zapis staze sa sata.'],
       ]),
     ).toEqual([])
   })
@@ -2555,16 +2585,18 @@ describe('what the written pages say the fee buys', () => {
        anything, and it would not have caught the description P32 names as the
        wrong one, a subscription to a website. */
     expect(sectionOf('pravilnik', /Član lige je/)).toMatch(
-      /primljen u članstvo Udruženja i kome je aktiviran takmičarski status/,
+      /Član lige je takmičar primljen u Udruženje kome je za sezonu aktiviran takmičarski status\./,
     )
     /* And activation is what carries it, since a member in the league may never
        have paid anything: one freed of the fee, or one whose virtual balance
        covered it. Written as three conditions with the fee among them, the
        definition gave rights in one article and took them back in another
-       (owner, 03.08.2026). The third way, the balance, is named in the same
-       sentence since 10.10.2026, in the words he approved. */
+       (owner, 03.08.2026). Since 22.10.2026 the three ways a status is activated
+       are said in the terms of use alone, which the article sends the reader to
+       (owner, PDL "Uprošćavanje pravnih tekstova (22.10.2026)"); the case below
+       holds the terms to all three. */
     expect(sectionOf('pravilnik', /Član lige je/)).toMatch(
-      /aktivira po evidentiranoj uplati članarine, po odluci Upravnog odbora kojom je član oslobođen plaćanja članarine, ili iz virtuelnog balansa člana\./,
+      /Kako se postaje član i sve o članskom broju objašnjavaju \[uslovi korišćenja\]\(\/uslovi-koriscenja\)\./,
     )
   })
 
@@ -2590,7 +2622,7 @@ describe('what the written pages say the fee buys', () => {
        thing as a queue of steps ending in a payment. A member freed of the fee never
        walks two of those steps. */
     expect(sectionOf('uslovi-koriscenja', /Prijava za članstvo/)).toMatch(
-      /Dok nije, niste vidljivi na portalu/,
+      /3\. Nalog je otvoren, a takmičarski status još nije aktivan\./,
     )
     expect(sectionOf('uslovi-koriscenja', /Prijava za članstvo/)).toMatch(
       /oslobodio plaćanja članarine prolazi bez koraka 4; članski broj i sva prava dobija/,
@@ -2654,7 +2686,7 @@ describe('what the written pages say the fee buys', () => {
     }
   })
 
-  it('asks the result form for what Član 37 says a picture changes', () => {
+  it('asks the result form for what the article on proof says a picture changes', () => {
     /* Owner, 22.08.2026: „Ukoliko podignete sliku, link ka zvaničnim rezultatima
        postaje neobavezan, ali polje Komentar postaje obavezno."
 
@@ -2666,16 +2698,26 @@ describe('what the written pages say the fee buys', () => {
 
        The field each rule names is checked to be on the form as well, because a
        typo in it is silent: a rule pointing at nothing never fires. */
+    /* The articles are found by their headings and not by their numbers, which the
+       rulebook changes every season and changed on 22.10.2026. Since then the rule
+       about the picture is the article on proof's (owner, PDL "Uprošćavanje pravnih
+       tekstova (22.10.2026)"), and the article on how a result is submitted names the
+       two roads. */
+    const proof = must(
+      /### Član \d+\. Dokazi[\s\S]*?(?=### Član|$)/.exec(
+        sectionOf('pravilnik', /Link ka zvaničnim rezultatima je sasvim dovoljan/),
+      ),
+      'the article on proof in its section',
+    )[0]
     const article = must(
-      /### Član 37\.[\s\S]*?(?=### Član 38\.)/.exec(
+      /### Član \d+\. Kako se prijavljuje rezultat[\s\S]*?(?=### Član)/.exec(
         sectionOf('pravilnik', /Rezultat prijavljujete sami/),
       ),
-      'Član 37 in its section',
+      'the article on how a result is submitted in its section',
     )[0]
 
-    expect(article).toMatch(
-      /Ukoliko podignete sliku, link ka zvaničnim rezultatima postaje neobavezan, ali polje Komentar postaje obavezno/,
-    )
+    expect(proof).toMatch(/Ako ga nemate, pošaljite sliku/)
+    expect(proof).toMatch(/u par reči napišite zašto linka nema i šta se na slici vidi/)
 
     /* **What Član 37 says about how a result reaches the portal is held in the
        snapshot now, with the rest of the written pages** (`writtenVerification.test.ts`,
@@ -2689,12 +2731,12 @@ describe('what the written pages say the fee buys', () => {
 
        What is left here is what a snapshot cannot say: that this article, and not some
        other, is where the rule about the two roads lives, and that the address is
-       still asked for on the road through an event — Član 39 says „Obavezan je na obe
-       prijave", and this is the half of that claim which lives in Član 37. */
-    expect(article).toMatch(/ostalo, uz link ka zvaničnim rezultatima/)
-    expect(article).toMatch(/portal preuzima sa nje ono što ta trka zadaje/)
+       still asked for on both of them. */
+    expect(article).toMatch(/sa svog profila ili sa strane događaja, dugmetom uz trku/)
+    expect(article).toMatch(/vreme i link ka zvaničnim rezultatima/)
+    expect(article).toMatch(/portal sam popuni ono što ta trka zadaje/)
 
-    expect(article, 'Član 37 still sends the address into the comment').not.toMatch(
+    expect(article, 'the article still sends the address into the comment').not.toMatch(
       /link nije zasebno polje|ide u komentar/,
     )
 
@@ -2732,7 +2774,7 @@ describe('what the written pages say the fee buys', () => {
     }
   })
 
-  it('summarises in the terms only the measures the rulebook still knows', () => {
+  it('leaves the measures to the rulebook, which knows only the ones still standing', () => {
     /* The terms send the reader to the rulebook and then say „Ukratko:", so the
        summary answers to the article. The owner struck two of the five measures
        on 22.08.2026 (Član 69: opomena, diskvalifikacija, isključenje), and the
@@ -2747,23 +2789,27 @@ describe('what the written pages say the fee buys', () => {
        comments, blocking and reporting, and „Brisanje neprikladnog komentara je
        moderacija" is a true sentence that the absence below would have called a
        measure. Measured. */
-    const terms = must(
-      /Ukratko: mere idu[^\n]*/.exec(sectionOf('uslovi-koriscenja', /Ukratko: mere idu/)),
-      'the summary of the measures in the terms',
-    )[0]
+    /* **Since 22.10.2026 the terms summarise nothing.** They say which document
+       governs the measures and stop there (owner, PDL "Uprošćavanje pravnih tekstova
+       (22.10.2026)"), so the summary can no longer go stale; what is held of the terms
+       is that they point at the rulebook and name no measure of their own. */
+    const terms = sectionOf('uslovi-koriscenja', /Koje mere postoje i kako se izriču/)
+
+    expect(terms).toMatch(/Koje mere postoje i kako se izriču, uređuje \[pravilnik\]\(\/pravilnik\)\./)
     /* The article and not the section it sits in. Read whole, the section also
-       holds Član 70, which begins „Brišu se svi rezultati": the absence below
-       would then be an absence of the wrong thing, and a measure put back into
-       Član 69 would pass under cover of the article after it. */
+       holds the article on what disqualification means, which begins „Brišu se svi
+       rezultati": the absence below would then be an absence of the wrong thing,
+       and a measure put back into the article on measures would pass under cover
+       of the article after it. Found by its heading, since its number moves. */
     const article = must(
-      /### Član 69\.[\s\S]*?(?=### Član 70\.)/.exec(
+      /### Član \d+\. Mere[\s\S]*?(?=### Član)/.exec(
         sectionOf('pravilnik', /Za kršenje pravilnika članu se može izreći/),
       ),
-      'Član 69 in its section',
+      'the article on measures in its section',
     )[0]
 
     for (const measure of [/opomen/, /diskvalifikacij/, /isključenj/]) {
-      expect(terms).toMatch(measure)
+      expect(terms).not.toMatch(measure)
       expect(article).toMatch(measure)
     }
 
@@ -2792,13 +2838,13 @@ describe('what the written pages say the fee buys', () => {
        with the row that names Zoho as a processor (V60; owner, 17.10.2026),
        and once more, to 22.10.2026, with the words about the backups in the row
        for Cloudflare (V70; owner, 20.10.2026); the rulebook did not change on
-       either day and keeps 16.10.2026. Written per
-       document and not as one day for all three, so a date moved on the terms,
-       or left behind on one of the other two, is a failure that names the
-       document. */
+       either day and kept 16.10.2026. On 22.10.2026 all three changed (V71; owner,
+       the same day) and all three carry that day. Written per
+       document and not as one day for all three, so a date moved on one of them,
+       or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
-      pravilnik: '16.10.2026',
-      'uslovi-koriscenja': '10.10.2026',
+      pravilnik: '22.10.2026',
+      'uslovi-koriscenja': '22.10.2026',
       'politika-privatnosti': '22.10.2026',
     } as const
 
@@ -2953,19 +2999,31 @@ describe('what the written pages say the fee buys', () => {
     }
   })
 
-  it('says who pays the postage in both documents that promise the parcel', () => {
+  it('says who pays the postage, and promises the parcel in one place', () => {
     /* Owner, 22.08.2026, on the fourth reading: „Poštanske troškove snosi Član."
-       He put it in Član 64, and the terms carry the same promise in their own
-       section on prizes; asked, he said it belongs in both.
+       He put it in the article on collecting prizes, and the terms carried the same
+       promise in their own section on prizes; asked, he said then it belongs in both.
 
-       One fact with two homes, which is the shape that goes stale: the rulebook
-       and the terms said the shirt and the medal are sent together long before
-       today, and only one of the two learnt who pays for the sending. Held here
-       so neither home can lose it alone. */
-    const sentence = /Poštanske troškove snosi Član\./
-
-    expect(sectionOf('pravilnik', /Pehari se preuzimaju lično/)).toMatch(sentence)
-    expect(sectionOf('uslovi-koriscenja', /Pehare ne šaljemo poštom/)).toMatch(sentence)
+       On 22.10.2026 he approved the simplification that took the terms' section on
+       prizes out, because it repeated the rulebook, and that says the shirt and the
+       medal stay in the table of awards alone (PDL "Uprošćavanje pravnih tekstova
+       (22.10.2026)"). So the promise has one home now, the article on collecting
+       prizes says who pays for the post, and the terms send the reader there. */
+    expect(sectionOf('pravilnik', /Pehari se preuzimaju lično/)).toMatch(
+      /Poštanske troškove slanja majice i medalje snosi član\./,
+    )
+    expect(
+      WRITTEN.flatMap((page) =>
+        page.sections
+          .filter((section) => /zajedno sa majicom sezone/.test(section.body))
+          .map((section) => `${page.slug} / ${section.heading}`),
+      ),
+      'the parcel is promised in more than the table of awards',
+    ).toEqual(['pravilnik / 14. Nagrade i priznanja'])
+    expect(whole('uslovi-koriscenja')).not.toMatch(/[Pp]oštanske troškove/)
+    expect(whole('uslovi-koriscenja')).toMatch(
+      /O nagradama, priznanjima i njihovom preuzimanju sve piše u pravilniku\./,
+    )
   })
 
   it('quotes the processing fee as the number the portal charges, in its one home', () => {

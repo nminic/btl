@@ -273,7 +273,11 @@ const STATUTE = '/BTL%20Statut.pdf'
 
     expect(link).toHaveAttribute('href', '/BTL%20Statut.pdf')
     /* And nowhere else, because the obligation is met by one published copy and
-       two of them are two things to keep true.
+       two of them are two things to keep true. Since 22.10.2026 the terms link the same
+       copy a second time, where they say that leaving the Association follows the
+       statute (owner, PDL "Uprošćavanje pravnih tekstova (22.10.2026)": „Ako želite da
+       istupite, postupak opisuje Statut."); that is one document linked from two
+       sentences of one page, and each is named below, so a third is still a failure.
      *
        Counted in the content rather than looked for by name on one screen. Asked
        as „no link called exactly Statut is on this render", a second one written
@@ -285,7 +289,10 @@ const STATUTE = '/BTL%20Statut.pdf'
         .map((section) => `${page.slug} / ${section.heading}`),
     )
 
-    expect(linking).toEqual(['uslovi-koriscenja / 1. Ko smo i šta ovi uslovi uređuju'])
+    expect(linking).toEqual([
+      'uslovi-koriscenja / 1. Ko smo i šta ovi uslovi uređuju',
+      'uslovi-koriscenja / 11. Odjava, brisanje, izmene i sporovi',
+    ])
 
     const served = join(process.cwd(), 'public', decodeURIComponent('BTL%20Statut.pdf'))
 

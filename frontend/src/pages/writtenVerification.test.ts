@@ -107,20 +107,16 @@ describe('the written pages', () => {
     expect(now.map((page) => page.slug)).toEqual(held.map((page) => page.slug))
   })
 
-  it('carry the rules about a waiting result in exactly the two places they belong', () => {
+  it('carry the rules about a waiting result in exactly the one place they belong', () => {
     /* The snapshot says the text has not changed; this says where these two rules
-       live, which is the question a snapshot cannot answer on its own. A third place
-       picking one up is a third place to correct, and the two that exist were already
+       live, which is the question a snapshot cannot answer on its own. A second place
+       picking one up is a second place to correct, and the two that once existed were
        corrected apart: until 30.08.2026 both said a waiting result is shown nowhere,
-       the rulebook was put right and the terms were not, and no test could tell. */
-    expect(placesOf(ABOUT_WAITING)).toEqual([
-      'pravilnik: 10. Verifikacija rezultata',
-      'uslovi-koriscenja: 5. Unos i verifikacija rezultata',
-    ])
-    expect(placesOf(ABOUT_CORRECTING)).toEqual([
-      'pravilnik: 10. Verifikacija rezultata',
-      'uslovi-koriscenja: 5. Unos i verifikacija rezultata',
-    ])
+       the rulebook was put right and the terms were not, and no test could tell. Since
+       22.10.2026 the terms send the reader to the rulebook instead of repeating it
+       (owner, PDL "Uprošćavanje pravnih tekstova (22.10.2026)"), so there is one place. */
+    expect(placesOf(ABOUT_WAITING)).toEqual(['pravilnik: 10. Verifikacija rezultata'])
+    expect(placesOf(ABOUT_CORRECTING)).toEqual(['pravilnik: 10. Verifikacija rezultata'])
   })
 
   it('use the English quotation mark and carry no Serbian one in any title, heading or body', () => {
@@ -160,7 +156,7 @@ describe('the written pages', () => {
     const rulebook = pages.find((page) => page.slug === 'pravilnik')
 
     expect(rulebook?.sections.map((section) => section.body).join('\n')).toContain(
-      'dugmetom "Unesi rezultat" u redu te trke.',
+      'na primer "Beogradski maraton, štafeta 1", sa dužinom',
     )
   })
 })
