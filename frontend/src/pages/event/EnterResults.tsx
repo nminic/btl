@@ -25,6 +25,7 @@ import { QUEUE } from '../admin/queues'
 import { queueRight } from '../admin/rights'
 import { everyEventToOffer } from '../member/eventsToOffer'
 import { racesToOffer } from '../member/racesToOffer'
+import { useSeasonsOpenForAReport } from '../member/useSeasonsOpenForAReport'
 import {
   choosingTheEvent,
   choosingTheRace,
@@ -37,6 +38,7 @@ import {
   typingTheEvent,
   typingTheRace,
   whatIsWrongWithTheBlock,
+  yearsOfTheDay,
   type TheBlock,
 } from './eventAndRace'
 import {
@@ -505,6 +507,13 @@ function TheBlockAndTheRows() {
   const [block, setBlock] = useState<TheBlock>(emptyBlock)
   /* Whether a press has asked the block yet: its sentences are said after the first, as the rows' are. */
   const [pressed, setPressed] = useState(false)
+  /* THE SEASONS THE SERVER SAYS ARE OPEN, for one question only: whether a new race on an event of the
+     calendar may be of the other year, which is so on the morning of 1 January and never else (owner,
+     22.10.2026, the exception kept beside „Ekran 7b: dan trke mora biti u godini izabranog događaja”, and
+     the cost of reading them accepted). Not waited for: until they are known the day is not held to the
+     event's year here, and the server holds it either way. Asked once per visit, so under a constant. */
+  const open = useSeasonsOpenForAReport('league')
+  const seasons = open.status === 'ready' ? open.data : null
   /* EVERY RACE EVENT BEGUN BY TODAY, OF ANY YEAR (owner, 21.10.2026: „Moderator i admin smeju da unose
      rezultate za BILO KOJU prethodnu godinu”, which overturns „NE NUDE SE STARIJI DOGAĐAJI VAN TEKUĆE
      SEZONE!” of 20.10.2026 for this screen), so no season is read off the server here. A name typed
@@ -531,7 +540,8 @@ function TheBlockAndTheRows() {
      list stands under either box to choose from (the boxes say why, `unreadable`). */
   const calendar = events.status === 'ready' ? events.data : []
   const run = races.status === 'ready' ? races.data : []
-  const wrong = pressed ? whatIsWrongWithTheBlock(block, today) : []
+  const asked = { open: seasons, offered: offeredEvents }
+  const wrong = pressed ? whatIsWrongWithTheBlock(block, today, asked) : []
   const said = (box: string) => wrong.find((one) => one.box === box)
   const kind = kindOfTheRows(block)
 
@@ -607,6 +617,7 @@ function TheBlockAndTheRows() {
                 value={block.date}
                 invalid={said('date') !== undefined}
                 describedBy={described}
+                within={yearsOfTheDay(block, seasons)}
                 onChange={(next) => setBlock((now) => ({ ...now, date: next }))}
               />
             ))}
@@ -708,7 +719,7 @@ function TheBlockAndTheRows() {
             blockIsWrong={() => {
               setPressed(true)
 
-              return whatIsWrongWithTheBlock(block, today).length > 0
+              return whatIsWrongWithTheBlock(block, today, asked).length > 0
             }}
             save={(rows, asked) =>
               block.race !== null

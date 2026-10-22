@@ -272,6 +272,18 @@ class ResultsByTheLeagueApi {
 	 */
 	static final String THE_EVENT_WOULD_MOVE_ONTO_ANOTHER = "theEventWouldMoveOntoAnother";
 
+	/**
+	 * A NEW RACE ON AN EVENT OF THE CALENDAR WHOSE DAY IS NOT IN THAT EVENT'S YEAR: „Dan trke nije u godini
+	 * izabranog događaja.” PDL, owner, 22.10.2026, „Ekran 7b: dan trke mora biti u godini izabranog
+	 * događaja” (the words were the coordinator's, approved by the choice), with his answer of the same day
+	 * that the morning of 1 January before ten stays the exception („Prozor 1. januara od 00:00 do 10:00
+	 * ostaje izuzetak”). Until then such a save was answered as a form not filled in, which said that a
+	 * time or a measure was missing when nothing was. 409, as its neighbours that are answered by what the
+	 * calendar holds rather than by what was sent: the year is the event's as it stands when the save holds
+	 * it, and the screen read it earlier (`THE_EVENT_IS_NOT_KNOWN`, `THE_RACE_IS_NOT_KNOWN`).
+	 */
+	static final String THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR = "theDayIsNotInTheEventsYear";
+
 	private final JdbcClient db;
 
 	private final TransactionTemplate inOneTransaction;
@@ -441,10 +453,12 @@ class ResultsByTheLeagueApi {
 	 *
 	 * <p><b>What has no sentence of its own is a form not filled in</b> ({@code theFormIsNotComplete}):
 	 * a key beside a name, a race of the calendar on a new event, an event that is not a race, a town
-	 * too long or with an invisible character or a country nobody has, a figure the kind fixes missing,
-	 * and a new race on an event of another year OUTSIDE the one morning that allows it (see the note
-	 * on the event's year in {@link #theRaceAndItsRows}). The screen builds none of them; that reading
-	 * is mine.
+	 * too long or with an invisible character or a country nobody has, and a figure the kind fixes
+	 * missing. The screen builds none of them; that reading is mine. <b>A new race on an event of another
+	 * year</b>, outside the one morning that allows it, has a sentence of its own since 22.10.2026
+	 * ({@link #THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR}), and the screen does build that one when its day is
+	 * typed: its own box refuses it first (`eventAndRace.ts`), and this is the answer to a request that
+	 * gets past it.
 	 */
 	@PostMapping("/api/results/on-a-race-of-an-event")
 	@RightIsNeeded(THE_RIGHT)
@@ -585,9 +599,11 @@ class ResultsByTheLeagueApi {
 		   moderator moves the event to the year first, and a race is not put on an event of another year,
 		   whatever the year of either is, those before 2027 and those long past included. The exception
 		   (PDL P9, 20.10.2026, „U prozoru 1. januara od 00:00 do 10:00 sme se sastaviti trka na događaju
-		   druge godine”, chosen against my recommendation) is the one morning it gives way. A request
-		   outside it is one the screen never builds, and is answered as a form not filled in; that reading
-		   is mine (the coordinator's answer of 20.10.2026).
+		   druge godine”, chosen against my recommendation) is the one morning it gives way, and the owner
+		   kept it so on 22.10.2026 („Prozor 1. januara od 00:00 do 10:00 ostaje izuzetak od pravila „dan
+		   trke u godini događaja” na ekranu 7b”). A request outside it is answered with the owner's sentence
+		   for it (PDL, 22.10.2026, „Ekran 7b: dan trke mora biti u godini izabranog događaja”): „Dan trke nije
+		   u godini izabranog događaja.” It was answered as a form not filled in until that day.
 
 		   THE WINDOW IS NOT WRITTEN HERE. It is the seasons open for a report, which are two for those
 		   ten hours and one for the rest of the year ({@link SeasonClock#seasonsOpenForAReport}), so BOTH
@@ -602,7 +618,7 @@ class ResultsByTheLeagueApi {
 		if (event.isPresent() && event.get().date().getYear() != day.getYear()
 				&& !(SeasonClock.aRunMayBeSentFor(event.get().date().getYear(), now())
 						&& SeasonClock.aRunMayBeSentFor(day.getYear(), now()))) {
-			return Done.only(notComplete());
+			return Done.only(no(HttpStatus.CONFLICT, THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR));
 		}
 
 		/* THE ROWS FIRST, on the race as it will be: a race nobody has made yet has no result and no

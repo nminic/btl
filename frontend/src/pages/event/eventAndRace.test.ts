@@ -12,7 +12,9 @@ import {
   theEventPageAfter,
   typingTheEvent,
   whatIsWrongWithTheBlock,
+  yearsOfTheDay,
   type TheBlock,
+  type TheBlockIsAsked,
 } from './eventAndRace'
 import { theEventSavedOn } from './leagueResultWrites'
 
@@ -69,9 +71,13 @@ const filled = (over: Partial<TheBlock> = {}): TheBlock => ({
   ...over,
 })
 
+/** What the block is asked against where a case does not say: the season of the day the cases stand on is
+ *  open, and the one event above is offered. */
+const ASKED: TheBlockIsAsked = { open: [2027], offered: OFFERED }
+
 /** What is wrong with the block on the day the cases stand on. */
-const boxes = (block: TheBlock, today = TODAY) =>
-  whatIsWrongWithTheBlock(block, today).map((one) => `${one.box} ${one.key}`)
+const boxes = (block: TheBlock, today = TODAY, asked = ASKED) =>
+  whatIsWrongWithTheBlock(block, today, asked).map((one) => `${one.box} ${one.key}`)
 
 describe('the event and the race of the block', () => {
   it('links an event typed exactly, and lets go of it on any other name, the race following a new one', () => {
@@ -162,6 +168,108 @@ describe('what is wrong with the block', () => {
     )
 
     expect(boxes({ ...onTheCalendar, date: '' })).toEqual([])
+  })
+})
+
+/**
+ * A NEW RACE ON AN EVENT OF THE CALENDAR IS OF THAT EVENT'S YEAR (owner, 22.10.2026, PDL „Ekran 7b: dan
+ * trke mora biti u godini izabranog događaja”, with the morning of 1 January kept as the exception).
+ *
+ * <p>The event is of 2027 and the cases stand on days of 2028, so the year of the event and the year
+ * today is in are two different years, and the seasons open are said by each case: 2028 alone, 2027 and
+ * 2028 on the morning of 1 January, or not known yet.
+ */
+describe('the day of a new race on an event of the calendar', () => {
+  const onTheEvent = (date: string): TheBlock => ({
+    ...choosingTheEvent(emptyBlock(), OFFERED[0] ?? { id: '', value: '', said: '', fills: {} }, [AN_EVENT]),
+    date,
+    raceName: 'Nova',
+    distanceKm: '10',
+    ascentM: '0',
+    descentM: '0',
+  })
+  const IN_2028 = '2028-03-01'
+  const OUT_OF_THE_WINDOW: TheBlockIsAsked = { open: [2028], offered: OFFERED }
+  const THE_WINDOW: TheBlockIsAsked = { open: [2027, 2028], offered: OFFERED }
+  const NOT_KNOWN: TheBlockIsAsked = { open: null, offered: OFFERED }
+  const SAID = 'date leagueResults.refused.theDayIsNotInTheEventsYear'
+
+  it('takes another day of the event’s year, which is not the year today is in', () => {
+    expect(boxes(onTheEvent('01/06/2027'), IN_2028, OUT_OF_THE_WINDOW)).toEqual([])
+  })
+
+  it('says a day of the year after the event and a day of the year before it, in the server’s words', () => {
+    expect(boxes(onTheEvent('01/02/2028'), IN_2028, OUT_OF_THE_WINDOW)).toEqual([SAID])
+    expect(boxes(onTheEvent('31/12/2026'), IN_2028, OUT_OF_THE_WINDOW)).toEqual([SAID])
+  })
+
+  it('takes the other year while both are open, and only while they are', () => {
+    expect(boxes(onTheEvent('01/01/2028'), '2028-01-01', THE_WINDOW)).toEqual([])
+    expect(boxes(onTheEvent('01/01/2028'), '2028-01-01', OUT_OF_THE_WINDOW)).toEqual([SAID])
+    /* Open seasons that do not hold the event's year give it no other. */
+    expect(boxes(onTheEvent('01/01/2028'), '2028-01-01', { open: [2028, 2029], offered: OFFERED })).toEqual([SAID])
+  })
+
+  it('says nothing of the year before the open seasons are known, as the server will', () => {
+    expect(boxes(onTheEvent('01/02/2028'), IN_2028, NOT_KNOWN)).toEqual([])
+  })
+
+  it('asks no year of a new event, whose day is its own', () => {
+    expect(boxes(filled({ date: '01/02/2026' }), IN_2028, OUT_OF_THE_WINDOW)).toEqual([])
+  })
+
+  it('shows the calendar the event’s year, both open years on the morning of 1 January, and nothing where no event is chosen', () => {
+    expect(yearsOfTheDay(onTheEvent(''), [2028])).toEqual({ first: 2027, last: 2027 })
+    expect(yearsOfTheDay(onTheEvent(''), [2027, 2028])).toEqual({ first: 2027, last: 2028 })
+    expect(yearsOfTheDay(onTheEvent(''), [2026, 2027])).toEqual({ first: 2026, last: 2027 })
+    expect(yearsOfTheDay(onTheEvent(''), null)).toEqual({ first: 2027, last: 2027 })
+    expect(yearsOfTheDay(filled(), [2027])).toBeUndefined()
+    expect(yearsOfTheDay({ ...onTheEvent(''), race: { raceId: A_RACE.id, kind: 'time' } }, [2027])).toBeUndefined()
+  })
+})
+
+/**
+ * A NAME OF SEVERAL EDITIONS IS NOT SENT AS A NEW EVENT WHERE THE DAY IS IN THE YEAR OF ONE OF THEM (owner,
+ * 22.10.2026, answering the author's question: „dugme ne pušta dok godina nije izabrana sa spiska, rečenicom
+ * „Izaberi godinu sa spiska.” … godina bez izdanja i dalje pravi nov događaj”).
+ *
+ * <p>Two editions of one name, of 2025 and 2026, and a third event whose name only begins with it, so a name
+ * that only begins an entry, a name of one edition and a year with no edition are each a different answer.
+ */
+describe('a name that stands for several editions', () => {
+  const edition = (id: string, value: string, date: string) => ({ id, value, said: `${value} – ${date}`, fills: { eventId: id, date } })
+  const EDITIONS = [
+    edition('1', 'Beogradski maraton', '12/04/2026'),
+    edition('2', 'Beogradski maraton', '06/04/2025'),
+    edition('3', 'Beogradski maraton noću', '01/06/2026'),
+  ]
+  const asked: TheBlockIsAsked = { open: [2027], offered: EDITIONS }
+  const named = (eventName: string, date: string) => boxes(filled({ eventName, raceName: eventName, date }), TODAY, asked)
+  const SAID = 'eventName leagueResults.chooseTheYear'
+
+  it('holds the save until a year is chosen, where the day is in the year of one of them', () => {
+    expect(named('Beogradski maraton', '01/06/2026')).toEqual([SAID])
+    expect(named('Beogradski maraton', '01/06/2025')).toEqual([SAID])
+  })
+
+  it('reads the name as the list does, in any case and with the spaces around it taken off', () => {
+    expect(named('  beogradski MARATON ', '01/06/2026')).toEqual([SAID])
+  })
+
+  it('lets a year with no edition make a new event', () => {
+    expect(named('Beogradski maraton', '01/06/2024')).toEqual([])
+  })
+
+  it('asks nothing of a name of one edition, of a name that only begins one, or of a block with no day yet', () => {
+    expect(named('Beogradski maraton noću', '01/06/2026')).toEqual([])
+    expect(named('Beogradski', '01/06/2026')).toEqual([])
+    expect(named('Beogradski maraton', '')).toEqual(['date form.errors.required'])
+  })
+
+  it('asks nothing once an edition is chosen', () => {
+    const chosen = { ...filled({ eventName: 'Beogradski maraton', date: '01/06/2026' }), event: { eventId: 1, slug: 'b', date: '2026-04-12' } }
+
+    expect(boxes(chosen, TODAY, asked)).toEqual([])
   })
 })
 
