@@ -1,5 +1,7 @@
 package com.btl.portal.db;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Propagation;
@@ -70,6 +72,15 @@ class PouringFromQaLeavesNothingBehindTest extends DatabaseTest {
 	 * end, as a real docker client does; {@code SLOW_RM} makes {@code rm} take two, so that the way
 	 * out lasts long enough to be signalled; {@code LEFTOVER} makes {@code ps} name a container of
 	 * the run.
+	 *
+	 * <p><b>THE {@code wait} AFTER THE {@code kill} IS NOT TIDINESS.</b> The client ends at once on a
+	 * TERM, and the {@code sleep} it was waiting for ended by that signal a moment before. Without
+	 * the {@code wait} that {@code sleep} is a child of a process which has gone, so PID 1 of the
+	 * container takes it, and PID 1 here is PostgreSQL: it reports a child that ended by a signal as
+	 * {@code untracked child process}, treats it as the crash of a server process, and throws every
+	 * session away (see {@link #theDatabaseWasNotRestartedByAnythingACaseLeftBehind}). Reaped by the
+	 * client first, nothing of it reaches PID 1. Measured 22.10.2026: the exit status 143 of the client
+	 * itself is not what PostgreSQL objects to, only the {@code sleep} killed by the signal.
 	 */
 	private static final String FAKE_DOCKER = """
 			#!/bin/sh
@@ -79,7 +90,7 @@ class PouringFromQaLeavesNothingBehindTest extends DatabaseTest {
 			    if [ "${SLOW:-}" = yes ]; then
 			      sleep 8 </dev/null >/dev/null 2>&1 &
 			      slept=$!
-			      trap 'echo CLIENT-TERM >> /tmp/b190-client; kill $slept 2>/dev/null; exit 143' TERM
+			      trap 'echo CLIENT-TERM >> /tmp/b190-client; kill $slept 2>/dev/null; wait $slept 2>/dev/null; exit 143' TERM
 			      wait $slept
 			    fi
 			    ;;
@@ -173,6 +184,52 @@ class PouringFromQaLeavesNothingBehindTest extends DatabaseTest {
 
 	@Autowired
 	PostgreSQLContainer postgres;
+
+	/**
+	 * What PostgreSQL's own log says when it throws every session away and starts again.
+	 *
+	 * <p><b>THE CASES BELOW RUN SHELLS IN THE DATABASE'S CONTAINER, AND THE DATABASE IS PID 1 THERE.</b>
+	 * A process whose parent has gone is handed to PID 1, and the postmaster does not take that for a
+	 * stranger's business: a child it never started that ends by a signal, or with a status other
+	 * than 0 or 1, is reported as {@code untracked child process (PID n) ...} and treated as the
+	 * crash of a server process, so every session is terminated and the server recovers. Measured
+	 * 22.10.2026 with the log of the very container: three of those, one for each of the three
+	 * signals the cases above send, and all ten connections of the pool closed behind them.
+	 *
+	 * <p>Nothing here fails when that happens, which is the whole difficulty: the cases hold no
+	 * connection ({@code NOT_SUPPORTED}) and measure the shell. The next class to use the pool meets
+	 * ten dead connections and a server that is still recovering, and its FIRST statement fails with
+	 * an I/O error sending to the backend. That is how it showed in CI on 22.10.2026, three times
+	 * in a day, always in {@code PaymentMethodCarriedOverTest}, which merely follows this class.
+	 * {@link #theDatabaseWasNotRestartedByAnythingACaseLeftBehind} holds it here, where it is made.
+	 */
+	private static final String THE_SERVER_STARTED_AGAIN = "all server processes terminated; reinitializing";
+
+	private int restartsBeforeTheCase;
+
+	private int restartsSoFar() {
+		return postgres.getLogs().split(Pattern.quote(THE_SERVER_STARTED_AGAIN), -1).length - 1;
+	}
+
+	@BeforeEach
+	void countTheRestartsSoFar() {
+		restartsBeforeTheCase = restartsSoFar();
+	}
+
+	/**
+	 * THE SERVER WAS NOT RESTARTED BY ANYTHING THE CASE LEFT BEHIND.
+	 *
+	 * <p>Counted in the log of the container, which is the only place that says so: the rows are
+	 * all still there afterwards, and a case that holds no connection sees nothing of it.
+	 */
+	@AfterEach
+	void theDatabaseWasNotRestartedByAnythingACaseLeftBehind() {
+		assertThat(restartsSoFar())
+				.as("a process this case left behind ended in a way PostgreSQL, which is PID 1 in this"
+						+ " container, takes for the crash of one of its own: every session was"
+						+ " terminated, and the next class to use the pool fails on its first statement")
+				.isEqualTo(restartsBeforeTheCase);
+	}
 
 	private static byte[] lf(Path file) {
 		try {
