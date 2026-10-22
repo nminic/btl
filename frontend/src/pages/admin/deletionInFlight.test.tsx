@@ -105,6 +105,13 @@ const SCREENS: Screen[] = [
     at: '/sr/administracija/clanovi',
     role: 'superadmin',
     ask: first,
+    /* THE MEMBERS' OWN QUESTION since 22.10.2026 (PDL „Brisanje člana na ekranu članova": „potvrda umesto
+       „Sigurno?" kaže „Obriši člana?""), with the name of the row in the confirming button's name. */
+    words: {
+      open: 'Obriši: {name}',
+      sure: 'Obriši člana? {name}',
+      keep: 'Odustani od brisanja: {name}',
+    },
   },
   {
     name: 'a team on its own page',
@@ -212,10 +219,16 @@ describe('a deletion that is out with the server', () => {
         'Obriši: ',
         '',
       )
-      const named = one.words ?? {
+      const said = one.words ?? {
         open: `Obriši: ${name}`,
         sure: `Potvrdi brisanje: ${name}`,
         keep: `Odustani od brisanja: ${name}`,
+      }
+      /* A screen whose words carry the name of the row has „{name}" where it stands. */
+      const named = {
+        open: said.open.replace('{name}', name),
+        sure: said.sure.replace('{name}', name),
+        keep: said.keep.replace('{name}', name),
       }
       const here = within(must(ask.parentElement, 'a place the buttons are drawn in'))
 

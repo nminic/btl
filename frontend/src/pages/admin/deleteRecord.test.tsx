@@ -454,4 +454,52 @@ describe('the question about deleting a record', () => {
       expect(screen.queryByRole('button')).not.toBeInTheDocument()
     })
   })
+
+  /* THE WORD ITS CROSS SHOWS, WHERE IT IS NOT THE WHOLE NAME (the members' list, owner, 22.10.2026, PDL
+     „Brisanje člana na ekranu članova"): the pointer's box says „Obriši" and the button is called „Obriši:
+     {name}". Left out, the box says what the button is called, as it did for the rating. */
+  describe('the words of the question', () => {
+    const SAYS = {
+      named: 'Obriši: Probni tim',
+      sure: 'Obriši člana?',
+      sureNamed: 'Obriši člana? Probni tim',
+      keepNamed: 'Odustani od brisanja: Probni tim',
+    }
+
+    function drawWith(words: Parameters<typeof DeleteRecord>[0]['words']) {
+      return render(
+        <I18nProvider locale="sr">
+          <DeleteRecord name="Probni tim" onDelete={vi.fn()} words={words} />
+        </I18nProvider>,
+      )
+    }
+
+    it('shows the word it is given on the cross, and is called by the whole name', () => {
+      drawWith({ ...SAYS, word: 'Obriši' })
+
+      const cross = screen.getByRole('button', { name: 'Obriši: Probni tim' })
+
+      expect(cross).toHaveTextContent(/^Obriši$/)
+    })
+
+    it('shows the name on the cross when no word is given', () => {
+      drawWith(SAYS)
+
+      expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).toHaveTextContent(
+        /^Obriši: Probni tim$/,
+      )
+    })
+
+    it('asks in the words it is given, the confirming button called by what it is given', async () => {
+      const user = setupUser()
+
+      drawWith({ ...SAYS, word: 'Obriši' })
+      await user.click(screen.getByRole('button', { name: 'Obriši: Probni tim' }))
+
+      expect(screen.getByRole('button', { name: 'Obriši člana? Probni tim' })).toHaveTextContent(
+        /^Obriši člana\?$/,
+      )
+      expect(screen.getByRole('button', { name: 'Odustani od brisanja: Probni tim' })).toBeVisible()
+    })
+  })
 })

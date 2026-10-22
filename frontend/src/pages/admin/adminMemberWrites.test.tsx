@@ -118,7 +118,7 @@ describe('the members screen', () => {
     const row = must(button.closest('tr'), `the row of ${name}`)
 
     await user.click(button)
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
+    await user.click(within(row).getByRole('button', { name: `Obriši člana? ${name}` }))
 
     return row
   }
@@ -382,7 +382,7 @@ describe('the members screen', () => {
 
       await user.click(button)
       await user.click(
-        within(row).getByRole('button', { name: 'Confirm the deletion: Ana Jovanović' }),
+        within(row).getByRole('button', { name: 'Delete the member? Ana Jovanović' }),
       )
 
       const alert = await within(row).findByRole('alert')
@@ -657,6 +657,15 @@ describe('the members screen', () => {
       await waitFor(() => {
         expect(screen.getByText('Član je obrisan.')).toBeInTheDocument()
       })
+
+      /* DRAWN, NOT ONLY SAID (owner, 22.10.2026, PDL „Brisanje člana na ekranu članova": „posle
+         brisanja se na ekranu vidi poruka"): it stands in the portal's status region, which is not
+         the clipped one (`visually-hidden`) the other sentences of this screen go to. */
+      const shown = screen.getByText('Član je obrisan.')
+
+      expect(shown).toHaveAttribute('role', 'status')
+      expect(shown.closest('.visually-hidden')).toBeNull()
+      expect(screen.getAllByText('Član je obrisan.')).toHaveLength(1)
 
       /* Off the row that is about to vanish and onto the one control that cannot be it.
          The other six lists anchor on „Nov …"; this one has no such button any more, so

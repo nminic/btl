@@ -838,11 +838,13 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    * then the whole of it.
    *
    * @param named     what the first button is called, and the word its cross shows on the pointer
+   * @param word      the word its cross shows on the pointer, where that is not the whole name
+   *                  (the members' list: the box says „Obriši", the button is called „Obriši: {name}")
    * @param sure      what the confirming button shows
    * @param sureNamed what it is called, where it is called something else than it shows
    * @param keepNamed what the button that puts the question away is called; it shows „Odustani"
    */
-  words?: { named: string; sure: string; sureNamed?: string; keepNamed: string }
+  words?: { named: string; word?: string; sure: string; sureNamed?: string; keepNamed: string }
 }) {
   const { t } = useI18n()
   const [asking, setAsking] = useState(false)
@@ -933,7 +935,7 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
          well („Obriši svoju ocenu"). The question it opens keeps its words. */
       <ActionButton
         symbol={SYMBOL.cross}
-        word={words === undefined ? t('admin.form.delete') : words.named}
+        word={words === undefined ? t('admin.form.delete') : (words.word ?? words.named)}
         name={words === undefined ? t('admin.form.deleteNamed', { name }) : words.named}
         className={`${look} entity-delete`}
         ref={opener}

@@ -1469,6 +1469,8 @@
       "theAccountAdministers": "This member's account administers the portal, so the member cannot be deleted from here."
     },
     "memberGone": "The member has been deleted.",
+    "memberDeleteSure": "Delete the member?",
+    "memberDeleteSureNamed": "Delete the member? {name}",
     "recordPayment": "Record the payment",
     "paymentRecorded": "The payment has been recorded.",
     "cancelMembership": "Cancel",

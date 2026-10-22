@@ -95,3 +95,39 @@
 .members__search {
   min-inline-size: 0;
 }
+
+/* THE DELETION OF A MEMBER STANDS APART FROM THE ACTIONS ABOVE IT (owner, 22.10.2026, PDL „Brisanje
+   člana na ekranu članova": „dugme „Obriši" je odvojeno razmakom od „Upiši uplatu" i „Storniraj"").
+   Measured in Chrome before this: the three squares stood one under another with no distance, and a press
+   3px under „Storniraj" landed on „Obriši". A block of its own with a margin over it, written at two
+   classes because `.entity-row-actions` (`pages/admin/Entity.css`) is `inline-flex` at one, and an
+   inline box stands in a line with the squares above and takes a margin on its sides only. It ends where
+   they end (`justify-content`): the cell is set to the right (`styles/table.css`), and a block of its own
+   would otherwise start at the left. Only this screen's: the other lists that draw the same component are
+   as they were. */
+.members-table__delete.entity-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-start: var(--space-20);
+}
+
+/* „Član je obrisan.", drawn while it is true and nothing at all while it is not: the box is on the page
+   all the time so the words, when they arrive, are read (`AdminMembers.tsx`), and an empty one takes no
+   room. */
+.members__gone {
+  margin: 0 0 var(--space-8);
+}
+
+.members__gone:empty {
+  margin: 0;
+}
+
+.members__gone:not(:empty) {
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--border);
+  border-inline-start-width: 4px;
+  border-radius: var(--radius-6);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+}
