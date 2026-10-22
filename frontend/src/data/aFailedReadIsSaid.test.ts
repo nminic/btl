@@ -352,7 +352,7 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
   {
     file: 'pages/member/MyBalanceLine.tsx',
     how: 'boundary',
-    why: 'MY REASONING, not a recorded decision: a NUMBER under a heading and not a list, so the decision of 02.10.2026 (a list that cannot be read says so) is not its question. A read that gave no balance draws no line, and above all not a nought, which is what the line said over a book of 600 on 22.10.2026; it is the box of `useMyCategory` beside it. It cannot tell a failure from the route\'s own 404 (an account with no member, or a member the Managing Board freed of the fee), so a sentence with a button that asks again would be false for the second. What to say for a failure alone is the owner\'s, and is in PENDING.',
+    why: 'MY REASONING, not a recorded decision: a NUMBER under a heading and not a list, so the decision of 02.10.2026 (a list that cannot be read says so) is not its question. A read that gave no balance draws no line, and above all not a nought, which is what the line said over a book of 600 on 22.10.2026; it is the box of `useMyCategory` beside it. It cannot tell a failure from the route\'s own 404 (an account with no member behind it), so a sentence with a button that asks again would be false for the second. What to say for a failure alone is the owner\'s, and is in PENDING.',
   },
   {
     file: 'pages/member/NewResult.tsx',

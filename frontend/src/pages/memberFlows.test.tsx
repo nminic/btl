@@ -828,7 +828,7 @@ describe('membership', () => {
        was spent, moves with the price list, falls to nought when a member he brought lapses,
        and does not see one whose link was taken off, though the money stays in the book.
 
-       The balance is `balance` of `GET /api/me/membership`, so this case hands the screen two
+       The balance is `GET /api/me/balance`, so this case hands the screen two
        sources that DISAGREE, which is the only setup in which the old count and the book
        can be told apart: four members counted (4 x 600 = 2.400) and a book of 600. A screen
        that went back to the count draws 2.400 here, and a case in which both said the same

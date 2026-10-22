@@ -23,7 +23,7 @@ function theServer() {
   const pending: ((answer: Response) => void)[] = []
 
   const { stop: putBack } = serverThat((path) =>
-    path === '/api/me/membership'
+    path === '/api/me/balance'
       ? new Promise<Response>((resolve) => {
           pending.push(resolve)
         })
@@ -38,7 +38,7 @@ function theServer() {
       const waiting = pending[which]
 
       if (waiting === undefined) {
-        throw new Error(`nothing was asked at /api/me/membership as number ${which}`)
+        throw new Error(`nothing was asked at /api/me/balance as number ${which}`)
       }
 
       waiting(response)

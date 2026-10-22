@@ -262,51 +262,25 @@ export function answeringCategory(said: CategoryAnswered | null): Response {
 export type BookAnswered = { amount: number; currency: 'RSD' | 'EUR' }
 
 /**
- * `GET /api/me/membership`, and the book it reports.
+ * `GET /api/me/balance`, and the book it reports.
  *
- * <p><b>The whole record `MyMembershipApi.MyMembership` answers, with the balance as the one
- * argument.</b> The screen reads `balance` and nothing else of it, but a body that carried only that
- * field would be a body the route cannot produce, and the read's narrowing (`myBalance.ts`) would be
- * measured against a state that does not exist. The other fields are the ones a member with an empty
- * book and nothing paid would be given (V4's early period, 4.200 RSD), and no case turns on them.
+ * <p><b>The route answers the money and nothing else</b> (`MyBalanceApi`: `{amount, currency}`), so
+ * that is the whole body here. It is served to every member, one the Managing Board freed of the
+ * fee included, and it writes nothing.
  *
- * @param book     what the book holds, or null for a route that answers 404: an account that races
- *                 for nobody, a visitor, or a member the Managing Board freed of this season's fee.
- *                 All three are „no figure" on the screen.
- * @param promised how much of it the code already minted for this season says the fee will use
- *                 (`fromTheBalance`), when that is not simply what the book holds up to the fee. The
- *                 book is what it adds up to NOW and the promise is what it added up to at the first
- *                 look, so a case that must tell the two apart hands in a different number.
+ * @param book what the book holds, or null for a route that answers 404: an account that races for
+ *             nobody, or a visitor (401 on the real route). Both are „no figure" on the screen.
  */
-export function bookAsServed(
-  book: BookAnswered | null,
-  promised?: number,
-): { asked: Asked[]; stop: () => void } {
-  return serverThat((path) =>
-    path === '/api/me/membership' ? answeringBook(book, promised) : null,
-  )
+export function bookAsServed(book: BookAnswered | null): { asked: Asked[]; stop: () => void } {
+  return serverThat((path) => (path === '/api/me/balance' ? answeringBook(book) : null))
 }
 
 /** The body of a 200 for a book that holds `book`, or the 404 for no figure. */
-export function answeringBook(book: BookAnswered | null, promised?: number): Response {
-  if (book === null) {
-    return new Response(null, { status: 404 })
-  }
-
-  const money = (amount: number) => ({ amount, currency: book.currency })
-
-  return new Response(
-    JSON.stringify({
-      season: 2028,
-      alreadyAMember: false,
-      priceKey: 'early',
-      fee: money(4200),
-      balance: book,
-      fromTheBalance: money(promised ?? Math.min(book.amount, 4200)),
-      toTransfer: money(Math.max(4200 - book.amount, 0)),
-      processingFeeEur: 0,
-      coveredByTheBalance: book.amount >= 4200,
-    }),
-    { status: 200, headers: { 'content-type': 'application/json' } },
-  )
+export function answeringBook(book: BookAnswered | null): Response {
+  return book === null
+    ? new Response(null, { status: 404 })
+    : new Response(JSON.stringify(book), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
 }

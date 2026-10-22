@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { first } from '../../test/at'
 import { answeringBook, serverThat } from '../../test/serverAnswers'
-import { balanceIn, MY_MEMBERSHIP, whatMyBalanceIs } from './myBalance'
+import { balanceIn, MY_BALANCE, whatMyBalanceIs } from './myBalance'
 
 /**
- * WHAT COUNTS AS A BALANCE FROM `GET /api/me/membership`, AND WHAT DOES NOT.
+ * WHAT COUNTS AS A BALANCE FROM `GET /api/me/balance`, AND WHAT DOES NOT.
  *
  * <p>The line under the referral programme is drawn off this, and every refusal here is the same
  * outcome on purpose (`null`, which the screen draws as no figure). That is exactly why each is
@@ -14,7 +14,7 @@ import { balanceIn, MY_MEMBERSHIP, whatMyBalanceIs } from './myBalance'
 describe('what the server says the book holds', () => {
   it('reads the amount and the currency off the balance of a full answer', async () => {
     const { stop } = serverThat((path) =>
-      path === MY_MEMBERSHIP ? answeringBook({ amount: 600, currency: 'RSD' }) : null,
+      path === MY_BALANCE ? answeringBook({ amount: 600, currency: 'RSD' }) : null,
     )
 
     try {
@@ -24,11 +24,13 @@ describe('what the server says the book holds', () => {
     }
   })
 
-  it('reads the balance and not the promise or the fee beside it', async () => {
-    /* `fromTheBalance` is what the first look of the season fixed and `fee` is another thing
-       again; only `balance` is what the book holds now. All three are different numbers here,
-       so a reader that took the wrong one is a failure. */
-    const { stop } = serverThat(() => answeringBook({ amount: 600, currency: 'EUR' }, 300))
+  it('reads the money off the top of the answer, whatever else the route adds', async () => {
+    /* `Balance.Money` serialises a derived `nothing` beside the two; a reader that insisted on exactly
+       two keys would draw no figure for every member on the day a field is added. */
+    const { stop } = serverThat(
+      () =>
+        new Response(JSON.stringify({ amount: 600, currency: 'EUR', nothing: false }), { status: 200 }),
+    )
 
     try {
       expect(await whatMyBalanceIs()).toEqual({ amount: 600, currency: 'EUR' })
@@ -43,7 +45,7 @@ describe('what the server says the book holds', () => {
     try {
       await whatMyBalanceIs()
 
-      expect(first(asked).path).toBe('/api/me/membership')
+      expect(first(asked).path).toBe('/api/me/balance')
       /* A read, which is what a GET is: `ApiSecurity` guards what changes something. */
       expect(first(asked).init).toBeUndefined()
     } finally {
@@ -54,14 +56,14 @@ describe('what the server says the book holds', () => {
   it.each([
     ['a visitor', () => new Response(null, { status: 401 })],
     [
-      'an account with no member, or one freed of the fee',
+      'an account with no member',
       () => new Response(null, { status: 404 }),
     ],
     ['a portal that is broken', () => new Response(null, { status: 500 })],
     ['a body that is not JSON', () => new Response('not json', { status: 200 })],
     [
       'a refusal whose body is shaped like an answer anyway',
-      () => new Response(JSON.stringify({ balance: { amount: 600, currency: 'RSD' } }), { status: 500 }),
+      () => new Response(JSON.stringify({ amount: 600, currency: 'RSD' }), { status: 500 }),
     ],
     [
       'no server at all',
@@ -82,24 +84,20 @@ describe('what the server says the book holds', () => {
   it.each([
     ['a body that is not an object', 'balance'],
     ['no body at all', null],
-    ['an answer without a balance', {}],
-    ['a balance that is not an object', { balance: 600 }],
-    ['a balance that is null', { balance: null }],
-    ['an amount that is a string', { balance: { amount: '600', currency: 'RSD' } }],
-    ['an amount that is missing', { balance: { currency: 'RSD' } }],
-    [
-      'an amount that is not a finite number',
-      { balance: { amount: Number.POSITIVE_INFINITY, currency: 'RSD' } },
-    ],
-    ['a currency the portal does not keep', { balance: { amount: 600, currency: 'USD' } }],
-    ['a currency that is missing', { balance: { amount: 600 } }],
-    ['a currency in the wrong case', { balance: { amount: 600, currency: 'rsd' } }],
+    ['an answer without an amount', { currency: 'RSD' }],
+    ['an amount that is a string', { amount: '600', currency: 'RSD' }],
+    ['an amount that is null', { amount: null, currency: 'RSD' }],
+    ['an amount that is not a finite number', { amount: Number.POSITIVE_INFINITY, currency: 'RSD' }],
+    ['a currency the portal does not keep', { amount: 600, currency: 'USD' }],
+    ['a currency that is missing', { amount: 600 }],
+    ['a currency in the wrong case', { amount: 600, currency: 'rsd' }],
+    ['the old answer, with the money under a key', { balance: { amount: 600, currency: 'RSD' } }],
   ])('believes nothing of %s', (_what, body) => {
     expect(balanceIn(body)).toBeNull()
   })
 
   it('believes a book of nought, which is a balance and not an absence', () => {
-    expect(balanceIn({ balance: { amount: 0, currency: 'EUR' } })).toEqual({
+    expect(balanceIn({ amount: 0, currency: 'EUR' })).toEqual({
       amount: 0,
       currency: 'EUR',
     })

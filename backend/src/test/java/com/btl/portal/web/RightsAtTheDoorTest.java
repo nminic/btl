@@ -425,6 +425,14 @@ class RightsAtTheDoorTest {
 					   shape `/api/inbox` has.
 					   `MyMembershipApiTest` and `MyMembershipWriteApiTest` hold both halves. */
 					"GET /api/me/membership", "POST /api/me/membership",
+					/* HIS OWN BOOK, READ ONLY, ADDED 22.10.2026. Reading what you yourself hold is not a
+					   moderator's action and no box anybody could tick would grant it, the sentence
+					   `/api/me/membership` beside it is on this list for. The address names no member, so
+					   „his own" is the only thing it can express. A visitor is refused 401 by the chain,
+					   because it is not on `READ_BY_ANYBODY`, and an account with no member behind it is
+					   refused 404 by the controller. Unlike `/api/me/membership` it answers a member freed
+					   of the fee and writes nothing. `MyBalanceApiTest` holds those halves. */
+					"GET /api/me/balance",
 					"GET /api/me/applications", "POST /api/email-confirmation",
 					/* HIS OWN RUNS THAT NOBODY HAS COUNTED, WAITING OR SENT BACK, ADDED WITH R2 OF THE
 					   RESULTS FLOWS. Reading what you yourself sent in is not a moderator's action and

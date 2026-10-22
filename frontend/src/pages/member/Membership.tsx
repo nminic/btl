@@ -123,7 +123,7 @@ function inTheirCurrency(
  * was never what a balance is (`MeApi`, on `referredCount`: „AND IT IS NOT HIS BALANCE"): measured on 22.10.2026, an
  * administrator activated a member the owner had brought in, the book held 600 RSD, and the
  * screen said „0 RSD". The balance is the book's, and `MyBalanceLine` reads it off
- * `GET /api/me/membership`. `referredCount` stays on `GET /api/me` and in the session
+ * `GET /api/me/balance`. `referredCount` stays on `GET /api/me` and in the session
  * (`myReferredCount`), where nothing reads it any more; the server's field is not removed by
  * the branch that stopped reading it, because the count has a meaning of its own („you have
  * brought in six people") that somebody may yet want to show.
@@ -1409,7 +1409,8 @@ export function Membership() {
                 profile was deleted, though the money in the book stays. Measured: an
                 administrator activated a member the owner had brought in, the book held 600
                 RSD, and this line said „0 RSD". `MyBalanceLine` reads it off
-                `GET /api/me/membership` (`balance`), in the currency the server keeps it in.
+                `GET /api/me/balance`, in the currency the server keeps it in, and that route answers every
+                member (the owner is freed of the fee) and writes nothing.
                 The sentence above it, about what ONE referral brings, is still the price
                 list's and still drawn from it.
 

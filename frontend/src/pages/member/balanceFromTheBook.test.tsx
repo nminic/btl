@@ -19,7 +19,7 @@ import { SLOW } from '../../test/slow'
  * „0 RSD", because the screen did not read the book: it multiplied the amount of a referral by
  * `referredCount` from `GET /api/me`. That is not a balance (it knows nothing of what was spent, it
  * moves with the price list, it falls to nought when a member he brought lapses), and it was
- * replaced by `balance` of `GET /api/me/membership`.
+ * replaced by `balance` of `GET /api/me/balance`.
  *
  * <p><b>THE AXES, and each is stood on both sides of its edge.</b> Every case that could pass with
  * the old sum in the code hands the screen two numbers that DISAGREE, because with one number both
@@ -29,14 +29,13 @@ import { SLOW } from '../../test/slow'
  *   <li><b>source of the figure:</b> a head count of four against a book of nought, and a head count
  *       of nought against a book of six hundred (the incident). `000001` has four counted in
  *       `GET /api/me` and `000032` none.</li>
- *   <li><b>what the book says against what a code promised:</b> `balance` is what it adds up to
- *       NOW and `fromTheBalance` is what the first look fixed (`Balance.asThePromiseStands`). The
- *       line is the first.</li>
  *   <li><b>currency:</b> the server's, with the amount. A member in Serbia whose book is in euro is
  *       drawn in euro, and the one from abroad in dinars if the server said dinars.</li>
- *   <li><b>no figure:</b> 404 (an account that races for nobody, or a member the Managing Board
- *       freed of this season's fee), a broken server, and the moment before the answer comes. In
- *       every one the line is not drawn, and above all not drawn as nought.</li>
+ *   <li><b>no figure:</b> 404 (an account that races for nobody), 401 (a visitor), a broken
+ *       server, and the moment before the answer comes. In every one the line is not drawn, and
+ *       above all not drawn as nought. A member freed of the fee is NOT here: the route answers
+ *       him his book, and the case below holds that the screen draws it beside the sentence that
+ *       says he owes nothing.</li>
  *   <li><b>who is asking:</b> a member, and somebody who registered and has not paid.</li>
  * </ul>
  */
@@ -72,7 +71,7 @@ function openHisPage(member: string, book: BookAnswered | null) {
  *  line that has not been drawn yet. */
 async function untilTheBookHasAnswered(asked: { path: string }[]): Promise<void> {
   await waitFor(() => {
-    expect(asked.some((one) => one.path === '/api/me/membership')).toBe(true)
+    expect(asked.some((one) => one.path === '/api/me/balance')).toBe(true)
   })
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -99,18 +98,6 @@ describe('the balance on „Moja članarina"', () => {
     expect(screen.queryByText('0 RSD')).not.toBeInTheDocument()
   })
 
-  it('is what the book adds up to now, and not what the first look promised', async () => {
-    /* `balance` 600 beside `fromTheBalance` 300: a promise minted at 300 and a book that has grown
-       since. The line says what is in the book. */
-    stand(membersAsServed('000032'))
-    stand(bookAsServed({ amount: 600, currency: 'RSD' }, 300))
-
-    renderAt('/sr/moja-clanarina', 'competitor', '000032')
-
-    expect(await screen.findByText('600 RSD')).toBeVisible()
-    expect(screen.queryByText('300 RSD')).not.toBeInTheDocument()
-  })
-
   it('is in the money the server keeps it in, whatever the profile says', async () => {
     /* 000001 lives in Serbia, so the screen's own rule says dinars. The book says euro (a member
        who changed his country keeps the balance he has), and the book is right. */
@@ -119,6 +106,37 @@ describe('the balance on „Moja članarina"', () => {
     expect(await screen.findByText('5 EUR')).toBeVisible()
     expect(screen.queryByText('5 RSD')).not.toBeInTheDocument()
     expect(screen.queryByText('20 EUR')).not.toBeInTheDocument()
+  })
+
+  it('is drawn to a member the Managing Board freed of the fee, beside the sentence that says so', async () => {
+    /* The owner is one, and the route that used to report the book turned him away with 404. The
+       screen draws what the route serves, and the sentence about being freed stays where it was. */
+    stand(
+      serverThat((path) =>
+        path === '/api/me'
+          ? new Response(
+              JSON.stringify({
+                role: 'competitor',
+                account: 1,
+                member: {
+                  memberNumber: '000032',
+                  country: 'RS',
+                  firstSeason: 2016,
+                  membershipBasis: 'feeExempt',
+                  membershipSeason: 2028,
+                },
+              }),
+              { status: 200, headers: { 'content-type': 'application/json' } },
+            )
+          : null,
+      ),
+    )
+    stand(bookAsServed({ amount: 600, currency: 'RSD' }))
+
+    renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2027-11-01')
+
+    expect(await screen.findByText(/Oslobođen si plaćanja članarine za sezonu 2028, odlukom/)).toBeVisible()
+    expect(await screen.findByText('600 RSD')).toBeVisible()
   })
 
   it('is drawn to somebody who registered and has not paid, on his account', async () => {
@@ -137,7 +155,7 @@ describe('the balance on „Moja članarina"', () => {
 
     await screen.findByText('600 RSD')
 
-    expect(route.asked.filter((one) => one.path === '/api/me/membership')).toHaveLength(1)
+    expect(route.asked.filter((one) => one.path === '/api/me/balance')).toHaveLength(1)
   })
 
   it('is read again on the next visit, so what moved the book in between is what is drawn', async () => {
@@ -150,7 +168,7 @@ describe('the balance on „Moja članarina"', () => {
 
     stand(membersAsServed('000001'))
     const route = stand(
-      serverThat((path) => (path === '/api/me/membership' ? answeringBook(book) : null)),
+      serverThat((path) => (path === '/api/me/balance' ? answeringBook(book) : null)),
     )
 
     const { router } = renderAt('/sr/moja-clanarina', 'competitor', '000001')
@@ -170,16 +188,16 @@ describe('the balance on „Moja članarina"', () => {
 
     expect(await screen.findByText('600 RSD')).toBeVisible()
     expect(screen.queryByText('0 RSD')).not.toBeInTheDocument()
-    expect(route.asked.filter((one) => one.path === '/api/me/membership')).toHaveLength(2)
+    expect(route.asked.filter((one) => one.path === '/api/me/balance')).toHaveLength(2)
   })
 
   it.each([
-    ['an account the league keeps no member for, or one freed of the fee', 404],
+    ['an account the league keeps no member for', 404],
     ['a server that is broken', 500],
     ['a visitor', 401],
   ])('draws no figure for %s, and above all not a nought', async (_who, status) => {
     stand(membersAsServed('000001'))
-    const route = stand(serverThat((path) => (path === '/api/me/membership' ? answeredWith(status) : null)))
+    const route = stand(serverThat((path) => (path === '/api/me/balance' ? answeredWith(status) : null)))
 
     renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
@@ -198,7 +216,7 @@ describe('the balance on „Moja članarina"', () => {
     stand(membersAsServed('000001'))
     const route = stand(
       serverThat((path) =>
-        path === '/api/me/membership'
+        path === '/api/me/balance'
           ? new Promise<Response>((resolve) => {
               answer = resolve
             })
@@ -210,7 +228,7 @@ describe('the balance on „Moja članarina"', () => {
 
     expect(await screen.findByText(THE_NOTE)).toBeVisible()
     await waitFor(() => {
-      expect(route.asked.some((one) => one.path === '/api/me/membership')).toBe(true)
+      expect(route.asked.some((one) => one.path === '/api/me/balance')).toBe(true)
     })
 
     expect(screen.queryByText('na balansu')).not.toBeInTheDocument()
