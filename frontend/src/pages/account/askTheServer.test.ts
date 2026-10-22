@@ -316,3 +316,119 @@ describe('what is sent', () => {
     expect(echoedBy(server.asked, 0)).toBe('imam')
   })
 })
+
+/**
+ * THE PROXY SAYING THE SITE IS LOCKED, TOLD FROM THE PORTAL SAYING NO (owner, 22.10.2026,
+ * `btl-produkt/ADL.md`, „portal to kaže i nudi novu karticu").
+ *
+ * <p>Measured from outside on 22.10.2026, without sending any access word: the proxy answers
+ * `401`, `WWW-Authenticate: Basic realm="restricted"`, `Content-Length: 0`. The portal's own 401
+ * (`SignInApi`'s `no()`, the chain's entry point) carries no `WWW-Authenticate` at all, and
+ * `ApiSecurityTest` and `SignInApiTest` hold THAT half on the server. This file holds the half that
+ * reads it: the number is the same on both, so the challenge is the whole of the difference, and every
+ * case below is one cell of the table status x challenge.
+ *
+ * <p>The two sources of the one fact a case can be written from are kept apart: a 401 WITHOUT the
+ * challenge is the portal's (and stays `wrong`, which is what makes `SignIn` say „wrong password"),
+ * and a challenge on a number that is NOT 401 is not the lock. Written from the number alone, or
+ * from the header alone, the first two cases of each table would be red.
+ */
+describe('the site being locked, which is a 401 that asks the browser for a password', () => {
+  const CHALLENGE = 'Basic realm="restricted"'
+
+  /** A 401 as the proxy gives it: no body, the challenge on it. */
+  function lockedBy(challenge: string): Response {
+    return new Response(null, { status: 401, headers: { 'www-authenticate': challenge } })
+  }
+
+  beforeEach(() => {
+    document.cookie = 'XSRF-TOKEN=imam'
+  })
+
+  it('is told apart from the answer to a write that arrived and was refused', async () => {
+    server = serverThat(() => lockedBy(CHALLENGE))
+
+    /* Nothing is carried but the word itself: not the number, not the realm, not the header. */
+    expect(await askTheServer('/api/registration', { email: 'a@b.rs' })).toEqual({ got: 'locked' })
+  })
+
+  it('reads the challenge and not the realm, which is a word in a configuration this repository does not hold', async () => {
+    for (const challenge of ['Basic realm="nesto-drugo"', 'Basic', 'Basic realm=bez-navodnika']) {
+      server?.stop()
+      server = serverThat(() => lockedBy(challenge))
+
+      expect(await askTheServer('/api/registration', {}), challenge).toEqual({ got: 'locked' })
+    }
+  })
+
+  it('reads the scheme however it is spelt, because schemes are not case sensitive', async () => {
+    for (const challenge of ['basic realm="x"', 'BASIC realm="x"']) {
+      server?.stop()
+      server = serverThat(() => lockedBy(challenge))
+
+      expect(await askTheServer('/api/registration', {}), challenge).toEqual({ got: 'locked' })
+    }
+  })
+
+  it('does not take the portal’s own 401 for the lock, which is the same number with no challenge', async () => {
+    server = serverThat(() => answeredWith(401))
+
+    /* The cell that fails if the lock is read from the number: this is `SignInApi`'s answer to a
+       wrong password, and `SignIn` tells that reader the password was wrong. */
+    expect(await askTheServer('/api/sign-in', {})).toEqual({ got: 'wrong', status: 401 })
+  })
+
+  it('does not take a challenge of another scheme for something a new tab can answer', async () => {
+    for (const challenge of ['Bearer realm="x"', 'Digest realm="x"', 'Basically realm="x"', '']) {
+      server?.stop()
+      server = serverThat(() => lockedBy(challenge))
+
+      expect(await askTheServer('/api/registration', {}), challenge).toEqual({
+        got: 'wrong',
+        status: 401,
+      })
+    }
+  })
+
+  it('reads a challenge on any number but 401 as that number, because the proxy asks with 401 and nothing else', async () => {
+    const challenge = { 'www-authenticate': CHALLENGE }
+
+    for (const status of [400, 404, 409, 500, 502]) {
+      server?.stop()
+      server = serverThat(() => new Response(null, { status, headers: challenge }))
+
+      expect(await askTheServer('/api/registration', {}), String(status)).toEqual({
+        got: 'wrong',
+        status,
+      })
+    }
+
+    server?.stop()
+    server = serverThat(() => new Response(null, { status: 403, headers: challenge }))
+    expect(await askTheServer('/api/registration', {})).toEqual({ got: 'rejected' })
+
+    server?.stop()
+    server = serverThat(() => new Response(null, { status: 204, headers: challenge }))
+    expect(await askTheServer('/api/registration', {})).toEqual({ got: 'done', body: undefined })
+  })
+
+  it('says it on a first write too, when the read for the token met the lock as well', async () => {
+    /* The case the owner met: a tab brought back after a rest has no cookie AND no password, so the
+       read for the token is answered 401 by the proxy and the write after it is answered the same.
+       The word is the write's, and the write is still sent: the proxy is what judges it. */
+    forgetEveryCookie()
+    server = serverThat(() => lockedBy(CHALLENGE))
+
+    expect(await askTheServer('/api/registration', { email: 'a@b.rs' })).toEqual({ got: 'locked' })
+    expect(server.asked.map((one) => one.path)).toEqual(['/api/countries', '/api/registration'])
+  })
+
+  it('reads it for every verb a write is sent with', async () => {
+    for (const how of ['POST', 'PUT', 'DELETE'] as const) {
+      server?.stop()
+      server = serverThat(() => lockedBy(CHALLENGE))
+
+      expect(await askTheServer('/api/leagues/1', {}, how), how).toEqual({ got: 'locked' })
+    }
+  })
+})

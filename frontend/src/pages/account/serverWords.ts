@@ -88,6 +88,14 @@ export function wordsFor(
     return t('server.rejected')
   }
 
+  /* THE SITE IS LOCKED AND THE BROWSER FORGOT THE WORD (owner, 22.10.2026, `askTheServer.ts`). One
+     sentence for every route, and a route's `numbers` are not consulted: this was never the route's
+     answer, the proxy in front of it gave it. The way to a new tab is drawn beside the sentence by
+     whoever draws it (`NewTabForTheAccess`). */
+  if (answer.got === 'locked') {
+    return t('server.locked')
+  }
+
   if (answer.got === 'wrong') {
     const own = Object.hasOwn(numbers, answer.status) ? numbers[answer.status] : undefined
 
