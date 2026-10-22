@@ -35,7 +35,7 @@ import java.util.List;
  * <p><b>NOTHING HERE IS PUBLIC, AND THE REASON IS NARROWER THAN ARTICLE 73's.</b>
  * ADL P-javno, the owner, 13.09.2026: "javno je ono sto Clan 73 nabraja, i nista
  * vise. Sve ostalo ceka resurs koji zna ko pita." This is that resource: it does
- * not withhold a field because Clan 73 leaves it out, it withholds the WHOLE
+ * not withhold a field because section 3 of the privacy policy leaves it out, it withholds the WHOLE
  * ANSWER from everybody except the one competitor it is about, the same closedness
  * {@link CommentApi} and {@link AttendanceApi} have. So this route is absent from
  * {@link ApiSecurity#READ_BY_ANYBODY} - a visitor is refused 401 before this class
@@ -332,7 +332,7 @@ class MyApplicationsApi {
 						   Why it is not merely tidy: `/api/competitors` stops carrying a member
 						   the day his fee lapses, so a number that is HERE and missing THERE is
 						   the difference between two answers, and that difference says he did
-						   not renew. Article 74 shuts everything about the fee, and the owner,
+						   not renew. Section 3 of the privacy policy shuts everything about the fee, and the owner,
 						   13.09.2026: „Kad je sporno, polje se IZOSTAVLJA i izostavljanje se
 						   imenuje sa razlogom." The invite row itself stays - it is his own, and
 						   he is the one who withdraws it - but the person behind it stops being

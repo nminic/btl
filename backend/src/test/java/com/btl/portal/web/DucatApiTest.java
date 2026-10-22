@@ -298,7 +298,7 @@ class DucatApiTest {
 	 * AND NOTHING ABOUT WHO HOLDS A DUCAT LEAVES THROUGH THIS ROUTE.
 	 *
 	 * <p>V15 has the recognitions - {@code ducat_award}, with the snapshot of what the
-	 * member had when he won it - and Article 73 does make „dukati i priznanja" public.
+	 * member had when he won it - and section 3 of the privacy policy does make „dukati i priznanja" public.
 	 * They are left out because no screen reads them, and „on the chance it will be
 	 * wanted" is the one reason that is never enough.
 	 *
@@ -310,7 +310,7 @@ class DucatApiTest {
 	 *
 	 * <p>The day a screen reads recognitions this case is what has to be decided against
 	 * rather than deleted: the holder is named by his MEMBER NUMBER, which is what
-	 * Article 73 publishes, and never by a name beside anything else off his row.
+	 * section 3 of the privacy policy publishes, and never by a name beside anything else off his row.
 	 */
 	@Test
 	void nothingAboutWhoHoldsADucatLeavesTheServer() throws Exception {

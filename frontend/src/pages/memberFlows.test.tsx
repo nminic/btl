@@ -165,7 +165,7 @@ function pricesWith(row: string, amounts: { eur: number; rsd: number | null }) {
 }
 
 /* 000032 by default and not 000001: a member freed of the fee owes nothing and is shown
-   no renewal at all (Pravilnik član 15, PDL P16), so every test about renewal
+   no renewal at all (the rulebook's article „Cena, rokovi i oslobađanje od članarine", PDL P16), so every test about renewal
    needs somebody who actually pays. Of the thirty, three do, and this is the
    grown one of them living in Serbia. His membership is not active, which this
    screen has no branch for and which none of these tests is about. */
@@ -466,7 +466,7 @@ describe('membership', () => {
   }, SLOW)
 
   it('asks a member freed of the fee for nothing at all', async () => {
-    /* Pravilnik član 15 and PDL P16: a member freed of the fee never has a payment.
+    /* The rulebook's article „Cena, rokovi i oslobađanje od članarine" and PDL P16: a member freed of the fee never has a payment.
        Only the line about their status said so, while the whole of the renewal
        underneath went on being drawn: a price, „Uplati sada", the recipient, a
        reference number and a QR code for money they do not owe.
@@ -575,7 +575,7 @@ describe('membership', () => {
        the record carried a year of birth.
 
        It does not any more. The year has gone from the record because the record is
-       served publicly and Član 74 forbids a year of birth on it (`data/types.ts`),
+       served publicly and section 3 of the privacy policy forbids a year of birth on it (`data/types.ts`),
        and the age band that replaced it cannot answer this: `24-` runs from a newborn
        to somebody of twenty four and the junior fee stops at fifteen.
 
@@ -2218,7 +2218,7 @@ describe('a result from entry to decision', () => {
 
   it('sends what the member said about the race to the server', async () => {
     /* The form has asked for it all along (`unos-rezultata.form.json`), the
-       rulebook lists it among what is entered from a profile (Član 37), and the
+       rulebook lists it among what is entered from a profile (the article „Kako se prijavljuje rezultat"), and the
        moderator's screen draws it where there is one (admin/ReviewQueue.tsx).
        This one door dropped it: the screen wrote an empty string into the
        submission and the words went nowhere.

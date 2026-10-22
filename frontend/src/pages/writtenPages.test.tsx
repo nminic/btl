@@ -1915,7 +1915,7 @@ describe('the rulebook', () => {
        The pair was in the wrong half of this until 15.08.2026. The owner settled
        it on 11.08.2026 (PDL P16): the trophy is for standing, „po kategorijama,
        generalno muški i ženski, jedan timski i jedan trkačkom paru", and the
-       figure is for what is not a standing. Član 62 lists the pair among the
+       figure is for what is not a standing. The article „Posebna priznanja" lists the pair among the
        special recognitions, which the article then handed a figure, so the
        rulebook gave the pair a figure while the decision gave them a trophy. */
     expect(rulebook).toMatch(/najboljem trkačkom paru/)
@@ -2536,7 +2536,7 @@ function sectionOf(
  *
  * `sectionOf` above takes the first that matches, which is right for sixteen
  * questions in this file that are anchored on a phrase: „Član lige je" is a
- * definition in Član 10 and a sentence anybody may write in the code of ethics,
+ * definition in the article „Član lige" and a sentence anybody may write in the code of ethics,
  * and a guard that stopped the file over an ordinary edit to the rulebook would
  * be a guard about itself.
  *
@@ -2634,7 +2634,7 @@ describe('what the written pages say the fee buys', () => {
     )
   })
 
-  it('writes the ladders of Član 49 exactly as the boards are ordered', () => {
+  it('writes the ladders of the article on ties exactly as the boards are ordered', () => {
     /* The tie-break ladders live in two homes: this table and `data/derive.ts`.
        Each home has its own guard — `derive.test.ts` measures the code by
        mutation — and until now nothing held this one, so the table could be put
@@ -2719,7 +2719,7 @@ describe('what the written pages say the fee buys', () => {
     expect(proof).toMatch(/Ako ga nemate, pošaljite sliku/)
     expect(proof).toMatch(/u par reči napišite zašto linka nema i šta se na slici vidi/)
 
-    /* **What Član 37 says about how a result reaches the portal is held in the
+    /* **What the article „Kako se prijavljuje rezultat" says about how a result reaches the portal is held in the
        snapshot now, with the rest of the written pages** (`writtenVerification.test.ts`,
        `test/writtenPages.snapshot.json`). The patterns that used to stand here were
        measured wrong five times over: a list joined by „i" instead of commas, a case
@@ -2777,7 +2777,7 @@ describe('what the written pages say the fee buys', () => {
   it('leaves the measures to the rulebook, which knows only the ones still standing', () => {
     /* The terms send the reader to the rulebook and then say „Ukratko:", so the
        summary answers to the article. The owner struck two of the five measures
-       on 22.08.2026 (Član 69: opomena, diskvalifikacija, isključenje), and the
+       on 22.08.2026 (the article „Mere": opomena, diskvalifikacija, isključenje), and the
        summary went on offering the other two: a member reading the terms would
        have seen that the league may delete their results or suspend them for
        thirty days, out of a rulebook that no longer allows either.

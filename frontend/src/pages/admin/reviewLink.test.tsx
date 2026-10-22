@@ -319,7 +319,7 @@ describe('the queue the moderator decides in', () => {
   })
 
   it('says nothing of the sort where nothing was sent at all', async () => {
-    /* Član 37 lets a member attach a picture instead of an address, so an empty
+    /* The rulebook's article „Dokazi" lets a member attach a picture instead of an address, so an empty
        link is the ordinary case and not a fault. A queue that complained about it
        would be complaining about every second result. */
     const table = await queueWith('')

@@ -899,7 +899,7 @@ class TeamApiTest {
 	 * NOT HIS TO SEE, and it is named here with the reason.
 	 *
 	 * <ul>
-	 * <li><b>Who administers the team.</b> Article 73 makes „Tim" public, which is
+	 * <li><b>Who administers the team.</b> Section 3 of the privacy policy makes „Tim" public, which is
 	 * which team a member runs for; it makes no ROLE inside a team public. Measured
 	 * before this was written: the one public screen that reads the field
 	 * ({@code pages/TeamDetail.tsx}) never draws it - all three uses are conditions
@@ -953,7 +953,7 @@ class TeamApiTest {
 	 * AND NO MEMBER NUMBER LEAVES THE SERVER WITH A TEAM, whatever it is called.
 	 *
 	 * <p>This is both decisions in one case. Who administers the team is left out, and
-	 * so is who is IN it - the second although Article 73 makes it public, because it
+	 * so is who is IN it - the second although section 3 of the privacy policy makes it public, because it
 	 * is already answered once by {@code /api/competitors} and the second home would
 	 * be the worse of the two: built out of {@code team_membership} it carries the
 	 * members whose fee has lapsed, and filtered to those whose fee is standing it is
@@ -1016,7 +1016,7 @@ class TeamApiTest {
 
 			for (String number : numbers) {
 				assertThat(whole).as("a member number (%s) left the server with a team, to %s, who"
-								+ " is not the administration. Clan 73 makes the team public and"
+								+ " is not the administration. Section 3 of the privacy policy makes the team public and"
 								+ " names no role inside one: who is in which team is"
 								+ " /api/competitors' answer, except a hidden member's team, which"
 								+ " a visitor is told in alsoInTheTeam and nowhere else; and who"
@@ -1606,7 +1606,7 @@ class TeamApiTest {
 	 * the visitor's answer stands on, asked of the answer that differs.
 	 *
 	 * <p>The one omission is still an omission - the seat, because a member is not the
-	 * administration and Article 73 makes no role inside a team public - and the one
+	 * administration and section 3 of the privacy policy makes no role inside a team public - and the one
 	 * thing added is named, with {@code Answers} checking that the portal really does
 	 * not serve that name. The mark left this list on 21.09.2026 in the same commit that
 	 * gave it an address, and both halves of the floor above say why it could not have
@@ -1629,7 +1629,7 @@ class TeamApiTest {
 	 * A MEMBER IS TOLD WHICH TEAM IS HIS TO RUN, AND IS TOLD NOTHING ABOUT ANYBODY
 	 * ELSE'S.
 	 *
-	 * <p>Article 73 makes „Tim" public and makes no role inside one public, so the
+	 * <p>Section 3 of the privacy policy makes „Tim" public and makes no role inside one public, so the
 	 * seat does not leave as a member number (the case above this one holds that over
 	 * the whole text). What every screen that read the number actually asked was
 	 * whether the READER holds the seat - {@code runs === memberNumber} three times in

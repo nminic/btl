@@ -1710,7 +1710,7 @@ describe('the errors a form is holding while somebody types', () => {
  * through the content and is measured here instead.
  *
  * The first one can be, and is, on the real content: `unos-rezultata` and
- * `prijava-sa-trke` both ask for a link that a picture frees (Član 37), and
+ * `prijava-sa-trke` both ask for a link that a picture frees (the rulebook's article „Dokazi"), and
  * `pages/member/newResult.test.tsx` measures both directions of it there, while
  * `pages/Registration.test.tsx` measures the third rule, `optionalWhenYoungerThan`,
  * on the real registration. Those are the guards that hold the arrangement; what is
@@ -1737,7 +1737,7 @@ const askedByAnswer: FormDef = {
 }
 
 /* And the other way round: obligatory as written, and let go once a picture
- * arrives, which is what Član 37 says about the link to the official results. */
+ * arrives, which is what the rulebook's article „Dokazi" says about the link to the official results. */
 const freedByPicture: FormDef = {
   id: 'proba',
   titleKey: 'proba.naslov',
@@ -1788,7 +1788,7 @@ describe('the star that only another answer brings', () => {
 describe('an error that says a field is obligatory', () => {
   it('goes when the form stops asking for that field', async () => {
     /* Recorded 22.08.2026: a member sends the form without the link, is told the
-       link is obligatory, and then attaches a picture, which by Član 37 lets the
+       link is obligatory, and then attaches a picture, which by the rulebook's article „Dokazi" lets the
        link go. The star and `aria-required` went; the red line under the box and
        the entry in the summary stayed, so the screen said in one breath that the
        field need not be answered and that it is wrong to have left it. */

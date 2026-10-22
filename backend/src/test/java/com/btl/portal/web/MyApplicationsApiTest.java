@@ -650,7 +650,7 @@ class MyApplicationsApiTest {
 	 * <p><b>Why the number goes and the row does not.</b> {@code /api/competitors} stops
 	 * carrying a member the day his fee lapses, so a number that is HERE and missing
 	 * THERE is the difference between two answers, and that difference says he did not
-	 * renew - „sve u vezi sa clanarinom" is what Article 74 shuts. The row is his own
+	 * renew - „sve u vezi sa clanarinom" is what section 3 of the privacy policy shuts. The row is his own
 	 * and he is the one who withdraws it, so it stays; the person behind it stops being
 	 * named. Owner, 13.09.2026: „Kad je sporno, polje se IZOSTAVLJA i izostavljanje se
 	 * imenuje sa razlogom."

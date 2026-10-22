@@ -94,7 +94,7 @@ export type NumberedResult = Result & { memberNumber: string }
  * dobije broj." The cost he accepted in the same breath was „svaki upit koji
  * racuna da broj postoji mora da kaze `member_number is not null`", and this is
  * that sentence said on the screens instead of in the database. It agrees with
- * what the standings are: a table of MEMBERS (PDL P11, Article 73), fed from
+ * what the standings are: a table of MEMBERS (PDL P11, section 3 of the privacy policy), fed from
  * `/api/competitors`, whose every row carries a number.
  *
  * **What it prevents is not a type error but many people made into one.** Every
@@ -529,7 +529,7 @@ const BY_TEAM = byLadder<TeamRow>([
  * than by a member number, because a team has no member number. What that id
  * promises is one thing only: that it is the same tomorrow, so the table does
  * not shuffle between two recounts of the same data. It promises nothing about
- * when the team joined, and the rulebook no longer says it does (Article 50):
+ * when the team joined, and the rulebook no longer says it does (the article „Deljenog mesta nema"):
  * the prototype hands out `team-dunav` from the seed and `teams-nov-N` from the
  * panel, and `localeCompare` puts `teams-nov-10` ahead of `teams-nov-2`. So
  * here too there is no shared place, and which of two teams nothing separates
@@ -696,7 +696,7 @@ export function rankTeams(
  * omission.** This used to take one and work the band out from a year of birth,
  * with a comment saying the band moves with the year so storing it would go
  * stale. Both halves of that were true and the portal is no longer allowed the
- * input: a year of birth is the short form of a date of birth, Član 74 says that
+ * input: a year of birth is the short form of a date of birth, section 3 of the privacy policy says that
  * is never shown, and a member's record is served publicly (ADL A8, `types.ts`).
  * So the band is stored, it is the band for `SEASON`, and a season handed in here
  * could not change the answer.
@@ -1289,7 +1289,7 @@ type Tally = { totals: Totals; reachedOn: string }
  * completed the count and the day needs no comparing of its own.
  *
  * The day matters because "reached earlier wins" is a rung on two of the boards
- * (PDL P12, and Article 49 of the rulebook), so both are counted here rather than
+ * (PDL P12, and the article „Izjednačenje" of the rulebook), so both are counted here rather than
  * one of them keeping the day to itself.
  */
 function tallyOf(results: Result[]): Map<string, Tally> {
@@ -1367,7 +1367,7 @@ export function topByCategory(
  * then reached earlier, then the member number.
  *
  * Points sit on the second rung and not the fourth since the owner's fourth
- * reading of the rulebook, 22.08.2026 (Article 49): between two members level on
+ * reading of the rulebook, 22.08.2026 (the article „Izjednačenje"): between two members level on
  * kilometres, what they took for those kilometres separates them before the
  * count of races does.
  *
@@ -1586,7 +1586,7 @@ export function topByKilometers(
 
 /** Longest on the course in a season. Ladder: time, points, kilometres, more
  *  races, vertical. Points were not a rung here at all until the owner's fourth
- *  reading, 22.08.2026 (Article 49); they now stand directly under the time. The
+ *  reading, 22.08.2026 (the article „Izjednačenje"); they now stand directly under the time. The
  *  day is not a rung on this one (PDL P12). */
 const BY_TIME_ON_COURSE = byLadder<TotalsRow>([
   (row) => row.seconds,
@@ -1704,7 +1704,7 @@ export type RaceRow = {
 /**
  * The best single races of a season, by the points of one result. Ladder:
  * points on that race, the longer race, then what the runner took in the whole
- * season and their kilometres in it (Article 49, owner's fourth reading,
+ * season and their kilometres in it (the article „Izjednačenje", owner's fourth reading,
  * 22.08.2026; the count of races in the season was a rung until then). The
  * earlier date is deliberately not a rung: the usual tie is two people crossing
  * the line together, which is the same race on the same day.
@@ -1735,7 +1735,7 @@ export function bestSingleRaces(
   })
 
   /* Points on that one race, then the longer race, then what the member took in
-     the whole season, then their kilometres in it (Article 49, owner's fourth
+     the whole season, then their kilometres in it (the article „Izjednačenje", owner's fourth
      reading 22.08.2026). The count of races in the season was the fourth rung
      until then and is not a measure any more. */
   const ladder = byLadder<(typeof rows)[number]>([

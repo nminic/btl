@@ -42,7 +42,7 @@ import java.util.List;
  *
  * <p><b>NOTHING HERE IS PUBLIC.</b> ADL P-javno, the owner on 13.09.2026: „javno je ono
  * što Član 73 nabraja, i ništa više", and it names verification among the seven
- * resources it covers. Article 73 lists nothing whatever about a queue, so this route is
+ * resources it covers. Section 3 of the privacy policy lists nothing whatever about a queue, so this route is
  * absent from {@link ApiSecurity#READ_BY_ANYBODY} and somebody who is not signed in is
  * answered 401 by the chain before this class runs - the same closedness
  * {@link CommentApi} and {@link AttendanceApi} have, enforced by NOT being enforced
@@ -158,7 +158,7 @@ import java.util.List;
  * RESOURCE PARTS COMPANY WITH {@link AttendanceApi} AND {@link CommentApi} ON PURPOSE.</b>
  * Those two drop a member who has not renewed, because a number that leaves a PUBLIC
  * answer and does not leave {@code /api/competitors} names, by the difference between two
- * answers, „sve u vezi sa članarinom" - which Article 74 puts beside the date of birth.
+ * answers, „sve u vezi sa članarinom" - which section 3 of the privacy policy puts beside the date of birth.
  * There is no such subtraction to make here: nothing in this answer is public, the only
  * reader is the one moderator holding that tab's tick, and the payments tab exists
  * precisely for people whose fee is not recorded (PDL P28a, 22.09.2026, „Verifikacija ima pet

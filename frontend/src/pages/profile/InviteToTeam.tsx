@@ -31,7 +31,7 @@ import {
  *
  * **WHO SEES IT: WHOEVER LEADS A TEAM, AND NO OTHER MEMBER OF IT.** PDL 27.09.2026, the owner
  * choosing between three offered outcomes: „Samo administrator tima, kako pise u Pravilniku."
- * (Article 53), which overturned his own „(bilo koji član)" of 05.09.2026. The route has asked
+ * (the rulebook's article „Osnivanje tima"), which overturned his own „(bilo koji član)" of 05.09.2026. The route has asked
  * that seat since the same day (`TeamJoiningWriteApi.heAdministersThisTeam`), and until T5 this
  * screen picked the reader's team by membership alone, so it offered every member of a team a
  * button that led to a 404 (QA review of 09.10.2026, row 4). The question is now

@@ -327,7 +327,7 @@ class TeamJoiningWriteApi {
 	 *
 	 * <p><b>It names somebody and is still safe, which is measured rather than assumed.</b>
 	 * Which teams a member stands in is public - {@code GET /api/teams} answers the roster
-	 * to a visitor and Article 73 names it - and the condition behind this reason reads the
+	 * to a visitor and section 3 of the privacy policy names it - and the condition behind this reason reads the
 	 * same rows ({@link TeamApi#WHO_STANDS_IN_A_TEAM} via {@link ATeamHeIsAlreadyIn}), so
 	 * naming it reveals nothing the portal does not already answer. That is the line
 	 * {@link PairWriteApi}'s {@code A_PAIR_ALREADY_HOLDS} draws for the same reason. A member
@@ -716,7 +716,7 @@ class TeamJoiningWriteApi {
 	 *
 	 * <p>PDL.md ("samo administrator tog tima"), quoted in full on this class: „Poziv u tim
 	 * salje **samo
-	 * administrator tog tima**", the owner's decision of 27.09.2026 taken off Article 53 of the
+	 * administrator tog tima**", the owner's decision of 27.09.2026 taken off the article „Osnivanje tima" of the
 	 * rulebook and overturning his own of 05.09.2026. <b>A member who merely stands in the team
 	 * is answered 404 here</b>, and the same man is answered 404 by {@link #decide} - which is
 	 * no longer a difference between the two directions but one rule read twice.

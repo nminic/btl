@@ -374,7 +374,7 @@ export function AdminMembers() {
                           printed the year of birth of every member until 13.09.2026,
                           and it was drawn from the same public file every other screen
                           reads (ADL A8): administration was where it was shown, not
-                          where it was kept. Član 74 allows the category and nothing
+                          where it was kept. Section 3 of the privacy policy allows the category and nothing
                           finer, so the category is the whole of what stands here. */}
                       <th scope="col" className="members-table__wide">
                         {t('competitors.columns.category')}

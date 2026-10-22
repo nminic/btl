@@ -224,7 +224,7 @@ class RightsAtTheDoorTest {
 	 * paragraph and not folded into the one above, because the two arrive by DIFFERENT
 	 * roads: {@code /api/pairs/{id}} was always visible to this floor and was named the day
 	 * it was written, while {@code /api/pairs} is on {@link ApiSecurity#READ_BY_ANYBODY} -
-	 * pairs are read publicly (Pravilnik, Clan 73) - and a floor keyed by path alone excused
+	 * pairs are read publicly (the privacy policy, section 3) - and a floor keyed by path alone excused
 	 * every verb at that address, writing included.
 	 *
 	 * <p><b>AND THAT IS THE MEASUREMENT THIS SNAPSHOT'S SHAPE COST, AND WHY THE COST WAS
@@ -460,7 +460,7 @@ class RightsAtTheDoorTest {
 					   one of these acts to somebody the TEAM decides rather than the league -
 					   „Prijavu u tim odobrava administrator tog tima" (owner, 05.09.2026),
 					   „Poziv u tim prihvata pozvani član" (same day), and „Poziv u tim salje
-					   samo administrator tog tima" (owner, 27.09.2026, off Article 53 of the
+					   samo administrator tog tima" (owner, 27.09.2026, off the article „Osnivanje tima" of the
 					   rulebook, overturning his own decision that any member of the team could
 					   send one). So what decides is the session weighed against the roster,
 					   inside the handler, and somebody it is not for is answered 404 by the

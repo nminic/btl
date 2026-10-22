@@ -1039,7 +1039,7 @@ describe('TopBoards', () => {
 
   it('leaves the best team to the page the teams have of their own', async () => {
     /* Owner, 04.08.2026: "Top timove ne prezentovati uopšte, jer timovi imaju
-       svoju zasebnu stranu." It is still one of the lists of Article 48 and
+       svoju zasebnu stranu." It is still one of the lists of the article „Top liste" and
        still worked out; it is not drawn here. */
     renderAt(`/sr/top-liste?sezona=${String(inLeague(2019))}`)
 
@@ -3248,7 +3248,7 @@ describe('Leagues', () => {
     expect(said(sr.seo).filter((one) => /grupi[sš]/i.test(one))).toEqual([])
 
     /* **And the written pages, which are the fifth home and the last one found.**
-       Član 57 said „Podela na kategorije zadaje se na nivou svake Lige" — the
+       The article „Liga kao pojam" said „Podela na kategorije zadaje se na nivou svake Lige" — the
        overturned rule itself, in the prose a member accepts on joining, standing while
        the field was gone from the model and the code. The owner had it deleted
        (31.08.2026).

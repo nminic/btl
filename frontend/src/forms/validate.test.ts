@@ -416,7 +416,7 @@ describe('conditional fields', () => {
 })
 
 describe('a picture that lets one field go and demands another', () => {
-  /* Član 37, owner 22.08.2026: „Ukoliko podignete sliku, link ka zvaničnim
+  /* The rulebook's article „Dokazi", owner 22.08.2026: „Ukoliko podignete sliku, link ka zvaničnim
      rezultatima postaje neobavezan, ali polje Komentar postaje obavezno."
 
      Two fields and one answer between them, so both directions are measured

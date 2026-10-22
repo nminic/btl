@@ -23,7 +23,7 @@ import java.util.List;
  * because it reads as though it might.</b> „Javno je ono sto Clan 73 nabraja, i
  * nista vise" (owner, 13.09.2026) is a rule about a PERSON: it names the seven
  * resources that carry one - teams, comments, ducats, moderators, pairs,
- * verification, attendance - and Article 73 lists what a competition publishes
+ * verification, attendance - and section 3 of the privacy policy lists what a competition publishes
  * about a competitor. No row of {@code price_row} belongs to anybody. A price is
  * not somebody's fact, and the thing that rule was written to stop - a member's
  * fee basis, who brought him in, whether he has paid - is not in this table at
@@ -64,7 +64,7 @@ class PricingApi {
 	 * <p><b>{@code label} IS WHAT A READER CALLS THE ROW AND {@code key} IS WHAT THE PORTAL
 	 * CALLS IT, and they are two fields because they are two facts.</b> The key is
 	 * {@code early} and is a name in code that no screen prints; the label is
-	 * „1. do 5. oktobra" and is the first column of the table a visitor reads under Clan 14
+	 * „1. do 5. oktobra" and is the first column of the table a visitor reads under the article „Cena, rokovi i oslobađanje od članarine"
 	 * of the rulebook. Owner, 25.09.2026 (PDL P12b, 1): „Naziv perioda postaje kolona u bazi
 	 * koju administrator menja sam iz administracije", which completes his own sentence of
 	 * 30.07.2026 (PDL:827) that a price list changes „cene <b>i nazivi perioda</b>". Until

@@ -5,7 +5,7 @@ import type { Price } from './types'
  *
  * <p><b>Three screens quote a price and until 26.09.2026 all three read a constant
  * compiled into the bundle</b> (`data/pricing.ts`): the administration's own screen, the
- * public table under Član 14 of the rulebook, and „Moja članarina" - which also fills in
+ * public table under the rulebook's article „Cena, rokovi i oslobađanje od članarine", and „Moja članarina" - which also fills in
  * the IPS QR code a member scans to pay. They read `GET /api/pricing` now, and this is
  * the one module that knows how that answer is taken apart, for the reason the price list
  * has always been one file: „the screen that sets prices and the page that publishes them
@@ -161,7 +161,7 @@ function day(monthDay: string): string {
  * <p><b>Asked of the ANSWER's null and no longer of the key.</b> It was
  * {@code row.key === 'junior'}, which is a claim that the junior level is the only row
  * that will ever be in that position; read off the null it is a claim about the row in
- * hand. Whether a season is ranked follows the day the fee is paid (Član 11 of the
+ * hand. Whether a season is ranked follows the day the fee is paid (the article „Pravo rangiranja" of the
  * rulebook), for a junior exactly as for anybody else, so a level answers the question
  * with „it does not apply to me" - and V4 holds that in both directions
  * ({@code price_row_only_period_is_ranked}, {@code (ranking is not null) = (kind =

@@ -631,7 +631,7 @@ class AttendanceApiTest {
 	 * the number the way {@code event_comment.who} does ({@code ADL.md}: „samo par
 	 * (eventId, memberNumber)"), so there is no half-answer here: leaving the bare
 	 * number in would say, by the DIFFERENCE between this answer and
-	 * {@code /api/competitors}, exactly the thing Article 74 puts beside the date of
+	 * {@code /api/competitors}, exactly the thing section 3 of the privacy policy puts beside the date of
 	 * birth.
 	 *
 	 * <p><b>The anchor is what makes this a measurement.</b> A member in good standing,

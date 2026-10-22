@@ -262,7 +262,7 @@ class MeApi {
 	/**
 	 * THE CALLER'S OWN RECORD, and only what is his own to see about himself.
 	 *
-	 * <p>Four of the first seven are facts Article 73 makes public about everybody, so a
+	 * <p>Four of the first seven are facts section 3 of the privacy policy makes public about everybody, so a
 	 * member whose fee is standing can read them elsewhere. <b>THE OTHER THREE LEAVE THE
 	 * SERVER THROUGH THIS ROUTE AND NO OTHER</b>: the basis his membership is held on,
 	 * here since 20.09.2026 on the owner's word, and his referral link and his count of
@@ -400,7 +400,7 @@ class MeApi {
 	 *                     reads, written where it is read for the reason the country is
 	 * @param ageBand      the band the rulebook puts him in for the season that is RUNNING
 	 *                     ({@code 24-}, {@code 25-39}, {@code 40-54} or {@code 55+}), which is
-	 *                     the category Article 74 makes public and the page is headed by. Never
+	 *                     the category section 3 of the privacy policy makes public and the page is headed by. Never
 	 *                     absent: {@code birth_date} is NOT NULL (V8) and
 	 *                     {@code Category.ageBandFor} is total. <b>The season is
 	 *                     {@code SeasonClock.seasonTheBandIsWorkedOutFor}'s and nobody's else</b>,
@@ -569,7 +569,7 @@ class MeApi {
 						+ "  as bio_waiting,"
 						/* AND THE YEAR, WHICH IS READ HERE AND LEAVES NOWHERE: the input the band is
 						   worked out from and the one field of this table the privacy policy is
-						   written about (Clan 74, „Datum rodjenja se nikada ne prikazuje, ni u punom
+						   written about (section 3 of the privacy policy, „Datum rodjenja se nikada ne prikazuje, ni u punom
 						   ni u skracenom obliku"), taken LAST and turned into a band before anything
 						   is built out of the row, so it reaches a local and never a component. The
 						   year and not the date, for the reason `CompetitorApi` gives at the same
