@@ -3,6 +3,7 @@ import { useI18n } from '../../i18n/useI18n'
 import type { TranslateParams } from '../../i18n/translate'
 import type { Answer } from './askTheServer'
 import { wordsFor } from './serverWords'
+import { TheSiteIsLocked } from './TheSiteIsLocked'
 
 /**
  * WHAT CAME BACK, AS A SENTENCE, AND NEVER A SENTENCE OF OUR OWN OVER ONE THE SERVER
@@ -58,6 +59,14 @@ export function ServerSaid({
      not raise an alert per race (`admin/EventRaces.tsx`). One home for the words, two ways of
      drawing them. */
   const said = (): string => wordsFor(answer, refusals, t, numbers, params)
+
+  /* THE SITE IS LOCKED, which is not an answer of the route this screen asked and so is not looked
+     up in `refusals` or `numbers`: one sentence and the way to a new tab, the same on every screen
+     that draws an answer (owner, 22.10.2026, `TheSiteIsLocked.tsx`). Forty screens reach it through
+     this component, which is why it is drawn here and not once per screen. */
+  if (answer.got === 'locked') {
+    return <TheSiteIsLocked />
+  }
 
   /* The way to a fresh link is offered beside the one refusal a fresh link answers,
      and it is the way the messages themselves already point: „Ako veza istekne,

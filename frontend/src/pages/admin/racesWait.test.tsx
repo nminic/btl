@@ -195,6 +195,8 @@ describe('an event whose races wait', () => {
     expect(screen.getByLabelText('Trka, 1. trka')).not.toHaveAccessibleDescription(
       sr.admin.raceSaveRefused.theDistanceIsNotKeptExactly,
     )
+    /* A refusal by name is not the site being locked, so the way to a new tab is not offered. */
+    expect(screen.queryByRole('link', { name: 'Otvori u novoj kartici' })).toBeNull()
     /* (b): nothing says the races are filed, and the rows are all still there. */
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
     expect(screen.getAllByLabelText(/^Dužina/)).toHaveLength(3)
@@ -232,6 +234,55 @@ describe('an event whose races wait', () => {
     /* And the list shows the event once, not once for each press. */
     await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
     expect(await rowsCalled(user, 'BBKT proba')).toBe(1)
+  }, SLOW)
+
+  it('says the site is locked beside each race the proxy answered, and offers the new tab once under the list', async () => {
+    /* The tab slept between the press that saved the event and the races: the event is saved, the
+       second and the third race meet the lock, the first is taken and the fourth is refused by name.
+       Owner, 22.10.2026 (ADL, „portal to kaže i nudi novu karticu"): the sentence is his, the button
+       is „Otvori u novoj kartici", and a link per race would be two controls with one name. The
+       fourth is there so that “some refusal was the lock” and “every refusal was” are two answers. */
+    let racePosts = 0
+
+    answering = (path, init) => {
+      if (path !== '/api/races' || init?.method !== 'POST') {
+        return null
+      }
+
+      racePosts += 1
+
+      if (racePosts === 1) {
+        return null
+      }
+
+      return racePosts === 4
+        ? refused('theDistanceIsNotKeptExactly')
+        : new Response(null, { status: 401, headers: { 'www-authenticate': 'Basic realm="restricted"' } })
+    }
+
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+    await aNewEventWith(user, 'BBKT zakljucano', [
+      { name: 'Prva trka', km: '10' },
+      { name: 'Druga trka', km: '15' },
+      { name: 'Treća trka', km: '21,1' },
+      { name: 'Četvrta trka', km: '42,2' },
+    ])
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    await screen.findByText(sr.admin.eventSavedRacesRefused)
+
+    expect(notSaved()).toEqual([
+      `2. trka (Druga trka): ${sr.server.locked}`,
+      `3. trka (Treća trka): ${sr.server.locked}`,
+      `4. trka (Četvrta trka): ${sr.admin.raceSaveRefused.theDistanceIsNotKeptExactly}`,
+    ])
+
+    const link = screen.getByRole('link', { name: 'Otvori u novoj kartici' })
+
+    expect(link).toHaveAttribute('href', '/sr')
+    expect(link).toHaveAttribute('target', '_blank')
   }, SLOW)
 
   it('names every race of an event that stands, a server fault as well as a refusal, and keeps them waiting while they are refused', async () => {

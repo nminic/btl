@@ -210,6 +210,31 @@ class ApiSecurityTest {
 	}
 
 	/**
+	 * THE PORTAL'S OWN 401 CARRIES NO CHALLENGE, and that absence is what the screens read.
+	 *
+	 * <p>While the site is locked the edge proxy answers 401 with {@code WWW-Authenticate: Basic
+	 * realm="restricted"} (measured from outside on 22.10.2026), and the portal tells that answer
+	 * from its own by that header alone: the number is the same. Owner, 22.10.2026 (ADL, "portal to
+	 * kaže i nudi novu karticu"): a screen that gets the first says the browser forgot the access word
+	 * and offers a new tab. The day this chain challenges - {@code httpBasic} switched on, or an entry
+	 * point that names a realm - every member who is not signed in would be told to type an access word
+	 * the site never asked for, and no screen would be wrong: this is the half that holds the other.
+	 *
+	 * <p>Asked of a route that is shut, of one that is not mapped, and of one that is open for
+	 * reading but not under this spelling, so the entry point is measured and not one route's answer.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"/api/me", "/api/nema-ovoga", "/api/places/2"})
+	void theChainSaysNoToAVisitorWithoutAskingTheBrowserForAPassword(String path) throws Exception {
+		var answer = http.perform(get(path)).andReturn().getResponse();
+
+		assertThat(answer.getStatus()).as("%s was not refused, so this measures nothing", path).isEqualTo(401);
+		assertThat(answer.getHeaderNames())
+				.as("%s was answered 401 with a challenge, which the screens read as the site being locked", path)
+				.noneMatch(name -> name.equalsIgnoreCase("WWW-Authenticate"));
+	}
+
+	/**
 	 * AND THAT HOLDS FOR EVERY OPEN ROUTE, not for the one somebody thought of.
 	 *
 	 * <p>The cases above name `/api/places` because it was the first. A review on
