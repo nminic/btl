@@ -107,10 +107,52 @@ class SmallPictureTest {
 			+ "85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+"
 			+ "85///Oc///nP/9EC";
 
+	/*
+	 * AND FIVE MORE, from the review of PR 639, round 1. The first three are the drawing above (red
+	 * 400 by 300, the blue square at 250, 50) as a WebP without loss, without loss and with an
+	 * alpha channel (its top left corner 60 by 60 see-through), and with loss and an alpha channel:
+	 * on imageio-webp 3.12.0 a circle smaller than the picture came out of the first green-grey and
+	 * out of the other two see-through. The last two claim a canvas of 100 by 100 (VP8X) around a
+	 * frame of 16383 by 16383, the second inside a frame of an animation (ANMF): on 3.12.0 the first
+	 * was an OutOfMemoryError on a heap of 350 MB.
+	 */
+	private static final String LOSSLESS_WEBP =
+			"UklGRjYAAABXRUJQVlA4TCoAAAAvj8FKAA8Q87//8x8OFLVtxHTw53TM7ncEZkT/JyAvvEY13n+95/3/LQU=";
+	private static final String LOSSLESS_WITH_ALPHA_WEBP =
+			"UklGRkgAAABXRUJQVlA4TDsAAAAvj8FKEBcQ8y8gKPJ/tPkP+EBRI0nKmjz0x0b5Rx3R/wmQ1rpn/HfEeNU9nEer"
+			+ "4z/8d1Lgf/yP/z+XAQA=";
+	private static final String LOSSY_WITH_ALPHA_WEBP =
+			"UklGRtwCAABXRUJQVlA4WAoAAAAQAAAAjwEAKwEAQUxQSCEAAAABDzD/ERFCUds2UPmjLYOdrwFYIvo/Adodh79w"
+			+ "+B//E24AVlA4IJQCAAAQKgCdASqQASwBPjEYiEQiIYiPPBABglnbuF1URsdX8A/ADTAfgx+zNWB8gXw/8D/3/9wD"
+			+ "8AOoA/jX5HcAD9AP5B7Y/8A/gHSAejB1gH6AekB1Bf8A/Q79/yqjQ/KBQuqHprsKvvNUPTTTaqUUwq+81Q9NdhSQ"
+			+ "z/HdUPTXYVfeZbkbWrgTskEpwbvUV1Q9NMlal38Ik1kjT37vfQIENZS4muwq+8Z8PqfvYZzzVD012FXwhlX3AU71"
+			+ "KvvNUPTXWZB5PaM7/quwq+81Q8qkw9KlKazmda7Cr7zLsFg8RxbCQGqHprsKtAf/EErziq/PNXgZsoJYweh6a7Cr"
+			+ "7zVD012FX3mqHprsKvvNUPTXYVfeaoemuwq+81Q9NdhV95qh6a7Cr7zVD012FX3mqHprsKvvNUPTXYVfeaoemuwq"
+			+ "+81Q9NdhV95qh6a7Cr7zVD012FX3mqHprsKvvGAA/v/guNf89m//1UCjTqk9FrHqObWuV1ZaQPwDew3mHz/AWYG9"
+			+ "cF+8H60taL2zY/0jFs260UuJp8Z1DSLOfeM0z9U90JtNdRwuO3NHwCdFTkSCEefpCJdU19ZM5r06ERS/MR1irKS+"
+			+ "wQQF895/TIs8yUdObiD/YKl7/39mmogw5BOnznivd19ghmpUuegIKYEDQeAcFuSzF3/JqEWiasEN5zUlMpnOFXjl"
+			+ "K1Pm/a1PCl8puoJaHB04Dm/zGKMt71rgIILKtMtMDzrvwdkSCVXnOdHgqEQAEIWS6s4YUZOEWzrjasLo/zMSb5iO"
+			+ "s4nPKVw72T3oGfvEH+mOrdE/fZJ2wWXLSRAZqVLWE4f+E4e23P1oZKyMBZcJUrnTUvNAQR6t/U1P7eUP/5KrpvSs"
+			+ "4UxCNgAAAAAAAAAAAAA=";
+	private static final String A_FRAME_LARGER_THAN_ITS_CANVAS_WEBP =
+			"UklGRnwAAABXRUJQVlA4WAoAAAAAAAAAYwAAYwAAVlA4IF4AAADwBQCdASr/P/8/PtFosFMoJiSioKgBABoJaW7h"
+			+ "c/D1QCe9xF5Yk+qVb0itGywJtTe4i8sA11NsAAD+/lF9//9CT//ibP/6TZ8Ir8YTSSDw1BVq5ZgUNlSOiCvsQAAA";
+	private static final String AN_ANIMATION_FRAME_LARGER_THAN_ITS_CANVAS_WEBP =
+			"UklGRioBAABXRUJQVlA4WAoAAAACAAAAYwAAYwAAQU5JTQYAAAAAAAAAAABBTk1GfAAAAAAAAAAAAGMAAGMAAGQA"
+			+ "AAJWUDggZAAAADAHAJ0BKv8//z8+0WiwUygmJKKgqAEAGglpbt/wL0C8AfoAAIs4PHifnk/0RpdBth7R82rjrNq4"
+			+ "6zauOs2rjrNIAAD+8Ju///0JP/+Js//pNnwiv6S6XHj0gmn5xivXeopAEABBTk1GegAAAAAAAAAAAGMAAGMAAGQA"
+			+ "AABWUDggYgAAANQGAJ0BKmQAZAA+0WCmUwIKAAGglpbt/kC8AfoB+/4nQAHZWL4lF1mdRe8iTT5Ik0+SJNPkiTT5"
+			+ "Ik0+SJM2AAD+6zj//oTY9qK///Qk/+Js/4mz4QX/rBdmHoEGOChLCAAA";
+
 	private static byte[] resource(String name) {
 		return Base64.getDecoder().decode(switch (name) {
 			case "marked.webp" -> MARKED_WEBP;
 			case "see-through.webp" -> SEE_THROUGH_WEBP;
+			case "lossless.webp" -> LOSSLESS_WEBP;
+			case "lossless-alpha.webp" -> LOSSLESS_WITH_ALPHA_WEBP;
+			case "lossy-alpha.webp" -> LOSSY_WITH_ALPHA_WEBP;
+			case "bomb.webp" -> A_FRAME_LARGER_THAN_ITS_CANVAS_WEBP;
+			case "bomb-animated.webp" -> AN_ANIMATION_FRAME_LARGER_THAN_ITS_CANVAS_WEBP;
 			default -> TOO_MANY_PIXELS_WEBP;
 		});
 	}
@@ -252,6 +294,54 @@ class SmallPictureTest {
 	void aWebpIsCutLikeTheOtherTwo() throws IOException {
 		blueAllThrough(SmallPicture.of(resource("marked.webp"), "image/webp", share("0.83333333"),
 				share("0.25"), share("0.33333333")));
+	}
+
+	/**
+	 * A CIRCLE SMALLER THAN THE PICTURE, in each of the three ways a WebP can be written, which is
+	 * the case the whole-picture cases above could not see: the reader is then asked for a region
+	 * and not for everything, and on imageio-webp 3.12.0 that region came out wrong for the two
+	 * pictures without loss and see-through for both with an alpha channel. Blue all through and
+	 * not see-through anywhere, so the cut is the square and the square is opaque.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "lossless.webp", "lossless-alpha.webp", "lossy-alpha.webp" })
+	void aWebpCircleSmallerThanThePictureIsCutWhereItIs(String name) throws IOException {
+		SmallPicture.Cut cut = SmallPicture.of(resource(name), "image/webp", share("0.83333333"),
+				share("0.25"), share("0.33333333"));
+
+		assertThat(cut.mediaType()).as("%s: the square is opaque, so its cut is a JPEG", name)
+				.isEqualTo("image/jpeg");
+		blueAllThrough(cut);
+	}
+
+	/**
+	 * A FRAME THAT CLAIMS MORE THAN ITS CANVAS IS MEASURED BY THE FRAME. The reader answers the
+	 * canvas, 100 by 100, so a ceiling asked only of the reader lets the decoder try 16383 by
+	 * 16383; the message carries the frame's count, which is what says the frame was read.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "bomb.webp", "bomb-animated.webp" })
+	void aWebpWhoseFrameClaimsMoreThanItsCanvasIsNotCut(String name) {
+		assertThatThrownBy(() -> SmallPicture.of(resource(name), "image/webp", share("0.5"),
+				share("0.5"), share("1")))
+				.isInstanceOf(IOException.class)
+				.hasMessageContaining("100 by 100")
+				.hasMessageContaining(String.valueOf(16383L * 16383L));
+	}
+
+	/** What the chunks claim, read without decoding; and a file that ends too soon claims nothing. */
+	@Test
+	void theLargestFrameIsReadOffTheChunks() {
+		assertThat(SmallPicture.largestFrameOf(resource("lossless.webp")))
+				.as("VP8L").isEqualTo(400L * 300);
+		assertThat(SmallPicture.largestFrameOf(resource("lossy-alpha.webp")))
+				.as("VP8X, ALPH and VP8 ").isEqualTo(400L * 300);
+		assertThat(SmallPicture.largestFrameOf(resource("bomb-animated.webp")))
+				.as("a frame inside ANMF").isEqualTo(16383L * 16383);
+
+		byte[] whole = resource("bomb.webp");
+		assertThat(SmallPicture.largestFrameOf(java.util.Arrays.copyOf(whole, 40)))
+				.as("a VP8 chunk cut off before its size is said").isZero();
 	}
 
 	/** And lossless with an alpha channel, which is a different decoder inside the same reader. */

@@ -694,8 +694,9 @@ class PhotoApi {
 	 * here because the circle is in the address ({@link #A_SMALL_PICTURE_IS_ASKED_FOR_AT}).
 	 *
 	 * <p><b>A picture that cannot be cut answers as one whose file is gone</b>, with one line to
-	 * whoever runs the server: there is no smaller picture to send, and the original would show
-	 * the wrong part of it.
+	 * whoever runs the server ({@link SmallPictures}): there is no smaller picture to send, and the
+	 * original would show the wrong part of it. <b>A reader who waited his whole term for his turn
+	 * is answered 503</b>, which is not a refusal of the picture but „not now".
 	 *
 	 * @param digest the digest of the content
 	 * @param circle the three fractions of the circle, as {@link #addressOfTheSmall} spells them
@@ -728,15 +729,28 @@ class PhotoApi {
 			return nothingIsHere(response);
 		}
 
-		Optional<SmallPicture.Cut> cut = small.of(new SmallPictures.Key(digest, circle),
-				() -> theFileOf(kept.get().id(), digest)
-						.flatMap(bytes -> cutOf(bytes, kept.get(), x, y, diameter, circle)));
+		SmallPictures.Answer answer = small.of(new SmallPictures.Key(digest, circle), () -> {
+			Optional<byte[]> bytes = theFileOf(kept.get().id(), digest);
 
-		if (cut.isEmpty()) {
+			return bytes.isEmpty() ? Optional.empty()
+					: Optional.of(SmallPicture.of(bytes.get(), kept.get().mediaType(), x, y, diameter));
+		});
+
+		/* NOT NOW, and said as such: the server is cutting other circles and this reader waited
+		   his whole term (`SmallPictures`). Not 404, because the picture IS there and the next
+		   reader will be answered it; the circle on the screen answers any refusal by drawing the
+		   original, so to a member this is the circle as it was before small pictures existed. */
+		if (answer.busy()) {
+			response.sendError(HttpStatus.SERVICE_UNAVAILABLE.value());
+			return null;
+		}
+
+		if (answer.cut().isEmpty()) {
 			return nothingIsHere(response);
 		}
 
-		return carrying(cut.get().mediaType(), cut.get().bytes(), FOR_A_DAY_PRIVATELY);
+		return carrying(answer.cut().get().mediaType(), answer.cut().get().bytes(),
+				FOR_A_DAY_PRIVATELY);
 	}
 
 	/**
@@ -756,18 +770,6 @@ class PhotoApi {
 		return fraction.setScale(8, RoundingMode.UNNECESSARY).toPlainString();
 	}
 
-	/** The cut, or nothing and one line saying which picture would not cut and why. */
-	private static Optional<SmallPicture.Cut> cutOf(byte[] bytes, Kept kept, BigDecimal x,
-			BigDecimal y, BigDecimal diameter, String circle) {
-		try {
-			return Optional.of(SmallPicture.of(bytes, kept.mediaType(), x, y, diameter));
-		} catch (IOException | RuntimeException unreadable) {
-			LOG.warn("picture {} could not be cut to {}: {}", kept.id(), circle,
-					unreadable.toString());
-
-			return Optional.empty();
-		}
-	}
 
 	/**
 	 * THE BYTES OF THE PICTURE THE CALLER HIMSELF IS WAITING ON, TO HIM AND TO NOBODY ELSE.

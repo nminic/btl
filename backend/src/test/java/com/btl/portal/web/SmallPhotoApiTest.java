@@ -120,6 +120,9 @@ class SmallPhotoApiTest {
 	@Autowired
 	private JdbcClient db;
 
+	@Autowired
+	private SmallPictures small;
+
 	private int issued;
 
 	private long theFacesWaitingRow;
@@ -158,14 +161,15 @@ class SmallPhotoApiTest {
 		account(HE, "000951");
 		account(AN_ACTIVE_MEMBER, "000955");
 
-		Logger photos = (Logger) LoggerFactory.getLogger(PhotoApi.class);
 		log.start();
-		photos.addAppender(log);
+		((Logger) LoggerFactory.getLogger(PhotoApi.class)).addAppender(log);
+		((Logger) LoggerFactory.getLogger(SmallPictures.class)).addAppender(log);
 	}
 
 	@AfterEach
 	void theFolderIsLeftEmptyAndTheLogAlone() throws IOException {
 		((Logger) LoggerFactory.getLogger(PhotoApi.class)).detachAppender(log);
+		((Logger) LoggerFactory.getLogger(SmallPictures.class)).detachAppender(log);
 
 		try (Stream<Path> left = Files.walk(FOLDER)) {
 			for (Path one : left.sorted(Comparator.reverseOrder()).toList()) {
@@ -474,5 +478,44 @@ class SmallPhotoApiTest {
 		assertThat(log.list).extracting(ILoggingEvent::getFormattedMessage)
 				.anySatisfy(line -> assertThat(line).contains("could not be read").contains(NO_FILE))
 				.anySatisfy(line -> assertThat(line).contains("could not be cut"));
+	}
+
+	/**
+	 * A READER WHO WAITED HIS WHOLE TERM FOR HIS TURN IS ANSWERED 503, NOT 404 AND NOT NEVER (review
+	 * of PR 639, round 1, S2). The turn is held here by a cut of another circle that does not
+	 * finish until this case lets it; the door is then asked for a circle nobody has cut yet. Once
+	 * the turn is free, the same address is the picture, so „not now" was not remembered.
+	 */
+	@Test
+	void aReaderWhoWaitedHisWholeTermIsToldNotNow() throws Exception {
+		/* A picture of its own, so that no other case has cut it already: a kept cut is answered
+		   without a turn at all. */
+		String digest = "c4".repeat(32);
+		competitor("000956", picture(digest, "image/jpeg", OVER_THE_SQUARE, drawn("jpeg")), false);
+		String address = recordOf(null, "000956").path("smallPhoto").asString();
+		java.util.concurrent.CountDownLatch inside = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.CountDownLatch letGo = new java.util.concurrent.CountDownLatch(1);
+
+		java.util.concurrent.CompletableFuture<SmallPictures.Answer> holding =
+				java.util.concurrent.CompletableFuture.supplyAsync(() -> small.of(
+						new SmallPictures.Key("ff".repeat(32), "holding-the-turn"), () -> {
+							inside.countDown();
+							try {
+								letGo.await(30, java.util.concurrent.TimeUnit.SECONDS);
+							} catch (InterruptedException stopped) {
+								Thread.currentThread().interrupt();
+							}
+							return java.util.Optional.empty();
+						}));
+
+		try {
+			assertThat(inside.await(10, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+			assertThat(answer(null, address).getStatus()).isEqualTo(503);
+		} finally {
+			letGo.countDown();
+			holding.get(10, java.util.concurrent.TimeUnit.SECONDS);
+		}
+
+		assertThat(answer(null, address).getStatus()).isEqualTo(200);
 	}
 }

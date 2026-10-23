@@ -128,9 +128,18 @@ public final class SmallPicture {
 			int width = reader.getWidth(0);
 			int height = reader.getHeight(0);
 
-			if ((long) width * height > ("image/webp".equals(mediaType) ? AT_MOST_WEBP_PIXELS
-					: AT_MOST_PIXELS)) {
-				throw new IOException(width + " by " + height + " is more than this cuts");
+			boolean webp = "image/webp".equals(mediaType);
+
+			/* FOR A WEBP, THE LARGEST THING ITS CHUNKS SAY, NOT ONLY WHAT THE READER SAYS. The
+			   reader answers the canvas of an extended file (VP8X), and the picture inside may
+			   claim a frame far larger: review of PR 639 measured 626 bytes that say a canvas of
+			   100 by 100 around a frame of 16383 by 16383, and an OutOfMemoryError on a heap of
+			   350 MB. So the ceiling is asked of the largest of the two. */
+			long pixels = Math.max((long) width * height, webp ? largestFrameOf(original) : 0);
+
+			if (pixels > (webp ? AT_MOST_WEBP_PIXELS : AT_MOST_PIXELS)) {
+				throw new IOException(width + " by " + height + " (" + pixels
+						+ " pixels in its largest frame) is more than this cuts");
 			}
 
 			int turn = "image/jpeg".equals(mediaType) ? orientationOf(original) : 1;
@@ -313,6 +322,57 @@ public final class SmallPicture {
 		}
 
 		return bytes.toByteArray();
+	}
+
+	/**
+	 * The most pixels any canvas or frame of this WebP claims, read off its chunks without
+	 * decoding anything: {@code VP8X} (the canvas), {@code VP8 } and {@code VP8L} (a picture), and
+	 * {@code ANMF} (a frame of an animation, and the pictures inside it). 0 for a file that ends
+	 * before its chunks say what they promise, which the decoder then refuses on its own.
+	 */
+	static long largestFrameOf(byte[] webp) {
+		try {
+			return largestIn(webp, 12, webp.length);
+		} catch (ArrayIndexOutOfBoundsException cutShort) {
+			return 0;
+		}
+	}
+
+	private static long largestIn(byte[] bytes, long from, long to) {
+		long largest = 0;
+		long at = from;
+
+		while (at + 8 <= to) {
+			int chunk = (int) at;
+			String kind = new String(bytes, chunk, 4, java.nio.charset.StandardCharsets.ISO_8859_1);
+			long size = littleEndian(bytes, chunk + 4, 4);
+			int data = chunk + 8;
+			long claimed = switch (kind) {
+				case "VP8X" -> (littleEndian(bytes, data + 4, 3) + 1) * (littleEndian(bytes, data + 7, 3) + 1);
+				case "VP8 " -> (littleEndian(bytes, data + 6, 2) & 0x3FFF)
+						* (littleEndian(bytes, data + 8, 2) & 0x3FFF);
+				case "VP8L" -> ((littleEndian(bytes, data + 1, 4) & 0x3FFF) + 1)
+						* ((littleEndian(bytes, data + 1, 4) >> 14 & 0x3FFF) + 1);
+				case "ANMF" -> Math.max(
+						(littleEndian(bytes, data + 6, 3) + 1) * (littleEndian(bytes, data + 9, 3) + 1),
+						largestIn(bytes, data + 16, Math.min(to, data + size)));
+				default -> 0;
+			};
+			largest = Math.max(largest, claimed);
+			at = Math.min(to, data + size + (size & 1));
+		}
+
+		return largest;
+	}
+
+	private static long littleEndian(byte[] bytes, int at, int count) {
+		long value = 0;
+
+		for (int one = count - 1; one >= 0; one--) {
+			value = value << 8 | bytes[at + one] & 0xFF;
+		}
+
+		return value;
 	}
 
 	private static final byte[] EXIF = { 'E', 'x', 'i', 'f', 0, 0 };
