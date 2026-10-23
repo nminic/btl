@@ -2012,7 +2012,7 @@ class MeApiTest {
 
 		db.sql("update competitor set gender = 'F', bio = ?, profile_hidden = true,"
 						+ " birthday_shown = 'full', birth_date = date '" + HIS_DATE_OF_BIRTH + "',"
-						+ " photo_id = ?, address = ?, phone = ? where member_number = ?")
+						+ " photo_id = ?, address = ?, phone = ?, shirt_size = 'XXXL' where member_number = ?")
 				.params(HIS_BIOGRAPHY, portrait, HIS_ADDRESS, HIS_TELEPHONE, ME).update();
 
 		/* HIS WORDS THAT WAIT, and another member's beside them (PDL P11, 18.10.2026). Written by the
