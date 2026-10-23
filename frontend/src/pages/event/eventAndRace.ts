@@ -132,6 +132,30 @@ export function choosingTheEvent(
       }
 }
 
+/**
+ * A DAY TYPED INTO THE DAY'S BOX. Where it makes a new edition ({@link aNewEditionOf}) the race takes the
+ * event's name while its box is empty, as the race of a name that links nothing does (owner, 23.10.2026,
+ * „isto kao za ime sa više izdanja”, answering the coordinator's addition to PR 636), and gives it up again
+ * when the day goes back where the edition's own race is chosen, so a race named for itself is never
+ * written over and one that only held the event's name does not stay behind as a new race's. The name is the
+ * list's, as the event's sent name is.
+ */
+export function changingTheDay(block: TheBlock, next: string, asked: TheBlockIsAsked): TheBlock {
+  const after = { ...block, date: next }
+  const now = aNewEditionOf(after, asked) ? theEntryOfTheEvent(after, asked.offered) : undefined
+  const before = aNewEditionOf(block, asked) ? theEntryOfTheEvent(block, asked.offered) : undefined
+
+  if (now !== undefined && before === undefined && block.raceName === '') {
+    return { ...after, raceName: now.value }
+  }
+
+  if (now === undefined && before !== undefined && block.raceName === before.value) {
+    return { ...after, raceName: '' }
+  }
+
+  return after
+}
+
 /** A name typed into the race's box: a race of the calendar is let go of, and this is a new one. */
 export function typingTheRace(block: TheBlock, next: string): TheBlock {
   return { ...block, raceName: next, race: null }

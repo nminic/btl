@@ -28,6 +28,7 @@ import { racesToOffer } from '../member/racesToOffer'
 import { useSeasonsOpenForAReport } from '../member/useSeasonsOpenForAReport'
 import {
   aNewEditionOf,
+  changingTheDay,
   choosingTheEvent,
   choosingTheRace,
   emptyBlock,
@@ -626,7 +627,7 @@ function TheBlockAndTheRows() {
                 invalid={said('date') !== undefined}
                 describedBy={described}
                 within={yearsOfTheDay(block, seasons, offeredEvents)}
-                onChange={(next) => setBlock((now) => ({ ...now, date: next }))}
+                onChange={(next) => setBlock((now) => changingTheDay(now, next, ofTheBlock))}
               />
             ))}
           {(block.event === null || edition) &&

@@ -728,6 +728,7 @@ describe('a name of one edition and a day of another year on the moderator’s o
 
     await user.clear(box)
     await user.type(box, day)
+    await user.clear(raceBox())
     await user.type(raceBox(), 'Zimska desetka')
     await user.type(screen.getByLabelText(/^Dužina/), '10')
     await user.type(screen.getByLabelText(/^Uspon/), '0')
@@ -755,6 +756,47 @@ describe('a name of one edition and a day of another year on the moderator’s o
       })
       expect(writes(server.asked)[0]?.body).not.toHaveProperty('event.id')
       expect(writes(server.asked)[0]?.body).not.toHaveProperty('race.date')
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('names the race for the event while its box is empty, sends that name, and takes it back with the day', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await onTheOnlyEdition(user)
+
+      const day = screen.getByLabelText(/^Datum trke/)
+
+      expect(raceBox()).toHaveValue('')
+
+      await user.clear(day)
+      await user.type(day, '01062026')
+
+      expect(raceBox()).toHaveValue('Zimska liga')
+
+      await user.clear(day)
+      await user.type(day, '01062027')
+
+      expect(raceBox()).toHaveValue('')
+
+      await user.clear(day)
+      await user.type(day, '01062026')
+
+      expect(raceBox()).toHaveValue('Zimska liga')
+
+      await user.type(screen.getByLabelText(/^Dužina/), '10')
+      await user.type(screen.getByLabelText(/^Uspon/), '0')
+      await user.type(screen.getByLabelText(/^Spust/), '0')
+      await aRowFor(user)
+      await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
+      await save(user)
+      await waitFor(() => expect(writes(server.asked)).toHaveLength(1))
+
+      expect(writes(server.asked)[0]?.body).toMatchObject({ race: { name: 'Zimska liga' } })
     } finally {
       server.stop()
     }

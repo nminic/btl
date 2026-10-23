@@ -3,6 +3,7 @@ import type { BtlEvent, Race } from '../../data/types'
 import type { Answer } from '../account/askTheServer'
 import {
   aNewEditionOf,
+  changingTheDay,
   choosingTheEvent,
   choosingTheRace,
   emptyBlock,
@@ -335,6 +336,34 @@ describe('a new edition of a name of one edition', () => {
       event: { name: 'Gradska liga', date: '2028-02-01', city: 'Ohrid', country: 'MK' },
       race: { name: 'Prva', kind: 'length', distanceKm: 10, ascentM: 0, descentM: 0, limitSeconds: null },
     })
+  })
+
+  it('gives the race the event’s name, as the list spells it, when the day makes a new edition and the race has none', () => {
+    const typed = onTheOnlyEdition('01/06/2027', { raceName: '' })
+
+    expect(typed.raceName).toBe('')
+    expect(changingTheDay(typed, '01/02/2028', ALONE).raceName).toBe('Gradska liga')
+    expect(changingTheDay(typed, '01/02/2028', ALONE).date).toBe('01/02/2028')
+  })
+
+  it('never writes over a race that has a name, whatever it is', () => {
+    expect(changingTheDay(onTheOnlyEdition('01/06/2027', { raceName: 'Moja trka' }), '01/02/2028', ALONE).raceName).toBe('Moja trka')
+  })
+
+  it('takes the name back when the day goes back to the edition’s year, and only if it was the event’s own', () => {
+    const made = changingTheDay(onTheOnlyEdition('01/06/2027', { raceName: '' }), '01/02/2028', ALONE)
+
+    expect(changingTheDay(made, '01/06/2027', ALONE).raceName).toBe('')
+    expect(changingTheDay({ ...made, raceName: 'Prva' }, '01/06/2027', ALONE).raceName).toBe('Prva')
+  })
+
+  it('leaves the race alone where the day changes and nothing is made or given up', () => {
+    const made = changingTheDay(onTheOnlyEdition('01/06/2027', { raceName: '' }), '01/02/2028', ALONE)
+
+    expect(changingTheDay(made, '02/02/2028', ALONE).raceName).toBe('Gradska liga')
+    expect(changingTheDay(onTheOnlyEdition('01/06/2027', { raceName: '' }), '02/06/2027', ALONE).raceName).toBe('')
+    expect(changingTheDay(onTheOnlyEdition('01/06/2027', { raceName: '' }), '01/02/2028', NOT_KNOWN).raceName).toBe('')
+    expect(changingTheDay(onTheOnlyEdition('01/06/2027', { raceName: '' }), '01/02/2028', { open: [2028], offered: SEVERAL }).raceName).toBe('')
   })
 
   it('sends the edition itself, by its key and with the race’s own day, where nothing makes a new one', () => {
