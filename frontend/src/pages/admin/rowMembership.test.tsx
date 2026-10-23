@@ -137,10 +137,14 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     const balance = await rowOf(ON_THE_BALANCE)
     const older = await rowOf(AN_OLDER_SEASON)
 
-    /* EVERY SYMBOL ON EVERY ROW, and the ones a row cannot use told off (the coordinator's answer of
-       22.10.2026, P3), so the deletion stands at the same place on every row. */
-    const offered = (row: HTMLElement, name: string) =>
-      within(row).getByRole('button', { name }).getAttribute('aria-disabled') !== 'true'
+    /* EVERY SYMBOL ON EVERY ROW (the coordinator's answer of 22.10.2026, P3): „Storniraj" told off where the
+       row cannot use it, and still in the order of focus; „Upiši uplatu" switched off for real (owner, PDL
+       20.10.2026: „ostaju pravo neaktivni (bez fokusa)"). */
+    const offered = (row: HTMLElement, name: string) => {
+      const button = within(row).getByRole('button', { name })
+
+      return button.getAttribute('aria-disabled') !== 'true' && !button.hasAttribute('disabled')
+    }
 
     for (const row of [paid, exempt, balance]) {
       expect(offered(row, 'Storniraj')).toBe(true)
@@ -160,6 +164,8 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     /* AN OLDER SEASON ON A PAYMENT OFFERS NOTHING OF THAT SEASON: the payment of the season on sale, and
        ticking that season, which is the exemption. His 2027 is ticked and cannot be changed. */
     expect(offered(older, 'Storniraj')).toBe(false)
+    expect(within(older).getByRole('button', { name: 'Storniraj' })).toBeEnabled()
+    expect(within(paid).getByRole('button', { name: 'Upiši uplatu' })).toBeDisabled()
     expect(within(await seasonsOf(user, older)).queryByRole('button', { name: 'Promeni osnov u oslobođenje' })).toBeNull()
     expect(offered(older, 'Upiši uplatu')).toBe(true)
     expect(await seasonBox(user, older, 2028)).not.toBeChecked()

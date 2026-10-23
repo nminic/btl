@@ -114,11 +114,13 @@ describe('recording a payment on a member’s row', () => {
     const user = setupUser()
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
-    /* ON EVERY ROW, AND TOLD OFF WHERE IT CANNOT ACT, so „Obriši" stands at the same place on every row
-       (the coordinator's answer of 22.10.2026, P3). A press on it opens nothing. */
+    /* ON EVERY ROW, AND SWITCHED OFF FOR REAL WHERE IT CANNOT ACT (owner, PDL 20.10.2026: „„Aktiviraj" i
+       „Upiši uplatu" ostaju pravo neaktivni (bez fokusa)"): out of the order of focus, and a press on it
+       opens nothing. It keeps its place, so every symbol stands where it does on every row. */
     const holds = within(await rowOf(HOLDS_IT)).getByRole('button', { name: 'Upiši uplatu' })
 
-    expect(holds).toHaveAttribute('aria-disabled', 'true')
+    expect(holds).toBeDisabled()
+    expect(holds).not.toHaveAttribute('aria-disabled')
     await user.click(holds)
     expect(screen.queryByRole('dialog')).toBeNull()
 
@@ -128,7 +130,7 @@ describe('recording a payment on a member’s row', () => {
     ] as const) {
       const row = await rowOf(number)
 
-      expect(within(row).getByRole('button', { name: 'Upiši uplatu' })).not.toHaveAttribute('aria-disabled')
+      expect(within(row).getByRole('button', { name: 'Upiši uplatu' })).toBeEnabled()
 
       const sheet = await paymentSheet(user, row)
 

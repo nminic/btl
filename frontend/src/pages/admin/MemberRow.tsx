@@ -52,11 +52,15 @@ type Refused = { answer: Exclude<Answer, { got: 'done' }>; refusals: Record<stri
  *    card „Podaci" puts it there), „Upiši uplatu" with a banknote (owner, 22.10.2026: „Može li simbol za
  *    to umesto znaka plus da bude kao novčanice"), „Storniraj", and, held apart from them, „Obriši",
  *    which asks in a sheet over the page (PDL „Potvrda brisanja više nije rečenica u redu tabele nego
- *    iskačući prozor"). An action the row cannot take today stays in its place, told off and still in the
- *    order of focus (the coordinator's answer of 22.10.2026, P3, from PDL 20.10.2026 „I privremeno
- *    neaktivno dugme pokazuje oblačić sa rečju"), so „Obriši" stands at the same place on every row and a
- *    sheet put away hands the focus back to the button that opened it, whatever the answer did to the
- *    row.
+ *    iskačući prozor"). An action the row cannot take today stays in its place (the coordinator's answer
+ *    of 22.10.2026, P3), so every symbol stands at the same place on every row. „Storniraj" is told off
+ *    and stays in the order of focus (PDL 20.10.2026, „I privremeno neaktivno dugme pokazuje oblačić sa
+ *    rečju"). **„Upiši uplatu" is switched off for real**, by the owner's own decision of the same day,
+ *    chosen against the recommendation: „„Aktiviraj" i „Upiši uplatu" ostaju pravo neaktivni (bez
+ *    fokusa); oblačić im se vidi samo mišem." The shape is the payments screen's „Aktiviraj"
+ *    (`Payments.tsx`, `disabled` on the `ActionButton`). What it costs, written down: a payment that
+ *    switches the symbol off takes it out of the order of focus, so the focus the sheet hands back after
+ *    a payment does not stay on it once the row is read again.
  *
  * **On a narrow screen the columns fold under the name** (the coordinator's answer of 22.10.2026, P2,
  * from PDL P24): below 1000px the town and the country, below 700px the basis and the seasons as well,
@@ -288,12 +292,8 @@ export function MemberRow({
             symbol={SYMBOL.banknote}
             word={t('admin.recordPayment')}
             className="entity-open"
-            aria-disabled={mayPay ? undefined : true}
-            onClick={() => {
-              if (mayPay) {
-                setAsking({ act: 'pay' })
-              }
-            }}
+            disabled={!mayPay}
+            onClick={() => setAsking({ act: 'pay' })}
           />
           <ActionButton
             symbol={SYMBOL.undo}

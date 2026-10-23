@@ -117,10 +117,17 @@
   border-color: var(--accent);
 }
 
+/* LAID OUT ONLY WHILE IT IS OPEN. A `display` written on the class weighs more than the browser's own
+   rule for `hidden`, so written on the bare class it drew every list open while its button said it was
+   shut (review of PR 638, measured in Chrome at 360, 768 and 1280). `:not([hidden])` leaves `hidden` to the
+   browser, which is what `MemberSeasons.tsx` sets. */
 .members-seasons__list {
   margin: var(--space-8) 0 0;
   padding: 0;
   list-style: none;
+}
+
+.members-seasons__list:not([hidden]) {
   display: flex;
   flex-direction: column;
   gap: var(--space-8);

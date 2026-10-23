@@ -225,6 +225,36 @@ for (const at of WIDTHS) {
   })
 }
 
+/**
+ * THE LIST OF SEASONS IS SHUT UNTIL IT IS OPENED (review of PR 638, high): a `display` written on its class
+ * drew every list open while its button said `aria-expanded="false"`, and nothing above saw it, because
+ * `membersTable.geometry.ts` opens every list before it measures. Asked here of the list this width draws,
+ * on a row of every shape: shut, it takes no room and its button says so; opened, it does, and says so.
+ */
+for (const at of WIDTHS.filter((one) => one.text === 100)) {
+  test(`the list of seasons takes no room until it is opened, at ${label(at)}`, async ({ open }) => {
+    const { page } = await open(at, '/sr/administracija/clanovi', 'table.members-table tbody tr', ANSWERS)
+
+    await everybody(page)
+
+    const rows = page.locator('table.members-table tbody tr')
+
+    for (let index = 0; index < 4; index += 1) {
+      const toggle = rows.nth(index).locator('button[aria-expanded]').filter({ visible: true }).first()
+      const list = page.locator(`[id="${(await toggle.getAttribute('aria-controls')) ?? ''}"]`)
+      const height = async () => (await list.evaluate((one) => one.getBoundingClientRect().height))
+
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      expect(await height(), `the shut list of row ${String(index)} takes room`).toBe(0)
+
+      await toggle.click()
+
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      expect(await height(), `the open list of row ${String(index)} takes no room`).toBeGreaterThan(0)
+    }
+  })
+}
+
 const SWEEP: At[] = [
   ...Array.from({ length: 24 }, (_, step): At => ({ width: 360 + step * 40, text: 100 })),
   { width: 360, text: 200 },
@@ -258,7 +288,7 @@ for (const at of SWEEP) {
       ]
 
       for (const control of controls) {
-        if ((await control.getAttribute('aria-disabled')) === 'true') {
+        if ((await control.getAttribute('aria-disabled')) === 'true' || (await control.isDisabled())) {
           continue
         }
 
