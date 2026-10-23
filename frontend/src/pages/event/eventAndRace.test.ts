@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { BtlEvent, Race } from '../../data/types'
 import type { Answer } from '../account/askTheServer'
 import {
+  aNewEditionOf,
   choosingTheEvent,
   choosingTheRace,
   emptyBlock,
@@ -10,6 +11,7 @@ import {
   hintOf,
   kindOfTheRows,
   theEventPageAfter,
+  theNameHasOneEdition,
   typingTheEvent,
   whatIsWrongWithTheBlock,
   yearsOfTheDay,
@@ -56,6 +58,9 @@ const A_RACE: Race = {
 }
 
 const OFFERED = [{ id: String(AN_EVENT.id), value: AN_EVENT.name, said: AN_EVENT.name, fills: {} }]
+
+/** The same name once more, in 2026: a name of two editions, and the box links neither by being typed. */
+const SEVERAL = [...OFFERED, { id: '9502', value: AN_EVENT.name, said: AN_EVENT.name, fills: {} }]
 
 /** A new event of a length, filled in whole. */
 const filled = (over: Partial<TheBlock> = {}): TheBlock => ({
@@ -189,9 +194,11 @@ describe('the day of a new race on an event of the calendar', () => {
     descentM: '0',
   })
   const IN_2028 = '2028-03-01'
-  const OUT_OF_THE_WINDOW: TheBlockIsAsked = { open: [2028], offered: OFFERED }
-  const THE_WINDOW: TheBlockIsAsked = { open: [2027, 2028], offered: OFFERED }
-  const NOT_KNOWN: TheBlockIsAsked = { open: null, offered: OFFERED }
+  /* The name stands in two years, so the edition chosen holds the day to its year (the owner's decision of
+     22.10.2026 as it stands for such a name; a name of one edition is the next block's). */
+  const OUT_OF_THE_WINDOW: TheBlockIsAsked = { open: [2028], offered: SEVERAL }
+  const THE_WINDOW: TheBlockIsAsked = { open: [2027, 2028], offered: SEVERAL }
+  const NOT_KNOWN: TheBlockIsAsked = { open: null, offered: SEVERAL }
   const SAID = 'date leagueResults.refused.theDayIsNotInTheEventsYear'
 
   it('takes another day of the event’s year, which is not the year today is in', () => {
@@ -207,7 +214,7 @@ describe('the day of a new race on an event of the calendar', () => {
     expect(boxes(onTheEvent('01/01/2028'), '2028-01-01', THE_WINDOW)).toEqual([])
     expect(boxes(onTheEvent('01/01/2028'), '2028-01-01', OUT_OF_THE_WINDOW)).toEqual([SAID])
     /* Open seasons that do not hold the event's year give it no other. */
-    expect(boxes(onTheEvent('01/01/2028'), '2028-01-01', { open: [2028, 2029], offered: OFFERED })).toEqual([SAID])
+    expect(boxes(onTheEvent('01/01/2028'), '2028-01-01', { open: [2028, 2029], offered: SEVERAL })).toEqual([SAID])
   })
 
   it('says nothing of the year before the open seasons are known, as the server will', () => {
@@ -219,12 +226,132 @@ describe('the day of a new race on an event of the calendar', () => {
   })
 
   it('shows the calendar the event’s year, both open years on the morning of 1 January, and nothing where no event is chosen', () => {
-    expect(yearsOfTheDay(onTheEvent(''), [2028])).toEqual({ first: 2027, last: 2027 })
-    expect(yearsOfTheDay(onTheEvent(''), [2027, 2028])).toEqual({ first: 2027, last: 2028 })
-    expect(yearsOfTheDay(onTheEvent(''), [2026, 2027])).toEqual({ first: 2026, last: 2027 })
-    expect(yearsOfTheDay(onTheEvent(''), null)).toEqual({ first: 2027, last: 2027 })
-    expect(yearsOfTheDay(filled(), [2027])).toBeUndefined()
-    expect(yearsOfTheDay({ ...onTheEvent(''), race: { raceId: A_RACE.id, kind: 'time' } }, [2027])).toBeUndefined()
+    expect(yearsOfTheDay(onTheEvent(''), [2028], SEVERAL)).toEqual({ first: 2027, last: 2027 })
+    expect(yearsOfTheDay(onTheEvent(''), [2027, 2028], SEVERAL)).toEqual({ first: 2027, last: 2028 })
+    expect(yearsOfTheDay(onTheEvent(''), [2026, 2027], SEVERAL)).toEqual({ first: 2026, last: 2027 })
+    expect(yearsOfTheDay(onTheEvent(''), null, SEVERAL)).toEqual({ first: 2027, last: 2027 })
+    expect(yearsOfTheDay(filled(), [2027], SEVERAL)).toBeUndefined()
+    expect(
+      yearsOfTheDay({ ...onTheEvent(''), race: { raceId: A_RACE.id, kind: 'time' } }, [2027], SEVERAL),
+    ).toBeUndefined()
+  })
+})
+
+/**
+ * A NAME OF ONE EDITION AND A DAY OF ANOTHER YEAR MAKE A NEW EDITION (owner, 23.10.2026, PDL „Unos trke sa
+ * imenom događaja koji ima samo jedno izdanje, a dan trke je u drugoj godini, pravi novo izdanje tog
+ * događaja, isto kao za ime sa više izdanja”). The name typed exactly links its one edition, and the block
+ * then asks for what a name that links nothing is asked for.
+ *
+ * <p>The event is of 2027 and the cases stand on days of 2028; every axis the rule reads has a case on
+ * both sides: one edition or two, the day in the edition's year or in another, a window or none, seasons
+ * known or not, and the name as the list keeps it or as it was typed.
+ */
+describe('a new edition of a name of one edition', () => {
+  /* The list holds other events first, so the one linked is never the first entry, and a name that only
+     begins the linked one, which is not a second edition of it. */
+  const ALONGSIDE = [
+    { id: '9700', value: 'Zimska liga', said: 'Zimska liga', fills: {} },
+    { id: '9701', value: 'Gradska liga noću', said: 'Gradska liga noću', fills: {} },
+    ...OFFERED,
+  ]
+  const IN_2028 = '2028-03-01'
+  const ALONE: TheBlockIsAsked = { open: [2028], offered: ALONGSIDE }
+  const THE_WINDOW: TheBlockIsAsked = { open: [2027, 2028], offered: ALONGSIDE }
+  const NOT_KNOWN: TheBlockIsAsked = { open: null, offered: ALONGSIDE }
+  const onTheOnlyEdition = (date: string, over: Partial<TheBlock> = {}): TheBlock => ({
+    ...typingTheEvent(emptyBlock(), 'gradska LIGA', ALONGSIDE, [AN_EVENT]),
+    date,
+    raceName: 'Nova',
+    distanceKm: '10',
+    ascentM: '0',
+    descentM: '0',
+    ...over,
+  })
+  const TOWN_MISSING = 'city leagueResults.refused.theTownIsMissing'
+
+  it('counts the editions of the chosen event’s own name, as the list spells it and not as it was typed', () => {
+    /* „Gradska liga noću” only begins the name, so it is no second edition of it. */
+    expect(theNameHasOneEdition(onTheOnlyEdition(''), ALONGSIDE)).toBe(true)
+    /* The same name in another case is. */
+    expect(theNameHasOneEdition(onTheOnlyEdition(''), [...ALONGSIDE, { id: '9702', value: 'GRADSKA LIGA', said: '', fills: {} }])).toBe(false)
+    expect(theNameHasOneEdition(onTheOnlyEdition(''), SEVERAL)).toBe(false)
+    expect(theNameHasOneEdition(emptyBlock(), ALONGSIDE)).toBe(false)
+    /* A list that does not hold the chosen event says nothing of its name. */
+    expect(theNameHasOneEdition(onTheOnlyEdition(''), [])).toBe(false)
+  })
+
+  it('asks the town of a day in another year, and refuses neither that day nor anything else', () => {
+    expect(boxes(onTheOnlyEdition('01/02/2028'), IN_2028, ALONE)).toEqual([TOWN_MISSING])
+    expect(boxes(onTheOnlyEdition('31/12/2026'), IN_2028, ALONE)).toEqual([TOWN_MISSING])
+    expect(boxes(onTheOnlyEdition('01/02/2028', { city: 'Ohrid', country: 'MK' }), IN_2028, ALONE)).toEqual([])
+    expect(boxes(onTheOnlyEdition('01/02/2028', { city: 'Ohrid' }), IN_2028, ALONE)).toEqual([
+      'city form.errors.countryMissing',
+    ])
+  })
+
+  it('still asks no town of a day in the edition’s own year', () => {
+    expect(boxes(onTheOnlyEdition('01/06/2027'), IN_2028, ALONE)).toEqual([])
+    expect(aNewEditionOf(onTheOnlyEdition('01/06/2027'), ALONE)).toBe(false)
+    expect(aNewEditionOf(onTheOnlyEdition('01/02/2028'), ALONE)).toBe(true)
+  })
+
+  it('does not make a new edition on the morning of 1 January, when both years are open and the race goes on the event', () => {
+    expect(boxes(onTheOnlyEdition('01/01/2028'), '2028-01-01', THE_WINDOW)).toEqual([])
+    expect(aNewEditionOf(onTheOnlyEdition('01/01/2028'), THE_WINDOW)).toBe(false)
+    expect(aNewEditionOf(onTheOnlyEdition('01/01/2028'), { ...THE_WINDOW, open: [2028] })).toBe(true)
+  })
+
+  it('makes nothing before the open seasons are known, as the box says nothing of the year then either', () => {
+    expect(aNewEditionOf(onTheOnlyEdition('01/02/2028'), NOT_KNOWN)).toBe(false)
+    expect(boxes(onTheOnlyEdition('01/02/2028'), IN_2028, NOT_KNOWN)).toEqual([])
+  })
+
+  it('makes nothing where no day is typed, where the race is one of the calendar’s, or where no event is chosen', () => {
+    expect(aNewEditionOf(onTheOnlyEdition(''), ALONE)).toBe(false)
+    expect(aNewEditionOf(onTheOnlyEdition('01/02/2028', { race: { raceId: A_RACE.id, kind: 'time' } }), ALONE)).toBe(false)
+    expect(aNewEditionOf(filled({ date: '01/02/2028' }), ALONE)).toBe(false)
+  })
+
+  it('makes nothing of a name of several editions, whose chosen edition keeps the refusal', () => {
+    const several: TheBlockIsAsked = { open: [2028], offered: SEVERAL }
+
+    expect(aNewEditionOf(onTheOnlyEdition('01/02/2028'), several)).toBe(false)
+    expect(boxes(onTheOnlyEdition('01/02/2028'), IN_2028, several)).toEqual([
+      'date leagueResults.refused.theDayIsNotInTheEventsYear',
+    ])
+  })
+
+  it('shows the calendar every year of a name of one edition, and still the edition’s year for several', () => {
+    expect(yearsOfTheDay(onTheOnlyEdition(''), [2028], ALONGSIDE)).toBeUndefined()
+    expect(yearsOfTheDay(onTheOnlyEdition(''), null, ALONGSIDE)).toBeUndefined()
+    expect(yearsOfTheDay(onTheOnlyEdition(''), [2028], SEVERAL)).toEqual({ first: 2027, last: 2027 })
+  })
+
+  it('sends the new edition as the new event it is, by the list’s name, with its own day and the town typed', () => {
+    expect(
+      eventAndRaceOf(onTheOnlyEdition('01/02/2028', { city: ' Ohrid ', country: 'MK', raceName: ' Prva ' }), ALONE),
+    ).toEqual({
+      event: { name: 'Gradska liga', date: '2028-02-01', city: 'Ohrid', country: 'MK' },
+      race: { name: 'Prva', kind: 'length', distanceKm: 10, ascentM: 0, descentM: 0, limitSeconds: null },
+    })
+  })
+
+  it('sends the edition itself, by its key and with the race’s own day, where nothing makes a new one', () => {
+    const own = eventAndRaceOf(onTheOnlyEdition('01/06/2027', { city: 'Ohrid', country: 'MK' }), ALONE)
+    const inTheWindow = eventAndRaceOf(onTheOnlyEdition('01/01/2028'), THE_WINDOW)
+    const several = eventAndRaceOf(onTheOnlyEdition('01/02/2028'), { open: [2028], offered: SEVERAL })
+    const unknown = eventAndRaceOf(onTheOnlyEdition('01/02/2028'), NOT_KNOWN)
+
+    expect(own.event).toEqual({ id: AN_EVENT.id })
+    expect(own.race).toMatchObject({ date: '2027-06-01' })
+    expect(inTheWindow.event).toEqual({ id: AN_EVENT.id })
+    expect(inTheWindow.race).toMatchObject({ date: '2028-01-01' })
+    expect([several.event, unknown.event]).toEqual([{ id: AN_EVENT.id }, { id: AN_EVENT.id }])
+    expect([several.race, unknown.race]).toEqual([
+      expect.objectContaining({ date: '2028-02-01' }),
+      expect.objectContaining({ date: '2028-02-01' }),
+    ])
   })
 })
 
@@ -284,7 +411,7 @@ describe('a name that stands for several editions', () => {
 
 describe('what the save sends of the event and the race', () => {
   it('names a new event by its name, its one day and its town, and gives its race no day of its own', () => {
-    expect(eventAndRaceOf(filled())).toEqual({
+    expect(eventAndRaceOf(filled(), ASKED)).toEqual({
       event: { name: 'Jezerska trka', date: '2027-06-01', city: 'Ohrid', country: 'MK' },
       race: { name: 'Jezerska desetka', kind: 'length', distanceKm: 10, ascentM: 20, descentM: 30, limitSeconds: null },
     })
@@ -293,11 +420,11 @@ describe('what the save sends of the event and the race', () => {
   it('names an event of the calendar by its key, and a new race on it with its own day and its limit', () => {
     const linked = choosingTheEvent(filled(), OFFERED[0] ?? { id: '', value: '', said: '', fills: {} }, [AN_EVENT])
 
-    expect(eventAndRaceOf({ ...linked, raceName: 'Sat', kind: 'time', hours: '1', date: '05/03/2027' })).toEqual({
+    expect(eventAndRaceOf({ ...linked, raceName: 'Sat', kind: 'time', hours: '1', date: '05/03/2027' }, ASKED)).toEqual({
       event: { id: AN_EVENT.id },
       race: { name: 'Sat', date: '2027-03-05', kind: 'time', distanceKm: null, ascentM: null, descentM: null, limitSeconds: 3600 },
     })
-    expect(eventAndRaceOf({ ...linked, raceName: 'Slobodna', kind: 'free' }).race).toMatchObject({
+    expect(eventAndRaceOf({ ...linked, raceName: 'Slobodna', kind: 'free' }, ASKED).race).toMatchObject({
       distanceKm: null,
       limitSeconds: null,
     })
