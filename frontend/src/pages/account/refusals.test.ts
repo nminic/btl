@@ -229,6 +229,23 @@ const NOT_YET_ON_ANY_SCREEN: Record<string, string[]> = {
     'theAddressIsNotShaped',
     'theAddressIsTaken',
   ],
+  /* ADDED 22.10.2026 WITH `PUT /api/members/{memberNumber}/data`, the administration correcting a
+     member's data (PDL, „Red člana, kartica Podaci i strana Podešavanja"). The card „Podaci" that
+     sends it is the next increment, so all seven wait here and this entry goes the day that screen
+     names them, as the case at the bottom of this file requires. The words it shares with the
+     member's own form (a box too long, emptied, a town not said once) are `MeWriteApi`'s constants
+     and are not declared in this file. */
+  'MemberDataWriteApi.java': [
+    'notTakenHere',
+    'aPairHoldsTheGender',
+    'aMinorNeedsAConsent',
+    'theAddressIsConfirmed',
+    'thereIsNoAccount',
+    'theAddressIsTaken',
+    /* Added 23.10.2026 (owner: the administration may not correct an address to a named
+       superadmin's), with the other six until the card names them. */
+    'theAddressIsTheSuperadmins',
+  ],
   /* `PairWriteApi` stood here until 10.10.2026 with two names, `aQuestionAlreadyStands` and
      `aPairAlreadyHolds`, both `POST /api/pairs`'s, which no screen sent: „Pozovi u trkački par"
      wrote its question into the session. Since P2 it sends the route (`profile/InviteToPair.tsx`,
@@ -450,6 +467,10 @@ describe('the reasons the server can name', () => {
     ['MemberMembershipApi.java',
       [WHEN_CANCELLING, WHEN_CHANGING_TO_THE_EXEMPTION, WHEN_PAYING_OVER_THE_EXEMPTION,
         WHEN_GRANTING_AN_EXEMPTION], 4],
+    /* ADDED 22.10.2026: no screen sends it yet, so every one of its seven (the seventh since
+       23.10.2026) waits in `NOT_YET_ON_ANY_SCREEN` above, and the count is what makes an eighth fail
+       here. */
+    ['MemberDataWriteApi.java', [], 7],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A RACING PAIR.
        Seven constants, and the count splits three ways: three are not refusals at all
        (`NOT_A_REASON` above), two are real refusals of the act that ASKS rather than answers

@@ -217,4 +217,20 @@ class TheNamedSuperadminTest {
 					.isFalse();
 		}
 	}
+
+	/**
+	 * WHETHER AN ADDRESS IS NAMED, confirmed or not (owner, 23.10.2026: the administration may not
+	 * correct a member's address to a named one). Folded on both sides, every member of the setting
+	 * and not only the first, and nothing else.
+	 */
+	@Test
+	void anAddressIsNamedWhateverItsCaseAndWhicheverMemberOfTheSettingItIs() {
+		TheNamedSuperadmin named = new TheNamedSuperadmin(NAMED, ALSO_NAMED);
+
+		assertThat(named.names(NAMED)).isTrue();
+		assertThat(named.names(ALSO_NAMED)).isTrue();
+		assertThat(named.names("  " + NAMED.toUpperCase(java.util.Locale.ROOT) + " ")).isTrue();
+		assertThat(named.names("neko-drugi@primer.rs")).isFalse();
+		assertThat(new TheNamedSuperadmin().names(NAMED)).isFalse();
+	}
 }

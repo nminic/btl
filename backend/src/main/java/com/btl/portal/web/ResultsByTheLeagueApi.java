@@ -281,6 +281,14 @@ class ResultsByTheLeagueApi {
 	 * time or a measure was missing when nothing was. 409, as its neighbours that are answered by what the
 	 * calendar holds rather than by what was sent: the year is the event's as it stands when the save holds
 	 * it, and the screen read it earlier (`THE_EVENT_IS_NOT_KNOWN`, `THE_RACE_IS_NOT_KNOWN`).
+	 *
+	 * <p><b>The screen does not build it for a name of ONE edition since 23.10.2026</b> (PDL, owner,
+	 * 23.10.2026, „Unos trke sa imenom događaja koji ima samo jedno izdanje, a dan trke je u drugoj godini,
+	 * pravi novo izdanje tog događaja, isto kao za ime sa više izdanja”): that save goes out as a new event
+	 * of the name, in the day's own year, and is answered as any new event is. The sentence stays for what
+	 * can still reach it: a request that names an event by its key (an edition chosen from a name of
+	 * several, a list that was stale, a request the screen did not make), and an event met at the address of
+	 * the day that was moved to another year ({@code ANewEventAnotherSaveMadeTest}).
 	 */
 	static final String THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR = "theDayIsNotInTheEventsYear";
 
@@ -456,9 +464,10 @@ class ResultsByTheLeagueApi {
 	 * too long or with an invisible character or a country nobody has, and a figure the kind fixes
 	 * missing. The screen builds none of them; that reading is mine. <b>A new race on an event of another
 	 * year</b>, outside the one morning that allows it, has a sentence of its own since 22.10.2026
-	 * ({@link #THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR}), and the screen does build that one when its day is
-	 * typed: its own box refuses it first (`eventAndRace.ts`), and this is the answer to a request that
-	 * gets past it.
+	 * ({@link #THE_DAY_IS_NOT_IN_THE_EVENTS_YEAR}), and the screen does build that one, for an edition
+	 * chosen from a name of several, when its day is typed: its own box refuses it first
+	 * (`eventAndRace.ts`), and this is the answer to a request that gets past it. A name of one edition
+	 * builds none (owner, 23.10.2026): it goes as a new event.
 	 */
 	@PostMapping("/api/results/on-a-race-of-an-event")
 	@RightIsNeeded(THE_RIGHT)
@@ -619,7 +628,10 @@ class ResultsByTheLeagueApi {
 		   kept it so on 22.10.2026 („Prozor 1. januara od 00:00 do 10:00 ostaje izuzetak od pravila „dan
 		   trke u godini događaja” na ekranu 7b”). A request outside it is answered with the owner's sentence
 		   for it (PDL, 22.10.2026, „Ekran 7b: dan trke mora biti u godini izabranog događaja”): „Dan trke nije
-		   u godini izabranog događaja.” It was answered as a form not filled in until that day.
+		   u godini izabranog događaja.” It was answered as a form not filled in until that day. Since
+		   23.10.2026 the screen sends a name of one edition as a new event, which never meets this question
+		   (owner, „pravi novo izdanje tog događaja”), so what reaches it is a request naming an event by its
+		   key.
 
 		   THE WINDOW IS NOT WRITTEN HERE. It is the seasons open for a report, which are two for those
 		   ten hours and one for the rest of the year ({@link SeasonClock#seasonsOpenForAReport}), so BOTH

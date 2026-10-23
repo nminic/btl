@@ -333,9 +333,12 @@ class NoBodyIsLargerThanOverRealHttpTest {
 		 * The address with every key a number that matches no row - and the one row there is for the
 		 * routes whose door looks at a row before it reads: the decision on the verification queue
 		 * answers 404 to a key nobody has before it has read a byte, to everybody, the superadmin too.
+		 * The administration's correction of a member's data does the same with a number nobody has
+		 * (22.10.2026), so it is given the one member there is, whom the superadmin may correct.
 		 */
 		String address(long theItemWaiting) {
 			String key = pattern.startsWith("/api/verification/{id}/") ? Long.toString(theItemWaiting)
+					: pattern.equals("/api/members/{memberNumber}/data") ? THE_MEMBERS_NUMBER
 					: A_NUMBER_WITH_NO_ROW;
 
 			return A_VARIABLE.matcher(pattern).replaceAll(key);

@@ -117,7 +117,8 @@ export function DatePicker({
    * <p>One screen gives it: „Unos rezultata za događaj”, whose new race on an event of the calendar must
    * be run in that event's year (PDL, owner, 22.10.2026, „Ekran 7b: dan trke mora biti u godini izabranog
    * događaja”: „Polje datuma ne nudi dane van godine događaja”), or on the morning of 1 January in either
-   * of the two years then open. The calendar opens inside them and its two arrows refuse to leave them,
+   * of the two years then open. Where the event's name has no other edition it gives none (owner,
+   * 23.10.2026): its other years are the days of a new edition. The calendar opens inside them and its two arrows refuse to leave them,
    * told off rather than switched off, as the calendar button is for a held box. The box still takes
    * whatever is typed, as it does everywhere: what the screen says of a day typed outside them is the
    * screen's (`pages/event/eventAndRace.ts`).
