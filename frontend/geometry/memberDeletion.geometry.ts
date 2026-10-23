@@ -461,7 +461,14 @@ for (const at of EDGE_SCREENS) {
   })
 }
 
-for (const at of [{ width: 360, text: 100 }, { width: 768, text: 100 }, { width: 1280, text: 100 }, { width: 360, text: 200 }] as At[]) {
+const ANSWER_SCREENS: At[] = [
+  { width: 360, text: 100 },
+  { width: 768, text: 100 },
+  { width: 1280, text: 100 },
+  { width: 360, text: 200 },
+]
+
+for (const at of ANSWER_SCREENS) {
   test(`the cross and then one press on „Obriši", or Enter on it, delete the member, at ${label(at)}`, async ({
     open,
   }) => {
