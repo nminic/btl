@@ -847,8 +847,9 @@ function profileIn(mine: object | null): Competitor | null {
     return null
   }
 
-  const photo = photoIn(mine)
+  const photo = photoIn(mine, 'photo')
   const crop = squareIn(mine)
+  const smallPhoto = photoIn(mine, 'smallPhoto')
 
   return {
     ...data,
@@ -862,6 +863,9 @@ function profileIn(mine: object | null): Competitor | null {
     bio,
     photo: crop === null ? null : photo,
     crop: photo === null ? null : crop,
+    /* The third half of the same fact (PDL, 23.10.2026, „umanjenu, već isečenu sliku za
+       kružiće"): nothing without the picture it was cut from. */
+    smallPhoto: photo === null || crop === null ? null : smallPhoto,
   }
 }
 
@@ -1008,8 +1012,8 @@ function flagIn(mine: object, name: 'firstSeason2027' | 'profileHidden' | 'activ
  * `/api/photos/`: it goes into an `img`, so the question is where the string goes next, as
  * `codeIn` asks of a code (my reasoning, not a recorded decision). Anything else is „no portrait".
  */
-function photoIn(mine: object): string | null {
-  const said: unknown = Reflect.get(mine, 'photo')
+function photoIn(mine: object, name: 'photo' | 'smallPhoto'): string | null {
+  const said: unknown = Reflect.get(mine, name)
 
   return typeof said === 'string' && said.startsWith('/api/photos/') ? said : null
 }

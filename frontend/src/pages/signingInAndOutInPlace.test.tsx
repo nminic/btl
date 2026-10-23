@@ -82,6 +82,7 @@ function aMember(
     profileHidden: hidden,
     photo: picture ? aCompetitor.photo : null,
     crop: picture ? aCompetitor.crop : null,
+    smallPhoto: picture ? aCompetitor.smallPhoto : null,
     bio: '',
   }
 }
@@ -465,7 +466,7 @@ describe('the header of somebody who has just signed in', () => {
     })
 
     await waitFor(() => {
-      expect(picturesIn(screen.getByRole('button', { name: 'Otvori nalog' }))).toEqual([aCompetitor.photo])
+      expect(picturesIn(screen.getByRole('button', { name: 'Otvori nalog' }))).toEqual([aCompetitor.smallPhoto])
     })
   })
 })
@@ -488,7 +489,7 @@ describe('somebody signs out without the page being reloaded', () => {
 
     /* Both ends named, because „no picture" is also what a page that has stopped drawing them
        looks like: before the sign out the very same cards have to hold his. */
-    expect(await picturesOnTheCards()).toEqual([aCompetitor.photo])
+    expect(await picturesOnTheCards()).toEqual([aCompetitor.smallPhoto])
 
     await signOutHere()
 

@@ -53,6 +53,8 @@ export const WHAT_MAY_BE_LEFT_OUT = [
   'teamSince',
   'photo',
   'crop',
+  /* And the same portrait cut small (PDL, 23.10.2026), absent with the other two. */
+  'smallPhoto',
   'phone',
   'bioWaiting',
   /* And the basis of the season on sale with its season, which a member whose fee has lapsed holds

@@ -166,6 +166,8 @@ export const MEMBERS: EntityDef = {
        `Team.crop` as the reason that field is nullable at all. */
     photo: null,
     crop: null,
+    /* And the small one cut from it, null with the other two (PDL, 23.10.2026). */
+    smallPhoto: null,
   },
 }
 
@@ -380,7 +382,7 @@ export const TEAMS: EntityDef = {
      which is why both are written out rather than left to a default. */
   /* And nobody named on it in place of his record (`Team.alsoInTheTeam`): a team made during
      this visit is made by somebody signed in, and to him every record names its own team. */
-  blank: { bio: '', logo: null, crop: WHOLE, alsoInTheTeam: [] },
+  blank: { bio: '', logo: null, crop: WHOLE, smallLogo: null, alsoInTheTeam: [] },
   /**
    * The address the team answers at, from its name.
    *

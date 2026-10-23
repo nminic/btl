@@ -841,6 +841,7 @@ describe('who administers a team, on the answer a member is given', () => {
     country: 'RS',
     bio: '',
     logo: null,
+    smallLogo: null,
     crop: null,
     alsoInTheTeam: [],
     ...fields,
@@ -861,6 +862,7 @@ describe('who administers a team, on the answer a member is given', () => {
     profileHidden: false,
     birthdayShown: 'none',
     photo: null,
+    smallPhoto: null,
     crop: null,
     bio: '',
   })

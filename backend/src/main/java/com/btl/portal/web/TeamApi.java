@@ -620,6 +620,10 @@ class TeamApi {
 	 *                    the empty path is an address that would be asked for
 	 * @param crop        the square of the mark, or null for a team that has no mark. The
 	 *                    other half of {@code logo} and never answered without it
+	 * @param smallLogo   the same mark already cut to that circle and small, which is what the
+	 *                    circle in the table of teams draws (PDL, 23.10.2026, „umanjenu, već
+	 *                    isečenu sliku za kružiće"). Null exactly when {@code logo} is, and
+	 *                    built by {@link PhotoApi#addressOfTheSmall} out of the same row
 	 * @param alsoInTheTeam the members of this team whose own record on
 	 *                    {@code /api/competitors} does not name it to the one asking, in
 	 *                    member number order - which since 02.10.2026 is a member who hides
@@ -678,7 +682,7 @@ class TeamApi {
 	 *                    and not a spelling of the empty one
 	 */
 	record Team(long id, String slug, String name, String city, String country, String bio,
-			String logo, Crop crop, List<AlsoInTheTeam> alsoInTheTeam,
+			String logo, Crop crop, String smallLogo, List<AlsoInTheTeam> alsoInTheTeam,
 			List<EndedMembership> endedMemberships,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Boolean foundedByMe,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Boolean administeredByMe,
@@ -1057,6 +1061,9 @@ class TeamApi {
 							mark == null ? null : A_PICTURE_IS_ASKED_FOR_AT + mark,
 							across == null ? null
 									: new Crop(across, row.getBigDecimal(9), row.getBigDecimal(10)),
+							mark == null ? null
+									: PhotoApi.addressOfTheSmall(mark, across, row.getBigDecimal(9),
+											row.getBigDecimal(10)),
 							/* An empty list for a team none of whose members the records leave
 							   out, and never null: „nobody is left out" is the answer, and a key
 							   carrying null would be a fifth shape for one sentence. */

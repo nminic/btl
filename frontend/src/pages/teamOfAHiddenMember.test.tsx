@@ -72,6 +72,7 @@ function aMember(
     profileHidden: hidden,
     photo: null,
     crop: null,
+    smallPhoto: null,
     bio: hidden ? null : '',
   }
 }

@@ -51,6 +51,7 @@ function aMember(memberNumber: string, since: number) {
     teamSince: since,
     photo: null,
     crop: null,
+    smallPhoto: null,
   }
 }
 

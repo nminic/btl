@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Vladan Đurišić">
+  <!-- Stand-in for a portrait a member would send and a moderator approve. Two of the
+       thirty two members carry one, so both states stand on the same screen: circles
+       with a photograph beside circles with initials (components/Portrait.tsx).
+       This one is framed WHOLE on purpose - the member beside it carries a real square,
+       and a case that swapped the two would otherwise compare a crop with itself. -->
+  <rect width="64" height="64" fill="#26343f" />
+  <circle cx="32" cy="24" r="12" fill="#d9a884" />
+  <path d="M8 64c0-14 11-22 24-22s24 8 24 22z" fill="#3f5d74" />
+</svg>

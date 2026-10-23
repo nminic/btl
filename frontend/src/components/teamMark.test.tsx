@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { renderAt, renderWithI18n } from '../test/render'
 import { must } from '../test/at'
 import type { Team } from '../data/types'
@@ -25,6 +25,7 @@ const aTeam = (over: Partial<Team> = {}): Team => ({
   crop: { x: 0.5, y: 0.5, size: 1 },
   bio: '',
   logo: null,
+  smallLogo: null,
   alsoInTheTeam: [],
   ...over,
 })
@@ -74,6 +75,44 @@ describe('the circle before a team name', () => {
        yet, and a review found the attribute could be switched off with every
        test still passing. */
     expect(drawn).toHaveAttribute('loading', 'lazy')
+  })
+
+  it('draws the small mark whole where the team carries one, lazily, and never cuts it again', () => {
+    /* Owner, 23.10.2026 (PDL, „Umanjene slike za kružiće"): the circle in the table of teams is one
+       of the small ones, so it draws the mark the server already cut, with no square on it. */
+    const { container } = renderWithI18n(
+      <TeamMark
+        team={aTeam({
+          logo: '/mock/logo/dunav.svg',
+          smallLogo: '/mock/logo/dunav.small.svg',
+          crop: { x: 0.25, y: 1, size: 0.5 },
+        })}
+      />,
+    )
+
+    const drawn = must(container.querySelector('img'), 'the small logo')
+
+    expect(drawn).toHaveAttribute('src', '/mock/logo/dunav.small.svg')
+    expect(drawn.getAttribute('style')).toBeNull()
+    expect(drawn).toHaveAttribute('loading', 'lazy')
+  })
+
+  it('falls back to the original cut to the square when the small mark will not load', () => {
+    const { container } = renderWithI18n(
+      <TeamMark
+        team={aTeam({
+          logo: '/mock/logo/dunav.svg',
+          smallLogo: '/mock/logo/dunav.small.svg',
+          crop: { x: 0.25, y: 1, size: 0.5 },
+        })}
+      />,
+    )
+
+    fireEvent.error(must(container.querySelector('img'), 'the small logo'))
+
+    const drawn = must(container.querySelector('img'), 'the logo after the small one failed')
+    expect(drawn).toHaveAttribute('src', '/mock/logo/dunav.svg')
+    expect(drawn).toHaveStyle({ objectPosition: '25% 100%', transform: 'scale(2)' })
   })
 
   it('cuts the logo where the team cut it', () => {
