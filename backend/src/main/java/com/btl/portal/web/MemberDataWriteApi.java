@@ -1,20 +1,31 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.account.WhatAnAddressLooksLike;
+import com.btl.portal.domain.mail.MailLanguage;
+import com.btl.portal.domain.mail.WhatTheMessageSays;
+import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
+import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 import com.btl.portal.domain.pricing.Currency;
 import com.btl.portal.domain.pricing.MembershipPrice;
+import com.btl.portal.domain.rights.TheNamedSuperadmin;
 import com.btl.portal.domain.registration.Guardianship;
 import com.btl.portal.domain.registration.WhatADataCorrectionSays;
 import com.btl.portal.domain.registration.WhatADataCorrectionSays.Field;
 import com.btl.portal.domain.registration.WhatAFieldMeans;
 import com.btl.portal.domain.season.SeasonClock;
+import com.btl.portal.domain.token.SecretToken;
+import com.btl.portal.mail.Postman;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mail.MailException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -104,6 +115,8 @@ import java.util.function.Function;
 @RestController
 class MemberDataWriteApi {
 
+	private static final Logger LOG = LoggerFactory.getLogger(MemberDataWriteApi.class);
+
 	/** A name in the body this route does not take, and the answer says which. */
 	static final String NOT_TAKEN_HERE = "notTakenHere";
 
@@ -121,6 +134,14 @@ class MemberDataWriteApi {
 
 	/** Another account already signs in with that address. */
 	static final String THE_ADDRESS_IS_TAKEN = "theAddressIsTaken";
+
+	/**
+	 * The address is one the settings name as the superadmin's (owner, 23.10.2026, PDL „Administracija
+	 * ne sme da ispravi adresu pošte člana na adresu imenovanog superadmina"). The sentence the screen
+	 * says for it is the assistant's and the owner changes it on QA: „Ova adresa pripada administraciji
+	 * portala i ne može biti adresa člana."
+	 */
+	static final String THE_ADDRESS_IS_THE_SUPERADMINS = "theAddressIsTheSuperadmins";
 
 	/** Every name the body may carry, spelt as the registration's form spells them. */
 	static final List<String> WHAT_THIS_ROUTE_TAKES = List.of("firstName", "lastName", "fatherName",
@@ -175,9 +196,16 @@ class MemberDataWriteApi {
 
 	private final Clock clock;
 
+	private final Postman postman;
+
+	private final Portal portal;
+
+	private final TheNamedSuperadmin superadmin;
+
 	MemberDataWriteApi(JdbcClient db, MemberDataApi data, MemberOfAccount memberOfAccount,
 			WhatHeMayDo mayHe, TownNamed towns, ACountryMovesTheMoney money, BalanceBook book,
-			ObjectMapper json, TransactionTemplate inOneTransaction, Clock clock) {
+			ObjectMapper json, TransactionTemplate inOneTransaction, Clock clock, Postman postman,
+			@Value("${btl.portal.address}") String portalAddress, TheNamedSuperadmin superadmin) {
 
 		this.db = db;
 		this.data = data;
@@ -189,6 +217,9 @@ class MemberDataWriteApi {
 		this.json = json;
 		this.inOneTransaction = inOneTransaction;
 		this.clock = clock;
+		this.postman = postman;
+		this.portal = new Portal(portalAddress);
+		this.superadmin = superadmin;
 	}
 
 	/**
@@ -249,8 +280,40 @@ class MemberDataWriteApi {
 
 		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
 
-		return inOneTransaction.execute(committing ->
+		Corrected done = inOneTransaction.execute(committing ->
 				write(member.get(), asking.account(), typed, town.orElse(null), today));
+
+		/* THE NEW LINK GOES OUT ONLY ONCE THE CORRECTION IS COMMITTED, the order
+		   `EmailConfirmationApi.resend` keeps: a letter sent from inside the transaction would be a
+		   link to a row that a rollback could still take back. */
+		if (done.link() != null) {
+			send(done.link());
+		}
+
+		return done.answer();
+	}
+
+	/** What the transaction answers, and the link to send once it has committed, if there is one. */
+	private record Corrected(ResponseEntity<?> answer, ToSend link) {
+
+		static Corrected refused(ResponseEntity<?> answer) {
+			return new Corrected(answer, null);
+		}
+	}
+
+	/** A new link to confirm an address, the address it goes to and the language it is written in. */
+	private record ToSend(long account, String address, String link, MailLanguage language) {
+	}
+
+	private void send(ToSend made) {
+		try {
+			postman.send(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, made.language(), portal,
+					made.link()), made.address());
+		} catch (MailException theRelayDidNotTakeIt) {
+			LOG.warn("a confirmation message for account {} after the administration corrected its address"
+					+ " did not go out; the token is written and asking again is what gets him out of it",
+					made.account(), theRelayDidNotTakeIt);
+		}
 	}
 
 	/**
@@ -341,7 +404,7 @@ class MemberDataWriteApi {
 		return notOffered.isEmpty() ? null : notComplete(notOffered);
 	}
 
-	private ResponseEntity<?> write(long member, long account, Correction typed, TownNamed.Town town,
+	private Corrected write(long member, long account, Correction typed, TownNamed.Town town,
 			LocalDate today) {
 
 		/* HIS ROW IS LOCKED FIRST, so two corrections at one instant are one after the other, and
@@ -358,26 +421,33 @@ class MemberDataWriteApi {
 		/* A DAY AFTER TODAY IS NOT A DAY OF BIRTH, and it is the one question about the form that
 		   needs the day. */
 		if (born == null) {
-			return notComplete(List.of("birthDate"));
+			return Corrected.refused(notComplete(List.of("birthDate")));
 		}
 
-		/* THE ADDRESS OF POST: only an account's, and only while it is not confirmed. */
+		/* THE ADDRESS OF POST: only an account's, and only while it is not confirmed. Whether it is
+		   confirmed is NOT asked here, off a read that nothing holds: it is the condition of the
+		   statement that moves it, below, and that statement is what holds the row. */
 		String address = typed.email() == null ? null : WhatAnAddressLooksLike.asItIsStored(typed.email());
 		boolean readdressed = address != null && !address.equals(before.email());
 
 		if (readdressed && before.emailConfirmed() == null) {
-			return conflict(THERE_IS_NO_ACCOUNT);
+			return Corrected.refused(conflict(THERE_IS_NO_ACCOUNT));
 		}
 
-		if (readdressed && before.emailConfirmed()) {
-			return conflict(THE_ADDRESS_IS_CONFIRMED);
+		/* NOT AN ADDRESS THE SETTINGS NAME AS THE SUPERADMIN'S (owner, 23.10.2026). Asked of what was
+		   typed, and `names` folds it the way it folds the settings, so the comparison is the one the
+		   taken address below makes, small letters on both sides. Left to stand, a correction to a
+		   named address that nobody holds yet would send that address the link the correction mails,
+		   and confirming it would make the member the superadmin (`TheNamedSuperadmin.covers`). */
+		if (readdressed && superadmin.names(typed.email())) {
+			return Corrected.refused(conflict(THE_ADDRESS_IS_THE_SUPERADMINS));
 		}
 
 		if (readdressed && db.sql("select count(*) from account where lower(email) = lower(?)"
 						+ " and competitor_id is distinct from ?")
 				.params(address, member).query(Long.class).single() > 0) {
 
-			return conflict(THE_ADDRESS_IS_TAKEN);
+			return Corrected.refused(conflict(THE_ADDRESS_IS_TAKEN));
 		}
 
 		/* THE GENDER, which a racing pair holds. „Bio u paru" is read as the schema reads it: a row
@@ -387,7 +457,7 @@ class MemberDataWriteApi {
 				&& db.sql("select count(*) from racing_pair where man_id = ? or woman_id = ?")
 				.params(member, member).query(Long.class).single() > 0) {
 
-			return conflict(A_PAIR_HOLDS_THE_GENDER);
+			return Corrected.refused(conflict(A_PAIR_HOLDS_THE_GENDER));
 		}
 
 		LocalDate wasBorn = LocalDate.parse(before.birthDate());
@@ -398,25 +468,62 @@ class MemberDataWriteApi {
 				&& db.sql("select count(*) from parental_consent where competitor_id = ?")
 				.param(member).query(Long.class).single() == 0) {
 
-			return conflict(A_MINOR_NEEDS_A_CONSENT);
+			return Corrected.refused(conflict(A_MINOR_NEEDS_A_CONSENT));
 		}
 
 		boolean documentEmptied = typed.idNumber() != null && typed.idNumber().isBlank();
 
 		if (documentEmptied && !underSixteen) {
-			return ResponseEntity.badRequest()
-					.body(new MeWriteApi.NotAllowed(MeWriteApi.A_FIELD_IS_BLANK, List.of("idNumber")));
+			return Corrected.refused(ResponseEntity.badRequest()
+					.body(new MeWriteApi.NotAllowed(MeWriteApi.A_FIELD_IS_BLANK, List.of("idNumber"))));
 		}
 
-		/* EVERY REFUSAL IS BEHIND US, and nothing has been written yet. */
+		/* EVERY REFUSAL IS BEHIND US BUT ONE, and nothing has been written yet.
+
+		   THE ADDRESS MOVES ONLY WHILE IT IS NOT CONFIRMED, AND THAT IS ASKED BY THE STATEMENT THAT
+		   MOVES IT (22.10.2026, the security review of PR 633). A confirmation opened in the same
+		   instant (`EmailConfirmationApi.confirm`) holds the same row before it reads its link, so the
+		   two are one after the other and never interleaved: if it got there first, the row is
+		   confirmed and this moves nothing, and the answer is that the address is his; if this got
+		   there first, the link it opened is gone by the time it reads it. Exactly one row or none,
+		   because `account_competitor_unique` (V23) gives a member at most one account. Nothing was
+		   written before this line, so a refusal here leaves nothing behind.
+
+		   FROM THIS STATEMENT ON THE ROW IS HELD, and everything about the account's links is done
+		   under it: every link sent to the old address is retired, and a request for a new one at the
+		   old address (`resend`, `PasswordResetApi.request`) waits and then finds nothing. */
+		ToSend link = null;
+
 		if (readdressed) {
-			db.sql("update account set email = ? where competitor_id = ?").params(address, member).update();
+			if (db.sql("update account set email = ? where competitor_id = ? and email_confirmed_at is null")
+					.params(address, member).update() != 1) {
+
+				return Corrected.refused(conflict(THE_ADDRESS_IS_CONFIRMED));
+			}
+
 			db.sql("delete from email_verification_token where account_id ="
 							+ " (select id from account where competitor_id = ?)")
 					.param(member).update();
 			db.sql("delete from password_reset_token where account_id ="
 							+ " (select id from account where competitor_id = ?)")
 					.param(member).update();
+
+			/* AND A NEW LINK, AT ONCE, TO THE CORRECTED ADDRESS (owner, PDL 22.10.2026: „portal odmah
+			   šalje novu vezu za potvrdu na ispravljenu adresu"). Written under the same hold, so no
+			   request at the old address can come between the retiring and the new one; the words are
+			   the confirmation's own, as `resend` sends them, in the account's language, and the address
+			   is the one the row now carries. */
+			SecretToken fresh = SecretToken.fresh();
+
+			db.sql("insert into email_verification_token (account_id, token_hash)"
+							+ " select id, ? from account where competitor_id = ?")
+					.params(fresh.hash(), member).update();
+
+			link = db.sql("select id, email, mail_language from account where competitor_id = ?")
+					.param(member)
+					.query((row, i) -> new ToSend(row.getLong(1), row.getString(2), fresh.secret(),
+							MailLanguage.ofTheColumn(row.getString(3))))
+					.single();
 		}
 
 		Currency was = town == null ? null : money.before(member);
@@ -467,7 +574,7 @@ class MemberDataWriteApi {
 			tell(member, WhatADataCorrectionSays.corrected(moved));
 		}
 
-		return ResponseEntity.ok(after);
+		return new Corrected(ResponseEntity.ok(after), link);
 	}
 
 	/**

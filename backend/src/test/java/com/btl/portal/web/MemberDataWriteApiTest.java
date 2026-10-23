@@ -2,12 +2,19 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.mail.MailLanguage;
+import com.btl.portal.domain.mail.WhatTheMessageSays;
+import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
+import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
+import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 import com.btl.portal.domain.token.SecretToken;
 import com.btl.portal.mail.Postman;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -40,8 +47,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -58,13 +72,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * member himself with data of his own; a third member holds tokens of his own that must survive; and
  * the day of the request is not the day anybody was born.
  */
-@SpringBootTest
+@SpringBootTest(properties = "btl.superadmin.email=" + MemberDataWriteApiTest.NAMED_SUPERADMINS)
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @Transactional
 class MemberDataWriteApiTest {
 
 	private static final Instant TODAY = Instant.parse("2027-10-20T09:00:00Z");
+
+	/** Two named, neither held by any account of this class, and the second is the one asked about. */
+	static final String NAMED_SUPERADMINS = "Glavni.Admin@Primer.rs,drugi-admin@primer.rs";
 
 	private static final String THE_SUPERADMIN = "superadmin-podaci@primer.rs";
 
@@ -108,7 +125,14 @@ class MemberDataWriteApiTest {
 	@Autowired
 	private ObjectMapper mapper;
 
-	/** Watched and never stubbed: M7 says „poruka u sanduče", so nothing may be mailed. */
+	@Value("${btl.portal.address}")
+	private String portalAddress;
+
+	/**
+	 * Watched, and told to hand nothing to a relay: M7 says „poruka u sanduče", so the correction
+	 * itself is never mailed, and the one letter there is - the new link to a corrected address
+	 * (owner, 22.10.2026) - is read off what was handed to it.
+	 */
 	@MockitoSpyBean
 	private Postman postman;
 
@@ -142,6 +166,8 @@ class MemberDataWriteApiTest {
 
 	@BeforeEach
 	void membersAndTheAdministration() {
+		doNothing().when(postman).send(any(Said.class), anyString());
+
 		first = competitor("000002", "a1", "Prvi", "M", "1980-01-01", A_TOWN_IN_SERBIA);
 		theModeratorHimself = competitor("000003", "a2", "Moderator", "M", "1985-03-03", A_TOWN_IN_SERBIA);
 		corrected = competitor("000005", "a3", "Ispravljani", "M", "1990-05-15", A_TOWN_IN_SERBIA);
@@ -302,6 +328,7 @@ class MemberDataWriteApiTest {
 	/** Nothing about anybody moved: every row, book, promise, token, address and message as set up. */
 	private void nothingWasWritten(Map<String, Object> before) {
 		assertThat(everythingNow()).isEqualTo(before);
+		verifyNoInteractions(postman);
 	}
 
 	private Map<String, Object> everythingNow() {
@@ -593,23 +620,41 @@ class MemberDataWriteApiTest {
 		   his and nobody else's. */
 		assertThat(db.sql("select email from account where competitor_id = ?").param(corrected)
 				.query(String.class).single()).isEqualTo("nova.adresa@primer.rs");
-		assertThat(count("select count(*) from email_verification_token t join account a on a.id = t.account_id"
-				+ " where a.competitor_id = ?", corrected)).isZero();
 		assertThat(count("select count(*) from password_reset_token t join account a on a.id = t.account_id"
 				+ " where a.competitor_id = ?", corrected)).isZero();
+
+		/* AND ONE NEW LINK, AT ONCE, TO THE CORRECTED ADDRESS (owner, PDL 22.10.2026: „portal odmah
+		   šalje novu vezu za potvrdu na ispravljenu adresu"): the only link his account now has, in
+		   the letter the confirmation always sends, to the address the row now carries and to nobody
+		   else - not the old one, not the moderator who sent the correction. */
+		ArgumentCaptor<Said> letter = ArgumentCaptor.forClass(Said.class);
+		ArgumentCaptor<String> to = ArgumentCaptor.forClass(String.class);
+
+		verify(postman, times(1)).send(letter.capture(), to.capture());
+		assertThat(to.getValue()).isEqualTo("nova.adresa@primer.rs");
+		assertThat(letter.getValue().subject()).isEqualTo(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
+				MailLanguage.SERBIAN, new Portal(portalAddress), "x").subject());
+
+		Matcher token = Pattern.compile("potvrda-adrese\\?token=([A-Za-z0-9_-]+)").matcher(letter.getValue().body());
+
+		assertThat(token.find()).as(letter.getValue().body()).isTrue();
+		assertThat(db.sql("select a.competitor_id from email_verification_token t join account a on a.id = t.account_id"
+						+ " where t.token_hash = ?").param(SecretToken.hashOf(token.group(1)))
+				.query(Long.class).single()).isEqualTo(corrected);
+		assertThat(count("select count(*) from email_verification_token t join account a on a.id = t.account_id"
+				+ " where a.competitor_id = ?", corrected)).isOne();
 		assertThat(count("select count(*) from email_verification_token t join account a on a.id = t.account_id"
 				+ " where a.competitor_id = ?", first)).isOne();
 		assertThat(count("select count(*) from password_reset_token t join account a on a.id = t.account_id"
 				+ " where a.competitor_id = ?", first)).isOne();
 
-		/* ONE MESSAGE, TO HIM, FROM THE LEAGUE, naming every datum and no value, and nothing mailed. */
+		/* ONE MESSAGE, TO HIM, FROM THE LEAGUE, naming every datum and no value. */
 		assertThat(messages()).containsExactly(corrected + " Izmenjeni su vaši podaci");
 		assertThat(db.sql("select coalesce(from_id::text, '-') || ' | ' || from_name || ' | ' || body from message")
 				.query(String.class).single())
 				.isEqualTo("- | Balkanska trkačka liga | Administracija lige je izmenila vaše podatke: ime, prezime,"
 						+ " ime oca, pol, datum rođenja, broj ličnog dokumenta, adresa elektronske pošte, adresa,"
 						+ " telefon, mesto, veličina majice.\n\nBalkanska trkačka liga");
-		verifyNoInteractions(postman);
 
 		/* AND THE ANSWER IS WHAT A READ NOW SAYS. */
 		assertThat(body(answer)).isEqualTo(body(read("000005", OVER_THE_MEMBERS)));
@@ -623,6 +668,7 @@ class MemberDataWriteApiTest {
 
 		assertThat(same.getStatus()).isEqualTo(200);
 		assertThat(messages()).isEmpty();
+		verifyNoInteractions(postman);
 		/* The same address in other letters is the same address: no link was retired. */
 		assertThat(count("select count(*) from email_verification_token")).isEqualTo(2);
 
@@ -668,6 +714,39 @@ class MemberDataWriteApiTest {
 		assertThat(data.path("city").asString()).isEqualTo("Mali Grad");
 		assertThat(data.path("country").asString()).isEqualTo("RS");
 		assertThat(db.sql("select body from message").query(String.class).single()).contains(": mesto.");
+	}
+
+	/**
+	 * NOT TO AN ADDRESS THE SETTINGS NAME AS THE SUPERADMIN'S (owner, 23.10.2026). Typed in other
+	 * letters and with spaces, and the second of the two named as well as the first.
+	 */
+	@Test
+	void anAddressTheSettingsNameAsTheSuperadminsIsRefused() throws Exception {
+		Map<String, Object> before = everythingNow();
+
+		for (String named : List.of(" glavni.admin@primer.RS ", "DRUGI-ADMIN@primer.rs")) {
+			MockHttpServletResponse answer = corrected("000005", "{\"email\": \"" + named + "\"}", OVER_THE_MEMBERS);
+
+			assertThat(answer.getStatus()).as(named).isEqualTo(409);
+			assertThat(reasonIn(answer)).as(named).isEqualTo(MemberDataWriteApi.THE_ADDRESS_IS_THE_SUPERADMINS);
+		}
+
+		nothingWasWritten(before);
+	}
+
+	/** The new link is written in the language the account's mail is written in, not always Serbian. */
+	@Test
+	void theNewLinkIsInTheLanguageOfHisMail() throws Exception {
+		db.sql("update account set mail_language = 'en' where competitor_id = ?").param(corrected).update();
+
+		assertThat(corrected("000005", "{\"email\": \"engleski@primer.rs\"}", OVER_THE_MEMBERS).getStatus())
+				.isEqualTo(200);
+
+		ArgumentCaptor<Said> letter = ArgumentCaptor.forClass(Said.class);
+
+		verify(postman, times(1)).send(letter.capture(), anyString());
+		assertThat(letter.getValue().subject()).isEqualTo(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
+				MailLanguage.ENGLISH, new Portal(portalAddress), "x").subject());
 	}
 
 	// --- the money ---
