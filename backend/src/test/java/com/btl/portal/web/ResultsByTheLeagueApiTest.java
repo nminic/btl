@@ -1141,6 +1141,56 @@ class ResultsByTheLeagueApiTest {
 	}
 
 	/**
+	 * A NEW EVENT NAMED AS AN EVENT THE CALENDAR HAS IN ANOTHER YEAR IS A NEW EDITION OF IT (PDL, owner,
+	 * 23.10.2026, „Unos trke sa imenom događaja koji ima samo jedno izdanje, a dan trke je u drugoj godini,
+	 * pravi novo izdanje tog događaja, isto kao za ime sa više izdanja”). This is the road the screen takes
+	 * for such a name since that day, so it is asked here on both sides of the year of the one edition, a
+	 * year before it and a year after it: the edition is made at the address of its own year, the town is
+	 * the one typed and not the old edition's, the race and the result are on it, and the old edition keeps
+	 * its day, its address and its three races.
+	 */
+	@Test
+	void aNewEventNamedAsOneOfAnotherYearIsANewEditionAndTouchesNothingOfTheOld() throws Exception {
+		long theOld = db.sql("select event_id from race where id = ?").param(theTen)
+				.query(Long.class).single();
+		int events = howMany("btl_event");
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onANewEvent("Prvi dogadjaj", "2026-06-06", "Ohrid", "MK",
+				newRace("Nova desetka", null, "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR))).getStatus()).as("the year before").isEqualTo(201);
+
+		clock.moveTo(Instant.parse("2028-03-01T10:00:00Z"));
+		membership(VERA, 2028);
+
+		MockHttpServletResponse after = onAnEvent(RESULTS_MODERATOR, onANewEvent("Prvi dogadjaj", "2028-02-01",
+				"Bitola", "MK", newRace("Zimska desetka", null, "free", null, null, null, null),
+				row(VERA, "5.00", 1, 1, AN_HOUR)));
+
+		assertThat(after.getStatus()).as("the year after").isEqualTo(201);
+		assertThat(new ObjectMapper().readTree(after.getContentAsString()).path("event").asString())
+				.isEqualTo("prvi-dogadjaj-2028");
+		assertThat(howMany("btl_event")).as("one new event for each of the two days").isEqualTo(events + 2);
+
+		assertThat(db.sql("select name || ' ' || date || ' ' || city || ' ' || kind from btl_event"
+						+ " where slug = 'prvi-dogadjaj-2026'").query(String.class).single())
+				.isEqualTo("Prvi dogadjaj 2026-06-06 Ohrid race");
+		assertThat(db.sql("select name || ' ' || date || ' ' || city || ' ' || kind from btl_event"
+						+ " where slug = 'prvi-dogadjaj-2028'").query(String.class).single())
+				.isEqualTo("Prvi dogadjaj 2028-02-01 Bitola race");
+		assertThat(db.sql("select count(*) from race r join btl_event e on e.id = r.event_id"
+						+ " where e.slug = 'prvi-dogadjaj-2026' and r.name = 'Nova desetka'"
+						+ " and r.date = date '2026-06-06'").query(Integer.class).single()).isEqualTo(1);
+		assertThat(db.sql("select count(*) from race r join btl_event e on e.id = r.event_id"
+						+ " where e.slug = 'prvi-dogadjaj-2028' and r.name = 'Zimska desetka'"
+						+ " and r.date = date '2028-02-01'").query(Integer.class).single()).isEqualTo(1);
+
+		assertThat(db.sql("select slug || ' ' || date || ' ' || (select count(*) from race where event_id = ?)"
+						+ " from btl_event where id = ?").params(theOld, theOld).query(String.class).single())
+				.as("the old edition as it was").isEqualTo("prvi-dogadjaj-2027 2027-05-08 3");
+		assertThat(resultsOf(VERA)).as("a result on each of the two new races").hasSize(2);
+	}
+
+	/**
 	 * THE SENTENCES OF THE SCREEN THAT ARE ITS OWN (approved 19.10.2026), each where it belongs, and
 	 * NOTHING WRITTEN BY ANY OF THEM: an event chosen by a key nobody answers to, a race chosen by a key
 	 * that is not that event's, and a new event with no town. The fourth, a new event or a new race before

@@ -49,7 +49,8 @@ export const WHEN_THE_LEAGUE_ENTERS_RESULTS: Record<string, string> = {
   /* PDL, owner, 22.10.2026, „Ekran 7b: dan trke mora biti u godini izabranog događaja”: a new race on an
      event of the calendar whose day is not in that event's year, outside the morning of 1 January. The
      block says the same words under the day before it sends anything (`eventAndRace.ts`); this is the
-     answer to a request that got past it. */
+     answer to a request that got past it. A name of one edition does not reach it from the screen since
+     23.10.2026: that day makes a new edition, which is sent as a new event. */
   theDayIsNotInTheEventsYear: 'leagueResults.refused.theDayIsNotInTheEventsYear',
 }
 

@@ -132,6 +132,30 @@ export function choosingTheEvent(
       }
 }
 
+/**
+ * A DAY TYPED INTO THE DAY'S BOX. Where it makes a new edition ({@link aNewEditionOf}) the race takes the
+ * event's name while its box is empty, as the race of a name that links nothing does (owner, 23.10.2026,
+ * „isto kao za ime sa više izdanja”, answering the coordinator's addition to PR 636), and gives it up again
+ * when the day goes back where the edition's own race is chosen, so a race named for itself is never
+ * written over and one that only held the event's name does not stay behind as a new race's. The name is the
+ * list's, as the event's sent name is.
+ */
+export function changingTheDay(block: TheBlock, next: string, asked: TheBlockIsAsked): TheBlock {
+  const after = { ...block, date: next }
+  const now = aNewEditionOf(after, asked) ? theEntryOfTheEvent(after, asked.offered) : undefined
+  const before = aNewEditionOf(block, asked) ? theEntryOfTheEvent(block, asked.offered) : undefined
+
+  if (now !== undefined && before === undefined && block.raceName === '') {
+    return { ...after, raceName: now.value }
+  }
+
+  if (now === undefined && before !== undefined && block.raceName === before.value) {
+    return { ...after, raceName: '' }
+  }
+
+  return after
+}
+
 /** A name typed into the race's box: a race of the calendar is let go of, and this is a new one. */
 export function typingTheRace(block: TheBlock, next: string): TheBlock {
   return { ...block, raceName: next, race: null }
@@ -191,11 +215,19 @@ export type TheBlockIsAsked = { open: readonly number[] | null; offered: readonl
  * nov događaj”). Such a name links none of them (`forms/exactName.ts`), so the save went out as a new
  * event, the server found the edition of that year at its address, and a race typed under it was made
  * again beside the one it already had.
+ *
+ * <p><b>And a name of ONE edition, linked by being typed exactly, is not held to that edition's year</b>
+ * (owner, 23.10.2026, „Unos trke sa imenom događaja koji ima samo jedno izdanje, a dan trke je u drugoj
+ * godini, pravi novo izdanje tog događaja, isto kao za ime sa više izdanja”): the day typed in another year
+ * is not refused, and the block is then asked for what a new event is asked for, its town
+ * ({@link aNewEditionOf}). A name of several editions with one chosen from the list keeps the refusal
+ * above, as does the morning of 1 January, when the race goes on the event of the other year.
  */
 export function whatIsWrongWithTheBlock(block: TheBlock, today: string, asked: TheBlockIsAsked): BlockWrong[] {
   const wrong: BlockWrong[] = []
   const asksTheDay = block.race === null
   const day = isoDate(block.date)
+  const anEdition = aNewEditionOf(block, asked)
 
   if (block.eventName.trim() === '') {
     wrong.push({ box: 'eventName', key: REQUIRED_KEY })
@@ -207,13 +239,19 @@ export function whatIsWrongWithTheBlock(block: TheBlock, today: string, asked: T
     wrong.push({ box: 'date', key: REQUIRED_KEY })
   } else if (asksTheDay && day > today) {
     wrong.push({ box: 'date', key: 'results.refused.theRaceHasNotBeenRun' })
-  } else if (asksTheDay && block.event !== null && asked.open !== null && !aDayOf(block.event.date, day, asked.open)) {
+  } else if (
+    asksTheDay &&
+    block.event !== null &&
+    asked.open !== null &&
+    !aDayOf(block.event.date, day, asked.open) &&
+    !anEdition
+  ) {
     wrong.push({ box: 'date', key: 'leagueResults.refused.theDayIsNotInTheEventsYear' })
   }
 
-  if (block.event === null && block.city.trim() === '') {
+  if ((block.event === null || anEdition) && block.city.trim() === '') {
     wrong.push({ box: 'city', key: 'leagueResults.refused.theTownIsMissing' })
-  } else if (block.event === null && block.country === '') {
+  } else if ((block.event === null || anEdition) && block.country === '') {
     wrong.push({ box: 'city', key: 'form.errors.countryMissing' })
   }
 
@@ -275,6 +313,52 @@ function aDayOf(eventDay: string, day: string, open: readonly number[]): boolean
   return theEvents === theDays || (open.includes(theEvents) && open.includes(theDays))
 }
 
+/**
+ * THE ENTRY OF THE LIST THE CHOSEN EVENT IS, by its key: where its name is read from. The name is the
+ * list's and not the box's, since a name typed exactly links in any case („gradska LIGA”) and the box keeps
+ * what was typed. Nothing where no event is chosen, or where the list does not hold it.
+ */
+function theEntryOfTheEvent(block: TheBlock, offered: readonly Suggestion[]): Suggestion | undefined {
+  return block.event === null ? undefined : offered.find((one) => one.id === String(block.event?.eventId))
+}
+
+/**
+ * WHETHER THE CHOSEN EVENT IS THE ONLY EDITION OF ITS NAME among those offered: every entry the name names
+ * exactly is counted (`forms/exactName.ts`), which is how the box itself tells one edition from several, so
+ * a name that links by being typed is the name that counts as one here.
+ */
+export function theNameHasOneEdition(block: TheBlock, offered: readonly Suggestion[]): boolean {
+  const entry = theEntryOfTheEvent(block, offered)
+
+  return entry !== undefined && everyOneNamedExactly(offered, entry.value).length === 1
+}
+
+/**
+ * A NEW EDITION OF THE EVENT CHOSEN: the name is of one edition, linked, and the day typed is not in that
+ * edition's year (owner, 23.10.2026, „Unos trke sa imenom događaja koji ima samo jedno izdanje, a dan trke
+ * je u drugoj godini, pravi novo izdanje tog događaja, isto kao za ime sa više izdanja”). The save is then
+ * what it is for a name that links nothing: a new event of that name, in its own year, with a town typed.
+ *
+ * <p><b>Not on the morning of 1 January</b> (the exception of 22.10.2026, kept beside the rule the owner
+ * has now relaxed for one edition): while both seasons are open the race goes on the event of the other
+ * year, as it did, so a day that `aDayOf` takes is not a new edition. <b>And not before the open seasons are
+ * known</b>, when nobody can say whether it is that morning: the box says nothing then and the server
+ * decides, as it always has. <b>And not for a name of several editions</b>, where an edition is chosen on
+ * purpose and a day outside its year is refused (`whatIsWrongWithTheBlock`).
+ */
+export function aNewEditionOf(block: TheBlock, asked: TheBlockIsAsked): boolean {
+  const day = isoDate(block.date)
+
+  return (
+    block.event !== null &&
+    block.race === null &&
+    asked.open !== null &&
+    day !== '' &&
+    !aDayOf(block.event.date, day, asked.open) &&
+    theNameHasOneEdition(block, asked.offered)
+  )
+}
+
 /** Whether the name typed names several editions offered, one of them in the year of the day typed. */
 function anEditionOfTheYearIsNotChosen(block: TheBlock, day: string, offered: readonly Suggestion[]): boolean {
   const editions = everyOneNamedExactly(offered, block.eventName.trim())
@@ -287,9 +371,17 @@ function anEditionOfTheYearIsNotChosen(block: TheBlock, day: string, offered: re
  * event's year, and on the morning of 1 January both seasons then open, where the event is of one of them
  * (the rule of `aDayOf`). Nothing where the day is a new event's own or no day is asked. Before the
  * seasons are known, the event's year alone: the calendar refuses nothing, it only does not offer.
+ *
+ * <p><b>And nothing where the name has one edition</b> (owner, 23.10.2026, {@link aNewEditionOf}): its
+ * other years are days of a new edition, so a calendar that stopped at the edition's year would offer no
+ * way to one.
  */
-export function yearsOfTheDay(block: TheBlock, open: readonly number[] | null): Years | undefined {
-  if (block.event === null || block.race !== null) {
+export function yearsOfTheDay(
+  block: TheBlock,
+  open: readonly number[] | null,
+  offered: readonly Suggestion[],
+): Years | undefined {
+  if (block.event === null || block.race !== null || theNameHasOneEdition(block, offered)) {
     return undefined
   }
 
@@ -326,20 +418,32 @@ export type EventAndRaceSent = {
  * THE EVENT AND THE RACE AS THE ROUTE READS THEM: by key where they are the calendar's, by everything
  * else where the save makes them. A new event's day is its own and its race carries none; a new race on
  * an event of the calendar carries its own. What a kind does not fix travels as nothing.
+ *
+ * <p>A new edition of an event of the calendar ({@link aNewEditionOf}) travels as the new event it is: by
+ * the name the list gives the linked edition (never the case the box was typed in, so the two editions do
+ * not differ by it) and the day, which is its own and its race's, and the town typed.
  */
-export function eventAndRaceOf(block: TheBlock): EventAndRaceSent {
+export function eventAndRaceOf(block: TheBlock, asked: TheBlockIsAsked): EventAndRaceSent {
   const course = block.kind === 'length'
   const time = block.kind === 'time'
+  const edition = aNewEditionOf(block, asked) ? theEntryOfTheEvent(block, asked.offered) : undefined
+  /* The event of the calendar the race goes on, or none where the save makes the event. */
+  const linked = block.event !== null && edition === undefined ? block.event : null
   const event =
-    block.event === null
-      ? { name: block.eventName.trim(), date: isoDate(block.date), city: block.city.trim(), country: block.country }
-      : { id: block.event.eventId }
+    linked === null
+      ? {
+          name: edition?.value ?? block.eventName.trim(),
+          date: isoDate(block.date),
+          city: block.city.trim(),
+          country: block.country,
+        }
+      : { id: linked.eventId }
 
   return {
     event,
     race: {
       name: block.raceName.trim(),
-      ...(block.event === null ? {} : { date: isoDate(block.date) }),
+      ...(linked === null ? {} : { date: isoDate(block.date) }),
       kind: block.kind,
       distanceKm: course ? parseNumber(block.distanceKm) : null,
       ascentM: course ? parseNumber(block.ascentM) : null,
