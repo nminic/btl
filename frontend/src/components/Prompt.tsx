@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type MouseEvent, type ReactNode } from 'react'
 import './Prompt.css'
 
 /**
@@ -41,6 +41,21 @@ import './Prompt.css'
  * that shows things. This asks a question, and a stray press landing on the page behind it
  * would be read by the moderator as „I have dealt with that row" when he has not. He has three
  * ways out that all say so out loud: either answer, or the button that declines.
+ *
+ * <p><b>A REPEAT OF A PRESS IS NOT AN ANSWER (22.10.2026).</b> Measured in Chrome on the moderation of
+ * the members at 360px: the sheet opens under the thumb that opened it, at the top of the window, and
+ * a double press on an action in the right-hand column of a row put its second click on „Ne", so the
+ * question opened and shut in one gesture; an action standing further left would have put it on the
+ * first way of saying yes. At 768 and 1280 the same second click fell on the backdrop. Where it lands
+ * is geometry, and geometry changes with every row, so it is not what is asked: the second click of a
+ * double press carries `detail` 2 and is refused on every button of the sheet, the way
+ * `admin/EntityEditor.tsx` refuses it on the confirming button of a deletion (`againstDoublePress`).
+ * The keyboard (`detail` 0) and a single press or touch (`detail` 1) answer as they always did.
+ *
+ * <p><b>A FIELD IS PART OF THE SHEET (22.10.2026)</b>, for the questions that ask for a number as well
+ * as a yes: Tab walks every field and every button and cannot leave, which is the ring
+ * `markdownEditor/LinkDialog.tsx` keeps for its two fields. And each sheet is named by its own heading
+ * through an id of its own (`useId`), so two sheets standing at once are two names and not one.
  */
 export function Prompt({
   title,
@@ -85,6 +100,16 @@ export function Prompt({
 }) {
   const busy = working !== undefined
   const sheet = useRef<HTMLDivElement>(null)
+  /* ONE ID PER SHEET, never written out by hand: a second sheet drawn over the first (a question about
+     the amount a field above it was given) would otherwise point its name at the first one's heading,
+     because an id that stands twice is found where it stands first. */
+  const titleId = useId()
+
+  /**
+   * WHETHER A PRESS ON A BUTTON OF THE SHEET IS ONE IT ANSWERS: never while a request is out, and never
+   * the second click of a double press (see the note on this component).
+   */
+  const answers = (pressed: MouseEvent<HTMLButtonElement>): boolean => !busy && pressed.detail <= 1
   /* WHERE THE FOCUS WAS, so it can be put back. WCAG 2.2 AA, 2.4.3: a dialog that closes
      leaving the focus on the body puts a keyboard reader back at the top of a table of six
      rows, having to count down to the one he was working on. Read at mount rather than at
@@ -160,9 +185,11 @@ export function Prompt({
        question while standing somewhere the question is not. Read at the moment of the press
        rather than kept, because what is focusable in here changes with the prompt.
 
-       THE BUTTONS ONLY, AND THE HEADING IS DELIBERATELY NOT AMONG THEM. Measured rather than
-       reasoned: the heading carries `tabIndex={-1}`, so it can be focused by this component but
-       is NOT in the browser's tab order. Written as „the first thing in the sheet", the backward
+       THE FIELDS AND THE BUTTONS, AND THE HEADING IS DELIBERATELY NOT AMONG THEM. The fields since
+       22.10.2026: a sheet that asks for an amount has one, and a ring of buttons only let Tab off
+       the last button skip it and Shift+Tab never reach it (`LinkDialog.tsx` walks `input, button`
+       for the same reason). Measured rather than reasoned: the heading carries `tabIndex={-1}`, so
+       it can be focused by this component but is NOT in the browser's tab order. Written as „the first thing in the sheet", the backward
        wrap compared the focus against the heading and therefore never fired from the first
        BUTTON - so Shift+Tab off it walked out of the sheet and landed on the „Aktiviraj" that
        opened it, which is exactly the fault this guard exists to prevent. The forward wrap
@@ -173,16 +200,16 @@ export function Prompt({
        cent threshold is what found that, and it is the one tool that sees a branch nothing
        reaches (`CLAUDE.md`, 25.09.2026). */
     const sheetNow = pressed.currentTarget
-    const buttons = Array.from(sheetNow.querySelectorAll<HTMLElement>('button'))
+    const ring = Array.from(sheetNow.querySelectorAll<HTMLElement>('input, button'))
 
     const back = pressed.shiftKey
     /* Where the ring ends in the direction of travel, and where it starts again. Written as one
        pair rather than as two branches of an `if`, so backwards and forwards are the same code
        read twice and cannot drift apart. */
-    const edge = back ? buttons[0] : buttons[buttons.length - 1]
-    const wrapTo = back ? buttons[buttons.length - 1] : buttons[0]
+    const edge = back ? ring[0] : ring[ring.length - 1]
+    const wrapTo = back ? ring[ring.length - 1] : ring[0]
 
-    /* Backwards off the HEADING as well as off the first button: the sheet opens with the focus
+    /* Backwards off the HEADING as well as off the first stop of the ring: the sheet opens with the focus
        there, so Shift+Tab as the very first press is an ordinary thing to do and there is
        nothing before it inside the sheet. */
     const atEdge =
@@ -203,13 +230,13 @@ export function Prompt({
         className="prompt__sheet"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="prompt-title"
+        aria-labelledby={titleId}
         ref={sheet}
         onKeyDown={onKeyDown}
       >
         {/* Focusable so the question is read out before anything can be pressed, and not a
             button: it does nothing and must not look as though it does. */}
-        <h2 className="prompt__title" id="prompt-title" tabIndex={-1} data-prompt-first>
+        <h2 className="prompt__title" id={titleId} tabIndex={-1} data-prompt-first>
           {title}
         </h2>
 
@@ -226,8 +253,8 @@ export function Prompt({
               type="button"
               className="button"
               aria-disabled={busy ? true : undefined}
-              onClick={() => {
-                if (busy) {
+              onClick={(pressed) => {
+                if (!answers(pressed)) {
                   return
                 }
 
@@ -245,8 +272,8 @@ export function Prompt({
             type="button"
             className="button button--secondary"
             aria-disabled={busy ? true : undefined}
-            onClick={() => {
-              if (busy) {
+            onClick={(pressed) => {
+              if (!answers(pressed)) {
                 return
               }
 
