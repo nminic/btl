@@ -92,10 +92,12 @@
   block-size: 2rem;
 }
 
-/* The distance that keeps a press meant for „Storniraj" off „Obriši": more than a finger's slop, the
-   20px PR 632 measured and kept. */
+/* The distance that keeps a press meant for „Storniraj" off „Obriši": a finger's slop, 16px (PR 632
+   measured the press that deleted a member at 3px from the action beside it). Not the 20 that PR kept
+   under the actions: at 820px, where the navigation stands beside the page, four more pixels pushed the
+   longest names of the sample out of the table's box (`geometry/membersTable.geometry.ts`). */
 .members-actions .members-actions__delete {
-  margin-inline-start: var(--space-20);
+  margin-inline-start: var(--space-16);
 }
 
 /* THE LIST OF SEASONS, which opens in the row (`MemberSeasons.tsx`). */
@@ -129,6 +131,16 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-8);
+}
+
+/* „Promeni osnov u oslobođenje" breaks between its words: on a telephone it stands in the column of the
+   name, and one line of it would be wider than the whole of that column. Its sides are a step narrower
+   than `.entity-open`'s, because its longest word sets how narrow the column „Sezone" can be, and at
+   820px the table needs every pixel (`geometry/membersTable.geometry.ts`). */
+.members-seasons__list .entity-open {
+  padding-inline: var(--space-6);
+  white-space: normal;
+  text-align: start;
 }
 
 .members-seasons__season {

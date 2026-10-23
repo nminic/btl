@@ -57,6 +57,9 @@ import './Prompt.css'
  * `markdownEditor/LinkDialog.tsx` keeps for its two fields. And each sheet is named by its own heading
  * through an id of its own (`useId`), so two sheets standing at once are two names and not one.
  */
+/** What a press inside the sheet may give the focus to: anything that takes it of its own accord. */
+const TAKES_THE_FOCUS = 'button, input, select, textarea, a[href], [tabindex]'
+
 export function Prompt({
   title,
   children,
@@ -224,8 +227,29 @@ export function Prompt({
   return (
     /* The backdrop is a plain element and takes no press: see the note on this component for
        why a press outside does not answer the question. It is here to cover the page, which is
-       what tells a sighted reader that the rest of it is not listening. */
-    <div className="prompt">
+       what tells a sighted reader that the rest of it is not listening.
+
+       AND A PRESS ON IT, OR ON THE WORDS OF THE SHEET, DOES NOT TAKE THE FOCUS OUT OF THE SHEET
+       (22.10.2026). Measured in Chrome on the moderation of the members: the second click of a double
+       press on a row's action lands on the backdrop or on the sheet's text, and a press on an element
+       that cannot take the focus hands it to the body. From there Escape and Tab reach nothing of the
+       sheet, whose handler is on the sheet, so the question could be answered only with the pointer.
+       So the default of a press is prevented unless it starts on something that takes the focus itself
+       (a button, a field, the heading), which is the one default that moves the focus where it should. */
+    <div
+      className="prompt"
+      onMouseDown={(pressed) => {
+        /* THE PATH BELOW THE BACKDROP AND NOTHING ABOVE IT: the page around the sheet holds elements that
+           take the focus as well (`main` carries a `tabindex` for the link that skips to it), and a press
+           counted as theirs handed the focus to them, measured in Chrome. */
+        const path = pressed.nativeEvent.composedPath()
+        const inside = path.slice(0, path.indexOf(pressed.currentTarget))
+
+        if (!inside.some((one) => one instanceof Element && one.matches(TAKES_THE_FOCUS))) {
+          pressed.preventDefault()
+        }
+      }}
+    >
       <div
         className="prompt__sheet"
         role="dialog"

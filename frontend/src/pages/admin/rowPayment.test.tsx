@@ -43,7 +43,10 @@ describe('recording a payment on a member’s row', () => {
   const COMPETITORS: Competitor[] = [
     person(HOLDS_IT, 'Ana', 'Držić'),
     person(IN_DINARS, 'Zoran', 'Vuković', { city: 'Niš' }),
-    person(IN_EURO, 'Mila', 'Tomić', { city: 'Podgorica', country: 'ME' }),
+    /* SERBIA, AND BILLED IN EURO, which no member really is: the money of the sheet is `currency`, the
+       server's one home for it (`Currency.of`), and a sheet that worked it out of the country instead
+       would say dinars here. Every other value the case reads is hers as the server would answer it. */
+    person(IN_EURO, 'Mila', 'Tomić', { city: 'Podgorica', country: 'RS' }),
   ]
 
   const ROWS: Member[] = [
