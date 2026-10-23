@@ -95,3 +95,60 @@
 .members__search {
   min-inline-size: 0;
 }
+
+/* THE DELETION OF A MEMBER STANDS APART FROM THE ACTIONS ABOVE IT (owner, 22.10.2026, PDL „Brisanje
+   člana na ekranu članova": „dugme „Obriši" je odvojeno razmakom od „Upiši uplatu" i „Storniraj"").
+   Measured in Chrome before this: the three squares stood one under another with no distance, and a press
+   3px under „Storniraj" landed on „Obriši". A block of its own with a margin over it, written at two
+   classes because `.entity-row-actions` (`pages/admin/Entity.css`) is `inline-flex` at one, and an
+   inline box stands in a line with the squares above and takes a margin on its sides only. It ends where
+   they end (`justify-content`): the cell is set to the right (`styles/table.css`), and a block of its own
+   would otherwise start at the left. Only this screen's: the other lists that draw the same component are
+   as they were. */
+.members-table__delete.entity-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-start: var(--space-20);
+}
+
+/* THE QUESTION TAKES THE PLACE OF THE CROSS, AND THE TWO BUTTONS STAND UNDER IT (review of PR 632, high:
+   „dvoklik na krstić briše člana na 768, 560 i 900"). The first press of a double press opens the question
+   and the second lands where the pointer is, so what stands on the cross's place after the first must
+   do nothing when it is pressed. The sentence is a line of its own as tall as the cross (`2rem`, the
+   square's own height, `components/ActionButton.css`) and as wide as the block, set to the right where
+   the cross was, so the buttons start on the row under it at every width and never where the pointer is:
+   „Obriši" to the left of „Odustani", which takes the right edge where the cross stood. A press on the
+   sentence does nothing, it being text. Under the deletion's own block, so no other list's note changes.
+   `.entity-row-note` is quiet where the events' „and N results with it" is, and this is what the reader
+   answers, so it is as loud as the words of the table. */
+.members-table__delete .entity-row-note {
+  flex: 0 0 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-block-size: 2rem;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+/* „Član je obrisan.", drawn while it is true and nothing at all while it is not: the box is on the page
+   all the time so the words, when they arrive, are read (`AdminMembers.tsx`), and an empty one takes no
+   room. */
+.members__gone {
+  margin: 0 0 var(--space-8);
+}
+
+.members__gone:empty {
+  margin: 0;
+}
+
+.members__gone:not(:empty) {
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--border);
+  border-inline-start-width: 4px;
+  border-radius: var(--radius-6);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+}

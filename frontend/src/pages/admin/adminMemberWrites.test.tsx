@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { arrivedResource, clearResourceCache, loadResource, type ResourceName } from '../../data/client'
 import type { Competitor } from '../../data/types'
 import { asMember, person } from '../../test/plate'
@@ -118,7 +118,7 @@ describe('the members screen', () => {
     const row = must(button.closest('tr'), `the row of ${name}`)
 
     await user.click(button)
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
+    await user.click(within(row).getByRole('button', { name: `Obriši člana: ${name}` }))
 
     return row
   }
@@ -382,7 +382,7 @@ describe('the members screen', () => {
 
       await user.click(button)
       await user.click(
-        within(row).getByRole('button', { name: 'Confirm the deletion: Ana Jovanović' }),
+        within(row).getByRole('button', { name: 'Delete the member: Ana Jovanović' }),
       )
 
       const alert = await within(row).findByRole('alert')
@@ -646,6 +646,62 @@ describe('the members screen', () => {
    * competitor appears in, so no later screen reads a row the server has forgotten - is held by
    * the cases above, one per resource, against the seven foreign keys `AdminMembers.tsx` names.
    */
+  it('asks „Obriši člana?" as a sentence beside two buttons, „Obriši" and „Odustani", and not „Sigurno?"',
+    async () => {
+      const server = serving()
+      const user = setupUser()
+      renderAt('/sr/administracija/clanovi', 'superadmin')
+
+      const cross = await screen.findByRole('button', { name: 'Obriši: Ana Jovanović' })
+      const row = must(cross.closest('tr'), 'the row of Ana Jovanović')
+
+      /* The word the cross shows on the pointer is „Obriši", the name is the longer one. */
+      expect(cross).toHaveTextContent(/^Obriši$/)
+
+      await user.click(cross)
+
+      /* THE QUESTION IS TEXT AND THE BUTTON SAYS ONLY „Obriši" (owner, 22.10.2026: „Potvrda: „Obriši
+         člana?" [Obriši] [Odustani]"). A button that carried the question and no sentence beside it
+         was the first reading and is the one this holds out. */
+      const sentence = within(row).getByText('Obriši člana?')
+      const sure = within(row).getByRole('button', { name: 'Obriši člana: Ana Jovanović' })
+
+      expect(sentence.closest('button')).toBeNull()
+      expect(sure).toHaveTextContent(/^Obriši$/)
+      expect(sure).toHaveAccessibleDescription('Obriši člana?')
+      expect(within(row).getByRole('button', { name: 'Odustani od brisanja: Ana Jovanović' })).toHaveTextContent(
+        /^Odustani$/,
+      )
+      expect(screen.queryByText('Sigurno?')).toBeNull()
+
+      server.stop()
+    }, SLOW)
+
+  it('does not delete on the second click of a double press on the cross, and does on the next single one', async () => {
+    /* Review of PR 632, rounds 1 to 3: the first press opens the question and the second lands where the
+       pointer is. Whatever the layout puts there, a click with `detail` above 1 is not an answer. */
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const cross = await screen.findByRole('button', { name: 'Obriši: Ana Jovanović' })
+    const row = must(cross.closest('tr'), 'the row of Ana Jovanović')
+
+    await user.click(cross)
+    fireEvent.click(within(row).getByRole('button', { name: 'Obriši člana: Ana Jovanović' }), { detail: 2 })
+
+    expect(writes(server.asked)).toEqual([])
+    expect(screen.queryByText('Član je obrisan.')).toBeNull()
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Obriši člana: Ana Jovanović' }), { detail: 1 })
+
+    await waitFor(() => {
+      expect(writes(server.asked)).toHaveLength(1)
+    })
+
+    server.stop()
+  }, SLOW)
+
   it('says one sentence out loud once a member is gone, and moves the focus off the row',
     async () => {
       const server = serving()
@@ -657,6 +713,15 @@ describe('the members screen', () => {
       await waitFor(() => {
         expect(screen.getByText('Član je obrisan.')).toBeInTheDocument()
       })
+
+      /* DRAWN, NOT ONLY SAID (owner, 22.10.2026, PDL „Brisanje člana na ekranu članova": „posle
+         brisanja se na ekranu vidi poruka"): it stands in the portal's status region, which is not
+         the clipped one (`visually-hidden`) the other sentences of this screen go to. */
+      const shown = screen.getByText('Član je obrisan.')
+
+      expect(shown).toHaveAttribute('role', 'status')
+      expect(shown.closest('.visually-hidden')).toBeNull()
+      expect(screen.getAllByText('Član je obrisan.')).toHaveLength(1)
 
       /* Off the row that is about to vanish and onto the one control that cannot be it.
          The other six lists anchor on „Nov …"; this one has no such button any more, so

@@ -52,7 +52,7 @@ describe('the organiser a team form offers', () => {
     )
 
     await user.click(within(row).getByRole('button', { name: /^Obriši: Vladan Đurišić/ }))
-    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Vladan Đurišić/ }))
+    await user.click(screen.getByRole('button', { name: /^Obriši člana: Vladan Đurišić/ }))
 
     /* Waited on the sentence the screen says rather than on the row going away; the note on
        the case below sets out the two drafts of this wait that passed while measuring
@@ -90,7 +90,7 @@ describe('the organiser a team form offers', () => {
     )
 
     await user.click(within(row).getByRole('button', { name: /^Obriši: Vladan Đurišić/ }))
-    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Vladan Đurišić/ }))
+    await user.click(screen.getByRole('button', { name: /^Obriši člana: Vladan Đurišić/ }))
 
     /* AND WAITED FOR, ON THE SENTENCE THE SCREEN SAYS RATHER THAN ON THE ROW GOING AWAY.
        The press is no longer the deletion; the answer is. Two earlier drafts of this wait

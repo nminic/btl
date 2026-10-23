@@ -128,8 +128,27 @@ export function AdminMembers() {
   const [recorded, setRecorded] = useState(0)
   const state = combinePair(useMembers(recorded), useCompetitors(recorded))
 
-  /** What just happened, for whoever is not watching the list. */
-  const [said, setSaid] = useState('')
+  /**
+   * What just happened, for whoever is not watching the list, and whether it is also DRAWN.
+   *
+   * <p>The deletion's „Član je obrisan." is drawn on the screen (owner, 22.10.2026, PDL „Brisanje člana na
+   * ekranu članova": „posle brisanja se na ekranu vidi poruka"). Until that day it went only to the hidden
+   * live region below, so a reader who looks at the list saw the row go and was told nothing: the focus has
+   * moved to the search field and the row he pressed on is gone with the member. The other sentences of
+   * this screen stay for a reader who does not look, as the owner's decision names the deletion only.
+   *
+   * <p><b>One state for both, so the next thing that happens takes the sentence back.</b> Every writer
+   * of `said` replaces the whole of it, and `shown` is true only for the deletion's, so a payment or a
+   * cancellation after it cannot leave a drawn „Član je obrisan." standing over a list it is no longer
+   * about, and no writer has a second place to remember.
+   */
+  const [saidNow, setSaidNow] = useState({ words: '', shown: false })
+  const said = saidNow.shown ? '' : saidNow.words
+  const shown = saidNow.shown ? saidNow.words : ''
+
+  function setSaid(words: string): void {
+    setSaidNow({ words, shown: false })
+  }
 
   /** Why a deletion did not happen, beside the row it was pressed on. */
   const [refused, setRefused] = useState<{
@@ -215,7 +234,7 @@ export function AdminMembers() {
     clearResourceCache('verification')
     clearResourceCache('payments')
     setRefused(null)
-    setSaid(t('admin.memberGone'))
+    setSaidNow({ words: t('admin.memberGone'), shown: true })
 
     /* ONLY HERE, INSIDE THE BRANCH THE ANSWER APPROVED. `memberNumbers.ts` reads
        `deletions[MEMBERS.id]` to work out which numbers are free, so this written
@@ -356,6 +375,13 @@ export function AdminMembers() {
               </div>
 
               <p className="rankings__count">{t('competitors.count', { count: rows.length })}</p>
+
+              {/* DRAWN ALWAYS AND FILLED WHEN IT IS TRUE: a live region that appears with its words in it
+                  is often not read, one that is already on the page and then gets them is. Nothing is
+                  drawn of it while it is empty (`AdminMembers.css`). */}
+              <p role="status" className="members__gone">
+                {shown}
+              </p>
 
               {/* NO SIDEWAYS SCROLL OF THE TABLE AT ANY WIDTH (PDL P24, „Tabele na telefonu nemaju
                   horizontalni skrol"; owner, 20.10.2026: the table that scrolled at every width is fixed
@@ -522,9 +548,31 @@ export function AdminMembers() {
                               onChanged={() => seasonChanged(one, t('admin.basisChanged'))}
                               onGranted={() => seasonChanged(one, t('admin.exemptionGranted'))}
                             />
-                            <span className="entity-row-actions">
+                            {/* HELD APART FROM THE ACTIONS ABOVE IT (owner, 22.10.2026, PDL „Brisanje člana
+                                na ekranu članova"): the three squares stood one under another with
+                                nothing between, and a press three pixels under „Storniraj" deleted the
+                                member. The distance is `AdminMembers.css`'s, measured in Chrome. */}
+                            <span className="entity-row-actions members-table__delete">
                               <DeleteRecord
                                 name={`${one.firstName} ${one.lastName}`}
+                                /* THE QUESTION IS A SENTENCE BESIDE THE TWO BUTTONS (owner, 22.10.2026, the
+                                   review he chose: „Potvrda: „Obriši člana?" [Obriši] [Odustani]"), and the
+                                   confirming button says „Obriši", named by whom it deletes. */
+                                asksWith={t('admin.memberDeleteAsk')}
+                                againstDoublePress
+                                words={{
+                                  named: t('admin.form.deleteNamed', {
+                                    name: `${one.firstName} ${one.lastName}`,
+                                  }),
+                                  word: t('admin.form.delete'),
+                                  sure: t('admin.form.delete'),
+                                  sureNamed: t('admin.memberDeleteSureNamed', {
+                                    name: `${one.firstName} ${one.lastName}`,
+                                  }),
+                                  keepNamed: t('admin.form.keepNamed', {
+                                    name: `${one.firstName} ${one.lastName}`,
+                                  }),
+                                }}
                                 onDelete={() => {
                                   /* The row about to go is where the focus is, moved
                                      before the answer is back exactly as
