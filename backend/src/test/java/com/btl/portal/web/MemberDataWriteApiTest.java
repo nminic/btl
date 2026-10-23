@@ -22,6 +22,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.mail.MailSendException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -54,6 +55,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -747,6 +749,23 @@ class MemberDataWriteApiTest {
 		verify(postman, times(1)).send(letter.capture(), anyString());
 		assertThat(letter.getValue().subject()).isEqualTo(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
 				MailLanguage.ENGLISH, new Portal(portalAddress), "x").subject());
+	}
+
+	/**
+	 * A RELAY THAT DOES NOT TAKE THE LETTER DOES NOT TAKE THE CORRECTION BACK: it is committed, the
+	 * link is written, and asking for another („Pošalji ponovo") is what gets him out of it, the
+	 * answer `resend` gives to the same failure.
+	 */
+	@Test
+	void aLetterTheRelayDoesNotTakeLeavesTheCorrectionAndItsLinkStanding() throws Exception {
+		doThrow(new MailSendException("the relay is not there")).when(postman).send(any(Said.class), anyString());
+
+		assertThat(corrected("000005", "{\"email\": \"bez-releja@primer.rs\"}", OVER_THE_MEMBERS).getStatus())
+				.isEqualTo(200);
+		assertThat(db.sql("select email from account where competitor_id = ?").param(corrected)
+				.query(String.class).single()).isEqualTo("bez-releja@primer.rs");
+		assertThat(count("select count(*) from email_verification_token t join account a on a.id = t.account_id"
+				+ " where a.competitor_id = ?", corrected)).isOne();
 	}
 
 	// --- the money ---
