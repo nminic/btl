@@ -632,6 +632,22 @@ class MemberDataWriteApiTest {
 				.startsWith("Administracija lige je izmenila vaše podatke: prezime.");
 	}
 
+	/**
+	 * EVERY FIELD SENT ALONE IS A REQUEST, and none of them is mistaken for a body that names nothing:
+	 * a country alone is a town said by half, which is its own refusal and not „the form is empty".
+	 */
+	@Test
+	void everyFieldSentAloneIsARequestAboutIt() throws Exception {
+		assertThat(corrected("000005", "{\"lastName\": \"Samo\"}", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
+		assertThat(corrected("000005", "{\"shirtSize\": \"XXL\"}", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
+		assertThat(rowOf(corrected)).startsWith("Ispravljani|Samo|").contains("|XXL|");
+
+		MockHttpServletResponse half = corrected("000005", "{\"country\": \"RS\"}", OVER_THE_MEMBERS);
+
+		assertThat(half.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(half)).isEqualTo(MeWriteApi.THE_TOWN_IS_NOT_SAID_ONCE);
+	}
+
 	@Test
 	void aPhoneEmptiedIsRemovedAndOneLeftOutIsKept() throws Exception {
 		assertThat(corrected("000005", "{\"address\": \"Treca 3\"}", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
