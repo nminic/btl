@@ -1,5 +1,3 @@
-import { ProfileLink } from '../profile/ProfileLink'
-import { categoryCodeFor, categoryLabel } from '../../data/categories'
 import { useState } from 'react'
 import { Resource } from '../../components/Resource'
 import { clearResourceCache } from '../../data/client'
@@ -8,14 +6,10 @@ import { combinePair, theInboxHasChanged, useCompetitors, useMembers } from '../
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { askTheServer, type Answer } from '../account/askTheServer'
-import { ServerSaid } from '../account/ServerSaid'
-import { DeleteRecord } from './EntityEditor'
 import { MEMBERS, recordsOf } from './entityForms'
-import { DELETE_THE_ACCOUNT, WHEN_DELETING_A_MEMBER } from './memberWrites'
+import { MemberRow } from './MemberRow'
+import { DELETE_THE_ACCOUNT } from './memberWrites'
 import { useOverlay } from './overlay'
-import { offeredFor } from './memberMembership'
-import { RowMembership } from './RowMembership'
-import { RowPayment } from './RowPayment'
 import { dropWhatActiveMoves } from './whatActiveMoves'
 import '../member/Member.css'
 import './AdminMembers.css'
@@ -68,10 +62,12 @@ function passes(one: Member, filter: MemberFilter): boolean {
  *
  * 1. **Deleting sends `DELETE /api/competitors/{memberNumber}`**, and was the whole
  *    of what this file had anything to say about until 18.10.2026. Since that day a
- *    row also records a payment, `POST /api/members/{memberNumber}/payment`
- *    (`RowPayment.tsx`; PDL P8, „Na redu člana u moderaciji: upis uplate za sezonu”),
- *    so the screen sends two verbs and the heading above is about the day it was
- *    written.
+ *    row also records a payment, `POST /api/members/{memberNumber}/payment` (PDL P8,
+ *    „Na redu člana u moderaciji: upis uplate za sezonu”), and grants, cancels and
+ *    changes the season on sale through `/api/members/{memberNumber}/membership`, so
+ *    the heading above is about the day it was written. Since 22.10.2026 every one of
+ *    them is put to the moderator by the row itself (`MemberRow.tsx`), the deletion
+ *    included, and this screen sends the deletion it is asked to.
  *
  * 2. **„Nov član" is gone, because the route that looks like its home is a
  *    different act.** `POST /api/competitors` is the GROUP entry that sends
@@ -150,12 +146,6 @@ export function AdminMembers() {
     setSaidNow({ words, shown: false })
   }
 
-  /** Why a deletion did not happen, beside the row it was pressed on. */
-  const [refused, setRefused] = useState<{
-    memberNumber: string
-    answer: Exclude<Answer, { got: 'done' }>
-  } | null>(null)
-
   /**
    * EVERY SUCCESS THIS VISIT HAS HAD ON A ROW, one entry per success and the member number in it, and
    * nothing else is kept. What a row reads from it is how many are its own (`useRowRefusal`), so the
@@ -178,17 +168,16 @@ export function AdminMembers() {
    * was its last member - and a screen that refused first would be a second rule
    * over a decision already taken.
    */
-  async function deleteOne(one: Member): Promise<void> {
+  async function deleteOne(one: Member): Promise<Answer> {
     const answer = await askTheServer(
       `/api/competitors/${one.memberNumber}?account=${DELETE_THE_ACCOUNT}`,
       {},
       'DELETE',
     )
 
+    /* A refusal is the row's to say, beside the row, in the route's own words (`MemberRow.tsx`). */
     if (answer.got !== 'done') {
-      setRefused({ memberNumber: one.memberNumber, answer })
-
-      return
+      return answer
     }
 
     /* EIGHT, NOT TWO, AND COUNTED AGAINST THE SCHEMA RATHER THAN AGAINST WHAT THIS
@@ -233,7 +222,6 @@ export function AdminMembers() {
     clearResourceCache('comments')
     clearResourceCache('verification')
     clearResourceCache('payments')
-    setRefused(null)
     setSaidNow({ words: t('admin.memberGone'), shown: true })
 
     /* ONLY HERE, INSIDE THE BRANCH THE ANSWER APPROVED. `memberNumbers.ts` reads
@@ -241,18 +229,25 @@ export function AdminMembers() {
        early would free a number the database still holds and hand it to the next
        activated membership. */
     remove(MEMBERS.id, one.memberNumber)
+
+    /* THE FOCUS GOES TO THE SEARCH ONCE THE ROW IS GONE, and not before the answer, which is when it
+       moved until 22.10.2026: the question is a sheet over the page now, and a sheet that is still
+       standing keeps the focus inside it. Moved while the sheet is still drawn, in the same turn as the
+       removal above, so the sheet that closes with its row finds its button gone and gives nothing back
+       (`Prompt.tsx`), and the reader lands on the one control that cannot be the row just deleted. */
+    document.getElementById(SEARCH_ID)?.focus()
+
+    return answer
   }
 
   /**
    * AN ACTION ON A ROW WENT THROUGH (PENDING 29660), and the sentence of an earlier refusal beside that
-   * row is no longer true of it: the deletion that was refused is said here, the cancellation, the
-   * change, the grant and the payment that were refused are said by the row's own components, and the
-   * count handed to them moves with this call. <b>Only this row's</b>: a refusal beside another row says
-   * something nothing here has changed.
+   * row is no longer true of it: every refusal is said by the row (`MemberRow.tsx`), the deletion's
+   * included since 22.10.2026, and the count handed to it moves with this call. <b>Only this row's</b>: a
+   * refusal beside another row says something nothing here has changed.
    */
   function settle(one: Member): void {
     setSucceededOn((were) => [...were, one.memberNumber])
-    setRefused((was) => (was?.memberNumber === one.memberNumber ? null : was))
   }
 
   /**
@@ -384,223 +379,44 @@ export function AdminMembers() {
               </p>
 
               {/* NO SIDEWAYS SCROLL OF THE TABLE AT ANY WIDTH (PDL P24, „Tabele na telefonu nemaju
-                  horizontalni skrol"; owner, 20.10.2026: the table that scrolled at every width is fixed
-                  before release). Until that day the box scrolled 608px at 360, 200 at 768 and 140 at 1280.
-                  What makes it fit is in `AdminMembers.css`: the heads and the pills break between words,
-                  on a telephone the table keeps the member and the record and carries the basis and the
-                  seasons under the name, Kategorija and Mesto are drawn from 1000px and „Poslednja sezona"
-                  from 1100px (owner, 20.10.2026, each chosen with my recommendation). */}
+                  horizontalni skrol"). FIVE COLUMNS since 22.10.2026 (owner, „Red na ekranu članova ima pet
+                  kolona"), folded under the name where they do not fit (the coordinator's answer of
+                  22.10.2026, P2): from 1000px all five; from 700px the name, the basis, the seasons and the
+                  actions, with the town under the name; below it the name and the actions, with the town,
+                  the basis and the seasons under the name. What does it is in `AdminMembers.css` and in the
+                  two queries of `styles/table.css`, and the row is `MemberRow.tsx`. */}
               <div className="table-scroll">
                 <table className="table members-table">
                   <caption className="visually-hidden">{t('admin.members')}</caption>
                   <thead>
                     <tr>
-                      <th scope="col">{t('competitors.columns.member')}</th>
-                      {/* The category, and no column of years beside it. This table
-                          printed the year of birth of every member until 13.09.2026,
-                          and it was drawn from the same public file every other screen
-                          reads (ADL A8): administration was where it was shown, not
-                          where it was kept. Section 3 of the privacy policy allows the category and nothing
-                          finer, so the category is the whole of what stands here. */}
+                      <th scope="col">{t('admin.memberColumns.name')}</th>
                       <th scope="col" className="members-table__wide">
-                        {t('competitors.columns.category')}
-                      </th>
-                      <th scope="col" className="members-table__wide">
-                        {t('competitors.columns.city')}
+                        {t('admin.memberColumns.town')}
                       </th>
                       <th scope="col" className="table__hide-phone">
-                        {t('admin.basis')}
+                        {t('admin.memberColumns.basis')}
                       </th>
                       <th scope="col" className="table__hide-phone">
-                        {t('admin.seasons')}
+                        {t('admin.memberColumns.seasons')}
                       </th>
-                      <th scope="col" className="members-table__last">
-                        {t('admin.lastSeason')}
-                      </th>
-                      <th scope="col">{t('admin.form.record')}</th>
+                      <th scope="col">{t('admin.memberColumns.options')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((one) => {
-                      const listed = onTheList.get(one.memberNumber)
-                      /* THE LAST SEASON IS THE LAST OF HIS SEASONS, whatever its basis (PDL P8,
-                         18.10.2026, „Kolona sa poslednjom sezonom u moderaciji broji svaki osnov”),
-                         and NOT the season on sale beside the basis: a member of 2027 who has not
-                         renewed by November has a last season and no basis of 2028. */
-                      const last = one.seasons.at(-1)
-                      /* HOW MANY ACTIONS ON THIS ROW HAVE GONE THROUGH, which is what ends a refusal
-                         beside it (`useRowRefusal`) and counts no other row's. */
-                      const succeeded = succeededOn.filter((number) => number === one.memberNumber).length
-                      /* THE BASIS AND THE SEASONS ARE DRAWN IN TWO PLACES, and only one of them at any
-                         width: their columns from 700px, and the box under the name below it
-                         (`table__hide-phone` and `table__phone-only`, the two halves of one query in
-                         `styles/table.css`). One pill each, so both places draw the same thing. */
-                      const basisTag =
-                        one.membershipBasis !== undefined && one.membershipSeason !== undefined ? (
-                          <span className={`tag tag--${one.membershipBasis}`}>
-                            {t('admin.basisOfTheSeason', {
-                              basis: t(`admin.basisValue.${one.membershipBasis}`),
-                              season: one.membershipSeason,
-                            })}
-                          </span>
-                        ) : null
-                      const seasonTags = one.seasons.map((held) => (
-                        <span key={held.season} className={`tag tag--${held.basis}`}>
-                          {t('admin.basisOfTheSeason', {
-                            basis: t(`admin.basisValue.${held.basis}`),
-                            season: held.season,
-                          })}
-                        </span>
-                      ))
-
-                      return (
-                        <tr key={one.memberNumber}>
-                          <td>
-                            {listed === undefined ? (
-                              <span>
-                                {one.firstName} {one.lastName}
-                              </span>
-                            ) : (
-                              <ProfileLink competitor={listed}>
-                                {one.firstName} {one.lastName}
-                              </ProfileLink>
-                            )}{' '}
-                            <span className="table__member-number">{one.memberNumber}</span>
-                            {/* THE BASIS AND THE SEASONS UNDER THE NAME, ON A TELEPHONE ONLY (owner,
-                                20.10.2026, chosen with my recommendation): the two columns that carry
-                                them on a wider screen do not fit beside the name and the record in
-                                328px, and the seasons are what the owner named as needed on the row
-                                (18.10.2026, „kojih sve godina je on bio clan"). Each under the name of
-                                its column, the shape of the figures under a race's name in the queue of
-                                results (`ReviewQueue.tsx`). The category and the town are not drawn
-                                below 1000px at all (owner, 20.10.2026). */}
-                            <div className="table__phone-only">
-                              <dl className="members-table__held">
-                                {basisTag !== null && (
-                                  <div>
-                                    <dt>{t('admin.basis')}</dt>
-                                    <dd>{basisTag}</dd>
-                                  </div>
-                                )}
-                                {seasonTags.length > 0 && (
-                                  <div>
-                                    <dt>{t('admin.seasons')}</dt>
-                                    <dd>{seasonTags}</dd>
-                                  </div>
-                                )}
-                              </dl>
-                            </div>
-                          </td>
-                          <td className="table__category members-table__wide">
-                            {categoryLabel(
-                              categoryCodeFor(one.gender, one.ageBand, one.firstSeason2027),
-                              t,
-                            )}
-                          </td>
-                          {/* Read, not edited in place - see the note at the top of
-                              this file for why there is no route to write it back. */}
-                          <td className="members-table__wide">{one.city}</td>
-                          {/* THE BASIS OF THE SEASON ON SALE, WITH ITS YEAR, and nothing for a
-                              member who holds no membership of it (owner, 18.10.2026, PDL P8:
-                              „do 14.10. je osnova 2027, od 15.10 je osnova 2028"). Until that day
-                              this drew the per-person column, so a member freed of 2027 was
-                              tagged „Uplata" and one let in on his balance was drawn with a
-                              word the screen did not know. The two fields travel together on
-                              the answer (`CompetitorApi`), and the tag is drawn only when both
-                              are there. */}
-                          <td className="table__hide-phone">{basisTag}</td>
-                          {/* EVERY SEASON HE WAS A MEMBER OF, oldest first, each on its own basis
-                              (owner, 18.10.2026: „bitno mi je da kao admin / moderator vidim na nivou
-                              clana kojih sve godina je on bio clan"). Read only: this screen writes
-                              no season. */}
-                          <td className="table__hide-phone">{seasonTags}</td>
-                          <td className="members-table__last">{last?.season}</td>
-                          <td>
-                            {/* „UPIS UPLATE" FOR A MEMBER WHO HOLDS NO SEASON ON SALE. A row that
-                                already carries a basis for it has nothing to book this way: a season
-                                held on a payment is the harmless repeat, and one held on an exemption or
-                                a balance is refused. */}
-                            {one.membershipBasis === undefined && (
-                              <RowPayment
-                                one={one}
-                                settled={succeeded}
-                                onRecorded={() => paymentRecorded(one)}
-                              />
-                            )}
-                            {/* AND OVER AN EXEMPTION, as a change of basis: „preko njega se može upisati
-                                uplata" (PDL P8, 18.10.2026). Never over a balance: „storno ..., pa nova
-                                radnja". */}
-                            {offeredFor(one.membershipBasis).paymentOverTheExemption && (
-                              <RowPayment
-                                one={one}
-                                settled={succeeded}
-                                overTheExemption
-                                onRecorded={() => seasonChanged(one, t('admin.basisChanged'))}
-                              />
-                            )}
-                            {/* „STORNIRAJ" ON EVERY SEASON ON SALE THAT IS HELD, „Promeni osnov u oslobođenje" on one
-                                held on a payment, and „Odobri oslobođenje" on a row that holds none
-                                (PDL P8, 18.10.2026, „Oslobođenje ostaje izbor na redu člana"). */}
-                            <RowMembership
-                              one={one}
-                              settled={succeeded}
-                              onCancelled={() => seasonChanged(one, t('admin.membershipCancelled'))}
-                              onChanged={() => seasonChanged(one, t('admin.basisChanged'))}
-                              onGranted={() => seasonChanged(one, t('admin.exemptionGranted'))}
-                            />
-                            {/* HELD APART FROM THE ACTIONS ABOVE IT (owner, 22.10.2026, PDL „Brisanje člana
-                                na ekranu članova"): the three squares stood one under another with
-                                nothing between, and a press three pixels under „Storniraj" deleted the
-                                member. The distance is `AdminMembers.css`'s, measured in Chrome. */}
-                            <span className="entity-row-actions members-table__delete">
-                              <DeleteRecord
-                                name={`${one.firstName} ${one.lastName}`}
-                                /* THE QUESTION IS A SENTENCE BESIDE THE TWO BUTTONS (owner, 22.10.2026, the
-                                   review he chose: „Potvrda: „Obriši člana?" [Obriši] [Odustani]"), and the
-                                   confirming button says „Obriši", named by whom it deletes. */
-                                asksWith={t('admin.memberDeleteAsk')}
-                                againstDoublePress
-                                words={{
-                                  named: t('admin.form.deleteNamed', {
-                                    name: `${one.firstName} ${one.lastName}`,
-                                  }),
-                                  word: t('admin.form.delete'),
-                                  sure: t('admin.form.delete'),
-                                  sureNamed: t('admin.memberDeleteSureNamed', {
-                                    name: `${one.firstName} ${one.lastName}`,
-                                  }),
-                                  keepNamed: t('admin.form.keepNamed', {
-                                    name: `${one.firstName} ${one.lastName}`,
-                                  }),
-                                }}
-                                onDelete={() => {
-                                  /* The row about to go is where the focus is, moved
-                                     before the answer is back exactly as
-                                     `RowActions.deleteRow` moves it for the entities
-                                     that still use it. A refusal is said in the row
-                                     and closes the question, and the row's own
-                                     „Obriši" takes the focus back from where it was
-                                     moved (`DeleteRecord`, owner 02.10.2026).
-
-                                     HANDED BACK, so the question can wait for the answer
-                                     (`DeleteRecord`, owner 02.10.2026): it tells „Odustani" off
-                                     for as long as the promise is pending. */
-                                  document.getElementById(SEARCH_ID)?.focus()
-
-                                  return deleteOne(one)
-                                }}
-                              />
-                            </span>
-                            {refused !== null && refused.memberNumber === one.memberNumber && (
-                              <ServerSaid
-                                answer={refused.answer}
-                                refusals={WHEN_DELETING_A_MEMBER}
-                              />
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
+                    {rows.map((one) => (
+                      <MemberRow
+                        key={one.memberNumber}
+                        one={one}
+                        listed={onTheList.get(one.memberNumber)}
+                        /* HOW MANY ACTIONS ON THIS ROW HAVE GONE THROUGH, which is what ends a
+                           refusal beside it (`useRowRefusal`) and counts no other row's. */
+                        settled={succeededOn.filter((number) => number === one.memberNumber).length}
+                        onPaid={() => paymentRecorded(one)}
+                        onChanged={(words) => seasonChanged(one, words)}
+                        onDelete={() => deleteOne(one)}
+                      />
+                    ))}
                   </tbody>
                 </table>
               </div>

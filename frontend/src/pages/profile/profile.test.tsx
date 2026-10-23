@@ -338,6 +338,7 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     profileHidden: false,
     birthdayShown: 'none' as const,
     photo: null,
+    smallPhoto: null,
     crop: null,
     bio: '',
   })

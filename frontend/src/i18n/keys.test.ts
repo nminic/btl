@@ -16,6 +16,7 @@ import { LOCALES } from './config'
 import { DUCAT_KINDS } from '../data/ducatRule'
 import { JUNIOR, PRICES } from '../data/pricing'
 import { ENTITY_FORMS, RACES } from '../pages/admin/entityForms'
+import { basisWordOf } from '../pages/admin/memberMembership'
 import { QUEUES } from '../pages/admin/queues'
 import en from './en.json'
 import sr from './sr.json'
@@ -199,7 +200,15 @@ describe('the names the portal composes out of a list', () => {
        rather than of the portal, they are in a book of their own now (`dev/words.ts`) so the
        production bundle does not carry them, and the family is walked against that book in
        `dev/words.test.tsx`. */
-    { of: 'admin.basisValue', each: ['payment', 'feeExempt'] },
+    /* The word of the column „Osnov", by basis and, for the exemption, by whether the member is a man or
+       a woman (owner, 22.10.2026): read off the function that builds the key, so a basis or a word added
+       there is asked here. */
+    {
+      of: 'admin.basisWord',
+      each: (['payment', 'feeExempt', 'balance'] as const).flatMap((basis) =>
+        (['M', 'F'] as const).map((gender) => basisWordOf(basis, gender).slice('admin.basisWord.'.length)),
+      ),
+    },
     { of: 'status', each: SUBMISSION_STATUSES },
     { of: 'topBoards.byLength', each: CATEGORIES },
     { of: 'event.rating', each: RATING_MARKS },

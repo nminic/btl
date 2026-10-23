@@ -115,7 +115,9 @@ public final class WhatAPictureIs {
 	 * unpacked. Deciding any of those means decoding the picture, and the portal accepts a
 	 * format the platform's own {@code ImageIO} cannot read at all, so a rule written over
 	 * a decoder would hold for two of the three types and quietly not for the third - which
-	 * is worse than a rule that says what it covers.
+	 * is worse than a rule that says what it covers. (Since 23.10.2026 a WebP reader is on the
+	 * class path for {@link SmallPicture}, which decodes a picture when a circle first asks for
+	 * it; nothing here was changed by that, and an upload is still not decoded.)
 	 *
 	 * <p><b>What carries the rest, so that the paragraph above is a boundary and not a
 	 * hole:</b> the bytes are served back under the type this method decided and never under

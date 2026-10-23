@@ -118,7 +118,9 @@ describe('the members screen', () => {
     const row = must(button.closest('tr'), `the row of ${name}`)
 
     await user.click(button)
-    await user.click(within(row).getByRole('button', { name: `Obriši člana: ${name}` }))
+    await user.click(
+      within(await screen.findByRole('dialog', { name: 'Obriši člana?' })).getByRole('button', { name: 'Obriši' }),
+    )
 
     return row
   }
@@ -176,7 +178,9 @@ describe('the members screen', () => {
          accessible name ends in the word that opens it, so the town being a button at all
          is the whole of what this refuses. */
       expect(within(table).queryByRole('button', { name: /Niš/ })).not.toBeInTheDocument()
-      expect(within(table).getAllByText('Niš')).toHaveLength(2)
+      /* Twice for each of the two who live there: the column, and the copy under the name that a
+         narrower screen draws instead (jsdom lays nothing out, so both are in the document). */
+      expect(within(table).getAllByText('Niš')).toHaveLength(4)
       /* And the one control a row does still carry, so this case cannot pass by the table
          being empty or unread. */
       expect(within(table).getAllByRole('button', { name: /^Obriši:/ })).toHaveLength(3)
@@ -250,24 +254,27 @@ describe('the members screen', () => {
     expect(row.getByText('Početnice')).toHaveClass('table__category')
     expect(row.queryByText('Ž 25-39')).not.toBeInTheDocument()
     expect(row.queryByText('Ž25-39')).not.toBeInTheDocument()
-    expect(row.getByText('Kraljevo')).toBeVisible()
+    /* The town and, under it in small type, the country (owner, 22.10.2026), in the column and in
+       the copy under the name. */
+    expect(row.getAllByText('Kraljevo')).toHaveLength(2)
+    expect(row.getAllByText('Srbija')).toHaveLength(2)
 
-    /* In the column of the basis, by its header, since 18.10.2026: the column of every season
-       beside it draws the same words for the season held on that basis (`MembersApi`). */
+    /* In the column of the basis, by its header: the copy under the name says the same word again. */
     const basisColumn = within(table).getAllByRole('columnheader')
-      .findIndex((one) => one.textContent === 'Osnov članstva')
+      .findIndex((one) => one.textContent === 'Osnov')
     expect(basisColumn).toBeGreaterThan(-1)
     const basisOf = (number: string) =>
       must(within(table).getByText(number).closest('tr'), `the row of ${number}`)
         .querySelectorAll('td')[basisColumn]?.textContent
 
-    expect(basisOf('000002')).toBe('Oslobođen članarine za 2028')
-    expect(basisOf('000017')).toBe('Balans za 2027')
+    /* One word, in her gender (owner, 22.10.2026: „Oslobođen" (za članicu „Oslobođena")). */
+    expect(basisOf('000002')).toBe('Oslobođena')
+    expect(basisOf('000017')).toBe('Balans')
 
-    /* Nothing at all in the cell of a member who holds no membership of the season on sale: not
-       „Uplata", which is what the per-person column used to say of everybody it did not free, and
-       not a label with no year. Asked of the last cell before the actions, by its column. */
-    expect(basisOf('000018')).toBe('')
+    /* A dash, and words behind it for a reader who does not see it, where he holds no membership of
+       the season on sale: not „Uplata", which is what the per-person column used to say of everybody
+       it did not free. */
+    expect(basisOf('000018')).toBe('–Bez članstva u ovoj sezoni')
 
     /* And no year of birth anywhere on the row, which is the half of this that is about
        privacy rather than about wording: the record is served to anybody who asks for its
@@ -382,7 +389,9 @@ describe('the members screen', () => {
 
       await user.click(button)
       await user.click(
-        within(row).getByRole('button', { name: 'Delete the member: Ana Jovanović' }),
+        within(await screen.findByRole('dialog', { name: 'Delete the member?' })).getByRole('button', {
+          name: 'Delete',
+        }),
       )
 
       const alert = await within(row).findByRole('alert')
@@ -646,41 +655,87 @@ describe('the members screen', () => {
    * competitor appears in, so no later screen reads a row the server has forgotten - is held by
    * the cases above, one per resource, against the seven foreign keys `AdminMembers.tsx` names.
    */
-  it('asks „Obriši člana?" as a sentence beside two buttons, „Obriši" and „Odustani", and not „Sigurno?"',
-    async () => {
-      const server = serving()
-      const user = setupUser()
-      renderAt('/sr/administracija/clanovi', 'superadmin')
-
-      const cross = await screen.findByRole('button', { name: 'Obriši: Ana Jovanović' })
-      const row = must(cross.closest('tr'), 'the row of Ana Jovanović')
-
-      /* The word the cross shows on the pointer is „Obriši", the name is the longer one. */
-      expect(cross).toHaveTextContent(/^Obriši$/)
-
-      await user.click(cross)
-
-      /* THE QUESTION IS TEXT AND THE BUTTON SAYS ONLY „Obriši" (owner, 22.10.2026: „Potvrda: „Obriši
-         člana?" [Obriši] [Odustani]"). A button that carried the question and no sentence beside it
-         was the first reading and is the one this holds out. */
-      const sentence = within(row).getByText('Obriši člana?')
-      const sure = within(row).getByRole('button', { name: 'Obriši člana: Ana Jovanović' })
-
-      expect(sentence.closest('button')).toBeNull()
-      expect(sure).toHaveTextContent(/^Obriši$/)
-      expect(sure).toHaveAccessibleDescription('Obriši člana?')
-      expect(within(row).getByRole('button', { name: 'Odustani od brisanja: Ana Jovanović' })).toHaveTextContent(
-        /^Odustani$/,
-      )
-      expect(screen.queryByText('Sigurno?')).toBeNull()
-
-      server.stop()
-    }, SLOW)
-
-  it('does not delete on the second click of a double press on the cross, and does on the next single one', async () => {
-    /* Review of PR 632, rounds 1 to 3: the first press opens the question and the second lands where the
-       pointer is. Whatever the layout puts there, a click with `detail` above 1 is not an answer. */
+  it('asks „Obriši člana?" in a sheet over the page, with „Obriši" and „Odustani", and not „Sigurno?"', async () => {
     const server = serving()
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const cross = await screen.findByRole('button', { name: 'Obriši: Ana Jovanović' })
+
+    /* The word the cross shows on the pointer is „Obriši", the name is the longer one. */
+    expect(cross).toHaveTextContent(/^Obriši$/)
+
+    await user.click(cross)
+
+    /* A SHEET OVER THE PAGE (owner, 22.10.2026, PDL „Potvrda brisanja više nije rečenica u redu tabele
+       nego iskačući prozor"), with the words that stayed: „Obriši člana?" [Obriši] [Odustani]. It names
+       whom it is about, by name and number, so a sheet opened from the wrong row says so. */
+    const sheet = await screen.findByRole('dialog', { name: 'Obriši člana?' })
+
+    expect(sheet).toHaveAttribute('aria-modal', 'true')
+    expect(within(sheet).getByText(`Ana Jovanović, ${DELETED}`)).toBeInTheDocument()
+    expect(within(sheet).getAllByRole('button').map((one) => one.textContent)).toEqual(['Obriši', 'Odustani'])
+    expect(screen.queryByText('Sigurno?')).toBeNull()
+
+    /* ESCAPE PUTS IT AWAY AND SENDS NOTHING, and the focus is back on the cross of that row. */
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(writes(server.asked)).toEqual([])
+    expect(cross).toHaveFocus()
+
+    /* AND SO DOES „Odustani". */
+    await user.click(cross)
+    await user.click(
+      within(await screen.findByRole('dialog', { name: 'Obriši člana?' })).getByRole('button', { name: 'Odustani' }),
+    )
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(writes(server.asked)).toEqual([])
+    expect(cross).toHaveFocus()
+
+    server.stop()
+  }, SLOW)
+
+  it('does not delete on the second click of a double press, and does on the next single one', async () => {
+    /* The first press opens the sheet and the second lands where the pointer is: measured in Chrome at
+       360px, inside the sheet. A click with `detail` above 1 answers no button of it (`Prompt.tsx`). */
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Obriši: Ana Jovanović' }))
+
+    const sheet = await screen.findByRole('dialog', { name: 'Obriši člana?' })
+
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Obriši' }), { detail: 2 })
+
+    expect(writes(server.asked)).toEqual([])
+    expect(screen.queryByText('Član je obrisan.')).toBeNull()
+
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Obriši' }), { detail: 1 })
+
+    await waitFor(() => {
+      expect(writes(server.asked)).toHaveLength(1)
+    })
+
+    server.stop()
+  }, SLOW)
+
+  /**
+   * WHILE THE DELETION IS OUT WITH THE SERVER (owner, 02.10.2026, choosing between three outcomes:
+   * „Ne", „Odustani" and Escape are onemoguceni while the request travels, with the state said in words,
+   * and the question is closed by whoever asked it when the answer arrives). Asked of this screen in
+   * `deletionInFlight.test.tsx` until 22.10.2026, when its question stopped being `DeleteRecord`'s.
+   */
+  it('while the deletion is out with the server, puts nothing away and says it is sending; a refusal closes it', async () => {
+    let answer: (value: Response) => void = () => {}
+    const server = serving(
+      () =>
+        new Promise<Response>((resolve) => {
+          answer = resolve
+        }),
+    )
     const user = setupUser()
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
@@ -688,16 +743,26 @@ describe('the members screen', () => {
     const row = must(cross.closest('tr'), 'the row of Ana Jovanović')
 
     await user.click(cross)
-    fireEvent.click(within(row).getByRole('button', { name: 'Obriši člana: Ana Jovanović' }), { detail: 2 })
 
-    expect(writes(server.asked)).toEqual([])
+    const sheet = await screen.findByRole('dialog', { name: 'Obriši člana?' })
+
+    await user.click(within(sheet).getByRole('button', { name: 'Obriši' }))
+    await waitFor(() => expect(writes(server.asked)).toHaveLength(1))
+
+    expect(within(sheet).getByRole('status')).toHaveTextContent('Šalje se')
+
+    await user.click(within(sheet).getByRole('button', { name: 'Odustani' }))
+    await user.keyboard('{Escape}')
+
+    expect(screen.getByRole('dialog', { name: 'Obriši člana?' })).toBe(sheet)
+    expect(writes(server.asked)).toHaveLength(1)
+
+    answer(answeredWith(404))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(await within(row).findByRole('alert')).toHaveTextContent('Server je odgovorio brojem 404')
+    expect(cross).toHaveFocus()
     expect(screen.queryByText('Član je obrisan.')).toBeNull()
-
-    fireEvent.click(within(row).getByRole('button', { name: 'Obriši člana: Ana Jovanović' }), { detail: 1 })
-
-    await waitFor(() => {
-      expect(writes(server.asked)).toHaveLength(1)
-    })
 
     server.stop()
   }, SLOW)
@@ -723,9 +788,10 @@ describe('the members screen', () => {
       expect(shown.closest('.visually-hidden')).toBeNull()
       expect(screen.getAllByText('Član je obrisan.')).toHaveLength(1)
 
-      /* Off the row that is about to vanish and onto the one control that cannot be it.
-         The other six lists anchor on „Nov …"; this one has no such button any more, so
+      /* Off the row that is gone and onto the one control that cannot be it, once the sheet is put
+         away with it. The other six lists anchor on „Nov …"; this one has no such button any more, so
          the search field is what a reader lands on. */
+      expect(screen.queryByRole('dialog')).toBeNull()
       expect(document.activeElement).toBe(screen.getByLabelText('Pretraga'))
 
       server.stop()

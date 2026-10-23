@@ -320,8 +320,10 @@ import java.util.Optional;
  * open is a request that never passed through the form</b>, exactly the case
  * {@link com.btl.portal.domain.registration.WhatRegistrationAsksFor} is written against; what
  * it costs today is a portrait a moderator refuses, which is the road every picture is on
- * anyway. Closing it properly means a decoder that reads all three formats, and that is a
- * dependency and its own piece of work.
+ * anyway. <b>Since 23.10.2026 the decoder exists</b> ({@code imageio-webp}, brought in for
+ * {@link com.btl.portal.domain.photo.SmallPicture}), so what stands between this route and the
+ * rule is no longer a missing reader but a piece of work nobody has asked for: it is not done
+ * here.
  * <li><b>A BYTE SIZE THE OWNER CHOSE.</b> {@link WhatAPictureIs#AT_MOST_BYTES} is five
  * megabytes and that number is MINE, not his: ADL A12a asks for a limit and names none, and
  * nothing in either journal carries one. It is marked as mine where it is declared and it is

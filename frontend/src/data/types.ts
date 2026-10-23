@@ -369,6 +369,20 @@ export type Competitor = {
    * nothing here for most members.
    */
   crop: Crop | null
+  /**
+   * Where the same portrait is asked for ALREADY CUT to that square and made small, or null
+   * exactly when `photo` is.
+   *
+   * Owner, 23.10.2026 (PDL, „Umanjene slike za kružiće"): „Server pravi i šalje umanjenu, već
+   * isečenu sliku za kružiće (Top 10 i svuda gde se slika prikazuje mala); original ostaje za
+   * profil." So every circle but the profile's own draws this and no crop at all, and the
+   * profile draws `photo` cut by `crop`, as every circle did until that day
+   * (`components/Portrait.tsx`).
+   *
+   * The whole address as the answer gives it, for `photo`'s reason: `PhotoApi` spells the
+   * square into it, and a screen that spelt it again would be a second home for that.
+   */
+  smallPhoto: string | null
 }
 
 /** One season a member was a member of, on that season's own basis (`MembersApi.Season`). */
@@ -421,8 +435,8 @@ export type Member = {
   membershipSeason?: number
   /**
    * Every season he holds a membership of, oldest first, each on its own basis; empty for a member
-   * who holds none. The column „Poslednja sezona" is the LAST of these (PDL P8, 18.10.2026: „Kolona
-   * sa poslednjom sezonom u moderaciji broji svaki osnov”), so that fact has this one home.
+   * who holds none. The row's list of seasons ticks exactly these (owner, 22.10.2026, „Red na ekranu
+   * članova ima pet kolona"), so that fact has this one home.
    */
   seasons: MemberSeason[]
   /**
@@ -767,6 +781,12 @@ export type Team = {
    * with no square since the day a missing key took a whole table into the error boundary.
    */
   crop: Crop | null
+  /**
+   * The same logo already cut to that square and made small, which is what the circle in the
+   * table of teams draws (owner, 23.10.2026, „umanjenu, već isečenu sliku za kružiće"). Null
+   * exactly when `logo` is, and read as the answer gives it (`Competitor.smallPhoto` says why).
+   */
+  smallLogo: string | null
   /**
    * THE MEMBERS OF THIS TEAM WHOSE OWN RECORD DOES NOT NAME IT TO THE ONE READING, with the
    * season each is in it from.

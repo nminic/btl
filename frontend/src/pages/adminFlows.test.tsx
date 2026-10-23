@@ -216,39 +216,33 @@ describe('the panel', () => {
 
 describe('members', () => {
   it('is the only place that says on what basis a membership is active', async () => {
-    /* **THE TAG IS THE BASIS WITH THE YEAR OF THE SEASON IT IS THE BASIS OF** (owner, 18.10.2026,
-       PDL P8, „Osnov članstva ima jedan dom"): „Oslobođen članarine za 2027" is one text, so the bare
-       „Oslobođen članarine" this case looked for is a tag the screen no longer draws. The count is
-       what the served rows hold and is never typed, and the three members who hold no membership of
-       the season on sale carry no tag at all.
-
-       **TWO SOURCES OF THE YEAR, SEPARATED BY THE CLOCK.** The day is 1 November 2027, when the season
-       on sale is 2028, while every served row says 2027: a tag that took its year from the clock
-       reads 2028, a tag that took it from the row reads 2027. On the real day of a run (2026) the
-       two are the same year and this case would tell them apart on no day at all. */
+    /* **ONE WORD, IN THE GENDER OF THE MEMBER** (owner, 22.10.2026, PDL „Red na ekranu članova ima pet
+       kolona", chosen with the recommendation: „Uplata", „Oslobođen" (za članicu „Oslobođena"), „Balans").
+       The year is the list of seasons beside it, so the word carries none. The counts are what the served
+       rows hold and are never typed: the sample frees men and women both, so a word that did not follow
+       the gender of the row fails one of the two counts. */
     renderAt('/sr/administracija/clanovi', 'superadmin', null, undefined, '2027-11-01')
 
     const table = await screen.findByRole('table', { name: 'Članovi' })
     /* The rows this screen draws (`members.json`) under the filter it opens on, „Aktivni". */
     const freed = servedMembers.filter((one) => one.active && one.membershipBasis === 'feeExempt')
+    const women = freed.filter((one) => one.gender === 'F')
 
-    expect(freed.length).toBeGreaterThan(0)
-    /* Read in the column of the basis alone, since 18.10.2026: the column of every season beside it
-       draws the same words for each season held on that basis (`MembersApi`), so a count over the
-       whole table would count each freed member twice. */
+    expect(women.length).toBeGreaterThan(0)
+    expect(freed.length - women.length).toBeGreaterThan(0)
+    /* Read in the column of the basis alone: the box under the name, drawn on a telephone, says the
+       same word again. */
     const basisColumn = within(table)
       .getAllByRole('columnheader')
-      .findIndex((one) => one.textContent === 'Osnov članstva')
+      .findIndex((one) => one.textContent === 'Osnov')
     expect(basisColumn).toBeGreaterThan(-1)
     const basisCells = within(table)
       .getAllByRole('row')
       .slice(1)
       .map((row) => row.querySelectorAll('td')[basisColumn]?.textContent)
-    expect(basisCells.filter((one) => one === 'Oslobođen članarine za 2027')).toHaveLength(
-      freed.length,
-    )
-    expect(within(table).queryByText('Oslobođen članarine')).not.toBeInTheDocument()
-    expect(within(table).queryByText(/za 2028/)).not.toBeInTheDocument()
+    expect(basisCells.filter((one) => one === 'Oslobođena')).toHaveLength(women.length)
+    expect(basisCells.filter((one) => one === 'Oslobođen')).toHaveLength(freed.length - women.length)
+    expect(within(table).queryByText(/za 20\d\d/)).not.toBeInTheDocument()
   })
 
   it('searches', async () => {

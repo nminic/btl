@@ -208,21 +208,14 @@ const IN_PIXELS = new Map([
     'shrinks the circle so the name in the frozen column keeps its letters',
   ],
   [
-    'pages/admin/AdminMembers.css 1099.98',
-    /* Owner, 20.10.2026, chosen with my recommendation: „Poslednja sezona" is drawn from 1100px, because
-       below it the seven columns of the moderation of the members do not fit their box (668 at 700; and
-       from 820, where the navigation stands beside the page, 516 at 820 and 681 at 1000). In pixels
-       because it takes a column away. */
-    'drops „Poslednja sezona", whose year is the last of the pills under „Sezone članstva" on the same row',
-  ],
-  [
     'pages/admin/AdminMembers.css 1000',
-    /* Owner, 20.10.2026, chosen with my recommendation, after the review of PR 594: Kategorija and Mesto
-       of the moderation of the members are drawn from 1000px, because from 820, where the navigation
-       stands beside the page, the box is 516 to 596 and six columns need about 606. Hidden outside every
-       query and shown from here, the width the list already has. In pixels because it decides whether a
-       column is drawn: in em it would take both columns off a 1280 screen at 200% text. */
-    'draws Kategorija and Mesto, which below it are not drawn at all (owner, 20.10.2026)',
+    /* The column „Mesto" of the moderation of the members is drawn from 1000px and folds under the name
+       below it (the coordinator's answer of 22.10.2026, P2, from P24; the five columns of the owner's
+       decision of the same day), because from 820, where the navigation stands beside the page, the box
+       is 516 to 596. Hidden outside every query and shown from here, the width the list already has, and
+       the copy under the name hidden from here in the same query. In pixels because it decides whether a
+       column is drawn: in em it would take the column off a 1280 screen at 200% text. */
+    'draws the column „Mesto", which below it folds under the name (22.10.2026)',
   ],
 ])
 
@@ -378,9 +371,6 @@ describe('space and corners are chosen from the scale, not typed', () => {
       // Set by their own content, each said where it is written: the front page
       // at 860, the rights table and the Top liste at 900.
       860, 900, 1000,
-      // The moderation of the members draws „Poslednja sezona" from here (owner, 20.10.2026): below it
-      // the seven columns do not fit the box beside the navigation.
-      1099.98,
     ])
   })
 

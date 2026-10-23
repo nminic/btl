@@ -1266,6 +1266,20 @@ class TeamApiTest {
 							+ " picture, so it is a circle that will never draw", slug, address)
 					.isInstanceOfSatisfying(HandlerMethod.class,
 							one -> assertThat(one.getBeanType()).isEqualTo(PhotoApi.class));
+
+			/* AND THE SMALL MARK THE TABLE OF TEAMS DRAWS IS THE SAME PICTURE CUT TO THE SAME
+			   ROW'S SQUARE (PDL, 23.10.2026, „umanjenu, već isečenu sliku za kružiće"): read off
+			   that row here, so a square read off another team's row is a different address. */
+			List<BigDecimal> square = db.sql("select p.crop_x, p.crop_y, p.crop_diameter from photo p"
+							+ " join team t on t.logo_id = p.id where t.slug = ?").param(slug)
+					.query((row, n) -> List.of(row.getBigDecimal(1), row.getBigDecimal(2),
+							row.getBigDecimal(3)))
+					.single();
+
+			assertThat(answerFor(slug).path("smallLogo").asString())
+					.as("%s did not come back with its own mark cut to its own square", slug)
+					.isEqualTo(PhotoApi.addressOfTheSmall(digest, square.get(0), square.get(1),
+							square.get(2)));
 		}
 
 		assertThat(answerFor("vardarski-krug").path(THE_TEAMS_MARK).isNull())
@@ -1316,6 +1330,10 @@ class TeamApiTest {
 							one.path("slug").asString(), one.path(THE_TEAMS_MARK),
 							one.path("crop"))
 					.isEqualTo(one.path("crop").isNull());
+			assertThat(one.has("smallLogo") && one.path("smallLogo").isNull())
+					.as("%s answered a small mark without its picture, or a picture without it",
+							one.path("slug").asString())
+					.isEqualTo(one.path(THE_TEAMS_MARK).isNull());
 		}
 	}
 

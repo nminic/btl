@@ -63,7 +63,14 @@ const DRAWN: Record<ActionSymbol, React.ReactNode> = {
       <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
     </>
   ),
-  plus: <path d="M12 5v14M5 12h14" />,
+  /* A banknote: the sheet, the coin in its middle and a point at each end. */
+  banknote: (
+    <>
+      <rect x="2.5" y="6" width="19" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M6.5 12h.01M17.5 12h.01" />
+    </>
+  ),
   down: <path d="M6 9l6 6 6-6" />,
   up: <path d="M18 15l-6-6-6 6" />,
   /* A circle that is not closed, with the head of an arrow where it opens: sent
@@ -72,12 +79,6 @@ const DRAWN: Record<ActionSymbol, React.ReactNode> = {
     <>
       <path d="M21 12a9 9 0 1 1-2.6-6.4" />
       <path d="M21 3v6h-6" />
-    </>
-  ),
-  shieldCheck: (
-    <>
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-      <path d="M9 12l2 2 4-4" />
     </>
   ),
 }

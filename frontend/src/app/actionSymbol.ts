@@ -24,9 +24,11 @@
  * - `plus`: Upiši uplatu.
  * - `down` and `up`: Prikaži and Sakrij a card.
  * - `again`: Ispravi i pošalji ponovo.
- * - `shieldCheck`: Odobri oslobođenje, a shield and not a bare check so it is not
- *   mistaken for the other checks in the member's row (owner, 20.10.2026, against
- *   the recommendation of a check).
+ * - `banknote`: Upiši uplatu, since 22.10.2026 in place of the plus (owner: „Može li
+ *   simbol za to umesto znaka plus da bude kao novčanice").
+ * - The shield with a check that „Odobri oslobođenje" carried from 20.10.2026 is gone
+ *   with the button: since 22.10.2026 the exemption is granted by ticking the season
+ *   in the member's row (PDL, „Red na ekranu članova ima pet kolona").
  */
 export const SYMBOL = {
   pencil: 'pencil',
@@ -35,11 +37,10 @@ export const SYMBOL = {
   check: 'check',
   back: 'back',
   undo: 'undo',
-  plus: 'plus',
+  banknote: 'banknote',
   down: 'down',
   up: 'up',
   again: 'again',
-  shieldCheck: 'shieldCheck',
 } as const
 
 export type ActionSymbol = (typeof SYMBOL)[keyof typeof SYMBOL]

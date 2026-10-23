@@ -99,20 +99,11 @@ const SCREENS: Screen[] = [
     role: 'superadmin',
     ask: first,
   },
-  {
-    name: 'the members of the administration',
-    source: 'admin/AdminMembers.tsx',
-    at: '/sr/administracija/clanovi',
-    role: 'superadmin',
-    ask: first,
-    /* THE MEMBERS' OWN QUESTION since 22.10.2026 (PDL „Brisanje člana na ekranu članova": „potvrda umesto
-       „Sigurno?" kaže „Obriši člana?" uz dugmad „Obriši" i „Odustani""): the confirming button is named by whom it deletes. */
-    words: {
-      open: 'Obriši: {name}',
-      sure: 'Obriši člana: {name}',
-      keep: 'Odustani od brisanja: {name}',
-    },
-  },
+  /* THE MEMBERS OF THE ADMINISTRATION STOOD HERE UNTIL 22.10.2026. Their deletion is a sheet over the
+     page since then (owner, PDL „Potvrda brisanja više nije rečenica u redu tabele nego iskačući
+     prozor"), drawn by `MemberRow.tsx` through `Prompt` and not through `DeleteRecord`, so the floor
+     below no longer finds the screen. The same rule is asked of that sheet in
+     `adminMemberWrites.test.tsx`, „while the deletion is out with the server". */
   {
     name: 'a team on its own page',
     source: 'TeamDetail.tsx',

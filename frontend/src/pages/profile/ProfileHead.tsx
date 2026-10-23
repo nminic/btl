@@ -59,8 +59,12 @@ export function ProfileHead({
           portrait since 26.09.2026 (PDL P28f) and `components/Portrait.tsx`
           decides between the two. The owner asked for exactly that fallback, so
           the monogram is the other half of the circle rather than a stand-in
-          waiting to be removed. */}
-      <Portrait competitor={competitor} />
+          waiting to be removed.
+
+          `whole`, because this is the one circle that draws the ORIGINAL: owner,
+          23.10.2026, „Server pravi i šalje umanjenu, već isečenu sliku za kružiće
+          [...] original ostaje za profil." */}
+      <Portrait competitor={competitor} whole />
 
       <div className="profile__identity">
         {/* The same row every screen with a control has, so the control lands at
