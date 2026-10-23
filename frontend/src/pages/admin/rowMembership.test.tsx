@@ -465,8 +465,8 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
   }, SLOW)
 
   /**
-   * AND THE SAME FOR BOTH CHANGES OF BASIS, each through its own door: the change from a payment on
-   * `RowMembership`, and the payment over the exemption on `RowPayment`. Each must drop the six
+   * AND THE SAME FOR BOTH CHANGES OF BASIS, each through its own door: the change from a payment in the
+   * list of seasons, and the payment over the exemption in the sheet of „Upiši uplatu". Each must drop the six
    * answers, read the list again, say that the basis changed, and leave the inbox of another row alone,
    * which is what tells it apart from `paymentRecorded`.
    */
@@ -795,9 +795,9 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
   /**
    * THE OTHER DIRECTION OF THE SAME FAULT: the refusal is the payment's over the exemption and the success
-   * is the cancellation beside it. The payment over the exemption is a second `RowPayment` on the row,
-   * handed the count by its own line, and a screen that handed it to the first and forgot the second would
-   * pass every case above.
+   * is the cancellation beside it. Until 22.10.2026 the payment over the exemption was a second component
+   * on the row, handed the count by its own line; the row is one component since, and this holds that
+   * every act of it reads the one count.
    */
   it('takes the refusal of a payment over the exemption away when the exemption is cancelled', async () => {
     const server = serving((_path, init) =>

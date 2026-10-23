@@ -48,8 +48,9 @@ import './Prompt.css'
  * question opened and shut in one gesture; an action standing further left would have put it on the
  * first way of saying yes. At 768 and 1280 the same second click fell on the backdrop. Where it lands
  * is geometry, and geometry changes with every row, so it is not what is asked: the second click of a
- * double press carries `detail` 2 and is refused on every button of the sheet, the way
- * `admin/EntityEditor.tsx` refuses it on the confirming button of a deletion (`againstDoublePress`).
+ * double press carries `detail` 2 and is refused on every button of the sheet. (The deletion of a
+ * member had its own refusal of it in `admin/EntityEditor.tsx`, `againstDoublePress`, from PR 632 until
+ * 22.10.2026, when that deletion became a sheet of this component and the prop had no screen left.)
  * The keyboard (`detail` 0) and a single press or touch (`detail` 1) answer as they always did.
  *
  * <p><b>A FIELD IS PART OF THE SHEET (22.10.2026)</b>, for the questions that ask for a number as well
