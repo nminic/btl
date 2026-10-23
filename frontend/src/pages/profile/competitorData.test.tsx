@@ -212,7 +212,7 @@ describe('the card the administration opens', () => {
 
     await user.clear(fatherName)
     await user.type(fatherName, 'Jovan')
-    await user.click(screen.getByRole('button', { name: sr.registration.submit }))
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
 
     expect(await screen.findByText(sr.account.saved)).toBeVisible()
     expect(corrections(asked)).toEqual([{ fatherName: 'Jovan' }])
@@ -228,7 +228,7 @@ describe('the card the administration opens', () => {
     asTheAdministration()
 
     await screen.findByRole('textbox', { name: /Ime oca/ })
-    await user.click(screen.getByRole('button', { name: sr.registration.submit }))
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
 
     expect(await screen.findByText(sr.memberData.nothingChanged)).toBeVisible()
     expect(corrections(asked)).toEqual([])
@@ -244,9 +244,9 @@ describe('the card the administration opens', () => {
 
     await user.clear(fatherName)
     await user.type(fatherName, 'Jovan')
-    await user.click(screen.getByRole('button', { name: sr.registration.submit }))
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
     await screen.findByText(sr.account.saved)
-    await user.click(screen.getByRole('button', { name: sr.registration.submit }))
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
 
     expect(await screen.findByText(sr.memberData.nothingChanged)).toBeVisible()
     expect(corrections(asked)).toHaveLength(1)
@@ -259,7 +259,7 @@ describe('the card the administration opens', () => {
     asTheAdministration()
 
     await user.click(await screen.findByRole('radio', { name: sr.registration.genderFemale }))
-    await user.click(screen.getByRole('button', { name: sr.registration.submit }))
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
 
     expect(await screen.findByText(sr.memberData.aPairHoldsTheGender)).toBeVisible()
     expect(screen.queryByText(sr.account.saved)).toBeNull()
@@ -275,7 +275,7 @@ describe('the card the administration opens', () => {
 
     await user.clear(fatherName)
     await user.type(fatherName, 'Jovan')
-    await user.click(screen.getByRole('button', { name: sr.registration.submit }))
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
 
     expect(await screen.findByText(/200/)).toBeVisible()
     expect(screen.queryByText(sr.account.saved)).toBeNull()
@@ -304,7 +304,7 @@ describe('the card the administration opens', () => {
 
     await user.clear(fatherName)
     await user.type(fatherName, 'Jovan')
-    await user.click(screen.getByRole('button', { name: sr.registration.submit }))
+    await user.click(screen.getByRole('button', { name: sr.account.save }))
     await screen.findByText(sr.account.saved)
 
     expect(corrections(asked)).toEqual([{ fatherName: 'Jovan' }])

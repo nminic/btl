@@ -50,6 +50,9 @@ export function theMembersForm(withAnAddress: boolean): FormDef {
   return {
     ...registracija,
     id: 'podaci-clana',
+    /* The button saves a correction, and its word is the one the member's own panel saves with
+       („Sačuvaj"), not the registration's „Pošalji prijavu". */
+    submitKey: 'account.save',
     fields: registracija.fields.filter(
       (one) =>
         WHAT_THE_ADMINISTRATION_CORRECTS.some((name) => name === one.name) &&

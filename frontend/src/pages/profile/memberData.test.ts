@@ -66,6 +66,7 @@ describe('what the form of the administration draws', () => {
       registracija.fields.map((one) => one.name).filter((name) => WHAT_THE_ADMINISTRATION_CORRECTS.some((one) => one === name)),
     )
     expect(theMembersForm(false).fields.map((one) => one.name)).not.toContain('email')
+    expect(theMembersForm(true).submitKey, 'the button saves, it does not send a registration').toBe('account.save')
     expect(theMembersForm(true).fields.find((one) => one.name === 'fatherName')).toBe(
       registracija.fields.find((one) => one.name === 'fatherName'),
     )
