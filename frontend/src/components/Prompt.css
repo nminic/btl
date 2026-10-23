@@ -35,6 +35,13 @@
   border-radius: var(--radius-8);
   background: var(--surface);
   box-shadow: 0 var(--space-8) var(--space-32) rgb(20 24 31 / 35%);
+  /* THE SHEET SAYS WHERE ITS TEXT STANDS, AND DOES NOT ASK WHO DREW IT (PDL, owner, 23.10.2026, the
+     anchor „Tekst u iskačućim prozorima na ekranu članova se poravnava levo"). It is drawn inside the
+     cell of a table, and that cell is aligned to the right (`styles/table.css`, `.table td`), which a
+     sheet with no alignment of its own inherited: the heading, the paragraphs and the label stood against
+     the right edge on every width (measured in the review of PR 638). `start` and not `left`, so the
+     writing direction decides which side that is. */
+  text-align: start;
 }
 
 .prompt__title {
