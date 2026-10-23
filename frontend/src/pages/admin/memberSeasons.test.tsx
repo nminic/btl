@@ -4,6 +4,7 @@ import type { Member } from '../../data/types'
 import { must } from '../../test/at'
 import { asMember, person } from '../../test/plate'
 import { renderAt } from '../../test/render'
+import { seasonsOf } from '../../test/memberRow'
 import { serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { addressOf } from '../profileAddress'
@@ -14,9 +15,12 @@ import { addressOf } from '../profileAddress'
  *
  * **NOTHING IN THE FIXTURE IS THE ONLY ONE OF ITS KIND, AND EVERY SECOND SOURCE IS SEPARATED:**
  *
- * - **The last season is not the season on sale.** Ana holds 2027 and 2028 and her basis on sale is
- *   2027's, so a column that read `membershipSeason` says 2027 where the last is 2028.
- * - **Nor her first season**, which is 2027.
+ * - **The season on sale is not the last season he holds, nor the first.** Since 22.10.2026 the column
+ *   „Osnov" is the basis of the season on sale and the closed list of seasons shows that season with
+ *   its box (owner, „Osnov je osnov sezone prikazane u koloni Sezone"; the coordinator's answer, P6).
+ *   2028 is on sale for everybody here: Ana holds it on her balance and 2027 on a payment, so a word
+ *   read off her first season says „Uplata"; Bora holds 2027 only, so a word read off his last season
+ *   says „Uplata" where he holds nothing of 2028, and a box read off it is ticked.
  * - **Active is not „holds a season".** Ceca holds one and her fee has lapsed; Dule holds none and
  *   his has lapsed too.
  * - **The link to a profile comes from the public list, which is served in another order**: Bora
@@ -25,8 +29,8 @@ import { addressOf } from '../profileAddress'
  */
 describe('the moderation of the members', () => {
   const ana = person('000009', 'Ana', 'Aktivna', {
-    membershipBasis: 'payment',
-    membershipSeason: 2027,
+    membershipBasis: 'balance',
+    membershipSeason: 2028,
   })
   const bora = person('000003', 'Bora', 'Bezobnove', {
     membershipBasis: undefined,
@@ -43,14 +47,15 @@ describe('the moderation of the members', () => {
 
   const MEMBERS: Member[] = [
     asMember(ana, {
+      seasonOnSale: 2028,
       seasons: [
         { season: 2027, basis: 'payment' },
         { season: 2028, basis: 'balance' },
       ],
     }),
-    asMember(ceca, { active: false, seasons: [{ season: 2027, basis: 'feeExempt' }] }),
-    asMember(bora, { seasons: [{ season: 2027, basis: 'payment' }] }),
-    asMember(dule, { active: false }),
+    asMember({ ...ceca, gender: 'F' }, { active: false, seasonOnSale: 2028, seasons: [{ season: 2027, basis: 'feeExempt' }] }),
+    asMember(bora, { seasonOnSale: 2028, seasons: [{ season: 2027, basis: 'payment' }] }),
+    asMember(dule, { active: false, seasonOnSale: 2028 }),
   ]
 
   /** The public list holds the two whose fee stands, and Bora first. */
@@ -84,7 +89,7 @@ describe('the moderation of the members', () => {
     return within(drawn)
       .getAllByRole('row')
       .slice(1)
-      .map((row) => must(row.querySelector('.table__member-number')?.textContent, 'a number'))
+      .map((row) => must(within(row).getByText(/^\d{6}$/).textContent, 'a number'))
   }
 
   /** One cell of the row of a member, found by the header of its column. */
@@ -165,7 +170,7 @@ describe('the moderation of the members', () => {
     server.stop()
   })
 
-  it('names every season of a member, oldest first, each on its own basis', async () => {
+  it('ticks every season of a member he holds, from the first of the league to the one on sale', async () => {
     const server = serving()
     const user = setupUser()
     renderAt('/sr/administracija/clanovi', 'superadmin')
@@ -173,20 +178,23 @@ describe('the moderation of the members', () => {
     const drawn = await table()
     await user.selectOptions(screen.getByLabelText('Članstvo'), 'Svi')
 
-    const tags = (memberNumber: string) =>
-      [...cell(drawn, memberNumber, 'Sezone članstva').querySelectorAll('.tag')].map(
-        (one) => one.textContent,
-      )
+    const ticked = async (memberNumber: string) => {
+      const list = await seasonsOf(user, cell(drawn, memberNumber, 'Sezone'))
 
-    expect(tags('000009')).toEqual(['Uplata za 2027', 'Balans za 2028'])
-    expect(tags('000006')).toEqual(['Oslobođen članarine za 2027'])
-    expect(tags('000003')).toEqual(['Uplata za 2027'])
-    expect(tags('000012')).toEqual([])
+      return within(list)
+        .getAllByRole('checkbox')
+        .map((box) => `${box.closest('label')?.textContent ?? ''} ${box instanceof HTMLInputElement && box.checked ? 'da' : 'ne'}`)
+    }
+
+    expect(await ticked('000009')).toEqual(['2027 da', '2028 da'])
+    expect(await ticked('000006')).toEqual(['2027 da', '2028 ne'])
+    expect(await ticked('000003')).toEqual(['2027 da', '2028 ne'])
+    expect(await ticked('000012')).toEqual(['2027 ne', '2028 ne'])
 
     server.stop()
   })
 
-  it('takes the last season off his seasons, whatever its basis, and not off the season on sale', async () => {
+  it('says the basis of the season on sale, and shows that season with its box, not the last he holds', async () => {
     const server = serving()
     const user = setupUser()
     renderAt('/sr/administracija/clanovi', 'superadmin')
@@ -194,13 +202,33 @@ describe('the moderation of the members', () => {
     const drawn = await table()
     await user.selectOptions(screen.getByLabelText('Članstvo'), 'Svi')
 
-    const last = (memberNumber: string) =>
-      cell(drawn, memberNumber, 'Poslednja sezona').textContent
+    const basis = (memberNumber: string) => cell(drawn, memberNumber, 'Osnov').textContent
+    const shown = (memberNumber: string) =>
+      within(cell(drawn, memberNumber, 'Sezone')).getByRole('button', { name: /^Sezone, / }).textContent
 
-    expect(last('000009')).toBe('2028')
-    expect(last('000003')).toBe('2027')
-    expect(last('000006')).toBe('2027')
-    expect(last('000012')).toBe('')
+    expect(basis('000009')).toBe('Balans')
+    expect(shown('000009')).toBe('☑ 2028')
+    /* A dash for the eye and words for a reader who does not see it. */
+    expect(basis('000003')).toBe('–Bez članstva u ovoj sezoni')
+    expect(shown('000003')).toBe('☐ 2028')
+    expect(basis('000006')).toBe('–Bez članstva u ovoj sezoni')
+    expect(basis('000012')).toBe('–Bez članstva u ovoj sezoni')
+
+    server.stop()
+  })
+
+  it('lets only the season on sale be changed, and draws the earlier ones as they stand', async () => {
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const drawn = await table()
+    await user.selectOptions(screen.getByLabelText('Članstvo'), 'Svi')
+
+    const list = await seasonsOf(user, cell(drawn, '000003', 'Sezone'))
+
+    expect(within(list).getByRole('checkbox', { name: '2027' })).toBeDisabled()
+    expect(within(list).getByRole('checkbox', { name: '2028' })).toBeEnabled()
 
     server.stop()
   })

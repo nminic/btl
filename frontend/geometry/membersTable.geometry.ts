@@ -14,22 +14,28 @@ import type { Answers, At, Geometry } from './support/harness.ts'
  *
  * **Asked in Chrome**, because jsdom lays nothing out:
  *
+ * **FIVE COLUMNS SINCE 22.10.2026** (owner, „Red na ekranu članova ima pet kolona"): Ime i prezime,
+ * Mesto, Osnov, Sezone, Opcije, folded under the name where they do not fit (the coordinator's answer of
+ * 22.10.2026, P2). Every list of seasons on the screen is OPENED before anything is measured, because an
+ * open list, with „Promeni osnov u oslobođenje" beside the season on sale, is the widest a row can be.
+ *
  * 1. **The table's own box is not wider inside than outside**, and the page does not scroll sideways,
- *    at 360, at 700 and 720 (the narrowest a table is drawn whole), at 768, at 820, 860 and 912 (the
- *    navigation stands beside the page from 820, so the box is narrower there than at 768: the review of
- *    PR 594 measured every width from 820 to 910 overflowing), at 1000 and at 1100 (where Kategorija
- *    and Mesto, and then „Poslednja sezona", come back; owner, 20.10.2026) and at 1280. **And at every
- *    tenth pixel from 700 to 1100** with the widest rows, because the bands where it did not fit were
- *    found between the widths that were asked.
+ *    at 360, at 700 and 720 (the narrowest a table is drawn with its middle columns), at 768, at 820,
+ *    860 and 912 (the navigation stands beside the page from 820, so the box is narrower there than at
+ *    768), at 1000 (where „Mesto" comes back as a column) and at 1100 and 1280. **And at every tenth
+ *    pixel from 700 to 1100** with the widest rows, because the bands where it did not fit were found
+ *    between the widths that were asked.
  * 2. **With the names of the sample, with long ones, and with the widest rows**: the real names the
  *    review of PR 591 used and the longest surname of the sample, every member a member of four
- *    seasons, and the town of the sample with the longest name; the widest rows put the four seasons
- *    and the basis all on „Oslobođen članarine", the longest pill. A row of the sample holds „Promeni
- *    osnov u oslobođenje", the widest the record can be, and the case asks that it was on the screen.
- * 3. **The columns each width draws, by their heads**: the member and the record on a telephone, with
- *    the basis and the seasons under the name; from 700 the basis and the seasons as columns as well;
- *    Kategorija and Mesto from 1000; „Poslednja sezona" from 1100. A table that fits because a column is
- *    missing that the owner did not take away would otherwise pass.
+ *    seasons with the fourth on sale, and the town and the country of the sample with the longest
+ *    names. A row of the sample holds „Promeni osnov u oslobođenje", and the case asks that it was on
+ *    the screen.
+ * 3. **The columns each width draws, by their heads**: the name and the options on a telephone, with the
+ *    town, the basis and the seasons under the name; from 700 the basis and the seasons as columns as
+ *    well, the town still under the name; from 1000 all five. A table that fits because a column is
+ *    missing that the owner did not take away would otherwise pass. **And what is folded under the name
+ *    says what its column says**, at every width where it is drawn, and nothing is folded where the
+ *    column is drawn.
  * 3a. **Every drawn cell stands under its own head, and a row draws as many cells as the head does**:
  *    a cell whose column is hidden in the head and drawn in the body passes every count of heads and
  *    every width, and puts the year of the last season under the record's head (review of PR 594).
@@ -71,7 +77,7 @@ const REAL_NAMES = [
   ['Konstantin', 'Karađorđević-Obrenović'],
 ] as const
 
-/** Four seasons, on all three bases, so the column of seasons and the box under the name hold four pills. */
+/** Four seasons, on all three bases, the fourth the one on sale, so every list holds four boxes. */
 const FOUR_SEASONS = [
   { season: 2027, basis: 'feeExempt' },
   { season: 2028, basis: 'payment' },
@@ -84,7 +90,7 @@ const LONG: Answers = {
   '/api/members': MEMBERS.map((one, index) => {
     const [firstName, lastName] = REAL_NAMES[index % REAL_NAMES.length] ?? REAL_NAMES[0]
 
-    return { ...one, firstName, lastName, city: 'Sremski Karlovci', seasons: FOUR_SEASONS }
+    return { ...one, firstName, lastName, city: 'Sremski Karlovci', country: 'BA', seasons: FOUR_SEASONS, seasonOnSale: 2030 }
   }),
 }
 
@@ -103,13 +109,15 @@ const WORST: Answers = {
       firstName,
       lastName,
       city: 'Sremski Karlovci',
+      country: 'BA',
+      seasonOnSale: 2030,
       seasons: FOUR_SEASONS.map((held) => ({ ...held, basis: 'feeExempt' })),
       /* Every basis on the exemption but the one paid: that row keeps „Promeni osnov u oslobođenje", the
          widest the record can be, and its pill is the shorter one, so the column of the basis is still
          set by the longest. */
       ...(one.membershipBasis === undefined || one.membershipBasis === 'payment'
         ? {}
-        : { membershipBasis: 'feeExempt', membershipSeason: 2028 }),
+        : { membershipBasis: 'feeExempt', membershipSeason: 2030 }),
     }
   }),
 }
@@ -120,20 +128,25 @@ const CASES = [
   ['the widest rows, four seasons', WORST],
 ] as const
 
-/** The heads of the seven columns, in order. */
-const ALL = ['Član', 'Kat.', 'Mesto', 'Osnov članstva', 'Sezone članstva', 'Poslednja sezona', 'Zapis']
+/** The heads of the five columns, in order. */
+const ALL = ['Ime i prezime', 'Mesto', 'Osnov', 'Sezone', 'Opcije']
 
-/** What a width draws (owner, 20.10.2026, each with my recommendation). */
+/** What a width draws (the coordinator's answer of 22.10.2026, P2). */
 function drawnAt(width: number): string[] {
   if (width < 700) {
-    return ['Član', 'Zapis']
+    return ['Ime i prezime', 'Opcije']
   }
 
-  if (width < 1000) {
-    return ['Član', 'Osnov članstva', 'Sezone članstva', 'Zapis']
+  return width < 1000 ? ['Ime i prezime', 'Osnov', 'Sezone', 'Opcije'] : ALL
+}
+
+/** What a width folds under the name, by the column it stands for. */
+function foldedAt(width: number): string[] {
+  if (width < 700) {
+    return ['Mesto', 'Osnov', 'Sezone']
   }
 
-  return width < 1100 ? ALL.filter((one) => one !== 'Poslednja sezona') : ALL
+  return width < 1000 ? ['Mesto'] : []
 }
 
 const WIDTHS = [360, 700, 720, 768, 820, 860, 912, 1000, 1100, 1280]
@@ -144,7 +157,21 @@ async function readTheTable(open: Geometry['open'], at: At, answers: Answers) {
 
   /* Everybody ever given a number, so the rows that record a payment are among them as well. */
   await page.getByRole('combobox').first().selectOption('all')
-  await page.getByText('Promeni osnov u oslobođenje').first().waitFor({ state: 'visible' })
+
+  /* EVERY LIST OF SEASONS THE WIDTH DRAWS, OPENED: the copy the stylesheet hides is not pressed. */
+  const toggles = page.locator('table.members-table button[aria-expanded]')
+
+  for (let index = 0; index < (await toggles.count()); index += 1) {
+    const toggle = toggles.nth(index)
+
+    if (await toggle.isVisible()) {
+      await toggle.click()
+    }
+  }
+
+  await page.getByText('Promeni osnov u oslobođenje').filter({ visible: true }).first().waitFor({ state: 'visible' })
+  /* The pointer is parked off the table again: the last press left it over a control. */
+  await page.mouse.move(1, 1)
 
   const seen = await page.evaluate(() => {
     const table = document.querySelector('table.members-table')
@@ -194,28 +221,32 @@ async function readTheTable(open: Geometry['open'], at: At, answers: Answers) {
       }
     }
 
-    /* The pills each row draws under the name, where the box under it is drawn at all, against the
-       pills of the columns of the basis and of the seasons in the same row, drawn or not: the box carries
-       every one of them and nothing else. */
-    const underTheName = rows.map((row) => {
-      /* Every pill the cell of the name draws, found by being in that cell and not by the class of the
-         box that holds them: a box that lost `table__phone-only` is drawn at every width, and a guard that
-         looked for the class would not see it. */
-      const under = [...row.querySelectorAll('td:first-child .tag')].filter(drawn)
-      const columns = [...row.children].slice(3, 5).reduce((sum, cell) => sum + cell.querySelectorAll('.tag').length, 0)
+    /* WHAT EACH ROW FOLDS UNDER THE NAME, found by being drawn in that cell and not by the class of the box
+       that holds it (a box that lost its class is drawn at every width, and a guard that looked for the
+       class would not see it), each said as its column says it: the list of seasons by the words on its
+       button, everything else by its text. */
+    const heads = [...table.querySelectorAll('thead th')]
+    const named = (one: Element | undefined) => (one?.textContent ?? '').trim()
+    const says = (one: Element) => {
+      const toggle = one.querySelector('button[aria-expanded]')
 
-      return {
-        under: under.map((one) => one.textContent).join(' | '),
-        columns: [...row.children].slice(3, 5).flatMap((cell) => [...cell.querySelectorAll('.tag')].map((one) => one.textContent)).join(' | '),
-        count: columns,
-      }
+      return (toggle === null ? one.textContent ?? '' : toggle.textContent ?? '').replace(/\s+/g, '')
+    }
+    const folded = rows.map((row) => {
+      const first = row.children[0]
+      const parts = first === undefined ? [] : [...first.querySelectorAll('dd')].filter(drawn)
+
+      return parts.map((part) => {
+        const name = named(part.previousElementSibling ?? undefined)
+        const column = [...row.children][heads.findIndex((head) => named(head) === name)]
+
+        return { name, here: says(part), there: column === undefined ? '' : says(column) }
+      })
     })
 
     /* Every drawn cell against the head drawn over it, found by where the two stand and not by their
        order: the head over the middle of the cell must be the cell's own (the head at its index). */
-    const heads = [...table.querySelectorAll('thead th')]
     const drawnHeads = heads.filter(drawn)
-    const named = (one: Element | undefined) => (one?.textContent ?? '').trim()
     const misplaced = rows.flatMap((row, index) => {
       const all = [...row.children]
       const shown = all.filter(drawn)
@@ -250,7 +281,7 @@ async function readTheTable(open: Geometry['open'], at: At, answers: Answers) {
       heads: [...table.querySelectorAll('thead th')].filter(drawn).map((one) => (one.textContent ?? '').trim()),
       rows: rows.length,
       words: [...table.querySelectorAll('tbody button')].filter(drawn).map((one) => (one.textContent ?? '').trim()),
-      underTheName,
+      folded,
       said,
       broken,
     }
@@ -275,18 +306,10 @@ for (const width of WIDTHS) {
       expect(seen.heads).toEqual(drawnAt(width))
       expect(seen.misplaced, 'cells that do not stand under their own head').toEqual([])
 
-      /* On a telephone the basis and the seasons stand under the name, every one of them; from 700 the
-         box under the name is not drawn at all. */
-      if (width < 700) {
-        expect(seen.underTheName.filter((one) => one.under !== one.columns)).toEqual([])
-      } else {
-        expect(seen.underTheName.filter((one) => one.under !== '')).toEqual([])
-      }
-
-      /* Measured is not assumed: the pills were there to be carried, four seasons on every long row. */
-      expect(seen.underTheName.reduce((sum, one) => sum + one.count, 0)).toBeGreaterThanOrEqual(
-        what.includes('four seasons') ? MEMBERS.length * 4 : MEMBERS.length - 3,
-      )
+      /* Under the name, on every row, exactly the columns this width folds, each saying what its column
+         says. */
+      expect(seen.folded.filter((parts) => parts.map((one) => one.name).join() !== foldedAt(width).join())).toEqual([])
+      expect(seen.folded.flat().filter((one) => one.here !== one.there)).toEqual([])
 
       expect(seen.said.length).toBeGreaterThan(MEMBERS.length * 2)
 

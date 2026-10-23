@@ -1213,21 +1213,27 @@
     "sectionNav": "The {name} section",
     "members": "Members",
     "events": "Events",
-    "basis": "Membership basis",
-    "basisValue": {
-      "payment": "Payment",
-      "feeExempt": "Exempt from the fee",
-      "balance": "Balance"
+    "memberColumns": {
+      "name": "Name",
+      "town": "Town",
+      "basis": "Basis",
+      "seasons": "Seasons",
+      "options": "Options"
     },
-    "basisOfTheSeason": "{basis} for {season}",
+    "basisWord": {
+      "payment": "Payment",
+      "balance": "Balance",
+      "feeExemptM": "Exempt",
+      "feeExemptF": "Exempt"
+    },
+    "basisNone": "No membership of this season",
+    "seasonsOf": "Seasons, {name}: {season}",
     "memberFilter": "Membership",
     "memberFilterValue": {
       "active": "Active",
       "inactive": "Inactive",
       "all": "All"
     },
-    "seasons": "Seasons of membership",
-    "lastSeason": "Last season",
     "pricing": "Price list",
     "ranking": "The right to be ranked",
     "rankingByPeriod": "By the period of payment",
@@ -1470,7 +1476,6 @@
     },
     "memberGone": "The member has been deleted.",
     "memberDeleteAsk": "Delete the member?",
-    "memberDeleteSureNamed": "Delete the member: {name}",
     "recordPayment": "Record the payment",
     "paymentRecorded": "The payment has been recorded.",
     "cancelMembership": "Cancel",
@@ -1482,7 +1487,6 @@
     },
     "askChangeToExemption": "Change the basis to an exemption for the {season} season? The record of the payment is deleted.",
     "membershipCancelled": "The membership has been cancelled.",
-    "grantExemption": "Grant the exemption",
     "askGrantExemption": "Grant the exemption from the fee for the {season} season?",
     "exemptionGranted": "The exemption has been recorded.",
     "basisChanged": "The basis of the membership has been changed.",

@@ -1213,21 +1213,27 @@
     "sectionNav": "Odeljak {name}",
     "members": "Članovi",
     "events": "Događaji",
-    "basis": "Osnov članstva",
-    "basisValue": {
-      "payment": "Uplata",
-      "feeExempt": "Oslobođen članarine",
-      "balance": "Balans"
+    "memberColumns": {
+      "name": "Ime i prezime",
+      "town": "Mesto",
+      "basis": "Osnov",
+      "seasons": "Sezone",
+      "options": "Opcije"
     },
-    "basisOfTheSeason": "{basis} za {season}",
+    "basisWord": {
+      "payment": "Uplata",
+      "balance": "Balans",
+      "feeExemptM": "Oslobođen",
+      "feeExemptF": "Oslobođena"
+    },
+    "basisNone": "Bez članstva u ovoj sezoni",
+    "seasonsOf": "Sezone, {name}: {season}",
     "memberFilter": "Članstvo",
     "memberFilterValue": {
       "active": "Aktivni",
       "inactive": "Neaktivni",
       "all": "Svi"
     },
-    "seasons": "Sezone članstva",
-    "lastSeason": "Poslednja sezona",
     "pricing": "Cenovnik",
     "ranking": "Pravo rangiranja",
     "rankingByPeriod": "Prema periodu uplate",
@@ -1470,7 +1476,6 @@
     },
     "memberGone": "Član je obrisan.",
     "memberDeleteAsk": "Obriši člana?",
-    "memberDeleteSureNamed": "Obriši člana: {name}",
     "recordPayment": "Upiši uplatu",
     "paymentRecorded": "Uplata je upisana.",
     "cancelMembership": "Storniraj",
@@ -1482,7 +1487,6 @@
     },
     "askChangeToExemption": "Promeni osnov u oslobođenje za sezonu {season}? Zapis o uplati se briše.",
     "membershipCancelled": "Članstvo je stornirano.",
-    "grantExemption": "Odobri oslobođenje",
     "askGrantExemption": "Odobri oslobođenje od članarine za sezonu {season}?",
     "exemptionGranted": "Oslobođenje je upisano.",
     "basisChanged": "Osnov članstva je promenjen.",
