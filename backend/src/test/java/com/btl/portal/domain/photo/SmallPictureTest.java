@@ -11,11 +11,11 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.zip.CRC32;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,12 +74,45 @@ class SmallPictureTest {
 		return bytes.toByteArray();
 	}
 
+	/*
+	 * THE THREE WEBP PICTURES, AS TEXT. The platform writes no WebP, so they were made once with
+	 * Pillow (a red field 400 by 300 with the blue square at 250, 50, lossy; a blue disc on nothing,
+	 * 300 by 300, lossless; a blue field 2001 by 2000, lossless) and are carried here in Base64
+	 * rather than as files: every file under backend/src is read as text by
+	 * JournalCitationsDoNotNameALineTest, and that floor reads no binary file today.
+	 */
+	private static final String MARKED_WEBP =
+			"UklGRlgCAABXRUJQVlA4IEwCAADwJwCdASqQASwBPjEYjEQiIaEQ3MwAIAMEtLdwuwCNjq/gH4AaYD8AP2O/qtOA"
+			+ "/gH4AfMzlAP4B+QG8AfwD2qv4B/AOkA4AD9AN8A/gH6EfvGVUaCw/EwFqQX3rThw4cOHDhw4cOHDhw4cOHDhw4cO"
+			+ "HDhw4cOHDhw4cOHBqTqXfznvXrTk3ZbCchpVPzhw4cOHDXa1WlT7l5WpBfetOHDXa1WlT65nvvWnDhw4a7Wq0qfX"
+			+ "USkF9604cODZnSclWG36dOnTp06dCeZNvFCQzSvzp06dOmwD/4gfl2E8J4TwlZ3zcxZpX506dOnTp06dOnTp06dO"
+			+ "nTp06dOnTp06dOnTp06dOnTp06dOnTp06dOnTp06dOnTp06dOnTp06dOnTp06dOnTp06dOnTp06dOnTp06dOnTp0"
+			+ "6dOnTp06dOnTp06dOnTp06bAAP7/ik/NzG1NIft0dgDBSZ9z/8J8kJipMAAR10bG2vtOhEUvzEls51vnDjCD3xmq"
+			+ "8MWVbCo6nP3ELWmaRZdEfL9apw9v/CRkIQHLlzEjvwmUJYaBH86D7B4U/Xo1YIbzmpKc0JlHJ9qtvY9FuuvtQyNg"
+			+ "yvAh0ry7ZwOoXnGU7HsJ1T073cDdds8RK45qtUqAY+QZ96jjUuGe0ucLnAwgLxIADNOxRj4Cic5KqmcU9n5iS2jZ"
+			+ "xGf75TuEMU87viFrUZImWiPPPanYnQR4k4gJ6XgSgD8bfO87DswGpiOzLSlqjSLzUVcJ4zuKwJ2Nfad8AxSXCHdk"
+			+ "m8ukgAAAAAAAAAAAAAA=";
+
+	private static final String SEE_THROUGH_WEBP =
+			"UklGRmQBAABXRUJQVlA4TFgBAAAvK8FKEA8QMf/zHwzIsW23bZS1ZAkqBaVRpaEUlsClbGP0HP//uGBwnoj+O3Ab"
+			+ "SZGycIw9VHnC5j/mbVBPcJV0AbhJ0pa4RC6GN4CHyzu0r0Xv6epvIzdvH9C2+hHkAQl5IBuk2mciT7xJyBOLhDzx"
+			+ "bnGubmKqbmjZJNW9EnnhaKK690Leqtjsq94LeSvZdDVlQgqVHVJNmZBCjQ5iyiRt21I89hXFRMopj44iXnKk6Nkl"
+			+ "NWVw6ZsyuohpGNK2JcVnP33uPueWyKebPNcAl4bkAGkhGAL0C8EYQCvELcL2u5BVHAeWawxerjlrWvPyHFcV01oT"
+			+ "zXFFN631KLQCntaae1pZgEof08o7VMKi0tq08iGUSKl0SyVlKnVTCZ6yAZRZoCwFZDwoe0KZGMrqUIaIsk2UuYIs"
+			+ "GGXUKDtHmT7KGkIGkrKZlBmFLCtlbCn7C5lkykr/x7xtAA==";
+
+	private static final String TOO_MANY_PIXELS_WEBP =
+			"UklGRsoAAABXRUJQVlA4TL4AAAAv0MfzAQcQ0f/+BwQkSf//kxH9z/jPf/7zn//85z//+c9//vOf//znP//5z3/+"
+			+ "85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+"
+			+ "85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+85///Oc///nPf/7zn//85z//+c9//vOf//znP//5z3/+"
+			+ "85///Oc///nP/9EC";
+
 	private static byte[] resource(String name) {
-		try (InputStream in = SmallPictureTest.class.getResourceAsStream("/photos/" + name)) {
-			return in.readAllBytes();
-		} catch (IOException cannot) {
-			throw new UncheckedIOException(cannot);
-		}
+		return Base64.getDecoder().decode(switch (name) {
+			case "marked.webp" -> MARKED_WEBP;
+			case "see-through.webp" -> SEE_THROUGH_WEBP;
+			default -> TOO_MANY_PIXELS_WEBP;
+		});
 	}
 
 	private static BufferedImage read(SmallPicture.Cut cut) {

@@ -1985,7 +1985,7 @@ describe('Competitors', () => {
     const hiding = ['000002', '000007']
     const served = everybody.map((one) =>
       hiding.includes(one.memberNumber)
-        ? { ...one, profileHidden: true, photo: null, crop: null, bio: null }
+        ? { ...one, profileHidden: true, photo: null, crop: null, smallPhoto: null, bio: null }
         : one,
     )
     const server = serverThat((path) =>
