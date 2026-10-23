@@ -181,9 +181,15 @@ class PasswordResetApi {
 		   reset is not conditioned on `email_confirmed_at` in either direction. */
 		String address = WhatAnAddressLooksLike.withoutTheSpacesAround(typed.email());
 
-		/* AND THE LANGUAGE OFF THE SAME ROW, in the same statement as the address it goes to. */
+		/* AND THE LANGUAGE OFF THE SAME ROW, in the same statement as the address it goes to.
+
+		   FOR UPDATE (22.10.2026, the security review of PR 633), for the reason
+		   `EmailConfirmationApi.resend` gives at length: without it a request for the old address,
+		   read while the administration was correcting it, wrote a live link after the correction
+		   had retired every other, and mailed it to the old address. Held, the lookup waits and is
+		   asked again of the row as it now stands. */
 		Optional<Found> found = db.sql("select id, email, mail_language from account"
-						+ " where lower(email) = lower(?)")
+						+ " where lower(email) = lower(?) for update")
 				.param(address)
 				.query((row, i) -> new Found(row.getLong(1), row.getString(2),
 						MailLanguage.ofTheColumn(row.getString(3))))
@@ -244,6 +250,18 @@ class PasswordResetApi {
 		}
 
 		boolean noToken = typed.token() == null || typed.token().isBlank();
+
+		/* THE ACCOUNT THE LINK NAMES IS LOCKED BEFORE THE LINK ITSELF (22.10.2026, the security
+		   review of PR 633), the order `EmailConfirmationApi.confirm` keeps too. The administration's
+		   correction of an address not yet confirmed (`MemberDataWriteApi`) holds the account while
+		   it retires this table's rows; a spend that held the link first and then waited for the
+		   account would be the other half of a deadlock, and PostgreSQL would end one of the two in
+		   an error. Held in this order, a spend that comes second finds the link already gone. */
+		if (!noToken) {
+			db.sql("select id from account where id ="
+							+ " (select account_id from password_reset_token where token_hash = ?) for update")
+					.param(SecretToken.hashOf(typed.token())).query(Long.class).list();
+		}
 
 		/* FOR UPDATE, the same guard `SignInApi` puts on the row it reads before
 		   deciding whether to spend it: two requests racing the same token must not
