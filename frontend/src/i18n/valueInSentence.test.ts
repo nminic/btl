@@ -302,6 +302,9 @@ describe('a sentence with a value put into it', () => {
          recommendation): a bare year after „za sezonu", as above. */
       'admin.askGrantExemption',
       'admin.dropRaceNamed',
+      /* „Izmeni podatke: {name}" (23.10.2026), the name of the pencil on a member's row, as the deletion's
+         beside it: the name after a colon, in the nominative. */
+      'admin.editMemberNamed',
       /* „Ovim brišeš i {count} rezultata.", asked before an event is deleted (owner,
          28.09.2026). The value is a COUNT, so it governs the noun rather than being
          governed by one, and the three plural forms are where that is answered. */
@@ -496,6 +499,7 @@ describe('a sentence with a value put into it', () => {
       'seo.calendarDay.recordTitle <- formatDate',
       'seo.competitor.awardsDescription',
       'seo.competitor.awardsTitle',
+      'seo.competitor.dataTitle',
       'seo.competitor.recordDescription',
       'seo.competitor.recordTitle',
       'seo.event.recordDescription',

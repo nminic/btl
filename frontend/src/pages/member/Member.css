@@ -52,8 +52,9 @@
   width: 100%;
 }
 
-/* TWO PANELS BESIDE EACH OTHER (PDL P11, owner, 18.10.2026, "Strana Podešavanja, sa snimaka": the
-   password beside the personal data, and the theme beside the language of the mail). One column on a
+/* TWO PANELS BESIDE EACH OTHER (PDL P11, owner, 18.10.2026, "Strana Podešavanja, sa snimaka", and
+   since 23.10.2026 the three rows of the settings: the password beside the privacy, the picture beside
+   the words about oneself, the theme beside the language of the mail). One column on a
    telephone and two from 51.25em, the width at which the navigation unfolds (`app/Shell.css`) and
    `forms/FormRenderer.css` lays a row out in columns, so the portal has one width at which it goes
    from one column to several and not one of its own for this.
@@ -68,6 +69,14 @@
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-16);
   align-items: start;
+}
+
+/* THE TALL ROWS OF THE SETTINGS, since 23.10.2026 (PDL, „Strana Podešavanja u tri visoka reda sa dve
+   kolone", owner: „a u desni stubac treba da dođe u njenoj visini Tekst o sebi boks"): the two boxes of a
+   row are as tall as each other, so the shorter one ends where its neighbour ends. A pair that is not a
+   row of the settings keeps the rule above it, each panel as tall as what it holds. */
+.member__row {
+  align-items: stretch;
 }
 
 @media (min-width: 51.25em) {

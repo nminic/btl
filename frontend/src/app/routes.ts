@@ -180,6 +180,7 @@ export const EXTRA_ADDRESSES: Address[] = [
   { path: '', seoKey: 'home' },
   { path: 'takmicar/:memberNumber', seoKey: 'competitor' },
   { path: 'takmicar/:memberNumber/priznanja', seoKey: 'competitorAwards' },
+  { path: 'takmicar/:memberNumber/podaci', seoKey: 'competitorData' },
   /* Before the event, because the static segment has to win: /kalendar/dan/... is
      a day and never a race whose address happens to begin with "dan". */
   { path: 'kalendar/dan/:date', seoKey: 'calendarDay' },

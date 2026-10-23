@@ -40,6 +40,7 @@ export const aNeverPaidRecord = {
   profileHidden: false,
   birthdayShown: 'none',
   address: 'Ulica Nova 3',
+  shirtSize: 'XL',
 }
 
 /**

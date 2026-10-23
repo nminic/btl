@@ -11,6 +11,7 @@ import type { Competitor, RacingPair, Team } from '../../data/types'
 import { Sentence } from '../../i18n/Sentence'
 import { useI18n } from '../../i18n/useI18n'
 import { useProfileLink } from './useProfileLink'
+import { THE_DATA, useWhoReadsTheData } from './whoReadsTheData'
 
 /**
  * Who the person is, above everything else, and the same on every part of the
@@ -225,6 +226,10 @@ export function ProfileParts({ competitor }: { competitor: Competitor }) {
      `/takmicar/000127-nikola-minic` to trophies at `/takmicar/000127/priznanja`
      and back again, which is two addresses for one person on one screen. */
   const base = profilePath(competitor, locale)
+  /* AND THE CARD „PODACI", AFTER THE TWO, offered only to whoever may open it (owner, 22.10.2026, PDL
+     „Profil dobija karticu „Podaci", posle „Pregled" i „Priznanja i nagrade", koju vidi samo sam član i
+     administracija"). Asked of the one home the card asks too (`whoReadsTheData.ts`). */
+  const reader = useWhoReadsTheData(competitor.memberNumber)
 
   return (
     <PartsNav
@@ -242,6 +247,7 @@ export function ProfileParts({ competitor }: { competitor: Competitor }) {
           label: t('profile.parts.overview'),
         },
         { to: `${base}/priznanja`, label: t('profile.parts.awards') },
+        ...(reader === null ? [] : [{ to: `${base}${THE_DATA}`, label: t('profile.parts.data') }]),
       ]}
     />
   )
@@ -272,7 +278,7 @@ export function ProfileTop({
   team,
   competitors,
   pairs,
-  seasons,
+  seasons = [],
   season,
 }: {
   competitor: Competitor
@@ -282,10 +288,12 @@ export function ProfileTop({
   /** The seasons the control offers. It governs both parts of the profile, not one
    *  of them (owner, 31.07.2026), which is why it stands with them rather than
    *  inside either. */
-  seasons: number[]
+  seasons?: number[]
   /** Which of them the profile is being read in, worked out by the part that draws
-   *  the content, so the control cannot disagree with what is below it. */
-  season: string
+   *  the content, so the control cannot disagree with what is below it. LEFT OUT by the card
+   *  „Podaci" (23.10.2026), which is about no season, and then no control is drawn: a control that
+   *  changes nothing on the screen it stands on is worse than none (the note on `ProfileParts`). */
+  season?: string
 }) {
   return (
     <div className="profile__top">
@@ -306,9 +314,11 @@ export function ProfileTop({
           markup, two arrangements, and no copy of the control. */}
       <div className="profile__belt">
         <ProfileParts competitor={competitor} />
-        <div className="rankings__head-tool profile__season">
-          <SeasonPicker seasons={seasons} season={season} />
-        </div>
+        {season !== undefined && (
+          <div className="rankings__head-tool profile__season">
+            <SeasonPicker seasons={seasons} season={season} />
+          </div>
+        )}
       </div>
     </div>
   )

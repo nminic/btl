@@ -459,8 +459,11 @@ class MemberDataWriteApiTest {
 		assertThat(data.path("address").asString()).isEqualTo("Ulica 1");
 		assertThat(data.path("phone").asString()).isEqualTo("0601234567");
 		assertThat(data.path("placeId").asLong()).isEqualTo(geonames);
-		assertThat(data.path("city").isNull()).isTrue();
-		assertThat(data.path("country").isNull()).isTrue();
+		/* THE TOWN IS NAMED WHICHEVER ROAD IT CAME BY (23.10.2026), so the form opens with it: the
+		   codebook's own name and its country, read off the codebook and not written here. */
+		assertThat(data.path("city").asString()).isEqualTo(db.sql("select p.name from competitor c"
+				+ " join place p on p.id = c.place_id where c.id = ?").param(corrected).query(String.class).single());
+		assertThat(data.path("country").asString()).isEqualTo("RS");
 		assertThat(data.path("shirtSize").asString()).isEqualTo("M");
 
 		Set<String> names = new TreeSet<>(data.propertyNames());

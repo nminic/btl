@@ -12,13 +12,15 @@ import type { Answers, At } from './support/harness.ts'
  * panel then LANDS, and this is what the owner looked at:
  *
  * <ol>
- * <li><b>The password stands beside the personal data, and the theme beside the language of the mail</b>
- * (his words: „Boksovi „Tema" i „Jezik pošte" stoje jedan pored drugog u istom redu; boks za promenu
- * lozinke stoji pored boksa za lične podatke"), <b>on a telephone one under the other</b> (the UI
- * standard of the repository, `CLAUDE.md`). Beside is asked as the same top and the first's right edge
- * not past the second's left; under is asked as the same left edge and the second's top not above the
- * first's bottom. Asked for a member whose fee stands and for somebody who has not paid, whose panels
- * differ.
+ * <li><b>Three tall rows of two since 23.10.2026: the password beside the privacy, the picture beside
+ * the words about himself, the theme beside the language of the mail</b> (PDL, „Strana Podešavanja u
+ * tri visoka reda sa dve kolone": „lozinka prelazi levo na njeno mesto, a Privatnost tekst iz priloga
+ * ide u desni stubac pored boksa za lozinku [...] u desni stubac treba da dođe u njenoj visini Tekst o
+ * sebi boks"), <b>the two of a row as tall as each other, and on a telephone one under the other</b>
+ * (the UI standard of the repository, `CLAUDE.md`). Beside is asked as the same top, the same bottom,
+ * and the first's right edge not past the second's left; under is asked as the same left edge and the
+ * second's top not above the first's bottom. Asked for a member whose fee stands and for somebody who has
+ * not paid, whose panels differ: his password has no neighbour and takes the whole row.
  * <li><b>No empty space under the field for choosing a picture, and none between the box for the words
  * about himself and the button</b> (his words: „veliki prazan prostor"). The cause was
  * `.rankings__field--wide { flex: 1 1 14rem }` meeting a column, where the basis is a HEIGHT: each field
@@ -55,6 +57,7 @@ const MEMBER = {
   birthdayShown: 'none',
   address: 'Bulevar Pupina 10',
   phone: '+381 60 123 456',
+  shirtSize: 'L',
 }
 
 const NEVER_PAID = {
@@ -74,6 +77,7 @@ const NEVER_PAID = {
   profileHidden: false,
   birthdayShown: 'none',
   address: 'Ulica Nova 3',
+  shirtSize: 'XL',
 }
 
 const ROW = {
@@ -102,22 +106,22 @@ const A_MEMBER: Answers = {
   '/api/me/photo': { waiting: null, standing: null },
 }
 
-/** Somebody who registered and has not paid: his data and his password, the theme and the mail. */
+/** Somebody who registered and has not paid: his password, the theme and the mail. */
 const SOMEBODY_WHO_HAS_NOT_PAID: Answers = {
   '/api/me': { role: 'competitor', account: 1, member: NEVER_PAID, mailLanguage: 'sr' },
 }
 
 const PANELS = {
-  data: 'section[aria-labelledby="account-personal"]',
   password: 'section[aria-labelledby="account-password"]',
+  privacy: 'section[aria-labelledby="settings-privacy"]',
   theme: 'section[aria-labelledby="settings-appearance"]',
   mail: 'section[aria-labelledby="settings-mail"]',
   picture: 'section[aria-labelledby="settings-picture"]',
   bio: 'section[aria-labelledby="settings-bio"]',
 } as const
 
-/** Only the screen of the settings, drawn with its panels, has the personal data. */
-const READY = PANELS.data
+/** Only the screen of the settings, drawn with its panels, has the password with the theme. */
+const READY = PANELS.password
 
 /** Where the panels stand two to a row: from 51.25em, which is 820px at the browser's own text. */
 const BESIDE: At[] = [
@@ -187,6 +191,7 @@ const expectPair = async (page: Page, first: string, second: string, columns: 1 
 
   if (columns === 2) {
     expect(Math.abs(a.top - b.top), `${why}: they stand in one row`).toBeLessThanOrEqual(SLACK)
+    expect(Math.abs(a.bottom - b.bottom), `${why}: the two of a row are as tall as each other`).toBeLessThanOrEqual(SLACK)
     expect(a.right, `${why}: the first ends before the second begins`).toBeLessThanOrEqual(b.left + SLACK)
   } else {
     expect(Math.abs(a.left - b.left), `${why}: they stand against one left edge`).toBeLessThanOrEqual(SLACK)
@@ -206,22 +211,24 @@ for (const [columns, widths] of [
   [1, UNDER],
 ] as const) {
   for (const at of widths) {
-    test(`the password stands ${columns === 2 ? 'beside' : 'under'} the personal data and the theme ${columns === 2 ? 'beside' : 'under'} the language of the mail, for a member whose fee stands, ${label(at)}`, async ({ open: opener }) => {
+    test(`three rows, the two of each ${columns === 2 ? 'beside' : 'under'} each other, for a member whose fee stands, ${label(at)}`, async ({ open: opener }) => {
       const { page, probe } = await open(opener, at, A_MEMBER)
 
       await page.locator(PANELS.mail).waitFor({ state: 'visible' })
-      await page.locator(PANELS.password).waitFor({ state: 'visible' })
+      await page.locator(PANELS.privacy).waitFor({ state: 'visible' })
+      await page.locator(PANELS.bio).waitFor({ state: 'visible' })
 
       expect(await pairsAreTwoColumns(page), 'the width reads the arrangement it was chosen for').toBe(columns)
 
-      await expectPair(page, PANELS.data, PANELS.password, columns, 'the personal data and the password')
+      await expectPair(page, PANELS.password, PANELS.privacy, columns, 'the password and the privacy')
+      await expectPair(page, PANELS.picture, PANELS.bio, columns, 'the picture and the words about himself')
       await expectPair(page, PANELS.theme, PANELS.mail, columns, 'the theme and the language of the mail')
 
       expect(probe.widened, 'the page was widened by something running off its right edge').toBe(0)
       expect(probe.sideways, 'the page scrolls sideways').toBe(0)
     })
 
-    test(`the same for somebody who has not paid, ${columns === 2 ? 'beside' : 'under'}, ${label(at)}`, async ({ open: opener }) => {
+    test(`the theme and the mail ${columns === 2 ? 'beside' : 'under'} each other and the password across the row for somebody who has not paid, ${label(at)}`, async ({ open: opener }) => {
       const { page, probe } = await open(opener, at, SOMEBODY_WHO_HAS_NOT_PAID)
 
       await page.locator(PANELS.mail).waitFor({ state: 'visible' })
@@ -229,8 +236,14 @@ for (const [columns, widths] of [
 
       expect(await pairsAreTwoColumns(page)).toBe(columns)
 
-      await expectPair(page, PANELS.data, PANELS.password, columns, 'the personal data and the password')
       await expectPair(page, PANELS.theme, PANELS.mail, columns, 'the theme and the language of the mail')
+
+      /* HIS PASSWORD HAS NO NEIGHBOUR, so it takes the whole row: as wide as the theme and the mail
+         together, from the left edge of the one to the right edge of the other. */
+      const row = await boxesOf(page, { password: PANELS.password, theme: PANELS.theme, mail: PANELS.mail })
+
+      expect(Math.abs((row['password']?.left ?? 0) - (row['theme']?.left ?? 1)), 'the password starts where the row starts').toBeLessThanOrEqual(SLACK)
+      expect(Math.abs((row['password']?.right ?? 0) - (row['mail']?.right ?? 1)), 'the password ends where the row ends').toBeLessThanOrEqual(SLACK)
 
       expect(probe.widened).toBe(0)
       expect(probe.sideways).toBe(0)

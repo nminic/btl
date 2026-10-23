@@ -1198,6 +1198,20 @@ class MeApiTest {
 	 * every other answer: the caller's address and number are in the caller's answer and in no
 	 * other, however they are spelt.
 	 */
+	/**
+	 * HIS SHIRT SIZE, OFF HIS OWN ROW AND NOBODY ELSE'S (23.10.2026, the card „Podaci" opens with it).
+	 * Two members with two different sizes, so the size of the first row, or of the caller of some
+	 * other request, cannot pass for his.
+	 */
+	@Test
+	void hisShirtSizeIsHisOwn() throws Exception {
+		db.sql("update competitor set shirt_size = 'XL' where member_number = ?").param(ME).update();
+		db.sql("update competitor set shirt_size = 'XS' where member_number = ?").param(LAPSED).update();
+
+		assertThat(answerFor(MY_ACCOUNT).path("member").path("shirtSize").asString()).isEqualTo("XL");
+		assertThat(answerFor(THE_LAPSED_ACCOUNT).path("member").path("shirtSize").asString()).isEqualTo("XS");
+	}
+
 	@Test
 	void hisPostalAddressAndHisTelephoneAreHisOwn() throws Exception {
 		db.sql("update competitor set address = ? where member_number = ?")
@@ -1787,14 +1801,15 @@ class MeApiTest {
 				.as("one of the names this case excuses is not on this record at all, so the"
 						+ " excuse is for nothing")
 				.containsAll(Set.of("referralCode", "referredCount", "membershipBasis",
-						"membershipSeason", "active", "address", "phone", "bioWaiting"));
-		/* THE PUBLIC LIST CARRIES NEITHER OF THE LAST TWO, and that is a decision and not a gap:
-		   PDL „Uvek privatno: mejl, telefon i adresa". Asked of the record's components so that a
+						"membershipSeason", "active", "address", "phone", "bioWaiting", "shirtSize"));
+		/* THE PUBLIC LIST CARRIES NONE OF THESE, and that is a decision and not a gap:
+		   PDL „Uvek privatno: mejl, telefon i adresa", and the size of the shirt since 23.10.2026,
+		   which section 3 of the privacy policy lists among what is never shown. Asked of the record's components so that a
 		   field added to it tomorrow under either name is a red case on the day it is written. */
 		assertThat(theirs)
 				.as("the public list carries a member's postal address, telephone or words that"
 						+ " wait, which are private (PDL) and are handed to him alone through this route")
-				.doesNotContain("address", "phone", "bioWaiting");
+				.doesNotContain("address", "phone", "bioWaiting", "shirtSize");
 		/* `active` IS THE FOURTH, since 11.10.2026, AND ITS TWIN IS THE ROW ITSELF. The public
 		   list is `where c.active`, so on it the fact is not a field but the presence of the
 		   member (`frontend/src/data/types.ts`: "it is the PRESENCE OF THE ROW"), and a lapsed
@@ -1804,7 +1819,7 @@ class MeApiTest {
 				.as("a fact this record carries has no twin on the public list and is not one of the"
 						+ " four named for it: give it a twin, or name it here with its reason")
 				.containsExactlyInAnyOrder("referralCode", "referredCount", "active", "address",
-						"phone", "bioWaiting");
+						"phone", "bioWaiting", "shirtSize");
 		shared.remove("membershipBasis");
 		/* And the season beside it, which leaves with the basis and is withheld with it. */
 		shared.remove("membershipSeason");
