@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { configure, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import sr from '../../i18n/sr.json'
@@ -320,6 +322,18 @@ describe('the card the administration opens', () => {
     expect(await screen.findByRole('textbox', { name: /Ime oca/ })).toHaveValue('Milan')
   }, SLOW)
 
+  it.each([
+    ['cannot be reached', () => Promise.reject(new TypeError('no server'))],
+    ['answers something that is not JSON', () => new Response('<!doctype html><title>ne ovo</title>', { status: 200 })],
+  ])('says the card could not be read when the server %s', async (_what, answer) => {
+    const { stop } = serverThat((path) => (path === `/api/members/${SOMEBODY}/data` ? answer() : null))
+
+    stops.push(stop)
+    asTheAdministration()
+
+    expect(await screen.findByRole('button', { name: /Pokušaj ponovo/ })).toBeVisible()
+  }, SLOW)
+
   it('says the card could not be read when the server will not give it', async () => {
     const { stop } = serverThat((path) => (path === `/api/members/${SOMEBODY}/data` ? json({}, 404) : null))
 
@@ -331,6 +345,30 @@ describe('the card the administration opens', () => {
 })
 
 describe('his own card', () => {
+  /* THE LIST IS A CACHE OF THE VISIT AND THE ANSWER ABOUT HIM IS THE SERVER'S, so for the length of a
+     visit they can disagree: his fee stands and the list read earlier does not carry him (his fee was
+     recorded since). His card is then drawn under the head of his own record (`HisOwnRecord`), as his
+     profile is, and not refused for a row the list does not have yet. */
+  it('is drawn under the head of his own record when the list read earlier does not carry him', async () => {
+    const { stop } = serverThat((path) => {
+      if (path !== '/api/competitors') {
+        return null
+      }
+
+      const file: { memberNumber: string; active: boolean }[] = JSON.parse(
+        readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
+      )
+
+      return json(file.filter((one) => one.active && one.memberNumber !== HIS))
+    })
+
+    stops.push(stop)
+    renderAt(`/sr/takmicar/${HIS}/podaci`, 'competitor', HIS)
+
+    expect(await screen.findByRole('heading', { level: 2, name: sr.account.personalTitle })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 1, name: /Strahinja Vukićević/ })).toBeVisible()
+  }, SLOW)
+
   it('sends a new town together with its country, and a new size alone', async () => {
     const user = setupUser()
     const { asked, stop } = serverThat((path, init) =>

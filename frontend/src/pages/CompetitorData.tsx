@@ -159,11 +159,10 @@ function TheCard({
         }
 
         /* NOT ON THE PUBLIC LIST, which for a reader who got this far is the administration opening the
-           card of a member whose fee has lapsed: the card, under a heading of its own. A list still
-           being read is the same wait the profile gives (`profile/visible.ts`). */
-        return readable.kind === 'waiting' ? (
-          <Loader inline={false} />
-        ) : (
+           card of a member whose fee has lapsed: the card, under a heading of its own. No wait for the
+           server to say who is reading, unlike the profile's (`profile/visible.ts`): the card asked that
+           before it drew anything (`CompetitorData`), so by here it has been said. */
+        return (
           <div className="profile">
             <h1>{t('profile.parts.data')}</h1>
             {children}
