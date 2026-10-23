@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -94,7 +95,13 @@ class SmallPicturesTest {
 				throw sneaky(thrown);
 			};
 
-			assertThat(small.of(ONE, failing)).as("%s", thrown).isEqualTo(SmallPictures.Answer.NOTHING);
+			/* Asked through `assertThatCode`, so that a throw which escapes is a failed case and not
+			   an error that takes the whole test run with it: an OutOfMemoryError left loose here
+			   ends the forked JVM, which is exactly what it would do to a request thread. */
+			SmallPictures.Answer[] answered = new SmallPictures.Answer[1];
+			assertThatCode(() -> answered[0] = small.of(ONE, failing)).as("%s escaped", thrown)
+					.doesNotThrowAnyException();
+			assertThat(answered[0]).as("%s", thrown).isEqualTo(SmallPictures.Answer.NOTHING);
 			assertThat(small.of(ONE, counting(calls, 10))).as("%s", thrown)
 					.isEqualTo(SmallPictures.Answer.NOTHING);
 			assertThat(calls).as("%s was cut again", thrown).hasValue(1);
