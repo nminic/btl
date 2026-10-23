@@ -600,6 +600,22 @@ class ResultsByTheLeagueApi {
 
 		LocalDate day = named.id() == null ? named.date() : race.date();
 
+		/* A RACE THE EVENT ALREADY HAS UNDER THE NAME TYPED IS THE RACE, and the rows go on it
+		   (PDL, owner, 23.10.2026, „Unos rezultata ne sme da napravi duplu trku”: „pre nego što napravi
+		   novu trku, server traži trku istog imena u izdanju koje je našao, i rezultat ide na nju”).
+		   Asked of the event as it stands once it is HELD, so a save that waited for another save
+		   meets the race that one made. What makes a race „of that name” is
+		   {@link #theRaceTheEventAlreadyHas}. A race found is entered on exactly as one chosen by its
+		   key, so nothing below (the year of the day, the day the event begins on) is asked of it:
+		   no race is put on the event. */
+		if (event.isPresent()) {
+			Optional<TheRace> there = theRaceTheEventAlreadyHas(event.get().id(), race, day);
+
+			if (there.isPresent()) {
+				return onTheEvent(theRows(there.get(), rows), event.get().id());
+			}
+		}
+
 		/* A NEW RACE GOES ON AN EVENT OF ITS OWN YEAR, except on the morning of 1 January before ten, when
 		   it may go on an event of the year just ended or of the year just begun.
 
@@ -718,6 +734,64 @@ class ResultsByTheLeagueApi {
 				.params(address, named.name().strip(), named.date(), named.city().strip(), country,
 						WhatAnEventCarries.A_RACE)
 				.query(Long.class).optional();
+	}
+
+	/**
+	 * THE RACE OF THIS EVENT THAT A NEW RACE TYPED HERE WOULD BE A SECOND OF, or nothing: the race of
+	 * the same name, on the same day and of the same measure.
+	 *
+	 * <p>The owner's sentence names the NAME and no more (PDL, 23.10.2026: „traži trku istog imena u
+	 * izdanju koje je našao”). The rest is mine, derived from two entries and measured by the cases of
+	 * {@code ResultsByTheLeagueApiTest}, and each part of it is there because the name alone would put a
+	 * run on a race it was not run on:
+	 * <ul>
+	 * <li><b>The name, in any case and with the spaces at its ends taken off</b>: the comparison the
+	 * screen makes of a name typed exactly (owner, 19.10.2026, „bez obzira na velika i mala slova”,
+	 * {@code forms/exactName.ts}), and the server stores a name stripped.
+	 * <li><b>The day</b>: an event of several days is one event of races on several days
+	 * (PDL P28a, 10.08.2026), and a race of the same name on another day is another race: the member
+	 * ran on the day typed, and a result moved to another day would be counted under a day he did not run.
+	 * The entry itself, in the account of what happened (the coordinator's text, not the owner's words),
+	 * calls the fault a second race „istog imena istog dana”.
+	 * <li><b>The measure</b>: two races of one name are the ordinary case, not a fault
+	 * (PDL, owner, 23.08.2026, „ja mogu da u okviru Beogradskog maratona imam dve trke, od 42.2 i 21.1, i
+	 * obe će dobiti default naziv Beogradski maraton”), and the portal tells such races apart by their
+	 * measure, which it writes in brackets after the name wherever it names a race (PDL, „Trka se svuda
+	 * zove „ime, godina, mera u zagradi””): the length of a race of a length, the limit of a race to a
+	 * limit. A half-marathon time put on the marathon would be counted at the marathon's course. A race
+	 * that fixes no measure (a free one) has none to compare, and the columns hold nought for it, which
+	 * is what a new one is written with ({@link #aNewRace}), so the same comparison answers.
+	 * </ul>
+	 *
+	 * <p><b>The kind is not asked, and that is not an omission.</b> The schema ties it to the measure
+	 * both ways ({@code race_only_a_timed_race_has_a_limit} and
+	 * {@code race_only_a_length_race_fixes_a_distance}, V7): a limit above nought is a race to a limit, a
+	 * length above nought is a race of a length, and nought of both is a free race, so two races that agree
+	 * on the limit and the length agree on the kind. A condition on it was written first and a mutation
+	 * that took it out left every case green, which is how it was found to answer nothing.
+	 *
+	 * <p><b>The climb is not part of it, and that is my reading, not a decision.</b> The measure the
+	 * portal names a race by has no climb in it, so a race of that name, day, kind and length is the same
+	 * race whatever climb was typed, and the rows are counted at the climb the race has (a figure the race
+	 * fixes is the race's, {@link WhatARaceCarries#figuresOf}). Read the other way, a climb that differs
+	 * would make a second race of one name, one day and one length, which is the fault the owner named.
+	 * The owner may object.
+	 *
+	 * <p>The lowest key where more than one answers, because races of one name that were made before this
+	 * was asked are there already and the choice must not depend on the order a table happens to be read.
+	 * The name is compared by the database ({@code lower}, in the column's own collation), so a letter
+	 * the collation lowercases is lowercased the way the column is, and a name that differs by a letter
+	 * (a diacritic included) is another name.
+	 */
+	private Optional<TheRace> theRaceTheEventAlreadyHas(long event, NamedRace race, LocalDate day) {
+		boolean course = WhatARaceCarries.fixesTheCourse(race.kind());
+		boolean time = WhatARaceCarries.fixesTheTime(race.kind());
+
+		return db.sql("select id from race where event_id = ? and lower(name) = lower(?) and date = ?"
+						+ " and limit_seconds = ? and distance_km = ? order by id limit 1")
+				.params(event, race.name().strip(), day, time ? race.limitSeconds() : 0,
+						course ? race.distanceKm() : BigDecimal.ZERO)
+				.query(Long.class).optional().flatMap(this::raceOf);
 	}
 
 	/** The race, with what its kind fixes and nought for the rest, as the approval writes one. */
