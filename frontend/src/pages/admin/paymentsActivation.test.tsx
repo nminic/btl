@@ -1430,7 +1430,10 @@ describe('activating a membership from the payments screen', () => {
         fireEvent.click(one, { detail: 2 })
       }
 
-      /* Nothing left through either door, and the question still stands to be answered. */
+      /* NOTHING STARTED, said by the sheet itself and not only by the server: a request is on its way
+         before it is recorded, so a count read at once would pass over a press that did send. The
+         sheet's own region says „Šalje se" from the moment an answer starts one (`working`). */
+      expect(within(sheet).getByRole('status')).toBeEmptyDOMElement()
       expect(everythingWritten(server.asked)).toEqual([])
       expect(screen.getByRole('dialog')).toBe(sheet)
 
