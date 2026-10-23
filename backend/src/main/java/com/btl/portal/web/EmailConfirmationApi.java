@@ -152,6 +152,22 @@ class EmailConfirmationApi {
 		   that is actually in the table. */
 		String hash = SecretToken.hashOf(typed.token());
 
+		/* THE ACCOUNT IS LOCKED FIRST, AND THE LINK IS READ AGAIN UNDER THAT LOCK (22.10.2026,
+		   the security review of PR 633). The administration may correct an address that is
+		   not yet confirmed (`MemberDataWriteApi`), and that correction retires every link the
+		   old address was sent. Read once, without the lock, a link opened in the same instant
+		   was found alive, and the `update` below then waited for the correction and wrote the
+		   moment over the NEW address - which a man who reads only the old mailbox would then
+		   have confirmed for somebody else. So the account named by the link is held, and only
+		   then is the link asked about: a correction that got there first has deleted it, and
+		   the answer is the one any dead link gets.
+
+		   THE ACCOUNT BEFORE THE LINK, and every route that touches both keeps that order
+		   (`PasswordResetApi` too), so two of them never hold one each and wait for the other. */
+		db.sql("select id from account where id ="
+						+ " (select account_id from email_verification_token where token_hash = ?) for update")
+				.param(hash).query(Long.class).list();
+
 		/* THE ACCOUNT'S OWN `email_confirmed_at` TRAVELS WITH THE LINK, joined in
 		   rather than asked in a second query, because `EmailConfirmation.decide`
 		   has to see it BEFORE it asks whether this particular link has run out -
@@ -236,8 +252,15 @@ class EmailConfirmationApi {
 
 		/* THE LANGUAGE OFF THE SAME ROW AS THE ADDRESS, in the same statement: the letter is
 		   written in the language of the account it goes to (owner, PDL P18, 03.10.2026). */
+		/* FOR UPDATE, AND IT IS WHAT KEEPS A LINK FROM BEING MINTED FOR AN ADDRESS THAT HAS JUST
+		   STOPPED BEING THE ACCOUNT'S (22.10.2026, the security review of PR 633). Read without it,
+		   a resend for the old address found the account while the administration's correction
+		   (`MemberDataWriteApi`) was moving it, and wrote its link after the correction had retired
+		   every other: a live link, mailed to the old address, to confirm the new one. Held, the
+		   lookup waits for the correction and PostgreSQL asks the row again as it now stands, so the
+		   old address matches nothing and nothing is written or sent. */
 		Optional<Found> found = db.sql("select id, email, mail_language from account"
-						+ " where lower(email) = lower(?) and email_confirmed_at is null")
+						+ " where lower(email) = lower(?) and email_confirmed_at is null for update")
 				.param(address)
 				.query((row, i) -> new Found(row.getLong(1), row.getString(2),
 						MailLanguage.ofTheColumn(row.getString(3))))

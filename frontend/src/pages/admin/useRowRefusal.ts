@@ -4,8 +4,9 @@ import { useState } from 'react'
  * A REFUSAL BESIDE ONE ROW, WHICH STANDS UNTIL THE NEXT ACTION ON THAT ROW SUCCEEDS (PENDING 29660,
  * review of PR 579, 19.10.2026, measured).
  *
- * <p><b>The fault.</b> `RowMembership` and `RowPayment` each hold the sentence of the last refusal
- * they met, and each cleared it only on THEIR OWN next success. A cancellation refused with „pa
+ * <p><b>The fault.</b> `RowMembership` and `RowPayment`, the two components a row was drawn with until
+ * 22.10.2026 (`MemberRow.tsx` is one since), each held the sentence of the last refusal they met, and
+ * each cleared it only on THEIR OWN next success. A cancellation refused with „pa
  * ništa nije urađeno” and then a payment over the exemption that went through left both on the row:
  * „Osnov članstva je promenjen.” in the live region and, beside the buttons, a sentence saying that
  * nothing had been done. The two components are siblings, so neither can see the other's state.

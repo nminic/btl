@@ -435,8 +435,8 @@ export type Member = {
   membershipSeason?: number
   /**
    * Every season he holds a membership of, oldest first, each on its own basis; empty for a member
-   * who holds none. The column „Poslednja sezona" is the LAST of these (PDL P8, 18.10.2026: „Kolona
-   * sa poslednjom sezonom u moderaciji broji svaki osnov”), so that fact has this one home.
+   * who holds none. The row's list of seasons ticks exactly these (owner, 22.10.2026, „Red na ekranu
+   * članova ima pet kolona"), so that fact has this one home.
    */
   seasons: MemberSeason[]
   /**

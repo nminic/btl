@@ -6,6 +6,7 @@ import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
+import { seasonsOf } from '../../test/memberRow'
 import { setupUser } from '../../test/user'
 import { QUEUE } from './queues'
 
@@ -1837,6 +1838,10 @@ describe('activating a membership from the payments screen', () => {
           memberNumber: '000019',
           firstName: 'Nikola',
           lastName: 'Zorić',
+          /* Renewed on his balance for the season on sale, which the server answers as the basis of that
+             season as well (`MembersApi`). */
+          membershipBasis: 'balance',
+          membershipSeason: 2031,
           seasons: [
             { season: 2027, basis: 'payment' },
             { season: 2031, basis: 'balance' },
@@ -1941,7 +1946,11 @@ describe('activating a membership from the payments screen', () => {
 
         const before = await screen.findByRole('table', { name: 'Članovi' })
 
-        expect(cellOf(before, '000019', 'Poslednja sezona').textContent).toBe('2027')
+        /* Nothing of the season on sale yet: a dash in „Osnov", and its box not ticked. */
+        expect(cellOf(before, '000019', 'Osnov').textContent).toBe('–Bez članstva u ovoj sezoni')
+        expect(
+          within(await seasonsOf(user, cellOf(before, '000019', 'Sezone'))).getByRole('checkbox', { name: '2031' }),
+        ).not.toBeChecked()
         expect(reads.members).toBe(1)
 
         await act(() => router.navigate(ADDRESS))
@@ -1959,8 +1968,13 @@ describe('activating a membership from the payments screen', () => {
         const again = await screen.findByRole('table', { name: 'Članovi' })
 
         /* AT ONCE, for the reason written in the case above. */
-        expect(cellOf(again, '000019', 'Poslednja sezona').textContent).toBe('2031')
-        expect(cellOf(again, '000019', 'Sezone članstva').querySelectorAll('.tag')).toHaveLength(2)
+        expect(cellOf(again, '000019', 'Osnov').textContent).toBe('Balans')
+        expect(reads.members).toBe(2)
+
+        const list = await seasonsOf(user, cellOf(again, '000019', 'Sezone'))
+
+        expect(within(list).getByRole('checkbox', { name: '2027' })).toBeChecked()
+        expect(within(list).getByRole('checkbox', { name: '2031' })).toBeChecked()
         expect(reads.members).toBe(2)
 
         server.stop()

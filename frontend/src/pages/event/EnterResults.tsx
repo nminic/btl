@@ -27,6 +27,8 @@ import { everyEventToOffer } from '../member/eventsToOffer'
 import { racesToOffer } from '../member/racesToOffer'
 import { useSeasonsOpenForAReport } from '../member/useSeasonsOpenForAReport'
 import {
+  aNewEditionOf,
+  changingTheDay,
   choosingTheEvent,
   choosingTheRace,
   emptyBlock,
@@ -510,8 +512,10 @@ function TheBlockAndTheRows() {
   /* THE SEASONS THE SERVER SAYS ARE OPEN, for one question only: whether a new race on an event of the
      calendar may be of the other year, which is so on the morning of 1 January and never else (owner,
      22.10.2026, the exception kept beside „Ekran 7b: dan trke mora biti u godini izabranog događaja”, and
-     the cost of reading them accepted). Not waited for: until they are known the day is not held to the
-     event's year here, and the server holds it either way. Asked once per visit, so under a constant. */
+     the cost of reading them accepted) and, since 23.10.2026, whether a day of another year makes a new
+     edition of a name of one edition (`aNewEditionOf`), which it never does on that morning. Not waited
+     for: until they are known the day is not held to the event's year here, and the server holds it either
+     way. Asked once per visit, so under a constant. */
   const open = useSeasonsOpenForAReport('league')
   const seasons = open.status === 'ready' ? open.data : null
   /* EVERY RACE EVENT BEGUN BY TODAY, OF ANY YEAR (owner, 21.10.2026: „Moderator i admin smeju da unose
@@ -523,7 +527,13 @@ function TheBlockAndTheRows() {
     () => (events.status === 'ready' ? everyEventToOffer(events.data, today) : []),
     [events, today],
   )
-  const linked = block.event?.eventId
+  const ofTheBlock = { open: seasons, offered: offeredEvents }
+  /* A NEW EDITION OF THE EVENT CHOSEN (owner, 23.10.2026, „Unos trke sa imenom događaja koji ima samo
+     jedno izdanje, a dan trke je u drugoj godini, pravi novo izdanje tog događaja”): the day is of another
+     year than the only edition of the name, so the race goes on an event nobody has made yet and the old
+     edition's races are not offered under the race's box. */
+  const edition = aNewEditionOf(block, ofTheBlock)
+  const linked = edition ? undefined : block.event?.eventId
   const offeredRaces = useMemo(
     () =>
       events.status === 'ready' && races.status === 'ready' && linked !== undefined
@@ -540,8 +550,7 @@ function TheBlockAndTheRows() {
      list stands under either box to choose from (the boxes say why, `unreadable`). */
   const calendar = events.status === 'ready' ? events.data : []
   const run = races.status === 'ready' ? races.data : []
-  const asked = { open: seasons, offered: offeredEvents }
-  const wrong = pressed ? whatIsWrongWithTheBlock(block, today, asked) : []
+  const wrong = pressed ? whatIsWrongWithTheBlock(block, today, ofTheBlock) : []
   const said = (box: string) => wrong.find((one) => one.box === box)
   const kind = kindOfTheRows(block)
 
@@ -617,11 +626,11 @@ function TheBlockAndTheRows() {
                 value={block.date}
                 invalid={said('date') !== undefined}
                 describedBy={described}
-                within={yearsOfTheDay(block, seasons)}
-                onChange={(next) => setBlock((now) => ({ ...now, date: next }))}
+                within={yearsOfTheDay(block, seasons, offeredEvents)}
+                onChange={(next) => setBlock((now) => changingTheDay(now, next, ofTheBlock))}
               />
             ))}
-          {block.event === null &&
+          {(block.event === null || edition) &&
             box('city', t('newResult.city'), (described) => (
               <PlaceField
                 id="league-block-city"
@@ -719,7 +728,7 @@ function TheBlockAndTheRows() {
             blockIsWrong={() => {
               setPressed(true)
 
-              return whatIsWrongWithTheBlock(block, today, asked).length > 0
+              return whatIsWrongWithTheBlock(block, today, ofTheBlock).length > 0
             }}
             save={(rows, asked) =>
               block.race !== null
@@ -727,7 +736,10 @@ function TheBlockAndTheRows() {
                     block.race.raceId,
                     rows.map((one) => bodyOf(one, asked)),
                   )
-                : theLeagueEnteredOnAnEvent({ ...eventAndRaceOf(block), rows: rows.map((one) => bodyOf(one, asked)) })
+                : theLeagueEnteredOnAnEvent({
+                    ...eventAndRaceOf(block, ofTheBlock),
+                    rows: rows.map((one) => bodyOf(one, asked)),
+                  })
             }
             after={(answer) => theEventPageAfter(block, theEventSavedOn(answer), locale)}
           />

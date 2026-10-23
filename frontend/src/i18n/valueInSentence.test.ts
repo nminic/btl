@@ -247,6 +247,13 @@ describe('a sentence with a value put into it', () => {
          no separator for the thousands, so they have no case to be wrong in. */
       '? (EventRaces.tsx)',
       '? (FormRenderer.tsx)',
+      /* The question before a cancellation on the member's row, chosen by the basis
+         (`memberMembership.ts#askingToCancel`): „Storniraj uplatu / oslobođenje / aktivaciju iz
+         balansa za sezonu {season}?" (owner, 18.10.2026, PDL P8), and the word of the column „Osnov",
+         chosen by the basis and the gender (`memberMembership.ts#basisWordOf`), which takes no value.
+         The value of the first is a bare year after „za sezonu", which has no case to be wrong in. It
+         stood under `RowMembership.tsx` until 22.10.2026, when the row became one component. */
+      '? (MemberRow.tsx)',
       /* The rule beside the password, whose name is declared as a `hintKey` on the
          screen rather than written into the call: `t(PASSWORD_FIELD.hintKey, { count })`.
          That shape is not an accident and is not avoidable either. `forms/fieldHint.test.tsx`
@@ -264,11 +271,6 @@ describe('a sentence with a value put into it', () => {
          je", all in figures, so none has a case to be wrong in. */
       '? (RaceForTheRun.tsx)',
       '? (ReviewQueue.tsx)',
-      /* The question before a cancellation on the member's row, chosen by the basis
-         (`memberMembership.ts#askingToCancel`): „Storniraj uplatu / oslobođenje / aktivaciju iz
-         balansa za sezonu {season}?" (owner, 18.10.2026, PDL P8). The value is a bare year after „za
-         sezonu", which has no case to be wrong in. */
-      '? (RowMembership.tsx)',
       '? (SendBack.tsx)',
       /* The sentence a bare number gets from the decision route, chosen by
          `whatABareNumberSays` and handed the number: „Server je odgovorio brojem {status}".
@@ -299,7 +301,6 @@ describe('a sentence with a value put into it', () => {
       /* „Odobri oslobođenje od članarine za sezonu {season}?" (owner, 20.10.2026, chosen with the
          recommendation): a bare year after „za sezonu", as above. */
       'admin.askGrantExemption',
-      'admin.basisOfTheSeason',
       'admin.dropRaceNamed',
       /* „Ovim brišeš i {count} rezultata.", asked before an event is deleted (owner,
          28.09.2026). The value is a COUNT, so it governs the noun rather than being
@@ -317,7 +318,6 @@ describe('a sentence with a value put into it', () => {
          anywhere („Poredak takmičenja", „Događaji i trke, {name}"), so this is the same
          answer `leagues.countingOf` already gives one screen along. */
       'admin.leagueRacesOf',
-      'admin.memberDeleteSureNamed',
       /* „U kalendaru nema nijednog događaja iz sezone {season}.", and the season is a
          number: a year written in figures has no case to be wrong in. */
       'admin.noEventsOfSeason',
@@ -332,6 +332,9 @@ describe('a sentence with a value put into it', () => {
       'admin.referralOpen',
       'admin.referralRunning',
       'admin.referralSettled',
+      /* The name of the list of seasons on a member's row: „Sezone, {name}: {season}". The year stands
+         after a colon as the thing named, and the name is the member's own as written. */
+      'admin.seasonsOf',
       'admin.sectionNav',
       'admin.showing',
       'awards.category',

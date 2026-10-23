@@ -57,8 +57,9 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * {@code String} it finds is a leaf. A leaf is then given a zero at its start, in its middle,
  * at its end and as its whole value, in a document that is otherwise one the type would accept,
  * and the document is read the two ways this portal reads one: straight from the bytes, which
- * is what an argument, {@link WhatWasSent} and three of the four hand-read routes do, and
- * through a tree, which is what {@code PUT /api/me} does. A type this walk does not know how to
+ * is what an argument, {@link WhatWasSent} and three of the five hand-read routes do, and
+ * through a tree, which is what {@code PUT /api/me} and the administration's correction of a
+ * member's data do. A type this walk does not know how to
  * walk FAILS the walk; it does not get a guess.
  *
  * <p><b>The control is half of it.</b> A reader that refused every text would pass the sweep
@@ -73,7 +74,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * the zero is always written as the escape the portal's own forms would produce, and the
  * exception must carry the sentence the reader gives it.
  *
- * <p><b>The four routes that read their own body are not visible to the dispatcher</b>, because
+ * <p><b>The five routes that read their own body are not visible to the dispatcher</b>, because
  * they take the request and not a type (the reason {@link WhatWasSent} exists for the rest). They
  * are named in a table here, and the table has its own floor: the controllers that hold an
  * {@link ObjectMapper} are asked of the dispatcher, and the table must be exactly those. A fifth
@@ -95,14 +96,15 @@ class NoTextHoldsAZeroTest {
 	private static final String ZERO = String.valueOf((char) 0);
 
 	/**
-	 * The four routes that read the request by hand, by controller, with the record each one
-	 * reads. {@code MeCategoryWriteApi.Wish} holds no text at all, and it is here because a text
+	 * The five routes that read the request by hand, by controller, with the record each one
+	 * reads. The fifth, since 22.10.2026, is the administration's correction of a member's data. {@code MeCategoryWriteApi.Wish} holds no text at all, and it is here because a text
 	 * added to it tomorrow is swept the day it is added.
 	 */
 	private static final Map<String, String> READ_BY_HAND = Map.of(
 			"InboxWriteApi", "Written",
 			"MeCategoryWriteApi", "Wish",
 			"MeWriteApi", "Change",
+			"MemberDataWriteApi", "Correction",
 			"VerificationWriteApi", "Answered");
 
 	/**
@@ -120,6 +122,10 @@ class NoTextHoldsAZeroTest {
 			Map.entry("MemberMembershipApi#grant:memberNumber (path)",
 					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("MemberPaymentApi#record:memberNumber (path)",
+					"a zero in a path is a 400 before any handler is reached"),
+			Map.entry("MemberDataApi#read:memberNumber (path)",
+					"a zero in a path is a 400 before any handler is reached"),
+			Map.entry("MemberDataWriteApi#correct:memberNumber (path)",
 					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("PhotoApi#photo:name (path)",
 					"a zero in a path is a 400 before any handler is reached"),
@@ -376,7 +382,7 @@ class NoTextHoldsAZeroTest {
 				.as("no text stands in a record inside a list, which is the row of a group")
 				.isTrue();
 		assertThat(bodies.values().stream().anyMatch(who -> who.stream().anyMatch(one -> one.endsWith(" (by hand)"))))
-				.as("the four routes that read their body by hand are not part of the sweep")
+				.as("the routes that read their body by hand are not part of the sweep")
 				.isTrue();
 	}
 

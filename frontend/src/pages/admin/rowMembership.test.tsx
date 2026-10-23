@@ -9,6 +9,7 @@ import type { Competitor, Member } from '../../data/types'
 import sr from '../../i18n/sr.json'
 import { asMember, person } from '../../test/plate'
 import { renderAt } from '../../test/render'
+import { memberRowOf as rowOf, paymentSheet, recordInTheSheet, seasonBox, seasonsOf } from '../../test/memberRow'
 import { answeredWith, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
@@ -126,14 +127,9 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     return asked.filter((one) => one.path === address && (one.init?.method ?? 'GET') === 'GET').length
   }
 
-  async function rowOf(memberNumber: string): Promise<HTMLElement> {
-    const table = await screen.findByRole('table', { name: 'Članovi' })
-
-    return must(within(table).getByText(memberNumber).closest('tr'), `the row of ${memberNumber}`)
-  }
-
   it('offers on each row exactly what its basis on sale allows, and the exemption on a row that holds none', async () => {
     const server = serving()
+    const user = setupUser()
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
     const paid = await rowOf(PAID)
@@ -141,29 +137,50 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     const balance = await rowOf(ON_THE_BALANCE)
     const older = await rowOf(AN_OLDER_SEASON)
 
-    for (const row of [paid, exempt, balance]) {
-      expect(within(row).getByRole('button', { name: 'Storniraj' })).toBeInTheDocument()
-      expect(within(row).queryByRole('button', { name: 'Odobri oslobođenje' })).toBeNull()
+    /* EVERY SYMBOL ON EVERY ROW (the coordinator's answer of 22.10.2026, P3): „Storniraj" told off where the
+       row cannot use it, and still in the order of focus; „Upiši uplatu" switched off for real (owner, PDL
+       20.10.2026: „ostaju pravo neaktivni (bez fokusa)"). */
+    const offered = (row: HTMLElement, name: string) => {
+      const button = within(row).getByRole('button', { name })
+
+      return button.getAttribute('aria-disabled') !== 'true' && !button.hasAttribute('disabled')
     }
 
-    expect(within(paid).getByRole('button', { name: 'Promeni osnov u oslobođenje' })).toBeInTheDocument()
-    expect(within(paid).queryByRole('button', { name: 'Upiši uplatu' })).toBeNull()
+    for (const row of [paid, exempt, balance]) {
+      expect(offered(row, 'Storniraj')).toBe(true)
+      /* The season on sale is ticked, and clearing it is the cancellation. */
+      expect(await seasonBox(user, row, 2028)).toBeChecked()
+    }
 
-    expect(within(exempt).queryByRole('button', { name: 'Promeni osnov u oslobođenje' })).toBeNull()
-    expect(within(exempt).getByLabelText('Uplaćeno (RSD)')).toBeInTheDocument()
+    expect(within(await seasonsOf(user, paid)).getByRole('button', { name: 'Promeni osnov u oslobođenje' })).toBeInTheDocument()
+    expect(offered(paid, 'Upiši uplatu')).toBe(false)
 
-    expect(within(balance).queryByRole('button', { name: 'Promeni osnov u oslobođenje' })).toBeNull()
-    expect(within(balance).queryByRole('button', { name: 'Upiši uplatu' })).toBeNull()
+    expect(within(await seasonsOf(user, exempt)).queryByRole('button', { name: 'Promeni osnov u oslobođenje' })).toBeNull()
+    expect(offered(exempt, 'Upiši uplatu')).toBe(true)
+
+    expect(within(await seasonsOf(user, balance)).queryByRole('button', { name: 'Promeni osnov u oslobođenje' })).toBeNull()
+    expect(offered(balance, 'Upiši uplatu')).toBe(false)
 
     /* AN OLDER SEASON ON A PAYMENT OFFERS NOTHING OF THAT SEASON: the payment of the season on sale, and
-       since 20.10.2026 its exemption. */
-    expect(within(older).queryByRole('button', { name: 'Storniraj' })).toBeNull()
-    expect(within(older).queryByRole('button', { name: 'Promeni osnov u oslobođenje' })).toBeNull()
-    expect(within(older).getByRole('button', { name: 'Upiši uplatu' })).toBeInTheDocument()
-    expect(within(older).getByRole('button', { name: 'Odobri oslobođenje' })).toBeInTheDocument()
+       ticking that season, which is the exemption. His 2027 is ticked and cannot be changed. */
+    expect(offered(older, 'Storniraj')).toBe(false)
+    expect(within(older).getByRole('button', { name: 'Storniraj' })).toBeEnabled()
+    expect(within(paid).getByRole('button', { name: 'Upiši uplatu' })).toBeDisabled()
+    expect(within(await seasonsOf(user, older)).queryByRole('button', { name: 'Promeni osnov u oslobođenje' })).toBeNull()
+    expect(offered(older, 'Upiši uplatu')).toBe(true)
+    expect(await seasonBox(user, older, 2028)).not.toBeChecked()
+    expect(await seasonBox(user, older, 2027)).toBeChecked()
+    expect(await seasonBox(user, older, 2027)).toBeDisabled()
+
+    /* A PRESS ON A SYMBOL THE ROW CANNOT USE OPENS NOTHING. */
+    await user.click(within(older).getByRole('button', { name: 'Storniraj' }))
+    await user.click(within(paid).getByRole('button', { name: 'Upiši uplatu' }))
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(sent(server.asked)).toEqual([])
 
     server.stop()
-  })
+  }, SLOW)
 
   it.each([
     [PAID, 'payment', 'Storniraj uplatu za sezonu 2028?', 'Ana Držić, sezona 2028.'],
@@ -205,6 +222,52 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     SLOW,
   )
 
+  /**
+   * CLEARING THE BOX OF THE SEASON ON SALE IS THE CANCELLATION (owner, 22.10.2026, chosen with the
+   * recommendation: „odštikliranje je storno te sezone"), the same question in the words of its basis and
+   * the same request as „Storniraj". On a row that is not the first, and on a basis that is not the first
+   * row's, so a request built off another row or another basis is a different request. „Ne" leaves the
+   * box as the server answered it, and the focus goes back to the box.
+   */
+  it('cancels the season on sale when its box is cleared, and „Ne” leaves the box ticked', async () => {
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const row = await rowOf(EXEMPT)
+    const box = await seasonBox(user, row, 2028)
+
+    await user.click(box)
+
+    const sheet = await screen.findByRole('dialog', { name: 'Storniraj oslobođenje za sezonu 2028?' })
+
+    expect(within(sheet).getByText('Zoran Vuković, sezona 2028.')).toBeInTheDocument()
+
+    await user.click(within(sheet).getByRole('button', { name: 'Ne' }))
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(box).toBeChecked()
+    expect(box).toHaveFocus()
+    expect(sent(server.asked)).toEqual([])
+
+    await user.click(box)
+    await user.click(
+      within(await screen.findByRole('dialog', { name: 'Storniraj oslobođenje za sezonu 2028?' })).getByRole(
+        'button',
+        { name: 'Da' },
+      ),
+    )
+
+    await waitFor(() =>
+      expect(sent(server.asked)).toEqual([
+        { how: 'DELETE', path: `/api/members/${EXEMPT}/membership`, body: { basis: 'feeExempt' } },
+      ]),
+    )
+    expect(await screen.findByText('Članstvo je stornirano.')).toBeInTheDocument()
+
+    server.stop()
+  }, SLOW)
+
   it('asks before turning a payment into an exemption that the record of the payment is deleted', async () => {
     const server = serving(() => Response.json({ season: 2028, basis: 'feeExempt' }))
     const user = setupUser()
@@ -212,7 +275,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
     const row = await rowOf(PAID)
 
-    await user.click(within(row).getByRole('button', { name: 'Promeni osnov u oslobođenje' }))
+    await user.click(within(await seasonsOf(user, row)).getByRole('button', { name: 'Promeni osnov u oslobođenje' }))
     await user.click(
       within(
         await screen.findByRole('dialog', {
@@ -239,8 +302,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     const row = await rowOf(EXEMPT)
 
     /* 3.200 of 4.200 with a book of 1.000: the book covers the rest, so nothing is asked. */
-    await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '3200')
-    await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, row), '3200')
 
     await waitFor(() =>
       expect(sent(server.asked)).toEqual([
@@ -294,7 +356,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
     const paid = await rowOf(PAID)
 
-    await user.click(within(paid).getByRole('button', { name: 'Promeni osnov u oslobođenje' }))
+    await user.click(within(await seasonsOf(user, paid)).getByRole('button', { name: 'Promeni osnov u oslobođenje' }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
 
     expect(
@@ -305,8 +367,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
     const exempt = await rowOf(EXEMPT)
 
-    await user.type(within(exempt).getByLabelText('Uplaćeno (RSD)'), '4200')
-    await user.click(within(exempt).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, exempt), '4200')
 
     expect(
       await within(exempt).findByText(sr.admin.membershipRefused.theBasisHasChanged),
@@ -358,7 +419,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     const deleted = await rowOf(PAID)
 
     await user.click(within(deleted).getByRole('button', { name: 'Obriši: Ana Držić' }))
-    await user.click(within(deleted).getByRole('button', { name: 'Obriši člana: Ana Držić' }))
+    await user.click(within(await screen.findByRole('dialog', { name: 'Obriši člana?' })).getByRole('button', { name: 'Obriši' }))
 
     expect(await screen.findByText('Član je obrisan.')).toBeInTheDocument()
 
@@ -410,8 +471,8 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
   }, SLOW)
 
   /**
-   * AND THE SAME FOR BOTH CHANGES OF BASIS, each through its own door: the change from a payment on
-   * `RowMembership`, and the payment over the exemption on `RowPayment`. Each must drop the six
+   * AND THE SAME FOR BOTH CHANGES OF BASIS, each through its own door: the change from a payment in the
+   * list of seasons, and the payment over the exemption in the sheet of „Upiši uplatu". Each must drop the six
    * answers, read the list again, say that the basis changed, and leave the inbox of another row alone,
    * which is what tells it apart from `paymentRecorded`.
    */
@@ -434,11 +495,10 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     const inboxReads = reads(server.asked, '/api/inbox')
 
     if (number === PAID) {
-      await user.click(within(row).getByRole('button', { name: 'Promeni osnov u oslobođenje' }))
+      await user.click(within(await seasonsOf(user, row)).getByRole('button', { name: 'Promeni osnov u oslobođenje' }))
       await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
     } else {
-      await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '3200')
-      await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+      await recordInTheSheet(user, await paymentSheet(user, row), '3200')
     }
 
     await waitFor(() => expect(reads(server.asked, '/api/members')).toBe(2))
@@ -476,7 +536,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     await waitFor(() => expect(reads(server.asked, '/api/inbox')).toBeGreaterThan(0))
     const inboxReads = reads(server.asked, '/api/inbox')
 
-    await user.click(within(row).getByRole('button', { name: 'Odobri oslobođenje' }))
+    await user.click(await seasonBox(user, row, 2028))
 
     const sheet = await screen.findByRole('dialog', { name: 'Odobri oslobođenje od članarine za sezonu 2028?' })
 
@@ -487,7 +547,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(sent(server.asked)).toEqual([])
 
-    await user.click(within(row).getByRole('button', { name: 'Odobri oslobođenje' }))
+    await user.click(await seasonBox(user, row, 2028))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
 
     await waitFor(() =>
@@ -517,7 +577,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
     const row = await rowOf(AN_OLDER_SEASON)
 
-    await user.click(within(row).getByRole('button', { name: 'Odobri oslobođenje' }))
+    await user.click(await seasonBox(user, row, 2028))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
 
     expect(await within(row).findByText(sr.admin.membershipRefused.thisChangeIsNotOffered)).toBeInTheDocument()
@@ -577,14 +637,13 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
       await user.click(within(row).getByRole('button', { name: 'Storniraj' }))
       await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
     } else if (door === 'the change to the exemption') {
-      await user.click(within(row).getByRole('button', { name: 'Promeni osnov u oslobođenje' }))
+      await user.click(within(await seasonsOf(user, row)).getByRole('button', { name: 'Promeni osnov u oslobođenje' }))
       await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
     } else if (door === 'the grant') {
-      await user.click(within(row).getByRole('button', { name: 'Odobri oslobođenje' }))
+      await user.click(await seasonBox(user, row, 2028))
       await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
     } else {
-      await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '3200')
-      await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+      await recordInTheSheet(user, await paymentSheet(user, row), '3200')
     }
 
     await waitFor(() => {
@@ -713,7 +772,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
     await within(balance).findByText(refusedCancel)
 
-    await user.click(within(paid).getByRole('button', { name: 'Promeni osnov u oslobođenje' }))
+    await user.click(within(await seasonsOf(user, paid)).getByRole('button', { name: 'Promeni osnov u oslobođenje' }))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
     await within(paid).findByText(sr.admin.membershipRefused.thisChangeIsNotOffered)
 
@@ -721,8 +780,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
     await within(exempt).findByText(refusedCancel)
 
-    await user.type(within(exempt).getByLabelText('Uplaćeno (RSD)'), '3200')
-    await user.click(within(exempt).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, exempt), '3200')
 
     expect(await screen.findByText('Osnov članstva je promenjen.')).toBeInTheDocument()
     expect(within(exempt).queryByText(refusedCancel)).toBeNull()
@@ -743,9 +801,9 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
   /**
    * THE OTHER DIRECTION OF THE SAME FAULT: the refusal is the payment's over the exemption and the success
-   * is the cancellation beside it. The payment over the exemption is a second `RowPayment` on the row,
-   * handed the count by its own line, and a screen that handed it to the first and forgot the second would
-   * pass every case above.
+   * is the cancellation beside it. Until 22.10.2026 the payment over the exemption was a second component
+   * on the row, handed the count by its own line; the row is one component since, and this holds that
+   * every act of it reads the one count.
    */
   it('takes the refusal of a payment over the exemption away when the exemption is cancelled', async () => {
     const server = serving((_path, init) =>
@@ -756,8 +814,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
 
     const exempt = await rowOf(EXEMPT)
 
-    await user.type(within(exempt).getByLabelText('Uplaćeno (RSD)'), '3200')
-    await user.click(within(exempt).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, exempt), '3200')
     expect(await within(exempt).findByText(sr.admin.membershipRefused.theBasisHasChanged)).toBeInTheDocument()
 
     await user.click(within(exempt).getByRole('button', { name: 'Storniraj' }))
@@ -803,20 +860,18 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     const balance = await rowOf(ON_THE_BALANCE)
 
     /* A refused payment, then the same control's success. */
-    await user.type(within(older).getByLabelText('Uplaćeno (RSD)'), '4800')
-    await user.click(within(older).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, older), '4800')
     await within(older).findByText(refusedPayment)
 
-    await user.click(within(older).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, older), '4800')
     expect(await screen.findByText('Uplata je upisana.')).toBeInTheDocument()
     expect(within(older).queryByText(refusedPayment)).toBeNull()
 
     /* A refused payment, then another control's success on the same row. */
-    await user.type(within(older).getByLabelText('Uplaćeno (RSD)'), '4800')
-    await user.click(within(older).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, older), '4800')
     await within(older).findByText(refusedPayment)
 
-    await user.click(within(older).getByRole('button', { name: 'Odobri oslobođenje' }))
+    await user.click(await seasonBox(user, older, 2028))
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
     expect(await screen.findByText('Oslobođenje je upisano.')).toBeInTheDocument()
     expect(within(older).queryByText(refusedPayment)).toBeNull()
@@ -825,19 +880,17 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
        deletion at a time, so it is the row pressed last that carries it. */
     async function refuseTheDeletionOf(row: HTMLElement, name: string) {
       await user.click(within(row).getByRole('button', { name: `Obriši: ${name}` }))
-      await user.click(within(row).getByRole('button', { name: `Obriši člana: ${name}` }))
+      await user.click(within(await screen.findByRole('dialog', { name: 'Obriši člana?' })).getByRole('button', { name: 'Obriši' }))
       expect(await within(row).findByText(refusedDeletion)).toBeInTheDocument()
     }
 
     await refuseTheDeletionOf(older, 'Ivan Jović')
-    await user.type(within(older).getByLabelText('Uplaćeno (RSD)'), '4800')
-    await user.click(within(older).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, older), '4800')
     await waitFor(() => expect(within(older).queryByText(refusedDeletion)).toBeNull())
 
     /* ...and stays when the payment goes through on ANOTHER row. */
     await refuseTheDeletionOf(balance, 'Mila Tomić')
-    await user.type(within(older).getByLabelText('Uplaćeno (RSD)'), '4800')
-    await user.click(within(older).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, older), '4800')
     await waitFor(() => expect(payments).toBe(5))
     expect(within(balance).getByText(refusedDeletion)).toBeInTheDocument()
 

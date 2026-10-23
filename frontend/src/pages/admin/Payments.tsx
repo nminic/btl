@@ -685,7 +685,7 @@ export function Payments() {
            profile is `competitors`, the public list that answers only the members whose fee
            stands. Leaving either cached would show the man still outside the league on the next
            screen the moderator opens - under all three values of the filter for a new member, and
-           with „Sezone članstva" and „Poslednja sezona" as they were for a renewal. Both doors of
+           with the basis and the list of seasons as they were for a renewal. Both doors of
            this screen end here (`POST /api/payments` and `POST /api/memberships`), so one place
            clears for both. */
         dropWhatActiveMoves()

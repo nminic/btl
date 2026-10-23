@@ -150,4 +150,19 @@ public final class TheNamedSuperadmin {
 	public boolean covers(String address, boolean addressConfirmed) {
 		return addressConfirmed && named.contains(WhatAnAddressLooksLike.asItIsStored(address));
 	}
+
+	/**
+	 * WHETHER THIS ADDRESS IS ONE THE SETTINGS NAME, confirmed or not, and folded on both sides
+	 * exactly as {@link #covers} folds it.
+	 *
+	 * <p>Owner, 23.10.2026 (PDL, „Administracija ne sme da ispravi adresu pošte člana na adresu
+	 * imenovanog superadmina"): the administration's correction of a member's address is refused
+	 * when it would give him a named address. {@link #covers} alone would not do: it asks about an
+	 * account that already carries the address and has confirmed it, and the correction is about an
+	 * address no account carries yet - the very state in which, confirmed later through the link the
+	 * correction sends, it would make the member the superadmin.
+	 */
+	public boolean names(String address) {
+		return named.contains(WhatAnAddressLooksLike.asItIsStored(address));
+	}
 }
