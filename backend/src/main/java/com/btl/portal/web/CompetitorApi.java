@@ -459,6 +459,12 @@ class CompetitorApi {
 	 * @param crop           the square of the portrait, or null for a member who has no
 	 *                       portrait in this answer. The other half of {@code photo} and
 	 *                       never answered without it
+	 * @param smallPhoto     where the same portrait is asked for already cut to that circle
+	 *                       and small, for every circle on the portal but the profile's own
+	 *                       (PDL, 23.10.2026, „Server pravi i šalje umanjenu, već isečenu
+	 *                       sliku za kružiće [...] original ostaje za profil"). Null exactly
+	 *                       when {@code photo} is, and built by {@link PhotoApi#addressOfTheSmall}
+	 *                       out of the same row, so the three never disagree
 	 * @param bio            what the member wrote about himself, or NULL for a member who
 	 *                       hides his profile when the reader may not read it - the same shape as
 	 *                       {@code photo} and for the same reason (PDL, 06.09.2026 names both
@@ -515,7 +521,7 @@ class CompetitorApi {
 	record Competitor(String memberNumber, String firstName, String lastName, String gender,
 			String city, String country, String ageBand, boolean firstSeason2027, int firstSeason,
 			String bio, Long teamId, Integer teamSince, boolean profileHidden,
-			String birthdayShown, String photo, Crop crop,
+			String birthdayShown, String photo, Crop crop, String smallPhoto,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer membershipSeason) {
 	}
@@ -823,6 +829,9 @@ class CompetitorApi {
 						portrait == null ? null : A_PICTURE_IS_ASKED_FOR_AT + portrait,
 						across == null ? null
 								: new Crop(across, row.getBigDecimal(17), row.getBigDecimal(18)),
+						portrait == null ? null
+								: PhotoApi.addressOfTheSmall(portrait, across, row.getBigDecimal(17),
+										row.getBigDecimal(18)),
 						/* The season of the basis is the season the join was pinned to, present
 						   exactly when the basis is, so it is withheld by the same `case`. */
 						basis, basis == null ? null : sold);

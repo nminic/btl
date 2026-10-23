@@ -80,13 +80,13 @@ describe('a team taken away from the administration', () => {
    */
   const TEAMS = [
     { id: FIRST_SERVED, slug: 'vardarski-krug', name: FIRST_SERVED_NAME, city: 'Skoplje',
-      country: 'MK', bio: '', logo: null, crop: null, organizerMemberNumber: '000003' },
+      country: 'MK', bio: '', logo: null, crop: null, smallLogo: null, organizerMemberNumber: '000003' },
     { id: ACTED, slug: 'savski-tim', name: ITS_NAME, city: 'Šabac', country: 'RS',
-      bio: '', logo: null, crop: null, organizerMemberNumber: '000007' },
+      bio: '', logo: null, crop: null, smallLogo: null, organizerMemberNumber: '000007' },
     { id: EMPTY, slug: 'moravski-klub', name: EMPTY_NAME, city: 'Čačak', country: 'RS',
-      bio: '', logo: null, crop: null, organizerMemberNumber: '' },
+      bio: '', logo: null, crop: null, smallLogo: null, organizerMemberNumber: '' },
     { id: 9, slug: 'dunavski-trkaci', name: LAST_SERVED_NAME, city: 'Novi Sad', country: 'RS',
-      bio: '', logo: null, crop: null, organizerMemberNumber: '000001' },
+      bio: '', logo: null, crop: null, smallLogo: null, organizerMemberNumber: '000001' },
   ]
 
   /**

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { must } from '../test/at'
 import { person } from '../test/plate'
 import { WHOLE } from './crop'
@@ -197,6 +197,60 @@ describe('the circle of a member whose portrait was approved', () => {
       objectPosition: '50% 50%',
       transform: 'scale(1)',
     })
+  })
+
+  it('draws the SMALL picture whole where the record carries one, and never cuts it again', () => {
+    /* Owner, 23.10.2026 (PDL, „Umanjene slike za kružiće"): „Server pravi i šalje umanjenu, već
+       isečenu sliku za kružiće [...] original ostaje za profil." The small one is already the
+       square, so no square is applied to it: drawn with `fittedTo` it would be cut a second time,
+       which is why the style is asserted empty and not merely the address. */
+    const small = '/api/photos/3c9e5f41/small/0.30000000-0.15000000-0.40000000'
+    const { container } = render(
+      <>
+        <Portrait competitor={{ ...FIRST, smallPhoto: '/api/photos/vladan/small/whole' }} />
+        <Portrait competitor={{ ...SUBJECT, smallPhoto: small }} />
+      </>,
+    )
+
+    const drawn = [...container.querySelectorAll('img')]
+
+    expect(must(drawn[1], 'the subject’s portrait')).toHaveAttribute('src', small)
+    expect(must(drawn[1], 'the subject’s portrait').getAttribute('style')).toBeNull()
+  })
+
+  it('draws the ORIGINAL cut to the square where it is asked for whole, as the profile does', () => {
+    /* „original ostaje za profil": `whole` is how the head of the profile says it is that one. */
+    const { container } = render(
+      <Portrait competitor={{ ...SUBJECT, smallPhoto: '/api/photos/3c9e5f41/small/x' }} whole />,
+    )
+
+    const drawn = must(container.querySelector('img'), 'the portrait')
+
+    expect(drawn).toHaveAttribute('src', '/api/photos/3c9e5f41')
+    expect(drawn).toHaveStyle({ objectPosition: '30% 15%', transform: 'scale(2.5)' })
+  })
+
+  it('falls back to the original cut to the square when the small picture will not load', () => {
+    /* The server declines to cut a picture larger than it can safely decode (`SmallPicture`),
+       and answers 404 for it; an empty circle where the original would have drawn is worse than
+       the original. Only THAT member's circle falls back: the address that failed is
+       remembered, not a flag, so the next member handed to the same circle is drawn small. */
+    const { container, rerender } = render(
+      <Portrait competitor={{ ...SUBJECT, smallPhoto: '/api/photos/3c9e5f41/small/x' }} />,
+    )
+
+    fireEvent.error(must(container.querySelector('img'), 'the small portrait'))
+
+    const drawn = must(container.querySelector('img'), 'the portrait after the small one failed')
+    expect(drawn).toHaveAttribute('src', '/api/photos/3c9e5f41')
+    expect(drawn).toHaveStyle({ objectPosition: '30% 15%', transform: 'scale(2.5)' })
+
+    rerender(<Portrait competitor={{ ...FIRST, smallPhoto: '/api/photos/vladan/small/whole' }} />)
+
+    expect(must(container.querySelector('img'), 'the next member')).toHaveAttribute(
+      'src',
+      '/api/photos/vladan/small/whole',
+    )
   })
 
   it('draws a member whose record says nothing sensible about the square', () => {

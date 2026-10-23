@@ -65,6 +65,7 @@ const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Comp
   profileHidden: false,
   birthdayShown: 'none',
   photo: null,
+  smallPhoto: null,
   crop: null,
   bio: '',
   ...extra,
@@ -587,6 +588,7 @@ describe('rankTeams', () => {
     organizerMemberNumber: '000001',
     bio: '',
     logo: null,
+    smallLogo: null,
     alsoInTheTeam: [],
   })
 
@@ -805,6 +807,7 @@ describe('membersOf', () => {
     country: 'RS',
     bio: '',
     logo: null,
+    smallLogo: null,
     crop: null,
     alsoInTheTeam,
   })

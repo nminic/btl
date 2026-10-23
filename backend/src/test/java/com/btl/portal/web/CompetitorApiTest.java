@@ -131,6 +131,13 @@ class CompetitorApiTest {
 	/** And which circle of it is drawn, the other half of the same fact. */
 	private static final String THE_SQUARE_OF_IT = "crop";
 
+	/**
+	 * The same portrait already cut to its square and small, for every circle but the profile's
+	 * (PDL, 23.10.2026, „Server pravi i šalje umanjenu, već isečenu sliku za kružiće"). A third
+	 * half of the one fact, and it leaves with the other two or not at all.
+	 */
+	private static final String THE_SMALL_PORTRAIT = "smallPhoto";
+
 	/** The team of the membership that has not ended, which hiding takes off the record. */
 	private static final String THE_TEAM = "teamId";
 
@@ -1069,6 +1076,16 @@ class CompetitorApiTest {
 	 * equality here would be measuring how many zeroes a column happens to carry and would fail
 	 * the day the column's scale changed while every fraction stayed exactly what it was.
 	 */
+	private void theSmallIsThatPicturesOwn(JsonNode one, String digest, String who) {
+		List<BigDecimal> square = theSquareOf(digest);
+
+		assertThat(one.path(THE_SMALL_PORTRAIT).asString())
+				.as("the small portrait answered to %s is not that picture cut to its own row's"
+						+ " square", who)
+				.isEqualTo(PhotoApi.addressOfTheSmall(digest, square.get(0), square.get(1),
+						square.get(2)));
+	}
+
 	private void theSquareIsThatPicturesOwn(JsonNode one, String digest, String who) {
 		assertThat(theSquareIn(one))
 				.as("the square answered to %s is not the one on that picture's row, so some other"
@@ -1107,6 +1124,7 @@ class CompetitorApiTest {
 				.as("the portrait answered is not the address of the picture her own row holds")
 				.isEqualTo(A_PICTURE_IS_ASKED_FOR_AT + HER_PORTRAIT);
 		theSquareIsThatPicturesOwn(hers, HER_PORTRAIT, "000012");
+		theSmallIsThatPicturesOwn(hers, HER_PORTRAIT, "000012");
 	}
 
 	/**
@@ -1164,6 +1182,10 @@ class CompetitorApiTest {
 			assertThat(one.path(THE_PORTRAIT).isNull())
 					.as("%s answers a square and no picture, or a picture and no square", who)
 					.isEqualTo(one.path(THE_SQUARE_OF_IT).isNull());
+			assertThat(one.has(THE_SMALL_PORTRAIT) && one.path(THE_SMALL_PORTRAIT).isNull())
+					.as("%s answers a small portrait and no picture, or a picture and no small one",
+							who)
+					.isEqualTo(one.path(THE_PORTRAIT).isNull());
 
 			if (!one.path(THE_PORTRAIT).isNull()) {
 				assertThat(one.path(THE_PORTRAIT).asString())
@@ -1290,13 +1312,16 @@ class CompetitorApiTest {
 				.doesNotContain(THE_PORTRAIT_OF_THE_ONE_WHO_HIDES);
 
 		assertThat(List.of(his.has(THE_PORTRAIT), his.path(THE_PORTRAIT).isNull(),
-						his.has(THE_SQUARE_OF_IT), his.path(THE_SQUARE_OF_IT).isNull()))
+						his.has(THE_SQUARE_OF_IT), his.path(THE_SQUARE_OF_IT).isNull(),
+						his.has(THE_SMALL_PORTRAIT), his.path(THE_SMALL_PORTRAIT).isNull()))
 				.as("a member who hides his profile does not read like a member who has no picture,"
 						+ " so the shape of the answer says which members are hiding")
 				.isEqualTo(List.of(somebodyWithNoPicture.has(THE_PORTRAIT),
 						somebodyWithNoPicture.path(THE_PORTRAIT).isNull(),
 						somebodyWithNoPicture.has(THE_SQUARE_OF_IT),
-						somebodyWithNoPicture.path(THE_SQUARE_OF_IT).isNull()));
+						somebodyWithNoPicture.path(THE_SQUARE_OF_IT).isNull(),
+						somebodyWithNoPicture.has(THE_SMALL_PORTRAIT),
+						somebodyWithNoPicture.path(THE_SMALL_PORTRAIT).isNull()));
 
 		/* AND THE OTHER MEMBER'S PORTRAIT DOES REACH THE SAME VISITOR, which is what makes
 		   HIDING the condition rather than the session. It is here rather than anywhere else
@@ -1340,6 +1365,7 @@ class CompetitorApiTest {
 							+ " member nor the administration, and from nobody else", asking)
 					.isEqualTo(A_PICTURE_IS_ASKED_FOR_AT + THE_PORTRAIT_OF_THE_ONE_WHO_HIDES);
 			theSquareIsThatPicturesOwn(his, THE_PORTRAIT_OF_THE_ONE_WHO_HIDES, asking);
+			theSmallIsThatPicturesOwn(his, THE_PORTRAIT_OF_THE_ONE_WHO_HIDES, asking);
 		}
 	}
 
@@ -1769,7 +1795,8 @@ class CompetitorApiTest {
 	 * that need a standing membership write one themselves.
 	 */
 	private static final Set<String> WHAT_HIDING_MAY_WITHHOLD =
-			Set.of(THE_PORTRAIT, THE_SQUARE_OF_IT, "bio", THE_TEAM, THE_SEASON_OF_THE_TEAM);
+			Set.of(THE_PORTRAIT, THE_SQUARE_OF_IT, THE_SMALL_PORTRAIT, "bio", THE_TEAM,
+					THE_SEASON_OF_THE_TEAM);
 
 	/**
 	 * ONE RECORD NAMES EXACTLY THE OTHER'S FIELDS, PLUS WHATEVER IS NAMED AS ALLOWED TO BE EXTRA

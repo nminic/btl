@@ -251,6 +251,61 @@ describe('the question sheet', () => {
   })
 
   /**
+   * A PRESS ON THE BACKDROP KEEPS THE FOCUS IN THE SHEET (22.10.2026): measured in Chrome, the second click
+   * of a double press lands there, and the body took the focus, so Escape and Tab no longer reached the
+   * sheet. A press inside the sheet is the reader's own and is left alone.
+   */
+  it('keeps the focus in the sheet when the backdrop is pressed, and answers Escape after it', async () => {
+    const user = setupUser()
+    /* Drawn inside an element that takes the focus, as the portal's `main` does (`tabindex`): what stands
+       around the sheet is not a press on the sheet. */
+    const around = document.createElement('div')
+
+    around.tabIndex = -1
+    document.body.append(around)
+
+    const answers = { yes: vi.fn(), balance: vi.fn(), no: vi.fn() }
+
+    render(
+      <Prompt
+        title="Prihvatam umanjen ukupan iznos?"
+        choices={[
+          { label: 'Da', onChoose: answers.yes },
+          { label: 'Odobri iz balansa', onChoose: answers.balance },
+        ]}
+        decline="Ne"
+        onDecline={answers.no}
+      >
+        <p>Sta se pita.</p>
+      </Prompt>,
+      { container: around },
+    )
+    const sheet = screen.getByRole('dialog')
+    const backdrop = sheet.parentElement
+
+    if (backdrop === null) {
+      throw new Error('the sheet stands on no backdrop')
+    }
+
+    /* `false` is what dispatching answers when the default was prevented: on the backdrop and on the
+       words of the sheet, and never on what takes the focus itself, a button or the question. */
+    expect(fireEvent.mouseDown(backdrop)).toBe(false)
+    expect(fireEvent.mouseDown(screen.getByText('Sta se pita.'))).toBe(false)
+    expect(fireEvent.mouseDown(screen.getByRole('button', { name: 'Da' }))).toBe(true)
+    expect(fireEvent.mouseDown(screen.getByRole('heading', { name: 'Prihvatam umanjen ukupan iznos?' }))).toBe(true)
+
+    await user.click(backdrop)
+
+    expect(sheet).toContainElement(document.activeElement instanceof HTMLElement ? document.activeElement : null)
+
+    await user.keyboard('{Escape}')
+
+    expect(answers.no).toHaveBeenCalledTimes(1)
+
+    around.remove()
+  })
+
+  /**
    * EACH SHEET IS NAMED BY ITS OWN QUESTION (22.10.2026), and two may stand at once: a question about
    * the amount drawn over the sheet that asked for it. An id written out by hand is found where it
    * stands first, so the second sheet would carry the first one's name.

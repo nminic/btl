@@ -38,6 +38,7 @@
     "profileHidden",
     "referralCode",
     "referredBy",
+    "smallPhoto",
     "teamId",
     "teamSince"
   ],
@@ -247,7 +248,8 @@
     "logo",
     "name",
     "organizerMemberNumber",
-    "slug"
+    "slug",
+    "smallLogo"
   ],
   "verification.json": [
     "ascentM",

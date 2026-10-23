@@ -111,8 +111,15 @@ class ApiSecurity {
 	 * digest is a sentence with no reader; so this list grants a {@code GET} and the
 	 * {@code HEAD} that is the same read without a body, and the {@code OPTIONS} rule below
 	 * shuts the rest along with everything else under {@code /api}.
+	 *
+	 * <p><b>And the small picture a circle draws, since 23.10.2026</b> (PDL, „Server pravi i
+	 * šalje umanjenu, već isečenu sliku za kružiće"). It is read by exactly the readers of the
+	 * picture it is cut from and refused by the same words ({@link PhotoApi#small}), so it is
+	 * opened by the same list and in the same two verbs. Named by {@link PhotoApi}'s own
+	 * constant, which is the string the route is mapped by, so the two are one text.
 	 */
-	static final List<String> READ_BY_ANYBODY_UNDER_A_NAME = List.of("/api/photos/{name}");
+	static final List<String> READ_BY_ANYBODY_UNDER_A_NAME = List.of("/api/photos/{name}",
+			PhotoApi.A_SMALL_PICTURE_IS_ASKED_FOR_AT);
 
 	/**
 	 * WHO THE SETTINGS NAME, ANSWERED ONCE FOR THE WHOLE APPLICATION AND NOT ONLY FOR THIS

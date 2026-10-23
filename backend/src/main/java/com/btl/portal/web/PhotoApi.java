@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.photo.SmallPicture;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.channels.Channels;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -24,6 +27,7 @@ import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -425,14 +429,63 @@ class PhotoApi {
 	 */
 	private static final String THE_PICTURE_A_DIGEST_NAMES =
 			"select p.id, p.media_type from photo p where p.digest = :digest"
-			+ " and (exists (select 1 from competitor his where his.photo_id = p.id"
+			+ PhotoApi.HELD_IN_THE_OPEN_FOR_THIS_READER
+			+ " order by p.id limit 1";
+
+	/**
+	 * WHETHER SOMETHING THIS READER MAY SEE HOLDS THE ROW {@code p}: the whole of the rule the
+	 * note on {@link #THE_PICTURE_A_DIGEST_NAMES} explains, written once.
+	 *
+	 * <p><b>One string read by two statements</b>, the original's and the small picture's
+	 * ({@link #THE_SMALL_PICTURE}), so that who may see a circle and who may see the picture it
+	 * was cut from are one sentence and cannot drift apart: a hidden member's face, a waiting
+	 * picture and a proposed team's mark are refused on both doors by the same words.
+	 */
+	private static final String HELD_IN_THE_OPEN_FOR_THIS_READER =
+			" and (exists (select 1 from competitor his where his.photo_id = p.id"
 			+ "  and (cast(:administration as boolean)"
 			+ "   or (not his.profile_hidden and exists (select 1 from account me"
 			+ "    where me.id = cast(:account as bigint) and me.competitor_id = his.id))"
 			+ "   or (his.active"
 			+ "    and (cast(:readsHiddenProfiles as boolean) or not his.profile_hidden))))"
-			+ " or exists (select 1 from team its where its.logo_id = p.id))"
+			+ " or exists (select 1 from team its where its.logo_id = p.id))";
+
+	/**
+	 * THE PICTURE A DIGEST NAMES, CUT TO THIS CIRCLE, IF SOMETHING THIS READER MAY SEE HOLDS IT
+	 * WITH EXACTLY THIS CIRCLE.
+	 *
+	 * <p><b>The circle is part of the question and not only of the answer.</b> Two rows may
+	 * carry one digest with two circles (a member who moves the circle over his approved
+	 * picture sends the same bytes again, PDL 27.09.2026, and two members may send one file),
+	 * and only a circle some public holder really has is cut. A circle nobody chose is
+	 * nothing here, which is what keeps this from cutting whatever a caller cares to spell -
+	 * and a waiting picture's circle is never one, because a waiting picture has no public
+	 * holder (ADL A60).
+	 */
+	private static final String THE_SMALL_PICTURE =
+			"select p.id, p.media_type from photo p where p.digest = :digest"
+			+ " and p.crop_x = :x and p.crop_y = :y and p.crop_diameter = :diameter"
+			+ PhotoApi.HELD_IN_THE_OPEN_FOR_THIS_READER
 			+ " order by p.id limit 1";
+
+	/**
+	 * WHERE A CIRCLE'S SMALL PICTURE IS ASKED FOR: the digest of the picture, and its circle
+	 * spelt out.
+	 *
+	 * <p><b>The circle is IN the address, and that is what lets the answer be kept a day.</b>
+	 * The day at the head of this class rests on „the bytes behind a given address cannot
+	 * change". For a small picture the bytes are the content AND the circle, so an address of
+	 * the digest alone would go on naming the old cut for a day after the circle moved. Spelt
+	 * out, a moved circle is a new address, exactly as a new picture is a new digest.
+	 */
+	static final String A_SMALL_PICTURE_IS_ASKED_FOR_AT = "/api/photos/{digest}/small/{circle}";
+
+	/**
+	 * The circle as the address spells it: the three fractions as V21 stores them, eight places
+	 * each, joined by hyphens. Exactly one spelling per circle, so one cut per circle is kept.
+	 */
+	private static final Pattern A_CIRCLE = Pattern.compile(
+			"^([01]\\.\\d{8})-([01]\\.\\d{8})-([01]\\.\\d{8})$");
 
 	/**
 	 * THE PICTURE ONE QUEUE ROW IS ABOUT, AND THE PRIVILEGE THAT ROW ITSELF NAMES.
@@ -509,6 +562,8 @@ class PhotoApi {
 
 	private final ActiveMemberOrAdministration readers;
 
+	private final SmallPictures small;
+
 	/**
 	 * @param folder  where the files are, which is a setting because QA and production are
 	 *                two installations of one portal and neither is this machine. ADL A43, 2,
@@ -521,14 +576,17 @@ class PhotoApi {
 	 * @param readers the one place „may he read what the league keeps for its own" is answered,
 	 *                asked by {@link #photo} and by nothing else here. Since 03.10.2026 that
 	 *                route asks who is reading rather than only whether there is a session, and
-	 *                the answer is not a right: an active member reads without holding one
+	 *                the answer is not a right: an active member reads without holding one.
+	 *                Asked by {@link #small} too, with the same three parameters
+	 * @param small   the small pictures already cut, and the one place a cut is made
 	 */
 	PhotoApi(JdbcClient db, @Value("${btl.photos.folder}") String folder, WhatHeMayDo mayHe,
-			ActiveMemberOrAdministration readers) {
+			ActiveMemberOrAdministration readers, SmallPictures small) {
 		this.db = db;
 		this.folder = Path.of(folder);
 		this.mayHe = mayHe;
 		this.readers = readers;
+		this.small = small;
 	}
 
 	/** The two things the row decides: where the file is, and what it is. */
@@ -572,9 +630,32 @@ class PhotoApi {
 			return nothingIsHere(response);
 		}
 
-		Optional<Kept> kept = db
+		Optional<Kept> kept = askedBy(member, db
 				.sql(THE_PICTURE_A_DIGEST_NAMES)
-				.param("digest", name)
+				.param("digest", name))
+				.query((row, one) -> new Kept(row.getLong(1), row.getString(2)))
+				.optional();
+
+		if (kept.isEmpty()) {
+			return nothingIsHere(response);
+		}
+
+		Optional<byte[]> bytes = theFileOf(kept.get().id(), name);
+
+		if (bytes.isEmpty()) {
+			return nothingIsHere(response);
+		}
+
+		return carrying(kept.get().mediaType(), bytes.get(), FOR_A_DAY_PRIVATELY);
+	}
+
+	/**
+	 * THE THREE FACTS ABOUT THE READER THAT {@link #HELD_IN_THE_OPEN_FOR_THIS_READER} ASKS, set
+	 * on a statement in one place for both doors that ask it.
+	 */
+	private JdbcClient.StatementSpec askedBy(WhoIsAsking.Member member,
+			JdbcClient.StatementSpec statement) {
+		return statement
 				/* WHETHER THE CALLER MAY READ A HIDDEN PROFILE, which since 03.10.2026 is
 				   `ActiveMemberOrAdministration` and no longer „is there a session" (PDL P23,
 				   03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni
@@ -593,7 +674,54 @@ class PhotoApi {
 				   session's own and never anything the request carried, and null for a visitor,
 				   which no account has. */
 				.param("administration", member != null && readers.isTheAdministration(member))
-				.param("account", member == null ? null : member.account())
+				.param("account", member == null ? null : member.account());
+	}
+
+	/**
+	 * THE SMALL PICTURE A CIRCLE DRAWS: the picture a digest names, cut to the circle the
+	 * address spells and made {@value SmallPicture#SIDE} pixels a side ({@link SmallPicture}).
+	 *
+	 * <p>PDL, 23.10.2026: „Server pravi i šalje umanjenu, već isečenu sliku za kružiće (Top 10
+	 * i svuda gde se slika prikazuje mala); original ostaje za profil." {@link #photo} stays
+	 * exactly what it was and goes on carrying the original to the profile, the cropper and
+	 * the moderator.
+	 *
+	 * <p><b>Who may see it is who may see the original, by the same words</b>
+	 * ({@link #HELD_IN_THE_OPEN_FOR_THIS_READER}), and every refusal takes the one road out a
+	 * digest nobody wrote takes, so this door is open to a visitor and still answers 404 for a
+	 * hidden member's face, a waiting picture and a proposed team's mark (ADL A8, A60). It is
+	 * kept a day and privately, for {@link #FOR_A_DAY_PRIVATELY}'s reason, and that reason holds
+	 * here because the circle is in the address ({@link #A_SMALL_PICTURE_IS_ASKED_FOR_AT}).
+	 *
+	 * <p><b>A picture that cannot be cut answers as one whose file is gone</b>, with one line to
+	 * whoever runs the server ({@link SmallPictures}): there is no smaller picture to send, and the
+	 * original would show the wrong part of it. <b>A reader who waited his whole term for his turn
+	 * is answered 503</b>, which is not a refusal of the picture but „not now".
+	 *
+	 * @param digest the digest of the content
+	 * @param circle the three fractions of the circle, as {@link #addressOfTheSmall} spells them
+	 * @param member who is asking, or null for a visitor, read exactly as {@link #photo} reads it
+	 */
+	@GetMapping(A_SMALL_PICTURE_IS_ASKED_FOR_AT)
+	ResponseEntity<byte[]> small(@PathVariable String digest, @PathVariable String circle,
+			@AuthenticationPrincipal WhoIsAsking.Member member, HttpServletResponse response)
+			throws IOException {
+		Matcher spelt = A_CIRCLE.matcher(circle);
+
+		if (!A_DIGEST.matcher(digest).matches() || !spelt.matches()) {
+			return nothingIsHere(response);
+		}
+
+		BigDecimal x = new BigDecimal(spelt.group(1));
+		BigDecimal y = new BigDecimal(spelt.group(2));
+		BigDecimal diameter = new BigDecimal(spelt.group(3));
+
+		Optional<Kept> kept = askedBy(member, db
+				.sql(THE_SMALL_PICTURE)
+				.param("digest", digest)
+				.param("x", x)
+				.param("y", y)
+				.param("diameter", diameter))
 				.query((row, one) -> new Kept(row.getLong(1), row.getString(2)))
 				.optional();
 
@@ -601,14 +729,47 @@ class PhotoApi {
 			return nothingIsHere(response);
 		}
 
-		Optional<byte[]> bytes = theFileOf(kept.get().id(), name);
+		SmallPictures.Answer answer = small.of(new SmallPictures.Key(digest, circle), () -> {
+			Optional<byte[]> bytes = theFileOf(kept.get().id(), digest);
 
-		if (bytes.isEmpty()) {
+			return bytes.isEmpty() ? Optional.empty()
+					: Optional.of(SmallPicture.of(bytes.get(), kept.get().mediaType(), x, y, diameter));
+		});
+
+		/* NOT NOW, and said as such: the server is cutting other circles and this reader waited
+		   his whole term (`SmallPictures`). Not 404, because the picture IS there and the next
+		   reader will be answered it; the circle on the screen answers any refusal by drawing the
+		   original, so to a member this is the circle as it was before small pictures existed. */
+		if (answer.busy()) {
+			response.sendError(HttpStatus.SERVICE_UNAVAILABLE.value());
+			return null;
+		}
+
+		if (answer.cut().isEmpty()) {
 			return nothingIsHere(response);
 		}
 
-		return carrying(kept.get().mediaType(), bytes.get(), FOR_A_DAY_PRIVATELY);
+		return carrying(answer.cut().get().mediaType(), answer.cut().get().bytes(),
+				FOR_A_DAY_PRIVATELY);
 	}
+
+	/**
+	 * WHERE THE SMALL PICTURE OF A PICTURE AND ITS CIRCLE IS ASKED FOR, written once for every
+	 * answer that hands one out ({@link CompetitorApi}, {@link MeApi}, {@link TeamApi}).
+	 *
+	 * <p>The fractions come off {@code numeric(9, 8)} (V21), so they carry eight places already
+	 * and {@code UNNECESSARY} says so: a ninth would be a column this was not written for.
+	 */
+	static String addressOfTheSmall(String digest, BigDecimal x, BigDecimal y,
+			BigDecimal diameter) {
+		return A_SMALL_PICTURE_IS_ASKED_FOR_AT.replace("{digest}", digest)
+				.replace("{circle}", spelt(x) + "-" + spelt(y) + "-" + spelt(diameter));
+	}
+
+	private static String spelt(BigDecimal fraction) {
+		return fraction.setScale(8, RoundingMode.UNNECESSARY).toPlainString();
+	}
+
 
 	/**
 	 * THE BYTES OF THE PICTURE THE CALLER HIMSELF IS WAITING ON, TO HIM AND TO NOBODY ELSE.

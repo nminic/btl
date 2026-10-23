@@ -1,4 +1,4 @@
-import type { MembershipBasis } from '../../data/types'
+import type { Gender, Member, MembershipBasis } from '../../data/types'
 import { WHEN_RECORDING_ON_THE_ROW, type RowBooking } from './memberPayment'
 
 /**
@@ -18,17 +18,18 @@ import { WHEN_RECORDING_ON_THE_ROW, type RowBooking } from './memberPayment'
  * sezone: do 14.10. samo tekuća, od 15.10. samo naredna”: `GET /api/members` answers the basis of exactly
  * that season, and `seasons` carries every season he ever held, the last of which need not be it. So
  * an older season on a payment offers nothing of that season here. A member who holds no season on sale
- * is offered the payment of `RowPayment` and, since 20.10.2026, the exemption of this file: „Oslobođenje
- * ostaje izbor na redu člana” (PDL P8, 18.10.2026), with a window the owner chose on 20.10.2026 between
- * the outcomes put to him, with the recommendation: „Odobri oslobođenje od članarine za sezonu
- * [godina]?”.
+ * is offered the payment (`MemberPaymentSheet.tsx`) and the exemption: „Oslobođenje ostaje izbor na redu
+ * člana” (PDL P8, 18.10.2026), with a window the owner chose on 20.10.2026 between the outcomes put to
+ * him, with the recommendation: „Odobri oslobođenje od članarine za sezonu [godina]?”. Since 22.10.2026
+ * the exemption is granted by ticking the season on sale in the row's list of seasons
+ * (`MemberSeasons.tsx`).
  */
 
 /**
  * What the row offers BESIDE „Storniraj”, worked out from the basis of the season on sale. „Storniraj”
  * itself needs no field: every basis may be cancelled, and a row with no basis has nothing to cancel.
- * Nor does „Odobri oslobođenje”: it is offered exactly where no basis is held, which is the one
- * question `RowMembership` asks of the basis before it draws anything.
+ * Nor does the exemption: it is offered exactly where no basis is held, as the box of the season on sale
+ * that is not ticked (`MemberSeasons.tsx`).
  */
 export type Offered = {
   /** „Promeni osnov u oslobođenje”: from a payment only. */
@@ -113,4 +114,31 @@ export const WHEN_GRANTING_AN_EXEMPTION: Record<string, string> = THE_ROWS_OWN
 export const WHEN_PAYING_OVER_THE_EXEMPTION: Record<string, string> = {
   ...WHEN_RECORDING_ON_THE_ROW,
   ...THE_ROWS_OWN,
+}
+
+/** What a box of the list asks the row to put to the moderator. */
+export type SeasonAsk = { act: 'grant' } | { act: 'cancel'; basis: MembershipBasis } | { act: 'toTheExemption' }
+
+/**
+ * THE BASIS A SEASON OF THE LIST STANDS ON, or nothing where he holds none of it.
+ *
+ * <p><b>The season on sale is read off `membershipBasis`</b>, the basis the column „Osnov" draws and the
+ * one a request names back to the route (PDL P8, [IZVEDENO 18.10.2026] „Zahtev za storno ili promenu
+ * nosi osnov koji je ekran pokazao"). <b>Every other season is read off `seasons`</b>, which is the only
+ * answer that says anything about it. For the season on sale the two are the same row of `membership`
+ * (`MembersApi`), so which of them is read cannot be told apart from outside: that is a boundary, said
+ * here, and not a guard.
+ */
+export function heldIn(one: Member, season: number): MembershipBasis | undefined {
+  return season === one.seasonOnSale
+    ? one.membershipBasis
+    : one.seasons.find((held) => held.season === season)?.basis
+}
+
+/**
+ * THE WORD OF THE COLUMN „OSNOV" (owner, 22.10.2026, chosen with the recommendation: „Uplata",
+ * „Oslobođen", for a woman „Oslobođena", „Balans"), as the key of the dictionary that says it.
+ */
+export function basisWordOf(basis: MembershipBasis, gender: Gender): string {
+  return basis === 'feeExempt' ? `admin.basisWord.feeExempt${gender}` : `admin.basisWord.${basis}`
 }

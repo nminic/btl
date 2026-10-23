@@ -323,7 +323,12 @@ class ApiSecurityTest {
 							asked)
 					.isNotEqualTo(401);
 
-			String folder = open.substring(0, open.lastIndexOf('/'));
+			/* THE FOLDER OF THE ADDRESS ASKED, NOT OF THE PATTERN. They were the same string
+			   while the one entry had its name last and nothing before it but `/api/photos`;
+			   the small picture's entry has a name in the middle too
+			   (`/api/photos/{digest}/small/{circle}`), and a folder cut off the pattern would be
+			   asked about with its braces still in it. */
+			String folder = asked.substring(0, asked.lastIndexOf('/'));
 			String respelt = folder.substring(0, folder.lastIndexOf('/') + 1)
 					+ folder.substring(folder.lastIndexOf('/') + 1).toUpperCase(java.util.Locale.ROOT)
 					+ asked.substring(folder.length());

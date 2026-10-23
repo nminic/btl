@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 96" role="img" aria-label="Anđelija Tomašević">
+  <!-- The second portrait, and TALLER THAN IT IS WIDE on purpose: a square chosen out of
+       a portrait photograph is the case `crop.size` exists for, and a picture that is
+       already square hides every mistake in the arithmetic that reads it
+       (components/crop.ts). The face sits high, which is where a sent photograph usually
+       puts it, so the square this member's record carries is not the middle. -->
+  <rect width="64" height="96" fill="#2e2536" />
+  <circle cx="32" cy="20" r="11" fill="#e0b596" />
+  <path d="M10 96c0-24 10-40 22-40s22 16 22 40z" fill="#6b4a63" />
+</svg>

@@ -66,6 +66,7 @@ export const aCompetitor = {
      countable (`PhotoApi`) - a different digest from the team's, because no two roles on
      this file may share one value. */
   photo: '/api/photos/3c9e5f41',
+  smallPhoto: '/api/photos/3c9e5f41/small',
   crop: { x: 0.42, y: 0.18, size: 0.64 },
 }
 
@@ -88,6 +89,7 @@ export const aCompetitorWithNoPortrait = {
   firstName: 'Strahinja',
   lastName: 'Vukićević',
   photo: null,
+  smallPhoto: null,
   crop: null,
 }
 
@@ -142,6 +144,7 @@ export const aTeam = {
   country: 'RS',
   bio: '',
   logo: '/api/photos/7d1f0a2b',
+  smallLogo: '/api/photos/7d1f0a2b/small',
   crop: { x: 0.5, y: 0.35, size: 0.72 },
   /* Empty, because the administration is signed in and every record names its own team to it
      (`TeamApi`, `alsoInTheTeam`). The other state is `aTeamToAVisitor` below. */
@@ -175,6 +178,7 @@ export const aTeamWithNoMark = {
   slug: 'novoosnovani-tim',
   name: 'Novoosnovani tim',
   logo: null,
+  smallLogo: null,
   crop: null,
   organizerMemberNumber: undefined,
   foundedByMe: false,
@@ -467,6 +471,7 @@ export const myOwnRecordFromMe = {
   birthdayShown: aCompetitor.birthdayShown,
   photo: aCompetitor.photo,
   crop: aCompetitor.crop,
+  smallPhoto: aCompetitor.smallPhoto,
   address: 'Bulevar Pupina 10',
   phone: '+381 60 123 456',
   /* The words of his that wait for a moderator (`MeApi.MyOwnRecord.bioWaiting`, PDL P11, 18.10.2026).

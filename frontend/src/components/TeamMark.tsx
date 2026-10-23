@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Team } from '../data/types'
 import { cropIn, fittedTo } from './crop'
 import './Crop.css'
@@ -34,7 +35,31 @@ import './TeamMark.css'
  * the sentence beside it is decoration, and decoration is `aria-hidden`.
  */
 export function TeamMark({ team }: { team: Team }) {
+  /* The small address that would not load; `Portrait` says why an address and not a flag. */
+  const [failed, setFailed] = useState<string | null>(null)
+
   if (team.logo !== null) {
+    /* The small mark, already cut on the server (owner, 23.10.2026, „umanjenu, već isečenu
+       sliku za kružiće"), drawn whole; the original cut here only when there is no small one
+       or it would not load, which is `Portrait`'s fall back for the same reason. */
+    if (team.smallLogo !== null && team.smallLogo !== failed) {
+      const small = team.smallLogo
+
+      return (
+        <span className="face-circle team-mark team-mark--logo crop-fitted" aria-hidden="true">
+          <img
+            src={small}
+            alt=""
+            width={64}
+            height={64}
+            loading="lazy"
+            decoding="async"
+            onError={() => setFailed(small)}
+          />
+        </span>
+      )
+    }
+
     return (
       /* The circle is the box around the picture and not the picture itself.
          A crop is a magnification, and magnifying an element magnifies its

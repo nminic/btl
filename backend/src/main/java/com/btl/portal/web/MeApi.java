@@ -428,6 +428,10 @@ class MeApi {
 	 *                     {@link PhotoApi})
 	 * @param crop         which circle of it is drawn, and ABSENT exactly when {@code photo} is:
 	 *                     the other half of the same fact, read off the same joined row
+	 * @param smallPhoto   the same portrait already cut to that circle and small, which is what
+	 *                     the circle beside his name in the header draws (PDL, 23.10.2026,
+	 *                     „umanjenu, već isečenu sliku za kružiće"). ABSENT exactly when
+	 *                     {@code photo} is, and built by {@link PhotoApi#addressOfTheSmall}
 	 * @param address      WHERE A SHIRT AND A MEDAL ARE SENT, his own and read off the one row that
 	 *                     is his (class note, 18.10.2026). Never absent: {@code competitor.address}
 	 *                     is NOT NULL and V8 refuses a blank one, so there is no branch here for none
@@ -453,6 +457,7 @@ class MeApi {
 			String bio, boolean profileHidden, String birthdayShown,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String photo,
 			@JsonInclude(JsonInclude.Include.NON_NULL) CompetitorApi.Crop crop,
+			@JsonInclude(JsonInclude.Include.NON_NULL) String smallPhoto,
 			String address, @JsonInclude(JsonInclude.Include.NON_NULL) String phone,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String bioWaiting) {
 	}
@@ -640,6 +645,9 @@ class MeApi {
 							across == null ? null
 									: new CompetitorApi.Crop(across, row.getBigDecimal(20),
 											row.getBigDecimal(21)),
+							portrait == null ? null
+									: PhotoApi.addressOfTheSmall(portrait, across,
+											row.getBigDecimal(20), row.getBigDecimal(21)),
 							row.getString(22), row.getString(23), row.getString(24));
 				})
 				.single();
