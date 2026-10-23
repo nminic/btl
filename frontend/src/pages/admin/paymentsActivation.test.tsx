@@ -1804,6 +1804,7 @@ describe('activating a membership from the payments screen', () => {
         firstSeason2027: false,
         active: true,
         city: 'Beograd',
+        country: 'RS',
         seasonOnSale: 2031,
         currency: 'RSD',
         expected: 4800,
