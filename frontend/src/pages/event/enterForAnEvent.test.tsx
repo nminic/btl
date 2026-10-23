@@ -865,8 +865,12 @@ describe('a name of one edition and a day of another year on the moderator’s o
 
       await user.clear(day)
       await user.type(day, '01062026')
+      /* The box already holds the event's name by now (a new edition's race is named for it), so what is
+         typed is typed over an empty box: otherwise the list is empty for the wrong reason. */
+      await user.clear(raceBox())
       await user.type(raceBox(), 'Zimska')
 
+      expect(raceBox()).toHaveValue('Zimska')
       expect(theRaces()).toEqual([])
     } finally {
       server.stop()
