@@ -273,7 +273,7 @@ for (const at of SWEEP) {
     await page.route('**/api/members', (route) =>
       route.request().method() === 'GET' ? route.fulfill({ status: 200, json: members }) : route.fallback(),
     )
-    await page.route('**/api/members/*', (route) => route.fulfill({ status: 200, json: {} }))
+    await page.route('**/api/members/**', (route) => route.fulfill({ status: 200, json: {} }))
 
     /* Read the list again under the routes above, so that the screen shows what they serve. */
     await page.reload()
@@ -321,7 +321,7 @@ for (const at of SWEEP) {
     }
 
     /* A row that holds nothing: the first of the sample that does not. */
-    const empty = numbers.find((number, index) => SHAPES[index]?.membershipBasis === undefined)
+    const empty = numbers.find((_, index) => SHAPES[index]?.membershipBasis === undefined)
 
     if (empty !== undefined) {
       await pressTwice(empty, 'nothing')
