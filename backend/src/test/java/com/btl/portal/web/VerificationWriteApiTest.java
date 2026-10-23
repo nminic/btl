@@ -3614,6 +3614,21 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * A NAME NOT FOUND IS MADE WITHOUT THE SPACES AT ITS ENDS, so the key finds it the next time: the
+	 * comparison above strips the name typed on its own, and without this case the two strips cover each
+	 * other (a mutation that took either out left every case green).
+	 */
+	@Test
+	void aNewRaceTypedWithSpacesAtItsEndsIsMadeWithoutThem() throws Exception {
+		long run = describedRun(ANA, "Nešto potpuno drugo", "length", THE_DAY_HE_RAN, "10.0000", 5, 5, 3000);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Nova staza", "   Nova staza   ",
+				"length", null)).getStatus()).isEqualTo(200);
+
+		assertThat(theOneRaceOf(theEventAt("nova-staza-2027").id()).name()).isEqualTo("Nova staza");
+	}
+
+	/**
 	 * THE SAME NAME ON ANOTHER DAY OF THE EVENT IS ANOTHER RACE: the member ran on the day typed, and a
 	 * result put on the race of another day would be counted under a day he did not run (PDL P28a,
 	 * 10.08.2026, an event of several days is one event of races on several days).
