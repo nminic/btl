@@ -3466,11 +3466,13 @@ class VerificationWriteApiTest {
 	}
 
 	/**
-	 * AND A SECOND RACE FOR THE SAME RUN IS NOT PREVENTED: a moderator who names the event
-	 * otherwise makes a second event and a second race.
+	 * AND A SECOND RACE FOR THE SAME RUN IS NOT PREVENTED WHERE THE NAMES DIFFER: a moderator who names
+	 * the event and the race otherwise makes a second event and a second race.
 	 *
 	 * <p>ADL, owner, 11.09.2026, the cost he accepted in the record's wording: „kalendar dobija
-	 * trke koje niko nije planirao, i duplikati se ne sprečavaju".
+	 * trke koje niko nije planirao, i duplikati se ne sprečavaju". Since 23.10.2026 that holds only for
+	 * names that differ: the same name, day and measure on an event that has the race put the run on it
+	 * ({@link #theSecondApprovalOfTheSameWordsPutsTheRunOnTheRaceTheFirstMade}).
 	 */
 	@Test
 	void aSecondRaceForTheSameRunIsMadeWhenTheModeratorNamesItOtherwise() throws Exception {
@@ -3487,6 +3489,299 @@ class VerificationWriteApiTest {
 		assertThat(eventAt("nocna-trka-zemun-2027")).isPresent();
 		assertThat(eventAt("zemunska-nocna-trka-2027")).isPresent();
 		assertThat(theResultOf(ANA).raceId()).isNotEqualTo(theResultOf(BOJAN).raceId());
+	}
+
+	/**
+	 * A RACE THE EVENT ALREADY HAS UNDER THE NAME TYPED TAKES THE RUN, AND NO SECOND RACE IS MADE.
+	 *
+	 * <p>PDL, owner, 23.10.2026, choosing among the outcomes offered, with my recommendation beside it:
+	 * the rule „Bez duple trke” holds for the APPROVAL of a reported result too. When the name of the
+	 * race is typed, and a race of the same name, the same day and the same measure is in the event,
+	 * the result goes on it; the key is the one PR 637 asks of the league's save
+	 * ({@link TheRaceAnEventAlreadyHas}).
+	 *
+	 * <p><b>Every way the race could be found by something other than its key is a different row
+	 * here.</b> The race of that name is the SECOND of its event, so the first race of the event is not
+	 * it; a race of the same name, day and measure stands in ANOTHER event and is the lowest key of the
+	 * calendar, so a lookup that did not ask the event finds that one. The name is typed in another case
+	 * and with spaces at its ends, so the stored name and the typed one are two strings. The member's
+	 * climb and fall and the moderator's are NOT the race's, so a result counted at either is a
+	 * different row from the one counted at the race's own (PDL, 03.08.2026, „Dužina, uspon i spust se
+	 * ne unose, nego se uzimaju sa izabrane trke"; the key leaves them out, which is my reading,
+	 * recorded in the entry of 23.10.2026).
+	 */
+	@Test
+	void aRaceTheEventAlreadyHasUnderTheNameTypedTakesTheRunAndNoSecondRaceIsMade()
+			throws Exception {
+		long elsewhere = event("drugo-izdanje-2027", "Drugo izdanje", THE_DAY_HE_RAN);
+		long inAnotherEvent = race(elsewhere, "Dunavski polumaraton", THE_DAY_HE_RAN, "21.1000", 30, 20);
+		long event = event("dunavski-polumaraton-2027", "Dunavski polumaraton", THE_DAY_HE_RAN);
+		long theFirstOfTheEvent = race(event, "Dunavska desetka", THE_DAY_HE_RAN, "10.0000", 5, 5);
+		long theRace = race(event, "Dunavski polumaraton", THE_DAY_HE_RAN, "21.1000", 30, 20);
+		long run = describedRun(ANA, "Nešto potpuno drugo", "length", THE_DAY_HE_RAN, "21.1000", 99, 88,
+				6000);
+		int events = howManyEvents();
+		int races = howManyRaces();
+
+		assertThat(theRace).isGreaterThan(theFirstOfTheEvent);
+		assertThat(inAnotherEvent).isLessThan(theFirstOfTheEvent);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Dunavski polumaraton",
+				"  dunavski POLUMARATON ", "length", "{\"distanceKm\":21.1,\"ascentM\":77,"
+						+ "\"descentM\":66,\"seconds\":6100}")).getStatus()).isEqualTo(200);
+
+		assertThat(howManyRaces()).as("a second race of the name was made").isEqualTo(races);
+		assertThat(howManyEvents()).isEqualTo(events);
+		assertThat(theResultOf(ANA).raceId())
+				.as("the run was counted on another race than the one of that name")
+				.isEqualTo(theRace);
+		assertThat(theResultOf(ANA).figures())
+				.as("the run was counted at the figures typed and not at the race's own climb and fall")
+				.isEqualTo(fourFigures("21.1", 30, 20, 6100));
+		assertThat(theResultOf(ANA).points()).isEqualByComparingTo(
+				BtlScoreCalculator.calculate(21.1, 30, 20, 6100));
+		assertThat(whatTheSubmissionSays(run)).isEqualTo(new Described(theRace, THE_DAY_HE_RAN, null,
+				null, null, null, null, fourFigures("21.1", 30, 20, 6100)));
+
+		/* AND THE LETTER NAMES THE RACE AS THE CALENDAR NAMES IT, not the words typed. */
+		MimeMessage[] arrived = SMTP.getReceivedMessages();
+
+		assertThat(arrived).isNotEmpty();
+		assertThat(arrived[0].getContent().toString()).contains("Dunavski polumaraton, 07.03.2027");
+	}
+
+	/**
+	 * THE SAME RACE IS FOUND WHEN THE MODERATOR NAMES THE EVENT BY ITS KEY, which is the other road into
+	 * {@code aRaceOnTheEvent}.
+	 */
+	@Test
+	void aRaceTheEventAlreadyHasIsFoundWhenTheEventIsChosenByItsKeyToo() throws Exception {
+		long event = event("dunavski-polumaraton-2027", "Dunavski polumaraton", THE_DAY_HE_RAN);
+
+		race(event, "Dunavska desetka", THE_DAY_HE_RAN, "10.0000", 5, 5);
+
+		long theRace = race(event, "Dunavski polumaraton", THE_DAY_HE_RAN, "21.1000", 30, 20);
+		long run = describedRun(ANA, "Nešto potpuno drugo", "length", THE_DAY_HE_RAN, "21.1000", 99, 88,
+				6000);
+		int races = howManyRaces();
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceOn(event, "Dunavski polumaraton"))
+				.getStatus()).isEqualTo(200);
+
+		assertThat(howManyRaces()).as("a second race of the name was made").isEqualTo(races);
+		assertThat(theResultOf(ANA).raceId()).isEqualTo(theRace);
+	}
+
+	/**
+	 * THE NAME IS THE SAME IN ANY CASE AND WITH THE SPACES AT ITS ENDS TAKEN OFF (owner, 19.10.2026, „bez
+	 * obzira na velika i mala slova”), which is how a name typed exactly is compared on the screen.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"DUNAVSKI POLUMARATON", "dunavski polumaraton", "   Dunavski polumaraton   "})
+	void aNameInAnotherCaseOrWithSpacesAtItsEndsIsTheSameName(String typed) throws Exception {
+		long event = event("dunavski-polumaraton-2027", "Dunavski polumaraton", THE_DAY_HE_RAN);
+		long theRace = race(event, "Dunavski polumaraton", THE_DAY_HE_RAN, "21.1000", 30, 20);
+		long run = describedRun(ANA, "Nešto potpuno drugo", "length", THE_DAY_HE_RAN, "21.1000", 99, 88,
+				6000);
+		int races = howManyRaces();
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Dunavski polumaraton", typed,
+				"length", null)).getStatus()).isEqualTo(200);
+
+		assertThat(howManyRaces()).isEqualTo(races);
+		assertThat(theResultOf(ANA).raceId()).isEqualTo(theRace);
+	}
+
+	/**
+	 * A NAME THAT DIFFERS BY A LETTER, A DIGIT OR A SPACE INSIDE IT IS ANOTHER NAME, and the race it
+	 * names is made (a diacritic is a letter: „Cacak” and „Čačak” are two names).
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"Dunavski polumaraton 2", "Dunavski polumaratón", "Dunavski  polumaraton"})
+	void aNameThatDiffersInsideItIsAnotherNameAndMakesTheRace(String typed) throws Exception {
+		long event = event("dunavski-polumaraton-2027", "Dunavski polumaraton", THE_DAY_HE_RAN);
+		long theOther = race(event, "Dunavski polumaraton", THE_DAY_HE_RAN, "21.1000", 30, 20);
+		long run = describedRun(ANA, "Nešto potpuno drugo", "length", THE_DAY_HE_RAN, "21.1000", 99, 88,
+				6000);
+		int races = howManyRaces();
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Dunavski polumaraton", typed,
+				"length", null)).getStatus()).isEqualTo(200);
+
+		assertThat(howManyRaces()).isEqualTo(races + 1);
+		assertThat(theResultOf(ANA).raceId()).isNotEqualTo(theOther);
+		assertThat(racesOf(event)).extracting(ARace::name).contains(typed.strip());
+	}
+
+	/**
+	 * THE SAME NAME ON ANOTHER DAY OF THE EVENT IS ANOTHER RACE: the member ran on the day typed, and a
+	 * result put on the race of another day would be counted under a day he did not run (PDL P28a,
+	 * 10.08.2026, an event of several days is one event of races on several days).
+	 */
+	@Test
+	void theSameNameOnAnotherDayOfTheEventMakesTheRace() throws Exception {
+		long event = event("dunavski-polumaraton-2027", "Dunavski polumaraton", SATURDAY);
+		long saturdays = race(event, "Dunavski polumaraton", SATURDAY, "21.1000", 30, 20);
+		long run = describedRun(ANA, "Nešto potpuno drugo", "length", THE_DAY_HE_RAN, "21.1000", 99, 88,
+				6000);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Dunavski polumaraton",
+				"Dunavski polumaraton", "length", null)).getStatus()).isEqualTo(200);
+
+		List<ARace> under = racesOf(event);
+
+		assertThat(under).hasSize(2);
+		assertThat(theResultOf(ANA).raceId()).isNotEqualTo(saturdays);
+		assertThat(theResultOf(ANA).raceDate()).isEqualTo(THE_DAY_HE_RAN);
+		assertThat(under.get(1).date()).isEqualTo(THE_DAY_HE_RAN);
+	}
+
+	/**
+	 * THE SAME NAME AND DAY OF ANOTHER MEASURE IS ANOTHER RACE (owner, 23.08.2026, „ja mogu da u okviru
+	 * Beogradskog maratona imam dve trke, od 42.2 i 21.1, i obe će dobiti default naziv”): a length
+	 * that differs, a free race and a race to a limit, all of the name and the day, are three races
+	 * that are not the half marathon he ran.
+	 */
+	@Test
+	void theSameNameAndDayOfAnotherMeasureMakesTheRace() throws Exception {
+		long event = event("dunavski-polumaraton-2027", "Dunavski polumaraton", THE_DAY_HE_RAN);
+		long marathon = race(event, "Dunavski polumaraton", THE_DAY_HE_RAN, "42.2000", 30, 20);
+		long free = freeRace(event, "Dunavski polumaraton", THE_DAY_HE_RAN);
+		long limited = timedRace(event, "Dunavski polumaraton", THE_DAY_HE_RAN, 6000);
+		long run = describedRun(ANA, "Nešto potpuno drugo", "length", THE_DAY_HE_RAN, "21.1000", 99, 88,
+				6000);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Dunavski polumaraton",
+				"Dunavski polumaraton", "length", null)).getStatus()).isEqualTo(200);
+
+		assertThat(racesOf(event)).hasSize(4);
+		assertThat(theResultOf(ANA).raceId()).isNotIn(marathon, free, limited);
+		assertThat(theResultOf(ANA).figures()).isEqualTo(fourFigures("21.1", 99, 88, 6000));
+	}
+
+	/**
+	 * A RACE TO A LIMIT IS FOUND BY ITS LIMIT, which is the time this approval would make it with, and
+	 * one of another limit is not it. The run is counted at the race's limit, as a run on a race to a
+	 * limit is (V7).
+	 */
+	@Test
+	void aRaceToALimitIsFoundByItsLimitAndOneOfAnotherLimitIsNot() throws Exception {
+		long event = event("dvanaest-sati-2027", "Dvanaest sati", THE_DAY_HE_RAN);
+		long otherLimit = timedRace(event, "Dvanaest sati", THE_DAY_HE_RAN, 3600);
+		long theRace = timedRace(event, "Dvanaest sati", THE_DAY_HE_RAN, 5400);
+		long run = describedRun(ANA, "Dvanaest sati", "time", THE_DAY_HE_RAN, "12.0000", 40, 30, 5400);
+		long another = describedRun(BOJAN, "Dvanaest sati", "time", THE_DAY_HE_RAN, "12.0000", 40, 30,
+				7200);
+		int races = howManyRaces();
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Dvanaest sati", "Dvanaest sati",
+				"time", null)).getStatus()).isEqualTo(200);
+
+		assertThat(howManyRaces()).isEqualTo(races);
+		assertThat(theResultOf(ANA).raceId()).isEqualTo(theRace);
+		assertThat(theResultOf(ANA).figures()).isEqualTo(fourFigures("12", 40, 30, 5400));
+
+		assertThat(decideWith(THE_SUPERADMIN, another, makingTheRace("Dvanaest sati", "Dvanaest sati",
+				"time", null)).getStatus()).isEqualTo(200);
+
+		assertThat(howManyRaces()).isEqualTo(races + 1);
+		assertThat(theResultOf(BOJAN).raceId()).isNotIn(theRace, otherLimit);
+	}
+
+	/**
+	 * A FREE RACE IS FOUND BY ITS NAME AND DAY, and the figures are the runner's own on it (V7): the
+	 * race has no measure to compare, and the run's distance does not have to be nought.
+	 */
+	@Test
+	void aFreeRaceIsFoundByItsNameAndDayAndTheFiguresAreTheRunners() throws Exception {
+		long event = event("visoki-vrh-2027", "Visoki vrh", THE_DAY_HE_RAN);
+		long theRace = freeRace(event, "Visoki vrh", THE_DAY_HE_RAN);
+		long run = describedRun(ANA, "Visoki vrh", "free", THE_DAY_HE_RAN, "18.4000", 1250, 300, 9000);
+		int races = howManyRaces();
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Visoki vrh", "Visoki vrh", "free",
+				null)).getStatus()).isEqualTo(200);
+
+		assertThat(howManyRaces()).isEqualTo(races);
+		assertThat(theResultOf(ANA).raceId()).isEqualTo(theRace);
+		assertThat(theResultOf(ANA).figures()).isEqualTo(fourFigures("18.4", 1250, 300, 9000));
+	}
+
+	/**
+	 * WHERE SEVERAL RACES ANSWER, THE LOWEST KEY IS THE RACE: races of one key made before this was asked
+	 * are in the calendar already, and the choice does not depend on the order a table is read in.
+	 */
+	@Test
+	void whereSeveralRacesAnswerTheLowestKeyIsTheRace() throws Exception {
+		long event = event("dunavski-polumaraton-2027", "Dunavski polumaraton", THE_DAY_HE_RAN);
+		long lowest = race(event, "Dunavski polumaraton", THE_DAY_HE_RAN, "21.1000", 30, 20);
+
+		race(event, "Dunavski polumaraton", THE_DAY_HE_RAN, "21.1000", 31, 21);
+		race(event, "Dunavski polumaraton", THE_DAY_HE_RAN, "21.1000", 32, 22);
+
+		long run = describedRun(ANA, "Nešto potpuno drugo", "length", THE_DAY_HE_RAN, "21.1000", 99, 88,
+				6000);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Dunavski polumaraton",
+				"Dunavski polumaraton", "length", null)).getStatus()).isEqualTo(200);
+
+		assertThat(theResultOf(ANA).raceId()).isEqualTo(lowest);
+		assertThat(theResultOf(ANA).figures()).isEqualTo(fourFigures("21.1", 30, 20, 6000));
+	}
+
+	/**
+	 * THE SECOND MEMBER WHO RAN THE SAME NEW RACE NEEDS NO AUTOCOMPLETE: the moderator types the same
+	 * words and the run goes on the race the first approval made. Until 23.10.2026 this made a second
+	 * race of the name on the same event and the same day (the cost of ADL, 11.09.2026, „duplikati se ne
+	 * sprečavaju", which this overturns for a race of one name, day and measure).
+	 */
+	@Test
+	void theSecondApprovalOfTheSameWordsPutsTheRunOnTheRaceTheFirstMade() throws Exception {
+		long anas = describedRun(ANA, "Noćna trka Zemun", "length", THE_DAY_HE_RAN, "5.0000", 15, 10,
+				1500);
+		long bojans = describedRun(BOJAN, "Noćna trka Zemun", "length", THE_DAY_HE_RAN, "5.0000", 25,
+				20, 1700);
+
+		assertThat(decideWith(THE_SUPERADMIN, anas, makingTheRace("Noćna trka Zemun",
+				"Noćna trka Zemun", "length", null)).getStatus()).isEqualTo(200);
+		assertThat(decideWith(THE_SUPERADMIN, bojans, makingTheRace("Noćna trka Zemun",
+				"Noćna trka Zemun", "length", null)).getStatus()).isEqualTo(200);
+
+		AnEvent event = theEventAt("nocna-trka-zemun-2027");
+		long theRace = theOneRaceOf(event.id()).id();
+
+		assertThat(theResultOf(ANA).raceId()).isEqualTo(theRace);
+		assertThat(theResultOf(BOJAN).raceId()).isEqualTo(theRace);
+		assertThat(theResultOf(BOJAN).figures())
+				.as("the second run is counted at the race's climb and fall, not at his own")
+				.isEqualTo(fourFigures("5", 15, 10, 1700));
+	}
+
+	/**
+	 * A MEMBER WHO HAS A RESULT ON THE RACE FOUND IS REFUSED AS ON ANY RACE, AND NO SECOND RACE IS MADE
+	 * TO GET AROUND IT (PDL P6, 09.09.2026, „Član ima najviše jedan rezultat na jednoj trci"). That the
+	 * row waits again is {@code VerificationDecisionConcurrencyTest}'s, as for the case above this one's
+	 * kind: this class runs in the test's own transaction, which a refusal thrown out of the route does
+	 * not roll back.
+	 */
+	@Test
+	void aMemberWhoHasAResultOnTheRaceFoundIsRefusedAndNoSecondRaceIsMade() throws Exception {
+		long event = event("dunavski-polumaraton-2027", "Dunavski polumaraton", THE_DAY_HE_RAN);
+		long theRace = race(event, "Dunavski polumaraton", THE_DAY_HE_RAN, "21.1000", 30, 20);
+
+		resultAlreadyCounted(ANA, theRace, THE_DAY_HE_RAN, "21.1000", 30, 20, 5500, "50.00");
+
+		long run = describedRun(ANA, "Nešto potpuno drugo", "length", THE_DAY_HE_RAN, "21.1000", 99, 88,
+				6000);
+		int races = howManyRaces();
+
+		MockHttpServletResponse refused = decideWith(THE_SUPERADMIN, run, makingTheRace(
+				"Dunavski polumaraton", "Dunavski polumaraton", "length", null));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(HE_HAS_A_RESULT_ON_THIS_RACE);
+		assertThat(howManyRaces()).isEqualTo(races);
+		assertThat(howManyResults(ANA)).isEqualTo(1);
 	}
 
 	/**
