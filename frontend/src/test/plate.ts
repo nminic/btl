@@ -41,6 +41,7 @@ export function person(
     birthdayShown: 'none',
     bio: '',
     photo: null,
+    smallPhoto: null,
     crop: null,
     ...over,
   }

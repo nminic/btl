@@ -58,6 +58,7 @@ export const WHAT_HE_DOES_NOT_HAVE_YET = [
   'teamSince',
   'photo',
   'crop',
+  'smallPhoto',
   'phone',
   'bioWaiting',
 ]
