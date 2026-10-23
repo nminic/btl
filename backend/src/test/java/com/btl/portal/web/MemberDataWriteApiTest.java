@@ -699,6 +699,12 @@ class MemberDataWriteApiTest {
 				.isEqualTo(200);
 		assertThat(promisesOf(aMinor)).isEmpty();
 		assertThat(promisesOf(corrected)).containsExactly(2028);
+
+		/* AND A YEAR THAT MOVES BUT CROSSES NO LINE KEEPS THE CODE: 1990 to 1989 is a grown man's
+		   price in 2028 either way. It is the year compared and not the price, otherwise. */
+		assertThat(corrected("000005", "{\"birthDate\": \"1989-05-15\"}", OVER_THE_MEMBERS).getStatus())
+				.isEqualTo(200);
+		assertThat(promisesOf(corrected)).containsExactly(2028);
 	}
 
 	// --- the rules of M7 ---
@@ -787,6 +793,17 @@ class MemberDataWriteApiTest {
 		assertThat(taken.getStatus()).isEqualTo(409);
 		assertThat(reasonIn(taken)).isEqualTo(MemberDataWriteApi.THE_ADDRESS_IS_TAKEN);
 		nothingWasWritten(before);
+
+		/* AN ADDRESS STORED IN CAPITALS, which a row older than the fold can be (EmailConfirmationApi says
+		   why the lookup is `lower` on both sides), is the same address as the one typed in small letters. */
+		db.sql("insert into account (first_name, last_name, email, role_id) values ('Stari', 'Nalog',"
+				+ " 'Stari.Nalog@Primer.rs', (select id from role where code = 'competitor'))").update();
+
+		MockHttpServletResponse inCapitals = corrected("000005", "{\"email\": \"stari.nalog@primer.rs\"}",
+				OVER_THE_MEMBERS);
+
+		assertThat(inCapitals.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(inCapitals)).isEqualTo(MemberDataWriteApi.THE_ADDRESS_IS_TAKEN);
 
 		/* The superadmin's own address is confirmed, so not even he moves it through the portal. */
 		assertThat(corrected("000009", "{\"email\": \"novi-super@primer.rs\"}", THE_SUPERADMIN).getStatus())
