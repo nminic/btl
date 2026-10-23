@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Competitor } from '../data/types'
 import { cropIn, fittedTo } from './crop'
 import './Crop.css'
@@ -57,12 +58,44 @@ import './Portrait.css'
  * An empty circle, for the places a board has but the league has not filled yet, so a
  * widget of ten slots is the same height whether the league has thirty members or three.
  */
-export function Portrait({ competitor }: { competitor?: Competitor }) {
+export function Portrait({ competitor, whole = false }: { competitor?: Competitor; whole?: boolean }) {
+  /* The small address that would not load, so the circle falls back to the original. Kept as
+     the ADDRESS and not as a flag, so a circle that is handed another member is not left
+     thinking his picture failed too. */
+  const [failed, setFailed] = useState<string | null>(null)
+
   if (competitor === undefined) {
     return <span className="face-circle portrait portrait--empty" aria-hidden="true" />
   }
 
   if (competitor.photo !== null) {
+    /* THE SMALL PICTURE, ALREADY CUT, FOR EVERY CIRCLE BUT THE PROFILE'S. Owner, 23.10.2026
+       (PDL, „Umanjene slike za kružiće"): „Server pravi i šalje umanjenu, već isečenu sliku za
+       kružiće [...] original ostaje za profil." Cut on the server, so it is drawn whole and the
+       square is not applied a second time.
+
+       And the original, cut here as it always was, in three cases: the profile asked for it
+       (`whole`), the answer carried no small one, or the small one would not load - the server
+       declines to cut a picture larger than it can safely decode (`SmallPicture`), and a circle
+       showing the original is better than an empty one. */
+    const small = whole ? null : competitor.smallPhoto
+
+    if (small !== null && small !== failed) {
+      return (
+        <span className="face-circle portrait crop-fitted" aria-hidden="true">
+          <img
+            src={small}
+            alt=""
+            width={64}
+            height={64}
+            loading="lazy"
+            decoding="async"
+            onError={() => setFailed(small)}
+          />
+        </span>
+      )
+    }
+
     return (
       /* The circle is the box around the picture and not the picture itself, which is the
          one thing this has to get right that a plain `object-fit: cover` does not. A crop

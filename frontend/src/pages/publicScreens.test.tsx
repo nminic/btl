@@ -1985,7 +1985,7 @@ describe('Competitors', () => {
     const hiding = ['000002', '000007']
     const served = everybody.map((one) =>
       hiding.includes(one.memberNumber)
-        ? { ...one, profileHidden: true, photo: null, crop: null, bio: null }
+        ? { ...one, profileHidden: true, photo: null, crop: null, smallPhoto: null, bio: null }
         : one,
     )
     const server = serverThat((path) =>
@@ -2053,10 +2053,29 @@ describe('Competitors', () => {
 
     const her = must(screen.getByText('Anđelija Vukotić').closest('li'), 'her card')
 
+    /* Her SMALL picture, already cut on the server (PDL, 23.10.2026, „umanjenu, već isečenu sliku
+       za kružiće [...] original ostaje za profil"): a card is one of the circles. */
     expect(must(her.querySelector('img'), 'her portrait')).toHaveAttribute(
       'src',
-      '/mock/photo/andjelija.svg',
+      '/mock/photo/andjelija.small.svg',
     )
+  })
+
+  it('draws the ORIGINAL on her profile, cut to her square, and the small one nowhere there', async () => {
+    /* The other half of the same sentence: „original ostaje za profil" (PDL, 23.10.2026). The
+       head of the profile is the one circle that still draws the whole picture and cuts it in
+       the browser, so what is asserted is the original's address AND her own square on it - the
+       small one is already cut, and a square applied to it would cut it twice. */
+    renderAt('/sr/takmicar/000003')
+
+    const head = must(
+      (await screen.findByRole('heading', { level: 1, name: /Anđelija Vukotić/ })).closest('header'),
+      'the head of her profile',
+    )
+    const portrait = must(head.querySelector('img'), 'her portrait on her profile')
+
+    expect(portrait).toHaveAttribute('src', '/mock/photo/andjelija.svg')
+    expect(portrait).toHaveStyle({ objectPosition: '30% 15%', transformOrigin: '30% 15%' })
   })
 
   it('searches, and says so when nothing matches', async () => {

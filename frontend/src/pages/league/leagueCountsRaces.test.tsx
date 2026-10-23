@@ -168,6 +168,7 @@ function servedCountingFour(): void {
             lastName,
             photo: null,
             crop: null,
+            smallPhoto: null,
           })),
         ),
         { status: 200, headers: JSON_HEADERS },

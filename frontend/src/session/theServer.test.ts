@@ -779,6 +779,7 @@ describe('the page of the caller himself', () => {
       bio: '',
       photo: null,
       crop: null,
+      smallPhoto: null,
     })
     expect(server.asked.map((one) => one.path)).toEqual(['/api/me'])
   })
@@ -795,6 +796,7 @@ describe('the page of the caller himself', () => {
           birthdayShown: 'full',
           photo: '/api/photos/3c9e5f41',
           crop: { x: 0.125, y: 0.25, size: 0.5 },
+          smallPhoto: '/api/photos/3c9e5f41/small/0.12500000-0.25000000-0.50000000',
         }),
       ),
     )
@@ -807,7 +809,29 @@ describe('the page of the caller himself', () => {
       birthdayShown: 'full',
       photo: '/api/photos/3c9e5f41',
       crop: { x: 0.125, y: 0.25, size: 0.5 },
+      smallPhoto: '/api/photos/3c9e5f41/small/0.12500000-0.25000000-0.50000000',
     })
+  })
+
+  it('takes the small portrait only under the portal’s own address and only beside the picture it was cut from', async () => {
+    /* The third half of the portrait (PDL, 23.10.2026, „umanjenu, već isečenu sliku za
+       kružiće"). It goes into an `img` like `photo`, so it is believed under `/api/photos/` and
+       nowhere else; and it is nothing without the picture and square it was cut from, so a
+       record that lost those does not keep a circle of them. */
+    const small = '/api/photos/3c9e5f41/small/0.12500000-0.25000000-0.50000000'
+    const withAPortrait = { ...HIS_PAGE, photo: '/api/photos/3c9e5f41', crop: { x: 0.125, y: 0.25, size: 0.5 } }
+
+    for (const [said, kept] of [
+      [{ ...withAPortrait, smallPhoto: small }, small],
+      [{ ...withAPortrait, smallPhoto: 'https://elsewhere.example/a.jpg' }, null],
+      [{ ...withAPortrait }, null],
+      [{ ...withAPortrait, photo: null, smallPhoto: small }, null],
+      [{ ...withAPortrait, crop: null, smallPhoto: small }, null],
+    ] as const) {
+      server = serverThat(() => saying(aMemberSaying(said)))
+
+      expect((await whatTheServerSaysOfMyProfile())?.smallPhoto, JSON.stringify(said)).toBe(kept)
+    }
   })
 
   it('reads the facts a page needs off the sample, and finds some', () => {

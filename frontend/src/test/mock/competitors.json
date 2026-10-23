@@ -20,6 +20,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": "/mock/photo/vladan.svg",
+    "smallPhoto": "/mock/photo/vladan.small.svg",
     "crop": {
       "x": 0.5,
       "y": 0.5,
@@ -47,6 +48,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -70,6 +72,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": "/mock/photo/andjelija.svg",
+    "smallPhoto": "/mock/photo/andjelija.small.svg",
     "crop": {
       "x": 0.3,
       "y": 0.15,
@@ -97,6 +100,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -120,6 +124,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -143,6 +148,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -166,6 +172,7 @@
     "profileHidden": false,
     "birthdayShown": "year",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -189,6 +196,7 @@
     "profileHidden": false,
     "birthdayShown": "full",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -212,6 +220,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -233,6 +242,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -256,6 +266,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -279,6 +290,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -302,6 +314,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -325,6 +338,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -348,6 +362,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -371,6 +386,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -394,6 +410,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -417,6 +434,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -440,6 +458,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -463,6 +482,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -486,6 +506,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -509,6 +530,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -532,6 +554,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -555,6 +578,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -578,6 +602,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -601,6 +626,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -624,6 +650,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -647,6 +674,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -670,6 +698,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -693,6 +722,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -714,6 +744,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   },
   {
@@ -735,6 +766,7 @@
     "profileHidden": false,
     "birthdayShown": "none",
     "photo": null,
+    "smallPhoto": null,
     "crop": null
   }
 ]

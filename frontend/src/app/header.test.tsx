@@ -274,9 +274,11 @@ describe('the account menu', () => {
 
     const button = await screen.findByRole('button', { name: 'Otvori nalog' })
 
+    /* The SMALL picture, already cut on the server: the header is one of the circles the owner
+       meant (PDL, 23.10.2026, „Server pravi i šalje umanjenu, već isečenu sliku za kružiće"). */
     expect(must(button.querySelector('img'), 'the portrait in the account button')).toHaveAttribute(
       'src',
-      '/mock/photo/andjelija.svg',
+      '/mock/photo/andjelija.small.svg',
     )
     expect(button).not.toHaveTextContent('AV')
   })

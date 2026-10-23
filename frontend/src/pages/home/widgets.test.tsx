@@ -64,6 +64,7 @@ const competitor = (memberNumber: string): Competitor => ({
   profileHidden: false,
   birthdayShown: 'none',
   photo: null,
+  smallPhoto: null,
   crop: null,
   bio: '',
 })

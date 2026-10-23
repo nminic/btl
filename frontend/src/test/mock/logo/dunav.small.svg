@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Dunavski trkači">
+  <!-- Stand-in for a logo a team would upload: the prototype has no uploads, and
+       one team carries one so both states are on the same screen, a circle with a
+       picture beside circles with initials. -->
+  <rect width="64" height="64" fill="#0e2a47" />
+  <path d="M0 40c8 0 8-6 16-6s8 6 16 6 8-6 16-6 8 6 16 6v24H0z" fill="#2f6fb3" />
+  <path d="M0 48c8 0 8-6 16-6s8 6 16 6 8-6 16-6 8 6 16 6v16H0z" fill="#4b8fd6" />
+  <circle cx="32" cy="22" r="9" fill="#e8b73a" />
+</svg>

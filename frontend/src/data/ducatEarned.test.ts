@@ -19,6 +19,7 @@ const member: Competitor = {
   profileHidden: false,
   birthdayShown: 'none',
   photo: null,
+  smallPhoto: null,
   crop: null,
   bio: '',
 }
