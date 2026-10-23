@@ -404,6 +404,13 @@ export type Member = {
   lastName: string
   gender: Gender
   city: string
+  /**
+   * The country he lives in, by its code, through whichever of its two homes his town has (`MembersApi`):
+   * drawn under the town on his row (owner, 22.10.2026, PDL „Red na ekranu članova ima pet kolona”:
+   * „Druga kolona Mesto, a ispod malim fontom ... Država”). The money he is billed in is NOT worked out
+   * from it here: that is `currency`, answered by the server, which is its one home.
+   */
+  country: string
   ageBand: AgeBand
   firstSeason2027: boolean
   /** Whether his fee stands, as `competitor.active` says it: the flag behind the public list. */

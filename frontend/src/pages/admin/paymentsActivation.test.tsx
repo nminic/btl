@@ -1393,6 +1393,60 @@ describe('activating a membership from the payments screen', () => {
     })
   })
 
+  /**
+   * THE SECOND CLICK OF A DOUBLE PRESS ANSWERS NONE OF THE THREE QUESTIONS (22.10.2026). The sheet opens
+   * at the top of the window, under the thumb that opened it: measured in Chrome at 360px on the
+   * moderation of the members, the second click of a double press on a row's action landed inside the
+   * sheet. `components/Prompt.tsx` refuses a click with `detail` 2 on every one of its buttons, and this
+   * asks it of each question this screen puts, through the screen, with both write doors counted.
+   */
+  describe('the second click of a double press', () => {
+    const QUESTIONS = [
+      { asked: 'the ground, his cases 4 and 5', whose: 'Petar Marko', typed: '' },
+      { asked: 'the shortfall, his case 3', whose: 'Petar Marko', typed: '20' },
+      { asked: 'the exemption, his case 6', whose: 'Ana Ilić', typed: '' },
+    ]
+
+    it.each(QUESTIONS)('answers no button of the question about $asked', async ({ whose, typed }) => {
+      const server = serving()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf(whose)
+
+      if (typed !== '') {
+        await user.type(within(row).getByLabelText(/^Uplaćeno/), typed)
+      }
+
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+
+      const sheet = await screen.findByRole('dialog')
+      const buttons = within(sheet).getAllByRole('button')
+
+      /* Every button of the question, the way out included: three on the first, two on the others. */
+      expect(buttons.length).toBeGreaterThanOrEqual(2)
+
+      for (const one of buttons) {
+        fireEvent.click(one, { detail: 2 })
+      }
+
+      /* NOTHING STARTED, said by the sheet itself and not only by the server: a request is on its way
+         before it is recorded, so a count read at once would pass over a press that did send. The
+         sheet's own region says „Šalje se" from the moment an answer starts one (`working`). */
+      expect(within(sheet).getByRole('status')).toBeEmptyDOMElement()
+      expect(everythingWritten(server.asked)).toEqual([])
+      expect(screen.getByRole('dialog')).toBe(sheet)
+
+      /* AND A SINGLE PRESS STILL ANSWERS IT, so the refusal above is about the repeat and not about
+         the buttons: the first way of saying yes sends. */
+      fireEvent.click(must(buttons[0], 'the first answer'), { detail: 1 })
+
+      await waitFor(() => expect(everythingWritten(server.asked)).toHaveLength(1))
+
+      server.stop()
+    })
+  })
+
   describe('when the server refuses', () => {
     /**
      * THE ONE REFUSAL THE SCREEN CANNOT SEE COMING, and the reason a map of sentences exists at
@@ -1750,6 +1804,7 @@ describe('activating a membership from the payments screen', () => {
         firstSeason2027: false,
         active: true,
         city: 'Beograd',
+        country: 'RS',
         seasonOnSale: 2031,
         currency: 'RSD',
         expected: 4800,

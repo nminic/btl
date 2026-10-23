@@ -60,6 +60,7 @@ export function asMember(competitor: Competitor, over: Partial<Member> = {}): Me
     lastName: competitor.lastName,
     gender: competitor.gender,
     city: competitor.city,
+    country: competitor.country,
     ageBand: competitor.ageBand,
     firstSeason2027: competitor.firstSeason2027,
     active: true,

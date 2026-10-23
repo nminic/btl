@@ -138,6 +138,7 @@
     "ageBand",
     "balance",
     "city",
+    "country",
     "currency",
     "expected",
     "firstName",

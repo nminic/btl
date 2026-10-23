@@ -311,6 +311,41 @@ class MembersApiTest {
 				Map.entry("000009", "balance 2027"), Map.entry("000011", ""));
 	}
 
+	/** Each member's country as „IT RSD": the code and, beside it, the money it bills him in. */
+	private static Map<String, String> countryOf(JsonNode answer) {
+		Map<String, String> country = new LinkedHashMap<>();
+
+		for (JsonNode one : answer) {
+			country.put(one.path("memberNumber").asString(),
+					one.path("country").asString() + " " + one.path("currency").asString());
+		}
+
+		return country;
+	}
+
+	@Test
+	void eachRowNamesHisCountryThroughWhicheverOfItsTwoHomesHeHas() throws Exception {
+		/* THREE HOMES FOR THREE MEMBERS, so no one reading can stand in for another (owner, 22.10.2026,
+		   PDL „Red na ekranu članova ima pet kolona": „Mesto, a ispod malim fontom ... Država"). V7 keeps
+		   a town either from the codebook, whose country is the town's, or typed, with the country named
+		   beside it, and never both. The rest of the fixture lives in Shanghai, the first town of the
+		   codebook (V3, rank 1), so a reading of the typed home alone answers nothing for them; 000005
+		   types his town, so a reading of the codebook's home alone answers nothing for him; and 000007
+		   lives in Serbia, the one country billed in dinars, so a country taken from another member's
+		   row bills him in the wrong money. */
+		db.sql("update competitor set place_id = null, city = 'Trst',"
+						+ " country_id = (select id from country where code = 'IT') where member_number = '000005'")
+				.update();
+		db.sql("update competitor set place_id = (select id from place where country_id ="
+						+ " (select id from country where code = 'RS') order by rank limit 1)"
+						+ " where member_number = '000007'")
+				.update();
+
+		assertThat(countryOf(members())).containsExactly(Map.entry("000002", "CN EUR"),
+				Map.entry("000005", "IT EUR"), Map.entry("000007", "RS RSD"), Map.entry("000009", "CN EUR"),
+				Map.entry("000011", "CN EUR"));
+	}
+
 	/** Each member's figures for the season on sale as „2028 EUR 38.00 35.00 12.00". */
 	private static Map<String, String> figuresOf(JsonNode answer) {
 		Map<String, String> figures = new LinkedHashMap<>();
