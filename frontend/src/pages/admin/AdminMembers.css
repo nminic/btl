@@ -84,7 +84,11 @@
   display: inline-flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: var(--space-4);
+  /* Two pixels between the squares that may stand together, which is room enough to tell them apart
+     (each is 32px, over the 24 WCAG 2.2 SC 2.5.8 asks), and four pixels a gap less across the row: on
+     the runner of CI, whose fonts are not this machine's, the table stood 1px over its box at 820px
+     (PR 638, the first run), and the distance that matters is the one before „Obriši", below. */
+  gap: var(--space-2);
 }
 
 .members-actions__kept {
@@ -143,9 +147,10 @@
 /* „Promeni osnov u oslobođenje" breaks between its words: on a telephone it stands in the column of the
    name, and one line of it would be wider than the whole of that column. Its sides are a step narrower
    than `.entity-open`'s, because its longest word sets how narrow the column „Sezone" can be, and at
-   820px the table needs every pixel (`geometry/membersTable.geometry.ts`). */
+   820px the table needs every pixel (`geometry/membersTable.geometry.ts`; on the runner of CI, whose
+   fonts are not this machine's, the table stood 1px over its box with two steps more). */
 .members-seasons__list .entity-open {
-  padding-inline: var(--space-6);
+  padding-inline: var(--space-4);
   white-space: normal;
   text-align: start;
 }
