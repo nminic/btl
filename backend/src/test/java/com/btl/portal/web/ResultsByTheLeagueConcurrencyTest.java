@@ -322,6 +322,17 @@ class ResultsByTheLeagueConcurrencyTest {
 
 	/** Takes what {@code hold} takes, keeps it until both saves wait behind it, lets go, and answers both. */
 	private void bothSaveTheSameNewRace(String eventName, String day, Runnable hold) throws Exception {
+		bothSave(hold, () -> onTheNewRace(ONE_MODERATOR, eventName, day, THE_MEMBER),
+				() -> onTheNewRace(THE_OTHER_MODERATOR, eventName, day, "000942"));
+	}
+
+	/**
+	 * THE SAME, WITH THE TWO REQUESTS GIVEN: each is a save of the new race, sent by the address of the
+	 * event or by its key, which are two roads in {@code theRaceAndItsRows} that each hold the event
+	 * before the race is asked about.
+	 */
+	private void bothSave(Runnable hold, Callable<MockHttpServletResponse> one,
+			Callable<MockHttpServletResponse> theOther) throws Exception {
 		ExecutorService pool = Executors.newFixedThreadPool(2);
 		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
 
@@ -334,8 +345,8 @@ class ResultsByTheLeagueConcurrencyTest {
 								+ " nought is counting something other than the two saves below")
 						.isZero();
 
-				submitted.add(pool.submit(() -> onTheNewRace(ONE_MODERATOR, eventName, day, THE_MEMBER)));
-				submitted.add(pool.submit(() -> onTheNewRace(THE_OTHER_MODERATOR, eventName, day, "000942")));
+				submitted.add(pool.submit(one));
+				submitted.add(pool.submit(theOther));
 
 				try {
 					BlockedBehindThisHold.untilBothArrive(db, submitted);
@@ -353,6 +364,63 @@ class ResultsByTheLeagueConcurrencyTest {
 		} finally {
 			pool.shutdownNow();
 		}
+	}
+
+	/**
+	 * THE ROAD OF THE KEY (review of PR 637, round 1, high): a save that names the event by its key holds it
+	 * the same way, and the cases above never sent one, so replacing that read with a plain one left every
+	 * case green. Three pairs, each with a request by the key: one by the address on the same day, one by
+	 * the address on ANOTHER day of the event (a race on a later day leaves the event where it begins), and
+	 * two by the key on another day. Every pair leaves one race, and each member's result is on it.
+	 */
+	@Test
+	void aSaveByTheKeyAndOneByTheAddressOnTheSameDayMakeOneRace() throws Exception {
+		bothByKeyOrAddress("2026-05-01", true, false);
+	}
+
+	@Test
+	void aSaveByTheKeyAndOneByTheAddressOnAnotherDayOfTheEventMakeOneRace() throws Exception {
+		bothByKeyOrAddress("2026-05-02", true, false);
+	}
+
+	@Test
+	void twoSavesByTheKeyOnAnotherDayOfTheEventMakeOneRace() throws Exception {
+		bothByKeyOrAddress("2026-05-02", true, true);
+	}
+
+	private void bothByKeyOrAddress(String day, boolean oneByKey, boolean theOtherByKey) throws Exception {
+		long other = anotherMember("000942", "0011223344558a42");
+		long eventId = db.sql("select id from btl_event where slug = ?").param(THE_EVENT)
+				.query(Long.class).single();
+
+		bothSave(() -> db.sql("select 1 from btl_event where id = ? for update").param(eventId)
+						.query(Integer.class).single(),
+				() -> oneByKey ? onTheNewRaceByKey(ONE_MODERATOR, eventId, day, THE_MEMBER)
+						: onTheNewRace(ONE_MODERATOR, "Istovremeni unos", day, THE_MEMBER),
+				() -> theOtherByKey ? onTheNewRaceByKey(THE_OTHER_MODERATOR, eventId, day, "000942")
+						: onTheNewRace(THE_OTHER_MODERATOR, "Istovremeni unos", day, "000942"));
+
+		assertThat(db.sql("select count(*) from race where event_id = ? and name = 'Nova istovremena'"
+						+ " and date = cast(? as date)").params(eventId, day).query(Integer.class).single())
+				.as("a second race of the name was made").isEqualTo(1);
+		assertThat(db.sql("select count(*) from race where event_id = ? and name = 'Nova istovremena'")
+				.param(eventId).query(Integer.class).single()).isEqualTo(1);
+		assertThat(db.sql("select count(distinct race_id) from result where competitor_id in (?, ?)")
+				.params(member, other).query(Integer.class).single()).isEqualTo(1);
+		assertThat(db.sql("select count(*) from result where competitor_id in (?, ?)")
+				.params(member, other).query(Integer.class).single()).isEqualTo(2);
+	}
+
+	private MockHttpServletResponse onTheNewRaceByKey(String email, long eventId, String day, String number)
+			throws Exception {
+		return http.perform(post("/api/results/on-a-race-of-an-event").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(email)))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"event\":{\"id\":" + eventId + "},\"race\":{\"name\":"
+								+ "\"Nova istovremena\",\"date\":\"" + day + "\",\"kind\":\"length\","
+								+ "\"distanceKm\":10.00,\"ascentM\":0,\"descentM\":0},\"rows\":["
+								+ "{\"memberNumber\":\"" + number + "\",\"seconds\":3600}]}"))
+				.andReturn().getResponse();
 	}
 
 	private MockHttpServletResponse onTheNewRace(String email, String eventName, String day, String number)
