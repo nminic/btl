@@ -83,8 +83,7 @@ const SYMBOL_OF = new Map<string, { symbol: ActionSymbol; word: string }>([
   /* The row of a race in the form of an event (PDL 20.10.2026, derived from the map). */
   ['admin.form.delete', { symbol: SYMBOL.cross, word: 'Obriši' }],
   ['admin.form.open', { symbol: SYMBOL.pencil, word: 'Otvori' }],
-  ['admin.grantExemption', { symbol: SYMBOL.shieldCheck, word: 'Odobri oslobođenje' }],
-  ['admin.recordPayment', { symbol: SYMBOL.plus, word: 'Upiši uplatu' }],
+  ['admin.recordPayment', { symbol: SYMBOL.banknote, word: 'Upiši uplatu' }],
   ['event.copy', { symbol: SYMBOL.copy, word: 'Kopiranje' }],
   ['event.delete', { symbol: SYMBOL.cross, word: 'Brisanje' }],
   ['event.edit', { symbol: SYMBOL.pencil, word: 'Izmena' }],

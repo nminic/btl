@@ -3,6 +3,7 @@ import { arrivedResource, clearResourceCache, loadResource, type ResourceName } 
 import type { Competitor, Member } from '../../data/types'
 import { asMember, person } from '../../test/plate'
 import { renderAt } from '../../test/render'
+import { memberRowOf as rowOf, paymentSheet, recordInTheSheet } from '../../test/memberRow'
 import { refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
@@ -105,23 +106,42 @@ describe('recording a payment on a member’s row', () => {
     return asked.filter((one) => one.path === address && (one.init?.method ?? 'GET') === 'GET').length
   }
 
-  /** By the member number drawn under the name, which is one text node where the name is two. */
-  async function rowOf(memberNumber: string): Promise<HTMLElement> {
-    const table = await screen.findByRole('table', { name: 'Članovi' })
-
-    return must(within(table).getByText(memberNumber).closest('tr'), `the row of ${memberNumber}`)
-  }
-
-  it('is offered only on a row that holds no season on sale, in that member’s own money', async () => {
+  it('is offered only on a row that holds no season on sale, in a sheet in that member’s own money', async () => {
     const server = serving()
+    const user = setupUser()
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
-    expect(within(await rowOf(HOLDS_IT)).queryByRole('button', { name: 'Upiši uplatu' })).toBeNull()
-    expect(within(await rowOf(IN_DINARS)).getByLabelText('Uplaćeno (RSD)')).toBeInTheDocument()
-    expect(within(await rowOf(IN_EURO)).getByLabelText('Uplaćeno (EUR)')).toBeInTheDocument()
+    /* ON EVERY ROW, AND TOLD OFF WHERE IT CANNOT ACT, so „Obriši" stands at the same place on every row
+       (the coordinator's answer of 22.10.2026, P3). A press on it opens nothing. */
+    const holds = within(await rowOf(HOLDS_IT)).getByRole('button', { name: 'Upiši uplatu' })
+
+    expect(holds).toHaveAttribute('aria-disabled', 'true')
+    await user.click(holds)
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    for (const [number, currency, expected, balance] of [
+      [IN_DINARS, 'RSD', '4.200 RSD', '1.000 RSD'],
+      [IN_EURO, 'EUR', '38 EUR', '2 EUR'],
+    ] as const) {
+      const row = await rowOf(number)
+
+      expect(within(row).getByRole('button', { name: 'Upiši uplatu' })).not.toHaveAttribute('aria-disabled')
+
+      const sheet = await paymentSheet(user, row)
+
+      expect(within(sheet).getByLabelText(`Uplaćeno (${currency})`)).toBeInTheDocument()
+      /* What he is expected to send and what his book holds, in his money (PDL P8, 18.10.2026). */
+      expect(within(sheet).getByText(`Očekivan iznos: ${expected}`)).toBeInTheDocument()
+      expect(within(sheet).getByText(`Balans: ${balance}`)).toBeInTheDocument()
+
+      await user.click(within(sheet).getByRole('button', { name: 'Odustani' }))
+      expect(screen.queryByRole('dialog')).toBeNull()
+    }
+
+    expect(sent(server.asked)).toEqual([])
 
     server.stop()
-  })
+  }, SLOW)
 
   it('sends what arrived to that member’s own address, and asks nothing when his book covers the rest', async () => {
     const server = serving()
@@ -131,8 +151,7 @@ describe('recording a payment on a member’s row', () => {
     const row = await rowOf(IN_DINARS)
 
     /* 3.200 of 4.200 with a book of 1.000: case 2, which goes straight through. */
-    await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '3200')
-    await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, row), '3200')
 
     await waitFor(() =>
       expect(sent(server.asked)).toEqual([
@@ -152,8 +171,7 @@ describe('recording a payment on a member’s row', () => {
     const row = await rowOf(IN_EURO)
 
     /* 30 of 38 euro with a book of 2: 6 is missing however the book is spent. */
-    await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '30')
-    await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, row), '30')
 
     const question = await screen.findByRole('dialog', { name: 'Prihvatam umanjen ukupan iznos?' })
 
@@ -166,7 +184,7 @@ describe('recording a payment on a member’s row', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(sent(server.asked)).toEqual([])
 
-    await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, row), '30')
     await user.click(
       within(await screen.findByRole('dialog', { name: 'Prihvatam umanjen ukupan iznos?' })).getByRole(
         'button',
@@ -183,29 +201,73 @@ describe('recording a payment on a member’s row', () => {
     server.stop()
   }, SLOW)
 
+  /**
+   * THE SHEET IS PUT AWAY BY ESCAPE WITH NOTHING SENT, AND EVERY WAY IT CLOSES GIVES THE FOCUS BACK TO
+   * „UPIŠI UPLATU" OF THAT ROW (WCAG 2.2 SC 2.4.3): after Escape, and after a payment that went through.
+   * The symbol stays on the row in both cases (the coordinator's answer of 22.10.2026, P3), which is what
+   * leaves the focus somewhere to go back to.
+   */
+  it('is put away by Escape with nothing sent, and gives the focus back to its button however it closes', async () => {
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const row = await rowOf(IN_EURO)
+    const opener = within(row).getByRole('button', { name: 'Upiši uplatu' })
+
+    const sheet = await paymentSheet(user, row)
+
+    await user.type(within(sheet).getByLabelText('Uplaćeno (EUR)'), '38')
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(sent(server.asked)).toEqual([])
+    expect(opener).toHaveFocus()
+
+    /* Opened again, it starts empty: what was typed into a sheet put away was not a payment. */
+    const again = await paymentSheet(user, row)
+
+    expect(within(again).getByLabelText('Uplaćeno (EUR)')).toHaveValue('')
+
+    await user.type(within(again).getByLabelText('Uplaćeno (EUR)'), '38')
+    await user.click(within(again).getByRole('button', { name: 'Upiši uplatu' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(sent(server.asked)).toEqual([
+      { path: `/api/members/${IN_EURO}/payment`, body: { received: 38, method: 'paypal' } },
+    ])
+    expect(opener).toHaveFocus()
+
+    server.stop()
+  }, SLOW)
+
   it('sends nothing for a nought or for what it cannot read, and says why beside the field', async () => {
     const server = serving()
     const user = setupUser()
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
-    const row = await rowOf(IN_DINARS)
-    const field = within(row).getByLabelText('Uplaćeno (RSD)')
-    const button = within(row).getByRole('button', { name: 'Upiši uplatu' })
+    const sheet = await paymentSheet(user, await rowOf(IN_DINARS))
+    const field = within(sheet).getByLabelText('Uplaćeno (RSD)')
+    const button = within(sheet).getByRole('button', { name: 'Upiši uplatu' })
+    const notMoney = 'Iznos uplate mora da bude veći od nule, pa uplata nije proknjižena i članstvo nije upisano.'
 
-    expect(button).toBeDisabled()
+    /* AN EMPTY FIELD IS SAID ONLY ONCE IT IS PRESSED, and it is the nought's sentence: the two are one
+       state (PDL 19, point 5). The row's button used to be switched off; a sheet's answer is not. */
+    expect(field).not.toHaveAccessibleDescription(notMoney)
+    await user.click(button)
+    expect(field).toHaveAccessibleDescription(notMoney)
 
     await user.type(field, '0')
+    await user.click(button)
 
-    expect(button).toBeDisabled()
-    expect(field).toHaveAccessibleDescription(
-      'Iznos uplate mora da bude veći od nule, pa uplata nije proknjižena i članstvo nije upisano.',
-    )
+    expect(field).toHaveAccessibleDescription(notMoney)
 
     await user.clear(field)
     await user.type(field, '4.200')
+    await user.click(button)
 
-    expect(button).toBeDisabled()
     expect(field).toHaveAccessibleDescription('Iznos unesi samo ciframa, bez tačaka i zareza.')
+    expect(screen.getByRole('dialog', { name: 'Upiši uplatu' })).toBe(sheet)
     expect(sent(server.asked)).toEqual([])
 
     server.stop()
@@ -218,8 +280,7 @@ describe('recording a payment on a member’s row', () => {
 
     const row = await rowOf(IN_DINARS)
 
-    await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '4200')
-    await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, row), '4200')
 
     expect(
       await within(row).findByText('Ovaj član već ima članstvo za ovu sezonu, pa nije upisano ponovo.'),
@@ -240,17 +301,19 @@ describe('recording a payment on a member’s row', () => {
     const user = setupUser()
     renderAt('/sr/administracija/clanovi', 'superadmin')
 
-    const row = await rowOf(IN_DINARS)
+    const sheet = await paymentSheet(user, await rowOf(IN_DINARS))
 
-    await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '4200')
+    await user.type(within(sheet).getByLabelText('Uplaćeno (RSD)'), '4200')
 
-    const button = within(row).getByRole('button', { name: 'Upiši uplatu' })
+    const button = within(sheet).getByRole('button', { name: 'Upiši uplatu' })
 
     await user.click(button)
     await user.click(button)
     await user.click(button)
 
     expect(sent(server.asked)).toHaveLength(1)
+    /* The sheet says a request is out and cannot be put away until the answer comes. */
+    expect(within(sheet).getByRole('status')).toHaveTextContent('Šalje se')
 
     answer(new Response('{}', { status: 201 }))
 
@@ -275,8 +338,7 @@ describe('recording a payment on a member’s row', () => {
 
     const row = await rowOf(IN_EURO)
 
-    await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '30')
-    await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, row), '30')
 
     const da = within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' })
 
@@ -312,8 +374,7 @@ describe('recording a payment on a member’s row', () => {
     expect(arrivedResource('payments')).toBeDefined()
     expect(arrivedResource('inbox')).toBeDefined()
 
-    await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '4200')
-    await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, row), '4200')
 
     await waitFor(() => expect(reads(server.asked, '/api/members')).toBe(2))
     expect(reads(server.asked, '/api/competitors')).toBe(2)
@@ -347,8 +408,7 @@ describe('recording a payment on a member’s row', () => {
       expect(arrivedResource(name), `${name} never landed, so nothing below was measured`).toBeDefined()
     }
 
-    await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '4200')
-    await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, row), '4200')
 
     await waitFor(() => {
       for (const name of dropped) {
@@ -377,8 +437,7 @@ describe('recording a payment on a member’s row', () => {
       await loadResource(name)
     }
 
-    await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '4200')
-    await user.click(within(row).getByRole('button', { name: 'Upiši uplatu' }))
+    await recordInTheSheet(user, await paymentSheet(user, row), '4200')
     await within(row).findByText('Ovaj član već ima članstvo za ovu sezonu, pa nije upisano ponovo.')
 
     for (const name of names) {

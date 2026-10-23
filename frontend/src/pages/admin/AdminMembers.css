@@ -1,53 +1,42 @@
 /*
  * THE TABLE OF THE MODERATION OF THE MEMBERS FITS ITS BOX AT EVERY WIDTH (PDL P24, „Tabele na
- * telefonu nemaju horizontalni skrol"; owner, 20.10.2026: „Tabela članova u moderaciji članova (klizi
- * bočno u svom okviru na svim širinama, protiv P24) popravlja se pre puštanja").
+ * telefonu nemaju horizontalni skrol"), IN FIVE COLUMNS (owner, 22.10.2026, „Red na ekranu članova ima
+ * pet kolona"): Ime i prezime, Mesto, Osnov, Sezone, Opcije.
  *
- * Measured before this, in Chrome, over the sample: the table stood at its narrowest everywhere, 936px,
- * in a box of 328 at 360, 736 at 768 and 796 at 1280. Three things held it there, and none was a word
- * of the table: the pills of the basis and of the seasons, 188px each, because `.tag` keeps its words on
- * one line (`pages/member/Member.css`); the head „Poslednja sezona", 135px over a cell of 51, because
- * `.table th` does (`styles/table.css`); and the record's „Promeni osnov u oslobođenje", which stays a
- * word (owner, 20.10.2026) and is the narrowest the record can be.
+ * Where they do not fit they fold under the name (the coordinator's answer of 22.10.2026, P2, from P24),
+ * at the two widths the portal already changes shape at and at no new one (`styles/scale.test.ts`):
+ * below 1000px the town and the country, below 700px the basis and the seasons as well
+ * (`table__hide-phone` and `table__phone-only`, the two halves of one query in `styles/table.css`).
+ * „Poslednja sezona" and its width of 1100px went with the seventh column: the fact is the last ticked
+ * box of the list of seasons.
  *
- * Every rule here is under `.members-table`, so the pills and the heads of every other table are as
- * they were. Words break BETWEEN words only: nothing here allows a break inside one, and the names of
- * the members never break inside a word (owner, 20.10.2026), which `geometry/membersTable.geometry.ts`
- * asks of Chrome at every width.
+ * Every rule here is under `.members-table` or the row's own classes, so the pills and the heads of
+ * every other table are as they were. Words break BETWEEN words only: the names of the members never
+ * break inside a word (owner, 20.10.2026), which `geometry/membersTable.geometry.ts` asks of Chrome.
  */
 
-/* The heads of this table break between their words („POSLEDNJA / SEZONA"). Written against `.table th`
-   with one class more, because the two are otherwise equal and `styles/table.css` comes later. */
+/* The heads of this table break between their words. Written against `.table th` with one class more,
+   because the two are otherwise equal and `styles/table.css` comes later. */
 .table.members-table th {
   white-space: normal;
 }
 
-/* And so do the pills of the basis and of the seasons („Oslobođen članarine / za 2027"). */
+/* And so does the pill of the basis. */
 .members-table .tag {
   white-space: normal;
 }
 
-/* WHERE THE BOX IS NARROW, AND IT IS NOT ONLY ON A TELEPHONE. The navigation stands beside the page
-   from 820px (`app/Shell.css`, the closed list in `styles/scale.test.ts`: „the navigation stops folding
-   away"), so the box is 516px at 820, 596 at 900 and 681 at 1000, narrower than at 768 (736). With the
-   two rules above the seven columns need about 690px with long names, and six about 606.
-
-   „POSLEDNJA SEZONA" IS DRAWN FROM 1100px (owner, 20.10.2026, chosen with my recommendation): of the
-   seven it is the one whose fact is on the row anyway, the last of the pills under „Sezone članstva",
-   oldest first. In pixels, because it takes a column away (`styles/scale.test.ts`). */
-@media (max-width: 1099.98px) {
-  .members-table__last {
-    display: none;
-  }
+/* The small line under the name and under the town: the number and the category, and the country
+   (owner, 22.10.2026: „ispod malim fontom ... članski broj, pa " - ", pa kategorija", „ispod malim
+   fontom kao ovo sa leve strane Država"). The size and the colour are `.table__member-number`'s. */
+.members-table__under {
+  display: block;
 }
 
-/* KATEGORIJA AND MESTO ARE DRAWN FROM 1000px (owner, 20.10.2026, chosen with my recommendation, after
-   the review of PR 594 measured every width from 820 to 910 overflowing the box with the six columns:
-   607 inside 516 at 820, 607 inside 596 at 900). Below it the table is the member, the basis, the
-   seasons and the record, which need about 450px; on a telephone the basis and the seasons go under
-   the name as well (below). Hidden outside every query and shown from the width the closed list
-   already has, 1000, so no new width is added; in pixels, because what it decides is whether a column
-   is drawn (`styles/scale.test.ts`). */
+/* THE TOWN AS A COLUMN FROM 1000px, AND UNDER THE NAME BELOW IT. Hidden outside every query and
+   shown from 1000, the width the closed list already has; in pixels, because what it decides is
+   whether a column is drawn (`styles/scale.test.ts`). Both halves in one query, so the column and the
+   copy under the name are never drawn together nor both missing. */
 .members-table__wide {
   display: none;
 }
@@ -56,34 +45,95 @@
   .members-table__wide {
     display: table-cell;
   }
+
+  .members-table__narrow {
+    display: none;
+  }
 }
 
-/* The basis and the seasons under the name, on a telephone, each under the name of its column: the
-   shape of `.review__figures` (`pages/admin/Verification.css`). Whether it is drawn at all is
-   `table__phone-only`'s on the box around it, never this rule's. */
+/* What is folded under the name, each under the name of its column: the shape of `.review__figures`
+   (`pages/admin/Verification.css`). Whether a part is drawn at all is the query's, never this rule's. */
 .members-table__held {
-  margin: var(--space-4) 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+  margin: 0;
   font-size: 0.85rem;
 }
 
-.members-table__held div {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-4);
+.members-table__held > div {
+  margin-block-start: var(--space-4);
+}
+
+/* The name of the part and what it says on one line, which wraps between words where it must. */
+.members-table__held dt,
+.members-table__held dd {
+  display: inline;
+  margin: 0;
 }
 
 .members-table__held dt {
+  margin-inline-end: var(--space-4);
   color: var(--text-muted);
 }
 
-.members-table__held dd {
-  margin: 0;
+/*
+ * THE SYMBOLS OF THE ROW STAND IN PLACES THAT NEVER MOVE (the coordinator's answer of 22.10.2026, P3):
+ * the place kept for „Edit", „Upiši uplatu", „Storniraj", and „Obriši" held apart from them (owner,
+ * 22.10.2026, „ikonica za brisanje ostaje u redu, odvojena od ostalih"). One line, never broken, so the
+ * deletion is at the same place on every row; the cell is as wide as the line.
+ */
+.members-actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.members-actions__kept {
+  inline-size: 2rem;
+  block-size: 2rem;
+}
+
+/* The distance that keeps a press meant for „Storniraj" off „Obriši": more than a finger's slop, the
+   20px PR 632 measured and kept. */
+.members-actions .members-actions__delete {
+  margin-inline-start: var(--space-20);
+}
+
+/* THE LIST OF SEASONS, which opens in the row (`MemberSeasons.tsx`). */
+.members-seasons__toggle {
+  font: inherit;
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-8);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.members-seasons__toggle:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+}
+
+.members-seasons__list {
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.members-seasons__list li {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.members-seasons__season {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-4);
 }
 
@@ -94,42 +144,6 @@
    they were. */
 .members__search {
   min-inline-size: 0;
-}
-
-/* THE DELETION OF A MEMBER STANDS APART FROM THE ACTIONS ABOVE IT (owner, 22.10.2026, PDL „Brisanje
-   člana na ekranu članova": „dugme „Obriši" je odvojeno razmakom od „Upiši uplatu" i „Storniraj"").
-   Measured in Chrome before this: the three squares stood one under another with no distance, and a press
-   3px under „Storniraj" landed on „Obriši". A block of its own with a margin over it, written at two
-   classes because `.entity-row-actions` (`pages/admin/Entity.css`) is `inline-flex` at one, and an
-   inline box stands in a line with the squares above and takes a margin on its sides only. It ends where
-   they end (`justify-content`): the cell is set to the right (`styles/table.css`), and a block of its own
-   would otherwise start at the left. Only this screen's: the other lists that draw the same component are
-   as they were. */
-.members-table__delete.entity-row-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-block-start: var(--space-20);
-}
-
-/* THE QUESTION TAKES THE PLACE OF THE CROSS, AND THE TWO BUTTONS STAND UNDER IT (review of PR 632, high:
-   „dvoklik na krstić briše člana na 768, 560 i 900"). The first press of a double press opens the question
-   and the second lands where the pointer is, so what stands on the cross's place after the first must
-   do nothing when it is pressed. The sentence is a line of its own as tall as the cross (`2rem`, the
-   square's own height, `components/ActionButton.css`) and as wide as the block, set to the right where
-   the cross was, so the buttons start on the row under it at every width and never where the pointer is:
-   „Obriši" to the left of „Odustani", which takes the right edge where the cross stood. A press on the
-   sentence does nothing, it being text. Under the deletion's own block, so no other list's note changes.
-   `.entity-row-note` is quiet where the events' „and N results with it" is, and this is what the reader
-   answers, so it is as loud as the words of the table. */
-.members-table__delete .entity-row-note {
-  flex: 0 0 100%;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  min-block-size: 2rem;
-  color: var(--text);
-  font-size: 1rem;
-  font-weight: 700;
 }
 
 /* „Član je obrisan.", drawn while it is true and nothing at all while it is not: the box is on the page
