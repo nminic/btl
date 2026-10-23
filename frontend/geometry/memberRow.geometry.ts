@@ -16,7 +16,7 @@ import type { Answers, At } from './support/harness.ts'
  *
  * 1. **A distance stands between the deletion and the action beside it, on every row**, at least a
  *    finger's slop (16px), and a press 3px past the edge of that action lands on nothing of the deletion,
- *    found by what Chrome says stands at that point. **And the deletion stands at the same place on every
+ *    found by what Chrome says stands at that point. **And every symbol stands at the same place on every
  *    row**, which is what the places that never move are for (the coordinator's answer of 22.10.2026, P3).
  * 2. **The sheet, once open, fits**, and after the deletion „Član je obrisan." is on the screen, in a box
  *    of its own that is not clipped to a pixel (`visually-hidden`), inside the window.
@@ -113,7 +113,7 @@ for (const at of WIDTHS) {
         const beside = buttons.find((one) => (one.textContent ?? '').trim() === 'Storniraj')
 
         if (own === undefined || beside === undefined) {
-          return { name: row.textContent ?? '', gap: null, landsOnIt: null, left: null }
+          return { name: row.textContent ?? '', gap: null, landsOnIt: null, left: null, payment: null, cancel: null }
         }
 
         const near = beside.getBoundingClientRect()
@@ -121,11 +121,17 @@ for (const at of WIDTHS) {
         /* Three pixels past the edge of „Storniraj", on its middle: where a press meant for it lands. */
         const hit = document.elementFromPoint(near.right + 3, near.top + near.height / 2)
 
+        /* Where each of the symbols stands across, by its word: the places never move. */
+        const place = (word: string) =>
+          Math.round(buttons.find((one) => (one.textContent ?? '').trim() === word)?.getBoundingClientRect().left ?? -1)
+
         return {
           name: own.getAttribute('aria-label') ?? '',
           gap: far.left - near.right,
           landsOnIt: hit !== null && (hit === own || own.contains(hit)),
           left: Math.round(far.left),
+          payment: place('Upiši uplatu'),
+          cancel: place('Storniraj'),
         }
       }),
     )
@@ -139,9 +145,14 @@ for (const at of WIDTHS) {
       expect(one.landsOnIt, `a press 3px past „Storniraj" lands on the deletion of ${one.name}`).toBe(false)
     }
 
-    const lefts = seen.map((one) => one.left ?? 0)
+    /* EVERY SYMBOL AT ONE PLACE ON EVERY ROW, and not the deletion alone: a row that drew one place fewer
+       would move the others while the deletion, set to the right of the cell, stayed where it was. */
+    for (const symbol of ['left', 'payment', 'cancel'] as const) {
+      const places = seen.map((one) => one[symbol] ?? -1)
 
-    expect(Math.max(...lefts) - Math.min(...lefts), 'the deletion does not stand at one place on every row').toBeLessThanOrEqual(1)
+      expect(places.filter((one) => one < 0), `rows without ${symbol}`).toEqual([])
+      expect(Math.max(...places) - Math.min(...places), `${symbol} does not stand at one place on every row`).toBeLessThanOrEqual(1)
+    }
   })
 
   test(`the sheet about deleting a member fits, and the sentence after it is on the screen, at ${label(at)}`, async ({ open }) => {
