@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -390,6 +391,18 @@ class MemberDataWriteApiTest {
 
 		assertThat(answer.getStatus()).isEqualTo(200);
 		assertThat(rowOf(theSuperadminHimself)).contains("|Drugi Otac|");
+	}
+
+	/** NoTextHoldsAZeroTest names both paths as „a 400 before any handler is reached"; this is that. */
+	@Test
+	void aZeroInTheNumberOfTheAddressIsRefusedBeforeTheHandlerIsReached() throws Exception {
+		Map<String, Object> before = everythingNow();
+
+		assertThat(sent(get(URI.create("/api/members/%00/data")), THE_SUPERADMIN).getStatus()).isEqualTo(400);
+		assertThat(sent(put(URI.create("/api/members/%00/data")).with(csrf())
+				.contentType(MediaType.APPLICATION_JSON).content("{\"firstName\": \"Novo\"}"), THE_SUPERADMIN)
+				.getStatus()).isEqualTo(400);
+		nothingWasWritten(before);
 	}
 
 	// --- what is read ---
