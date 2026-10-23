@@ -224,7 +224,7 @@ for (const at of WIDTHS) {
  * The first press of a double press opens the question; the second lands where the pointer is. So the
  * place of the cross must be taken by something that does nothing when pressed (the sentence), at EVERY
  * width and on every shape of the record, because the widths where the question wrapped differently were
- * found between the ones that were asked: every 40px from 360 to 1280, and 360 at 200% text. Four
+ * found between the ones that were asked: every 40px from 360 to 1280, 768 and 900 (the review's), and 360 at 200% text. Four
  * shapes of the record (the exemption, a payment, the balance, nothing), and the two a moderator makes
  * (the record after a cancellation, and after the exemption is granted again), each pressed twice in
  * quick succession by `dblclick` and by two presses one after the other.
@@ -251,6 +251,9 @@ const SHAPES = (() => {
 const SWEEP: At[] = [
   ...Array.from({ length: 24 }, (_, step): At => ({ width: 360 + step * 40, text: 100 })),
   { width: 360, text: 200 },
+  /* The widths the review measured, which are not multiples of 40. */
+  { width: 768, text: 100 },
+  { width: 900, text: 100 },
 ]
 
 for (const at of SWEEP) {
