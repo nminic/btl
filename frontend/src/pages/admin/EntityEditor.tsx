@@ -770,7 +770,15 @@ export function OpenRecord({
  * is not out with anyone: the row leaves in the same render, and the question behaves as it
  * always did. Nothing here handles Escape, so there is no key to refuse.
  */
-export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', asksWith, words }: {
+export function DeleteRecord({
+  name,
+  onDelete,
+  onKeep,
+  look = 'entity-open',
+  asksWith,
+  words,
+  againstDoublePress = false,
+}: {
   name: string
   /**
    * What the second press does, and whether the reader has to wait for it.
@@ -850,6 +858,29 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    * @param keepNamed what the button that puts the question away is called; it shows „Odustani"
    */
   words?: { named: string; word?: string; sure: string; sureNamed?: string; keepNamed: string }
+  /**
+   * A DOUBLE PRESS ON THE CROSS MUST NOT DELETE (review of PR 632, rounds 1 to 3; owner, 22.10.2026).
+   *
+   * <p>The first press of a double press opens the question and the second lands where the pointer is.
+   * Two layouts were tried to keep the confirming button from standing there, and both failed for the
+   * same reason: the focus the question takes moves the page (a button partly under the edge of the
+   * window is scrolled into view), and whatever the page puts under the pointer afterwards is pressed.
+   * So this is a behaviour and not a place, and it holds whatever the geometry is:
+   *
+   * <ol>
+   *   <li>**The confirming button does not send on a click that is a repeat** (`event.detail > 1`: the
+   *   second press of a double press, and the second of two quick presses on one spot). Enter and Space
+   *   (`detail` 0) and a single touch or click (`detail` 1) send as they always did.
+   *   <li>**The focus the question takes does not scroll the page** (`preventScroll`), so nothing moves
+   *   under a pointer that has not moved. Where the question was opened from the keyboard (`detail` 0 on
+   *   the cross) the button is brought into view afterwards: a reader who uses the keyboard does not
+   *   double-press, and a focus out of sight is WCAG 2.2 SC 2.4.11.
+   * </ol>
+   *
+   * <p>Only the members' list passes it: it is the screen the review measured, and the others draw the
+   * question as they always did.
+   */
+  againstDoublePress?: boolean
 }) {
   const { t } = useI18n()
   const [asking, setAsking] = useState(false)
@@ -894,6 +925,8 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    */
   const [afterAnAnswer, setAfterAnAnswer] = useState(false)
   const opener = useRef<HTMLButtonElement>(null)
+  /** Whether the question was last opened from the keyboard (`againstDoublePress`). */
+  const openedByKeyboard = useRef(false)
   /**
    * THE BUTTON THAT ANSWERS THE QUESTION („Sigurno?"), so the keyboard goes to it when the question is
    * asked (PENDING 28269 and 29822; WCAG 2.2 SC 2.4.3).
@@ -924,9 +957,15 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
      keeps the focus wherever the reader has taken it. Closing it is the other effect's (above). */
   useLayoutEffect(() => {
     if (asking) {
-      sure.current?.focus()
+      /* NOT SCROLLED where the screen asks to be held against a double press: the page moving under a
+         pointer that has not is what put the button there (`againstDoublePress`). */
+      sure.current?.focus({ preventScroll: againstDoublePress })
+
+      if (againstDoublePress && openedByKeyboard.current) {
+        sure.current?.scrollIntoView({ block: 'nearest' })
+      }
     }
-  }, [asking])
+  }, [asking, againstDoublePress])
   /* One id per row. Sixty rows sharing one would point every confirming button at the
      first row's sentence, which is the same fault an `id` written out by hand always
      has on a list (`OpenRecord`, `describedBy`, says it one control along). */
@@ -944,7 +983,8 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
         name={words === undefined ? t('admin.form.deleteNamed', { name }) : words.named}
         className={`${look} entity-delete`}
         ref={opener}
-        onClick={() => {
+        onClick={(event) => {
+          openedByKeyboard.current = event.detail === 0
           setAfterAnAnswer(false)
           setAsking(true)
         }}
@@ -975,7 +1015,13 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
            has the focus (or had it, where `RowActions` has moved it on), and `disabled` would
            take it out of the tab order. */
         aria-disabled={working ? true : undefined}
-        onClick={() => {
+        onClick={(event) => {
+          /* A REPEAT OF A PRESS IS NOT AN ANSWER (`againstDoublePress`): the second click of a double
+             press carries `detail` 2, and the first one is what opened the question. */
+          if (againstDoublePress && event.detail > 1) {
+            return
+          }
+
           /* Reachable means pressable, so the refusal lives here as well as on the attribute. A
              second press while the first is out would send a second deletion, which the route
              answers 404 - and the reader is then told his first one failed. */

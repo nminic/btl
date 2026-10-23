@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { arrivedResource, clearResourceCache, loadResource, type ResourceName } from '../../data/client'
 import type { Competitor } from '../../data/types'
 import { asMember, person } from '../../test/plate'
@@ -676,6 +676,31 @@ describe('the members screen', () => {
 
       server.stop()
     }, SLOW)
+
+  it('does not delete on the second click of a double press on the cross, and does on the next single one', async () => {
+    /* Review of PR 632, rounds 1 to 3: the first press opens the question and the second lands where the
+       pointer is. Whatever the layout puts there, a click with `detail` above 1 is not an answer. */
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin')
+
+    const cross = await screen.findByRole('button', { name: 'Obriši: Ana Jovanović' })
+    const row = must(cross.closest('tr'), 'the row of Ana Jovanović')
+
+    await user.click(cross)
+    fireEvent.click(within(row).getByRole('button', { name: 'Obriši člana: Ana Jovanović' }), { detail: 2 })
+
+    expect(writes(server.asked)).toEqual([])
+    expect(screen.queryByText('Član je obrisan.')).toBeNull()
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Obriši člana: Ana Jovanović' }), { detail: 1 })
+
+    await waitFor(() => {
+      expect(writes(server.asked)).toHaveLength(1)
+    })
+
+    server.stop()
+  }, SLOW)
 
   it('says one sentence out loud once a member is gone, and moves the focus off the row',
     async () => {

@@ -559,6 +559,7 @@ export function AdminMembers() {
                                    review he chose: „Potvrda: „Obriši člana?" [Obriši] [Odustani]"), and the
                                    confirming button says „Obriši", named by whom it deletes. */
                                 asksWith={t('admin.memberDeleteAsk')}
+                                againstDoublePress
                                 words={{
                                   named: t('admin.form.deleteNamed', {
                                     name: `${one.firstName} ${one.lastName}`,

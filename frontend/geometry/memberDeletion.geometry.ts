@@ -351,3 +351,175 @@ for (const at of SWEEP) {
     await pressTwice(first, 'after the exemption was granted again')
   })
 }
+
+/**
+ * A DOUBLE PRESS ON A CROSS NEAR THE BOTTOM OF THE WINDOW DELETES NOBODY, AND NEITHER DOES IT OPEN THE
+ * QUESTION OF THE NEXT ROW (review of PR 632, round 3, high): at 200% text, with the row standing 13 to
+ * 20px above the edge of the window, the first press moved the focus to „Obriši", the button was partly
+ * under the edge, Chrome scrolled the page to show it, and the button came under the pointer: the second
+ * press sent the deletion. The scroll could as well bring the cross of the NEXT row there and open its
+ * question.
+ *
+ * Two layouts failed for this one reason, so the guard is of the behaviour and not of a place
+ * (`DeleteRecord`'s `againstDoublePress`): a real `page.mouse.dblclick` and two presses on the cross of a
+ * row set on purpose at 1 to 60px above the bottom edge of the window, at the ordinary text size and at
+ * 200%, at the widths the review used. No deletion may leave the page, the page may not have scrolled
+ * under the pointer, and only the pressed row may ask. And the two answers that must still delete are
+ * asked: one click on „Obriši", and Enter on it (the question gives it the focus).
+ */
+const NEAR_THE_EDGE = [1, 13, 20, 40, 60]
+const EDGE_SCREENS: At[] = [
+  ...[360, 560, 768, 900, 1280].map((width): At => ({ width, text: 100 })),
+  ...[360, 768, 1280].map((width): At => ({ width, text: 200 })),
+]
+
+for (const at of EDGE_SCREENS) {
+  test(`a double press on a cross near the bottom edge deletes nobody and opens one question at most, at ${label(at)}`, async ({
+    open,
+  }) => {
+    const { page } = await open(at, '/sr/administracija/clanovi', 'table.members-table tbody tr', ANSWERS)
+    const deletions: string[] = []
+
+    await page.route('**/api/competitors/*', (route) => {
+      if (route.request().method() === 'DELETE') {
+        deletions.push(route.request().url())
+
+        return route.fulfill({ status: 200, json: {} })
+      }
+
+      return route.fallback()
+    })
+    await page.getByRole('combobox').first().selectOption('all')
+
+    const row = page.locator('table.members-table tbody tr').nth(5)
+    const cross = row.getByRole('button', { name: /^Obriši: / })
+
+    for (const gap of NEAR_THE_EDGE) {
+      for (const how of ['dblclick', 'two presses'] as const) {
+        await cross.scrollIntoViewIfNeeded()
+
+        /* The row set so that the bottom of the cross stands `gap`px above the bottom of the window. */
+        await page.evaluate(
+          ([above]) => {
+            const box = [...document.querySelectorAll('table.members-table tbody tr')][5]
+              ?.querySelector('button[aria-label^="Obriši: "]')
+              ?.getBoundingClientRect()
+
+            if (box === undefined) {
+              throw new Error('the sixth row has no cross')
+            }
+
+            window.scrollBy(0, box.bottom - (window.innerHeight - (above ?? 0)))
+          },
+          [gap],
+        )
+        await page.evaluate(async () => {
+          await new Promise((done) => requestAnimationFrame(() => done(undefined)))
+        })
+
+        const box = await cross.boundingBox()
+
+        if (box === null) {
+          throw new Error('the cross has no box')
+        }
+
+        const edge = await page.evaluate(() => window.innerHeight)
+
+        /* Measured is not assumed: the cross stands where it was asked to, in the window. */
+        expect(Math.round(edge - (box.y + box.height)), `the cross stands ${gap}px above the edge`).toBe(gap)
+
+        const before = await page.evaluate(() => window.scrollY)
+        const x = box.x + box.width / 2
+        const y = box.y + box.height / 2
+
+        if (how === 'dblclick') {
+          await page.mouse.dblclick(x, y)
+        } else {
+          await page.mouse.click(x, y)
+          await page.mouse.click(x, y)
+        }
+
+        await page.waitForTimeout(200)
+
+        const state = await page.evaluate(() => ({
+          scrollY: window.scrollY,
+          asking: [...document.querySelectorAll('table.members-table tbody tr')]
+            .map((one, index) => ({ index, asks: one.textContent?.includes('Obriši člana?') ?? false }))
+            .filter((one) => one.asks)
+            .map((one) => one.index),
+        }))
+
+        expect(deletions, `${how} at ${gap}px above the edge sent a deletion`).toEqual([])
+        await expect(page.getByText('Član je obrisan.')).toHaveCount(0)
+        expect(state.asking, `${how} at ${gap}px above the edge: the rows that ask`).toEqual([5])
+        expect(state.scrollY, `${how} at ${gap}px above the edge moved the page under the pointer`).toBe(before)
+
+        await row.getByRole('button', { name: /^Odustani/ }).click()
+        await expect(row.getByText('Obriši člana?')).toHaveCount(0)
+      }
+    }
+  })
+}
+
+for (const at of [{ width: 360, text: 100 }, { width: 768, text: 100 }, { width: 1280, text: 100 }, { width: 360, text: 200 }] as At[]) {
+  test(`the cross and then one press on „Obriši", or Enter on it, delete the member, at ${label(at)}`, async ({
+    open,
+  }) => {
+    const { page } = await open(at, '/sr/administracija/clanovi', 'table.members-table tbody tr', ANSWERS)
+    const deletions: string[] = []
+
+    await page.route('**/api/competitors/*', (route) => {
+      if (route.request().method() === 'DELETE') {
+        deletions.push(route.request().url())
+
+        return route.fulfill({ status: 200, json: {} })
+      }
+
+      return route.fallback()
+    })
+    await page.getByRole('combobox').first().selectOption('all')
+
+    /* THE SECOND CLICK OF A DOUBLE PRESS, WHEREVER THE LAYOUT PUTS „Obriši" (`againstDoublePress`): a click
+       on the button that Chrome counts as the second of two (`clickCount` 2, `detail` 2) sends nothing, so
+       the behaviour is held on its own and not through where things stand. One press on the cross, then
+       the repeat on the button, then the single press that answers. */
+    const held = page.locator('table.members-table tbody tr').nth(4)
+
+    await held.getByRole('button', { name: /^Obriši: / }).click()
+
+    const sure = held.getByRole('button', { name: /^Obriši člana: / })
+
+    /* Press and release with a click count of 2, which is one click carrying `detail` 2: Playwright's
+       `click({ clickCount: 2 })` is two whole clicks, the first of them a single one that answers. */
+    const onIt = await sure.boundingBox()
+
+    if (onIt === null) {
+      throw new Error('„Obriši" has no box')
+    }
+
+    await page.mouse.move(onIt.x + onIt.width / 2, onIt.y + onIt.height / 2)
+    await page.mouse.down({ clickCount: 2 })
+    await page.mouse.up({ clickCount: 2 })
+    await page.waitForTimeout(200)
+    expect(deletions, 'the second click of a double press on „Obriši" sent a deletion').toEqual([])
+    await expect(page.getByText('Član je obrisan.')).toHaveCount(0)
+    await expect(sure).toBeVisible()
+    await held.getByRole('button', { name: /^Odustani/ }).click()
+
+    /* One press on the cross, one on „Obriši". */
+    const first = page.locator('table.members-table tbody tr').nth(2)
+
+    await first.getByRole('button', { name: /^Obriši: / }).click()
+    await first.getByRole('button', { name: /^Obriši člana: / }).click()
+    await expect(page.getByText('Član je obrisan.')).toBeVisible()
+    expect(deletions).toHaveLength(1)
+
+    /* One press on the cross, then Enter, which is where the question put the focus. */
+    const next = page.locator('table.members-table tbody tr').nth(2)
+
+    await next.getByRole('button', { name: /^Obriši: / }).click()
+    await expect(next.getByRole('button', { name: /^Obriši člana: / })).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect.poll(() => deletions.length).toBe(2)
+  })
+}

@@ -1,4 +1,4 @@
-import { act, configure, render, screen } from '@testing-library/react'
+import { act, configure, fireEvent, render, screen } from '@testing-library/react'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
@@ -518,6 +518,96 @@ describe('the question about deleting a record', () => {
       expect(screen.getByText('Obriši člana?').closest('button')).toBeNull()
       expect(sure).toHaveAccessibleDescription('Obriši člana?')
       expect(screen.getByRole('button', { name: 'Odustani od brisanja: Probni tim' })).toBeVisible()
+    })
+  })
+
+  /* A DOUBLE PRESS ON THE CROSS MUST NOT DELETE (review of PR 632, rounds 1 to 3). The first press opens the
+     question and the second lands where the pointer is, so the confirming button does not send on a click
+     that is a repeat (`detail` above 1), whatever the layout puts under the pointer. */
+  describe('held against a double press', () => {
+    function drawGuarded(onDelete: () => void | Promise<unknown>, against = true) {
+      return render(
+        <I18nProvider locale="sr">
+          <DeleteRecord name="Probni tim" onDelete={onDelete} againstDoublePress={against} />
+        </I18nProvider>,
+      )
+    }
+
+    const SURE = { name: 'Potvrdi brisanje: Probni tim' }
+
+    it('sends nothing on the second click of a double press, and sends on the next single click', async () => {
+      const user = setupUser()
+      const onDelete = vi.fn()
+
+      drawGuarded(onDelete)
+      await ask(user)
+
+      fireEvent.click(screen.getByRole('button', SURE), { detail: 2 })
+      expect(onDelete).not.toHaveBeenCalled()
+
+      fireEvent.click(screen.getByRole('button', SURE), { detail: 1 })
+      expect(onDelete).toHaveBeenCalledTimes(1)
+    })
+
+    it('sends on Enter and on a single touch, which carry detail 0 and 1', async () => {
+      const user = setupUser()
+      const onDelete = vi.fn()
+
+      drawGuarded(onDelete)
+      await ask(user)
+
+      fireEvent.click(screen.getByRole('button', SURE), { detail: 0 })
+      expect(onDelete).toHaveBeenCalledTimes(1)
+    })
+
+    it('sends on a repeat where the screen did not ask to be held, as every other screen always did', async () => {
+      const user = setupUser()
+      const onDelete = vi.fn()
+
+      drawGuarded(onDelete, false)
+      await ask(user)
+
+      fireEvent.click(screen.getByRole('button', SURE), { detail: 2 })
+      expect(onDelete).toHaveBeenCalledTimes(1)
+    })
+
+    it('takes the focus without scrolling the page when asked from a pointer, and scrolls to it from the keyboard', async () => {
+      const user = setupUser()
+      const focus = vi.spyOn(HTMLElement.prototype, 'focus')
+      const reveal = vi.fn()
+
+      Element.prototype.scrollIntoView = reveal
+
+      try {
+        drawGuarded(vi.fn())
+        await ask(user)
+
+        expect(focus).toHaveBeenCalledWith({ preventScroll: true })
+        expect(reveal).not.toHaveBeenCalled()
+
+        /* Put the question away and ask it again from the keyboard: detail 0 is how Enter arrives. */
+        await user.click(screen.getByRole('button', { name: 'Odustani od brisanja: Probni tim' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Obriši: Probni tim' }), { detail: 0 })
+
+        expect(reveal).toHaveBeenCalledTimes(1)
+      } finally {
+        focus.mockRestore()
+        Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+      }
+    })
+
+    it('scrolls to the focus as it always did where the screen did not ask', async () => {
+      const user = setupUser()
+      const focus = vi.spyOn(HTMLElement.prototype, 'focus')
+
+      try {
+        drawGuarded(vi.fn(), false)
+        await ask(user)
+
+        expect(focus).toHaveBeenCalledWith({ preventScroll: false })
+      } finally {
+        focus.mockRestore()
+      }
     })
   })
 })
