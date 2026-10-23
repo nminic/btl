@@ -168,6 +168,13 @@ import java.util.Set;
  * na postojećem događaju"; {@link NewRace} carries his words). Until that decision the approval
  * was refused there instead, by his answer of 10.10.2026, which the new one overturns.
  *
+ * <p><b>NOR IS A RACE MADE A SECOND TIME, from 23.10.2026.</b> The cost above is overtaken for a race of
+ * one name, one day and one measure: when the event the race goes on already has such a race, the run
+ * goes on it (PDL P9, owner, 23.10.2026, „„Bez duple trke" važi i kod ODOBRAVANJA prijavljenog rezultata:
+ * kad je ime trke otkucano, a trka istog imena, istog dana i iste mere postoji u izdanju, rezultat ide
+ * na nju (isti ključ kao PR 637)"). Names that differ still make a race of their own. The key is
+ * {@link TheRaceAnEventAlreadyHas}, asked in {@link #aRaceOnTheEvent}.
+ *
  * <p><b>THE CONTRADICTION BESIDE {@code comments} IS SETTLED, NOT STILL OPEN.</b> PDL („ne
  * odbija nego brise, a napomena je neobavezna") and V9's {@code verification_refusal_says_why}
  * used to disagree, and it stood recorded in {@code PENDING.md} rather than resolved because
@@ -2033,7 +2040,20 @@ class VerificationWriteApi {
 		   30.08.2026, the cost the owner accepted in the record's wording: „prevezivanje mora da
 		   bude atomsko sa upisom trke, inače nastane trka bez rezultata ili rezultat koji pokazuje
 		   na trku koje nema"). */
-		long race = on.made() == null ? on.raceId() : theRaceThisApprovalMakes(sent, on, counted);
+		long race;
+
+		if (on.made() == null) {
+			race = on.raceId();
+		} else {
+			/* A RACE THE EVENT ALREADY HAS UNDER THE NAME TYPED IS THE RACE THE RUN IS COUNTED ON, and
+			   then it is counted at that race as it stands (see {@link #aRaceOnTheEvent}): the figures
+			   and the name below are the found race's, not the typed ones. */
+			Placed placed = theRaceThisApprovalMakes(sent, on, counted);
+
+			race = placed.race();
+			on = placed.on();
+			counted = placed.counted();
+		}
 
 		BigDecimal points = BtlScoreCalculator.calculate(counted.distanceKm().doubleValue(),
 				counted.ascentM(), counted.descentM(), counted.seconds());
@@ -2151,9 +2171,9 @@ class VerificationWriteApi {
 	 *
 	 * @param counted the four figures the run is counted at, already judged, which the race is
 	 *                made of
-	 * @return the race's key
+	 * @return the race the run goes on, and what it is counted at there
 	 */
-	private long theRaceThisApprovalMakes(Submission sent, CountedOn on, Figures counted) {
+	private Placed theRaceThisApprovalMakes(Submission sent, CountedOn on, Figures counted) {
 		Long there = on.made().eventId();
 
 		if (there == null) {
@@ -2169,7 +2189,7 @@ class VerificationWriteApi {
 					.optional();
 
 			if (made.isPresent()) {
-				return theRace(made.get(), on, counted);
+				return new Placed(theRace(made.get(), on, counted), on, counted);
 			}
 
 			there = db.sql("select id from btl_event where slug = ?")
@@ -2193,10 +2213,39 @@ class VerificationWriteApi {
 	 * ({@link TheDayOfAnEvent#theEventHeldForThisWrite} says why), because the event may have
 	 * changed since {@link #howTheRunIsCounted} asked: what answers differently now is thrown out
 	 * of the transaction ({@link TheCalendarMovedMeanwhile}) and takes the claim back with it.
+	 *
+	 * <p><b>The race the event already has under the name typed is asked FIRST of the event once it is
+	 * held</b>, and is the answer when there is one (PDL, owner, 23.10.2026, see the note on the class):
+	 * the run goes on it, counted at the race's own figures ({@link WhatARaceCarries#figuresOf}),
+	 * and nothing is asked of the event's day or address, because no race is put on it. It is asked
+	 * after the hold and not before, so an approval that waited for another approval of the same words
+	 * meets the race that one made.
 	 */
-	private long aRaceOnTheEvent(long id, CountedOn on, Figures counted) {
+	private Placed aRaceOnTheEvent(long id, CountedOn on, Figures counted) {
 		TheDayOfAnEvent.Standing event = TheDayOfAnEvent.theEventHeldForThisWrite(db, id)
 				.orElseThrow(() -> new TheCalendarMovedMeanwhile(THE_EVENT_IS_NOT_KNOWN));
+
+		/* A RACE THE EVENT ALREADY HAS UNDER THE NAME TYPED IS THE RACE, and the run goes on it
+		   (PDL, owner, 23.10.2026, „„Bez duple trke” važi i kod ODOBRAVANJA prijavljenog rezultata:
+		   kad je ime trke otkucano, a trka istog imena, istog dana i iste mere postoji u izdanju,
+		   rezultat ide na nju (isti ključ kao PR 637)”). Asked of the event as it stands once it is
+		   HELD, so an approval that waited for another approval meets the race that one made. The
+		   key is {@link TheRaceAnEventAlreadyHas}, the one the save of results asks. The measure
+		   asked is the one THIS approval would write, the four figures it counts at: the length of a
+		   race of a length, the time of a race to a limit (which is the limit it would be made with,
+		   {@link #theRace}). A race found is counted at as a race chosen by its key is
+		   ({@link WhatARaceCarries#figuresOf}: the climb and the fall are the race's, not the
+		   run's, PDL 03.08.2026), and nothing below is asked of it: no race is put on the event. */
+		Optional<Long> there = TheRaceAnEventAlreadyHas.keyOf(db, event.id(), on.raceName(), on.day(),
+				on.made().kind(), counted.distanceKm(), counted.seconds());
+
+		if (there.isPresent()) {
+			CountedOn found = theRaceChosen(there.get()).orElseThrow();
+
+			return new Placed(found.raceId(), found,
+					WhatARaceCarries.figuresOf(found.race(), counted));
+		}
+
 		String noRace = whyNoRaceGoesOn(event, on.day());
 
 		if (noRace != null) {
@@ -2209,7 +2258,7 @@ class VerificationWriteApi {
 		TheDayOfAnEvent.theEventNowBeginsOn(db, event, beginning,
 				TheDayOfAnEvent.addressFor(event, beginning));
 
-		return race;
+		return new Placed(race, on, counted);
 	}
 
 	/**
@@ -2609,6 +2658,15 @@ class VerificationWriteApi {
 	 * @param town      where an event this approval makes stands ({@link NewRace#city} says which)
 	 */
 	private record Made(Long eventId, String eventName, String kind, Town town) {
+	}
+
+	/**
+	 * The race a run is counted on once the approval has settled which, with the race as the run is
+	 * counted on it. The typed or made race ({@code on}, {@code counted} as they came in) where the
+	 * approval made it, and the found race, named as the calendar names it and at its own figures,
+	 * where the event already had one (see {@link #aRaceOnTheEvent}).
+	 */
+	private record Placed(long race, CountedOn on, Figures counted) {
 	}
 
 	/** A town as an event keeps it: a row of the codebook, or a name typed with its country (V7). */

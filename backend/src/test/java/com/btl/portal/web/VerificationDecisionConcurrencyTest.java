@@ -186,6 +186,12 @@ class VerificationDecisionConcurrencyTest {
 
 	private long runItem;
 
+	/* THE SECOND MEMBER'S RUN OF THE ONE CASE IN WHICH TWO APPROVALS TYPE THE SAME RACE, nought until
+	   that case makes it. */
+	private long theOtherRun;
+
+	private long theOtherItem;
+
 	/* THE SECOND MEMBER OF THE ONE CASE IN WHICH THE LEAGUE'S SAVE NAMES TWO, nought until it makes him. */
 	private long another;
 
@@ -233,10 +239,11 @@ class VerificationDecisionConcurrencyTest {
 		db.sql("delete from team_membership where competitor_id = ?").param(founder).update();
 		db.sql("delete from team where slug = ?").param(THE_SLUG).update();
 		db.sql("delete from message where to_id = ?").param(founder).update();
-		db.sql("delete from verification_lock where verification_id in (?, ?, ?)")
-				.params(teamItem, profileItem, runItem).update();
-		db.sql("delete from verification where id in (?, ?, ?)")
-				.params(teamItem, profileItem, runItem).update();
+		db.sql("delete from verification_lock where verification_id in (?, ?, ?, ?)")
+				.params(teamItem, profileItem, runItem, theOtherItem).update();
+		db.sql("delete from verification where id in (?, ?, ?, ?)")
+				.params(teamItem, profileItem, runItem, theOtherItem).update();
+		db.sql("delete from result_submission where id = ?").param(theOtherRun).update();
 		db.sql("delete from result where competitor_id = ?").param(founder).update();
 		db.sql("delete from result where competitor_id = ?").param(another).update();
 		db.sql("delete from message where to_id = ?").param(another).update();
@@ -731,6 +738,102 @@ class VerificationDecisionConcurrencyTest {
 					.param(theRun).query(Long.class).single())
 					.as("the submission points at a race other than the one it was counted on")
 					.isEqualTo(races.get(0));
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
+	/**
+	 * TWO APPROVALS OF TWO RUNS THAT TYPE THE SAME RACE OF AN EVENT THAT HAS NONE YET AT ONE INSTANT MAKE
+	 * ONE RACE, AND BOTH RESULTS ARE ON IT (PDL, owner, 23.10.2026, „Bez duple trke” holds for the
+	 * approval, the key being the one PR 637 asks of the league's save).
+	 *
+	 * <p>Both approvals find the event, and neither finds the race, because the other has not written it
+	 * yet: the question about the race is only true once the event is HELD ({@code for no key update},
+	 * {@code TheDayOfAnEvent#theEventHeldForThisWrite}), which is what puts the second approval behind
+	 * the first. Two different runs and two different members, because one run is answered once and
+	 * the second approval of it would stop at the claim, never reaching the event. This connection holds
+	 * the event until the lock manager shows BOTH approvals queued behind it
+	 * ({@link BlockedBehindThisHold}), the same way
+	 * {@code ResultsByTheLeagueConcurrencyTest} forces the league's save, so the case does not depend
+	 * on the scheduler. An approval that asked about the race before it held the event, or did not ask,
+	 * makes a second race here, and each member's result lands on his own.
+	 */
+	@Test
+	void twoApprovalsOfTheSameTypedRaceOfAnEventThatHasNoneYetMakeOneRaceAndBothResultsAreOnIt()
+			throws Exception {
+		another = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
+						+ " shirt_size, health_statement_at)"
+						+ " values (?, 'Drugi', 'Clan', 'F', date '1990-01-01', " + A_TOWN
+						+ ", 2027, false, true, '0011223344558a42', '', false, 'none', 'Otac',"
+						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
+				.param(THE_OTHER_MEMBER).query(Long.class).single();
+
+		long event = db.sql("insert into btl_event (slug, name, date, place_id, kind, featured,"
+						+ " description, link) values (?, ?, date '2026-09-12', " + A_TOWN
+						+ ", 'race', false, '', '') returning id")
+				.params(ONE_ADDRESS, ONE_NAME).query(Long.class).single();
+
+		aRunOnARaceTheCalendarDoesNotHoldWaits();
+
+		theOtherRun = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
+						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
+						+ " link, comment) values (?, null, date '2026-09-12', ?, 'length', " + A_TOWN
+						+ ", 12.0000, 90, 70, 3400, 'https://primer.rs/rezultati', '') returning id")
+				.params(another, THE_NAME_HE_TYPED).query(Long.class).single();
+
+		theOtherItem = db.sql("insert into verification (queue, competitor_id, subject, body,"
+						+ " result_submission_id) values ('results', ?, ?, '', ?) returning id")
+				.params(another, THE_NAME_HE_TYPED, theOtherRun).query(Long.class).single();
+
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			Callable<MockHttpServletResponse> one = () -> answerWith(ONE_MODERATOR, runItem,
+					makingTheRace(ONE_NAME));
+			Callable<MockHttpServletResponse> theOther = () -> answerWith(THE_OTHER_MODERATOR,
+					theOtherItem, makingTheRace(ONE_NAME));
+
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from btl_event where id = ? for update").param(event)
+						.query(Integer.class).single();
+
+				assertThat(BlockedBehindThisHold.count(db))
+						.as("the event is held and nothing has been sent yet, so a count that is not"
+								+ " nought is counting something other than the two approvals below")
+						.isZero();
+
+				submitted.add(pool.submit(one));
+				submitted.add(pool.submit(theOther));
+
+				try {
+					BlockedBehindThisHold.untilBothArrive(db, submitted);
+				} catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+
+				assertThat(submitted).as("an approval went through without waiting for the event")
+						.hasSize(2).noneMatch(Future::isDone);
+
+				return null;
+			});
+
+			assertThat(List.of(submitted.get(0).get(30, TimeUnit.SECONDS).getStatus(),
+					submitted.get(1).get(30, TimeUnit.SECONDS).getStatus())).containsExactly(200, 200);
+
+			List<Long> races = db.sql("select id from race where event_id = ?").param(event)
+					.query(Long.class).list();
+
+			assertThat(races).as("a second race of the name was made").hasSize(1);
+			assertThat(db.sql("select count(distinct race_id) from result where competitor_id in (?, ?)")
+					.params(founder, another).query(Integer.class).single())
+					.as("the two results are not on one race").isEqualTo(1);
+			assertThat(db.sql("select count(*) from result where competitor_id in (?, ?)"
+					+ " and race_id = ?").params(founder, another, races.get(0))
+					.query(Integer.class).single()).isEqualTo(2);
 		} finally {
 			pool.shutdownNow();
 		}
