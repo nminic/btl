@@ -335,6 +335,11 @@ class SmallPhotoApiTest {
 	void aMovedCircleIsANewAddressAndTheOldOneIsNobodys() throws Exception {
 		String before = recordOf(null, "000951").path("smallPhoto").asString();
 
+		/* Asked once BEFORE the circle moves, so the server has the old cut kept: a cut kept by
+		   the picture alone, and not by the picture and its circle, would be handed out again
+		   below under the new address. */
+		assertThat(near(picture(answer(null, before)).getRGB(120, 120), Color.BLUE)).isTrue();
+
 		db.sql("delete from verification where photo_id = ?").param(theFacesWaitingRow).update();
 		db.sql("update competitor set photo_id = ? where member_number = '000951'")
 				.param(theFacesWaitingRow).update();
