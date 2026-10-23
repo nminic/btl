@@ -1770,7 +1770,7 @@ class ResultsByTheLeagueApiTest {
 	}
 
 	/**
-	 * THE KIND AND THE MEASURE ARE PART OF IT TOO. Races of one name on one day are the ordinary case
+	 * THE MEASURE IS PART OF IT TOO, AND IT CARRIES THE KIND (V7 ties the two). Races of one name on one day are the ordinary case
 	 * („ja mogu da u okviru Beogradskog maratona imam dve trke, od 42.2 i 21.1, i obe će dobiti default
 	 * naziv Beogradski maraton"), so a name that is also a race's of another kind, or of another length, or
 	 * of another limit, is another race, and a result of a half-marathon is not counted on the marathon.

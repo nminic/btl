@@ -726,7 +726,7 @@ class ResultsByTheLeagueApi {
 
 	/**
 	 * THE RACE OF THIS EVENT THAT A NEW RACE TYPED HERE WOULD BE A SECOND OF, or nothing: the race of
-	 * the same name, on the same day, of the same kind and of the same measure.
+	 * the same name, on the same day and of the same measure.
 	 *
 	 * <p>The owner's sentence names the NAME and no more (PDL, 23.10.2026: „traži trku istog imena u
 	 * izdanju koje je našao”). The rest is mine, derived from two entries and measured by the cases of
@@ -741,7 +741,7 @@ class ResultsByTheLeagueApi {
 	 * ran on the day typed, and a result moved to another day would be counted under a day he did not run.
 	 * The entry itself, in the account of what happened (the coordinator's text, not the owner's words),
 	 * calls the fault a second race „istog imena istog dana”.
-	 * <li><b>The kind and the measure</b>: two races of one name are the ordinary case, not a fault
+	 * <li><b>The measure</b>: two races of one name are the ordinary case, not a fault
 	 * (PDL, owner, 23.08.2026, „ja mogu da u okviru Beogradskog maratona imam dve trke, od 42.2 i 21.1, i
 	 * obe će dobiti default naziv Beogradski maraton”), and the portal tells such races apart by their
 	 * measure, which it writes in brackets after the name wherever it names a race (PDL, „Trka se svuda
@@ -750,6 +750,13 @@ class ResultsByTheLeagueApi {
 	 * that fixes no measure (a free one) has none to compare, and the columns hold nought for it, which
 	 * is what a new one is written with ({@link #aNewRace}), so the same comparison answers.
 	 * </ul>
+	 *
+	 * <p><b>The kind is not asked, and that is not an omission.</b> The schema ties it to the measure
+	 * both ways ({@code race_only_a_timed_race_has_a_limit} and
+	 * {@code race_only_a_length_race_fixes_a_distance}, V7): a limit above nought is a race to a limit, a
+	 * length above nought is a race of a length, and nought of both is a free race, so two races that agree
+	 * on the limit and the length agree on the kind. A condition on it was written first and a mutation
+	 * that took it out left every case green, which is how it was found to answer nothing.
 	 *
 	 * <p><b>The climb is not part of it, and that is my reading, not a decision.</b> The measure the
 	 * portal names a race by has no climb in it, so a race of that name, day, kind and length is the same
@@ -769,8 +776,8 @@ class ResultsByTheLeagueApi {
 		boolean time = WhatARaceCarries.fixesTheTime(race.kind());
 
 		return db.sql("select id from race where event_id = ? and lower(name) = lower(?) and date = ?"
-						+ " and kind = ? and limit_seconds = ? and distance_km = ? order by id limit 1")
-				.params(event, race.name().strip(), day, race.kind(), time ? race.limitSeconds() : 0,
+						+ " and limit_seconds = ? and distance_km = ? order by id limit 1")
+				.params(event, race.name().strip(), day, time ? race.limitSeconds() : 0,
 						course ? race.distanceKm() : BigDecimal.ZERO)
 				.query(Long.class).optional().flatMap(this::raceOf);
 	}
