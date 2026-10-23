@@ -89,6 +89,10 @@ const TO_A_LIMIT = aRace({
   category: 'short',
 })
 
+/* The one race of „Zimska liga”, the name of one edition, so a new edition of it has an old edition's race
+   that must not be offered under it. */
+const OF_THE_WINTER = aRace({ id: 9603, eventId: 9505, name: 'Zimska liga, prvo kolo', date: '2027-02-07' })
+
 const answering = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
@@ -118,7 +122,7 @@ function serving(
     }
 
     if (method === 'GET' && path === '/api/races') {
-      return answering([OF_A_LENGTH, TO_A_LIMIT])
+      return answering([OF_A_LENGTH, TO_A_LIMIT, OF_THE_WINTER])
     }
 
     return method === 'GET' ? null : write(path)
@@ -563,7 +567,8 @@ describe('what the block says before anything is sent', () => {
  * događaja; ako zahtev ipak stigne, server odbija rečenicom „Dan trke nije u godini izabranog događaja.””).
  *
  * <p>The event is „Gradska liga” of 2026 on a day of 2027, so the year of the event and the year today is in
- * are two different years.
+ * are two different years. The name stands in two years, so the edition chosen holds the day; a name of one
+ * edition is the next block's (owner, 23.10.2026).
  */
 describe('the day of a new race on an event of the calendar', () => {
   const OF_2026 = must(CALENDAR[1], 'the event of 2026')
@@ -700,6 +705,221 @@ describe('the day of a new race on an event of the calendar', () => {
       await save(user)
 
       expect(await screen.findByText(sr.leagueResults.refused.theDayIsNotInTheEventsYear)).toBeVisible()
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+/**
+ * A NAME OF ONE EDITION AND A DAY OF ANOTHER YEAR MAKE A NEW EDITION, ON THE SCREEN (owner, 23.10.2026, PDL
+ * „Unos trke sa imenom događaja koji ima samo jedno izdanje, a dan trke je u drugoj godini, pravi novo
+ * izdanje tog događaja, isto kao za ime sa više izdanja”). „Zimska liga” is of 2027 alone in the calendar
+ * above, with one race, and typing its name exactly links it.
+ */
+describe('a name of one edition and a day of another year on the moderator’s own screen', () => {
+  async function onTheOnlyEdition(user: ReturnType<typeof setupUser>): Promise<void> {
+    /* Typed in another case than the calendar keeps it, which links it all the same. */
+    await user.type(eventBox(), 'zimska LIGA')
+  }
+
+  async function aDayAndTheRest(user: ReturnType<typeof setupUser>, day: string): Promise<void> {
+    const box = screen.getByLabelText(/^Datum trke/)
+
+    await user.clear(box)
+    await user.type(box, day)
+    await user.clear(raceBox())
+    await user.type(raceBox(), 'Zimska desetka')
+    await user.type(screen.getByLabelText(/^Dužina/), '10')
+    await user.type(screen.getByLabelText(/^Uspon/), '0')
+    await user.type(screen.getByLabelText(/^Spust/), '0')
+    await aRowFor(user)
+  }
+
+  it('sends a new event of the name, by the calendar’s spelling, on that day and in the town typed', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await onTheOnlyEdition(user)
+      await aDayAndTheRest(user, '01062026')
+      await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
+      await save(user)
+
+      await waitFor(() => expect(writes(server.asked)).toHaveLength(1))
+
+      expect(writes(server.asked)[0]?.path).toBe('/api/results/on-a-race-of-an-event')
+      expect(writes(server.asked)[0]?.body).toMatchObject({
+        event: { name: 'Zimska liga', date: '2026-06-01', city: 'Kranj', country: 'SI' },
+        race: { name: 'Zimska desetka' },
+      })
+      expect(writes(server.asked)[0]?.body).not.toHaveProperty('event.id')
+      expect(writes(server.asked)[0]?.body).not.toHaveProperty('race.date')
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('names the race for the event while its box is empty, sends that name, and takes it back with the day', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await onTheOnlyEdition(user)
+
+      const day = screen.getByLabelText(/^Datum trke/)
+
+      expect(raceBox()).toHaveValue('')
+
+      await user.clear(day)
+      await user.type(day, '01062026')
+
+      expect(raceBox()).toHaveValue('Zimska liga')
+
+      await user.clear(day)
+      await user.type(day, '01062027')
+
+      expect(raceBox()).toHaveValue('')
+
+      await user.clear(day)
+      await user.type(day, '01062026')
+
+      expect(raceBox()).toHaveValue('Zimska liga')
+
+      await user.type(screen.getByLabelText(/^Dužina/), '10')
+      await user.type(screen.getByLabelText(/^Uspon/), '0')
+      await user.type(screen.getByLabelText(/^Spust/), '0')
+      await aRowFor(user)
+      await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
+      await save(user)
+      await waitFor(() => expect(writes(server.asked)).toHaveLength(1))
+
+      expect(writes(server.asked)[0]?.body).toMatchObject({ race: { name: 'Zimska liga' } })
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('asks the town as a new event is asked, and does not say the day is wrong', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await onTheOnlyEdition(user)
+      await aDayAndTheRest(user, '01062026')
+      await save(user)
+
+      expect(screen.getByText(sr.leagueResults.refused.theTownIsMissing)).toBeVisible()
+      expect(screen.getByLabelText(/^Datum trke/)).not.toHaveAttribute('aria-invalid', 'true')
+      expect(screen.queryByText(sr.leagueResults.refused.theDayIsNotInTheEventsYear)).toBeNull()
+      expect(writes(server.asked)).toEqual([])
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('draws the town only while the day is in another year than the edition’s', async () => {
+    const user = setupUser()
+    const server = serving()
+
+    try {
+      await open(user)
+      await onTheOnlyEdition(user)
+
+      expect(screen.queryByLabelText(/^Mesto/)).toBeNull()
+
+      const day = screen.getByLabelText(/^Datum trke/)
+
+      await user.clear(day)
+      await user.type(day, '01062026')
+
+      expect(screen.getByLabelText(/^Mesto/)).toBeVisible()
+
+      await user.clear(day)
+      await user.type(day, '01062027')
+
+      expect(screen.queryByLabelText(/^Mesto/)).toBeNull()
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('offers no race of the old edition under the new one’s, and does under the old one’s own', async () => {
+    const user = setupUser()
+    const server = serving()
+    const theRaces = () => offered().filter((one) => one.startsWith('Zimska liga, prvo kolo'))
+
+    try {
+      await open(user)
+      await onTheOnlyEdition(user)
+      await user.type(raceBox(), 'Zimska')
+
+      expect(theRaces()).toHaveLength(1)
+
+      await user.clear(raceBox())
+
+      const day = screen.getByLabelText(/^Datum trke/)
+
+      await user.clear(day)
+      await user.type(day, '01062026')
+      /* The box already holds the event's name by now (a new edition's race is named for it), so what is
+         typed is typed over an empty box: otherwise the list is empty for the wrong reason. */
+      await user.clear(raceBox())
+      await user.type(raceBox(), 'Zimska')
+
+      expect(raceBox()).toHaveValue('Zimska')
+      expect(theRaces()).toEqual([])
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('opens the calendar past the edition’s year, which a name of several editions does not', async () => {
+    const user = setupUser()
+    const server = serving()
+    const shown = () => screen.getByText(/2026|2025|2027/, { selector: '.datepicker__bar strong' }).textContent
+
+    try {
+      await open(user)
+      await onTheOnlyEdition(user)
+      await user.click(
+        within(must(screen.getByLabelText(/^Datum trke/).closest('.datepicker'), 'the day’s picker')).getByRole('button', {
+          name: sr.form.openCalendar,
+        }),
+      )
+
+      expect(shown()).toBe(formatMonth('2027-02', 'sr'))
+
+      for (let press = 0; press < 2; press += 1) {
+        await user.click(screen.getByRole('button', { name: sr.calendar.previousMonth }))
+      }
+
+      expect(shown()).toBe(formatMonth('2026-12', 'sr'))
+      expect(screen.getByRole('button', { name: sr.calendar.previousMonth })).not.toHaveAttribute('aria-disabled')
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('still puts the race on the edition on the morning of 1 January, while both years are open, and asks no town', async () => {
+    const user = setupUser()
+    const server = serving(undefined, undefined, [2027, 2028])
+
+    try {
+      renderAt(PATH, 'moderator', null, CHECKS_RESULTS, '2028-01-01')
+      await screen.findByRole('heading', { level: 1, name: sr.leagueResults.forAnEvent })
+      await onTheOnlyEdition(user)
+      await aDayAndTheRest(user, '01012028')
+
+      expect(screen.queryByLabelText(/^Mesto/)).toBeNull()
+
+      await save(user)
+      await waitFor(() => expect(writes(server.asked)).toHaveLength(1))
+
+      expect(writes(server.asked)[0]?.body).toMatchObject({ event: { id: 9505 }, race: { date: '2028-01-01' } })
     } finally {
       server.stop()
     }

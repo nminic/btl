@@ -1,6 +1,5 @@
 package com.btl.portal.web;
 
-import com.btl.portal.domain.balance.Balance;
 import com.btl.portal.domain.pricing.Currency;
 import com.btl.portal.domain.registration.WhatAFieldMeans;
 import jakarta.servlet.http.HttpServletRequest;
@@ -419,7 +418,7 @@ class MeWriteApi {
 	 * A town named in both ways at once, or in neither, when the request named one at all.
 	 *
 	 * <p>The same word {@link EventWriteApi} answers, because it is the same sentence about
-	 * a different row - see {@link #theTownNamed} for what is shared here and what is not.
+	 * a different row - see {@link TownNamed} for what is shared here and what is not.
 	 */
 	static final String THE_TOWN_IS_NOT_SAID_ONCE = "theTownIsNotSaidOnce";
 
@@ -606,7 +605,7 @@ class MeWriteApi {
 	 *
 	 * <p><b>{@code city} is not on either list</b>, because emptying it is not a fact about a
 	 * column but about the TOWN, which is three columns and one rule; see
-	 * {@link #theTownNamed}.
+	 * {@link TownNamed}.
 	 *
 	 * <p><b>Nor is {@code shirtSize}, although it may never be emptied either.</b> This list
 	 * is of BOXES - {@link #boxesEmptied} reads each one through
@@ -648,30 +647,27 @@ class MeWriteApi {
 	 */
 	private final TransactionTemplate inOneTransaction;
 
-	/**
-	 * THE BOOK OF BALANCE, BECAUSE A MEMBER MOVING COUNTRY MOVES HIS MONEY WITH HIM.
-	 *
-	 * <p>The owner decided on 27.09.2026 (PDL 26) that a balance is translated at 1 EUR = 120 RSD when
-	 * a member changes country, and „trenutak je promena zemlje na zapisu clana" - which is this route
-	 * and no other. So the screen that edits a profile is also, on exactly one of its fields, a route
-	 * that writes two lines into an immutable ledger.
-	 */
-	private final BalanceBook book;
+	/** Where a town the request named resolves to, the same answer the administration gets. */
+	private final TownNamed towns;
 
-	/** Read twice on such a request, before and after, because the question is whether it CHANGED. */
-	private final CurrencyOfMember currencyOf;
+	/**
+	 * THE BOOK OF BALANCE, BECAUSE A MEMBER MOVING COUNTRY MOVES HIS MONEY WITH HIM (PDL 26,
+	 * 27.09.2026). So the screen that edits a profile is also, on exactly one of its fields, a route
+	 * that writes two lines into an immutable ledger; what it writes is decided in one place.
+	 */
+	private final ACountryMovesTheMoney money;
 
 	MeWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, ActiveMemberOrAdministration readers,
-			ObjectMapper json, TransactionTemplate inOneTransaction, BalanceBook book,
-			CurrencyOfMember currencyOf) {
+			ObjectMapper json, TransactionTemplate inOneTransaction, TownNamed towns,
+			ACountryMovesTheMoney money) {
 
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.readers = readers;
 		this.json = json;
 		this.inOneTransaction = inOneTransaction;
-		this.book = book;
-		this.currencyOf = currencyOf;
+		this.towns = towns;
+		this.money = money;
 	}
 
 	/**
@@ -953,7 +949,7 @@ class MeWriteApi {
 		/* THE TOWN IS RESOLVED BEFORE THE TRANSACTION OPENS, so a town nothing maps is a
 		   refusal that has written nothing rather than one decided over a switch that was
 		   already moved - the same order every other refusal on this route keeps. */
-		Optional<Town> town = theTownNamed(typed);
+		Optional<TownNamed.Town> town = towns.named(typed.placeId(), typed.city(), typed.country());
 
 		if (town.isPresent() && town.orElseThrow().refused() != null) {
 			return no(HttpStatus.BAD_REQUEST, town.orElseThrow().refused());
@@ -1123,92 +1119,6 @@ class MeWriteApi {
 	}
 
 	/**
-	 * THE TOWN THE REQUEST NAMED, or nothing where it named none.
-	 *
-	 * <p><b>Nothing and „a town that is wrong" are two different answers</b>, which is why
-	 * this hands back an {@link Optional} of a record that may itself carry a refusal
-	 * instead of a bare null: a request that says nothing about where the member lives
-	 * leaves all three columns alone, and a request that says something the portal cannot
-	 * resolve is refused rather than quietly ignored.
-	 *
-	 * <p><b>THE THREE COLUMNS ARE ONE FACT AND THE SCHEMA SAYS SO.</b> V7:
-	 * {@code competitor_town_is_from_the_codebook_or_typed check ((place_id is null) <>
-	 * (city is null))} and {@code competitor_typed_town_names_its_country check ((city is
-	 * null) = (country_id is null))}. So they cannot be written one at a time the way the
-	 * other personal columns are: {@code coalesce} on each of them separately would let a
-	 * member who typed a town clear his {@code place_id} and break the first check, which
-	 * V7's own note spells out. Either the request names the whole town or it names none of
-	 * it, and {@link #write} writes all three together or leaves all three alone.
-	 *
-	 * <p><b>A THIRD HOME FOR THIS RULE, NAMED RATHER THAN HIDDEN, AND WITH THE MUTATION
-	 * THAT CATCHES IT DRIFTING.</b> {@link RegistrationApi#theTown} answers it for a member
-	 * being made and {@link EventWriteApi} for an event, and the two already differ on
-	 * purpose - one hands back nothing at all and the other names WHICH of the two faults
-	 * it is. Folding the three into one class would have to settle that difference and
-	 * would reach into both of those files, which is its own piece of work rather than a
-	 * line of this one. What is done instead is what {@code CLAUDE.md} asks of a fact that
-	 * lives in more than one place: the place that decides FOR A MEMBER'S OWN ROW is this
-	 * one, and {@code MeWriteApiTest.theSameMalformedTownIsRefusedWhereverItIsSent} sends
-	 * one body that names a town in both ways at once to this route and to
-	 * {@code /api/registration} and requires both to refuse it. Loosened here alone, that
-	 * case goes red.
-	 */
-	private Optional<Town> theTownNamed(Change typed) {
-		boolean fromTheCodebook = typed.placeId() != null;
-		boolean typedByHand = !isNothing(typed.city()) || !isNothing(typed.country());
-
-		if (!fromTheCodebook && !typedByHand) {
-			return Optional.empty();
-		}
-
-		/* BOTH WAYS AT ONCE IS NOT A TOWN. A codebook town „nosi svoju drzavu, koja se ne
-		   menja" (owner, 11.08.2026), so a country sent beside one would be the portal
-		   letting somebody put Belgrade in France. And half of the typed shape is not a town
-		   either: a name with no country, or a country with no name. */
-		if (fromTheCodebook == typedByHand
-				|| (typedByHand && (isNothing(typed.city()) || isNothing(typed.country())))) {
-
-			return Optional.of(Town.refusedWith(THE_TOWN_IS_NOT_SAID_ONCE));
-		}
-
-		if (fromTheCodebook) {
-			return Optional.of(db.sql("select id from place where geonames_id = ?")
-					.param(typed.placeId()).query(Long.class).optional()
-					.map(one -> new Town(one, null, null, null))
-					.orElseGet(() -> Town.refusedWith(THE_TOWN_IS_NOT_KNOWN)));
-		}
-
-		return Optional.of(db.sql("select id from country where code = ?")
-				.param(typed.country().strip()).query(Long.class).optional()
-				.map(one -> new Town(null, typed.city().strip(), one, null))
-				.orElseGet(() -> Town.refusedWith(THE_TOWN_IS_NOT_KNOWN)));
-	}
-
-	/**
-	 * A town resolved into the three columns V7 holds, or the word for why it could not be.
-	 *
-	 * <p>Exactly one of {@code placeKey} and {@code city} is ever set on a resolved town,
-	 * which is the schema's own check read as a shape instead of as a refusal.
-	 *
-	 * @param placeKey {@code place.id}, THIS DATABASE'S KEY, resolved from the
-	 *                 {@code geonames_id} the request carried - the two are never the same
-	 *                 number and never confused, which is the distinction
-	 *                 {@link EventWriteApi} draws by naming its own field {@code placeKey}
-	 * @param refused  the reason, on a town that resolved to nothing. Null on a real one
-	 */
-	private record Town(Long placeKey, String city, Long countryId, String refused) {
-
-		static Town refusedWith(String reason) {
-			return new Town(null, null, null, reason);
-		}
-	}
-
-	/** Null, empty or nothing but spaces, which are one answer about a box nobody filled. */
-	private static boolean isNothing(String value) {
-		return value == null || value.isBlank();
-	}
-
-	/**
 	 * THE WRITING, AND IT IS ONE TRANSACTION OVER AT MOST TWO STATEMENTS.
 	 *
 	 * <p><b>A TEXT SENT IS WRITTEN LAST, AND IT NEVER REFUSES.</b> The update of the member's own row
@@ -1244,7 +1154,7 @@ class MeWriteApi {
 	 * TheSwitchAndTheTextAreOneThingTest} measures, is this statement together with the queue
 	 * row, where a lever does exist.
 	 */
-	private ResponseEntity<?> write(long me, long account, Change typed, Town town,
+	private ResponseEntity<?> write(long me, long account, Change typed, TownNamed.Town town,
 			TransactionStatus committing) {
 
 		boolean removing = typed.bio() != null && typed.bio().isBlank();
@@ -1275,7 +1185,7 @@ class MeWriteApi {
 			   there is no moment at which a row could carry half of what he sent.
 
 			   AND THE TOWN IS THREE COLUMNS UNDER ONE CONDITION rather than three
-			   `coalesce`s, because V7 binds them to each other - see `theTownNamed`. Written
+			   `coalesce`s, because V7 binds them to each other - see `TownNamed`. Written
 			   separately, a member who typed a town and then chose one out of the codebook
 			   would leave `city` standing beside a `place_id` and the row would be refused
 			   by `competitor_town_is_from_the_codebook_or_typed`, which is a 500 where he
@@ -1284,7 +1194,7 @@ class MeWriteApi {
 			   nothing left to compare with. Read only when a town is actually being written: the
 			   request that merely renames him cannot change his country, and asking otherwise would
 			   be a statement on every edit of a profile form. */
-			Currency was = town == null ? null : currencyOf.of(me);
+			Currency was = town == null ? null : money.before(me);
 
 			db.sql("update competitor set bio = coalesce(cast(? as text), bio),"
 							+ " profile_hidden = coalesce(cast(? as boolean), profile_hidden),"
@@ -1311,55 +1221,12 @@ class MeWriteApi {
 							me)
 					.update();
 
-			/* AND IF THE MONEY HE IS BILLED IN HAS CHANGED, HIS BALANCE IS RESTATED IN THE NEW ONE.
-
-			   Owner, 27.09.2026 (PDL, section 26), chosen between three outcomes: „Dvojka, 120 je
-			   kurs i tako ostaje do daljnjeg." And PDL 25 is why it has to happen at all: a balance is
-			   „uvek u valuti zavisno od drzave", so a member billed in euro from now on cannot go on
-			   holding dinars.
-
-			   THE MOMENT IS THIS ONE AND NOT ANY OTHER, WHICH IS HIS SENTENCE AND NOT A CHOICE MADE
-			   HERE: „Trenutak je promena zemlje na zapisu clana, ne prijava i ne pocetak sezone."
-			   This is the only route in the portal that writes `competitor.country_id`, and that is
-			   measured rather than assumed: every `update competitor set` and every
-			   `insert into competitor` in `src/main` was counted, and no administrative route touches a
-			   member's town. So this is the only place that sentence can live.
-
-			   THREE STATES AND ONLY ONE OF THEM MOVES ANY MONEY, and the two that do not are the
-			   ordinary ones: he named no town at all, so his country cannot have moved; he named one and
-			   the MONEY did not change, which is Belgrade to Novi Sad and equally Germany to France; or
-			   the money changed, and then his whole book is restated.
-
-			   AND AN EMPTY BOOK WRITES NO LINES EITHER, which is not an optimisation:
-			   `balance_entry_a_conversion_moves_something` (V42) refuses a line of nought, and rightly -
-			   a member with no balance has nothing to restate, and a pair of lines saying so would be
-			   two facts about money that never moved.
-
-			   THE PROMISE GOES EVEN WHEN THE BOOK IS EMPTY, and that is the one place these two
-			   conditions come apart rather than being one. A member whose book was empty was still
-			   minted a code, for the whole fee, and `balance_promise` records that nought so his next
-			   look is held to it (`BalanceBook.promise` says why at length). That slip is in the old
-			   money and is not payable, so it goes with every other. Written as one condition, his
-			   unpayable slip would survive exactly because he had no balance.
-
-			   WHO THE BOOK SAYS DID IT IS HE HIMSELF, which is the honest answer and the reason the
-			   account is threaded down here. `balance_entry.recorded_by_name` is `not null` and ADL asks
-			   for „ko"; nobody in the administration was involved, so naming a moderator would be a
-			   false record and leaving the name blank is refused by
-			   `balance_entry_recorded_by_name_not_blank`. */
+			/* AND IF THE MONEY HE IS BILLED IN HAS CHANGED, HIS BALANCE IS RESTATED IN THE NEW ONE, and
+			   the book names him as the one who did it. `ACountryMovesTheMoney` holds the owner's
+			   sentences and the three states, because since 22.10.2026 a second route writes a
+			   member's country (`MemberDataWriteApi`) and both have to do the same thing. */
 			if (was != null) {
-				Currency now = currencyOf.of(me);
-
-				if (was != now) {
-					book.forgetEveryPromise(me);
-
-					Balance.Money had = book.of(me, was);
-
-					if (had.isMoney()) {
-						book.translated(me, had, Balance.translated(had, now), account,
-								memberOfAccount.nameOf(account));
-					}
-				}
+				money.after(me, was, account);
 			}
 		}
 
