@@ -54,6 +54,7 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
@@ -61,6 +62,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
@@ -97,6 +99,9 @@ class MemberDataWriteApiTest {
 	private static final String HIS_ADDRESS = "ispravljani@primer.rs";
 
 	private static final String A_CONFIRMED_ONE = "potvrdjen-podaci@primer.rs";
+
+	/** An account with no password and an address not confirmed, the other state of {@link #HIS_ADDRESS}. */
+	private static final String HE_HAS_NONE = "bez-lozinke-podaci@primer.rs";
 
 	private static final String A_TOWN_IN_SERBIA =
 			"(select id from place where country_id = (select id from country where code = 'RS')"
@@ -166,6 +171,13 @@ class MemberDataWriteApiTest {
 	/** 000010, born 2013, under sixteen, a parent's consent on record, and a junior's promise. */
 	private long aMinor;
 
+	/**
+	 * 000011, entered by the administration and never taken over: an account with NO PASSWORD and an
+	 * address not confirmed, with links of both kinds sent to the old address (PDL, owner, 23.10.2026:
+	 * which link a correction sends depends on this).
+	 */
+	private long withNoPassword;
+
 	@BeforeEach
 	void membersAndTheAdministration() {
 		doNothing().when(postman).send(any(Said.class), anyString());
@@ -179,6 +191,7 @@ class MemberDataWriteApiTest {
 		confirmed = competitor("000008", "a7", "Potvrdjeni", "F", "1975-04-04", A_TOWN_IN_SERBIA);
 		theSuperadminHimself = competitor("000009", "a8", "Super", "M", "1960-08-08", A_TOWN_ABROAD);
 		aMinor = competitor("000010", "a9", "Mladi", "M", "2013-01-01", A_TOWN_IN_SERBIA);
+		withNoPassword = competitor("000011", "aa", "Bezlozinke", "F", "1993-09-09", A_TOWN_IN_SERBIA);
 
 		db.sql("insert into competitor_document (competitor_id, document_number) values (?, 'AB123'),"
 				+ " (?, 'FIRST1'), (?, 'MINOR1')").params(corrected, first, aMinor).update();
@@ -202,13 +215,14 @@ class MemberDataWriteApiTest {
 		ticked(OVER_THE_PAYMENTS_ONLY, "queue:payments");
 		account(AN_ACTIVE_MEMBER, "competitor", first, "Prvi", "Clan", true);
 		account(HIS_ADDRESS, "competitor", corrected, "Ispravljani", "Clan", false);
+		account(HE_HAS_NONE, "competitor", withNoPassword, "Bezlozinke", "Clan", false, false);
 		account(A_CONFIRMED_ONE, "competitor", confirmed, "Potvrdjeni", "Clan", true);
 		account("upar@primer.rs", "competitor", inAPair, "Upar", "Clan", true);
 		account("mladi@primer.rs", "competitor", aMinor, "Mladi", "Clan", true);
 
 		/* LINKS SENT TO HIS ADDRESS, AND TO THE FIRST MEMBER'S, which must survive a correction
 		   of his. */
-		for (String email : List.of(HIS_ADDRESS, AN_ACTIVE_MEMBER)) {
+		for (String email : List.of(HIS_ADDRESS, AN_ACTIVE_MEMBER, HE_HAS_NONE)) {
 			db.sql("insert into email_verification_token (account_id, token_hash)"
 							+ " values ((select id from account where email = ?), ?)")
 					.params(email, SecretToken.fresh().hash()).update();
@@ -243,10 +257,17 @@ class MemberDataWriteApiTest {
 
 	private void account(String email, String role, Long competitor, String first, String last,
 			boolean confirmedAddress) {
-		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id, email_confirmed_at)"
-						+ " values (?, ?, ?, (select id from role where code = ?), ?, ?)")
+		account(email, role, competitor, first, last, confirmedAddress, true);
+	}
+
+	/** @param withAPassword whether the account has a password: one the administration entered has none */
+	private void account(String email, String role, Long competitor, String first, String last,
+			boolean confirmedAddress, boolean withAPassword) {
+		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id, email_confirmed_at,"
+						+ " password_hash) values (?, ?, ?, (select id from role where code = ?), ?, ?, ?)")
 				.params(first, last, email, role, competitor,
-						confirmedAddress ? Timestamp.from(Instant.parse("2026-09-02T10:00:00Z")) : null)
+						confirmedAddress ? Timestamp.from(Instant.parse("2026-09-02T10:00:00Z")) : null,
+						withAPassword ? "{bcrypt}$2a$10$notarealhashnotarealhashnotarealhashnotarealhashnotarea" : null)
 				.update();
 
 		SecretToken session = SecretToken.fresh();
@@ -337,7 +358,7 @@ class MemberDataWriteApiTest {
 		Map<String, Object> now = new LinkedHashMap<>();
 
 		for (long one : List.of(first, theModeratorHimself, corrected, inAPair, hisPartner, withNoAccount,
-				confirmed, theSuperadminHimself, aMinor)) {
+				confirmed, theSuperadminHimself, aMinor, withNoPassword)) {
 			now.put("row " + one, rowOf(one));
 			now.put("book " + one, bookOf(one));
 			now.put("promises " + one, promisesOf(one));
@@ -671,8 +692,9 @@ class MemberDataWriteApiTest {
 		assertThat(same.getStatus()).isEqualTo(200);
 		assertThat(messages()).isEmpty();
 		verifyNoInteractions(postman);
-		/* The same address in other letters is the same address: no link was retired. */
-		assertThat(count("select count(*) from email_verification_token")).isEqualTo(2);
+		/* The same address in other letters is the same address: no link was retired. The three
+		   accounts of the fixture that hold links hold one of this kind each. */
+		assertThat(count("select count(*) from email_verification_token")).isEqualTo(3);
 
 		assertThat(corrected("000005", "{\"lastName\": \"Novic\", \"firstName\": \"Ispravljani\"}",
 				OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
@@ -749,6 +771,89 @@ class MemberDataWriteApiTest {
 		verify(postman, times(1)).send(letter.capture(), anyString());
 		assertThat(letter.getValue().subject()).isEqualTo(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS,
 				MailLanguage.ENGLISH, new Portal(portalAddress), "x").subject());
+	}
+
+	/**
+	 * AN ACCOUNT WITH NO PASSWORD IS SENT THE LINK TO SET ONE, NOT THE LINK TO CONFIRM, AND SPENDING IT
+	 * CONFIRMS THE ADDRESS TOO.
+	 *
+	 * <p>PDL, owner, 23.10.2026, choosing among the outcomes offered with my recommendation beside it:
+	 * when the administration corrects the address of a member who has NO password, the portal sends
+	 * him the link to set a password (it confirms the address as well) instead of the link to confirm;
+	 * a member who has a password still gets the link to confirm (the case below).
+	 *
+	 * <p><b>The other state of the same fact is in the same fixture</b>: {@link #HIS_ADDRESS} has a
+	 * password and {@link #HE_HAS_NONE} has none, both unconfirmed, both with links of both kinds sent
+	 * to the old address, so a link chosen by the wrong account, by the wrong column or by nothing is a
+	 * different row. The letter is the invitation's own (always Serbian, owner, 10.10.2026, Q4), goes
+	 * to the corrected address and to nobody else, and the one link the account now has is a link to
+	 * set a password, written for him and not for the member beside him whose links survive. The link
+	 * is SPENT here, not only read: the address is confirmed and the password is set by it.
+	 */
+	@Test
+	void anAccountWithNoPasswordIsSentTheLinkToSetOneAndSpendingItConfirmsTheAddress() throws Exception {
+		assertThat(corrected("000011", "{\"email\": \" Nova.Bez.Lozinke@Primer.rs \"}", OVER_THE_MEMBERS)
+				.getStatus()).isEqualTo(200);
+
+		ArgumentCaptor<Said> letter = ArgumentCaptor.forClass(Said.class);
+		ArgumentCaptor<String> to = ArgumentCaptor.forClass(String.class);
+
+		verify(postman, times(1)).send(letter.capture(), to.capture());
+		assertThat(to.getValue()).isEqualTo("nova.bez.lozinke@primer.rs");
+		assertThat(letter.getValue().subject()).isEqualTo(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER,
+				new Portal(portalAddress), "x").subject());
+
+		Matcher token = Pattern.compile("nova-lozinka\\?token=([A-Za-z0-9_-]+)").matcher(letter.getValue().body());
+
+		assertThat(token.find()).as(letter.getValue().body()).isTrue();
+		assertThat(db.sql("select a.competitor_id from password_reset_token t join account a on a.id = t.account_id"
+						+ " where t.token_hash = ?").param(SecretToken.hashOf(token.group(1)))
+				.query(Long.class).single()).isEqualTo(withNoPassword);
+
+		/* THE ONLY LINK HE HAS NOW, of the one kind, and nothing of the other: the old links are
+		   retired, the link to confirm is not written. The others' links stand. */
+		assertThat(count("select count(*) from password_reset_token t join account a on a.id = t.account_id"
+				+ " where a.competitor_id = ?", withNoPassword)).isOne();
+		assertThat(count("select count(*) from email_verification_token t join account a on a.id = t.account_id"
+				+ " where a.competitor_id = ?", withNoPassword)).isZero();
+		assertThat(count("select count(*) from password_reset_token t join account a on a.id = t.account_id"
+				+ " where a.competitor_id = ?", first)).isOne();
+		assertThat(count("select count(*) from email_verification_token t join account a on a.id = t.account_id"
+				+ " where a.competitor_id = ?", first)).isOne();
+		assertThat(count("select count(*) from password_reset_token t join account a on a.id = t.account_id"
+				+ " where a.competitor_id = ?", corrected)).isOne();
+
+		/* SPENT: the password is set and the address, which was not confirmed, is. */
+		assertThat(db.sql("select email_confirmed_at is null and password_hash is null from account"
+				+ " where competitor_id = ?").param(withNoPassword).query(Boolean.class).single()).isTrue();
+
+		MockHttpServletResponse spent = http.perform(post("/api/password-reset").with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"token\":\"" + token.group(1) + "\",\"password\":\"trcim.kroz.sumu.2027\","
+								+ "\"passwordRepeat\":\"trcim.kroz.sumu.2027\"}"))
+				.andReturn().getResponse();
+
+		assertThat(spent.getStatus()).isEqualTo(204);
+		assertThat(db.sql("select email_confirmed_at is not null and password_hash is not null from account"
+				+ " where competitor_id = ?").param(withNoPassword).query(Boolean.class).single()).isTrue();
+	}
+
+	/** The account that has a password is sent the link to confirm, and the one beside it, with none, is not. */
+	@Test
+	void anAccountWithAPasswordIsSentTheLinkToConfirmAndNotTheLinkToSetOne() throws Exception {
+		assertThat(corrected("000005", "{\"email\": \"s.lozinkom@primer.rs\"}", OVER_THE_MEMBERS).getStatus())
+				.isEqualTo(200);
+
+		ArgumentCaptor<Said> letter = ArgumentCaptor.forClass(Said.class);
+
+		verify(postman, times(1)).send(letter.capture(), eq("s.lozinkom@primer.rs"));
+		assertThat(letter.getValue().body()).contains("potvrda-adrese?token=").doesNotContain("nova-lozinka");
+		assertThat(count("select count(*) from password_reset_token t join account a on a.id = t.account_id"
+				+ " where a.competitor_id = ?", corrected)).isZero();
+		assertThat(count("select count(*) from email_verification_token t join account a on a.id = t.account_id"
+				+ " where a.competitor_id = ?", corrected)).isOne();
+		assertThat(count("select count(*) from email_verification_token t join account a on a.id = t.account_id"
+				+ " where a.competitor_id = ?", withNoPassword)).isOne();
 	}
 
 	/**
