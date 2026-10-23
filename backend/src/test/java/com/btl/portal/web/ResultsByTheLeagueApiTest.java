@@ -1676,6 +1676,214 @@ class ResultsByTheLeagueApiTest {
 		assertThat(howMany("btl_event")).isEqualTo(events + 1);
 	}
 
+	/* ============================================ „Unos rezultata ne sme da napravi duplu trku" */
+
+	/**
+	 * THE RACE THE EVENT ALREADY HAS UNDER THE NAME TYPED TAKES THE ROWS, AND NO SECOND RACE IS MADE
+	 * (PDL, owner, 23.10.2026, „pre nego što napravi novu trku, server traži trku istog imena u izdanju
+	 * koje je našao, i rezultat ide na nju").
+	 *
+	 * <p>The event is found at the address of its name and year, as the screen sends it when the edition
+	 * was made meanwhile or scheduled ahead and the list under the box did not offer it. <b>Two sources
+	 * for the race, told apart:</b> another event holds a race of the same name, kind, length and day, and
+	 * it is written FIRST, so it is the lower key and the one a search over every event, or over the wrong
+	 * one, would meet before the right one. The name is typed in other letters and with spaces about it,
+	 * and the climb typed is not the race's. The same member again is refused as on any race, which is
+	 * what a save that goes on the race has to say and a second race beside it would have hidden.
+	 */
+	@Test
+	void aNameTypedOfARaceTheEventHasTakesTheRowsAndMakesNoSecondRace() throws Exception {
+		long decoyEvent = event("susedna-staza-2027", "Susedna staza", LocalDate.of(2027, 5, 15));
+		long decoy = race(decoyEvent, "Staza", LocalDate.of(2027, 5, 15), "length", 0, "10.00", 100, 80);
+		long theEvent = event("ciljna-staza-2027", "Ciljna staza", LocalDate.of(2027, 5, 15));
+		long there = race(theEvent, "Staza", LocalDate.of(2027, 5, 15), "length", 0, "10.00", 100, 80);
+		int events = howMany("btl_event");
+		int races = howMany("race");
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onANewEvent("Ciljna staza", "2027-05-15", "Ohrid", "MK",
+				newRace(" STAZA ", null, "length", "10.00", 0, 0, null),
+				row(VERA, null, null, null, AN_HOUR))).getStatus()).isEqualTo(201);
+
+		assertThat(List.of(howMany("btl_event"), howMany("race"))).containsExactly(events, races);
+		assertThat(resultsOf(VERA)).containsExactly(figures(there, "10", 100, 80, AN_HOUR,
+				BtlScoreCalculator.calculate(10.0, 100, 80, AN_HOUR)));
+		assertThat(db.sql("select count(*) from result where race_id = ?").param(decoy)
+				.query(Integer.class).single()).isZero();
+
+		MockHttpServletResponse again = onAnEvent(RESULTS_MODERATOR, onANewEvent("Ciljna staza",
+				"2027-05-15", "Ohrid", "MK", newRace("Staza", null, "length", "10.00", 0, 0, null),
+				row(VERA, null, null, null, AN_HOUR)));
+
+		assertThat(again.getStatus()).isEqualTo(400);
+		assertThat(wrongRows(again)).containsExactly("0 heHasAResultOnThisRace");
+		assertThat(howMany("race")).isEqualTo(races);
+		assertThat(resultsOf(VERA)).hasSize(1);
+	}
+
+	/**
+	 * THE SAME FOR AN EVENT CHOSEN BY ITS KEY, with a climb that is not the race's: the rows are counted at
+	 * the climb the race has (a figure the race fixes is the race's), and no second race is made. The
+	 * climb is not part of what makes two races one (see {@code theRaceTheEventAlreadyHas}).
+	 */
+	@Test
+	void anEventChosenByItsKeyTakesTheRaceOfThatNameWhateverClimbWasTyped() throws Exception {
+		long decoyEvent = event("susedna-staza-2027", "Susedna staza", LocalDate.of(2027, 5, 15));
+
+		race(decoyEvent, "Staza", LocalDate.of(2027, 5, 15), "length", 0, "10.00", 5, 5);
+
+		long theEvent = event("ciljna-staza-2027", "Ciljna staza", LocalDate.of(2027, 5, 15));
+		long there = race(theEvent, "Staza", LocalDate.of(2027, 5, 15), "length", 0, "10.00", 100, 80);
+		int races = howMany("race");
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				newRace("staza", "2027-05-15", "length", "10.00", 5, 5, null),
+				row(BOJAN, null, null, null, AN_HOUR))).getStatus()).isEqualTo(201);
+
+		assertThat(howMany("race")).isEqualTo(races);
+		assertThat(resultsOf(BOJAN)).containsExactly(figures(there, "10", 100, 80, AN_HOUR,
+				BtlScoreCalculator.calculate(10.0, 100, 80, AN_HOUR)));
+	}
+
+	/**
+	 * THE DAY IS PART OF WHAT MAKES A RACE THAT RACE. An event of two days holds a race of one name on each,
+	 * and a result entered for the second day is not put on the first (PDL P28a, 10.08.2026: „dve trke u
+	 * subotu i jedna u nedelju su jedan događaj sa tri trke"): a new race is made on the day typed, and the
+	 * event keeps the day it began on.
+	 */
+	@Test
+	void theSameNameOnAnotherDayOfTheEventIsAnotherRace() throws Exception {
+		long theEvent = event("dvodnevna-staza-2027", "Dvodnevna staza", LocalDate.of(2027, 5, 15));
+		long saturday = race(theEvent, "Staza", LocalDate.of(2027, 5, 15), "length", 0, "10.00", 100, 80);
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				newRace("Staza", "2027-05-16", "length", "10.00", 100, 80, null),
+				row(VERA, null, null, null, AN_HOUR))).getStatus()).isEqualTo(201);
+
+		List<Long> both = db.sql("select id from race where event_id = ? order by date").param(theEvent)
+				.query(Long.class).list();
+
+		assertThat(both).hasSize(2).first().isEqualTo(saturday);
+		assertThat(resultsOf(VERA)).containsExactly(figures(both.get(1), "10", 100, 80, AN_HOUR,
+				BtlScoreCalculator.calculate(10.0, 100, 80, AN_HOUR)));
+		assertThat(db.sql("select date from btl_event where id = ?").param(theEvent)
+				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2027, 5, 15));
+	}
+
+	/**
+	 * THE KIND AND THE MEASURE ARE PART OF IT TOO. Races of one name on one day are the ordinary case
+	 * („ja mogu da u okviru Beogradskog maratona imam dve trke, od 42.2 i 21.1, i obe će dobiti default
+	 * naziv Beogradski maraton"), so a name that is also a race's of another kind, or of another length, or
+	 * of another limit, is another race, and a result of a half-marathon is not counted on the marathon.
+	 * The third state, a free race, has no measure and answers to its name, its day and its kind.
+	 */
+	@Test
+	void theSameNameOfAnotherKindOrAnotherMeasureIsAnotherRace() throws Exception {
+		long theEvent = event("trosmerna-staza-2027", "Trosmerna staza", LocalDate.of(2027, 5, 15));
+		long there = race(theEvent, "Staza", LocalDate.of(2027, 5, 15), "length", 0, "10.00", 100, 80);
+		long upToAnHour = race(theEvent, "Sat", LocalDate.of(2027, 5, 15), "time", AN_HOUR, "0", 0, 0);
+		long free = race(theEvent, "Slobodna", LocalDate.of(2027, 5, 15), "free", 0, "0", 0, 0);
+
+		/* Another kind, another length, another limit, and a free race under the name of a race of a length. */
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				newRace("Staza", "2027-05-15", "time", null, null, null, AN_HOUR),
+				row(VERA, "5.00", 10, 10, null))).getStatus()).isEqualTo(201);
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				newRace("Staza", "2027-05-15", "length", "21.10", 100, 80, null),
+				row(BOJAN, null, null, null, AN_HOUR))).getStatus()).isEqualTo(201);
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				newRace("Sat", "2027-05-15", "time", null, null, null, 2 * AN_HOUR),
+				row(ANA, "5.00", 10, 10, null))).getStatus()).isEqualTo(201);
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				newRace("Slobodna", "2027-05-15", "length", "10.00", 100, 80, null),
+				row(MIRA, null, null, null, AN_HOUR))).getStatus()).isEqualTo(201);
+
+		assertThat(db.sql("select count(*) from race where event_id = ?").param(theEvent)
+				.query(Integer.class).single()).isEqualTo(7);
+		assertThat(db.sql("select count(*) from result r join race x on x.id = r.race_id"
+						+ " where x.event_id = ?").param(theEvent).query(Integer.class).single()).isEqualTo(4);
+		assertThat(db.sql("select count(*) from result where race_id in (?, ?, ?)")
+				.params(there, upToAnHour, free).query(Integer.class).single()).isZero();
+	}
+
+	/**
+	 * A RACE THAT FIXES NO LENGTH, ONE THAT FIXES THE LIMIT AND ONE THAT FIXES THE LENGTH ARE EACH FOUND BY
+	 * WHAT THEY FIX. A free race, a race to a limit and a race of a length of the fixture, typed again on
+	 * their own event by their names, take the rows and make nothing.
+	 */
+	@Test
+	void eachKindOfRaceIsFoundByTheMeasureItFixes() throws Exception {
+		int races = howMany("race");
+		String theDay = "2027-05-08";
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onANewEvent("Prvi dogadjaj", theDay, "Ohrid", "MK",
+				newRace("Brdska trka", null, "free", null, null, null, null),
+				row(VERA, "6.00", 7, 7, AN_HOUR))).getStatus()).isEqualTo(201);
+		assertThat(onAnEvent(RESULTS_MODERATOR, onANewEvent("Prvi dogadjaj", theDay, "Ohrid", "MK",
+				newRace("Sestocasovna", null, "time", null, null, null, SIX_HOURS),
+				row(BOJAN, "50.00", 9, 9, null))).getStatus()).isEqualTo(201);
+		assertThat(onAnEvent(RESULTS_MODERATOR, onANewEvent("Prvi dogadjaj", theDay, "Ohrid", "MK",
+				newRace("Desetka", null, "length", "10.00", 0, 0, null),
+				row(ANA, null, null, null, AN_HOUR))).getStatus()).isEqualTo(201);
+
+		assertThat(howMany("race")).isEqualTo(races);
+		assertThat(db.sql("select count(*) from result where race_id in (?, ?, ?)")
+				.params(theHill, theSixHours, theTen).query(Integer.class).single()).isEqualTo(3);
+	}
+
+	/**
+	 * A NAME THAT DIFFERS BY A LETTER IS ANOTHER NAME, and a diacritic is a letter: the comparison is of
+	 * case and of the spaces about the name, and no more (the screen's own, {@code forms/exactName.ts}).
+	 */
+	@Test
+	void aNameThatDiffersByALetterIsAnotherRace() throws Exception {
+		int races = howMany("race");
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onANewEvent("Prvi dogadjaj", "2027-05-08", "Ohrid", "MK",
+				newRace("Desetkaš", null, "length", "10.00", 100, 80, null),
+				row(VERA, null, null, null, AN_HOUR))).getStatus()).isEqualTo(201);
+
+		assertThat(howMany("race")).isEqualTo(races + 1);
+	}
+
+	/**
+	 * WHERE MORE THAN ONE RACE ANSWERS, the first made does: races of one name made before the question
+	 * was asked are there already, and the rows must not go on whichever the table happens to give first.
+	 */
+	@Test
+	void whereTwoRacesAnswerTheFirstMadeTakesTheRows() throws Exception {
+		long theEvent = event("dvojnici-2027", "Dvojnici", LocalDate.of(2027, 5, 15));
+		long first = race(theEvent, "Dvojnik", LocalDate.of(2027, 5, 15), "length", 0, "10.00", 1, 1);
+
+		race(theEvent, "Dvojnik", LocalDate.of(2027, 5, 15), "length", 0, "10.00", 2, 2);
+
+		assertThat(onAnEvent(RESULTS_MODERATOR, onTheEvent(theEvent,
+				newRace("Dvojnik", "2027-05-15", "length", "10.00", 0, 0, null),
+				row(VERA, null, null, null, AN_HOUR))).getStatus()).isEqualTo(201);
+
+		assertThat(resultsOf(VERA)).containsExactly(figures(first, "10", 1, 1, AN_HOUR,
+				BtlScoreCalculator.calculate(10.0, 1, 1, AN_HOUR)));
+	}
+
+	/**
+	 * THE RACE FOUND IS ENTERED ON AS A RACE CHOSEN BY ITS KEY IS: a row refused leaves nothing behind, and
+	 * the event is not moved to a day it was not asked to begin on.
+	 */
+	@Test
+	void aRowRefusedOnARaceFoundWritesNothingAndLeavesTheEventWhereItStands() throws Exception {
+		int races = howMany("race");
+		int results = howMany("result");
+
+		MockHttpServletResponse refused = onAnEvent(RESULTS_MODERATOR, onANewEvent("Prvi dogadjaj",
+				"2027-05-08", "Ohrid", "MK", newRace("Desetka", null, "length", "10.00", 0, 0, null),
+				row(VERA, null, null, null, AN_HOUR), row(NOBODY_HOLDS_THIS, null, null, null, AN_HOUR)));
+
+		assertThat(refused.getStatus()).isEqualTo(400);
+		assertThat(wrongRows(refused)).containsExactly("1 theMemberIsNotKnown");
+		assertThat(List.of(howMany("race"), howMany("result"))).containsExactly(races, results);
+		assertThat(db.sql("select date from btl_event where slug = 'prvi-dogadjaj-2027'")
+				.query(LocalDate.class).single()).isEqualTo(LocalDate.of(2027, 5, 8));
+	}
+
 	/* ===================================================================== helpers */
 
 	private MockHttpServletResponse entered(String email, long race, String body) throws Exception {

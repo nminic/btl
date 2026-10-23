@@ -78,6 +78,11 @@ class ResultsByTheLeagueConcurrencyTest {
 
 	private long race;
 
+	/** The second member and the events the cases below make, taken back out after each. */
+	private final List<Long> moreMembers = new ArrayList<>();
+
+	private final List<String> moreEvents = new ArrayList<>();
+
 	@BeforeEach
 	void twoModeratorsOneMemberAndOneRace() {
 		moderator(ONE_MODERATOR);
@@ -106,10 +111,21 @@ class ResultsByTheLeagueConcurrencyTest {
 
 	@AfterEach
 	void takeThemBackOut() {
-		db.sql("delete from message where to_id = ?").param(member).update();
-		db.sql("delete from result where competitor_id = ?").param(member).update();
-		db.sql("delete from btl_event where slug = ?").param(THE_EVENT).update();
-		db.sql("delete from competitor where id = ?").param(member).update();
+		moreMembers.add(member);
+		moreEvents.add(THE_EVENT);
+
+		for (long each : moreMembers) {
+			db.sql("delete from message where to_id = ?").param(each).update();
+			db.sql("delete from result where competitor_id = ?").param(each).update();
+		}
+
+		for (String slug : moreEvents) {
+			db.sql("delete from btl_event where slug = ?").param(slug).update();
+		}
+
+		for (long each : moreMembers) {
+			db.sql("delete from competitor where id = ?").param(each).update();
+		}
 
 		for (String email : sessions.keySet()) {
 			db.sql("delete from account where email = ?").param(email).update();
@@ -240,6 +256,132 @@ class ResultsByTheLeagueConcurrencyTest {
 		} finally {
 			pool.shutdownNow();
 		}
+	}
+
+	/**
+	 * TWO SAVES OF ONE NEW RACE ON ONE EVENT, AT ONE INSTANT, MAKE ONE RACE (PDL, owner, 23.10.2026, „Unos
+	 * rezultata ne sme da napravi duplu trku").
+	 *
+	 * <p>Both saves find the event and neither finds the race, because the other has not written it yet: the
+	 * question about the race is only true once the event is HELD ({@code for no key update}), which is what
+	 * puts the second save behind the first. This connection holds the event until the lock manager shows
+	 * BOTH saves queued behind it ({@link BlockedBehindThisHold}), so the case does not depend on the
+	 * scheduler. A save that asked about the race before it held the event, or did not ask at all, makes
+	 * a second race here, and each member's result lands on his own.
+	 */
+	@Test
+	void twoSavesOfOneNewRaceOnOneEventAtOneInstantMakeOneRace() throws Exception {
+		long other = anotherMember("000942", "0011223344558a42");
+		long eventId = db.sql("select id from btl_event where slug = ?").param(THE_EVENT)
+				.query(Long.class).single();
+
+		bothSaveTheSameNewRace("Istovremeni unos", "2026-05-01", () -> {
+			db.sql("select 1 from btl_event where id = ? for update").param(eventId)
+					.query(Integer.class).single();
+		});
+
+		assertThat(db.sql("select count(*) from race where event_id = ? and name = 'Nova istovremena'")
+				.param(eventId).query(Integer.class).single()).as("a second race of the name was made")
+				.isEqualTo(1);
+		assertThat(db.sql("select count(distinct race_id) from result where competitor_id in (?, ?)"
+				+ " and race_id in (select id from race where name = 'Nova istovremena')")
+				.params(member, other).query(Integer.class).single()).isEqualTo(1);
+		assertThat(db.sql("select count(*) from result where competitor_id in (?, ?)")
+				.params(member, other).query(Integer.class).single()).isEqualTo(2);
+	}
+
+	/**
+	 * THE SAME WHERE THE EVENT IS MADE IN THE SAME INSTANT: both saves find no event, both insert at its
+	 * address, and the one that loses is begun again from the top ({@code THE_ADDRESS_WAS_TAKEN}). Whichever
+	 * order they take the second time round, the second meets the race the first made.
+	 *
+	 * <p>This connection stands for the save that made the event first: it inserts the event and holds it
+	 * uncommitted, so both real saves stop at their insert behind it, and neither could have seen the event
+	 * at the top.
+	 */
+	@Test
+	void twoSavesOfOneNewRaceOnAnEventBeingMadeAtOneInstantMakeOneRace() throws Exception {
+		long other = anotherMember("000942", "0011223344558a42");
+		String slug = "istovremeno-izdanje-2026";
+
+		moreEvents.add(slug);
+
+		bothSaveTheSameNewRace("Istovremeno izdanje", "2026-06-01", () -> {
+			db.sql("insert into btl_event (slug, name, date, place_id, kind, featured, description, link)"
+					+ " values (?, 'Istovremeno izdanje', date '2026-06-01',"
+					+ " (select id from place where rank = 1), 'race', false, '', '')")
+					.param(slug).update();
+		});
+
+		assertThat(db.sql("select count(*) from race r join btl_event e on e.id = r.event_id"
+				+ " where e.slug = ?").param(slug).query(Integer.class).single())
+				.as("a second race of the name was made").isEqualTo(1);
+		assertThat(db.sql("select count(*) from result where competitor_id in (?, ?)")
+				.params(member, other).query(Integer.class).single()).isEqualTo(2);
+	}
+
+	/** Takes what {@code hold} takes, keeps it until both saves wait behind it, lets go, and answers both. */
+	private void bothSaveTheSameNewRace(String eventName, String day, Runnable hold) throws Exception {
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				hold.run();
+
+				assertThat(BlockedBehindThisHold.count(db))
+						.as("the hold is taken and nothing has been sent yet, so a count that is not"
+								+ " nought is counting something other than the two saves below")
+						.isZero();
+
+				submitted.add(pool.submit(() -> onTheNewRace(ONE_MODERATOR, eventName, day, THE_MEMBER)));
+				submitted.add(pool.submit(() -> onTheNewRace(THE_OTHER_MODERATOR, eventName, day, "000942")));
+
+				try {
+					BlockedBehindThisHold.untilBothArrive(db, submitted);
+				} catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+
+				assertThat(submitted).as("a save went through without waiting").noneMatch(Future::isDone);
+
+				return null;
+			});
+
+			assertThat(List.of(submitted.get(0).get(30, TimeUnit.SECONDS).getStatus(),
+					submitted.get(1).get(30, TimeUnit.SECONDS).getStatus())).containsExactly(201, 201);
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
+	private MockHttpServletResponse onTheNewRace(String email, String eventName, String day, String number)
+			throws Exception {
+		return http.perform(post("/api/results/on-a-race-of-an-event").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(email)))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"event\":{\"name\":\"" + eventName + "\",\"date\":\"" + day
+								+ "\",\"city\":\"Ohrid\",\"country\":\"MK\"},\"race\":{\"name\":"
+								+ "\"Nova istovremena\",\"kind\":\"length\",\"distanceKm\":10.00,"
+								+ "\"ascentM\":0,\"descentM\":0},\"rows\":[{\"memberNumber\":\"" + number
+								+ "\",\"seconds\":3600}]}"))
+				.andReturn().getResponse();
+	}
+
+	private long anotherMember(String number, String referral) {
+		long made = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
+						+ " shirt_size, health_statement_at)"
+						+ " values (?, 'Drugi', 'Istovremeni', 'M', date '1991-01-01',"
+						+ " (select id from place where rank = 1), 2027, false, true,"
+						+ " ?, '', false, 'none', 'Otac', 'Ulica 2', 'M',"
+						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
+				.params(number, referral).query(Long.class).single();
+
+		moreMembers.add(made);
+
+		return made;
 	}
 
 	private MockHttpServletResponse entered(String email, int seconds) throws Exception {
