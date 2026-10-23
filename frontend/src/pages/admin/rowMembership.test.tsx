@@ -347,6 +347,32 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     server.stop()
   }, SLOW)
 
+  it('takes the drawn „Član je obrisan." back when the next thing on the screen is a cancellation', async () => {
+    /* The deletion's sentence is drawn (owner, 22.10.2026, PDL „Brisanje člana na ekranu članova"), the
+       cancellation's is not: so a cancellation after a deletion must leave no „Član je obrisan." on the
+       page over a list it is no longer about. The row deleted and the row cancelled are different. */
+    const server = serving()
+    const user = setupUser()
+    renderAt('/sr/administracija/clanovi', 'superadmin', PAID)
+
+    const deleted = await rowOf(PAID)
+
+    await user.click(within(deleted).getByRole('button', { name: 'Obriši: Ana Držić' }))
+    await user.click(within(deleted).getByRole('button', { name: 'Obriši člana: Ana Držić' }))
+
+    expect(await screen.findByText('Član je obrisan.')).toBeInTheDocument()
+
+    const cancelled = await rowOf(EXEMPT)
+
+    await user.click(within(cancelled).getByRole('button', { name: 'Storniraj' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+
+    expect(await screen.findByText('Članstvo je stornirano.')).toBeInTheDocument()
+    expect(screen.queryByText('Član je obrisan.')).toBeNull()
+
+    server.stop()
+  }, SLOW)
+
   it('asks again for every answer a cancellation changes, and leaves the inbox of another row alone', async () => {
     const server = serving()
     const user = setupUser()
@@ -799,7 +825,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
        deletion at a time, so it is the row pressed last that carries it. */
     async function refuseTheDeletionOf(row: HTMLElement, name: string) {
       await user.click(within(row).getByRole('button', { name: `Obriši: ${name}` }))
-      await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
+      await user.click(within(row).getByRole('button', { name: `Obriši člana: ${name}` }))
       expect(await within(row).findByText(refusedDeletion)).toBeInTheDocument()
     }
 

@@ -317,6 +317,7 @@ const aMember = {
   lastName: 'Babić',
   gender: 'F' as const,
   city: 'Beograd',
+  country: 'RS',
   ageBand: '40-54' as const,
   firstSeason2027: false,
   active: true,
@@ -339,6 +340,8 @@ const aLapsedMember = {
   lastName: 'Filić',
   gender: 'F' as const,
   city: 'Niš',
+  /* Another country than the first sample's, and billed in euro, so the two are not one value read twice. */
+  country: 'BA',
   ageBand: '25-39' as const,
   firstSeason2027: true,
   active: false,

@@ -317,6 +317,7 @@ describe('a sentence with a value put into it', () => {
          anywhere („Poredak takmičenja", „Događaji i trke, {name}"), so this is the same
          answer `leagues.countingOf` already gives one screen along. */
       'admin.leagueRacesOf',
+      'admin.memberDeleteSureNamed',
       /* „U kalendaru nema nijednog događaja iz sezone {season}.", and the season is a
          number: a year written in figures has no case to be wrong in. */
       'admin.noEventsOfSeason',

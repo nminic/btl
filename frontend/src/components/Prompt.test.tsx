@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { setupUser } from '../test/user'
 import { Prompt } from './Prompt'
 
@@ -155,5 +155,119 @@ describe('the question sheet', () => {
 
       expect(yes).toHaveFocus()
     })
+  })
+
+  /**
+   * THE SECOND CLICK OF A DOUBLE PRESS IS NOT AN ANSWER (22.10.2026). Measured in Chrome at 360px: the
+   * sheet opens under the thumb that opened it, and the second click of a double press on an action of a
+   * row landed on „Ne"; further left it would land on the first way of saying yes. A browser marks that
+   * click with `detail` 2, the keyboard with 0, and a single press with 1.
+   */
+  describe('with a press repeated', () => {
+    it('answers no button on the second click of a double press', () => {
+      const answers = aSheet()
+
+      for (const name of ['Da', 'Odobri iz balansa', 'Ne']) {
+        fireEvent.click(screen.getByRole('button', { name }), { detail: 2 })
+      }
+
+      expect(answers.yes).not.toHaveBeenCalled()
+      expect(answers.balance).not.toHaveBeenCalled()
+      expect(answers.no).not.toHaveBeenCalled()
+    })
+
+    it('still answers a single press and the keyboard, on every button', () => {
+      const answers = aSheet()
+
+      /* `detail` 1 is a press of a pointer, 0 is Enter or the space bar on a focused button. */
+      fireEvent.click(screen.getByRole('button', { name: 'Da' }), { detail: 1 })
+      fireEvent.click(screen.getByRole('button', { name: 'Odobri iz balansa' }), { detail: 0 })
+      fireEvent.click(screen.getByRole('button', { name: 'Ne' }), { detail: 1 })
+      fireEvent.click(screen.getByRole('button', { name: 'Ne' }), { detail: 0 })
+
+      expect(answers.yes).toHaveBeenCalledTimes(1)
+      expect(answers.balance).toHaveBeenCalledTimes(1)
+      expect(answers.no).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  /**
+   * A SHEET THAT ASKS FOR A NUMBER AS WELL (22.10.2026): the field is a stop of the ring Tab walks, in
+   * both directions, and the focus cannot leave the sheet from it.
+   */
+  describe('with a field in it', () => {
+    function aSheetWithAField() {
+      render(
+        <>
+          <button type="button">Iza lista</button>
+          <Prompt title="Upiši uplatu" choices={[{ label: 'Upiši', onChoose: vi.fn() }]} decline="Odustani" onDecline={vi.fn()}>
+            <label>
+              Uplaćeno (RSD)
+              <input type="text" />
+            </label>
+          </Prompt>
+        </>,
+      )
+
+      return {
+        field: screen.getByRole('textbox', { name: 'Uplaćeno (RSD)' }),
+        record: screen.getByRole('button', { name: 'Upiši' }),
+        keep: screen.getByRole('button', { name: 'Odustani' }),
+      }
+    }
+
+    it('walks from the last button back to the field, and never out to the page', async () => {
+      const user = setupUser()
+      const { field, record, keep } = aSheetWithAField()
+
+      /* The sheet opens on its question; the field is the first stop after it. */
+      await user.tab()
+      expect(field).toHaveFocus()
+
+      await user.tab()
+      expect(record).toHaveFocus()
+
+      await user.tab()
+      expect(keep).toHaveFocus()
+
+      await user.tab()
+      expect(field).toHaveFocus()
+    })
+
+    it('walks backwards from the field to the last button, and never out to the page', async () => {
+      const user = setupUser()
+      const { field, keep } = aSheetWithAField()
+
+      await user.tab()
+      expect(field).toHaveFocus()
+
+      await user.tab({ shift: true })
+      expect(keep).toHaveFocus()
+
+      await user.tab({ shift: true })
+      await user.tab({ shift: true })
+      expect(field).toHaveFocus()
+    })
+  })
+
+  /**
+   * EACH SHEET IS NAMED BY ITS OWN QUESTION (22.10.2026), and two may stand at once: a question about
+   * the amount drawn over the sheet that asked for it. An id written out by hand is found where it
+   * stands first, so the second sheet would carry the first one's name.
+   */
+  it('names each of two sheets standing at once by its own question', () => {
+    render(
+      <>
+        <Prompt title="Upiši uplatu" choices={[]} decline="Odustani" onDecline={vi.fn()}>
+          <p>Prvi list.</p>
+        </Prompt>
+        <Prompt title="Prihvatam umanjen ukupan iznos?" choices={[]} decline="Ne" onDecline={vi.fn()}>
+          <p>Drugi list.</p>
+        </Prompt>
+      </>,
+    )
+
+    expect(screen.getByRole('dialog', { name: 'Upiši uplatu' })).toHaveTextContent('Prvi list.')
+    expect(screen.getByRole('dialog', { name: 'Prihvatam umanjen ukupan iznos?' })).toHaveTextContent('Drugi list.')
   })
 })

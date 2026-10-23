@@ -81,6 +81,13 @@ class MembersApi {
 	}
 
 	/**
+	 * @param country          the country he lives in, by its code, through whichever of its two homes
+	 *                         V7 gives it (the town's country, or the one named beside a typed town):
+	 *                         the row draws it under the town (owner, 22.10.2026, PDL „Red na ekranu
+	 *                         članova ima pet kolona”: „Druga kolona Mesto, a ispod malim fontom ...
+	 *                         Država”). The same column {@code currency} is worked out from, and the
+	 *                         same code {@link CompetitorApi.Competitor} answers; the town and the
+	 *                         country are public (PDL P23), so nothing new is told to anybody
 	 * @param active           whether his fee stands, as {@code competitor.active} says it
 	 * @param membershipBasis  the basis of the season ON SALE ({@link SeasonClock#seasonBeingPaidFor}),
 	 *                         absent for a member who holds no row of it: the same field, under the
@@ -109,7 +116,7 @@ class MembersApi {
 	 *                         before anything is sent
 	 */
 	record Member(String memberNumber, String firstName, String lastName, String gender,
-			String city, String ageBand, boolean firstSeason2027, boolean active,
+			String city, String country, String ageBand, boolean firstSeason2027, boolean active,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer membershipSeason,
 			List<Season> seasons, int seasonOnSale, String currency, BigDecimal expected,
@@ -181,7 +188,7 @@ class MembersApi {
 			MembershipPrice.Price price = MembershipPrice.on(priceList, today, one.birthYear(), sold, his);
 
 			return new Member(one.memberNumber(), one.firstName(), one.lastName(), one.gender(),
-					one.city(), Category.ageBandFor(one.birthYear(), season).code(),
+					one.city(), one.countryCode(), Category.ageBandFor(one.birthYear(), season).code(),
 					one.firstSeason2027(), one.active(),
 					one.basis(), one.basis() == null ? null : sold,
 					List.copyOf(held.getOrDefault(one.id(), List.of())),
