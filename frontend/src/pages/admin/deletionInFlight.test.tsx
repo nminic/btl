@@ -27,8 +27,9 @@ import sr from '../../i18n/sr.json'
  * once.
  *
  * <p><b>The list has a floor of its own</b> (the last block): every file that draws the question
- * is found by asking the parser for the JSX tags `DeleteRecord` and `RowActions`, and each one
- * must be a row of this table. A list kept by hand is the list that goes short the day somebody
+ * is found by asking the parser for the JSX tag `DeleteRecord`, and each one must be a row of
+ * this table. (`RowActions` is not a tag of it since 23.10.2026: it draws a sheet,
+ * `deletionSheet.test.tsx` has its own floor.) A list kept by hand is the list that goes short the day somebody
  * draws a ninth, so the ninth fails here before it fails anywhere a reader would see it.
  *
  * <p><b>What each row does, and what it does not claim.</b> The first record on the screen is the
@@ -66,39 +67,15 @@ type Screen = {
   refusal?: number
 }
 
-/** The first record on the screen: the first button that offers to delete one. */
-const first = async (): Promise<HTMLElement> =>
-  must((await screen.findAllByRole('button', { name: /^Obriši: / }))[0], 'a record to delete')
-
 const SCREENS: Screen[] = [
-  {
-    name: 'the events',
-    source: 'admin/AdminEvents.tsx',
-    at: '/sr/administracija/dogadjaji',
-    role: 'superadmin',
-    ask: first,
-  },
-  {
-    name: 'the competitions',
-    source: 'admin/AdminLeagues.tsx',
-    at: '/sr/administracija/lige',
-    role: 'superadmin',
-    ask: first,
-  },
-  {
-    name: 'the moderators',
-    source: 'admin/AdminModerators.tsx',
-    at: '/sr/administracija/moderatori',
-    role: 'superadmin',
-    ask: first,
-  },
-  {
-    name: 'the teams of the administration',
-    source: 'admin/AdminTeams.tsx',
-    at: '/sr/administracija/timovi',
-    role: 'superadmin',
-    ask: first,
-  },
+  /* THE FOUR LISTS OF THE ADMINISTRATION STOOD HERE UNTIL 23.10.2026 (the events, the competitions, the
+     moderators and the teams). Their deletion is a sheet over the page since then (owner, PDL „Tri odgovora
+     od 23.10.2026"), drawn by `DeleteSheet` through `RowActions` and not through `DeleteRecord`. The same
+     rule is asked of that sheet in `deletionSheet.test.tsx`, „while the deletion is out, puts nothing away
+     and says that it is sending", and before they left this table every mutation this table held against
+     them was run against that file and fell there (23.10.2026: no sheet told off, no ref against a second
+     press, a sheet that closes at once, an answer that does not close it, a ref that is not let go, a
+     deletion handed back as nothing). */
   /* THE MEMBERS OF THE ADMINISTRATION STOOD HERE UNTIL 22.10.2026. Their deletion is a sheet over the
      page since then (owner, PDL „Potvrda brisanja više nije rečenica u redu tabele nego iskačući
      prozor"), drawn by `MemberRow.tsx` through `Prompt` and not through `DeleteRecord`, so the floor
@@ -280,10 +257,9 @@ describe('a deletion that is out with the server', () => {
          with the question. */
       const { server, settle, user, named, here, refusal } = await leaveItOut()
 
-      /* THE FOCUS IS MOVED ON BEFORE THE ANSWER, and on four of the screens it had been already
-         (`RowActions` and the members' list move it ahead of the answer). React gives the button that
-         asks the element „Potvrdi brisanje" had, so a focus left where it was would be on it whatever
-         the code does about it - which is how an `autoFocus` that does nothing read as working. */
+      /* THE FOCUS IS MOVED OFF „Potvrdi brisanje" BEFORE THE ANSWER. React gives the button that asks the
+         element „Potvrdi brisanje" had, so a focus left where it was would be on it whatever the code
+         does about it - which is how an `autoFocus` that does nothing read as working. */
       await user.tab()
 
       settle(() => answeredWith(refusal))
@@ -335,9 +311,9 @@ describe('a deletion that is out with the server', () => {
       })
 
       /* AND THE SECOND REFUSAL BRINGS THE FOCUS BACK AS WELL, which is what lowering the flag when the
-         question is asked again is for: `RowActions` and the members' list move the focus off the
-         confirming button when it is pressed, and a flag left raised by the first answer would be
-         raised again by the second without changing, so nothing would bring it back. */
+         question is asked again is for: the focus is moved off the confirming button before the answer,
+         and a flag left raised by the first answer would be raised again by the second without
+         changing, so nothing would bring it back. */
       await waitFor(() => {
         expect(
           here.queryByRole('button', { name: named.sure }),
@@ -379,8 +355,7 @@ describe('a deletion that is out with the server', () => {
    *
    * <p>Asked of the parser and not of the text, so a tag written over two lines, or imported under
    * another name, is still a tag. `EntityEditor.tsx` itself is the one file left out: it defines
-   * the question and draws it inside `RowActions`, which is why `RowActions` is on the list of
-   * tags and its four callers are on the table.
+   * the question, and since 23.10.2026 draws it nowhere.
    */
   it('has a row for every screen that draws the question', () => {
     const pages = join(process.cwd(), 'src', 'pages')
@@ -397,7 +372,7 @@ describe('a deletion that is out with the server', () => {
       const visit = (node: ts.Node): void => {
         if (
           (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
-          ['DeleteRecord', 'RowActions'].includes(node.tagName.getText(file))
+          node.tagName.getText(file) === 'DeleteRecord'
         ) {
           draws = true
         }

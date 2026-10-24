@@ -682,13 +682,16 @@ export function RowActions({
     return deleteRecord().finally(leaveTheRow)
   }
 
+  /* A `div` AND NOT A `span`, since 23.10.2026: the sheet is a `div` (`components/Prompt.tsx`) and a `div`
+     in a `span` is not valid HTML. It is still the same inline-flex box (`Entity.css`), and the sheet is
+     fixed to the window, so it takes no place in it. */
   return (
-    <span className="entity-row-actions">
+    <div className="entity-row-actions">
       <OpenRecord name={name} onOpen={onOpen} />
       <DeleteSheet name={name} asks={asks} onDelete={deleteRow}>
         {asksWith === undefined ? null : <p>{asksWith}</p>}
       </DeleteSheet>
-    </span>
+    </div>
   )
 }
 
