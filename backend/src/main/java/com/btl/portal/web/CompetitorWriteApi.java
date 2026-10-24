@@ -343,6 +343,24 @@ class CompetitorWriteApi {
 			return no(HttpStatus.CONFLICT, THE_ACCOUNT_ADMINISTERS);
 		}
 
+		takeAway(gone);
+
+		return ResponseEntity.noContent().build();
+	}
+
+	/**
+	 * THE DELETING ITSELF, ONCE EVERY REFUSAL IS BEHIND: his account, him, the other half of every
+	 * pair he was in told, a team he was the last of gone, and the file of his picture.
+	 *
+	 * <p><b>Package visible because a second door uses it, and it is the same act.</b> The owner,
+	 * 23.10.2026: a registration not confirmed in seven days „briše se sama", and so does a member
+	 * the administration entered who set no password and has neither a payment nor a number
+	 * ({@link UnconfirmedAccountsAreSwept}). That is a member deleted with his account, and a second
+	 * copy of these lines would be a second place to forget his pairs, his team or his picture.
+	 * Whoever calls this has already decided he goes, and calls it inside the transaction that
+	 * decided it.
+	 */
+	void takeAway(long gone) {
 		/* READ BEFORE THE DELETE AND NEVER AFTER, all three, and for one reason:
 		   `racing_pair` and `team_membership` are `on delete cascade` (V12, V11) and
 		   `competitor.photo_id` is a column ON THE ROW ITSELF, so the moment the member goes
@@ -374,8 +392,6 @@ class CompetitorWriteApi {
 
 		emptyTeams.goIfEmpty(teams);
 		photo.ifPresent(this::takeAwayTheFileOf);
-
-		return ResponseEntity.noContent().build();
 	}
 
 	/**
@@ -482,7 +498,7 @@ class CompetitorWriteApi {
 	 * account and may hang off none. A member with no account is refused nothing here and the
 	 * delete below removes no row.
 	 */
-	private boolean hisAccountAdministers(long member) {
+	boolean hisAccountAdministers(long member) {
 		return db.sql("select r.code, a.email, a.email_confirmed_at,"
 						+ " exists(select 1 from account_admin_right x where x.account_id = a.id)"
 						+ " from account a join role r on r.id = a.role_id"
@@ -1023,8 +1039,7 @@ class CompetitorWriteApi {
 	private String invitationFor(long account) {
 		SecretToken invitation = SecretToken.fresh();
 
-		db.sql("insert into password_reset_token (account_id, token_hash) values (?, ?)")
-				.params(account, invitation.hash()).update();
+		AnInvitationOfAMember.mint(db, account, invitation);
 
 		return invitation.secret();
 	}

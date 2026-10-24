@@ -598,7 +598,18 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read off
 			   this very assertion when it ran before the entry existed. */
-			new Applied("71", "V71__the_legal_pages_say_each_thing_in_one_place.sql", -1120675458));
+			new Applied("71", "V71__the_legal_pages_say_each_thing_in_one_place.sql", -1120675458),
+
+			/* V72. An unconfirmed registration lasts seven days (owner, 23.10.2026, PDL „Poruka posle potvrde
+			   adrese i rok nedovršene registracije"): the confirmation link's default moves from twenty four hours
+			   to seven days, and every account standing unconfirmed when it runs is kept seven days from that
+			   moment in a column of its own (owner, 24.10.2026, „zatečenima 7 dana od dana podizanja").
+
+			   72 because it is the next free number, MEASURED on 24.10.2026: no remote branch, no worktree and
+			   no open pull request held a migration at V72 or above, and origin/main stands at V71.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("72", "V72__an_unconfirmed_registration_lasts_seven_days.sql", 1522514020));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

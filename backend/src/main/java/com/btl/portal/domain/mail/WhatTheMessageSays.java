@@ -182,10 +182,10 @@ public final class WhatTheMessageSays {
 	 * Each of them, with the path it points at and how long it is good for.
 	 *
 	 * <p>The durations are the owner's, taken from the schema and not invented
-	 * here: twenty four hours for confirming an address ([ODLUKA 08.09.2026], long
-	 * enough that somebody opening his mail next morning still gets in) and one
-	 * hour for a password link, which is the shorter because it is the one that
-	 * hands over an account.
+	 * here: seven days for confirming an address (owner, 23.10.2026, PDL „Poruka posle
+	 * potvrde adrese i rok nedovršene registracije": „Link za potvrdu adrese važi 7 dana",
+	 * which overturned the twenty four hours of 08.09.2026) and one hour for a password
+	 * link, which is the shorter because it is the one that hands over an account.
 	 *
 	 * <p><b>TWO OF THEM NOW POINT AT THE SAME PLACE, AND THAT IS A DECISION RATHER
 	 * THAN A COLLISION.</b> „Nov moderator dobija pozivnicu na mejl, a lozinku
@@ -210,7 +210,7 @@ public final class WhatTheMessageSays {
 	 */
 	public enum Message {
 
-		CONFIRM_THE_ADDRESS("confirmTheAddress", "/potvrda-adrese", Duration.ofHours(24), true),
+		CONFIRM_THE_ADDRESS("confirmTheAddress", "/potvrda-adrese", Duration.ofDays(7), true),
 
 		SET_A_NEW_PASSWORD("setANewPassword", "/nova-lozinka", Duration.ofHours(1), true),
 
@@ -236,20 +236,23 @@ public final class WhatTheMessageSays {
 		 * Svakom unetom stize poruka sa vezom na kojoj sam postavlja lozinku i time
 		 * preuzima nalog."
 		 *
-		 * <p><b>One hour, and the same row as the other two, which is the owner's choice
-		 * of 25.09.2026 between exactly those two outcomes.</b> He refused a longer
-		 * invitation with its price named: it would need either a table of its own, which
-		 * ADL A53 forbids by name („ne kao druga tabela i drugi razred"), or a move of the
-		 * default this column shares - and that would carry EVERY forgotten password from
-		 * one hour to seven days, which is the number he chose on 11.09.2026.
+		 * <p><b>SEVEN DAYS, „kao link za potvrdu", AND STILL THE SAME ROW AS THE OTHER TWO.</b>
+		 * The owner, 23.10.2026 (PDL „Poruka posle potvrde adrese i rok nedovršene registracije"):
+		 * „Link pozivnice člana kog je upisala administracija važi 7 dana, kao link za potvrdu
+		 * (ranije 1 sat)", and after those seven days the entry is deleted unless he has a payment
+		 * or a number. That overturns the one hour of 25.09.2026 and keeps what that decision
+		 * kept: no table of its own (ADL A53, „ne kao druga tabela i drugi razred"), and the
+		 * column default this row shares with a forgotten password stays one hour, which is the
+		 * number the owner chose for a password on 11.09.2026.
 		 *
-		 * <p><b>What makes an hour survivable for a group entered at once is not this
-		 * message but a road that already exists</b>, and it is measured rather than
-		 * hoped: {@code POST /api/password-reset/request} asks nothing about a role, a
-		 * password or a confirmed address, so somebody who opens his post that evening
-		 * gets himself another link from the sign-in screen. The words below say so.
+		 * <p><b>So the seven days are written onto the row when it is minted</b>
+		 * ({@code web.AnInvitationOfAMember}) rather than taken from the column's default, and
+		 * this number is where they are read from. {@code HowLongALinkLastsMatchesTheSchemaTest}
+		 * ties it to the default of the CONFIRMATION's column, because „kao link za potvrdu" is
+		 * the owner's own measure of it, and {@code AnInvitationLastsWhatItSaysTest} measures
+		 * that the row both routes mint really lasts it.
 		 */
-		INVITED_AS_A_MEMBER("invitedAsAMember", "/nova-lozinka", Duration.ofHours(1), false);
+		INVITED_AS_A_MEMBER("invitedAsAMember", "/nova-lozinka", Duration.ofDays(7), false);
 
 		private final String key;
 
@@ -381,6 +384,10 @@ public final class WhatTheMessageSays {
 	/** How long a link lasts, in the words of the language it is told in. */
 	static String howLong(Duration lasts, MailLanguage in) {
 		if (in == MailLanguage.ENGLISH) {
+			if (inWholeDays(lasts)) {
+				return DAYS_IN_ENGLISH.get((int) lasts.toDays() - FIRST_DAY_IN_WORDS);
+			}
+
 			long hours = lasts.toHours();
 
 			return hours + (hours == 1 ? " hour" : " hours");
@@ -390,13 +397,55 @@ public final class WhatTheMessageSays {
 	}
 
 	/**
-	 * „1 sat", „2 sata", „24 sata", „5 sati".
+	 * „SEDAM DANA", IN WORDS, AND NOT „168 SATI".
+	 *
+	 * <p>The owner's text for the confirmation (PDL 23.10.2026, example A) says „Link važi sedam
+	 * dana" and „za sedam dana neće ostati ni traga od nje", and the invitation's sentence of
+	 * 24.10.2026 says „Link važi sedam dana". The number still comes from {@link Message#lasts}
+	 * and never from the dictionary, so a link the schema ends sooner cannot be promised for a
+	 * week; only the way a whole number of days is said is written here.
+	 *
+	 * <p><b>From two days and no sooner</b>: a link of a day has always been said in hours, „24
+	 * sata", and stays so. <b>And as far as a week and no further</b>, which is as far as any link of
+	 * the portal lasts. A duration of whole days beyond that is refused rather than spoken in
+	 * figures, and {@code WhatTheMessageSaysTest.howLongTheLinkLastsReachesTheMember} asks every
+	 * {@link Message} in both languages, so a link that one day lasts eight days fails there and
+	 * not in a member's mailbox.
+	 */
+	private static final java.util.List<String> DAYS_IN_SERBIAN = java.util.List.of("dva dana",
+			"tri dana", "četiri dana", "pet dana", "šest dana", "sedam dana");
+
+	private static final java.util.List<String> DAYS_IN_ENGLISH = java.util.List.of("two days",
+			"three days", "four days", "five days", "six days", "seven days");
+
+	/** The first number of days said in words, and the place of each in the two lists above. */
+	private static final int FIRST_DAY_IN_WORDS = 2;
+
+	private static boolean inWholeDays(Duration lasts) {
+		if (lasts.toHours() < FIRST_DAY_IN_WORDS * 24 || lasts.toHours() % 24 != 0) {
+			return false;
+		}
+
+		if (lasts.toDays() >= FIRST_DAY_IN_WORDS + DAYS_IN_SERBIAN.size()) {
+			throw new IllegalArgumentException(lasts.toDays() + " days is longer than any link"
+					+ " the portal has words for");
+		}
+
+		return true;
+	}
+
+	/**
+	 * „1 sat", „2 sata", „5 sati", and a whole number of days in words: „sedam dana".
 	 *
 	 * <p>Serbian agrees the noun with the last digit, and the teens are the
 	 * exception that a rule written on the last digit alone gets wrong: eleven
 	 * takes the same form as five, not the same as one.
 	 */
 	static String howLong(Duration lasts) {
+		if (inWholeDays(lasts)) {
+			return DAYS_IN_SERBIAN.get((int) lasts.toDays() - FIRST_DAY_IN_WORDS);
+		}
+
 		long hours = lasts.toHours();
 		long last = hours % 10;
 		long teens = hours % 100;

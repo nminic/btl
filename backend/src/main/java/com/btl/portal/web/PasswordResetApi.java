@@ -18,7 +18,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mail.MailException;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -114,11 +113,14 @@ class PasswordResetApi {
 
 	private final StoredPassword keeping;
 
+	private final TheLetterAfterTheAddress welcome;
+
 	PasswordResetApi(JdbcClient db, Postman postman, TransactionTemplate inOneTransaction,
-			@Value("${btl.portal.address}") String address) {
+			TheLetterAfterTheAddress welcome, @Value("${btl.portal.address}") String address) {
 		this.db = db;
 		this.postman = postman;
 		this.inOneTransaction = inOneTransaction;
+		this.welcome = welcome;
 		/* A THIRD CONSTRUCTOR THAT BUILDS A `Portal` OUT OF CONFIGURATION, beside
 		   `RegistrationApi`'s and `EmailConfirmationApi`'s; see the note in
 		   `EmailConfirmationApi` for the two comments elsewhere corrected to say so. */
@@ -242,11 +244,36 @@ class PasswordResetApi {
 	 * for why "prijava bez lozinke se ne uvodi" rules that out on its own.
 	 */
 	@PostMapping("/api/password-reset")
-	@Transactional
 	ResponseEntity<Refused> reset(@RequestBody ResetTyped typed) {
+		Reset done = inOneTransaction.execute(committing -> resetting(typed));
+
+		/* AN ADDRESS THIS RESET CONFIRMED FOR THE FIRST TIME IS TOLD ABOUT ITS MEMBERSHIP, after the
+		   commit, exactly as `EmailConfirmationApi.confirm` tells one it confirmed (owner, 23.10.2026,
+		   „Posle potvrđene adrese portal šalje poruku o članarini"). This is the member the
+		   administration entered: setting his password through the invitation is what confirms his
+		   address (PDL 19.09.2026), so this is his moment of confirming it. */
+		if (done.firstConfirmed() != null) {
+			welcome.sendTo(done.firstConfirmed());
+		}
+
+		return done.answer();
+	}
+
+	/**
+	 * What the reset answers, and the account whose address it confirmed for the first time, or
+	 * {@code null} where it confirmed nothing.
+	 */
+	private record Reset(ResponseEntity<Refused> answer, Long firstConfirmed) {
+	}
+
+	/**
+	 * THE RESET ITSELF, IN ONE TRANSACTION, statement for statement what the {@code @Transactional}
+	 * method was before the letter after it had to wait for the commit.
+	 */
+	private Reset resetting(ResetTyped typed) {
 		if (typed.password() == null || typed.passwordRepeat() == null
 				|| !typed.password().equals(typed.passwordRepeat())) {
-			return no(THE_FORM_IS_NOT_COMPLETE);
+			return new Reset(no(THE_FORM_IS_NOT_COMPLETE), null);
 		}
 
 		boolean noToken = typed.token() == null || typed.token().isBlank();
@@ -295,16 +322,24 @@ class PasswordResetApi {
 				typed.password(), passwords, Instant.now());
 
 		if (outcome == Outcome.THE_LINK_IS_NO_GOOD) {
-			return no(THE_LINK_IS_NOT_VALID);
+			return new Reset(no(THE_LINK_IS_NOT_VALID), null);
 		}
 		if (outcome == Outcome.THE_PASSWORD_IS_TOO_SHORT) {
-			return no(THE_FORM_IS_NOT_COMPLETE);
+			return new Reset(no(THE_FORM_IS_NOT_COMPLETE), null);
 		}
 		if (outcome == Outcome.THE_PASSWORD_HAS_BEEN_BREACHED) {
-			return no(THE_PASSWORD_HAS_LEAKED);
+			return new Reset(no(THE_PASSWORD_HAS_LEAKED), null);
 		}
 
 		long account = found.orElseThrow().account();
+
+		/* WHETHER THIS RESET IS ABOUT TO CONFIRM THE ADDRESS FOR THE FIRST TIME, read before the
+		   statement below writes it and under the hold the first statement of this method took on
+		   the account, so the answer is still true when that statement runs: an account with no
+		   password and no confirmed address, which is exactly the case that statement confirms. */
+		boolean confirmsTheAddress = db.sql("select password_hash is null and email_confirmed_at is null"
+						+ " from account where id = ?")
+				.param(account).query(Boolean.class).single();
 
 		/* EVERY LIVE TOKEN OF THIS ACCOUNT IS SPENT HERE, NOT ONLY THE ONE THAT WAS
 		   USED. A second link mailed earlier - or a minute later by somebody racing
@@ -367,7 +402,7 @@ class PasswordResetApi {
 
 		   WHY THE ORDER CARRIES ANYTHING. `SignInApi` is the only place under
 		   `src/main` that mints an `account_session` row, and it mints one after
-		   reading `password_hash`. This route is one transaction (`@Transactional`)
+		   reading `password_hash`. This route is one transaction (`inOneTransaction`)
 		   against PostgreSQL at its default `read committed` - nothing in this portal
 		   sets an isolation level anywhere - so a sign in racing it reads whichever of
 		   the two states has committed, never a half of this one. Written in this
@@ -409,7 +444,7 @@ class PasswordResetApi {
 		db.sql("delete from account_session where account_id = ?")
 				.param(account).update();
 
-		return ResponseEntity.noContent().build();
+		return new Reset(ResponseEntity.noContent().build(), confirmsTheAddress ? account : null);
 	}
 
 	private static ResponseEntity<Refused> no(String reason) {

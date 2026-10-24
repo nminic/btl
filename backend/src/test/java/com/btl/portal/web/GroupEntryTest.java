@@ -286,6 +286,24 @@ class GroupEntryTest {
 	 * drops a name nothing is declared for silently, which is exactly the shape that would
 	 * otherwise go unnoticed and is why this is measured rather than assumed.
 	 */
+	/**
+	 * THE INVITATION LASTS SEVEN DAYS, „kao link za potvrdu" (owner, 23.10.2026), written onto its
+	 * row when it is minted: the column's own default is the hour of a forgotten password and stays
+	 * so. The other route that mints one, correcting the address of a member with no password, is
+	 * measured by {@code AnInvitationLastsWhatItSaysTest}.
+	 */
+	@Test
+	void theInvitationLastsTheSevenDaysItsLetterPromises() throws Exception {
+		assertThat(enter(aGroupOfThree(), EVERYTHING).getStatus()).isEqualTo(201);
+
+		assertThat(db.sql("select extract(epoch from (expires_at - created_at))::bigint"
+						+ " from password_reset_token where account_id = (select id from account where email = ?)")
+				.param(folded(SECOND_TYPED)).query(Long.class).single())
+				.isEqualTo(com.btl.portal.domain.mail.WhatTheMessageSays.Message.INVITED_AS_A_MEMBER.lasts()
+						.toSeconds())
+				.isEqualTo(Duration.ofDays(7).toSeconds());
+	}
+
 	@Test
 	void aBiographySentWithARowIsIgnoredAndTheColumnStaysEmpty() throws Exception {
 		List<Map<String, Object>> group = aGroupOfThree();

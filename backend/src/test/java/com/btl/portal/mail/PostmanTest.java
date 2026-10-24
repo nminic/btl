@@ -463,6 +463,68 @@ class PostmanTest {
 	}
 
 	/**
+	 * A LETTER WITH A FILE BESIDE IT ARRIVES AS ONE LETTER, WITH THE FILE, AND EVERYTHING ELSE A
+	 * LETTER OF THIS PORTAL CARRIES.
+	 *
+	 * <p>The slip a member from Serbia is mailed once his address is confirmed (owner, 23.10.2026,
+	 * „IPS QR kod u prilogu") is the first letter that is not a {@code SimpleMailMessage}, so the
+	 * three things every plain one is given are asked of it here: from {@code no-reply@}, a reply to
+	 * the league, and its words in their own letters. And the file: its name, its type, and its
+	 * bytes, the very ones that were drawn.
+	 */
+	@Test
+	void aLetterWithAFileCarriesTheFileAndEverythingAPlainLetterCarries() throws Exception {
+		byte[] drawn = {(byte) 0x89, 'P', 'N', 'G', 0, 1, 2, 3};
+
+		postman.sendWith(new Said("Uplatnica za članarinu", "Hvala što ste potvrdili svoju adresu."),
+				"clan@primer.rs", new Postman.Attachment("uplatnica-2027.png", "image/png", () -> drawn));
+
+		MimeMessage arrived = waitForOne();
+
+		assertThat(arrived.getSubject()).isEqualTo("Uplatnica za članarinu");
+		assertThat(arrived.getFrom()[0].toString()).isEqualTo(from);
+		assertThat(arrived.getReplyTo()[0].toString()).isEqualTo(league);
+		assertThat(arrived.getAllRecipients()).extracting(Object::toString).containsExactly("clan@primer.rs");
+
+		jakarta.mail.Multipart parts = (jakarta.mail.Multipart) arrived.getContent();
+		String text = null;
+		jakarta.mail.BodyPart file = null;
+
+		for (int one = 0; one < parts.getCount(); one++) {
+			jakarta.mail.BodyPart part = parts.getBodyPart(one);
+
+			if (part.getContent() instanceof jakarta.mail.Multipart inner) {
+				text = inner.getBodyPart(0).getContent().toString();
+			} else if (jakarta.mail.Part.ATTACHMENT.equalsIgnoreCase(part.getDisposition())) {
+				file = part;
+			} else {
+				text = part.getContent().toString();
+			}
+		}
+
+		assertThat(text).isEqualTo("Hvala što ste potvrdili svoju adresu.");
+		assertThat(file).as("the letter arrived without its file").isNotNull();
+		assertThat(file.getFileName()).isEqualTo("uplatnica-2027.png");
+		assertThat(file.getContentType()).startsWith("image/png");
+		assertThat(file.getInputStream().readAllBytes()).isEqualTo(drawn);
+	}
+
+	/**
+	 * A FILE THAT CANNOT BE DRAWN IS THE RELAY'S KIND OF FAILURE, so whoever sent the letter answers
+	 * it where he answers a relay that will not take one, and nothing leaves.
+	 */
+	@Test
+	void aFileThatCannotBeDrawnFailsTheLetterAsTheRelayWould() {
+		assertThatThrownBy(() -> postman.sendWith(new Said("Naslov", "Telo"), "clan@primer.rs",
+				new Postman.Attachment("x.png", "image/png", () -> {
+					throw new java.io.IOException("could not be drawn");
+				})))
+				.isInstanceOf(org.springframework.mail.MailException.class);
+
+		assertThat(SMTP.getReceivedMessages()).isEmpty();
+	}
+
+	/**
 	 * A KEY IS NEVER SENT DOWN A CONNECTION THAT MIGHT NOT BE ENCRYPTED.
 	 *
 	 * <p>`starttls.enable` means "use it if the server offers it", so a stripping

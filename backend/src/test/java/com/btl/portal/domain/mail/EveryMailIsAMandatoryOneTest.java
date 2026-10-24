@@ -116,7 +116,17 @@ class EveryMailIsAMandatoryOneTest {
 			   first is the mail about a result entered, the second the mail about a result approved,
 			   each for a season whose table no longer moves. */
 			Map.entry("resultEnteredInAFrozenSeason", "a result entered by the league in a season that has frozen: the mail about a result entered"),
-			Map.entry("resultApprovedInAFrozenSeason", "a result approved after its season froze: the mail about a result approved"));
+			Map.entry("resultApprovedInAFrozenSeason", "a result approved after its season froze: the mail about a result approved"),
+			/* THE LETTER AFTER A CONFIRMED ADDRESS, six words for one occasion. Named by the owner
+			   himself and not on the list P22 keeps: PDL, 23.10.2026, „Posle potvrđene adrese portal
+			   šalje poruku o članarini", with B, C, D and E that day and F and G on 24.10.2026. Each
+			   is a key of its own because each is a different letter; exactly one of them goes, once. */
+			Map.entry("welcomeWithASlip", "the letter after a confirmed address: from Serbia, the slip and the code (PDL 23.10.2026, B)"),
+			Map.entry("welcomeWithPayPal", "the letter after a confirmed address: from abroad, PayPal (PDL 23.10.2026, C)"),
+			Map.entry("welcomeFreedOfTheFee", "the letter after a confirmed address: freed of the fee (PDL 23.10.2026, D)"),
+			Map.entry("welcomePaidFromTheBalance", "the letter after a confirmed address: paid from the balance (PDL 23.10.2026, E)"),
+			Map.entry("welcomePaid", "the letter after a confirmed address: paid before he confirmed (PDL 24.10.2026, F)"),
+			Map.entry("welcomeTheBalanceCovers", "the letter after a confirmed address: the balance covers the fee (PDL 24.10.2026, G)"));
 
 	@Test
 	void thePortalHasWordsForNoOccasionThatIsNotAMandatoryMail() {

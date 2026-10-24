@@ -34,8 +34,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * <li><b>The link is stored as a digest and never as itself</b> (ADL A8), so
  * whoever reads this table can activate nobody.</li>
  *
- * <li><b>Every link has an end, and the schema says when: twenty four hours</b>
- * ([ODLUKA 08.09.2026, vlasnik], ADL A38). Held as a default rather than as an
+ * <li><b>Every link has an end, and the schema says when: seven days of hours</b>
+ * (owner, 23.10.2026, V72; twenty four hours by [ODLUKA 08.09.2026, vlasnik], ADL A38, until then). Held as a default rather than as an
  * interval the backend remembers, so a row written by anything at all still gets
  * an end, and held loosely enough that a row which names its own end keeps
  * it.</li>
@@ -58,8 +58,8 @@ class AccountAndVerificationTest extends DatabaseTest {
 	private static final String ANOTHER_HASH = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
 	private static final String THIRD_HASH = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
 
-	/* An end the caller names, and it is deliberately nowhere near twenty four
-	   hours from now: the column has a default, so a fixture that happened to
+	/* An end the caller names, and it is deliberately nowhere near seven days
+	   from now: the column has a default, so a fixture that happened to
 	   agree with it would leave every case below unable to say which of the two
 	   wrote the row. */
 	private static final String AN_INSTANT = "timestamptz '2027-01-01 00:00:00+00'";
@@ -95,6 +95,10 @@ class AccountAndVerificationTest extends DatabaseTest {
 						   somebody is: what the password hashes to, how many tries have missed
 						   since the last one that did not, and until when the account is shut. */
 						"password_hash", "failed_sign_ins", "locked_until",
+						/* V72. Until when an account that stood unconfirmed on the day of that
+						   deployment is kept (owner, 24.10.2026, „zatečenima 7 dana od dana
+						   podizanja"): a fact about one day, about signing up and not about who. */
+						"kept_unconfirmed_until",
 						/* V23. „Ime i prezime nosi sam nalog" (owner, 14.09.2026): the name of
 						   whoever owns the login, which is not the same fact as the name in the
 						   register of members and does not replace it. And the member this
@@ -248,18 +252,18 @@ class AccountAndVerificationTest extends DatabaseTest {
 	 *
 	 * The asymmetry is the point and both halves are decisions. A link runs out on
 	 * a clock, so the clock belongs to the column ([ODLUKA 08.09.2026, vlasnik],
-	 * ADL A38); an address is confirmed by a member clicking, so nothing but the
+	 * ADL A38; seven days since the owner's decision of 23.10.2026); an address is confirmed by a member clicking, so nothing but the
 	 * click may write that instant, and a default there would confirm every
 	 * account at birth.
 	 *
 	 * The interval is asked for by name and not merely counted, because inside a
-	 * transaction {@code interval '24 hours'} and {@code interval '1 day'} put the
+	 * transaction {@code interval '168 hours'} and {@code interval '7 days'} put the
 	 * end at the same instant and no measurement below can tell them apart. They
 	 * are not the same rule: a day is a calendar day, so on the night the clocks
 	 * change it is twenty three hours or twenty five. What comes back here has
 	 * been parsed and normalised by PostgreSQL rather than read off the file, so
-	 * {@code interval '1440 minutes'} is the same answer and {@code interval '1
-	 * day'} is a different one, which is exactly the line that matters.
+	 * {@code interval '10080 minutes'} is the same answer and {@code interval '7
+	 * days'} is a different one, which is exactly the line that matters.
 	 *
 	 * {@code id} is the third answer, and it is here so that a query answering the
 	 * same word to everything cannot pass: one column has no default and two do.
@@ -269,24 +273,24 @@ class AccountAndVerificationTest extends DatabaseTest {
 	void theSchemaChoosesTheLifetimeOfALinkAndNotTheMomentOfConfirmation() {
 		assertThat(defaultOf("email_verification_token", "expires_at"))
 				.as("hours and not days, because a day is twenty three or twenty five of them twice a year")
-				.isEqualTo("(now() + '24:00:00'::interval)");
+				.isEqualTo("(now() + '168:00:00'::interval)");
 
 		assertThat(defaultOf("account", "email_confirmed_at")).isEqualTo(NO_DEFAULT);
 		assertThat(defaultOf("email_verification_token", "id")).isNotEqualTo(NO_DEFAULT);
 	}
 
 	/**
-	 * A link written without an end lasts twenty four hours, and one written with
-	 * an end keeps the end it was given.
+	 * A link written without an end lasts seven days of hours (owner, 23.10.2026, V72; twenty four
+	 * hours until then), and one written with an end keeps the end it was given.
 	 *
-	 * [ODLUKA 08.09.2026, vlasnik], ADL A38, in his words: long enough that
+	 * What the twenty four hours were for, [ODLUKA 08.09.2026, vlasnik], ADL A38, in his words: long enough that
 	 * somebody who opens his mail the next morning still gets in, short enough
 	 * that a link out of an old message is not live for months.
 	 *
 	 * Two rows and not one, because with one row every value below could have come
 	 * from somewhere else. The row that says nothing is asked how far its end is
 	 * from {@code now()}, which is the other source of that instant and the only
-	 * one that would still answer twenty four hours if the default were the clock
+	 * one that would still answer seven days if the default were the clock
 	 * rather than a date somebody typed. The row that names its own end is what
 	 * makes this a floor and not a ceiling: a generated column, or a trigger, or a
 	 * check demanding the interval would all pass the first assertion and fail
@@ -296,7 +300,7 @@ class AccountAndVerificationTest extends DatabaseTest {
 	 * table, so neither answer can be the other row's.
 	 *
 	 * Which interval was written is a different question and is asked above: these
-	 * two rows would answer the same to a day as to twenty four hours.
+	 * two rows would answer the same to seven days as to 168 hours.
 	 */
 	@Test
 	void aLinkWrittenWithoutAnEndLastsTwentyFourHoursAndOneWrittenWithAnEndKeepsIt() {
@@ -310,7 +314,8 @@ class AccountAndVerificationTest extends DatabaseTest {
 						+ " where token_hash = '" + ONE_HASH + "'")
 				.query(Long.class)
 				.single())
-				.isEqualTo(86_400L);
+				.as("seven days of hours (owner, 23.10.2026, V72), where it was twenty four until then")
+				.isEqualTo(604_800L);
 
 		assertThat(db
 				.sql("select expires_at = " + AN_INSTANT + " from email_verification_token where token_hash = '"
