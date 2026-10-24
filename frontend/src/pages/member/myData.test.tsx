@@ -61,18 +61,24 @@ describe('the page of somebody who has not paid', () => {
     expect(screen.getByDisplayValue(aNeverPaidRecord.address)).toBeVisible()
   }, SLOW)
 
-  it('draws nothing that makes a member visible, and no box for what only the administration changes', async () => {
+  it('draws nothing that makes a member visible, and nothing he types into for what only the administration changes', async () => {
     stand(neverPaidAsServed())
     renderAt(PAGE, 'visitor', null)
 
     const panel = await screen.findByRole('heading', { level: 2, name: 'Lični podaci' })
     const mine = within(must(panel.closest('section'), 'the panel'))
 
-    /* The father's name is the administration's (PDL 22.10.2026, „Ime oca i dalje menja samo
-       administracija"), and the address of post is not changed here, as on the card. */
-    expect(mine.queryByLabelText(/Ime oca/)).not.toBeInTheDocument()
+    /* The father's name, the gender, the date and the document are the administration's to change (PDL
+       22.10.2026, 24.10.2026) and he SEES them held (`heldFields.test.tsx` holds how); the address of
+       post is not drawn at all, as on the card. What is asked here is that none of them is a box he
+       can type into. */
+    for (const label of [/^Ime oca/, /^Pol/, /^Datum rođenja/, /^Broj ličnog dokumenta/]) {
+      for (const box of mine.getAllByLabelText(label)) {
+        expect(box, String(label)).toHaveAttribute('readonly')
+      }
+    }
+
     expect(mine.queryByLabelText(/Adresa elektronske pošte|E-pošta|Email/i)).not.toBeInTheDocument()
-    expect(mine.queryByLabelText(/Pol|Datum rođenja/)).not.toBeInTheDocument()
 
     /* And none of the three things the entry of 10.10.2026 keeps from him. */
     for (const heading of ['Profilna slika', 'Tekst o sebi', 'Privatnost', 'Lozinka']) {

@@ -1796,6 +1796,7 @@
     "personalTitle": "Personal details",
     "save": "Save",
     "saved": "Saved.",
+    "heldNote": "The administration changes the gender, the date of birth, the father's name and the number of the document on your request.",
     "nothingToSave": "The server found no change at all in the request. Refresh the page and try again.",
     "fieldIsBlank": "One of the required fields was left empty. Fill it in and save again.",
     "fieldIsTooLong": "One field is longer than the portal takes. Shorten it and save again.",

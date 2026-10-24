@@ -470,10 +470,20 @@ export type MyData = Pick<
   country: string
   /** His shirt size, one of the seven, which the same card opens with (23.10.2026). */
   shirtSize: string
+  /**
+   * THE FOUR HE SEES LOCKED on his own card and on the page „Moji podaci" (PDL 24.10.2026, owner: „clan
+   * ga vidi ali je disabled za menjanje. Moze samo da trazi od admina"): his gender is the field above,
+   * and these are the other three. His father's name, never empty.
+   */
+  fatherName: string
+  /** His date of birth, as the table spells it (`1990-05-15`). Answered to him alone (`MeApi.MyOwnRecord`). */
+  birthDate: string
+  /** The number of his identity document, and the EMPTY STRING for a member who gave none: the server leaves the key out. */
+  idNumber: string
 }
 
 /**
- * THE SAME RECORD AS {@link whatTheServerSaysOfMyProfile}, read for the ten facts above, or
+ * THE SAME RECORD AS {@link whatTheServerSaysOfMyProfile}, read for the facts above, or
  * nothing.
  *
  * <p>Its own reader for the reason that one has: a fault in it must never sign him out, and it
@@ -915,7 +925,7 @@ function sixFactsIn(
 }
 
 /**
- * THE TEN FACTS OF {@link MyData} out of the caller's record, or nothing when any of them is
+ * THE FACTS OF {@link MyData} out of the caller's record, or nothing when any of them is
  * missing or of a kind the portal does not know: the six of {@link sixFactsIn}, and the four that
  * are his alone.
  *
@@ -930,15 +940,26 @@ function dataIn(mine: object | null): MyData | null {
   }
 
   const address = nameIn(mine, 'address')
-  const phone = phoneIn(mine)
+  const phone = textOrNothingIn(mine, 'phone')
   const country = nameIn(mine, 'country')
   const shirtSize = nameIn(mine, 'shirtSize')
+  const fatherName = nameIn(mine, 'fatherName')
+  const birthDate = dateIn(mine, 'birthDate')
+  const idNumber = textOrNothingIn(mine, 'idNumber')
 
-  if (address === null || phone === null || country === null || shirtSize === null) {
+  if (
+    address === null ||
+    phone === null ||
+    country === null ||
+    shirtSize === null ||
+    fatherName === null ||
+    birthDate === null ||
+    idNumber === null
+  ) {
     return null
   }
 
-  return { ...six, address, phone, country, shirtSize }
+  return { ...six, address, phone, country, shirtSize, fatherName, birthDate, idNumber }
 }
 
 /**
@@ -959,7 +980,7 @@ function feeStandsIn(mine: object | null): boolean | null {
  */
 function nameIn(
   mine: object,
-  name: 'firstName' | 'lastName' | 'city' | 'address' | 'country' | 'shirtSize',
+  name: 'firstName' | 'lastName' | 'city' | 'address' | 'country' | 'shirtSize' | 'fatherName',
 ): string | null {
   const said: unknown = Reflect.get(mine, name)
 
@@ -967,20 +988,38 @@ function nameIn(
 }
 
 /**
- * The telephone: text, or nothing at all for a member who has none.
+ * The telephone or the number of his document: text, or nothing at all for a member who has none.
  *
- * <p>The server leaves the key OUT for him (`MeApi.MyOwnRecord.phone`), so absence is read as the
+ * <p>The server leaves the key OUT for him (`MeApi.MyOwnRecord.phone`, `.idNumber`), so absence is read as the
  * empty box. Anything else that is not text is a server saying something the portal does not know,
  * and ends the reading like every other fact of the record.
  */
-function phoneIn(mine: object): string | null {
-  const said: unknown = Reflect.get(mine, 'phone')
+function textOrNothingIn(mine: object, name: 'phone' | 'idNumber'): string | null {
+  const said: unknown = Reflect.get(mine, name)
 
   if (said === undefined) {
     return ''
   }
 
   return typeof said === 'string' ? said : null
+}
+
+/**
+ * A day as the table spells it, `1990-05-15`: looked for and never asserted, and nothing that merely
+ * reads as a date (a year alone, a time, a day that is not on the calendar).
+ */
+function dateIn(mine: object, name: 'birthDate'): string | null {
+  const said: unknown = Reflect.get(mine, name)
+
+  if (typeof said !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(said)) {
+    return null
+  }
+
+  /* A day that is on the calendar: `1975-02-31` parses and rolls over into March, so it is spelt back
+     and held against what was sent. `Date.parse` alone would call it a date. */
+  const parsed = new Date(said)
+
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === said ? said : null
 }
 
 /** Text that may be empty: what a member has written about himself, when he has written nothing. */

@@ -227,6 +227,10 @@ function whatMeAnswers(): Response {
             phone: myOwnRecordFromMe.phone,
             /* And his size, private for the same reason since 23.10.2026 (privacy policy, section 3). */
             shirtSize: myOwnRecordFromMe.shirtSize,
+            /* And the three he sees locked since 24.10.2026, for the same reason. */
+            fatherName: myOwnRecordFromMe.fatherName,
+            birthDate: myOwnRecordFromMe.birthDate,
+            idNumber: myOwnRecordFromMe.idNumber,
           },
         }),
   }

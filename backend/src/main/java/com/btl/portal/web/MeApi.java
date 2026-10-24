@@ -407,7 +407,8 @@ class MeApi {
 	 *                     the one home of the question, so that the two doors cannot name two
 	 *                     seasons for one member; {@code MeApiTest} holds them together at the
 	 *                     moments the band moves on. <b>The year it is worked out from is read
-	 *                     and leaves nowhere</b>, to him as to anybody
+	 *                     and leaves nowhere as a year</b>; his own date is answered to him whole
+	 *                     since 24.10.2026 ({@code birthDate}, below) and to nobody else
 	 * @param firstSeason2027 whether he runs in the beginners' category (PDL P7). Never absent:
 	 *                     the column is NOT NULL
 	 * @param teamSince    the season the membership that has NOT ENDED began in, and ABSENT
@@ -421,7 +422,7 @@ class MeApi {
 	 *                     him change it has to know where it stands
 	 * @param birthdayShown what he chose about his birthday ({@code none}, {@code year} or
 	 *                     {@code full}), which the portal needs in order to draw the card at all.
-	 *                     The date itself never leaves, to him or to anybody
+	 *                     The date is {@code birthDate}, below, and is his alone
 	 * @param photo        where his approved portrait is asked for, as the whole address, and
 	 *                     ABSENT for a member who has none. The address is the DIGEST of the
 	 *                     content and never {@code photo.id}, which is countable (see
@@ -450,6 +451,25 @@ class MeApi {
 	 *                     the column NOT NULL. Private like his address (privacy policy, section 3:
 	 *                     „veličina majice" is among what is never shown), so the public list does
 	 *                     not carry it
+	 * @param fatherName   his father's name, never absent ({@code competitor_father_name_not_blank},
+	 *                     V8), since 24.10.2026: his card „Podaci" and the page „Moji podaci" draw it as a
+	 *                     LOCKED box (PDL 24.10.2026, „clan ga vidi ali je disabled za menjanje. Moze samo
+	 *                     da trazi od admina"). Read off the one row that is his, and the write still
+	 *                     refuses it by name ({@code MeWriteApi}). **Nothing else serves it to a member**
+	 *                     (the public list does not, and neither does any other route of this class's
+	 *                     family): this record is the only door, and it opens on his own row only
+	 * @param birthDate    his date of birth as the table spells it ({@code 1990-05-15}), never absent
+	 *                     ({@code birth_date} is NOT NULL, V8), since 24.10.2026 and for the same reason
+	 *                     as the father's name: a locked box on his own card. **It reaches nobody else
+	 *                     through this class**, and the public list answers neither the date nor the
+	 *                     year ({@code CompetitorApiTest#noYearOfBirthLeavesTheServer}); the band is
+	 *                     still worked out beside it and is what every other screen is told
+	 * @param idNumber     the number of his identity document out of {@code competitor_document}, the
+	 *                     table of its own ADL A12 keeps it in, and ABSENT for a member who has none (a
+	 *                     row there is optional, so a missing key is the one way this record says „he
+	 *                     gave none", as {@code phone} says it). Read by his own key from that table
+	 *                     and by nobody else's: {@code competitor_id} is its primary key, so the
+	 *                     subquery returns at most the one row that is his
 	 */
 	record MyOwnRecord(@JsonInclude(JsonInclude.Include.NON_NULL) String memberNumber,
 			String country, int firstSeason,
@@ -465,6 +485,8 @@ class MeApi {
 			@JsonInclude(JsonInclude.Include.NON_NULL) CompetitorApi.Crop crop,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String smallPhoto,
 			String address, @JsonInclude(JsonInclude.Include.NON_NULL) String phone, String shirtSize,
+			String fatherName, String birthDate,
+			@JsonInclude(JsonInclude.Include.NON_NULL) String idNumber,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String bioWaiting) {
 	}
 
@@ -584,9 +606,18 @@ class MeApi {
 						   ni u skracenom obliku"), taken LAST and turned into a band before anything
 						   is built out of the row, so it reaches a local and never a component. The
 						   year and not the date, for the reason `CompetitorApi` gives at the same
-						   place: the day is not part of the question. `noDateOfBirthLeavesHisOwnDoor`
-						   reads the whole answer as text, so it refuses the year however it is spelt. */
-						+ " c.birth_year"
+						   place: the day is not part of the question. Since 24.10.2026 the date itself
+						   is answered to HIM (`birth_date`, below, for the locked box on his own card)
+						   and `onlyHisOwnDateOfBirthLeavesHisOwnDoor` asks that nobody else's does. */
+						+ " c.birth_year,"
+						/* THE FOUR THE MEMBER SEES LOCKED ON HIS OWN CARD (PDL 24.10.2026): his father's
+						   name, his date of birth and the number of his document, off the very row the
+						   rest of this answer comes off and so nobody else's. The document is a
+						   subquery by `competitor_id`, the primary key of its table, so it can return
+						   one row at most and the row is the one whose owner is `c.id`. */
+						+ " c.father_name, c.birth_date::text,"
+						+ " (select d.document_number from competitor_document d"
+						+ "  where d.competitor_id = c.id)"
 						+ " from competitor c"
 						+ " left join place town on town.id = c.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
@@ -654,7 +685,8 @@ class MeApi {
 							portrait == null ? null
 									: PhotoApi.addressOfTheSmall(portrait, across,
 											row.getBigDecimal(20), row.getBigDecimal(21)),
-							row.getString(22), row.getString(23), row.getString(24), row.getString(25));
+							row.getString(22), row.getString(23), row.getString(24),
+							row.getString(27), row.getString(28), row.getString(29), row.getString(25));
 				})
 				.single();
 	}

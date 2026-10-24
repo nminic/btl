@@ -1796,6 +1796,7 @@
     "personalTitle": "Lični podaci",
     "save": "Sačuvaj",
     "saved": "Sačuvano.",
+    "heldNote": "Pol, datum rođenja, ime oca i broj ličnog dokumenta menja administracija na tvoj zahtev.",
     "nothingToSave": "Server nije našao nijednu izmenu u zahtevu. Osveži stranu i pokušaj ponovo.",
     "fieldIsBlank": "Jedno od obaveznih polja je ostalo prazno. Popuni ga pa sačuvaj ponovo.",
     "fieldIsTooLong": "Jedno polje je duže nego što portal prima. Skrati ga pa sačuvaj ponovo.",

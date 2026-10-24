@@ -82,6 +82,9 @@ describe('his own data', () => {
         phone: '',
         country: 'RS',
         shirtSize: 'XL',
+        fatherName: 'Zoran',
+        birthDate: '1992-11-23',
+        idNumber: 'CD67890',
       },
     })
   }, SLOW)

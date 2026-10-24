@@ -35,6 +35,10 @@ const HE = {
   birthdayShown: 'none',
   address: 'Bulevar Pupina 10, stan 14, ulaz B',
   shirtSize: 'XL',
+  /* The four he sees held (PDL 24.10.2026), with a father's name and a document as long as they get. */
+  fatherName: 'Aleksandar-Petrović Radosavljević',
+  birthDate: '1992-11-23',
+  idNumber: 'ABCDEFGHIJ1234567890',
 }
 
 const SOMEBODY_WHO_HAS_NOT_PAID: Answers = {
