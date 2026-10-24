@@ -33,6 +33,7 @@ import { inYearlyWindow, seasonShown, transfersTakeEffect } from '../data/season
 import { readerAdministers, teamAdminOf } from '../data/teamAdmin'
 import { useSession } from '../session/useSession'
 import { DeleteSheet } from './admin/DeleteSheet'
+import { TEAM_DELETED } from './teamDeleted'
 import { MEMBERS, recordsOf, TEAMS } from './admin/entityForms'
 import { recordKey } from '../session/context'
 import { useOverlay } from './admin/overlay'
@@ -187,7 +188,7 @@ export function TeamDetail() {
       }
 
       remove(TEAMS.id, String(team.id))
-      void navigate(`/${locale}/timovi`)
+      void navigate(`/${locale}/timovi`, { state: TEAM_DELETED })
 
       return
     }
@@ -225,7 +226,7 @@ export function TeamDetail() {
     clearResourceCache('teams')
     clearResourceCache('competitors')
 
-    void navigate(`/${locale}/timovi`)
+    void navigate(`/${locale}/timovi`, { state: TEAM_DELETED })
   }
 
   return (

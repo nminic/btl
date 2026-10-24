@@ -39,6 +39,7 @@ import { ServerSaid } from './account/ServerSaid'
 import { SYMBOL } from '../app/actionSymbol'
 import { ActionLink } from '../components/ActionButton'
 import { DeleteSheet } from './admin/DeleteSheet'
+import { DeletionSaid } from './admin/DeletionSaid'
 import { QUEUE } from './admin/queues'
 import { queueRight, useMay } from './admin/rights'
 import './Profile.css'
@@ -300,6 +301,9 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
   /* The pencil and the x on every row, for whoever checks results (PDL P9, 18.10.2026, the owner:
      „Na nivou reda takmičara želim dva ekonomična dugmeta za edit (olovka) i brisanje (x)”). */
   const manages = useMay()(ENTERS_RESULTS)
+  /* WHAT THE LAST DELETION SAID, drawn over the table (PDL, 24.10.2026, „Rezultat je obrisan.") and taken back by the next
+     refusal and when the list goes (`admin/DeletionSaid.tsx`). */
+  const [said, setSaid] = useState('')
   /* Why the last x was refused, beside the row it was pressed on, until the next press. */
   const [refused, setRefused] = useState<{ id: number; answer: Exclude<Answer, { got: 'done' }> } | null>(
     null,
@@ -331,6 +335,7 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
           return date > today ? null : (
             <>
               <h2 className="profile__section">{t('event.results')}</h2>
+              <DeletionSaid said={said} clear={setSaid} />
               <p className="profile__empty">{t('event.noResults')}</p>
             </>
           )
@@ -348,6 +353,8 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
             <h2 className="profile__section">
               {t('event.results')} <span className="profile__count">{ran.length}</span>
             </h2>
+
+            <DeletionSaid said={said} clear={setSaid} />
 
             <div className="table-scroll">
               <table className="table table--results">
@@ -486,11 +493,13 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                                          list really has lost it (`leagueResultWrites.ts` drops it). */
                                       remove(RESULTS, String(result.id))
                                       setRefused(null)
+                                      setSaid(t('results.deleted'))
 
                                       return
                                     }
 
                                     setRefused({ id: result.id, answer })
+                                    setSaid('')
                                   })
                                 }
                               />

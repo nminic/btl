@@ -47,6 +47,8 @@ type Screen = {
   source: string
   /** The question, in the screen's words: it is the sheet's name. */
   asks: string
+  /** What the screen says once the deletion is through (PDL, 24.10.2026), and where: the team's page says it on the list it leaves for. */
+  gone: string
   /** Where it is drawn, as whom, and on which day. */
   at: string
   role: Role
@@ -71,6 +73,7 @@ const SCREENS: Screen[] = [
   {
     name: 'a team on its own page',
     asks: sr.admin.teamDeleteAsk,
+    gone: sr.admin.teamGone,
     source: 'TeamDetail.tsx',
     at: '/sr/tim/dunavski-trkaci',
     role: 'competitor',
@@ -84,6 +87,7 @@ const SCREENS: Screen[] = [
        table and not the first, for the reason the member's own list below gives. */
     name: 'a result on the page of its event',
     asks: sr.results.deleteAsk,
+    gone: sr.results.deleted,
     source: 'EventDetail.tsx',
     at: '/sr/kalendar/mrazijada-2020',
     role: 'superadmin',
@@ -101,6 +105,7 @@ const SCREENS: Screen[] = [
        obriše svoju ocenu ili da je izmeni"), in the owner's words for the question. */
     name: 'a member\'s own rating on the page of its event',
     asks: sr.event.deleteOwnRatingAsk,
+    gone: sr.event.ratingGone,
     source: 'event/EventComments.tsx',
     at: '/sr/kalendar/fruskogorski-maraton-2010',
     role: 'competitor',
@@ -112,6 +117,7 @@ const SCREENS: Screen[] = [
   {
     name: 'a member\'s own counted result',
     asks: sr.results.deleteAsk,
+    gone: sr.results.deleted,
     source: 'member/MyResults.tsx',
     at: '/sr/moji-rezultati',
     role: 'competitor',
@@ -351,4 +357,95 @@ describe('a deletion that is out with the server', () => {
 
     expect(found.sort()).toEqual(SCREENS.map((each) => each.source).sort())
   })
+})
+
+/**
+ * WHAT IS SAID WHEN THE DELETION IS THROUGH, ON THE FOUR PLACES OUTSIDE THE ADMINISTRATION (owner, 24.10.2026, PDL „Posle
+ * brisanja na četiri mesta van administracije stoji vidljiva poruka", with the owner's choice of my recommendation):
+ * „Rezultat je obrisan." on the page of an event and in „Moji rezultati", „Ocena je obrisana." on the rating, and „Tim je
+ * obrisan." on the list of teams that the team's own page leaves for.
+ *
+ * <p>Each is DRAWN and not only said (`admin/DeletionSaid.tsx`), once, and taken back by a refusal of the next deletion. The
+ * rating is the one that needs a case of its own: deleting his only rating takes the list it stood in away, and a sentence kept
+ * in that list would go with it.
+ */
+describe('what the screen says once a deletion is through', () => {
+  describe.each(SCREENS)('on $name', (one) => {
+    /** Asks, says yes, and lets the server answer with what the case gives it. */
+    async function deleteWith(answer: () => Response) {
+      const server = serverThat((_, init) => (init?.method === 'DELETE' ? answer() : null))
+      const user = setupUser()
+
+      renderAt(one.at, one.role, one.member ?? null, undefined, one.day ?? null)
+
+      const ask = await one.ask()
+
+      await user.click(ask)
+      await user.click(within(await theSheet(one.asks)).getByRole('button', { name: 'Obriši' }))
+
+      return { server, user, ask }
+    }
+
+    it('draws the sentence, once, where a reader looks, and not in the clipped region', async () => {
+      const { server } = await deleteWith(did)
+
+      const said = await screen.findByText(one.gone)
+
+      expect(said).toHaveAttribute('role', 'status')
+      expect(said.closest('.visually-hidden')).toBeNull()
+      expect(screen.getAllByText(one.gone)).toHaveLength(1)
+
+      server.stop()
+    }, SLOW)
+
+    it('says nothing when the server refused, and the sentence of an earlier deletion is not about this one', async () => {
+      let answered = 0
+      const { server, user } = await deleteWith(() => {
+        answered += 1
+
+        return answered === 1 ? did() : answeredWith(one.refusal ?? 404)
+      })
+
+      await screen.findByText(one.gone)
+
+      /* A SECOND DELETION, which the server refuses. The team's page has left by then, so only the other three can be asked. */
+      if (one.at.includes('/tim/')) {
+        server.stop()
+
+        return
+      }
+
+      const next = await one.ask()
+
+      await user.click(next)
+      await user.click(within(await theSheet(one.asks)).getByRole('button', { name: 'Obriši' }))
+      await waitFor(() => {
+        expect(screen.queryByText(one.gone)).toBeNull()
+      })
+
+      server.stop()
+    }, SLOW)
+
+    it('says nothing when the deletion was refused to begin with', async () => {
+      const { server } = await deleteWith(() => answeredWith(one.refusal ?? 404))
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      })
+
+      expect(screen.queryByText(one.gone)).toBeNull()
+
+      server.stop()
+    }, SLOW)
+  })
+})
+
+describe('the list of teams', () => {
+  it('says nothing to a reader who comes to it any other way than by deleting a team', async () => {
+    renderAt('/sr/timovi', 'competitor', '000001', undefined, '2026-10-15')
+
+    await screen.findByRole('table', { name: 'Timovi' })
+
+    expect(screen.queryByText(sr.admin.teamGone)).toBeNull()
+  }, SLOW)
 })

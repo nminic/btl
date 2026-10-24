@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import './Entity.css'
 
 /**
  * WHAT THE SCREEN SAYS ONCE A ROW IS GONE: „Tim je obrisan." (owner, 23.10.2026, PDL „Tri odgovora od
@@ -13,6 +14,10 @@ import { useEffect } from 'react'
  * <p><b>ALWAYS ON THE PAGE AND FILLED WHEN IT IS TRUE</b>: a live region that appears with its words in
  * it is often not read, one that is already there and then gets them is. An empty one takes no room
  * (`Entity.css`).
+ *
+ * <p><b>ALSO DRAWN OUTSIDE THE ADMINISTRATION since 24.10.2026</b> (PDL, „Posle brisanja na četiri mesta van administracije stoji
+ * vidljiva poruka"): a result on the page of its event, a member's own results, a member's own rating, and the list of teams
+ * a team is deleted from its own page to. It imports the stylesheet itself for that reason.
  *
  * <p><b>THE LIST TAKES THE SENTENCE BACK WHEN IT GOES.</b> The words live in the screen, which outlasts
  * the list: the form of a record replaces the list while it is open, and a sentence left standing would

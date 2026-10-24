@@ -52,8 +52,6 @@ type Screen = {
   asks: string
   /** What the screen says once the row is gone, where it says it: the four lists of the administration do (`DeletionSaid`). */
   gone?: string
-  /** The address a deletion on it goes to, as a pattern the browser's route understands. */
-  route?: string
   answers: Answers
   /** Something only this screen has, to wait for; a table row by default. */
   ready?: string
@@ -73,7 +71,6 @@ const SCREENS: Screen[] = [
     path: '/sr/administracija/dogadjaji',
     asks: 'Obriši događaj?',
     gone: 'Događaj je obrisan, sa svojim trkama i rezultatima.',
-    route: '**/api/events/*',
     answers: {
       '/api/me': ME,
       '/api/events': sample('events'),
@@ -86,7 +83,6 @@ const SCREENS: Screen[] = [
     path: '/sr/administracija/lige',
     asks: 'Obriši ligu?',
     gone: 'Liga je obrisana.',
-    route: '**/api/leagues/*',
     answers: {
       '/api/me': ME,
       '/api/leagues': sample('leagues'),
@@ -99,7 +95,6 @@ const SCREENS: Screen[] = [
     path: '/sr/administracija/moderatori',
     asks: 'Obriši moderatora?',
     gone: 'Moderator je obrisan.',
-    route: '**/api/moderators/*',
     answers: { '/api/me': ME, '/api/moderators': sample('moderators') },
   },
   {
@@ -107,7 +102,6 @@ const SCREENS: Screen[] = [
     path: '/sr/administracija/timovi',
     asks: 'Obriši tim?',
     gone: 'Tim je obrisan.',
-    route: '**/api/teams/*',
     answers: { '/api/me': ME, '/api/teams': sample('teams'), '/api/competitors': sample('competitors') },
   },
   /* THE FOUR PLACES OUTSIDE THE ADMINISTRATION (owner, 24.10.2026, PDL „Odgovori od 24.10.2026 (popodne)"): the
@@ -118,6 +112,7 @@ const SCREENS: Screen[] = [
     name: 'the page of a team',
     path: '/sr/tim/dunavski-trkaci',
     asks: 'Obriši tim?',
+    gone: 'Tim je obrisan.',
     answers: { ...everyAnswer(), '/api/me': member('000001') },
     ready: 'h1.profile__name',
     which: 0,
@@ -126,6 +121,7 @@ const SCREENS: Screen[] = [
     name: 'a result on the page of its event',
     path: '/sr/kalendar/zimski-nocni-polumaraton-2020',
     asks: 'Obriši rezultat?',
+    gone: 'Rezultat je obrisan.',
     answers: { ...everyAnswer(), '/api/me': ME },
     ready: 'tbody td.table__points',
   },
@@ -133,6 +129,7 @@ const SCREENS: Screen[] = [
     name: 'the results of a member',
     path: '/sr/moji-rezultati',
     asks: 'Obriši rezultat?',
+    gone: 'Rezultat je obrisan.',
     answers: { ...everyAnswer(), '/api/me': member('000021') },
     ready: 'tbody td.table__points',
   },
@@ -140,6 +137,7 @@ const SCREENS: Screen[] = [
     name: 'the rating of a member',
     path: '/sr/kalendar/fruskogorski-maraton-2010',
     asks: 'Obriši svoju ocenu?',
+    gone: 'Ocena je obrisana.',
     answers: { ...everyAnswer(), '/api/me': member('000021') },
     ready: '.comments__his',
     cross: 'Obriši svoju ocenu',
@@ -339,34 +337,63 @@ for (const screen of SCREENS) {
   }
 
   for (const width of screen.gone === undefined ? [] : WIDTHS) {
-    const at: At = { width, text: 200 }
+    for (const text of TEXTS) {
+      const at: At = { width, text }
 
-    test(`${screen.name}: the sentence after a deletion stands in the window, over the table, at ${label(at)}`, async ({ open }) => {
-      const { page, probe } = await open(at, screen.path, screen.ready ?? READY, screen.answers)
+      test(`${screen.name}: the sentence after a deletion is drawn, whole and not cut off, in the window, before its table, at ${label(at)}`, async ({ open }) => {
+        const { page, probe } = await open(at, screen.path, screen.ready ?? READY, screen.answers)
 
-      await page.route(screen.route ?? '**/api/**', (route) => route.fulfill({ status: 204 }))
-      await (await crossOf(page, screen)).click()
-      await page.getByRole('dialog', { name: screen.asks }).getByRole('button', { name: 'Obriši', exact: true }).click()
+        /* Only the deletion is answered here (204); everything else the page asks for goes on to the answers of the sample. */
+        await page.route('**/api/**', (route) =>
+          route.request().method() === 'DELETE' ? route.fulfill({ status: 204 }) : route.fallback(),
+        )
+        await (await crossOf(page, screen)).click()
+        await page.getByRole('dialog', { name: screen.asks }).getByRole('button', { name: 'Obriši', exact: true }).click()
 
-      const said = page.getByText(screen.gone ?? '', { exact: true })
+        const said = page.getByText(screen.gone ?? '', { exact: true })
 
-      await said.waitFor({ state: 'visible' })
-      await page.waitForFunction(() => document.getAnimations().length === 0)
+        await said.waitFor({ state: 'visible' })
+        await page.waitForFunction(() => document.getAnimations().length === 0)
+        await said.scrollIntoViewIfNeeded()
 
-      const box = await said.boundingBox()
-      const table = await page.locator('table').first().boundingBox()
-      const sideways = await page.evaluate(
-        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-      )
-      const clientWidth = await page.evaluate(() => document.documentElement.clientWidth)
+        const seen = await said.evaluate((one) => {
+          const box = one.getBoundingClientRect()
+          /* WHAT STANDS AT THE MIDDLE OF IT: itself, or its own words. A box cut off by an ancestor, or covered, answers
+             with something else, which is what „not cut off" is asked through. */
+          const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+          /* The first table AFTER it in the document, which is the table that the sentence is over; none on a page with no table. */
+          const next = [...document.querySelectorAll('table')].find(
+            (table) => (one.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+          )
 
-      expectNoSidewaysBeforeTheSheet(screen.name, at, probe.sideways)
-      expect(sideways, 'the sentence makes the page move sideways').toBeLessThanOrEqual(probe.sideways)
-      expect(box, 'the sentence draws no box').not.toBeNull()
-      expect(table, 'the table draws no box').not.toBeNull()
-      expect((box?.x ?? -1) + SLACK, 'the sentence runs off the left edge').toBeGreaterThanOrEqual(0)
-      expect((box?.x ?? 0) + (box?.width ?? 0) - SLACK, 'the sentence runs off the right edge').toBeLessThanOrEqual(clientWidth)
-      expect((box?.y ?? 0) + (box?.height ?? 0), 'the sentence stands over the table').toBeLessThanOrEqual((table?.y ?? 0) + SLACK)
-    })
+          return {
+            x: box.left,
+            right: box.right,
+            bottom: box.bottom,
+            width: box.width,
+            height: box.height,
+            standsThere: top !== null && one.contains(top),
+            // The words are not cut: the content is not taller or wider than the box that draws it.
+            cutOff: one.scrollWidth > one.clientWidth + 1 || one.scrollHeight > one.clientHeight + 1,
+            nextTableTop: next === undefined ? null : next.getBoundingClientRect().top,
+            sideways: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            clientWidth: document.documentElement.clientWidth,
+          }
+        })
+
+        expectNoSidewaysBeforeTheSheet(screen.name, at, probe.sideways)
+        expect(seen.sideways, 'the sentence makes the page move sideways').toBeLessThanOrEqual(probe.sideways)
+        expect(seen.width, 'the sentence draws no box').toBeGreaterThan(0)
+        expect(seen.height, 'the sentence draws no box').toBeGreaterThan(0)
+        expect(seen.x + SLACK, 'the sentence runs off the left edge').toBeGreaterThanOrEqual(0)
+        expect(seen.right - SLACK, 'the sentence runs off the right edge').toBeLessThanOrEqual(seen.clientWidth)
+        expect(seen.standsThere, 'something else stands over the middle of the sentence, or an ancestor cuts it off').toBe(true)
+        expect(seen.cutOff, 'the words of the sentence are cut off by its own box').toBe(false)
+
+        if (seen.nextTableTop !== null) {
+          expect(seen.bottom, 'the sentence stands over the table').toBeLessThanOrEqual(seen.nextTableTop + SLACK)
+        }
+      })
+    }
   }
 }

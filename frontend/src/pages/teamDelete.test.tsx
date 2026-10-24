@@ -615,6 +615,11 @@ describe('a team its administrator takes down', () => {
            and so was taking it away. */
         expect(writes(server.asked)).toEqual(approving)
 
+        /* AND THE LIST IT LEFT FOR SAYS SO (PDL, 24.10.2026), by this road as well as by the route's: a team
+           that stands only in the session is taken away without a request, and the sentence is the reader's
+           only word that it went. */
+        expect(await screen.findByText('Tim je obrisan.')).toBeVisible()
+
         expect(
           (await listedTeams()).some((one) => /Timočka/.test(one.textContent ?? '')),
         ).toBe(false)

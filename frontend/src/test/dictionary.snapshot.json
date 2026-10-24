@@ -664,6 +664,7 @@
     "editOwnRating": "Izmeni svoju ocenu",
     "deleteOwnRating": "Obriši svoju ocenu",
     "deleteOwnRatingAsk": "Obriši svoju ocenu?",
+    "ratingGone": "Ocena je obrisana.",
     "ratedBy": {
       "one": "iz {count} ocene",
       "few": "iz {count} ocene",
@@ -1058,6 +1059,7 @@
     "sending": "Šalje se",
     "withdrawing": "Briše se",
     "deleteAsk": "Obriši rezultat?",
+    "deleted": "Rezultat je obrisan.",
     "refused": {
       "theFormIsNotComplete": "Rezultat nije poslat. Proveri dužinu, uspon, spust i vreme: nešto nedostaje ili je izvan dozvoljenih vrednosti.",
       "theRaceIsNotKnown": "Trka koju si izabrao više ne stoji u kalendaru. Osveži stranu i izaberi je ponovo.",

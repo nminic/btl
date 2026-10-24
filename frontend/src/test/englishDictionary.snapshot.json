@@ -664,6 +664,7 @@
     "editOwnRating": "Edit your rating",
     "deleteOwnRating": "Delete your rating",
     "deleteOwnRatingAsk": "Delete your rating?",
+    "ratingGone": "The rating has been deleted.",
     "ratedBy": {
       "one": "out of {count} rating",
       "few": "out of {count} ratings",
@@ -1058,6 +1059,7 @@
     "sending": "Sending",
     "withdrawing": "Deleting",
     "deleteAsk": "Delete the result?",
+    "deleted": "The result has been deleted.",
     "refused": {
       "theFormIsNotComplete": "The result was not sent. Check the distance, the climb, the descent and the time: something is missing or outside the allowed range.",
       "theRaceIsNotKnown": "The race you chose is no longer in the calendar. Refresh the page and choose it again.",
