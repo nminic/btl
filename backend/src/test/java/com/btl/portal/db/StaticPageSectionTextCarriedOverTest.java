@@ -611,7 +611,11 @@ Poslednja izmena: 28.09.2026.\
 						+ " from static_page_section s"
 						+ " join static_page p on p.id = s.page_id"
 						+ " where p.slug in ('uslovi-koriscenja', 'politika-privatnosti')"
-						+ "   and s.body ilike '%karti%'")
+						/* The one place the root is not the payment card: since V73 (owner, 24.10.2026) the row
+						   about the number of the identity document says who sees it, "na svojoj kartici Podaci",
+						   which is the card of the member's own profile and has nothing to do with paying. Taken
+						   out by its words, so a payment card anywhere beside it is still found. */
+						+ "   and replace(s.body, 'na svojoj kartici Podaci', '') ilike '%karti%'")
 				.query(String.class)
 				.list();
 

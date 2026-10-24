@@ -188,14 +188,33 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	}
 
 	/**
-	 * THE SIGN-OFF STANDS WHERE V71 left it, on the policy as on the other two. V73 moves no date: the request named
-	 * the word and nothing else, and whether the policy's "Poslednja izmena" moves is the owner's to say.
+	 * THE SIGN-OFF OF THE POLICY MOVES, AND THE OTHER TWO DO NOT. PDL, "Datum Poslednja izmena se pomera" (owner,
+	 * 16.10.2026): the date moves on the document whose text changes. V73 changes the policy's text and nothing of the
+	 * rulebook's or the terms', so the policy stands at 24.10.2026 (the day the owner approved the words; THE ASSISTANT'S
+	 * DERIVATION from the rule, chosen by the coordinator who asked for the file, not a decision of the owner's) and the
+	 * rulebook and the terms keep the 22.10.2026 V71 gave them, in both languages.
 	 */
 	@Test
-	void v73MovesNoSignOff() {
+	void thePolicyIsSignedOffOnTheTwentyFourthAndTheOtherTwoStayOnTheTwentySecond() {
 		for (String language : List.of("sr", "en")) {
-			assertThat(bodyOf(language, THE_POLICY_SIGN_OFF)).containsOnlyOnce(signOffIn(language));
+			assertThat(placesWhichCarry(language, signOffAfterIn(language)))
+					.as("the %s sign-off of 24.10.2026 must stand on the privacy policy alone", language)
+					.containsExactly(THE_POLICY_SIGN_OFF);
+			assertThat(bodyOf(language, THE_POLICY_SIGN_OFF))
+					.containsOnlyOnce(signOffAfterIn(language))
+					.doesNotContain(signOffIn(language));
+			assertThat(placesWhichCarry(language, signOffIn(language)))
+					.as("the %s sign-off of 22.10.2026 must stand on the rulebook and on the terms of use, and not on"
+							+ " the policy", language)
+					.containsExactlyInAnyOrder(new Place("pravilnik", 19), new Place("uslovi-koriscenja", 11));
 		}
+	}
+
+	private static final String SERBIAN_SIGN_OFF_AFTER = "Poslednja izmena: 24.10.2026.";
+	private static final String ENGLISH_SIGN_OFF_AFTER = "Last amended: 24.10.2026.";
+
+	private static String signOffAfterIn(String language) {
+		return language.equals("sr") ? SERBIAN_SIGN_OFF_AFTER : ENGLISH_SIGN_OFF_AFTER;
 	}
 
 	/**
@@ -210,6 +229,10 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 
 		assertThat(migrationSql("57")).as("V57 does not write the Serbian old clause").contains(SERBIAN_OLD);
 		assertThat(migrationSql("57")).as("V57 does not write the English old clause").contains(ENGLISH_OLD);
+
+		for (String text : List.of(SERBIAN_SIGN_OFF_AFTER, ENGLISH_SIGN_OFF_AFTER)) {
+			assertThat(before).as("a migration before V73 already writes \"%s\"", text).doesNotContain(text);
+		}
 
 		for (String text : List.of(SERBIAN_NEW, ENGLISH_NEW)) {
 			assertThat(before).as("a migration before V73 already writes \"%s\"", text).doesNotContain(text);
@@ -257,6 +280,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 		for (String language : List.of("sr", "en")) {
 			setBody(language, THE_PLACE, asItStoodBefore(language, THE_PLACE));
 			setBody(language, THE_TABLE, asItStoodBefore(language, THE_TABLE));
+			setBody(language, THE_POLICY_SIGN_OFF, asItStoodBefore(language, THE_POLICY_SIGN_OFF));
 		}
 	}
 
@@ -265,7 +289,8 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 		return bodyOf(language, place)
 				.replace(newIn(language), oldIn(language))
 				.replace(rowNew(language), rowOld(language))
-				.replace(headingNew(language), headingOld(language));
+				.replace(headingNew(language), headingOld(language))
+				.replace(signOffAfterIn(language), signOffIn(language));
 	}
 
 	private List<String> everySectionBody() {
@@ -278,7 +303,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	}
 
 	/**
-	 * V73 run over the text before it, the one case in which it succeeds: four sections change, and no other section of
+	 * V73 run over the text before it, the one case in which it succeeds: six sections change, and no other section of
 	 * either table changes by a character. Inside the two, taking the word out again gives the text V73 found.
 	 */
 	@Test
@@ -286,8 +311,8 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 		putBackTheTextAsItStoodBeforeV73();
 
 		List<String> before = everySectionBody();
-		List<String> found = List.of(bodyOf("sr", THE_TABLE), bodyOf("sr", THE_PLACE), bodyOf("en", THE_TABLE),
-				bodyOf("en", THE_PLACE));
+		List<String> found = List.of(bodyOf("sr", THE_TABLE), bodyOf("sr", THE_PLACE), bodyOf("sr", THE_POLICY_SIGN_OFF),
+				bodyOf("en", THE_TABLE), bodyOf("en", THE_PLACE), bodyOf("en", THE_POLICY_SIGN_OFF));
 
 		jdbc.execute(migrationSql(String.valueOf(THE_MIGRATION)));
 
@@ -304,15 +329,17 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 			}
 		}
 
-		assertThat(changed).as("V73 must change the body of four sections and no other").isEqualTo(4);
+		assertThat(changed).as("V73 must change the body of six sections and no other").isEqualTo(6);
 
 		for (String language : List.of("sr", "en")) {
 			theClauseStandsInThatOneSectionAndTheOldOneNowhere(language);
 		}
 
 		assertThat(List.of(asItStoodBefore("sr", THE_TABLE), asItStoodBefore("sr", THE_PLACE),
-				asItStoodBefore("en", THE_TABLE), asItStoodBefore("en", THE_PLACE)))
-				.as("with the words taken out again, sections 2 and 3 must be the text V73 found in each language")
+				asItStoodBefore("sr", THE_POLICY_SIGN_OFF), asItStoodBefore("en", THE_TABLE),
+				asItStoodBefore("en", THE_PLACE), asItStoodBefore("en", THE_POLICY_SIGN_OFF)))
+				.as("with the words and the date taken out again, sections 2, 3 and 7 must be the text V73 found in each"
+						+ " language")
 				.isEqualTo(found);
 	}
 
@@ -321,14 +348,41 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 		PSQLException error = v73RunAgain();
 
 		assertThat(error.getServerErrorMessage().getMessage()).contains("the written pages were not edited");
-		assertThat(error.getServerErrorMessage().getMessage()).contains("6 of 6 edits");
+		assertThat(error.getServerErrorMessage().getMessage()).contains("8 of 8 edits");
 		assertThat(reportOf(error).lines().toList())
 				.contains("Date of birth @ politika-privatnosti #3 sr: found 0 times, and its new text is already there",
 						"Date of birth @ politika-privatnosti #3 en: found 0 times, and its new text is already there",
 						"Document row @ politika-privatnosti #2 sr: found 0 times, and its new text is already there",
 						"Document row @ politika-privatnosti #2 en: found 0 times, and its new text is already there",
 						"Never shown, heading @ politika-privatnosti #3 sr: found 0 times, and its new text is already there",
-						"Never shown, heading @ politika-privatnosti #3 en: found 0 times, and its new text is already there");
+						"Never shown, heading @ politika-privatnosti #3 en: found 0 times, and its new text is already there",
+						"Sign-off @ politika-privatnosti #7 sr: found 0 times, and its new text is already there",
+						"Sign-off @ politika-privatnosti #7 en: found 0 times, and its new text is already there");
+	}
+
+	@Test
+	void aSignOffThatIsAlreadyMovedStopsV73() {
+		putBackTheTextAsItStoodBeforeV73();
+		setBody("sr", THE_POLICY_SIGN_OFF,
+				bodyOf("sr", THE_POLICY_SIGN_OFF).replace(SERBIAN_SIGN_OFF, SERBIAN_SIGN_OFF_AFTER));
+
+		PSQLException error = v73RunAgain();
+
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 8 edits");
+		assertThat(reportOf(error))
+				.contains("Sign-off @ politika-privatnosti #7 sr: found 0 times, and its new text is already there");
+	}
+
+	@Test
+	void aSignOffWithoutTheOldDateStopsV73() {
+		putBackTheTextAsItStoodBeforeV73();
+		setBody("en", THE_POLICY_SIGN_OFF,
+				bodyOf("en", THE_POLICY_SIGN_OFF).replace(ENGLISH_SIGN_OFF, "Last amended: 01.01.2026."));
+
+		PSQLException error = v73RunAgain();
+
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 8 edits");
+		assertThat(reportOf(error)).contains("Sign-off @ politika-privatnosti #7 en: found 0 times");
 	}
 
 	@Test
@@ -338,7 +392,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 
 		PSQLException error = v73RunAgain();
 
-		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 6 edits");
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 8 edits");
 		assertThat(reportOf(error)).contains("Date of birth @ politika-privatnosti #3 sr: found 2 times");
 	}
 
@@ -349,7 +403,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 
 		PSQLException error = v73RunAgain();
 
-		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 6 edits");
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 8 edits");
 		assertThat(reportOf(error)).contains("Date of birth @ politika-privatnosti #3 en: found 0 times");
 	}
 
@@ -360,7 +414,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 
 		PSQLException error = v73RunAgain();
 
-		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 6 edits");
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 8 edits");
 		assertThat(reportOf(error))
 				.contains("Date of birth @ politika-privatnosti #3 sr: found once, and its new text is already there");
 	}
@@ -378,8 +432,8 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 
 		PSQLException error = v73RunAgain();
 
-		/* Two of the six are aimed at that text: the clause and the heading over the list. */
-		assertThat(error.getServerErrorMessage().getMessage()).contains("2 of 6 edits");
+		/* Two of the eight are aimed at that text: the clause and the heading over the list. */
+		assertThat(error.getServerErrorMessage().getMessage()).contains("2 of 8 edits");
 		assertThat(reportOf(error).lines().toList())
 				.contains("Date of birth @ politika-privatnosti #3 en: there is no such text",
 						"Never shown, heading @ politika-privatnosti #3 en: there is no such text");

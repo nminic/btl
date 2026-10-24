@@ -35,10 +35,14 @@
    written in the rulebook or in the terms of use (read out of the text the portal serves, the rulebook's old Article 74
    having gone into the privacy policy in V71).
 
-   THE SIGN-OFF DATE IS NOT MOVED HERE. PDL, "Datum Poslednja izmena se pomera" (owner, 16.10.2026), moves the date on a
-   document whose text changes. The request that asked for this file named the word and nothing else ("ništa drugo u
-   pravnim tekstovima ne diraš"), so the policy still says "Poslednja izmena: 22.10.2026." and the question of moving it
-   is put to the owner with this file, not decided by it.
+   THE SIGN-OFF DATE MOVES, AND ONLY ON THE PRIVACY POLICY. PDL, "Datum Poslednja izmena se pomera" (owner, 16.10.2026):
+   the date moves on the documents whose text changes and stays on those whose text does not (V57 moved all three, V58 and
+   V60 moved the ones they changed, V61 changed no word and moved nothing, V70 moved the policy). The policy's text changes
+   here, so its "Poslednja izmena: 22.10.2026." becomes "Poslednja izmena: 24.10.2026." and "Last amended: 22.10.2026."
+   becomes "Last amended: 24.10.2026.". The rulebook and the terms of use are not touched and keep 22.10.2026. THIS IS THE
+   ASSISTANT'S DERIVATION FROM THAT RULE, NOT A DECISION OF THE OWNER'S: the coordinator who asked for this file derived it
+   and chose 24.10.2026, the day the owner approved the words, as V70 chose the day it reached QA. It is moved before the
+   merge if the file reaches QA on another day.
 
    HOW. The shape of V70 and for its reason: every edit is asked how many times its old text stands in the text it is
    aimed at, and anything but exactly once is a problem. A section that already carries the new text is a problem too.
@@ -50,7 +54,8 @@
 
    WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row added or removed; the body of four section
    texts (sections 2 and 3 of the policy, in both languages) and nothing else in them: not the other sentences of section
-   3, not the list of what is never shown but for its heading, and not the other rows of the table.
+   3, not the list of what is never shown but for its heading, and not the other rows of the table; and the date in section
+   7 of the policy (two more section texts).
 
    WHY A NEW FILE AND NOT AN EDIT OF V57: ADL A2. V57 has been applied, its checksum is in flyway_schema_history, and
    MigrationsAreImmutableTest holds Flyway to it. V73 and not V72, because V72 belongs to the pull request that is
@@ -101,7 +106,14 @@ Adresa elektronske pošte$new$),
 E-mail address$old$,
              $new$### Never displayed to others
 
-E-mail address$new$)
+E-mail address$new$),
+
+            ('Sign-off', 'politika-privatnosti', 7, 'sr',
+             $old$Poslednja izmena: 22.10.2026.$old$,
+             $new$Poslednja izmena: 24.10.2026.$new$),
+            ('Sign-off', 'politika-privatnosti', 7, 'en',
+             $old$Last amended: 22.10.2026.$old$,
+             $new$Last amended: 24.10.2026.$new$)
 
         ) as edits (label, slug, section_position, in_language, old_text, new_text)
     loop

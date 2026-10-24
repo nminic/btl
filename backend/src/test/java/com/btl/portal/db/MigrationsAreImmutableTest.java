@@ -604,8 +604,8 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   (the owner, 24.10.2026, PDL, the entry "Politika privatnosti, odeljak 3": add the word "drugima"):
 			   the word "drugima" in the sentence of section 3 about the date of birth, in the cell about the document
 			   and in the heading over the list of what is never shown, because a member sees his own date on
-			   his own card. Six edits, each stopping the migration unless its old text stands exactly once and its
-			   new text is not already there. No schema, and no sign-off date moved.
+			   his own card. Eight edits, each stopping the migration unless its old text stands exactly once and its
+			   new text is not already there. Two of them move the sign-off of the policy, and only the policy, to 24.10.2026. No schema.
 
 			   73 and not 72, MEASURED on 24.10.2026: the pull request that carries V72 (an unconfirmed registration
 			   lasts seven days) is merged before this one, and no other remote ref held a migration at V73. This
@@ -615,7 +615,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read off
 			   this very assertion when it ran before the entry existed. */
 			new Applied("73", "V73__the_privacy_policy_says_the_date_of_birth_is_not_shown_to_others.sql",
-					124453924));
+					1071621632));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

@@ -106,12 +106,10 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 					List.of("Language of your e-mail, Serbian or English")),
 			new Edit("B", POLICY, 3, "sr",
 					List.of("Datum rođenja, adresa elektronske pošte"),
-					/* The heading says "drugima" since V73 (owner, 24.10.2026): the list is of what is never shown to others. */
-					List.of("### Nikada se ne prikazuje drugima\n\nAdresa elektronske pošte, adresa za slanje")),
+					List.of("### Nikada se ne prikazuje\n\nAdresa elektronske pošte, adresa za slanje")),
 			new Edit("B", POLICY, 3, "en",
 					List.of("Date of birth, e-mail address"),
-					/* Since V73: never displayed to others. */
-					List.of("### Never displayed to others\n\nE-mail address, mailing address")),
+					List.of("### Never displayed\n\nE-mail address, mailing address")),
 			new Edit("C", POLICY, 3, "sr",
 					List.of(
 						"tražimo samo da bismo znali",
