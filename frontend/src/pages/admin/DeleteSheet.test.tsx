@@ -57,6 +57,8 @@ describe('the sheet that asks before a deletion', () => {
     const sheet = await theSheet('Obriši tim?')
 
     expect(within(sheet).getByText('Drugi tim')).toBeInTheDocument()
+    /* DESCRIBED BY THE NAME OF THE ROW THAT ASKED, the second, and by nothing of the first (PDL, 25.10.2026). */
+    expect(sheet).toHaveAccessibleDescription('Drugi tim')
     expect(within(sheet).queryByText('Prvi tim')).toBeNull()
     expect(within(sheet).getAllByRole('button').map((one) => one.textContent)).toEqual(['Obriši', 'Odustani'])
     expect(onDelete).not.toHaveBeenCalled()

@@ -47,6 +47,8 @@ type Screen = {
   asks: string
   /** What the screen says once the row is gone. */
   gone: string
+  /** What the sheet says under the name besides it, where it says anything: it is part of what a reader is TOLD (PDL, 25.10.2026). */
+  under?: RegExp
 }
 
 const SCREENS: Screen[] = [
@@ -56,6 +58,7 @@ const SCREENS: Screen[] = [
     at: '/sr/administracija/dogadjaji',
     asks: sr.admin.eventDeleteAsk,
     gone: sr.admin.eventGone,
+    under: /Ovim brišeš i \d+ rezultat|Broj rezultata koji odlaze/,
   },
   {
     name: 'the competitions',
@@ -70,6 +73,7 @@ const SCREENS: Screen[] = [
     at: '/sr/administracija/moderatori',
     asks: sr.admin.moderatorDeleteAsk,
     gone: sr.admin.moderatorGone,
+    under: new RegExp(sr.admin.moderatorDeleteNote.replace(/[.]/g, '\\.')),
   },
   {
     name: 'the teams of the administration',
@@ -146,6 +150,16 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
     /* THE ROW IT IS ABOUT, by name: a sheet opened from the wrong row says so. */
     expect(within(sheet).getByText(name)).toBeInTheDocument()
     expect(within(sheet).getAllByRole('button').map((each) => each.textContent)).toEqual(['Obriši', 'Odustani'])
+
+    /* WHAT A READER IS TOLD, because the focus lands on the heading and skips the body (PDL, 25.10.2026, „Odgovori od
+       25.10.2026 (noć): prozor brisanja"): the sheet is DESCRIBED by its body, so the name of the row and what goes
+       with it are said after the question, as the button that confirmed said them before the sheet. The name is the
+       row's (read from its cells in `twoRows`), so the first row's name is not what is described. */
+    expect(sheet).toHaveAccessibleDescription(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+
+    if (one.under !== undefined) {
+      expect(sheet).toHaveAccessibleDescription(one.under)
+    }
 
     /* AND NOTHING OF THE OLD QUESTION IS LEFT IN THE ROW. */
     expect(within(row).queryByRole('button', { name: /^Potvrdi brisanje:/ })).toBeNull()

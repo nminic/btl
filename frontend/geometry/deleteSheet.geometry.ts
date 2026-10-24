@@ -108,6 +108,20 @@ const SCREENS: Screen[] = [
      team's own page, a result on the page of its event, a member's own results and his own rating. They say
      nothing after a deletion that the sheet's own geometry would need, so they carry no `gone`. The answers are
      every answer of the sample (`src/test/mock`), as `actionTip.geometry.ts` reads these same screens. */
+  /* THE PAGE OF AN EVENT, which deleted the whole event through `window.confirm` until 25.10.2026 (PDL, „Odgovori od
+     25.10.2026 (noć): prozor brisanja"). Its cross stands in the head of the page, the first of the crosses by that name
+     (the results below carry crosses of their own, named after the member). After the deletion the reader is on the
+     calendar, which says so. */
+  {
+    name: 'the page of an event',
+    path: '/sr/kalendar/maraton-maratona-2015',
+    asks: 'Obriši događaj?',
+    gone: 'Događaj je obrisan, sa svojim trkama i rezultatima.',
+    answers: { ...everyAnswer(), '/api/me': ME },
+    ready: 'h1',
+    cross: 'Obriši: Maraton maratona',
+    which: 0,
+  },
   {
     name: 'the page of a team',
     path: '/sr/tim/dunavski-trkaci',

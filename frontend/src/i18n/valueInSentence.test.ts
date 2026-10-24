@@ -364,7 +364,6 @@ describe('a sentence with a value put into it', () => {
       'ducats.everySeason',
       'ducats.sentence <- formatNumber',
       'ducats.stepUp <- formatNumber',
-      'event.deleteAsk',
       'event.enterResultNamed',
       'event.fromEdition',
       'event.ratedBy',

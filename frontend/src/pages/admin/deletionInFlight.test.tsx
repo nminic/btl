@@ -49,6 +49,8 @@ type Screen = {
   asks: string
   /** What the screen says once the deletion is through (PDL, 24.10.2026), and where: the team's page says it on the list it leaves for. */
   gone: string
+  /** Whether the page is left once the deletion is through (the team's, the event's), so nothing more can be asked of it. */
+  leaves?: true
   /** Where it is drawn, as whom, and on which day. */
   at: string
   role: Role
@@ -71,9 +73,22 @@ type Screen = {
 
 const SCREENS: Screen[] = [
   {
+    /* THE WHOLE EVENT, from its own page, since 25.10.2026 (it asked through `window.confirm` until then): the cross in the
+       head of the page, named after the event. Its sentence is said on the calendar the reader is taken to. */
+    name: 'an event on its own page',
+    source: 'event/EventActions.tsx',
+    asks: sr.admin.eventDeleteAsk,
+    gone: sr.admin.eventGone,
+    leaves: true,
+    at: '/sr/kalendar/maraton-maratona-2015',
+    role: 'superadmin',
+    ask: async () => screen.findByRole('button', { name: 'Obriši: Maraton maratona' }),
+  },
+  {
     name: 'a team on its own page',
     asks: sr.admin.teamDeleteAsk,
     gone: sr.admin.teamGone,
+    leaves: true,
     source: 'TeamDetail.tsx',
     at: '/sr/tim/dunavski-trkaci',
     role: 'competitor',
@@ -215,6 +230,8 @@ describe('a deletion that is out with the server', () => {
 
         expect(holder, 'the cross is named after another record than the one it stands in').toContain(name)
         expect(within(sheet).getByText(name)).toBeInTheDocument()
+        /* AND IT IS THE SHEET'S DESCRIPTION, which is what a reader hears after the question (PDL, 25.10.2026). */
+        expect(sheet).toHaveAccessibleDescription(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
       } else {
         expect(sheet.querySelectorAll('.prompt__body p')).toHaveLength(0)
       }
@@ -408,8 +425,8 @@ describe('what the screen says once a deletion is through', () => {
 
       await screen.findByText(one.gone)
 
-      /* A SECOND DELETION, which the server refuses. The team's page has left by then, so only the other three can be asked. */
-      if (one.at.includes('/tim/')) {
+      /* A SECOND DELETION, which the server refuses. The page of a team or of an event has left by then, so only the others can be asked. */
+      if (one.leaves) {
         server.stop()
 
         return

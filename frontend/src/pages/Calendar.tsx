@@ -1,5 +1,7 @@
-import { Link } from 'react-router'
+import { useState } from 'react'
+import { Link, useLocation } from 'react-router'
 import { useToday } from '../clock/useClock'
+import { DeletionSaid } from './admin/DeletionSaid'
 import { EVENTS } from './admin/entityForms'
 import { useMay } from './admin/rights'
 import { Resource } from '../components/Resource'
@@ -20,6 +22,7 @@ import { EventChip, EventScale, HollowLane } from './calendar/DayChips'
 import { LengthLegend } from './calendar/LengthLegend'
 import './Calendar.css'
 import { useFilterParams } from '../app/useFilterParams'
+import { eventWasDeleted } from './eventDeleted'
 
 /* How many events a day shows before the rest go to the day's own page (owner,
  * 31.07.2026). Five: a day with six is rare enough that sending it to a page of
@@ -190,12 +193,18 @@ export function Calendar() {
   const [params, setParams] = useFilterParams()
   const state = combinePair(useEvents(), useRaces())
   const today = useToday()
+  const arrived = useLocation().state
+  const [said, setSaid] = useState(() => (eventWasDeleted(arrived) ? t('admin.eventGone') : ''))
 
   return (
     <div className="calendar rankings--tooled">
       {/* Outside the Resource: a screen that says nothing at all while it waits
           is the one thing every other screen here avoids. */}
       <h1>{t('calendar.title')}</h1>
+
+      {/* „Događaj je obrisan, sa svojim trkama i rezultatima.", for whoever was brought here by the deletion of an event from
+          its own page (PDL, 25.10.2026). Drawn only while there is something to say, for the reason `Teams.tsx` gives. */}
+      {said !== '' && <DeletionSaid said={said} clear={setSaid} />}
 
       <Resource state={state}>
         {([events, races]) => {

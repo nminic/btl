@@ -85,7 +85,6 @@ const SYMBOL_OF = new Map<string, { symbol: ActionSymbol; word: string }>([
   ['admin.form.open', { symbol: SYMBOL.pencil, word: 'Otvori' }],
   ['admin.recordPayment', { symbol: SYMBOL.banknote, word: 'Upiši uplatu' }],
   ['event.copy', { symbol: SYMBOL.copy, word: 'Kopiranje' }],
-  ['event.delete', { symbol: SYMBOL.cross, word: 'Brisanje' }],
   ['event.edit', { symbol: SYMBOL.pencil, word: 'Izmena' }],
   /* The pencil on every result of the event page (PDL P9, 18.10.2026), named by whose run it is. */
   ['leagueResults.edit', { symbol: SYMBOL.pencil, word: 'Izmeni' }],

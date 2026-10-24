@@ -647,12 +647,6 @@
     "commentEventUnknown": "This event no longer exists.",
     "edit": "Change",
     "copy": "Copying",
-    "delete": "Deleting",
-    "deleteAsk": {
-      "one": "Delete the event \"{name}\" and {count} race of it? This cannot be undone.",
-      "few": "Delete the event \"{name}\" and {count} races of it? This cannot be undone.",
-      "other": "Delete the event \"{name}\" and {count} races of it? This cannot be undone."
-    },
     "kind": {
       "race": "Race",
       "training": "Training",
@@ -1470,6 +1464,7 @@
     },
     "moderatorGone": "The moderator has been deleted.",
     "moderatorDeleteAsk": "Delete the moderator?",
+    "moderatorDeleteNote": "The account stays; only the moderator rights are taken away.",
     "moderatorSavedUnseen": "The moderator has been saved, but the portal cannot show them in this list. Refresh the page.",
     "moderatorRightsSavedUnseen": "The right has been saved, but the portal cannot show the new state. Refresh the page.",
     "memberDeleteRefused": {

@@ -57,6 +57,14 @@ import './Prompt.css'
  * as a yes: Tab walks every field and every button and cannot leave, which is the ring
  * `markdownEditor/LinkDialog.tsx` keeps for its two fields. And each sheet is named by its own heading
  * through an id of its own (`useId`), so two sheets standing at once are two names and not one.
+ *
+ * <p><b>THE SHEET IS DESCRIBED BY ITS BODY (25.10.2026)</b>, so a screen reader says what is deleted and what goes with
+ * it, and not only the question. Measured in the review of PR 645: before the sheet, the button that confirmed a
+ * deletion carried the name of the record and, through `aria-describedby`, the sentence under the question
+ * („Ovim brišeš i 0 rezultata."); in the sheet the focus lands on the heading and skips the body, so a reader heard
+ * only „Obriši događaj?" and „Obriši". The owner decided that the reader hears both again, in the shared sheet and
+ * therefore in every sheet (PDL, „Odgovori od 25.10.2026 (noć): prozor brisanja"): the member's row and the payments
+ * included. The body is read as one description, whatever it holds.
  */
 /** What a press inside the sheet may give the focus to: anything that takes it of its own accord. */
 const TAKES_THE_FOCUS = 'button, input, select, textarea, a[href], [tabindex]'
@@ -108,6 +116,8 @@ export function Prompt({
      the amount a field above it was given) would otherwise point its name at the first one's heading,
      because an id that stands twice is found where it stands first. */
   const titleId = useId()
+  /* AND ONE FOR THE BODY, which the dialog is DESCRIBED by (below). */
+  const bodyId = useId()
 
   /**
    * WHETHER A PRESS ON A BUTTON OF THE SHEET IS ONE IT ANSWERS: never while a request is out, and never
@@ -256,6 +266,7 @@ export function Prompt({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={bodyId}
         ref={sheet}
         onKeyDown={onKeyDown}
       >
@@ -265,7 +276,9 @@ export function Prompt({
           {title}
         </h2>
 
-        <div className="prompt__body">{children}</div>
+        <div className="prompt__body" id={bodyId}>
+          {children}
+        </div>
 
         {/* TOLD OFF AND NOT SWITCHED OFF, on every button and for the reason `working` gives: the
             one that was pressed has the focus. `aria-disabled` stops nothing by itself, so each

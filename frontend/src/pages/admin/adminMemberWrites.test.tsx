@@ -674,6 +674,8 @@ describe('the members screen', () => {
 
     expect(sheet).toHaveAttribute('aria-modal', 'true')
     expect(within(sheet).getByText(`Ana Jovanović, ${DELETED}`)).toBeInTheDocument()
+    /* AND SAID TO A READER, as the sheet's description (PDL, 25.10.2026: the shared sheet, so the member's row too). */
+    expect(sheet).toHaveAccessibleDescription(`Ana Jovanović, ${DELETED}`)
     expect(within(sheet).getAllByRole('button').map((one) => one.textContent)).toEqual(['Obriši', 'Odustani'])
     expect(screen.queryByText('Sigurno?')).toBeNull()
 

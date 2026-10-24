@@ -647,12 +647,6 @@
     "commentEventUnknown": "Ovaj događaj više ne postoji.",
     "edit": "Izmena",
     "copy": "Kopiranje",
-    "delete": "Brisanje",
-    "deleteAsk": {
-      "one": "Obrisati događaj \"{name}\" i {count} njegovu trku? Ovo se ne može opozvati.",
-      "few": "Obrisati događaj \"{name}\" i {count} njegove trke? Ovo se ne može opozvati.",
-      "other": "Obrisati događaj \"{name}\" i {count} njegovih trka? Ovo se ne može opozvati."
-    },
     "kind": {
       "race": "Trka",
       "training": "Trening",
@@ -1465,6 +1459,7 @@
     },
     "moderatorGone": "Moderator je obrisan.",
     "moderatorDeleteAsk": "Obriši moderatora?",
+    "moderatorDeleteNote": "Nalog ostaje, skidaju se samo prava moderatora.",
     "moderatorSavedUnseen": "Moderator je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
     "moderatorRightsSavedUnseen": "Pravo je sačuvano, ali portal ne može da prikaže novo stanje. Osveži stranu.",
     "teamDeleteRefused": {

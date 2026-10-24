@@ -482,6 +482,7 @@ export function AdminModerators() {
                           <RowActions
                             entity={MODERATORS}
                             asks={t('admin.moderatorDeleteAsk')}
+                            asksWith={t('admin.moderatorDeleteNote')}
                             record={one}
                             name={`${one.firstName} ${one.lastName}`}
                             onOpen={() => {
