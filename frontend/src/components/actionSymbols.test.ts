@@ -131,7 +131,6 @@ const STAYS_A_WORD = new Map([
   ['admin.addRace', FORM],
   ['admin.changeToExemption', LISTED],
   ['admin.form.back', NOT_AN_ACTION],
-  ['admin.form.keep', ANSWER],
   ['admin.form.new.races', LISTED],
   ['admin.leagueRaces', NOT_AN_ACTION],
   ['bio.send', FORM],
