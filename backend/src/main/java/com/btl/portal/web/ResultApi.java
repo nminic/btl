@@ -87,7 +87,9 @@ import java.util.List;
  * both doors, and in the season that is being run the band is the same on both;
  * {@code aRunnersBandIsTheBandTheListGaveHimInTheSeasonOfTheResult} holds the two to each other.
  * Left out on purpose, each for its own decision: the year of birth as a field (section 3 of the privacy policy:
- * „Datum rođenja se nikada ne prikazuje, ni u punom ni u skraćenom obliku", and below is what a
+ * „Datum rođenja se nikada ne prikazuje, ni u punom ni u skraćenom obliku" as it read when this was written; it now
+ * reads „ne prikazujemo ga drugima ni u punom ni u skraćenom obliku, osim ako sami izaberete [...]", V57 and V73,
+ * and this resource serves no date either way), and below is what a
  * band per season gives back of it anyway); whether his fee
  * stands (PDL P34, 21.09.2026 took {@code active} off the public list for being „činjenica o
  * tuđem plaćanju", and a field here would put it back through the side door); and the

@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react'
 import { Navigate } from 'react-router'
 import { Loader } from '../../components/Loader'
-import { useI18n } from '../../i18n/useI18n'
 import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
+import { useWhereARefusedReaderGoes } from '../member/whereARefusedReaderGoes'
 import { mayOpen, type Need } from './needs'
 import { useMay } from './rights'
 
@@ -45,6 +45,10 @@ import { useMay } from './rights'
  * Replaced rather than pushed, so the back button goes where the reader came
  * from instead of back onto the door.
  *
+ * **THE FRONT PAGE FOR EVERYBODY BUT SOMEBODY WHO REGISTERED AND HAS NOT PAID**, whom it sends to
+ * the page he pays on (owner, 22.10.2026, „Direktna adresa strane koja mu nije otvorena
+ * preusmerava na Članarinu"; `member/whereARefusedReaderGoes.ts`).
+ *
  * AND IT DOES NOT REFUSE ANYBODY BEFORE THE SERVER HAS SAID WHO IS READING (owner,
  * 29.09.2026, chosen between three offered outcomes). Until that day this file read the
  * role at its first paint and acted on it, and at the first paint of a visit the role is
@@ -72,7 +76,7 @@ import { useMay } from './rights'
  * given. Every other visit arrives here as the visitor and waits.
  */
 export function Guard({ need, children }: { need: Need; children: ReactElement }) {
-  const { locale } = useI18n()
+  const away = useWhereARefusedReaderGoes()
   const { role } = useRole()
   const may = useMay()
   const { theServerHasAnswered } = useSession()
@@ -92,5 +96,5 @@ export function Guard({ need, children }: { need: Need; children: ReactElement }
     return <Loader inline={false} />
   }
 
-  return <Navigate to={`/${locale}`} replace />
+  return <Navigate to={away} replace />
 }

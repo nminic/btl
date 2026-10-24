@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * GET /api/me: WHO IS ASKING, AND THE CALLER'S OWN RECORD.
@@ -269,7 +270,7 @@ class MeApiTest {
 	/**
 	 * THE CALLER'S PORTRAIT, SPELT IN LETTERS ALONE, and that is a measurement. A digest is sixty
 	 * four characters of {@code [0-9a-f]} (V8, {@code photo_digest_shape}), so one carrying
-	 * digits may spell a four digit year by accident, and {@link #noDateOfBirthLeavesHisOwnDoor}
+	 * digits may spell a four digit year by accident, and {@link #onlyHisOwnDateOfBirthLeavesHisOwnDoor}
 	 * reads the answer as text and asks it for every year of birth. Letters cannot spell one.
 	 */
 	private static final String HIS_PORTRAIT = "ab".repeat(32);
@@ -286,7 +287,7 @@ class MeApiTest {
 	/**
 	 * THE CALLER'S POSTAL ADDRESS AND TELEPHONE, each a value no other row carries (every other row
 	 * is written with {@code 'Ulica 1'} and no telephone at all). Spelt with no run of four digits,
-	 * for the reason the portrait is spelt in letters: {@link #noDateOfBirthLeavesHisOwnDoor} reads
+	 * for the reason the portrait is spelt in letters: {@link #onlyHisOwnDateOfBirthLeavesHisOwnDoor} reads
 	 * the whole answer as text and asks it for a year, and a telephone number is exactly the sort of
 	 * thing that spells one by accident.
 	 */
@@ -315,6 +316,23 @@ class MeApiTest {
 	 * years in the table are far apart and neither is a season in this fixture.
 	 */
 	private static final String HIS_DATE_OF_BIRTH = "1957-06-15";
+
+	/**
+	 * THE THREE HE IS ANSWERED LOCKED ON HIS OWN CARD since 24.10.2026 (PDL, "clan ga vidi ali je
+	 * disabled za menjanje. Moze samo da trazi od admina"), each a value no other row carries: every
+	 * other row's father is {@code 'Otac'}. Spelt in letters alone, for the reason the portrait is:
+	 * {@link #onlyHisOwnDateOfBirthLeavesHisOwnDoor} reads the answer as text and asks it for years.
+	 */
+	private static final String HIS_FATHER = "Svetozar";
+
+	private static final String HIS_DOCUMENT = "KARTICAMILICE";
+
+	/** And the lapsed member's, so "his" is never "the caller's" and never "whoever is first". */
+	private static final String THE_LAPSED_MEMBERS_FATHER = "Milovan";
+
+	private static final String THE_LAPSED_MEMBERS_DOCUMENT = "KARTICANENADA";
+
+	private static final String THE_LAPSED_MEMBERS_DATE_OF_BIRTH = "1988-03-04";
 
 	@Autowired
 	private MockMvc http;
@@ -1581,28 +1599,38 @@ class MeApiTest {
 	}
 
 	/**
-	 * AND NO DATE OF BIRTH LEAVES THIS DOOR EITHER, in any spelling.
+	 * ONLY HIS OWN DATE OF BIRTH LEAVES THIS DOOR, to him, and nobody else's, and no year of any
+	 * row anywhere else in the answer.
 	 *
-	 * <p>Section 3 of the privacy policy: „Datum rodjenja se nikada ne prikazuje, ni u punom ni u
+	 * <p>Section 3 of the privacy policy: "Datum rodjenja se nikada ne prikazuje, ni u punom ni u
 	 * skracenom obliku." {@link CompetitorApiTest#noYearOfBirthLeavesTheServer} holds it for the
-	 * public list and this holds it for the door that answers a member his own page. Asked of the
-	 * answer as TEXT and not of a field name, because a year is a year whatever it is called.
+	 * public list. THIS door answers a member his own date since 24.10.2026, as a LOCKED box on his own
+	 * card (PDL, "clan ga vidi ali je disabled za menjanje. Moze samo da trazi od admina", and the
+	 * owner's choice that the same holds for the gender, the father's name and the number of his
+	 * document). That is the narrowing of the sentence above and not its end: the date is his, whole,
+	 * under {@code birthDate}, and everything else in the answer is asked as it always was.
 	 *
-	 * <p><b>The four whole numbers an answer legitimately carries are taken out first</b> - the
-	 * season he started in, the key of his team, the season he joined it and his count - because
-	 * a key out of a {@code bigserial} that happens to read 1990 is a coincidence and not a leak,
-	 * and a case that went red on it would be one nobody could fix. What is left is names, words,
-	 * addresses and digests, none of which can spell a year in this fixture. The years are read
-	 * out of the database, so a row added tomorrow is measured without anybody remembering it.
+	 * <p><b>Asked of the answer as TEXT and not of a field name</b>, because a year is a year whatever
+	 * it is called: with the one key that is allowed to carry it taken out, no year of any row (his
+	 * own included) and no day of any row is anywhere in what is left. <b>And the value is his and
+	 * not another row's</b>: the lapsed member's date is a third year, and the answer is asked for the
+	 * caller's date exactly. The four whole numbers an answer legitimately carries are taken out
+	 * first - the season he started in, the key of his team, the season he joined it and his count -
+	 * because a key out of a {@code bigserial} that happens to read 1990 is a coincidence and not a
+	 * leak, and a case that went red on it would be one nobody could fix.
 	 */
 	@Test
-	void noDateOfBirthLeavesHisOwnDoor() throws Exception {
+	void onlyHisOwnDateOfBirthLeavesHisOwnDoor() throws Exception {
 		ObjectNode mine = (ObjectNode) answerFor(MY_ACCOUNT).path("member").deepCopy();
 
 		assertThat(mine.path("memberNumber").asString())
 				.as("this is not his record at all, so the text below says nothing about what is"
 						+ " left out of it")
 				.isEqualTo(ME);
+		assertThat(mine.path("birthDate").asString())
+				.as("his own date, spelt as the table spells it")
+				.isEqualTo(HIS_DATE_OF_BIRTH);
+		mine.remove("birthDate");
 		for (String number : List.of("firstSeason", "teamId", "teamSince", "referredCount")) {
 			assertThat(mine.has(number)).as("%s is a whole number he is answered", number).isTrue();
 			mine.remove(number);
@@ -1614,18 +1642,86 @@ class MeApiTest {
 		List<String> days = db.sql("select distinct to_char(birth_date, '-MM-DD') from competitor")
 				.query(String.class).list();
 		assertThat(years).as("the years were not read out of the database, so the loop asserts"
-				+ " nothing").hasSize(2);
-		assertThat(days).as("the days were not read out of the database").hasSize(2);
+				+ " nothing").hasSize(3);
+		assertThat(days).as("the days were not read out of the database").hasSize(3);
 
 		for (String year : years) {
-			assertThat(text).as("a year of birth (%s) left the server", year).doesNotContain(year);
+			assertThat(text).as("a year of birth (%s) left the server outside birthDate", year)
+					.doesNotContain(year);
 		}
 		for (String day : days) {
-			assertThat(text).as("a whole date of birth (%s) left the server", day)
+			assertThat(text).as("a whole date of birth (%s) left the server outside birthDate", day)
 					.doesNotContain(day);
 		}
 		assertThat(text).as("his own date, spelt as the table spells it")
 				.doesNotContain(HIS_DATE_OF_BIRTH);
+	}
+
+	/**
+	 * HIS FATHER'S NAME, HIS DATE OF BIRTH AND THE NUMBER OF HIS DOCUMENT ARE HIS OWN, off his own row
+	 * and the one document that is his (PDL 24.10.2026, the locked boxes of his card).
+	 *
+	 * <p>Two members with three different values each, so a source that reads the first row, the
+	 * caller of some other request or the wrong member's document is told from the right one. And a
+	 * member with <b>no document at all</b> is answered no key, not an empty string and not a
+	 * neighbour's number: {@code competitor_document} is optional.
+	 */
+	@Test
+	void hisFatherHisDateAndHisDocumentAreHisOwn() throws Exception {
+		JsonNode mine = answerFor(MY_ACCOUNT).path("member");
+
+		assertThat(mine.path("fatherName").asString()).isEqualTo(columnOf("father_name", ME))
+				.isEqualTo(HIS_FATHER);
+		assertThat(mine.path("birthDate").asString()).isEqualTo(HIS_DATE_OF_BIRTH);
+		assertThat(mine.path("idNumber").asString()).isEqualTo(HIS_DOCUMENT);
+
+		JsonNode lapsed = answerFor(THE_LAPSED_ACCOUNT).path("member");
+
+		assertThat(lapsed.path("fatherName").asString())
+				.as("a member whose fee has lapsed is handed his own father's name")
+				.isEqualTo(THE_LAPSED_MEMBERS_FATHER);
+		assertThat(lapsed.path("birthDate").asString()).isEqualTo(THE_LAPSED_MEMBERS_DATE_OF_BIRTH);
+		assertThat(lapsed.path("idNumber").asString()).isEqualTo(THE_LAPSED_MEMBERS_DOCUMENT);
+
+		JsonNode noDocument = answerFor(HER_ACCOUNT).path("member");
+
+		assertThat(noDocument.path("fatherName").asString()).isEqualTo("Otac");
+		assertThat(noDocument.has("idNumber"))
+				.as("a member with no document row was answered one (a neighbour's, an empty string or"
+						+ " a null) instead of no key")
+				.isFalse();
+		assertThat(db.sql("select count(*) from competitor_document d join competitor c on"
+						+ " c.id = d.competitor_id where c.member_number = ?")
+				.param(ABROAD).query(Long.class).single())
+				.as("the fixture gave her a document after all, so the absence above is not a fact")
+				.isZero();
+	}
+
+	/**
+	 * AND NO OTHER DOOR SERVES THEM TO HIM: not the public list, which is read here as the caller and
+	 * as two other members and answers none of the three for anybody (it never carried any), and not
+	 * the administration's read of a member's data, which is behind a right he does not hold and
+	 * answers him as an address that is not there.
+	 *
+	 * <p>Asked of the whole text of each answer, for every value the caller and the lapsed member
+	 * hold, so a field added to the list under another name is caught as the year is.
+	 */
+	@Test
+	void noOtherDoorServesTheFatherTheDateOrTheDocument() throws Exception {
+		for (String email : List.of(MY_ACCOUNT, THE_LAPSED_ACCOUNT, HER_ACCOUNT)) {
+			String list = whatThePublicListSays(email);
+
+			assertThat(list).as("the public list read as %s", email).isNotEmpty();
+			for (String value : List.of(HIS_FATHER, HIS_DOCUMENT, THE_LAPSED_MEMBERS_FATHER,
+					THE_LAPSED_MEMBERS_DOCUMENT, HIS_DATE_OF_BIRTH, THE_LAPSED_MEMBERS_DATE_OF_BIRTH)) {
+				assertThat(list).as("%s left through the public list read as %s", value, email)
+						.doesNotContain(value);
+			}
+		}
+
+		http.perform(get("/api/members/" + ME + "/data")
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(MY_ACCOUNT).secret())))
+				.andExpect(status().isNotFound());
 	}
 
 	/**
@@ -1801,7 +1897,8 @@ class MeApiTest {
 				.as("one of the names this case excuses is not on this record at all, so the"
 						+ " excuse is for nothing")
 				.containsAll(Set.of("referralCode", "referredCount", "membershipBasis",
-						"membershipSeason", "active", "address", "phone", "bioWaiting", "shirtSize"));
+						"membershipSeason", "active", "address", "phone", "bioWaiting", "shirtSize",
+						"fatherName", "birthDate", "idNumber"));
 		/* THE PUBLIC LIST CARRIES NONE OF THESE, and that is a decision and not a gap:
 		   PDL „Uvek privatno: mejl, telefon i adresa", and the size of the shirt since 23.10.2026,
 		   which section 3 of the privacy policy lists among what is never shown. Asked of the record's components so that a
@@ -1809,7 +1906,8 @@ class MeApiTest {
 		assertThat(theirs)
 				.as("the public list carries a member's postal address, telephone or words that"
 						+ " wait, which are private (PDL) and are handed to him alone through this route")
-				.doesNotContain("address", "phone", "bioWaiting", "shirtSize");
+				.doesNotContain("address", "phone", "bioWaiting", "shirtSize", "fatherName", "birthDate",
+						"idNumber");
 		/* `active` IS THE FOURTH, since 11.10.2026, AND ITS TWIN IS THE ROW ITSELF. The public
 		   list is `where c.active`, so on it the fact is not a field but the presence of the
 		   member (`frontend/src/data/types.ts`: "it is the PRESENCE OF THE ROW"), and a lapsed
@@ -1819,7 +1917,7 @@ class MeApiTest {
 				.as("a fact this record carries has no twin on the public list and is not one of the"
 						+ " four named for it: give it a twin, or name it here with its reason")
 				.containsExactlyInAnyOrder("referralCode", "referredCount", "active", "address",
-						"phone", "bioWaiting", "shirtSize");
+						"phone", "bioWaiting", "shirtSize", "fatherName", "birthDate", "idNumber");
 		shared.remove("membershipBasis");
 		/* And the season beside it, which leaves with the basis and is withheld with it. */
 		shared.remove("membershipSeason");
@@ -2012,8 +2110,18 @@ class MeApiTest {
 
 		db.sql("update competitor set gender = 'F', bio = ?, profile_hidden = true,"
 						+ " birthday_shown = 'full', birth_date = date '" + HIS_DATE_OF_BIRTH + "',"
-						+ " photo_id = ?, address = ?, phone = ?, shirt_size = 'XXXL' where member_number = ?")
-				.params(HIS_BIOGRAPHY, portrait, HIS_ADDRESS, HIS_TELEPHONE, ME).update();
+						+ " photo_id = ?, address = ?, phone = ?, shirt_size = 'XXXL', father_name = ?"
+						+ " where member_number = ?")
+				.params(HIS_BIOGRAPHY, portrait, HIS_ADDRESS, HIS_TELEPHONE, HIS_FATHER, ME).update();
+		hasADocument(ME, HIS_DOCUMENT);
+
+		/* AND THE LAPSED MEMBER'S OWN THREE, so a source that reads the wrong row gives a value that
+		   is somebody's and not the caller's: the sweep of `andNothingOfAnybodyElses` asks that no
+		   other row is answered the caller's value, and this keeps the two apart on all three. */
+		db.sql("update competitor set father_name = ?, birth_date = date '"
+						+ THE_LAPSED_MEMBERS_DATE_OF_BIRTH + "' where member_number = ?")
+				.params(THE_LAPSED_MEMBERS_FATHER, LAPSED).update();
+		hasADocument(LAPSED, THE_LAPSED_MEMBERS_DOCUMENT);
 
 		/* HIS WORDS THAT WAIT, and another member's beside them (PDL P11, 18.10.2026). Written by the
 		   statement `MeWriteApi` queues a text with, so the fixture is the state the portal writes. */
@@ -2044,6 +2152,13 @@ class MeApiTest {
 						+ " select 'profiles', c.id, c.first_name || ' ' || c.last_name, ?"
 						+ " from competitor c where c.member_number = ?")
 				.params(text, memberNumber).update();
+	}
+
+	/** The number of a member's identity document, in the table of its own (ADL A12). */
+	private void hasADocument(String memberNumber, String number) {
+		db.sql("insert into competitor_document (competitor_id, document_number)"
+						+ " select c.id, ? from competitor c where c.member_number = ?")
+				.params(number, memberNumber).update();
 	}
 
 	/** A picture a moderator has APPROVED is a {@code photo} row; the member's column names it. */

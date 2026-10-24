@@ -2839,13 +2839,17 @@ describe('what the written pages say the fee buys', () => {
        and once more, to 22.10.2026, with the words about the backups in the row
        for Cloudflare (V70; owner, 20.10.2026); the rulebook did not change on
        either day and kept 16.10.2026. On 22.10.2026 all three changed (V71; owner,
-       the same day) and all three carry that day. Written per
+       the same day) and all three carry that day. The privacy policy moved on to
+       24.10.2026 with the word „drugima" (V73; owner, 24.10.2026), by the rule
+       of 16.10.2026 that the date moves on the document whose text changes (the
+       derivation of the assistant, not the owner's own decision); the rulebook and
+       the terms did not change and keep 22.10.2026. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
       pravilnik: '22.10.2026',
       'uslovi-koriscenja': '22.10.2026',
-      'politika-privatnosti': '22.10.2026',
+      'politika-privatnosti': '24.10.2026',
     } as const
 
     for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {

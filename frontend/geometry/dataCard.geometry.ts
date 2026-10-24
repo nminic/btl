@@ -47,6 +47,10 @@ const HIM = {
   address: 'Bulevar Pupina 10, stan 14, ulaz B',
   phone: '+381 60 123 456',
   shirtSize: 'L',
+  /* The four he sees held (PDL 24.10.2026), with a father's name and a document as long as they get. */
+  fatherName: 'Aleksandar-Petrović Radosavljević',
+  birthDate: '1980-04-02',
+  idNumber: 'ABCDEFGHIJ1234567890',
 }
 
 const THE_LISTS = {

@@ -251,13 +251,19 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 		}
 	}
 
+	/**
+	 * V71 signed all three off on 22.10.2026, and V73 moved the policy's on to 24.10.2026 (PDL, "Datum Poslednja izmena
+	 * se pomera": the text of the policy changed and not the others'). So 22.10.2026 stands on the rulebook and on the
+	 * terms, and the policy stands on 24.10.2026, which {@link TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest}
+	 * holds. What V71 itself did is held by the cases below, which put the pages back to what V71 found.
+	 */
 	@Test
-	void allThreeDocumentsAreSignedOffOnTheTwentySecondInBothLanguages() {
+	void theRulebookAndTheTermsAreSignedOffOnTheTwentySecondInBothLanguagesAndThePolicyHasMovedOn() {
 		for (String[] signOff : new String[][] { { "sr", "Poslednja izmena: 22.10.2026." },
 				{ "en", "Last amended: 22.10.2026." } }) {
 			assertThat(placesWhichCarry(signOff[0], signOff[1]))
-					.as("%s: the three documents are not all signed off on 22.10.2026", signOff[0])
-					.containsExactlyInAnyOrder(new Place(POLICY, 7), new Place(RULEBOOK, 19), new Place(TERMS, 11));
+					.as("%s: the rulebook and the terms are signed off on 22.10.2026, and the policy is not", signOff[0])
+					.containsExactlyInAnyOrder(new Place(RULEBOOK, 19), new Place(TERMS, 11));
 		}
 
 		for (String gone : List.of("Poslednja izmena: 16.10.2026.", "Poslednja izmena: 10.10.2026.")) {
@@ -303,8 +309,11 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 				.containsKey("uslovi-koriscenja #12 sr body").containsKey("uslovi-koriscenja #12 en body");
 
 		jdbc.execute(migrationSql(String.valueOf(THE_MIGRATION)));
+		/* And V73 over what V71 gave, because the portal serves what V73 wrote on top of it (24.10.2026) and the text V71
+		   found is the text before V73. */
+		jdbc.execute(migrationSql("73"));
 
-		assertThat(everyText()).as("V71 over the text it found does not give the text the portal serves")
+		assertThat(everyText()).as("V71 and V73 over the text V71 found do not give the text the portal serves")
 				.isEqualTo(finished);
 	}
 

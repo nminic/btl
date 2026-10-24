@@ -521,9 +521,10 @@ describe('the envelope for somebody who registered and has not paid', () => {
   /**
    * HE HAS A RECORD AND NO NUMBER, and the panel under the envelope is drawn for a member
    * (`app/MessagesMenu.tsx` reads the member arm of `SignedIn`), as it was drawn for nobody else while
-   * he was the account arm: it asks nothing and says there is nothing. **Whether somebody who has
-   * not paid should have an inbox is not decided anywhere** - this holds what the panel does, so
-   * that giving him one is a deliberate change and not a side effect of a new arm. **Measured as
+   * he was the account arm: it asks nothing and says there is nothing. **The header does not draw
+   * the envelope to him at all since 24.10.2026** (`app/unpaidMenu.test.tsx` holds that); what is
+   * held here is what the panel does where it IS mounted, so that giving him an inbox is a
+   * deliberate change and not a side effect of a new arm. **Measured as
    * the ABSENCE of the request**, for the reason the case above gives, and asked of the third arm
    * because a panel written `signedIn.as !== 'account'` would draw his inbox and spend a request on
    * every new member who signs in.
