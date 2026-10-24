@@ -150,7 +150,7 @@ class UnconfirmedAccountsAreSweptTest {
 		assertThat(db.sql("select count(*) from competitor where id = ?").param(member).query(Long.class).single())
 				.as("the account went and the member stayed behind it").isZero();
 
-		/* AND THE ADDRESS IS FREE: the decision's „adresa je slobodna za novu registraciju". */
+		/* AND THE ADDRESS IS FREE for a new registration, as the decision says. */
 		aMember("registrovan@primer.rs", "competitor", true);
 	}
 
@@ -295,9 +295,9 @@ class UnconfirmedAccountsAreSweptTest {
 	}
 
 	/**
-	 * FOURTEEN DAYS FROM THE REGISTRATION, AND IT GOES WHATEVER ITS LINKS SAY (owner, 24.10.2026, PDL
-	 * „Rok nepotvrđene prijave": „nova poruka za potvrdu daje novih 7 dana, ali se prijava svakako
-	 * briše najkasnije 14 dana posle registracije"). The registration that goes holds a link sent four
+	 * FOURTEEN DAYS FROM THE REGISTRATION, AND IT GOES WHATEVER ITS LINKS SAY: the owner chose with my
+	 * recommendation (PDL 24.10.2026, „Rok nepotvrđene prijave") that a new confirmation gives seven
+	 * new days and the registration goes fourteen days after it at the latest. The registration that goes holds a link sent four
 	 * days ago and still good for three, so a bound counted from the last link would keep it; on the
 	 * fourteenth day exactly it goes, and a second short of it it stays.
 	 */
@@ -320,7 +320,10 @@ class UnconfirmedAccountsAreSweptTest {
 		assertThat(stands(aSecondShort)).as("gone a second before the fourteenth day").isTrue();
 	}
 
-	/** And the same for an invitation, fourteen days from the entry. */
+	/**
+	 * And the same for an invitation, fourteen days from the entry, which is derived and not the
+	 * owner's decision (PDL, IZVEDENO 24.10.2026, „Granica od 14 dana važi i za pozivnicu").
+	 */
 	@Test
 	void anEntryGoesOnItsFourteenthDayWhileItsInvitationStillStands() {
 		long entered = aMember("upisan-14@primer.rs", "competitor", false);

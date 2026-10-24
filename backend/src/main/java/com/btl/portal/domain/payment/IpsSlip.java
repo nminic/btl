@@ -10,7 +10,7 @@ import java.util.List;
  *
  * <p><b>The same slip the page „Moja članarina" draws, and that is measured, not hoped.</b> The
  * owner, 23.10.2026 (PDL „Poruka posle potvrde adrese i rok nedovršene registracije"): a member from
- * Serbia gets „podatke za uplatu i IPS QR kod u prilogu". The page builds the same text in
+ * Serbia is sent the payment details with the IPS QR code attached. The page builds the same text in
  * {@code frontend/src/data/paymentQr.ts} ({@code ipsPayload}), so there are two writers of one
  * string, in two languages. Neither can read the other, so they meet on a file:
  * {@code frontend/src/data/ipsSlipBothSidesWrite.json} holds the payee and a set of slips with the
@@ -19,7 +19,8 @@ import java.util.List;
  * alone, the file fails on the other.
  *
  * <p><b>What it does NOT share with the page is the amount</b>, and that is the owner's decision
- * of 26.09.2026 rather than a drift: „QR se kuje na iznos minus balans". The server works that
+ * of 26.09.2026, chosen with my recommendation, rather than a drift: the code is minted on the
+ * amount less the balance. The server works that
  * amount out ({@code MembershipInvoice}); the page still quotes the full price of the period, which
  * is a fault of the page against the same decision and is mended as its own piece of work (PDL,
  * 24.10.2026). The FORM of the text, given an amount, is what both sides hold to.

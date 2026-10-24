@@ -18,11 +18,13 @@ import java.util.concurrent.TimeUnit;
  * A REGISTRATION NOBODY CONFIRMED IN SEVEN DAYS IS DELETED, AND SO IS A MEMBER THE ADMINISTRATION
  * ENTERED WHO SET NO PASSWORD IN SEVEN DAYS.
  *
- * <p>The owner, 23.10.2026 (PDL „Poruka posle potvrde adrese i rok nedovršene registracije"): „Link
- * za potvrdu adrese važi 7 dana ..., a prijava koja za to vreme nije potvrđena briše se sama, bez
- * poruke, i adresa je slobodna za novu registraciju." And: „Isto važi i za člana kog je upisala
- * administracija (pozivnica) a koji za 7 dana ne postavi lozinku. ... Izuzetak: član koji već ima
- * evidentiranu uplatu ili članski broj se ne briše (broj se nikad ne dodeljuje ponovo)."
+ * <p>The owner, 23.10.2026 (PDL „Poruka posle potvrde adrese i rok nedovršene registracije"), asked
+ * „Moze li link da traje 7 dana, a da se nakon toga briše i cela prijava (nedovršena registracija, oslobađa se mail adresa i sl)?", and chose with my recommendation that
+ * the link lasts seven days and that a registration not confirmed in that time is deleted by itself,
+ * with no message, leaving the address free for a new registration. He chose too, against my
+ * recommendation, that the same holds for a member the administration entered who sets no password
+ * in seven days, and with my recommendation the exception: a member who already has a recorded
+ * payment or a member number is not deleted, because a number is never handed out twice.
  *
  * <p><b>WHO GOES, IN THE TERMS THE SCHEMA ALREADY HAS.</b> A member whose account has no confirmed
  * address - which is both a registration not confirmed and an entry whose invitation was never
@@ -31,11 +33,13 @@ import java.util.concurrent.TimeUnit;
  * <li><b>every link he was ever sent has run out, or fourteen days have passed since his account
  * was written</b>, and he was sent at least one link. The seven days are the life of a link: every
  * letter the portal sends him says „Link važi sedam dana", and a link asked for on the sixth day is
- * another seven days. But no more than fourteen from the registration, the owner's decision of
- * 24.10.2026 (PDL „Rok nepotvrđene prijave"): „nova poruka za potvrdu daje novih 7 dana, ali se
- * prijava svakako briše najkasnije 14 dana posle registracije", so that nobody holds somebody else's
- * address taken by asking for a new link every six days. The same for an invitation, fourteen days
- * from the entry. An account that stood before V72 has no recorded moment and no fourteenth day.
+ * another seven days. But no more than fourteen from the registration: the owner chose with my
+ * recommendation (PDL 24.10.2026, „Rok nepotvrđene prijave") that a new confirmation gives seven
+ * new days and the registration is deleted fourteen days after it at the latest, so that nobody
+ * holds somebody else's address taken by asking for a new link every six days. The same for an
+ * invitation, fourteen days from the entry, which is derived and not his decision (PDL, IZVEDENO
+ * 24.10.2026, „Granica od 14 dana važi i za pozivnicu", from his decision of 23.10.2026 that what
+ * holds for a registration holds for the member the administration entered). An account that stood before V72 has no recorded moment and no fourteenth day.
  * An account no link was ever sent to is not a registration and not an invitation - nothing the
  * decision is about - and stays;
  * <li><b>he has no member number and no payment of any state</b>. The owner's exception names the
@@ -54,7 +58,7 @@ import java.util.concurrent.TimeUnit;
  *
  * <p><b>THE DELETING IS THE ADMINISTRATION'S OWN</b> ({@link CompetitorWriteApi#takeAway}): his
  * account and him, his pairs' other halves told, a team he was the last of gone, his picture's file.
- * Without a message to him, because the decision says „bez poruke".
+ * Without a message to him, because the decision says the registration goes with no message.
  *
  * <p><b>ONE MEMBER AT A TIME, EACH IN A TRANSACTION OF ITS OWN, AND HIS ACCOUNT HELD FIRST.</b> The
  * account before anything else is the order every route that touches an account and its links
@@ -93,7 +97,8 @@ class UnconfirmedAccountsAreSwept {
 
 	/**
 	 * Fourteen days from the moment the account was written, and the registration goes whatever its
-	 * links say (owner, 24.10.2026, „najkasnije 14 dana posle registracije").
+	 * links say (the owner chose it with my recommendation, PDL 24.10.2026; for an invitation it is
+	 * derived, PDL IZVEDENO 24.10.2026).
 	 */
 	static final Duration AT_THE_LATEST = Duration.ofDays(14);
 

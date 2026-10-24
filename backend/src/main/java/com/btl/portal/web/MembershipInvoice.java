@@ -177,8 +177,9 @@ class MembershipInvoice {
 	/**
 	 * WHAT A SLIP FOR THIS SEASON ASKS HIM TO SEND, AS THE FIRST ONE HE WAS SHOWN FIXED IT.
 	 *
-	 * <p>The owner, 26.09.2026: „QR se kuje na iznos minus balans", and 27.09.2026, that a booking
-	 * takes „ono sto je kod obecao, ne ono sto balans stoji na dan knjizenja". So the first time an
+	 * <p>The owner chose with my recommendation, on 26.09.2026, that the code is minted on the amount
+	 * less the balance, and on 27.09.2026 that a booking takes what the code promised and not what the
+	 * balance stands at on the day of the booking. So the first time an
 	 * amount is put in front of him for a season, what his balance takes off it is recorded as a
 	 * promise, and every later slip for that season is the same number. {@link MyMembershipApi}
 	 * gives the whole of the reasoning beside its call, and it is its own: this is the code it used to

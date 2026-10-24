@@ -27,7 +27,8 @@ import java.util.Map;
  *
  * <p>The owner was shown {@code btl-produkt/primeri/uplatnica-qr-2027.png} on 23.10.2026 and chose
  * it: the code, and under it „IPS QR kod za uplatu", the purpose and the amount. ZXing draws the
- * code (owner, the same day, „Server crta QR kod bibliotekom ZXing"); the platform's own
+ * code (the owner chose it the same day among the options offered, with my recommendation); the
+ * platform's own
  * {@link ImageIO} writes the PNG, so ZXing's {@code javase} module is not needed.
  *
  * <p><b>THE BYTES IN THE CODE ARE THE BYTES THE PAGE PUTS IN ITS OWN</b>, and getting that right

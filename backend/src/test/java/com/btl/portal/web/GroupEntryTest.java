@@ -287,7 +287,8 @@ class GroupEntryTest {
 	 * otherwise go unnoticed and is why this is measured rather than assumed.
 	 */
 	/**
-	 * THE INVITATION LASTS SEVEN DAYS, „kao link za potvrdu" (owner, 23.10.2026), written onto its
+	 * THE INVITATION LASTS SEVEN DAYS, AS LONG AS A CONFIRMATION (owner, 23.10.2026, chosen with my
+	 * recommendation), written onto its
 	 * row when it is minted: the column's own default is the hour of a forgotten password and stays
 	 * so. The other route that mints one, correcting the address of a member with no password, is
 	 * measured by {@code AnInvitationLastsWhatItSaysTest}.

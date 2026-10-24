@@ -13,8 +13,8 @@ import {
 /**
  * THE SLIP THE SERVER MAILS IS THE SLIP THIS PAGE DRAWS, AND THE TWO MEET ON ONE FILE.
  *
- * The owner, 23.10.2026: a member from Serbia whose address is confirmed is mailed „podatke za
- * uplatu i IPS QR kod u prilogu". The server writes that code in Java (`IpsSlip`), and this page
+ * The owner, 23.10.2026: a member from Serbia whose address is confirmed is mailed the payment
+ * details with the IPS QR code attached. The server writes that code in Java (`IpsSlip`), and this page
  * writes its own with `ipsPayload`; neither can read the other. So `ipsSlipBothSidesWrite.json`
  * holds the payee and a set of slips with the text each must come out as, `IpsSlipTest` requires
  * the server to write exactly that, and this requires the page to. Edited to suit one side, the file

@@ -16,11 +16,11 @@ import java.util.ResourceBundle;
 /**
  * THE LETTER A MEMBER IS SENT THE MOMENT HIS ADDRESS IS CONFIRMED, AND WHICH OF SIX IT IS.
  *
- * <p>The owner, 23.10.2026 (PDL „Poruka posle potvrde adrese i rok nedovršene registracije"):
- * „Posle potvrđene adrese portal šalje poruku o članarini: član iz Srbije dobija podatke za uplatu i
- * IPS QR kod u prilogu, član iz inostranstva PayPal podatke (bez QR koda), a vlasnikovim rečima
- * „oslobođen ili pokriven balansom dobija poruku na koji je način njegova članarina izmirena"". On
- * 24.10.2026 he added F, for a member whose payment was recorded before he confirmed, and G, for a
+ * <p>The owner, 23.10.2026 (PDL „Poruka posle potvrde adrese i rok nedovršene registracije"): once
+ * his address is confirmed, a member from Serbia is sent the payment details with the IPS QR code
+ * attached and a member from abroad the PayPal details with no code, and in the owner's own words
+ * „oslobođen ili pokriven balansom dobija poruku na koji je način njegova članarina izmirena". On
+ * 24.10.2026 he chose, with my recommendation, F, for a member whose payment was recorded before he confirmed, and G, for a
  * balance that covers the whole fee while the membership has not been taken out of it yet; and he
  * chose that nothing is sent for a fee of nought, nor to a member who already has a number and no
  * membership of the season on sale.
@@ -146,8 +146,9 @@ public final class WhatTheWelcomeSays {
 
 	/**
 	 * C, with the PayPal address, the amount with the processing fee already in it, and whose the
-	 * address is: „PayPal adresa je poslovna, na Sportsko udruženje BTL." (owner, 24.10.2026, PDL).
-	 * The word for an account is in none of it, which is derived from his sentence of 22.10.2026.
+	 * address is, in the name of the association. The owner chose these words, „PayPal adresa" and
+	 * the note that it is a business address of the association, with my recommendation (PDL
+	 * 24.10.2026), as a choice of their own.
 	 */
 	public static Said withPayPal(MailLanguage in, int season, String paypal, String amount,
 			String recipient, Portal portal) {

@@ -1,10 +1,11 @@
 /* An unconfirmed registration lasts seven days, and then it is deleted.
  *
- * The owner's decision of 23.10.2026 (PDL „Poruka posle potvrde adrese i rok nedovršene
- * registracije"): „Link za potvrdu adrese važi 7 dana (ranije 24 sata ...), a prijava koja za to
- * vreme nije potvrđena briše se sama, bez poruke, i adresa je slobodna za novu registraciju." The
- * same for a member the administration entered who sets no password in seven days, unless he
- * already has a payment or a number. The deleting is the server's (`UnconfirmedAccountsAreSwept`);
+ * The owner, 23.10.2026 (PDL „Poruka posle potvrde adrese i rok nedovršene registracije"), asked
+ * „Moze li link da traje 7 dana, a da se nakon toga briše i cela prijava (nedovršena registracija, oslobađa se mail adresa i sl)?", and chose with my recommendation
+ * that the confirmation link lasts seven days, where it was twenty four hours, and that a
+ * registration not confirmed in that time is deleted by itself, with no message, leaving the address
+ * free. The same for a member the administration entered who sets no password in seven days, unless
+ * he already has a payment or a number. The deleting is the server's (`UnconfirmedAccountsAreSwept`);
  * this file holds the two things only the schema can.
  *
  *
@@ -48,8 +49,10 @@
  *
  * WHEN THE ACCOUNT WAS WRITTEN
  * ----------------------------
- * The owner, 24.10.2026 (PDL „Rok nepotvrđene prijave"): „nova poruka za potvrdu daje novih 7 dana,
- * ali se prijava svakako briše najkasnije 14 dana posle registracije". Asking for a new link every
+ * The owner chose with my recommendation (PDL 24.10.2026, „Rok nepotvrđene prijave") that a new
+ * confirmation gives seven new days and that the registration is deleted fourteen days after it at
+ * the latest; for an invitation the same bound, fourteen days from the entry, is derived (PDL,
+ * IZVEDENO 24.10.2026, „Granica od 14 dana važi i za pozivnicu"). Asking for a new link every
  * six days would otherwise hold somebody else's address taken for ever. So the account says when it
  * was written: `account.created_at`, which every account written from this file on is given by its
  * default, the registration and the administration's entry alike.
@@ -82,4 +85,4 @@ alter table account
 alter table account
     alter column created_at set default now();
 
-comment on column account.created_at is 'When the account was written, for every account written from V72 on; empty for the accounts that stood before it, whose moment nobody recorded. An unconfirmed registration is deleted fourteen days after it at the latest (owner, 24.10.2026).';
+comment on column account.created_at is 'When the account was written, for every account written from V72 on; empty for the accounts that stood before it, whose moment nobody recorded. An unconfirmed registration is deleted fourteen days after it at the latest (owner, 24.10.2026, chosen with my recommendation; derived for an invitation).';

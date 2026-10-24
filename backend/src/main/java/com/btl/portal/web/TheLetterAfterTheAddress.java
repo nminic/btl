@@ -22,8 +22,8 @@ import java.util.List;
 /**
  * THE LETTER A MEMBER IS SENT THE MOMENT HIS ADDRESS IS CONFIRMED FOR THE FIRST TIME.
  *
- * <p>The owner, 23.10.2026 (PDL „Poruka posle potvrde adrese i rok nedovršene registracije"):
- * „Posle potvrđene adrese portal šalje poruku o članarini". Which of the six letters it is,
+ * <p>The owner, 23.10.2026 (PDL „Poruka posle potvrde adrese i rok nedovršene registracije"): once
+ * the address is confirmed, the portal writes to the member about his membership. Which of the six letters it is,
  * {@link WhatTheWelcomeSays#which} decides; this class reads what that needs and sends it.
  *
  * <p><b>THERE ARE TWO WAYS AN ADDRESS IS CONFIRMED, AND BOTH CALL THIS, EACH ONLY WHEN IT WAS THE
@@ -42,7 +42,8 @@ import java.util.List;
  * out only once that promise is committed, for the same reason a link is sent only once its row is.
  *
  * <p><b>THE AMOUNT IS THE SERVER'S, MINUS THE BALANCE, AT THE JUNIOR PRICE WHERE IT APPLIES</b>
- * (owner, 26.09.2026, „QR se kuje na iznos minus balans"; PDL 24.10.2026), worked out by
+ * (owner, 26.09.2026, chosen with my recommendation: the code is minted on the amount less the
+ * balance; PDL 24.10.2026), worked out by
  * {@link MembershipInvoice} exactly as {@code GET /api/me/membership} works it out, and promised the
  * same way the first time it is shown. The page „Moja članarina" quotes the full price of the period
  * today; that is the page's fault against the same decision and is mended on its own.

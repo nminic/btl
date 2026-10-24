@@ -146,8 +146,8 @@ class EmailConfirmationApi {
 		Confirmed done = inOneTransaction.execute(committing -> confirming(typed));
 
 		/* THE LETTER ABOUT HIS MEMBERSHIP GOES ONLY ONCE THE CONFIRMATION HAS COMMITTED, and only
-		   if THIS request was the one that confirmed it (owner, 23.10.2026, „Posle potvrđene adrese
-		   portal šalje poruku o članarini"; `TheLetterAfterTheAddress`). A second press on the link
+		   if THIS request was the one that confirmed it (owner, 23.10.2026: once the address is
+		   confirmed the portal writes to him about his membership; `TheLetterAfterTheAddress`). A second press on the link
 		   answers 204 as it always did and sends nothing. */
 		if (done.firstConfirmed() != null) {
 			welcome.sendTo(done.firstConfirmed());

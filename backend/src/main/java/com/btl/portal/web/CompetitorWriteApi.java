@@ -353,7 +353,7 @@ class CompetitorWriteApi {
 	 * pair he was in told, a team he was the last of gone, and the file of his picture.
 	 *
 	 * <p><b>Package visible because a second door uses it, and it is the same act.</b> The owner,
-	 * 23.10.2026: a registration not confirmed in seven days „briše se sama", and so does a member
+	 * 23.10.2026: a registration not confirmed in seven days is deleted by itself, and so is a member
 	 * the administration entered who set no password and has neither a payment nor a number
 	 * ({@link UnconfirmedAccountsAreSwept}). That is a member deleted with his account, and a second
 	 * copy of these lines would be a second place to forget his pairs, his team or his picture.

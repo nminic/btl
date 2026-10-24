@@ -118,8 +118,8 @@ class EveryMailIsAMandatoryOneTest {
 			Map.entry("resultEnteredInAFrozenSeason", "a result entered by the league in a season that has frozen: the mail about a result entered"),
 			Map.entry("resultApprovedInAFrozenSeason", "a result approved after its season froze: the mail about a result approved"),
 			/* THE LETTER AFTER A CONFIRMED ADDRESS, six words for one occasion. Named by the owner
-			   himself and not on the list P22 keeps: PDL, 23.10.2026, „Posle potvrđene adrese portal
-			   šalje poruku o članarini", with B, C, D and E that day and F and G on 24.10.2026. Each
+			   himself and not on the list P22 keeps: PDL, 23.10.2026, once the address is confirmed the
+			   portal writes to the member about his membership, with B, C, D and E that day and F and G on 24.10.2026. Each
 			   is a key of its own because each is a different letter; exactly one of them goes, once. */
 			Map.entry("welcomeWithASlip", "the letter after a confirmed address: from Serbia, the slip and the code (PDL 23.10.2026, B)"),
 			Map.entry("welcomeWithPayPal", "the letter after a confirmed address: from abroad, PayPal (PDL 23.10.2026, C)"),

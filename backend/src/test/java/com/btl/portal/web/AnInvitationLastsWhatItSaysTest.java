@@ -33,8 +33,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /**
  * THE INVITATION A CORRECTED ADDRESS IS SENT LASTS THE SEVEN DAYS ITS LETTER PROMISES.
  *
- * <p>The owner, 23.10.2026: „Link pozivnice člana kog je upisala administracija važi 7 dana, kao link
- * za potvrdu (ranije 1 sat)". Two routes mint that invitation: entering members in a group, measured
+ * <p>The owner chose on 23.10.2026, with my recommendation, that the invitation of a member the
+ * administration entered lasts seven days, as long as the confirmation link, where it was one hour. Two routes mint that invitation: entering members in a group, measured
  * in {@code GroupEntryTest}, and correcting the address of a member who has no password (PDL
  * 23.10.2026), measured here. A class of its own and not a case in {@code MemberDataWriteApiTest},
  * because that file is being changed on another branch at the same time.

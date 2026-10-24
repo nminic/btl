@@ -58,9 +58,9 @@ class HowLongALinkLastsMatchesTheSchemaTest extends DatabaseTest {
 	 * WHOSE DEFAULT EACH MESSAGE'S PROMISE IS HELD TO, which is the row it lives in for every
 	 * message but one.
 	 *
-	 * <p><b>The member's invitation lasts „kao link za potvrdu"</b> (owner, 23.10.2026, PDL „Poruka
-	 * posle potvrde adrese i rok nedovršene registracije": „Link pozivnice člana kog je upisala
-	 * administracija važi 7 dana, kao link za potvrdu (ranije 1 sat)"), while its row stays a
+	 * <p><b>The member's invitation lasts as long as the confirmation</b> (the owner chose it among
+	 * the options offered, with my recommendation, PDL 23.10.2026, „Poruka posle potvrde adrese i rok
+	 * nedovršene registracije": seven days, where it was one hour), while its row stays a
 	 * reset's, whose default stays the hour of a forgotten password. So its seven days are written
 	 * onto the row when it is minted ({@code AnInvitationOfAMember}), and what they are held to here
 	 * is the confirmation's default, which is the owner's own measure of them. That the row really

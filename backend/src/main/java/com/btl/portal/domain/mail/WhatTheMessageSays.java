@@ -182,9 +182,9 @@ public final class WhatTheMessageSays {
 	 * Each of them, with the path it points at and how long it is good for.
 	 *
 	 * <p>The durations are the owner's, taken from the schema and not invented
-	 * here: seven days for confirming an address (owner, 23.10.2026, PDL „Poruka posle
-	 * potvrde adrese i rok nedovršene registracije": „Link za potvrdu adrese važi 7 dana",
-	 * which overturned the twenty four hours of 08.09.2026) and one hour for a password
+	 * here: seven days for confirming an address (the owner, 23.10.2026, PDL „Poruka posle
+	 * potvrde adrese i rok nedovršene registracije", asked „Moze li link da traje 7 dana, a da se nakon toga briše i cela prijava (nedovršena registracija, oslobađa se mail adresa i sl)?" and chose
+	 * the seven days with my recommendation, overturning the twenty four hours of 08.09.2026) and one hour for a password
 	 * link, which is the shorter because it is the one that hands over an account.
 	 *
 	 * <p><b>TWO OF THEM NOW POINT AT THE SAME PLACE, AND THAT IS A DECISION RATHER
@@ -236,11 +236,12 @@ public final class WhatTheMessageSays {
 		 * Svakom unetom stize poruka sa vezom na kojoj sam postavlja lozinku i time
 		 * preuzima nalog."
 		 *
-		 * <p><b>SEVEN DAYS, „kao link za potvrdu", AND STILL THE SAME ROW AS THE OTHER TWO.</b>
-		 * The owner, 23.10.2026 (PDL „Poruka posle potvrde adrese i rok nedovršene registracije"):
-		 * „Link pozivnice člana kog je upisala administracija važi 7 dana, kao link za potvrdu
-		 * (ranije 1 sat)", and after those seven days the entry is deleted unless he has a payment
-		 * or a number. That overturns the one hour of 25.09.2026 and keeps what that decision
+		 * <p><b>SEVEN DAYS, AS LONG AS A CONFIRMATION, AND STILL THE SAME ROW AS THE OTHER TWO.</b>
+		 * The owner chose among the options offered, with my recommendation (PDL 23.10.2026,
+		 * „Poruka posle potvrde adrese i rok nedovršene registracije"), that the invitation of a
+		 * member the administration entered lasts seven days, as long as the confirmation link and
+		 * no longer one hour, and that after those seven days the entry is deleted unless he has a
+		 * payment or a number. That overturns the one hour of 25.09.2026 and keeps what that decision
 		 * kept: no table of its own (ADL A53, „ne kao druga tabela i drugi razred"), and the
 		 * column default this row shares with a forgotten password stays one hour, which is the
 		 * number the owner chose for a password on 11.09.2026.
@@ -248,8 +249,8 @@ public final class WhatTheMessageSays {
 		 * <p><b>So the seven days are written onto the row when it is minted</b>
 		 * ({@code web.AnInvitationOfAMember}) rather than taken from the column's default, and
 		 * this number is where they are read from. {@code HowLongALinkLastsMatchesTheSchemaTest}
-		 * ties it to the default of the CONFIRMATION's column, because „kao link za potvrdu" is
-		 * the owner's own measure of it, and {@code AnInvitationLastsWhatItSaysTest} measures
+		 * ties it to the default of the CONFIRMATION's column, because the length of the
+		 * confirmation is the measure the decision gives it, and {@code AnInvitationLastsWhatItSaysTest} measures
 		 * that the row both routes mint really lasts it.
 		 */
 		INVITED_AS_A_MEMBER("invitedAsAMember", "/nova-lozinka", Duration.ofDays(7), false);
@@ -399,9 +400,9 @@ public final class WhatTheMessageSays {
 	/**
 	 * „SEDAM DANA", IN WORDS, AND NOT „168 SATI".
 	 *
-	 * <p>The owner's text for the confirmation (PDL 23.10.2026, example A) says „Link važi sedam
-	 * dana" and „za sedam dana neće ostati ni traga od nje", and the invitation's sentence of
-	 * 24.10.2026 says „Link važi sedam dana". The number still comes from {@link Message#lasts}
+	 * <p>The text of example A, which the owner chose for the confirmation (PDL 23.10.2026), says
+	 * „Link važi sedam dana" and „za sedam dana neće ostati ni traga od nje", and the invitation's
+	 * sentence he chose on 24.10.2026 says „Link važi sedam dana". The number still comes from {@link Message#lasts}
 	 * and never from the dictionary, so a link the schema ends sooner cannot be promised for a
 	 * week; only the way a whole number of days is said is written here.
 	 *

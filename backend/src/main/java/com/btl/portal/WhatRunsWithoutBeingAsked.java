@@ -21,8 +21,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * task, and the case that asks for it fails; nothing reads this file's text.
  *
  * <p><b>THE NEXT JOB USES THIS SWITCH AND DOES NOT ADD A SECOND, and the second one did.</b>
- * {@code UnconfirmedAccountsAreSwept} (owner, 23.10.2026: an unconfirmed registration „briše se
- * sama" after seven days) is its own {@code @Scheduled} method and nothing more, and so will the
+ * {@code UnconfirmedAccountsAreSwept} (owner, 23.10.2026: an unconfirmed registration is deleted by
+ * itself after seven days) is its own {@code @Scheduled} method and nothing more, and so will the
  * 1 January job the journal's P13 describes be. Boot builds one scheduler thread for all of them, so a job that
  * waits on something slow holds every other one back; each of them is short, and the day one is
  * not is the day to give the scheduler a pool.

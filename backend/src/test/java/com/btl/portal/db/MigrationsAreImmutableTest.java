@@ -611,7 +611,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   no open pull request held a migration at V72 or above, and origin/main stands at V71.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("72", "V72__an_unconfirmed_registration_lasts_seven_days.sql", -1865365028));
+			new Applied("72", "V72__an_unconfirmed_registration_lasts_seven_days.sql", -317542150));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

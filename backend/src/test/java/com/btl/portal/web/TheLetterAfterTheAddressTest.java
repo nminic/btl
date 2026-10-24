@@ -303,7 +303,8 @@ class TheLetterAfterTheAddressTest {
 
 	/**
 	 * THE BALANCE COMES OFF THE AMOUNT, IN THE WORDS AND IN THE CODE, AND IS PROMISED (owner,
-	 * 26.09.2026, „QR se kuje na iznos minus balans"; 27.09.2026, the first look fixes the promise).
+	 * 26.09.2026, chosen with my recommendation: the code is minted on the amount less the balance;
+	 * 27.09.2026, the first look fixes the promise).
 	 * His book holds less than the fee, so the full fee and the fee less the book are two numbers.
 	 */
 	@Test

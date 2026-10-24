@@ -248,8 +248,8 @@ class PasswordResetApi {
 		Reset done = inOneTransaction.execute(committing -> resetting(typed));
 
 		/* AN ADDRESS THIS RESET CONFIRMED FOR THE FIRST TIME IS TOLD ABOUT ITS MEMBERSHIP, after the
-		   commit, exactly as `EmailConfirmationApi.confirm` tells one it confirmed (owner, 23.10.2026,
-		   „Posle potvrđene adrese portal šalje poruku o članarini"). This is the member the
+		   commit, exactly as `EmailConfirmationApi.confirm` tells one it confirmed (owner, 23.10.2026:
+		   once the address is confirmed the portal writes to him about his membership). This is the member the
 		   administration entered: setting his password through the invitation is what confirms his
 		   address (PDL 19.09.2026), so this is his moment of confirming it. */
 		if (done.firstConfirmed() != null) {

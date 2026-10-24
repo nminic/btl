@@ -466,8 +466,8 @@ class PostmanTest {
 	 * A LETTER WITH A FILE BESIDE IT ARRIVES AS ONE LETTER, WITH THE FILE, AND EVERYTHING ELSE A
 	 * LETTER OF THIS PORTAL CARRIES.
 	 *
-	 * <p>The slip a member from Serbia is mailed once his address is confirmed (owner, 23.10.2026,
-	 * „IPS QR kod u prilogu") is the first letter that is not a {@code SimpleMailMessage}, so the
+	 * <p>The slip a member from Serbia is mailed once his address is confirmed (owner, 23.10.2026: the
+	 * IPS QR code goes as an attachment) is the first letter that is not a {@code SimpleMailMessage}, so the
 	 * three things every plain one is given are asked of it here: from {@code no-reply@}, a reply to
 	 * the league, and its words in their own letters. And the file: its name, its type, and its
 	 * bytes, the very ones that were drawn.

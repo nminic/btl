@@ -213,8 +213,8 @@ public class Postman {
 	 * SENDS WHAT WAS SAID TO ONE ADDRESS, WITH ONE FILE BESIDE IT AND NOBODY COPIED IN.
 	 *
 	 * <p>The first letter of this portal that carries anything but words: the payment slip a member
-	 * from Serbia is sent once his address is confirmed (owner, 23.10.2026, „IPS QR kod u
-	 * prilogu"). A {@link SimpleMailMessage} cannot carry a file, so this one is a MIME message,
+	 * from Serbia is sent once his address is confirmed (owner, 23.10.2026: the IPS QR code goes
+	 * as an attachment). A {@link SimpleMailMessage} cannot carry a file, so this one is a MIME message,
 	 * with the same three things every message here is given - who it is from, who it is to, and
 	 * that a reply goes to the league (ADL A4c) - and its text in UTF-8, which is what the plain
 	 * ones are sent in too.
