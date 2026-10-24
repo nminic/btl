@@ -19,8 +19,8 @@ import type { Answers, At } from './support/harness.ts'
  * sebi boks"), <b>the two of a row as tall as each other, and on a telephone one under the other</b>
  * (the UI standard of the repository, `CLAUDE.md`). Beside is asked as the same top, the same bottom,
  * and the first's right edge not past the second's left; under is asked as the same left edge and the
- * second's top not above the first's bottom. Asked for a member whose fee stands and for somebody who has
- * not paid, whose panels differ: his password has no neighbour and takes the whole row.
+ * second's top not above the first's bottom. Asked for a member whose fee stands. Somebody who has not
+ * paid is not drawn the settings since 23.10.2026 (PDL 22.10.2026), so his arrangement is not asked.
  * <li><b>No empty space under the field for choosing a picture, and none between the box for the words
  * about himself and the button</b> (his words: „veliki prazan prostor"). The cause was
  * `.rankings__field--wide { flex: 1 1 14rem }` meeting a column, where the basis is a HEIGHT: each field
@@ -60,26 +60,6 @@ const MEMBER = {
   shirtSize: 'L',
 }
 
-const NEVER_PAID = {
-  country: 'RS',
-  firstSeason: 2027,
-  membershipBasis: 'payment',
-  active: false,
-  referralCode: '3d6b1f0a9c2e4478',
-  referredCount: 0,
-  firstName: 'Tek',
-  lastName: 'Stigao',
-  gender: 'M',
-  city: 'Beograd',
-  ageBand: '25-39',
-  firstSeason2027: false,
-  bio: '',
-  profileHidden: false,
-  birthdayShown: 'none',
-  address: 'Ulica Nova 3',
-  shirtSize: 'XL',
-}
-
 const ROW = {
   memberNumber: MEMBER.memberNumber,
   firstName: MEMBER.firstName,
@@ -104,11 +84,6 @@ const A_MEMBER: Answers = {
   '/api/me': { role: 'competitor', account: 1, member: MEMBER, mailLanguage: 'sr' },
   '/api/competitors': [ROW],
   '/api/me/photo': { waiting: null, standing: null },
-}
-
-/** Somebody who registered and has not paid: his password, the theme and the mail. */
-const SOMEBODY_WHO_HAS_NOT_PAID: Answers = {
-  '/api/me': { role: 'competitor', account: 1, member: NEVER_PAID, mailLanguage: 'sr' },
 }
 
 const PANELS = {
@@ -226,27 +201,6 @@ for (const [columns, widths] of [
 
       expect(probe.widened, 'the page was widened by something running off its right edge').toBe(0)
       expect(probe.sideways, 'the page scrolls sideways').toBe(0)
-    })
-
-    test(`the theme and the mail ${columns === 2 ? 'beside' : 'under'} each other and the password across the row for somebody who has not paid, ${label(at)}`, async ({ open: opener }) => {
-      const { page, probe } = await open(opener, at, SOMEBODY_WHO_HAS_NOT_PAID)
-
-      await page.locator(PANELS.mail).waitFor({ state: 'visible' })
-      await page.locator(PANELS.password).waitFor({ state: 'visible' })
-
-      expect(await pairsAreTwoColumns(page)).toBe(columns)
-
-      await expectPair(page, PANELS.theme, PANELS.mail, columns, 'the theme and the language of the mail')
-
-      /* HIS PASSWORD HAS NO NEIGHBOUR, so it takes the whole row: as wide as the theme and the mail
-         together, from the left edge of the one to the right edge of the other. */
-      const row = await boxesOf(page, { password: PANELS.password, theme: PANELS.theme, mail: PANELS.mail })
-
-      expect(Math.abs((row['password']?.left ?? 0) - (row['theme']?.left ?? 1)), 'the password starts where the row starts').toBeLessThanOrEqual(SLACK)
-      expect(Math.abs((row['password']?.right ?? 0) - (row['mail']?.right ?? 1)), 'the password ends where the row ends').toBeLessThanOrEqual(SLACK)
-
-      expect(probe.widened).toBe(0)
-      expect(probe.sideways).toBe(0)
     })
   }
 }

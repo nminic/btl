@@ -92,9 +92,10 @@ for (const at of WIDTHS) {
   })
 
   test(`the menu with his name stands inside the page and cuts nothing off, ${label(at)}`, async ({ open }) => {
-    const { page, probe } = await open(at, '/sr', '.account__btn', SOMEBODY_WHO_HAS_NOT_PAID)
+    const { page, probe } = await open(at, '/sr/moji-podaci', CARD, SOMEBODY_WHO_HAS_NOT_PAID)
 
-    /* Waited for until the name is in the circle, so the panel is opened on his name and not on nothing. */
+    /* On the page of his data and not the front page, which is too short to draw the scrollbar a desktop
+       has (`geometry/support/harness.ts`). Waited for until the name is in the circle, so the panel is opened on his name and not on nothing. */
     await expect(page.locator('.account__monogram')).toHaveText('AR')
     await page.locator('.account__btn').click()
     await page.locator('.account__panel .account__who').waitFor({ state: 'visible' })
