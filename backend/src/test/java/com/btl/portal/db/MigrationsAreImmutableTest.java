@@ -598,7 +598,23 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read off
 			   this very assertion when it ran before the entry existed. */
-			new Applied("71", "V71__the_legal_pages_say_each_thing_in_one_place.sql", -1120675458));
+			new Applied("71", "V71__the_legal_pages_say_each_thing_in_one_place.sql", -1120675458),
+
+			/* V73. The privacy policy says the date of birth is not shown to others, in Serbian and in English
+			   (the owner, 24.10.2026, PDL, the entry "Politika privatnosti, odeljak 3": add the word "drugima"):
+			   one word in the sentence of section 3 about the date of birth, because a member sees his own date on
+			   his own card. Two edits, each stopping the migration unless its old text stands exactly once and its
+			   new text is not already there. No schema, and no sign-off date moved.
+
+			   73 and not 72, MEASURED on 24.10.2026: the pull request that carries V72 (an unconfirmed registration
+			   lasts seven days) is merged before this one, and no other remote ref held a migration at V73. This
+			   list therefore has no V72 yet; it gets one when that pull request is merged, and the two entries are
+			   neighbours that do not touch.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read off
+			   this very assertion when it ran before the entry existed. */
+			new Applied("73", "V73__the_privacy_policy_says_the_date_of_birth_is_not_shown_to_others.sql",
+					-1995356564));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

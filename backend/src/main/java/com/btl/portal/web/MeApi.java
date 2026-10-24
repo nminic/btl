@@ -602,8 +602,9 @@ class MeApi {
 						+ "  as bio_waiting,"
 						/* AND THE YEAR, WHICH IS READ HERE AND LEAVES NOWHERE: the input the band is
 						   worked out from and the one field of this table the privacy policy is
-						   written about (section 3 of the privacy policy, „Datum rodjenja se nikada ne prikazuje, ni u punom
-						   ni u skracenom obliku"), taken LAST and turned into a band before anything
+						   written about (section 3 of the privacy policy, as it read when this was written: „Datum
+						   rodjenja se nikada ne prikazuje, ni u punom ni u skracenom obliku"; it now says „ne prikazujemo ga
+						   drugima ni u punom ni u skraćenom obliku, osim ako sami izaberete [...]", V57 and V73), taken LAST and turned into a band before anything
 						   is built out of the row, so it reaches a local and never a component. The
 						   year and not the date, for the reason `CompetitorApi` gives at the same
 						   place: the day is not part of the question. Since 24.10.2026 the date itself
