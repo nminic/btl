@@ -255,8 +255,17 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	/** The text as it stood BEFORE V73: the new clause put back to the old one in both languages, by hand. */
 	private void putBackTheTextAsItStoodBeforeV73() {
 		for (String language : List.of("sr", "en")) {
-			setBody(language, THE_PLACE, bodyOf(language, THE_PLACE).replace(newIn(language), oldIn(language)));
+			setBody(language, THE_PLACE, asItStoodBefore(language, THE_PLACE));
+			setBody(language, THE_TABLE, asItStoodBefore(language, THE_TABLE));
 		}
+	}
+
+	/** A section with every word V73 adds taken out again: what V73 found. */
+	private String asItStoodBefore(String language, Place place) {
+		return bodyOf(language, place)
+				.replace(newIn(language), oldIn(language))
+				.replace(rowNew(language), rowOld(language))
+				.replace(headingNew(language), headingOld(language));
 	}
 
 	private List<String> everySectionBody() {
@@ -269,7 +278,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	}
 
 	/**
-	 * V73 run over the text before it, the one case in which it succeeds: two sections change, and no other section of
+	 * V73 run over the text before it, the one case in which it succeeds: four sections change, and no other section of
 	 * either table changes by a character. Inside the two, taking the word out again gives the text V73 found.
 	 */
 	@Test
@@ -277,7 +286,8 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 		putBackTheTextAsItStoodBeforeV73();
 
 		List<String> before = everySectionBody();
-		Set<String> found = Set.of(bodyOf("sr", THE_PLACE), bodyOf("en", THE_PLACE));
+		List<String> found = List.of(bodyOf("sr", THE_TABLE), bodyOf("sr", THE_PLACE), bodyOf("en", THE_TABLE),
+				bodyOf("en", THE_PLACE));
 
 		jdbc.execute(migrationSql(String.valueOf(THE_MIGRATION)));
 
@@ -294,16 +304,15 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 			}
 		}
 
-		assertThat(changed).as("V73 must change the body of two sections and no other").isEqualTo(2);
+		assertThat(changed).as("V73 must change the body of four sections and no other").isEqualTo(4);
 
 		for (String language : List.of("sr", "en")) {
 			theClauseStandsInThatOneSectionAndTheOldOneNowhere(language);
 		}
 
-		assertThat(Set.of(
-				bodyOf("sr", THE_PLACE).replace(SERBIAN_NEW, SERBIAN_OLD),
-				bodyOf("en", THE_PLACE).replace(ENGLISH_NEW, ENGLISH_OLD)))
-				.as("with the word taken out again, section 3 must be the text V73 found in each language")
+		assertThat(List.of(asItStoodBefore("sr", THE_TABLE), asItStoodBefore("sr", THE_PLACE),
+				asItStoodBefore("en", THE_TABLE), asItStoodBefore("en", THE_PLACE)))
+				.as("with the words taken out again, sections 2 and 3 must be the text V73 found in each language")
 				.isEqualTo(found);
 	}
 
@@ -312,10 +321,14 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 		PSQLException error = v73RunAgain();
 
 		assertThat(error.getServerErrorMessage().getMessage()).contains("the written pages were not edited");
-		assertThat(error.getServerErrorMessage().getMessage()).contains("2 of 2 edits");
+		assertThat(error.getServerErrorMessage().getMessage()).contains("6 of 6 edits");
 		assertThat(reportOf(error).lines().toList())
 				.contains("Date of birth @ politika-privatnosti #3 sr: found 0 times, and its new text is already there",
-						"Date of birth @ politika-privatnosti #3 en: found 0 times, and its new text is already there");
+						"Date of birth @ politika-privatnosti #3 en: found 0 times, and its new text is already there",
+						"Document row @ politika-privatnosti #2 sr: found 0 times, and its new text is already there",
+						"Document row @ politika-privatnosti #2 en: found 0 times, and its new text is already there",
+						"Never shown, heading @ politika-privatnosti #3 sr: found 0 times, and its new text is already there",
+						"Never shown, heading @ politika-privatnosti #3 en: found 0 times, and its new text is already there");
 	}
 
 	@Test
@@ -325,7 +338,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 
 		PSQLException error = v73RunAgain();
 
-		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 2 edits");
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 6 edits");
 		assertThat(reportOf(error)).contains("Date of birth @ politika-privatnosti #3 sr: found 2 times");
 	}
 
@@ -336,7 +349,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 
 		PSQLException error = v73RunAgain();
 
-		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 2 edits");
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 6 edits");
 		assertThat(reportOf(error)).contains("Date of birth @ politika-privatnosti #3 en: found 0 times");
 	}
 
@@ -347,7 +360,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 
 		PSQLException error = v73RunAgain();
 
-		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 2 edits");
+		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 6 edits");
 		assertThat(reportOf(error))
 				.contains("Date of birth @ politika-privatnosti #3 sr: found once, and its new text is already there");
 	}
@@ -365,7 +378,84 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 
 		PSQLException error = v73RunAgain();
 
-		assertThat(error.getServerErrorMessage().getMessage()).contains("1 of 2 edits");
-		assertThat(reportOf(error)).contains("Date of birth @ politika-privatnosti #3 en: there is no such text");
+		/* Two of the six are aimed at that text: the clause and the heading over the list. */
+		assertThat(error.getServerErrorMessage().getMessage()).contains("2 of 6 edits");
+		assertThat(reportOf(error).lines().toList())
+				.contains("Date of birth @ politika-privatnosti #3 en: there is no such text",
+						"Never shown, heading @ politika-privatnosti #3 en: there is no such text");
+	}
+
+	private static final String SERBIAN_ROW_OLD = "Vidi ga samo administracija, ne prikazuje se nigde i stoji odvojeno od podataka";
+	private static final String ENGLISH_ROW_OLD = "Only the administration sees it; it is not displayed anywhere and stands apart from the data";
+	private static final String SERBIAN_ROW_NEW = "Vidi ga samo administracija i vi, na svojoj kartici Podaci; drugima se ne prikazuje nigde"
+			+ " i stoji odvojeno od podataka";
+	private static final String ENGLISH_ROW_NEW = "Only the administration and you see it, on your own Details card; it is not displayed to"
+			+ " others anywhere and stands apart from the data";
+
+	private static final String SERBIAN_HEADING_OLD = "### Nikada se ne prikazuje\n\nAdresa elektronske pošte";
+	private static final String ENGLISH_HEADING_OLD = "### Never displayed\n\nE-mail address";
+	private static final String SERBIAN_HEADING_NEW = "### Nikada se ne prikazuje drugima\n\nAdresa elektronske pošte";
+	private static final String ENGLISH_HEADING_NEW = "### Never displayed to others\n\nE-mail address";
+
+	private static final Place THE_TABLE = new Place(POLICY, 2);
+
+	private static String rowOld(String language) {
+		return language.equals("sr") ? SERBIAN_ROW_OLD : ENGLISH_ROW_OLD;
+	}
+
+	private static String rowNew(String language) {
+		return language.equals("sr") ? SERBIAN_ROW_NEW : ENGLISH_ROW_NEW;
+	}
+
+	private static String headingOld(String language) {
+		return language.equals("sr") ? SERBIAN_HEADING_OLD : ENGLISH_HEADING_OLD;
+	}
+
+	private static String headingNew(String language) {
+		return language.equals("sr") ? SERBIAN_HEADING_NEW : ENGLISH_HEADING_NEW;
+	}
+
+	/**
+	 * THE TWO MORE PLACES (owner, 24.10.2026, the words are the assistant's): the cell of the table that says who sees the
+	 * number of the identity document, and the heading over the list of what is never shown, which holds the father's name
+	 * and that number. Each stands once, in its own section and in no other, and the old words stand nowhere.
+	 */
+	@Test
+	void theCellOfTheDocumentAndTheHeadingOverTheListStandOnceInTheirOwnSectionsInBothLanguages() {
+		for (String language : List.of("sr", "en")) {
+			assertThat(placesWhichCarry(language, rowNew(language)))
+					.as("the %s cell about the document must stand in section 2 of the policy and in no other", language)
+					.containsExactly(THE_TABLE);
+			assertThat(placesWhichCarry(language, rowOld(language)))
+					.as("the %s cell about the document as it stood before V73 must be nowhere", language).isEmpty();
+			assertThat(bodyOf(language, THE_TABLE)).containsOnlyOnce(rowNew(language));
+
+			assertThat(placesWhichCarry(language, headingNew(language)))
+					.as("the %s heading over the list must stand in section 3 of the policy and in no other", language)
+					.containsExactly(THE_PLACE);
+			assertThat(placesWhichCarry(language, headingOld(language)))
+					.as("the %s heading as it stood before V73 must be nowhere", language).isEmpty();
+			assertThat(bodyOf(language, THE_PLACE)).containsOnlyOnce(headingNew(language));
+		}
+	}
+
+	/**
+	 * The list under the heading still names the father's name and the document, and the cell still carries the rest of
+	 * what it said: the word and the clause were added to the sentence and nothing was taken out of it.
+	 */
+	@Test
+	void theListAndTheRestOfTheCellAreAsTheyWere() {
+		assertThat(bodyOf("sr", THE_PLACE)).contains("ime oca, broj ličnog dokumenta, telefon");
+		assertThat(bodyOf("en", THE_PLACE)).contains("father's name, ID document number, phone");
+		assertThat(bodyOf("sr", THE_TABLE))
+				.contains("u sopstvenoj tabeli sa sopstvenim pravom pristupa | Pravna obaveza | Sekcija 5 |");
+		assertThat(bodyOf("en", THE_TABLE))
+				.contains("in its own table with its own access rights | Legal obligation | Section 5 |");
+	}
+
+	@Test
+	void theWordIsNotAtTheEndOfTheCellOrAfterTheHeading() {
+		assertThat(bodyOf("sr", THE_PLACE)).doesNotContain("Nikada se ne prikazuje\n\nAdresa elektronske pošte, adresa za slanje, drugima");
+		assertThat(bodyOf("sr", THE_TABLE)).doesNotContain("pravom pristupa drugima");
 	}
 }

@@ -1,4 +1,5 @@
-/* THE PRIVACY POLICY SAYS THE DATE OF BIRTH IS NOT SHOWN TO OTHERS, IN SERBIAN AND IN ENGLISH.
+/* THE PRIVACY POLICY SAYS THE DATE OF BIRTH, THE FATHER'S NAME AND THE NUMBER OF THE DOCUMENT ARE NOT SHOWN TO OTHERS, IN
+   SERBIAN AND IN ENGLISH.
 
    WHOSE DECISION, AND WHERE IT IS WRITTEN. PDL, the entry "Politika privatnosti, odeljak 3" (owner, 24.10.2026): "nikada
    ne prikazuje drugima, dakle dodaj rec "drugima"". The sentence about the date of birth gains the word "drugima", because
@@ -10,6 +11,17 @@
    THE WORDS, character for character, and nothing else in the sentence moves.
      Serbian:  ... i ne prikazujemo ga drugima ni u punom ni u skraćenom obliku, osim ako sami izaberete ...
      English:  ... and we do not display it to others in full or in shortened form, unless you yourself choose ...
+   THE TWO MORE PLACES, the same day, the same reason, the owner's choice among the places offered (the words are the
+   assistant's and so is the English): the row of the table in section 2 for the number of the identity document, which
+   said "Vidi ga samo administracija, ne prikazuje se nigde", now says "Vidi ga samo administracija i vi, na svojoj kartici
+   Podaci; drugima se ne prikazuje nigde" (the rest of the cell is as it was), because a member sees the number on his own
+   card; and the heading over the list in section 3, "Nikada se ne prikazuje", becomes "Nikada se ne prikazuje drugima",
+   because the list holds the father's name and the number of the document, both of which the member sees on his own card.
+   The heading and not the two names alone, because the list is one list and the member sees on his own card, and has always
+   seen on his own page, more than those two (his address, his telephone, his shirt size).
+   English: "Only the administration and you see it, on your own Details card; it is not displayed to others anywhere"
+   (the English card is called "Details", `profile.parts.data`), and "### Never displayed to others".
+
    WHERE THE WORD GOES. After "ga" and before "ni u punom", and after "it" and before "in full": the word is about who
    the date is not shown to, so it stands beside the verb it limits and not at the end of the sentence, where it would
    limit "ako sami izaberete".
@@ -36,9 +48,9 @@
    has the whole argument). The old text of each edit is the start of the sentence up to the exception, which stands once
    in section 3 of the policy in each language and nowhere else on the written pages.
 
-   WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row added or removed; the body of two section
-   texts (section 3 of the policy, in both languages) and nothing else in them, not the other sentences of the section and
-   not the list of what is never shown.
+   WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row added or removed; the body of four section
+   texts (sections 2 and 3 of the policy, in both languages) and nothing else in them: not the other sentences of section
+   3, not the list of what is never shown but for its heading, and not the other rows of the table.
 
    WHY A NEW FILE AND NOT AN EDIT OF V57: ADL A2. V57 has been applied, its checksum is in flyway_schema_history, and
    MigrationsAreImmutableTest holds Flyway to it. V73 and not V72, because V72 belongs to the pull request that is
@@ -67,7 +79,29 @@ begin
              $new$Datum rođenja tražimo da bismo znali uzrasnu kategoriju i ne prikazujemo ga drugima ni u punom ni u skraćenom obliku, osim ako$new$),
             ('Date of birth', 'politika-privatnosti', 3, 'en',
              $old$We ask for the date of birth so that we know the age category, and we do not display it in full or in shortened form, unless$old$,
-             $new$We ask for the date of birth so that we know the age category, and we do not display it to others in full or in shortened form, unless$new$)
+             $new$We ask for the date of birth so that we know the age category, and we do not display it to others in full or in shortened form, unless$new$),
+
+            ('Document row', 'politika-privatnosti', 2, 'sr',
+             $old$Vidi ga samo administracija, ne prikazuje se nigde i stoji odvojeno od podataka$old$,
+             $new$Vidi ga samo administracija i vi, na svojoj kartici Podaci; drugima se ne prikazuje nigde i stoji odvojeno od podataka$new$),
+            ('Document row', 'politika-privatnosti', 2, 'en',
+             $old$Only the administration sees it; it is not displayed anywhere and stands apart from the data$old$,
+             $new$Only the administration and you see it, on your own Details card; it is not displayed to others anywhere and stands apart from the data$new$),
+
+            ('Never shown, heading', 'politika-privatnosti', 3, 'sr',
+             $old$### Nikada se ne prikazuje
+
+Adresa elektronske pošte$old$,
+             $new$### Nikada se ne prikazuje drugima
+
+Adresa elektronske pošte$new$),
+            ('Never shown, heading', 'politika-privatnosti', 3, 'en',
+             $old$### Never displayed
+
+E-mail address$old$,
+             $new$### Never displayed to others
+
+E-mail address$new$)
 
         ) as edits (label, slug, section_position, in_language, old_text, new_text)
     loop
