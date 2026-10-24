@@ -166,15 +166,6 @@ const LEADS_TO_A_SHUT_DOOR = [
   /^\/sr\/takmicar\/[^/]+\/podaci$/,
 ]
 
-/**
- * THE ONE LINK THAT IS KNOWN TO REMAIN, named so that it is not a hole nobody can see: the envelope in
- * the header is drawn to him as it was decided on 16.10.2026 (PDL P8: „koverta ne čita sanduče i kaže da
- * poruka nema"), and „Sve poruke" at the foot of its panel leads to the inbox, which now sends him to the
- * page he pays on. Whether the envelope stays is a question for the owner and is in the report of this
- * change; the day it is answered this line goes, one way or the other.
- */
-const UNDECIDED = ['/sr/poruke']
-
 /** Everything the page links to, as the path of each address. */
 function everyLinkOnTheScreen(): string[] {
   return [...document.querySelectorAll('a[href]')].map((one) =>
@@ -211,7 +202,7 @@ describe('a page that is open to somebody who has not paid', () => {
       await settle()
 
       const shut = everyLinkOnTheScreen().filter(
-        (path) => LEADS_TO_A_SHUT_DOOR.some((pattern) => pattern.test(path)) && !UNDECIDED.includes(path),
+        (path) => LEADS_TO_A_SHUT_DOOR.some((pattern) => pattern.test(path)),
       )
 
       expect(shut).toEqual([])

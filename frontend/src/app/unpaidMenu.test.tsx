@@ -251,6 +251,27 @@ describe('the picture of somebody who has not paid, with a keyboard and a screen
   }, SLOW)
 })
 
+describe('the envelope of the inbox, for somebody who has not paid', () => {
+  /* **HIDDEN UNTIL HE PAYS** (owner, 24.10.2026, chosen between offered outcomes with the recommendation:
+     „Neplaćenom članu se koverta sa porukama u zaglavlju sakriva dok ne plati"). Held on both sides,
+     because a header that dropped the envelope for everybody would pass the case about him. */
+  it('is not drawn to him, and is drawn to a member and to administration', async () => {
+    stand(neverPaidAsServed())
+    renderAt('/sr', 'visitor', null)
+
+    await pictureButton()
+
+    expect(screen.queryByRole('button', { name: /Otvori poruke/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Sve poruke', hidden: true })).not.toBeInTheDocument()
+  }, SLOW)
+
+  it('is drawn to a member', async () => {
+    renderAt('/sr', 'competitor', '000007')
+
+    expect(await screen.findByRole('button', { name: /Otvori poruke/ })).toBeVisible()
+  }, SLOW)
+})
+
 describe('the word, over everything somebody who has not paid can open', () => {
   /* **ASKED OF THE SCREENS HE IS DRAWN AND OF NOTHING ELSE**: the front page, the calendar, the teams,
      the page he pays on and the page of his data. The rulebook, the terms and the privacy policy are
@@ -277,6 +298,25 @@ describe('the word, over everything somebody who has not paid can open', () => {
     },
     SLOW,
   )
+})
+
+describe('the word, on the page he pays on from abroad', () => {
+  /* **THE PAYPAL SENTENCES NO LONGER SAY IT** (owner, 24.10.2026, chosen between offered outcomes with
+     the recommendation: „Adresa naloga" is „PayPal adresa", and the note begins „PayPal adresa je
+     poslovna, na Sportsko udruženje BTL."). They are drawn to everybody abroad and not to him alone, so
+     the case reads the page as he meets it and as a member does. */
+  it('is nowhere on it, in the text or in the names, and the label and the note are the new ones', async () => {
+    stand(neverPaidAsServed({ country: 'MK' }))
+    renderAt('/sr/moja-clanarina', 'visitor', null, undefined, '2026-11-01')
+
+    expect(await screen.findByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
+    expect(screen.getByText('PayPal adresa')).toBeVisible()
+    expect(screen.getByText(/^PayPal adresa je poslovna, na Sportsko udruženje BTL\./)).toBeVisible()
+
+    for (const words of everyWordOnTheScreen()) {
+      expect(words).not.toMatch(/nalog/i)
+    }
+  }, SLOW)
 })
 
 describe('the same menu for everybody else', () => {
