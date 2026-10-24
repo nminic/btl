@@ -6,7 +6,9 @@ import type { Role } from '../../roles/context'
 import { HOW_LONG_THE_DOOR_WAITS } from '../../session/useTheServersSession'
 import { renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
+import { theCookieNames } from '../../test/setup'
 import { SLOW } from '../../test/slow'
+import { THE_DATA } from './whoReadsTheData'
 
 /**
  * THE MOMENT BEFORE THE SERVER HAS SAID WHO IS READING, ON THE TWO ADDRESSES THAT SEND A READER
@@ -521,5 +523,173 @@ describe.each([
     })
 
     expect(router.state.location.pathname).toBe('/sr')
+  }, SLOW)
+})
+
+/**
+ * THE CARD „PODACI", THE THIRD ADDRESS THAT TURNS A READER AWAY BY WHO HE IS, ASKED BEFORE THE SERVER
+ * HAS SAID WHO IS READING.
+ *
+ * <p><b>The fault these cases hold, measured in the review of PR 643.</b> `pages/CompetitorData.tsx`
+ * draws the loading indicator for as long as `signedIn === null && asking`, and decides who may read
+ * only after that. It is the decision of 29.09.2026 („Čuvar ne preusmerava dok server ne kaže ko
+ * čita") carried to the card, and nothing held it: with that condition replaced by `false` all 1899
+ * cases stayed green, and the probe the reviewer ran - the first paint of a refresh, where the browser
+ * knows nobody and the cookie names 000007 - sent the member from his own card to the front page.
+ *
+ * <p><b>It is asked here and not by the file about the card</b> (`competitorData.test.tsx`), because
+ * that file renders every reader already known (`test/render.tsx`), so the moment before the answer
+ * does not exist there to be measured. These cases make it exist the way the two above do: a server in
+ * front whose `GET /api/me` HAS NOT COME BACK, and a render as `visitor`, which is what production's
+ * first paint really is.
+ *
+ * <p><b>Two readers, because the condition has two ways to be wrong.</b> The member on his own card is
+ * known by the session's member number; the administration on somebody else's is known by the ROLE the
+ * answer names. A wait that ended on either alone would let the other through to the front page.
+ */
+describe('the card Podaci, before the server has said who is reading', () => {
+  const HIS_NUMBER = '000007'
+  const SOMEBODY_ELSE = '000001'
+
+  let server: ReturnType<typeof aServerThatHoldsTheAnswerAboutTheCaller> | null = null
+
+  afterEach(() => {
+    server?.stop()
+    server = null
+  })
+
+  /**
+   * A `GET /api/me` that has not come back, and the way to make it come back as ANOTHER request for
+   * the same address.
+   *
+   * <p>**It cannot be `aServerThatHasNotSaidWho` above**, which hands one `Response` to every asker:
+   * the card asks `GET /api/me` twice in a visit, once for who is reading and once, when it is his
+   * own, for his record (`member/useMyData.ts`), and a body can be read only once. Each asker here
+   * gets its own answer, and for a member the answer is the one the harness gives whoever the cookie
+   * names (`test/setup.ts`), so his record is the generated file's and not a copy written here.
+   *
+   * <p>Only a read is held. A write to the same address goes on to the disc reader, as it does in
+   * every other file.
+   */
+  function aServerThatHoldsTheAnswerAboutTheCaller(answerSomebodyElsesData: boolean) {
+    const disc = globalThis.fetch
+    let release: () => void = () => undefined
+    const waiting = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let answer: () => Promise<Response> = () => disc('/api/me')
+
+    const { asked, stop } = serverThat((path, init) => {
+      if (path === '/api/me' && (init?.method ?? 'GET') === 'GET') {
+        return waiting.then(() => answer())
+      }
+
+      if (answerSomebodyElsesData && path === `/api/members/${SOMEBODY_ELSE}/data`) {
+        return new Response(
+          JSON.stringify({
+            memberNumber: SOMEBODY_ELSE,
+            firstName: 'Vladan',
+            lastName: 'Đurišić',
+            fatherName: 'Petar',
+            gender: 'M',
+            birthDate: '1980-04-02',
+            idNumber: 'AB12345',
+            email: 'vladan@primer.rs',
+            emailConfirmed: false,
+            address: 'Bulevar 1',
+            phone: '060111222',
+            placeId: null,
+            city: 'Beograd',
+            country: 'RS',
+            shirtSize: 'L',
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      }
+
+      return null
+    })
+
+    return {
+      asked,
+      stop,
+      /** The answer is whoever the cookie names, as the harness answers it. */
+      arrivesAsTheCookieSays: async () => {
+        release()
+        await settledWithNoTimeGoingBy()
+      },
+      /** The answer is this body, for a reader the generated files have no row for. */
+      arrivesAs: async (body: unknown) => {
+        answer = () =>
+          Promise.resolve(
+            new Response(JSON.stringify(body), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            }),
+          )
+        release()
+        await settledWithNoTimeGoingBy()
+      },
+    }
+  }
+
+  it('does not send a member from his own card while the answer is on its way, and shows nothing of it', async () => {
+    server = aServerThatHoldsTheAnswerAboutTheCaller(false)
+
+    const { router } = renderAt(`${HIM}${THE_DATA}`, 'visitor', null)
+
+    await settledWithNoTimeGoingBy()
+
+    expect(router.state.location.pathname).toBe(`${HIM}${THE_DATA}`)
+    expect(waitingOutLoud()).toHaveLength(1)
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 2, name: sr.account.personalTitle })).not.toBeInTheDocument()
+  }, SLOW)
+
+  it('opens his own card to the member the cookie names, and never sent him to the front page on the way', async () => {
+    server = aServerThatHoldsTheAnswerAboutTheCaller(false)
+
+    const { router } = renderAt(`${HIM}${THE_DATA}`, 'visitor', null)
+
+    /* The cookie names him from the first moment; the PORTAL learns it only from the answer. Set after
+       the render and not through `renderAt`'s member number, which would hand the session his number
+       at the first paint and so be the very reader this file is about not having. */
+    theCookieNames({ role: 'competitor', memberNumber: HIS_NUMBER })
+    await settledWithNoTimeGoingBy()
+
+    expect(router.state.location.pathname).toBe(`${HIM}${THE_DATA}`)
+
+    await server.arrivesAsTheCookieSays()
+
+    expect(await screen.findByRole('heading', { level: 2, name: sr.account.personalTitle })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 1, name: /Strahinja Vukićević/ })).toBeVisible()
+    expect(router.state.location.pathname).toMatch(new RegExp(`^/sr/takmicar/${HIS_NUMBER}-.+/podaci$`))
+    expect(waitingOutLoud()).toHaveLength(0)
+  }, SLOW)
+
+  it('does not send the administration from the card of somebody else while the answer is on its way', async () => {
+    server = aServerThatHoldsTheAnswerAboutTheCaller(true)
+
+    const { router } = renderAt(`/sr/takmicar/${SOMEBODY_ELSE}${THE_DATA}`, 'visitor', null)
+
+    await settledWithNoTimeGoingBy()
+
+    expect(router.state.location.pathname).toBe(`/sr/takmicar/${SOMEBODY_ELSE}${THE_DATA}`)
+    expect(waitingOutLoud()).toHaveLength(1)
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: /Ime oca/ })).not.toBeInTheDocument()
+  }, SLOW)
+
+  it('opens the registration’s form on the card of somebody else to the administration the server names', async () => {
+    server = aServerThatHoldsTheAnswerAboutTheCaller(true)
+
+    const { router } = renderAt(`/sr/takmicar/${SOMEBODY_ELSE}${THE_DATA}`, 'visitor', null)
+
+    await settledWithNoTimeGoingBy()
+    await server.arrivesAs({ role: 'superadmin', account: 1, member: null })
+
+    expect(await screen.findByRole('textbox', { name: /Ime oca/ })).toHaveValue('Petar')
+    expect(router.state.location.pathname).toMatch(new RegExp(`^/sr/takmicar/${SOMEBODY_ELSE}(-.+)?/podaci$`))
+    expect(waitingOutLoud()).toHaveLength(0)
   }, SLOW)
 })

@@ -391,8 +391,12 @@ describe('his own card', () => {
     await user.click(screen.getByRole('button', { name: sr.account.save }))
     await screen.findByText(sr.account.saved)
 
+    /* THE COUNTRY IS HIS OWN, NOT A COUNTRY: 000007 is from Banja Luka, so a member who types a town and
+       leaves the country alone sends BA. Asked as `expect.any(String)` it said only that a country went
+       along, and `country: me.country` replaced by a constant 'RS' (the country of most of the file)
+       stayed green (review of PR 643). */
     expect(
       asked.filter((one) => one.path === '/api/me' && one.init?.method === 'PUT').map((one) => JSON.parse(String(one.init?.body))),
-    ).toEqual([{ shirtSize: 'XXL' }, { city: 'Novi Grad', country: expect.any(String) }])
+    ).toEqual([{ shirtSize: 'XXL' }, { city: 'Novi Grad', country: 'BA' }])
   }, SLOW)
 })
