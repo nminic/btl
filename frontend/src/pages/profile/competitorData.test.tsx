@@ -387,16 +387,22 @@ describe('his own card', () => {
     const town = screen.getByRole('combobox', { name: new RegExp(`^${sr.registration.city}`) })
 
     await user.clear(town)
-    await user.type(town, 'Novi Grad')
+    await user.type(town, 'Zzyzx Brdo')
     await user.click(screen.getByRole('button', { name: sr.account.save }))
     await screen.findByText(sr.account.saved)
 
     /* THE COUNTRY IS HIS OWN, NOT A COUNTRY: 000007 is from Banja Luka, so a member who types a town and
        leaves the country alone sends BA. Asked as `expect.any(String)` it said only that a country went
        along, and `country: me.country` replaced by a constant 'RS' (the country of most of the file)
-       stayed green (review of PR 643). */
+       stayed green (review of PR 643).
+
+       THE TOWN IS ONE THE CODEBOOK HAS NEVER HEARD OF, and it has to be. 'Novi Grad', which stood here,
+       is a place the codebook recognises, and a recognised place writes its own country into the field
+       (`forms/PlaceField.tsx`, the effect on `known`): the case then sent BA from the codebook and
+       measured nothing about where the card opened with its country from. A hamlet the codebook does not
+       hold leaves the country exactly as the field was given it. */
     expect(
       asked.filter((one) => one.path === '/api/me' && one.init?.method === 'PUT').map((one) => JSON.parse(String(one.init?.body))),
-    ).toEqual([{ shirtSize: 'XXL' }, { city: 'Novi Grad', country: 'BA' }])
+    ).toEqual([{ shirtSize: 'XXL' }, { city: 'Zzyzx Brdo', country: 'BA' }])
   }, SLOW)
 })

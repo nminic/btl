@@ -688,8 +688,10 @@ describe('the card Podaci, before the server has said who is reading', () => {
     await settledWithNoTimeGoingBy()
     await server.arrivesAs({ role: 'superadmin', account: 1, member: null })
 
-    expect(await screen.findByRole('textbox', { name: /Ime oca/ })).toHaveValue('Petar')
+    /* The address first and the form second, so a card that sent him away is an assertion that says so
+       and not a form that never came and a case that ends on its own clock. */
     expect(router.state.location.pathname).toMatch(new RegExp(`^/sr/takmicar/${SOMEBODY_ELSE}(-.+)?/podaci$`))
+    expect(await screen.findByRole('textbox', { name: /Ime oca/ })).toHaveValue('Petar')
     expect(waitingOutLoud()).toHaveLength(0)
   }, SLOW)
 })
