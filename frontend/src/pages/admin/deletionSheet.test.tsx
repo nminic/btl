@@ -92,8 +92,18 @@ async function twoRows() {
   const second = must(all[1], 'the cross of the second row')
   const first = must(all[0], 'the cross of the first row')
   const name = must(second.getAttribute('aria-label'), 'a name on the cross').replace('Obriši: ', '')
+  const row = must(second.closest('tr'), 'the row of the second record')
 
-  return { first, second, name, row: must(second.closest('tr'), 'the row of the second record') }
+  /* THE NAME COMES FROM A SECOND SOURCE: the cells of the row itself. Read only off the cross, a screen
+     that named every row after the first would name the sheet after the first as well, and the sheet
+     would agree with the cross it was opened from (the mutation „name from the first row" survived
+     the first draft of this file for exactly that reason). */
+  expect(
+    (row.textContent ?? '').replace(/\s+/g, ''),
+    'the cross is named after another row than the one it stands in',
+  ).toContain(name.replace(/\s+/g, ''))
+
+  return { first, second, name, row }
 }
 
 const deletions = (asked: Asked[]) => asked.filter((one) => one.init?.method === 'DELETE')
