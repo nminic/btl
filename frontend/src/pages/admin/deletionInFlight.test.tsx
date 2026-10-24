@@ -189,6 +189,10 @@ describe('a deletion that is out with the server', () => {
 
       expect(ask).toHaveAccessibleName(one.words?.open ?? /^Obriši: /)
 
+      /* READ BEFORE THE SHEET IS OPENED, because the sheet stands inside the row and would bring its own name
+         into the row's text. */
+      const holder = (ask.closest('tr') ?? document.querySelector('h1'))?.textContent ?? ''
+
       await user.click(ask)
 
       const sheet = await theSheet(one.asks)
@@ -202,9 +206,8 @@ describe('a deletion that is out with the server', () => {
          with itself (the mutations „name is a constant" survived the first draft of this case). */
       if (one.words === undefined) {
         const name = must(ask.getAttribute('aria-label'), 'a name').replace('Obriši: ', '')
-        const holder = must(ask.closest('tr') ?? document.querySelector('h1'), 'where the record is named')
 
-        expect(holder.textContent, 'the cross is named after another record than the one it stands in').toContain(name)
+        expect(holder, 'the cross is named after another record than the one it stands in').toContain(name)
         expect(within(sheet).getByText(name)).toBeInTheDocument()
       } else {
         expect(sheet.querySelectorAll('.prompt__body p')).toHaveLength(0)
