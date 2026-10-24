@@ -268,6 +268,8 @@ describe('the sheet that asks before a deletion', () => {
     const cross = screen.getByRole('button', { name: 'Obriši svoju ocenu' })
 
     expect(cross).toHaveClass('button', 'button--secondary', 'entity-delete')
+    /* The word the cross shows on the pointer is the screen's as well, not only its name. */
+    expect(cross).toHaveTextContent('Obriši svoju ocenu')
 
     await user.click(cross)
 

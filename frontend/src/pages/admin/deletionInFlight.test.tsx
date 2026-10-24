@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, screen, waitFor, within } from '@testing-library/react'
 import ts from 'typescript'
 import type { Role } from '../../roles/context'
 import { must } from '../../test/at'
@@ -10,6 +10,10 @@ import { setupUser } from '../../test/user'
 import { theSheet } from '../../test/deleteSheet'
 import { sources } from '../../test/sources'
 import sr from '../../i18n/sr.json'
+
+/* Every wait is given half of what a case is given, for the reason `rowMembership.test.tsx` gives: a
+   mutation then fails on its assertion and not on the clock of the case. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * THE SHEET THAT ASKS „OBRIŠI X?" OUTSIDE THE ADMINISTRATION, ASKED THE SAME THINGS ABOUT THE MOMENT THE DELETION
@@ -192,10 +196,15 @@ describe('a deletion that is out with the server', () => {
       expect(screen.queryByText('Sigurno?')).toBeNull()
       expect(within(sheet).getAllByRole('button').map((each) => each.textContent)).toEqual(['Obriši', 'Odustani'])
 
-      /* A sheet that names a record names the one whose cross was pressed; the rating has none to name. */
+      /* A sheet that names a record names the one whose cross was pressed; the rating has none to name.
+         THE NAME COMES FROM TWO SOURCES: the cross, and the row (or the heading of the page) the cross stands
+         in. Read off the cross alone, a screen that named the sheet and the cross after a constant would agree
+         with itself (the mutations „name is a constant" survived the first draft of this case). */
       if (one.words === undefined) {
         const name = must(ask.getAttribute('aria-label'), 'a name').replace('Obriši: ', '')
+        const holder = must(ask.closest('tr') ?? document.querySelector('h1'), 'where the record is named')
 
+        expect(holder.textContent, 'the cross is named after another record than the one it stands in').toContain(name)
         expect(within(sheet).getByText(name)).toBeInTheDocument()
       } else {
         expect(sheet.querySelectorAll('.prompt__body p')).toHaveLength(0)
