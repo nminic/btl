@@ -300,6 +300,10 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
     /* SAID IN WORDS, in the sheet, only while it is true. */
     expect(within(sheet).getByRole('status')).toHaveTextContent(sr.results.sending)
 
+    /* THE FOCUS IS STILL IN THE SHEET: it moves to the control that starts a new record when the answer is
+       in, and a move ahead of it would leave a reader outside a question he has not finished answering. */
+    expect(sheet.contains(document.activeElement)).toBe(true)
+
     /* TOLD OFF AND NOT SWITCHED OFF: the one that was pressed has the focus. */
     const keep = within(sheet).getByRole('button', { name: 'Odustani' })
 

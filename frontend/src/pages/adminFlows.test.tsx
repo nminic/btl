@@ -3215,8 +3215,8 @@ describe('the section of entities', () => {
     const name = must(remove.getAttribute('aria-label'), 'a name on the delete control').replace('Obriši: ', '')
 
     await user.click(remove)
-    // Asking is not doing: the row is still there while the question stands.
-    expect(table().getByText(name)).toBeVisible()
+    // Asking is not doing: the row is still there while the question stands, and so is the name in the sheet.
+    expect(table().getAllByText(name)).toHaveLength(2)
 
     await sayYes(user, 'Obriši tim?')
 

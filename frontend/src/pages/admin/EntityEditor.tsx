@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { fieldValue, shownValue, textFrom, valuesFor } from '../../forms/records'
 import type { FieldError, FieldOption, FormDef, FormValues } from '../../forms/types'
@@ -750,6 +750,14 @@ export function OpenRecord({
 /**
  * And the control that removes it (owner, 30.07.2026).
  *
+ * <p><b>THE ROWS OF THE ADMINISTRATION DO NOT DRAW THIS ANY MORE (23.10.2026).</b> The owner decided that
+ * every screen of the administration that deletes asks in a sheet over the page, as the row of a member
+ * does (PDL „Tri odgovora od 23.10.2026"), and `RowActions` draws `DeleteSheet` for the events, the
+ * competitions, the moderators and the teams. What still draws THIS is the team's own page, the results of
+ * an event, a member's rating and a member's own results: screens of members and of the public pages,
+ * which that decision does not name and which wait for the owner to say whether it reaches them. The
+ * description below is of the question as it is asked there.
+ *
  * Asked twice, because nothing brings the record back and the button stands in a
  * row of twenty beside the one that merely opens it. The first press asks, the
  * second does it, and the third control that appears beside it puts the question
@@ -789,7 +797,7 @@ export function OpenRecord({
  * is not out with anyone: the row leaves in the same render, and the question behaves as it
  * always did. Nothing here handles Escape, so there is no key to refuse.
  */
-export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', asksWith, words }: {
+export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', words }: {
   name: string
   /**
    * What the second press does, and whether the reader has to wait for it.
@@ -817,20 +825,6 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    * one screen wider, recorded and not fixed with the item that named one screen.
    */
   onKeep?: () => void
-  /**
-   * WHAT ELSE THIS DELETION TAKES, said between the question and the answer.
-   *
-   * <p>Owner, 28.09.2026, choosing between three outcomes: the button works at once and
-   * the reader is told the number before he confirms. So this is drawn only while the
-   * question stands - the row of sixty says nothing until somebody has pressed once,
-   * which is the same reason the question itself is two presses rather than a dialogue.
-   *
-   * <p>Only the events screen passes one. It is optional rather than required because the
-   * other three lists take nothing else with them: a moderator, a team and a competition
-   * are one row each, and a sentence saying „and nothing else" on every one of them is
-   * noise on three screens to be honest on a fourth.
-   */
-  asksWith?: string
   /**
    * What the three buttons are dressed as.
    *
@@ -914,8 +908,8 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    * that.</b> The opener is an `ActionButton` since 20.10.2026 and the question is a fragment, so the
    * two are different types at the root of this component's output: React takes the opener out and
    * puts the question in, and the reader who pressed Enter on „Obriši" was left on the document
-   * (`admin/deleteRecord.test.tsx`, „takes the keyboard to „Sigurno?"", asks it on the component alone
-   * and `admin/deleting.test.tsx` on a list of two rows). A reader who is told „Sigurno?" has to be
+   * (`admin/deleteRecord.test.tsx`, „takes the keyboard to „Sigurno?"", asks it on the component alone).
+   * A reader who is told „Sigurno?" has to be
    * standing on it: it is the control that answers, and it is where the earlier arrangement left him
    * when the two were one element.
    */
@@ -939,11 +933,6 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
       sure.current?.focus()
     }
   }, [asking])
-  /* One id per row. Sixty rows sharing one would point every confirming button at the
-     first row's sentence, which is the same fault an `id` written out by hand always
-     has on a list (`OpenRecord`, `describedBy`, says it one control along). */
-  const saying = useId()
-
   if (!asking) {
     return (
       /* A cross since 20.10.2026, on every row the question is asked from (owner: „nego da budu
@@ -966,23 +955,11 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
 
   return (
     <>
-      {/* Before the buttons rather than after them, so it is read on the way to the
-          one that cannot be undone rather than behind it. */}
-      {asksWith !== undefined && (
-        <span className="entity-row-note" id={saying}>
-          {asksWith}
-        </span>
-      )}
       <button
         ref={sure}
         type="button"
         className={`${look} entity-delete entity-delete--sure`}
         aria-label={words === undefined ? t('admin.form.deleteSureNamed', { name }) : words.sureNamed}
-        /* So whoever arrives here by keyboard is told what goes with it. Named
-           through the element rather than folded into the label, because the label
-           is what tells twenty of these buttons apart and a number in it would make
-           two rows with the same count read as one control. */
-        aria-describedby={asksWith === undefined ? undefined : saying}
         /* TOLD OFF WHILE ITS OWN DELETION IS OUT, not switched off: the control a reader pressed
            has the focus (or had it, where `RowActions` has moved it on), and `disabled` would
            take it out of the tab order. */
