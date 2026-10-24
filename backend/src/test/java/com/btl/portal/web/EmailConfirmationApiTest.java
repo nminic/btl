@@ -385,7 +385,7 @@ class EmailConfirmationApiTest {
 		assertThat(toTheEnglish.getSubject()).isEqualTo("Confirm your address");
 		assertThat(toTheEnglish.getContent().toString())
 				.contains(portal + "/en" + Message.CONFIRM_THE_ADDRESS.path() + "?token=")
-				.contains("24 hours");
+				.contains("seven days");
 	}
 
 	@Test

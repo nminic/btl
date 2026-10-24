@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mail.MailException;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -83,7 +82,7 @@ class EmailConfirmationApi {
 	 * The one reason a confirmation is refused. There is only the one: the token this
 	 * route was handed does not point at a row that is still live, whether because it
 	 * never did, because somebody already spent it on a different link, or because its
-	 * twenty four hours (V6) ran out. Registration tells three reasons apart because
+	 * seven days (V72; V6 gave twenty four hours) ran out. Registration tells three reasons apart because
 	 * three different fields need three different fixes; a token is not a field
 	 * anybody edits, so there is nothing here for a second reason to say that this one
 	 * does not already cover.
@@ -98,11 +97,14 @@ class EmailConfirmationApi {
 
 	private final Portal portal;
 
+	private final TheLetterAfterTheAddress welcome;
+
 	EmailConfirmationApi(JdbcClient db, Postman postman, TransactionTemplate inOneTransaction,
-			@Value("${btl.portal.address}") String address) {
+			TheLetterAfterTheAddress welcome, @Value("${btl.portal.address}") String address) {
 		this.db = db;
 		this.postman = postman;
 		this.inOneTransaction = inOneTransaction;
+		this.welcome = welcome;
 		/* THIS IS NO LONGER THE ONLY CONSTRUCTOR THAT DOES THIS, and the comment on
 		   `WhatTheMessageSays.Portal` that used to say so is corrected in the same
 		   commit that adds this line, together with the one in
@@ -140,10 +142,35 @@ class EmailConfirmationApi {
 	 * in, and the member typed no password here for a cookie to stand in for.
 	 */
 	@PostMapping("/api/email-confirmation")
-	@Transactional
 	ResponseEntity<Refused> confirm(@RequestBody Typed typed) {
+		Confirmed done = inOneTransaction.execute(committing -> confirming(typed));
+
+		/* THE LETTER ABOUT HIS MEMBERSHIP GOES ONLY ONCE THE CONFIRMATION HAS COMMITTED, and only
+		   if THIS request was the one that confirmed it (owner, 23.10.2026: once the address is
+		   confirmed the portal writes to him about his membership; `TheLetterAfterTheAddress`). A second press on the link
+		   answers 204 as it always did and sends nothing. */
+		if (done.firstConfirmed() != null) {
+			welcome.sendTo(done.firstConfirmed());
+		}
+
+		return done.answer();
+	}
+
+	/**
+	 * What the confirmation answers, and the account whose address it confirmed for the first time,
+	 * or {@code null} where it confirmed nothing new.
+	 */
+	private record Confirmed(ResponseEntity<Refused> answer, Long firstConfirmed) {
+	}
+
+	/**
+	 * THE CONFIRMATION ITSELF, IN ONE TRANSACTION, in exactly the order it always had: the account
+	 * first, then the link. It was the whole of a {@code @Transactional} method until the letter
+	 * after it had to wait for the commit, which a method that IS the transaction cannot.
+	 */
+	private Confirmed confirming(Typed typed) {
 		if (typed.token() == null || typed.token().isBlank()) {
-			return no();
+			return new Confirmed(no(), null);
 		}
 
 		/* THE TOKEN IS HASHED BEFORE IT IS EVER COMPARED, and never the other way
@@ -192,8 +219,10 @@ class EmailConfirmationApi {
 		Outcome outcome = EmailConfirmation.decide(found.map(Confirmable::link).orElse(null), Instant.now());
 
 		if (outcome != Outcome.CONFIRM_IT && outcome != Outcome.ALREADY_DONE) {
-			return no();
+			return new Confirmed(no(), null);
 		}
+
+		Long firstConfirmed = null;
 
 		if (outcome == Outcome.CONFIRM_IT) {
 			/* AND ONLY WHILE IT IS STILL EMPTY. `decide` has already refused a link
@@ -202,13 +231,20 @@ class EmailConfirmationApi {
 			   between them holding the row - two requests racing two different, both
 			   still-unconfirmed-when-read live links must not both write the moment.
 			   What guards that is the same it always was: the column, checked again,
-			   atomically, right here. */
+			   atomically, right here.
+
+			   AND THIS IS THE FIRST CONFIRMATION OF THE ADDRESS, which is the one fact the letter
+			   after it turns on. `decide` answered CONFIRM_IT because the column was empty, and it was
+			   read under the hold the first statement of this method took on the account, so nothing
+			   can have written the moment between that read and this write. */
 			db.sql("update account set email_confirmed_at = now()"
 							+ " where id = ? and email_confirmed_at is null")
 					.param(found.orElseThrow().account()).update();
+
+			firstConfirmed = found.orElseThrow().account();
 		}
 
-		return ResponseEntity.noContent().build();
+		return new Confirmed(ResponseEntity.noContent().build(), firstConfirmed);
 	}
 
 	/**

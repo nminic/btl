@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.balance.Balance;
 import com.btl.portal.domain.member.MemberNumber;
+import com.btl.portal.domain.membership.Basis;
 import com.btl.portal.domain.pricing.Currency;
 import com.btl.portal.domain.pricing.MembershipPrice;
 import com.btl.portal.domain.season.SeasonClock;
@@ -98,10 +99,15 @@ class MembershipInvoice {
 	 *                           rather than a redundancy</b>: an exemption IS a membership, granted
 	 *                           one season at a time
 	 * @param numberHeAlreadyHas his member number, or {@code null} if he has never had one
+	 * @param holds              the basis of that row, or {@code null} where there is none: the
+	 *                           letter after a confirmed address says HOW the season is his (owner,
+	 *                           23.10.2026 and 24.10.2026: freed, on his balance, or paid), which the
+	 *                           two booleans before it cannot tell apart. Read off the same row in the
+	 *                           same statement, so the three cannot disagree
 	 */
 	record Invoice(int season, String priceKey, Balance.Settlement settled,
 			BigDecimal processingFeeEurIfHeTransfers, boolean alreadyAMember, boolean exemptFromTheFee,
-			MemberNumber numberHeAlreadyHas) {
+			MemberNumber numberHeAlreadyHas, Basis holds) {
 	}
 
 	private record TheMember(LocalDate birthDate, String memberNumber) {
@@ -164,6 +170,44 @@ class MembershipInvoice {
 
 		return new Invoice(season, price.key(), settled, price.fee(), basisForTheSeason != null,
 				FEE_EXEMPT.equals(basisForTheSeason),
-				member.memberNumber() == null ? null : new MemberNumber(member.memberNumber()));
+				member.memberNumber() == null ? null : new MemberNumber(member.memberNumber()),
+				basisForTheSeason == null ? null : Basis.of(basisForTheSeason));
+	}
+
+	/**
+	 * WHAT A SLIP FOR THIS SEASON ASKS HIM TO SEND, AS THE FIRST ONE HE WAS SHOWN FIXED IT.
+	 *
+	 * <p>The owner chose with my recommendation, on 26.09.2026, that the code is minted on the amount
+	 * less the balance, and on 27.09.2026 that a booking takes what the code promised and not what the
+	 * balance stands at on the day of the booking. So the first time an
+	 * amount is put in front of him for a season, what his balance takes off it is recorded as a
+	 * promise, and every later slip for that season is the same number. {@link MyMembershipApi}
+	 * gives the whole of the reasoning beside its call, and it is its own: this is the code it used to
+	 * hold, moved here unchanged because a SECOND place now puts an amount in front of him - the
+	 * letter after his address is confirmed (owner, 23.10.2026) - and two copies of the rule would be
+	 * two places for the promise to be written differently.
+	 *
+	 * <p><b>It writes the promise only when there is something to transfer</b>; a balance that
+	 * covers the whole fee mints no code, so there is nothing to promise about.
+	 */
+	Balance.Settlement asTheSlipPromises(long me, Invoice owed) {
+		return book.promised(me, owed.season())
+				.map(standing -> Balance.asThePromiseStands(owed.settled(), standing))
+				.orElseGet(() -> {
+					if (!owed.settled().coveredByTheBalance()) {
+						book.promise(me, owed.season(), owed.settled().fromTheBalance());
+					}
+
+					return owed.settled();
+				});
+	}
+
+	/**
+	 * The processing fee on what that slip asks for: V16's euro fee where there is a transfer to
+	 * process, and nothing where there is none. Asked of the transfer the slip carries, not of
+	 * today's arithmetic, for the reason {@link MyMembershipApi} gives beside its call.
+	 */
+	static BigDecimal processingOn(Balance.Settlement slip, Invoice owed) {
+		return slip.toTransfer().isNothing() ? BigDecimal.ZERO : owed.processingFeeEurIfHeTransfers();
 	}
 }

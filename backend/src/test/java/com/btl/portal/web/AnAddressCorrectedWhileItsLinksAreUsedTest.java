@@ -75,7 +75,7 @@ class AnAddressCorrectedWhileItsLinksAreUsedTest {
 
 	private static final String THE_SUPERADMIN = "superadmin-utrka@primer.rs";
 
-	private static final String A_GOOD_PASSWORD = "Duga Lozinka Za Probu 2026";
+	private static final String A_GOOD_PASSWORD = "trcim.kroz.sumu.2027";
 
 	@Autowired
 	private MockMvc http;
@@ -261,6 +261,30 @@ class AnAddressCorrectedWhileItsLinksAreUsedTest {
 		assertThat(lettersWentTo()).isEmpty();
 	}
 
+	/**
+	 * A PASSWORD SET IN THE SAME INSTANT, AND FIRST: the spend takes the row, sets the password and confirms
+	 * the address, so the correction that waited meets an address that is his now, is refused, and sends
+	 * nobody a link (the link it would have sent depends on whether he has a password, and the statement
+	 * that asks is the one that moves the address).
+	 */
+	@Test
+	void aPasswordSetFirstMakesTheAddressHisAndTheCorrectionIsRefusedAndSendsNothing() throws Exception {
+		String opened = aLink("password_reset_token");
+
+		List<MockHttpServletResponse> answers = inThisOrder(
+				() -> sent(post("/api/password-reset").content("{\"token\": \"" + opened + "\", \"password\": \""
+						+ A_GOOD_PASSWORD + "\", \"passwordRepeat\": \"" + A_GOOD_PASSWORD + "\"}")),
+				this::theCorrection);
+
+		assertThat(answers.get(0).getStatus()).as("the spend").isEqualTo(204);
+		assertThat(answers.get(1).getStatus()).as("the correction of an address now confirmed").isEqualTo(409);
+		assertThat(answers.get(1).getContentAsString()).contains(MemberDataWriteApi.THE_ADDRESS_IS_CONFIRMED);
+		assertThat(addressAndConfirmed()).isEqualTo(THE_OLD_ADDRESS + " true");
+		assertThat(db.sql("select password_hash is not null from account where id = ?").param(hisAccount)
+				.query(Boolean.class).single()).isTrue();
+		assertThat(lettersWentTo()).isEmpty();
+	}
+
 	@Test
 	void aNewLinkAskedForAtTheOldAddressIsNeitherWrittenNorSent() throws Exception {
 		List<MockHttpServletResponse> answers = inThisOrder(this::theCorrection,
@@ -269,9 +293,13 @@ class AnAddressCorrectedWhileItsLinksAreUsedTest {
 		assertThat(answers.get(0).getStatus()).isEqualTo(200);
 		assertThat(answers.get(1).getStatus()).isEqualTo(204);
 
-		/* ONE LINK, THE CORRECTION'S OWN, and one letter, to the new address. */
-		assertThat(db.sql("select count(*) from email_verification_token where account_id = ?")
+		/* ONE LINK, THE CORRECTION'S OWN, and one letter, to the new address. His account has no
+		   password, so the correction's own link is the link to set one (PDL, owner, 23.10.2026) and
+		   the link to confirm, which a resend at the old address would write, is not there. */
+		assertThat(db.sql("select count(*) from password_reset_token where account_id = ?")
 				.param(hisAccount).query(Long.class).single()).isOne();
+		assertThat(db.sql("select count(*) from email_verification_token where account_id = ?")
+				.param(hisAccount).query(Long.class).single()).isZero();
 		assertThat(lettersWentTo()).containsExactly(THE_NEW_ADDRESS);
 	}
 
@@ -282,7 +310,12 @@ class AnAddressCorrectedWhileItsLinksAreUsedTest {
 
 		assertThat(answers.get(0).getStatus()).isEqualTo(200);
 		assertThat(answers.get(1).getStatus()).isEqualTo(204);
+
+		/* ONE LINK, THE CORRECTION'S OWN: a second one is a link written for the old address after
+		   the correction had retired every other. */
 		assertThat(db.sql("select count(*) from password_reset_token where account_id = ?")
+				.param(hisAccount).query(Long.class).single()).isOne();
+		assertThat(db.sql("select count(*) from email_verification_token where account_id = ?")
 				.param(hisAccount).query(Long.class).single()).isZero();
 		assertThat(lettersWentTo()).containsExactly(THE_NEW_ADDRESS);
 	}

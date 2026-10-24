@@ -66,12 +66,9 @@ class MyMembershipApi {
 
 	private final MembershipInvoice invoice;
 
-	private final BalanceBook book;
-
-	MyMembershipApi(MemberOfAccount memberOfAccount, MembershipInvoice invoice, BalanceBook book) {
+	MyMembershipApi(MemberOfAccount memberOfAccount, MembershipInvoice invoice) {
 		this.memberOfAccount = memberOfAccount;
 		this.invoice = invoice;
-		this.book = book;
 	}
 
 	/**
@@ -201,15 +198,10 @@ class MyMembershipApi {
 		   whose balance had already paid. The nought that pins a member is the one minted on an empty
 		   book, and that one is still written: an empty book is not covered, so it takes the branch
 		   below. */
-		Balance.Settlement settled = book.promised(me, owed.season())
-				.map(standing -> Balance.asThePromiseStands(owed.settled(), standing))
-				.orElseGet(() -> {
-					if (!owed.settled().coveredByTheBalance()) {
-						book.promise(me, owed.season(), owed.settled().fromTheBalance());
-					}
-
-					return owed.settled();
-				});
+		/* AND SINCE 24.10.2026 THE RULE IS WRITTEN ONCE, IN `MembershipInvoice.asTheSlipPromises`,
+		   because the letter a member is sent once his address is confirmed puts the same amount in
+		   front of him (owner, 23.10.2026) and has to promise exactly what this does. */
+		Balance.Settlement settled = invoice.asTheSlipPromises(me, owed);
 
 		/* NO TRANSFER, NOTHING TO PROCESS: reasoning rather than a written decision, and V16's own
 		   words carry it - the fee „is NOT membership and is shown as its own line". Asked of the
@@ -217,9 +209,7 @@ class MyMembershipApi {
 		   a member whose balance grew past his fee after his code was minted: `coveredByTheBalance`
 		   is true for him (he may let himself in) while the slip in his hand still asks for a
 		   transfer, and a transfer that is asked for is a transfer somebody's bank will charge for. */
-		BigDecimal processing = settled.toTransfer().isNothing()
-				? BigDecimal.ZERO
-				: owed.processingFeeEurIfHeTransfers();
+		BigDecimal processing = MembershipInvoice.processingOn(settled, owed);
 
 		return ResponseEntity.ok(new MyMembership(owed.season(), owed.alreadyAMember(), owed.priceKey(),
 				settled.fee(), settled.balance(), settled.fromTheBalance(), settled.toTransfer(),
