@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
 import { must } from '../../test/at'
+import { sayYes } from '../../test/deleteSheet'
 import { renderAt } from '../../test/render'
 import { did, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
@@ -557,7 +558,7 @@ describe('a change waiting on the queue of teams', () => {
     )
 
     await user.click(within(row).getByRole('button', { name: /^Obriši/ }))
-    await user.click(within(row).getByRole('button', { name: /^Potvrdi brisanje/ }))
+    await sayYes(user, 'Obriši tim?')
 
     /* THE DELETION IS REALLY THROUGH BEFORE THE WALK GOES ON, because it lands on the answer
        rather than on the press. Navigating away first would leave the rest of this case
