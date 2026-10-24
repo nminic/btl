@@ -10,6 +10,7 @@ import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import type { FormValues } from '../../forms/types'
 import { recordKey } from '../../session/context'
+import { DeletionSaid } from './DeletionSaid'
 import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
 import { LeagueRaceModeration } from './LeagueRaceModeration'
 import { countedDaysOf, countedRacesOf } from './leagueCounted'
@@ -246,6 +247,8 @@ export function AdminLeagues() {
 
     if (answer.got !== 'done') {
       setRefused({ id: league.id, answer })
+      /* The sentence of an earlier deletion is not about this one (`DeletionSaid.tsx`). */
+      setSaid('')
 
       return
     }
@@ -349,6 +352,10 @@ export function AdminLeagues() {
             <>
               <EntityBar entity={LEAGUES} onNew={() => setEditing({ mode: 'new' })} />
 
+              {/* What the deletion said, DRAWN and not only said (owner, 23.10.2026: the deletion asks and
+                  answers as the member's row does, `DeletionSaid.tsx`). */}
+              <DeletionSaid said={said} clear={setSaid} />
+
               <div className="table-scroll">
                 <table className="table">
                   <caption className="visually-hidden">{t('admin.leagues')}</caption>
@@ -398,6 +405,7 @@ export function AdminLeagues() {
                         <td>
                           <RowActions
                             entity={LEAGUES}
+                            asks={t('admin.leagueDeleteAsk')}
                             record={league}
                             name={league.name}
                             onOpen={() => setEditing({ mode: 'one', record: league })}
@@ -466,12 +474,6 @@ export function AdminLeagues() {
                 </table>
               </div>
 
-              {/* Said once and politely: the list beside it has already changed, and a
-                  reader who is not looking at it gets the one sentence that says so.
-                  The same shape the panel of races uses. */}
-              <p aria-live="polite" className="visually-hidden">
-                {said}
-              </p>
             </>
           )
         }}

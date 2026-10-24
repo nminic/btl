@@ -9,6 +9,7 @@ import { plainWords } from '../../forms/worded'
 import { useSession } from '../../session/useSession'
 import { recordKey } from '../../session/context'
 import { BlocksLeaving } from './BlocksLeaving'
+import { DeleteSheet } from './DeleteSheet'
 import {
   addressField,
   fieldValues,
@@ -578,11 +579,19 @@ export function RowActions({
   alsoRemove,
   deleteRecord,
   asksWith,
+  asks,
 }: {
   entity: EntityDef
   record: object
   /** What the row is called, for both accessible names. */
   name: string
+  /**
+   * THE QUESTION, IN THE WORDS THAT NAME WHAT IS DELETED: „Obriši tim?" (owner, 23.10.2026, PDL „Tri
+   * odgovora od 23.10.2026"). Required, and written by the screen, which is the one that knows what its
+   * rows are called and in what gender; the sentence that follows a deletion („Tim je obrisan.") is its
+   * too.
+   */
+  asks: string
   onOpen: () => void
   /**
    * WHO TAKES THE RECORD AWAY, WHERE IT IS NOT THE SESSION.
@@ -592,13 +601,15 @@ export function RowActions({
    * overlay, the competitions have `DELETE /api/leagues/{id}` and use it.
    *
    * <p><b>It replaces the session write and nothing else.</b> The focus still moves to the
-   * one control that cannot be the row just pressed, before the answer is back, which is
-   * what the six already do and what a reader on a row that is about to vanish needs. A
-   * deletion the server refuses is said beside the row, the question closes with the answer,
-   * and the row's own „Obriši" takes the focus back from where it was moved ahead of it
-   * (`DeleteRecord`, owner 02.10.2026).
+   * one control that cannot be the row just pressed, which is what the six already do and
+   * what a reader on a row that is about to vanish needs; since 23.10.2026 it moves when the
+   * answer is in and not before, because the question is a sheet over the page and a sheet
+   * that stands keeps the focus. A deletion the server refuses is said beside the row, the
+   * sheet closes with the answer, and the row's own „Obriši" takes the focus back
+   * (`DeleteSheet`, owner 02.10.2026 and 23.10.2026).
    *
-   * <p><b>It returns the promise of the deletion, and that is not optional for a route.</b>
+   * <p><b>It returns the promise of the deletion, and that is not optional for a route:</b>
+   * the type says so, and a handler written `() => void deleteOne(one)` no longer compiles.
    * The question the reader answered stays on the page while the request is out, told off
    * and saying it is sending (owner, 02.10.2026: „Ne", „Odustani" and Escape do nothing
    * while a request is out), and it can only know the request is out if what it was handed
@@ -606,7 +617,7 @@ export function RowActions({
    * nothing, so „Odustani" would go on putting the question away over a deletion that goes
    * on - which is exactly what every caller wrote until that day.
    */
-  deleteRecord?: () => void | Promise<unknown>
+  deleteRecord?: () => Promise<unknown>
   /**
    * What goes with the record, where something does.
    *
@@ -633,8 +644,9 @@ export function RowActions({
    * what it will take with it is said in the question, where somebody who has pressed
    * once still has the second press to think about.
    *
-   * <p>Named on the confirming button through `aria-describedby`, so it is read out to
-   * whoever arrives there by keyboard rather than being a sentence only the sighted meet.
+   * <p>Drawn in the body of the sheet, under the name of the record, where the dialog's
+   * own reading finds it (23.10.2026; it was read through `aria-describedby` on the
+   * confirming button while the question was a row).
    */
   asksWith?: string
 }) {
@@ -645,30 +657,37 @@ export function RowActions({
      on nothing and the next Tab starts the page from the top. It moves to the
      control that starts a new record, which is the one thing on the screen that
      cannot be the row just deleted; a screen reader announces the move, which is
-     also the only word anyone gets that the deletion happened. */
+     also the only word anyone gets that the deletion happened.
+
+     WHEN THE ANSWER IS IN AND NOT BEFORE (23.10.2026): the question is a sheet over the page now, and a
+     sheet that is still standing keeps the focus inside it. The move is made while the sheet is still
+     drawn, in the turn that takes the row, so a sheet that closes with its row finds its button gone and
+     gives nothing back, and a sheet that closes over a row that stayed (a refusal) gives the focus back
+     to „Obriši" of that row (`components/Prompt.tsx`), which is where the reader asks again. */
+  function leaveTheRow(): void {
+    document.getElementById(NEW_RECORD_ID)?.focus()
+  }
+
   function deleteRow(): void | Promise<unknown> {
-    const anchor = document.getElementById(NEW_RECORD_ID)
-
-    if (anchor !== null) {
-      anchor.focus()
-    }
-
     alsoRemove?.()
 
     if (deleteRecord === undefined) {
+      leaveTheRow()
       remove(entity.id, id)
 
       return
     }
 
     /* HANDED BACK, so the question can wait for the answer (see `deleteRecord`). */
-    return deleteRecord()
+    return deleteRecord().finally(leaveTheRow)
   }
 
   return (
     <span className="entity-row-actions">
       <OpenRecord name={name} onOpen={onOpen} />
-      <DeleteRecord name={name} onDelete={deleteRow} asksWith={asksWith} />
+      <DeleteSheet name={name} asks={asks} onDelete={deleteRow}>
+        {asksWith === undefined ? null : <p>{asksWith}</p>}
+      </DeleteSheet>
     </span>
   )
 }
