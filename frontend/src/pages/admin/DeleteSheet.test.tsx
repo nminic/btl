@@ -13,8 +13,8 @@ configure({ asyncUtilTimeout: SLOW / 2 })
  * THE SHEET THAT ASKS „OBRIŠI X?" ON ITS OWN, WITHOUT ANY OF THE PLACES THAT DRAW IT (owner, 23.10.2026 and
  * 24.10.2026, PDL „Odgovori od 24.10.2026 (popodne)": „Stari „Sigurno?" u redu time nestaje iz portala").
  *
- * <p>These are the cases `deleteRecord.test.tsx` asked of the question that stood in the row until that day,
- * asked of its successor, and each one fails on its own mutation of `DeleteSheet.tsx` or of `Prompt.tsx`
+ * <p>These are the cases `deleteRecord.test.tsx` asked of the question that stood in the row until 24.10.2026
+ * (`DeleteRecord`, deleted with them), asked of its successor, and each one fails on its own mutation of `DeleteSheet.tsx` or of `Prompt.tsx`
  * (the series is in the description of PR 645). What no screen can say is what the sheet does while the
  * deletion is out, because each screen holds a guard of its own: a guard deleted from here would be caught by
  * a screen's and the case would stay green. The handler's answer is held until the case lets it go.

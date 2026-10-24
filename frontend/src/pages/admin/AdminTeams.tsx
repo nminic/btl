@@ -412,7 +412,7 @@ export function AdminTeams() {
                             />
                             {/* Why this one did not go, in the row it was pressed in.
                                 The question closed with the answer and the focus is back
-                                on this row's own „Obriši" (`DeleteRecord`, owner
+                                on this row's own „Obriši" (`DeleteSheet`, owner
                                 02.10.2026), so the sentence stands beside the button and
                                 carries itself: `ServerSaid` draws it in an alert. */}
                             {refused !== null && refused.id === team.id && (

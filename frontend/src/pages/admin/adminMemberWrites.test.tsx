@@ -726,7 +726,7 @@ describe('the members screen', () => {
    * WHILE THE DELETION IS OUT WITH THE SERVER (owner, 02.10.2026, choosing between three outcomes:
    * „Ne", „Odustani" and Escape are onemoguceni while the request travels, with the state said in words,
    * and the question is closed by whoever asked it when the answer arrives). Asked of this screen in
-   * `deletionInFlight.test.tsx` until 22.10.2026, when its question stopped being `DeleteRecord`'s.
+   * `deletionInFlight.test.tsx` until 22.10.2026, when its question stopped being the row's.
    */
   it('while the deletion is out with the server, puts nothing away and says it is sending; a refusal closes it', async () => {
     let answer: (value: Response) => void = () => {}

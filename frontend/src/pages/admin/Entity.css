@@ -193,12 +193,6 @@
   background: transparent;
 }
 
-.entity-delete--sure {
-  border-color: var(--danger);
-  color: var(--danger);
-  font-weight: 700;
-}
-
 /* The races of an event, under the form that names it. Set off from the form
    above rather than running straight on from it. */
 .entity-races {
