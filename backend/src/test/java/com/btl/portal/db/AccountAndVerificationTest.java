@@ -96,9 +96,11 @@ class AccountAndVerificationTest extends DatabaseTest {
 						   since the last one that did not, and until when the account is shut. */
 						"password_hash", "failed_sign_ins", "locked_until",
 						/* V72. Until when an account that stood unconfirmed on the day of that
-						   deployment is kept (owner, 24.10.2026, „zatečenima 7 dana od dana
-						   podizanja"): a fact about one day, about signing up and not about who. */
-						"kept_unconfirmed_until",
+						   deployment is kept, seven days from that day (derived 24.10.2026, PDL
+						   IZVEDENO, not the owner's words), and when an account was written, from
+						   which an unconfirmed registration goes fourteen days later at the latest
+						   (owner, 24.10.2026): facts about signing up and not about who. */
+						"kept_unconfirmed_until", "created_at",
 						/* V23. „Ime i prezime nosi sam nalog" (owner, 14.09.2026): the name of
 						   whoever owns the login, which is not the same fact as the name in the
 						   register of members and does not replace it. And the member this

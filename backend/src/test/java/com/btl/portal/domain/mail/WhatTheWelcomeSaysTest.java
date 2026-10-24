@@ -140,18 +140,18 @@ class WhatTheWelcomeSaysTest {
 	@Test
 	void cIsTheExampleWithItsFactsFilledIn() {
 		Said c = WhatTheWelcomeSays.withPayPal(MailLanguage.SERBIAN, 2027, "info@balkanskatrkackaliga.net",
-				"32,00 EUR", PORTAL);
+				"32,00 EUR", "Sportsko udruženje BTL", PORTAL);
 
 		assertThat(c.subject()).isEqualTo("Podaci za uplatu članarine za 2027. godinu");
 		assertThat(c.body()).isEqualTo(String.join("\n", HELLO, "",
 				"Da biste postali član lige za 2027. godinu, ostalo je još samo da uplatite članarinu"
 						+ " preko PayPal-a:",
 				"",
-				"Adresa naloga: info@balkanskatrkackaliga.net",
+				"PayPal adresa: info@balkanskatrkackaliga.net",
 				"Iznos (sa uračunatom taksom): 32,00 EUR",
 				"",
-				"Taksa nije članarina nego trošak obrade plaćanja kod PayPal-a. Kursna razlika i naknada"
-						+ " vaše banke ostaju na vama.",
+				"PayPal adresa je poslovna, na Sportsko udruženje BTL. Taksa nije članarina nego trošak"
+						+ " obrade plaćanja kod PayPal-a. Kursna razlika i naknada vaše banke ostaju na vama.",
 				"",
 				"Pošto još nemate članski broj, prepoznaćemo uplatu po vašem imenu, a čim stigne,"
 						+ " moderator je potvrđuje i dobijate članski broj.",
@@ -172,14 +172,14 @@ class WhatTheWelcomeSaysTest {
 			case WITH_A_SLIP -> WhatTheWelcomeSays.withASlip(MailLanguage.ENGLISH, 2027, "R", "A",
 					"3,600.00 RSD", "Članarina za 2027. godinu", PORTAL);
 			case WITH_PAYPAL -> WhatTheWelcomeSays.withPayPal(MailLanguage.ENGLISH, 2027, "P", "32.00 EUR",
-					PORTAL);
+					"U", PORTAL);
 			default -> WhatTheWelcomeSays.about(letter, MailLanguage.ENGLISH, 2027, PORTAL);
 		};
 		Said serbian = switch (letter) {
 			case WITH_A_SLIP -> WhatTheWelcomeSays.withASlip(MailLanguage.SERBIAN, 2027, "R", "A",
 					"3.600,00 RSD", "Članarina za 2027. godinu", PORTAL);
 			case WITH_PAYPAL -> WhatTheWelcomeSays.withPayPal(MailLanguage.SERBIAN, 2027, "P", "32,00 EUR",
-					PORTAL);
+					"U", PORTAL);
 			default -> WhatTheWelcomeSays.about(letter, MailLanguage.SERBIAN, 2027, PORTAL);
 		};
 

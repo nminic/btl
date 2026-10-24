@@ -11,7 +11,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * V72 OVER ACCOUNTS AS A DATABASE ALREADY HOLDS THEM: the unconfirmed ones, and only those, come out
  * kept seven days from the moment it ran.
  *
- * <p>The owner, 24.10.2026: „zatečenima 7 dana od dana podizanja". The shape is
+ * <p>Seven days from the deployment for the accounts already standing, which is derived and not the
+ * owner's words (PDL, IZVEDENO 24.10.2026). And the moment an account was written stays empty for
+ * them, because nobody recorded it. The shape is
  * {@code MailLanguageCarriedOverTest}'s: the column the migration adds is taken away, accounts are
  * written the way the database holds them, and THE FILE ITSELF is run over them
  * ({@link DatabaseTest#migrationSql}), inside the case's transaction.
@@ -24,6 +26,7 @@ class UnconfirmedAccountsCarriedOverTest extends DatabaseTest {
 	@BeforeEach
 	void accountsWrittenBeforeV72() {
 		jdbc.execute("alter table account drop column kept_unconfirmed_until cascade");
+		jdbc.execute("alter table account drop column created_at cascade");
 
 		for (String[] one : new String[][] {{"nepotvrdjen@primer.rs", null}, {"potvrdjen@primer.rs", "now()"},
 				{"pozvan@primer.rs", null}}) {
@@ -52,5 +55,19 @@ class UnconfirmedAccountsCarriedOverTest extends DatabaseTest {
 				.query(String.class).list())
 				.containsExactly("nepotvrdjen@primer.rs 604800", "potvrdjen@primer.rs not kept",
 						"pozvan@primer.rs 604800");
+
+		assertThat(db.sql("select count(*) from account where email like '%@primer.rs' and created_at is not null")
+				.query(Long.class).single())
+				.as("an account that stood before V72 was given a moment of writing nobody recorded")
+				.isZero();
+
+		db.sql("insert into account (first_name, last_name, email, role_id)"
+						+ " values ('Probni', 'Probic', 'posle@primer.rs', (select id from role where code = 'competitor'))")
+				.update();
+
+		assertThat(db.sql("select created_at = now() from account where email = 'posle@primer.rs'")
+				.query(Boolean.class).single())
+				.as("an account written after V72 does not carry the moment it was written")
+				.isTrue();
 	}
 }

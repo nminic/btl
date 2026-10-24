@@ -158,7 +158,7 @@ class TheLetterAfterTheAddress {
 					slip.toTransfer().currency().name(), in);
 
 			return new Written(reader.address(), WhatTheWelcomeSays.withPayPal(in,
-					owed.season(), IpsSlip.PAYPAL_ADDRESS, amount, portal), null);
+					owed.season(), IpsSlip.PAYPAL_ADDRESS, amount, IpsSlip.RECIPIENT_NAME, portal), null);
 		}
 
 		return new Written(reader.address(),

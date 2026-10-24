@@ -354,7 +354,9 @@ class TheLetterAfterTheAddressTest {
 
 		assertThat(letter.subject()).isEqualTo("Podaci za uplatu članarine za 2027. godinu");
 		assertThat(letter.text())
-				.contains("Adresa naloga: info@balkanskatrkackaliga.net")
+				.contains("PayPal adresa: info@balkanskatrkackaliga.net")
+				.contains("PayPal adresa je poslovna, na Sportsko udruženje BTL.")
+				.doesNotContain("nalog")
 				.contains("Iznos (sa uračunatom taksom): " + com.btl.portal.domain.mail.WhatTheWelcomeSays
 						.amount(total, "EUR", com.btl.portal.domain.mail.MailLanguage.SERBIAN));
 		assertThat(letter.file()).isNull();

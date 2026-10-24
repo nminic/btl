@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -27,11 +28,16 @@ import java.util.concurrent.TimeUnit;
  * address - which is both a registration not confirmed and an entry whose invitation was never
  * spent, because spending it is what confirms the address (PDL 19.09.2026) - when:
  * <ul>
- * <li><b>every link he was ever sent has run out</b>, and he was sent at least one. The seven days
- * are the life of a link and not of the account: every letter the portal sends him says „Link važi
- * sedam dana", and „Pošalji potvrdu ponovo" stays as it is, so a link asked for on the sixth day is
- * another seven days, as its own letter promises. An account no link was ever sent to is not a
- * registration and not an invitation - nothing the decision is about - and stays;
+ * <li><b>every link he was ever sent has run out, or fourteen days have passed since his account
+ * was written</b>, and he was sent at least one link. The seven days are the life of a link: every
+ * letter the portal sends him says „Link važi sedam dana", and a link asked for on the sixth day is
+ * another seven days. But no more than fourteen from the registration, the owner's decision of
+ * 24.10.2026 (PDL „Rok nepotvrđene prijave"): „nova poruka za potvrdu daje novih 7 dana, ali se
+ * prijava svakako briše najkasnije 14 dana posle registracije", so that nobody holds somebody else's
+ * address taken by asking for a new link every six days. The same for an invitation, fourteen days
+ * from the entry. An account that stood before V72 has no recorded moment and no fourteenth day.
+ * An account no link was ever sent to is not a registration and not an invitation - nothing the
+ * decision is about - and stays;
  * <li><b>he has no member number and no payment of any state</b>. The owner's exception names the
  * entered member, and it holds for a registration too, for the reason he gave: a number is never
  * handed out twice, and a payment is money somebody sent (accepted 24.10.2026, derived from that
@@ -40,7 +46,7 @@ import java.util.concurrent.TimeUnit;
  * administration's own deletion asks it. A moderator with no member is not a member and is never
  * swept at all: the decision is about a member;
  * <li><b>and he is not one of the accounts that stood unconfirmed the day V72 ran</b>, which are kept
- * seven days from that day (owner, 24.10.2026, „zatečenima 7 dana od dana podizanja").
+ * seven days from that day. That is derived and not the owner's words (PDL, IZVEDENO 24.10.2026).
  * </ul>
  *
  * <p><b>Confirmed is never swept</b>, and that is a property and not a branch: nothing in the portal
@@ -79,10 +85,17 @@ class UnconfirmedAccountsAreSwept {
 			+ " and (a.kept_unconfirmed_until is null or a.kept_unconfirmed_until <= :now)"
 			+ " and (exists (select 1 from email_verification_token t where t.account_id = a.id)"
 			+ "   or exists (select 1 from password_reset_token t where t.account_id = a.id))"
-			+ " and not exists (select 1 from email_verification_token t"
-			+ "   where t.account_id = a.id and t.expires_at > :now)"
-			+ " and not exists (select 1 from password_reset_token t"
-			+ "   where t.account_id = a.id and t.used_at is null and t.expires_at > :now)";
+			+ " and ((not exists (select 1 from email_verification_token t"
+			+ "     where t.account_id = a.id and t.expires_at > :now)"
+			+ "   and not exists (select 1 from password_reset_token t"
+			+ "     where t.account_id = a.id and t.used_at is null and t.expires_at > :now))"
+			+ "  or a.created_at + make_interval(secs => :atTheLatest) <= :now)";
+
+	/**
+	 * Fourteen days from the moment the account was written, and the registration goes whatever its
+	 * links say (owner, 24.10.2026, „najkasnije 14 dana posle registracije").
+	 */
+	static final Duration AT_THE_LATEST = Duration.ofDays(14);
 
 	private final JdbcClient db;
 
@@ -133,7 +146,8 @@ class UnconfirmedAccountsAreSwept {
 				.param(member).query(Long.class).list();
 
 		boolean stillMayGo = db.sql("select exists (select 1" + MAY_GO + " and c.id = :member)")
-				.param("now", now).param("member", member).query(Boolean.class).single();
+				.param("now", now).param("atTheLatest", AT_THE_LATEST.toSeconds()).param("member", member)
+				.query(Boolean.class).single();
 
 		if (!stillMayGo || members.hisAccountAdministers(member)) {
 			return false;

@@ -28,7 +28,8 @@
  *
  * THE ACCOUNTS ALREADY STANDING
  * -----------------------------
- * The owner, 24.10.2026: „zatečenima 7 dana od dana podizanja". An account standing unconfirmed when
+ * Derived on 24.10.2026 and not the owner's own words (PDL, marked IZVEDENO 24.10.2026): the
+ * accounts already standing get seven days from the day of deployment. An account standing unconfirmed when
  * this runs was mailed a link of twenty four hours or one hour, and words that told him to ask for a
  * new one, never that he would be deleted. Every one of its links has long run out, so by the rule
  * alone the first sweep would delete it the hour the server came up. So each of them is kept for
@@ -44,6 +45,22 @@
  * holds them, runs THIS FILE over them, and requires the unconfirmed ones and only those to come out
  * kept for seven days.
  *
+ *
+ * WHEN THE ACCOUNT WAS WRITTEN
+ * ----------------------------
+ * The owner, 24.10.2026 (PDL „Rok nepotvrđene prijave"): „nova poruka za potvrdu daje novih 7 dana,
+ * ali se prijava svakako briše najkasnije 14 dana posle registracije". Asking for a new link every
+ * six days would otherwise hold somebody else's address taken for ever. So the account says when it
+ * was written: `account.created_at`, which every account written from this file on is given by its
+ * default, the registration and the administration's entry alike.
+ *
+ * EMPTY FOR THE ACCOUNTS ALREADY STANDING, and not filled with the moment this runs: that moment is
+ * not when any of them was written, and a column that said so would be a fact nobody recorded. The
+ * column is added with no default first, so PostgreSQL leaves those rows empty, and the default is
+ * set after. An account with no moment is held only by its links and by the seven days above; it
+ * has no fourteenth day, and on 24.10.2026 neither QA nor production held a single unconfirmed
+ * account.
+ *
  * This file does not change once it is applied (ADL A2); a correction is the next migration.
  */
 
@@ -53,8 +70,16 @@ alter table email_verification_token
 alter table account
     add column kept_unconfirmed_until timestamptz;
 
-comment on column account.kept_unconfirmed_until is 'Until when an account that stood unconfirmed on the day V72 ran is kept, whatever its links say: seven days from that day (owner, 24.10.2026). Empty for every other account, and never written again.';
+comment on column account.kept_unconfirmed_until is 'Until when an account that stood unconfirmed on the day V72 ran is kept, whatever its links say: seven days from that day (derived 24.10.2026, PDL). Empty for every other account, and never written again.';
 
 update account
    set kept_unconfirmed_until = now() + interval '168 hours'
  where email_confirmed_at is null;
+
+alter table account
+    add column created_at timestamptz;
+
+alter table account
+    alter column created_at set default now();
+
+comment on column account.created_at is 'When the account was written, for every account written from V72 on; empty for the accounts that stood before it, whose moment nobody recorded. An unconfirmed registration is deleted fourteen days after it at the latest (owner, 24.10.2026).';

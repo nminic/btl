@@ -144,11 +144,15 @@ public final class WhatTheWelcomeSays {
 				purpose, membershipPage(portal, in));
 	}
 
-	/** C, with the PayPal address and the amount, the processing fee already in it. */
+	/**
+	 * C, with the PayPal address, the amount with the processing fee already in it, and whose the
+	 * address is: „PayPal adresa je poslovna, na Sportsko udruženje BTL." (owner, 24.10.2026, PDL).
+	 * The word for an account is in none of it, which is derived from his sentence of 22.10.2026.
+	 */
 	public static Said withPayPal(MailLanguage in, int season, String paypal, String amount,
-			Portal portal) {
+			String recipient, Portal portal) {
 		return written(Letter.WITH_PAYPAL, in, String.valueOf(season), paypal, amount,
-				membershipPage(portal, in));
+				membershipPage(portal, in), recipient);
 	}
 
 	/** The first of the three lines under the code, „IPS QR kod za uplatu". */

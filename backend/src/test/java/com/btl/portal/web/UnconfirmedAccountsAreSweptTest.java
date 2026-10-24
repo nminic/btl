@@ -87,11 +87,21 @@ class UnconfirmedAccountsAreSweptTest {
 				.param(String.format("%016x", 0xd31eL * 1000 + ++issued))
 				.query(Long.class).single();
 
-		return db.sql("insert into account (first_name, last_name, email, role_id, competitor_id,"
+		long account = db.sql("insert into account (first_name, last_name, email, role_id, competitor_id,"
 						+ " password_hash) values ('Probni', 'Clan', ?, (select id from role where code = ?),"
 						+ " ?, ?) returning id")
 				.params(email, role, member, withAPassword ? "{bcrypt}$2a$10$abcdefghijklmnopqrstuv" : null)
 				.query(Long.class).single();
+
+		/* WRITTEN A DAY BEFORE THE SWEEP, so no case below reaches the fourteenth day but the ones
+		   that set the moment themselves. */
+		writtenAt(account, NOW.minus(Duration.ofDays(1)));
+
+		return account;
+	}
+
+	private void writtenAt(long account, Instant at) {
+		db.sql("update account set created_at = ? where id = ?").params(Timestamp.from(at), account).update();
 	}
 
 	private void aConfirmationLinkEnding(long account, Instant at) {
@@ -262,14 +272,16 @@ class UnconfirmedAccountsAreSweptTest {
 	}
 
 	/**
-	 * AN ACCOUNT THAT STOOD UNCONFIRMED THE DAY V72 RAN IS KEPT UNTIL THE DAY IT WAS GIVEN (owner,
-	 * 24.10.2026, „zatečenima 7 dana od dana podizanja"), and swept after it like any other.
+	 * AN ACCOUNT THAT STOOD UNCONFIRMED THE DAY V72 RAN IS KEPT UNTIL THE DAY IT WAS GIVEN, seven days
+	 * from the deployment (derived 24.10.2026, PDL IZVEDENO, not the owner's words), and swept after
+	 * it like any other. It has no recorded moment, so the fourteenth day does not reach it.
 	 */
 	@Test
 	void anAccountStandingOnTheDayOfTheDeploymentIsKeptUntilItsDay() {
 		long account = aMember("zatecen@primer.rs", "competitor", true);
 
 		aConfirmationLinkEnding(account, NOW.minus(Duration.ofDays(20)));
+		db.sql("update account set created_at = null where id = ?").param(account).update();
 		db.sql("update account set kept_unconfirmed_until = ? where id = ?")
 				.params(Timestamp.from(NOW.plus(Duration.ofHours(2))), account).update();
 
@@ -280,6 +292,45 @@ class UnconfirmedAccountsAreSweptTest {
 		sweptAt(NOW.plus(Duration.ofHours(2))).sweep();
 
 		assertThat(stands(account)).isFalse();
+	}
+
+	/**
+	 * FOURTEEN DAYS FROM THE REGISTRATION, AND IT GOES WHATEVER ITS LINKS SAY (owner, 24.10.2026, PDL
+	 * „Rok nepotvrđene prijave": „nova poruka za potvrdu daje novih 7 dana, ali se prijava svakako
+	 * briše najkasnije 14 dana posle registracije"). The registration that goes holds a link sent four
+	 * days ago and still good for three, so a bound counted from the last link would keep it; on the
+	 * fourteenth day exactly it goes, and a second short of it it stays.
+	 */
+	@Test
+	void aRegistrationGoesOnItsFourteenthDayWhateverItsLinksSay() {
+		long onTheDay = aMember("cetrnaesti-dan@primer.rs", "competitor", true);
+		long aSecondShort = aMember("sekund-pre@primer.rs", "competitor", true);
+
+		for (long each : List.of(onTheDay, aSecondShort)) {
+			aConfirmationLinkEnding(each, NOW.minus(Duration.ofDays(8)));
+			aConfirmationLinkEnding(each, NOW.plus(Duration.ofDays(3)));
+		}
+
+		writtenAt(onTheDay, NOW.minus(Duration.ofDays(14)));
+		writtenAt(aSecondShort, NOW.minus(Duration.ofDays(14)).plusSeconds(1));
+
+		sweptAt(NOW).sweep();
+
+		assertThat(stands(onTheDay)).as("still standing on the fourteenth day of a registration").isFalse();
+		assertThat(stands(aSecondShort)).as("gone a second before the fourteenth day").isTrue();
+	}
+
+	/** And the same for an invitation, fourteen days from the entry. */
+	@Test
+	void anEntryGoesOnItsFourteenthDayWhileItsInvitationStillStands() {
+		long entered = aMember("upisan-14@primer.rs", "competitor", false);
+
+		anInvitationEnding(entered, NOW.plus(Duration.ofDays(2)));
+		writtenAt(entered, NOW.minus(Duration.ofDays(15)));
+
+		sweptAt(NOW).sweep();
+
+		assertThat(stands(entered)).isFalse();
 	}
 
 	/** Once an hour, the first an hour after the start, as the pictures' sweep. */
