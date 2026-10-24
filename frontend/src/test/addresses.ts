@@ -90,6 +90,12 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
   /* Nought since 17.10.2026: every place he took is in the imported history, and no season before
      2027 is a trophy (PDL P27). The count is still the sign that the part has been worked out. */
   ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Vladan Đurišić', 'Pehari 0'],
+  /* THE CARD „PODACI" (PDL 22.10.2026), which only the member himself and the administration open: a
+     visitor is sent to the front page, as from every profile he may not read, and the member these walks
+     sign in as (000021) is drawn HIS OWN card, under the head of his profile. No part is named, because a
+     part is asked of both readers and the visitor is drawn the front page; the panel itself is read by
+     `profile/competitorData.test.tsx`. */
+  ['/sr/takmicar/000021/podaci', 'Balkanska trkačka liga', 'Ksenija Vasiljević'],
   ['/sr/timovi', 'Timovi', 'Timovi'],
   ['/sr/tim/dunavski-trkaci', 'Dunavski trkači', 'Dunavski trkači'],
   /* The front page, to a member, and that is the screen this address answers with

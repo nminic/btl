@@ -169,7 +169,8 @@
       "recordTitle": "{name}, {city}",
       "recordDescription": "{name}: sve trke, bodovi i statistika u Balkanskoj trkačkoj ligi.",
       "awardsTitle": "{name}, priznanja",
-      "awardsDescription": "{name}: pehari i dukati osvojeni u Balkanskoj trkačkoj ligi."
+      "awardsDescription": "{name}: pehari i dukati osvojeni u Balkanskoj trkačkoj ligi.",
+      "dataTitle": "{name}, podaci"
     },
     "event": {
       "title": "Događaj iz kalendara",
@@ -216,6 +217,10 @@
     "rateEvent": {
       "title": "Ocena događaja",
       "description": "Oceni organizaciju, vrednost za novac i ambijent. Ocene bez komentara se objavljuju odmah, a komentar kad ga moderator odobri."
+    },
+    "competitorData": {
+      "title": "Podaci takmičara",
+      "description": "Podaci jednog člana Balkanske trkačke lige, koje vide samo on i administracija."
     }
   },
   "pager": {

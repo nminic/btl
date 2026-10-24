@@ -60,7 +60,8 @@ import { SignedOut } from './SignedOut'
  * who has registered and has not paid; and an account with no record. Two screens are drawn
  * for the third of them instead of telling him, and say so by asking
  * {@link useScreenForTheUnpaidToo}: „Moja clanarina", where he pays and chooses his category, and
- * the settings, where he changes his data and his password. The other nine ask
+ * the settings, where he changes his password (his data leave the settings on 23.10.2026 for the page
+ * „Moji podaci", PDL 22.10.2026, which is the next piece of work). The other nine ask
  * {@link useMemberScreen} and are told, by {@link NotAMemberYet}, that the rest opens when his
  * fee is recorded and where to go to pay it.
  *

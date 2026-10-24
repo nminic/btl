@@ -134,13 +134,26 @@ export type Typed = Record<Sent, string>
  * field of the same record, and `MeWriteApi.EACH_BOX_ON_THE_FORM` holds the SERVER to that
  * very file. Three homes for one number, and the file is the only one that decides.
  *
- * <p>`city` is not among them and that is named rather than forgotten: a town is chosen out
- * of the codebook (`type: 'place'`), and {@code PUT /api/me} takes it as either a
- * {@code placeId} or a typed {@code city} with its {@code country} - never both and never
- * neither, which is its own refusal. That is a picker and two roads rather than a box, and
- * it is written down as what this screen does not yet do.
+ * <p><b>The town and the shirt size since 23.10.2026</b>, when the panel moved from the screen of
+ * the settings to the card „Podaci" of the member's own profile (PDL 22.10.2026, „Profil dobija
+ * karticu „Podaci""; „Član sam menja sve osim pola i datuma rođenja", and the father's name stays the
+ * administration's, „Ime oca i dalje menja samo administracija"). The town is a name and its country,
+ * the same two words the registration sends for it (`Registration.tsx`), so {@code PUT /api/me} takes
+ * it as a typed {@code city} with its {@code country} and never as a {@code placeId}; the two travel
+ * together or not at all, because the route refuses half a town (`theTownIsNotSaidOnce`). The address
+ * of post is not here: it is changed only against a confirmation, which is its own piece of work (PDL,
+ * „Promena adrese pošte ulazi u obim pred lansiranje, ali se radi posle profila, lige i ostatka
+ * bloka", 24.09.2026).
  */
-export const WHAT_THIS_SCREEN_SENDS = ['firstName', 'lastName', 'address', 'phone'] as const
+export const WHAT_THIS_SCREEN_SENDS = [
+  'firstName',
+  'lastName',
+  'address',
+  'phone',
+  'city',
+  'country',
+  'shirtSize',
+] as const
 
 export type Sent = (typeof WHAT_THIS_SCREEN_SENDS)[number]
 
@@ -161,13 +174,25 @@ export type Sent = (typeof WHAT_THIS_SCREEN_SENDS)[number]
  */
 export const NEVER_EMPTIED: readonly Sent[] = ['firstName', 'lastName', 'address']
 
-/** How many characters each of those boxes holds, asked of the form rather than of me. */
-export const AS_LONG_AS_THE_FORM_ALLOWS: Record<Sent, number> = {
+/**
+ * THE FIELDS SOMEBODY TYPES INTO FREELY, which are the ones with a length: the town is picked or
+ * typed in its own control (`PlaceField`), its country goes with it, and the size is one of seven.
+ */
+export const TYPED_BOXES = ['firstName', 'lastName', 'address', 'phone'] as const
+
+export type TypedBox = (typeof TYPED_BOXES)[number]
+
+/** How many characters each of those boxes holds, and the town's, asked of the form rather than of me. */
+export const AS_LONG_AS_THE_FORM_ALLOWS: Record<TypedBox | 'city', number> = {
   firstName: limitOf(registracija, 'firstName'),
   lastName: limitOf(registracija, 'lastName'),
   address: limitOf(registracija, 'address'),
   phone: limitOf(registracija, 'phone'),
+  city: limitOf(registracija, 'city'),
 }
+
+/** The two words of the town, which travel together or not at all. */
+const THE_TOWN: readonly Sent[] = ['city', 'country']
 
 /**
  * WHAT OF IT ACTUALLY CHANGED, WHICH IS THE ONLY THING THAT TRAVELS.
@@ -212,6 +237,15 @@ export function whatChanged(standing: Standing, typed: Typed): Partial<Record<Se
 
     if (written !== standing[name].trim()) {
       changed[name] = written
+    }
+  }
+
+  /* HALF A TOWN IS NOT A TOWN: a new town in the same country moves only the name, and a country
+     chosen for the same name moves only the country, but the route takes the two together or
+     refuses them (`MeWriteApi`, `theTownIsNotSaidOnce`). So either one moving sends both. */
+  if (THE_TOWN.some((name) => Object.hasOwn(changed, name))) {
+    for (const name of THE_TOWN) {
+      changed[name] = typed[name].trim()
     }
   }
 
