@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
@@ -49,11 +50,19 @@ type Screen = {
   path: string
   /** The question the sheet asks. */
   asks: string
-  /** What the screen says once the row is gone. */
-  gone: string
+  /** What the screen says once the row is gone, where it says it: the four lists of the administration do (`DeletionSaid`). */
+  gone?: string
   /** The address a deletion on it goes to, as a pattern the browser's route understands. */
-  route: string
+  route?: string
   answers: Answers
+  /** Something only this screen has, to wait for; a table row by default. */
+  ready?: string
+  /** The cross that asks, by name: a record's „Obriši: {name}" by default. */
+  cross?: RegExp | string
+  /** Which of the crosses, counted from nought: the second by default, never the first where there is a list. */
+  which?: number
+  /** Whether the sheet names a record under the question; a member's own rating has none to name. */
+  named?: boolean
 }
 
 const ME = { role: 'superadmin', account: 41, membershipBasis: null }
@@ -101,6 +110,42 @@ const SCREENS: Screen[] = [
     route: '**/api/teams/*',
     answers: { '/api/me': ME, '/api/teams': sample('teams'), '/api/competitors': sample('competitors') },
   },
+  /* THE FOUR PLACES OUTSIDE THE ADMINISTRATION (owner, 24.10.2026, PDL „Odgovori od 24.10.2026 (popodne)"): the
+     team's own page, a result on the page of its event, a member's own results and his own rating. They say
+     nothing after a deletion that the sheet's own geometry would need, so they carry no `gone`. The answers are
+     every answer of the sample (`src/test/mock`), as `actionTip.geometry.ts` reads these same screens. */
+  {
+    name: 'the page of a team',
+    path: '/sr/tim/dunavski-trkaci',
+    asks: 'Obriši tim?',
+    answers: { ...everyAnswer(), '/api/me': member('000001') },
+    ready: 'h1.profile__name',
+    which: 0,
+  },
+  {
+    name: 'a result on the page of its event',
+    path: '/sr/kalendar/zimski-nocni-polumaraton-2020',
+    asks: 'Obriši rezultat?',
+    answers: { ...everyAnswer(), '/api/me': ME },
+    ready: 'tbody td.table__points',
+  },
+  {
+    name: 'the results of a member',
+    path: '/sr/moji-rezultati',
+    asks: 'Obriši rezultat?',
+    answers: { ...everyAnswer(), '/api/me': member('000021') },
+    ready: 'tbody td.table__points',
+  },
+  {
+    name: 'the rating of a member',
+    path: '/sr/kalendar/fruskogorski-maraton-2010',
+    asks: 'Obriši svoju ocenu?',
+    answers: { ...everyAnswer(), '/api/me': member('000021') },
+    ready: '.comments__his',
+    cross: 'Obriši svoju ocenu',
+    which: 0,
+    named: false,
+  },
 ]
 
 /** The three widths the portal is measured at (CLAUDE.md, UI standards), at the reader's own text and at 200%. */
@@ -108,6 +153,30 @@ const WIDTHS = [360, 768, 1280]
 const TEXTS = [100, 200] as const
 
 const READY = 'table tbody tr'
+
+/** Every answer of the sample, under the address it answers (`/api/results/runners` from `results/runners.json`). */
+function everyAnswer(dir = fileURLToPath(new URL('../src/test/mock/', import.meta.url)), prefix = ''): Record<string, unknown> {
+  return Object.fromEntries(
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry): [string, unknown][] => {
+      const at = join(dir, entry.name)
+
+      if (entry.isDirectory()) {
+        return Object.entries(everyAnswer(at, `${prefix}${entry.name}/`))
+      }
+
+      return entry.name.endsWith('.json')
+        ? [[`/api/${prefix}${entry.name.slice(0, -'.json'.length)}`, JSON.parse(readFileSync(at, 'utf-8'))]]
+        : []
+    }),
+  )
+}
+
+/** A member of the sample, answering `/api/me` with his own record. */
+function member(number: string) {
+  const record = sample<Record<string, unknown>[]>('competitors').find((one) => one.memberNumber === number)
+
+  return { role: 'competitor', account: 1, mailLanguage: 'sr', seasonsOpenForAReport: [2027], member: record }
+}
 
 /**
  * THE SCREENS THAT ALREADY MOVE SIDEWAYS BEFORE ANY SHEET IS OPEN, on `main`.
@@ -119,10 +188,14 @@ const READY = 'table tbody tr'
  * is not written down: it is a fact about the fonts and not about the screen. PDL P24 forbids it. It is
  * reported with this branch and not fixed in it.
  *
+ * <p>**The page of an event with a member's own rating on it moves the same way at 360px and 200% text** (70px on the
+ * machine it was measured on, 24.10.2026, `origin/main` af327df5, with nothing of this branch on it; none at the
+ * reader's own text). It is a fault of that page and is reported, not fixed, here.
+ *
  * <p>Written as a name and not as a skip, so the guard still fails if the sheet or the sentence makes it
  * worse, and still fails on every other screen and width where nothing moves.
  */
-const MOVES_ALREADY: ReadonlySet<string> = new Set(['the events|360|200'])
+const MOVES_ALREADY: ReadonlySet<string> = new Set(['the events|360|200', 'the rating of a member|360|200'])
 
 const movesAlready = (screen: string, at: At) => MOVES_ALREADY.has(`${screen}|${at.width}|${at.text}`)
 
@@ -133,13 +206,14 @@ function expectNoSidewaysBeforeTheSheet(screen: string, at: At, sideways: number
   }
 }
 
-/** The cross of the second row that is drawn on this screen. */
-async function secondCross(page: Page) {
-  const crosses = page.getByRole('button', { name: /^Obriši: / }).filter({ visible: true })
+/** The cross of the row that is drawn on this screen: the second, so a first row cannot stand in for it. */
+async function crossOf(page: Page, screen: Screen) {
+  const crosses = page.getByRole('button', { name: screen.cross ?? /^Obriši: / }).filter({ visible: true })
+  const which = screen.which ?? 1
 
-  expect(await crosses.count(), 'one row cannot tell a row from the first row').toBeGreaterThan(1)
+  expect(await crosses.count(), 'one row cannot tell a row from the first row').toBeGreaterThan(which)
 
-  return crosses.nth(1)
+  return crosses.nth(which)
 }
 
 /** Where the sheet stands, and where its buttons and its text stand inside it. */
@@ -194,9 +268,9 @@ for (const screen of SCREENS) {
       const at: At = { width, text }
 
       test(`${screen.name}: the sheet stands inside the window and its text at its start at ${label(at)}`, async ({ open }) => {
-        const { page, probe } = await open(at, screen.path, READY, screen.answers)
+        const { page, probe } = await open(at, screen.path, screen.ready ?? READY, screen.answers)
 
-        await (await secondCross(page)).click()
+        await (await crossOf(page, screen)).click()
         await page.getByRole('dialog', { name: screen.asks }).waitFor({ state: 'visible' })
         await page.waitForFunction(() => document.getAnimations().length === 0)
 
@@ -231,7 +305,7 @@ for (const screen of SCREENS) {
           'the two buttons overlap',
         ).toBe(true)
 
-        expect(seen.text.length).toBeGreaterThan(1)
+        expect(seen.text.length).toBeGreaterThan(screen.named === false ? 0 : 1)
 
         for (const one of seen.text) {
           expect(['start', 'left'], `„${one.text}" computes ${one.align}`).toContain(one.align)
@@ -242,7 +316,7 @@ for (const screen of SCREENS) {
       })
 
       test(`${screen.name}: a double press on the cross opens one sheet and sends nothing at ${label(at)}`, async ({ open }) => {
-        const { page } = await open(at, screen.path, READY, screen.answers)
+        const { page } = await open(at, screen.path, screen.ready ?? READY, screen.answers)
         const sent: string[] = []
 
         page.on('request', (request) => {
@@ -251,7 +325,7 @@ for (const screen of SCREENS) {
           }
         })
 
-        const cross = await secondCross(page)
+        const cross = await crossOf(page, screen)
 
         await cross.dblclick()
         await page.waitForFunction(() => document.getAnimations().length === 0)
@@ -264,17 +338,17 @@ for (const screen of SCREENS) {
     }
   }
 
-  for (const width of WIDTHS) {
+  for (const width of screen.gone === undefined ? [] : WIDTHS) {
     const at: At = { width, text: 200 }
 
     test(`${screen.name}: the sentence after a deletion stands in the window, over the table, at ${label(at)}`, async ({ open }) => {
-      const { page, probe } = await open(at, screen.path, READY, screen.answers)
+      const { page, probe } = await open(at, screen.path, screen.ready ?? READY, screen.answers)
 
-      await page.route(screen.route, (route) => route.fulfill({ status: 204 }))
-      await (await secondCross(page)).click()
+      await page.route(screen.route ?? '**/api/**', (route) => route.fulfill({ status: 204 }))
+      await (await crossOf(page, screen)).click()
       await page.getByRole('dialog', { name: screen.asks }).getByRole('button', { name: 'Obriši', exact: true }).click()
 
-      const said = page.getByText(screen.gone, { exact: true })
+      const said = page.getByText(screen.gone ?? '', { exact: true })
 
       await said.waitFor({ state: 'visible' })
       await page.waitForFunction(() => document.getAnimations().length === 0)
