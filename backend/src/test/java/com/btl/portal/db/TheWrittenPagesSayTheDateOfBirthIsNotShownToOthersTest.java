@@ -13,8 +13,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 /**
- * THE ONE WORD V73 ADDS TO THE PRIVACY POLICY, "drugima" (TO OTHERS), IN THE SENTENCE ABOUT THE DATE OF BIRTH, HELD ON
- * THE TEXT THE PORTAL SERVES, IN BOTH LANGUAGES.
+ * WHAT V73 CHANGES IN THE PRIVACY POLICY, HELD ON THE TEXT THE PORTAL SERVES, IN BOTH LANGUAGES: THE WORD "drugima" (TO
+ * OTHERS) IN THE SENTENCE ABOUT THE DATE OF BIRTH, THE CELL AND THE ITEM THAT SAY WHO SEES THE NUMBER OF THE DOCUMENT AND
+ * THE FATHER'S NAME, AND THE DAY THE POLICY IS SIGNED OFF ON.
  *
  * <p><b>Why this exists.</b> The owner decided on 24.10.2026 (PDL, the entry "Politika privatnosti, odeljak 3") that the
  * policy's sentence about the date of birth says it is not shown to others, because since that day a member sees his own
@@ -31,9 +32,15 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * <p><b>The sweeps are over every section of every page, with no {@code where} clause</b>: the new words stand in section
  * 3 of the policy and nowhere else, and the words they replace stand nowhere.
  *
- * <p><b>The sign-off is NOT moved by V73</b>, and a case holds it, so that moving it is a decision and not a side effect:
- * the request that asked for this file named the word and nothing else, and the entry of 16.10.2026 ("Datum Poslednja
- * izmena se pomera") would move the date on a document whose text changes. The question is put to the owner.
+ * <p><b>The sign-off of the policy MOVES, to 24.10.2026, and the other two documents' does not</b> (22.10.2026): the entry
+ * of 16.10.2026 ("Datum Poslednja izmena se pomera") moves the date on a document whose text changes. That is the
+ * assistant's and the coordinator's derivation from the recorded rule and not a decision of the owner's; 24.10.2026 is the
+ * day he approved the words.
+ *
+ * <p><b>The heading over the list of what is never shown is NOT touched</b>
+ * ({@link #theHeadingOverTheListIsAsItWasAndSaysNothingOfOthers}): the owner took back the "drugima" a first version put
+ * over the whole list, because it would have said the member sees the internal notes, the private messages and the
+ * signature's IP address. The exception stands on the one item it is true of.
  */
 class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTest {
 
@@ -289,7 +296,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 		return bodyOf(language, place)
 				.replace(newIn(language), oldIn(language))
 				.replace(rowNew(language), rowOld(language))
-				.replace(headingNew(language), headingOld(language))
+				.replace(itemNew(language), itemOld(language))
 				.replace(signOffAfterIn(language), signOffIn(language));
 	}
 
@@ -303,11 +310,12 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	}
 
 	/**
-	 * V73 run over the text before it, the one case in which it succeeds: six sections change, and no other section of
-	 * either table changes by a character. Inside the two, taking the word out again gives the text V73 found.
+	 * V73 run over the text before it, the one case in which it succeeds: six sections change (sections 2, 3 and 7 of the
+	 * policy, in two languages), and no other section of either table changes by a character. Inside the six, taking
+	 * the words and the date out again gives the text V73 found.
 	 */
 	@Test
-	void v73ChangesTwoSectionsAndNothingElse() {
+	void v73ChangesSixSectionsAndNothingElse() {
 		putBackTheTextAsItStoodBeforeV73();
 
 		List<String> before = everySectionBody();
@@ -354,8 +362,8 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 						"Date of birth @ politika-privatnosti #3 en: found 0 times, and its new text is already there",
 						"Document row @ politika-privatnosti #2 sr: found 0 times, and its new text is already there",
 						"Document row @ politika-privatnosti #2 en: found 0 times, and its new text is already there",
-						"Never shown, heading @ politika-privatnosti #3 sr: found 0 times, and its new text is already there",
-						"Never shown, heading @ politika-privatnosti #3 en: found 0 times, and its new text is already there",
+						"Never shown, item @ politika-privatnosti #3 sr: found 0 times, and its new text is already there",
+						"Never shown, item @ politika-privatnosti #3 en: found 0 times, and its new text is already there",
 						"Sign-off @ politika-privatnosti #7 sr: found 0 times, and its new text is already there",
 						"Sign-off @ politika-privatnosti #7 en: found 0 times, and its new text is already there");
 	}
@@ -432,11 +440,11 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 
 		PSQLException error = v73RunAgain();
 
-		/* Two of the eight are aimed at that text: the clause and the heading over the list. */
+		/* Two of the eight are aimed at that text: the clause and the item of the list. */
 		assertThat(error.getServerErrorMessage().getMessage()).contains("2 of 8 edits");
 		assertThat(reportOf(error).lines().toList())
 				.contains("Date of birth @ politika-privatnosti #3 en: there is no such text",
-						"Never shown, heading @ politika-privatnosti #3 en: there is no such text");
+						"Never shown, item @ politika-privatnosti #3 en: there is no such text");
 	}
 
 	private static final String SERBIAN_ROW_OLD = "Vidi ga samo administracija, ne prikazuje se nigde i stoji odvojeno od podataka";
@@ -446,10 +454,16 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	private static final String ENGLISH_ROW_NEW = "Only the administration and you see it, on your own Details card; it is not displayed to"
 			+ " others anywhere and stands apart from the data";
 
-	private static final String SERBIAN_HEADING_OLD = "### Nikada se ne prikazuje\n\nAdresa elektronske pošte";
-	private static final String ENGLISH_HEADING_OLD = "### Never displayed\n\nE-mail address";
-	private static final String SERBIAN_HEADING_NEW = "### Nikada se ne prikazuje drugima\n\nAdresa elektronske pošte";
-	private static final String ENGLISH_HEADING_NEW = "### Never displayed to others\n\nE-mail address";
+	private static final String SERBIAN_ITEM_OLD = "veličina majice, ime oca, broj ličnog dokumenta, telefon";
+	private static final String ENGLISH_ITEM_OLD = "T-shirt size, father's name, ID document number, phone";
+	private static final String SERBIAN_ITEM_NEW = "veličina majice, ime oca i broj ličnog dokumenta, osim vama, na vašoj kartici Podaci,"
+			+ " telefon";
+	private static final String ENGLISH_ITEM_NEW = "T-shirt size, father's name and ID document number, except to you, on your own"
+			+ " Details card, phone";
+
+	/** The heading over the list, which V73 does NOT touch (owner, 24.10.2026), and the words that follow it. */
+	private static final String SERBIAN_HEADING = "### Nikada se ne prikazuje\n\nAdresa elektronske pošte";
+	private static final String ENGLISH_HEADING = "### Never displayed\n\nE-mail address";
 
 	private static final Place THE_TABLE = new Place(POLICY, 2);
 
@@ -461,21 +475,26 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 		return language.equals("sr") ? SERBIAN_ROW_NEW : ENGLISH_ROW_NEW;
 	}
 
-	private static String headingOld(String language) {
-		return language.equals("sr") ? SERBIAN_HEADING_OLD : ENGLISH_HEADING_OLD;
+	private static String itemOld(String language) {
+		return language.equals("sr") ? SERBIAN_ITEM_OLD : ENGLISH_ITEM_OLD;
 	}
 
-	private static String headingNew(String language) {
-		return language.equals("sr") ? SERBIAN_HEADING_NEW : ENGLISH_HEADING_NEW;
+	private static String itemNew(String language) {
+		return language.equals("sr") ? SERBIAN_ITEM_NEW : ENGLISH_ITEM_NEW;
+	}
+
+	private static String headingIn(String language) {
+		return language.equals("sr") ? SERBIAN_HEADING : ENGLISH_HEADING;
 	}
 
 	/**
 	 * THE TWO MORE PLACES (owner, 24.10.2026, the words are the assistant's): the cell of the table that says who sees the
-	 * number of the identity document, and the heading over the list of what is never shown, which holds the father's name
-	 * and that number. Each stands once, in its own section and in no other, and the old words stand nowhere.
+	 * number of the identity document, and the item of the list of what is never shown that names the father's name and
+	 * that number, which gains "osim vama, na vašoj kartici Podaci". Each stands once, in its own section and in no other,
+	 * and the old words stand nowhere.
 	 */
 	@Test
-	void theCellOfTheDocumentAndTheHeadingOverTheListStandOnceInTheirOwnSectionsInBothLanguages() {
+	void theCellOfTheDocumentAndTheItemOfTheListStandOnceInTheirOwnSectionsInBothLanguages() {
 		for (String language : List.of("sr", "en")) {
 			assertThat(placesWhichCarry(language, rowNew(language)))
 					.as("the %s cell about the document must stand in section 2 of the policy and in no other", language)
@@ -484,23 +503,45 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 					.as("the %s cell about the document as it stood before V73 must be nowhere", language).isEmpty();
 			assertThat(bodyOf(language, THE_TABLE)).containsOnlyOnce(rowNew(language));
 
-			assertThat(placesWhichCarry(language, headingNew(language)))
-					.as("the %s heading over the list must stand in section 3 of the policy and in no other", language)
+			assertThat(placesWhichCarry(language, itemNew(language)))
+					.as("the %s item of the list must stand in section 3 of the policy and in no other", language)
 					.containsExactly(THE_PLACE);
-			assertThat(placesWhichCarry(language, headingOld(language)))
-					.as("the %s heading as it stood before V73 must be nowhere", language).isEmpty();
-			assertThat(bodyOf(language, THE_PLACE)).containsOnlyOnce(headingNew(language));
+			assertThat(placesWhichCarry(language, itemOld(language)))
+					.as("the %s item as it stood before V73 must be nowhere", language).isEmpty();
+			assertThat(bodyOf(language, THE_PLACE)).containsOnlyOnce(itemNew(language));
 		}
 	}
 
 	/**
-	 * The list under the heading still names the father's name and the document, and the cell still carries the rest of
-	 * what it said: the word and the clause were added to the sentence and nothing was taken out of it.
+	 * THE HEADING OVER THE LIST IS WHAT IT WAS. A heading with "drugima" over the whole list would say that the member sees
+	 * the internal notes, the private messages and the IP address of the parent's signature, which he does not (owner,
+	 * 24.10.2026: the exception goes on the one item it is true of). The heading stands once, as it stood, directly over
+	 * the list, in both languages.
 	 */
 	@Test
-	void theListAndTheRestOfTheCellAreAsTheyWere() {
-		assertThat(bodyOf("sr", THE_PLACE)).contains("ime oca, broj ličnog dokumenta, telefon");
-		assertThat(bodyOf("en", THE_PLACE)).contains("father's name, ID document number, phone");
+	void theHeadingOverTheListIsAsItWasAndSaysNothingOfOthers() {
+		for (String language : List.of("sr", "en")) {
+			assertThat(bodyOf(language, THE_PLACE)).containsOnlyOnce(headingIn(language));
+		}
+
+		assertThat(bodyOf("sr", THE_PLACE)).doesNotContain("Nikada se ne prikazuje drugima");
+		assertThat(bodyOf("en", THE_PLACE)).doesNotContain("Never displayed to others");
+	}
+
+	/**
+	 * The rest of the list and the rest of the cell are as they were: the words were added to one item and to one cell,
+	 * and nothing was taken out of either.
+	 */
+	@Test
+	void theRestOfTheListAndOfTheCellAreAsTheyWere() {
+		assertThat(bodyOf("sr", THE_PLACE))
+				.contains("Adresa elektronske pošte, adresa za slanje, sve u vezi sa članarinom i plaćanjem, stanje virtuelnog balansa,"
+						+ " veličina majice, ime oca i broj")
+				.contains("telefon, privatne poruke, interne beleške administracije");
+		assertThat(bodyOf("en", THE_PLACE))
+				.contains("E-mail address, mailing address, everything related to the membership fee and payment, virtual balance,"
+						+ " T-shirt size, father's name and ID document number")
+				.contains("phone, private messages, internal administration notes");
 		assertThat(bodyOf("sr", THE_TABLE))
 				.contains("u sopstvenoj tabeli sa sopstvenim pravom pristupa | Pravna obaveza | Sekcija 5 |");
 		assertThat(bodyOf("en", THE_TABLE))
@@ -508,8 +549,8 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	}
 
 	@Test
-	void theWordIsNotAtTheEndOfTheCellOrAfterTheHeading() {
-		assertThat(bodyOf("sr", THE_PLACE)).doesNotContain("Nikada se ne prikazuje\n\nAdresa elektronske pošte, adresa za slanje, drugima");
+	void theWordsAreNotAtTheEndOfTheCellOrOfTheList() {
 		assertThat(bodyOf("sr", THE_TABLE)).doesNotContain("pravom pristupa drugima");
+		assertThat(bodyOf("sr", THE_PLACE)).doesNotContain("osim vama, na vašoj kartici Podaci, privatne poruke");
 	}
 }

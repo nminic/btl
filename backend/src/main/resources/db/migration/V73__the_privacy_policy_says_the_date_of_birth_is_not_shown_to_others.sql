@@ -15,12 +15,16 @@
    assistant's and so is the English): the row of the table in section 2 for the number of the identity document, which
    said "Vidi ga samo administracija, ne prikazuje se nigde", now says "Vidi ga samo administracija i vi, na svojoj kartici
    Podaci; drugima se ne prikazuje nigde" (the rest of the cell is as it was), because a member sees the number on his own
-   card; and the heading over the list in section 3, "Nikada se ne prikazuje", becomes "Nikada se ne prikazuje drugima",
-   because the list holds the father's name and the number of the document, both of which the member sees on his own card.
-   The heading and not the two names alone, because the list is one list and the member sees on his own card, and has always
-   seen on his own page, more than those two (his address, his telephone, his shirt size).
+   card; and the item in the list of what is never shown in section 3, "ime oca, broj ličnog dokumenta", which becomes "ime
+   oca i broj ličnog dokumenta, osim vama, na vašoj kartici Podaci", for the same reason.
    English: "Only the administration and you see it, on your own Details card; it is not displayed to others anywhere"
-   (the English card is called "Details", `profile.parts.data`), and "### Never displayed to others".
+   (the English card is called "Details", `profile.parts.data`), and "father's name and ID document number, except to
+   you, on your own Details card".
+
+   THE HEADING OVER THAT LIST IS NOT TOUCHED (owner, 24.10.2026, between the offers, with the recommendation; the words are
+   the assistant's). A first version of this file wrote "Nikada se ne prikazuje drugima" over the whole list, and the owner
+   took it back: a heading over the whole list would say the member sees the internal notes, the private messages and the
+   IP address of the parent's signature, which he does not. The exception goes on the one item it is true of.
 
    WHERE THE WORD GOES. After "ga" and before "ni u punom", and after "it" and before "in full": the word is about who
    the date is not shown to, so it stands beside the verb it limits and not at the end of the sentence, where it would
@@ -54,7 +58,7 @@
 
    WHAT IT DOES NOT TOUCH: no schema, no constraint, no key, no index, no row added or removed; the body of four section
    texts (sections 2 and 3 of the policy, in both languages) and nothing else in them: not the other sentences of section
-   3, not the list of what is never shown but for its heading, and not the other rows of the table; and the date in section
+   3, not the list of what is never shown but for the one item, and not the other rows of the table; and the date in section
    7 of the policy (two more section texts).
 
    WHY A NEW FILE AND NOT AN EDIT OF V57: ADL A2. V57 has been applied, its checksum is in flyway_schema_history, and
@@ -93,20 +97,12 @@ begin
              $old$Only the administration sees it; it is not displayed anywhere and stands apart from the data$old$,
              $new$Only the administration and you see it, on your own Details card; it is not displayed to others anywhere and stands apart from the data$new$),
 
-            ('Never shown, heading', 'politika-privatnosti', 3, 'sr',
-             $old$### Nikada se ne prikazuje
-
-Adresa elektronske pošte$old$,
-             $new$### Nikada se ne prikazuje drugima
-
-Adresa elektronske pošte$new$),
-            ('Never shown, heading', 'politika-privatnosti', 3, 'en',
-             $old$### Never displayed
-
-E-mail address$old$,
-             $new$### Never displayed to others
-
-E-mail address$new$),
+            ('Never shown, item', 'politika-privatnosti', 3, 'sr',
+             $old$veličina majice, ime oca, broj ličnog dokumenta, telefon$old$,
+             $new$veličina majice, ime oca i broj ličnog dokumenta, osim vama, na vašoj kartici Podaci, telefon$new$),
+            ('Never shown, item', 'politika-privatnosti', 3, 'en',
+             $old$T-shirt size, father's name, ID document number, phone$old$,
+             $new$T-shirt size, father's name and ID document number, except to you, on your own Details card, phone$new$),
 
             ('Sign-off', 'politika-privatnosti', 7, 'sr',
              $old$Poslednja izmena: 22.10.2026.$old$,
