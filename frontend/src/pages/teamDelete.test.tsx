@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { configure, screen, waitFor, within } from '@testing-library/react'
 import sr from '../i18n/sr.json'
 import { must } from '../test/at'
+import { sayYes } from '../test/deleteSheet'
 import { renderAt } from '../test/render'
 import { did, refused, serverThat, type Asked } from '../test/serverAnswers'
 import { playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
@@ -279,7 +280,7 @@ describe('a team its administrator takes down', () => {
     )
 
     await user.click(within(row).getByRole('button', { name: /^Obriši: Dunavski trkači/ }))
-    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Dunavski trkači/ }))
+    await sayYes(user, 'Obriši tim?')
 
     /* THE SCREEN ASKED THE ROUTE, at the address of the team in the row and nowhere else. */
     await waitFor(() => {
@@ -337,7 +338,7 @@ describe('a team its administrator takes down', () => {
     expect(within(row).getByText('1')).toBeVisible()
 
     await user.click(within(row).getByRole('button', { name: /^Obriši: Timočka/ }))
-    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Timočka/ }))
+    await sayYes(user, 'Obriši tim?')
 
     /* And nobody else lost their team with it: emptying every member rather than this
        team's would pass everything below. Dunav keeps its six. */
