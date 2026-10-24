@@ -6,6 +6,7 @@ import { expectFrontPage, renderAt } from '../../test/render'
 import { answeredWith, did, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { at, must } from '../../test/at'
+import { sayYes } from '../../test/deleteSheet'
 import { SLOW } from '../../test/slow'
 import { RIGHTS } from './rights'
 
@@ -117,7 +118,7 @@ describe('the moderators screen', () => {
     const row = must(button.closest('tr'), `the row of ${name}`)
 
     await user.click(button)
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
+    await sayYes(user, 'Obriši moderatora?')
 
     return row
   }

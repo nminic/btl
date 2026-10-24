@@ -4,6 +4,7 @@ import { moderatorWith, renderAt } from '../../test/render'
 import { answeredWith, did, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
+import { sayYes } from '../../test/deleteSheet'
 import { SLOW } from '../../test/slow'
 
 /**
@@ -164,7 +165,7 @@ describe('a team taken away from the administration', () => {
     )
 
     await user.click(within(row).getByRole('button', { name: `Obriši: ${name}` }))
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
+    await sayYes(user, 'Obriši tim?')
 
     return row
   }

@@ -193,12 +193,6 @@
   background: transparent;
 }
 
-.entity-delete--sure {
-  border-color: var(--danger);
-  color: var(--danger);
-  font-weight: 700;
-}
-
 /* The races of an event, under the form that names it. Set off from the form
    above rather than running straight on from it. */
 .entity-races {
@@ -301,4 +295,25 @@
   font-size: 0.85rem;
   font-weight: 500;
   color: var(--down);
+}
+
+/* „Tim je obrisan.", drawn while it is true and nothing at all while it is not: the box is on the page all
+   the time so the words, when they arrive, are read (`DeletionSaid.tsx`), and an empty one takes no room.
+   The look is the one `.members__gone` gives the same sentence on the screen of the members. */
+.entity-gone {
+  margin: 0 0 var(--space-8);
+}
+
+.entity-gone:empty {
+  margin: 0;
+}
+
+.entity-gone:not(:empty) {
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--border);
+  border-inline-start-width: 4px;
+  border-radius: var(--radius-6);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
 }

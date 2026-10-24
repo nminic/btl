@@ -8,6 +8,7 @@ import { loadResource } from '../../data/client'
 import { resultsOf } from '../../data/derive'
 import { fieldDate } from '../../forms/dateField'
 import { must } from '../../test/at'
+import { sayYes } from '../../test/deleteSheet'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { useSession } from '../../session/useSession'
@@ -701,7 +702,7 @@ describe('a result that has been counted', () => {
     const row = await firstCounted()
 
     await user.click(row.getByRole('button', { name: /^Obriši/ }))
-    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje/ }))
+    await sayYes(user, 'Obriši rezultat?')
 
     /* The whole table before against the whole table after, and not the count of
        either. Measured by a review on 28.08.2026: with `remove` given another

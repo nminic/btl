@@ -663,8 +663,8 @@
     "noMoreComments": "Nema više komentara.",
     "editOwnRating": "Izmeni svoju ocenu",
     "deleteOwnRating": "Obriši svoju ocenu",
-    "deleteOwnRatingSure": "Obriši svoju ocenu?",
-    "keepOwnRating": "Odustani od brisanja svoje ocene",
+    "deleteOwnRatingAsk": "Obriši svoju ocenu?",
+    "ratingGone": "Ocena je obrisana.",
     "ratedBy": {
       "one": "iz {count} ocene",
       "few": "iz {count} ocene",
@@ -1058,6 +1058,8 @@
   "results": {
     "sending": "Šalje se",
     "withdrawing": "Briše se",
+    "deleteAsk": "Obriši rezultat?",
+    "deleted": "Rezultat je obrisan.",
     "refused": {
       "theFormIsNotComplete": "Rezultat nije poslat. Proveri dužinu, uspon, spust i vreme: nešto nedostaje ili je izvan dozvoljenih vrednosti.",
       "theRaceIsNotKnown": "Trka koju si izabrao više ne stoji u kalendaru. Osveži stranu i izaberi je ponovo.",
@@ -1311,10 +1313,7 @@
       "nextWeek": "Tačno sedam dana posle kopiranog događaja",
       "racesRefused": "Trke nisu sačuvane. Ispravi obeležena polja; ispod tabele piše šta je pogrešno u svakom od njih.",
       "deleteNamed": "Obriši: {name}",
-      "deleteSure": "Sigurno?",
-      "deleteSureNamed": "Potvrdi brisanje: {name}",
-      "keep": "Odustani",
-      "keepNamed": "Odustani od brisanja: {name}"
+      "keep": "Odustani"
     },
     "field": {
       "memberNumber": "Članski broj",
@@ -1433,6 +1432,7 @@
       "theKindCannotChangeOnceRunsAreCounted": "Vrsta trke ne može da se promeni dok na trci stoji odobren rezultat."
     },
     "eventGone": "Događaj je obrisan, sa svojim trkama i rezultatima.",
+    "eventDeleteAsk": "Obriši događaj?",
     "eventSavedUnseen": "Događaj je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
     "eventSavedRacesRefused": "Događaj je sačuvan. Trke koje nisu sačuvane označene su ispod tabele; ispravi ih pa pritisni Sačuvaj. Šalju se samo trke.",
     "eventSavedRacesKept": "Događaj je sačuvan. Trke koje nisu obrisane navedene su ispod polja događaja; pritisni Sačuvaj da se brisanje pokuša ponovo. Šalju se samo trke.",
@@ -1443,6 +1443,7 @@
     },
     "eventDeleteCountUnknown": "Broj rezultata koji odlaze još nije poznat.",
     "leagueGone": "Liga je obrisana.",
+    "leagueDeleteAsk": "Obriši ligu?",
     "leagueSavedUnseen": "Liga je sačuvana, ali portal ne može da je prikaže u ovom spisku. Osveži stranu.",
     "leagueTextSaved": "Izmena je sačuvana.",
     "priceSaved": "Cena je sačuvana.",
@@ -1463,12 +1464,14 @@
       "aRightTheMatrixDoesNotHold": "Portal ne poznaje to pravo. Osveži stranu."
     },
     "moderatorGone": "Moderator je obrisan.",
+    "moderatorDeleteAsk": "Obriši moderatora?",
     "moderatorSavedUnseen": "Moderator je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
     "moderatorRightsSavedUnseen": "Pravo je sačuvano, ali portal ne može da prikaže novo stanje. Osveži stranu.",
     "teamDeleteRefused": {
       "theWindowIsShut": "Prelazni rok je zatvoren. Otvara se 15. oktobra i traje do 31. decembra. Tim se do tada ne briše, ni iz administracije."
     },
     "teamGone": "Tim je obrisan.",
+    "teamDeleteAsk": "Obriši tim?",
     "memberDeleteRefused": {
       "theAccountMustBeDecided": "Portal nije prosledio odluku o nalogu. Osveži stranu pa pokušaj ponovo.",
       "anonymisingIsNotWrittenYet": "Anonimizacija naloga još nije napisana. Član se za sada može samo obrisati.",

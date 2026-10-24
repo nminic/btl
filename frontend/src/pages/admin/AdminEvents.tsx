@@ -19,6 +19,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import { wordsFor } from '../account/serverWords'
+import { DeletionSaid } from './DeletionSaid'
 import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
 import {
   EVENTS,
@@ -380,6 +381,8 @@ export function AdminEvents() {
 
     if (answer.got !== 'done') {
       setRefusedDelete({ id: event.id, answer })
+      /* The sentence of an earlier deletion is not about this one (`DeletionSaid.tsx`). */
+      setSaid('')
 
       return
     }
@@ -1444,6 +1447,10 @@ export function AdminEvents() {
                 {found.length > rows.length ? ` ${t('admin.ofMany', { count: found.length })}` : ''}
               </p>
 
+              {/* What the deletion said, DRAWN and not only said (owner, 23.10.2026: the deletion asks and
+                  answers as the member's row does, `DeletionSaid.tsx`). */}
+              <DeletionSaid said={said} clear={setSaid} />
+
               <div className="table-scroll">
                 <table className="table">
                   <caption className="visually-hidden">{t('admin.events')}</caption>
@@ -1490,6 +1497,7 @@ export function AdminEvents() {
                         <td>
                           <RowActions
                             entity={EVENTS}
+                            asks={t('admin.eventDeleteAsk')}
                             record={one}
                             name={one.name}
                             onOpen={() => {
@@ -1540,12 +1548,6 @@ export function AdminEvents() {
                 </table>
               </div>
 
-              {/* Said once and politely: the list beside it has already changed, and a
-                  reader who is not looking at it gets the one sentence that says so.
-                  The same shape `admin/AdminLeagues.tsx` uses. */}
-              <p aria-live="polite" className="visually-hidden">
-                {said}
-              </p>
             </>
           )
         }}

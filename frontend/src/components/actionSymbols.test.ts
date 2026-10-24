@@ -37,8 +37,8 @@ import { sources, WHOLE_PORTAL } from '../test/sources'
  * is read where it is a call of `t` with a written key, or a choice between two
  * written keys (`t(open ? 'a' : 'b')`, or `open ? t('a') : t('b')`). A text that
  * arrives any other way (a variable, a prop, a word built in a helper) is not read,
- * and such a button is outside this floor: `DeleteRecord` in
- * `pages/admin/EntityEditor.tsx`, which draws `face ?? t('admin.form.delete')`, is
+ * and such a button is outside this floor: `DeleteSheet` in
+ * `pages/admin/DeleteSheet.tsx`, which draws `opener ?? t('admin.form.delete')`, is
  * the one that matters, and it is converted by hand with the shared paths.
  *
  * The component is found through the import and not by its name, so a screen that
@@ -131,7 +131,6 @@ const STAYS_A_WORD = new Map([
   ['admin.addRace', FORM],
   ['admin.changeToExemption', LISTED],
   ['admin.form.back', NOT_AN_ACTION],
-  ['admin.form.keep', ANSWER],
   ['admin.form.new.races', LISTED],
   ['admin.leagueRaces', NOT_AN_ACTION],
   ['bio.send', FORM],
@@ -207,12 +206,12 @@ const STAYS_A_WORD = new Map([
  * that the symbol is the one the owner's map gives the thing they do, and that nothing
  * else on the portal draws a symbol over a word this floor cannot read.
  *
- * - `DeleteRecord` (pages/admin/EntityEditor.tsx), the first button of every deletion:
+ * - `DeleteSheet` (pages/admin/DeleteSheet.tsx), the first button of every deletion:
  *   „Obriši", or the words a screen hands over („Obriši svoju ocenu").
  * - `CopyField` (components/CopyField.tsx): the name of the value it copies.
  */
 const HANDED_DOWN = new Map([
-  ['pages/admin/EntityEditor.tsx', SYMBOL.cross],
+  ['pages/admin/DeleteSheet.tsx', SYMBOL.cross],
   ['components/CopyField.tsx', SYMBOL.copy],
 ])
 

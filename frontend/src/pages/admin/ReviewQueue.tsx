@@ -823,7 +823,7 @@ export function ReviewQueue() {
                         box away would close it over a request that goes on and take the reason with
                         it (owner, 02.10.2026: „Ne", „Odustani" i Escape dok zahtev još putuje ka
                         serveru su onemogućeni). Nothing here handles Escape, so there is no key to
-                        refuse (`DeleteRecord` says the same of itself). */}
+                        refuse (`components/Prompt.tsx` says the same of itself). */}
                     <button
                       type="button"
                       className="button button--secondary"
