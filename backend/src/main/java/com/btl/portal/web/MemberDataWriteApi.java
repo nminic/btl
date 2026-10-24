@@ -535,19 +535,23 @@ class MemberDataWriteApi {
 			   potvrđuje i adresu), umesto veze za potvrdu. Član koji ima lozinku i dalje dobija vezu za
 			   potvrdu"). An account with no password is one the administration entered and that nobody
 			   has taken over (V18), and the link that gets him in is the invitation's own road:
-			   `password_reset_token`, the one hour its column gives, the words of
+			   `password_reset_token`, the seven days the owner gave it on 23.10.2026, the words of
 			   `Message#INVITED_AS_A_MEMBER`, and spending it sets the password and confirms the address in
 			   the same statement (`PasswordReset`). An account with a password is sent the link to
 			   confirm, in its language, as `resend` sends it. */
 			SecretToken fresh = SecretToken.fresh();
 			boolean noPassword = hasNoPassword.orElseThrow();
 
-			db.sql(noPassword
-							? "insert into password_reset_token (account_id, token_hash)"
-									+ " select id, ? from account where competitor_id = ?"
-							: "insert into email_verification_token (account_id, token_hash)"
-									+ " select id, ? from account where competitor_id = ?")
-					.params(fresh.hash(), member).update();
+			/* THE INVITATION'S ROW IS WRITTEN WHERE THE GROUP ENTRY WRITES ITS OWN, so it lasts the
+			   seven days the owner gave it on 23.10.2026 and not the hour of the column's default. */
+			if (noPassword) {
+				AnInvitationOfAMember.mint(db, db.sql("select id from account where competitor_id = ?")
+						.param(member).query(Long.class).single(), fresh);
+			} else {
+				db.sql("insert into email_verification_token (account_id, token_hash)"
+								+ " select id, ? from account where competitor_id = ?")
+						.params(fresh.hash(), member).update();
+			}
 
 			link = db.sql("select id, email, mail_language from account where competitor_id = ?")
 					.param(member)

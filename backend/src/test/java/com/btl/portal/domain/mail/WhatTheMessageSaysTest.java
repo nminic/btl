@@ -69,31 +69,22 @@ class WhatTheMessageSaysTest {
 	}
 
 	/**
-	 * THE NAME OF THE LINK TO ASK FOR A NEW ONE IS BETWEEN ENGLISH QUOTES (PDL P18, 18.10.2026).
+	 * THE INVITATION OF A MEMBER SAYS WHAT HAPPENS AFTER A WEEK, IN THE OWNER'S SENTENCE.
 	 *
-	 * <p>The owner: "Neka navodnici budu engleski", for the whole portal and every mail. The
-	 * member who reads this invitation is told which link on the sign-in page to press, and the
-	 * words of that link are the only thing in any mail the portal sends that sits between
-	 * quotes. Asserted as the whole sentence, with the quotes on both sides, because the old
-	 * opening mark and the plain closing one were two different marks in one sentence.
+	 * <p>PDL, 24.10.2026, „Pozivnica člana kog upiše administracija dobija rečenicu": it replaced
+	 * the one that sent him to „Zaboravljena lozinka", because after seven days with no password his
+	 * entry is deleted and a link from the sign-in page is no longer a way in. Asserted as the whole
+	 * sentence the owner wrote, rendered: the seven days in it come from {@link Message#lasts}.
 	 */
 	@Test
-	void theLinkToAskForANewOneIsNamedBetweenEnglishQuotes() {
+	void theInvitationOfAMemberSaysWhatHappensAfterAWeekInTheOwnersSentence() {
 		assertThat(WhatTheMessageSays.about(Message.INVITED_AS_A_MEMBER, PORTAL, TOKEN).body())
-				.contains("Ako link istekne, zatražite novi sa strane za prijavu, na"
-						+ " \"Zaboravljena lozinka\".\n");
+				.contains("Link važi sedam dana i može da se upotrebi jednom. Ako ga za to vreme ne otvorite,"
+						+ " vaš upis se briše, osim ako je članarina već evidentirana; tada nam se javite na"
+						+ " info@balkanskatrkackaliga.net i poslaćemo vam novi.")
+				.doesNotContain("Zaboravljena lozinka");
 	}
 
-	/**
-	 * WHAT EACH OF THE FOUR MAILS SAYS, WORD FOR WORD, AND THAT NONE OF THEM CALLS THE ADDRESS IT
-	 * CARRIES "VEZA" (PDL P18, 18.10.2026, "Tekst mejlova, posle pregleda svih osam").
-	 *
-	 * <p>The owner: "U mejlovima svuda umesto veza koristi link." The Serbian mails are held as a
-	 * snapshot of the whole text, with the address and the lifetime filled in as the class writes
-	 * them, because a pattern over a word has to be right about every case and gender the
-	 * word can stand in, and the whole text is not asked to. The English mails, which are my
-	 * translation of the same meaning and not his words, are held the same way.
-	 */
 	@Test
 	void theMailsSayExactlyWhatTheyWereDecidedToSay() {
 		String tail = "Balkanska trkačka liga";
@@ -105,9 +96,11 @@ class WhatTheMessageSaysTest {
 				"Da bismo znali da je ova adresa zaista vaša, otvorite ovaj link:",
 				linkOf(Message.CONFIRM_THE_ADDRESS, MailLanguage.SERBIAN),
 				"",
-				"Link važi 24 sata. Ako istekne, zatražite novi sa strane za prijavu.",
+				"Link važi sedam dana. Ako ga za to vreme ne otvorite, vašu nedovršenu prijavu brišemo, a ova"
+						+ " adresa ostaje slobodna, pa se možete registrovati ponovo kad god poželite.",
 				"",
-				"Ako se niste registrovali kod nas, ovu poruku slobodno zanemarite.",
+				"Ako se niste registrovali kod nas, ovu poruku slobodno zanemarite i za sedam dana neće"
+						+ " ostati ni traga od nje.",
 				"",
 				tail));
 
@@ -145,10 +138,11 @@ class WhatTheMessageSaysTest {
 				"Vaš nalog postoji, ali još nema lozinku. Otvorite ovaj link i postavite je sami:",
 				linkOf(Message.INVITED_AS_A_MEMBER, MailLanguage.SERBIAN),
 				"",
-				"Link važi 1 sat i može da se upotrebi jednom. Dok ga ne upotrebite, na nalog ne može da"
-						+ " se prijavi niko, pa ni vi.",
+				"Link važi sedam dana i može da se upotrebi jednom. Ako ga za to vreme ne otvorite, vaš upis"
+						+ " se briše, osim ako je članarina već evidentirana; tada nam se javite na"
+						+ " info@balkanskatrkackaliga.net i poslaćemo vam novi.",
 				"",
-				"Ako link istekne, zatražite novi sa strane za prijavu, na \"Zaboravljena lozinka\".",
+				"Dok ga ne upotrebite, na nalog ne može da se prijavi niko, pa ni vi.",
 				"",
 				tail));
 
@@ -159,9 +153,12 @@ class WhatTheMessageSaysTest {
 				"So that we know this address really is yours, open this link:",
 				linkOf(Message.CONFIRM_THE_ADDRESS, MailLanguage.ENGLISH),
 				"",
-				"The link is valid for 24 hours. If it expires, ask for a new one on the sign-in page.",
+				"The link is valid for seven days. If you do not open it in that time, we delete your"
+						+ " unfinished registration and this address stays free, so you can register again"
+						+ " whenever you like.",
 				"",
-				"If you did not register with us, you can safely ignore this message.",
+				"If you did not register with us, you can safely ignore this message, and in seven days"
+						+ " there will be no trace of it left.",
 				"",
 				tail));
 
@@ -327,6 +324,29 @@ class WhatTheMessageSaysTest {
 		assertThat(WhatTheMessageSays.howLong(Duration.ofHours(14))).isEqualTo("14 sati");
 		assertThat(WhatTheMessageSays.howLong(Duration.ofHours(21))).isEqualTo("21 sat");
 		assertThat(WhatTheMessageSays.howLong(Duration.ofHours(24))).isEqualTo("24 sata");
+	}
+
+	/**
+	 * A WEEK IS „SEDAM DANA", IN WORDS, as the owner's texts of 23.10.2026 and 24.10.2026 say it; a
+	 * day is still said in hours; and a link longer than any the portal has is refused rather than
+	 * said in figures.
+	 */
+	@Test
+	void wholeDaysFromTwoToSevenAreSpokenInWords() {
+		assertThat(WhatTheMessageSays.howLong(Duration.ofDays(7))).isEqualTo("sedam dana");
+		assertThat(WhatTheMessageSays.howLong(Duration.ofDays(7), MailLanguage.ENGLISH)).isEqualTo("seven days");
+		assertThat(WhatTheMessageSays.howLong(Duration.ofDays(2))).isEqualTo("dva dana");
+		assertThat(WhatTheMessageSays.howLong(Duration.ofDays(2), MailLanguage.ENGLISH)).isEqualTo("two days");
+		assertThat(WhatTheMessageSays.howLong(Duration.ofDays(5))).isEqualTo("pet dana");
+		assertThat(WhatTheMessageSays.howLong(Duration.ofHours(36))).isEqualTo("36 sati");
+		assertThat(WhatTheMessageSays.howLong(Duration.ofHours(36), MailLanguage.ENGLISH)).isEqualTo("36 hours");
+		assertThat(WhatTheMessageSays.howLong(Duration.ofHours(50)))
+				.as("fifty hours are not a whole number of days and are said in hours")
+				.isEqualTo("50 sati");
+		assertThatThrownBy(() -> WhatTheMessageSays.howLong(Duration.ofDays(8)))
+				.isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> WhatTheMessageSays.howLong(Duration.ofDays(8), MailLanguage.ENGLISH))
+				.isInstanceOf(IllegalArgumentException.class);
 	}
 
 	/** And in English, where one is singular and every other number is not. */
