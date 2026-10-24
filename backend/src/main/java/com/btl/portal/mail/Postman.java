@@ -2,10 +2,14 @@ package com.btl.portal.mail;
 
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 /**
@@ -184,5 +188,53 @@ public class Postman {
 		message.setText(said.body());
 
 		relay.send(message);
+	}
+
+	/**
+	 * A FILE THAT GOES WITH A LETTER, and the bytes of it are made only when the letter is.
+	 *
+	 * @param name        what the reader's mail client calls it
+	 * @param contentType its media type, {@code image/png} for the slip
+	 * @param drawn       makes the bytes; asked inside the message being prepared, so whatever it
+	 *                    throws reaches whoever sent the letter as the relay's own kind of failure
+	 *                    ({@code MailPreparationException}), and is answered where the relay's are
+	 */
+	public record Attachment(String name, String contentType, Drawn drawn) {
+	}
+
+	/** The bytes of an attachment, drawn when the message is. */
+	@FunctionalInterface
+	public interface Drawn {
+
+		byte[] bytes() throws IOException;
+	}
+
+	/**
+	 * SENDS WHAT WAS SAID TO ONE ADDRESS, WITH ONE FILE BESIDE IT AND NOBODY COPIED IN.
+	 *
+	 * <p>The first letter of this portal that carries anything but words: the payment slip a member
+	 * from Serbia is sent once his address is confirmed (owner, 23.10.2026: the IPS QR code goes
+	 * as an attachment). A {@link SimpleMailMessage} cannot carry a file, so this one is a MIME message,
+	 * with the same three things every message here is given - who it is from, who it is to, and
+	 * that a reply goes to the league (ADL A4c) - and its text in UTF-8, which is what the plain
+	 * ones are sent in too.
+	 */
+	public void sendWith(Said said, String to, Attachment attachment) {
+		Objects.requireNonNull(said, "said");
+		Objects.requireNonNull(to, "to");
+		Objects.requireNonNull(attachment, "attachment");
+
+		relay.send(message -> {
+			MimeMessageHelper letter = new MimeMessageHelper(message, true,
+					StandardCharsets.UTF_8.name());
+
+			letter.setFrom(from);
+			letter.setTo(to);
+			letter.setReplyTo(league);
+			letter.setSubject(said.subject());
+			letter.setText(said.body());
+			letter.addAttachment(attachment.name(),
+					new ByteArrayResource(attachment.drawn().bytes()), attachment.contentType());
+		});
 	}
 }

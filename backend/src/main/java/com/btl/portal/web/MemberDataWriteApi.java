@@ -95,9 +95,10 @@ import java.util.function.Function;
  * <li>A corrected address of post retires every link already sent to the old one - the
  * confirmation and the setting of a password, which is also how an invitation is taken over.
  * Left standing, whoever holds the mistyped address could confirm the account or set its password
- * after the administration has given it to somebody else. Nothing is sent to the new address: the
- * member asks for a new confirmation himself („Pošalji ponovo"), and whether the portal should send
- * one on its own is not decided.</li>
+ * after the administration has given it to somebody else. A new link goes to the new address at
+ * once, which is the owner's decision and not this reasoning (PDL 22.10.2026, and 23.10.2026 for
+ * which link): the link to confirm for an account that has a password, and the link to set one
+ * for an account that has none.</li>
  * <li>A document number emptied is a removal only for a member under sixteen, by the same rule
  * the registration asks it by („Od člana mlađeg od 16 godina se traži ali nije obavezan", the
  * privacy policy); for anybody older it is {@link MeWriteApi#A_FIELD_IS_BLANK}.</li>
@@ -301,17 +302,26 @@ class MemberDataWriteApi {
 		}
 	}
 
-	/** A new link to confirm an address, the address it goes to and the language it is written in. */
-	private record ToSend(long account, String address, String link, MailLanguage language) {
+	/**
+	 * A new link to an address the administration corrected, the address it goes to, which letter it
+	 * is and the language its reader chose.
+	 *
+	 * @param message {@link Message#CONFIRM_THE_ADDRESS} for an account that has a password, and
+	 *                {@link Message#INVITED_AS_A_MEMBER} for one that has none (see {@link #write})
+	 */
+	private record ToSend(long account, String address, String link, MailLanguage language, Message message) {
 	}
 
 	private void send(ToSend made) {
 		try {
-			postman.send(WhatTheMessageSays.about(Message.CONFIRM_THE_ADDRESS, made.language(), portal,
-					made.link()), made.address());
+			/* THE INVITATION IS ALWAYS SERBIAN and has no language to be given (owner, 10.10.2026,
+			   Q4, `Message#followsTheReader`); the confirmation follows its reader. */
+			postman.send(made.message().followsTheReader()
+					? WhatTheMessageSays.about(made.message(), made.language(), portal, made.link())
+					: WhatTheMessageSays.about(made.message(), portal, made.link()), made.address());
 		} catch (MailException theRelayDidNotTakeIt) {
-			LOG.warn("a confirmation message for account {} after the administration corrected its address"
-					+ " did not go out; the token is written and asking again is what gets him out of it",
+			LOG.warn("a link for account {} after the administration corrected its address did not go out;"
+					+ " the token is written and asking again is what gets him out of it",
 					made.account(), theRelayDidNotTakeIt);
 		}
 	}
@@ -495,9 +505,16 @@ class MemberDataWriteApi {
 		ToSend link = null;
 
 		if (readdressed) {
-			if (db.sql("update account set email = ? where competitor_id = ? and email_confirmed_at is null")
-					.params(address, member).update() != 1) {
+			/* WHETHER HE HAS A PASSWORD IS ANSWERED BY THIS SAME STATEMENT, under the hold it takes
+			   (PDL, owner, 23.10.2026: an account with none is sent a link to set one, which confirms
+			   the address too, and one with a password is sent the link to confirm). A password set in
+			   the same instant (`PasswordReset.confirm`) spends a token this correction deletes below,
+			   after it has waited for the row, so what is read here is what the link is written for. */
+			Optional<Boolean> hasNoPassword = db.sql("update account set email = ? where competitor_id = ?"
+							+ " and email_confirmed_at is null returning password_hash is null")
+					.params(address, member).query(Boolean.class).optional();
 
+			if (hasNoPassword.isEmpty()) {
 				return Corrected.refused(conflict(THE_ADDRESS_IS_CONFIRMED));
 			}
 
@@ -510,19 +527,37 @@ class MemberDataWriteApi {
 
 			/* AND A NEW LINK, AT ONCE, TO THE CORRECTED ADDRESS (owner, PDL 22.10.2026: „portal odmah
 			   šalje novu vezu za potvrdu na ispravljenu adresu"). Written under the same hold, so no
-			   request at the old address can come between the retiring and the new one; the words are
-			   the confirmation's own, as `resend` sends them, in the account's language, and the address
-			   is the one the row now carries. */
-			SecretToken fresh = SecretToken.fresh();
+			   request at the old address can come between the retiring and the new one, and the
+			   address is the one the row now carries.
 
-			db.sql("insert into email_verification_token (account_id, token_hash)"
-							+ " select id, ? from account where competitor_id = ?")
-					.params(fresh.hash(), member).update();
+			   WHICH LINK IS THE ACCOUNT'S OWN STATE (owner, PDL 23.10.2026, „Kad administracija ispravi
+			   adresu pošte člana koji NEMA lozinku, portal mu šalje vezu za postavljanje lozinke (ona
+			   potvrđuje i adresu), umesto veze za potvrdu. Član koji ima lozinku i dalje dobija vezu za
+			   potvrdu"). An account with no password is one the administration entered and that nobody
+			   has taken over (V18), and the link that gets him in is the invitation's own road:
+			   `password_reset_token`, the seven days the owner gave it on 23.10.2026, the words of
+			   `Message#INVITED_AS_A_MEMBER`, and spending it sets the password and confirms the address in
+			   the same statement (`PasswordReset`). An account with a password is sent the link to
+			   confirm, in its language, as `resend` sends it. */
+			SecretToken fresh = SecretToken.fresh();
+			boolean noPassword = hasNoPassword.orElseThrow();
+
+			/* THE INVITATION'S ROW IS WRITTEN WHERE THE GROUP ENTRY WRITES ITS OWN, so it lasts the
+			   seven days the owner gave it on 23.10.2026 and not the hour of the column's default. */
+			if (noPassword) {
+				AnInvitationOfAMember.mint(db, db.sql("select id from account where competitor_id = ?")
+						.param(member).query(Long.class).single(), fresh);
+			} else {
+				db.sql("insert into email_verification_token (account_id, token_hash)"
+								+ " select id, ? from account where competitor_id = ?")
+						.params(fresh.hash(), member).update();
+			}
 
 			link = db.sql("select id, email, mail_language from account where competitor_id = ?")
 					.param(member)
 					.query((row, i) -> new ToSend(row.getLong(1), row.getString(2), fresh.secret(),
-							MailLanguage.ofTheColumn(row.getString(3))))
+							MailLanguage.ofTheColumn(row.getString(3)),
+							noPassword ? Message.INVITED_AS_A_MEMBER : Message.CONFIRM_THE_ADDRESS))
 					.single();
 		}
 

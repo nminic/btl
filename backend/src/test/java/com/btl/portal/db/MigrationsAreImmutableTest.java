@@ -600,6 +600,19 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   this very assertion when it ran before the entry existed. */
 			new Applied("71", "V71__the_legal_pages_say_each_thing_in_one_place.sql", -1120675458),
 
+			/* V72. An unconfirmed registration lasts seven days (owner, 23.10.2026, PDL „Poruka posle potvrde
+			   adrese i rok nedovršene registracije"): the confirmation link's default moves from twenty four hours
+			   to seven days; every account standing unconfirmed when it runs is kept seven days from that
+			   moment in a column of its own (derived 24.10.2026, PDL IZVEDENO); and an account says when it
+			   was written, from which an unconfirmed registration goes fourteen days later at the latest
+			   (owner, 24.10.2026, PDL „Rok nepotvrđene prijave").
+
+			   72 because it is the next free number, MEASURED on 24.10.2026: no remote branch, no worktree and
+			   no open pull request held a migration at V72 or above, and origin/main stands at V71.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("72", "V72__an_unconfirmed_registration_lasts_seven_days.sql", -317542150),
+
 			/* V73. The privacy policy says the date of birth is not shown to others, in Serbian and in English
 			   (the owner, 24.10.2026, PDL, the entry "Politika privatnosti, odeljak 3": add the word "drugima"):
 			   the word "drugima" in the sentence of section 3 about the date of birth, in the cell about the document
@@ -608,9 +621,8 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   new text is not already there. Two of them move the sign-off of the policy, and only the policy, to 24.10.2026. No schema.
 
 			   73 and not 72, MEASURED on 24.10.2026: the pull request that carries V72 (an unconfirmed registration
-			   lasts seven days) is merged before this one, and no other remote ref held a migration at V73. This
-			   list therefore has no V72 yet; it gets one when that pull request is merged, and the two entries are
-			   neighbours that do not touch.
+			   lasts seven days) is merged before this one, and no other remote ref held a migration at V73. V72
+			   therefore stands just above, and the two entries are neighbours that do not touch.
 
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read off
 			   this very assertion when it ran before the entry existed. */
