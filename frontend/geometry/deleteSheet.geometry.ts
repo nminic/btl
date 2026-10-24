@@ -152,6 +152,7 @@ async function readTheSheet(page: Page) {
     }
 
     const box = sheet.getBoundingClientRect()
+    const backdrop = (sheet.parentElement ?? sheet).getBoundingClientRect()
     const style = getComputedStyle(sheet)
     const startEdge = box.left + parseFloat(style.paddingLeft)
     const buttons = [...sheet.querySelectorAll('button')].map((one) => {
@@ -176,6 +177,8 @@ async function readTheSheet(page: Page) {
     return {
       left: box.left,
       right: box.right,
+      backdropLeft: backdrop.left,
+      backdropRight: backdrop.right,
       top: box.top,
       width: innerWidth,
       sideways: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -202,8 +205,16 @@ for (const screen of SCREENS) {
 
         expectNoSidewaysBeforeTheSheet(screen.name, at, probe.sideways)
         expect(seen.sideways, 'the sheet makes the page move sideways').toBeLessThanOrEqual(probe.sideways)
-        expect(seen.left, 'the sheet runs off the left edge').toBeGreaterThanOrEqual(-SLACK)
-        expect(seen.right, 'the sheet runs off the right edge').toBeLessThanOrEqual(clientWidth + SLACK)
+        /* THE EDGES OF THE WINDOW, and where the page is wider than the window already (`MOVES_ALREADY`) the
+           edges of the sheet's own backdrop, which is as wide as the page and not as the window: against the
+           window the sheet would be judged by a fault of the screen behind it (on the CI runner the backdrop
+           is 410px wide there, measured in the first CI run of this file). */
+        const [leftEdge, rightEdge] = movesAlready(screen.name, at)
+          ? [seen.backdropLeft, seen.backdropRight]
+          : [0, clientWidth]
+
+        expect(seen.left, 'the sheet runs off the left edge').toBeGreaterThanOrEqual(leftEdge - SLACK)
+        expect(seen.right, 'the sheet runs off the right edge').toBeLessThanOrEqual(rightEdge + SLACK)
         expect(seen.top, 'the sheet starts above the window').toBeGreaterThanOrEqual(-SLACK)
 
         expect(seen.buttons.map((one) => one.text)).toEqual(['Obriši', 'Odustani'])
