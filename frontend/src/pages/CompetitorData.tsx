@@ -20,6 +20,7 @@ import { ProfileTop } from './profile/ProfileHead'
 import { TheMembersData } from './profile/TheMembersData'
 import { profileFor } from './profile/visible'
 import { THE_DATA, useWhoReadsTheData } from './profile/whoReadsTheData'
+import { useWhereARefusedReaderGoes } from './member/whereARefusedReaderGoes'
 import { memberNumberIn, redirectTo } from './profileAddress'
 import './Profile.css'
 import './member/Member.css'
@@ -47,7 +48,9 @@ import './member/Member.css'
  * superadmin: the form of the registration, without the password (`TheMembersData.tsx`).</li>
  * <li><b>Everybody else</b>, and a member whose fee has lapsed reading his own (the server answers his
  * writes 404, PDL P8, 11.10.2026): the home page, the answer the profile gives a reader who may not
- * read it (owner, 06.09.2026), so the address says nothing about whether a card is there (ADL A8).</li>
+ * read it (owner, 06.09.2026), so the address says nothing about whether a card is there (ADL A8).
+ * Somebody who registered and has not paid is sent to the page he pays on instead (owner, 22.10.2026;
+ * `member/whereARefusedReaderGoes.ts`): his own card opens with the fee, like the rest.</li>
  * </ol>
  *
  * <p><b>The head is the profile's head</b> („Ista strana"), drawn from the public list the profile is
@@ -58,10 +61,10 @@ import './member/Member.css'
 export function CompetitorData() {
   const { memberNumber: part } = useParams()
   const memberNumber = memberNumberIn(part)
-  const { locale } = useI18n()
   const { signedIn } = useSession()
   const asking = useServerIsStillBeingAsked()
   const reader = useWhoReadsTheData(memberNumber)
+  const away = useWhereARefusedReaderGoes()
 
   /* UNTIL THE SERVER HAS SAID WHO IS READING, nothing is decided (owner, 10.10.2026, PDL P26): a cold
      load of this address by the member himself would otherwise send him to the home page. */
@@ -70,7 +73,7 @@ export function CompetitorData() {
   }
 
   if (reader === null) {
-    return <Navigate to={`/${locale}`} replace />
+    return <Navigate to={away} replace />
   }
 
   return (

@@ -1,9 +1,12 @@
 import type { ReactElement } from 'react'
+import { Navigate } from 'react-router'
 import { Loader } from '../../components/Loader'
+import { useI18n } from '../../i18n/useI18n'
 import { useServerIsStillBeingAsked } from '../../session/useServerIsStillBeingAsked'
 import { useSession } from '../../session/useSession'
-import { NotAMemberYet } from './NotAMemberYet'
+import { THE_DATA } from '../profile/whoReadsTheData'
 import { NotRacing } from './NotRacing'
+import { SentToTheFee } from './SentToTheFee'
 import { SignedOut } from './SignedOut'
 
 /**
@@ -58,12 +61,18 @@ import { SignedOut } from './SignedOut'
  * <p><b>SO THERE ARE FOUR ANSWERS, and the hook is the only place that tells them apart:</b>
  * nobody signed in; a member (whose fee stands or has lapsed, a flag on the answer); somebody
  * who has registered and has not paid; and an account with no record. Two screens are drawn
- * for the third of them instead of telling him, and say so by asking
- * {@link useScreenForTheUnpaidToo}: „Moja clanarina", where he pays and chooses his category, and
- * the settings, where he changes his password (his data leave the settings on 23.10.2026 for the page
- * „Moji podaci", PDL 22.10.2026, which is the next piece of work). The other nine ask
- * {@link useMemberScreen} and are told, by {@link NotAMemberYet}, that the rest opens when his
- * fee is recorded and where to go to pay it.
+ * for the third of them instead of telling him, and say so by asking the hooks beside this one:
+ * „Moja clanarina", where he pays and chooses his category ({@link useScreenForTheUnpaidToo}), and
+ * „Moji podaci", where he changes his data until he is approved ({@link useScreenForTheUnpaidOnly},
+ * PDL 22.10.2026). The rest ask {@link useMemberScreen} or {@link useScreenForEveryAccount} and
+ * he is SENT to the page he pays on, by {@link SentToTheFee}, without being told that they exist.
+ *
+ * <p><b>HE WAS TOLD „Ovaj deo se otvara kad članarina bude evidentirana" UNTIL 23.10.2026, and the
+ * owner took the sentence out with the screens it stood on</b> (PDL 22.10.2026, „Član koji još nije
+ * platio: bez reči nalog, samo Članarina": „Sve opcije koje mu nisu dostupne privremeno (dakle sve
+ * osim Članarine) ne treba da mu uopšte budu dostupne. [...] Kad kažem dostupne, mislim vidljive
+ * niti deep linkom dostupne."). That includes the settings, which he used to be drawn the password
+ * and the theme on: they open with the fee, like the rest.
  *
  * <p><b>The member whose fee has LAPSED is a member here, not a fifth answer, and that is
  * deliberate.</b> PDL P8, 11.10.2026 (the addition to „Šta sme neplaćen član", the owner's choice
@@ -148,7 +157,7 @@ import { SignedOut } from './SignedOut'
  * back into all six with the package staying green. „Which screens belong to one person"
  * cannot be answered by an address, so `pages/member/oneQuestion.test.tsx` asks the module
  * graph instead - which modules of the portal name `SignedOut`, `NotRacing` and
- * `NotAMemberYet` - and requires the answer to be this file and nothing else.
+ * `SentToTheFee` - and requires the answer to be this file and nothing else.
  *
  * <p><b>And that catches ONE of the two ways back, which is why the walk beside it is not
  * spare.</b> A screen that writes the sentence for itself again has to name `SignedOut`, and
@@ -230,6 +239,53 @@ export function useScreenForTheUnpaidToo(): ScreenForTheUnpaidToo {
 }
 
 /**
+ * The same question for the one screen that is drawn to somebody who has not paid and to nobody
+ * else: „Moji podaci" (PDL 22.10.2026, „Neka ima u navigaciji stranu Moji Podaci dok nije
+ * odobren").
+ *
+ * <p>`account` is the key the screen asks the server for his data under, as in
+ * {@link ScreenForTheUnpaidToo}. For everybody else `instead` is what to draw, and it is never a
+ * page: the screen goes away with the approval and the data are changed elsewhere. [IZVEDENO, moje,
+ * the owner said where the entry goes and not what the address answers] A member whose fee stands is
+ * sent to the card „Podaci" of his own profile, where his data are; a member whose fee has lapsed is
+ * sent to the page he renews on, which is all that is open to him, as it is to somebody who has not
+ * paid; and the rest are told what every screen of the member area tells them.
+ */
+export type ScreenForTheUnpaidOnly =
+  | { account: number; instead: null }
+  | { account: null; instead: ReactElement }
+
+/**
+ * THE QUESTION ASKED BY THE ONE SCREEN THAT IS FOR SOMEBODY WHO HAS NOT PAID AND FOR NOBODY ELSE.
+ *
+ * <p>{@link useScreenForTheUnpaidToo} with the three answers that are not his turned into what to
+ * draw. Not a second place that decides who has paid: it asks that hook and names neither
+ * `NotRacing` nor `SignedOut`, which `oneQuestion.test.tsx` requires of every module but this one.
+ */
+export function useScreenForTheUnpaidOnly(): ScreenForTheUnpaidOnly {
+  const who = useScreenForTheUnpaidToo()
+  const { locale } = useI18n()
+
+  if (who.standing === 'neverPaid') {
+    return { account: who.account, instead: null }
+  }
+
+  if (who.standing === null) {
+    return { account: null, instead: who.instead }
+  }
+
+  return {
+    account: null,
+    instead:
+      who.standing === 'standing' ? (
+        <Navigate to={`/${locale}/takmicar/${who.memberNumber}${THE_DATA}`} replace />
+      ) : (
+        <SentToTheFee />
+      ),
+  }
+}
+
+/**
  * The same question for the screen that is drawn to EVERY signed in account, and the fifth way:
  * an account the league keeps no record of, which administration is.
  *
@@ -237,7 +293,7 @@ export function useScreenForTheUnpaidToo(): ScreenForTheUnpaidToo {
  * three signed in ways are exactly {@link ScreenForTheUnpaidToo}'s, and so is the way for nobody.
  */
 export type ScreenForEveryAccount =
-  | Exclude<ScreenForTheUnpaidToo, { standing: null }>
+  | Extract<ScreenForTheUnpaidToo, { standing: 'standing' | 'lapsed' }>
   /** A moderator or a superadmin: signed in, and no competitor record behind the account (PDL P21,
    *  „Jedan nalog je tačno jedan član", which administration is not). */
   | { standing: 'account'; memberNumber: null; account: number; instead: null }
@@ -264,6 +320,13 @@ export function useScreenForEveryAccount(): ScreenForEveryAccount {
   const who = useScreenForTheUnpaidToo()
   const { signedIn } = useSession()
 
+  /* SOMEBODY WHO HAS NOT PAID HAS NO SETTINGS YET (PDL 22.10.2026): the password, the theme and the
+     language of his mail open with the fee, like the rest, and the address sends him to the page he
+     pays on. Said here and not in the screen, so the screen cannot draw him anything. */
+  if (who.standing === 'neverPaid') {
+    return { standing: null, memberNumber: null, instead: <SentToTheFee /> }
+  }
+
   return who.standing === null && signedIn?.as === 'account'
     ? { standing: 'account', memberNumber: null, account: signedIn.account, instead: null }
     : who
@@ -272,12 +335,12 @@ export function useScreenForEveryAccount(): ScreenForEveryAccount {
 export function useMemberScreen(): MemberScreen {
   const who = useScreenForTheUnpaidToo()
 
-  /* THE SENTENCE FOR SOMEBODY WHO HAS NOT PAID IS DRAWN HERE AND NOWHERE ELSE, the same
-     arrangement `SignedOut` and `NotRacing` have: the nine screens that ask this hook cannot
-     say it for themselves, and `oneQuestion.test.tsx` requires that the only module naming
-     `NotAMemberYet` is this one. */
+  /* WHERE SOMEBODY WHO HAS NOT PAID IS SENT IS DECIDED HERE AND NOWHERE ELSE, the same
+     arrangement `SignedOut` and `NotRacing` have: the screens that ask this hook cannot
+     decide it for themselves, and `oneQuestion.test.tsx` requires that the only module naming
+     `SentToTheFee` is this one. */
   if (who.standing === 'neverPaid') {
-    return { memberNumber: null, instead: <NotAMemberYet /> }
+    return { memberNumber: null, instead: <SentToTheFee /> }
   }
 
   return who.standing === null

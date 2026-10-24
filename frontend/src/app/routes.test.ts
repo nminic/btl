@@ -2,6 +2,8 @@ import POSTED_ADDRESSES from './postedAddresses.json'
 import { routeObjects } from './routeObjects'
 import {
   ACCOUNT_ROUTES,
+  accountMenuFor,
+  MY_DATA_ADDRESS,
   CONTACT_ADDRESS,
   EXTRA_ADDRESSES,
   FOOTER_ROUTES,
@@ -113,6 +115,26 @@ describe('the shape of the navigation', () => {
 describe('ACCOUNT_ROUTES', () => {
   it('holds settings, which no longer hang off a cog of their own (PDL P28a)', () => {
     expect(ACCOUNT_ROUTES.map((route) => route.path)).toContain('podesavanja')
+  })
+  /* **WHAT SOMEBODY WHO HAS NOT PAID IS DRAWN, AND IN WHAT ORDER** (owner, 22.10.2026: „Neka ima u
+     navigaciji stranu Moji Podaci dok nije odobren koja je iznad Moja Članarina", and „Sve opcije koje
+     mu nisu dostupne privremeno (dakle sve osim Članarine) ne treba da mu uopšte budu dostupne"). */
+  it('draws somebody who has not paid „Moji podaci" above „Moja članarina", and nothing else', () => {
+    expect(accountMenuFor(true).map((route) => route.path)).toEqual(['moji-podaci', 'moja-clanarina'])
+  })
+
+  it('draws everybody else the list as it was, without „Moji podaci" and without the inbox', () => {
+    expect(accountMenuFor(false).map((route) => route.path)).toEqual([
+      'moj-profil',
+      'moji-rezultati',
+      'moja-clanarina',
+      'podesavanja',
+    ])
+  })
+
+  it('serves „Moji podaci" at an address of its own, whoever the menu draws it to', () => {
+    expect(ROUTES.map((route) => route.path)).toContain(MY_DATA_ADDRESS)
+    expect(MY_DATA_ADDRESS).toBe('moji-podaci')
   })
 })
 

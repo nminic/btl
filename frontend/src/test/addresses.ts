@@ -153,6 +153,11 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
   ['/sr/nova-lozinka?token=nesto', 'Nova lozinka', 'Nova lozinka'],
   ['/sr/potvrda-adrese?token=nesto', 'Potvrda adrese', 'Potvrda adrese'],
   ['/sr/moj-profil', 'Za ovo treba prijava', 'Ksenija Vasiljević'],
+  /* „Moji podaci" (PDL 22.10.2026) is HIS WHO HAS NOT PAID, and the member these walks sign in as pays:
+     he is sent to the card „Podaci" of his own profile, where his data are, and is drawn his own head
+     there. Drawn as itself to the one reader this walk does not sign in as, in
+     `pages/member/myData.test.tsx`. */
+  ['/sr/moji-podaci', 'Za ovo treba prijava', 'Ksenija Vasiljević'],
   ['/sr/moji-rezultati', 'Za ovo treba prijava', 'Moji rezultati'],
   ['/sr/moja-clanarina', 'Za ovo treba prijava', 'Moja članarina'],
   ['/sr/podesavanja', 'Za ovo treba prijava', 'Podešavanja'],

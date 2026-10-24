@@ -48,6 +48,7 @@ import { ReviewQueue } from '../pages/admin/ReviewQueue'
 import { Membership } from '../pages/member/Membership'
 import { MessageDetail } from '../pages/member/MessageDetail'
 import { Messages } from '../pages/member/Messages'
+import { MyData } from '../pages/member/MyData'
 import { Settings } from '../pages/member/Settings'
 import { MyProfile } from '../pages/member/MyProfile'
 import { MyResults } from '../pages/member/MyResults'
@@ -73,6 +74,7 @@ const SCREENS: Record<string, ReactElement> = {
   'potvrda-adrese': <ConfirmAddress />,
   'zaboravljena-lozinka': <ForgottenPassword />,
   'moj-profil': <MyProfile />,
+  'moji-podaci': <MyData />,
   'moji-rezultati': <MyResults />,
   'moja-clanarina': <Membership />,
   poruke: <Messages />,

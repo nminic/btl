@@ -39,21 +39,19 @@ const THEMES: Theme[] = ['dark', 'light']
  * sme da se iskljuci, ekran se pravi ponovo." `settings.test.tsx` is the floor that makes
  * a return deliberate rather than accidental.
  *
- * <p><b>THE SCREEN HAS FOUR SHAPES SINCE 17.10.2026, AND WHICH ONE IS DRAWN IS DECIDED BY THE
- * HOOK AND BY NOTHING ON THIS PAGE</b> (`memberScreen.tsx`, `useScreenForEveryAccount`). Three of
- * them are the ones of 11.10.2026, and the fourth is below them. PDL P8,
+ * <p><b>THE SCREEN HAS THREE SHAPES SINCE 23.10.2026, AND WHICH ONE IS DRAWN IS DECIDED BY THE
+ * HOOK AND BY NOTHING ON THIS PAGE</b> (`memberScreen.tsx`, `useScreenForEveryAccount`). The fourth
+ * of 17.10.2026, somebody who registered and has not paid, is gone: the address sends him to the
+ * page he pays on and he is not drawn the password or the theme (PDL 22.10.2026, „Član koji još
+ * nije platio: bez reči nalog, samo Članarina": „Sve opcije koje mu nisu dostupne privremeno (dakle
+ * sve osim Članarine) ne treba da mu uopšte budu dostupne"). The three that are left are below, and
+ * the first two are the ones of 11.10.2026. PDL P8,
  * the entry „Šta sme neplaćen član" (10.10.2026) and its addition of 11.10.2026, both chosen by
  * the owner between offered outcomes - the sentences are the record's and not his own words:
  *
  * <ul>
  * <li><b>A member whose fee stands</b> is drawn everything, exactly as he was, and now the language
  * of his mail.</li>
- * <li><b>Somebody who registered and has not paid</b> is drawn his password and the theme: „Sme:
- * [...] lozinku, adresu pošte i svoje podatke za evidenciju i majicu. Ne sme ništa što ga čini
- * vidljivim ili ga uključuje u ligu: sliku, biografiju, skrivanje profila". The three panels that
- * are left out are the three that entry names, and a sentence says they open when his fee is
- * recorded. His data, which the same entry lets him change, left this screen for everybody on
- * 23.10.2026 and are his on the page „Moji podaci" (PDL 22.10.2026), the next piece of work.</li>
  * <li><b>A member whose fee has lapsed</b> is drawn the theme and one sentence: his data and his
  * password are answered 404 (the addition of 11.10.2026: „izmena podataka (PUT /api/me) i lozinke
  * (PUT /api/me/password) mu daje 404"), and so are the picture, the biography and the switch,
@@ -119,28 +117,24 @@ export function Settings() {
           **THE PERSONAL DATA ARE NOT ON THIS SCREEN FOR ANYBODY.** A member whose fee stands changes them
           on the card „Podaci" of his own profile (PDL 22.10.2026, „Profil dobija karticu „Podaci""), and
           somebody who has not paid yet on the page „Moji podaci" (PDL 22.10.2026, „Neka ima u navigaciji
-          stranu Moji Podaci dok nije odobren"), which is the next piece of work and draws the same panel
-          (`PersonalData.tsx`).
+          stranu Moji Podaci dok nije odobren"), which draws the same panel (`PersonalData.tsx`).
 
           **THE FIRST ROW: THE PASSWORD, AND BESIDE IT WHO SEES THE PROFILE.** The password is drawn to a
-          member whose fee stands, to somebody who has not paid, and to an administration account with no
-          member (PDL, the answers of 17.10.2026 in the evening: „Nalog administracije bez člana na strani
-          Podešavanja vidi sve troje"), named for the three who see it rather than excluded for the one who
-          does not, so a fifth way of being signed in is not handed a password by a condition written as
-          „anybody but a lapsed member" (`PUT /api/me/password` answers a lapsed member 404). The switch
-          that hides the profile is a member's whose fee stands and nobody else's: hiding a profile is one
-          of the three things somebody who has not paid may not do (PDL P8, 10.10.2026). Where it is not
-          drawn the password takes the whole row (`.member__pair > :only-child`). */}
-      {(who.standing === 'standing' ||
-        who.standing === 'neverPaid' ||
-        who.standing === 'account') && (
+          member whose fee stands and to an administration account with no member (PDL, the answers of
+          17.10.2026 in the evening: „Nalog administracije bez člana na strani Podešavanja vidi sve
+          troje"), named for the two who see it rather than excluded for the one who does not, so a
+          fifth way of being signed in is not handed a password by a condition written as „anybody but a
+          lapsed member" (`PUT /api/me/password` answers a lapsed member 404). Somebody who has not paid
+          is not among them since 23.10.2026: he is not on this screen at all (`memberScreen.tsx`). The
+          switch that hides the profile is a member's whose fee stands and nobody else's: hiding a
+          profile is one of the three things somebody who has not paid may not do (PDL P8, 10.10.2026).
+          Where it is not drawn the password takes the whole row (`.member__pair > :only-child`). */}
+      {(who.standing === 'standing' || who.standing === 'account') && (
         <div className="member__pair member__row">
           <ChangePassword />
           {who.standing === 'standing' && <HisPrivacy competitors={competitors} memberNumber={memberNumber} />}
         </div>
       )}
-
-      {who.standing === 'neverPaid' && <p className="member__note">{t('settings.opensWithTheFee')}</p>}
 
       {/* **THE ONE SENTENCE A MEMBER WHOSE FEE HAS LAPSED IS TOLD**, since 16.10.2026 (PDL P8, the
           entry „Šta sme neplaćen član", the decision of that day, chosen by the owner between
@@ -252,7 +246,7 @@ function HisPrivacy({
 /**
  * THE SENTENCE FOR A MEMBER WHOSE FEE HAS LAPSED, with the way to the page he renews it on.
  *
- * <p>The way is the page he pays on (`MEMBERSHIP_ADDRESS`, the same address `NotAMemberYet` sends
+ * <p>The way is the page he pays on (`MEMBERSHIP_ADDRESS`, the same address `SentToTheFee` sends
  * somebody who has not paid to), and it stands INSIDE the sentence as a link, so a screen reader
  * hears where it goes without a label repeating what the sentence says (`i18n/Sentence.tsx`, the
  * same arrangement the club on a profile uses). It is named by what the menu calls it

@@ -69,6 +69,10 @@
       "title": "Moji trkački rezultati",
       "description": "Prijavljeni rezultati, faza provere u kojoj se nalaze i bodovi koje su doneli."
     },
+    "myData": {
+      "title": "Moji BTL podaci",
+      "description": "Ime, adresa, telefon, mesto i veličina majice, dok članarina još nije evidentirana."
+    },
     "membership": {
       "title": "Moja BTL članarina",
       "description": "Stanje članstva, plaćanje članarine i uplatnica sa QR kodom."

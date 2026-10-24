@@ -4,7 +4,7 @@ import { clearResourceCache } from '../../data/client'
 import sr from '../../i18n/sr.json'
 import { useSession } from '../../session/useSession'
 import { must } from '../../test/at'
-import { aNeverPaidRecord } from '../../test/neverPaid'
+import { neverPaidAsServed } from '../../test/neverPaid'
 import { renderAt } from '../../test/render'
 import { answeredWith, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
@@ -32,13 +32,12 @@ import { THE_MAIL_LANGUAGE_GOES_TO, type MailLanguage } from './mailLanguage'
  */
 configure({ asyncUtilTimeout: SLOW / 2 })
 
-type Kind = 'member' | 'lapsed' | 'neverPaid' | 'account'
+type Kind = 'member' | 'lapsed' | 'account'
 
-/** `GET /api/me` for each of the four kinds of reader the screen draws, without the language. */
+/** `GET /api/me` for each of the three kinds of reader the screen draws, without the language. */
 const WHO: Record<Kind, object> = {
   member: { role: 'competitor', account: 1, member: { memberNumber: '000007', active: true } },
   lapsed: { role: 'competitor', account: 1, member: { memberNumber: '000032', active: false } },
-  neverPaid: { role: 'competitor', account: 1, member: aNeverPaidRecord },
   /* A moderator: signed in, and no competitor record behind the account (PDL P21). */
   account: { role: 'moderator', account: 1 },
 }
@@ -127,7 +126,7 @@ describe('who is drawn the choice of the language of the mail', () => {
   /**
    * EVERY KIND OF READER THERE IS, WITH THE LANGUAGE THE SERVER HOLDS FOR HIM CHOSEN.
    *
-   * <p>The four kinds and both languages, so that a panel hidden from one kind, a panel that opens on
+   * <p>The three kinds and both languages, so that a panel hidden from one kind, a panel that opens on
    * one language whatever the server says, and a panel that leaves both radios empty all fail here.
    * The account with no record is the one this increment widens the settings for, and the member
    * whose fee has lapsed is the one the first version of the rule left out (the owner's answer of
@@ -138,8 +137,6 @@ describe('who is drawn the choice of the language of the mail', () => {
     ['member', 'en'],
     ['lapsed', 'sr'],
     ['lapsed', 'en'],
-    ['neverPaid', 'sr'],
-    ['neverPaid', 'en'],
     ['account', 'sr'],
     ['account', 'en'],
   ] as const)(
@@ -158,6 +155,25 @@ describe('who is drawn the choice of the language of the mail', () => {
     },
     SLOW,
   )
+
+  /* **HE IS NOT DRAWN THE CHOICE SINCE 23.10.2026**: the settings open with the fee for somebody who
+     registered and has not paid, like the rest (PDL 22.10.2026, „Član koji još nije platio: bez reči
+     nalog, samo Članarina": „Sve opcije koje mu nisu dostupne privremeno (dakle sve osim Članarine) ne
+     treba da mu uopšte budu dostupne"). That narrows the answer of 17.10.2026 (the language of the mail
+     is a setting of the account, so „svako ko ima nalog" may change it), and the narrowing is the
+     newer decision's. */
+  it('is not drawn to somebody who has not paid, who is sent to the page he pays on', async () => {
+    const { stop } = neverPaidAsServed({}, 'competitor')
+    const { router } = renderAt('/sr/podesavanja', 'visitor', null)
+
+    try {
+      expect(await screen.findByRole('heading', { level: 1, name: 'Moja članarina' })).toBeVisible()
+      expect(router.state.location.pathname).toBe('/sr/moja-clanarina')
+      expect(screen.queryByRole('group', { name: 'Jezik pošte' })).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  }, SLOW)
 
   it('draws the choice under the title of the group, and the two radios inside that group', async () => {
     theServer('member', 'sr')
@@ -332,8 +348,8 @@ describe('choosing the language of the mail', () => {
     expect(screen.queryByRole('button', { name: /Sačuvaj/ })).not.toBeInTheDocument()
   }, SLOW)
 
-  it('sends it for an account with no record, a member who has not paid and a lapsed member alike', async () => {
-    for (const kind of ['account', 'neverPaid', 'lapsed'] as const) {
+  it('sends it for an account with no record and a lapsed member alike', async () => {
+    for (const kind of ['account', 'lapsed'] as const) {
       const user = setupUser()
       const server = theServer(kind, 'sr')
       const { unmount } = renderAt('/sr/podesavanja', 'visitor', null)
