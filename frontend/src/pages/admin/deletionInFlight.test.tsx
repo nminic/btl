@@ -7,58 +7,54 @@ import { renderAt } from '../../test/render'
 import { answeredWith, did, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
+import { theSheet } from '../../test/deleteSheet'
 import { sources } from '../../test/sources'
 import sr from '../../i18n/sr.json'
 
 /**
- * EVERY SCREEN THAT ASKS „OBRISI?" BEFORE IT SENDS A DELETION, ASKED THE SAME THING ABOUT THE
- * MOMENT THE DELETION IS OUT (owner, 02.10.2026, choosing between three outcomes he was priced;
- * PDL, „Odluke iz ciscenja nalaza", first item: „Ne", „Odustani" and Escape are onemoguceni while
- * the request travels, with the state said in words, and the question is closed by whoever asked
- * it when the answer arrives. It holds for ALL the screens with a confirmation, not only for the
- * activation).
+ * THE SHEET THAT ASKS „OBRIŠI X?" OUTSIDE THE ADMINISTRATION, ASKED THE SAME THINGS ABOUT THE MOMENT THE DELETION
+ * IS OUT (owner, 24.10.2026, PDL „Odgovori od 24.10.2026 (popodne)": the window is given to the four places
+ * outside the administration - the team's own page, a result on the page of its event, a member's own result and
+ * his own rating - and „Stari „Sigurno?" u redu time nestaje iz portala"; and the rule of 02.10.2026, PDL „Odluke
+ * iz ciscenja nalaza", first item: „Ne", „Odustani" and Escape are onemoguceni while the request travels, with the
+ * state said in words, and the question is closed by whoever asked it when the answer arrives).
  *
- * <p><b>Why a table and not a case in each screen's own file.</b> `deleteRecord.test.tsx` asks
- * the component alone, and that cannot see the half that lives in the screens: `DeleteRecord`
- * knows a deletion is out only if the handler it is given RETURNS the promise of it, and a screen
- * that wrote `() => void deleteOne(one)` instead - which is the line every one of these used to
- * have - draws a question whose „Odustani" works while the request goes on. So the same question
- * is asked of each screen, with the answer to its `DELETE` held, and the screens are listed here
- * once.
+ * <p><b>Why a table and not a case in each screen's own file.</b> `DeleteSheet.test.tsx` asks the component alone,
+ * and that cannot see the half that lives in the screens: the sheet knows a deletion is out only if the handler it
+ * is given RETURNS the promise of it, and a screen that wrote `() => void deleteOne(one)` instead draws a sheet whose
+ * „Odustani" works while the request goes on. So the same question is asked of each screen, with the answer to its
+ * `DELETE` held, and the screens are listed here once. (The four lists of the administration are asked in
+ * `deletionSheet.test.tsx`, and the members' row in `adminMemberWrites.test.tsx`.)
  *
- * <p><b>The list has a floor of its own</b> (the last block): every file that draws the question
- * is found by asking the parser for the JSX tag `DeleteRecord`, and each one must be a row of
- * this table. (`RowActions` is not a tag of it since 23.10.2026: it draws a sheet,
- * `deletionSheet.test.tsx` has its own floor.) A list kept by hand is the list that goes short the day somebody
- * draws a ninth, so the ninth fails here before it fails anywhere a reader would see it.
+ * <p><b>The list has a floor of its own</b> (the last block): every file that draws `DeleteSheet` is found by
+ * asking the parser for the JSX tag, and each one must be a row of this table. A list kept by hand is the list that
+ * goes short the day somebody draws a fifth, so the fifth fails here before it fails anywhere a reader would see it.
  *
- * <p><b>What each row does, and what it does not claim.</b> The first record on the screen is the
- * one asked about - and the member's second counted result, for the reason
- * `member/resultToTheServer.test.tsx` gives (with the first, replacing the result the screen
- * deletes with `counted[0]` changes nothing). The sentence a refusal is drawn as belongs to each
- * screen and is measured in its own file; here a refusal is the answer that closes the question
- * (owner, 02.10.2026, the second half of the same rule) and leaves the sentence and the focus with
- * the button that asked.
+ * <p><b>The record asked about is the SECOND where there is a list of them</b> - a member's second counted result, for
+ * the reason `member/resultToTheServer.test.tsx` gives. The sentence a refusal is drawn as belongs to each screen and
+ * is measured in its own file; here a refusal is the answer that closes the sheet (owner, 02.10.2026, the second half
+ * of the same rule) and leaves the sentence and the focus with the cross that asked.
  */
 
 type Screen = {
   /** What a failure calls it. */
   name: string
-  /** The file that draws the question, relative to `src/pages`. */
+  /** The file that draws the sheet, relative to `src/pages`. */
   source: string
+  /** The question, in the screen's words: it is the sheet's name. */
+  asks: string
   /** Where it is drawn, as whom, and on which day. */
   at: string
   role: Role
   member?: string
   day?: string
-  /** The button that asks the question about the record to be deleted. */
+  /** The cross that asks the question about the record to be deleted. */
   ask: () => Promise<HTMLElement>
   /**
-   * What the three buttons are called, where the screen does not call them by a record's name
-   * (`DeleteRecord`'s `words`): a member's own rating, „Obriši svoju ocenu". Left out, they are the
-   * portal's own words around the name the first button carries.
+   * What the cross is called, where the screen does not call it by a record's name: a member's own rating,
+   * „Obriši svoju ocenu". Left out, it is the portal's own „Obriši: {name}", and the sheet names the record.
    */
-  words?: { open: string; sure: string; keep: string }
+  words?: { open: string; asks: string }
   /**
    * The number a refusal is answered with here, where a 404 is not a refusal on this screen: the event
    * page reads a 404 to a member's deletion of his rating as „no longer there" and says nothing (the
@@ -68,21 +64,9 @@ type Screen = {
 }
 
 const SCREENS: Screen[] = [
-  /* THE FOUR LISTS OF THE ADMINISTRATION STOOD HERE UNTIL 23.10.2026 (the events, the competitions, the
-     moderators and the teams). Their deletion is a sheet over the page since then (owner, PDL „Tri odgovora
-     od 23.10.2026"), drawn by `DeleteSheet` through `RowActions` and not through `DeleteRecord`. The same
-     rule is asked of that sheet in `deletionSheet.test.tsx`, „while the deletion is out, puts nothing away
-     and says that it is sending", and before they left this table every mutation this table held against
-     them was run against that file and fell there (23.10.2026: no sheet told off, no ref against a second
-     press, a sheet that closes at once, an answer that does not close it, a ref that is not let go, a
-     deletion handed back as nothing). */
-  /* THE MEMBERS OF THE ADMINISTRATION STOOD HERE UNTIL 22.10.2026. Their deletion is a sheet over the
-     page since then (owner, PDL „Potvrda brisanja više nije rečenica u redu tabele nego iskačući
-     prozor"), drawn by `MemberRow.tsx` through `Prompt` and not through `DeleteRecord`, so the floor
-     below no longer finds the screen. The same rule is asked of that sheet in
-     `adminMemberWrites.test.tsx`, „while the deletion is out with the server". */
   {
     name: 'a team on its own page',
+    asks: sr.admin.teamDeleteAsk,
     source: 'TeamDetail.tsx',
     at: '/sr/tim/dunavski-trkaci',
     role: 'competitor',
@@ -95,6 +79,7 @@ const SCREENS: Screen[] = [
        the page of its event (PDL P9, 18.10.2026), through the same question. The second row of the
        table and not the first, for the reason the member's own list below gives. */
     name: 'a result on the page of its event',
+    asks: sr.results.deleteAsk,
     source: 'EventDetail.tsx',
     at: '/sr/kalendar/mrazijada-2020',
     role: 'superadmin',
@@ -111,20 +96,18 @@ const SCREENS: Screen[] = [
     /* A MEMBER'S OWN RATING ON THE PAGE OF ITS EVENT, since 20.10.2026 (PDL P6, „Član uvek sme da
        obriše svoju ocenu ili da je izmeni"), in the owner's words for the question. */
     name: 'a member\'s own rating on the page of its event',
+    asks: sr.event.deleteOwnRatingAsk,
     source: 'event/EventComments.tsx',
     at: '/sr/kalendar/fruskogorski-maraton-2010',
     role: 'competitor',
     member: '000021',
     ask: async () => screen.findByRole('button', { name: sr.event.deleteOwnRating }),
-    words: {
-      open: sr.event.deleteOwnRating,
-      sure: sr.event.deleteOwnRatingSure,
-      keep: sr.event.keepOwnRating,
-    },
+    words: { open: sr.event.deleteOwnRating, asks: sr.event.deleteOwnRatingAsk },
     refusal: 500,
   },
   {
     name: 'a member\'s own counted result',
+    asks: sr.results.deleteAsk,
     source: 'member/MyResults.tsx',
     at: '/sr/moji-rezultati',
     role: 'competitor',
@@ -169,12 +152,12 @@ const sending = () =>
 describe('a deletion that is out with the server', () => {
   describe.each(SCREENS)('on $name', (one) => {
     /**
-     * Asks the question and answers it, leaving the deletion out, and hands back what a reader is
-     * left looking at: the place the three buttons are drawn in, and the name of the record.
+     * Asks the question and answers it, leaving the deletion out, and hands back what a reader is left looking at:
+     * the cross, the sheet, and the name of the record.
      *
-     * <p><b>Everything is asked of that place and never of the whole screen</b>, because a name is
-     * not an identity: a member's counted results carry the same race twice, so „Obriši: Iločki
-     * polumaraton" is two buttons on the page and one in a row.
+     * <p><b>Everything is asked of the sheet and of the cross, never of the whole screen</b>, because a name is not an
+     * identity: a member's counted results carry the same race twice, so „Obriši: Iločki polumaraton" is two buttons
+     * on the page and one in a row.
      */
     async function leaveItOut() {
       const held = holdingEveryDeletion()
@@ -183,97 +166,82 @@ describe('a deletion that is out with the server', () => {
       renderAt(one.at, one.role, one.member ?? null, undefined, one.day ?? null)
 
       const ask = await one.ask()
-      const name = must(ask.getAttribute('aria-label'), 'a name on the delete control').replace(
-        'Obriši: ',
-        '',
-      )
-      const said = one.words ?? {
-        open: `Obriši: ${name}`,
-        sure: `Potvrdi brisanje: ${name}`,
-        keep: `Odustani od brisanja: ${name}`,
-      }
-      /* A screen whose words carry the name of the row has „{name}" where it stands. */
-      const named = {
-        open: said.open.replace('{name}', name),
-        sure: said.sure.replace('{name}', name),
-        keep: said.keep.replace('{name}', name),
-      }
-      const here = within(must(ask.parentElement, 'a place the buttons are drawn in'))
 
       await user.click(ask)
-      await user.click(await here.findByRole('button', { name: named.sure }))
 
-      return { ...held, user, named, here, refusal: one.refusal ?? 404 }
+      const sheet = within(await theSheet(one.asks))
+
+      await user.click(sheet.getByRole('button', { name: 'Obriši' }))
+
+      return { ...held, user, ask, sheet, refusal: one.refusal ?? 404 }
     }
 
-    it('tells „Odustani" off, and keeps the question when it is pressed', async () => {
-      const { server, settle, user, named, here } = await leaveItOut()
+    it('names the record in the sheet, and the cross after the words of the screen', async () => {
+      const user = setupUser()
 
-      const keep = here.getByRole('button', { name: named.keep })
+      renderAt(one.at, one.role, one.member ?? null, undefined, one.day ?? null)
 
-      /* TOLD OFF AND NOT SWITCHED OFF: the portal's own answer, and the one `Potvrdi brisanje`
-         beside it gives too. */
+      const ask = await one.ask()
+
+      expect(ask).toHaveAccessibleName(one.words?.open ?? /^Obriši: /)
+
+      await user.click(ask)
+
+      const sheet = await theSheet(one.asks)
+
+      expect(screen.queryByText('Sigurno?')).toBeNull()
+      expect(within(sheet).getAllByRole('button').map((each) => each.textContent)).toEqual(['Obriši', 'Odustani'])
+
+      /* A sheet that names a record names the one whose cross was pressed; the rating has none to name. */
+      if (one.words === undefined) {
+        const name = must(ask.getAttribute('aria-label'), 'a name').replace('Obriši: ', '')
+
+        expect(within(sheet).getByText(name)).toBeInTheDocument()
+      } else {
+        expect(sheet.querySelectorAll('.prompt__body p')).toHaveLength(0)
+      }
+    }, SLOW)
+
+    it('tells „Odustani" off, says that it is sending, and keeps the sheet when it is pressed', async () => {
+      const { server, settle, user, sheet } = await leaveItOut()
+
+      const keep = sheet.getByRole('button', { name: 'Odustani' })
+
+      /* TOLD OFF AND NOT SWITCHED OFF: the portal's own answer. */
       expect(keep).toHaveAttribute('aria-disabled', 'true')
       expect(keep).not.toBeDisabled()
-
-      await user.click(keep)
-
-      /* THE QUESTION IS STILL ASKED, which is what putting it away would have undone. */
-      expect(here.getByRole('button', { name: named.sure })).toBeInTheDocument()
-      expect(here.queryByRole('button', { name: named.open })).not.toBeInTheDocument()
-
-      /* AND WHEN THE ANSWER COMES THE QUESTION GOES WITH THE RECORD, which is the owner's „list se
-         zatvara sam kad stigne odgovor": nothing was pressed to close it, and nothing is left
-         asking about a record that is gone. */
-      settle(did)
-      await waitFor(() => {
-        expect(
-          here.queryByRole('button', { name: named.sure }),
-        ).not.toBeInTheDocument()
-      })
-
-      server.stop()
-    }, SLOW)
-
-    it('says that it is sending, only while it is', async () => {
-      const { server, settle } = await leaveItOut()
-
       expect(sending()).toHaveLength(1)
 
+      await user.click(keep)
+      await user.keyboard('{Escape}')
+
+      /* THE SHEET IS STILL THERE, which is what putting it away would have undone. */
+      expect(screen.getByRole('dialog', { name: one.asks })).toBeInTheDocument()
+
+      /* AND WHEN THE ANSWER COMES IT GOES, which is the owner's „list se zatvara sam kad stigne odgovor":
+         nothing was pressed to close it. */
       settle(did)
       await waitFor(() => {
-        expect(sending()).toHaveLength(0)
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       })
+      expect(sending()).toHaveLength(0)
 
       server.stop()
     }, SLOW)
 
-    it('closes the question by itself when a refusal is in, and leaves the sentence and the focus with the button that asked', async () => {
-      /* THE OWNER'S RULE OF 02.10.2026 (PDL, „Odbijanje zatvara pitanje kao i uspeh"): „na svaki
-         odgovor servera pitanje se zatvara, a razlog odbijanja stoji uz dugme". Nobody pressed
-         „Odustani" here, so a question that is gone is one the ANSWER closed; the sentence is the
-         screen's own and is said in an alert, and the focus goes where the activation puts it after
-         a 409 - to the button of the row (`admin/Payments.tsx`), because the one that had it left
-         with the question. */
-      const { server, settle, user, named, here, refusal } = await leaveItOut()
-
-      /* THE FOCUS IS MOVED OFF „Potvrdi brisanje" BEFORE THE ANSWER. React gives the button that asks the
-         element „Potvrdi brisanje" had, so a focus left where it was would be on it whatever the code
-         does about it - which is how an `autoFocus` that does nothing read as working. */
-      await user.tab()
+    it('closes the sheet by itself when a refusal is in, and leaves the sentence and the focus with the cross that asked', async () => {
+      /* THE OWNER'S RULE OF 02.10.2026 (PDL, „Odbijanje zatvara pitanje kao i uspeh"): „na svaki odgovor
+         servera pitanje se zatvara, a razlog odbijanja stoji uz dugme". The sentence is the screen's own and is
+         said in an alert, and the focus goes back to the cross that asked, because the sheet that had it is gone. */
+      const { server, settle, ask, refusal } = await leaveItOut()
 
       settle(() => answeredWith(refusal))
 
       await waitFor(() => {
-        expect(
-          here.queryByRole('button', { name: named.sure }),
-        ).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       })
 
-      expect(
-        here.queryByRole('button', { name: named.keep }),
-      ).not.toBeInTheDocument()
-      expect(here.getByRole('button', { name: named.open })).toHaveFocus()
+      expect(ask).toHaveFocus()
       expect(sending()).toHaveLength(0)
       expect(await screen.findByText(new RegExp(`Server je odgovorio brojem ${String(refusal)}`))).toBeInTheDocument()
 
@@ -281,83 +249,65 @@ describe('a deletion that is out with the server', () => {
     }, SLOW)
 
     it('can be asked again after a refusal, and the second asking is sent', async () => {
-      /* The guard that refuses a second press while one is out is a ref, and one left standing after
-         the answer would answer every press with nothing beside a question that looks live. */
-      const { server, settle, user, named, here, refusal } = await leaveItOut()
+      /* The guard that refuses a second press while one is out is a ref, and one left standing after the answer
+         would answer every press with nothing beside a sheet that looks live. */
+      const { server, settle, user, ask, refusal } = await leaveItOut()
 
       settle(() => answeredWith(refusal))
-
       await waitFor(() => {
-        expect(
-          here.queryByRole('button', { name: named.sure }),
-        ).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       })
 
-      await user.click(here.getByRole('button', { name: named.open }))
+      await user.click(ask)
 
-      const again = await here.findByRole('button', { name: named.sure })
+      const again = within(await theSheet(one.asks))
 
       /* AND NOTHING OF THE FIRST ATTEMPT IS LEFT ON IT: not told off, and no sentence about sending. */
-      expect(again).not.toHaveAttribute('aria-disabled')
-      expect(
-        here.getByRole('button', { name: named.keep }),
-      ).not.toHaveAttribute('aria-disabled')
+      expect(again.getByRole('button', { name: 'Obriši' })).not.toHaveAttribute('aria-disabled')
+      expect(again.getByRole('button', { name: 'Odustani' })).not.toHaveAttribute('aria-disabled')
       expect(sending()).toHaveLength(0)
 
-      await user.click(again)
+      await user.click(again.getByRole('button', { name: 'Obriši' }))
 
       await waitFor(() => {
         expect(server.asked.filter((each) => each.init?.method === 'DELETE')).toHaveLength(2)
       })
 
-      /* AND THE SECOND REFUSAL BRINGS THE FOCUS BACK AS WELL, which is what lowering the flag when the
-         question is asked again is for: the focus is moved off the confirming button before the answer,
-         and a flag left raised by the first answer would be raised again by the second without
-         changing, so nothing would bring it back. */
+      /* AND THE SECOND REFUSAL BRINGS THE FOCUS BACK AS WELL. */
       await waitFor(() => {
-        expect(
-          here.queryByRole('button', { name: named.sure }),
-        ).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       })
-      expect(here.getByRole('button', { name: named.open })).toHaveFocus()
+      expect(ask).toHaveFocus()
 
       server.stop()
     }, SLOW)
 
-    it('puts a question asked again after a refusal away', async () => {
-      /* Whatever the first attempt raised is let go of, so the way out of the second question is
-         open: a flag that stayed raised would leave two buttons that do nothing. */
-      const { server, settle, user, named, here, refusal } = await leaveItOut()
+    it('puts a sheet asked again after a refusal away', async () => {
+      const { server, settle, user, ask, refusal } = await leaveItOut()
 
       settle(() => answeredWith(refusal))
-
       await waitFor(() => {
-        expect(
-          here.queryByRole('button', { name: named.sure }),
-        ).not.toBeInTheDocument()
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       })
 
-      await user.click(here.getByRole('button', { name: named.open }))
-      await user.click(here.getByRole('button', { name: named.keep }))
+      await user.click(ask)
+      await user.click(within(await theSheet(one.asks)).getByRole('button', { name: 'Odustani' }))
 
-      expect(here.getByRole('button', { name: named.open })).toBeInTheDocument()
-      expect(
-        here.queryByRole('button', { name: named.sure }),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(ask).toHaveFocus()
 
       server.stop()
     }, SLOW)
-
   })
 
   /**
-   * THE FLOOR: NO SCREEN DRAWS THE QUESTION WITHOUT BEING ON THE LIST ABOVE.
+   * THE FLOOR: NO SCREEN DRAWS THE SHEET WITHOUT BEING ON THE LIST ABOVE.
    *
-   * <p>Asked of the parser and not of the text, so a tag written over two lines, or imported under
-   * another name, is still a tag. `EntityEditor.tsx` itself is the one file left out: it defines
-   * the question, and since 23.10.2026 draws it nowhere.
+   * <p>Asked of the parser and not of the text, so a tag written over two lines, or imported under another name, is
+   * still a tag. `EntityEditor.tsx` itself is the one file left out: it draws the sheet inside `RowActions`, whose
+   * four callers are on the table of `deletionSheet.test.tsx`.
    */
-  it('has a row for every screen that draws the question', () => {
+  it('has a row for every screen that draws the sheet', () => {
     const pages = join(process.cwd(), 'src', 'pages')
     const found: string[] = []
 
@@ -372,7 +322,7 @@ describe('a deletion that is out with the server', () => {
       const visit = (node: ts.Node): void => {
         if (
           (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
-          node.tagName.getText(file) === 'DeleteRecord'
+          node.tagName.getText(file) === 'DeleteSheet'
         ) {
           draws = true
         }
@@ -387,6 +337,6 @@ describe('a deletion that is out with the server', () => {
       }
     }
 
-    expect(found.sort()).toEqual(SCREENS.map((one) => one.source).sort())
+    expect(found.sort()).toEqual(SCREENS.map((each) => each.source).sort())
   })
 })

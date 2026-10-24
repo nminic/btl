@@ -38,7 +38,7 @@ import type { Answer } from './account/askTheServer'
 import { ServerSaid } from './account/ServerSaid'
 import { SYMBOL } from '../app/actionSymbol'
 import { ActionLink } from '../components/ActionButton'
-import { DeleteRecord } from './admin/EntityEditor'
+import { DeleteSheet } from './admin/DeleteSheet'
 import { QUEUE } from './admin/queues'
 import { queueRight, useMay } from './admin/rights'
 import './Profile.css'
@@ -461,7 +461,7 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                         <td className="table__points">{formatPoints(result.points, locale)}</td>
                         {manages && (
                           <td>
-                            <span className="entity-row-actions">
+                            <div className="entity-row-actions">
                               {/* The pencil: the same screen as the entry, with this one row and its
                                   member fixed (`event/EnterResults.tsx`). Named by whose run it is,
                                   because a column of pencils is one control said many times over
@@ -473,10 +473,11 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                                 name={t('leagueResults.editNamed', { name: named })}
                                 to={`/${locale}/kalendar/${slug}/rezultati?trka=${String(result.raceId)}&rezultat=${String(result.id)}`}
                               />
-                              {/* The x: asked twice, as every deletion on the portal is, and named
+                              {/* The x: asked in a sheet, as every deletion on the portal is (PDL, 24.10.2026), and named
                                   by the run it takes away. */}
-                              <DeleteRecord
+                              <DeleteSheet
                                 name={named}
+                                asks={t('results.deleteAsk')}
                                 look="button button--secondary button--compact"
                                 onDelete={() =>
                                   theLeagueDeleted(result.raceId, result.id).then((answer) => {
@@ -493,7 +494,7 @@ function EventResults({ slug, date }: { slug: string; date: string }) {
                                   })
                                 }
                               />
-                            </span>
+                            </div>
                             {refused !== null && refused.id === result.id && (
                               /* A 404 is said in the portal's own words for a number, as on every
                                  screen that draws this question (`admin/deletionInFlight.test.tsx`). */

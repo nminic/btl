@@ -20,7 +20,7 @@ import { useSession } from '../../session/useSession'
 import { isActiveMember } from '../../roles/activeMemberOrAdministration'
 import { SYMBOL } from '../../app/actionSymbol'
 import { ActionLink } from '../../components/ActionButton'
-import { DeleteRecord } from '../admin/EntityEditor'
+import { DeleteSheet } from '../admin/DeleteSheet'
 import { ServerSaid } from '../account/ServerSaid'
 import type { Answer } from '../account/askTheServer'
 import { saysNothing, theRatingDeleted } from './commentWrites'
@@ -418,7 +418,7 @@ function Comment({
 
       {his !== null && (
         <div className="comments__his">
-          <span className="entity-row-actions">
+          <div className="entity-row-actions">
             {/* The pencil: the rating form of the event it was given for, filled in with what he gave
                 (`RateEvent.tsx`). Sent again, it replaces this one (owner, 19.10.2026), at once without
                 words and after a moderator with them, and this one stands until then (20.10.2026). */}
@@ -428,16 +428,13 @@ function Comment({
               className="button button--secondary button--compact"
               to={`/${locale}/kalendar/${his}/ocena`}
             />
-            {/* The x, asked twice as every deletion on the portal is, in the owner's words
+            {/* The x, asked in a sheet as every deletion on the portal is (PDL, 24.10.2026), in the owner's words
                 („Obriši svoju ocenu?"). */}
-            <DeleteRecord
+            <DeleteSheet
               name={t('event.deleteOwnRating')}
+              asks={t('event.deleteOwnRatingAsk')}
+              opener={t('event.deleteOwnRating')}
               look="button button--secondary button--compact"
-              words={{
-                named: t('event.deleteOwnRating'),
-                sure: t('event.deleteOwnRatingSure'),
-                keepNamed: t('event.keepOwnRating'),
-              }}
               onKeep={() => {
                 setRefused(null)
               }}
@@ -454,7 +451,7 @@ function Comment({
                 })
               }
             />
-          </span>
+          </div>
           {refused !== null && <ServerSaid answer={refused} refusals={{}} />}
         </div>
       )}

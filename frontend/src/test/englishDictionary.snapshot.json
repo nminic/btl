@@ -663,8 +663,7 @@
     "noMoreComments": "No more comments.",
     "editOwnRating": "Edit your rating",
     "deleteOwnRating": "Delete your rating",
-    "deleteOwnRatingSure": "Delete your rating?",
-    "keepOwnRating": "Cancel deleting your rating",
+    "deleteOwnRatingAsk": "Delete your rating?",
     "ratedBy": {
       "one": "out of {count} rating",
       "few": "out of {count} ratings",
@@ -1058,6 +1057,7 @@
   "results": {
     "sending": "Sending",
     "withdrawing": "Deleting",
+    "deleteAsk": "Delete the result?",
     "refused": {
       "theFormIsNotComplete": "The result was not sent. Check the distance, the climb, the descent and the time: something is missing or outside the allowed range.",
       "theRaceIsNotKnown": "The race you chose is no longer in the calendar. Refresh the page and choose it again.",
@@ -1311,10 +1311,7 @@
       "nextWeek": "Exactly seven days after the event copied",
       "racesRefused": "The races were not saved. Correct the marked fields; under the table it says what is wrong with each of them.",
       "deleteNamed": "Delete: {name}",
-      "deleteSure": "Are you sure?",
-      "deleteSureNamed": "Confirm the deletion: {name}",
-      "keep": "Cancel",
-      "keepNamed": "Cancel the deletion: {name}"
+      "keep": "Cancel"
     },
     "field": {
       "memberNumber": "Member number",

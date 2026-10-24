@@ -32,7 +32,7 @@ import { teamOf } from '../data/derive'
 import { inYearlyWindow, seasonShown, transfersTakeEffect } from '../data/season'
 import { readerAdministers, teamAdminOf } from '../data/teamAdmin'
 import { useSession } from '../session/useSession'
-import { DeleteRecord } from './admin/EntityEditor'
+import { DeleteSheet } from './admin/DeleteSheet'
 import { MEMBERS, recordsOf, TEAMS } from './admin/entityForms'
 import { recordKey } from '../session/context'
 import { useOverlay } from './admin/overlay'
@@ -193,7 +193,7 @@ export function TeamDetail() {
     }
 
     /* THE OLD SENTENCE GOES WHEN A NEW ATTEMPT STARTS, and not when it is answered: with the
-       request out the page says it is sending (`DeleteRecord`), and a refusal about the one before
+       request out the page says it is sending (`DeleteSheet`), and a refusal about the one before
        it standing over that would be read as the answer to this one. */
     setRefused(null)
 
@@ -370,13 +370,14 @@ export function TeamDetail() {
                             />
                             {/* Asked twice before it happens, and asked by the portal's one
                                 way of asking about something nothing brings back
-                                (`DeleteRecord`), dressed as the button beside it. Not a
+                                (`DeleteSheet`, a sheet over the page since 24.10.2026), dressed as the button beside it. Not a
                                 dialog written here: all three of its controls carry the name
                                 of what is being deleted, so a reader who arrives at the
                                 question „delete what" is answered without going back up the
                                 page, and that was got right once already. */}
-                            <DeleteRecord
+                            <DeleteSheet
                               name={team.name}
+                              asks={t('admin.teamDeleteAsk')}
                               look="button button--secondary"
                               /* The team goes, and with it its points in the standing: there is
                                  no standing without a record, so the owner's „pa se tim briše
@@ -407,7 +408,7 @@ export function TeamDetail() {
                           `ServerSaid` draws the refusal of a deletion as an alert, so the reader
                           hears it as it appears, and the question has closed with the answer: the
                           focus is on „Obriši", the button the sentence stands beside
-                          (`DeleteRecord`, owner 02.10.2026). */}
+                          (`DeleteSheet`, owner 02.10.2026). */}
                       {said}
                       {refused !== null && refused.on === here && (
                         <ServerSaid answer={refused.answer} refusals={WHEN_DELETING_A_TEAM} />

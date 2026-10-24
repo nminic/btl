@@ -7,7 +7,7 @@ import type { SentRun } from '../../data/types'
 import { combinePair, RESULTS, useMyResultSubmissions, useResults } from '../../data/useResource'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { DeleteRecord } from '../admin/EntityEditor'
+import { DeleteSheet } from '../admin/DeleteSheet'
 import type { SubmissionStatus } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { useMemberScreen } from './memberScreen'
@@ -101,7 +101,7 @@ function Mine({ me }: { me: string }) {
     setGoing(true)
     setRefusal(null)
 
-    /* RETURNED, which `DeleteRecord` waits on: its „Odustani" is told off, and „Šalje se" said
+    /* RETURNED, which `DeleteSheet` waits on: its „Odustani" is told off, and „Šalje se" said
        beside it, for as long as this promise is pending (owner, 02.10.2026). The page-level line
        above the table stays: it is the one that explains a press on ANOTHER row being refused. */
     return theResultWasTakenBack(result).then((answer) => {
@@ -389,8 +389,9 @@ function Mine({ me }: { me: string }) {
                                   to={`/${locale}/rezultat/novi?ispravka=${String(result.id)}`}
                                 />
                               )}
-                              <DeleteRecord
+                              <DeleteSheet
                                 name={result.raceName}
+                                asks={t('results.deleteAsk')}
                                 look="button button--secondary"
                                 /* HANDED BACK, so the question can wait for the answer: the
                                    promise of the deletion, or nothing where another one is

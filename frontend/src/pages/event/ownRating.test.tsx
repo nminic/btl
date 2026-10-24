@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import { arrivedResource, loadResource } from '../../data/client'
 import type { EventComment } from '../../data/types'
 import { at, must } from '../../test/at'
+import { sayYes } from '../../test/deleteSheet'
 import { renderAt } from '../../test/render'
 import { answeredWith, serverThat } from '../../test/serverAnswers'
 import type { Asked } from '../../test/serverAnswers'
@@ -238,7 +239,7 @@ describe('the deletion', () => {
     const card = cardOf(within(list).getByText(HIS.body))
 
     await user.click(within(card).getByRole('button', { name: sr.event.deleteOwnRating }))
-    await user.click(within(card).getByRole('button', { name: sr.event.deleteOwnRatingSure }))
+    await sayYes(user, sr.event.deleteOwnRatingAsk)
 
     return { list, user }
   }

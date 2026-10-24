@@ -148,7 +148,6 @@ describe.each(SCREENS)('the sheet that asks before $name delete a row', (one) =>
     expect(within(sheet).getAllByRole('button').map((each) => each.textContent)).toEqual(['Obriši', 'Odustani'])
 
     /* AND NOTHING OF THE OLD QUESTION IS LEFT IN THE ROW. */
-    expect(screen.queryByText(sr.admin.form.deleteSure)).toBeNull()
     expect(within(row).queryByRole('button', { name: /^Potvrdi brisanje:/ })).toBeNull()
     expect(within(row).queryByRole('button', { name: /^Odustani od brisanja:/ })).toBeNull()
 

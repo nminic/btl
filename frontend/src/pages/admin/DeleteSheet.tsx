@@ -5,8 +5,10 @@ import { Prompt } from '../../components/Prompt'
 import { useI18n } from '../../i18n/useI18n'
 
 /**
- * THE QUESTION „OBRIŠI X?" AS A SHEET OVER THE PAGE, FOR EVERY ROW OF THE ADMINISTRATION THAT IS TAKEN AWAY
- * (owner, 23.10.2026, PDL „Tri odgovora od 23.10.2026": „Svaki ekran administracije koji briše dobija
+ * THE QUESTION „OBRIŠI X?" AS A SHEET OVER THE PAGE, FOR EVERY DELETION ON THE PORTAL. Owner, 23.10.2026 for
+ * every row of the administration, and 24.10.2026 for the four places outside it: the team's own page, a result
+ * on the page of its event, a member's own result and his own rating (PDL „Odgovori od 24.10.2026 (popodne)":
+ * „Stari „Sigurno?" u redu time nestaje iz portala"). The first decision, in the owner's words (PDL „Tri odgovora od 23.10.2026": „Svaki ekran administracije koji briše dobija
  * isti iskačući prozor kao red člana, sa rečima koje imenuju šta se briše (npr. „Obriši tim?" [Obriši]
  * [Odustani]), umesto potvrde „Sigurno?" u redu").
  *
@@ -33,9 +35,19 @@ import { useI18n } from '../../i18n/useI18n'
  * focus has to land on the control that starts a new record only once the row is gone; `RowActions` moves
  * it when the answer is in, in the turn that brings the row down with the sheet.
  */
-export function DeleteSheet({ name, asks, onDelete, children }: {
+export function DeleteSheet({ name, asks, onDelete, onKeep, look = 'entity-open', opener, children }: {
   /** What the row is called: the name of the cross, and the line under the question. */
   name: string
+  /** Told when the READER puts the sheet away, and not when an answer closes it: a screen that drew something about an
+   *  earlier attempt (a refusal) takes it back (`TeamDetail`, registry item 311). */
+  onKeep?: () => void
+  /** What the cross is dressed as: `entity-open` in a row of the administration, a button on the pages of members. */
+  look?: string
+  /**
+   * The cross, where it is not named after the record: a member's own rating is „Obriši svoju ocenu" and has no
+   * name of its own to put under the question (PDL P6, 20.10.2026). Then the sheet carries no line under the question.
+   */
+  opener?: string
   /** The question, in the words that name what is deleted: „Obriši tim?". */
   asks: string
   /**
@@ -81,9 +93,9 @@ export function DeleteSheet({ name, asks, onDelete, children }: {
     <>
       <ActionButton
         symbol={SYMBOL.cross}
-        word={t('admin.form.delete')}
-        name={t('admin.form.deleteNamed', { name })}
-        className="entity-open entity-delete"
+        word={opener ?? t('admin.form.delete')}
+        name={opener ?? t('admin.form.deleteNamed', { name })}
+        className={`${look} entity-delete`}
         onClick={() => setAsking(true)}
       />
       {asking && (
@@ -91,10 +103,13 @@ export function DeleteSheet({ name, asks, onDelete, children }: {
           title={asks}
           choices={[{ label: t('admin.form.delete'), onChoose: choose }]}
           decline={t('admin.form.keep')}
-          onDecline={() => setAsking(false)}
+          onDecline={() => {
+            setAsking(false)
+            onKeep?.()
+          }}
           working={working ? t('results.sending') : undefined}
         >
-          <p>{name}</p>
+          {opener === undefined && <p>{name}</p>}
           {children}
         </Prompt>
       )}
