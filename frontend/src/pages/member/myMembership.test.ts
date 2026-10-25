@@ -25,6 +25,7 @@ describe('what the server says he sends', () => {
         fromTheBalance: { amount: 1100, currency: 'RSD' },
         toTransfer: { amount: 3700, currency: 'RSD' },
         processingFeeEur: 0,
+        coveredByTheBalance: false,
       })
     } finally {
       stop()
@@ -73,6 +74,8 @@ describe('the answer, narrowed by looking at it', () => {
     ['no amount to transfer', { ...FULL, toTransfer: undefined }],
     ['an amount to transfer in a money the portal does not know', { ...FULL, toTransfer: { amount: 1, currency: 'USD' } }],
     ['no share of the balance', { ...FULL, fromTheBalance: undefined }],
+    ['no word on whether the balance covers it', { ...FULL, coveredByTheBalance: undefined }],
+    ['a word on it that is not a yes or a no', { ...FULL, coveredByTheBalance: 'true' }],
   ])('is nothing for %s', (_what, body) => {
     expect(owedIn(body)).toBeNull()
   })
@@ -84,6 +87,21 @@ describe('the answer, narrowed by looking at it', () => {
     expect(said?.fromTheBalance).toEqual({ amount: 28, currency: 'EUR' })
     expect(said?.processingFeeEur).toBe(3)
     expect(said?.season).toBe(2028)
+  })
+
+  /* TWO FACTS AND NOT ONE, and the answer the owner chose turns on telling them apart (PDL, 25.10.2026:
+     the member whose balance grew after his slip „vidi i dugme i uplatnicu"). A reader that worked
+     „covered" out of a transfer of nought would say no here, where the book holds the whole 4.800 and
+     the slip in his hand still asks for 4.200; and say yes for nought to transfer beside a book that
+     does not reach the fee, which the second half stands in. */
+  it('reads whether the balance covers the fee off its own field and not off the transfer', () => {
+    const grew = owedIn(anInvoice(2027, 'RSD', { toTransfer: 4200, fromTheBalance: 600, balance: 4800 }))
+    const short = owedIn({ ...anInvoice(2027, 'RSD', { toTransfer: 0, fromTheBalance: 4800 }), coveredByTheBalance: false })
+
+    expect(grew?.coveredByTheBalance).toBe(true)
+    expect(grew?.toTransfer.amount).toBe(4200)
+    expect(short?.coveredByTheBalance).toBe(false)
+    expect(short?.toTransfer.amount).toBe(0)
   })
 })
 
@@ -97,7 +115,7 @@ describe('the names it reads, against the record the route serves', () => {
     const read = Object.keys(owedIn(FULL) ?? {})
 
     expect(declared.length, 'the record was found and read').toBeGreaterThan(5)
-    expect(read.length).toBe(5)
+    expect(read.length).toBe(6)
     expect(read.filter((name) => !declared.includes(name))).toEqual([])
   })
 
