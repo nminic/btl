@@ -82,19 +82,18 @@ export function WhatHeSends({
   const failedOnce = useRef(false)
 
   /* THE FOCUS COMES BACK HERE when the button that asked again leaves with it, the shape
-     `components/Resource.tsx` has for a part, copied with its guards (WCAG 2.2 SC 2.4.3): only if
-     it left with the focus on it, only if nobody has taken the focus since, and onto a node of its
-     own drawn only once this has failed, so a read that never failed is the markup it always was. */
+     `components/Resource.tsx` has for a part (WCAG 2.2 SC 2.4.3): only if it left with the focus on
+     it (`Unreadable` says so, and says nothing for a reader who moved on while it asked), and onto a
+     node of its own drawn only once this has failed, so a read that never failed is the markup it
+     always was. `Resource` also asks whether a screen took the focus for itself while it drew; nothing
+     drawn here takes it, so that question has no case that could reach it and is not asked. */
   useLayoutEffect(() => {
     if (owed.status === 'error') {
       failedOnce.current = true
       keptTheFocus.current = false
     } else if (owed.status === 'ready' && keptTheFocus.current) {
       keptTheFocus.current = false
-
-      if (document.activeElement === document.body) {
-        anchor.current?.focus({ preventScroll: true })
-      }
+      anchor.current?.focus({ preventScroll: true })
     }
   })
 

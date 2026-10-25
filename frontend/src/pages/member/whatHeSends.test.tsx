@@ -209,6 +209,49 @@ describe('a read that did not answer', () => {
   }, SLOW)
 })
 
+describe('the keyboard of a reader who moved on while it asked again', () => {
+  it('is left where he put it', async () => {
+    /* The other side of the case above, and the guard `Resource` has for a part: only a button that
+       left with the focus on it is followed, and a reader who moved on while it asked keeps his place. */
+    let fails = true
+    let answer: (response: Response) => void = () => undefined
+    stand(
+      serverThat((path, init) => {
+        if (path !== '/api/me/membership' || init?.method !== undefined) {
+          return null
+        }
+
+        if (fails) {
+          return answeredWith(500)
+        }
+
+        return new Promise<Response>((resolve) => {
+          answer = resolve
+        })
+      }),
+    )
+    const user = setupUser()
+
+    renderAt('/sr/moja-clanarina', 'competitor', IN_SERBIA, undefined, IN_THE_WINDOW)
+
+    const again = await screen.findByRole('button', { name: 'Pokušaj ponovo' })
+
+    fails = false
+    again.focus()
+    await user.keyboard('{Enter}')
+
+    /* He moves on while the asking is out, and then it is answered. */
+    const elsewhere = screen.getByRole('heading', { level: 1, name: 'Moja članarina' })
+
+    elsewhere.setAttribute('tabindex', '-1')
+    elsewhere.focus()
+    answer(answeringInvoice(anInvoice(2027, 'RSD')))
+
+    expect(within(await theSlip()).getByText('3.700 RSD')).toBeVisible()
+    expect(document.activeElement).toBe(elsewhere)
+  }, SLOW)
+})
+
 describe('the read is asked only where a slip is about to be drawn, because it writes the promise', () => {
   /* MY REASONING over the owner's decision of 27.09.2026, accepted by the coordinator on
      25.10.2026: the first look of a season fixes what the code promises, and the route records the
