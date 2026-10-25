@@ -305,14 +305,25 @@ describe('a sentence with a value put into it', () => {
       /* „Izmeni podatke: {name}" (23.10.2026), the name of the pencil on a member's row, as the deletion's
          beside it: the name after a colon, in the nominative. */
       'admin.editMemberNamed',
-      /* „Ovim brišeš i {count} rezultata.", asked before an event is deleted (owner,
-         28.09.2026). The value is a COUNT, so it governs the noun rather than being
-         governed by one, and the three plural forms are where that is answered. */
+      /* „Ovim brišeš i {races} i {results}.", asked before an event is deleted (owner,
+         28.09.2026, and the races beside the results since 25.10.2026), and its other state,
+         „Ovim brišeš i {races}, a broj rezultata koji odlaze još nije poznat.". Both values
+         are the two plural keys below, made in `admin/eventDeletionWords.ts`; each is the
+         object of „brišeš", so the accusative, and that is answered in the forms of those
+         keys („1 trku", „2 trke", „5 trka"), which is why the race is not `units.raceCount`.
+         The two keys themselves take a COUNT, which governs the noun rather than being
+         governed by one. */
+      'admin.eventDeleteCountUnknown',
+      'admin.eventDeleteRaces',
+      'admin.eventDeleteResults',
       'admin.eventDeleteTakes',
       'admin.form.deleteNamed',
       'admin.form.openNamed',
       'admin.form.raceNumber',
       'admin.form.removeRow',
+      /* „Nova pozivnica je poslata na {email}. Prethodni link više ne važi." (owner, 25.10.2026): an
+         address of post after „na", which is written as it is and has no case to be wrong in. */
+      'admin.invitationSent',
       /* „Trke u ligi {name}", the accessible name of the box that folds on the list of
          competitions. The name of a competition stands after „u ligi", which governs the
          locative - and a competition's name is a proper name the portal never declines
@@ -410,6 +421,10 @@ describe('a sentence with a value put into it', () => {
          `PROCESSING_FEE_EUR` written straight into the sentence and it is the served row
          now, so it is formatted like the two amounts either side of it. */
       'membership.costs <- money',
+      /* The season a member's balance pays for, beside the button that lets him in on it (owner,
+         25.10.2026, the agent's words). A bare year after „za sezonu", which follows as a label and
+         does not decline. */
+      'membership.coveredByTheBalance',
       'membership.feeExempt',
       /* The heading of the panel somebody who has not paid pays in, which takes the season the
          way the renewal heading below takes it (`membership.renewal`): a bare number from the
@@ -432,6 +447,11 @@ describe('a sentence with a value put into it', () => {
          „tim" and leaves the name itself alone. No formatter writes it: `Team.name` is
          handed over as the server answers it. */
       'membership.leaveTeamAsk',
+      /* What the press of „Aktiviraj članstvo" came to (owner, 25.10.2026, the agent's words): the season
+         the server let him in for, a bare year after „za sezonu", and his new number after „je", both
+         labels that do not decline. */
+      'membership.letIn',
+      'membership.letInNumber',
       /* And the two bases of the season on sale said in „Stanje" with the year, after „sezonu",
          which the year follows as a label and does not decline (PDL P8, 18.10.2026). */
       'membership.paidFor',

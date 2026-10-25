@@ -84,6 +84,11 @@ const SYMBOL_OF = new Map<string, { symbol: ActionSymbol; word: string }>([
   ['admin.form.delete', { symbol: SYMBOL.cross, word: 'Obriši' }],
   ['admin.form.open', { symbol: SYMBOL.pencil, word: 'Otvori' }],
   ['admin.recordPayment', { symbol: SYMBOL.banknote, word: 'Upiši uplatu' }],
+  /* The envelope on the member's row (owner, 25.10.2026). */
+  ['admin.sendNewInvitation', { symbol: SYMBOL.envelope, word: 'Pošalji novu pozivnicu' }],
+  /* And what its box says where it cannot act (owner, 25.10.2026), on the same envelope. */
+  ['admin.invitationNotNeeded', { symbol: SYMBOL.envelope, word: 'Član je već postavio lozinku.' }],
+  ['admin.invitationNoAccount', { symbol: SYMBOL.envelope, word: 'Član nema nalog na portalu, pa pozivnica nema kome da ode.' }],
   ['event.copy', { symbol: SYMBOL.copy, word: 'Kopiranje' }],
   ['event.edit', { symbol: SYMBOL.pencil, word: 'Izmena' }],
   /* The pencil on a member's row (PDL 22.10.2026), which leads to the card „Podaci" of his profile. */
@@ -157,6 +162,11 @@ const STAYS_A_WORD = new Map([
   ['membership.leaveTeam', LISTED],
   ['membership.leaveTeamKeep', ANSWER],
   ['membership.leaveTeamSure', ANSWER],
+  /* The one click that lets a member in on his balance, and the button is NAMED in the decision, so the word is the owner's. */
+  [
+    'membership.letMeIn',
+    'the button of a member whose balance covers the fee, which the owner named „Aktiviraj članstvo" (PDL 25.10.2026, the same word as in message G): a word and not a symbol',
+  ],
   ['myProfile.signOut', LISTED],
   ['myResults.add', LISTED],
   ['nav.login', NOT_AN_ACTION],

@@ -29,6 +29,12 @@ import {
   type SeasonAsk,
 } from './memberMembership'
 import { paymentOnTheRow, WHEN_RECORDING_ON_THE_ROW, type RowBooking } from './memberPayment'
+import {
+  addressIn,
+  invitationOnTheRow,
+  WHAT_THE_NUMBER_SAYS_WHEN_INVITING,
+  WHEN_SENDING_AN_INVITATION,
+} from './memberInvitation'
 import { WHEN_DELETING_A_MEMBER } from './memberWrites'
 import { useRowRefusal } from './useRowRefusal'
 import '../member/Member.css'
@@ -38,8 +44,13 @@ import './AdminMembers.css'
 /** Every question a row can put, one at a time. */
 type Asking = SeasonAsk | { act: 'pay' } | { act: 'delete' }
 
-/** A refusal and the words it is said in, which are those of the request that met it. */
-type Refused = { answer: Exclude<Answer, { got: 'done' }>; refusals: Record<string, string> }
+/** A refusal and the words it is said in, which are those of the request that met it, and the bare numbers
+ *  that request gives a meaning to, where it gives any (`memberInvitation.ts`). */
+type Refused = {
+  answer: Exclude<Answer, { got: 'done' }>
+  refusals: Record<string, string>
+  numbers?: Record<number, string>
+}
 
 /**
  * ONE ROW OF THE MODERATION OF THE MEMBERS, IN FIVE COLUMNS (owner, 22.10.2026, PDL „Red na ekranu
@@ -87,6 +98,7 @@ export function MemberRow({
   settled,
   onPaid,
   onChanged,
+  onInvited,
   onDelete,
 }: {
   one: Member
@@ -100,6 +112,8 @@ export function MemberRow({
   /** A season was granted, cancelled, or its basis changed, which a payment over the exemption is; the
    *  words are what the screen says of it. */
   onChanged: (said: string) => void
+  /** A new invitation went out; the words are what the screen says of it, which name the address. */
+  onInvited: (said: string) => void
   /** The deletion, sent by the screen, which knows what the visit must forget with him. */
   onDelete: () => Promise<Answer>
 }) {
@@ -118,7 +132,12 @@ export function MemberRow({
   const mayPay = basis === undefined || payOver
   const workingSays = working ? t('results.sending') : undefined
 
-  async function send(request: () => Promise<Answer>, refusals: Record<string, string>, done: () => void) {
+  async function send(
+    request: () => Promise<Answer>,
+    refusals: Record<string, string>,
+    done: (body: unknown) => void,
+    numbers?: Record<number, string>,
+  ) {
     if (outstanding.current) {
       return
     }
@@ -132,12 +151,12 @@ export function MemberRow({
       setAsking(null)
 
       if (answer.got === 'done') {
-        done()
+        done(answer.body)
 
         return
       }
 
-      setRefused({ answer, refusals })
+      setRefused({ answer, refusals, numbers })
     } finally {
       outstanding.current = false
       setWorking(false)
@@ -251,6 +270,28 @@ export function MemberRow({
     ) : (
       <span className={`tag tag--${basis}`}>{word}</span>
     )
+  /**
+   * „POŠALJI NOVU POZIVNICU", AT ONCE AND WITH NO SHEET (owner, 25.10.2026, PDL „Nova pozivnica od
+   * administracije i rečenica o trkama: odgovori od 25.10.2026"), through the row's one guard (`send`), so a
+   * second press while the first is out sends nothing. The sentence after it names the address the server
+   * says it went to; it is DRAWN on the screen, as the deletion's is, because no sheet stood between the
+   * press and the letter and nothing else on the row changes to say that anything happened.
+   */
+  function invite() {
+    void send(
+      () => askTheServer(invitationOnTheRow(one.memberNumber), {}, 'POST'),
+      WHEN_SENDING_AN_INVITATION,
+      (body) => {
+        const to = addressIn(body)
+
+        onInvited(to === null ? t('admin.invitationSentSomewhere') : t('admin.invitationSent', { email: to }))
+      },
+      WHAT_THE_NUMBER_SAYS_WHEN_INVITING,
+    )
+  }
+
+  const invitable = one.invitation === 'due'
+  const unreachable = one.invitation === 'noAccount'
   const country = countryName(one.country)
   const seasons = <MemberSeasons one={one} onAsk={setAsking} />
 
@@ -288,7 +329,7 @@ export function MemberRow({
       </td>
       <td className="table__hide-phone">{basisCell}</td>
       <td className="table__hide-phone">{seasons}</td>
-      <td>
+      <td className="members-table__options">
         <span className="members-actions">
           {/* „IZMENI PODATKE", A LINK AND NOT A BUTTON: it goes to a page, the card „Podaci" of his profile,
               at the address the profile has where the public list carries him, and by the number alone
@@ -323,6 +364,22 @@ export function MemberRow({
               }
             }}
           />
+          {/* THE ENVELOPE STANDS ON EVERY ROW, so the symbols keep their places (owner, 25.10.2026), and is
+              switched off for real where no invitation is due, the shape of „Upiši uplatu" beside it: out of
+              the order of focus, its box seen by the pointer only. Its name stays „Pošalji novu pozivnicu"
+              either way; what the box says where it cannot act is why not („Član je već postavio lozinku.").
+
+              The symbol is written as the same choice as the word, three times the envelope, and that is
+              `components/actionSymbols.test.ts` and not style: it reads a word and its symbol only where the
+              two are the same shape, and holds every word to the symbol the owner's map gives it. */}
+          <ActionButton
+            symbol={invitable ? SYMBOL.envelope : unreachable ? SYMBOL.envelope : SYMBOL.envelope}
+            word={t(invitable ? 'admin.sendNewInvitation' : unreachable ? 'admin.invitationNoAccount' : 'admin.invitationNotNeeded')}
+            name={t('admin.sendNewInvitation')}
+            className="entity-open"
+            disabled={!invitable}
+            onClick={invite}
+          />
           <ActionButton
             symbol={SYMBOL.cross}
             word={t('admin.form.delete')}
@@ -332,7 +389,7 @@ export function MemberRow({
           />
         </span>
         <div className="activate__said" role="status">
-          {refused === null ? null : <ServerSaid answer={refused.answer} refusals={refused.refusals} />}
+          {refused === null ? null : <ServerSaid answer={refused.answer} refusals={refused.refusals} numbers={refused.numbers} />}
         </div>
         {asking === null ? null : question(asking)}
       </td>

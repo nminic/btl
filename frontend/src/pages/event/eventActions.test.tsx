@@ -354,7 +354,7 @@ describe('deleting an event', () => {
    */
   const noConfirm = () => vi.spyOn(window, 'confirm').mockReturnValue(true)
 
-  it('asks in a sheet, naming the event and saying how many results go with it, and never through the browser', async () => {
+  it('asks in a sheet, naming the event and saying how many races and results go with it, and never through the browser', async () => {
     /* Nothing brings any of it back, and deleting an event of five races from a page
        showing one of them is easy to do by mistake. */
     const user = setupUser()
@@ -377,14 +377,19 @@ describe('deleting an event', () => {
       /* THE EVENT, BY NAME, and the sentence about what goes with it, in the words the administration's list of events
          has (`admin.eventDeleteTakes`). Both are the sheet's DESCRIPTION too, so a reader hears them. */
       expect(within(sheet).getByText(mine.name)).toBeInTheDocument()
-      /* THE NUMBER IS THIS EVENT'S, counted through its races (`result_race_fk`), and not the number of every result there
-         is, nor of the races: the three are different numbers on this event. */
+      /* THE NUMBERS ARE THIS EVENT'S: its races, and its results counted through them (`result_race_fk`), and not the
+         number of every result there is. The races and the results are different numbers on this event, so a sentence that
+         put one count in both places, or the two the wrong way round, says something else (owner, 25.10.2026, „imenuje i
+         trke i rezultate"). */
       const itsRaces = new Set((await loadResource<Race[]>('races')).filter((one) => one.eventId === mine.id).map((one) => one.id))
       const going = (await loadResource<Result[]>('results')).filter((one) => itsRaces.has(one.raceId)).length
 
       expect(going, 'the case has results to count').toBeGreaterThan(0)
       expect(going, 'one number cannot tell the sources apart').not.toBe(itsRaces.size)
-      expect(within(sheet).getByText(new RegExp(`^Ovim brišeš i ${String(going)} rezultat`))).toBeInTheDocument()
+      expect(itsRaces.size, 'the case has races to count').toBeGreaterThan(1)
+      expect(
+        within(sheet).getByText(new RegExp(`^Ovim brišeš i ${String(itsRaces.size)} trk[aue] i ${String(going)} rezultata?\\.$`)),
+      ).toBeInTheDocument()
       expect(sheet).toHaveAccessibleDescription(new RegExp(`${mine.name}.*Ovim brišeš i`))
 
       expect(confirm, 'the browser is not asked').not.toHaveBeenCalled()

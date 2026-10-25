@@ -14,8 +14,9 @@ export const MY_MEMBERSHIP = '/api/me/membership'
  * the first look of a season fixes (owner, 27.09.2026) are all in it, and none of them is worked out
  * a second time here.
  *
- * <p><b>Only the fields the screen reads.</b> The route answers more (`fee`, `balance`, `priceKey`,
- * `coveredByTheBalance`); a field nothing reads is a field nothing holds, so it is not narrowed.
+ * <p><b>Only the fields the screen reads.</b> The route answers more (`fee`, `balance`, `priceKey`); a
+ * field nothing reads is a field nothing holds, so it is not narrowed. `coveredByTheBalance` joined
+ * the read on 25.10.2026 with the button that lets him in on his balance (`member/WhatHeSends.tsx`).
  * `data/contract.test.ts` holds every name below to a component of the Java record, so a rename on
  * either side fails there and not on a screen that quietly draws nothing.
  */
@@ -30,6 +31,14 @@ export type MyMembership = {
   toTransfer: MyBalance
   /** Charged on a euro transfer only, and nought where there is nothing to transfer. */
   processingFeeEur: number
+  /**
+   * The owner's „veći ili jednak", asked of the book TODAY and not of the promise: true is
+   * `POST /api/me/membership` letting him in. It is NOT `toTransfer` being nought, and the two part
+   * company for a member whose balance grew after his slip was minted - covered today, and still holding
+   * a slip that asks for something. The owner, 25.10.2026: that member „vidi i dugme i uplatnicu, pa
+   * bira", so the screen reads each fact off its own field.
+   */
+  coveredByTheBalance: boolean
 }
 
 /**
@@ -83,6 +92,7 @@ export function owedIn(body: unknown): MyMembership | null {
   const season: unknown = Reflect.get(body, 'season')
   const alreadyAMember: unknown = Reflect.get(body, 'alreadyAMember')
   const processingFeeEur: unknown = Reflect.get(body, 'processingFeeEur')
+  const coveredByTheBalance: unknown = Reflect.get(body, 'coveredByTheBalance')
   const fromTheBalance = balanceIn(Reflect.get(body, 'fromTheBalance'))
   const toTransfer = balanceIn(Reflect.get(body, 'toTransfer'))
 
@@ -98,9 +108,13 @@ export function owedIn(body: unknown): MyMembership | null {
     return null
   }
 
+  if (typeof coveredByTheBalance !== 'boolean') {
+    return null
+  }
+
   if (fromTheBalance === null || toTransfer === null) {
     return null
   }
 
-  return { season, alreadyAMember, fromTheBalance, toTransfer, processingFeeEur }
+  return { season, alreadyAMember, fromTheBalance, toTransfer, processingFeeEur, coveredByTheBalance }
 }

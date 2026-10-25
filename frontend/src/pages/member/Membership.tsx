@@ -36,6 +36,8 @@ import { theServerWasToldILeft } from './teamExit'
 import { MyRacingPairs } from './MyRacingPairs'
 import { MyBalanceLine } from './MyBalanceLine'
 import { WhatHeSends } from './WhatHeSends'
+import { WHEN_LETTING_MYSELF_IN } from './fromTheBalance'
+import { useLetMeIn } from './useLetMeIn'
 import './Member.css'
 
 /**
@@ -304,6 +306,32 @@ export function Membership() {
       opener.current?.focus()
     }
   }, [afterAnAnswer])
+
+  /**
+   * LETTING HIMSELF IN ON HIS BALANCE (owner, 25.10.2026, PDL „Dugme „Aktiviraj članstvo" na „Mojoj
+   * članarini""): the press, what it came to, and how many times the server has been asked again since.
+   *
+   * <p><b>What it came to is drawn HERE, at the head of the renewal panel, and not beside the button</b>,
+   * because every answer takes the button away: let in, he holds the season and the panel says so;
+   * refused for holding it or owing nothing, the same; refused because the balance no longer reaches the
+   * fee, the part is read again and draws the slip instead. A sentence drawn beside the button would go
+   * with it. The focus goes to the sentence, for the reason the button that took it is gone (WCAG 2.2,
+   * 2.4.3), and to the heading of the panel on the one road that draws no sentence.
+   */
+  const lettingIn = useLetMeIn()
+  const saidAboutLettingIn = useRef<HTMLDivElement>(null)
+  const renewalHeading = useRef<HTMLHeadingElement>(null)
+  /** Whether the part that says what he sends is drawing the button, told by that part (it is the one
+   *  that reads the answer): somebody who has not paid gets his number from it, and „Stanje" says so. */
+  const [coveredNow, setCoveredNow] = useState(false)
+
+  useLayoutEffect(() => {
+    if (lettingIn.outcome !== null) {
+      const said = saidAboutLettingIn.current ?? renewalHeading.current
+
+      said?.focus()
+    }
+  }, [lettingIn.outcome])
 
   /**
    * LEAVES THE TEAM, AND THEN ASKS THE SERVER WHO IT NOW THINKS THIS MEMBER IS.
@@ -592,8 +620,10 @@ export function Membership() {
                 {neverPaid
                   ? /* NOT „Član od {season}. sezone.", which is said of somebody who is one. He has
                        registered and the league has not recorded a fee, so he is told exactly that
-                       and what follows from it (`membership.notPaidYet`). */
-                    t('membership.notPaidYet')
+                       and what follows from it (`membership.notPaidYet`). And where his balance
+                       covers the fee, how he gets the number is the button and not a moderator
+                       (PDL, 25.10.2026). */
+                    t(coveredNow ? 'membership.notPaidYetCovered' : 'membership.notPaidYet')
                   : feeExempt
                   ? /* **The season being sold, since 18.10.2026, and no longer the one he is in.**
                        The owner on that day (PDL P8, „Koja sezona se prikazuje"): „do 14.10. je
@@ -830,7 +860,7 @@ export function Membership() {
             )}
 
             <section className="member__panel" aria-labelledby="membership-renewal">
-              <h2 className="profile__section" id="membership-renewal">
+              <h2 className="profile__section" id="membership-renewal" tabIndex={-1} ref={renewalHeading}>
                 {t(neverPaid ? 'membership.firstPayment' : 'membership.renewal', {
                   /* THE SEASON OF THE PAYMENT ONLY WHERE A PAYMENT IS TAKEN. The heading stands
                      over the sentence for a shut panel too, and for a member whose fee stands
@@ -841,6 +871,35 @@ export function Membership() {
                   season: !held && payable ? payingSeason : nextSeason,
                 })}
               </h2>
+
+              {/* WHAT THE PRESS OF „AKTIVIRAJ ČLANSTVO" CAME TO, here and not beside the button, which
+                  every answer takes away (`lettingIn` above). Let in: the season the server names and,
+                  where he had none, the number it gave him (owner, 25.10.2026, the agent's words). Refused
+                  or unanswered: the route's own sentence for each, through `ServerSaid`, which draws it as
+                  an alert. Nothing for a „done" the screen cannot read: the page the server is then asked
+                  for says what stands, and the focus goes to the heading above. */}
+              {lettingIn.outcome !== null && lettingIn.outcome.got !== 'unread' && (
+                  <div
+                    ref={saidAboutLettingIn}
+                    tabIndex={-1}
+                    role={lettingIn.outcome.got === 'in' ? 'status' : undefined}
+                  >
+                    {lettingIn.outcome.got === 'in' ? (
+                      <>
+                        <p className="member__note">
+                          {t('membership.letIn', { season: lettingIn.outcome.season })}
+                        </p>
+                        {lettingIn.outcome.newNumber !== null && (
+                          <p className="member__note">
+                            {t('membership.letInNumber', { number: lettingIn.outcome.newNumber })}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <ServerSaid answer={lettingIn.outcome.answer} refusals={WHEN_LETTING_MYSELF_IN} />
+                    )}
+                  </div>
+                )}
 
               {/* A member freed of the fee owes nothing, ever (the rulebook's article „Cena, rokovi i oslobađanje od članarine", PDL
                   P16). Only the line about their status said so, while the
@@ -892,13 +951,22 @@ export function Membership() {
                       promise of the season: mounted here, inside the one branch of the panel that
                       offers a payment, it is asked exactly where a slip is about to be drawn and
                       nowhere else (`member/WhatHeSends.tsx`). */}
+                  {/* KEYED BY HOW MANY TIMES THE SERVER WAS ASKED AGAIN after a press of „Aktiviraj
+                      članstvo", so a refusal because the balance no longer reaches the fee reads what
+                      he owes once more and draws the slip for the rest (`useLetMeIn`). */}
                   <WhatHeSends
+                    key={lettingIn.readAgain}
                     asked={who.standing === 'neverPaid' ? who.account : who.memberNumber}
                     season={payingSeason}
                     methods={methods}
                     neverPaid={neverPaid}
                     purpose={purpose}
                     reference={reference}
+                    sending={lettingIn.sending}
+                    onLetMeIn={() => {
+                      void lettingIn.letMeIn(neverPaid)
+                    }}
+                    onCovered={setCoveredNow}
                   />
                 </>
               ) : (
@@ -1183,8 +1251,14 @@ export function Membership() {
                 />
               ))}
               {/* Keyed by whose it is, which is the number of a member and the account of
-                  somebody who has not paid: the screen above has already told the two apart. */}
-              <MyBalanceLine asked={who.standing === 'neverPaid' ? who.account : who.memberNumber} />
+                  somebody who has not paid: the screen above has already told the two apart. And by
+                  how many times the server was asked again after „Aktiviraj članstvo", because a
+                  member who had a number keeps it, so the key above does not move when his balance
+                  pays for the season. */}
+              <MyBalanceLine
+                key={lettingIn.readAgain}
+                asked={who.standing === 'neverPaid' ? who.account : who.memberNumber}
+              />
               <p className="member__note">{t('membership.balanceNote')}</p>
             </section>
           </div>
