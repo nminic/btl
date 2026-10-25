@@ -443,7 +443,19 @@ describe('when the server refuses', () => {
 
   it('says the server could not be reached, keeps the button, and asks nothing again', async () => {
     const user = setupUser()
-    const asked = openHisPage(aServer({ pressed: () => Promise.reject(new TypeError('Failed to fetch')) }))
+    let tries = 0
+    /* The first press gets no answer and the second one is let in, so the button that stays is the one
+       that works: a ref that went on holding the press, or a state that went on saying „Šalje se", would
+       leave a button that is drawn and does nothing. */
+    const asked = openHisPage(
+      aServer({
+        pressed: () => {
+          tries += 1
+
+          return tries === 1 ? Promise.reject(new TypeError('Failed to fetch')) : letIn(2027, LAPSED)
+        },
+      }),
+    )
     const button = await theButton()
     const before = asksAboutMe(asked)
 
@@ -454,6 +466,18 @@ describe('when the server refuses', () => {
     )
     expect(screen.getByRole('button', { name: 'Aktiviraj članstvo' })).toBeVisible()
     expect(asksAboutMe(asked)).toBe(before)
+
+    /* AND IT STILL WORKS: not marked as busy, no „Šalje se", and a second press goes out and lets him in. */
+    const again = screen.getByRole('button', { name: 'Aktiviraj članstvo' })
+
+    expect(again).not.toHaveAttribute('aria-disabled', 'true')
+    expect(screen.queryByText('Šalje se')).not.toBeInTheDocument()
+
+    await user.click(again)
+
+    expect(await screen.findByText('Članstvo za sezonu 2027 je aktivirano.')).toBeVisible()
+    expect(screen.queryByText('Šalje se')).not.toBeInTheDocument()
+    expect(presses(asked)).toBe(2)
   }, SLOW)
 })
 
