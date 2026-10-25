@@ -109,7 +109,9 @@ for (const at of WIDTHS) {
       const { page, probe } = await open(at, `/sr/kalendar/${SLUG}`, 'tbody td.table__points', answers)
 
       if (asking) {
-        await page.getByRole('button', { name: /^Obriši: / }).first().click()
+        /* THE CROSS OF A RESULT, in the table: since 25.10.2026 the head of the page carries a cross of the same words that
+           deletes the whole event, and it comes first. */
+        await page.locator('tbody').getByRole('button', { name: /^Obriši: / }).first().click()
         await page.getByRole('dialog', { name: 'Obriši rezultat?' }).waitFor({ state: 'visible' })
       }
 
