@@ -132,6 +132,11 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
      owner 27.09.2026), and the form is what both a visitor and a member meet on any day.
      `DAY` still holds this table to one day, for the profile row below rather than this one. */
   ['/sr/registracija', 'Registracija', 'Registracija'],
+  /* The same page with the code of whoever brought the reader in its path, the link the portal shares
+     since 25.10.2026 (owner, 22.10.2026: „Link preporuke nosi samo šifru u adresi strane za
+     registraciju"). The code is one the generated file really hands out (000001's), so the row is the
+     address a member actually sends. */
+  ['/sr/registracija/7f07b38ff7ee7543', 'Registracija', 'Registracija'],
   ['/sr/prijava', 'Prijava', 'Prijava'],
   /* Where a forgotten password is asked about. No token on the address, unlike the two
      below: nothing is ever posted that points here, so it is reached by typing or by the
