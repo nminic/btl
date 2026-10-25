@@ -611,7 +611,18 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   no open pull request held a migration at V72 or above, and origin/main stands at V71.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("72", "V72__an_unconfirmed_registration_lasts_seven_days.sql", -317542150));
+			new Applied("72", "V72__an_unconfirmed_registration_lasts_seven_days.sql", -317542150),
+
+			/* V74. A bank statement is remembered and its file is not (owner, 24.10.2026, PDL „Učitavanje
+			   izvoda iz banke na ekranu Uplate": „Server pamti broj izvoda i stavke (da se isti izvod ne
+			   knjiži dvaput), a sam PDF ne čuva.").
+
+			   74 and not 73, MEASURED on 25.10.2026: origin/main stands at V72, and the open pull request 644
+			   (branch b-nalog-bez-reci) holds V73; no remote branch holds V74. Whichever of the two lands
+			   second gains the other's line above or below this one.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("74", "V74__a_bank_statement_is_remembered_and_its_file_is_not.sql", 1208052030));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

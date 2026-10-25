@@ -3,14 +3,14 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { formatShortDate } from '../i18n/format'
 import sr from '../i18n/sr.json'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import servedMembers from '../test/mock/members.json'
 import servedPrices from '../test/mock/pricing.json'
 import { did, refused, serverThat } from '../test/serverAnswers'
 import { translate } from '../i18n/translate'
 import { Decided } from '../test/decided'
-import { at, first, inputElement, must } from '../test/at'
+import { at, first, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
 import { unremarked } from '../test/stylesheet'
 import { setupUser } from '../test/user'
@@ -1187,10 +1187,6 @@ describe('payment payloads', () => {
      `pages/admin/adminPayments.test.tsx`: that the town is in its cell, and that no address and
      no country appear anywhere on the screen. */
 
-  /* The statement, as the way a hundred payments are reconciled at once (owner,
-     31.07.2026). Turning the file into decisions is the server's work and the
-     server does not exist yet, so what it does today is take the file and say
-     so; what it can honestly refuse is a file that is not a statement at all. */
   /* TWO CASES STOOD HERE AND BOTH MEASURED A BOX THAT IS GONE (27.09.2026). They held the
      words over „Odbij uz ovaj razlog" and where the message went: to nobody for a
      registration with no number, and to the member himself for one renewing. The screen of
@@ -1204,104 +1200,9 @@ describe('payment payloads', () => {
      results for the words over the box (the line in the member's inbox is written by the
      server there since R1 of the results flows). What went is this screen's reading of it. */
 
-  it('takes a statement in PDF and says what it did with it', async () => {
-    const user = setupUser()
-    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
-
-    const pick = await screen.findByLabelText('Izaberi PDF izvoda')
-
-    await user.upload(pick, new File(['%PDF-1.7'], 'izvod-jul.pdf', { type: 'application/pdf' }))
-
-    expect(await screen.findByText(/Primljen izvod izvod-jul\.pdf/)).toBeVisible()
-    expect(screen.queryByText(/mora biti PDF/)).not.toBeInTheDocument()
-  })
-
-  /* A statement saved without a type is still a statement. What decides is the
-     file, not what the operating system called it. */
-  it('takes a real PDF whose type the machine never wrote down', async () => {
-    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
-
-    const pick = inputElement(await screen.findByLabelText('Izaberi PDF izvoda'))
-
-    /* Handed over rather than picked, because `user.upload` matches `accept`
-       against the type alone; a browser matches the extension as well, so a
-       `.pdf` with no type does reach the screen there. */
-    fireEvent.change(pick, {
-      target: { files: [new File(['%PDF-1.4 ...'], 'izvod.pdf', { type: '' })] },
-    })
-
-    expect(await screen.findByText(/Primljen izvod izvod\.pdf/)).toBeVisible()
-  })
-
-  it('refuses anything renamed to look like a statement', async () => {
-    const user = setupUser()
-    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
-
-    const pick = await screen.findByLabelText('Izaberi PDF izvoda')
-
-    // A spreadsheet with the extension changed, which is what a hurried
-    // administrator actually does.
-    await user.upload(pick, new File(['ime;iznos'], 'izvod.pdf', { type: 'application/pdf' }))
-
-    expect(await screen.findByText(/mora biti PDF/)).toBeVisible()
-    expect(screen.queryByText(/Primljen izvod/)).not.toBeInTheDocument()
-  })
-
-  it('refuses a file that is not a statement, and says why', async () => {
-    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
-
-    const pick = inputElement(await screen.findByLabelText('Izaberi PDF izvoda'))
-
-    /* Handed over rather than picked through the control: `accept` already
-       turns a CSV away in the dialog, and `user.upload` honours that, so the
-       one case worth testing is the one `accept` cannot cover, which is
-       somebody choosing "all files" and handing over a CSV anyway. */
-    fireEvent.change(pick, {
-      target: { files: [new File(['ime;iznos'], 'izvod.csv', { type: 'text/csv' })] },
-    })
-
-    expect(await screen.findByText(/mora biti PDF/)).toBeVisible()
-    expect(screen.queryByText(/Primljen izvod/)).not.toBeInTheDocument()
-  })
-
-  /* The dialog turns a spreadsheet away before it reaches the screen, which is
-     why the case above has to be handed over rather than picked. */
-  it('asks the dialog for PDFs only', async () => {
-    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
-
-    expect(await screen.findByLabelText('Izaberi PDF izvoda')).toHaveAttribute(
-      'accept',
-      'application/pdf',
-    )
-  })
-
-  it('replaces what it said last time rather than piling messages up', async () => {
-    const user = setupUser()
-    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
-
-    const pick = await screen.findByLabelText('Izaberi PDF izvoda')
-
-    await user.upload(pick, new File(['%PDF-1.7'], 'prvi.pdf', { type: 'application/pdf' }))
-    expect(await screen.findByText(/Primljen izvod prvi\.pdf/)).toBeVisible()
-
-    await user.upload(pick, new File(['ne pdf'], 'drugi.pdf', { type: 'application/pdf' }))
-    expect(await screen.findByText(/mora biti PDF/)).toBeVisible()
-    expect(screen.queryByText(/Primljen izvod/)).not.toBeInTheDocument()
-  })
-
-  it('says nothing at all when the picking was called off', async () => {
-    /* Opening the dialog and closing it again fires the same event with an
-       empty list, and a screen that answers "primljen izvod" to a file nobody
-       chose is worse than one that says nothing. */
-    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
-
-    const pick = inputElement(await screen.findByLabelText('Izaberi PDF izvoda'))
-
-    fireEvent.change(pick, { target: { files: [] } })
-
-    expect(screen.queryByText(/Primljen izvod/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/mora biti PDF/)).not.toBeInTheDocument()
-  })
+  /* THE BANK STATEMENT'S CASES MOVED TO `admin/statementScreen.test.tsx` on 25.10.2026, when the server
+     started reading the file (PDL „Učitavanje izvoda iz banke"): the box now speaks to a route, and its
+     cases need a server in front of them. */
 
   /* The whole payload, written out, built from the exported constants.
    *

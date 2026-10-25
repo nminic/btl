@@ -20,6 +20,7 @@ import { must } from '../../test/at'
 import { WHEN_WRITING_A_MODERATOR } from '../admin/moderatorWrites'
 import { WHEN_ACTIVATING, WHEN_BOOKING_A_PAYMENT } from '../admin/activation'
 import { WHEN_RECORDING_ON_THE_ROW } from '../admin/memberPayment'
+import { WHEN_TAKING_A_STATEMENT } from '../admin/statement'
 import {
   WHEN_CANCELLING,
   WHEN_CHANGING_TO_THE_EXEMPTION,
@@ -134,6 +135,9 @@ function reasonsIn(file: string): string[] {
  */
 const NOT_A_REASON: Record<string, string[]> = {
   'PricingWriteApi.java': ['fee', 'referral'],
+  /* `StatementApi` (25.10.2026, PDL „Učitavanje izvoda iz banke") names the three states a payment on a
+     statement can be in, which the route answers 200 with: they are words of the answer, not refusals. */
+  'StatementApi.java': ['booked', 'alreadyRecorded', 'waiting'],
   /* `MePhotoApi` declared one of these on 26.09.2026 and gained two more on 27.09.2026
      with `mine`, the GET this class did not use to have (PDL 21a/21b):
      `THE_PROFILES_TAB = "profiles"` is the NAME OF A QUEUE, the one PDL P28a calls
@@ -610,6 +614,9 @@ describe('the reasons the server can name', () => {
        day is not in that event's year (`theDayIsNotInTheEventsYear`, PDL „Ekran 7b: dan trke mora biti u
        godini izabranog događaja”), which until then was answered as a form not filled in. */
     ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 13],
+    /* ADDED 25.10.2026 WITH THE BANK STATEMENT ON THE PAYMENTS SCREEN (PDL 24.10.2026). Seven constants:
+       four refusals, answered by the statement box, and the three states of a line in `NOT_A_REASON`. */
+    ['StatementApi.java', [WHEN_TAKING_A_STATEMENT], 7],
   ]
 
   /** What a file declares that really is a refusal AND has a screen today, which is every

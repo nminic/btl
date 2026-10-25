@@ -81,6 +81,19 @@
 			<artifactId>core</artifactId>
 			<version>3.5.4</version>
 		</dependency>
+		<!-- The reader of the bank statement the Payments screen takes (PDL „Učitavanje izvoda iz banke
+		     na ekranu Uplate", 24.10.2026: the server reads the PDF statement of AIK banka). Text and
+		     its position on the page only; nothing is written, rendered or signed, so Bouncy Castle,
+		     which PDFBox marks optional, is not pulled in. 3.0.8 is the latest release on Maven
+		     Central (08.07.2026). It brings pdfbox-io and fontbox 3.0.8; its commons-logging resolves
+		     to the 1.3.6 the build already held. OSV lists no vulnerability for any of the four, and
+		     the two of 2026 (CVE-2026-23907, CVE-2026-33929) are in the ExtractEmbeddedFiles example,
+		     which is another artifact, and are fixed in this release. -->
+		<dependency>
+			<groupId>org.apache.pdfbox</groupId>
+			<artifactId>pdfbox</artifactId>
+			<version>3.0.8</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.postgresql</groupId>

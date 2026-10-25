@@ -421,7 +421,7 @@ class PaymentsDueApi {
 			   iznos" je ono sto clan SALJE, dakle sa uracunatom taksom." `MembershipPrice` already
 			   answers nought for the fee on the dinar side, so the same line is right in both
 			   currencies rather than branching on one of them. */
-			BigDecimal expected = price.amount().add(price.fee());
+			BigDecimal expected = price.expected();
 
 			/* AND WHAT HE IS CHARGED WITHOUT THE FEE ON THE SAME ROW, taken from the very `price`
 			   `expected` was just added up from: a balance is measured against this and never

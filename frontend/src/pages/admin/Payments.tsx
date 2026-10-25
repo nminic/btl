@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Prompt } from '../../components/Prompt'
 import { Resource } from '../../components/Resource'
 import type { MembershipDue, Outstanding } from '../../data/types'
 import { usePaymentsDue } from '../../data/useResource'
-import { money } from '../../i18n/format'
+import { formatNumericDate, money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
@@ -18,6 +18,17 @@ import {
 } from './activation'
 import { matching } from './paymentSearch'
 import { QueueMeta } from './QueueMeta'
+import {
+  STATEMENTS,
+  statementToSend,
+  takenIn,
+  whatWaits,
+  WHEN_TAKING_A_STATEMENT,
+  WHY_IT_WAITS,
+  type Candidate,
+  type StatementLine,
+  type Taken,
+} from './statement'
 import { QUEUE } from './queues'
 import { dropWhatActiveMoves } from './whatActiveMoves'
 import '../member/Member.css'
@@ -30,29 +41,63 @@ import { ActionButton } from '../../components/ActionButton'
 const SEARCH_ID = 'payments-search'
 
 /**
- * The bank statement, as the way a hundred payments are reconciled at once
- * (owner, 31.07.2026).
- *
- * Every slip carries a reference of the form 2027000037 (`YYYYNNNNNN`, owner,
- * 20.10.2026: the season, then the six digit member number), so a statement can say
- * whose money each line is without anybody reading names. Turning the file into
- * decisions is the server's work and the server does not exist yet, so what this
- * does today is take the file and say so; the row by row confirmation below it
- * is what actually settles anything, and it is not going away when the parsing
- * arrives, because a payment that arrives without a reference will always need a
- * person.
- *
- * It refuses anything that is not a PDF by reading the first five bytes rather
- * than by believing what the operating system called the file. A statement saved
- * without a type is still a statement, and anything at all renamed to `.pdf` is
- * still not one; only the file itself knows.
+ * WHAT THE STATEMENT BOX LAST SAID, held by the screen and not by the box, because a statement that
+ * booked a payment remounts the list the box stands in (`Payments` below) and the sentence about what
+ * it booked must outlive that.
  */
-function Statement() {
-  const { t } = useI18n()
-  /* One region, always on the page, and only its text changes. A region that is
-     added to the page together with its text is one that a screen reader often
-     misses, because there was nothing there to be watching. */
-  const [said, setSaid] = useState<{ key: string; name?: string } | null>(null)
+type StatementSaid =
+  | { said: 'wrongKind' }
+  | { said: 'taking'; name: string }
+  | { said: 'taken'; taken: Taken }
+  | { said: 'notUnderstood' }
+  | { said: 'refused'; answer: Exclude<Answer, { got: 'done' }> }
+
+/**
+ * THE BANK STATEMENT, READ BY THE SERVER (owner, 24.10.2026, PDL „Učitavanje izvoda iz banke na ekranu
+ * Uplate").
+ *
+ * <p>„Server iz PDF izvoda (AIK banka, račun 105-0000000003284-71) čita svaku uplatu koja potražuje"; a
+ * payment whose reference names the member and the season with exactly the expected amount „se
+ * evidentira sama", and everything else „ide na ručnu potvrdu". So this box sends the file and says what
+ * the server did with it, and the list under it shows every payment of every statement that still
+ * waits, with whom it may be about. The row by row confirmation below the list is untouched and is
+ * still what settles a payment that waits; how a waiting payment is confirmed from here is a question
+ * put to the owner and is not drawn yet.
+ *
+ * <p>It refuses anything that is not a PDF by reading the first five bytes rather than by believing
+ * what the operating system called the file, and sends nothing in that case. A statement saved without
+ * a type is still a statement, and anything at all renamed to `.pdf` is still not one; only the file
+ * itself knows. The server reads the file again in any case, and refuses what is not a statement of
+ * this account in its own words.
+ */
+function Statement({
+  said,
+  onSaid,
+  onBooked,
+}: {
+  said: StatementSaid | null
+  onSaid: (said: StatementSaid) => void
+  /** Called when a statement booked a payment, so the list of who owes is read again. */
+  onBooked: () => void
+}) {
+  const { locale, t } = useI18n()
+  /* WHAT WAITS, read as the box mounts, which is also after every statement that booked something,
+     because that remounts it. Null while it is read and when it could not be. */
+  const [waiting, setWaiting] = useState<StatementLine[] | null>(null)
+
+  useEffect(() => {
+    let active = true
+
+    void whatWaits().then((lines) => {
+      if (active) {
+        setWaiting(lines)
+      }
+    })
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   async function look(file: File | undefined) {
     if (file === undefined) {
@@ -61,12 +106,54 @@ function Statement() {
 
     const opening = await file.slice(0, 5).text()
 
-    setSaid(
-      opening === '%PDF-'
-        ? { key: 'review.statement.taken', name: file.name }
-        : { key: 'review.statement.wrongKind' },
-    )
+    if (opening !== '%PDF-') {
+      onSaid({ said: 'wrongKind' })
+
+      return
+    }
+
+    onSaid({ said: 'taking', name: file.name })
+
+    const answer = await askTheServer(STATEMENTS, statementToSend(file))
+
+    if (answer.got !== 'done') {
+      onSaid({ said: 'refused', answer })
+
+      return
+    }
+
+    const taken = takenIn(answer.body)
+
+    if (taken === null) {
+      onSaid({ said: 'notUnderstood' })
+
+      return
+    }
+
+    onSaid({ said: 'taken', taken })
+
+    /* A STATEMENT THAT BOOKED SOMETHING CHANGES WHO OWES, so the list is read again the way an
+       activation reads it again (`onActivated`), and that remount reads what waits as well. One that
+       booked nothing only adds to what waits. */
+    if (taken.bookedNow > 0) {
+      onBooked()
+    } else {
+      setWaiting(await whatWaits())
+    }
   }
+
+  /** A member as the list under the box writes one: the name, the number when he has one, the town. */
+  const whose = (one: Candidate): string =>
+    one.memberNumber === ''
+      ? t('review.statement.candidateWithoutNumber', {
+          whose: `${one.firstName} ${one.lastName}`,
+          city: one.city,
+        })
+      : t('review.statement.candidate', {
+          whose: `${one.firstName} ${one.lastName}`,
+          number: one.memberNumber,
+          city: one.city,
+        })
 
   return (
     <section className="statement" aria-labelledby="statement-heading">
@@ -83,17 +170,155 @@ function Statement() {
         />
       </label>
 
+      {/* One region, always on the page, and only its text changes. A region that is added to the
+          page together with its text is one that a screen reader often misses, because there was
+          nothing there to be watching. */}
       <p
-        className={
-          said?.key === 'review.statement.wrongKind'
-            ? 'member__note statement__refused'
-            : 'member__note'
-        }
+        className={said?.said === 'wrongKind' ? 'member__note statement__refused' : 'member__note'}
         role="status"
       >
-        {said === null ? '' : t(said.key, { name: said.name ?? '' })}
+        {said === null ? '' : statementSentence(said, t)}
       </p>
+
+      {said?.said === 'refused' ? (
+        <ServerSaid answer={said.answer} refusals={WHEN_TAKING_A_STATEMENT} />
+      ) : null}
+
+      {said?.said === 'taken' ? (
+        <ul className="statement__settled">
+          {said.taken.lines.flatMap((one) =>
+            one.member === null || one.state === 'waiting'
+              ? []
+              : [
+                  <li key={one.id}>
+                    {one.state === 'booked'
+                      ? t('review.statement.bookedLine', {
+                          whose: whose(one.member),
+                          amount: `${money(one.amount, locale)} ${one.currency}`,
+                        })
+                      : t('review.statement.alreadyLine', {
+                          whose: whose(one.member),
+                          season: one.season,
+                        })}
+                  </li>,
+                ],
+          )}
+        </ul>
+      ) : null}
+
+      {waiting === null ? null : (
+        <>
+          <h3 className="profile__section" id="statement-waiting-heading">
+            {t('review.statement.waitingTitle')}{' '}
+            <span className="profile__count">{waiting.length}</span>
+          </h3>
+
+          {waiting.length === 0 ? (
+            <p className="profile__empty">{t('review.statement.waitingNone')}</p>
+          ) : (
+            <div className="table-scroll">
+              <table className="table statement__lines" aria-labelledby="statement-waiting-heading">
+                <thead>
+                  <tr>
+                    <th scope="col">{t('review.statement.columns.payer')}</th>
+                    <th scope="col">{t('review.statement.columns.amount')}</th>
+                    <th scope="col">{t('review.statement.columns.purpose')}</th>
+                    <th scope="col">{t('review.statement.columns.why')}</th>
+                    <th scope="col">{t('review.statement.columns.suggestion')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {waiting.map((one) => (
+                    <WaitingLine key={one.id} one={one} whose={whose} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
     </section>
+  )
+}
+
+/** The one sentence the box says about the last thing it did, for every state but a refusal. */
+function statementSentence(
+  said: StatementSaid,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string {
+  switch (said.said) {
+    case 'wrongKind':
+      return t('review.statement.wrongKind')
+    case 'taking':
+      return t('review.statement.taking', { name: said.name })
+    case 'notUnderstood':
+      return t('review.statement.notUnderstood')
+    case 'refused':
+      /* SAID BY `ServerSaid` BESIDE THIS REGION, in the route's own words. */
+      return ''
+    case 'taken':
+      return t('review.statement.taken', {
+        number: said.taken.number,
+        dated: formatNumericDate(said.taken.dated),
+        booked: said.taken.bookedNow,
+        waiting: said.taken.lines.filter((one) => one.state === 'waiting').length,
+        already: said.taken.lines.filter((one) => one.state === 'alreadyRecorded').length,
+      })
+  }
+}
+
+/**
+ * ONE PAYMENT OF A STATEMENT THAT WAITS, with everything the statement printed about it and whom it may
+ * be about. Read only: how it is confirmed from here is the owner's question and is not drawn yet.
+ */
+function WaitingLine({ one, whose }: { one: StatementLine; whose: (one: Candidate) => string }) {
+  const { locale, t } = useI18n()
+
+  return (
+    <tr>
+      <td>
+        {one.payer}
+        {one.payerAccount === '' ? null : (
+          <span className="table__member-number">
+            {t('review.statement.payerAccount', { account: one.payerAccount })}
+          </span>
+        )}
+      </td>
+      <td>
+        {`${money(one.amount, locale)} ${one.currency}`}
+        <span className="table__member-number">
+          {t('review.statement.onTheStatement', {
+            number: one.statement,
+            dated: formatNumericDate(one.dated),
+          })}
+        </span>
+      </td>
+      <td>
+        {one.purpose}
+        {one.paymentCode === '' ? null : (
+          <span className="table__member-number">
+            {t('review.statement.paymentCode', { code: one.paymentCode })}
+          </span>
+        )}
+        {one.reference === '' ? null : (
+          <span className="table__member-number">
+            {t('review.statement.reference', { reference: one.reference })}
+          </span>
+        )}
+      </td>
+      <td>{t(WHY_IT_WAITS[one.waitsBecause] ?? 'review.statement.why.notBooked')}</td>
+      <td>
+        {one.candidates.length === 0 ? (
+          t('review.statement.noSuggestion')
+        ) : (
+          <ul className="statement__candidates">
+            {one.candidates.map((candidate) => (
+              <li key={candidate.competitorId}>{whose(candidate)}</li>
+            ))}
+          </ul>
+        )}
+      </td>
+    </tr>
   )
 }
 
@@ -665,10 +890,15 @@ export function Payments() {
      `usePaymentsDue` says what is wanted in as many words: „The screen writes to the route,
      clears this name, and reads the derived answer again." The count is the key. */
   const [readAgain, setReadAgain] = useState(0)
+  /* WHAT THE STATEMENT BOX LAST SAID, held here because a statement that booked a payment remounts
+     the list below, and the sentence about what it booked has to be there when it comes back. */
+  const [statementSaid, setStatementSaid] = useState<StatementSaid | null>(null)
 
   return (
     <TheList
       key={readAgain}
+      statementSaid={statementSaid}
+      onStatementSaid={setStatementSaid}
       /* WHETHER THIS DRAWING IS THE ONE AFTER AN ACTIVATION, and it is the count that says so:
          every remount but the first is one, because nothing else moves it. Read by the search box
          below, which is where the focus goes when a row has left the list. */
@@ -706,9 +936,13 @@ export function Payments() {
 function TheList({
   onActivated,
   afterAnActivation,
+  statementSaid,
+  onStatementSaid,
 }: {
   onActivated: () => void
   afterAnActivation: boolean
+  statementSaid: StatementSaid | null
+  onStatementSaid: (said: StatementSaid) => void
 }) {
   const { t } = useI18n()
   const [search, setSearch] = useState('')
@@ -731,7 +965,7 @@ function TheList({
 
           return (
             <>
-              <Statement />
+              <Statement said={statementSaid} onSaid={onStatementSaid} onBooked={onActivated} />
 
               <div className="pending__bar">
                 {/* The season is named because the screen is about one, and it comes off the

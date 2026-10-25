@@ -36,11 +36,17 @@ import java.util.regex.Pattern;
  * <p><b>Owner, on the one question this whole class exists to answer</b> (PDL,
  * 28.07.2026): „Povlascena cena ne postoji. Ako vlasnik nekome odobri povoljnije
  * uslove, regulise to van sistema. Jedino merilo je vlasnikova potvrda da je
- * clanarina izmirena, bez obzira na to da li je novac stvarno uplacen." There is no
- * bank integration here and none is coming: a moderator reads a statement or a
- * PayPal notice with his own eyes and says so, and this route is the one place that
- * saying happens. {@code queue:payments} is the tick that lets him, the same right
+ * clanarina izmirena, bez obzira na to da li je novac stvarno uplacen." A moderator
+ * reads a statement or a PayPal notice with his own eyes and says so, and this route is
+ * where he says it. {@code queue:payments} is the tick that lets him, the same right
  * {@link VerificationApi} already reads the waiting list under.
+ *
+ * <p><b>A sentence here said there was no bank integration and none was coming; that stopped
+ * being true on 24.10.2026</b>, when the owner decided that the server reads the PDF statement
+ * of AIK banka and books by itself a payment whose reference names the member and the season
+ * with exactly the expected amount (PDL „Učitavanje izvoda iz banke na ekranu Uplate").
+ * {@link StatementApi} does that, through the same {@link BookingAPayment} this route books
+ * through, so the statement is a third door to this booking and not a second way of booking.
  *
  * <p><b>Recognising a payment is the WHOLE of what this route decides, and the
  * decision is not written here.</b> {@link RecordingAPayment} already states it,
@@ -384,14 +390,17 @@ class PaymentApi {
 	 * twice is only as safe as the floor under the pair. {@code PaymentReferenceMatchesTheSchemaTest}
 	 * takes the constraint's own expression out of the catalogue and asks PostgreSQL to judge every
 	 * length from nought to sixteen and a handful of texts that are not digits, against this pattern's
-	 * answer; this field is package private for that and for nothing else.
+	 * answer; this field is package private for that, and since 25.10.2026 for {@link StatementApi},
+	 * which asks the same shape of a reference read off a bank statement.
 	 *
 	 * <p><b>THIS ROUTE DOES NOT MATCH A REFERENCE TO ANYBODY.</b> It checks the form and whether another
-	 * payment already carries it, and nothing reads the digits as a season or a member (measured
-	 * 20.10.2026: the only readers of {@code payment.reference} are the uniqueness question and the
-	 * insert in {@link BookingAPayment}). The screens never send a reference (a first payment has none
-	 * and a booking from the members table sends none), so what reaches this is a moderator typing the
-	 * one off a statement.
+	 * payment already carries it, and nothing here reads the digits as a season or a member. The screens
+	 * never send a reference (a first payment has none and a booking from the members table sends none),
+	 * so what reaches this is a moderator typing the one off a statement. <b>Reading the digits as a
+	 * season and a member is {@link StatementApi}'s</b>, since 25.10.2026 (PDL 24.10.2026: „Kad poziv na
+	 * broj imenuje člana i sezonu (YYYYNNNNNN) i iznos je tačno očekivani, uplata se evidentira sama"),
+	 * and only to decide whether a line of a statement books by itself; what it books goes through
+	 * {@link BookingAPayment} with the reference on it, exactly as a typed one does.
 	 */
 	static final Pattern A_REFERENCE = Pattern.compile("^[0-9]{10}$");
 

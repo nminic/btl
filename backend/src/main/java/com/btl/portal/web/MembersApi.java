@@ -192,7 +192,7 @@ class MembersApi {
 					one.firstSeason2027(), one.active(),
 					one.basis(), one.basis() == null ? null : sold,
 					List.copyOf(held.getOrDefault(one.id(), List.of())),
-					sold, his.name(), price.amount().add(price.fee()), price.amount(),
+					sold, his.name(), price.expected(), price.amount(),
 					books.get(one.id()).amount());
 		}).toList();
 	}

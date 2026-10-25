@@ -1203,8 +1203,42 @@
     "statement": {
       "title": "A bank statement",
       "choose": "Choose a statement PDF",
-      "taken": "The statement {name} has been taken. Reconciling by reference number will be the server's work; until then you confirm payments by hand.",
-      "wrongKind": "A statement must be a PDF. This file is not, so it was not taken."
+      "taking": "Reading the statement {name}…",
+      "taken": "Statement number {number} of {dated} has been taken. Payments booked by themselves: {booked}. Payments waiting for your confirmation: {waiting}. Payments that had already been recorded: {already}.",
+      "notUnderstood": "The server took the statement, but the portal cannot read its answer. Reload the page to see what was booked.",
+      "wrongKind": "A statement must be a PDF. This file is not, so it was not taken.",
+      "bookedLine": "Booked by itself: {whose}, {amount}",
+      "alreadyLine": "Already recorded: {whose}, season {season}",
+      "candidate": "{whose} ({number}), {city}",
+      "candidateWithoutNumber": "{whose}, {city}",
+      "waitingTitle": "Payments from statements waiting for confirmation",
+      "waitingNone": "No payment from a statement is waiting for confirmation.",
+      "columns": {
+        "payer": "Payer",
+        "amount": "Amount",
+        "purpose": "Purpose",
+        "why": "Why it waits",
+        "suggestion": "Suggestion"
+      },
+      "payerAccount": "Account {account}",
+      "onTheStatement": "Statement number {number} of {dated}",
+      "paymentCode": "Payment code {code}",
+      "reference": "Reference {reference}",
+      "noSuggestion": "No suggestion",
+      "why": {
+        "noReference": "The payment carries no reference number.",
+        "unknownReference": "The reference number names no member.",
+        "anotherSeason": "The reference number is for another season.",
+        "notInDinars": "The member pays in euro, and the payment arrived in the dinar account.",
+        "notTheExpectedAmount": "The amount is not the one expected of the member.",
+        "notBooked": "The payment has not been booked."
+      },
+      "refused": {
+        "theStatementIsMissing": "The statement did not reach the server. Choose the statement PDF again.",
+        "theStatementIsTooLarge": "The statement is larger than 2 MB, so it was not taken.",
+        "theFileIsNotAStatement": "This is not an AIK banka statement the portal can read, so nothing was booked.",
+        "theStatementIsOfAnotherAccount": "This is a statement of another account. The portal reads only statements of account 105-0000000003284-71."
+      }
     },
     "reasonNeeded": "Enter a reason so that you can send."
   },
