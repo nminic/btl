@@ -38,6 +38,7 @@ import { EventRaces } from './EventRaces'
 import { raceKind } from '../../data/raceKind'
 import { allFinished, isChanged, rowsOf, storedRow, type RaceOfRow, type RaceRow } from './raceRows'
 import { nextSeason } from './nextSeason'
+import { whatGoesWith } from './eventDeletionWords'
 import {
   WHEN_WRITING_AN_EVENT,
   WHEN_WRITING_A_RACE,
@@ -1364,6 +1365,12 @@ export function AdminEvents() {
            * itself; the route deletes the event in one statement and the schema cascades
            * them (`result_race_fk` from the race), so there is nothing left to wait for.
            *
+           * <p><b>And since 25.10.2026 it names the races too</b> (owner, PDL „Rečenica u
+           * prozoru brisanja događaja imenuje i trke i rezultate koji odlaze"), in the words
+           * the event's own page says it in (`eventDeletionWords.ts`). The races are this
+           * screen's to count at once, since it does not draw without them, so they are named
+           * in both states below.
+           *
            * <p><b>Counted through the RACES and not through the address</b>, because that
            * is what the database will really do. A result names its event by address as
            * well, and the two answers differ exactly where two events answer at one
@@ -1386,17 +1393,15 @@ export function AdminEvents() {
            * cannot tell him the number at this moment.
            */
           const goingWith = (event: BtlEvent): string => {
-            if (results === null) {
-              return t('admin.eventDeleteCountUnknown')
-            }
-
             const mine = new Set(
               allRaces.filter((race) => race.eventId === event.id).map((race) => String(race.id)),
             )
 
-            return t('admin.eventDeleteTakes', {
-              count: results.filter((made) => mine.has(String(made.raceId))).length,
-            })
+            return whatGoesWith(
+              t,
+              mine.size,
+              results === null ? null : results.filter((made) => mine.has(String(made.raceId))).length,
+            )
           }
 
           const needle = search.trim().toLowerCase()

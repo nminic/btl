@@ -305,9 +305,17 @@ describe('a sentence with a value put into it', () => {
       /* „Izmeni podatke: {name}" (23.10.2026), the name of the pencil on a member's row, as the deletion's
          beside it: the name after a colon, in the nominative. */
       'admin.editMemberNamed',
-      /* „Ovim brišeš i {count} rezultata.", asked before an event is deleted (owner,
-         28.09.2026). The value is a COUNT, so it governs the noun rather than being
-         governed by one, and the three plural forms are where that is answered. */
+      /* „Ovim brišeš i {races} i {results}.", asked before an event is deleted (owner,
+         28.09.2026, and the races beside the results since 25.10.2026), and its other state,
+         „Ovim brišeš i {races}, a broj rezultata koji odlaze još nije poznat.". Both values
+         are the two plural keys below, made in `admin/eventDeletionWords.ts`; each is the
+         object of „brišeš", so the accusative, and that is answered in the forms of those
+         keys („1 trku", „2 trke", „5 trka"), which is why the race is not `units.raceCount`.
+         The two keys themselves take a COUNT, which governs the noun rather than being
+         governed by one. */
+      'admin.eventDeleteCountUnknown',
+      'admin.eventDeleteRaces',
+      'admin.eventDeleteResults',
       'admin.eventDeleteTakes',
       'admin.form.deleteNamed',
       'admin.form.openNamed',

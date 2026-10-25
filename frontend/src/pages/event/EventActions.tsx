@@ -15,6 +15,7 @@ import { useMay } from '../admin/rights'
 import { SYMBOL } from '../../app/actionSymbol'
 import { ActionButton } from '../../components/ActionButton'
 import { DeleteSheet } from '../admin/DeleteSheet'
+import { whatGoesWith } from '../admin/eventDeletionWords'
 import { EVENT_DELETED } from '../eventDeleted'
 
 /**
@@ -60,8 +61,9 @@ export function EventActions({
 
   const mayEdit = may(`entity:${EVENTS.id}`)
   const mine = races.filter((race) => race.eventId === event.id)
-  /* HOW MANY RESULTS GO WITH THE EVENT, counted the way the database counts them: through its races, which is what
-     `result_race_fk` cascades from (`admin/AdminEvents.tsx`, `goingWith`, says the same in the administration). */
+  /* HOW MANY RACES AND RESULTS GO WITH THE EVENT, counted the way the database counts them: the races through
+     `race_event_fk`, the results through those races, which is what `result_race_fk` cascades from
+     (`admin/AdminEvents.tsx`, `goingWith`, says the same in the administration, in the words of `admin/eventDeletionWords.ts`). */
   const mineIds = new Set(mine.map((race) => race.id))
   const goingWith = results.filter((made) => mineIds.has(made.raceId)).length
 
@@ -216,7 +218,7 @@ export function EventActions({
           <ActionButton symbol={SYMBOL.pencil} word={t('event.edit')} className="button button--secondary" onClick={change} />
           <ActionButton symbol={SYMBOL.copy} word={t('event.copy')} className="button button--secondary" onClick={copy} />
           <DeleteSheet name={event.name} asks={t('admin.eventDeleteAsk')} look="button button--secondary" onDelete={erase}>
-            <p>{t('admin.eventDeleteTakes', { count: goingWith })}</p>
+            <p>{whatGoesWith(t, mine.length, goingWith)}</p>
           </DeleteSheet>
           {/* What the route said instead of doing it. The reader is still on the
               event's own page when a deletion is refused - nothing navigated - so
