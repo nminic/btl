@@ -383,7 +383,7 @@ const OPENING: { file: string; how: How; why: string }[] = [
   {
     file: 'pages/admin/MemberRow.tsx',
     how: 'says',
-    why: 'MY REASONING, read off the code on 25.10.2026: the writes of the row (`send`) and the deletion keep the answer beside the row and draw it through `ServerSaid`. No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',
+    why: 'MY REASONING, read off the code on 25.10.2026: the writes of the row (`send`, the new invitation of `invitationOnTheRow` among them) and the deletion keep the answer beside the row and draw it through `ServerSaid`. No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',
   },
   {
     file: 'pages/admin/Payments.tsx',
@@ -544,6 +544,16 @@ const OPENING: { file: string; how: How; why: string }[] = [
     file: 'pages/member/teamWrites.ts',
     how: 'hands on',
     why: 'MY REASONING, read off the code on 25.10.2026: opens the answer only to drop caches, and hands it back whole to `ServedTeamInvite.tsx`.',
+  },
+  {
+    file: 'pages/member/fromTheBalance.ts',
+    how: 'hands on',
+    why: 'MY REASONING, read off the code on 26.10.2026: `theServerWasAskedToLetMeIn` returns the answer of `POST /api/me/membership` whole, after only clearing a cache on done, to `useLetMeIn.ts`.',
+  },
+  {
+    file: 'pages/member/useLetMeIn.ts',
+    how: 'hands on',
+    why: 'MY REASONING, read off the code on 26.10.2026: every answer that is not done is kept whole as the outcome `not`, which `Membership.tsx` draws through `ServerSaid` beside the button „Aktiviraj članstvo".',
   },
   {
     file: 'pages/member/useMyCategory.ts',
