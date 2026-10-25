@@ -100,12 +100,12 @@ const json = (body: unknown): Response =>
  * @param meFailsAfter   `/api/me` answers 500 once the route has answered, a page that cannot be read
  */
 function aServer({
-  record = aLapsedMembersPage as Record<string, unknown>,
+  record = aLapsedMembersPage,
   invoices = [COVERED],
   pressed = () => letIn(2027, LAPSED),
-  after = inOnHisBalance(2027) as Record<string, unknown>,
+  after = inOnHisBalance(2027),
   books = [dinars(5100), dinars(300)],
-  afterAnyAnswer = {} as Record<string, unknown>,
+  afterAnyAnswer = {},
   meFailsAfter = false,
 }: {
   record?: Record<string, unknown>
@@ -181,8 +181,9 @@ function openThePageOfSomebodyWhoHasNotPaid(server: { asked: Asked[] }): Asked[]
   return server.asked
 }
 
-const theButton = (): Promise<HTMLElement> =>
-  screen.findByRole('button', { name: 'Aktiviraj članstvo' }, { timeout: SLOW })
+/* Within half of the case's own clock (`configure` above), so a button that never comes fails on this
+   line and never on the clock of the case (`btl/CLAUDE.md`, odeljak 25). */
+const theButton = (): Promise<HTMLElement> => screen.findByRole('button', { name: 'Aktiviraj članstvo' })
 
 const presses = (asked: Asked[]): number =>
   asked.filter((one) => one.path === '/api/me/membership' && one.init?.method === 'POST').length
@@ -488,11 +489,13 @@ describe('somebody who has not paid', () => {
       aServer({ record: aNeverPaidRecord, invoices: [anInvoice(2027, 'RSD')] }),
     )
 
-    await waitFor(() => {
-      expect(asked.some((one) => one.path === '/api/me/membership')).toBe(true)
-    })
+    /* AFTER the slip is drawn, which is after what he owes has been answered: the sentence about the
+       moderator is also what stands before that answer arrives, so read earlier it says nothing about
+       the answer at all. */
+    expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
+    expect(asked.some((one) => one.path === '/api/me/membership')).toBe(true)
     expect(
-      await screen.findByText(
+      screen.getByText(
         'Članarina ti još nije evidentirana, pa još nemaš članski broj. Dobijaš ga kad moderator evidentira tvoju uplatu.',
       ),
     ).toBeVisible()
