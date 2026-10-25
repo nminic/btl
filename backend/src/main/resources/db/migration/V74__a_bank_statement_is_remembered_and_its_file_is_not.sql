@@ -39,6 +39,12 @@
  * whose payment was booked and has since been cancelled (PDL P8, „zapis o uplati se BRIŠE”): the key
  * goes to null with the payment, and the line is a line that waits again.
  *
+ * SET ASIDE, WITH WHO AND WHEN. The owner, 25.10.2026 (PDL „Učitavanje izvoda: dva odgovora od
+ * 25.10.2026”), chose with my recommendation: a payment that is not a membership fee „zatvara se dugmetom
+ * „Nije članarina”, bez knjiženja; portal pamti ko ju je zatvorio i kad”. So `set_aside_at` and
+ * `set_aside_by_name` are there together or not at all, the account may go and the name stays, and a
+ * line set aside names no payment.
+ *
  * WHETHER A WAITING LINE IS „ALREADY RECORDED” IS NOT KEPT, because it is not a fact about the
  * statement: it is the member's membership, which is asked of `membership` whenever the line is shown.
  *
@@ -82,12 +88,17 @@ create table bank_statement_line (
     season         integer       not null,
     payment_id     bigint,
     waits_because  text,
+    set_aside_at      timestamptz,
+    set_aside_by      bigint,
+    set_aside_by_name text        collate sr_latn,
 
     constraint bank_statement_line_pk primary key (id),
 
     constraint bank_statement_line_statement_fk foreign key (statement_id) references bank_statement (id)
         on delete cascade,
     constraint bank_statement_line_payment_fk foreign key (payment_id) references payment (id)
+        on delete set null,
+    constraint bank_statement_line_set_aside_by_fk foreign key (set_aside_by) references account (id)
         on delete set null,
 
     constraint bank_statement_line_position_positive check (position > 0),
@@ -98,9 +109,14 @@ create table bank_statement_line (
         ('noReference', 'unknownReference', 'anotherSeason', 'notInDinars', 'notTheExpectedAmount',
          'notBooked')),
     constraint bank_statement_line_booked_or_waiting check (payment_id is null or waits_because is null),
+    constraint bank_statement_line_set_aside_says_who check ((set_aside_at is null) = (set_aside_by_name is null)),
+    constraint bank_statement_line_set_aside_by_name_not_blank
+        check (set_aside_by_name is null or btrim(set_aside_by_name) <> ''),
+    constraint bank_statement_line_set_aside_is_not_booked check (set_aside_at is null or payment_id is null),
 
     constraint bank_statement_line_one_order_once unique (order_number),
     constraint bank_statement_line_one_position_once unique (statement_id, position)
 );
 
 create index bank_statement_line_payment_idx on bank_statement_line (payment_id);
+create index bank_statement_line_set_aside_by_idx on bank_statement_line (set_aside_by);
