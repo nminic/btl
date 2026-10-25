@@ -400,6 +400,19 @@ describe('a member freed of the fee, on the answer the server gives', () => {
   })
 })
 
+/**
+ * The referral link as the page draws it, read once the box that copies it is there.
+ *
+ * Waited for through the copy button, which stands in every shape of the link, and then READ, so
+ * a page that draws another shape fails on what it drew and not on a wait the case's clock ends
+ * (`btl/CLAUDE.md`, section 25).
+ */
+async function theLinkDrawn(copy = 'Kopiraj link za preporuku'): Promise<string> {
+  await screen.findByRole('button', { name: copy })
+
+  return must(screen.getByText(/registracija/).textContent, 'the link beside its button')
+}
+
 describe('the referral link, on the answer the server gives', () => {
   it('carries no code where the answer carried none, rather than the word undefined', async () => {
     /* **THIS ASKED `/api/competitors` UNTIL 25.09.2026 AND ASKS `/api/me` NOW, which is
@@ -468,9 +481,7 @@ describe('the referral link, on the answer the server gives', () => {
       /* Matched as a fragment, because what the page draws is the WHOLE address the
          origin gives it (`app/head.ts`, `addressOf`), and this case is about the code
          in the path rather than about where the portal lives. */
-      expect(
-        await screen.findByText(new RegExp(`/sr/registracija/${onTheWire}$`)),
-      ).toBeVisible()
+      expect(await theLinkDrawn()).toMatch(new RegExp(`/sr/registracija/${onTheWire}$`))
       /* AND THE COUNT ON THE SAME WIRE IS NOT A BALANCE ANY MORE (22.10.2026). Three
          referrals at six hundred dinars would be 1.800, which is what this line drew when
          it multiplied the count; the balance is the book's (`balanceFromTheBook.test.tsx`)
@@ -494,8 +505,7 @@ describe('the referral link, on the answer the server gives', () => {
     try {
       renderAt('/en/moja-clanarina', 'competitor', stillAMember)
 
-      expect(await screen.findByText(/\/en\/registracija\/aaaaaaaaaaaaaaaa$/)).toBeVisible()
-      expect(screen.queryByText(/\/sr\/registracija/)).not.toBeInTheDocument()
+      expect(await theLinkDrawn('Copy the referral link')).toMatch(/\/en\/registracija\/aaaaaaaaaaaaaaaa$/)
     } finally {
       stop()
     }
@@ -569,7 +579,7 @@ describe('the balance, on a count the server gives', () => {
 
       /* Waited for through the address under the sentence, which comes off the same answer, so „nothing
          is drawn about a balance yet" cannot pass for „the sum is not drawn". */
-      expect(await screen.findByText(/\/sr\/registracija\/aaaaaaaaaaaaaaaa$/)).toBeVisible()
+      expect(await theLinkDrawn()).toMatch(/\/sr\/registracija\/aaaaaaaaaaaaaaaa$/)
       expect(screen.queryByText(sum)).not.toBeInTheDocument()
     } finally {
       stop()

@@ -237,8 +237,12 @@ describe('Registration is never shut', () => {
          there, and every case above that hands `renderForm` its own two routes would still pass. */
       renderAt(address, 'visitor', null, undefined, OPEN)
 
-      expect(await screen.findByLabelText(/Datum rođenja|Date of birth/)).toBeVisible()
-      expect(screen.queryByRole('heading', { name: /Ove strane nema|No such page/ })).not.toBeInTheDocument()
+      /* Waited for through the first heading, which both the page and the page that is not there
+         have, and then read: a table without the route fails on the name and not on the clock. */
+      const heading = await screen.findByRole('heading', { level: 1 })
+
+      expect(heading).toHaveTextContent(address.startsWith('/en') ? 'Registration' : 'Registracija')
+      expect(screen.getByLabelText(/Datum rođenja|Date of birth/)).toBeVisible()
     },
   )
 })

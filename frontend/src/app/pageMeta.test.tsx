@@ -165,8 +165,14 @@ describe('the address of a page', () => {
 
     const words = locale === 'sr' ? sr : en
 
-    await waitFor(() => expect(document.title.startsWith(words.seo.register.title)).toBe(true))
-    await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/${locale}/registracija`))
+    /* Each wait ends before the case's own clock does, so a page that names itself otherwise fails
+       on the assertion and not on the clock (`btl/CLAUDE.md`, section 25). */
+    await waitFor(() => expect(document.title.startsWith(words.seo.register.title)).toBe(true), {
+      timeout: 2000,
+    })
+    await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/${locale}/registracija`), {
+      timeout: 2000,
+    })
     expect(href('alternate', 'sr')).toBe(`${SITE_ORIGIN}/sr/registracija`)
     expect(href('alternate', 'en')).toBe(`${SITE_ORIGIN}/en/registracija`)
     expect(href('alternate', 'x-default')).toBe(`${SITE_ORIGIN}/sr/registracija`)

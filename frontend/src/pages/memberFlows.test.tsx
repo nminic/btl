@@ -198,6 +198,19 @@ function owing(invoice: InvoiceAnswered | null | Response): void {
   invoiceAsServed(invoice)
 }
 
+/**
+ * The referral link as the page draws it, read once the box that copies it is there.
+ *
+ * Waited for through the copy button, which stands in every shape of the link, and then READ, so
+ * a page that draws another shape fails on what it drew and not on a wait the case's clock ends
+ * (`btl/CLAUDE.md`, section 25).
+ */
+async function theLinkDrawn(copy = 'Kopiraj link za preporuku'): Promise<string> {
+  await screen.findByRole('button', { name: copy })
+
+  return must(screen.getByText(/registracija/).textContent, 'the link beside its button')
+}
+
 function renderMembershipOn(
   today: string,
   memberNumber = '000032',
@@ -1018,7 +1031,7 @@ describe('membership', () => {
       /* The link carries a code and not the member number. That number is public
          and consecutive, so a link built out of it can be assembled for anybody,
          by anybody, including for oneself. */
-      expect(await screen.findByText(/\/sr\/registracija\/7f07b38ff7ee7543$/)).toBeVisible()
+      expect(await theLinkDrawn()).toMatch(/\/sr\/registracija\/7f07b38ff7ee7543$/)
       expect(screen.queryByText(/registracija\/000001/)).not.toBeInTheDocument()
       expect(screen.queryByText(/preporuka=/)).not.toBeInTheDocument()
       expect(screen.getByText(/donosi ti 600 RSD na balans/)).toBeVisible()
@@ -1052,11 +1065,12 @@ describe('membership', () => {
     await withClipboard({ writeText }, async () => {
       renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
-      const link = await screen.findByText(/\/sr\/registracija\/7f07b38ff7ee7543$/)
+      const link = await theLinkDrawn()
 
+      expect(link).toMatch(/\/sr\/registracija\/7f07b38ff7ee7543$/)
       await user.click(screen.getByRole('button', { name: 'Kopiraj link za preporuku' }))
 
-      expect(writeText).toHaveBeenCalledWith(link.textContent)
+      expect(writeText).toHaveBeenCalledWith(link)
       /* Said through a live region that is on the page from the first render
          (present, empty, above), not one mounted only once there is something to
          announce - the confirmation is the region's text changing, not its
@@ -1076,7 +1090,7 @@ describe('membership', () => {
       async () => {
         renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
-        await screen.findByText(/\/sr\/registracija\/7f07b38ff7ee7543$/)
+        expect(await theLinkDrawn()).toMatch(/\/sr\/registracija\/7f07b38ff7ee7543$/)
         await user.click(screen.getByRole('button', { name: 'Kopiraj link za preporuku' }))
 
         expectSeen(await screen.findByText('Kopiranje nije uspelo. Kopiraj link ručno.'))
@@ -1094,7 +1108,7 @@ describe('membership', () => {
     await withClipboard(undefined, async () => {
       renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
-      await screen.findByText(/\/sr\/registracija\/7f07b38ff7ee7543$/)
+      expect(await theLinkDrawn()).toMatch(/\/sr\/registracija\/7f07b38ff7ee7543$/)
       await user.click(screen.getByRole('button', { name: 'Kopiraj link za preporuku' }))
 
       expectSeen(await screen.findByText('Kopiranje nije uspelo. Kopiraj link ručno.'))
