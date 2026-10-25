@@ -534,6 +534,12 @@ describe('which races count towards a competition', () => {
 
     const REFRESH = 'Osveži stranu'
 
+    /* HALF OF A CASE'S CLOCK FOR EVERY WAIT of these cases (`pages/admin/saveWhileSaving.test.tsx`), so a
+       sentence never drawn, or drawn twice, fails on its assertion and not as a case that ran out of time
+       (btl/CLAUDE.md, section 25). Measured: without it, three mutations of this panel were read as
+       nothing at all, every case ending on the clock. */
+    const HALF = SLOW / 2
+
     /** A 401 as the proxy gives it: no body, the challenge on it. */
     const theProxy = () =>
       new Response(null, { status: 401, headers: { 'www-authenticate': 'Basic realm="restricted"' } })
@@ -595,7 +601,7 @@ describe('which races count towards a competition', () => {
       await chooseADay(user)
       await user.click(within(box).getByRole('button', { name: 'Dodaj u ligu' }))
 
-      expect(await within(box).findByRole('alert')).toHaveTextContent(SENTENCE)
+      expect(await within(box).findByRole('alert', {}, { timeout: HALF })).toHaveTextContent(SENTENCE)
       expect(within(box).getByRole('link', { name: OPEN })).toHaveAttribute('href', '/sr')
       expect(box.textContent ?? '').not.toContain(REFRESH)
       expect(other.textContent ?? '').not.toContain(SENTENCE)
@@ -619,7 +625,7 @@ describe('which races count towards a competition', () => {
 
       await user.click(within(box).getByRole('button', { name: /^Izbaci trku Beogradski maraton/ }))
 
-      expect(await within(box).findByRole('alert')).toHaveTextContent(SENTENCE)
+      expect(await within(box).findByRole('alert', {}, { timeout: HALF })).toHaveTextContent(SENTENCE)
       expect(box.textContent ?? '').not.toContain(REFRESH)
       expect(within(box).getAllByRole('button', { name: /^Izbaci trku/ })).toHaveLength(2)
 
@@ -635,7 +641,7 @@ describe('which races count towards a competition', () => {
 
       const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
 
-      expect(await within(box).findByRole('alert')).toHaveTextContent(
+      expect(await within(box).findByRole('alert', {}, { timeout: HALF })).toHaveTextContent(
         'Portal nije prihvatio izmenu. Osveži stranu pa pokušaj ponovo.',
       )
       expect(screen.queryByText(SENTENCE)).not.toBeInTheDocument()
@@ -653,13 +659,13 @@ describe('which races count towards a competition', () => {
 
       const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
 
-      expect(await within(box).findByRole('alert')).toHaveTextContent(SENTENCE)
+      expect(await within(box).findByRole('alert', {}, { timeout: HALF })).toHaveTextContent(SENTENCE)
 
       await user.click(within(box).getByRole('button', { name: 'Dodaj u ligu' }))
 
       await waitFor(() => {
         expect(within(box).getAllByRole('button', { name: /^Izbaci trku/ })).toHaveLength(3)
-      })
+      }, { timeout: HALF })
       /* Two presses reached the server, so the second is what the sentence went away for. */
       expect(writes(server.asked).map((one) => one.how)).toEqual(['POST', 'POST'])
       expect(screen.queryByText(SENTENCE)).not.toBeInTheDocument()
