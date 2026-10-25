@@ -45,6 +45,7 @@ import {
 import { WHEN_WRITING_AN_EVENT, WHEN_WRITING_A_RACE } from '../admin/eventWrites'
 import { WHEN_THE_LEAGUE_ENTERS_RESULTS } from '../event/leagueResultWrites'
 import { WHEN_CORRECTING_A_MEMBER } from '../profile/memberData'
+import { WHEN_SENDING_AN_INVITATION } from '../admin/memberInvitation'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -461,6 +462,10 @@ describe('the reasons the server can name', () => {
        shares with the member's own route are that route's constants (`MeWriteApi`), held by
        `member/myAccount.test.ts`, and not declared in this file. */
     ['MemberDataWriteApi.java', [WHEN_CORRECTING_A_MEMBER], 7],
+    /* ADDED 25.10.2026 WITH THE ENVELOPE ON THE MEMBER'S ROW (`admin/MemberRow.tsx`): three constants, all
+       three refusals of `POST /api/members/{memberNumber}/invitation`. The third arrives with a 503 and is
+       said through the number as well (`admin/memberInvitation.ts`). */
+    ['MemberInvitationApi.java', [WHEN_SENDING_AN_INVITATION], 3],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A RACING PAIR.
        Seven constants, and the count splits three ways: three are not refusals at all
        (`NOT_A_REASON` above), two are real refusals of the act that ASKS rather than answers

@@ -21,7 +21,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000002",
@@ -45,7 +46,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000003",
@@ -69,7 +71,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000004",
@@ -93,7 +96,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "due"
   },
   {
     "memberNumber": "000005",
@@ -117,7 +121,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000006",
@@ -141,7 +146,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000007",
@@ -165,7 +171,8 @@
     "currency": "EUR",
     "expected": 43,
     "price": 40,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000008",
@@ -189,7 +196,8 @@
     "currency": "EUR",
     "expected": 43,
     "price": 40,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000009",
@@ -213,7 +221,8 @@
     "currency": "EUR",
     "expected": 43,
     "price": 40,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000010",
@@ -230,7 +239,8 @@
     "currency": "EUR",
     "expected": 43,
     "price": 40,
-    "balance": 12.75
+    "balance": 12.75,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000011",
@@ -254,7 +264,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "noAccount"
   },
   {
     "memberNumber": "000012",
@@ -278,7 +289,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000013",
@@ -302,7 +314,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000014",
@@ -326,7 +339,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000015",
@@ -350,7 +364,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000016",
@@ -374,7 +389,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000017",
@@ -398,7 +414,8 @@
     "currency": "EUR",
     "expected": 43,
     "price": 40,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000018",
@@ -422,7 +439,8 @@
     "currency": "EUR",
     "expected": 43,
     "price": 40,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000019",
@@ -446,7 +464,8 @@
     "currency": "EUR",
     "expected": 43,
     "price": 40,
-    "balance": 0
+    "balance": 0,
+    "invitation": "due"
   },
   {
     "memberNumber": "000020",
@@ -470,7 +489,8 @@
     "currency": "EUR",
     "expected": 43,
     "price": 40,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000021",
@@ -494,7 +514,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000022",
@@ -518,7 +539,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000023",
@@ -542,7 +564,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000024",
@@ -566,7 +589,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000025",
@@ -590,7 +614,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000026",
@@ -614,7 +639,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000027",
@@ -638,7 +664,8 @@
     "currency": "EUR",
     "expected": 43,
     "price": 40,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000028",
@@ -662,7 +689,8 @@
     "currency": "EUR",
     "expected": 43,
     "price": 40,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000029",
@@ -686,7 +714,8 @@
     "currency": "EUR",
     "expected": 43,
     "price": 40,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000030",
@@ -710,7 +739,8 @@
     "currency": "EUR",
     "expected": 43,
     "price": 40,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000031",
@@ -727,7 +757,8 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 6000
+    "balance": 6000,
+    "invitation": "passwordSet"
   },
   {
     "memberNumber": "000032",
@@ -744,6 +775,7 @@
     "currency": "RSD",
     "expected": 4800,
     "price": 4800,
-    "balance": 0
+    "balance": 0,
+    "invitation": "passwordSet"
   }
 ]

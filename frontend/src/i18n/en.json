@@ -1442,12 +1442,19 @@
     "eventSavedUnseen": "The event was saved, but the portal cannot show it in this list. Reload the page.",
     "eventSavedRacesRefused": "The event is saved. The races that were not saved are listed under the table; correct them and press Save. Only the races are sent.",
     "eventSavedRacesKept": "The event is saved. The races that were not deleted are listed under the fields of the event; press Save to try deleting them again. Only the races are sent.",
-    "eventDeleteTakes": {
-      "one": "This deletes {count} result as well.",
-      "few": "This deletes {count} results as well.",
-      "other": "This deletes {count} results as well."
+    "eventDeleteTakes": "This deletes {races} and {results} as well.",
+    "eventDeleteRaces": {
+      "one": "{count} race",
+      "few": "{count} races",
+      "other": "{count} races"
     },
-    "eventDeleteCountUnknown": "How many results go with it is not known yet.",
+    "eventDeleteResults": {
+      "one": "{count} result",
+      "few": "{count} results",
+      "other": "{count} results"
+    },
+    "eventDeleteNothing": "The event has no races and no results.",
+    "eventDeleteCountUnknown": "This deletes {races} as well; how many results go with it is not known yet.",
     "leagueGone": "The competition has been deleted.",
     "leagueDeleteAsk": "Delete the competition?",
     "teamGone": "The team has been deleted.",
@@ -1488,6 +1495,12 @@
     "memberDeleteAsk": "Delete the member?",
     "recordPayment": "Record the payment",
     "paymentRecorded": "The payment has been recorded.",
+    "sendNewInvitation": "Send a new invitation",
+    "invitationSent": "A new invitation has been sent to {email}. The earlier link no longer works.",
+    "invitationSentSomewhere": "A new invitation has been sent. The earlier link no longer works.",
+    "invitationNotNeeded": "The member has already set a password.",
+    "invitationNoAccount": "The member has no account on the portal, so there is nobody for an invitation to reach.",
+    "invitationNotSent": "The mail is not accepting messages at the moment, so the invitation was not sent. Try again in a minute or two.",
     "cancelMembership": "Cancel",
     "changeToExemption": "Change the basis to an exemption",
     "askCancel": {

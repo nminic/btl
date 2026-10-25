@@ -3032,6 +3032,10 @@ describe('an event that is deleted', () => {
 
   /** How many results really hang off an event, counted the way the database counts them:
    *  through its races, which is what `result_race_fk` cascades from. */
+  function racesUnder(event: BtlEvent, races: Race[]): number {
+    return races.filter((race) => race.eventId === event.id).length
+  }
+
   function resultsUnder(event: BtlEvent, races: Race[], scored: Result[]): number {
     const its = new Set(races.filter((race) => race.eventId === event.id).map((race) => race.id))
 
@@ -3067,7 +3071,9 @@ describe('an event that is deleted', () => {
     const scored = await loadResource<Result[]>('results')
     const counted = events
       .map((one) => ({ event: one, under: resultsUnder(one, races, scored) }))
-      .filter((one) => one.under > 0)
+      /* And never an event whose races and results are the same number, so the races said beside them have a place
+         of their own to be wrong in. */
+      .filter((one) => one.under > 0 && one.under !== racesUnder(one.event, races))
     const fewest = must(
       counted.reduce((so, one) => (one.under < so.under ? one : so)),
       'an event with results',
@@ -3086,13 +3092,19 @@ describe('an event that is deleted', () => {
 
     for (const { event, under } of [fewest, most]) {
       const row = await rowOf(event, user)
+      /* AND ITS RACES BESIDE THEM (owner, 25.10.2026, „imenuje i trke i rezultate"), in their own place in the
+         sentence: on an event whose two numbers differ, a sentence with one count in both places, or the two the
+         wrong way round, is a different sentence. */
+      const raced = racesUnder(event, races)
+
+      expect(raced, 'one number cannot tell the races from the results').not.toBe(under)
 
       await user.click(within(row).getByRole('button', { name: `Obriši: ${event.name}` }))
 
       expect(
         await askedWith(),
-        `the question does not carry the ${String(under)} results of this event`,
-      ).toContain(String(under))
+        `the question does not carry the ${String(raced)} races and the ${String(under)} results of this event`,
+      ).toMatch(new RegExp(`^Ovim brišeš i ${String(raced)} trk[aue] i ${String(under)} rezultata?\\.$`))
 
       /* Put away again, so the next event is asked from the same place. */
       await sayNo(user, 'Obriši događaj?')
@@ -3291,7 +3303,11 @@ describe('an event that is deleted', () => {
        values were the same string. The one furthest down the list shares nothing with
        a number written out by hand. */
     const mine = must(
-      events.filter((one) => resultsUnder(one, races, scored) > 0).at(-1),
+      events
+        .filter((one) => resultsUnder(one, races, scored) > 0)
+        /* Whose races are not as many as its results, so the one number said is the races' and nothing else's. */
+        .filter((one) => resultsUnder(one, races, scored) !== racesUnder(one, races))
+        .at(-1),
       'an event with results',
     )
 
@@ -3309,8 +3325,14 @@ describe('an event that is deleted', () => {
 
     const words = await askedWith()
 
-    expect(words, 'a number was invented while the file was still on its way').not.toMatch(/[0-9]/)
-    expect(words).toBe('Broj rezultata koji odlaze još nije poznat.')
+    /* The races are this screen's to count at once and are named (owner, 25.10.2026); the results are not, and the one
+       number in the sentence is the races'. */
+    const raced = racesUnder(mine, races)
+
+    expect(raced, 'one number cannot tell the races from the results').not.toBe(resultsUnder(mine, races, scored))
+    expect(words, 'a number was invented while the file was still on its way').toMatch(
+      new RegExp(`^Ovim brišeš i ${String(raced)} trk[aue], a broj rezultata koji odlaze još nije poznat\\.$`),
+    )
 
     /* And the deletion is not held back, which is the whole of what changed. */
     await sayYes(user, 'Obriši događaj?')

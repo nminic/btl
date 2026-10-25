@@ -402,6 +402,30 @@ class MembersApiTest {
 	}
 
 	@Test
+	void eachRowSaysWhetherAnInvitationCanReachHimByHisPasswordAndNotByHisAddress() throws Exception {
+		/* THE ENVELOPE OF THE ROW (owner, 25.10.2026): an account with no password is „due", one with a
+		   password is not, and a member with no account has nobody to send to. Every account of this
+		   setup is unconfirmed, so giving 000007 a password parts the password from the address: read
+		   off `email_confirmed_at`, he would be „due" too. 000002 and 000009 have no account; 000005 is
+		   the moderator's own row and 000011 a lapsed member, both without a password. */
+		db.sql("update account set password_hash = '{bcrypt}$2a$10$notarealhash' where email = ?")
+				.param(AN_ACTIVE_MEMBER).update();
+
+		Map<String, String> invitation = new LinkedHashMap<>();
+
+		for (JsonNode one : members()) {
+			invitation.put(one.path("memberNumber").asString(), one.path("invitation").asString());
+		}
+
+		assertThat(invitation).containsExactly(
+				Map.entry("000002", "noAccount"),
+				Map.entry("000005", "due"),
+				Map.entry("000007", "passwordSet"),
+				Map.entry("000009", "noAccount"),
+				Map.entry("000011", "due"));
+	}
+
+	@Test
 	void everyFieldTheModerationReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/members", members(), "members.json");
 	}

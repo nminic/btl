@@ -332,6 +332,7 @@ const aMember = {
   expected: 4200,
   price: 4200,
   balance: 120,
+  invitation: 'due' as const,
 }
 
 const aLapsedMember = {
@@ -351,6 +352,7 @@ const aLapsedMember = {
   expected: 38,
   price: 35,
   balance: 0,
+  invitation: 'noAccount' as const,
 }
 
 const readAsMember: Member = aMember
