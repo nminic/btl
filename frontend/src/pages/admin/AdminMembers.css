@@ -91,6 +91,19 @@
   gap: var(--space-2);
 }
 
+/* FIVE SQUARES SINCE 25.10.2026, with the envelope of „Pošalji novu pozivnicu", and they are 1.75rem here
+   (owner, 25.10.2026, chosen with the recommendation: „kvadrati u redu člana su 1.75rem (28px), samo u tom
+   redu, a ostali ekrani ostaju na 2rem"). At the portal's 2rem the line was 34px longer and the table
+   stood out of its box at 360 (337 inside 328) and at 820 (533 inside 516), measured by
+   `geometry/membersTable.geometry.ts` with the longest names of the sample. 28px is still over the 24 of
+   WCAG 2.2 SC 2.5.8, and the 16px before „Obriši" below is kept whole. Written against `.action.action`
+   with one class more, so no other row of symbols on the portal changes, which
+   `geometry/actionTip.geometry.ts` asks of every screen. */
+.members-actions .action.action {
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+}
+
 /* The distance that keeps a press meant for „Storniraj" off „Obriši": a finger's slop, 16px (PR 632
    measured the press that deleted a member at 3px from the action beside it). Not the 20 that PR kept
    under the actions: at 820px, where the navigation stands beside the page, four more pixels pushed the

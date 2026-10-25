@@ -103,12 +103,14 @@ for (const at of WIDTHS) {
 
     expect(word, 'the cross carries its word as text').toBe('Obriši')
 
-    /* A square of two rem, 32px at the size the browser starts from, whatever the look it wears
-       gives a button of padding or height: the rule that makes it one has to win, and only a
-       browser says whether it does. */
+    /* A SQUARE OF 1.75rem ON THIS ROW, 28px at the size the browser starts from (owner, 25.10.2026: „kvadrati
+       u redu člana su 1.75rem (28px), samo u tom redu, a ostali ekrani ostaju na 2rem"), whatever the look it
+       wears gives a button of padding or height: the rule that makes it one has to win, and only a browser
+       says whether it does. Until that day this asked 32px here; the two rem the rest of the portal keeps
+       are asked of every other screen below („every symbol stands in the middle of its square"). */
     const square = await cross.boundingBox()
 
-    expect(square === null ? null : [Math.round(square.width), Math.round(square.height)]).toEqual([32, 32])
+    expect(square === null ? null : [Math.round(square.width), Math.round(square.height)]).toEqual([28, 28])
 
     for (const how of ['the pointer', 'the keyboard'] as const) {
       if (how === 'the pointer') {
@@ -149,6 +151,12 @@ for (const at of WIDTHS) {
 
 /**
  * EVERY SYMBOL STANDS IN THE MIDDLE OF ITS SQUARE, ON EVERY SCREEN THAT DRAWS ONE (review of PR 593).
+ *
+ * **Two sizes since 25.10.2026, and which one is read off the page, not off a list**: 28px for a symbol on
+ * the row of a member (`.members-actions`, `pages/admin/AdminMembers.css`, owner's decision of that day)
+ * and 32px, the two rem of `components/ActionButton.css`, for every other. Each size must be drawn
+ * somewhere, so neither half can pass by having nothing to ask: the screen of the members draws the
+ * smaller, and every other screen the larger.
  *
  * The square is laid out by `components/ActionButton.css`, but the look it wears is each screen's, and
  * a screen's rule of two classes is as heavy as the square's: `.review__decide .button` and
@@ -251,6 +259,7 @@ for (const at of WIDTHS) {
 
             return {
               name: one.getAttribute('aria-label') ?? one.textContent,
+              owed: one.closest('.members-actions') === null ? 32 : 28,
               size: [Math.round(square.width), Math.round(square.height)],
               off:
                 drawing === undefined
@@ -264,7 +273,13 @@ for (const at of WIDTHS) {
       )
 
       expect(seen.length, 'the symbols this screen draws').toBeGreaterThanOrEqual(screen.least)
-      expect(seen.filter((one) => one.size[0] !== 32 || one.size[1] !== 32)).toEqual([])
+      expect(seen.filter((one) => one.size[0] !== one.owed || one.size[1] !== one.owed)).toEqual([])
+      /* The row of a member draws the smaller square on its screen and nowhere else; every other screen
+         draws the two rem the portal keeps. */
+      const members = screen.path === '/sr/administracija/clanovi'
+
+      expect(seen.some((one) => one.owed === 28), 'a symbol of the row of a member is drawn').toBe(members)
+      expect(members || seen.some((one) => one.owed === 32), 'a symbol of two rem is drawn').toBe(true)
       expect(seen.filter((one) => one.off > 1)).toEqual([])
       expect(probe.sideways).toBe(0)
     })
