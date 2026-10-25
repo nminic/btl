@@ -104,6 +104,16 @@
   block-size: 1.75rem;
 }
 
+/* AND THE CELL THAT HOLDS THEM KEEPS FOUR PIXELS A SIDE, not the eight of `styles/table.css`. Measured
+   25.10.2026: with the squares at 28px the table needed 514px of the 516 its box has at 820 on this
+   machine, and on the runner of CI, whose fonts are wider, 521, so the first push stood 5px over. Four is
+   what the ring of a focused square takes beyond it (`index.css`, 2px wide and 2px off), so the last
+   square's ring is not cut by the edge of the table's box. Written on the cell's own class, with the
+   table's two, so no other cell of any table moves. */
+.table.members-table td.members-table__options {
+  padding-inline: var(--space-4);
+}
+
 /* The distance that keeps a press meant for „Storniraj" off „Obriši": a finger's slop, 16px (PR 632
    measured the press that deleted a member at 3px from the action beside it). Not the 20 that PR kept
    under the actions: at 820px, where the navigation stands beside the page, four more pixels pushed the

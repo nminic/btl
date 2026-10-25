@@ -329,7 +329,7 @@ export function MemberRow({
       </td>
       <td className="table__hide-phone">{basisCell}</td>
       <td className="table__hide-phone">{seasons}</td>
-      <td>
+      <td className="members-table__options">
         <span className="members-actions">
           {/* „IZMENI PODATKE", A LINK AND NOT A BUTTON: it goes to a page, the card „Podaci" of his profile,
               at the address the profile has where the public list carries him, and by the number alone
