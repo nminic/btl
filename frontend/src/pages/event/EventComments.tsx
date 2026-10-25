@@ -20,7 +20,8 @@ import { useSession } from '../../session/useSession'
 import { isActiveMember } from '../../roles/activeMemberOrAdministration'
 import { SYMBOL } from '../../app/actionSymbol'
 import { ActionLink } from '../../components/ActionButton'
-import { DeleteRecord } from '../admin/EntityEditor'
+import { DeleteSheet } from '../admin/DeleteSheet'
+import { DeletionSaid } from '../admin/DeletionSaid'
 import { ServerSaid } from '../account/ServerSaid'
 import type { Answer } from '../account/askTheServer'
 import { saysNothing, theRatingDeleted } from './commentWrites'
@@ -136,6 +137,9 @@ function TheComments({ eventId, date }: { eventId: number; date: string }) {
   /* Read again, here and beside the name of the event alike, when his deletion is answered
      (`theCommentsHaveChanged`, `commentWrites.ts`). */
   const state = combineResources(useComments(), useCompetitors(), useEvents())
+  /* WHAT HIS LAST DELETION SAID, held here and not in the list, because deleting his only rating takes the list away
+     and the sentence would go with it (PDL, 24.10.2026, „Ocena je obrisana."). */
+  const [said, setSaid] = useState('')
 
   /* An event still to be run draws no section here at all, so while its data is
      on its way it must not hold a box open either: the reader would watch a
@@ -210,6 +214,8 @@ function TheComments({ eventId, date }: { eventId: number; date: string }) {
               {t('event.comments')}
             </h2>
 
+            <DeletionSaid key={eventId} said={said} clear={setSaid} />
+
             {mine.length === 0 ? (
               <p className="profile__empty">{t('event.noComments')}</p>
             ) : (
@@ -217,7 +223,7 @@ function TheComments({ eventId, date }: { eventId: number; date: string }) {
                  the list again. Without it React keeps the same component
                  across a change of address and the next race opens grown to
                  wherever the last one was left. */
-              <CommentList key={eventId} written={mine} competitors={competitors} />
+              <CommentList key={eventId} written={mine} competitors={competitors} onSaid={setSaid} />
             )}
           </>
         )
@@ -239,11 +245,14 @@ function TheComments({ eventId, date }: { eventId: number; date: string }) {
 function CommentList({
   written,
   competitors,
+  onSaid,
 }: {
   /** Each comment beside the year of the running it was written about, empty
    *  where that is the one being read. */
   written: { comment: EventComment; slug: string; from: string }[]
   competitors: Competitor[]
+  /** What his deletion said, for the sentence over the list. */
+  onSaid: (words: string) => void
 }) {
   const { t } = useI18n()
   const { shown, whole, asked, more } = useGrowing(written.length, AT_FIRST)
@@ -280,6 +289,7 @@ function CommentList({
             from={from}
             his={me !== null && comment.memberNumber === me ? slug : null}
             onGone={setGone}
+            onSaid={onSaid}
           />
         ))}
       </ol>
@@ -311,6 +321,7 @@ function Comment({
   from,
   his,
   onGone,
+  onSaid,
 }: {
   comment: EventComment
   who: Competitor | undefined
@@ -322,6 +333,8 @@ function Comment({
   his: string | null
   /** Told the id of a rating the server no longer holds, once his deletion is answered. */
   onGone: (id: number) => void
+  /** What the deletion said: „Ocena je obrisana." on success, nothing after a refusal. */
+  onSaid: (words: string) => void
 }) {
   const { locale, t } = useI18n()
   /* What the server said to his deletion where it is something the page has words for: neither done
@@ -418,7 +431,7 @@ function Comment({
 
       {his !== null && (
         <div className="comments__his">
-          <span className="entity-row-actions">
+          <div className="entity-row-actions">
             {/* The pencil: the rating form of the event it was given for, filled in with what he gave
                 (`RateEvent.tsx`). Sent again, it replaces this one (owner, 19.10.2026), at once without
                 words and after a moderator with them, and this one stands until then (20.10.2026). */}
@@ -428,16 +441,13 @@ function Comment({
               className="button button--secondary button--compact"
               to={`/${locale}/kalendar/${his}/ocena`}
             />
-            {/* The x, asked twice as every deletion on the portal is, in the owner's words
+            {/* The x, asked in a sheet as every deletion on the portal is (PDL, 24.10.2026), in the owner's words
                 („Obriši svoju ocenu?"). */}
-            <DeleteRecord
+            <DeleteSheet
               name={t('event.deleteOwnRating')}
+              asks={t('event.deleteOwnRatingAsk')}
+              opener={t('event.deleteOwnRating')}
               look="button button--secondary button--compact"
-              words={{
-                named: t('event.deleteOwnRating'),
-                sure: t('event.deleteOwnRatingSure'),
-                keepNamed: t('event.keepOwnRating'),
-              }}
               onKeep={() => {
                 setRefused(null)
               }}
@@ -445,16 +455,18 @@ function Comment({
                 theRatingDeleted(comment.id).then((answer) => {
                   if (answer.got !== 'done' && !saysNothing(answer)) {
                     setRefused(answer)
+                    onSaid('')
 
                     return
                   }
 
                   setRefused(null)
+                  onSaid(t('event.ratingGone'))
                   onGone(comment.id)
                 })
               }
             />
-          </span>
+          </div>
           {refused !== null && <ServerSaid answer={refused} refusals={{}} />}
         </div>
       )}

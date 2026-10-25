@@ -10,6 +10,7 @@ import servedPrices from '../test/mock/pricing.json'
 import { did, refused, serverThat } from '../test/serverAnswers'
 import { translate } from '../i18n/translate'
 import { Decided } from '../test/decided'
+import { sayNo, sayYes } from '../test/deleteSheet'
 import { at, first, inputElement, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
 import { unremarked } from '../test/stylesheet'
@@ -3214,10 +3215,10 @@ describe('the section of entities', () => {
     const name = must(remove.getAttribute('aria-label'), 'a name on the delete control').replace('Obriši: ', '')
 
     await user.click(remove)
-    // Asking is not doing: the row is still there while the question stands.
-    expect(table().getByText(name)).toBeVisible()
+    // Asking is not doing: the row is still there while the question stands, and so is the name in the sheet.
+    expect(table().getAllByText(name)).toHaveLength(2)
 
-    await user.click(table().getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
+    await sayYes(user, 'Obriši tim?')
 
     /* AWAITED, BECAUSE THE ROW LEAVES ON THE ANSWER AND NOT ON THE PRESS. Read as it was, this
        measured the moment between the two and would fail on a screen that was working. */
@@ -3237,10 +3238,10 @@ describe('the section of entities', () => {
     const before = (await screen.findAllByRole('button', { name: /^Obriši:/ })).length
 
     await user.click(first(table().getAllByRole('button', { name: /^Obriši:/ })))
-    await user.click(table().getByRole('button', { name: /^Odustani od brisanja:/ }))
+    await sayNo(user, 'Obriši tim?')
 
     expect(table().queryAllByRole('button', { name: /^Obriši:/ })).toHaveLength(before)
-    expect(table().queryByRole('button', { name: /^Potvrdi brisanje:/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('sends a moderator with no entity of his own to the front page', async () => {

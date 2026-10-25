@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import { arrivedResource, loadResource } from '../../data/client'
 import type { EventComment } from '../../data/types'
 import { at, must } from '../../test/at'
+import { sayYes } from '../../test/deleteSheet'
 import { renderAt } from '../../test/render'
 import { answeredWith, serverThat } from '../../test/serverAnswers'
 import type { Asked } from '../../test/serverAnswers'
@@ -238,7 +239,7 @@ describe('the deletion', () => {
     const card = cardOf(within(list).getByText(HIS.body))
 
     await user.click(within(card).getByRole('button', { name: sr.event.deleteOwnRating }))
-    await user.click(within(card).getByRole('button', { name: sr.event.deleteOwnRatingSure }))
+    await sayYes(user, sr.event.deleteOwnRatingAsk)
 
     return { list, user }
   }
@@ -275,6 +276,30 @@ describe('the deletion', () => {
     })
     expect(screen.queryByRole('alert')).toBeNull()
     expect(arrivedResource('verification'), 'the queue held from before the deletion is still held').toBeUndefined()
+  }, LONGER_THAN_A_MISS)
+
+  it('says „Ocena je obrisana." over the list, and still says it when his was the only rating and the list is gone', async () => {
+    /* PDL, 24.10.2026, „Posle brisanja na četiri mesta van administracije stoji vidljiva poruka". His two ratings of
+       the event are all there is of it, so the deletion takes the list away and puts „no comments" in its place: a
+       sentence kept in the list would have gone with it, which is why it is held by the section (`EventComments.tsx`). */
+    server = holding(served().filter((one) => one.eventId === EVENT_ID && one.memberNumber === ME))
+
+    const user = setupUser()
+
+    renderAt(`/sr/kalendar/${EVENT}`, 'competitor', ME)
+
+    const list = await theList()
+    const card = cardOf(await within(list).findByText(HIS.body))
+
+    await user.click(within(card).getByRole('button', { name: sr.event.deleteOwnRating }))
+    await sayYes(user, sr.event.deleteOwnRatingAsk)
+
+    const said = await screen.findByText(sr.event.ratingGone)
+
+    expect(said).toHaveAttribute('role', 'status')
+    expect(said.closest('.visually-hidden')).toBeNull()
+    expect(screen.getByText(sr.event.noComments)).toBeInTheDocument()
+    expect(screen.getAllByText(sr.event.ratingGone)).toHaveLength(1)
   }, LONGER_THAN_A_MISS)
 
   it('says nothing to a 404 and draws what the server now has', async () => {

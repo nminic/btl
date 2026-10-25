@@ -1230,8 +1230,8 @@
 }
 
 /* The pencil and the x are NOT held on one line here. `.entity-row-actions` wraps (`pages/admin/Entity.css`)
-   and has to: the question that opens when the x is pressed puts two more buttons and a sentence in the
-   same box (`DeleteRecord`, `.entity-row-note`), and with `flex-wrap: nowrap` on it the table scrolled
+   and has to: the question that opened when the x was pressed put two more buttons and a sentence in the
+   same box (`DeleteRecord`, until 24.10.2026, when the question became a sheet over the page), and with `flex-wrap: nowrap` on it the table scrolled
    sideways inside its own box at 360px and at 768px, which a table on a telephone does not do (PDL P24,
    „Tabele na telefonu nemaju horizontalni skrol"). When the pair does wrap, the middle rule above centres
    the words on the centre of the whole group of buttons, which is the centre of the cell's content. */

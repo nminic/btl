@@ -7,7 +7,8 @@ import type { SentRun } from '../../data/types'
 import { combinePair, RESULTS, useMyResultSubmissions, useResults } from '../../data/useResource'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { DeleteRecord } from '../admin/EntityEditor'
+import { DeleteSheet } from '../admin/DeleteSheet'
+import { DeletionSaid } from '../admin/DeletionSaid'
 import type { SubmissionStatus } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { useMemberScreen } from './memberScreen'
@@ -66,6 +67,8 @@ function Mine({ me }: { me: string }) {
      press while the first is out is refused below. */
   const [refusal, setRefusal] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
   const [going, setGoing] = useState(false)
+  /* WHAT THE LAST DELETION SAID, drawn over the table (PDL, 24.10.2026, „Rezultat je obrisan."). */
+  const [said, setSaid] = useState('')
   /* Read and written in the same tick, so a redraw cannot land between two presses that
      arrive before one answer does. Deleting twice would answer 404 the second time, which
      would tell the member his result is gone in the words of „that is not yours". */
@@ -100,8 +103,9 @@ function Mine({ me }: { me: string }) {
     outstanding.current = true
     setGoing(true)
     setRefusal(null)
+    setSaid('')
 
-    /* RETURNED, which `DeleteRecord` waits on: its „Odustani" is told off, and „Šalje se" said
+    /* RETURNED, which `DeleteSheet` waits on: its „Odustani" is told off, and „Šalje se" said
        beside it, for as long as this promise is pending (owner, 02.10.2026). The page-level line
        above the table stays: it is the one that explains a press on ANOTHER row being refused. */
     return theResultWasTakenBack(result).then((answer) => {
@@ -123,6 +127,7 @@ function Mine({ me }: { me: string }) {
          served list really has lost it - `resultWrites.ts` drops that cache - and this is
          what covers the moment between the answer and the re-read. */
       remove(RESULTS, String(result))
+      setSaid(t('results.deleted'))
       /* And the list of what was sent is read again, because a correction of this result that
          was waiting or was sent back is gone with it on the server, and nothing here would
          otherwise know. */
@@ -270,6 +275,8 @@ function Mine({ me }: { me: string }) {
                   is. */}
               {going && <p role="status">{t('results.withdrawing')}</p>}
 
+              <DeletionSaid said={said} clear={setSaid} />
+
               {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_A_RESULT_IS_WRITTEN} />}
 
               {own.length === 0 ? (
@@ -389,8 +396,9 @@ function Mine({ me }: { me: string }) {
                                   to={`/${locale}/rezultat/novi?ispravka=${String(result.id)}`}
                                 />
                               )}
-                              <DeleteRecord
+                              <DeleteSheet
                                 name={result.raceName}
+                                asks={t('results.deleteAsk')}
                                 look="button button--secondary"
                                 /* HANDED BACK, so the question can wait for the answer: the
                                    promise of the deletion, or nothing where another one is

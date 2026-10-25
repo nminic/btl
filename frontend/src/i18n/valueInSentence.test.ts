@@ -310,8 +310,6 @@ describe('a sentence with a value put into it', () => {
          governed by one, and the three plural forms are where that is answered. */
       'admin.eventDeleteTakes',
       'admin.form.deleteNamed',
-      'admin.form.deleteSureNamed',
-      'admin.form.keepNamed',
       'admin.form.openNamed',
       'admin.form.raceNumber',
       'admin.form.removeRow',
@@ -369,7 +367,6 @@ describe('a sentence with a value put into it', () => {
       'ducats.everySeason',
       'ducats.sentence <- formatNumber',
       'ducats.stepUp <- formatNumber',
-      'event.deleteAsk',
       'event.enterResultNamed',
       'event.fromEdition',
       'event.ratedBy',

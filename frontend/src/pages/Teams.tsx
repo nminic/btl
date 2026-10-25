@@ -1,4 +1,5 @@
-import { Link } from 'react-router'
+import { useState } from 'react'
+import { Link, useLocation } from 'react-router'
 import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
@@ -10,6 +11,8 @@ import { formatNumber, formatPoints } from '../i18n/format'
 import { TeamMark } from '../components/TeamMark'
 import { useI18n } from '../i18n/useI18n'
 import { useSession } from '../session/useSession'
+import { DeletionSaid } from './admin/DeletionSaid'
+import { teamWasDeleted } from './teamDeleted'
 import { MEMBERS, recordsOf, TEAMS } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
 import { mineIn, rowClass } from '../components/mine'
@@ -41,10 +44,19 @@ export function Teams() {
   const running = String(seasonShown(today))
   const asked = useSeason(running)
   const state = combineResources(useTeams(), useCompetitors(), useResults())
+  const arrived = useLocation().state
+  const [said, setSaid] = useState(() => (teamWasDeleted(arrived) ? t('admin.teamGone') : ''))
 
   return (
     <div className="rankings rankings--tooled">
       <h1>{t('teams.title')}</h1>
+
+      {/* „Tim je obrisan.", for whoever was brought here by the deletion of a team from its own page (PDL, 24.10.2026).
+          DRAWN ONLY WHILE THERE IS SOMETHING TO SAY, unlike the lists of the administration: the sentence is here from the
+          first draw (it comes with the arrival, it is not written afterwards), so there is no live region to keep on the
+          page for words that arrive later, and an empty `status` on every visit to the list of teams would be a second
+          one beside the portal's own announcement of the screen (`app/navigation.test.tsx` reads that one by its role). */}
+      {said !== '' && <DeletionSaid said={said} clear={setSaid} />}
 
       <Resource state={state}>
         {([teams, competitors, results]) => {

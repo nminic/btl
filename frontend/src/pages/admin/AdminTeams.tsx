@@ -11,6 +11,7 @@ import { ServerSaid } from '../account/ServerSaid'
 import { addressesIn, nameError } from './teamProposal'
 import { EditableCell } from './EditableCell'
 import { useSession } from '../../session/useSession'
+import { DeletionSaid } from './DeletionSaid'
 import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
 import { MEMBERS, recordsOf, TEAMS, type Editing } from './entityForms'
 import { recordKey } from '../../session/context'
@@ -186,6 +187,8 @@ export function AdminTeams() {
 
     if (answer.got !== 'done') {
       setRefused({ id: team.id, answer })
+      /* The sentence of an earlier deletion is not about this one (`DeletionSaid.tsx`). */
+      setSaid('')
 
       return
     }
@@ -292,6 +295,10 @@ export function AdminTeams() {
             <>
               <EntityBar entity={TEAMS} onNew={() => setEditing({ mode: 'new' })} />
 
+              {/* What the deletion said, DRAWN and not only said (owner, 23.10.2026: the deletion asks and
+                  answers as the member's row does, `DeletionSaid.tsx`). */}
+              <DeletionSaid said={said} clear={setSaid} />
+
               <div className="table-scroll">
                 <table className="table">
                   <caption className="visually-hidden">{t('admin.teams')}</caption>
@@ -352,6 +359,7 @@ export function AdminTeams() {
                           <td>
                             <RowActions
                               entity={TEAMS}
+                              asks={t('admin.teamDeleteAsk')}
                               record={team}
                               name={team.name}
                               onOpen={() => setEditing({ mode: 'one', record: team })}
@@ -404,7 +412,7 @@ export function AdminTeams() {
                             />
                             {/* Why this one did not go, in the row it was pressed in.
                                 The question closed with the answer and the focus is back
-                                on this row's own „Obriši" (`DeleteRecord`, owner
+                                on this row's own „Obriši" (`DeleteSheet`, owner
                                 02.10.2026), so the sentence stands beside the button and
                                 carries itself: `ServerSaid` draws it in an alert. */}
                             {refused !== null && refused.id === team.id && (
@@ -418,12 +426,6 @@ export function AdminTeams() {
                 </table>
               </div>
 
-              {/* Said once and politely: the list beside it has already changed, and a
-                  reader who is not looking at it gets the one sentence that says so.
-                  The same shape the competitions use. */}
-              <p aria-live="polite" className="visually-hidden">
-                {said}
-              </p>
             </>
           )
         }}

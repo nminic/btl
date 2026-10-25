@@ -268,11 +268,10 @@ export function Membership() {
    * next reader can overturn it without looking for an owner's sentence that is not there.</b>
    *
    * <p><b>And it is asked with this screen's own words rather than through
-   * `admin/EntityEditor.tsx`'s `DeleteRecord`.</b> That component asks the same way and its
-   * three labels are about deleting a RECORD („Obriši", „Potvrdi brisanje: {name}") - which
-   * is not what happens here, since nothing of his is deleted and the team goes on standing.
-   * Widening it to a third set of words would reach every administrative screen that draws
-   * it, which is a change to the administration in a branch about one member's own page.
+   * `admin/DeleteSheet.tsx`</b> (`DeleteRecord` until 24.10.2026). Those labels are about deleting a RECORD
+   * („Obriši", „Obriši tim?") - which is not what happens here, since nothing of his is deleted and the
+   * team goes on standing, and the owner left this question as it is (PDL „Odgovori od 24.10.2026
+   * (popodne)": „Sigurno izlaziš iz tima" ostaje kakvo jeste).
    */
   const [asking, setAsking] = useState(false)
   /** Why the leaving did not happen, for the one person who pressed it. */
@@ -308,14 +307,14 @@ export function Membership() {
    * lowering it when the question is asked again is what lets the next refusal raise it again and run
    * the effect again (`leaveTeam.test.tsx`, „puts the focus on the button again after a second refusal").
    *
-   * <p><b>A ref and an effect, and NOT `autoFocus`</b>, for the reason `admin/EntityEditor.tsx`'s
-   * `DeleteRecord` gives at the same state: React reuses the confirming button's element for the
+   * <p><b>A ref and an effect, and NOT `autoFocus`</b>, for the reason `DeleteRecord` (deleted 24.10.2026,
+   * `admin/EntityEditor.tsx`) gave at the same state: React reuses the confirming button's element for the
    * button that asks, so an attribute that acts when an element is created acts on neither road.
    */
   const [afterAnAnswer, setAfterAnAnswer] = useState(false)
   const opener = useRef<HTMLButtonElement>(null)
 
-  /* A LAYOUT EFFECT, for the reason `DeleteRecord` gives: the focus is on the button in the very
+  /* A LAYOUT EFFECT, for the reason `DeleteRecord` gave: the focus is on the button in the very
      commit that draws it, and not a task later. */
   useLayoutEffect(() => {
     if (afterAnAnswer) {

@@ -10,6 +10,7 @@ import { SessionProvider } from '../session/SessionProvider'
 import { useSession } from '../session/useSession'
 import { AdminEvents } from './admin/AdminEvents'
 import { at, first, inputElement, must, selectElement } from '../test/at'
+import { sayNo, sayYes, theSheet } from '../test/deleteSheet'
 import { Saved } from '../test/saved'
 import { answeredWith, refused, serverThat } from '../test/serverAnswers'
 import { whatWasSent, whereItWrote } from '../test/sent'
@@ -1319,7 +1320,7 @@ describe('the races of an event', () => {
     )
 
     await user.click(within(row).getByRole('button', { name: `Obriši: ${one.name}` }))
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${one.name}` }))
+    await sayYes(user, 'Obriši događaj?')
 
     /**
      * NOTHING IS SAID ABOUT THE RESULTS, AND THE REASON IS NO LONGER A GUARD ON THIS SIDE.
@@ -3037,12 +3038,15 @@ describe('an event that is deleted', () => {
     return scored.filter((one) => its.has(one.raceId)).length
   }
 
-  /** The sentence the question points the reader at, read off the button that confirms. */
-  function askedWith(row: HTMLElement, name: string): string {
-    const sure = within(row).getByRole('button', { name: `Potvrdi brisanje: ${name}` })
-    const at = must(sure.getAttribute('aria-describedby'), 'the sentence beside the question')
+  /**
+   * The sentence the sheet says under the name of the event: the LAST paragraph of its body, because the
+   * name is the first and an event's name can carry digits of its own (`pages/admin/DeleteSheet.tsx`).
+   * It was read off the button that confirmed, through `aria-describedby`, while the question was a row.
+   */
+  async function askedWith(): Promise<string> {
+    const paragraphs = Array.from((await theSheet('Obriši događaj?')).querySelectorAll('.prompt__body p'))
 
-    return must(document.getElementById(at), 'the element that sentence is in').textContent ?? ''
+    return must(paragraphs.at(-1), 'the sentence under the name').textContent ?? ''
   }
 
   it('says how many results go with it, and each event says its own number', async () => {
@@ -3086,12 +3090,12 @@ describe('an event that is deleted', () => {
       await user.click(within(row).getByRole('button', { name: `Obriši: ${event.name}` }))
 
       expect(
-        askedWith(row, event.name),
+        await askedWith(),
         `the question does not carry the ${String(under)} results of this event`,
       ).toContain(String(under))
 
       /* Put away again, so the next event is asked from the same place. */
-      await user.click(within(row).getByRole('button', { name: `Odustani od brisanja: ${event.name}` }))
+      await sayNo(user, 'Obriši događaj?')
     }
   }, SLOW)
 
@@ -3172,7 +3176,7 @@ describe('an event that is deleted', () => {
     const row = await rowOf(mine, user)
 
     await user.click(within(row).getByRole('button', { name: `Obriši: ${mine.name}` }))
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${mine.name}` }))
+    await sayYes(user, 'Obriši događaj?')
 
     expect(within(row).getByRole('alert')).toBeVisible()
     /* And the row is still there, because nothing was deleted. */
@@ -3221,9 +3225,7 @@ describe('an event that is deleted', () => {
     )
 
     await user.click(within(made).getByRole('button', { name: 'Obriši: Trka koja se briše' }))
-    await user.click(
-      within(made).getByRole('button', { name: 'Potvrdi brisanje: Trka koja se briše' }),
-    )
+    await sayYes(user, 'Obriši događaj?')
 
     expect(
       (await table('Događaji'))
@@ -3259,7 +3261,7 @@ describe('an event that is deleted', () => {
 
     expect(whereItWrote(watching.asked), 'the first press already deleted it').toEqual([])
 
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${mine.name}` }))
+    await sayYes(user, 'Obriši događaj?')
 
     expect(whereItWrote(watching.asked)).toEqual([`DELETE /api/events/${String(mine.id)}`])
   }, SLOW)
@@ -3305,13 +3307,13 @@ describe('an event that is deleted', () => {
 
     await user.click(within(row).getByRole('button', { name: `Obriši: ${mine.name}` }))
 
-    const words = askedWith(row, mine.name)
+    const words = await askedWith()
 
     expect(words, 'a number was invented while the file was still on its way').not.toMatch(/[0-9]/)
     expect(words).toBe('Broj rezultata koji odlaze još nije poznat.')
 
     /* And the deletion is not held back, which is the whole of what changed. */
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${mine.name}` }))
+    await sayYes(user, 'Obriši događaj?')
 
     expect(whereItWrote(watching.asked)).toEqual([`DELETE /api/events/${String(mine.id)}`])
   }, SLOW)
@@ -3383,7 +3385,7 @@ describe('an event that is deleted', () => {
     )
 
     await user.click(within(row).getByRole('button', { name: `Obriši: ${one.name}` }))
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${one.name}` }))
+    await sayYes(user, 'Obriši događaj?')
 
     /**
      * ONE STATEMENT TAKES ALL OF IT, AND THAT IS WHAT IS MEASURED NOW.

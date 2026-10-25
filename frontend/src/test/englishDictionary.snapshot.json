@@ -658,12 +658,6 @@
     "commentEventUnknown": "This event no longer exists.",
     "edit": "Change",
     "copy": "Copying",
-    "delete": "Deleting",
-    "deleteAsk": {
-      "one": "Delete the event \"{name}\" and {count} race of it? This cannot be undone.",
-      "few": "Delete the event \"{name}\" and {count} races of it? This cannot be undone.",
-      "other": "Delete the event \"{name}\" and {count} races of it? This cannot be undone."
-    },
     "kind": {
       "race": "Race",
       "training": "Training",
@@ -674,8 +668,8 @@
     "noMoreComments": "No more comments.",
     "editOwnRating": "Edit your rating",
     "deleteOwnRating": "Delete your rating",
-    "deleteOwnRatingSure": "Delete your rating?",
-    "keepOwnRating": "Cancel deleting your rating",
+    "deleteOwnRatingAsk": "Delete your rating?",
+    "ratingGone": "The rating has been deleted.",
     "ratedBy": {
       "one": "out of {count} rating",
       "few": "out of {count} ratings",
@@ -1070,6 +1064,8 @@
   "results": {
     "sending": "Sending",
     "withdrawing": "Deleting",
+    "deleteAsk": "Delete the result?",
+    "deleted": "The result has been deleted.",
     "refused": {
       "theFormIsNotComplete": "The result was not sent. Check the distance, the climb, the descent and the time: something is missing or outside the allowed range.",
       "theRaceIsNotKnown": "The race you chose is no longer in the calendar. Refresh the page and choose it again.",
@@ -1321,10 +1317,7 @@
       "nextWeek": "Exactly seven days after the event copied",
       "racesRefused": "The races were not saved. Correct the marked fields; under the table it says what is wrong with each of them.",
       "deleteNamed": "Delete: {name}",
-      "deleteSure": "Are you sure?",
-      "deleteSureNamed": "Confirm the deletion: {name}",
-      "keep": "Cancel",
-      "keepNamed": "Cancel the deletion: {name}"
+      "keep": "Cancel"
     },
     "field": {
       "memberNumber": "Member number",
@@ -1443,6 +1436,7 @@
       "theKindCannotChangeOnceRunsAreCounted": "The kind of a race cannot change while an approved result stands at it."
     },
     "eventGone": "The event has been deleted, with its races and its results.",
+    "eventDeleteAsk": "Delete the event?",
     "eventSavedUnseen": "The event was saved, but the portal cannot show it in this list. Reload the page.",
     "eventSavedRacesRefused": "The event is saved. The races that were not saved are listed under the table; correct them and press Save. Only the races are sent.",
     "eventSavedRacesKept": "The event is saved. The races that were not deleted are listed under the fields of the event; press Save to try deleting them again. Only the races are sent.",
@@ -1453,7 +1447,9 @@
     },
     "eventDeleteCountUnknown": "How many results go with it is not known yet.",
     "leagueGone": "The competition has been deleted.",
+    "leagueDeleteAsk": "Delete the competition?",
     "teamGone": "The team has been deleted.",
+    "teamDeleteAsk": "Delete the team?",
     "teamDeleteRefused": {
       "theWindowIsShut": "The transfer window is closed. It opens on 15 October and lasts until 31 December. Until then a team is not deleted, not even from the administration."
     },
@@ -1477,6 +1473,8 @@
       "aRightTheMatrixDoesNotHold": "The portal does not know that right. Refresh the page."
     },
     "moderatorGone": "The moderator has been deleted.",
+    "moderatorDeleteAsk": "Delete the moderator?",
+    "moderatorDeleteNote": "The account stays; only the moderator rights are taken away.",
     "moderatorSavedUnseen": "The moderator has been saved, but the portal cannot show them in this list. Refresh the page.",
     "moderatorRightsSavedUnseen": "The right has been saved, but the portal cannot show the new state. Refresh the page.",
     "memberDeleteRefused": {

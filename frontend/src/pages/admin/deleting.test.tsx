@@ -9,6 +9,7 @@ import { RoleProvider } from '../../roles/RoleProvider'
 import { SessionProvider } from '../../session/SessionProvider'
 import { first, must } from '../../test/at'
 import { Decided } from '../../test/decided'
+import { sayYes, theSheet } from '../../test/deleteSheet'
 import { moderatorWith, expectFrontPage, renderAt } from '../../test/render'
 import { did, serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
@@ -67,13 +68,15 @@ describe('a record entered during this visit and then deleted', () => {
 
     await user.click(table().getByRole('button', { name: 'Obriši: Probni tim' }))
 
-    /* The teams' list is one of the seven screens that keep the portal's „Sigurno?" (the members' list
-       changed on 22.10.2026, PDL „Brisanje člana na ekranu članova", and only it). */
-    expect(table().getByRole('button', { name: 'Potvrdi brisanje: Probni tim' })).toHaveTextContent(
-      /^Sigurno\?$/,
-    )
+    /* The teams' list asks in a sheet over the page, as the members' list does since 22.10.2026 (PDL
+       „Tri odgovora od 23.10.2026": every screen of the administration that deletes). The row asks
+       nothing of its own any more. */
+    const sheet = await theSheet('Obriši tim?')
 
-    await user.click(table().getByRole('button', { name: 'Potvrdi brisanje: Probni tim' }))
+    expect(within(sheet).getByText('Probni tim')).toBeInTheDocument()
+    expect(table().queryByRole('button', { name: 'Potvrdi brisanje: Probni tim' })).toBeNull()
+
+    await sayYes(user, 'Obriši tim?')
 
     expect(table().queryByText('Probni tim')).not.toBeInTheDocument()
     expect(table().getAllByRole('row')).toHaveLength(before)
@@ -113,19 +116,20 @@ describe('the focus after a row is deleted', () => {
     const name = must(remove.getAttribute('aria-label'), 'a name on the delete control').replace('Obriši: ', '')
 
     await user.click(remove)
-    await user.click(table().getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
+    await sayYes(user, 'Obriši tim?')
+
+    /* AND THE ROW REALLY WENT, which is what makes the sentence below about a row that is „no longer on
+       the page" true rather than aspirational. Awaited, because the row leaves on the answer, and so
+       does the focus since 23.10.2026: the question is a sheet over the page, and a sheet that stands
+       keeps the focus inside it. */
+    await waitFor(() => {
+      expect(table().queryByText(name)).not.toBeInTheDocument()
+    })
 
     /* Without this the focus is on a button that is no longer on the page and
        the next Tab starts from the top; the move is also the only word a screen
        reader gets that anything happened. */
     expect(screen.getByRole('button', { name: 'Novi tim' })).toHaveFocus()
-
-    /* AND THE ROW REALLY WENT, which is what makes the sentence above about a row that is
-       „no longer on the page" true rather than aspirational. Awaited, because the row
-       leaves on the answer and the focus moved before it. */
-    await waitFor(() => {
-      expect(table().queryByText(name)).not.toBeInTheDocument()
-    })
 
     server.stop()
   }, SLOW)
@@ -142,30 +146,34 @@ describe('the focus after a row is deleted', () => {
             entity={TEAMS}
             record={{ id: 'tim-1', name: 'Probni' }}
             name="Probni"
+            asks="Obriši tim?"
             onOpen={vi.fn()}
           />
         </SessionProvider>
       </I18nProvider>,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Obriši: Probni' }))
+    const cross = screen.getByRole('button', { name: 'Obriši: Probni' })
 
-    const sure = screen.getByRole('button', { name: 'Potvrdi brisanje: Probni' })
-    await user.click(sure)
+    await user.click(cross)
+    await sayYes(user, 'Obriši tim?')
 
     /* Nothing here reads the list, so the row is still drawn; what matters is
        that asking for an anchor that is not on the page neither threw nor moved
-       the focus anywhere unexpected. */
-    expect(sure).toHaveFocus()
+       the focus anywhere unexpected: the sheet is put away and the focus is on the cross it was asked
+       from (`components/Prompt.tsx`). */
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(cross).toHaveFocus()
   })
 })
 
 describe('the focus when the question is asked from the keyboard', () => {
-  it('goes to „Sigurno?" of the row that asked, which is the second of the list', async () => {
+  it('goes to the question of the sheet, and not to the document, when the row that asked is the second of the list', async () => {
     /* PENDING 28269 and 29822. Enter on „Obriši" took the opener out of the page, so the focus fell to
-       the document and the next Tab started the page from the top. A click does not show it, and the
-       row that asks is the SECOND, so a focus that went to the first control of the list is told
-       from the right one. */
+       the document and the next Tab started the page from the top. A click does not show it. The
+       question is a sheet since 23.10.2026 and the focus goes to its heading, which is read first
+       (`components/Prompt.tsx`); the row that asks is the SECOND, so a sheet that read the first row is
+       told from the right one by the name it carries. */
     const user = setupUser()
     renderAt('/sr/administracija/timovi', 'superadmin')
 
@@ -179,7 +187,10 @@ describe('the focus when the question is asked from the keyboard', () => {
     second.focus()
     await user.keyboard('{Enter}')
 
-    expect(table().getByRole('button', { name: `Potvrdi brisanje: ${name}` })).toHaveFocus()
+    const sheet = await theSheet('Obriši tim?')
+
+    expect(within(sheet).getByRole('heading', { name: 'Obriši tim?' })).toHaveFocus()
+    expect(within(sheet).getByText(name)).toBeInTheDocument()
     expect(document.body).not.toHaveFocus()
   }, SLOW)
 })

@@ -28,6 +28,9 @@ import type { Answers, At } from './support/harness.ts'
  * opens drawn in the row. A rule that keeps the pair on one line fixes the centres and breaks this, which
  * is why the two are asked together (PR 586, review: `flex-wrap: nowrap` measured 345 against 328 at
  * 360px with long names and 491 against 347 with the question open).
+ * Since 24.10.2026 the question is a sheet over the page and no longer stands in the row (PDL „Odgovori od
+ * 24.10.2026 (popodne)"), so the row cannot be widened by it; the case with it open stays, because the sheet is
+ * the thing that now stands there and the table must still fit its box while it does.
  *
  * **Three widths, 360, 768 and 1280**, because the cells that are shown change with the width (the
  * phone keeps the name, the time and the points and the buttons; `table__hide-phone` takes the rest).
@@ -106,8 +109,10 @@ for (const at of WIDTHS) {
       const { page, probe } = await open(at, `/sr/kalendar/${SLUG}`, 'tbody td.table__points', answers)
 
       if (asking) {
-        await page.getByRole('button', { name: /^Obriši: / }).first().click()
-        await page.getByRole('button', { name: /^Potvrdi brisanje/ }).first().waitFor({ state: 'visible' })
+        /* THE CROSS OF A RESULT, in the table: since 25.10.2026 the head of the page carries a cross of the same words that
+           deletes the whole event, and it comes first. */
+        await page.locator('tbody').getByRole('button', { name: /^Obriši: / }).first().click()
+        await page.getByRole('dialog', { name: 'Obriši rezultat?' }).waitFor({ state: 'visible' })
       }
 
       const seen = await page.evaluate(() => {

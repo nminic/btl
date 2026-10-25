@@ -7,11 +7,12 @@ import { moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { touchEveryRace } from '../../test/touchEveryRace'
 import { loadResource } from '../../data/client'
-import type { BtlEvent, Race } from '../../data/types'
+import type { BtlEvent, Race, Result } from '../../data/types'
 import { copiedRace } from './copiedRace'
 import { fieldDate, shiftDate } from '../../forms/dateField'
 import { nextSeason } from '../admin/nextSeason'
-import { answeredWith, serverThat } from '../../test/serverAnswers'
+import { sayNo, sayYes, theSheet } from '../../test/deleteSheet'
+import { answeredWith, did, serverThat } from '../../test/serverAnswers'
 
 /* What can be done with an event, from the event's own page (owner,
  * 03.08.2026): copied and deleted by whoever administers events, and reported a
@@ -51,6 +52,18 @@ function races(): HTMLElement {
   return screen.getByRole('table', { name: 'Trke' })
 }
 
+/**
+ * THE NAME OF THE CROSS THAT DELETES THE EVENT, which is „Obriši: {name of the event}" since 25.10.2026 (it was „Brisanje").
+ * Read off the served events and not written out, and by the name of the event and not by „Obriši:" alone: for whoever may
+ * check results, every row of the results carries a cross of the same words, and the event's is the one named after the event.
+ */
+async function theDeletion(where: string = EVENT): Promise<string> {
+  const events = await loadResource<BtlEvent[]>('events')
+  const named = must(events.find((one) => one.slug === where.slice(where.lastIndexOf('/') + 1)), 'the event being read')
+
+  return `Obriši: ${named.name}`
+}
+
 async function openEvent(
   role: Parameters<typeof renderAt>[1],
   member: string | null = null,
@@ -72,7 +85,7 @@ describe('who is offered what on an event', () => {
   it('offers a visitor nothing at all, and no column to put it in', async () => {
     await openEvent('visitor')
 
-    for (const name of ['Kopiranje', 'Brisanje']) {
+    for (const name of ['Kopiranje', await theDeletion()]) {
       expect(screen.queryByRole('button', { name })).toBeNull()
     }
 
@@ -108,7 +121,7 @@ describe('who is offered what on an event', () => {
     await openEvent('superadmin')
 
     expect(screen.getByRole('button', { name: 'Kopiranje' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Brisanje' })).toBeVisible()
+    expect(screen.getByRole('button', { name: await theDeletion() })).toBeVisible()
   })
 
   it('offers a moderator without the events neither of them', async () => {
@@ -118,7 +131,7 @@ describe('who is offered what on an event', () => {
     await openEvent('moderator', null, moderatorWith(['queue:results']))
 
     expect(screen.queryByRole('button', { name: 'Kopiranje' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Brisanje' })).toBeNull()
+    expect(screen.queryByRole('button', { name: await theDeletion() })).toBeNull()
   })
 
   it('offers a signed-in member the way in, once per race, in the table', async () => {
@@ -139,7 +152,7 @@ describe('who is offered what on an event', () => {
     }
 
     expect(screen.queryByRole('link', { name: 'Prijavi rezultat' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Brisanje' })).toBeNull()
+    expect(screen.queryByRole('button', { name: await theDeletion() })).toBeNull()
   })
 
   it('draws no control box at all where there is nothing to press', async () => {
@@ -229,7 +242,7 @@ describe('who is offered what on an event', () => {
     await openEvent('superadmin', '000007')
 
     expect(screen.getByRole('button', { name: 'Kopiranje' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Brisanje' })).toBeVisible()
+    expect(screen.getByRole('button', { name: await theDeletion() })).toBeVisible()
     /* A link, because it leads to another screen, and in the table because that
        is where the race is (EventDetail.tsx). */
     expect(within(races()).getAllByRole('link', { name: /^Unesi rezultat/ }).length)
@@ -333,32 +346,62 @@ describe('a race carried into a copy of its event', () => {
 })
 
 describe('deleting an event', () => {
-  it('asks first, and says how many races go with it', async () => {
-    /* Nothing brings any of it back, and deleting an event of five races from a
-       page showing one of them is easy to do by mistake. */
-    const user = setupUser()
-    const asked: string[] = []
-    const confirm = vi.spyOn(window, 'confirm').mockImplementation((message) => {
-      asked.push(String(message))
+  /**
+   * THE SHEET OF EVERY OTHER DELETION, IN PLACE OF `window.confirm` (owner, 25.10.2026, PDL „Odgovori od 25.10.2026 (noć):
+   * prozor brisanja": „Strana događaja briše ceo događaj kroz isti prozor („Obriši događaj?" sa imenom i rečenicom o trkama
+   * i rezultatima koji odlaze), umesto sistemske potvrde pregledača"). The browser's own question is never asked: the case
+   * that presses the button holds that `window.confirm` is not called.
+   */
+  const noConfirm = () => vi.spyOn(window, 'confirm').mockReturnValue(true)
 
-      return false
-    })
+  it('asks in a sheet, naming the event and saying how many results go with it, and never through the browser', async () => {
+    /* Nothing brings any of it back, and deleting an event of five races from a page
+       showing one of them is easy to do by mistake. */
+    const user = setupUser()
+    const confirm = noConfirm()
+    const server = serverThat(() => null)
 
     try {
-      await openEvent('superadmin')
-      await user.click(await screen.findByRole('button', { name: 'Brisanje' }))
+      /* An event whose races and results are different numbers (2 and 5), so the count in the sentence has one source only. */
+      const where = '/sr/kalendar/trka-za-decji-osmeh-2014'
 
-      expect(asked).toHaveLength(1)
-      expect(first(asked)).toMatch(/Obrisati događaj/)
-      expect(first(asked)).toMatch(/trk/)
+      await openEvent('superadmin', null, undefined, where)
+
+      const events = await loadResource<BtlEvent[]>('events')
+      const mine = must(events.find((one) => one.slug === where.slice(where.lastIndexOf('/') + 1)), 'the event')
+
+      await user.click(await screen.findByRole('button', { name: await theDeletion(where) }))
+
+      const sheet = await theSheet('Obriši događaj?')
+
+      /* THE EVENT, BY NAME, and the sentence about what goes with it, in the words the administration's list of events
+         has (`admin.eventDeleteTakes`). Both are the sheet's DESCRIPTION too, so a reader hears them. */
+      expect(within(sheet).getByText(mine.name)).toBeInTheDocument()
+      /* THE NUMBER IS THIS EVENT'S, counted through its races (`result_race_fk`), and not the number of every result there
+         is, nor of the races: the three are different numbers on this event. */
+      const itsRaces = new Set((await loadResource<Race[]>('races')).filter((one) => one.eventId === mine.id).map((one) => one.id))
+      const going = (await loadResource<Result[]>('results')).filter((one) => itsRaces.has(one.raceId)).length
+
+      expect(going, 'the case has results to count').toBeGreaterThan(0)
+      expect(going, 'one number cannot tell the sources apart').not.toBe(itsRaces.size)
+      expect(within(sheet).getByText(new RegExp(`^Ovim brišeš i ${String(going)} rezultat`))).toBeInTheDocument()
+      expect(sheet).toHaveAccessibleDescription(new RegExp(`${mine.name}.*Ovim brišeš i`))
+
+      expect(confirm, 'the browser is not asked').not.toHaveBeenCalled()
+      expect(server.asked.filter((one) => one.init?.method === 'DELETE')).toEqual([])
+
       /* Answered no, so the event is still on screen. */
-      expect(screen.getByRole('button', { name: 'Brisanje' })).toBeVisible()
+      await sayNo(user, 'Obriši događaj?')
+
+      expect(screen.getByRole('button', { name: await theDeletion(where) })).toBeVisible()
+      expect(server.asked.filter((one) => one.init?.method === 'DELETE')).toEqual([])
     } finally {
+      server.stop()
       confirm.mockRestore()
     }
-  })
+  }, SEVERAL_SCREENS)
 
-  it('asks the route once, for the event alone, and leaves for the month it was in', async () => {
+  it('asks the route once, for the event alone, and leaves for the month it was in, saying that it is gone', async () => {
     /**
      * ONE REQUEST AND NOT ONE PER RACE, WHICH IS THE WHOLE OF WHAT THE CASCADE BUYS.
      *
@@ -376,9 +419,9 @@ describe('deleting an event', () => {
      * file this suite reads is not it.
      */
     const user = setupUser()
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-    /* Watching and answering nothing, so the floor under it still replies. */
-    const server = serverThat(() => null)
+    const confirm = noConfirm()
+    /* Watching and answering the deletion alone, so the floor under it still replies. */
+    const server = serverThat((_path, init) => (init?.method === 'DELETE' ? did() : null))
 
     try {
       const { router } = await openEvent('superadmin')
@@ -395,21 +438,41 @@ describe('deleting an event', () => {
          about: on a single race event it would be the same number either way. */
       expect(drawn).toBeGreaterThan(1)
 
-      await user.click(screen.getByRole('button', { name: 'Brisanje' }))
+      await user.click(screen.getByRole('button', { name: await theDeletion() }))
+      await sayYes(user, 'Obriši događaj?')
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/sr/kalendar')
+      })
 
       expect(
         server.asked.filter((one) => one.init?.method === 'DELETE').map((one) => one.path),
         'the races and the results are the database s to take, not this screen s',
       ).toEqual([`/api/events/${String(mine.id)}`])
+      expect(confirm, 'the browser is not asked').not.toHaveBeenCalled()
 
-      expect(router.state.location.pathname).toBe('/sr/kalendar')
       /* The month the event was in, read off the record rather than written out: a
          month spelt here by hand would be a second home for the event's own day. */
       expect(router.state.location.search).toBe(`?mesec=${mine.date.slice(0, 7)}`)
+
+      /* AND THE CALENDAR SAYS IT (PDL, 25.10.2026, „posle brisanja ide poruka kao na ostalim mestima"): drawn, once, and
+         not in the clipped region, in the words the list of events in the administration says it in. */
+      const said = await screen.findByText('Događaj je obrisan, sa svojim trkama i rezultatima.')
+
+      expect(said).toHaveAttribute('role', 'status')
+      expect(said.closest('.visually-hidden')).toBeNull()
     } finally {
       server.stop()
       confirm.mockRestore()
     }
+  }, SEVERAL_SCREENS)
+
+  it('says nothing on the calendar of a reader who comes to it any other way', async () => {
+    renderAt('/sr/kalendar', 'superadmin')
+
+    await screen.findByRole('heading', { level: 1 })
+
+    expect(screen.queryByText('Događaj je obrisan, sa svojim trkama i rezultatima.')).toBeNull()
   }, SEVERAL_SCREENS)
 
   it('reads the calendar off the server again rather than the array it already had', async () => {
@@ -419,16 +482,20 @@ describe('deleting an event', () => {
        that happens AFTER the write, which is the only order that says anything: the
        same address is read before it as a matter of course. */
     const user = setupUser()
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-    const server = serverThat(() => null)
+    const confirm = noConfirm()
+    const server = serverThat((_path, init) => (init?.method === 'DELETE' ? did() : null))
 
     try {
       await openEvent('superadmin')
-      await user.click(screen.getByRole('button', { name: 'Brisanje' }))
+      await user.click(screen.getByRole('button', { name: await theDeletion() }))
+      await sayYes(user, 'Obriši događaj?')
+
+      await waitFor(() => {
+        expect(server.asked.findIndex((one) => one.init?.method === 'DELETE')).toBeGreaterThan(-1)
+      })
 
       const wrote = server.asked.findIndex((one) => one.init?.method === 'DELETE')
 
-      expect(wrote, 'nothing was written, so this measures nothing').toBeGreaterThan(-1)
       /* Asked as „did this become true", because the read happens when the calendar
          mounts and that is a render after the press rather than inside it. */
       await waitFor(() => {
@@ -446,23 +513,45 @@ describe('deleting an event', () => {
     }
   }, SEVERAL_SCREENS)
 
-  it('says why when the route refuses, and takes nobody anywhere', async () => {
+  it('says why when the route refuses, closes the sheet, takes nobody anywhere, and says nothing of a deletion', async () => {
     /* A deletion that did not happen must not read as one that did. The reader stays
        on the event, which is still there, and is told in his own language. */
     const user = setupUser()
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const confirm = noConfirm()
     const server = serverThat((_path, init) =>
       init?.method === 'DELETE' ? answeredWith(404) : null,
     )
 
     try {
       const { router } = await openEvent('superadmin')
+      const cross = screen.getByRole('button', { name: await theDeletion() })
 
-      await user.click(screen.getByRole('button', { name: 'Brisanje' }))
+      await user.click(cross)
+      await sayYes(user, 'Obriši događaj?')
 
       expect(await screen.findByRole('alert')).toBeVisible()
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).toBeNull()
+      })
+
       expect(router.state.location.pathname).toBe('/sr/kalendar/maraton-maratona-2015')
-      expect(screen.getByRole('button', { name: 'Brisanje' })).toBeVisible()
+      expect(screen.getByRole('button', { name: await theDeletion() })).toBeVisible()
+      /* THE FOCUS IS BACK ON THE CROSS THAT ASKED, where the sentence stands beside it. */
+      expect(cross).toHaveFocus()
+      expect(screen.queryByText('Događaj je obrisan, sa svojim trkama i rezultatima.')).toBeNull()
+
+      /* A SECOND ATTEMPT TAKES THE OLD SENTENCE BACK while it is out: a refusal standing over a request that is on its way
+         would be read as the answer to it. The second answer is held. */
+      server.stop()
+      const held = serverThat((_path, init) => (init?.method === 'DELETE' ? new Promise<Response>(() => undefined) : null))
+
+      await user.click(cross)
+      await sayYes(user, 'Obriši događaj?')
+      await waitFor(() => {
+        expect(held.asked.filter((one) => one.init?.method === 'DELETE')).toHaveLength(1)
+      })
+      expect(screen.queryByRole('alert')).toBeNull()
+      held.stop()
     } finally {
       server.stop()
       confirm.mockRestore()
@@ -1089,7 +1178,7 @@ describe('changing an event', () => {
       await openEvent(role, member, moderator)
 
       const head = await untilTheRowIsSettled()
-      const buttons = ['Izmena', 'Kopiranje', 'Brisanje']
+      const buttons = ['Izmena', 'Kopiranje', 'Obriši']
 
       expect(
         within(head).queryAllByRole('button').map(textOf),
@@ -1169,7 +1258,7 @@ describe('changing an event', () => {
     expect(within(box).queryAllByRole('button').map(textOf)).toEqual([
       'Izmena',
       'Kopiranje',
-      'Brisanje',
+      'Obriši',
     ])
     expect(box, 'the box is not the shared row of controls').toHaveClass('rankings__head-tool')
   }, SEVERAL_SCREENS)
@@ -1191,7 +1280,7 @@ describe('changing an event', () => {
     expect(within(head).queryAllByRole('button').map(textOf)).toEqual([
       'Izmena',
       'Kopiranje',
-      'Brisanje',
+      'Obriši',
     ])
     expect(within(head).queryAllByRole('link').map(textOf)).toEqual([])
   }, SEVERAL_SCREENS)
