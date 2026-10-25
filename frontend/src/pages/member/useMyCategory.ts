@@ -3,6 +3,7 @@ import { clearResourceCache } from '../../data/client'
 import { recordKey } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { MEMBERS } from '../admin/entityForms'
+import type { Answer } from '../account/askTheServer'
 import {
   categoryIn,
   tellTheServerMyCategory,
@@ -22,11 +23,20 @@ import {
  * it: a member whose deadline passed between drawing the box and pressing it is told so
  * (`theChoiceIsShut`) instead of watching a control do nothing, which PDL.md:1659 calls
  * worse than no control.
+ *
+ * <p><b>`failure` is every OTHER answer that was not „done", whole</b>, so the screen can say it the way
+ * every other screen of the portal does (`ServerSaid`). Owner, 25.10.2026 (`btl-produkt/PDL.md`, „Poruka
+ * o probnoj šifri na svakom ekranu koji upisuje: odgovori od 25.10.2026"): the choice of category says
+ * every failure - the site locked, a session that ran out, an error of the server, an answer that never
+ * came - and not the lock alone. Until then all four were dropped here, and the radio went back to what it
+ * was with nothing said, which on a locked site is the very answer the owner decided must be told
+ * (ADL, 22.10.2026, „portal to kaže i nudi novu karticu"). The refusal keeps its own sentence, as before.
  */
 export type TheCategoryIChoose = {
   standing: MyCategory | null
   choosing: boolean
   refusal: string | null
+  failure: Exclude<Answer, { got: 'done' } | { got: 'refused' }> | null
   choose: (firstSeason: boolean) => Promise<void>
 }
 
@@ -34,6 +44,7 @@ export function useMyCategory(): TheCategoryIChoose {
   const [standing, setStanding] = useState<MyCategory | null>(null)
   const [choosing, setChoosing] = useState(false)
   const [refusal, setRefusal] = useState<string | null>(null)
+  const [failure, setFailure] = useState<TheCategoryIChoose['failure']>(null)
   const { memberNumber, editRecord } = useSession()
 
   useEffect(() => {
@@ -56,6 +67,7 @@ export function useMyCategory(): TheCategoryIChoose {
   const choose = useCallback(async (firstSeason: boolean): Promise<void> => {
     setChoosing(true)
     setRefusal(null)
+    setFailure(null)
 
     const answered = await tellTheServerMyCategory(firstSeason)
 
@@ -99,10 +111,12 @@ export function useMyCategory(): TheCategoryIChoose {
 
     if (answered.got === 'refused') {
       setRefusal(answered.reason)
+    } else if (answered.got !== 'done') {
+      setFailure(answered)
     }
 
     setChoosing(false)
   }, [memberNumber, editRecord])
 
-  return { standing, choosing, refusal, choose }
+  return { standing, choosing, refusal, failure, choose }
 }

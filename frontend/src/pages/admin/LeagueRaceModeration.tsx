@@ -8,6 +8,7 @@ import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { countedDaysOf } from './leagueCounted'
 import { askTheServer, type Answer } from '../account/askTheServer'
+import { TheSiteIsLocked } from '../account/TheSiteIsLocked'
 import { WHEN_MODERATING_LEAGUE_RACES } from './leagueWrites'
 import '../Leagues.css'
 import { SYMBOL } from '../../app/actionSymbol'
@@ -95,6 +96,15 @@ export function LeagueRaceModeration({
   const [one, setOne] = useState('')
   /** What the server said about the last press, drawn beneath the form. */
   const [refused, setRefused] = useState<string | null>(null)
+  /**
+   * WHETHER THE LAST PRESS MET THE LOCK OF THE TRIAL PERIOD, and not the route at all (owner, 22.10.2026,
+   * ADL „portal to kaže i nudi novu karticu"; 23.10.2026, PDL „važi za svaki ekran koji upisuje", with
+   * the approving of the races of a league named in it). Its own state and not a sentence in `refused`,
+   * because what it is drawn as is not a sentence of this panel: it is the owner's, with the link to a
+   * new tab under it (`TheSiteIsLocked`). Until 25.10.2026 it fell to `admin.leagueRefused.unknown`,
+   * „Osveži stranu pa pokušaj ponovo", which is the refresh the owner turned down.
+   */
+  const [locked, setLocked] = useState(false)
   /** What just happened, for whoever is not watching the list. */
   const [said, setSaid] = useState('')
 
@@ -131,12 +141,14 @@ export function LeagueRaceModeration({
 
     if (answer.got === 'done') {
       setRefused(null)
+      setLocked(false)
       done()
 
       return
     }
 
-    setRefused(sentenceFor(answer.got === 'refused' ? answer.reason : null))
+    setLocked(answer.got === 'locked')
+    setRefused(answer.got === 'locked' ? null : sentenceFor(answer.got === 'refused' ? answer.reason : null))
   }
 
   return (
@@ -323,6 +335,8 @@ export function LeagueRaceModeration({
                     </button>
                   </form>
                 )}
+
+                {locked && <TheSiteIsLocked />}
 
                 {refused === null ? null : (
                   <p role="alert" className="entity-row-note">
