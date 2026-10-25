@@ -211,7 +211,9 @@ class StatementApi {
 	@GetMapping("/api/statements/lines")
 	@RightIsNeeded("queue:payments")
 	ResponseEntity<List<Line>> waiting() {
-		List<Line> lines = seen(db.sql(LINES + " where l.payment_id is null and l.set_aside_at is null"
+		/* WHETHER A LINE WAITS IS ANSWERED ONCE, by the state `seen` gives it, and not a second time here:
+		   a line set aside reads as set aside and is left out below with every line that does not wait. */
+		List<Line> lines = seen(db.sql(LINES + " where l.payment_id is null"
 						+ " order by s.dated, s.number, l.position")
 				.query(StatementApi::stored).list());
 
