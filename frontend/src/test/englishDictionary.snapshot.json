@@ -1160,6 +1160,8 @@
     "balanceNote": "The balance pays for future fees. It is not paid out in money and is not transferred to another member.",
     "feeExemptNoRenewal": "You are exempt from paying the fee, so there is nothing to pay.",
     "amountLabel": "Amount",
+    "fromTheBalance": "Your balance covers {fromTheBalance}, so you pay {toTransfer}.",
+    "amountNotArrived": "The amount to pay did not arrive. Refresh the page and try again.",
     "notPaidYet": "Your fee has not been recorded yet, so you do not have a member number yet. You get one when a moderator records your payment.",
     "firstPayment": "Paying the fee for {season}.",
     "firstPaymentOpen": "Paying is open.",

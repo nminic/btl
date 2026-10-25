@@ -130,6 +130,23 @@ export function canonicalPath(path: string): string {
   return path.toLowerCase().replace(/\/+$/, '')
 }
 
+/**
+ * The address a page names as its own, which is the path it is read at except where the path
+ * carries something that is not part of the page.
+ *
+ * <p>One such thing today: the referral code in `registracija/<code>` (owner, 22.10.2026). It is the
+ * registration page and nothing else, so its canonical address, its alternates and `og:url` are
+ * the registration page's (derived 25.10.2026 from the decision of 22.10.2026, PDL). That is also
+ * what the old `?preporuka=` link has always had, because a query is not part of a path, so the two
+ * shapes of one link name the same page; and a page per code would ask a search engine to keep
+ * thousands of copies of one form.
+ */
+export function addressOfThePage(path: string): string {
+  const [first, ...rest] = path.split('/')
+
+  return first === 'registracija' && rest.length === 1 ? first : path
+}
+
 export function applyHead(head: PageHead): void {
   /* The name of the league goes on the end of every title, and exactly once.
      The front page and the main competition already begin with it, so adding it
@@ -138,7 +155,8 @@ export function applyHead(head: PageHead): void {
   const title = head.title.startsWith(head.siteName)
     ? head.title
     : `${head.title} · ${head.siteName}`
-  const canonical = addressOf(head.textLocale, head.path)
+  const page = addressOfThePage(head.path)
+  const canonical = addressOf(head.textLocale, page)
 
   document.title = title
   metaTag('name', 'description', head.description)
@@ -171,11 +189,11 @@ export function applyHead(head: PageHead): void {
    * they did not ask for; that was /en's own state before 26.09.2026, and is the
    * state a locale entered ahead of its dictionary will be in the same way. */
   for (const locale of LOCALES.filter((one) => dictionaryLocale(one) === one)) {
-    linkTag('alternate', addressOf(locale, head.path), locale)
+    linkTag('alternate', addressOf(locale, page), locale)
   }
 
   // Which one to offer somebody whose language is none of the above.
-  linkTag('alternate', addressOf(DEFAULT_LOCALE, head.path), 'x-default')
+  linkTag('alternate', addressOf(DEFAULT_LOCALE, page), 'x-default')
 
   /* What a shared link shows. The image is the same on every page and is set
    * once in index.html, so it is not touched here; inventing a path to a picture

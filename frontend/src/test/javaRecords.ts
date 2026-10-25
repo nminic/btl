@@ -17,11 +17,13 @@ import { join } from 'node:path'
  * very same names.
  *
  * @param record the record's simple name, which is looked for as `record <name>(`
+ * @param file   the file under `web/` that declares it, `MeApi.java` unless said otherwise
+ *               (`MyMembershipApi.java` is the second since 25.10.2026)
  * @returns its components, sorted, or nothing for a name the file does not declare
  */
-export function componentsOf(record: string): string[] {
+export function componentsOf(record: string, file = 'MeApi.java'): string[] {
   const source = readFileSync(
-    join(process.cwd(), '..', 'backend', 'src', 'main', 'java', 'com', 'btl', 'portal', 'web', 'MeApi.java'),
+    join(process.cwd(), '..', 'backend', 'src', 'main', 'java', 'com', 'btl', 'portal', 'web', file),
     'utf-8',
   )
   const opens = source.indexOf(`record ${record}(`)

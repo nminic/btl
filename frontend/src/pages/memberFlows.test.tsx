@@ -16,7 +16,7 @@ import {
 } from '../data/paymentQr'
 /* The bundled list, read only to NAME the figures this screen must no longer show: the
    served answer is moved away from them, and the assertions say so in both directions. */
-import { JUNIOR, PRICES, PROCESSING_FEE_EUR, REFERRAL } from '../data/pricing'
+import { JUNIOR, PRICES, PROCESSING_FEE_EUR, REFERRAL, seasonBeingPaidFor } from '../data/pricing'
 import servedPrices from '../test/mock/pricing.json'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { SessionProvider } from '../session/SessionProvider'
@@ -27,13 +27,16 @@ import { readQr } from '../test/readQr'
 import { AsksTheServerWhoIAm, expectFrontPage, renderAt } from '../test/render'
 import { setupUser, type Pressing } from '../test/user'
 import {
+  anInvoice,
   answeringCategory,
   bookAsServed,
   categoryAsServed,
+  invoiceAsServed,
   membersAsServed,
   refused,
   serverThat,
   type CategoryAnswered,
+  type InvoiceAnswered,
 } from '../test/serverAnswers'
 import { theCookieNames } from '../test/setup'
 import { myOwnRecordFromMe } from '../test/theAnswer'
@@ -170,7 +173,38 @@ function pricesWith(row: string, amounts: { eur: number; rsd: number | null }) {
    needs somebody who actually pays. Of the thirty, three do, and this is the
    grown one of them living in Serbia. His membership is not active, which this
    screen has no branch for and which none of these tests is about. */
-function renderMembershipOn(today: string, memberNumber = '000032', probe: ReactNode = null) {
+/** The generated members, read once for their country. */
+const generatedMembers: { memberNumber: string; country: string }[] = JSON.parse(
+  readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
+)
+
+/**
+ * WHAT `GET /api/me/membership` ANSWERS A MEMBER OF THE GENERATED FILE ON `today`: the season the
+ * panel sells that day, in his money (dinars for Serbia, euro for anywhere else, by the country on
+ * his row), at `anInvoice`'s figures, which are on no row of the price list. Since 25.10.2026 the
+ * amount on the slip is the server's (`member/WhatHeSends.tsx`).
+ */
+function owedBy(memberNumber: string, today: string): InvoiceAnswered {
+  const row = must(
+    generatedMembers.find((one) => one.memberNumber === memberNumber),
+    `member ${memberNumber} in the generated file`,
+  )
+
+  return anInvoice(seasonBeingPaidFor(today), row.country === 'RS' ? 'RSD' : 'EUR')
+}
+
+/** The route's answer stood in front of the disc for the case; the file's `afterEach` takes it off. */
+function owing(invoice: InvoiceAnswered | null | Response): void {
+  invoiceAsServed(invoice)
+}
+
+function renderMembershipOn(
+  today: string,
+  memberNumber = '000032',
+  probe: ReactNode = null,
+  invoice: InvoiceAnswered | null | Response = owedBy(memberNumber, today),
+) {
+  owing(invoice)
   /* **AND THE COOKIE NAMES HIM, which this screen needs and `renderAt` does for every
      case that goes through the router.** How a member's own fee is held reaches him
      through `GET /api/me` and through nothing else: `/api/competitors` decides that
@@ -568,45 +602,27 @@ describe('membership', () => {
     stop()
   })
 
-  it('quotes a junior the grown fee, because nothing on the record says who is a junior', async () => {
-    /* **This case held the opposite until 13.09.2026, and it is turned round on
-       purpose rather than deleted.** It used to say that the code a junior scans
-       carries the junior figure, which is what PDL P8 wants: „ko u sezoni za koju
-       plaća bar jedan dan ima 14 godina ili manje". The screen could do it because
-       the record carried a year of birth.
+  it('carries the figure the server sends a junior, and not the grown fee of the day', async () => {
+    /* **This case held the opposite from 13.09.2026 to 25.10.2026, and it is turned round on
+       purpose.** It said the code a junior scans carries the grown fee, because the record lost the
+       year of birth (section 3 of the privacy policy) and an age band cannot tell a junior from an
+       adult. The server knows the year of birth, and since 25.10.2026 the amount is the server's
+       (`GET /api/me/membership`, PDL 26.09.2026 „QR se kuje na iznos minus balans", and PDL P23,
+       31.07.2026, „Uzrast se meri kroz celu sezonu, ne na jedan dan").
 
-       It does not any more. The year has gone from the record because the record is
-       served publicly and section 3 of the privacy policy forbids a year of birth on it (`data/types.ts`),
-       and the age band that replaced it cannot answer this: `24-` runs from a newborn
-       to somebody of twenty four and the junior fee stops at fifteen.
+       000031 is the member it applies to. The answer is 2.400 less 500 on his book, so the figure
+       is on no row of the price list: neither the grown fee of the day (4.800) nor the junior row
+       (2.400) is what a screen reading the route draws. */
+    renderMembershipOn('2026-11-01', '000031', null, anInvoice(2027, 'RSD', { toTransfer: 1900, fromTheBalance: 500 }))
 
-       **What this is for.** The old fault is back for whoever is a junior, and a
-       regression that nothing measures is one nobody remembers. This says out loud
-       what the screen now does, so that putting the junior fee back — which needs
-       either a junior mark on a public record or a backend that knows who is signed
-       in — fails here and has to be decided rather than slipped in. The owner has the
-       question; the two ways out and what each costs are written at the call site in
-       `pages/member/Membership.tsx`.
-
-       000031 is the member it applies to: fourteen through the season being renewed,
-       and one of the three who actually pay. */
-    renderFor('000031')
-
-    /* Read off the code itself, by the decoder, since 26.09.2026: the written text of
-       the payload ("Prikaži sadržaj koda") left the screen with it (PDL.md:1659), and
-       the code is still the one place this figure is drawn. */
     const payload = readQr(await screen.findByRole('img', { name: /QR/ }))
 
-    /* 4.800 is the standard fee on the day this case renders, which is the late part
-       of the renewal window. Worth noting that the case this replaced asserted the
-       payload was not 4.200: that figure is the fee earlier in the window and was
-       never what this render could have produced, so that half of it held nothing. */
-    expect(payload).toContain('I:RSD4800,00')
+    expect(payload).toContain('I:RSD1900,00')
+    expect(payload).not.toContain('I:RSD4800,00')
     expect(payload).not.toContain(`I:RSD${JUNIOR.rsd},00`)
+    expect(screen.getByText('1.900 RSD')).toBeVisible()
 
-    /* The sentence stays, and it is now the only place a junior is told what they
-       owe. It is also why this is a regression and not a rule change: the screen
-       says one figure in words and asks for another in the code. */
+    /* The sentence stays the price list's fixed rate, said to everybody. */
     expect(
       screen.getByText(/bar jedan dan 14 godina ili manje plaća 20 EUR, a iz Srbije 2.400 RSD/),
     ).toBeVisible()
@@ -637,7 +653,7 @@ describe('membership', () => {
     renderFor('000010')
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
-    expect(screen.getByText(/Podatke za uplatu vidiš u nastavku/)).toBeVisible()
+    expect(await screen.findByText(/Podatke za uplatu vidiš u nastavku/)).toBeVisible()
 
     expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
     expect(screen.queryByText('Poziv na broj')).not.toBeInTheDocument()
@@ -648,14 +664,12 @@ describe('membership', () => {
     expect(screen.getByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
     expect(screen.getByText(RECIPIENT_NAME)).toBeVisible()
     expect(screen.getByText('info@balkanskatrkackaliga.net')).toBeVisible()
-    expect(screen.getByText('43,00')).toBeVisible()
-    /* NEVER THE JUNIOR ROW, which is a zamena-izvora check and not a second way to
-       say the same thing: `junior.eur` is a fixed 20 regardless of the date
-       (`public/mock/pricing.json`, `kind: "level"`, no window), so 20 + 3 = 23 is
-       exactly the wrong number this screen would show if the amount ever read
-       `junior` instead of `due` - the 13.09.2026 boundary the slip already lives
-       with (`Membership.tsx`, the comment above `methods`). Asserting only "43,00"
-       is present would pass just the same on a screen showing both figures. */
+    /* WHAT THE SERVER SAYS HE SENDS, since 25.10.2026: the answer's 33,50 and its fee of 3
+       (`anInvoice`), as letter C adds them. Never the price list's period plus its fee (40 + 3)
+       and never its junior row plus the fee (20 + 3), which are the two figures a screen reading
+       the price list would draw; asserting only „36,50" would pass on a screen showing all three. */
+    expect(screen.getByText('36,50')).toBeVisible()
+    expect(screen.queryByText('43,00')).not.toBeInTheDocument()
     expect(screen.queryByText('23,00')).not.toBeInTheDocument()
     /* The same reference the Serbian slip would use for this member and season -
        `paymentReference(2027, '000010')` - read off the one function rather than
@@ -667,36 +681,24 @@ describe('membership', () => {
     expect(screen.getByText('2027000010')).toBeVisible()
   })
 
-  it('quotes a different PayPal amount as the selling period changes, fee included', async () => {
-    /* THE OTHER AXIS OF THE SAME AMOUNT: the period, not the country. Read on 20
-       October rather than 1 November, this is the early period (15-31 October, 35
-       EUR) and not the regular one (40 EUR), so the fee-inclusive total is 38 - the
-       owner's own example for this exact decision ("prva cena recimo 38 eur 1.
-       oktobra"). Held beside the 43 on 1 November (the case above), a screen that
-       had hard-coded either figure would fail one of the two.
+  it('draws the PayPal amount the server sends whatever the selling period, fee included', async () => {
+    /* THIS WAS THE PERIOD AXIS UNTIL 25.10.2026: on 20 October the screen read the early row of
+       the price list (35 EUR) plus the fee, 38. Which row a day falls in is the server's question
+       now (`MembershipPrice`), so what this holds is that the screen draws the answer's figure on
+       a day the price list would have given another one: 31 sent plus a fee of 3 is 34, and the
+       early row plus the fee (38) is never drawn. */
+    renderMembershipOn('2026-10-20', '000010', null, anInvoice(2027, 'EUR', { toTransfer: 31, fromTheBalance: 4 }))
 
-       The day was 1 October until 29.09.2026, when the owner moved the early period
-       to the fifteenth; his example above still names the first, because what it is
-       an example of is the AMOUNT and not the day. */
-    renderMembershipOn('2026-10-20', '000010')
-
-    expect(await screen.findByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
-    expect(screen.getByText('38,00')).toBeVisible()
-    expect(screen.queryByText('43,00')).not.toBeInTheDocument()
+    expect(await screen.findByText('34,00')).toBeVisible()
+    expect(screen.queryByText('38,00')).not.toBeInTheDocument()
   })
 
-  it('promises nothing about a payment slip when the served price list has no period in force', async () => {
-    /* THE SECOND AXIS OF THE SAME GUARD, and it is a member IN SERBIA this time - the
-       first axis (country) is measured above and below, on 000010. „Podatke za uplatu
-       vidiš u nastavku" is gated on `due.length > 0` alone since PayPal got real data
-       (`Membership.tsx`), because `due` answers „none or one" over whatever the served
-       list holds (`inForceOn`, data/priceList.ts) and this side cannot hold it to tiling
-       the year the way `PriceListRowsTest` holds the server: a gap in what is served is a
-       state this screen has to survive rather than rule out.
-
-       Emptied by dropping every `period` row rather than by picking a date, so the case
-       does not depend on which day of the year renders it: `inForceOn` reads only rows of
-       `A_PERIOD`, and none at all means none in force on any day. */
+  it('draws the slip the server answers although the served price list has no period in force', async () => {
+    /* UNTIL 25.10.2026 A GAP IN THE SERVED PRICE LIST TOOK THE SLIP AWAY, because the slip's
+       amount was the row in force. It is the server's now (`GET /api/me/membership`), so a hole in
+       what `/api/pricing` serves takes away the line that quotes today's price and nothing of what
+       he sends: the gate on „Podatke za uplatu vidiš u nastavku" reads the answer's amount
+       (`member/WhatHeSends.tsx`). Emptied by dropping every `period` row, so no day has one. */
     const { stop } = serverThat((path) =>
       path === '/api/pricing'
         ? new Response(
@@ -705,38 +707,36 @@ describe('membership', () => {
           )
         : null,
     )
-    /* The choice of category has its own route since 27.09.2026 and is served here for the
-       one assertion below that it survives a price list with a hole in it. */
     const category = categoryAsServed(OPEN_TO_HIM)
 
     try {
       renderFor('000032')
 
-      expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+      expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
+      expect(screen.getByText('3.700 RSD')).toBeVisible()
+      expect(screen.getByText(/Podatke za uplatu vidiš u nastavku/)).toBeVisible()
+      expect(screen.queryByText(/Danas članarina košta/)).not.toBeInTheDocument()
       /* The category choice does not depend on a price and stays. */
       expect(
         await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
       ).toBeVisible()
-
-      expect(screen.queryByText(/Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
-      expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
     } finally {
       category.stop()
       stop()
     }
   })
 
-  it('promises nothing about a PayPal amount either, when the served price list has no period in force', async () => {
-    /* THE SAME SECOND AXIS AGAIN, for the country the case above does not reach: a
-       member abroad has no `due.map` slip to fall silent, but has the PayPal amount
-       this round adds, and that reads `due` too (`paypalTotal`, Membership.tsx). An
-       empty served list is a gap this side cannot rule out for either country, so
-       neither may point a member at money it never computed. */
+  it.each([
+    ['no period in force', 'period'],
+    ['no fee row', 'fee'],
+  ])('draws the PayPal amount the server answers although the served price list has %s', async (_what, dropped) => {
+    /* The same change for a member abroad: the PayPal amount was the row in force plus the fee
+       row, so either gap took it away. Both figures are the answer's now (`toTransfer` and
+       `processingFeeEur`), so neither gap reaches it. */
     const { stop } = serverThat((path) =>
       path === '/api/pricing'
         ? new Response(
-            JSON.stringify(servedPrices.filter((row) => row.kind !== 'period')),
+            JSON.stringify(servedPrices.filter((row) => row.kind !== dropped)),
             { status: 200, headers: { 'content-type': 'application/json' } },
           )
         : null,
@@ -745,62 +745,14 @@ describe('membership', () => {
     try {
       renderFor('000010')
 
-      expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
-      expect(screen.getByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
-
-      expect(screen.queryByText(/Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
-      expect(screen.queryByText('info@balkanskatrkackaliga.net')).not.toBeInTheDocument()
-      expect(screen.queryByText(paymentReference(2027, '000010'))).not.toBeInTheDocument()
+      expect(await screen.findByText('36,50')).toBeVisible()
+      expect(screen.getByText(/Podatke za uplatu vidiš u nastavku/)).toBeVisible()
+      expect(screen.getByText(paymentReference(2027, '000010'))).toBeVisible()
     } finally {
       stop()
     }
   })
 
-  it('promises nothing about a PayPal amount either, when the served price list has no fee row', async () => {
-    /* THE THIRD AXIS OF THE SAME GUARD (round 3 of the PR 385 review), and periods are
-       untouched this time: only the `fee` row is dropped. `due` therefore still holds a
-       row - the slip's own half of the question is satisfied - but the PayPal amount is
-       built off `due` AND `processing` together (`paypalTotal`, Membership.tsx), so a
-       fee-only gap starves it exactly as an empty `due` did on the axis above, and a
-       sentence gated on `due.length > 0` alone (round two's own fix) could not see that:
-       it was found standing over an empty PayPal block a second time, on this third axis.
-
-       000010 abroad is the only member this axis can be measured on: in Serbia the slip
-       reads `due` alone and never `processing`, so removing the fee row would leave the
-       slip (and the sentence) exactly as they were - the fault is invisible on that half
-       of the country axis and only PayPal ever reads the fee row at all. Same day as the
-       two cases above, 1 November 2026, so only the fee row removing it touches. */
-    const { stop } = serverThat((path) =>
-      path === '/api/pricing'
-        ? new Response(JSON.stringify(servedPrices.filter((row) => row.kind !== 'fee')), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          })
-        : null,
-    )
-
-    try {
-      renderFor('000010')
-
-      expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
-      /* The heading and its note stay: they are keyed on the method applying to this
-         country and not on there being an amount, and that gate is not what this case
-         is about. Only the promise and the fields the missing fee starves are checked. */
-      expect(screen.getByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
-
-      expect(screen.queryByText(/Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
-      expect(screen.queryByText('info@balkanskatrkackaliga.net')).not.toBeInTheDocument()
-      expect(
-        screen.queryByRole('button', { name: 'Kopiraj adresu za uplatu' }),
-      ).not.toBeInTheDocument()
-      expect(
-        screen.queryByRole('button', { name: 'Kopiraj iznos za uplatu' }),
-      ).not.toBeInTheDocument()
-      expect(screen.queryByText(paymentReference(2027, '000010'))).not.toBeInTheDocument()
-    } finally {
-      stop()
-    }
-  })
 
   it('writes the amount owed to a member in Serbia, in dinars', async () => {
     /* The row carrying the amount was spelled RSD by hand while every other
@@ -812,11 +764,12 @@ describe('membership', () => {
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
 
     const amount = must(
-      screen.getByText('Iznos').nextElementSibling?.textContent,
+      (await screen.findByText('Iznos')).nextElementSibling?.textContent,
       'the amount beside its label',
     )
 
-    expect(amount).toMatch(/RSD$/)
+    /* In the money the server answered, and the answer's own figure. */
+    expect(amount).toBe('3.700 RSD')
   })
 
   it('shows the balance the book holds, and not what a referral is worth times the head count', { timeout: SLOW }, async () => {
@@ -891,7 +844,7 @@ describe('membership', () => {
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
 
-    const written = screen.getByRole('heading', { level: 3, name: 'Uplatnica' })
+    const written = await screen.findByRole('heading', { level: 3, name: 'Uplatnica' })
 
     expect(written).toBeVisible()
     /* ONE HEADING AND NOT TWO SINCE 18.10.2026 (PDL P8, owner: „obriši naslov Uplatnica sa QR
@@ -960,19 +913,16 @@ describe('membership', () => {
 
     await screen.findByRole('heading', { name: 'Moja članarina' })
 
-    const regular = must(
-      PRICES.find((row) => row.key === 'regular'),
-      'the price in force on 1 November',
-    )
     const expected = ipsPayload({
       account: RECIPIENT_ACCOUNT,
       recipient: RECIPIENT_NAME,
-      amountRsd: regular.rsd,
+      /* What the server says he sends (`anInvoice`), since 25.10.2026. */
+      amountRsd: 3700,
       purpose: paymentPurpose(2027),
       reference: paymentReference(2027, '000032'),
     })
 
-    expect(readQr(screen.getByRole('img', { name: /QR/ }))).toBe(expected)
+    expect(readQr(await screen.findByRole('img', { name: /QR/ }))).toBe(expected)
     /* The disclosure this used to sit beside is gone, not merely closed (stavka 1,
        owner 26.09.2026: „Obriši ekstraktibilnu liniju Prikaži sadržaj koda"). */
     expect(screen.queryByText('Prikaži sadržaj koda')).not.toBeInTheDocument()
@@ -1068,8 +1018,9 @@ describe('membership', () => {
       /* The link carries a code and not the member number. That number is public
          and consecutive, so a link built out of it can be assembled for anybody,
          by anybody, including for oneself. */
-      expect(await screen.findByText(/registracija\?preporuka=7f07b38ff7ee7543/)).toBeVisible()
-      expect(screen.queryByText(/preporuka=000001/)).not.toBeInTheDocument()
+      expect(await screen.findByText(/\/sr\/registracija\/7f07b38ff7ee7543$/)).toBeVisible()
+      expect(screen.queryByText(/registracija\/000001/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/preporuka=/)).not.toBeInTheDocument()
       expect(screen.getByText(/donosi ti 600 RSD na balans/)).toBeVisible()
       /* And the balance is the BOOK's, 600, in dinars because the server keeps it in dinars.
          This member brought five and four of them are active, which counted at the price of a
@@ -1101,7 +1052,7 @@ describe('membership', () => {
     await withClipboard({ writeText }, async () => {
       renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
-      const link = await screen.findByText(/registracija\?preporuka=7f07b38ff7ee7543/)
+      const link = await screen.findByText(/\/sr\/registracija\/7f07b38ff7ee7543$/)
 
       await user.click(screen.getByRole('button', { name: 'Kopiraj link za preporuku' }))
 
@@ -1125,7 +1076,7 @@ describe('membership', () => {
       async () => {
         renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
-        await screen.findByText(/registracija\?preporuka=7f07b38ff7ee7543/)
+        await screen.findByText(/\/sr\/registracija\/7f07b38ff7ee7543$/)
         await user.click(screen.getByRole('button', { name: 'Kopiraj link za preporuku' }))
 
         expectSeen(await screen.findByText('Kopiranje nije uspelo. Kopiraj link ručno.'))
@@ -1143,7 +1094,7 @@ describe('membership', () => {
     await withClipboard(undefined, async () => {
       renderAt('/sr/moja-clanarina', 'competitor', '000001')
 
-      await screen.findByText(/registracija\?preporuka=7f07b38ff7ee7543/)
+      await screen.findByText(/\/sr\/registracija\/7f07b38ff7ee7543$/)
       await user.click(screen.getByRole('button', { name: 'Kopiraj link za preporuku' }))
 
       expectSeen(await screen.findByText('Kopiranje nije uspelo. Kopiraj link ručno.'))
@@ -1171,7 +1122,7 @@ describe('membership', () => {
       expectSeen(await screen.findByText('Adresa je kopirana.'))
 
       await user.click(screen.getByRole('button', { name: 'Kopiraj iznos za uplatu' }))
-      expect(writeText).toHaveBeenLastCalledWith('43,00')
+      expect(writeText).toHaveBeenLastCalledWith('36,50')
       expectSeen(await screen.findByText('Iznos je kopiran.'))
 
       await user.click(screen.getByRole('button', { name: 'Kopiraj napomenu za uplatu' }))
@@ -1270,7 +1221,12 @@ describe('membership', () => {
    * from the other at any rate the league has ever used either: PDL P12d, owner 25.09.2026,
    * refusing the recommendation that the route convert one into the other.
    */
-  it('puts the price the server sent into the QR code, not the one the bundle shipped', async () => {
+  it('puts what the server says he sends into the QR code, and neither the price served nor the one shipped', async () => {
+    /* UNTIL 25.10.2026 THIS HELD THE SERVED PRICE LIST AGAINST THE BUNDLE: an administrator who
+       changed a row changed what the code asked for. The code is the answer of
+       `GET /api/me/membership` now, so a served row moved away from the bundle (44 EUR, 5.280 RSD)
+       and the bundle itself are both figures the code must NOT carry, and the answer (3.700) is
+       the one it must. Held in all three directions, so a screen drawing two of them fails. */
     const { stop } = pricesWith('early', { eur: 44, rsd: 5280 })
 
     try {
@@ -1281,22 +1237,22 @@ describe('membership', () => {
 
       expect(early.rsd, 'the bundled figure has to differ, or this measures nothing').not.toBe(5280)
 
-      /* The second half of October, inside the first band, so `early` is the period in
-         force and the renewal window is open (both moved to the fifteenth on 29.09.2026).
-         000032 pays and lives in Serbia, which is what it takes to be shown a slip at all. */
+      owing(anInvoice(2028, 'RSD'))
       renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2027-10-20')
 
-      const code = await screen.findByRole('img', { name: /QR/ })
-      const payload = readQr(code)
+      const payload = readQr(await screen.findByRole('img', { name: /QR/ }))
 
-      expect(payload).toContain('I:RSD5280,00')
+      expect(payload).toContain('I:RSD3700,00')
+      expect(payload, 'the served row must not be what a member scans').not.toContain('I:RSD5280,00')
       expect(payload, 'the bundled figure must not be what a member scans').not.toContain(
         `I:RSD${early.rsd},00`,
       )
 
       /* And the writing beside it says the same thing, because a member typing the payment
          into a bank by hand never sees the code at all. */
-      expect(screen.getByText('5.280 RSD')).toBeVisible()
+      expect(screen.getByText('3.700 RSD')).toBeVisible()
+      /* The price line above is still the served list's, which is what it quotes. */
+      expect(screen.getByText(/Danas članarina košta 44 EUR, a iz Srbije 5\.280 RSD/)).toBeVisible()
     } finally {
       stop()
     }
@@ -1361,7 +1317,7 @@ describe('membership', () => {
          button since 26.09.2026 (PDL.md:1659). */
       expect(screen.getByRole('heading', { name: 'Obnova članarine za 2027.' })).toBeVisible()
       expect(
-        screen.getByText(/Podatke za uplatu vidiš u nastavku/),
+        await screen.findByText(/Podatke za uplatu vidiš u nastavku/),
       ).toBeVisible()
 
       /* **His first season**, which is 2016 in the seed and is on no row the answer to the
@@ -1382,7 +1338,7 @@ describe('membership', () => {
       ).toMatch(/RSD$/)
       /* **And his own referral link**, which V24 section 6 promises him on exactly this
          page and which P26a moved here for exactly this reason. */
-      expect(screen.getByText(/registracija\?preporuka=a92a9c8493cecc3e/)).toBeVisible()
+      expect(screen.getByText(/\/sr\/registracija\/a92a9c8493cecc3e$/)).toBeVisible()
     } finally {
       stop()
     }
@@ -1447,9 +1403,19 @@ describe('membership', () => {
       const list = membersAsServed('000031')
 
       try {
-        renderMembershipOn('2026-11-01', '000031')
+        /* The server decides his money by the same country, so its answer is in euro where the
+           answer puts him abroad. */
+        renderMembershipOn(
+          '2026-11-01',
+          '000031',
+          null,
+          anInvoice(2027, answered.country === 'RS' ? 'RSD' : 'EUR'),
+        )
 
         expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+        /* The payment data has been drawn in either case, so the slip's absence below is the
+           country's and not a read still out. */
+        expect(await screen.findByText(/Podatke za uplatu vidiš u nastavku/)).toBeVisible()
 
         expect(screen.getByText(drawn.season)).toBeVisible()
         expect(screen.getByText(drawn.team)).toBeVisible()

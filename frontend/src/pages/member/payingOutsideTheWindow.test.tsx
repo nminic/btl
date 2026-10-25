@@ -5,7 +5,8 @@ import { must } from '../../test/at'
 import { neverPaidAsServed } from '../../test/neverPaid'
 import { readQr } from '../../test/readQr'
 import { renderAt } from '../../test/render'
-import { serverThat } from '../../test/serverAnswers'
+import { seasonBeingPaidFor } from '../../data/pricing'
+import { anInvoice, invoiceAsServed, serverThat, type InvoiceAnswered } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import servedPrices from '../../test/mock/pricing.json'
 
@@ -53,10 +54,30 @@ const LAPSED = { memberNumber: '000050' }
 /** The same member, whose fee stands. */
 const STANDING = { memberNumber: '000050', active: true }
 
-function openHisPage(changes: Record<string, unknown>, today: string) {
+/**
+ * His page on `today`, with `GET /api/me/membership` answering what he sends.
+ *
+ * <p>The answer is about the season the panel sells that day, in his money (dinars for Serbia, euro
+ * for anywhere else, as the server decides by his country), and its figures are on no row of the
+ * price list (`anInvoice`). Since 25.10.2026 the amount is the server's, so WHICH ROW of the price
+ * list a day falls in is the server's question too (`MembershipPrice`); what this file still holds
+ * the screen to is the season, the reference, the sentences, and that the slip carries the answer.
+ */
+function openHisPage(
+  changes: Record<string, unknown>,
+  today: string,
+  invoice: InvoiceAnswered = anInvoice(
+    seasonBeingPaidFor(today),
+    changes.country === undefined || changes.country === 'RS' ? 'RSD' : 'EUR',
+  ),
+) {
   stand(neverPaidAsServed(changes))
+  stand(invoiceAsServed(invoice))
   renderAt('/sr/moja-clanarina', 'visitor', null, undefined, today)
 }
+
+/** What the slip carries: the server's answer, `anInvoice`'s dinar figure. */
+const SENT = '3.700 RSD'
 
 function rowOf(key: string) {
   return must(
@@ -100,7 +121,7 @@ describe('somebody who has never paid, outside the window', () => {
 
       expect(within(slip).getByText(`Članarina za ${season}. godinu`)).toBeVisible()
       expect(within(slip).queryByText('Poziv na broj')).not.toBeInTheDocument()
-      expect(within(slip).getByText(dinars(rowOf('season').rsd))).toBeVisible()
+      expect(within(slip).getByText(SENT)).toBeVisible()
 
       /* THE WHOLE CODE, from the same four facts, so the season in it, the amount and the absence
          of a reference tag are one assertion. The empty string is what `IpsPayment` means by none. */
@@ -108,14 +129,14 @@ describe('somebody who has never paid, outside the window', () => {
         ipsPayload({
           account: RECIPIENT_ACCOUNT,
           recipient: RECIPIENT_NAME,
-          amountRsd: must(rowOf('season').rsd, 'the dinar amount'),
+          amountRsd: 3700,
           purpose: paymentPurpose(season),
           reference: '',
         }),
       )
 
       expect(screen.getByText('Uplata je otvorena.')).toBeVisible()
-      expect(screen.getByText(/Prepoznaje se po imenu/)).toBeVisible()
+      expect(await screen.findByText(/Prepoznaje se po imenu/)).toBeVisible()
       expect(screen.queryByText(SHUT)).not.toBeInTheDocument()
     },
     SLOW,
@@ -145,7 +166,7 @@ describe('a member whose fee has lapsed, outside the window', () => {
         ipsPayload({
           account: RECIPIENT_ACCOUNT,
           recipient: RECIPIENT_NAME,
-          amountRsd: must(rowOf('season').rsd, 'the dinar amount'),
+          amountRsd: 3700,
           purpose: paymentPurpose(season),
           reference: `${season}000050`,
         }),
@@ -179,7 +200,12 @@ describe('a member whose fee has lapsed, outside the window', () => {
   }, SLOW)
 
   it('and the junior sentence is still the fixed one, whatever the date', async () => {
-    openHisPage(LAPSED, '2027-03-01')
+    /* A JUNIOR, AS THE SERVER ANSWERS HIM: 2.400 dinars less 500 on his book. The server knows the
+       year of birth and this side does not (PDL P23, 31.07.2026, „Uzrast se meri kroz celu sezonu,
+       ne na jedan dan"), so the slip carries its answer, and the sentence above it stays the price
+       list's fixed rate. Until 25.10.2026 the slip was the adult row of the day, because nothing on
+       the record tells a junior from an adult. */
+    openHisPage(LAPSED, '2027-03-01', anInvoice(2027, 'RSD', { toTransfer: 1900, fromTheBalance: 500 }))
 
     const junior = rowOf('junior')
 
@@ -189,8 +215,6 @@ describe('a member whose fee has lapsed, outside the window', () => {
       ),
     ).toBeVisible()
 
-    /* AND THE SLIP STAYS THE ROW OF THE DAY, not the junior one: nothing on the record tells a
-       junior from an adult (the 13.09.2026 boundary the screen already lives with). */
     const slip = must(
       (await screen.findByRole('heading', { level: 3, name: 'Uplatnica' })).closest<HTMLElement>(
         '.pay__slip',
@@ -198,7 +222,8 @@ describe('a member whose fee has lapsed, outside the window', () => {
       'the slip',
     )
 
-    expect(within(slip).getByText(dinars(rowOf('season').rsd))).toBeVisible()
+    expect(within(slip).getByText('1.900 RSD')).toBeVisible()
+    expect(within(slip).queryByText(dinars(rowOf('season').rsd))).not.toBeInTheDocument()
     expect(within(slip).queryByText(dinars(junior.rsd))).not.toBeInTheDocument()
   }, SLOW)
 
@@ -207,9 +232,8 @@ describe('a member whose fee has lapsed, outside the window', () => {
 
     expect(await screen.findByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
 
-    const sends = rowOf('season').eur + rowOf('processing').eur
-
-    expect(screen.getByText(sends.toFixed(2).replace('.', ','))).toBeVisible()
+    /* The answer's transfer and the answer's fee (`anInvoice`: 33,50 and 3), as letter C adds them. */
+    expect(await screen.findByText('36,50')).toBeVisible()
     expect(screen.getByText('2027000050')).toBeVisible()
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
     expect(screen.getByText(NO_RANKING)).toBeVisible()
@@ -240,12 +264,16 @@ describe('the edges of the window, from both sides', () => {
     ).toBeVisible()
 
     const slip = must(
-      screen.getByRole('heading', { level: 3, name: 'Uplatnica' }).closest<HTMLElement>('.pay__slip'),
+      (await screen.findByRole('heading', { level: 3, name: 'Uplatnica' })).closest<HTMLElement>(
+        '.pay__slip',
+      ),
       'the slip',
     )
 
     expect(within(slip).getByText(`${season}000050`)).toBeVisible()
-    expect(within(slip).getByText(dinars(rowOf(key).rsd))).toBeVisible()
+    /* The amount on the slip is the server's for that day (`MembershipPrice` picks the row), so the
+       row this case names is held by the price line above and the slip by the answer. */
+    expect(within(slip).getByText(SENT)).toBeVisible()
     expect(screen.queryAllByText(NO_RANKING)).toHaveLength(ranking ? 1 : 0)
   }, SLOW)
 

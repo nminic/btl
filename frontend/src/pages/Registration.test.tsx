@@ -1,6 +1,6 @@
 import { SLOW } from '../test/slow'
 import { render, screen, waitFor, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { registracija } from '../forms/definitions'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -127,11 +127,18 @@ function renderForm(today = OPEN, address = '/sr/registracija') {
   return render(
     <ClockProvider simulatedDay={today}>
       <I18nProvider locale="sr">
-        {/* The address matters to one pair of tests and to nothing else: a
-            member who arrives by somebody's referral link arrives with the code
-            in the query, and that is the only fact the programme rests on. */}
+        {/* The address matters to the cases about a referral and to nothing else: a
+            member who arrives by somebody's referral link arrives with the code in the
+            path (since 25.10.2026) or in the old query, and that is the only fact the
+            programme rests on. The two routes are the two the portal serves the screen
+            at (`app/routeObjects.tsx`), so the screen reads the path's segment the way it
+            does under the real router; that the real router serves the second one is held
+            by its own case below, through `renderAt`. */}
         <MemoryRouter initialEntries={[address]}>
-          <Registration />
+          <Routes>
+            <Route path="/:locale/registracija" element={<Registration />} />
+            <Route path="/:locale/registracija/:code" element={<Registration />} />
+          </Routes>
         </MemoryRouter>
       </I18nProvider>
     </ClockProvider>,
@@ -221,6 +228,19 @@ describe('Registration is never shut', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Registracija' })).toBeVisible()
   })
+
+  it.each(['/sr/registracija/7f07b38ff7ee7543', '/en/registracija/7f07b38ff7ee7543'])(
+    'renders it through the real route at the address with a referral code in it, %s',
+    async (address) => {
+      /* The address the portal shares since 25.10.2026 (owner, 22.10.2026), served by the real
+         route table: a table that lost `registracija/:code` answers it with the page that is not
+         there, and every case above that hands `renderForm` its own two routes would still pass. */
+      renderAt(address, 'visitor', null, undefined, OPEN)
+
+      expect(await screen.findByLabelText(/Datum rođenja|Date of birth/)).toBeVisible()
+      expect(screen.queryByRole('heading', { name: /Ove strane nema|No such page/ })).not.toBeInTheDocument()
+    },
+  )
 })
 
 describe('Registration once it is open', () => {
@@ -1372,6 +1392,42 @@ describe('what the registration sends', () => {
     })
 
     expect(Reflect.get(Object(theBodySent()), 'referredBy')).toBe('7f07b38ff7ee7543')
+  }, SLOW)
+
+  /* **THE CODE IN THE PATH, since 25.10.2026** (owner, 22.10.2026: „Link preporuke nosi samo šifru
+     u adresi strane za registraciju [...] Stari oblik ?preporuka= i dalje radi"). Each row is an
+     address and what goes over the wire for it. Read off the body and not off the sentence after
+     sending, because the body is the fact the credit is worked out of.
+
+     - The path, in both languages of the pair.
+     - A wrong code in the path, of each kind the query is already held to, is no referral (PDL,
+       13.08.2026, „Portal prima samo kod tačnog oblika", derived for the path on 25.10.2026).
+     - **One link, one code**: where the path carries a segment only the path is read, so a right
+       code in the query beside a wrong one in the path is no referral, and a right code in the path
+       beside ANOTHER right code in the query is the path's (derived 25.10.2026, PDL). The second of
+       these is the case that tells „the path first" from „whichever is right", and the first tells
+       „only the path" from „the path, else the query".
+     - The address with nothing after the slash is the plain registration page. */
+  it.each([
+    ['the code in the path', '/sr/registracija/7f07b38ff7ee7543', '7f07b38ff7ee7543'],
+    ['the code in the path of the English pair', '/en/registracija/7f07b38ff7ee7543', '7f07b38ff7ee7543'],
+    ['a code of the wrong shape in the path', '/sr/registracija/nemaovakvogkoda', null],
+    ['a code in capitals in the path, which the schema refuses', '/sr/registracija/7F07B38FF7EE7543', null],
+    ['anything at all in the path', '/sr/registracija/%22%3E%3Cimg%20src%3Dx%20onerror%3Dalert(1)%3E', null],
+    ['a wrong code in the path beside a right one in the query', '/sr/registracija/nemaovakvogkoda?preporuka=7f07b38ff7ee7543', null],
+    ['a right code in the path beside another right one in the query', '/sr/registracija/7f07b38ff7ee7543?preporuka=aaaaaaaaaaaaaaaa', '7f07b38ff7ee7543'],
+    ['nothing after the slash', '/sr/registracija/', null],
+  ])('carries what the address names for %s', async (_what, address, carried) => {
+    const user = setupUser()
+    renderForm(OPEN, address)
+
+    await fillAndSend(user)
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    expect(Reflect.get(Object(theBodySent()), 'referredBy')).toBe(carried)
   }, SLOW)
 
   it('carries the language of the page it was typed on, so an English page starts his mail in English', async () => {

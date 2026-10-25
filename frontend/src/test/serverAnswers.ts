@@ -284,3 +284,86 @@ export function answeringBook(book: BookAnswered | null): Response {
         headers: { 'content-type': 'application/json' },
       })
 }
+
+/** `MyMembershipApi.MyMembership` on the wire, every component of it. */
+export type InvoiceAnswered = {
+  season: number
+  alreadyAMember: boolean
+  priceKey: string
+  fee: BookAnswered
+  balance: BookAnswered
+  fromTheBalance: BookAnswered
+  toTransfer: BookAnswered
+  processingFeeEur: number
+  coveredByTheBalance: boolean
+}
+
+/**
+ * WHAT `GET /api/me/membership` ANSWERS A MEMBER WHO OWES THE SEASON, built for a case.
+ *
+ * <p><b>The default figures are on no row of the served price list, and that is the point of
+ * them.</b> The screen used to read the price list for this amount; an answer that repeated a row
+ * of it (4.800 RSD, 40 EUR) would be drawn the same by a screen that never asked the route, so a case
+ * standing on it would measure nothing (CLAUDE.md, „Dva izvora, jedna vrednost"). 3.700 dinars with
+ * 1.100 off the balance, or 33,50 euro with 6,50 off it and a fee of 3, are figures only the route
+ * can have put on the page.
+ *
+ * @param season   the season the answer is about, which the screen requires to be its own
+ * @param currency his money, which the server decides by his country
+ * @param changes  what this case changes over the defaults
+ */
+export function anInvoice(
+  season: number,
+  currency: 'RSD' | 'EUR',
+  changes: {
+    toTransfer?: number
+    fromTheBalance?: number
+    processingFeeEur?: number
+    alreadyAMember?: boolean
+  } = {},
+): InvoiceAnswered {
+  const toTransfer = changes.toTransfer ?? (currency === 'RSD' ? 3700 : 33.5)
+  const fromTheBalance = changes.fromTheBalance ?? (currency === 'RSD' ? 1100 : 6.5)
+  const processingFeeEur = changes.processingFeeEur ?? (currency === 'EUR' && toTransfer > 0 ? 3 : 0)
+  const money = (amount: number): BookAnswered => ({ amount, currency })
+
+  return {
+    season,
+    alreadyAMember: changes.alreadyAMember ?? false,
+    priceKey: 'regular',
+    fee: money(toTransfer + fromTheBalance),
+    balance: money(fromTheBalance),
+    fromTheBalance: money(fromTheBalance),
+    toTransfer: money(toTransfer),
+    processingFeeEur,
+    coveredByTheBalance: toTransfer === 0,
+  }
+}
+
+/**
+ * `GET /api/me/membership`, and what he owes.
+ *
+ * @param invoice what the route answers, null for its 404 (an account that races for nobody, or a
+ *                member freed of the season), or a `Response` for any other way it can end
+ */
+export function invoiceAsServed(
+  invoice: InvoiceAnswered | null | Response,
+): { asked: Asked[]; stop: () => void } {
+  return serverThat((path, init) =>
+    path === '/api/me/membership' && init?.method === undefined ? answeringInvoice(invoice) : null,
+  )
+}
+
+/** The body of a 200 for `invoice`, its 404 for null, or the response handed in. */
+export function answeringInvoice(invoice: InvoiceAnswered | null | Response): Response {
+  if (invoice instanceof Response) {
+    return invoice
+  }
+
+  return invoice === null
+    ? new Response(null, { status: 404 })
+    : new Response(JSON.stringify(invoice), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+}

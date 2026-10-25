@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import en from '../i18n/en.json'
 import sr from '../i18n/sr.json'
 import { must } from '../test/at'
 import { renderAt } from '../test/render'
@@ -152,6 +153,27 @@ describe('the description of a page', () => {
 })
 
 describe('the address of a page', () => {
+  it.each([
+    ['/sr/registracija/7f07b38ff7ee7543', 'sr'],
+    ['/en/registracija/7f07b38ff7ee7543', 'en'],
+  ])('names %s as the registration page, without the code', async (address, locale) => {
+    /* The code is not part of the page (derived 25.10.2026 from the owner's decision of
+       22.10.2026, PDL): the canonical link, both alternates and `og:url` name the registration page,
+       which is what the old `?preporuka=` link has always named. Read after the tab has the
+       registration page's name, so a tag left by an earlier case cannot answer for this one. */
+    renderAt(address)
+
+    const words = locale === 'sr' ? sr : en
+
+    await waitFor(() => expect(document.title.startsWith(words.seo.register.title)).toBe(true))
+    await waitFor(() => expect(href('canonical')).toBe(`${SITE_ORIGIN}/${locale}/registracija`))
+    expect(href('alternate', 'sr')).toBe(`${SITE_ORIGIN}/sr/registracija`)
+    expect(href('alternate', 'en')).toBe(`${SITE_ORIGIN}/en/registracija`)
+    expect(href('alternate', 'x-default')).toBe(`${SITE_ORIGIN}/sr/registracija`)
+    expect(content('property', 'og:url')).toBe(`${SITE_ORIGIN}/${locale}/registracija`)
+    expect(document.head.innerHTML).not.toContain('7f07b38ff7ee7543')
+  })
+
   it('declares itself canonical, and offers the languages that have words', async () => {
     renderAt('/sr/kalendar')
 

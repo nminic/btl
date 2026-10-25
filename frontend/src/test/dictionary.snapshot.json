@@ -1160,6 +1160,8 @@
     "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu i ne prenosi se drugom članu.",
     "feeExemptNoRenewal": "Oslobođen si plaćanja članarine, pa nema šta da uplatiš.",
     "amountLabel": "Iznos",
+    "fromTheBalance": "Balans pokriva {fromTheBalance}, pa uplaćuješ {toTransfer}.",
+    "amountNotArrived": "Iznos za uplatu nije stigao. Osveži stranicu i pokušaj ponovo.",
     "notPaidYet": "Članarina ti još nije evidentirana, pa još nemaš članski broj. Dobijaš ga kad moderator evidentira tvoju uplatu.",
     "firstPayment": "Uplata članarine za {season}.",
     "firstPaymentOpen": "Uplata je otvorena.",
