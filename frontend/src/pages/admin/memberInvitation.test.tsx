@@ -96,12 +96,14 @@ describe('a new invitation from the member’s row', () => {
       /* SWITCHED OFF FOR REAL, as „Upiši uplatu" is, and its box says why to the pointer. */
       expect(off, number).toBeDisabled()
 
-      await user.hover(off)
-
-      expect(await screen.findByText(why), number).toBeInTheDocument()
+      /* THE WORD IS THIS ROW'S OWN, read inside this envelope: read off the whole screen, the reason of
+         the other switched-off row answered for it and the two reasons could be swapped unseen (measured,
+         the mutation series of this branch). */
+      expect(within(off).getByText(why), number).toBeInTheDocument()
+      /* The box the pointer opens shows the button's word (`components/ActionButton.tsx`, `useTip(word)`);
+         jsdom sends no pointer to a disabled button, so that half is the component's own case, not this one. */
 
       await user.click(off)
-      await user.unhover(off)
     }
 
     expect(sent(server.asked)).toEqual([])
