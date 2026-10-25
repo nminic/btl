@@ -1170,6 +1170,14 @@
     "noRanking": "Članarina plaćena sada ne daje pravo rangiranja.",
     "paidFor": "Članarina za sezonu {season} je plaćena.",
     "paidFromBalance": "Članarina za sezonu {season} je plaćena iz balansa.",
+    "coveredByTheBalance": "Tvoj balans iz programa preporuke pokriva članarinu za sezonu {season}. Ono što preostane ostaje na balansu za sledeću sezonu.",
+    "letMeIn": "Aktiviraj članstvo",
+    "letIn": "Članstvo za sezonu {season} je aktivirano.",
+    "letInNumber": "Tvoj članski broj je {number}.",
+    "letInAlready": "Članstvo za ovu sezonu je već aktivirano.",
+    "letInNothingToPay": "Za ovu sezonu nemaš članarinu za plaćanje.",
+    "letInNotEnough": "Balans više ne pokriva celu članarinu, pa su ispod podaci za uplatu ostatka.",
+    "notPaidYetCovered": "Članarina ti još nije evidentirana, pa još nemaš članski broj. Dobijaš ga kad aktiviraš članstvo iz balansa.",
     "alreadyPaid": "Članarina za {season} je već plaćena, pa nema šta da uplatiš."
   },
   "review": {
