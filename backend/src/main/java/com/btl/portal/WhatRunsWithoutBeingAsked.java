@@ -16,12 +16,14 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * time it is, and what happens by itself at a given time.
  *
  * <p><b>WHAT HOLDS IT.</b> {@code ThePicturesFolderIsSweptTest} asks the scheduler the context
- * really built for the task that runs the sweep. With the annotation below removed there is no
+ * really built for the task that runs the sweep, and {@code UnconfirmedAccountsAreSweptTest} for
+ * its own. With the annotation below removed there is no
  * task, and the case that asks for it fails; nothing reads this file's text.
  *
- * <p><b>THE NEXT JOB USES THIS SWITCH AND DOES NOT ADD A SECOND.</b> The 1 January job the
- * journal's P13 describes is the second scheduled thing this portal will have and needs only its
- * own {@code @Scheduled} method. Boot builds one scheduler thread for all of them, so a job that
+ * <p><b>THE NEXT JOB USES THIS SWITCH AND DOES NOT ADD A SECOND, and the second one did.</b>
+ * {@code UnconfirmedAccountsAreSwept} (owner, 23.10.2026: an unconfirmed registration is deleted by
+ * itself after seven days) is its own {@code @Scheduled} method and nothing more, and so will the
+ * 1 January job the journal's P13 describes be. Boot builds one scheduler thread for all of them, so a job that
  * waits on something slow holds every other one back; each of them is short, and the day one is
  * not is the day to give the scheduler a pool.
  */

@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { heldControl } from '../../forms/held'
+import { formatDate } from '../../i18n/format'
 import { AskedLabel } from '../../forms/AskedLabel'
+import { registracija } from '../../forms/definitions'
+import { PlaceField } from '../../forms/PlaceField'
+import { choicesOf } from '../../forms/records'
 import { useI18n } from '../../i18n/useI18n'
 import type { MyData } from '../../session/theServer'
 import { askTheServer, type Answer } from '../account/askTheServer'
@@ -8,7 +13,7 @@ import {
   AS_LONG_AS_THE_FORM_ALLOWS,
   NEVER_EMPTIED,
   THE_ACCOUNT_GOES_TO,
-  WHAT_THIS_SCREEN_SENDS,
+  TYPED_BOXES,
   WHEN_CHANGING_MY_DATA,
   whatChanged,
   type Standing,
@@ -21,8 +26,8 @@ import {
  * <p>PDL P28b, 1, owner 24.09.2026: „Licni podaci (adresa, telefon, ime, prezime) stupaju
  * odmah. Red za proveru ceka samo ono sto javnost vidi kao sadrzaj: biografija i slika."
  * That sentence is the whole shape of this panel, and it is the reason there is no „sent
- * for approval" anywhere on it: the two panels underneath - the picture and the words about
- * oneself - are the ones that wait, and they say so in their own words.
+ * for approval" anywhere on it: the picture and the words about oneself, on the screen of the
+ * settings, are the ones that wait, and they say so in their own words.
  *
  * <p><b>What it deliberately does NOT do, written here rather than left to be found.</b>
  *
@@ -34,10 +39,14 @@ import {
  * has written both since 24.09.2026 - but a screen that cannot show a saved value is, to the
  * person who saved it, the same as one that did not keep it. {@code GET /api/me} carries both now
  * (`MeApi.MyOwnRecord`), to him alone, and the public record still carries neither.</li>
- * <li><b>It does not carry the town.</b> A town is chosen out of a codebook of every
- * settlement in the world and reaches the route as either a key or a typed name with its
- * country, never both and never neither. That is a picker and two roads rather than a box,
- * and it is a decided change this screen has not made yet.</li>
+ * <li><b>It carries the town and the shirt size since 23.10.2026</b>, when it moved from the screen
+ * of the settings to the card „Podaci" of his own profile (PDL 22.10.2026, „Profil dobija karticu
+ * „Podaci""; „Član sam menja sve osim pola i datuma rođenja"). The town in the control the
+ * registration draws it with (`PlaceField`), a name and its country; the size out of the seven the
+ * registration offers, read off its definition. A town in another country moves the money he is
+ * billed in, which is the server's to do (`ACountryMovesTheMoney`).</li>
+ * <li><b>It does not carry the father's name</b>, which only the administration changes (PDL
+ * 22.10.2026, „Ime oca i dalje menja samo administracija"), nor the gender and the date of birth.</li>
  * <li><b>It does not carry the address of electronic post.</b> The owner decided on
  * 24.09.2026 that a member changes it himself „ali mora da potvrdi novu", because that
  * address is also how he signs in and an unconfirmed change is somebody taking the account.
@@ -53,9 +62,14 @@ import {
  * address of post. The decisions they explained stand (PDL P28b, 2: the date of birth and the gender are an
  * administrator's), and the server still refuses them by name (`notYoursToChange`); what is gone is the
  * screen saying so. The date of birth is not shown anywhere, as before.
+ *
+ * <p><b>One panel for every reader who has one</b>: the card „Podaci" of a member whose fee stands,
+ * and the page „Moji podaci" of somebody who has not paid yet, which is the next piece of work (PDL
+ * 22.10.2026: „Neka ima u navigaciji stranu Moji Podaci dok nije odobren koja je iznad Moja
+ * Članarina"). Both send to the same route and are told the same sentences.
  */
 export function PersonalData({ me }: { me: MyData }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
 
   /* WHAT THE SERVER HOLDS, held here and not read off `me` on every render, because a
      successful save moves it and nothing refetches the resource. It starts as what the server
@@ -65,18 +79,17 @@ export function PersonalData({ me }: { me: MyData }) {
      The boxes START as the same four values, which is the whole of the fault of 18.10.2026: they
      used to open empty for the address and the telephone and the member who had saved them read
      that as the portal having lost them. */
-  const [standing, setStanding] = useState<Standing>({
+  const opened: Standing = {
     firstName: me.firstName,
     lastName: me.lastName,
     address: me.address,
     phone: me.phone,
-  })
-  const [typed, setTyped] = useState<Typed>({
-    firstName: me.firstName,
-    lastName: me.lastName,
-    address: me.address,
-    phone: me.phone,
-  })
+    city: me.city,
+    country: me.country,
+    shirtSize: me.shirtSize,
+  }
+  const [standing, setStanding] = useState<Standing>(opened)
+  const [typed, setTyped] = useState<Typed>(opened)
   const [asking, setAsking] = useState(false)
   const [answer, setAnswer] = useState<Answer | null>(null)
   const said = useRef<HTMLParagraphElement>(null)
@@ -88,8 +101,8 @@ export function PersonalData({ me }: { me: MyData }) {
 
   /* Said out loud, because what the reader pressed is answered by a sentence that appears
      somewhere else on the screen: without this the focus stays on the button and a screen
-     reader is told nothing at all (WCAG 2.2 SC 4.1.3). The same shape the two panels below
-     already use. */
+     reader is told nothing at all (WCAG 2.2 SC 4.1.3). The same shape the panels of the picture and
+     of the words about oneself use. */
   useEffect(() => {
     if (saved) {
       said.current?.focus()
@@ -112,6 +125,20 @@ export function PersonalData({ me }: { me: MyData }) {
     setAsking(false)
   }
 
+  /* The four boxes he sees held, in the order the registration asks them. The gender and the date are
+     said the way the portal says them everywhere (`registration.genderMale`, `formatDate`) and the
+     number of the document is empty for a member who gave none. */
+  const HELD = [
+    {
+      name: 'gender',
+      label: t('registration.gender'),
+      value: t(me.gender === 'M' ? 'registration.genderMale' : 'registration.genderFemale'),
+    },
+    { name: 'birthDate', label: t('registration.birthDate'), value: formatDate(me.birthDate, locale) },
+    { name: 'fatherName', label: t('registration.fatherName'), value: me.fatherName },
+    { name: 'idNumber', label: t('registration.idNumber'), value: me.idNumber },
+  ]
+
   return (
     <>
       <section className="member__panel" aria-labelledby="account-personal">
@@ -131,7 +158,7 @@ export function PersonalData({ me }: { me: MyData }) {
             }
           }}
         >
-          {WHAT_THIS_SCREEN_SENDS.map((name) => {
+          {TYPED_BOXES.map((name) => {
             /* **ASKED FOR WHERE THE SERVER WILL NOT TAKE IT EMPTY** (PENDING 217.5). One fact
                decides all three things a box says about itself, the star, `aria-required` and the
                word „neobavezno". It used to be that fact AND whether the portal could see what the
@@ -163,6 +190,72 @@ export function PersonalData({ me }: { me: MyData }) {
               </div>
             )
           })}
+
+          {/* THE TOWN, IN THE CONTROL THE REGISTRATION DRAWS IT WITH, and its country beside it.
+              Asked for, as on the registration: the column is never empty (V7). */}
+          <div className="rankings__field">
+            <AskedLabel id="account-city">{t('registration.city')}</AskedLabel>
+            <PlaceField
+              id="account-city"
+              name="city"
+              value={typed.city}
+              country={typed.country}
+              required
+              invalid={false}
+              describedBy={undefined}
+              onChange={(town, country) => {
+                setAnswer(null)
+                setTyped((before) => ({ ...before, city: town, country }))
+              }}
+            />
+          </div>
+
+          {/* THE SIZE, one of the seven the registration offers, read off its definition so the two
+              cannot offer different sizes. */}
+          <div className="rankings__field">
+            <AskedLabel id="account-shirtSize">{t('registration.shirtSize')}</AskedLabel>
+            <select
+              id="account-shirtSize"
+              value={typed.shirtSize}
+              aria-required="true"
+              onChange={(event) => {
+                setAnswer(null)
+                setTyped((before) => ({ ...before, shirtSize: event.target.value }))
+              }}
+            >
+              {choicesOf(registracija, 'shirtSize').map((one) => (
+                <option key={one.value} value={one.value}>
+                  {t(one.labelKey)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* **THE FOUR HE SEES AND DOES NOT CHANGE** (PDL 24.10.2026, owner: „clan ga vidi ali je disabled za
+              menjanje. Moze samo da trazi od admina", and, chosen between offered outcomes with the
+              recommendation, the same for the gender, the date of birth and the father's name). Held and
+              not switched off, the way the portal holds a locked box everywhere (`forms/held.ts`,
+              `FormRenderer`): `readOnly` and `aria-disabled`, so a keyboard reaches each of them, a screen
+              reader reads the value and says it is held, and the number can be copied. The sentence under
+              them is their description. They are never sent: the server refuses them by name
+              (`MeWriteApi`), and `TYPED_BOXES` does not name them. */}
+          {HELD.map(({ name, label, value }) => (
+            <div className="rankings__field" key={name}>
+              <label htmlFor={`account-${name}`}>{label}</label>
+              <input
+                id={`account-${name}`}
+                type="text"
+                className={heldControl(true)}
+                value={value}
+                readOnly
+                aria-disabled="true"
+                aria-describedby="account-held-note"
+              />
+            </div>
+          ))}
+          <p className="member__note" id="account-held-note">
+            {t('account.heldNote')}
+          </p>
 
           <p className="member__actions">
             {/* Told off rather than switched off, as everywhere else on the portal:

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { at, inputElement, must } from '../../test/at'
+import { at, inputElement } from '../../test/at'
 import { renderAt } from '../../test/render'
 import {
   answeredWith,
@@ -373,18 +373,19 @@ describe('the way in', () => {
     return [...readFileSync(MAIL, 'utf-8').matchAll(/"([^"]+)"/g)].map((one) => one[1] ?? '')
   }
 
-  it('is a link on the sign-in page, called what the messages call it, and it leads here', async () => {
-    const named = theControlTheMessagesName()
+  /**
+   * NO MESSAGE NAMES THE CONTROL ANY MORE, and that is the owner's decision of 24.10.2026 (PDL,
+   * the sentence of the invitation of a member the administration entered): after seven days with
+   * no password his entry is deleted, so the sentence that sent him to „Zaboravljena lozinka" was
+   * replaced. A name written into the messages again is a promise this screen has to keep, and this
+   * fails on the day one appears, so the case below is asked to hold it.
+   */
+  it('is named by no message since the invitation stopped sending anybody to it', () => {
+    expect(theControlTheMessagesName()).toEqual([])
+  })
 
-    /* The floor under the reading itself: a pattern that stopped matching would leave
-       nothing to check and this case would pass saying nothing. One name is what the
-       file holds today, and a second one is a decision somebody has to make rather than
-       something this case should guess at. */
-    expect(named).toHaveLength(1)
-
-    const name = must(at(named, 0), 'the control the messages name')
-
-    expect(name).not.toBe('')
+  it('is a link on the sign-in page, and it leads here', async () => {
+    const name = 'Zaboravljena lozinka'
 
     server = serverThat(() => null)
 

@@ -381,3 +381,18 @@ export function limitOf(form: FormDef, name: string): number {
 
   return field.maxLength
 }
+
+/**
+ * THE CHOICES A FIELD OF A DEFINITION OFFERS, read from the definition for the reason {@link limitOf}
+ * reads a length from it: the sizes of a shirt offered on the card „Podaci" and on the registration are
+ * one list in one file (23.10.2026). Throws where the field has none, for the reason `limitOf` throws.
+ */
+export function choicesOf(form: FormDef, name: string): readonly FieldOption[] {
+  const field = form.fields.find((one) => one.name === name)
+
+  if (field?.options === undefined) {
+    throw new Error(`Form ${form.id} has no field ${name} with choices of its own`)
+  }
+
+  return field.options
+}

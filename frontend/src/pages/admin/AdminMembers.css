@@ -91,11 +91,6 @@
   gap: var(--space-2);
 }
 
-.members-actions__kept {
-  inline-size: 2rem;
-  block-size: 2rem;
-}
-
 /* The distance that keeps a press meant for „Storniraj" off „Obriši": a finger's slop, 16px (PR 632
    measured the press that deleted a member at 3px from the action beside it). Not the 20 that PR kept
    under the actions: at 820px, where the navigation stands beside the page, four more pixels pushed the

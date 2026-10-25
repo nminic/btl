@@ -66,8 +66,12 @@ class MemberDataApi {
 	 *                       and null where he typed one - never {@code place.id}, which is this
 	 *                       database's key and means nothing to a caller ({@link MeWriteApi.Changed}
 	 *                       answers it the same way)
-	 * @param city           the town he typed, and null where it came out of the codebook
-	 * @param country        the code of that typed town's country, and null otherwise
+	 * @param city           the NAME of his town, whichever road it came by: the codebook's name, or
+	 *                       the one typed. Since 23.10.2026, because the card „Podaci" opens the form
+	 *                       of the registration, whose town is a name and a country, with what stands
+	 *                       (`GET /api/me` has answered it this way all along). Until then it was the
+	 *                       typed town only, and a town of the codebook opened an empty box
+	 * @param country        the code of that town's country, whichever road it came by
 	 */
 	record Data(String memberNumber, String firstName, String lastName, String fatherName, String gender,
 			String birthDate, String idNumber, String email, Boolean emailConfirmed, String address,
@@ -94,12 +98,14 @@ class MemberDataApi {
 		return db.sql("select c.member_number, c.first_name, c.last_name, c.father_name, c.gender,"
 						+ " c.birth_date::text, d.document_number, a.email,"
 						+ " case when a.id is null then null else a.email_confirmed_at is not null end,"
-						+ " c.address, c.phone, p.geonames_id, c.city, k.code, c.shirt_size"
+						+ " c.address, c.phone, p.geonames_id, coalesce(p.name, c.city),"
+						+ " coalesce(pk.code, k.code), c.shirt_size"
 						+ " from competitor c"
 						+ " left join competitor_document d on d.competitor_id = c.id"
 						+ " left join account a on a.competitor_id = c.id"
 						+ " left join place p on p.id = c.place_id"
 						+ " left join country k on k.id = c.country_id"
+						+ " left join country pk on pk.id = p.country_id"
 						+ " where c.id = ?")
 				.param(competitor)
 				.query((row, i) -> new Data(row.getString(1), row.getString(2), row.getString(3),

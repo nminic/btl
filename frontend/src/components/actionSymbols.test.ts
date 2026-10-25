@@ -86,6 +86,8 @@ const SYMBOL_OF = new Map<string, { symbol: ActionSymbol; word: string }>([
   ['admin.recordPayment', { symbol: SYMBOL.banknote, word: 'Upiši uplatu' }],
   ['event.copy', { symbol: SYMBOL.copy, word: 'Kopiranje' }],
   ['event.edit', { symbol: SYMBOL.pencil, word: 'Izmena' }],
+  /* The pencil on a member's row (PDL 22.10.2026), which leads to the card „Podaci" of his profile. */
+  ['admin.editMember', { symbol: SYMBOL.pencil, word: 'Izmeni podatke' }],
   /* The pencil on every result of the event page (PDL P9, 18.10.2026), named by whose run it is. */
   ['leagueResults.edit', { symbol: SYMBOL.pencil, word: 'Izmeni' }],
   /* Taking a row out of the entry of results, as a race is taken out of the form of an event. */
@@ -160,7 +162,6 @@ const STAYS_A_WORD = new Map([
   ['nav.login', NOT_AN_ACTION],
   ['newPassword.sending', FORM],
   ['newPassword.submit', FORM],
-  ['nav.membership', NOT_AN_ACTION],
   ['newResult.another', NOT_AN_ACTION],
   ['newResult.toMine', NOT_AN_ACTION],
   ['pager.next', NOT_AN_ACTION],

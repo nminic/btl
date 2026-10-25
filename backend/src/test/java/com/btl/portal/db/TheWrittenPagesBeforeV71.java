@@ -1,6 +1,12 @@
 package com.btl.portal.db;
 
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.jdbc.core.simple.JdbcClient;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,7 +72,60 @@ final class TheWrittenPagesBeforeV71 {
 		return edits;
 	}
 
+	/** One edit of V73: its table has no field column, the body is always the one. */
+	private static final Pattern A_BODY_EDIT = Pattern.compile(
+			"\\(\\s*'((?:[^']|'')*)',\\s*'([^']*)',\\s*(\\d+),\\s*'(\\w+)',\\s*"
+					+ "\\$old\\$(.*?)\\$old\\$,\\s*\\$new\\$(.*?)\\$new\\$\\)",
+			Pattern.DOTALL);
+
+	/**
+	 * V73 UNDONE, so that what is put back is the text V71 left, whatever V73 has written since (24.10.2026).
+	 *
+	 * <p>Every guard that calls {@link #putBack(JdbcClient, String)} puts the pages back to how they stood before an older
+	 * migration and runs it again, and each of them is written against the text V71 left. V73 added the word "drugima"
+	 * in three places and moved the sign-off of the policy; none of that is what those migrations found. Read out of V73
+	 * itself, the way this file reads V71: the new text of each edit stands exactly once and becomes the old text again.
+	 */
+	private static void undoV73(JdbcClient db) {
+		String v73 = theSqlOfV73();
+		List<Edit> edits = new ArrayList<>();
+		Matcher each = A_BODY_EDIT.matcher(v73);
+
+		while (each.find()) {
+			edits.add(new Edit(each.group(1).replace("''", "'"), each.group(2), Integer.parseInt(each.group(3)),
+					each.group(4), "body", each.group(5), each.group(6)));
+		}
+
+		assertThat(edits).as("no edit could be read out of V73, so nothing would be put back").isNotEmpty();
+		assertThat(edits.size() * 2)
+				.as("V73 carries an old text that this reading did not pair with its edit")
+				.isEqualTo(v73.split("\\$old\\$", -1).length - 1);
+
+		for (int index = edits.size() - 1; index >= 0; index--) {
+			Edit edit = edits.get(index);
+			String now = textOf(db, edit);
+
+			assertThat(now).as("%s: the text V73 put in must stand exactly once to be taken out", edit.label())
+					.containsOnlyOnce(edit.newText());
+			write(db, edit, now.replace(edit.newText(), edit.oldText()));
+		}
+	}
+
+	private static String theSqlOfV73() {
+		try {
+			Resource[] found = new PathMatchingResourcePatternResolver().getResources("classpath:db/migration/V73__*.sql");
+
+			assertThat(found).as("V73 is not on the class path").hasSize(1);
+
+			return new String(found[0].getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+		} catch (IOException failed) {
+			throw new UncheckedIOException(failed);
+		}
+	}
+
 	static void putBack(JdbcClient db, String v71) {
+		undoV73(db);
+
 		Matcher removed = THE_REMOVED_SECTION.matcher(v71);
 
 		assertThat(removed.find()).as("V71 no longer names the section of the terms of use it removes").isTrue();

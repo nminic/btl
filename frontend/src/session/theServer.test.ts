@@ -705,6 +705,14 @@ const HIS_PAGE: Record<string, unknown> = {
      `WHAT_A_PAGE_NEEDS`, and `the page of the caller himself` asks that it is not in the page). The
      sample has no telephone, which is how the server says a member has none. */
   address: 'Mihajla Pupina 10',
+  /* HIS SHIRT SIZE, his alone like the address (`MeApi.MyOwnRecord.shirtSize`, since 23.10.2026): the
+     card „Podaci" opens with it, and a profile neither needs it nor may carry it. */
+  shirtSize: 'XL',
+  /* THE THREE HE SEES LOCKED on his card (`MeApi.MyOwnRecord.fatherName`, `.birthDate`, `.idNumber`, since
+     24.10.2026): his alone like the address, and no part of a profile. */
+  fatherName: 'Milan',
+  birthDate: '1975-09-30',
+  idNumber: 'AB12345',
 }
 
 /** What the answer is when somebody signed in with a member behind the account says this. */
@@ -720,7 +728,18 @@ function aMemberSaying(member: Record<string, unknown>): string {
  * Derived from the sample, so a fact added to it tomorrow is measured here on the day it arrives.
  */
 const WHAT_A_PAGE_NEEDS = Object.keys(HIS_PAGE).filter(
-  (key) => !['membershipBasis', 'active', 'referralCode', 'referredCount', 'address'].includes(key),
+  (key) =>
+    ![
+      'membershipBasis',
+      'active',
+      'referralCode',
+      'referredCount',
+      'address',
+      'shirtSize',
+      'fatherName',
+      'birthDate',
+      'idNumber',
+    ].includes(key),
 )
 
 /** The three of those that are ALSO who he is, and so are read by the session as well. */
@@ -1011,9 +1030,18 @@ const A_NEWCOMERS_RECORD: Record<string, unknown> = (() => {
  *  besides them. Derived from the reader's own sample, never from a list of the page. */
 const THE_SIX = ['firstName', 'lastName', 'gender', 'city', 'ageBand', 'firstSeason2027']
 
-/** And the two that are his alone, since 18.10.2026: where a shirt is sent and how he is called. The
- *  data screen draws them in boxes, and the page does not draw them at all. */
-const THE_TWO_THAT_ARE_HIS_ALONE = ['address', 'phone']
+/** And the ones that are his alone: where a shirt is sent and how he is called (18.10.2026), and the
+ *  size of the shirt (23.10.2026). The data screen draws them in boxes, and the page does not draw them
+ *  at all. */
+const THE_TWO_THAT_ARE_HIS_ALONE = ['address', 'phone', 'shirtSize']
+
+/** And the three he sees LOCKED, since 24.10.2026 (PDL, owner: „clan ga vidi ali je disabled za
+ *  menjanje"): his father's name, his date of birth and the number of his document. */
+const THE_LOCKED_THREE = ['fatherName', 'birthDate', 'idNumber']
+
+/** And the one the page needs as well that the card „Podaci" needs too, since 23.10.2026: the country of
+ *  his town, which its form writes beside the town's name. */
+const THE_TOWNS_COUNTRY = ['country']
 
 describe('the data of the caller himself', () => {
   it('is the six facts and his address and no number, for somebody who has registered and has not paid', async () => {
@@ -1028,6 +1056,11 @@ describe('the data of the caller himself', () => {
       firstSeason2027: false,
       address: 'Mihajla Pupina 10',
       phone: '',
+      country: 'RS',
+      shirtSize: 'XL',
+      fatherName: 'Milan',
+      birthDate: '1975-09-30',
+      idNumber: 'AB12345',
     })
     expect(server.asked.map((one) => one.path)).toEqual(['/api/me'])
   })
@@ -1106,7 +1139,7 @@ describe('the data of the caller himself', () => {
     server = serverThat(() => saying(aMemberSaying(HIS_PAGE)))
 
     expect(Object.keys(must(await whatTheServerSaysOfMyData(), 'a member has data too')).toSorted()).toEqual(
-      [...THE_SIX, ...THE_TWO_THAT_ARE_HIS_ALONE].toSorted(),
+      [...THE_SIX, ...THE_TWO_THAT_ARE_HIS_ALONE, ...THE_TOWNS_COUNTRY, ...THE_LOCKED_THREE].toSorted(),
     )
   })
 
@@ -1137,7 +1170,58 @@ describe('the data of the caller himself', () => {
      person whose record is missing his country, his first season, his biography or his two
      choices, because none of them is on it. This is what parts the reader from `profileIn`, which
      would answer nothing for any of these. */
-  it.each(WHAT_A_PAGE_NEEDS.filter((key) => !THE_SIX.includes(key) && key !== 'memberNumber'))(
+  /* **THE LOCKED THREE (24.10.2026)**: the father's name and the date are never missing (V8 holds both
+     NOT NULL), and the number of the document is the one that may be: a member who gave none is answered
+     no key, and the portal reads that as the empty box, as it reads the telephone. */
+  it.each<[string, unknown]>([
+    ['fatherName', undefined],
+    ['fatherName', '   '],
+    ['fatherName', 7],
+    ['birthDate', undefined],
+    ['birthDate', '1975'],
+    ['birthDate', '1975-09-30T10:00:00Z'],
+    ['birthDate', '1975-02-31'],
+    ['birthDate', '1975-13-45'],
+    ['birthDate', 19750930],
+    ['idNumber', 7],
+    ['idNumber', null],
+  ])('does not believe %s when it is sent as %j', async (key, sent) => {
+    const { [key]: _left, ...without } = A_NEWCOMERS_RECORD
+
+    server = serverThat(() =>
+      saying(aMemberSaying(sent === undefined ? without : { ...without, [key]: sent })),
+    )
+
+    expect(await whatTheServerSaysOfMyData()).toBeNull()
+  })
+
+  it('reads a document that is not there as the empty box, and the one that is as it is', async () => {
+    const { idNumber: _none, ...without } = A_NEWCOMERS_RECORD
+
+    server = serverThat(() => saying(aMemberSaying(without)))
+    expect(await whatTheServerSaysOfMyData()).toMatchObject({ idNumber: '' })
+
+    server.stop()
+    server = serverThat(() => saying(aMemberSaying(A_NEWCOMERS_RECORD)))
+    expect(await whatTheServerSaysOfMyData()).toMatchObject({ idNumber: 'AB12345' })
+  })
+
+  /* **AND THE COUNTRY AND THE SIZE ARE ASKED OF HIM SINCE 23.10.2026**: the card „Podaci" opens its town
+     and its size with them, and a box opened on a value the server did not give is the fault of
+     18.10.2026 again. */
+  it.each([...THE_TOWNS_COUNTRY, 'shirtSize'])('is nothing at all without %s, which the card opens with', async (key) => {
+    const { [key]: _left, ...without } = A_NEWCOMERS_RECORD
+
+    server = serverThat(() => saying(aMemberSaying(without)))
+
+    expect(await whatTheServerSaysOfMyData(), `${key} left out`).toBeNull()
+  })
+
+  it.each(
+    WHAT_A_PAGE_NEEDS.filter(
+      (key) => !THE_SIX.includes(key) && key !== 'memberNumber' && !THE_TOWNS_COUNTRY.includes(key),
+    ),
+  )(
     'is still the six when %s is missing, which only a page needs',
     async (key) => {
       const { [key]: _left, ...without } = A_NEWCOMERS_RECORD

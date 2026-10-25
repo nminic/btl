@@ -69,6 +69,10 @@
       "title": "Moji trkački rezultati",
       "description": "Prijavljeni rezultati, faza provere u kojoj se nalaze i bodovi koje su doneli."
     },
+    "myData": {
+      "title": "Moji BTL podaci",
+      "description": "Ime, adresa, telefon, mesto i veličina majice, dok članarina još nije evidentirana."
+    },
     "membership": {
       "title": "Moja BTL članarina",
       "description": "Stanje članstva, plaćanje članarine i uplatnica sa QR kodom."
@@ -169,7 +173,8 @@
       "recordTitle": "{name}, {city}",
       "recordDescription": "{name}: sve trke, bodovi i statistika u Balkanskoj trkačkoj ligi.",
       "awardsTitle": "{name}, priznanja",
-      "awardsDescription": "{name}: pehari i dukati osvojeni u Balkanskoj trkačkoj ligi."
+      "awardsDescription": "{name}: pehari i dukati osvojeni u Balkanskoj trkačkoj ligi.",
+      "dataTitle": "{name}, podaci"
     },
     "event": {
       "title": "Događaj iz kalendara",
@@ -216,6 +221,10 @@
     "rateEvent": {
       "title": "Ocena događaja",
       "description": "Oceni organizaciju, vrednost za novac i ambijent. Ocene bez komentara se objavljuju odmah, a komentar kad ga moderator odobri."
+    },
+    "competitorData": {
+      "title": "Podaci takmičara",
+      "description": "Podaci jednog člana Balkanske trkačke lige, koje vide samo on i administracija."
     }
   },
   "pager": {

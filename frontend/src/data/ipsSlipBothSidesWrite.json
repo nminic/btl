@@ -1,0 +1,18 @@
+{
+  "recipientName": "Sportsko udruženje BTL",
+  "recipientAddress": "Bulevar Arsenija Čarnojevića 77, 11070 Novi Beograd",
+  "account": "105000000000328471",
+  "paypalAddress": "info@balkanskatrkackaliga.net",
+  "slips": [
+    {
+      "season": 2027,
+      "amountRsd": 3600,
+      "payload": "K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD3600,00|SF:289|S:Članarina za 2027. godinu"
+    },
+    {
+      "season": 2028,
+      "amountRsd": 1234.5,
+      "payload": "K:PR|V:01|C:1|R:105000000000328471|N:Sportsko udruženje BTL|I:RSD1234,50|SF:289|S:Članarina za 2028. godinu"
+    }
+  ]
+}

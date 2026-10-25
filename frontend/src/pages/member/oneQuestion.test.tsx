@@ -166,6 +166,9 @@ const WALKED: { screen: string; at: string }[] = [
      `data/seedMessages.ts` out, so `41` is the first row of `test/mock/inbox.json`. */
   { screen: 'pages/member/MessageDetail.tsx', at: '/sr/poruke/41' },
   { screen: 'pages/member/Messages.tsx', at: '/sr/poruke' },
+  /* HIS UNTIL HE IS APPROVED AND NOBODY ELSE'S (PDL 22.10.2026): to a member whose fee stands it is
+     the card „Podaci" of his profile, to one whose fee has lapsed the page he renews on. */
+  { screen: 'pages/member/MyData.tsx', at: '/sr/moji-podaci' },
   { screen: 'pages/member/MyProfile.tsx', at: '/sr/moj-profil' },
   { screen: 'pages/member/MyResults.tsx', at: '/sr/moji-rezultati' },
   { screen: 'pages/member/NewResult.tsx', at: '/sr/rezultat/novi' },
@@ -269,17 +272,18 @@ describe('the one door to „nobody is signed in"', () => {
   })
 
   /**
-   * And the same for the fourth, which arrived on 11.10.2026.
+   * And the same for the fourth, which arrived on 11.10.2026 and changed its form on 23.10.2026.
    *
-   * <p>„Ovaj deo se otvara kad članarina bude evidentirana" is said to somebody who registered
-   * and has not paid, and it is said INSTEAD of a screen of a member's. A screen deciding on it
-   * by itself is the same fault once more - two homes for one fact, and the second home is the
-   * one that would be wrong the day the first is mended. The two screens that DO draw for him
-   * ask the hook beside this one for a different answer (`useScreenForTheUnpaidToo`), so they do
-   * not name this module either.
+   * <p>Somebody who registered and has not paid is SENT to the page he pays on INSTEAD of a screen
+   * of a member's (owner, 22.10.2026, PDL „Član koji još nije platio: bez reči nalog, samo
+   * Članarina"); until that day he was told „Ovaj deo se otvara kad članarina bude evidentirana". A
+   * screen deciding on it by itself is the same fault once more - two homes for one fact, and the
+   * second home is the one that would be wrong the day the first is mended. The two screens that DO
+   * draw for him ask the hooks beside this one for a different answer (`useScreenForTheUnpaidToo`,
+   * `useScreenForTheUnpaidOnly`), so they do not name this module either.
    */
-  it('has a twin for „it opens when your fee is recorded", named by the same one module', () => {
-    const { walked, naming } = modulesNaming('pages/member/NotAMemberYet.tsx')
+  it('has a twin for „you are sent to the page you pay on", named by the same one module', () => {
+    const { walked, naming } = modulesNaming('pages/member/SentToTheFee.tsx')
 
     expect(walked, 'the portal is still here').toBeGreaterThan(WHOLE_PORTAL)
     expect(naming).toEqual([HOOK])
@@ -363,13 +367,18 @@ describe('the one door to „nobody is signed in"', () => {
 })
 
 /**
- * The three things the member area says INSTEAD of itself, and the only three: nobody is signed
- * in; the account races for nobody; and the account has registered and has not paid.
+ * The two things the member area says INSTEAD of itself, and the only two: nobody is signed in; the
+ * account races for nobody. The third, „Ovaj deo se otvara kad članarina bude evidentirana", was said
+ * to somebody who registered and has not paid until 23.10.2026 and is not any more: he is sent to the
+ * page he pays on (PDL 22.10.2026), so the sentence is in {@link GONE_WITH_THE_SCREEN}, asked to be
+ * nowhere.
  */
-const REFUSALS = [
-  'Za ovo treba prijava',
-  'Ovaj deo je za takmičare',
+const REFUSALS = ['Za ovo treba prijava', 'Ovaj deo je za takmičare']
+
+/** What he used to be told, and the words of the screen that told him. */
+const GONE_WITH_THE_SCREEN = [
   'Ovaj deo se otvara kad članarina bude evidentirana',
+  'Registrovao si se, ali članarina još nije evidentirana',
 ]
 
 /**
@@ -387,7 +396,9 @@ const REFUSALS = [
  * `SignIn` and `useTheServersSession` both set the role and the session together.
  */
 async function theHeadingOnceTheAnswerHasArrived(): Promise<HTMLElement> {
-  expect(await screen.findByRole('button', { name: 'Otvori nalog' })).toBeVisible()
+  /* The button behind the picture, under either name: somebody who has not paid is given one without
+     the word „nalog" (`shell.openMyMenu`, PDL 22.10.2026). */
+  expect(await screen.findByRole('button', { name: /^Otvori (nalog|moj meni)$/ })).toBeVisible()
 
   /* AND THEN WAITED FOR AGAIN, because the answer and the screen are two arrivals and
      not one. The menu appearing says the session knows who is asking; the screen behind
@@ -486,12 +497,12 @@ const REFUSED_TO_AN_ACCOUNT_WITH_NO_RECORD = WALKED.filter(
 )
 
 describe('every screen of the member area, to somebody the server has signed in', () => {
-  it('refuses ten of the eleven to an account with no record, and draws the eleventh', () => {
+  it('refuses eleven of the twelve to an account with no record, and draws the twelfth', () => {
     /* The floor under the walk below: the exception is one screen, it is a row of the list, and the
        other ten are what is walked. A second screen dropped from the walk would move both. */
     expect(WALKED.map((one) => one.screen)).toContain(THE_SCREEN_AN_ACCOUNT_WITH_NO_RECORD_IS_DRAWN)
     expect(REFUSED_TO_AN_ACCOUNT_WITH_NO_RECORD).toHaveLength(WALKED.length - 1)
-    expect(REFUSED_TO_AN_ACCOUNT_WITH_NO_RECORD).toHaveLength(10)
+    expect(REFUSED_TO_AN_ACCOUNT_WITH_NO_RECORD).toHaveLength(11)
   })
 
   it.each(REFUSED_TO_AN_ACCOUNT_WITH_NO_RECORD)('does not send $at back to the sign in', async ({ at }) => {
@@ -625,9 +636,9 @@ describe('the member number the screens read', () => {
    * <p><b>This case said until 11.10.2026 that he is told „Ovaj deo je za takmicare", and
    * called it a boundary rather than a decision.</b> It was neither: it was a sentence false
    * of him, because his account HAS a record and what it lacks is a number, and the owner
-   * has since decided what he may do (PDL P8, the entry „Šta sme neplaćen član"). He is told
-   * that the part opens when his fee is recorded, and the walk below measures it on all eleven
-   * addresses.
+   * has since decided what he may do (PDL P8, the entry „Šta sme neplaćen član"). He was told
+   * that the part opens when his fee is recorded until 23.10.2026, and is sent to the page he pays
+   * on since (PDL 22.10.2026); the walk below measures it on every address.
    *
    * <p><b>The record is deliberately a poor one</b> - a basis and nothing else - because what
    * says „there is a record" is the presence of the object and not of any field in it
@@ -638,18 +649,16 @@ describe('the member number the screens read', () => {
     'is missing rather than invented when the record carries no number',
     async () => {
       aServerAnswering({ role: 'competitor', account: 107, member: { membershipBasis: 'payment' } })
-      renderAt('/sr/moj-profil', 'visitor', null)
+      const { router } = renderAt('/sr/moj-profil', 'visitor', null)
 
       /* The wait is given half of the time the case has, which is the arrangement of the cases
          below this one in the file for the new states (`waitsForHalfOfACase`); this case is older
          than that and was reworded, so it carries the half itself. */
-      expect(
-        await screen.findByRole(
-          'heading',
-          { level: 1, name: 'Ovaj deo se otvara kad članarina bude evidentirana' },
-          { timeout: SLOW / 2 },
-        ),
-      ).toBeVisible()
+      /* Asked of the address and not of a heading: a record this poor draws „Tvoji podaci o članstvu
+         nisu stigli" on the page he is sent to, which is that page's business and not this case's. */
+      await waitFor(() => expect(router.state.location.pathname).toBe('/sr/moja-clanarina'), {
+        timeout: SLOW / 2,
+      })
       expect(
         screen.queryByRole('heading', { level: 1, name: 'Ovaj deo je za takmičare' }),
       ).not.toBeInTheDocument()
@@ -697,11 +706,13 @@ describe('every screen of the member area, to somebody who has registered and ha
   /**
    * THE TWO SCREENS THAT ARE DRAWN FOR HIM, and what each calls itself.
    *
-   * <p>PDL P8, the entry „Šta sme neplaćen član" (10.10.2026, chosen by the owner between offered
-   * outcomes; the sentence is the record's): „Sme: izbor kategorije i plaćanje, lozinku, adresu
-   * pošte i svoje podatke za evidenciju i majicu." Paying and choosing a category are
-   * „Moja članarina", and the password and his data are the settings. The other nine screens are
-   * not his yet, and each of them tells him so.
+   * <p>PDL 22.10.2026, „Član koji još nije platio: bez reči nalog, samo Članarina": „Neka ima u
+   * navigaciji stranu Moji Podaci dok nije odobren koja je iznad Moja Članarina", and „Sve opcije koje
+   * mu nisu dostupne privremeno (dakle sve osim Članarine) ne treba da mu uopšte budu dostupne [...]
+   * Kad kažem dostupne, mislim vidljive niti deep linkom dostupne." (the owner's words), with the
+   * address answered by the page he pays on (chosen by the owner between offered outcomes with the
+   * recommendation). Paying and choosing a category are „Moja članarina", and his data are „Moji
+   * podaci". The settings were drawn to him until 23.10.2026 and are not any more.
    *
    * <p><b>Written by hand, and held on both sides.</b> The walk below is derived from `WALKED`,
    * which has a floor of its own (the module graph and the router, above), and the case right
@@ -710,7 +721,7 @@ describe('every screen of the member area, to somebody who has registered and ha
    */
   const HIS_OWN = [
     { screen: 'pages/member/Membership.tsx', heading: 'Moja članarina' },
-    { screen: 'pages/member/Settings.tsx', heading: 'Podešavanja' },
+    { screen: 'pages/member/MyData.tsx', heading: 'Moji podaci' },
   ]
 
   const THE_TWO = WALKED.flatMap((one) => {
@@ -719,14 +730,14 @@ describe('every screen of the member area, to somebody who has registered and ha
     return his === undefined ? [] : [{ ...one, heading: his.heading }]
   })
 
-  const THE_OTHER_NINE = WALKED.filter((one) => !HIS_OWN.some((own) => own.screen === one.screen))
+  const THE_OTHER_TEN = WALKED.filter((one) => !HIS_OWN.some((own) => own.screen === one.screen))
 
-  it('walks the two that are drawn for him and the nine that are not, and nothing else', () => {
+  it('walks the two that are drawn for him and the ten that are not, and nothing else', () => {
     expect(THE_TWO.map((one) => one.screen).toSorted()).toEqual(
       HIS_OWN.map((own) => own.screen).toSorted(),
     )
-    expect(THE_OTHER_NINE).toHaveLength(WALKED.length - HIS_OWN.length)
-    expect(THE_OTHER_NINE).toHaveLength(9)
+    expect(THE_OTHER_TEN).toHaveLength(WALKED.length - HIS_OWN.length)
+    expect(THE_OTHER_TEN).toHaveLength(10)
   })
 
   it('ends a wait that never succeeds in an assertion and not in its own clock', () => {
@@ -736,40 +747,36 @@ describe('every screen of the member area, to somebody who has registered and ha
   })
 
   it.each(THE_TWO)(
-    'draws its own page at $at, and not a sentence about a part that is shut',
+    'draws its own page at $at, and does not send him away',
     async ({ at, heading }) => {
       aServerAnswering({ role: 'competitor', account: 107, member: aNeverPaidRecord })
-      renderAt(at, 'visitor', null)
+      const { router } = renderAt(at, 'visitor', null)
 
       expect((await theHeadingOnceTheAnswerHasArrived()).textContent).toBe(heading)
+      expect(router.state.location.pathname).toBe(at)
     },
     SLOW,
   )
 
-  it.each(THE_OTHER_NINE)(
-    'tells him at $at that it opens when his fee is recorded, and where he pays it',
+  it.each(THE_OTHER_TEN)(
+    'sends him from $at to the page he pays on, and says nothing of the page he was sent from',
     async ({ at }) => {
       aServerAnswering({ role: 'competitor', account: 107, member: aNeverPaidRecord })
-      renderAt(at, 'visitor', null)
+      const { router } = renderAt(at, 'visitor', null)
 
-      expect((await theHeadingOnceTheAnswerHasArrived()).textContent).toBe(
-        'Ovaj deo se otvara kad članarina bude evidentirana',
-      )
+      expect((await theHeadingOnceTheAnswerHasArrived()).textContent).toBe('Moja članarina')
 
-      /* Read inside the screen rather than on the page, because the menu behind the picture
-         has a „Moja članarina" of its own and the header has a way home: the sentence is
-         measured by what stands under it. The way onward is the page he pays on and not the
-         front page and not the sign in - he is signed in already, and the front page would
-         leave him looking for it. */
-      const mine = within(screen.getByRole('main'))
+      /* WHERE HE ENDED UP, asked of the router and not of the heading: a heading says what is drawn and
+         the address says where he is. And replaced rather than pushed, so Back does not land on the
+         address that sends him on again. */
+      expect(router.state.location.pathname).toBe('/sr/moja-clanarina')
+      expect(router.state.historyAction).toBe('REPLACE')
 
-      expect(mine.getByText(/Registrovao si se, ali članarina još nije evidentirana/)).toBeVisible()
-      expect(mine.getByRole('link', { name: 'Moja članarina' })).toHaveAttribute(
-        'href',
-        '/sr/moja-clanarina',
-      )
-      expect(mine.queryByRole('link', { name: 'Naslovna strana' })).not.toBeInTheDocument()
-      expect(mine.queryByRole('link', { name: 'Prijava' })).not.toBeInTheDocument()
+      /* The sentence he used to be told, and the screen it stood on: nothing on the page he lands on
+         says another page exists. */
+      for (const gone of GONE_WITH_THE_SCREEN) {
+        expect(screen.queryByText(gone)).not.toBeInTheDocument()
+      }
     },
     SLOW,
   )

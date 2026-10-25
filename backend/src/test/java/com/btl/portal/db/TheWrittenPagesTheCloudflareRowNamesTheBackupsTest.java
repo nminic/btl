@@ -296,9 +296,14 @@ class TheWrittenPagesTheCloudflareRowNamesTheBackupsTest extends DatabaseTest {
 	 * {@link #v70ChangesTheRowAndMovesTheSignOffInFourSectionsAndChangesNothingElse}.
 	 */
 	private void theSignOffsStandAsTheyDoNow(String language) {
+		/* V73 moved the policy's on to 24.10.2026 (PDL, "Datum Poslednja izmena se pomera"), so 22.10.2026 stands on the
+		   rulebook and the terms alone. */
 		assertThat(placesWhichCarry(language, signOffAfter(language)))
-				.as("the %s sign-off of 22.10.2026 must stand on the three documents and nowhere else", language)
-				.containsExactlyInAnyOrder(THE_POLICY_SIGN_OFF, THE_RULEBOOK_SIGN_OFF, new Place("uslovi-koriscenja", 11));
+				.as("the %s sign-off of 22.10.2026 must stand on the rulebook and the terms, and not on the policy",
+						language)
+				.containsExactlyInAnyOrder(THE_RULEBOOK_SIGN_OFF, new Place("uslovi-koriscenja", 11));
+		assertThat(bodyOf(language, THE_POLICY_SIGN_OFF))
+				.containsOnlyOnce(language.equals("sr") ? "Poslednja izmena: 24.10.2026." : "Last amended: 24.10.2026.");
 
 		for (String gone : List.of(signOffBefore(language), rulebookSignOffIn(language), termsSignOffIn(language))) {
 			assertThat(placesWhichCarry(language, gone))
@@ -404,9 +409,11 @@ class TheWrittenPagesTheCloudflareRowNamesTheBackupsTest extends DatabaseTest {
 				.contains("Cloudflare @ politika-privatnosti #5 sr: found 0 times, and its new text is already there",
 						"Cloudflare @ politika-privatnosti #5 en: found 0 times, and its new text is already there");
 		assertThat(reportOf(error).lines().toList())
-				.as("the sign-off is already moved and V70 did not say so")
-				.contains("Cloudflare date @ politika-privatnosti #7 sr: found 0 times, and its new text is already there",
-						"Cloudflare date @ politika-privatnosti #7 en: found 0 times, and its new text is already there");
+				.as("the sign-off has moved on and V70 did not say its old date is gone")
+				/* The new text of V70 (22.10.2026) is not there either since V73 moved the policy on to 24.10.2026, so
+				   the report says only that the old date is found nowhere. */
+				.contains("Cloudflare date @ politika-privatnosti #7 sr: found 0 times",
+						"Cloudflare date @ politika-privatnosti #7 en: found 0 times");
 	}
 
 	/**

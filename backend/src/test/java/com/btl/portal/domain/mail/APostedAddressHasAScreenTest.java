@@ -74,10 +74,18 @@ class APostedAddressHasAScreenTest {
 			"postedAddresses.json");
 
 	/** Every distinct path a message can carry, asked of the enum rather than of its text. */
+	/**
+	 * Every address a letter of this portal carries: the one each {@link Message} hangs its token
+	 * on, and the page „Moja članarina" the letter after a confirmed address names (PDL 23.10.2026).
+	 */
 	private static List<String> whatTheseMessagesCarry() {
-		return List.copyOf(new TreeSet<>(Arrays.stream(Message.values())
+		TreeSet<String> carried = new TreeSet<>(Arrays.stream(Message.values())
 				.map(Message::path)
-				.toList()));
+				.toList());
+
+		carried.add(WhatTheWelcomeSays.MEMBERSHIP_PAGE);
+
+		return List.copyOf(carried);
 	}
 
 	private static List<String> whatTheFrontendIsToldToServe() {

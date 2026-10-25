@@ -1,24 +1,25 @@
 import { act, configure, getConfig, screen, within } from '@testing-library/react'
-import { useSession } from '../../session/useSession'
-import { setupUser } from '../../test/user'
 import { afterEach, describe, expect, it } from 'vitest'
 import { hisPageAsServed } from '../../test/hisPage'
-import { aNeverPaidRecord, neverPaidAsServed } from '../../test/neverPaid'
+import { neverPaidAsServed } from '../../test/neverPaid'
 import { renderAt } from '../../test/render'
 import { answeredWith, isResource, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 
 /**
- * THE SETTINGS SCREEN HAS THREE SHAPES, AND WHICH ONE A READER IS DRAWN IS DECIDED BY WHO HE IS.
+ * THE SETTINGS SCREEN HAS THREE SHAPES, AND WHICH ONE A READER IS DRAWN IS DECIDED BY WHO HE IS. A
+ * FOURTH READER, SOMEBODY WHO REGISTERED AND HAS NOT PAID, IS NOT DRAWN IT AT ALL.
  *
  * <p>PDL P8, the entry „Šta sme neplaćen član" (10.10.2026) and its addition of 11.10.2026, both
  * chosen by the owner between offered outcomes - the sentences are the record's and not his own
  * words:
  *
  * <ul>
- * <li><b>Somebody who registered and has not paid</b> may change „lozinku, adresu pošte i svoje
- * podatke za evidenciju i majicu", and may not do „ništa što ga čini vidljivim ili ga uključuje u
- * ligu: sliku, biografiju, skrivanje profila".</li>
+ * <li><b>Somebody who registered and has not paid</b> was drawn the password and the theme until
+ * 23.10.2026, and is sent to the page he pays on since: the owner decided on 22.10.2026 (PDL, „Član
+ * koji još nije platio: bez reči nalog, samo Članarina") that „Sve opcije koje mu nisu dostupne
+ * privremeno (dakle sve osim Članarine) ne treba da mu uopšte budu dostupne", and „vidljive niti deep
+ * linkom dostupne". His data are on the page „Moji podaci" (`myData.test.tsx`).</li>
  * <li><b>A member whose fee has lapsed</b> „dopire samo do obnove i svog profila": the data and the
  * password are answered 404 (`PUT /api/me`, `PUT /api/me/password`), and the picture, the
  * biography and the switch with them.</li>
@@ -67,9 +68,6 @@ const PANELS = {
   mail: 'Pošta',
   privacy: 'Privatnost',
 } as const
-
-const WHAT_OPENS_LATER =
-  'Slika, biografija i skrivanje profila otvaraju se kad tvoja članarina bude evidentirana.'
 
 /**
  * The sentence a member whose fee has lapsed is told (PDL P8, 16.10.2026, „Članu kome je istekla
@@ -125,171 +123,21 @@ async function drawn(): Promise<void> {
 }
 
 describe('the settings of somebody who registered and has not paid', () => {
-  it('draws his data and his password and the theme, and nothing that makes a member visible', async () => {
+  /* **HE IS NOT DRAWN THEM, AND NOT TOLD THEY EXIST** (PDL 22.10.2026, „Član koji još nije platio:
+     bez reči nalog, samo Članarina"): until 23.10.2026 he was drawn the password and the theme, with a
+     sentence that three more opened with his fee. The address sends him to the page he pays on, and
+     nothing of the screen is drawn on the way. */
+  it('sends him to the page he pays on and draws none of the settings', async () => {
     stand(neverPaidAsServed())
-    renderAt('/sr/podesavanja', 'visitor', null)
+    const { router } = renderAt('/sr/podesavanja', 'visitor', null)
 
-    await drawn()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Moja članarina' })).toBeVisible()
+    expect(router.state.location.pathname).toBe('/sr/moja-clanarina')
+    expect(screen.queryByRole('heading', { level: 1, name: 'Podešavanja' })).not.toBeInTheDocument()
 
-    /* What the entry lets him do. His data arrives behind a read of its own, so it is waited for. */
-    expect(await screen.findByRole('heading', { level: 2, name: PANELS.data })).toBeVisible()
-    expect(screen.getByDisplayValue('Tek')).toBeVisible()
-    expect(screen.getByDisplayValue('Stigao')).toBeVisible()
-    expect(screen.getByRole('heading', { level: 2, name: PANELS.password })).toBeVisible()
-
-    /* What it does not: „sliku, biografiju, skrivanje profila". */
-    expect(screen.queryByRole('heading', { name: PANELS.picture })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: PANELS.biography })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: PANELS.privacy })).not.toBeInTheDocument()
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-  }, SLOW)
-
-  it('is told, once, that the three he does not see open with his fee', async () => {
-    stand(neverPaidAsServed())
-    renderAt('/sr/podesavanja', 'visitor', null)
-
-    await drawn()
-
-    expect(await screen.findByText(WHAT_OPENS_LATER)).toBeVisible()
-    expect(screen.getAllByText(WHAT_OPENS_LATER)).toHaveLength(1)
-    /* And not the other one: his fee was never recorded, so there is nothing to be renewed. */
-    expectNoSentenceAboutRenewal()
-  }, SLOW)
-
-  it('draws his data from the answer that has a row for him, and not from the public list', async () => {
-    /* The list the server serves is every member whose fee stands, and he is on no row of it, so a
-       screen that looked him up THERE would draw nothing of his. His data is asked for under his own
-       cookie (`GET /api/me`) a second time, after the shell's own question, and the language of his
-       mail (`MailLanguageChoice`) is a third: it is read off the same answer by a panel of its own,
-       which is drawn to every kind of reader and so cannot borrow a read that is made only for him. */
-    const { asked } = stand(neverPaidAsServed())
-
-    renderAt('/sr/podesavanja', 'visitor', null)
-
-    await drawn()
-    await screen.findByRole('heading', { level: 2, name: PANELS.data })
-
-    expect(asked.filter((one) => one.path === '/api/me')).toHaveLength(3)
-  }, SLOW)
-
-  it('says his data could not be read, and offers to ask again, when the server will not give it', async () => {
-    /* The shell's question is answered, and the one that follows is not: the second read of the
-       same address is the screen's own. Said in the portal's own words (`components/Resource`) and
-       not in a sentence of this screen's. The THIRD read is the language panel's and is answered,
-       because this case is about his data: the panels read in the order they stand on the screen
-       (the shell, his data, the language of his mail), which is what makes „the second" his. */
-    let answered = 0
-
-    stand(
-      serverThat((path) => {
-        if (path !== '/api/me') {
-          return null
-        }
-
-        answered += 1
-
-        return answered === 2
-          ? new Response(null, { status: 500 })
-          : new Response(
-              JSON.stringify({
-                role: 'competitor',
-                account: 1,
-                member: aNeverPaidRecord,
-                mailLanguage: 'sr',
-              }),
-              { status: 200, headers: { 'content-type': 'application/json' } },
-            )
-      }),
-    )
-    renderAt('/sr/podesavanja', 'visitor', null)
-
-    await drawn()
-
-    expect(await screen.findByText('Podaci se ne mogu učitati.')).toBeVisible()
-    expect(screen.getByRole('button', { name: /Pokušaj ponovo/ })).toBeVisible()
-    /* And the rest of the screen is there, because a failed read of his data is not a reason to
-       take his password or the theme away from him. */
-    expect(screen.getByRole('heading', { level: 2, name: PANELS.password })).toBeVisible()
-  }, SLOW)
-})
-
-/**
- * SOMEBODY ELSE SIGNING IN WHILE THE SETTINGS ARE OPEN, through the portal's own live writer.
- *
- * <p>`theServerSignedMeIn` is the very call `member/SignIn.tsx` makes with the answer to `GET
- * /api/me`, `SessionProvider` sits above the router so it never comes down, and the sign in screen
- * can be walked to while somebody is signed in: a shared laptop at a race is the ordinary case. It
- * moves what the server answers in the same click, so a case built on it measures whether the SCREEN
- * reacts and not whether the stand-in server can.
- */
-function SignInAsSomebodyWhoHasNotPaid({ account }: { account: number }) {
-  const { theServerSignedMeIn } = useSession()
-
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        theServerSignedMeIn({
-          account,
-          memberNumber: null,
-          country: 'RS',
-          firstSeason: 2027,
-          teamId: null,
-          membershipBasis: 'payment',
-          membershipSeason: null,
-          referralCode: '3d6b1f0a9c2e4478',
-          referredCount: 0,
-          hasARecord: true,
-          feeStands: false,
-        })
-      }}
-    >
-      prijavi drugog
-    </button>
-  )
-}
-
-describe('the settings of somebody who has not paid, when somebody else signs in beside them', () => {
-  /* **THE FAULT THIS EXISTS FOR IS THE SECOND MAN READING THE FIRST ONE'S NAME OUT OF THE BOX.**
-     His data is held by the account it was asked under (`useMyData`), and the screen is what hands
-     the hook that account. A screen that handed it a constant would hold the first answer for ever:
-     the effect asks again only when the account it is keyed by changes, so the second reader would
-     be drawn the first reader's name and could press „Sačuvaj" on it. The cheaper mutation - the
-     hook ignoring the account - is held by `useMyData.test.tsx`; this is the wire between the two. */
-  it('draws the second reader his own data, and not the first reader\'s', async () => {
-    const user = setupUser()
-    let whose: Record<string, unknown> = {}
-
-    stand(
-      serverThat((path) =>
-        path === '/api/me'
-          ? new Response(
-              JSON.stringify({
-                role: 'competitor',
-                account: 1,
-                member: { ...aNeverPaidRecord, ...whose },
-              }),
-              { status: 200, headers: { 'content-type': 'application/json' } },
-            )
-          : null,
-      ),
-    )
-    renderAt(
-      '/sr/podesavanja',
-      'visitor',
-      null,
-      undefined,
-      undefined,
-      <SignInAsSomebodyWhoHasNotPaid account={2} />,
-    )
-
-    expect(await screen.findByDisplayValue('Tek')).toBeVisible()
-
-    whose = { firstName: 'Ana', lastName: 'Anić' }
-    await user.click(screen.getByRole('button', { name: 'prijavi drugog' }))
-
-    expect(await screen.findByDisplayValue('Ana')).toBeVisible()
-    expect(screen.queryByDisplayValue('Tek')).not.toBeInTheDocument()
+    for (const panel of Object.values(PANELS)) {
+      expect(screen.queryByRole('heading', { name: panel }), panel).not.toBeInTheDocument()
+    }
   }, SLOW)
 })
 
@@ -312,9 +160,6 @@ describe('the settings of a member whose fee has lapsed', () => {
     }
 
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-    /* And not the sentence that is for somebody who has not paid: he HAS a number, and „kad tvoja
-       članarina bude evidentirana" is said to a person whose fee was never recorded. */
-    expect(screen.queryByText(WHAT_OPENS_LATER)).not.toBeInTheDocument()
     /* What he is told instead: his data and his password open once the fee is renewed, and where. */
     expectTheSentenceAboutRenewal()
   }, SLOW)
@@ -404,7 +249,6 @@ describe('the settings of an administration account with no member', () => {
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
       /* Nothing is waiting on a renewal for somebody who has no fee: the sentence is a lapsed member's. */
       expectNoSentenceAboutRenewal()
-      expect(screen.queryByText(WHAT_OPENS_LATER)).not.toBeInTheDocument()
     },
     SLOW,
   )
@@ -413,59 +257,60 @@ describe('the settings of an administration account with no member', () => {
 describe('the settings of a member whose fee stands', () => {
   /* 000001 is freed of the fee in the generated data and stands. The anchor of the other two:
      everything is drawn, in the order it was always drawn in. */
-  it('draws every panel there is, and not the sentence for somebody who has not paid', async () => {
+  it('draws every panel there is', async () => {
     renderAt('/sr/podesavanja', 'competitor', '000001')
 
     await drawn()
 
-    for (const panel of [
-      PANELS.data,
-      PANELS.picture,
-      PANELS.biography,
-      PANELS.password,
-      PANELS.privacy,
-    ]) {
+    for (const panel of [PANELS.picture, PANELS.biography, PANELS.password, PANELS.privacy]) {
       expect(await screen.findByRole('heading', { name: panel }), panel).toBeVisible()
     }
 
+    expect(screen.queryByRole('heading', { name: PANELS.data })).not.toBeInTheDocument()
+
     expect(screen.getByRole('checkbox')).toBeVisible()
-    expect(screen.queryByText(WHAT_OPENS_LATER)).not.toBeInTheDocument()
     /* Nothing to be told: his fee stands, so nothing is waiting on a renewal. */
     expectNoSentenceAboutRenewal()
   }, SLOW)
 
-  it('draws them in the order of how much each is his own, with the password beside the personal data', async () => {
+  /* THREE ROWS OF TWO, IN THE OWNER'S ORDER (PDL 22.10.2026, „Strana Podešavanja u tri visoka reda sa
+     dve kolone"): the password and who sees the profile, the picture and the words about himself, the
+     theme and the language of the mail. And the personal data are not among them, for him either: they
+     are on the card „Podaci" of his profile. */
+  it('draws them in three rows, the password and the privacy, the picture and the words, the theme and the mail', async () => {
     renderAt('/sr/podesavanja', 'competitor', '000001')
 
     await drawn()
     await screen.findByRole('heading', { level: 2, name: PANELS.privacy })
+    await screen.findByRole('heading', { level: 2, name: PANELS.biography })
 
     expect(
       within(screen.getByRole('main'))
         .getAllByRole('heading', { level: 2 })
         .map((one) => one.textContent),
     ).toEqual([
-      PANELS.data,
       PANELS.password,
+      PANELS.privacy,
       PANELS.picture,
       PANELS.biography,
       PANELS.appearance,
       PANELS.mail,
-      PANELS.privacy,
     ])
   }, SLOW)
 })
 
 /**
- * WHICH PANELS STAND BESIDE WHICH (PDL P11, owner, 18.10.2026, „Strana Podešavanja, sa snimaka":
- * „Boksovi „Tema" i „Jezik pošte" stoje jedan pored drugog u istom redu; boks za promenu lozinke
- * stoji pored boksa za lične podatke").
+ * WHICH PANELS STAND BESIDE WHICH (PDL 22.10.2026, „Strana Podešavanja u tri visoka reda sa dve
+ * kolone": „lozinka prelazi levo na njeno mesto, a Privatnost tekst iz priloga ide u desni stubac pored
+ * boksa za lozinku [...] Profilna slika sa svim opcijama treba da bude u nivou levog stupca, a u desni
+ * stubac treba da dođe u njenoj visini Tekst o sebi boks"; and from 18.10.2026 „Boksovi „Tema" i
+ * „Jezik pošte" stoje jedan pored drugog u istom redu").
  *
  * <p>jsdom lays nothing out, so "beside" is asked in the only terms it can answer: two panels share a
  * `.member__pair`, the one element the stylesheet turns into two columns from 51.25em
  * (`styles/settingsLayout.test.ts` holds the rule, and `geometry/settings.geometry.ts` asks Chrome
- * where they then LAND). Asked of each of the four ways of being signed in, because the panels of each
- * are different: the pair a member is drawn is not the pair somebody who has not paid is, and an
+ * where they then LAND). Asked of each of the three ways of being drawn the screen, because the panels of
+ * each are different: the pair a member is drawn is not the pair a member whose fee has lapsed is, and an
  * administration account has its password with no neighbour at all.
  */
 describe('which panels of the settings stand beside which', () => {
@@ -476,32 +321,26 @@ describe('which panels of the settings stand beside which', () => {
   const panelsIn = (pair: Element | null): (string | null)[] =>
     [...(pair?.querySelectorAll(':scope > section > h2') ?? [])].map((one) => one.textContent)
 
-  it('puts the password beside the personal data and the theme beside the language of the mail, for a member whose fee stands', async () => {
+  it('puts the password beside the privacy, the picture beside the words, and the theme beside the mail, for a member whose fee stands', async () => {
     renderAt('/sr/podesavanja', 'competitor', '000001')
 
     await drawn()
     await screen.findByRole('heading', { level: 2, name: PANELS.privacy })
+    await screen.findByRole('heading', { level: 2, name: PANELS.biography })
 
-    expect(panelsIn(pairOf(PANELS.data))).toEqual([PANELS.data, PANELS.password])
+    expect(panelsIn(pairOf(PANELS.password))).toEqual([PANELS.password, PANELS.privacy])
+    expect(panelsIn(pairOf(PANELS.picture))).toEqual([PANELS.picture, PANELS.biography])
     expect(panelsIn(pairOf(PANELS.appearance))).toEqual([PANELS.appearance, PANELS.mail])
-    expect(pairOf(PANELS.data), 'the two pairs are one').not.toBe(pairOf(PANELS.appearance))
+    expect(new Set([pairOf(PANELS.password), pairOf(PANELS.picture), pairOf(PANELS.appearance)]).size,
+      'the three rows are three').toBe(3)
 
-    /* And the panels that are not in a pair are not: the picture, the words about himself and the
-       switch each take a row of their own. */
-    for (const panel of [PANELS.picture, PANELS.biography, PANELS.privacy]) {
-      expect(pairOf(panel), panel).toBeNull()
+    /* And every pair is one of the tall rows (`.member__row`), whose two boxes are as tall as each
+       other (`Member.css`). */
+    for (const panel of [PANELS.password, PANELS.picture, PANELS.appearance]) {
+      expect(pairOf(panel), panel).toHaveClass('member__row')
+      /* Two boxes and nothing else, so nothing a panel draws beside itself takes a cell of the row. */
+      expect(pairOf(panel)?.children, panel).toHaveLength(2)
     }
-  }, SLOW)
-
-  it('puts them beside each other for somebody who has not paid too', async () => {
-    stand(neverPaidAsServed())
-    renderAt('/sr/podesavanja', 'visitor', null)
-
-    await drawn()
-    await screen.findByRole('heading', { level: 2, name: PANELS.data })
-
-    expect(panelsIn(pairOf(PANELS.data))).toEqual([PANELS.data, PANELS.password])
-    expect(panelsIn(pairOf(PANELS.appearance))).toEqual([PANELS.appearance, PANELS.mail])
   }, SLOW)
 
   it('puts the theme beside the language of the mail for a member whose fee has lapsed, who has neither the data nor the password', async () => {
@@ -514,7 +353,7 @@ describe('which panels of the settings stand beside which', () => {
     expect(screen.queryByRole('heading', { level: 2, name: PANELS.password })).toBeNull()
   }, SLOW)
 
-  it('leaves the password alone in its row for an administration account, which has no personal data to stand beside', async () => {
+  it('leaves the password alone in its row for an administration account, which has no profile to hide', async () => {
     stand(
       serverThat((path) => {
         if (path === '/api/me') {

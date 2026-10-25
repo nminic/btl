@@ -14,8 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * WHAT THE MESSAGE PROMISES IS WHAT THE SCHEMA ACTUALLY DOES, and PostgreSQL is
  * the one asked.
  *
- * <p>Twenty four hours for confirming an address and one hour for a password link
- * are the owner's numbers, and they are written down twice: once as the column's
+ * <p>Seven days for confirming an address (owner, 23.10.2026; twenty four hours until then)
+ * and one hour for a password link are the owner's numbers, and they are written down twice: once as the column's
  * own default, and once in {@code Message} so the message can say it out loud.
  * Nothing but this joins them, and a message that promises a day about a link the
  * schema ends in an hour sends the member back to a door that shut while he was
@@ -49,11 +49,29 @@ class HowLongALinkLastsMatchesTheSchemaTest extends DatabaseTest {
 			   sentence below asks after the TABLE's default rather than after a number
 			   written beside the message. */
 			Message.INVITED_AS_A_MODERATOR, "password_reset_token",
-			/* AND SO DOES THE MEMBER'S, FOR THE SAME REASON AND BY THE OWNER'S OWN CHOICE
-			   OF 25.09.2026 between one hour in this row and a longer life somewhere else.
-			   Three messages naming two tables is therefore the expected shape here, and the
-			   biconditional below is what keeps that from meaning „any two may collide". */
+			/* AND SO DOES THE MEMBER'S, FOR THE SAME REASON. Three messages naming two tables
+			   is therefore the expected shape here, and the biconditional below is what keeps
+			   that from meaning „any two may collide". */
 			Message.INVITED_AS_A_MEMBER, "password_reset_token");
+
+	/**
+	 * WHOSE DEFAULT EACH MESSAGE'S PROMISE IS HELD TO, which is the row it lives in for every
+	 * message but one.
+	 *
+	 * <p><b>The member's invitation lasts as long as the confirmation</b> (the owner chose it among
+	 * the options offered, with my recommendation, PDL 23.10.2026, „Poruka posle potvrde adrese i rok
+	 * nedovršene registracije": seven days, where it was one hour), while its row stays a
+	 * reset's, whose default stays the hour of a forgotten password. So its seven days are written
+	 * onto the row when it is minted ({@code AnInvitationOfAMember}), and what they are held to here
+	 * is the confirmation's default, which is the owner's own measure of them. That the row really
+	 * is minted with them is measured by {@code AnInvitationLastsWhatItSaysTest}, over both routes
+	 * that mint one.
+	 */
+	private static final Map<Message, String> WHOSE_DEFAULT_IT_LASTS = Map.of(
+			Message.CONFIRM_THE_ADDRESS, "email_verification_token",
+			Message.SET_A_NEW_PASSWORD, "password_reset_token",
+			Message.INVITED_AS_A_MODERATOR, "password_reset_token",
+			Message.INVITED_AS_A_MEMBER, "email_verification_token");
 
 	/** How long the column's own default actually gives, asked of PostgreSQL. */
 	private Duration whatTheSchemaGives(String table) {
@@ -78,6 +96,9 @@ class HowLongALinkLastsMatchesTheSchemaTest extends DatabaseTest {
 		assertThat(WHERE_THE_LINK_LIVES.keySet())
 				.as("a message was added and nothing here measures how long its link lasts")
 				.containsExactlyInAnyOrder(Message.values());
+		assertThat(WHOSE_DEFAULT_IT_LASTS.keySet())
+				.as("a message was added and nothing here says whose default it lasts")
+				.containsExactlyInAnyOrder(Message.values());
 	}
 
 	/**
@@ -89,7 +110,7 @@ class HowLongALinkLastsMatchesTheSchemaTest extends DatabaseTest {
 	@ParameterizedTest
 	@EnumSource(Message.class)
 	void whatTheMessagePromisesTheSchemaGives(Message message) {
-		Duration given = whatTheSchemaGives(WHERE_THE_LINK_LIVES.get(message));
+		Duration given = whatTheSchemaGives(WHOSE_DEFAULT_IT_LASTS.get(message));
 
 		assertThat(given.toSeconds())
 				.as("%s tells the member the link lasts %s and the schema gives %s",

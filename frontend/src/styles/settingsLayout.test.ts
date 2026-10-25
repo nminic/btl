@@ -40,6 +40,14 @@ describe('two panels of the settings, side by side', () => {
     expect(rule.getPropertyValue('grid-template-columns')).toBe('repeat(2, minmax(0, 1fr))')
   })
 
+  /* THE THREE ROWS OF THE SETTINGS ARE THE EXCEPTION, since 23.10.2026: the owner asked for the words
+     about oneself „u njenoj visini", the height of the picture beside them (PDL, „Strana Podešavanja u
+     tri visoka reda sa dve kolone"), so in a row the two boxes stretch to each other. A pair that is not
+     a row keeps `start`, above. */
+  it('stretch the two boxes of a row of the settings to each other', () => {
+    expect(ruleFor(MEMBER_CSS, '.member__row', 'Member.css').getPropertyValue('align-items')).toBe('stretch')
+  })
+
   it('leaves a panel with no neighbour the whole row', () => {
     const rule = ruleInMedia(
       MEMBER_CSS,
