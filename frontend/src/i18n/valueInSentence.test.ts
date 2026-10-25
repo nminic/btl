@@ -428,6 +428,12 @@ describe('a sentence with a value put into it', () => {
       'membership.firstPayment',
       'membership.firstSeasonClosed',
       'membership.firstSeasonOpen',
+      /* What the balance takes off the slip and what is left to send (owner, 25.10.2026, the
+         sentence chosen as offered). Both are amounts with their money after them, written by
+         `money` inside `member/WhatHeSends.tsx`'s own `written`, so no arrow is read off this call:
+         „Balans pokriva 700 RSD, pa uplaćuješ 4.100 RSD." puts each after a verb as its object, and
+         a figure with its money does not decline. */
+      'membership.fromTheBalance',
       'membership.inTeam',
       'membership.junior <- money',
       /* The team a member is about to leave, and the case it wants is the one

@@ -6,7 +6,7 @@ import { SLOW } from '../test/slow'
 import { clearResourceCache, loadResource } from './client'
 import { renderAt } from '../test/render'
 import { theCookieNames } from '../test/setup'
-import { membersAsServed, serverThat } from '../test/serverAnswers'
+import { anInvoice, invoiceAsServed, membersAsServed, serverThat } from '../test/serverAnswers'
 import {
   aCompetitor,
   asAnswered,
@@ -385,6 +385,8 @@ describe('a member freed of the fee, on the answer the server gives', () => {
     expect(generatedBasis(stillAMember)).toBe('feeExempt')
 
     const { stop } = meAnswering({ memberNumber: stillAMember, membershipBasis: 'payment' })
+    /* And the route that says what he sends, which is asked only where a slip is drawn. */
+    const owes = invoiceAsServed(anInvoice(2027, 'RSD'))
 
     try {
       renderAt('/sr/moja-clanarina', 'competitor', stillAMember, undefined, '2026-11-01')
@@ -392,10 +394,24 @@ describe('a member freed of the fee, on the answer the server gives', () => {
       expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
       expect(screen.queryByText(/Oslobođen si plaćanja/)).not.toBeInTheDocument()
     } finally {
+      owes.stop()
       stop()
     }
   })
 })
+
+/**
+ * The referral link as the page draws it, read once the box that copies it is there.
+ *
+ * Waited for through the copy button, which stands in every shape of the link, and then READ, so
+ * a page that draws another shape fails on what it drew and not on a wait the case's clock ends
+ * (`btl/CLAUDE.md`, section 25).
+ */
+async function theLinkDrawn(copy = 'Kopiraj link za preporuku'): Promise<string> {
+  await screen.findByRole('button', { name: copy })
+
+  return must(screen.getByText(/registracija/).textContent, 'the link beside its button')
+}
 
 describe('the referral link, on the answer the server gives', () => {
   it('carries no code where the answer carried none, rather than the word undefined', async () => {
@@ -414,15 +430,20 @@ describe('the referral link, on the answer the server gives', () => {
        three the session holds null, and the address under the sentence would read
        „…?preporuka=undefined" - a link a reader would copy and send on.
 
-       What is drawn instead is the address with nothing after the sign, which is a link
-       that plainly does not work rather than one that looks as if it might. */
+       Until 25.10.2026 what was drawn instead was the address with nothing after the sign. Since
+       the code is in the path that nothing would be the registration page itself, a link that
+       works and credits nobody, so no box to copy is drawn at all (owner, 25.10.2026). Waited for
+       through the sentence above the box, which comes off the price list and is drawn in the same
+       pass, so „not drawn yet" cannot pass for „not drawn". */
     const { stop } = meAnswering({ memberNumber: stillAMember, membershipBasis: 'payment' })
 
     try {
       renderAt('/sr/moja-clanarina', 'competitor', stillAMember)
 
-      expect(await screen.findByText(/registracija\?preporuka=$/)).toBeVisible()
-      expect(screen.queryByText(/preporuka=undefined/)).not.toBeInTheDocument()
+      expect(await screen.findByText(/^Svako ko se učlani preko tvog linka/)).toBeVisible()
+      expect(screen.queryByRole('button', { name: 'Kopiraj link za preporuku' })).not.toBeInTheDocument()
+      expect(screen.queryByText(/registracija/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/undefined/)).not.toBeInTheDocument()
     } finally {
       stop()
     }
@@ -459,15 +480,32 @@ describe('the referral link, on the answer the server gives', () => {
 
       /* Matched as a fragment, because what the page draws is the WHOLE address the
          origin gives it (`app/head.ts`, `addressOf`), and this case is about the code
-         after the sign rather than about where the portal lives. */
-      expect(
-        await screen.findByText(new RegExp(`registracija\\?preporuka=${onTheWire}$`)),
-      ).toBeVisible()
+         in the path rather than about where the portal lives. */
+      expect(await theLinkDrawn()).toMatch(new RegExp(`/sr/registracija/${onTheWire}$`))
       /* AND THE COUNT ON THE SAME WIRE IS NOT A BALANCE ANY MORE (22.10.2026). Three
          referrals at six hundred dinars would be 1.800, which is what this line drew when
          it multiplied the count; the balance is the book's (`balanceFromTheBook.test.tsx`)
          and the book is not asked here, so nothing is drawn. */
       expect(screen.queryByText('1.800 RSD')).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  })
+
+  it('is the English pair on the English page', async () => {
+    /* PDL, 22.10.2026: „balkanskatrkackaliga.net/sr/registracija/413f1023555bd1be (i engleski par)".
+       The member's own page in English shares the English registration page, so the language is
+       the page's and not a fixed one. */
+    const { stop } = meAnswering({
+      memberNumber: stillAMember,
+      membershipBasis: 'payment',
+      referralCode: 'aaaaaaaaaaaaaaaa',
+    })
+
+    try {
+      renderAt('/en/moja-clanarina', 'competitor', stillAMember)
+
+      expect(await theLinkDrawn('Copy the referral link')).toMatch(/\/en\/registracija\/aaaaaaaaaaaaaaaa$/)
     } finally {
       stop()
     }
@@ -484,7 +522,7 @@ describe('the referral link, on the answer the server gives', () => {
        answer carried: a code with an ampersand and a hash in it was drawn as „…?preporuka=a&b=c#d",
        which is an address with another parameter and a fragment in place of a code. The reader
        believes only what the schema holds now, so such a code is „I was not told", and the page
-       draws what it draws for that: the address with nothing after the sign.
+       draws what it draws for that: since 25.10.2026, no link at all.
 
        **Nothing is encoded where the address is built, and this is the case that makes that safe**:
        the alphabet of a code has no character an address spells differently, and what keeps a
@@ -493,8 +531,8 @@ describe('the referral link, on the answer the server gives', () => {
        spells differently, a code refused for its capitals alone, and one with a space and a percent
        sign - so a reader that gave up any one of them is found on the page as well as in its table.
 
-       And the text that was sent is asked to be NOWHERE on the page, because „nothing after the
-       sign" is also satisfied by a page that draws the empty address and prints the code beside it. */
+       And the text that was sent is asked to be NOWHERE on the page, because „no link" is also
+       satisfied by a page that prints the code somewhere else. */
     const { stop } = meAnswering({
       memberNumber: stillAMember,
       membershipBasis: 'payment',
@@ -504,11 +542,9 @@ describe('the referral link, on the answer the server gives', () => {
     try {
       renderAt('/sr/moja-clanarina', 'competitor', stillAMember)
 
-      /* Found by what is the same in both states - the address up to the sign - and then read, so
-         that a page which draws the code fails on what it drew instead of on a wait that never ends. */
-      const drawn = await screen.findByText(/registracija\?preporuka=/)
-
-      expect(drawn.textContent, 'what the page draws after the sign').toMatch(/registracija\?preporuka=$/)
+      /* Waited for through the sentence drawn in the same pass as the link would be. */
+      expect(await screen.findByText(/^Svako ko se učlani preko tvog linka/)).toBeVisible()
+      expect(screen.queryByRole('button', { name: 'Kopiraj link za preporuku' })).not.toBeInTheDocument()
       expect(document.body.textContent ?? '', 'the code the answer carried, written on the page').not.toContain(
         sent,
       )
@@ -543,7 +579,7 @@ describe('the balance, on a count the server gives', () => {
 
       /* Waited for through the address under the sentence, which comes off the same answer, so „nothing
          is drawn about a balance yet" cannot pass for „the sum is not drawn". */
-      expect(await screen.findByText(/registracija\?preporuka=aaaaaaaaaaaaaaaa$/)).toBeVisible()
+      expect(await theLinkDrawn()).toMatch(/\/sr\/registracija\/aaaaaaaaaaaaaaaa$/)
       expect(screen.queryByText(sum)).not.toBeInTheDocument()
     } finally {
       stop()

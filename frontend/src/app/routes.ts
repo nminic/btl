@@ -235,6 +235,10 @@ export const EXTRA_ADDRESSES: Address[] = [
   /* Generic on purpose: the subject of a message is personal data and must not
    * end up in a browser tab, in history or in a shared link (PDL P23). */
   { path: 'poruke/:id', seoKey: 'message' },
+  /* The registration page with a referral code in it, named as the registration page is: the
+     code is not part of what the page is (`app/useRouteChrome.ts` gives it the same canonical
+     address too). */
+  { path: 'registracija/:code', seoKey: 'register' },
   { path: 'rezultat/novi', seoKey: 'newResult' },
   /* One entry for every queue under verification, because they are all the same
    * kind of screen and the queues themselves are defined in QUEUES, next to the

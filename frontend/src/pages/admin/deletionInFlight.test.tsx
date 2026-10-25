@@ -276,7 +276,11 @@ describe('a deletion that is out with the server', () => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       })
 
-      expect(ask).toHaveFocus()
+      /* The focus goes back a tick after the sheet is gone, so it is waited for like the sheet is: read once, it
+         raced the move under a loaded runner (CI of PR 649, twice in three runs) and passed alone every time. */
+      await waitFor(() => {
+        expect(ask).toHaveFocus()
+      })
       expect(sending()).toHaveLength(0)
       expect(await screen.findByText(new RegExp(`Server je odgovorio brojem ${String(refusal)}`))).toBeInTheDocument()
 

@@ -1,3 +1,4 @@
+import { addressOfThePage } from './head'
 import POSTED_ADDRESSES from './postedAddresses.json'
 import { routeObjects } from './routeObjects'
 import {
@@ -209,9 +210,27 @@ describe('seoKeyFor', () => {
   })
 
   it('gives every address its own seo entry, so that no two pages share a name', () => {
-    const keys = [...ROUTES, ...EXTRA_ADDRESSES].map((address) => address.seoKey)
+    /* Over PAGES and not over addresses, since 25.10.2026: `registracija/:code` is the
+       registration page with a referral code in it and names itself as that page
+       (`addressOfThePage`, app/head.ts), so it is one page with two addresses and one name. Every
+       other address is its own page. */
+    const pages = [...ROUTES, ...EXTRA_ADDRESSES].filter(
+      (address) => addressOfThePage(address.path) === address.path,
+    )
+    const keys = pages.map((address) => address.seoKey)
 
+    expect(pages.length).toBe(ROUTES.length + EXTRA_ADDRESSES.length - 1)
     expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it('names the registration page with a referral code in it as the registration page', () => {
+    expect(seoKeyFor('registracija/7f07b38ff7ee7543')).toBe('register')
+    expect(seoKeyFor('registracija/7f07b38ff7ee7543')).toBe(seoKeyFor('registracija'))
+    expect(addressOfThePage('registracija/7f07b38ff7ee7543')).toBe('registracija')
+    /* Only that one address: a value under any other screen is its own page. */
+    expect(addressOfThePage('takmicar/000001')).toBe('takmicar/000001')
+    expect(addressOfThePage('registracija')).toBe('registracija')
+    expect(addressOfThePage('registracija/a/b')).toBe('registracija/a/b')
   })
 })
 
