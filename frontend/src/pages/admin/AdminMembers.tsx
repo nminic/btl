@@ -130,13 +130,15 @@ export function AdminMembers() {
    * <p>The deletion's „Član je obrisan." is drawn on the screen (owner, 22.10.2026, PDL „Brisanje člana na
    * ekranu članova": „posle brisanja se na ekranu vidi poruka"). Until that day it went only to the hidden
    * live region below, so a reader who looks at the list saw the row go and was told nothing: the focus has
-   * moved to the search field and the row he pressed on is gone with the member. The other sentences of
-   * this screen stay for a reader who does not look, as the owner's decision names the deletion only.
+   * moved to the search field and the row he pressed on is gone with the member. So is the new
+   * invitation's („Nova pozivnica je poslata na {adresa}.", owner, 25.10.2026), which goes out with no sheet
+   * before it (`invited`). The other sentences of this screen stay for a reader who does not look, as the
+   * owner's decisions name those two only.
    *
    * <p><b>One state for both, so the next thing that happens takes the sentence back.</b> Every writer
-   * of `said` replaces the whole of it, and `shown` is true only for the deletion's, so a payment or a
-   * cancellation after it cannot leave a drawn „Član je obrisan." standing over a list it is no longer
-   * about, and no writer has a second place to remember.
+   * of `said` replaces the whole of it, and `shown` is true only for the deletion's and the invitation's,
+   * so a payment or a cancellation after either cannot leave a drawn sentence standing over a list it is
+   * no longer about, and no writer has a second place to remember.
    */
   const [saidNow, setSaidNow] = useState({ words: '', shown: false })
   const said = saidNow.shown ? '' : saidNow.words
@@ -307,6 +309,17 @@ export function AdminMembers() {
     setSaid(said)
   }
 
+  /**
+   * A NEW INVITATION WENT OUT FROM A ROW (owner, 25.10.2026), and the sentence that says so is drawn, as the
+   * deletion's is: the envelope sends with no sheet before it, so this is the one thing on the screen that
+   * says the press did anything. Nothing cached is dropped, because nothing any list serves has changed: the
+   * account still has no password, and its links are not served to anybody.
+   */
+  function invited(one: Member, words: string): void {
+    settle(one)
+    setSaidNow({ words, shown: true })
+  }
+
   return (
     <div className="member">
       {/* The name of the screen is in the navigation beside it and in the
@@ -414,6 +427,7 @@ export function AdminMembers() {
                         settled={succeededOn.filter((number) => number === one.memberNumber).length}
                         onPaid={() => paymentRecorded(one)}
                         onChanged={(words) => seasonChanged(one, words)}
+                        onInvited={(words) => invited(one, words)}
                         onDelete={() => deleteOne(one)}
                       />
                     ))}

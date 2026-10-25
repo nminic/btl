@@ -81,6 +81,14 @@ const DRAWN: Record<ActionSymbol, React.ReactNode> = {
       <path d="M21 3v6h-6" />
     </>
   ),
+  /* The envelope the header's messages carry (`MailIcon` below), drawn the same, so a letter looks
+     like one letter wherever the portal shows it. */
+  envelope: (
+    <>
+      <rect x="2.5" y="4.5" width="19" height="15" rx="2.5" />
+      <path d="M3 7l9 6 9-6" />
+    </>
+  ),
 }
 
 /** One of the action symbols, drawn. */

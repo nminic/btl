@@ -58,7 +58,7 @@ const SCREENS: Screen[] = [
     at: '/sr/administracija/dogadjaji',
     asks: sr.admin.eventDeleteAsk,
     gone: sr.admin.eventGone,
-    under: /Ovim brišeš i \d+ trk[aue]( i \d+ rezultat|, a broj rezultata koji odlaze)/,
+    under: /Ovim brišeš i \d+ trk[aue]( i \d+ rezultat|, a broj rezultata koji odlaze)|Događaj nema trka ni rezultata/,
   },
   {
     name: 'the competitions',
@@ -517,7 +517,9 @@ describe('the sheet that asks before an event is deleted', () => {
     /* The races, and either the number of results that go with them or the sentence that the number is not known yet:
        the two states of the same fact (`AdminEvents.tsx`, `goingWith`; owner, 25.10.2026, the races beside the results). */
     expect(
-      within(sheet).getByText(/^Ovim brišeš i \d+ trk[aue]( i \d+ rezultata?\.|, a broj rezultata koji odlaze još nije poznat\.)$/),
+      within(sheet).getByText(
+        /^(Ovim brišeš i \d+ trk[aue]( i \d+ rezultata?\.|, a broj rezultata koji odlaze još nije poznat\.)|Događaj nema trka ni rezultata\.)$/,
+      ),
     ).toBeInTheDocument()
   }, SLOW)
 })

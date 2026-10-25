@@ -1451,6 +1451,7 @@
       "few": "{count} results",
       "other": "{count} results"
     },
+    "eventDeleteNothing": "The event has no races and no results.",
     "eventDeleteCountUnknown": "This deletes {races} as well; how many results go with it is not known yet.",
     "leagueGone": "The competition has been deleted.",
     "leagueDeleteAsk": "Delete the competition?",
@@ -1492,6 +1493,12 @@
     "memberDeleteAsk": "Delete the member?",
     "recordPayment": "Record the payment",
     "paymentRecorded": "The payment has been recorded.",
+    "sendNewInvitation": "Send a new invitation",
+    "invitationSent": "A new invitation has been sent to {email}. The earlier link no longer works.",
+    "invitationSentSomewhere": "A new invitation has been sent. The earlier link no longer works.",
+    "invitationNotNeeded": "The member has already set a password.",
+    "invitationNoAccount": "The member has no account on the portal, so there is nobody for an invitation to reach.",
+    "invitationNotSent": "The mail is not accepting messages at the moment, so the invitation was not sent. Try again in a minute or two.",
     "cancelMembership": "Cancel",
     "changeToExemption": "Change the basis to an exemption",
     "askCancel": {

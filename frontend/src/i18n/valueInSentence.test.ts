@@ -321,6 +321,9 @@ describe('a sentence with a value put into it', () => {
       'admin.form.openNamed',
       'admin.form.raceNumber',
       'admin.form.removeRow',
+      /* „Nova pozivnica je poslata na {email}. Prethodni link više ne važi." (owner, 25.10.2026): an
+         address of post after „na", which is written as it is and has no case to be wrong in. */
+      'admin.invitationSent',
       /* „Trke u ligi {name}", the accessible name of the box that folds on the list of
          competitions. The name of a competition stands after „u ligi", which governs the
          locative - and a competition's name is a proper name the portal never declines

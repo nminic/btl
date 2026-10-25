@@ -26,6 +26,8 @@
  * - `again`: Ispravi i pošalji ponovo.
  * - `banknote`: Upiši uplatu, since 22.10.2026 in place of the plus (owner: „Može li
  *   simbol za to umesto znaka plus da bude kao novčanice").
+ * - `envelope`: Pošalji novu pozivnicu, on the member's row (owner, 25.10.2026, PDL „Nova
+ *   pozivnica od administracije i rečenica o trkama: odgovori od 25.10.2026": „simbol koverte").
  * - The shield with a check that „Odobri oslobođenje" carried from 20.10.2026 is gone
  *   with the button: since 22.10.2026 the exemption is granted by ticking the season
  *   in the member's row (PDL, „Red na ekranu članova ima pet kolona").
@@ -41,6 +43,7 @@ export const SYMBOL = {
   down: 'down',
   up: 'up',
   again: 'again',
+  envelope: 'envelope',
 } as const
 
 export type ActionSymbol = (typeof SYMBOL)[keyof typeof SYMBOL]

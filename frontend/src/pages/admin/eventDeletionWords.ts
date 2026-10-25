@@ -16,8 +16,17 @@ import type { Translate } from '../../i18n/context'
  * <p><b>The races are always known and the results are not.</b> The administration draws without waiting for the
  * results, the largest file the portal has (owner, 28.09.2026), and an approximate number or a nought is what that
  * decision refused. So with `results` absent the races are still named and the results are said to be unknown.
+ *
+ * <p><b>An event with no race says so in words of its own</b> (owner, 25.10.2026, PDL „Nova pozivnica od
+ * administracije i rečenica o trkama: odgovori od 25.10.2026": „Događaj nema trka ni rezultata." in place of
+ * „0 trka i 0 rezultata"), and in both states: a result hangs off a race, so an event with none has no
+ * result to wait for.
  */
 export function whatGoesWith(t: Translate, races: number, results: number | null): string {
+  if (races === 0) {
+    return t('admin.eventDeleteNothing')
+  }
+
   const racesSaid = t('admin.eventDeleteRaces', { count: races })
 
   return results === null

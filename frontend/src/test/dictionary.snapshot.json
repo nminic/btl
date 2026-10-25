@@ -1451,6 +1451,7 @@
       "few": "{count} rezultata",
       "other": "{count} rezultata"
     },
+    "eventDeleteNothing": "Događaj nema trka ni rezultata.",
     "eventDeleteCountUnknown": "Ovim brišeš i {races}, a broj rezultata koji odlaze još nije poznat.",
     "leagueGone": "Liga je obrisana.",
     "leagueDeleteAsk": "Obriši ligu?",
@@ -1492,6 +1493,12 @@
     "memberDeleteAsk": "Obriši člana?",
     "recordPayment": "Upiši uplatu",
     "paymentRecorded": "Uplata je upisana.",
+    "sendNewInvitation": "Pošalji novu pozivnicu",
+    "invitationSent": "Nova pozivnica je poslata na {email}. Prethodni link više ne važi.",
+    "invitationSentSomewhere": "Nova pozivnica je poslata. Prethodni link više ne važi.",
+    "invitationNotNeeded": "Član je već postavio lozinku.",
+    "invitationNoAccount": "Član nema nalog na portalu, pa pozivnica nema kome da ode.",
+    "invitationNotSent": "Pošta trenutno ne prima poruke, pa pozivnica nije poslata. Pokušaj ponovo za koji minut.",
     "cancelMembership": "Storniraj",
     "changeToExemption": "Promeni osnov u oslobođenje",
     "askCancel": {

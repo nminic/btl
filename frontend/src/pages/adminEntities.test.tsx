@@ -3104,7 +3104,7 @@ describe('an event that is deleted', () => {
       expect(
         await askedWith(),
         `the question does not carry the ${String(raced)} races and the ${String(under)} results of this event`,
-      ).toMatch(new RegExp(`^Ovim brišeš i ${String(raced)} trk[aue] i ${String(under)} rezultata?\.$`))
+      ).toMatch(new RegExp(`^Ovim brišeš i ${String(raced)} trk[aue] i ${String(under)} rezultata?\\.$`))
 
       /* Put away again, so the next event is asked from the same place. */
       await sayNo(user, 'Obriši događaj?')
@@ -3331,7 +3331,7 @@ describe('an event that is deleted', () => {
 
     expect(raced, 'one number cannot tell the races from the results').not.toBe(resultsUnder(mine, races, scored))
     expect(words, 'a number was invented while the file was still on its way').toMatch(
-      new RegExp(`^Ovim brišeš i ${String(raced)} trk[aue], a broj rezultata koji odlaze još nije poznat\.$`),
+      new RegExp(`^Ovim brišeš i ${String(raced)} trk[aue], a broj rezultata koji odlaze još nije poznat\\.$`),
     )
 
     /* And the deletion is not held back, which is the whole of what changed. */
