@@ -194,7 +194,7 @@ describe('a member’s own data', () => {
 
     const panel = await personalPanel()
 
-    expect(within(panel).getByRole('textbox', { name: /Ime/ })).toHaveValue(ME.firstName)
+    expect(typedBox(panel, /^Ime/)).toHaveValue(ME.firstName)
     expect(within(panel).getByRole('textbox', { name: /Prezime/ })).toHaveValue(ME.lastName)
     expect(within(panel).queryByDisplayValue(SOMEBODY_ELSE.firstName)).not.toBeInTheDocument()
   })
@@ -526,13 +526,26 @@ function neverEmptiedByTheServer(): string[] {
   return [...at(declared, 1).matchAll(/"([^"]+)"/g)].map((one) => at(one, 1))
 }
 
+/**
+ * THE ONE BOX A MEMBER TYPES INTO that goes by these words, the held ones not counted: the box of his
+ * father's name is drawn beside „Ime" since 24.10.2026 and begins with the same word, but it is held
+ * (`readOnly`, PDL 24.10.2026) and nothing he does moves it.
+ */
+function typedBox(panel: HTMLElement, name: RegExp): HTMLElement {
+  const typed = within(panel)
+    .getAllByRole('textbox', { name })
+    .filter((one) => !one.hasAttribute('readonly'))
+
+  expect(typed, `exactly one box he types into goes by ${String(name)}`).toHaveLength(1)
+
+  return at(typed, 0)
+}
+
 /** The four boxes, by the name the portal sends each under, found by the words on their labels. */
 function personalBoxes(panel: HTMLElement): { name: TypedBox; box: HTMLInputElement }[] {
   return TYPED_BOXES.map((name) => ({
     name,
-    box: inputElement(
-      within(panel).getByRole('textbox', { name: new RegExp(`^${sr.registration[name]}`) }),
-    ),
+    box: inputElement(typedBox(panel, new RegExp(`^${sr.registration[name]}`))),
   }))
 }
 

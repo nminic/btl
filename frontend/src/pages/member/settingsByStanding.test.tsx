@@ -7,16 +7,19 @@ import { answeredWith, isResource, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 
 /**
- * THE SETTINGS SCREEN HAS THREE SHAPES, AND WHICH ONE A READER IS DRAWN IS DECIDED BY WHO HE IS.
+ * THE SETTINGS SCREEN HAS THREE SHAPES, AND WHICH ONE A READER IS DRAWN IS DECIDED BY WHO HE IS. A
+ * FOURTH READER, SOMEBODY WHO REGISTERED AND HAS NOT PAID, IS NOT DRAWN IT AT ALL.
  *
  * <p>PDL P8, the entry „Šta sme neplaćen član" (10.10.2026) and its addition of 11.10.2026, both
  * chosen by the owner between offered outcomes - the sentences are the record's and not his own
  * words:
  *
  * <ul>
- * <li><b>Somebody who registered and has not paid</b> may change „lozinku, adresu pošte i svoje
- * podatke za evidenciju i majicu", and may not do „ništa što ga čini vidljivim ili ga uključuje u
- * ligu: sliku, biografiju, skrivanje profila".</li>
+ * <li><b>Somebody who registered and has not paid</b> was drawn the password and the theme until
+ * 23.10.2026, and is sent to the page he pays on since: the owner decided on 22.10.2026 (PDL, „Član
+ * koji još nije platio: bez reči nalog, samo Članarina") that „Sve opcije koje mu nisu dostupne
+ * privremeno (dakle sve osim Članarine) ne treba da mu uopšte budu dostupne", and „vidljive niti deep
+ * linkom dostupne". His data are on the page „Moji podaci" (`myData.test.tsx`).</li>
  * <li><b>A member whose fee has lapsed</b> „dopire samo do obnove i svog profila": the data and the
  * password are answered 404 (`PUT /api/me`, `PUT /api/me/password`), and the picture, the
  * biography and the switch with them.</li>
@@ -65,9 +68,6 @@ const PANELS = {
   mail: 'Pošta',
   privacy: 'Privatnost',
 } as const
-
-const WHAT_OPENS_LATER =
-  'Slika, biografija i skrivanje profila otvaraju se kad tvoja članarina bude evidentirana.'
 
 /**
  * The sentence a member whose fee has lapsed is told (PDL P8, 16.10.2026, „Članu kome je istekla
@@ -123,42 +123,22 @@ async function drawn(): Promise<void> {
 }
 
 describe('the settings of somebody who registered and has not paid', () => {
-  /* **HIS DATA ARE NOT HERE SINCE 23.10.2026**: the personal data left the settings for everybody
-     (PDL 22.10.2026, „Strana Podešavanja u tri visoka reda sa dve kolone"), and somebody who has not
-     paid changes his on the page „Moji podaci" (PDL 22.10.2026, „Neka ima u navigaciji stranu Moji
-     Podaci dok nije odobren"), which is the next piece of work and takes with it the three cases of
-     this file that read his data here: from the answer that has a row for him, a read that fails, and
-     a second reader signing in beside the first. Until it is there he has nowhere to change them, which
-     the coordinator accepted on the condition that the two go out together. */
-  it('draws his password and the theme, and neither his data nor anything that makes a member visible', async () => {
+  /* **HE IS NOT DRAWN THEM, AND NOT TOLD THEY EXIST** (PDL 22.10.2026, „Član koji još nije platio:
+     bez reči nalog, samo Članarina"): until 23.10.2026 he was drawn the password and the theme, with a
+     sentence that three more opened with his fee. The address sends him to the page he pays on, and
+     nothing of the screen is drawn on the way. */
+  it('sends him to the page he pays on and draws none of the settings', async () => {
     stand(neverPaidAsServed())
-    renderAt('/sr/podesavanja', 'visitor', null)
+    const { router } = renderAt('/sr/podesavanja', 'visitor', null)
 
-    await drawn()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Moja članarina' })).toBeVisible()
+    expect(router.state.location.pathname).toBe('/sr/moja-clanarina')
+    expect(screen.queryByRole('heading', { level: 1, name: 'Podešavanja' })).not.toBeInTheDocument()
 
-    expect(await screen.findByRole('heading', { level: 2, name: PANELS.password })).toBeVisible()
-    expect(screen.queryByRole('heading', { name: PANELS.data })).not.toBeInTheDocument()
-    expect(screen.queryByDisplayValue('Tek')).not.toBeInTheDocument()
-
-    /* What it does not: „sliku, biografiju, skrivanje profila". */
-    expect(screen.queryByRole('heading', { name: PANELS.picture })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: PANELS.biography })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: PANELS.privacy })).not.toBeInTheDocument()
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    for (const panel of Object.values(PANELS)) {
+      expect(screen.queryByRole('heading', { name: panel }), panel).not.toBeInTheDocument()
+    }
   }, SLOW)
-
-  it('is told, once, that the three he does not see open with his fee', async () => {
-    stand(neverPaidAsServed())
-    renderAt('/sr/podesavanja', 'visitor', null)
-
-    await drawn()
-
-    expect(await screen.findByText(WHAT_OPENS_LATER)).toBeVisible()
-    expect(screen.getAllByText(WHAT_OPENS_LATER)).toHaveLength(1)
-    /* And not the other one: his fee was never recorded, so there is nothing to be renewed. */
-    expectNoSentenceAboutRenewal()
-  }, SLOW)
-
 })
 
 describe('the settings of a member whose fee has lapsed', () => {
@@ -180,9 +160,6 @@ describe('the settings of a member whose fee has lapsed', () => {
     }
 
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-    /* And not the sentence that is for somebody who has not paid: he HAS a number, and „kad tvoja
-       članarina bude evidentirana" is said to a person whose fee was never recorded. */
-    expect(screen.queryByText(WHAT_OPENS_LATER)).not.toBeInTheDocument()
     /* What he is told instead: his data and his password open once the fee is renewed, and where. */
     expectTheSentenceAboutRenewal()
   }, SLOW)
@@ -272,7 +249,6 @@ describe('the settings of an administration account with no member', () => {
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
       /* Nothing is waiting on a renewal for somebody who has no fee: the sentence is a lapsed member's. */
       expectNoSentenceAboutRenewal()
-      expect(screen.queryByText(WHAT_OPENS_LATER)).not.toBeInTheDocument()
     },
     SLOW,
   )
@@ -281,7 +257,7 @@ describe('the settings of an administration account with no member', () => {
 describe('the settings of a member whose fee stands', () => {
   /* 000001 is freed of the fee in the generated data and stands. The anchor of the other two:
      everything is drawn, in the order it was always drawn in. */
-  it('draws every panel there is, and not the sentence for somebody who has not paid', async () => {
+  it('draws every panel there is', async () => {
     renderAt('/sr/podesavanja', 'competitor', '000001')
 
     await drawn()
@@ -293,7 +269,6 @@ describe('the settings of a member whose fee stands', () => {
     expect(screen.queryByRole('heading', { name: PANELS.data })).not.toBeInTheDocument()
 
     expect(screen.getByRole('checkbox')).toBeVisible()
-    expect(screen.queryByText(WHAT_OPENS_LATER)).not.toBeInTheDocument()
     /* Nothing to be told: his fee stands, so nothing is waiting on a renewal. */
     expectNoSentenceAboutRenewal()
   }, SLOW)
@@ -334,8 +309,8 @@ describe('the settings of a member whose fee stands', () => {
  * <p>jsdom lays nothing out, so "beside" is asked in the only terms it can answer: two panels share a
  * `.member__pair`, the one element the stylesheet turns into two columns from 51.25em
  * (`styles/settingsLayout.test.ts` holds the rule, and `geometry/settings.geometry.ts` asks Chrome
- * where they then LAND). Asked of each of the four ways of being signed in, because the panels of each
- * are different: the pair a member is drawn is not the pair somebody who has not paid is, and an
+ * where they then LAND). Asked of each of the three ways of being drawn the screen, because the panels of
+ * each are different: the pair a member is drawn is not the pair a member whose fee has lapsed is, and an
  * administration account has its password with no neighbour at all.
  */
 describe('which panels of the settings stand beside which', () => {
@@ -366,17 +341,6 @@ describe('which panels of the settings stand beside which', () => {
       /* Two boxes and nothing else, so nothing a panel draws beside itself takes a cell of the row. */
       expect(pairOf(panel)?.children, panel).toHaveLength(2)
     }
-  }, SLOW)
-
-  it('leaves the password alone in its row for somebody who has not paid, who may not hide a profile', async () => {
-    stand(neverPaidAsServed())
-    renderAt('/sr/podesavanja', 'visitor', null)
-
-    await drawn()
-    await screen.findByRole('heading', { level: 2, name: PANELS.password })
-
-    expect(panelsIn(pairOf(PANELS.password))).toEqual([PANELS.password])
-    expect(panelsIn(pairOf(PANELS.appearance))).toEqual([PANELS.appearance, PANELS.mail])
   }, SLOW)
 
   it('puts the theme beside the language of the mail for a member whose fee has lapsed, who has neither the data nor the password', async () => {

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { heldControl } from '../../forms/held'
+import { formatDate } from '../../i18n/format'
 import { AskedLabel } from '../../forms/AskedLabel'
 import { registracija } from '../../forms/definitions'
 import { PlaceField } from '../../forms/PlaceField'
@@ -67,7 +69,7 @@ import {
  * Članarina"). Both send to the same route and are told the same sentences.
  */
 export function PersonalData({ me }: { me: MyData }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
 
   /* WHAT THE SERVER HOLDS, held here and not read off `me` on every render, because a
      successful save moves it and nothing refetches the resource. It starts as what the server
@@ -122,6 +124,20 @@ export function PersonalData({ me }: { me: MyData }) {
     setAnswer(answered)
     setAsking(false)
   }
+
+  /* The four boxes he sees held, in the order the registration asks them. The gender and the date are
+     said the way the portal says them everywhere (`registration.genderMale`, `formatDate`) and the
+     number of the document is empty for a member who gave none. */
+  const HELD = [
+    {
+      name: 'gender',
+      label: t('registration.gender'),
+      value: t(me.gender === 'M' ? 'registration.genderMale' : 'registration.genderFemale'),
+    },
+    { name: 'birthDate', label: t('registration.birthDate'), value: formatDate(me.birthDate, locale) },
+    { name: 'fatherName', label: t('registration.fatherName'), value: me.fatherName },
+    { name: 'idNumber', label: t('registration.idNumber'), value: me.idNumber },
+  ]
 
   return (
     <>
@@ -214,6 +230,32 @@ export function PersonalData({ me }: { me: MyData }) {
               ))}
             </select>
           </div>
+
+          {/* **THE FOUR HE SEES AND DOES NOT CHANGE** (PDL 24.10.2026, owner: „clan ga vidi ali je disabled za
+              menjanje. Moze samo da trazi od admina", and, chosen between offered outcomes with the
+              recommendation, the same for the gender, the date of birth and the father's name). Held and
+              not switched off, the way the portal holds a locked box everywhere (`forms/held.ts`,
+              `FormRenderer`): `readOnly` and `aria-disabled`, so a keyboard reaches each of them, a screen
+              reader reads the value and says it is held, and the number can be copied. The sentence under
+              them is their description. They are never sent: the server refuses them by name
+              (`MeWriteApi`), and `TYPED_BOXES` does not name them. */}
+          {HELD.map(({ name, label, value }) => (
+            <div className="rankings__field" key={name}>
+              <label htmlFor={`account-${name}`}>{label}</label>
+              <input
+                id={`account-${name}`}
+                type="text"
+                className={heldControl(true)}
+                value={value}
+                readOnly
+                aria-disabled="true"
+                aria-describedby="account-held-note"
+              />
+            </div>
+          ))}
+          <p className="member__note" id="account-held-note">
+            {t('account.heldNote')}
+          </p>
 
           <p className="member__actions">
             {/* Told off rather than switched off, as everywhere else on the portal:

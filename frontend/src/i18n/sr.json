@@ -55,6 +55,10 @@
       "title": "Moji trkački rezultati",
       "description": "Prijavljeni rezultati, faza provere u kojoj se nalaze i bodovi koje su doneli."
     },
+    "myData": {
+      "title": "Moji BTL podaci",
+      "description": "Ime, adresa, telefon, mesto i veličina majice, dok članarina još nije evidentirana."
+    },
     "membership": {
       "title": "Moja BTL članarina",
       "description": "Stanje članstva, plaćanje članarine i uplatnica sa QR kodom."
@@ -234,7 +238,8 @@
     "contact": "Kontakt",
     "home": "Naslovna strana",
     "join": "Učlani se",
-    "openAccount": "Otvori nalog"
+    "openAccount": "Otvori nalog",
+    "openMyMenu": "Otvori moj meni"
   },
   "nav": {
     "home": "Naslovna",
@@ -253,6 +258,7 @@
     "confirmAddress": "Potvrda adrese",
     "forgottenPassword": "Zaboravljena lozinka",
     "myProfile": "Moj profil",
+    "myData": "Moji podaci",
     "myResults": "Moji rezultati",
     "membership": "Moja članarina",
     "messages": "Poruke",
@@ -1106,8 +1112,8 @@
     "notYetSold": "Članarina se još ne prodaje. Naplata kreće 15. oktobra.",
     "junior": "Ko u sezoni ima bar jedan dan 14 godina ili manje plaća {eur} EUR, a iz Srbije {rsd} RSD, bez obzira na datum uplate.",
     "paypal": "PayPal",
-    "paypalNote": "Nalog je poslovni, na Sportsko udruženje BTL. PayPal se ne nudi članovima iz Srbije, jer plaćanje njime između rezidenata Srbije nije dozvoljeno.",
-    "paypalAddressLabel": "Adresa naloga",
+    "paypalNote": "PayPal adresa je poslovna, na Sportsko udruženje BTL. PayPal se ne nudi članovima iz Srbije, jer plaćanje njime između rezidenata Srbije nije dozvoljeno.",
+    "paypalAddressLabel": "PayPal adresa",
     "paypalAmountLabel": "Iznos (sa uračunatom taksom)",
     "paypalNoteLabel": "Napomena",
     "paypalCopyAddress": "Kopiraj adresu za uplatu",
@@ -1158,8 +1164,6 @@
     "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu i ne prenosi se drugom članu.",
     "feeExemptNoRenewal": "Oslobođen si plaćanja članarine, pa nema šta da uplatiš.",
     "amountLabel": "Iznos",
-    "notYetTitle": "Ovaj deo se otvara kad članarina bude evidentirana",
-    "notYetText": "Registrovao si se, ali članarina još nije evidentirana, pa ti ovaj deo još nije otvoren. Uplatu i izbor kategorije obavljaš na strani Moja članarina.",
     "notPaidYet": "Članarina ti još nije evidentirana, pa još nemaš članski broj. Dobijaš ga kad moderator evidentira tvoju uplatu.",
     "firstPayment": "Uplata članarine za {season}.",
     "firstPaymentOpen": "Uplata je otvorena.",
@@ -1547,7 +1551,6 @@
     "privacy": "Privatnost",
     "hideProfile": "Sakrij moj profil od svakoga ko nije aktivan član ni administracija",
     "hideProfileNote": "Ime ostaje u tabelama i na rang listama, jer bi bez toga zajedničko rangiranje izgubilo smisao. Skriva se samo tvoja profilna strana, i to samo od posetilaca koji nisu prijavljeni i od prijavljenih naloga bez aktivne članarine.",
-    "opensWithTheFee": "Slika, biografija i skrivanje profila otvaraju se kad tvoja članarina bude evidentirana.",
     "opensWhenTheFeeIsRenewed": "Podaci i lozinka otvaraju se kad tvoja članarina bude obnovljena. Obnovi je ovde: {renewal}.",
     "themeLabel": "Tema",
     "themeDark": "Tamna",
@@ -1793,6 +1796,7 @@
     "personalTitle": "Lični podaci",
     "save": "Sačuvaj",
     "saved": "Sačuvano.",
+    "heldNote": "Pol, datum rođenja, ime oca i broj ličnog dokumenta menja administracija na tvoj zahtev.",
     "nothingToSave": "Server nije našao nijednu izmenu u zahtevu. Osveži stranu i pokušaj ponovo.",
     "fieldIsBlank": "Jedno od obaveznih polja je ostalo prazno. Popuni ga pa sačuvaj ponovo.",
     "fieldIsTooLong": "Jedno polje je duže nego što portal prima. Skrati ga pa sačuvaj ponovo.",

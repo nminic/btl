@@ -18,9 +18,13 @@ import java.util.List;
  *
  * <p><b>The year of birth does not leave this server, and that is the whole
  * reason this resource was written before the easier ones.</b> The published
- * privacy policy says it in one sentence, in its section 3: „Datum
+ * privacy policy said it in one sentence, in its section 3: „Datum
  * rođenja se nikada ne prikazuje, ni u punom ni u skraćenom obliku. Javna je
- * samo kategorija koja iz njega proizlazi." The year IS the shortened form. The
+ * samo kategorija koja iz njega proizlazi." (That is the wording of 13.09.2026.
+ * The policy now says, in the same section, „ne prikazujemo ga <b>drugima</b> ni u punom ni u skraćenom
+ * obliku, osim ako sami izaberete da se na vašem profilu vidi ceo datum ili samo godina": V57 added the
+ * choice, and V73 of 24.10.2026 added the word „drugima", because a member sees his own date on his own
+ * card (see {@link MeApi}). The list below answers nothing of it either way.) The year IS the shortened form. The
  * portal served {@code birthYear} for all thirty two members until 13.09.2026,
  * when B52 removed it from {@code public/mock/competitors.json} and put the age
  * band there instead; that was the thing that had to stop before the policy takes
@@ -30,7 +34,7 @@ import java.util.List;
  * <p><b>AND SINCE 21.09.2026 WHAT REPLACES IT IS ANSWERED: the age band, which is
  * the one thing section 3 of the privacy policy says IS public.</b> „Datum rodjenja se nikada ne
  * prikazuje, ni u punom ni u skraćenom obliku. Javna je samo kategorija koja iz
- * njega proizlazi." The year is the shortened form and stays; the category that
+ * njega proizlazi." (The wording of 21.09.2026; see the paragraph above for the sentence as it stands.) The year is the shortened form and stays; the category that
  * comes out of it is the sentence's second half and it had been owed since
  * 13.09.2026, when B52 took the year off {@code public/mock/competitors.json} and
  * put the band there instead. Until this increment the debt was carried as a NAME

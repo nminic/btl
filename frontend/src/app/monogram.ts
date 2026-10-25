@@ -20,3 +20,16 @@
 export function monogramFor(identifier: string): string {
   return identifier.slice(-2)
 }
+
+/**
+ * The first letter of each of two names, for the circle of somebody who has a name and no record to
+ * take a portrait from: somebody who registered and has not paid (owner, 22.10.2026: „Treba i dalje
+ * da stoje inicijali").
+ *
+ * <p>The same two letters `components/Portrait.tsx` takes out of the same two fields for a member.
+ * It is not that component's to draw here: `Portrait` draws a MEMBER and needs his record, and what
+ * a circle with no record means is the owner's decision (see `app/AccountMenu.tsx`).
+ */
+export function initialsOf(firstName: string, lastName: string): string {
+  return `${firstName.slice(0, 1)}${lastName.slice(0, 1)}`
+}

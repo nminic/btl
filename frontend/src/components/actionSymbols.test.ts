@@ -164,7 +164,6 @@ const STAYS_A_WORD = new Map([
   ['nav.login', NOT_AN_ACTION],
   ['newPassword.sending', FORM],
   ['newPassword.submit', FORM],
-  ['nav.membership', NOT_AN_ACTION],
   ['newResult.another', NOT_AN_ACTION],
   ['newResult.toMine', NOT_AN_ACTION],
   ['pager.next', NOT_AN_ACTION],

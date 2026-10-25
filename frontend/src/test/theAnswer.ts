@@ -477,6 +477,11 @@ export const myOwnRecordFromMe = {
   /* His shirt size (`MeApi.MyOwnRecord.shirtSize`, since 23.10.2026): the card „Podaci" of his own
      profile opens with it. Private like the two above, so not on the public list either. */
   shirtSize: 'L',
+  /* The three he sees LOCKED on his card (`MeApi.MyOwnRecord.fatherName`, `.birthDate`, `.idNumber`, PDL
+     24.10.2026), his alone: the public list carries none of them. */
+  fatherName: 'Petar',
+  birthDate: '1980-04-02',
+  idNumber: 'AB12345',
   /* The words of his that wait for a moderator (`MeApi.MyOwnRecord.bioWaiting`, PDL P11, 18.10.2026).
      The harness does NOT answer it for the members of the generated file (`test/setup.ts`): the server
      leaves it out for a member whose words do not wait, which is nearly every one, and a screen drawn
