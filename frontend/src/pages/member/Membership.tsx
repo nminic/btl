@@ -233,7 +233,7 @@ export function Membership() {
      portal's clock reads whole days with no notion of an hour (`data/season.ts`). Drawn
      under `inYearlyWindow` the box vanished at midnight on 1 January and took the last
      ten hours of the member's own deadline with it. */
-  const { standing, choosing, refusal, choose } = useMyCategory()
+  const { standing, choosing, refusal, failure, choose } = useMyCategory()
 
   /**
    * LEAVING THE TEAM: THE QUESTION, THE REASON IT WAS REFUSED, AND WHETHER ONE IS OUT.
@@ -848,6 +848,13 @@ export function Membership() {
                       {t('membership.choiceRefused')}
                     </p>
                   )}
+
+                  {/* AND EVERY OTHER WAY THE CHOICE CAN FAIL, said as the rest of the portal says it
+                      (owner, 25.10.2026, PDL „Poruka o probnoj šifri na svakom ekranu koji upisuje:
+                      odgovori od 25.10.2026": „Izbor kategorije kaže svaki neuspeh, kao ostali ekrani").
+                      The site locked is one of them, and `ServerSaid` draws it with the way to a new tab
+                      (`TheSiteIsLocked`). No refusal reaches this, so no route's words are handed in. */}
+                  {failure !== null && <ServerSaid answer={failure} refusals={{}} />}
                 </fieldset>
               </section>
             )}
