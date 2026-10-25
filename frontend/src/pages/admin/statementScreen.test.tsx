@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { configure, fireEvent, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { inputElement } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -14,6 +14,17 @@ import { STATEMENT_LINES, STATEMENTS } from './statement'
  * <p>The cases of the box that stood in `pages/adminFlows.test.tsx` moved here with it, because the
  * box now speaks to a route and every one of them needs a server in front.
  */
+
+/**
+ * THE CLOCK OF A CASE OF THIS FILE, which is Vitest's own when nothing sets another, and every wait here
+ * is given half of it (`btl/CLAUDE.md`, section 25, and `saveWhileSaving.test.tsx`, the precedent). Left
+ * at `test/setup.ts`'s `SLOW`, a wait for a sentence that never comes outlives the case, and the case
+ * ends on its clock instead of on its assertion: measured 25.10.2026, a mutation that stopped the list
+ * from being read again ended in „Test timed out in 5000ms", which is no measurement.
+ */
+const A_CASE_HAS = 5_000
+
+configure({ asyncUtilTimeout: A_CASE_HAS / 2 })
 
 const PAYMENTS = '/sr/administracija/verifikacija/uplate'
 
@@ -534,5 +545,11 @@ describe('a payment that waits, confirmed or set aside', () => {
     answer(new Response(null, { status: 204 }))
     await waitFor(() => expect(press).not.toHaveAttribute('aria-disabled'))
     expect(server.asked.filter((one) => one.path.endsWith('/set-aside'))).toHaveLength(1)
+  })
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(A_CASE_HAS)
   })
 })
