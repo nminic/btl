@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useParams } from 'react-router'
 import { useFilterParams } from '../app/useFilterParams'
 import { registracija } from '../forms/definitions'
 import { FormRenderer } from '../forms/FormRenderer'
@@ -246,7 +247,18 @@ export function Registration() {
    * attack today; it becomes one the day a backend keeps it and an
    * administration screen writes out who brought whom. The shape is known and
    * costs one line, so it is checked at the door rather than migrated later. */
-  const carried = params.get('preporuka') ?? ''
+  /* AND SINCE 25.10.2026 THE CODE IS IN THE PATH, `/sr/registracija/<code>` (owner, 22.10.2026:
+     „Link preporuke nosi samo šifru u adresi strane za registraciju"), while `?preporuka=` goes on
+     working for the links already sent („Stari oblik ?preporuka= i dalje radi").
+   *
+     ONE LINK, ONE CODE: where the path carries a segment, only the path is read, and a wrong one
+     is no referral even beside a right `?preporuka=` (derived 25.10.2026 from the decisions of
+     22.10.2026 and 13.08.2026, PDL). The portal never builds an address with both, so both is an
+     address somebody put together by hand. The shape is asked of the path exactly as of the query
+     („Portal prima samo kod tačnog oblika", 13.08.2026), so a wrong or empty code opens the plain
+     registration, as though there had been no link at all. */
+  const { code: inThePath } = useParams()
+  const carried = inThePath ?? params.get('preporuka') ?? ''
   const referral = REFERRAL_CODE.test(carried) ? carried : null
 
   /* THE CLOSED PAGE STOOD HERE AND IS GONE (PDL, "Zabrana registracije pre 01.10.2026 se

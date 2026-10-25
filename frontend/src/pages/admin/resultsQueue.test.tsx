@@ -1192,7 +1192,7 @@ describe('the figures the moderator sets', () => {
  * R1, so the rules had nothing to hold for here, and the rewrite onto the route carried neither.
  *
  * <p><b>Escape.</b> Neither box handles Escape, so there is no key of theirs to refuse
- * (`admin/EntityEditor.tsx`, `DeleteRecord`, says the same of itself). The case that presses it while a
+ * (`components/Prompt.tsx`, which the sheet of a deletion is, says the same of itself). The case that presses it while a
  * request is out holds that a handler added to either box one day has to ask the same question.
  *
  * <p><b>The decision is HELD</b>, a promise that has not come back (`test/serverAnswers.ts` says why it

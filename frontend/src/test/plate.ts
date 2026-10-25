@@ -78,6 +78,9 @@ export function asMember(competitor: Competitor, over: Partial<Member> = {}): Me
     expected: 4800,
     price: 4800,
     balance: 0,
+    /* An account with a password, the state of nearly every member: a case about the envelope passes
+       another. */
+    invitation: 'passwordSet',
     ...over,
   }
 }

@@ -19,6 +19,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import { wordsFor } from '../account/serverWords'
+import { DeletionSaid } from './DeletionSaid'
 import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
 import {
   EVENTS,
@@ -37,6 +38,7 @@ import { EventRaces } from './EventRaces'
 import { raceKind } from '../../data/raceKind'
 import { allFinished, isChanged, rowsOf, storedRow, type RaceOfRow, type RaceRow } from './raceRows'
 import { nextSeason } from './nextSeason'
+import { whatGoesWith } from './eventDeletionWords'
 import {
   WHEN_WRITING_AN_EVENT,
   WHEN_WRITING_A_RACE,
@@ -380,6 +382,8 @@ export function AdminEvents() {
 
     if (answer.got !== 'done') {
       setRefusedDelete({ id: event.id, answer })
+      /* The sentence of an earlier deletion is not about this one (`DeletionSaid.tsx`). */
+      setSaid('')
 
       return
     }
@@ -1361,6 +1365,12 @@ export function AdminEvents() {
            * itself; the route deletes the event in one statement and the schema cascades
            * them (`result_race_fk` from the race), so there is nothing left to wait for.
            *
+           * <p><b>And since 25.10.2026 it names the races too</b> (owner, PDL „Rečenica u
+           * prozoru brisanja događaja imenuje i trke i rezultate koji odlaze"), in the words
+           * the event's own page says it in (`eventDeletionWords.ts`). The races are this
+           * screen's to count at once, since it does not draw without them, so they are named
+           * in both states below.
+           *
            * <p><b>Counted through the RACES and not through the address</b>, because that
            * is what the database will really do. A result names its event by address as
            * well, and the two answers differ exactly where two events answer at one
@@ -1383,17 +1393,15 @@ export function AdminEvents() {
            * cannot tell him the number at this moment.
            */
           const goingWith = (event: BtlEvent): string => {
-            if (results === null) {
-              return t('admin.eventDeleteCountUnknown')
-            }
-
             const mine = new Set(
               allRaces.filter((race) => race.eventId === event.id).map((race) => String(race.id)),
             )
 
-            return t('admin.eventDeleteTakes', {
-              count: results.filter((made) => mine.has(String(made.raceId))).length,
-            })
+            return whatGoesWith(
+              t,
+              mine.size,
+              results === null ? null : results.filter((made) => mine.has(String(made.raceId))).length,
+            )
           }
 
           const needle = search.trim().toLowerCase()
@@ -1444,6 +1452,10 @@ export function AdminEvents() {
                 {found.length > rows.length ? ` ${t('admin.ofMany', { count: found.length })}` : ''}
               </p>
 
+              {/* What the deletion said, DRAWN and not only said (owner, 23.10.2026: the deletion asks and
+                  answers as the member's row does, `DeletionSaid.tsx`). */}
+              <DeletionSaid said={said} clear={setSaid} />
+
               <div className="table-scroll">
                 <table className="table">
                   <caption className="visually-hidden">{t('admin.events')}</caption>
@@ -1490,6 +1502,7 @@ export function AdminEvents() {
                         <td>
                           <RowActions
                             entity={EVENTS}
+                            asks={t('admin.eventDeleteAsk')}
                             record={one}
                             name={one.name}
                             onOpen={() => {
@@ -1540,12 +1553,6 @@ export function AdminEvents() {
                 </table>
               </div>
 
-              {/* Said once and politely: the list beside it has already changed, and a
-                  reader who is not looking at it gets the one sentence that says so.
-                  The same shape `admin/AdminLeagues.tsx` uses. */}
-              <p aria-live="polite" className="visually-hidden">
-                {said}
-              </p>
             </>
           )
         }}

@@ -40,6 +40,11 @@ export const aNeverPaidRecord = {
   profileHidden: false,
   birthdayShown: 'none',
   address: 'Ulica Nova 3',
+  shirtSize: 'XL',
+  /* The locked three of his page (PDL 24.10.2026). He registered with a document, so he has all three. */
+  fatherName: 'Zoran',
+  birthDate: '1992-11-23',
+  idNumber: 'CD67890',
 }
 
 /**

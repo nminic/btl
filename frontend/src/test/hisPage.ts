@@ -39,10 +39,15 @@ export const aLapsedMembersPage = {
   profileHidden: false,
   birthdayShown: 'none',
   address: 'Ulica Stara 7',
+  shirtSize: 'S',
+  /* The locked three of the card (PDL 24.10.2026); he gave no document, so the number is in
+     `WHAT_MAY_BE_LEFT_OUT`. */
+  fatherName: 'Milan',
+  birthDate: '1975-09-30',
 }
 
 /**
- * THE SIX NAMES `MeApi.MyOwnRecord` LEAVES OUT RATHER THAN CARRY AS NULL (`@JsonInclude
+ * THE NAMES `MeApi.MyOwnRecord` LEAVES OUT RATHER THAN CARRY AS NULL (`@JsonInclude
  * (NON_NULL)`), because a member may honestly have none of what they say: no club, and with it
  * no year in it, and no portrait, and with it no square, no telephone, and no words waiting for a
  * moderator. `memberNumber` is the seventh annotated component and is present in the sample, because a
@@ -56,6 +61,8 @@ export const WHAT_MAY_BE_LEFT_OUT = [
   /* And the same portrait cut small (PDL, 23.10.2026), absent with the other two. */
   'smallPhoto',
   'phone',
+  /* The number of his document, absent for a member who gave none (`MeApi.MyOwnRecord.idNumber`). */
+  'idNumber',
   'bioWaiting',
   /* And the basis of the season on sale with its season, which a member whose fee has lapsed holds
      no membership of (`MeApi.MyOwnRecord`, since V62; PDL P8, 18.10.2026). Until that day he was

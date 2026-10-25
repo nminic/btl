@@ -10,6 +10,7 @@ import {
 } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { at, must } from '../../test/at'
+import { sayYes } from '../../test/deleteSheet'
 import { SLOW } from '../../test/slow'
 
 /**
@@ -135,7 +136,7 @@ describe('a competition made, changed and taken away', () => {
     )
 
     await user.click(within(row).getByRole('button', { name: `Obriši: ${name}` }))
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
+    await sayYes(user, 'Obriši ligu?')
 
     return row
   }

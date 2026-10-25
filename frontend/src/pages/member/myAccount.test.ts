@@ -6,7 +6,7 @@ import { answeredWith, forgetEveryCookie, refused, serverThat } from '../../test
 import { askTheServer } from '../account/askTheServer'
 import {
   AS_LONG_AS_THE_FORM_ALLOWS,
-  WHAT_THIS_SCREEN_SENDS,
+  TYPED_BOXES,
   WHEN_CHANGING_MY_DATA,
   WHEN_CHANGING_MY_PASSWORD,
   hiddenIn,
@@ -62,6 +62,9 @@ function asOpened(moved: { standing?: Partial<Standing>; typed?: Partial<Typed> 
     lastName: 'Vukićević',
     address: 'Kneza Miloša 1',
     phone: '+381 60 123 456',
+    city: 'Beograd',
+    country: 'RS',
+    shirtSize: 'M',
   }
 
   return [{ ...held, ...moved.standing }, { ...held, ...moved.typed }]
@@ -160,6 +163,26 @@ describe('what of the member’s own form actually travels', () => {
    * nothing the second time. Without this, a rule that always sent the two private fields would pass
    * every case above that moves one of them and send the same address again on every press.
    */
+  /**
+   * HALF A TOWN IS NOT A TOWN (23.10.2026): the route takes the name and the country together or
+   * refuses them, so either one moving sends both, and neither moving sends neither.
+   */
+  it('sends the town and its country together when either of the two moved', () => {
+    expect(whatChanged(...asOpened({ typed: { city: 'Novi Sad' } }))).toEqual({
+      city: 'Novi Sad',
+      country: 'RS',
+    })
+    expect(whatChanged(...asOpened({ typed: { country: 'HR' } }))).toEqual({
+      city: 'Beograd',
+      country: 'HR',
+    })
+    expect(whatChanged(...asOpened({ typed: { city: ' Beograd ' } }))).toEqual({})
+  })
+
+  it('sends the size alone when only the size moved', () => {
+    expect(whatChanged(...asOpened({ typed: { shirtSize: 'XL' } }))).toEqual({ shirtSize: 'XL' })
+  })
+
   it('sends nothing for a box that holds what was just written', () => {
     expect(
       whatChanged(...asOpened({ standing: { phone: '065 1234' }, typed: { phone: '065 1234' } })),
@@ -177,10 +200,10 @@ describe('how long each box on the member’s own form is', () => {
    * So what is left to measure is that every field this screen sends really has one, and that
    * the four are not quietly the same number - which is what a broken read would look like.
    */
-  it('is a real number for every field the screen sends', () => {
-    expect(WHAT_THIS_SCREEN_SENDS.length).toBe(4)
+  it('is a real number for every box typed into, and for the town', () => {
+    expect(TYPED_BOXES.length).toBe(4)
 
-    for (const name of WHAT_THIS_SCREEN_SENDS) {
+    for (const name of [...TYPED_BOXES, 'city'] as const) {
       expect(AS_LONG_AS_THE_FORM_ALLOWS[name], name).toBeGreaterThan(0)
     }
 

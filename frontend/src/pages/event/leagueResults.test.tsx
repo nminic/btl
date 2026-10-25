@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import type { Race, Result } from '../../data/types'
 import { must } from '../../test/at'
+import { sayYes } from '../../test/deleteSheet'
 import { expectFrontPage, moderatorWith, renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
@@ -841,7 +842,6 @@ describe('the pencil and the x', () => {
     const table = await screen.findByRole('table', { name: 'Rezultati članova' })
     const row = must(within(table).getAllByRole('row').slice(1)[1], 'the second row')
     const ask = within(row).getByRole('button', { name: /^Obriši: / })
-    const name = must(ask.getAttribute('aria-label'), 'a name').replace('Obriši: ', '')
 
     /* The cross every deletion on the portal is drawn with since 20.10.2026, and its word for a
        reader is the one it always had. */
@@ -849,7 +849,7 @@ describe('the pencil and the x', () => {
     expect(ask).toHaveTextContent('Obriši')
 
     await user.click(ask)
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
+    await sayYes(user, 'Obriši rezultat?')
 
     await waitFor(() => {
       expect(within(table).getAllByRole('row').slice(1)).toHaveLength(ITS_RESULTS.length - 1)
@@ -890,10 +890,9 @@ describe('the pencil and the x', () => {
     const table = await screen.findByRole('table', { name: 'Rezultati članova' })
     const row = must(within(table).getAllByRole('row').slice(1)[1], 'the second row')
     const ask = within(row).getByRole('button', { name: /^Obriši: / })
-    const name = must(ask.getAttribute('aria-label'), 'a name').replace('Obriši: ', '')
 
     await user.click(ask)
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
+    await sayYes(user, 'Obriši rezultat?')
 
     const said = 'Član već ima prijavu koja čeka za ovu trku. Prvo je odobri ili odbij u redu za proveru.'
 

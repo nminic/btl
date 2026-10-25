@@ -1,7 +1,10 @@
+import { addressOfThePage } from './head'
 import POSTED_ADDRESSES from './postedAddresses.json'
 import { routeObjects } from './routeObjects'
 import {
   ACCOUNT_ROUTES,
+  accountMenuFor,
+  MY_DATA_ADDRESS,
   CONTACT_ADDRESS,
   EXTRA_ADDRESSES,
   FOOTER_ROUTES,
@@ -114,6 +117,26 @@ describe('ACCOUNT_ROUTES', () => {
   it('holds settings, which no longer hang off a cog of their own (PDL P28a)', () => {
     expect(ACCOUNT_ROUTES.map((route) => route.path)).toContain('podesavanja')
   })
+  /* **WHAT SOMEBODY WHO HAS NOT PAID IS DRAWN, AND IN WHAT ORDER** (owner, 22.10.2026: „Neka ima u
+     navigaciji stranu Moji Podaci dok nije odobren koja je iznad Moja Članarina", and „Sve opcije koje
+     mu nisu dostupne privremeno (dakle sve osim Članarine) ne treba da mu uopšte budu dostupne"). */
+  it('draws somebody who has not paid „Moji podaci" above „Moja članarina", and nothing else', () => {
+    expect(accountMenuFor(true).map((route) => route.path)).toEqual(['moji-podaci', 'moja-clanarina'])
+  })
+
+  it('draws everybody else the list as it was, without „Moji podaci" and without the inbox', () => {
+    expect(accountMenuFor(false).map((route) => route.path)).toEqual([
+      'moj-profil',
+      'moji-rezultati',
+      'moja-clanarina',
+      'podesavanja',
+    ])
+  })
+
+  it('serves „Moji podaci" at an address of its own, whoever the menu draws it to', () => {
+    expect(ROUTES.map((route) => route.path)).toContain(MY_DATA_ADDRESS)
+    expect(MY_DATA_ADDRESS).toBe('moji-podaci')
+  })
 })
 
 describe('ROUTES', () => {
@@ -187,9 +210,27 @@ describe('seoKeyFor', () => {
   })
 
   it('gives every address its own seo entry, so that no two pages share a name', () => {
-    const keys = [...ROUTES, ...EXTRA_ADDRESSES].map((address) => address.seoKey)
+    /* Over PAGES and not over addresses, since 25.10.2026: `registracija/:code` is the
+       registration page with a referral code in it and names itself as that page
+       (`addressOfThePage`, app/head.ts), so it is one page with two addresses and one name. Every
+       other address is its own page. */
+    const pages = [...ROUTES, ...EXTRA_ADDRESSES].filter(
+      (address) => addressOfThePage(address.path) === address.path,
+    )
+    const keys = pages.map((address) => address.seoKey)
 
+    expect(pages.length).toBe(ROUTES.length + EXTRA_ADDRESSES.length - 1)
     expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it('names the registration page with a referral code in it as the registration page', () => {
+    expect(seoKeyFor('registracija/7f07b38ff7ee7543')).toBe('register')
+    expect(seoKeyFor('registracija/7f07b38ff7ee7543')).toBe(seoKeyFor('registracija'))
+    expect(addressOfThePage('registracija/7f07b38ff7ee7543')).toBe('registracija')
+    /* Only that one address: a value under any other screen is its own page. */
+    expect(addressOfThePage('takmicar/000001')).toBe('takmicar/000001')
+    expect(addressOfThePage('registracija')).toBe('registracija')
+    expect(addressOfThePage('registracija/a/b')).toBe('registracija/a/b')
   })
 })
 

@@ -255,13 +255,16 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 	 * V60 and runs it.
 	 */
 	private void theSignOffOfThePolicyHasMovedOnAndNoOtherDocumentMovedWithIt(String language) {
+		/* V73 moved the policy's on to 24.10.2026 (PDL, "Datum Poslednja izmena se pomera"), so 22.10.2026 stands on the
+		   rulebook and the terms alone. */
 		assertThat(placesWhichCarry(language, signOffNow(language)))
-				.as("the %s sign-off of 22.10.2026 must stand on the three documents, the policy among them", language)
-				.containsExactlyInAnyOrder(THE_POLICY_SIGN_OFF, new Place("pravilnik", 19),
-						new Place("uslovi-koriscenja", 11));
+				.as("the %s sign-off of 22.10.2026 must stand on the rulebook and the terms, and not on the policy",
+						language)
+				.containsExactlyInAnyOrder(new Place("pravilnik", 19), new Place("uslovi-koriscenja", 11));
 		assertThat(bodyOf(language, THE_POLICY_SIGN_OFF))
-				.as("the privacy policy must be signed off once, on 22.10.2026, and no longer on the day V60 wrote")
-				.containsOnlyOnce(signOffNow(language))
+				.as("the privacy policy must be signed off once, on 24.10.2026, and no longer on the day V60 wrote")
+				.containsOnlyOnce(language.equals("sr") ? "Poslednja izmena: 24.10.2026." : "Last amended: 24.10.2026.")
+				.doesNotContain(signOffNow(language))
 				.doesNotContain(signOffAfter(language))
 				.doesNotContain(signOffBefore(language));
 		assertThat(placesWhichCarry(language, signOffAfter(language)))

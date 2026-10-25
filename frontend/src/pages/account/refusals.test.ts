@@ -45,6 +45,8 @@ import {
 } from '../joiningThisTeam'
 import { WHEN_WRITING_AN_EVENT, WHEN_WRITING_A_RACE } from '../admin/eventWrites'
 import { WHEN_THE_LEAGUE_ENTERS_RESULTS } from '../event/leagueResultWrites'
+import { WHEN_CORRECTING_A_MEMBER } from '../profile/memberData'
+import { WHEN_SENDING_AN_INVITATION } from '../admin/memberInvitation'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -233,23 +235,11 @@ const NOT_YET_ON_ANY_SCREEN: Record<string, string[]> = {
     'theAddressIsNotShaped',
     'theAddressIsTaken',
   ],
-  /* ADDED 22.10.2026 WITH `PUT /api/members/{memberNumber}/data`, the administration correcting a
-     member's data (PDL, „Red člana, kartica Podaci i strana Podešavanja"). The card „Podaci" that
-     sends it is the next increment, so all seven wait here and this entry goes the day that screen
-     names them, as the case at the bottom of this file requires. The words it shares with the
-     member's own form (a box too long, emptied, a town not said once) are `MeWriteApi`'s constants
-     and are not declared in this file. */
-  'MemberDataWriteApi.java': [
-    'notTakenHere',
-    'aPairHoldsTheGender',
-    'aMinorNeedsAConsent',
-    'theAddressIsConfirmed',
-    'thereIsNoAccount',
-    'theAddressIsTaken',
-    /* Added 23.10.2026 (owner: the administration may not correct an address to a named
-       superadmin's), with the other six until the card names them. */
-    'theAddressIsTheSuperadmins',
-  ],
+  /* `MemberDataWriteApi` stood here from 22.10.2026 with all seven of its names, while no screen sent
+     `PUT /api/members/{memberNumber}/data`. Since 23.10.2026 the card „Podaci" sends it
+     (`profile/TheMembersData.tsx`), so the seven have a dictionary on the line for that file below and
+     the entry went, as the case at the bottom of this file requires of a reason whose screen has
+     arrived. */
   /* `PairWriteApi` stood here until 10.10.2026 with two names, `aQuestionAlreadyStands` and
      `aPairAlreadyHolds`, both `POST /api/pairs`'s, which no screen sent: „Pozovi u trkački par"
      wrote its question into the session. Since P2 it sends the route (`profile/InviteToPair.tsx`,
@@ -471,10 +461,15 @@ describe('the reasons the server can name', () => {
     ['MemberMembershipApi.java',
       [WHEN_CANCELLING, WHEN_CHANGING_TO_THE_EXEMPTION, WHEN_PAYING_OVER_THE_EXEMPTION,
         WHEN_GRANTING_AN_EXEMPTION], 4],
-    /* ADDED 22.10.2026: no screen sends it yet, so every one of its seven (the seventh since
-       23.10.2026) waits in `NOT_YET_ON_ANY_SCREEN` above, and the count is what makes an eighth fail
-       here. */
-    ['MemberDataWriteApi.java', [], 7],
+    /* ADDED 22.10.2026, AND ANSWERED SINCE 23.10.2026 BY THE CARD „PODACI" (`profile/TheMembersData.tsx`):
+       the administration correcting a member's data. Seven constants and seven reasons; the sentences it
+       shares with the member's own route are that route's constants (`MeWriteApi`), held by
+       `member/myAccount.test.ts`, and not declared in this file. */
+    ['MemberDataWriteApi.java', [WHEN_CORRECTING_A_MEMBER], 7],
+    /* ADDED 25.10.2026 WITH THE ENVELOPE ON THE MEMBER'S ROW (`admin/MemberRow.tsx`): three constants, all
+       three refusals of `POST /api/members/{memberNumber}/invitation`. The third arrives with a 503 and is
+       said through the number as well (`admin/memberInvitation.ts`). */
+    ['MemberInvitationApi.java', [WHEN_SENDING_AN_INVITATION], 3],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A RACING PAIR.
        Seven constants, and the count splits three ways: three are not refusals at all
        (`NOT_A_REASON` above), two are real refusals of the act that ASKS rather than answers

@@ -613,13 +613,28 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   Pinned LAST, when the file was final, off this very assertion. */
 			new Applied("72", "V72__an_unconfirmed_registration_lasts_seven_days.sql", -317542150),
 
+			/* V73. The privacy policy says the date of birth is not shown to others, in Serbian and in English
+			   (the owner, 24.10.2026, PDL, the entry "Politika privatnosti, odeljak 3": add the word "drugima"):
+			   the word "drugima" in the sentence of section 3 about the date of birth, in the cell about the document
+			   and in the item of the list of what is never shown that names the document and the father, because a member sees his own date on
+			   his own card. Eight edits, each stopping the migration unless its old text stands exactly once and its
+			   new text is not already there. Two of them move the sign-off of the policy, and only the policy, to 24.10.2026. No schema.
+
+			   73 and not 72, MEASURED on 24.10.2026: the pull request that carries V72 (an unconfirmed registration
+			   lasts seven days) is merged before this one, and no other remote ref held a migration at V73. V72
+			   therefore stands just above, and the two entries are neighbours that do not touch.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read off
+			   this very assertion when it ran before the entry existed. */
+			new Applied("73", "V73__the_privacy_policy_says_the_date_of_birth_is_not_shown_to_others.sql",
+					-936128839),
+
 			/* V74. A bank statement is remembered and its file is not (owner, 24.10.2026, PDL „Učitavanje
 			   izvoda iz banke na ekranu Uplate": „Server pamti broj izvoda i stavke (da se isti izvod ne
 			   knjiži dvaput), a sam PDF ne čuva.").
 
-			   74 and not 73, MEASURED on 25.10.2026: origin/main stands at V72, and the open pull request 644
-			   (branch b-nalog-bez-reci) holds V73; no remote branch holds V74. Whichever of the two lands
-			   second gains the other's line above or below this one.
+			   74 and not 73, MEASURED on 25.10.2026: V73 (pull request 644) was merged on 25.10.2026 and stands just
+			   above; no remote branch holds V74, measured again that day when main was merged into this branch.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
 			new Applied("74", "V74__a_bank_statement_is_remembered_and_its_file_is_not.sql", 1208052030));

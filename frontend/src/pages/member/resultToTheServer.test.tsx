@@ -6,6 +6,7 @@ import type { BtlEvent, Race, Result, SentRun } from '../../data/types'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
+import { sayYes } from '../../test/deleteSheet'
 import { SLOW } from '../../test/slow'
 import { answeredWith, did, refused, serverThat, type Asked } from '../../test/serverAnswers'
 
@@ -31,7 +32,7 @@ const ME = '000007'
  * (`test/setup.ts`), so the two run out in the same instant and the case dies with „Test
  * timed out in 20000ms" instead of with the name of the element. Measured on this very file
  * on 28.09.2026: seven failures, not one of which said what was missing, over two fixtures
- * that were simply wrong (the road is `prijava` and the second press is „Potvrdi brisanje").
+ * that were simply wrong (the road is `prijava` and the second press is „Obriši" in the sheet it opens).
  */
 const SOON = { timeout: 4_000 }
 
@@ -1348,7 +1349,7 @@ describe('a counted result the member takes back', () => {
       const pressed = resultOf(row)
 
       await user.click(row.getByRole('button', { name: /^Obriši: / }))
-      await user.click(await screen.findByRole('button', { name: /^Potvrdi brisanje/ }, SOON))
+      await sayYes(user, 'Obriši rezultat?')
 
       await waitFor(() => {
         expect(writes()).toHaveLength(1)
@@ -1378,7 +1379,7 @@ describe('a counted result the member takes back', () => {
       const row = await secondRow()
 
       await user.click(row.getByRole('button', { name: /^Obriši: / }))
-      await user.click(await screen.findByRole('button', { name: /^Potvrdi brisanje/ }, SOON))
+      await sayYes(user, 'Obriši rezultat?')
 
       expect(
         await screen.findByText(/Proveri dužinu, uspon, spust i vreme/, undefined, SOON),
@@ -1418,11 +1419,16 @@ describe('a counted result the member takes back', () => {
          and that would take a second result off his profile on one answer. */
       for (const row of rows.slice(0, 2)) {
         await user.click(within(row).getByRole('button', { name: /^Obriši: / }))
-        /* Within the row and never over the whole screen: the first row's confirmation is
-           still open, because nothing closes it while its request is out, so a screen-wide
-           query finds two and this case would fail over its own second press rather than
-           over the thing it measures. */
-        await user.click(within(row).getByRole('button', { name: /^Potvrdi brisanje/ }))
+        /* THE LAST SHEET ON THE PAGE, and not the only one: the first row's sheet is still open, because
+           nothing closes it while its request is out, so a screen-wide query finds two. In a browser the
+           first sheet covers the page and the second cross cannot be pressed at all (`Prompt`, the
+           backdrop), which makes this guard a second line behind the sheet's own; jsdom lays nothing out, so
+           the press reaches it here and the case keeps the line held. */
+        const sheets = await screen.findAllByRole('dialog', { name: 'Obriši rezultat?' })
+
+        await user.click(
+          within(must(sheets.at(-1), 'the sheet of the row just pressed')).getByRole('button', { name: 'Obriši' }),
+        )
       }
 
       expect(writes()).toHaveLength(1)
@@ -1453,7 +1459,7 @@ describe('a counted result the member takes back', () => {
       const row = await secondRow()
 
       await user.click(row.getByRole('button', { name: /^Obriši: / }))
-      await user.click(await screen.findByRole('button', { name: /^Potvrdi brisanje/ }, SOON))
+      await sayYes(user, 'Obriši rezultat?')
 
       await screen.findByText(/Proveri dužinu, uspon, spust i vreme/, undefined, SOON)
 
@@ -1462,7 +1468,7 @@ describe('a counted result the member takes back', () => {
       }, SOON)
 
       await user.click(row.getByRole('button', { name: /^Obriši: / }))
-      await user.click(await screen.findByRole('button', { name: /^Potvrdi brisanje/ }, SOON))
+      await sayYes(user, 'Obriši rezultat?')
 
       await waitFor(() => {
         expect(writes()).toHaveLength(2)
@@ -1506,7 +1512,7 @@ describe('a refusal that says the counted result is not there', () => {
     const before = reads()
 
     await user.click(row.getByRole('button', { name: /^Obriši: / }))
-    await user.click(await screen.findByRole('button', { name: /^Potvrdi brisanje/ }, SOON))
+    await sayYes(user, 'Obriši rezultat?')
 
     expect(await screen.findByText(said, undefined, SOON)).toBeVisible()
 
@@ -1631,7 +1637,7 @@ describe('a refusal that says the counted result is not there', () => {
       const before = reads()
 
       await user.click(row.getByRole('button', { name: /^Obriši: / }))
-      await user.click(await screen.findByRole('button', { name: /^Potvrdi brisanje/ }, SOON))
+      await sayYes(user, 'Obriši rezultat?')
 
       await waitFor(() => {
         expect(reads().sent).toBe(before.sent + 1)

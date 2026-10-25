@@ -39,7 +39,24 @@ const prices: unknown = JSON.parse(
 
 const aChoice = { season: 2027, firstSeason: false, firstSeasonAllowed: true, category: 'M25-39', open: true }
 
+/* What he sends for the season on sale, which the slip has been drawn off since 25.10.2026 (PDL,
+   26.09.2026, „QR se kuje na iznos minus balans"; `GET /api/me/membership`, `MyMembershipApi`): the
+   record exactly, in dinars, because both of these live in Serbia. Without it the screen draws no slip. */
+const dinars = (amount: number) => ({ amount, currency: 'RSD' })
+const owed = {
+  season: 2027,
+  alreadyAMember: false,
+  priceKey: 'early',
+  fee: dinars(4200),
+  balance: dinars(600),
+  fromTheBalance: dinars(600),
+  toTransfer: dinars(3600),
+  processingFeeEur: 0,
+  coveredByTheBalance: false,
+}
+
 const common: Answers = {
+  '/api/me/membership': owed,
   '/api/pricing': prices,
   '/api/results': [],
   '/api/teams': [],

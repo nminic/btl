@@ -235,7 +235,11 @@ export function Shell() {
                 the league any money. */}
             {signedIn !== null ? (
               <>
-                <MessagesMenu />
+                {/* NOT DRAWN TO SOMEBODY WHO REGISTERED AND HAS NOT PAID (owner, 24.10.2026, chosen between
+                    offered outcomes with the recommendation: „Neplaćenom članu se koverta sa porukama u
+                    zaglavlju sakriva dok ne plati"). It was drawn to him with an empty panel since
+                    16.10.2026, and its „Sve poruke" led to a page that sends him on to the fee. */}
+                {signedIn.as !== 'neverPaid' && <MessagesMenu />}
                 <AccountMenu signedIn={signedIn} />
               </>
             ) : (

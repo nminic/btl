@@ -37,8 +37,8 @@ import { sources, WHOLE_PORTAL } from '../test/sources'
  * is read where it is a call of `t` with a written key, or a choice between two
  * written keys (`t(open ? 'a' : 'b')`, or `open ? t('a') : t('b')`). A text that
  * arrives any other way (a variable, a prop, a word built in a helper) is not read,
- * and such a button is outside this floor: `DeleteRecord` in
- * `pages/admin/EntityEditor.tsx`, which draws `face ?? t('admin.form.delete')`, is
+ * and such a button is outside this floor: `DeleteSheet` in
+ * `pages/admin/DeleteSheet.tsx`, which draws `opener ?? t('admin.form.delete')`, is
  * the one that matters, and it is converted by hand with the shared paths.
  *
  * The component is found through the import and not by its name, so a screen that
@@ -84,9 +84,15 @@ const SYMBOL_OF = new Map<string, { symbol: ActionSymbol; word: string }>([
   ['admin.form.delete', { symbol: SYMBOL.cross, word: 'Obriši' }],
   ['admin.form.open', { symbol: SYMBOL.pencil, word: 'Otvori' }],
   ['admin.recordPayment', { symbol: SYMBOL.banknote, word: 'Upiši uplatu' }],
+  /* The envelope on the member's row (owner, 25.10.2026). */
+  ['admin.sendNewInvitation', { symbol: SYMBOL.envelope, word: 'Pošalji novu pozivnicu' }],
+  /* And what its box says where it cannot act (owner, 25.10.2026), on the same envelope. */
+  ['admin.invitationNotNeeded', { symbol: SYMBOL.envelope, word: 'Član je već postavio lozinku.' }],
+  ['admin.invitationNoAccount', { symbol: SYMBOL.envelope, word: 'Član nema nalog na portalu, pa pozivnica nema kome da ode.' }],
   ['event.copy', { symbol: SYMBOL.copy, word: 'Kopiranje' }],
-  ['event.delete', { symbol: SYMBOL.cross, word: 'Brisanje' }],
   ['event.edit', { symbol: SYMBOL.pencil, word: 'Izmena' }],
+  /* The pencil on a member's row (PDL 22.10.2026), which leads to the card „Podaci" of his profile. */
+  ['admin.editMember', { symbol: SYMBOL.pencil, word: 'Izmeni podatke' }],
   /* The pencil on every result of the event page (PDL P9, 18.10.2026), named by whose run it is. */
   ['leagueResults.edit', { symbol: SYMBOL.pencil, word: 'Izmeni' }],
   /* Taking a row out of the entry of results, as a race is taken out of the form of an event. */
@@ -131,7 +137,6 @@ const STAYS_A_WORD = new Map([
   ['admin.addRace', FORM],
   ['admin.changeToExemption', LISTED],
   ['admin.form.back', NOT_AN_ACTION],
-  ['admin.form.keep', ANSWER],
   ['admin.form.new.races', LISTED],
   ['admin.leagueRaces', NOT_AN_ACTION],
   ['bio.send', FORM],
@@ -162,7 +167,6 @@ const STAYS_A_WORD = new Map([
   ['nav.login', NOT_AN_ACTION],
   ['newPassword.sending', FORM],
   ['newPassword.submit', FORM],
-  ['nav.membership', NOT_AN_ACTION],
   ['newResult.another', NOT_AN_ACTION],
   ['newResult.toMine', NOT_AN_ACTION],
   ['pager.next', NOT_AN_ACTION],
@@ -207,12 +211,12 @@ const STAYS_A_WORD = new Map([
  * that the symbol is the one the owner's map gives the thing they do, and that nothing
  * else on the portal draws a symbol over a word this floor cannot read.
  *
- * - `DeleteRecord` (pages/admin/EntityEditor.tsx), the first button of every deletion:
+ * - `DeleteSheet` (pages/admin/DeleteSheet.tsx), the first button of every deletion:
  *   „Obriši", or the words a screen hands over („Obriši svoju ocenu").
  * - `CopyField` (components/CopyField.tsx): the name of the value it copies.
  */
 const HANDED_DOWN = new Map([
-  ['pages/admin/EntityEditor.tsx', SYMBOL.cross],
+  ['pages/admin/DeleteSheet.tsx', SYMBOL.cross],
   ['components/CopyField.tsx', SYMBOL.copy],
 ])
 

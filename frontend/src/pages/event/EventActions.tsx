@@ -14,6 +14,9 @@ import { ran } from './ran'
 import { useMay } from '../admin/rights'
 import { SYMBOL } from '../../app/actionSymbol'
 import { ActionButton } from '../../components/ActionButton'
+import { DeleteSheet } from '../admin/DeleteSheet'
+import { whatGoesWith } from '../admin/eventDeletionWords'
+import { EVENT_DELETED } from '../eventDeleted'
 
 /**
  * What can be done with an event, from the event's own page.
@@ -58,6 +61,11 @@ export function EventActions({
 
   const mayEdit = may(`entity:${EVENTS.id}`)
   const mine = races.filter((race) => race.eventId === event.id)
+  /* HOW MANY RACES AND RESULTS GO WITH THE EVENT, counted the way the database counts them: the races through
+     `race_event_fk`, the results through those races, which is what `result_race_fk` cascades from
+     (`admin/AdminEvents.tsx`, `goingWith`, says the same in the administration, in the words of `admin/eventDeletionWords.ts`). */
+  const mineIds = new Set(mine.map((race) => race.id))
+  const goingWith = results.filter((made) => mineIds.has(made.raceId)).length
 
   /**
    * THE WAY TO THE FORM THAT CHANGES THIS EVENT, WHICH IS THE ADMINISTRATION'S OWN.
@@ -143,14 +151,14 @@ export function EventActions({
    * (`data/useResource.ts`), so this button took the event off the calendar for the rest of
    * the visit and left the row standing in the database for everybody else.
    *
-   * <p><b>It asks first, and that is unchanged</b>: nothing brings any of it back, and
-   * deleting an event of five races from a page that shows one of them is easy to do by
-   * mistake. What is new is that the answer is now the truth.
+   * <p><b>It asks first, in the sheet of every other deletion since 25.10.2026</b> (`admin/DeleteSheet.tsx`; it asked
+   * through `window.confirm` until then): nothing brings any of it back, and deleting an event of five races from a page
+   * that shows one of them is easy to do by mistake. The sheet names the event and says how many results go with it, in
+   * the words the administration's list of events already has. What is new beside that is that the answer is the truth.
    */
   async function erase() {
-    if (!window.confirm(t('event.deleteAsk', { name: event.name, count: mine.length }))) {
-      return
-    }
+    /* The sentence of an earlier refusal is not about this attempt. */
+    setRefused(null)
 
     const answer = await askTheServer(`/api/events/${String(event.id)}`, {}, 'DELETE')
 
@@ -167,7 +175,7 @@ export function EventActions({
     clearResourceCache('events')
     clearResourceCache('races')
     clearResourceCache(RESULTS)
-    void navigate(`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`)
+    void navigate(`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`, { state: EVENT_DELETED })
   }
 
   /* What a member may do here, and half of whether there is a row at all. PDL P9
@@ -209,7 +217,9 @@ export function EventActions({
         <>
           <ActionButton symbol={SYMBOL.pencil} word={t('event.edit')} className="button button--secondary" onClick={change} />
           <ActionButton symbol={SYMBOL.copy} word={t('event.copy')} className="button button--secondary" onClick={copy} />
-          <ActionButton symbol={SYMBOL.cross} word={t('event.delete')} className="button button--secondary" onClick={() => void erase()} />
+          <DeleteSheet name={event.name} asks={t('admin.eventDeleteAsk')} look="button button--secondary" onDelete={erase}>
+            <p>{whatGoesWith(t, mine.length, goingWith)}</p>
+          </DeleteSheet>
           {/* What the route said instead of doing it. The reader is still on the
               event's own page when a deletion is refused - nothing navigated - so
               the sentence belongs here, beside the button he pressed. */}

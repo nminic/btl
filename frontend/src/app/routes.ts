@@ -27,6 +27,16 @@ export type RouteDef = Address & {
    * own is still a screen.
    */
   notInMenu?: boolean
+  /**
+   * Whom the entry in the menu behind the account picture is drawn to, when that is not "every
+   * account": `unpaid` is somebody who registered and has not paid and NOBODY ELSE, `unpaidToo` is
+   * everybody and him as well. Left out, the entry is drawn to every account except him.
+   *
+   * An entry of his is also an address the router serves, so the list stays one list: it is what
+   * the router is built from and `accountMenuFor` is the one place that says who sees which of
+   * them (PDL 22.10.2026, „Član koji još nije platio: bez reči nalog, samo Članarina").
+   */
+  menuFor?: 'unpaid' | 'unpaidToo'
 }
 
 /* One entry in the top navigation: one word, one screen. Order here is the order
@@ -67,17 +77,25 @@ export const NAV: NavSection[] = [
 ]
 
 /* WHERE A MEMBER PAYS AND CHOOSES HIS CATEGORY, as a name and not only as a row of the list
- * below. The part of the portal that tells somebody who cannot use his own screens yet where to
- * go instead (`pages/member/NotAMemberYet.tsx`) has to point here, and a second spelling of an
- * address is the first thing a rename leaves behind. */
+ * below. The part of the portal that sends somebody who cannot use a screen yet to the one he can
+ * (`pages/member/SentToTheFee.tsx`) has to point here, and a second spelling of an address is the
+ * first thing a rename leaves behind. */
 export const MEMBERSHIP_ADDRESS = 'moja-clanarina'
+
+/* WHERE SOMEBODY WHO HAS NOT PAID CHANGES HIS DATA, until the fee is recorded. After that the data
+ * are on the card „Podaci" of his profile. */
+export const MY_DATA_ADDRESS = 'moji-podaci'
 
 /* The member area. It hangs off the picture and the cog in the header, not off
  * the navigation, because it belongs to one person rather than to the league. */
 export const ACCOUNT_ROUTES: RouteDef[] = [
+  /* HIS, UNTIL HE IS APPROVED, and above the page he pays on (owner, 22.10.2026: „Neka ima u
+     navigaciji stranu Moji Podaci dok nije odobren koja je iznad Moja Članarina."). Nobody else is
+     drawn it: the member whose fee stands changes his data on the card „Podaci" of his profile. */
+  { path: MY_DATA_ADDRESS, labelKey: 'nav.myData', seoKey: 'myData', menuFor: 'unpaid' },
   { path: 'moj-profil', labelKey: 'nav.myProfile', seoKey: 'myProfile' },
   { path: 'moji-rezultati', labelKey: 'nav.myResults', seoKey: 'myResults' },
-  { path: MEMBERSHIP_ADDRESS, labelKey: 'nav.membership', seoKey: 'membership' },
+  { path: MEMBERSHIP_ADDRESS, labelKey: 'nav.membership', seoKey: 'membership', menuFor: 'unpaidToo' },
   /* Not drawn in the menu behind the picture (owner, 23.08.2026): the envelope
      in the header opens the inbox and „Sve poruke" stands at the foot of it,
      which is one press fewer than the menu. It stays in this list because the
@@ -96,6 +114,23 @@ export const ACCOUNT_ROUTES: RouteDef[] = [
  *  the name of the statute in the first section of the terms to be the link instead.
  *  The obligation is met there: one published copy is a published copy, and it is the
  *  document a member accepts on joining, which is where somebody looking for it goes. */
+/**
+ * The entries of the menu behind the account picture, for one kind of reader.
+ *
+ * Somebody who registered and has not paid is drawn two of them, „Moji podaci" and then „Moja
+ * članarina", and nothing else (owner, 22.10.2026: „Sve opcije koje mu nisu dostupne privremeno
+ * (dakle sve osim Članarine) ne treba da mu uopšte budu dostupne"). Everybody else is drawn the
+ * list as it was, without „Moji podaci" and without the entries that have a shorter way in of their
+ * own. The sign out button is not in this list for either of them and stays for both.
+ */
+export function accountMenuFor(unpaid: boolean): RouteDef[] {
+  return ACCOUNT_ROUTES.filter((route) =>
+    unpaid
+      ? route.menuFor !== undefined
+      : route.notInMenu !== true && route.menuFor !== 'unpaid',
+  )
+}
+
 export const FOOTER_ROUTES: RouteDef[] = [
   { path: 'politika-privatnosti', labelKey: 'nav.privacy', seoKey: 'privacy' },
   { path: 'uslovi-koriscenja', labelKey: 'nav.terms', seoKey: 'terms' },
@@ -180,6 +215,7 @@ export const EXTRA_ADDRESSES: Address[] = [
   { path: '', seoKey: 'home' },
   { path: 'takmicar/:memberNumber', seoKey: 'competitor' },
   { path: 'takmicar/:memberNumber/priznanja', seoKey: 'competitorAwards' },
+  { path: 'takmicar/:memberNumber/podaci', seoKey: 'competitorData' },
   /* Before the event, because the static segment has to win: /kalendar/dan/... is
      a day and never a race whose address happens to begin with "dan". */
   { path: 'kalendar/dan/:date', seoKey: 'calendarDay' },
@@ -199,6 +235,10 @@ export const EXTRA_ADDRESSES: Address[] = [
   /* Generic on purpose: the subject of a message is personal data and must not
    * end up in a browser tab, in history or in a shared link (PDL P23). */
   { path: 'poruke/:id', seoKey: 'message' },
+  /* The registration page with a referral code in it, named as the registration page is: the
+     code is not part of what the page is (`app/useRouteChrome.ts` gives it the same canonical
+     address too). */
+  { path: 'registracija/:code', seoKey: 'register' },
   { path: 'rezultat/novi', seoKey: 'newResult' },
   /* One entry for every queue under verification, because they are all the same
    * kind of screen and the queues themselves are defined in QUEUES, next to the

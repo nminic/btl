@@ -90,6 +90,12 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
   /* Nought since 17.10.2026: every place he took is in the imported history, and no season before
      2027 is a trophy (PDL P27). The count is still the sign that the part has been worked out. */
   ['/sr/takmicar/000001/priznanja', 'Vladan Đurišić', 'Vladan Đurišić', 'Pehari 0'],
+  /* THE CARD „PODACI" (PDL 22.10.2026), which only the member himself and the administration open: a
+     visitor is sent to the front page, as from every profile he may not read, and the member these walks
+     sign in as (000021) is drawn HIS OWN card, under the head of his profile. No part is named, because a
+     part is asked of both readers and the visitor is drawn the front page; the panel itself is read by
+     `profile/competitorData.test.tsx`. */
+  ['/sr/takmicar/000021/podaci', 'Balkanska trkačka liga', 'Ksenija Vasiljević'],
   ['/sr/timovi', 'Timovi', 'Timovi'],
   ['/sr/tim/dunavski-trkaci', 'Dunavski trkači', 'Dunavski trkači'],
   /* The front page, to a member, and that is the screen this address answers with
@@ -126,6 +132,11 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
      owner 27.09.2026), and the form is what both a visitor and a member meet on any day.
      `DAY` still holds this table to one day, for the profile row below rather than this one. */
   ['/sr/registracija', 'Registracija', 'Registracija'],
+  /* The same page with the code of whoever brought the reader in its path, the link the portal shares
+     since 25.10.2026 (owner, 22.10.2026: „Link preporuke nosi samo šifru u adresi strane za
+     registraciju"). The code is one the generated file really hands out (000001's), so the row is the
+     address a member actually sends. */
+  ['/sr/registracija/7f07b38ff7ee7543', 'Registracija', 'Registracija'],
   ['/sr/prijava', 'Prijava', 'Prijava'],
   /* Where a forgotten password is asked about. No token on the address, unlike the two
      below: nothing is ever posted that points here, so it is reached by typing or by the
@@ -147,6 +158,11 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
   ['/sr/nova-lozinka?token=nesto', 'Nova lozinka', 'Nova lozinka'],
   ['/sr/potvrda-adrese?token=nesto', 'Potvrda adrese', 'Potvrda adrese'],
   ['/sr/moj-profil', 'Za ovo treba prijava', 'Ksenija Vasiljević'],
+  /* „Moji podaci" (PDL 22.10.2026) is HIS WHO HAS NOT PAID, and the member these walks sign in as pays:
+     he is sent to the card „Podaci" of his own profile, where his data are, and is drawn his own head
+     there. Drawn as itself to the one reader this walk does not sign in as, in
+     `pages/member/myData.test.tsx`. */
+  ['/sr/moji-podaci', 'Za ovo treba prijava', 'Ksenija Vasiljević'],
   ['/sr/moji-rezultati', 'Za ovo treba prijava', 'Moji rezultati'],
   ['/sr/moja-clanarina', 'Za ovo treba prijava', 'Moja članarina'],
   ['/sr/podesavanja', 'Za ovo treba prijava', 'Podešavanja'],

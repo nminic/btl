@@ -986,7 +986,7 @@ describe('a field changed in the row rather than on the form', () => {
       return (
         <>
           <EditableCell under={TEAMS.id} id={row.id} field="name" value={row.name} label="Naziv" />
-          <RowActions entity={TEAMS} record={row} name={row.name} onOpen={vi.fn()} />
+          <RowActions entity={TEAMS} record={row} name={row.name} asks="Obriši tim?" onOpen={vi.fn()} />
         </>
       )
     }

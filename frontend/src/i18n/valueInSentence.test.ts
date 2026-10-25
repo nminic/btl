@@ -301,16 +301,28 @@ describe('a sentence with a value put into it', () => {
          recommendation): a bare year after „za sezonu", as above. */
       'admin.askGrantExemption',
       'admin.dropRaceNamed',
-      /* „Ovim brišeš i {count} rezultata.", asked before an event is deleted (owner,
-         28.09.2026). The value is a COUNT, so it governs the noun rather than being
-         governed by one, and the three plural forms are where that is answered. */
+      /* „Izmeni podatke: {name}" (23.10.2026), the name of the pencil on a member's row, as the deletion's
+         beside it: the name after a colon, in the nominative. */
+      'admin.editMemberNamed',
+      /* „Ovim brišeš i {races} i {results}.", asked before an event is deleted (owner,
+         28.09.2026, and the races beside the results since 25.10.2026), and its other state,
+         „Ovim brišeš i {races}, a broj rezultata koji odlaze još nije poznat.". Both values
+         are the two plural keys below, made in `admin/eventDeletionWords.ts`; each is the
+         object of „brišeš", so the accusative, and that is answered in the forms of those
+         keys („1 trku", „2 trke", „5 trka"), which is why the race is not `units.raceCount`.
+         The two keys themselves take a COUNT, which governs the noun rather than being
+         governed by one. */
+      'admin.eventDeleteCountUnknown',
+      'admin.eventDeleteRaces',
+      'admin.eventDeleteResults',
       'admin.eventDeleteTakes',
       'admin.form.deleteNamed',
-      'admin.form.deleteSureNamed',
-      'admin.form.keepNamed',
       'admin.form.openNamed',
       'admin.form.raceNumber',
       'admin.form.removeRow',
+      /* „Nova pozivnica je poslata na {email}. Prethodni link više ne važi." (owner, 25.10.2026): an
+         address of post after „na", which is written as it is and has no case to be wrong in. */
+      'admin.invitationSent',
       /* „Trke u ligi {name}", the accessible name of the box that folds on the list of
          competitions. The name of a competition stands after „u ligi", which governs the
          locative - and a competition's name is a proper name the portal never declines
@@ -365,7 +377,6 @@ describe('a sentence with a value put into it', () => {
       'ducats.everySeason',
       'ducats.sentence <- formatNumber',
       'ducats.stepUp <- formatNumber',
-      'event.deleteAsk',
       'event.enterResultNamed',
       'event.fromEdition',
       'event.ratedBy',
@@ -416,6 +427,12 @@ describe('a sentence with a value put into it', () => {
       'membership.firstPayment',
       'membership.firstSeasonClosed',
       'membership.firstSeasonOpen',
+      /* What the balance takes off the slip and what is left to send (owner, 25.10.2026, the
+         sentence chosen as offered). Both are amounts with their money after them, written by
+         `money` inside `member/WhatHeSends.tsx`'s own `written`, so no arrow is read off this call:
+         „Balans pokriva 700 RSD, pa uplaćuješ 4.100 RSD." puts each after a verb as its object, and
+         a figure with its money does not decline. */
+      'membership.fromTheBalance',
       'membership.inTeam',
       'membership.junior <- money',
       /* The team a member is about to leave, and the case it wants is the one
@@ -511,6 +528,7 @@ describe('a sentence with a value put into it', () => {
       'seo.calendarDay.recordTitle <- formatDate',
       'seo.competitor.awardsDescription',
       'seo.competitor.awardsTitle',
+      'seo.competitor.dataTitle',
       'seo.competitor.recordDescription',
       'seo.competitor.recordTitle',
       'seo.event.recordDescription',

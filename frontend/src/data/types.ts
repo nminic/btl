@@ -456,6 +456,13 @@ export type Member = {
    * svakog člana na redu u moderaciji, isto kao na ekranu Uplate”).
    */
   balance: number
+  /**
+   * Whether the envelope on his row, „Pošalji novu pozivnicu", can send him one (owner, 25.10.2026, PDL
+   * „Nova pozivnica od administracije i rečenica o trkama: odgovori od 25.10.2026"), answered by the
+   * server off his account (`MembersApi`): `due` for an account with no password, `passwordSet` for one
+   * that has it, `noAccount` for a member with no account at all.
+   */
+  invitation: 'due' | 'passwordSet' | 'noAccount'
 }
 
 /* ~~A race has no name of its own (owner, 11.08.2026).~~ **Overturned 23.08.2026

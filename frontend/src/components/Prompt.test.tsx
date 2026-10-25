@@ -310,6 +310,14 @@ describe('the question sheet', () => {
    * the amount drawn over the sheet that asked for it. An id written out by hand is found where it
    * stands first, so the second sheet would carry the first one's name.
    */
+  it('is described by its body, so that a reader hears what is asked about and not only the question', () => {
+    /* The focus lands on the heading and skips the body, so without the description a reader of a sheet that deletes
+       hears „Obriši događaj?" and „Obriši" and never which event or what goes with it (PR 645, review; PDL, 25.10.2026). */
+    aSheet()
+
+    expect(screen.getByRole('dialog')).toHaveAccessibleDescription('Sta se pita.')
+  })
+
   it('names each of two sheets standing at once by its own question', () => {
     render(
       <>

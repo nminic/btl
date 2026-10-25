@@ -55,6 +55,10 @@
       "title": "Moji trkački rezultati",
       "description": "Prijavljeni rezultati, faza provere u kojoj se nalaze i bodovi koje su doneli."
     },
+    "myData": {
+      "title": "Moji BTL podaci",
+      "description": "Ime, adresa, telefon, mesto i veličina majice, dok članarina još nije evidentirana."
+    },
     "membership": {
       "title": "Moja BTL članarina",
       "description": "Stanje članstva, plaćanje članarine i uplatnica sa QR kodom."
@@ -155,7 +159,8 @@
       "recordTitle": "{name}, {city}",
       "recordDescription": "{name}: sve trke, bodovi i statistika u Balkanskoj trkačkoj ligi.",
       "awardsTitle": "{name}, priznanja",
-      "awardsDescription": "{name}: pehari i dukati osvojeni u Balkanskoj trkačkoj ligi."
+      "awardsDescription": "{name}: pehari i dukati osvojeni u Balkanskoj trkačkoj ligi.",
+      "dataTitle": "{name}, podaci"
     },
     "event": {
       "title": "Događaj iz kalendara",
@@ -202,6 +207,10 @@
     "rateEvent": {
       "title": "Ocena događaja",
       "description": "Oceni organizaciju, vrednost za novac i ambijent. Ocene bez komentara se objavljuju odmah, a komentar kad ga moderator odobri."
+    },
+    "competitorData": {
+      "title": "Podaci takmičara",
+      "description": "Podaci jednog člana Balkanske trkačke lige, koje vide samo on i administracija."
     }
   },
   "shell": {
@@ -229,7 +238,8 @@
     "contact": "Kontakt",
     "home": "Naslovna strana",
     "join": "Učlani se",
-    "openAccount": "Otvori nalog"
+    "openAccount": "Otvori nalog",
+    "openMyMenu": "Otvori moj meni"
   },
   "nav": {
     "home": "Naslovna",
@@ -248,6 +258,7 @@
     "confirmAddress": "Potvrda adrese",
     "forgottenPassword": "Zaboravljena lozinka",
     "myProfile": "Moj profil",
+    "myData": "Moji podaci",
     "myResults": "Moji rezultati",
     "membership": "Moja članarina",
     "messages": "Poruke",
@@ -647,12 +658,6 @@
     "commentEventUnknown": "Ovaj događaj više ne postoji.",
     "edit": "Izmena",
     "copy": "Kopiranje",
-    "delete": "Brisanje",
-    "deleteAsk": {
-      "one": "Obrisati događaj \"{name}\" i {count} njegovu trku? Ovo se ne može opozvati.",
-      "few": "Obrisati događaj \"{name}\" i {count} njegove trke? Ovo se ne može opozvati.",
-      "other": "Obrisati događaj \"{name}\" i {count} njegovih trka? Ovo se ne može opozvati."
-    },
     "kind": {
       "race": "Trka",
       "training": "Trening",
@@ -663,8 +668,8 @@
     "noMoreComments": "Nema više komentara.",
     "editOwnRating": "Izmeni svoju ocenu",
     "deleteOwnRating": "Obriši svoju ocenu",
-    "deleteOwnRatingSure": "Obriši svoju ocenu?",
-    "keepOwnRating": "Odustani od brisanja svoje ocene",
+    "deleteOwnRatingAsk": "Obriši svoju ocenu?",
+    "ratingGone": "Ocena je obrisana.",
     "ratedBy": {
       "one": "iz {count} ocene",
       "few": "iz {count} ocene",
@@ -799,7 +804,8 @@
     "parts": {
       "label": "Delovi profila",
       "overview": "Pregled",
-      "awards": "Priznanja i nagrade"
+      "awards": "Priznanja i nagrade",
+      "data": "Podaci"
     },
     "moreDucats": "Učitaj još dukata",
     "showingDucats": "Prikazano {shown} od {total}",
@@ -1058,6 +1064,8 @@
   "results": {
     "sending": "Šalje se",
     "withdrawing": "Briše se",
+    "deleteAsk": "Obriši rezultat?",
+    "deleted": "Rezultat je obrisan.",
     "refused": {
       "theFormIsNotComplete": "Rezultat nije poslat. Proveri dužinu, uspon, spust i vreme: nešto nedostaje ili je izvan dozvoljenih vrednosti.",
       "theRaceIsNotKnown": "Trka koju si izabrao više ne stoji u kalendaru. Osveži stranu i izaberi je ponovo.",
@@ -1100,8 +1108,8 @@
     "notYetSold": "Članarina se još ne prodaje. Naplata kreće 15. oktobra.",
     "junior": "Ko u sezoni ima bar jedan dan 14 godina ili manje plaća {eur} EUR, a iz Srbije {rsd} RSD, bez obzira na datum uplate.",
     "paypal": "PayPal",
-    "paypalNote": "Nalog je poslovni, na Sportsko udruženje BTL. PayPal se ne nudi članovima iz Srbije, jer plaćanje njime između rezidenata Srbije nije dozvoljeno.",
-    "paypalAddressLabel": "Adresa naloga",
+    "paypalNote": "PayPal adresa je poslovna, na Sportsko udruženje BTL. PayPal se ne nudi članovima iz Srbije, jer plaćanje njime između rezidenata Srbije nije dozvoljeno.",
+    "paypalAddressLabel": "PayPal adresa",
     "paypalAmountLabel": "Iznos (sa uračunatom taksom)",
     "paypalNoteLabel": "Napomena",
     "paypalCopyAddress": "Kopiraj adresu za uplatu",
@@ -1152,8 +1160,8 @@
     "balanceNote": "Balansom se plaćaju buduće članarine. Ne isplaćuje se u novcu i ne prenosi se drugom članu.",
     "feeExemptNoRenewal": "Oslobođen si plaćanja članarine, pa nema šta da uplatiš.",
     "amountLabel": "Iznos",
-    "notYetTitle": "Ovaj deo se otvara kad članarina bude evidentirana",
-    "notYetText": "Registrovao si se, ali članarina još nije evidentirana, pa ti ovaj deo još nije otvoren. Uplatu i izbor kategorije obavljaš na strani Moja članarina.",
+    "fromTheBalance": "Balans pokriva {fromTheBalance}, pa uplaćuješ {toTransfer}.",
+    "amountNotArrived": "Iznos za uplatu nije stigao. Osveži stranicu i pokušaj ponovo.",
     "notPaidYet": "Članarina ti još nije evidentirana, pa još nemaš članski broj. Dobijaš ga kad moderator evidentira tvoju uplatu.",
     "firstPayment": "Uplata članarine za {season}.",
     "firstPaymentOpen": "Uplata je otvorena.",
@@ -1345,10 +1353,7 @@
       "nextWeek": "Tačno sedam dana posle kopiranog događaja",
       "racesRefused": "Trke nisu sačuvane. Ispravi obeležena polja; ispod tabele piše šta je pogrešno u svakom od njih.",
       "deleteNamed": "Obriši: {name}",
-      "deleteSure": "Sigurno?",
-      "deleteSureNamed": "Potvrdi brisanje: {name}",
-      "keep": "Odustani",
-      "keepNamed": "Odustani od brisanja: {name}"
+      "keep": "Odustani"
     },
     "field": {
       "memberNumber": "Članski broj",
@@ -1467,16 +1472,25 @@
       "theKindCannotChangeOnceRunsAreCounted": "Vrsta trke ne može da se promeni dok na trci stoji odobren rezultat."
     },
     "eventGone": "Događaj je obrisan, sa svojim trkama i rezultatima.",
+    "eventDeleteAsk": "Obriši događaj?",
     "eventSavedUnseen": "Događaj je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
     "eventSavedRacesRefused": "Događaj je sačuvan. Trke koje nisu sačuvane označene su ispod tabele; ispravi ih pa pritisni Sačuvaj. Šalju se samo trke.",
     "eventSavedRacesKept": "Događaj je sačuvan. Trke koje nisu obrisane navedene su ispod polja događaja; pritisni Sačuvaj da se brisanje pokuša ponovo. Šalju se samo trke.",
-    "eventDeleteTakes": {
-      "one": "Ovim brišeš i {count} rezultat.",
-      "few": "Ovim brišeš i {count} rezultata.",
-      "other": "Ovim brišeš i {count} rezultata."
+    "eventDeleteTakes": "Ovim brišeš i {races} i {results}.",
+    "eventDeleteRaces": {
+      "one": "{count} trku",
+      "few": "{count} trke",
+      "other": "{count} trka"
     },
-    "eventDeleteCountUnknown": "Broj rezultata koji odlaze još nije poznat.",
+    "eventDeleteResults": {
+      "one": "{count} rezultat",
+      "few": "{count} rezultata",
+      "other": "{count} rezultata"
+    },
+    "eventDeleteNothing": "Događaj nema trka ni rezultata.",
+    "eventDeleteCountUnknown": "Ovim brišeš i {races}, a broj rezultata koji odlaze još nije poznat.",
     "leagueGone": "Liga je obrisana.",
+    "leagueDeleteAsk": "Obriši ligu?",
     "leagueSavedUnseen": "Liga je sačuvana, ali portal ne može da je prikaže u ovom spisku. Osveži stranu.",
     "leagueTextSaved": "Izmena je sačuvana.",
     "priceSaved": "Cena je sačuvana.",
@@ -1497,12 +1511,15 @@
       "aRightTheMatrixDoesNotHold": "Portal ne poznaje to pravo. Osveži stranu."
     },
     "moderatorGone": "Moderator je obrisan.",
+    "moderatorDeleteAsk": "Obriši moderatora?",
+    "moderatorDeleteNote": "Nalog ostaje, skidaju se samo prava moderatora.",
     "moderatorSavedUnseen": "Moderator je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
     "moderatorRightsSavedUnseen": "Pravo je sačuvano, ali portal ne može da prikaže novo stanje. Osveži stranu.",
     "teamDeleteRefused": {
       "theWindowIsShut": "Prelazni rok je zatvoren. Otvara se 15. oktobra i traje do 31. decembra. Tim se do tada ne briše, ni iz administracije."
     },
     "teamGone": "Tim je obrisan.",
+    "teamDeleteAsk": "Obriši tim?",
     "memberDeleteRefused": {
       "theAccountMustBeDecided": "Portal nije prosledio odluku o nalogu. Osveži stranu pa pokušaj ponovo.",
       "anonymisingIsNotWrittenYet": "Anonimizacija naloga još nije napisana. Član se za sada može samo obrisati.",
@@ -1512,6 +1529,12 @@
     "memberDeleteAsk": "Obriši člana?",
     "recordPayment": "Upiši uplatu",
     "paymentRecorded": "Uplata je upisana.",
+    "sendNewInvitation": "Pošalji novu pozivnicu",
+    "invitationSent": "Nova pozivnica je poslata na {email}. Prethodni link više ne važi.",
+    "invitationSentSomewhere": "Nova pozivnica je poslata. Prethodni link više ne važi.",
+    "invitationNotNeeded": "Član je već postavio lozinku.",
+    "invitationNoAccount": "Član nema nalog na portalu, pa pozivnica nema kome da ode.",
+    "invitationNotSent": "Pošta trenutno ne prima poruke, pa pozivnica nije poslata. Pokušaj ponovo za koji minut.",
     "cancelMembership": "Storniraj",
     "changeToExemption": "Promeni osnov u oslobođenje",
     "askCancel": {
@@ -1529,7 +1552,9 @@
       "theBasisIsNotKnown": "Portal ne poznaje osnov članstva koji je poslat, pa ništa nije urađeno. Osveži stranicu i pokušaj ponovo.",
       "thisChangeIsNotOffered": "Ova promena osnova se na redu člana ne nudi, pa ništa nije urađeno. Aktivacija iz balansa se prvo stornira, pa se upisuje nova.",
       "theBasisHasChanged": "Osnov za ovu sezonu se u međuvremenu promenio, pa ništa nije urađeno. Osveži stranicu."
-    }
+    },
+    "editMember": "Izmeni podatke",
+    "editMemberNamed": "Izmeni podatke: {name}"
   },
   "ducats": {
     "title": "Dukati",
@@ -1573,14 +1598,14 @@
     "privacy": "Privatnost",
     "hideProfile": "Sakrij moj profil od svakoga ko nije aktivan član ni administracija",
     "hideProfileNote": "Ime ostaje u tabelama i na rang listama, jer bi bez toga zajedničko rangiranje izgubilo smisao. Skriva se samo tvoja profilna strana, i to samo od posetilaca koji nisu prijavljeni i od prijavljenih naloga bez aktivne članarine.",
-    "opensWithTheFee": "Slika, biografija i skrivanje profila otvaraju se kad tvoja članarina bude evidentirana.",
     "opensWhenTheFeeIsRenewed": "Podaci i lozinka otvaraju se kad tvoja članarina bude obnovljena. Obnovi je ovde: {renewal}.",
     "themeLabel": "Tema",
     "themeDark": "Tamna",
     "themeLight": "Svetla",
     "mail": "Pošta",
     "mailLanguageLegend": "Jezik pošte",
-    "mailLanguageNotChosen": "Jezik pošte nije izabran. Izaberi jedan od dva ponuđena."  },
+    "mailLanguageNotChosen": "Jezik pošte nije izabran. Izaberi jedan od dva ponuđena."
+  },
   "rights": {
     "title": "Prava moderatora",
     "intro": "Red je moderator, kolona je pravo. Kućica se pamti čim se pritisne, nema dugmeta za čuvanje. Prava su u dve grupe zato što su to dve različite radnje: uređivanje menja zapis, a odlučivanje pušta ili vraća tuđi rad.",
@@ -1818,6 +1843,7 @@
     "personalTitle": "Lični podaci",
     "save": "Sačuvaj",
     "saved": "Sačuvano.",
+    "heldNote": "Pol, datum rođenja, ime oca i broj ličnog dokumenta menja administracija na tvoj zahtev.",
     "nothingToSave": "Server nije našao nijednu izmenu u zahtevu. Osveži stranu i pokušaj ponovo.",
     "fieldIsBlank": "Jedno od obaveznih polja je ostalo prazno. Popuni ga pa sačuvaj ponovo.",
     "fieldIsTooLong": "Jedno polje je duže nego što portal prima. Skrati ga pa sačuvaj ponovo.",
@@ -1872,5 +1898,16 @@
       "theEventWouldMoveOntoAnother": "Trka bi pomerila događaj u godinu u kojoj događaj sa istim nazivom već postoji. Izaberi taj događaj.",
       "theDayIsNotInTheEventsYear": "Dan trke nije u godini izabranog događaja."
     }
+  },
+  "memberData": {
+    "nothingChanged": "Nijedan podatak nije izmenjen, pa nema šta da se sačuva.",
+    "formNotComplete": "Neko polje nije popunjeno onako kako ga forma traži. Proveri ga pa sačuvaj ponovo.",
+    "notTakenHere": "Server ne prima jedno od poslatih polja. Osveži stranu pa sačuvaj ponovo.",
+    "aPairHoldsTheGender": "Član je bio u trkačkom paru, a par uvek čine jedan muškarac i jedna žena, pa mu se pol ne menja.",
+    "aMinorNeedsAConsent": "Sa ovim datumom rođenja član bi bio mlađi od 16 godina, a za njega nema saglasnosti roditelja, pa se datum ne upisuje.",
+    "theAddressIsConfirmed": "Član je već potvrdio ovu adresu elektronske pošte, pa je može promeniti samo on.",
+    "thereIsNoAccount": "Član nema nalog na portalu, pa nema ni adresu elektronske pošte koja bi se ispravila.",
+    "theAddressIsTaken": "Ovu adresu elektronske pošte već koristi drugi nalog.",
+    "theAddressIsTheSuperadmins": "Ova adresa pripada administraciji portala i ne može biti adresa člana."
   }
 }

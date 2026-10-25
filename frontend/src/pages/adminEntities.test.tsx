@@ -10,6 +10,7 @@ import { SessionProvider } from '../session/SessionProvider'
 import { useSession } from '../session/useSession'
 import { AdminEvents } from './admin/AdminEvents'
 import { at, first, inputElement, must, selectElement } from '../test/at'
+import { sayNo, sayYes, theSheet } from '../test/deleteSheet'
 import { Saved } from '../test/saved'
 import { answeredWith, refused, serverThat } from '../test/serverAnswers'
 import { whatWasSent, whereItWrote } from '../test/sent'
@@ -1319,7 +1320,7 @@ describe('the races of an event', () => {
     )
 
     await user.click(within(row).getByRole('button', { name: `Obriši: ${one.name}` }))
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${one.name}` }))
+    await sayYes(user, 'Obriši događaj?')
 
     /**
      * NOTHING IS SAID ABOUT THE RESULTS, AND THE REASON IS NO LONGER A GUARD ON THIS SIDE.
@@ -3031,18 +3032,25 @@ describe('an event that is deleted', () => {
 
   /** How many results really hang off an event, counted the way the database counts them:
    *  through its races, which is what `result_race_fk` cascades from. */
+  function racesUnder(event: BtlEvent, races: Race[]): number {
+    return races.filter((race) => race.eventId === event.id).length
+  }
+
   function resultsUnder(event: BtlEvent, races: Race[], scored: Result[]): number {
     const its = new Set(races.filter((race) => race.eventId === event.id).map((race) => race.id))
 
     return scored.filter((one) => its.has(one.raceId)).length
   }
 
-  /** The sentence the question points the reader at, read off the button that confirms. */
-  function askedWith(row: HTMLElement, name: string): string {
-    const sure = within(row).getByRole('button', { name: `Potvrdi brisanje: ${name}` })
-    const at = must(sure.getAttribute('aria-describedby'), 'the sentence beside the question')
+  /**
+   * The sentence the sheet says under the name of the event: the LAST paragraph of its body, because the
+   * name is the first and an event's name can carry digits of its own (`pages/admin/DeleteSheet.tsx`).
+   * It was read off the button that confirmed, through `aria-describedby`, while the question was a row.
+   */
+  async function askedWith(): Promise<string> {
+    const paragraphs = Array.from((await theSheet('Obriši događaj?')).querySelectorAll('.prompt__body p'))
 
-    return must(document.getElementById(at), 'the element that sentence is in').textContent ?? ''
+    return must(paragraphs.at(-1), 'the sentence under the name').textContent ?? ''
   }
 
   it('says how many results go with it, and each event says its own number', async () => {
@@ -3063,7 +3071,9 @@ describe('an event that is deleted', () => {
     const scored = await loadResource<Result[]>('results')
     const counted = events
       .map((one) => ({ event: one, under: resultsUnder(one, races, scored) }))
-      .filter((one) => one.under > 0)
+      /* And never an event whose races and results are the same number, so the races said beside them have a place
+         of their own to be wrong in. */
+      .filter((one) => one.under > 0 && one.under !== racesUnder(one.event, races))
     const fewest = must(
       counted.reduce((so, one) => (one.under < so.under ? one : so)),
       'an event with results',
@@ -3082,16 +3092,22 @@ describe('an event that is deleted', () => {
 
     for (const { event, under } of [fewest, most]) {
       const row = await rowOf(event, user)
+      /* AND ITS RACES BESIDE THEM (owner, 25.10.2026, „imenuje i trke i rezultate"), in their own place in the
+         sentence: on an event whose two numbers differ, a sentence with one count in both places, or the two the
+         wrong way round, is a different sentence. */
+      const raced = racesUnder(event, races)
+
+      expect(raced, 'one number cannot tell the races from the results').not.toBe(under)
 
       await user.click(within(row).getByRole('button', { name: `Obriši: ${event.name}` }))
 
       expect(
-        askedWith(row, event.name),
-        `the question does not carry the ${String(under)} results of this event`,
-      ).toContain(String(under))
+        await askedWith(),
+        `the question does not carry the ${String(raced)} races and the ${String(under)} results of this event`,
+      ).toMatch(new RegExp(`^Ovim brišeš i ${String(raced)} trk[aue] i ${String(under)} rezultata?\\.$`))
 
       /* Put away again, so the next event is asked from the same place. */
-      await user.click(within(row).getByRole('button', { name: `Odustani od brisanja: ${event.name}` }))
+      await sayNo(user, 'Obriši događaj?')
     }
   }, SLOW)
 
@@ -3172,7 +3188,7 @@ describe('an event that is deleted', () => {
     const row = await rowOf(mine, user)
 
     await user.click(within(row).getByRole('button', { name: `Obriši: ${mine.name}` }))
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${mine.name}` }))
+    await sayYes(user, 'Obriši događaj?')
 
     expect(within(row).getByRole('alert')).toBeVisible()
     /* And the row is still there, because nothing was deleted. */
@@ -3221,9 +3237,7 @@ describe('an event that is deleted', () => {
     )
 
     await user.click(within(made).getByRole('button', { name: 'Obriši: Trka koja se briše' }))
-    await user.click(
-      within(made).getByRole('button', { name: 'Potvrdi brisanje: Trka koja se briše' }),
-    )
+    await sayYes(user, 'Obriši događaj?')
 
     expect(
       (await table('Događaji'))
@@ -3259,7 +3273,7 @@ describe('an event that is deleted', () => {
 
     expect(whereItWrote(watching.asked), 'the first press already deleted it').toEqual([])
 
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${mine.name}` }))
+    await sayYes(user, 'Obriši događaj?')
 
     expect(whereItWrote(watching.asked)).toEqual([`DELETE /api/events/${String(mine.id)}`])
   }, SLOW)
@@ -3289,7 +3303,11 @@ describe('an event that is deleted', () => {
        values were the same string. The one furthest down the list shares nothing with
        a number written out by hand. */
     const mine = must(
-      events.filter((one) => resultsUnder(one, races, scored) > 0).at(-1),
+      events
+        .filter((one) => resultsUnder(one, races, scored) > 0)
+        /* Whose races are not as many as its results, so the one number said is the races' and nothing else's. */
+        .filter((one) => resultsUnder(one, races, scored) !== racesUnder(one, races))
+        .at(-1),
       'an event with results',
     )
 
@@ -3305,13 +3323,19 @@ describe('an event that is deleted', () => {
 
     await user.click(within(row).getByRole('button', { name: `Obriši: ${mine.name}` }))
 
-    const words = askedWith(row, mine.name)
+    const words = await askedWith()
 
-    expect(words, 'a number was invented while the file was still on its way').not.toMatch(/[0-9]/)
-    expect(words).toBe('Broj rezultata koji odlaze još nije poznat.')
+    /* The races are this screen's to count at once and are named (owner, 25.10.2026); the results are not, and the one
+       number in the sentence is the races'. */
+    const raced = racesUnder(mine, races)
+
+    expect(raced, 'one number cannot tell the races from the results').not.toBe(resultsUnder(mine, races, scored))
+    expect(words, 'a number was invented while the file was still on its way').toMatch(
+      new RegExp(`^Ovim brišeš i ${String(raced)} trk[aue], a broj rezultata koji odlaze još nije poznat\\.$`),
+    )
 
     /* And the deletion is not held back, which is the whole of what changed. */
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${mine.name}` }))
+    await sayYes(user, 'Obriši događaj?')
 
     expect(whereItWrote(watching.asked)).toEqual([`DELETE /api/events/${String(mine.id)}`])
   }, SLOW)
@@ -3383,7 +3407,7 @@ describe('an event that is deleted', () => {
     )
 
     await user.click(within(row).getByRole('button', { name: `Obriši: ${one.name}` }))
-    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${one.name}` }))
+    await sayYes(user, 'Obriši događaj?')
 
     /**
      * ONE STATEMENT TAKES ALL OF IT, AND THAT IS WHAT IS MEASURED NOW.

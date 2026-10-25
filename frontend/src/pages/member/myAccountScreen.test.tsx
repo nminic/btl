@@ -10,7 +10,7 @@ import { myOwnRecordFromMe } from '../../test/theAnswer'
 import { setupUser } from '../../test/user'
 import en from '../../i18n/en.json'
 import sr from '../../i18n/sr.json'
-import { WHAT_THIS_SCREEN_SENDS, type Sent } from './myAccount'
+import { TYPED_BOXES, type TypedBox } from './myAccount'
 
 /**
  * THE SCREEN A MEMBER CHANGES HIS OWN ACCOUNT FROM.
@@ -50,6 +50,13 @@ const SOMEBODY_ELSE = must(
 )
 
 /** The panel a case is talking about, so a query cannot wander into the one below it. */
+/**
+ * WHERE A MEMBER'S OWN DATA ARE, since 23.10.2026: the card „Podaci" of his own profile (PDL 22.10.2026,
+ * „Profil dobija karticu „Podaci""), and no longer the screen of the settings, which the cases of the
+ * password below still open.
+ */
+const HIS_CARD = `/sr/takmicar/${ME.memberNumber}/podaci`
+
 function panelOf(heading: string): HTMLElement {
   return must(
     screen.getByRole('heading', { level: 2, name: heading }).closest('section'),
@@ -183,11 +190,11 @@ describe('a member’s own data', () => {
   })
 
   it('opens with what the portal really holds about him, and not with somebody else’s', async () => {
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
-    expect(within(panel).getByRole('textbox', { name: /Ime/ })).toHaveValue(ME.firstName)
+    expect(typedBox(panel, /^Ime/)).toHaveValue(ME.firstName)
     expect(within(panel).getByRole('textbox', { name: /Prezime/ })).toHaveValue(ME.lastName)
     expect(within(panel).queryByDisplayValue(SOMEBODY_ELSE.firstName)).not.toBeInTheDocument()
   })
@@ -206,7 +213,7 @@ describe('a member’s own data', () => {
       phone: '+381 11 765 432',
     }))
 
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
@@ -218,7 +225,7 @@ describe('a member’s own data', () => {
   it('opens with an empty telephone for a member who has none, and his address beside it', async () => {
     ;({ stop } = aServerThatKeepsWhatItIsTold({ address: 'Vojvode Stepa 5' }))
 
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
@@ -238,7 +245,7 @@ describe('a member’s own data', () => {
     const { asked, stop: put } = serverThat(() => null)
 
     stop = put
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
     const save = within(panel).getByRole('button', { name: sr.account.save })
@@ -267,7 +274,7 @@ describe('a member’s own data', () => {
       path === '/api/me' && init?.method === 'PUT' ? answeredWith(200) : null,
     ))
 
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
@@ -295,7 +302,7 @@ describe('a member’s own data', () => {
       path === '/api/me' && init?.method === 'PUT' ? refused('aFieldIsBlank') : null,
     ))
 
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
@@ -328,7 +335,7 @@ describe('a member’s own data', () => {
       path === '/api/me' && init?.method === 'PUT' ? held : null,
     ))
 
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
@@ -352,7 +359,7 @@ describe('a member’s own data', () => {
       path === '/api/me' && init?.method === 'PUT' ? answeredWith(500) : null,
     ))
 
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
@@ -373,7 +380,7 @@ describe('a member’s own data', () => {
       path === '/api/me' && init?.method === 'PUT' ? answeredWith(200) : null,
     ))
 
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
@@ -395,7 +402,7 @@ describe('a member’s own data', () => {
     const user = setupUser()
     ;({ stop } = aServerThatKeepsWhatItIsTold({ address: 'Vojvode Stepa 5' }))
 
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
@@ -430,7 +437,7 @@ describe('a member’s own data', () => {
     const kept = aServerThatKeepsWhatItIsTold({ address: 'Vojvode Stepa 5' })
     stop = kept.stop
 
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
@@ -445,7 +452,7 @@ describe('a member’s own data', () => {
     })
 
     cleanup()
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const again = await personalPanel()
 
@@ -468,7 +475,7 @@ describe('a member’s own data', () => {
     })
     stop = kept.stop
 
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
@@ -487,7 +494,7 @@ describe('a member’s own data', () => {
     expect(kept.held()).toEqual({ address: 'Vojvode Stepa 5' })
 
     cleanup()
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const again = await personalPanel()
 
@@ -519,13 +526,26 @@ function neverEmptiedByTheServer(): string[] {
   return [...at(declared, 1).matchAll(/"([^"]+)"/g)].map((one) => at(one, 1))
 }
 
+/**
+ * THE ONE BOX A MEMBER TYPES INTO that goes by these words, the held ones not counted: the box of his
+ * father's name is drawn beside „Ime" since 24.10.2026 and begins with the same word, but it is held
+ * (`readOnly`, PDL 24.10.2026) and nothing he does moves it.
+ */
+function typedBox(panel: HTMLElement, name: RegExp): HTMLElement {
+  const typed = within(panel)
+    .getAllByRole('textbox', { name })
+    .filter((one) => !one.hasAttribute('readonly'))
+
+  expect(typed, `exactly one box he types into goes by ${String(name)}`).toHaveLength(1)
+
+  return at(typed, 0)
+}
+
 /** The four boxes, by the name the portal sends each under, found by the words on their labels. */
-function personalBoxes(panel: HTMLElement): { name: Sent; box: HTMLInputElement }[] {
-  return WHAT_THIS_SCREEN_SENDS.map((name) => ({
+function personalBoxes(panel: HTMLElement): { name: TypedBox; box: HTMLInputElement }[] {
+  return TYPED_BOXES.map((name) => ({
     name,
-    box: inputElement(
-      within(panel).getByRole('textbox', { name: new RegExp(`^${sr.registration[name]}`) }),
-    ),
+    box: inputElement(typedBox(panel, new RegExp(`^${sr.registration[name]}`))),
   }))
 }
 
@@ -577,7 +597,7 @@ describe('which boxes of a member’s own data are asked for', () => {
   it('asks for the address and not for the telephone, as the server takes them', async () => {
     ;({ stop } = aServerThatKeepsWhatItIsTold({ address: 'Vojvode Stepa 5' }))
 
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
     const neverEmptied = neverEmptiedByTheServer()
@@ -606,7 +626,7 @@ describe('which boxes of a member’s own data are asked for', () => {
       phone: '+381 11 765 432',
     }))
 
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
@@ -622,7 +642,7 @@ describe('which boxes of a member’s own data are asked for', () => {
     const user = setupUser()
     ;({ stop } = aServerThatKeepsWhatItIsTold({ address: 'Vojvode Stepa 5' }))
 
-    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
@@ -679,8 +699,10 @@ describe('what the owner took off the settings screen', () => {
   it('is not on the screen of a member whose fee stands, and the box of what he may not change is gone', async () => {
     renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
 
-    await personalPanel()
     await screen.findByRole('region', { name: sr.settings.mail })
+
+    /* AND NEITHER ARE HIS DATA, since 23.10.2026: they are on the card „Podaci" of his profile. */
+    expect(screen.queryByRole('heading', { name: sr.account.personalTitle })).toBeNull()
 
     for (const sentence of WHAT_THE_OWNER_TOOK_OFF) {
       expect(screen.queryByText(new RegExp(sentence.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))), sentence).toBeNull()
@@ -694,7 +716,6 @@ describe('what the owner took off the settings screen', () => {
   it('leaves no control of the screen naming a sentence that is not there', async () => {
     renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
 
-    await personalPanel()
     await screen.findByRole('region', { name: sr.settings.mail })
 
     for (const one of document.querySelectorAll('[aria-describedby]')) {

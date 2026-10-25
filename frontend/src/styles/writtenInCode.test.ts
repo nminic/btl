@@ -278,6 +278,13 @@ describe('what a screen says in its own voice', () => {
       'aria-autocomplete',
       'aria-controls',
       'aria-describedby',
+      /* A LOCKED BOX, 24.10.2026, and it is machinery rather than speech. It carries the word "true"
+         and a reader never meets that word: what he meets is that the box is unavailable, which the
+         browser tells him in his own language (the way every locked box of the portal is held,
+         `forms/held.ts`). `pages/member/PersonalData.tsx` writes it on the four boxes a member sees and
+         does not change (PDL 24.10.2026), as `forms/FormRenderer.tsx` writes it, from a variable.
+         Same kind of name as `aria-modal` below. */
+      'aria-disabled',
       'aria-haspopup',
       'aria-hidden',
       'aria-labelledby',

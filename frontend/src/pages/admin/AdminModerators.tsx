@@ -10,6 +10,7 @@ import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import { recordKey, type Rights } from '../../session/context'
 import { useSession } from '../../session/useSession'
+import { DeletionSaid } from './DeletionSaid'
 import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
 import { MODERATORS, recordsOf, type Editing, type Overlay } from './entityForms'
 import {
@@ -290,6 +291,8 @@ export function AdminModerators() {
 
     if (answer.got !== 'done') {
       setRefused({ id: moderator.id, answer })
+      /* The sentence of an earlier deletion is not about this one (`DeletionSaid.tsx`). */
+      setSaid('')
 
       return
     }
@@ -439,6 +442,10 @@ export function AdminModerators() {
             <>
               <EntityBar entity={MODERATORS} onNew={() => setEditing({ mode: 'new' })} />
 
+              {/* What the deletion said, DRAWN and not only said (owner, 23.10.2026: the deletion asks and
+                  answers as the member's row does, `DeletionSaid.tsx`). */}
+              <DeletionSaid said={said} clear={setSaid} />
+
               <div className="table-scroll">
                 <table className="table moderators">
                   <caption className="visually-hidden">{t('admin.moderators')}</caption>
@@ -474,6 +481,8 @@ export function AdminModerators() {
                         <td>
                           <RowActions
                             entity={MODERATORS}
+                            asks={t('admin.moderatorDeleteAsk')}
+                            asksWith={t('admin.moderatorDeleteNote')}
                             record={one}
                             name={`${one.firstName} ${one.lastName}`}
                             onOpen={() => {
@@ -489,14 +498,6 @@ export function AdminModerators() {
                   </tbody>
                 </table>
               </div>
-
-              {/* Said once and politely, the same shape `AdminLeagues.tsx` uses:
-                  the focus has already moved to the control that starts a new
-                  record, so a reader who is not looking at the list gets the one
-                  sentence that says what just left it. */}
-              <p aria-live="polite" className="visually-hidden">
-                {said}
-              </p>
 
               <h2 className="entity-heading">{t('rights.title')}</h2>
               <p className="member__note">{t('rights.intro')}</p>

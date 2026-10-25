@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { configure, screen, waitFor, within } from '@testing-library/react'
 import sr from '../i18n/sr.json'
 import { must } from '../test/at'
+import { sayNo, sayYes, theSheet } from '../test/deleteSheet'
 import { renderAt } from '../test/render'
 import { did, refused, serverThat, type Asked } from '../test/serverAnswers'
 import { playTheHistoryAsLeagueSeasons } from '../test/leagueSeasons'
@@ -146,7 +147,8 @@ describe('a team its administrator takes down', () => {
   it('is asked about twice, and one press changes nothing', async () => {
     /* The portal's one way of asking about something nothing brings back, and it is
        the reason nothing here writes a dialog of its own: the first press opens the
-       question, the second answers it. Pressed once, the team is still there. */
+       sheet (`admin/DeleteSheet.tsx`, since 24.10.2026), the second answers it. Pressed
+       once, the team is still there. */
     const user = setupUser()
     const { router } = renderAt('/sr/tim/dunavski-trkaci', 'competitor', '000001', undefined, DAY)
 
@@ -154,8 +156,8 @@ describe('a team its administrator takes down', () => {
 
     /* And both answers are on offer, each carrying the name, so a reader who arrives
        at the question is told what it is about without going back up the page. */
-    expect(screen.getByRole('button', { name: /^Potvrdi brisanje: Dunavski trkači/ })).toBeVisible()
-    await user.click(screen.getByRole('button', { name: /^Odustani od brisanja: Dunavski trkači/ }))
+    expect(within(await theSheet('Obriši tim?')).getByText('Dunavski trkači')).toBeVisible()
+    await sayNo(user, 'Obriši tim?')
 
     await router.navigate('/sr/timovi')
 
@@ -175,7 +177,7 @@ describe('a team its administrator takes down', () => {
     const { router } = renderAt('/sr/tim/dunavski-trkaci', 'competitor', '000001', undefined, DAY)
 
     await user.click(await screen.findByRole('button', { name: /^Obriši: Dunavski trkači/ }))
-    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Dunavski trkači/ }))
+    await sayYes(user, 'Obriši tim?')
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/sr/timovi')
@@ -214,7 +216,7 @@ describe('a team its administrator takes down', () => {
     const { router } = renderAt('/sr/tim/dunavski-trkaci', 'competitor', '000001', undefined, DAY)
 
     await user.click(await screen.findByRole('button', { name: /^Obriši: Dunavski trkači/ }))
-    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Dunavski trkači/ }))
+    await sayYes(user, 'Obriši tim?')
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/sr/timovi')
@@ -279,7 +281,7 @@ describe('a team its administrator takes down', () => {
     )
 
     await user.click(within(row).getByRole('button', { name: /^Obriši: Dunavski trkači/ }))
-    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Dunavski trkači/ }))
+    await sayYes(user, 'Obriši tim?')
 
     /* THE SCREEN ASKED THE ROUTE, at the address of the team in the row and nowhere else. */
     await waitFor(() => {
@@ -337,7 +339,7 @@ describe('a team its administrator takes down', () => {
     expect(within(row).getByText('1')).toBeVisible()
 
     await user.click(within(row).getByRole('button', { name: /^Obriši: Timočka/ }))
-    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Timočka/ }))
+    await sayYes(user, 'Obriši tim?')
 
     /* And nobody else lost their team with it: emptying every member rather than this
        team's would pass everything below. Dunav keeps its six. */
@@ -393,7 +395,7 @@ describe('a team its administrator takes down', () => {
     const { router } = renderAt('/sr/tim/dunavski-trkaci', 'competitor', '000001', undefined, DAY)
 
     await user.click(await screen.findByRole('button', { name: /^Obriši: Dunavski trkači/ }))
-    await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Dunavski trkači/ }))
+    await sayYes(user, 'Obriši tim?')
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/sr/timovi')
@@ -436,10 +438,10 @@ describe('a team its administrator takes down', () => {
 
     const ITS_NAME = 'Vardarski krug'
 
-    /** Presses „Obriši" and then „Potvrdi brisanje", which is what the page asks for. */
+    /** Presses „Obriši" and then „Obriši" in the sheet it opens, which is what the page asks for. */
     async function deleteIt(user: ReturnType<typeof setupUser>) {
       await user.click(await screen.findByRole('button', { name: `Obriši: ${ITS_NAME}` }))
-      await user.click(screen.getByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }))
+      await sayYes(user, 'Obriši tim?')
     }
 
     it('goes to DELETE on ITS OWN address, and never to the first team on the list',
@@ -603,9 +605,7 @@ describe('a team its administrator takes down', () => {
         await user.click(
           await screen.findByRole('button', { name: 'Obriši: Timočka trkačka družina' }),
         )
-        await user.click(
-          screen.getByRole('button', { name: 'Potvrdi brisanje: Timočka trkačka družina' }),
-        )
+        await sayYes(user, 'Obriši tim?')
 
         await waitFor(() => {
           expect(router.state.location.pathname).toBe('/sr/timovi')
@@ -614,6 +614,11 @@ describe('a team its administrator takes down', () => {
         /* NOT ONE WRITE MORE, of any verb, to any address. The team itself is the session's
            and so was taking it away. */
         expect(writes(server.asked)).toEqual(approving)
+
+        /* AND THE LIST IT LEFT FOR SAYS SO (PDL, 24.10.2026), by this road as well as by the route's: a team
+           that stands only in the session is taken away without a request, and the sentence is the reader's
+           only word that it went. */
+        expect(await screen.findByText('Tim je obrisan.')).toBeVisible()
 
         expect(
           (await listedTeams()).some((one) => /Timočka/.test(one.textContent ?? '')),
@@ -673,7 +678,7 @@ describe('a refusal of the deletion of a team', () => {
     const view = renderAt(`/sr/tim/${VARDAR}`, 'competitor', '000003', undefined, DAY)
 
     await user.click(await screen.findByRole('button', { name: `Obriši: ${ITS_NAME}` }))
-    await user.click(screen.getByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }))
+    await sayYes(user, 'Obriši tim?')
     await screen.findByRole('alert')
 
     return { server, router: view.router }
@@ -727,7 +732,7 @@ describe('a refusal of the deletion of a team', () => {
     await router.navigate(`/sr/tim/${VARDAR}`)
 
     await user.click(await screen.findByRole('button', { name: `Obriši: ${ITS_NAME}` }))
-    await user.click(screen.getByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }))
+    await sayYes(user, 'Obriši tim?')
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Prelazni rok je zatvoren.')
 
@@ -764,7 +769,7 @@ describe('a refusal of the deletion of a team', () => {
       }
 
       await user.click(await screen.findByRole('button', { name: `Obriši: ${ITS_NAME}` }))
-      await user.click(screen.getByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }))
+      await sayYes(user, 'Obriši tim?')
       await screen.findByText(sr.results.sending)
 
       return { server, router: view.router, letItAnswer }
@@ -840,7 +845,7 @@ describe('a refusal of the deletion of a team', () => {
     const { server } = await refusedOnce(user)
 
     await user.click(screen.getByRole('button', { name: `Obriši: ${ITS_NAME}` }))
-    await user.click(screen.getByRole('button', { name: `Odustani od brisanja: ${ITS_NAME}` }))
+    await sayNo(user, 'Obriši tim?')
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: `Obriši: ${ITS_NAME}` })).toBeInTheDocument()
@@ -869,7 +874,7 @@ describe('a refusal of the deletion of a team', () => {
     }
 
     await user.click(screen.getByRole('button', { name: `Obriši: ${ITS_NAME}` }))
-    await user.click(screen.getByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }))
+    await sayYes(user, 'Obriši tim?')
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 
@@ -886,9 +891,7 @@ describe('a refusal of the deletion of a team', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('Prelazni rok je zatvoren.')
     /* THE QUESTION HAS CLOSED, and the focus is on the button the sentence stands beside. */
-    expect(
-      screen.queryByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: `Obriši: ${ITS_NAME}` })).toHaveFocus()
 
     server.stop()
