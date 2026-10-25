@@ -320,6 +320,9 @@ export function anInvoice(
     fromTheBalance?: number
     processingFeeEur?: number
     alreadyAMember?: boolean
+    /** What the book holds today, which is `fromTheBalance` unless the case says otherwise: it
+     *  parts company with it for a member whose balance grew after his code was minted. */
+    balance?: number
   } = {},
 ): InvoiceAnswered {
   const toTransfer = changes.toTransfer ?? (currency === 'RSD' ? 3700 : 33.5)
@@ -332,7 +335,7 @@ export function anInvoice(
     alreadyAMember: changes.alreadyAMember ?? false,
     priceKey: 'regular',
     fee: money(toTransfer + fromTheBalance),
-    balance: money(fromTheBalance),
+    balance: money(changes.balance ?? fromTheBalance),
     fromTheBalance: money(fromTheBalance),
     toTransfer: money(toTransfer),
     processingFeeEur,

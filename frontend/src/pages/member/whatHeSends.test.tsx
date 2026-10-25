@@ -102,6 +102,18 @@ describe('the slip, in Serbia', () => {
     expect(screen.getByText(/^Podatke za uplatu vidiš u nastavku/)).toBeVisible()
   }, SLOW)
 
+  it('names what the promise of the season takes off, and not what the book holds today', async () => {
+    /* THE BALANCE GREW AFTER HIS CODE WAS MINTED (owner, 27.09.2026: „Balans se skida ONOLIKO
+       KOLIKO JE KOD OBECAO"): the book holds 1.200 today and the promise 600, so the slip asks for
+       4.200 and says 600. A screen that worked the figure out of today's book would say 1.200 and
+       ask for 3.600. */
+    openHisPage(IN_SERBIA, anInvoice(2027, 'RSD', { toTransfer: 4200, fromTheBalance: 600, balance: 1200 }))
+
+    expect(within(await theSlip()).getByText('4.200 RSD')).toBeVisible()
+    expect(screen.getByText('Balans pokriva 600 RSD, pa uplaćuješ 4.200 RSD.')).toBeVisible()
+    expect(screen.queryByText(/1\.200 RSD, pa/)).not.toBeInTheDocument()
+  }, SLOW)
+
   it('says nothing about the balance where it takes no part', async () => {
     openHisPage(IN_SERBIA, anInvoice(2027, 'RSD', { toTransfer: 4750, fromTheBalance: 0 }))
 

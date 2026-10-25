@@ -481,6 +481,26 @@ describe('the referral link, on the answer the server gives', () => {
     }
   })
 
+  it('is the English pair on the English page', async () => {
+    /* PDL, 22.10.2026: „balkanskatrkackaliga.net/sr/registracija/413f1023555bd1be (i engleski par)".
+       The member's own page in English shares the English registration page, so the language is
+       the page's and not a fixed one. */
+    const { stop } = meAnswering({
+      memberNumber: stillAMember,
+      membershipBasis: 'payment',
+      referralCode: 'aaaaaaaaaaaaaaaa',
+    })
+
+    try {
+      renderAt('/en/moja-clanarina', 'competitor', stillAMember)
+
+      expect(await screen.findByText(/\/en\/registracija\/aaaaaaaaaaaaaaaa$/)).toBeVisible()
+      expect(screen.queryByText(/\/sr\/registracija/)).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  })
+
   it.each([
     ['an ampersand and a hash in it', 'a&b=c#d'],
     ['capitals, which the schema refuses', '7F07B38FF7EE7543'],
