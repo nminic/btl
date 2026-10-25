@@ -358,3 +358,181 @@ describe('the payments that wait', () => {
     expect(screen.queryByText('Nijedna uplata sa izvoda ne čeka potvrdu.')).not.toBeInTheDocument()
   })
 })
+
+/**
+ * „POTVRDI" AND „NIJE ČLANARINA" (owner, 25.10.2026, PDL „Učitavanje izvoda: dva odgovora od 25.10.2026").
+ *
+ * <p>The list of who owes is served here with three members: Duško in dinars, whom the line suggests;
+ * Ana in euro, whom the line also suggests and who cannot be booked from dinars; and Marko in dinars,
+ * whom the line does not suggest, so that „Drugi član" has somebody to open who is not on the line.
+ */
+describe('a payment that waits, confirmed or set aside', () => {
+  const DUE = {
+    season: 2027,
+    accounts: [
+      { competitorId: 4, memberNumber: '000004', firstName: 'Duško', lastName: 'Kunić', city: 'Beograd',
+        currency: 'RSD', expected: 4200, price: 4200, balance: 0 },
+      { competitorId: 6, memberNumber: '000006', firstName: 'Ana', lastName: 'Anić', city: 'Zagreb',
+        currency: 'EUR', expected: 38, price: 35, balance: 0 },
+      { competitorId: 27, memberNumber: '000027', firstName: 'Marko', lastName: 'Marković', city: 'Niš',
+        currency: 'RSD', expected: 4200, price: 4200, balance: 0 },
+    ],
+  }
+
+  const ANA = { competitorId: 6, memberNumber: '000006', firstName: 'Ana', lastName: 'Anić', city: 'Zagreb' }
+
+  function aServerOfPayments(lines: unknown[][], setAside: () => Response = () => new Response(null, { status: 204 })) {
+    let read = 0
+    const server = serverThat((path, init) => {
+      if (path === '/api/payments' && (init?.method ?? 'GET') === 'GET') {
+        return json(DUE)
+      }
+
+      if (path === '/api/payments' && init?.method === 'POST') {
+        return new Response(JSON.stringify({ paymentId: 1 }), { status: 201 })
+      }
+
+      if (path === STATEMENT_LINES) {
+        read += 1
+
+        return json(lines[Math.min(read, lines.length) - 1] ?? [])
+      }
+
+      if (path.endsWith('/set-aside') && init?.method === 'POST') {
+        return setAside()
+      }
+
+      return null
+    })
+
+    stop = server.stop
+
+    return server.asked
+  }
+
+  const WAITING = aLine({ id: 7, amount: 4200, candidates: [DUSKO, ANA] })
+
+  it('opens the suggested member’s row with the line’s amount written in, and books it there naming the line', async () => {
+    const asked = aServerOfPayments([[WAITING]])
+    const user = setupUser()
+    renderAt(PAYMENTS, 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Potvrdi: Duško Kunić (000004), Beograd' }))
+
+    expect(screen.queryByRole('button', { name: /Potvrdi: Ana Anić/ })).not.toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Otvoren je red za uplatu sa izvoda: DUŠKO KUNIĆ, KRALJA PETRA 1, BEOGRAD, 4.200 RSD. Proveri iznos i pritisni Aktiviraj.',
+      ),
+    ).toBeVisible()
+
+    const table = screen.getByRole('table', { name: 'Uplate i aktivacija članova' })
+    const rows = within(table).getAllByRole('row')
+
+    expect(rows).toHaveLength(2)
+
+    const field = within(rows[1] ?? table).getByLabelText(/Uplaćeno/)
+
+    expect(field).toHaveValue('4200')
+    expect(field).toHaveFocus()
+
+    await user.click(within(rows[1] ?? table).getByRole('button', { name: 'Aktiviraj' }))
+
+    await waitFor(() => expect(asked.some((one) => one.path === '/api/payments' && one.init?.method === 'POST')).toBe(true))
+
+    const sent = asked.find((one) => one.path === '/api/payments' && one.init?.method === 'POST')
+
+    expect(JSON.parse(String(sent?.init?.body))).toEqual({
+      competitorId: 4,
+      received: 4200,
+      useTheBalance: true,
+      method: 'ips',
+      reference: null,
+      statementLine: 7,
+    })
+  })
+
+  it('lets the opened row go and shows everybody again', async () => {
+    aServerOfPayments([[WAITING]])
+    const user = setupUser()
+    renderAt(PAYMENTS, 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Potvrdi: Duško Kunić (000004), Beograd' }))
+    await user.click(screen.getByRole('button', { name: 'Prikaži sve' }))
+
+    expect(within(screen.getByRole('table', { name: 'Uplate i aktivacija članova' })).getAllByRole('row')).toHaveLength(4)
+    expect(screen.queryByText(/Otvoren je red/)).not.toBeInTheDocument()
+  })
+
+  it('opens another member’s row the same way, offering only those in dinars', async () => {
+    aServerOfPayments([[WAITING]])
+    const user = setupUser()
+    renderAt(PAYMENTS, 'superadmin')
+
+    const another = await screen.findByLabelText('Drugi član')
+
+    expect(within(another).queryByText(/Ana Anić/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Otvori red' })).toBeDisabled()
+
+    await user.selectOptions(another, 'Marko Marković (000027), Niš')
+    await user.click(screen.getByRole('button', { name: 'Otvori red' }))
+
+    const rows = within(screen.getByRole('table', { name: 'Uplate i aktivacija članova' })).getAllByRole('row')
+
+    expect(rows).toHaveLength(2)
+    expect(within(rows[1] ?? document.body).getByText(/Marko Marković/)).toBeVisible()
+    expect(within(rows[1] ?? document.body).getByLabelText(/Uplaćeno/)).toHaveValue('4200')
+  })
+
+  it('sets a line aside, and the list that waits is read again without it', async () => {
+    const asked = aServerOfPayments([[WAITING], []])
+    const user = setupUser()
+    renderAt(PAYMENTS, 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Nije članarina' }))
+
+    expect(await screen.findByText('Nijedna uplata sa izvoda ne čeka potvrdu.')).toBeVisible()
+    expect(asked.filter((one) => one.path === '/api/statements/lines/7/set-aside')).toHaveLength(1)
+  })
+
+  it('says why a line could not be set aside, and keeps it', async () => {
+    aServerOfPayments([[WAITING]], () => refused('theStatementLineIsSettled', 409))
+    const user = setupUser()
+    renderAt(PAYMENTS, 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Nije članarina' }))
+
+    expect(await screen.findByText('Ova stavka izvoda je već zatvorena. Osveži stranicu.')).toBeVisible()
+    expect(screen.getByText(/DUŠKO KUNIĆ, KRALJA PETRA 1/)).toBeVisible()
+  })
+
+  it('sends one setting aside for two presses fired at once', async () => {
+    let answer = (_done: Response): void => {}
+    const server = serverThat((path, init) => {
+      if (path === STATEMENT_LINES) {
+        return json([WAITING])
+      }
+
+      if (path.endsWith('/set-aside') && init?.method === 'POST') {
+        return new Promise<Response>((resolve) => {
+          answer = resolve
+        })
+      }
+
+      return path === '/api/payments' ? json(DUE) : null
+    })
+    stop = server.stop
+    renderAt(PAYMENTS, 'superadmin')
+
+    const press = await screen.findByRole('button', { name: 'Nije članarina' })
+
+    fireEvent.click(press)
+    fireEvent.click(press)
+    await waitFor(() => expect(server.asked.filter((one) => one.path.endsWith('/set-aside'))).toHaveLength(1))
+    expect(press).toHaveAttribute('aria-disabled', 'true')
+
+    answer(new Response(null, { status: 204 }))
+    await waitFor(() => expect(press).not.toHaveAttribute('aria-disabled'))
+    expect(server.asked.filter((one) => one.path.endsWith('/set-aside'))).toHaveLength(1)
+  })
+})

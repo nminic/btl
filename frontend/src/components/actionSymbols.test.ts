@@ -104,6 +104,13 @@ const SYMBOL_OF = new Map<string, { symbol: ActionSymbol; word: string }>([
   ['myResults.sendAgain', { symbol: SYMBOL.again, word: 'Ispravi i pošalji ponovo' }],
   /* An invitation into a racing pair, as one into a team (PDL 20.10.2026, derived). */
   ['pair.accept', { symbol: SYMBOL.check, word: 'Prihvati' }],
+  /* A line of a bank statement on the Payments screen (owner, 25.10.2026, PDL „Učitavanje izvoda: dva
+     odgovora od 25.10.2026"): „Potvrdi" opens the suggested member's row, „Otvori red" another member's,
+     „Nije članarina" closes the line, and „Prikaži sve" lets the opened row go. */
+  ['review.statement.confirm', { symbol: SYMBOL.check, word: 'Potvrdi' }],
+  ['review.statement.openAnother', { symbol: SYMBOL.pencil, word: 'Otvori red' }],
+  ['review.statement.setAside', { symbol: SYMBOL.cross, word: 'Nije članarina' }],
+  ['review.statement.showEverybody', { symbol: SYMBOL.back, word: 'Prikaži sve' }],
   ['pair.refuse', { symbol: SYMBOL.cross, word: 'Odbij' }],
   ['review.amend', { symbol: SYMBOL.pencil, word: 'Ispravi' }],
   ['review.approve', { symbol: SYMBOL.check, word: 'Odobri' }],

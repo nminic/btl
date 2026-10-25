@@ -553,7 +553,9 @@ class KeysAndIndexesTest extends DatabaseTest {
 					"the other end of bank_statement_loaded_by_fk, which a deleted account empties"),
 			new Index("bank_statement_line_payment_idx",
 					"the line a payment was booked from, and the other end of bank_statement_line_payment_fk,"
-							+ " which a cancelled payment empties"));
+							+ " which a cancelled payment empties"),
+			new Index("bank_statement_line_set_aside_by_idx",
+					"the other end of bank_statement_line_set_aside_by_fk, which a deleted account empties"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says

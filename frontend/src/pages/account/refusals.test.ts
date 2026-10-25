@@ -20,7 +20,7 @@ import { must } from '../../test/at'
 import { WHEN_WRITING_A_MODERATOR } from '../admin/moderatorWrites'
 import { WHEN_ACTIVATING, WHEN_BOOKING_A_PAYMENT } from '../admin/activation'
 import { WHEN_RECORDING_ON_THE_ROW } from '../admin/memberPayment'
-import { WHEN_TAKING_A_STATEMENT } from '../admin/statement'
+import { WHEN_SETTING_A_LINE_ASIDE, WHEN_TAKING_A_STATEMENT } from '../admin/statement'
 import {
   WHEN_CANCELLING,
   WHEN_CHANGING_TO_THE_EXEMPTION,
@@ -139,7 +139,7 @@ const NOT_A_REASON: Record<string, string[]> = {
   'PricingWriteApi.java': ['fee', 'referral'],
   /* `StatementApi` (25.10.2026, PDL „Učitavanje izvoda iz banke") names the three states a payment on a
      statement can be in, which the route answers 200 with: they are words of the answer, not refusals. */
-  'StatementApi.java': ['booked', 'alreadyRecorded', 'waiting'],
+  'StatementApi.java': ['booked', 'alreadyRecorded', 'waiting', 'setAside'],
   /* `MePhotoApi` declared one of these on 26.09.2026 and gained two more on 27.09.2026
      with `mine`, the GET this class did not use to have (PDL 21a/21b):
      `THE_PROFILES_TAB = "profiles"` is the NAME OF A QUEUE, the one PDL P28a calls
@@ -439,7 +439,11 @@ describe('the reasons the server can name', () => {
 
        TEN CONSTANTS AND TEN REASONS since 18.10.2026: `thePaymentWasReversed` went with the state
        it was about, the same day and for the same decision as on `MembershipWriteApi`'s line above,
-       and the four sentences shared with `WHEN_ACTIVATING` became three. */
+       and the four sentences shared with `WHEN_ACTIVATING` became three.
+
+       FOURTEEN SINCE 25.10.2026: a booking may name a line of a bank statement („Potvrdi", owner,
+       25.10.2026), and the line can be unknown, settled, of another amount, or dinars for a member billed
+       in euro. Answered on the payments screen, the only screen that sends a line. */
     /* TWO SCREENS SINCE 18.10.2026 AND THE SAME NAMES ON BOTH, ten of them since that same day: the member's row in the moderation of
        the members books through the same class (`MemberPaymentApi`, which declares no reason of its
        own and answers `PaymentApi`'s), so its map is registered here, for the direction that has
@@ -448,7 +452,7 @@ describe('the reasons the server can name', () => {
        member's row (`MemberMembershipApi`, PUT) is booked by the same booking and refused in these
        words, so its map is registered here as well, for the direction that has teeth. */
     ['PaymentApi.java',
-      [WHEN_BOOKING_A_PAYMENT, WHEN_RECORDING_ON_THE_ROW, WHEN_PAYING_OVER_THE_EXEMPTION], 10],
+      [WHEN_BOOKING_A_PAYMENT, WHEN_RECORDING_ON_THE_ROW, WHEN_PAYING_OVER_THE_EXEMPTION], 14],
     /* ADDED 19.10.2026 WITH THE OPTIONS ON THE MEMBER'S ROW (PDL P8, 18.10.2026): a season cancelled,
        or its basis changed. Four constants and four reasons, and three acts on one address, each with
        the map of what it can meet: `DELETE` cannot name a change, so `thisChangeIsNotOffered` is not on
@@ -611,7 +615,8 @@ describe('the reasons the server can name', () => {
     ['ResultsByTheLeagueApi.java', [WHEN_THE_LEAGUE_ENTERS_RESULTS], 13],
     /* ADDED 25.10.2026 WITH THE BANK STATEMENT ON THE PAYMENTS SCREEN (PDL 24.10.2026). Seven constants:
        four refusals, answered by the statement box, and the three states of a line in `NOT_A_REASON`. */
-    ['StatementApi.java', [WHEN_TAKING_A_STATEMENT], 7],
+    /* NINE SINCE 25.10.2026: „Nije članarina" names one refusal of its own, and a fourth state. */
+    ['StatementApi.java', [WHEN_TAKING_A_STATEMENT, WHEN_SETTING_A_LINE_ASIDE], 9],
   ]
 
   /** What a file declares that really is a refusal AND has a screen today, which is every

@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
@@ -43,8 +44,13 @@ import java.util.Optional;
  * se evidentira sama. Sve ostalo (manji ili veći iznos, nepoznat broj) ide na ručnu potvrdu." That is
  * {@link #take}.
  * <li>„Uplata bez poziva na broj dobija predlog člana po imenu i prezimenu uplatioca, a vlasnik ga
- * potvrđuje jednim klikom ili bira drugog." The suggestion is {@link #candidatesFor}; the click that
- * confirms it waits for the owner's answer about its shape and is not on this route.
+ * potvrđuje jednim klikom ili bira drugog." The suggestion is {@link #candidatesFor}. The click that
+ * confirms it is the owner's of 25.10.2026 (PDL „Učitavanje izvoda: dva odgovora od 25.10.2026"): it
+ * opens the member's row on the Payments screen with the line's amount written in, and the booking goes
+ * through {@link PaymentApi}, which writes it onto the line ({@link PaymentApi.Confirm#statementLine}).
+ * It stands on every line that waits, with a reference or without one (coordinator, 25.10.2026).
+ * <li>A line that is no membership fee „zatvara se dugmetom „Nije članarina", bez knjiženja; portal pamti
+ * ko ju je zatvorio i kad" (owner, 25.10.2026): {@link #setAside}.
  * <li>„Server pamti broj izvoda i stavke (da se isti izvod ne knjiži dvaput), a sam PDF ne čuva." The
  * statement and its lines are V74; the file is read in memory here and kept nowhere.
  * </ul>
@@ -88,12 +94,18 @@ class StatementApi {
 
 	static final String THE_STATEMENT_IS_OF_ANOTHER_ACCOUNT = "theStatementIsOfAnotherAccount";
 
+	/** A line set aside that was booked already, or set aside already. */
+	static final String THE_LINE_IS_SETTLED = "theStatementLineIsSettled";
+
 	/** What a line is, as the screen is told. */
 	static final String BOOKED = "booked";
 
 	static final String ALREADY_RECORDED = "alreadyRecorded";
 
 	static final String WAITING = "waiting";
+
+	/** Closed by „Nije članarina", with no payment (owner, 25.10.2026). */
+	static final String SET_ASIDE = "setAside";
 
 	/** The only money the account the statement is of holds (PDL P8). */
 	private static final Currency DINARS = Currency.RSD;
@@ -138,7 +150,7 @@ class StatementApi {
 	/**
 	 * One payment of a statement, as it stands.
 	 *
-	 * @param state        {@link #BOOKED}, {@link #ALREADY_RECORDED} or {@link #WAITING}
+	 * @param state        {@link #BOOKED}, {@link #ALREADY_RECORDED}, {@link #SET_ASIDE} or {@link #WAITING}
 	 * @param member       whom it was booked to, or who already holds the season; null while it waits
 	 * @param candidates   while it waits, whom it may be about: the member its reference names, or the
 	 *                     members of the payer's name, both namesakes when there are two; empty when
@@ -199,11 +211,45 @@ class StatementApi {
 	@GetMapping("/api/statements/lines")
 	@RightIsNeeded("queue:payments")
 	ResponseEntity<List<Line>> waiting() {
-		List<Line> lines = seen(db.sql(LINES + " where l.payment_id is null"
+		List<Line> lines = seen(db.sql(LINES + " where l.payment_id is null and l.set_aside_at is null"
 						+ " order by s.dated, s.number, l.position")
 				.query(StatementApi::stored).list());
 
 		return ResponseEntity.ok(lines.stream().filter(line -> WAITING.equals(line.state())).toList());
+	}
+
+	/**
+	 * „NIJE ČLANARINA": THE LINE IS CLOSED WITHOUT A BOOKING, AND WHO CLOSED IT AND WHEN IS KEPT (owner,
+	 * 25.10.2026, PDL „Učitavanje izvoda: dva odgovora od 25.10.2026").
+	 *
+	 * <p>The line is taken {@code for update}, the lock {@link PaymentApi} takes on it when „Potvrdi" books
+	 * it, so the two cannot both settle one line: whichever comes second finds it settled. A line nobody
+	 * kept is answered 404, as an address that does not exist.
+	 */
+	@PostMapping("/api/statements/lines/{id}/set-aside")
+	@RightIsNeeded("queue:payments")
+	ResponseEntity<?> setAside(@PathVariable long id, @AuthenticationPrincipal WhoIsAsking.Member asking) {
+		return inOneTransaction.execute(committing -> {
+			Optional<Boolean> settled = db.sql("select payment_id is not null or set_aside_at is not null"
+							+ " from bank_statement_line where id = ? for update")
+					.param(id).query(Boolean.class).optional();
+
+			if (settled.isEmpty()) {
+				return ResponseEntity.notFound().build();
+			}
+
+			if (settled.get()) {
+				return ResponseEntity.status(HttpStatus.CONFLICT).body(new Refused(THE_LINE_IS_SETTLED));
+			}
+
+			db.sql("update bank_statement_line set set_aside_at = ?, set_aside_by = ?, set_aside_by_name = ?,"
+							+ " waits_because = null where id = ?")
+					.params(Timestamp.from(clock.instant()), asking.account(),
+							memberOfAccount.nameOf(asking.account()), id)
+					.update();
+
+			return ResponseEntity.noContent().build();
+		});
 	}
 
 	/**
@@ -362,11 +408,12 @@ class StatementApi {
 	/** A line as V74 holds it. */
 	private record Stored(long id, LocalDate dated, int statement, int position, String payer,
 			String payerAccount, BigDecimal amount, String paymentCode, String purpose, String reference,
-			int season, Long bookedTo, String waitsBecause) {
+			int season, Long bookedTo, String waitsBecause, boolean setAside) {
 	}
 
 	private static final String LINES = "select l.id, s.dated, s.number, l.position, l.payer, l.payer_account,"
-			+ " l.amount, l.payment_code, l.purpose, l.reference, l.season, p.competitor_id, l.waits_because"
+			+ " l.amount, l.payment_code, l.purpose, l.reference, l.season, p.competitor_id, l.waits_because,"
+			+ " l.set_aside_at is not null"
 			+ " from bank_statement_line l"
 			+ " join bank_statement s on s.id = l.statement_id"
 			+ " left join payment p on p.id = l.payment_id";
@@ -377,7 +424,7 @@ class StatementApi {
 
 		return new Stored(row.getLong(1), row.getDate(2).toLocalDate(), row.getInt(3), row.getInt(4),
 				row.getString(5), row.getString(6), row.getBigDecimal(7), row.getString(8), row.getString(9),
-				row.getString(10), row.getInt(11), bookedTo, row.getString(13));
+				row.getString(10), row.getInt(11), bookedTo, row.getString(13), row.getBoolean(14));
 	}
 
 	private List<Stored> linesWithOrders(List<String> orders) {
@@ -396,6 +443,10 @@ class StatementApi {
 		return lines.stream().map(one -> {
 			if (one.bookedTo() != null) {
 				return line(one, BOOKED, find(everybody, one.bookedTo()), List.of(), null);
+			}
+
+			if (one.setAside()) {
+				return line(one, SET_ASIDE, null, List.of(), null);
 			}
 
 			List<Candidate> candidates = candidatesFor(one, everybody);

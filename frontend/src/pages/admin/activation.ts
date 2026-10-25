@@ -301,6 +301,12 @@ export const WHEN_BOOKING_A_PAYMENT: Record<string, string> = {
   theReferenceIsTaken: 'verification.activationRefused.theReferenceIsTaken',
   theMembershipIsAlreadyHeld: 'verification.activationRefused.theMembershipIsAlreadyHeld',
   theMembershipCostsNothing: 'verification.activationRefused.theMembershipCostsNothing',
+  /* A ROW OPENED FROM A LINE OF A BANK STATEMENT (owner, 25.10.2026, PDL „Učitavanje izvoda: dva odgovora
+     od 25.10.2026"): the booking names the line, and these are the ways the line can say no. */
+  theStatementLineIsNotKnown: 'verification.activationRefused.theStatementLineIsNotKnown',
+  theStatementLineIsSettled: 'verification.activationRefused.theStatementLineIsSettled',
+  theAmountIsNotTheStatementLines: 'verification.activationRefused.theAmountIsNotTheStatementLines',
+  theMemberDoesNotPayInDinars: 'verification.activationRefused.theMemberDoesNotPayInDinars',
 }
 
 /**
@@ -477,6 +483,8 @@ type Booking = {
   useTheBalance: boolean
   method: PaymentMethod
   reference: null
+  /** The line of a bank statement this books, when „Potvrdi" on that line opened the row; absent otherwise. */
+  statementLine?: number
 }
 
 /** `MembershipWriteApi`'s, and no amount goes with it: the server works out what comes off. */
@@ -602,7 +610,14 @@ function granting(whose: Whose, ground: string): Sending {
  *                  <b>Never `covers` and never anything worked out from the balance</b>: the box
  *                  is what decides (PDL 23a), and the server is what works out how much comes off
  */
-export function sending(whose: Whose, typed: Typed, including: boolean): Press {
+export function sending(
+  whose: Whose,
+  typed: Typed,
+  including: boolean,
+  /** The line of a bank statement the row was opened from (owner, 25.10.2026), or null. It goes only on a
+   *  payment: a press with nothing typed is no money arriving, so it is no line's booking. */
+  statementLine: number | null = null,
+): Press {
   const what = whatToDo(typed, whose.expected, whose.price, whose.balance, including)
 
   if (typed.got !== 'amount') {
@@ -638,6 +653,7 @@ export function sending(whose: Whose, typed: Typed, including: boolean): Press {
       useTheBalance: including,
       method,
       reference: null,
+      ...(statementLine === null ? {} : { statementLine }),
     },
   }
 

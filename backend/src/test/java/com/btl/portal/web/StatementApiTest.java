@@ -432,6 +432,177 @@ class StatementApiTest {
 	}
 
 	/* ------------------------------------------------------------------------------------
+	   „POTVRDI": THE MEMBER'S ROW BOOKS THE LINE (owner, 25.10.2026)
+	   ------------------------------------------------------------------------------------ */
+
+	/**
+	 * THE ROW OPENED FROM A LINE BOOKS THAT LINE: the payment is the member's, of what the line says
+	 * arrived, through the same booking as a payment typed by hand, and the line names it and waits no more.
+	 * The other line on the statement, for another member and another amount, is untouched, so a booking
+	 * written onto the wrong line shows on both.
+	 */
+	@Test
+	void aRowOpenedFromALineBooksThatLineAndNoOther() throws Exception {
+		long marko = competitor("000027", "Marko", "Markovic", A_TOWN_IN_SERBIA);
+		competitor("000031", "Janko", "Jankovic", A_TOWN_IN_SERBIA);
+
+		JsonNode taken = taken(statement(20)
+				.credit("JANKO JANKOVIĆ", "3900.00", null, order())
+				.credit("MARKO MARKOVIĆ", "4100.00", null, order()));
+		long janko = lineId(taken, 0);
+		long markos = lineId(taken, 1);
+
+		MockHttpServletResponse answer = booked(marko, "4100.00", markos);
+
+		assertThat(answer.getStatus()).as(answer.getContentAsString()).isEqualTo(201);
+		assertThat(db.sql("select l.id || ' ' || p.competitor_id || ' ' || p.received || ' ' || coalesce(l.waits_because,"
+						+ " 'nothing') from bank_statement_line l join payment p on p.id = l.payment_id")
+				.query(String.class).list())
+				.containsExactly(markos + " " + marko + " 4100.00 nothing");
+		assertThat(payers(waiting())).containsExactly("JANKO JANKOVIĆ");
+		assertThat(db.sql("select payment_id is null from bank_statement_line where id = ?").param(janko)
+				.query(Boolean.class).single()).isTrue();
+	}
+
+	@Test
+	void aLineThatIsSettledOrUnknownOrOfAnotherAmountBooksNothing() throws Exception {
+		long marko = competitor("000027", "Marko", "Markovic", A_TOWN_IN_SERBIA);
+		long janko = competitor("000031", "Janko", "Jankovic", A_TOWN_IN_SERBIA);
+
+		JsonNode taken = taken(statement(21)
+				.credit("MARKO MARKOVIĆ", "4100.00", null, order())
+				.credit("NEKO TREĆI", "50.00", null, order()));
+		long markos = lineId(taken, 0);
+		long third = lineId(taken, 1);
+
+		assertThat(refusalOf(booked(marko, "4200.00", markos), 400)).isEqualTo("theAmountIsNotTheStatementLines");
+		assertThat(refusalOf(booked(marko, "4100.00", 999999L), 400)).isEqualTo("theStatementLineIsNotKnown");
+		assertThat(paymentCount()).isZero();
+
+		assertThat(booked(marko, "4100.00", markos).getStatus()).isEqualTo(201);
+		assertThat(refusalOf(booked(janko, "4100.00", markos), 409)).isEqualTo("theStatementLineIsSettled");
+
+		assertThat(setAsideAs(third, moderatorCookie).getStatus()).isEqualTo(204);
+		assertThat(refusalOf(booked(janko, "50.00", third), 409)).isEqualTo("theStatementLineIsSettled");
+
+		assertThat(db.sql("select competitor_id from payment").query(Long.class).list()).containsExactly(marko);
+	}
+
+	/**
+	 * A MEMBER WHO PAYS IN EURO IS NOT BOOKED FROM A LINE OF THE DINAR ACCOUNT: the dinars would be read as
+	 * euro. And a member who does not exist is answered as the booking always answers him.
+	 */
+	@Test
+	void aLineIsNotBookedToAMemberWhoPaysInEuroOrToNobody() throws Exception {
+		long abroad = competitor("000044", "Iz", "Inostranstva", A_TOWN_ABROAD);
+
+		long line = lineId(taken(statement(22).credit("IZ INOSTRANSTVA", "38.00", null, order())), 0);
+
+		assertThat(refusalOf(booked(abroad, "38.00", line), 400)).isEqualTo("theMemberDoesNotPayInDinars");
+		assertThat(refusalOf(booked(999999L, "38.00", line), 400)).isEqualTo("theCompetitorDoesNotExist");
+		assertThat(paymentCount()).isZero();
+	}
+
+	/** THE HARMLESS REPEAT IS NOT THE LINE'S: a member already booked by hand leaves the line unwritten. */
+	@Test
+	void aMemberAlreadyBookedLeavesTheLineUnwritten() throws Exception {
+		long dusko = competitor("000004", "Duško", "Kunić", A_TOWN_IN_SERBIA);
+		bookedByHand(dusko);
+
+		long line = lineId(taken(statement(23).credit("NEKO ZA DUŠKA", EXPECTED, null, order())), 0);
+
+		assertThat(booked(dusko, EXPECTED, line).getStatus()).isEqualTo(200);
+		assertThat(db.sql("select payment_id is null from bank_statement_line where id = ?").param(line)
+				.query(Boolean.class).single()).isTrue();
+	}
+
+	/* ------------------------------------------------------------------------------------
+	   „NIJE ČLANARINA" (owner, 25.10.2026)
+	   ------------------------------------------------------------------------------------ */
+
+	/**
+	 * A LINE SET ASIDE IS CLOSED WITHOUT A BOOKING, NAMES WHO CLOSED IT AND WHEN, WAITS NO MORE, and reads
+	 * as set aside when its statement is taken again. The other line still waits.
+	 */
+	@Test
+	void aLineSetAsideIsClosedWithWhoAndWhenAndWaitsNoMore() throws Exception {
+		ASyntheticStatement statement = statement(24)
+				.credit("DONATOR PRVI", "1000.00", null, order())
+				.credit("NEKO DRUGI", "50.00", null, order());
+		long first = lineId(taken(statement), 0);
+
+		assertThat(setAsideAs(first, moderatorCookie).getStatus()).isEqualTo(204);
+
+		assertThat(db.sql("select set_aside_by_name || ' ' || (set_aside_at = ?) || ' ' || (set_aside_by ="
+						+ " (select id from account where email = ?)) from bank_statement_line where id = ?")
+				.params(Timestamp.from(NOW), MODERATOR, first).query(String.class).single())
+				.isEqualTo("Blagajnik Izvoda true true");
+		assertThat(payers(waiting())).containsExactly("NEKO DRUGI");
+		assertThat(states(taken(statement))).containsExactly("setAside", "waiting");
+		assertThat(paymentCount()).isZero();
+	}
+
+	@Test
+	void aLineSetAsideOrBookedCannotBeSetAsideAgainAndAnUnknownOneIsNotThere() throws Exception {
+		competitor("000027", "Marko", "Markovic", A_TOWN_IN_SERBIA);
+
+		JsonNode taken = taken(statement(25)
+				.credit("MARKO MARKOVIĆ", EXPECTED, "2028000027", order())
+				.credit("DONATOR", "10.00", null, order()));
+
+		assertThat(setAsideAs(lineId(taken, 1), moderatorCookie).getStatus()).isEqualTo(204);
+		assertThat(refusalOf(setAsideAs(lineId(taken, 1), moderatorCookie), 409)).isEqualTo("theStatementLineIsSettled");
+		assertThat(refusalOf(setAsideAs(lineId(taken, 0), moderatorCookie), 409)).isEqualTo("theStatementLineIsSettled");
+		assertThat(setAsideAs(999999L, moderatorCookie).getStatus()).isEqualTo(404);
+		assertThat(db.sql("select count(*) from bank_statement_line where set_aside_at is not null")
+				.query(Long.class).single()).isEqualTo(1);
+	}
+
+	@Test
+	void settingALineAsideTakesTheTick() throws Exception {
+		long line = lineId(taken(statement(26).credit("DONATOR", "10.00", null, order())), 0);
+
+		assertThat(setAsideAs(line, noRightsCookie).getStatus()).isEqualTo(404);
+		assertThat(http.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+						.post("/api/statements/lines/" + line + "/set-aside").with(csrf()))
+				.andReturn().getResponse().getStatus()).isEqualTo(401);
+		assertThat(db.sql("select count(*) from bank_statement_line where set_aside_at is not null")
+				.query(Long.class).single()).isZero();
+	}
+
+	private long lineId(JsonNode taken, int line) {
+		return taken.get("lines").get(line).get("id").asLong();
+	}
+
+	private long paymentCount() {
+		return db.sql("select count(*) from payment").query(Long.class).single();
+	}
+
+	/** The row on the Payments screen, opened from a line, pressing „Aktiviraj" with the box ticked. */
+	private MockHttpServletResponse booked(long competitorId, String received, Long line) throws Exception {
+		return http.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+						.post("/api/payments").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, moderatorCookie))
+						.contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+						.content("{\"competitorId\": " + competitorId + ", \"received\": " + received
+								+ ", \"useTheBalance\": true, \"method\": \"ips\", \"statementLine\": " + line + "}"))
+				.andReturn().getResponse();
+	}
+
+	private MockHttpServletResponse setAsideAs(long line, String cookie) throws Exception {
+		return http.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+						.post("/api/statements/lines/" + line + "/set-aside").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, cookie)))
+				.andReturn().getResponse();
+	}
+
+	private String refusalOf(MockHttpServletResponse answer, int status) throws Exception {
+		assertThat(answer.getStatus()).as(answer.getContentAsString()).isEqualTo(status);
+
+		return mapper.readTree(answer.getContentAsString(StandardCharsets.UTF_8)).get("reason").asString();
+	}
+
+	/* ------------------------------------------------------------------------------------
 	   THE SETUP
 	   ------------------------------------------------------------------------------------ */
 

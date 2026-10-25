@@ -351,6 +351,33 @@ class PaymentApi {
 	static final String THE_MEMBERSHIP_IS_ALREADY_HELD = "theMembershipIsAlreadyHeld";
 
 	/**
+	 * THE LINE OF A BANK STATEMENT THIS BOOKING NAMES IS NOT ONE THE PORTAL KEPT.
+	 *
+	 * <p>Since 25.10.2026 a booking may come from a line of a statement (owner, PDL „Učitavanje izvoda:
+	 * dva odgovora od 25.10.2026": „Potvrdi" opens the member's row with the line's amount written in,
+	 * and the booking goes through this same route). These four are the ways that can be wrong.
+	 */
+	static final String THE_STATEMENT_LINE_IS_NOT_KNOWN = "theStatementLineIsNotKnown";
+
+	/** The line was booked already, by the statement or by a person, or set aside as no membership fee. */
+	static final String THE_STATEMENT_LINE_IS_SETTLED = "theStatementLineIsSettled";
+
+	/**
+	 * What the row sends as arrived is not what the line says arrived. The line is the money: the field is
+	 * written in from it and may be changed, and a booking that names a line books exactly that line.
+	 */
+	static final String THE_AMOUNT_IS_NOT_THE_STATEMENT_LINES = "theAmountIsNotTheStatementLines";
+
+	/**
+	 * The member is billed in euro and a statement's line is dinars in the dinar account. Booked anyway,
+	 * the dinars would be read as euro, a hundred and twenty times over, and the surplus would go onto his
+	 * book as money he never sent. Refused here and not only kept off the screen, because nothing else
+	 * stops a request from naming the two. (Derived 25.10.2026 by the agent; no recorded decision names
+	 * this case.)
+	 */
+	static final String THE_MEMBER_DOES_NOT_PAY_IN_DINARS = "theMemberDoesNotPayInDinars";
+
+	/**
 	 * {@code payment_method_known}, V39: the two ways the money arrives.
 	 *
 	 * <p>The owner decided on 27.09.2026 (PDL 23b) that the set has exactly two members.
@@ -426,13 +453,16 @@ class PaymentApi {
 
 	private final ABeginnersCategoryAMembershipMoves category;
 
+	private final CurrencyOfMember currencyOf;
+
 	PaymentApi(BookingAPayment booking, TransactionTemplate inOneTransaction, JdbcClient db, Clock clock,
-			ABeginnersCategoryAMembershipMoves category) {
+			ABeginnersCategoryAMembershipMoves category, CurrencyOfMember currencyOf) {
 		this.booking = booking;
 		this.inOneTransaction = inOneTransaction;
 		this.db = db;
 		this.clock = clock;
 		this.category = category;
+		this.currencyOf = currencyOf;
 	}
 
 	/**
@@ -485,9 +515,21 @@ class PaymentApi {
 	 * @param reference    the poziv na broj, when the statement carries one; null for
 	 *                     a first payment, which has no number yet to write on a slip
 	 *                     (V16)
+	 * @param statementLine the line of a bank statement this books, when „Potvrdi" on that
+	 *                     line opened the row (PDL 25.10.2026); null otherwise. The line is
+	 *                     locked, must still wait, and must say exactly what arrived, and the
+	 *                     booking it makes is written onto it
 	 */
 	record Confirm(Long competitorId, BigDecimal received, Boolean useTheBalance, String method,
-			String reference) {
+			String reference, Long statementLine) {
+
+		/**
+		 * A booking that names no line of a statement, which is every booking but the one „Potvrdi" on a
+		 * line of the Payments screen sends.
+		 */
+		Confirm(Long competitorId, BigDecimal received, Boolean useTheBalance, String method, String reference) {
+			this(competitorId, received, useTheBalance, method, reference, null);
+		}
 	}
 
 	/** Why a confirmation was refused. */
@@ -539,6 +581,15 @@ class PaymentApi {
 		return inOneTransaction.execute(committing -> {
 			lockTheMember(typed.competitorId());
 
+			/* THE LINE OF A STATEMENT, WHEN THE ROW WAS OPENED FROM ONE, taken after the member and in
+			   that order everywhere it is taken by a booking, so two bookings cannot hold each other. */
+			ResponseEntity<?> theLineSaysNo = typed.statementLine() == null ? null
+					: whatIsWrongWithTheLine(typed.statementLine(), typed);
+
+			if (theLineSaysNo != null) {
+				return theLineSaysNo;
+			}
+
 			/* THE SEASON IS READ HERE, ONCE, and handed to the booking, because the beginners' category
 			   is asked about the same season before the booking and after it: two readings of the clock
 			   would part across midnight of 15 October. Still the clock's and never the request's
@@ -549,6 +600,15 @@ class PaymentApi {
 			ResponseEntity<?> answer = booking.book(typed, reference, asking, season).answer();
 
 			category.tellHimIfItMoved(before);
+
+			/* ONLY A NEW PAYMENT IS WRITTEN ONTO THE LINE: a refusal books nothing, and the harmless
+			   repeat (200) is a payment that stood before this press and is not the line's. */
+			if (typed.statementLine() != null && answer.getStatusCode() == HttpStatus.CREATED) {
+				db.sql("update bank_statement_line set payment_id = ?, waits_because = null where id = ?")
+						.params(((Confirmed) java.util.Objects.requireNonNull(answer.getBody())).paymentId(),
+								typed.statementLine())
+						.update();
+			}
 
 			return answer;
 		});
@@ -582,6 +642,45 @@ class PaymentApi {
 	 * so nothing here decides anything and every answer of this route is the one it gave before. A
 	 * member number is not drawn here either: {@link MemberNumbers} stays the last thing a booking does.
 	 */
+	/**
+	 * WHAT KEEPS THIS BOOKING FROM BOOKING THE LINE IT NAMES, or null when nothing does. The line is taken
+	 * {@code for update}, so a second press, or „Nije članarina" on the same line, waits for this one and
+	 * then finds it settled.
+	 */
+	private ResponseEntity<?> whatIsWrongWithTheLine(long line, Confirm typed) {
+		record Line(BigDecimal amount, boolean settled) {
+		}
+
+		java.util.Optional<Line> found = db.sql("select amount, payment_id is not null or set_aside_at is not null"
+						+ " from bank_statement_line where id = ? for update")
+				.param(line)
+				.query((row, i) -> new Line(row.getBigDecimal(1), row.getBoolean(2)))
+				.optional();
+
+		if (found.isEmpty()) {
+			return no(HttpStatus.BAD_REQUEST, THE_STATEMENT_LINE_IS_NOT_KNOWN);
+		}
+
+		if (found.get().settled()) {
+			return no(HttpStatus.CONFLICT, THE_STATEMENT_LINE_IS_SETTLED);
+		}
+
+		if (found.get().amount().compareTo(typed.received()) != 0) {
+			return no(HttpStatus.BAD_REQUEST, THE_AMOUNT_IS_NOT_THE_STATEMENT_LINES);
+		}
+
+		/* AND A MEMBER WHO EXISTS, asked of the member's own row: `CurrencyOfMember` refuses to answer
+		   about somebody who does not, and the booking below answers that case with its own word. */
+		boolean exists = Boolean.TRUE.equals(db.sql("select exists(select 1 from competitor where id = ?)")
+				.param(typed.competitorId()).query(Boolean.class).single());
+
+		if (exists && currencyOf.of(typed.competitorId()) != Currency.RSD) {
+			return no(HttpStatus.BAD_REQUEST, THE_MEMBER_DOES_NOT_PAY_IN_DINARS);
+		}
+
+		return null;
+	}
+
 	private void lockTheMember(long competitorId) {
 		db.sql("select id from competitor where id = ? for update")
 				.param(competitorId)

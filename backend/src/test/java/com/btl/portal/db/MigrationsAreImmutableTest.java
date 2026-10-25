@@ -637,7 +637,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   above; no remote branch holds V74, measured again that day when main was merged into this branch.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("74", "V74__a_bank_statement_is_remembered_and_its_file_is_not.sql", 1208052030));
+			new Applied("74", "V74__a_bank_statement_is_remembered_and_its_file_is_not.sql", -1979659123));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

@@ -23,6 +23,8 @@ import {
   statementToSend,
   takenIn,
   whatWaits,
+  setAsideAt,
+  WHEN_SETTING_A_LINE_ASIDE,
   WHEN_TAKING_A_STATEMENT,
   WHY_IT_WAITS,
   type Candidate,
@@ -53,6 +55,14 @@ type StatementSaid =
   | { said: 'refused'; answer: Exclude<Answer, { got: 'done' }> }
 
 /**
+ * A ROW OPENED FROM A LINE OF A STATEMENT (owner, 25.10.2026, PDL „Učitavanje izvoda: dva odgovora od
+ * 25.10.2026"): „Potvrdi" „otvara postojeći red predloženog člana na Uplatama, sa već upisanim iznosom sa
+ * stavke; knjiženje ide kroz isti prozor kao i ručna uplata". So the line is carried to the member's row
+ * and nothing is booked from the line itself.
+ */
+type Opened = { line: StatementLine; competitorId: number }
+
+/**
  * THE BANK STATEMENT, READ BY THE SERVER (owner, 24.10.2026, PDL „Učitavanje izvoda iz banke na ekranu
  * Uplate").
  *
@@ -74,11 +84,17 @@ function Statement({
   said,
   onSaid,
   onBooked,
+  due,
+  onOpen,
 }: {
   said: StatementSaid | null
   onSaid: (said: StatementSaid) => void
   /** Called when a statement booked a payment, so the list of who owes is read again. */
   onBooked: () => void
+  /** Who owes this season, the rows a waiting payment can be confirmed on. */
+  due: MembershipDue[]
+  /** „Potvrdi": the member's row is opened with the line's amount written in. */
+  onOpen: (opened: Opened) => void
 }) {
   const { locale, t } = useI18n()
   /* WHAT WAITS, read as the box mounts, which is also after every statement that booked something,
@@ -225,11 +241,21 @@ function Statement({
                     <th scope="col">{t('review.statement.columns.purpose')}</th>
                     <th scope="col">{t('review.statement.columns.why')}</th>
                     <th scope="col">{t('review.statement.columns.suggestion')}</th>
+                    <th scope="col">{t('review.statement.columns.act')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {waiting.map((one) => (
-                    <WaitingLine key={one.id} one={one} whose={whose} />
+                    <WaitingLine
+                      key={one.id}
+                      one={one}
+                      whose={whose}
+                      due={due}
+                      onOpen={onOpen}
+                      onSetAside={() => {
+                        void whatWaits().then(setWaiting)
+                      }}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -268,11 +294,70 @@ function statementSentence(
 }
 
 /**
- * ONE PAYMENT OF A STATEMENT THAT WAITS, with everything the statement printed about it and whom it may
- * be about. Read only: how it is confirmed from here is the owner's question and is not drawn yet.
+ * ONE PAYMENT OF A STATEMENT THAT WAITS, with everything the statement printed about it, whom it may be
+ * about, and the two things the owner can do with it (owner, 25.10.2026, PDL „Učitavanje izvoda: dva
+ * odgovora od 25.10.2026"):
+ *
+ * <p><b>„Potvrdi"</b> opens the member's row with the line's amount written in, and the booking goes
+ * through that row's own question (manjak, balans, višak), never from here. It stands on every line that
+ * waits, with a reference or without (coordinator, 25.10.2026), once for each suggested member who owes
+ * this season, and „Drugi član" opens anybody else's row the same way. A member who pays in euro is not
+ * offered: the line is dinars, and the route refuses it anyway (`theMemberDoesNotPayInDinars`).
+ *
+ * <p><b>„Nije članarina"</b> closes the line without a booking, and the server keeps who and when.
  */
-function WaitingLine({ one, whose }: { one: StatementLine; whose: (one: Candidate) => string }) {
+function WaitingLine({
+  one,
+  whose,
+  due,
+  onOpen,
+  onSetAside,
+}: {
+  one: StatementLine
+  whose: (one: Candidate) => string
+  due: MembershipDue[]
+  onOpen: (opened: Opened) => void
+  onSetAside: () => void
+}) {
   const { locale, t } = useI18n()
+  const [another, setAnother] = useState('')
+  const [refused, setRefused] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+  /* ONE REQUEST AT A TIME FROM THIS LINE, the ref `Row` keeps and for its reason: a second press fired
+     before the render the first would cause must find the first still out. */
+  const outstanding = useRef(false)
+  const [settingAside, setSettingAside] = useState(false)
+
+  /* IN DINARS ONLY, because the line is: a member billed in euro cannot be booked from it. */
+  const owing = due.filter((member) => member.currency === one.currency)
+  const confirmable = one.candidates.filter((candidate) =>
+    owing.some((member) => member.competitorId === candidate.competitorId),
+  )
+  const anotherId = `another-${one.id}`
+
+  async function setAside() {
+    if (outstanding.current) {
+      return
+    }
+
+    outstanding.current = true
+    setSettingAside(true)
+
+    try {
+      const answer = await askTheServer(setAsideAt(one.id), {})
+
+      if (answer.got === 'done') {
+        setRefused(null)
+        onSetAside()
+
+        return
+      }
+
+      setRefused(answer)
+    } finally {
+      outstanding.current = false
+      setSettingAside(false)
+    }
+  }
 
   return (
     <tr>
@@ -318,6 +403,51 @@ function WaitingLine({ one, whose }: { one: StatementLine; whose: (one: Candidat
           </ul>
         )}
       </td>
+      <td>
+        <div className="statement__act">
+          {confirmable.map((candidate) => (
+            <ActionButton
+              key={candidate.competitorId}
+              symbol={SYMBOL.check}
+              word={t('review.statement.confirm')}
+              name={t('review.statement.confirmFor', { whose: whose(candidate) })}
+              className="button"
+              onClick={() => onOpen({ line: one, competitorId: candidate.competitorId })}
+            />
+          ))}
+
+          <div className="rankings__field">
+            <label htmlFor={anotherId}>{t('review.statement.another')}</label>
+            <select id={anotherId} value={another} onChange={(event) => setAnother(event.target.value)}>
+              <option value="">{t('review.statement.anotherNone')}</option>
+              {owing.map((member) => (
+                <option key={member.competitorId} value={String(member.competitorId)}>
+                  {whose(member)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <ActionButton
+            symbol={SYMBOL.pencil}
+            word={t('review.statement.openAnother')}
+            className="button button--secondary"
+            disabled={another === ''}
+            onClick={() => onOpen({ line: one, competitorId: Number(another) })}
+          />
+
+          <ActionButton
+            symbol={SYMBOL.cross}
+            word={t('review.statement.setAside')}
+            className="button button--secondary"
+            aria-disabled={settingAside ? true : undefined}
+            onClick={() => void setAside()}
+          />
+
+          <div className="activate__said" role="status">
+            {refused === null ? null : <ServerSaid answer={refused} refusals={WHEN_SETTING_A_LINE_ASIDE} />}
+          </div>
+        </div>
+      </td>
     </tr>
   )
 }
@@ -341,15 +471,20 @@ function Row({
   one,
   season,
   onActivated,
+  fromTheLine = null,
 }: {
   one: MembershipDue
   /** For the prompt's own heading, so a question names the year it is about rather than leaving
    *  the moderator to look for it behind the sheet. Off the answer, never off a clock. */
   season: number
   onActivated: () => void
+  /** The line of a bank statement this row was opened from by „Potvrdi" (owner, 25.10.2026): its
+   *  amount is written into the field and the booking names it. Null for a row nobody opened. */
+  fromTheLine?: StatementLine | null
 }) {
   const { locale, t } = useI18n()
-  const [typed, setTyped] = useState('')
+  /* EMPTY, OR WHAT ARRIVED ON THE LINE THE ROW WAS OPENED FROM: „sa već upisanim iznosom sa stavke". */
+  const [typed, setTyped] = useState(() => (fromTheLine === null ? '' : String(fromTheLine.amount)))
   /* TICKED TO BEGIN WITH, which is the owner's own word: „podrazumevano stiklirana". Held as its
      own state rather than derived from the balance, because a moderator clearing it over a
      member who HAS money is exactly cases 3b and 6. */
@@ -400,7 +535,7 @@ function Row({
      answer. It carries the body of every request this row could send, so nothing below assembles
      one: `activation.ts#sending` is where „which number goes into which field" is decided, and a
      test can ask it without mounting a row. */
-  const press = sending(one, read, including)
+  const press = sending(one, read, including, fromTheLine === null ? null : fromTheLine.id)
   /**
    * THE TWO THINGS A PRESS CAN DO, NARROWED HERE IN THE RENDER AND NEVER IN THE HANDLER.
    *
@@ -544,6 +679,10 @@ function Row({
                  `forms/FormRenderer.tsx` does for a number field the server keeps whole. */
               inputMode="numeric"
               autoComplete="off"
+              /* WHERE THE KEYBOARD GOES WHEN „POTVRDI" OPENED THIS ROW (WCAG 2.2 AA, 2.4.3): the
+                 button pressed has left with the list it stood in, and this field is what the next
+                 look is for. */
+              autoFocus={fromTheLine !== null}
               value={typed}
               aria-describedby={read.got === 'refused' ? wrongId : undefined}
               aria-invalid={read.got === 'refused' ? true : undefined}
@@ -944,8 +1083,10 @@ function TheList({
   statementSaid: StatementSaid | null
   onStatementSaid: (said: StatementSaid) => void
 }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const [search, setSearch] = useState('')
+  /* THE ROW „POTVRDI" OPENED, which is the only row drawn while it is open; null when none is. */
+  const [opened, setOpened] = useState<Opened | null>(null)
   const state = usePaymentsDue()
 
   const queue = QUEUE.payments
@@ -961,11 +1102,20 @@ function TheList({
 
       <Resource state={state}>
         {(outstanding: Outstanding) => {
-          const rows = matching(outstanding.accounts, search)
+          const rows =
+            opened === null
+              ? matching(outstanding.accounts, search)
+              : outstanding.accounts.filter((one) => one.competitorId === opened.competitorId)
 
           return (
             <>
-              <Statement said={statementSaid} onSaid={onStatementSaid} onBooked={onActivated} />
+              <Statement
+                said={statementSaid}
+                onSaid={onStatementSaid}
+                onBooked={onActivated}
+                due={outstanding.accounts}
+                onOpen={setOpened}
+              />
 
               <div className="pending__bar">
                 {/* The season is named because the screen is about one, and it comes off the
@@ -1009,6 +1159,23 @@ function TheList({
                 </div>
               </div>
 
+              {opened === null ? null : (
+                <div className="member__note statement__opened">
+                  <p>
+                    {t('review.statement.opened', {
+                      payer: opened.line.payer,
+                      amount: `${money(opened.line.amount, locale)} ${opened.line.currency}`,
+                    })}
+                  </p>
+                  <ActionButton
+                    symbol={SYMBOL.back}
+                    word={t('review.statement.showEverybody')}
+                    className="button button--secondary"
+                    onClick={() => setOpened(null)}
+                  />
+                </div>
+              )}
+
               {/* THREE STATES AND NOT TWO, and the middle one is the reason this is not an
                   `||`. „Everybody is a member" is the ordinary state of a working portal on
                   the first day (owner: „NIKO SE NE DOVODI U PORTAL DOK SE SAM NE PRIJAVI");
@@ -1041,10 +1208,13 @@ function TheList({
                     <tbody>
                       {rows.map((one) => (
                         <Row
-                          key={one.competitorId}
+                          /* THE LINE IS PART OF THE KEY, so a row opened from a line starts with that
+                             line's amount and a row opened from another line starts again. */
+                          key={`${one.competitorId}-${opened === null ? '' : opened.line.id}`}
                           one={one}
                           season={outstanding.season}
                           onActivated={onActivated}
+                          fromTheLine={opened === null ? null : opened.line}
                         />
                       ))}
                     </tbody>

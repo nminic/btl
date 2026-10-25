@@ -18,8 +18,21 @@ export type Candidate = {
   city: string
 }
 
-/** What a payment on a statement is: booked by the statement itself, already settled, or waiting. */
-export type LineState = 'booked' | 'alreadyRecorded' | 'waiting'
+/**
+ * What a payment on a statement is: booked, already settled by the member it is about, set aside as no
+ * membership fee („Nije članarina", owner, 25.10.2026), or waiting.
+ */
+export type LineState = 'booked' | 'alreadyRecorded' | 'setAside' | 'waiting'
+
+/** Where „Nije članarina" closes one line. */
+export function setAsideAt(line: number): string {
+  return `${STATEMENT_LINES}/${line}/set-aside`
+}
+
+/** What closing a line can be refused with (`StatementApi`, `refusals.test.ts` reads the route). */
+export const WHEN_SETTING_A_LINE_ASIDE: Record<string, string> = {
+  theStatementLineIsSettled: 'review.statement.setAsideRefused.theStatementLineIsSettled',
+}
 
 /**
  * One payment a statement says arrived, as `StatementApi` answers it.
@@ -201,7 +214,7 @@ function lineIn(body: unknown): StatementLine | null {
     typeof statement !== 'number' ||
     typeof amount !== 'number' ||
     typeof season !== 'number' ||
-    (state !== 'booked' && state !== 'alreadyRecorded' && state !== 'waiting') ||
+    (state !== 'booked' && state !== 'alreadyRecorded' && state !== 'setAside' && state !== 'waiting') ||
     dated === null ||
     payer === null ||
     payerAccount === null ||

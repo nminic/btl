@@ -6,6 +6,7 @@ import sr from '../../i18n/sr.json'
 import { serverThat } from '../../test/serverAnswers'
 import {
   linesIn,
+  setAsideAt,
   STATEMENT_LINES,
   statementToSend,
   takenIn,
@@ -96,6 +97,11 @@ describe('a line of a statement', () => {
         waitsBecause: 'noReference',
       },
     ])
+  })
+
+  it('may be set aside, at an address of its own', () => {
+    expect(linesIn([aLine({ state: 'setAside', candidates: [], waitsBecause: null })])?.[0]?.state).toBe('setAside')
+    expect(setAsideAt(7)).toBe('/api/statements/lines/7/set-aside')
   })
 
   it('carries the member it was booked to', () => {

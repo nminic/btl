@@ -64,6 +64,14 @@ class BankStatementConstraintsTest extends DatabaseTest {
 		return "insert into bank_statement_line (" + LINE_COLUMNS + ") values (" + values + ")";
 	}
 
+	/** A line set aside, the three columns of „Nije članarina" given. */
+	private static String setAside(String paymentAndWhy, String at, String by, String name) {
+		return "insert into bank_statement_line (statement_id, position, order_number, payer, amount, purpose,"
+				+ " season, payment_id, waits_because, set_aside_at, set_aside_by, set_aside_by_name) values ("
+				+ THE_STATEMENT + ", 5, 'E', 'P', 1.00, '', 2028, " + paymentAndWhy + ", " + at + ", " + by + ", "
+				+ name + ")";
+	}
+
 	private static String lineWithId(String id, String values) {
 		return "insert into bank_statement_line (id, " + LINE_COLUMNS + ") values (" + id + ", " + values + ")";
 	}
@@ -139,7 +147,20 @@ class BankStatementConstraintsTest extends DatabaseTest {
 				Violation.of("bank_statement_line_one_order_once",
 						line("(select id from bank_statement where number = 7), 1, 'A', 'P', null, 1.00, null, '',"
 								+ " null, 2028, null, 'noReference'")),
-				Violation.of("bank_statement_line_one_position_once", line(aLine(1, "C"))));
+				Violation.of("bank_statement_line_one_position_once", line(aLine(1, "C"))),
+
+				/* SET ASIDE: by an account that exists, with who and when together, with a name that says
+				   something, and never over a booked line. */
+				Violation.of("bank_statement_line_set_aside_by_fk",
+						setAside("null, null", "now()", "999999", "'Blagajnik Probni'")),
+				Violation.of("bank_statement_line_set_aside_says_who",
+						setAside("null, null", "now()", THE_MODERATOR, "null")),
+				Violation.of("bank_statement_line_set_aside_says_who",
+						setAside("null, null", "null", THE_MODERATOR, "'Blagajnik Probni'")),
+				Violation.of("bank_statement_line_set_aside_by_name_not_blank",
+						setAside("null, null", "now()", THE_MODERATOR, "'  '")),
+				Violation.of("bank_statement_line_set_aside_is_not_booked",
+						setAside(A_PAYMENT + ", null", "now()", THE_MODERATOR, "'Blagajnik Probni'")));
 	}
 
 	@BeforeEach
@@ -203,6 +224,9 @@ class BankStatementConstraintsTest extends DatabaseTest {
 				line(THE_STATEMENT + ", 3, 'C', 'P', null, 38.00, null, '', null, 2028, null, null"),
 				/* Every field the statement may leave out, left out. */
 				line(THE_STATEMENT + ", 4, 'D', 'P', null, 0.01, null, '', null, 2027, null, 'notInDinars'"),
+				/* Set aside as no membership fee, and by an account already gone. */
+				setAside("null, null", "now()", THE_MODERATOR, "'Blagajnik Probni'"),
+				setAside("null, null", "now()", "null", "'Blagajnik Probni'"),
 				/* The statement of another day with the same number, which a new year starts again. */
 				statement("'105-0000000003284-71', 1, date '2027-01-05', now(), null, 'Blagajnik Probni'"));
 	}

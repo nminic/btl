@@ -155,6 +155,45 @@
   color: var(--danger);
 }
 
+/* THE PAYMENTS OF A STATEMENT THAT WAIT (PDL 24.10.2026 and 25.10.2026). The box above lines its
+   children up at the start, which sizes a child to its content: a table wider than the window then made
+   its scrolling box as wide as itself, and the page scrolled sideways at 360 and at 768 (measured,
+   `geometry/statementLines.geometry.ts`). Stretched, the box is as wide as the page and the table scrolls
+   inside it, as every other table of the portal does. */
+.statement > .table-scroll {
+  align-self: stretch;
+}
+
+/* Words and not figures in every column, so every cell starts where its heading does. Written over
+   `.table`'s own rule for the first three columns and the rest (`styles/table.css`), which this outranks
+   by one class and does not depend on the order the sheets are read in. */
+.statement .table.statement__lines th,
+.statement .table.statement__lines td {
+  text-align: start;
+}
+
+/* What the statement printed beside the payer, the amount and the purpose, each on a line of its own
+   under them, smaller and quieter, the way a member number stands under a name. */
+.statement__lines .table__member-number {
+  display: block;
+}
+
+/* The controls of a line one under another, so a narrow column wraps between them and never inside
+   one. A box inside the cell and not the cell itself, which stays a cell for a reader's table commands. */
+.statement__act {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-8);
+}
+
+.statement__opened {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
 /* The heading of the waiting list and the one decision that settles all of it,
    level with each other (owner, 01.08.2026). */
 .pending__bar {

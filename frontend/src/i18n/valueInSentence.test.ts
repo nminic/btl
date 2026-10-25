@@ -514,7 +514,11 @@ describe('a sentence with a value put into it', () => {
       'review.statement.bookedLine <- money',
       'review.statement.candidate',
       'review.statement.candidateWithoutNumber',
+      /* „Potvrdi: {whose}", the name of a member after a colon, and „Otvoren je red za uplatu sa izvoda:
+         {payer}, {amount}." (25.10.2026), the payer as printed and an amount in figures, after a colon. */
+      'review.statement.confirmFor',
       'review.statement.onTheStatement <- formatNumericDate',
+      'review.statement.opened <- money',
       'review.statement.payerAccount',
       'review.statement.paymentCode',
       'review.statement.reference',

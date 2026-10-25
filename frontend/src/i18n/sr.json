@@ -1226,12 +1226,24 @@
         "amount": "Iznos",
         "purpose": "Svrha",
         "why": "Zašto čeka",
-        "suggestion": "Predlog"
+        "suggestion": "Predlog",
+        "act": "Potvrda"
       },
       "payerAccount": "Račun {account}",
       "onTheStatement": "Izvod broj {number} od {dated}",
       "paymentCode": "Šifra plaćanja {code}",
       "reference": "Poziv na broj {reference}",
+      "confirm": "Potvrdi",
+      "confirmFor": "Potvrdi: {whose}",
+      "another": "Drugi član",
+      "anotherNone": "Izaberi člana",
+      "openAnother": "Otvori red",
+      "setAside": "Nije članarina",
+      "setAsideRefused": {
+        "theStatementLineIsSettled": "Ova stavka izvoda je već zatvorena. Osveži stranicu."
+      },
+      "opened": "Otvoren je red za uplatu sa izvoda: {payer}, {amount}. Proveri iznos i pritisni Aktiviraj.",
+      "showEverybody": "Prikaži sve",
       "noSuggestion": "Nema predloga",
       "why": {
         "noReference": "Uplata nema poziv na broj.",
@@ -1714,6 +1726,10 @@
     "askShortfall": "Prihvatam umanjen ukupan iznos?",
     "askShortfallShort": "Nedostaje: {amount}",
     "activationRefused": {
+      "theStatementLineIsNotKnown": "Ova stavka izvoda nije pronađena, pa uplata nije proknjižena. Osveži stranicu.",
+      "theStatementLineIsSettled": "Ova stavka izvoda je već zatvorena, pa uplata nije proknjižena ponovo. Osveži stranicu.",
+      "theAmountIsNotTheStatementLines": "Iznos nije onaj sa stavke izvoda, pa uplata nije proknjižena. Uplata sa izvoda se knjiži sa iznosom koji je stigao.",
+      "theMemberDoesNotPayInDinars": "Ovaj član plaća u evrima, a uplata sa izvoda je stigla na dinarski račun, pa nije proknjižena.",
       "theFormIsNotComplete": "Aktivacija nije poslata do kraja, pa članstvo nije upisano. Osveži stranicu i pokušaj ponovo.",
       "theGroundIsNotKnown": "Osnov aktivacije nije prepoznat, pa članstvo nije upisano. Osveži stranicu i pokušaj ponovo.",
       "nothingWouldComeOffTheBalance": "Sa balansa ovog člana ne može da se skine ništa, pa članstvo nije upisano.",
