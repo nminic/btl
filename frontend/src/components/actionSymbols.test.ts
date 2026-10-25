@@ -157,6 +157,11 @@ const STAYS_A_WORD = new Map([
   ['membership.leaveTeam', LISTED],
   ['membership.leaveTeamKeep', ANSWER],
   ['membership.leaveTeamSure', ANSWER],
+  /* The one click that lets a member in on his balance, and the button is NAMED in the decision, so the word is the owner's. */
+  [
+    'membership.letMeIn',
+    'the button of a member whose balance covers the fee, which the owner named „Aktiviraj članstvo" (PDL 25.10.2026, the same word as in message G): a word and not a symbol',
+  ],
   ['myProfile.signOut', LISTED],
   ['myResults.add', LISTED],
   ['nav.login', NOT_AN_ACTION],
