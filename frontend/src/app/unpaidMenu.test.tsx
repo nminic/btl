@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { htmlElement } from '../test/at'
 import { aNeverPaidRecord, neverPaidAsServed } from '../test/neverPaid'
 import { renderAt } from '../test/render'
-import { serverThat } from '../test/serverAnswers'
+import { anInvoice, invoiceAsServed, serverThat } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 import { useSession } from '../session/useSession'
@@ -307,10 +307,13 @@ describe('the word, on the page he pays on from abroad', () => {
      the case reads the page as he meets it and as a member does. */
   it('is nowhere on it, in the text or in the names, and the label and the note are the new ones', async () => {
     stand(neverPaidAsServed({ country: 'MK' }))
+    /* What he sends is the server's since 25.10.2026, in euro abroad, and the PayPal data is drawn
+       under it. */
+    stand(invoiceAsServed(anInvoice(2027, 'EUR')))
     renderAt('/sr/moja-clanarina', 'visitor', null, undefined, '2026-11-01')
 
     expect(await screen.findByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
-    expect(screen.getByText('PayPal adresa')).toBeVisible()
+    expect(await screen.findByText('PayPal adresa')).toBeVisible()
     expect(screen.getByText(/^PayPal adresa je poslovna, na Sportsko udruženje BTL\./)).toBeVisible()
 
     for (const words of everyWordOnTheScreen()) {

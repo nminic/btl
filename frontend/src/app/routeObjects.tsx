@@ -160,6 +160,10 @@ const DETAILS: RouteObject[] = [
   { path: 'liga/:slug', element: <LeagueDetail /> },
   { path: 'rezultat/novi', element: <NewResult /> },
   { path: 'poruke/:id', element: <MessageDetail /> },
+  /* The registration page with the code of whoever brought the reader in it (owner, 22.10.2026:
+     „Link preporuke nosi samo šifru u adresi strane za registraciju"). The same screen as
+     `registracija`, which reads the segment itself (`pages/Registration.tsx`). */
+  { path: 'registracija/:code', element: <Registration /> },
   /* The five verification queues (PDL P28a). The addresses live in QUEUES, which
      is also what the list of queues links with, so a queue cannot end up with a
      row that points nowhere.

@@ -1,4 +1,4 @@
-import { configure, getConfig, screen, within } from '@testing-library/react'
+import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   ipsPayload,
@@ -6,7 +6,6 @@ import {
   RECIPIENT_ACCOUNT,
   RECIPIENT_NAME,
 } from '../../data/paymentQr'
-import { PRICES } from '../../data/pricing'
 import { must } from '../../test/at'
 import { componentsOf } from '../../test/javaRecords'
 import {
@@ -16,9 +15,14 @@ import {
 } from '../../test/neverPaid'
 import { readQr } from '../../test/readQr'
 import { renderAt } from '../../test/render'
-import { categoryAsServed, serverThat, type CategoryAnswered } from '../../test/serverAnswers'
+import {
+  anInvoice,
+  categoryAsServed,
+  invoiceAsServed,
+  type CategoryAnswered,
+  type InvoiceAnswered,
+} from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
-import servedPrices from '../../test/mock/pricing.json'
 
 /**
  * „MOJA ČLANARINA", TO SOMEBODY WHO HAS REGISTERED AND HAS NOT PAID.
@@ -77,9 +81,20 @@ const BEFORE_THE_FIRST_SALE = '2026-10-14'
  *
  * @param changes what this case changes in his record, over `aNeverPaidRecord`
  * @param today   the day the portal is read as
+ * @param invoice what `GET /api/me/membership` answers him: by default what he sends for 2027 in his
+ *                money, dinars for Serbia and euro for anywhere else, as the server decides by his
+ *                country
  */
-function openHisPage(changes: Record<string, unknown> = {}, today = IN_THE_WINDOW) {
+function openHisPage(
+  changes: Record<string, unknown> = {},
+  today = IN_THE_WINDOW,
+  invoice: InvoiceAnswered = anInvoice(
+    2027,
+    changes.country === undefined || changes.country === 'RS' ? 'RSD' : 'EUR',
+  ),
+) {
   stand(neverPaidAsServed(changes))
+  stand(invoiceAsServed(invoice))
 
   /* A VISITOR AND NO NUMBER HANDED IN, the way `oneQuestion.test.tsx` does it: the only thing
      that makes this a session is the answer above. */
@@ -145,7 +160,7 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
     ).toBeVisible()
     expect(screen.getByText('Uplata je otvorena.')).toBeVisible()
     expect(
-      screen.getByText(
+      await screen.findByText(
         'Podatke za uplatu vidiš u nastavku. Čim uplata stigne, moderator je potvrđuje i dobijaš članski broj.',
       ),
     ).toBeVisible()
@@ -204,10 +219,6 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
   it('draws a code that carries no reference tag at all, and not the season alone', async () => {
     openHisPage()
 
-    const regular = must(
-      PRICES.find((row) => row.key === 'regular'),
-      'the price in force on 1 November',
-    )
     const drawn = readQr(await screen.findByRole('img', { name: /QR/ }))
 
     /* The whole payload, written out from the same four facts the screen reads for him, and with
@@ -216,7 +227,8 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
       ipsPayload({
         account: RECIPIENT_ACCOUNT,
         recipient: RECIPIENT_NAME,
-        amountRsd: regular.rsd,
+        /* What the server says he sends (`anInvoice`), and no row of the price list. */
+        amountRsd: 3700,
         purpose: paymentPurpose(2027),
         reference: '',
       }),
@@ -267,11 +279,12 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
     expect(screen.getByRole('radio', { name: 'U početničkoj kategoriji' })).toBeEnabled()
   }, SLOW)
 
-  it('is drawn the referral link the record gave him, as it was before', async () => {
+  it('is drawn the referral link the record gave him, with the code in the path', async () => {
     openHisPage()
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Program preporuke' })).toBeVisible()
-    expect(screen.getByText(/registracija\?preporuka=3d6b1f0a9c2e4478/)).toBeVisible()
+    expect(screen.getByText(/\/sr\/registracija\/3d6b1f0a9c2e4478$/)).toBeVisible()
+    expect(screen.queryByText(/preporuka=/)).not.toBeInTheDocument()
   }, SLOW)
 
   /* **WHERE THE PAYMENT PANEL STOPS, and it stops at the first sale and not at the window.** It was
@@ -291,33 +304,28 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
   /* **THE TWO SENTENCES THAT POINT AT THE SLIP ARE DRAWN ONLY WHERE A SLIP IS**, for him as for
      everybody (PDL P11, 15.08.2026, „Kontrola koja ništa ne radi je gora nego da je nema"; that a
      sentence pointing at data that is not there is the same fault in words is this record's
-     reading, and it is the guard `memberFlows.test.tsx` holds for a member with a number on three
-     axes). His own sentence about how the payment is known points at the same data, so it is held
-     to the same gate on the two axes that can be measured on him: a served price list with no
-     period in force, in Serbia and abroad, and a served list with no fee row, abroad. */
+     reading). His own sentence about how the payment is known points at the same data, so it is held
+     to the same gate. Since 25.10.2026 what decides whether there is a slip is the server's answer
+     and not the price list (`member/WhatHeSends.tsx`), so the axes are the answer's: nothing left to
+     send because the balance covers the fee (owner, 25.10.2026: no slip, no QR, no PayPal amount),
+     in Serbia and abroad, and an answer about another season than the one this panel sells. */
   it.each([
-    ['in Serbia, when the served price list has no period in force', 'RS', 'period'],
-    ['abroad, when the served price list has no period in force', 'MK', 'period'],
-    ['abroad, when the served price list has no fee row', 'MK', 'fee'],
-  ])('is told nothing about how a payment is known %s', async (_what, country, dropped) => {
-    stand(
-      serverThat((path) =>
-        path === '/api/pricing'
-          ? new Response(JSON.stringify(servedPrices.filter((row) => row.kind !== dropped)), {
-              status: 200,
-              headers: { 'content-type': 'application/json' },
-            })
-          : null,
-      ),
-    )
-    openHisPage({ country })
+    ['in Serbia, when his balance covers the fee', 'RS', anInvoice(2027, 'RSD', { toTransfer: 0, fromTheBalance: 4800 })],
+    ['abroad, when his balance covers the fee', 'MK', anInvoice(2027, 'EUR', { toTransfer: 0, fromTheBalance: 40 })],
+    ['in Serbia, when the answer is about another season', 'RS', anInvoice(2028, 'RSD')],
+  ])('is told nothing about how a payment is known %s', async (_what, country, invoice) => {
+    openHisPage({ country }, IN_THE_WINDOW, invoice)
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Moja članarina' })).toBeVisible()
     /* The panel itself is drawn, so the absence below is the sentences' and not the page's. */
     expect(screen.getByRole('heading', { level: 2, name: 'Uplata članarine za 2027.' })).toBeVisible()
+    /* And the read has been answered, so the absence is not a read still out. */
+    await waitFor(() => expect(screen.getByText('Uplata je otvorena.')).toBeVisible())
 
     expect(screen.queryByText(/Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Prepoznaje se po imenu/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kopiraj iznos za uplatu' })).not.toBeInTheDocument()
   }, SLOW)
 })
 
@@ -329,6 +337,7 @@ describe('a member who HAS a number, on the same page', () => {
      through the harness, which answers `/api/me` off the generated file, so the member has his
      number, his flag and his team (none) the way the server gives them. */
   function openAMembersPage(memberNumber = '000032') {
+    stand(invoiceAsServed(anInvoice(2027, 'RSD')))
     renderAt('/sr/moja-clanarina', 'competitor', memberNumber, undefined, IN_THE_WINDOW)
   }
 
@@ -357,7 +366,7 @@ describe('a member who HAS a number, on the same page', () => {
       await screen.findByRole('heading', { level: 2, name: 'Obnova članarine za 2027.' }),
     ).toBeVisible()
     expect(screen.getByText(/Ne registruješ se ponovo/)).toBeVisible()
-    expect(screen.getByText(/tvoje članstvo se produžava/)).toBeVisible()
+    expect(await screen.findByText(/tvoje članstvo se produžava/)).toBeVisible()
     expect(screen.getByText('Član od 2016. sezone.')).toBeVisible()
 
     expect(screen.queryByRole('heading', { name: /^Uplata članarine/ })).not.toBeInTheDocument()
