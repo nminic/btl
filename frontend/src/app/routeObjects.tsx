@@ -4,6 +4,7 @@ import { DEFAULT_LOCALE } from '../i18n/config'
 import { Calendar } from '../pages/Calendar'
 import { Competitors } from '../pages/Competitors'
 import { CompetitorAwards } from '../pages/CompetitorAwards'
+import { CompetitorData } from '../pages/CompetitorData'
 import { CompetitorProfile } from '../pages/CompetitorProfile'
 import { CalendarDay } from '../pages/CalendarDay'
 import { EventDetail } from '../pages/EventDetail'
@@ -147,6 +148,8 @@ const DETAILS: RouteObject[] = [
   { path: 'kalendar/:slug/ocena', element: <RateEvent /> },
   { path: 'takmicar/:memberNumber', element: <CompetitorProfile /> },
   { path: 'takmicar/:memberNumber/priznanja', element: <CompetitorAwards /> },
+  /* The card „Podaci", which only the member himself and the administration open (owner, 22.10.2026). */
+  { path: 'takmicar/:memberNumber/podaci', element: <CompetitorData /> },
   { path: 'tim/:slug', element: <TeamDetail /> },
   /* Changing a team is the team's own address plus a word, the way reporting a
      result sits under the event it was run at: it is about that team, and the way

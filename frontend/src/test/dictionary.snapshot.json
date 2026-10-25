@@ -155,7 +155,8 @@
       "recordTitle": "{name}, {city}",
       "recordDescription": "{name}: sve trke, bodovi i statistika u Balkanskoj trkačkoj ligi.",
       "awardsTitle": "{name}, priznanja",
-      "awardsDescription": "{name}: pehari i dukati osvojeni u Balkanskoj trkačkoj ligi."
+      "awardsDescription": "{name}: pehari i dukati osvojeni u Balkanskoj trkačkoj ligi.",
+      "dataTitle": "{name}, podaci"
     },
     "event": {
       "title": "Događaj iz kalendara",
@@ -202,6 +203,10 @@
     "rateEvent": {
       "title": "Ocena događaja",
       "description": "Oceni organizaciju, vrednost za novac i ambijent. Ocene bez komentara se objavljuju odmah, a komentar kad ga moderator odobri."
+    },
+    "competitorData": {
+      "title": "Podaci takmičara",
+      "description": "Podaci jednog člana Balkanske trkačke lige, koje vide samo on i administracija."
     }
   },
   "shell": {
@@ -799,7 +804,8 @@
     "parts": {
       "label": "Delovi profila",
       "overview": "Pregled",
-      "awards": "Priznanja i nagrade"
+      "awards": "Priznanja i nagrade",
+      "data": "Podaci"
     },
     "moreDucats": "Učitaj još dukata",
     "showingDucats": "Prikazano {shown} od {total}",
@@ -1495,7 +1501,9 @@
       "theBasisIsNotKnown": "Portal ne poznaje osnov članstva koji je poslat, pa ništa nije urađeno. Osveži stranicu i pokušaj ponovo.",
       "thisChangeIsNotOffered": "Ova promena osnova se na redu člana ne nudi, pa ništa nije urađeno. Aktivacija iz balansa se prvo stornira, pa se upisuje nova.",
       "theBasisHasChanged": "Osnov za ovu sezonu se u međuvremenu promenio, pa ništa nije urađeno. Osveži stranicu."
-    }
+    },
+    "editMember": "Izmeni podatke",
+    "editMemberNamed": "Izmeni podatke: {name}"
   },
   "ducats": {
     "title": "Dukati",
@@ -1546,7 +1554,8 @@
     "themeLight": "Svetla",
     "mail": "Pošta",
     "mailLanguageLegend": "Jezik pošte",
-    "mailLanguageNotChosen": "Jezik pošte nije izabran. Izaberi jedan od dva ponuđena."  },
+    "mailLanguageNotChosen": "Jezik pošte nije izabran. Izaberi jedan od dva ponuđena."
+  },
   "rights": {
     "title": "Prava moderatora",
     "intro": "Red je moderator, kolona je pravo. Kućica se pamti čim se pritisne, nema dugmeta za čuvanje. Prava su u dve grupe zato što su to dve različite radnje: uređivanje menja zapis, a odlučivanje pušta ili vraća tuđi rad.",
@@ -1838,5 +1847,16 @@
       "theEventWouldMoveOntoAnother": "Trka bi pomerila događaj u godinu u kojoj događaj sa istim nazivom već postoji. Izaberi taj događaj.",
       "theDayIsNotInTheEventsYear": "Dan trke nije u godini izabranog događaja."
     }
+  },
+  "memberData": {
+    "nothingChanged": "Nijedan podatak nije izmenjen, pa nema šta da se sačuva.",
+    "formNotComplete": "Neko polje nije popunjeno onako kako ga forma traži. Proveri ga pa sačuvaj ponovo.",
+    "notTakenHere": "Server ne prima jedno od poslatih polja. Osveži stranu pa sačuvaj ponovo.",
+    "aPairHoldsTheGender": "Član je bio u trkačkom paru, a par uvek čine jedan muškarac i jedna žena, pa mu se pol ne menja.",
+    "aMinorNeedsAConsent": "Sa ovim datumom rođenja član bi bio mlađi od 16 godina, a za njega nema saglasnosti roditelja, pa se datum ne upisuje.",
+    "theAddressIsConfirmed": "Član je već potvrdio ovu adresu elektronske pošte, pa je može promeniti samo on.",
+    "thereIsNoAccount": "Član nema nalog na portalu, pa nema ni adresu elektronske pošte koja bi se ispravila.",
+    "theAddressIsTaken": "Ovu adresu elektronske pošte već koristi drugi nalog.",
+    "theAddressIsTheSuperadmins": "Ova adresa pripada administraciji portala i ne može biti adresa člana."
   }
 }

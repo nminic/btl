@@ -462,10 +462,18 @@ export type MyData = Pick<
    * has no other way to say "none" than to be empty.
    */
   phone: string
+  /**
+   * The code of his town's country, `RS`, whichever road the town came by: the form of the card
+   * „Podaci" writes a town as a name and a country (PDL 22.10.2026, „Profil dobija karticu
+   * „Podaci""), and opens with what stands.
+   */
+  country: string
+  /** His shirt size, one of the seven, which the same card opens with (23.10.2026). */
+  shirtSize: string
 }
 
 /**
- * THE SAME RECORD AS {@link whatTheServerSaysOfMyProfile}, read for the eight facts above, or
+ * THE SAME RECORD AS {@link whatTheServerSaysOfMyProfile}, read for the ten facts above, or
  * nothing.
  *
  * <p>Its own reader for the reason that one has: a fault in it must never sign him out, and it
@@ -907,8 +915,8 @@ function sixFactsIn(
 }
 
 /**
- * THE EIGHT FACTS OF {@link MyData} out of the caller's record, or nothing when any of them is
- * missing or of a kind the portal does not know: the six of {@link sixFactsIn}, and the two that
+ * THE TEN FACTS OF {@link MyData} out of the caller's record, or nothing when any of them is
+ * missing or of a kind the portal does not know: the six of {@link sixFactsIn}, and the four that
  * are his alone.
  *
  * <p>The address is text that says something, like a name; the telephone is text or nothing at
@@ -923,12 +931,14 @@ function dataIn(mine: object | null): MyData | null {
 
   const address = nameIn(mine, 'address')
   const phone = phoneIn(mine)
+  const country = nameIn(mine, 'country')
+  const shirtSize = nameIn(mine, 'shirtSize')
 
-  if (address === null || phone === null) {
+  if (address === null || phone === null || country === null || shirtSize === null) {
     return null
   }
 
-  return { ...six, address, phone }
+  return { ...six, address, phone, country, shirtSize }
 }
 
 /**
@@ -947,7 +957,10 @@ function feeStandsIn(mine: object | null): boolean | null {
  * A name, a town or a postal address: text that says something. A blank one is a server saying
  * nothing.
  */
-function nameIn(mine: object, name: 'firstName' | 'lastName' | 'city' | 'address'): string | null {
+function nameIn(
+  mine: object,
+  name: 'firstName' | 'lastName' | 'city' | 'address' | 'country' | 'shirtSize',
+): string | null {
   const said: unknown = Reflect.get(mine, name)
 
   return typeof said === 'string' && said.trim() !== '' ? said : null

@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { SYMBOL } from '../../app/actionSymbol'
-import { ActionButton } from '../../components/ActionButton'
+import { ActionButton, ActionLink } from '../../components/ActionButton'
 import { Prompt } from '../../components/Prompt'
 import { categoryCodeFor, categoryLabel } from '../../data/categories'
 import { countryName } from '../../data/countryName'
@@ -8,7 +8,9 @@ import type { Competitor, Member } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
+import { profilePath } from '../profileAddress'
 import { ProfileLink } from '../profile/ProfileLink'
+import { THE_DATA } from '../profile/whoReadsTheData'
 import { MemberPaymentSheet } from './MemberPaymentSheet'
 import { MemberSeasons } from './MemberSeasons'
 import {
@@ -48,8 +50,10 @@ type Refused = { answer: Exclude<Answer, { got: 'done' }>; refusals: Record<stri
  * 3. **Osnov**, one word for the season on sale (`basisWordOf`), and a dash where he holds none of it:
  *    „Osnov je osnov sezone prikazane u koloni Sezone".
  * 4. **Sezone**, the list of seasons (`MemberSeasons.tsx`).
- * 5. **Opcije**, symbols in places that never move: a place kept for „Edit" (the increment that makes the
- *    card „Podaci" puts it there), „Upiši uplatu" with a banknote (owner, 22.10.2026: „Može li simbol za
+ * 5. **Opcije**, symbols in places that never move: „Izmeni podatke" with a pencil, which leads to the
+ *    card „Podaci" of his profile (PDL 22.10.2026: „Dugme Edit otvara popunjenu formu sa svim podacima
+ *    kao registracionu, samo bez lozinke", and the assistant's derivation told to the owner the same day,
+ *    „Edit vodi na karticu Podaci profila tog člana („ista strana"), pa forma ima jedan dom"), „Upiši uplatu" with a banknote (owner, 22.10.2026: „Može li simbol za
  *    to umesto znaka plus da bude kao novčanice"), „Storniraj", and, held apart from them, „Obriši",
  *    which asks in a sheet over the page (PDL „Potvrda brisanja više nije rečenica u redu tabele nego
  *    iskačući prozor"). An action the row cannot take today stays in its place (the coordinator's answer
@@ -99,7 +103,7 @@ export function MemberRow({
   /** The deletion, sent by the screen, which knows what the visit must forget with him. */
   onDelete: () => Promise<Answer>
 }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   const [asking, setAsking] = useState<Asking | null>(null)
   const [refused, setRefused] = useRowRefusal<Refused>(settled)
   const outstanding = useRef(false)
@@ -286,8 +290,21 @@ export function MemberRow({
       <td className="table__hide-phone">{seasons}</td>
       <td>
         <span className="members-actions">
-          {/* The place of „Edit", kept empty until the card „Podaci" exists to open. */}
-          <span className="members-actions__kept" aria-hidden="true" />
+          {/* „IZMENI PODATKE", A LINK AND NOT A BUTTON: it goes to a page, the card „Podaci" of his profile,
+              at the address the profile has where the public list carries him, and by the number alone
+              where it does not (a member whose fee has lapsed, whose card the administration still opens,
+              `CompetitorData.tsx`). */}
+          <ActionLink
+            symbol={SYMBOL.pencil}
+            word={t('admin.editMember')}
+            name={t('admin.editMemberNamed', { name: whose })}
+            className="entity-open"
+            to={
+              listed === undefined
+                ? `/${locale}/takmicar/${one.memberNumber}${THE_DATA}`
+                : `${profilePath(listed, locale)}${THE_DATA}`
+            }
+          />
           <ActionButton
             symbol={SYMBOL.banknote}
             word={t('admin.recordPayment')}

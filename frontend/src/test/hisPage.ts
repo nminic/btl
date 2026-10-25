@@ -39,6 +39,7 @@ export const aLapsedMembersPage = {
   profileHidden: false,
   birthdayShown: 'none',
   address: 'Ulica Stara 7',
+  shirtSize: 'S',
 }
 
 /**

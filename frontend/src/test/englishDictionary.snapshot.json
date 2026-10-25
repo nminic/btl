@@ -155,7 +155,8 @@
       "recordTitle": "{name}, {city}",
       "recordDescription": "{name}: every race, the points and the statistics in BTL.",
       "awardsTitle": "{name}, awards",
-      "awardsDescription": "{name}: the trophies and the ducats won in BTL."
+      "awardsDescription": "{name}: the trophies and the ducats won in BTL.",
+      "dataTitle": "{name}, details"
     },
     "event": {
       "title": "An event from the calendar",
@@ -202,6 +203,10 @@
     "rateEvent": {
       "title": "Rating an event",
       "description": "Rate the organisation, the value for money and the atmosphere. Ratings without a comment are published at once, and a comment once a moderator approves it."
+    },
+    "competitorData": {
+      "title": "A competitor's details",
+      "description": "The details of one BTL member, which only he and the administration see."
     }
   },
   "shell": {
@@ -799,7 +804,8 @@
     "parts": {
       "label": "Parts of the profile",
       "overview": "Overview",
-      "awards": "Awards and prizes"
+      "awards": "Awards and prizes",
+      "data": "Details"
     },
     "moreDucats": "Load more ducats",
     "showingDucats": "Showing {shown} of {total}",
@@ -1495,7 +1501,9 @@
       "theBasisIsNotKnown": "The portal does not know the basis of membership that was sent, so nothing was done. Refresh the page and try again.",
       "thisChangeIsNotOffered": "This change of basis is not offered on a member's row, so nothing was done. An activation from the balance is cancelled first, and a new one is recorded after.",
       "theBasisHasChanged": "The basis for this season has changed in the meantime, so nothing was done. Refresh the page."
-    }
+    },
+    "editMember": "Edit the details",
+    "editMemberNamed": "Edit the details: {name}"
   },
   "ducats": {
     "title": "Ducats",
@@ -1546,7 +1554,8 @@
     "themeLight": "Light",
     "mail": "Mail",
     "mailLanguageLegend": "Language of the mail",
-    "mailLanguageNotChosen": "No language of the mail was chosen. Choose one of the two offered."  },
+    "mailLanguageNotChosen": "No language of the mail was chosen. Choose one of the two offered."
+  },
   "rights": {
     "title": "Moderators' rights",
     "intro": "A row is a moderator, a column is a right. A box is remembered the moment it is pressed, there is no button to save. The rights are in two groups because they are two different actions: editing changes a record, while deciding lets somebody else's work through or sends it back.",
@@ -1838,5 +1847,16 @@
       "theEventWouldMoveOntoAnother": "The race would move the event into a year in which an event with the same name already exists. Choose that event.",
       "theDayIsNotInTheEventsYear": "The day of the race is not in the year of the chosen event."
     }
+  },
+  "memberData": {
+    "nothingChanged": "No detail was changed, so there is nothing to save.",
+    "formNotComplete": "A field is not filled in the way the form asks. Check it and save again.",
+    "notTakenHere": "The server does not take one of the fields that were sent. Refresh the page and save again.",
+    "aPairHoldsTheGender": "The member was in a racing pair, and a pair is always one man and one woman, so the gender is not changed.",
+    "aMinorNeedsAConsent": "With this date of birth the member would be younger than 16, and there is no consent of a parent for him, so the date is not written.",
+    "theAddressIsConfirmed": "The member has already confirmed this email address, so only he can change it.",
+    "thereIsNoAccount": "The member has no account on the portal, so there is no email address to correct.",
+    "theAddressIsTaken": "Another account already uses this email address.",
+    "theAddressIsTheSuperadmins": "This address belongs to the portal's administration and cannot be a member's."
   }
 }

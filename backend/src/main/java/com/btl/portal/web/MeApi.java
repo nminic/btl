@@ -444,6 +444,12 @@ class MeApi {
 	 *                     and not an empty string: V8 says „no phone is NULL" and refuses a blank
 	 *                     one ({@code competitor_phone_not_blank}), so a missing key is the one way
 	 *                     this record says „he has none", as {@code teamId} says it for a team
+	 * @param shirtSize    his size, one of the seven, since 23.10.2026: the card „Podaci" of his own
+	 *                     profile opens with it (PDL 22.10.2026, „Profil dobija karticu „Podaci""),
+	 *                     and {@code MeWriteApi} has taken it since 24.09.2026. Never absent: V8 holds
+	 *                     the column NOT NULL. Private like his address (privacy policy, section 3:
+	 *                     „veličina majice" is among what is never shown), so the public list does
+	 *                     not carry it
 	 */
 	record MyOwnRecord(@JsonInclude(JsonInclude.Include.NON_NULL) String memberNumber,
 			String country, int firstSeason,
@@ -458,7 +464,7 @@ class MeApi {
 			@JsonInclude(JsonInclude.Include.NON_NULL) String photo,
 			@JsonInclude(JsonInclude.Include.NON_NULL) CompetitorApi.Crop crop,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String smallPhoto,
-			String address, @JsonInclude(JsonInclude.Include.NON_NULL) String phone,
+			String address, @JsonInclude(JsonInclude.Include.NON_NULL) String phone, String shirtSize,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String bioWaiting) {
 	}
 
@@ -564,7 +570,7 @@ class MeApi {
 						   columns `MeWriteApi` writes and the only ones it writes them to: there
 						   is no second home for either, which is why this is a read and not a
 						   decision about which of two copies is true. */
-						+ " c.address, c.phone,"
+						+ " c.address, c.phone, c.shirt_size,"
 						/* THE WORDS OF HIS THAT WAIT, off the clause the write answers its `waiting` with
 						   (`MeWriteApi.A_TEXT_THAT_WAITS`), and the oldest first like the write: since
 						   V53 the table holds at most one, but the order is what makes the answer not
@@ -634,7 +640,7 @@ class MeApi {
 							/* THE RULE IS ASKED FOR, NEVER REPEATED HERE: `Category` is where the
 							   league's bands live and where the decision that age is settled on 1
 							   January rather than on the birthday is written down (PDL P7). */
-							Category.ageBandFor(row.getInt(25), season).code(),
+							Category.ageBandFor(row.getInt(26), season).code(),
 							row.getBoolean(13),
 							row.getObject(14) == null ? null : row.getInt(14),
 							row.getString(15), row.getBoolean(16), row.getString(17),
@@ -648,7 +654,7 @@ class MeApi {
 							portrait == null ? null
 									: PhotoApi.addressOfTheSmall(portrait, across,
 											row.getBigDecimal(20), row.getBigDecimal(21)),
-							row.getString(22), row.getString(23), row.getString(24));
+							row.getString(22), row.getString(23), row.getString(24), row.getString(25));
 				})
 				.single();
 	}
