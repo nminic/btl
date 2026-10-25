@@ -15,11 +15,13 @@ import org.springframework.jdbc.core.simple.JdbcClient;
  * and they are read from {@link Message#INVITED_AS_A_MEMBER}, which
  * {@code HowLongALinkLastsMatchesTheSchemaTest} ties to how long a confirmation lasts.
  *
- * <p><b>Two routes mint it, and both come here</b>: entering members in a group
- * ({@code CompetitorWriteApi}) and correcting the address of a member who has no password
- * ({@code MemberDataWriteApi}, PDL 23.10.2026). Written twice, the two would be two places for the
- * seven days to part, and the one left at an hour would be deleted while its link still promised a
- * week. {@code AnInvitationLastsWhatItSaysTest} measures the row each route writes.
+ * <p><b>Three routes mint it, and all three come here</b>: entering members in a group
+ * ({@code CompetitorWriteApi}), correcting the address of a member who has no password
+ * ({@code MemberDataWriteApi}, PDL 23.10.2026), and the administration sending a new invitation from
+ * the member's row ({@code MemberInvitationApi}, PDL 25.10.2026). Written more than once, they would be
+ * places for the seven days to part, and the one left at an hour would be deleted while its link still
+ * promised a week. {@code GroupEntryTest}, {@code AnInvitationLastsWhatItSaysTest} and
+ * {@code MemberInvitationApiTest} measure the row each route writes.
  *
  * <p>The moderator's invitation is not this: it lasts the hour it always did, because the decision
  * is about a member.

@@ -98,8 +98,9 @@ describe('what a button that acts on one thing says', () => {
     )
 
     /* Ten since 22.10.2026: the banknote took the place of the plus, and the shield went with the
-       button that granted the exemption, which is a box of the member's list of seasons now. */
-    expect(symbols).toHaveLength(10)
+       button that granted the exemption, which is a box of the member's list of seasons now. Eleven since
+       25.10.2026, with the envelope of „Pošalji novu pozivnicu" on the member's row. */
+    expect(symbols).toHaveLength(11)
 
     for (const one of symbols) {
       const drawing = must(screen.getByRole('button', { name: one }).querySelector('svg'), one)

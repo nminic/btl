@@ -1450,12 +1450,19 @@
     "eventSavedUnseen": "Događaj je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
     "eventSavedRacesRefused": "Događaj je sačuvan. Trke koje nisu sačuvane označene su ispod tabele; ispravi ih pa pritisni Sačuvaj. Šalju se samo trke.",
     "eventSavedRacesKept": "Događaj je sačuvan. Trke koje nisu obrisane navedene su ispod polja događaja; pritisni Sačuvaj da se brisanje pokuša ponovo. Šalju se samo trke.",
-    "eventDeleteTakes": {
-      "one": "Ovim brišeš i {count} rezultat.",
-      "few": "Ovim brišeš i {count} rezultata.",
-      "other": "Ovim brišeš i {count} rezultata."
+    "eventDeleteTakes": "Ovim brišeš i {races} i {results}.",
+    "eventDeleteRaces": {
+      "one": "{count} trku",
+      "few": "{count} trke",
+      "other": "{count} trka"
     },
-    "eventDeleteCountUnknown": "Broj rezultata koji odlaze još nije poznat.",
+    "eventDeleteResults": {
+      "one": "{count} rezultat",
+      "few": "{count} rezultata",
+      "other": "{count} rezultata"
+    },
+    "eventDeleteNothing": "Događaj nema trka ni rezultata.",
+    "eventDeleteCountUnknown": "Ovim brišeš i {races}, a broj rezultata koji odlaze još nije poznat.",
     "leagueGone": "Liga je obrisana.",
     "leagueDeleteAsk": "Obriši ligu?",
     "leagueSavedUnseen": "Liga je sačuvana, ali portal ne može da je prikaže u ovom spisku. Osveži stranu.",
@@ -1496,6 +1503,12 @@
     "memberDeleteAsk": "Obriši člana?",
     "recordPayment": "Upiši uplatu",
     "paymentRecorded": "Uplata je upisana.",
+    "sendNewInvitation": "Pošalji novu pozivnicu",
+    "invitationSent": "Nova pozivnica je poslata na {email}. Prethodni link više ne važi.",
+    "invitationSentSomewhere": "Nova pozivnica je poslata. Prethodni link više ne važi.",
+    "invitationNotNeeded": "Član je već postavio lozinku.",
+    "invitationNoAccount": "Član nema nalog na portalu, pa pozivnica nema kome da ode.",
+    "invitationNotSent": "Pošta trenutno ne prima poruke, pa pozivnica nije poslata. Pokušaj ponovo za koji minut.",
     "cancelMembership": "Storniraj",
     "changeToExemption": "Promeni osnov u oslobođenje",
     "askCancel": {

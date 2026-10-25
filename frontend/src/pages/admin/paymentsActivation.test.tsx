@@ -1811,6 +1811,7 @@ describe('activating a membership from the payments screen', () => {
         expected: 4800,
         price: 4800,
         balance: 0,
+        invitation: 'passwordSet' as const,
       }
 
       const BEFORE: Member[] = [

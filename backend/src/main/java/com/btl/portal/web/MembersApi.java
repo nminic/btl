@@ -114,18 +114,27 @@ class MembersApi {
 	 *                         svakog člana na redu u moderaciji, isto kao na ekranu Uplate”), so that
 	 *                         recording a payment on the row asks „Prihvatam umanjen ukupan iznos?”
 	 *                         before anything is sent
+	 * @param invitation       whether the row's envelope, „Pošalji novu pozivnicu", can send him one
+	 *                         ({@link MemberInvitationApi}; owner, 25.10.2026, PDL „Nova pozivnica od
+	 *                         administracije i rečenica o trkama: odgovori od 25.10.2026"): {@code due}
+	 *                         for an account with no password, which is a member the administration
+	 *                         entered and nobody took over, {@code passwordSet} for an account that has
+	 *                         one, and {@code noAccount} for a member with no account at all, whom no
+	 *                         letter can reach. Asked of the password and never of the confirmed
+	 *                         address: an account that registered itself has a password and may still be
+	 *                         unconfirmed, and an invitation is the road to a password
 	 */
 	record Member(String memberNumber, String firstName, String lastName, String gender,
 			String city, String country, String ageBand, boolean firstSeason2027, boolean active,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer membershipSeason,
 			List<Season> seasons, int seasonOnSale, String currency, BigDecimal expected,
-			BigDecimal price, BigDecimal balance) {
+			BigDecimal price, BigDecimal balance, String invitation) {
 	}
 
 	private record Row(long id, String memberNumber, String firstName, String lastName, String gender,
 			String city, boolean firstSeason2027, boolean active, String basis, int birthYear,
-			String countryCode) {
+			String countryCode, String invitation) {
 	}
 
 	@GetMapping("/api/members")
@@ -153,8 +162,13 @@ class MembersApi {
 						+ " sold.basis, c.birth_year,"
 						/* THE COUNTRY THROUGH BOTH OF ITS HOMES, the shape `PaymentsDueApi` reads the
 						   same column with: V7 makes exactly one of the two present. */
-						+ " coalesce(town_country.code, typed_country.code) as country_code"
+						+ " coalesce(town_country.code, typed_country.code) as country_code,"
+						/* WHETHER AN INVITATION CAN REACH HIM, off his own account: `account_competitor_unique`
+						   (V23) makes this join at most one row. */
+						+ " case when a.id is null then 'noAccount' when a.password_hash is null then 'due'"
+						+ "  else 'passwordSet' end as invitation"
 						+ " from competitor c"
+						+ " left join account a on a.competitor_id = c.id"
 						+ " left join place town on town.id = c.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
 						+ " left join country typed_country on typed_country.id = c.country_id"
@@ -167,7 +181,8 @@ class MembersApi {
 				.param("sold", sold)
 				.query((row, one) -> new Row(row.getLong(1), row.getString(2), row.getString(3),
 						row.getString(4), row.getString(5), row.getString(6), row.getBoolean(7),
-						row.getBoolean(8), row.getString(9), row.getInt(10), row.getString(11)))
+						row.getBoolean(8), row.getString(9), row.getInt(10), row.getString(11),
+						row.getString(12)))
 				.list();
 
 		/* EVERY MEMBER'S MONEY, THEN THE BOOK AND THE PRICE LIST ONE READING EACH FOR THE WHOLE ANSWER,
@@ -193,7 +208,7 @@ class MembersApi {
 					one.basis(), one.basis() == null ? null : sold,
 					List.copyOf(held.getOrDefault(one.id(), List.of())),
 					sold, his.name(), price.amount().add(price.fee()), price.amount(),
-					books.get(one.id()).amount());
+					books.get(one.id()).amount(), one.invitation());
 		}).toList();
 	}
 }
