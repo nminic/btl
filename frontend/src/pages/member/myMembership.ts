@@ -21,7 +21,7 @@ export const MY_MEMBERSHIP = '/api/me/membership'
  * either side fails there and not on a screen that quietly draws nothing.
  */
 export type MyMembership = {
-  /** The season the server is selling today; the screen draws nothing for any other one. */
+  /** The season the server is selling today; for any other one the screen says the amount did not arrive. */
   season: number
   /** A `membership` row already stands for him and this season, on any basis. */
   alreadyAMember: boolean
