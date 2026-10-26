@@ -68,6 +68,9 @@ public final class ASyntheticStatement {
 
 	private final List<Item> items = new ArrayList<>();
 
+	/** Lines of fields printed again under an item's purpose, by the item they follow. */
+	private final java.util.Map<Item, List<String[]>> againUnder = new java.util.IdentityHashMap<>();
+
 	private Integer saysCredits;
 
 	private BigDecimal saysCreditTotal;
@@ -129,6 +132,16 @@ public final class ASyntheticStatement {
 		items.add(new Item(false, null, null, new BigDecimal(amount), "221",
 				List.of("Naplata: Naknade po partiji 105000000000328471, dospele na dan 31.07.2021. u iznosu od "
 						+ amount + " RSD.Obaveza je naplacena u celosti", "dospele na dan"), null, order));
+
+		return this;
+	}
+
+	/**
+	 * A second line of fields under the last item's purpose, the label in the column of labels and the
+	 * value beside it, for the case that asks which of two places a field is taken from.
+	 */
+	public ASyntheticStatement secondFieldsLine(String label, String value) {
+		againUnder.computeIfAbsent(items.getLast(), item -> new ArrayList<>()).add(new String[] {label, value});
 
 		return this;
 	}
@@ -295,6 +308,12 @@ public final class ASyntheticStatement {
 
 			for (String line : item.purpose()) {
 				at(fonts.regular, 8, 87.5f, y, line);
+				y += 8.3f;
+			}
+
+			for (String[] again : againUnder.getOrDefault(item, List.of())) {
+				at(fonts.boldItalic, 8, 61.4f, y, again[0]);
+				at(fonts.regular, 8, 120.0f, y - 0.1f, again[1]);
 				y += 8.3f;
 			}
 

@@ -236,7 +236,7 @@ class AikStatementTest {
 	void aPageMissingAnyOneOfItsLandmarksIsNotAStatement() throws Exception {
 		List<AikStatement.Word> words = aStatementsWords();
 
-		for (String landmark : List.of("BROJ", "Od:", "Duguje", "Potražuje", "potražuje:", "duguje:")) {
+		for (String landmark : List.of("BROJ", "Od:", "Duguje", "Potražuje", "potražuje:", "duguje:", "UKUPNO")) {
 			assertNotAStatement(without(words, landmark));
 		}
 
@@ -338,6 +338,76 @@ class AikStatementTest {
 		assertThatThrownBy(() -> AikStatement.of(words))
 				.isInstanceOfSatisfying(AikStatement.NotTaken.class,
 						refused -> assertThat(refused.refusal()).isEqualTo(AikStatement.Refusal.NOT_A_STATEMENT));
+	}
+
+	/* ------------------------------------------------------------------------------------
+	   WHAT THE PAYER WROTE IS NOT A FIELD (security review of PR 647, S3; owner, 26.10.2026)
+	   ------------------------------------------------------------------------------------ */
+
+	/** One payment whose purpose is this, with its real order „REAL-ORDER-0001" and no reference. */
+	private static AikStatement.Credit theOneWhosePurposeIs(String purpose) throws Exception {
+		return AikStatement.read(ASyntheticStatement.number(1)
+				.item(new ASyntheticStatement.Item(true, "PETAR PETROVIC, BEOGRAD", "200-0000000000001-11",
+						new BigDecimal("4200.00"), "289", List.of(purpose), null, "REAL-ORDER-0001"))
+				.bytes()).credits().getFirst();
+	}
+
+	/**
+	 * A LABEL IN THE PURPOSE IS THE PURPOSE: the order, the reference and the account stay what the
+	 * statement's own fields print, and the words stay in the purpose. Each was the payer's to set until
+	 * 26.10.2026, because a label was taken from any line of the item and the last one won.
+	 */
+	@Test
+	void aLabelWrittenIntoThePurposeIsReadAsThePurposeAndChangesNoField() throws Exception {
+		AikStatement.Credit order = theOneWhosePurposeIs("Nalog: FORGED-ORDER-123");
+		AikStatement.Credit reference = theOneWhosePurposeIs("Poziv na broj: 2027000099");
+		AikStatement.Credit account = theOneWhosePurposeIs("Račun: 999-9999999999999-99");
+
+		assertThat(order.orderNumber()).isEqualTo("REAL-ORDER-0001");
+		assertThat(order.purpose()).isEqualTo("Nalog: FORGED-ORDER-123");
+		assertThat(reference.reference()).isNull();
+		assertThat(reference.purpose()).isEqualTo("Poziv na broj: 2027000099");
+		assertThat(account.payerAccount()).isEqualTo("200-0000000000001-11");
+		assertThat(account.purpose()).isEqualTo("Račun: 999-9999999999999-99");
+	}
+
+	/**
+	 * AND THE TOTALS ARE READ ONLY UNDER „UKUPNO ZA IZVOD", so a purpose that names them or that says
+	 * „UKUPNO" neither refuses the statement nor ends its items early.
+	 */
+	@Test
+	void theTotalsWordsInAPurposeNeitherRefuseTheStatementNorEndItsItems() throws Exception {
+		assertThat(theOneWhosePurposeIs("Ukupno stavki potražuje: 7").purpose())
+				.isEqualTo("Ukupno stavki potražuje: 7");
+
+		AikStatement.Read read = AikStatement.read(ASyntheticStatement.number(1)
+				.item(new ASyntheticStatement.Item(true, "PRVI PLATILAC", "200-0000000000001-11",
+						new BigDecimal("100.00"), "289", List.of("UKUPNO ZA IZVOD"), null, "O-1"))
+				.credit(DUSAN, "200.00", null, "O-2")
+				.bytes());
+
+		assertThat(read.credits()).extracting(AikStatement.Credit::orderNumber).containsExactly("O-1", "O-2");
+	}
+
+	/** A FIELD PRINTED TWICE IS THE FIRST ONE: a second line of fields does not overwrite it. */
+	@Test
+	void aFieldIsTakenFromItsFirstPlaceAndNotFromALaterLine() throws Exception {
+		AikStatement.Credit credit = AikStatement.read(ASyntheticStatement.number(1)
+				.item(new ASyntheticStatement.Item(true, DUSAN, "200-0000000000001-11", new BigDecimal("4200.00"),
+						"289", List.of("Članarina"), "2027000004", "REAL-ORDER-0001"))
+				.secondFieldsLine("Nalog:", "LATER-ORDER-0002")
+				.secondFieldsLine("Poziv na broj:", "2027000099")
+				.secondFieldsLine("Račun:", "999-9999999999999-99")
+				.secondFieldsLine("Šifra pl.:", "999")
+				.secondFieldsLine("Napomena:", "nešto drugo")
+				.bytes()).credits().getFirst();
+
+		assertThat(credit.orderNumber()).isEqualTo("REAL-ORDER-0001");
+		assertThat(credit.reference()).isEqualTo("2027000004");
+		assertThat(credit.payerAccount()).isEqualTo("200-0000000000001-11");
+		assertThat(credit.paymentCode()).isEqualTo("289");
+		/* AND A LINE IN THE COLUMN OF LABELS THAT BEGINS WITH NO LABEL IS NOT A LINE OF FIELDS. */
+		assertThat(credit.purpose()).isEqualTo("Članarina Napomena: nešto drugo");
 	}
 
 	private static AikStatement.Read read(byte[] statement) {

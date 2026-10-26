@@ -363,8 +363,12 @@ class PaymentApi {
 	static final String THE_STATEMENT_LINE_IS_SETTLED = "theStatementLineIsSettled";
 
 	/**
-	 * What the row sends as arrived is not what the line says arrived. The line is the money: the field is
-	 * written in from it and may be changed, and a booking that names a line books exactly that line.
+	 * What the row sends as arrived is not what the line says arrived, in whole dinars. The line is the
+	 * money: the field is written in from it and may be changed, and a booking that names a line books
+	 * exactly that line. Owner, 26.10.2026 (PDL): „Stavka izvoda sa parama (npr. 4.200,50) knjiži se kroz
+	 * „Potvrdi" zaokruženo nadole na cele dinare (4.200); pare se ne prate." So the line's amount is
+	 * rounded down before it is compared, and what arrived stays a whole number as every amount typed is
+	 * ({@link #THE_AMOUNT_IS_NOT_WHOLE}): the two rules meet in the whole dinars and do not collide.
 	 */
 	static final String THE_AMOUNT_IS_NOT_THE_STATEMENT_LINES = "theAmountIsNotTheStatementLines";
 
@@ -665,7 +669,8 @@ class PaymentApi {
 			return no(HttpStatus.CONFLICT, THE_STATEMENT_LINE_IS_SETTLED);
 		}
 
-		if (found.get().amount().compareTo(typed.received()) != 0) {
+		/* IN WHOLE DINARS, ROUNDED DOWN: the paras are not followed (owner, 26.10.2026). */
+		if (found.get().amount().setScale(0, java.math.RoundingMode.FLOOR).compareTo(typed.received()) != 0) {
 			return no(HttpStatus.BAD_REQUEST, THE_AMOUNT_IS_NOT_THE_STATEMENT_LINES);
 		}
 

@@ -463,6 +463,44 @@ describe('a payment that waits, confirmed or set aside', () => {
     })
   })
 
+  /** PARAS ARE NOT FOLLOWED (owner, 26.10.2026): a line of 4.200,50 opens the row with 4.200 in it. */
+  it('writes a line with paras into the row in whole dinars, rounded down, and books that', async () => {
+    const asked = aServerOfPayments([[{ ...WAITING, amount: 4200.5 }]])
+    const user = setupUser()
+    renderAt(PAYMENTS, 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Potvrdi: Duško Kunić (000004), Beograd' }))
+
+    const rows = within(screen.getByRole('table', { name: 'Uplate i aktivacija članova' })).getAllByRole('row')
+
+    expect(within(rows[1] ?? document.body).getByLabelText(/Uplaćeno/)).toHaveValue('4200')
+
+    await user.click(within(rows[1] ?? document.body).getByRole('button', { name: 'Aktiviraj' }))
+    await waitFor(() => expect(asked.some((one) => one.path === '/api/payments' && one.init?.method === 'POST')).toBe(true))
+
+    const sent = asked.find((one) => one.path === '/api/payments' && one.init?.method === 'POST')
+
+    expect(JSON.parse(String(sent?.init?.body))).toMatchObject({ received: 4200, statementLine: 7 })
+  })
+
+  /**
+   * ALREADY RECORDED AND STILL ON THE LIST (owner, 26.10.2026): marked so, with whom, and with „Nije
+   * članarina" and nothing else, because there is nothing to book.
+   */
+  it('keeps a line already recorded on the list, marked, with only „Nije članarina"', async () => {
+    aServerOfPayments([[aLine({ id: 9, state: 'alreadyRecorded', member: DUSKO, candidates: [], waitsBecause: null })]])
+    renderAt(PAYMENTS, 'superadmin')
+
+    const table = await screen.findByRole('table', { name: /Uplate sa izvoda koje čekaju potvrdu/ })
+    const row = within(within(table).getAllByRole('row')[1] ?? table)
+
+    expect(row.getByText('Već evidentirano: Duško Kunić (000004), Beograd, sezona 2027')).toBeVisible()
+    expect(row.getByRole('button', { name: 'Nije članarina' })).toBeVisible()
+    expect(row.queryByRole('button', { name: /Potvrdi/ })).not.toBeInTheDocument()
+    expect(row.queryByLabelText('Drugi član')).not.toBeInTheDocument()
+    expect(row.queryByRole('button', { name: 'Otvori red' })).not.toBeInTheDocument()
+  })
+
   it('lets the opened row go and shows everybody again', async () => {
     aServerOfPayments([[WAITING]])
     const user = setupUser()

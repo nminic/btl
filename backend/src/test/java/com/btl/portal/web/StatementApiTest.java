@@ -321,11 +321,12 @@ class StatementApiTest {
 	   ------------------------------------------------------------------------------------ */
 
 	/**
-	 * THE LINES THAT WAIT, OVER EVERY STATEMENT, OLDEST FIRST: not the booked one, not the one already
-	 * recorded, and a booked one whose payment has since been cancelled waits again.
+	 * THE LINES THAT WAIT, OVER EVERY STATEMENT, OLDEST FIRST: not the booked one; the one already recorded
+	 * stays, marked so, until it is set aside (owner, 26.10.2026); and a booked one whose payment has since
+	 * been cancelled waits again.
 	 */
 	@Test
-	void theWaitingLinesAreEveryLineNotBookedAndNotAlreadyRecorded() throws Exception {
+	void theWaitingLinesAreEveryLineNotBookedAndTheAlreadyRecordedStayMarked() throws Exception {
 		long marko = competitor("000027", "Marko", "Markovic", A_TOWN_IN_SERBIA);
 		long dusko = competitor("000004", "Duško", "Kunić", A_TOWN_IN_SERBIA);
 		competitor("000031", "Janko", "Jankovic", A_TOWN_IN_SERBIA);
@@ -337,6 +338,14 @@ class StatementApiTest {
 				.credit("DUŠKO KUNIĆ", EXPECTED, null, order())
 				.credit("NEKO TREĆI", "50.00", null, order()));
 
+		JsonNode first = waiting();
+
+		assertThat(payers(first)).containsExactly("DUŠKO KUNIĆ", "NEKO TREĆI", "JANKO JANKOVIĆ");
+		assertThat(states(first)).containsExactly("alreadyRecorded", "waiting", "waiting");
+		assertThat(first.get(0).get("member").get("competitorId").asLong()).isEqualTo(dusko);
+
+		/* „NIJE ČLANARINA" CLOSES IT, with who and when, and then it is gone. */
+		assertThat(setAsideAs(first.get(0).get("id").asLong(), moderatorCookie).getStatus()).isEqualTo(204);
 		assertThat(payers(waiting())).containsExactly("NEKO TREĆI", "JANKO JANKOVIĆ");
 
 		/* AND A CANCELLED PAYMENT, as the member's row cancels one: the row goes and the line waits. */
@@ -503,6 +512,42 @@ class StatementApiTest {
 		assertThat(paymentCount()).isZero();
 	}
 
+	/**
+	 * A LINE WITH PARAS IS BOOKED IN WHOLE DINARS, ROUNDED DOWN (owner, 26.10.2026): 4.200,50 books as
+	 * 4.200, and 4.201 or the paras themselves are refused, each with its own word. The line is the only
+	 * source of the 4.200: the row is sent 4.200 and the line says 4.200,50.
+	 */
+	@Test
+	void aLineWithParasIsBookedInWholeDinarsRoundedDown() throws Exception {
+		long marko = competitor("000027", "Marko", "Markovic", A_TOWN_IN_SERBIA);
+
+		long line = lineId(taken(statement(27).credit("MARKO MARKOVIĆ", "4200.50", null, order())), 0);
+
+		assertThat(refusalOf(booked(marko, "4201", line), 400)).isEqualTo("theAmountIsNotTheStatementLines");
+		assertThat(refusalOf(booked(marko, "4200.50", line), 400)).isEqualTo("theAmountIsNotWhole");
+		assertThat(booked(marko, "4200", line).getStatus()).isEqualTo(201);
+		assertThat(db.sql("select received from payment").query(BigDecimal.class).single())
+				.isEqualByComparingTo("4200");
+	}
+
+	/**
+	 * „ALREADY RECORDED" IS ASKED OF THE SEASON THE LINE WAS TAKEN FOR, and not of the season on sale today:
+	 * a member who holds the season on sale and not the line's own is not „already recorded" for that line.
+	 */
+	@Test
+	void alreadyRecordedIsAskedOfTheLinesOwnSeason() throws Exception {
+		long dusko = competitor("000004", "Duško", "Kunić", A_TOWN_IN_SERBIA);
+		bookedByHand(dusko);
+
+		long line = lineId(taken(statement(28).credit("DUŠKO KUNIĆ", EXPECTED, null, order())), 0);
+
+		assertThat(states(waiting())).containsExactly("alreadyRecorded");
+
+		db.sql("update bank_statement_line set season = ? where id = ?").params(SEASON - 1, line).update();
+
+		assertThat(states(waiting())).containsExactly("waiting");
+	}
+
 	/** THE HARMLESS REPEAT IS NOT THE LINE'S: a member already booked by hand leaves the line unwritten. */
 	@Test
 	void aMemberAlreadyBookedLeavesTheLineUnwritten() throws Exception {
@@ -657,7 +702,10 @@ class StatementApiTest {
 	}
 
 	private static List<String> states(JsonNode taken) {
-		return field(taken, "state");
+		List<String> values = new ArrayList<>();
+		(taken.isArray() ? taken : taken.get("lines")).forEach(line -> values.add(line.get("state").asString()));
+
+		return values;
 	}
 
 	private static List<String> field(JsonNode taken, String name) {

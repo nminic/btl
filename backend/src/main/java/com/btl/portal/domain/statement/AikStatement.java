@@ -39,9 +39,11 @@ import java.util.regex.Pattern;
  *
  * <p><b>WHERE THE REFERENCE STANDS IS AN ASSUMPTION, AND A WRITTEN BOUNDARY.</b> The first statement
  * carries no payment with a poziv na broj, so nothing measured says how this bank prints one. It is
- * read as a labelled field „Poziv na broj:" anywhere in the item's block, the same way the other
- * fields are printed, and only from there: ten digits that happen to stand in the purpose are not
- * read as a reference, because the decision names the reference and not the purpose. If the bank
+ * read as a labelled field „Poziv na broj:" on a line of fields of the item, a line that begins with a
+ * label in the column of labels, the way the other fields are printed ({@code THE_VALUES}), and only
+ * from there: a reference written into the purpose, ten digits or the whole label with them, is not
+ * read as one, because the decision names the reference and not the purpose, and the purpose is what
+ * the payer wrote. If the bank
  * prints it otherwise, the line has no reference here and goes to the manual confirmation, which is
  * the safe direction; nothing is booked on a guess. The first statement that carries one confirms or
  * corrects this paragraph (coordinator, 25.10.2026, writing it as a boundary).
@@ -52,12 +54,28 @@ import java.util.regex.Pattern;
  * come to exactly those counts and those totals is refused as unreadable, so an item lost across a
  * page break, a column read on the wrong side or an amount read wrong cannot pass unnoticed.
  *
- * <p><b>WHAT A BAD FILE MAY COST IS BOUNDED BEFORE IT IS READ</b>, in the shape {@code SmallPicture}
- * gave a picture's pixels (PR 639): the bytes are capped by the route before this is called
- * ({@link #AT_MOST_BYTES}), the parser may hold no more than {@link #AT_MOST_MEMORY} in memory and
- * nothing on disk, a document of more than {@link #AT_MOST_PAGES} pages or an encrypted one is not
- * opened past its header, and the text is abandoned after {@link #AT_MOST_WORDS} words. Whatever
- * PDFBox throws on a damaged file is the same answer as a file that is not a statement at all.
+ * <p><b>WHAT A BAD FILE MAY COST IS BOUNDED BEFORE ITS TEXT IS READ</b>, in the shape {@code SmallPicture}
+ * gave a picture's pixels (PR 639), and each bound says what it holds:
+ * <ul>
+ * <li>the bytes of the file, capped by the route before this is called ({@link #AT_MOST_BYTES});
+ * <li>PDFBox's cache of the streams, in memory only and never on disk ({@link #AT_MOST_STREAM_CACHE}),
+ * which bounds that cache and nothing else;
+ * <li>an encrypted document is not read;
+ * <li>the pages, counted by walking the page tree and not read off the file's {@code /Count}, at most
+ * {@link #AT_MOST_PAGES}, and the reading stops at that page as well;
+ * <li>the decoded bytes of everything reading the text decodes, at most
+ * {@link WhatAFileMayCost#AT_MOST_DECODED}, measured before the text is read; a form inside a page, a
+ * font whose glyphs are content and a stream only an image codec could decode are refused
+ * ({@link WhatAFileMayCost} says why);
+ * <li>the words, at most {@link #AT_MOST_WORDS}.
+ * </ul>
+ * Nesting is PDFBox's own to bound, and it does: measured 26.10.2026 on a stack of 512 KB, a page whose
+ * resources are a dictionary nested 200 000 deep and a content of arrays nested a million deep were both
+ * read without an error and refused as no statement. So no error is caught here; one that is not an
+ * exception is not this method's to answer.
+ * Not bounded: time, which no clock watches, and which the decoded bytes bound only as far as cheap
+ * operators allow. Whatever PDFBox throws on a damaged file is the same answer as a file that is not a
+ * statement at all.
  */
 public final class AikStatement {
 
@@ -71,8 +89,12 @@ public final class AikStatement {
 	 */
 	public static final long AT_MOST_BYTES = 2L * 1024 * 1024;
 
-	/** The most memory the parser may hold for the file's streams; nothing goes to a temporary file. */
-	static final long AT_MOST_MEMORY = 32L * 1024 * 1024;
+	/**
+	 * The most PDFBox's cache of the file's streams may hold, in memory and never in a temporary file.
+	 * It bounds that cache and nothing else: what reading the text builds is bounded by
+	 * {@link WhatAFileMayCost}, before the text is read.
+	 */
+	static final long AT_MOST_STREAM_CACHE = 32L * 1024 * 1024;
 
 	/** A statement with more pages than this is not read. The first one has one. */
 	static final int AT_MOST_PAGES = 50;
@@ -88,6 +110,15 @@ public final class AikStatement {
 
 	/** The left margin the ordinals stand in. Measured at 19.6; the text of an item starts at 54.9. */
 	private static final float THE_MARGIN = 40f;
+
+	/**
+	 * WHERE THE COLUMN OF VALUES BEGINS, and what is left of it is the column of labels. Measured on the
+	 * first statement: the labels of an item start at 60.2 („Račun:"), 61.4 („Nalog:") and 77.3 („Datum
+	 * izvršenja:"), and its values and its purpose at 87.5 and after. A label is taken only where a line
+	 * begins with one left of this; anything right of it is what somebody wrote, and the purpose is
+	 * written by the payer (security review of PR 647, S3; owner, 26.10.2026: fixed rather than refused).
+	 */
+	private static final float THE_VALUES = 85f;
 
 	private static final Pattern AN_ORDINAL = Pattern.compile("^([0-9]{1,4})\\.$");
 
@@ -193,22 +224,29 @@ public final class AikStatement {
 	 */
 	static List<Word> wordsOf(byte[] bytes, int atMostWords) throws NotTaken {
 		try (PDDocument document = Loader.loadPDF(bytes, "", null, null,
-				MemoryUsageSetting.setupMainMemoryOnly(AT_MOST_MEMORY).streamCache)) {
+				MemoryUsageSetting.setupMainMemoryOnly(AT_MOST_STREAM_CACHE).streamCache)) {
 			if (document.isEncrypted()) {
 				throw new NotTaken(Refusal.NOT_A_STATEMENT, "an encrypted document");
 			}
 
-			if (document.getNumberOfPages() > AT_MOST_PAGES) {
-				throw new NotTaken(Refusal.NOT_A_STATEMENT, document.getNumberOfPages() + " pages");
-			}
+			/* THE COST OF READING THE TEXT, MEASURED BEFORE IT IS SPENT: the pages walked and not read off
+			   the file's own count, and the decoded bytes of everything reading the text decodes
+			   (`WhatAFileMayCost`). The review of PR 647 measured why: a file of 300 KB whose content
+			   inflates to 300 MB exhausted the heap behind the stream cache this used to rely on. */
+			WhatAFileMayCost.ofReading(document);
 
 			Words reading = new Words(atMostWords);
+			/* AND THE READING ITSELF STOPS AT THE SAME PAGE, a second lock on the count above. */
+			reading.setEndPage(AT_MOST_PAGES);
 			reading.getText(document);
 
 			return reading.words;
 		}
 		catch (NotTaken refused) {
 			throw refused;
+		}
+		catch (WhatAFileMayCost.TooMuch tooMuch) {
+			throw new NotTaken(Refusal.NOT_A_STATEMENT, "reading it would cost " + tooMuch.getMessage());
 		}
 		catch (IOException | RuntimeException broken) {
 			/* WHATEVER A DAMAGED FILE MAKES PDFBOX THROW, and a file that is not a PDF at all, is one
@@ -293,9 +331,14 @@ public final class AikStatement {
 			credits.add(credit);
 		}
 
-		checkedAgainstItsTotals(lines, "potražuje:", creditHead,
+		Word end = words.stream()
+				.filter(word -> word.x() < THE_MARGIN && word.text().equals("UKUPNO"))
+				.min(Comparator.comparingInt(Word::page).thenComparingDouble(Word::y))
+				.orElseThrow(() -> new NotTaken(Refusal.NOT_A_STATEMENT, "no UKUPNO ZA IZVOD"));
+
+		checkedAgainstItsTotals(lines, end, "potražuje:", creditHead,
 				credits.stream().map(Credit::amount).toList());
-		checkedAgainstItsTotals(lines, "duguje:", debitHead, debits);
+		checkedAgainstItsTotals(lines, end, "duguje:", debitHead, debits);
 
 		return new Read(account, number, dated, List.copyOf(credits));
 	}
@@ -306,9 +349,12 @@ public final class AikStatement {
 	 * <p>„Ukupno stavki potražuje: 1" with the total in the column beside it on the same line; the same
 	 * for „duguje:". Both are asked, because a credit read as a debit leaves both sides wrong.
 	 */
-	private static void checkedAgainstItsTotals(List<Line> lines, String side, Word head, List<BigDecimal> read)
-			throws NotTaken {
+	private static void checkedAgainstItsTotals(List<Line> lines, Word end, String side, Word head,
+			List<BigDecimal> read) throws NotTaken {
+		/* ONLY UNDER „UKUPNO ZA IZVOD" IN THE MARGIN, where the bank prints its totals: the same words in a
+		   purpose, above it, are what a payer wrote. */
 		Line totals = lines.stream()
+				.filter(line -> line.page() == end.page() && line.y() >= end.y())
 				.filter(line -> line.hasRun(List.of("Ukupno", "stavki", side)))
 				.findFirst()
 				.orElseThrow(() -> new NotTaken(Refusal.NOT_A_STATEMENT, "no total for " + side));
@@ -356,7 +402,7 @@ public final class AikStatement {
 	/** Where the items of a page stop: „UKUPNO ZA IZVOD" when it is on that page, the end of it otherwise. */
 	private static float endOfItemsOn(List<Word> words, int page) {
 		return words.stream()
-				.filter(word -> word.page() == page && word.text().equals("UKUPNO"))
+				.filter(word -> word.page() == page && word.x() < THE_MARGIN && word.text().equals("UKUPNO"))
 				.map(Word::y)
 				.min(Float::compare)
 				.orElse(Float.MAX_VALUE);
@@ -396,25 +442,28 @@ public final class AikStatement {
 		List<String> purpose = new ArrayList<>();
 
 		for (Line line : block) {
-			List<Labelled> labelled = labelledIn(line);
-
-			if (labelled.isEmpty()) {
+			/* A LINE OF FIELDS BEGINS WITH A LABEL IN THE COLUMN OF LABELS, and only such a line is read for
+			   labels at all; every other line is the purpose, read as words. A purpose that says „Nalog:" or
+			   „Poziv na broj:" is the payer's text and says nothing about the payment. */
+			if (line.words().getFirst().x() >= THE_VALUES || labelAt(line.words(), 0) == null) {
 				purpose.add(joined(line.words()));
 				continue;
 			}
 
-			for (Labelled one : labelled) {
+			for (Labelled one : labelledIn(line)) {
 				String value = joined(one.value());
 
 				if (value.isEmpty()) {
 					continue;
 				}
 
+				/* AND THE FIRST PLACE A FIELD STANDS IS ITS PLACE: a second line of fields naming it again
+				   does not overwrite it. */
 				switch (one.label().getFirst()) {
-					case "Račun:" -> account = one.value().getFirst().text();
-					case "Nalog:" -> order = value;
-					case "Šifra" -> code = one.value().getFirst().text();
-					case "Poziv" -> reference = referenceOf(value);
+					case "Račun:" -> account = account == null ? one.value().getFirst().text() : account;
+					case "Nalog:" -> order = order == null ? value : order;
+					case "Šifra" -> code = code == null ? one.value().getFirst().text() : code;
+					case "Poziv" -> reference = reference == null ? referenceOf(value) : reference;
 					default -> {
 						/* The dates, which nothing here keeps. */
 					}
@@ -435,33 +484,31 @@ public final class AikStatement {
 	private record Labelled(List<String> label, List<Word> value) {
 	}
 
-	/** Every label on a line, each with the words after it up to the next label. */
+	/**
+	 * Every label on a line of fields, each with the words after it up to the next label. Asked only of a
+	 * line that begins with a label (`fieldsOf`), so the first word is one.
+	 */
 	private static List<Labelled> labelledIn(Line line) {
 		List<Word> words = line.words();
 		List<Labelled> found = new ArrayList<>();
-		List<String> current = null;
+		List<String> current = labelAt(words, 0);
 		List<Word> value = new ArrayList<>();
 
-		for (int i = 0; i < words.size(); i++) {
+		for (int i = current.size(); i < words.size(); i++) {
 			List<String> label = labelAt(words, i);
 
-			if (label != null) {
-				if (current != null) {
-					found.add(new Labelled(current, List.copyOf(value)));
-				}
-
-				current = label;
-				value.clear();
-				i += label.size() - 1;
-			}
-			else if (current != null) {
+			if (label == null) {
 				value.add(words.get(i));
+				continue;
 			}
+
+			found.add(new Labelled(current, List.copyOf(value)));
+			current = label;
+			value.clear();
+			i += label.size() - 1;
 		}
 
-		if (current != null) {
-			found.add(new Labelled(current, List.copyOf(value)));
-		}
+		found.add(new Labelled(current, List.copyOf(value)));
 
 		return found;
 	}

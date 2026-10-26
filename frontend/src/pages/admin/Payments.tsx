@@ -332,6 +332,9 @@ function WaitingLine({
   const confirmable = one.candidates.filter((candidate) =>
     owing.some((member) => member.competitorId === candidate.competitorId),
   )
+  /* ALREADY RECORDED, AND STILL HERE (owner, 26.10.2026): „ostaje na spisku sa oznakom „Već evidentirano"
+     i dugmetom „Nije članarina"". Nothing to book, so no „Potvrdi" and no other member; only the closing. */
+  const recorded = one.state === 'alreadyRecorded' ? one.member : null
   const anotherId = `another-${one.id}`
 
   async function setAside() {
@@ -391,9 +394,15 @@ function WaitingLine({
           </span>
         )}
       </td>
-      <td>{t(WHY_IT_WAITS[one.waitsBecause] ?? 'review.statement.why.notBooked')}</td>
       <td>
-        {one.candidates.length === 0 ? (
+        {recorded === null
+          ? t(WHY_IT_WAITS[one.waitsBecause] ?? 'review.statement.why.notBooked')
+          : t('review.statement.alreadyLine', { whose: whose(recorded), season: one.season })}
+      </td>
+      <td>
+        {recorded !== null ? (
+          whose(recorded)
+        ) : one.candidates.length === 0 ? (
           t('review.statement.noSuggestion')
         ) : (
           <ul className="statement__candidates">
@@ -416,24 +425,32 @@ function WaitingLine({
             />
           ))}
 
-          <div className="rankings__field">
-            <label htmlFor={anotherId}>{t('review.statement.another')}</label>
-            <select id={anotherId} value={another} onChange={(event) => setAnother(event.target.value)}>
-              <option value="">{t('review.statement.anotherNone')}</option>
-              {owing.map((member) => (
-                <option key={member.competitorId} value={String(member.competitorId)}>
-                  {whose(member)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <ActionButton
-            symbol={SYMBOL.pencil}
-            word={t('review.statement.openAnother')}
-            className="button button--secondary"
-            disabled={another === ''}
-            onClick={() => onOpen({ line: one, competitorId: Number(another) })}
-          />
+          {recorded !== null ? null : (
+            <>
+              <div className="rankings__field">
+                <label htmlFor={anotherId}>{t('review.statement.another')}</label>
+                <select
+                  id={anotherId}
+                  value={another}
+                  onChange={(event) => setAnother(event.target.value)}
+                >
+                  <option value="">{t('review.statement.anotherNone')}</option>
+                  {owing.map((member) => (
+                    <option key={member.competitorId} value={String(member.competitorId)}>
+                      {whose(member)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <ActionButton
+                symbol={SYMBOL.pencil}
+                word={t('review.statement.openAnother')}
+                className="button button--secondary"
+                disabled={another === ''}
+                onClick={() => onOpen({ line: one, competitorId: Number(another) })}
+              />
+            </>
+          )}
 
           <ActionButton
             symbol={SYMBOL.cross}
@@ -484,7 +501,11 @@ function Row({
 }) {
   const { locale, t } = useI18n()
   /* EMPTY, OR WHAT ARRIVED ON THE LINE THE ROW WAS OPENED FROM: „sa već upisanim iznosom sa stavke". */
-  const [typed, setTyped] = useState(() => (fromTheLine === null ? '' : String(fromTheLine.amount)))
+  /* IN WHOLE DINARS, ROUNDED DOWN, which is the owner's of 26.10.2026: „Stavka izvoda sa parama (npr.
+     4.200,50) knjiži se kroz „Potvrdi" zaokruženo nadole na cele dinare (4.200); pare se ne prate." */
+  const [typed, setTyped] = useState(() =>
+    fromTheLine === null ? '' : String(Math.floor(fromTheLine.amount)),
+  )
   /* TICKED TO BEGIN WITH, which is the owner's own word: „podrazumevano stiklirana". Held as its
      own state rather than derived from the balance, because a moderator clearing it over a
      member who HAS money is exactly cases 3b and 6. */

@@ -207,7 +207,12 @@ class StatementApi {
 				orders.isEmpty() ? List.of() : seen(linesWithOrders(orders))));
 	}
 
-	/** Every payment of every statement that still waits for a person, oldest statement first. */
+	/**
+	 * Every payment of every statement that still waits for a person, oldest statement first, and every one
+	 * that is already recorded and not yet closed. Owner, 26.10.2026 (PDL): „Stavka čiji je jedini
+	 * predloženi član već član te sezone ne nestaje: ostaje na spisku sa oznakom „Već evidentirano" i
+	 * dugmetom „Nije članarina", pa se zatvara sa ko i kad."
+	 */
 	@GetMapping("/api/statements/lines")
 	@RightIsNeeded("queue:payments")
 	ResponseEntity<List<Line>> waiting() {
@@ -217,7 +222,9 @@ class StatementApi {
 						+ " order by s.dated, s.number, l.position")
 				.query(StatementApi::stored).list());
 
-		return ResponseEntity.ok(lines.stream().filter(line -> WAITING.equals(line.state())).toList());
+		return ResponseEntity.ok(lines.stream()
+				.filter(line -> WAITING.equals(line.state()) || ALREADY_RECORDED.equals(line.state()))
+				.toList());
 	}
 
 	/**
