@@ -23,7 +23,11 @@ import { setupUser } from '../../test/user'
  * the balance (nought, part of the fee, the whole fee); the money (dinars with the slip and the code,
  * euro with PayPal and the fee); the season the answer is about (the one the panel sells, another);
  * the money of the answer against the way the session says he pays (the same, the other); whether a
- * membership already stands; and the read itself (answered, refused, failed and asked again). And
+ * membership already stands; and the read itself (answered, refused, failed and asked again). Since
+ * 25.10.2026 an answer about another season, or in the other money, says what a failed read says and
+ * is asked again the same way (PDL, decision of 25.10.2026, „ista rečenica kao kad iznos ne stigne"),
+ * and where there is nothing to send the part „PayPal" is not drawn at all (same day, „ne crta se ni
+ * deo „PayPal""). And
  * one axis that is not about what is drawn but about what is ASKED: the read writes the promise of
  * the season on the server, so it is asked where a slip is about to be drawn and nowhere else.
  *
@@ -131,6 +135,9 @@ describe('PayPal, abroad', () => {
     expect(screen.queryByText('43,00')).not.toBeInTheDocument()
     expect(screen.getByText('Balans pokriva 6,50 EUR, pa uplaćuješ 33,50 EUR.')).toBeVisible()
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
+    /* The other side of the cases where nothing is sent: an amount to send draws the part whole. */
+    expect(screen.getByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
+    expect(screen.getByText(/^PayPal adresa je poslovna/)).toBeVisible()
   }, SLOW)
 
   it('adds the fee the answer names and not the price list\'s', async () => {
@@ -145,11 +152,14 @@ describe('nothing to send', () => {
   it.each([
     ['in Serbia, when the balance covers the fee', IN_SERBIA, anInvoice(2027, 'RSD', { toTransfer: 0, fromTheBalance: 4800 })],
     ['abroad, when the balance covers the fee', ABROAD, anInvoice(2027, 'EUR', { toTransfer: 0, fromTheBalance: 40 })],
-    ['when the answer is about another season', IN_SERBIA, anInvoice(2028, 'RSD')],
-    ['when the answer says a membership already stands', IN_SERBIA, anInvoice(2027, 'RSD', { alreadyAMember: true })],
-    ['in Serbia, when the answer is in euro', IN_SERBIA, anInvoice(2027, 'EUR')],
-    ['abroad, when the answer is in dinars', ABROAD, anInvoice(2027, 'RSD')],
-  ])('draws no amount and points at none %s', async (_what, member, invoice) => {
+    ['in Serbia, when the answer says a membership already stands', IN_SERBIA, anInvoice(2027, 'RSD', { alreadyAMember: true })],
+    /* An amount still on the answer, so what hides the part is the membership and not a nought. */
+    ['abroad, when the answer says a membership already stands', ABROAD, anInvoice(2027, 'EUR', { alreadyAMember: true })],
+    /* Nothing is asked of him in these two, so the money the answer names is not looked at, and they
+       say nothing about an amount that did not arrive. */
+    ['in Serbia, when a membership stands and the answer names euro', IN_SERBIA, anInvoice(2027, 'EUR', { alreadyAMember: true })],
+    ['abroad, when the balance covers the fee and the answer names dinars', ABROAD, anInvoice(2027, 'RSD', { toTransfer: 0, fromTheBalance: 4800 })],
+  ])('draws no amount, no part „PayPal" and points at none %s', async (_what, member, invoice) => {
     const { asked } = openHisPage(member, invoice)
 
     await untilTheRenewalIsDrawn()
@@ -161,6 +171,75 @@ describe('nothing to send', () => {
     expect(screen.queryByText(/^Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
     expect(screen.queryByText(/^Balans pokriva/)).not.toBeInTheDocument()
     expect(screen.queryByText(/^Iznos za uplatu nije stigao/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'PayPal' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/^PayPal adresa je poslovna/)).not.toBeInTheDocument()
+  }, SLOW)
+})
+
+describe('in Serbia, with a part of the fee on the balance', () => {
+  /* The other side of the part „PayPal": in Serbia it was never drawn, and the slip is drawn as it was. */
+  it('draws the slip and no part „PayPal"', async () => {
+    openHisPage(IN_SERBIA, anInvoice(2027, 'RSD'))
+
+    expect(within(await theSlip()).getByText('3.700 RSD')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'PayPal' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/^PayPal adresa je poslovna/)).not.toBeInTheDocument()
+  }, SLOW)
+})
+
+describe('an answer this panel cannot draw from', () => {
+  it.each([
+    ['in Serbia, about the season after the one on sale', IN_SERBIA, anInvoice(2028, 'RSD'), IN_THE_WINDOW],
+    ['abroad, about the season before the one on sale', ABROAD, anInvoice(2026, 'EUR'), IN_THE_WINDOW],
+    /* A membership that stands, but of another season, is still an answer about another season. */
+    ['about another season, saying a membership of it stands', IN_SERBIA, anInvoice(2028, 'RSD', { alreadyAMember: true }), IN_THE_WINDOW],
+    /* Out of the window the season on sale is the running one, so it is not the year after today's: a
+       screen that held the answer to that year draws this one and says nothing. */
+    ['out of the window, about the year after today', IN_SERBIA, anInvoice(2028, 'RSD'), '2027-03-01'],
+    ['in Serbia, in euro', IN_SERBIA, anInvoice(2027, 'EUR'), IN_THE_WINDOW],
+    ['abroad, in dinars', ABROAD, anInvoice(2027, 'RSD'), IN_THE_WINDOW],
+    /* Covered today, and still asking for money that is not his: the button goes with the amount. */
+    ['abroad, in dinars, while the balance covers the fee', ABROAD, anInvoice(2027, 'RSD', { toTransfer: 100, fromTheBalance: 4700, balance: 4800 }), IN_THE_WINDOW],
+  ])('says the amount did not arrive, with a way to ask again, %s', async (_what, member, invoice, today) => {
+    const { asked } = openHisPage(member, invoice, today)
+
+    expect(
+      await screen.findByText('Iznos za uplatu nije stigao. Osveži stranicu i pokušaj ponovo.'),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Pokušaj ponovo' })).toBeVisible()
+    expect(readsOf(asked)).toBe(1)
+    expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'PayPal' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Kopiraj iznos za uplatu' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Aktiviraj članstvo' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
+  }, SLOW)
+
+  it.each([
+    ['about another season', IN_SERBIA, anInvoice(2028, 'RSD'), anInvoice(2027, 'RSD')],
+    ['in the other money', ABROAD, anInvoice(2027, 'RSD'), anInvoice(2027, 'EUR')],
+  ])('draws what he sends once the asking again is answered for this panel, after an answer %s', async (_what, member, first, then) => {
+    let answer = first
+    const route = stand(
+      serverThat((path, init) =>
+        path === '/api/me/membership' && init?.method === undefined ? answeringInvoice(answer) : null,
+      ),
+    )
+    const user = setupUser()
+
+    renderAt('/sr/moja-clanarina', 'competitor', member, undefined, IN_THE_WINDOW)
+
+    const again = await screen.findByRole('button', { name: 'Pokušaj ponovo' })
+
+    answer = then
+    again.focus()
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByText(/^Balans pokriva/)).toBeVisible()
+    expect(screen.queryByText(/^Iznos za uplatu nije stigao/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Pokušaj ponovo' })).not.toBeInTheDocument()
+    expect(readsOf(route.asked)).toBe(2)
+    await waitFor(() => expect(document.activeElement?.textContent).toBe('Podaci za uplatu'))
   }, SLOW)
 })
 
