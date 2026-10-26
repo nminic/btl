@@ -176,7 +176,26 @@ final class WhatAFileMayCost {
 			input = raw.readAllBytes();
 		}
 
-		long decoded = input.length;
+		/* A STREAM WITH NO FILTER IS ITS OWN BYTES, and it goes through the same sink as any other, so
+		   what is left of the budget is asked in one place for every stream. */
+		if (filters.isEmpty()) {
+			Sink plain = new Sink(budget - spent, false);
+
+			try {
+				plain.write(input, 0, input.length);
+			}
+			catch (Stopped stopped) {
+				/* `over` below says so. */
+			}
+
+			if (plain.over) {
+				throw new TooMuch("more than " + budget + " decoded bytes");
+			}
+
+			spent += plain.counted;
+
+			return;
+		}
 
 		for (int i = 0; i < filters.size(); i++) {
 			if (!COUNTABLE.contains(filters.get(i))) {
@@ -199,14 +218,11 @@ final class WhatAFileMayCost {
 			}
 
 			input = step.kept();
-			decoded = step.counted;
-		}
 
-		if (spent + decoded > budget) {
-			throw new TooMuch("more than " + budget + " decoded bytes");
+			if (last) {
+				spent += step.counted;
+			}
 		}
-
-		spent += decoded;
 	}
 
 	private static List<COSName> filtersOf(COSStream stream) throws TooMuch {

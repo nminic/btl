@@ -62,7 +62,7 @@ import java.util.regex.Pattern;
  * which bounds that cache and nothing else;
  * <li>an encrypted document is not read;
  * <li>the pages, counted by walking the page tree and not read off the file's {@code /Count}, at most
- * {@link #AT_MOST_PAGES}, and the reading stops at that page as well;
+ * {@link #AT_MOST_PAGES};
  * <li>the decoded bytes of everything reading the text decodes, at most
  * {@link WhatAFileMayCost#AT_MOST_DECODED}, measured before the text is read; a form inside a page, a
  * font whose glyphs are content and a stream only an image codec could decode are refused
@@ -236,8 +236,6 @@ public final class AikStatement {
 			WhatAFileMayCost.ofReading(document);
 
 			Words reading = new Words(atMostWords);
-			/* AND THE READING ITSELF STOPS AT THE SAME PAGE, a second lock on the count above. */
-			reading.setEndPage(AT_MOST_PAGES);
 			reading.getText(document);
 
 			return reading.words;
