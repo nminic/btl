@@ -471,6 +471,12 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"balance_entry.balance_entry_recorded_by_fk set null",
 				"balance_entry.balance_entry_referred_fk set null",
 				"balance_promise.balance_promise_competitor_fk cascade",
+				/* V74. The account that took a statement may go and its name stays (PDL P23); a statement's
+				   lines go with it; and a cancelled payment leaves its line, which then waits again. */
+				"bank_statement.bank_statement_loaded_by_fk set null",
+				"bank_statement_line.bank_statement_line_payment_fk set null",
+				"bank_statement_line.bank_statement_line_set_aside_by_fk set null",
+				"bank_statement_line.bank_statement_line_statement_fk cascade",
 				// O6: the next running of the race stays, its link empties
 				"btl_event.btl_event_copied_from_fk set null",
 				/* A codebook never disappears under a row that names it, and RESTRICT

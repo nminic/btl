@@ -2,6 +2,10 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.pricing.Currency;
+import com.btl.portal.domain.pricing.MembershipPrice;
+import com.btl.portal.domain.season.SeasonClock;
+import com.btl.portal.domain.statement.ASyntheticStatement;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,19 +22,24 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.MonthDay;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +48,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
@@ -52,7 +62,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * ({@code POST /api/payments}), a payment on the member's row ({@code POST
  * /api/members/{n}/payment}), an exemption and a balance from the payments screen ({@code POST
  * /api/memberships}), the member's own activation ({@code POST /api/me/membership}) and the
- * cancellation on his row ({@code DELETE /api/members/{n}/membership}). The change of basis
+ * cancellation on his row ({@code DELETE /api/members/{n}/membership}), and since 25.10.2026 a bank
+ * statement that books a payment by itself ({@code POST /api/statements}, PDL 24.10.2026). The change of basis
  * ({@code PUT} on the same address) deletes and writes the row in one go and is held to saying
  * nothing.
  *
@@ -161,6 +172,11 @@ class ABeginnersCategoryAMembershipMovesTest {
 
 	private int issued;
 
+	@Autowired
+	private PriceRows priceRows;
+
+	private int statements;
+
 	/** The same shape {@code MemberMembershipApiTest} uses, and it reports UTC for the same reason. */
 	static final class AClockTheCaseMoves extends Clock {
 
@@ -204,7 +220,9 @@ class ABeginnersCategoryAMembershipMovesTest {
 	enum Road {
 		THE_PAYMENTS_SCREEN, A_PAYMENT_ON_HIS_ROW, FREE_OF_THE_FEE, FROM_HIS_BALANCE, HIS_OWN_ACTIVATION,
 		/** The exemption granted on his row, where no season on sale stood (20.10.2026). */
-		AN_EXEMPTION_ON_HIS_ROW
+		AN_EXEMPTION_ON_HIS_ROW,
+		/** A bank statement whose reference names him with exactly the expected amount (PDL 24.10.2026). */
+		A_BANK_STATEMENT
 	}
 
 	@BeforeEach
@@ -484,7 +502,43 @@ class ABeginnersCategoryAMembershipMovesTest {
 			case HIS_OWN_ACTIVATION -> sent(post("/api/me/membership"), "{}", number + "@primer.rs");
 			case AN_EXEMPTION_ON_HIS_ROW -> sent(post("/api/members/" + number + "/membership"),
 					"{\"basis\": \"feeExempt\"}", THE_SUPERADMIN);
+			case A_BANK_STATEMENT -> aStatementPaying(number);
 		};
+	}
+
+	/**
+	 * A STATEMENT THAT BOOKS HIS SEASON BY ITSELF: his reference of the season on sale and exactly the
+	 * amount the label expects of him. A statement pays into the dinar account, so he is moved to Serbia
+	 * first; nothing else this file measures reads his country. And the statement is required to have
+	 * booked him, so a case below that says „nothing moved" cannot pass on a statement that booked nothing.
+	 */
+	private MockHttpServletResponse aStatementPaying(String number) throws Exception {
+		db.sql("update competitor set place_id = (select id from place where country_id ="
+						+ " (select id from country where code = 'RS') order by rank limit 1) where member_number = ?")
+				.param(number).update();
+
+		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
+		BigDecimal expected = MembershipPrice.on(priceRows.all(),
+				MonthDay.from(LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE)), 1990, season, Currency.RSD)
+				.expected();
+
+		statements++;
+
+		byte[] statement = ASyntheticStatement.number(statements)
+				.credit("PROBNI CLAN", expected.toPlainString(), season + number,
+						String.format("59%014d (19%014d-1)", statements, statements))
+				.bytes();
+
+		MockHttpServletResponse answer = http.perform(multipart("/api/statements")
+						.file(new MockMultipartFile("statement", "izvod.pdf", "application/pdf", statement))
+						.with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, cookies.get(THE_SUPERADMIN))))
+				.andReturn().getResponse();
+
+		assertThat(mapper.readTree(answer.getContentAsString(StandardCharsets.UTF_8)).get("bookedNow").asInt())
+				.as("the statement booked his payment").isEqualTo(1);
+
+		return answer;
 	}
 
 	private MockHttpServletResponse cancelled(String number, String basis) throws Exception {

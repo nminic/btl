@@ -262,7 +262,6 @@ describe('a sentence with a value put into it', () => {
          deletion of 31.08.2026. The value it takes is the one number this portal has for
          the length of a password (`pages/account/passwordRule.ts`). */
       '? (NewPassword.tsx)',
-      '? (Payments.tsx)',
       '? (PendingQueue.tsx)',
       /* What is wrong with one box of the panel that names the race of a run the calendar does
          not hold, in the words of the form the box comes from (`forms/validate.ts`): the same
@@ -514,6 +513,26 @@ describe('a sentence with a value put into it', () => {
          measure joined by dashes (`member/racesToOffer.ts`), after a colon, where nothing asks a
          case of it. */
       'review.chosenRace',
+      /* THE BANK STATEMENT ON THE PAYMENTS SCREEN (25.10.2026, PDL „Učitavanje izvoda iz banke"). Every
+         value is a figure, a number of an account, a date in figures or a name standing after a colon or
+         on its own: „Već evidentirano: {whose}, sezona {season}", „Proknjiženo samo od sebe: {whose},
+         {amount}", „{whose} ({number}), {city}", „Izvod broj {number} od {dated}", „Račun {account}",
+         „Šifra plaćanja {code}", „Poziv na broj {reference}", the counts after the colons of „Izvod broj …
+         je učitan", and the name of the file in „Čitam izvod {name}…". None has a case to be wrong in. */
+      'review.statement.alreadyLine',
+      'review.statement.bookedLine <- money',
+      'review.statement.candidate',
+      'review.statement.candidateWithoutNumber',
+      /* „Potvrdi: {whose}", the name of a member after a colon, and „Otvoren je red za uplatu sa izvoda:
+         {payer}, {amount}." (25.10.2026), the payer as printed and an amount in figures, after a colon. */
+      'review.statement.confirmFor',
+      'review.statement.onTheStatement <- formatNumericDate',
+      'review.statement.opened <- money',
+      'review.statement.payerAccount',
+      'review.statement.paymentCode',
+      'review.statement.reference',
+      'review.statement.taken <- formatNumericDate',
+      'review.statement.taking',
       'review.sweptLeft',
       'rights.box',
       'rights.granted',

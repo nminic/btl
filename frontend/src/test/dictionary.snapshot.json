@@ -1219,8 +1219,54 @@
     "statement": {
       "title": "Izvod iz banke",
       "choose": "Izaberi PDF izvoda",
-      "taken": "Primljen izvod {name}. Rasknjižavanje po pozivu na broj radiće server; do tada uplate potvrđuješ ručno.",
-      "wrongKind": "Izvod mora biti PDF. Ovaj fajl nije, pa nije primljen."
+      "taking": "Čitam izvod {name}…",
+      "taken": "Izvod broj {number} od {dated} je učitan. Uplate proknjižene same od sebe: {booked}. Uplate koje čekaju tvoju potvrdu: {waiting}. Uplate koje su već bile evidentirane: {already}.",
+      "notUnderstood": "Server je primio izvod, ali portal ne ume da pročita njegov odgovor. Osveži stranu da vidiš šta je proknjiženo.",
+      "wrongKind": "Izvod mora biti PDF. Ovaj fajl nije, pa nije primljen.",
+      "bookedLine": "Proknjiženo samo od sebe: {whose}, {amount}",
+      "alreadyLine": "Već evidentirano: {whose}, sezona {season}",
+      "candidate": "{whose} ({number}), {city}",
+      "candidateWithoutNumber": "{whose}, {city}",
+      "waitingTitle": "Uplate sa izvoda koje čekaju potvrdu",
+      "waitingNone": "Nijedna uplata sa izvoda ne čeka potvrdu.",
+      "columns": {
+        "payer": "Uplatilac",
+        "amount": "Iznos",
+        "purpose": "Svrha",
+        "why": "Zašto čeka",
+        "suggestion": "Predlog",
+        "act": "Potvrda"
+      },
+      "payerAccount": "Račun {account}",
+      "onTheStatement": "Izvod broj {number} od {dated}",
+      "paymentCode": "Šifra plaćanja {code}",
+      "reference": "Poziv na broj {reference}",
+      "confirm": "Potvrdi",
+      "confirmFor": "Potvrdi: {whose}",
+      "another": "Drugi član",
+      "anotherNone": "Izaberi člana",
+      "openAnother": "Otvori red",
+      "setAside": "Nije članarina",
+      "setAsideRefused": {
+        "theStatementLineIsSettled": "Ova stavka izvoda je već zatvorena. Osveži stranicu."
+      },
+      "opened": "Otvoren je red za uplatu sa izvoda: {payer}, {amount}. Proveri iznos i pritisni Aktiviraj.",
+      "showEverybody": "Prikaži sve",
+      "noSuggestion": "Nema predloga",
+      "why": {
+        "noReference": "Uplata nema poziv na broj.",
+        "unknownReference": "Poziv na broj ne imenuje nijednog člana.",
+        "anotherSeason": "Poziv na broj je za drugu sezonu.",
+        "notInDinars": "Član plaća u evrima, a uplata je stigla na dinarski račun.",
+        "notTheExpectedAmount": "Iznos nije onaj koji se od člana očekuje.",
+        "notBooked": "Uplata nije proknjižena."
+      },
+      "refused": {
+        "theStatementIsMissing": "Izvod nije stigao do servera. Izaberi PDF izvoda ponovo.",
+        "theStatementIsTooLarge": "Izvod je veći od 2 MB, pa nije primljen.",
+        "theFileIsNotAStatement": "Ovo nije izvod AIK banke koji portal ume da pročita, pa ništa nije proknjiženo.",
+        "theStatementIsOfAnotherAccount": "Ovo je izvod drugog računa. Portal čita samo izvod računa 105-0000000003284-71."
+      }
     },
     "reasonNeeded": "Upiši razlog da bi mogao da pošalješ."
   },
@@ -1688,6 +1734,10 @@
     "askShortfall": "Prihvatam umanjen ukupan iznos?",
     "askShortfallShort": "Nedostaje: {amount}",
     "activationRefused": {
+      "theStatementLineIsNotKnown": "Ova stavka izvoda nije pronađena, pa uplata nije proknjižena. Osveži stranicu.",
+      "theStatementLineIsSettled": "Ova stavka izvoda je već zatvorena, pa uplata nije proknjižena ponovo. Osveži stranicu.",
+      "theAmountIsNotTheStatementLines": "Iznos nije onaj sa stavke izvoda, pa uplata nije proknjižena. Uplata sa izvoda se knjiži sa iznosom koji je stigao.",
+      "theMemberDoesNotPayInDinars": "Ovaj član plaća u evrima, a uplata sa izvoda je stigla na dinarski račun, pa nije proknjižena.",
       "theFormIsNotComplete": "Aktivacija nije poslata do kraja, pa članstvo nije upisano. Osveži stranicu i pokušaj ponovo.",
       "theGroundIsNotKnown": "Osnov aktivacije nije prepoznat, pa članstvo nije upisano. Osveži stranicu i pokušaj ponovo.",
       "nothingWouldComeOffTheBalance": "Sa balansa ovog člana ne može da se skine ništa, pa članstvo nije upisano.",

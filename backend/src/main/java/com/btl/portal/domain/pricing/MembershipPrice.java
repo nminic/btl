@@ -37,6 +37,17 @@ public final class MembershipPrice {
 
 	/** What somebody owes: the row it came from, the amount, and the fee beside it. */
 	public record Price(String key, java.math.BigDecimal amount, java.math.BigDecimal fee, boolean ranking) {
+
+		/**
+		 * WHAT HE IS EXPECTED TO SEND: the amount with the fee on it. Owner, 27.09.2026 (PDL 19): „„Ocekivan
+		 * iznos" je ono sto clan SALJE, dakle sa uracunatom taksom." The one home of that sum, read by the
+		 * label on the Payments screen ({@code PaymentsDueApi}), by the booking that measures what arrived
+		 * against it ({@code BookingAPayment}) and by a bank statement that books a payment of exactly
+		 * this much by itself ({@code StatementApi}, PDL 24.10.2026).
+		 */
+		public java.math.BigDecimal expected() {
+			return amount.add(fee);
+		}
 	}
 
 	/** The key of the row that carries the junior price. */

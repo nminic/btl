@@ -94,6 +94,12 @@ export const WHEN_RECORDING_ON_THE_ROW: Record<string, string> = Object.fromEntr
     ([reason]) =>
       reason !== 'theReferenceIsNotShaped' &&
       reason !== 'theReferenceIsTaken' &&
-      reason !== 'theCompetitorDoesNotExist',
+      reason !== 'theCompetitorDoesNotExist' &&
+      /* AND THE FOUR ABOUT A LINE OF A BANK STATEMENT (25.10.2026): the row in the moderation of the
+         members books through its own route, which takes no line, so none of them can reach it. */
+      reason !== 'theStatementLineIsNotKnown' &&
+      reason !== 'theStatementLineIsSettled' &&
+      reason !== 'theAmountIsNotTheStatementLines' &&
+      reason !== 'theMemberDoesNotPayInDinars',
   ),
 )

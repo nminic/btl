@@ -365,7 +365,19 @@ class KeysAndIndexesTest extends DatabaseTest {
 			/* V63. The trail of a cancelled membership and of a change of basis (PDL P8, 18.10.2026). */
 			new Key("membership_change_pk", false,
 					"a surrogate key nothing outside the portal sees; a line of the trail is written once and"
-							+ " never moved, so there is no order to maintain"));
+							+ " never moved, so there is no order to maintain"),
+
+			/* V74. A bank statement the Payments screen took, and its payments (PDL 24.10.2026). */
+			new Key("bank_statement_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("bank_statement_one_of_a_kind", false,
+					"a statement is looked up by its account, its number and its day, which is how the bank"
+							+ " names one and what keeps it from being taken twice"),
+			new Key("bank_statement_line_pk", false, "a surrogate key the screen names a line by"),
+			new Key("bank_statement_line_one_order_once", false,
+					"a payment is looked up by the bank's own order number, over every statement, so one"
+							+ " printed on two statements is one line"),
+			new Key("bank_statement_line_one_position_once", false,
+					"the place of a payment on its statement, as the bank printed it; read, never moved"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -536,7 +548,14 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("verification_one_picture_waits_per_member",
 					"one picture of one member waits for a moderator at a time; the complement of the"
 							+ " text index above, told apart by photo_id, and a partial index for the"
-							+ " same reason"));
+							+ " same reason"),
+			new Index("bank_statement_loaded_by_idx",
+					"the other end of bank_statement_loaded_by_fk, which a deleted account empties"),
+			new Index("bank_statement_line_payment_idx",
+					"the line a payment was booked from, and the other end of bank_statement_line_payment_fk,"
+							+ " which a cancelled payment empties"),
+			new Index("bank_statement_line_set_aside_by_idx",
+					"the other end of bank_statement_line_set_aside_by_fk, which a deleted account empties"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says

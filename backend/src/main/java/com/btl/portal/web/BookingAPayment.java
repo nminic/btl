@@ -40,9 +40,10 @@ import java.util.Optional;
  * ({@code frontend/src/pages/account/refusals.test.ts}).
  *
  * <p><b>Opens no transaction of its own</b>: each door opens the one it books in, and each door that
- * books here ({@link MemberPaymentApi}, {@link PaymentApi}, {@link MemberMembershipApi}) takes the
- * member's row {@code for update} first and holds that lock across all of this. The method does not
- * take it itself, so a fourth caller must.
+ * books here ({@link MemberPaymentApi}, {@link PaymentApi}, {@link MemberMembershipApi}, and since
+ * 25.10.2026 {@link StatementApi}, a bank statement booking a payment by itself) takes the member's row
+ * {@code for update} first and holds that lock across all of this. The method does not take it itself,
+ * so a fifth caller must.
  */
 @Component
 class BookingAPayment {
@@ -343,7 +344,7 @@ class BookingAPayment {
 		   paid in full (case 1) or over (case 7) is owed nothing more, so the same line takes nothing off
 		   his book even with the box ticked, and that is one formula covering four of the seven cases
 		   rather than four branches. */
-		Balance.Money expected = new Balance.Money(price.amount().add(price.fee()), his);
+		Balance.Money expected = new Balance.Money(price.expected(), his);
 		Balance.Money received = new Balance.Money(typed.received(), his);
 
 		Balance.Money fromTheBalance = typed.useTheBalance()

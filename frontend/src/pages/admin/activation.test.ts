@@ -478,6 +478,24 @@ describe('what one press on a row sends', () => {
     })
 
     /**
+     * A ROW OPENED FROM A LINE OF A BANK STATEMENT names the line on the payment it sends (owner,
+     * 25.10.2026, „Potvrdi"), and only there: a press with nothing typed is no money arriving, so the
+     * grant it sends names no line. The line is 9 and the competitor 58, so a number taken from the wrong
+     * one shows.
+     */
+    it('names the line of a statement the row was opened from on the payment, and on nothing else', () => {
+      expect(sending(HIM, amount(43), TICKED, 9)).toMatchObject({
+        press: 'sends',
+        sending: { to: PAYMENTS, body: { competitorId: 58, received: 43, statementLine: 9 } },
+      })
+
+      const granted = sending({ ...HIM, balance: 0 }, { got: 'nothing' }, CLEARED, 9)
+
+      expect(JSON.stringify(granted)).not.toContain('statementLine')
+      expect(granted.press).toBe('asksAboutTheExemption')
+    })
+
+    /**
      * CASE 7, and <b>the first case that measures the join</b>: 50 is neither the expected amount
      * nor the balance nor any shortfall, so the number on the wire can only have come from the
      * field.

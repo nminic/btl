@@ -627,7 +627,17 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file, read off
 			   this very assertion when it ran before the entry existed. */
 			new Applied("73", "V73__the_privacy_policy_says_the_date_of_birth_is_not_shown_to_others.sql",
-					-936128839));
+					-936128839),
+
+			/* V74. A bank statement is remembered and its file is not (owner, 24.10.2026, PDL „Učitavanje
+			   izvoda iz banke na ekranu Uplate": „Server pamti broj izvoda i stavke (da se isti izvod ne
+			   knjiži dvaput), a sam PDF ne čuva.").
+
+			   74 and not 73, MEASURED on 25.10.2026: V73 (pull request 644) was merged on 25.10.2026 and stands just
+			   above; no remote branch holds V74, measured again that day when main was merged into this branch.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("74", "V74__a_bank_statement_is_remembered_and_its_file_is_not.sql", -1979659123));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
