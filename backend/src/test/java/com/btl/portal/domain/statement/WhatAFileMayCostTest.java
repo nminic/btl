@@ -280,6 +280,24 @@ class WhatAFileMayCostTest {
 		}
 	}
 
+	/** AND A CONTENT WITH NO FILTER IS MEASURED AGAINST WHAT IS LEFT, not against the whole budget. */
+	@Test
+	void aContentWithNoFilterIsMeasuredAgainstWhatTheOthersLeft() throws Exception {
+		try (PDDocument document = new PDDocument()) {
+			aPage(document, content(document, 500));
+			COSStream plain = document.getDocument().createCOSStream();
+
+			try (OutputStream out = plain.createRawOutputStream()) {
+				out.write(new byte[600]);
+			}
+
+			aPage(document, plain);
+
+			assertThatCode(() -> measured(document, 1_100)).doesNotThrowAnyException();
+			tooMuch(document, 1_099, "decoded bytes");
+		}
+	}
+
 	/** A CONTENT IN SEVERAL STREAMS costs all of them; a page with no content costs nothing. */
 	@Test
 	void aContentInSeveralStreamsCostsAllOfThemAndNoContentCostsNothing() throws Exception {
