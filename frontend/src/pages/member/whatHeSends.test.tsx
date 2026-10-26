@@ -155,6 +155,10 @@ describe('nothing to send', () => {
     ['in Serbia, when the answer says a membership already stands', IN_SERBIA, anInvoice(2027, 'RSD', { alreadyAMember: true })],
     /* An amount still on the answer, so what hides the part is the membership and not a nought. */
     ['abroad, when the answer says a membership already stands', ABROAD, anInvoice(2027, 'EUR', { alreadyAMember: true })],
+    /* Nothing is asked of him in these two, so the money the answer names is not looked at, and they
+       say nothing about an amount that did not arrive. */
+    ['in Serbia, when a membership stands and the answer names euro', IN_SERBIA, anInvoice(2027, 'EUR', { alreadyAMember: true })],
+    ['abroad, when the balance covers the fee and the answer names dinars', ABROAD, anInvoice(2027, 'RSD', { toTransfer: 0, fromTheBalance: 4800 })],
   ])('draws no amount, no part „PayPal" and points at none %s', async (_what, member, invoice) => {
     const { asked } = openHisPage(member, invoice)
 
