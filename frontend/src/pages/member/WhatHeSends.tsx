@@ -4,6 +4,7 @@ import { QrCode } from '../../components/QrCode'
 import { Unreadable } from '../../components/Unreadable'
 import {
   ipsPayload,
+  methodFor,
   PAYPAL_ADDRESS,
   RECIPIENT_ACCOUNT,
   RECIPIENT_ADDRESS,
@@ -50,12 +51,19 @@ function written(amount: MyBalance, locale: string): string {
  * record a promise about a slip nobody was shown. So the parent draws this inside the one branch of
  * the panel that offers a payment, and never anywhere else.
  *
- * <p><b>A list of none or one, as every amount on this screen.</b> An answer about another season
- * than the one this panel sells, an answer saying a membership already stands, an amount in a money
- * that is not this way to pay, and nothing left to transfer all draw no slip and no PayPal amount,
- * and the sentence that says the data follows goes with them. Nothing left to transfer is the
- * balance covering the whole fee: no code then (PDL, 26.09.2026, „Balans veći ili jednak članarini
- * aktivira članstvo bez uplate"; owner, 25.10.2026, no slip, no QR and no PayPal amount for it).
+ * <p><b>A list of none or one, as every amount on this screen.</b> An answer saying a membership
+ * already stands and nothing left to transfer draw no slip and no part „PayPal" at all, its heading
+ * and its note about the business address included, and the sentence that says the data follows
+ * goes with them (PDL, decision of 25.10.2026, „ne crta se ni deo „PayPal""). Nothing left to transfer
+ * is the balance covering the whole fee: no code then (PDL, 26.09.2026, „Balans veći ili jednak
+ * članarini aktivira članstvo bez uplate"; owner, 25.10.2026, no slip, no QR and no PayPal amount for
+ * it).
+ *
+ * <p><b>An answer about another season than the one this panel sells, or asking in a money that is not
+ * his way to pay, is not one of those</b>: it says the sentence of an amount that did not arrive, with
+ * „Pokušaj ponovo" (PDL, decision of 25.10.2026, „ista rečenica kao kad iznos ne stigne"). The read
+ * itself turns it into one that did not answer (`useMyMembership`), so it reaches this part as the
+ * failure it is drawn as, and everything below is drawn off an answer already held to this panel.
  *
  * <p><b>AND THE BUTTON THAT LETS HIM IN ON HIS BALANCE, read off `coveredByTheBalance` and never off a
  * transfer of nought</b> (owner, 25.10.2026, PDL „Dugme „Aktiviraj članstvo" na „Mojoj članarini""). The
@@ -94,16 +102,16 @@ export function WhatHeSends({
   onCovered: (covered: boolean) => void
 }) {
   const { locale, t } = useI18n()
-  const owed = useMyMembership(asked)
+  const owed = useMyMembership(asked, season, methods)
   const anchor = useRef<HTMLSpanElement>(null)
   const keptTheFocus = useRef(false)
   const failedOnce = useRef(false)
 
-  /* Only an answer about the season this panel sells, and only where no membership of it stands: a list
-     of none or one, and everything below is drawn off it. Worked out before the answer is looked at in
-     any other way, because the sentence outside this part has to be told about it in an effect. */
-  const about =
-    owed.status === 'ready' && owed.data.season === season && !owed.data.alreadyAMember ? [owed.data] : []
+  /* Only where no membership of the season stands: a list of none or one, and everything below is drawn
+     off it. The read has already held the answer to this panel's season and to his way to pay. Worked
+     out before the answer is looked at in any other way, because the sentence outside this part has to
+     be told about it in an effect. */
+  const about = owed.status === 'ready' && !owed.data.alreadyAMember ? [owed.data] : []
   const covered = about.filter((one) => one.coveredByTheBalance)
   const coveredAtAll = covered.length > 0
 
@@ -148,10 +156,10 @@ export function WhatHeSends({
     )
   }
 
-  const inDinars = about.filter((one) => one.toTransfer.currency === 'RSD' && one.toTransfer.amount > 0)
-  const inEuro = about.filter((one) => one.toTransfer.currency === 'EUR' && one.toTransfer.amount > 0)
-  const slip = methods.includes('ips') ? inDinars : []
-  const paypal = methods.includes('paypal') ? inEuro : []
+  /* Split by the money of the answer, which the read has already held to a way he pays. */
+  const owing = about.filter((one) => one.toTransfer.amount > 0)
+  const slip = owing.filter((one) => methodFor(one.toTransfer.currency) === 'ips')
+  const paypal = owing.filter((one) => methodFor(one.toTransfer.currency) === 'paypal')
   const drawn = [...slip, ...paypal]
 
   return (
@@ -260,53 +268,54 @@ export function WhatHeSends({
           }
         />
       ))}
-      {methods.includes('paypal') && (
-        <div className="pay">
+      {/* THE WHOLE PART, HEADING AND NOTE INCLUDED, ONLY WHERE THERE IS AN AMOUNT TO SEND (PDL, decision
+          of 25.10.2026, „ne crta se ni deo „PayPal""): a heading and a note about an address with no
+          address and no amount under them point at a payment that is not there. */}
+      {paypal.map((one) => (
+        <div className="pay" key="paypal">
           <h4>{t('membership.paypal')}</h4>
           <p className="member__note">{t('membership.paypalNote')}</p>
           {/* What a member abroad sends through PayPal, fee included (owner, 27.09.2026: „cena
               ostaje 35, clan salje 38, a taksa se vidi kao svoj red"), less what his balance pays:
               the answer's transfer plus the answer's fee, as letter C adds them. */}
-          {paypal.map((one) => (
-            <div className="pay__slipText" key="paypal">
-              <dl className="pay__details">
-                <dt>{t('membership.toWhom')}</dt>
-                <dd>{RECIPIENT_NAME}</dd>
-              </dl>
-              <CopyField
-                label={t('membership.paypalAddressLabel')}
-                value={PAYPAL_ADDRESS}
-                copyButtonLabel={t('membership.paypalCopyAddress')}
-                copiedMessage={t('membership.paypalAddressCopied')}
-                failedMessage={t('membership.paypalAddressCopyFailed')}
-              />
-              {/* Two decimals always: this figure is typed into a PayPal amount field. */}
-              <CopyField
-                label={t('membership.paypalAmountLabel')}
-                value={formatNumber(
-                  Math.round((one.toTransfer.amount + one.processingFeeEur) * 100) / 100,
-                  locale,
-                  2,
-                )}
-                copyButtonLabel={t('membership.paypalCopyAmount')}
-                copiedMessage={t('membership.paypalAmountCopied')}
-                failedMessage={t('membership.paypalAmountCopyFailed')}
-              />
-              {/* AND NOT AT ALL FOR SOMEBODY WHO HAS NO REFERENCE (PDL P8, 10.10.2026): the note is
-                  made of the reference and of nothing else. */}
-              {!neverPaid && (
-                <CopyField
-                  label={t('membership.paypalNoteLabel')}
-                  value={reference}
-                  copyButtonLabel={t('membership.paypalCopyNote')}
-                  copiedMessage={t('membership.paypalNoteCopied')}
-                  failedMessage={t('membership.paypalNoteCopyFailed')}
-                />
+          <div className="pay__slipText">
+            <dl className="pay__details">
+              <dt>{t('membership.toWhom')}</dt>
+              <dd>{RECIPIENT_NAME}</dd>
+            </dl>
+            <CopyField
+              label={t('membership.paypalAddressLabel')}
+              value={PAYPAL_ADDRESS}
+              copyButtonLabel={t('membership.paypalCopyAddress')}
+              copiedMessage={t('membership.paypalAddressCopied')}
+              failedMessage={t('membership.paypalAddressCopyFailed')}
+            />
+            {/* Two decimals always: this figure is typed into a PayPal amount field. */}
+            <CopyField
+              label={t('membership.paypalAmountLabel')}
+              value={formatNumber(
+                Math.round((one.toTransfer.amount + one.processingFeeEur) * 100) / 100,
+                locale,
+                2,
               )}
-            </div>
-          ))}
+              copyButtonLabel={t('membership.paypalCopyAmount')}
+              copiedMessage={t('membership.paypalAmountCopied')}
+              failedMessage={t('membership.paypalAmountCopyFailed')}
+            />
+            {/* AND NOT AT ALL FOR SOMEBODY WHO HAS NO REFERENCE (PDL P8, 10.10.2026): the note is
+                made of the reference and of nothing else. */}
+            {!neverPaid && (
+              <CopyField
+                label={t('membership.paypalNoteLabel')}
+                value={reference}
+                copyButtonLabel={t('membership.paypalCopyNote')}
+                copiedMessage={t('membership.paypalNoteCopied')}
+                failedMessage={t('membership.paypalNoteCopyFailed')}
+              />
+            )}
+          </div>
         </div>
-      )}
+      ))}
     </>
   )
 }
