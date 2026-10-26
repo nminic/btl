@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef } from 'react'
 import { CopyField } from '../../components/CopyField'
 import { QrCode } from '../../components/QrCode'
 import { Unreadable } from '../../components/Unreadable'
@@ -55,8 +55,16 @@ function written(amount: MyBalance, locale: string): string {
  * that is not this way to pay, and nothing left to transfer all draw no slip and no PayPal amount,
  * and the sentence that says the data follows goes with them. Nothing left to transfer is the
  * balance covering the whole fee: no code then (PDL, 26.09.2026, „Balans veći ili jednak članarini
- * aktivira članstvo bez uplate"; owner, 25.10.2026, no slip, no QR and no PayPal amount for it). The
- * press that activates it is a separate piece of work and not here.
+ * aktivira članstvo bez uplate"; owner, 25.10.2026, no slip, no QR and no PayPal amount for it).
+ *
+ * <p><b>AND THE BUTTON THAT LETS HIM IN ON HIS BALANCE, read off `coveredByTheBalance` and never off a
+ * transfer of nought</b> (owner, 25.10.2026, PDL „Dugme „Aktiviraj članstvo" na „Mojoj članarini""). The
+ * two are different facts: the first is today's book against the fee, the second what the slip of the
+ * season promised. A member whose balance grew past the fee after his slip was minted has both - „vidi i
+ * dugme i uplatnicu, pa bira" - so the button and the slip are each drawn off their own field, and either
+ * may stand without the other. Drawn whatever way he pays: the balance is not a way to pay a transfer.
+ * The press itself, and what stands after it, are the parent's (`useLetMeIn`), because the answer moves
+ * the season he holds, and that takes this whole part off the page.
  */
 export function WhatHeSends({
   asked,
@@ -65,6 +73,9 @@ export function WhatHeSends({
   neverPaid,
   purpose,
   reference,
+  sending,
+  onLetMeIn,
+  onCovered,
 }: {
   /** Whose read this is: his number, or the account of somebody who has not paid. */
   asked: number | string
@@ -74,12 +85,35 @@ export function WhatHeSends({
   neverPaid: boolean
   purpose: string
   reference: string
+  /** A press of „Aktiviraj članstvo" is out, so the button says it is busy and the sentence says why. */
+  sending: boolean
+  /** The press. */
+  onLetMeIn: () => void
+  /** Told whether the button is drawn, for the one sentence about him that stands outside this part:
+   *  how somebody who has not paid gets his number (PDL, 25.10.2026). */
+  onCovered: (covered: boolean) => void
 }) {
   const { locale, t } = useI18n()
   const owed = useMyMembership(asked)
   const anchor = useRef<HTMLSpanElement>(null)
   const keptTheFocus = useRef(false)
   const failedOnce = useRef(false)
+
+  /* Only an answer about the season this panel sells, and only where no membership of it stands: a list
+     of none or one, and everything below is drawn off it. Worked out before the answer is looked at in
+     any other way, because the sentence outside this part has to be told about it in an effect. */
+  const about =
+    owed.status === 'ready' && owed.data.season === season && !owed.data.alreadyAMember ? [owed.data] : []
+  const covered = about.filter((one) => one.coveredByTheBalance)
+  const coveredAtAll = covered.length > 0
+
+  /* NO CLEAN-UP THAT TELLS IT `false` ON THE WAY OUT, and that is measured rather than forgotten: the
+     sentence it feeds is drawn only to somebody who has not paid, and this part leaves the page for him
+     only when he is let in (and the sentence goes with his standing) or is read again (and the new one
+     says `false` while it reads). No case could see such a clean-up, so it would be a line nothing holds. */
+  useEffect(() => {
+    onCovered(coveredAtAll)
+  }, [coveredAtAll, onCovered])
 
   /* THE FOCUS COMES BACK HERE when the button that asked again leaves with it, the shape
      `components/Resource.tsx` has for a part (WCAG 2.2 SC 2.4.3): only if it left with the focus on
@@ -114,7 +148,6 @@ export function WhatHeSends({
     )
   }
 
-  const about = owed.data.season === season && !owed.data.alreadyAMember ? [owed.data] : []
   const inDinars = about.filter((one) => one.toTransfer.currency === 'RSD' && one.toTransfer.amount > 0)
   const inEuro = about.filter((one) => one.toTransfer.currency === 'EUR' && one.toTransfer.amount > 0)
   const slip = methods.includes('ips') ? inDinars : []
@@ -128,6 +161,32 @@ export function WhatHeSends({
           {t('membership.details')}
         </span>
       )}
+      {/* HIS BALANCE COVERS THE FEE, SO HE MAY LET HIMSELF IN (owner, 25.10.2026: „Aktiviraj članstvo",
+          the sentence above it as offered, no window asking him to confirm, because letter G promises
+          „jednim klikom"). First on the panel, above any slip, for the member who has both. The season
+          is the answer's, which the list already requires to be this panel's. */}
+      {covered.map((one) => (
+        <Fragment key="letMeIn">
+          <p className="member__note">{t('membership.coveredByTheBalance', { season: one.season })}</p>
+          <div className="member__links">
+            <button
+              type="button"
+              className="button button--primary"
+              aria-disabled={sending ? true : undefined}
+              onClick={onLetMeIn}
+            >
+              {t('membership.letMeIn')}
+            </button>
+          </div>
+          {/* Said in words while it is true (WCAG 2.2 AA, 4.1.3), in the portal's sentence for a request
+              that is out, as „Potvrdi izlazak" says it on the same screen. */}
+          {sending && (
+            <p className="member__note" role="status">
+              {t('results.sending')}
+            </p>
+          )}
+        </Fragment>
+      ))}
       {/* „Podatke za uplatu vidiš u nastavku." ONLY WHERE THE DATA IT POINTS AT REALLY FOLLOWS
           (review of PR 385, three rounds, one per axis): read off `drawn`, which is exactly what the
           slip and the PayPal amount below are drawn from, so the sentence cannot drift from them. A

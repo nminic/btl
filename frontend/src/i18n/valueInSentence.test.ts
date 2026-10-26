@@ -420,6 +420,10 @@ describe('a sentence with a value put into it', () => {
          `PROCESSING_FEE_EUR` written straight into the sentence and it is the served row
          now, so it is formatted like the two amounts either side of it. */
       'membership.costs <- money',
+      /* The season a member's balance pays for, beside the button that lets him in on it (owner,
+         25.10.2026, the agent's words). A bare year after „za sezonu", which follows as a label and
+         does not decline. */
+      'membership.coveredByTheBalance',
       'membership.feeExempt',
       /* The heading of the panel somebody who has not paid pays in, which takes the season the
          way the renewal heading below takes it (`membership.renewal`): a bare number from the
@@ -442,6 +446,11 @@ describe('a sentence with a value put into it', () => {
          „tim" and leaves the name itself alone. No formatter writes it: `Team.name` is
          handed over as the server answers it. */
       'membership.leaveTeamAsk',
+      /* What the press of „Aktiviraj članstvo" came to (owner, 25.10.2026, the agent's words): the season
+         the server let him in for, a bare year after „za sezonu", and his new number after „je", both
+         labels that do not decline. */
+      'membership.letIn',
+      'membership.letInNumber',
       /* And the two bases of the season on sale said in „Stanje" with the year, after „sezonu",
          which the year follows as a label and does not decline (PDL P8, 18.10.2026). */
       'membership.paidFor',

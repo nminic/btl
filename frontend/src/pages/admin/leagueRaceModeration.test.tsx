@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import axe from 'axe-core'
 import { arrivedResource, clearResourceCache } from '../../data/client'
 import { renderAt } from '../../test/render'
@@ -512,6 +512,168 @@ describe('which races count towards a competition', () => {
 
       server.stop()
     }, SLOW)
+
+  /**
+   * WHEN THE BROWSER HAS FORGOTTEN THE WORD OF THE TRIAL PERIOD (owner, 22.10.2026, ADL „portal to kaže
+   * i nudi novu karticu"; 23.10.2026, PDL: the message „važi za svaki ekran koji upisuje [...] među njima
+   * [...] odobravanje trka lige").
+   *
+   * **The words are written out and not read from the dictionary**, for the reason
+   * `account/theSiteIsLocked.test.tsx` gives. Until 25.10.2026 this panel said „Osveži stranu pa pokušaj
+   * ponovo" for it, which is the refresh the owner turned down, so that sentence is asked to be absent.
+   *
+   * **The axes, counted.** The lock and the portal's own 401 are one number and two answers. Adding a
+   * race and taking one out are two writes of one panel. Two boxes are open, so a sentence drawn in every
+   * panel is one too many. And a press that goes through after it takes the sentence away.
+   */
+  describe('when the site is locked against the press', () => {
+    const SENTENCE =
+      'Pregledač je zaboravio pristupnu šifru za probni period. Otvori portal u novoj kartici i ukucaj je tamo, pa se vrati ovde i pošalji ponovo; ono što si upisao je i dalje tu.'
+
+    const OPEN = 'Otvori u novoj kartici'
+
+    const REFRESH = 'Osveži stranu'
+
+    /* HALF OF A CASE'S CLOCK FOR EVERY WAIT of these cases (`pages/admin/saveWhileSaving.test.tsx`), so a
+       sentence never drawn, or drawn twice, fails on its assertion and not as a case that ran out of time
+       (btl/CLAUDE.md, section 25). Measured: without it, three mutations of this panel were read as
+       nothing at all, every case ending on the clock. */
+    const HALF = SLOW / 2
+
+    /** A 401 as the proxy gives it: no body, the challenge on it. */
+    const theProxy = () =>
+      new Response(null, { status: 401, headers: { 'www-authenticate': 'Basic realm="restricted"' } })
+
+    /**
+     * The same competitions, and each WRITE answered in turn by what the case hands in, the last one
+     * again after that. Counted on the verb, because `serving` answers every request that is not a
+     * resource with the same function, the read that hands out the token included, and a turn spent on
+     * that read is a press answered with the wrong one.
+     */
+    function inTurn(...answers: (() => Response)[]) {
+      clearResourceCache()
+      let next = 0
+
+      return serverThat((path, init) => {
+        if (path === '/api/leagues') {
+          return new Response(JSON.stringify(LEAGUES), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        }
+
+        if (isResource(path)) {
+          return null
+        }
+
+        if (init?.method === undefined || init.method === 'GET') {
+          return did()
+        }
+
+        const answer = answers[Math.min(next, answers.length - 1)] ?? did
+
+        next += 1
+
+        return answer()
+      })
+    }
+
+    async function chooseADay(user: ReturnType<typeof setupUser>) {
+      await user.selectOptions(
+        screen.getByLabelText('Događaj', { selector: `#league-moderation-${ACTED}-event` }),
+        String(A_DAY_NOBODY_COUNTS),
+      )
+      await user.selectOptions(
+        screen.getByLabelText('Trka', { selector: `#league-moderation-${ACTED}-race` }),
+        String(THE_RACE_OF_THAT_DAY),
+      )
+    }
+
+    it('says so in the box that was pressed, with the way to a new tab, and keeps what was chosen', async () => {
+      const server = serving(theProxy)
+      const user = await openTheBox()
+      /* AND A SECOND BOX OPEN BESIDE IT, so a sentence drawn in every panel is one too many. */
+      await user.click(screen.getByRole('button', { name: `Trke u ligi ${NOTHING_YET}` }))
+
+      const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
+      const other = must(document.getElementById(`league-moderation-${COUNTS_NOTHING}`), 'the other box')
+
+      await chooseADay(user)
+      await user.click(within(box).getByRole('button', { name: 'Dodaj u ligu' }))
+
+      expect(await within(box).findByRole('alert', {}, { timeout: HALF })).toHaveTextContent(SENTENCE)
+      expect(within(box).getByRole('link', { name: OPEN })).toHaveAttribute('href', '/sr')
+      expect(box.textContent ?? '').not.toContain(REFRESH)
+      expect(other.textContent ?? '').not.toContain(SENTENCE)
+      /* „ono što si upisao je i dalje tu": the two choosers hold what was chosen. */
+      expect(screen.getByLabelText('Događaj', { selector: `#league-moderation-${ACTED}-event` })).toHaveValue(
+        String(A_DAY_NOBODY_COUNTS),
+      )
+      expect(screen.getByLabelText('Trka', { selector: `#league-moderation-${ACTED}-race` })).toHaveValue(
+        String(THE_RACE_OF_THAT_DAY),
+      )
+      /* And nothing was counted. */
+      expect(within(box).getAllByRole('button', { name: /^Izbaci trku/ })).toHaveLength(2)
+
+      server.stop()
+    }, SLOW)
+
+    it('says so for a race taken out, which stays counted', async () => {
+      const server = serving(theProxy)
+      const user = await openTheBox()
+      const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
+
+      await user.click(within(box).getByRole('button', { name: /^Izbaci trku Beogradski maraton/ }))
+
+      expect(await within(box).findByRole('alert', {}, { timeout: HALF })).toHaveTextContent(SENTENCE)
+      expect(box.textContent ?? '').not.toContain(REFRESH)
+      expect(within(box).getAllByRole('button', { name: /^Izbaci trku/ })).toHaveLength(2)
+
+      server.stop()
+    }, SLOW)
+
+    it('says the panel’s own sentence and not the lock when the portal itself answered 401, which carries no challenge', async () => {
+      const server = serving(() => new Response(null, { status: 401 }))
+      const user = await openTheBox()
+
+      await chooseADay(user)
+      await user.click(screen.getByRole('button', { name: 'Dodaj u ligu' }))
+
+      const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
+
+      expect(await within(box).findByRole('alert', {}, { timeout: HALF })).toHaveTextContent(
+        'Portal nije prihvatio izmenu. Osveži stranu pa pokušaj ponovo.',
+      )
+      expect(screen.queryByText(SENTENCE)).not.toBeInTheDocument()
+      expect(within(box).queryByRole('link', { name: OPEN })).not.toBeInTheDocument()
+
+      server.stop()
+    }, SLOW)
+
+    it('takes the sentence away when the next press goes through', async () => {
+      const server = inTurn(theProxy, did)
+      const user = await openTheBox()
+
+      await chooseADay(user)
+      await user.click(screen.getByRole('button', { name: 'Dodaj u ligu' }))
+
+      const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
+
+      expect(await within(box).findByRole('alert', {}, { timeout: HALF })).toHaveTextContent(SENTENCE)
+
+      await user.click(within(box).getByRole('button', { name: 'Dodaj u ligu' }))
+
+      await waitFor(() => {
+        expect(within(box).getAllByRole('button', { name: /^Izbaci trku/ })).toHaveLength(3)
+      }, { timeout: HALF })
+      /* Two presses reached the server, so the second is what the sentence went away for. */
+      expect(writes(server.asked).map((one) => one.how)).toEqual(['POST', 'POST'])
+      expect(screen.queryByText(SENTENCE)).not.toBeInTheDocument()
+      expect(within(box).queryByRole('link', { name: OPEN })).not.toBeInTheDocument()
+
+      server.stop()
+    }, SLOW)
+  })
 
   /**
    * THE ROW ABOVE THE BOX, WHICH IS WHERE THIS PANEL'S WRITES WERE NOT ARRIVING.

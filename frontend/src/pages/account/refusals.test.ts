@@ -29,6 +29,7 @@ import {
 } from '../admin/memberMembership'
 import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
 import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
+import { WHEN_LETTING_MYSELF_IN } from '../member/fromTheBalance'
 import { WHEN_CHOOSING_THE_LANGUAGE_OF_MAIL } from '../member/mailLanguage'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
 import { WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR } from '../member/pairWrites'
@@ -400,6 +401,10 @@ describe('the reasons the server can name', () => {
        uplati se BRIŠE.”), on this door and on `PaymentApi`'s below, and V64 takes the state out of
        the schema. The two that are not refusals did not move. */
     ['MembershipWriteApi.java', [WHEN_ACTIVATING], 8],
+    /* ADDED 25.10.2026 WITH THE BUTTON THAT LETS A MEMBER IN ON HIS OWN BALANCE (owner, 25.10.2026, PDL
+       „Dugme „Aktiviraj članstvo" na „Mojoj članarini""): `POST /api/me/membership` had stood since
+       26.09.2026 with no caller. Three constants and three reasons, each answered on „Moja članarina". */
+    ['MyMembershipWriteApi.java', [WHEN_LETTING_MYSELF_IN], 3],
     /* THE ELEVENTH, ADDED 28.09.2026, AND IT IS HERE BECAUSE OF WHAT HAPPENED WITHOUT IT.
        `admin/activation.ts` carried two sentences saying `POST /api/payments` takes no amount and
        spends the balance by what a QR code promised. Both were true when written and both were

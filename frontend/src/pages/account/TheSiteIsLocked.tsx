@@ -47,9 +47,11 @@ export function NewTabForTheAccess({ describedBy }: { describedBy?: string }) {
 
 /**
  * WHAT AN ANSWER OF „THE SITE IS LOCKED" IS DRAWN AS: the owner's sentence as an alert, and the
- * link to a new tab under it. The one home for both, because two screens draw an answer by name
- * (`ServerSaid`, and `WhatTheServerSaid` in the queues of administration) and a copy would be a
- * second place for a sentence that has to be word for word the owner's. <b>The sentence itself is
+ * link to a new tab under it. The one home for both, because three places draw it (`ServerSaid`,
+ * `WhatTheServerSaid` in the queues of administration, and since 25.10.2026 the races of a league,
+ * `admin/LeagueRaceModeration.tsx`, whose own sentences are not `ServerSaid`'s) and a copy would be a
+ * second place for a sentence that has to be word for word the owner's. Which places that write say it
+ * at all is held over the whole portal by `theLockIsSaid.test.ts`. <b>The sentence itself is
  * asked of `wordsFor`</b>, where every other sentence an answer gets is chosen, so the key is held in
  * one module (`serverWords.test.ts` reads that off the parser).
  *

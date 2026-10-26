@@ -1170,6 +1170,14 @@
     "noRanking": "A fee paid now does not give you the right to be ranked.",
     "paidFor": "The fee for season {season} is paid.",
     "paidFromBalance": "The fee for season {season} is paid from your balance.",
+    "coveredByTheBalance": "Your balance from the referral programme covers the fee for season {season}. Whatever is left stays on your balance for the next season.",
+    "letMeIn": "Activate membership",
+    "letIn": "Your membership for season {season} is activated.",
+    "letInNumber": "Your member number is {number}.",
+    "letInAlready": "Your membership for this season is already activated.",
+    "letInNothingToPay": "There is no fee for you to pay for this season.",
+    "letInNotEnough": "Your balance no longer covers the whole fee, so the payment details for the rest are below.",
+    "notPaidYetCovered": "Your fee has not been recorded yet, so you do not have a member number yet. You get one when you activate your membership from your balance.",
     "alreadyPaid": "The fee for {season} is already paid, so there is nothing to pay."
   },
   "review": {

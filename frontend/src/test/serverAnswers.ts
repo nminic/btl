@@ -321,7 +321,8 @@ export function anInvoice(
     processingFeeEur?: number
     alreadyAMember?: boolean
     /** What the book holds today, which is `fromTheBalance` unless the case says otherwise: it
-     *  parts company with it for a member whose balance grew after his code was minted. */
+     *  parts company with it for a member whose balance grew after his code was minted, and it is what
+     *  `coveredByTheBalance` is asked of. */
     balance?: number
   } = {},
 ): InvoiceAnswered {
@@ -339,7 +340,12 @@ export function anInvoice(
     fromTheBalance: money(fromTheBalance),
     toTransfer: money(toTransfer),
     processingFeeEur,
-    coveredByTheBalance: toTransfer === 0,
+    /* WHAT THE BOOK HOLDS TODAY AGAINST THE FEE, the server's own question (`Balance.against`), and
+       NOT whether anything is left to transfer. The two agree for every default, and part company for
+       a member whose balance grew past the fee after his slip was minted (owner, 25.10.2026: he „vidi i
+       dugme i uplatnicu"). Written as `toTransfer === 0` until that day, which made that member a
+       state no case could stand in. */
+    coveredByTheBalance: (changes.balance ?? fromTheBalance) >= toTransfer + fromTheBalance,
   }
 }
 
