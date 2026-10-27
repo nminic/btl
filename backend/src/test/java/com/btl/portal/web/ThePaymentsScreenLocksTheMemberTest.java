@@ -83,7 +83,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @Import(TestcontainersConfiguration.class)
 class ThePaymentsScreenLocksTheMemberTest {
 
-	private static final Instant AFTER_THE_FIFTEENTH = Instant.parse("2027-10-20T09:00:00Z");
+	private static final Instant AFTER_THE_FIFTEENTH = Instant.parse("2027-11-16T09:00:00Z");
 
 	/** Distinct from every other fixture's, on purpose: these rows are committed. */
 	private static final String MODERATOR = "uplate-zakljucavanje-moderator@primer.rs";

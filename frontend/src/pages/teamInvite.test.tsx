@@ -830,7 +830,7 @@ describe('which day the answer is read off', () => {
       <>
         <Invite from={DUNAV} who="000002" />
         <Become who="000002" />
-        <Day on="2027-10-15" />
+        <Day on="2027-11-11" />
       </>,
     )
 
@@ -845,7 +845,7 @@ describe('which day the answer is read off', () => {
        was sent it would be 2027, a season already run from end to end, and the club would
        count every result that member has. */
     await user.click(await screen.findByRole('button', { name: 'pozovi 000002 u tim 1' }))
-    await user.click(screen.getByRole('button', { name: 'danas je 2027-10-15' }))
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-11-11' }))
     await user.click(screen.getByRole('button', { name: 'postani 000002' }))
     await openTheInvitation(user)
     await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
@@ -870,7 +870,7 @@ describe('which day the answer is read off', () => {
         <Invite from={VARDAR} who="000002" />
         <Become who="000003" />
         <Become who="000002" />
-        <Day on="2027-10-15" />
+        <Day on="2027-11-11" />
         <Day on="2027-11-20" />
       </>,
     )
@@ -882,7 +882,7 @@ describe('which day the answer is read off', () => {
     await user.click(await screen.findByRole('button', { name: 'pozovi 000002 u tim 1' }))
     await user.click(screen.getByRole('button', { name: 'pozovi 000002 u tim 3' }))
 
-    await user.click(screen.getByRole('button', { name: 'danas je 2027-10-15' }))
+    await user.click(screen.getByRole('button', { name: 'danas je 2027-11-11' }))
     await user.click(screen.getByRole('button', { name: 'postani 000002' }))
 
     const both = (await inbox(user)).filter((one) => /Poziv u tim "/.test(one.textContent ?? ''))
@@ -898,7 +898,7 @@ describe('which day the answer is read off', () => {
 
     const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
 
-    expect(must(told[0], 'the notice Vardar was sent').textContent).toContain('15. 10. 2027.')
+    expect(must(told[0], 'the notice Vardar was sent').textContent).toContain('11. 11. 2027.')
   }, SEVERAL_SCREENS)
 
 })

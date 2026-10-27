@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.MonthDay;
 import java.util.List;
 
@@ -26,10 +27,10 @@ public class MembershipPriceTest {
 	   ne mogu raziti. Bez toga bi se sedam iznosa prepisivalo, a A12 to zabranjuje. */
 
 	public static final List<MembershipPrice.Row> ROWS = List.of(
-			row("early", "period", "10-15", "10-31", 35, 4200, true),
-			row("regular", "period", "11-01", "11-30", 40, 4800, true),
-			row("late", "period", "12-01", "12-31", 50, 6000, true),
-			row("season", "period", "01-01", "10-14", 40, 4800, false),
+			row("early", "period", "11-11", "11-20", 35, 4200, true),
+			row("regular", "period", "11-21", "12-31", 40, 4800, true),
+			row("late", "period", "01-01", "03-31", 50, 6000, true),
+			row("season", "period", "04-01", "11-10", 40, 4800, false),
 			row("junior", "level", null, null, 20, 2400, null),
 			row("processing", "fee", null, null, 3, null, null),
 			row("referral", "referral", null, null, 5, 600, null));
@@ -58,16 +59,17 @@ public class MembershipPriceTest {
 	 */
 	@ParameterizedTest
 	@CsvSource({
-			"01-01, season",   // the year opens in the late window's aftermath
+			"01-01, late",     // the year opens inside the ranked months of the running season
+			"03-31, late",
+			"04-01, season",   // and the running season goes on without the right to be ranked
 			"09-30, season",
-			"10-01, season",   // no longer the early window, and nothing else says so
-			"10-14, season",   // and that period now runs to the middle of October
-			"10-15, early",    // the seventeen days open
-			"10-31, early",    // and close with the month
-			"11-01, regular",
-			"11-30, regular",
-			"12-01, late",
-			"12-31, late"      // the year ends here
+			"10-15, season",   // no longer the early window, and nothing else says so
+			"11-01, season",   // nor the regular one
+			"11-10, season",   // that period now runs to the eve of the cycle
+			"11-11, early",    // the ten days open
+			"11-20, early",    // and close
+			"11-21, regular",
+			"12-31, regular"   // the year ends here
 	})
 	void everyBoundaryBetweenThePeriodsIsWhereItShouldBe(String day, String key) {
 		assertThat(MembershipPrice.periodFor(ROWS, monthDay(day)).key()).isEqualTo(key);
@@ -76,12 +78,40 @@ public class MembershipPriceTest {
 	/** What a member pays in each period, in both currencies. */
 	@Test
 	void thePriceIsThePriceOfTheDay() {
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-20"), 1990, 2027, Currency.EUR).amount())
+		assertThat(MembershipPrice.on(ROWS, in2027("11-15"), 1990, 2027, Currency.EUR).amount())
 				.isEqualByComparingTo("35");
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-20"), 1990, 2027, Currency.RSD).amount())
+		assertThat(MembershipPrice.on(ROWS, in2027("11-15"), 1990, 2027, Currency.RSD).amount())
 				.isEqualByComparingTo("4200");
-		assertThat(MembershipPrice.on(ROWS, monthDay("12-15"), 1990, 2027, Currency.EUR).amount())
+		assertThat(MembershipPrice.on(ROWS, in2027("02-15"), 1990, 2027, Currency.EUR).amount())
 				.isEqualByComparingTo("50");
+	}
+
+	/**
+	 * DURING THE FIRST SALE OF 2026 THE PRICE IS THE CYCLE'S FIRST, and in 2027 the same fortnight is the running season's.
+	 *
+	 * <p>Owner, 27.10.2026: „hocu da ove godine ljudi i dalje mogu da se prijavljuju i pre 11.11. po uslovima koji ce
+	 * vaziti 11.11." The year is part of the question, which is why {@code on} takes a date: 1 November 2026 is read as
+	 * 11 November (35 EUR, 4.200 RSD, ranked) and 1 November 2027 as itself (40 EUR, 4.800 RSD, not ranked). Asked for
+	 * every currency, because the five readers of this class are billed in both.
+	 */
+	@Test
+	void theFirstSalePaysTheCyclesFirstPriceAndNoLaterYearDoes() {
+		assertThat(MembershipPrice.on(ROWS, LocalDate.of(2026, 11, 1), 1990, 2027, Currency.EUR).amount())
+				.isEqualByComparingTo("35");
+		assertThat(MembershipPrice.on(ROWS, LocalDate.of(2026, 10, 15), 1990, 2027, Currency.RSD).amount())
+				.isEqualByComparingTo("4200");
+		assertThat(MembershipPrice.on(ROWS, LocalDate.of(2026, 11, 10), 1990, 2027, Currency.EUR).ranking())
+				.isTrue();
+		assertThat(MembershipPrice.on(ROWS, LocalDate.of(2026, 10, 14), 1990, 2027, Currency.EUR).amount())
+				.as("the day before the first sale is still the running season's row")
+				.isEqualByComparingTo("40");
+		assertThat(MembershipPrice.on(ROWS, LocalDate.of(2026, 11, 21), 1990, 2027, Currency.EUR).amount())
+				.isEqualByComparingTo("40");
+		assertThat(MembershipPrice.on(ROWS, LocalDate.of(2027, 11, 1), 1990, 2028, Currency.EUR).amount())
+				.as("the exception of the first year was repeated in 2027")
+				.isEqualByComparingTo("40");
+		assertThat(MembershipPrice.on(ROWS, LocalDate.of(2027, 11, 1), 1990, 2028, Currency.EUR).ranking())
+				.isFalse();
 	}
 
 	/**
@@ -94,13 +124,13 @@ public class MembershipPriceTest {
 	 */
 	@Test
 	void theFeeIsOnEuroPaymentsAndNeverOnDinarOnes() {
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-20"), 1990, 2027, Currency.EUR).fee())
+		assertThat(MembershipPrice.on(ROWS, in2027("11-15"), 1990, 2027, Currency.EUR).fee())
 				.isEqualByComparingTo("3");
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-20"), 1990, 2027, Currency.RSD).fee())
+		assertThat(MembershipPrice.on(ROWS, in2027("11-15"), 1990, 2027, Currency.RSD).fee())
 				.as("a dinar payment was charged a fee that covers an intermediary it does not use")
 				.isEqualByComparingTo("0");
 
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-20"), 1990, 2027, Currency.EUR).amount())
+		assertThat(MembershipPrice.on(ROWS, in2027("11-15"), 1990, 2027, Currency.EUR).amount())
 				.as("the fee was added into the membership instead of standing beside it")
 				.isEqualByComparingTo("35");
 	}
@@ -114,11 +144,11 @@ public class MembershipPriceTest {
 	 */
 	@Test
 	void theJuniorPriceIsTheSameWheneverItIsPaid() {
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-20"), 2015, 2027, Currency.EUR).amount())
+		assertThat(MembershipPrice.on(ROWS, in2027("11-15"), 2015, 2027, Currency.EUR).amount())
 				.isEqualByComparingTo("20");
-		assertThat(MembershipPrice.on(ROWS, monthDay("12-31"), 2015, 2027, Currency.EUR).amount())
+		assertThat(MembershipPrice.on(ROWS, in2027("12-31"), 2015, 2027, Currency.EUR).amount())
 				.isEqualByComparingTo("20");
-		assertThat(MembershipPrice.on(ROWS, monthDay("12-31"), 2015, 2027, Currency.EUR).key())
+		assertThat(MembershipPrice.on(ROWS, in2027("12-31"), 2015, 2027, Currency.EUR).key())
 				.isEqualTo("junior");
 	}
 
@@ -132,17 +162,17 @@ public class MembershipPriceTest {
 	 * period, so it has no business answering it.
 	 */
 	@Test
-	void aJuniorWhoPaysInMarchIsNoMoreRankedThanAnybodyElseWhoDoes() {
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-20"), 2015, 2027, Currency.EUR).ranking())
+	void aJuniorWhoPaysInMayIsNoMoreRankedThanAnybodyElseWhoDoes() {
+		assertThat(MembershipPrice.on(ROWS, in2027("11-15"), 2015, 2027, Currency.EUR).ranking())
 				.as("a junior who paid in the window was refused a place")
 				.isTrue();
 
-		assertThat(MembershipPrice.on(ROWS, monthDay("03-15"), 2015, 2027, Currency.EUR).ranking())
-				.as("a junior who paid in March was told he could be ranked, and nobody else who"
+		assertThat(MembershipPrice.on(ROWS, in2027("05-15"), 2015, 2027, Currency.EUR).ranking())
+				.as("a junior who paid in May was told he could be ranked, and nobody else who"
 						+ " paid that day can be")
 				.isFalse();
 
-		assertThat(MembershipPrice.on(ROWS, monthDay("03-15"), 1990, 2027, Currency.EUR).ranking()).isFalse();
+		assertThat(MembershipPrice.on(ROWS, in2027("05-15"), 1990, 2027, Currency.EUR).ranking()).isFalse();
 	}
 
 	/**
@@ -173,9 +203,9 @@ public class MembershipPriceTest {
 				.filter(row -> !"late".equals(row.key()))
 				.toList();
 
-		assertThatThrownBy(() -> MembershipPrice.periodFor(withAGap, monthDay("12-15")))
+		assertThatThrownBy(() -> MembershipPrice.periodFor(withAGap, monthDay("02-15")))
 				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("12-15");
+				.hasMessageContaining("02-15");
 	}
 
 	/** And so does a price list with a row missing. */
@@ -185,7 +215,7 @@ public class MembershipPriceTest {
 				.filter(row -> !MembershipPrice.PROCESSING.equals(row.key()))
 				.toList();
 
-		assertThatThrownBy(() -> MembershipPrice.on(withoutTheFee, monthDay("10-20"), 1990, 2027, Currency.EUR))
+		assertThatThrownBy(() -> MembershipPrice.on(withoutTheFee, in2027("11-15"), 1990, 2027, Currency.EUR))
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining(MembershipPrice.PROCESSING);
 	}
@@ -268,6 +298,11 @@ public class MembershipPriceTest {
 		assertThat(MembershipPrice.amountIsWhole(new BigDecimal(written)))
 				.as("%s: it %s a fraction in it", written, whole ? "has no" : "has")
 				.isEqualTo(whole);
+	}
+
+	/** A date of 2027, which is a year with no exception: the list is read on the calendar day. */
+	private static LocalDate in2027(String written) {
+		return LocalDate.of(2027, Integer.parseInt(written.substring(0, 2)), Integer.parseInt(written.substring(3)));
 	}
 
 	private static MonthDay monthDay(String written) {

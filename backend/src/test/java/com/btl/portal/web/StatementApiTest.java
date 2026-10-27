@@ -61,7 +61,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @Transactional
 class StatementApiTest {
 
-	private static final Instant NOW = Instant.parse("2027-10-20T09:00:00Z");
+	private static final Instant NOW = Instant.parse("2027-11-16T09:00:00Z");
 
 	private static final int SEASON = 2028;
 
@@ -332,8 +332,8 @@ class StatementApiTest {
 		competitor("000031", "Janko", "Jankovic", A_TOWN_IN_SERBIA);
 		bookedByHand(dusko);
 
-		taken(statement(10).dated("24.10.2027").credit("JANKO JANKOVIĆ", "10.00", null, order()));
-		taken(statement(9).dated("23.10.2027")
+		taken(statement(10).dated("20.11.2027").credit("JANKO JANKOVIĆ", "10.00", null, order()));
+		taken(statement(9).dated("19.11.2027")
 				.credit("MARKO MARKOVIĆ", EXPECTED, "2028000027", order())
 				.credit("DUŠKO KUNIĆ", EXPECTED, null, order())
 				.credit("NEKO TREĆI", "50.00", null, order()));
@@ -377,7 +377,7 @@ class StatementApiTest {
 
 	@Test
 	void aWaitingLineSaysEverythingTheStatementPrinted() throws Exception {
-		taken(statement(11).dated("23.10.2027").item(new ASyntheticStatement.Item(true,
+		taken(statement(11).dated("19.11.2027").item(new ASyntheticStatement.Item(true,
 				"PETAR PETROVIĆ, ULICA 9, NOVI SAD", "160-0000000000002-22", new BigDecimal("1234.00"), "189",
 				List.of("Članarina", "za Petra"), "(97) 1234", "5900000000000777 (1900000000000777-1)")));
 
@@ -391,7 +391,7 @@ class StatementApiTest {
 		assertThat(line.get("purpose").asString()).isEqualTo("Članarina za Petra");
 		assertThat(line.get("reference").asString()).isEqualTo("1234");
 		assertThat(line.get("statement").asInt()).isEqualTo(11);
-		assertThat(line.get("dated").asString()).isEqualTo("2027-10-23");
+		assertThat(line.get("dated").asString()).isEqualTo("2027-11-19");
 		assertThat(line.get("season").asInt()).isEqualTo(SEASON);
 		assertThat(line.get("waitsBecause").asString()).isEqualTo("unknownReference");
 	}
@@ -652,7 +652,7 @@ class StatementApiTest {
 	   ------------------------------------------------------------------------------------ */
 
 	private ASyntheticStatement statement(int number) {
-		return ASyntheticStatement.number(number).dated("20.10.2027");
+		return ASyntheticStatement.number(number).dated("16.11.2027");
 	}
 
 	/** A fresh order number of the bank, never the same twice in one case. */

@@ -614,7 +614,7 @@ class CompetitorApi {
 		int season = SeasonClock.seasonTheBandIsWorkedOutFor(now);
 
 		/* AND THE SEASON ON SALE, WHICH IS THE ONE THE BASIS IS ANSWERED FOR, off the same reading
-		   of the clock. Not `season` above: from 15 October to 31 December the two are a year
+		   of the clock. Not `season` above: from 11 November to 31 December the two are a year
 		   apart, and the owner's decision of 18.10.2026 is about exactly that stretch. */
 		int sold = SeasonClock.seasonBeingPaidFor(now);
 

@@ -133,7 +133,7 @@ describe('the balance on „Moja članarina"', { timeout: SLOW }, () => {
     )
     stand(bookAsServed({ amount: 600, currency: 'RSD' }))
 
-    renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2027-11-01')
+    renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2027-11-25')
 
     expect(await screen.findByText(/Oslobođen si plaćanja članarine za sezonu 2028, odlukom/)).toBeVisible()
     expect(await screen.findByText('600 RSD')).toBeVisible()

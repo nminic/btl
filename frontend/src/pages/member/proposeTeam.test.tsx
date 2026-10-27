@@ -60,7 +60,7 @@ afterEach(() => {
 const DAY = '2026-10-15'
 
 /** A day inside the transfer window of the first season: the page of a team opens on 2027 and a team founded now begins in 2028. */
-const A_WINDOW_DAY_OF_THE_FIRST_SEASON = '2027-10-15'
+const A_WINDOW_DAY_OF_THE_FIRST_SEASON = '2027-11-11'
 
 describe('the way to propose a team', () => {
   it('is offered to a member who is in no team, on the standing of the teams', async () => {
@@ -161,7 +161,7 @@ describe('the way to propose a team', () => {
     await screen.findByRole('table', { name: 'Timovi' })
 
     expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
-    expect(screen.getByText(/od 15. oktobra do 31. decembra/)).toBeVisible()
+    expect(screen.getByText(/od 11. novembra do 31. decembra/)).toBeVisible()
 
     await router.navigate('/sr/novi-tim')
 
@@ -181,7 +181,7 @@ describe('the way to propose a team', () => {
 
     await screen.findByRole('table', { name: 'Timovi' })
 
-    expect(screen.queryByText(/od 15. oktobra do 31. decembra/)).toBeNull()
+    expect(screen.queryByText(/od 11. novembra do 31. decembra/)).toBeNull()
     expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
   })
 
@@ -197,7 +197,7 @@ describe('the way to propose a team', () => {
        that has not begun and the one the standing opens on are both 2027 (owner,
        16.10.2026, `seasonShown`), so on `DAY` the two halves of this case could not be
        told apart. */
-    renderAt('/sr/timovi', 'competitor', '000002', undefined, '2027-10-15')
+    renderAt('/sr/timovi', 'competitor', '000002', undefined, '2027-11-11')
 
     await screen.findByRole('table', { name: 'Timovi' })
 

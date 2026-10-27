@@ -23,7 +23,6 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.MonthDay;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -377,7 +376,7 @@ class StatementApi {
 	private BigDecimal expectedOf(long competitorId, int season) {
 		LocalDate born = db.sql("select birth_date from competitor where id = ?")
 				.param(competitorId).query(LocalDate.class).single();
-		MonthDay today = MonthDay.from(LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE));
+		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
 
 		return MembershipPrice.on(priceRows.all(), today, born.getYear(), season, DINARS).expected();
 	}

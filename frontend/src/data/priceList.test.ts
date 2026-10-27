@@ -111,44 +111,59 @@ describe('what membership costs on a day', () => {
 
   it('is the last period whose first day has passed, all the year round', () => {
     /* The four periods tile the year with no gap and no overlap, and every one of them is
-       reached: the year opens inside `season`, and the selling year opens on 15 October.
+       reached: the year opens inside `late`, and the selling year opens on 11 November.
        Boundaries on both sides of each window, because „the last period whose first day has
        passed" and „the period whose window contains today" are the same answer everywhere
        except on a boundary got wrong. */
     const on = (day: string) => inForceOn(bands, day).map((one) => one.key)
 
-    expect(on('2027-01-01')).toEqual(['season'])
+    expect(on('2027-01-01')).toEqual(['late'])
+    expect(on('2027-03-31')).toEqual(['late'])
+    expect(on('2027-04-01')).toEqual(['season'])
     expect(on('2027-09-30')).toEqual(['season'])
-    /* THE DAY THAT CHANGED SIDES on 29.09.2026: the early band opened here and this is now
-       an ordinary day of the running season's period. Every other row below reads the same
-       under the old list and the new one. */
-    expect(on('2027-10-01')).toEqual(['season'])
-    expect(on('2027-10-14')).toEqual(['season'])
-    expect(on('2027-10-15')).toEqual(['early'])
-    expect(on('2027-10-31')).toEqual(['early'])
-    expect(on('2027-11-01')).toEqual(['regular'])
-    expect(on('2027-11-30')).toEqual(['regular'])
-    expect(on('2027-12-01')).toEqual(['late'])
-    expect(on('2027-12-31')).toEqual(['late'])
+    /* THE DAYS THAT CHANGED SIDES on 27.10.2026: 15 October to 10 November was the early and
+       regular bands and is now the running season's period. Every other row below reads the
+       same under the old list and the new one. */
+    expect(on('2027-10-15')).toEqual(['season'])
+    expect(on('2027-11-01')).toEqual(['season'])
+    expect(on('2027-11-10')).toEqual(['season'])
+    expect(on('2027-11-11')).toEqual(['early'])
+    expect(on('2027-11-20')).toEqual(['early'])
+    expect(on('2027-11-21')).toEqual(['regular'])
+    expect(on('2027-12-31')).toEqual(['regular'])
+  })
+
+  it('reads the first sale of 2026 as the day the cycle opens, and no other year', () => {
+    /* Owner, 27.10.2026: „hocu da ove godine ljudi i dalje mogu da se prijavljuju i pre 11.11.
+       po uslovima koji ce vaziti 11.11." From 15 October to 10 November 2026 the price in force
+       is the early one, which the calendar alone would not say. */
+    const on = (day: string) => inForceOn(bands, day).map((one) => one.key)
+
+    expect(on('2026-10-14')).toEqual(['season'])
+    expect(on('2026-10-15')).toEqual(['early'])
+    expect(on('2026-11-01')).toEqual(['early'])
+    expect(on('2026-11-10')).toEqual(['early'])
+    expect(on('2026-11-21')).toEqual(['regular'])
+    expect(on('2027-11-01')).toEqual(['season'])
   })
 
   it('reads the window and not the order the answer arrived in', () => {
     /* THE SOURCE SWAP FOR THIS FUNCTION, and it is the one that matters: the served list
-       OPENS with 15 October and the year opens on 1 January, so a function that took the
+       OPENS with 11 November and the year opens on 1 January, so a function that took the
        first row, or the last, or trusted the answer's order would be right about some days
        and wrong about these. Handed the same rows backwards it has to answer the same thing.
      */
     const backwards = pricedInBoth([...ROWS].reverse())
 
-    expect(inForceOn(backwards, '2027-01-15').map((one) => one.key)).toEqual(['season'])
-    expect(inForceOn(backwards, '2027-10-20').map((one) => one.key)).toEqual(['early'])
+    expect(inForceOn(backwards, '2027-02-15').map((one) => one.key)).toEqual(['late'])
+    expect(inForceOn(backwards, '2027-11-12').map((one) => one.key)).toEqual(['early'])
   })
 
   it('answers nothing where the list holds no period at all', () => {
     /* Which the constant could never do - it was four rows a test held to tiling the year -
        and an answer can. A screen with no price to quote says nothing rather than quoting a
        figure nobody sent. */
-    expect(inForceOn(pricedInBoth(ROWS.filter((one) => one.kind !== A_PERIOD)), '2027-10-20')).toEqual(
+    expect(inForceOn(pricedInBoth(ROWS.filter((one) => one.kind !== A_PERIOD)), '2027-11-12')).toEqual(
       [],
     )
   })
@@ -161,20 +176,20 @@ describe('what membership costs on a day', () => {
        „it is dropped" is held rather than „it is not first". */
     const broken = pricedInBoth([...ROWS, like('early', { key: 'no-window', from: null })])
 
-    expect(inForceOn(broken, '2027-01-15').map((one) => one.key)).toEqual(['season'])
-    expect(inForceOn(broken, '2027-10-20').map((one) => one.key)).toEqual(['early'])
+    expect(inForceOn(broken, '2027-02-15').map((one) => one.key)).toEqual(['late'])
+    expect(inForceOn(broken, '2027-11-12').map((one) => one.key)).toEqual(['early'])
   })
 })
 
 describe('the window a row is sold in', () => {
   it('is the two days of the year, as a day is read', () => {
-    expect(windowOf(like('early', {}))).toBe('15.10. - 31.10.')
-    expect(windowOf(like('regular', {}))).toBe('1.11. - 30.11.')
+    expect(windowOf(like('early', {}))).toBe('11.11. - 20.11.')
+    expect(windowOf(like('regular', {}))).toBe('21.11. - 31.12.')
   })
 
   it('is nothing at all where the row has no window', () => {
     /* Both of them asked about and not only the first, although V4 ties them together: a cell
-       reading „15.10. - undefined" is what one answer alone would draw. */
+       reading „11.11. - undefined" is what one answer alone would draw. */
     expect(windowOf(like('junior', {}))).toBeNull()
     expect(windowOf(like('early', { to: null }))).toBeNull()
     expect(windowOf(like('early', { from: null }))).toBeNull()

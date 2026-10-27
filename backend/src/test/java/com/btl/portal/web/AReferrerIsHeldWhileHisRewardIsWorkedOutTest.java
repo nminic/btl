@@ -98,7 +98,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class AReferrerIsHeldWhileHisRewardIsWorkedOutTest {
 
 	/** The renewal window of 2027: what is on sale is 2028, and a Serbian member sends 4.200 dinars. */
-	private static final Instant IN_OCTOBER_2027 = Instant.parse("2027-10-20T09:00:00Z");
+	private static final Instant IN_OCTOBER_2027 = Instant.parse("2027-11-16T09:00:00Z");
 
 	/** Distinct from every other fixture's, on purpose: these rows are committed. */
 	private static final String THE_CASHIER = "preporucilac-drzan-blagajnik@primer.rs";

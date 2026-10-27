@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.MonthDay;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -141,7 +140,7 @@ class MembersApi {
 	@RightIsNeeded(CompetitorApi.OVER_THE_MEMBERS)
 	List<Member> members() {
 		/* The clock is read ONCE for the whole answer, as `CompetitorApi` reads it: the band for the
-		   season it is worked out for, and the basis for the season on sale, which from 15 October
+		   season it is worked out for, and the basis for the season on sale, which from 11 November
 		   is the next one. */
 		ZonedDateTime now = ZonedDateTime.now(clock);
 		int season = SeasonClock.seasonTheBandIsWorkedOutFor(now);
@@ -192,13 +191,13 @@ class MembersApi {
 				Collectors.toMap(Row::id, one -> Currency.of(one.countryCode())));
 		Map<Long, Balance.Money> books = book.forEveryOneOf(monies);
 		List<MembershipPrice.Row> priceList = priceRows.all();
-		MonthDay today = MonthDay.from(LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE));
+		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
 
 		return rows.stream().map(one -> {
 			Currency his = monies.get(one.id());
 
 			/* THE SEASON ON SALE AND NOT THE SEASON THE BAND IS WORKED OUT FOR, which is the one read
-			   above for the band: from 15 October the two are different years, and the junior price
+			   above for the band: from 11 November the two are different years, and the junior price
 			   follows the season paid for (`MembershipPrice.on`). */
 			MembershipPrice.Price price = MembershipPrice.on(priceList, today, one.birthYear(), sold, his);
 

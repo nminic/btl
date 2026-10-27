@@ -36,7 +36,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.MonthDay;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -92,10 +91,10 @@ class ABeginnersCategoryAMembershipMovesTest {
 	private static final Instant SEPTEMBER_2027 = Instant.parse("2027-09-10T09:00:00Z");
 
 	/** The first instant the screen asks about 2028, which is what the line said closed or opened. */
-	private static final Instant THE_FIFTEENTH = Instant.parse("2027-10-15T09:00:00Z");
+	private static final Instant THE_FIFTEENTH = Instant.parse("2027-11-11T09:00:00Z");
 
 	/** 2028 on sale while 2027 is run: a membership of a season with no runs. */
-	private static final Instant AFTER_THE_FIFTEENTH = Instant.parse("2027-10-20T09:00:00Z");
+	private static final Instant AFTER_THE_FIFTEENTH = Instant.parse("2027-11-16T09:00:00Z");
 
 	/** 2028 on sale and run, with 2027 behind it. */
 	private static final Instant SEPTEMBER_2028 = Instant.parse("2028-09-10T09:00:00Z");
@@ -519,7 +518,7 @@ class ABeginnersCategoryAMembershipMovesTest {
 
 		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
 		BigDecimal expected = MembershipPrice.on(priceRows.all(),
-				MonthDay.from(LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE)), 1990, season, Currency.RSD)
+				LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE), 1990, season, Currency.RSD)
 				.expected();
 
 		statements++;

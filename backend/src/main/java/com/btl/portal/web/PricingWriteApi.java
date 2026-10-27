@@ -264,8 +264,8 @@ class PricingWriteApi {
 
 	/**
 	 * The moment, off the bean rather than off {@code ZonedDateTime.now()}, for the reason
-	 * {@code WhatTimeItIs} gives: both sides of 15 October have to be measurable on a day that
-	 * is not 15 October.
+	 * {@code WhatTimeItIs} gives: both sides of 11 November have to be measurable on a day that
+	 * is not 11 November.
 	 */
 	private final Clock clock;
 
@@ -423,7 +423,7 @@ class PricingWriteApi {
 	 * the code. <b>My reasoning, marked as such:</b> this address takes one {@code PUT} carrying
 	 * one body, so letting the name through while refusing the amount would accept HALF a form,
 	 * and there is no answer in any journal for what the screen should then redraw. <b>The cost
-	 * it carries, said out loud:</b> from midnight in Belgrade on 15 October the referral row
+	 * it carries, said out loud:</b> from midnight in Belgrade on 11 November the referral row
 	 * cannot be renamed either, until the window opens again. If that is ever wrong it is one
 	 * condition on one line, and the case that holds it is written in both directions.
 	 *

@@ -384,7 +384,7 @@ class CompetitorApiTest {
 	 * {@link SeasonClock} whether they still disagree at this instant rather than
 	 * remembering that they once did.
 	 */
-	private static final Instant MID_OCTOBER_2027 = Instant.parse("2027-10-15T12:00:00Z");
+	private static final Instant MID_OCTOBER_2027 = Instant.parse("2027-11-11T12:00:00Z");
 
 	@Autowired
 	private MockMvc http;

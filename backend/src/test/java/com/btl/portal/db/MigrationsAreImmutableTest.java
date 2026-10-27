@@ -637,7 +637,26 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   above; no remote branch holds V74, measured again that day when main was merged into this branch.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("74", "V74__a_bank_statement_is_remembered_and_its_file_is_not.sql", -1979659123));
+			new Applied("74", "V74__a_bank_statement_is_remembered_and_its_file_is_not.sql", -1979659123),
+
+			/* V75. The selling year opens on 11 November (owner, 27.10.2026, PDL „Novi godišnji ciklus od 11.
+			   novembra"): the days, the names and the ranking of the four periods of the price list and nothing
+			   else - no amount, no column, no constraint.
+
+			   75 and not 76: V76 stands just above and is the page text of the same decision. Both are numbered
+			   after V74, which main held on 27.10.2026 (a3a556a1); no remote branch held V75 or V76 then.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("75", "V75__the_selling_year_opens_on_the_eleventh_of_november.sql", 356515742),
+
+			/* V76. The rulebook says the cycle opens on 11 November (owner, 27.10.2026, PDL „Reči Pravilnika za novi
+			   ciklus"): twelve edits of the rulebook in both languages (Articles 10, 11 and 49 and the sign-off, which
+			   moves to 27.10.2026), each stopping the migration unless its old text stands exactly once.
+
+			   Pinned LAST, when the file was final, off this very assertion. If the owner changes a word of it
+			   before it merges, the file is changed in place and this number is read again; after the merge it is
+			   immutable like the others. */
+			new Applied("76", "V76__the_rulebook_says_the_cycle_opens_on_the_eleventh_of_november.sql", 3181062));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

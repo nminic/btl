@@ -25,7 +25,12 @@ export const FIRST_SEASON = 2027
 
 /** Renewal and the transfer window both open on this day.
  *
- * **It was `10-01` until 29.09.2026**, when the owner moved it: „Zelim da prvi
+ * **It is `11-11` from 27.10.2026** (PDL, „Novi godišnji ciklus od 11. novembra"): „Prijave
+ * ce pocinjati 11. novembra svake godine i trajati 10 dana po ceni od 35 eur (4200)", and
+ * the owner chose that everything which opened on 15 October moves with it. The one
+ * exception is the first year, `FIRST_SALE` below, which opens on its own day.
+ *
+ * **It was `10-15` until then and `10-01` until 29.09.2026**, when the owner moved it: „Zelim da prvi
  * period postane 15-31. oktobar, drugi 1-30. novembar a ostalo ostaje isto. S tim
  * na umu zelim i da se prelazni rok i sve ostalo otvara 15.10. ubuduce, a ne
  * 1.10." Asked whether only the OPENING moves, he answered „Tacno", so
@@ -38,7 +43,21 @@ export const FIRST_SEASON = 2027
  * by asking this file for the behaviour and `data/pricing.ts` for the day. The
  * backend carries the identical pair and the identical floor
  * (`SeasonClock.transferWindowOpen`, `TheSellingYearAndTheTransferWindowOpenOnOneDayTest`). */
-export const WINDOW_OPENS = '10-15'
+export const WINDOW_OPENS = '11-11'
+
+/**
+ * The first day anything is sold, and the one year in which `WINDOW_OPENS` is not the day the
+ * window opens.
+ *
+ * Owner, 27.10.2026: „Iako ce tako biti upisan cenovnik na svim mestima, hocu da ove godine
+ * ljudi i dalje mogu da se prijavljuju i pre 11.11. po uslovima koji ce vaziti 11.11." So in
+ * 2026 the window is open from this day, the season on sale is 2027 and the price is that of
+ * the period which opens on `WINDOW_OPENS` (`dayThePriceListIsReadOn`). From the next year the
+ * general rule is the whole rule. **A date and not a day of the year, because it happens
+ * once**, which is the opposite of `WINDOW_OPENS`. It is the same fact `SeasonClock.FIRST_SALE`
+ * is on the server, and `REGISTRATION_OPENS` in `data/pricing.ts` reads it from here.
+ */
+export const FIRST_SALE = '2026-10-15'
 
 /** And both shut at the end of this day. Nothing is decided in January. */
 export const WINDOW_CLOSES = '12-31'
@@ -60,7 +79,7 @@ export const WINDOW_CLOSES = '12-31'
  * database (PENDING).
  *
  * **And the hour.** The decision names 00:00 CET. The portal reads whole days off
- * one clock with no notion of an hour (src/clock), so „the day 15 October has begun"
+ * one clock with no notion of an hour (src/clock), so „the day the window opens has begun"
  * is what it can answer. Since 20.10.2026 that day is Belgrade's, the same one the
  * server counts, so it turns over at Belgrade midnight and not an hour or two later.
  * Written down rather than pretended away.
@@ -150,7 +169,30 @@ export function boardsAreToppedUp(today: string): boolean {
 export function inYearlyWindow(today: string): boolean {
   const dayInYear = today.slice(5)
 
+  if (today.slice(0, 4) === FIRST_SALE.slice(0, 4)) {
+    return today >= FIRST_SALE && dayInYear <= WINDOW_CLOSES
+  }
+
   return dayInYear >= WINDOW_OPENS && dayInYear <= WINDOW_CLOSES
+}
+
+/**
+ * The day of the year the price list is read on for a given date.
+ *
+ * Almost always the day itself. The one exception is the first sale: from `FIRST_SALE` to the
+ * eve of `WINDOW_OPENS` in that year the list is read as if it were the day the cycle opens,
+ * so the price is that of the period which starts there (35 EUR, 4.200 RSD) and not the one
+ * of the running season the calendar would pick. The server's twin is
+ * `SeasonClock.dayThePriceListIsReadOn`.
+ */
+export function dayThePriceListIsReadOn(today: string): string {
+  const dayInYear = today.slice(5)
+
+  if (today.slice(0, 4) === FIRST_SALE.slice(0, 4) && today >= FIRST_SALE && dayInYear < WINDOW_OPENS) {
+    return WINDOW_OPENS
+  }
+
+  return dayInYear
 }
 
 /**

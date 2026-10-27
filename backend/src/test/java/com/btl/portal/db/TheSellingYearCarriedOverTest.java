@@ -54,7 +54,7 @@ class TheSellingYearCarriedOverTest extends DatabaseTest {
 				+ " label = '1. do 5. oktobra' where key = 'early'");
 		jdbc.execute("update price_row set day_from = '10-06', day_to = '11-30',"
 				+ " label = '6. oktobra do 30. novembra' where key = 'regular'");
-		jdbc.execute("update price_row set day_to = '09-30',"
+		jdbc.execute("update price_row set day_from = '01-01', day_to = '09-30',"
 				+ " label = '1. januara do 30. septembra' where key = 'season'");
 	}
 
@@ -128,11 +128,15 @@ class TheSellingYearCarriedOverTest extends DatabaseTest {
 	 */
 	@Test
 	void thePagesMoveOverTheTextThatWasAlreadyThere() {
+		/* V76 (27.10.2026) rewrote the sentences V49 moved, and the pages say "od 11. novembra"
+		   and "from 11 November" today, so those are what the fixture turns back into the old
+		   day. The second replacement of each pair finds nothing any more and is kept because
+		   it is the other half of the sentence V49 changed. */
 		jdbc.execute("update static_page_section set body = replace(replace(body,"
-				+ " 'od 15. oktobra', 'od 1. oktobra'),"
+				+ " 'od 11. novembra', 'od 1. oktobra'),"
 				+ " 'do 14. oktobra tekuća', 'do 30. septembra tekuća')");
 		jdbc.execute("update static_page_section_translation set body = replace(replace(body,"
-				+ " 'from 15 October', 'from 1 October'),"
+				+ " 'from 11 November', 'from 1 October'),"
 				+ " 'to 14 October the current one is', 'to 30 September the current one is')");
 
 		assertThat(bodiesNaming("static_page_section", "od 1. oktobra"))

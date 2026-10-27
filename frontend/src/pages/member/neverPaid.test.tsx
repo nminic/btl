@@ -69,7 +69,7 @@ function stand<T extends { stop: () => void }>(server: T): T {
   return server
 }
 
-/** A day inside the renewal window (15 October to 31 December), the only days the payment panel is
+/** A day inside the renewal window (11 November to 31 December), the only days the payment panel is
  *  drawn on, and the first period of the price list after its first fortnight. */
 const IN_THE_WINDOW = '2026-11-01'
 
@@ -296,7 +296,7 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
   it('is told when payment opens, before the first sale, as everybody is', async () => {
     openHisPage({}, BEFORE_THE_FIRST_SALE)
 
-    expect(await screen.findByText('Obnova se otvara 15. oktobra i traje do 31. decembra.')).toBeVisible()
+    expect(await screen.findByText('Obnova se otvara 11. novembra i traje do 31. decembra.')).toBeVisible()
     expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
   }, SLOW)

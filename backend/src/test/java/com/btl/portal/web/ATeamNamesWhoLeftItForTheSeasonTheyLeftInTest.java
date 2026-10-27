@@ -173,7 +173,7 @@ class ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest {
 
 	/** 11:00 in Belgrade on 20 October 2027, inside the window: the five of the first October have just pressed. */
 	private static final Moment OCTOBER_2027 = new Moment("20 October 2027, 11:00",
-			inBelgrade(2027, 10, 20, 11, 0), NO_SEASON_OF_THE_FIXTURE_HAS_FROZEN, 6, 0);
+			inBelgrade(2027, 11, 16, 11, 0), NO_SEASON_OF_THE_FIXTURE_HAS_FROZEN, 6, 0);
 
 	/** 15:59 on 1 January 2028: the season being run is already 2028 and the table of 2027 has not frozen. */
 	private static final Moment ONE_MINUTE_BEFORE_2027_FREEZES = new Moment("1 January 2028, 15:59",
@@ -185,7 +185,7 @@ class ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest {
 
 	/** 11:00 on 20 October 2028: the table of 2027 has been frozen since January, the second leaver has just pressed. */
 	private static final Moment OCTOBER_2028 = new Moment("20 October 2028, 11:00",
-			inBelgrade(2028, 10, 20, 11, 0), 2027, 1, 6);
+			inBelgrade(2028, 11, 16, 11, 0), 2027, 1, 6);
 
 	/** 15:59 on 1 January 2029: the season being run is already 2029 and the table of 2028 has not frozen. */
 	private static final Moment ONE_MINUTE_BEFORE_2028_FREEZES = new Moment("1 January 2029, 15:59",

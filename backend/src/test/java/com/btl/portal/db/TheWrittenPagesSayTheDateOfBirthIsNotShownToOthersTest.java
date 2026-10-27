@@ -211,9 +211,12 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 					.containsOnlyOnce(signOffAfterIn(language))
 					.doesNotContain(signOffIn(language));
 			assertThat(placesWhichCarry(language, signOffIn(language)))
-					.as("the %s sign-off of 22.10.2026 must stand on the rulebook and on the terms of use, and not on"
-							+ " the policy", language)
-					.containsExactlyInAnyOrder(new Place("pravilnik", 19), new Place("uslovi-koriscenja", 11));
+					.as("the %s sign-off of 22.10.2026 must stand on the terms of use alone, V76 having moved the rulebook's"
+							+ " on to 27.10.2026 and V73 the policy's", language)
+					.containsExactly(new Place("uslovi-koriscenja", 11));
+			assertThat(placesWhichCarry(language, language.equals("sr") ? "Poslednja izmena: 27.10.2026." : "Last amended: 27.10.2026."))
+					.as("the %s sign-off of 27.10.2026 must stand on the rulebook alone", language)
+					.containsExactly(new Place("pravilnik", 19));
 		}
 	}
 

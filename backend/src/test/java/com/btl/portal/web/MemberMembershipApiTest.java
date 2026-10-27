@@ -73,7 +73,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class MemberMembershipApiTest {
 
 	/** 2028 on sale while 2027 is run: 35 EUR plus the fee of 3. */
-	private static final Instant AFTER_THE_FIFTEENTH = Instant.parse("2027-10-20T09:00:00Z");
+	private static final Instant AFTER_THE_FIFTEENTH = Instant.parse("2027-11-16T09:00:00Z");
 
 	/** 2027 on sale and run. */
 	private static final Instant BEFORE_THE_FIFTEENTH = Instant.parse("2027-09-10T09:00:00Z");

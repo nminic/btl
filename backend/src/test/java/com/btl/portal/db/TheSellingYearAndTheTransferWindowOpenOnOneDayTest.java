@@ -34,12 +34,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * that a floor repeating the condition it measures would have (ADL, 29.09.2026, „Pod koji
  * ponavlja USLOV iz fajla koji meri nije pod").
  *
- * <p><b>WHICH ROWS ARE THE SELLING YEAR IS DERIVED AND NOT NAMED.</b> A period that buys a
- * place in the standing is a period that sells a season which has not begun; the one period
- * that does not ({@code ranking = false}) is the season already running, sold without the
- * right to be ranked. So the window is asked of {@code min(day_from)} and {@code max(day_to)}
- * over the RANKED periods, and no key - not „early", not „late" - appears here. A fifth
- * period added tomorrow is inside this question the day it is inserted.
+ * <p><b>WHICH ROW OPENS THE SELLING YEAR IS NAMED SINCE 27.10.2026, AND WHY IT HAS TO BE.</b>
+ * It used to be derived: a period that buys a place in the standing sold a season which had not
+ * begun, and the one that did not was the season already running. The owner then made 1 January
+ * to 31 March a ranked period OF THE RUNNING SEASON, so ranking no longer tells the two apart
+ * and {@code min(day_from)} over the ranked periods is 1 January. The cycle opens with the row
+ * {@code early} (PDL, „Prijave ce pocinjati 11. novembra svake godine"): its {@code day_from}
+ * is the day this file holds the clock to, and the last day of the cycle is the last day of
+ * the year, {@code max(day_to)} over all periods. What is read out of the table is still a
+ * day and never written here.
  *
  * <p><b>The year is walked twice, and neither of them is 2026.</b> The days are {@code mm-dd}
  * because the list repeats every year (owner, 30.07.2026), so a case pinned to one year would
@@ -52,7 +55,9 @@ class TheSellingYearAndTheTransferWindowOpenOnOneDayTest extends DatabaseTest {
 
 	/**
 	 * Two seasons the league actually has, walked so that a rule right in one year only is
-	 * red in the other. 2028 is a leap year, which is why it is the second of the two.
+	 * red in the other. 2028 is a leap year, which is why it is the second of the two. Neither
+	 * is 2026, whose first sale opens on its own day ({@link SeasonClock#FIRST_SALE}) and has a
+	 * case of its own below.
 	 */
 	private static final List<Integer> SEASONS = List.of(2027, 2028);
 
@@ -63,28 +68,24 @@ class TheSellingYearAndTheTransferWindowOpenOnOneDayTest extends DatabaseTest {
 	 * When the price list starts and stops selling a season that has not begun, asked of the
 	 * table.
 	 *
-	 * <p>The count is asserted first because everything below is satisfied by an empty
-	 * answer: {@code min} over no rows is null, and a null boundary would make every
-	 * assertion here compare nothing to nothing. Three is what the list holds, and it is read
-	 * off the same query rather than written beside it.
+	 * <p>The row is asserted first because everything below is satisfied by an empty answer:
+	 * a null boundary would make every assertion here compare nothing to nothing.
 	 */
 	private SellingYear theSellingYear() {
-		List<String> ranked = db
-				.sql("select day_from from price_row where kind = 'period' and ranking order by day_from")
+		List<String> opening = db
+				.sql("select day_from from price_row where kind = 'period' and key = 'early'")
 				.query(String.class)
 				.list();
 
-		assertThat(ranked)
-				.as("the price list has no period that sells a season not yet begun, so the"
-						+ " boundary below is read off nothing and this file measures nothing")
-				.isNotEmpty();
+		assertThat(opening)
+				.as("the price list has no row that opens the cycle, so the boundary below is read"
+						+ " off nothing and this file measures nothing")
+				.hasSize(1);
 
-		return db.sql("select min(day_from), max(day_to) from price_row"
-						+ " where kind = 'period' and ranking")
-				.query((row, one) -> new SellingYear(
-						MonthDay.parse("--" + row.getString(1)),
-						MonthDay.parse("--" + row.getString(2))))
-				.single();
+		return new SellingYear(
+				MonthDay.parse("--" + opening.getFirst()),
+				MonthDay.parse("--" + db.sql("select max(day_to) from price_row where kind = 'period'")
+						.query(String.class).single()));
 	}
 
 	private static ZonedDateTime middayOn(int season, MonthDay day) {
@@ -144,6 +145,54 @@ class TheSellingYearAndTheTransferWindowOpenOnOneDayTest extends DatabaseTest {
 					.as("in %d the window stayed open past the end of the selling year", season)
 					.isFalse();
 		}
+	}
+
+	/**
+	 * THE FIRST YEAR OPENS ON ITS OWN DAY AND NO OTHER YEAR DOES (owner, 27.10.2026).
+	 *
+	 * <p>„hocu da ove godine ljudi i dalje mogu da se prijavljuju i pre 11.11. po uslovima koji ce
+	 * vaziti 11.11." The window of 2026 is open from {@link SeasonClock#FIRST_SALE} and the season
+	 * on sale is 2027; the same fortnight in 2027 is shut and the season on sale is the running one.
+	 * Asked on the days around the exception AND on the day the table opens, so a rule that
+	 * extended the exception to later years - or dropped it - is red on a named day. The cases read
+	 * the day the table opens, and write down only the exception's own day, which is the
+	 * clock's constant and not a second copy of the table.
+	 */
+	@Test
+	void theFirstSaleOf2026OpensEarlierThanTheTableAndIsNotRepeated() {
+		SellingYear selling = theSellingYear();
+		ZonedDateTime firstSale = SeasonClock.FIRST_SALE.atTime(12, 0).atZone(SeasonClock.ZONE);
+
+		assertThat(SeasonClock.transferWindowOpen(firstSale.minusDays(1)))
+				.as("the window was open the day before the first sale").isFalse();
+		assertThat(SeasonClock.transferWindowOpen(firstSale)).isTrue();
+		assertThat(SeasonClock.seasonBeingPaidFor(firstSale)).isEqualTo(2027);
+		assertThat(SeasonClock.transferWindowOpen(middayOnTheDayBefore(2026, selling.opens())))
+				.as("the exception of 2026 ended before the day the table opens on").isTrue();
+		assertThat(SeasonClock.transferWindowOpen(middayOn(2026, selling.opens()))).isTrue();
+
+		assertThat(SeasonClock.transferWindowOpen(firstSale.withYear(2027)))
+				.as("the exception of the first year was repeated in 2027").isFalse();
+		assertThat(SeasonClock.seasonBeingPaidFor(firstSale.withYear(2027))).isEqualTo(2027);
+	}
+
+	/**
+	 * AND THE PRICE LIST IS READ ON THE DAY THE TABLE OPENS ON DURING THE FIRST SALE, so the
+	 * price of the days before it is the cycle's first price and not the running season's.
+	 */
+	@Test
+	void duringTheFirstSaleThePriceListIsReadOnTheDayTheTableOpens() {
+		SellingYear selling = theSellingYear();
+
+		assertThat(SeasonClock.dayThePriceListIsReadOn(SeasonClock.FIRST_SALE.minusDays(1)))
+				.isEqualTo(MonthDay.from(SeasonClock.FIRST_SALE.minusDays(1)));
+		assertThat(SeasonClock.dayThePriceListIsReadOn(SeasonClock.FIRST_SALE)).isEqualTo(selling.opens());
+		assertThat(SeasonClock.dayThePriceListIsReadOn(selling.opens().atYear(2026).minusDays(1)))
+				.isEqualTo(selling.opens());
+		assertThat(SeasonClock.dayThePriceListIsReadOn(selling.opens().atYear(2026).plusDays(3)))
+				.isEqualTo(MonthDay.from(selling.opens().atYear(2026).plusDays(3)));
+		assertThat(SeasonClock.dayThePriceListIsReadOn(SeasonClock.FIRST_SALE.withYear(2027)))
+				.isEqualTo(MonthDay.from(SeasonClock.FIRST_SALE));
 	}
 
 	/**

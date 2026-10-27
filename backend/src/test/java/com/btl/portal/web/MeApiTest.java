@@ -138,7 +138,7 @@ class MeApiTest {
 	 * transfer window on, {@code seasonBeingPaidFor} answers NEXT year while the season being RUN is
 	 * still this one, and the band moves on the second and never on the first (PDL P7).
 	 */
-	private static final Instant MID_OCTOBER_2027 = Instant.parse("2027-10-15T12:00:00Z");
+	private static final Instant MID_OCTOBER_2027 = Instant.parse("2027-11-11T12:00:00Z");
 
 	/**
 	 * The night the year turns, the instant {@code CompetitorApiTest} and {@code ResultApiTest} stand

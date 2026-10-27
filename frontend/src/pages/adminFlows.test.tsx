@@ -222,7 +222,7 @@ describe('members', () => {
        The year is the list of seasons beside it, so the word carries none. The counts are what the served
        rows hold and are never typed: the sample frees men and women both, so a word that did not follow
        the gender of the row fails one of the two counts. */
-    renderAt('/sr/administracija/clanovi', 'superadmin', null, undefined, '2027-11-01')
+    renderAt('/sr/administracija/clanovi', 'superadmin', null, undefined, '2027-11-25')
 
     const table = await screen.findByRole('table', { name: 'Članovi' })
     /* The rows this screen draws (`members.json`) under the filter it opens on, „Aktivni". */
@@ -316,15 +316,15 @@ function runningSeasonSentence(): RegExp {
 
 describe('the price list', () => {
   it('is a period of the year rather than a date, because the list repeats', async () => {
-    /* Owner, 30.07.2026: membership for 2027 is sold until 30 September 2027,
-       and on 15 October the same four periods open again for 2028. Written as
+    /* Owner, 30.07.2026: membership for 2027 is sold until 10 November 2027,
+       and on 11 November the same four periods open again for 2028. Written as
        dates they would have expired. */
     renderAt('/sr/administracija/cenovnik', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Cenovnik' })
 
-    expect(within(table).getByText('15.10. - 31.10.')).toBeVisible()
-    expect(within(table).getByText('1.1. - 14.10.')).toBeVisible()
+    expect(within(table).getByText('11.11. - 20.11.')).toBeVisible()
+    expect(within(table).getByText('1.4. - 10.11.')).toBeVisible()
     // The junior price is the one row with no period at all.
     expect(within(table).getByText('Svaka uplata')).toBeVisible()
     // The in-season price buys a profile but no place in the standing.
@@ -472,7 +472,7 @@ describe('the price list', () => {
     /* Said in full, so the second half of the sentence is held too: read from the
        dictionary on both sides, a test tells you the same string equals itself
        and a wrong date inside it passes. */
-    expect(open).toHaveAccessibleDescription(/Obnova te sezone je otvorena od 15\. oktobra/)
+    expect(open).toHaveAccessibleDescription(/Obnova te sezone je otvorena od 11. novembra/)
 
     await user.click(open)
 
@@ -545,7 +545,7 @@ describe('the price list', () => {
        was settled by 15 October 2027. */
     expect(open).toHaveAccessibleDescription(runningSeasonSentence())
     expect(open).toHaveAccessibleDescription(/Sezona 2028 je već u toku/)
-    expect(open).toHaveAccessibleDescription(/zaključan 15\. oktobra prethodne godine, a ovaj upis ga ipak menja/)
+    expect(open).toHaveAccessibleDescription(/zaključan 11. novembra prethodne godine, a ovaj upis ga ipak menja/)
   })
 
   it('has one live region on the price list, not two', async () => {
@@ -578,7 +578,7 @@ describe('the price list', () => {
        A year on, therefore, where the three possible sources of that number part
        company: the clock says 2028, the constant still says 2027, and dropping the
        floor from `Math.max` would say 2028 here but 2026 in January. */
-    renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2027-11-01')
+    renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2027-11-25')
 
     await screen.findByRole('table', { name: 'Preporuka' })
 
@@ -661,9 +661,9 @@ describe('the price list', () => {
       expect(sent.path).toBe('/api/pricing/early')
       /* THE NAME TRAVELS TOO, SINCE V34, read back off the form exactly as `EntityEditor`
          pre-filled it from the row being changed: this case only clears and retypes the
-         euro field, so the name on the wire is the row's own, „15. do 31. oktobra". */
+         euro field, so the name on the wire is the row's own, „11. do 20. novembra". */
       expect(JSON.parse(String(sent.init?.body))).toEqual({
-        label: '15. do 31. oktobra',
+        label: '11. do 20. novembra',
         eur: 33,
         rsd: 4200,
       })
@@ -685,7 +685,7 @@ describe('the price list', () => {
     renderAt('/sr/administracija/cenovnik', 'superadmin')
 
     await screen.findByRole('table', { name: 'Cenovnik' })
-    await user.click(screen.getByRole('button', { name: 'Otvori: 15. do 31. oktobra' }))
+    await user.click(screen.getByRole('button', { name: 'Otvori: 11. do 20. novembra' }))
 
     const eur = screen.getByLabelText(/Iznos u evrima/)
 
@@ -709,7 +709,7 @@ describe('the price list', () => {
       renderAt('/sr/administracija/cenovnik', 'superadmin')
 
       await screen.findByRole('table', { name: 'Cenovnik' })
-      await user.click(screen.getByRole('button', { name: 'Otvori: 15. do 31. oktobra' }))
+      await user.click(screen.getByRole('button', { name: 'Otvori: 11. do 20. novembra' }))
 
     /* Three fields and no more. The window is the year itself and is not
        something an administrator types (owner, 30.07.2026); it used to ask for a
@@ -734,7 +734,7 @@ describe('the price list', () => {
       const table = within(await screen.findByRole('table', { name: 'Cenovnik' }))
       expect(table.getByText('33')).toBeVisible()
       // And the period it belongs to is where it was.
-      expect(table.getByText('15.10. - 31.10.')).toBeVisible()
+      expect(table.getByText('11.11. - 20.11.')).toBeVisible()
     } finally {
       stop()
     }
@@ -785,7 +785,7 @@ describe('the price list', () => {
       await user.type(eur, '7')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(/od 15. oktobra utvrđen/)
+      expect(await screen.findByRole('alert')).toHaveTextContent(/od 11. novembra utvrđen/)
     } finally {
       stop()
     }
@@ -916,7 +916,7 @@ describe('the price list', () => {
       renderAt('/sr/administracija/cenovnik', 'superadmin')
 
       await screen.findByRole('table', { name: 'Cenovnik' })
-      await user.click(screen.getByRole('button', { name: 'Otvori: 15. do 31. oktobra' }))
+      await user.click(screen.getByRole('button', { name: 'Otvori: 11. do 20. novembra' }))
 
       const field = screen.getByLabelText(box)
 

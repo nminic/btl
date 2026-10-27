@@ -375,7 +375,7 @@ export const readAsLeague: League = aLeague
  */
 export const aPricePeriod = {
   key: 'early',
-  label: '15. do 31. oktobra',
+  label: '11. do 20. novembra',
   kind: 'period',
   from: '10-15',
   to: '10-31',

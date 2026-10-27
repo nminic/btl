@@ -128,13 +128,13 @@ class ARaceCorrectedRecountsItsRunsTest {
 	private static final String MODERATOR = "kalendar@primer.rs";
 
 	/** Noon in Belgrade, with 2027 running and nowhere near a freeze. */
-	private static final Instant WHILE_2027_RUNS = Instant.parse("2027-10-15T10:00:00Z");
+	private static final Instant WHILE_2027_RUNS = Instant.parse("2027-11-11T10:00:00Z");
 
 	/** 23:59:59 in Belgrade on 14 October 2027, the last second before the transfer window opens:
 	 *  2027 is running and the season on sale is still 2027, where at noon on the day after it is
 	 *  already 2028. */
 	private static final Instant A_SECOND_BEFORE_THE_WINDOW_OPENS =
-			Instant.parse("2027-10-14T21:59:59Z");
+			Instant.parse("2027-11-10T22:59:59Z");
 
 	/** 15:59:59 in Belgrade on 1 January 2028: 2027 has stopped taking reports at ten and
 	 *  has not frozen yet. */

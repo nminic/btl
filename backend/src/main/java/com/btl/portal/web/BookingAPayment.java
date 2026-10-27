@@ -16,7 +16,6 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.MonthDay;
 import java.util.List;
 import java.util.Optional;
 
@@ -114,7 +113,7 @@ class BookingAPayment {
 	 * season and books a payment in its place, and the two must be about one season. The two payment
 	 * doors ({@link PaymentApi}, {@link MemberPaymentApi}) ask whether the beginners' category was open
 	 * before the booking and after it ({@link ABeginnersCategoryAMembershipMoves}). Two readings of the
-	 * clock would part across midnight of 15 October. Until that day this class also had an overload
+	 * clock would part across midnight of 11 November. Until that day this class also had an overload
 	 * that read the clock itself, for the two payment doors; it went when they stopped needing it.
 	 */
 	Booked book(PaymentApi.Confirm typed, String reference, WhoIsAsking.Member asking, int season) {
@@ -249,7 +248,7 @@ class BookingAPayment {
 
 		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
 		List<MembershipPrice.Row> rows = priceRows.all();
-		MembershipPrice.Price price = MembershipPrice.on(rows, MonthDay.from(today),
+		MembershipPrice.Price price = MembershipPrice.on(rows, today,
 				competitor.birthDate().getYear(), season, his);
 
 		/* AND WHETHER THE PRICE LIST IS ASKING FOR ANYTHING AT ALL, WHICH IS THE ONE REFUSAL ON THIS

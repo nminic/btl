@@ -69,7 +69,7 @@ export const THE_DAY_THE_SUITE_IS_READ_AS = '2026-09-30'
  * different YEAR, which is what catches a case that asks the machine for the year
  * itself rather than asking the portal what day it is.
  */
-export const THE_OTHER_DAY_THE_SUITE_IS_READ_AS = '2027-11-01'
+export const THE_OTHER_DAY_THE_SUITE_IS_READ_AS = '2027-11-12'
 
 /**
  * Which of the two this pass is being read as.

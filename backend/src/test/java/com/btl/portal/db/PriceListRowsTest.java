@@ -63,12 +63,14 @@ class PriceListRowsTest extends DatabaseTest {
 	@Test
 	void thePriceListIsTheSevenRowsTheOwnerDecided() {
 		assertThat(rows()).containsExactly(
-				new Row("early", "period", "10-15", "10-31", money(35), money(4200), true),
-				new Row("regular", "period", "11-01", "11-30", money(40), money(4800), true),
-				new Row("late", "period", "12-01", "12-31", money(50), money(6000), true),
+				new Row("early", "period", "11-11", "11-20", money(35), money(4200), true),
+				new Row("regular", "period", "11-21", "12-31", money(40), money(4800), true),
+				/* The months of the running season that still buy a place in the standing
+				   (owner, 27.10.2026): ranked, and dearer than the cycle's first days. */
+				new Row("late", "period", "01-01", "03-31", money(50), money(6000), true),
 				/* The season already running buys a profile but no place in the
 				   standing, which is the one period that answers Ne. */
-				new Row("season", "period", "01-01", "10-14", money(40), money(4800), false),
+				new Row("season", "period", "04-01", "11-10", money(40), money(4800), false),
 				new Row("junior", "level", null, null, money(20), money(2400), null),
 				new Row("processing", "fee", null, null, money(3), null, null),
 				/* Two figures and not one with a conversion, as everywhere else on
@@ -108,7 +110,7 @@ class PriceListRowsTest extends DatabaseTest {
 	 *
 	 * Walked in a leap year so that 29 February is a day like any other: the
 	 * periods are days of the year and not dates, because the list repeats. What is
-	 * sold from 1 October is the next season, every year, for as long as the portal
+	 * sold from 11 November is the next season, every year, for as long as the portal
 	 * runs.
 	 */
 	@Test

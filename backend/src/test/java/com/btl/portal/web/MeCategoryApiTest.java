@@ -99,7 +99,7 @@ class MeCategoryApiTest {
 	private static final String NOTHING_IS_THERE = "/api/zzzzzzzzzz";
 
 	/** Inside the renewal window, two official seasons deep. See the note on this class. */
-	private static final Instant IN_OCTOBER_2028 = Instant.parse("2028-10-15T12:00:00Z");
+	private static final Instant IN_OCTOBER_2028 = Instant.parse("2028-11-11T12:00:00Z");
 
 	/** The season being chosen at that moment, spelt out so a case cannot drift with the code. */
 	private static final int THE_SEASON_BEING_CHOSEN = 2029;
@@ -561,8 +561,8 @@ class MeCategoryApiTest {
 	void theColumnAndTheSeasonAgreeOnlyWhileTheSeasonIsTheFirstOne() {
 		/* Either side of midnight in Belgrade on 15 October, which is where the window opens
 		   since 29.09.2026; it was 1 October until then and the pair moved with it. */
-		Instant beforeTheDebtIsLive = Instant.parse("2027-10-14T21:00:00Z");
-		Instant afterTheDebtIsLive = Instant.parse("2027-10-14T23:00:00Z");
+		Instant beforeTheDebtIsLive = Instant.parse("2027-11-10T22:00:00Z");
+		Instant afterTheDebtIsLive = Instant.parse("2027-11-11T00:00:00Z");
 
 		assertThat(SeasonClock.seasonBeingPaidFor(beforeTheDebtIsLive.atZone(SeasonClock.ZONE)))
 				.as("the column and the season agreed until 15 October 2027 and no longer do, "

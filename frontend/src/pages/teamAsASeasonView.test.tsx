@@ -378,7 +378,7 @@ describe('the page of a team that nobody was in yet', () => {
 describe('the page of a team, in the transfer window', () => {
   const RESULTS = [...BEFORE_THE_LEAGUE, ...IN_2027]
 
-  it.each(['2027-10-15', '2027-11-01', '2027-12-31'])(
+  it.each(['2027-11-11', '2027-11-20', '2027-12-31'])(
     'offers the season that has not begun on %s, and still opens on the running one',
     async (day) => {
       const { stop } = answering(RESULTS)
@@ -406,7 +406,7 @@ describe('the page of a team, in the transfer window', () => {
     const { stop } = answering(RESULTS)
 
     try {
-      renderAt(`/sr/tim/${ITS_ADDRESS}`, 'visitor', null, undefined, '2027-11-01')
+      renderAt(`/sr/tim/${ITS_ADDRESS}`, 'visitor', null, undefined, '2027-11-12')
 
       await roster()
       await user.selectOptions(await control(), '2028')
@@ -444,7 +444,7 @@ describe('the page of a team, in the transfer window', () => {
     const { stop } = answering(RESULTS)
 
     try {
-      renderAt(`/sr/tim/${ITS_ADDRESS}?sezona=2028`, 'visitor', null, undefined, '2027-11-01')
+      renderAt(`/sr/tim/${ITS_ADDRESS}?sezona=2028`, 'visitor', null, undefined, '2027-11-12')
 
       await roster()
 
@@ -461,7 +461,7 @@ describe('the page of a team, outside the transfer window', () => {
 
   /* A day of the running season, the day before the window opens, and the last day of the one before
      it, so the edges are read from both sides. */
-  it.each(['2027-01-15', '2027-06-01', '2027-10-14'])(
+  it.each(['2027-01-15', '2027-06-01', '2027-11-10'])(
     'offers only the running season on %s',
     async (day) => {
       const { stop } = answering(RESULTS)
