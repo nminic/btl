@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.MonthDay;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -192,8 +191,7 @@ class MembersApi {
 				Collectors.toMap(Row::id, one -> Currency.of(one.countryCode())));
 		Map<Long, Balance.Money> books = book.forEveryOneOf(monies);
 		List<MembershipPrice.Row> priceList = priceRows.all();
-		MonthDay today = SeasonClock.dayThePriceListIsReadOn(
-				LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE));
+		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
 
 		return rows.stream().map(one -> {
 			Currency his = monies.get(one.id());

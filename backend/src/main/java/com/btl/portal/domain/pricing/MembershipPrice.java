@@ -1,5 +1,8 @@
 package com.btl.portal.domain.pricing;
 
+import com.btl.portal.domain.season.SeasonClock;
+
+import java.time.LocalDate;
 import java.time.MonthDay;
 import java.util.List;
 
@@ -318,13 +321,17 @@ public final class MembershipPrice {
 	 * means, and it is what made the compiler find all of them when the rule moved.
 	 *
 	 * @param rows      the price list as V4 holds it, all seven
-	 * @param day       the day the membership is being paid for
+	 * @param day       the DATE the membership is being paid for, in the league's zone. It is a date and not a day of
+	 *                  the year since 27.10.2026, because which row of the list is read depends on the year too: during
+	 *                  the first sale of 2026 the list is read as if it were the day the cycle opens
+	 *                  ({@link SeasonClock#dayThePriceListIsReadOn}). The conversion is made HERE, once, so no caller can
+	 *                  hand this the calendar day and quietly price the first fortnight at the running season's row.
 	 * @param birthYear the member's year of birth
 	 * @param season    the season being paid for
 	 * @param currency  which money he is billed in, which is what the fee hangs on
 	 */
-	public static Price on(List<Row> rows, MonthDay day, int birthYear, int season, Currency currency) {
-		Row period = periodFor(rows, day);
+	public static Price on(List<Row> rows, LocalDate day, int birthYear, int season, Currency currency) {
+		Row period = periodFor(rows, SeasonClock.dayThePriceListIsReadOn(day));
 		Row applies = juniorFor(birthYear, season) ? rowNamed(rows, JUNIOR) : period;
 
 		java.math.BigDecimal amount = amountIn(applies, currency);

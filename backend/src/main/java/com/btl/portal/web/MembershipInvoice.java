@@ -131,7 +131,7 @@ class MembershipInvoice {
 		   nobody asks. */
 		Currency his = currencyOf.of(me);
 
-		MembershipPrice.Price price = MembershipPrice.on(priceRows.all(), SeasonClock.dayThePriceListIsReadOn(today),
+		MembershipPrice.Price price = MembershipPrice.on(priceRows.all(), today,
 				member.birthDate().getYear(), season, his);
 
 		Balance.Settlement settled = Balance.against(

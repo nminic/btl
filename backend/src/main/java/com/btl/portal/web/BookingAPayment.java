@@ -248,7 +248,7 @@ class BookingAPayment {
 
 		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
 		List<MembershipPrice.Row> rows = priceRows.all();
-		MembershipPrice.Price price = MembershipPrice.on(rows, SeasonClock.dayThePriceListIsReadOn(today),
+		MembershipPrice.Price price = MembershipPrice.on(rows, today,
 				competitor.birthDate().getYear(), season, his);
 
 		/* AND WHETHER THE PRICE LIST IS ASKING FOR ANYTHING AT ALL, WHICH IS THE ONE REFUSAL ON THIS

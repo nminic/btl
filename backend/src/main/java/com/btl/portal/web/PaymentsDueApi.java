@@ -14,7 +14,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.MonthDay;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -408,8 +407,7 @@ class PaymentsDueApi {
 		Map<Long, Balance.Money> books = book.forEveryOneOf(monies);
 		List<MembershipPrice.Row> priceList = priceRows.all();
 
-		MonthDay today = SeasonClock.dayThePriceListIsReadOn(
-				LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE));
+		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
 
 		return rows.stream().map(one -> {
 			Currency his = monies.get(one.id());

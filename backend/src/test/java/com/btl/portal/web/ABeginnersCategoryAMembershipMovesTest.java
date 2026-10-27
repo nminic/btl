@@ -36,7 +36,6 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.MonthDay;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -519,7 +518,7 @@ class ABeginnersCategoryAMembershipMovesTest {
 
 		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
 		BigDecimal expected = MembershipPrice.on(priceRows.all(),
-				MonthDay.from(LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE)), 1990, season, Currency.RSD)
+				LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE), 1990, season, Currency.RSD)
 				.expected();
 
 		statements++;
