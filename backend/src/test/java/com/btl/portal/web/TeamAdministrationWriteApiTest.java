@@ -97,7 +97,7 @@ class TeamAdministrationWriteApiTest {
 	private static final Instant OUTSIDE_THE_WINDOW = Instant.parse("2027-06-15T10:00:00Z");
 
 	/** 11:00 in Belgrade on 10 November 2027: the transfer window is open. */
-	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-11-10T10:00:00Z");
+	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-11-30T10:00:00Z");
 
 	/** Written first, so it holds the smallest key of the three. Its name is the taken one. */
 	private static final String FIRST_TEAM = "prvi-tim";
@@ -644,7 +644,7 @@ class TeamAdministrationWriteApiTest {
 	 * osnivanje i brisanje tima" (29.09.2026), and the class says why.
 	 */
 	@ParameterizedTest
-	@ValueSource(strings = {"2027-06-15T10:00:00Z", "2027-11-10T10:00:00Z"})
+	@ValueSource(strings = {"2027-06-15T10:00:00Z", "2027-11-30T10:00:00Z"})
 	void theWindowBindsNoChangeOfNameTownOrSeat(String moment) throws Exception {
 		clock.moveTo(Instant.parse(moment));
 

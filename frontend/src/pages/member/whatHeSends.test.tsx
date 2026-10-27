@@ -372,7 +372,7 @@ describe('the read is asked only where a slip is about to be drawn, because it w
   it('is not asked while the renewal is shut', async () => {
     const route = openHisPage(IN_SERBIA, anInvoice(2027, 'RSD'), '2026-07-30')
 
-    expect(await screen.findByText('Obnova se otvara 15. oktobra i traje do 31. decembra.')).toBeVisible()
+    expect(await screen.findByText('Obnova se otvara 11. novembra i traje do 31. decembra.')).toBeVisible()
     await waitFor(() => expect(route.asked.some((one) => one.path === '/api/me/balance')).toBe(true))
     expect(readsOf(route.asked)).toBe(0)
   }, SLOW)

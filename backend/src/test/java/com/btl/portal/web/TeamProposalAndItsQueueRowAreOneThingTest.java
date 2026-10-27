@@ -82,7 +82,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class TeamProposalAndItsQueueRowAreOneThingTest {
 
 	/** 11:00 in Belgrade on 3 October 2027, inside the transfer window. */
-	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-10-20T09:00:00Z");
+	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-11-16T09:00:00Z");
 
 	/**
 	 * Distinct from every other fixture's example member, on purpose.

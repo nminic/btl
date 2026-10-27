@@ -165,8 +165,8 @@ function inTheirCurrency(
  * of 16.10.2026: „moze da uplati odmah za tekucu godinu bez rangiranja, pricali smo o ovome 5
  * puta").** This said until that day that nobody had said how somebody who registers in March
  * pays and that a panel opened for him then would be a rule invented here. It was not
- * undecided: the price list has a row for exactly that stretch („1. januara do 14. oktobra",
- * 40 EUR, no right to be ranked) and the owner had been asked about it before. From 15 October to
+ * undecided: the price list has a row for exactly that stretch („1. aprila do 10. novembra",
+ * 40 EUR, no right to be ranked) and the owner had been asked about it before. From 11 November to
  * 31 December the panel is the renewal's, for the next season; from 1 January to 14 October it is
  * the same panel for the running one (`seasonBeingPaidFor`), drawn to whoever owes a fee for it -
  * him, and a member whose fee has lapsed - and not to a member whose fee stands. The referral
@@ -933,7 +933,7 @@ export function Membership() {
                   </p>
 
                   {/* THE ONE SENTENCE A PAYMENT MADE OUTSIDE THE WINDOW OWES HIM (PDL P8, the row
-                      „1. januara do 14. oktobra: 40 EUR, bez prava rangiranja"): what he pays
+                      „1. aprila do 10. novembra: 40 EUR, bez prava rangiranja"): what he pays
                       now does not give the right to be ranked. Read off the row in force and
                       not off the date, so it is drawn exactly where the served list says the
                       period carries no such right, and never inside the window, where every

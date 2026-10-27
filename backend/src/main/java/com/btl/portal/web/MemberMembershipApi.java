@@ -69,7 +69,7 @@ import java.util.Set;
  * season these routes can touch. Nothing in a request names one. The one reading feeds the rows, the
  * book, the trail, the message and, when an exemption is replaced by a payment, the booking itself
  * ({@link BookingAPayment#book(PaymentApi.Confirm, String, WhoIsAsking.Member, int)}), so nothing here
- * can be about two years across midnight of 15 October.
+ * can be about two years across midnight of 11 November.
  *
  * <p><b>THE REQUEST SAYS WHAT THE SCREEN SHOWED, AND THE ROUTE ACTS ONLY ON THAT.</b> A grant is sent
  * from a row that showed no basis, so a season that stands on one by then is refused the same way, and

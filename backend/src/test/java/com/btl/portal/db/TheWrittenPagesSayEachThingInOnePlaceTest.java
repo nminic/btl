@@ -252,18 +252,22 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 	}
 
 	/**
-	 * V71 signed all three off on 22.10.2026, and V73 moved the policy's on to 24.10.2026 (PDL, "Datum Poslednja izmena
-	 * se pomera": the text of the policy changed and not the others'). So 22.10.2026 stands on the rulebook and on the
-	 * terms, and the policy stands on 24.10.2026, which {@link TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest}
-	 * holds. What V71 itself did is held by the cases below, which put the pages back to what V71 found.
+	 * V71 signed all three off on 22.10.2026, V73 moved the policy's on to 24.10.2026 and V76 the rulebook's on to
+	 * 27.10.2026 (PDL, "Datum Poslednja izmena se pomera": the text of the document changed and not the others'). So
+	 * 22.10.2026 stands on the terms alone, the policy stands on 24.10.2026, which
+	 * {@link TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest} holds, and the rulebook on 27.10.2026. What V71
+	 * itself did is held by the cases below, which put the pages back to what V71 found.
 	 */
 	@Test
-	void theRulebookAndTheTermsAreSignedOffOnTheTwentySecondInBothLanguagesAndThePolicyHasMovedOn() {
-		for (String[] signOff : new String[][] { { "sr", "Poslednja izmena: 22.10.2026." },
-				{ "en", "Last amended: 22.10.2026." } }) {
+	void theTermsAreSignedOffOnTheTwentySecondInBothLanguagesAndTheRulebookAndThePolicyHaveMovedOn() {
+		for (String[] signOff : new String[][] { { "sr", "Poslednja izmena: 22.10.2026.", "Poslednja izmena: 27.10.2026." },
+				{ "en", "Last amended: 22.10.2026.", "Last amended: 27.10.2026." } }) {
 			assertThat(placesWhichCarry(signOff[0], signOff[1]))
-					.as("%s: the rulebook and the terms are signed off on 22.10.2026, and the policy is not", signOff[0])
-					.containsExactlyInAnyOrder(new Place(RULEBOOK, 19), new Place(TERMS, 11));
+					.as("%s: the terms are signed off on 22.10.2026, and the rulebook and the policy are not", signOff[0])
+					.containsExactly(new Place(TERMS, 11));
+			assertThat(placesWhichCarry(signOff[0], signOff[2]))
+					.as("%s: the rulebook is signed off on 27.10.2026", signOff[0])
+					.containsExactly(new Place(RULEBOOK, 19));
 		}
 
 		for (String gone : List.of("Poslednja izmena: 16.10.2026.", "Poslednja izmena: 10.10.2026.")) {
@@ -312,8 +316,10 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 		/* And V73 over what V71 gave, because the portal serves what V73 wrote on top of it (24.10.2026) and the text V71
 		   found is the text before V73. */
 		jdbc.execute(migrationSql("73"));
+		/* And V76 over that, because the rulebook the portal serves carries it (27.10.2026). */
+		jdbc.execute(migrationSql("76"));
 
-		assertThat(everyText()).as("V71 and V73 over the text V71 found do not give the text the portal serves")
+		assertThat(everyText()).as("V71, V73 and V76 over the text V71 found do not give the text the portal serves")
 				.isEqualTo(finished);
 	}
 
@@ -347,7 +353,7 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 		assertThat(error.getServerErrorMessage().getDetail().lines().toList())
 				.as("V71 does not report one line for every edit it makes")
 				.hasSize(edits)
-				.contains("rulebook date @ pravilnik #19 sr body: found 0 times, and its new text is already there",
+				.contains("rulebook date @ pravilnik #19 sr body: found 0 times",
 						"terms 12 becomes 11 @ uslovi-koriscenja #12 en heading: there is no such text");
 	}
 

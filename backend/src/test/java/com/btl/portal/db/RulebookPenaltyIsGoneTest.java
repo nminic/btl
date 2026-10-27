@@ -212,9 +212,8 @@ class RulebookPenaltyIsGoneTest extends DatabaseTest {
 				.single();
 
 		assertThat(changes)
-				.as("the rulebook no longer states the 31 December deadline as the team's")
-				.contains("Promena tima stupa na snagu 1. januara naredne sezone")
-				.contains("Sve promene moraju biti završene do 31. decembra");
+				.as("the rulebook no longer says a change of team takes effect on 1 January of the next season (the sentence about completing all changes by 31 December was struck by the owner on 27.10.2026)")
+				.contains("Promena tima stupa na snagu 1. januara naredne sezone");
 		assertThat(changes)
 				.as("the rulebook no longer says the pair is bound by no deadline")
 				.contains("Na raskid para se ne odnosi nijedan rok iz ovog člana");
@@ -234,17 +233,18 @@ class RulebookPenaltyIsGoneTest extends DatabaseTest {
 
 		assertThat(body)
 				.as("Article 56 no longer says leaving happens in the same window joining does")
-				/* THE DAY IS DELIBERATELY NOT IN THIS PHRASE ANY MORE (29.09.2026). What this case
-				   is about is that leaving happens in the SAME window joining does, which is what
-				   replaced the abolished penalty; WHICH day that window opens on is a different
-				   fact, it moved from the first of October to the fifteenth, and it has a guard of
-				   its own with a floor under it (TheWrittenPagesOpenOnTheFifteenthTest, which reads
-				   the day out of price_row rather than naming it). Left in, this would have been a
-				   second home for that day inside a case about something else. */
-				.contains("Iz tima se izlazi u istom prozoru u kom se i ulazi");
-		assertThat(body)
-				.as("Article 56 no longer says that leaving costs nothing")
-				.contains("Izlazak je jedan i ne nosi nikakvu kaznu");
+				/* THE PARAGRAPH WAS REPLACED BY THE OWNER'S OWN TWO SENTENCES ON 27.10.2026, and
+				   these are they: „Prelazni rok za timove je od 11. novembra do 31. decembra." and
+				   „Ulazak ili izlazak iz tima su dozvoljeni samo tokom prelaznog roka." What this
+				   case holds is that joining and leaving are one window, which is what replaced the
+				   abolished penalty. THE DAY IS DELIBERATELY NOT IN THE FIRST PHRASE: which day that
+				   window opens on is a different fact, and it has a guard of its own with a floor
+				   under it (TheWrittenPagesOpenOnTheElevenOfNovemberTest, which reads the day out of
+				   price_row rather than naming it). The sentences about a single exit, the
+				   contribution that stays and leaving outside the window went with the paragraph; the
+				   penalty they denied is still absent from every page, which the sweeps above hold. */
+				.contains("Prelazni rok za timove je od")
+				.contains("Ulazak ili izlazak iz tima su dozvoljeni samo tokom prelaznog roka");
 		assertThat(body)
 				.as("Article 56 no longer separates the pair from the team's window")
 				.contains("Trkački par raskida svaka strana, bilo kada");

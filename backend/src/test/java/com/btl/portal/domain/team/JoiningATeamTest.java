@@ -17,7 +17,7 @@ class JoiningATeamTest {
 
 	/** Inside the window: October of 2027, so the season joined is 2028. */
 	private static final ZonedDateTime IN_THE_WINDOW =
-			ZonedDateTime.of(2027, 10, 25, 12, 0, 0, 0, SeasonClock.ZONE);
+			ZonedDateTime.of(2027, 11, 25, 12, 0, 0, 0, SeasonClock.ZONE);
 
 	/** Outside it: September of the same year, which is the season that is running. */
 	private static final ZonedDateTime WINDOW_SHUT =

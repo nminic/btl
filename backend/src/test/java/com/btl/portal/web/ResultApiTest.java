@@ -79,7 +79,7 @@ class ResultApiTest {
 	 * calendar year it was run in. The two moments above both fall outside that
 	 * window, in January and in June, where the two functions agree.
 	 */
-	private static final Instant INSIDE_THE_TRANSFER_WINDOW = Instant.parse("2028-10-15T12:00:00Z");
+	private static final Instant INSIDE_THE_TRANSFER_WINDOW = Instant.parse("2028-11-11T12:00:00Z");
 
 	/**
 	 * THE AUTUMN OF 2026, WHEN NO SEASON IS RUNNING AT ALL.

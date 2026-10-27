@@ -109,8 +109,8 @@ class PricingWriteApiTest {
 
 	private static final String A_MEMBER = "takmicar@primer.rs";
 
-	/** Noon in Belgrade on 15 March 2028. See the head of this class for every word of it. */
-	private static final Instant IN_MARCH = Instant.parse("2028-03-15T11:00:00Z");
+	/** Noon in Belgrade on 15 May 2028. See the head of this class for every word of it. */
+	private static final Instant IN_MAY = Instant.parse("2028-05-15T11:00:00Z");
 
 	/**
 	 * Inside the {@code regular} period, 1 to 30 November, and past the day the window opens.
@@ -129,7 +129,7 @@ class PricingWriteApiTest {
 	 * {@code early} period rather than in {@code regular} - so one constant serving both
 	 * would have quietly renamed the row that case is about.
 	 */
-	private static final Instant IN_THE_REGULAR_PERIOD = Instant.parse("2028-11-10T10:00:00Z");
+	private static final Instant IN_THE_REGULAR_PERIOD = Instant.parse("2028-11-25T10:00:00Z");
 
 	/**
 	 * MIDNIGHT IN BELGRADE ON 1 OCTOBER, WRITTEN AS THE INSTANT IT ACTUALLY IS.
@@ -153,7 +153,7 @@ class PricingWriteApiTest {
 	 * {@code SeasonClockTest} failed twice each time. The route's own claim about the zone
 	 * was carried by nothing.
 	 */
-	private static final Instant AS_THE_WINDOW_OPENS = Instant.parse("2028-10-14T22:00:00Z");
+	private static final Instant AS_THE_WINDOW_OPENS = Instant.parse("2028-11-10T23:00:00Z");
 
 	/**
 	 * One second earlier, when it is still 14 October in Belgrade.
@@ -163,7 +163,7 @@ class PricingWriteApiTest {
 	 * assertion about the window being open and fail only here.
 	 */
 	private static final Instant A_SECOND_BEFORE_THE_WINDOW_OPENS =
-			Instant.parse("2028-10-14T21:59:59Z");
+			Instant.parse("2028-11-10T22:59:59Z");
 
 	/** The row every case writes. See the head of this class for why it is this one. */
 	private static final String ACTED = "regular";
@@ -268,13 +268,13 @@ class PricingWriteApiTest {
 		@Bean
 		@Primary
 		AClockTheCaseMoves aClockTheCaseMoves() {
-			return new AClockTheCaseMoves(IN_MARCH);
+			return new AClockTheCaseMoves(IN_MAY);
 		}
 	}
 
 	@BeforeEach
 	void fourAccountsAndThreePaymentsOnTwoRows() {
-		clock.moveTo(IN_MARCH);
+		clock.moveTo(IN_MAY);
 
 		mayCookie = account(MAY, "moderator");
 		ticked(MAY, "entity:pricing");
@@ -1586,8 +1586,8 @@ class PricingWriteApiTest {
 						+ " fee, method, state, recorded_at, recorded_by_name, received)"
 						+ " values (?, ?, (select id from price_row where key = ?), ?, ?, ?, 'ips',"
 						+ " 'recorded', ?, 'Probni Probic', ?::numeric + ?::numeric) returning id")
-				.params(competitor, SeasonClock.seasonBeingPaidFor(IN_MARCH.atZone(SeasonClock.ZONE)),
-						priceRow, amount, currency, fee, Timestamp.from(IN_MARCH), amount, fee)
+				.params(competitor, SeasonClock.seasonBeingPaidFor(IN_MAY.atZone(SeasonClock.ZONE)),
+						priceRow, amount, currency, fee, Timestamp.from(IN_MAY), amount, fee)
 				.query(Long.class).single();
 	}
 }

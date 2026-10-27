@@ -304,10 +304,11 @@ class PaymentOutsideTheWindowTest {
 	 */
 	@ParameterizedTest
 	@CsvSource({
-			"2027-10-14T10:00:00Z, 2027, season",
-			"2027-10-15T10:00:00Z, 2028, early",
-			"2027-12-31T10:00:00Z, 2028, late",
-			"2028-01-01T10:00:00Z, 2028, season"
+			"2027-11-10T10:00:00Z, 2027, season",
+			"2027-11-11T10:00:00Z, 2028, early",
+			"2027-12-31T10:00:00Z, 2028, regular",
+			"2028-01-01T10:00:00Z, 2028, late",
+			"2028-04-01T10:00:00Z, 2028, season"
 	})
 	void theListIsAboutTheSeasonTheDayNamesAndPricedAtTheRowTheDayFallsIn(String day, int season,
 			String row) throws Exception {

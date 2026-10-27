@@ -104,7 +104,7 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 	private static final String ZERO = String.valueOf((char) 0);
 
 	/** 11:00 in Belgrade on 20 October 2027, inside the transfer window and in the season 2027. */
-	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-10-20T09:00:00Z");
+	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-11-16T09:00:00Z");
 
 	private static final String THE_FORM_IS_NOT_COMPLETE = "theFormIsNotComplete";
 

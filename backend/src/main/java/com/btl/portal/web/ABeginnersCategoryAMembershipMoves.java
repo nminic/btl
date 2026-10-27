@@ -33,7 +33,7 @@ import org.springframework.stereotype.Component;
  * <p><b>THE SEASON ASKED IS THE ONE AFTER THE MEMBERSHIP'S, NEVER ITS OWN.</b> {@link BestOfficialSeason}
  * counts a season only toward the seasons after it, so a membership of a season can never move that
  * season's own category. It is worked out once, in {@link #before}, and the line names the very number
- * the right was asked for. A membership of the season on sale from 15 October has no approved runs yet
+ * the right was asked for. A membership of the season on sale from 11 November has no approved runs yet
  * (a race is not entered before it is run), so writing one moves nothing and no line goes; that is the
  * arithmetic and not a condition written here.
  *

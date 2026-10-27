@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * by its name.
  *
  * <p><b>The sweeps are over every row, with no {@code where} clause</b>, the shape of
- * {@link RulebookPenaltyIsGoneTest} and {@link TheWrittenPagesOpenOnTheFifteenthTest} and for their reason: what is
+ * {@link RulebookPenaltyIsGoneTest} and {@link TheWrittenPagesOpenOnTheElevenOfNovemberTest} and for their reason: what is
  * worth holding is not that one article is right but that NO article carries the old sentence, in whatever section
  * or language it is written next. {@link #EDITS} says what each edit took out and what it put in, as phrases and
  * not as whole texts: the whole texts are V57, and a second copy of a legal text is a place for it to go stale.

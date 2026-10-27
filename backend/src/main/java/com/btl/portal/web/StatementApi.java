@@ -377,7 +377,8 @@ class StatementApi {
 	private BigDecimal expectedOf(long competitorId, int season) {
 		LocalDate born = db.sql("select birth_date from competitor where id = ?")
 				.param(competitorId).query(LocalDate.class).single();
-		MonthDay today = MonthDay.from(LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE));
+		MonthDay today = SeasonClock.dayThePriceListIsReadOn(
+				LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE));
 
 		return MembershipPrice.on(priceRows.all(), today, born.getYear(), season, DINARS).expected();
 	}

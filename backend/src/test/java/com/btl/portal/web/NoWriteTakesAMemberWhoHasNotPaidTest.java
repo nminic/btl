@@ -141,7 +141,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class NoWriteTakesAMemberWhoHasNotPaidTest {
 
 	/** Inside the transfer window (it opens on 15 October), so the season being formed is 2028. */
-	private static final Instant NOW = Instant.parse("2027-11-02T10:00:00Z");
+	private static final Instant NOW = Instant.parse("2027-11-23T10:00:00Z");
 
 	private static final String PASSWORD = "lozinka-koja-je-dovoljno-duga";
 
@@ -405,7 +405,7 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 
 		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
 						+ " values (?, 2028, 'feeExempt', 'Probni Probic',"
-						+ " timestamptz '2027-10-20 10:00:00+00')")
+						+ " timestamptz '2027-11-16 10:00:00+00')")
 				.param(memberOf.get(LAPSED)).update();
 
 		member(ADDRESSEE, "M", true);
@@ -929,7 +929,7 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 
 	long ownPair(String owner) {
 		return once("pair", owner, () -> db.sql("insert into racing_pair (season, man_id, woman_id,"
-						+ " made_at) values (2028, ?, ?, timestamptz '2027-10-20 10:00:00+00') returning id")
+						+ " made_at) values (2028, ?, ?, timestamptz '2027-11-16 10:00:00+00') returning id")
 				.params(memberOf.get(owner), womanOf(owner)).query(Long.class).single());
 	}
 

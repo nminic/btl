@@ -216,7 +216,7 @@ class PaymentsDueApiTest {
 	private static final Instant IN_JUNE_2027 = Instant.parse("2027-06-01T07:00:00Z");
 
 	/** Where the season on sale has moved on and {@code seasonBeingRun} has not. */
-	private static final Instant IN_OCTOBER_2027 = Instant.parse("2027-10-20T07:00:00Z");
+	private static final Instant IN_OCTOBER_2027 = Instant.parse("2027-11-16T07:00:00Z");
 
 	private static final String A_TOWN = "(select id from place where rank = 1)";
 

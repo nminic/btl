@@ -61,7 +61,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class MembersApiTest {
 
 	/** 2028 is on sale (SeasonClock, from 15 October) and 2027 is still being run. */
-	private static final Instant AFTER_THE_FIFTEENTH = Instant.parse("2027-10-20T10:00:00Z");
+	private static final Instant AFTER_THE_FIFTEENTH = Instant.parse("2027-11-16T10:00:00Z");
 
 	/** 2027 is on sale and being run. */
 	private static final Instant BEFORE_THE_FIFTEENTH = Instant.parse("2027-10-10T10:00:00Z");

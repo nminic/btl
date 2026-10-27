@@ -312,7 +312,7 @@ class PaymentsDueApi {
 		}
 
 		/* THE SEASON PAYMENT IS BEING TAKEN FOR, read ONCE for the whole answer. Read per row
-		   it could cross 15 October between two rows of one list, and two accounts would be
+		   it could cross 11 November between two rows of one list, and two accounts would be
 		   answered about two different seasons under one heading. `PaymentApi` reads the same
 		   method at the same point of its own work, which is what keeps the writer and this
 		   reader from disagreeing about which membership closes a row. */
@@ -408,7 +408,8 @@ class PaymentsDueApi {
 		Map<Long, Balance.Money> books = book.forEveryOneOf(monies);
 		List<MembershipPrice.Row> priceList = priceRows.all();
 
-		MonthDay today = MonthDay.from(LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE));
+		MonthDay today = SeasonClock.dayThePriceListIsReadOn(
+				LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE));
 
 		return rows.stream().map(one -> {
 			Currency his = monies.get(one.id());

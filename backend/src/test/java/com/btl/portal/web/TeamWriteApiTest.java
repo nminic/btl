@@ -122,7 +122,7 @@ class TeamWriteApiTest {
 	}
 
 	/** 11:00 in Belgrade on 20 October 2027, well inside the transfer window. */
-	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-10-20T09:00:00Z");
+	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-11-16T09:00:00Z");
 
 	/** Written first, has no team, and never asks for anything. */
 	private static final String FIRST_WRITTEN = "000100";
@@ -877,7 +877,7 @@ class TeamWriteApiTest {
 	@ParameterizedTest
 	@CsvSource({
 			"2027-10-14T21:59:00Z, 404, the last minute of 14 October in Belgrade",
-			"2027-10-14T22:00:00Z, 201, midnight opening 15 October in Belgrade",
+			"2027-11-10T23:00:00Z, 201, midnight opening 15 October in Belgrade",
 			"2027-12-31T22:59:00Z, 201, the last minute of 31 December in Belgrade",
 			"2027-12-31T23:00:00Z, 404, midnight opening 1 January in Belgrade"})
 	void aTeamIsFoundedOnlyInsideTheTransferWindow(String moment, int expected, String what)
@@ -1341,8 +1341,8 @@ class TeamWriteApiTest {
 	 */
 	@ParameterizedTest
 	@CsvSource({
-			"2027-10-20T09:00:00Z, 2027, the season the membership also began in",
-			"2028-10-20T09:00:00Z, 2028, a season that is not the one it began in"})
+			"2027-11-16T09:00:00Z, 2027, the season the membership also began in",
+			"2028-11-16T09:00:00Z, 2028, a season that is not the one it began in"})
 	void aMembershipThatHasBegunIsEndedWithThisSeasonAndNotRemoved(String moment, int seasonTo,
 			String what) throws Exception {
 
@@ -1784,12 +1784,12 @@ class TeamWriteApiTest {
 	@ParameterizedTest
 	@CsvSource({
 			"2027-10-14T21:59:00Z, 000500, 409, a begun membership, last minute of 14 October",
-			"2027-10-14T22:00:00Z, 000500, 204, a begun membership, 15 October opening",
+			"2027-11-10T23:00:00Z, 000500, 204, a begun membership, 15 October opening",
 			"2027-12-31T22:59:00Z, 000500, 204, a begun membership, last minute of December",
 			"2027-12-31T23:00:00Z, 000500, 409, a begun membership, 1 January opening",
 			"2027-10-14T21:59:00Z, 000200, 409, a membership NOT begun, September",
 			"2027-06-15T10:00:00Z, 000200, 409, a membership NOT begun, the middle of June",
-			"2027-10-20T09:00:00Z, 000200, 204, a membership NOT begun, inside the window"})
+			"2027-11-16T09:00:00Z, 000200, 204, a membership NOT begun, inside the window"})
 	void aMemberLeavesHisTeamOnlyInsideTheTransferWindow(String moment, String who, int expected,
 			String what) throws Exception {
 
@@ -1850,7 +1850,7 @@ class TeamWriteApiTest {
 	 */
 	@ParameterizedTest
 	@CsvSource({
-			"2027-10-20T09:00:00Z, inside the transfer window",
+			"2027-11-16T09:00:00Z, inside the transfer window",
 			"2027-06-15T10:00:00Z, the middle of June, with the window shut"})
 	void aTeamHeIsNotInAnswersWhatAnAddressThatIsNotThereAnswers(String moment, String what)
 			throws Exception {
@@ -2295,7 +2295,7 @@ class TeamWriteApiTest {
 	 * {@link #aTeamIsFoundedOnlyInsideTheTransferWindow} ALREADY USES</b>, and they are the
 	 * edges rather than days near them. That is not tidiness: the window is read in Belgrade
 	 * (`SeasonClock.ZONE`) while this file's clock reports UTC, and the two zones agree on
-	 * every day of the year EXCEPT between {@code 2027-10-14T22:00:00Z} and midnight UTC -
+	 * every day of the year EXCEPT between {@code 2027-11-10T23:00:00Z} and midnight UTC -
 	 * so a case standing twenty days from the edge cannot tell the league's own time from the
 	 * server's, and the mutation that swaps one for the other passes it in silence.
 	 *
@@ -2312,7 +2312,7 @@ class TeamWriteApiTest {
 	@ParameterizedTest
 	@CsvSource({
 			"2027-10-14T21:59:00Z, 409, the last minute of 14 October in Belgrade",
-			"2027-10-14T22:00:00Z, 204, midnight opening 15 October in Belgrade",
+			"2027-11-10T23:00:00Z, 204, midnight opening 15 October in Belgrade",
 			"2027-12-31T22:59:00Z, 204, the last minute of 31 December in Belgrade",
 			"2027-12-31T23:00:00Z, 409, midnight opening 1 January in Belgrade"})
 	void aTeamIsDeletedOnlyInsideTheTransferWindow(String moment, int expected, String what)

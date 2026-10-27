@@ -4,6 +4,7 @@ import { seasonBeingRenewed } from './pricing'
 import { sources, WHOLE_PORTAL } from '../test/sources'
 import {
   boardsAreToppedUp,
+  dayThePriceListIsReadOn,
   FIRST_SEASON,
   inYearlyWindow,
   referralMayBeSet,
@@ -13,15 +14,42 @@ import {
 } from './season'
 
 describe('the yearly window', () => {
-  it('opens on the fifteenth of October and shuts with the year', () => {
+  it('opens on the eleventh of November and shuts with the year', () => {
+    expect(inYearlyWindow('2027-10-15')).toBe(false)
+    /* THE DAYS THAT CHANGED SIDES when the owner moved the window on 27.10.2026: from 15
+       October to 10 November 2027 it used to be open and is shut. */
+    expect(inYearlyWindow('2027-10-31')).toBe(false)
+    expect(inYearlyWindow('2027-11-01')).toBe(false)
+    expect(inYearlyWindow('2027-11-10')).toBe(false)
+    expect(inYearlyWindow('2027-11-11')).toBe(true)
+    expect(inYearlyWindow('2027-12-31')).toBe(true)
+    expect(inYearlyWindow('2028-01-01')).toBe(false)
+    expect(inYearlyWindow('2028-11-10')).toBe(false)
+    expect(inYearlyWindow('2028-11-11')).toBe(true)
+  })
+
+  it('opens the first year, 2026, on the day of the first sale and in no other year', () => {
+    /* Owner, 27.10.2026: „hocu da ove godine ljudi i dalje mogu da se prijavljuju i pre 11.11.
+       po uslovima koji ce vaziti 11.11." The window of 2026 is open from 15 October, exactly as
+       it has been, and the rule of every later year is the general one. */
     expect(inYearlyWindow('2026-09-30')).toBe(false)
-    /* THE DAY THAT CHANGED SIDES when the owner moved the window on 29.09.2026, and
-       the only assertion here a rule reading the month alone cannot pass. */
-    expect(inYearlyWindow('2026-10-01')).toBe(false)
     expect(inYearlyWindow('2026-10-14')).toBe(false)
     expect(inYearlyWindow('2026-10-15')).toBe(true)
+    expect(inYearlyWindow('2026-11-01')).toBe(true)
+    expect(inYearlyWindow('2026-11-10')).toBe(true)
+    expect(inYearlyWindow('2026-11-11')).toBe(true)
     expect(inYearlyWindow('2026-12-31')).toBe(true)
     expect(inYearlyWindow('2027-01-01')).toBe(false)
+  })
+
+  it('reads the price list on the day the cycle opens during the first sale, and on its own day otherwise', () => {
+    expect(dayThePriceListIsReadOn('2026-10-14')).toBe('10-14')
+    expect(dayThePriceListIsReadOn('2026-10-15')).toBe('11-11')
+    expect(dayThePriceListIsReadOn('2026-11-10')).toBe('11-11')
+    expect(dayThePriceListIsReadOn('2026-11-11')).toBe('11-11')
+    expect(dayThePriceListIsReadOn('2026-11-25')).toBe('11-25')
+    expect(dayThePriceListIsReadOn('2027-10-20')).toBe('10-20')
+    expect(dayThePriceListIsReadOn('2027-11-10')).toBe('11-10')
   })
 
   /**
@@ -127,13 +155,16 @@ describe('the yearly window', () => {
        the negation is what makes 1 January true again, which is a fact about the
        running season the screen has to admit to (pages/admin/AdminPricing.tsx). */
     expect(referralMayBeSet('2026-09-30')).toBe(true)
-    /* The fortnight the period GAINED: this is the complement of the window, so a
+    /* The days the period GAINED: this is the complement of the window, so a
        window that opens later leaves more room, not less. */
     expect(referralMayBeSet('2026-10-01')).toBe(true)
     expect(referralMayBeSet('2026-10-14')).toBe(true)
     expect(referralMayBeSet('2026-10-15')).toBe(false)
     expect(referralMayBeSet('2026-12-31')).toBe(false)
     expect(referralMayBeSet('2027-01-01')).toBe(true)
+    expect(referralMayBeSet('2027-10-15')).toBe(true)
+    expect(referralMayBeSet('2027-11-10')).toBe(true)
+    expect(referralMayBeSet('2027-11-11')).toBe(false)
   })
 
   it('has no season running until the first one begins', () => {

@@ -85,7 +85,7 @@ class TheLetterAfterTheAddressTest {
 	private static final int ON_SALE = 2027;
 
 	/** The day of the year the price list is asked about, as V4 writes its periods. */
-	private static final String THE_DAY = "10-20";
+	private static final String THE_DAY = "11-11";
 
 	private static final String NEW_PASSWORD = "trcim.kroz.sumu.2027";
 

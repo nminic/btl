@@ -28,10 +28,17 @@ import { inYearlyWindow } from './season'
  * `SeasonClock` for the behaviour. Four homes, one boundary, and a floor on each side.
  */
 
-/** The two years walked, neither of them 2026, and the second a leap year. */
+/** The two years walked, neither of them 2026 (whose first sale opens on its own day), and the second a leap year. */
 const SEASONS = [2027, 2028]
 
 const ranked = PRICES.filter((row) => row.ranking)
+
+/* THE ROW THE SELLING YEAR OPENS WITH (27.10.2026). It used to be the first day of the ranked
+   rows, and it stopped being derivable that way when the owner made 1 January to 31 March a
+   ranked period of the running season: ranking no longer tells a period that sells next season
+   from one that sells this. The opening day is the first day of the row that opens the cycle,
+   the one named 'early' (PDL, „Prijave ce pocinjati 11. novembra svake godine"). */
+const opening = PRICES.find((row) => row.key === 'early')
 
 /* Reduced rather than sorted and indexed, and the reason is a type rather than taste:
    `sort()[0]` is `string | undefined` because an array may be empty, and this repository
@@ -43,7 +50,11 @@ const ranked = PRICES.filter((row) => row.ranking)
    Found by `npm run build` and by nothing else: vitest strips types rather than checking
    them, so this file was green while it would not compile. */
 function sellingYearOpens(): string {
-  return ranked.map((row) => row.from).reduce((first, day) => (day < first ? day : first))
+  if (opening === undefined) {
+    throw new Error('the price list has no row that opens the cycle, so this measures nothing')
+  }
+
+  return opening.from
 }
 
 function sellingYearCloses(): string {

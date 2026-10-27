@@ -1,3 +1,4 @@
+import { dayThePriceListIsReadOn } from './season'
 import type { Price } from './types'
 
 /**
@@ -109,7 +110,7 @@ export function ofKind<T extends Price>(rows: T[], kind: string): T[] {
  * which is exactly why the walk cannot use it.
  */
 export function inForceOn(rows: PricedInBoth[], today: string): PricedInBoth[] {
-  const day = today.slice(5)
+  const day = dayThePriceListIsReadOn(today)
   /* A PERIOD WITH NO WINDOW IS NOT A CANDIDATE, and it is dropped rather than read as one
      opening on the first day of the year. V4 forbids the state - a period is the only kind
      sold in a window and is never sold outside one (`price_row_period_has_days`) - so this

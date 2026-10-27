@@ -698,7 +698,7 @@ class TeamWriteApi {
 		ZonedDateTime now = ZonedDateTime.now(clock);
 
 		/* THE WINDOW, ASKED OF THE ONE PLACE THAT HAS IT. `SeasonClock.transferWindowOpen`
-		   is where 15 October lives, and `JoiningATeam` reads the same method for the other
+		   is where 11 November lives, and `JoiningATeam` reads the same method for the other
 		   direction; a month written out here would be that window with a second home. */
 		if (!SeasonClock.transferWindowOpen(now)) {
 			return no(HttpStatus.CONFLICT, THE_WINDOW_IS_SHUT);
@@ -868,7 +868,7 @@ class TeamWriteApi {
 		}
 
 		/* AND THE WINDOW, ASKED OF THE ONE PLACE THAT HAS IT AND ASKED OF BOTH CALLERS.
-		   `SeasonClock.transferWindowOpen` is where 15 October lives and `leaving` reads the
+		   `SeasonClock.transferWindowOpen` is where 11 November lives and `leaving` reads the
 		   same method for the same reason; a month written out here would be that window
 		   with a second home. */
 		if (!SeasonClock.transferWindowOpen(ZonedDateTime.now(clock))) {

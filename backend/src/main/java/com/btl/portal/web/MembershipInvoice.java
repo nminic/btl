@@ -12,7 +12,6 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.time.MonthDay;
 import java.time.ZonedDateTime;
 
 /**
@@ -132,7 +131,7 @@ class MembershipInvoice {
 		   nobody asks. */
 		Currency his = currencyOf.of(me);
 
-		MembershipPrice.Price price = MembershipPrice.on(priceRows.all(), MonthDay.from(today),
+		MembershipPrice.Price price = MembershipPrice.on(priceRows.all(), SeasonClock.dayThePriceListIsReadOn(today),
 				member.birthDate().getYear(), season, his);
 
 		Balance.Settlement settled = Balance.against(

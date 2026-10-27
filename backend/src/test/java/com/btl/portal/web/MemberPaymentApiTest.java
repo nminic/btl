@@ -66,7 +66,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class MemberPaymentApiTest {
 
 	/** 2028 on sale, at „15. do 31. oktobra": 35 EUR plus the fee of 3, or 4.200 RSD. */
-	private static final Instant AFTER_THE_FIFTEENTH = Instant.parse("2027-10-20T09:00:00Z");
+	private static final Instant AFTER_THE_FIFTEENTH = Instant.parse("2027-11-16T09:00:00Z");
 
 
 
@@ -389,8 +389,8 @@ class MemberPaymentApiTest {
 	@ParameterizedTest
 	@CsvSource({
 			"2027-10-10T09:00:00Z, 2027",
-			"2027-10-14T22:30:00Z, 2028",
-			"2027-10-20T09:00:00Z, 2028",
+			"2027-11-10T23:30:00Z, 2028",
+			"2027-11-16T09:00:00Z, 2028",
 			"2028-01-01T10:00:00Z, 2028",
 			"2028-01-01T16:30:00Z, 2028",
 			"2026-10-18T09:00:00Z, 2027"})

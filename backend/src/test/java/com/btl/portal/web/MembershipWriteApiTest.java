@@ -81,7 +81,7 @@ class MembershipWriteApiTest {
 	private static final Instant IN_JUNE_2027 = Instant.parse("2027-06-15T09:00:00Z");
 
 	/** Inside the renewal window: what is on sale is 2028 while the season being RUN is 2027. */
-	private static final Instant IN_OCTOBER_2027 = Instant.parse("2027-10-15T09:00:00Z");
+	private static final Instant IN_OCTOBER_2027 = Instant.parse("2027-11-11T09:00:00Z");
 
 	/**
 	 * The fortnight before the portal opens, PDL:806: the owner opens the first profiles and

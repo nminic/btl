@@ -33,38 +33,54 @@ describe('the four periods', () => {
 })
 
 describe('priceOn', () => {
-  it('finds the price in force', () => {
+  it('finds the price in force in the first year, 2026, whose first sale opens on 15 October', () => {
+    /* THE ONE YEAR WITH AN EXCEPTION (owner, 27.10.2026): from 15 October to 10 November 2026
+       the list is read as if it were 11 November, so the price is the early one and the
+       running-season row, which the calendar would pick on those days, does not apply. */
     expect(priceOn('2026-10-14').eur).toBe(40)
     expect(priceOn('2026-10-15').eur).toBe(35)
     expect(priceOn('2026-10-31').eur).toBe(35)
-    /* THE DAY THAT CHANGED SIDES on 29.09.2026, and the only one that tells the new
-       list from the old: it was the early price and is now the running season's. */
-    expect(priceOn('2026-10-01').eur).toBe(40)
-    expect(priceOn('2026-11-01').eur).toBe(40)
-    expect(priceOn('2026-11-29').eur).toBe(40)
-    expect(priceOn('2026-11-30').eur).toBe(40)
-    expect(priceOn('2026-12-01').eur).toBe(50)
-    expect(priceOn('2026-12-31').eur).toBe(50)
+    expect(priceOn('2026-11-01').eur).toBe(35)
+    expect(priceOn('2026-11-10').eur).toBe(35)
+    expect(priceOn('2026-11-11').eur).toBe(35)
+    expect(priceOn('2026-11-20').eur).toBe(35)
+    expect(priceOn('2026-11-21').eur).toBe(40)
+    expect(priceOn('2026-12-31').eur).toBe(40)
+  })
+
+  it('finds the price in force from 2027 on, by the calendar alone', () => {
+    expect(priceOn('2027-01-01').eur).toBe(50)
+    expect(priceOn('2027-03-31').eur).toBe(50)
+    expect(priceOn('2027-04-01').eur).toBe(40)
+    /* The days 15 October to 10 November are the running season in 2027: the exception of the
+       first year does not repeat. */
+    expect(priceOn('2027-10-15').key).toBe('season')
+    expect(priceOn('2027-11-10').key).toBe('season')
+    expect(priceOn('2027-11-11').key).toBe('early')
+    expect(priceOn('2027-11-20').key).toBe('early')
+    expect(priceOn('2027-11-21').key).toBe('regular')
+    expect(priceOn('2027-12-31').key).toBe('regular')
   })
 
   it('answers on any day of any year, because the periods repeat', () => {
-    /* Owner, 30.07.2026: membership for 2027 is sold until 30 September 2027,
-       and on 15 October the same four open again for 2028. Written as dates the
-       list would have run out and the portal would have stopped having a price
-       on a morning nobody was watching. */
-    expect(priceOn('2031-10-20').eur).toBe(35)
+    /* Owner, 30.07.2026: membership for 2027 is sold until 10 November 2027, and on 11 November
+       the same four open again for 2028. Written as dates the list would have run out and the
+       portal would have stopped having a price on a morning nobody was watching. */
+    expect(priceOn('2031-11-20').eur).toBe(35)
     expect(priceOn('2031-05-05').eur).toBe(40)
     expect(priceOn('2026-09-20').eur).toBe(40)
-    expect(priceOn('2026-01-01').eur).toBe(40)
+    expect(priceOn('2026-01-01').eur).toBe(50)
   })
 
   it('gives the in-season price no place in the standing', () => {
-    expect(priceOn('2027-03-01').ranking).toBe(false)
+    expect(priceOn('2027-04-01').ranking).toBe(false)
     expect(priceOn('2027-09-30').ranking).toBe(false)
-    expect(priceOn('2027-10-14').ranking).toBe(false)
+    expect(priceOn('2027-11-10').ranking).toBe(false)
     expect(priceOn('2026-10-15').ranking).toBe(true)
-    /* And the fortnight the running season gained: ranked before 29.09.2026, not now. */
     expect(priceOn('2026-10-01').ranking).toBe(false)
+    /* And the months that are paid for the running season WITH the right to be ranked, from 27.10.2026. */
+    expect(priceOn('2027-01-01').ranking).toBe(true)
+    expect(priceOn('2027-03-31').ranking).toBe(true)
   })
 })
 
@@ -78,6 +94,7 @@ describe('registrationOpen', () => {
     expect(registrationOpen('2026-10-01')).toBe(false)
     expect(registrationOpen('2026-10-14')).toBe(false)
     expect(registrationOpen('2026-10-15')).toBe(true)
+    expect(registrationOpen('2027-04-01')).toBe(true)
   })
 })
 
@@ -97,7 +114,7 @@ describe('the season a renewal is for', () => {
    */
 
   it('is next year, once the portal is past the first official season', () => {
-    expect(seasonBeingRenewed('2027-11-01')).toBe(2028)
+    expect(seasonBeingRenewed('2027-11-12')).toBe(2028)
     expect(seasonBeingRenewed('2028-01-15')).toBe(2029)
   })
 
@@ -113,18 +130,19 @@ describe('the season a renewal is for', () => {
 })
 
 describe('the season a payment made today buys', () => {
-  /* Two seasons and one window. Inside the window (15 October to 31 December) it is the next
-   * season, which is what `seasonBeingRenewed` answers; outside it the running one, because the
-   * owner confirmed on 16.10.2026 that somebody who pays between 1 January and 14 October pays for
-   * the current year at once (PDL P8, the price list, item U1). The server books under the same
+  /* Two seasons and one window. Inside the window (11 November to 31 December, and in 2026 from
+   * 15 October) it is the next season, which is what `seasonBeingRenewed` answers; outside it the
+   * running one, because the owner confirmed on 16.10.2026 that somebody who pays between 1 January
+   * and 10 November pays for the current year at once (PDL P8, the price list, item U1). The server books under the same
    * value (`SeasonClock.seasonBeingPaidFor`, measured in `PaymentOutsideTheWindowTest`).
    *
    * Each edge is stood on from both sides, and the two seasons part company on every day outside the
    * window, so replacing this call by `seasonBeingRenewed` is caught by the first of them. */
   it.each([
-    ['2027-10-15', 2028],
+    ['2027-11-11', 2028],
     ['2027-12-31', 2028],
     ['2026-10-15', 2027],
+    ['2026-11-01', 2027],
     ['2026-12-31', 2027],
   ])('is the next season on %s, inside the window', (day, season) => {
     expect(seasonBeingPaidFor(day)).toBe(season)
@@ -132,9 +150,10 @@ describe('the season a payment made today buys', () => {
 
   it.each([
     ['2027-01-01', 2027],
-    ['2027-10-14', 2027],
+    ['2027-10-15', 2027],
+    ['2027-11-10', 2027],
     ['2028-01-01', 2028],
-    ['2028-10-14', 2028],
+    ['2028-11-10', 2028],
   ])('is the season that is running on %s, outside it', (day, season) => {
     expect(seasonBeingPaidFor(day)).toBe(season)
     expect(seasonBeingRenewed(day), 'the two parted company, or this measures nothing').not.toBe(season)

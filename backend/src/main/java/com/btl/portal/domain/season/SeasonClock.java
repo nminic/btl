@@ -131,7 +131,15 @@ public final class SeasonClock {
 	 * The day the transfer window opens, which is the day the price list starts selling a
 	 * season that has not begun.
 	 *
-	 * <p><b>It was 1 October until 29.09.2026, when the owner moved it:</b> „Zelim da prvi
+	 * <p><b>It is 11 November from 27.10.2026 (PDL, „Novi godišnji ciklus od 11. novembra"):</b>
+	 * „Prijave ce pocinjati 11. novembra svake godine i trajati 10 dana po ceni od 35 eur
+	 * (4200)", and the owner chose that everything which opened on 15 October moves with it -
+	 * the transfer window, the sale of the next season, the basis, the list and the deadline for
+	 * the referral amount. The end of the window stays at the end of 31 December. <b>That year,
+	 * 2026, is the one exception, and it is {@link #FIRST_SALE} rather than a clause in this
+	 * day:</b> see there.
+	 *
+	 * <p><b>It was 15 October until then, and 1 October until 29.09.2026, when the owner moved it:</b> „Zelim da prvi
 	 * period postane 15-31. oktobar, drugi 1-30. novembar a ostalo ostaje isto. S tim na umu
 	 * zelim i da se prelazni rok i sve ostalo otvara 15.10. ubuduce, a ne 1.10." Asked
 	 * whether only the OPENING moves, he answered „Tacno", so the window still shuts at the
@@ -148,10 +156,31 @@ public final class SeasonClock {
 	 * by asking the TABLE for the day and this class for the behaviour. A second reader here
 	 * would be a third home for one boundary with nothing holding it to either.
 	 */
-	private static final MonthDay WINDOW_OPENS = MonthDay.of(10, 15);
+	private static final MonthDay WINDOW_OPENS = MonthDay.of(11, 11);
 
 	/**
-	 * The transfer window: 15 October to 31 December, the same window membership is
+	 * THE FIRST DAY ANYTHING IS SOLD, and the one year in which {@link #WINDOW_OPENS} is not the
+	 * day the window opens.
+	 *
+	 * <p><b>Owner, 27.10.2026 (PDL, „Novi godišnji ciklus od 11. novembra"):</b> „Iako ce tako
+	 * biti upisan cenovnik na svim mestima, hocu da ove godine ljudi i dalje mogu da se
+	 * prijavljuju i pre 11.11. po uslovima koji ce vaziti 11.11." So in 2026 the window is open
+	 * from this day, the season on sale is 2027 and the price is the one of the period that
+	 * opens on {@link #WINDOW_OPENS} ({@link #dayThePriceListIsReadOn}). From the next year the
+	 * general rule is the whole rule.
+	 *
+	 * <p><b>A date and not a day of the year, because it happens once</b>, which is the opposite
+	 * of {@link #WINDOW_OPENS}. It is the same fact the front end calls
+	 * {@code REGISTRATION_OPENS}.
+	 *
+	 * <p><b>The mutation that proves it is a replacement and never a deleted assertion:</b> let
+	 * the exception hold for every year from 2026 on and 2027 opens on 15 October;
+	 * {@code SeasonClockTest} fails on 20 October 2027.
+	 */
+	public static final LocalDate FIRST_SALE = LocalDate.of(2026, 10, 15);
+
+	/**
+	 * The transfer window: 11 November to 31 December, the same window membership is
 	 * renewed in.
 	 *
 	 * <p>Owner, 05.09.2026: a team is founded only inside it, and a change of team
@@ -166,15 +195,45 @@ public final class SeasonClock {
 	 * end staying put is itself what the owner decided on 29.09.2026.
 	 *
 	 * <p><b>Read as a day and no longer as a month, and the day is why.</b> This was
-	 * {@code getMonthValue() >= 10} while the window began with October; from 15 October the
-	 * month is no longer the question, and the first fourteen days of October are now OUTSIDE
-	 * a window they used to open. That stretch is the only thing that tells the two shapes
-	 * apart, which is why the cases about it carry every file that measures this one.
+	 * {@code getMonthValue() >= 10} while the window began with October; from 15 October, and
+	 * now from 11 November, the month is no longer the question, and the days of October and
+	 * of the first third of November are OUTSIDE a window they used to open. That stretch is
+	 * the only thing that tells the two shapes apart, which is why the cases about it carry
+	 * every file that measures this one.
 	 *
 	 * @param at the moment being asked about, in any zone: it is read in the league's
 	 */
 	public static boolean transferWindowOpen(ZonedDateTime at) {
-		return !MonthDay.from(at.withZoneSameInstant(ZONE)).isBefore(WINDOW_OPENS);
+		LocalDate day = at.withZoneSameInstant(ZONE).toLocalDate();
+
+		if (day.getYear() == FIRST_SALE.getYear()) {
+			return !day.isBefore(FIRST_SALE);
+		}
+
+		return !MonthDay.from(day).isBefore(WINDOW_OPENS);
+	}
+
+	/**
+	 * THE DAY OF THE YEAR THE PRICE LIST IS READ ON FOR A GIVEN DATE.
+	 *
+	 * <p>Almost always the day itself. The one exception is the first sale (owner, 27.10.2026):
+	 * from {@link #FIRST_SALE} to the eve of {@link #WINDOW_OPENS} in that year the list is read
+	 * as if it were the day the cycle opens, so the price is that of the period which starts
+	 * there - 35 EUR, 4.200 RSD - and not the one of the running season the calendar would pick
+	 * on those days. It returns {@link #WINDOW_OPENS} itself, and not the name of a row: the
+	 * row that starts on that day is the table's to name.
+	 *
+	 * @param day the date being asked about, in the league's zone
+	 */
+	public static MonthDay dayThePriceListIsReadOn(LocalDate day) {
+		MonthDay asked = MonthDay.from(day);
+
+		if (day.getYear() == FIRST_SALE.getYear() && !day.isBefore(FIRST_SALE)
+				&& asked.isBefore(WINDOW_OPENS)) {
+			return WINDOW_OPENS;
+		}
+
+		return asked;
 	}
 
 	/**
@@ -227,7 +286,14 @@ public final class SeasonClock {
 	 * false</b>, and a review found it by working both instants out instead of reading the
 	 * sentence.
 	 *
-	 * <p><b>Measured on Java 21, for the only day the rule is about.</b> Belgrade is still
+	 * <p><b>THIS PARAGRAPH IS ABOUT 15 OCTOBER 2026 ONLY, and from 27.10.2026 that is the one
+	 * year it is about.</b> The day the amount settles is {@link #FIRST_SALE} in 2026 and 11
+	 * November in every year after it, and on 11 November Belgrade has already left summer
+	 * time (the last Sunday of October is at the latest the 31st), so midnight there IS
+	 * midnight at +01:00 and the two readings below coincide. What follows was measured for the
+	 * 15 October of the years it was written for and is kept because 2026 still stands on it.
+	 *
+	 * <p><b>Measured on Java 21, for the only day the rule was about.</b> Belgrade is still
 	 * on summer time on 15 October - it does not leave it until the last Sunday of the month
 	 * - so midnight there is at {@code +02:00}:
 	 *
@@ -335,7 +401,8 @@ public final class SeasonClock {
 	 * (V11), so this is the number that goes in that column.
 	 *
 	 * <p><b>The days in that quotation are the ones he said and the window has since moved:
-	 * it is 15.10 to 31.12 from 29.09.2026.</b> His sentence is kept word for word because it
+	 * it was 15.10 to 31.12 from 29.09.2026 and is 11.11 to 31.12 from 27.10.2026 (2026
+	 * itself opens on 15.10, {@link #FIRST_SALE}).</b> His sentence is kept word for word because it
 	 * is a quotation, and what it decides - that leaving happens in the SAME window as
 	 * joining - is what carried across; the dates in it were how the window read that day.
 	 * {@link #transferWindowOpen} is the only place the days are, here as everywhere.
@@ -500,8 +567,8 @@ public final class SeasonClock {
 	 * are, would still be calling it last year for the first hour of every New Year in
 	 * Belgrade, and that hour is a boundary this field moves on.
 	 *
-	 * <p><b>And it is NOT {@link #seasonBeingPaidFor}.</b> That one answers from 15 October
-	 * with NEXT year, which would move every member's band forward a season in the autumn
+	 * <p><b>And it is NOT {@link #seasonBeingPaidFor}.</b> That one answers from the day the
+	 * window opens with NEXT year, which would move every member's band forward a season in the autumn
 	 * without a single birthday - and the band moves once, on 1 January, which is the whole of
 	 * PDL P7 („Uzrast se u ligi utvrđuje jednom, na 1. januar sezone"). Two cases refuse the
 	 * swap, one here and one through the route:
@@ -611,8 +678,8 @@ public final class SeasonClock {
 	 * it.
 	 *
 	 * <p><b>THIS IS NOT {@link #seasonBeingPaidFor} AND MUST NOT BE WRITTEN AS IT.</b>
-	 * That one answers what is on SALE and steps into next year on 15 October, so from the
-	 * middle of October to December it would refuse a league for the year that is still
+	 * That one answers what is on SALE and steps into next year on the day the
+	 * window opens, so from then to December it would refuse a league for the year that is still
 	 * running - and PDL P15a's fourth decision says races enter a league "i tokom godine te
 	 * lige", which is that very stretch of it. Two questions about a season are two methods
 	 * here, which is the split {@link #transfersTakeEffect} was already made for.

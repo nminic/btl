@@ -452,13 +452,13 @@ describe('membership', () => {
   }
 
   it.each([
-    ['freed of 2028, in the window', '2027-11-01', 'feeExempt', 2028,
+    ['freed of 2028, in the window', '2027-11-25', 'feeExempt', 2028,
       /Oslobođen si plaćanja članarine za sezonu 2028, odlukom/, /Oslobođen si plaćanja članarine, pa nema/],
-    ['paid for 2028, in the window', '2027-11-01', 'payment', 2028,
+    ['paid for 2028, in the window', '2027-11-25', 'payment', 2028,
       /^Članarina za sezonu 2028 je plaćena\.$/, /^Članarina za 2028 je već plaćena, pa nema šta da uplatiš\.$/],
-    ['let into 2028 on his balance', '2027-11-01', 'balance', 2028,
+    ['let into 2028 on his balance', '2027-11-25', 'balance', 2028,
       /^Članarina za sezonu 2028 je plaćena iz balansa\.$/, /^Članarina za 2028 je već plaćena/],
-    ['freed of 2027, on the last day it is sold', '2027-10-14', 'feeExempt', 2027,
+    ['freed of 2027, on the last day it is sold', '2027-11-10', 'feeExempt', 2027,
       /Oslobođen si plaćanja članarine za sezonu 2027, odlukom/, /Oslobođen si plaćanja članarine, pa nema/],
     ['freed of 2027 before the league has a season', '2026-11-01', 'feeExempt', 2027,
       /Oslobođen si plaćanja članarine za sezonu 2027, odlukom/, /Oslobođen si plaćanja članarine, pa nema/],
@@ -488,7 +488,7 @@ describe('membership', () => {
     const { stop } = meSays({ membershipBasis: 'feeExempt', membershipSeason: 2027 })
 
     try {
-      renderMembershipOn('2027-11-01', '000032')
+      renderMembershipOn('2027-11-25', '000032')
 
       expect(await screen.findByRole('heading', { name: 'Uplatnica' }, { timeout: SLOW / 2 })).toBeVisible()
       expect(screen.queryByText(/Oslobođen si plaćanja/)).not.toBeInTheDocument()
@@ -504,7 +504,7 @@ describe('membership', () => {
     const { stop } = meSays({})
 
     try {
-      renderMembershipOn('2027-11-01', '000032')
+      renderMembershipOn('2027-11-25', '000032')
 
       expect(await screen.findByRole('heading', { name: 'Uplatnica' }, { timeout: SLOW / 2 })).toBeVisible()
       expect(screen.queryByText(/je plaćena|je već plaćena|Oslobođen si/)).not.toBeInTheDocument()
@@ -972,11 +972,11 @@ describe('membership', () => {
     }
   })
 
-  it('has a price in any October of any year, because the list repeats', async () => {
+  it('has a price in any November of any year, because the list repeats', async () => {
     /* It used to run out at the end of 2027, and this screen carried a line
        saying membership was not on sale yet for the day it did. The four
        periods repeat now (owner, 30.07.2026), so that day never comes. */
-    renderMembershipOn('2031-10-20')
+    renderMembershipOn('2031-11-15')
 
     expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
     expect(screen.getAllByText(/35 EUR, a iz Srbije 4\.200 RSD/).length).toBeGreaterThan(0)
@@ -1252,7 +1252,7 @@ describe('membership', () => {
       expect(early.rsd, 'the bundled figure has to differ, or this measures nothing').not.toBe(5280)
 
       owing(anInvoice(2028, 'RSD'))
-      renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2027-10-20')
+      renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2027-11-15')
 
       const payload = readQr(await screen.findByRole('img', { name: /QR/ }))
 
@@ -1472,7 +1472,7 @@ describe('membership', () => {
       const category = categoryAsServed(said)
 
       try {
-        renderMembershipOn('2027-11-01', '000032')
+        renderMembershipOn('2027-11-25', '000032')
 
         const beginner = await screen.findByRole('radio', {
           name: 'U početničkoj kategoriji',
@@ -1593,7 +1593,7 @@ describe('membership', () => {
     const category = categoryAsServed(OPEN_TO_HIM, answeringCategory(CLOSED_TO_HIM))
 
     try {
-      renderMembershipOn('2027-11-01', '000032')
+      renderMembershipOn('2027-11-25', '000032')
 
       const beginner = await screen.findByRole('radio', { name: 'U početničkoj kategoriji' })
 
@@ -1631,7 +1631,7 @@ describe('membership', () => {
     const category = categoryAsServed(HE_WANTS_THE_BEGINNERS, answeringCategory(OPEN_TO_HIM))
 
     try {
-      renderMembershipOn('2027-11-01', '000032')
+      renderMembershipOn('2027-11-25', '000032')
 
       const age = await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' })
 
@@ -1669,7 +1669,7 @@ describe('membership', () => {
     const category = categoryAsServed(OPEN_TO_HIM, refused('theChoiceIsShut', 409))
 
     try {
-      renderMembershipOn('2027-11-01', '000032')
+      renderMembershipOn('2027-11-25', '000032')
 
       fireEvent.click(await screen.findByRole('radio', { name: 'U početničkoj kategoriji' }))
 
@@ -1723,7 +1723,7 @@ describe('membership', () => {
     const category = categoryAsServed(PAST_THE_DEADLINE)
 
     try {
-      renderMembershipOn('2027-11-01', '000032')
+      renderMembershipOn('2027-11-25', '000032')
 
       expect(
         await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
@@ -1747,7 +1747,7 @@ describe('membership', () => {
     const category = categoryAsServed(null)
 
     try {
-      renderMembershipOn('2027-11-01', '000032')
+      renderMembershipOn('2027-11-25', '000032')
 
       expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
       expect(
@@ -2597,7 +2597,7 @@ describe('the transfer window and renewal', () => {
   it('shuts both outside the window, and says when they open', async () => {
     renderMembership('2026-07-29')
 
-    expect(await screen.findByText(/Obnova se otvara 15. oktobra/)).toBeVisible()
+    expect(await screen.findByText(/Obnova se otvara 11. novembra/)).toBeVisible()
     expect(screen.getByText(/Prelazni rok je zatvoren/)).toBeVisible()
     expect(screen.queryByText(/U tim ulaziš prijavom/)).not.toBeInTheDocument()
   })
@@ -2676,7 +2676,7 @@ describe('screens that depend on the date', () => {
     renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2026-09-20')
 
     expect(
-      await screen.findByText('Članarina se još ne prodaje. Naplata kreće 15. oktobra.'),
+      await screen.findByText('Članarina se još ne prodaje. Naplata kreće 11. novembra.'),
     ).toBeVisible()
 
     /* Day first, because the switch is the portal's own date control since
@@ -2689,7 +2689,7 @@ describe('screens that depend on the date', () => {
       await screen.findByText('Danas članarina košta 35 EUR, a iz Srbije 4.200 RSD.'),
     ).toBeVisible()
     expect(
-      screen.queryByText('Članarina se još ne prodaje. Naplata kreće 15. oktobra.'),
+      screen.queryByText('Članarina se još ne prodaje. Naplata kreće 11. novembra.'),
     ).not.toBeInTheDocument()
   }, SEVERAL_SCREENS)
 })

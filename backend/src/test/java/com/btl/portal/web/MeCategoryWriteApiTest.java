@@ -73,7 +73,7 @@ class MeCategoryWriteApiTest {
 
 	private static final String NOTHING_IS_THERE = "/api/zzzzzzzzzz";
 
-	private static final Instant IN_OCTOBER_2028 = Instant.parse("2028-10-15T12:00:00Z");
+	private static final Instant IN_OCTOBER_2028 = Instant.parse("2028-11-11T12:00:00Z");
 
 	/** Ten o'clock in Belgrade on 1 January 2029, which is the deadline itself. */
 	private static final Instant THE_DEADLINE = Instant.parse("2029-01-01T09:00:00Z");
