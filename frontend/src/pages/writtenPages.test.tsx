@@ -2843,11 +2843,13 @@ describe('what the written pages say the fee buys', () => {
        24.10.2026 with the word „drugima" (V73; owner, 24.10.2026), by the rule
        of 16.10.2026 that the date moves on the document whose text changes (the
        derivation of the assistant, not the owner's own decision); the rulebook and
-       the terms did not change and keep 22.10.2026. Written per
+       the terms did not change and kept 22.10.2026. The rulebook moved to 27.10.2026
+       with the cycle that opens on 11 November (V76; owner, 27.10.2026), by the same
+       rule; the terms did not change and keep 22.10.2026. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
-      pravilnik: '22.10.2026',
+      pravilnik: '27.10.2026',
       'uslovi-koriscenja': '22.10.2026',
       'politika-privatnosti': '24.10.2026',
     } as const
