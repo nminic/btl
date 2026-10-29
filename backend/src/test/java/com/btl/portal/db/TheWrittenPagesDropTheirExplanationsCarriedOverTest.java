@@ -266,11 +266,12 @@ class TheWrittenPagesDropTheirExplanationsCarriedOverTest extends DatabaseTest {
 	 * THE FLOORS OF THE TWO SWEEPS: asked of the text before V77, the sweep for the exemption finds it in the four
 	 * sections of the Serbian text that held the owner's five places (PDL 29.10.2026) and in the same four of the English,
 	 * and the English sweep finds it in the policy as well, in the sentence about the name that stays with a decision.
-	 * That sentence names no root in Serbian ("da ne plati članarinu", section 5 of the policy, edited by V77), and the
-	 * Serbian sweep sees it only through its forms without the root, which is what holds those forms: a sweep that asked
-	 * for the root alone would miss it here, and miss the same sentence written anew. The same forms see "ne plaća za
-	 * pristup sajtu" in section 2 of the terms, which V77 also strikes (USL-01). The sweep for the familiar phrase finds it
-	 * in Article 8. A pattern that had gone blind would pass the sweeps of the other class on any text.
+	 * That sentence names no root in Serbian ("odobrili da neko plati manje ili da ne plati članarinu", section 5 of the
+	 * policy, edited by V77), and the Serbian sweep sees it only through its forms without the root, which is what holds
+	 * those forms: a sweep that asked for the root alone would miss it here, and miss the same sentence written anew. The
+	 * same forms see "ne plaća za pristup sajtu" in section 2 of the terms, which V77 also strikes (USL-01). The sweep for
+	 * the familiar phrase finds it in Article 8. A pattern that had gone blind would pass the sweeps of the other class on
+	 * any text.
 	 */
 	@Test
 	void theSweepsFindWhatTheyKeepOutInTheTextBeforeV77() {
