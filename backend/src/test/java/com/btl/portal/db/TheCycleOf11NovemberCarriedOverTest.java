@@ -247,6 +247,10 @@ class TheCycleOf11NovemberCarriedOverTest extends DatabaseTest {
 
 	/** The old sentences, put back by the reverse of each of V76's replacements. */
 	private void theTextAsItStoodBeforeV76() {
+		/* V77 (29.10.2026) struck sentences of the same sections and moved all three sign-offs, so it is undone first,
+		   read out of V77 itself, and what is put back below is then the text V76 left. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "77");
+
 		put("pravilnik", 3, null, "zaključno sa 31. martom 2027. godine", "zaključno sa 31. decembrom 2026. godine");
 		put("pravilnik", 3, "en", "by a payment made by 31 March 2027 at the latest",
 				"by a payment made by 31 December 2026 at the latest");

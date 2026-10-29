@@ -202,21 +202,25 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	 * rulebook and the terms keep the 22.10.2026 V71 gave them, in both languages.
 	 */
 	@Test
-	void thePolicyIsSignedOffOnTheTwentyFourthAndTheOtherTwoStayOnTheTwentySecond() {
+	void thePolicyIsSignedOffOnTheTwentyNinthAndNoEarlierDayStandsAnywhereAnyMore() {
+		/* V77 (owner, 29.10.2026) moved all three documents to 29.10.2026: the 24.10.2026 V73 gave the policy, the
+		   27.10.2026 V76 gave the rulebook and the 22.10.2026 the terms keep stand nowhere now. What V73 itself does to
+		   the date is held by the cases that put the text back to before V73 and run it. */
 		for (String language : List.of("sr", "en")) {
-			assertThat(placesWhichCarry(language, signOffAfterIn(language)))
-					.as("the %s sign-off of 24.10.2026 must stand on the privacy policy alone", language)
-					.containsExactly(THE_POLICY_SIGN_OFF);
-			assertThat(bodyOf(language, THE_POLICY_SIGN_OFF))
-					.containsOnlyOnce(signOffAfterIn(language))
-					.doesNotContain(signOffIn(language));
-			assertThat(placesWhichCarry(language, signOffIn(language)))
-					.as("the %s sign-off of 22.10.2026 must stand on the terms of use alone, V76 having moved the rulebook's"
-							+ " on to 27.10.2026 and V73 the policy's", language)
-					.containsExactly(new Place("uslovi-koriscenja", 11));
-			assertThat(placesWhichCarry(language, language.equals("sr") ? "Poslednja izmena: 27.10.2026." : "Last amended: 27.10.2026."))
-					.as("the %s sign-off of 27.10.2026 must stand on the rulebook alone", language)
-					.containsExactly(new Place("pravilnik", 19));
+			String today = language.equals("sr") ? "Poslednja izmena: 29.10.2026." : "Last amended: 29.10.2026.";
+
+			assertThat(placesWhichCarry(language, today))
+					.as("the %s sign-off of 29.10.2026 must stand on all three documents", language)
+					.containsExactlyInAnyOrder(THE_POLICY_SIGN_OFF, new Place("uslovi-koriscenja", 11),
+							new Place("pravilnik", 19));
+			assertThat(bodyOf(language, THE_POLICY_SIGN_OFF)).containsOnlyOnce(today);
+
+			for (String gone : List.of(signOffAfterIn(language), signOffIn(language),
+					language.equals("sr") ? "Poslednja izmena: 27.10.2026." : "Last amended: 27.10.2026.")) {
+				assertThat(placesWhichCarry(language, gone))
+						.as("the %s sign-off \"%s\" must stand nowhere, V77 having moved every document on", language, gone)
+						.isEmpty();
+			}
 		}
 	}
 
@@ -287,6 +291,10 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 
 	/** The text as it stood BEFORE V73: the new clause put back to the old one in both languages, by hand. */
 	private void putBackTheTextAsItStoodBeforeV73() {
+		/* V77 (29.10.2026) cut the cell, the heading and the sign-off this file reverts by hand, so the pages are first put
+		   back to how they stood before V77, read out of V77 itself. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "77");
+
 		for (String language : List.of("sr", "en")) {
 			setBody(language, THE_PLACE, asItStoodBefore(language, THE_PLACE));
 			setBody(language, THE_TABLE, asItStoodBefore(language, THE_TABLE));
@@ -356,6 +364,9 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 
 	@Test
 	void v73RunAgainOverTheFinishedTextStopsAndSaysTheWordIsAlreadyThere() {
+		/* The text V73 finished, which is the text before V77 cut parts of it (29.10.2026). */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "77");
+
 		PSQLException error = v73RunAgain();
 
 		assertThat(error.getServerErrorMessage().getMessage()).contains("the written pages were not edited");
@@ -499,12 +510,21 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	@Test
 	void theCellOfTheDocumentAndTheItemOfTheListStandOnceInTheirOwnSectionsInBothLanguages() {
 		for (String language : List.of("sr", "en")) {
-			assertThat(placesWhichCarry(language, rowNew(language)))
+			/* The cell as V77 left it: its words about the table the number is kept in (owner, 29.10.2026) are struck,
+			   and the words V73 added to it ("na svojoj kartici Podaci; drugima") stand. */
+			String cell = language.equals("sr")
+					? "Vidi ga samo administracija i vi, na svojoj kartici Podaci; drugima se ne prikazuje nigde |"
+					: "Only the administration and you see it, on your own Details card; it is not displayed to others"
+							+ " anywhere |";
+
+			assertThat(placesWhichCarry(language, cell))
 					.as("the %s cell about the document must stand in section 2 of the policy and in no other", language)
 					.containsExactly(THE_TABLE);
 			assertThat(placesWhichCarry(language, rowOld(language)))
 					.as("the %s cell about the document as it stood before V73 must be nowhere", language).isEmpty();
-			assertThat(bodyOf(language, THE_TABLE)).containsOnlyOnce(rowNew(language));
+			assertThat(placesWhichCarry(language, rowNew(language)))
+					.as("the %s cell must no longer say where the number is kept (V77)", language).isEmpty();
+			assertThat(bodyOf(language, THE_TABLE)).containsOnlyOnce(cell);
 
 			assertThat(placesWhichCarry(language, itemNew(language)))
 					.as("the %s item of the list must stand in section 3 of the policy and in no other", language)
@@ -523,8 +543,16 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	 */
 	@Test
 	void theHeadingOverTheListIsAsItWasAndSaysNothingOfOthers() {
+		/* V77 renamed the heading (owner, 29.10.2026, PDL "Urednička revizija Pravilnika, Uslova i Politike
+		   privatnosti"): „Nikada se ne prikazuje" contradicted the exception the same section makes for the member
+		   himself, so it is „Podaci koji nisu javni" now. It still stands once, directly over the list, and still says
+		   nothing of others. */
 		for (String language : List.of("sr", "en")) {
-			assertThat(bodyOf(language, THE_PLACE)).containsOnlyOnce(headingIn(language));
+			String renamed = language.equals("sr")
+					? "### Podaci koji nisu javni\n\nAdresa elektronske pošte"
+					: "### Data that is not public\n\nE-mail address";
+
+			assertThat(bodyOf(language, THE_PLACE)).containsOnlyOnce(renamed).doesNotContain(headingIn(language));
 		}
 
 		assertThat(bodyOf("sr", THE_PLACE)).doesNotContain("Nikada se ne prikazuje drugima");
@@ -545,10 +573,12 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 				.contains("E-mail address, mailing address, everything related to the membership fee and payment, virtual balance,"
 						+ " T-shirt size, father's name and ID document number")
 				.contains("phone, private messages, internal administration notes");
+		/* The words about the table the number is kept in went with V77 (owner, 29.10.2026); the legal basis and the
+		   retention of the row, which come after them, are as they were. */
 		assertThat(bodyOf("sr", THE_TABLE))
-				.contains("u sopstvenoj tabeli sa sopstvenim pravom pristupa | Pravna obaveza | Sekcija 5 |");
+				.contains("drugima se ne prikazuje nigde | Pravna obaveza | Sekcija 5 |");
 		assertThat(bodyOf("en", THE_TABLE))
-				.contains("in its own table with its own access rights | Legal obligation | Section 5 |");
+				.contains("it is not displayed to others anywhere | Legal obligation | Section 5 |");
 	}
 
 	@Test

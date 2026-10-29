@@ -656,7 +656,18 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   Pinned LAST, when the file was final, off this very assertion. If the owner changes a word of it
 			   before it merges, the file is changed in place and this number is read again; after the merge it is
 			   immutable like the others. */
-			new Applied("76", "V76__the_rulebook_says_the_cycle_opens_on_the_eleventh_of_november.sql", 3181062));
+			new Applied("76", "V76__the_rulebook_says_the_cycle_opens_on_the_eleventh_of_november.sql", 3181062),
+
+			/* V77. The three legal pages drop their explanations and the familiar phrases, no longer offer the
+			   exemption from the fee, and name the one exception to "no refund" (owner, 29.10.2026, PDL „Urednička
+			   revizija Pravilnika, Uslova i Politike privatnosti (29.10.2026)"): sixty-one edits of the rulebook,
+			   the terms and the policy in both languages, each stopping the migration unless its old text stands
+			   exactly once, and the sign-off of all three moving to 29.10.2026.
+
+			   77 and no other: main stood at V76 on 29.10.2026 (eaeccf46) and no remote branch held V77.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("77", "V77__the_legal_pages_drop_explanations_and_the_fee_exemption.sql", 351982592));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

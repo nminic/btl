@@ -472,9 +472,9 @@ class PageApiTest {
 	}
 
 	/**
-	 * THE ROW V60 ADDS (Zoho as a processor) AND THE DAY THE POLICY IS SIGNED OFF ON (V70's, 22.10.2026, which moved
-	 * it on from V60's) REACH THE VISITOR, in section 5 and section 7 of the privacy policy, in the language he asks
-	 * for.
+	 * THE ROW V60 ADDS (Zoho as a processor) AND THE DAY THE POLICY IS SIGNED OFF ON (V77's, 29.10.2026, which moved
+	 * it on from V60's, V70's and V73's) REACH THE VISITOR, in section 5 and section 7 of the privacy policy, in the
+	 * language he asks for.
 	 *
 	 * <p>{@code TheWrittenPagesNameZohoAsAProcessorTest} holds the rows; this holds that the route serves them, which
 	 * is the one thing it cannot see. Asked in Serbian and in real English.
@@ -485,11 +485,11 @@ class PageApiTest {
 				{ "sr", "| Brevo (Sendinblue SAS) | Vaša adresa i sadržaj poruke | Francuska |\n"
 						+ "| Zoho Corporation | Prepiska sa adresom info@: vaša adresa i sadržaj poruka | SAD |\n"
 						+ "| Poslovna banka Udruženja |",
-						"Poslednja izmena: 24.10.2026." },
+						"Poslednja izmena: 29.10.2026." },
 				{ "en", "| Brevo (Sendinblue SAS) | Your address and the content of the message | France |\n"
 						+ "| Zoho Corporation | Correspondence with info@: your address and the content of the messages"
 						+ " | USA |\n| The Association's business bank |",
-						"Last amended: 24.10.2026." } };
+						"Last amended: 29.10.2026." } };
 
 		for (String[] each : asked) {
 			JsonNode served = answerIn(each[0]);
@@ -536,7 +536,9 @@ class PageApiTest {
 	/**
 	 * NO TEXT THE ROUTE SERVES CARRIES A SERBIAN QUOTATION MARK, AND THE SENTENCES V61 CHANGED CARRY THE ENGLISH ONE
 	 * (owner, PDL P18, the section "Navodnici", 18.10.2026). V61 changed ten; V71 took out the rulebook's article on
-	 * how a result is submitted, which carried two of them ("Unesi rezultat" and "Submit result"), so eight are left.
+	 * how a result is submitted, which carried two of them ("Unesi rezultat" and "Submit result"), and V77 (29.10.2026)
+	 * struck the sentence of Article 63 that said there is no "archived competitor" marker, which carried two more, so
+	 * six are left.
 	 *
 	 * <p>{@code TheWrittenPagesUseTheEnglishQuotationMarkTest} holds the columns; this holds that the route serves the
 	 * result, in Serbian and in real English, which is the one thing it cannot see. The sweep reads every title, every
@@ -550,10 +552,8 @@ class PageApiTest {
 				{ "sr", "rec-predsednika", "1", "Sportsko udruženje \"BTL\", pod popularnim imenom" },
 				{ "sr", "pravilnik", "5", "na primer \"Beogradski maraton, štafeta 1\", sa dužinom" },
 				{ "sr", "pravilnik", "12", "- \"Zajednička trka\" znači ista trka" },
-				{ "sr", "pravilnik", "16", "Oznake \"arhiviran takmičar\" nema" },
 				{ "en", "pravilnik", "5", "for example \"Beogradski maraton, relay leg 1\", with the length" },
-				{ "en", "pravilnik", "12", "- A \"shared race\" means the same race" },
-				{ "en", "pravilnik", "16", "There is no \"archived competitor\" marker" } };
+				{ "en", "pravilnik", "12", "- A \"shared race\" means the same race" } };
 
 		for (String language : List.of("sr", "en")) {
 			JsonNode served = answerIn(language);

@@ -682,7 +682,7 @@ describe('a drawing a written section names', () => {
     )
 
     expect(order).toEqual([
-      'Član 11. Cena, rokovi i oslobađanje od članarine',
+      'Član 11. Cena i rokovi',
       'the price table',
       'Član 12. Povraćaj',
       'Član 13. Šta članstvo donosi',
@@ -1626,8 +1626,11 @@ describe('the rulebook', () => {
        same words into the rulebook's own Član 74 left the policy pointing
        nobody anywhere, the rulebook pointing at itself, and the suite green. */
     const expected: [string, string, number, RegExp][] = [
-      ['pravilnik', 'članski broj i pravo rangiranja pod uslovima iz', 10, /Pravo rangiranja/],
-      ['pravilnik', 'steklo pravo rangiranja govori', 10, /Pravo rangiranja/],
+      /* Since 29.10.2026 (owner, PDL "Urednička revizija Pravilnika, Uslova i Politike privatnosti
+         (29.10.2026)") the article on the price names the right to be ranked once, in his own
+         sentence about the payment deadline. The two lines that stood here belonged to the paragraph
+         about the exemption from the fee, which the same decision struck. */
+      ['pravilnik', 'preduslov rangiranja regulisan', 10, /Pravo rangiranja/],
       ['pravilnik', '- Pravo rangiranja pod uslovima iz', 10, /Pravo rangiranja/],
       ['pravilnik', 'ne donosi nikakvo pravo iz', 13, /Šta članstvo donosi/],
       /* What the shirt and the medal take is said once, in the table of awards, since
@@ -1788,9 +1791,13 @@ describe('the rulebook', () => {
        things: the link is enough, a picture stands in for it, and a picture never
        stands alone, because it comes with a few words on why there is no link and
        what it shows. */
-    expect(rulebook).toMatch(/Link ka zvaničnim rezultatima je sasvim dovoljan\./)
-    expect(rulebook).toMatch(/Ako ga nemate, pošaljite sliku, recimo snimak sata ili diplomu/)
-    expect(rulebook).toMatch(/u par reči napišite zašto linka nema i šta se na slici vidi/)
+    /* The familiar phrases „sasvim dovoljan", „recimo" and „u par reči" went on 29.10.2026 (owner, PDL
+       "Urednička revizija Pravilnika, Uslova i Politike privatnosti (29.10.2026)"); the three things the
+       article says did not change. */
+    expect(rulebook).toMatch(/Dovoljan je link ka zvaničnim rezultatima\./)
+    expect(rulebook).toMatch(/Ako ga nemate, pošaljite sliku, na primer snimak sata ili diplomu/)
+    expect(rulebook).toMatch(/kratko napišite zašto linka nema i šta se na slici vidi/)
+    expect(rulebook).not.toMatch(/sasvim dovoljan|recimo snimak|u par reči/)
     /* And nowhere the other way round, in any of the three documents: this rule
        lived in four homes and one of them was rewritten while three went on
        saying the opposite, which is what a round of review found. */
@@ -1852,8 +1859,12 @@ describe('the rulebook', () => {
     expect(rulebook).not.toMatch(/koji ne ispunjava jedan od ova tri/)
   })
 
-  it('knows a member freed of the fee, and says the fee from abroad is not membership', () => {
-    expect(rulebook).toMatch(/oslobodi plaćanja članarine/)
+  it('does not offer a freedom from the fee, and says the fee from abroad is not membership', () => {
+    /* Owner, 29.10.2026, in capitals: nowhere in any text may the exemption from the membership fee be
+       mentioned as an option (PDL, "Urednička revizija Pravilnika, Uslova i Politike privatnosti
+       (29.10.2026)"). The paragraph that offered it was replaced by his own sentence, which keeps the one thing
+       in it that was a rule. The authority of the Managing Board itself stays in the portal, not in this text. */
+    expect(rulebook).not.toMatch(/oslob/i)
     /* Membership is measured by activation, and the deadline for the right to
        be ranked is measured by the day the league booked the payment (owner,
        10.10.2026; the sentence said „po danu uplate, a ne po danu kada je liga
@@ -1864,12 +1875,36 @@ describe('the rulebook', () => {
        was struck by the owner on 21.08.2026. The sentence before it already says
        they have the same rights as anybody else. What has to survive is that the
        two questions stay apart, so the next sentence is read along with it. */
-    expect(rulebook).toMatch(/meri se aktiviranim statusom na portalu. Do kada se plaća/)
+    expect(rulebook).toMatch(
+      /Takmičarski status u nekoj sezoni zavisi od aktiviranog statusa na portalu, dok je rok plaćanja za preduslov rangiranja regulisan Članom 10\./,
+    )
     expect(rulebook).not.toMatch(/nikad nema uplatu/)
     expect(rulebook).toMatch(/Rok se meri po danu kada je liga uplatu proknjižila\./)
     expect(rulebook).not.toMatch(/Rok se meri po danu uplate/)
     expect(rulebook).toMatch(new RegExp(`taksa za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`))
     expect(rulebook).toMatch(/nije deo članarine/)
+  })
+
+  it('names the one exception to a refund in Article 12 and in the terms, and keeps Article 63 without it', () => {
+    /* Owner, 29.10.2026 (PDL "Urednička revizija Pravilnika, Uslova i Politike privatnosti (29.10.2026)"):
+       a paid fee is not returned, except in exceptional cases by decision of the Managing Board. It is said
+       in Article 12 and in section 3 of the terms. The line in the list of what a disqualification means
+       (Article 63) stays as it was: the owner turned the exception down there. */
+    const exception = 'osim u izuzetnim slučajevima odluke Upravnog odbora'
+
+    expect(rulebook).toContain(
+      `### Član 12. Povraćaj\n\nUplaćena članarina se ne vraća, ni pri odjavi, ni pri prestanku članstva, ni pri diskvalifikaciji, ${exception}.`,
+    )
+    expect(whole('uslovi-koriscenja')).toContain(`Uplaćene članarine se ne vraćaju, ${exception}.`)
+    expect((whole('pravilnik') + whole('uslovi-koriscenja')).split(exception).length - 1).toBe(2)
+
+    const disqualification = must(
+      /### Član 63\.[\s\S]*?(?=### Član 64\.)/.exec(rulebook ?? ''),
+      'the article on what a disqualification means',
+    )[0]
+
+    expect(disqualification).toContain('- Članarina se ne vraća.\n')
+    expect(disqualification).not.toContain('izuzetn')
   })
 
   it('keeps a first season member in one category and only one', () => {
@@ -1927,7 +1962,10 @@ describe('the rulebook', () => {
        rulebook is not where a competition beside the main one is described. What
        a league is, and that the league itself runs two of its own, stays. */
     expect(rulebook).not.toMatch(/RunTrace liga|U RunTrace ligu/)
-    expect(rulebook).toMatch(/### Član \d+\. Liga kao pojam/)
+    /* Renamed on 29.10.2026 (owner, PDL "Urednička revizija Pravilnika, Uslova i Politike privatnosti
+       (29.10.2026)", the item about Član 50): only the heading changed, and no other article names it. */
+    expect(rulebook).toMatch(/### Član \d+\. Prateće lige/)
+    expect(rulebook).not.toMatch(/Liga kao pojam/)
   })
 
   it('cannot be changed inside a season', () => {
@@ -1950,7 +1988,7 @@ describe('the rulebook', () => {
       /Upisujete događaj i trku, dužinu, uspon i spust, vreme i link ka zvaničnim rezultatima/,
     )
     expect(rulebook).toMatch(
-      /Ako ga nemate, pošaljite sliku, recimo snimak sata ili diplomu, i u par reči napišite zašto linka nema/,
+      /Ako ga nemate, pošaljite sliku, na primer snimak sata ili diplomu, i kratko napišite zašto linka nema/,
     )
   })
 })
@@ -2064,7 +2102,10 @@ describe('how a written page is set', () => {
        rules of conduct, and the rulebook's „Detalji su u sekciji 12" and „sopstvena
        takmičenja lige iz sekcije 13", whose articles repeated what other articles say. */
     const inProse: [string, string, number, RegExp][] = [
-      ['politika-privatnosti', 'pristanak ne traži', 4, /Kolačići/],
+      /* Worded „ni za jedno se pristanak ne traži (sekcija 4)" until 29.10.2026, when the sentence
+         that retold section 4 inside section 6 was cut back to its first half and kept this pointer
+         (owner, PDL "Urednička revizija Pravilnika, Uslova i Politike privatnosti (29.10.2026)"). */
+      ['politika-privatnosti', 'se ne povlači jer se ne daje', 4, /Kolačići/],
       ['pravilnik', 'priznanja po broju trka iz', 14, /Nagrade i priznanja/],
       ['pravilnik', 'može dovesti do mera iz', 16, /Sankcije i diskvalifikacija/],
     ]
@@ -2572,10 +2613,17 @@ describe('what the written pages say the fee buys', () => {
      terms say it plainly now, and these hold the three documents to it.
      Read off the disc, because this is about what is written rather than about
      what a screen does with it. */
-  it('says the fee is not paid for the website but for membership in the league', () => {
-    expect(sectionOf('uslovi-koriscenja', /Takmičarski status za sezonu/)).toMatch(
-      /ne plaća za pristup sajtu nego za članstvo u ligi/,
-    )
+  it('does not describe the fee as a payment for the website', () => {
+    /* The sentence „Članarina se, dakle, ne plaća za pristup sajtu nego za članstvo u ligi." was an
+       explanation that carried no right, duty, deadline or criterion, and the owner had it struck on
+       29.10.2026 (PDL "Urednička revizija Pravilnika, Uslova i Politike privatnosti (29.10.2026)").
+       What stays is the part that is a rule: the competitor status of a season is another thing from
+       membership, and without it the account exists but results are not entered. The section is still
+       found by that first sentence, so striking the section itself fails here too. */
+    const section = sectionOf('uslovi-koriscenja', /Takmičarski status za sezonu/)
+
+    expect(section).toMatch(/Takmičarski status za sezonu je nešto drugo od članstva\./)
+    expect(section).not.toMatch(/pristup sajtu/)
   })
 
   it('says in the rulebook too that membership is what a member is', () => {
@@ -2619,14 +2667,15 @@ describe('what the written pages say the fee buys', () => {
       /Dok takmičarski status nije aktivan/,
     )
     /* And the section that walks through registration, which described the same
-       thing as a queue of steps ending in a payment. A member freed of the fee never
-       walks two of those steps. */
+       thing as a queue of steps ending in a payment. Since 29.10.2026 it no longer
+       offers the exemption from the fee as a way through (owner, PDL "Urednička
+       revizija Pravilnika, Uslova i Politike privatnosti (29.10.2026)"): the sentence
+       about a member the Managing Board freed of the fee went, and the one about a
+       virtual balance that covers the fee stays below. */
     expect(sectionOf('uslovi-koriscenja', /Prijava za članstvo/)).toMatch(
       /3\. Nalog je otvoren, a takmičarski status još nije aktivan\./,
     )
-    expect(sectionOf('uslovi-koriscenja', /Prijava za članstvo/)).toMatch(
-      /oslobodio plaćanja članarine prolazi bez koraka 4; članski broj i sva prava dobija/,
-    )
+    expect(sectionOf('uslovi-koriscenja', /Prijava za članstvo/)).not.toMatch(/oslobo/i)
     /* And so does one whose virtual balance covers the whole fee, since the third
        way a status is activated is the balance (owner, 10.10.2026). */
     expect(sectionOf('uslovi-koriscenja', /Prijava za članstvo/)).toMatch(
@@ -2705,7 +2754,7 @@ describe('what the written pages say the fee buys', () => {
        two roads. */
     const proof = must(
       /### Član \d+\. Dokazi[\s\S]*?(?=### Član|$)/.exec(
-        sectionOf('pravilnik', /Link ka zvaničnim rezultatima je sasvim dovoljan/),
+        sectionOf('pravilnik', /Dovoljan je link ka zvaničnim rezultatima/),
       ),
       'the article on proof in its section',
     )[0]
@@ -2717,7 +2766,7 @@ describe('what the written pages say the fee buys', () => {
     )[0]
 
     expect(proof).toMatch(/Ako ga nemate, pošaljite sliku/)
-    expect(proof).toMatch(/u par reči napišite zašto linka nema i šta se na slici vidi/)
+    expect(proof).toMatch(/kratko napišite zašto linka nema i šta se na slici vidi/)
 
     /* **What the article „Kako se prijavljuje rezultat" says about how a result reaches the portal is held in the
        snapshot now, with the rest of the written pages** (`writtenVerification.test.ts`,
@@ -2845,13 +2894,16 @@ describe('what the written pages say the fee buys', () => {
        derivation of the assistant, not the owner's own decision); the rulebook and
        the terms did not change and kept 22.10.2026. The rulebook moved to 27.10.2026
        with the cycle that opens on 11 November (V76; owner, 27.10.2026), by the same
-       rule; the terms did not change and keep 22.10.2026. Written per
+       rule; the terms did not change and keep 22.10.2026. On 29.10.2026 all three
+       changed again (V77; owner, the same day: the editorial revision of the three
+       pages, PDL "Urednička revizija Pravilnika, Uslova i Politike privatnosti
+       (29.10.2026)") and all three carry that day. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
-      pravilnik: '27.10.2026',
-      'uslovi-koriscenja': '22.10.2026',
-      'politika-privatnosti': '24.10.2026',
+      pravilnik: '29.10.2026',
+      'uslovi-koriscenja': '29.10.2026',
+      'politika-privatnosti': '29.10.2026',
     } as const
 
     for (const slug of ['pravilnik', 'uslovi-koriscenja', 'politika-privatnosti'] as const) {
@@ -2954,9 +3006,11 @@ describe('what the written pages say the fee buys', () => {
        name can come back onto the portal from there, and no test can see that file.
        It is written in PENDING instead. */
     const endsOn = (sentence: string, named: string) => {
-      /* Found by the whole sentence it ends on, minus the full stop, which is the
-         only character in either of them a regular expression would read as
-         something else.
+      /* Found by the whole sentence it ends on, minus the final full stop. Every
+         character a regular expression would read as something else is escaped
+         first (the sentence about writing to us carries the address as a link,
+         with brackets, parentheses and dots; since 29.10.2026 it is the sentence
+         the page ends on).
 
          The whole sentence and not a phrase out of it, because `oneSectionOf`
          refuses an anchor two sections share and a phrase is easy to share: „za
@@ -2964,7 +3018,10 @@ describe('what the written pages say the fee buys', () => {
          sekcije 5", written anywhere in the policy as an ordinary cross
          reference, would have stopped this file with three words in common. The
          whole sentence is one section's own. */
-      const section = oneSectionOf('politika-privatnosti', new RegExp(sentence.slice(0, -1)))
+      const section = oneSectionOf(
+        'politika-privatnosti',
+        new RegExp(sentence.slice(0, -1).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      )
 
       expect(
         section.trimEnd().endsWith(sentence),
@@ -2987,7 +3044,7 @@ describe('what the written pages say the fee buys', () => {
       'it may be offering to name a safeguard once more',
     )
     endsOn(
-      'Prvo nam pišite, jer se većina stvari reši u jednoj poruci.',
+      'Prvo nam pišite na [info@balkanskatrkackaliga.net](mailto:info@balkanskatrkackaliga.net).',
       'it may be offering a way to complain once more',
     )
 
