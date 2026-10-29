@@ -182,7 +182,7 @@ class GrantingASeason {
 		   his referrer nothing further, and it is silent rather than an error. Inside the one
 		   transaction this route already opens, so the entry and the membership stand or fall
 		   together. */
-		book.aReferralWasActivated(competitorId, account, enteredByName);
+		book.aReferralWasActivated(competitorId, season, account, enteredByName);
 
 		/* AND ONLY NOW IS A NUMBER DRAWN, AFTER EVERY ROW THE DATABASE COULD STILL REFUSE, which is
 		   the order the two other doors to the same fact already keep: `PaymentApi.recordIt` draws

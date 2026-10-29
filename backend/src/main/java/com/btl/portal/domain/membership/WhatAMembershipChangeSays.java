@@ -1,7 +1,10 @@
 package com.btl.portal.domain.membership;
 
+import com.btl.portal.domain.balance.Balance;
 import com.btl.portal.domain.category.Category;
+import com.btl.portal.domain.mail.MailLanguage;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
+import com.btl.portal.domain.mail.WhatTheWelcomeSays;
 
 import java.text.MessageFormat;
 import java.util.Locale;
@@ -10,7 +13,8 @@ import java.util.ResourceBundle;
 
 /**
  * THE LINES A MEMBER GETS IN HIS INBOX WHEN HIS MEMBERSHIP IS CHANGED: THE FOUR ABOUT HIS ROW, AND THE
- * TWO ABOUT THE BEGINNERS' CATEGORY THAT A MEMBERSHIP CAN CLOSE OR OPEN AGAIN.
+ * TWO ABOUT THE BEGINNERS' CATEGORY THAT A MEMBERSHIP CAN CLOSE OR OPEN AGAIN - AND THE ONE THAT THANKS
+ * HIS REFERRER WHEN HE IS ACTIVATED.
  *
  * <p><b>The decision.</b> The owner, 18.10.2026 (PDL P8, the section „Osnov clanstva ima jedan dom,
  * zapis po sezoni"), chosen with the recommendation: „Upis uplate, promena osnova i storno stizu
@@ -19,6 +23,13 @@ import java.util.ResourceBundle;
  * since 20.10.2026: an exemption granted on the row to a member who held no season on sale, in the
  * words the owner approved on 18.10.2026 („Može ovako”), „Oslobođeni ste članarine” / „Za sezonu
  * {sezona} oslobođeni ste plaćanja članarine i član ste lige.”
+ *
+ * <p><b>The seventh is not about the member it is addressed to.</b> The owner, 29.10.2026 (PDL, „Preostala
+ * pitanja posle provere pravnih strana prema kodu"), chosen between those put to him after the question of
+ * gender: the referrer is thanked when the member he brought in is activated (PDL P16, 12.08.2026,
+ * „preporučilac tada dobija obaveštenje sa zahvalnicom"), in words without gender, with the newcomer's name
+ * in the nominative and the referrer addressed as „vi". It names the newcomer, the season, and what was
+ * written onto the referrer's balance in his own money.
  *
  * <p><b>IN SERBIAN ONLY, and that is a decision, not a gap.</b> The owner, 10.10.2026 (PDL, „Jezik
  * mejlova (JM)"): „u sanducetu kopija rezultatskih poruka prati jezik mejla, ostalo srpsko (potpuno
@@ -79,7 +90,13 @@ public final class WhatAMembershipChangeSays {
 		THE_BEGINNERS_CATEGORY_WAS_CLOSED("beginnersCategoryClosed", 3),
 
 		/** A membership cancelled opened it again: the same three facts. */
-		THE_BEGINNERS_CATEGORY_WAS_REOPENED("beginnersCategoryReopened", 3);
+		THE_BEGINNERS_CATEGORY_WAS_REOPENED("beginnersCategoryReopened", 3),
+
+		/**
+		 * The member he brought in was activated and the reward was written onto his balance, said to
+		 * the REFERRER: the newcomer's name, the season of the membership, and the amount written.
+		 */
+		A_REFERRAL_WAS_THANKED("referralThanked", 3);
 
 		private final String key;
 
@@ -150,6 +167,31 @@ public final class WhatAMembershipChangeSays {
 	public static Said beginnersCategoryMoved(boolean open, int season, int theSeasonAfter) {
 		return said(open ? Told.THE_BEGINNERS_CATEGORY_WAS_REOPENED : Told.THE_BEGINNERS_CATEGORY_WAS_CLOSED,
 				aSeason(season), Integer.toString(Category.FIRST_SEASON_POINTS), aSeason(theSeasonAfter));
+	}
+
+	/**
+	 * THE THANKS TO WHOEVER BROUGHT A MEMBER IN, for the activation that wrote his reward (PDL P16).
+	 *
+	 * <p><b>Three facts, and each comes from a different place</b>: the newcomer's name (not the
+	 * referrer's, whom the message is addressed to), the season of the membership that was activated (not
+	 * the year the clock reads), and the amount that was WRITTEN, in the referrer's money - handed over
+	 * as the money itself and never as a figure to be formatted here, so the number the member reads is
+	 * the number the book holds.
+	 *
+	 * <p>The amount is written the way the portal's letters about the fee write it
+	 * ({@link WhatTheWelcomeSays#amount}, „4.200,00 RSD"): this dictionary is Serbian only, by the
+	 * decision at the head of this class, and that is the Serbian form of it.
+	 *
+	 * @param newcomer the name of the member who was brought in, as it stands on his record
+	 * @param season   the season of the membership that was activated
+	 * @param written  what was written onto the referrer's balance
+	 */
+	public static Said referralThanked(String newcomer, int season, Balance.Money written) {
+		Objects.requireNonNull(newcomer, "newcomer");
+		Objects.requireNonNull(written, "written");
+
+		return said(Told.A_REFERRAL_WAS_THANKED, newcomer, aSeason(season),
+				WhatTheWelcomeSays.amount(written.amount(), written.currency().name(), MailLanguage.SERBIAN));
 	}
 
 	/** One basis in the words a member reads. */
