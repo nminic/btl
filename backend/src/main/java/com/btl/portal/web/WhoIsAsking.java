@@ -8,6 +8,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponseWrapper;
+import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -95,9 +97,9 @@ final class WhoIsAsking extends OncePerRequestFilter {
 			FilterChain chain) throws ServletException, IOException {
 
 		Instant now = Instant.now();
+		OneSessionCookie answering = new OneSessionCookie(response);
 
-		carried(request)
-				.flatMap(this::sessionFor)
+		carried(request).ifPresent(secret -> sessionFor(secret)
 				.filter(one -> SessionLife.stillOpen(one.life(), now))
 				.ifPresent(one -> {
 					String role = one.roleAfter(named);
@@ -113,8 +115,23 @@ final class WhoIsAsking extends OncePerRequestFilter {
 										java.sql.Timestamp.from(SessionLife.renewedUntil(now)),
 										one.session())
 								.update();
+
+						/* THE COOKIE IS RENEWED IN THE SAME BREATH AS THE ROW, and only then.
+						   The row now runs thirty days from this moment, and the browser
+						   still holds a cookie that runs thirty days from the last time one
+						   was handed out - the sign in. Left alone it would be thrown away
+						   thirty days after signing in while the server went on honouring the
+						   session, and the privacy policy's „najduže 30 dana od kada ste
+						   poslednji put koristili portal" would be false for everybody who
+						   keeps coming back (owner, 29.10.2026, PDL „Kolačić sesije se
+						   obnavlja kad server produži sesiju").
+
+						   The SECRET handed back is the one that arrived, which is the one
+						   this row was found by; it is never read out of the row, because the
+						   row keeps only a hash. */
+						answering.renewed(secret);
 					}
-				});
+				}));
 
 		/* THE CONTEXT IS NOT CLEARED HERE, and the line that did it was taken out
 		   the same hour it was written.
@@ -131,7 +148,7 @@ final class WhoIsAsking extends OncePerRequestFilter {
 		   holds it is `WhoIsAskingTest.nobodySignedInIsNobody`. Spring clears the
 		   context itself, at the far end of the chain, where nothing is left to read
 		   it. */
-		chain.doFilter(request, response);
+		chain.doFilter(request, answering);
 	}
 
 	private static Optional<String> carried(HttpServletRequest request) {
@@ -197,5 +214,50 @@ final class WhoIsAsking extends OncePerRequestFilter {
 	 * requests of a moderator and every reader would carry a branch for it.
 	 */
 	record Member(long account, String role) {
+	}
+
+	/**
+	 * THE ANSWER, WITH AT MOST ONE COOKIE UNDER THE SESSION'S NAME.
+	 *
+	 * <p>Renewing hands the cookie back before the route has run, and two routes
+	 * set it themselves: signing in sets a new one and signing out sets one that is
+	 * already over. Added side by side the answer would carry two cookies of one
+	 * name, and which of them a browser keeps would be a matter of the order they
+	 * were written in. For signing out that is the difference between a member who
+	 * is signed out and one who is handed his old session back in the same answer.
+	 *
+	 * <p><b>So whatever a route says about the session cookie replaces what was
+	 * said before it, here, once</b>, and not at each route: a route written next
+	 * year that sets the cookie is covered without knowing this exists. Every
+	 * other {@code Set-Cookie} the answer already carries, the CSRF token among
+	 * them, is put back as it was.
+	 */
+	private static final class OneSessionCookie extends HttpServletResponseWrapper {
+
+		OneSessionCookie(HttpServletResponse response) {
+			super(response);
+		}
+
+		void renewed(String secret) {
+			super.addHeader(HttpHeaders.SET_COOKIE, SessionCookie.carrying(secret).toString());
+		}
+
+		@Override
+		public void addHeader(String name, String value) {
+			if (!HttpHeaders.SET_COOKIE.equalsIgnoreCase(name) || !SessionCookie.isOne(value)) {
+				super.addHeader(name, value);
+				return;
+			}
+
+			List<String> others = getHeaders(HttpHeaders.SET_COOKIE).stream()
+					.filter(one -> !SessionCookie.isOne(one))
+					.toList();
+
+			super.setHeader(HttpHeaders.SET_COOKIE, value);
+
+			for (String other : others) {
+				super.addHeader(HttpHeaders.SET_COOKIE, other);
+			}
+		}
 	}
 }
