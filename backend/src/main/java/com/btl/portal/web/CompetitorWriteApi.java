@@ -75,12 +75,14 @@ import java.util.regex.Pattern;
  *
  * <p><b>ALMOST NONE OF THE DELETING IS IN THIS FILE, AND THAT IS THE DESIGN RATHER THAN AN
  * OMISSION.</b> The schema already sorts every row that points at a member into what is HIS
- * and goes with him ({@code on delete cascade}: his results, his submissions, his payments,
- * his memberships, his pairs, his invitations, his ducats, his messages) and what merely
- * NAMES him and keeps its own existence ({@code on delete set null}: the seat of a team or
- * a league, a comment he wrote, a frozen season's row). One statement here sets all of it
- * going. V23 wrote that sorting down at length and this class is what finally pulls the
- * lever.
+ * and goes with him ({@code on delete cascade}: his results, his submissions, his pairs, his
+ * invitations, his ducats, his messages) and what merely NAMES him and keeps its own existence
+ * ({@code on delete set null}: the seat of a team or a league, a comment he wrote, a frozen
+ * season's row, and since V79 his payments, his memberships, his book of balance and the trail
+ * of changes to his memberships, which stay without his name and his number because the
+ * Privacy Policy keeps the bookkeeping for five years - PDL, 29.10.2026). One statement here
+ * sets all of it going. V23 wrote that sorting down at length and this class is what finally
+ * pulls the lever.
  *
  * <p><b>FOUR THINGS THE CASCADE CANNOT DO, AND THEY ARE THE WHOLE OF THIS CLASS.</b>
  *

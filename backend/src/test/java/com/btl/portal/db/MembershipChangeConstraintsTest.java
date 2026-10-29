@@ -88,9 +88,8 @@ class MembershipChangeConstraintsTest extends DatabaseTest {
 				Violation.of("membership_change_pk",
 						changeWithId(THE_KEY_ALREADY_THERE, A_MEMBER_WITH_NO_ACCOUNT + ", " + A_GOOD_CANCELLATION)),
 
-				/* WHOSE: a trail about nobody, and about a member who does not exist. */
-				Violation.notNull("membership_change_competitor_id_not_null", "competitor_id",
-						change("null, " + A_GOOD_CANCELLATION)),
+				/* WHOSE: a trail about a member who does not exist. A trail about nobody is refused by a
+				   trigger since V79 and measured in `TheMoneyOutlivesADeletedMemberTest`. */
 				Violation.of("membership_change_competitor_fk", change("999999, " + A_GOOD_CANCELLATION)),
 
 				/* WHICH SEASON, and never one before the league. */
@@ -282,15 +281,26 @@ class MembershipChangeConstraintsTest extends DatabaseTest {
 				.containsExactly("gone Moderator Probni");
 	}
 
-	/** And the trail of a member goes with him, the direction his book and his seasons take. */
+	/**
+	 * AND THE TRAIL OF A DELETED MEMBER STAYS, WITHOUT HIM (V79; PDL, 29.10.2026, „ostaju bez imena").
+	 *
+	 * <p>Read as the whole table and not through a join onto {@code competitor}: a join drops a row
+	 * without a member, so it would say the same thing whether the trail stayed or went with him.
+	 */
 	@Test
-	void deletingAMemberTakesHisTrailWithHim() {
+	void deletingAMemberLeavesHisTrailWithoutHim() {
 		db.sql(change(A_MEMBER_WITH_NO_ACCOUNT + ", " + A_GOOD_CANCELLATION)).update();
+
+		long before = db.sql("select count(*) from membership_change").query(Long.class).single();
 
 		db.sql("delete from competitor where member_number = '006001'").update();
 
-		assertThat(db.sql("select c.member_number from membership_change t join competitor c"
-						+ " on c.id = t.competitor_id").query(String.class).list())
-				.containsExactly("006000");
+		assertThat(db.sql("select coalesce(c.member_number, 'nobody') from membership_change t"
+						+ " left join competitor c on c.id = t.competitor_id order by 1").query(String.class).list())
+				.as("the trail of the deleted member did not stay, or stayed naming him, or took the"
+						+ " other member's with it")
+				.hasSize((int) before)
+				.contains("006000", "nobody")
+				.doesNotContain("006001");
 	}
 }

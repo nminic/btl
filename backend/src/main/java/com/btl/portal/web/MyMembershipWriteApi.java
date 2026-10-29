@@ -70,7 +70,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <li><s>Two requests activating the identical season at the same instant</s>, <b>guarded since
  * 19.10.2026</b>: {@link #lockHim} takes his row first, so the second waits, finds the membership and
  * is answered {@link Outcome#ALREADY_A_MEMBER}. It used to read no membership, lose to
- * {@code membership_pk} (V22) and answer 500, and spend a member number for good, for the reason
+ * {@code membership_one_a_season} (V22, so named since V79) and answer 500, and spend a member number for good, for the reason
  * {@link MemberNumbers} gives about sequences.
  * <li><b>A code minted for one season and a code for another, both standing, and the balance gone
  * by the time the second is paid.</b> That is the boundary PDL leaves open, and it belongs to the
@@ -184,7 +184,7 @@ class MyMembershipWriteApi {
 	 *
 	 * <p>It closes the race this class's heading used to list as deliberately unguarded as well: of two
 	 * activations of one season at one instant the second now waits, finds the membership and is
-	 * answered {@link Outcome#ALREADY_A_MEMBER}, not the 500 {@code membership_pk} used to give it.
+	 * answered {@link Outcome#ALREADY_A_MEMBER}, not the 500 {@code membership_one_a_season} used to give it.
 	 *
 	 * <p>The account names the member, so the row is there; the answer is not looked at and nothing here
 	 * decides anything.

@@ -783,7 +783,7 @@ class CompetitorApi {
 						+ " left join photo mine on mine.id = c.photo_id"
 						+ "  and " + THE_PROFILE_IS_OPEN_TO_THE_CALLER
 						/* THE MEMBERSHIP OF THE SEASON ON SALE, the one home of the basis since V62.
-						   `membership_pk` is (competitor, season), so this joins at most one row
+						   `membership_one_a_season` is (competitor, season), so this joins at most one row
 						   and a member still comes back once. The condition on who may READ it is
 						   the `case` above and not this join, so the row is joined for every caller
 						   and withheld from all but the administration in one place. */

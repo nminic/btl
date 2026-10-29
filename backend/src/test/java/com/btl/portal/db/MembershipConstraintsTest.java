@@ -237,9 +237,8 @@ class MembershipConstraintsTest extends DatabaseTest {
 				   `membership_free_of_the_fee_says_who` as well as the constraint each is about,
 				   and a row that breaks two says nothing about either - PostgreSQL reports one of
 				   them and the case would be measuring whichever it happened to report. */
-				Violation.notNull("membership_competitor_id_not_null", "competitor_id",
-						withATrail("null, 2027, 'feeExempt', null, " + A_TRAIL)),
-				/* A membership for somebody who is not there. */
+				/* A membership for somebody who is not there. One for nobody is refused by a trigger
+				   since V79 and measured in `TheMoneyOutlivesADeletedMemberTest`. */
 				Violation.of("membership_competitor_fk",
 						withATrail("999999, 2027, 'feeExempt', null, " + A_TRAIL)),
 
@@ -260,8 +259,19 @@ class MembershipConstraintsTest extends DatabaseTest {
 				   reaches for the moment he wants to record a change of basis - would still refuse
 				   an identical row and let this one through, so an identical row would measure
 				   nothing. */
-				Violation.of("membership_pk",
+				Violation.of("membership_one_a_season",
 						withATrail(A_MEMBER + ", 2029, 'feeExempt', null, " + A_TRAIL)),
+
+				/* THE SURROGATE V79 PUT UNDER IT, both ways it can be wrong, written with the key by
+				   hand. The duplicate is for a season nobody holds, so the pair above has nothing to
+				   collide with and only the key can refuse it. */
+				Violation.notNull("membership_id_not_null", "id",
+						"insert into membership (id, " + COLUMNS + ", decided_by, decided_by_name, decided_at)"
+								+ " values (null, " + A_MEMBER + ", 2031, 'feeExempt', null, " + A_TRAIL + ")"),
+				Violation.of("membership_pk",
+						"insert into membership (id, " + COLUMNS + ", decided_by, decided_by_name, decided_at)"
+								+ " values ((select id from membership order by id limit 1), " + A_MEMBER
+								+ ", 2031, 'feeExempt', null, " + A_TRAIL + ")"),
 
 				/* BOTH HALVES OF A12, and they fail differently. Held on a payment and naming
 				   none is the member who appears in the report of takings with nothing behind
@@ -282,6 +292,13 @@ class MembershipConstraintsTest extends DatabaseTest {
 						membership(A_MEMBER + ", 2027, 'payment', " + ANOTHER_MEMBERS_2027)),
 				Violation.of("membership_payment_fk",
 						membership(A_MEMBER + ", 2027, 'payment', " + HIS_2029)),
+
+				/* AND ONCE THE MEMBER IS FORGOTTEN, THE RECEIPT STILL HAS TO BE THERE (V79). A key with a
+				   null in it is not checked, so the triple above says nothing about a row whose member
+				   was deleted; this is the one key left that does. Written as the row of a deleted
+				   member pointed at a receipt that does not exist, which breaks this key alone. */
+				Violation.of("membership_payment_id_fk",
+						"update membership set competitor_id = null, payment_id = 999999 where season = 2029"),
 
 				/* V35, AND THE FOUR BREAK IN FOUR DIFFERENT DIRECTIONS.
 				   Each row below breaks exactly ONE of them: the first names the moment and not
@@ -696,19 +713,19 @@ class MembershipConstraintsTest extends DatabaseTest {
 	}
 
 	/**
-	 * A MEMBERSHIP GOES WITH THE PERSON, and the two cascades out of him do not fight each other.
+	 * A MEMBERSHIP OUTLIVES THE PERSON, WITHOUT HIM, and on the receipt it stood on.
 	 *
-	 * <p>This is the case the deletion rule towards {@code payment} was chosen against. Deleting a
-	 * member cascades into {@code payment} and into {@code membership} in the same statement, and
-	 * the membership standing here names one of those payments: a RESTRICT towards the receipt
-	 * would make this delete succeed or fail depending on which cascade PostgreSQL walked first.
+	 * <p>Until V79 it went with him. The owner, 29.10.2026 (PDL): „Brisanje profila više ne sme da
+	 * briše uplate, članstva ni balans: ostaju bez imena". The membership standing here names one of
+	 * his receipts by the triple (payment, member, season), so both have to forget him in an order
+	 * that never leaves the membership naming a triple that is gone; that is what a deletion that
+	 * SUCCEEDS proves. And the reference, which carries his member number, goes with the pointer.
 	 *
-	 * <p>Written as a deletion that SUCCEEDS and leaves the other man's row standing. Both halves
-	 * are the claim: without the cascade the delete is refused outright, and an assertion that the
-	 * table is empty afterwards would be satisfied by a cascade that took everybody.
+	 * <p>Both halves are the claim: the other man's row is untouched, and the deleted man's row is
+	 * still there, which an assertion through an inner join could not tell from a cascade.
 	 */
 	@Test
-	void theMembershipGoesWithTheMember() {
+	void theMembershipStaysWithoutTheMember() {
 		db.sql(GOOD_ANOTHER_MEMBER).update();
 
 		assertThat(db.sql("select count(*) from membership").query(Long.class).single())
@@ -721,10 +738,15 @@ class MembershipConstraintsTest extends DatabaseTest {
 						+ " be deleted at all")
 				.isOne();
 
-		assertThat(db.sql("select c.member_number from membership m"
-						+ " join competitor c on c.id = m.competitor_id").query(String.class).list())
-				.as("the deletion took the wrong memberships with it")
-				.containsExactly("001001");
+		/* SINCE V79 THE ROW STAYS, without him (PDL, 29.10.2026). Read through a LEFT join, because
+		   an inner one drops a row without a member and would say the same whether it stayed or went. */
+		assertThat(db.sql("select coalesce(c.member_number, 'nobody') || ' ' || m.season || ' '"
+						+ " || coalesce(p.reference, 'no reference') from membership m"
+						+ " left join competitor c on c.id = m.competitor_id"
+						+ " join payment p on p.id = m.payment_id order by 1").query(String.class).list())
+				.as("the deleted member's membership did not stay on its receipt without him, or the"
+						+ " other man's was touched")
+				.containsExactly("001001 2027 2027001001", "nobody 2029 no reference");
 	}
 
 	/**
