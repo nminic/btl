@@ -3283,14 +3283,16 @@ describe('Leagues', () => {
        on Round 'n' Around — passed with the whole gate green (all three measured in
        review, 31.08.2026). The four articles were renumbered on 22.10.2026 (owner, PDL
        "Uprošćavanje pravnih tekstova (22.10.2026)"), and the section is held as it now
-       stands, numbers included.
+       stands, numbers included. On 29.10.2026 the article was renamed „Prateće lige", and
+       the explanation and the promotional sentence in the two articles after it went (owner,
+       PDL "Urednička revizija Pravilnika, Uslova i Politike privatnosti (29.10.2026)").
 
        So the unit is the section, which is what a reader meets as one piece, and there
        is no edge left inside it. This is the first passage in this repo held word for
        word; the neighbouring guards read prose with patterns, and that is exactly why
        they kept missing this. The cost is the point: changing any of these four
        articles is a deliberate act that comes here too. */
-    const SECTION_13 = `### Član 50. Liga kao pojam
+    const SECTION_13 = `### Član 50. Prateće lige
 
 Pored glavnog takmičenja postoje i Lige, zasebna takmičenja sa sopstvenim spiskom događaja koji tokom godine ulaze u njih. Spisak događaja sme da se menja tokom godine.
 
@@ -3304,13 +3306,13 @@ Pored glavnog takmičenja postoje i Lige, zasebna takmičenja sa sopstvenim spis
 
 Ultramaraton u obliku slobodne trke: prati se ukupna kilometraža i ukupno vreme. Posebnog prikaza za višestruke polumaratone i maratone nema.
 
-Trka može trajati nekoliko minuta ili nekoliko dana, a broj BTL bodova koji se na njoj skupi nije ničim ograničen. Daje sjajnu šansu svima da izvuku iz sebe svoj realan maksimum, i pobednik možda neće biti onaj ko pretrči najviše ili bude najbrži.
+Trka može trajati nekoliko minuta ili nekoliko dana, a broj BTL bodova koji se na njoj skupi nije ničim ograničen.
 
 Detalji će biti objavljeni na raspisu samog događaja u BTL kalendaru.
 
 ### Član 52. BTL dezorijentiring
 
-Nije cilj stići prvi, cilj je tokom sat vremena sakupiti što više BTL bodova. Detalji će biti objavljeni na raspisu samog događaja u BTL kalendaru.
+Cilj je da se tokom sat vremena sakupi što više BTL bodova. Detalji će biti objavljeni na raspisu samog događaja u BTL kalendaru.
 
 ### Član 53. BTL sreda
 

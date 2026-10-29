@@ -255,18 +255,26 @@ class TheWrittenPagesNameZohoAsAProcessorTest extends DatabaseTest {
 	 * V60 and runs it.
 	 */
 	private void theSignOffOfThePolicyHasMovedOnAndNoOtherDocumentMovedWithIt(String language) {
-		/* V73 moved the policy's on to 24.10.2026 (PDL, "Datum Poslednja izmena se pomera"), so 22.10.2026 stands on the
-		   rulebook and the terms alone. */
-		assertThat(placesWhichCarry(language, signOffNow(language)))
-				.as("the %s sign-off of 22.10.2026 must stand on the terms alone, V76 having moved the rulebook's and V73 the policy's",
+		/* V73 moved the policy's on to 24.10.2026 and V76 the rulebook's to 27.10.2026 (PDL, "Datum Poslednja izmena se
+		   pomera"); V77 (owner, 29.10.2026) moved all three to 29.10.2026, so each of those days stands nowhere now and
+		   the one day stands on all three documents. */
+		String today = language.equals("sr") ? "Poslednja izmena: 29.10.2026." : "Last amended: 29.10.2026.";
+
+		assertThat(placesWhichCarry(language, today))
+				.as("the %s sign-off of 29.10.2026 must stand on all three documents, V77 having moved them together",
 						language)
-				.containsExactly(new Place("uslovi-koriscenja", 11));
-		assertThat(placesWhichCarry(language, language.equals("sr") ? "Poslednja izmena: 27.10.2026." : "Last amended: 27.10.2026."))
-				.as("the %s sign-off of 27.10.2026 must stand on the rulebook alone", language)
-				.containsExactly(new Place("pravilnik", 19));
+				.containsExactlyInAnyOrder(new Place("pravilnik", 19), THE_POLICY_SIGN_OFF,
+						new Place("uslovi-koriscenja", 11));
+		for (String gone : List.of(signOffNow(language),
+				language.equals("sr") ? "Poslednja izmena: 27.10.2026." : "Last amended: 27.10.2026.")) {
+			assertThat(placesWhichCarry(language, gone))
+					.as("the %s sign-off \"%s\" must stand nowhere, V77 having moved every document on", language, gone)
+					.isEmpty();
+		}
 		assertThat(bodyOf(language, THE_POLICY_SIGN_OFF))
-				.as("the privacy policy must be signed off once, on 24.10.2026, and no longer on the day V60 wrote")
-				.containsOnlyOnce(language.equals("sr") ? "Poslednja izmena: 24.10.2026." : "Last amended: 24.10.2026.")
+				.as("the privacy policy must be signed off once, on 29.10.2026, and no longer on the day V60 wrote")
+				.containsOnlyOnce(today)
+				.doesNotContain(language.equals("sr") ? "Poslednja izmena: 24.10.2026." : "Last amended: 24.10.2026.")
 				.doesNotContain(signOffNow(language))
 				.doesNotContain(signOffAfter(language))
 				.doesNotContain(signOffBefore(language));

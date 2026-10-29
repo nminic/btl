@@ -171,17 +171,27 @@ class LaddersMatchTheRulebookTest {
 	}
 
 	/**
-	 * The principle above the table is still the principle the code is built on.
+	 * The paragraph that stated the principle above the table is gone, and the table alone says it now.
 	 *
 	 * <p>Every rung of every ladder means MORE of something, which is why
-	 * {@link Rung#moreFirst()} is the only direction there is. The day the
-	 * rulebook says otherwise, this asks for a rung that can go the other way
-	 * rather than letting the code keep a principle the portal has dropped.
+	 * {@link Rung#moreFirst()} is the only direction there is. Until 29.10.2026 the article said so in a paragraph of
+	 * its own ("Načelo je jedno: nagrađuje se veći obim, nikad efikasnost ..."), and this held that sentence in the
+	 * rulebook. The owner had the paragraph struck in the editorial revision of that day (PDL, "Urednička revizija
+	 * Pravilnika, Uslova i Politike privatnosti (29.10.2026)", the item that approves "brisanje načela u članu 42"):
+	 * it explained the order of the criteria and carried no rule of its own, since the table below it is the order.
+	 * The code is built on the same principle as before, and the table is still read here by
+	 * {@link #theGeneralStandingOrdersByWhatTheRulebookPublishes}. What this holds is that the paragraph does not come
+	 * back unannounced, which would put a second statement of the principle beside the table.
 	 */
 	@Test
-	void volumeIsRewardedAndEfficiencyNever() throws IOException {
+	void theParagraphThatStatedThePrincipleIsGoneAndTheTableStillStandsAlone() throws IOException {
 		assertThat(rulebook())
-				.as("the article no longer carries the principle every ladder in the code is built on")
-				.contains("nagrađuje se veći obim, nikad efikasnost");
+				.as("the paragraph that stated the principle is back in the article on ties")
+				.doesNotContain("nagrađuje se veći obim, nikad efikasnost")
+				.doesNotContain("Načelo je jedno")
+				.contains("Redosled merila, dok se izjednačenje ne razreši:");
+		assertThat(published())
+				.as("the table that now states the order of the criteria alone has lost its general standing")
+				.containsKey("Generalni plasman");
 	}
 }

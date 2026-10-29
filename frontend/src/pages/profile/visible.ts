@@ -92,8 +92,9 @@ export type Readable =
  * profile is unreachable to a reader who is neither an active member nor the administration, and
  * to nobody else (`PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni
  * administracija,
- * nikad prema aktivnom članu"`). The published policy gives the reason in the same sentence as the promise: „ali
- * ne i od ostalih članova, jer bi time nestao smisao zajedničkog rangiranja."
+ * nikad prema aktivnom članu"`). The published policy gave the reason in the same sentence as the promise („ali
+ * ne i od ostalih članova, jer bi time nestao smisao zajedničkog rangiranja") until 29.10.2026, when the editorial
+ * revision struck the reason and kept the promise.
  *
  * **THE SECOND ARGUMENT IS WHETHER THIS READER MAY READ A HIDDEN PROFILE, AND SINCE 03.10.2026 IT IS
  * NOT WHETHER ANYBODY IS SIGNED IN** (this paragraph was written for that reading on 02.10.2026, and

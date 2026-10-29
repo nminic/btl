@@ -233,17 +233,23 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 		Place rulebookSignOff = new Place(RULEBOOK, 19);
 		Place policySignOff = new Place(POLICY, 7);
 
-		/* V73 moved the policy's on to 24.10.2026 (PDL, "Datum Poslednja izmena se pomera"), so 22.10.2026 stands on the
-		   rulebook and the terms alone, and the policy says 24.10.2026 once. */
-		assertThat(placesWhichCarry(language, policySignOffNow(language)))
-				.as("the %s sign-off of 22.10.2026 must stand on the terms alone, V76 having moved the rulebook's and V73 the policy's",
+		/* V73 moved the policy's on to 24.10.2026 and V76 the rulebook's to 27.10.2026 (PDL, "Datum Poslednja izmena se
+		   pomera"); V77 (owner, 29.10.2026) moved all three to 29.10.2026, so each of those days stands nowhere now and
+		   the one day stands on all three documents, once in each. */
+		String today = language.equals("sr") ? "Poslednja izmena: 29.10.2026." : "Last amended: 29.10.2026.";
+
+		assertThat(placesWhichCarry(language, today))
+				.as("the %s sign-off of 29.10.2026 must stand on all three documents, V77 having moved them together",
 						language)
-				.containsExactly(THE_TERMS_SIGN_OFF_NOW);
-		assertThat(placesWhichCarry(language, language.equals("sr") ? "Poslednja izmena: 27.10.2026." : "Last amended: 27.10.2026."))
-				.as("the %s sign-off of 27.10.2026 must stand on the rulebook alone", language)
-				.containsExactly(rulebookSignOff);
-		assertThat(bodyOf(language, policySignOff))
-				.containsOnlyOnce(language.equals("sr") ? "Poslednja izmena: 24.10.2026." : "Last amended: 24.10.2026.");
+				.containsExactlyInAnyOrder(rulebookSignOff, policySignOff, THE_TERMS_SIGN_OFF_NOW);
+		for (String gone : List.of(policySignOffNow(language),
+				language.equals("sr") ? "Poslednja izmena: 27.10.2026." : "Last amended: 27.10.2026.",
+				language.equals("sr") ? "Poslednja izmena: 24.10.2026." : "Last amended: 24.10.2026.")) {
+			assertThat(placesWhichCarry(language, gone))
+					.as("the %s sign-off \"%s\" must stand nowhere, V77 having moved every document on", language, gone)
+					.isEmpty();
+		}
+		assertThat(bodyOf(language, policySignOff)).containsOnlyOnce(today);
 		assertThat(placesWhichCarry(language, signOffAfter(language)))
 				.as("the %s sign-off of 16.10.2026 must stand nowhere, the rulebook having moved on", language)
 				.isEmpty();
@@ -252,13 +258,14 @@ class TheWrittenPagesSayThatTheCategoryRevealsTheYearOfBirthTest extends Databas
 				.isEmpty();
 
 		assertThat(bodyOf(language, THE_TERMS_SIGN_OFF_NOW))
-				.as("%s #%s %s: signed off once, on the day of V71", THE_TERMS_SIGN_OFF_NOW.slug(),
+				.as("%s #%s %s: signed off once, on the day of V77", THE_TERMS_SIGN_OFF_NOW.slug(),
 						THE_TERMS_SIGN_OFF_NOW.position(), language)
-				.containsOnlyOnce(policySignOffNow(language));
+				.containsOnlyOnce(today)
+				.doesNotContain(policySignOffNow(language));
 		assertThat(bodyOf(language, rulebookSignOff))
-				.as("%s #%s %s: signed off once, on the day of V76", rulebookSignOff.slug(), rulebookSignOff.position(),
+				.as("%s #%s %s: signed off once, on the day of V77", rulebookSignOff.slug(), rulebookSignOff.position(),
 						language)
-				.containsOnlyOnce(language.equals("sr") ? "Poslednja izmena: 27.10.2026." : "Last amended: 27.10.2026.")
+				.containsOnlyOnce(today)
 				.doesNotContain(policySignOffNow(language));
 	}
 

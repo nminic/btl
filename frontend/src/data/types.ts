@@ -240,9 +240,11 @@ export type Competitor = {
    * možete sakriti profil od posetilaca koji nisu prijavljeni, ali ne i od ostalih članova,
    * jer bi time nestao smisao zajedničkog rangiranja." Nothing in the code answered for it
    * until 06.09.2026, when the owner asked for the control rather than for the sentence to go.
+   * (The policy no longer gives the reason since 29.10.2026, when the editorial revision struck
+   * the explanation and kept the promise: „ali ne i od ostalih aktivnih članova".)
    *
-   * **What it hides is the profile page, not the member.** The reason is in the policy's own
-   * sentence: the standing would stop meaning anything. So the name keeps its place in every
+   * **What it hides is the profile page, not the member.** The reason is the one the policy's
+   * sentence gave: the standing would stop meaning anything. So the name keeps its place in every
    * table and every ranking, and it is the page behind it that says nothing to a stranger.
    */
   profileHidden: boolean

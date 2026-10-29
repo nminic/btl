@@ -80,15 +80,16 @@ final class TheWrittenPagesBeforeV71 {
 
 	/**
 	 * A MIGRATION AFTER V71 UNDONE, so that what is put back is the text V71 left, whatever the later ones have written
-	 * since: V73 (24.10.2026) and V76 (27.10.2026), the latter first.
+	 * since: V73 (24.10.2026), V76 (27.10.2026) and V77 (29.10.2026), the latest first.
 	 *
 	 * <p>Every guard that calls {@link #putBack(JdbcClient, String)} puts the pages back to how they stood before an older
 	 * migration and runs it again, and each of them is written against the text V71 left. V73 added the word "drugima"
 	 * in three places and moved the sign-off of the policy; V76 moved the dates of the cycle and the sign-off of the
-	 * rulebook. None of that is what those migrations found. Read out of the later migration itself, the way this file
-	 * reads V71: the new text of each edit stands exactly once and becomes the old text again.
+	 * rulebook; V77 struck explanations and familiar phrases from all three pages and moved all three sign-offs. None of
+	 * that is what those migrations found. Read out of the later migration itself, the way this file reads V71: the new
+	 * text of each edit stands exactly once and becomes the old text again.
 	 */
-	private static void undoBodyEdits(JdbcClient db, String version) {
+	static void undoBodyEdits(JdbcClient db, String version) {
 		String v73 = theSqlOf(version);
 		List<Edit> edits = new ArrayList<>();
 		Matcher each = A_BODY_EDIT.matcher(v73);
@@ -127,6 +128,7 @@ final class TheWrittenPagesBeforeV71 {
 	}
 
 	static void putBack(JdbcClient db, String v71) {
+		undoBodyEdits(db, "77");
 		undoBodyEdits(db, "76");
 		undoBodyEdits(db, "73");
 

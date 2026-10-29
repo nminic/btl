@@ -296,19 +296,21 @@ class TheWrittenPagesTheCloudflareRowNamesTheBackupsTest extends DatabaseTest {
 	 * {@link #v70ChangesTheRowAndMovesTheSignOffInFourSectionsAndChangesNothingElse}.
 	 */
 	private void theSignOffsStandAsTheyDoNow(String language) {
-		/* V73 moved the policy's on to 24.10.2026 (PDL, "Datum Poslednja izmena se pomera"), so 22.10.2026 stands on the
-		   rulebook and the terms alone. */
-		assertThat(placesWhichCarry(language, signOffAfter(language)))
-				.as("the %s sign-off of 22.10.2026 must stand on the terms alone, V76 having moved the rulebook's and V73 the policy's",
-						language)
-				.containsExactly(new Place("uslovi-koriscenja", 11));
-		assertThat(placesWhichCarry(language, language.equals("sr") ? "Poslednja izmena: 27.10.2026." : "Last amended: 27.10.2026."))
-				.as("the %s sign-off of 27.10.2026 must stand on the rulebook alone", language)
-				.containsExactly(THE_RULEBOOK_SIGN_OFF);
-		assertThat(bodyOf(language, THE_POLICY_SIGN_OFF))
-				.containsOnlyOnce(language.equals("sr") ? "Poslednja izmena: 24.10.2026." : "Last amended: 24.10.2026.");
+		/* V73 moved the policy's on to 24.10.2026 and V76 the rulebook's to 27.10.2026 (PDL, "Datum Poslednja izmena se
+		   pomera"); V77 (owner, 29.10.2026) moved all three to 29.10.2026, so each of those days stands nowhere now and
+		   the one day stands on all three documents. */
+		String today = language.equals("sr") ? "Poslednja izmena: 29.10.2026." : "Last amended: 29.10.2026.";
 
-		for (String gone : List.of(signOffBefore(language), rulebookSignOffIn(language), termsSignOffIn(language))) {
+		assertThat(placesWhichCarry(language, today))
+				.as("the %s sign-off of 29.10.2026 must stand on all three documents, V77 having moved them together",
+						language)
+				.containsExactlyInAnyOrder(THE_RULEBOOK_SIGN_OFF, THE_POLICY_SIGN_OFF, new Place("uslovi-koriscenja", 11));
+		assertThat(bodyOf(language, THE_POLICY_SIGN_OFF)).containsOnlyOnce(today);
+
+		for (String gone : List.of(signOffAfter(language),
+				language.equals("sr") ? "Poslednja izmena: 27.10.2026." : "Last amended: 27.10.2026.",
+				language.equals("sr") ? "Poslednja izmena: 24.10.2026." : "Last amended: 24.10.2026.",
+				signOffBefore(language), rulebookSignOffIn(language), termsSignOffIn(language))) {
 			assertThat(placesWhichCarry(language, gone))
 					.as("the %s sign-off \"%s\" must stand nowhere", language, gone)
 					.isEmpty();

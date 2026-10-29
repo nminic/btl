@@ -570,8 +570,9 @@ describe('hiding a profile from readers who may not read it', () => {
   it('is not hiding from other members, which is the half the policy explains', async () => {
     /* Every case here read a member's own profile, so „signed in" and „it is me" were the same
        reader and the condition could be narrowed to the owner with nothing falling (review,
-       06.09.2026). The policy gives the reason for the other half in the same sentence: „ali ne
-       i od ostalih članova, jer bi time nestao smisao zajedničkog rangiranja." The other member
+       06.09.2026). The policy gave the reason for the other half in the same sentence („ali ne
+       i od ostalih članova, jer bi time nestao smisao zajedničkog rangiranja") until 29.10.2026,
+       when the editorial revision struck the reason and kept the promise. The other member
        is an ACTIVE one, since 03.10.2026 (`000012` is on the list the server serves): the case
        that turns a member whose fee has lapsed away is further down. */
     const user = setupUser()

@@ -103,7 +103,7 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 	private List<String> referencesIn(String language) {
 		/* Unicode classes, or \b does not see "Č" as a letter and the Serbian half finds nothing at all. */
 		Pattern reference = Pattern.compile(language.equals("sr")
-				? "\\b(?:Član|Člana|člana|član|Članu|članu)\\s(\\d+)\\b"
+				? "\\b(?:Član|Člana|člana|član|Članu|članu|Članom|članom)\\s(\\d+)\\b"
 				: "\\b(?:Article|article)\\s(\\d+)\\b", Pattern.UNICODE_CHARACTER_CLASS);
 		List<String> found = new ArrayList<>();
 
@@ -192,8 +192,6 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 				{ "en", "The league is a public competition", List.of(new Place(POLICY, 3)) },
 				{ "sr", "taksa za obradu plaćanja od 3 EUR", List.of(new Place(RULEBOOK, 4)) },
 				{ "en", "payment processing fee of 3 EUR", List.of(new Place(RULEBOOK, 4)) },
-				{ "sr", "Upravni odbor sme odlukom da redovnog člana oslobodi", List.of(new Place(RULEBOOK, 4)) },
-				{ "en", "The Managing Board may, by decision, exempt a regular member", List.of(new Place(RULEBOOK, 4)) },
 				{ "sr", "Odjava iz sezone ne znači i istupanje iz Udruženja.", List.of(new Place(TERMS, 11)) },
 				{ "en", "Cancelling for a season does not mean leaving the Association.", List.of(new Place(TERMS, 11)) },
 				/* What was said twice or three times and is now said nowhere: Article 9 and the terms' table. */
@@ -206,7 +204,12 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 				{ "sr", "Ukratko: mere idu", List.of() },
 				{ "en", "In short: measures range", List.of() },
 				{ "sr", "podatke čuvamo pet godina", List.of() },
-				{ "en", "we keep the data for five years", List.of() } };
+				{ "en", "we keep the data for five years", List.of() },
+				/* And what the owner had struck on 29.10.2026 (PDL, "Urednička revizija Pravilnika, Uslova i Politike
+				   privatnosti"): no text offers the exemption from the fee as an option any more, so the paragraph of
+				   Article 11 that said the Managing Board may exempt a regular member is said nowhere. */
+				{ "sr", "Upravni odbor sme odlukom da redovnog člana oslobodi", List.of() },
+				{ "en", "The Managing Board may, by decision, exempt a regular member", List.of() } };
 
 		for (Object[] home : homes) {
 			@SuppressWarnings("unchecked")
@@ -228,8 +231,10 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 				{ "en", new Place(RULEBOOK, 2), "You can submit results from the previous season yourself until 1 January at 10:00." },
 				{ "sr", new Place(RULEBOOK, 8), "Izbor za narednu sezonu možete da menjate koliko god puta želite, sve do 1. januara u 10:00, kada postaje konačan." },
 				{ "en", new Place(RULEBOOK, 8), "You can change your choice for the next season as many times as you like, right up to 1 January at 10:00, when it becomes final." },
-				{ "sr", new Place(RULEBOOK, 9), "Link ka zvaničnim rezultatima je sasvim dovoljan." },
-				{ "en", new Place(RULEBOOK, 9), "A link to the official results is quite enough." },
+				/* „sasvim dovoljan" / „quite enough" went on 29.10.2026 with the other familiar phrases (owner, PDL
+				   "Urednička revizija Pravilnika, Uslova i Politike privatnosti"); the sentence says the same thing. */
+				{ "sr", new Place(RULEBOOK, 9), "Dovoljan je link ka zvaničnim rezultatima." },
+				{ "en", new Place(RULEBOOK, 9), "A link to the official results is enough." },
 				{ "sr", new Place(TERMS, 11), "Ako želite da istupite, postupak opisuje [Statut](/BTL%20Statut.pdf)." },
 				{ "en", new Place(TERMS, 11), "If you wish to leave, the procedure is described in the [Statute](/BTL%20Statut.pdf)." },
 				{ "sr", new Place(TERMS, 11), "Vi svoj profil i dalje vidite, a dukati i priznanja ostaju zabeleženi i vraćaju se sa vama kad ponovo obnovite status." },
@@ -252,22 +257,28 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 	}
 
 	/**
-	 * V71 signed all three off on 22.10.2026, V73 moved the policy's on to 24.10.2026 and V76 the rulebook's on to
-	 * 27.10.2026 (PDL, "Datum Poslednja izmena se pomera": the text of the document changed and not the others'). So
-	 * 22.10.2026 stands on the terms alone, the policy stands on 24.10.2026, which
-	 * {@link TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest} holds, and the rulebook on 27.10.2026. What V71
-	 * itself did is held by the cases below, which put the pages back to what V71 found.
+	 * V71 signed all three off on 22.10.2026, V73 moved the policy's on to 24.10.2026, V76 the rulebook's on to
+	 * 27.10.2026 (PDL, "Datum Poslednja izmena se pomera": the text of the document changed and not the others'), and V77
+	 * (owner, 29.10.2026) changed the text of all three and so moved all three to 29.10.2026. So none of the earlier
+	 * days stands anywhere now and 29.10.2026 stands once on each document. What V71 itself did is held by the cases
+	 * below, which put the pages back to what V71 found.
 	 */
 	@Test
-	void theTermsAreSignedOffOnTheTwentySecondInBothLanguagesAndTheRulebookAndThePolicyHaveMovedOn() {
-		for (String[] signOff : new String[][] { { "sr", "Poslednja izmena: 22.10.2026.", "Poslednja izmena: 27.10.2026." },
-				{ "en", "Last amended: 22.10.2026.", "Last amended: 27.10.2026." } }) {
+	void allThreeAreSignedOffOnTheTwentyNinthInBothLanguagesAndNoEarlierDayStands() {
+		for (String[] signOff : new String[][] {
+				{ "sr", "Poslednja izmena: 29.10.2026.", "Poslednja izmena: 22.10.2026.", "Poslednja izmena: 24.10.2026.",
+						"Poslednja izmena: 27.10.2026." },
+				{ "en", "Last amended: 29.10.2026.", "Last amended: 22.10.2026.", "Last amended: 24.10.2026.",
+						"Last amended: 27.10.2026." } }) {
 			assertThat(placesWhichCarry(signOff[0], signOff[1]))
-					.as("%s: the terms are signed off on 22.10.2026, and the rulebook and the policy are not", signOff[0])
-					.containsExactly(new Place(TERMS, 11));
-			assertThat(placesWhichCarry(signOff[0], signOff[2]))
-					.as("%s: the rulebook is signed off on 27.10.2026", signOff[0])
-					.containsExactly(new Place(RULEBOOK, 19));
+					.as("%s: all three documents are signed off on 29.10.2026", signOff[0])
+					.containsExactlyInAnyOrder(new Place(TERMS, 11), new Place(RULEBOOK, 19), new Place(POLICY, 7));
+
+			for (int earlier = 2; earlier < signOff.length; earlier++) {
+				assertThat(placesWhichCarry(signOff[0], signOff[earlier]))
+						.as("%s: \"%s\" stands nowhere, V77 having moved every document on", signOff[0], signOff[earlier])
+						.isEmpty();
+			}
 		}
 
 		for (String gone : List.of("Poslednja izmena: 16.10.2026.", "Poslednja izmena: 10.10.2026.")) {
@@ -318,8 +329,10 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 		jdbc.execute(migrationSql("73"));
 		/* And V76 over that, because the rulebook the portal serves carries it (27.10.2026). */
 		jdbc.execute(migrationSql("76"));
+		/* And V77 over that, because all three pages the portal serves carry it (29.10.2026). */
+		jdbc.execute(migrationSql("77"));
 
-		assertThat(everyText()).as("V71, V73 and V76 over the text V71 found do not give the text the portal serves")
+		assertThat(everyText()).as("V71, V73, V76 and V77 over the text V71 found do not give the text the portal serves")
 				.isEqualTo(finished);
 	}
 
