@@ -95,9 +95,9 @@ final class WhoIsAsking extends OncePerRequestFilter {
 			FilterChain chain) throws ServletException, IOException {
 
 		Instant now = Instant.now();
+		OneSessionCookie answering = new OneSessionCookie(response);
 
-		carried(request)
-				.flatMap(this::sessionFor)
+		carried(request).ifPresent(secret -> sessionFor(secret)
 				.filter(one -> SessionLife.stillOpen(one.life(), now))
 				.ifPresent(one -> {
 					String role = one.roleAfter(named);
@@ -113,8 +113,23 @@ final class WhoIsAsking extends OncePerRequestFilter {
 										java.sql.Timestamp.from(SessionLife.renewedUntil(now)),
 										one.session())
 								.update();
+
+						/* THE COOKIE IS RENEWED IN THE SAME BREATH AS THE ROW, and only then.
+						   The row now runs thirty days from this moment, and the browser
+						   still holds a cookie that runs thirty days from the last time one
+						   was handed out - the sign in. Left alone it would be thrown away
+						   thirty days after signing in while the server went on honouring the
+						   session, and the privacy policy's „najduže 30 dana od kada ste
+						   poslednji put koristili portal" would be false for everybody who
+						   keeps coming back (owner, 29.10.2026, PDL „Kolačić sesije se
+						   obnavlja kad server produži sesiju").
+
+						   The SECRET handed back is the one that arrived, which is the one
+						   this row was found by; it is never read out of the row, because the
+						   row keeps only a hash. */
+						answering.renewed(secret);
 					}
-				});
+				}));
 
 		/* THE CONTEXT IS NOT CLEARED HERE, and the line that did it was taken out
 		   the same hour it was written.
@@ -131,7 +146,7 @@ final class WhoIsAsking extends OncePerRequestFilter {
 		   holds it is `WhoIsAskingTest.nobodySignedInIsNobody`. Spring clears the
 		   context itself, at the far end of the chain, where nothing is left to read
 		   it. */
-		chain.doFilter(request, response);
+		chain.doFilter(request, answering);
 	}
 
 	private static Optional<String> carried(HttpServletRequest request) {
