@@ -538,7 +538,7 @@ export function Membership() {
            dinar side - there is no intermediary there to pay (PDL, owner 04.08.2026) - so
            it is read off the whole answer and never off `inBoth`. */
         const processing = ofKind(prices, A_FEE)
-        /* A member freed of the fee owes nothing at all (the rulebook's article „Cena, rokovi i oslobađanje od članarine", PDL P16),
+        /* A member freed of the fee owes nothing at all (the rulebook's article „Cena i rokovi", PDL P16),
            and twenty nine of the thirty two members in the data are freed of the fee. */
         /* **OFF THE ANSWER THAT CARRIES IT TO HIM, AND NOT OFF THE PUBLIC LIST**
            (21.09.2026). This read `me.membershipBasis`, and `/api/competitors` decides
@@ -901,7 +901,7 @@ export function Membership() {
                   </div>
                 )}
 
-              {/* A member freed of the fee owes nothing, ever (the rulebook's article „Cena, rokovi i oslobađanje od članarine", PDL
+              {/* A member freed of the fee owes nothing, ever (the rulebook's article „Cena i rokovi", PDL
                   P16). Only the line about their status said so, while the
                   whole of the renewal underneath went on being drawn: a price,
                   „Uplati sada", the recipient, a reference number and a QR code

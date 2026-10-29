@@ -169,7 +169,7 @@ function pricesWith(row: string, amounts: { eur: number; rsd: number | null }) {
 }
 
 /* 000032 by default and not 000001: a member freed of the fee owes nothing and is shown
-   no renewal at all (the rulebook's article „Cena, rokovi i oslobađanje od članarine", PDL P16), so every test about renewal
+   no renewal at all (the rulebook's article „Cena i rokovi", PDL P16), so every test about renewal
    needs somebody who actually pays. Of the thirty, three do, and this is the
    grown one of them living in Serbia. His membership is not active, which this
    screen has no branch for and which none of these tests is about. */
@@ -514,7 +514,7 @@ describe('membership', () => {
   }, SLOW)
 
   it('asks a member freed of the fee for nothing at all', async () => {
-    /* The rulebook's article „Cena, rokovi i oslobađanje od članarine" and PDL P16: a member freed of the fee never has a payment.
+    /* The rulebook's article „Cena i rokovi" and PDL P16: a member freed of the fee never has a payment.
        Only the line about their status said so, while the whole of the renewal
        underneath went on being drawn: a price, „Uplati sada", the recipient, a
        reference number and a QR code for money they do not owe.

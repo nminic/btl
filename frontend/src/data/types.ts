@@ -969,7 +969,7 @@ export type PageSection = {
    *
    * **Where those figures come from moved on 26.09.2026** and this sentence used to
    * name `data/pricing.ts`. `components/PriceTable.tsx` reads `GET /api/pricing` now,
-   * so the table under the article „Cena, rokovi i oslobađanje od članarine" shows what the administration really set rather than
+   * so the table under the article „Cena i rokovi" shows what the administration really set rather than
    * what this build shipped. See {@link Price}.
    */
   gallery?: 'ducats' | 'prices' | null

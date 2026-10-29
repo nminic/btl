@@ -2,7 +2,7 @@ import { dayThePriceListIsReadOn, FIRST_SALE, FIRST_SEASON, inYearlyWindow, tran
 /* THE SELLING YEAR AND THE RULES OF WHO PAYS WHAT. **NO SCREEN DRAWS AN AMOUNT OUT OF THIS
  * FILE ANY MORE, and that is the whole of what changed on 26.09.2026.**
  *
- * This was the price list: the front page, the public table under the rulebook's article „Cena, rokovi i oslobađanje od članarine"
+ * This was the price list: the front page, the public table under the rulebook's article „Cena i rokovi"
  * and „Moja članarina" all read their figures here, with whatever the administration had
  * changed laid over them out of the session. That overlay never reached a server, so „the
  * price the administration set" lasted exactly as long as one visit in one browser - and
