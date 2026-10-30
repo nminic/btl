@@ -873,6 +873,7 @@
     "joinNoBody": "The team \"{team}\" did not accept your application.",
     "joinWithdraw": "Withdraw the application",
     "joinWaiting": "Applications waiting",
+    "joinWhenPaid": "You join a team for the {season} season when you have paid the fee for that season. You will find the payment on the My fee page.",
     "decideRefused": {
       "theFormIsNotComplete": "The answer did not reach the server in full, so the application has not been answered. Refresh the page and try again.",
       "theWindowIsShut": "The transfer window has closed in the meantime, so he has not been taken into the team. The application still waits: the window opens on 11 November and runs to 31 December."

@@ -296,6 +296,186 @@ class TeamJoiningWriteApiTest {
 		applicationOf(NOBODY_ELSE, THE_TEAM);
 	}
 
+	// ----- PDL 30.10.2026: ENTERING A TEAM ASKS FOR THE SEASON ON SALE --------------------------
+
+	/**
+	 * A MEMBER WHO HOLDS ONLY THE SEASON BEING RUN MAY NOT ASK A TEAM, AND IS TOLD WHY.
+	 *
+	 * <p>PDL, ODLUKA 30.10.2026, „U prelaznom roku svaki ulaz u tim traži plaćenu narednu sezonu":
+	 * „Prijava u tim, prihvatanje poziva i predlog novog tima traže članstvo za sezonu za koju se
+	 * plaća". The clock is inside the window of 2027, so the season on sale is 2028 and the season
+	 * being run is 2027, which is what makes the two states of this case different at all:
+	 * {@code competitor.active} is true for both.
+	 *
+	 * <p><b>Both states in one case, on one member, so that neither can pass for the wrong
+	 * reason.</b> He holds 2027 alone and is refused; he holds 2028 alone (2027 taken away) and is
+	 * let through. A version that asks {@code active}, or the season being run, lets the first
+	 * through; one that asks for any row at all does the same.
+	 */
+	@Test
+	void aMemberWhoHoldsOnlyTheSeasonBeingRunMayNotAskATeamAndIsToldWhy() throws Exception {
+		holdsOnly(ME, 2027);
+
+		MockHttpServletResponse refused = applyTo(THE_TEAM, ME);
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(TeamJoiningWriteApi.THE_SEASON_IS_NOT_PAID)
+				.isEqualTo("theSeasonIsNotPaid");
+		assertThat(howManyApplications()).as("nothing is written for a member who has not paid")
+				.isOne();
+
+		holdsOnly(ME, 2028);
+
+		assertThat(applyTo(THE_TEAM, ME).getStatus())
+				.as("the season on sale is the one that counts, and he holds it")
+				.isEqualTo(201);
+	}
+
+	/**
+	 * AND A MEMBER WHOSE FEE HAS LAPSED STAYS THE EMPTY 404, which is a different answer and must
+	 * not be turned into this one: he holds no season at all, and the decision of 19.09.2026 says
+	 * every action is shut to him without a sentence.
+	 */
+	@Test
+	void aMemberWhoHoldsNoSeasonAtAllIsStillTheEmptyNotFound() throws Exception {
+		MockHttpServletResponse answered = applyTo(THE_TEAM, LAPSED);
+
+		assertThat(answered.getStatus()).isEqualTo(404);
+		assertThat(answered.getContentAsString()).isEmpty();
+	}
+
+	/**
+	 * THE ORDER IS THE WINDOW, THEN THE TEAM, THEN THE FEE: a member who has not paid and ALSO could
+	 * not enter today is told what he can do something about first, and a team he is in is not
+	 * turned into a sentence about money (the screen draws them in the same order).
+	 */
+	@Test
+	void theFeeIsAskedAfterTheWindowAndAfterTheTeamHeAlreadyHas() throws Exception {
+		holdsOnly(ME, 2027);
+		holdsOnly(PLAIN, 2027);
+
+		assertThat(applyTo(THE_TEAM, PLAIN).getStatus())
+				.as("a member in a team for the season is turned away as before, whatever he owes")
+				.isEqualTo(404);
+
+		clock.moveTo(OUTSIDE_THE_WINDOW);
+
+		MockHttpServletResponse shut = applyTo(THE_TEAM, ME);
+
+		assertThat(shut.getStatus()).as("a shut window is not turned into a sentence about a fee")
+				.isEqualTo(404);
+		assertThat(shut.getContentAsString()).isEmpty();
+	}
+
+	/**
+	 * THE APPLICANT'S SEASON IS WHAT IS ASKED AT THE TEAM'S ANSWER, NOT THE LEADER'S, AND NOT ONLY AT
+	 * THE ASKING.
+	 *
+	 * <p>An application written while he held 2028, followed by the cancelling of 2028 (a storno
+	 * between the asking and the answer), is a question about a man who can no longer enter: the
+	 * team's answer does not find it, for refusing as much as for accepting, and the row waits for
+	 * him (PDL 06.09.2026, „Prijava člana koji je u međuvremenu dobio tim se timu ne prikazuje").
+	 * Once he holds 2028 again the same answer goes through.
+	 */
+	@Test
+	void anApplicantWhoHoldsOnlyTheSeasonBeingRunIsNotThereForTheTeamToAnswer() throws Exception {
+		long application = applicationOf(ME, THE_TEAM);
+
+		holdsOnly(ME, 2027);
+
+		assertThat(decide(THE_TEAM, application, answered(true), LEADER).getStatus()).isEqualTo(404);
+		assertThat(decide(THE_TEAM, application, answered(false), LEADER).getStatus())
+				.as("refusing is not found either: the row simply waits for him")
+				.isEqualTo(404);
+		assertThat(applicationStands(application)).isTrue();
+		assertThat(membershipsOf(ME)).isEmpty();
+		assertThat(inboxOf(ME)).isEmpty();
+
+		alsoHolds(ME, 2028);
+
+		assertThat(decide(THE_TEAM, application, answered(true), LEADER).getStatus()).isEqualTo(204);
+		assertThat(membershipsOf(ME)).containsExactly(THE_TEAM + " from 2028");
+	}
+
+	/**
+	 * AND IT IS THE APPLICANT'S, NOT THE LEADER'S: a leader who has not paid the season himself
+	 * still answers an application of a member who has. The decision names three entries, and
+	 * answering is not one of them.
+	 */
+	@Test
+	void aLeaderWhoHoldsOnlyTheSeasonBeingRunStillAnswersAnApplication() throws Exception {
+		long application = applicationOf(ME, THE_TEAM);
+
+		holdsOnly(LEADER, 2027);
+
+		assertThat(decide(THE_TEAM, application, answered(true), LEADER).getStatus()).isEqualTo(204);
+		assertThat(membershipsOf(ME)).containsExactly(THE_TEAM + " from 2028");
+	}
+
+	/**
+	 * A TEAM MAY INVITE A MEMBER WHO HOLDS ONLY THE SEASON BEING RUN, AND HE ACCEPTS WHEN HE PAYS.
+	 *
+	 * <p>PDL, ODLUKA 30.10.2026: „Poziv sme da se pošalje i članu koji narednu nije platio, ali on
+	 * ga prihvata tek kad plati." The sender holds only 2027 too, which is the other half of the
+	 * same sentence: nothing is asked of the man who sends. The invitee is refused "Prihvati" with
+	 * the reason, keeps the question, and is taken in the moment he holds 2028.
+	 */
+	@Test
+	void anInvitationIsSentToAMemberWhoHasNotPaidAndHeAcceptsWhenHeHas() throws Exception {
+		holdsOnly(ME, 2027);
+		holdsOnly(LEADER, 2027);
+
+		MockHttpServletResponse sent = invite(THE_TEAM, asking(ME), LEADER);
+
+		assertThat(sent.getStatus()).as("the invitation is sent whatever he owes").isEqualTo(201);
+
+		long invitation = mapper.readTree(sent.getContentAsString()).path("id").asLong();
+
+		MockHttpServletResponse refused = answer(THE_TEAM, invitation, answered(true), ME);
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(TeamJoiningWriteApi.THE_SEASON_IS_NOT_PAID);
+		assertThat(invitationStands(invitation)).as("it waits for him").isTrue();
+		assertThat(membershipsOf(ME)).isEmpty();
+
+		alsoHolds(ME, 2028);
+
+		assertThat(answer(THE_TEAM, invitation, answered(true), ME).getStatus()).isEqualTo(204);
+		assertThat(membershipsOf(ME)).containsExactly(THE_TEAM + " from 2028");
+	}
+
+	/** "Odbij" asks nothing of the season, for the reason it asks nothing of the window. */
+	@Test
+	void anInvitationIsRefusedByAMemberWhoHasNotPaid() throws Exception {
+		holdsOnly(ME, 2027);
+
+		long invitation = invitationTo(ME, THE_OTHER_TEAM, 2028);
+
+		assertThat(answer(THE_OTHER_TEAM, invitation, answered(false), ME).getStatus())
+				.isEqualTo(204);
+		assertThat(invitationStands(invitation)).isFalse();
+	}
+
+	/** The same order on the answer: the window, then the team he has, then the fee. */
+	@Test
+	void anInvitationIsAnsweredTheWindowFirstThenTheTeamThenTheFee() throws Exception {
+		holdsOnly(PLAIN, 2027);
+		holdsOnly(ME, 2027);
+
+		long toPlain = invitationTo(PLAIN, THE_OTHER_TEAM, 2028);
+		long toMe = invitationTo(ME, THE_OTHER_TEAM, 2028);
+
+		assertThat(reasonIn(answer(THE_OTHER_TEAM, toPlain, answered(true), PLAIN)))
+				.as("a member in a team is told so before he is told what he owes")
+				.isEqualTo(TeamJoiningWriteApi.HE_IS_ALREADY_IN_A_TEAM);
+
+		clock.moveTo(OUTSIDE_THE_WINDOW);
+
+		assertThat(reasonIn(answer(THE_OTHER_TEAM, toMe, answered(true), ME)))
+				.as("and a shut window before either")
+				.isEqualTo(TeamJoiningWriteApi.THE_WINDOW_IS_SHUT);
+	}
+
 	private void competitor(String number, boolean active) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, first_season, active, "
@@ -306,6 +486,40 @@ class TeamJoiningWriteApiTest {
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, "Probić" + number, active, String.format("%016x", ++issued))
+				.update();
+
+		/* A MEMBER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Entering a team
+		   asks for a membership of the season on sale and not for `competitor.active` (PDL
+		   30.10.2026), so an active member with no row is a member who has not paid it. The member
+		   who holds only ONE of the two is made by `holdsOnly`; a member whose fee has lapsed
+		   (`active` false) holds neither. */
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " select c.id, s.season, 'feeExempt', 'Probni Probic',"
+						+ " timestamptz '2026-09-01 10:00:00+00'"
+						+ " from competitor c cross join (values (2027), (2028)) as s (season)"
+						+ " where c.member_number = ? and c.active")
+				.param(number)
+				.update();
+	}
+
+	/** One more season held by the member, the fee paid or cancelled between two requests of a case. */
+	private void alsoHolds(String memberNumber, int season) {
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " select c.id, ?, 'feeExempt', 'Probni Probic', timestamptz '2026-09-01 10:00:00+00'"
+						+ " from competitor c where c.member_number = ?")
+				.params(season, memberNumber)
+				.update();
+	}
+
+	/**
+	 * A MEMBER WHO HOLDS ONLY THE ONE SEASON GIVEN, which is the state {@code competitor.active}
+	 * cannot tell from a member who holds both: he is active either way. PDL 30.10.2026 asks for
+	 * the season he would ENTER for, so the case that needs the difference makes it here.
+	 */
+	private void holdsOnly(String memberNumber, int season) {
+		db.sql("delete from membership where season <> ? and competitor_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.params(season, memberNumber)
 				.update();
 	}
 

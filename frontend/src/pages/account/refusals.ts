@@ -70,7 +70,14 @@ export const WHEN_REGISTERING: Record<string, string> = {
 }
 
 /**
- * `TeamWriteApi`, which names five, and answers a member proposing a team.
+ * `TeamWriteApi`, which names six, and answers a member proposing a team.
+ *
+ * <p><b>The sixth, `theSeasonIsNotPaid`, is the owner's sentence word for word</b> (PDL, ODLUKA
+ * 30.10.2026, „U prelaznom roku svaki ulaz u tim traži plaćenu narednu sezonu": „U tim za sezonu
+ * [sezona] ulaziš kad platiš članarinu za tu sezonu. Uplatu ćeš naći na strani Moja članarina.").
+ * The screen draws the same sentence INSTEAD of the form when the server says he owes the season
+ * (`member/ProposeTeam.tsx`), so this entry answers a race: a fee cancelled between the drawing
+ * and the press. It takes the season, which `ServerSaid` is handed.
  *
  * <p><b>Two of the five say what the form already checks at the door</b>
  * ({@code nameError} in {@code pages/admin/teamProposal.ts}, read by
@@ -86,6 +93,7 @@ export const WHEN_PROPOSING_A_TEAM: Record<string, string> = {
   theNameMakesNoAddress: 'teams.proposeNoAddress',
   theLinkIsNotShaped: 'teams.proposeLinkNotShaped',
   theAddressIsTaken: 'teams.proposeTaken',
+  theSeasonIsNotPaid: 'teams.joinWhenPaid',
 }
 
 /**

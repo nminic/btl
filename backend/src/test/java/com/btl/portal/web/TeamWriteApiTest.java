@@ -418,6 +418,65 @@ class TeamWriteApiTest {
 				.param(FIRST_WRITTEN).update();
 	}
 
+	// ----- PDL 30.10.2026: PROPOSING A TEAM ASKS FOR THE SEASON ON SALE ----------------------------
+
+	/**
+	 * A MEMBER WHO HOLDS ONLY THE SEASON BEING RUN MAY NOT PROPOSE A TEAM, AND IS TOLD WHY.
+	 *
+	 * <p>PDL, ODLUKA 30.10.2026, „U prelaznom roku svaki ulaz u tim traži plaćenu narednu sezonu":
+	 * „Prijava u tim, prihvatanje poziva i predlog novog tima traže članstvo za sezonu za koju se
+	 * plaća". Odbijeno: „predlog tima slobodan (osnivač ulazi u tim odmah po odobrenju, odluka od
+	 * 05.09.2026)". The clock is inside the window of 2027, so the season on sale is 2028 and the
+	 * season being run is 2027.
+	 *
+	 * <p><b>Both states on one member.</b> He holds 2027 alone and is refused, with nothing
+	 * written; he holds 2028 alone (2027 taken away) and the same request goes through. Asking
+	 * {@code competitor.active}, or the season being run, lets the first through.
+	 */
+	@Test
+	void aMemberWhoHoldsOnlyTheSeasonBeingRunMayNotProposeATeamAndIsToldWhy() throws Exception {
+		holdsOnly(ME, 2027);
+
+		long proposalsBefore = howManyProposals();
+
+		MockHttpServletResponse refused = proposeAs(ME, naming("Novi trkaci"));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo(TeamWriteApi.THE_SEASON_IS_NOT_PAID)
+				.isEqualTo(TeamJoiningWriteApi.THE_SEASON_IS_NOT_PAID);
+		assertThat(howManyProposals()).as("nothing is written for a member who has not paid")
+				.isEqualTo(proposalsBefore);
+
+		holdsOnly(ME, 2028);
+
+		assertThat(proposeAs(ME, naming("Novi trkaci")).getStatus())
+				.as("the season on sale is the one that counts, and he holds it")
+				.isEqualTo(201);
+	}
+
+	/**
+	 * THE ORDER IS THE WINDOW AND THE TEAM HE HAS FIRST, AND THE FEE AFTER: a member who has not
+	 * paid and could not found a team anyway is told what he can do something about first, with
+	 * the empty answer those two have always had.
+	 */
+	@Test
+	void theFeeIsAskedAfterTheWindowAndAfterTheTeamHeAlreadyHas() throws Exception {
+		holdsOnly(HAS_A_TEAM, 2027);
+		holdsOnly(ME, 2027);
+
+		MockHttpServletResponse inATeam = proposeAs(HAS_A_TEAM, naming("Drugi tim"));
+
+		assertThat(inATeam.getStatus()).isEqualTo(404);
+		assertThat(inATeam.getContentAsString()).isEmpty();
+
+		clock.moveTo(Instant.parse("2027-06-15T10:00:00Z"));
+
+		MockHttpServletResponse shut = proposeAs(ME, naming("Treci tim"));
+
+		assertThat(shut.getStatus()).isEqualTo(404);
+		assertThat(shut.getContentAsString()).isEmpty();
+	}
+
 	private void competitor(String number) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, first_season, active, "
@@ -428,6 +487,31 @@ class TeamWriteApiTest {
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, String.format("%016x", ++issued))
+				.update();
+
+		/* A MEMBER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Entering a team
+		   asks for a membership of the season on sale and not for `competitor.active` (PDL
+		   30.10.2026), so an active member with no row is a member who has not paid it. The member
+		   who holds only ONE of the two is made by `holdsOnly`; a member whose fee has lapsed
+		   (`active` false) holds neither. */
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " select c.id, s.season, 'feeExempt', 'Probni Probic',"
+						+ " timestamptz '2026-09-01 10:00:00+00'"
+						+ " from competitor c cross join (values (2027), (2028)) as s (season)"
+						+ " where c.member_number = ? and c.active")
+				.param(number)
+				.update();
+	}
+
+	/**
+	 * A MEMBER WHO HOLDS ONLY THE ONE SEASON GIVEN, which is the state {@code competitor.active}
+	 * cannot tell from a member who holds both: he is active either way. PDL 30.10.2026 asks for
+	 * the season he would ENTER for, so the case that needs the difference makes it here.
+	 */
+	private void holdsOnly(String memberNumber, int season) {
+		db.sql("delete from membership where season <> ? and competitor_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.params(season, memberNumber)
 				.update();
 	}
 

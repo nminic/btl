@@ -1,12 +1,12 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { Navigate } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { clearResourceCache } from '../../data/client'
 import { teamOf } from '../../data/derive'
-import { inYearlyWindow } from '../../data/season'
+import { inYearlyWindow, transfersTakeEffect } from '../../data/season'
 import { useSend, useSent } from '../sent'
 import { Resource } from '../../components/Resource'
-import { combinePair, useCompetitors, useTeams } from '../../data/useResource'
+import { combinePair, useCompetitors, useTeams, useWhatIsWaiting } from '../../data/useResource'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { predlogTima } from '../../forms/definitions'
 import type { FieldError, FormValues } from '../../forms/types'
@@ -61,6 +61,30 @@ import './Member.css'
  * (`forms/PlaceField.tsx`). `EditTeam.tsx` draws the same definition and changes
  * with it.
  */
+/**
+ * THE SEASON THE MEMBER OWES BEFORE HE CAN PROPOSE A TEAM, asked of the server, and handed to
+ * whatever is drawn.
+ *
+ * <p>PDL, ODLUKA 30.10.2026, „U prelaznom roku svaki ulaz u tim traži plaćenu narednu sezonu":
+ * a proposal is an entry because its founder is written into the team the day it is approved,
+ * and the owner rejected a proposal that stays free while the application and the invitation
+ * ask. The fact is `GET /api/me/applications`'s `seasonToPayFor`, the same one the team's page
+ * and the invitation in the inbox read, so the three cannot disagree about whether he owes it.
+ * A component of its own because a hook cannot be called after the early returns of
+ * {@link ProposeTeam}, and the member number it needs is only known past them.
+ */
+function WhenTheSeasonIsOwed({
+  mine,
+  children,
+}: {
+  mine: string
+  children: (owed: number | null) => ReactNode
+}) {
+  const state = useWhatIsWaiting(mine)
+
+  return <Resource state={state}>{(waiting) => children(waiting.seasonToPayFor)}</Resource>
+}
+
 export function ProposeTeam() {
   const { locale, t } = useI18n()
   const who = useMemberScreen()
@@ -220,6 +244,19 @@ export function ProposeTeam() {
           }
 
           return (
+            <WhenTheSeasonIsOwed mine={mine}>
+              {(owed) =>
+                /* **THE SENTENCE STANDS WHERE THE FORM WOULD, UNDER THE SAME HEADING, AND THE
+                   ADDRESS IS NOT A REDIRECT** (derived, not asked: PDL 30.10.2026 says „Ekran
+                   članu to kaže jednom rečenicom", and a redirect, which is what a member the
+                   portal has no business with gets, says nothing). Asked after the two conditions
+                   above, which is the order the route asks them in. */
+                owed !== null ? (
+                  <>
+                    <h1 className="form__title">{t('teams.proposeTitle')}</h1>
+                    <p className="member__note">{t('teams.joinWhenPaid', { season: owed })}</p>
+                  </>
+                ) : (
             <>
               <FormRenderer
                 form={predlogTima}
@@ -250,9 +287,19 @@ export function ProposeTeam() {
               {sending && <p role="status">{t('teams.proposeSending')}</p>}
 
               {refusal !== null && (
-                <ServerSaid answer={refusal} refusals={WHEN_PROPOSING_A_TEAM} />
+                /* The season only the refusal of the fee reads: a fee cancelled between the drawing
+                   and the press, so the read that would have named the season is the one this
+                   outran, and inside the window the season a change takes effect in is that one. */
+                <ServerSaid
+                  answer={refusal}
+                  refusals={WHEN_PROPOSING_A_TEAM}
+                  params={{ season: transfersTakeEffect(today) }}
+                />
               )}
             </>
+                )
+              }
+            </WhenTheSeasonIsOwed>
           )
         }}
       </Resource>

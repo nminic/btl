@@ -873,6 +873,7 @@
     "joinNoBody": "Tim \"{team}\" nije prihvatio tvoju prijavu.",
     "joinWithdraw": "Povuci prijavu",
     "joinWaiting": "Prijave koje čekaju",
+    "joinWhenPaid": "U tim za sezonu {season} ulaziš kad platiš članarinu za tu sezonu. Uplatu ćeš naći na strani Moja članarina.",
     "decideRefused": {
       "theFormIsNotComplete": "Odgovor nije poslat do kraja, pa prijava nije odgovorena. Osveži stranicu i pokušaj ponovo.",
       "theWindowIsShut": "Prelazni rok se u međuvremenu zatvorio, pa član nije primljen u tim. Prijava i dalje čeka: rok se otvara 11. novembra i traje do 31. decembra."

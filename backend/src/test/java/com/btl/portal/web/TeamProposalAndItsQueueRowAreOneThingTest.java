@@ -140,6 +140,19 @@ class TeamProposalAndItsQueueRowAreOneThingTest {
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.param(ME).update();
 
+		/* A MEMBER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Entering a team
+		   asks for a membership of the season on sale and not for `competitor.active` (PDL
+		   30.10.2026), so an active member with no row is a member who has not paid it. The member
+		   who holds only ONE of the two is made by `holdsOnly`; a member whose fee has lapsed
+		   (`active` false) holds neither. */
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " select c.id, s.season, 'feeExempt', 'Probni Probic',"
+						+ " timestamptz '2026-09-01 10:00:00+00'"
+						+ " from competitor c cross join (values (2027), (2028)) as s (season)"
+						+ " where c.member_number = ? and c.active")
+				.param(ME)
+				.update();
+
 		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id) values"
 						+ " ('Probni', 'Probic', ?, (select id from role where code = 'competitor'),"
 						+ " (select id from competitor where member_number = ?))")
