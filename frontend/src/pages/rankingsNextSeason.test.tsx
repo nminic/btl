@@ -79,10 +79,10 @@ const RESULTS = [
   },
 ]
 
-function answering() {
+function answering(results: unknown[] = RESULTS) {
   const answers = new Map<string, unknown[]>([
     ['/api/competitors', MEMBERS],
-    ['/api/results', RESULTS],
+    ['/api/results', results],
   ])
 
   return serverThat((path) => {
@@ -284,6 +284,27 @@ describe('the table, once 2028 has begun', () => {
     try {
       renderAt('/sr/tabela?sezona=2027', 'visitor', null, undefined, '2028-01-01')
 
+      expect(NUMBERS(await standing())).toEqual([BOTH])
+    } finally {
+      stop()
+    }
+  }, SLOW)
+})
+
+describe('the table, and the seasons it is NOT drawn for everybody', () => {
+  it('draws a season that is on the list only because a result is dated in it as the raced alone', async () => {
+    /* A result dated in 2028 on a day of 2027 cannot be run, but it is the one way the list holds a season
+       the clock does not offer, and the table of it must not be drawn as the season that has not begun:
+       „2028 ce tek od [11.11] moci … da se puni", not before. */
+    const { stop } = answering([...RESULTS, { ...must(RESULTS[0], 'the result'), id: 710_002, date: '2028-05-02' }])
+
+    try {
+      renderAt('/sr/tabela?sezona=2028', 'visitor', null, undefined, '2027-03-01')
+
+      const select = await control()
+
+      expect(offered(select)).toEqual(['2028', '2027'])
+      expect(select.value).toBe('2028')
       expect(NUMBERS(await standing())).toEqual([BOTH])
     } finally {
       stop()
