@@ -133,6 +133,27 @@ describe('a member without the right to rank, in public', () => {
   }, SLOW)
 })
 
+describe('a member without the right to rank in the season shown, in the table of one before it', () => {
+  it('stands where he ranked, and his category is drawn for nobody', async () => {
+    /* 2028 is shown and he holds it without the right; in 2027 he ranked. The category the portal
+       keeps is the one he chose for the season shown, so drawn beside his 2027 row it would be the
+       choice the owner said is shown nowhere. */
+    const server = serving(theList(true), [
+      aRunOf2027(VLADAN, 60, true, 900001),
+      aRunOf2027(HIS_TEAMMATE, 20, true, 900002),
+    ])
+    renderAt('/sr/tabela?sezona=2027', 'visitor', null, undefined, '2028-06-01')
+
+    const his = must((await screen.findByText(VLADAN)).closest('tr'), 'his row')
+    const theirs = must(screen.getByText(HIS_TEAMMATE).closest('tr'), 'his teammate row')
+
+    expect(must(his.querySelector('.table__category'), 'his category cell').textContent).toBe('')
+    expect(must(theirs.querySelector('.table__category'), 'a category cell').textContent).not.toBe('')
+
+    server.stop()
+  }, SLOW)
+})
+
 describe('the administration', () => {
   const ana = person('000009', 'Ana', 'Aktivna', { membershipBasis: 'balance', membershipSeason: 2028 })
   const MEMBERS: Member[] = [
