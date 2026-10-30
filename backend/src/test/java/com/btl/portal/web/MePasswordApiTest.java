@@ -303,13 +303,22 @@ class MePasswordApiTest {
 				.isFalse();
 		assertThat(stillOpen(sessions.get(ME).get(2))).isFalse();
 
-		assertThat(stillOpen(sessions.get(ME).get(1)))
+		/* SINCE 30.10.2026 THE SESSION THAT ASKED KEEPS ITS ROW UNDER A NEW SECRET (owner, PDL,
+		   with the decision quoted in `MePasswordApi`), so it is the cookie the answer hands out
+		   that must go on answering. The old secret, and the socket case
+		   `TheSessionCookieFollowsTheSessionOverRealHttpTest.changingThePasswordGivesTheSessionANewSecret`,
+		   measure the rest. */
+		Cookie handedOut = answer.getCookie(SessionCookie.NAME);
+
+		assertThat(handedOut).as("changing the password handed out no new cookie").isNotNull();
+		assertThat(db.sql("select count(*) from account_session where account_id ="
+						+ " (select id from account where email = ?)").param(ME).query(Integer.class).single())
 				.as("the row of the session that asked is gone, so the member signed himself out"
 						+ " of the browser he is typing in")
-				.isTrue();
+				.isOne();
 
 		assertThat(http.perform(get("/api/me")
-						.cookie(new Cookie(SessionCookie.NAME, theSessionIAskFrom())))
+						.cookie(new Cookie(SessionCookie.NAME, handedOut.getValue())))
 				.andReturn().getResponse().getStatus())
 				.as("the session that asked no longer opens anything, which is the portal"
 						+ " answering 204 and then refusing him everything")

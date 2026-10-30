@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.account.BreachedPasswords;
 import com.btl.portal.domain.account.PasswordPolicy;
+import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.account.SignIn;
 import com.btl.portal.domain.account.StoredPassword;
 import com.btl.portal.domain.mail.MailLanguage;
@@ -11,6 +12,7 @@ import com.btl.portal.domain.token.SecretToken;
 import com.btl.portal.mail.Postman;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -125,9 +127,11 @@ import java.util.Optional;
  * the first proof anybody has of the mailbox - and this route is the opposite case by
  * construction: reaching it at all means somebody signed in, which V6 and {@code SignIn}
  * already make conditional on that column.
- * <li><b>It does not hand back a new cookie.</b> The session that asked is untouched, so the
- * one the browser is holding goes on being the right one; a fresh one would be a second row
- * for the same browser and the old one would have to be ended, which is the shape this route
+ * <li><b>It hands back a new cookie for the SAME row.</b> Until 30.10.2026 the session that asked
+ * was left untouched; the owner then chose, between the outcomes put to him after the security
+ * review of PR 656 and with my recommendation, that the session that asked keeps its row and
+ * gets a new secret in it, so the member stays signed in and a copy of the old cookie opens
+ * nothing. It is still not a second row for the same browser, which is the shape this route
  * exists to avoid.
  * </ul>
  *
@@ -287,7 +291,17 @@ class MePasswordApi {
 			tell(done);
 		}
 
-		return done.refusal() == null ? ResponseEntity.noContent().build() : done.refusal();
+		if (done.refusal() != null) {
+			return done.refusal();
+		}
+
+		ResponseEntity.HeadersBuilder<?> changed = ResponseEntity.noContent();
+
+		if (done.newSecret() != null) {
+			changed.header(HttpHeaders.SET_COOKIE, SessionCookie.carrying(done.newSecret()).toString());
+		}
+
+		return changed.build();
 	}
 
 	/**
@@ -299,7 +313,7 @@ class MePasswordApi {
 	 *
 	 */
 	private record Done(ResponseEntity<Refused> refusal, long account, String address, Instant at,
-			MailLanguage language) {
+			MailLanguage language, String newSecret) {
 	}
 
 	private Done write(long account, String carried, Change typed) {
@@ -445,7 +459,34 @@ class MePasswordApi {
 				.params(account, SecretToken.hashOf(carried))
 				.update();
 
-		return new Done(null, account, stored.address(), now, stored.language());
+		/* AND THE ONE SESSION THAT SURVIVES GETS A NEW SECRET, and the member stays signed in on
+		   it. The owner, 30.10.2026, choosing between the outcomes put to him after the security
+		   review of PR 656 (with my recommendation): changing the password gives the current
+		   session a new secret, the row is updated, the answer carries the new cookie, and the
+		   member stays signed in. Somebody who copied the cookie this request arrived on is left
+		   holding a secret nothing opens any more, which until today a password change did not
+		   do for the very session it was asked from.
+
+		   THE ROW IS FOUND BY THE SECRET THIS REQUEST CARRIES AND ITS ACCOUNT, never by the
+		   account alone: the delete above has just left exactly one row of this account, but
+		   naming it by what arrived is what keeps the new secret out of any other row whatever
+		   the delete did.
+
+		   IT IS RENEWED IN THE SAME STATEMENT, because the cookie handed out runs thirty days from
+		   now and the row must end on the same day (`SessionCookie.LASTS`). And the cookie goes
+		   only if the row was really rewritten, for `OneSessionCookie`'s reason: a session ended
+		   elsewhere a moment ago (signed out in another tab) gets no cookie, and the password is
+		   changed all the same. The route's cookie is also why the filter's own renewal stands
+		   aside on this answer. */
+		SecretToken fresh = SecretToken.fresh();
+		boolean rotated = db.sql("update account_session set token_hash = ?, last_used_at = ?, expires_at = ?"
+						+ " where account_id = ? and token_hash = ?")
+				.params(fresh.hash(), Timestamp.from(now), Timestamp.from(SessionLife.renewedUntil(now)),
+						account, SecretToken.hashOf(carried))
+				.update() == 1;
+
+		return new Done(null, account, stored.address(), now, stored.language(),
+				rotated ? fresh.secret() : null);
 	}
 
 	/**
@@ -506,7 +547,7 @@ class MePasswordApi {
 	}
 
 	private static Done no(String reason) {
-		return new Done(ResponseEntity.badRequest().body(new Refused(reason)), 0, null, null, null);
+		return new Done(ResponseEntity.badRequest().body(new Refused(reason)), 0, null, null, null, null);
 	}
 
 	/**

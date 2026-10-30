@@ -1,18 +1,25 @@
 package com.btl.portal.web;
 
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletResponse;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
- * What the wrapper does with the headers it is handed, without a server in the way.
+ * What the wrapper does with a renewal it was handed, without a server in the way.
  *
- * <p>The cases over a real socket measure the two routes that set the session cookie.
- * Neither of them sets anything else before it does, so the part that keeps what was
- * there is not reached by them, and it is the part a route written later would need.
+ * <p>The cases over a real socket ({@link TheSessionCookieFollowsTheSessionOverRealHttpTest}) measure
+ * the routes the portal has. These measure the three ways a route can write a cookie of its own -
+ * {@code addHeader}, {@code setHeader} and {@code addCookie} - of which the portal's routes use only
+ * the second, through {@code ResponseEntity}; a route written next year may use either of the others.
+ *
+ * <p><b>Every case counts how many times the row was renewed</b>, because the rule is that the row
+ * and the cookie go together: a case that only read the cookie would pass a wrapper that renewed the
+ * row and then decided not to say so.
  */
 class OneSessionCookieTest {
 
@@ -24,58 +31,151 @@ class OneSessionCookieTest {
 
 	private final OneSessionCookie answering = new OneSessionCookie(underneath);
 
-	/**
-	 * A HEADER THAT IS NOT THE SESSION'S GOES THROUGH AS IT IS, and so does a cookie that is
-	 * not the session's: a header of another name, and a Set-Cookie of another cookie.
-	 */
-	@Test
-	void anythingThatIsNotTheSessionCookieIsAddedAsItIs() {
-		answering.addHeader("X-Probni", "1");
-		answering.addHeader("x-probni", "2");
-		answering.addHeader(HttpHeaders.SET_COOKIE, CSRF);
+	/** How many times the renewing {@code update} ran. */
+	private final AtomicInteger renewed = new AtomicInteger();
 
-		assertThat(underneath.getHeaders("X-Probni")).containsExactly("1", "2");
-		assertThat(underneath.getHeaders(HttpHeaders.SET_COOKIE)).containsExactly(CSRF);
+	private void dueAndTheRowIsThere() {
+		answering.renewWhenAnswered("tajna", () -> {
+			renewed.incrementAndGet();
+			return 1;
+		});
+	}
+
+	private java.util.List<String> aboutTheSession() {
+		return underneath.getHeaders(HttpHeaders.SET_COOKIE).stream().filter(SessionCookie::isOne).toList();
 	}
 
 	/**
-	 * WHAT THE ROUTE SAYS ABOUT THE SESSION REPLACES WHAT THE FILTER SAID, and the cookie
-	 * that was set before either of them is still there, once.
+	 * AN ANSWER THAT SAYS NOTHING ABOUT CACHING, AND NOTHING ABOUT THE SESSION, IS RENEWED when it is
+	 * committed, once, and the cookie it already carried stays beside the session's.
 	 */
 	@Test
-	void theRoutesWordOnTheSessionReplacesTheRenewalAndKeepsTheRest() {
+	void anOrdinaryAnswerIsRenewedOnceWhenItIsCommitted() throws Exception {
+		dueAndTheRowIsThere();
 		answering.addHeader(HttpHeaders.SET_COOKIE, CSRF);
-		answering.renewed("tajna");
 
-		assertThat(underneath.getHeaders(HttpHeaders.SET_COOKIE))
-				.as("the renewal is not written, so this measures nothing")
-				.hasSize(2)
-				.anyMatch(one -> one.startsWith(SessionCookie.NAME + "=tajna;"));
+		assertThat(renewed).as("the row was renewed before the answer was committed").hasValue(0);
 
-		answering.addHeader(HttpHeaders.SET_COOKIE, OVER);
+		answering.flushBuffer();
+		answering.answered();
 
-		assertThat(underneath.getHeaders(HttpHeaders.SET_COOKIE))
-				.as("the answer carries more or fewer cookies than the session's and the CSRF one,"
-						+ " or both kinds of the session's")
-				.hasSize(2)
-				.contains(CSRF)
-				.filteredOn(SessionCookie::isOne)
-				.hasSize(1)
-				.allMatch(one -> one.startsWith(SessionCookie.NAME + "=; ") && one.contains("Max-Age=0"));
+		assertThat(renewed).hasValue(1);
+		assertThat(underneath.getHeaders(HttpHeaders.SET_COOKIE)).hasSize(2).contains(CSRF);
+		assertThat(aboutTheSession()).singleElement().asString().startsWith(SessionCookie.NAME + "=tajna;");
 	}
 
-	/** AND WITH NOTHING BEFORE IT, A SESSION COOKIE IS JUST ADDED. */
+	/** AN ANSWER THAT SAYS {@code no-store} IS RENEWED, and so is one that wrote no body at all. */
 	@Test
-	void aSessionCookieWithNothingBeforeItIsJustSet() {
-		answering.addHeader(HttpHeaders.SET_COOKIE, OVER);
+	void anAnswerThatForbidsKeepingIsRenewedEvenWithNoBody() {
+		dueAndTheRowIsThere();
+		answering.setHeader(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, max-age=0, must-revalidate");
 
-		assertThat(underneath.getHeaders(HttpHeaders.SET_COOKIE)).hasSize(1)
-				.allMatch(one -> one.startsWith(SessionCookie.NAME + "=; ") && one.contains("Max-Age=0"));
+		answering.answered();
+
+		assertThat(renewed).hasValue(1);
+		assertThat(aboutTheSession()).hasSize(1);
 	}
 
-	/** A HEADER WITH NO VALUE IS NOT THE SESSION'S, and is passed on rather than failing here. */
+	/** AN ANSWER A CACHE MAY KEEP RENEWS NOTHING, neither the row nor the cookie. */
 	@Test
-	void aSetCookieWithNoValueIsNotTakenForTheSessionsAndFailsNothing() {
-		assertThatCode(() -> answering.addHeader(HttpHeaders.SET_COOKIE, null)).doesNotThrowAnyException();
+	void anAnswerACacheMayKeepRenewsNothing() throws Exception {
+		dueAndTheRowIsThere();
+		answering.setHeader(HttpHeaders.CACHE_CONTROL, "max-age=86400, private");
+
+		answering.flushBuffer();
+		answering.answered();
+
+		assertThat(renewed).as("the row was renewed for an answer that could not carry its cookie").hasValue(0);
+		assertThat(aboutTheSession()).isEmpty();
+	}
+
+	/** A ROW THAT IS GONE BY THEN GETS NO COOKIE. */
+	@Test
+	void aRowThatIsGoneGetsNoCookie() throws Exception {
+		answering.renewWhenAnswered("tajna", () -> {
+			renewed.incrementAndGet();
+			return 0;
+		});
+
+		answering.flushBuffer();
+
+		assertThat(renewed).as("the row was never asked, so this measures nothing").hasValue(1);
+		assertThat(aboutTheSession()).isEmpty();
+	}
+
+	/**
+	 * A ROUTE THAT SAYS SOMETHING ABOUT THE SESSION'S COOKIE IS THE ONLY ONE THAT DOES, however it
+	 * writes it: through {@code addHeader}, through {@code setHeader}, or through {@code addCookie}.
+	 */
+	@Test
+	void theRoutesWordThroughAddHeaderIsTheOnlyOne() throws Exception {
+		dueAndTheRowIsThere();
+		answering.addHeader(HttpHeaders.SET_COOKIE, OVER);
+
+		answering.flushBuffer();
+
+		assertThat(renewed).hasValue(0);
+		assertThat(aboutTheSession()).singleElement().asString().contains("Max-Age=0").doesNotContain("tajna");
+	}
+
+	@Test
+	void theRoutesWordThroughSetHeaderIsTheOnlyOne() throws Exception {
+		dueAndTheRowIsThere();
+		answering.addHeader(HttpHeaders.SET_COOKIE, CSRF);
+		answering.setHeader(HttpHeaders.SET_COOKIE, OVER);
+
+		answering.flushBuffer();
+
+		assertThat(renewed).hasValue(0);
+		assertThat(aboutTheSession()).singleElement().asString().contains("Max-Age=0").doesNotContain("tajna");
+	}
+
+	@Test
+	void theRoutesWordThroughAddCookieIsTheOnlyOne() throws Exception {
+		dueAndTheRowIsThere();
+		answering.addCookie(new Cookie(SessionCookie.NAME, ""));
+
+		answering.flushBuffer();
+
+		assertThat(renewed).hasValue(0);
+		assertThat(aboutTheSession()).hasSize(1).noneMatch(one -> one.contains("tajna"));
+	}
+
+	/**
+	 * AND SPRING'S OWN WAY OF WRITING A HEADER, which empties the name before it adds: the route's
+	 * cookie emptied that way and never written again is no word about the session, so the renewal
+	 * goes.
+	 */
+	@Test
+	void aSetCookieEmptiedAndNotWrittenAgainIsNoWordAboutTheSession() throws Exception {
+		dueAndTheRowIsThere();
+		answering.addHeader(HttpHeaders.SET_COOKIE, OVER);
+		answering.setHeader(HttpHeaders.SET_COOKIE, null);
+
+		answering.flushBuffer();
+
+		assertThat(renewed).hasValue(1);
+		assertThat(aboutTheSession()).hasSize(1).allMatch(one -> one.contains("tajna"));
+	}
+
+	/** AN ANSWER COMMITTED UNDERNEATH WITHOUT THIS WRAPPER SEEING IT RENEWS NOTHING, not even the row. */
+	@Test
+	void anAnswerCommittedUnderneathRenewsNothing() {
+		dueAndTheRowIsThere();
+		underneath.setCommitted(true);
+
+		answering.answered();
+
+		assertThat(renewed).hasValue(0);
+		assertThat(aboutTheSession()).isEmpty();
+	}
+
+	/** AND NOTHING DUE, NOTHING DONE, whichever way the answer ends. */
+	@Test
+	void nothingDueIsNothingDone() throws Exception {
+		answering.flushBuffer();
+		answering.answered();
+
+		assertThat(underneath.getHeaders(HttpHeaders.SET_COOKIE)).isEmpty();
 	}
 }

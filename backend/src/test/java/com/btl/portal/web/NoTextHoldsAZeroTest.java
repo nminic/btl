@@ -150,6 +150,8 @@ class NoTextHoldsAZeroTest {
 					"REFUSED: it asks NoTextHoldsAZero.holdsAZero itself and answers 400"),
 			Map.entry("MePasswordApi#change:" + SessionCookie.NAME + " (cookie)",
 					"hashed before it is used"),
+			Map.entry("PasswordResetApi#reset:" + SessionCookie.NAME + " (cookie)",
+					"hashed before it is compared with the sessions the reset deletes"),
 			Map.entry("SignOutApi#signOut:" + SessionCookie.NAME + " (cookie)",
 					"hashed before it is used"));
 
