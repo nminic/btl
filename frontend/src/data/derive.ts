@@ -786,7 +786,7 @@ export function rankTeams(
  * code does not do.
  */
 export function categoryOfMember(competitor: Competitor): string {
-  return categoryCodeFor(competitor.gender, competitor.ageBand, competitor.firstSeason2027)
+  return categoryCodeFor(competitor.gender, competitor.ageBand, competitor.beginner)
 }
 
 /** Category codes present in a gender's field, in a stable order. */

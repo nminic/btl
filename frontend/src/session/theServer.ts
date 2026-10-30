@@ -452,7 +452,7 @@ export async function whatTheServerSaysOfMyProfile(): Promise<Competitor | null>
  */
 export type MyData = Pick<
   Competitor,
-  'firstName' | 'lastName' | 'gender' | 'city' | 'ageBand' | 'firstSeason2027'
+  'firstName' | 'lastName' | 'gender' | 'city' | 'ageBand' | 'beginner'
 > & {
   /** Where a shirt and a medal are sent. Never empty: the server takes no blank one. */
   address: string
@@ -903,7 +903,7 @@ function profileIn(mine: object | null): Competitor | null {
  */
 function sixFactsIn(
   mine: object | null,
-): Pick<Competitor, 'firstName' | 'lastName' | 'gender' | 'city' | 'ageBand' | 'firstSeason2027'> | null {
+): Pick<Competitor, 'firstName' | 'lastName' | 'gender' | 'city' | 'ageBand' | 'beginner'> | null {
   if (mine === null) {
     return null
   }
@@ -913,7 +913,7 @@ function sixFactsIn(
   const gender = genderIn(mine)
   const city = nameIn(mine, 'city')
   const ageBand = ageBandIn(mine)
-  const firstSeason2027 = flagIn(mine, 'firstSeason2027')
+  const beginner = flagIn(mine, 'beginner')
 
   if (
     firstName === null ||
@@ -921,12 +921,12 @@ function sixFactsIn(
     gender === null ||
     city === null ||
     ageBand === null ||
-    firstSeason2027 === null
+    beginner === null
   ) {
     return null
   }
 
-  return { firstName, lastName, gender, city, ageBand, firstSeason2027 }
+  return { firstName, lastName, gender, city, ageBand, beginner }
 }
 
 /**
@@ -1056,7 +1056,7 @@ function birthdayShownIn(mine: object): BirthdayShown | null {
 }
 
 /** A yes or a no, and nothing that merely reads as one. */
-function flagIn(mine: object, name: 'firstSeason2027' | 'profileHidden' | 'active'): boolean | null {
+function flagIn(mine: object, name: 'beginner' | 'profileHidden' | 'active'): boolean | null {
   const said: unknown = Reflect.get(mine, name)
 
   return typeof said === 'boolean' ? said : null

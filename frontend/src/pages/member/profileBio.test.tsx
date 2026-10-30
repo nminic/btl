@@ -114,7 +114,7 @@ function hisRecord(who: Competitor, waiting: string | null): Record<string, unkn
     gender: who.gender,
     city: who.city,
     ageBand: who.ageBand,
-    firstSeason2027: who.firstSeason2027,
+    beginner: who.beginner,
     bio: who.bio ?? '',
     ...(waiting === null ? {} : { bioWaiting: waiting }),
   }

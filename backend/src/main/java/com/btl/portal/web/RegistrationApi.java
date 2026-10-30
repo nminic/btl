@@ -372,7 +372,7 @@ class RegistrationApi {
 	 *                every other thing the form should have caught
 	 */
 	record Typed(String firstName, String lastName, String fatherName, String birthDate,
-			String gender, Boolean firstSeason2027, String email, String password,
+			String gender, Boolean beginner, String email, String password,
 			String passwordRepeat, String address, Long placeId, String city, String country,
 			String idNumber, String phone, String shirtSize, Boolean healthStatement,
 			String parentConsent, String parentRelation, String referredBy, String mailLanguage) {
@@ -655,7 +655,7 @@ class RegistrationApi {
 				.params(typed.firstName().strip(), typed.lastName().strip(), typed.gender(),
 						town.placeId(), town.city(), town.countryId(),
 						SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock)),
-						typed.firstSeason2027(), ReferralCode.fresh().written(),
+						typed.beginner(), ReferralCode.fresh().written(),
 						whoBrought(typed),
 						java.sql.Date.valueOf(born), typed.fatherName().strip(),
 						typed.address().strip(), WhatAFieldMeans.thePhone(typed.phone()), typed.shirtSize(), now)
@@ -847,7 +847,7 @@ class RegistrationApi {
 		filledIn.put("fatherName", typed.fatherName());
 		filledIn.put("birthDate", typed.birthDate());
 		filledIn.put("gender", WhatAFieldMeans.theGender(typed.gender()));
-		filledIn.put("firstSeason2027", typed.firstSeason2027() == null ? null : "izabrano");
+		filledIn.put("beginner", typed.beginner() == null ? null : "izabrano");
 		filledIn.put("email", WhatAnAddressLooksLike.itDoes(address) ? address : null);
 		filledIn.put("password", typed.password());
 		filledIn.put("passwordRepeat", typed.passwordRepeat());

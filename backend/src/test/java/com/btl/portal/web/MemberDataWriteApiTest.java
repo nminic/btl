@@ -526,11 +526,11 @@ class MemberDataWriteApiTest {
 		Map<String, Object> before = everythingNow();
 
 		MockHttpServletResponse answer = corrected("000005", "{\"firstName\": \"Novo\", \"password\": \"x\","
-				+ " \"firstSeason2027\": true, \"healthStatement\": true}", OVER_THE_MEMBERS);
+				+ " \"beginner\": true, \"healthStatement\": true}", OVER_THE_MEMBERS);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(reasonIn(answer)).isEqualTo(MemberDataWriteApi.NOT_TAKEN_HERE);
-		assertThat(listIn(answer, "fields")).containsExactly("password", "firstSeason2027", "healthStatement");
+		assertThat(listIn(answer, "fields")).containsExactly("password", "beginner", "healthStatement");
 		nothingWasWritten(before);
 	}
 
@@ -1064,7 +1064,7 @@ class MemberDataWriteApiTest {
 
 		elsewhere.put("password", "the owner: „samo bez lozinke\"");
 		elsewhere.put("passwordRepeat", "the same, and it is the form checking itself");
-		elsewhere.put("firstSeason2027", "the beginners' category has its own screen and route");
+		elsewhere.put("beginner", "the beginners' category has its own screen and route");
 		elsewhere.put("healthStatement", "a moment recorded once at registration, not a fact");
 		elsewhere.put("parentConsent", "evidence that a consent was given (V8), which is not edited");
 		elsewhere.put("parentRelation", "the same row");

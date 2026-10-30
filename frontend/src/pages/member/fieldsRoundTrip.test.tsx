@@ -87,7 +87,7 @@ function aServerThatKeepsTheProfile(opening: { hidden: boolean; bio: string }): 
           gender: HIM.gender,
           city: HIM.city,
           ageBand: HIM.ageBand,
-          firstSeason2027: HIM.firstSeason2027,
+          beginner: HIM.beginner,
           profileHidden: hidden,
           bio,
           ...(waiting === null ? {} : { bioWaiting: waiting }),

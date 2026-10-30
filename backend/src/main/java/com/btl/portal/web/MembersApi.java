@@ -129,7 +129,7 @@ class MembersApi {
 	 *                         unconfirmed, and an invitation is the road to a password
 	 */
 	record Member(String memberNumber, String firstName, String lastName, String gender,
-			String city, String country, String ageBand, boolean firstSeason2027, boolean active,
+			String city, String country, String ageBand, boolean beginner, boolean active,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer membershipSeason,
 			List<Season> seasons, int seasonOnSale, String currency, BigDecimal expected,
@@ -137,7 +137,7 @@ class MembersApi {
 	}
 
 	private record Row(long id, String memberNumber, String firstName, String lastName, String gender,
-			String city, boolean firstSeason2027, boolean active, String basis, int birthYear,
+			String city, boolean beginner, boolean active, String basis, int birthYear,
 			String countryCode, String invitation) {
 	}
 
@@ -209,7 +209,7 @@ class MembersApi {
 
 			return new Member(one.memberNumber(), one.firstName(), one.lastName(), one.gender(),
 					one.city(), one.countryCode(), Category.ageBandFor(one.birthYear(), season).code(),
-					one.firstSeason2027(), one.active(),
+					one.beginner(), one.active(),
 					one.basis(), one.basis() == null ? null : sold,
 					List.copyOf(held.getOrDefault(one.id(), List.of())),
 					sold, his.name(), price.expected(), price.amount(),

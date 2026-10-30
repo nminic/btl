@@ -125,7 +125,7 @@ function hisRecord(held: { address: string; phone?: string }): Record<string, un
     gender: ME.gender,
     city: ME.city,
     ageBand: ME.ageBand,
-    firstSeason2027: ME.firstSeason2027,
+    beginner: ME.beginner,
     address: held.address,
     ...(held.phone === undefined ? {} : { phone: held.phone }),
   }

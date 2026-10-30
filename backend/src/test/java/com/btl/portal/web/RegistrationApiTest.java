@@ -167,7 +167,7 @@ class RegistrationApiTest {
 		form.put("fatherName", "Milorad");
 		form.put("birthDate", today.minusYears(30).toString());
 		form.put("gender", "M");
-		form.put("firstSeason2027", true);
+		form.put("beginner", true);
 		form.put("email", ADDRESS);
 		form.put("password", PASSWORD);
 		form.put("passwordRepeat", PASSWORD);

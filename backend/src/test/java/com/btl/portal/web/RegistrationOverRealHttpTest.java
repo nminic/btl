@@ -141,7 +141,7 @@ class RegistrationOverRealHttpTest {
 		LocalDate born = LocalDate.now().minusYears(30);
 		String form = """
 				{"firstName":"Mrezni","lastName":"Mreznic","fatherName":"Milorad",\
-				"birthDate":"%s","gender":"M","firstSeason2027":true,"email":"%s",\
+				"birthDate":"%s","gender":"M","beginner":true,"email":"%s",\
 				"password":"%s","passwordRepeat":"%s","address":"Ulica slobode 15",\
 				"placeId":%d,"idNumber":"AB1234567","shirtSize":"L","healthStatement":true}"""
 				.formatted(born, ADDRESS, PASSWORD, PASSWORD, aTownOfTheCodebook);

@@ -944,7 +944,7 @@ describe('the privacy policy', () => {
        are read out of the town and the address.
        So the field names its own row of the policy, in `registracija.form.json`, and this
        reads the form rather than the dictionary. A field added without a row fails here,
-       which is the only moment anybody is thinking about that field at all. `firstSeason2027`
+       which is the only moment anybody is thinking about that field at all. `beginner`
        was collected for weeks with no row, and nothing said so.
        The row is matched on the cell rather than on the line, so a table reflowed by hand
        does not read as a policy that lost a row.

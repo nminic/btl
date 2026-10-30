@@ -1175,7 +1175,7 @@ class MeApiTest {
 						+ " is the one row of the fixture that is 55 or more, and the year itself is not"
 						+ " an answer (the case on the year of birth)")
 				.isEqualTo("55+");
-		assertThat(mine.path("firstSeason2027").asBoolean())
+		assertThat(mine.path("beginner").asBoolean())
 				.as("whether he runs in the beginners' category").isTrue();
 		assertThat(mine.path("teamSince").asInt())
 				.as("the season the membership that has NOT ended began in, which is the one he"
@@ -1358,7 +1358,7 @@ class MeApiTest {
 		assertThat(hers.path("gender").asString())
 				.as("she shares the gender of every row but one, and it is not the caller's")
 				.isEqualTo("M");
-		assertThat(hers.path("firstSeason2027").asBoolean()).isFalse();
+		assertThat(hers.path("beginner").asBoolean()).isFalse();
 		assertThat(hers.path("profileHidden").asBoolean()).isFalse();
 		assertThat(hers.path("birthdayShown").asString()).isEqualTo("none");
 		assertThat(hers.path("bio").asString())
@@ -1394,7 +1394,7 @@ class MeApiTest {
 		assertThat(his.path("teamSince").asInt())
 				.as("the season his membership of the third team began in")
 				.isEqualTo(2027);
-		assertThat(his.path("firstSeason2027").asBoolean()).isFalse();
+		assertThat(his.path("beginner").asBoolean()).isFalse();
 		assertThat(his.path("profileHidden").asBoolean()).isFalse();
 	}
 
@@ -1446,7 +1446,7 @@ class MeApiTest {
 				.as("this is not his record at all, so the profile below says nothing")
 				.isEqualTo(LAPSED);
 		assertThat(his.path("profileHidden").asBoolean()).isTrue();
-		assertThat(his.path("firstSeason2027").asBoolean()).isFalse();
+		assertThat(his.path("beginner").asBoolean()).isFalse();
 		assertThat(his.path("bio").asString())
 				.as("his biography was held back from him, as the public list holds a hidden one back"
 						+ " from a reader whose fee has lapsed. Of his own page nothing is hidden")
@@ -1505,7 +1505,7 @@ class MeApiTest {
 				.isEqualTo("25-39");
 		assertThat(his.path("birthdayShown").asString()).as("what he chose about his birthday")
 				.isEqualTo("year");
-		assertThat(his.path("firstSeason2027").asBoolean())
+		assertThat(his.path("beginner").asBoolean())
 				.as("whether he runs in the beginners' category, which a lapsed fee does not take"
 						+ " from him")
 				.isTrue();
@@ -1925,7 +1925,7 @@ class MeApiTest {
 		assertThat(shared)
 				.as("the two doors share almost nothing, so the comparison below is asked of a few"
 						+ " names and says little")
-				.contains("firstName", "lastName", "gender", "city", "ageBand", "firstSeason2027", "teamSince",
+				.contains("firstName", "lastName", "gender", "city", "ageBand", "beginner", "teamSince",
 						"bio", "profileHidden", "birthdayShown", "photo", "crop", "memberNumber",
 						"country", "firstSeason", "teamId");
 
@@ -2060,7 +2060,7 @@ class MeApiTest {
 	 *               and the one who never paid
 	 */
 	private void competitor(String number, String first, String last, String place, String city,
-			String country, int firstSeason, boolean firstSeason2027, String basis,
+			String country, int firstSeason, boolean beginner, String basis,
 			String broughtBy) {
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, city, country_id, first_season, first_season_2027,"
@@ -2077,7 +2077,7 @@ class MeApiTest {
 				   active, and the one whose fee has LAPSED is the second state the portal really
 				   does write - a number, and not active. Both halves are measured by
 				   `everyRowHereIsAStateThePortalCanWrite` rather than promised by this comment. */
-				.params(number, first, last, firstSeason, firstSeason2027,
+				.params(number, first, last, firstSeason, beginner,
 						number != null && !LAPSED.equals(number),
 						String.format("%016x", ++issued))
 				.query(Long.class).single();

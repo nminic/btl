@@ -293,7 +293,7 @@ describe('a member whose fee has lapsed, on his own page', () => {
          are three of them to be read. */
       const ahead = FILE.filter(
         (one) =>
-          one.active === true && one.gender === 'M' && one.ageBand === '40-54' && one.firstSeason2027 === false,
+          one.active === true && one.gender === 'M' && one.ageBand === '40-54' && one.beginner === false,
       ).slice(0, 3)
 
       expect(ahead, 'three men of his band on the list, which the generated data has').toHaveLength(3)

@@ -1229,8 +1229,8 @@ describe('what the registration sends', () => {
 
        Three faults are held by this one comparison and each was real:
 
-       - `firstSeason2027` is a BOOLEAN. The form offers the strings „yes" and „no", and
-         `Typed.firstSeason2027` is a `Boolean`, so the word would have been refused by
+       - `beginner` is a BOOLEAN. The form offers the strings „yes" and „no", and
+         `Typed.beginner` is a `Boolean`, so the word would have been refused by
          Jackson before the handler ran at all - a bare 400 with no reason in it, which
          no screen can turn into a sentence.
        - ~~`photo` IS ABSENT, because its value in the form is the name of a file on
@@ -1259,7 +1259,7 @@ describe('what the registration sends', () => {
       fatherName: 'Milan',
       birthDate: '1985-04-12',
       gender: 'M',
-      firstSeason2027: false,
+      beginner: false,
       email: 'vladan@primer.rs',
       password: PASSWORD,
       passwordRepeat: PASSWORD,
@@ -1294,7 +1294,7 @@ describe('what the registration sends', () => {
   }, SLOW)
 
   it('chooses the beginners category as a boolean the other way round too', async () => {
-    /* The second state of the axis. With only the case above, `firstSeason2027: false`
+    /* The second state of the axis. With only the case above, `beginner: false`
        is satisfied by a line that answers false to everything. */
     const user = setupUser()
     renderForm()
@@ -1305,7 +1305,7 @@ describe('what the registration sends', () => {
       expect(whatWasSent()).toHaveLength(1)
     })
 
-    expect(Reflect.get(Object(theBodySent()), 'firstSeason2027')).toBe(true)
+    expect(Reflect.get(Object(theBodySent()), 'beginner')).toBe(true)
   }, SLOW)
 
   it('carries the signature of a guardian for somebody under sixteen', async () => {

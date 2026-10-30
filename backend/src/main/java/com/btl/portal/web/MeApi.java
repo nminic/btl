@@ -409,7 +409,7 @@ class MeApi {
 	 *                     moments the band moves on. <b>The year it is worked out from is read
 	 *                     and leaves nowhere as a year</b>; his own date is answered to him whole
 	 *                     since 24.10.2026 ({@code birthDate}, below) and to nobody else
-	 * @param firstSeason2027 whether he runs in the beginners' category (PDL P7). Never absent:
+	 * @param beginner whether he runs in the beginners' category (PDL P7). Never absent:
 	 *                     the column is NOT NULL
 	 * @param teamSince    the season the membership that has NOT ENDED began in, and ABSENT
 	 *                     exactly when {@code teamId} is: the two halves of the link to a team
@@ -478,7 +478,7 @@ class MeApi {
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer membershipSeason,
 			boolean active, String referralCode, int referredCount,
 			String firstName, String lastName, String gender, String city, String ageBand,
-			boolean firstSeason2027,
+			boolean beginner,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer teamSince,
 			String bio, boolean profileHidden, String birthdayShown,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String photo,

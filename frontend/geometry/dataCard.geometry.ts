@@ -27,7 +27,7 @@ const ROW = {
   city: 'Beograd',
   country: 'RS',
   ageBand: '40-54',
-  firstSeason2027: false,
+  beginner: false,
   firstSeason: 2014,
   bio: '',
   teamId: null,

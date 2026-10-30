@@ -1802,7 +1802,7 @@ describe('activating a membership from the payments screen', () => {
       const first = {
         gender: 'M' as const,
         ageBand: '40-54' as const,
-        firstSeason2027: false,
+        beginner: false,
         active: true,
         city: 'Beograd',
         country: 'RS',

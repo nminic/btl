@@ -361,7 +361,7 @@ class GroupEntryTest {
 	 * A BOX THAT IS THERE AND OFF IS FILLED IN; ONE THAT IS NOT THERE AT ALL IS NOT.
 	 *
 	 * <p><b>Two states of one fact, and only one of them was in the fixture until the
-	 * coverage floor said so.</b> {@code firstSeason2027} is in
+	 * coverage floor said so.</b> {@code beginner} is in
 	 * {@link WhatRegistrationAsksFor#OF_EVERYBODY}, so it is required - but „required" for a
 	 * box means it must have been ANSWERED, and answering „no" is an answer. A route that
 	 * read the box's VALUE rather than its presence would refuse every member whose first
@@ -373,7 +373,7 @@ class GroupEntryTest {
 	@Test
 	void aBoxAnsweredNoIsAnsweredAndOneThatIsAbsentIsNot() throws Exception {
 		List<Map<String, Object>> group = aGroupOfThree();
-		group.get(1).put("firstSeason2027", false);
+		group.get(1).put("beginner", false);
 
 		assertThat(enter(group, EVERYTHING).getStatus())
 				.as("a member who said his first season is NOT 2027 was refused, so the route"
@@ -382,12 +382,12 @@ class GroupEntryTest {
 		assertThat(memberBehind(folded(SECOND_TYPED)).get("first_season_2027"))
 				.as("the answer he gave was not written down").isEqualTo(false);
 
-		group.get(1).remove("firstSeason2027");
+		group.get(1).remove("beginner");
 
 		assertThat(rowsRefusedIn(enter(group, EVERYTHING)))
 				.as("a box nobody answered passed as answered")
 				.containsExactly(Map.of("row", 1, "reason", "theFormIsNotComplete",
-						"missing", List.of("firstSeason2027")));
+						"missing", List.of("beginner")));
 	}
 
 	/* ------------------------------------------------- what the invitation opens, and whose */
@@ -1147,7 +1147,7 @@ class GroupEntryTest {
 		row.put("fatherName", "Otac " + first);
 		row.put("birthDate", A_GROWN_UP);
 		row.put("gender", gender);
-		row.put("firstSeason2027", true);
+		row.put("beginner", true);
 		row.put("email", email);
 		row.put("address", "Ulica " + first + " 1");
 		row.put("placeId", aTownOfTheCodebook);

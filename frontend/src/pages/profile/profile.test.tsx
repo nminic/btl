@@ -327,7 +327,7 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     city: 'Čačak',
     country: 'RS',
     ageBand,
-    firstSeason2027: false,
+    beginner: false,
     firstSeason: 2020,
     unranked: false,
     active: true,

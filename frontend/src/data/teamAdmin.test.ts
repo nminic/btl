@@ -43,7 +43,7 @@ const member = (
   city: 'Novi Sad',
   country: 'RS',
   ageBand: '25-39',
-  firstSeason2027: false,
+  beginner: false,
   firstSeason: 2019,
   unranked: false,
   membershipBasis: 'payment',

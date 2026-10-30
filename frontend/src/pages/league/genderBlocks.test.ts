@@ -68,7 +68,7 @@ const person = (memberNumber: string, gender: 'M' | 'F'): Competitor => ({
   city: 'Beograd',
   country: 'RS',
   ageBand: '40-54',
-  firstSeason2027: false,
+  beginner: false,
   firstSeason: 2019,
   unranked: false,
   membershipBasis: 'payment',
@@ -134,18 +134,18 @@ describe('the name of a block of the standing', () => {
        question the fixture has to answer is simply whether the bands arrive in an order
        no rule about them would produce. They do. */
     const rows = [
-      { ...person('000007', 'M'), ageBand: '40-54' as const, firstSeason2027: false, scores: [50] },
+      { ...person('000007', 'M'), ageBand: '40-54' as const, beginner: false, scores: [50] },
       /* Three level with each other, so there is something a tie-break could move: with
          every total different there is no tie at all and a tie-break never fires, which
          was true of one earlier draft of this fixture. */
-      { ...person('000005', 'M'), ageBand: '40-54' as const, firstSeason: 2022, firstSeason2027: false, scores: [9, 8, 3] },
-      { ...person('000001', 'M'), ageBand: '25-39' as const, firstSeason: 2020, firstSeason2027: true, scores: [14, 6] },
-      { ...person('000003', 'M'), ageBand: '55+' as const, firstSeason: 2021, firstSeason2027: false, scores: [7, 6, 5, 2] },
-      { ...person('000004', 'M'), ageBand: '40-54' as const, firstSeason: 2018, firstSeason2027: false, scores: [11, 6, 3] },
-      { ...person('000006', 'M'), ageBand: '25-39' as const, firstSeason: 2023, firstSeason2027: false, scores: [10, 5, 4, 1] },
+      { ...person('000005', 'M'), ageBand: '40-54' as const, firstSeason: 2022, beginner: false, scores: [9, 8, 3] },
+      { ...person('000001', 'M'), ageBand: '25-39' as const, firstSeason: 2020, beginner: true, scores: [14, 6] },
+      { ...person('000003', 'M'), ageBand: '55+' as const, firstSeason: 2021, beginner: false, scores: [7, 6, 5, 2] },
+      { ...person('000004', 'M'), ageBand: '40-54' as const, firstSeason: 2018, beginner: false, scores: [11, 6, 3] },
+      { ...person('000006', 'M'), ageBand: '25-39' as const, firstSeason: 2023, beginner: false, scores: [10, 5, 4, 1] },
       /* And a woman, so the blocks are two and the reading below has to cross one. */
-      { ...person('000009', 'F'), ageBand: '25-39' as const, firstSeason2027: false, scores: [30] },
-      { ...person('000002', 'F'), ageBand: '25-39' as const, firstSeason2027: false, scores: [12, 8] },
+      { ...person('000009', 'F'), ageBand: '25-39' as const, beginner: false, scores: [30] },
+      { ...person('000002', 'F'), ageBand: '25-39' as const, beginner: false, scores: [12, 8] },
     ].map(({ scores, ...competitor }) => ({
       competitor,
       points: new Map(scores.map((score, at) => [at + 1, score])),

@@ -54,7 +54,7 @@ import java.util.List;
  * <p><b>AND THE BEGINNERS' CATEGORY IS NOT THIS FIELD AND IS NOT ANSWERED
  * INSTEAD OF IT.</b> A member in his first season carries {@code R} rather than a
  * band (PDL P7, owner 03.08. and 11.08.2026), but which of the two a screen draws
- * is decided by {@code firstSeason2027}, which this resource already answers, and
+ * is decided by {@code beginner}, which this resource already answers, and
  * the band is answered BESIDE it rather than replaced by it - exactly as the
  * served file does for all thirty two members. Whether somebody may still be in
  * that category depends on his whole history of points, which this server does not
@@ -539,7 +539,7 @@ class CompetitorApi {
 	 *                       touched here
 	 */
 	record Competitor(String memberNumber, String firstName, String lastName, String gender,
-			String city, String country, String ageBand, boolean firstSeason2027, int firstSeason,
+			String city, String country, String ageBand, boolean beginner, int firstSeason,
 			boolean unranked, String bio, Long teamId, Integer teamSince, boolean profileHidden,
 			String birthdayShown, String photo, Crop crop, String smallPhoto,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis,

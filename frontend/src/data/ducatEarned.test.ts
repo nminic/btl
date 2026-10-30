@@ -11,7 +11,7 @@ const member: Competitor = {
   city: 'Novi Sad',
   country: 'RS',
   ageBand: '25-39',
-  firstSeason2027: false,
+  beginner: false,
   firstSeason: 2027,
   unranked: false,
   membershipBasis: 'payment',

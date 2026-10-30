@@ -295,7 +295,7 @@ class EveryRouteFindsATownByItsMarkTest {
 		form.put("fatherName", "Milorad");
 		form.put("birthDate", LocalDate.now(SeasonClock.ZONE).minusYears(30).toString());
 		form.put("gender", "M");
-		form.put("firstSeason2027", true);
+		form.put("beginner", true);
 		form.put("email", address);
 		form.put("password", PASSWORD);
 		form.put("passwordRepeat", PASSWORD);

@@ -2274,7 +2274,7 @@ class MeWriteApiTest {
 		   answered entry from staying here as an excuse. */
 		Map<String, String> elsewhere = new LinkedHashMap<>();
 
-		elsewhere.put("firstSeason2027", "decides the CATEGORY exactly as the date of birth"
+		elsewhere.put("beginner", "decides the CATEGORY exactly as the date of birth"
 				+ " does (PDL P5), and the owner's reason for refusing those two covers it");
 		elsewhere.put("email", "PDL P28b, 2: changed by the member himself but only against a"
 				+ " confirmation of the new address, which is a second table and its own"
@@ -2829,7 +2829,7 @@ class MeWriteApiTest {
 		registering.put("fatherName", "Milorad");
 		registering.put("birthDate", "1990-01-01");
 		registering.put("gender", "M");
-		registering.put("firstSeason2027", true);
+		registering.put("beginner", true);
 		registering.put("email", "nov-clan@primer.rs");
 		registering.put("password", "ovo je jedna duga lozinka");
 		registering.put("passwordRepeat", "ovo je jedna duga lozinka");

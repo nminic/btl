@@ -77,7 +77,7 @@ describe('his own data', () => {
         gender: 'M',
         city: 'Beograd',
         ageBand: '25-39',
-        firstSeason2027: false,
+        beginner: false,
         address: 'Ulica Nova 3',
         phone: '',
         country: 'RS',

@@ -53,7 +53,7 @@ export function valuesFor(form: FormDef, record: Record<string, unknown>): FormV
          Asked of the ANSWERS and not of the control since 20.09.2026, which is
          the same question `recordValue` asks on the way out and the reason it is
          asked in one place: `featured` offers the same two words out of a select
-         and `firstSeason2027` out of a pair of buttons, and both records keep a
+         and `beginner` out of a pair of buttons, and both records keep a
          flag. Read off the control, an event that IS singled out opened its form
          with the word „true" in it, which is neither button. */
       values[field.name] = value ? 'yes' : 'no'
@@ -285,7 +285,7 @@ export function recordValue(field: FieldDef, text: string): unknown {
   }
 
   /* A question a record keeps as a yes or a no: „Početnička" and „Starosna" are the
-     two faces of `firstSeason2027`, and „Da"/„Ne" the two faces of `BtlEvent.featured`
+     two faces of `beginner`, and „Da"/„Ne" the two faces of `BtlEvent.featured`
      (data/types.ts). Which question that is is decided by what the field OFFERS
      rather than by what was typed into it or by the control it is drawn with: a
      field offering „yes" and „no" and nothing else is the shape of a question a

@@ -48,7 +48,7 @@ function theListWith(wishes: Record<string, boolean>): string {
       .filter((one) => one.active)
       .map((one) => ({
         ...asAnswered(one, aCompetitor),
-        firstSeason2027: wishes[one.memberNumber] ?? one.firstSeason2027,
+        beginner: wishes[one.memberNumber] ?? one.beginner,
       })),
   )
 }

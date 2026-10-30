@@ -1895,7 +1895,7 @@ function whatTheCardSays(one: Competitor): string {
      letter is typed here (owner, 18.10.2026). */
   const word = one.gender === 'M' ? sr.category.rookieMale : sr.category.rookieFemale
   const mark = one.gender === 'M' ? sr.category.markMale : sr.category.markFemale
-  const category = one.firstSeason2027 ? word : `${mark} ${one.ageBand}`
+  const category = one.beginner ? word : `${mark} ${one.ageBand}`
 
   return `${one.firstName} ${one.lastName}${one.memberNumber}${category}${one.city}`
 }

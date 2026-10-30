@@ -80,9 +80,9 @@
       "integer": true
     },
     {
-      "name": "firstSeason2027",
+      "name": "beginner",
       "type": "checkbox",
-      "labelKey": "admin.field.firstSeason2027"
+      "labelKey": "admin.field.beginner"
     }
   ]
 }

@@ -35,7 +35,7 @@ export const aNeverPaidRecord = {
   gender: 'M',
   city: 'Beograd',
   ageBand: '25-39',
-  firstSeason2027: false,
+  beginner: false,
   bio: '',
   profileHidden: false,
   birthdayShown: 'none',

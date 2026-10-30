@@ -149,7 +149,7 @@
       "policyBasis": "Izvršenje ugovora i pravna obaveza"
     },
     {
-      "name": "firstSeason2027",
+      "name": "beginner",
       "type": "choice",
       "labelKey": "registration.category",
       "required": true,

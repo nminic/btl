@@ -132,7 +132,7 @@ import java.util.List;
  * <p><b>A BOUNDARY AND NOT A DECISION: THE BEGINNER'S MARK IS WHAT THE RECORD SAYS TODAY.</b>
  * The owner's choice was about the band alone. The mark a member had in the season of an old
  * result cannot be read from anywhere, because the record of a member's category per season does
- * not exist yet (item ZS), so {@code firstSeason2027} is the flag on his record as it stands now,
+ * not exist yet (item ZS), so {@code beginner} is the flag on his record as it stands now,
  * whichever season the result belongs to, and for an old result it may differ from what the
  * frozen table of that season files him under. When that record exists this field reads it and
  * this paragraph goes. That is my derivation from the choice and not a thing he was asked.
@@ -209,14 +209,14 @@ class ResultApi {
 	 *                        written twice (PDL, 13.09.2026). The band he had in the season the
 	 *                        result was run in, and not the one {@code /api/competitors} answers
 	 *                        for the season that is running (owner, 10.10.2026)
-	 * @param firstSeason2027 whether he runs in the beginners' category rather than in the one for
+	 * @param beginner whether he runs in the beginners' category rather than in the one for
 	 *                        his age (PDL P7). The flag on his record as it stands now, whichever
 	 *                        season the result belongs to: the record of his category per season
 	 *                        does not exist yet (item ZS), and the note on this class draws that
 	 *                        boundary
 	 */
 	record Runner(String firstName, String lastName, String gender, String ageBand,
-			boolean firstSeason2027) {
+			boolean beginner) {
 	}
 
 	/**

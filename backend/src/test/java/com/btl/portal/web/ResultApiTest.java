@@ -244,7 +244,7 @@ class ResultApiTest {
 	 * else, so that two of them compare as values.
 	 */
 	private record TheRunner(String firstName, String lastName, String gender, String ageBand,
-			boolean firstSeason2027) {
+			boolean beginner) {
 	}
 
 	/** The runner of one row of this answer. */
@@ -260,7 +260,7 @@ class ResultApiTest {
 	private static TheRunner fiveNamesIn(JsonNode record) {
 		return new TheRunner(record.path("firstName").asString(), record.path("lastName").asString(),
 				record.path("gender").asString(), record.path("ageBand").asString(),
-				record.path("firstSeason2027").asBoolean());
+				record.path("beginner").asBoolean());
 	}
 
 	/** The whole answer as text, which is what a name or a year is looked for in. */
@@ -808,7 +808,7 @@ class ResultApiTest {
 					.as("the runner of %s carries other names than the five it is allowed",
 							row.path("memberNumber").asString())
 					.containsExactlyInAnyOrder("firstName", "lastName", "gender", "ageBand",
-							"firstSeason2027");
+							"beginner");
 		}
 	}
 

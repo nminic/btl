@@ -696,7 +696,7 @@ const HIS_PAGE: Record<string, unknown> = {
   gender: 'M',
   city: 'Zaječar',
   ageBand: '40-54',
-  firstSeason2027: false,
+  beginner: false,
   bio: '',
   profileHidden: false,
   birthdayShown: 'none',
@@ -765,8 +765,8 @@ const NOT_BELIEVED_AS_A_PAGE: [key: string, sent: unknown][] = [
   ['ageBand', '99+'],
   ['ageBand', '25–39'],
   ['ageBand', 7],
-  ['firstSeason2027', 'false'],
-  ['firstSeason2027', 0],
+  ['beginner', 'false'],
+  ['beginner', 0],
   ['bio', 7],
   ['bio', null],
   ['profileHidden', 'true'],
@@ -787,7 +787,7 @@ describe('the page of the caller himself', () => {
       city: 'Zaječar',
       country: 'RS',
       ageBand: '40-54',
-      firstSeason2027: false,
+      beginner: false,
       firstSeason: 2016,
       /* `/api/me` does not say it; his own page is drawn for him, so his category is shown to him
          (`profileIn`). */
@@ -1031,7 +1031,7 @@ const A_NEWCOMERS_RECORD: Record<string, unknown> = (() => {
 
 /** The six this reader is for, which are the facts a data screen draws and nothing a page needs
  *  besides them. Derived from the reader's own sample, never from a list of the page. */
-const THE_SIX = ['firstName', 'lastName', 'gender', 'city', 'ageBand', 'firstSeason2027']
+const THE_SIX = ['firstName', 'lastName', 'gender', 'city', 'ageBand', 'beginner']
 
 /** And the ones that are his alone: where a shirt is sent and how he is called (18.10.2026), and the
  *  size of the shirt (23.10.2026). The data screen draws them in boxes, and the page does not draw them
@@ -1056,7 +1056,7 @@ describe('the data of the caller himself', () => {
       gender: 'M',
       city: 'Zaječar',
       ageBand: '40-54',
-      firstSeason2027: false,
+      beginner: false,
       address: 'Mihajla Pupina 10',
       phone: '',
       country: 'RS',

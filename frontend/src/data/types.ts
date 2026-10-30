@@ -185,7 +185,7 @@ export type Competitor = {
    * puts a member into the beginners' category for a whole season, and that
    * cannot be undone mid-season.
    */
-  firstSeason2027: boolean
+  beginner: boolean
   firstSeason: number
   /**
    * Whether he holds the membership of the season the screens show as the running one
@@ -443,7 +443,7 @@ export type Member = {
    */
   country: string
   ageBand: AgeBand
-  firstSeason2027: boolean
+  beginner: boolean
   /** Whether his fee stands, as `competitor.active` says it: the flag behind the public list. */
   active: boolean
   /** The basis of the season ON SALE, the same field and rule as on `Competitor`. */
@@ -527,7 +527,7 @@ export type Race = {
    * store and not a shape of the record, and the store already answers for it:
    * `forms/records.ts` turns the two buttons of a yes-or-no question into a
    * boolean on the way in (`recordValue`, `like`) and back into the words on the
-   * way out (`valuesFor`), which is how `Competitor.firstSeason2027` has been
+   * way out (`valuesFor`), which is how `Competitor.beginner` has been
    * kept since it was written.
    */
   renamed: boolean
@@ -603,7 +603,7 @@ export type BtlEvent = {
    * or a false, because that is what the schema keeps and what `/api/events`
    * answers with (`CalendarApi.Event`, `featured boolean not null`). The two
    * meet in `forms/records.ts`, which is where every question asked in words and
-   * kept as a flag has met since `Competitor.firstSeason2027` was written.
+   * kept as a flag has met since `Competitor.beginner` was written.
    */
   featured: boolean
   /**

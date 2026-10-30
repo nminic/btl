@@ -209,7 +209,7 @@ describe('the members screen', () => {
       ...person('000002', 'Milica', 'Pavlović'),
       gender: 'F',
       ageBand: '25-39',
-      firstSeason2027: true,
+      beginner: true,
       city: 'Kraljevo',
       membershipBasis: 'feeExempt',
       membershipSeason: 2028,

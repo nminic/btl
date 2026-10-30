@@ -646,7 +646,7 @@ class CompetitorApiTest {
 	}
 
 	private void member(String number, String first, String last, String gender, String born,
-			String place, String city, String country, int firstSeason, boolean firstSeason2027,
+			String place, String city, String country, int firstSeason, boolean beginner,
 			boolean active, String basis, String bio, String referralCode, String broughtBy,
 			boolean hidden, String birthdayShown) {
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
@@ -656,7 +656,7 @@ class CompetitorApiTest {
 						+ " values (?, ?, ?, ?, date '" + born + "', " + place + ", " + city + ", "
 						+ country + ", ?, ?, ?, ?, " + broughtBy + ", ?, ?, ?, 'Otac', 'Ulica 1',"
 						+ " 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, first, last, gender, firstSeason, firstSeason2027, active,
+				.params(number, first, last, gender, firstSeason, beginner, active,
 						referralCode, bio, hidden, birthdayShown)
 				.query(Long.class).single();
 

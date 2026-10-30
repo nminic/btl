@@ -892,7 +892,7 @@ describe('who administers a team, on the answer a member is given', () => {
     city: 'Novi Sad',
     country: 'RS',
     ageBand: '25-39',
-    firstSeason2027: false,
+    beginner: false,
     firstSeason: 2019,
     unranked: false,
     teamId: 1,

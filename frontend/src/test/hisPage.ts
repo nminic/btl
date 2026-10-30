@@ -34,7 +34,7 @@ export const aLapsedMembersPage = {
   gender: 'M',
   city: 'Zaječar',
   ageBand: '40-54',
-  firstSeason2027: false,
+  beginner: false,
   bio: '',
   profileHidden: false,
   birthdayShown: 'none',

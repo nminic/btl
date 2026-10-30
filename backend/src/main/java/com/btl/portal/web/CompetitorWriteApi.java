@@ -647,7 +647,7 @@ class CompetitorWriteApi {
 	 *                   {@code competitor.referred_by} is left empty.
 	 */
 	record Invited(String firstName, String lastName, String fatherName, String birthDate,
-			String gender, Boolean firstSeason2027, String email, String address, Long placeId,
+			String gender, Boolean beginner, String email, String address, Long placeId,
 			String city, String country, String idNumber, String phone, String shirtSize,
 			Boolean healthStatement, String parentConsent, String parentRelation) {
 	}
@@ -994,7 +994,7 @@ class CompetitorWriteApi {
 						reading.typed().gender(), reading.town().placeId(), reading.town().city(),
 						reading.town().countryId(),
 						SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock)),
-						reading.typed().firstSeason2027(), ReferralCode.fresh().written(),
+						reading.typed().beginner(), ReferralCode.fresh().written(),
 						java.sql.Date.valueOf(reading.born()),
 						reading.typed().fatherName().strip(), reading.typed().address().strip(),
 						WhatAFieldMeans.thePhone(reading.typed().phone()),
@@ -1191,7 +1191,7 @@ class CompetitorWriteApi {
 		filledIn.put("fatherName", typed.fatherName());
 		filledIn.put("birthDate", typed.birthDate());
 		filledIn.put("gender", WhatAFieldMeans.theGender(typed.gender()));
-		filledIn.put("firstSeason2027", typed.firstSeason2027() == null ? null : "izabrano");
+		filledIn.put("beginner", typed.beginner() == null ? null : "izabrano");
 		filledIn.put("email", WhatAnAddressLooksLike.itDoes(address) ? address : null);
 		filledIn.put("address", typed.address());
 		filledIn.put("city", town == null ? null : "izabrano");

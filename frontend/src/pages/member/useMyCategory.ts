@@ -92,7 +92,7 @@ export function useMyCategory(): TheCategoryIChoose {
            Two writes and both are needed, which is `ProfileVisibility.tsx`'s own pair: the
            overlay for a screen already holding the list, the dropped cache for the next one to
            read the row. The value is the WISH as the route answered it, because the WISH is
-           what `/api/competitors` serves on every row (`firstSeason2027`) and what the screens
+           what `/api/competitors` serves on every row (`beginner`) and what the screens
            make the category of - the right is not on that list, and a beginner's right cannot
            close for 2027 (`BestOfficialSeason` reads the seasons strictly before it). Written
            as the word the overlay keeps (`forms/records.ts`, `like`).
@@ -101,7 +101,7 @@ export function useMyCategory(): TheCategoryIChoose {
            his for a screen to draw. */
         if (memberNumber !== null) {
           editRecord(recordKey(MEMBERS.id, memberNumber), {
-            firstSeason2027: String(said.firstSeason),
+            beginner: String(said.firstSeason),
           })
         }
 

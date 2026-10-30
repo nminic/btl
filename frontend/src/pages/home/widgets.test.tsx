@@ -56,7 +56,7 @@ const competitor = (memberNumber: string): Competitor => ({
   city: 'Beograd',
   country: 'RS',
   ageBand: '40-54',
-  firstSeason2027: false,
+  beginner: false,
   firstSeason: 2027,
   unranked: false,
   membershipBasis: 'payment',
