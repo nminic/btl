@@ -688,7 +688,17 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   79 and not 78: V78 is the branch of PR 657, open while this was written.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("79", "V79__the_money_of_a_deleted_member_stays_without_his_name.sql", 1899883250));
+			new Applied("79", "V79__the_money_of_a_deleted_member_stays_without_his_name.sql", 1899883250),
+
+			/* V80. The rulebook says in the owner's two sentences who pays in which currency (Article 11), and its
+			   sign-off moves from 29.10.2026 to 30.10.2026 (owner, 30.10.2026, PDL „Urednička revizija Pravilnika,
+			   Uslova i Politike privatnosti (29.10.2026)", the item „Član 11, konačan oblik"): two edits in both
+			   languages, each stopping the migration unless its old text stands exactly once.
+
+			   80 and no other: main stood at V79 on 30.10.2026 (b70a4759) and no branch of the remote held V80.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("80", "V80__the_rulebook_says_who_pays_in_which_currency_in_the_owners_words.sql", -535520445));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

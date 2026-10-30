@@ -206,10 +206,13 @@ class TheWrittenPagesDropTheirExplanationsTest extends DatabaseTest {
 					"pravilnika, da se isto pitanje ne bi rešavalo dvaput različito.",
 					"is written into the next version of the Rulebook.",
 					"Rulebook, so that the same question is not resolved differently twice."),
+			/* V77 wrote 29.10.2026 here and V80 (owner, 30.10.2026) moved the rulebook on to 30.10.2026, so the day that
+			   STANDS is V80's; that V77 itself writes 29.10.2026 over the text it found is held by
+			   TheWrittenPagesDropTheirExplanationsCarriedOverTest, which undoes V80 first. */
 			new Change("PRAV-30", RULEBOOK, 19,
-					"Poslednja izmena: 29.10.2026.",
+					"Poslednja izmena: 30.10.2026.",
 					"izmena: 27.10.2026.",
-					"Last amended: 29.10.2026.",
+					"Last amended: 30.10.2026.",
 					"amended: 27.10.2026."),
 			new Change("USL-01", TERMS, 2,
 					"a profil se ne prikazuje.",
@@ -406,6 +409,22 @@ class TheWrittenPagesDropTheirExplanationsTest extends DatabaseTest {
 	 * alone): "ne plati" / "ne plaća" (the member does not pay), "plati manje" (pays less), and "bez plaćanja članarine"
 	 * (without paying the fee). The first is written {@code ne pla[ćct]} and not {@code ne pla[ćc]}: Serbian says "ne
 	 * plati" for a decision about a single fee, and that form has a "t" where the present tense has a "ć".
+	 *
+	 * <p><b>THE LIMIT OF THIS SEARCH, written down so that nobody reads it as complete (PR 657 review, 29.10.2026).</b>
+	 * A search by words has no bottom. It does not see "ne mora da plati", "besplatno članstvo", "doesn't pay" or "free
+	 * membership", and a sentence worded in a way nobody has thought of yet passes it. The list is NOT extended each time
+	 * somebody thinks of another wording: that is the road of the guards that were rewritten four times. What stands
+	 * behind it is different for the two languages. The Serbian text of all three pages is held WHOLE by the snapshot
+	 * {@code frontend/src/test/writtenPages.snapshot.json}, so a Serbian sentence that offers the exemption in new words
+	 * fails there, on the sentence itself. The English has no snapshot, so the English search is the only thing that
+	 * stands between a new English sentence and the page; a form it lacks is found by a person reading the English page,
+	 * not by this pattern.
+	 *
+	 * <p><b>A HIT IS NOT ALWAYS AN EXEMPTION.</b> "ne plati" / "not pay" also match a rule about a deadline: a sentence
+	 * such as "Član koji ne plati članarinu do 31. marta nema pravo rangiranja." says what happens to a member who is late
+	 * and offers nobody anything. A hit on a sentence of that kind is a question for the owner (is this the rule about a
+	 * deadline, or an offer?) and not a reason to narrow the pattern until it passes, because a narrower pattern is the
+	 * wider hole.
 	 */
 	static final Pattern AN_EXEMPTION_IN_SERBIAN = Pattern.compile(
 			"oslob|ne pla[ćct]|plati manje|bez pla[ćc]anja članarin", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);

@@ -2897,11 +2897,14 @@ describe('what the written pages say the fee buys', () => {
        rule; the terms did not change and keep 22.10.2026. On 29.10.2026 all three
        changed again (V77; owner, the same day: the editorial revision of the three
        pages, PDL "Urednička revizija Pravilnika, Uslova i Politike privatnosti
-       (29.10.2026)") and all three carry that day. Written per
+       (29.10.2026)") and all three carry that day. The rulebook moved on to
+       30.10.2026 with Article 11 said in the owner's two sentences (V80; owner,
+       30.10.2026), by the same rule; the terms and the policy did not change and keep
+       29.10.2026. Written per
        document and not as one day for all three, so a date moved on one of them,
        or left behind on one, is a failure that names the document. */
     const SIGNED_OFF = {
-      pravilnik: '29.10.2026',
+      pravilnik: '30.10.2026',
       'uslovi-koriscenja': '29.10.2026',
       'politika-privatnosti': '29.10.2026',
     } as const
