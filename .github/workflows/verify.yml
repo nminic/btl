@@ -96,6 +96,7 @@ jobs:
       - run: npm ci --no-fund --no-audit
       # The second half of `npm run test:coverage`, by the very script it calls
       # (frontend/vitest.anotherDay.config.ts). No coverage here: the thresholds are measured once.
+      - run: exit 1
       - name: Testovi sa drugim danom
         run: npm run test:another-day
 
