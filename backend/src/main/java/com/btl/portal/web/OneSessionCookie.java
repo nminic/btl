@@ -41,8 +41,11 @@ import java.util.function.IntSupplier;
  * emptying the name first), or through {@code addCookie}: all three end up as a
  * {@code Set-Cookie} line on the answer, and that line is what is read.
  * <li><b>And the cookie goes only if the row was really renewed</b>, that is, only if the
- * {@code update} touched exactly one row. A session deleted after the filter found it - signed
- * out in another tab, or ended by a password reset - is not handed back to the browser.
+ * {@code update} touched exactly one row, and the row it names is the one with the id AND the hash
+ * of the secret that arrived. A session deleted after the filter found it - signed out in another
+ * tab, or ended by a password reset - is not handed back to the browser, and neither is a secret
+ * that a password change replaced while the request was on its way: the row is still there, but it
+ * is no longer the row that secret opens.
  * </ul>
  *
  * <p><b>WHAT IS NOT COVERED, and it is a boundary rather than an oversight.</b>
@@ -76,7 +79,8 @@ final class OneSessionCookie extends OnCommittedResponseWrapper {
 	/**
 	 * The renewal this answer will carry if it may.
 	 *
-	 * @param secret         the secret that arrived, which is the one the row was found by
+	 * @param secret         the secret that arrived, which is the one the row was found by and
+	 *                       the one the renewing {@code update} must name it by again
 	 * @param renewingTheRow the {@code update} of the row, returning how many rows it touched;
 	 *                       run here and nowhere else, so the row is never renewed when the
 	 *                       cookie may not go
