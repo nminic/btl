@@ -376,7 +376,7 @@ class BookingAPayment {
 		   na balans automatski, u trenutku kad se novom članu aktivira članarina, ne u trenutku
 		   registracije". Once per member brought in however many seasons he goes on to pay for, and
 		   what holds that is `balance_entry_one_a_referral` (V38) rather than a question asked here. */
-		book.aReferralWasActivated(competitor.id(), asking.account(), recordedByName);
+		book.aReferralWasActivated(competitor.id(), season, asking.account(), recordedByName);
 
 		/* AND ONLY NOW IS A NUMBER DRAWN, WHICH IS THE LAST THING THIS METHOD DOES AND IS A POSITION
 		   RATHER THAN AN ORDER OF CONVENIENCE.
