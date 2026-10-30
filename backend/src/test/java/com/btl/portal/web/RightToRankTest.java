@@ -229,6 +229,18 @@ class RightToRankTest {
 	}
 
 	/**
+	 * AND IN THE WINDOW THE LIST STILL ASKS ABOUT THE SEASON IT IS DRAWN FOR, not the one on sale: on
+	 * 20 November 2027 the screens show 2027 and sell 2028, and 000209 holds 2027 without the right and
+	 * 2028 with it. Asked about the season on sale, he would read as ranked in the table of 2027.
+	 */
+	@Test
+	void inTheWindowTheListAsksAboutTheSeasonShownAndNotTheOneOnSale() throws Exception {
+		clock.moveTo(Instant.parse("2027-11-20T10:00:00Z"));
+
+		assertThat(unranked()).containsEntry("000209", true).containsEntry("000208", false);
+	}
+
+	/**
 	 * THE THRESHOLD OF THE BEGINNERS' CATEGORY COUNTS A SEASON WITHOUT THE RIGHT TO RANK (PDL,
 	 * 30.10.2026: „Njegovi bodovi se računaju u prag od 12 bodova"). 000202 took 12 points in 2027 and
 	 * held it without the right to rank; 2028 is asked about, so 2027 is the season before.
