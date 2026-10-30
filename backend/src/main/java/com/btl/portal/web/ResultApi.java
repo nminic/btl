@@ -6,9 +6,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * WHAT WAS RUN, BY WHOM, AND WHAT IT WAS WORTH.
@@ -272,6 +275,16 @@ class ResultApi {
 		/* THE CATEGORIES OF EVERY SEASON, read once for the whole answer (`CategoryOfASeason`). */
 		CategoryOfASeason.Book book = categories.everybody();
 
+		/* WHEN EACH MEMBERSHIP WAS ACTIVATED, read once for the whole answer and asked by member and season.
+		   The runner is told from the membership of the season his BAND is worked out for, which is not
+		   always the season of the run (a run before the league's first season is banded for the first),
+		   so the two probes in the query below, which are about the run's own year, cannot answer it. */
+		Map<Held, Timestamp> activations = new HashMap<>();
+		db.sql("select m.competitor_id, m.season, " + WhenASeasonWasActivated.of("m") + " from membership m")
+				.query(row -> {
+					activations.put(new Held(row.getLong(1), row.getInt(2)), row.getTimestamp(3));
+				});
+
 		return db.sql("select r.id, c.member_number, r.race_id, ra.name as race_name,"
 						+ " e.name as event_name, e.slug as event_slug, r.race_date,"
 						+ " r.distance_km, r.ascent_m, r.descent_m, r.seconds, r.points, r.category,"
@@ -329,6 +342,10 @@ class ResultApi {
 				.query((row, one) -> {
 					String memberNumber = row.getString(2);
 					LocalDate day = row.getDate(7).toLocalDate();
+					/* THE ONE SEASON THE RUNNER IS ABOUT: the category below is worked out for it and the
+					   right to rank is asked of it, so the two can never be about different seasons. */
+					int theSeasonOfTheRunner = SeasonClock.seasonTheBandOfAResultIsWorkedOutFor(day);
+					Held theRunnersMembership = new Held(row.getLong(17), theSeasonOfTheRunner);
 
 					return new Result(row.getLong(1), memberNumber, row.getLong(3),
 							row.getString(4), row.getString(5), row.getString(6),
@@ -350,14 +367,20 @@ class ResultApi {
 											   day is this row's own and not the clock's, which is
 											   why the same row is answered in the same band on
 											   any day. */
-											book.in(row.getLong(17), row.getInt(18),
-													SeasonClock.seasonTheBandOfAResultIsWorkedOutFor(day)),
-											/* HELD WITHOUT THE RIGHT TO RANK: a membership of the
-											   run's season that does not rank. */
-											row.getBoolean(19) && !WhenASeasonWasActivated.ranks(day.getYear(),
-													row.getTimestamp(20))));
+											book.in(row.getLong(17), row.getInt(18), theSeasonOfTheRunner),
+											/* HELD WITHOUT THE RIGHT TO RANK: a membership of the season
+											   the category above is for that does not rank. The run's own
+											   year is not asked: a run of 2026 is banded for 2027 and the
+											   member holds no 2026 at all. */
+											activations.containsKey(theRunnersMembership)
+													&& !WhenASeasonWasActivated.ranks(theSeasonOfTheRunner,
+															activations.get(theRunnersMembership))));
 				})
 				.list();
+	}
+
+	/** A member and a season: the key of a membership. */
+	private record Held(long competitor, int season) {
 	}
 
 	/**

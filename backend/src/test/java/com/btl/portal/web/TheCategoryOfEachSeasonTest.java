@@ -335,6 +335,34 @@ class TheCategoryOfEachSeasonTest {
 				.as("and his name stays, because he stands on the list of the race").isEqualTo("Probni");
 	}
 
+	@Test
+	void aRunBeforeTheFirstSeasonIsToldFromTheMembershipOfTheSeasonItsBandIsWorkedOutFor() throws Exception {
+		/* A run of 2026 is banded for 2027 (the first season the league has), and nobody holds a 2026. The right
+		   to rank is asked of the same 2027 the category is worked out for, so the one who holds 2027 late has
+		   none here either and the one who holds it in time has it, and two members of one run, one season. */
+		aRace("trka-2026", "Trka 2026", "2026-05-10");
+		aRun(WITHOUT_THE_RIGHT, "Trka 2026", "2026-05-10", "5.00");
+		aRun(BOTH, "Trka 2026", "2026-05-10", "6.00");
+
+		Map<String, JsonNode> runners = new HashMap<>();
+		mapper.readTree(whole("/api/results", null))
+				.forEach(one -> runners.put(one.path("memberNumber").asString() + " " + one.path("date").asString(),
+						one.path("runner")));
+
+		JsonNode withoutTheRight = runners.get(WITHOUT_THE_RIGHT + " 2026-05-10");
+		assertThat(withoutTheRight.path("ageBand").isNull() && withoutTheRight.path("beginner").isNull())
+				.as("a run of 2026 told the category of 2027 to a member who holds 2027 without the right to rank")
+				.isTrue();
+		assertThat(withoutTheRight.path("firstName").asString()).as("and his name stays").isEqualTo("Probni");
+		JsonNode hisRunOf2027 = runners.get(WITHOUT_THE_RIGHT + " 2027-05-10");
+		assertThat(hisRunOf2027.path("ageBand").isNull() && hisRunOf2027.path("beginner").isNull())
+				.as("his run of 2027 itself, which is held without the right").isTrue();
+		JsonNode bothOf2026 = runners.get(BOTH + " 2026-05-10");
+		assertThat(bothOf2026.path("ageBand").asString() + " " + bothOf2026.path("beginner").asBoolean())
+				.as("a run of 2026 of a member who holds 2027 with the right carries the category of 2027")
+				.isEqualTo("24- true");
+	}
+
 	/* ------------------------------------------------------------------------ the write */
 
 	@Test
