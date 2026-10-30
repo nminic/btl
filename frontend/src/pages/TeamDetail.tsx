@@ -17,7 +17,7 @@ import {
   categoryLabelIn,
   standingSeasonOf,
   totalsOf,
-  unrankedIn,
+  standsIn,
 } from '../data/derive'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { clearResourceCache } from '../data/client'
@@ -302,11 +302,15 @@ export function TeamDetail() {
         const members = everMembers
           .filter((one) => inTeamIn(one, Number(season)))
           .map((one) => one.competitor)
-          /* **Never a member who holds this season without the right to rank** (PDL, 28.10.2026: he
-             „ne pojavljuje se u tabelama lige, rang listama", and his points „ne ulaze u zbir tima").
-             The members below are a standing with places, so he is not in it, and his runs are not
-             in the figures above it either. */
-          .filter((one) => !unrankedIn(one, results, Number(season), today))
+          /* **Only a member with a fee for this season and the right to rank in it** (owner, 30.10.2026,
+             PDL „Na strani tima plasman sezone nose samo članovi tima sa članarinom za tu sezonu i sa
+             pravom rangiranja u njoj"), which is a category of THIS season on his record (`standsIn`).
+             The members below are a standing with places, so the others are not in it, the same as in
+             the table of the season; a member without the right still brings no points to the figures
+             above it, and the team still counts him (`rankTeams`, „Broji se, bez plasmana"). The cost
+             the owner accepted: in the window a member of the team is not placed on the page of the next
+             season until he pays, and one with no fee for the running season is no longer placed at 0. */
+          .filter((one) => standsIn(one, Number(season)))
         const numbers = new Set(members.map((one) => one.memberNumber))
         const inSeason = results.filter((one) => standingSeasonOf(one) === Number(season))
         const mine = numbered(inSeason).filter((one) => numbers.has(one.memberNumber))

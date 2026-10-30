@@ -140,6 +140,37 @@ describe('a member without the right to rank, in public', () => {
   }, SLOW)
 })
 
+describe('the members of a team placed in a season', () => {
+  /* Owner, 30.10.2026, PDL „Na strani tima plasman sezone nose samo članovi tima sa članarinom za tu
+     sezonu i sa pravom rangiranja u njoj". Three members of one team, none of whom has run: Damjan holds
+     2027 with the right; Strahinja holds no membership of 2027 (his card still speaks of 2027, the
+     running season, because he holds neither season); Vladan holds 2027 without the right, so his card
+     names nothing. A page that asked the card instead of the season of its own table would place
+     Strahinja; one that asked nothing would place all three. */
+  const STRAHINJA = '000007'
+  const threeStates = (): Competitor[] =>
+    SERVED.map((one) =>
+      one.memberNumber === VLADAN
+        ? { ...one, category: null, categories: [] }
+        : one.memberNumber === STRAHINJA
+          ? { ...one, categories: [] }
+          : one,
+    )
+
+  it('places the member with a fee for the season and the right in it, and nobody else of the team', async () => {
+    const server = serving(threeStates(), [])
+    renderAt('/sr/tim/dunavski-trkaci', 'visitor', null, undefined, '2027-06-01')
+
+    const members = await screen.findByRole('table', { name: 'Članovi' }, { timeout: SLOW / 2 })
+
+    expect(within(members).getByText(HIS_TEAMMATE)).toBeInTheDocument()
+    expect(within(members).queryByText(STRAHINJA), 'a member of the team with no fee for 2027').toBeNull()
+    expect(within(members).queryByText(VLADAN), 'a member of the team without the right in 2027').toBeNull()
+
+    server.stop()
+  }, SLOW)
+})
+
 describe('a member without the right to rank in the season shown, in the table of one before it', () => {
   /* 2028 is shown and he holds it without the right; in 2027 he ranked, in his band of 2027. The card
      names nothing (the season it speaks of is 2028), and 2027 is on his list of seasons with its own
