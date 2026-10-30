@@ -13,7 +13,7 @@ import {
   seasonsOfTheTable,
   categoryLabelIn,
 } from '../data/derive'
-import { seasonShown } from '../data/season'
+import { nextSeasonOnOffer, seasonShown } from '../data/season'
 import { offeredSeason } from '../components/season'
 import type { Competitor, Gender, Result } from '../data/types'
 import { combinePair, useCompetitors, useResults } from '../data/useResource'
@@ -74,6 +74,7 @@ function Standing({
      the men or of the women, whichever list was open, until the running one had
      three people in it, so the table opened on 2019. */
   const fallback = seasonShown(today)
+  const notBegun = nextSeasonOnOffer(today)
 
   /* Held against what is on offer, so `?sezona=2019` in an address shows this season
      and not a table the control cannot name (`offeredSeason`). */
@@ -97,18 +98,19 @@ function Standing({
      „2028 ce tek od [11.11] moci da se izabere i da se puni novoprijavljenim / uplacenim
      takmicarima"). `fallback` is the season shown: `seasonShown(today)`, which is 2027 until 2027 is
      over. Read off the same value the control opens on, so the table that opens and the table that
-     carries everybody cannot be two different seasons. **`>=` and not `===`:** the season that has
-     not begun is on the list from 11 November (`nextSeasonOnOffer`) and before 1 January it has no
-     result at all, so drawn like a frozen season it would be empty whoever had paid for it. A frozen
-     one stays as it was: a member with no race is not placed in a season that has been run. */
+     carries everybody cannot be two different seasons. **And the one that has not begun** is on the
+     list from 11 November (`nextSeasonOnOffer`) and before 1 January it has no result at all, so
+     drawn like a frozen season it would be empty whoever had paid for it. Named by those two and not
+     by „from the shown one on", so that no other season is ever drawn this way. A frozen one stays
+     as it was: a member with no race is not placed in a season that has been run. */
   const rows = useMemo(
     () =>
-      (season >= fallback ? rankingWithEverybody : rankingFor)(field, results, {
+      (season === fallback || season === notBegun ? rankingWithEverybody : rankingFor)(field, results, {
         season,
         gender,
         categoryCode: category,
       }),
-    [field, results, season, fallback, gender, category],
+    [field, results, season, fallback, notBegun, gender, category],
   )
 
   /* No sentence under the heading (owner, 04.08.2026). It said that the 2027
