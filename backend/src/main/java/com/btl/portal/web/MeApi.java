@@ -639,7 +639,7 @@ class MeApi {
 						   gets its decision both change together. */
 						+ " left join team_membership m on m.competitor_id = c.id"
 						+ "  and m.season_to is null"
-						/* HIS MEMBERSHIP OF THE SEASON ON SALE, AND NO OTHER. `membership_pk` is
+						/* HIS MEMBERSHIP OF THE SEASON ON SALE, AND NO OTHER. `membership_one_a_season` is
 						   (competitor, season), so this joins at most one row and he still comes
 						   back once. Both halves of the condition are the question: without the
 						   member it is somebody else's basis, without the season it is every

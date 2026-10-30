@@ -212,6 +212,15 @@ class CompetitorWriteApiTest {
 
 	private static final String A_MODERATOR_WITH_NO_RIGHTS = "bez-prava@primer.rs";
 
+	/** What he paid for his season, which no other payment in the fixture is. */
+	private static final String HIS_AMOUNT = "4200.00";
+
+	/** And what the other payer paid, so a row read off the wrong member says a different number. */
+	private static final String THE_MATES_AMOUNT = "3600.00";
+
+	/** The name every moderator account in this class is written under, the deleter's included. */
+	private static final String THE_ADMINISTRATIONS_NAME = "Moderator Bezimeni";
+
 	@Autowired
 	private MockMvc http;
 
@@ -299,6 +308,142 @@ class CompetitorWriteApiTest {
 		moderator(THE_DELETER);
 		ticked(THE_DELETER, CompetitorApi.OVER_THE_MEMBERS);
 		moderator(A_MODERATOR_WITH_NO_RIGHTS);
+
+		/* HIS MONEY AND A SECOND MEMBER'S, each of the four kinds of row V79 keeps (PDL, 29.10.2026).
+		   Two payers with two different amounts, so a row read off the wrong member says a different
+		   number; the administration's name on what it decided, and HIS OWN name on what he wrote
+		   himself - his spend of his own balance and the reward his activation paid the man who
+		   brought him in, which stands on that man's row and not on his. */
+		paid(THE_TARGET, A_SEASON_BEING_RUN, HIS_AMOUNT);
+		paid(A_MATE_WHO_IS_STILL_IN, A_SEASON_BEING_RUN, THE_MATES_AMOUNT);
+
+		long spend = line(THE_TARGET, "-35.00", "membership", null, THE_SEASON_AFTER, HIS_EMAIL);
+		db.sql("insert into membership (competitor_id, season, basis, balance_entry_id)"
+						+ " values (?, ?, 'balance', ?)")
+				.params(competitorId(THE_TARGET), THE_SEASON_AFTER, spend).update();
+
+		line(THE_TARGET, "5.00", "referral", FIRST_WRITTEN, null, THE_DELETER);
+		line(A_MATE_WHO_IS_STILL_IN, "5.00", "referral", THE_TARGET, null, HIS_EMAIL);
+
+		db.sql("insert into membership_change (competitor_id, season, action, basis_before, basis_after,"
+						+ " decided_by, decided_by_name, decided_at) values (?, ?, 'cancelled', 'feeExempt',"
+						+ " null, (select id from account where email = ?), ?,"
+						+ " timestamptz '2026-10-02 09:00:00+00')")
+				.params(competitorId(THE_TARGET), A_SEASON_STILL_TO_COME, THE_DELETER,
+						THE_ADMINISTRATIONS_NAME)
+				.update();
+	}
+
+	/**
+	 * A payment recognised by the deleter for one season, its reference the season and the number run
+	 * together as V16 builds it, and the membership standing on it.
+	 */
+	private void paid(String memberNumber, int season, String amount) {
+		long payment = db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
+						+ " currency, fee, method, state, recorded_at, recorded_by, recorded_by_name, received)"
+						+ " values (?, ?, ?, (select id from price_row order by sort_order limit 1),"
+						+ " cast(? as numeric), 'RSD', 0, 'ips', 'recorded',"
+						+ " timestamptz '2026-10-02 09:00:00+00', (select id from account where email = ?), ?,"
+						+ " cast(? as numeric)) returning id")
+				.params(competitorId(memberNumber), season, season + memberNumber, amount, THE_DELETER,
+						THE_ADMINISTRATIONS_NAME, amount)
+				.query(Long.class).single();
+
+		db.sql("insert into membership (competitor_id, season, basis, payment_id) values (?, ?, 'payment', ?)")
+				.params(competitorId(memberNumber), season, payment).update();
+	}
+
+	/** A line in the book of the member named, written by the account named and signed with its name. */
+	private long line(String memberNumber, String amount, String reason, String broughtIn, Integer season,
+			String writtenBy) {
+		return db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
+						+ " referred_competitor_id, season, occurred_at, recorded_by, recorded_by_name)"
+						+ " values (?, cast(? as numeric), 'EUR', ?,"
+						+ " (select id from competitor where member_number = ?), ?,"
+						+ " timestamptz '2026-10-02 09:00:00+00', (select id from account where email = ?),"
+						+ " (select first_name || ' ' || last_name from account where email = ?)) returning id")
+				.params(competitorId(memberNumber), amount, reason, broughtIn, season, writtenBy, writtenBy)
+				.query(Long.class).single();
+	}
+
+	/**
+	 * HIS MONEY STAYS, WITHOUT HIM. The owner, 29.10.2026 (PDL): „Brisanje profila više ne sme da briše
+	 * uplate, članstva ni balans: ostaju bez imena, jer Politika obećava čuvanje knjigovodstvene
+	 * dokumentacije najmanje pet godina."
+	 *
+	 * <p>Each kind of row is read where its member is gone, so a cascade that took it and a row that
+	 * stayed naming him are both a different answer. What stays is the amount, the season, the basis
+	 * and who decided; the reference goes, because V16 writes his member number into it and the
+	 * Privacy Policy says „ime i članski broj nestaju".
+	 */
+	@Test
+	void hisPaymentsMembershipsBookAndTrailStayWithoutHim() throws Exception {
+		assertThat(deleteAs(THE_DELETER, THE_TARGET, "delete").getStatus()).isEqualTo(204);
+
+		assertThat(db.sql("select season || ' ' || amount || ' ' || currency || ' '"
+						+ " || coalesce(reference, 'no reference') || ' ' || recorded_by_name"
+						+ " from payment where competitor_id is null").query(String.class).list())
+				.as("his payment did not stay, or stayed with his number in its reference, or lost"
+						+ " the name of the administrator who recognised it")
+				.containsExactly(A_SEASON_BEING_RUN + " " + HIS_AMOUNT + " RSD no reference "
+						+ THE_ADMINISTRATIONS_NAME);
+
+		assertThat(db.sql("select m.season || ' ' || m.basis || ' '"
+						+ " || coalesce(p.amount::text, b.amount::text) from membership m"
+						+ " left join payment p on p.id = m.payment_id"
+						+ " left join balance_entry b on b.id = m.balance_entry_id"
+						+ " where m.competitor_id is null order by m.season").query(String.class).list())
+				.as("his memberships did not stay on what they stood on")
+				.containsExactly(A_SEASON_BEING_RUN + " payment " + HIS_AMOUNT,
+						THE_SEASON_AFTER + " balance -35.00");
+
+		assertThat(db.sql("select reason || ' ' || amount || ' ' || recorded_by_name from balance_entry"
+						+ " where competitor_id is null order by reason").query(String.class).list())
+				.as("his book did not stay, or the line the administration wrote lost its name")
+				.containsExactly("membership -35.00 <Obrisani član>",
+						"referral 5.00 " + THE_ADMINISTRATIONS_NAME);
+
+		assertThat(db.sql("select season || ' ' || action || ' ' || decided_by_name from membership_change"
+						+ " where competitor_id is null").query(String.class).list())
+				.as("the trail of his membership did not stay with the administrator's name")
+				.containsExactly(A_SEASON_STILL_TO_COME + " cancelled " + THE_ADMINISTRATIONS_NAME);
+	}
+
+	/**
+	 * AND NOBODY ELSE'S MONEY MOVES, whatever deleting him wrote.
+	 *
+	 * <p>The other payer's payment and membership come out exactly as they went in, the whole row; and
+	 * the reward HIS activation paid the man who brought him in stays on that man's book with its
+	 * amount, losing only the pointer at him and his name, which is the signature he wrote it with.
+	 */
+	@Test
+	void theOtherMembersMoneyStaysAsItWasAndHisRewardLosesOnlyHisName() throws Exception {
+		long mate = competitorId(A_MATE_WHO_IS_STILL_IN);
+		String before = moneyOf(mate);
+
+		assertThat(before).as("the other payer has no payment and no membership to keep").contains(
+				THE_MATES_AMOUNT);
+
+		assertThat(deleteAs(THE_DELETER, THE_TARGET, "delete").getStatus()).isEqualTo(204);
+
+		assertThat(moneyOf(mate))
+				.as("the other payer's payment or membership changed when somebody else was deleted")
+				.isEqualTo(before);
+
+		assertThat(db.sql("select reason || ' ' || amount || ' '"
+						+ " || coalesce(referred_competitor_id::text, 'nobody') || ' ' || recorded_by_name"
+						+ " from balance_entry where competitor_id = ?")
+				.param(mate).query(String.class).list())
+				.as("the reward his activation paid did not stay on its earner's book, or kept his name")
+				.containsExactly("referral 5.00 nobody <Obrisani član>");
+	}
+
+	/** One member's payments and memberships, every column, as the database holds them. */
+	private String moneyOf(long member) {
+		return db.sql("select (select jsonb_agg(to_jsonb(p) order by p.id) from payment p"
+						+ " where p.competitor_id = ?)::text || (select jsonb_agg(to_jsonb(m) order by m.id)"
+						+ " from membership m where m.competitor_id = ?)::text")
+				.params(member, member).query(String.class).single();
 	}
 
 	/**

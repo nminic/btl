@@ -541,7 +541,7 @@ function Row({
    * against resending a form or a decision the server can be asked about again; this guards a
    * member number, and `nextval('member_number_seq')` never gives one back. Two requests in the
    * air at once both pass „is there a membership already", both draw a number, and the loser
-   * fails on `membership_pk` - so the number it drew is spent for nothing (PDL section 19,
+   * fails on `membership_one_a_season` - so the number it drew is spent for nothing (PDL section 19,
    * „Aktivacija trosi clanski broj nepovratno").
    */
   const outstanding = useRef(false)

@@ -137,7 +137,7 @@ import java.util.regex.Pattern;
  * WHICH IS THE ONE THING THIS CLASS DECIDES THAT IS NOT ABOUT MONEY.</b> The
  * paragraph here used to say that a {@code membership} row on any basis but
  * {@code payment} „has no code path to reach today", so confirming a payment for such
- * a person „would collide with {@code membership_pk} rather than be decided by this
+ * a person „would collide with {@code membership_one_a_season} rather than be decided by this
  * class", and that the day a screen granted one was the day the decision belonged
  * here. The mechanism of that collision was stated correctly and is worth keeping:
  * {@code write} reads {@code payment} and never {@code membership}, so a season held

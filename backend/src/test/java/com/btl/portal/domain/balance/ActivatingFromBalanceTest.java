@@ -161,7 +161,7 @@ class ActivatingFromBalanceTest {
 	/**
 	 * AND A MEMBER OF THIS SEASON ALREADY IS TOLD THAT, NOT SOMETHING ELSE.
 	 *
-	 * <p>Without this the row would collide with {@code membership_pk} (V22) and the member would be
+	 * <p>Without this the row would collide with {@code membership_one_a_season} (V22, so named since V79) and the member would be
 	 * answered 500. {@code PaymentApi} lists this state as one it leaves unguarded because nothing
 	 * could reach it; this class is what reaches it.
 	 *

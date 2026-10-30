@@ -409,7 +409,7 @@ class BalanceBook {
 	 * own pair of lines with its own reason.
 	 *
 	 * <p><b>THE MEMBERSHIP THAT STANDS NOW, and not every spend the season ever had.</b> One season has
-	 * at most one {@code membership} row at a time ({@code membership_pk}, V22), but since V63 a season
+	 * at most one {@code membership} row at a time ({@code membership_one_a_season}, V22, so named since V79), but since V63 a season
 	 * can be cancelled and paid for again (PDL P8, 18.10.2026), and the book keeps the lines of every
 	 * pass. A sum over every {@code membership} line of the season would then answer what two
 	 * memberships took. So the season's lines are read as {@link ReversingAMembership#whatTheSeasonHolds}

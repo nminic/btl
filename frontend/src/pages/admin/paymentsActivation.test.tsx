@@ -1991,7 +1991,7 @@ describe('activating a membership from the payments screen', () => {
    * „Aktiviraj" was not disabled either - so a second press reopened the very question the
    * first was still answering, and a second „Da" sent a second, identical body. Both requests
    * pass „is there a membership already", both draw a member number, and the loser fails on
-   * `membership_pk` - so the number it drew is gone for nothing, because
+   * `membership_one_a_season` - so the number it drew is gone for nothing, because
    * `nextval('member_number_seq')` never gives one back (PDL section 19, „Aktivacija trosi
    * clanski broj nepovratno").
    *
@@ -2104,7 +2104,7 @@ describe('activating a membership from the payments screen', () => {
      * <p><b>And it is the path where the stake is highest.</b> A grant and a booking both draw a
      * member number and `nextval('member_number_seq')` never gives one back (PDL section 19,
      * „Aktivacija trosi clanski broj nepovratno"); the loser of two requests in the air fails on
-     * `membership_pk` with the number it drew already spent.
+     * `membership_one_a_season` with the number it drew already spent.
      *
      * <p><b>Two raw clicks in one `act`</b>, for the reason the case above gives: `user.click`
      * awaits its own click through, so `activating` would have caught up and a mutation swapping

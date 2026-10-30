@@ -49,7 +49,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * and says why in so many words: „a moderator working a list somebody reads to him clicks the same row
  * twice, and a second write would draw a second member number". That held for a second press that
  * arrived AFTER the first had committed. Two presses that arrived together both read that no row stood,
- * both drew a number, and the second lost to {@code membership_pk}: a 500 for a press the route was
+ * both drew a number, and the second lost to {@code membership_one_a_season}: a 500 for a press the route was
  * written to be harmless for, and a number spent for good - {@code member_number_seq} is a sequence, so
  * a value drawn inside a transaction that goes back is never handed out again. PDL, „Clanski broj se
  * nikad ne dodeljuje dvaput" (31.07.2026).
@@ -284,7 +284,7 @@ class FreeingTwiceAtOneInstantTest {
 	 * AND A BOOKING THE DATABASE REFUSES SPENDS NO NUMBER, WHICH IS WHERE THE DRAW STANDS AND NOT A
 	 * PROPERTY OF THE LOCK.
 	 *
-	 * <p>The lock above is what keeps two presses from meeting {@code membership_pk}, and with it in
+	 * <p>The lock above is what keeps two presses from meeting {@code membership_one_a_season}, and with it in
 	 * place no refusal the portal can reach today comes after the decision on this route - which is
 	 * exactly why the position of the draw cannot be measured by the race. So the refusal is put there
 	 * by hand: a constraint this case adds to {@code membership} and takes away again, which refuses

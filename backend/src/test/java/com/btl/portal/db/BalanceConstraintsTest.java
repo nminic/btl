@@ -125,9 +125,9 @@ class BalanceConstraintsTest extends DatabaseTest {
 						entryWithId(THE_KEY_ALREADY_THERE,
 								SOMEBODY_HE_BROUGHT_IN + ", " + A_GOOD_ROW_AFTER_THE_KEY)),
 
-				Violation.notNull("balance_entry_competitor_id_not_null", "competitor_id",
-						entry("null, 5, 'EUR', 'referral', " + NOBODY_HAS_CLAIMED_HIM + ", null, "
-								+ AN_INSTANT + ", " + AN_ACCOUNT + ", 'Blagajnik'")),
+				/* A line about nobody is refused by a trigger since V79, not by a NOT NULL, so it is
+				   measured in `TheMoneyOutlivesADeletedMemberTest`, beside the deletion that may now
+				   leave such a line behind. */
 				Violation.of("balance_entry_competitor_fk",
 						entry("999999, 5, 'EUR', 'referral', " + NOBODY_HAS_CLAIMED_HIM + ", null, "
 								+ AN_INSTANT + ", " + AN_ACCOUNT + ", 'Blagajnik'")),
@@ -416,7 +416,7 @@ class BalanceConstraintsTest extends DatabaseTest {
 	void whoWroteALineCannotBeRewrittenEither() {
 		assertThatThrownBy(() -> db.sql("update balance_entry set recorded_by_name = 'Neko Drugi'")
 				.update())
-				.hasMessageContaining("cannot be changed once written");
+				.hasMessageContaining("cannot be signed by somebody else");
 	}
 
 	/**
@@ -466,18 +466,27 @@ class BalanceConstraintsTest extends DatabaseTest {
 	}
 
 	/**
-	 * AND DELETING A MEMBER TAKES HIS BOOK WITH HIM, which the immutability trigger deliberately does
-	 * not stand in the way of.
+	 * AND DELETING A MEMBER LEAVES HIS BOOK WITHOUT HIM AND TAKES HIS PROMISES, which the immutability
+	 * trigger deliberately does not stand in the way of.
 	 *
-	 * <p>Were DELETE refused as well, deleting a member would fail outright and the promise PDL P23
-	 * makes about a member who asks to be gone would be the thing that broke. „Immutable" is about
-	 * nobody rewriting what a line says.
+	 * <p>Until V79 the book went with him. The owner, 29.10.2026 (PDL): „Brisanje profila više ne sme
+	 * da briše uplate, članstva ni balans: ostaju bez imena". So the lines stay and only the pointer at
+	 * him goes, which reaches the trigger as an UPDATE it has to let through, or the deletion fails
+	 * and the promise of P23 is the thing that broke. A promise is not a line of the book (V38) and
+	 * still goes with him.
 	 */
 	@Test
-	void deletingAMemberTakesHisBookAndHisPromisesWithHim() {
+	void deletingAMemberLeavesHisBookWithoutHimAndTakesHisPromises() {
+		long lines = db.sql("select count(*) from balance_entry").query(Long.class).single();
+
+		assertThat(lines).as("there is no line in the book, so what stays says nothing").isPositive();
+
 		db.sql("delete from competitor where member_number = '005000'").update();
 
-		assertThat(db.sql("select count(*) from balance_entry").query(Long.class).single()).isZero();
+		assertThat(db.sql("select count(*) from balance_entry where competitor_id is null")
+				.query(Long.class).single())
+				.as("the book of a deleted member did not stay, without him")
+				.isEqualTo(lines);
 		assertThat(db.sql("select count(*) from balance_promise").query(Long.class).single()).isZero();
 	}
 

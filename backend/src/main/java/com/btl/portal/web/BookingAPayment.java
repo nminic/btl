@@ -184,7 +184,7 @@ class BookingAPayment {
 	 * AND ON WHATEVER GROUND.
 	 *
 	 * <p>The question is the KEY and not the basis, which is what makes it complete by
-	 * construction: {@code membership_pk} is {@code (competitor_id, season)}, so a row
+	 * construction: {@code membership_one_a_season} is {@code (competitor_id, season)}, so a row
 	 * this returns true for is a row the {@code insert} below cannot add, whatever
 	 * value its {@code basis} column happens to carry today or gains tomorrow.
 	 */
@@ -393,7 +393,7 @@ class BookingAPayment {
 		   sentence above now refuses it first, so this is the second lock on the same door);
 		   `payment_one_a_season` against a row left `awaited`, which the paragraph at the head of
 		   this class names as reached „exactly like no row at all"; and the two true races the same
-		   paragraph names, on `payment_one_a_season` and on `membership_pk`, where two moderators
+		   paragraph names, on `payment_one_a_season` and on `membership_one_a_season`, where two moderators
 		   confirm the same instant. The loser of a race now draws NOTHING rather than drawing and
 		   losing.
 

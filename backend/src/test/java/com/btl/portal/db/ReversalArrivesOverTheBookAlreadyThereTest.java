@@ -36,6 +36,11 @@ class ReversalArrivesOverTheBookAlreadyThereTest extends DatabaseTest {
 	private void whatV63Did() {
 		jdbc.execute("drop table membership_change");
 		jdbc.execute("drop function a_membership_change_is_written_once()");
+
+		/* AND WHAT V79 WROTE OVER THE TABLE THIS TAKES AWAY: the trigger that forgets a deleted member
+		   names `membership_change` since V79, so it goes back to the form V33 gave it, which is the
+		   form that stood when V63 ran. V33's own file is what restores it, not a copy of its body. */
+		jdbc.execute(migrationSql("33"));
 		jdbc.execute("alter table balance_entry"
 				+ " drop constraint balance_entry_a_reversal_moves_something,"
 				+ " drop constraint balance_entry_reason_known,"
