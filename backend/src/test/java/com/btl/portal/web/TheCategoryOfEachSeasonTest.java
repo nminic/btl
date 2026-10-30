@@ -110,6 +110,9 @@ class TheCategoryOfEachSeasonTest {
 
 	private static final String INHERITS = "000206";
 
+	/** On the list (his fee stands) and holding no row of either season: the card falls back to the running one. */
+	private static final String HOLDS_NEITHER = "000207";
+
 	private static final String THE_ADMINISTRATION = "moderator-clanovi@primer.rs";
 
 	@Autowired
@@ -193,6 +196,8 @@ class TheCategoryOfEachSeasonTest {
 		held(closedByHisOwn, 2028, SOLD_IN_NOVEMBER);
 		wish(closedByHisOwn, 2027, true);
 
+		competitor(HOLDS_NEITHER, "F", "2000-03-03");
+
 		long inherits = competitor(INHERITS, "M", "1995-03-03");
 		held(inherits, 2027, ACTIVATED_IN_TIME);
 		held(inherits, 2028, SOLD_IN_NOVEMBER);
@@ -232,6 +237,17 @@ class TheCategoryOfEachSeasonTest {
 	void theCardOfAMemberOfTheNextSeasonAloneSpeaksOfIt() throws Exception {
 		assertThat(card(ONLY_NEXT)).isEqualTo("2028 40-54 beginner");
 		assertThat(card(ONLY_RUNNING)).as("no wish at all is the age category").isEqualTo("2027 55+ age");
+	}
+
+	/**
+	 * A MEMBER ON THE LIST WITH NO ROW OF EITHER SEASON, which the list itself treats as somebody whose fee
+	 * stands: his card speaks of the running season (my derivation from the decision, which names the two
+	 * seasons he may hold and not this), and he stands in no table, so no season is on his list.
+	 */
+	@Test
+	void aMemberWhoHoldsNeitherSeasonIsCardedForTheRunningOneAndStandsInNoTable() throws Exception {
+		assertThat(card(HOLDS_NEITHER)).isEqualTo("2027 25-39 age");
+		assertThat(seasonsOf(recordOf(null, HOLDS_NEITHER))).isEmpty();
 	}
 
 	@Test

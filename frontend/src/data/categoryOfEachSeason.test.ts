@@ -148,6 +148,25 @@ describe('a choice made in this visit', () => {
     expect(cardCategoryOf(forTheOther)).toBe('M25-39')
   })
 
+  it('leaves the season it is not for as the server answered it, where the two would differ', () => {
+    /* His age category in both seasons and on a card of 2027: a beginners' choice for 2028 changes 2028
+       alone. Folded over every season, it would change 2027 and the card as well, which is the
+       replacement this case is written against (in the case above every value it reads was already
+       the answer either way). */
+    const ageInBoth = competitor('000005', {
+      category: { season: 2027, ageBand: '25-39', beginner: false },
+      categories: [
+        { season: 2027, ageBand: '25-39', beginner: false },
+        { season: 2028, ageBand: '25-39', beginner: false },
+      ],
+      chosenCategory: '2028:yes',
+    })
+
+    expect(categoryIn(ageInBoth, 2028)).toBe('M R')
+    expect(categoryIn(ageInBoth, 2027)).toBe('M25-39')
+    expect(cardCategoryOf(ageInBoth)).toBe('M25-39')
+  })
+
   it('reads nothing out of an overlay that is not a season and a yes or a no', () => {
     expect(categoryIn({ ...TWO_CATEGORIES, chosenCategory: 'yes' }, 2028)).toBe('M25-39')
   })
