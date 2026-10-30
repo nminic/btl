@@ -707,7 +707,16 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   81 and no other: main stood at V80 on 30.10.2026 (6ced3b44) and no branch of the remote held V81.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("81", "V81__the_category_a_member_wants_is_kept_per_season.sql", 636849562));
+			new Applied("81", "V81__the_category_a_member_wants_is_kept_per_season.sql", 636849562),
+
+			/* V82. A change of basis keeps the day the season was first activated: the change route
+			   carries it onto the row it writes, with a flag that says it carried one (owner,
+			   30.10.2026, PDL „Promena osnova članstva ... zadržava dan prve aktivacije te sezone").
+
+			   82 and no other: main stood at V81 on 30.10.2026 (2b25a7d1) and no branch of the remote held V82.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("82", "V82__a_change_of_basis_keeps_the_day_the_season_was_first_activated.sql", 1982317120));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
