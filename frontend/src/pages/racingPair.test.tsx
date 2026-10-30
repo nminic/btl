@@ -105,6 +105,7 @@ beforeEach(() => {
             teamProposals: [],
             pairInvites: [],
             alreadyInATeam: false,
+            seasonToPayFor: null,
           }),
           { status: 200, headers: { 'content-type': 'application/json' } },
         )

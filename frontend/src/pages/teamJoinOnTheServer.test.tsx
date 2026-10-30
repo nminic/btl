@@ -129,6 +129,14 @@ type TheAsker = {
    */
   lists?: Record<string, Application[]>
   alreadyInATeam?: boolean
+  /** The season he owes before he can enter a team, as `GET /api/me/applications` answers it. */
+  seasonToPayFor?: number | null
+  /**
+   * The season he comes to owe at the moment the application is answered, whatever the answer: a
+   * fee cancelled between the drawing and the press, which is what a refusal of `theSeasonIsNotPaid`
+   * is the route saying. The same arrangement as `meanwhile`.
+   */
+  becomesOwing?: number
   post?: () => Response
   remove?: () => Response
   keeps?: boolean
@@ -152,6 +160,8 @@ function aServerForTheAsker({
   rows = [],
   lists,
   alreadyInATeam = false,
+  seasonToPayFor = null,
+  becomesOwing,
   post = (): Response => json({ id: NEW_KEY, teamId: THIS.id }, 201),
   remove = did,
   keeps = true,
@@ -160,6 +170,7 @@ function aServerForTheAsker({
   reading = null,
 }: TheAsker = {}) {
   let standing = [...rows]
+  let owed = seasonToPayFor
 
   return serverThat((path, init) => {
     const how = init?.method ?? 'GET'
@@ -180,6 +191,7 @@ function aServerForTheAsker({
         teamProposals: [],
         pairInvites: [],
         alreadyInATeam,
+        seasonToPayFor: owed,
       })
     }
 
@@ -189,6 +201,7 @@ function aServerForTheAsker({
       const answer = post()
 
       standing = [...standing, ...meanwhile]
+      owed = becomesOwing ?? owed
 
       if (answer.status === 201 && keeps) {
         standing = [...standing, { id: NEW_KEY, teamId: Number(asking[1]), date: DAY_IN }]
@@ -685,6 +698,7 @@ describe('„Prijavi se u tim", sent to the server', () => {
           teamProposals: [],
           pairInvites: [],
           alreadyInATeam: false,
+          seasonToPayFor: null,
         }
 
         return reads === 1 ? json(body) : second.then(() => json(body))
@@ -725,7 +739,7 @@ describe('„Prijavi se u tim", sent to the server', () => {
         reads += 1
 
         return reads === 1
-          ? json({ teamApplications: [], teamInvitations: [], teamProposals: [], pairInvites: [], alreadyInATeam: false })
+          ? json({ teamApplications: [], teamInvitations: [], teamProposals: [], pairInvites: [], alreadyInATeam: false, seasonToPayFor: null })
           : answeredWith(500)
       },
     })
@@ -918,6 +932,126 @@ describe('who is offered „Prijavi se u tim"', () => {
     }
   }, SLOW)
 
+  it('draws the owner\'s sentence where the button would stand when the server says he owes the season', async () => {
+    /* PDL, 30.10.2026: „U tim za sezonu [sezona] ulaziš kad platiš članarinu za tu sezonu. Uplatu
+       ćeš naći na strani Moja članarina." The number is the SERVER's (2029 here, not the year the
+       fixture's clock stands in), so a screen that worked the season out itself says another. */
+    const server = aServerForTheAsker({ seasonToPayFor: 2029 })
+
+    try {
+      renderAt(at(THIS.slug), 'competitor', ASKER, undefined, DAY_IN)
+
+      await heading(THIS.name)
+      await whatHeWaitsOnHasLanded()
+
+      expect(applyButton()).toBeNull()
+      expect(screen.getByText(sr.teams.joinWhenPaid.replace('{season}', '2029'))).toBeVisible()
+      expect(screen.getByText(/Uplatu ćeš naći na strani Moja članarina\.$/)).toBeVisible()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('draws that sentence under the row of controls and not among them', async () => {
+    const server = aServerForTheAsker({ seasonToPayFor: 2028 })
+
+    try {
+      renderAt(at(THIS.slug), 'competitor', ASKER, undefined, DAY_IN)
+
+      await heading(THIS.name)
+      await whatHeWaitsOnHasLanded()
+
+      expect(
+        screen.getByText(sr.teams.joinWhenPaid.replace('{season}', '2028')).parentElement,
+      ).toHaveClass('rankings--tooled')
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('says nothing about a fee outside the transfer window, where nobody enters a team', async () => {
+    const server = aServerForTheAsker({ seasonToPayFor: 2028 })
+
+    try {
+      renderAt(at(THIS.slug), 'competitor', ASKER, undefined, DAY_OUT)
+
+      await heading(THIS.name)
+      await whatHeWaitsOnHasLanded()
+
+      expect(applyButton()).toBeNull()
+      expect(screen.queryByText(/ulaziš kad platiš članarinu/)).toBeNull()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('says nothing about a fee to a member who has an application standing elsewhere, and keeps the way back', async () => {
+    /* The order is the route's: the application standing is asked before the fee, and the way back
+       is not touched by it (PDL, 06.09.2026). */
+    const server = aServerForTheAsker({ rows: [TO_ANOTHER], seasonToPayFor: 2028 })
+
+    try {
+      renderAt(at(ANOTHER.slug), 'competitor', ASKER, undefined, DAY_IN)
+
+      expect(await screen.findByRole('button', { name: sr.teams.joinWithdraw })).toBeVisible()
+      expect(screen.queryByText(/ulaziš kad platiš članarinu/)).toBeNull()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('does not say the refusal of a fee as a refusal: the sentence that stands in the button\'s place says it, once', async () => {
+    /* He paid when the page was drawn, and the fee was cancelled before the press: the route
+       refuses with `theSeasonIsNotPaid`, the list is read again and now says he owes 2028. The
+       refusal is the same words as the sentence the page then draws, so drawn as well it would
+       stand twice, and under an alert that tells the reader something went wrong with a button
+       that is no longer there. */
+    const server = aServerForTheAsker({
+      post: () => refused('theSeasonIsNotPaid', 409),
+      becomesOwing: 2028,
+    })
+    const user = setupUser()
+
+    try {
+      renderAt(at(THIS.slug), 'competitor', ASKER, undefined, DAY_IN)
+
+      await user.click(await screen.findByRole('button', { name: sr.teams.join }))
+
+      expect(
+        await screen.findByText(sr.teams.joinWhenPaid.replace('{season}', '2028')),
+      ).toBeVisible()
+      expect(screen.getAllByText(/ulaziš kad platiš članarinu/)).toHaveLength(1)
+      expect(screen.queryByRole('alert')).toBeNull()
+      expect(applyButton()).toBeNull()
+      expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('draws the button again, and no sentence, when the fee was paid again before the list was read', async () => {
+    /* The race the other way: the route refused for a fee that the list read again no longer owes.
+       Nothing is left to say, and the button is back for a second press. */
+    const server = aServerForTheAsker({ post: () => refused('theSeasonIsNotPaid', 409) })
+    const user = setupUser()
+
+    try {
+      renderAt(at(THIS.slug), 'competitor', ASKER, undefined, DAY_IN)
+
+      await user.click(await screen.findByRole('button', { name: sr.teams.join }))
+      await waitFor(() => {
+        expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
+      })
+      await settled()
+
+      expect(screen.queryByRole('alert')).toBeNull()
+      expect(screen.queryByText(/ulaziš kad platiš članarinu/)).toBeNull()
+      expect(applyButton()).toBeVisible()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
   it('is not offered on a team nobody is in, because there is nobody to answer', async () => {
     const server = aServerForTheAsker()
 
@@ -959,7 +1093,7 @@ describe('who is offered „Prijavi se u tim"', () => {
       reading: () =>
         fails
           ? answeredWith(500)
-          : json({ teamApplications: [], teamInvitations: [], teamProposals: [], pairInvites: [], alreadyInATeam: false }),
+          : json({ teamApplications: [], teamInvitations: [], teamProposals: [], pairInvites: [], alreadyInATeam: false, seasonToPayFor: null }),
     })
     const user = setupUser()
 

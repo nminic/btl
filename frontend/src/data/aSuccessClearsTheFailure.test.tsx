@@ -504,6 +504,7 @@ const THE_NAMES: TheNames[] = [
         teamProposals: [{ id: 902, teamId: null, name: SECRET, date: '2026-10-01' }],
         pairInvites: [],
         alreadyInATeam: false,
+        seasonToPayFor: null,
       }),
   },
 ]

@@ -271,6 +271,11 @@ describe('a sentence with a value put into it', () => {
       '? (RaceForTheRun.tsx)',
       '? (ReviewQueue.tsx)',
       '? (SendBack.tsx)',
+      /* The sentence of the unpaid season, made by the inbox line of an invitation from a key held
+         in a map (`words[standing.accept]`, `member/teamWrites.ts`), with the season as its one
+         value: a year, in figures, so no case to be wrong in. The same sentence is the one
+         `teams.joinWhenPaid` below is made with where its key is written out. */
+      '? (ServedTeamInvite.tsx)',
       /* The sentence a bare number gets from the decision route, chosen by
          `whatABareNumberSays` and handed the number: „Server je odgovorio brojem {status}".
          It stood under `PendingQueue.tsx` until R1 of the results flows, when the line that
@@ -620,6 +625,10 @@ describe('a sentence with a value put into it', () => {
          side draws it. */
       'teams.joinRefusedNamed',
       'teams.joinTakenNamed',
+      /* „U tim za sezonu {season} ulaziš kad platiš članarinu za tu sezonu": the owner's sentence of
+         30.10.2026, word for word. A year in figures, after „sezonu" and before the verb, so it has
+         no case to be wrong in. */
+      'teams.joinWhenPaid',
       'teams.proposeBody',
       'teams.proposeDone',
       'topBoards.place',

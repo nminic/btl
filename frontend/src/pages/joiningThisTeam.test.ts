@@ -240,6 +240,7 @@ const NOTHING_WAITS = {
   teamProposals: [],
   pairInvites: [],
   alreadyInATeam: false,
+  seasonToPayFor: null,
 }
 
 /** What was written, and to where, off the recording server's own account of it. */

@@ -447,6 +447,7 @@ class TeamWriteApiTest {
 		assertThat(howManyProposals()).as("nothing is written for a member who has not paid")
 				.isEqualTo(proposalsBefore);
 
+		alsoHolds(ME, 2028);
 		holdsOnly(ME, 2028);
 
 		assertThat(proposeAs(ME, naming("Novi trkaci")).getStatus())
@@ -500,6 +501,15 @@ class TeamWriteApiTest {
 						+ " from competitor c cross join (values (2027), (2028)) as s (season)"
 						+ " where c.member_number = ? and c.active")
 				.param(number)
+				.update();
+	}
+
+	/** One more season held by the member, the fee paid or cancelled between two requests of a case. */
+	private void alsoHolds(String memberNumber, int season) {
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " select c.id, ?, 'feeExempt', 'Probni Probic', timestamptz '2026-09-01 10:00:00+00'"
+						+ " from competitor c where c.member_number = ?")
+				.params(season, memberNumber)
 				.update();
 	}
 

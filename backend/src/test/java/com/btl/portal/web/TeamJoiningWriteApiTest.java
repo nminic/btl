@@ -324,6 +324,7 @@ class TeamJoiningWriteApiTest {
 		assertThat(howManyApplications()).as("nothing is written for a member who has not paid")
 				.isOne();
 
+		alsoHolds(ME, 2028);
 		holdsOnly(ME, 2028);
 
 		assertThat(applyTo(THE_TEAM, ME).getStatus())
