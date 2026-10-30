@@ -12,16 +12,25 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
+import javax.sql.DataSource;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -44,10 +53,36 @@ import static org.assertj.core.api.Assertions.assertThat;
  * The value in the answer has two places it could come from, the session that arrived with the
  * request and any other that is open, and with only one session open a cookie taken from the
  * wrong one would look exactly like a cookie taken from the right one.
+ *
+ * <p><b>And the renewal is decided when the answer is committed, not before the route runs</b>
+ * ({@link OneSessionCookie}): an answer a cache may keep renews nothing, a route that sets the
+ * session's cookie itself is the only one to do so, and a row that is gone by then gets no cookie.
+ * Each of those has a case here, over the same socket.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfiguration.class)
 class TheSessionCookieFollowsTheSessionOverRealHttpTest {
+
+	/** A picture a team holds, so anybody may be answered it, under a name of its own. */
+	private static final String A_DIGEST = "b278".repeat(16);
+
+	private static final Path FOLDER = aFolderOfItsOwn();
+
+	@DynamicPropertySource
+	static void whereThePicturesAre(DynamicPropertyRegistry settings) {
+		settings.add("btl.photos.folder", FOLDER::toString);
+	}
+
+	private static Path aFolderOfItsOwn() {
+		try {
+			return Files.createTempDirectory("btl-photos-cookie-case");
+		} catch (java.io.IOException cannot) {
+			throw new java.io.UncheckedIOException(cannot);
+		}
+	}
+
+	@Autowired
+	private DataSource pool;
 
 	private static final String MINE = "kolacic-prvi@primer.rs";
 
@@ -75,7 +110,7 @@ class TheSessionCookieFollowsTheSessionOverRealHttpTest {
 	private SecretToken hersDueForRenewal;
 
 	@BeforeEach
-	void twoAccountsAndAStaleSessionForEach() {
+	void twoAccountsAndAStaleSessionForEach() throws Exception {
 		forget();
 
 		account(MINE);
@@ -86,7 +121,18 @@ class TheSessionCookieFollowsTheSessionOverRealHttpTest {
 	}
 
 	@AfterEach
-	void forget() {
+	void forget() throws Exception {
+		try (java.util.stream.Stream<Path> files = Files.list(FOLDER)) {
+			for (Path one : files.toList()) {
+				Files.delete(one);
+			}
+		}
+
+		db.sql("delete from team where slug = 'b278-tim-sa-slikom'").update();
+		db.sql("delete from photo where digest = ?").param(A_DIGEST).update();
+		db.sql("delete from password_reset_token where account_id in"
+						+ " (select id from account where email in (?, ?))")
+				.params(MINE, SOMEBODY_ELSE).update();
 		db.sql("delete from account_session where account_id in"
 						+ " (select id from account where email in (?, ?))")
 				.params(MINE, SOMEBODY_ELSE).update();
@@ -226,6 +272,9 @@ class TheSessionCookieFollowsTheSessionOverRealHttpTest {
 		assertThat(attributesOf(aboutTheSession(mine).get(0)))
 				.as("the cookie is not the one signing in hands out")
 				.containsExactly("Path=/", THIRTY_DAYS, "Secure", "HttpOnly", "SameSite=Strict");
+		assertThat(mine.headers().allValues("cache-control"))
+				.as("an answer that carries the secret does not forbid a cache to keep it")
+				.anyMatch(one -> one.contains("no-store"));
 
 		HttpResponse<String> hers = me(carrying(hersDueForRenewal));
 
@@ -306,8 +355,8 @@ class TheSessionCookieFollowsTheSessionOverRealHttpTest {
 	/**
 	 * SIGNING OUT FROM A SESSION DUE FOR RENEWAL LEAVES ONE COOKIE AND IT IS THE ONE THAT ENDS.
 	 *
-	 * <p>The filter renews the row and puts the cookie in the answer before the route runs; the
-	 * route then deletes the row and says the cookie is over. Both lines in one answer would
+	 * <p>The session is due, so the filter hands its renewal to the answer; the route then deletes
+	 * the row and says the cookie is over. Both lines in one answer would
 	 * leave a browser to choose, and the choice would be the member handed his old session back
 	 * in the answer that signs him out. The XSRF cookie is compared with the same call from a
 	 * session that is not due, so a replacement that threw it away would show.
@@ -343,9 +392,9 @@ class TheSessionCookieFollowsTheSessionOverRealHttpTest {
 	/**
 	 * SIGNING IN WITH THE OLD COOKIE STILL ON THE REQUEST LEAVES ONE COOKIE AND IT IS THE NEW ONE.
 	 *
-	 * <p>The old cookie is due for renewal, so the filter hands it back; the route then hands out
-	 * the new one. The browser must be left with the new session, and the answer must name only
-	 * that.
+	 * <p>The old cookie is due for renewal and its row is still there, so nothing but the route's own
+	 * word stops the renewal handing it back beside the new one the route hands out. The browser
+	 * must be left with the new session, and the answer must name only that.
 	 */
 	@Test
 	void signingInOverAnOldCookieLeavesOnlyTheNewOne() throws Exception {
@@ -388,5 +437,151 @@ class TheSessionCookieFollowsTheSessionOverRealHttpTest {
 				.isEqualTo(attributesOf(plain.headers().allValues("set-cookie").stream()
 						.filter(one -> one.startsWith(TOKEN_COOKIE + "=")).findFirst().orElseThrow()));
 		assertThat(SessionLife.LASTS).as("the age written above is the session's").isEqualTo(Duration.ofDays(30));
+	}
+
+	/** A picture a team holds, with its file, which is a picture anybody may be answered. */
+	private void aPictureATeamHolds() throws Exception {
+		long id = db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter)"
+						+ " values ('image/png', 5, ?, 0.5, 0.5, 0.5) returning id")
+				.param(A_DIGEST).query(Long.class).single();
+
+		Files.write(FOLDER.resolve(String.valueOf(id)), new byte[] {(byte) 0x89, 'P', 'N', 'G', 0x00});
+
+		db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, logo_id,"
+						+ " first_season, admin_id) values ('b278-tim-sa-slikom', 'Tim sa slikom', '', '',"
+						+ " (select id from place where rank = 1), null, null, ?, 2027, null)")
+				.param(id).update();
+	}
+
+	/**
+	 * AN ANSWER A CACHE MAY KEEP RENEWS NOTHING: NOT THE COOKIE, AND NOT THE ROW EITHER (security
+	 * review of PR 656, 29.10.2026).
+	 *
+	 * <p>A picture is served for a day, privately, and a {@code Set-Cookie} stored with it would be
+	 * this member's secret handed to whoever is next served that copy. The row stays as it was too,
+	 * because a row renewed without its cookie is the gap the renewal exists to close. The next
+	 * answer that is not kept, a page, renews both, which is also what proves the session was due.
+	 */
+	@Test
+	void anAnswerACacheMayKeepRenewsNeitherTheRowNorTheCookie() throws Exception {
+		aPictureATeamHolds();
+		Instant endedBefore = endsFor(mineDueForRenewal);
+
+		HttpResponse<String> picture = get("/api/photos/" + A_DIGEST, carrying(mineDueForRenewal));
+
+		assertThat(picture.statusCode()).as("the picture was not served, so this measures nothing")
+				.isEqualTo(200);
+		assertThat(picture.headers().allValues("cache-control"))
+				.as("the picture is not an answer a cache may keep, so this measures nothing")
+				.anyMatch(one -> one.contains("max-age=86400"))
+				.noneMatch(one -> one.contains("no-store"));
+		assertThat(aboutTheSession(picture)).as("an answer a cache may keep carried the session's secret")
+				.isEmpty();
+		assertThat(endsFor(mineDueForRenewal))
+				.as("the row was renewed by an answer that could not carry its cookie")
+				.isEqualTo(endedBefore);
+
+		HttpResponse<String> page = me(carrying(mineDueForRenewal));
+
+		assertThat(aboutTheSession(page)).as("the session was not due, so this measures nothing").hasSize(1);
+		assertThat(endsFor(mineDueForRenewal)).isAfter(endedBefore);
+	}
+
+	/**
+	 * A SESSION ENDED WHILE ITS ANSWER IS ON THE WAY IS HANDED NO COOKIE.
+	 *
+	 * <p>The filter finds the session and the route answers; between the two, another request ends it
+	 * (signing out in another tab, a password reset). That deletion is held open here, so the renewal
+	 * is written while it is pending and has to wait behind it - which is what puts it exactly in the
+	 * gap - and touches no row once it commits. A cookie sent without asking how many rows were
+	 * renewed would hand the browser back a session that is over.
+	 */
+	@Test
+	void aSessionEndedWhileItsAnswerIsOnTheWayIsHandedNoCookie() throws Exception {
+		ExecutorService asking = Executors.newSingleThreadExecutor();
+
+		try (AHeldTransaction endingItElsewhere = new AHeldTransaction(pool)) {
+			endingItElsewhere.db().sql("delete from account_session where token_hash = ?")
+					.param(mineDueForRenewal.hash()).update();
+
+			Future<HttpResponse<String>> answer = asking.submit(() -> me(carrying(mineDueForRenewal)));
+
+			endingItElsewhere.untilBehind(1, List.of(answer));
+			endingItElsewhere.commit();
+
+			HttpResponse<String> answered = answer.get(30, TimeUnit.SECONDS);
+
+			assertThat(answered.statusCode()).as("the session was not found before it ended, so this"
+					+ " measures nothing").isEqualTo(200);
+			assertThat(aboutTheSession(answered))
+					.as("a session that ended before its renewal was written was handed its cookie")
+					.isEmpty();
+		} finally {
+			asking.shutdownNow();
+		}
+
+		assertThat(stillOpen(mineDueForRenewal)).isFalse();
+	}
+
+	private HttpResponse<String> reset(String cookies) throws Exception {
+		SecretToken link = SecretToken.fresh();
+
+		db.sql("insert into password_reset_token (account_id, token_hash)"
+						+ " values ((select id from account where email = ?), ?)")
+				.params(MINE, link.hash()).update();
+
+		String token = aToken();
+		String carried = cookies == null ? "" : "; " + cookies;
+
+		return post("/api/password-reset", TOKEN_COOKIE + "=" + token + carried, token,
+				"{\"token\":\"" + link.secret() + "\",\"password\":\"novaLozinka9876sasvim\","
+						+ "\"passwordRepeat\":\"novaLozinka9876sasvim\"}");
+	}
+
+	/**
+	 * A RESET ASKED FROM A BROWSER SIGNED IN AS THAT MEMBER ENDS THE BROWSER'S COOKIE TOO.
+	 *
+	 * <p>The reset ends every session of the account, the one this browser carries among them, and
+	 * the answer says so with the cookie that is over - once, and not beside a renewal of the
+	 * session it has just ended, which is due here on purpose.
+	 */
+	@Test
+	void aResetFromTheMembersOwnBrowserEndsItsCookie() throws Exception {
+		HttpResponse<String> answer = reset(carrying(mineDueForRenewal));
+
+		assertThat(answer.statusCode()).isEqualTo(204);
+		assertThat(stillOpen(mineDueForRenewal)).as("the reset did not end the session").isFalse();
+		assertThat(aboutTheSession(answer)).as("the reset carried more than one cookie for the session, or none")
+				.hasSize(1);
+		assertThat(valueOf(aboutTheSession(answer).get(0))).as("the reset handed a session back").isEmpty();
+		assertThat(aboutTheSession(answer).get(0)).contains("Max-Age=0");
+		assertThat(stillOpen(hersDueForRenewal)).isTrue();
+	}
+
+	/**
+	 * AND FROM A BROWSER SIGNED IN AS SOMEBODY ELSE IT LEAVES THAT COOKIE ALONE.
+	 *
+	 * <p>Her session is not one this reset ends, so the answer says nothing that would sign her out:
+	 * nothing at all while her session is not due, and her own cookie renewed when it is - which is
+	 * the case where a cookie taken from the session the reset DID end would show.
+	 */
+	@Test
+	void aResetFromAnotherMembersBrowserLeavesHerCookieAlone() throws Exception {
+		SecretToken hersNotDue = open(SOMEBODY_ELSE, Duration.ofMinutes(1), Duration.ofDays(30));
+
+		HttpResponse<String> notDue = reset(carrying(hersNotDue));
+
+		assertThat(notDue.statusCode()).isEqualTo(204);
+		assertThat(stillOpen(mineDueForRenewal)).as("the reset did not end his session").isFalse();
+		assertThat(aboutTheSession(notDue)).as("a reset of his password touched her cookie").isEmpty();
+		assertThat(stillOpen(hersNotDue)).isTrue();
+
+		HttpResponse<String> due = reset(carrying(hersDueForRenewal));
+
+		assertThat(due.statusCode()).isEqualTo(204);
+		assertThat(aboutTheSession(due)).as("her renewal was not one cookie").hasSize(1);
+		assertThat(valueOf(aboutTheSession(due).get(0)))
+				.as("a reset of his password ended her cookie, or handed her his")
+				.isEqualTo(hersDueForRenewal.secret());
 	}
 }

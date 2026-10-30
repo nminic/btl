@@ -15,15 +15,18 @@ import com.btl.portal.mail.Postman;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mail.MailException;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -244,8 +247,10 @@ class PasswordResetApi {
 	 * for why "prijava bez lozinke se ne uvodi" rules that out on its own.
 	 */
 	@PostMapping("/api/password-reset")
-	ResponseEntity<Refused> reset(@RequestBody ResetTyped typed) {
-		Reset done = inOneTransaction.execute(committing -> resetting(typed));
+	ResponseEntity<Refused> reset(@RequestBody ResetTyped typed,
+			@CookieValue(name = SessionCookie.NAME, required = false) String carried) {
+
+		Reset done = inOneTransaction.execute(committing -> resetting(typed, carried));
 
 		/* AN ADDRESS THIS RESET CONFIRMED FOR THE FIRST TIME IS TOLD ABOUT ITS MEMBERSHIP, after the
 		   commit, exactly as `EmailConfirmationApi.confirm` tells one it confirmed (owner, 23.10.2026:
@@ -270,7 +275,7 @@ class PasswordResetApi {
 	 * THE RESET ITSELF, IN ONE TRANSACTION, statement for statement what the {@code @Transactional}
 	 * method was before the letter after it had to wait for the commit.
 	 */
-	private Reset resetting(ResetTyped typed) {
+	private Reset resetting(ResetTyped typed, String carried) {
 		if (typed.password() == null || typed.passwordRepeat() == null
 				|| !typed.password().equals(typed.passwordRepeat())) {
 			return new Reset(no(THE_FORM_IS_NOT_COMPLETE), null);
@@ -441,10 +446,28 @@ class PasswordResetApi {
 		   mailbox and picks a new password; a reset is the one defence a member
 		   locked out by a stolen cookie has; it bought him nothing while a row nobody
 		   deleted kept answering 200. */
-		db.sql("delete from account_session where account_id = ?")
-				.param(account).update();
+		List<String> ended = db.sql("delete from account_session where account_id = ? returning token_hash")
+				.param(account).query(String.class).list();
 
-		return new Reset(ResponseEntity.noContent().build(), confirmsTheAddress ? account : null);
+		/* AND THE BROWSER THAT ASKED IS TOLD ITS OWN SESSION IS OVER, IF IT WAS ONE OF THEM. The
+		   reset may be asked from a browser signed in as this member, or as somebody else entirely,
+		   or as nobody; only in the first case did this statement just end the session it carries,
+		   and only then is its cookie replaced by one that is over - `SignOutApi`'s cookie, for
+		   `SignOutApi`'s reason, a cookie nothing will ever open again. Another member's session in
+		   that browser is alive and is none of this reset's business, so it is not touched.
+
+		   The question is asked of the rows this delete really took, by what the cookie hashes to,
+		   and not of who `WhoIsAsking` decided was asking: a session that had already run out is
+		   no one's request, and its row still went here. */
+		boolean itsOwnSessionEnded = carried != null && ended.contains(SecretToken.hashOf(carried));
+
+		ResponseEntity.HeadersBuilder<?> done = ResponseEntity.noContent();
+
+		if (itsOwnSessionEnded) {
+			done.header(HttpHeaders.SET_COOKIE, SessionCookie.gone().toString());
+		}
+
+		return new Reset(done.build(), confirmsTheAddress ? account : null);
 	}
 
 	private static ResponseEntity<Refused> no(String reason) {
