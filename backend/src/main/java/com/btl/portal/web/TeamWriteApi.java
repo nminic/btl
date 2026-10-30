@@ -339,6 +339,21 @@ class TeamWriteApi {
 	 */
 	static final String THE_WINDOW_IS_SHUT = "theWindowIsShut";
 
+	/**
+	 * THE MEMBER HAS NOT PAID THE SEASON THE TEAM WOULD TAKE HIM IN FOR, AND {@link #propose} SAYS SO.
+	 *
+	 * <p>PDL, ODLUKA 30.10.2026, „U prelaznom roku svaki ulaz u tim traži plaćenu narednu sezonu":
+	 * „Prijava u tim, prihvatanje poziva i predlog novog tima traže članstvo za sezonu za koju se
+	 * plaća". A proposal is such an entry because the founder is written into his team the day it
+	 * is approved (PDL 05.09.2026, „Odobrenje novog tima upisuje osnivača u taj tim"); the
+	 * decision rejected a proposal that stays free while the application and the invitation ask.
+	 * It carries a reason where the window and a team he is already in answer an empty 404 on the
+	 * same route, for the reason {@link TeamJoiningWriteApi#THE_SEASON_IS_NOT_PAID} gives: the
+	 * only fact it gives away is the caller's own fee. Spelt exactly as that constant, because it
+	 * is one fact read by two files.
+	 */
+	static final String THE_SEASON_IS_NOT_PAID = "theSeasonIsNotPaid";
+
 	/*
 	 * THE REASON A MEMBERSHIP CARRIES WHEN IT ENDS IS NOT DECLARED HERE. It is
 	 * `Membership.LEFT_ON_HIS_OWN`, and the note on it says why the vocabulary of that
@@ -383,6 +398,9 @@ class TeamWriteApi {
 	/** Who is asking, and whether his fee stands: what {@link #propose} opens with. */
 	private final ActiveMemberOrAdministration readers;
 
+	/** Whether he holds the season the team would take him in for: what {@link #propose} asks after the window. */
+	private final AMembershipOfTheSeasonHeWouldJoin holdsTheSeason;
+
 	private final Clock clock;
 
 	/**
@@ -424,12 +442,14 @@ class TeamWriteApi {
 	private final WhatHeMayDo mayHe;
 
 	TeamWriteApi(JdbcClient db, MemberOfAccount memberOfAccount,
-			ActiveMemberOrAdministration readers, Clock clock, TransactionTemplate inOneTransaction,
+			ActiveMemberOrAdministration readers, AMembershipOfTheSeasonHeWouldJoin holdsTheSeason,
+			Clock clock, TransactionTemplate inOneTransaction,
 			ATeamGoesWithItsLastMember emptyTeams, WhatHeMayDo mayHe) {
 
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.readers = readers;
+		this.holdsTheSeason = holdsTheSeason;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
 		this.emptyTeams = emptyTeams;
@@ -529,9 +549,18 @@ class TeamWriteApi {
 		   the form: a member the portal would have sent away from this screen learns
 		   nothing more by filling it in correctly. Which of the two refused him is not told
 		   apart, for the reason written at the top of this class. */
-		if (JoiningATeam.mayJoin(membershipsOf(me), ZonedDateTime.now(clock))
-				!= JoiningATeam.Answer.YES) {
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
+		if (JoiningATeam.mayJoin(membershipsOf(me), now) != JoiningATeam.Answer.YES) {
 			return awayAtAnOpenAddress();
+		}
+
+		/* AND THE SEASON HE WOULD JOIN FOR HAS TO BE HELD (PDL 30.10.2026, on
+		   `THE_SEASON_IS_NOT_PAID`). After the window and the team he may already have, which is
+		   the order the screen draws them in, and before anything about the form: a member the
+		   portal has a sentence for learns nothing more by filling it in correctly. */
+		if (!holdsTheSeason.holds(me, now)) {
+			return no(HttpStatus.CONFLICT, THE_SEASON_IS_NOT_PAID);
 		}
 
 		if (isNothing(typed.name())) {
