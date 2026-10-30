@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * WHAT V79 DOES TO THE ROWS THAT ARE ALREADY THERE, run against a real database.
@@ -23,6 +24,21 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p><b>Two members, two seasons each, on two different grounds</b>, so a key handed out twice, a row
  * carried for the wrong man or a season dropped is a different answer.
+ *
+ * <p><b>And a third member whose fee exemption was entered before V35</b>, so it names neither who
+ * freed him nor when. Such a row is on QA today (member 1, the owner, whose account administers the
+ * portal and so is never deleted through the door), and production has none (measured 30.10.2026).
+ * It is written the way history wrote it: V35's pair of checks taken off, the row written, the pair
+ * put back {@code not valid}, which is how V35 left every database that already held one.
+ *
+ * <p><b>THE BOUNDARY THAT ROW SETS, written here because only a migration can move it and this
+ * change may not write one.</b> V79 turned the deletion of a member from a cascade into an UPDATE of
+ * his membership ({@code competitor_id} set to null), and V35 says in as many words that a
+ * {@code not valid} check is still enforced on every update of a row. So deleting such a member now
+ * fails on {@code membership_free_of_the_fee_says_when} and nothing of his goes, where before V79 his
+ * exemption went with him; through the door that is a 500 for the administrator.
+ * {@link #aMemberFreedBeforeV35CannotBeDeletedAndNothingOfHisMoves} holds what the deletion does
+ * today, and whoever writes the migration that lets it through turns that case around.
  */
 class TheMoneyOutlivesADeletedMemberCarriedOverTest extends DatabaseTest {
 
@@ -104,6 +120,21 @@ class TheMoneyOutlivesADeletedMemberCarriedOverTest extends DatabaseTest {
 				.query(String.class).list();
 	}
 
+	/**
+	 * A fee exemption as V35 found it: no name and no moment. V35's pair of checks refuses that on any
+	 * row written since, so the pair is taken off and put back the way V35 put it.
+	 */
+	private void freedBeforeV35(String number, int season) {
+		jdbc.execute("alter table membership drop constraint membership_free_of_the_fee_says_who,"
+				+ " drop constraint membership_free_of_the_fee_says_when");
+		db.sql("insert into membership (competitor_id, season, basis) values (" + member(number) + ", "
+				+ season + ", 'feeExempt')").update();
+		jdbc.execute("alter table membership add constraint membership_free_of_the_fee_says_who"
+				+ " check (basis <> 'feeExempt' or decided_by_name is not null) not valid");
+		jdbc.execute("alter table membership add constraint membership_free_of_the_fee_says_when"
+				+ " check (basis <> 'feeExempt' or decided_at is not null) not valid");
+	}
+
 	@BeforeEach
 	void whatThePortalHoldsBeforeV79() {
 		whatV79Did();
@@ -113,11 +144,13 @@ class TheMoneyOutlivesADeletedMemberCarriedOverTest extends DatabaseTest {
 
 		competitor("009000", "00112233445566d1");
 		competitor("009001", "00112233445566d2");
+		competitor("009002", "00112233445566d3");
 
 		paid("009000", 2027, "4200.00");
 		freed("009000", 2028);
 		freed("009001", 2027);
 		paid("009001", 2028, "3600.00");
+		freedBeforeV35("009002", 2027);
 
 		db.sql("insert into balance_entry (competitor_id, amount, currency, reason, season, occurred_at,"
 				+ " recorded_by, recorded_by_name) values (" + member("009001") + ", 5, 'EUR', 'overpayment',"
@@ -148,7 +181,35 @@ class TheMoneyOutlivesADeletedMemberCarriedOverTest extends DatabaseTest {
 		assertThat(db.sql("select count(distinct id) || ' of ' || count(*) from membership")
 				.query(String.class).single())
 				.as("a membership already there has no key, or shares one")
-				.isEqualTo("4 of 4");
+				.isEqualTo("5 of 5");
+	}
+
+	/**
+	 * A MEMBER FREED BEFORE V35 CANNOT BE DELETED, AND NOTHING OF HIS MOVES. The class note says why and
+	 * what would change it. The other two members stand as they were beside him, so a deletion that took
+	 * his exemption anyway, or emptied it, is a different answer.
+	 */
+	@Test
+	void aMemberFreedBeforeV35CannotBeDeletedAndNothingOfHisMoves() {
+		jdbc.execute(migrationSql("79"));
+
+		assertThat(db.sql("select count(*) from membership where basis = 'feeExempt' and decided_at is null"
+						+ " and competitor_id = " + member("009002")).query(Long.class).single())
+				.as("there is no exemption from before V35 to delete, so this measures nothing")
+				.isOne();
+
+		List<String> before = theMoney();
+
+		/* The refusal aborts the transaction of the test, so what it left is asked after a rollback to
+		   the point taken here. */
+		jdbc.execute("savepoint before_the_refusal");
+		assertThatThrownBy(() -> db.sql("delete from competitor where member_number = '009002'").update())
+				.hasMessageContaining("membership_free_of_the_fee_says_when");
+		jdbc.execute("rollback to savepoint before_the_refusal");
+
+		assertThat(theMoney()).as("a refused deletion moved a row").isEqualTo(before);
+		assertThat(db.sql("select count(*) from competitor where member_number = '009002'")
+				.query(Long.class).single()).isOne();
 	}
 
 	/**

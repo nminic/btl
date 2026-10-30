@@ -27,6 +27,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * lines it wrote about somebody else, which is the exception the Privacy Policy names;
  * <li>and a membership left without its member still goes with its receipt.
  * </ul>
+ *
+ * <p><b>WHAT THE NOT NULL HELD AND NOTHING HOLDS NOW, a boundary rather than an oversight.</b> Before
+ * V79 the column refused a null on any statement, an UPDATE included; V79's triggers
+ * ({@code a_new_row_names_its_member}) refuse it on INSERT alone, because a deletion arrives at these
+ * rows as an UPDATE that empties the key and that one has to go through. So an
+ * {@code update payment set competitor_id = null} written by hand on a living member's row is taken
+ * today, on {@code payment} and {@code membership}; on {@code balance_entry} and
+ * {@code membership_change} the written-once triggers let a key be forgotten by design. Nothing under
+ * {@code backend/src/main} writes such an UPDATE (searched 30.10.2026: the only statements that set
+ * {@code competitor_id = null} on these four tables are V79's deletion trigger). Holding it would take
+ * a trigger that tells the deletion's UPDATE from any other, which is a migration, and this class
+ * changes none.
  */
 class TheMoneyOutlivesADeletedMemberTest extends DatabaseTest {
 
@@ -242,5 +254,50 @@ class TheMoneyOutlivesADeletedMemberTest extends DatabaseTest {
 
 		assertThat(db.sql("select count(*) from membership where competitor_id is null").query(Long.class)
 				.single()).isZero();
+	}
+
+	/**
+	 * A WOMAN'S ACCOUNT GOING TAKES HER NAME OFF HER OWN LINES WITH THE WORD FOR A WOMAN. The rest of
+	 * this class deletes a man, so the word V79 picks by gender was measured on one side only; she is a
+	 * member of her own, with an account and a spend of her own balance, and he stays beside her so the
+	 * word cannot be read off the wrong row.
+	 */
+	@Test
+	void herAccountGoingSignsHerOwnLineWithTheWordForAWoman() {
+		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('008002', 'Clanica', 'Probna',"
+				+ " 'F', date '1984-04-04', " + A_TOWN + ", null, null, 2027, false, true, '00112233445566c3',"
+				+ " null, '', false, 'none', 'Otac', 'Ulica 2', 'M', timestamptz '2026-09-01 10:00:00+00')")
+				.update();
+		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id) values"
+				+ " ('Clanica', 'Probna', 'clanica@primer.rs', (select id from role where code = 'competitor'),"
+				+ " (select id from competitor where member_number = '008002'))").update();
+		db.sql(entry("(select id from competitor where member_number = '008002'), -35, 'EUR', 'membership',"
+				+ " null, 2028, " + AN_INSTANT + ", (select id from account where email = 'clanica@primer.rs'),"
+				+ " 'Clanica Probna'")).update();
+
+		db.sql("delete from account where email = 'clanica@primer.rs'").update();
+		db.sql("delete from account where email = 'clan@primer.rs'").update();
+
+		assertThat(db.sql("select c.member_number || ' ' || e.recorded_by_name"
+						+ " from balance_entry e join competitor c on c.id = e.competitor_id"
+						+ " where e.reason = 'membership' order by c.member_number").query(String.class).list())
+				.containsExactly("008000 <Obrisani član>", "008002 <Obrisana članica>");
+	}
+
+	/**
+	 * THE WORD IS NOT WRITTEN ON A LINE WHOSE ACCOUNT WAS ALREADY FORGOTTEN. The guard lets the name
+	 * change only in the update that takes {@code recorded_by} from somebody to nobody; a line whose
+	 * author's account went long ago carries the author's name and a null key, and an update that
+	 * writes the word over that name leaves the key null on both sides. Without the half that asks
+	 * what the key WAS, that update would be the one rewrite the guard exists to refuse.
+	 */
+	@Test
+	void theWordOverALineWhoseAccountIsAlreadyForgottenIsRefused() {
+		db.sql(entry(HE + ", 9, 'EUR', 'overpayment', null, 2030, " + AN_INSTANT + ", null,"
+				+ " 'Bivsi Blagajnik'")).update();
+
+		assertThatThrownBy(() -> db.sql("update balance_entry set recorded_by_name = '<Obrisani član>'"
+						+ " where recorded_by_name = 'Bivsi Blagajnik'").update())
+				.hasMessageContaining("cannot be signed by somebody else");
 	}
 }
