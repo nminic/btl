@@ -346,6 +346,30 @@ class TeamJoiningWriteApiTest {
 	}
 
 	/**
+	 * A TEAM THAT IS NOT THERE IS NOT THERE TO A MEMBER WHO OWES THE SEASON EITHER.
+	 *
+	 * <p>An address that is not there is not there to every caller (ADL A8, and
+	 * {@code AWordInAKeyOverRealHttpTest} measures it over a real socket), so the sentence about
+	 * his fee must never be what tells a member that a team does not exist. The fee is asked AFTER
+	 * the team: a team nobody leads and a team with no row at all both answer the empty 404 to the
+	 * member who owes the season, and a team that is there answers him the 409.
+	 */
+	@Test
+	void aTeamThatIsNotThereIsNotThereToAMemberWhoOwesTheSeasonEither() throws Exception {
+		holdsOnly(ME, 2027);
+
+		assertThat(send(post("/api/teams/{id}/applications", 9_999_999_999L), ME).getStatus())
+				.as("a key no team carries")
+				.isEqualTo(404);
+		assertThat(applyTo(AN_EMPTY_TEAM, ME).getStatus())
+				.as("a team nobody is in, which has nobody to answer for it")
+				.isEqualTo(404);
+		assertThat(applyTo(THE_TEAM, ME).getStatus())
+				.as("and a team that is there is the member's own sentence")
+				.isEqualTo(409);
+	}
+
+	/**
 	 * THE ORDER IS THE WINDOW, THEN THE TEAM, THEN THE FEE: a member who has not paid and ALSO could
 	 * not enter today is told what he can do something about first, and a team he is in is not
 	 * turned into a sentence about money (the screen draws them in the same order).

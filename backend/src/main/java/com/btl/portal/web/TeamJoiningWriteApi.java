@@ -584,16 +584,18 @@ class TeamJoiningWriteApi {
 			throw nothingIsHere();
 		}
 
-		/* THE SEASON HE WOULD JOIN FOR HAS TO BE HELD (PDL 30.10.2026, quoted on the class), asked
-		   after the window and the team he may already have, which is the order the screen draws
-		   them in, and before anything about the team asked: it is his own fee, so it can say
-		   nothing about a team he has no business with. */
-		if (!holdsTheSeason.holds(me, now)) {
-			return no(HttpStatus.CONFLICT, THE_SEASON_IS_NOT_PAID);
-		}
-
 		if (!somebodyCouldAnswerForThisTeam(team)) {
 			throw nothingIsHere();
+		}
+
+		/* THE SEASON HE WOULD JOIN FOR HAS TO BE HELD (PDL 30.10.2026, quoted on the class), asked
+		   after the window, the team he may already have and the team being there at all. The last
+		   is not the order the screen draws them in, and it is on purpose: an address that is not
+		   there is not there to EVERY caller (`AWordInAKeyOverRealHttpTest`), a member who owes the
+		   season included, so the sentence about his fee is never what tells him a team does not
+		   exist. */
+		if (!holdsTheSeason.holds(me, now)) {
+			return no(HttpStatus.CONFLICT, THE_SEASON_IS_NOT_PAID);
 		}
 
 		if (aQuestionOfHisAlreadyStands(me)) {

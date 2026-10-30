@@ -1027,7 +1027,7 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 	}
 
 	private long member(String number, String gender, boolean active) {
-		return db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
+		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, first_season, active, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
@@ -1037,6 +1037,20 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, gender, active, String.format("8b%014x", ++issued))
 				.query(Long.class).single();
+
+		/* A MEMBER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Entering a
+		   team asks for a membership of the season on sale and not for `competitor.active` (PDL
+		   30.10.2026), so an active member with no row is a member who has not paid it. The one
+		   who is not active holds none here, and `LAPSED` is given his own row by the fixture. */
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " select c.id, s.season, 'feeExempt', 'Probni Probic',"
+						+ " timestamptz '2026-09-01 10:00:00+00'"
+						+ " from competitor c cross join (values (2027), (2028)) as s (season)"
+						+ " where c.id = ? and c.active")
+				.param(id)
+				.update();
+
+		return id;
 	}
 
 	private static String emailOf(String caller) {
