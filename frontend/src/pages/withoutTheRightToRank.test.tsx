@@ -109,7 +109,10 @@ describe('a member without the right to rank, in public', () => {
     const server = serving(theList(true), [aRunOf2027(VLADAN, 77.77, false, 900001)])
     renderAt('/sr/kalendar/novogodisnja-trka-mrsac-2017', 'visitor', null, undefined, '2027-06-01')
 
-    expect(await screen.findByText(/Đurišić/)).toBeInTheDocument()
+    /* The page first, then his name, each on half the clock of the case, so a run that is not drawn
+       fails on this sentence and never on the clock (CLAUDE.md §25). */
+    await screen.findByRole('heading', { level: 1 }, { timeout: SLOW / 2 })
+    expect(await screen.findByText(/Đurišić/, undefined, { timeout: SLOW / 4 })).toBeInTheDocument()
 
     server.stop()
   }, SLOW)
