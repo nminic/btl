@@ -688,4 +688,55 @@ class TheSessionCookieFollowsTheSessionOverRealHttpTest {
 				db.sql("select password_hash from account where email = ?").param(MINE).query(String.class)
 						.single())).as("the password did not change").isTrue();
 	}
+
+	/**
+	 * A REQUEST THAT ARRIVED WITH THE OLD SECRET IS HANDED NOTHING WHEN THE PASSWORD CHANGE REPLACED IT
+	 * WHILE THE ANSWER WAS ON THE WAY (owner, 30.10.2026: the member stays signed in, on a new cookie, and
+	 * a stolen old one stops working; security review of PR 661).
+	 *
+	 * <p>The write of the new secret is held open, which is exactly what {@code MePasswordApi} does to the
+	 * row: a new hash and thirty days. The request carrying the OLD secret has already read the row and
+	 * is due for renewal, so its renewal waits behind that write and runs the moment it commits. Named by
+	 * the row's id alone it would find the row, return 1 and send the old secret back with thirty days on
+	 * it, and if that answer reached the browser last the member would be signed out by the change that
+	 * was meant to keep him in. Named by the hash of the secret that arrived it finds nothing and the
+	 * answer carries no session cookie.
+	 *
+	 * <p>The new secret is read at the end, and opens the portal, so the row the late request left alone
+	 * is the row the change wrote.
+	 */
+	@Test
+	void aRequestCarryingTheSecretAPasswordChangeJustReplacedIsHandedNoCookie() throws Exception {
+		SecretToken replacement = SecretToken.fresh();
+		ExecutorService asking = Executors.newSingleThreadExecutor();
+
+		try (AHeldTransaction changingThePassword = new AHeldTransaction(pool)) {
+			changingThePassword.db().sql("update account_session set token_hash = ?, last_used_at = ?,"
+							+ " expires_at = ? where token_hash = ?")
+					.params(replacement.hash(), Timestamp.from(Instant.now()),
+							Timestamp.from(SessionLife.renewedUntil(Instant.now())), mineDueForRenewal.hash())
+					.update();
+
+			Future<HttpResponse<String>> answer = asking.submit(() -> me(carrying(mineDueForRenewal)));
+
+			changingThePassword.untilBehind(1, List.of(answer));
+			changingThePassword.commit();
+
+			HttpResponse<String> answered = answer.get(30, TimeUnit.SECONDS);
+
+			assertThat(answered.statusCode()).as("the old secret was not found before the change committed,"
+					+ " so this measures nothing").isEqualTo(200);
+			assertThat(aboutTheSession(answered))
+					.as("a secret the password change had just replaced was handed back with thirty days on it")
+					.isEmpty();
+		} finally {
+			asking.shutdownNow();
+		}
+
+		assertThat(me(carrying(mineDueForRenewal)).statusCode()).as("the old secret still opens the portal")
+				.isEqualTo(401);
+		assertThat(me(carrying(replacement)).statusCode()).as("the new secret opens nothing, so the member"
+				+ " was signed out").isEqualTo(200);
+		assertThat(stillOpen(replacement)).isTrue();
+	}
 }

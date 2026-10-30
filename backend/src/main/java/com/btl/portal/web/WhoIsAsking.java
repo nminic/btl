@@ -126,12 +126,22 @@ final class WhoIsAsking extends OncePerRequestFilter {
 
 						   The SECRET handed back is the one that arrived, which is the one this
 						   row was found by; it is never read out of the row, because the row
-						   keeps only a hash. */
+						   keeps only a hash.
+
+						   THE ROW IS NAMED BY ITS ID AND BY THE HASH OF THAT SAME SECRET, not by the
+						   id alone. Changing the password gives the session a new secret in the row
+						   (`MePasswordApi`, owner 30.10.2026), and a request that arrived with the old
+						   one has already read the row and waits behind that write. Named by id
+						   alone its update would find the row once the change commits, return 1, and
+						   hand the browser the old secret with thirty days on it, which is the member
+						   signed out by the very change that was meant to keep him in. Named by the
+						   hash it finds nothing, returns 0, and the answer carries no cookie. */
 						answering.renewWhenAnswered(secret, () -> db
-								.sql("update account_session set last_used_at = ?, expires_at = ? where id = ?")
+								.sql("update account_session set last_used_at = ?, expires_at = ?"
+										+ " where id = ? and token_hash = ?")
 								.params(java.sql.Timestamp.from(now),
 										java.sql.Timestamp.from(SessionLife.renewedUntil(now)),
-										one.session())
+										one.session(), SecretToken.hashOf(secret))
 								.update());
 					}
 				}));
