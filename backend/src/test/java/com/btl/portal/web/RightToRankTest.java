@@ -242,8 +242,9 @@ class RightToRankTest {
 
 	/**
 	 * AND IN THE WINDOW EACH SEASON IS ASKED ABOUT ITSELF: on 20 November 2027 000209 holds 2027 without the
-	 * right and 2028 with it, so he stands in the table of 2028 and not of 2027, and his card, which speaks
-	 * of 2027 until 1 January, names nothing.
+	 * right and 2028 with it, so he stands in the table of 2028 and not of 2027, and his card names 2028 (PDL,
+	 * 30.10.2026: a member without the right in the running season who has paid the next one is carded for the
+	 * next), never 2027, which he holds without the right.
 	 */
 	@Test
 	void inTheWindowEachSeasonIsAskedAboutItself() throws Exception {
@@ -254,7 +255,8 @@ class RightToRankTest {
 
 		for (JsonNode one : answer("/api/competitors")) {
 			if (one.path("memberNumber").asString().equals("000209")) {
-				assertThat(one.path("category").isNull()).as("his card names 2027, held without the right").isTrue();
+				assertThat(one.path("category").path("season").asInt())
+						.as("his card names 2027, held without the right, or nothing at all").isEqualTo(2028);
 			}
 		}
 	}
