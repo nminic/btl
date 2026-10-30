@@ -79,11 +79,16 @@ describe('where the team answers what is waiting on it', () => {
     ])
   })
 
-  it('names the one refusal of applying and the four of inviting, and no others', () => {
+  it('names the two refusals of applying and the four of inviting, and no others', () => {
     /* Since T5 (10.10.2026), for the reason the case above gives. The one that means „he has
        been asked" is said in the words that stand in the button's place once the list shows it,
-       which is the line asserted last. */
-    expect(Object.keys(WHEN_APPLYING_TO_A_TEAM)).toEqual(['aQuestionAlreadyStands'])
+       which is the line asserted last. The second of applying is the fee (PDL, 30.10.2026), said
+       in the owner's sentence, which is also what the page draws in the button's place. */
+    expect(Object.keys(WHEN_APPLYING_TO_A_TEAM)).toEqual([
+      'aQuestionAlreadyStands',
+      'theSeasonIsNotPaid',
+    ])
+    expect(WHEN_APPLYING_TO_A_TEAM.theSeasonIsNotPaid).toBe('teams.joinWhenPaid')
     expect(Object.keys(WHEN_INVITING_INTO_A_TEAM)).toEqual([
       'theFormIsNotComplete',
       'theWindowIsShut',
