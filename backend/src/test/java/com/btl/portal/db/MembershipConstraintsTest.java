@@ -378,7 +378,17 @@ class MembershipConstraintsTest extends DatabaseTest {
 								+ ", null, null, " + AN_INSTANT)),
 				Violation.of(THE_TRAIL_OF_A_BALANCE,
 						membershipNaming(A_MEMBER + ", 2030, 'balance', null, " + HIS_BOOK_ENTRY + ", "
-								+ AN_ACCOUNT + ", null, null")));
+								+ AN_ACCOUNT + ", null, null")),
+
+				/* V82, THE FIRST DAY A CHANGE OF BASIS CARRIES. Whether it was carried is always said,
+				   and a day is never named on a row that says it carried none. Both rows are his own
+				   receipt for 2027, so nothing else in them is wrong. */
+				Violation.notNull("membership_first_activation_carried_not_null", "first_activation_carried",
+						"insert into membership (" + COLUMNS + ", first_activation_carried) values ("
+								+ A_MEMBER + ", 2027, 'payment', " + HIS_2027 + ", null)"),
+				Violation.of("membership_a_first_day_is_carried",
+						"insert into membership (" + COLUMNS + ", first_activated_at) values ("
+								+ A_MEMBER + ", 2027, 'payment', " + HIS_2027 + ", " + AN_INSTANT + ")"));
 	}
 
 	@ParameterizedTest
@@ -466,10 +476,22 @@ class MembershipConstraintsTest extends DatabaseTest {
 			membershipNaming(A_MEMBER + ", 2030, 'balance', null, " + HIS_BOOK_ENTRY
 					+ ", null, 'Blagajnik Probni', " + AN_INSTANT);
 
+	/**
+	 * Written by a change of basis, carrying the day the season was first activated (V82), and the same
+	 * carrying no day at all, which is what a change over the exemption from before V35 writes.
+	 */
+	private static final String GOOD_CARRYING_THE_FIRST_DAY =
+			"insert into membership (" + COLUMNS + ", first_activation_carried, first_activated_at) values ("
+					+ A_MEMBER + ", 2027, 'payment', " + HIS_2027 + ", true, " + AN_INSTANT + ")";
+
+	private static final String GOOD_CARRYING_NO_DAY =
+			"insert into membership (" + COLUMNS + ", first_activation_carried, first_activated_at) values ("
+					+ A_MEMBER + ", 2027, 'payment', " + HIS_2027 + ", true, null)";
+
 	static List<String> legitimateRows() {
 		return List.of(GOOD_ON_HIS_OWN_RECEIPT, GOOD_LET_IN_FREE, GOOD_ANOTHER_MEMBER,
 				GOOD_OUT_OF_THE_BOOK, GOOD_OUT_OF_THE_BOOK_AT_A_REDUCED_AMOUNT,
-				GOOD_OUT_OF_THE_BOOK_AFTER_THE_ACCOUNT_WENT);
+				GOOD_OUT_OF_THE_BOOK_AFTER_THE_ACCOUNT_WENT, GOOD_CARRYING_THE_FIRST_DAY, GOOD_CARRYING_NO_DAY);
 	}
 
 	@ParameterizedTest

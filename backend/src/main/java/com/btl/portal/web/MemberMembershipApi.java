@@ -385,9 +385,16 @@ class MemberMembershipApi {
 		   would tell him his category closed when nothing moved; that is why
 		   `ABeginnersCategoryAMembershipMoves` is asked by the routes and not by `BookingAPayment` or
 		   `GrantingASeason`. `ABeginnersCategoryAMembershipMovesTest` holds it. */
+
+		/* THE DAY THE SEASON WAS FIRST ACTIVATED, read on the row before it goes, because the row is
+		   the only place it is written and the change deletes it. Read through
+		   `WhenASeasonWasActivated.of`, so a row an earlier change already wrote hands on the day IT
+		   carried, never its own evidence, which is the day of that change. */
+		Optional<Timestamp> first = firstActivation(member.get(), season);
+
 		return Basis.PAYMENT.word().equals(typed.to())
-				? aPaymentOverTheExemption(member.get(), season, held.get(), typed, asking)
-				: anExemptionOverThePayment(member.get(), season, held.get(), asking);
+				? aPaymentOverTheExemption(member.get(), season, held.get(), typed, first, asking)
+				: anExemptionOverThePayment(member.get(), season, held.get(), first, asking);
 	}
 
 	/**
@@ -399,7 +406,7 @@ class MemberMembershipApi {
 	 * twice ({@code balance_entry_one_a_referral}, V38).
 	 */
 	private ResponseEntity<?> anExemptionOverThePayment(long member, int season, Held held,
-			WhoIsAsking.Member asking) {
+			Optional<Timestamp> first, WhoIsAsking.Member asking) {
 
 		String name = memberOfAccount.nameOf(asking.account());
 		String number = db.sql("select member_number from competitor where id = ?")
@@ -409,6 +416,7 @@ class MemberMembershipApi {
 		book.reversed(member, season, currencyOf.of(member), asking.account(), name);
 		granting.grant(member, number, season, Basis.FEE_EXEMPT.word(),
 				Balance.Money.nothingIn(currencyOf.of(member)), true, asking.account());
+		carried(member, season, first);
 
 		trail(member, season, "basisChanged", held.basis(), Basis.FEE_EXEMPT.word(), asking.account(), name);
 		tell(member, WhatAMembershipChangeSays.basisChanged(season, Basis.FEE_EXEMPT));
@@ -433,7 +441,7 @@ class MemberMembershipApi {
 	 * the one transaction and asks the manager for nothing.
 	 */
 	private ResponseEntity<?> aPaymentOverTheExemption(long member, int season, Held held, Changing typed,
-			WhoIsAsking.Member asking) {
+			Optional<Timestamp> first, WhoIsAsking.Member asking) {
 
 		if (typed.method() == null || typed.method().isBlank()) {
 			return PaymentApi.no(HttpStatus.BAD_REQUEST, PaymentApi.THE_FORM_IS_NOT_COMPLETE);
@@ -462,6 +470,8 @@ class MemberMembershipApi {
 
 			return booked.answer();
 		}
+
+		carried(member, season, first);
 
 		db.sql("release savepoint before_the_exemption_went").update();
 
@@ -496,6 +506,36 @@ class MemberMembershipApi {
 				.params(member, season)
 				.query((row, i) -> new Held(row.getString(1), row.getObject(2, Long.class)))
 				.optional();
+	}
+
+	/**
+	 * When the season was first activated, as {@link WhenASeasonWasActivated#of} reads it on the row
+	 * that stands, which the caller has already found; empty for the one exemption written before V35,
+	 * which has no moment and ranks, and for a row a change already carried that missing moment onto.
+	 * Read as a list because the one row it reads may answer NULL, and an empty answer is not „no row".
+	 */
+	private Optional<Timestamp> firstActivation(long member, int season) {
+		return Optional.ofNullable(db.sql("select " + WhenASeasonWasActivated.of("m") + " from membership m"
+						+ " where m.competitor_id = ? and m.season = ?")
+				.params(member, season)
+				.query((row, i) -> row.getTimestamp(1))
+				.list()
+				.getFirst());
+	}
+
+	/**
+	 * THE FIRST DAY GOES ONTO THE ROW THE CHANGE WROTE (V82). The owner, 30.10.2026: „Promena osnova
+	 * članstva (uplata u oslobođenje i obrnuto) zadržava dan prve aktivacije te sezone". The flag is
+	 * written whether or not the day is known, so a row with no moment hands on „no moment", which
+	 * ranks, rather than the day of this change. An update of the row just inserted and of nothing
+	 * else: the one row V35 cannot update, the exemption from before its trail, is the row the change
+	 * has already deleted.
+	 */
+	private void carried(long member, int season, Optional<Timestamp> first) {
+		db.sql("update membership set first_activation_carried = true,"
+						+ " first_activated_at = cast(? as timestamptz) where competitor_id = ? and season = ?")
+				.params(first.orElse(null), member, season)
+				.update();
 	}
 
 	/** The season's rows go: the payment, which takes its membership with it, or the membership. */

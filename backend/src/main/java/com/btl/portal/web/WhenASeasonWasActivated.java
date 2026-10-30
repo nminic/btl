@@ -28,9 +28,20 @@ import java.sql.Timestamp;
  * <li>an exemption: {@code membership.decided_at} (V35).</li>
  * </ul>
  *
- * Nothing is stored, so nothing can disagree with these three, and a membership cancelled and
- * written again is a new row whose activation is its own: the cancellation deletes the payment or
- * the row ({@link MemberMembershipApi}), so the row that stands is the only one there is to read.
+ * A membership cancelled and written again is a new row whose activation is its own: the cancellation
+ * deletes the payment or the row ({@link MemberMembershipApi}), so the row that stands is the only one
+ * there is to read.
+ *
+ * <p><b>EXCEPT A ROW A CHANGE OF BASIS WROTE, WHICH CARRIES THE FIRST DAY (V82).</b> The owner,
+ * 30.10.2026, chosen with the recommendation: „Promena osnova članstva (uplata u oslobođenje i obrnuto)
+ * zadržava dan prve aktivacije te sezone, pa sezona ne gubi pravo rangiranja samo zato što je članstvo
+ * ponovo upisano. Promena osnova nije storno". A change deletes the evidence above and writes a row
+ * whose own evidence is the day of the change, so the change route reads {@link #of} on the row it
+ * deletes and writes it onto the new one ({@code membership.first_activated_at}, with
+ * {@code first_activation_carried} saying that it did). A carried row answers that, and only that: its
+ * own payment or decision is the day of the change, never of the activation. Read through {@link #of},
+ * a second change carries the first day again, and a cancellation, which deletes the row, carries
+ * nothing.
  *
  * <p><b>THE RULE ITSELF IS NOT HERE</b>: which day ranks is {@link SeasonClock#anActivationRanks},
  * in the league's zone. This class only finds the moment and hands it over.
@@ -39,7 +50,9 @@ import java.sql.Timestamp;
  * be found.</b> Exactly one shape has none: an exemption written before V35 gave exemptions their
  * trail (V35 adds its check {@code not valid} for that one row). It was written in the autumn of
  * 2026, before the first 31 March there is, so whatever its real day was, it ranks; answering „no
- * right" for it would take the owner's own membership of 2027 off every table.
+ * right" for it would take the owner's own membership of 2027 off every table. A change of basis
+ * over that row carries its missing moment as it carries any other (V82, the flag with no day), so
+ * the row that replaces it ranks as well, rather than answering the day of the change.
  */
 final class WhenASeasonWasActivated {
 
@@ -47,21 +60,26 @@ final class WhenASeasonWasActivated {
 	}
 
 	/**
-	 * The moment, as an SQL expression over a row of {@code membership} under the given alias. Each
-	 * of the three is a probe of a primary key, and at most one of them is there for any row (V22,
-	 * V35, V38: the basis names exactly one kind of evidence).
+	 * The moment, as an SQL expression over a row of {@code membership} under the given alias: the
+	 * carried first day of a row a change of basis wrote, which may be NULL (V82: the change carried a
+	 * row that had no moment), or else the row's own evidence. Each of the three is a probe of a
+	 * primary key, and at most one of them is there for any row (V22, V35, V38: the basis names exactly
+	 * one kind of evidence).
 	 */
 	static String of(String membership) {
-		return "coalesce((select p.recorded_at from payment p where p.id = " + membership + ".payment_id),"
+		return "(case when " + membership + ".first_activation_carried then " + membership
+				+ ".first_activated_at else"
+				+ " coalesce((select p.recorded_at from payment p where p.id = " + membership + ".payment_id),"
 				+ " (select be.occurred_at from balance_entry be where be.id = " + membership
 				+ ".balance_entry_id),"
-				+ " " + membership + ".decided_at)";
+				+ " " + membership + ".decided_at) end)";
 	}
 
 	/**
 	 * Whether a membership of that season, activated at that moment, ranks.
 	 *
 	 * @param activated what {@link #of} read, or NULL for the one row the note on this class names
+	 *                  and for a row a change of basis carried it onto
 	 */
 	static boolean ranks(int season, Timestamp activated) {
 		return activated == null || SeasonClock.anActivationRanks(season, activated.toInstant());
