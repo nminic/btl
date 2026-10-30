@@ -204,15 +204,19 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	@Test
 	void thePolicyIsSignedOffOnTheTwentyNinthAndNoEarlierDayStandsAnywhereAnyMore() {
 		/* V77 (owner, 29.10.2026) moved all three documents to 29.10.2026: the 24.10.2026 V73 gave the policy, the
-		   27.10.2026 V76 gave the rulebook and the 22.10.2026 the terms keep stand nowhere now. What V73 itself does to
-		   the date is held by the cases that put the text back to before V73 and run it. */
+		   27.10.2026 V76 gave the rulebook and the 22.10.2026 the terms keep stand nowhere now. V80 (owner, 30.10.2026)
+		   moved the rulebook on to 30.10.2026. What V73 itself does to the date is held by the cases that put the text
+		   back to before V73 and run it. */
 		for (String language : List.of("sr", "en")) {
 			String today = language.equals("sr") ? "Poslednja izmena: 29.10.2026." : "Last amended: 29.10.2026.";
+			String rulebookToday = language.equals("sr") ? "Poslednja izmena: 30.10.2026." : "Last amended: 30.10.2026.";
 
 			assertThat(placesWhichCarry(language, today))
-					.as("the %s sign-off of 29.10.2026 must stand on all three documents", language)
-					.containsExactlyInAnyOrder(THE_POLICY_SIGN_OFF, new Place("uslovi-koriscenja", 11),
-							new Place("pravilnik", 19));
+					.as("the %s sign-off of 29.10.2026 must stand on the terms and the policy", language)
+					.containsExactlyInAnyOrder(THE_POLICY_SIGN_OFF, new Place("uslovi-koriscenja", 11));
+			assertThat(placesWhichCarry(language, rulebookToday))
+					.as("the %s sign-off of 30.10.2026 must stand on the rulebook alone", language)
+					.containsExactly(new Place("pravilnik", 19));
 			assertThat(bodyOf(language, THE_POLICY_SIGN_OFF)).containsOnlyOnce(today);
 
 			for (String gone : List.of(signOffAfterIn(language), signOffIn(language),
@@ -292,7 +296,9 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	/** The text as it stood BEFORE V73: the new clause put back to the old one in both languages, by hand. */
 	private void putBackTheTextAsItStoodBeforeV73() {
 		/* V77 (29.10.2026) cut the cell, the heading and the sign-off this file reverts by hand, so the pages are first put
-		   back to how they stood before V77, read out of V77 itself. */
+		   back to how they stood before V77, read out of V77 itself (V80 of 30.10.2026 moved the rulebook's sign-off on
+		   from the day V77 gave it, so it is undone first). */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "80");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "78");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "77");
 
@@ -366,6 +372,7 @@ class TheWrittenPagesSayTheDateOfBirthIsNotShownToOthersTest extends DatabaseTes
 	@Test
 	void v73RunAgainOverTheFinishedTextStopsAndSaysTheWordIsAlreadyThere() {
 		/* The text V73 finished, which is the text before V77 cut parts of it (29.10.2026). */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "80");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "78");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "77");
 

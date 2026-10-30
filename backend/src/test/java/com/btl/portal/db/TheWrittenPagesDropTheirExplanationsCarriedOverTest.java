@@ -95,7 +95,9 @@ class TheWrittenPagesDropTheirExplanationsCarriedOverTest extends DatabaseTest {
 
 	/** The pages as they stood before V77, and the proof that this is so: a piece of every old text stands again. */
 	private void theTextAsItStoodBeforeV77() {
-		/* V78 (29.10.2026) edited two of the sections V77 edits, so it is undone first, read out of V78 itself. */
+		/* V78 (29.10.2026) edited two of the sections V77 edits, so it is undone first, read out of V78 itself, and V80
+		   (30.10.2026) moved the rulebook's sign-off on from the day V77 gave it, so it is undone before that. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "80");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "78");
 
 		theTextAsItStoodBeforeV77WhenV78IsAlreadyUndone();
@@ -144,7 +146,9 @@ class TheWrittenPagesDropTheirExplanationsCarriedOverTest extends DatabaseTest {
 	@Test
 	void v77OverTheTextItFoundGivesTheTextV77LeftAndChangesNothingElse() {
 		/* The text the portal serves carries V78 on top (29.10.2026), which edits two of the sections V77 edits, so V78 is
-		   undone first and what V77 is compared to is the text V77 itself left. */
+		   undone first and what V77 is compared to is the text V77 itself left (V80 of 30.10.2026 first of all, since it
+		   moved the sign-off V77 wrote). */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "80");
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "78");
 
 		Map<String, String> finished = everyText();
@@ -260,6 +264,38 @@ class TheWrittenPagesDropTheirExplanationsCarriedOverTest extends DatabaseTest {
 		assertThat(bodyOf(TheWrittenPagesDropTheirExplanationsTest.RULEBOOK, 11, "sr"))
 				.containsOnlyOnce(sentence)
 				.doesNotContain("Periodičnog obračuna nema");
+	}
+
+	/**
+	 * THE FORMS OF THE EXEMPTION SWEEP THAT NAME NO ROOT STAND ON A FLOOR OF THEIR OWN, in both languages (PR 657
+	 * review, 29.10.2026: putting the old English list back stayed green, because the text before V77 holds no English
+	 * mention that only the new forms catch, so nothing asked whether those forms see). The sentence the review named
+	 * is written into a section of the rulebook, with its Serbian pair, and the sweep must find it in each language: the
+	 * Serbian form {@code ne pla[ćct]} sees "ne plati", the English {@code not pay} sees "does not pay". The sentence
+	 * is written over the current text and not over the text before V77, because what is asked is whether the
+	 * patterns see it, wherever it stands.
+	 */
+	@Test
+	void theSweepsSeeTheOfferOfAnExemptionThatNamesNoRoot() {
+		String serbian = "Upravni odbor može da odluči da član ne plati članarinu.";
+		String english = "The Managing Board may decide that a member does not pay the membership fee.";
+
+		setBody(TheWrittenPagesDropTheirExplanationsTest.RULEBOOK, 4, "sr",
+				bodyOf(TheWrittenPagesDropTheirExplanationsTest.RULEBOOK, 4, "sr") + "\n\n" + serbian);
+		setBody(TheWrittenPagesDropTheirExplanationsTest.RULEBOOK, 4, "en",
+				bodyOf(TheWrittenPagesDropTheirExplanationsTest.RULEBOOK, 4, "en") + "\n\n" + english);
+
+		List<TheWrittenPagesDropTheirExplanationsTest.Row> rows = TheWrittenPagesDropTheirExplanationsTest
+				.theThreePages(db);
+
+		assertThat(TheWrittenPagesDropTheirExplanationsTest.whereItMatches(rows, "sr",
+				TheWrittenPagesDropTheirExplanationsTest.AN_EXEMPTION_IN_SERBIAN))
+				.as("the Serbian sweep does not see an offer of the exemption that names no root")
+				.containsExactly("pravilnik #4");
+		assertThat(TheWrittenPagesDropTheirExplanationsTest.whereItMatches(rows, "en",
+				TheWrittenPagesDropTheirExplanationsTest.AN_EXEMPTION_IN_ENGLISH))
+				.as("the English sweep does not see an offer of the exemption that names no root")
+				.containsExactly("pravilnik #4");
 	}
 
 	/**

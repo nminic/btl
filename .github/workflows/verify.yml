@@ -52,8 +52,14 @@ jobs:
           name: backend-coverage
           path: backend/target/site/jacoco
 
-  frontend:
-    name: Frontend (lint, testovi, 100% coverage, build)
+  # The frontend gate is three jobs that run side by side and one job that waits for them
+  # (ADL A-CI, 30.10.2026). Before, it was five steps one after the other on one runner: about 46
+  # minutes (measured 30.10.2026, report b279), of which the Vitest pass with coverage was about
+  # 15.5, the same suite read as the other day about 11, and the Playwright geometry about 19.4.
+  # Nothing is skipped and nothing is loosened: every step that was there is in one of the three
+  # jobs with the same command, and the number of workers is the one each tool picks by itself.
+  frontend-tests:
+    name: Frontend - lint, testovi, 100% coverage, build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -67,8 +73,46 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci --no-fund --no-audit
       - run: npm run lint
+      # `npm run test:coverage` is `vitest run --coverage && npm run test:another-day`, and that
+      # stays the one command of the full gate on a machine. Here its first half runs on its own,
+      # with the same threshold (vite.config.ts), because its second half is the job below.
       - name: Testovi sa coverage pragom 100%
-        run: npm run test:coverage
+        run: npx vitest run --coverage
+      - run: npm run build
+
+  frontend-another-day:
+    name: Frontend - isti testovi, drugi dan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-fund --no-audit
+      # The second half of `npm run test:coverage`, by the very script it calls
+      # (frontend/vitest.anotherDay.config.ts). No coverage here: the thresholds are measured once.
+      - name: Testovi sa drugim danom
+        run: npm run test:another-day
+
+  frontend-geometry:
+    name: Frontend - build, geometrija u pravom Chrome-u
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-fund --no-audit
       - run: npm run build
       # The guards that ask a real browser where things stand (ADL A63), over the build of the
       # step above. Chrome is the one the runner image carries and nothing is downloaded
@@ -84,3 +128,27 @@ jobs:
         with:
           name: frontend-geometry
           path: frontend/test-results
+
+  # The name below is the one the rule of the `main` branch asks for as a required check, so it is
+  # written exactly as it was and the rule is not touched. `if: always()` makes it run when a job
+  # it waits for failed or was cancelled or skipped, and the test below makes it fail then: a job
+  # that is skipped counts as a pass to GitHub, and a job that waits on a skipped one is skipped
+  # too, so without this the gate would be green over a geometry that never ran.
+  frontend:
+    name: Frontend (lint, testovi, 100% coverage, build)
+    runs-on: ubuntu-latest
+    needs: [frontend-tests, frontend-another-day, frontend-geometry]
+    if: always()
+    steps:
+      - name: Svaka tri posla moraju biti uspešna
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "frontend-tests, frontend-another-day, frontend-geometry: $RESULTS"
+          for result in $RESULTS; do
+            if [ "$result" != "success" ]; then
+              echo "A job did not succeed: $result"
+              exit 1
+            fi
+          done
+          [ "$(echo $RESULTS | wc -w)" -eq 3 ]
