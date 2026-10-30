@@ -455,7 +455,7 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				// mine: an intention is nothing once either end of it is gone
 				"attending.attending_competitor_fk cascade",
 				"attending.attending_event_fk cascade",
-				/* V38. The book of balance goes with the member it is about: a liability of the
+				/* V38, UNTIL V79. The book of balance goes with the member it is about: a liability of the
 				   association towards somebody who is gone is not a liability, which is the direction
 				   `membership_competitor_fk` takes for the same reason. But the CREDIT survives the
 				   person it was earned FOR - V7's own sentence about `competitor.referred_by`, „the
@@ -467,7 +467,10 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   by a case rather than in production: a trigger refusing every `update` made the
 				   cascade itself fail, and a check demanding that a reward always name somebody made it
 				   fail one layer further down. See V38 and `BalanceConstraintsTest`. */
-				"balance_entry.balance_entry_competitor_fk cascade",
+				/* V79 (PDL, 29.10.2026, „Brisanje profila više ne sme da briše uplate, članstva ni
+				   balans: ostaju bez imena"): the book no longer goes with the member. It stays, and
+				   only the pointer at him empties, so the same direction as the credit beside it. */
+				"balance_entry.balance_entry_competitor_fk set null",
 				"balance_entry.balance_entry_recorded_by_fk set null",
 				"balance_entry.balance_entry_referred_fk set null",
 				"balance_promise.balance_promise_competitor_fk cascade",
@@ -532,8 +535,10 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   se praznio; a `league_event` od V20 nema uopste, jer liga broji trke. */
 				"league_race.league_race_league_fk cascade",
 				"league_race.league_race_race_fk cascade",
-				/* V22. A membership is a fact ABOUT a member and means nothing without him, the
-				   same as his payment and his team membership, so both keys CASCADE. The receipt
+				/* V22, AND ITS FIRST HALF HELD UNTIL V79. A membership is a fact ABOUT a member and
+				   means nothing without him, the same as his payment and his team membership, so both
+				   keys CASCADE - until the owner decided on 29.10.2026 that the bookkeeping outlives
+				   the member, so the membership and the payment now stay without him. The receipt
 				   one does as well, and that is not a preference: deleting a member takes his
 				   payments and his memberships in the same statement, so a RESTRICT towards the
 				   payment would make that delete succeed or fail depending on which of the two
@@ -541,24 +546,29 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   payment is deleted as well (PDL P8, „zapis o uplati se BRIŠE”; V64 took the state
 				   `reversed` away), and the same CASCADE is what takes its membership with it, so the
 				   two go together or not at all.
-				   What survives a deleted member is the frozen season, and it survives WITHOUT
-				   him: those four keys are `set null` below and the trigger of V17 empties the
+				   What survives a deleted member is the frozen season (and since V79 his money),
+				   and it survives WITHOUT him: those four keys are `set null` below and the trigger of V17 empties the
 				   name beside them (FrozenSeasonConstraintsTest). */
 				/* And the line in the book that paid for a season goes with the season, for the reason
 				   V22 gives about the receipt: evidence and the membership it evidences go together or
 				   not at all. */
 				"membership.membership_balance_entry_fk cascade",
-				"membership.membership_competitor_fk cascade",
+				/* V79: the membership stays without its member, for the reason the book does. */
+				"membership.membership_competitor_fk set null",
 				/* V35. The account that entered an exemption EMPTIES and the name it was entered
 				   under stays, which is the same sentence V9 wrote for a decision and V16 for a
 				   receipt: a moderator has the same right to have his account deleted as anybody
 				   else (PDL P23), and the exemption stays given. */
 				"membership.membership_decided_by_fk set null",
 				"membership.membership_payment_fk cascade",
-				/* V63. The trail of a change on a member's row goes with the member, the direction his
+				/* V79. The triple above is not checked once the member is forgotten, so the receipt
+				   alone keeps V22's rule for the row he leaves behind: it goes with its payment. */
+				"membership.membership_payment_id_fk cascade",
+				/* V63, UNTIL V79. The trail of a change on a member's row goes with the member, the direction his
 				   seasons and his book take (PDL P23); the account that did it may go and the name it was
 				   done under stays, the same sentence V35 wrote for an exemption. */
-				"membership_change.membership_change_competitor_fk cascade",
+				/* V79: and the trail stays as well, without him. */
+				"membership_change.membership_change_competitor_fk set null",
 				"membership_change.membership_change_decided_by_fk set null",
 				"message.message_from_fk set null",
 				"message.message_pair_invite_fk cascade",
@@ -570,11 +580,13 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"pair_invite.pair_invite_from_fk cascade",
 				"pair_invite.pair_invite_to_fk cascade",
 				"parental_consent.parental_consent_competitor_fk cascade",
-				/* V16. Uplata ide sa osobom, red cenovnika koji imenuje ne sme da ode dok je tu,
+				/* V16. Uplata je isla sa osobom do V79, a od tada ostaje bez nje; red cenovnika koji imenuje ne sme da ode dok je tu,
 				   a nalog blagajnika se PRAZNI i ime ostaje - isto kao odluka u V9. */
 				/* V18. Link za lozinku ide sa nalogom iz istog razloga kao sesija. */
 				"password_reset_token.password_reset_token_account_fk cascade",
-				"payment.payment_competitor_fk cascade",
+				/* V79: the payment no longer goes with its member; it stays, without him and without
+				   the reference that carried his number. */
+				"payment.payment_competitor_fk set null",
 				"payment.payment_price_row_fk restrict",
 				"payment.payment_recorded_by_fk set null",
 				"place.place_country_fk no action",

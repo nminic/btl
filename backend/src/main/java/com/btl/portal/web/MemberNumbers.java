@@ -63,7 +63,7 @@ import org.springframework.stereotype.Component;
  * unchanged) draws LAST as well, after the line in the book, the
  * {@code insert into membership} and the referral, and the two halves of that came for two
  * different reasons. <b>Two presses at once</b> both decided to grant, both drew - the draw
- * stood ahead of the insert - and the second then lost to {@code membership_pk}: a 500,
+ * stood ahead of the insert - and the second then lost to {@code membership_one_a_season}: a 500,
  * measured by {@code FreeingTwiceAtOneInstantTest} before either half existed, inside a
  * transaction that went back with its number already drawn. The route now locks the member's
  * row before it decides, so the second press waits for the first and is answered the harmless

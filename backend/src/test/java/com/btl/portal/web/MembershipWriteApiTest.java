@@ -673,7 +673,7 @@ class MembershipWriteApiTest {
 	 * <p>He paid. Writing an exemption over that would replace a membership held on money with
 	 * one held on a decision, and nothing would be left saying the money had arrived - the
 	 * mirror of what {@code PaymentApi} refuses in the other direction. Between the two, the
-	 * act that comes second is always refused and {@code membership_pk} is never met.
+	 * act that comes second is always refused and {@code membership_one_a_season} is never met.
 	 */
 	@Test
 	void aRecordedFeeIsNotForgivenQuietly() throws Exception {

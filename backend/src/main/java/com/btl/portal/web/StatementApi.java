@@ -413,15 +413,22 @@ class StatementApi {
 		db.sql("update bank_statement_line set waits_because = ? where id = ?").params(because, line).update();
 	}
 
-	/** A line as V74 holds it. */
+	/**
+	 * A line as V74 holds it.
+	 *
+	 * @param booked   whether the line names a payment, asked of the line itself
+	 * @param bookedTo whose that payment is, and null when it names none OR when its member has since been
+	 *                 deleted: since V79 the payment outlives him without a pointer at him (PDL,
+	 *                 29.10.2026), so the line stays booked and there is nobody left to draw beside it
+	 */
 	private record Stored(long id, LocalDate dated, int statement, int position, String payer,
 			String payerAccount, BigDecimal amount, String paymentCode, String purpose, String reference,
-			int season, Long bookedTo, String waitsBecause, boolean setAside) {
+			int season, boolean booked, Long bookedTo, String waitsBecause, boolean setAside) {
 	}
 
 	private static final String LINES = "select l.id, s.dated, s.number, l.position, l.payer, l.payer_account,"
 			+ " l.amount, l.payment_code, l.purpose, l.reference, l.season, p.competitor_id, l.waits_because,"
-			+ " l.set_aside_at is not null"
+			+ " l.set_aside_at is not null, l.payment_id is not null"
 			+ " from bank_statement_line l"
 			+ " join bank_statement s on s.id = l.statement_id"
 			+ " left join payment p on p.id = l.payment_id";
@@ -432,7 +439,8 @@ class StatementApi {
 
 		return new Stored(row.getLong(1), row.getDate(2).toLocalDate(), row.getInt(3), row.getInt(4),
 				row.getString(5), row.getString(6), row.getBigDecimal(7), row.getString(8), row.getString(9),
-				row.getString(10), row.getInt(11), bookedTo, row.getString(13), row.getBoolean(14));
+				row.getString(10), row.getInt(11), row.getBoolean(15), bookedTo, row.getString(13),
+				row.getBoolean(14));
 	}
 
 	private List<Stored> linesWithOrders(List<String> orders) {
@@ -449,8 +457,12 @@ class StatementApi {
 		List<Candidate> everybody = lines.isEmpty() ? List.of() : everybody();
 
 		return lines.stream().map(one -> {
-			if (one.bookedTo() != null) {
-				return line(one, BOOKED, find(everybody, one.bookedTo()), List.of(), null);
+			/* BOOKED IS A FACT ABOUT THE LINE, AND WHOSE IS A FACT ABOUT THE PAYMENT. Read off the payment's
+			   member, a line booked to somebody since deleted read as waiting in the answer to a statement
+			   taken again, while the queue, which asks the line, left it out. */
+			if (one.booked()) {
+				return line(one, BOOKED, one.bookedTo() == null ? null : find(everybody, one.bookedTo()),
+						List.of(), null);
 			}
 
 			if (one.setAside()) {

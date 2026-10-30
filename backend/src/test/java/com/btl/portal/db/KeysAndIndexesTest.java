@@ -255,13 +255,14 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("payment_one_a_season", false,
 					"one payment per member per season, looked up by the pair and carrying no order"),
 
-			/* V22. The one key in the schema that IS the whole row: a membership is the person
-			   and the year and has nothing else to be identified by, so there is no surrogate
-			   beside it that somebody could write a second row under. Same shape and same reason
-			   as `league_race_pk` and `message_read_pk`. Beside it, the target V19's trick needs:
-			   a membership names a receipt AND whose it is AND which season, all in one key, so a
-			   row cannot carry somebody else's. */
-			new Key("membership_pk", false,
+			/* V22 made the member and the year the whole key, and V79 had to stop: a membership now
+			   outlives its member without a pointer at him (PDL, 29.10.2026), and a primary key cannot
+			   hold a null. So the shape is `payment`'s - a surrogate, and the pair beside it - and the
+			   pair still refuses a second row for a living member. Beside them, the target V19's trick
+			   needs: a membership names a receipt AND whose it is AND which season, all in one key, so
+			   a row cannot carry somebody else's. */
+			new Key("membership_pk", false, "a surrogate key nothing outside the portal sees"),
+			new Key("membership_one_a_season", false,
 					"the member and the season together, which is what says he is a member of one"
 							+ " season once; looked up by the pair and carrying no order"),
 			new Key("payment_competitor_season_unique", false,

@@ -561,6 +561,35 @@ class StatementApiTest {
 				.query(Boolean.class).single()).isTrue();
 	}
 
+	/**
+	 * A LINE BOOKED TO A MEMBER WHO HAS SINCE BEEN DELETED STAYS BOOKED, TO NOBODY, AND WAITS FOR NOBODY.
+	 *
+	 * <p>Since V79 his payment outlives him without a pointer at him (PDL, 29.10.2026, „Brisanje profila
+	 * više ne sme da briše uplate"), so the line still names it and the money was booked. A namesake who
+	 * stays is the other source the answer could come from: read off the payment's member rather than
+	 * off the line, the line would be suggested to him, or marked as his, when the statement is taken
+	 * again.
+	 */
+	@Test
+	void aLineBookedToAMemberSinceDeletedStaysBookedToNobody() throws Exception {
+		long marko = competitor("000027", "Marko", "Markovic", A_TOWN_IN_SERBIA);
+
+		ASyntheticStatement statement = statement(24).credit("MARKO MARKOVIĆ", EXPECTED, "2028000027", order());
+
+		assertThat(states(taken(statement))).containsExactly("booked");
+
+		competitor("000099", "Marko", "Markovic", A_TOWN_IN_SERBIA);
+		db.sql("delete from competitor where id = ?").param(marko).update();
+
+		JsonNode again = taken(statement);
+
+		assertThat(states(again)).as("the line his payment was booked from no longer reads as booked")
+				.containsExactly("booked");
+		assertThat(again.get("lines").get(0).get("member").isNull())
+				.as("a booked line names a member the payment no longer has").isTrue();
+		assertThat(waiting()).as("a booked line waits again").isEmpty();
+	}
+
 	/* ------------------------------------------------------------------------------------
 	   „NIJE ČLANARINA" (owner, 25.10.2026)
 	   ------------------------------------------------------------------------------------ */

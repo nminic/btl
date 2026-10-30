@@ -415,7 +415,7 @@ class MyMembershipWriteApiTest {
 	 * A MEMBER OF THIS SEASON ALREADY IS REFUSED, AND NOTHING IS TAKEN OFF HIS BALANCE.
 	 *
 	 * <p>He holds a covering balance, so the refusal cannot be coming out of the money. Without this
-	 * the second row would collide with {@code membership_pk} and he would be answered 500.
+	 * the second row would collide with {@code membership_one_a_season} and he would be answered 500.
 	 *
 	 * <p><b>He is in on his OWN BALANCE and not free of the fee, which is what makes this case about
 	 * {@code alreadyAMember}.</b> An exemption is a membership too, and {@code ActivatingFromBalance}

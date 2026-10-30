@@ -24,7 +24,7 @@ import java.util.Objects;
  *
  * <ul>
  * <li><b>Is he already a member of this season.</b> Refused, and said out loud rather than left
- * to collide with {@code membership_pk} (V22) and answer 500. This is the exact shape
+ * to collide with {@code membership_one_a_season} (V22, so named since V79) and answer 500. This is the exact shape
  * {@code PaymentApi} lists as deliberately unguarded because nothing could reach it - „a
  * competitor already holding a {@code membership} row for this season ... has no code path to
  * reach today" - and this class is the code path, so the guard is owed here.

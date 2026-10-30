@@ -678,7 +678,17 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   78 and no other: main stood at V77 on 29.10.2026 (03028557) and no branch of the remote held V78.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("78", "V78__the_rulebook_keeps_the_ducats_in_one_sentence_and_the_policy_loses_the_map.sql", -50931346));
+			new Applied("78", "V78__the_rulebook_keeps_the_ducats_in_one_sentence_and_the_policy_loses_the_map.sql", -50931346),
+
+			/* V79. A deleted member's payments, memberships, book and trail stay without his name and his
+			   number (owner, 29.10.2026, PDL „Brisanje profila više ne sme da briše uplate, članstva ni
+			   balans"): four keys set null, the membership's key becomes a surrogate beside the pair, and
+			   the triggers that forget a deleted member and his account.
+
+			   79 and not 78: V78 is the branch of PR 657, open while this was written.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("79", "V79__the_money_of_a_deleted_member_stays_without_his_name.sql", 1899883250));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

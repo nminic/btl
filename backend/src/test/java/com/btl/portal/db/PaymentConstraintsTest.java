@@ -145,9 +145,8 @@ class PaymentConstraintsTest extends DatabaseTest {
 								+ ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal', 'awaited',"
 								+ " null, null, null, null from payment limit 1"),
 
-				Violation.notNull("payment_competitor_id_not_null", "competitor_id",
-						payment("null, 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal', 'awaited',"
-								+ " null, null, null")),
+				/* A payment about nobody is refused by a trigger since V79 and measured in
+				   `TheMoneyOutlivesADeletedMemberTest`. */
 				Violation.of("payment_competitor_fk",
 						payment("999999, 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal', 'awaited',"
 								+ " null, null, null")),

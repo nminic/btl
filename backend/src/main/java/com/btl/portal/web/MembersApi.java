@@ -171,7 +171,7 @@ class MembersApi {
 						+ " left join place town on town.id = c.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
 						+ " left join country typed_country on typed_country.id = c.country_id"
-						/* `membership_pk` is (competitor, season), so this joins at most one row. */
+						/* `membership_one_a_season` is (competitor, season), so this joins at most one row. */
 						+ " left join membership sold on sold.competitor_id = c.id"
 						+ "  and sold.season = :sold"
 						/* EVERYBODY WHO WAS EVER GIVEN A NUMBER, and nobody else (PDL, 21.09.2026). */

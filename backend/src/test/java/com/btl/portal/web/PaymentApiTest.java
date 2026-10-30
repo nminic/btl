@@ -441,7 +441,7 @@ class PaymentApiTest {
 	/**
 	 * A SEASON ALREADY HELD WITHOUT A FEE IS REFUSED, AND THE KEY IS NEVER REACHED.
 	 *
-	 * <p>{@code membership_pk} is {@code (competitor_id, season)}, so the row the
+	 * <p>{@code membership_one_a_season} is {@code (competitor_id, season)}, so the row the
 	 * administration writes when it frees somebody of the fee occupies exactly the
 	 * place {@code recordIt} would insert into. Before this guard the route read
 	 * {@code payment} only, found nothing waiting, drew a number, wrote the payment and

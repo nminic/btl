@@ -197,7 +197,7 @@ class MembershipWriteApi {
 	 * where the man PAID, and forgiving a fee that has arrived is not a thing this route may
 	 * do quietly. It is the mirror of {@code PaymentApi.THE_MEMBERSHIP_IS_ALREADY_HELD} and
 	 * the two exist for one reason between them: whichever act comes second is refused, so
-	 * {@code membership_pk} is never met and neither act silently replaces the other.
+	 * {@code membership_one_a_season} is never met and neither act silently replaces the other.
 	 */
 	static final String THE_FEE_IS_ALREADY_RECORDED = "theFeeIsAlreadyRecorded";
 
@@ -315,7 +315,7 @@ class MembershipWriteApi {
 		   TOGETHER. `ALREADY_GRANTED_ON_THIS_GROUND` answers a second press 200 and writes nothing,
 		   and it can only do that if the second press SEES the first one's row. Without the lock two
 		   presses that arrived at once both read that no membership stood, both decided to grant,
-		   and the second lost to `membership_pk`: a 500 for the very press the repeat was written for
+		   and the second lost to `membership_one_a_season`: a 500 for the very press the repeat was written for
 		   (measured, `FreeingTwiceAtOneInstantTest`, before this line existed). Held here, the second
 		   press waits for the first to commit and then reads its membership and its number.
 

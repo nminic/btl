@@ -189,7 +189,7 @@ public final class GrantingAMembership {
 	 * Judged in this order, and the order is the reason each refusal says what it says.
 	 *
 	 * <p><b>THE SEASON BEING TAKEN COMES FIRST, because it is the fact that would end in a
-	 * 500.</b> {@code membership_pk} is {@code (competitor_id, season)} (V22), so a row standing
+	 * 500.</b> {@code membership_one_a_season} is {@code (competitor_id, season)} (V22), so a row standing
 	 * for this pair is a row the {@code insert} cannot add whatever ground it carries. Asked last,
 	 * the refusals below it would be reported for a season that is already settled and the write
 	 * would then meet the key anyway.

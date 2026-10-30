@@ -104,6 +104,13 @@ class BalanceCarriedOverTest extends DatabaseTest {
 		jdbc.execute("drop table balance_entry, balance_promise cascade");
 		jdbc.execute("drop function a_balance_entry_is_written_once(), a_reward_says_who_earned_it()");
 
+		/* AND WHAT V79 WROTE OVER THE BOOK THIS TAKES AWAY: the two triggers that forget a deleted
+		   member and his account name `balance_entry` since V79. The member's goes back to the form V33
+		   gave it, by running V33's own file, and the account's did not exist before V79 at all. */
+		jdbc.execute(migrationSql("33"));
+		jdbc.execute("drop trigger account_deletion_forgets_his_own_lines on account");
+		jdbc.execute("drop function a_deleted_account_forgets_his_own_lines()");
+
 		/* AND THE ONE THING V38 DID NOT CREATE BUT WIDENED, which is why it is restated rather than
 		   dropped: `membership_basis_known` existed before it and has to go back to the two words
 		   V22 gave it. Measured against the V35 on `main` rather than assumed: V35 adds three columns
