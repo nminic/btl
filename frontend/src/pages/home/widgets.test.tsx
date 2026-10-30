@@ -58,6 +58,7 @@ const competitor = (memberNumber: string): Competitor => ({
   ageBand: '40-54',
   firstSeason2027: false,
   firstSeason: 2027,
+  unranked: false,
   membershipBasis: 'payment',
   teamId: null,
   teamSince: null,
@@ -86,6 +87,7 @@ const result = (memberNumber: string, points: number): Result => ({
   points,
   category: 'short',
   inItsSeason: true,
+  inItsStanding: true,
 })
 
 describe('News', () => {

@@ -58,14 +58,14 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
       ...ON_SALE,
       membershipBasis: 'payment',
       seasons: [
-        { season: 2027, basis: 'feeExempt' },
-        { season: 2028, basis: 'payment' },
+        { season: 2027, basis: 'feeExempt', ranked: true },
+        { season: 2028, basis: 'payment', ranked: true },
       ],
     }),
     asMember(must(COMPETITORS[1], 'Zoran'), {
       ...ON_SALE,
       membershipBasis: 'feeExempt',
-      seasons: [{ season: 2028, basis: 'feeExempt' }],
+      seasons: [{ season: 2028, basis: 'feeExempt', ranked: true }],
       currency: 'RSD',
       expected: 4200,
       price: 4200,
@@ -74,7 +74,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
     asMember(must(COMPETITORS[2], 'Mila'), {
       ...ON_SALE,
       membershipBasis: 'balance',
-      seasons: [{ season: 2028, basis: 'balance' }],
+      seasons: [{ season: 2028, basis: 'balance', ranked: true }],
       currency: 'EUR',
       expected: 38,
       price: 35,
@@ -83,7 +83,7 @@ describe('cancelling a season or changing its basis on a member’s row', () => 
       seasonOnSale: 2028,
       membershipBasis: undefined,
       membershipSeason: undefined,
-      seasons: [{ season: 2027, basis: 'payment' }],
+      seasons: [{ season: 2027, basis: 'payment', ranked: true }],
       active: true,
     }),
   ]

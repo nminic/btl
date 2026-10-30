@@ -54,7 +54,7 @@ describe('recording a payment on a member’s row', () => {
     asMember(must(COMPETITORS[1], 'Zoran'), {
       membershipBasis: undefined,
       membershipSeason: undefined,
-      seasons: [{ season: 2027, basis: 'payment' }],
+      seasons: [{ season: 2027, basis: 'payment', ranked: true }],
       active: true,
       seasonOnSale: 2028,
       currency: 'RSD',
@@ -65,7 +65,7 @@ describe('recording a payment on a member’s row', () => {
     asMember(must(COMPETITORS[2], 'Mila'), {
       membershipBasis: undefined,
       membershipSeason: undefined,
-      seasons: [{ season: 2027, basis: 'payment' }],
+      seasons: [{ season: 2027, basis: 'payment', ranked: true }],
       active: true,
       seasonOnSale: 2028,
       currency: 'EUR',

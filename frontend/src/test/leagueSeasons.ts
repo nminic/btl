@@ -69,6 +69,13 @@ function movedRecord(record: unknown): unknown {
     copy.inItsSeason = true
   }
 
+  /* And of a member who held that season with the right to rank in it (`Result.inItsStanding`, PDL,
+     28.10.2026): the history the league never ran carries no day of activation, so it is read as
+     the ordinary case, a season taken before its 31 March. */
+  if (typeof copy.inItsStanding === 'boolean') {
+    copy.inItsStanding = true
+  }
+
   return copy
 }
 

@@ -54,6 +54,7 @@ export const aCompetitor = {
   ageBand: '40-54' as const,
   firstSeason2027: false,
   firstSeason: 2014,
+  unranked: false,
   bio: '',
   teamId: 1,
   teamSince: 2014,

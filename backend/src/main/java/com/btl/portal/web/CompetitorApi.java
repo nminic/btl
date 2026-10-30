@@ -521,10 +521,26 @@ class CompetitorApi {
 	 * @param membershipSeason the season {@code membershipBasis} is the basis of, present exactly
 	 *                       when it is: to the administration, for a member who holds a row for
 	 *                       the season on sale
+	 * @param unranked       whether he holds the membership of the season the list is drawn for
+	 *                       (the season his band is worked out for, which is the season the screens
+	 *                       show as the running one) and it was activated after 31 March of it
+	 *                       ({@link WhenASeasonWasActivated}). PDL, 28.10.2026: such a member „ne
+	 *                       pojavljuje se u tabelama lige, rang listama ni u kategoriji", and
+	 *                       30.10.2026, of the category: „ne prikazuje se javno nigde njegov odabir".
+	 *                       The screens need it for the members who have NOT raced: a run carries
+	 *                       its own {@code inItsStanding}, but the table of the running season draws
+	 *                       every member with a fee, raced or not, and the category is drawn on every
+	 *                       card and profile. It tells nothing that table does not: a member on this
+	 *                       list and missing from it is the same fact.
+	 *                       <p><b>False for a member who holds no membership of that season at
+	 *                       all</b> (in the window, one who paid only for the next): he is not a
+	 *                       member „bez prava rangiranja" but no member of it, and what the screens
+	 *                       do with him is the debt {@code rankingWithEverybody} already names, not
+	 *                       touched here
 	 */
 	record Competitor(String memberNumber, String firstName, String lastName, String gender,
 			String city, String country, String ageBand, boolean firstSeason2027, int firstSeason,
-			String bio, Long teamId, Integer teamSince, boolean profileHidden,
+			boolean unranked, String bio, Long teamId, Integer teamSince, boolean profileHidden,
 			String birthdayShown, String photo, Crop crop, String smallPhoto,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer membershipSeason) {
@@ -745,6 +761,10 @@ class CompetitorApi {
 						   THEY STAND BEFORE THE YEAR rather than after it, so that the sentence
 						   below stays true: the year is still the LAST column read. */
 						+ " mine.digest, mine.crop_x, mine.crop_y, mine.crop_diameter,"
+						/* WHETHER HE HOLDS THE SEASON THE LIST IS DRAWN FOR, AND WHEN IT WAS
+						   ACTIVATED, which together say whether he ranks in it (`unranked`). */
+						+ " shown.season is not null as holds_the_season_shown,"
+						+ " " + WhenASeasonWasActivated.of("shown") + " as shown_activated_at,"
 						+ " c.birth_year"
 						+ " from competitor c"
 						+ " left join place town on town.id = c.place_id"
@@ -789,6 +809,11 @@ class CompetitorApi {
 						   and withheld from all but the administration in one place. */
 						+ " left join membership held on held.competitor_id = c.id"
 						+ "  and held.season = :sold"
+						/* AND THE MEMBERSHIP OF THE SEASON SHOWN, which is not the one on sale from
+						   11 November to 31 December, and the one the right to rank is asked of. The
+						   same key, so at most one row. */
+						+ " left join membership shown on shown.competitor_id = c.id"
+						+ "  and shown.season = :shown"
 						/* AND ONLY THE MEMBERS WHOSE FEE IS STANDING, which is the whole of what
 						   this resource is allowed to say about a fee. PDL P11: „Status clanarine
 						   se ne prikazuje na profilu... ko nije platio, ne vidi se nigde osim u
@@ -800,6 +825,7 @@ class CompetitorApi {
 				.param("administration", administration)
 				.param("readsHiddenProfiles", readsHiddenProfiles)
 				.param("sold", sold)
+				.param("shown", season)
 				.query((row, one) -> {
 					/* Exact decimal all the way out, never a double, which is `TeamApi`'s own
 					   sentence about the same three numbers: V21 chose `numeric(9, 8)` because
@@ -822,8 +848,11 @@ class CompetitorApi {
 						   January rather than on the birthday is written down (PDL P7, changed
 						   from the 2017 rulebook). A second copy of that arithmetic in a
 						   mapper is a second place to fix when a band moves. */
-						Category.ageBandFor(row.getInt(19), season).code(),
-						row.getBoolean(7), row.getInt(8), row.getString(9),
+						Category.ageBandFor(row.getInt(21), season).code(),
+						row.getBoolean(7), row.getInt(8),
+						/* THE SEASON SHOWN, read off the same clock as the band above. */
+						row.getBoolean(19) && !WhenASeasonWasActivated.ranks(season, row.getTimestamp(20)),
+						row.getString(9),
 						row.getObject(10) == null ? null : row.getLong(10),
 						row.getObject(11) == null ? null : row.getInt(11),
 						row.getBoolean(12), row.getString(13),

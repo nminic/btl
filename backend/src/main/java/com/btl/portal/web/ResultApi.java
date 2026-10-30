@@ -238,10 +238,28 @@ class ResultApi {
 	 *                 each screen because the screens do not have the memberships, and
 	 *                 {@link BestOfficialSeason} asks the same join, so the two sides cannot disagree
 	 *                 about which runs a season holds.
+	 * @param inItsStanding whether the result counts in the STANDINGS of its season: {@code inItsSeason},
+	 *                 and the membership of that season was activated by 31 March of it
+	 *                 ({@link WhenASeasonWasActivated}). PDL, 28.10.2026: a member without the right
+	 *                 to rank „ima profil, unosi rezultate i vidi svoje bodove i statistiku na
+	 *                 profilu; ne pojavljuje se u tabelama lige, rang listama ni u kategoriji, a
+	 *                 bodovi mu ne ulaze u zbir tima ni para", and 30.10.2026: he still earns his
+	 *                 ducats, his points still close the beginners' category, he stands on the list
+	 *                 of the race, and his season counts as the previous one on the board of best
+	 *                 progress. So it is a SECOND flag beside {@code inItsSeason} and not a narrower
+	 *                 {@code inItsSeason}: the profile, the ducats, the threshold and the season
+	 *                 before on the board of progress read the first, and every table, board and sum
+	 *                 reads this one. The screens cannot work it out for themselves, because they do
+	 *                 not have the day a membership was activated, and the day is the whole rule.
+	 *                 <p>It tells a reader nothing the tables do not: a member whose run counts in
+	 *                 his season and in no standing of it is a member missing from the tables of that
+	 *                 season, which the owner's decision itself makes public. The basis is still told
+	 *                 to nobody (PDL, 28.07.2026), and neither is the day.
 	 */
 	record Result(long id, String memberNumber, long raceId, String raceName, String eventName,
 			String eventSlug, LocalDate date, BigDecimal distanceKm, int ascentM, int descentM,
-			int seconds, BigDecimal points, String category, boolean inItsSeason, Runner runner) {
+			int seconds, BigDecimal points, String category, boolean inItsSeason,
+			boolean inItsStanding, Runner runner) {
 	}
 
 	@GetMapping("/api/results")
@@ -267,7 +285,13 @@ class ResultApi {
 						   `membership` is the member and the season, so this is one probe of an
 						   index per row and not a scan. */
 						+ " exists(select 1 from membership m where m.competitor_id = r.competitor_id"
-						+ " and m.season = extract(year from r.race_date)) as in_its_season"
+						+ " and m.season = extract(year from r.race_date)) as in_its_season,"
+						/* AND WHEN THAT SAME MEMBERSHIP WAS ACTIVATED, which decides whether the
+						   season's standings count the run (see `inItsStanding`). The same key as the
+						   line above, so it is the membership that stands and no other. */
+						+ " (select " + WhenASeasonWasActivated.of("m") + " from membership m"
+						+ " where m.competitor_id = r.competitor_id"
+						+ " and m.season = extract(year from r.race_date)) as activated_at"
 						+ " from result r"
 						+ " join competitor c on c.id = r.competitor_id"
 						+ " join race ra on ra.id = r.race_id"
@@ -303,6 +327,10 @@ class ResultApi {
 							day, row.getBigDecimal(8), row.getInt(9),
 							row.getInt(10), row.getInt(11), row.getBigDecimal(12), row.getString(13),
 							row.getBoolean(19),
+							/* THE SEASON IS THE YEAR OF THE RUN, the year the membership above was
+							   joined on, and never the clock's. */
+							row.getBoolean(19)
+									&& WhenASeasonWasActivated.ranks(day.getYear(), row.getTimestamp(20)),
 							/* NULL WHEN HE HAS NO MEMBER NUMBER, the key still there. The note on
 							   this class says why a registration without one is not named. */
 							memberNumber == null ? null

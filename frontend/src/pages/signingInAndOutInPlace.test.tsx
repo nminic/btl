@@ -157,6 +157,7 @@ function aResult(memberNumber: string, date: string, points: number) {
     category: 'short',
     /* A run of a member of the season it is run in (`Result.inItsSeason`). */
     inItsSeason: true,
+    inItsStanding: true,
   }
 }
 

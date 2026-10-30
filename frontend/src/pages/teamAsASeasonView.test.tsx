@@ -77,6 +77,7 @@ function aResult(memberNumber: string, date: string, points: number, distanceKm 
     points,
     category: 'short',
     inItsSeason,
+    inItsStanding: inItsSeason,
   }
 }
 

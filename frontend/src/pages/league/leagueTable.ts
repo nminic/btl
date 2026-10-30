@@ -1,5 +1,5 @@
 import { genderMark } from '../../data/categories'
-import { numbered, seasonOf } from '../../data/derive'
+import { numbered, standingSeasonOf } from '../../data/derive'
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
 import { leagueRaces } from './leagueCounting'
 
@@ -132,9 +132,11 @@ export function leagueTable(
   for (const result of numbered(results)) {
     const eventId = eventOf.get(result.raceId)
 
-    /* A run no season counts is in no standing of a competition either (`seasonOf`, PDL P9,
-       18.10.2026: „ne ulazi ni u jednu sezonsku tabelu"), even on a race the competition counts. */
-    if (eventId === undefined || seasonOf(result) === null) {
+    /* A run no season counts is in no standing of a competition either (PDL P9, 18.10.2026: „ne
+       ulazi ni u jednu sezonsku tabelu"), even on a race the competition counts, and neither is a
+       run of a member without the right to rank in its season (PDL, 28.10.2026: „ne pojavljuje se u
+       tabelama lige, rang listama"): `standingSeasonOf` answers none for both. */
+    if (eventId === undefined || standingSeasonOf(result) === null) {
       continue
     }
 

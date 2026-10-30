@@ -39,7 +39,11 @@ export function countTheHistoryInItsSeasons(): void {
         JSON.stringify(
           Array.isArray(body)
             ? body.map((one: unknown) =>
-                typeof one === 'object' && one !== null ? { ...one, inItsSeason: true } : one,
+                /* With the right to rank as well (`Result.inItsStanding`, PDL 28.10.2026): the
+                   history carries no day of activation, so it is the ordinary season. */
+                typeof one === 'object' && one !== null
+                  ? { ...one, inItsSeason: true, inItsStanding: true }
+                  : one,
               )
             : body,
         ),

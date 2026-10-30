@@ -355,7 +355,9 @@ describe('the season the front page counts', () => {
   let previous = window.matchMedia
 
   /** The history as served, and these results of the league on top of it. */
-  function serveAlso(added: { memberNumber: string; date: string; inItsSeason?: boolean }[]): void {
+  function serveAlso(
+    added: { memberNumber: string; date: string; inItsSeason?: boolean; inItsStanding?: boolean }[],
+  ): void {
     vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
       const answer = await served(input, init)
 
@@ -376,6 +378,7 @@ describe('the season the front page counts', () => {
             /* Runs of the league, by members of the season they were run in: the history they
                are copied from counts in no season (`Result.inItsSeason`). */
             inItsSeason: true,
+            inItsStanding: true,
             ...one,
           })),
         ]),
@@ -461,7 +464,7 @@ describe('the season the front page counts', () => {
     serveAlso([
       { memberNumber: '000001', date: '2027-01-10' },
       { memberNumber: '000002', date: '2027-02-14' },
-      { memberNumber: '000004', date: '2027-02-20', inItsSeason: false },
+      { memberNumber: '000004', date: '2027-02-20', inItsSeason: false, inItsStanding: false },
     ])
     renderAt('/sr', 'visitor', null, undefined, '2027-03-01')
 

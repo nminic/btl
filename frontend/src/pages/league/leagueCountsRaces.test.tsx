@@ -104,6 +104,7 @@ const ran = (id: number, memberNumber: string, raceId: number, points: number): 
   points,
   category: 'short',
   inItsSeason: true,
+  inItsStanding: true,
 })
 
 /**

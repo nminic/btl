@@ -13,6 +13,7 @@ const member: Competitor = {
   ageBand: '25-39',
   firstSeason2027: false,
   firstSeason: 2027,
+  unranked: false,
   membershipBasis: 'payment',
   teamId: null,
   teamSince: null,
@@ -45,6 +46,7 @@ function race(date: string, over: Partial<Result> = {}): Result {
     points: 20,
     category: 'short',
     inItsSeason: true,
+    inItsStanding: true,
     ...over,
   }
 }
@@ -106,9 +108,9 @@ describe('the quantity a kind names', () => {
        history is a year raced in, though no season counts a run of it (`Result.inItsSeason`). Read
        by the season a run counts in, the three years below would be one answer of nothing. */
     const history = [
-      race('2015-03-01', { inItsSeason: false }),
-      race('2016-03-01', { inItsSeason: false }),
-      race('2019-03-01', { inItsSeason: false }),
+      race('2015-03-01', { inItsSeason: false, inItsStanding: false }),
+      race('2016-03-01', { inItsSeason: false, inItsStanding: false }),
+      race('2019-03-01', { inItsSeason: false, inItsStanding: false }),
     ]
 
     expect(quantityOf('seasonCount', history)).toBe(3)

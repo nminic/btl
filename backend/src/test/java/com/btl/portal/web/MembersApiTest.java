@@ -229,6 +229,42 @@ class MembersApiTest {
 		return basis;
 	}
 
+	/**
+	 * THE ADMINISTRATION SEES WHICH SEASON CARRIES NO RIGHT TO RANK (PDL, 30.10.2026: „Administracija
+	 * vidi „bez prava rangiranja" u redu člana, na spisku sezona, pored osnova članstva").
+	 *
+	 * <p>A member who holds 2027 exempted on 1 May and 2028 exempted in the autumn before it: one
+	 * season of each kind on one row, so a flag answered per member rather than per season is a
+	 * different answer, and every season of the fixture written in October 2026 ranks.
+	 */
+	@Test
+	void eachSeasonOnTheRowSaysWhetherItCarriesTheRightToRank() throws Exception {
+		long late = member("000013", "Lazar", "Hadzic", "M", true, false, "11aa22bb33cc44d7");
+		HeldOn.season(db, late, 2027, "feeExempt", Instant.parse("2027-05-01T10:00:00Z"));
+		HeldOn.season(db, late, 2028, "feeExempt", Instant.parse("2027-11-20T10:00:00Z"));
+
+		Map<String, List<String>> ranked = new LinkedHashMap<>();
+
+		for (JsonNode one : members()) {
+			ranked.put(one.path("memberNumber").asString(),
+					StreamSupport.stream(one.path("seasons").spliterator(), false)
+							.map(held -> held.path("season").asInt() + " " + held.path("ranked").asBoolean())
+							.toList());
+		}
+
+		assertThat(ranked).containsEntry("000013", List.of("2027 false", "2028 true"))
+				.containsEntry("000002", List.of("2027 true", "2028 true"));
+
+		/* AND THE SCREEN READS EXACTLY THESE NAMES OF A SEASON: the flat floor above cannot see
+		   inside one, so the names of a season are compared with the served file's here. */
+		JsonNode hers = StreamSupport.stream(members().spliterator(), false)
+				.filter(one -> one.path("memberNumber").asString().equals("000002"))
+				.findFirst().orElseThrow();
+
+		assertThat(Answers.fieldsOf(hers.path("seasons").get(0)))
+				.isEqualTo(Answers.fieldsOf(Answers.servedRecord("members.json").path("seasons").get(0)));
+	}
+
 	@Test
 	void aVisitorIsAskedToSignIn() throws Exception {
 		assertThat(statusFor(null)).isEqualTo(401);

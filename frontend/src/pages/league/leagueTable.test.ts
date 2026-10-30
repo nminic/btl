@@ -13,6 +13,7 @@ const person = (memberNumber: string): Competitor => ({
   ageBand: '40-54',
   firstSeason2027: false,
   firstSeason: 2019,
+  unranked: false,
   membershipBasis: 'payment',
   teamId: null,
   teamSince: null,
@@ -77,6 +78,7 @@ const result = (memberNumber: string, raceId: number, points: number, inItsSeaso
   points,
   category: 'short',
   inItsSeason,
+  inItsStanding: inItsSeason,
 })
 
 /* **Counts every race of the two events it holds**, which is the ordinary arrangement and the one
@@ -157,6 +159,21 @@ describe('the grid of a competition', () => {
     )
 
     expect(table.columns.map((one) => one.eventId)).toEqual([8, 7])
+  })
+
+  it('has no row for a member without the right to rank, though his run counts in its season', () => {
+    /* PDL, 28.10.2026: he „ne pojavljuje se u tabelama lige, rang listama". His run is the largest
+       on a counted race and counts in its season (`inItsSeason`), so a table asking „was he a member"
+       instead of „does he rank" puts him first. */
+    const table = leagueTable(
+      league,
+      events,
+      races,
+      [result('000001', 9, 10), { ...result('000002', 9, 50), inItsStanding: false }],
+      [person('000001'), person('000002')],
+    )
+
+    expect(table.rows.map((one) => one.competitor.memberNumber)).toEqual(['000001'])
   })
 
   it('has a row for everyone who ran at least one of them, and for nobody else', () => {

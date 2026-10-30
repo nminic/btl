@@ -8,10 +8,10 @@ import { Resource } from '../components/Resource'
 import { SeasonPicker } from '../components/SeasonPicker'
 import {
   categoriesOf,
-  categoryOfMember,
   rankingFor,
   rankingWithEverybody,
   seasonsOnOffer,
+  shownCategoryLabel,
 } from '../data/derive'
 import { seasonShown } from '../data/season'
 import { offeredSeason } from '../components/season'
@@ -316,7 +316,7 @@ function Standing({
                       </span>
                     </NamePlate>
                   </td>
-                  <td className="table__category">{categoryLabel(categoryOfMember(row.competitor), t)}</td>
+                  <td className="table__category">{shownCategoryLabel(row.competitor, t)}</td>
                   <td className="table__hide-phone">{row.races}</td>
                   <td className="table__hide-phone">{formatNumber(row.kilometers, locale, 2)}</td>
                   <td className="table__hide-phone">{formatNumber(row.ascent, locale)}</td>

@@ -70,6 +70,12 @@ export function MemberSeasons({ one, onAsk }: { one: Member; onAsk: (ask: Season
                 />
                 {season}
               </label>
+              {/* Beside the season it is said of, and nowhere else on the portal (owner, 30.10.2026:
+                  „Administracija vidi „bez prava rangiranja" u redu člana, na spisku sezona, pored
+                  osnova članstva, i nigde drugde"). Read off the season's own row (`MembersApi`). */}
+              {one.seasons.some((row) => row.season === season && !row.ranked) && (
+                <span className="members-seasons__unranked"> · {t('admin.withoutTheRightToRank')}</span>
+              )}
               {onSaleNow && offeredFor(onSale).toTheExemption && (
                 <button type="button" className="entity-open" onClick={() => onAsk({ act: 'toTheExemption' })}>
                   {t('admin.changeToExemption')}

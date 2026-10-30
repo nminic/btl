@@ -59,6 +59,7 @@ const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Comp
   ageBand: '40-54',
   firstSeason2027: false,
   firstSeason: 2027,
+  unranked: false,
   membershipBasis: 'payment',
   teamId: null,
   teamSince: null,
@@ -91,6 +92,7 @@ const result = (memberNumber: string | null, date: string, points: number, extra
   points,
   category: 'short',
   inItsSeason: true,
+  inItsStanding: true,
   ...extra,
 })
 

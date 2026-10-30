@@ -23,6 +23,41 @@ class SeasonClockTest {
 	private static final ZoneId UTC = ZoneId.of("UTC");
 	private static final ZoneId TOKYO = ZoneId.of("Asia/Tokyo");
 
+	/**
+	 * THE RIGHT TO RANK ENDS WITH 31 MARCH OF THE SEASON, THE DAY INCLUDED, IN BELGRADE.
+	 *
+	 * <p>Both sides of the boundary are one hour apart and on the same UTC date, so a rule read in
+	 * UTC gives the second the right as well, and a rule that excluded the day itself ({@code
+	 * isBefore} for {@code !isAfter}) takes it from the first. Belgrade is on summer time from the
+	 * last Sunday of March, so in 2027 (28 March) midnight there is 22:00 UTC.
+	 */
+	@Test
+	void anActivationRanksUntilTheEndOf31MarchInBelgrade() {
+		assertThat(SeasonClock.lastDayAnActivationRanks(2027)).isEqualTo(LocalDate.of(2027, 3, 31));
+
+		assertThat(SeasonClock.anActivationRanks(2027, Instant.parse("2027-03-31T21:30:00Z")))
+				.as("an activation at 23:30 on 31 March in Belgrade lost the right to rank")
+				.isTrue();
+		assertThat(SeasonClock.anActivationRanks(2027, Instant.parse("2027-03-31T22:10:00Z")))
+				.as("an activation ten minutes into 1 April in Belgrade kept the right to rank")
+				.isFalse();
+	}
+
+	/**
+	 * THE SEASON IS THE ONE THE MEMBERSHIP IS OF, NEVER THE YEAR OF THE ACTIVATION.
+	 *
+	 * <p>One instant, two seasons: November 2027 is after 31 March 2027 and before 31 March 2028, so
+	 * a membership of 2028 bought then ranks and one of 2027 does not. A rule reading the year of the
+	 * activation instead of the season gives both the same answer.
+	 */
+	@Test
+	void theDeadlineIsTheSeasonsOwnAndNotTheYearOfTheActivation() {
+		Instant november = Instant.parse("2027-11-15T10:00:00Z");
+
+		assertThat(SeasonClock.anActivationRanks(2028, november)).isTrue();
+		assertThat(SeasonClock.anActivationRanks(2027, november)).isFalse();
+	}
+
 	/** The three moments of closing 2027, in order and six hours apart at the end. */
 	@Test
 	void theThreeMomentsOfClosingASeasonAreWhereTheyShouldBe() {

@@ -487,6 +487,15 @@ class CompetitorApiTest {
 				2019, false, true, "feeExempt", "Moderiram i trcim.", "e5d4c3b2a1908805", "null",
 				false, "full");
 
+		/* AND HER EXEMPTION WAS DECIDED ON 2 APRIL 2027, after the last day that gives the right to
+		   rank in 2027 (PDL, 28.10.2026), so she is the one member of the list „bez prava
+		   rangiranja" and `unranked` is not the same on every record. A date the calendar has not
+		   reached at AUTUMN_2026, which nothing on this route asks about: the moment is read, never
+		   compared with the clock. */
+		db.sql("update membership set decided_at = timestamptz '2027-04-02 10:00:00+00'"
+						+ " where competitor_id = (select id from competitor where member_number = '000023')")
+				.update();
+
 		/* AND THE FOURTH, WHOSE FEE HAS LAPSED. His number sorts BETWEEN two of the
 		   three, so a list that lets him through is wrong in its order as well as in
 		   its length, and everything else about him is ordinary: he is not hidden, he

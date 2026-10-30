@@ -874,6 +874,11 @@ function profileIn(mine: object | null): Competitor | null {
     memberNumber,
     country,
     firstSeason,
+    /* HIS OWN PAGE, DRAWN FOR HIMSELF, and `/api/me` does not say whether he ranks. His category is
+       shown nowhere PUBLICLY when he does not (owner, 30.10.2026, „ne prikazuje se javno nigde njegov
+       odabir"), and he chose it in his own settings, so drawing it to him is not showing it to
+       anybody. Every reader of anybody else's record reads `/api/competitors`, which says it. */
+    unranked: false,
     profileHidden,
     birthdayShown,
     teamId: wholeIn(mine, 'teamId'),

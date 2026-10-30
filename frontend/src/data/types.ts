@@ -188,6 +188,15 @@ export type Competitor = {
   firstSeason2027: boolean
   firstSeason: number
   /**
+   * Whether he holds the membership of the season the screens show as the running one
+   * (`seasonShown`) without the right to rank in it: activated after 31 March of it
+   * (`CompetitorApi.Competitor`). PDL, 28.10.2026: such a member „ne pojavljuje se u tabelama lige,
+   * rang listama ni u kategoriji", and 30.10.2026: „ne prikazuje se javno nigde njegov odabir" of a
+   * category. Read for what a run cannot say: the member who has not raced, and the category drawn
+   * on his card and his profile. False for a member who holds no membership of that season at all.
+   */
+  unranked: boolean
+  /**
    * How this membership is held, and ONLY TO THE ADMINISTRATION.
    *
    * PDL, 793: the basis is administration's to see. `/api/competitors` answers it
@@ -391,6 +400,12 @@ export type Competitor = {
 export type MemberSeason = {
   season: number
   basis: MembershipBasis
+  /**
+   * Whether that season's membership carries the right to rank in it (activated by 31 March of it,
+   * `MembersApi.Season`). The row says „bez prava rangiranja" beside a season that does not, and
+   * nothing else on the portal does (PDL, 30.10.2026).
+   */
+  ranked: boolean
 }
 
 /**
@@ -690,6 +705,19 @@ export type Result = {
    * `seasonOf` (`data/derive.ts`), which answers no season for a result that counts in none.
    */
   inItsSeason: boolean
+  /**
+   * Whether the STANDINGS of its season count this result: `inItsSeason`, and the membership of
+   * that season was activated by 31 March of it (`ResultApi.Result`, `WhenASeasonWasActivated`).
+   *
+   * PDL, 28.10.2026: a member without the right to rank „ima profil, unosi rezultate i vidi svoje
+   * bodove i statistiku na profilu; ne pojavljuje se u tabelama lige, rang listama ni u kategoriji, a
+   * bodovi mu ne ulaze u zbir tima ni para". The day of activation decides, and this side does not
+   * have it, so the server says it. Read by one function only, `standingSeasonOf`
+   * (`data/derive.ts`); what keeps reading `inItsSeason` instead - the profile, the ducats, the
+   * threshold of the beginners' category, the season before on the board of progress, the list of a
+   * race - does so by the owner's decisions of 30.10.2026.
+   */
+  inItsStanding: boolean
 }
 
 /**

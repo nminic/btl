@@ -1557,6 +1557,7 @@
     "invitationNotSent": "Pošta trenutno ne prima poruke, pa pozivnica nije poslata. Pokušaj ponovo za koji minut.",
     "cancelMembership": "Storniraj",
     "changeToExemption": "Promeni osnov u oslobođenje",
+    "withoutTheRightToRank": "bez prava rangiranja",
     "askCancel": {
       "payment": "Storniraj uplatu za sezonu {season}?",
       "feeExempt": "Storniraj oslobođenje za sezonu {season}?",

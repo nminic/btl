@@ -45,6 +45,7 @@ const member = (
   ageBand: '25-39',
   firstSeason2027: false,
   firstSeason: 2019,
+  unranked: false,
   membershipBasis: 'payment',
   teamId,
   teamSince,

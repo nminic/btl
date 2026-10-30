@@ -33,6 +33,7 @@ export function person(
     ageBand: '40-54',
     firstSeason2027: false,
     firstSeason: 2027,
+    unranked: false,
     membershipBasis: 'payment',
     membershipSeason: 2027,
     teamId: null,
@@ -70,7 +71,7 @@ export function asMember(competitor: Competitor, over: Partial<Member> = {}): Me
     seasons:
       membershipBasis === undefined || membershipSeason === undefined
         ? []
-        : [{ season: membershipSeason, basis: membershipBasis }],
+        : [{ season: membershipSeason, basis: membershipBasis, ranked: true }],
     /* The figures of the season on sale as a member in Serbia with an empty book is answered them on
        a day in the renewal window: 2027, 4.800 dinars, no fee. */
     seasonOnSale: 2027,

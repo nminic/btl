@@ -141,6 +141,9 @@ export const MEMBERS: EntityDef = {
     referredBy: null,
     profileHidden: false,
     birthdayShown: 'none',
+    /* A member entered here holds no season the server could call one without the right to rank
+       (`Competitor.unranked`, which only the day of an activation decides), so false. */
+    unranked: false,
     /* The portrait and its square, neither of which any field here asks for and both of
        which the record carries since 26.09.2026 (PDL P28f). An administrator never types
        one: a member sends a picture and a moderator approves it (`MePhotoApi`,
