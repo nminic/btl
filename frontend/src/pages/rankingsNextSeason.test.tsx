@@ -197,6 +197,34 @@ describe('the table, in the transfer window of the first season', () => {
     }
   }, SLOW)
 
+  it('puts the buttons of the season being read above the table, not those of the season shown', async () => {
+    const { stop } = answering()
+
+    try {
+      /* Only the member who holds both has the beginners' category, and only in 2028. */
+      renderAt('/sr/tabela?sezona=2028', 'visitor', null, undefined, '2027-11-11')
+      await standing()
+
+      expect(screen.getByRole('button', { name: 'Početnici' })).toBeTruthy()
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
+  it('and 2027 has no button for a category only 2028 holds', async () => {
+    const { stop } = answering()
+
+    try {
+      renderAt('/sr/tabela', 'visitor', null, undefined, '2027-11-11')
+      await standing()
+
+      expect(screen.getByRole('button', { name: 'M 40-54' })).toBeTruthy()
+      expect(screen.queryByRole('button', { name: 'Početnici' })).toBeNull()
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
   it('narrows 2028 by the categories of 2028, and by none of 2027', async () => {
     const { stop } = answering()
 
