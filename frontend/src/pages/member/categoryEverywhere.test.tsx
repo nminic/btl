@@ -272,6 +272,29 @@ describe('a category chosen on „Moja članarina"', () => {
     }
   }, SLOW)
 
+  it('draws the category the route worked out, the wish AND the right, and not the wish alone', async () => {
+    /* He asked for the beginners' category and the route answered that it is closed to him: his wish
+       stands, his category is his band. The overlay carries the category of the season, as the list
+       serves it per season (V81), so the table says his band and not the wish. */
+    const user = setupUser()
+    const closed: CategoryAnswered = { ...choice(true, 'M40-54'), firstSeasonAllowed: false }
+    const server = theServer({ before: choice(false, 'M40-54'), written: () => answeringCategory(closed) })
+
+    try {
+      const { router } = renderAt('/sr/moja-clanarina', 'competitor', ME, undefined, DAY)
+
+      await choose(user, 'U početničkoj kategoriji')
+      await waitFor(() => {
+        expect(server.asked.some((one) => one.init?.method === 'PUT')).toBe(true)
+      }, { timeout: SLOW / 2 })
+      await router.navigate('/sr/tabela')
+
+      expect(categoryIn(await rowOf('Damjan Krstić'))).toBe('M 40-54')
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
   it('changes nothing anywhere when the route refuses it', async () => {
     const user = setupUser()
     const server = theServer({ before: choice(false, 'M40-54'), written: () => refused('theChoiceIsShut', 409) })

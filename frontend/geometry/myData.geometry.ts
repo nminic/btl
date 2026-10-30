@@ -30,6 +30,8 @@ const HE = {
   city: 'Beograd',
   ageBand: '25-39',
   beginner: false,
+  categorySeason: 2027,
+  categories: [],
   bio: '',
   profileHidden: false,
   birthdayShown: 'none',

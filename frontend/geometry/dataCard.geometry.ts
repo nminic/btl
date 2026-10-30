@@ -26,8 +26,9 @@ const ROW = {
   gender: 'M',
   city: 'Beograd',
   country: 'RS',
-  ageBand: '40-54',
-  beginner: false,
+  /* The card and every season he stands in (`CompetitorApi`, V81). */
+  category: { season: 2027, ageBand: '40-54', beginner: false },
+  categories: [{ season: 2027, ageBand: '40-54', beginner: false }],
   firstSeason: 2014,
   bio: '',
   teamId: null,
@@ -40,6 +41,11 @@ const ROW = {
 
 const HIM = {
   ...ROW,
+  /* `/api/me` spells the category of his card in three fields of its own (`MeApi`, V81). */
+  category: undefined,
+  ageBand: '40-54',
+  beginner: false,
+  categorySeason: 2027,
   membershipBasis: 'payment',
   active: true,
   referralCode: '7f07b38ff7ee7543',
