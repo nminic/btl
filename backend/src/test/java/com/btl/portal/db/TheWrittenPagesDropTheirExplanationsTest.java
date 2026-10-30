@@ -400,10 +400,20 @@ class TheWrittenPagesDropTheirExplanationsTest extends DatabaseTest {
 				.toList();
 	}
 
-	static final Pattern AN_EXEMPTION_IN_SERBIAN = Pattern.compile("oslob", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+	/**
+	 * The root "oslob", and the three ways to offer the same thing WITHOUT the root (PR 654 review, 29.10.2026: "the
+	 * Managing Board may decide that a member does not pay the membership fee" passed the sweep, which asked for the root
+	 * alone): "ne plati" / "ne plaća" (the member does not pay), "plati manje" (pays less), and "bez plaćanja članarine"
+	 * (without paying the fee). The first is written {@code ne pla[ćct]} and not {@code ne pla[ćc]}: Serbian says "ne
+	 * plati" for a decision about a single fee, and that form has a "t" where the present tense has a "ć".
+	 */
+	static final Pattern AN_EXEMPTION_IN_SERBIAN = Pattern.compile(
+			"oslob|ne pla[ćct]|plati manje|bez pla[ćc]anja članarin", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
+	/** The same, in English: the roots, and "not pay", "pays less" and "no fee" for the offer without them. */
 	static final Pattern AN_EXEMPTION_IN_ENGLISH = Pattern.compile(
-			"exempt|waiv|free of the (membership )?fee|pays? no membership fee", Pattern.CASE_INSENSITIVE);
+			"exempt|waiv|free of the (membership )?fee|pays? no membership fee|not pay|pays? less|no fee",
+			Pattern.CASE_INSENSITIVE);
 
 	static final Pattern A_FAMILIAR_PHRASE_IN_SERBIAN = Pattern.compile("samo nam se javite",
 			Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);

@@ -95,6 +95,14 @@ class TheWrittenPagesDropTheirExplanationsCarriedOverTest extends DatabaseTest {
 
 	/** The pages as they stood before V77, and the proof that this is so: a piece of every old text stands again. */
 	private void theTextAsItStoodBeforeV77() {
+		/* V78 (29.10.2026) edited two of the sections V77 edits, so it is undone first, read out of V78 itself. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "78");
+
+		theTextAsItStoodBeforeV77WhenV78IsAlreadyUndone();
+	}
+
+	/** The same, for the case that has already put the pages back to the text V77 left and kept a copy of it. */
+	private void theTextAsItStoodBeforeV77WhenV78IsAlreadyUndone() {
 		TheWrittenPagesBeforeV71.undoBodyEdits(db, "77");
 
 		for (TheWrittenPagesDropTheirExplanationsTest.Change change : TheWrittenPagesDropTheirExplanationsTest.CHANGES) {
@@ -134,10 +142,14 @@ class TheWrittenPagesDropTheirExplanationsCarriedOverTest extends DatabaseTest {
 	 * every page in both languages, and changes exactly the sections it names and no other.
 	 */
 	@Test
-	void v77OverTheTextItFoundGivesTheTextThePortalServesAndChangesNothingElse() {
+	void v77OverTheTextItFoundGivesTheTextV77LeftAndChangesNothingElse() {
+		/* The text the portal serves carries V78 on top (29.10.2026), which edits two of the sections V77 edits, so V78 is
+		   undone first and what V77 is compared to is the text V77 itself left. */
+		TheWrittenPagesBeforeV71.undoBodyEdits(db, "78");
+
 		Map<String, String> finished = everyText();
 
-		theTextAsItStoodBeforeV77();
+		theTextAsItStoodBeforeV77WhenV78IsAlreadyUndone();
 
 		Map<String, String> before = everyText();
 
@@ -147,7 +159,7 @@ class TheWrittenPagesDropTheirExplanationsCarriedOverTest extends DatabaseTest {
 
 		Map<String, String> after = everyText();
 
-		assertThat(after).as("V77 over the text it found does not give the text the portal serves").isEqualTo(finished);
+		assertThat(after).as("V77 over the text it found does not give the text V77 left").isEqualTo(finished);
 
 		long named = TheWrittenPagesDropTheirExplanationsTest.CHANGES.stream()
 				.map(change -> change.slug() + " #" + change.position())
@@ -253,9 +265,13 @@ class TheWrittenPagesDropTheirExplanationsCarriedOverTest extends DatabaseTest {
 	/**
 	 * THE FLOORS OF THE TWO SWEEPS: asked of the text before V77, the sweep for the exemption finds it in the four
 	 * sections of the Serbian text that held the owner's five places (PDL 29.10.2026) and in the same four of the English,
-	 * and the English sweep finds it in the policy as well, in the sentence about the name that stays with a decision
-	 * (which names no root in Serbian, and is edited by V77 all the same). The sweep for the familiar phrase finds it in
-	 * Article 8. A pattern that had gone blind would pass the sweeps of the other class on any text.
+	 * and the English sweep finds it in the policy as well, in the sentence about the name that stays with a decision.
+	 * That sentence names no root in Serbian ("odobrili da neko plati manje ili da ne plati članarinu", section 5 of the
+	 * policy, edited by V77), and the Serbian sweep sees it only through its forms without the root, which is what holds
+	 * those forms: a sweep that asked for the root alone would miss it here, and miss the same sentence written anew. The
+	 * same forms see "ne plaća za pristup sajtu" in section 2 of the terms, which V77 also strikes (USL-01). The sweep for
+	 * the familiar phrase finds it in Article 8. A pattern that had gone blind would pass the sweeps of the other class on
+	 * any text.
 	 */
 	@Test
 	void theSweepsFindWhatTheyKeepOutInTheTextBeforeV77() {
@@ -267,11 +283,12 @@ class TheWrittenPagesDropTheirExplanationsCarriedOverTest extends DatabaseTest {
 		assertThat(TheWrittenPagesDropTheirExplanationsTest.whereItMatches(rows, "sr",
 				TheWrittenPagesDropTheirExplanationsTest.AN_EXEMPTION_IN_SERBIAN))
 				.as("the Serbian sweep for the exemption cannot see it in the text that held it")
-				.containsExactlyInAnyOrder("pravilnik #3", "pravilnik #4", "uslovi-koriscenja #3", "uslovi-koriscenja #4");
+				.containsExactlyInAnyOrder("pravilnik #3", "pravilnik #4", "uslovi-koriscenja #2", "uslovi-koriscenja #3",
+						"uslovi-koriscenja #4", "politika-privatnosti #5");
 		assertThat(TheWrittenPagesDropTheirExplanationsTest.whereItMatches(rows, "en",
 				TheWrittenPagesDropTheirExplanationsTest.AN_EXEMPTION_IN_ENGLISH))
 				.as("the English sweep for the exemption cannot see it in the text that held it")
-				.contains("pravilnik #3", "pravilnik #4", "uslovi-koriscenja #3", "uslovi-koriscenja #4",
+				.containsExactlyInAnyOrder("pravilnik #3", "pravilnik #4", "uslovi-koriscenja #3", "uslovi-koriscenja #4",
 						"politika-privatnosti #5");
 		assertThat(TheWrittenPagesDropTheirExplanationsTest.whereItMatches(rows, "sr",
 				TheWrittenPagesDropTheirExplanationsTest.A_FAMILIAR_PHRASE_IN_SERBIAN))
