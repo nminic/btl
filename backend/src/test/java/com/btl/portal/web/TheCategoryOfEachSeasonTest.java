@@ -66,8 +66,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * band of one season can never be read for the other without the answer changing.</li>
  * <li>{@link #ONLY_NEXT} holds 2028 alone, so his card speaks of 2028; {@link #ONLY_RUNNING} holds 2027
  * alone and has no wish written at all, so he is in his age category.</li>
- * <li>{@link #WITHOUT_THE_RIGHT} holds 2027 activated on 2 April and 2028 as well: his card says nothing
- * until 1 January, and 2027 is on no list of his, while 2028 is.</li>
+ * <li>{@link #WITHOUT_THE_RIGHT} holds 2027 activated on 2 April and 2028 as well: his card speaks of 2028
+ * as the card of a member of 2028 alone does (PDL, 30.10.2026), and 2027 is on no list of his, while 2028
+ * is. {@link #WITHOUT_THE_RIGHT_AND_NOTHING_AFTER} holds 2027 activated late and nothing else: his card
+ * says nothing.</li>
  * <li>{@link #CLOSED_BY_HIS_OWN} wants the beginners' category in 2027 and has 13 points IN 2027: the season
  * that is still being decided cannot close itself, and closes 2028, which inherits the wish.</li>
  * <li>{@link #INHERITS} wrote his wish for 2027 alone and holds 2028 too, with no points: 2028 reads the
@@ -112,6 +114,9 @@ class TheCategoryOfEachSeasonTest {
 
 	/** On the list (his fee stands) and holding no row of either season: the card falls back to the running one. */
 	private static final String HOLDS_NEITHER = "000207";
+
+	/** Holds 2027 activated late and nothing for 2028: the one whose card stays empty. */
+	private static final String WITHOUT_THE_RIGHT_AND_NOTHING_AFTER = "000208";
 
 	private static final String THE_ADMINISTRATION = "moderator-clanovi@primer.rs";
 
@@ -198,6 +203,10 @@ class TheCategoryOfEachSeasonTest {
 
 		competitor(HOLDS_NEITHER, "F", "2000-03-03");
 
+		long withoutTheRightAndNothingAfter = competitor(WITHOUT_THE_RIGHT_AND_NOTHING_AFTER, "M", "1990-03-03");
+		held(withoutTheRightAndNothingAfter, 2027, ACTIVATED_LATE);
+		wish(withoutTheRightAndNothingAfter, 2027, true);
+
 		long inherits = competitor(INHERITS, "M", "1995-03-03");
 		held(inherits, 2027, ACTIVATED_IN_TIME);
 		held(inherits, 2028, SOLD_IN_NOVEMBER);
@@ -254,9 +263,21 @@ class TheCategoryOfEachSeasonTest {
 	void aSeasonHeldWithoutTheRightCarriesNoCategoryAndNoMark() throws Exception {
 		JsonNode his = recordOf(null, WITHOUT_THE_RIGHT);
 
+		/* THREE STATES OF ONE FIELD. (a) holds 2027 without the right and 2028 as well, (b) holds 2028 alone,
+		   (c) holds 2027 without the right and nothing else. PDL, 30.10.2026: (a) is carded exactly as (b). */
+		JsonNode alone = recordOf(null, ONLY_NEXT).path("category");
 		assertThat(his.path("category").isNull())
-				.as("his card names the category of 2027, which he holds without the right to rank, and it"
-						+ " is not 2028's either before 1 January")
+				.as("(a) is the only member of the public list with no category, which says he is without the"
+						+ " right: his card names no category although he holds 2028")
+				.isFalse();
+		assertThat(card(WITHOUT_THE_RIGHT))
+				.as("(a) is carded for 2027, the season he holds without the right, which hands out his choice")
+				.isEqualTo("2028 25-39 age");
+		assertThat(new ArrayList<>(his.path("category").propertyNames()))
+				.as("(a) carries a card of another shape than (b)")
+				.isEqualTo(new ArrayList<>(alone.propertyNames()));
+		assertThat(recordOf(null, WITHOUT_THE_RIGHT_AND_NOTHING_AFTER).path("category").isNull())
+				.as("(c) holds 2027 without the right and no 2028, so his card has nothing to carry")
 				.isTrue();
 		assertThat(seasonsOf(his)).as("2027 is on his list although he holds it without the right")
 				.containsExactly("2028 25-39 age");

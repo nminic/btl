@@ -193,13 +193,26 @@ class CategoryOfASeason {
 		/**
 		 * The category of his card, for a reader who may be told it: null where he holds the season of
 		 * the card without the right to rank in it (PDL, 30.10.2026, „ne prikazuje se javno nigde njegov
-		 * odabir").
+		 * odabir"), EXCEPT that a member who holds the running season without the right and holds the one on
+		 * sale as well is carded for the one on sale. PDL, owner, 30.10.2026: „Član koji je u tekućoj sezoni
+		 * bez prava rangiranja, a platio je i narednu, od 11.11. do 31.12. ima na kartici kategoriju naredne
+		 * sezone", the reason being that otherwise he would be the one member on the public list with no
+		 * category, and the list would say he is without the right. The exception is for the member whose
+		 * running category is not shown anyway, so it is never the running season's category that is carried
+		 * (that would hand out the choice the decision keeps back).
 		 */
 		OfASeason onTheCard(long member, int birthYear, ZonedDateTime at) {
 			int season = seasonOfTheCard(member, at);
 			Held that = holds(member, season);
 
-			return that != null && !that.ranks() ? null : in(member, birthYear, season);
+			if (that == null || that.ranks()) {
+				return in(member, birthYear, season);
+			}
+
+			int onSale = SeasonClock.seasonBeingPaidFor(at);
+			Held next = onSale == season ? null : holds(member, onSale);
+
+			return next == null || !next.ranks() ? null : in(member, birthYear, onSale);
 		}
 
 		/**
