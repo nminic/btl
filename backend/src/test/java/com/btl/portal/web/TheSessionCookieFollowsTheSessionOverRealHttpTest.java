@@ -584,4 +584,108 @@ class TheSessionCookieFollowsTheSessionOverRealHttpTest {
 				.as("a reset of his password ended her cookie, or handed her his")
 				.isEqualTo(hersDueForRenewal.secret());
 	}
+
+	private static final String NEW_PASSWORD = "novaLozinka9876sasvim";
+
+	/** Changing the password from the browser holding {@code session}, with the old password given. */
+	private HttpResponse<String> changePassword(SecretToken session, String oldPassword) throws Exception {
+		String token = aToken();
+
+		return client.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/me/password"))
+						.header("Content-Type", "application/json")
+						.header("Cookie", TOKEN_COOKIE + "=" + token + "; " + carrying(session))
+						.header(TOKEN_HEADER, token)
+						.PUT(HttpRequest.BodyPublishers.ofString("{\"oldPassword\":\"" + oldPassword
+								+ "\",\"password\":\"" + NEW_PASSWORD + "\",\"passwordRepeat\":\"" + NEW_PASSWORD
+								+ "\"}"))
+						.build(),
+				HttpResponse.BodyHandlers.ofString());
+	}
+
+	private int sessionsOf(String email) {
+		return db.sql("select count(*) from account_session where account_id = (select id from account"
+				+ " where email = ?)").param(email).query(Integer.class).single();
+	}
+
+	/**
+	 * CHANGING THE PASSWORD GIVES THE SESSION THAT ASKED A NEW SECRET, AND THE MEMBER STAYS SIGNED IN
+	 * (owner, 30.10.2026, chosen between the outcomes put to him after the security review of PR 656).
+	 *
+	 * <p>The old secret opens nothing any more, the new one opens his account, and the answer carries
+	 * exactly one cookie for the session. His other device is signed out as before, and the other
+	 * member's session is left exactly as it was: the new secret has two places it could have been
+	 * written, his row and hers, and only the first is right.
+	 *
+	 * <p>His session is due for renewal, so the filter's renewal has to stand aside for the route's
+	 * cookie. The control is a refused change asked from her browser, also due: the same route, an
+	 * answer that carries a renewal and no cookie of the route's own, so a change that dropped or
+	 * doubled the CSRF cookie would set a different list of names.
+	 */
+	@Test
+	void changingThePasswordGivesTheSessionANewSecret() throws Exception {
+		SecretToken mineElsewhere = open(MINE, Duration.ofMinutes(1), Duration.ofDays(30));
+
+		HttpResponse<String> control = changePassword(hersDueForRenewal, "nijeTacnaLozinka123");
+
+		assertThat(control.statusCode()).isEqualTo(400);
+
+		HttpResponse<String> answer = changePassword(mineDueForRenewal, RIGHT);
+
+		assertThat(answer.statusCode()).isEqualTo(204);
+		assertThat(aboutTheSession(answer)).as("changing the password carried more than one cookie for the"
+				+ " session, or none").hasSize(1);
+
+		String handedOut = valueOf(aboutTheSession(answer).get(0));
+
+		assertThat(handedOut).as("the session kept its old secret, or was handed another member's")
+				.isNotEmpty()
+				.isNotEqualTo(mineDueForRenewal.secret())
+				.isNotEqualTo(hersDueForRenewal.secret());
+		assertThat(attributesOf(aboutTheSession(answer).get(0)))
+				.containsExactly("Path=/", THIRTY_DAYS, "Secure", "HttpOnly", "SameSite=Strict");
+		assertThat(namesSet(answer)).as("changing the password dropped or doubled a cookie that is not the"
+				+ " session's").isEqualTo(namesSet(control));
+
+		assertThat(me(carrying(mineDueForRenewal)).statusCode()).as("the old secret still opens the portal")
+				.isEqualTo(401);
+		assertThat(me(SessionCookie.NAME + "=" + handedOut).statusCode())
+				.as("the new secret opens nothing, so the member was signed out").isEqualTo(200);
+		assertThat(sessionsOf(MINE)).as("his other device was not signed out, or his own row went").isOne();
+		assertThat(stillOpen(mineElsewhere)).isFalse();
+		assertThat(me(carrying(hersDueForRenewal)).statusCode())
+				.as("her session was touched by his password change").isEqualTo(200);
+	}
+
+	/**
+	 * A SESSION ENDED WHILE THE PASSWORD IS BEING CHANGED IS HANDED NO NEW SECRET, and the password
+	 * changes all the same. Signing out in another tab is held open here, so the rewriting of the
+	 * session waits behind it and finds no row once it commits; a cookie sent anyway would be a secret
+	 * for a row nobody has.
+	 */
+	@Test
+	void aSessionEndedWhileThePasswordChangesIsHandedNoNewSecret() throws Exception {
+		SecretToken notDue = open(MINE, Duration.ofMinutes(1), Duration.ofDays(30));
+		ExecutorService asking = Executors.newSingleThreadExecutor();
+
+		try (AHeldTransaction signingOutElsewhere = new AHeldTransaction(pool)) {
+			signingOutElsewhere.db().sql("delete from account_session where token_hash = ?")
+					.param(notDue.hash()).update();
+
+			Future<HttpResponse<String>> answer = asking.submit(() -> changePassword(notDue, RIGHT));
+
+			signingOutElsewhere.untilBehind(1, List.of(answer));
+			signingOutElsewhere.commit();
+
+			HttpResponse<String> answered = answer.get(30, TimeUnit.SECONDS);
+
+			assertThat(answered.statusCode()).isEqualTo(204);
+			assertThat(aboutTheSession(answered)).as("a session that ended was handed a new secret").isEmpty();
+		} finally {
+			asking.shutdownNow();
+		}
+
+		assertThat(new com.btl.portal.domain.account.StoredPassword().matches(NEW_PASSWORD,
+				db.sql("select password_hash from account where email = ?").param(MINE).query(String.class)
+						.single())).as("the password did not change").isTrue();
+	}
 }
