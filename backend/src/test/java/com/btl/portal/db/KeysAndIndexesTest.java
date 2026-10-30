@@ -255,6 +255,12 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("payment_one_a_season", false,
 					"one payment per member per season, looked up by the pair and carrying no order"),
 
+			/* V81. The wish for a category is one per member per season, and it goes with him (it is
+			   his profile, not bookkeeping), so the pair is the whole key, the shape V22 had before
+			   V79 needed a membership to outlive its member. Read by the member, the first column. */
+			new Key("category_wish_pk", false,
+					"the member and the season together: one wish per member per season, read by the member"),
+
 			/* V22 made the member and the year the whole key, and V79 had to stop: a membership now
 			   outlives its member without a pointer at him (PDL, 29.10.2026), and a primary key cannot
 			   hold a null. So the shape is `payment`'s - a surrogate, and the pair beside it - and the

@@ -291,7 +291,7 @@ export type FieldDef = {
    *
    * It was a guard over two words in a hint before, which held exactly as long as nobody
    * reworded a hint: a review reworded one, deleted the row, and the whole suite stayed
-   * green while the portal went on asking. Before that, `firstSeason2027` was collected
+   * green while the portal went on asking. Before that, `beginner` was collected
    * for weeks with no row at all.
    *
    * Optional on the type and demanded of the registration form by its own guard: the

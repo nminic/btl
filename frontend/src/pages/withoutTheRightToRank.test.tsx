@@ -32,9 +32,13 @@ const SERVED: Competitor[] = JSON.parse(readFileSync(join(MOCK, 'competitors.jso
 const VLADAN = '000001'
 const HIS_TEAMMATE = '000013'
 
-/** The served list with Vladan held without the right to rank, or with it. */
-const theList = (unranked: boolean) =>
-  SERVED.map((one) => (one.memberNumber === VLADAN ? { ...one, unranked } : one))
+/**
+ * The served list with Vladan holding the season shown (2027) without the right to rank, or with it. Held
+ * without it, the server answers no category of that season for him, on his card or in his seasons, and
+ * no mark of why (PDL, 30.10.2026; `CompetitorApi`, V81).
+ */
+const theList = (unranked: boolean): Competitor[] =>
+  SERVED.map((one) => (one.memberNumber === VLADAN && unranked ? { ...one, category: null, categories: [] } : one))
 
 /** A run of 2027 on the race of an event the calendar has. */
 const aRunOf2027 = (memberNumber: string, points: number, inItsStanding: boolean, id: number): Result => ({
@@ -136,22 +140,72 @@ describe('a member without the right to rank, in public', () => {
   }, SLOW)
 })
 
+describe('the members of a team placed in a season', () => {
+  /* Owner, 30.10.2026, PDL „Na strani tima plasman sezone nose samo članovi tima sa članarinom za tu
+     sezonu i sa pravom rangiranja u njoj". Three members of one team, none of whom has run: Damjan holds
+     2027 with the right; Strahinja holds no membership of 2027 (his card still speaks of 2027, the
+     running season, because he holds neither season); Vladan holds 2027 without the right, so his card
+     names nothing. A page that asked the card instead of the season of its own table would place
+     Strahinja; one that asked nothing would place all three. */
+  const STRAHINJA = '000007'
+  const threeStates = (): Competitor[] =>
+    SERVED.map((one) =>
+      one.memberNumber === VLADAN
+        ? { ...one, category: null, categories: [] }
+        : one.memberNumber === STRAHINJA
+          ? { ...one, categories: [] }
+          : one,
+    )
+
+  it('places the member with a fee for the season and the right in it, and nobody else of the team', async () => {
+    const server = serving(threeStates(), [])
+    renderAt('/sr/tim/dunavski-trkaci', 'visitor', null, undefined, '2027-06-01')
+
+    const members = await screen.findByRole('table', { name: 'Članovi' }, { timeout: SLOW / 2 })
+
+    expect(within(members).getByText(HIS_TEAMMATE)).toBeInTheDocument()
+    expect(within(members).queryByText(STRAHINJA), 'a member of the team with no fee for 2027').toBeNull()
+    expect(within(members).queryByText(VLADAN), 'a member of the team without the right in 2027').toBeNull()
+
+    server.stop()
+  }, SLOW)
+})
+
 describe('a member without the right to rank in the season shown, in the table of one before it', () => {
-  it('stands where he ranked, and his category is drawn for nobody', async () => {
-    /* 2028 is shown and he holds it without the right; in 2027 he ranked. The category the portal
-       keeps is the one he chose for the season shown, so drawn beside his 2027 row it would be the
-       choice the owner said is shown nowhere. */
-    const server = serving(theList(true), [
+  /* 2028 is shown and he holds it without the right; in 2027 he ranked, in his band of 2027. The card
+     names nothing (the season it speaks of is 2028), and 2027 is on his list of seasons with its own
+     category. Owner, 30.10.2026: „Prikazuj u proslim, svakako se to zamrzava", which turned over what
+     PR 664 drew here (nothing beside his 2027 row). */
+  const heRankedIn2027 = (): Competitor[] =>
+    SERVED.map((one) =>
+      one.memberNumber === VLADAN
+        ? { ...one, category: null, categories: [{ season: 2027, ageBand: '55+', beginner: false }] }
+        : one,
+    )
+
+  it('stands where he ranked, with the category of that season', async () => {
+    const server = serving(heRankedIn2027(), [
       aRunOf2027(VLADAN, 60, true, 900001),
       aRunOf2027(HIS_TEAMMATE, 20, true, 900002),
     ])
     renderAt('/sr/tabela?sezona=2027', 'visitor', null, undefined, '2028-06-01')
 
     const his = must((await screen.findByText(VLADAN)).closest('tr'), 'his row')
-    const theirs = must(screen.getByText(HIS_TEAMMATE).closest('tr'), 'his teammate row')
 
-    expect(must(his.querySelector('.table__category'), 'his category cell').textContent).toBe('')
-    expect(must(theirs.querySelector('.table__category'), 'a category cell').textContent).not.toBe('')
+    expect(must(his.querySelector('.table__category'), 'his category cell').textContent).toBe('M 55+')
+    /* And the filter of that season finds him under it. */
+    server.stop()
+  }, SLOW)
+
+  it('is found under the category of that season by the filter of that season', async () => {
+    const server = serving(heRankedIn2027(), [
+      aRunOf2027(VLADAN, 60, true, 900001),
+      aRunOf2027(HIS_TEAMMATE, 20, true, 900002),
+    ])
+    renderAt(`/sr/tabela?sezona=2027&kategorija=${encodeURIComponent('M55+')}`, 'visitor', null, undefined, '2028-06-01')
+
+    await screen.findByRole('button', { name: 'M 55+', pressed: true }, { timeout: SLOW / 2 })
+    expect(must(screen.getByRole('table').querySelector('tbody'), 'the rows').textContent).toContain(VLADAN)
 
     server.stop()
   }, SLOW)

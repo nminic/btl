@@ -243,11 +243,11 @@ class MeWriteApiTest {
 
 	private void competitor(String number, String first, String last, String bio, boolean hidden) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, first_season_2027, active, "
+						+ " place_id, first_season, active, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, true, "
+						+ " (select id from place where rank = 1), 2027, true, "
 						+ " ?, ?, ?, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, first, last, String.format("%016x", ++issued), bio, hidden)
@@ -2274,7 +2274,7 @@ class MeWriteApiTest {
 		   answered entry from staying here as an excuse. */
 		Map<String, String> elsewhere = new LinkedHashMap<>();
 
-		elsewhere.put("firstSeason2027", "decides the CATEGORY exactly as the date of birth"
+		elsewhere.put("beginner", "decides the CATEGORY exactly as the date of birth"
 				+ " does (PDL P5), and the owner's reason for refusing those two covers it");
 		elsewhere.put("email", "PDL P28b, 2: changed by the member himself but only against a"
 				+ " confirmation of the new address, which is a second table and its own"
@@ -2829,7 +2829,7 @@ class MeWriteApiTest {
 		registering.put("fatherName", "Milorad");
 		registering.put("birthDate", "1990-01-01");
 		registering.put("gender", "M");
-		registering.put("firstSeason2027", true);
+		registering.put("beginner", true);
 		registering.put("email", "nov-clan@primer.rs");
 		registering.put("password", "ovo je jedna duga lozinka");
 		registering.put("passwordRepeat", "ovo je jedna duga lozinka");
@@ -2900,11 +2900,11 @@ class MeWriteApiTest {
 		};
 
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Neplacen', 'Neplacenic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, false, ?,"
+						+ " (select id from place where rank = 1), 2027, false, ?,"
 						+ " 'Tekst koji stoji.', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00') returning id")
 				.params(kind == NotPaid.NEVER_PAID ? null : "000900", String.format("%016x", ++issued))

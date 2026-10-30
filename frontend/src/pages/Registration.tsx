@@ -83,11 +83,11 @@ function theBody(
     gender: written(values, 'gender'),
     /* A BOOLEAN AND NOT THE WORD „yes", and this was a real fault rather than a
        tidying: the form offers the strings `yes` and `no` (`registracija.form.json`)
-       and `Typed.firstSeason2027` is a `Boolean`. Jackson does not translate one into
+       and `Typed.beginner` is a `Boolean`. Jackson does not translate one into
        the other - it refuses the whole request before the handler runs at all, so what
        came back was not even „the form is not complete" but a bare 400 with no reason
        in it, which this screen would have had to call „the server answered 400". */
-    firstSeason2027: values.firstSeason2027 === 'yes',
+    beginner: values.beginner === 'yes',
     email: written(values, 'email'),
     password: written(values, 'password'),
     /* What the second box really holds, not the first one sent twice. Whether they

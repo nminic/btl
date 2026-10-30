@@ -149,7 +149,7 @@ class VerificationDecisionConcurrencyTest {
 	private static final String THE_NAME_HE_TYPED = "Trka koje nema";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
+			+ " birth_date, place_id, city, country_id, first_season, active,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -204,7 +204,7 @@ class VerificationDecisionConcurrencyTest {
 
 		founder = db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni',"
 						+ " 'Osnivac', 'M', date '1990-05-05', " + A_TOWN + ", null, null, 2027,"
-						+ " false, true, '00112233445588a1', null, '', false, 'none',"
+						+ " true, '00112233445588a1', null, '', false, 'none',"
 						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
 				.param(THE_FOUNDER)
@@ -763,11 +763,11 @@ class VerificationDecisionConcurrencyTest {
 	void twoApprovalsOfTheSameTypedRaceOfAnEventThatHasNoneYetMakeOneRaceAndBothResultsAreOnIt()
 			throws Exception {
 		another = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Drugi', 'Clan', 'F', date '1990-01-01', " + A_TOWN
-						+ ", 2027, false, true, '0011223344558a42', '', false, 'none', 'Otac',"
+						+ ", 2027, true, '0011223344558a42', '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.param(THE_OTHER_MEMBER).query(Long.class).single();
 
@@ -1217,11 +1217,11 @@ class VerificationDecisionConcurrencyTest {
 	void anApprovalOntoARaceTheLeagueIsEnteringHimOnWaitsForItAndIsRefusedAndNeverDeadlocks()
 			throws Exception {
 		another = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Drugi', 'Clan', 'F', date '1990-01-01', " + A_TOWN
-						+ ", 2027, false, true, '0011223344558a42', '', false, 'none', 'Otac',"
+						+ ", 2027, true, '0011223344558a42', '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.param(THE_OTHER_MEMBER).query(Long.class).single();
 

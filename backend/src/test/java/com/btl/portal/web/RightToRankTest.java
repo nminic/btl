@@ -191,53 +191,74 @@ class RightToRankTest {
 				.containsEntry("000210 2027-05-01", false);
 	}
 
-	/** Who the list says is unranked, by member number, for the season it is drawn for. */
-	private Map<String, Boolean> unranked() throws Exception {
+	/**
+	 * Who the list says stands in the table of a season, by member number: a category of that season on
+	 * his record (V81). Since 30.10.2026 the list carries no mark of „without the right" at all (PDL,
+	 * „Za sezonu bez prava rangiranja server u javnom odgovoru ne šalje ni kategoriju ni oznaku"), so a
+	 * member who holds the season without the right and one who holds no membership of it read alike.
+	 */
+	private Map<String, Boolean> standsIn(int season) throws Exception {
 		Map<String, Boolean> told = new TreeMap<>();
 
 		for (JsonNode one : answer("/api/competitors")) {
-			told.put(one.path("memberNumber").asString(), one.path("unranked").asBoolean());
+			boolean stands = false;
+
+			for (JsonNode category : one.path("categories")) {
+				stands |= category.path("season").asInt() == season;
+			}
+
+			told.put(one.path("memberNumber").asString(), stands);
 		}
 
 		return told;
 	}
 
 	@Test
-	void theListSaysWhoHoldsTheSeasonItIsDrawnForWithoutTheRightToRank() throws Exception {
+	void theListSaysWhoStandsInTheTableOfTheSeasonAndNothingAboutWhy() throws Exception {
 		clock.moveTo(JUNE_2027);
 
-		assertThat(unranked()).isEqualTo(new TreeMap<>(Map.ofEntries(
-				Map.entry("000201", false), Map.entry("000202", true), Map.entry("000203", true),
-				Map.entry("000204", true), Map.entry("000205", true), Map.entry("000206", true),
-				Map.entry("000207", false), Map.entry("000208", false), Map.entry("000209", true),
+		assertThat(standsIn(2027)).isEqualTo(new TreeMap<>(Map.ofEntries(
+				Map.entry("000201", true), Map.entry("000202", false), Map.entry("000203", false),
+				Map.entry("000204", false), Map.entry("000205", false), Map.entry("000206", false),
+				Map.entry("000207", true), Map.entry("000208", true), Map.entry("000209", false),
 				Map.entry("000210", false))));
+		assertThat(answerText("/api/competitors")).doesNotContain("unranked");
 	}
 
 	/**
-	 * A YEAR ON, THE SAME LIST ASKS ABOUT 2028: 000208 and 000209 swap, and everybody who holds no
-	 * membership of 2028 is not „without the right to rank" but no member of it, which is not this
-	 * field's to say.
+	 * A YEAR ON, 000208 and 000209 swap: 000208 held 2028 from 1 May and 000209 from November before it.
 	 */
 	@Test
-	void aYearOnTheListAsksAboutTheNextSeason() throws Exception {
+	void aYearOnTheNextSeasonIsAskedOfItsOwnCategories() throws Exception {
 		clock.moveTo(JUNE_2028);
 
-		assertThat(unranked()).containsEntry("000208", true)
-				.containsEntry("000209", false)
+		assertThat(standsIn(2028)).containsEntry("000208", false)
+				.containsEntry("000209", true)
 				.containsEntry("000202", false)
 				.containsEntry("000201", false);
+		assertThat(standsIn(2027)).as("the season before keeps its table").containsEntry("000208", true)
+				.containsEntry("000209", false);
 	}
 
 	/**
-	 * AND IN THE WINDOW THE LIST STILL ASKS ABOUT THE SEASON IT IS DRAWN FOR, not the one on sale: on
-	 * 20 November 2027 the screens show 2027 and sell 2028, and 000209 holds 2027 without the right and
-	 * 2028 with it. Asked about the season on sale, he would read as ranked in the table of 2027.
+	 * AND IN THE WINDOW EACH SEASON IS ASKED ABOUT ITSELF: on 20 November 2027 000209 holds 2027 without the
+	 * right and 2028 with it, so he stands in the table of 2028 and not of 2027, and his card names 2028 (PDL,
+	 * 30.10.2026: a member without the right in the running season who has paid the next one is carded for the
+	 * next), never 2027, which he holds without the right.
 	 */
 	@Test
-	void inTheWindowTheListAsksAboutTheSeasonShownAndNotTheOneOnSale() throws Exception {
+	void inTheWindowEachSeasonIsAskedAboutItself() throws Exception {
 		clock.moveTo(Instant.parse("2027-11-20T10:00:00Z"));
 
-		assertThat(unranked()).containsEntry("000209", true).containsEntry("000208", false);
+		assertThat(standsIn(2027)).containsEntry("000209", false).containsEntry("000208", true);
+		assertThat(standsIn(2028)).containsEntry("000209", true);
+
+		for (JsonNode one : answer("/api/competitors")) {
+			if (one.path("memberNumber").asString().equals("000209")) {
+				assertThat(one.path("category").path("season").asInt())
+						.as("his card names 2027, held without the right, or nothing at all").isEqualTo(2028);
+			}
+		}
 	}
 
 	/**
@@ -276,13 +297,17 @@ class RightToRankTest {
 				.getContentAsString(StandardCharsets.UTF_8));
 	}
 
+	private String answerText(String path) throws Exception {
+		return http.perform(get(path)).andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+	}
+
 	private long member(String number) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, city, country_id, first_season, first_season_2027, active,"
+						+ " place_id, city, country_id, first_season, active,"
 						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Ime', 'Prezime', 'M', date '1990-05-05',"
-						+ " (select id from place where rank = 1), null, null, 2027, false, true,"
+						+ " (select id from place where rank = 1), null, null, 2027, true,"
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, "00112233" + number + "aa")

@@ -541,56 +541,24 @@ class MeCategoryApiTest {
 		assertThat(answerFor(FREED_OF_THE_FEE).path("firstSeasonAllowed").asBoolean()).isTrue();
 	}
 
-	/**
-	 * THE COLUMN THE WISH IS STORED IN NAMES ONE SEASON, AND THE DEBT BECOMES LIVE IN OCTOBER
-	 * 2027.
-	 *
-	 * <p>This case measures nothing about behaviour and is here to put a date in the suite
-	 * rather than only in a document. {@code competitor.first_season_2027} can hold the wish for
-	 * one season, and the owner chose on 27.09.2026 to keep it and record the debt („da zapises
-	 * kao tehnicki dug da se ne zaboravi i resi strukturalno nekad sto pre") after being shown
-	 * that moving it touches 172 places in 95 files.
-	 *
-	 * <p><b>What is asserted is the instant the two part company</b>, against a fixed moment and
-	 * never against the machine's clock: from 15 October 2027 the season being chosen is 2028 and
-	 * the column is still named for 2027, so from then a wish written for one season overwrites
-	 * the other. The fixture above already stands past that date, which is why the route it
-	 * tests is honest about what it does and not about what the column is called.
-	 */
-	@Test
-	void theColumnAndTheSeasonAgreeOnlyWhileTheSeasonIsTheFirstOne() {
-		/* Either side of midnight in Belgrade on 15 October, which is where the window opens
-		   since 29.09.2026; it was 1 October until then and the pair moved with it. */
-		Instant beforeTheDebtIsLive = Instant.parse("2027-11-10T22:00:00Z");
-		Instant afterTheDebtIsLive = Instant.parse("2027-11-11T00:00:00Z");
-
-		assertThat(SeasonClock.seasonBeingPaidFor(beforeTheDebtIsLive.atZone(SeasonClock.ZONE)))
-				.as("the column and the season agreed until 15 October 2027 and no longer do, "
-						+ "so the debt this case names has moved")
-				.isEqualTo(SeasonClock.FIRST_SEASON);
-
-		assertThat(SeasonClock.seasonBeingPaidFor(afterTheDebtIsLive.atZone(SeasonClock.ZONE)))
-				.as("from midnight in Belgrade on 1 October 2027 the wish is for a season the "
-						+ "column cannot name, and PENDING.md carries what that costs")
-				.isEqualTo(SeasonClock.FIRST_SEASON + 1);
-	}
-
 	/* ------------------------------------------------------------------- the fixture */
 
 	private void competitor(String number, String first, String last, String gender,
 			String birthDate, boolean firstSeason, String basis) {
 
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name,"
 						+ " address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, cast(? as date),"
-						+ " (select id from place where rank = 1), 2027, ?, true,"
+						+ " (select id from place where rank = 1), 2027, true,"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, first, last, gender, birthDate, firstSeason,
-						String.format("%016x", ++issued))
+				.params(number, first, last, gender, birthDate, String.format("%016x", ++issued))
 				.query(Long.class).single();
+
+		db.sql("insert into category_wish (competitor_id, season, beginner) values (?, 2027, ?)")
+				.params(id, firstSeason).update();
 
 		/* THE BASIS IS A ROW OF THE SEASON ON SALE SINCE V62, and at IN_OCTOBER_2028 that is
 		   2029. The case about being freed of the fee measures that this route reads none of it. */

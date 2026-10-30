@@ -1075,7 +1075,7 @@ const STANDS_IN: Record<string, string | null> = {
   address: 'Kontakt i dostava',
   phone: 'Kontakt i dostava',
   city: 'Kontakt i dostava',
-  firstSeason2027: 'Takmičenje',
+  beginner: 'Takmičenje',
   shirtSize: 'Takmičenje',
   /* ~~`photo: 'Profil'` and `bio: 'Profil'` stood here.~~ Both left on 28.09.2026 and
      the group „Profil" left with them, because a group is the fields that stand in it:
@@ -1122,7 +1122,7 @@ const ROWS_ARE: string[][] = [
      which is ONE field: the town carries the country beside it and the two are
      two columns of the three (`FormRenderer.css`, `.field--place`). */
   ['city'],
-  ['firstSeason2027', 'shirtSize'],
+  ['beginner', 'shirtSize'],
   /* ~~A seventh row stood here, the picture beside the words.~~ Both left on
      28.09.2026: „Profilna sekcija se sa slikom i svojim recima izbacuje iz
      registracione forme - to ce clan popunjavati naknadno kad bude odobren"

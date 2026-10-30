@@ -44,6 +44,10 @@ const THE_RING = sr.profile.byCategory
 function aMember(memberNumber: string, since: number) {
   return {
     ...aCompetitor,
+    /* A member of every season these cases read, with the right to rank in each: since 30.10.2026 a team
+       places only the members who stand in the table of its season (`standsIn`, PDL „Na strani tima
+       plasman sezone nose samo članovi tima sa članarinom za tu sezonu i sa pravom rangiranja u njoj"). */
+    categories: [2027, 2028, 2029].map((season) => ({ season, ageBand: '40-54' as const, beginner: false })),
     memberNumber,
     firstName: 'Ime',
     lastName: memberNumber,

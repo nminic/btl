@@ -100,7 +100,7 @@ class PaymentApiTest {
 	private static final BigDecimal WHAT_A_SERBIAN_MEMBER_SENDS = new BigDecimal("4200.00");
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
+			+ " birth_date, place_id, city, country_id, first_season, active,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -203,7 +203,7 @@ class PaymentApiTest {
 	private long competitor(String referralSuffix, String memberNumber, boolean active, String birthDate,
 			String town) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', 'Takmicar',"
-						+ " 'M', ?, " + town + ", null, null, 2027, false, ?, "
+						+ " 'M', ?, " + town + ", null, null, 2027, ?, "
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(memberNumber, java.sql.Date.valueOf(LocalDate.parse(birthDate)), active,

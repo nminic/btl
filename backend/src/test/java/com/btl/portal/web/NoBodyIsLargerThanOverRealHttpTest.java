@@ -130,11 +130,11 @@ class NoBodyIsLargerThanOverRealHttpTest {
 	@BeforeEach
 	void threeKindsOfCaller() {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, first_season_2027, active, "
+						+ " place_id, first_season, active, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, true, ?, '',"
+						+ " (select id from place where rank = 1), 2027, true, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
 				.params(THE_MEMBERS_NUMBER, String.format("%016x", Long.parseLong(THE_MEMBERS_NUMBER)))
 				.update();

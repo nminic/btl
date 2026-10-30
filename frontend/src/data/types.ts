@@ -98,6 +98,65 @@ export const BIRTHDAY_SHOWN = ['none', 'year', 'full'] as const
 export type BirthdayShown = (typeof BIRTHDAY_SHOWN)[number]
 
 /**
+ * The category of ONE SEASON, as the server works it out (`CategoryOfASeason`): the age band
+ * of that season and whether he runs in the beginners' category in it.
+ *
+ * The age band this member competes in, which is the whole of what the portal
+ * is allowed to know about how old they are.
+ *
+ * **The band is stored and the year of birth is not, since 13.09.2026.** The
+ * record carried `birthYear` and the band was worked out from it. That is the
+ * right way round for a database and the wrong way round here: every field on
+ * this record that is not behind the question of who is asking is public to
+ * anybody who asks for the address, signed in or not (ADL A8), and the band is
+ * not one of the three that are (`/api/competitors`). Section 3 of the privacy policy
+ * says the date of birth „se nikada ne prikazuje, ni u
+ * punom ni u skraćenom obliku. Javna je samo kategorija koja iz njega
+ * proizlazi", and a year is the short form. So the portal now carries the
+ * thing that is public and not the thing it was derived from.
+ *
+ * **What that costs, measured rather than guessed.** The band moves with the
+ * calendar and this field does not: it is the band for `SEASON`. Counted over
+ * the served data on 13.09.2026, 25 of the 32 members change band somewhere
+ * between 2010 and 2027, so every screen that draws a category for an earlier
+ * season now draws today's band for them. Keeping that exact would mean a band
+ * per season, and that was measured too: from a band per season over 2010-2027
+ * the **exact** year of birth comes back for those same 25 members, because the
+ * season a band changes in fixes it. One band pins nobody: nought of the 32.
+ *
+ * **What one band does still give away, and the first draft of this got it
+ * wrong.** It said the narrowest set of years a band is consistent with is
+ * fifteen wide. That is true of the band READ ON ITS OWN and false of the record
+ * it sits in. Nobody enters a league, joins a club, runs a race or writes a
+ * comment before they are born, and all four of those are public and dated on
+ * the same file or beside it. Measured against the years this change removed,
+ * 000007's window is **eight** years wide (2003-2010, closed by a comment of his
+ * dated 2010-05-08) and six of the 32 come in under fifteen. Every one of the 32
+ * true years lies inside its window, so these are hard bounds and not a guess.
+ *
+ * **So the rule this field is under is not „the band gives nothing away".** It is
+ * that a window is not a year: eight candidates is not a date of birth, and Član
+ * 74 is about the date. What follows is a cost to weigh rather than a licence:
+ * every further public fact with a date on it narrows these windows again, so one
+ * is worth adding on its own merits and not on the grounds that the band already
+ * reveals nothing.
+ *
+ * So exactness through history and a private date of birth cannot both be had out
+ * of a public file, and this is the half the policy names. The other half is what
+ * the backend is for (ADL A8).
+ */
+export type SeasonCategory = {
+  season: number
+  ageBand: AgeBand
+  /**
+   * Whether he runs in the beginners' category rather than in the one for his age in that season
+   * (PDL P7): the wish of that season AND the right, worked out by the server, so a wish he no longer
+   * has a right to reads as his band here.
+   */
+  beginner: boolean
+}
+
+/**
  * A member of the league, as `/api/competitors` answers for one.
  *
  * **WHETHER THE FEE IS STANDING IS NOT A FIELD HERE, AND SINCE 21.09.2026 IT IS THE
@@ -129,73 +188,35 @@ export type Competitor = {
   city: string
   country: string
   /**
-   * The age band this member competes in, which is the whole of what the portal
-   * is allowed to know about how old they are.
-   *
-   * **The band is stored and the year of birth is not, since 13.09.2026.** The
-   * record carried `birthYear` and the band was worked out from it. That is the
-   * right way round for a database and the wrong way round here: every field on
-   * this record that is not behind the question of who is asking is public to
-   * anybody who asks for the address, signed in or not (ADL A8), and the band is
-   * not one of the three that are (`/api/competitors`). Section 3 of the privacy policy
-   * says the date of birth „se nikada ne prikazuje, ni u
-   * punom ni u skraćenom obliku. Javna je samo kategorija koja iz njega
-   * proizlazi", and a year is the short form. So the portal now carries the
-   * thing that is public and not the thing it was derived from.
-   *
-   * **What that costs, measured rather than guessed.** The band moves with the
-   * calendar and this field does not: it is the band for `SEASON`. Counted over
-   * the served data on 13.09.2026, 25 of the 32 members change band somewhere
-   * between 2010 and 2027, so every screen that draws a category for an earlier
-   * season now draws today's band for them. Keeping that exact would mean a band
-   * per season, and that was measured too: from a band per season over 2010-2027
-   * the **exact** year of birth comes back for those same 25 members, because the
-   * season a band changes in fixes it. One band pins nobody: nought of the 32.
-   *
-   * **What one band does still give away, and the first draft of this got it
-   * wrong.** It said the narrowest set of years a band is consistent with is
-   * fifteen wide. That is true of the band READ ON ITS OWN and false of the record
-   * it sits in. Nobody enters a league, joins a club, runs a race or writes a
-   * comment before they are born, and all four of those are public and dated on
-   * the same file or beside it. Measured against the years this change removed,
-   * 000007's window is **eight** years wide (2003-2010, closed by a comment of his
-   * dated 2010-05-08) and six of the 32 come in under fifteen. Every one of the 32
-   * true years lies inside its window, so these are hard bounds and not a guess.
-   *
-   * **So the rule this field is under is not „the band gives nothing away".** It is
-   * that a window is not a year: eight candidates is not a date of birth, and Član
-   * 74 is about the date. What follows is a cost to weigh rather than a licence:
-   * every further public fact with a date on it narrows these windows again, so one
-   * is worth adding on its own merits and not on the grounds that the band already
-   * reveals nothing.
-   *
-   * So exactness through history and a private date of birth cannot both be had out
-   * of a public file, and this is the half the policy names. The other half is what
-   * the backend is for (ADL A8).
+   * THE CATEGORY ON HIS CARD AND IN THE HEAD OF HIS PROFILE, the places that are not tied to a
+   * season, or null where it is withheld (`CompetitorApi`). PDL, owner, 30.10.2026: „dok traje
+   * trenutna sezona, prikazuje se kategorija u trenutnoj sezoni. Ukoliko clan nije clan trenutne
+   * sezone nego naredne, prikazuje se na njegovom profilu da je clan te buduce kategorije". Null
+   * where he holds that season without the right to rank in it, and the screens draw nothing then.
    */
-  ageBand: AgeBand
+  category: SeasonCategory | null
   /**
-   * Whether this member runs in the beginners' category rather than in the one
-   * for their age (PDL P7).
-   *
-   * A yes or a no, and the record keeps it as one. The registration form asks it
-   * as two buttons, „Početnička" and „Starosna", which write the words „yes"
-   * and „no"; the layer between the two turns those into this (forms/records.ts,
-   * `like` and `recordValue`). It matters that they meet: „no" read as a yes
-   * puts a member into the beginners' category for a whole season, and that
-   * cannot be undone mid-season.
+   * THE CATEGORY OF EVERY SEASON HE STANDS IN THE TABLE OF, oldest first (`CompetitorApi`): each
+   * season he holds a membership of with the right to rank, with the category of THAT season. PDL,
+   * owner, 30.10.2026: „poredak svake sezone prikazuje kategoriju te sezone", and of the frozen ones,
+   * „Prikazuj u proslim, svakako se to zamrzava". A season he holds without the right is not here
+   * (PDL, 30.10.2026: „Za sezonu bez prava rangiranja server u javnom odgovoru ne šalje ni kategoriju
+   * ni oznaku"), which is what the table of that season already shows; neither is a season he holds
+   * no membership of. So „does he stand in the table of this season" is asked of this list
+   * (`standsIn`), and never of the list of members as a whole.
    */
-  firstSeason2027: boolean
+  categories: SeasonCategory[]
   firstSeason: number
   /**
-   * Whether he holds the membership of the season the screens show as the running one
-   * (`seasonShown`) without the right to rank in it: activated after 31 March of it
-   * (`CompetitorApi.Competitor`). PDL, 28.10.2026: such a member „ne pojavljuje se u tabelama lige,
-   * rang listama ni u kategoriji", and 30.10.2026: „ne prikazuje se javno nigde njegov odabir" of a
-   * category. Read for what a run cannot say: the member who has not raced, and the category drawn
-   * on his card and his profile. False for a member who holds no membership of that season at all.
+   * WHAT HE CHOSE IN THIS VISIT, AND NOTHING THE SERVER SENDS: the session's overlay of his own choice
+   * on „Moja članarina", written as `season:yes` or `season:no` (`useMyCategory`). PDL P7, owner,
+   * 18.10.2026: „baš svuda svuda da ostane. Ako vratim na starosnu, treba svuda da se promeni ponovo",
+   * and a screen already holding the list would otherwise go on drawing the category he had before.
+   * It is the category the route answered (the wish AND the right), and it is folded over the season
+   * it is FOR and no other (`categoryIn`, `cardCategoryOf`), so a choice for next season leaves the
+   * running season alone.
    */
-  unranked: boolean
+  chosenCategory?: string
   /**
    * How this membership is held, and ONLY TO THE ADMINISTRATION.
    *
@@ -443,7 +464,7 @@ export type Member = {
    */
   country: string
   ageBand: AgeBand
-  firstSeason2027: boolean
+  beginner: boolean
   /** Whether his fee stands, as `competitor.active` says it: the flag behind the public list. */
   active: boolean
   /** The basis of the season ON SALE, the same field and rule as on `Competitor`. */
@@ -527,7 +548,7 @@ export type Race = {
    * store and not a shape of the record, and the store already answers for it:
    * `forms/records.ts` turns the two buttons of a yes-or-no question into a
    * boolean on the way in (`recordValue`, `like`) and back into the words on the
-   * way out (`valuesFor`), which is how `Competitor.firstSeason2027` has been
+   * way out (`valuesFor`), which is how `Competitor.beginner` has been
    * kept since it was written.
    */
   renamed: boolean
@@ -603,7 +624,7 @@ export type BtlEvent = {
    * or a false, because that is what the schema keeps and what `/api/events`
    * answers with (`CalendarApi.Event`, `featured boolean not null`). The two
    * meet in `forms/records.ts`, which is where every question asked in words and
-   * kept as a flag has met since `Competitor.firstSeason2027` was written.
+   * kept as a flag has met since `Competitor.beginner` was written.
    */
   featured: boolean
   /**

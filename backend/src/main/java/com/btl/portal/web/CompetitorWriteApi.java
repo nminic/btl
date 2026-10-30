@@ -647,7 +647,7 @@ class CompetitorWriteApi {
 	 *                   {@code competitor.referred_by} is left empty.
 	 */
 	record Invited(String firstName, String lastName, String fatherName, String birthDate,
-			String gender, Boolean firstSeason2027, String email, String address, Long placeId,
+			String gender, Boolean beginner, String email, String address, Long placeId,
 			String city, String country, String idNumber, String phone, String shirtSize,
 			Boolean healthStatement, String parentConsent, String parentRelation) {
 	}
@@ -982,19 +982,18 @@ class CompetitorWriteApi {
 		   afterwards, through `PUT /api/me`, where a moderator sees them before anybody
 		   else does. Written as a literal rather than as an empty parameter so that there
 		   is no value here for a caller to influence at all. */
+		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
 		long member = db.sql("insert into competitor"
 						+ " (first_name, last_name, gender, place_id, city, country_id,"
-						+ "  first_season, first_season_2027, active,"
+						+ "  first_season, active,"
 						+ "  referral_code, bio, profile_hidden, birth_date,"
 						+ "  father_name, address, phone, shirt_size, health_statement_at)"
-						+ " values (?, ?, ?, ?, ?, ?, ?, ?, false, ?, '', false, ?,"
+						+ " values (?, ?, ?, ?, ?, ?, ?, false, ?, '', false, ?,"
 						+ "  ?, ?, ?, ?, ?)"
 						+ " returning id")
 				.params(reading.typed().firstName().strip(), reading.typed().lastName().strip(),
 						reading.typed().gender(), reading.town().placeId(), reading.town().city(),
-						reading.town().countryId(),
-						SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock)),
-						reading.typed().firstSeason2027(), ReferralCode.fresh().written(),
+						reading.town().countryId(), season, ReferralCode.fresh().written(),
 						java.sql.Date.valueOf(reading.born()),
 						reading.typed().fatherName().strip(), reading.typed().address().strip(),
 						WhatAFieldMeans.thePhone(reading.typed().phone()),
@@ -1002,6 +1001,11 @@ class CompetitorWriteApi {
 				.query(Long.class).single();
 
 		db.sql("update account set competitor_id = ? where id = ?").params(member, account).update();
+
+		/* AND THE CATEGORY HE WANTS, FOR THE SEASON HE IS ENTERED FOR (V81), exactly as the registration
+		   writes it: the season `first_season` names, and every later one inherits it (PDL, 30.10.2026). */
+		db.sql("insert into category_wish (competitor_id, season, beginner) values (?, ?, ?)")
+				.params(member, season, reading.typed().beginner()).update();
 
 		String document = WhatAFieldMeans.theDocument(reading.typed().idNumber());
 
@@ -1191,7 +1195,7 @@ class CompetitorWriteApi {
 		filledIn.put("fatherName", typed.fatherName());
 		filledIn.put("birthDate", typed.birthDate());
 		filledIn.put("gender", WhatAFieldMeans.theGender(typed.gender()));
-		filledIn.put("firstSeason2027", typed.firstSeason2027() == null ? null : "izabrano");
+		filledIn.put("beginner", typed.beginner() == null ? null : "izabrano");
 		filledIn.put("email", WhatAnAddressLooksLike.itDoes(address) ? address : null);
 		filledIn.put("address", typed.address());
 		filledIn.put("city", town == null ? null : "izabrano");

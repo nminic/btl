@@ -188,11 +188,11 @@ class ResultApiTest {
 	private void member(String number, String first, String last, String gender, String born,
 			String referral, boolean feeStanding) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, city, country_id, first_season, first_season_2027, active,"
+						+ " place_id, city, country_id, first_season, active,"
 						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, date '" + born + "',"
-						+ " (select id from place where rank = 1), null, null, 2027, false, ?,"
+						+ " (select id from place where rank = 1), null, null, 2027, ?,"
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, first, last, gender, feeStanding, referral).update();
@@ -244,7 +244,7 @@ class ResultApiTest {
 	 * else, so that two of them compare as values.
 	 */
 	private record TheRunner(String firstName, String lastName, String gender, String ageBand,
-			boolean firstSeason2027) {
+			boolean beginner) {
 	}
 
 	/** The runner of one row of this answer. */
@@ -260,7 +260,7 @@ class ResultApiTest {
 	private static TheRunner fiveNamesIn(JsonNode record) {
 		return new TheRunner(record.path("firstName").asString(), record.path("lastName").asString(),
 				record.path("gender").asString(), record.path("ageBand").asString(),
-				record.path("firstSeason2027").asBoolean());
+				record.path("beginner").asBoolean());
 	}
 
 	/** The whole answer as text, which is what a name or a year is looked for in. */
@@ -297,9 +297,11 @@ class ResultApiTest {
 		member(number, first, last, gender, born, "0011223344" + number, feeStanding);
 	}
 
-	/** The beginners' category, which is a flag on the record and not something worked out. */
+	/** The beginners' category, wished for 2027 and so for every season after it (V81). */
 	private void heRunsAsABeginner(String number) {
-		db.sql("update competitor set first_season_2027 = true where member_number = ?")
+		db.sql("insert into category_wish (competitor_id, season, beginner)"
+						+ " select id, 2027, true from competitor where member_number = ?"
+						+ " on conflict (competitor_id, season) do update set beginner = true")
 				.param(number).update();
 	}
 
@@ -313,11 +315,11 @@ class ResultApiTest {
 	private void anApplicantWithNoMemberNumber(String first, String last, String gender,
 			String born) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, city, country_id, first_season, first_season_2027, active,"
+						+ " place_id, city, country_id, first_season, active,"
 						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (null, ?, ?, ?, date '" + born + "',"
-						+ " (select id from place where rank = 1), null, null, 2027, false, false,"
+						+ " (select id from place where rank = 1), null, null, 2027, false,"
 						+ " '00112233440000ab', null, '', false, 'none', 'Otac', 'Ulica 1',"
 						+ " 'M', timestamptz '2026-09-01 10:00:00+00')")
 				.params(first, last, gender).update();
@@ -808,7 +810,7 @@ class ResultApiTest {
 					.as("the runner of %s carries other names than the five it is allowed",
 							row.path("memberNumber").asString())
 					.containsExactlyInAnyOrder("firstName", "lastName", "gender", "ageBand",
-							"firstSeason2027");
+							"beginner");
 		}
 	}
 
@@ -1255,7 +1257,10 @@ class ResultApiTest {
 
 			for (JsonNode one : new ObjectMapper().readTree(http.perform(get("/api/competitors"))
 					.andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8))) {
-				theList.put(one.path("memberNumber").asString(), fiveNamesIn(one));
+				theList.put(one.path("memberNumber").asString(), new TheRunner(one.path("firstName").asString(),
+						one.path("lastName").asString(), one.path("gender").asString(),
+						one.path("category").path("ageBand").asString(),
+						one.path("category").path("beginner").asBoolean()));
 			}
 
 			int compared = 0;

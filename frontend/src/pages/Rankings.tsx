@@ -11,7 +11,7 @@ import {
   rankingFor,
   rankingWithEverybody,
   seasonsOnOffer,
-  shownCategoryLabel,
+  categoryLabelIn,
 } from '../data/derive'
 import { seasonShown } from '../data/season'
 import { offeredSeason } from '../components/season'
@@ -172,7 +172,7 @@ function Standing({
             >
               {t('rankings.allCategories')}
             </button>
-            {categoriesOf(competitors, gender).map((code) => (
+            {categoriesOf(competitors, gender, season).map((code) => (
               <button
                 key={code}
                 type="button"
@@ -316,7 +316,7 @@ function Standing({
                       </span>
                     </NamePlate>
                   </td>
-                  <td className="table__category">{shownCategoryLabel(row.competitor, t)}</td>
+                  <td className="table__category">{categoryLabelIn(row.competitor, season, t)}</td>
                   <td className="table__hide-phone">{row.races}</td>
                   <td className="table__hide-phone">{formatNumber(row.kilometers, locale, 2)}</td>
                   <td className="table__hide-phone">{formatNumber(row.ascent, locale)}</td>

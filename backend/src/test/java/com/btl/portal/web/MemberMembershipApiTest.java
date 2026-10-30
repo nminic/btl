@@ -97,7 +97,7 @@ class MemberMembershipApiTest {
 	private static final String A_TOWN_ABROAD = "(select id from place where rank = 1)";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
+			+ " birth_date, place_id, city, country_id, first_season, active,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -172,7 +172,7 @@ class MemberMembershipApiTest {
 
 	private long competitor(String number, String suffix, boolean active, Long referredBy) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', 'Clan',"
-						+ " 'M', date '1990-05-15', " + A_TOWN_ABROAD + ", null, null, 2027, false, ?, ?, ?, '',"
+						+ " 'M', date '1990-05-15', " + A_TOWN_ABROAD + ", null, null, 2027, ?, ?, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
 				.params(number, active, "0011aabbccddee" + suffix, referredBy)

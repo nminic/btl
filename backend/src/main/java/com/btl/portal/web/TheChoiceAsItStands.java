@@ -5,7 +5,6 @@ import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.ZonedDateTime;
 
@@ -28,34 +27,28 @@ import java.time.ZonedDateTime;
  * pushes him over twelve points writes nothing at all - the answer simply changes the moment
  * the row it approved exists.
  *
- * <p><b>WHERE THE WISH IS STORED TODAY, AND WHY THAT IS A DEBT RATHER THAN A DESIGN.</b>
- * {@code competitor.first_season_2027} (V7) is a single boolean per member whose NAME carries
- * a season, so it can hold the wish for one season only. The wish is a fact about a member AND
- * a season (PDL P7: the category is assigned per season and a change takes effect from the
- * next one), which is a row per pair rather than a column per member - and
- * {@code btl-produkt/PRED-BAZU-ANALIZA.md} recorded exactly that before V7 shipped: „Ime nosi
- * godinu u sebi... pa je u bazi izbor kategorije po sezoni, ne bulean na clanu." The owner was
- * shown what moving it costs - 172 places in 95 files - and chose to keep the column for now
- * and record the debt (27.09.2026: „da zapises kao tehnicki dug da se ne zaboravi i resi
- * strukturalno nekad sto pre"). The debt is in {@code PENDING.md} and it becomes live in
- * OCTOBER 2027, the first moment {@link SeasonClock#seasonBeingPaidFor} names a season the
- * column cannot: from then a wish written for 2028 overwrites the one that was 2027's.
- * {@code theColumnAndTheSeasonAgreeOnlyWhileTheSeasonIsTheFirstOne} in
- * {@code MeCategoryApiTest} stands on that instant and names it, so the deadline is in the
- * suite and not only in a document.
+ * <p><b>WHERE THE WISH IS STORED, AND WHICH SEASON IT IS READ FOR.</b> Since V81 the wish is a row per
+ * member and season ({@code category_wish}), and the season here is the one being chosen,
+ * {@link SeasonClock#seasonBeingPaidFor}: from 11 November that is next year, so a member who holds
+ * the running season and ticks the box for the next one changes the next one alone, and the running
+ * season keeps the category it began with (PDL P7, „Nema promene kategorije tokom godine"). Where no
+ * row of that season exists yet the box opens on the last one before it (PDL, owner, 30.10.2026,
+ * „Izbor kategorije za novu sezonu nasleđuje poslednji raniji izbor"). The debt the owner recorded on
+ * 27.09.2026 about a column with 2027 in its name is paid by that migration; the wish, the right and
+ * the category are asked of {@link CategoryOfASeason}, which every list asks as well.
  */
 @Component
 class TheChoiceAsItStands {
 
 	private final JdbcClient db;
 
-	private final BestOfficialSeason bestOfficialSeason;
+	private final CategoryOfASeason categories;
 
 	private final Clock clock;
 
-	TheChoiceAsItStands(JdbcClient db, BestOfficialSeason bestOfficialSeason, Clock clock) {
+	TheChoiceAsItStands(JdbcClient db, CategoryOfASeason categories, Clock clock) {
 		this.db = db;
-		this.bestOfficialSeason = bestOfficialSeason;
+		this.categories = categories;
 		this.clock = clock;
 	}
 
@@ -73,17 +66,17 @@ class TheChoiceAsItStands {
 		int season = SeasonClock.seasonBeingPaidFor(now);
 
 		Member whoHeIs = memberRow(me);
-		BigDecimal best = bestOfficialSeason.pointsFor(me, season);
-		boolean allowed = Category.firstSeasonAllowed(best);
+		CategoryOfASeason.Book book = categories.of(me);
+		boolean wish = book.wish(me, season);
+		boolean allowed = book.allowed(me, season);
 
-		return new MeCategoryApi.Choice(season, whoHeIs.firstSeason(), allowed,
-				Category.codeFor(whoHeIs.gender(), whoHeIs.birthYear(), season,
-						whoHeIs.firstSeason() && allowed),
+		return new MeCategoryApi.Choice(season, wish, allowed,
+				Category.codeFor(whoHeIs.gender(), whoHeIs.birthYear(), season, wish && allowed),
 				SeasonClock.categoryMayBeChosenFor(season, now));
 	}
 
 	/**
-	 * What the row holds about him: his wish, and the two facts a band is made of.
+	 * What the row holds about him: the two facts a band is made of.
 	 *
 	 * <p><b>{@code birth_year} is a GENERATED column</b> ({@code extract(year from birth_date)},
 	 * V8), so the year the band is taken from is the database's own reading of the date it
@@ -95,9 +88,9 @@ class TheChoiceAsItStands {
 	 * {@code account_competitor_fk} refuses outright.
 	 */
 	private Member memberRow(long me) {
-		return db.sql("select gender, birth_year, first_season_2027 from competitor where id = ?")
+		return db.sql("select gender, birth_year from competitor where id = ?")
 				.param(me)
-				.query((row, one) -> new Member(row.getString(1), row.getInt(2), row.getBoolean(3)))
+				.query((row, one) -> new Member(row.getString(1), row.getInt(2)))
 				.single();
 	}
 
@@ -106,6 +99,6 @@ class TheChoiceAsItStands {
 	 * birth and section 3 of the privacy policy forbids showing it (ADL A8), so it goes into a band here and never
 	 * into an answer.
 	 */
-	private record Member(String gender, int birthYear, boolean firstSeason) {
+	private record Member(String gender, int birthYear) {
 	}
 }

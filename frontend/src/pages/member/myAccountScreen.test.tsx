@@ -6,7 +6,7 @@ import type { Competitor } from '../../data/types'
 import { at, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { answeredWith, refused, serverThat, type Asked } from '../../test/serverAnswers'
-import { myOwnRecordFromMe } from '../../test/theAnswer'
+import { hisCategoryFromMe, myOwnRecordFromMe } from '../../test/theAnswer'
 import { setupUser } from '../../test/user'
 import en from '../../i18n/en.json'
 import sr from '../../i18n/sr.json'
@@ -124,8 +124,7 @@ function hisRecord(held: { address: string; phone?: string }): Record<string, un
     lastName: ME.lastName,
     gender: ME.gender,
     city: ME.city,
-    ageBand: ME.ageBand,
-    firstSeason2027: ME.firstSeason2027,
+    ...hisCategoryFromMe(ME),
     address: held.address,
     ...(held.phone === undefined ? {} : { phone: held.phone }),
   }
@@ -710,7 +709,7 @@ describe('what the owner took off the settings screen', () => {
 
     expect(screen.queryByRole('heading', { name: 'Podaci koji se ne menjaju ovde' })).toBeNull()
     expect(screen.queryByRole('textbox', { name: /Adresa elektronske pošte/ })).toBeNull()
-    expect(screen.queryByText(`M ${ME.ageBand}`), 'the category of the box that is gone').toBeNull()
+    expect(screen.queryByText(`M ${hisCategoryFromMe(ME).ageBand}`), 'the category of the box that is gone').toBeNull()
   })
 
   it('leaves no control of the screen naming a sentence that is not there', async () => {

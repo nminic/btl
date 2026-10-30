@@ -291,10 +291,29 @@ describe('a member whose fee has lapsed, on his own page', () => {
          of his band), and a ranking drawn against nobody but himself would put him first on both. The
          three are read off the list the case serves and not named, and the case says first that there
          are three of them to be read. */
-      const ahead = FILE.filter(
-        (one) =>
-          one.active === true && one.gender === 'M' && one.ageBand === '40-54' && one.firstSeason2027 === false,
-      ).slice(0, 3)
+      const ahead = FILE.filter((one) => {
+        const card: unknown = one.category
+
+        return (
+          one.active === true &&
+          one.gender === 'M' &&
+          typeof card === 'object' &&
+          card !== null &&
+          Reflect.get(card, 'ageBand') === '40-54' &&
+          Reflect.get(card, 'beginner') === false
+        )
+      }).slice(0, 3)
+      /* AND THE THREE STAND IN THE TABLE OF 2028, with the band of 2028, which a member of the list does
+         only where he holds that season (`Competitor.categories`, V81); the file is the list of 2027. */
+      const aheadIn2028 = new Set(ahead.map((one) => String(one.memberNumber)))
+      const theListOf2028 = FILE.filter((one) => one.active === true).map((row) => {
+        const answered = asAnswered(row, aCompetitor)
+        const seasons: unknown = answered.categories
+
+        return aheadIn2028.has(String(row.memberNumber)) && Array.isArray(seasons)
+          ? { ...answered, categories: [...seasons, { season: 2028, ageBand: '40-54', beginner: false }] }
+          : answered
+      })
 
       expect(ahead, 'three men of his band on the list, which the generated data has').toHaveLength(3)
 
@@ -307,7 +326,9 @@ describe('a member whose fee has lapsed, on his own page', () => {
                 aRun(9003, '000032', 100, 2028),
                 ...ahead.map((one, index) => aRun(9010 + index, String(one.memberNumber), 300 - 50 * index, 2028)),
               ])
-            : null,
+            : path === '/api/competitors'
+              ? json(theListOf2028)
+              : null,
         ),
       )
       renderAt(`${HIS_ADDRESS}/priznanja`, 'competitor', '000032')

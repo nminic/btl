@@ -550,11 +550,11 @@ class AccountAndVerificationTest extends DatabaseTest {
 	/** A member, in the shape MembershipConstraintsTest already writes one. */
 	private void competitor(String number, String first, String last) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date, place_id,"
-						+ " city, country_id, first_season, first_season_2027, active, "
+						+ " city, country_id, first_season, active, "
 						+ " referral_code, referred_by, bio, profile_hidden, birthday_shown, father_name,"
 						+ " address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'M', date '1982-02-02', (select id from place where rank = 1),"
-						+ " null, null, 2027, false, true, ?, null, '', false, 'none', 'Otac',"
+						+ " null, null, 2027, true, ?, null, '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, first, last, "00112233445566" + number.substring(4))
 				.update();

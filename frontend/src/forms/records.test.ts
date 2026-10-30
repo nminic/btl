@@ -37,7 +37,7 @@ const form: FormDef = {
      * carries no options and the screen hands them in. */
     { name: 'open', type: 'select', labelKey: 'proba.otvoren' },
     /* Two buttons for a question the record keeps as a yes or a no
-     * (data/types.ts, `firstSeason2027`). */
+     * (data/types.ts, `beginner`). */
     {
       name: 'beginner',
       type: 'choice',
@@ -275,7 +275,7 @@ describe('a value out of a form for a record that is being created', () => {
 
   it('turns the two words of a yes or no question into a yes or a no', () => {
     /* A pair of buttons writes „yes" or „no", and the record holding the answer
-       holds a boolean (data/types.ts, `firstSeason2027`). Left as words, „no"
+       holds a boolean (data/types.ts, `beginner`). Left as words, „no"
        was not „true" and so was false by accident, and „yes" was false as well:
        a beginner in the wrong category for a whole season, which PDL P7 says
        cannot be undone mid-season. */

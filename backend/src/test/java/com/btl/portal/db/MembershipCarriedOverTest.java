@@ -50,7 +50,7 @@ class MembershipCarriedOverTest extends DatabaseTest {
 	private static final String AN_ACCOUNT = "(select id from account where email = 'blagajnik@primer.rs')";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
+			+ " birth_date, place_id, city, country_id, first_season, active,"
 			+ " membership_basis, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -86,7 +86,7 @@ class MembershipCarriedOverTest extends DatabaseTest {
 
 	private void competitor(String number, String last, String code, String basis, int firstSeason) {
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', ?, 'M',"
-						+ " date '1982-02-02', " + A_TOWN + ", null, null, ?, false, true, ?, ?, null,"
+						+ " date '1982-02-02', " + A_TOWN + ", null, null, ?, true, ?, ?, null,"
 						+ " '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, last, firstSeason, basis, code).update();

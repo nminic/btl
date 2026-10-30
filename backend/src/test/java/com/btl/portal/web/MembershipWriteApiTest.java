@@ -111,7 +111,7 @@ class MembershipWriteApiTest {
 					+ " order by rank limit 1)";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
+			+ " birth_date, place_id, city, country_id, first_season, active,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -244,7 +244,7 @@ class MembershipWriteApiTest {
 	private long competitor(String referralSuffix, String memberNumber, boolean active) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni',"
 						+ " 'Takmicar', 'M', date '1990-05-15', " + A_TOWN + ", null, null, 2027,"
-						+ " false, ?, ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " ?, ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(memberNumber, active, "00112233445566" + referralSuffix)
 				.query(Long.class).single();
@@ -259,7 +259,7 @@ class MembershipWriteApiTest {
 	private long competitorIn(String town, String memberNumber) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni',"
 						+ " 'Takmicar', 'M', date '1990-05-15', " + town + ", null, null, 2027,"
-						+ " false, false, ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " false, ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(memberNumber, "0011223344" + memberNumber)
 				.query(Long.class).single();

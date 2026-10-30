@@ -410,6 +410,13 @@ describe('what the portal serves about how old somebody is', () => {
    * that intolerable is `id`: it is an identity in ten files and a quantity in none.
    */
   const MAY_HOLD_A_YEAR = [
+    /* TWO SEASONS AND NOT A YEAR OF BIRTH, since 30.10.2026: the season the category on his card is
+       the category OF, and the season of each category he stands in a table under (`CompetitorApi`,
+       PDL, owner, 30.10.2026, „Kategorija se čuva po sezoni"). Both are seasons he holds a membership
+       of, or the running one, so never before 2027; their value in the file is 2027. Added to the
+       snapshot by hand, as this file requires, with the band and the beginners' mark beside each. */
+    'competitors.json:categories.season',
+    'competitors.json:category.season',
     'competitors.json:firstSeason',
     /* A SEASON, NOT A YEAR OF BIRTH, since 18.10.2026: the season the basis of a membership is the
        basis of, which is the season on sale (PDL P8, „Osnov članstva ima jedan dom”). It stands
@@ -501,18 +508,25 @@ describe('what the portal serves about how old somebody is', () => {
     expect(loose, READ_THIS_BEFORE_WIDENING_THE_LIST).toEqual([])
   })
 
-  it('serves every member an age band, and only a band the rulebook has', () => {
-    /* A member with no band at all, or with one invented, fails here. Held to
-       `AGE_BANDS` rather than to four strings written out again, so the two cannot
-       drift: the rulebook fixes the bands and `categories.ts` is where the portal keeps
-       them (PDL P7). */
-    const members: { memberNumber: string; ageBand?: unknown }[] = JSON.parse(
-      readFileSync(join(MOCK, 'competitors.json'), 'utf-8'),
-    )
+  it('serves every category an age band, and only a band the rulebook has', () => {
+    /* A category with no band at all, or with one invented, fails here: the one on the card and every
+       one of a season he stands in (`Competitor.category`, `Competitor.categories`, V81). Held to
+       `AGE_BANDS` rather than to four strings written out again, so the two cannot drift: the rulebook
+       fixes the bands and `categories.ts` is where the portal keeps them (PDL P7). */
+    const members: { memberNumber: string; category?: { ageBand?: unknown } | null; categories?: { ageBand?: unknown }[] }[] =
+      JSON.parse(readFileSync(join(MOCK, 'competitors.json'), 'utf-8'))
 
     expect(members.length).toBeGreaterThan(30)
 
-    const wrong = members
+    const bands = members.flatMap((one) =>
+      [...(one.category === null || one.category === undefined ? [] : [one.category]), ...(one.categories ?? [])].map(
+        (category) => ({ memberNumber: one.memberNumber, ageBand: category.ageBand }),
+      ),
+    )
+
+    expect(bands.length, 'no category is served, so nothing below is asked of anything').toBeGreaterThan(30)
+
+    const wrong = bands
       .filter((one) => typeof one.ageBand !== 'string' || !AGE_BANDS.some((b) => b === one.ageBand))
       .map((one) => `${one.memberNumber}: ${String(one.ageBand)}`)
 

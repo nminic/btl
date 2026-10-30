@@ -303,7 +303,7 @@ export function MemberRow({
           {/* The number and the category in elements of their own, so each can be found by itself. */}
           <span>{one.memberNumber}</span> -{' '}
           <span className="table__category">
-            {categoryLabel(categoryCodeFor(one.gender, one.ageBand, one.firstSeason2027), t)}
+            {categoryLabel(categoryCodeFor(one.gender, one.ageBand, one.beginner), t)}
           </span>
         </span>
         <dl className="members-table__held">

@@ -218,6 +218,10 @@ function whatMeAnswers(): Response {
           member: {
             ...asAnswered(mine, myOwnRecordFromMe),
             referredCount: broughtIn(members, mine),
+            /* THE CATEGORY OF HIS CARD AS `/api/me` SPELLS IT (V81): the band and the mark apart and the
+               season they are OF, off the card the file carries for him, and his band of 2027 where the
+               card is withheld from the public (`MeApi` tells him his own whatever the list says). */
+            ...cardFromTheFile(mine),
             /* THE THREE COLUMNS THE PUBLIC FILE DOES NOT HAVE, BY DECISION (PDL „Uvek privatno: mejl,
                telefon i adresa"), so `asAnswered` cannot copy them off the row. They are the sample's
                own, the same for every member of the file, which is the arrangement
@@ -239,6 +243,21 @@ function whatMeAnswers(): Response {
     status: 200,
     headers: { 'content-type': 'application/json' },
   })
+}
+
+/** The category of his card out of a row of the file, in the three fields `/api/me` answers it with. */
+function cardFromTheFile(mine: Record<string, unknown>): { ageBand: unknown; beginner: unknown; categorySeason: unknown } {
+  const card: unknown = mine.category
+  const first: unknown = Array.isArray(mine.categories) ? mine.categories[0] : undefined
+  const read: unknown = typeof card === 'object' && card !== null ? card : first
+
+  return typeof read === 'object' && read !== null
+    ? {
+        ageBand: Reflect.get(read, 'ageBand'),
+        beginner: Reflect.get(read, 'beginner'),
+        categorySeason: Reflect.get(read, 'season'),
+      }
+    : { ageBand: '40-54', beginner: false, categorySeason: 2027 }
 }
 
 /**

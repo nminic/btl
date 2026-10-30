@@ -361,7 +361,7 @@ class GroupEntryTest {
 	 * A BOX THAT IS THERE AND OFF IS FILLED IN; ONE THAT IS NOT THERE AT ALL IS NOT.
 	 *
 	 * <p><b>Two states of one fact, and only one of them was in the fixture until the
-	 * coverage floor said so.</b> {@code firstSeason2027} is in
+	 * coverage floor said so.</b> {@code beginner} is in
 	 * {@link WhatRegistrationAsksFor#OF_EVERYBODY}, so it is required - but „required" for a
 	 * box means it must have been ANSWERED, and answering „no" is an answer. A route that
 	 * read the box's VALUE rather than its presence would refuse every member whose first
@@ -373,21 +373,21 @@ class GroupEntryTest {
 	@Test
 	void aBoxAnsweredNoIsAnsweredAndOneThatIsAbsentIsNot() throws Exception {
 		List<Map<String, Object>> group = aGroupOfThree();
-		group.get(1).put("firstSeason2027", false);
+		group.get(1).put("beginner", false);
 
 		assertThat(enter(group, EVERYTHING).getStatus())
 				.as("a member who said his first season is NOT 2027 was refused, so the route"
 						+ " reads what the box says rather than whether it was answered")
 				.isEqualTo(201);
-		assertThat(memberBehind(folded(SECOND_TYPED)).get("first_season_2027"))
+		assertThat(wishBehind(folded(SECOND_TYPED)))
 				.as("the answer he gave was not written down").isEqualTo(false);
 
-		group.get(1).remove("firstSeason2027");
+		group.get(1).remove("beginner");
 
 		assertThat(rowsRefusedIn(enter(group, EVERYTHING)))
 				.as("a box nobody answered passed as answered")
 				.containsExactly(Map.of("row", 1, "reason", "theFormIsNotComplete",
-						"missing", List.of("firstSeason2027")));
+						"missing", List.of("beginner")));
 	}
 
 	/* ------------------------------------------------- what the invitation opens, and whose */
@@ -1147,7 +1147,7 @@ class GroupEntryTest {
 		row.put("fatherName", "Otac " + first);
 		row.put("birthDate", A_GROWN_UP);
 		row.put("gender", gender);
-		row.put("firstSeason2027", true);
+		row.put("beginner", true);
 		row.put("email", email);
 		row.put("address", "Ulica " + first + " 1");
 		row.put("placeId", aTownOfTheCodebook);
@@ -1194,12 +1194,12 @@ class GroupEntryTest {
 
 	private long competitor(String number, String referral, boolean active) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at)"
 						+ " values (?, 'Zatecen', 'Zatecenic', 'M', date '1985-01-01',"
-						+ " (select id from place order by rank limit 1), 2027, false, ?,"
+						+ " (select id from place order by rank limit 1), 2027, ?,"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 9', 'L',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, active, referral).query(Long.class).single();
@@ -1235,6 +1235,15 @@ class GroupEntryTest {
 	private Map<String, Object> memberBehind(String email) {
 		return db.sql("select c.* from competitor c join account a on a.competitor_id = c.id"
 				+ " where a.email = ?").param(email).query().singleRow();
+	}
+
+	/**
+	 * The category he asked for, for the season {@link #NOW} sells (V81): one row, the season the entry
+	 * was made for.
+	 */
+	private Object wishBehind(String email) {
+		return db.sql("select w.beginner from category_wish w join account a on a.competitor_id = w.competitor_id"
+				+ " where a.email = ? and w.season = 2027").param(email).query(Boolean.class).single();
 	}
 
 	private int howManyDocumentsOf(String email) {

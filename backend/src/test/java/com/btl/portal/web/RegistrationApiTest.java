@@ -167,7 +167,7 @@ class RegistrationApiTest {
 		form.put("fatherName", "Milorad");
 		form.put("birthDate", today.minusYears(30).toString());
 		form.put("gender", "M");
-		form.put("firstSeason2027", true);
+		form.put("beginner", true);
 		form.put("email", ADDRESS);
 		form.put("password", PASSWORD);
 		form.put("passwordRepeat", PASSWORD);
@@ -273,7 +273,11 @@ class RegistrationApiTest {
 		   NOT NULL and may be empty (V7), and the words are written afterwards through
 		   `PUT /api/me`, which puts them in front of a moderator first. */
 		assertThat(competitor.get("bio")).isEqualTo("");
-		assertThat(competitor.get("first_season_2027")).isEqualTo(true);
+		assertThat(db.sql("select season, beginner from category_wish where competitor_id = ?")
+				.param(competitor.get("id")).query().listOfRows())
+				.as("the category he asked for is kept for the season he is joining, and for no other")
+				.containsExactly(Map.of("season", SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(SeasonClock.ZONE)),
+						"beginner", true));
 		assertThat(((java.sql.Date) competitor.get("birth_date")).toLocalDate())
 				.isEqualTo(today.minusYears(30));
 		assertThat(competitor.get("health_statement_at"))
@@ -879,11 +883,11 @@ class RegistrationApiTest {
 	 */
 	private long aMemberWhoseCodeIs(String code) {
 		return db.sql("insert into competitor (first_name, last_name, gender, birth_date,"
-						+ " city, country_id, first_season, first_season_2027, active,"
+						+ " city, country_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, father_name,"
 						+ " address, shirt_size, health_statement_at)"
 						+ " values ('Stari', 'Clanovic', 'M', ?,"
-						+ " 'Beograd', (select id from country where code = ?), 2027, false, true,"
+						+ " 'Beograd', (select id from country where code = ?), 2027, true,"
 						+ " ?, '', false, 'Otac', 'Ulica 1', 'M', now())"
 						+ " returning id")
 				.params(java.sql.Date.valueOf(today.minusYears(40)), theCountryThatTownIsIn, code)

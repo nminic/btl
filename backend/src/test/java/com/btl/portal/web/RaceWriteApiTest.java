@@ -215,11 +215,11 @@ class RaceWriteApiTest {
 
 	private long competitor(String number, String referral) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Trkac', 'M', date '1990-01-01', " + A_TOWN
-						+ ", 2027, false, true, ?, '', false, 'none', 'Otac', 'Ulica 1',"
+						+ ", 2027, true, ?, '', false, 'none', 'Otac', 'Ulica 1',"
 						+ " 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, referral).query(Long.class).single();
 	}

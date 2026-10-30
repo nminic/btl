@@ -54,7 +54,7 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 	private static final String A_TOWN = "(select id from place where rank = 1)";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
+			+ " birth_date, place_id, city, country_id, first_season, active,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -544,7 +544,7 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ", photo_id) values (?,"
 						+ " 'Probni', 'Nosilac', 'M', date '1990-01-01', " + A_TOWN + ", null, null,"
-						+ " 2027, false, true, ?, null, '', false, 'none', 'Otac',"
+						+ " 2027, true, ?, null, '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00', " + literal(photo)
 						+ ") returning id")
 				.params(String.format("%06d", 5400 + which), String.format("%016x", 0xb5400000L + which))

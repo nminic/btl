@@ -89,11 +89,11 @@ class ResultsByTheLeagueConcurrencyTest {
 		moderator(THE_OTHER_MODERATOR);
 
 		member = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Istovremeni', 'Unos', 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, true,"
+						+ " (select id from place where rank = 1), 2027, true,"
 						+ " '0011223344558a41', '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.param(THE_MEMBER).query(Long.class).single();
@@ -438,11 +438,11 @@ class ResultsByTheLeagueConcurrencyTest {
 
 	private long anotherMember(String number, String referral) {
 		long made = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Drugi', 'Istovremeni', 'M', date '1991-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, true,"
+						+ " (select id from place where rank = 1), 2027, true,"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 2', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, referral).query(Long.class).single();

@@ -42,11 +42,10 @@ import java.util.List;
  * codebase has been bitten by three times in a week. The cost, said plainly: this route accepts
  * a wish no screen of the portal can send it.
  *
- * <p><b>WHERE IT IS STORED, AND THE DEBT THAT COMES WITH IT.</b>
- * {@code competitor.first_season_2027} - one boolean per member, with a season in its own name.
- * {@link TheChoiceAsItStands} carries the measurement, the owner's decision of 27.09.2026 to
- * keep it and record the debt, and the month it becomes live. Nothing here writes a season,
- * because there is no column to write one into.
+ * <p><b>WHERE IT IS STORED: one row per member and season ({@code category_wish}, V81)</b>, and
+ * the season is the one the box is for, which {@link TheChoiceAsItStands} names off the same
+ * reading of the clock its deadline is asked of. A wish written for next season changes next
+ * season alone: the running one keeps its own row, or the row it inherits.
  *
  * <p><b>What an omitted field means here, which ADL A54 requires every write route to say:</b>
  * it is REFUSED. The form has one field, so „leave it alone" would make the whole request a
@@ -179,11 +178,13 @@ class MeCategoryWriteApi {
 		   season is being chosen and whether it is still open from ONE moment; spelt here as
 		   two more SeasonClock calls, this route would be free to disagree with the GET beside
 		   it about which season the member is even looking at. */
-		if (!theChoice.of(me).open()) {
+		MeCategoryApi.Choice asItStands = theChoice.of(me);
+
+		if (!asItStands.open()) {
 			return ResponseEntity.status(HttpStatus.CONFLICT).body(new Refused(THE_CHOICE_IS_SHUT));
 		}
 
-		write(me, typed.firstSeason());
+		write(me, asItStands.season(), typed.firstSeason());
 
 		/* AND THE ANSWER IS WORKED OUT AGAIN RATHER THAN ECHOED, which is load-bearing here and
 		   not a habit. Two of the five fields are DERIVED and neither is in the request:
@@ -215,7 +216,7 @@ class MeCategoryWriteApi {
 	}
 
 	/**
-	 * THE WRITING, WHICH TOUCHES ONE ROW AND ONE COLUMN.
+	 * THE WRITING, WHICH TOUCHES ONE ROW: HIS, FOR THE SEASON THE BOX IS FOR.
 	 *
 	 * <p><b>{@code competitor_id} is the one parameter that does not come out of the form</b>,
 	 * so this writes the row of the member whose session this is and of nobody else. There is
@@ -223,15 +224,16 @@ class MeCategoryWriteApi {
 	 * reason the resource is under {@code /api/me} rather than at
 	 * {@code /api/competitors/{number}/category}.
 	 *
-	 * <p><b>No {@code insert} and no {@code on conflict}</b>, unlike
-	 * {@link MeWriteApi}'s own write: the column is on {@code competitor} and is
-	 * {@code not null}, so every member has a value from the moment he registers. There is no
-	 * „he has no row" case here, and the season the column is named for is not written because
-	 * there is nowhere to write it - see {@link TheChoiceAsItStands} for the debt that is.
+	 * <p><b>An insert that becomes an update</b>, because a season may have no row of its own
+	 * yet: it reads the last one before it until he ticks the box (PDL, 30.10.2026), and the
+	 * first tick for a new season is the moment that season gets one.
+	 *
+	 * @param season the season the deadline was just asked of, never read again here
 	 */
-	private void write(long me, boolean firstSeason) {
-		db.sql("update competitor set first_season_2027 = ? where id = ?")
-				.params(firstSeason, me)
+	private void write(long me, int season, boolean beginner) {
+		db.sql("insert into category_wish (competitor_id, season, beginner) values (?, ?, ?)"
+						+ " on conflict (competitor_id, season) do update set beginner = excluded.beginner")
+				.params(me, season, beginner)
 				.update();
 	}
 

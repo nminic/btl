@@ -208,8 +208,8 @@ describe('the members screen', () => {
     const beginner: Competitor = {
       ...person('000002', 'Milica', 'Pavlović'),
       gender: 'F',
-      ageBand: '25-39',
-      firstSeason2027: true,
+      category: { season: 2027, ageBand: '25-39', beginner: true },
+      categories: [{ season: 2027, ageBand: '25-39', beginner: true }],
       city: 'Kraljevo',
       membershipBasis: 'feeExempt',
       membershipSeason: 2028,

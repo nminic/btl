@@ -2,20 +2,20 @@ import {
   bestOfficialSeason,
   bestSingleRaces,
   boardOfTen,
+  cardCategoryOf,
   categoriesOf,
-  categoryOfMember,
+  categoryIn,
   rankingFor,
   rankingWithEverybody,
   rankTeams,
   resultsOf,
-  shownCategoryOf,
   standingSeasonOf,
+  standsIn,
   topByCategory,
   topByKilometers,
   topByProgress,
   topByTimeOnCourse,
   topPairs,
-  unrankedIn,
 } from './derive'
 import { earnedDucats } from './ducatEarned'
 import type { DucatFamily } from './ducatRule'
@@ -30,7 +30,9 @@ import type { Competitor, RacingPair, Result, Team } from './types'
  * bodovi mu ne ulaze u zbir tima ni para". And 30.10.2026: he earns his ducats, his points count in
  * the threshold of the beginners' category, and his season counts as the previous one on the board
  * of best progress. Which runs are his without the right is the server's to say
- * (`Result.inItsStanding`, `Competitor.unranked`); this file measures what every reader does with it.
+ * (`Result.inItsStanding`, and since 30.10.2026 the categories `Competitor.categories` carries only for the
+ * seasons he stands in, with no mark of „without the right" at all); this file measures what every reader
+ * does with it.
  *
  * **The member without the right is the strongest of the field on every measure**, so a reader that
  * lets him through puts him FIRST and never merely somewhere: 80 points against 50 and 30, the
@@ -46,10 +48,9 @@ const competitor = (memberNumber: string, over: Partial<Competitor> = {}): Compe
   gender: 'M',
   city: 'Beograd',
   country: 'RS',
-  ageBand: '40-54',
-  firstSeason2027: false,
+  category: { season: 2027, ageBand: '40-54', beginner: false },
+  categories: [{ season: 2027, ageBand: '40-54', beginner: false }],
   firstSeason: 2027,
-  unranked: false,
   teamId: null,
   teamSince: null,
   profileHidden: false,
@@ -88,10 +89,11 @@ const withoutTheRight = (memberNumber: string, date: string, points: number, ove
 
 const RANKED = competitor('000001')
 const ALSO_RANKED = competitor('000003')
-/* Without the right in the season shown, raced, and in a band nobody else is in. */
-const UNRANKED = competitor('000002', { unranked: true, ageBand: '55+' })
-/* Without the right in the season shown and NOT raced, in a band of his own as well. */
-const UNRANKED_UNRACED = competitor('000004', { unranked: true, ageBand: '25-39' })
+/* Without the right in the season shown, and raced: the server answers no category of that season
+   for him, on his card or in his list (PDL, 30.10.2026). */
+const UNRANKED = competitor('000002', { category: null, categories: [] })
+/* Without the right in the season shown and NOT raced. */
+const UNRANKED_UNRACED = competitor('000004', { category: null, categories: [] })
 /* Ranked and not raced: the member the table of the running season does draw at nought. */
 const RANKED_UNRACED = competitor('000006')
 
@@ -128,16 +130,14 @@ describe('the table of a season', () => {
   })
 
   it('offers no category that only a member without the right is in', () => {
-    const offered = categoriesOf(FIELD, 'M')
-
-    expect(offered).toContain(categoryOfMember(RANKED))
-    expect(offered).not.toContain(categoryOfMember(UNRANKED))
-    expect(offered).not.toContain(categoryOfMember(UNRANKED_UNRACED))
+    expect(categoriesOf(FIELD, 'M', 2027)).toEqual(['M40-54'])
   })
 
   it('files him under no category, and draws none for him', () => {
-    expect(shownCategoryOf(RANKED)).toBe(categoryOfMember(RANKED))
-    expect(shownCategoryOf(UNRANKED)).toBeNull()
+    expect(cardCategoryOf(RANKED)).toBe('M40-54')
+    expect(categoryIn(RANKED, 2027)).toBe('M40-54')
+    expect(cardCategoryOf(UNRANKED)).toBeNull()
+    expect(categoryIn(UNRANKED, 2027)).toBeNull()
 
     /* Read as the category he chose, he would stand first in it. */
     expect(
@@ -145,7 +145,7 @@ describe('the table of a season', () => {
         rankingFor(FIELD, [...RESULTS_2027, run('000002', '2026-05-01', 1, { inItsSeason: false })], {
           season: 2027,
           gender: 'M',
-          categoryCode: categoryOfMember(UNRANKED),
+          categoryCode: 'M55+',
         }),
       ),
     ).toEqual([])
@@ -219,7 +219,7 @@ describe('the sums of a team and of a pair', () => {
     }
     const members = [
       competitor('000001', { teamId: 7, teamSince: 2027 }),
-      competitor('000002', { teamId: 7, teamSince: 2027, unranked: true }),
+      competitor('000002', { teamId: 7, teamSince: 2027, category: null, categories: [] }),
     ]
     const [row] = rankTeams([team], members, RESULTS_2027, 2027)
 
@@ -273,16 +273,23 @@ describe('what he keeps', () => {
   })
 })
 
-describe('whether he is known to hold a season without the right', () => {
-  it('is told by the list of the season shown, and by a run of any other season', () => {
-    const past = [withoutTheRight('000001', '2027-05-01', 1)]
+describe('whether he stands in the table of a season', () => {
+  it('is told by a category of that season and of no other, with no mark of „without the right"', () => {
+    const twoSeasons = competitor('000007', {
+      categories: [
+        { season: 2027, ageBand: '40-54', beginner: false },
+        { season: 2028, ageBand: '40-54', beginner: false },
+      ],
+    })
+    const onlyTheNext = competitor('000008', {
+      category: { season: 2028, ageBand: '40-54', beginner: false },
+      categories: [{ season: 2028, ageBand: '40-54', beginner: false }],
+    })
 
-    /* The list speaks of the season shown, and of nothing else. */
-    expect(unrankedIn(UNRANKED_UNRACED, [], 2028, '2028-03-01')).toBe(true)
-    expect(unrankedIn(UNRANKED_UNRACED, [], 2027, '2028-03-01')).toBe(false)
-    /* A run says it of its own season, and only of his. */
-    expect(unrankedIn(RANKED, past, 2027, '2028-03-01')).toBe(true)
-    expect(unrankedIn(ALSO_RANKED, past, 2027, '2028-03-01')).toBe(false)
-    expect(unrankedIn(RANKED, past, 2028, '2028-03-01')).toBe(false)
+    expect(standsIn(twoSeasons, 2027)).toBe(true)
+    expect(standsIn(twoSeasons, 2028)).toBe(true)
+    expect(standsIn(onlyTheNext, 2027)).toBe(false)
+    expect(standsIn(onlyTheNext, 2028)).toBe(true)
+    expect(standsIn(UNRANKED_UNRACED, 2027)).toBe(false)
   })
 })

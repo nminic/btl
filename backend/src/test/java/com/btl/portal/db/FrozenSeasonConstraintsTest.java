@@ -61,7 +61,7 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 	private static final String A_LEAGUE = "(select id from league where slug = 'zamrznuta-liga')";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender, birth_date,"
-			+ " place_id, city, country_id, first_season, first_season_2027, active, "
+			+ " place_id, city, country_id, first_season, active, "
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -98,11 +98,11 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 	@BeforeEach
 	void probe() {
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('001010', 'Prvi', 'Zamrznuti',"
-				+ " 'M', date '1981-01-01', " + A_TOWN + ", null, null, 2027, false, true, "
+				+ " 'M', date '1981-01-01', " + A_TOWN + ", null, null, 2027, true, "
 				+ " '00112233445566f1', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('001011', 'Prva', 'Zamrznuta',"
-				+ " 'F', date '1992-02-02', " + A_TOWN + ", null, null, 2027, false, true, "
+				+ " 'F', date '1992-02-02', " + A_TOWN + ", null, null, 2027, true, "
 				+ " '00112233445566f2', null, '', false, 'none', 'Otac', 'Ulica 2', 'S',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 

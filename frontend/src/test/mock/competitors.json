@@ -6,10 +6,19 @@
     "gender": "M",
     "city": "Beograd",
     "country": "RS",
-    "ageBand": "55+",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "55+",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "55+",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2014,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -35,10 +44,19 @@
     "gender": "M",
     "city": "Novi Sad",
     "country": "RS",
-    "ageBand": "40-54",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "40-54",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "40-54",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2015,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -60,10 +78,19 @@
     "gender": "F",
     "city": "Niš",
     "country": "RS",
-    "ageBand": "40-54",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "40-54",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "40-54",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2016,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -89,10 +116,19 @@
     "gender": "M",
     "city": "Kragujevac",
     "country": "RS",
-    "ageBand": "25-39",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "25-39",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "25-39",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2017,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -114,10 +150,19 @@
     "gender": "M",
     "city": "Čačak",
     "country": "RS",
-    "ageBand": "25-39",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "25-39",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "25-39",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2018,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -139,10 +184,19 @@
     "gender": "F",
     "city": "Subotica",
     "country": "RS",
-    "ageBand": "24-",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "24-",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "24-",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2014,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -164,10 +218,19 @@
     "gender": "M",
     "city": "Banja Luka",
     "country": "BA",
-    "ageBand": "24-",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "24-",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "24-",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2015,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -189,10 +252,19 @@
     "gender": "M",
     "city": "Sarajevo",
     "country": "BA",
-    "ageBand": "55+",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "55+",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "55+",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2016,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -214,10 +286,19 @@
     "gender": "F",
     "city": "Podgorica",
     "country": "ME",
-    "ageBand": "40-54",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "40-54",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "40-54",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2017,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -239,10 +320,19 @@
     "gender": "M",
     "city": "Skoplje",
     "country": "MK",
-    "ageBand": "25-39",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "25-39",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "25-39",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2018,
-    "unranked": false,
     "active": true,
     "bio": "",
     "teamId": null,
@@ -262,10 +352,19 @@
     "gender": "M",
     "city": "Beograd",
     "country": "RS",
-    "ageBand": "55+",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "55+",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "55+",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2014,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -287,10 +386,19 @@
     "gender": "F",
     "city": "Novi Sad",
     "country": "RS",
-    "ageBand": "40-54",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "40-54",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "40-54",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2015,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -312,10 +420,19 @@
     "gender": "M",
     "city": "Niš",
     "country": "RS",
-    "ageBand": "40-54",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "40-54",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "40-54",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2016,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -337,10 +454,19 @@
     "gender": "M",
     "city": "Kragujevac",
     "country": "RS",
-    "ageBand": "25-39",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "25-39",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "25-39",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2017,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -362,10 +488,19 @@
     "gender": "F",
     "city": "Čačak",
     "country": "RS",
-    "ageBand": "25-39",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "25-39",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "25-39",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2018,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -387,10 +522,19 @@
     "gender": "M",
     "city": "Subotica",
     "country": "RS",
-    "ageBand": "24-",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "24-",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "24-",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2014,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -412,10 +556,19 @@
     "gender": "M",
     "city": "Banja Luka",
     "country": "BA",
-    "ageBand": "24-",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "24-",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "24-",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2015,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -437,10 +590,19 @@
     "gender": "F",
     "city": "Sarajevo",
     "country": "BA",
-    "ageBand": "55+",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "55+",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "55+",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2016,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -462,10 +624,19 @@
     "gender": "M",
     "city": "Podgorica",
     "country": "ME",
-    "ageBand": "40-54",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "40-54",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "40-54",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2017,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -487,10 +658,19 @@
     "gender": "M",
     "city": "Skoplje",
     "country": "MK",
-    "ageBand": "25-39",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "25-39",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "25-39",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2018,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -512,10 +692,19 @@
     "gender": "F",
     "city": "Beograd",
     "country": "RS",
-    "ageBand": "55+",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "55+",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "55+",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2014,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -537,10 +726,19 @@
     "gender": "M",
     "city": "Novi Sad",
     "country": "RS",
-    "ageBand": "40-54",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "40-54",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "40-54",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2015,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -562,10 +760,19 @@
     "gender": "M",
     "city": "Niš",
     "country": "RS",
-    "ageBand": "40-54",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "40-54",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "40-54",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2016,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -587,10 +794,19 @@
     "gender": "F",
     "city": "Kragujevac",
     "country": "RS",
-    "ageBand": "25-39",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "25-39",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "25-39",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2017,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -612,10 +828,19 @@
     "gender": "M",
     "city": "Čačak",
     "country": "RS",
-    "ageBand": "25-39",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "25-39",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "25-39",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2018,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -637,10 +862,19 @@
     "gender": "M",
     "city": "Subotica",
     "country": "RS",
-    "ageBand": "24-",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "24-",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "24-",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2014,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -662,10 +896,19 @@
     "gender": "F",
     "city": "Banja Luka",
     "country": "BA",
-    "ageBand": "24-",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "24-",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "24-",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2015,
-    "unranked": false,
     "active": true,
     "membershipBasis": "payment",
     "membershipSeason": 2027,
@@ -687,10 +930,19 @@
     "gender": "M",
     "city": "Sarajevo",
     "country": "BA",
-    "ageBand": "55+",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "55+",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "55+",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2016,
-    "unranked": false,
     "active": true,
     "membershipBasis": "balance",
     "membershipSeason": 2027,
@@ -712,10 +964,19 @@
     "gender": "M",
     "city": "Podgorica",
     "country": "ME",
-    "ageBand": "40-54",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "40-54",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "40-54",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2017,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -737,10 +998,19 @@
     "gender": "F",
     "city": "Skoplje",
     "country": "MK",
-    "ageBand": "25-39",
-    "firstSeason2027": false,
+    "category": {
+      "season": 2027,
+      "ageBand": "25-39",
+      "beginner": false
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "25-39",
+        "beginner": false
+      }
+    ],
     "firstSeason": 2018,
-    "unranked": false,
     "active": true,
     "membershipBasis": "feeExempt",
     "membershipSeason": 2027,
@@ -762,10 +1032,19 @@
     "gender": "M",
     "city": "Sremski Karlovci",
     "country": "RS",
-    "ageBand": "24-",
-    "firstSeason2027": true,
+    "category": {
+      "season": 2027,
+      "ageBand": "24-",
+      "beginner": true
+    },
+    "categories": [
+      {
+        "season": 2027,
+        "ageBand": "24-",
+        "beginner": true
+      }
+    ],
     "firstSeason": 2027,
-    "unranked": false,
     "active": true,
     "teamId": 1,
     "teamSince": 2027,
@@ -785,10 +1064,9 @@
     "gender": "M",
     "city": "Zaječar",
     "country": "RS",
-    "ageBand": "40-54",
-    "firstSeason2027": false,
+    "category": null,
+    "categories": [],
     "firstSeason": 2016,
-    "unranked": false,
     "active": false,
     "teamId": null,
     "teamSince": null,

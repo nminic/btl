@@ -315,11 +315,11 @@ class DucatApiTest {
 	@Test
 	void nothingAboutWhoHoldsADucatLeavesTheServer() throws Exception {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-				+ " place_id, city, country_id, first_season, first_season_2027, active,"
+				+ " place_id, city, country_id, first_season, active,"
 				+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 				+ " father_name, address, shirt_size, health_statement_at) values ('000777', 'Zlatibor',"
 				+ " 'Dukatovic', 'M', date '1988-04-19', (select id from place where rank = 1), null,"
-				+ " null, 2027, false, true, 'aa11bb22cc33dd44', null, '', false, 'none',"
+				+ " null, 2027, true, 'aa11bb22cc33dd44', null, '', false, 'none',"
 				+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')").update();
 
 		assertThat(db.sql("insert into ducat_award (competitor_id, ducat_id, kind, threshold, reached,"

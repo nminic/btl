@@ -570,10 +570,10 @@ class AReferrerIsHeldWhileHisRewardIsWorkedOutTest {
 
 	private long member(String number, String referralCode, boolean active, Long referredBy) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, first_season_2027, active, referral_code, referred_by, bio,"
+						+ " place_id, first_season, active, referral_code, referred_by, bio,"
 						+ " profile_hidden, birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at) values (?, 'Probni', 'Preporucen', 'M', date '1990-05-15',"
-						+ " " + A_TOWN_IN_SERBIA + ", 2027, false, ?, ?, ?, '', false, 'none', 'Otac',"
+						+ " " + A_TOWN_IN_SERBIA + ", 2027, ?, ?, ?, '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, active, referralCode, referredBy)
 				.query(Long.class).single();

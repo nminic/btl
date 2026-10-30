@@ -36,7 +36,7 @@ public final class WhatRegistrationAsksFor {
 	 * that draws a member draws one without a picture already.
 	 */
 	public static final Set<String> OF_EVERYBODY = Set.of(
-			"firstName", "lastName", "fatherName", "birthDate", "gender", "firstSeason2027",
+			"firstName", "lastName", "fatherName", "birthDate", "gender", "beginner",
 			"email", "password", "passwordRepeat", "address", "city", "shirtSize",
 			"healthStatement");
 

@@ -6,7 +6,7 @@ import { inputElement } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
-import { aCompetitor, myOwnRecordFromMe } from '../../test/theAnswer'
+import { aCompetitor, hisCategoryFromMe, myOwnRecordFromMe } from '../../test/theAnswer'
 import { setupUser } from '../../test/user'
 
 /**
@@ -86,8 +86,7 @@ function aServerThatKeepsTheProfile(opening: { hidden: boolean; bio: string }): 
           lastName: HIM.lastName,
           gender: HIM.gender,
           city: HIM.city,
-          ageBand: HIM.ageBand,
-          firstSeason2027: HIM.firstSeason2027,
+          ...hisCategoryFromMe(HIM),
           profileHidden: hidden,
           bio,
           ...(waiting === null ? {} : { bioWaiting: waiting }),

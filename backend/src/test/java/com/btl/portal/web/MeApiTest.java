@@ -872,6 +872,14 @@ class MeApiTest {
 				if (field.getName().equals("active")) {
 					continue;
 				}
+				/* AND THE SEASON HIS CARD SPEAKS OF (V81), for the same reason: at AUTUMN_2026 the season
+				   running and the season on sale are both 2027, the first the league has, so every card of
+				   this fixture is of 2027 and the caller cannot be the odd one out of it. Which season the
+				   card speaks of is `TheCategoryOfEachSeasonTest`'s, on rows chosen so that each wrong
+				   source gives another season. */
+				if (field.getName().equals("categorySeason")) {
+					continue;
+				}
 				/* AND THE SEASON OF THE BASIS, for the same kind of reason: it is the season on
 				   sale, which on any one day is one number for every member who holds a basis at
 				   all, so four of the seven rows share it with the caller by construction. That it
@@ -1175,7 +1183,7 @@ class MeApiTest {
 						+ " is the one row of the fixture that is 55 or more, and the year itself is not"
 						+ " an answer (the case on the year of birth)")
 				.isEqualTo("55+");
-		assertThat(mine.path("firstSeason2027").asBoolean())
+		assertThat(mine.path("beginner").asBoolean())
 				.as("whether he runs in the beginners' category").isTrue();
 		assertThat(mine.path("teamSince").asInt())
 				.as("the season the membership that has NOT ended began in, which is the one he"
@@ -1358,7 +1366,7 @@ class MeApiTest {
 		assertThat(hers.path("gender").asString())
 				.as("she shares the gender of every row but one, and it is not the caller's")
 				.isEqualTo("M");
-		assertThat(hers.path("firstSeason2027").asBoolean()).isFalse();
+		assertThat(hers.path("beginner").asBoolean()).isFalse();
 		assertThat(hers.path("profileHidden").asBoolean()).isFalse();
 		assertThat(hers.path("birthdayShown").asString()).isEqualTo("none");
 		assertThat(hers.path("bio").asString())
@@ -1394,7 +1402,7 @@ class MeApiTest {
 		assertThat(his.path("teamSince").asInt())
 				.as("the season his membership of the third team began in")
 				.isEqualTo(2027);
-		assertThat(his.path("firstSeason2027").asBoolean()).isFalse();
+		assertThat(his.path("beginner").asBoolean()).isFalse();
 		assertThat(his.path("profileHidden").asBoolean()).isFalse();
 	}
 
@@ -1446,7 +1454,7 @@ class MeApiTest {
 				.as("this is not his record at all, so the profile below says nothing")
 				.isEqualTo(LAPSED);
 		assertThat(his.path("profileHidden").asBoolean()).isTrue();
-		assertThat(his.path("firstSeason2027").asBoolean()).isFalse();
+		assertThat(his.path("beginner").asBoolean()).isFalse();
 		assertThat(his.path("bio").asString())
 				.as("his biography was held back from him, as the public list holds a hidden one back"
 						+ " from a reader whose fee has lapsed. Of his own page nothing is hidden")
@@ -1483,7 +1491,11 @@ class MeApiTest {
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedIsHandedEveryNameAndBothChoicesOfHisProfileToo() throws Exception {
-		db.sql("update competitor set first_season_2027 = true, profile_hidden = false,"
+		db.sql("insert into category_wish (competitor_id, season, beginner)"
+						+ " select id, 2027, true from competitor where member_number = ?"
+						+ " on conflict (competitor_id, season) do update set beginner = true")
+				.param(LAPSED).update();
+		db.sql("update competitor set profile_hidden = false,"
 						+ " birthday_shown = 'year', gender = 'F' where member_number = ?")
 				.param(LAPSED).update();
 
@@ -1505,7 +1517,7 @@ class MeApiTest {
 				.isEqualTo("25-39");
 		assertThat(his.path("birthdayShown").asString()).as("what he chose about his birthday")
 				.isEqualTo("year");
-		assertThat(his.path("firstSeason2027").asBoolean())
+		assertThat(his.path("beginner").asBoolean())
 				.as("whether he runs in the beginners' category, which a lapsed fee does not take"
 						+ " from him")
 				.isTrue();
@@ -1825,10 +1837,10 @@ class MeApiTest {
 			assertThat(hers).as("%s: the member born in 1988", when).isEqualTo(moment[3]);
 			assertThat(theLapsed).as("%s: the member born in 1973, whose fee has lapsed", when)
 					.isEqualTo(moment[4]);
-			assertThat(rowOnThePublicList(MY_ACCOUNT, ME).path("ageBand").asString())
+			assertThat(rowOnThePublicList(MY_ACCOUNT, ME).path("category").path("ageBand").asString())
 					.as("%s: the two doors name two bands for the member born in 2003", when)
 					.isEqualTo(his);
-			assertThat(rowOnThePublicList(HER_ACCOUNT, ABROAD).path("ageBand").asString())
+			assertThat(rowOnThePublicList(HER_ACCOUNT, ABROAD).path("category").path("ageBand").asString())
 					.as("%s: the two doors name two bands for the member born in 1988", when)
 					.isEqualTo(hers);
 		}
@@ -1858,7 +1870,7 @@ class MeApiTest {
 				.as("the band was worked out for the calendar year 2026, a season the league does not"
 						+ " have, instead of for its first")
 				.isEqualTo("25-39");
-		assertThat(rowOnThePublicList(MY_ACCOUNT, ME).path("ageBand").asString())
+		assertThat(rowOnThePublicList(MY_ACCOUNT, ME).path("category").path("ageBand").asString())
 				.as("the other door names another band for the same member")
 				.isEqualTo("25-39");
 	}
@@ -1917,7 +1929,11 @@ class MeApiTest {
 				.as("a fact this record carries has no twin on the public list and is not one of the"
 						+ " four named for it: give it a twin, or name it here with its reason")
 				.containsExactlyInAnyOrder("referralCode", "referredCount", "active", "address",
-						"phone", "bioWaiting", "shirtSize", "fatherName", "birthDate", "idNumber");
+						"phone", "bioWaiting", "shirtSize", "fatherName", "birthDate", "idNumber",
+						/* THE CATEGORY OF HIS CARD, and its twin is the public card's `category`, whose
+						   three fields these are (V81, `CategoryOfASeason`); they are compared below by
+						   value, field against field. */
+						"ageBand", "beginner", "categorySeason");
 		shared.remove("membershipBasis");
 		/* And the season beside it, which leaves with the basis and is withheld with it. */
 		shared.remove("membershipSeason");
@@ -1925,7 +1941,7 @@ class MeApiTest {
 		assertThat(shared)
 				.as("the two doors share almost nothing, so the comparison below is asked of a few"
 						+ " names and says little")
-				.contains("firstName", "lastName", "gender", "city", "ageBand", "firstSeason2027", "teamSince",
+				.contains("firstName", "lastName", "gender", "city", "teamSince",
 						"bio", "profileHidden", "birthdayShown", "photo", "crop", "memberNumber",
 						"country", "firstSeason", "teamId");
 
@@ -1938,6 +1954,14 @@ class MeApiTest {
 						.as("%s is answered one way by /api/me and another by /api/competitors for"
 								+ " the very same member (%s)", name, who[1])
 						.isEqualTo(valueOf(there.path(name)));
+			}
+
+			for (String[] twins : new String[][] {{"ageBand", "ageBand"}, {"beginner", "beginner"},
+					{"categorySeason", "season"}}) {
+				assertThat(valueOf(here.path(twins[0])))
+						.as("the category of his card is %s one way by /api/me and another by /api/competitors"
+								+ " for the very same member (%s)", twins[0], who[1])
+						.isEqualTo(valueOf(there.path("category").path(twins[1])));
 			}
 		}
 	}
@@ -2060,14 +2084,14 @@ class MeApiTest {
 	 *               and the one who never paid
 	 */
 	private void competitor(String number, String first, String last, String place, String city,
-			String country, int firstSeason, boolean firstSeason2027, String basis,
+			String country, int firstSeason, boolean beginner, String basis,
 			String broughtBy) {
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, city, country_id, first_season, first_season_2027,"
+						+ " birth_date, place_id, city, country_id, first_season,"
 						+ " active, referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'M', date '1990-01-01', " + place + ", " + city + ", "
-						+ country + ", ?, ?, ?, ?, " + broughtBy + ", '', false, 'none', 'Otac',"
+						+ country + ", ?, ?, ?, " + broughtBy + ", '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				/* ACTIVE FOLLOWS THE NUMBER, and is worked out here rather than passed in because
 				   the portal does not let the two be chosen separately: `PaymentApi` is the only
@@ -2077,10 +2101,13 @@ class MeApiTest {
 				   active, and the one whose fee has LAPSED is the second state the portal really
 				   does write - a number, and not active. Both halves are measured by
 				   `everyRowHereIsAStateThePortalCanWrite` rather than promised by this comment. */
-				.params(number, first, last, firstSeason, firstSeason2027,
+				.params(number, first, last, firstSeason,
 						number != null && !LAPSED.equals(number),
 						String.format("%016x", ++issued))
 				.query(Long.class).single();
+
+		db.sql("insert into category_wish (competitor_id, season, beginner) values (?, 2027, ?)")
+				.params(id, beginner).update();
 
 		if (basis != null) {
 			HeldOn.season(db, id, THE_SEASON_ON_SALE, basis);

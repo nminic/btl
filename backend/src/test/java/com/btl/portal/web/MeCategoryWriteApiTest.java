@@ -448,17 +448,19 @@ class MeCategoryWriteApiTest {
 	private void competitor(String number, String first, String last, String gender,
 			String birthDate, boolean firstSeason) {
 
-		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, first_season_2027, active, "
+		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
+						+ " place_id, first_season, active, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name,"
 						+ " address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, cast(? as date),"
-						+ " (select id from place where rank = 1), 2027, ?, true, "
+						+ " (select id from place where rank = 1), 2027, true, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
-						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, first, last, gender, birthDate, firstSeason,
-						String.format("%016x", ++issued))
-				.update();
+						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
+				.params(number, first, last, gender, birthDate, String.format("%016x", ++issued))
+				.query(Long.class).single();
+
+		db.sql("insert into category_wish (competitor_id, season, beginner) values (?, 2027, ?)")
+				.params(id, firstSeason).update();
 	}
 
 	private void account(String email, String role, String memberNumber) {
@@ -558,9 +560,13 @@ class MeCategoryWriteApiTest {
 		return named;
 	}
 
-	/** What the column says, which is the only place the wish is kept. */
+	/**
+	 * What the latest row of his says (V81): the wish every season from that one on reads, until a later
+	 * row says otherwise.
+	 */
 	private boolean wishOf(String memberNumber) {
-		return db.sql("select first_season_2027 from competitor where member_number = ?")
+		return db.sql("select w.beginner from category_wish w join competitor c on c.id = w.competitor_id"
+						+ " where c.member_number = ? order by w.season desc limit 1")
 				.param(memberNumber)
 				.query(Boolean.class)
 				.single();

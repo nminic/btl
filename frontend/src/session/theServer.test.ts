@@ -552,9 +552,20 @@ describe('who the server says I am', () => {
     const who = must(await whoTheServerSaysIAm(), 'an answer that names a member')
     const page = await whatTheServerSaysOfMyProfile()
 
+    /* `categorySeason` lands on the page as the season of its card (`Competitor.category.season`), the one
+       name the page spells another way than the answer (V81). */
+    const onThePage =
+      page === null
+        ? undefined
+        : key === 'categorySeason'
+          ? page.category?.season
+          : Reflect.has(page, key)
+            ? Reflect.get(page, key)
+            : undefined
+
     return {
       whoHeIs: Reflect.has(who, key) ? Reflect.get(who, key) : undefined,
-      hisPage: page !== null && Reflect.has(page, key) ? Reflect.get(page, key) : undefined,
+      hisPage: onThePage,
     }
   }
 
@@ -696,7 +707,10 @@ const HIS_PAGE: Record<string, unknown> = {
   gender: 'M',
   city: 'Zaječar',
   ageBand: '40-54',
-  firstSeason2027: false,
+  beginner: false,
+  /* The season the two above are the category OF, and every season he stands in the table of (V81). */
+  categorySeason: 2027,
+  categories: [{ season: 2027, ageBand: '40-54', beginner: false }],
   bio: '',
   profileHidden: false,
   birthdayShown: 'none',
@@ -765,8 +779,17 @@ const NOT_BELIEVED_AS_A_PAGE: [key: string, sent: unknown][] = [
   ['ageBand', '99+'],
   ['ageBand', '25–39'],
   ['ageBand', 7],
-  ['firstSeason2027', 'false'],
-  ['firstSeason2027', 0],
+  ['beginner', 'false'],
+  ['beginner', 0],
+  /* The categories of every season he stands in (V81): a list believed whole or not at all, so ONE element that is not a season spoils it. */
+  ['categories', 'every season'],
+  ['categories', [7]],
+  ['categories', [null]],
+  ['categories', [{ season: 2027, ageBand: '40-54', beginner: false }, 'the next one']],
+  ['categories', [{ season: '2027', ageBand: '40-54', beginner: false }]],
+  ['categories', [{ season: 2027.5, ageBand: '40-54', beginner: false }]],
+  ['categories', [{ season: 2027, ageBand: '99+', beginner: false }]],
+  ['categories', [{ season: 2027, ageBand: '40-54', beginner: 'false' }]],
   ['bio', 7],
   ['bio', null],
   ['profileHidden', 'true'],
@@ -786,12 +809,10 @@ describe('the page of the caller himself', () => {
       gender: 'M',
       city: 'Zaječar',
       country: 'RS',
-      ageBand: '40-54',
-      firstSeason2027: false,
+      /* His own card, never withheld from him (`profileIn`), and every season he stands in. */
+      category: { season: 2027, ageBand: '40-54', beginner: false },
+      categories: [{ season: 2027, ageBand: '40-54', beginner: false }],
       firstSeason: 2016,
-      /* `/api/me` does not say it; his own page is drawn for him, so his category is shown to him
-         (`profileIn`). */
-      unranked: false,
       profileHidden: false,
       birthdayShown: 'none',
       /* The two pairs that may honestly be absent are null on the record, which is how the public
@@ -1031,7 +1052,7 @@ const A_NEWCOMERS_RECORD: Record<string, unknown> = (() => {
 
 /** The six this reader is for, which are the facts a data screen draws and nothing a page needs
  *  besides them. Derived from the reader's own sample, never from a list of the page. */
-const THE_SIX = ['firstName', 'lastName', 'gender', 'city', 'ageBand', 'firstSeason2027']
+const THE_SIX = ['firstName', 'lastName', 'gender', 'city', 'ageBand', 'beginner', 'categorySeason']
 
 /** And the ones that are his alone: where a shirt is sent and how he is called (18.10.2026), and the
  *  size of the shirt (23.10.2026). The data screen draws them in boxes, and the page does not draw them
@@ -1056,7 +1077,8 @@ describe('the data of the caller himself', () => {
       gender: 'M',
       city: 'Zaječar',
       ageBand: '40-54',
-      firstSeason2027: false,
+      beginner: false,
+      categorySeason: 2027,
       address: 'Mihajla Pupina 10',
       phone: '',
       country: 'RS',
@@ -1148,7 +1170,7 @@ describe('the data of the caller himself', () => {
 
   it('reads the six off the sample, and finds six', () => {
     /* An empty list would make both sweeps below say nothing at all, quietly. */
-    expect(THE_SIX).toHaveLength(6)
+    expect(THE_SIX).toHaveLength(7)
     expect(THE_SIX.every((key) => key in A_NEWCOMERS_RECORD)).toBe(true)
   })
 

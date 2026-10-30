@@ -717,7 +717,7 @@ describe('Rankings', () => {
     const competitors = await loadResource<Competitor[]>('competitors')
     const results = await loadResource<Result[]>('results')
     const empty = must(
-      categoriesOf(competitors, 'F').find(
+      categoriesOf(competitors, 'F', SPARSE).find(
         (code) =>
           rankingFor(competitors, results, { season: SPARSE, gender: 'F', categoryCode: code })
             .length === 0,
@@ -1895,7 +1895,8 @@ function whatTheCardSays(one: Competitor): string {
      letter is typed here (owner, 18.10.2026). */
   const word = one.gender === 'M' ? sr.category.rookieMale : sr.category.rookieFemale
   const mark = one.gender === 'M' ? sr.category.markMale : sr.category.markFemale
-  const category = one.firstSeason2027 ? word : `${mark} ${one.ageBand}`
+  const category =
+    one.category === null ? '' : one.category.beginner ? word : `${mark} ${one.category.ageBand}`
 
   return `${one.firstName} ${one.lastName}${one.memberNumber}${category}${one.city}`
 }

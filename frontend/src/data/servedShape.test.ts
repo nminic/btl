@@ -320,7 +320,7 @@ const aMember = {
   city: 'Beograd',
   country: 'RS',
   ageBand: '40-54' as const,
-  firstSeason2027: false,
+  beginner: false,
   active: true,
   membershipBasis: 'balance' as const,
   membershipSeason: 2028,
@@ -345,7 +345,7 @@ const aLapsedMember = {
   /* Another country than the first sample's, and billed in euro, so the two are not one value read twice. */
   country: 'BA',
   ageBand: '25-39' as const,
-  firstSeason2027: true,
+  beginner: true,
   active: false,
   seasons: [],
   seasonOnSale: 2028,

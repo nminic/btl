@@ -68,11 +68,11 @@ class ASweepMeetsAConfirmationTest {
 	@BeforeEach
 	void aRegistrationWhoseLinkHasRunOut() {
 		long member = db.sql("insert into competitor (first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, first_season_2027, active,"
+						+ " place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values ('Probni', 'Sudar', 'M', date '1990-01-01', " + A_TOWN_IN_SERBIA
-						+ ", 2027, true, false, '5ad0c157aa11b0e1', '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ ", 2027, false, '5ad0c157aa11b0e1', '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.query(Long.class).single();
 

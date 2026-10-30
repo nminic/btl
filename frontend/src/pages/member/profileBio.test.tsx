@@ -7,7 +7,7 @@ import { must } from '../../test/at'
 import { measurePicture } from '../../test/picture'
 import { renderAt } from '../../test/render'
 import { refused, serverThat, type Asked } from '../../test/serverAnswers'
-import { aCompetitor, myOwnRecordFromMe } from '../../test/theAnswer'
+import { aCompetitor, hisCategoryFromMe, myOwnRecordFromMe } from '../../test/theAnswer'
 import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
 import { SLOW } from '../../test/slow'
@@ -113,8 +113,7 @@ function hisRecord(who: Competitor, waiting: string | null): Record<string, unkn
     lastName: who.lastName,
     gender: who.gender,
     city: who.city,
-    ageBand: who.ageBand,
-    firstSeason2027: who.firstSeason2027,
+    ...hisCategoryFromMe(who),
     bio: who.bio ?? '',
     ...(waiting === null ? {} : { bioWaiting: waiting }),
   }
