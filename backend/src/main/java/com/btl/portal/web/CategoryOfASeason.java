@@ -210,7 +210,9 @@ class CategoryOfASeason {
 			}
 
 			int onSale = SeasonClock.seasonBeingPaidFor(at);
-			Held next = onSale == season ? null : holds(member, onSale);
+			/* Outside the window the season on sale IS the running one, so `next` is `that` again and does not
+			   rank: the exception stands only from 11.11., where the two seasons are two. */
+			Held next = holds(member, onSale);
 
 			return next == null || !next.ranks() ? null : in(member, birthYear, onSale);
 		}

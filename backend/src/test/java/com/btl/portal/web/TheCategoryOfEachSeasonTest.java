@@ -93,6 +93,9 @@ class TheCategoryOfEachSeasonTest {
 	/** 2027 frozen (1 January 2028 at 16:00), 2028 running. */
 	private static final Instant IN_FEBRUARY_2028 = Instant.parse("2028-02-15T11:00:00Z");
 
+	/** The day before 2028 goes on sale (11 November): the running season is the only one there is. */
+	private static final Instant THE_DAY_BEFORE_THE_WINDOW = Instant.parse("2027-11-10T11:00:00Z");
+
 	private static final Instant ACTIVATED_IN_TIME = Instant.parse("2026-10-20T10:00:00Z");
 
 	/** After 31 March 2027, so 2027 held from that day has no right to rank (PDL, 28.10.2026). */
@@ -117,6 +120,9 @@ class TheCategoryOfEachSeasonTest {
 
 	/** Holds 2027 activated late and nothing for 2028: the one whose card stays empty. */
 	private static final String WITHOUT_THE_RIGHT_AND_NOTHING_AFTER = "000208";
+
+	/** A row no member's life produces (a 2028 membership activated after 31 March 2028 is read on 20 November 2027). */
+	private static final String BOTH_WITHOUT_THE_RIGHT = "000209";
 
 	private static final String THE_ADMINISTRATION = "moderator-clanovi@primer.rs";
 
@@ -203,6 +209,10 @@ class TheCategoryOfEachSeasonTest {
 
 		competitor(HOLDS_NEITHER, "F", "2000-03-03");
 
+		long bothWithoutTheRight = competitor(BOTH_WITHOUT_THE_RIGHT, "M", "1990-03-03");
+		held(bothWithoutTheRight, 2027, ACTIVATED_LATE);
+		held(bothWithoutTheRight, 2028, Instant.parse("2028-04-02T10:00:00Z"));
+
 		long withoutTheRightAndNothingAfter = competitor(WITHOUT_THE_RIGHT_AND_NOTHING_AFTER, "M", "1990-03-03");
 		held(withoutTheRightAndNothingAfter, 2027, ACTIVATED_LATE);
 		wish(withoutTheRightAndNothingAfter, 2027, true);
@@ -279,6 +289,15 @@ class TheCategoryOfEachSeasonTest {
 		assertThat(recordOf(null, WITHOUT_THE_RIGHT_AND_NOTHING_AFTER).path("category").isNull())
 				.as("(c) holds 2027 without the right and no 2028, so his card has nothing to carry")
 				.isTrue();
+		assertThat(recordOf(null, BOTH_WITHOUT_THE_RIGHT).path("category").isNull())
+				.as("(d) holds both seasons without the right: a season without it carries nothing, whichever it is")
+				.isTrue();
+
+		clock.moveTo(THE_DAY_BEFORE_THE_WINDOW);
+		assertThat(recordOf(null, WITHOUT_THE_RIGHT).path("category").isNull())
+				.as("(a) before 11 November, when 2028 is not on sale yet and the running season is the only one")
+				.isTrue();
+		clock.moveTo(IN_THE_WINDOW);
 		assertThat(seasonsOf(his)).as("2027 is on his list although he holds it without the right")
 				.containsExactly("2028 25-39 age");
 		assertThat(whole("/api/competitors", null)).as("a mark of „without the right” left the server")
