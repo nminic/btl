@@ -297,14 +297,19 @@ class TheWrittenPagesTheCloudflareRowNamesTheBackupsTest extends DatabaseTest {
 	 */
 	private void theSignOffsStandAsTheyDoNow(String language) {
 		/* V73 moved the policy's on to 24.10.2026 and V76 the rulebook's to 27.10.2026 (PDL, "Datum Poslednja izmena se
-		   pomera"); V77 (owner, 29.10.2026) moved all three to 29.10.2026, so each of those days stands nowhere now and
-		   the one day stands on all three documents. */
+		   pomera"); V77 (owner, 29.10.2026) moved all three to 29.10.2026, and V80 (owner, 30.10.2026) moved the rulebook
+		   on to 30.10.2026, so each of the earlier days stands nowhere now, 29.10.2026 stands on the terms and the policy
+		   and 30.10.2026 on the rulebook alone. */
 		String today = language.equals("sr") ? "Poslednja izmena: 29.10.2026." : "Last amended: 29.10.2026.";
+		String rulebookToday = language.equals("sr") ? "Poslednja izmena: 30.10.2026." : "Last amended: 30.10.2026.";
 
 		assertThat(placesWhichCarry(language, today))
-				.as("the %s sign-off of 29.10.2026 must stand on all three documents, V77 having moved them together",
+				.as("the %s sign-off of 29.10.2026 must stand on the terms and the policy, V77 having moved them together",
 						language)
-				.containsExactlyInAnyOrder(THE_RULEBOOK_SIGN_OFF, THE_POLICY_SIGN_OFF, new Place("uslovi-koriscenja", 11));
+				.containsExactlyInAnyOrder(THE_POLICY_SIGN_OFF, new Place("uslovi-koriscenja", 11));
+		assertThat(placesWhichCarry(language, rulebookToday))
+				.as("the %s sign-off of 30.10.2026 must stand on the rulebook alone, V80 having moved it", language)
+				.containsExactly(THE_RULEBOOK_SIGN_OFF);
 		assertThat(bodyOf(language, THE_POLICY_SIGN_OFF)).containsOnlyOnce(today);
 
 		for (String gone : List.of(signOffAfter(language),

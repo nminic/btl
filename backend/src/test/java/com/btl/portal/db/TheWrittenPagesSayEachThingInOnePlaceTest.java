@@ -271,8 +271,12 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 				{ "en", "Last amended: 29.10.2026.", "Last amended: 22.10.2026.", "Last amended: 24.10.2026.",
 						"Last amended: 27.10.2026." } }) {
 			assertThat(placesWhichCarry(signOff[0], signOff[1]))
-					.as("%s: all three documents are signed off on 29.10.2026", signOff[0])
-					.containsExactlyInAnyOrder(new Place(TERMS, 11), new Place(RULEBOOK, 19), new Place(POLICY, 7));
+					.as("%s: the terms and the policy are signed off on 29.10.2026", signOff[0])
+					.containsExactlyInAnyOrder(new Place(TERMS, 11), new Place(POLICY, 7));
+			/* V80 (owner, 30.10.2026) moved the rulebook on from the day V77 gave it. */
+			assertThat(placesWhichCarry(signOff[0], signOff[1].replace("29.10.2026", "30.10.2026")))
+					.as("%s: the rulebook alone is signed off on 30.10.2026", signOff[0])
+					.containsExactly(new Place(RULEBOOK, 19));
 
 			for (int earlier = 2; earlier < signOff.length; earlier++) {
 				assertThat(placesWhichCarry(signOff[0], signOff[earlier]))
@@ -333,8 +337,10 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 		jdbc.execute(migrationSql("77"));
 		/* And V78 over that, because the ducats and the policy table the portal serves carry it (29.10.2026). */
 		jdbc.execute(migrationSql("78"));
+		/* And V80 over that, because the rulebook's Article 11 and its sign-off the portal serves carry it (30.10.2026). */
+		jdbc.execute(migrationSql("80"));
 
-		assertThat(everyText()).as("V71, V73, V76, V77 and V78 over the text V71 found do not give the text the portal serves")
+		assertThat(everyText()).as("V71, V73, V76, V77, V78 and V80 over the text V71 found do not give the text the portal serves")
 				.isEqualTo(finished);
 	}
 
