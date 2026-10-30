@@ -202,6 +202,7 @@ const aResult = {
   /* A run of 2010, which no season counts: the league begins in 2027, and `membership` holds no
      season before it (V22). */
   inItsSeason: false,
+  inItsStanding: false,
   dots: ['marathon' as const],
 }
 
@@ -324,8 +325,8 @@ const aMember = {
   membershipBasis: 'balance' as const,
   membershipSeason: 2028,
   seasons: [
-    { season: 2027, basis: 'payment' as const },
-    { season: 2028, basis: 'balance' as const },
+    { season: 2027, basis: 'payment' as const, ranked: true },
+    { season: 2028, basis: 'balance' as const, ranked: false },
   ],
   seasonOnSale: 2028,
   currency: 'RSD',

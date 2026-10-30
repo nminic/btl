@@ -70,6 +70,7 @@ const person = (memberNumber: string, gender: 'M' | 'F'): Competitor => ({
   ageBand: '40-54',
   firstSeason2027: false,
   firstSeason: 2019,
+  unranked: false,
   membershipBasis: 'payment',
   teamId: null,
   teamSince: null,

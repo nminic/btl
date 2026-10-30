@@ -110,6 +110,7 @@ function aResult(memberNumber: string, date: string, points: number, inItsSeason
     /* A run of a member of the season it is run in, unless a case says it counts in none
        (`Result.inItsSeason`). */
     inItsSeason,
+    inItsStanding: inItsSeason,
   }
 }
 

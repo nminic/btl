@@ -2,6 +2,9 @@ package com.btl.portal.web;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 
+import java.sql.Timestamp;
+import java.time.Instant;
+
 /**
  * A MEMBERSHIP OF ONE SEASON ON ONE OF THE THREE BASES, written the way the schema takes each.
  *
@@ -25,31 +28,54 @@ final class HeldOn {
 	 *              here rather than by the database, so a misspelt fixture says so in its own words
 	 */
 	static void season(JdbcClient db, long competitor, int season, String basis) {
+		season(db, competitor, season, basis, AUTUMN_OF_THE_FIRST_SALE);
+	}
+
+	/** The moment every membership written without one was activated: before any 31 March. */
+	static final Instant AUTUMN_OF_THE_FIRST_SALE = Instant.parse("2026-10-20T10:00:00Z");
+
+	/**
+	 * The same row, activated at a moment the case names: the payment booked, the balance spent or
+	 * the exemption decided then, which is what the right to rank is read off
+	 * ({@code WhenASeasonWasActivated}).
+	 *
+	 * @return the payment or the line of the book the row names, or nothing for an exemption
+	 */
+	static Long season(JdbcClient db, long competitor, int season, String basis, Instant activated) {
+		Timestamp at = Timestamp.from(activated);
+
 		switch (basis) {
 			case "payment" -> {
 				long payment = db.sql("insert into payment (competitor_id, season, price_row_id, amount,"
 								+ " currency, fee, method, state, recorded_at, recorded_by_name, received)"
 								+ " values (?, ?, (select id from price_row order by sort_order limit 1),"
-								+ " 30.00, 'EUR', 3.00, 'ips', 'recorded', timestamptz '2026-10-20 10:00:00+00',"
+								+ " 30.00, 'EUR', 3.00, 'ips', 'recorded', ?,"
 								+ " 'Blagajnik Probni', 33.00) returning id")
-						.params(competitor, season).query(Long.class).single();
+						.params(competitor, season, at).query(Long.class).single();
 				db.sql("insert into membership (competitor_id, season, basis, payment_id)"
 								+ " values (?, ?, 'payment', ?)")
 						.params(competitor, season, payment).update();
+
+				return payment;
 			}
-			case "feeExempt" -> db.sql("insert into membership (competitor_id, season, basis,"
-							+ " decided_by_name, decided_at) values (?, ?, 'feeExempt', 'Moderator Probni',"
-							+ " timestamptz '2026-10-20 10:00:00+00')")
-					.params(competitor, season).update();
+			case "feeExempt" -> {
+				db.sql("insert into membership (competitor_id, season, basis,"
+								+ " decided_by_name, decided_at) values (?, ?, 'feeExempt', 'Moderator Probni', ?)")
+						.params(competitor, season, at).update();
+
+				return null;
+			}
 			case "balance" -> {
 				long entry = db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
 								+ " season, occurred_at, recorded_by_name) values (?, -30.00, 'EUR',"
-								+ " 'membership', ?, timestamptz '2026-10-20 10:00:00+00', 'Blagajnik Probni')"
+								+ " 'membership', ?, ?, 'Blagajnik Probni')"
 								+ " returning id")
-						.params(competitor, season).query(Long.class).single();
+						.params(competitor, season, at).query(Long.class).single();
 				db.sql("insert into membership (competitor_id, season, basis, balance_entry_id)"
 								+ " values (?, ?, 'balance', ?)")
 						.params(competitor, season, entry).update();
+
+				return entry;
 			}
 			default -> throw new IllegalArgumentException("no basis is called " + basis);
 		}

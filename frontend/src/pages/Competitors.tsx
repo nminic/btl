@@ -1,9 +1,8 @@
 import { ProfileLink } from './profile/ProfileLink'
-import { categoryLabel } from '../data/categories'
 import { useMemo } from 'react'
 import { Portrait } from '../components/Portrait'
 import { Resource } from '../components/Resource'
-import { categoryOfMember } from '../data/derive'
+import { shownCategoryLabel } from '../data/derive'
 import type { Competitor } from '../data/types'
 import { useCompetitors } from '../data/useResource'
 import { MEMBERS, recordsOf } from './admin/entityForms'
@@ -96,7 +95,10 @@ function CompetitorCards({
                 <span className="card__number">{competitor.memberNumber}</span>
 
                 <span className="card__meta">
-                  <span className="card__chip">{categoryLabel(categoryOfMember(competitor), t)}</span>
+                  {/* No chip at all where the category is shown nowhere (`shownCategoryOf`). */}
+                  {shownCategoryLabel(competitor, t) !== '' && (
+                    <span className="card__chip">{shownCategoryLabel(competitor, t)}</span>
+                  )}
                   <span className="card__city">{competitor.city}</span>
                 </span>
               </ProfileLink>

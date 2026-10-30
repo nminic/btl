@@ -1,5 +1,6 @@
 package com.btl.portal.domain.season;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.MonthDay;
 import java.time.ZoneId;
@@ -519,6 +520,48 @@ public final class SeasonClock {
 	/** Whether a run of that season may be sent at this moment ({@link #seasonsOpenForAReport}). */
 	public static boolean aRunMayBeSentFor(int season, ZonedDateTime at) {
 		return seasonsOpenForAReport(at).contains(season);
+	}
+
+	/**
+	 * THE LAST DAY ON WHICH A MEMBERSHIP OF A SEASON MAY BE ACTIVATED AND STILL CARRY THE RIGHT TO
+	 * RANK IN IT: 31 March of that season, the day itself included.
+	 *
+	 * <p><b>The rulebook, article 10, in the owner's approved words of 27.10.2026:</b> „...po uplati
+	 * izvršenoj zaključno sa 31. martom 2027. godine ili po odluci Upravnog odbora o oslobađanju od
+	 * članarine donetoj do istog dana", and the rule the league measures it by (Z6): „Rok se meri po
+	 * danu kada je liga uplatu proknjižila." So it is a DAY and not an instant, and the day is the
+	 * league's, in {@link #ZONE}.
+	 *
+	 * <p><b>The same day for every basis</b> (PDL, „Sprovođenje „bez prava rangiranja": odgovori od
+	 * 28.10.2026", the owner's choice): „Odlučuje dan aktivacije, za svaki osnov isto: uplata
+	 * proknjižena posle 31.3., aktivacija iz balansa preporuke posle 31.3. i oslobođenje Upravnog
+	 * odbora doneto posle 31.3. ne daju pravo rangiranja za tu sezonu." Which moment is the
+	 * activation of which basis is not this class's question: it is read where the three are
+	 * written ({@code web/WhenASeasonWasActivated}).
+	 *
+	 * @param season the season the membership is OF, never the year it was activated in: a
+	 *               membership of 2028 bought in November 2027 is activated long before 31 March
+	 *               2028 and ranks
+	 */
+	public static LocalDate lastDayAnActivationRanks(int season) {
+		return LocalDate.of(season, 3, 31);
+	}
+
+	/**
+	 * WHETHER A MEMBERSHIP OF THIS SEASON, ACTIVATED AT THIS INSTANT, GIVES ITS MEMBER THE RIGHT TO
+	 * RANK IN THAT SEASON (see {@link #lastDayAnActivationRanks}).
+	 *
+	 * <p><b>The instant is read as a day in the league's own zone.</b> Ten minutes past midnight on 1
+	 * April in Belgrade is still 31 March in UTC, and a server that read its own zone would hand the
+	 * right to a membership the league activated on 1 April. {@code SeasonClockTest} stands on that
+	 * hour in both directions.
+	 *
+	 * @param season    the season the membership is OF
+	 * @param activated the moment the league activated it: the payment booked, the balance spent, or
+	 *                  the exemption decided
+	 */
+	public static boolean anActivationRanks(int season, Instant activated) {
+		return !activated.atZone(ZONE).toLocalDate().isAfter(lastDayAnActivationRanks(season));
 	}
 
 	/**

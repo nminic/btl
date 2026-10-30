@@ -1,11 +1,10 @@
 import { profilePath } from '../profileAddress'
-import { categoryLabel } from '../../data/categories'
 import { Link } from 'react-router'
 import { PartsNav } from '../../components/PartsNav'
 import { Portrait } from '../../components/Portrait'
 import { SeasonPicker } from '../../components/SeasonPicker'
 import { useToday } from '../../clock/useClock'
-import { categoryOfMember, pairsFrom } from '../../data/derive'
+import { pairsFrom, shownCategoryLabel } from '../../data/derive'
 import { seasonShown } from '../../data/season'
 import type { Competitor, RacingPair, Team } from '../../data/types'
 import { Sentence } from '../../i18n/Sentence'
@@ -87,8 +86,15 @@ export function ProfileHead({
             {t('profile.memberNumberLabel', { number: competitor.memberNumber })}
           </span>
           {' · '}
-          {categoryLabel(categoryOfMember(competitor), t)}
-          {' · '}
+          {/* With the dot that follows it, and neither where the category is shown nowhere: a member
+              without the right to rank in the season shown (owner, 30.10.2026, „ne prikazuje se javno
+              nigde njegov odabir", `shownCategoryOf`). */}
+          {shownCategoryLabel(competitor, t) !== '' && (
+            <>
+              {shownCategoryLabel(competitor, t)}
+              {' · '}
+            </>
+          )}
           {/* **THE BIRTHDAY IS NOT HERE, and that is a decision and not an omission**
               (12.09.2026). It was drawn here from 06.09.2026, for a member who chose to show
               it, on the strength of one sentence in section 3 of the privacy policy: an

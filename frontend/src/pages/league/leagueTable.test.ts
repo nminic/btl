@@ -13,6 +13,7 @@ const person = (memberNumber: string): Competitor => ({
   ageBand: '40-54',
   firstSeason2027: false,
   firstSeason: 2019,
+  unranked: false,
   membershipBasis: 'payment',
   teamId: null,
   teamSince: null,
@@ -77,6 +78,7 @@ const result = (memberNumber: string, raceId: number, points: number, inItsSeaso
   points,
   category: 'short',
   inItsSeason,
+  inItsStanding: inItsSeason,
 })
 
 /* **Counts every race of the two events it holds**, which is the ordinary arrangement and the one

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { categoryLabel } from '../data/categories'
 import { useNavigate, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { CategoryDonut } from '../components/CategoryDonut'
@@ -9,15 +8,16 @@ import { offeredSeason, useSeason } from '../components/season'
 import { useToday } from '../clock/useClock'
 import { Counters } from './home/Counters'
 import {
-  categoryOfMember,
   countsByCategory,
   inTeamIn,
   membersOf,
   numbered,
   rankMembers,
-  seasonOf,
   seasonsOnOffer,
+  shownCategoryLabel,
+  standingSeasonOf,
   totalsOf,
+  unrankedIn,
 } from '../data/derive'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
 import { clearResourceCache } from '../data/client'
@@ -302,8 +302,13 @@ export function TeamDetail() {
         const members = everMembers
           .filter((one) => inTeamIn(one, Number(season)))
           .map((one) => one.competitor)
+          /* **Never a member who holds this season without the right to rank** (PDL, 28.10.2026: he
+             „ne pojavljuje se u tabelama lige, rang listama", and his points „ne ulaze u zbir tima").
+             The members below are a standing with places, so he is not in it, and his runs are not
+             in the figures above it either. */
+          .filter((one) => !unrankedIn(one, results, Number(season), today))
         const numbers = new Set(members.map((one) => one.memberNumber))
-        const inSeason = results.filter((one) => seasonOf(one) === Number(season))
+        const inSeason = results.filter((one) => standingSeasonOf(one) === Number(season))
         const mine = numbered(inSeason).filter((one) => numbers.has(one.memberNumber))
         const totals = totalsOf(mine)
         /* Places, not row numbers, and the whole ladder rather than points
@@ -507,7 +512,7 @@ export function TeamDetail() {
                               {row.competitor.memberNumber}
                             </span>
                           </td>
-                          <td className="table__category">{categoryLabel(categoryOfMember(row.competitor), t)}</td>
+                          <td className="table__category">{shownCategoryLabel(row.competitor, t)}</td>
                           <td className="table__hide-phone">{formatNumber(row.races, locale)}</td>
                           <td className="table__points">{formatPoints(row.points, locale)}</td>
                         </tr>

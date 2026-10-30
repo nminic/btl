@@ -49,12 +49,12 @@ describe('the moderation of the members', () => {
     asMember(ana, {
       seasonOnSale: 2028,
       seasons: [
-        { season: 2027, basis: 'payment' },
-        { season: 2028, basis: 'balance' },
+        { season: 2027, basis: 'payment', ranked: true },
+        { season: 2028, basis: 'balance', ranked: true },
       ],
     }),
-    asMember({ ...ceca, gender: 'F' }, { active: false, seasonOnSale: 2028, seasons: [{ season: 2027, basis: 'feeExempt' }] }),
-    asMember(bora, { seasonOnSale: 2028, seasons: [{ season: 2027, basis: 'payment' }] }),
+    asMember({ ...ceca, gender: 'F' }, { active: false, seasonOnSale: 2028, seasons: [{ season: 2027, basis: 'feeExempt', ranked: true }] }),
+    asMember(bora, { seasonOnSale: 2028, seasons: [{ season: 2027, basis: 'payment', ranked: true }] }),
     asMember(dule, { active: false, seasonOnSale: 2028 }),
   ]
 

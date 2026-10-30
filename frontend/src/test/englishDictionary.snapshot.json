@@ -1557,6 +1557,7 @@
     "invitationNotSent": "The mail is not accepting messages at the moment, so the invitation was not sent. Try again in a minute or two.",
     "cancelMembership": "Cancel",
     "changeToExemption": "Change the basis to an exemption",
+    "withoutTheRightToRank": "without the right to rank",
     "askCancel": {
       "payment": "Cancel the payment for the {season} season?",
       "feeExempt": "Cancel the exemption for the {season} season?",

@@ -48,6 +48,7 @@ const man = (memberNumber: string): Competitor => ({
   ageBand: '40-54',
   firstSeason2027: false,
   firstSeason: 2027,
+  unranked: false,
   membershipBasis: 'payment',
   teamId: 1,
   teamSince: 2027,
@@ -88,6 +89,7 @@ const run = (
   points,
   category: 'short',
   inItsSeason,
+  inItsStanding: inItsSeason,
   ...over,
 })
 

@@ -75,8 +75,13 @@ class MembersApi {
 	 *
 	 * @param season the season, never before 2027, which {@code membership} cannot hold
 	 * @param basis  that season's own basis, read off that season's row and not off the season on sale
+	 * @param ranked whether that season's membership carries the right to rank in it: activated by 31
+	 *               March of the season ({@link WhenASeasonWasActivated}). The administration sees „bez
+	 *               prava rangiranja" beside the season and nowhere else (PDL, 30.10.2026, „u redu
+	 *               člana, na spisku sezona, pored osnova članstva, i nigde drugde"); this resource is
+	 *               read by the administration over the members alone
 	 */
-	record Season(int season, String basis) {
+	record Season(int season, String basis, boolean ranked) {
 	}
 
 	/**
@@ -150,10 +155,11 @@ class MembersApi {
 		   first, which the screen relies on to name the last one. */
 		Map<Long, List<Season>> held = new HashMap<>();
 
-		db.sql("select m.competitor_id, m.season, m.basis from membership m"
-						+ " order by m.competitor_id, m.season")
+		db.sql("select m.competitor_id, m.season, m.basis, " + WhenASeasonWasActivated.of("m")
+						+ " from membership m order by m.competitor_id, m.season")
 				.query((row, one) -> held.computeIfAbsent(row.getLong(1), any -> new ArrayList<>())
-						.add(new Season(row.getInt(2), row.getString(3))))
+						.add(new Season(row.getInt(2), row.getString(3),
+								WhenASeasonWasActivated.ranks(row.getInt(2), row.getTimestamp(4)))))
 				.list();
 
 		List<Row> rows = db.sql("select c.id, c.member_number, c.first_name, c.last_name, c.gender,"

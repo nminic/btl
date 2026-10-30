@@ -1,4 +1,4 @@
-import { categoryCodeFor } from './categories'
+import { categoryCodeFor, categoryLabel } from './categories'
 import { boardsAreToppedUp, FIRST_SEASON, seasonShown } from './season'
 import { DOTS } from './types'
 import type {
@@ -73,6 +73,69 @@ export const EMPTY_TOTALS: Totals = {
  */
 export function seasonOf(result: Result): number | null {
   return result.inItsSeason ? yearOf(result) : null
+}
+
+/**
+ * THE SEASON WHOSE STANDINGS COUNT A RESULT, OR NONE, AND THE ONE PLACE THAT QUESTION IS ANSWERED.
+ *
+ * `seasonOf`, narrowed to the runs whose member holds that season WITH the right to rank: its
+ * membership was activated by 31 March (`Result.inItsStanding`, which the server works out, because
+ * the day of activation is the whole rule and this side does not have it). PDL, 28.10.2026: a member
+ * without the right „ne pojavljuje se u tabelama lige, rang listama ni u kategoriji, a bodovi mu ne
+ * ulaze u zbir tima ni para".
+ *
+ * **Every table, board and sum asks this**: the general standing, the boards of ten, the top boards,
+ * the board of pairs, the standing of teams and a team's own page, the table of a competition and
+ * the awards. **And four things deliberately do not**, each by a decision of 30.10.2026, and they ask
+ * `seasonOf` or `yearOf` as before: his profile („vidi svoje bodove i statistiku na profilu"), his
+ * ducats („osvaja dukate"), the threshold of the beginners' category („računaju u prag od 12") and
+ * the season BEFORE on the board of best progress („prethodna sezona bez prava rangiranja se računa
+ * kao prethodna"). The list of a race draws every result, as it always has.
+ */
+export function standingSeasonOf(result: Result): number | null {
+  return result.inItsStanding ? seasonOf(result) : null
+}
+
+/**
+ * THE CATEGORY A MEMBER IS SHOWN IN, OR NONE.
+ *
+ * Owner, 30.10.2026, of a member without the right to rank in the season shown: „On moze da odabere
+ * kategoriju u svojim podesavanjima, ali istina, ne prikazuje se javno nigde njegov odabir." So his
+ * category is drawn nowhere and files him under nothing - not on his card, not on his profile, not
+ * in a column of a table and not under a filter of one. The category is stored for the season shown
+ * and not per season (`categoryOfMember`), so the same answer holds over every season a table is
+ * read for: what a past table would file him under is today's choice, which is exactly the thing not
+ * to show.
+ */
+export function shownCategoryOf(competitor: Competitor): string | null {
+  return competitor.unranked ? null : categoryOfMember(competitor)
+}
+
+/** The words a card, a profile or a column draws for `shownCategoryOf`, and nothing where it is none. */
+export function shownCategoryLabel(competitor: Competitor, t: (key: string) => string): string {
+  const shown = shownCategoryOf(competitor)
+
+  return shown === null ? '' : categoryLabel(shown, t)
+}
+
+/**
+ * Whether a member is known to hold a season without the right to rank in it.
+ *
+ * Two doors, and either is enough: the list says it of the season shown (`Competitor.unranked`), and
+ * a run of his counted in its season and not in its standings says it of that season. A season he
+ * neither holds as the season shown nor ran in without the right is answered „no", because nothing on
+ * this side knows otherwise, and there he stands with no points anyway.
+ */
+export function unrankedIn(competitor: Competitor, results: Result[], season: number, today: string): boolean {
+  return (
+    (season === seasonShown(today) && competitor.unranked) ||
+    results.some(
+      (result) =>
+        result.memberNumber === competitor.memberNumber &&
+        seasonOf(result) === season &&
+        !result.inItsStanding,
+    )
+  )
 }
 
 /** The year a result was run in, which is what a history is read by (see `seasonOf`). */
@@ -339,7 +402,7 @@ export function rankingFor(
   const totals = new Map<string, Totals>()
 
   for (const result of numbered(results)) {
-    if (seasonOf(result) !== filter.season) {
+    if (standingSeasonOf(result) !== filter.season) {
       continue
     }
 
@@ -350,7 +413,7 @@ export function rankingFor(
     .filter((competitor) => competitor.gender === filter.gender)
     .filter(
       (competitor) =>
-        filter.categoryCode === undefined || categoryOfMember(competitor) === filter.categoryCode,
+        filter.categoryCode === undefined || shownCategoryOf(competitor) === filter.categoryCode,
     )
     .map((competitor) => ({
       competitor,
@@ -394,9 +457,13 @@ export function rankingWithEverybody(
     .filter((competitor) => competitor.gender === filter.gender)
     .filter(
       (competitor) =>
-        filter.categoryCode === undefined || categoryOfMember(competitor) === filter.categoryCode,
+        filter.categoryCode === undefined || shownCategoryOf(competitor) === filter.categoryCode,
     )
     .filter((competitor) => !placed.has(competitor.memberNumber))
+    /* A fee for the season is not the right to rank in it (PDL, 28.10.2026): the member who holds
+       the season shown without it is on the list and not on its table, raced or not. The list
+       speaks of the season shown, which is the season this table is drawn for. */
+    .filter((competitor) => !competitor.unranked)
     .sort((left, right) => left.memberNumber.localeCompare(right.memberNumber))
     .map((competitor, index) => ({
       competitor,
@@ -536,7 +603,9 @@ const BY_TEAM = byLadder<TeamRow>([
  * goes first is arbitrary and steady, which is all it has to be.
  *
  * The results are taken as given, so the caller decides whether the board is
- * one season or the whole history. The roster is not: the season is handed in
+ * one season or the whole history, with one exception since 30.10.2026: a run no standing counts
+ * (`standingSeasonOf`) is never summed, so a run of a member without the right to rank adds
+ * nothing to his team. The roster is not taken as given: the season is handed in
  * and the members are scoped to it here, because both callers need the same
  * thing done to the same argument and a rule each of them has to remember to
  * apply is exactly the shape of the bug this closes. A standing headed by a year
@@ -682,7 +751,15 @@ export function rankTeams(
     return {
       team,
       members: numbers.size,
-      totals: totalsOf(numbered(results).filter((result) => numbers.has(result.memberNumber))),
+      /* Only what a standing counts: „Bodovi člana bez prava rangiranja ne ulaze u zbir tima ni
+         para" (owner, 11.08.2026, kept 28.10.2026). Asked here and not left to the caller, for the
+         reason the roster is scoped here: every caller needs it of the same argument. He stays in
+         the count of members, which is the roster and not a standing. */
+      totals: totalsOf(
+        numbered(results).filter(
+          (result) => numbers.has(result.memberNumber) && standingSeasonOf(result) !== null,
+        ),
+      ),
     }
   })
 
@@ -718,7 +795,13 @@ export function categoriesOf(competitors: Competitor[], gender: Gender): string[
     ...new Set(
       competitors
         .filter((competitor) => competitor.gender === gender)
-        .map((competitor) => categoryOfMember(competitor)),
+        /* Nothing for a member whose category is shown nowhere (`shownCategoryOf`), or a filter
+           that exists because of him alone would name his choice. */
+        .flatMap((competitor) => {
+          const shown = shownCategoryOf(competitor)
+
+          return shown === null ? [] : [shown]
+        }),
     ),
   ].sort()
 }
@@ -1231,7 +1314,12 @@ export function boardOfTen(
   }
 
   const waiting = competitors
-    .filter((competitor) => competitor.gender === gender && !taken.has(competitor.memberNumber))
+    /* Never a member who holds the season shown without the right to rank: a board of ten is a
+       standing in another shape, and he is on none (PDL, 28.10.2026). */
+    .filter(
+      (competitor) =>
+        competitor.gender === gender && !taken.has(competitor.memberNumber) && !competitor.unranked,
+    )
     // The member number is handed out on activation, so its order is the order
     // people joined in.
     .sort((left, right) => left.memberNumber.localeCompare(right.memberNumber))
@@ -1313,7 +1401,7 @@ function seasonRows(
   results: Result[],
   season: number,
 ): TallyRow[] {
-  const tally = tallyOf(results.filter((result) => seasonOf(result) === season))
+  const tally = tallyOf(results.filter((result) => standingSeasonOf(result) === season))
 
   return competitors.flatMap((competitor) => {
     const own = tally.get(competitor.memberNumber)
@@ -1349,7 +1437,7 @@ export function topByCategory(
   limit: number,
 ): Placed<TallyRow>[] {
   const tally = tallyOf(
-    results.filter((result) => seasonOf(result) === season && result.category === category),
+    results.filter((result) => standingSeasonOf(result) === season && result.category === category),
   )
 
   const columns = competitors.flatMap((competitor) => {
@@ -1514,7 +1602,10 @@ export function topPairs(
   limit: number,
 ): Placed<PairRow>[] {
   const known = new Map(competitors.map((one) => [one.memberNumber, one]))
-  const inSeason = results.filter((result) => seasonOf(result) === season)
+  /* Only what the standings count (`standingSeasonOf`): „Bodovi člana bez prava rangiranja ne ulaze u
+     zbir tima ni para" (owner, 11.08.2026). With his runs gone the two of them ran nothing together,
+     so the pair is not on the board at all, and his name is on no list (PDL, 28.10.2026). */
+  const inSeason = results.filter((result) => standingSeasonOf(result) === season)
 
   const rows = pairs
     .filter((pair) => pair.season === season)
@@ -1665,7 +1756,11 @@ export function topByProgress(
   season: number,
   limit: number,
 ): Placed<ProgressRow>[] {
-  const now = totalsByMember(results.filter((result) => seasonOf(result) === season))
+  /* THE TWO SEASONS ARE ASKED TWO DIFFERENT QUESTIONS, ON PURPOSE. The season of the board is a
+     standing, so only what its standings count (`standingSeasonOf`); the season before is the measure
+     of where he started, and it counts whether or not he held it with the right to rank (owner,
+     30.10.2026: „prethodna sezona bez prava rangiranja se računa kao prethodna"), so `seasonOf`. */
+  const now = totalsByMember(results.filter((result) => standingSeasonOf(result) === season))
   const before = totalsByMember(
     results.filter((result) => seasonOf(result) === season - 1 && season - 1 >= FIRST_SEASON),
   )
@@ -1716,7 +1811,7 @@ export function bestSingleRaces(
   limit: number,
 ): Placed<RaceRow>[] {
   const byNumber = new Map(competitors.map((competitor) => [competitor.memberNumber, competitor]))
-  const inSeason = numbered(results).filter((result) => seasonOf(result) === season)
+  const inSeason = numbered(results).filter((result) => standingSeasonOf(result) === season)
   const totals = totalsByMember(inSeason)
 
   /* The season behind the race, carried on the row: the last two rungs need it,

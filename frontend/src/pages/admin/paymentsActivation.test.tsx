@@ -1820,14 +1820,14 @@ describe('activating a membership from the payments screen', () => {
           memberNumber: '000031',
           firstName: 'Jovana',
           lastName: 'Ilić',
-          seasons: [{ season: 2027, basis: 'payment' }],
+          seasons: [{ season: 2027, basis: 'payment', ranked: true }],
         },
         {
           ...first,
           memberNumber: '000019',
           firstName: 'Nikola',
           lastName: 'Zorić',
-          seasons: [{ season: 2027, basis: 'payment' }],
+          seasons: [{ season: 2027, basis: 'payment', ranked: true }],
         },
       ]
 
@@ -1844,8 +1844,8 @@ describe('activating a membership from the payments screen', () => {
           membershipBasis: 'balance',
           membershipSeason: 2031,
           seasons: [
-            { season: 2027, basis: 'payment' },
-            { season: 2031, basis: 'balance' },
+            { season: 2027, basis: 'payment', ranked: true },
+            { season: 2031, basis: 'balance', ranked: true },
           ],
         },
         {
@@ -1853,7 +1853,7 @@ describe('activating a membership from the payments screen', () => {
           memberNumber: '000099',
           firstName: 'Petar',
           lastName: 'Marko',
-          seasons: [{ season: 2031, basis: 'payment' }],
+          seasons: [{ season: 2031, basis: 'payment', ranked: true }],
         },
       ]
 

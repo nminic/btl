@@ -329,6 +329,7 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     ageBand,
     firstSeason2027: false,
     firstSeason: 2020,
+    unranked: false,
     active: true,
     membershipBasis: 'payment' as const,
     referralCode: 'proba0000',
@@ -360,6 +361,7 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     points,
     category: 'short' as const,
     inItsSeason: true,
+    inItsStanding: true,
   })
 
   it('carries both, the better place first', () => {

@@ -789,6 +789,9 @@ describe('the page of the caller himself', () => {
       ageBand: '40-54',
       firstSeason2027: false,
       firstSeason: 2016,
+      /* `/api/me` does not say it; his own page is drawn for him, so his category is shown to him
+         (`profileIn`). */
+      unranked: false,
       profileHidden: false,
       birthdayShown: 'none',
       /* The two pairs that may honestly be absent are null on the record, which is how the public

@@ -40,7 +40,8 @@
     "referredBy",
     "smallPhoto",
     "teamId",
-    "teamSince"
+    "teamSince",
+    "unranked"
   ],
   "ducats.json": [
     "art",
@@ -154,6 +155,7 @@
     "seasonOnSale",
     "seasons",
     "seasons.basis",
+    "seasons.ranked",
     "seasons.season"
   ],
   "moderators.json": [
@@ -225,6 +227,7 @@
     "eventSlug",
     "id",
     "inItsSeason",
+    "inItsStanding",
     "memberNumber",
     "points",
     "raceId",
