@@ -7,6 +7,7 @@ import {
   dayThePriceListIsReadOn,
   FIRST_SEASON,
   inYearlyWindow,
+  nextSeasonOnOffer,
   referralMayBeSet,
   seasonRunning,
   seasonShown,
@@ -213,5 +214,34 @@ describe('the boards of the front page', () => {
     expect(boardsAreToppedUp('2027-01-01')).toBe(false)
     expect(boardsAreToppedUp('2027-01-02')).toBe(false)
     expect(boardsAreToppedUp('2028-06-01')).toBe(false)
+  })
+})
+
+describe('the table of the season that has not begun', () => {
+  it('is offered from the day the window opens to the last day of the year, and from no other', () => {
+    /* PDL, owner, 18.10.2026: „2028 ce tek od [11.11] moci da se izabere". The days either side of both
+       ends, so a window one day early or one day late cannot pass. */
+    expect(nextSeasonOnOffer('2027-03-01')).toBeNull()
+    expect(nextSeasonOnOffer('2027-11-10')).toBeNull()
+    expect(nextSeasonOnOffer('2027-11-11')).toBe(2028)
+    expect(nextSeasonOnOffer('2027-12-31')).toBe(2028)
+    expect(nextSeasonOnOffer('2028-01-01')).toBeNull()
+    expect(nextSeasonOnOffer('2028-11-11')).toBe(2029)
+  })
+
+  it('is nothing at all in 2026, whatever the day, because the season shown is already the next one', () => {
+    /* In 2026 the season shown is 2027 and the season a transfer lands in is 2027 as well, so there is no
+       second season to offer. `2026-10-15` is the first day of the first sale, on which the window is open. */
+    expect(nextSeasonOnOffer('2026-06-01')).toBeNull()
+    expect(nextSeasonOnOffer('2026-10-15')).toBeNull()
+    expect(nextSeasonOnOffer('2026-11-10')).toBeNull()
+    expect(nextSeasonOnOffer('2026-11-11')).toBeNull()
+    expect(nextSeasonOnOffer('2026-12-31')).toBeNull()
+  })
+
+  it('is always later than the season shown when it is anything', () => {
+    for (const day of ['2027-11-11', '2028-12-01', '2031-11-30']) {
+      expect(nextSeasonOnOffer(day)).toBe(seasonShown(day) + 1)
+    }
   })
 })
