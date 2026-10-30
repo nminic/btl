@@ -817,7 +817,10 @@ class MemberMembershipApiTest {
 		assertThat(active(lapsed)).isTrue();
 		assertThat(count("select count(*) from balance_entry where competitor_id = ? and reason = 'referral'"
 				+ " and referred_competitor_id = ?", referrer, lapsed)).isOne();
-		assertThat(messages()).containsExactly(lapsed + " " + GRANTED);
+		/* THE REFERRER IS THANKED FOR THE REWARD (owner, 29.10.2026), in the order the route writes: the
+		   reward and its thanks inside the grant, then the notice to the member after it. The words
+		   themselves are held by `TheReferrerIsThankedTest`. */
+		assertThat(messages()).containsExactly(referrer + " Hvala na preporuci", lapsed + " " + GRANTED);
 	}
 
 	/** The season is the clock's: before 15 October the one run, at 00:30 of 1 January the new one, in 2026 the first. */

@@ -229,7 +229,7 @@ class MyMembershipWriteApi {
 		   novom članu aktivira članarina." A member let in on his own balance is activated, so his
 		   referrer earns exactly as he would have from a recognised payment. Left out, the reward
 		   would depend on which door the newcomer came through, which no decision says. */
-		book.aReferralWasActivated(me, asking.account(), myName);
+		book.aReferralWasActivated(me, owed.season(), asking.account(), myName);
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(new Activated(owed.season(), memberNumber, spent));
 	}

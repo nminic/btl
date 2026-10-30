@@ -669,6 +669,17 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   Pinned LAST, when the file was final, off this very assertion. */
 			new Applied("77", "V77__the_legal_pages_drop_explanations_and_the_fee_exemption.sql", 351982592),
 
+			/* V78. The rulebook says in one sentence who keeps the ducats and the policy no longer mentions a map of
+			   countries visited (owner, 29.10.2026, PDL „Urednička revizija Pravilnika, Uslova i Politike privatnosti
+			   (29.10.2026)", the item „Preostala pitanja posle provere pravnih strana prema kodu"): two edits in both
+			   languages, each stopping the migration unless its old text stands exactly once. The sign-off stays at
+			   29.10.2026, where V77 put it.
+
+			   78 and no other: main stood at V77 on 29.10.2026 (03028557) and no branch of the remote held V78.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("78", "V78__the_rulebook_keeps_the_ducats_in_one_sentence_and_the_policy_loses_the_map.sql", -50931346),
+
 			/* V79. A deleted member's payments, memberships, book and trail stay without his name and his
 			   number (owner, 29.10.2026, PDL „Brisanje profila više ne sme da briše uplate, članstva ni
 			   balans"): four keys set null, the membership's key becomes a surrogate beside the pair, and

@@ -1,11 +1,14 @@
 package com.btl.portal.domain.membership;
 
+import com.btl.portal.domain.balance.Balance;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
 import com.btl.portal.domain.membership.WhatAMembershipChangeSays.Told;
+import com.btl.portal.domain.pricing.Currency;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
+import java.math.BigDecimal;
 import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.List;
@@ -28,6 +31,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class WhatAMembershipChangeSaysTest {
 
 	private static final int SEASON = 2028;
+
+	private static final Balance.Money SOME_MONEY = new Balance.Money(new BigDecimal("600.00"), Currency.RSD);
 
 	/** Every occasion and every basis has its words, and every word has its occasion or its basis. */
 	@Test
@@ -99,6 +104,30 @@ class WhatAMembershipChangeSaysTest {
 						+ " u zvaničnu sezonu. Time ste pali ispod praga od 12 bodova, pa vam je početnička"
 						+ " kategorija ponovo otvorena za sezonu 2029.\n\n"
 						+ "Balkanska trkačka liga"));
+
+		assertThat(WhatAMembershipChangeSays.referralThanked("Ime Prezime", SEASON,
+				new Balance.Money(new BigDecimal("4200.00"), Currency.RSD))).isEqualTo(new Said(
+				"Hvala na preporuci",
+				"Osoba koju ste preporučili, Ime Prezime, postala je deo lige za sezonu 2028, pa smo vam na"
+						+ " balans upisali 4.200,00 RSD. Hvala vam na preporuci.\n\n"
+						+ "Balkanska trkačka liga"));
+	}
+
+	/**
+	 * THE THREE FACTS OF THE THANKS ARE THREE FACTS, and each lands in its own place: the name where the
+	 * person is named, the season where the season is, and the amount in the money it was written in,
+	 * as the portal's letters write it. Three values no two of which are alike, in both moneys.
+	 */
+	@Test
+	void theNameTheSeasonAndTheAmountOfTheThanksAreThreeFacts() {
+		String dinars = WhatAMembershipChangeSays.referralThanked("Ana Anic", 2031,
+				new Balance.Money(new BigDecimal("876.00"), Currency.RSD)).body();
+		String euro = WhatAMembershipChangeSays.referralThanked("Ana Anic", 2031,
+				new Balance.Money(new BigDecimal("7.30"), Currency.EUR)).body();
+
+		assertThat(dinars).contains("preporučili, Ana Anic, postala").contains("za sezonu 2031, pa")
+				.contains("upisali 876,00 RSD.").doesNotContain("2,031").doesNotContain("EUR");
+		assertThat(euro).contains("upisali 7,30 EUR.").doesNotContain("RSD");
 	}
 
 	/**
@@ -122,7 +151,8 @@ class WhatAMembershipChangeSaysTest {
 	void theSeasonGivenIsTheSeasonSaid() {
 		for (Said said : List.of(WhatAMembershipChangeSays.paymentRecorded(2031),
 				WhatAMembershipChangeSays.basisChanged(2031, Basis.PAYMENT),
-				WhatAMembershipChangeSays.cancelled(2031))) {
+				WhatAMembershipChangeSays.cancelled(2031),
+				WhatAMembershipChangeSays.referralThanked("Ana Anic", 2031, SOME_MONEY))) {
 			assertThat(said.body()).contains("sezonu 2031").doesNotContain("2028").doesNotContain("2,031");
 		}
 	}
@@ -182,6 +212,7 @@ class WhatAMembershipChangeSaysTest {
 		return Stream.concat(
 				Stream.of(WhatAMembershipChangeSays.paymentRecorded(SEASON),
 						WhatAMembershipChangeSays.cancelled(SEASON),
+						WhatAMembershipChangeSays.referralThanked("Ana Anic", SEASON, SOME_MONEY),
 						WhatAMembershipChangeSays.beginnersCategoryMoved(false, SEASON, SEASON + 1),
 						WhatAMembershipChangeSays.beginnersCategoryMoved(true, SEASON, SEASON + 1)),
 				Arrays.stream(Basis.values()).map(one -> WhatAMembershipChangeSays.basisChanged(SEASON, one)))

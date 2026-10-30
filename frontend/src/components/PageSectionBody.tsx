@@ -91,7 +91,7 @@ function drawing(gallery: PageSection['gallery']): ReactNode {
  *
  * Where the drawing stands is the section's own to say, since 21.08.2026: the
  * fee schedule belongs under the sentence naming the decision that sets it
- * (the rulebook's article „Cena, rokovi i oslobađanje od članarine", owner) and not at the foot of the whole section,
+ * (the rulebook's article „Cena i rokovi", owner) and not at the foot of the whole section,
  * three articles below it. A section that names a drawing marks a place for it,
  * and a test holds the two together (writtenPages.test.tsx).
  *

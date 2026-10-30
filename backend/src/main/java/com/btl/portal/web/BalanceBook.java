@@ -3,6 +3,8 @@ package com.btl.portal.web;
 import com.btl.portal.domain.balance.Balance;
 import com.btl.portal.domain.balance.BookLine;
 import com.btl.portal.domain.balance.ReversingAMembership;
+import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
+import com.btl.portal.domain.membership.WhatAMembershipChangeSays;
 import com.btl.portal.domain.pricing.Currency;
 import com.btl.portal.domain.pricing.MembershipPrice;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -596,9 +598,21 @@ class BalanceBook {
 	 * activated, and measures the turn-taking of the activation that writes with a change of his country, and
 	 * with a grant and a payment for two members of one referrer.
 	 *
+	 * <p><b>And the referrer is thanked, here and only here, and only when a line was WRITTEN.</b> The
+	 * owner, 29.10.2026 (PDL P16, „preporučilac tada dobija obaveštenje sa zahvalnicom", the words chosen
+	 * the same day): the message is the other half of the reward, so it is sent by the one method that
+	 * writes the reward and not by each of the three doors that call it. A door written next year cannot
+	 * pay without thanking, and a door cannot thank without paying. The statement below answers how many
+	 * rows it wrote, and that is the whole of the condition: {@code on conflict ... do nothing} answers
+	 * nought for a member who was already rewarded, so a second activation of the same member, in the
+	 * same season or in another, says nothing.
+	 *
 	 * @param newMember {@code competitor.id} of the member whose membership has just been activated
+	 * @param season    the season of that membership, which the message names; handed in by the caller
+	 *                  because the reward line itself carries none (V42 gives a season only to a spend
+	 *                  and an overpayment)
 	 */
-	void aReferralWasActivated(long newMember, Long account, String accountName) {
+	void aReferralWasActivated(long newMember, int season, Long account, String accountName) {
 		/* Asked without the hold, and only to decide whether to wait for him: a reward worth nothing in
 		   the referrer's money writes no line, so there is nothing to hold him for. */
 		if (theRewardOf(newMember).isEmpty()) {
@@ -620,13 +634,31 @@ class BalanceBook {
 			return;
 		}
 
-		db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
+		int written = db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
 						+ " referred_competitor_id, occurred_at, recorded_by, recorded_by_name)"
 						+ " values (?, ?, ?, 'referral', ?, ?, ?, ?)"
 						+ " on conflict (referred_competitor_id) do nothing")
 				.params(reward.orElseThrow().referrer(), reward.orElseThrow().money().amount(),
 						reward.orElseThrow().money().currency().name(), newMember,
 						Timestamp.from(clock.instant()), account, accountName)
+				.update();
+
+		if (written == 0) {
+			return;
+		}
+
+		/* The name of the man who was brought in, as it stands on his record: he is the subject of the
+		   sentence and the referrer, whom it is addressed to, is not. */
+		String newcomer = db.sql("select first_name || ' ' || last_name from competitor where id = ?")
+				.param(newMember).query(String.class).single();
+
+		Said thanks = WhatAMembershipChangeSays.referralThanked(newcomer, season,
+				reward.orElseThrow().money());
+
+		/* ALWAYS ADDRESSED: `message.to_id` left empty means EVERYBODY (V13). */
+		db.sql("insert into message (to_id, from_id, from_name, subject, body) values (?, null, ?, ?, ?)")
+				.params(reward.orElseThrow().referrer(), PairWriteApi.THE_LEAGUE, thanks.subject(),
+						thanks.body())
 				.update();
 	}
 

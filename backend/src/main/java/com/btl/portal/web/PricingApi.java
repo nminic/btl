@@ -64,7 +64,7 @@ class PricingApi {
 	 * <p><b>{@code label} IS WHAT A READER CALLS THE ROW AND {@code key} IS WHAT THE PORTAL
 	 * CALLS IT, and they are two fields because they are two facts.</b> The key is
 	 * {@code early} and is a name in code that no screen prints; the label is
-	 * „1. do 5. oktobra" and is the first column of the table a visitor reads under the article „Cena, rokovi i oslobađanje od članarine"
+	 * „1. do 5. oktobra" and is the first column of the table a visitor reads under the article „Cena i rokovi"
 	 * of the rulebook. Owner, 25.09.2026 (PDL P12b, 1): „Naziv perioda postaje kolona u bazi
 	 * koju administrator menja sam iz administracije", which completes his own sentence of
 	 * 30.07.2026 (PDL:827) that a price list changes „cene <b>i nazivi perioda</b>". Until

@@ -71,7 +71,7 @@ const NOTHING_YET: Overlay = { edits: {}, creations: {}, deletions: {} }
  * constant, an administrator who raises a price here raises what the next member is CHARGED
  * while the page he reads and the code he scans still say the old number." All three screens
  * that quote a price read the route in this increment - this one, the public table under
- * the article „Cena, rokovi i oslobađanje od članarine" (`components/PriceTable.tsx`) and „Moja članarina" (`pages/member/Membership.tsx`,
+ * the article „Cena i rokovi" (`components/PriceTable.tsx`) and „Moja članarina" (`pages/member/Membership.tsx`,
  * which fills in the IPS QR code) - so the gap closes at RUN TIME and not only in the source.
  *
  * <p><b>WHAT THIS SCREEN COULD NOT DO UNTIL V34, AND BOTH WERE THE SAME MISSING COLUMN.</b>
