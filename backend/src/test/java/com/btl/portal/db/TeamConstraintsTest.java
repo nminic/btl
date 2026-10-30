@@ -76,7 +76,7 @@ class TeamConstraintsTest extends DatabaseTest {
 			+ " 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789')";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender, birth_date,"
-			+ " place_id, city, country_id, first_season, first_season_2027, active, "
+			+ " place_id, city, country_id, first_season, active, "
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -130,11 +130,11 @@ class TeamConstraintsTest extends DatabaseTest {
 	@BeforeEach
 	void probe() {
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000950', 'Probni', 'Osnivac', 'M',"
-				+ " date '1987-07-07', " + A_TOWN + ", null, null, 2027, false, true, "
+				+ " date '1987-07-07', " + A_TOWN + ", null, null, 2027, true, "
 				+ " '0011223344556680', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000951', 'Druga', 'Clanica', 'F',"
-				+ " date '1993-03-03', null, 'Zaselak', " + A_COUNTRY + ", 2027, false, true, "
+				+ " date '1993-03-03', null, 'Zaselak', " + A_COUNTRY + ", 2027, true, "
 				+ " '0011223344556681', null, '', false, 'none', 'Otac', 'Ulica 2', 'S',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 

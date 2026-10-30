@@ -35,6 +35,13 @@ export const aLapsedMembersPage = {
   city: 'Zaječar',
   ageBand: '40-54',
   beginner: false,
+  /* The category of his card and the season it is OF, and every season he stands in the table of
+     (`MeApi`, V81): 2028 and 2029, the two seasons the cases of his awards run in. */
+  categorySeason: 2027,
+  categories: [
+    { season: 2028, ageBand: '40-54', beginner: false },
+    { season: 2029, ageBand: '40-54', beginner: false },
+  ],
   bio: '',
   profileHidden: false,
   birthdayShown: 'none',

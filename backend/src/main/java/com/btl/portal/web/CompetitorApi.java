@@ -1,6 +1,5 @@
 package com.btl.portal.web;
 
-import com.btl.portal.domain.category.Category;
 import com.btl.portal.domain.season.SeasonClock;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -54,11 +53,11 @@ import java.util.List;
  * <p><b>AND THE BEGINNERS' CATEGORY IS NOT THIS FIELD AND IS NOT ANSWERED
  * INSTEAD OF IT.</b> A member in his first season carries {@code R} rather than a
  * band (PDL P7, owner 03.08. and 11.08.2026), but which of the two a screen draws
- * is decided by {@code beginner}, which this resource already answers, and
- * the band is answered BESIDE it rather than replaced by it - exactly as the
- * served file does for all thirty two members. Whether somebody may still be in
- * that category depends on his whole history of points, which this server does not
- * have yet; nothing here needs it, because nothing here chooses between the two.
+ * is decided by {@code beginner} beside the band, and the band is answered BESIDE
+ * it rather than replaced by it - exactly as the served file does for all thirty
+ * two members. Since 30.10.2026 the mark is the DERIVED one, the wish of that season
+ * and the right ({@link CategoryOfASeason}), so a wish he no longer has a right to
+ * reads as his band here exactly as it does in the box of {@code /api/me/category}.
  *
  * <p><b>And nothing about the membership fee leaves either.</b> The same article
  * of the rulebook goes on: „Datum rođenja se nikada ne prikazuje, ni u punom ni
@@ -417,6 +416,8 @@ class CompetitorApi {
 
 	private final ActiveMemberOrAdministration readers;
 
+	private final CategoryOfASeason categoriesOfSeasons;
+
 	/**
 	 * <b>{@code MemberOfAccount} left this constructor on 25.09.2026 with the question it
 	 * answered, and the question is back since 03.10.2026 through the one class that owns it.</b>
@@ -428,11 +429,12 @@ class CompetitorApi {
 	 * hold a second spelling of who reads what the league keeps for its own.
 	 */
 	CompetitorApi(JdbcClient db, WhatHeMayDo mayHe, Clock clock,
-			ActiveMemberOrAdministration readers) {
+			ActiveMemberOrAdministration readers, CategoryOfASeason categoriesOfSeasons) {
 		this.db = db;
 		this.mayHe = mayHe;
 		this.clock = clock;
 		this.readers = readers;
+		this.categoriesOfSeasons = categoriesOfSeasons;
 	}
 
 	/**
@@ -495,12 +497,29 @@ class CompetitorApi {
 	 *                       link leave together or neither does
 	 * @param birthdayShown  what the member chose about their birthday, which the
 	 *                       portal needs in order to draw the card at all
-	 * @param ageBand        the band alone and never the finished code, so the sex is
-	 *                       not written twice: see the note on this class. Answered on
-	 *                       every record to everybody, because section 3 of the privacy policy makes it the
-	 *                       one thing about a date of birth that IS public, and it does
-	 *                       not depend on {@code birthdayShown} - that choice hides the
-	 *                       date, not the category it produces (PDL, 06.09.2026)
+	 * @param category       THE CATEGORY ON HIS CARD AND IN THE HEAD OF HIS PROFILE, the places that
+	 *                       are not tied to a season, or NULL. PDL, owner, 30.10.2026: „dok traje
+	 *                       trenutna sezona, prikazuje se kategorija u trenutnoj sezoni. Ukoliko
+	 *                       clan nije clan trenutne sezone nego naredne, prikazuje se na njegovom
+	 *                       profilu da je clan te buduce kategorije", and the season it is of rides
+	 *                       on it ({@link CategoryOfASeason.Book#seasonOfTheCard}). The band and
+	 *                       never the finished code, so the sex is not written twice (PDL,
+	 *                       13.09.2026), and it does not depend on {@code birthdayShown}: that choice
+	 *                       hides the date, not the category it produces (PDL, 06.09.2026).
+	 *                       <p><b>Null exactly where he holds that season without the right to rank
+	 *                       in it</b> (PDL, 30.10.2026: „Za sezonu bez prava rangiranja server u
+	 *                       javnom odgovoru ne šalje ni kategoriju ni oznaku da je član bez
+	 *                       prava"). Null and not an absent key, the shape the portrait already has
+	 *                       for a fact that is withheld; nothing beside it says why
+	 * @param categories     THE CATEGORY OF EVERY SEASON HE STANDS IN THE TABLE OF, oldest first:
+	 *                       each season he holds a membership of that ranks, with the category of
+	 *                       THAT season (PDL, 30.10.2026: „poredak svake sezone prikazuje kategoriju
+	 *                       te sezone", and of the frozen ones, „Prikazuj u proslim, svakako se to
+	 *                       zamrzava"). A season he holds without the right is not on it, which is
+	 *                       what the table of that season already shows and nothing more. The cost,
+	 *                       accepted by the owner on 10.10.2026 for the runner of every result and
+	 *                       published since V58: a member who crosses a band between two seasons
+	 *                       gives away his year of birth
 	 * @param membershipBasis on what basis the membership on THIS record is held, on
 	 *                       every record of an answer the administration asked for and
 	 *                       ABSENT from every record of anybody else's - a visitor's, a
@@ -521,26 +540,10 @@ class CompetitorApi {
 	 * @param membershipSeason the season {@code membershipBasis} is the basis of, present exactly
 	 *                       when it is: to the administration, for a member who holds a row for
 	 *                       the season on sale
-	 * @param unranked       whether he holds the membership of the season the list is drawn for
-	 *                       (the season his band is worked out for, which is the season the screens
-	 *                       show as the running one) and it was activated after 31 March of it
-	 *                       ({@link WhenASeasonWasActivated}). PDL, 28.10.2026: such a member „ne
-	 *                       pojavljuje se u tabelama lige, rang listama ni u kategoriji", and
-	 *                       30.10.2026, of the category: „ne prikazuje se javno nigde njegov odabir".
-	 *                       The screens need it for the members who have NOT raced: a run carries
-	 *                       its own {@code inItsStanding}, but the table of the running season draws
-	 *                       every member with a fee, raced or not, and the category is drawn on every
-	 *                       card and profile. It tells nothing that table does not: a member on this
-	 *                       list and missing from it is the same fact.
-	 *                       <p><b>False for a member who holds no membership of that season at
-	 *                       all</b> (in the window, one who paid only for the next): he is not a
-	 *                       member „bez prava rangiranja" but no member of it, and what the screens
-	 *                       do with him is the debt {@code rankingWithEverybody} already names, not
-	 *                       touched here
 	 */
 	record Competitor(String memberNumber, String firstName, String lastName, String gender,
-			String city, String country, String ageBand, boolean beginner, int firstSeason,
-			boolean unranked, String bio, Long teamId, Integer teamSince, boolean profileHidden,
+			String city, String country, CategoryOfASeason.OfASeason category,
+			List<CategoryOfASeason.OfASeason> categories, int firstSeason, String bio, Long teamId, Integer teamSince, boolean profileHidden,
 			String birthdayShown, String photo, Crop crop, String smallPhoto,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String membershipBasis,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer membershipSeason) {
@@ -620,24 +623,25 @@ class CompetitorApi {
 		   exactly that reason. */
 		boolean readsHiddenProfiles = readers.includes(member);
 
-		/* AND THE SEASON THE BANDS BELOW ARE WORKED OUT FOR, read ONCE for the whole
+		/* AND THE MOMENT THE CATEGORIES BELOW ARE WORKED OUT FOR, read ONCE for the whole
 		   answer rather than per row. Two members with the same year of birth must come
 		   back in the same band, and a clock read inside the mapper can cross midnight
 		   on 1 January between two rows of one list - which is the one night of the year
-		   this field moves on. `SeasonClock.seasonTheBandIsWorkedOutFor` says which season
-		   it is and why. */
+		   the card moves on (PDL, 30.10.2026, „1.1. se njegova kategorija automatski
+		   menja"). `CategoryOfASeason.Book.seasonOfTheCard` says which season it is and why,
+		   and the book is read once too, for everybody, rather than a query per member. */
 		ZonedDateTime now = ZonedDateTime.now(clock);
-		int season = SeasonClock.seasonTheBandIsWorkedOutFor(now);
+		CategoryOfASeason.Book book = categoriesOfSeasons.everybody();
 
 		/* AND THE SEASON ON SALE, WHICH IS THE ONE THE BASIS IS ANSWERED FOR, off the same reading
-		   of the clock. Not `season` above: from 11 November to 31 December the two are a year
+		   of the clock. Not the season of the card: from 11 November to 31 December the two are a year
 		   apart, and the owner's decision of 18.10.2026 is about exactly that stretch. */
 		int sold = SeasonClock.seasonBeingPaidFor(now);
 
 		return db.sql("select c.member_number, c.first_name, c.last_name, c.gender,"
 						+ " coalesce(town.name, c.city) as city,"
 						+ " coalesce(town_country.code, typed_country.code) as country,"
-						+ " c.first_season_2027, c.first_season,"
+						+ " c.id, c.first_season,"
 						/* THE BIOGRAPHY, WITHHELD BY THE SAME RULE AS THE PORTRAIT BUT NOT BY
 						   THE SAME MECHANISM, because it stands on `competitor` itself rather
 						   than on a joined row that can simply fail to match (see the note on
@@ -761,10 +765,6 @@ class CompetitorApi {
 						   THEY STAND BEFORE THE YEAR rather than after it, so that the sentence
 						   below stays true: the year is still the LAST column read. */
 						+ " mine.digest, mine.crop_x, mine.crop_y, mine.crop_diameter,"
-						/* WHETHER HE HOLDS THE SEASON THE LIST IS DRAWN FOR, AND WHEN IT WAS
-						   ACTIVATED, which together say whether he ranks in it (`unranked`). */
-						+ " shown.season is not null as holds_the_season_shown,"
-						+ " " + WhenASeasonWasActivated.of("shown") + " as shown_activated_at,"
 						+ " c.birth_year"
 						+ " from competitor c"
 						+ " left join place town on town.id = c.place_id"
@@ -809,11 +809,6 @@ class CompetitorApi {
 						   and withheld from all but the administration in one place. */
 						+ " left join membership held on held.competitor_id = c.id"
 						+ "  and held.season = :sold"
-						/* AND THE MEMBERSHIP OF THE SEASON SHOWN, which is not the one on sale from
-						   11 November to 31 December, and the one the right to rank is asked of. The
-						   same key, so at most one row. */
-						+ " left join membership shown on shown.competitor_id = c.id"
-						+ "  and shown.season = :shown"
 						/* AND ONLY THE MEMBERS WHOSE FEE IS STANDING, which is the whole of what
 						   this resource is allowed to say about a fee. PDL P11: „Status clanarine
 						   se ne prikazuje na profilu... ko nije platio, ne vidi se nigde osim u
@@ -825,7 +820,6 @@ class CompetitorApi {
 				.param("administration", administration)
 				.param("readsHiddenProfiles", readsHiddenProfiles)
 				.param("sold", sold)
-				.param("shown", season)
 				.query((row, one) -> {
 					/* Exact decimal all the way out, never a double, which is `TeamApi`'s own
 					   sentence about the same three numbers: V21 chose `numeric(9, 8)` because
@@ -843,15 +837,13 @@ class CompetitorApi {
 
 					return new Competitor(row.getString(1), row.getString(2),
 						row.getString(3), row.getString(4), row.getString(5), row.getString(6),
-						/* THE RULE IS ASKED FOR, NEVER REPEATED HERE. `Category` is where the
-						   league's bands live and where the decision that age is settled on 1
-						   January rather than on the birthday is written down (PDL P7, changed
-						   from the 2017 rulebook). A second copy of that arithmetic in a
-						   mapper is a second place to fix when a band moves. */
-						Category.ageBandFor(row.getInt(21), season).code(),
-						row.getBoolean(7), row.getInt(8),
-						/* THE SEASON SHOWN, read off the same clock as the band above. */
-						row.getBoolean(19) && !WhenASeasonWasActivated.ranks(season, row.getTimestamp(20)),
+						/* THE RULE IS ASKED FOR, NEVER REPEATED HERE. `CategoryOfASeason` is where
+						   the category of a season is worked out, for every reader, from the band
+						   (`Category`), the wish of that season and the right. The member is `c.id`
+						   and the year of birth is the last column, read here and leaving nowhere. */
+						book.onTheCard(row.getLong(7), row.getInt(19), now),
+						book.standing(row.getLong(7), row.getInt(19)),
+						row.getInt(8),
 						row.getString(9),
 						row.getObject(10) == null ? null : row.getLong(10),
 						row.getObject(11) == null ? null : row.getInt(11),

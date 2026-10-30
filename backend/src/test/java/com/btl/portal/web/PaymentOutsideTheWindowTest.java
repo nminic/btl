@@ -75,7 +75,7 @@ class PaymentOutsideTheWindowTest {
 					+ " order by rank limit 1)";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
+			+ " birth_date, place_id, city, country_id, first_season, active,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -158,7 +158,7 @@ class PaymentOutsideTheWindowTest {
 
 	private long competitor(String referralSuffix, String memberNumber, String birthDate, String town) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', 'Takmicar',"
-						+ " 'M', ?, " + town + ", null, null, 2027, false, false, "
+						+ " 'M', ?, " + town + ", null, null, 2027, false, "
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(memberNumber, java.sql.Date.valueOf(LocalDate.parse(birthDate)),

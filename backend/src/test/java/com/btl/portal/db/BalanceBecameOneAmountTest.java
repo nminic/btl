@@ -71,7 +71,7 @@ class BalanceBecameOneAmountTest extends DatabaseTest {
 	private static final String AN_INSTANT = "timestamptz '2026-10-02 09:00:00+00'";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
+			+ " birth_date, place_id, city, country_id, first_season, active,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -137,7 +137,7 @@ class BalanceBecameOneAmountTest extends DatabaseTest {
 
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', 'Takmicar',"
 						+ " 'M', date '1982-02-02', " + town + ", " + city + ", " + country + ", 2027,"
-						+ " false, true, ?, " + referredBy + ", '', false, 'none', 'Otac',"
+						+ " true, ?, " + referredBy + ", '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, "00112233445599" + number.substring(4))
 				.update();

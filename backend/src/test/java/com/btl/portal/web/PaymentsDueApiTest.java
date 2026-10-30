@@ -1519,10 +1519,10 @@ class PaymentsDueApiTest {
 	private long competitor(String number, String first, String last, boolean active, String town,
 			String birthDate) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
-						+ " values (?, ?, ?, 'F', ?::date, " + town + ", 2027, false, ?,"
+						+ " values (?, ?, ?, 'F', ?::date, " + town + ", 2027, ?,"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, first, last, birthDate, active, String.format("%016x", ++issued))

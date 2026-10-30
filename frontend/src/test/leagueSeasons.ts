@@ -82,6 +82,32 @@ function movedRecord(record: unknown): unknown {
 const MOVED = new Set(['/api/results', '/api/pairs'])
 
 /**
+ * AND A MEMBER OF THE LIST STANDS IN THE TABLE OF EVERY SEASON THE HISTORY NOW FALLS IN, with the band of
+ * his card: the runs above are read as runs of members who held their season with the right to rank, and
+ * since 30.10.2026 a member stands in the table of a season exactly where the list carries a category of
+ * that season for him (`Competitor.categories`, V81). A member whose card names none stands in none.
+ */
+function inEverySeasonOfTheHistory(record: unknown): unknown {
+  if (typeof record !== 'object' || record === null) {
+    return record
+  }
+
+  const card: unknown = Reflect.get(record, 'category')
+
+  if (typeof card !== 'object' || card === null) {
+    return record
+  }
+
+  const seasons: unknown[] = []
+
+  for (let season = FIRST_SEASON; season <= inLeague(FIRST_SEASON); season += 1) {
+    seasons.push({ ...card, season })
+  }
+
+  return { ...record, categories: seasons }
+}
+
+/**
  * Serve the history in league seasons for every case of the `describe` this is
  * called in, and put back what was served before when each case ends.
  *
@@ -99,13 +125,16 @@ export function playTheHistoryAsLeagueSeasons(): void {
       const answer = await served(input, init)
       const path = String(input).split('?')[0] ?? ''
 
-      if ((init?.method ?? 'GET') !== 'GET' || !MOVED.has(path) || !answer.ok) {
+      const theList = path === '/api/competitors'
+
+      if ((init?.method ?? 'GET') !== 'GET' || (!MOVED.has(path) && !theList) || !answer.ok) {
         return answer
       }
 
       const body: unknown = await answer.json()
+      const each = theList ? inEverySeasonOfTheHistory : movedRecord
 
-      return new Response(JSON.stringify(Array.isArray(body) ? body.map(movedRecord) : body), {
+      return new Response(JSON.stringify(Array.isArray(body) ? body.map(each) : body), {
         status: answer.status,
         headers: { 'content-type': 'application/json' },
       })

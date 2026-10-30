@@ -650,15 +650,18 @@ class CompetitorApiTest {
 			boolean active, String basis, String bio, String referralCode, String broughtBy,
 			boolean hidden, String birthdayShown) {
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, city, country_id, first_season, first_season_2027,"
+						+ " birth_date, place_id, city, country_id, first_season,"
 						+ " active, referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, date '" + born + "', " + place + ", " + city + ", "
-						+ country + ", ?, ?, ?, ?, " + broughtBy + ", ?, ?, ?, 'Otac', 'Ulica 1',"
+						+ country + ", ?, ?, ?, " + broughtBy + ", ?, ?, ?, 'Otac', 'Ulica 1',"
 						+ " 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, first, last, gender, firstSeason, beginner, active,
+				.params(number, first, last, gender, firstSeason, active,
 						referralCode, bio, hidden, birthdayShown)
 				.query(Long.class).single();
+
+		db.sql("insert into category_wish (competitor_id, season, beginner) values (?, 2027, ?)")
+				.params(id, beginner).update();
 
 		/* THE BASIS IS A ROW OF THE SEASON ON SALE SINCE V62, and at AUTUMN_2026 that is 2027:
 		   the calendar answers 2026, which the league does not have, so `seasonBeingPaidFor`
@@ -2488,7 +2491,7 @@ class CompetitorApiTest {
 		assertThat(bands())
 				.as("a member is answered a band other than the one the rulebook puts him in")
 				.containsExactly(Map.entry("000007", "25-39"), Map.entry("000012", "55+"),
-						Map.entry("000023", "40-54"), Map.entry("000045", "24-"));
+						Map.entry("000045", "24-"));
 	}
 
 	/**
@@ -2509,7 +2512,7 @@ class CompetitorApiTest {
 		Map<String, String> bands = bands();
 
 		assertThat(bands).as("no bands came back, so nothing below is asked of anything")
-				.hasSize(4);
+				.hasSize(3);
 
 		assertThat(bands.values())
 				.as("a band left the server that the rulebook does not have")
@@ -2773,11 +2776,19 @@ class CompetitorApiTest {
 		}
 	}
 
-	/** The band on every record of an answer, by member number and in the answer's order. */
+	/**
+	 * The band on the card of every record of an answer, by member number and in the answer's order: the
+	 * category of the season his card speaks of (V81, {@code CategoryOfASeason}).
+	 */
 	private Map<String, String> bandsIn(JsonNode answered) {
 		Map<String, String> bands = new LinkedHashMap<>();
-		answered.forEach(one ->
-				bands.put(one.path("memberNumber").asString(), one.path(THE_AGE_BAND).asString()));
+		/* A card with no category is a member who holds that season without the right to rank (000023),
+		   and the case about him is `aSeasonWithoutTheRightCarriesNoCategoryAndNoMark`: no band to compare. */
+		answered.forEach(one -> {
+			if (!one.path("category").isNull()) {
+				bands.put(one.path("memberNumber").asString(), one.path("category").path(THE_AGE_BAND).asString());
+			}
+		});
 
 		return bands;
 	}

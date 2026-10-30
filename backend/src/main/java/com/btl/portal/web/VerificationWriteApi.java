@@ -2334,13 +2334,11 @@ class VerificationWriteApi {
 	 * stays where it was while the category under it changes. Without a line in his inbox that
 	 * reads as the portal losing his choice.
 	 *
-	 * <p><b>It is sent whether or not he ever ticked the box, and that is deliberate.</b>
-	 * Asking {@code competitor.first_season_2027} would be a second condition over a field
-	 * whose name carries a season (V7) and which
-	 * {@code TheChoiceAsItStands} already records as a debt to be paid when a second season
-	 * exists. What this message reports is true either way - a right he had is gone - and the
-	 * portal telling somebody about a category he was not asking for is a smaller fault than
-	 * staying silent towards somebody who was.
+	 * <p><b>It is sent whether or not he ticked the box for that season, and that is
+	 * deliberate.</b> The wish is kept per season since V81 ({@code category_wish}), and asking
+	 * it here would be a change of behaviour nobody decided. What this message reports is true
+	 * either way - a right he had is gone - and the portal telling somebody about a category he
+	 * was not asking for is a smaller fault than staying silent towards somebody who was.
 	 */
 	private void tellHimHisCategoryMoved(long member, int season, Run counted) {
 		tell(member, "Početnička kategorija vam je zatvorena",

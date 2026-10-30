@@ -116,7 +116,7 @@ class MemberDataWriteApiTest {
 					+ " order by rank limit 1)";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
+			+ " birth_date, place_id, city, country_id, first_season, active,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, phone, shirt_size, health_statement_at";
 
@@ -235,7 +235,7 @@ class MemberDataWriteApiTest {
 	private long competitor(String number, String suffix, String name, String gender, String born,
 			String town) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, ?, 'Clan', ?,"
-						+ " cast(? as date), " + town + ", null, null, 2027, false, true, ?, null, '',"
+						+ " cast(? as date), " + town + ", null, null, 2027, true, ?, null, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', '0601234567', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, name, gender, born, "0011aabbccddee" + suffix)

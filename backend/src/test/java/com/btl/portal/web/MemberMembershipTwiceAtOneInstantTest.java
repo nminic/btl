@@ -116,10 +116,10 @@ class MemberMembershipTwiceAtOneInstantTest {
 		cookie = session.secret();
 
 		him = db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, first_season_2027, active, referral_code, bio,"
+						+ " place_id, first_season, active, referral_code, bio,"
 						+ " profile_hidden, birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at) values (?, 'Probni', 'Dvostornic', 'M', date '1990-05-15',"
-						+ " (select id from place where rank = 1), 2027, false, true, '0011aabbccddeefa', '',"
+						+ " (select id from place where rank = 1), 2027, true, '0011aabbccddeefa', '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
 				.param(THE_NUMBER).query(Long.class).single();

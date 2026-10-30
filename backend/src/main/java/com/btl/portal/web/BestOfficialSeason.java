@@ -5,6 +5,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * THE MOST POINTS A MEMBER HAS TAKEN IN ANY ONE OFFICIAL SEASON.
@@ -122,18 +124,60 @@ class BestOfficialSeason {
 	 *         Java.
 	 */
 	BigDecimal pointsFor(long competitor, int season) {
-		/* ONLY A SEASON HE WAS A MEMBER IN IS A SEASON OF HIS AT ALL, and the join says so (see the
-		   note on this class). The key of `membership` is the member and the season, so the join is
-		   one row per result or none, and never two. */
-		return db.sql("select coalesce(max(total), 0) from ("
-						+ " select sum(r.points) as total from result r"
+		return bestBefore(totals(competitor).getOrDefault(competitor, Map.of()), season);
+	}
+
+	/**
+	 * THE TOTAL OF EVERY OFFICIAL SEASON, PER MEMBER: the one text the rule is read from, for one
+	 * member or for everybody at once.
+	 *
+	 * <p><b>Since 30.10.2026 the lists ask it too</b> ({@link CategoryOfASeason}): the category of
+	 * every season a member stands in is worked out on {@code /api/competitors}, {@code /api/me},
+	 * {@code /api/members} and on every runner of {@code /api/results}, and a second {@code select}
+	 * there would be a second home for which runs a season holds. So the totals are read here, by
+	 * one text, and „the best season BEFORE the one asked" is {@link #bestBefore}, one Java line.
+	 *
+	 * <p>ONLY A SEASON HE WAS A MEMBER IN IS A SEASON OF HIS AT ALL, and the join says so (see the
+	 * note on this class). {@code membership_one_a_season} is the member and the season, so the join
+	 * is one row per result or none, and never two. Nothing before {@link SeasonClock#FIRST_SEASON}.
+	 *
+	 * @param onlyOf {@code competitor.id} of the one member asked about, or null for everybody
+	 * @return per member, the total of each official season he holds a membership of and has run in
+	 */
+	Map<Long, Map<Integer, BigDecimal>> totals(Long onlyOf) {
+		Map<Long, Map<Integer, BigDecimal>> totals = new HashMap<>();
+
+		db.sql("select r.competitor_id, cast(extract(year from r.race_date) as integer), sum(r.points)"
+						+ " from result r"
 						+ " join membership m on m.competitor_id = r.competitor_id"
 						+ " and m.season = extract(year from r.race_date)"
-						+ " where r.competitor_id = ? and extract(year from r.race_date) >= ?"
-						+ " and extract(year from r.race_date) < ?"
-						+ " group by extract(year from r.race_date)) each_season")
-				.params(competitor, SeasonClock.FIRST_SEASON, season)
-				.query(BigDecimal.class)
-				.single();
+						+ " where extract(year from r.race_date) >= :first"
+						+ " and (cast(:onlyOf as bigint) is null or r.competitor_id = cast(:onlyOf as bigint))"
+						+ " group by r.competitor_id, extract(year from r.race_date)")
+				.param("first", SeasonClock.FIRST_SEASON)
+				.param("onlyOf", onlyOf)
+				.query((row, one) -> totals.computeIfAbsent(row.getLong(1), any -> new HashMap<>())
+						.put(row.getInt(2), row.getBigDecimal(3)))
+				.list();
+
+		return totals;
+	}
+
+	/**
+	 * THE BEST SINGLE SEASON STRICTLY BEFORE THE ONE ASKED, or zero where there is none.
+	 *
+	 * <p><b>Strictly before, and that is the bound this class is about</b> (see its note): a season
+	 * is never decided off itself, so a member who takes twenty points in 2028 is still a beginner
+	 * in 2028 if 2028 was open to him, and closed from 2029.
+	 *
+	 * @param totals what {@link #totals} answered for one member
+	 * @param season the season the question is being asked FOR
+	 */
+	static BigDecimal bestBefore(Map<Integer, BigDecimal> totals, int season) {
+		return totals.entrySet().stream()
+				.filter(each -> each.getKey() < season)
+				.map(Map.Entry::getValue)
+				.max(BigDecimal::compareTo)
+				.orElse(BigDecimal.ZERO);
 	}
 }

@@ -379,7 +379,7 @@ class GroupEntryTest {
 				.as("a member who said his first season is NOT 2027 was refused, so the route"
 						+ " reads what the box says rather than whether it was answered")
 				.isEqualTo(201);
-		assertThat(memberBehind(folded(SECOND_TYPED)).get("first_season_2027"))
+		assertThat(wishBehind(folded(SECOND_TYPED)))
 				.as("the answer he gave was not written down").isEqualTo(false);
 
 		group.get(1).remove("beginner");
@@ -1194,12 +1194,12 @@ class GroupEntryTest {
 
 	private long competitor(String number, String referral, boolean active) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at)"
 						+ " values (?, 'Zatecen', 'Zatecenic', 'M', date '1985-01-01',"
-						+ " (select id from place order by rank limit 1), 2027, false, ?,"
+						+ " (select id from place order by rank limit 1), 2027, ?,"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 9', 'L',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, active, referral).query(Long.class).single();
@@ -1235,6 +1235,15 @@ class GroupEntryTest {
 	private Map<String, Object> memberBehind(String email) {
 		return db.sql("select c.* from competitor c join account a on a.competitor_id = c.id"
 				+ " where a.email = ?").param(email).query().singleRow();
+	}
+
+	/**
+	 * The category he asked for, for the season {@link #NOW} sells (V81): one row, the season the entry
+	 * was made for.
+	 */
+	private Object wishBehind(String email) {
+		return db.sql("select w.beginner from category_wish w join account a on a.competitor_id = w.competitor_id"
+				+ " where a.email = ? and w.season = 2027").param(email).query(Boolean.class).single();
 	}
 
 	private int howManyDocumentsOf(String email) {

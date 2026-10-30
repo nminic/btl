@@ -243,11 +243,11 @@ class MeWriteApiTest {
 
 	private void competitor(String number, String first, String last, String bio, boolean hidden) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, first_season_2027, active, "
+						+ " place_id, first_season, active, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, true, "
+						+ " (select id from place where rank = 1), 2027, true, "
 						+ " ?, ?, ?, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, first, last, String.format("%016x", ++issued), bio, hidden)
@@ -2900,11 +2900,11 @@ class MeWriteApiTest {
 		};
 
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Neplacen', 'Neplacenic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, false, ?,"
+						+ " (select id from place where rank = 1), 2027, false, ?,"
 						+ " 'Tekst koji stoji.', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00') returning id")
 				.params(kind == NotPaid.NEVER_PAID ? null : "000900", String.format("%016x", ++issued))

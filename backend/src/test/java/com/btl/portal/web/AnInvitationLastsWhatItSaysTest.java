@@ -87,11 +87,11 @@ class AnInvitationLastsWhatItSaysTest {
 		session = cookie.secret();
 
 		long member = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values ('000071', 'Bez', 'Lozinke', 'F', date '1993-09-09', " + A_TOWN_IN_SERBIA
-						+ ", 2027, false, true, '0011aabbccdd7171', '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ ", 2027, true, '0011aabbccdd7171', '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.query(Long.class).single();
 

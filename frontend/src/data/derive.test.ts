@@ -39,6 +39,7 @@ import type { Drawn } from './derive'
 import { firstSeasonAllowed } from './categories'
 import { at, first } from '../test/at'
 import { DOTS } from './types'
+import type { AgeBand } from './categories'
 import type {
   BtlEvent,
   Competitor,
@@ -49,6 +50,12 @@ import type {
   Team,
 } from './types'
 
+/** A member who stands in the table of 2027 in one band, and whose card says the same. */
+const inBand = (ageBand: AgeBand, beginner = false): Pick<Competitor, 'category' | 'categories'> => ({
+  category: { season: 2027, ageBand, beginner },
+  categories: [{ season: 2027, ageBand, beginner }],
+})
+
 const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Competitor => ({
   memberNumber,
   firstName: 'Ime',
@@ -56,10 +63,9 @@ const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Comp
   gender: 'M',
   city: 'Beograd',
   country: 'RS',
-  ageBand: '40-54',
-  beginner: false,
+  category: { season: 2027, ageBand: '40-54', beginner: false },
+  categories: [{ season: 2027, ageBand: '40-54', beginner: false }],
   firstSeason: 2027,
-  unranked: false,
   membershipBasis: 'payment',
   teamId: null,
   teamSince: null,
@@ -177,7 +183,7 @@ describe('rankingFor', () => {
   const competitors = [
     competitor('000001'),
     competitor('000002'),
-    competitor('000004', { ageBand: '55+', firstName: 'Vukašin' }),
+    competitor('000004', { ...inBand('55+'), firstName: 'Vukašin' }),
     competitor('000003', { gender: 'F' }),
   ]
 
@@ -309,30 +315,44 @@ describe('categoriesOf', () => {
        and this would still pass. She is `55+` against a man in `55+`, and the
        answer names two codes rather than three. */
     const competitors = [
-      competitor('000001', { ageBand: '55+' }),
-      competitor('000002', { ageBand: '25-39' }),
-      competitor('000004', { ageBand: '25-39' }),
-      competitor('000003', { gender: 'F', ageBand: '55+' }),
+      competitor('000001', { ...inBand('55+') }),
+      competitor('000002', { ...inBand('25-39') }),
+      competitor('000004', { ...inBand('25-39') }),
+      competitor('000003', { gender: 'F', ...inBand('55+') }),
     ]
 
-    expect(categoriesOf(competitors, 'M')).toEqual(['M25-39', 'M55+'])
+    expect(categoriesOf(competitors, 'M', 2027)).toEqual(['M25-39', 'M55+'])
   })
 
-  /* **A case that moved a member between bands as the season turned stood here
-     until 13.09.2026.** It handed the same member to 2026 and to 2027 and expected
-     `M25-39` then `M40-54`, which is PDL P7: the band follows the age reached in
-     the calendar year.
-   *
-     It cannot be asked any more, and not because it stopped mattering. The band is
-     now read off the record instead of worked out from a year of birth, because the
-     record is served publicly and a year of birth may not be (section 3 of the privacy policy,
-     `data/types.ts`). `categoriesOf` takes no season, so there is no second season
-     to hand it. What the portal gives up by that is written where the field is. */
-  it('takes no season, so nothing it answers can turn on one', () => {
-    /* Read off the signature rather than from a second call with a different year:
-       a function that ignores an argument and one that does not take it look the
-       same from outside, and only one of them is honest about it. */
-    expect(categoriesOf).toHaveLength(2)
+  /* **A case that moved a member between bands as the season turned stood here until 13.09.2026**,
+     and one that said `categoriesOf` takes no season stood here until 30.10.2026, when the server began
+     to answer the category of every season a member stands in (`Competitor.categories`, PDL, owner,
+     30.10.2026: „poredak svake sezone prikazuje kategoriju te sezone"). So the season is asked again,
+     and the filters of one season name the categories of that season and of no other. */
+  it('names the categories of the season asked for, and a member who stands in no table of it names none', () => {
+    const competitors = [
+      /* 25-39 in 2027 and 40-54 in 2028: the band of each season, not of today. */
+      competitor('000001', {
+        category: { season: 2028, ageBand: '40-54', beginner: false },
+        categories: [
+          { season: 2027, ageBand: '25-39', beginner: false },
+          { season: 2028, ageBand: '40-54', beginner: false },
+        ],
+      }),
+      /* A beginner in 2027 and in his band in 2028. */
+      competitor('000002', {
+        category: { season: 2028, ageBand: '55+', beginner: false },
+        categories: [
+          { season: 2027, ageBand: '55+', beginner: true },
+          { season: 2028, ageBand: '55+', beginner: false },
+        ],
+      }),
+      /* Stands in no table of 2027 (a season held without the right to rank, or not held at all). */
+      competitor('000004', { category: null, categories: [{ season: 2028, ageBand: '24-', beginner: false }] }),
+    ]
+
+    expect(categoriesOf(competitors, 'M', 2027)).toEqual(['M R', 'M25-39'])
+    expect(categoriesOf(competitors, 'M', 2028)).toEqual(['M24-', 'M40-54', 'M55+'])
   })
 })
 

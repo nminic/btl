@@ -133,10 +133,10 @@ class MembersApiTest {
 	private long member(String number, String first, String last, String gender, boolean active,
 			boolean hidden, String referralCode) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active, referral_code,"
+						+ " birth_date, place_id, first_season, active, referral_code,"
 						+ " bio, profile_hidden, birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at) values (?, ?, ?, ?, date '1980-05-05',"
-						+ " (select id from place where rank = 1), 2027, false, ?, ?, '', ?, 'none',"
+						+ " (select id from place where rank = 1), 2027, ?, ?, '', ?, 'none',"
 						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, first, last, gender, active, referralCode, hidden)
 				.query(Long.class).single();
@@ -405,11 +405,11 @@ class MembersApiTest {
 		   the junior row from 15 October; he pays in dinars and the others in euro, so a currency
 		   taken from anybody else's country reads the other column; and he has no book at all. */
 		long junior = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active, referral_code,"
+						+ " birth_date, place_id, first_season, active, referral_code,"
 						+ " bio, profile_hidden, birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at) values ('000013', 'Mali', 'Hadzic', 'M', date '2012-06-01',"
 						+ " (select id from place where country_id = (select id from country where code = 'RS')"
-						+ " order by rank limit 1), 2027, false, false, '11aa22bb33cc44d7', '', false, 'none',"
+						+ " order by rank limit 1), 2027, false, '11aa22bb33cc44d7', '', false, 'none',"
 						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.query(Long.class).single();
 

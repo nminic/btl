@@ -17,10 +17,16 @@
   ],
   "competitors.json": [
     "active",
-    "ageBand",
-    "beginner",
     "bio",
     "birthdayShown",
+    "categories",
+    "categories.ageBand",
+    "categories.beginner",
+    "categories.season",
+    "category",
+    "category.ageBand",
+    "category.beginner",
+    "category.season",
     "city",
     "country",
     "crop",
@@ -40,8 +46,7 @@
     "referredBy",
     "smallPhoto",
     "teamId",
-    "teamSince",
-    "unranked"
+    "teamSince"
   ],
   "ducats.json": [
     "art",

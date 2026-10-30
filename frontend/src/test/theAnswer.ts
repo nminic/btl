@@ -1,3 +1,4 @@
+import type { AgeBand } from '../data/categories'
 import type {
   Competitor,
   League,
@@ -51,10 +52,9 @@ export const aCompetitor = {
   gender: 'M' as const,
   city: 'Beograd',
   country: 'RS',
-  ageBand: '40-54' as const,
-  beginner: false,
+  category: { season: 2027, ageBand: '40-54' as const, beginner: false },
+  categories: [{ season: 2027, ageBand: '40-54' as const, beginner: false }],
   firstSeason: 2014,
-  unranked: false,
   bio: '',
   teamId: 1,
   teamSince: 2014,
@@ -450,6 +450,17 @@ export const readAsFee: Price = aProcessingFee
  * the generated file calls `000001`, whose fee stands; the harness fills the real value in for
  * every member of the file (`test/setup.ts`, `whatMeAnswers`), so `000032` is answered `false`.
  */
+/**
+ * THE CATEGORY OF HIS CARD AS `/api/me` ANSWERS IT, out of a record of the public list: the band and the
+ * mark apart, and the season it is the category OF (`MeApi.MyOwnRecord`). A record whose card names no
+ * category is answered his band of 2027, which is what `/api/me` tells him whatever the public list says.
+ */
+export function hisCategoryFromMe(one: Competitor): { ageBand: AgeBand; beginner: boolean; categorySeason: number } {
+  const card = one.category ?? one.categories[0] ?? { season: 2027, ageBand: '40-54', beginner: false }
+
+  return { ageBand: card.ageBand, beginner: card.beginner, categorySeason: card.season }
+}
+
 export const myOwnRecordFromMe = {
   memberNumber: '000001',
   country: 'RS',
@@ -464,8 +475,12 @@ export const myOwnRecordFromMe = {
   lastName: aCompetitor.lastName,
   gender: aCompetitor.gender,
   city: aCompetitor.city,
-  ageBand: aCompetitor.ageBand,
-  beginner: aCompetitor.beginner,
+  /* The category of his card, the band and the mark apart, and the season it is OF (`MeApi`). */
+  ageBand: '40-54' as const,
+  beginner: false,
+  categorySeason: 2027,
+  /* And every season he stands in the table of, as the public list carries it (`MeApi`, V81). */
+  categories: aCompetitor.categories,
   teamSince: aCompetitor.teamSince,
   bio: aCompetitor.bio,
   profileHidden: aCompetitor.profileHidden,

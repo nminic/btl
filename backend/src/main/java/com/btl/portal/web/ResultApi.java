@@ -1,6 +1,5 @@
 package com.btl.portal.web;
 
-import com.btl.portal.domain.category.Category;
 import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -129,13 +128,16 @@ import java.util.List;
  * result, with the beginner's mark. {@code noYearOfBirthLeavesTheServer} holds the year itself,
  * which is a field and not an inference.
  *
- * <p><b>A BOUNDARY AND NOT A DECISION: THE BEGINNER'S MARK IS WHAT THE RECORD SAYS TODAY.</b>
- * The owner's choice was about the band alone. The mark a member had in the season of an old
- * result cannot be read from anywhere, because the record of a member's category per season does
- * not exist yet (item ZS), so {@code beginner} is the flag on his record as it stands now,
- * whichever season the result belongs to, and for an old result it may differ from what the
- * frozen table of that season files him under. When that record exists this field reads it and
- * this paragraph goes. That is my derivation from the choice and not a thing he was asked.
+ * <p><b>THE BEGINNER'S MARK IS THE ONE OF THE RESULT'S SEASON TOO</b>, since the wish is kept per
+ * season (V81, PDL, owner, 30.10.2026: „Hocu strukturalno ovo da resim, zasto se kategorije ne cuvaju po
+ * sezoni vec sad?"). The band and the mark are asked of {@link CategoryOfASeason}, the one home every
+ * list asks, for the season the result's band is worked out for, so the runner of a result and the table
+ * of its season name one category.
+ *
+ * <p><b>AND NEITHER FOR A RUN OF A SEASON HE HOLDS WITHOUT THE RIGHT TO RANK.</b> PDL, 30.10.2026: „Za
+ * sezonu bez prava rangiranja server u javnom odgovoru ne šalje ni kategoriju ni oznaku da je član bez
+ * prava". Both are null on such a runner; the name stays, because he stands on the list of the race
+ * (PDL, 30.10.2026, „Stoji na spisku rezultata trke na strani događaja, kao i svi").
  *
  * <p><b>IT DOES NOT DEPEND ON THE FEE, and the one place the fee is asked is the condition
  * above.</b> A row is served with its {@code runner} or it is not served at all: a member
@@ -192,9 +194,12 @@ class ResultApi {
 
 	private final Clock clock;
 
-	ResultApi(JdbcClient db, Clock clock) {
+	private final CategoryOfASeason categories;
+
+	ResultApi(JdbcClient db, Clock clock, CategoryOfASeason categories) {
 		this.db = db;
 		this.clock = clock;
+		this.categories = categories;
 	}
 
 	/**
@@ -210,13 +215,13 @@ class ResultApi {
 	 *                        result was run in, and not the one {@code /api/competitors} answers
 	 *                        for the season that is running (owner, 10.10.2026)
 	 * @param beginner whether he runs in the beginners' category rather than in the one for
-	 *                        his age (PDL P7). The flag on his record as it stands now, whichever
-	 *                        season the result belongs to: the record of his category per season
-	 *                        does not exist yet (item ZS), and the note on this class draws that
-	 *                        boundary
+	 *                        his age (PDL P7), in the season the result belongs to: the wish of that
+	 *                        season and the right ({@link CategoryOfASeason}). This and
+	 *                        {@code ageBand} are both NULL on a run of a season he holds without the
+	 *                        right to rank, and the note on this class says why
 	 */
 	record Runner(String firstName, String lastName, String gender, String ageBand,
-			boolean beginner) {
+			Boolean beginner) {
 	}
 
 	/**
@@ -264,6 +269,9 @@ class ResultApi {
 
 	@GetMapping("/api/results")
 	List<Result> results() {
+		/* THE CATEGORIES OF EVERY SEASON, read once for the whole answer (`CategoryOfASeason`). */
+		CategoryOfASeason.Book book = categories.everybody();
+
 		return db.sql("select r.id, c.member_number, r.race_id, ra.name as race_name,"
 						+ " e.name as event_name, e.slug as event_slug, r.race_date,"
 						+ " r.distance_km, r.ascent_m, r.descent_m, r.seconds, r.points, r.category,"
@@ -272,7 +280,7 @@ class ResultApi {
 						   member's. Joined every time and never stored, like the names above.
 						   NOTHING HERE ASKS WHETHER HE IS ACTIVE OR WHETHER HE HIDES HIS PROFILE,
 						   on purpose, and the note on this class says why. */
-						+ " c.first_name, c.last_name, c.gender, c.first_season_2027,"
+						+ " c.first_name, c.last_name, c.gender, r.competitor_id,"
 						/* AND THE YEAR, WHICH IS READ HERE AND LEAVES NOWHERE. It is the input the
 						   band is worked out from and the one field of this table the privacy
 						   policy is written about, so it reaches the mapper below and goes
@@ -334,19 +342,32 @@ class ResultApi {
 							/* NULL WHEN HE HAS NO MEMBER NUMBER, the key still there. The note on
 							   this class says why a registration without one is not named. */
 							memberNumber == null ? null
-									: new Runner(row.getString(14), row.getString(15),
-											row.getString(16),
-											/* THE RULE IS ASKED FOR, NEVER REPEATED HERE: `Category`
-											   is where the league's bands live, and `SeasonClock`
-											   is where the season a result's band is worked out
-											   for lives. The day is this row's own and not the
-											   clock's, which is why the same row is answered in
-											   the same band on any day. */
-											Category.ageBandFor(row.getInt(18),
-													SeasonClock.seasonTheBandOfAResultIsWorkedOutFor(day)).code(),
-											row.getBoolean(17)));
+									: runner(row.getString(14), row.getString(15), row.getString(16),
+											/* THE RULE IS ASKED FOR, NEVER REPEATED HERE:
+											   `CategoryOfASeason` is where the category of a
+											   season is worked out, and `SeasonClock` is where the
+											   season a result's band is worked out for lives. The
+											   day is this row's own and not the clock's, which is
+											   why the same row is answered in the same band on
+											   any day. */
+											book.in(row.getLong(17), row.getInt(18),
+													SeasonClock.seasonTheBandOfAResultIsWorkedOutFor(day)),
+											/* HELD WITHOUT THE RIGHT TO RANK: a membership of the
+											   run's season that does not rank. */
+											row.getBoolean(19) && !WhenASeasonWasActivated.ranks(day.getYear(),
+													row.getTimestamp(20))));
 				})
 				.list();
+	}
+
+	/**
+	 * WHO RAN IT, with the category of the season and without one where that season is held without the
+	 * right to rank.
+	 */
+	private static Runner runner(String firstName, String lastName, String gender,
+			CategoryOfASeason.OfASeason category, boolean withoutTheRight) {
+		return withoutTheRight ? new Runner(firstName, lastName, gender, null, null)
+				: new Runner(firstName, lastName, gender, category.ageBand(), category.beginner());
 	}
 
 	/**

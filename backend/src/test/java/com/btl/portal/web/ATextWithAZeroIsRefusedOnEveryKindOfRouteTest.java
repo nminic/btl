@@ -192,11 +192,11 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 
 	private void competitor(String number, String first, String last, boolean active) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, first_season_2027, active, "
+						+ " place_id, first_season, active, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, ?, "
+						+ " (select id from place where rank = 1), 2027, ?, "
 						+ " ?, 'Biografija koja vec stoji.', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, first, last, active, String.format("7b%014x", ++issued))

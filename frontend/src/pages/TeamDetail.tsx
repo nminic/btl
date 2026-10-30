@@ -14,7 +14,7 @@ import {
   numbered,
   rankMembers,
   seasonsOnOffer,
-  shownCategoryLabel,
+  categoryLabelIn,
   standingSeasonOf,
   totalsOf,
   unrankedIn,
@@ -512,7 +512,7 @@ export function TeamDetail() {
                               {row.competitor.memberNumber}
                             </span>
                           </td>
-                          <td className="table__category">{shownCategoryLabel(row.competitor, t)}</td>
+                          <td className="table__category">{categoryLabelIn(row.competitor, Number(season), t)}</td>
                           <td className="table__hide-phone">{formatNumber(row.races, locale)}</td>
                           <td className="table__points">{formatPoints(row.points, locale)}</td>
                         </tr>

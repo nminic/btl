@@ -28,9 +28,9 @@ class BankStatementCarriedOverTest extends DatabaseTest {
 		db.sql("insert into account (first_name, last_name, email, role_id) values ('Blagajnik', 'Zatecen',"
 				+ " 'zatecen@primer.rs', (select id from role where code = 'moderator'))").update();
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date, place_id,"
-				+ " first_season, first_season_2027, active, referral_code, bio, profile_hidden, birthday_shown,"
+				+ " first_season, active, referral_code, bio, profile_hidden, birthday_shown,"
 				+ " father_name, address, shirt_size, health_statement_at) values ('008000', 'Zatecen', 'Clan',"
-				+ " 'M', date '1990-05-15', (select id from place where rank = 1), 2027, false, true,"
+				+ " 'M', date '1990-05-15', (select id from place where rank = 1), 2027, true,"
 				+ " '00112233445566f1', '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 		db.sql("insert into payment (competitor_id, season, price_row_id, amount, currency, fee, method, state,"

@@ -698,7 +698,16 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   80 and no other: main stood at V79 on 30.10.2026 (b70a4759) and no branch of the remote held V80.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("80", "V80__the_rulebook_says_who_pays_in_which_currency_in_the_owners_words.sql", -535520445));
+			new Applied("80", "V80__the_rulebook_says_who_pays_in_which_currency_in_the_owners_words.sql", -535520445),
+
+			/* V81. The category a member wants is kept per member and season (`category_wish`), every
+			   member's wish becomes his wish for 2027, and `competitor.first_season_2027` goes (owner,
+			   30.10.2026, PDL „Kategorija se čuva po sezoni, strukturno, odmah").
+
+			   81 and no other: main stood at V80 on 30.10.2026 (6ced3b44) and no branch of the remote held V81.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("81", "V81__the_category_a_member_wants_is_kept_per_season.sql", 636849562));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

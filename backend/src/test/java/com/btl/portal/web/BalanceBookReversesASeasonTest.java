@@ -83,11 +83,11 @@ class BalanceBookReversesASeasonTest {
 
 	private long competitor(String number, String code, Long referredBy) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, city, country_id, first_season, first_season_2027,"
+						+ " birth_date, place_id, city, country_id, first_season,"
 						+ " active, referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Clan', 'M', date '1982-02-02', " + A_TOWN + ", null,"
-						+ " null, 2027, false, true, ?, ?, '', false, 'none', 'Otac', 'Ulica 1',"
+						+ " null, 2027, true, ?, ?, '', false, 'none', 'Otac', 'Ulica 1',"
 						+ " 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, code, referredBy).query(Long.class).single();
 	}

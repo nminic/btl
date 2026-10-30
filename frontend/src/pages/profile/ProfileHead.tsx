@@ -4,7 +4,7 @@ import { PartsNav } from '../../components/PartsNav'
 import { Portrait } from '../../components/Portrait'
 import { SeasonPicker } from '../../components/SeasonPicker'
 import { useToday } from '../../clock/useClock'
-import { pairsFrom, shownCategoryLabel } from '../../data/derive'
+import { cardCategoryLabel, pairsFrom } from '../../data/derive'
 import { seasonShown } from '../../data/season'
 import type { Competitor, RacingPair, Team } from '../../data/types'
 import { Sentence } from '../../i18n/Sentence'
@@ -87,11 +87,11 @@ export function ProfileHead({
           </span>
           {' · '}
           {/* With the dot that follows it, and neither where the category is shown nowhere: a member
-              without the right to rank in the season shown (owner, 30.10.2026, „ne prikazuje se javno
-              nigde njegov odabir", `shownCategoryOf`). */}
-          {shownCategoryLabel(competitor, t) !== '' && (
+              without the right to rank in the season his card speaks of (owner, 30.10.2026, „ne
+              prikazuje se javno nigde njegov odabir", `cardCategoryOf`). */}
+          {cardCategoryLabel(competitor, t) !== '' && (
             <>
-              {shownCategoryLabel(competitor, t)}
+              {cardCategoryLabel(competitor, t)}
               {' · '}
             </>
           )}

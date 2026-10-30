@@ -46,10 +46,26 @@ function theListWith(wishes: Record<string, boolean>): string {
   return JSON.stringify(
     file
       .filter((one) => one.active)
-      .map((one) => ({
-        ...asAnswered(one, aCompetitor),
-        beginner: wishes[one.memberNumber] ?? one.beginner,
-      })),
+      .map((one) => {
+        const answered = asAnswered(one, aCompetitor)
+        const wished = wishes[one.memberNumber]
+        /* The category of 2027 with the wish the case gives him, on his card and in his list of seasons
+           (V81): every member of the file holds 2027 and his card speaks of it. */
+        const with2027 = (category: unknown): unknown =>
+          wished === undefined ||
+          typeof category !== 'object' ||
+          category === null ||
+          Reflect.get(category, 'season') !== 2027
+            ? category
+            : { ...category, beginner: wished }
+        const seasons: unknown = answered.categories
+
+        return {
+          ...answered,
+          category: with2027(answered.category),
+          categories: Array.isArray(seasons) ? seasons.map(with2027) : seasons,
+        }
+      }),
   )
 }
 
@@ -358,7 +374,18 @@ describe('the table of the season shown as the running one', () => {
 
       const table = await screen.findByRole('table', {}, { timeout: SLOW / 2 })
       const rows = within(table).getAllByRole('row').slice(1)
-      const men4054 = file.filter((one) => one.active && one.gender === 'M' && one.ageBand === '40-54')
+      const men4054 = file.filter((one) => {
+        const card: unknown = one.category
+
+        return (
+          one.active &&
+          one.gender === 'M' &&
+          typeof card === 'object' &&
+          card !== null &&
+          Reflect.get(card, 'ageBand') === '40-54' &&
+          Reflect.get(card, 'beginner') === false
+        )
+      })
 
       expect(rows.map(categoryIn)).toEqual(men4054.map(() => 'M 40-54'))
       expect(rows.map((row) => row.textContent?.match(/\d{6}/)?.[0])).toEqual(men4054.map((one) => one.memberNumber))

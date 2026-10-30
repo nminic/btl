@@ -37,9 +37,10 @@ import org.springframework.stereotype.Component;
  * (a race is not entered before it is run), so writing one moves nothing and no line goes; that is the
  * arithmetic and not a condition written here.
  *
- * <p><b>It is sent whether or not he ever ticked the box</b>, for {@code VerificationWriteApi}'s reason:
- * the wish lives in a column whose name carries a season ({@code competitor.first_season_2027}), and
- * what the line reports is true either way.
+ * <p><b>It is sent whether or not he ticked the box for that season</b>, for {@code VerificationWriteApi}'s
+ * reason: what the line reports is true either way, a right he had is gone or is back. The wish has been
+ * kept per season since V81 ({@code category_wish}), and asking it here would be a change of behaviour
+ * nobody decided.
  *
  * <p><b>Under the league's name</b>, which is what every line on these roads is sent under: PDL P13,
  * 19.09.2026, „Kad portal sam piše poruku članu, pošiljalac je naziv lige."

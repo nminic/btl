@@ -89,7 +89,7 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 	void theSixTablesCarryTheseColumnsAndNoOthers() {
 		assertThat(columnsOf("competitor")).containsExactlyInAnyOrder("id", "member_number", "first_name",
 				"last_name", "gender", "place_id", "city", "country_id", "first_season",
-				"first_season_2027", "active", "referral_code", "referred_by", "bio",
+				"active", "referral_code", "referred_by", "bio",
 				"profile_hidden", "birthday_shown",
 				/* AND NO BASIS OF A MEMBERSHIP. `membership_basis` stood here from V7 until V62
 				   dropped it: the basis is a fact about a season and its one home is
@@ -492,6 +492,10 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   it is, because a merged migration is not rewritten (ADL A2). */
 				"btl_event.btl_event_country_fk restrict",
 				"btl_event.btl_event_place_fk restrict",
+				/* V81. The category a member wants is part of his profile and no bookkeeping, so it
+				   goes with him; V79 keeps only the rows of money. The frozen category of a season
+				   stays in `season_competitor.category`, which loses only its pointer. */
+				"category_wish.category_wish_competitor_fk cascade",
 				/* V30. A waiting comment goes with the event it was written about (V10's own
 				   sentence, applied one table over) and with its member, the same as a waiting
 				   result (PDL P21) and unlike a PUBLISHED comment, which V7 tombstones instead:
@@ -798,11 +802,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 		int number = nextMember++;
 		return db
 				.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date, place_id,"
-						+ " city, country_id, first_season, first_season_2027, active,"
+						+ " city, country_id, first_season, active,"
 						+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at) values ('000" + number
 						+ "', '" + firstName + "', '" + lastName + "', 'M', date '1990-05-05', " + town
-						+ ", 2027, false, true, '0000000000000" + number + "', "
+						+ ", 2027, true, '0000000000000" + number + "', "
 						+ (referredBy == null ? "null" : referredBy) + ", '', false, 'none', "
 						+ "'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.query(Long.class)

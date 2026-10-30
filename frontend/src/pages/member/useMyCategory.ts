@@ -91,17 +91,18 @@ export function useMyCategory(): TheCategoryIChoose {
 
            Two writes and both are needed, which is `ProfileVisibility.tsx`'s own pair: the
            overlay for a screen already holding the list, the dropped cache for the next one to
-           read the row. The value is the WISH as the route answered it, because the WISH is
-           what `/api/competitors` serves on every row (`beginner`) and what the screens
-           make the category of - the right is not on that list, and a beginner's right cannot
-           close for 2027 (`BestOfficialSeason` reads the seasons strictly before it). Written
-           as the word the overlay keeps (`forms/records.ts`, `like`).
+           read the row. **The overlay names the season the box is FOR** (`said.season`), because the
+           category is kept per season since V81: a choice for next season changes the table of next
+           season and, where his card speaks of next season, the card, and leaves the running season
+           alone (PDL, owner, 30.10.2026, „Koja kategorija se prikazuje kad član ima dve sezone"). And
+           it is the CATEGORY the route answered, the wish AND the right, which is what the list
+           serves per season (`Competitor.categories`); `data/derive.ts` folds it over that season.
 
            Nothing for a reader with no member number: he is on no list, so there is no row of
            his for a screen to draw. */
         if (memberNumber !== null) {
           editRecord(recordKey(MEMBERS.id, memberNumber), {
-            beginner: String(said.firstSeason),
+            chosenCategory: `${said.season}:${said.firstSeason && said.firstSeasonAllowed ? 'yes' : 'no'}`,
           })
         }
 

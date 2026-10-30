@@ -11,6 +11,7 @@ import type {
   RacingPair,
   Result,
   Team,
+  SeasonCategory,
 } from './types'
 
 /* Everything the screens compute out of raw results. Pure functions, so the
@@ -97,45 +98,74 @@ export function standingSeasonOf(result: Result): number | null {
 }
 
 /**
- * THE CATEGORY A MEMBER IS SHOWN IN, OR NONE.
- *
- * Owner, 30.10.2026, of a member without the right to rank in the season shown: „On moze da odabere
- * kategoriju u svojim podesavanjima, ali istina, ne prikazuje se javno nigde njegov odabir." So his
- * category is drawn nowhere and files him under nothing - not on his card, not on his profile, not
- * in a column of a table and not under a filter of one. The category is stored for the season shown
- * and not per season (`categoryOfMember`), so the same answer holds over every season a table is
- * read for: what a past table would file him under is today's choice, which is exactly the thing not
- * to show.
+ * WHAT HE CHOSE IN THIS VISIT, read off the overlay (`Competitor.chosenCategory`): the season it is FOR
+ * and whether it is the beginners' category, or nothing.
  */
-export function shownCategoryOf(competitor: Competitor): string | null {
-  return competitor.unranked ? null : categoryOfMember(competitor)
+function chosenThisVisit(competitor: Competitor): { season: number; beginner: boolean } | null {
+  const said = competitor.chosenCategory?.match(/^(\d{4}):(yes|no)$/)
+
+  return said === null || said === undefined ? null : { season: Number(said[1]), beginner: said[2] === 'yes' }
 }
 
-/** The words a card, a profile or a column draws for `shownCategoryOf`, and nothing where it is none. */
-export function shownCategoryLabel(competitor: Competitor, t: (key: string) => string): string {
-  const shown = shownCategoryOf(competitor)
+/** One season's category as the server answered it, with this visit's choice folded over that season. */
+function folded(competitor: Competitor, category: SeasonCategory): SeasonCategory {
+  const chosen = chosenThisVisit(competitor)
+
+  return chosen !== null && chosen.season === category.season ? { ...category, beginner: chosen.beginner } : category
+}
+
+function codeOf(competitor: Competitor, category: SeasonCategory): string {
+  return categoryCodeFor(competitor.gender, category.ageBand, folded(competitor, category).beginner)
+}
+
+/**
+ * THE CATEGORY ON HIS CARD AND IN THE HEAD OF HIS PROFILE, OR NONE: the places that are not tied to a
+ * season.
+ *
+ * PDL, owner, 30.10.2026: „dok traje trenutna sezona, prikazuje se kategorija u trenutnoj sezoni.
+ * Ukoliko clan nije clan trenutne sezone nego naredne, prikazuje se na njegovom profilu da je clan te
+ * buduce kategorije". Which season that is the server decides (`CategoryOfASeason`), and none where he
+ * holds it without the right to rank: „ne prikazuje se javno nigde njegov odabir".
+ */
+export function cardCategoryOf(competitor: Competitor): string | null {
+  return competitor.category === null ? null : codeOf(competitor, competitor.category)
+}
+
+/** The words a card or a profile draws for `cardCategoryOf`, and nothing where it is none. */
+export function cardCategoryLabel(competitor: Competitor, t: (key: string) => string): string {
+  const shown = cardCategoryOf(competitor)
 
   return shown === null ? '' : categoryLabel(shown, t)
 }
 
 /**
- * Whether a member is known to hold a season without the right to rank in it.
+ * THE CATEGORY HE STANDS IN THE TABLE OF ONE SEASON UNDER, OR NONE: the category of THAT season.
  *
- * Two doors, and either is enough: the list says it of the season shown (`Competitor.unranked`), and
- * a run of his counted in its season and not in its standings says it of that season. A season he
- * neither holds as the season shown nor ran in without the right is answered „no", because nothing on
- * this side knows otherwise, and there he stands with no points anyway.
+ * PDL, owner, 30.10.2026: „poredak svake sezone prikazuje kategoriju te sezone", and of the frozen ones,
+ * „Prikazuj u proslim, svakako se to zamrzava". None where he does not stand in that table: a season he
+ * holds without the right to rank, or holds no membership of (`Competitor.categories`).
  */
-export function unrankedIn(competitor: Competitor, results: Result[], season: number, today: string): boolean {
-  return (
-    (season === seasonShown(today) && competitor.unranked) ||
-    results.some(
-      (result) =>
-        result.memberNumber === competitor.memberNumber &&
-        seasonOf(result) === season &&
-        !result.inItsStanding,
-    )
-  )
+export function categoryIn(competitor: Competitor, season: number): string | null {
+  const that = competitor.categories.find((one) => one.season === season)
+
+  return that === undefined ? null : codeOf(competitor, that)
+}
+
+/** The words a column of the table of one season draws for `categoryIn`, and nothing where it is none. */
+export function categoryLabelIn(competitor: Competitor, season: number, t: (key: string) => string): string {
+  const shown = categoryIn(competitor, season)
+
+  return shown === null ? '' : categoryLabel(shown, t)
+}
+
+/**
+ * WHETHER HE STANDS IN THE TABLE OF ONE SEASON: a membership of it with the right to rank, which is
+ * exactly a category of that season on his record. PDL P7, 18.10.2026: „tabela sezone prikazuje svakog
+ * člana sa važećom članarinom za tu sezonu", and 28.10.2026, of a member without the right to rank:
+ * „ne pojavljuje se u tabelama lige, rang listama ni u kategoriji".
+ */
+export function standsIn(competitor: Competitor, season: number): boolean {
+  return competitor.categories.some((one) => one.season === season)
 }
 
 /** The year a result was run in, which is what a history is read by (see `seasonOf`). */
@@ -413,7 +443,7 @@ export function rankingFor(
     .filter((competitor) => competitor.gender === filter.gender)
     .filter(
       (competitor) =>
-        filter.categoryCode === undefined || shownCategoryOf(competitor) === filter.categoryCode,
+        filter.categoryCode === undefined || categoryIn(competitor, filter.season) === filter.categoryCode,
     )
     .map((competitor) => ({
       competitor,
@@ -440,11 +470,10 @@ export function rankingFor(
  * 1 January 2027 (owner, 17.10.2026), and the awards (`profile/awards.ts`), where a member with no
  * race placed third would be handed a medal. Neither may see these rows.
  *
- * **Who „has a fee for that season" is the list itself**: `/api/competitors` carries exactly the
- * members whose fee stands (`CompetitorApi`, `where c.active`), which for the season shown as the
- * running one is the same set. It stops being the same set in October 2027, when a member who paid
- * for 2028 is active while 2027 is still the season shown - the debt of `first_season_2027`, written
- * down in the pull request rather than solved here.
+ * **Who „has a fee for that season" is asked of the season itself** (`standsIn`): the categories the
+ * server answers per season, one for each season he holds with the right to rank. Until 30.10.2026 it
+ * was the list as a whole, which stopped being the same set the day a member paid for the next season
+ * while this one was still shown.
  */
 export function rankingWithEverybody(
   competitors: Competitor[],
@@ -457,13 +486,13 @@ export function rankingWithEverybody(
     .filter((competitor) => competitor.gender === filter.gender)
     .filter(
       (competitor) =>
-        filter.categoryCode === undefined || shownCategoryOf(competitor) === filter.categoryCode,
+        filter.categoryCode === undefined || categoryIn(competitor, filter.season) === filter.categoryCode,
     )
     .filter((competitor) => !placed.has(competitor.memberNumber))
-    /* A fee for the season is not the right to rank in it (PDL, 28.10.2026): the member who holds
-       the season shown without it is on the list and not on its table, raced or not. The list
-       speaks of the season shown, which is the season this table is drawn for. */
-    .filter((competitor) => !competitor.unranked)
+    /* EVERY MEMBER WITH A FEE FOR THIS SEASON AND THE RIGHT TO RANK IN IT, and nobody else (`standsIn`):
+       a fee for the season is not the right to rank in it (PDL, 28.10.2026), and a member who paid only
+       for the next season holds no fee for this one, which is the debt this function used to name. */
+    .filter((competitor) => standsIn(competitor, filter.season))
     .sort((left, right) => left.memberNumber.localeCompare(right.memberNumber))
     .map((competitor, index) => ({
       competitor,
@@ -766,39 +795,16 @@ export function rankTeams(
   return withPlaces(rows, BY_TEAM, (row) => String(row.team.id))
 }
 
-/**
- * The category a member competes in.
- *
- * **No season, since 13.09.2026, and that is a statement rather than an
- * omission.** This used to take one and work the band out from a year of birth,
- * with a comment saying the band moves with the year so storing it would go
- * stale. Both halves of that were true and the portal is no longer allowed the
- * input: a year of birth is the short form of a date of birth, section 3 of the privacy policy says that
- * is never shown, and a member's record is served publicly (ADL A8, `types.ts`).
- * So the band is stored, it is the band for `SEASON`, and a season handed in here
- * could not change the answer.
- *
- * Taking the parameter away rather than ignoring it is the point. It was already
- * half ignored — the first season flag is stored, so a member who spent 2027 as a
- * beginner was filed under that category in every season, and `profile/awards.ts`
- * carried a note saying so. A function that accepts a season and does nothing with
- * it reads as one that honours it, and every caller then believes something the
- * code does not do.
- */
-export function categoryOfMember(competitor: Competitor): string {
-  return categoryCodeFor(competitor.gender, competitor.ageBand, competitor.beginner)
-}
-
-/** Category codes present in a gender's field, in a stable order. */
-export function categoriesOf(competitors: Competitor[], gender: Gender): string[] {
+/** Category codes present in a gender's field of one season, in a stable order. */
+export function categoriesOf(competitors: Competitor[], gender: Gender, season: number): string[] {
   return [
     ...new Set(
       competitors
         .filter((competitor) => competitor.gender === gender)
-        /* Nothing for a member whose category is shown nowhere (`shownCategoryOf`), or a filter
-           that exists because of him alone would name his choice. */
+        /* Nothing for a member who does not stand in the table of this season (`categoryIn`), or a
+           filter that exists because of him alone would name his choice. */
         .flatMap((competitor) => {
-          const shown = shownCategoryOf(competitor)
+          const shown = categoryIn(competitor, season)
 
           return shown === null ? [] : [shown]
         }),
@@ -1314,11 +1320,12 @@ export function boardOfTen(
   }
 
   const waiting = competitors
-    /* Never a member who holds the season shown without the right to rank: a board of ten is a
-       standing in another shape, and he is on none (PDL, 28.10.2026). */
+    /* Only a member who stands in the table of this season (`standsIn`): a board of ten is a standing
+       in another shape, and a member who holds the season without the right to rank is on none (PDL,
+       28.10.2026). */
     .filter(
       (competitor) =>
-        competitor.gender === gender && !taken.has(competitor.memberNumber) && !competitor.unranked,
+        competitor.gender === gender && !taken.has(competitor.memberNumber) && standsIn(competitor, season),
     )
     // The member number is handed out on activation, so its order is the order
     // people joined in.

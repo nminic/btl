@@ -8,6 +8,7 @@ import {
   MEMBERSHIP_BASES,
   type BirthdayShown,
   type Competitor,
+  type SeasonCategory,
   type Crop,
   type Gender,
   type MembershipBasis,
@@ -450,10 +451,16 @@ export async function whatTheServerSaysOfMyProfile(): Promise<Competitor | null>
  * number that may be absent is a record every screen that draws a member would then have to ask
  * about; this one is read by one screen, and a screen that wants a number cannot be handed it.
  */
-export type MyData = Pick<
-  Competitor,
-  'firstName' | 'lastName' | 'gender' | 'city' | 'ageBand' | 'beginner'
-> & {
+export type MyData = Pick<Competitor, 'firstName' | 'lastName' | 'gender' | 'city'> & {
+  /**
+   * The band of the season his card speaks of (`MeApi`), which is the category the page is headed by.
+   * His own, so never withheld, the season without the right to rank included.
+   */
+  ageBand: AgeBand
+  /** Whether he runs in the beginners' category in that season: the wish AND the right (`MeApi`). */
+  beginner: boolean
+  /** The season those two are the category OF. */
+  categorySeason: number
   /** Where a shirt and a medal are sent. Never empty: the server takes no blank one. */
   address: string
   /**
@@ -806,7 +813,7 @@ function countryIn(mine: object | null): string | null {
  */
 function wholeIn(
   mine: object | null,
-  name: 'firstSeason' | 'teamId' | 'teamSince' | 'referredCount' | 'membershipSeason',
+  name: 'firstSeason' | 'teamId' | 'teamSince' | 'referredCount' | 'membershipSeason' | 'categorySeason',
 ): number | null {
   if (mine === null) {
     return null
@@ -852,9 +859,11 @@ function profileIn(mine: object | null): Competitor | null {
   const bio = textIn(mine, 'bio')
   const profileHidden = flagIn(mine, 'profileHidden')
   const birthdayShown = birthdayShownIn(mine)
+  const categories = categoriesIn(mine)
 
   if (
     data === null ||
+    categories === null ||
     memberNumber === null ||
     country === null ||
     firstSeason === null ||
@@ -870,15 +879,21 @@ function profileIn(mine: object | null): Competitor | null {
   const smallPhoto = photoIn(mine, 'smallPhoto')
 
   return {
-    ...data,
+    firstName: data.firstName,
+    lastName: data.lastName,
+    gender: data.gender,
+    city: data.city,
     memberNumber,
     country,
     firstSeason,
-    /* HIS OWN PAGE, DRAWN FOR HIMSELF, and `/api/me` does not say whether he ranks. His category is
-       shown nowhere PUBLICLY when he does not (owner, 30.10.2026, „ne prikazuje se javno nigde njegov
-       odabir"), and he chose it in his own settings, so drawing it to him is not showing it to
-       anybody. Every reader of anybody else's record reads `/api/competitors`, which says it. */
-    unranked: false,
+    /* HIS OWN PAGE, DRAWN FOR HIMSELF, and `/api/me` tells him his category even in a season he holds
+       without the right to rank. It is shown nowhere PUBLICLY then (owner, 30.10.2026, „ne prikazuje
+       se javno nigde njegov odabir"), and he chose it in his own settings, so drawing it to him is not
+       showing it to anybody. Every reader of anybody else's record reads `/api/competitors`. */
+    category: { season: data.categorySeason, ageBand: data.ageBand, beginner: data.beginner },
+    /* Every season he stands in the table of, which his awards are drawn off while the public list
+       does not carry him (`useHisOwnRecord`). */
+    categories,
     profileHidden,
     birthdayShown,
     teamId: wholeIn(mine, 'teamId'),
@@ -903,7 +918,7 @@ function profileIn(mine: object | null): Competitor | null {
  */
 function sixFactsIn(
   mine: object | null,
-): Pick<Competitor, 'firstName' | 'lastName' | 'gender' | 'city' | 'ageBand' | 'beginner'> | null {
+): Pick<MyData, 'firstName' | 'lastName' | 'gender' | 'city' | 'ageBand' | 'beginner' | 'categorySeason'> | null {
   if (mine === null) {
     return null
   }
@@ -914,6 +929,7 @@ function sixFactsIn(
   const city = nameIn(mine, 'city')
   const ageBand = ageBandIn(mine)
   const beginner = flagIn(mine, 'beginner')
+  const categorySeason = wholeIn(mine, 'categorySeason')
 
   if (
     firstName === null ||
@@ -921,12 +937,13 @@ function sixFactsIn(
     gender === null ||
     city === null ||
     ageBand === null ||
-    beginner === null
+    beginner === null ||
+    categorySeason === null
   ) {
     return null
   }
 
-  return { firstName, lastName, gender, city, ageBand, beginner }
+  return { firstName, lastName, gender, city, ageBand, beginner, categorySeason }
 }
 
 /**
@@ -1046,6 +1063,35 @@ function ageBandIn(mine: object): AgeBand | null {
   const said: unknown = Reflect.get(mine, 'ageBand')
 
   return AGE_BANDS.find((one) => one === said) ?? null
+}
+
+/**
+ * The category of every season he stands in the table of, or nothing where one of them is not a season,
+ * a band the portal knows and a yes or a no: a page drawn with a category the portal made up is a lie
+ * about a member to the member himself.
+ */
+function categoriesIn(mine: object): SeasonCategory[] | null {
+  const said: unknown = Reflect.get(mine, 'categories')
+
+  if (!Array.isArray(said)) {
+    return null
+  }
+
+  const read = said.map((one: unknown): SeasonCategory | null => {
+    if (typeof one !== 'object' || one === null) {
+      return null
+    }
+
+    const season: unknown = Reflect.get(one, 'season')
+    const ageBand = ageBandIn(one)
+    const beginner: unknown = Reflect.get(one, 'beginner')
+
+    return typeof season === 'number' && Number.isInteger(season) && ageBand !== null && typeof beginner === 'boolean'
+      ? { season, ageBand, beginner }
+      : null
+  })
+
+  return read.every((one) => one !== null) ? read.filter((one) => one !== null) : null
 }
 
 /** What he chose to show of his birthday, looked for among the three words there are. */

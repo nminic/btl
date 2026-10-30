@@ -1,7 +1,6 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.balance.Balance;
-import com.btl.portal.domain.category.Category;
 import com.btl.portal.domain.pricing.Currency;
 import com.btl.portal.domain.pricing.MembershipPrice;
 import com.btl.portal.domain.season.SeasonClock;
@@ -63,7 +62,11 @@ class MembersApi {
 
 	private final BalanceBook book;
 
-	MembersApi(JdbcClient db, Clock clock, PriceRows priceRows, BalanceBook book) {
+	private final CategoryOfASeason categories;
+
+	MembersApi(JdbcClient db, Clock clock, PriceRows priceRows, BalanceBook book,
+			CategoryOfASeason categories) {
+		this.categories = categories;
 		this.db = db;
 		this.clock = clock;
 		this.priceRows = priceRows;
@@ -137,7 +140,7 @@ class MembersApi {
 	}
 
 	private record Row(long id, String memberNumber, String firstName, String lastName, String gender,
-			String city, boolean beginner, boolean active, String basis, int birthYear,
+			String city, boolean active, String basis, int birthYear,
 			String countryCode, String invitation) {
 	}
 
@@ -148,8 +151,14 @@ class MembersApi {
 		   season it is worked out for, and the basis for the season on sale, which from 11 November
 		   is the next one. */
 		ZonedDateTime now = ZonedDateTime.now(clock);
-		int season = SeasonClock.seasonTheBandIsWorkedOutFor(now);
 		int sold = SeasonClock.seasonBeingPaidFor(now);
+
+		/* AND THE CATEGORY OF EVERY MEMBER, out of the one home every list asks (`CategoryOfASeason`),
+		   read once for the whole answer: the season his card speaks of, and never withheld here, the
+		   season without the right to rank included, because the administration is not the public. That
+		   is derived from the decision of 18.10.2026 („profil, kartica takmičara, tim, administracija ...
+		   odmah pokazuju novu kategoriju"), not asked. */
+		CategoryOfASeason.Book categoryBook = categories.everybody();
 
 		/* EVERY SEASON OF EVERY MEMBER ON THE LIST, read once and handed out by member. Oldest
 		   first, which the screen relies on to name the last one. */
@@ -163,7 +172,7 @@ class MembersApi {
 				.list();
 
 		List<Row> rows = db.sql("select c.id, c.member_number, c.first_name, c.last_name, c.gender,"
-						+ " coalesce(town.name, c.city) as city, c.first_season_2027, c.active,"
+						+ " coalesce(town.name, c.city) as city, c.active,"
 						+ " sold.basis, c.birth_year,"
 						/* THE COUNTRY THROUGH BOTH OF ITS HOMES, the shape `PaymentsDueApi` reads the
 						   same column with: V7 makes exactly one of the two present. */
@@ -186,8 +195,7 @@ class MembersApi {
 				.param("sold", sold)
 				.query((row, one) -> new Row(row.getLong(1), row.getString(2), row.getString(3),
 						row.getString(4), row.getString(5), row.getString(6), row.getBoolean(7),
-						row.getBoolean(8), row.getString(9), row.getInt(10), row.getString(11),
-						row.getString(12)))
+						row.getString(8), row.getInt(9), row.getString(10), row.getString(11)))
 				.list();
 
 		/* EVERY MEMBER'S MONEY, THEN THE BOOK AND THE PRICE LIST ONE READING EACH FOR THE WHOLE ANSWER,
@@ -202,14 +210,14 @@ class MembersApi {
 		return rows.stream().map(one -> {
 			Currency his = monies.get(one.id());
 
-			/* THE SEASON ON SALE AND NOT THE SEASON THE BAND IS WORKED OUT FOR, which is the one read
-			   above for the band: from 11 November the two are different years, and the junior price
+			/* THE SEASON ON SALE AND NOT THE SEASON HIS CARD SPEAKS OF: from 11 November the two are different years, and the junior price
 			   follows the season paid for (`MembershipPrice.on`). */
 			MembershipPrice.Price price = MembershipPrice.on(priceList, today, one.birthYear(), sold, his);
 
+			CategoryOfASeason.OfASeason category = categoryBook.onHisOwnCard(one.id(), one.birthYear(), now);
+
 			return new Member(one.memberNumber(), one.firstName(), one.lastName(), one.gender(),
-					one.city(), one.countryCode(), Category.ageBandFor(one.birthYear(), season).code(),
-					one.beginner(), one.active(),
+					one.city(), one.countryCode(), category.ageBand(), category.beginner(), one.active(),
 					one.basis(), one.basis() == null ? null : sold,
 					List.copyOf(held.getOrDefault(one.id(), List.of())),
 					sold, his.name(), price.expected(), price.amount(),

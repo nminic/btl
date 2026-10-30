@@ -623,9 +623,10 @@ class RegistrationApi {
 		}
 
 		Timestamp now = Timestamp.from(clock.instant());
+		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
 		long competitor = db.sql("insert into competitor"
 						+ " (first_name, last_name, gender, place_id, city, country_id,"
-						+ "  first_season, first_season_2027, active,"
+						+ "  first_season, active,"
 						+ "  referral_code, referred_by, bio, profile_hidden, birth_date,"
 						+ "  father_name, address, phone, shirt_size, health_statement_at)"
 						/* `member_number` IS NOT WRITTEN AND `member_number_seq` IS NOT ASKED.
@@ -649,13 +650,12 @@ class RegistrationApi {
 						   `PUT /api/me`, where a moderator sees them before anybody else does.
 						   Written as a literal rather than as an empty parameter so that there
 						   is no value here for a caller to influence at all. */
-						+ " values (?, ?, ?, ?, ?, ?, ?, ?, false, ?, ?, '', false, ?,"
+						+ " values (?, ?, ?, ?, ?, ?, ?, false, ?, ?, '', false, ?,"
 						+ "  ?, ?, ?, ?, ?)"
 						+ " returning id")
 				.params(typed.firstName().strip(), typed.lastName().strip(), typed.gender(),
 						town.placeId(), town.city(), town.countryId(),
-						SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock)),
-						typed.beginner(), ReferralCode.fresh().written(),
+						season, ReferralCode.fresh().written(),
 						whoBrought(typed),
 						java.sql.Date.valueOf(born), typed.fatherName().strip(),
 						typed.address().strip(), WhatAFieldMeans.thePhone(typed.phone()), typed.shirtSize(), now)
@@ -668,6 +668,13 @@ class RegistrationApi {
 		   back, because a second home for one fact is free to disagree with the first. */
 		db.sql("update account set competitor_id = ? where id = ?")
 				.params(competitor, account.orElseThrow()).update();
+
+		/* AND WHICH CATEGORY HE WANTS, FOR THE SEASON HE IS JOINING (V81): the season `first_season`
+		   above names, off the same reading of the clock. Every later season inherits it until he
+		   ticks the box again (PDL, 30.10.2026, „Izbor kategorije za novu sezonu nasleđuje poslednji
+		   raniji izbor"). */
+		db.sql("insert into category_wish (competitor_id, season, beginner) values (?, ?, ?)")
+				.params(competitor, season, typed.beginner()).update();
 
 		String document = WhatAFieldMeans.theDocument(typed.idNumber());
 

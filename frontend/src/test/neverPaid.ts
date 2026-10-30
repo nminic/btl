@@ -36,6 +36,9 @@ export const aNeverPaidRecord = {
   city: 'Beograd',
   ageBand: '25-39',
   beginner: false,
+  categorySeason: 2027,
+  /* He has never paid, so he stands in no table (`MeApi`, V81). */
+  categories: [],
   bio: '',
   profileHidden: false,
   birthdayShown: 'none',

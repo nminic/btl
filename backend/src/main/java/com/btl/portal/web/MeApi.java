@@ -222,10 +222,13 @@ class MeApi {
 
 	private final Clock clock;
 
-	MeApi(JdbcClient db, MemberOfAccount memberOfAccount, Clock clock) {
+	private final CategoryOfASeason categories;
+
+	MeApi(JdbcClient db, MemberOfAccount memberOfAccount, Clock clock, CategoryOfASeason categories) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.clock = clock;
+		this.categories = categories;
 	}
 
 	/**
@@ -398,19 +401,26 @@ class MeApi {
 	 * @param city         the town's name out of the codebook when the town came from it, and the
 	 *                     typed one otherwise: the same {@code coalesce} {@link CompetitorApi}
 	 *                     reads, written where it is read for the reason the country is
-	 * @param ageBand      the band the rulebook puts him in for the season that is RUNNING
-	 *                     ({@code 24-}, {@code 25-39}, {@code 40-54} or {@code 55+}), which is
-	 *                     the category section 3 of the privacy policy makes public and the page is headed by. Never
-	 *                     absent: {@code birth_date} is NOT NULL (V8) and
+	 * @param ageBand      the band of the season his card speaks of ({@code categorySeason}), which is
+	 *                     the category section 3 of the privacy policy makes public and the page is
+	 *                     headed by. Never absent: {@code birth_date} is NOT NULL (V8) and
 	 *                     {@code Category.ageBandFor} is total. <b>The season is
-	 *                     {@code SeasonClock.seasonTheBandIsWorkedOutFor}'s and nobody's else</b>,
-	 *                     the one home of the question, so that the two doors cannot name two
-	 *                     seasons for one member; {@code MeApiTest} holds them together at the
-	 *                     moments the band moves on. <b>The year it is worked out from is read
-	 *                     and leaves nowhere as a year</b>; his own date is answered to him whole
+	 *                     {@link CategoryOfASeason}'s and nobody's else</b> (PDL, owner, 30.10.2026: „dok
+	 *                     traje trenutna sezona, prikazuje se kategorija u trenutnoj sezoni. Ukoliko clan
+	 *                     nije clan trenutne sezone nego naredne, prikazuje se na njegovom profilu da je
+	 *                     clan te buduce kategorije"), the one home of the question, so that the two
+	 *                     doors cannot name two seasons for one member. <b>The year it is worked out from
+	 *                     is read and leaves nowhere as a year</b>; his own date is answered to him whole
 	 *                     since 24.10.2026 ({@code birthDate}, below) and to nobody else
-	 * @param beginner whether he runs in the beginners' category (PDL P7). Never absent:
-	 *                     the column is NOT NULL
+	 * @param beginner     whether he runs in the beginners' category in that season (PDL P7): the wish
+	 *                     of that season AND the right. Told to him in a season he holds without the
+	 *                     right to rank too, which the public list does not (PDL, 30.10.2026: „On moze
+	 *                     da odabere kategoriju u svojim podesavanjima")
+	 * @param categorySeason the season {@code ageBand} and {@code beginner} are the category OF, so a screen
+	 *                     can tell whether a choice he has just made is about it
+	 * @param categories   the category of every season he stands in the table of, oldest first, exactly as
+	 *                     {@code /api/competitors} carries it for a member on its list: his own page draws
+	 *                     his awards off it while that list does not carry him
 	 * @param teamSince    the season the membership that has NOT ENDED began in, and ABSENT
 	 *                     exactly when {@code teamId} is: the two halves of the link to a team
 	 *                     come off one joined row, so a club is never named without its year
@@ -478,7 +488,7 @@ class MeApi {
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer membershipSeason,
 			boolean active, String referralCode, int referredCount,
 			String firstName, String lastName, String gender, String city, String ageBand,
-			boolean beginner,
+			boolean beginner, int categorySeason, List<CategoryOfASeason.OfASeason> categories,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer teamSince,
 			String bio, boolean profileHidden, String birthdayShown,
 			@JsonInclude(JsonInclude.Include.NON_NULL) String photo,
@@ -519,16 +529,16 @@ class MeApi {
 	 * case here for none.
 	 */
 	private MyOwnRecord recordOf(long me) {
-		/* THE SEASON HIS BAND IS WORKED OUT FOR, asked of the one home of that question and read
-		   once for the whole answer, as `CompetitorApi` reads it once for a whole list: a clock
-		   read inside the mapper could cross midnight on 1 January in the middle of one row,
-		   which is the one night of the year this field moves on. */
+		/* THE MOMENT HIS CATEGORY IS WORKED OUT FOR, read once for the whole answer, as
+		   `CompetitorApi` reads it once for a whole list: a clock read inside the mapper could cross
+		   midnight on 1 January in the middle of one row, which is the one night of the year his card
+		   moves on (PDL, 30.10.2026). Which season that is, is `CategoryOfASeason`'s to say. */
 		ZonedDateTime now = ZonedDateTime.now(clock);
-		int season = SeasonClock.seasonTheBandIsWorkedOutFor(now);
+		CategoryOfASeason.Book book = categories.of(me);
 
 		/* AND THE SEASON ON SALE, WHICH IS THE ONE HIS BASIS IS ANSWERED FOR, off the same reading
 		   of the clock and from the same home `MembershipInvoice` asks, so the panel „Stanje" and
-		   the panel for renewal name the same season. It is not `season` above: that one is the
+		   the panel for renewal name the same season. It is not the season of his card: that one is the
 		   season the band is worked out for, and from 11 November to 31 December the two are a year
 		   apart. */
 		int sold = SeasonClock.seasonBeingPaidFor(now);
@@ -579,7 +589,7 @@ class MeApi {
 						   (see the join below). */
 						+ " c.first_name, c.last_name, c.gender,"
 						+ " coalesce(town.name, c.city) as city,"
-						+ " c.first_season_2027, m.season_from as team_since,"
+						+ " c.id, m.season_from as team_since,"
 						+ " c.bio, c.profile_hidden, c.birthday_shown,"
 						/* THE PORTRAIT AND ITS SQUARE, ONE FACT ASKED FOR IN ONE BREATH: all four
 						   come off the same joined row, every column of which is NOT NULL (V8), so
@@ -669,11 +679,19 @@ class MeApi {
 							row.getBoolean(6), row.getString(7), row.getInt(8),
 							row.getString(9), row.getString(10), row.getString(11),
 							row.getString(12),
-							/* THE RULE IS ASKED FOR, NEVER REPEATED HERE: `Category` is where the
-							   league's bands live and where the decision that age is settled on 1
-							   January rather than on the birthday is written down (PDL P7). */
-							Category.ageBandFor(row.getInt(26), season).code(),
-							row.getBoolean(13),
+							/* THE RULE IS ASKED FOR, NEVER REPEATED HERE: `CategoryOfASeason` works
+							   out the category of the season his card speaks of, and to HIM it is
+							   never withheld, the season without the right to rank included (PDL,
+							   30.10.2026: „On moze da odabere kategoriju u svojim podesavanjima").
+							   This is derived from the decision of 18.10.2026, not asked. */
+							book.onHisOwnCard(row.getLong(13), row.getInt(26), now).ageBand(),
+							book.onHisOwnCard(row.getLong(13), row.getInt(26), now).beginner(),
+							book.onHisOwnCard(row.getLong(13), row.getInt(26), now).season(),
+							/* AND EVERY SEASON HE STANDS IN THE TABLE OF, with its category, as the public
+							   list carries it: his own page draws his awards off them while that list does
+							   not carry him (PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle
+							   god postoji"). */
+							book.standing(row.getLong(13), row.getInt(26)),
 							row.getObject(14) == null ? null : row.getInt(14),
 							row.getString(15), row.getBoolean(16), row.getString(17),
 							/* The digest and never the key, and never the empty path for a member

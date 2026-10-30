@@ -250,11 +250,11 @@ class TheBasisOfTheSeasonOnSaleTest {
 	/** A standing member behind his own account, with what he holds of 2027 and of 2028. */
 	private void member(String number, String in2027, String in2028) {
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Clan', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, true, ?, '', false,"
+						+ " (select id from place where rank = 1), 2027, true, ?, '', false,"
 						+ " 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
 				.params(number, String.format("%016x", 0x8000L + ++issued))

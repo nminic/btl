@@ -1,5 +1,5 @@
 import {
-  categoryOfMember,
+  categoryIn,
   rankingFor,
   resultsOf,
   seasonOf,
@@ -83,27 +83,19 @@ export function awardsOf(
   return [...bySeason.entries()]
     .filter(([season]) => raced.has(season))
     .flatMap(([season, inSeason]) => {
-      /* Which board they stood on. Known to be imperfect, and since 13.09.2026
-         imperfect in the open: a member's category is stored rather than worked
-         out per season, so somebody is filed under today's band in every season
-         they ever raced. This note used to say the same of the „first season"
-         flag alone, with the age band still moving properly; now both halves are
-         fixed and `categoryOfMember` takes no season at all, which is why nothing
-         is handed one here.
-
-         P7 says the band belongs to one year alone, and that stays true. What
-         changed is that the portal cannot honour it: the band is worked out from a
-         date of birth, section 3 of the privacy policy forbids the portal a date of birth, and a band per
-         season hands the year straight back (measured: 25 of 32 members, see
-         `data/types.ts`). This is the half a public file can have. */
-      const category = categoryOfMember(competitor)
+      /* Which board they stood on: the category of THAT season (`categoryIn`), since 30.10.2026 when
+         the server began to keep it per season (PDL, owner, 30.10.2026, „poredak svake sezone prikazuje
+         kategoriju te sezone"). Until then it was today's band in every season, and this note said so.
+         None where he does not stand in that season's table, and then there is no board of a category
+         to have stood on. */
+      const category = categoryIn(competitor, season)
 
       /* The two boards one season is stood on, named rather than written into
          the loop, because the list is what says `kind` holds an award kind and
          not merely a word. */
       const boards: { kind: AwardKind; category: string; code: string | undefined }[] = [
         { kind: 'overall', category: '', code: undefined },
-        { kind: 'category', category, code: category },
+        ...(category === null ? [] : [{ kind: 'category' as const, category, code: category }]),
       ]
 
       return boards.flatMap(({ kind, category: band, code }) => {

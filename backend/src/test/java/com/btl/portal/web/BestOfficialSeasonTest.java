@@ -82,11 +82,11 @@ class BestOfficialSeasonTest {
 
 	private void member(String number, String referral) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, city, country_id, first_season, first_season_2027, active,"
+						+ " place_id, city, country_id, first_season, active,"
 						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Ime', 'Prezime', 'M', date '1990-05-05',"
-						+ " (select id from place where rank = 1), null, null, 2027, false, true,"
+						+ " (select id from place where rank = 1), null, null, 2027, true,"
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, referral).update();
