@@ -27,7 +27,12 @@ final class SessionCookie {
 	 */
 	static final String NAME = "__Host-btl";
 
-	/** Thirty days, which is what `account_session.expires_at` defaults to (V18). */
+	/**
+	 * Thirty days, which is what `account_session.expires_at` defaults to (V18) and
+	 * what {@code WhoIsAsking} hands the session when it renews it. The cookie is
+	 * handed out again at the same moment, with this same age, so the browser and
+	 * the row end on the same day (owner, 29.10.2026).
+	 */
 	static final Duration LASTS = Duration.ofDays(30);
 
 	private SessionCookie() {
@@ -67,6 +72,11 @@ final class SessionCookie {
 	 */
 	static ResponseCookie gone() {
 		return base("").maxAge(0).build();
+	}
+
+	/** Whether a {@code Set-Cookie} header value sets or removes THIS cookie, by its name. */
+	static boolean isOne(String setCookie) {
+		return java.util.Objects.toString(setCookie, "").startsWith(NAME + "=");
 	}
 
 	private static ResponseCookie.ResponseCookieBuilder base(String value) {

@@ -1075,7 +1075,7 @@ describe('the price list', () => {
    * <p><b>What it costs here is worse than it was there.</b> `data/client.ts` caches a
    * resource for the whole visit, and the PUBLIC price table reads the very same entry
    * (`components/PriceTable.tsx`). Left uncleared, a price raised in the administration
-   * would have gone on being published under the rulebook's article „Cena, rokovi i oslobađanje od članarine", in that same browser,
+   * would have gone on being published under the rulebook's article „Cena i rokovi", in that same browser,
    * for the rest of the visit - and the member's own „Moja članarina" with it, IPS QR code
    * included.
    *

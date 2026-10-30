@@ -6,7 +6,7 @@ import type { Price } from './types'
  *
  * <p><b>Three screens quote a price and until 26.09.2026 all three read a constant
  * compiled into the bundle</b> (`data/pricing.ts`): the administration's own screen, the
- * public table under the rulebook's article „Cena, rokovi i oslobađanje od članarine", and „Moja članarina" - which also fills in
+ * public table under the rulebook's article „Cena i rokovi", and „Moja članarina" - which also fills in
  * the IPS QR code a member scans to pay. They read `GET /api/pricing` now, and this is
  * the one module that knows how that answer is taken apart, for the reason the price list
  * has always been one file: „the screen that sets prices and the page that publishes them

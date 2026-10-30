@@ -331,8 +331,10 @@ class TheWrittenPagesSayEachThingInOnePlaceTest extends DatabaseTest {
 		jdbc.execute(migrationSql("76"));
 		/* And V77 over that, because all three pages the portal serves carry it (29.10.2026). */
 		jdbc.execute(migrationSql("77"));
+		/* And V78 over that, because the ducats and the policy table the portal serves carry it (29.10.2026). */
+		jdbc.execute(migrationSql("78"));
 
-		assertThat(everyText()).as("V71, V73, V76 and V77 over the text V71 found do not give the text the portal serves")
+		assertThat(everyText()).as("V71, V73, V76, V77 and V78 over the text V71 found do not give the text the portal serves")
 				.isEqualTo(finished);
 	}
 

@@ -34,7 +34,7 @@ import './Markdown.css'
  * that cost once the route existed is the boundary `PricingWriteApi` names in its own
  * heading: an administrator raised a price, the next member was CHARGED the new one, and
  * this table - the one the rulebook publishes - went on showing the old. Read from the
- * route, the page under the article „Cena, rokovi i oslobađanje od članarine" says what
+ * route, the page under the article „Cena i rokovi" says what
  * the association really decided.
  *
  * The figures and nothing else. Three notes stood around this table until
