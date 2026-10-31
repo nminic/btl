@@ -226,3 +226,27 @@ export function dayThePriceListIsReadOn(today: string): string {
 export function transfersTakeEffect(today: string): number {
   return Math.max(FIRST_SEASON, Number(today.slice(0, 4)) + 1)
 }
+
+/**
+ * THE SEASON THAT HAS NOT BEGUN, WHEN A TABLE OF IT IS TO BE OFFERED, OR NOTHING.
+ *
+ * PDL, owner, 26.09.2026: „portal člana kroz to vreme prikazuje u poretku naredne sezone po tekućem
+ * izboru", and 18.10.2026: „2028 ce tek od [11.11] moci da se izabere i da se puni novoprijavljenim /
+ * uplacenim takmicarima. Pre 2027 NE POSTOJE SEZONE NI U FILTERU NITI BILO GDE!" So the table of the
+ * next season exists from the day the window opens (`inYearlyWindow`, 11 November) to the end of the
+ * year, and not a day before: nobody can hold a membership of it earlier.
+ *
+ * **Nothing in 2026, and that is the answer and not a gap.** In 2026 the season shown is already 2027
+ * (`seasonShown`) and 2027 is also the one a transfer lands in (`transfersTakeEffect`), so there is no
+ * season further on to offer; asking for it would put 2027 on the list twice. The first day this
+ * answers anything is 11 November 2027, with 2028.
+ *
+ * **Not `transfersTakeEffect` on its own.** That answers every day of the year, since a team may be
+ * agreed in March for the season after; this is the narrower question of when a TABLE of it is read,
+ * and the page of a team asks it the same way (`inYearlyWindow` before `transfersTakeEffect`).
+ */
+export function nextSeasonOnOffer(today: string): number | null {
+  const next = transfersTakeEffect(today)
+
+  return inYearlyWindow(today) && next > seasonShown(today) ? next : null
+}

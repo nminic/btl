@@ -27,6 +27,7 @@ import {
   pairsFrom,
   rankTeams,
   resultsOf,
+  seasonsOfTheTable,
   seasonsOnOffer,
   seasonsWithResults,
   totalsByMember,
@@ -476,6 +477,41 @@ describe('the seasons a seasonal view offers', () => {
        on a profile stay career figures). Held here so that the floor above cannot be
        moved into it without this going red. */
     expect(seasonsWithResults(history)).toEqual([2026, 2019])
+  })
+})
+
+describe('the seasons the table offers', () => {
+  /* PDL, owner, 18.10.2026: „2028 ce tek od [11.11] moci da se izabere". The table adds the season that
+     has not begun to what `seasonsOnOffer` gives, from the day the window opens; the top boards do not
+     (PDL, 17.10.2026: from 1 January 2027 they hold only members with points). The day it is read and
+     the day the results were run are two different constants, so the answer cannot be read off either
+     for the other. */
+  const raced = [result('000001', '2027-05-02', 1)]
+
+  it('is what the boards offer, with 2028 first, from the eleventh of November 2027', () => {
+    expect(seasonsOfTheTable(raced, '2027-11-11')).toEqual([2028, 2027])
+    expect(seasonsOfTheTable(raced, '2027-12-31')).toEqual([2028, 2027])
+    expect(seasonsOnOffer(raced, '2027-11-11')).toEqual([2027])
+  })
+
+  it('is the list of the boards before that, and after the year is over', () => {
+    expect(seasonsOfTheTable(raced, '2027-11-10')).toEqual(seasonsOnOffer(raced, '2027-11-10'))
+    expect(seasonsOfTheTable(raced, '2028-01-01')).toEqual(seasonsOnOffer(raced, '2028-01-01'))
+    expect(seasonsOfTheTable(raced, '2028-01-01')).toEqual([2028, 2027])
+  })
+
+  it('is 2027 alone through the whole of 2026, with the window open or shut', () => {
+    expect(seasonsOfTheTable([], '2026-10-15')).toEqual([2027])
+    expect(seasonsOfTheTable([], '2026-11-10')).toEqual([2027])
+    expect(seasonsOfTheTable([], '2026-11-11')).toEqual([2027])
+    expect(seasonsOfTheTable([], '2026-12-31')).toEqual([2027])
+  })
+
+  it('lists a season once when the results already hold it', () => {
+    expect(seasonsOfTheTable([...raced, result('000001', '2028-01-05', 1)], '2027-11-11')).toEqual([
+      2028,
+      2027,
+    ])
   })
 })
 
