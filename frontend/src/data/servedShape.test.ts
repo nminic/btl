@@ -434,6 +434,7 @@ const whatIsWaitingAnswer = {
   teamProposals: [{ id: 21, teamId: null, name: 'Dunavski trkači', date: '2026-10-02' }],
   pairInvites: [{ id: 31, memberNumber: '000031', sentByMe: false, date: '2026-10-05' }],
   alreadyInATeam: false,
+  seasonToPayFor: null,
 }
 
 /** One invitation of it, for the half the record above cannot say: an empty `teamInvitations`

@@ -284,13 +284,26 @@ function ForAMember({
      are one number here by construction. */
   const his = waiting.teamApplications.find((one) => one.teamId === team)
   const offerToApply = mayApply && !waiting.teamApplications.some((one) => standing(one.teamId))
+  /* **WHERE THE BUTTON WOULD STAND AND HE HAS NOT PAID THE SEASON HE WOULD ENTER FOR, THE SENTENCE
+     STANDS INSTEAD** (PDL, ODLUKA 30.10.2026, „U prelaznom roku svaki ulaz u tim traži plaćenu
+     narednu sezonu": „Ekran članu to kaže jednom rečenicom"). The fact is the server's
+     (`seasonToPayFor`, beside `alreadyInATeam`), and it is read AFTER the conditions the button
+     already had, which is the order the route asks them in. „Povuci prijavu" is not touched: an
+     application he already sent stays his to take back (PDL, 06.09.2026). */
+  const owed = offerToApply ? waiting.seasonToPayFor : null
+  /* A refusal that names the fee is NOT said as a refusal. Named refusals send the list to be read
+     again (`theServerSaysTheScreenIsStale`), and what that read answers is either the sentence above
+     in the place of the button, or, if he paid meanwhile, the button back. Drawn as well, the
+     sentence would stand twice. */
+  const outranAFee =
+    refused !== null && refused.answer.got === 'refused' && refused.answer.reason === 'theSeasonIsNotPaid'
 
   return (
     <>
       {children({
         controls: (
           <>
-            {offerToApply && (
+            {offerToApply && owed === null && (
               <button
                 ref={join}
                 type="button"
@@ -323,10 +336,11 @@ function ForAMember({
             )}
           </>
         ),
-        said:
-          refused === null ? null : (
-            <ServerSaid answer={refused.answer} refusals={refused.refusals} />
-          ),
+        said: owed !== null ? (
+          <p className="member__note">{t('teams.joinWhenPaid', { season: owed })}</p>
+        ) : refused === null || outranAFee ? null : (
+          <ServerSaid answer={refused.answer} refusals={refused.refusals} />
+        ),
       })}
     </>
   )

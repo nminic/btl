@@ -201,6 +201,17 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, first, last, active, String.format("7b%014x", ++issued))
 				.update();
+
+		/* A MEMBER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Entering a team
+		   asks for a membership of the season on sale and not for `competitor.active` (PDL
+		   30.10.2026), so an active member with no row is a member who has not paid it. */
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " select c.id, s.season, 'feeExempt', 'Probni Probic',"
+						+ " timestamptz '2026-09-01 10:00:00+00'"
+						+ " from competitor c cross join (values (2027), (2028)) as s (season)"
+						+ " where c.member_number = ? and c.active")
+				.param(number)
+				.update();
 	}
 
 	private void account(String email, String role, String memberNumber) {

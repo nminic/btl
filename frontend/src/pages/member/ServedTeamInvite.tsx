@@ -3,6 +3,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { combinePair, useWhatIsWaiting } from '../../data/useResource'
+import { transfersTakeEffect } from '../../data/season'
 import type { WhatIsWaiting } from '../../data/types'
 import { ServerSaid } from '../account/ServerSaid'
 import type { Answer } from '../account/askTheServer'
@@ -157,6 +158,13 @@ function TheAnswer({
   /* The sentences in the reader's sex, the one drawn before anything is sent and the one the
      route refuses with, out of one map, so the two cannot come apart. */
   const words = woman ? WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE : WHEN_ANSWERING_A_TEAM_INVITE
+  /* THE SEASON THE SENTENCE OF THE UNPAID FEE NAMES (PDL, 30.10.2026): the server's own answer
+     (`seasonToPayFor`) where it gave one, and otherwise the season a change takes effect in, which
+     inside the transfer window is the same number (`SeasonClock`). The second is only ever read
+     when the route refused an acceptance the screen was drawn to allow: the fee was cancelled
+     between the drawing and the press, and the read that would have named the season is the one
+     this refusal outran. */
+  const season = waiting.seasonToPayFor ?? transfersTakeEffect(today)
 
   async function answer(team: number, accepted: boolean): Promise<void> {
     if (outstanding.current) {
@@ -246,7 +254,7 @@ function TheAnswer({
              the button that has not gone anywhere. The KEY is read out of the same map the
              route's refusals are read out of, so the sentence a member gets before he
              presses and the one he gets if the server refuses him cannot come apart. */
-          <span className="messages__answered">{t(words[standing.accept])}</span>
+          <span className="messages__answered">{t(words[standing.accept], { season })}</span>
         )}{' '}
         <ActionButton
           symbol={SYMBOL.cross}
@@ -258,7 +266,7 @@ function TheAnswer({
           }}
         />
       </p>
-      {said !== null && <ServerSaid answer={said} refusals={words} />}
+      {said !== null && <ServerSaid answer={said} refusals={words} params={{ season }} />}
     </>
   )
 }

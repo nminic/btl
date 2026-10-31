@@ -237,6 +237,38 @@ describe('the way to propose a team', () => {
     expect(seasons).toHaveValue('2027')
   }, SLOW)
 
+  it('says the owner\'s sentence under the same heading instead of the form, and does not send him away, when the server says he owes the season', async () => {
+    /* PDL, 30.10.2026: „predlog novog tima traže članstvo za sezonu za koju se plaća", and the
+       screen says it with one sentence (derived: the same sentence the team's page and the
+       invitation say, and not a redirect, which says nothing). The number is the SERVER's. */
+    const server = serverThat((path) =>
+      path === '/api/me/applications'
+        ? new Response(
+            JSON.stringify({
+              teamApplications: [],
+              teamInvitations: [],
+              teamProposals: [],
+              pairInvites: [],
+              alreadyInATeam: false,
+              seasonToPayFor: 2029,
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
+
+    try {
+      renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
+
+      expect(await screen.findByRole('heading', { level: 1, name: sr.teams.proposeTitle })).toBeVisible()
+      expect(screen.getByText(sr.teams.joinWhenPaid.replace('{season}', '2029'))).toBeVisible()
+      expect(screen.queryByLabelText(/Naziv tima/)).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Pošalji predlog' })).toBeNull()
+    } finally {
+      server.stop()
+    }
+  })
+
   it('asks whoever reaches the address without signing in to sign in', async () => {
     renderAt('/sr/novi-tim')
 
@@ -424,6 +456,30 @@ describe('a proposal a member sends', () => {
       /* Nothing moved: the form still holds what was typed. */
       expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
       expect(screen.getByLabelText(/Naziv tima/)).toHaveValue('Trkači Morave')
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('says the owner\'s sentence of the fee, with the season the server named, when it is refused for a fee cancelled meanwhile', async () => {
+    /* PDL, 30.10.2026: „U tim za sezonu [sezona] ulaziš kad platiš članarinu za tu sezonu." The
+       form was drawn because the server then said nothing was owed, and the press was refused with
+       the name of the fee: the read that would have named the season is the one this outran, so the
+       season is the one a change takes effect in, which on the 15th of October 2026 is 2027. */
+    const server = serverThat((path, init) =>
+      path === '/api/teams' && init?.method === 'POST' ? refused('theSeasonIsNotPaid', 409) : null,
+    )
+
+    try {
+      const user = setupUser()
+      renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
+
+      await fill(user, 'Trkači Morave')
+
+      expect(
+        await screen.findByText(sr.teams.joinWhenPaid.replace('{season}', '2027')),
+      ).toBeVisible()
+      expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
     } finally {
       server.stop()
     }

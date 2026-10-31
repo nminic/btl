@@ -188,6 +188,21 @@ import java.util.Optional;
  * told apart from a number nobody carries, a lapsed member would be named by the DIFFERENCE
  * between two answers over consecutive numbers.
  *
+ * <p><b>BUT „ACTIVE" IS NOT „PAID FOR THE SEASON HE WOULD JOIN", AND SINCE 31.10.2026 THE ROUTES
+ * THAT PUT HIM INTO A TEAM ASK THE SECOND.</b> PDL, ODLUKA 30.10.2026, „U prelaznom roku svaki
+ * ulaz u tim traži plaćenu narednu sezonu": „Prijava u tim, prihvatanje poziva i predlog novog
+ * tima traže članstvo za sezonu za koju se plaća (naredna, u prelaznom roku). Poziv sme da se
+ * pošalje i članu koji narednu nije platio, ali on ga prihvata tek kad plati. Izlazak iz tima ne
+ * traži ništa." {@code competitor.active} has no season in it (V22), so a member who had paid
+ * only the season being run passed every door below. Asked of
+ * {@link AMembershipOfTheSeasonHeWouldJoin}, the one place that holds the question: on
+ * {@link #apply} and on {@link #answer} with „Prihvati", as a 409 that names itself
+ * ({@link #THE_SEASON_IS_NOT_PAID}) because the reader is the member and it is HIS fee; on
+ * {@link #decide} as the applicant simply not being there, the way {@code c.active} already
+ * hides one whose fee has lapsed (PDL 06.09.2026, „Prijava člana koji je u međuvremenu dobio
+ * tim se timu ne prikazuje"). {@link #invite} asks nothing of the man it invites and says so in
+ * its note, and leaving asks nothing at all.
+ *
  * <p><b>AND SINCE P8U THE CALLER'S HALF OF IT IS ASKED FIRST ON THE THREE ROUTES THAT READ A
  * BODY.</b> Teams are on the list PDL P8 gives of what a member who has not paid may not do
  * (10.10.2026, „timove"), and inviting, deciding about an application and answering an
@@ -323,6 +338,19 @@ class TeamJoiningWriteApi {
 	static final String THE_WINDOW_IS_SHUT = "theWindowIsShut";
 
 	/**
+	 * THE MEMBER HAS NOT PAID THE SEASON HE WOULD ENTER THE TEAM FOR, AND HE IS TOLD SO.
+	 *
+	 * <p>PDL, ODLUKA 30.10.2026 (quoted on the class): entering a team asks for the season on
+	 * sale, and „Ekran članu to kaže jednom rečenicom": „U tim za sezonu [sezona] ulaziš kad platiš
+	 * članarinu za tu sezonu. Uplatu ćeš naći na strani Moja članarina." It carries a reason where
+	 * a shut window or a team he is in answers an empty 404 on {@link #apply}, because the fact it
+	 * gives away is the caller's own fee, which the portal shows him on „Moja članarina", and the
+	 * sentence is the one thing that tells him what to do. Spelt exactly as
+	 * {@code TeamWriteApi.THE_SEASON_IS_NOT_PAID}, because it is one fact read by two files.
+	 */
+	static final String THE_SEASON_IS_NOT_PAID = "theSeasonIsNotPaid";
+
+	/**
 	 * THE MEMBER THIS IS ABOUT ALREADY HAS A TEAM FOR THE SEASON IN QUESTION.
 	 *
 	 * <p><b>It names somebody and is still safe, which is measured rather than assumed.</b>
@@ -409,6 +437,8 @@ class TeamJoiningWriteApi {
 
 	private final ATeamHeIsAlreadyIn alreadyInATeam;
 
+	private final AMembershipOfTheSeasonHeWouldJoin holdsTheSeason;
+
 	private final Clock clock;
 
 	/**
@@ -420,13 +450,15 @@ class TeamJoiningWriteApi {
 	private final TransactionTemplate inOneTransaction;
 
 	TeamJoiningWriteApi(JdbcClient db, MemberOfAccount memberOfAccount,
-			ActiveMemberOrAdministration readers, ATeamHeIsAlreadyIn alreadyInATeam, Clock clock,
+			ActiveMemberOrAdministration readers, ATeamHeIsAlreadyIn alreadyInATeam,
+			AMembershipOfTheSeasonHeWouldJoin holdsTheSeason, Clock clock,
 			TransactionTemplate inOneTransaction) {
 
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.readers = readers;
 		this.alreadyInATeam = alreadyInATeam;
+		this.holdsTheSeason = holdsTheSeason;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
 	}
@@ -556,6 +588,16 @@ class TeamJoiningWriteApi {
 			throw nothingIsHere();
 		}
 
+		/* THE SEASON HE WOULD JOIN FOR HAS TO BE HELD (PDL 30.10.2026, quoted on the class), asked
+		   after the window, the team he may already have and the team being there at all. The last
+		   is not the order the screen draws them in, and it is on purpose: an address that is not
+		   there is not there to EVERY caller (`AWordInAKeyOverRealHttpTest`), a member who owes the
+		   season included, so the sentence about his fee is never what tells him a team does not
+		   exist. */
+		if (!holdsTheSeason.holds(me, now)) {
+			return no(HttpStatus.CONFLICT, THE_SEASON_IS_NOT_PAID);
+		}
+
 		if (aQuestionOfHisAlreadyStands(me)) {
 			return no(HttpStatus.CONFLICT, A_QUESTION_ALREADY_STANDS);
 		}
@@ -626,13 +668,18 @@ class TeamJoiningWriteApi {
 	}
 
 	private ResponseEntity<?> deciding(long me, long team, long application, boolean accepted) {
-		Optional<TheApplication> his = applicationHeMayDecide(me, team, application);
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
+		/* THE APPLICANT'S SEASON IS ASKED INSIDE THE STATEMENT THAT FINDS THE ROW, so an applicant
+		   whose season has been cancelled since he asked is not there to decide, for refusing as
+		   much as for accepting (see the class note), and the moment is the one read for the
+		   window below. */
+		Optional<TheApplication> his = applicationHeMayDecide(me, team, application,
+				AMembershipOfTheSeasonHeWouldJoin.season(now));
 
 		if (his.isEmpty()) {
 			throw nothingIsHere();
 		}
-
-		ZonedDateTime now = ZonedDateTime.now(clock);
 
 		/* THE APPLICANT MAY HAVE GOT A TEAM BETWEEN THE QUESTION AND THIS ANSWER, which is
 		   the decision of 06.09.2026 on this method and is asked in Java so that
@@ -737,6 +784,13 @@ class TeamJoiningWriteApi {
 	 * <p><b>And the window is answered before the member number is resolved</b>, which is the
 	 * same rule pointing at the invitee: on a day nothing may be written, no request learns
 	 * anything at all about who carries which number.
+	 *
+	 * <p><b>NOTHING IS ASKED OF THE SEASON THE INVITEE HOLDS, AND THAT IS THE DECISION AND NOT AN
+	 * OMISSION.</b> PDL, ODLUKA 30.10.2026 (quoted on the class): „Poziv sme da se pošalje i članu
+	 * koji narednu nije platio, ali on ga prihvata tek kad plati." So the man is resolved by
+	 * {@link #memberNumbered} exactly as before, a member whose fee stands, and the question of the
+	 * season is {@link #answer}'s. Neither is the sender's: a leader who has not paid the season
+	 * himself still sends, because the decision names the three entries and this is not one.
 	 */
 	@PostMapping(path = "/api/teams/{id}/invitations", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> invite(@AuthenticationPrincipal WhoIsAsking.Member asking,
@@ -879,6 +933,14 @@ class TeamJoiningWriteApi {
 
 		if (alreadyInATeam.standsInHisWay(me, now)) {
 			return no(HttpStatus.CONFLICT, HE_IS_ALREADY_IN_A_TEAM);
+		}
+
+		/* AND „PRIHVATI" NEEDS THE SEASON PAID, which „Odbij" above never did and the invitation
+		   never did: the invitation could be sent to him unpaid, and it waits for him (PDL
+		   30.10.2026). Asked last, because the sentence it earns („ulaziš kad platiš") presumes
+		   he is free to enter. */
+		if (!holdsTheSeason.holds(me, now)) {
+			return no(HttpStatus.CONFLICT, THE_SEASON_IS_NOT_PAID);
 		}
 
 		takeHimIn(me, team, now);
@@ -1211,7 +1273,8 @@ class TeamJoiningWriteApi {
 	 * <p>The {@code coalesce} is a team nobody administers at all, which is FALSE here rather
 	 * than null - the shape {@link TeamWriteApi} uses for the identical comparison.
 	 */
-	private Optional<TheApplication> applicationHeMayDecide(long me, long team, long application) {
+	private Optional<TheApplication> applicationHeMayDecide(long me, long team, long application,
+			int season) {
 		return db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
 						+ " select a.id, a.competitor_id, c.first_name || ' ' || c.last_name, c.gender,"
 						+ " t.name"
@@ -1229,8 +1292,12 @@ class TeamJoiningWriteApi {
 						+ " join team t on t.id = ?"
 						+ " join competitor c on c.id = a.competitor_id"
 						+ " where a.id = ? and a.team_id = t.id and c.active"
+						/* HIS season, the applicant's and not the caller's: the leader of a team who
+						   has not paid the next season still decides, and the applicant who has not
+						   is the one not found. */
+						+ " and " + AMembershipOfTheSeasonHeWouldJoin.heHoldsIt("a.competitor_id")
 						+ " and coalesce(" + TeamApi.WHO_ADMINISTERS_IT + " = ?, false)")
-				.params(team, application, me)
+				.params(team, application, season, me)
 				.query((row, one) -> new TheApplication(row.getLong(1), row.getLong(2),
 						row.getString(3), row.getString(4), row.getString(5)))
 				.optional();

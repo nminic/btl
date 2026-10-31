@@ -37,7 +37,11 @@ import java.util.Objects;
  * consequence - "so a member cannot be in a team for a season he has not paid" -
  * and a round on 12.09.2026 pointed out what that costs: a reader who believes it
  * never writes the check at the place where it belongs. Whether a member has paid
- * is the service layer's question, and it is still open.
+ * is the service layer's question. It was open until 31.10.2026, when the owner decided
+ * (PDL, 30.10.2026) that every way into a team asks for a membership of {@link
+ * #seasonHeWouldJoin}; the answer lives in {@code web/AMembershipOfTheSeasonHeWouldJoin}, which
+ * asks THIS method for the season, so the number a member joins for and the number he must have
+ * paid cannot come apart.
  */
 public final class JoiningATeam {
 

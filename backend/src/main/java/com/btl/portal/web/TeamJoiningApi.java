@@ -142,6 +142,16 @@ class TeamJoiningApi {
 	private final ATeamHeIsAlreadyIn alreadyInATeam;
 
 	/**
+	 * AND THE ONE PLACE THAT ANSWERS „HAS HE PAID THE SEASON HE WOULD ENTER FOR", for the same
+	 * reason and the same rows: PDL, ODLUKA 30.10.2026, „U prelaznom roku svaki ulaz u tim traži
+	 * plaćenu narednu sezonu". An applicant whose season has been cancelled since he asked is
+	 * not shown to the team, because {@link TeamJoiningWriteApi#decide} would not find him
+	 * either, and the application waits for him (PDL 06.09.2026, „Prijava člana koji je u
+	 * međuvremenu dobio tim se timu ne prikazuje").
+	 */
+	private final AMembershipOfTheSeasonHeWouldJoin holdsTheSeason;
+
+	/**
 	 * Which season an acceptance would be for is a question about a moment, and the moment
 	 * comes from the bean rather than from {@code Instant.now()} for the reason
 	 * {@code WhatTimeItIs} gives: both sides of 1 January are then one fixture and two
@@ -150,12 +160,14 @@ class TeamJoiningApi {
 	private final Clock clock;
 
 	TeamJoiningApi(JdbcClient db, MemberOfAccount memberOfAccount, WhatHeMayDo mayHe,
-			ATeamHeIsAlreadyIn alreadyInATeam, Clock clock) {
+			ATeamHeIsAlreadyIn alreadyInATeam, AMembershipOfTheSeasonHeWouldJoin holdsTheSeason,
+			Clock clock) {
 
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.mayHe = mayHe;
 		this.alreadyInATeam = alreadyInATeam;
+		this.holdsTheSeason = holdsTheSeason;
 		this.clock = clock;
 	}
 
@@ -194,6 +206,8 @@ class TeamJoiningApi {
 				/* THE DECISION OF 06.09.2026, asked of the record through the one object that
 				   owns the rule rather than folded into the statement above. */
 				.filter(one -> !alreadyInATeam.standsInHisWay(one.applicant(), now))
+				/* AND THE ONE OF 30.10.2026: HIS SEASON, the applicant's. */
+				.filter(one -> holdsTheSeason.holds(one.applicant(), now))
 				.map(Awaited::asAnApplication)
 				.toList());
 	}

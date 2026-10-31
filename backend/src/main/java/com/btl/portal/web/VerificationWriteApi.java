@@ -40,6 +40,7 @@ import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.Set;
 
@@ -359,6 +360,22 @@ class VerificationWriteApi {
 	private static final String HE_IS_ALREADY_IN_A_TEAM = "Osnivač je već u nekom timu.";
 
 	/**
+	 * THE FOUNDER HAS NOT PAID THE SEASON THE TEAM WOULD TAKE HIM IN FOR, SAID TO THE MODERATOR
+	 * WHO IS ABOUT TO APPROVE IT.
+	 *
+	 * <p>PDL, ODLUKA 31.10.2026, owner, on the entry of 30.10.2026 („U prelaznom roku svaki ulaz u
+	 * tim traži plaćenu narednu sezonu"): the item stays in the queue, and the moderator reads,
+	 * word for word, „Osnivač nije platio članarinu za sezonu [sezona]." It is the member's own
+	 * sentence turned toward the person who decides, because the member's („ulaziš kad platiš")
+	 * addresses the founder and this reader is not he. A method and not a constant, because it
+	 * carries the season, the same way the other sentences of this file that carry a value are
+	 * written.
+	 */
+	static String theFounderHasNotPaidReads(int season) {
+		return "Osnivač nije platio članarinu za sezonu " + season + ".";
+	}
+
+	/**
 	 * THE PICTURE THE MODERATOR SAW IS NOT THE ONE THE ROW HOLDS NOW: NOTHING IS DECIDED AND THE ROW
 	 * STAYS.
 	 *
@@ -642,6 +659,9 @@ class VerificationWriteApi {
 	 */
 	private final ObjectMapper json;
 
+	/** Whether the founder of a proposed team holds the season the team takes him in for: what an approval asks. */
+	private final AMembershipOfTheSeasonHeWouldJoin holdsTheSeason;
+
 	/** The league's own address, which the letter about an approved run is blind-copied to
 	 *  ({@link #post} carries why). Configured rather than written here for the reason
 	 *  {@code application.properties} gives beside it. */
@@ -649,8 +669,10 @@ class VerificationWriteApi {
 
 	VerificationWriteApi(JdbcClient db, WhatHeMayDo mayHe, TransactionTemplate inOneTransaction,
 			Clock clock, MemberOfAccount memberOfAccount, BestOfficialSeason bestOfficialSeason,
-			Postman postman, ObjectMapper json, @Value("${btl.mail.league}") String theLeague) {
+			Postman postman, ObjectMapper json, AMembershipOfTheSeasonHeWouldJoin holdsTheSeason,
+			@Value("${btl.mail.league}") String theLeague) {
 		this.db = db;
+		this.holdsTheSeason = holdsTheSeason;
 		this.mayHe = mayHe;
 		this.inOneTransaction = inOneTransaction;
 		this.clock = clock;
@@ -1248,7 +1270,8 @@ class VerificationWriteApi {
 		int season = SeasonClock.transfersTakeEffect(clock.instant().atZone(SeasonClock.ZONE));
 
 		if (answer.yes() && proposal != null) {
-			Optional<ResponseEntity<?>> refused = whyTheTeamCannotBeMade(proposal, season);
+			Optional<ResponseEntity<?>> refused = whyTheTeamCannotBeMade(proposal, season,
+					clock.instant().atZone(SeasonClock.ZONE));
 
 			if (refused.isPresent()) {
 				return new Carried(refused.get(), null, null);
@@ -2461,7 +2484,8 @@ class VerificationWriteApi {
 	 *
 	 * @return the refusal, or nothing where there is none
 	 */
-	private Optional<ResponseEntity<?>> whyTheTeamCannotBeMade(Proposal proposal, int season) {
+	private Optional<ResponseEntity<?>> whyTheTeamCannotBeMade(Proposal proposal, int season,
+			ZonedDateTime now) {
 		if (Boolean.TRUE.equals(db.sql("select exists(select 1 from team where slug = ?)")
 				.param(EventAddress.written(proposal.name())).query(Boolean.class).single())) {
 			return Optional.of(no(HttpStatus.CONFLICT, THE_NAME_IS_TAKEN));
@@ -2479,6 +2503,20 @@ class VerificationWriteApi {
 						+ " where competitor_id = ? and (season_to is null or season_to >= ?))")
 				.params(proposal.competitorId(), season).query(Boolean.class).single())) {
 			return Optional.of(no(HttpStatus.CONFLICT, HE_IS_ALREADY_IN_A_TEAM));
+		}
+
+		/* AND WHETHER HE HOLDS THE SEASON THE TEAM TAKES HIM IN FOR (PDL 30.10.2026, entry „U
+		   prelaznom roku svaki ulaz u tim traži plaćenu narednu sezonu", and the owner's wording of
+		   31.10.2026 on `theFounderHasNotPaidReads`). The season is `seasonHeWouldJoin`, which is
+		   the season on sale at the moment of the decision: inside the window the next one, which
+		   is what the founder pays for to enter, and outside it the one being run, which every
+		   member whose fee stands holds. NOT the `season` this method is handed, which is
+		   `transfersTakeEffect` and names a season nobody can have paid for in January. Checked at
+		   the decision and not at the proposal, so a founder whose season was cancelled in
+		   between is stopped; the item stays in the queue and waits for him, like the two above. */
+		if (!holdsTheSeason.holds(proposal.competitorId(), now)) {
+			return Optional.of(no(HttpStatus.CONFLICT,
+					theFounderHasNotPaidReads(AMembershipOfTheSeasonHeWouldJoin.season(now))));
 		}
 
 		return Optional.empty();

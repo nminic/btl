@@ -48,20 +48,23 @@ export function theAnswerGoesTo(team: number, invitation: number): string {
 }
 
 /**
- * THE THREE REFUSALS `PUT /api/teams/{id}/invitations/{invitation}` CAN NAME, each to a
+ * THE FOUR REFUSALS `PUT /api/teams/{id}/invitations/{invitation}` CAN NAME, each to a
  * sentence in the dictionary.
  *
- * <p><b>Read off the route rather than remembered.</b> `TeamJoiningWriteApi` declares six
- * `static final String` constants and only three of them can come back from THIS route:
+ * <p><b>Read off the route rather than remembered.</b> `TeamJoiningWriteApi` declares seven
+ * `static final String` constants and only four of them can come back from THIS route:
  * `THE_FORM_IS_NOT_COMPLETE` for a body naming neither „Prihvati" nor „Odbij",
- * `THE_WINDOW_IS_SHUT` for accepting on a day nothing may be written about a squad, and
- * `HE_IS_ALREADY_IN_A_TEAM` for accepting once he has a team. `A_QUESTION_ALREADY_STANDS`
- * and `HE_HAS_ALREADY_BEEN_ASKED` belong to the two POST routes of the same class, which the
- * team's page and a profile send (`pages/joiningThisTeam.ts`, since T5 on 10.10.2026), and
- * `THE_INVITATION_WAS_MISSED` is a subject line rather than a refusal at all.
- * `pages/account/refusals.test.ts` holds all six, split by the screen that meets each.
+ * `THE_WINDOW_IS_SHUT` for accepting on a day nothing may be written about a squad,
+ * `HE_IS_ALREADY_IN_A_TEAM` for accepting once he has a team, and, since 31.10.2026,
+ * `THE_SEASON_IS_NOT_PAID` for accepting before he has paid the season he would enter for
+ * (PDL, ODLUKA 30.10.2026, „U prelaznom roku svaki ulaz u tim traži plaćenu narednu sezonu").
+ * `A_QUESTION_ALREADY_STANDS` and `HE_HAS_ALREADY_BEEN_ASKED` belong to the two POST routes
+ * of the same class, which the team's page and a profile send (`pages/joiningThisTeam.ts`,
+ * since T5 on 10.10.2026), and `THE_INVITATION_WAS_MISSED` is a subject line rather than a
+ * refusal at all. `pages/account/refusals.test.ts` holds all seven, split by the screen that
+ * meets each.
  *
- * <p><b>TWO OF THE THREE POINT AT A SENTENCE THE SCREEN ALSO DRAWS BEFORE ANYTHING IS SENT,
+ * <p><b>THREE OF THE FOUR POINT AT A SENTENCE THE SCREEN ALSO DRAWS BEFORE ANYTHING IS SENT,
  * and that is the decision rather than a saving.</b> The same two facts are answered twice
  * over: once by `GET /api/me/applications` when the buttons are drawn, and once by the route
  * when the answer arrives, because either can change in between. A refusal means the same
@@ -80,6 +83,11 @@ export function theAnswerGoesTo(team: number, invitation: number): string {
  * `alreadyInATeam` as a boolean and `GET /api/me`'s `teamId` is a DIFFERENT fact - its own
  * note says „WHAT IT DOES NOT SAY is which team he is in THIS season" - so reading it here
  * would give one decision two sources that can come apart.
+ * <li>`theSeasonIsNotPaid` is `teams.joinWhenPaid`, the owner's own sentence word for word
+ * (PDL, 30.10.2026, „Ekran članu to kaže jednom rečenicom"), and it takes the season, which
+ * the screen reads off `GET /api/me/applications` (`seasonToPayFor`, the server's answer) and
+ * hands to `ServerSaid` too. It is the same sentence on the team's page where „Prijavi se u
+ * tim" would stand and on the page that proposes a team: one fact, one sentence.
  * <li>`theFormIsNotComplete` is the one that is only ever a refusal, so it is the only one
  * that lives under `teams.answerRefused`.
  * </ul>
@@ -103,6 +111,7 @@ export const WHEN_ANSWERING_A_TEAM_INVITE = {
   theFormIsNotComplete: 'teams.answerRefused.theFormIsNotComplete',
   theWindowIsShut: 'teams.inviteWaits',
   heIsAlreadyInATeam: 'teams.inviteOvertakenUnnamed',
+  theSeasonIsNotPaid: 'teams.joinWhenPaid',
 }
 
 /**
@@ -135,7 +144,7 @@ export const WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE = {
  * one pair of facts. A guard that measured them separately would be two halves with nothing
  * tying them together, which is exactly the shape that reads as though it works.
  */
-export type MayHeAccept = 'offered' | 'theWindowIsShut' | 'heIsAlreadyInATeam'
+export type MayHeAccept = 'offered' | 'theWindowIsShut' | 'heIsAlreadyInATeam' | 'theSeasonIsNotPaid'
 
 /** An invitation the server is still holding for this member, with everything the screen
  *  has to decide already decided. */
@@ -206,7 +215,7 @@ export function theInvitationStanding(
   return { standing: true, team: his.teamId, accept: whetherHeMayAccept(waiting, today) }
 }
 
-/** The two obstacles, in the order the route asks them in. Split out so that the answer
+/** The three obstacles, in the order the route asks them in. Split out so that the answer
  *  about WHICH invitation and the answer about WHETHER any may be accepted are two
  *  readings: the second cannot differ between two of his invitations, which is the very
  *  reason `MyApplicationsApi` answers `alreadyInATeam` beside the lists and not on each. */
@@ -215,7 +224,13 @@ function whetherHeMayAccept(waiting: WhatIsWaiting, today: string): MayHeAccept 
     return 'theWindowIsShut'
   }
 
-  return waiting.alreadyInATeam ? 'heIsAlreadyInATeam' : 'offered'
+  if (waiting.alreadyInATeam) {
+    return 'heIsAlreadyInATeam'
+  }
+
+  /* LAST, because the sentence it earns („ulaziš kad platiš") presumes he is free to enter, and
+     the route asks it last for the same reason (`TeamJoiningWriteApi.answering`). */
+  return waiting.seasonToPayFor === null ? 'offered' : 'theSeasonIsNotPaid'
 }
 
 /**

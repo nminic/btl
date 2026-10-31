@@ -493,6 +493,41 @@ class TeamJoiningApiTest {
 				.containsExactly(INVITED_BY_ANOTHER_TEAM + " on 2027-10-05");
 	}
 
+	/**
+	 * AN APPLICANT WHO HOLDS ONLY THE SEASON BEING RUN IS NOT SHOWN TO THE TEAM, AND HIS ROW WAITS.
+	 *
+	 * <p>PDL, ODLUKA 30.10.2026, „U prelaznom roku svaki ulaz u tim traži plaćenu narednu sezonu",
+	 * read with the decision of 06.09.2026 it is carried out like („Prijava člana koji je u
+	 * međuvremenu dobio tim se timu ne prikazuje"): the route that answers the team would not find
+	 * him, so the list does not show him. The clock is moved INSIDE the window of 2027 because the
+	 * rest of this file stands on 15 October, where the season on sale is the one being run and
+	 * {@code competitor.active} says all there is.
+	 *
+	 * <p><b>The one man is listed and then not, and the other applicant stays.</b> That is the
+	 * difference between a filter on his season and one that empties the list, and it is the same
+	 * member in both states, so nothing else about him can be what changed the answer.
+	 */
+	@Test
+	void anApplicantWhoHoldsOnlyTheSeasonBeingRunIsNotShownToTheTeamAndHisRowWaits() throws Exception {
+		clock.moveTo(Instant.parse("2027-11-20T09:00:00Z"));
+
+		assertThat(applicationsOf(THE_TEAM, LEADER).stream().anyMatch(one -> one.startsWith(APPLICANT)))
+				.as("he holds the season on sale, so the team sees him")
+				.isTrue();
+
+		holdsOnly(APPLICANT, 2027);
+
+		List<String> shown = applicationsOf(THE_TEAM, LEADER);
+
+		assertThat(shown).noneMatch(one -> one.startsWith(APPLICANT));
+		assertThat(shown).as("and only he is hidden").anyMatch(one -> one.startsWith(ANOTHER_APPLICANT));
+		assertThat(db.sql("select count(*) from team_application a"
+						+ " join competitor c on c.id = a.competitor_id where c.member_number = ?")
+				.param(APPLICANT).query(Long.class).single())
+				.as("the row is still his: hidden, not deleted")
+				.isOne();
+	}
+
 	/** Neither list answers with the other's rows, which one shared helper would. */
 	@Test
 	void theTwoListsDoNotCrossOver() throws Exception {
@@ -966,6 +1001,31 @@ class TeamJoiningApiTest {
 						+ " ?, '', ?, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, "Probić" + number, active, String.format("%016x", ++issued), hidden)
+				.update();
+
+		/* A MEMBER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Entering a team
+		   asks for a membership of the season on sale and not for `competitor.active` (PDL
+		   30.10.2026), so an active member with no row is a member who has not paid it. The member
+		   who holds only ONE of the two is made by `holdsOnly`; a member whose fee has lapsed
+		   (`active` false) holds neither. */
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " select c.id, s.season, 'feeExempt', 'Probni Probic',"
+						+ " timestamptz '2026-09-01 10:00:00+00'"
+						+ " from competitor c cross join (values (2027), (2028)) as s (season)"
+						+ " where c.member_number = ? and c.active")
+				.param(number)
+				.update();
+	}
+
+	/**
+	 * A MEMBER WHO HOLDS ONLY THE ONE SEASON GIVEN, which is the state {@code competitor.active}
+	 * cannot tell from a member who holds both: he is active either way. PDL 30.10.2026 asks for
+	 * the season he would ENTER for, so the case that needs the difference makes it here.
+	 */
+	private void holdsOnly(String memberNumber, int season) {
+		db.sql("delete from membership where season <> ? and competitor_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.params(season, memberNumber)
 				.update();
 	}
 

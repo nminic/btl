@@ -210,6 +210,19 @@ class VerificationDecisionConcurrencyTest {
 				.param(THE_FOUNDER)
 				.query(Long.class).single();
 
+		/* A FOUNDER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Approving a
+		   proposal asks for a membership of the season on sale and not for `competitor.active` (PDL
+		   30.10.2026), and this file runs on the real clock. Without the row both approvals are refused
+		   with 409 BEFORE either reaches the row's lock, so the race the cases below measure is never
+		   run. The row cascades away with the founder in the cleanup below. */
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " select c.id, s.season, 'feeExempt', 'Probni Probic',"
+						+ " timestamptz '2026-09-01 10:00:00+00'"
+						+ " from competitor c cross join (values (2027), (2028)) as s (season)"
+						+ " where c.id = ? and c.active")
+				.param(founder)
+				.update();
+
 		proposal = db.sql("insert into team_proposal (competitor_id, name, bio, link, place_id)"
 						+ " values (?, ?, '', '', " + A_TOWN + ") returning id")
 				.params(founder, THE_TEAM)

@@ -29,5 +29,6 @@
       "date": "2026-10-05"
     }
   ],
-  "alreadyInATeam": false
+  "alreadyInATeam": false,
+  "seasonToPayFor": null
 }

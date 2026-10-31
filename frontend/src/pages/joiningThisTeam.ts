@@ -160,23 +160,29 @@ export const WHEN_DECIDING_AN_APPLICATION = {
 }
 
 /**
- * THE ONE REFUSAL `POST /api/teams/{id}/applications` NAMES, to a sentence.
+ * THE TWO REFUSALS `POST /api/teams/{id}/applications` NAMES, each to a sentence.
  *
  * <p><b>Read off the route.</b> `TeamJoiningWriteApi.asking` names `A_QUESTION_ALREADY_STANDS`
  * (409) for a member who already has an application standing on any team, which is PDL
  * 06.09.2026, „„Prijavi se u tim" se crta samo kad član nema nijednu prijavu u letu, traženo po
- * broju člana kroz sve timove". Every other way that route says no is an empty 404 by ADL A8 -
- * an account naming no member, a member whose fee has lapsed, a member who already has a team,
- * a shut window, a team nobody leads - so it carries no reason to look up, and `ServerSaid`
- * says the number.
+ * broju člana kroz sve timove", and, since 31.10.2026, `THE_SEASON_IS_NOT_PAID` (409) for a
+ * member who has not paid the season he would enter the team for (PDL, ODLUKA 30.10.2026,
+ * „U prelaznom roku svaki ulaz u tim traži plaćenu narednu sezonu"). Every other way that route
+ * says no is an empty 404 by ADL A8 - an account naming no member, a member whose fee has
+ * lapsed, a member who already has a team, a shut window, a team nobody leads - so it carries
+ * no reason to look up, and `ServerSaid` says the number.
  *
- * <p><b>The screen does not offer the press in that state</b> (`AskingThisTeam.tsx` reads
- * `GET /api/me/applications` first), so the sentence answers a race: an application sent from
- * another tab after this page read what was waiting. The words are the agent's and the owner
- * took them to be changed on QA (10.10.2026).
+ * <p><b>The screen does not offer the press in either state</b> (`AskingThisTeam.tsx` reads
+ * `GET /api/me/applications` first), so both sentences answer a race: an application sent from
+ * another tab after this page read what was waiting, or a fee cancelled after it. The words
+ * of the first are the agent's and the owner took them to be changed on QA (10.10.2026); the
+ * second is the owner's own, word for word (PDL, 30.10.2026), and it is the sentence the screen
+ * draws where the button would have been, which is why it is filed under the top-level key
+ * `teams.joinWhenPaid` and not under `applyRefused`.
  */
 export const WHEN_APPLYING_TO_A_TEAM = {
   aQuestionAlreadyStands: 'teams.applyRefused.aQuestionAlreadyStands',
+  theSeasonIsNotPaid: 'teams.joinWhenPaid',
 }
 
 /**
@@ -187,6 +193,7 @@ export const WHEN_APPLYING_TO_A_TEAM = {
  * this map in when the reader is a woman and the verb is „poslala".
  */
 export const WHEN_A_WOMAN_APPLIES_TO_A_TEAM = {
+  ...WHEN_APPLYING_TO_A_TEAM,
   aQuestionAlreadyStands: 'teams.applyRefused.aQuestionAlreadyStandsFemale',
 }
 

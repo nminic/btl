@@ -1798,6 +1798,68 @@ class VerificationWriteApiTest {
 				.param(THE_TEAM).query(Integer.class).single()).isZero();
 	}
 
+	/**
+	 * A FOUNDER WHO HOLDS ONLY THE SEASON BEING RUN IS NOT MADE A TEAM'S FOUNDER, AND THE MODERATOR IS
+	 * TOLD WHY IN THE OWNER'S WORDS.
+	 *
+	 * <p>PDL, ODLUKA 30.10.2026, „U prelaznom roku svaki ulaz u tim traži plaćenu narednu sezonu":
+	 * „predlog novog tima traže članstvo za sezonu za koju se plaća", and the owner's wording of
+	 * 31.10.2026 for what the moderator reads: „Osnivač nije platio članarinu za sezonu [sezona]."
+	 * The item stays in the queue, like the two refusals above it.
+	 *
+	 * <p>The clock is moved INSIDE the window of 2027 because the rest of this file stands in March,
+	 * where the season on sale is the one being run and {@code competitor.active} says all there is.
+	 * <b>The same founder in both states:</b> he holds 2027 alone and is refused with the season on
+	 * sale (2028) named; he holds 2028 as well and the same answer approves.
+	 */
+	@Test
+	void aFounderWhoHasNotPaidTheSeasonOnSaleIsRefusedInTheOwnersWordsAndTheItemStays() throws Exception {
+		clock.moveTo(Instant.parse("2027-11-20T09:00:00Z"));
+
+		db.sql("delete from membership where competitor_id = ? and season = 2028")
+				.param(memberId(BOJAN)).update();
+
+		MockHttpServletResponse refused = decide(TEAMS_MODERATOR, bojansTeam, true, null);
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo("Osnivač nije platio članarinu za sezonu 2028.");
+		assertThat(stateOf(bojansTeam)).isEqualTo("waiting");
+		assertThat(db.sql("select count(*) from team where name = ?")
+				.param(THE_TEAM).query(Integer.class).single()).isZero();
+		assertThat(db.sql("select count(*) from team_membership")
+				.query(Integer.class).single()).isZero();
+
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " values (?, 2028, 'feeExempt', 'Probni Probic',"
+						+ " timestamptz '2026-09-01 10:00:00+00')")
+				.param(memberId(BOJAN)).update();
+
+		assertThat(answer(TEAMS_MODERATOR, bojansTeam, true, null)).isEqualTo(200);
+		assertThat(db.sql("select count(*) from team where name = ?")
+				.param(THE_TEAM).query(Integer.class).single()).isOne();
+	}
+
+	/**
+	 * THE SEASON ASKED IS THE ONE ON SALE AT THE DECISION, NOT THE ONE THE TEAM STARTS IN.
+	 *
+	 * <p>A proposal sent in December and approved on 2 January starts its team in 2029
+	 * ({@code transfersTakeEffect}), a season nobody can have paid for until the sale opens in
+	 * November. Asked of THAT season the moderator could approve nothing outside the window; asked of
+	 * the one on sale, which in January is the one being run, a founder who holds 2028 is approved.
+	 * The fixture's members hold 2027 and 2028 and nothing else, so a version that asks for the
+	 * team's own season is refused here.
+	 */
+	@Test
+	void aProposalApprovedInJanuaryAsksTheSeasonBeingRunAndNotTheOneTheTeamStartsIn() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-02T10:00:00Z"));
+
+		assertThat(answer(TEAMS_MODERATOR, bojansTeam, true, null)).isEqualTo(200);
+		assertThat(db.sql("select first_season from team where name = ?")
+				.param(THE_TEAM).query(Integer.class).single())
+				.as("the team still starts the season after the one being run")
+				.isEqualTo(2029);
+	}
+
 	// ----- comments, and the one refusal that needs no reason (ADL A64) -----------------
 
 	/**

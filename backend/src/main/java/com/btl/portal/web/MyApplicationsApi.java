@@ -173,6 +173,8 @@ class MyApplicationsApi {
 	 */
 	private final ATeamHeIsAlreadyIn alreadyInATeam;
 
+	private final AMembershipOfTheSeasonHeWouldJoin holdsTheSeason;
+
 	/**
 	 * Which season an acceptance would be for is a question about a moment, and the moment
 	 * comes from the bean rather than from {@code Instant.now()} for the reason
@@ -181,9 +183,11 @@ class MyApplicationsApi {
 	 */
 	private final Clock clock;
 
-	MyApplicationsApi(JdbcClient db, ATeamHeIsAlreadyIn alreadyInATeam, Clock clock) {
+	MyApplicationsApi(JdbcClient db, ATeamHeIsAlreadyIn alreadyInATeam,
+			AMembershipOfTheSeasonHeWouldJoin holdsTheSeason, Clock clock) {
 		this.db = db;
 		this.alreadyInATeam = alreadyInATeam;
+		this.holdsTheSeason = holdsTheSeason;
 		this.clock = clock;
 	}
 
@@ -246,10 +250,25 @@ class MyApplicationsApi {
 	 *                       <p>It stands beside the lists rather than on each invitation
 	 *                       because it cannot differ between two of them; the note on
 	 *                       {@link TeamInvitation} has the guard that measured that.
+	 * @param seasonToPayFor THE SEASON HE HAS TO PAY BEFORE HE CAN ENTER A TEAM, or null where
+	 *                       there is none. PDL, ODLUKA 30.10.2026, „U prelaznom roku svaki ulaz u
+	 *                       tim traži plaćenu narednu sezonu": the screen says to the member,
+	 *                       „U tim za sezonu [sezona] ulaziš kad platiš članarinu za tu sezonu",
+	 *                       and [sezona] is this number. It is the SERVER'S answer to „does he
+	 *                       hold the season he would join for", beside {@link #alreadyInATeam}
+	 *                       and for the same reason: three screens draw their button from it
+	 *                       (the team's page, the invitation in the inbox, the page that
+	 *                       proposes a team) and a copy worked out on each from the session
+	 *                       would be that fact with three homes. <b>Null in two cases that must
+	 *                       not be read as one:</b> he holds the season (nothing to say), and
+	 *                       the window is shut (nobody enters a team today, so nothing about a
+	 *                       fee is owed the sentence). It is not null merely because he has a
+	 *                       team: the order the routes ask in is window, team, fee, and the
+	 *                       screen reads {@link #alreadyInATeam} before it reads this.
 	 */
 	record Waiting(List<TeamApplication> teamApplications, List<TeamInvitation> teamInvitations,
 			List<TeamProposal> teamProposals, List<PairInvite> pairInvites,
-			boolean alreadyInATeam) {
+			boolean alreadyInATeam, Integer seasonToPayFor) {
 	}
 
 	/**
@@ -266,11 +285,26 @@ class MyApplicationsApi {
 		   is the honest answer and not a placeholder for one this class chose not
 		   to compute. */
 		if (me == null) {
-			return new Waiting(List.of(), List.of(), List.of(), List.of(), false);
+			return new Waiting(List.of(), List.of(), List.of(), List.of(), false, null);
 		}
 
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
 		return new Waiting(teamApplications(me), teamInvitations(me), teamProposals(me),
-				pairInvites(me), alreadyInATeam.standsInHisWay(me, ZonedDateTime.now(clock)));
+				pairInvites(me), alreadyInATeam.standsInHisWay(me, now), seasonToPayFor(me, now));
+	}
+
+	/**
+	 * The season he must pay before he can enter a team, or nothing (see
+	 * {@link Waiting#seasonToPayFor}). Asked only while the window is open, because outside it
+	 * nobody enters a team and the sentence would be about a fee nothing is waiting on.
+	 */
+	private Integer seasonToPayFor(long me, ZonedDateTime now) {
+		if (!SeasonClock.transferWindowOpen(now) || holdsTheSeason.holds(me, now)) {
+			return null;
+		}
+
+		return AMembershipOfTheSeasonHeWouldJoin.season(now);
 	}
 
 	/** V23: at most one member per account, and null for a moderator who has none. */

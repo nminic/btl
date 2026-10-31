@@ -106,6 +106,7 @@
     "pairInvites.id",
     "pairInvites.memberNumber",
     "pairInvites.sentByMe",
+    "seasonToPayFor",
     "teamApplications",
     "teamApplications.date",
     "teamApplications.id",

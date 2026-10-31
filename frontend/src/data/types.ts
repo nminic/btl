@@ -1910,6 +1910,22 @@ export type WhatIsWaiting = {
    * „Prihvati" reads this and never that.
    */
   alreadyInATeam: boolean
+  /**
+   * THE SEASON HE HAS TO PAY BEFORE HE CAN ENTER A TEAM, or `null` where there is none.
+   *
+   * PDL, ODLUKA 30.10.2026, „U prelaznom roku svaki ulaz u tim traži plaćenu narednu sezonu":
+   * the screen says „U tim za sezonu [sezona] ulaziš kad platiš članarinu za tu sezonu", and
+   * [sezona] is this number. It is the SERVER'S answer to „does he hold the season he would join
+   * for" (`MyApplicationsApi.Waiting#seasonToPayFor`), beside `alreadyInATeam` and for the same
+   * reason: three screens draw their button from it - the team's page, the invitation in the
+   * inbox and the page that proposes a team - and a copy worked out on each from the session
+   * would be that fact with three homes.
+   *
+   * **`null` means two things that must not be read as one**: he holds the season, and the
+   * transfer window is shut. The first leaves the button; the second is not this field's to say,
+   * the screens that draw anything in a shut window ask the clock.
+   */
+  seasonToPayFor: number | null
 }
 
 /**

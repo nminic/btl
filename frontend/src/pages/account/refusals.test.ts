@@ -297,8 +297,14 @@ describe('the reasons the server can name', () => {
        pass unnoticed if the dictionary were not on this list. So it is registered for the
        direction that has teeth, and the direction that has none is written down here
        instead of being left to look like cover it does not give. */
+    /* SEVEN SINCE 31.10.2026: `THE_SEASON_IS_NOT_PAID`, the reason `propose` gives a member who has
+       not paid the season he would found the team for (PDL, ODLUKA 30.10.2026, „U prelaznom roku
+       svaki ulaz u tim traži plaćenu narednu sezonu"). It is answered on the first dictionary
+       only, by the owner's own sentence, which is also the one the screen draws in place of the
+       form. The count moved from six exactly as the note above says it should: as a red gate with
+       the number in the message. */
     ['TeamWriteApi.java',
-      [WHEN_PROPOSING_A_TEAM, WHEN_LEAVING_A_TEAM, WHEN_DELETING_A_TEAM], 6],
+      [WHEN_PROPOSING_A_TEAM, WHEN_LEAVING_A_TEAM, WHEN_DELETING_A_TEAM], 7],
     ['CommentWriteApi.java', [WHEN_RATING_AN_EVENT], 3],
     /* THE SIXTH, ADDED 25.09.2026, AND IT IS THE FIRST THAT WAS OWED RATHER THAN NEW.
        `LeagueWriteApi` has named eleven reasons since B40 and six of them have been drawn
@@ -572,7 +578,11 @@ describe('the reasons the server can name', () => {
         WHEN_INVITING_INTO_A_TEAM,
         WHEN_INVITING_A_WOMAN_INTO_A_TEAM,
       ],
-      6,
+      /* SEVEN SINCE 31.10.2026: `THE_SEASON_IS_NOT_PAID`, the one reason of the class that two of
+         its routes give, `POST .../applications` and the "Prihvati" of `PUT .../invitations/..`
+         (PDL, ODLUKA 30.10.2026). Both dictionaries carry it, under the one key, because it is one
+         sentence on every screen that meets it. */
+      7,
     ],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT WRITES ONE MEMBER'S NOTE TO ANOTHER,
        `event/GoingToEvent.tsx`. Two constants, both real refusals of

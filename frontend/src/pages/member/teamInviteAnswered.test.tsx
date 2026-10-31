@@ -209,6 +209,7 @@ function waitingWhere(
     { id: 44, teamId: 5, date: '2026-10-09' },
     { id: HIS_INVITE, teamId: HIS_TEAM, date: '2026-10-06' },
   ],
+  seasonToPayFor: number | null = null,
 ): unknown {
   return {
     /* The same key under a different team, so reading the wrong list is a wrong address rather
@@ -218,6 +219,7 @@ function waitingWhere(
     teamProposals: [{ id: HIS_INVITE, teamId: 77, name: 'Dunavski trkači', date: '2026-10-02' }],
     pairInvites: [{ id: 77, memberNumber: '000031', sentByMe: false, date: '2026-10-08' }],
     alreadyInATeam,
+    seasonToPayFor,
   }
 }
 
@@ -941,6 +943,79 @@ describe('answering a served invitation into a team', () => {
   )
 
   it(
+    'holds „Prihvati" back for a member who owes the season, says so in the owner\'s words with the season the SERVER named, and keeps „Odbij"',
+    async () => {
+      const user = setupUser()
+
+      /* 2029 and not the year the clock stands in (2027 is what a screen working it out itself would
+         say), so the number on the screen can only have come from the answer. */
+      aServerWhere(waitingWhere(false, undefined, 2029))
+      await openTheQuestion()
+
+      /* PDL, 30.10.2026: „On ga prihvata tek kad plati." The invitation was sent to him unpaid, and
+         it waits; „Odbij" is still his, for the reason it is held back by nothing else (06.09.2026). */
+      expect(anyAcceptButton()).toBeNull()
+      expect(screen.getByText(sr.teams.joinWhenPaid.replace('{season}', '2029'))).toBeVisible()
+
+      await user.click(theRefuseButton())
+
+      await waitFor(() => {
+        expect(asked()).toContain(THE_ADDRESS)
+      })
+
+      expect(sentTo(THE_ADDRESS)).toEqual([{ accepted: false }])
+    },
+    SLOW,
+  )
+
+  it(
+    'says the team he has before the fee, and the window before either',
+    async () => {
+      /* The route's own order (`TeamJoiningWriteApi.answering`): the window, then the team, then
+         the fee, because the sentence about the fee presumes he is free to enter. */
+      aServerWhere(waitingWhere(true, undefined, 2028))
+      await openTheQuestion()
+
+      expect(screen.getByText(sr.teams.inviteOvertakenUnnamed)).toBeVisible()
+      expect(screen.queryByText(/ulaziš kad platiš članarinu/)).toBeNull()
+    },
+    SLOW,
+  )
+
+  it(
+    'says the window is shut and not the fee, when the fee is owed too',
+    async () => {
+      aServerWhere(waitingWhere(false, undefined, 2028))
+      await openTheQuestion(OUTSIDE_IT)
+
+      expect(screen.getByText(sr.teams.inviteWaits)).toBeVisible()
+      expect(screen.queryByText(/ulaziš kad platiš članarinu/)).toBeNull()
+    },
+    SLOW,
+  )
+
+  it(
+    'reads the refusal of the fee out of the very map the screen drew its own sentence from, with a season',
+    async () => {
+      const user = setupUser()
+
+      /* Drawn where „Prihvati" IS offered, and refused for the fee: it was cancelled between the
+         drawing and the press. The read that would have named the season is the one this refusal
+         outran, so the season is the one a change takes effect in, which inside the window is the
+         same number (2027 on this clock). */
+      aServerWhere(waitingWhere(), () => refused('theSeasonIsNotPaid', 409))
+      await openTheQuestion()
+
+      await user.click(theAcceptButton())
+
+      expect(
+        await screen.findByText(sr.teams.joinWhenPaid.replace('{season}', '2027')),
+      ).toBeVisible()
+    },
+    SLOW,
+  )
+
+  it(
     'says the window is shut, and not that he has a team, when both are true at once',
     async () => {
       aServerWhere(waitingWhere(true))
@@ -1190,6 +1265,7 @@ describe('answering a served invitation into a team', () => {
         teamProposals: [],
         pairInvites: [],
         alreadyInATeam: false,
+        seasonToPayFor: null,
       })
 
       const { unmount } = renderAt(

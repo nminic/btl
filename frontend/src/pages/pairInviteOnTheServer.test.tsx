@@ -161,6 +161,7 @@ function aServerForThePair({
         teamProposals: [],
         pairInvites: standing[reader()] ?? [],
         alreadyInATeam: false,
+        seasonToPayFor: null,
       })
     }
 
@@ -447,6 +448,7 @@ describe('what stands in the place of the button', () => {
             teamProposals: [],
             pairInvites: HIS_QUESTIONS,
             alreadyInATeam: false,
+            seasonToPayFor: null,
           }),
         ),
     })
@@ -484,6 +486,7 @@ describe('what stands in the place of the button', () => {
               teamProposals: [],
               pairInvites: [],
               alreadyInATeam: false,
+              seasonToPayFor: null,
             }),
     })
     const user = setupUser()
@@ -998,6 +1001,7 @@ describe('the questions still standing on the reader’s own page', () => {
               teamProposals: [],
               pairInvites: HIS_QUESTIONS,
               alreadyInATeam: false,
+              seasonToPayFor: null,
             }),
     })
     const user = setupUser()
