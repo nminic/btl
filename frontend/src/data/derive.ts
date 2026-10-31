@@ -1,5 +1,5 @@
 import { categoryCodeFor, categoryLabel } from './categories'
-import { boardsAreToppedUp, FIRST_SEASON, seasonShown } from './season'
+import { boardsAreToppedUp, FIRST_SEASON, nextSeasonOnOffer, seasonShown } from './season'
 import { DOTS } from './types'
 import type {
   BtlEvent,
@@ -277,6 +277,25 @@ export function seasonsOnOffer(results: Result[], today: string): number[] {
       ...seasonsCounted(results).filter((season) => season >= FIRST_SEASON),
     ]),
   ].sort((left, right) => right - left)
+}
+
+/**
+ * The seasons the TABLE offers: those of `seasonsOnOffer`, and from the day the window opens the one
+ * that has not begun (`nextSeasonOnOffer`), newest first.
+ *
+ * **A function of its own and not a change to `seasonsOnOffer`, and that is a decision.** The top
+ * boards read `seasonsOnOffer` too, and from 1 January 2027 they hold only members with points (PDL,
+ * 17.10.2026), so a board of a season that has not begun is empty by construction; and the page of a
+ * team and the list of teams put the next season on their own lists their own way. Only the table is
+ * drawn for members who have not raced (`rankingWithEverybody`), which is what makes the season worth
+ * offering before its first result (PDL, 26.09.2026 and 18.10.2026).
+ */
+export function seasonsOfTheTable(results: Result[], today: string): number[] {
+  const next = nextSeasonOnOffer(today)
+
+  return [...new Set([...(next === null ? [] : [next]), ...seasonsOnOffer(results, today)])].sort(
+    (left, right) => right - left,
+  )
 }
 
 export function addToTotals(totals: Totals, result: Result): Totals {

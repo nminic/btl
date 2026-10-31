@@ -10,10 +10,10 @@ import {
   categoriesOf,
   rankingFor,
   rankingWithEverybody,
-  seasonsOnOffer,
+  seasonsOfTheTable,
   categoryLabelIn,
 } from '../data/derive'
-import { seasonShown } from '../data/season'
+import { nextSeasonOnOffer, seasonShown } from '../data/season'
 import { offeredSeason } from '../components/season'
 import type { Competitor, Gender, Result } from '../data/types'
 import { combinePair, useCompetitors, useResults } from '../data/useResource'
@@ -59,8 +59,9 @@ function Standing({
   const linkTo = useProfileLink()
 
   /* No season before the league's first (owner, 10.10.2026: „Ne postoje obracuni liga"
-     before 2027), and always the one this screen opens on (`seasonsOnOffer`). */
-  const seasons = useMemo(() => seasonsOnOffer(results, today), [results, today])
+     before 2027), always the one this screen opens on, and from 11 November the one that has not begun
+     (`seasonsOfTheTable`, which is `seasonsOnOffer` and `nextSeasonOnOffer`). */
+  const seasons = useMemo(() => seasonsOfTheTable(results, today), [results, today])
 
   /* The season this screen opens on when the address names none, worked out
      apart from the season being read. The shared control needs both: it writes a
@@ -73,6 +74,7 @@ function Standing({
      the men or of the women, whichever list was open, until the running one had
      three people in it, so the table opened on 2019. */
   const fallback = seasonShown(today)
+  const notBegun = nextSeasonOnOffer(today)
 
   /* Held against what is on offer, so `?sezona=2019` in an address shows this season
      and not a table the control cannot name (`offeredSeason`). */
@@ -89,20 +91,26 @@ function Standing({
    * quietly rewrites who came third in a season already run. */
   const field = competitors
 
-  /* EVERY MEMBER IN THE SEASON SHOWN AS THE RUNNING ONE, AND ONLY THE RACED IN ANY OTHER (PDL P7,
-     owner, 18.10.2026: „tabela sezone prikazuje svakog člana sa važećom članarinom za tu sezonu, i
-     bez ijedne trke, ispod onih koji imaju bodove", clarified the same day as the season shown as the
-     running one, „Ovo je samo sada bitno"). `fallback` is that season: `seasonShown(today)`, which
-     is 2027 until 2027 is over. Read off the same value the control opens on, so the table that
-     opens and the table that carries everybody cannot be two different seasons. */
+  /* EVERY MEMBER IN THE SEASON SHOWN AS THE RUNNING ONE AND IN THE ONE THAT HAS NOT BEGUN, AND ONLY THE
+     RACED IN ANY EARLIER ONE (PDL P7, owner, 18.10.2026: „tabela sezone prikazuje svakog člana sa
+     važećom članarinom za tu sezonu, i bez ijedne trke, ispod onih koji imaju bodove", clarified the
+     same day as the season shown as the running one, „Ovo je samo sada bitno", and of the next one:
+     „2028 ce tek od [11.11] moci da se izabere i da se puni novoprijavljenim / uplacenim
+     takmicarima"). `fallback` is the season shown: `seasonShown(today)`, which is 2027 until 2027 is
+     over. Read off the same value the control opens on, so the table that opens and the table that
+     carries everybody cannot be two different seasons. **And the one that has not begun** is on the
+     list from 11 November (`nextSeasonOnOffer`) and before 1 January it has no result at all, so
+     drawn like a frozen season it would be empty whoever had paid for it. Named by those two and not
+     by „from the shown one on", so that no other season is ever drawn this way. A frozen one stays
+     as it was: a member with no race is not placed in a season that has been run. */
   const rows = useMemo(
     () =>
-      (season === fallback ? rankingWithEverybody : rankingFor)(field, results, {
+      (season === fallback || season === notBegun ? rankingWithEverybody : rankingFor)(field, results, {
         season,
         gender,
         categoryCode: category,
       }),
-    [field, results, season, fallback, gender, category],
+    [field, results, season, fallback, notBegun, gender, category],
   )
 
   /* No sentence under the heading (owner, 04.08.2026). It said that the 2027
