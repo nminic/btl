@@ -146,13 +146,17 @@ class MySeasonToPayForTest {
 	}
 
 	/**
-	 * OUTSIDE THE WINDOW NOBODY ENTERS A TEAM, SO NOBODY OWES A SENTENCE: the answer is null even
-	 * for the member who holds only the season being run, who is the one it names inside.
+	 * OUTSIDE THE WINDOW NOBODY ENTERS A TEAM, SO NOBODY OWES A SENTENCE.
+	 *
+	 * <p>The member asked is the one who holds only 2028: outside the window the season on sale is
+	 * the one being run (2027), which he does NOT hold, so a version without the window would name
+	 * it. The member who holds 2027 would be null either way and could not tell the two apart.
 	 */
 	@Test
 	void outsideTheWindowNobodyOwesAnything() throws Exception {
 		clock.moveTo(OUTSIDE_THE_WINDOW);
 
+		assertThat(owedBy(HOLDS_ONLY_THE_NEXT).isNull()).isTrue();
 		assertThat(owedBy(HOLDS_ONLY_THE_ONE_BEING_RUN).isNull()).isTrue();
 	}
 
