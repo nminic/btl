@@ -6,7 +6,9 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * THE MOST POINTS A MEMBER HAS TAKEN IN ANY ONE OFFICIAL SEASON.
@@ -40,6 +42,23 @@ import java.util.Map;
  * who paid in October for the next season ran the rest of the running one as nobody's member. The
  * join is the same condition {@link ResultApi} serves as {@code inItsSeason}, which is what the
  * screens count a season by, so the two sides cannot disagree about which runs a season holds.
+ * A season he holds WITHOUT the right to rank in it (activated after 31 March, PDL 28.10.2026) is a
+ * season he was a member in, and it counts: PDL, 30.10.2026, „Sprovođenje „bez prava rangiranja",
+ * odgovori pre izrade": „Njegovi bodovi se računaju u prag od 12 bodova koji zatvara početničku
+ * kategoriju (izabrao uz moju preporuku)." So the join asks for a membership and never whether it ranks.
+ *
+ * <p><b>A FROZEN SEASON IS COUNTED AT ITS FREEZE, AND NOTHING WRITTEN INTO IT AFTERWARDS MOVES THE
+ * RIGHT.</b> PDL, owner, 30.10.2026, „Prag od 12 bodova koji zatvara početničku broji bodove sezone u
+ * trenutku njenog zamrzavanja": „Dakle mora u trenutku zamrzavanja sezone da ima 12 bodova da bi presla u
+ * starosnu trajno (odnosno izgubila izbor da bude Pocetnik)." A season that has been frozen
+ * ({@code season_frozen}, V83, written by {@link ASeasonFreezes}) is read off
+ * {@code season_points_at_freeze} and not off {@code result}, so a result the league enters, changes or
+ * deletes in it afterwards, an approval after 16:00, a member deleting his own run of it, or a race or an
+ * event deleted with its results, leaves the right exactly as the freeze found it. A member with no row
+ * there had no points in it at the freeze. A season not frozen yet, or frozen and not snapshotted yet
+ * (the job runs at 16:00 and again every hour until it has), is read live, which is the decision of
+ * 26.09.2026 for every season before its freeze.
+ *
  * <p><b>The season a result belongs to is the year its RACE was run in</b>, and that is
  * read off {@code result.race_date} rather than joined to the race. The column is on the
  * row by a composite reference to {@code (race.id, race.date)} with
@@ -66,8 +85,9 @@ import java.util.Map;
  * counted again ({@code RaceWriteApi}, PDL P4, the owner's decision of 20.09.2026) - so a
  * season already over the threshold almost always finishes over it, and waiting for the
  * year to end would leave that next season's category open to somebody who has plainly
- * left it. Where the points DO go down the answer goes down with them, because nothing
- * here is stored: the right opens again exactly as it closed. The member is told when an
+ * left it. Where the points DO go down before the freeze the answer goes down with them,
+ * because nothing of a season not frozen is stored: the right opens again exactly as it
+ * closed. After the freeze it does not (see above). The member is told when an
  * approval closes it ({@code VerificationWriteApi}), and since the owner's answers of
  * 10.10.2026 (PDL P4) when a correction of a race closes it or opens it again
  * ({@code RaceWriteApi}); a deletion of his own run says nothing about the category. This
@@ -141,10 +161,39 @@ class BestOfficialSeason {
 	 * note on this class). {@code membership_one_a_season} is the member and the season, so the join
 	 * is one row per result or none, and never two. Nothing before {@link SeasonClock#FIRST_SEASON}.
 	 *
+	 * <p><b>A SEASON THAT HAS BEEN FROZEN IS ITS POINTS AT THE FREEZE</b> (see the note on this class): its
+	 * live totals are taken out for every member and what {@code season_points_at_freeze} holds is put in
+	 * their place, so a member with no row there has nothing in that season.
+	 *
 	 * @param onlyOf {@code competitor.id} of the one member asked about, or null for everybody
-	 * @return per member, the total of each official season he holds a membership of and has run in
+	 * @return per member, the total of each official season he holds a membership of and has run in, at
+	 *         its freeze for a season that has been frozen
 	 */
 	Map<Long, Map<Integer, BigDecimal>> totals(Long onlyOf) {
+		Map<Long, Map<Integer, BigDecimal>> totals = live(onlyOf);
+
+		Set<Integer> frozen = new HashSet<>(db.sql("select season from season_frozen").query(Integer.class).list());
+
+		totals.values().forEach(seasons -> seasons.keySet().removeAll(frozen));
+
+		db.sql("select competitor_id, season, points from season_points_at_freeze"
+						+ " where cast(:onlyOf as bigint) is null or competitor_id = cast(:onlyOf as bigint)")
+				.param("onlyOf", onlyOf)
+				.query((row, one) -> totals.computeIfAbsent(row.getLong(1), any -> new HashMap<>())
+						.put(row.getInt(2), row.getBigDecimal(3)))
+				.list();
+
+		return totals;
+	}
+
+	/**
+	 * THE TOTAL OF EVERY OFFICIAL SEASON AS THE ROWS OF {@code result} HOLD IT NOW, frozen or not: what a
+	 * season not frozen is read from, and what {@link ASeasonFreezes} writes down at the freeze. One text
+	 * for both, so the snapshot and the live answer cannot disagree about which runs a season holds.
+	 *
+	 * @param onlyOf {@code competitor.id} of the one member asked about, or null for everybody
+	 */
+	Map<Long, Map<Integer, BigDecimal>> live(Long onlyOf) {
 		Map<Long, Map<Integer, BigDecimal>> totals = new HashMap<>();
 
 		db.sql("select r.competitor_id, cast(extract(year from r.race_date) as integer), sum(r.points)"

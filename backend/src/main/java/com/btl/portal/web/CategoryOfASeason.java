@@ -41,8 +41,11 @@ import java.util.TreeMap;
  * because nothing here writes {@code season_competitor} (V17) yet. The wish of a season cannot be written
  * after 1 January of it at 10:00 ({@link SeasonClock#categoryMayBeChosenFor}), a wish of a later season
  * cannot change it (the latest row NOT AFTER it), the band of a season is a function of the season, and the
- * right reads only seasons before it. What can still move it is a correction of a race or a cancellation in
- * a season before it; that is the boundary until the freeze writes its snapshot.
+ * right reads only seasons before it, each frozen one at its freeze ({@link BestOfficialSeason}, PDL
+ * 30.10.2026, „Prag od 12 bodova koji zatvara početničku broji bodove sezone u trenutku njenog
+ * zamrzavanja"). What can still
+ * move it is a write into a season before it that is not frozen yet, or frozen and not snapshotted yet
+ * ({@link ASeasonFreezes} names that boundary).
  */
 @Component
 class CategoryOfASeason {

@@ -170,7 +170,8 @@ import java.util.stream.Stream;
  * <p><b>THE BOUNDARY OF A FROZEN SEASON, said here rather than left to be found.</b> The snapshot of
  * a frozen season does not exist yet (PDL P9, [GRANICA, izmereno 18.10.2026], ADL A37): every table
  * is worked out live from {@code result}, so a write into a season after its freeze would still
- * move that season's live tables and the category {@link BestOfficialSeason} works out. No season
+ * move that season's live tables. It no longer moves the category {@link BestOfficialSeason} works
+ * out: since V83 that reads a frozen season at its freeze ({@link ASeasonFreezes}). No season
  * is frozen before 01.01.2028 at 16:00, and the snapshot has to exist before then. Nothing here
  * builds it.
  *

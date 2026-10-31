@@ -635,6 +635,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"season_competitor.season_competitor_fk set null",
 				"season_league_standing.season_league_standing_competitor_fk set null",
 				"season_league_standing.season_league_standing_league_fk set null",
+				/* V83. What a member held in a frozen season goes with him: a deleted member has no
+				   category to work out, and V79 keeps only the rows of money. The season it was frozen
+				   in is never deleted while points of it stand. */
+				"season_points_at_freeze.season_points_at_freeze_competitor_fk cascade",
+				"season_points_at_freeze.season_points_at_freeze_season_fk restrict",
 				"season_team.season_team_fk set null",
 				/* V24. Both CASCADE: nothing writes to this table yet (no page uses `includes`
 				   today), and a page that takes another in, or is taken in, is not a person -
