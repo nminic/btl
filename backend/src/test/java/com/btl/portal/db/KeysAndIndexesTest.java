@@ -261,6 +261,14 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("category_wish_pk", false,
 					"the member and the season together: one wish per member per season, read by the member"),
 
+			/* V83. The freeze of a season is one row per season, taken with ON CONFLICT DO NOTHING,
+			   and a deferrable key is no ON CONFLICT arbiter; what a member held in it is one row per
+			   season and member, read by the season the job wrote. */
+			new Key("season_frozen_pk", false,
+					"one freeze per season, the arbiter of the job's ON CONFLICT DO NOTHING"),
+			new Key("season_points_at_freeze_pk", false,
+					"the season and the member together: one total per member per frozen season"),
+
 			/* V22 made the member and the year the whole key, and V79 had to stop: a membership now
 			   outlives its member without a pointer at him (PDL, 29.10.2026), and a primary key cannot
 			   hold a null. So the shape is `payment`'s - a surrogate, and the pair beside it - and the
@@ -422,6 +430,9 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Index("race_date_idx", "the races of one day, which is what a season and a league read"),
 			new Index("result_competitor_race_date_idx", "ADL A12, 2c, in as many words: the results of one member "
 					+ "by the day of the race"),
+			new Index("season_points_at_freeze_competitor_idx", "what one member held at each freeze, which"
+					+ " is how his right is read for him alone, and the other end of"
+					+ " season_points_at_freeze_competitor_fk"),
 			new Index("result_race_idx", "the results of one race, and the other end of result_race_fk, which is "
 					+ "over two columns and so is this"),
 			new Index("attending_competitor_idx", "the events one member said he is going to"),

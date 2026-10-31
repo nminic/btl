@@ -716,7 +716,12 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   82 and no other: main stood at V81 on 30.10.2026 (2b25a7d1) and no branch of the remote held V82.
 
 			   Pinned LAST, when the file was final, off this very assertion. */
-			new Applied("82", "V82__a_change_of_basis_keeps_the_day_the_season_was_first_activated.sql", 1982317120));
+			new Applied("82", "V82__a_change_of_basis_keeps_the_day_the_season_was_first_activated.sql", 1982317120),
+
+			/* V83. The threshold of twelve counts a frozen season at its freeze: `season_frozen` and
+			   `season_points_at_freeze`, written by the first piece of the 1 January job (PDL 30.10.2026).
+			   83 and no other: main stood at V82 on 31.10.2026 (4d712ebb) and no branch of the remote held V83. */
+			new Applied("83", "V83__the_threshold_of_a_frozen_season_is_its_points_at_the_freeze.sql", -99725440));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
