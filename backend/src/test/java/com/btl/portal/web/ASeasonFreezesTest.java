@@ -140,9 +140,13 @@ class ASeasonFreezesTest {
 		assertThat(db.sql("select frozen_at from season_frozen where season = 2027").query(Timestamp.class).single().toInstant())
 				.isEqualTo(LocalDateTime.of(2028, 1, 1, 16, 0).atZone(BELGRADE).toInstant());
 
-		freezeAt(2029, 1, 1, 16, 0);
+		/* And a job that runs late writes the moment it ran, which is the moment the snapshot is of
+		   (the boundary `ASeasonFreezes` names), never 16:00 written as if it had run then. */
+		freezeAt(2029, 1, 2, 9, 30);
 
 		assertThat(frozenSeasons()).containsExactly(2027, 2028);
+		assertThat(db.sql("select frozen_at from season_frozen where season = 2028").query(Timestamp.class).single().toInstant())
+				.isEqualTo(LocalDateTime.of(2029, 1, 2, 9, 30).atZone(BELGRADE).toInstant());
 	}
 
 	/**
