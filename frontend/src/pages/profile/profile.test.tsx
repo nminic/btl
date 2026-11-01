@@ -563,6 +563,21 @@ describe('the season, over both parts of the profile', () => {
     expect(screen.queryByText('Ovaj takmičar još nema nijedan pehar.')).not.toBeInTheDocument()
   })
 
+  /* The awards part holds the year from the address against its list exactly as the overview
+     does, and since 02.11.2026 that list is only the years with results, so the hold decides
+     something there too. A select shows its first option for a value it does not carry, so the
+     control alone would read „sve" while the trophies below were narrowed to the year asked for
+     (review of PR 670, round 2). Read at once after the heading, so a wrong page fails on the words. */
+  it('reads the trophies in all of them when the address names a year the member never raced', async () => {
+    renderAt('/sr/takmicar/000001/priznanja?sezona=1999')
+
+    await screen.findByRole('heading', { level: 1 })
+
+    expect(selectElement(screen.getByLabelText('Godina')).value).toBe('sve')
+    expect(screen.getByRole('table', { name: 'Pehari' })).toBeVisible()
+    expect(screen.queryByText('U izabranoj sezoni nije osvojen nijedan pehar.')).not.toBeInTheDocument()
+  })
+
   it('opens on all of them, which is what a profile is', async () => {
     /* Owner, 31.07.2026. A profile is somebody's whole running life, and the
        question it answers first is what they have done rather than what they
