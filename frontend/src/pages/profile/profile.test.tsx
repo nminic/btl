@@ -192,7 +192,7 @@ describe('what a competitor has won', () => {
 describe('clearing the filters', () => {
   it('puts the reader back on the season the profile opens on', async () => {
     const user = setupUser()
-    renderAt('/sr/takmicar/000007?sezona=2010&duzina=marathon')
+    renderAt('/sr/takmicar/000007?sezona=2014&duzina=half')
 
     expect(await screen.findByText(/nema nijednog rezultata/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Poništi filtere' }))
@@ -424,7 +424,7 @@ describe('the address stays as short as it can be', () => {
     const { router } = renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
-    const season = selectElement(screen.getByLabelText('Sezona'))
+    const season = selectElement(screen.getByLabelText('Godina'))
     const another = must(at(within(season).getAllByRole('option'), 1).getAttribute('value'), 'value')
 
     /* All of them is the default (owner, 31.07.2026), so the bare address is
@@ -498,10 +498,10 @@ describe('an empty table says which of the four kinds of nothing it is', () => {
   })
 
   it('names both where both are chosen', async () => {
-    renderAt('/sr/takmicar/000002?sezona=2010&duzina=ultra')
+    renderAt('/sr/takmicar/000002?sezona=2018&duzina=ultra')
 
     expect(
-      await screen.findByText('Za izabranu sezonu i distancu nema nijednog rezultata.'),
+      await screen.findByText('Za izabranu godinu i distancu nema nijednog rezultata.'),
     ).toBeVisible()
   })
 })
@@ -571,7 +571,7 @@ describe('the season, over both parts of the profile', () => {
 
     await screen.findByRole('heading', { level: 1 })
 
-    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('sve')
+    expect(selectElement(screen.getByLabelText('Godina')).value).toBe('sve')
   })
 
   it('will not take a year that only looks like one', async () => {
@@ -582,21 +582,54 @@ describe('the season, over both parts of the profile', () => {
 
     await screen.findByRole('heading', { level: 1 })
 
-    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('sve')
+    expect(selectElement(screen.getByLabelText('Godina')).value).toBe('sve')
   })
 
   /* The choice travels between the two parts of one profile, because it lives
      in the address and every link in the control carries the query. */
   it('keeps the season chosen while moving between the two parts', async () => {
     const user = setupUser()
-    renderAt('/sr/takmicar/000001?sezona=2019')
+    /* A year 000001 has results in, as the history is played here: a year without any is not
+       offered on the profile at all (owner, 02.11.2026). */
+    const year = String(inLeague(2019))
+    renderAt(`/sr/takmicar/000001?sezona=${year}`)
 
     await screen.findByRole('heading', { level: 1 })
-    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2019')
+    expect(selectElement(screen.getByLabelText('Godina')).value).toBe(year)
 
     await user.click(screen.getByRole('link', { name: 'Priznanja i nagrade' }))
 
-    expect(selectElement(await screen.findByLabelText('Sezona'))).toHaveValue('2019')
+    expect(selectElement(await screen.findByLabelText('Godina'))).toHaveValue(year)
+  })
+})
+
+describe('the years a profile offers', () => {
+  /* The history as the files carry it, not moved into league seasons: the question is which
+     calendar years a person ran in. */
+  /* Owner, 02.11.2026: a year with no result „ne treba da se pojavi kao opcija za tog takmicara u
+     njegovoj listi". Read in 2027, when the running year is one 000002 has nothing in, so a list
+     that still added the running year would carry it. */
+  it('offers only the years the member has results in, not the running one', async () => {
+    renderAt('/sr/takmicar/000002', 'visitor', null, undefined, '2027-06-01')
+
+    await screen.findByRole('heading', { level: 1 })
+    const offered = within(selectElement(screen.getByLabelText('Godina')))
+      .getAllByRole('option')
+      .map((option) => option.getAttribute('value'))
+
+    expect(offered).toEqual(['sve', '2026', '2021', '2020', '2019', '2018', '2017', '2016', '2015'])
+  })
+
+  /* And a year an address names is no exception: 000002 has nothing in 2010, so the profile opens
+     on all of them rather than on an empty year it would have to add to the list. */
+  it('opens on all of them when the address names a year without results', async () => {
+    renderAt('/sr/takmicar/000002?sezona=2010')
+
+    await screen.findByRole('heading', { level: 1 })
+    const picker = selectElement(screen.getByLabelText('Godina'))
+
+    expect(picker.value).toBe('sve')
+    expect(within(picker).queryByRole('option', { name: '2010' })).not.toBeInTheDocument()
   })
 })
 
