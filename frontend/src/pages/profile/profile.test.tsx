@@ -553,8 +553,9 @@ describe('the season, over both parts of the profile', () => {
     /* One control at the top of the page governs the results and the trophies
        alike (owner, 31.07.2026). 000001 has trophies, but not in every season,
        so a season without one has to say that rather than that there are none
-       at all. */
-    renderAt(`/sr/takmicar/000001/priznanja?sezona=${String(inLeague(2010))}`)
+       at all. A season he raced in, since a profile offers no other (owner,
+       02.11.2026): he has results in 2020 and no trophy from it. */
+    renderAt(`/sr/takmicar/000001/priznanja?sezona=${String(inLeague(2020))}`)
 
     expect(
       await screen.findByText('U izabranoj sezoni nije osvojen nijedan pehar.'),
@@ -631,6 +632,31 @@ describe('the years a profile offers', () => {
 
     expect(picker.value).toBe('sve')
     expect(within(picker).queryByRole('option', { name: '2010' })).not.toBeInTheDocument()
+    /* And what is below the control is all of them too. A select shows its first option for a
+       value it does not carry, so the control alone would read „sve" while the table below was
+       read in 2010 and stood empty (review of PR 670). */
+    expect(screen.getByRole('table', { name: 'Rezultati' })).toBeVisible()
+    expect(screen.queryByText(/nema nijednog rezultata/i)).not.toBeInTheDocument()
+  })
+
+  /* The awards part stands under the same control, so it offers the same years: a list of its own
+     added the running year, and a year chosen there was lost on the way to the overview (review of
+     PR 670; owner, 31.07.2026: „ono što se odabere ostaje dok se prelazi između dva taba"). */
+  it('offers the same years on the awards part, and a year chosen there survives the way across', async () => {
+    const user = setupUser()
+    renderAt('/sr/takmicar/000002/priznanja?sezona=2019', 'visitor', null, undefined, '2027-06-01')
+
+    await screen.findByRole('heading', { level: 1 })
+    const offered = within(selectElement(screen.getByLabelText('Godina')))
+      .getAllByRole('option')
+      .map((option) => option.getAttribute('value'))
+
+    expect(offered).toEqual(['sve', '2026', '2021', '2020', '2019', '2018', '2017', '2016', '2015'])
+    expect(selectElement(screen.getByLabelText('Godina')).value).toBe('2019')
+
+    await user.click(screen.getByRole('link', { name: 'Pregled' }))
+
+    expect(selectElement(await screen.findByLabelText('Godina'))).toHaveValue('2019')
   })
 })
 

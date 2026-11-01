@@ -11,7 +11,7 @@ import { useColumns, useGrowing } from '../components/growing'
 import { LoadMore } from '../components/LoadMore'
 import { earnedDucats } from '../data/ducatEarned'
 import { unitFor, type Ducat } from '../data/ducatRule'
-import { pairsNow } from '../data/derive'
+import { pairsNow, resultsOf, seasonsWithResults } from '../data/derive'
 import type { Competitor, RacingPair } from '../data/types'
 import { formatNumber, formatPoints, wholePeriod } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
@@ -32,7 +32,7 @@ import {
   useTeams,
 } from '../data/useResource'
 import { awardsOf } from './profile/awards'
-import { ALL_SEASONS, offeredSeason, seasonOptions, useSeason } from '../components/season'
+import { ALL_SEASONS, offeredSeason, useSeason } from '../components/season'
 import { ProfileTop } from './profile/ProfileHead'
 import './Profile.css'
 
@@ -190,9 +190,14 @@ function AwardsFor({
      The ducats below are not narrowed and cannot be: a ducat is won over a
      career and carries no season, which is the same reason the note above the
      two sections says what it says. */
+  /* The same years the overview offers, and from the same answer: the years this person has
+     results in (owner, 02.11.2026: a year without any „ne treba da se pojavi kao opcija"). One list
+     for both parts is what keeps a year chosen on one part chosen on the other (owner, 31.07.2026:
+     „ono što se odabere ostaje dok se prelazi između dva taba"); a list of its own here offered the
+     running year, which the overview no longer does, and lost the choice on the way across. */
   const seasons = useMemo(
-    () => seasonOptions([...new Set(all.map((one) => one.season))], asked, today),
-    [all, asked, today],
+    () => seasonsWithResults(resultsOf(results, competitor.memberNumber)),
+    [results, competitor.memberNumber],
   )
   /* Held against the list before anything is read in it, so the control and the
      trophies below it cannot show two different years. */
