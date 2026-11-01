@@ -301,6 +301,8 @@ export function ProfileTop({
    *  changes nothing on the screen it stands on is worse than none (the note on `ProfileParts`). */
   season?: string
 }) {
+  const { t } = useI18n()
+
   return (
     <div className="profile__top">
       <ProfileHead competitor={competitor} team={team} competitors={competitors} pairs={pairs} />
@@ -322,7 +324,7 @@ export function ProfileTop({
         <ProfileParts competitor={competitor} />
         {season !== undefined && (
           <div className="rankings__head-tool profile__season">
-            <SeasonPicker seasons={seasons} season={season} />
+            <SeasonPicker seasons={seasons} season={season} label={t('profile.year')} />
           </div>
         )}
       </div>

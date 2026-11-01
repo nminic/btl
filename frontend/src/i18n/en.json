@@ -729,6 +729,7 @@
     "feeExempt": "Exempt from the fee",
     "noTeam": "No team",
     "allTime": "All",
+    "year": "Year",
     "totals": "Totals",
     "races": "Races",
     "kilometers": "Kilometres",
@@ -752,7 +753,7 @@
     },
     "notFound": "There is no such profile.",
     "byCategory": "Races by distance",
-    "noneInFilter": "There is no result for the chosen season and distance.",
+    "noneInFilter": "There is no result for the chosen year and distance.",
     "racesWord": {
       "one": "race",
       "few": "races",
@@ -798,7 +799,6 @@
       "marathon": "42.2 km",
       "ultra": "Ultra"
     },
-    "noneInSeason": "There is no result at all in season {season}.",
     "noneInLength": "There is no result of the chosen distance.",
     "clearFilters": "Clear the filters",
     "parts": {

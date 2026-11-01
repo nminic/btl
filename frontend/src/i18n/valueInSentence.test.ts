@@ -494,7 +494,6 @@ describe('a sentence with a value put into it', () => {
       'profile.inTeam',
       'profile.memberNumberLabel',
       'profile.memberSince',
-      'profile.noneInSeason',
       'profile.racesWord',
       'profile.showingDucats',
       'profile.showingResults',
