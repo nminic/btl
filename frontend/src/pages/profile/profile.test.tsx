@@ -500,9 +500,10 @@ describe('an empty table says which of the four kinds of nothing it is', () => {
   it('names both where both are chosen', async () => {
     renderAt('/sr/takmicar/000002?sezona=2018&duzina=ultra')
 
-    expect(
-      await screen.findByText('Za izabranu godinu i distancu nema nijednog rezultata.'),
-    ).toBeVisible()
+    /* Waited on the button that stands beside every empty table, then the sentence is read at
+       once: a wrong sentence fails here on the words, not on the clock of the case. */
+    await screen.findByRole('button', { name: 'Poništi filtere' })
+    expect(screen.getByText('Za izabranu godinu i distancu nema nijednog rezultata.')).toBeVisible()
   })
 })
 
