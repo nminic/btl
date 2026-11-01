@@ -309,7 +309,7 @@ function ProfileBody({
 
         {shown.length === 0 ? (
           <div className="profile__results-empty">
-            <p>{emptyText(t, mine.length, season, length)}</p>
+            <p>{emptyText(t, mine.length, season)}</p>
             {(season !== ALL_SEASONS || length !== ALL_LENGTHS) && (
               <button
                 type="button"
@@ -422,7 +422,6 @@ function emptyText(
   t: (key: string, params?: Record<string, string | number>) => string,
   raced: number,
   season: string,
-  length: string,
 ): string {
   if (raced === 0) {
     /* Written without a gender, unlike the biography above it. The portal has
