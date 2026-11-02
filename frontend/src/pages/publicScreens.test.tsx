@@ -2145,7 +2145,7 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
-    const season = selectElement(screen.getByLabelText('Sezona'))
+    const season = selectElement(screen.getByLabelText('Godina'))
     const years = within(season)
       .getAllByRole('option')
       .map((one) => Number(one.getAttribute('value')))
@@ -2199,14 +2199,14 @@ describe('CompetitorProfile', () => {
       'rankings--tooled',
     )
 
-    expect(within(top).getAllByLabelText('Sezona')).toHaveLength(1)
+    expect(within(top).getAllByLabelText('Godina')).toHaveLength(1)
     /* Not inside either of the other two, which is what lets one grid put it in
        either row without drawing it twice. */
     expect(
-      within(must(heading.parentElement, 'a parent')).queryByLabelText('Sezona'),
+      within(must(heading.parentElement, 'a parent')).queryByLabelText('Godina'),
     ).not.toBeInTheDocument()
     expect(
-      within(screen.getByRole('navigation', { name: 'Delovi profila' })).queryByLabelText('Sezona'),
+      within(screen.getByRole('navigation', { name: 'Delovi profila' })).queryByLabelText('Godina'),
     ).not.toBeInTheDocument()
     expect(screen.queryByText(/Sezona se bira jednom/)).not.toBeInTheDocument()
   })
@@ -2267,20 +2267,23 @@ describe('CompetitorProfile', () => {
        are (CompetitorProfile.tsx). */
     const all = Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))
 
-    await user.selectOptions(screen.getByLabelText('Sezona'), '2020')
+    await user.selectOptions(screen.getByLabelText('Godina'), '2020')
     expect(Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))).toBeLessThan(all)
 
-    await user.selectOptions(screen.getByLabelText('Sezona'), 'sve')
+    await user.selectOptions(screen.getByLabelText('Godina'), 'sve')
     expect(Number(must(document.querySelector('.profile__count')?.textContent, 'the count beside the heading'))).toBe(all)
   })
 
-  it('shows a season from the address that this person has nothing in', async () => {
-    /* The select is built from the seasons they raced, so a season named in the
-       address matched no option and the control drew itself empty. */
+  it('opens on all of them when the address names a year this person has nothing in', async () => {
+    /* The select is built from the years they raced. It used to add the year the address named,
+       so the control could show an empty year; since 02.11.2026 a year without results is not
+       offered at all (owner: „Ne treba da se pojavi kao opcija za tog takmicara u njegovoj
+       listi"), and the address falls back to all of them. */
     renderAt('/sr/takmicar/000007?sezona=2010')
 
     await screen.findByRole('heading', { level: 1 })
-    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2010')
+    expect(selectElement(screen.getByLabelText('Godina')).value).toBe('sve')
+    expect(screen.getByRole('table', { name: 'Rezultati' })).toBeVisible()
   })
 
   it('names the race a result was run in, not the event it belonged to', async () => {
@@ -2356,7 +2359,7 @@ describe('CompetitorProfile', () => {
     expect(await screen.findByRole('heading', { name: /^Pehari \d+$/ })).toBeVisible()
     /* The season control stands on this part too, and narrows it (owner,
        31.07.2026): one choice at the top of the page governs both. */
-    expect(screen.getByLabelText('Sezona')).toBeVisible()
+    expect(screen.getByLabelText('Godina')).toBeVisible()
 
     await user.click(screen.getByRole('link', { name: 'Pregled' }))
     expect(await screen.findByRole('region', { name: 'Zbirna statistika' })).toBeVisible()
@@ -2504,11 +2507,13 @@ describe('CompetitorProfile', () => {
   }, SLOW)
 
   it('says which of the four kinds of nothing it is', async () => {
-    /* Never raced at all is a different fact from raced but not this season, and
-       a reader told the wrong one goes looking for a fault. */
-    renderAt('/sr/takmicar/000007?sezona=2010')
+    /* Never raced at all is a different fact from raced but not at this distance in this year, and
+       a reader told the wrong one goes looking for a fault. A year is offered only where there are
+       results (owner, 02.11.2026), so a chosen year is empty only with a distance: 000007 ran in
+       2019 and never ran a half marathon. */
+    renderAt('/sr/takmicar/000007?sezona=2019&duzina=half')
 
-    expect(await screen.findByText('U sezoni 2010. nema nijednog rezultata.')).toBeVisible()
+    expect(await screen.findByText('Za izabranu godinu i distancu nema nijednog rezultata.')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Poništi filtere' })).toBeVisible()
   })
 
@@ -2593,9 +2598,9 @@ describe('CompetitorProfile', () => {
        and the first year on offer is all of them. */
     renderAt('/sr/takmicar/000007')
 
-    const control = await screen.findByLabelText('Sezona')
+    const control = await screen.findByLabelText('Godina')
 
-    expect(within(must(control.closest('label'), 'the label around it')).getByText('Sezona')).not.toHaveClass(
+    expect(within(must(control.closest('label'), 'the label around it')).getByText('Godina')).not.toHaveClass(
       'visually-hidden',
     )
     expect(within(control).getAllByRole('option').map((one) => one.textContent)[0]).toBe('Sve')
