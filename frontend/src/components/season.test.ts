@@ -1,4 +1,4 @@
-import { ALL_SEASONS, offeredSeason, seasonOptions } from './season'
+import { ALL_SEASONS, offeredSeason } from './season'
 
 /* The two rules the comments in season.ts claim and nothing was holding them to:
  * that a year is four digits and not merely digits, and that the running season
@@ -30,26 +30,5 @@ describe('offeredSeason', () => {
        string while the option beside it carries the number 999. The comparison
        is on the string the option carries, which is what stops it. */
     expect(offeredSeason('0999', [2026, 999], undefined)).toBe(ALL_SEASONS)
-  })
-})
-
-describe('seasonOptions', () => {
-  it('offers the running season even when this person has nothing in it', () => {
-    /* The select opens on the running season by default, and a select cannot
-       open on an option it does not have. Somebody who last raced in 2019 would
-       otherwise land on a control showing a year that is not in its own list. */
-    expect(seasonOptions([2019, 2018], '2027', '2027-04-01')).toEqual([2027, 2019, 2018])
-  })
-
-  it('offers a season a shared link named, so the link shows what it was sent to show', () => {
-    expect(seasonOptions([2019], '2010', '2027-04-01')).toEqual([2027, 2019, 2010])
-  })
-
-  it('adds nothing for all of them at once', () => {
-    expect(seasonOptions([2019], ALL_SEASONS, '2027-04-01')).toEqual([2027, 2019])
-  })
-
-  it('never offers the same year twice', () => {
-    expect(seasonOptions([2027, 2019], '2027', '2027-04-01')).toEqual([2027, 2019])
   })
 })

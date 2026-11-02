@@ -52,27 +52,3 @@ export function useSeason(fallback: string = ALL_SEASONS): string {
 export function offeredSeason(asked: string, offered: number[], fallback: string | undefined): string {
   return offered.some((year) => String(year) === asked) ? asked : (fallback ?? ALL_SEASONS)
 }
-
-/**
- * The seasons a profile offers: the ones this person raced, the running one, and
- * whatever the address named.
- *
- * The running one is always there even when they have nothing in it, because it
- * is what the teams open on and a select cannot open on an option it does not
- * have. On a profile the default is all of them, but the running year still
- * belongs on the list: somebody looking at a profile in March wants this season
- * to be one choice away. A season named in a shared link is there for the same
- * reason: the link has to show what it was sent to show, and an empty table
- * under the right year says something true.
- */
-export function seasonOptions(raced: number[], season: string, today: string): number[] {
-  const years = new Set(raced)
-
-  years.add(Number(today.slice(0, 4)))
-
-  if (season !== ALL_SEASONS) {
-    years.add(Number(season))
-  }
-
-  return [...years].sort((left, right) => right - left)
-}

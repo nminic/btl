@@ -23,6 +23,7 @@ export function SeasonPicker({
   seasons,
   season,
   fallback,
+  label,
 }: {
   seasons: number[]
   /**
@@ -41,6 +42,10 @@ export function SeasonPicker({
    * them, which is what they want: a team is a thing of one season.
    */
   fallback?: string
+  /** What the control is called. Left out it is the season; a profile names it the year, because
+   *  it offers years whose runs count in no season (owner, 02.11.2026: „ne treba da pise SEZONA
+   *  nego GODINA ... zvanicno je prva sezona 2027"). */
+  label?: string
 }) {
   const { t } = useI18n()
   const [params, setParams] = useFilterParams()
@@ -74,7 +79,7 @@ export function SeasonPicker({
 
   return (
     <label className="rankings__field">
-      <span>{t('rankings.season')}</span>
+      <span>{label ?? t('rankings.season')}</span>
       {years}
     </label>
   )

@@ -5,7 +5,6 @@ import { memberNumberIn, redirectTo } from './profileAddress'
 import { useMemo } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
-import { useToday } from '../clock/useClock'
 import { CategoryDonut } from '../components/CategoryDonut'
 import { Loader } from '../components/Loader'
 import { Resource } from '../components/Resource'
@@ -38,7 +37,7 @@ import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../
 import { useI18n } from '../i18n/useI18n'
 import { shortBio } from './profile/bio'
 import { ProfileTop } from './profile/ProfileHead'
-import { ALL_SEASONS, offeredSeason, seasonOptions, useSeason } from '../components/season'
+import { ALL_SEASONS, offeredSeason, useSeason } from '../components/season'
 import { useFilterParams } from '../app/useFilterParams'
 import './Profile.css'
 
@@ -194,18 +193,16 @@ function ProfileBody({
 }) {
   const { locale, t } = useI18n()
   const [params, setParams] = useFilterParams()
-  const today = useToday()
   const asked = useSeason()
 
   const mine = useMemo(
     () => resultsOf(results, competitor.memberNumber),
     [results, competitor.memberNumber],
   )
-  const seasons = useMemo(() => seasonsWithResults(mine), [mine])
-  const options = useMemo(
-    () => seasonOptions(seasons, asked, today),
-    [seasons, asked, today],
-  )
+  /* Only the years this person has results in (owner, 02.11.2026: a year with none „ne treba da
+     se pojavi kao opcija za tog takmicara u njegovoj listi"). Not the running year, and not a year
+     an address names: such an address opens on all of them, through `offeredSeason`. */
+  const options = useMemo(() => seasonsWithResults(mine), [mine])
   /* Held against the list before anything is read in it, so the control and the
      table below it cannot show two different years. */
   const season = offeredSeason(asked, options, undefined)
@@ -312,7 +309,7 @@ function ProfileBody({
 
         {shown.length === 0 ? (
           <div className="profile__results-empty">
-            <p>{emptyText(t, mine.length, season, length)}</p>
+            <p>{emptyText(t, mine.length, season)}</p>
             {(season !== ALL_SEASONS || length !== ALL_LENGTHS) && (
               <button
                 type="button"
@@ -417,14 +414,14 @@ function ProfileBody({
   )
 }
 
-/** Which of the four sentences an empty table gets. Never raced at all is a
- *  different fact from raced but not this season, and a reader who is told the
- *  wrong one goes looking for a fault. */
+/** Which of the three sentences an empty table gets. Never raced at all is a
+ *  different fact from raced but not at this distance, and a reader who is told the
+ *  wrong one goes looking for a fault. A year is offered only where there are results
+ *  (owner, 02.11.2026), so a chosen year is empty only together with a distance. */
 function emptyText(
   t: (key: string, params?: Record<string, string | number>) => string,
   raced: number,
   season: string,
-  length: string,
 ): string {
   if (raced === 0) {
     /* Written without a gender, unlike the biography above it. The portal has
@@ -434,13 +431,7 @@ function emptyText(
     return t('profile.noResults')
   }
 
-  if (season !== ALL_SEASONS && length !== ALL_LENGTHS) {
-    return t('profile.noneInFilter')
-  }
-
-  return season === ALL_SEASONS
-    ? t('profile.noneInLength')
-    : t('profile.noneInSeason', { season })
+  return season === ALL_SEASONS ? t('profile.noneInLength') : t('profile.noneInFilter')
 }
 
 /**

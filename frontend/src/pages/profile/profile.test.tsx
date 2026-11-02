@@ -192,7 +192,7 @@ describe('what a competitor has won', () => {
 describe('clearing the filters', () => {
   it('puts the reader back on the season the profile opens on', async () => {
     const user = setupUser()
-    renderAt('/sr/takmicar/000007?sezona=2010&duzina=marathon')
+    renderAt('/sr/takmicar/000007?sezona=2014&duzina=half')
 
     expect(await screen.findByText(/nema nijednog rezultata/)).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Poništi filtere' }))
@@ -424,7 +424,7 @@ describe('the address stays as short as it can be', () => {
     const { router } = renderAt('/sr/takmicar/000007')
 
     await screen.findByRole('heading', { level: 1 })
-    const season = selectElement(screen.getByLabelText('Sezona'))
+    const season = selectElement(screen.getByLabelText('Godina'))
     const another = must(at(within(season).getAllByRole('option'), 1).getAttribute('value'), 'value')
 
     /* All of them is the default (owner, 31.07.2026), so the bare address is
@@ -498,11 +498,12 @@ describe('an empty table says which of the four kinds of nothing it is', () => {
   })
 
   it('names both where both are chosen', async () => {
-    renderAt('/sr/takmicar/000002?sezona=2010&duzina=ultra')
+    renderAt('/sr/takmicar/000002?sezona=2018&duzina=ultra')
 
-    expect(
-      await screen.findByText('Za izabranu sezonu i distancu nema nijednog rezultata.'),
-    ).toBeVisible()
+    /* Waited on the button that stands beside every empty table, then the sentence is read at
+       once: a wrong sentence fails here on the words, not on the clock of the case. */
+    await screen.findByRole('button', { name: 'Poništi filtere' })
+    expect(screen.getByText('Za izabranu godinu i distancu nema nijednog rezultata.')).toBeVisible()
   })
 })
 
@@ -552,13 +553,29 @@ describe('the season, over both parts of the profile', () => {
     /* One control at the top of the page governs the results and the trophies
        alike (owner, 31.07.2026). 000001 has trophies, but not in every season,
        so a season without one has to say that rather than that there are none
-       at all. */
-    renderAt(`/sr/takmicar/000001/priznanja?sezona=${String(inLeague(2010))}`)
+       at all. A season he raced in, since a profile offers no other (owner,
+       02.11.2026): he has results in 2020 and no trophy from it. */
+    renderAt(`/sr/takmicar/000001/priznanja?sezona=${String(inLeague(2020))}`)
 
     expect(
       await screen.findByText('U izabranoj sezoni nije osvojen nijedan pehar.'),
     ).toBeVisible()
     expect(screen.queryByText('Ovaj takmičar još nema nijedan pehar.')).not.toBeInTheDocument()
+  })
+
+  /* The awards part holds the year from the address against its list exactly as the overview
+     does, and since 02.11.2026 that list is only the years with results, so the hold decides
+     something there too. A select shows its first option for a value it does not carry, so the
+     control alone would read „sve" while the trophies below were narrowed to the year asked for
+     (review of PR 670, round 2). Read at once after the heading, so a wrong page fails on the words. */
+  it('reads the trophies in all of them when the address names a year the member never raced', async () => {
+    renderAt('/sr/takmicar/000001/priznanja?sezona=1999')
+
+    await screen.findByRole('heading', { level: 1 })
+
+    expect(selectElement(screen.getByLabelText('Godina')).value).toBe('sve')
+    expect(screen.getByRole('table', { name: 'Pehari' })).toBeVisible()
+    expect(screen.queryByText('U izabranoj sezoni nije osvojen nijedan pehar.')).not.toBeInTheDocument()
   })
 
   it('opens on all of them, which is what a profile is', async () => {
@@ -571,7 +588,7 @@ describe('the season, over both parts of the profile', () => {
 
     await screen.findByRole('heading', { level: 1 })
 
-    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('sve')
+    expect(selectElement(screen.getByLabelText('Godina')).value).toBe('sve')
   })
 
   it('will not take a year that only looks like one', async () => {
@@ -582,21 +599,79 @@ describe('the season, over both parts of the profile', () => {
 
     await screen.findByRole('heading', { level: 1 })
 
-    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('sve')
+    expect(selectElement(screen.getByLabelText('Godina')).value).toBe('sve')
   })
 
   /* The choice travels between the two parts of one profile, because it lives
      in the address and every link in the control carries the query. */
   it('keeps the season chosen while moving between the two parts', async () => {
     const user = setupUser()
-    renderAt('/sr/takmicar/000001?sezona=2019')
+    /* A year 000001 has results in, as the history is played here: a year without any is not
+       offered on the profile at all (owner, 02.11.2026). */
+    const year = String(inLeague(2019))
+    renderAt(`/sr/takmicar/000001?sezona=${year}`)
 
     await screen.findByRole('heading', { level: 1 })
-    expect(selectElement(screen.getByLabelText('Sezona')).value).toBe('2019')
+    expect(selectElement(screen.getByLabelText('Godina')).value).toBe(year)
 
     await user.click(screen.getByRole('link', { name: 'Priznanja i nagrade' }))
 
-    expect(selectElement(await screen.findByLabelText('Sezona'))).toHaveValue('2019')
+    expect(selectElement(await screen.findByLabelText('Godina'))).toHaveValue(year)
+  })
+})
+
+describe('the years a profile offers', () => {
+  /* The history as the files carry it, not moved into league seasons: the question is which
+     calendar years a person ran in. */
+  /* Owner, 02.11.2026: a year with no result „ne treba da se pojavi kao opcija za tog takmicara u
+     njegovoj listi". Read in 2027, when the running year is one 000002 has nothing in, so a list
+     that still added the running year would carry it. */
+  it('offers only the years the member has results in, not the running one', async () => {
+    renderAt('/sr/takmicar/000002', 'visitor', null, undefined, '2027-06-01')
+
+    await screen.findByRole('heading', { level: 1 })
+    const offered = within(selectElement(screen.getByLabelText('Godina')))
+      .getAllByRole('option')
+      .map((option) => option.getAttribute('value'))
+
+    expect(offered).toEqual(['sve', '2026', '2021', '2020', '2019', '2018', '2017', '2016', '2015'])
+  })
+
+  /* And a year an address names is no exception: 000002 has nothing in 2010, so the profile opens
+     on all of them rather than on an empty year it would have to add to the list. */
+  it('opens on all of them when the address names a year without results', async () => {
+    renderAt('/sr/takmicar/000002?sezona=2010')
+
+    await screen.findByRole('heading', { level: 1 })
+    const picker = selectElement(screen.getByLabelText('Godina'))
+
+    expect(picker.value).toBe('sve')
+    expect(within(picker).queryByRole('option', { name: '2010' })).not.toBeInTheDocument()
+    /* And what is below the control is all of them too. A select shows its first option for a
+       value it does not carry, so the control alone would read „sve" while the table below was
+       read in 2010 and stood empty (review of PR 670). */
+    expect(screen.getByRole('table', { name: 'Rezultati' })).toBeVisible()
+    expect(screen.queryByText(/nema nijednog rezultata/i)).not.toBeInTheDocument()
+  })
+
+  /* The awards part stands under the same control, so it offers the same years: a list of its own
+     added the running year, and a year chosen there was lost on the way to the overview (review of
+     PR 670; owner, 31.07.2026: „ono što se odabere ostaje dok se prelazi između dva taba"). */
+  it('offers the same years on the awards part, and a year chosen there survives the way across', async () => {
+    const user = setupUser()
+    renderAt('/sr/takmicar/000002/priznanja?sezona=2019', 'visitor', null, undefined, '2027-06-01')
+
+    await screen.findByRole('heading', { level: 1 })
+    const offered = within(selectElement(screen.getByLabelText('Godina')))
+      .getAllByRole('option')
+      .map((option) => option.getAttribute('value'))
+
+    expect(offered).toEqual(['sve', '2026', '2021', '2020', '2019', '2018', '2017', '2016', '2015'])
+    expect(selectElement(screen.getByLabelText('Godina')).value).toBe('2019')
+
+    await user.click(screen.getByRole('link', { name: 'Pregled' }))
+
+    expect(selectElement(await screen.findByLabelText('Godina'))).toHaveValue('2019')
   })
 })
 

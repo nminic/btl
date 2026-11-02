@@ -729,6 +729,7 @@
     "feeExempt": "Oslobođen članarine",
     "noTeam": "Bez tima",
     "allTime": "Sve",
+    "year": "Godina",
     "totals": "Zbirno",
     "races": "Trka",
     "kilometers": "Kilometara",
@@ -752,7 +753,7 @@
     },
     "notFound": "Ovog profila nema.",
     "byCategory": "Trke po distanci",
-    "noneInFilter": "Za izabranu sezonu i distancu nema nijednog rezultata.",
+    "noneInFilter": "Za izabranu godinu i distancu nema nijednog rezultata.",
     "racesWord": {
       "one": "trka",
       "few": "trke",
@@ -798,7 +799,6 @@
       "marathon": "42,2 km",
       "ultra": "Ultra"
     },
-    "noneInSeason": "U sezoni {season}. nema nijednog rezultata.",
     "noneInLength": "Nema nijednog rezultata izabrane distance.",
     "clearFilters": "Poništi filtere",
     "parts": {
