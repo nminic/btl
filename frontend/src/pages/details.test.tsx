@@ -390,9 +390,10 @@ describe('LeagueDetail', () => {
        numbers in. */
     const opens = within(box).getByRole('button', { name: /Događaji i trke/ })
 
-    await setupUser().click(opens)
-    /* One line to an event since 03.11.2026, so the events are the lines of the panel this
-       button opens, read off its own `aria-controls` rather than off anything else in the box. */
+    /* Open on arrival since 03.11.2026, so nothing is pressed. One line to an event since the same
+       day, so the events are the lines of the panel this button opens, read off its own
+       `aria-controls` rather than off anything else in the box. */
+    expect(opens).toHaveAttribute('aria-expanded', 'true')
     const panel = must(
       document.getElementById(must(opens.getAttribute('aria-controls'), 'what the button opens')),
       'the panel of the box',
@@ -476,12 +477,12 @@ describe('LeagueDetail', () => {
       expect(must(toggle.parentElement, 'what the button sits in').tagName).toBe('H3')
     }
 
-    /* Pointing at something, and at something that is really there while the box is folded,
-       which is the reason the panel carries `hidden` rather than being taken out. */
+    /* Pointing at something, and at something that is really there whether the box is open or
+       folded, which is the reason the panel carries `hidden` rather than being taken out. */
     const panels = toggles.map((toggle) => {
       const id = toggle.getAttribute('aria-controls')
       expect(id).toBeTruthy()
-      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      expect(toggle).toHaveAttribute('aria-expanded', 'true')
       return must(document.getElementById(String(id)), `the panel ${id} points at`)
     })
 
@@ -498,6 +499,9 @@ describe('LeagueDetail', () => {
          `aria-controls` becomes a circle, sending a reader to where they already are, while the
          panel that actually folds carries no id at all. Measured by a review on 13.09.2026, which
          made exactly that move and watched all 2766 cases stay green. */
+      /* Open on arrival (owner, 03.11.2026), so it folds on a press, and it is the one that does. */
+      expect(panel).not.toHaveAttribute('hidden')
+      await setupUser().click(toggle)
       expect(panel, 'the element aria-controls names is not the one that folds').toHaveAttribute(
         'hidden',
       )
@@ -517,12 +521,12 @@ describe('LeagueDetail', () => {
     ).toBeVisible()
   })
 
-  it('keeps the events and races of a competition folded until somebody asks', async () => {
-    /* Owner, 13.09.2026: „pa onda ide i sekcijica DOGAĐAJI / TRKE koja se može ekspandovati tako
-       da se vide sve označene." Folded to begin with, because this screen carries every
-       competition of a season at once.
+  it('shows the events of a competition on arrival, and folds and opens them on a press', async () => {
+    /* Owner, 03.11.2026: „kutija treba da bude default otvorena (expanded), ne collapsed". Until
+       that day it was folded to begin with (owner, 13.09.2026: „sekcijica DOGAĐAJI / TRKE koja se
+       može ekspandovati").
 
-       **What is folded is read off the control and off the document, not off one of them.**
+       **What is open is read off the control and off the document, not off one of them.**
        `aria-expanded` alone would pass on a box whose content is drawn all the same, and a
        missing name alone would pass on a box with no control at all. */
     const user = setupUser()
@@ -531,31 +535,31 @@ describe('LeagueDetail', () => {
 
     const opens = await screen.findByRole('button', { name: 'Događaji i trke, RunTrace liga 2027' })
 
+    expect(opens).toHaveAttribute('aria-expanded', 'true')
+    expect(await screen.findByRole('link', { name: 'Podgorička desetka' })).toBeVisible()
+
+    await user.click(opens)
+
     expect(opens).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('link', { name: 'Podgorička desetka' })).toBeNull()
 
+    /* And it opens again on a second press, which is the half of a disclosure that a case
+       written only one way never meets. */
     await user.click(opens)
 
     expect(opens).toHaveAttribute('aria-expanded', 'true')
     expect(await screen.findByRole('link', { name: 'Podgorička desetka' })).toBeVisible()
-
-    /* And it folds again on a second press, which is the half of a disclosure that a case
-       written only one way never meets. */
-    await user.click(opens)
-
-    expect(opens).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByRole('link', { name: 'Podgorička desetka' })).toBeNull()
   }, SLOW)
 
-  it('opens the box of the competition it belongs to and of no other', async () => {
+  it('draws each box out of its own competition, and folds it alone', async () => {
     /* **Two competitions on the screen and the one asked for is the second**, which is the whole
        of this case: a box reading `leagues[0]` instead of its own competition draws RunTrace's
        eight events under Planinska's name, and every question about „is something listed" stays
        green while the screen tells a lie. Planinska has no event at all, so what its box says is
        a sentence the other box can never produce.
 
-       And the box that was not pressed stays shut: one piece of state for the whole screen would
-       open all of them together. */
+       And the box that was not pressed stays open: one piece of state for the whole screen would
+       fold all of them together. */
     const user = setupUser()
 
     renderAt('/sr/lige?sezona=2027')
@@ -565,11 +569,20 @@ describe('LeagueDetail', () => {
     })
     const other = screen.getByRole('button', { name: 'Događaji i trke, RunTrace liga 2027' })
 
+    const panel = must(
+      document.getElementById(must(mine.getAttribute('aria-controls'), 'what the button opens')),
+      'the panel of Planinska',
+    )
+
+    expect(await within(panel).findByText('Ovoj ligi još nije dodeljena nijedna trka.')).toBeVisible()
+    expect(within(panel).queryByRole('link', { name: 'Podgorička desetka' })).toBeNull()
+
     await user.click(mine)
 
-    expect(await screen.findByText('Ovoj ligi još nije dodeljena nijedna trka.')).toBeVisible()
-    expect(screen.queryByRole('link', { name: 'Podgorička desetka' })).toBeNull()
-    expect(other).toHaveAttribute('aria-expanded', 'false')
+    expect(mine).toHaveAttribute('aria-expanded', 'false')
+    expect(panel).not.toBeVisible()
+    expect(other).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('link', { name: 'Podgorička desetka' })).toBeVisible()
   }, SLOW)
 
   it('lists each event that counts in one line: its day, and the measures of its races that count', async () => {
@@ -595,13 +608,7 @@ describe('LeagueDetail', () => {
       held.find((one) => !races.some((race) => race.eventId === one.id)),
       'an event of the competition with no race of its own',
     )
-    const user = setupUser()
-
     renderAt('/sr/lige?sezona=2019')
-
-    await user.click(
-      await screen.findByRole('button', { name: `Događaji i trke, ${league.name}` }),
-    )
 
     const list = must(
       (await screen.findByRole('link', { name: 'Mrazijada' })).closest('ul'),
@@ -651,13 +658,21 @@ describe('LeagueDetail', () => {
     const races = await loadResource<Race[]>('races')
     const mraz = must(races.find((one) => one.id === 758), 'the race of Mrazijada')
     const sid = must(races.find((one) => one.id === 1088), 'the 32,4 km of Šid')
+    /* And two lengths written to more than two decimals, since no race in the file has one, so a
+       line that rounded to two or three would pass every other case (review of PR 671): the
+       marathon to the metre, and a length to the fourth decimal, which is as many as
+       `race.distance_km` keeps. Owner, 03.11.2026: „ako trka ima 7.03 km, nema skracivanja". */
     const served = [
       ...races.map((one) =>
         one.id === mraz.id
           ? { ...one, kind: 'free' }
           : one.id === sid.id
             ? { ...one, kind: 'time', limitSeconds: 86_400 }
-            : one,
+            : one.id === 1089
+              ? { ...one, distanceKm: 42.195 }
+              : one.id === 1583
+                ? { ...one, distanceKm: 7.0325 }
+                : one,
       ),
       { ...sid, id: 990_001, kind: 'length', distanceKm: 3 },
     ]
@@ -671,13 +686,7 @@ describe('LeagueDetail', () => {
     clearResourceCache('races')
 
     try {
-      const user = setupUser()
-
       renderAt('/sr/lige?sezona=2019')
-
-      await user.click(
-        await screen.findByRole('button', { name: 'Događaji i trke, Brdska liga 2019' }),
-      )
 
       const lines = within(
         must(
@@ -691,7 +700,8 @@ describe('LeagueDetail', () => {
       expect(lines).toEqual(
         expect.arrayContaining([
           'Mrazijada (5. 1. 2019.)',
-          'Šidski novogodišnji maraton (14. 1. 2019.) - 42,2 km, 24 h',
+          'Šidski novogodišnji maraton (14. 1. 2019.) - 42,195 km, 24 h',
+          'Zimski noćni polumaraton (9. 2. 2019.) - 21,1 km, 7,0325 km',
         ]),
       )
     } finally {
@@ -708,13 +718,7 @@ describe('LeagueDetail', () => {
       events.find((one) => one.slug === 'mrazijada-2019'),
       'Mrazijada, the first event of brdska-2019',
     )
-    const user = setupUser()
-
     renderAt('/sr/lige?sezona=2019')
-
-    await user.click(
-      await screen.findByRole('button', { name: 'Događaji i trke, Brdska liga 2019' }),
-    )
 
     expect(await screen.findByRole('link', { name: opening.name })).toHaveAttribute(
       'href',

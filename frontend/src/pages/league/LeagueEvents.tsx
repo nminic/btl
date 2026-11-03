@@ -36,8 +36,10 @@ import '../Leagues.css'
  * event whose races counting are all free has no dash after its day, since a dash with nothing
  * after it says nothing.
  *
- * **Folded until somebody asks.** This screen carries every competition of a season at once, and
- * three competitions of forty six events each would bury the names the reader came for. What is
+ * **Open on arrival, and folded on a press** (owner, 03.11.2026: „kutija treba da bude default
+ * otvorena (expanded), ne collapsed"). Until that day it was folded until somebody asked, on the
+ * reasoning that this screen carries every competition of a season at once; one line to an event
+ * is what made the open box short enough to stand. Each box keeps its own state. What is
  * open is said by `aria-expanded` rather than by the words on the button, which is what a
  * disclosure is; the shape is the portal's own (`app/Dropdown.tsx`, `admin/PendingQueue.tsx`):
  * a button, `aria-controls` naming the panel, and the panel carrying `hidden` rather than being
@@ -61,7 +63,7 @@ const LENGTH_AS_STORED = 4
 
 export function LeagueEvents({ league }: { league: League }) {
   const { locale, t } = useI18n()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
   const panelId = `league-counting-${league.id}`
   /* Said once and read twice: on the button and on the wait, so a reader working by ear hears the
      same competition named either way. */

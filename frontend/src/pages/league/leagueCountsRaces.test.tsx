@@ -297,8 +297,6 @@ describe('the list of competitions, for a competition that counts some of the ra
 
     servedCountingFour()
 
-    const user = setupUser()
-
     renderAt(LIST)
 
     const box = must(
@@ -306,9 +304,8 @@ describe('the list of competitions, for a competition that counts some of the ra
       'the box of the competition',
     )
 
+    /* Open on arrival (owner, 03.11.2026), so nothing is pressed. */
     const opens = within(box).getByRole('button', { name: /Događaji i trke/ })
-
-    await user.click(opens)
     const days = await within(
       must(
         document.getElementById(must(opens.getAttribute('aria-controls'), 'what the button opens')),

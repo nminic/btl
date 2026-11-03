@@ -211,6 +211,19 @@ describe('a part of a screen waits without covering the page', () => {
     SLOW,
   )
 
+  /** The box of events reads both files and is open on arrival (owner, 03.11.2026), so a file
+   *  that never arrives is said inside every box, and only there: the screen around it is not
+   *  replaced by an error. Waited for, since the box says so when the request gives up. */
+  async function theFailureStaysInTheBoxes(): Promise<void> {
+    const boxes = await screen.findAllByRole('button', { name: /^Događaji i trke, / })
+    const said = await screen.findAllByRole('alert')
+
+    expect(said).toHaveLength(boxes.length)
+    for (const one of said) {
+      expect(one.closest('.leagues__counting'), 'an error outside the box of events').not.toBeNull()
+    }
+  }
+
   it.each(BOTH)(
     'says the number of days is unknown rather than nought when %s never arrives',
     async (name) => {
@@ -233,7 +246,7 @@ describe('a part of a screen waits without covering the page', () => {
       await waitFor(() => {
         expect(facts()).toContain('Događaja: nepoznato')
       })
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      await theFailureStaysInTheBoxes()
     },
     SLOW,
   )
@@ -320,8 +333,9 @@ describe('a part of a screen waits without covering the page', () => {
        the whole screen with an error and take with it everything the owner moved here on
        07.09.2026.
 
-       What the failed file costs is the inside of a box that is folded to begin with, so nothing
-       on the screen as it arrives even says so. */
+       What the failed file costs is the inside of the box of events, which is open on arrival
+       since 03.11.2026 (owner: „kutija treba da bude default otvorena"), so that box says so,
+       inside itself, and nothing else on the screen does. */
     restore = breakResource('races')
     renderAt('/sr/lige?sezona=2027')
 
@@ -331,7 +345,7 @@ describe('a part of a screen waits without covering the page', () => {
       screen.getByRole('button', { name: 'Događaji i trke, RunTrace liga 2027' }),
     ).toBeVisible()
     expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await theFailureStaysInTheBoxes()
 
     /* And the number of days says so rather than counting nought, the same way „Učesnika" does
        two cases above. Since 13.09.2026 that number is worked out of the races as well, so a
