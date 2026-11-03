@@ -103,9 +103,15 @@ export type Named = Pick<Race, 'name' | 'date' | 'limitSeconds' | 'distanceKm'> 
  * **How finely a length is written is the caller's, and only a length has it.** The
  * name of a race writes one decimal until two races need parting, and the table of
  * races on an event writes two, which is what `raceLabel` leans on when it parts a
- * pair by the finer reading. A limit and an empty answer do not change with it.
+ * pair by the finer reading. A limit and an empty answer do not change with it, and
+ * neither do they with `fewest`, which is `formatDistance`'s own.
  */
-export function raceMeasure(race: Named, locale: string, decimals = 1): string {
+export function raceMeasure(
+  race: Named,
+  locale: string,
+  decimals = 1,
+  fewest = decimals,
+): string {
   /* Read through the one function that knows the three words, and not off the
      record. The type says `RaceKind`; the file says whatever it says, and a word
      this portal has never heard of would otherwise fall past both branches below
@@ -118,7 +124,7 @@ export function raceMeasure(race: Named, locale: string, decimals = 1): string {
 
   return kind === 'time'
     ? formatLimit(race.limitSeconds)
-    : formatDistance(race.distanceKm, locale, decimals)
+    : formatDistance(race.distanceKm, locale, decimals, fewest)
 }
 
 export function raceLabel(race: Named, among: Named[], locale: string): string {

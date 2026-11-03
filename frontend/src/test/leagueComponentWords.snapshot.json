@@ -206,6 +206,10 @@
     "react"
   ],
   "src/pages/league/LeagueEvents.tsx": [
+    "(",
+    ")",
+    ",",
+    "-",
     "../../components/Resource",
     "../../data/raceLabel",
     "../../data/types",
@@ -222,9 +226,8 @@
     "leagues.countingOf",
     "leagues.noCounting",
     "leagues__counting",
-    "leagues__event-day",
-    "leagues__event-name",
-    "leagues__event-races",
+    "leagues__event-line",
+    "leagues__event-what",
     "leagues__events",
     "leagues__toggle",
     "profile__empty",

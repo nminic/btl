@@ -66,15 +66,19 @@ const DATE_SHAPES: Record<DateShape, Intl.DateTimeFormatOptions> = {
  *  reads its date the same way whoever is looking. */
 export const DATE_SHAPE_OPTIONS: Readonly<Record<string, Intl.DateTimeFormatOptions>> = DATE_SHAPES
 
-function numberFormat(locale: string, fractionDigits: number): Intl.NumberFormat {
+function numberFormat(
+  locale: string,
+  fractionDigits: number,
+  fewest = fractionDigits,
+): Intl.NumberFormat {
   const tag = intlTag(locale)
 
   return kept(
     numbers,
-    `${tag}|${fractionDigits}`,
+    `${tag}|${fractionDigits}|${fewest}`,
     () =>
       new Intl.NumberFormat(tag, {
-        minimumFractionDigits: fractionDigits,
+        minimumFractionDigits: fewest,
         maximumFractionDigits: fractionDigits,
       }),
   )
@@ -126,9 +130,20 @@ export function formatPoints(value: number, locale: string): string {
  * (`data/raceLabel.ts`, `raceMeasure`), and it is that difference `raceLabel` leans
  * on when it parts two races of one name by the finer reading, so the two had to be
  * one answer asked twice rather than two.
+ *
+ * `fewest` is how many of those decimals are written even when they are zeros, and it
+ * is all of them unless the caller says otherwise. The list of events of a competition
+ * says nought (owner, 03.11.2026: „skraćuje se sve što može od nula nakon decimalnog
+ * zareza"), so 12 km rather than 12,0 km, and asks for every decimal there is, so 7,03 km
+ * stays 7,03 km.
  */
-export function formatDistance(kilometers: number, locale: string, decimals = 1): string {
-  return `${formatNumber(kilometers, locale, decimals)} km`
+export function formatDistance(
+  kilometers: number,
+  locale: string,
+  decimals = 1,
+  fewest = decimals,
+): string {
+  return `${numberFormat(locale, decimals, fewest).format(kilometers)} km`
 }
 
 export function formatElevation(meters: number, locale: string): string {

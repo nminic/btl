@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
-import { raceLabel } from '../../data/raceLabel'
+import { raceMeasure } from '../../data/raceLabel'
 import type { League } from '../../data/types'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
@@ -19,11 +19,22 @@ import '../Leagues.css'
  * the page of a single competition for one day, on his word of 12.09.2026, and he corrected
  * himself the next morning: „ne vidi se na pojedinačnim stranama lige."
  *
- * **Two levels, and the second one is the point** (owner, 12.09.2026, the half of that day that
- * survived): an event, and under it the races that enter the competition by name, „da član vidi
- * zašto mu neka trka sa tog dana nije u tabeli." A member who ran the short race of a morning
- * whose long race is the one that counts has that answered here, in words, rather than by
- * noticing that a column of the standing is missing.
+ * **One line to an event** (owner, 03.11.2026, „u jednom redu formata BBKT (10.1.2027.) - 12 km,
+ * 6 km, 3 km"): the name of the event as a link, its day in brackets, and after a dash the
+ * measures of the races of it that count, with no nought after the decimal comma that can be left
+ * off. Only noughts go: a length is never rounded (owner, the same day: „ako trka ima 7.03 km,
+ * nema skracivanja"), so 7,03 km and 21,1 km and 12 km. The day is written the way the rest of the portal writes one (he chose it the same day,
+ * between the two offered, on my recommendation). Until 03.11.2026 the races stood under the event
+ * one to a line and by name (owner, 12.09.2026). What that was for still holds: „da član vidi
+ * zašto mu neka trka sa tog dana nije u tabeli". Only the races that count are measured here, so
+ * a member who ran the short race of a morning whose long race counts reads its length missing
+ * from the line.
+ *
+ * **The measure is the one a race's name carries in brackets** (`data/raceLabel.ts`,
+ * `raceMeasure`): a length for a race of a length, how long it lasts for a timed race, and nothing
+ * for a free one, which he chose on 03.11.2026 between the two offered, on my recommendation. An
+ * event whose races counting are all free has no dash after its day, since a dash with nothing
+ * after it says nothing.
  *
  * **Folded until somebody asks.** This screen carries every competition of a season at once, and
  * three competitions of forty six events each would bury the names the reader came for. What is
@@ -44,6 +55,10 @@ import '../Leagues.css'
  * on 12.09.2026: „u samoj tabeli rezultata lige kolona i dalje nosi samo datum"). Naming the
  * races is this box's work and not the table's.
  */
+/** As many decimals as a race's length is stored with (`race.distance_km`, `numeric(8, 4)` since V25), so
+ *  that no length is rounded on its way to the line, only stripped of the noughts it ends in. */
+const LENGTH_AS_STORED = 4
+
 export function LeagueEvents({ league }: { league: League }) {
   const { locale, t } = useI18n()
   const [open, setOpen] = useState(false)
@@ -85,27 +100,21 @@ export function LeagueEvents({ league }: { league: League }) {
 
             return (
               <ul className="leagues__events">
-                {counting.map(({ event, races: mine }) => (
-                  <li key={event.id}>
-                    <h4 className="leagues__event-name">
-                      <Link to={`/${locale}/kalendar/${event.slug}`}>{event.name}</Link>
-                    </h4>
+                {counting.map(({ event, races: mine }) => {
+                  const measures = mine
+                    .map((race) => raceMeasure(race, locale, LENGTH_AS_STORED, 0))
+                    .filter((measure) => measure !== '')
 
-                    <p className="leagues__event-day">{formatShortDate(event.date, locale)}</p>
-
-                    <ul className="leagues__event-races">
-                      {mine.map((race) => (
-                        /* Named through the one function that names a race among the races it is
-                           shown beside (`data/raceLabel.ts`), which is what the event's own page
-                           names them by as well. Every race in the file starts out carrying its
-                           event's name, so a list written as the bare name would be „BTL trening
-                           trek" three times over; the label adds what parts them, and adds the
-                           day only where the day is what does it. */
-                        <li key={race.id}>{raceLabel(race, mine, locale)}</li>
-                      ))}
-                    </ul>
-                  </li>
-                ))}
+                  return (
+                    <li key={event.id} className="leagues__event-line">
+                      <Link to={`/${locale}/kalendar/${event.slug}`}>{event.name}</Link>{' '}
+                      <span className="leagues__event-what">
+                        ({formatShortDate(event.date, locale)})
+                        {measures.length > 0 && ` - ${measures.join(', ')}`}
+                      </span>
+                    </li>
+                  )
+                })}
               </ul>
             )
           }}
