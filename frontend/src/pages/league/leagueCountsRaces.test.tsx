@@ -9,7 +9,6 @@ import { renderAt } from '../../test/render'
 import { serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { aCompetitor } from '../../test/theAnswer'
-import { setupUser } from '../../test/user'
 
 /**
  * A COMPETITION THAT COUNTS SOME OF THE RACES OF A DAY, ON THE SCREENS THAT DRAW IT.
