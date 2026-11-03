@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
-import { raceLabel } from '../../data/raceLabel'
+import { raceMeasure } from '../../data/raceLabel'
 import type { BtlEvent, League, Race, Result } from '../../data/types'
 import { formatDayMonth, formatPoints } from '../../i18n/format'
 import { at, first, must } from '../../test/at'
@@ -9,7 +9,6 @@ import { renderAt } from '../../test/render'
 import { serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { aCompetitor } from '../../test/theAnswer'
-import { setupUser } from '../../test/user'
 
 /**
  * A COMPETITION THAT COUNTS SOME OF THE RACES OF A DAY, ON THE SCREENS THAT DRAW IT.
@@ -291,10 +290,11 @@ describe('the list of competitions, for a competition that counts some of the ra
   it('lists under a day only the races it counts, and counts days and people by them', async () => {
     const { races } = theArrangement()
     const raceOf = (id: number) => must(races.find((one) => one.id === id), `trka ${String(id)}`)
+    /* What the line writes for a race: every decimal it is stored with and no nought it ends in,
+       which `pages/details.test.tsx` holds letter by letter. Here the question is which races. */
+    const measured = (id: number) => raceMeasure(raceOf(id), 'sr', 4, 0)
 
     servedCountingFour()
-
-    const user = setupUser()
 
     renderAt(LIST)
 
@@ -303,39 +303,28 @@ describe('the list of competitions, for a competition that counts some of the ra
       'the box of the competition',
     )
 
-    await user.click(within(box).getByRole('button', { name: /Događaji i trke/ }))
+    /* Open on arrival (owner, 03.11.2026), so nothing is pressed. */
+    const opens = within(box).getByRole('button', { name: /Događaji i trke/ })
+    const days = await within(
+      must(
+        document.getElementById(must(opens.getAttribute('aria-controls'), 'what the button opens')),
+        'the panel of the box',
+      ),
+    ).findAllByRole('listitem')
 
-    const days = await within(box).findAllByRole('heading', { level: 4 })
-
-    /* Three days, in the order the season is run in, and none of the eight others the record names. */
+    /* Three days, in the order the season is run in, and none of the eight others the record names.
+       **And on each line exactly the races the competition counts**, one line to an event since
+       03.11.2026 (owner: „u jednom redu formata BBKT (10.1.2027.) - 12 km, 6 km, 3 km"): one race
+       of the day of three, both of the day of two, and the only one of the third. A line measuring
+       all the races of each day is the box this replaced, and a line of one race per day is its
+       opposite. The two of one day in the owner's order (PDL P6, 18.10.2026, `data/raceOrder.ts`),
+       the longer first: 1089 is the 42,2 km and 1088 the 32,4, so the server's order is the other
+       way. */
     expect(days.map((day) => day.textContent)).toEqual([
-      'Mrazijada',
-      'Šidski novogodišnji maraton',
-      'BTL trening trek',
+      `Mrazijada (5. 1. 2019.) - ${measured(THE_ONLY_ONE)}`,
+      `Šidski novogodišnji maraton (14. 1. 2019.) - ${measured(1089)}, ${measured(1088)}`,
+      `BTL trening trek (27. 1. 2019.) - ${measured(THE_MIDDLE_OF_THREE)}`,
     ])
-
-    /* **Under each of them exactly the races the competition counts, named exactly.** One race
-       under the day of three, both under the day of two, and the only one under the third: a list
-       of all the races of each day is the box this replaced, and a list of one race per day is
-       its opposite. */
-    const underEach = (name: string) => {
-      const item = must(
-        within(box).getByRole('heading', { level: 4, name }).closest('li'),
-        `the item of ${name}`,
-      )
-
-      return within(item)
-        .getAllByRole('listitem')
-        .map((one) => one.textContent)
-    }
-    const named = (ids: number[]) =>
-      ids.map(raceOf).map((one, _index, among) => raceLabel(one, among, 'sr'))
-
-    expect(underEach('BTL trening trek')).toEqual(named([THE_MIDDLE_OF_THREE]))
-    /* The two of one day in the owner's order (PDL P6, 18.10.2026, `data/raceOrder.ts`), the
-       longer first: 1089 is the 42,2 km and 1088 the 32,4, so the server's order is the other way. */
-    expect(underEach('Šidski novogodišnji maraton')).toEqual(named([1089, 1088]))
-    expect(underEach('Mrazijada')).toEqual(named([THE_ONLY_ONE]))
 
     /* **The two numbers on the row, from the same races.** Three days and not the eleven the record
        names, the ten of them with races, nor the four races; and two people and not three:

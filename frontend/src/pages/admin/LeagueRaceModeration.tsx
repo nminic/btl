@@ -249,9 +249,8 @@ export function LeagueRaceModeration({
                                with a button after it, each button began wherever its race's name
                                and distance happened to end, which on a day of four distances is
                                four different places. The class is on the item and not on the
-                               list, because `.leagues__event-races` is also what the public
-                               competition page draws its races in (`league/LeagueEvents.tsx`),
-                               and nothing there has a control to line up. */
+                               list: the list is the indent under the event, the item is the row
+                               a control lines up in. */
                             <li key={race.id} className="leagues__counted-race">
                               <span>{raceLabel(race, run, locale)}</span>
                               {/* The words on the button are short and the name adds the

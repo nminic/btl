@@ -122,6 +122,22 @@ describe('format', () => {
     expect(formatElevation(1180, 'sr')).toBe('1.180 m')
   })
 
+  it('leaves off the noughts a length ends in only where asked, and rounds nothing then', () => {
+    /* Owner, 03.11.2026, for the list of events of a competition: „skraćuje se sve što može od
+       nula nakon decimalnog zareza", and „ako trka ima 7.03 km, nema skracivanja".
+
+       **Asked both ways round on the same numbers**, because the formatters are kept and reused:
+       one kept by the decimals alone would hand the screen that writes every nought the one that
+       writes none, or the other way, whichever of the two was asked for first. */
+    expect(formatDistance(12, 'sr', 4, 0)).toBe('12 km')
+    expect(formatDistance(12, 'sr', 4)).toBe('12,0000 km')
+    expect(formatDistance(12, 'sr', 1)).toBe('12,0 km')
+    expect(formatDistance(12, 'sr', 1, 0)).toBe('12 km')
+    expect(formatDistance(7.03, 'sr', 4, 0)).toBe('7,03 km')
+    expect(formatDistance(42.195, 'sr', 4, 0)).toBe('42,195 km')
+    expect(formatDistance(21.1, 'sr', 4, 0)).toBe('21,1 km')
+  })
+
   it('hides the hour for a race shorter than an hour', () => {
     expect(formatDuration(1598)).toBe('26:38')
   })

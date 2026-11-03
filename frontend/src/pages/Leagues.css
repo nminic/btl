@@ -145,8 +145,8 @@
   gap: var(--space-14);
 }
 
-/* The name of the event, which is an h4 on the public page and an h3 in administration, and keeps
-   the size of one in both. What is set here is the
+/* The name of the event in administration, where it is an h3 and keeps the size of one. What is
+   set here is the
    distance to the day under it and to the races under that, because those two lines are read with
    it rather than after it. */
 .leagues__event-name {
@@ -171,6 +171,18 @@
   padding-inline-start: var(--space-20);
   color: var(--text-muted);
   overflow-wrap: anywhere;
+}
+
+/* An event of a competition on the public list, in one line (owner, 03.11.2026): the name, and
+   after it the day and the measures, muted as the day and the races under it were. A line and not
+   a row that may not break: at 360 a name of three words and four lengths does not fit, and it
+   wraps as a sentence would. `overflow-wrap` for the same reason as the races above. */
+.leagues__event-line {
+  overflow-wrap: anywhere;
+}
+
+.leagues__event-what {
+  color: var(--text-muted);
 }
 
 /* THE `+` THAT PUTS A RACE INTO A COMPETITION (`admin/LeagueRaceModeration.tsx`).
