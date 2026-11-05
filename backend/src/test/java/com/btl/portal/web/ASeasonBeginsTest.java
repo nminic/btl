@@ -111,6 +111,10 @@ class ASeasonBeginsTest {
 
 	private long uros;
 
+	private long pera;
+
+	private long nena;
+
 	@BeforeEach
 	void aLeagueOnTheLastDayOf2027() {
 		dule = member("000300", "Dule", "Duletic", "M");
@@ -137,9 +141,11 @@ class ASeasonBeginsTest {
 		zora = member("000390", "Zora", "Zoric", "F");
 		tara = member("000380", "Tara", "Taric", "F");
 		uros = member("000381", "Uros", "Urosic", "M");
+		pera = member("000391", "Pera", "Peric", "M");
+		nena = member("000392", "Nena", "Nenic", "F");
 
 		for (long each : List.of(dule, aca, eva, ceca, boban, fica, gaga, hana, ivan, kuma, raka, sava, jova,
-				kosta, lela, mile, mira, vesna, vlada, yoca, wanda, zora, tara, uros)) {
+				kosta, lela, mile, mira, vesna, vlada, yoca, wanda, zora, tara, uros, pera, nena)) {
 			HeldOn.season(db, each, 2027, "feeExempt");
 		}
 
@@ -157,6 +163,7 @@ class ASeasonBeginsTest {
 		HeldOn.season(db, wanda, SEASON, "payment");
 		HeldOn.season(db, zora, SEASON, "payment");
 		HeldOn.season(db, uros, SEASON, "payment");
+		HeldOn.season(db, pera, SEASON, "payment");
 		HeldOn.season(db, kuma, SEASON, "payment", HALF_AN_HOUR_BEFORE);
 		HeldOn.season(db, raka, SEASON, "payment", HALF_AN_HOUR_AFTER);
 		HeldOn.season(db, sava, SEASON, "payment", HALF_AN_HOUR_AFTER);
@@ -208,6 +215,10 @@ class ASeasonBeginsTest {
 		pair(SEASON, boban, ceca);
 		pair(SEASON, yoca, wanda);
 		pair(2027, aca, hana);
+
+		/* A LAPSED WOMAN WHO IS IN NO TEAM AT ALL, in a pair with a man who renewed: only the pair can name
+		   her, so a lapsed-member query that looks at the man's side of a pair alone does not find her. */
+		pair(SEASON, pera, nena);
 	}
 
 	/**
@@ -246,15 +257,21 @@ class ASeasonBeginsTest {
 		assertThat(pairs()).containsExactly("2027 Aca Hana", "2028 Boban Ceca");
 
 		assertThat(messages()).containsExactlyInAnyOrder(
-				ceca + " " + ASeasonBegins.YOU_ADMINISTER + "Prvi tim | " + ASeasonBegins.theSeatReads("Prvi tim", SEASON),
-				kosta + " " + ASeasonBegins.YOU_ADMINISTER + "Cetvrti tim | "
-						+ ASeasonBegins.theSeatReads("Cetvrti tim", SEASON),
+				ceca + " Vi ste administrator tima Prvi tim | Od 1. januara 2028 vi ste administrator tima Prvi tim,"
+						+ " jer je dosadašnjem administratoru istekla članarina, a vi ste član koji je najduže u timu."
+						+ " Ako ne želite ovu ulogu, javite se ligi.",
+				kosta + " Vi ste administrator tima Cetvrti tim | Od 1. januara 2028 vi ste administrator tima"
+						+ " Cetvrti tim, jer je dosadašnjem administratoru istekla članarina, a vi ste član koji je"
+						+ " najduže u timu. Ako ne želite ovu ulogu, javite se ligi.",
+				pera + " " + PairWriteApi.THE_PAIR_IS_BROKEN + " | Nena Nenic nije produžila članarinu za sezonu"
+						+ " 2028, pa je vaš trkački par raskinut.",
 				vesna + " " + PairWriteApi.THE_PAIR_IS_BROKEN + " | Aca Acic nije produžio članarinu za sezonu 2028,"
 						+ " pa je vaš trkački par raskinut.",
 				vlada + " " + PairWriteApi.THE_PAIR_IS_BROKEN + " | Eva Evic nije produžila članarinu za sezonu 2028,"
 						+ " pa je vaš trkački par raskinut.",
 				wanda + " " + PairWriteApi.THE_PAIR_IS_BROKEN + " | Joca Jocic nije produžio članarinu za sezonu"
 						+ " 2028, pa je vaš trkački par raskinut.");
+		assertThat(messages()).hasSize(6);
 		assertThat(messages()).noneMatch(one -> one.startsWith(zora + " "));
 		assertThat(db.sql("select count(*) from message where from_name <> ?").param(PairWriteApi.THE_LEAGUE)
 				.query(Long.class).single()).isZero();
@@ -324,9 +341,33 @@ class ASeasonBeginsTest {
 				.containsExactly("Cetvrti tim Kosta", "Deveti tim -", "Prvi tim Boban", "Treci tim Hana");
 		assertThat(pairs()).containsExactly("2027 Aca Hana");
 		assertThat(messages()).contains(
-				boban + " " + ASeasonBegins.YOU_ADMINISTER + "Prvi tim | " + ASeasonBegins.theSeatReads("Prvi tim", SEASON),
+				boban + " Vi ste administrator tima Prvi tim | Od danas vi ste administrator tima Prvi tim, jer je"
+						+ " dosadašnjem administratoru istekla članarina, a vi ste član koji je najduže u timu. Ako ne"
+						+ " želite ovu ulogu, javite se ligi.",
 				boban + " " + PairWriteApi.THE_PAIR_IS_BROKEN + " | Ceca Cecic nije produžila članarinu za sezonu"
 						+ " 2028, pa je vaš trkački par raskinut.");
+	}
+
+	/**
+	 * A SEASON CANCELLED FOR 2027 MOVES NOBODY, in February 2027 or at any other time (PDL 05.11.2026, „Storno
+	 * sezone 2027 ne izbacuje iz tima ni para"), though the member stands in a team he administers and in a pair
+	 * of 2027: the first season the rule works is 2028, which the case above holds from the other side.
+	 */
+	@Test
+	void aSeasonCancelledFor2027MovesNobodyOutOfHisTeamOrHisPair() {
+		List<String> memberships = memberships();
+		List<String> teams = teams();
+		List<String> pairs = pairs();
+		List<String> messages = messages();
+
+		begins.cancelled(aca, 2027, at(2027, 2, 10, 9, 0));
+		begins.cancelled(aca, 2027, at(2028, 2, 10, 9, 0));
+
+		assertThat(memberships()).isEqualTo(memberships);
+		assertThat(teams()).isEqualTo(teams);
+		assertThat(adminOf("prvi-tim")).isEqualTo(aca);
+		assertThat(pairs()).isEqualTo(pairs).contains("2027 Aca Hana");
+		assertThat(messages()).isEqualTo(messages).isEmpty();
 	}
 
 	/* ------------------------------------------------------------------------------------

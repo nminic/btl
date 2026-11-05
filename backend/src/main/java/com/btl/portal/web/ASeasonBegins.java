@@ -78,6 +78,13 @@ class ASeasonBegins {
 	/** The subject of the message to the member a team now has as its administrator, approved 05.11.2026. */
 	static final String YOU_ADMINISTER = "Vi ste administrator tima ";
 
+	/**
+	 * THE FIRST SEASON THAT BEGINS WITH THE DROPPING OUT: the first job runs on 1 January 2028 (PDL 05.11.2026,
+	 * „Ispadanje iz timova i parova prvi put radi 1.1.2028"), and a season cancelled for 2027 moves nobody
+	 * („Storno sezone 2027 ne izbacuje iz tima ni para; pravilo „storno izbacuje odmah" važi od sezone 2028").
+	 */
+	static final int FIRST_SEASON_THAT_DROPS_MEMBERS = 2028;
+
 	private final JdbcClient db;
 
 	private final ATeamGoesWithItsLastMember teams;
@@ -116,7 +123,7 @@ class ASeasonBegins {
 				.query(Long.class)
 				.list();
 
-		out(lapsed, season);
+		out(lapsed, season, false);
 
 		List<Long> nobodyIsIn = db.sql("select t.id from team t where not exists(select 1 from team_membership m"
 						+ " where m.team_id = t.id and (m.season_to is null or m.season_to >= ?))"
@@ -133,7 +140,9 @@ class ASeasonBegins {
 
 	/**
 	 * A SEASON CANCELLED AFTER IT BEGAN takes its member out of his team and his pair at once (PDL
-	 * 05.11.2026). Before the season before it froze, nothing happens here: until 16:00 on 1 January the
+	 * 05.11.2026), from the season 2028 on ({@link #FIRST_SEASON_THAT_DROPS_MEMBERS}); a season before it moves
+	 * nobody. The new administrator of his team is told with „Od danas" ({@link #theSeatReadsFromToday}), not
+	 * with the first of January. Before the season before it froze, nothing happens here: until 16:00 on 1 January the
 	 * season being cancelled has not begun for teams, and {@link #begin} drops him at 16:00 anyway, since he
 	 * holds nothing then.
 	 *
@@ -145,11 +154,11 @@ class ASeasonBegins {
 	 * @param now    the moment of the cancellation
 	 */
 	void cancelled(long member, int season, ZonedDateTime now) {
-		if (!SeasonClock.isFrozen(season - 1, now)) {
+		if (season < FIRST_SEASON_THAT_DROPS_MEMBERS || !SeasonClock.isFrozen(season - 1, now)) {
 			return;
 		}
 
-		Set<Long> touched = out(List.of(member), season);
+		Set<Long> touched = out(List.of(member), season, true);
 
 		for (Long team : touched) {
 			boolean nobodyIsIn = Boolean.TRUE.equals(db.sql("select not exists(select 1 from team_membership m"
@@ -167,9 +176,11 @@ class ASeasonBegins {
 	/**
 	 * These members out of every team and every pair of the season, with the seats and the messages.
 	 *
+	 * @param fromToday whether the seat is told with „Od danas" (a cancellation) and not with the first of
+	 *                  January (the job)
 	 * @return the teams they were in
 	 */
-	private Set<Long> out(Collection<Long> members, int season) {
+	private Set<Long> out(Collection<Long> members, int season, boolean fromToday) {
 		Set<Long> touched = new LinkedHashSet<>();
 
 		for (Long member : members) {
@@ -195,7 +206,7 @@ class ASeasonBegins {
 
 				String name = db.sql("select name from team where id = ?").param(team).query(String.class).single();
 
-				tell(now, YOU_ADMINISTER + name, theSeatReads(name, season));
+				tell(now, YOU_ADMINISTER + name, fromToday ? theSeatReadsFromToday(name) : theSeatReads(name, season));
 			}
 		}
 
@@ -298,6 +309,12 @@ class ASeasonBegins {
 		return "Od 1. januara " + season + " vi ste administrator tima " + team + ", jer je dosadašnjem"
 				+ " administratoru istekla članarina, a vi ste član koji je najduže u timu. Ako ne želite ovu"
 				+ " ulogu, javite se ligi.";
+	}
+
+	/** WHAT THE NEW ADMINISTRATOR OF A TEAM READS AFTER A CANCELLATION IN THE YEAR, approved by the owner on 05.11.2026. */
+	static String theSeatReadsFromToday(String team) {
+		return "Od danas vi ste administrator tima " + team + ", jer je dosadašnjem administratoru istekla"
+				+ " članarina, a vi ste član koji je najduže u timu. Ako ne želite ovu ulogu, javite se ligi.";
 	}
 
 	/** The portal writing in the league's name, as {@link PairWriteApi} does. */
