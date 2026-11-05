@@ -238,12 +238,12 @@ class ASeasonFreezesTest {
 	}
 
 	/**
-	 * IT IS SCHEDULED AT 16:00 ON 1 JANUARY BY THE LEAGUE'S CLOCK, AND EVERY HOUR, THE FIRST AN HOUR AFTER
-	 * START. Asked of the scheduler the context really built, the way {@code ThePicturesFolderIsSweptTest}
-	 * asks it.
+	 * IT IS SCHEDULED AT 16:00 ON 1 JANUARY BY THE LEAGUE'S CLOCK, AND AT START, AND EVERY HOUR AFTER (PDL,
+	 * 05.11.2026, „posao zamrzavanja proba odmah pri dizanju servera"). Asked of the scheduler the context
+	 * really built, the way {@code ThePicturesFolderIsSweptTest} asks it.
 	 */
 	@Test
-	void itIsScheduledAtTheFreezeAndEveryHourAfterStart() {
+	void itIsScheduledAtTheFreezeAtStartAndEveryHourAfter() {
 		List<ScheduledTask> tasks = theTasksOfTheFreeze();
 
 		assertThat(tasks).hasSize(2);
@@ -263,7 +263,7 @@ class ASeasonFreezesTest {
 		assertThat(atTheFreeze.getTrigger().nextExecution(new SimpleTriggerContext(null, null,
 				theFreeze.plusSeconds(60)))).isEqualTo(LocalDateTime.of(2029, 1, 1, 16, 0).atZone(BELGRADE).toInstant());
 		assertThat(hourly.getIntervalDuration()).isEqualTo(Duration.ofHours(1));
-		assertThat(hourly.getInitialDelayDuration()).isEqualTo(Duration.ofHours(1));
+		assertThat(hourly.getInitialDelayDuration()).isEqualTo(Duration.ZERO);
 	}
 
 	private List<ScheduledTask> theTasksOfTheFreeze() {

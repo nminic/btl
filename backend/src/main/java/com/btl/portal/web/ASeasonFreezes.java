@@ -45,13 +45,16 @@ import java.util.concurrent.TimeUnit;
  * way.
  *
  * <p><b>WHEN IT RUNS.</b> At 16:00 on 1 January by the league's clock ({@link SeasonClock#tablesFreeze}),
- * and every hour after the process starts, the first an hour after it. The hourly run follows the decision
- * of 19.09.2026 about the 1 January job („Ispadanje se upisuje, poslom koji se pokrene 1. januara u 16h po
+ * and once the process starts and every hour after that. The hourly run follows the decision of
+ * 19.09.2026 about the 1 January job („Ispadanje se upisuje, poslom koji se pokrene 1. januara u 16h po
  * CET"), whose accepted cost reads „dogovoreno je da je posao idempotentan i da se pokušava pri svakom
- * dizanju dok ne prođe". The hour before the first run is mine, copied from
- * {@link ThePicturesFolderIsSwept}'s reason: a run at start would run in every Spring context every test
- * class builds, against one database they all share, at whatever moment that context's clock says, and a
- * season frozen there would stay frozen for every class after it.
+ * dizanju dok ne prođe". <b>The first run is AT START and not an hour after it (PDL, owner, 05.11.2026,
+ * „Potvrđeno: posao zamrzavanja proba odmah pri dizanju servera"):</b> a server that was down at 16:00
+ * freezes the season the moment it is up, and not an hour later. The cost is that every Spring context
+ * a test class builds runs it once, against the one database they all share, at whatever moment that
+ * context's clock says. That is harmless before 1.1.2028 16:00, when {@link SeasonClock#isFrozen} is false
+ * for the system clock and the run does nothing; a case that moves the clock past it freezes the seasons
+ * behind it and must leave the rows it wrote as it found them.
  *
  * <p><b>THE BOUNDARY, NAMED.</b> The snapshot is of the moment the job ran, not of 16:00 itself: a result
  * written between 16:00 and the run is in it. At 16:00 the cron runs within the second; it is wider only
@@ -95,7 +98,7 @@ class ASeasonFreezes {
 	 * so one that fails leaves the others written and is tried again on the next run.
 	 */
 	@Scheduled(cron = "0 0 16 1 1 *", zone = "Europe/Belgrade")
-	@Scheduled(fixedDelay = 1, initialDelay = 1, timeUnit = TimeUnit.HOURS)
+	@Scheduled(fixedDelay = 1, initialDelay = 0, timeUnit = TimeUnit.HOURS)
 	void freeze() {
 		ZonedDateTime now = clock.instant().atZone(SeasonClock.ZONE);
 
