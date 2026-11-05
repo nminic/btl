@@ -256,6 +256,86 @@
       "ageBand": "25-39",
       "beginner": false,
       "ranks": true
+    },
+    {
+      "id": 51,
+      "number": "000151",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 52,
+      "number": "000152",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 53,
+      "number": "000153",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 54,
+      "number": "000154",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 55,
+      "number": "000155",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 56,
+      "number": "000156",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 57,
+      "number": "000157",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 58,
+      "number": "000158",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 59,
+      "number": "000159",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 60,
+      "number": "000160",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
     }
   ],
   "events": [
@@ -974,9 +1054,220 @@
       "length": "short",
       "raceName": "G",
       "standing": true
+    },
+    {
+      "id": 39,
+      "member": 51,
+      "race": 101,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 2000,
+      "points": "3.00",
+      "length": "short",
+      "raceName": "Krug 10",
+      "standing": true
+    },
+    {
+      "id": 40,
+      "member": 52,
+      "race": 201,
+      "event": 2,
+      "date": "2028-06-10",
+      "kilometers": "5",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 4000,
+      "points": "3.00",
+      "length": "short",
+      "raceName": "Petica",
+      "standing": true
+    },
+    {
+      "id": 41,
+      "member": 53,
+      "race": 401,
+      "event": 4,
+      "date": "2028-11-20",
+      "kilometers": "10",
+      "ascent": 100,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "3.50",
+      "length": "short",
+      "raceName": "Zimska desetka",
+      "standing": true
+    },
+    {
+      "id": 42,
+      "member": 54,
+      "race": 101,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "3.50",
+      "length": "short",
+      "raceName": "Krug 10",
+      "standing": true
+    },
+    {
+      "id": 43,
+      "member": 55,
+      "race": 201,
+      "event": 2,
+      "date": "2028-06-10",
+      "kilometers": "5",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 6000,
+      "points": "8.50",
+      "length": "short",
+      "raceName": "Petica",
+      "standing": true
+    },
+    {
+      "id": 44,
+      "member": 56,
+      "race": 101,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 6000,
+      "points": "4.50",
+      "length": "short",
+      "raceName": "Krug 10",
+      "standing": true
+    },
+    {
+      "id": 45,
+      "member": 57,
+      "race": 101,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "7.00",
+      "length": "short",
+      "raceName": "Krug 10",
+      "standing": true
+    },
+    {
+      "id": 46,
+      "member": 57,
+      "race": 201,
+      "event": 2,
+      "date": "2028-06-10",
+      "kilometers": "5",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 1500,
+      "points": "7.00",
+      "length": "short",
+      "raceName": "Petica",
+      "standing": true
+    },
+    {
+      "id": 47,
+      "member": 58,
+      "race": 101,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "7.00",
+      "length": "short",
+      "raceName": "Krug 10",
+      "standing": true
+    },
+    {
+      "id": 48,
+      "member": 58,
+      "race": 201,
+      "event": 2,
+      "date": "2028-06-10",
+      "kilometers": "5",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 1500,
+      "points": "1.00",
+      "length": "short",
+      "raceName": "Petica",
+      "standing": true
+    },
+    {
+      "id": 49,
+      "member": 59,
+      "race": 101,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "7.00",
+      "length": "short",
+      "raceName": "Krug 10",
+      "standing": true
+    },
+    {
+      "id": 50,
+      "member": 59,
+      "race": 202,
+      "event": 2,
+      "date": "2028-06-10",
+      "kilometers": "42.2",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 12000,
+      "points": "1.00",
+      "length": "marathon",
+      "raceName": "Maraton",
+      "standing": true
+    },
+    {
+      "id": 51,
+      "member": 60,
+      "race": 101,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "7.00",
+      "length": "short",
+      "raceName": "Krug 10",
+      "standing": true
+    },
+    {
+      "id": 52,
+      "member": 60,
+      "race": 301,
+      "event": 3,
+      "date": "2028-09-15",
+      "kilometers": "50",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 20000,
+      "points": "1.00",
+      "length": "ultra",
+      "raceName": "Ultra",
+      "standing": true
     }
   ],
   "before": {
+    "5": "25.00",
     "1": "30.00",
     "2": "50.00",
     "3": "10.00",
@@ -1041,6 +1332,20 @@
       "roster": [
         25,
         26
+      ]
+    },
+    {
+      "id": 40,
+      "name": "Cetrdeseti",
+      "roster": [
+        51
+      ]
+    },
+    {
+      "id": 41,
+      "name": "Cetrdeset prvi",
+      "roster": [
+        52
       ]
     }
   ],
@@ -1149,6 +1454,7 @@
         "000103",
         "000106",
         "000105",
+        "000157",
         "000122",
         "000121",
         "000119",
@@ -1157,7 +1463,16 @@
         "000126",
         "000127",
         "000128",
-        "000124"
+        "000124",
+        "000155",
+        "000160",
+        "000159",
+        "000158",
+        "000156",
+        "000153",
+        "000154",
+        "000151",
+        "000152"
       ],
       "F": [
         "000113",
@@ -1183,6 +1498,7 @@
       "M25-39": [
         "000104",
         "000105",
+        "000157",
         "000122",
         "000121",
         "000119",
@@ -1191,7 +1507,16 @@
         "000126",
         "000127",
         "000128",
-        "000124"
+        "000124",
+        "000155",
+        "000160",
+        "000159",
+        "000158",
+        "000156",
+        "000153",
+        "000154",
+        "000151",
+        "000152"
       ],
       "M40-54": [
         "000102",
@@ -1225,6 +1550,8 @@
       12,
       11,
       30,
+      40,
+      41,
       20,
       3
     ],
@@ -1250,6 +1577,12 @@
       "30": [
         "000125",
         "000126"
+      ],
+      "40": [
+        "000151"
+      ],
+      "41": [
+        "000152"
       ]
     },
     "byLength": {
@@ -1257,8 +1590,10 @@
         "000104",
         "000101",
         "000103",
+        "000157",
         "000121",
         "000131",
+        "000158",
         "000106",
         "000105",
         "000122",
@@ -1277,8 +1612,16 @@
         "000149",
         "000124",
         "000134",
+        "000155",
+        "000159",
+        "000160",
         "000116",
-        "000114"
+        "000114",
+        "000156",
+        "000153",
+        "000154",
+        "000151",
+        "000152"
       ],
       "half": [
         "000111",
@@ -1289,20 +1632,26 @@
         "000102"
       ],
       "marathon": [
-        "000113"
+        "000113",
+        "000159"
       ],
       "ultra": [
-        "000113"
+        "000113",
+        "000160"
       ]
     },
     "kilometers": [
       "000113",
+      "000160",
+      "000159",
       "000102",
       "000111",
       "000112",
       "000104",
       "000103",
       "000101",
+      "000157",
+      "000158",
       "000122",
       "000132",
       "000106",
@@ -1323,19 +1672,32 @@
       "000149",
       "000116",
       "000114",
+      "000156",
+      "000153",
+      "000154",
+      "000151",
       "000124",
-      "000134"
+      "000134",
+      "000155",
+      "000152"
     ],
     "timeOnCourse": [
       "000113",
+      "000160",
+      "000159",
       "000102",
       "000112",
       "000111",
       "000104",
       "000103",
+      "000155",
+      "000156",
       "000124",
       "000134",
       "000101",
+      "000157",
+      "000158",
+      "000152",
       "000114",
       "000116",
       "000106",
@@ -1348,10 +1710,13 @@
       "000137",
       "000138",
       "000149",
+      "000153",
+      "000154",
       "000121",
       "000131",
       "000125",
       "000135",
+      "000151",
       "000122",
       "000132",
       "000123",
@@ -1399,12 +1764,26 @@
       28,
       7,
       8,
+      43,
+      45,
+      51,
+      49,
+      47,
+      46,
       17,
       18,
       19,
       21,
       20,
-      22
+      22,
+      44,
+      41,
+      42,
+      39,
+      40,
+      52,
+      50,
+      48
     ],
     "pairs": [
       [
@@ -1467,7 +1846,16 @@
           "000101",
           "000106",
           "000104",
-          "000103"
+          "000103",
+          "000157",
+          "000155",
+          "000158",
+          "000160",
+          "000159",
+          "000156",
+          "000154",
+          "000151",
+          "000152"
         ],
         "F": [
           "000113",
@@ -1481,7 +1869,8 @@
         ],
         "M": [
           "000105",
-          "000103"
+          "000103",
+          "000153"
         ],
         "F": [
           "000111",
