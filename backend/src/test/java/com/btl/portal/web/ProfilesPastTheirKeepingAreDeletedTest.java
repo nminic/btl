@@ -405,24 +405,30 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 
 	/**
 	 * THE WALK, TWICE: the first run takes him and leaves the member beside him, and the second finds
-	 * nothing of his left to take and fails on nothing.
+	 * nothing of his left to take and fails on nothing. A moderator whose own season is as old as his is
+	 * found by the walk every hour, because the walk asks only the keeping, and is left every hour,
+	 * because the decision asks who administers.
 	 */
 	@Test
 	void aSecondRunFindsNothingLeftAndFailsOnNothing() {
 		long he = aMember("M");
 		long beside = aMember("M");
+		long moderator = aMember("M", "071003", "moderator");
 
 		heldOn(he, 2027, "payment");
 		heldOn(beside, 2032, "payment");
+		heldOn(moderator, 2027, "payment");
 
 		job(FIVE_YEARS_AFTER_2027).sweep();
 
 		assertThat(stands(he)).isFalse();
 		assertThat(stands(beside)).isTrue();
+		assertThat(stands(moderator)).as("the walk deleted a moderator").isTrue();
 
 		job(FIVE_YEARS_AFTER_2027.plus(Duration.ofHours(1))).sweep();
 
 		assertThat(stands(beside)).isTrue();
+		assertThat(stands(moderator)).isTrue();
 	}
 
 	/** Once an hour, the first an hour after the start, as the pictures' sweep. */
