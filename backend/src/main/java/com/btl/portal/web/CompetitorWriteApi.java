@@ -363,12 +363,35 @@ class CompetitorWriteApi {
 	 * decided it.
 	 */
 	void takeAway(long gone) {
-		/* READ BEFORE THE DELETE AND NEVER AFTER, all three, and for one reason:
-		   `racing_pair` and `team_membership` are `on delete cascade` (V12, V11) and
-		   `competitor.photo_id` is a column ON THE ROW ITSELF, so the moment the member goes
-		   there is nothing left to read any of them off. The same sentence `PairWriteApi.end`
-		   writes beside its own reading. */
-		List<Partner> partners = partnersOf(gone);
+		takeAway(gone, partnersOf(gone));
+	}
+
+	/**
+	 * THE SAME DELETING, AND NOBODY IS TOLD: the deletion of a profile whose keeping has run out
+	 * ({@link ProfilesPastTheirKeepingAreDeleted}).
+	 *
+	 * <p>The owner, 05.11.2026 (PDL, „Brisanje posle pet godina ne šalje poruku nikome"), chose with
+	 * my recommendation that the deletion five years on sends no message to anybody: „ni članu
+	 * unapred, ni bivšem partneru iz para". Every pair such a member was ever in is a pair of a season
+	 * long over, and {@link #partnersOf} reads every season, so the deletion the administration asks
+	 * for would tell a partner of 2027 in 2033 that their pair is broken. Everything else is the same
+	 * act, so it is the same lines; only the list of whom to tell is empty.
+	 */
+	void takeAwayWithoutAWord(long gone) {
+		takeAway(gone, List.of());
+	}
+
+	/**
+	 * @param partners whom to tell, READ BEFORE THE DELETE AND NEVER AFTER: {@code racing_pair} is
+	 *                 {@code on delete cascade} (V12), so once the member goes there is nothing left
+	 *                 to read them off, which is why the caller reads them as it calls
+	 */
+	private void takeAway(long gone, List<Partner> partners) {
+		/* READ BEFORE THE DELETE AND NEVER AFTER, both, and for one reason:
+		   `team_membership` is `on delete cascade` (V11) and `competitor.photo_id` is a column
+		   ON THE ROW ITSELF, so the moment the member goes there is nothing left to read either
+		   of them off. The same sentence `PairWriteApi.end` writes beside its own reading, and
+		   the partners above are read the same way, by the caller, before this line. */
 		List<Long> teams = emptyTeams.teamsOf(gone);
 		Optional<Long> photo = photoOf(gone);
 
