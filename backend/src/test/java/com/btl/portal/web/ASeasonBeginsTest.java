@@ -40,6 +40,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * it had not begun, it is deleted, and the team goes.</li>
  * <li>Pairs of 2028 in all three states (one renewed, both renewed, neither), a lapsed man and a lapsed
  * woman, a lapsed member who is in no team at all, and a pair of 2027, which froze and stays.</li>
+ * <li><b>Deveti tim</b>: its seat names Tara, whose flag went off before the turn, so the seat is Uros's
+ * already; it does not move and nobody is told, and the column stops naming her.</li>
  * <li>Zora, who has nothing to do with any of it and must hear nothing.</li>
  * </ul>
  */
@@ -105,6 +107,10 @@ class ASeasonBeginsTest {
 
 	private long zora;
 
+	private long tara;
+
+	private long uros;
+
 	@BeforeEach
 	void aLeagueOnTheLastDayOf2027() {
 		dule = member("000300", "Dule", "Duletic", "M");
@@ -129,9 +135,11 @@ class ASeasonBeginsTest {
 		yoca = member("000373", "Joca", "Jocic", "M");
 		wanda = member("000374", "Vanda", "Vandic", "F");
 		zora = member("000390", "Zora", "Zoric", "F");
+		tara = member("000380", "Tara", "Taric", "F");
+		uros = member("000381", "Uros", "Urosic", "M");
 
 		for (long each : List.of(dule, aca, eva, ceca, boban, fica, gaga, hana, ivan, kuma, raka, sava, jova,
-				kosta, lela, mile, mira, vesna, vlada, yoca, wanda, zora)) {
+				kosta, lela, mile, mira, vesna, vlada, yoca, wanda, zora, tara, uros)) {
 			HeldOn.season(db, each, 2027, "feeExempt");
 		}
 
@@ -148,6 +156,7 @@ class ASeasonBeginsTest {
 		HeldOn.season(db, vlada, SEASON, "payment");
 		HeldOn.season(db, wanda, SEASON, "payment");
 		HeldOn.season(db, zora, SEASON, "payment");
+		HeldOn.season(db, uros, SEASON, "payment");
 		HeldOn.season(db, kuma, SEASON, "payment", HALF_AN_HOUR_BEFORE);
 		HeldOn.season(db, raka, SEASON, "payment", HALF_AN_HOUR_AFTER);
 		HeldOn.season(db, sava, SEASON, "payment", HALF_AN_HOUR_AFTER);
@@ -186,6 +195,13 @@ class ASeasonBeginsTest {
 		long sedmi = team("sedmi-tim", "Sedmi tim", mile);
 		in(mile, sedmi, 2028, null);
 
+		/* A SEAT NAMING A MEMBER WHO NO LONGER STANDS IN IT: Tara's flag went off before the turn, so the
+		   seat is Uros's already and does not move, and the column must stop naming her all the same. */
+		long deveti = team("deveti-tim", "Deveti tim", tara);
+		in(tara, deveti, 2027, null);
+		in(uros, deveti, 2027, null);
+		db.sql("update competitor set active = false where id = ?").param(tara).update();
+
 		pair(SEASON, aca, vesna);
 		pair(SEASON, vlada, eva);
 		pair(SEASON, fica, gaga);
@@ -219,11 +235,13 @@ class ASeasonBeginsTest {
 				"Mira Treci tim 2027 2027 " + Membership.LEFT_ON_HIS_OWN,
 				"Jova Cetvrti tim" + lapsed,
 				"Kosta Cetvrti tim 2027 -",
-				"Mira Cetvrti tim 2028 -");
+				"Mira Cetvrti tim 2028 -",
+				"Tara Deveti tim" + lapsed,
+				"Uros Deveti tim 2027 -");
 
 		assertThat(teams()).as("Drugi tim had nobody who renewed, Peti tim nobody after the window, and Mile's"
 						+ " row in Sedmi tim had not begun")
-				.containsExactly("Cetvrti tim Kosta", "Prvi tim Ceca", "Treci tim Hana");
+				.containsExactly("Cetvrti tim Kosta", "Deveti tim -", "Prvi tim Ceca", "Treci tim Hana");
 
 		assertThat(pairs()).containsExactly("2027 Aca Hana", "2028 Boban Ceca");
 
@@ -303,7 +321,7 @@ class ASeasonBeginsTest {
 		assertThat(memberships()).contains("Ceca Prvi tim" + " 2027 2027 " + Membership.THE_FEE_LAPSED,
 				"Boban Prvi tim 2027 -");
 		assertThat(teams()).as("Osmi tim had only Zora, Prvi tim still has Boban and Dule")
-				.containsExactly("Cetvrti tim Kosta", "Prvi tim Boban", "Treci tim Hana");
+				.containsExactly("Cetvrti tim Kosta", "Deveti tim -", "Prvi tim Boban", "Treci tim Hana");
 		assertThat(pairs()).containsExactly("2027 Aca Hana");
 		assertThat(messages()).contains(
 				boban + " " + ASeasonBegins.YOU_ADMINISTER + "Prvi tim | " + ASeasonBegins.theSeatReads("Prvi tim", SEASON),
