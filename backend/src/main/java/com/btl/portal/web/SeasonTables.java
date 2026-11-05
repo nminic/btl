@@ -40,6 +40,11 @@ import java.util.function.Function;
  * <li>Who a table is drawn from is not in the file: the screen reads the members it is served, this
  * reads the members who hold the season with the right to rank ({@link ASeasonFreezes} says why). The
  * file hands both sides the same members.</li>
+ * <li>That every rung of every ladder decides a place is not measured by a floor, because the rungs are
+ * private to {@code derive.ts} and to this class and a floor would have to be a list of them. It is
+ * held by the file's pairs and by one mutation for each rung (take the rung out of one side: the
+ * file fails on that side), and a rung added to a ladder arrives without a pair until somebody writes
+ * it.</li>
  * </ul>
  *
  * <p>Pure: nothing here reads the database or the clock, so every table is measured on one fixture.

@@ -95,6 +95,14 @@ class LeagueWriteApiTest {
 	/** Noon in Belgrade on 15 March 2028. See the head of this class for every word of it. */
 	private static final Instant IN_MARCH = Instant.parse("2028-03-15T11:00:00Z");
 
+	/**
+	 * WHERE THE CONTEXT'S CLOCK STANDS WHEN IT STARTS, which is before every freeze: {@code ASeasonFreezes}
+	 * tries at start (PDL, 05.11.2026), and a context born after 16:00 on 1.1.2028 would freeze 2027 into
+	 * the one database every class shares, in the middle of this class's own set-up. The case moves the
+	 * clock to its own moment in {@code @BeforeEach}.
+	 */
+	private static final Instant WHEN_THE_CONTEXT_STARTS = Instant.parse("2027-10-15T10:00:00Z");
+
 	private static final int FROZEN = 2027;
 
 	private static final int RUNNING = 2028;
@@ -182,7 +190,7 @@ class LeagueWriteApiTest {
 		@Bean
 		@Primary
 		AClockTheCaseMoves aClockTheCaseMoves() {
-			return new AClockTheCaseMoves(IN_MARCH);
+			return new AClockTheCaseMoves(WHEN_THE_CONTEXT_STARTS);
 		}
 	}
 

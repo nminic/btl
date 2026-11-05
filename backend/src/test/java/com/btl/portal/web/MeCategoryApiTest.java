@@ -101,6 +101,14 @@ class MeCategoryApiTest {
 	/** Inside the renewal window, two official seasons deep. See the note on this class. */
 	private static final Instant IN_OCTOBER_2028 = Instant.parse("2028-11-11T12:00:00Z");
 
+	/**
+	 * WHERE THE CONTEXT'S CLOCK STANDS WHEN IT STARTS, which is before every freeze: {@code ASeasonFreezes}
+	 * tries at start (PDL, 05.11.2026), and a context born after 16:00 on 1.1.2028 would freeze 2027 into
+	 * the one database every class shares, in the middle of this class's own set-up. The case moves the
+	 * clock to its own moment in {@code @BeforeEach}.
+	 */
+	private static final Instant WHEN_THE_CONTEXT_STARTS = Instant.parse("2027-10-15T10:00:00Z");
+
 	/** The season being chosen at that moment, spelt out so a case cannot drift with the code. */
 	private static final int THE_SEASON_BEING_CHOSEN = 2029;
 
@@ -181,7 +189,7 @@ class MeCategoryApiTest {
 		@Bean
 		@Primary
 		AClockTheCaseMoves aClockTheCaseMoves() {
-			return new AClockTheCaseMoves(IN_OCTOBER_2028);
+			return new AClockTheCaseMoves(WHEN_THE_CONTEXT_STARTS);
 		}
 	}
 

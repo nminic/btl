@@ -41,7 +41,9 @@ import type {
  * is the payment slip's (`ipsSlipBothSidesWrite.json`).
  *
  * The file is built so every rung of every ladder decides at least one place against the rung after it
- * (the header of `SeasonTables.java` names what it cannot hold). The members the server reads are the
+ * (the header of `SeasonTables.java` names what it cannot hold). That is held by its pairs and by a
+ * mutation for each rung, not by a floor below: the rungs are private to `derive.ts`, so a floor over
+ * them would be a list, and the floor below measures only that no table is left empty. The members the server reads are the
  * ones who hold the season with the right to rank; the screen is handed the same people, those without
  * the right as members with no category of the season and runs its standings do not count.
  */
