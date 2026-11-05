@@ -2,7 +2,6 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.season.SeasonClock;
-import com.btl.portal.domain.team.Membership;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -85,6 +84,20 @@ class ASeasonBeginsThroughTheFreezeTest {
 
 		pair(2027, aca, vesna);
 		pair(2028, aca, vesna);
+
+		/* A pair stands on the board of pairs only with a race the two of them ran. */
+		db.sql("insert into btl_event (slug, name, date, place_id, city, country_id, kind,"
+				+ " featured, description, link) values ('zajednicka-trka', 'Zajednicka', date '2027-05-01', null,"
+				+ " 'Kraljevo', (select id from country where code = 'RS'), 'race', false, '', '')").update();
+		db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds, distance_km, ascent_m,"
+				+ " descent_m) values ((select id from btl_event where slug = 'zajednicka-trka'), 'Zajednicka',"
+				+ " false, date '2027-05-01', 'length', 0, 10, 0, 0)").update();
+
+		for (long each : List.of(aca, vesna)) {
+			db.sql("insert into result (competitor_id, race_id, race_date, distance_km, ascent_m, descent_m,"
+					+ " seconds, points) values (?, (select id from race where name = 'Zajednicka'),"
+					+ " date '2027-05-01', 10, 0, 0, 3000, 10.00)").param(each).update();
+		}
 	}
 
 	@Test
@@ -134,8 +147,8 @@ class ASeasonBeginsThroughTheFreezeTest {
 		begins.followTheFreezeOf(2027);
 
 		assertThat(standing()).as("2028 does drop the member who did not renew it").isNotEqualTo(before);
-		assertThat(db.sql("select left_reason from team_membership where competitor_id = ?").param(aca)
-				.query(String.class).list()).containsExactly(Membership.THE_FEE_LAPSED);
+		assertThat(db.sql("select name from team order by name").query(String.class).list())
+				.as("Prvi tim went with the member who did not renew").containsExactly("Drugi tim");
 		assertThat(db.sql("select season from racing_pair order by season").query(Integer.class).list())
 				.containsExactly(2027);
 	}
