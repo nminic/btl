@@ -52,6 +52,16 @@ public record Membership(long teamId, int seasonFrom, Integer seasonTo, String l
 	 */
 	public static final String LEFT_ON_HIS_OWN = "izašao iz tima";
 
+	/**
+	 * WHY A MEMBERSHIP ENDED, WHEN WHAT ENDED IT IS A FEE NOT RENEWED FOR THE SEASON THAT BEGAN.
+	 *
+	 * <p>The second writer the note above names: the turn of the season ({@code ASeasonBegins}), and the
+	 * cancellation of a season after it began. PDL 19.09.2026: „Automatsko ispadanje nosi zapisan razlog,
+	 * ne nestaje tiho." No grammatical gender, as the owner approved on 05.11.2026, since it is the same
+	 * words for a man and a woman.
+	 */
+	public static final String THE_FEE_LAPSED = "članarina nije produžena";
+
 	public Membership {
 		if (seasonFrom < FIRST_SEASON) {
 			throw new IllegalArgumentException("the league has no season " + seasonFrom);

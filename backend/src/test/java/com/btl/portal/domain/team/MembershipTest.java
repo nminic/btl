@@ -109,6 +109,16 @@ class MembershipTest {
 				.isEqualTo(Membership.LEFT_ON_HIS_OWN);
 	}
 
+	/**
+	 * AND THE REASON THE TURN OF THE SEASON WRITES, for the same reason as the one above: blanked, every
+	 * member who did not renew would throw at 16:00 on 1 January instead of leaving his team.
+	 */
+	@Test
+	void theReasonTheTurnOfTheSeasonWritesIsOneAnEndingWillTake() {
+		assertThat(Membership.open(A_TEAM, 2027).ended(2027, Membership.THE_FEE_LAPSED).leftReason())
+				.isEqualTo(Membership.THE_FEE_LAPSED);
+	}
+
 	@Test
 	void nobodyLeftATeamBeforeJoiningIt() {
 		assertThatThrownBy(() -> new Membership(A_TEAM, 2028, 2027, "presao"))
