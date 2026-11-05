@@ -452,6 +452,19 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 		assertThat(db.sql("select competitor_id, who from season_competitor where season = 2027 and position = 2")
 				.query().singleRow()).as("the row of the member beside him")
 				.containsEntry("competitor_id", beside).containsEntry("who", "Drugi Clan");
+		assertThat(db.sql("select competitor_id, who from season_team_member where position = 1").query()
+				.singleRow()).as("his place on the roster of a frozen team")
+				.containsEntry("competitor_id", null).containsEntry("who", "Probni Clan");
+		assertThat(db.sql("select competitor_id, who from season_team_member where position = 2").query()
+				.singleRow()).as("the place of the member beside him on it")
+				.containsEntry("competitor_id", beside).containsEntry("who", "Drugi Clan");
+		assertThat(db.sql("select competitor_id, who from season_award where position = 1").query().singleRow())
+				.as("his award, in a table the job names nowhere")
+				.containsEntry("competitor_id", null).containsEntry("who", "Probni Clan");
+		assertThat(db.sql("select competitor_id, who from season_award where position = 2").query().singleRow())
+				.as("the award of the member beside him")
+				.containsEntry("competitor_id", beside).containsEntry("who", "Drugi Clan");
+
 		assertThat(db.sql("select competitor_id, who from season_probe").query().singleRow())
 				.as("a snapshot table nothing here names")
 				.containsEntry("competitor_id", null).containsEntry("who", "Probni Clan");
@@ -471,19 +484,6 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 		assertThat(db.sql("select team_id from season_team where name = 'Tim s njegovim brojem'")
 				.query(Long.class).single()).as("a row whose TEAM has the number of the member who went")
 				.isEqualTo(he);
-
-		assertThat(db.sql("select competitor_id, who from season_team_member where position = 1").query()
-				.singleRow()).as("his place on the roster of a frozen team")
-				.containsEntry("competitor_id", null).containsEntry("who", "Probni Clan");
-		assertThat(db.sql("select competitor_id, who from season_team_member where position = 2").query()
-				.singleRow()).as("the place of the member beside him on it")
-				.containsEntry("competitor_id", beside).containsEntry("who", "Drugi Clan");
-		assertThat(db.sql("select competitor_id, who from season_award where position = 1").query().singleRow())
-				.as("his award, in a table the job names nowhere")
-				.containsEntry("competitor_id", null).containsEntry("who", "Probni Clan");
-		assertThat(db.sql("select competitor_id, who from season_award where position = 2").query().singleRow())
-				.as("the award of the member beside him")
-				.containsEntry("competitor_id", beside).containsEntry("who", "Drugi Clan");
 
 		Map<String, Object> message = db.sql("select from_id, from_name from message where to_id = ?")
 				.param(beside).query().singleRow();
