@@ -400,7 +400,9 @@ class TheTablesOfASeason {
 			}
 		}
 
-		if (!teams.standings().isEmpty() && teams.standings().getFirst().row().totals().races() > 0) {
+		/* A team that ran nothing gives nothing, and that needs no condition of its own here: nobody on
+		   its page ran, so the line below names nobody (mutation A2, 05.11.2026, proved the two equal). */
+		if (!teams.standings().isEmpty()) {
 			TeamStanding winner = teams.standings().getFirst().row();
 
 			for (Placed<Standing> one : teams.pages().get(winner.team().id())) {
