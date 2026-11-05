@@ -71,7 +71,7 @@ import java.util.Set;
  * he walks out.
  */
 @Component
-class ASeasonBegins {
+class ASeasonBegins implements WhatFollowsTheFreeze {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ASeasonBegins.class);
 
@@ -92,6 +92,25 @@ class ASeasonBegins {
 	ASeasonBegins(JdbcClient db, ATeamGoesWithItsLastMember teams) {
 		this.db = db;
 		this.teams = teams;
+	}
+
+	/**
+	 * THE FREEZE OF A SEASON IS THE BEGINNING OF THE ONE AFTER IT, in the transaction the snapshot is written
+	 * in and after it ({@link WhatFollowsTheFreeze}): 2027 freezes on 1.1.2028 at 16:00 and 2028 begins then.
+	 * The season handed over is the frozen one, so the one that begins is {@code frozenSeason + 1}.
+	 *
+	 * <p><b>A freeze before the first dropping out moves nobody</b> (PDL 05.11.2026, „Ispadanje iz timova i
+	 * parova prvi put radi 1.1.2028"): the freeze of 2026 would begin 2027, the first season of the league, and
+	 * there is no such freeze, since {@link ASeasonFreezes} starts at {@link SeasonClock#FIRST_SEASON}. The
+	 * guard is here all the same, so the decision does not rest on the loop of another class.
+	 */
+	@Override
+	public void followTheFreezeOf(int frozenSeason) {
+		if (frozenSeason + 1 < FIRST_SEASON_THAT_DROPS_MEMBERS) {
+			return;
+		}
+
+		begin(frozenSeason + 1);
 	}
 
 	/**
