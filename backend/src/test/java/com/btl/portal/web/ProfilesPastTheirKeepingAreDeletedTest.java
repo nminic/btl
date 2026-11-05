@@ -377,9 +377,13 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 		heldOn(he, 2027, "payment");
 		heldOn(beside, 2032, "payment");
 
+		/* The totals and the place in the category are V84's, as in CompetitorWriteApiTest: the place is the
+		   place, which is the one category both rows stand in. */
 		db.sql("insert into season_competitor (season, position, competitor_id, who, gender, category, points,"
-				+ " races) values (2027, 1, ?, 'Probni Clan', 'M', 'Seniori', 10.00, 3),"
-				+ " (2027, 2, ?, 'Drugi Clan', 'M', 'Seniori', 9.00, 3)").params(he, beside).update();
+				+ " races, kilometers, ascent, descent, seconds, category_position)"
+				+ " values (2027, 1, ?, 'Probni Clan', 'M', 'Seniori', 10.00, 3, 30, 0, 0, 9000, 1),"
+				+ " (2027, 2, ?, 'Drugi Clan', 'M', 'Seniori', 9.00, 3, 30, 0, 0, 9000, 2)")
+				.params(he, beside).update();
 
 		db.sql("create table season_probe (id bigserial primary key,"
 				+ " competitor_id bigint references competitor (id) on delete set null, who text)").update();
@@ -415,8 +419,22 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 		db.sql("insert into season_league_standing (season, league_id, league_name, position, competitor_id,"
 				+ " who, gender, points) values (2027, ?, 'Liga s njegovim brojem', 1, ?, 'Drugi Clan', 'M', 8.00)")
 				.params(he, beside).update();
-		db.sql("insert into season_team (season, position, team_id, name, points, members)"
-				+ " values (2027, 1, ?, 'Tim s njegovim brojem', 20.00, 2)").param(he).update();
+		db.sql("insert into season_team (season, position, team_id, name, points, members, races, kilometers,"
+				+ " ascent, descent, seconds) values (2027, 1, ?, 'Tim s njegovim brojem', 20.00, 2, 1, 10, 0,"
+				+ " 0, 3000)").param(he).update();
+
+		/* THE TABLES V84 ADDED, which no line of the job names: the roster of that team and the awards.
+		   Each holds his row and the row of the member beside him, so "the pointer empty, the name staying"
+		   is asked of the one and "untouched" of the other. */
+		db.sql("insert into season_team_member (season_team_id, position, competitor_id, who, gender, points,"
+				+ " races, kilometers, ascent, descent, seconds) values"
+				+ " ((select id from season_team where name = 'Tim s njegovim brojem'), 1, ?, 'Probni Clan', 'M',"
+				+ " 10.00, 3, 30, 0, 0, 9000),"
+				+ " ((select id from season_team where name = 'Tim s njegovim brojem'), 2, ?, 'Drugi Clan', 'M',"
+				+ " 9.00, 3, 30, 0, 0, 9000)").params(he, beside).update();
+		db.sql("insert into season_award (season, kind, position, competitor_id, who, gender, points) values"
+				+ " (2027, 'overall', 1, ?, 'Probni Clan', 'M', 10.00),"
+				+ " (2027, 'overall', 2, ?, 'Drugi Clan', 'M', 9.00)").params(he, beside).update();
 
 		db.sql("insert into season_frozen (season, frozen_at) values (2027, timestamptz '2028-01-01 15:00:00+00')"
 				+ " on conflict do nothing").update();
@@ -453,6 +471,19 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 		assertThat(db.sql("select team_id from season_team where name = 'Tim s njegovim brojem'")
 				.query(Long.class).single()).as("a row whose TEAM has the number of the member who went")
 				.isEqualTo(he);
+
+		assertThat(db.sql("select competitor_id, who from season_team_member where position = 1").query()
+				.singleRow()).as("his place on the roster of a frozen team")
+				.containsEntry("competitor_id", null).containsEntry("who", "Probni Clan");
+		assertThat(db.sql("select competitor_id, who from season_team_member where position = 2").query()
+				.singleRow()).as("the place of the member beside him on it")
+				.containsEntry("competitor_id", beside).containsEntry("who", "Drugi Clan");
+		assertThat(db.sql("select competitor_id, who from season_award where position = 1").query().singleRow())
+				.as("his award, in a table the job names nowhere")
+				.containsEntry("competitor_id", null).containsEntry("who", "Probni Clan");
+		assertThat(db.sql("select competitor_id, who from season_award where position = 2").query().singleRow())
+				.as("the award of the member beside him")
+				.containsEntry("competitor_id", beside).containsEntry("who", "Drugi Clan");
 
 		Map<String, Object> message = db.sql("select from_id, from_name from message where to_id = ?")
 				.param(beside).query().singleRow();
