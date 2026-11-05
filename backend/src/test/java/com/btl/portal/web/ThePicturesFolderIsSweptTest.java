@@ -153,13 +153,21 @@ class ThePicturesFolderIsSweptTest {
 		}
 	}
 
+	/**
+	 * WHERE THE CONTEXT'S CLOCK STANDS WHEN IT STARTS, which is before every freeze: {@code ASeasonFreezes}
+	 * tries at start (PDL, 05.11.2026), and a context born after 16:00 on 1.1.2028 would freeze the
+	 * seasons behind it into the one database every class shares, and leave them frozen for every class
+	 * after it. The case moves the clock to its own moment in {@code @BeforeEach}.
+	 */
+	private static final Instant WHEN_THE_CONTEXT_STARTS = Instant.parse("2027-10-15T10:00:00Z");
+
 	@TestConfiguration(proxyBeanMethods = false)
 	static class TheClockThisCaseUses {
 
 		@Bean
 		@Primary
 		AClockTheCaseMoves aClockTheCaseMoves() {
-			return new AClockTheCaseMoves(A_MOMENT_THE_MACHINE_IS_NOT_AT);
+			return new AClockTheCaseMoves(WHEN_THE_CONTEXT_STARTS);
 		}
 	}
 

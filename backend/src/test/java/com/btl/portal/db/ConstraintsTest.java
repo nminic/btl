@@ -398,7 +398,7 @@ class ConstraintsTest extends DatabaseTest {
 						LeagueConstraintsTest.TABLES, DucatConstraintsTest.TABLES,
 						PaymentConstraintsTest.TABLES, MembershipConstraintsTest.TABLES,
 						MembershipChangeConstraintsTest.TABLES,
-						FrozenSeasonConstraintsTest.TABLES,
+						FrozenSeasonConstraintsTest.TABLES, FrozenTablesConstraintsTest.TABLES,
 						AuthenticationConstraintsTest.TABLES, StaticPageConstraintsTest.TABLES,
 						BalanceConstraintsTest.TABLES, BankStatementConstraintsTest.TABLES,
 						CategoryWishConstraintsTest.TABLES, PointsAtTheFreezeConstraintsTest.TABLES)

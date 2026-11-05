@@ -1349,11 +1349,13 @@ class CompetitorWriteApiTest {
 	}
 
 	private void frozen(int position, String memberNumber, String who, String gender) {
+		/* The totals and the place in the category are V84's; the place is the place, which is the one
+		   category every row here stands in. */
 		db.sql("insert into season_competitor (season, position, competitor_id, who, gender,"
-						+ " category, points, races)"
+						+ " category, points, races, kilometers, ascent, descent, seconds, category_position)"
 						+ " values (?, ?, (select id from competitor where member_number = ?), ?,"
-						+ " ?, 'Seniori', 10.00, 3)")
-				.params(A_SEASON_BEING_RUN, position, memberNumber, who, gender).update();
+						+ " ?, 'Seniori', 10.00, 3, 30, 0, 0, 9000, ?)")
+				.params(A_SEASON_BEING_RUN, position, memberNumber, who, gender, position).update();
 
 		if (position == 1) {
 			db.sql("insert into season_league_standing (season, league_id, league_name, position,"

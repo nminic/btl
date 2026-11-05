@@ -632,15 +632,31 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				/* V17. Sve cetiri PRAZNE pokazivac i ostavljaju red: zamrznuta sezona je istorija i
 				   ne brise se nikad (P13). Ime tima i lige ostaje jer nisu osobe; ime clana
 				   uklanja OKIDAC, jer strani kljuc ume da isprazni pokazivac a ne i drugu kolonu. */
+				/* V84. Every pointer to a member, a race, an event, a league or a pair EMPTIES and leaves
+				   the frozen row, for V17's reason; the name goes by the trigger of V84 and the job that
+				   deletes after five years empties the pointer first and keeps the name (ADL,
+				   05.11.2026). Only what hangs off a frozen row of the snapshot itself goes with it. */
+				"season_award.season_award_competitor_fk set null",
+				"season_board.season_board_competitor_fk set null",
+				"season_board.season_board_race_fk set null",
 				"season_competitor.season_competitor_fk set null",
+				"season_league_cell.season_league_cell_column_fk cascade",
+				"season_league_cell.season_league_cell_standing_fk cascade",
+				"season_league_column.season_league_column_event_fk set null",
+				"season_league_column.season_league_column_league_fk set null",
 				"season_league_standing.season_league_standing_competitor_fk set null",
 				"season_league_standing.season_league_standing_league_fk set null",
+				"season_pair.season_pair_fk set null",
+				"season_pair_half.season_pair_half_competitor_fk set null",
+				"season_pair_half.season_pair_half_pair_fk cascade",
 				/* V83. What a member held in a frozen season goes with him: a deleted member has no
 				   category to work out, and V79 keeps only the rows of money. The season it was frozen
 				   in is never deleted while points of it stand. */
 				"season_points_at_freeze.season_points_at_freeze_competitor_fk cascade",
 				"season_points_at_freeze.season_points_at_freeze_season_fk restrict",
 				"season_team.season_team_fk set null",
+				"season_team_member.season_team_member_competitor_fk set null",
+				"season_team_member.season_team_member_team_fk cascade",
 				/* V24. Both CASCADE: nothing writes to this table yet (no page uses `includes`
 				   today), and a page that takes another in, or is taken in, is not a person -
 				   deleting either side of the relation is the administrator deleting a page,
