@@ -68,6 +68,12 @@ class ASeasonFreezesTest {
 	@Autowired
 	private ObjectProvider<ScheduledTaskHolder> schedulers;
 
+	@Autowired
+	private TheTablesOfASeason tables;
+
+	@Autowired
+	private ObjectProvider<WhatFollowsTheFreeze> followers;
+
 	@BeforeEach
 	void anaAtTenAndBojanAtThirteenIn2027() {
 		member("000201", "00112233440201aa");
@@ -273,7 +279,7 @@ class ASeasonFreezesTest {
 	private void freezeAt(int year, int month, int day, int hour, int minute) {
 		Instant at = LocalDateTime.of(year, month, day, hour, minute).atZone(BELGRADE).toInstant();
 
-		new ASeasonFreezes(db, Clock.fixed(at, ZoneOffset.UTC), inOneTransaction, best).freeze();
+		new ASeasonFreezes(db, Clock.fixed(at, ZoneOffset.UTC), inOneTransaction, best, tables, followers).freeze();
 	}
 
 	private List<Integer> frozenSeasons() {

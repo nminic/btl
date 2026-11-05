@@ -1,0 +1,779 @@
+{
+  "season": 2028,
+  "members": [
+    {
+      "id": 1,
+      "number": "000101",
+      "gender": "M",
+      "ageBand": "40-54",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 2,
+      "number": "000102",
+      "gender": "M",
+      "ageBand": "40-54",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 3,
+      "number": "000103",
+      "gender": "M",
+      "ageBand": "40-54",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 4,
+      "number": "000104",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 5,
+      "number": "000105",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 6,
+      "number": "000106",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": true,
+      "ranks": true
+    },
+    {
+      "id": 7,
+      "number": "000107",
+      "gender": "M",
+      "ageBand": "40-54",
+      "beginner": false,
+      "ranks": false
+    },
+    {
+      "id": 8,
+      "number": "000108",
+      "gender": "M",
+      "ageBand": "40-54",
+      "beginner": false,
+      "ranks": false
+    },
+    {
+      "id": 11,
+      "number": "000111",
+      "gender": "F",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 12,
+      "number": "000112",
+      "gender": "F",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 13,
+      "number": "000113",
+      "gender": "F",
+      "ageBand": "25-39",
+      "beginner": true,
+      "ranks": true
+    },
+    {
+      "id": 14,
+      "number": "000114",
+      "gender": "F",
+      "ageBand": "40-54",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 15,
+      "number": "000115",
+      "gender": "F",
+      "ageBand": "40-54",
+      "beginner": false,
+      "ranks": false
+    },
+    {
+      "id": 16,
+      "number": "000116",
+      "gender": "F",
+      "ageBand": "40-54",
+      "beginner": false,
+      "ranks": true
+    }
+  ],
+  "events": [
+    {
+      "id": 1,
+      "date": "2028-03-05",
+      "name": "Prolecni krug"
+    },
+    {
+      "id": 2,
+      "date": "2028-06-10",
+      "name": "Letnja trka"
+    },
+    {
+      "id": 3,
+      "date": "2028-09-15",
+      "name": "Jesenji ultra"
+    },
+    {
+      "id": 4,
+      "date": "2028-11-20",
+      "name": "Zimski krug"
+    },
+    {
+      "id": 99,
+      "date": "2027-05-05",
+      "name": "Prosla sezona"
+    }
+  ],
+  "races": [
+    {
+      "id": 101,
+      "event": 1,
+      "kilometers": "10",
+      "length": "short",
+      "name": "Krug 10"
+    },
+    {
+      "id": 102,
+      "event": 1,
+      "kilometers": "21.1",
+      "length": "half",
+      "name": "Polumaraton"
+    },
+    {
+      "id": 201,
+      "event": 2,
+      "kilometers": "5",
+      "length": "short",
+      "name": "Petica"
+    },
+    {
+      "id": 202,
+      "event": 2,
+      "kilometers": "42.2",
+      "length": "marathon",
+      "name": "Maraton"
+    },
+    {
+      "id": 301,
+      "event": 3,
+      "kilometers": "50",
+      "length": "ultra",
+      "name": "Ultra"
+    },
+    {
+      "id": 302,
+      "event": 3,
+      "kilometers": "30",
+      "length": "long",
+      "name": "Duga"
+    },
+    {
+      "id": 401,
+      "event": 4,
+      "kilometers": "10",
+      "length": "short",
+      "name": "Zimska desetka"
+    },
+    {
+      "id": 402,
+      "event": 4,
+      "kilometers": "5",
+      "length": "short",
+      "name": "Zimska petica"
+    },
+    {
+      "id": 999,
+      "event": 99,
+      "kilometers": "10",
+      "length": "short",
+      "name": "Lanjska"
+    }
+  ],
+  "runs": [
+    {
+      "id": 1,
+      "member": 1,
+      "race": 101,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "20.00",
+      "length": "short",
+      "raceName": "Krug 10",
+      "standing": true
+    },
+    {
+      "id": 2,
+      "member": 1,
+      "race": 201,
+      "event": 2,
+      "date": "2028-06-10",
+      "kilometers": "5",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 1500,
+      "points": "20.00",
+      "length": "short",
+      "raceName": "Petica",
+      "standing": true
+    },
+    {
+      "id": 3,
+      "member": 2,
+      "race": 302,
+      "event": 3,
+      "date": "2028-09-15",
+      "kilometers": "30",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 9000,
+      "points": "40.00",
+      "length": "long",
+      "raceName": "Duga",
+      "standing": true
+    },
+    {
+      "id": 4,
+      "member": 3,
+      "race": 101,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "10",
+      "ascent": 500,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "15.00",
+      "length": "short",
+      "raceName": "Krug 10",
+      "standing": true
+    },
+    {
+      "id": 5,
+      "member": 3,
+      "race": 401,
+      "event": 4,
+      "date": "2028-11-20",
+      "kilometers": "10",
+      "ascent": 500,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "15.00",
+      "length": "short",
+      "raceName": "Zimska desetka",
+      "standing": true
+    },
+    {
+      "id": 6,
+      "member": 4,
+      "race": 101,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "Krug 10",
+      "standing": true
+    },
+    {
+      "id": 7,
+      "member": 4,
+      "race": 201,
+      "event": 2,
+      "date": "2028-06-10",
+      "kilometers": "5",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 1500,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "Petica",
+      "standing": true
+    },
+    {
+      "id": 8,
+      "member": 4,
+      "race": 402,
+      "event": 4,
+      "date": "2028-11-20",
+      "kilometers": "5",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 1500,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "Zimska petica",
+      "standing": true
+    },
+    {
+      "id": 9,
+      "member": 5,
+      "race": 401,
+      "event": 4,
+      "date": "2028-11-20",
+      "kilometers": "10",
+      "ascent": 100,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "25.00",
+      "length": "short",
+      "raceName": "Zimska desetka",
+      "standing": true
+    },
+    {
+      "id": 10,
+      "member": 6,
+      "race": 101,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "10",
+      "ascent": 300,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "25.00",
+      "length": "short",
+      "raceName": "Krug 10",
+      "standing": true
+    },
+    {
+      "id": 11,
+      "member": 7,
+      "race": 101,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "Krug 10",
+      "standing": false
+    },
+    {
+      "id": 12,
+      "member": 11,
+      "race": 102,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "21.1",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 7000,
+      "points": "30.00",
+      "length": "half",
+      "raceName": "Polumaraton",
+      "standing": true
+    },
+    {
+      "id": 13,
+      "member": 12,
+      "race": 102,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "21.1",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 8000,
+      "points": "30.00",
+      "length": "half",
+      "raceName": "Polumaraton",
+      "standing": true
+    },
+    {
+      "id": 14,
+      "member": 13,
+      "race": 202,
+      "event": 2,
+      "date": "2028-06-10",
+      "kilometers": "42.2",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 14000,
+      "points": "50.00",
+      "length": "marathon",
+      "raceName": "Maraton",
+      "standing": true
+    },
+    {
+      "id": 15,
+      "member": 13,
+      "race": 301,
+      "event": 3,
+      "date": "2028-09-15",
+      "kilometers": "50",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 20000,
+      "points": "60.00",
+      "length": "ultra",
+      "raceName": "Ultra",
+      "standing": true
+    },
+    {
+      "id": 16,
+      "member": 13,
+      "race": 302,
+      "event": 3,
+      "date": "2028-09-15",
+      "kilometers": "30",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 9500,
+      "points": "45.00",
+      "length": "long",
+      "raceName": "Duga",
+      "standing": true
+    },
+    {
+      "id": 17,
+      "member": 14,
+      "race": 401,
+      "event": 4,
+      "date": "2028-11-20",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3600,
+      "points": "5.00",
+      "length": "short",
+      "raceName": "Zimska desetka",
+      "standing": true
+    },
+    {
+      "id": 18,
+      "member": 16,
+      "race": 101,
+      "event": 1,
+      "date": "2028-03-05",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3600,
+      "points": "5.00",
+      "length": "short",
+      "raceName": "Krug 10",
+      "standing": true
+    }
+  ],
+  "before": {
+    "1": "30.00",
+    "2": "50.00",
+    "3": "10.00",
+    "4": "20.00",
+    "13": "100.00"
+  },
+  "teams": [
+    {
+      "id": 9,
+      "name": "Deveti",
+      "roster": [
+        1,
+        4,
+        7
+      ]
+    },
+    {
+      "id": 10,
+      "name": "Deseti",
+      "roster": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": 11,
+      "name": "Jedanaesti",
+      "roster": [
+        5,
+        11
+      ]
+    },
+    {
+      "id": 12,
+      "name": "Dvanaesti",
+      "roster": [
+        6,
+        12
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Treci",
+      "roster": [
+        8
+      ]
+    },
+    {
+      "id": 20,
+      "name": "Dvadeseti",
+      "roster": [
+        15
+      ]
+    }
+  ],
+  "pairs": [
+    {
+      "id": 1,
+      "man": 1,
+      "woman": 16
+    },
+    {
+      "id": 2,
+      "man": 4,
+      "woman": 14
+    },
+    {
+      "id": 3,
+      "man": 5,
+      "woman": 14
+    },
+    {
+      "id": 4,
+      "man": 2,
+      "woman": 13
+    },
+    {
+      "id": 5,
+      "man": 7,
+      "woman": 11
+    }
+  ],
+  "leagues": [
+    {
+      "id": 1,
+      "name": "Prva liga",
+      "races": [
+        101,
+        201,
+        301
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Druga liga",
+      "races": [
+        102,
+        401
+      ]
+    }
+  ],
+  "expected": {
+    "standing": {
+      "M": [
+        "000102",
+        "000101",
+        "000104",
+        "000103",
+        "000106",
+        "000105"
+      ],
+      "F": [
+        "000113",
+        "000111",
+        "000112",
+        "000114",
+        "000116"
+      ]
+    },
+    "category": {
+      "M R": [
+        "000106"
+      ],
+      "M25-39": [
+        "000104",
+        "000105"
+      ],
+      "M40-54": [
+        "000102",
+        "000101",
+        "000103"
+      ],
+      "Ž R": [
+        "000113"
+      ],
+      "Ž25-39": [
+        "000111",
+        "000112"
+      ],
+      "Ž40-54": [
+        "000114",
+        "000116"
+      ]
+    },
+    "teams": [
+      9,
+      10,
+      12,
+      11,
+      20,
+      3
+    ],
+    "teamPages": {
+      "3": [],
+      "9": [
+        "000101",
+        "000104"
+      ],
+      "10": [
+        "000102",
+        "000103"
+      ],
+      "11": [
+        "000111",
+        "000105"
+      ],
+      "12": [
+        "000112",
+        "000106"
+      ],
+      "20": []
+    },
+    "byLength": {
+      "short": [
+        "000104",
+        "000101",
+        "000103",
+        "000106",
+        "000105",
+        "000116",
+        "000114"
+      ],
+      "half": [
+        "000111",
+        "000112"
+      ],
+      "long": [
+        "000113",
+        "000102"
+      ],
+      "marathon": [
+        "000113"
+      ],
+      "ultra": [
+        "000113"
+      ]
+    },
+    "kilometers": [
+      "000113",
+      "000102",
+      "000111",
+      "000112",
+      "000104",
+      "000103",
+      "000101",
+      "000106",
+      "000105",
+      "000116",
+      "000114"
+    ],
+    "timeOnCourse": [
+      "000113",
+      "000102",
+      "000112",
+      "000111",
+      "000104",
+      "000103",
+      "000101",
+      "000114",
+      "000116",
+      "000106",
+      "000105"
+    ],
+    "progress": [
+      "000113",
+      "000103",
+      "000101",
+      "000104"
+    ],
+    "bestRaces": [
+      15,
+      14,
+      16,
+      3,
+      12,
+      13,
+      9,
+      10,
+      1,
+      2,
+      4,
+      5,
+      6,
+      7,
+      8,
+      17,
+      18
+    ],
+    "pairs": [
+      [
+        4,
+        "000113"
+      ],
+      [
+        3,
+        "000105"
+      ],
+      [
+        1,
+        "000101"
+      ]
+    ],
+    "leagues": {
+      "1": {
+        "columns": [
+          1,
+          2,
+          3
+        ],
+        "M": [
+          "000101",
+          "000106",
+          "000104",
+          "000103"
+        ],
+        "F": [
+          "000113",
+          "000116"
+        ]
+      },
+      "2": {
+        "columns": [
+          1,
+          4
+        ],
+        "M": [
+          "000105",
+          "000103"
+        ],
+        "F": [
+          "000111",
+          "000112",
+          "000114"
+        ]
+      }
+    }
+  }
+}
