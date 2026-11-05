@@ -471,6 +471,82 @@ class MemberMembershipApiTest {
 		assertThat(active(member)).isFalse();
 	}
 
+	/**
+	 * A SEASON CANCELLED IN FEBRUARY, AFTER IT BEGAN, TAKES HIM OUT OF HIS TEAM AND HIS PAIR AT ONCE (PDL
+	 * 05.11.2026, „Storno sezone posle 1. januara u 16h izbacuje člana iz tima i para odmah"), with the
+	 * messages of the turn of the season. He administered the team, so the member left in it is told he
+	 * does now: which is only true if the seat was read BEFORE the cancellation wrote {@code active} again,
+	 * since read after it the seat had already passed to that member and nothing would seem to move.
+	 */
+	@Test
+	void aSeasonCancelledAfterItBeganTakesHimOutOfHisTeamAndHisPairAtOnce() throws Exception {
+		clock.moveTo(Instant.parse("2028-02-10T09:00:00Z"));
+		long partner = aTeamAndAPairOf2028();
+
+		assertThat(cancelled("000005", "payment", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
+
+		assertThat(db.sql("select season_from || ' ' || coalesce(season_to::text, '-') || ' '"
+						+ " || coalesce(left_reason, '-') from team_membership where competitor_id = ?")
+				.param(member).query(String.class).single())
+				.isEqualTo("2027 2027 " + com.btl.portal.domain.team.Membership.THE_FEE_LAPSED);
+		assertThat(count("select count(*) from racing_pair where man_id = ?", member)).isZero();
+		assertThat(db.sql("select admin_id from team where slug = 'tim-storna'").query(Long.class).single())
+				.isEqualTo(somebodyElse);
+		assertThat(messages()).contains(somebodyElse + " " + ASeasonBegins.YOU_ADMINISTER + "Tim storna",
+				partner + " " + PairWriteApi.THE_PAIR_IS_BROKEN);
+	}
+
+	/**
+	 * AND AT HALF PAST MIDNIGHT ON 1 JANUARY NOTHING MOVES YET: 2027 has not frozen, and the turn drops him
+	 * at 16:00 because he holds nothing for 2028 then.
+	 */
+	@Test
+	void aSeasonCancelledBeforeTheTurnLeavesHisTeamAndPairToTheTurn() throws Exception {
+		clock.moveTo(HALF_PAST_MIDNIGHT);
+		aTeamAndAPairOf2028();
+
+		assertThat(cancelled("000005", "payment", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
+
+		assertThat(count("select count(*) from team_membership where competitor_id = ? and season_to is null",
+				member)).isEqualTo(1);
+		assertThat(count("select count(*) from racing_pair where man_id = ?", member)).isEqualTo(1);
+		assertThat(messages()).noneMatch(one -> one.contains(PairWriteApi.THE_PAIR_IS_BROKEN)
+				|| one.contains(ASeasonBegins.YOU_ADMINISTER));
+	}
+
+	/**
+	 * The member holds 2028, administers a team with somebody else in it who holds 2028 too, and is in a
+	 * pair of 2028 with a woman who holds it.
+	 *
+	 * @return the woman
+	 */
+	private long aTeamAndAPairOf2028() {
+		HeldOn.season(db, member, 2028, "payment");
+		HeldOn.season(db, somebodyElse, 2028, "payment");
+
+		long partner = db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000077', 'Ana',"
+						+ " 'Partnerka', 'F', date '1990-05-15', " + A_TOWN_ABROAD + ", null, null, 2027, true,"
+						+ " '0011aabbccddeee9', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
+				.query(Long.class).single();
+		HeldOn.season(db, partner, 2028, "payment");
+
+		long team = db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, logo_id,"
+						+ " first_season, admin_id) values ('tim-storna', 'Tim storna', '', '', " + A_TOWN_ABROAD
+						+ ", null, null, null, 2027, ?) returning id")
+				.param(member).query(Long.class).single();
+
+		for (long each : List.of(member, somebodyElse)) {
+			db.sql("insert into team_membership (competitor_id, team_id, season_from) values (?, ?, 2027)")
+					.params(each, team).update();
+		}
+
+		db.sql("insert into racing_pair (season, man_id, woman_id) values (2028, ?, ?)")
+				.params(member, partner).update();
+
+		return partner;
+	}
+
 	/** In 2026 the season on sale is the first one, 2027, and the calendar's 2026 is no season. */
 	@Test
 	void in2026TheFirstSeasonIsTheOneCancelled() throws Exception {
