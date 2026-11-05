@@ -75,6 +75,14 @@ class MeCategoryWriteApiTest {
 
 	private static final Instant IN_OCTOBER_2028 = Instant.parse("2028-11-11T12:00:00Z");
 
+	/**
+	 * WHERE THE CONTEXT'S CLOCK STANDS WHEN IT STARTS, which is before every freeze: {@code ASeasonFreezes}
+	 * tries at start (PDL, 05.11.2026), and a context born after 16:00 on 1.1.2028 would freeze 2027 into
+	 * the one database every class shares, in the middle of this class's own set-up. The case moves the
+	 * clock to its own moment in {@code @BeforeEach}.
+	 */
+	private static final Instant WHEN_THE_CONTEXT_STARTS = Instant.parse("2027-10-15T10:00:00Z");
+
 	/** Ten o'clock in Belgrade on 1 January 2029, which is the deadline itself. */
 	private static final Instant THE_DEADLINE = Instant.parse("2029-01-01T09:00:00Z");
 
@@ -139,7 +147,7 @@ class MeCategoryWriteApiTest {
 		@Bean
 		@Primary
 		AClockTheCaseMoves aClockTheCaseMoves() {
-			return new AClockTheCaseMoves(IN_OCTOBER_2028);
+			return new AClockTheCaseMoves(WHEN_THE_CONTEXT_STARTS);
 		}
 	}
 
