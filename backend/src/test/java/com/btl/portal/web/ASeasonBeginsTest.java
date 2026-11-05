@@ -371,7 +371,7 @@ class ASeasonBeginsTest {
 	}
 
 	private long adminOf(String slug) {
-		return db.sql("select admin_id from team where slug = ?").param(slug).query(Long.class).single();
+		return db.sql("select coalesce(admin_id, 0) from team where slug = ?").param(slug).query(Long.class).single();
 	}
 
 	private List<String> memberships() {

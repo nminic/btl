@@ -490,7 +490,7 @@ class MemberMembershipApiTest {
 				.param(member).query(String.class).single())
 				.isEqualTo("2027 2027 " + com.btl.portal.domain.team.Membership.THE_FEE_LAPSED);
 		assertThat(count("select count(*) from racing_pair where man_id = ?", member)).isZero();
-		assertThat(db.sql("select admin_id from team where slug = 'tim-storna'").query(Long.class).single())
+		assertThat(db.sql("select coalesce(admin_id, 0) from team where slug = 'tim-storna'").query(Long.class).single())
 				.isEqualTo(somebodyElse);
 		assertThat(messages()).contains(somebodyElse + " " + ASeasonBegins.YOU_ADMINISTER + "Tim storna",
 				partner + " " + PairWriteApi.THE_PAIR_IS_BROKEN);
