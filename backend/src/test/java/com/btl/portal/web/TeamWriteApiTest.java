@@ -2782,9 +2782,10 @@ class TeamWriteApiTest {
 	private void frozenStanding(int position, String teamSlug, String name, String points,
 			int members) {
 
-		db.sql("insert into season_team (season, position, team_id, name, points, members)"
+		db.sql("insert into season_team (season, position, team_id, name, points, members, races, kilometers,"
+						+ " ascent, descent, seconds)"
 						+ " values (?, ?, (select id from team where slug = ?), ?,"
-						+ " cast(? as numeric), ?)")
+						+ " cast(? as numeric), ?, 1, 10, 0, 0, 3000)")
 				.params(THE_FROZEN_SEASON, position, teamSlug, name, points, members).update();
 	}
 
