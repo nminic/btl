@@ -367,14 +367,17 @@ class CompetitorWriteApi {
 	}
 
 	/**
-	 * THE SAME DELETING, AND NOBODY IS TOLD: the deletion of a profile whose keeping has run out
-	 * ({@link ProfilesPastTheirKeepingAreDeleted}).
+	 * THE SAME DELETING, AND NOBODY IS TOLD: the deletion of a profile five years after the end of his
+	 * last season ({@link ProfilesPastTheirKeepingAreDeleted}), and only that one.
 	 *
 	 * <p>The owner, 05.11.2026 (PDL, „Brisanje posle pet godina ne šalje poruku nikome"), chose with
 	 * my recommendation that the deletion five years on sends no message to anybody: „ni članu
 	 * unapred, ni bivšem partneru iz para". Every pair such a member was ever in is a pair of a season
 	 * long over, and {@link #partnersOf} reads every season, so the deletion the administration asks
-	 * for would tell a partner of 2027 in 2033 that their pair is broken. Everything else is the same
+	 * for would tell a partner of 2027 in 2033 that their pair is broken. The deletion twelve months
+	 * after the opening of an account that never became a member is NOT this one: it calls {@link
+	 * #takeAway(long)} and tells the partner (PDL 05.11.2026, „Brisanje naloga koji nikad nije postao
+	 * član (posle 12 meseci) javlja partneru da je trkački par raskinut"). Everything else is the same
 	 * act, so it is the same lines; only the list of whom to tell is empty.
 	 */
 	void takeAwayWithoutAWord(long gone) {

@@ -29,9 +29,9 @@ import java.util.concurrent.TimeUnit;
  * recommendation: every season of membership counts, whatever its basis - a payment, an exemption from
  * the fee or the balance. A season counts too when it was cancelled: „Član kome je jedina sezona
  * stornirana briše se pet godina posle kraja te sezone" (PDL 05.11.2026), because a cancellation
- * leaves him his number and a trail of money ({@code membership_change}, V63). The owner decided the
- * case of the ONLY season; that a cancelled season counts the same way beside other seasons is
- * derived from his reason and is mine, and it is the later deletion of the two readings. The end of a
+ * leaves him his number and a trail of money ({@code membership_change}, V63). The owner decided
+ * the same for a cancelled season beside other seasons (PDL 05.11.2026, „I kad postoje i druge sezone,
+ * rok od pet godina teče od poslednje sezone u evidenciji, i stornirane"). The end of a
  * season is {@link SeasonClock#racesEnd}, midnight of 1 January in the league's zone.
  * <li><b>Twelve months from the opening of an account that never became a member.</b> PDL 05.11.2026:
  * „nalog koji nikad nije postao član (nema nijednu sezonu članstva ni članski broj) 12 meseci od
@@ -58,8 +58,10 @@ import java.util.concurrent.TimeUnit;
  * dukati ostaju u trajnom vlasništvu profila, osim u slučaju brisanja istog"), his pairs, a team he was
  * the last of, his picture; and the money stays without his name (V79). His name in a comment and in a
  * message becomes <Obrisani član> or <Obrisana članica>, as for a deletion he asked for (PDL
- * 05.11.2026). Nobody is sent a message, not he beforehand and not a partner of a pair (PDL 05.11.2026,
- * „Brisanje posle pet godina ne šalje poruku nikome").
+ * 05.11.2026). After five years nobody is sent a message, not he beforehand and not a partner of a pair (PDL
+ * 05.11.2026, „Brisanje posle pet godina ne šalje poruku nikome"); after twelve months a partner of a
+ * pair is told it is broken, as for the other two deletions (PDL 05.11.2026, „Brisanje naloga koji nikad
+ * nije postao član (posle 12 meseci) javlja partneru da je trkački par raskinut").
  *
  * <p><b>AND ONE THING IS NOT THE SAME: HIS NAME STAYS IN THE FROZEN TABLES OF HIS SEASONS.</b> PDL P23
  * („Postoje dva različita slučaja uklanjanja, koja se ne smeju pomešati"): when the keeping runs out
@@ -108,16 +110,20 @@ class ProfilesPastTheirKeepingAreDeleted {
 	 * names, and a member with neither has no greatest season: {@code max} of nothing is null, and null
 	 * is never at or before anything, so the first branch never reaches somebody who was never a member.
 	 */
-	private static final String MAY_GO = " from competitor c where"
-			+ " ((select max(s.season) from (select season from membership where competitor_id = c.id"
+	private static final String FIVE_YEARS_OVER =
+			"(select max(s.season) from (select season from membership where competitor_id = c.id"
 			+ "     union all select season from membership_change where competitor_id = c.id) s)"
-			+ "   <= :lastSeasonGone"
-			+ "  or (c.member_number is null"
+			+ "   <= :lastSeasonGone";
+
+	private static final String TWELVE_MONTHS_OVER = "(c.member_number is null"
 			+ "   and not exists (select 1 from membership m where m.competitor_id = c.id)"
 			+ "   and not exists (select 1 from membership_change h where h.competitor_id = c.id)"
 			+ "   and exists (select 1 from account a where a.competitor_id = c.id"
 			+ "     and a.email_confirmed_at is not null"
-			+ "     and coalesce(a.created_at, c.health_statement_at) <= :openedBy)))";
+			+ "     and coalesce(a.created_at, c.health_statement_at) <= :openedBy))";
+
+	private static final String MAY_GO = " from competitor c where (" + FIVE_YEARS_OVER + " or "
+			+ TWELVE_MONTHS_OVER + ")";
 
 	/**
 	 * One statement for each key of a snapshot table that is to let go of a member, written by the
@@ -201,7 +207,21 @@ class ProfilesPastTheirKeepingAreDeleted {
 			db.sql(lettingGo).param(member).update();
 		}
 
-		members.takeAwayWithoutAWord(member);
+		/* THE TWO WAYS DIFFER IN WHOM THEY TELL (PDL 05.11.2026): five years on nobody is told, because every
+		   pair of his is of a season long over; twelve months on a partner is told the pair is broken,
+		   because an account that never became a member may have accepted a pair. The two conditions are
+		   exclusive (the second asks for no season at all), so this asks only the first. */
+		boolean afterFiveYears = db.sql("select exists (select 1 from competitor c where c.id = :member and "
+						+ FIVE_YEARS_OVER + ")")
+				.param("lastSeasonGone", lastSeasonGone(now)).param("member", member)
+				.query(Boolean.class).single();
+
+		if (afterFiveYears) {
+			members.takeAwayWithoutAWord(member);
+		}
+		else {
+			members.takeAway(member);
+		}
 
 		return true;
 	}

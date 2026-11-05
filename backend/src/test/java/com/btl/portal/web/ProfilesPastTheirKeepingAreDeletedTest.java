@@ -253,6 +253,32 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 	}
 
 	/**
+	 * TWELVE MONTHS ON, A PARTNER IS TOLD THE PAIR IS BROKEN (PDL 05.11.2026, „Brisanje naloga koji nikad
+	 * nije postao član (posle 12 meseci) javlja partneru da je trkački par raskinut"): an account opened
+	 * and confirmed on 1 March 2027 with no number and no season, in a pair of 2028 with a woman who holds
+	 * 2028, measured on 2 March 2028. The woman has one message and the pair is gone. Beside it, the
+	 * deletion five years on tells her nothing, so the two ways are asked of the same woman.
+	 */
+	@Test
+	void anAccountThatNeverBecameAMemberTellsHisPartnerThePairIsBroken() {
+		ZonedDateTime now = belgrade(2028, 3, 2, 10, 0, 0);
+		long he = neverAMember();
+		long she = aMember("F");
+
+		opened(he, belgrade(2027, 3, 1, 10, 0, 0), belgrade(2027, 3, 1, 10, 0, 0));
+		heldOn(she, 2028, "payment");
+		db.sql("insert into racing_pair (season, man_id, woman_id) values (2028, ?, ?)").params(he, she).update();
+
+		assertThat(goes(he, now)).isTrue();
+
+		assertThat(db.sql("select count(*) from message where to_id = ?").param(she).query(Long.class).single())
+				.as("his partner was told the pair is broken").isEqualTo(1);
+		assertThat(db.sql("select count(*) from racing_pair where woman_id = ?").param(she).query(Long.class).single())
+				.isZero();
+		assertThat(stands(she)).isTrue();
+	}
+
+	/**
 	 * AN ACCOUNT THAT STOOD BEFORE V72 HAS NO OPENING, AND THE REGISTRATION'S MOMENT IS IT: thirteen
 	 * months ago he goes, eleven he stays; and where the account has its own moment, that moment decides
 	 * and not the registration's.
@@ -338,6 +364,39 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 		db.sql("create table season_probe (id bigserial primary key,"
 				+ " competitor_id bigint references competitor (id) on delete set null, who text)").update();
 		db.sql("insert into season_probe (competitor_id, who) values (?, 'Probni Clan')").param(he).update();
+		/* THE PROBE EMPTIES ITS NAME ON THE DELETION, as V79's trigger does for the two real tables. Without
+		   it `on delete set null` alone gives "the pointer empty, the name staying" whatever the job did,
+		   so the same value would come from two places and no mutation of the catalogue question would
+		   change it. */
+		db.sql("create function season_probe_forgets_the_name() returns trigger language plpgsql as"
+				+ " $body$ begin update season_probe set who = null where competitor_id = old.id;"
+				+ " return old; end; $body$").update();
+		db.sql("create trigger season_probe_forgets_the_name_of_a_deleted_member before delete on competitor"
+				+ " for each row execute function season_probe_forgets_the_name()").update();
+
+		/* THE STANDINGS OF A LEAGUE: his own row, and the row of the member beside him. */
+		db.sql("insert into league (slug, name, season, rules, prizes) values ('probna-liga', 'Probna liga',"
+				+ " 2027, '', '')").update();
+		db.sql("insert into season_league_standing (season, league_id, league_name, position, competitor_id,"
+				+ " who, gender, points) values (2027, (select id from league where slug = 'probna-liga'),"
+				+ " 'Probna liga', 1, ?, 'Probni Clan', 'M', 10.00),"
+				+ " (2027, (select id from league where slug = 'probna-liga'), 'Probna liga', 2, ?,"
+				+ " 'Drugi Clan', 'M', 9.00)").params(he, beside).update();
+
+		/* A LEAGUE AND A TEAM WHOSE KEY IS THE NUMBER OF THE MEMBER WHO GOES. A key that names a league
+		   or a team is not a key that names a member, and the question put to the catalogue is which
+		   table points at competitor: with it dropped, `league_id = ?` and `team_id = ?` are asked of his
+		   number and empty somebody else's league and team. */
+		db.sql("insert into league (id, slug, name, season, rules, prizes) values (?, 'liga-s-njegovim-brojem',"
+				+ " 'Liga s njegovim brojem', 2027, '', '')").param(he).update();
+		db.sql("insert into team (id, slug, name, bio, link, place_id, city, country_id, logo_id, first_season,"
+				+ " admin_id) values (?, 'tim-s-njegovim-brojem', 'Tim s njegovim brojem', '', '', "
+				+ A_TOWN_IN_SERBIA + ", null, null, null, 2027, null)").param(he).update();
+		db.sql("insert into season_league_standing (season, league_id, league_name, position, competitor_id,"
+				+ " who, gender, points) values (2027, ?, 'Liga s njegovim brojem', 1, ?, 'Drugi Clan', 'M', 8.00)")
+				.params(he, beside).update();
+		db.sql("insert into season_team (season, position, team_id, name, points, members)"
+				+ " values (2027, 1, ?, 'Tim s njegovim brojem', 20.00, 2)").param(he).update();
 
 		db.sql("insert into season_frozen (season, frozen_at) values (2027, timestamptz '2028-01-01 15:00:00+00')"
 				+ " on conflict do nothing").update();
@@ -358,6 +417,22 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 		assertThat(db.sql("select competitor_id, who from season_probe").query().singleRow())
 				.as("a snapshot table nothing here names")
 				.containsEntry("competitor_id", null).containsEntry("who", "Probni Clan");
+
+		assertThat(db.sql("select competitor_id, who from season_league_standing where position = 1"
+				+ " and league_name = 'Probna liga'").query().singleRow()).as("his row of a league's standing")
+				.containsEntry("competitor_id", null).containsEntry("who", "Probni Clan");
+		assertThat(db.sql("select competitor_id, who from season_league_standing where position = 2"
+				+ " and league_name = 'Probna liga'").query().singleRow())
+				.as("the row of the member beside him in it")
+				.containsEntry("competitor_id", beside).containsEntry("who", "Drugi Clan");
+		assertThat(db.sql("select league_id, competitor_id, who from season_league_standing"
+				+ " where league_name = 'Liga s njegovim brojem'").query().singleRow())
+				.as("a row whose LEAGUE has the number of the member who went")
+				.containsEntry("league_id", he).containsEntry("competitor_id", beside)
+				.containsEntry("who", "Drugi Clan");
+		assertThat(db.sql("select team_id from season_team where name = 'Tim s njegovim brojem'")
+				.query(Long.class).single()).as("a row whose TEAM has the number of the member who went")
+				.isEqualTo(he);
 
 		Map<String, Object> message = db.sql("select from_id, from_name from message where to_id = ?")
 				.param(beside).query().singleRow();
