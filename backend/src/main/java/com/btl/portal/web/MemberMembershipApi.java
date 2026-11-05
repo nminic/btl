@@ -146,9 +146,12 @@ class MemberMembershipApi {
 
 	private final ABeginnersCategoryAMembershipMoves category;
 
+	private final ASeasonBegins teamsAndPairs;
+
 	MemberMembershipApi(JdbcClient db, Clock clock, TransactionTemplate inOneTransaction, BalanceBook book,
 			BookingAPayment booking, GrantingASeason granting, CurrencyOfMember currencyOf,
-			MemberOfAccount memberOfAccount, ABeginnersCategoryAMembershipMoves category) {
+			MemberOfAccount memberOfAccount, ABeginnersCategoryAMembershipMoves category,
+			ASeasonBegins teamsAndPairs) {
 		this.db = db;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
@@ -158,6 +161,7 @@ class MemberMembershipApi {
 		this.currencyOf = currencyOf;
 		this.memberOfAccount = memberOfAccount;
 		this.category = category;
+		this.teamsAndPairs = teamsAndPairs;
 	}
 
 	/** @param basis the basis the screen showed for the season, which is the one cancelled */
@@ -261,6 +265,12 @@ class MemberMembershipApi {
 		   with it by `membership_payment_fk` (V22, ON DELETE CASCADE), so the payment is what is
 		   deleted; the other two bases have no payment and the membership itself goes. */
 		gone(member.get(), season, held.get());
+
+		/* AND A SEASON THAT HAS BEGUN TAKES HIM OUT OF HIS TEAM AND HIS PAIR AT ONCE, PDL 05.11.2026, „Storno
+		   sezone posle 1. januara u 16h izbacuje člana iz tima i para odmah": „Jedno pravilo: bez članarine
+		   za sezonu nema tima ni para te sezone." Asked here, before `active` is written again below, so the
+		   seat of his team is read while he still stands in it. */
+		teamsAndPairs.cancelled(member.get(), season, now);
 
 		/* WHAT THE SEASON HELD AGAINST THE BALANCE COMES BACK OFF IT, by a line of its own, under the
 		   lock taken above (see `BalanceBook.reversed`). An exemption held nothing, and nothing is
