@@ -112,6 +112,150 @@
       "ageBand": "40-54",
       "beginner": false,
       "ranks": true
+    },
+    {
+      "id": 19,
+      "number": "000119",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 21,
+      "number": "000121",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 22,
+      "number": "000122",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 23,
+      "number": "000123",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 24,
+      "number": "000124",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 25,
+      "number": "000125",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 26,
+      "number": "000126",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 27,
+      "number": "000127",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 28,
+      "number": "000128",
+      "gender": "M",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 31,
+      "number": "000131",
+      "gender": "F",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 32,
+      "number": "000132",
+      "gender": "F",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 33,
+      "number": "000133",
+      "gender": "F",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 34,
+      "number": "000134",
+      "gender": "F",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 35,
+      "number": "000135",
+      "gender": "F",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 36,
+      "number": "000136",
+      "gender": "F",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 37,
+      "number": "000137",
+      "gender": "F",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 38,
+      "number": "000138",
+      "gender": "F",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
+    },
+    {
+      "id": 49,
+      "number": "000149",
+      "gender": "F",
+      "ageBand": "25-39",
+      "beginner": false,
+      "ranks": true
     }
   ],
   "events": [
@@ -134,6 +278,11 @@
       "id": 4,
       "date": "2028-11-20",
       "name": "Zimski krug"
+    },
+    {
+      "id": 5,
+      "date": "2028-12-01",
+      "name": "Decembarski krug"
     },
     {
       "id": 99,
@@ -197,6 +346,55 @@
       "kilometers": "5",
       "length": "short",
       "name": "Zimska petica"
+    },
+    {
+      "id": 501,
+      "event": 5,
+      "kilometers": "5",
+      "length": "short",
+      "name": "A1"
+    },
+    {
+      "id": 502,
+      "event": 5,
+      "kilometers": "5",
+      "length": "short",
+      "name": "A2"
+    },
+    {
+      "id": 503,
+      "event": 5,
+      "kilometers": "12",
+      "length": "short",
+      "name": "B"
+    },
+    {
+      "id": 504,
+      "event": 5,
+      "kilometers": "10",
+      "length": "short",
+      "name": "C"
+    },
+    {
+      "id": 505,
+      "event": 5,
+      "kilometers": "8",
+      "length": "short",
+      "name": "D"
+    },
+    {
+      "id": 506,
+      "event": 5,
+      "kilometers": "10",
+      "length": "short",
+      "name": "E"
+    },
+    {
+      "id": 507,
+      "event": 5,
+      "kilometers": "10",
+      "length": "short",
+      "name": "G"
     },
     {
       "id": 999,
@@ -476,6 +674,306 @@
       "length": "short",
       "raceName": "Krug 10",
       "standing": true
+    },
+    {
+      "id": 19,
+      "member": 21,
+      "race": 501,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "5",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 1000,
+      "points": "5.00",
+      "length": "short",
+      "raceName": "A1",
+      "standing": true
+    },
+    {
+      "id": 20,
+      "member": 31,
+      "race": 501,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "5",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 1000,
+      "points": "5.00",
+      "length": "short",
+      "raceName": "A1",
+      "standing": true
+    },
+    {
+      "id": 21,
+      "member": 21,
+      "race": 502,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "5",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 1000,
+      "points": "5.00",
+      "length": "short",
+      "raceName": "A2",
+      "standing": true
+    },
+    {
+      "id": 22,
+      "member": 31,
+      "race": 502,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "5",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 1000,
+      "points": "5.00",
+      "length": "short",
+      "raceName": "A2",
+      "standing": true
+    },
+    {
+      "id": 23,
+      "member": 22,
+      "race": 503,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "12",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 1000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "B",
+      "standing": true
+    },
+    {
+      "id": 24,
+      "member": 32,
+      "race": 503,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "12",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 1000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "B",
+      "standing": true
+    },
+    {
+      "id": 25,
+      "member": 23,
+      "race": 504,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 1000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "C",
+      "standing": true
+    },
+    {
+      "id": 26,
+      "member": 33,
+      "race": 504,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 1000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "C",
+      "standing": true
+    },
+    {
+      "id": 27,
+      "member": 24,
+      "race": 505,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "8",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 5000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "D",
+      "standing": true
+    },
+    {
+      "id": 28,
+      "member": 34,
+      "race": 505,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "8",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 5000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "D",
+      "standing": true
+    },
+    {
+      "id": 29,
+      "member": 25,
+      "race": 506,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 2000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "E",
+      "standing": true
+    },
+    {
+      "id": 30,
+      "member": 35,
+      "race": 506,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 2000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "E",
+      "standing": true
+    },
+    {
+      "id": 31,
+      "member": 26,
+      "race": 506,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "E",
+      "standing": true
+    },
+    {
+      "id": 32,
+      "member": 36,
+      "race": 506,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "E",
+      "standing": true
+    },
+    {
+      "id": 33,
+      "member": 27,
+      "race": 507,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "G",
+      "standing": true
+    },
+    {
+      "id": 34,
+      "member": 38,
+      "race": 507,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "G",
+      "standing": true
+    },
+    {
+      "id": 35,
+      "member": 28,
+      "race": 507,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "G",
+      "standing": true
+    },
+    {
+      "id": 36,
+      "member": 37,
+      "race": 507,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "G",
+      "standing": true
+    },
+    {
+      "id": 37,
+      "member": 19,
+      "race": 507,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "G",
+      "standing": true
+    },
+    {
+      "id": 38,
+      "member": 49,
+      "race": 507,
+      "event": 5,
+      "date": "2028-12-01",
+      "kilometers": "10",
+      "ascent": 0,
+      "descent": 0,
+      "seconds": 3000,
+      "points": "10.00",
+      "length": "short",
+      "raceName": "G",
+      "standing": true
     }
   ],
   "before": {
@@ -483,7 +981,11 @@
     "2": "50.00",
     "3": "10.00",
     "4": "20.00",
-    "13": "100.00"
+    "13": "100.00",
+    "31": "5.00",
+    "22": "5.00",
+    "23": "5.00",
+    "24": "5.00"
   },
   "teams": [
     {
@@ -532,6 +1034,14 @@
       "roster": [
         15
       ]
+    },
+    {
+      "id": 30,
+      "name": "Trideseti",
+      "roster": [
+        25,
+        26
+      ]
     }
   ],
   "pairs": [
@@ -559,6 +1069,56 @@
       "id": 5,
       "man": 7,
       "woman": 11
+    },
+    {
+      "id": 6,
+      "man": 3,
+      "woman": 15
+    },
+    {
+      "id": 11,
+      "man": 21,
+      "woman": 31
+    },
+    {
+      "id": 12,
+      "man": 22,
+      "woman": 32
+    },
+    {
+      "id": 13,
+      "man": 23,
+      "woman": 33
+    },
+    {
+      "id": 14,
+      "man": 24,
+      "woman": 34
+    },
+    {
+      "id": 15,
+      "man": 25,
+      "woman": 35
+    },
+    {
+      "id": 16,
+      "man": 26,
+      "woman": 36
+    },
+    {
+      "id": 17,
+      "man": 27,
+      "woman": 38
+    },
+    {
+      "id": 18,
+      "man": 28,
+      "woman": 37
+    },
+    {
+      "id": 19,
+      "man": 19,
+      "woman": 49
     }
   ],
   "leagues": [
@@ -588,12 +1148,30 @@
         "000104",
         "000103",
         "000106",
-        "000105"
+        "000105",
+        "000122",
+        "000121",
+        "000119",
+        "000123",
+        "000125",
+        "000126",
+        "000127",
+        "000128",
+        "000124"
       ],
       "F": [
         "000113",
         "000111",
         "000112",
+        "000132",
+        "000131",
+        "000133",
+        "000135",
+        "000136",
+        "000137",
+        "000138",
+        "000149",
+        "000134",
         "000114",
         "000116"
       ]
@@ -604,7 +1182,16 @@
       ],
       "M25-39": [
         "000104",
-        "000105"
+        "000105",
+        "000122",
+        "000121",
+        "000119",
+        "000123",
+        "000125",
+        "000126",
+        "000127",
+        "000128",
+        "000124"
       ],
       "M40-54": [
         "000102",
@@ -616,7 +1203,16 @@
       ],
       "Ž25-39": [
         "000111",
-        "000112"
+        "000112",
+        "000132",
+        "000131",
+        "000133",
+        "000135",
+        "000136",
+        "000137",
+        "000138",
+        "000149",
+        "000134"
       ],
       "Ž40-54": [
         "000114",
@@ -628,6 +1224,7 @@
       10,
       12,
       11,
+      30,
       20,
       3
     ],
@@ -649,15 +1246,37 @@
         "000112",
         "000106"
       ],
-      "20": []
+      "20": [],
+      "30": [
+        "000125",
+        "000126"
+      ]
     },
     "byLength": {
       "short": [
         "000104",
         "000101",
         "000103",
+        "000121",
+        "000131",
         "000106",
         "000105",
+        "000122",
+        "000132",
+        "000119",
+        "000123",
+        "000125",
+        "000126",
+        "000127",
+        "000128",
+        "000133",
+        "000135",
+        "000136",
+        "000137",
+        "000138",
+        "000149",
+        "000124",
+        "000134",
         "000116",
         "000114"
       ],
@@ -684,10 +1303,28 @@
       "000104",
       "000103",
       "000101",
+      "000122",
+      "000132",
       "000106",
       "000105",
+      "000121",
+      "000131",
+      "000119",
+      "000123",
+      "000125",
+      "000126",
+      "000127",
+      "000128",
+      "000133",
+      "000135",
+      "000136",
+      "000137",
+      "000138",
+      "000149",
       "000116",
-      "000114"
+      "000114",
+      "000124",
+      "000134"
     ],
     "timeOnCourse": [
       "000113",
@@ -696,17 +1333,39 @@
       "000111",
       "000104",
       "000103",
+      "000124",
+      "000134",
       "000101",
       "000114",
       "000116",
       "000106",
-      "000105"
+      "000105",
+      "000119",
+      "000126",
+      "000127",
+      "000128",
+      "000136",
+      "000137",
+      "000138",
+      "000149",
+      "000121",
+      "000131",
+      "000125",
+      "000135",
+      "000122",
+      "000132",
+      "000123",
+      "000133"
     ],
     "progress": [
       "000113",
       "000103",
       "000101",
-      "000104"
+      "000104",
+      "000131",
+      "000122",
+      "000123",
+      "000124"
     ],
     "bestRaces": [
       15,
@@ -721,11 +1380,31 @@
       2,
       4,
       5,
+      23,
+      24,
       6,
+      37,
+      25,
+      29,
+      31,
+      33,
+      35,
+      26,
+      30,
+      32,
+      36,
+      34,
+      38,
+      27,
+      28,
       7,
       8,
       17,
-      18
+      18,
+      19,
+      21,
+      20,
+      22
     ],
     "pairs": [
       [
@@ -739,6 +1418,42 @@
       [
         1,
         "000101"
+      ],
+      [
+        11,
+        "000121"
+      ],
+      [
+        12,
+        "000122"
+      ],
+      [
+        16,
+        "000126"
+      ],
+      [
+        17,
+        "000127"
+      ],
+      [
+        18,
+        "000128"
+      ],
+      [
+        19,
+        "000119"
+      ],
+      [
+        15,
+        "000125"
+      ],
+      [
+        13,
+        "000123"
+      ],
+      [
+        14,
+        "000124"
       ]
     ],
     "leagues": {

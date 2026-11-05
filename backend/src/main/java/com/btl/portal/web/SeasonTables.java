@@ -342,6 +342,7 @@ final class SeasonTables {
 	 * {@code bestSingleRaces}: the points of the one race, the longer race, the member's points in the
 	 * season, his kilometres in it (owner, 22.08.2026). The runs come in the order the screen is served
 	 * them (by day and id), which decides between two races of one member that are level on all four.
+	 * Every run is of one of {@code members}, which is what {@link TheTablesOfASeason} hands in.
 	 */
 	static List<Placed<BestRace>> bestRaces(List<Member> members, List<Run> runs) {
 		Map<Long, Member> known = new HashMap<>();
@@ -352,7 +353,6 @@ final class SeasonTables {
 
 		List<BestRace> rows = runs.stream()
 				.sorted(Comparator.comparing(Run::date).thenComparing(Run::id))
-				.filter(run -> known.containsKey(run.member()))
 				.map(run -> new BestRace(known.get(run.member()), run, Totals.of(byMember.get(run.member()))))
 				.toList();
 

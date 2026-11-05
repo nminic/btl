@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import SEASON from './tablesBothSidesWrite.json'
 import {
+  CATEGORIES,
   bestSingleRaces,
   rankingFor,
   rankMembers,
@@ -14,10 +15,9 @@ import {
   topPairs,
   numbered,
 } from './derive'
-import { categoryCodeFor } from './categories'
+import { AGE_BANDS, categoryCodeFor, type AgeBand } from './categories'
 import { leagueGroups, leagueTable } from '../pages/league/leagueTable'
 import type {
-  AgeBand,
   BtlEvent,
   Competitor,
   Gender,
@@ -50,6 +50,45 @@ type Fixture = typeof SEASON
 
 const LIMITLESS = Number.MAX_SAFE_INTEGER
 
+/** What the file says, read as the portal's own type, or the case stops on the line that is wrong. */
+function gender(text: string): Gender {
+  if (text === 'M' || text === 'F') {
+    return text
+  }
+
+  throw new Error(`no gender ${text}`)
+}
+
+function band(text: string): AgeBand {
+  const found = AGE_BANDS.find((one) => one === text)
+
+  if (found === undefined) {
+    throw new Error(`no band ${text}`)
+  }
+
+  return found
+}
+
+function length(text: string): RaceCategory {
+  const found = CATEGORIES.find((one) => one === text)
+
+  if (found === undefined) {
+    throw new Error(`no length ${text}`)
+  }
+
+  return found
+}
+
+function given<K, V>(map: Map<K, V>, key: K): V {
+  const value = map.get(key)
+
+  if (value === undefined) {
+    throw new Error(`the file names ${String(key)} and does not hold it`)
+  }
+
+  return value
+}
+
 function inputs(season: Fixture) {
   const races = new Map(season.races.map((one) => [one.id, one]))
   const days = new Map(season.events.map((one) => [one.id, one.date]))
@@ -59,12 +98,12 @@ function inputs(season: Fixture) {
     memberNumber: one.number,
     firstName: 'Ime',
     lastName: one.number,
-    gender: one.gender as Gender,
+    gender: gender(one.gender),
     city: 'Beograd',
     country: 'RS',
     category: null,
     categories: one.ranks
-      ? [{ season: season.season, ageBand: one.ageBand as AgeBand, beginner: one.beginner }]
+      ? [{ season: season.season, ageBand: band(one.ageBand), beginner: one.beginner }]
       : [],
     firstSeason: 2027,
     membershipBasis: 'payment',
@@ -81,11 +120,11 @@ function inputs(season: Fixture) {
   const numberOf = new Map(season.members.map((one) => [one.id, one.number]))
 
   const result = (id: number, member: number, race: number, date: string, points: number, rest: Partial<Result>) => {
-    const theRace = races.get(race)!
+    const theRace = given(races, race)
 
     return {
       id,
-      memberNumber: numberOf.get(member)!,
+      memberNumber: given(numberOf, member),
       raceId: race,
       raceName: theRace.name,
       eventName: theRace.name,
@@ -96,7 +135,7 @@ function inputs(season: Fixture) {
       descentM: 0,
       seconds: 0,
       points,
-      category: theRace.length as RaceCategory,
+      category: length(theRace.length),
       inItsSeason: true,
       inItsStanding: true,
       ...rest,
@@ -114,7 +153,7 @@ function inputs(season: Fixture) {
     ),
     /* What each member held in the season before, as one run of it; the server is handed the sum. */
     ...Object.entries(season.before).map(([member, points], index) =>
-      result(-1 - index, Number(member), 999, days.get(99)!, Number(points), { inItsStanding: false }),
+      result(-1 - index, Number(member), 999, given(days, 99), Number(points), { inItsStanding: false }),
     ),
   ]
 
@@ -134,7 +173,7 @@ function inputs(season: Fixture) {
   const pairs: RacingPair[] = season.pairs.map((one) => ({
     id: one.id,
     season: season.season,
-    memberNumbers: [numberOf.get(one.man)!, numberOf.get(one.woman)!],
+    memberNumbers: [given(numberOf, one.man), given(numberOf, one.woman)],
   }))
 
   const events: BtlEvent[] = season.events.map((one) => ({
@@ -156,13 +195,13 @@ function inputs(season: Fixture) {
     eventId: one.event,
     name: one.name,
     renamed: false,
-    date: days.get(one.event)!,
+    date: given(days, one.event),
     kind: 'length',
     limitSeconds: 0,
     distanceKm: Number(one.kilometers),
     ascentM: 0,
     descentM: 0,
-    category: one.length as RaceCategory,
+    category: length(one.length),
     dots: [],
   }))
 
@@ -201,9 +240,9 @@ function tables(season: Fixture) {
     ),
     category: Object.fromEntries(
       codes.map((code) => {
-        const gender: Gender = code.startsWith('M') ? 'M' : 'F'
+        const ofThe: Gender = code.startsWith('M') ? 'M' : 'F'
 
-        return [code, numbers(rankingFor(competitors, results, { season: year, gender, categoryCode: code }))]
+        return [code, numbers(rankingFor(competitors, results, { season: year, gender: ofThe, categoryCode: code }))]
       }),
     ),
     teams: rankTeams(teams, competitors, results, year).map((row) => row.team.id),
@@ -220,10 +259,7 @@ function tables(season: Fixture) {
       }),
     ),
     byLength: Object.fromEntries(
-      (['short', 'half', 'long', 'marathon', 'ultra'] as const).map((length) => [
-        length,
-        numbers(topByCategory(competitors, results, year, length, LIMITLESS)),
-      ]),
+      CATEGORIES.map((one) => [one, numbers(topByCategory(competitors, results, year, one, LIMITLESS))]),
     ),
     kilometers: numbers(topByKilometers(competitors, results, year, LIMITLESS)),
     timeOnCourse: numbers(topByTimeOnCourse(competitors, results, year, LIMITLESS)),
@@ -274,7 +310,7 @@ describe('the tables a frozen season writes down', () => {
       drawn.pairs,
       drawn.byLength.short,
     ]) {
-      expect(list.length).toBeGreaterThan(1)
+      expect(list?.length ?? 0).toBeGreaterThan(1)
     }
   })
 })
