@@ -155,12 +155,16 @@ class FrozenSeasonApi {
 	 * been frozen: a season not frozen has no snapshot to read, and its tables are the live answers.
 	 */
 	@GetMapping("/api/frozen-tables/{season}")
-	Tables tables(@PathVariable AKey season, HttpServletResponse response) throws IOException {
-		/* An `AKey` and not an `int`, so a word in its place is the 404 a season that is not frozen gets and
-		   not a 400 nobody else is answered (`RightsAtTheDoorTest`, ADL A8). Read by the database as a
-		   bigint, so a number no season can be is a row that is not there. */
-		List<Integer> frozen = db.sql("select season from season_frozen where season = ?").param(season.value())
-				.query(Integer.class).list();
+	Tables tables(@PathVariable String season, HttpServletResponse response) throws IOException {
+		/* THE TEXT, READ HERE, and neither an `int` nor an `AKey` parameter. An `int` answers a word with a
+		   400 before this runs (`RightsAtTheDoorTest`). An `AKey` parameter puts the route under
+		   `AWordInAKeyOverRealHttpTest`, whose every route is one a visitor is told to sign in at: this one
+		   is open, so a visitor is told 404 where the address beside it tells him 401, and that tells him
+		   nothing he may not know (`ApiSecurity` opens it by name). Read as the key the text spells, so a
+		   word and a number no season can be are both a row that is not there, the 404 a season not frozen
+		   gets: the shape `PhotoApi` has for its name. */
+		List<Integer> frozen = db.sql("select season from season_frozen where season = ?")
+				.param(AKey.read(season).value()).query(Integer.class).list();
 
 		if (frozen.isEmpty()) {
 			response.sendError(HttpStatus.NOT_FOUND.value());
