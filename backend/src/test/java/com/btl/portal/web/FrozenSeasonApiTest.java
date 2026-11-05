@@ -84,6 +84,17 @@ class FrozenSeasonApiTest {
 		member("000403", "Goran", "Treci", "M");
 		member("000404", "Vera", "Cetvrta", "F");
 
+		/* Bojan and Goran hold 2028 too, so their team is still there after 16:00: the season that begins
+		   takes out of his team whoever did not renew (`ASeasonBegins`, which follows the freeze), and a team
+		   left with nobody goes with its last member. Without it a team read here would be one already
+		   deleted, and the case about the link would be the case about the name. */
+		for (String number : List.of("000402", "000403")) {
+			db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+							+ " values ((select id from competitor where member_number = ?), 2028, 'feeExempt',"
+							+ " 'Probni Probic', timestamptz '2027-11-20 10:00:00+00')")
+					.param(number).update();
+		}
+
 		for (String number : List.of("000401", "000402", "000403", "000404")) {
 			db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
 							+ " values ((select id from competitor where member_number = ?), 2027, 'feeExempt',"
