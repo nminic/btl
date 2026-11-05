@@ -33,11 +33,20 @@ import java.util.concurrent.TimeUnit;
  * the same for a cancelled season beside other seasons (PDL 05.11.2026, „I kad postoje i druge sezone,
  * rok od pet godina teče od poslednje sezone u evidenciji, i stornirane"). The end of a
  * season is {@link SeasonClock#racesEnd}, midnight of 1 January in the league's zone.
+ * <li><b>Five years, and from the first of February.</b> PDL 05.11.2026, „Brisanje posle pet godina
+ * ide tek od 1. februara", chosen with my recommendation: the deletion comes a month after the five
+ * years end, so that the statements of the bank for the payments of December arrive. A member whose
+ * last season is 2027 has his five years over on 1 January 2033 and goes from 1 February 2033, at midnight
+ * in the league's zone; the twelve months below are not moved by it.
  * <li><b>Twelve months from the opening of an account that never became a member.</b> PDL 05.11.2026:
  * „nalog koji nikad nije postao član (nema nijednu sezonu članstva ni članski broj) 12 meseci od
  * otvaranja", and in the same decision „Nalog bez potvrđene adrese se briše kao danas (7 do 14
  * dana)", which is {@link UnconfirmedAccountsAreSwept}. So this asks only of a CONFIRMED account, and
- * an unconfirmed one is that class's business whatever it decides about it. The opening is
+ * an unconfirmed one is that class's business whatever it decides about it. <b>Never one with any
+ * payment beside it</b> (PDL 05.11.2026, „Nalog uz koji postoji ikakva uplata (i ona koja čeka
+ * knjiženje) ne briše se po roku od 12 meseci"), whether it was recorded or still awaits its booking,
+ * as {@link UnconfirmedAccountsAreSwept} keeps an unconfirmed one with a payment (PDL 23.10.2026).
+ * The opening is
  * {@code account.created_at} (V72) and, for an account that stood before V72 and has no moment,
  * {@code competitor.health_statement_at}: the registration writes it at the moment the form is sent
  * and the administration's entry at the moment of the entry, and nothing in the portal writes it
@@ -98,13 +107,20 @@ class ProfilesPastTheirKeepingAreDeleted {
 	/** „Pet godina od poslednje sezone" (Privacy Policy, section 5; PDL P23). */
 	static final int YEARS_KEPT = 5;
 
+	/**
+	 * „Brisanje posle pet godina ide tek od 1. februara, mesec posle isteka roka, da stignu izvodi za
+	 * uplate iz decembra" (PDL 05.11.2026): the deletion waits one month past the end of the five years.
+	 * The twelve months of an account that never became a member are not moved by it.
+	 */
+	static final int MONTHS_GRACE_AFTER_THE_FIVE = 1;
+
 	/** „12 meseci od otvaranja naloga" (Privacy Policy, section 5; PDL 05.11.2026). */
 	static final int MONTHS_KEPT_NEVER_A_MEMBER = 12;
 
 	/**
-	 * Members who may go: {@code :lastSeasonGone} is the latest season whose five years are over, and
-	 * {@code :openedBy} the latest opening whose twelve months are. Asked again under the holds, one
-	 * member at a time.
+	 * Members who may go: {@code :lastSeasonGone} is the latest season whose five years and the month
+	 * after them are over, and {@code :openedBy} the latest opening whose twelve months are. Asked
+	 * again under the holds, one member at a time.
 	 *
 	 * <p>The latest season is the greatest of his seasons of membership and of the seasons his trail
 	 * names, and a member with neither has no greatest season: {@code max} of nothing is null, and null
@@ -118,6 +134,7 @@ class ProfilesPastTheirKeepingAreDeleted {
 	private static final String TWELVE_MONTHS_OVER = "(c.member_number is null"
 			+ "   and not exists (select 1 from membership m where m.competitor_id = c.id)"
 			+ "   and not exists (select 1 from membership_change h where h.competitor_id = c.id)"
+			+ "   and not exists (select 1 from payment p where p.competitor_id = c.id)"
 			+ "   and exists (select 1 from account a where a.competitor_id = c.id"
 			+ "     and a.email_confirmed_at is not null"
 			+ "     and coalesce(a.created_at, c.health_statement_at) <= :openedBy))";
@@ -227,8 +244,9 @@ class ProfilesPastTheirKeepingAreDeleted {
 	}
 
 	/**
-	 * The latest season whose five years are over at {@code now}: the end of a season is
-	 * {@link SeasonClock#racesEnd}, and the keeping ends five years after it. Asked of that boundary
+	 * The latest season whose five years and the month after them are over at {@code now}: the end of a
+	 * season is {@link SeasonClock#racesEnd}, and the deletion comes five years and a month after it
+	 * (PDL 05.11.2026: from 1 February). Asked of that boundary
 	 * rather than of the calendar year, so the day the end of a season moves, this moves with it. The
 	 * walk starts at the year of {@code now} in whatever zone it is given, because that year is never
 	 * earlier than the answer, which is at least five years before it.
@@ -236,7 +254,8 @@ class ProfilesPastTheirKeepingAreDeleted {
 	static int lastSeasonGone(ZonedDateTime now) {
 		int season = now.getYear();
 
-		while (SeasonClock.racesEnd(season).plusYears(YEARS_KEPT).isAfter(now)) {
+		while (SeasonClock.racesEnd(season).plusYears(YEARS_KEPT).plusMonths(MONTHS_GRACE_AFTER_THE_FIVE)
+				.isAfter(now)) {
 			season--;
 		}
 

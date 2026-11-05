@@ -49,8 +49,12 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 	/** The opening of every account written here unless a case names another: long before every case. */
 	private static final ZonedDateTime OPENED = belgrade(2026, 9, 1, 12, 0, 0);
 
-	/** The first moment at which a member whose last season is 2027 has had his five years. */
-	private static final ZonedDateTime FIVE_YEARS_AFTER_2027 = belgrade(2033, 1, 1, 0, 0, 0);
+	/**
+	 * The first moment at which a member whose last season is 2027 is deleted: his five years end on 1
+	 * January 2033 and the deletion comes from 1 February (PDL 05.11.2026, „Brisanje posle pet godina ide
+	 * tek od 1. februara").
+	 */
+	private static final ZonedDateTime FIVE_YEARS_AFTER_2027 = belgrade(2033, 2, 1, 0, 0, 0);
 
 	@Autowired
 	private JdbcClient db;
@@ -151,6 +155,9 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 		heldOn(alsoIn2029, 2029, "payment");
 
 		assertThat(goes(last2027, belgrade(2032, 7, 1, 12, 0, 0))).as("four and a half years").isFalse();
+		assertThat(goes(last2027, belgrade(2033, 1, 1, 0, 0, 1))).as("the five years just over").isFalse();
+		assertThat(goes(last2027, belgrade(2033, 1, 31, 23, 59, 59)))
+				.as("31 January 2033, the last second of the month after").isFalse();
 		assertThat(goes(last2027, FIVE_YEARS_AFTER_2027.minusSeconds(1))).as("a second short").isFalse();
 		assertThat(stands(last2027)).isTrue();
 
@@ -203,7 +210,8 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 
 		assertThat(goes(onlyCancelled, belgrade(2033, 6, 1, 12, 0, 0))).as("the short way").isFalse();
 		assertThat(goes(cancelledLater, belgrade(2034, 6, 1, 12, 0, 0))).as("from the season before").isFalse();
-		assertThat(goes(onlyCancelled, belgrade(2034, 1, 1, 0, 0, 0))).isTrue();
+		assertThat(goes(onlyCancelled, belgrade(2034, 1, 31, 23, 59, 59))).as("the month after").isFalse();
+		assertThat(goes(onlyCancelled, belgrade(2034, 2, 1, 0, 0, 0))).isTrue();
 	}
 
 	/**
@@ -224,7 +232,9 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 	/**
 	 * TWELVE MONTHS FROM THE OPENING OF A CONFIRMED ACCOUNT THAT NEVER BECAME A MEMBER (PDL 05.11.2026):
 	 * on the moment he goes and a second short of it he stays; counted from the opening and not from the
-	 * confirmation; and a payment that is only awaited is neither a season nor a number.
+	 * confirmation; and a payment that is only awaited is neither a season nor a number. But an account
+	 * with ANY payment beside it stays (PDL 05.11.2026, „Nalog uz koji postoji ikakva uplata"), whether
+	 * the payment is recorded or still awaits its booking; the account beside them with none goes.
 	 */
 	@Test
 	void anAccountThatNeverBecameAMemberGoesTwelveMonthsFromItsOpening() {
@@ -233,6 +243,7 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 		long aSecondShort = neverAMember();
 		long confirmedLately = neverAMember();
 		long awaitingAPayment = neverAMember();
+		long withARecordedPayment = neverAMember();
 
 		opened(onTheMoment, now.minusMonths(12), OPENED);
 		opened(aSecondShort, now.minusMonths(12).plusSeconds(1), OPENED);
@@ -243,13 +254,22 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 						+ " (select id from price_row order by sort_order limit 1), 35.00, 'EUR', 3.00, 'paypal',"
 						+ " 'awaited')")
 				.param(awaitingAPayment).update();
+		db.sql("insert into payment (competitor_id, season, price_row_id, amount, currency, fee, method, state,"
+						+ " recorded_at, recorded_by_name, received) values (?, 2028,"
+						+ " (select id from price_row order by sort_order limit 1), 35.00, 'EUR', 3.00, 'paypal',"
+						+ " 'recorded', now(), 'Blagajnik Probni', 35.00)")
+				.param(withARecordedPayment).update();
 
 		assertThat(goes(aSecondShort, now)).as("a second short of twelve months").isFalse();
 		assertThat(goes(onTheMoment, now)).isTrue();
 		assertThat(goes(confirmedLately, now)).as("counted from the confirmation").isTrue();
-		assertThat(goes(awaitingAPayment, now)).as("an awaited payment kept him").isTrue();
-		assertThat(db.sql("select count(*) from payment where competitor_id is null and season = 2028"
-				+ " and state = 'awaited'").query(Long.class).single()).as("the payment stays without him").isPositive();
+		assertThat(goes(awaitingAPayment, now)).as("a payment that awaits its booking kept him").isFalse();
+		assertThat(goes(withARecordedPayment, now)).as("a recorded payment kept him").isFalse();
+		assertThat(stands(awaitingAPayment)).isTrue();
+		assertThat(stands(withARecordedPayment)).isTrue();
+		assertThat(db.sql("select count(*) from payment where competitor_id in (?, ?)")
+				.params(awaitingAPayment, withARecordedPayment).query(Long.class).single())
+				.as("both payments still name their member").isEqualTo(2);
 	}
 
 	/**
