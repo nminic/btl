@@ -174,6 +174,17 @@ class FrozenSeasonApiTest {
 		assertThat(rows(league.get("standings").get(0).get("cells"), "column", "points"))
 				.containsExactly("1 25.0", "2 20.0");
 		assertThat(rows(league.get("standings").get(1).get("cells"), "column", "points")).containsExactly("2 40.0");
+
+		/* AND IN THE SECOND LEAGUE, whose columns were written after the first one's: their ids are never
+		   their places there, so a cell that named its column by id would point past the grid. In the first
+		   league the two can be the same numbers (mutation R6, 05.11.2026). */
+		JsonNode second = league(tablesOf2027(null), "druga-liga-2027");
+
+		assertThat(db.sql("select count(*) from season_league_column k join league l on l.id = k.league_id"
+				+ " where l.slug = 'druga-liga-2027' and k.id = k.position").query(Long.class).single())
+				.as("the second league's columns share ids with their places, so this measures nothing").isZero();
+		assertThat(rows(second.get("standings").get(0).get("cells"), "column", "points"))
+				.containsExactly("1 25.0", "2 20.0");
 	}
 
 	@Test
