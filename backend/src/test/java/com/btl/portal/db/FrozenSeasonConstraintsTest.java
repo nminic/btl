@@ -65,18 +65,34 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
-	private static final String RANK_COLUMNS =
-			"season, position, competitor_id, who, gender, category, points, races";
-	private static final String TEAM_COLUMNS = "season, position, team_id, name, points, members";
+	/* V84 added the totals the screens order by and the place inside a category; a row below that names
+	   only V17's columns is given good values for those (`rank`, `team`), and one that breaks them names
+	   them (`rankWith`, `teamWith`). */
+	private static final String RANK_COLUMNS = "season, position, competitor_id, who, gender, category, points, races,"
+			+ " kilometers, ascent, descent, seconds, category_position";
+	private static final String TEAM_COLUMNS =
+			"season, position, team_id, name, points, members, races, kilometers, ascent, descent, seconds";
+
+	/* A place inside the category that no other row here holds, so a row about something else never
+	   breaks `season_competitor_one_per_place_in_category` by accident. */
+	private static int aFreeCategoryPlace = 100;
 	private static final String LEAGUE_COLUMNS =
 			"season, league_id, league_name, position, competitor_id, who, gender, points";
 
 	private static String rank(String values) {
-		return "insert into season_competitor (" + RANK_COLUMNS + ") values (" + values + ")";
+		return rankWith(values, "10, 0, 0, 3000, " + aFreeCategoryPlace++);
+	}
+
+	private static String rankWith(String values, String ofV84) {
+		return "insert into season_competitor (" + RANK_COLUMNS + ") values (" + values + ", " + ofV84 + ")";
 	}
 
 	private static String team(String values) {
-		return "insert into season_team (" + TEAM_COLUMNS + ") values (" + values + ")";
+		return teamWith(values, "1, 10, 0, 0, 3000");
+	}
+
+	private static String teamWith(String values, String ofV84) {
+		return "insert into season_team (" + TEAM_COLUMNS + ") values (" + values + ", " + ofV84 + ")";
 	}
 
 	private static String standing(String values) {
@@ -115,7 +131,8 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 		db.sql("insert into league (slug, name, season, rules, prizes) values ('zamrznuta-liga',"
 				+ " 'Zamrznuta liga', 2027, '', '')").update();
 
-		db.sql(rank("2027, 1, " + A_MEMBER + ", 'Prvi Zamrznuti', 'M', 'senior', 1240.55, 22")).update();
+		db.sql(rankWith("2027, 1, " + A_MEMBER + ", 'Prvi Zamrznuti', 'M', 'senior', 1240.55, 22",
+				"10, 0, 0, 3000, 1")).update();
 		db.sql(team("2027, 1, " + A_TEAM + ", 'Zamrznut tim', 4820.10, 12")).update();
 		db.sql(standing("2027, " + A_LEAGUE + ", 'Zamrznuta liga', 1, " + A_MEMBER + ", 'Prvi Zamrznuti',"
 				+ " 'M', 980.25")).update();
@@ -126,10 +143,10 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 				/* THE STANDINGS. */
 				Violation.notNull("season_competitor_id_not_null", "id",
 						"insert into season_competitor (id, " + RANK_COLUMNS + ") values (null, 2028, 1, "
-								+ A_MEMBER + ", 'Neko', 'M', 'senior', 10, 1)"),
+								+ A_MEMBER + ", 'Neko', 'M', 'senior', 10, 1, 10, 0, 0, 3000, 7)"),
 				Violation.of("season_competitor_pk",
 						"insert into season_competitor (id, " + RANK_COLUMNS + ") select id, 2028, 1, "
-								+ A_MEMBER + ", 'Neko', 'M', 'senior', 10, 1 from season_competitor limit 1"),
+								+ A_MEMBER + ", 'Neko', 'M', 'senior', 10, 1, 10, 0, 0, 3000, 8 from season_competitor limit 1"),
 				Violation.notNull("season_competitor_season_not_null", "season",
 						rank("null, 1, " + A_MEMBER + ", 'Neko', 'M', 'senior', 10, 1")),
 				Violation.of("season_competitor_season_not_before_the_league",
@@ -162,13 +179,42 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 				Violation.of("season_competitor_one_per_place",
 						rank("2027, 1, " + A_WOMAN + ", 'Neko', 'M', 'senior', 10, 1")),
 
+				/* V84 ON THE STANDINGS: the totals, and the place inside the category. */
+				Violation.notNull("season_competitor_kilometers_not_null", "kilometers",
+						rankWith("2028, 1, " + A_MEMBER + ", 'Neko', 'M', 'senior', 10, 1", "null, 0, 0, 3000, 5")),
+				Violation.notNull("season_competitor_ascent_not_null", "ascent",
+						rankWith("2028, 1, " + A_MEMBER + ", 'Neko', 'M', 'senior', 10, 1", "10, null, 0, 3000, 5")),
+				Violation.notNull("season_competitor_descent_not_null", "descent",
+						rankWith("2028, 1, " + A_MEMBER + ", 'Neko', 'M', 'senior', 10, 1", "10, 0, null, 3000, 5")),
+				Violation.notNull("season_competitor_seconds_not_null", "seconds",
+						rankWith("2028, 1, " + A_MEMBER + ", 'Neko', 'M', 'senior', 10, 1", "10, 0, 0, null, 5")),
+				Violation.notNull("season_competitor_category_position_not_null", "category_position",
+						rankWith("2028, 1, " + A_MEMBER + ", 'Neko', 'M', 'senior', 10, 1", "10, 0, 0, 3000, null")),
+				Violation.of("season_competitor_totals_not_negative",
+						rankWith("2028, 1, " + A_MEMBER + ", 'Neko', 'M', 'senior', 10, 1", "10, -1, 0, 3000, 5")),
+				Violation.of("season_competitor_category_position_positive",
+						rankWith("2028, 1, " + A_MEMBER + ", 'Neko', 'M', 'senior', 10, 1", "10, 0, 0, 3000, 0")),
+				/* The probe holds first place among the men of 'senior' in 2027; this is the same place in
+				   that category given to somebody else, at a place of the gender nobody holds. */
+				Violation.of("season_competitor_one_per_place_in_category",
+						rankWith("2027, 5, " + A_WOMAN + ", 'Neko', 'M', 'senior', 10, 1", "10, 0, 0, 3000, 1")),
+
+				/* V84 ON THE TEAM STANDINGS: the totals the team ladder reads. */
+				Violation.notNull("season_team_races_not_null", "races", teamWith("2028, 1, " + A_TEAM + ", 'Tim', 10, 1", "null, 10, 0, 0, 3000")),
+				Violation.notNull("season_team_kilometers_not_null", "kilometers",
+						teamWith("2028, 1, " + A_TEAM + ", 'Tim', 10, 1", "1, null, 0, 0, 3000")),
+				Violation.notNull("season_team_ascent_not_null", "ascent", teamWith("2028, 1, " + A_TEAM + ", 'Tim', 10, 1", "1, 10, null, 0, 3000")),
+				Violation.notNull("season_team_descent_not_null", "descent", teamWith("2028, 1, " + A_TEAM + ", 'Tim', 10, 1", "1, 10, 0, null, 3000")),
+				Violation.notNull("season_team_seconds_not_null", "seconds", teamWith("2028, 1, " + A_TEAM + ", 'Tim', 10, 1", "1, 10, 0, 0, null")),
+				Violation.of("season_team_totals_not_negative", teamWith("2028, 1, " + A_TEAM + ", 'Tim', 10, 1", "-1, 10, 0, 0, 3000")),
+
 				/* THE TEAM STANDINGS. */
 				Violation.notNull("season_team_id_not_null", "id",
 						"insert into season_team (id, " + TEAM_COLUMNS + ") values (null, 2028, 1, "
-								+ A_TEAM + ", 'Tim', 10, 1)"),
+								+ A_TEAM + ", 'Tim', 10, 1, 1, 10, 0, 0, 3000)"),
 				Violation.of("season_team_pk",
 						"insert into season_team (id, " + TEAM_COLUMNS + ") select id, 2028, 1, " + A_TEAM
-								+ ", 'Tim', 10, 1 from season_team limit 1"),
+								+ ", 'Tim', 10, 1, 1, 10, 0, 0, 3000 from season_team limit 1"),
 				Violation.notNull("season_team_season_not_null", "season",
 						team("null, 1, " + A_TEAM + ", 'Tim', 10, 1")),
 				Violation.of("season_team_season_not_before_the_league",

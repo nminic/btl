@@ -131,9 +131,10 @@ class ConventionsTest extends DatabaseTest {
 				"competitor", "competitor_document", "country", "ducat", "ducat_award", "ducat_kind", "email_verification_token", "event_comment", "league", "league_race", "membership", "membership_change", "message",
 				"message_read", "pair_invite", "parental_consent", "password_reset_token", "payment",
 				"photo", "place", "price_row",
-				"race", "racing_pair", "result", "result_submission", "role", "season_competitor", "season_frozen",
-				"season_league_standing", "season_points_at_freeze",
-				"season_team", "static_page", "static_page_include", "static_page_section",
+				"race", "racing_pair", "result", "result_submission", "role", "season_award", "season_board",
+				"season_competitor", "season_frozen", "season_league_cell", "season_league_column",
+				"season_league_standing", "season_pair", "season_pair_half", "season_points_at_freeze",
+				"season_team", "season_team_member", "static_page", "static_page_include", "static_page_section",
 				"static_page_section_translation", "static_page_translation", "team", "team_application",
 				"team_invitation", "team_membership", "team_proposal", "verification", "verification_lock");
 	}

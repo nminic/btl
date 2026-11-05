@@ -721,7 +721,12 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			/* V83. The threshold of twelve counts a frozen season at its freeze: `season_frozen` and
 			   `season_points_at_freeze`, written by the first piece of the 1 January job (PDL 30.10.2026).
 			   83 and no other: main stood at V82 on 31.10.2026 (4d712ebb) and no branch of the remote held V83. */
-			new Applied("83", "V83__the_threshold_of_a_frozen_season_is_its_points_at_the_freeze.sql", -99725440));
+			new Applied("83", "V83__the_threshold_of_a_frozen_season_is_its_points_at_the_freeze.sql", -99725440),
+
+			/* V84. The frozen season keeps every table it draws: V17's three filled out, the top lists, the
+			   awards, a team's roster, the board of pairs and a league's grid (PDL 31.07.2026, 05.11.2026).
+			   84 and no other: main stood at V83 on 05.11.2026 (fc550fcf) and no branch of the remote held V84. */
+			new Applied("84", "V84__the_frozen_season_keeps_every_table_it_draws.sql", 1263605275));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
