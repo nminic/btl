@@ -537,6 +537,39 @@ class ResultWriteApiTest {
 	}
 
 	/**
+	 * THE KEY OF A RACE IS NOT THE KEY OF AN EVENT: a key that is a race's and no event's is a race that
+	 * is not known.
+	 *
+	 * <p>The rows above send 999999999, a key neither table holds, so a check of the event that asked the
+	 * table of races instead passed them all, and it passed the fixture's own event too, whose key is
+	 * also the key of a race (measured 06.11.2026: {@code from race where id = ?} in place of
+	 * {@code from btl_event}, 103 of 103 green). The race is made after the sequence of races is moved
+	 * past anything the events have, so its key is held by no event.
+	 */
+	@Test
+	void aKeyThatIsARacesAndNoEventsIsARaceThatIsNotKnown() throws Exception {
+		db.sql("select setval(pg_get_serial_sequence('race', 'id'),"
+				+ " greatest(nextval(pg_get_serial_sequence('race', 'id')), 900000))").query().listOfRows();
+
+		long aRacesKey = db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m) values (?, 'Trka cije kljuc nije kljuc dogadjaja',"
+						+ " false, date '2027-04-04', 'length', 0, 10.00, 0, 0) returning id")
+				.param(anEventOfTheCalendar()).query(Long.class).single();
+
+		assertThat(db.sql("select count(*) from btl_event where id = ?").param(aRacesKey).query(Long.class)
+				.single()).as("the key is an event's too, so the case measures nothing").isZero();
+
+		Map<String, Object> fields = aDescribedRun();
+
+		fields.remove("eventName");
+		fields.remove("placeId");
+		fields.put("eventId", aRacesKey);
+
+		assertThat(reasonIn(reportedAs(ME, form(fields)))).isEqualTo(ResultWriteApi.THE_RACE_IS_NOT_KNOWN);
+		assertThat(howManySubmissions()).isZero();
+	}
+
+	/**
 	 * A RACE THE CALENDAR DOES NOT HOLD IS DESCRIBED, AND EVERY COLUMN AN APPROVAL WILL NEED
 	 * IS COLLECTED.
 	 *
