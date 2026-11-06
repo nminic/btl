@@ -202,12 +202,14 @@ class ASeasonBeginsTest {
 		long sedmi = team("sedmi-tim", "Sedmi tim", mile);
 		in(mile, sedmi, 2028, null);
 
-		/* A SEAT NAMING A MEMBER WHO NO LONGER STANDS IN IT: Tara's flag went off before the turn, so the
-		   seat is Uros's already and does not move, and the column must stop naming her all the same. */
+		/* A SEAT NAMING A MEMBER WHO NO LONGER STANDS IN IT: Tara's season 2027 was cancelled before the turn,
+		   so she holds no season, the seat is Uros's already and does not move, and the column must stop naming
+		   her all the same. Her flag is left TRUE on purpose: since AF-1 nothing reads it, and a seat read off
+		   the flag would still be hers. */
 		long deveti = team("deveti-tim", "Deveti tim", tara);
 		in(tara, deveti, 2027, null);
 		in(uros, deveti, 2027, null);
-		db.sql("update competitor set active = false where id = ?").param(tara).update();
+		db.sql("delete from membership where competitor_id = ?").param(tara).update();
 
 		pair(SEASON, aca, vesna);
 		pair(SEASON, vlada, eva);
