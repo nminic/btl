@@ -500,7 +500,12 @@ describe('the list of competitions', () => {
      * Asked as „this sheet lays no track of columns", over the whole file with its comments
      * blanked, rather than as „this one media query is not there". A second column can be asked
      * for at any width and in any of the four properties below, so naming the query that used to
-     * do it would hold against putting that query back and against nothing else. */
+     * do it would hold against putting that query back and against nothing else.
+     *
+     * **This is the half that reads text, and it knows four ways to lay a track.** A fifth does not
+     * need one (`display: flex; flex-wrap: wrap` with a basis of half the box, or `max-width: 50%` on
+     * the box), so what the sentence says is asked of Chrome in `geometry/leagueList.geometry.ts`:
+     * the width of each box against the width of its list, and whether any stands beside another. */
     const sheet = unremarked(readFileSync(LEAGUES, 'utf-8'))
     const found = COLUMNS.filter((property) => sheet.includes(property))
 
