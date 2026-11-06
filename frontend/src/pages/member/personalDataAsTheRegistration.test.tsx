@@ -138,6 +138,19 @@ describe('the panel of a member whose fee stands, on his card „Podaci"', () =>
     expectTheRegistrationsShape(await thePanel())
   }, SLOW)
 
+  /**
+   * <p><b>The panel is a region named by its own heading</b>, which is the heading the form draws and not
+   * one of the panel's: the two meet only by an id, so the panel names the form's heading by the form's
+   * own name for it.
+   */
+  it('is a region a screen reader can be taken to, named „Lični podaci"', async () => {
+    renderAt(HIS_CARD, 'competitor', '000001')
+
+    const panel = await thePanel()
+
+    expect(screen.getByRole('region', { name: sr.account.personalTitle })).toBe(panel)
+  }, SLOW)
+
   it('says who changes the held four before the first of them, and nothing about the address of post', async () => {
     renderAt(HIS_CARD, 'competitor', '000001')
 
