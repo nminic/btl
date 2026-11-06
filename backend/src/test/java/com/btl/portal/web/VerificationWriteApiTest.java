@@ -2417,6 +2417,34 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * THE SEASON THAT CLOSES IS THE ONE AFTER THE RUN'S, NOT THE ONE AFTER THE DAY THE APPROVAL IS MADE.
+	 *
+	 * <p>Every case above stands the clock in March 2027, where the year of the run, the year of the clock
+	 * and the year the clock is in are one number, so reading the season off the clock instead of off the
+	 * race gives 2028 as well (measured 06.11.2026: {@code now(clock).getYear() + 1} in place of the
+	 * race's year, and the plain run's year, both green). Here the run is of 2027 and the approval is
+	 * made on 2 January 2028, which is how a race of December is approved in January: the season after
+	 * the run is 2028, the season after the clock is 2029, and the message names 2028 and never 2029
+	 * (PDL, 26.09.2026: the threshold holds „od naredne sezone", the season after the one the run is of).
+	 */
+	@Test
+	void aRunOf2027ApprovedInJanuary2028ClosesTheSeasonAfterTheRunAndNotTheSeasonAfterTheClock() throws Exception {
+		long ana = memberId(ANA);
+
+		clock.moveTo(Instant.parse("2028-01-02T10:00:00Z"));
+
+		assertThat(answer(THE_SUPERADMIN, anasMarathon, true, null)).isEqualTo(200);
+
+		String said = bodyOfTheMessageTo(ANA);
+
+		assertThat(said).contains("za sezonu 2028");
+		assertThat(said).as("it names the season after the clock instead of the season after the run")
+				.doesNotContain("za sezonu 2029").doesNotContain("za sezonu 2027");
+		assertThat(beginnersCategoryIsOpenFor(ana, 2028)).as("the season after the run did not close").isFalse();
+		assertThat(beginnersCategoryIsOpenFor(ana, 2027)).as("the run's own season closed on itself").isTrue();
+	}
+
+	/**
 	 * AND HE IS TOLD WHICH RUN IT WAS AND WHAT IT IS WORTH: THE FIRST TWO PARTS OF IT.
 	 *
 	 * <p>The message named neither the race nor the day until it was read against the entry
