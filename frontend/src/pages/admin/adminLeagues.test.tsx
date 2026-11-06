@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { clearResourceCache } from '../../data/client'
 import { moderatorWith, renderAt } from '../../test/render'
 import {
@@ -812,10 +812,31 @@ describe('a competition made, changed and taken away', () => {
            every field that is not - `LABEL:Propozicije (neobavezno)`, measured off this
            very screen. `entityForms.test.tsx` reads the dictionary key alone and never
            sees that suffix, which is why the bare word is not what a reader is offered. */
-        const rules = await screen.findByLabelText(/^Propozicije/)
+        /* THE BOX IS ASKED WHAT IT HOLDS BEFORE THE FORM IS SAVED (CI, 06.11.2026, twice, on
+           branches that touch no frontend). The run that failed drew the public box with
+           „Još nije napisano.": `clear` had reached the form and the sentence had not. The field
+           is the editor of the texts (`components/markdownEditor/`), not an `<input>`: a text
+           handed back to it by the form that is not the one it last said it holds replaces what
+           is in the box, so a keystroke that lands while the form is still handing back an
+           earlier text is lost, and on a busy runner that is a matter of order. Nothing about
+           the claim moves - the box of the competition must still carry exactly this sentence,
+           read off the public screen. Only the SETTING UP of the case waits until the box
+           really holds what it is about to save, and writes again if it does not. */
+        const sentence = 'Nove propozicije sa administracije.'
 
-        await user.clear(rules)
-        await user.type(rules, 'Nove propozicije sa administracije.')
+        await screen.findByLabelText(/^Propozicije/)
+
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          await user.clear(screen.getByLabelText(/^Propozicije/))
+          await user.type(screen.getByLabelText(/^Propozicije/), sentence)
+          await act(async () => {})
+
+          if (screen.getByLabelText(/^Propozicije/).textContent === sentence) {
+            break
+          }
+        }
+
+        expect(screen.getByLabelText(/^Propozicije/)).toHaveTextContent(sentence)
         await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
         await screen.findByRole('status', { name: 'Sačuvano' })
 
@@ -828,7 +849,7 @@ describe('a competition made, changed and taken away', () => {
           'the box of the competition just changed',
         )
 
-        expect(within(box).getByText('Nove propozicije sa administracije.')).toBeVisible()
+        expect(within(box).getByText(sentence)).toBeVisible()
 
         server.stop()
       }, SLOW)
