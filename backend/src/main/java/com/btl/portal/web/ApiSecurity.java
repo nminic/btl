@@ -82,7 +82,9 @@ class ApiSecurity {
 					"/api/pairs",
 					"/api/teams",
 					"/api/pricing",
-					"/api/pages");
+					"/api/pages",
+					/* Which seasons are frozen: public as their tables are (Član 73), see FrozenSeasonApi. */
+					"/api/frozen-seasons");
 
 	/**
 	 * AND THE ONE THING ANYBODY MAY READ THAT IS NOT A WHOLE ADDRESS.
@@ -119,7 +121,10 @@ class ApiSecurity {
 	 * constant, which is the string the route is mapped by, so the two are one text.
 	 */
 	static final List<String> READ_BY_ANYBODY_UNDER_A_NAME = List.of("/api/photos/{name}",
-			PhotoApi.A_SMALL_PICTURE_IS_ASKED_FOR_AT);
+			PhotoApi.A_SMALL_PICTURE_IS_ASKED_FOR_AT,
+			/* The tables of one frozen season, named by the season (FrozenSeasonApi says why this is not
+			   under /api/frozen-seasons). Anybody, as the tables of a season are. */
+			"/api/frozen-tables/{season}");
 
 	/**
 	 * WHO THE SETTINGS NAME, ANSWERED ONCE FOR THE WHOLE APPLICATION AND NOT ONLY FOR THIS

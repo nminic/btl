@@ -320,8 +320,15 @@ describe('which fields the portal serves', () => {
        „U padajućoj listi su svi članovi sa članskim brojem, aktivni i neaktivni").** Three paths,
        none nested: the number and the two names, and nothing about his fee or his age. Served to
        the administration over the results alone. Added to the snapshot by hand, as this file
-       requires; none of the three can be year-shaped. */
-    expect(Object.keys(served)).toHaveLength(20)
+       requires; none of the three can be year-shaped.
+
+       **Twenty two since 05.11.2026: `frozen-seasons.json` and `frozen-tables.json`, the seasons the
+       freeze has written down and every table of one of them (`FrozenSeasonApi`, PDL 31.07.2026,
+       „Zamrznuta sezona je materijalizovan zapis, ne izračun”).** Public, as the tables of a season are.
+       About a person they carry what a table already shows: the number, the name, the gender and the
+       category of that season (public by PDL „Oblik zamrzavanja”, point 6), and nothing about his
+       fee or his age. Added to the snapshot by hand; the two seasons are named in `MAY_HOLD_A_YEAR`. */
+    expect(Object.keys(served)).toHaveLength(22)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(
       10,
@@ -424,6 +431,11 @@ describe('what the portal serves about how old somebody is', () => {
        first season of the league, for the twenty nine members the file frees of the fee. */
     'competitors.json:membershipSeason',
     'competitors.json:teamSince',
+    /* THE FROZEN SEASON ITSELF, since 05.11.2026 (`FrozenSeasonApi`): which seasons the freeze has
+       written down, and the season one snapshot is OF. Never before 2027 (`season_frozen_season_not_before
+       _the_league`, V83), and their value in the files is 2027, the first season of the league. */
+    'frozen-seasons.json:season',
+    'frozen-tables.json:season',
     'leagues.json:season',
     /* TWO SEASONS AND NOT A YEAR OF BIRTH, since 18.10.2026, and both are the seasons of a membership
        (`MembersApi`): `membershipSeason` is the season on sale, the same field as in `competitors.json`
