@@ -399,6 +399,14 @@ class PageApiTest {
 				.as("the English section no longer has the \"data generated while you are a"
 						+ " member\" table")
 				.isNotNull();
+		/* The member table FOLLOWS the join table: the split above bounds each block, but it
+		   forgets where the blocks stand, and the old check on positions (greater than, over the
+		   whole body) went with the rewrite. Swapping the two tables passes every line below it
+		   and fails this one. */
+		assertThat(sections.indexOf(memberTable))
+				.as("the English table of what a member generates no longer comes AFTER the table"
+						+ " of what he enters when he joins")
+				.isGreaterThan(sections.indexOf(joinTable));
 		assertThat(whatDataIsProcessed).containsOnlyOnce("Profile picture");
 		assertThat(memberTable)
 				.as("the real English answer does not list the profile picture among what"
@@ -428,6 +436,25 @@ class PageApiTest {
 						+ " beside it already carries")
 				.contains("Your consent")
 				.doesNotContain("Performance of contract");
+
+		/* The OTHER row the owner's decision of 28.09.2026 names: a photo of a watch or a screen
+		   shown as evidence stays on "Performance of contract" (PDL.md, "Pravni osnov za profilnu
+		   sliku je pristanak, ne izvršenje ugovora"), while the profile picture moves to consent.
+		   Three of the four cells the decision names were held; this is the fourth, and the
+		   Serbian side of it is held byte for byte against mock/pages.json. */
+		List<String> watchRows = whatDataIsProcessed.lines()
+				.filter(line -> line.contains("A photo of a watch or a screen as evidence"))
+				.toList();
+
+		assertThat(watchRows)
+				.as("the English policy no longer has exactly one row for a photo of a watch or"
+						+ " a screen as evidence")
+				.hasSize(1);
+		assertThat(watchRows.get(0))
+				.as("the evidence photo's ground is no longer \"Performance of contract\": the"
+						+ " owner moved only the profile picture to consent (28.09.2026)")
+				.contains("Performance of contract")
+				.doesNotContain("Your consent");
 
 		assertThat(pageNamed(ours, "uslovi-koriscenja").path("title").asString())
 				.as("uslovi-koriscenja's real English title did not reach the route")
