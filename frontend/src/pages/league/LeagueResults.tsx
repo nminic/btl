@@ -6,10 +6,16 @@ import { PER_PAGE, pageFrom } from '../../components/pageOf'
 import { Resource } from '../../components/Resource'
 import { genderMark } from '../../data/categories'
 import type { BtlEvent, Competitor, Gender, League, Race, Result } from '../../data/types'
-import { combineResources, useCompetitors, useRaces, useResults } from '../../data/useResource'
+import { combineFour, useCompetitors, useFrozenSeasons, useRaces, useResults } from '../../data/useResource'
+import { useFrozenTables } from '../../data/useFrozenTables'
+import { Link } from 'react-router'
+import { useFrozenPeople, type FrozenOne as AFrozenOne } from '../frozen/frozenPeople'
 import { formatDayMonth, formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { leagueGroups, leagueTable } from './leagueTable'
+import { leagueGroups, leagueTable, type LeagueColumn, type LeagueRow } from './leagueTable'
+
+/** A member of a frozen row and his place, which keys the row where nothing else can. */
+type FrozenOne = AFrozenOne & { place: string }
 import './League.css'
 import { useFilterParams } from '../../app/useFilterParams'
 
@@ -49,8 +55,6 @@ function Grid({
   competitors: Competitor[]
   gender: Gender
 }) {
-  const { locale, t } = useI18n()
-  const [params] = useFilterParams()
   /* Who the grid is drawn from (PDL P11). A member whose fee has run out is not
      in the standing of the season now, and a competition's grid is that standing
      over a subset of its events. It does not show today, because the one such
@@ -60,6 +64,19 @@ function Grid({
     () => leagueTable(league, events, races, results, competitors),
     [league, events, races, results, competitors],
   )
+
+  return <Drawn table={table} gender={gender} />
+}
+
+/** A row of the grid, and the member it names as the freeze wrote him where the competition is frozen. */
+type Shown = LeagueRow & { frozen?: FrozenOne }
+
+/** A column of the grid; a frozen one whose event has since been deleted has no page to lead to. */
+type ShownColumn = LeagueColumn & { unlinked?: true }
+
+function Drawn({ table, gender }: { table: { columns: ShownColumn[]; rows: Shown[] }; gender: Gender }) {
+  const { locale, t } = useI18n()
+  const [params] = useFilterParams()
 
   if (table.rows.length === 0) {
     return <p className="profile__empty">{t('leagues.noResults')}</p>
@@ -160,33 +177,59 @@ function Grid({
                       and the page the press opens. Two **races** of one event no
                       longer arise here at all: a column is the event
                       (`leagueTable.ts`). */}
-                  <a
-                    className="league__race-day"
-                    href={`/${locale}/kalendar/${column.slug}`}
-                    title={column.name}
-                    aria-label={`${column.name} ${formatDayMonth(column.date)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {formatDayMonth(column.date)}
-                  </a>
+                  {column.unlinked === true ? (
+                    /* An event deleted after the competition froze: its day and its name as the freeze
+                       wrote them, and no page to open. */
+                    <span
+                      className="league__race-day"
+                      title={column.name}
+                      aria-label={`${column.name} ${formatDayMonth(column.date)}`}
+                    >
+                      {formatDayMonth(column.date)}
+                    </span>
+                  ) : (
+                    <a
+                      className="league__race-day"
+                      href={`/${locale}/kalendar/${column.slug}`}
+                      title={column.name}
+                      aria-label={`${column.name} ${formatDayMonth(column.date)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {formatDayMonth(column.date)}
+                    </a>
+                  )}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {shown.map((row) => (
-              <tr key={row.competitor.memberNumber}>
+              <tr key={row.frozen === undefined ? row.competitor.memberNumber : `place-${row.frozen.place}`}>
                 <th scope="row" className="league__who">
                   {/* **Krug pa ime u dva reda** (vlasnik, 07.09.2026), jer je prva kolona
                       zamrznuta i ima mesta ispod. Isto rade i „Najviše kilometara" i „Najduže na
                       stazi", koje je vlasnik istog dana svrstao uz ligu; jedan red ostaje na
                       glavnoj tabeli i na Najboljim pojedinačnim rezultatima. */}
-                  <ProfileLink competitor={row.competitor}>
-                    <NamePlate competitors={[row.competitor]}>
-                      <OverTwoLines competitor={row.competitor} />
-                    </NamePlate>
-                  </ProfileLink>
+                  {row.frozen === undefined ? (
+                    <ProfileLink competitor={row.competitor}>
+                      <NamePlate competitors={[row.competitor]}>
+                        <OverTwoLines competitor={row.competitor} />
+                      </NamePlate>
+                    </ProfileLink>
+                  ) : row.frozen.to === undefined ? (
+                    <span>
+                      <NamePlate competitors={[row.competitor]}>
+                        <OverTwoLines competitor={row.competitor} />
+                      </NamePlate>
+                    </span>
+                  ) : (
+                    <Link to={row.frozen.to}>
+                      <NamePlate competitors={[row.competitor]}>
+                        <OverTwoLines competitor={row.competitor} />
+                      </NamePlate>
+                    </Link>
+                  )}
                 </th>
                 <td className="table__points league__total">{formatPoints(row.total, locale)}</td>
                 {table.columns.map((column) => {
@@ -220,11 +263,15 @@ export function LeagueResults({
   gender: Gender
 }) {
   const { t } = useI18n()
-  const state = combineResources(useRaces(), useResults(), useCompetitors())
+  const state = combineFour(useRaces(), useResults(), useCompetitors(), useFrozenSeasons())
 
   return (
     <Resource state={state} inline label={t('leagues.standing')}>
-      {([races, results, competitors]) => (
+      {([races, results, competitors, frozen]) =>
+        /* WHICH SEASON IS FROZEN IS THE RECORD'S AND NEVER THE CLOCK'S (PDL, derived 10.10.2026). */
+        frozen.some((one) => one.season === league.season) ? (
+          <FrozenGrid league={league} competitors={competitors} gender={gender} />
+        ) : (
         <Grid
           league={league}
           events={events}
@@ -233,7 +280,45 @@ export function LeagueResults({
           competitors={competitors}
           gender={gender}
         />
-      )}
+        )
+      }
+    </Resource>
+  )
+}
+
+/**
+ * THE GRID OF A FROZEN COMPETITION: its columns and its rows as the freeze wrote them (PDL „Oblik
+ * zamrzavanja", point 4: „spisak trka prati živi spisak, a mreža tabele ostaje ista"). The list of what it
+ * counts is drawn elsewhere and is the live one; this is only the grid.
+ */
+function FrozenGrid({ league, competitors, gender }: { league: League; competitors: Competitor[]; gender: Gender }) {
+  const state = useFrozenTables(league.season)
+  const people = useFrozenPeople(competitors, league.season)
+
+  return (
+    <Resource state={state} inline>
+      {(tables) => {
+        const frozen = tables.leagues.find((one) => one.slug === league.slug)
+        const columns: ShownColumn[] = (frozen?.columns ?? []).map((one, index) => ({
+          eventId: index + 1,
+          date: one.date,
+          name: one.name,
+          slug: one.eventSlug ?? '',
+          ...(one.eventSlug === null ? { unlinked: true as const } : {}),
+        }))
+        const rows: Shown[] = (frozen?.standings ?? []).map((one) => {
+          const who = people(one)
+
+          return {
+            competitor: who.competitor,
+            points: new Map(one.cells.map((cell) => [cell.column, cell.points])),
+            total: one.points,
+            frozen: { ...who, place: `${one.gender}-${one.position}` },
+          }
+        })
+
+        return <Drawn table={{ columns, rows }} gender={gender} />
+      }}
     </Resource>
   )
 }

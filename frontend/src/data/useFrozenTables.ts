@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useHeldRead } from '../pages/member/useHeldRead'
 import { frozenTablesIn, type FrozenTables } from './frozen'
-import type { ResourceState } from './useResource'
+import { useFrozenSeasons, type ResourceState } from './useResource'
 
 /**
  * EVERY TABLE OF ONE FROZEN SEASON, read once per season the screen asks about.
@@ -35,4 +35,33 @@ export function useFrozenTables(season: number): ResourceState<FrozenTables> {
   const read = useCallback(() => theTablesOf(season), [season])
 
   return useHeldRead(read, season, 'The tables of a frozen season could not be read')
+}
+
+/**
+ * EVERY TABLE OF EVERY FROZEN SEASON, for a screen that reads across seasons (a member's awards, PDL,
+ * owner, 05.11.2026: „Strana „Priznanja i nagrade" za zamrznutu sezonu crta lične, timske i pehare para
+ * ... Crta se iz snimka"). One read per frozen season, and none until the list of them has come back.
+ */
+export function useEveryFrozenTable(): ResourceState<FrozenTables[]> {
+  const frozen = useFrozenSeasons()
+  const asked = frozen.status === 'ready' ? frozen.data.map((one) => one.season).join(',') : ''
+  const read = useCallback(async () => {
+    const tables: FrozenTables[] = []
+
+    for (const season of asked === '' ? [] : asked.split(',')) {
+      const one = await theTablesOf(Number(season))
+
+      if (one === null) {
+        return null
+      }
+
+      tables.push(one)
+    }
+
+    return tables
+  }, [asked])
+  const held = useHeldRead(read, asked, 'The tables of the frozen seasons could not be read')
+
+  /* Until the list of frozen seasons is in, its own state, which carries no data of either kind. */
+  return frozen.status === 'ready' ? held : frozen.status === 'loading' ? { status: 'loading' } : frozen
 }

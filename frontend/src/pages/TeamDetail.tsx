@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { CategoryDonut } from '../components/CategoryDonut'
@@ -19,7 +19,11 @@ import {
   totalsOf,
   standsIn,
 } from '../data/derive'
-import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
+import { combineFour, useCompetitors, useFrozenSeasons, useResults, useTeams } from '../data/useResource'
+import { useFrozenTables } from '../data/useFrozenTables'
+import { EMPTY_TOTALS, type RankingRow, type Totals } from '../data/derive'
+import { FrozenName } from './frozen/FrozenName'
+import { useFrozenPeople, type FrozenOne } from './frozen/frozenPeople'
 import { clearResourceCache } from '../data/client'
 import type { Competitor, Team } from '../data/types'
 import { askTheServer, type Answer } from './account/askTheServer'
@@ -90,7 +94,7 @@ export function TeamDetail() {
   const { memberNumber, remove, editRecord } = useSession()
   const navigate = useNavigate()
   const overlay = useOverlay()
-  const state = combineResources(useTeams(), useCompetitors(), useResults())
+  const state = combineFour(useTeams(), useCompetitors(), useResults(), useFrozenSeasons())
 
   /**
    * Why a deletion did not happen, for the one person who pressed it, and THE PAGE IT WAS REFUSED ON
@@ -231,7 +235,7 @@ export function TeamDetail() {
 
   return (
     <Resource state={state}>
-      {([teams, competitors, results]) => {
+      {([teams, competitors, results, frozen]) => {
         /* Through the overlay, because a moderator naming another administrator
            writes there and not into the file on the disc; read from the file alone,
            the button stayed with the member they had just replaced (review,
@@ -321,7 +325,7 @@ export function TeamDetail() {
            src/data/derive.ts exists to prevent (PDL P12). */
         const rows = rankMembers(members, mine)
 
-        return (
+        const drawn = (totals: Totals, rows: Shown[]) => (
           <>
             <PageMeta
               title={t('seo.team.recordTitle', { name: team.name, city: team.city })}
@@ -506,14 +510,19 @@ export function TeamDetail() {
                     <tbody>
                       {rows.map((row) => (
                         <tr
-                          key={row.competitor.memberNumber}
+                          /* A frozen row may name nobody the portal still serves, so its place is its key. */
+                          key={row.frozen === undefined ? row.competitor.memberNumber : `place-${row.position}`}
                           className={podiumClass(row.position)}
                         >
                           <td className="table__position">{row.position}</td>
                           <td>
-                            <CompetitorName competitor={row.competitor} />{' '}
+                            {row.frozen === undefined ? (
+                              <CompetitorName competitor={row.competitor} />
+                            ) : (
+                              <FrozenName one={row.frozen} />
+                            )}{' '}
                             <span className="table__member-number">
-                              {row.competitor.memberNumber}
+                              {row.frozen === undefined ? row.competitor.memberNumber : (row.frozen.memberNumber ?? '')}
                             </span>
                           </td>
                           <td className="table__category">{categoryLabelIn(row.competitor, Number(season), t)}</td>
@@ -527,6 +536,77 @@ export function TeamDetail() {
               )}
             </div>
           </>
+        )
+
+        /* WHICH SEASON IS FROZEN IS THE RECORD'S AND NEVER THE CLOCK'S (PDL, derived 10.10.2026). */
+        return frozen.some((one) => String(one.season) === season) ? (
+          <FrozenTeamPage season={Number(season)} slug={team.slug} competitors={listedMembers} drawn={drawn} />
+        ) : (
+          drawn(totals, rows)
+        )
+      }}
+    </Resource>
+  )
+}
+
+/** A member's row on the team's page: placed by the ladder for a season read live, as the freeze wrote it. */
+type Shown = RankingRow & { frozen?: FrozenOne }
+
+/**
+ * THE TEAM'S PAGE IN A FROZEN SEASON: its figures and its members as the freeze wrote them (PDL, 31.07.2026),
+ * the category each member had that season beside him. A team that ran nothing that season is not in the
+ * snapshot and has no members on it, which is the same silence the live page says.
+ */
+function FrozenTeamPage({
+  season,
+  slug,
+  competitors,
+  drawn,
+}: {
+  season: number
+  slug: string
+  competitors: Competitor[]
+  drawn: (totals: Totals, rows: Shown[]) => ReactNode
+}) {
+  const state = useFrozenTables(season)
+  const people = useFrozenPeople(competitors, season)
+
+  return (
+    <Resource state={state}>
+      {(tables) => {
+        const frozen = tables.teams.find((one) => one.slug === slug)
+        const categories = new Map(tables.standings.map((one) => [`${one.memberNumber}|${one.who}`, one.category]))
+
+        if (frozen === undefined) {
+          return drawn(EMPTY_TOTALS, [])
+        }
+
+        return drawn(
+          {
+            races: frozen.races,
+            kilometers: frozen.kilometers,
+            ascent: frozen.ascent,
+            descent: frozen.descent,
+            seconds: frozen.seconds,
+            points: frozen.points,
+          },
+          [...frozen.roster]
+            .sort((left, right) => left.position - right.position)
+            .map((one) => {
+              const who = people(one, categories.get(`${one.memberNumber}|${one.who}`) ?? null)
+
+              return {
+                competitor: who.competitor,
+                position: one.position,
+                races: one.races,
+                kilometers: one.kilometers,
+                ascent: one.ascent,
+                descent: one.descent,
+                seconds: one.seconds,
+                points: one.points,
+                frozen: who,
+              }
+            }),
         )
       }}
     </Resource>

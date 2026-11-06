@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
 import { useToday } from '../clock/useClock'
 import { Resource } from '../components/Resource'
@@ -6,7 +6,10 @@ import { SeasonPicker } from '../components/SeasonPicker'
 import { offeredSeason, useSeason } from '../components/season'
 import { rankTeams, seasonOf, seasonsOnOffer, teamOf } from '../data/derive'
 import { inYearlyWindow, seasonShown, transfersTakeEffect } from '../data/season'
-import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
+import type { Placed, TeamRow } from '../data/derive'
+import type { Team } from '../data/types'
+import { combineFour, useCompetitors, useFrozenSeasons, useResults, useTeams } from '../data/useResource'
+import { useFrozenTables } from '../data/useFrozenTables'
 import { formatNumber, formatPoints } from '../i18n/format'
 import { TeamMark } from '../components/TeamMark'
 import { useI18n } from '../i18n/useI18n'
@@ -33,6 +36,72 @@ import './Rankings.css'
  * the whole result set, so a page of fifty closed drawers was fifty passes over
  * everything waiting to happen.
  */
+/** A team's row: placed by the ladder for a season read live, as the freeze wrote it for a frozen one. */
+type Shown = Placed<TeamRow> & { unlinked?: true }
+
+/**
+ * THE TEAM STANDINGS OF A FROZEN SEASON, as the freeze wrote them (PDL, 31.07.2026): the places, the names
+ * the teams had, the members each counted and the points. A team still on the portal is drawn with its mark
+ * and its town as they are today; a team deleted since keeps the name the freeze wrote and leads nowhere.
+ */
+function FrozenTeams({
+  season,
+  teams,
+  drawn,
+}: {
+  season: number
+  teams: Team[]
+  drawn: (rows: Shown[]) => ReactNode
+}) {
+  const state = useFrozenTables(season)
+
+  return (
+    <Resource state={state}>
+      {(tables) =>
+        drawn(
+          [...tables.teams]
+            .sort((left, right) => left.position - right.position)
+            .map((one) => {
+              const live = teams.find((team) => one.slug !== null && team.slug === one.slug)
+              const totals = {
+                races: one.races,
+                kilometers: one.kilometers,
+                ascent: one.ascent,
+                descent: one.descent,
+                seconds: one.seconds,
+                points: one.points,
+              }
+
+              return live === undefined
+                ? {
+                    team: { ...NO_TEAM, id: -one.position, name: one.name },
+                    members: one.members,
+                    totals,
+                    position: one.position,
+                    unlinked: true as const,
+                  }
+                : { team: { ...live, name: one.name }, members: one.members, totals, position: one.position }
+            }),
+        )
+      }
+    </Resource>
+  )
+}
+
+/** What a frozen row says of a team the portal no longer has: its name, and nothing to draw beside it. */
+const NO_TEAM: Team = {
+  id: 0,
+  slug: '',
+  name: '',
+  city: '',
+  country: '',
+  bio: '',
+  logo: null,
+  crop: null,
+  smallLogo: null,
+  alsoInTheTeam: [],
+}
+
 export function Teams() {
   const { locale, t } = useI18n()
   const today = useToday()
@@ -43,7 +112,7 @@ export function Teams() {
      opened on 2026, a season the league never ran. */
   const running = String(seasonShown(today))
   const asked = useSeason(running)
-  const state = combineResources(useTeams(), useCompetitors(), useResults())
+  const state = combineFour(useTeams(), useCompetitors(), useResults(), useFrozenSeasons())
   const arrived = useLocation().state
   const [said, setSaid] = useState(() => (teamWasDeleted(arrived) ? t('admin.teamGone') : ''))
 
@@ -59,7 +128,7 @@ export function Teams() {
       {said !== '' && <DeletionSaid said={said} clear={setSaid} />}
 
       <Resource state={state}>
-        {([teams, competitors, results]) => {
+        {([teams, competitors, results, frozen]) => {
           /* The seasons anybody has raced in, and the running one, which is the
              default and a control cannot open on an option it does not have.
              Worked out before the choice, because the choice is held against it. */
@@ -102,7 +171,7 @@ export function Teams() {
              them a second one (review). */
           const myTeam = teamOf(members.find((one) => one.memberNumber === memberNumber))
 
-          return (
+          const drawn = (rows: Shown[]) => (
             <>
               <div className="rankings__head-tool">
                 {/* A team is put forward by whoever wants to run in it, and
@@ -186,10 +255,19 @@ export function Teams() {
                           {/* The mark before the name, both inside the link, so
                               the whole pair is one target and a reader aiming at
                               the logo lands on the team (owner, 12.08.2026). */}
-                          <Link to={`/${locale}/tim/${row.team.slug}`}>
-                            <TeamMark team={row.team} />
-                            {row.team.name}
-                          </Link>
+                          {row.unlinked === true ? (
+                            /* A team deleted after its season froze: its name, and no page to lead to (PDL,
+                               derived 10.10.2026, „tim obrisan posle 16:00 ostaje u tabeli kao ime bez veze"). */
+                            <span>
+                              <TeamMark team={row.team} />
+                              {row.team.name}
+                            </span>
+                          ) : (
+                            <Link to={`/${locale}/tim/${row.team.slug}`}>
+                              <TeamMark team={row.team} />
+                              {row.team.name}
+                            </Link>
+                          )}
                         </td>
                         <td className="table__hide-phone">{row.team.city}</td>
                         <td className="table__hide-phone">{formatNumber(row.members, locale)}</td>
@@ -201,6 +279,13 @@ export function Teams() {
               </div>
               )}
             </>
+          )
+
+          /* WHICH SEASON IS FROZEN IS THE RECORD'S AND NEVER THE CLOCK'S (PDL, derived 10.10.2026). */
+          return frozen.some((one) => String(one.season) === season) ? (
+            <FrozenTeams season={Number(season)} teams={listed} drawn={drawn} />
+          ) : (
+            drawn(rows)
           )
         }}
       </Resource>

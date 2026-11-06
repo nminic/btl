@@ -178,9 +178,9 @@ export function leagueTable(
  * calls otherwise. It could be a category code until 31.08.2026, when the owner
  * settled that a competition ranks one way and it is by gender.
  */
-export type LeagueGroup = {
+export type LeagueGroup<R extends LeagueRow = LeagueRow> = {
   code: string
-  rows: LeagueRow[]
+  rows: R[]
 }
 
 /**
@@ -216,8 +216,9 @@ export type LeagueGroup = {
  * still has to be dropped is a block with nobody on the **page** being drawn,
  * and that belongs to the screen, which is where the paging is.
  */
-export function leagueGroups(rows: LeagueRow[]): LeagueGroup[] {
-  const held = new Map<string, LeagueRow[]>()
+/* Of any row a grid draws, so the row of a frozen competition keeps what it carries (`LeagueResults.tsx`). */
+export function leagueGroups<R extends LeagueRow>(rows: R[]): LeagueGroup<R>[] {
+  const held = new Map<string, R[]>()
 
   for (const row of rows) {
     const code = genderMark(row.competitor.gender)
