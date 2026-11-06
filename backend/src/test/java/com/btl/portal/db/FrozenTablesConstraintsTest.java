@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Every constraint of the tables V84 adds to the frozen season, each broken on purpose by a row that
+ * Every constraint of the tables V84 and V85 add to the frozen season, each broken on purpose by a row that
  * breaks it and nothing else (the shape {@link FrozenSeasonConstraintsTest} has for V17's three).
  *
  * <p>A row is written as the good row of its table with one or two columns replaced, so every row
@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class FrozenTablesConstraintsTest extends DatabaseTest {
 
 	static final List<String> TABLES = List.of("season_team_member", "season_board", "season_pair",
-			"season_pair_half", "season_league_column", "season_league_cell", "season_award");
+			"season_pair_half", "season_league_column", "season_league_cell", "season_award", "season_team_length");
 
 	record Violation(String constraint, String evidence, String sql) {
 
@@ -72,6 +72,8 @@ class FrozenTablesConstraintsTest extends DatabaseTest {
 		good.put("season_award", values("season", "2027", "kind", "'overall'", "category", "null", "position", "2",
 				"competitor_id", A_WOMAN, "who", "'Prva Zamrznuta'", "gender", "'F'", "points", "8", "team_name",
 				"null"));
+
+		good.put("season_team_length", values("season_team_id", THE_TEAM, "length", "'half'", "races", "1"));
 
 		return good;
 	}
@@ -172,6 +174,8 @@ class FrozenTablesConstraintsTest extends DatabaseTest {
 		db.sql("insert into season_award (season, kind, category, position, competitor_id, who, gender, points,"
 				+ " team_name) values (2027, 'overall', null, 1, " + A_MEMBER + ", 'Prvi Zamrznuti', 'M', 10, null)")
 				.update();
+		db.sql("insert into season_team_length (season_team_id, length, races) values (" + THE_TEAM + ", 'short', 2)")
+				.update();
 	}
 
 	static List<Violation> violations() {
@@ -271,6 +275,13 @@ class FrozenTablesConstraintsTest extends DatabaseTest {
 		all.add(of("season_award_points_not_negative", "season_award", "points", "-1"));
 		all.add(of("season_award_one_each", "season_award", "competitor_id", A_MEMBER, "position", "3"));
 
+		/* THE RING OF A TEAM (V85). */
+		all.addAll(notNulls("season_team_length", "season_team_id", "length", "races"));
+		all.add(of("season_team_length_pk", "season_team_length", "length", "'short'"));
+		all.add(of("season_team_length_team_fk", "season_team_length", "season_team_id", "999999"));
+		all.add(of("season_team_length_known", "season_team_length", "length", "'free'"));
+		all.add(of("season_team_length_races_positive", "season_team_length", "races", "0"));
+
 		return all;
 	}
 
@@ -346,11 +357,15 @@ class FrozenTablesConstraintsTest extends DatabaseTest {
 
 		assertThat(db.sql("select count(*) from season_league_cell").query(Long.class).single()).isZero();
 		assertThat(db.sql("select count(*) from season_team_member").query(Long.class).single()).isZero();
+		assertThat(db.sql("select count(*) from season_team_length").query(Long.class).single()).isZero();
 		assertThat(db.sql("select count(*) from season_pair_half").query(Long.class).single()).isZero();
 	}
 
 	@Test
 	void theTeamTheLeagueTheEventTheRaceAndThePairMayGoAndTheFrozenRowsStay() {
+		/* A team deleted after the freeze leaves its frozen row and the ring hung off it (PDL, 04.09.2026, „Tim
+		   se briše i kad je sezona zamrznuta, ali zamrznuta tabela ostaje"). */
+		db.sql("delete from team where slug = 'zamrznut-tim-v84'").update();
 		db.sql("delete from racing_pair").update();
 		db.sql("delete from league where slug = 'zamrznuta-liga-v84'").update();
 		db.sql("delete from btl_event where slug = 'zamrznut-dogadjaj'").update();
@@ -358,5 +373,8 @@ class FrozenTablesConstraintsTest extends DatabaseTest {
 		assertThat(db.sql("select count(*) from season_pair where pair_id is null").query(Long.class).single()).isOne();
 		assertThat(db.sql("select name || ' ' || coalesce(event_id::text, '-') || ' ' || coalesce(league_id::text, '-')"
 				+ " from season_league_column").query(String.class).single()).isEqualTo("Zamrznut dogadjaj - -");
+		assertThat(db.sql("select l.length || ' ' || l.races || ' ' || coalesce(t.team_id::text, '-')"
+				+ " from season_team_length l join season_team t on t.id = l.season_team_id").query(String.class)
+				.single()).isEqualTo("short 2 -");
 	}
 }

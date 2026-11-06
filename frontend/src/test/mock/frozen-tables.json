@@ -18,8 +18,8 @@
     {
       "position": 2,
       "categoryPosition": 1,
-      "memberNumber": null,
-      "who": "Relja Momčilović",
+      "memberNumber": "000005",
+      "who": "Bogoljub Nikolajević",
       "gender": "M",
       "category": "M25-39",
       "points": 388.2,
@@ -28,6 +28,20 @@
       "ascent": 900,
       "descent": 950,
       "seconds": 52000
+    },
+    {
+      "position": 3,
+      "categoryPosition": 2,
+      "memberNumber": null,
+      "who": "Relja Momčilović",
+      "gender": "M",
+      "category": "M25-39",
+      "points": 210.0,
+      "races": 7,
+      "kilometers": 96.0,
+      "ascent": 400,
+      "descent": 400,
+      "seconds": 30000
     },
     {
       "position": 1,
@@ -63,12 +77,12 @@
       "position": 1,
       "slug": "dunavski-trkaci",
       "name": "Dunavski trkači",
-      "points": 812.5,
-      "members": 3,
-      "races": 27,
-      "kilometers": 378.6,
-      "ascent": 3600,
-      "descent": 3550,
+      "points": 800.7,
+      "members": 2,
+      "races": 26,
+      "kilometers": 368.4,
+      "ascent": 3000,
+      "descent": 3000,
       "seconds": 113200,
       "roster": [
         {
@@ -82,40 +96,101 @@
           "ascent": 2100,
           "descent": 2050,
           "seconds": 61200
+        },
+        {
+          "position": 2,
+          "memberNumber": "000005",
+          "who": "Bogoljub Nikolajević",
+          "gender": "M",
+          "points": 388.2,
+          "races": 12,
+          "kilometers": 170.0,
+          "ascent": 900,
+          "descent": 950,
+          "seconds": 52000
+        }
+      ],
+      "racesByLength": [
+        {
+          "length": "short",
+          "races": 18
+        },
+        {
+          "length": "half",
+          "races": 8
         }
       ]
     },
     {
       "position": 2,
+      "slug": "vardarski-krug",
+      "name": "Vardarski krug",
+      "points": 401.75,
+      "members": 1,
+      "races": 13,
+      "kilometers": 180.2,
+      "ascent": 1500,
+      "descent": 1500,
+      "seconds": 58000,
+      "roster": [
+        {
+          "position": 1,
+          "memberNumber": "000003",
+          "who": "Anđelija Vukotić",
+          "gender": "F",
+          "points": 401.75,
+          "races": 13,
+          "kilometers": 180.2,
+          "ascent": 1500,
+          "descent": 1500,
+          "seconds": 58000
+        }
+      ],
+      "racesByLength": [
+        {
+          "length": "short",
+          "races": 6
+        },
+        {
+          "length": "long",
+          "races": 7
+        }
+      ]
+    },
+    {
+      "position": 3,
       "slug": null,
       "name": "Tim koji je obrisan",
-      "points": 120.0,
+      "points": 210.0,
       "members": 1,
-      "races": 4,
-      "kilometers": 42.0,
-      "ascent": 100,
-      "descent": 100,
-      "seconds": 14000,
-      "roster": []
+      "races": 7,
+      "kilometers": 96.0,
+      "ascent": 400,
+      "descent": 400,
+      "seconds": 30000,
+      "roster": [
+        {
+          "position": 1,
+          "memberNumber": null,
+          "who": "Relja Momčilović",
+          "gender": "M",
+          "points": 210.0,
+          "races": 7,
+          "kilometers": 96.0,
+          "ascent": 400,
+          "descent": 400,
+          "seconds": 30000
+        }
+      ],
+      "racesByLength": [
+        {
+          "length": "ultra",
+          "races": 7
+        }
+      ]
     }
   ],
   "boards": [
-    {
-      "board": "byLength",
-      "length": "short",
-      "position": 1,
-      "memberNumber": "000001",
-      "who": "Vladan Đurišić",
-      "gender": "M",
-      "points": 180.0,
-      "races": 9,
-      "kilometers": 90.0,
-      "ascent": 800,
-      "descent": 800,
-      "seconds": 27000,
-      "previousPoints": null,
-      "raceName": null
-    },
     {
       "board": "bestRace",
       "length": null,
@@ -133,6 +208,54 @@
       "raceName": "Beogradski maraton"
     },
     {
+      "board": "byLength",
+      "length": "short",
+      "position": 1,
+      "memberNumber": "000001",
+      "who": "Vladan Đurišić",
+      "gender": "M",
+      "points": 180.0,
+      "races": 9,
+      "kilometers": 90.0,
+      "ascent": 800,
+      "descent": 800,
+      "seconds": 27000,
+      "previousPoints": null,
+      "raceName": null
+    },
+    {
+      "board": "kilometers",
+      "length": null,
+      "position": 1,
+      "memberNumber": "000001",
+      "who": "Vladan Đurišić",
+      "gender": "M",
+      "points": 412.5,
+      "races": 14,
+      "kilometers": 198.4,
+      "ascent": 2100,
+      "descent": 2050,
+      "seconds": 61200,
+      "previousPoints": null,
+      "raceName": null
+    },
+    {
+      "board": "kilometers",
+      "length": null,
+      "position": 2,
+      "memberNumber": "000003",
+      "who": "Anđelija Vukotić",
+      "gender": "F",
+      "points": 401.75,
+      "races": 13,
+      "kilometers": 180.2,
+      "ascent": 1500,
+      "descent": 1500,
+      "seconds": 58000,
+      "previousPoints": null,
+      "raceName": null
+    },
+    {
       "board": "progress",
       "length": null,
       "position": 1,
@@ -146,6 +269,22 @@
       "descent": 1500,
       "seconds": 58000,
       "previousPoints": 300.0,
+      "raceName": null
+    },
+    {
+      "board": "timeOnCourse",
+      "length": null,
+      "position": 1,
+      "memberNumber": "000001",
+      "who": "Vladan Đurišić",
+      "gender": "M",
+      "points": 412.5,
+      "races": 14,
+      "kilometers": 198.4,
+      "ascent": 2100,
+      "descent": 2050,
+      "seconds": 61200,
+      "previousPoints": null,
       "raceName": null
     }
   ],
@@ -167,6 +306,27 @@
         {
           "memberNumber": "000003",
           "who": "Anđelija Vukotić",
+          "gender": "F"
+        }
+      ]
+    },
+    {
+      "position": 2,
+      "points": 95.0,
+      "races": 2,
+      "kilometers": 20.0,
+      "ascent": 100,
+      "descent": 100,
+      "seconds": 7000,
+      "halves": [
+        {
+          "memberNumber": "000005",
+          "who": "Bogoljub Nikolajević",
+          "gender": "M"
+        },
+        {
+          "memberNumber": null,
+          "who": null,
           "gender": "F"
         }
       ]
@@ -205,19 +365,62 @@
               "points": 44.1
             }
           ]
+        },
+        {
+          "gender": "M",
+          "position": 2,
+          "memberNumber": null,
+          "who": "Relja Momčilović",
+          "points": 30.0,
+          "cells": [
+            {
+              "column": 1,
+              "points": 30.0
+            }
+          ]
         }
       ]
     }
   ],
   "awards": [
     {
-      "kind": "overall",
-      "category": null,
+      "kind": "category",
+      "category": "M25-39",
+      "position": 1,
+      "memberNumber": "000005",
+      "who": "Bogoljub Nikolajević",
+      "gender": "M",
+      "points": 388.2,
+      "teamName": null
+    },
+    {
+      "kind": "category",
+      "category": "M25-39",
+      "position": 2,
+      "memberNumber": null,
+      "who": "Relja Momčilović",
+      "gender": "M",
+      "points": 210.0,
+      "teamName": null
+    },
+    {
+      "kind": "category",
+      "category": "M40-54",
       "position": 1,
       "memberNumber": "000001",
       "who": "Vladan Đurišić",
       "gender": "M",
       "points": 412.5,
+      "teamName": null
+    },
+    {
+      "kind": "category",
+      "category": "Ž R",
+      "position": 1,
+      "memberNumber": null,
+      "who": null,
+      "gender": "F",
+      "points": 120.0,
       "teamName": null
     },
     {
@@ -231,14 +434,112 @@
       "teamName": null
     },
     {
+      "kind": "overall",
+      "category": null,
+      "position": 1,
+      "memberNumber": "000001",
+      "who": "Vladan Đurišić",
+      "gender": "M",
+      "points": 412.5,
+      "teamName": null
+    },
+    {
+      "kind": "overall",
+      "category": null,
+      "position": 2,
+      "memberNumber": "000005",
+      "who": "Bogoljub Nikolajević",
+      "gender": "M",
+      "points": 388.2,
+      "teamName": null
+    },
+    {
+      "kind": "overall",
+      "category": null,
+      "position": 3,
+      "memberNumber": null,
+      "who": "Relja Momčilović",
+      "gender": "M",
+      "points": 210.0,
+      "teamName": null
+    },
+    {
+      "kind": "overall",
+      "category": null,
+      "position": 1,
+      "memberNumber": "000003",
+      "who": "Anđelija Vukotić",
+      "gender": "F",
+      "points": 401.75,
+      "teamName": null
+    },
+    {
+      "kind": "overall",
+      "category": null,
+      "position": 2,
+      "memberNumber": null,
+      "who": null,
+      "gender": "F",
+      "points": 120.0,
+      "teamName": null
+    },
+    {
+      "kind": "pair",
+      "category": null,
+      "position": 1,
+      "memberNumber": "000001",
+      "who": "Vladan Đurišić",
+      "gender": "M",
+      "points": 160.4,
+      "teamName": null
+    },
+    {
+      "kind": "pair",
+      "category": null,
+      "position": 1,
+      "memberNumber": "000003",
+      "who": "Anđelija Vukotić",
+      "gender": "F",
+      "points": 160.4,
+      "teamName": null
+    },
+    {
       "kind": "team",
       "category": null,
       "position": 1,
       "memberNumber": "000001",
       "who": "Vladan Đurišić",
       "gender": "M",
-      "points": 812.5,
+      "points": 800.7,
       "teamName": "Dunavski trkači"
+    },
+    {
+      "kind": "team",
+      "category": null,
+      "position": 1,
+      "memberNumber": "000005",
+      "who": "Bogoljub Nikolajević",
+      "gender": "M",
+      "points": 800.7,
+      "teamName": "Dunavski trkači"
+    }
+  ],
+  "pointsAtTheFreeze": [
+    {
+      "memberNumber": "000001",
+      "points": 412.5
+    },
+    {
+      "memberNumber": "000003",
+      "points": 401.75
+    },
+    {
+      "memberNumber": "000005",
+      "points": 388.2
+    },
+    {
+      "memberNumber": "000006",
+      "points": 55.0
     }
   ]
 }

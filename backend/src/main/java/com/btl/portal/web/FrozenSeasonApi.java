@@ -91,9 +91,18 @@ class FrozenSeasonApi {
 			int races, BigDecimal kilometers, int ascent, int descent, int seconds) {
 	}
 
-	/** @param slug null where the team has since been deleted */
+	/** How many of a frozen team's races were run at one length; only a length it ran has one. */
+	record Length(String length, int races) {
+	}
+
+	/**
+	 * @param slug          null where the team has since been deleted
+	 * @param racesByLength the ring of the team's page, as the freeze counted it (PDL, owner, 06.11.2026, „Krug
+	 *                      „Trke po distanci" na strani tima zamrznute sezone crta se iz snimka")
+	 */
 	record Team(int position, String slug, String name, BigDecimal points, int members, int races,
-			BigDecimal kilometers, int ascent, int descent, int seconds, List<TeamMember> roster) {
+			BigDecimal kilometers, int ascent, int descent, int seconds, List<TeamMember> roster,
+			List<Length> racesByLength) {
 	}
 
 	/**
@@ -139,8 +148,21 @@ class FrozenSeasonApi {
 			BigDecimal points, String teamName) {
 	}
 
+	/**
+	 * What one member held in the season at its freeze (V83), with the right to rank or without it.
+	 *
+	 * <p>The season after this one reads it on the list of best progress: „najbolji napredak ... uzimaju
+	 * broj iz snimka" (PDL, derived 10.10.2026), and the season before counts „whether or not he held it with
+	 * the right to rank" (owner, 30.10.2026, „prethodna sezona bez prava rangiranja se računa kao prethodna").
+	 * The table of the season holds only the members who ranked, so it cannot answer that. Nothing new about
+	 * a member leaves here: his runs of that season and his points on them are answered by
+	 * {@code /api/results} already. A member who is gone has no row, because V83's row goes with him.
+	 */
+	record Held(String memberNumber, BigDecimal points) {
+	}
+
 	record Tables(int season, List<Standing> standings, List<Team> teams, List<Board> boards, List<Pair> pairs,
-			List<League> leagues, List<Award> awards) {
+			List<League> leagues, List<Award> awards, List<Held> pointsAtTheFreeze) {
 	}
 
 	@GetMapping("/api/frozen-seasons")
@@ -173,7 +195,8 @@ class FrozenSeasonApi {
 
 		int one = frozen.getFirst();
 
-		return new Tables(one, standings(one), teams(one), boards(one), pairs(one), leagues(one), awards(one));
+		return new Tables(one, standings(one), teams(one), boards(one), pairs(one), leagues(one), awards(one),
+				pointsAtTheFreeze(one));
 	}
 
 	private List<Standing> standings(int season) {
@@ -203,6 +226,21 @@ class FrozenSeasonApi {
 							row.getInt(7), row.getBigDecimal(8), row.getInt(9), row.getInt(10), row.getInt(11)));
 				});
 
+		/* In the order the five lengths are named everywhere (`SeasonTables.LENGTHS`), a vocabulary and not a
+		   place: there is no place among them to keep, and the screen reads them into a map. */
+		Map<Long, List<Length>> lengths = new LinkedHashMap<>();
+
+		db.sql("select l.season_team_id, l.length, l.races"
+						+ " from season_team_length l join season_team t on t.id = l.season_team_id"
+						+ " where t.season = ?"
+						+ " order by l.season_team_id, array_position(array['short', 'half', 'long', 'marathon', 'ultra'],"
+						+ " l.length)")
+				.param(season)
+				.query(row -> {
+					lengths.computeIfAbsent(row.getLong(1), any -> new ArrayList<>())
+							.add(new Length(row.getString(2), row.getInt(3)));
+				});
+
 		return db.sql("select t.id, t.position, team.slug, t.name, t.points, t.members, t.races, t.kilometers,"
 						+ " t.ascent, t.descent, t.seconds"
 						+ " from season_team t left join team on team.id = t.team_id"
@@ -210,7 +248,8 @@ class FrozenSeasonApi {
 				.param(season)
 				.query((row, one) -> new Team(row.getInt(2), row.getString(3), row.getString(4), row.getBigDecimal(5),
 						row.getInt(6), row.getInt(7), row.getBigDecimal(8), row.getInt(9), row.getInt(10),
-						row.getInt(11), rosters.getOrDefault(row.getLong(1), List.of())))
+						row.getInt(11), rosters.getOrDefault(row.getLong(1), List.of()),
+						lengths.getOrDefault(row.getLong(1), List.of())))
 				.list();
 	}
 
@@ -290,6 +329,15 @@ class FrozenSeasonApi {
 				.params(season, season)
 				.query((row, one) -> new League(row.getString(2), row.getString(3),
 						columns.getOrDefault(row.getLong(1), List.of()), rows.getOrDefault(row.getLong(1), List.of())))
+				.list();
+	}
+
+	private List<Held> pointsAtTheFreeze(int season) {
+		return db.sql("select c.member_number, p.points from season_points_at_freeze p"
+						+ " join competitor c on c.id = p.competitor_id"
+						+ " where p.season = ? and c.member_number is not null order by c.member_number")
+				.param(season)
+				.query((row, one) -> new Held(row.getString(1), row.getBigDecimal(2)))
 				.list();
 	}
 

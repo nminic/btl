@@ -533,6 +533,26 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
     return whatMeAnswers()
   }
 
+  /* THE FROZEN SEASONS, answered as the server answers them on the days this suite is read as (2026 and
+     2027, `test/theDay.ts`): none, because the first season freezes on 1.1.2028 at 16:00. The file
+     `mock/frozen-seasons.json` names 2027 and is the shape the server gives a season on the list
+     (`FrozenSeasonApiTest` holds the two to each other); answered here, it would put every screen of the
+     suite on a snapshot of the season the suite reads live. A case about a frozen season puts its own
+     server in front, and the tables of 2027 are answered off `mock/frozen-tables.json` below. */
+  if (asked === '/api/frozen-seasons') {
+    return new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } })
+  }
+
+  const frozenTables = /^\/api\/frozen-tables\/(\d+)$/.exec(asked)
+
+  if (frozenTables !== null) {
+    const file: unknown = JSON.parse(readFileSync(join(PUBLIC_DIR, '/mock/frozen-tables.json'), 'utf-8'))
+
+    return String(Reflect.get(Object(file), 'season')) === frozenTables[1]
+      ? new Response(JSON.stringify(file), { status: 200, headers: { 'content-type': 'application/json' } })
+      : new Response(null, { status: 404 })
+  }
+
   /* `GET /api/me/photo` (`MePhotoApi.mine`), READ ONLY: the same address takes the picture itself as a
      `POST`, and that one is not answered here. A member the harness signs in has no picture waiting
      and none standing under a public address - the generated files keep their pictures under `/mock`,

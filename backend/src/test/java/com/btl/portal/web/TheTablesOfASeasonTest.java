@@ -251,6 +251,52 @@ class TheTablesOfASeasonTest {
 				.containsExactly("Tim A 1 Bojan Drugi", "Tim A 2 Goran Cetvrti", "Tim B 1 Ana Prva");
 	}
 
+	/**
+	 * THE RING OF A FROZEN TEAM'S PAGE (PDL, owner, 06.11.2026, „posao zamrzavanja u 16:00 upisuje i broj trka
+	 * tima po vrsti, pa trka upisana posle zamrzavanja ne menja krug te sezone"): per team, the runs its row adds
+	 * up, each under the length it was run at.
+	 *
+	 * <p>Every count here has a second source kept apart from it: a member without the right to rank (Dejan,
+	 * a short race) and one who joined for the next season (Vera, a short race) are in the teams and bring
+	 * nothing; the second team runs a length the first does not; a marathon of 2027 is entered for the first
+	 * team after the freeze; the season after is frozen with a marathon of its own for the same team; and the
+	 * team is deleted at the end.
+	 */
+	@Test
+	void aFrozenTeamKeepsHowManyRacesOfEachLengthItsRowAddsUpAndNothingEnteredAfterTheFreeze() {
+		team("tim-a", "Tim A");
+		team("tim-b", "Tim B");
+		inTeam("000302", "tim-a", 2027, null);
+		inTeam("000304", "tim-a", 2027, null);
+		inTeam("000305", "tim-a", 2027, null);
+		inTeam("000301", "tim-b", 2027, null);
+		inTeam("000303", "tim-b", 2028, null);
+		race("Jesen", "Maraton", 42.2, "2027-10-10");
+		run("000301", "Maraton", 60.00);
+		memberOf("000302", 2028, "2027-11-20 10:00:00+00");
+		event("Leto", "2028-07-07");
+		race("Leto", "Letnji maraton", 42.2, "2028-07-07");
+
+		freezeAt(2028, 1, 1, 16, 0);
+
+		run("000302", "Maraton", 50.00);
+		run("000302", "Letnji maraton", 50.00);
+
+		freezeAt(2029, 1, 1, 16, 0);
+		db.sql("delete from team where slug = 'tim-a'").update();
+
+		assertThat(db.sql("select t.season || ' ' || t.name || ' ' || l.length || ' ' || l.races"
+						+ " from season_team_length l join season_team t on t.id = l.season_team_id"
+						+ " order by t.season, t.name, l.length").query(String.class).list())
+				.as("Tim A ran no marathon in 2027 until after its freeze, and Tim B ran the one of 2027; Dejan and"
+						+ " Vera ran a short race each for their teams and bring none; 2028 is its own")
+				.containsExactly("2027 Tim A half 1", "2027 Tim A short 2", "2027 Tim B marathon 1",
+						"2027 Tim B short 1", "2028 Tim A marathon 1");
+		assertThat(db.sql("select count(*) from season_team t where t.races <> (select coalesce(sum(l.races), 0)"
+						+ " from season_team_length l where l.season_team_id = t.id)").query(Long.class).single())
+				.as("the ring of a team adds up to the races its row counts").isZero();
+	}
+
 	@Test
 	void aPairWithALapsedHalfStaysOnTheBoardOfTheSeasonItRan() {
 		member("000309", "Jelena", "Deveta", "F", "1990-05-05");

@@ -1781,15 +1781,23 @@ export function topByProgress(
   results: Result[],
   season: number,
   limit: number,
+  /* WHAT EACH MEMBER HELD IN THE SEASON BEFORE AT ITS FREEZE, by member number, where that season is
+     frozen (`data/frozen.ts`, `pointsAtTheFreeze`): „najbolji napredak ... uzimaju broj iz snimka" (PDL,
+     derived 10.10.2026), so a result of the season before entered or corrected after its freeze does
+     not move this board. Left out, the season before is read off the results, as it is while it runs. */
+  frozenBefore?: Map<string, number>,
 ): Placed<ProgressRow>[] {
   /* THE TWO SEASONS ARE ASKED TWO DIFFERENT QUESTIONS, ON PURPOSE. The season of the board is a
      standing, so only what its standings count (`standingSeasonOf`); the season before is the measure
      of where he started, and it counts whether or not he held it with the right to rank (owner,
      30.10.2026: „prethodna sezona bez prava rangiranja se računa kao prethodna"), so `seasonOf`. */
   const now = totalsByMember(results.filter((result) => standingSeasonOf(result) === season))
-  const before = totalsByMember(
-    results.filter((result) => seasonOf(result) === season - 1 && season - 1 >= FIRST_SEASON),
-  )
+  const before: Map<string, { points: number }> =
+    frozenBefore === undefined
+      ? totalsByMember(
+          results.filter((result) => seasonOf(result) === season - 1 && season - 1 >= FIRST_SEASON),
+        )
+      : new Map([...frozenBefore].map(([member, points]) => [member, { points }]))
 
   const rows = competitors.flatMap((competitor) => {
     const own = now.get(competitor.memberNumber)

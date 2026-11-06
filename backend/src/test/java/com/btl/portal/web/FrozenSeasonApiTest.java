@@ -336,6 +336,38 @@ class FrozenSeasonApiTest {
 		return names;
 	}
 
+	/**
+	 * THE RING OF A TEAM'S PAGE IS WHAT THE FREEZE COUNTED FOR THAT TEAM'S ROW OF THAT SEASON (PDL, owner,
+	 * 06.11.2026, „Krug „Trke po distanci" na strani tima zamrznute sezone crta se iz snimka"), and each of its
+	 * other sources says something else here: a marathon of 2027 entered for Tim A after the freeze, Tim B's
+	 * marathon run before it, and a row of the season after for Tim A holding an ultra. Tim B is deleted after
+	 * the freeze and keeps its ring.
+	 */
+	@Test
+	void aTeamsRingIsTheCountOfItsOwnRowAndNothingEnteredAfterOrWrittenForAnotherSeason() throws Exception {
+		db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds, distance_km, ascent_m,"
+				+ " descent_m) values ((select id from btl_event where slug = 'jesen-2027'), 'Maraton', false,"
+				+ " date '2027-10-10', 'length', 0, 42.2, 0, 0)").update();
+		run("000401", "Maraton", 60.00);
+
+		frozen();
+
+		run("000402", "Maraton", 50.00);
+		db.sql("insert into season_frozen (season, frozen_at) values (2028, timestamptz '2029-01-01 15:00:00+00')").update();
+		db.sql("insert into season_team (season, position, team_id, name, points, members, races, kilometers, ascent,"
+				+ " descent, seconds) values (2028, 1, (select id from team where slug = 'tim-a'), 'Tim A', 9, 1, 1,"
+				+ " 100, 0, 0, 3000)").update();
+		db.sql("insert into season_team_length (season_team_id, length, races) values ((select id from season_team"
+				+ " where season = 2028), 'ultra', 1)").update();
+		db.sql("delete from team where slug = 'tim-b'").update();
+
+		JsonNode teams = tablesOf2027(null).get("teams");
+
+		assertThat(rows(teams, "name", "slug")).containsExactly("Tim B null", "Tim A tim-a");
+		assertThat(rows(teams.get(0).get("racesByLength"), "length", "races")).containsExactly("short 2", "marathon 1");
+		assertThat(rows(teams.get(1).get("racesByLength"), "length", "races")).containsExactly("short 3");
+	}
+
 	@Test
 	void aTeamOrAnEventDeletedLaterIsANameWithoutALinkAndALeagueDeletedLaterIsNotAnswered() throws Exception {
 		frozen();
@@ -349,6 +381,38 @@ class FrozenSeasonApiTest {
 		assertThat(rows(league(tables, "liga-2027").get("columns"), "eventSlug", "name"))
 				.containsExactly("prolece-2027 Prolece", "null Jesen");
 		assertThat(rows(tables.get("leagues"), "slug")).containsExactly("liga-2027");
+	}
+
+	/**
+	 * What every member held at the freeze, a member WITHOUT the right to rank among them: the list of best
+	 * progress of the season after reads it, and counts the season before „whether or not he held it with the
+	 * right to rank" (owner, 30.10.2026). He is in no table of the season, which is the other half.
+	 */
+	@Test
+	void thePointsAtTheFreezeNameEveryMemberWhoHeldTheSeasonAndOnlyThem() throws Exception {
+		member("000405", "Dejan", "Peti", "M");
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " values ((select id from competitor where member_number = '000405'), 2027, 'feeExempt',"
+						+ " 'Probni Probic', timestamptz '2027-04-15 10:00:00+00')")
+				.update();
+		run("000405", "Krug", 99.00);
+		member("000406", "Djordje", "Sesti", "M");
+		run("000406", "Krug", 77.00);
+
+		frozen();
+		/* Another frozen season holding other points for a member of this one: the points of 2027 are 2027's
+		   alone, which a query that forgot the season would answer with both (mutation J1, 06.11.2026). */
+		db.sql("insert into season_frozen (season, frozen_at) values (2028, timestamptz '2029-01-01 15:00:00+00')").update();
+		db.sql("insert into season_points_at_freeze (season, competitor_id, points)"
+						+ " values (2028, (select id from competitor where member_number = '000401'), 7.00)")
+				.update();
+
+		JsonNode tables = tablesOf2027(null);
+
+		assertThat(rows(tables.get("pointsAtTheFreeze"), "memberNumber", "points"))
+				.containsExactly("000401 30.0", "000402 45.0", "000403 40.0", "000404 12.0", "000405 99.0");
+		assertThat(rows(tables.get("standings"), "memberNumber"))
+				.as("a member without the right to rank stood in the table").doesNotContain("000405");
 	}
 
 	@Test
@@ -388,10 +452,10 @@ class FrozenSeasonApiTest {
 		JsonNode served = json.readTree(Files.readString(MOCK.resolve("frozen-tables.json"), StandardCharsets.UTF_8));
 
 		for (String[] at : List.of(new String[] {}, new String[] {"standings"}, new String[] {"teams"},
-				new String[] {"teams", "roster"}, new String[] {"boards"}, new String[] {"pairs"},
+				new String[] {"teams", "roster"}, new String[] {"teams", "racesByLength"}, new String[] {"boards"}, new String[] {"pairs"},
 				new String[] {"pairs", "halves"}, new String[] {"leagues"}, new String[] {"leagues", "columns"},
 				new String[] {"leagues", "standings"}, new String[] {"leagues", "standings", "cells"},
-				new String[] {"awards"})) {
+				new String[] {"awards"}, new String[] {"pointsAtTheFreeze"})) {
 			assertThat(Answers.fieldsOf(first(answered, at)))
 					.as("the answer and frozen-tables.json under %s", String.join(".", at))
 					.isEqualTo(Answers.fieldsOf(first(served, at)));

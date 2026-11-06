@@ -1812,7 +1812,9 @@
     "position": "{position}. place",
     "empty": "This competitor has no trophy yet.",
     "noneInSeason": "No trophy was won in the season chosen.",
-    "noDucats": "No ducat yet."
+    "noDucats": "No ducat yet.",
+    "team": "Team standing, {team}",
+    "pair": "Racing pair"
   },
   "report": {
     "title": "Reporting a result",
@@ -1935,5 +1937,9 @@
     "thereIsNoAccount": "The member has no account on the portal, so there is no email address to correct.",
     "theAddressIsTaken": "Another account already uses this email address.",
     "theAddressIsTheSuperadmins": "This address belongs to the portal's administration and cannot be a member's."
+  },
+  "frozen": {
+    "deletedMan": "<Deleted member>",
+    "deletedWoman": "<Deleted member>"
   }
 }

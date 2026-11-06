@@ -31,7 +31,9 @@ import {
   useResults,
   useTeams,
 } from '../data/useResource'
-import { awardsOf } from './profile/awards'
+import { awardsOf, frozenAwardsOf } from './profile/awards'
+import type { FrozenTables } from '../data/frozen'
+import { useEveryFrozenTable } from '../data/useFrozenTables'
 import { ALL_SEASONS, offeredSeason, useSeason } from '../components/season'
 import { ProfileTop } from './profile/ProfileHead'
 import './Profile.css'
@@ -71,12 +73,12 @@ function AwardsBody({
      the pair on „Pregled" and dropped it on „Priznanja" would be two answers about one person. */
   const state = combinePair(
     combineFour(useCompetitors(), useResults(), useTeams(), usePairs()),
-    useDucats(),
+    combinePair(useDucats(), useEveryFrozenTable()),
   )
 
   return (
     <Resource state={state}>
-      {([[everybody, results, teams, fromFile], ducats]) => {
+      {([[everybody, results, teams, fromFile], [ducats, frozenTables]]) => {
         /* The same three answers as the profile itself, from the same place, and through the
            same overlay: this page draws the same head from the same record, and a check written
            on one of the two is a check on neither. */
@@ -119,6 +121,7 @@ function AwardsBody({
             competitors={among}
             results={results}
             ducats={ducats}
+            frozenTables={frozenTables}
             team={teams.find((one) => one.id === competitor.teamId)}
             pairs={pairsNow(fromFile, pairsMade, pairsBroken)}
           />
@@ -162,6 +165,7 @@ function AwardsFor({
   competitors,
   results,
   ducats,
+  frozenTables,
   team,
   pairs,
 }: {
@@ -170,6 +174,8 @@ function AwardsFor({
   competitors: Parameters<typeof awardsOf>[1]
   results: Parameters<typeof awardsOf>[2]
   ducats: Parameters<typeof earnedDucats>[2]
+  /** Every frozen season's snapshot (`/api/frozen-tables/{season}`): its trophies are read, not worked out. */
+  frozenTables: FrozenTables[]
   team: Parameters<typeof ProfileTop>[0]['team']
   /** The pairs that hold now, for the line under the name (`profile/ProfileHead.tsx`). */
   pairs: RacingPair[]
@@ -179,10 +185,17 @@ function AwardsFor({
   const today = useToday()
   const asked = useSeason()
 
-  const all = useMemo(
-    () => awardsOf(competitor, competitors, results),
-    [competitor, competitors, results],
-  )
+  /* A FROZEN SEASON'S TROPHIES ARE ITS SNAPSHOT'S (PDL, owner, 05.11.2026), and a season the record does not
+     say is frozen is read live as it always was. Which is which is the record's and never the clock's (PDL,
+     derived 10.10.2026). Newest season first, the better place first inside one, as `awardsOf` hands them. */
+  const all = useMemo(() => {
+    const frozen = new Set(frozenTables.map((one) => one.season))
+
+    return [
+      ...awardsOf(competitor, competitors, results).filter((one) => !frozen.has(one.season)),
+      ...frozenAwardsOf(frozenTables, competitor.memberNumber),
+    ].sort((left, right) => right.season - left.season || left.position - right.position)
+  }, [competitor, competitors, results, frozenTables])
   /* Narrowed by the same season the overview is read in (owner, 31.07.2026). The
      control stands at the top of the page and governs both parts, so a season
      chosen among the results is still chosen among the trophies.
@@ -305,10 +318,14 @@ function AwardsFor({
                         in two ("Kategorija M" over "55+") on all five rows (PENDING 29125). The
                         board of everybody has no category in it, so it is the cell of the other
                         kind that wears the class and not the column. */}
-                    <td className={award.kind === 'overall' ? undefined : 'table__category'}>
+                    <td className={award.kind === 'category' ? 'table__category' : undefined}>
                       {award.kind === 'overall'
                         ? t('awards.overall')
-                        : t('awards.category', { category: categoryLabel(award.category, t) })}
+                        : award.kind === 'team'
+                          ? t('awards.team', { team: String(award.team) })
+                          : award.kind === 'pair'
+                            ? t('awards.pair')
+                            : t('awards.category', { category: categoryLabel(award.category, t) })}
                     </td>
                     <td>{t('awards.position', { position: formatNumber(award.position, locale) })}</td>
                     <td className="table__points">{formatPoints(award.points, locale)}</td>

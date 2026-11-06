@@ -64,6 +64,9 @@ describe('the list of resources', () => {
       'comments',
       'competitors',
       'events',
+      /* Twenty-two since 05.11.2026: the seasons the freeze has written down (`FrozenSeasonApi`), so a
+         screen reads the snapshot of a season on it and the live answers for every other one. */
+      'frozen-seasons',
       'inbox',
       'leagues',
       /* Eighteen since 28.09.2026, with the screen that answers a team's invitation. It is

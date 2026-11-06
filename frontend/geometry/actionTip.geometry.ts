@@ -185,7 +185,11 @@ function everyAnswer(dir = MOCK, prefix = ''): Record<string, unknown> {
   )
 }
 
-const SAMPLE = everyAnswer()
+/* THE FROZEN SEASONS, answered as the server answers them on the day this file is read as: none, because
+   the first season freezes on 1.1.2028 at 16:00. `mock/frozen-seasons.json` names 2027 because it is the
+   shape the server gives a season on the list, and answered as it is it put the page of a team on a
+   snapshot this file does not serve (`test/setup.ts` answers the suite the same way, for the same reason). */
+const SAMPLE = { ...everyAnswer(), '/api/frozen-seasons': [] }
 const SUPERADMIN = { role: 'superadmin', account: 41, membershipBasis: null }
 
 /** A member of the sample, answering `/api/me` with his own record. */

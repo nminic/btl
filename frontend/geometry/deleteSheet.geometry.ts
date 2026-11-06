@@ -65,6 +65,12 @@ type Screen = {
 
 const ME = { role: 'superadmin', account: 41, membershipBasis: null }
 
+/* THE FROZEN SEASONS, answered as the server answers them on the day this file is read as: none, because
+   the first season freezes on 1.1.2028 at 16:00. `mock/frozen-seasons.json` names 2027 because it is the
+   shape the server gives a season on the list, and answered as it is it put the page of a team on a
+   snapshot this file does not serve (`test/setup.ts` answers the suite the same way, for the same reason). */
+const NONE_FROZEN = { '/api/frozen-seasons': [] }
+
 const SCREENS: Screen[] = [
   {
     name: 'the events',
@@ -117,7 +123,7 @@ const SCREENS: Screen[] = [
     path: '/sr/kalendar/maraton-maratona-2015',
     asks: 'Obriši događaj?',
     gone: 'Događaj je obrisan, sa svojim trkama i rezultatima.',
-    answers: { ...everyAnswer(), '/api/me': ME },
+    answers: { ...everyAnswer(), ...NONE_FROZEN, '/api/me': ME },
     ready: 'h1',
     cross: 'Obriši: Maraton maratona',
     which: 0,
@@ -127,7 +133,7 @@ const SCREENS: Screen[] = [
     path: '/sr/tim/dunavski-trkaci',
     asks: 'Obriši tim?',
     gone: 'Tim je obrisan.',
-    answers: { ...everyAnswer(), '/api/me': member('000001') },
+    answers: { ...everyAnswer(), ...NONE_FROZEN, '/api/me': member('000001') },
     ready: 'h1.profile__name',
     which: 0,
   },
@@ -136,7 +142,7 @@ const SCREENS: Screen[] = [
     path: '/sr/kalendar/zimski-nocni-polumaraton-2020',
     asks: 'Obriši rezultat?',
     gone: 'Rezultat je obrisan.',
-    answers: { ...everyAnswer(), '/api/me': ME },
+    answers: { ...everyAnswer(), ...NONE_FROZEN, '/api/me': ME },
     ready: 'tbody td.table__points',
   },
   {
@@ -144,7 +150,7 @@ const SCREENS: Screen[] = [
     path: '/sr/moji-rezultati',
     asks: 'Obriši rezultat?',
     gone: 'Rezultat je obrisan.',
-    answers: { ...everyAnswer(), '/api/me': member('000021') },
+    answers: { ...everyAnswer(), ...NONE_FROZEN, '/api/me': member('000021') },
     ready: 'tbody td.table__points',
   },
   {
@@ -152,7 +158,7 @@ const SCREENS: Screen[] = [
     path: '/sr/kalendar/fruskogorski-maraton-2010',
     asks: 'Obriši svoju ocenu?',
     gone: 'Ocena je obrisana.',
-    answers: { ...everyAnswer(), '/api/me': member('000021') },
+    answers: { ...everyAnswer(), ...NONE_FROZEN, '/api/me': member('000021') },
     ready: '.comments__his',
     cross: 'Obriši svoju ocenu',
     which: 0,

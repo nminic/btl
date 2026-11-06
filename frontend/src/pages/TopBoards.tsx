@@ -18,8 +18,12 @@ import {
   topPairs,
   pairsNow,
 } from '../data/derive'
+import type { PairRow, Placed, ProgressRow, TallyRow, TotalsRow } from '../data/derive'
+import { pointsAtTheFreeze, type FrozenBoard, type FrozenPerson, type FrozenTables } from '../data/frozen'
 import type { Competitor, RaceCategory, RacingPair, Result } from '../data/types'
-import { combineResources, useCompetitors, usePairs, useResults } from '../data/useResource'
+import { combineFour, useCompetitors, useFrozenSeasons, usePairs, useResults } from '../data/useResource'
+import { useFrozenTables } from '../data/useFrozenTables'
+import { useFrozenPeople, type FrozenOne } from './frozen/frozenPeople'
 import { formatCourseTime, formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { leaderClass } from '../components/podium'
@@ -268,18 +272,145 @@ function nameOf(competitor: Competitor): string {
   return `${competitor.firstName} ${competitor.lastName}`
 }
 
+/** Where a frozen row's name leads and what keys it (`frozen/frozenPeople.ts`); a live row has none. */
+type Frozen = { frozen?: { to: string | undefined; key: string } }
+
+/** A best single race as a board draws it: the one race and nothing else of the result. */
+type BestRace = {
+  competitor: Competitor
+  result: Pick<Result, 'id' | 'raceName' | 'distanceKm' | 'ascentM' | 'descentM' | 'seconds' | 'points'>
+}
+
+/**
+ * WHAT EVERY BOARD OF A SEASON IS DRAWN FROM: the ladders of `derive.ts` over the results for a season read
+ * live, the places the freeze wrote for a frozen one (`frozenSources`). One shape for both, so the boards are
+ * drawn by one piece of markup and the two can never be laid out differently.
+ */
+type Sources = {
+  byLength: (category: RaceCategory) => (Placed<TallyRow> & Frozen)[]
+  progress: (Placed<ProgressRow> & Frozen)[]
+  kilometers: (Placed<TallyRow> & Frozen)[]
+  onCourse: (Placed<TotalsRow> & Frozen)[]
+  pairs: (Placed<PairRow> & Frozen)[]
+  bestRaces: (Placed<BestRace> & Frozen)[]
+}
+
+function liveSources(
+  field: Competitor[],
+  results: Result[],
+  pairs: RacingPair[],
+  season: number,
+  frozenBefore: Map<string, number> | undefined,
+): Sources {
+  return {
+    byLength: (category) => topByCategory(field, results, season, category, PLACES),
+    progress: topByProgress(field, results, season, PROGRESS_PLACES, frozenBefore),
+    kilometers: topByKilometers(field, results, season, PLACES),
+    onCourse: topByTimeOnCourse(field, results, season, PLACES),
+    pairs: topPairs(pairs, field, results, season, PAIR_PLACES),
+    bestRaces: bestSingleRaces(field, results, season, PLACES),
+  }
+}
+
+/**
+ * THE BOARDS OF A FROZEN SEASON, as the freeze wrote them (PDL, 31.07.2026, „Zamrznuta sezona je
+ * materijalizovan zapis, ne izračun"): every place of every list is the place written down, cut where the
+ * board cuts the live one. Only the gain on the list of progress is read as the difference of the two
+ * numbers its row holds, the season and the season before, because that is what the bar draws.
+ */
+function frozenSources(tables: FrozenTables, people: (one: FrozenPerson) => FrozenOne): Sources {
+  const list = (board: string, length: string | null, places: number) =>
+    tables.boards
+      .filter((one) => one.board === board && one.length === length)
+      .sort((left, right) => left.position - right.position)
+      .slice(0, places)
+  const placed = (one: FrozenBoard) => {
+    const who = people(one)
+
+    return {
+      competitor: who.competitor,
+      races: one.races,
+      kilometers: one.kilometers,
+      ascent: one.ascent,
+      descent: one.descent,
+      seconds: one.seconds,
+      points: one.points,
+      reachedOn: '',
+      position: one.position,
+      frozen: { to: who.to, key: `place-${one.position}` },
+    }
+  }
+
+  return {
+    byLength: (category) => list('byLength', category, PLACES).map(placed),
+    progress: list('progress', null, PROGRESS_PLACES).map((one) => ({
+      ...placed(one),
+      previousPoints: Number(one.previousPoints),
+      gain: one.points - Number(one.previousPoints),
+    })),
+    kilometers: list('kilometers', null, PLACES).map(placed),
+    onCourse: list('timeOnCourse', null, PLACES).map(placed),
+    pairs: [...tables.pairs]
+      .sort((left, right) => left.position - right.position)
+      .slice(0, PAIR_PLACES)
+      .map((one) => {
+        const first = people(one.halves[0])
+        const second = people(one.halves[1])
+
+        return {
+          pair: {
+            id: -one.position,
+            season: tables.season,
+            memberNumbers: [first.competitor.memberNumber, second.competitor.memberNumber],
+          },
+          competitors: [first.competitor, second.competitor],
+          races: one.races,
+          kilometers: one.kilometers,
+          ascent: one.ascent,
+          descent: one.descent,
+          seconds: one.seconds,
+          points: one.points,
+          position: one.position,
+          frozen: { to: undefined, key: `pair-${one.position}` },
+        }
+      }),
+    bestRaces: list('bestRace', null, PLACES).map((one) => {
+      const who = people(one)
+
+      return {
+        competitor: who.competitor,
+        result: {
+          id: -one.position,
+          raceName: String(one.raceName),
+          distanceKm: one.kilometers,
+          ascentM: one.ascent,
+          descentM: one.descent,
+          seconds: one.seconds,
+          points: one.points,
+        },
+        position: one.position,
+        frozen: { to: who.to, key: `race-${one.position}` },
+      }
+    }),
+  }
+}
+
+type Picker = { seasons: number[]; season: number; fallback: number }
+
 function Boards({
   competitors,
   results,
   pairs,
+  frozenSeasons,
   seasonParam,
 }: {
   competitors: Competitor[]
   results: Result[]
   pairs: RacingPair[]
+  /** The seasons the freeze has written down (`/api/frozen-seasons`): the boards of one of them are its snapshot. */
+  frozenSeasons: number[]
   seasonParam: string | null
 }) {
-  const { locale, t } = useI18n()
   const today = useToday()
   /* The running season, and before the league has one its first, empty or not; and
      nothing before it on offer (owner, 16.10.2026 and 10.10.2026; `seasonShown`,
@@ -288,21 +419,97 @@ function Boards({
   const seasons = useMemo(() => seasonsOnOffer(results, today), [results, today])
   const fallback = seasonShown(today)
   const season = Number(offeredSeason(seasonParam ?? '', seasons, String(fallback)))
+  const picker = { seasons, season, fallback }
+
+  /* WHICH SEASON IS FROZEN IS THE RECORD'S AND NEVER THE CLOCK'S (PDL, derived 10.10.2026, „za čitanje
+     zamrznutosti odlučuje zapis o činu, ne sat"). */
+  if (frozenSeasons.includes(season)) {
+    return <FrozenBoards competitors={competitors} picker={picker} />
+  }
+
+  /* And the season before frozen: the list of progress measures against what it held at its freeze. */
+  if (frozenSeasons.includes(season - 1)) {
+    return <LiveAfterAFrozenSeason competitors={competitors} results={results} pairs={pairs} picker={picker} />
+  }
+
+  return <LiveBoards competitors={competitors} results={results} pairs={pairs} picker={picker} frozenBefore={undefined} />
+}
+
+function FrozenBoards({ competitors, picker }: { competitors: Competitor[]; picker: Picker }) {
+  const state = useFrozenTables(picker.season)
+  const people = useFrozenPeople(competitors, picker.season)
+
+  return <Resource state={state}>{(tables) => <Drawn picker={picker} sources={frozenSources(tables, people)} />}</Resource>
+}
+
+function LiveAfterAFrozenSeason({
+  competitors,
+  results,
+  pairs,
+  picker,
+}: {
+  competitors: Competitor[]
+  results: Result[]
+  pairs: RacingPair[]
+  picker: Picker
+}) {
+  const state = useFrozenTables(picker.season - 1)
+
+  return (
+    <Resource state={state}>
+      {(before) => (
+        <LiveBoards
+          competitors={competitors}
+          results={results}
+          pairs={pairs}
+          picker={picker}
+          frozenBefore={pointsAtTheFreeze(before)}
+        />
+      )}
+    </Resource>
+  )
+}
+
+function LiveBoards({
+  competitors,
+  results,
+  pairs,
+  picker,
+  frozenBefore,
+}: {
+  competitors: Competitor[]
+  results: Result[]
+  pairs: RacingPair[]
+  picker: Picker
+  frozenBefore: Map<string, number> | undefined
+}) {
   /* Who the boards of this season are drawn from (PDL P11). The article „Top liste" is the
      standing of a season in several shapes, so the rule that holds for the table
      holds here.
 
      The list itself since 21.09.2026, for the reason `Rankings.tsx` writes out. */
   const field = competitors
+  const sources = useMemo(
+    () => liveSources(field, results, pairs, picker.season, frozenBefore),
+    [field, results, pairs, picker.season, frozenBefore],
+  )
+
+  return <Drawn picker={picker} sources={sources} />
+}
+
+function Drawn({ picker, sources }: { picker: Picker; sources: Sources }) {
+  const { locale, t } = useI18n()
+  const { seasons, season, fallback } = picker
 
   /* Held steady across renders (`useProfileLink` is a `useCallback` over the reader and the
      locale), so it may sit in the list below without rebuilding the boards on every render. */
   const linkTo = useProfileLink()
 
-  /* One pass over the results per board, and the season only changes when
-   * somebody changes it, so the boards are not rebuilt on every render. */
   const boards = useMemo<Widget[]>(() => {
-    const profile = (who: Competitor) => linkTo(who)
+    /* A frozen row says where its name leads; a live one is asked of the reader here. */
+    const profile = (row: { competitor: Competitor } & Frozen) =>
+      row.frozen === undefined ? linkTo(row.competitor) : row.frozen.to
+    const keyOf = (row: Frozen, live: string) => row.frozen?.key ?? live
     const noResults = t('topBoards.empty')
 
     /* One of the five lists by length, as a chart of its own. On the front page
@@ -314,12 +521,12 @@ function Boards({
       id: category,
       title: t(`topBoards.byLength.${category}`),
       empty: noResults,
-      columns: topByCategory(field, results, season, category, PLACES).map((column) => ({
+      columns: sources.byLength(category).map((column) => ({
         competitor: column.competitor,
         value: column.races,
         label: formatNumber(column.races, locale),
         place: t('topBoards.place', { position: column.position }),
-        to: profile(column.competitor),
+        to: profile(column),
       })),
     })
 
@@ -345,7 +552,7 @@ function Boards({
       id: 'progress',
       title: t('topBoards.progress'),
       empty: t('topBoards.progressEmpty'),
-      columns: topByProgress(field, results, season, PROGRESS_PLACES).map((row) => ({
+      columns: sources.progress.map((row) => ({
         competitor: row.competitor,
         value: row.points,
         /* In points as the portal writes them everywhere else, to two decimals
@@ -360,7 +567,7 @@ function Boards({
           label: formatPoints(row.previousPoints, locale),
           reading: t('topBoards.columns.previousSeason'),
         },
-        to: profile(row.competitor),
+        to: profile(row),
       })),
     }
 
@@ -370,9 +577,9 @@ function Boards({
       title: t('topBoards.kilometers'),
       columns: [{ text: t('topBoards.columns.distance') }],
       empty: noResults,
-      places: topByKilometers(field, results, season, PLACES).map((row) => ({
-        to: profile(row.competitor),
-        key: row.competitor.memberNumber,
+      places: sources.kilometers.map((row) => ({
+        to: profile(row),
+        key: keyOf(row, row.competitor.memberNumber),
         position: row.position,
         name: (
           <NamePlate competitors={[row.competitor]}>
@@ -390,9 +597,9 @@ function Boards({
       title: t('topBoards.onCourse'),
       columns: [{ text: t('topBoards.columns.time') }],
       empty: noResults,
-      places: topByTimeOnCourse(field, results, season, PLACES).map((row) => ({
-        to: profile(row.competitor),
-        key: row.competitor.memberNumber,
+      places: sources.onCourse.map((row) => ({
+        to: profile(row),
+        key: keyOf(row, row.competitor.memberNumber),
         position: row.position,
         name: (
           <NamePlate competitors={[row.competitor]}>
@@ -421,8 +628,8 @@ function Boards({
       id: 'pairs',
       title: t('topBoards.pairs'),
       columns: [{ text: t('topBoards.columns.points') }],
-      places: topPairs(pairs, field, results, season, PAIR_PLACES).map((row) => ({
-        key: String(row.pair.id),
+      places: sources.pairs.map((row) => ({
+        key: keyOf(row, String(row.pair.id)),
         position: row.position,
         /* No link on the row: a pair is two people and there is no one profile to lead to. The
            `Place` said so before there was a pair to draw. */
@@ -480,9 +687,9 @@ function Boards({
         { text: t('rankings.columns.points') },
       ],
       empty: noResults,
-      places: bestSingleRaces(field, results, season, PLACES).map((row) => ({
-        to: profile(row.competitor),
-        key: String(row.result.id),
+      places: sources.bestRaces.map((row) => ({
+        to: profile(row),
+        key: keyOf(row, String(row.result.id)),
         position: row.position,
         name: <NamePlate competitors={[row.competitor]}>{nameOf(row.competitor)}</NamePlate>,
         members: [row.competitor.memberNumber],
@@ -512,7 +719,7 @@ function Boards({
       bestPairs,
       bestRaces,
     ]
-  }, [field, results, pairs, season, locale, t, linkTo])
+  }, [sources, locale, t, linkTo])
 
   return (
     <>
@@ -547,17 +754,18 @@ export function TopBoards() {
   const [params] = useFilterParams()
   /* Only what the boards show. The teams went off this page with the layout of
      04.08.2026, and the file of teams went with them. */
-  const state = combineResources(useCompetitors(), useResults(), usePairs())
+  const state = combineFour(useCompetitors(), useResults(), usePairs(), useFrozenSeasons())
 
   return (
     <div className="boards rankings--tooled">
       <h1>{t('topBoards.title')}</h1>
 
       <Resource state={state}>
-        {([competitors, results, fromFile]) => (
+        {([competitors, results, fromFile, frozen]) => (
           <Boards
             competitors={competitors}
             results={results}
+            frozenSeasons={frozen.map((one) => one.season)}
             /* Through what this visit has made and broken, so a pair confirmed a moment ago is on
                the board the moment it exists, and one that was ended is off it (`pairsNow`). */
             pairs={pairsNow(fromFile, pairsMade, pairsBroken)}

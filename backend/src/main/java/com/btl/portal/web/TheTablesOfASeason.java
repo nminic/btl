@@ -207,6 +207,13 @@ class TheTablesOfASeason {
 			List<Placed<Standing>> page = SeasonTables.teamPage(
 					members.stream().filter(member -> row.team().roster().contains(member.id())).toList(), runs);
 
+			/* The ring of the team's page, counted over the runs the row above adds up (PDL, owner, 06.11.2026,
+			   „posao zamrzavanja u 16:00 upisuje i broj trka tima po vrsti"). */
+			SeasonTables.racesByLength(row.team().roster(), runs).forEach((length, races) -> db
+					.sql("insert into season_team_length (season_team_id, length, races) values (?, ?, ?)")
+					.params(frozen, length, races)
+					.update());
+
 			pages.put(row.team().id(), page);
 
 			for (Placed<Standing> one : page) {

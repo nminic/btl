@@ -1812,7 +1812,9 @@
     "position": "{position}. mesto",
     "empty": "Ovaj takmičar još nema nijedan pehar.",
     "noneInSeason": "U izabranoj sezoni nije osvojen nijedan pehar.",
-    "noDucats": "Još nijedan dukat."
+    "noDucats": "Još nijedan dukat.",
+    "team": "Timski plasman, {team}",
+    "pair": "Trkački par"
   },
   "report": {
     "title": "Prijava rezultata",
@@ -1935,5 +1937,9 @@
     "thereIsNoAccount": "Član nema nalog na portalu, pa nema ni adresu elektronske pošte koja bi se ispravila.",
     "theAddressIsTaken": "Ovu adresu elektronske pošte već koristi drugi nalog.",
     "theAddressIsTheSuperadmins": "Ova adresa pripada administraciji portala i ne može biti adresa člana."
+  },
+  "frozen": {
+    "deletedMan": "<Obrisani član>",
+    "deletedWoman": "<Obrisana članica>"
   }
 }

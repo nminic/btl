@@ -266,6 +266,28 @@ final class SeasonTables {
 		return placed(rows, ladder, row -> String.valueOf(row.team().id()));
 	}
 
+	/**
+	 * {@code countsByCategory} over the runs {@link #teams} adds up for {@code roster}: how many of them were
+	 * run at each length, in the order of {@link #LENGTHS}, and only the lengths that were run. The ring on a
+	 * team's page is drawn off this (PDL, owner, 06.11.2026, „Krug „Trke po distanci" na strani tima
+	 * zamrznute sezone crta se iz snimka"), so its races add up to the team's {@code races}.
+	 */
+	static Map<String, Integer> racesByLength(Set<Long> roster, List<Run> runs) {
+		Map<String, Integer> counts = new LinkedHashMap<>();
+
+		for (String length : LENGTHS) {
+			int races = (int) runs.stream()
+					.filter(run -> roster.contains(run.member()) && run.length().equals(length))
+					.count();
+
+			if (races > 0) {
+				counts.put(length, races);
+			}
+		}
+
+		return counts;
+	}
+
 	/** {@code tallyOf}: the totals of each member, and the day of the last run that made them. */
 	private static List<Tally> tally(List<Member> members, List<Run> runs) {
 		Map<Long, Tally> tally = new HashMap<>();

@@ -6,6 +6,7 @@ import {
   seasonsCounted,
 } from '../../data/derive'
 import { FIRST_SEASON } from '../../data/season'
+import type { FrozenTables } from '../../data/frozen'
 import type { Competitor, Result } from '../../data/types'
 
 /* What a competitor has won, worked out rather than stored.
@@ -22,9 +23,10 @@ import type { Competitor, Result } from '../../data/types'
  * that takes an award away.
  */
 
-/** Where a trophy is won: the standing of a gender, or one category inside it.
- *  Both are boards of the same shape and both give out three (PDL P16). */
-export type AwardKind = 'overall' | 'category'
+/** Where a trophy is won: the standing of a gender, or one category inside it, both of which give out
+ *  three (PDL P16); and, in a frozen season, the team standing and the board of pairs, which give out one
+ *  each (owner, 11.08.2026, „timski (1), trkački par (1)"). */
+export type AwardKind = 'overall' | 'category' | 'team' | 'pair'
 
 export type Award = {
   season: number
@@ -34,7 +36,45 @@ export type Award = {
   /** First, second or third. */
   position: number
   points: number
+  /** The team whose trophy it is, as it was named when it won; on a team's award only. */
+  team?: string
 }
+
+/**
+ * EVERY TROPHY A MEMBER HOLDS IN THE FROZEN SEASONS, read off their snapshots and not worked out.
+ *
+ * PDL, owner, 05.11.2026, „Strana „Priznanja i nagrade" za zamrznutu sezonu crta lične, timske i pehare
+ * para": „Lični pehari (prva tri generalno i prva tri u kategoriji), plus timski pehar svakom članu koji je
+ * tom timu nosio bodove te sezone, i pehar para obema polovinama. Crta se iz snimka." The freeze wrote one
+ * row per member who holds one (`season_award`, V84); this reads his.
+ */
+export function frozenAwardsOf(tables: FrozenTables[], memberNumber: string): Award[] {
+  return tables.flatMap((one) =>
+    one.awards
+      .filter((award) => award.memberNumber === memberNumber)
+      .map((award) => ({
+        season: one.season,
+        kind: kindOf(award.kind),
+        category: award.category ?? '',
+        position: award.position,
+        points: award.points,
+        ...(award.teamName === null ? {} : { team: award.teamName }),
+      })),
+  )
+}
+
+/** The kind the snapshot names, among the four the page draws; any other is not a trophy of this page. */
+function kindOf(kind: string): AwardKind {
+  const found = KINDS.find((one) => one === kind)
+
+  if (found === undefined) {
+    throw new Error(`no award of the kind ${kind}`)
+  }
+
+  return found
+}
+
+const KINDS: AwardKind[] = ['overall', 'category', 'team', 'pair']
 
 /** How many places a board rewards. */
 const PLACES = 3

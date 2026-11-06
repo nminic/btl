@@ -49,6 +49,7 @@ import type {
   WhatIsWaiting,
 } from './types'
 import type { DucatFamily } from './ducatRule'
+import type { FrozenSeason } from './frozen'
 import type { Place } from './places'
 
 
@@ -367,6 +368,11 @@ const aRunner = {
 }
 
 const readAsRunner: Runner = aRunner
+
+/** A season the record of the freeze holds (`FrozenSeasonApi.frozenSeasons`, `season_frozen`). */
+const aFrozenSeason = { season: 2027 }
+
+const readAsFrozenSeason: FrozenSeason = aFrozenSeason
 
 /**
  * THE SIXTEENTH RESOURCE, whose answer is a record and not a list.
@@ -723,6 +729,7 @@ describe('the answer the backend gives', () => {
     expect(readAsMember.seasons.at(-1)?.season).toBe(2028)
     expect(readAsLapsedMember.membershipBasis).toBeUndefined()
     expect(readAsRunner.memberNumber).toBe('000002')
+    expect(readAsFrozenSeason.season).toBe(2027)
     /* The four that had never been seen until 21.09.2026, and for each of them the
        state that is the whole reason it is written down twice or not at all. */
     /* THE ONE CONDITIONAL FIELD LEFT, in each of the states its condition puts it in:
@@ -831,6 +838,7 @@ describe('the answer the backend gives', () => {
       ['moderators', [aModerator]],
       ['members', [aMember, aLapsedMember]],
       ['results/runners', [aRunner]],
+      ['frozen-seasons', [aFrozenSeason]],
       /* Both states of the inbox against the served file. The pair is what makes the two
          question ids measured as KEYS: one sample alone would say „a number" or „nothing", and
          the file may then hold either of those and nothing else. */
@@ -937,6 +945,7 @@ describe('the answer the backend gives', () => {
     expect(missing(aModerator, servedRow('moderators'))).toEqual([])
     expect(missing(aMember, servedRow('members'))).toEqual([])
     expect(missing(aRunner, servedRow('results/runners'))).toEqual([])
+    expect(missing(aFrozenSeason, servedRow('frozen-seasons'))).toEqual([])
     expect(missing(aSentRunThatWaits, servedRow('me/result-submissions'))).toEqual([])
 
     /* AND THE DUCATS, WHICH LEFT THIS LIST ON 20.09.2026 RATHER THAN SHRANK IN IT.
@@ -1144,6 +1153,11 @@ describe('the answer the backend gives', () => {
       /* THE TWENTY-FIRST, added 19.10.2026 with the league's own entry of results on the event page,
          which reads it. Three fields, none optional. */
       'results/runners',
+      /* THE TWENTY-SECOND, added 06.11.2026 with the screens of a frozen season, which read it to
+         know which seasons are drawn from their snapshot. One field. The snapshot itself is not a name
+         here: its address carries the season and is read by `useFrozenTables`, and its shape is held
+         by `FrozenSeasonApiTest`'s floor `Answers` and by `frozen.test.ts`. */
+      'frozen-seasons',
     ]
 
     /* AND NOTHING IS EXCUSED ANY MORE. */

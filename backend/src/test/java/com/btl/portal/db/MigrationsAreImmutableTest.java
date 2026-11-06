@@ -726,7 +726,11 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			/* V84. The frozen season keeps every table it draws: V17's three filled out, the top lists, the
 			   awards, a team's roster, the board of pairs and a league's grid (PDL 31.07.2026, 05.11.2026).
 			   84 and no other: main stood at V83 on 05.11.2026 (fc550fcf) and no branch of the remote held V84. */
-			new Applied("84", "V84__the_frozen_season_keeps_every_table_it_draws.sql", 1263605275));
+			new Applied("84", "V84__the_frozen_season_keeps_every_table_it_draws.sql", 1263605275),
+			/* V85. A frozen team keeps how many races of each length it ran, the ring of its page (PDL, owner,
+			   06.11.2026). 85 and no other: main stood at V84 on 06.11.2026 (61d7d7de) and no branch of the remote
+			   held V85. */
+			new Applied("85", "V85__a_frozen_team_keeps_its_races_by_length.sql", 1853638019));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

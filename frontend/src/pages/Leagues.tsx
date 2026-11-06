@@ -16,7 +16,9 @@ import {
   useLeagues,
   useRaces,
   useResults,
+  useFrozenSeasons,
 } from '../data/useResource'
+import { useFrozenTables } from '../data/useFrozenTables'
 import { useToday } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
 import { useMay } from './admin/rights'
@@ -106,6 +108,44 @@ function CountedEvents({ league }: { league: League }) {
  * at the table („Koliko ih je u tabeli"), and two ways of counting one thing are two answers.
  */
 function Entrants({ league }: { league: League }) {
+  const { t } = useI18n()
+  const frozen = useFrozenSeasons()
+
+  if (frozen.status === 'error') {
+    return <>{t('leagues.unknown')}</>
+  }
+
+  /* WHICH SEASON IS FROZEN IS THE RECORD'S AND NEVER THE CLOCK'S (PDL, derived 10.10.2026): a frozen
+     competition counts who stands in its snapshot, the table its page draws. Until the list of frozen
+     seasons has come back the number waits, as it waits for the four files below. */
+  if (frozen.status !== 'ready') {
+    return null
+  }
+
+  return frozen.data.some((one) => one.season === league.season) ? (
+    <FrozenEntrants league={league} />
+  ) : (
+    <LiveEntrants league={league} />
+  )
+}
+
+/** How many stand in the snapshot of a frozen competition, both genders: the rows of its grid. */
+function FrozenEntrants({ league }: { league: League }) {
+  const { t } = useI18n()
+  const state = useFrozenTables(league.season)
+
+  if (state.status === 'error') {
+    return <>{t('leagues.unknown')}</>
+  }
+
+  if (state.status !== 'ready') {
+    return null
+  }
+
+  return <>{state.data.leagues.find((one) => one.slug === league.slug)?.standings.length ?? 0}</>
+}
+
+function LiveEntrants({ league }: { league: League }) {
   const { t } = useI18n()
   const eventsState = useEvents()
   const racesState = useRaces()
