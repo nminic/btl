@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { profilePath } from '../profileAddress'
 import { Link } from 'react-router'
 import { PartsNav } from '../../components/PartsNav'
@@ -234,7 +235,7 @@ export function ProfileParts({ competitor }: { competitor: Competitor }) {
   const base = profilePath(competitor, locale)
   /* AND THE CARD „PODACI", AFTER THE TWO, offered only to whoever may open it (owner, 22.10.2026, PDL
      „Profil dobija karticu „Podaci", posle „Pregled" i „Priznanja i nagrade", koju vidi samo sam član i
-     administracija"). Asked of the one home the card asks too (`whoReadsTheData.ts`). */
+     administracija"; the two are „Rezultati" and „Priznanja" since 06.11.2026). Asked of the one home the card asks too (`whoReadsTheData.ts`). */
   const reader = useWhoReadsTheData(competitor.memberNumber)
 
   return (
@@ -248,7 +249,7 @@ export function ProfileParts({ competitor }: { competitor: Competitor }) {
              (member/MyProfile.tsx), and the nav is built from the record's own
              address. Without this the reader who opened their own profile saw a row
              of parts with **nothing** marked, while the same screen entered from the
-             list of competitors marks „Pregled" (owner, 23.08.2026). */
+             list of competitors marks it (owner, 23.08.2026, when it was still called „Pregled"). */
           also: `/${locale}/moj-profil`,
           label: t('profile.parts.overview'),
         },
@@ -264,7 +265,7 @@ export function ProfileParts({ competitor }: { competitor: Competitor }) {
  *
  * The three are one arrangement and not three, because where the season stands
  * depends on how much room there is: beside the name on a wide screen, and in the
- * row with „Pregled" and „Priznanja i nagrade" once the screen is narrow (owner,
+ * row with the parts („Rezultati" and „Priznanja" since 06.11.2026) once the screen is narrow (owner,
  * 23.08.2026: „Sezona 2026 sa dropdown treba da pređe u red gde su Pregled i
  * Priznanja / nagrade, a da Ime i Prezime ostane odmah iznad Članskog broja i sl.
  * bez ogromnog praznog prostora kao što je trenutno slučaj").
@@ -286,6 +287,7 @@ export function ProfileTop({
   pairs,
   seasons = [],
   season,
+  acts,
 }: {
   competitor: Competitor
   team: Team | undefined
@@ -300,6 +302,17 @@ export function ProfileTop({
    *  „Podaci" (23.10.2026), which is about no season, and then no control is drawn: a control that
    *  changes nothing on the screen it stands on is worse than none (the note on `ProfileParts`). */
   season?: string
+  /**
+   * WHAT THE READER CAN DO ABOUT THIS PERSON, in the row of the parts and to the right of them (owner,
+   * 06.11.2026, PDL „Profil: forma „Podaci" po obliku forme za prijavu": „malo normalno dugme alignovano
+   * desno, istog formata i reda gde se nalaze i Pregled, Priznanja i nagrade, i podaci"). Handed by the
+   * part, because which parts carry it is the part's to say: „Rezultati" and „Priznanja" do, „Podaci" does
+   * not (owner, same day). Left out, nothing is drawn for it.
+   *
+   * <p>Beside the nav and never inside it: a `nav` is a list of where to go, and a button that sends an
+   * invitation is not a place.
+   */
+  acts?: ReactNode
 }) {
   const { t } = useI18n()
 
@@ -312,7 +325,7 @@ export function ProfileTop({
           the owner has since asked for the one shape everywhere, and one shape is
           one thing to learn. */}
       {/* The parts and the season as one belt, so that on a narrow screen they share
-          a line and **wrap** when they cannot: „Priznanja i nagrade" and the season
+          a line and **wrap** when they cannot: „Priznanja i nagrade", as the awards were called then, and the season
           together ask for 435px at 200% text in a box of 328, and a row that cannot
           give way pushes the page sideways instead. Measured on the first attempt at
           this: 107px of page scroll at 200%, starting from 162%.
@@ -321,7 +334,12 @@ export function ProfileTop({
           become children of the grid and the season goes up beside the name. One
           markup, two arrangements, and no copy of the control. */}
       <div className="profile__belt">
-        <ProfileParts competitor={competitor} />
+        {/* The parts and what the reader can do, one row that wraps (owner, 06.11.2026): the acts stand
+            to the right of the parts and fall under them, still to the right, when the two do not fit. */}
+        <div className="profile__tabs">
+          <ProfileParts competitor={competitor} />
+          {acts !== undefined && <div className="profile__acts">{acts}</div>}
+        </div>
         {season !== undefined && (
           <div className="rankings__head-tool profile__season">
             <SeasonPicker seasons={seasons} season={season} label={t('profile.year')} />

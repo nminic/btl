@@ -1025,7 +1025,7 @@ describe('the control that names the parts of a record', () => {
     /* Without `end` on the first one, the overview counts itself as open on
        every part below it and both are marked at once. */
     expect(open).toHaveLength(1)
-    expect(first(open).textContent).toBe('Priznanja i nagrade')
+    expect(first(open).textContent).toBe('Priznanja')
   })
 })
 
