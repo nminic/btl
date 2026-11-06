@@ -563,6 +563,42 @@ class ResultApiTest {
 	}
 
 	/**
+	 * A MEMBER WHO CHANGED HIS NAME, HIS GENDER AND HIS DATE OF BIRTH IS READ UNDER THE NEW ONES ON EVERY
+	 * RUN OF HIS, and not under the ones he had when the first of them was served.
+	 *
+	 * <p>The runner is „joined every time and never stored" ({@code ResultApi.results}), and the case above
+	 * holds that for the race and the event. A member is a third thing it holds nothing for: a server that
+	 * kept the first value it read for a member, by his number, answers the name and the year of birth of
+	 * a member as they were (measured 06.11.2026: a static map by member number, green for the name and for
+	 * the year, 21 of 21). Three runs of one member are asked, in two seasons, so a value kept per row
+	 * and a value kept per member are both refused; the band is compared with what the rule gives for the
+	 * year he has now, not with a band written here.
+	 */
+	@Test
+	void aMemberWhoChangedHisNameHisGenderAndHisBirthIsReadUnderTheNewOnesOnEveryRunOfHis() throws Exception {
+		List<JsonNode> before = rowsOf(A_MEMBER_WHOSE_FEE_IS_STANDING);
+
+		assertThat(before).as("the member has no run to read his new name from").hasSize(3);
+
+		db.sql("update competitor set first_name = 'Promenjena', last_name = 'Prezimenjena', gender = 'M',"
+				+ " birth_date = date '1961-01-01' where member_number = ?").param(A_MEMBER_WHOSE_FEE_IS_STANDING).update();
+
+		for (JsonNode row : rowsOf(A_MEMBER_WHOSE_FEE_IS_STANDING)) {
+			int season = Integer.parseInt(row.path("date").asString().substring(0, 4));
+			TheRunner runner = runnerOf(row);
+
+			assertThat(runner.firstName()).as("the first name of the run of %s", row.path("date").asString())
+					.isEqualTo("Promenjena");
+			assertThat(runner.lastName()).as("the last name of the run of %s", row.path("date").asString())
+					.isEqualTo("Prezimenjena");
+			assertThat(runner.gender()).as("the gender of the run of %s", row.path("date").asString())
+					.isEqualTo("M");
+			assertThat(runner.ageBand()).as("the band of the run of %s", row.path("date").asString())
+					.isEqualTo(Category.ageBandFor(1961, season).code());
+		}
+	}
+
+	/**
 	 * AND A MEMBER WHOSE FEE HAS LAPSED KEEPS THE SEASONS HE WAS A MEMBER IN AND
 	 * LOSES THE ONE THAT IS RUNNING.
 	 *
