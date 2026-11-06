@@ -705,6 +705,37 @@ class MeApiTest {
 	}
 
 	/**
+	 * HE IS COUNTED EVERYBODY HE BROUGHT IN WHO EVER HELD A MEMBERSHIP, AND NOT ONLY THOSE WHOSE FEE STANDS NOW.
+	 *
+	 * <p>The owner, 06.11.2026, chosen among the options offered with my recommendation: „Broj dovedenih članova
+	 * broji svakoga ko je ikad imao članarinu, ne samo one kojima članarina sada važi". Asked in June 2028, when
+	 * the seasons the caller's recruits held (2027) no longer count: whoever held one is counted, and whoever never
+	 * held a row is not. So the lapsed recruit, given his 2027 here, is counted with the two others, and the one
+	 * the lapsed member brought in and who never got a number is not counted to him.
+	 *
+	 * <p>The wrong counts are all different numbers: counting only the members active in June 2028 answers the
+	 * caller 0, counting the flag answers him 2, and counting every recruit answers the lapsed member 2.
+	 */
+	@Test
+	void heIsCountedEverybodyHeBroughtInWhoEverHeldAMembership() throws Exception {
+		HeldOn.season(db, competitorIdOf(LAPSED), 2027, "feeExempt");
+		clock.moveTo(Instant.parse("2028-06-15T10:00:00Z"));
+
+		assertThat(howMany("referred_by = ? and exists(select 1 from membership m"
+						+ " where m.competitor_id = competitor.id and m.season >= 2028)", competitorIdOf(ME)))
+				.as("somebody the caller brought in holds a season that counts in June 2028, so a count of the"
+						+ " members active now is not told from a count of those who ever held one")
+				.isZero();
+
+		assertThat(answerFor(MY_ACCOUNT).path("member").path("referredCount").asInt())
+				.as("the caller is not counted the three he brought in who ever held a membership")
+				.isEqualTo(3);
+		assertThat(answerFor(THE_LAPSED_ACCOUNT).path("member").path("referredCount").asInt())
+				.as("the lapsed member is counted the recruit who never held a membership, or not the one who did")
+				.isEqualTo(1);
+	}
+
+	/**
 	 * AND THE OTHER DOOR ANSWERS NEITHER OF THEM, TO HIM OR TO ANYBODY.
 	 *
 	 * <p><b>This case held the opposite claim between 21.09.2026 and 25.09.2026 and is
