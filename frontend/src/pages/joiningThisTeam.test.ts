@@ -52,6 +52,14 @@ const APPLICATION = 71
 
 const INVITATION = 94
 
+/* The answers that say a page was drawn from something stale, as the two writes that read them tell them
+   apart from a server that merely failed: a refusal the route named, and the empty 404 (the row it was
+   asked about is not there). */
+const STALE: [what: string, answer: () => Response][] = [
+  ['a refusal the route named', () => refused('aQuestionAlreadyStands', 409)],
+  ['the empty 404', () => answeredWith(404)],
+]
+
 const listOf = (what: unknown): Response =>
   new Response(JSON.stringify(what), {
     status: 200,
@@ -554,24 +562,27 @@ describe('the member asking a team to take him', () => {
   })
 
   /* And the two resources an application does not touch, whatever the answer: a refusal changes no
-     team and no member's team, and the screens that read them are not told otherwise. */
-  it.each([
-    ['teams'] as const,
-    ['competitors'] as const,
-  ])('leaves %s alone when the route refused', async (name) => {
-    expect(
-      await timesAskedFor(name, async () => {
-        const server = serverThat((_path, init) =>
-          init?.method === 'POST' ? refused('aQuestionAlreadyStands', 409) : null,
-        )
+     team and no member's team, and the screens that read them are not told otherwise. Both answers
+     that say the page was stale, because the branch that drops the list he waits on is the same one
+     for both and a line added to it for only one of them is a different fault (measured: the two
+     resources dropped on the empty 404 alone kept the whole file green). */
+  describe.each(STALE)('when the answer is %s', (_what, answer) => {
+    it.each([
+      ['teams'] as const,
+      ['competitors'] as const,
+    ])('leaves %s alone', async (name) => {
+      expect(
+        await timesAskedFor(name, async () => {
+          const server = serverThat((_path, init) => (init?.method === 'POST' ? answer() : null))
 
-        try {
-          await theApplicationWasSent(TEAM)
-        } finally {
-          server.stop()
-        }
-      }),
-    ).toBe(0)
+          try {
+            await theApplicationWasSent(TEAM)
+          } finally {
+            server.stop()
+          }
+        }),
+      ).toBe(0)
+    })
   })
 
   /* And the two resources an application does not touch, on the press that went through: an
@@ -595,6 +606,47 @@ describe('the member asking a team to take him', () => {
 })
 
 describe('the member taking his application back', () => {
+  /* THE TWO RESOURCES AN APPLICATION DOES NOT TOUCH, on the way out as on the way in: taking it back
+     puts nobody in a team and takes nobody out of one. On the press that went through and on both
+     answers that say the page was stale, since the branch that drops the list he waits on is shared
+     and a line added to it would drop these as well (measured: the two dropped on a stale refusal of
+     the withdrawal, and on the empty 404, kept the whole file green). */
+  it.each([
+    ['teams'] as const,
+    ['competitors'] as const,
+  ])('leaves %s alone even when the server agreed', async (name) => {
+    expect(
+      await timesAskedFor(name, async () => {
+        const server = serverThat((_path, init) => (init?.method === 'DELETE' ? did() : null))
+
+        try {
+          await theApplicationWasTakenBack(TEAM, APPLICATION)
+        } finally {
+          server.stop()
+        }
+      }),
+    ).toBe(0)
+  })
+
+  describe.each(STALE)('when the answer is %s', (_what, answer) => {
+    it.each([
+      ['teams'] as const,
+      ['competitors'] as const,
+    ])('leaves %s alone', async (name) => {
+      expect(
+        await timesAskedFor(name, async () => {
+          const server = serverThat((_path, init) => (init?.method === 'DELETE' ? answer() : null))
+
+          try {
+            await theApplicationWasTakenBack(TEAM, APPLICATION)
+          } finally {
+            server.stop()
+          }
+        }),
+      ).toBe(0)
+    })
+  })
+
   it('sends the withdrawal to that row of that team, and nothing in it', async () => {
     const server = serverThat((path, init) =>
       init?.method === 'DELETE' && path === '/api/teams/2/applications/71' ? did() : null,

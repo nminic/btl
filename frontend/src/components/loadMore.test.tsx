@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { act, configure, render, screen, waitFor } from '@testing-library/react'
+import { act, configure, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useRef, useState } from 'react'
 import { must } from '../test/at'
 import { intersecting, watcher } from '../test/intersection'
@@ -227,6 +227,26 @@ describe('the focus, when a list becomes whole', () => {
     await user.click(screen.getByRole('button', { name: 'Učitaj još' }))
 
     expect(end(15)).toHaveFocus()
+  })
+
+  it('leaves a reader who stands on nothing where he is, as one who pressed with a mouse or a finger does', () => {
+    /* THE THIRD STATE OF WHERE THE READER STANDS, and the commonest one: not on the button and not on
+       a filter but on the page. Pressed with a mouse or a finger the button does not always take the
+       focus (Safari, Firefox on a Mac), and the focus then lies on `body`. Such a reader was never
+       standing on the button, so the sentence at the foot has nobody to follow and must not take
+       the focus from the page. Every other case here presses through `user.click`, which focuses the
+       button first, so the button was always what was held (measured: the condition that asks whether
+       the focus is on `body` where it asks whether it is on the button kept every case green).
+       `fireEvent.click` presses without focusing. */
+    render(<Growing total={15} step={10} />)
+
+    expect(document.body, 'the reader starts out standing on nothing').toHaveFocus()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Učitaj još' }))
+
+    expect(screen.getByText('To je svih 15')).toBeVisible()
+    expect(end(15)).not.toHaveFocus()
+    expect(document.body).toHaveFocus()
   })
 
   it('stays where it is when the list becomes whole under the reader', async () => {

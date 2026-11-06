@@ -76,6 +76,30 @@ describe('the entries a box offers for a name', () => {
     expect(offered()).toHaveLength(8)
   })
 
+  it('offers every edition of a name typed out whole with a space before it or after it', async () => {
+    /* The box is asked after the spaces are taken off the ends of what was typed, as it is for a name
+       typed in part (`matching`); asked of the text as it stands, „Beogradski maraton ” names nothing
+       exactly and offers eight (measured: `everyOneNamedExactly(all, value)` in place of `(all, asked)`
+       kept the file green, since every other case types a name without a space at either end). The
+       list is the files' own, with more than eight editions of the name. */
+    const list = everyEventToOffer(EVENTS, LATE)
+    const editions = list.filter((one) => one.value === 'Beogradski maraton')
+
+    expect(editions.length, 'the files hold more editions of the name than eight').toBeGreaterThan(8)
+
+    const user = setupUser()
+
+    stand(list)
+    await user.type(screen.getByLabelText('Događaj'), 'Beogradski maraton ')
+
+    expect(offered()).toEqual(editions.map((one) => one.said))
+
+    await user.clear(screen.getByLabelText('Događaj'))
+    await user.type(screen.getByLabelText('Događaj'), '  beogradski MARATON')
+
+    expect(offered()).toEqual(editions.map((one) => one.said))
+  })
+
   it('fills what is left of the eight with the names that only begin with it, in the order handed in', async () => {
     const list = [
       entry('a', 'Trka oko jezera'),

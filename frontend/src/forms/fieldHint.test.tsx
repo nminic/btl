@@ -1320,6 +1320,34 @@ describe('a form laid out in groups', () => {
     })
   })
 
+  it('opens every group with its name, as the first thing standing in it', () => {
+    /* HTML draws a `legend` as the title of its `fieldset` only when it is the FIRST child, and
+       the accessible name is worked out from the first `legend` descendant wherever it stands, so
+       the case above (which asks the name) passes with a `span` put in front of the legend and with
+       the legend moved behind the rows, the name drawn under the fields it names. Measured on both.
+       The CSS written for the group (`.form__groupName`) is written for the title being the first
+       thing in it, which is what is held here.
+
+       Over every wrapper the renderer drew, counted against the table of groups so that a wrapper
+       the loop never reaches shows up as a number that does not add up. */
+    renderForm()
+
+    const wrappers = [...document.querySelectorAll<HTMLElement>('.form__group')]
+
+    expect(wrappers, 'the form draws a different number of groups than were settled on').toHaveLength(
+      GROUPS_ARE.length,
+    )
+
+    for (const wrapper of wrappers) {
+      expect(wrapper.tagName, 'a group is not a fieldset').toBe('FIELDSET')
+      expect(
+        must(wrapper.firstElementChild, 'a group is drawn empty').tagName,
+        `${String(wrapper.textContent).slice(0, 30)} does not open with its legend`,
+      ).toBe('LEGEND')
+      expect(wrapper.querySelectorAll(':scope > legend'), 'a group holds two legends').toHaveLength(1)
+    }
+  })
+
   /* Owner, 28.09.2026: „organizuj je bolje, možda ponovo jedno ispod drugog",
      choosing, between three offered outcomes, the one that keeps the thirds of
      12.08.2026 (`PDL.md`: „Podeli je racionalno na trećine horizontalno") and
@@ -1471,6 +1499,19 @@ describe('a form laid out in groups', () => {
     )
 
     expect(untouched.length, 'every form the portal has names a group').toBeGreaterThan(0)
+
+    /* And the other half, asked of the registry and not of the property it was filtered by: a
+       population picked by "no field names a group" and held only to be non-empty empties itself
+       the day a field of one of its forms is given a group, and nothing here notices that the
+       form walked out (measured: one field of `admin-tim` given a `groupKey`, 324 passed). So the
+       forms that DO name a group are named, and the two halves have to make up the registry. */
+    const naming = ALL_FORMS.filter((form) => form.fields.some((one) => one.groupKey !== undefined))
+
+    expect(
+      naming.map((form) => form.id),
+      'a form other than the registration names a group, and nothing here draws it grouped',
+    ).toEqual([registracija.id])
+    expect(untouched.length + naming.length).toBe(ALL_FORMS.length)
 
     for (const form of untouched) {
       const { container } = render(

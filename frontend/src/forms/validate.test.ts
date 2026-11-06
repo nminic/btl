@@ -131,6 +131,31 @@ describe('validateField', () => {
     expect(afterTheDot, 'in the domain, behind the dot').toEqual(allowed)
   })
 
+  it('holds the dot that parts the domain, and the place of a dot inside each of the three classes', () => {
+    /* What the sweep above cannot see. It asks each class about every character, but 0x2E belongs to
+       all three, so a class that lost the dot is covered by its neighbour (`ab@pri.mer.rs` still
+       splits somewhere else) and the three lists stay the same; and nothing in it asks for the dot
+       that parts the domain, because every address it builds already carries one. Measured: the
+       separator removed from the pattern, a class without the dot, each survived the whole file.
+
+       The database holds the same address as `^[!-?A-~]+@[!-?A-~]+$` (`account_email_shape`, V6),
+       with no dot at all, so bringing the form in line with it is the likeliest next edit to this
+       line and the one these cases are for.
+
+       The dot inside a class is asked by its place, since a place is the only thing that tells the
+       classes apart: a domain that begins with a dot can only be split by the class in front of
+       the separator being allowed one, a domain that ends with a dot only by the class behind it. */
+    const field = text({ type: 'email' })
+
+    for (const refused of ['trkac@primer', 'trkac@primer,rs', 'trkac@primer rs', '@primer.rs']) {
+      expect(validateField(field, refused), refused).not.toBeNull()
+    }
+
+    for (const accepted of ['ab@primer.rs', 'a.b@primer.rs', 'ab@.a.b', 'ab@a.b.']) {
+      expect(validateField(field, accepted), accepted).toBeNull()
+    }
+  })
+
   /**
    * THE LENGTH OF A PASSWORD IS ONE FACT, AND THE FORM MEASURES IT THE WAY THE SERVER DOES.
    *
