@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * V87, FROM THE TABLE'S SIDE: a reset link is spent once and is never given more time, whoever
- * writes the statement (ADL, owner, 06.11.2026).
+ * writes the statement (ADL, technical decision, 06.11.2026).
  *
  * <p>Nothing here goes through the service. The route spends a link with one atomic statement, and
  * the point of the trigger is that the table says the same thing to a statement written by somebody

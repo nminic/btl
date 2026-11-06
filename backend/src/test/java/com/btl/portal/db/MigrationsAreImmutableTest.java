@@ -740,8 +740,8 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   Pinned LAST, when the file was final, off this very assertion. */
 			new Applied("86", "V86__whether_a_member_is_active_is_read_off_his_seasons.sql", 1495915210),
 
-			/* V87. A reset link is spent once and never given more time, enforced by the table (ADL, owner,
-			   06.11.2026). 87 after PR 684's V86, which the owner told this branch to leave room for. */
+			/* V87. A reset link is spent once and never given more time, enforced by the table (ADL,
+			   technical decision, 06.11.2026). 87 after PR 684's V86, which the owner told this branch to leave room for. */
 			new Applied("87", "V87__a_reset_link_is_spent_once_and_never_lengthened.sql", 1610863958));
 
 	@Test

@@ -1,9 +1,10 @@
 /*
  * A RESET LINK IS SPENT ONCE AND IS NEVER GIVEN MORE TIME, AND THE DATABASE IS WHAT ENFORCES IT.
  *
- * ADL, owner, 06.11.2026: „Link za oporavak lozinke se troši jednom i ne produžava se, i to sprovodi
- * baza, ne servis. Okidač odbija izmenu reda tokena kad `used_at` nije null i brani pomeranje
- * `expires_at`; servis i dalje troši atomskim upitom." The precedent for a trigger that says what a
+ * ADL, technical decision, 06.11.2026: a reset link is spent once and is never lengthened, and the
+ * database enforces it, not the service. The trigger refuses any update of a token row whose
+ * `used_at` is not null, and refuses moving `expires_at` later (moving it earlier is allowed); the
+ * service still spends a link with its atomic statement. The precedent for a trigger that says what a
  * row may no longer become is V38 (`a_balance_entry_is_written_once`), the shape this follows.
  *
  * WHAT WAS MISSING, measured in the review that wrote it down: nothing in the schema stopped
