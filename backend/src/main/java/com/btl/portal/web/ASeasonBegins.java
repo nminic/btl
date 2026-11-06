@@ -242,6 +242,11 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 	 * before the snapshot had written the team down, which is „zamrzavanje pa ispadanje" turned around
 	 * (PDL, derived 19.09.2026) and „Prethodne sezone su zamrznute i ne diraju se" broken. Until the record
 	 * is there the job drops him itself, since he holds nothing of the season then.
+	 *
+	 * <p>The first clause is the decision of 05.11.2026 written where it is applied („od sezone 2028"). The
+	 * record already says as much for 2027, since {@code season_frozen_season_not_before_the_league} (V83)
+	 * lets no row name 2026, so a mutation of that clause down to 2027 cannot be told apart by any case: the
+	 * clause is kept because it is the decision and not because a case could fail without it.
 	 */
 	private boolean aCancellationTakesHimOut(int season) {
 		return season >= FIRST_SEASON_THAT_DROPS_MEMBERS
