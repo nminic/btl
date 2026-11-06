@@ -940,6 +940,41 @@ class ARaceCorrectedRecountsItsRunsTest {
 	}
 
 	/**
+	 * THE SEASON OF A RACE IS THE SEASON OF ITS OWN DAY, AND NOT THE SEASON OF THE EVENT IT IS RUN AT.
+	 *
+	 * <p>Every event of the fixture has one day, so a season worked out from the event's {@code date}
+	 * gives what the race's own day gives (measured 06.11.2026: the event's year in place of the
+	 * race's, 98 of 98 green). Here one event begins on 31 December 2027 and holds two races, one on
+	 * that day and one on 1 January 2028, with a run at each. Half an hour after the freeze the first
+	 * is of a frozen season and counts nothing again, the second is of the season now running and
+	 * counts its run again: a season taken from the event's day holds both frozen or both running.
+	 */
+	@Test
+	void aTwoDayEventHoldsOneRaceOfTheFrozenSeasonAndOneOfTheRunningSeasonAndEachIsJudgedByItsOwnDay()
+			throws Exception {
+		event("dvodnevna-2027", "Dvodnevna trka", LocalDate.parse("2027-12-31"));
+
+		long theFirstDay = race("dvodnevna-2027", "Dvodnevna prva", LocalDate.parse("2027-12-31"), "length", 0,
+				"5", 40, 30);
+		long theSecondDay = race("dvodnevna-2027", "Dvodnevna druga", NEW_YEARS_DAY, "length", 0, "5", 40, 30);
+		long runOnTheFirstDay = result(secondRunner, theFirstDay, "5", 40, 30, 1500, counted("5", 40, 30, 1500));
+		long runOnTheSecondDay = result(secondRunner, theSecondDay, "5", 40, 30, 1500, counted("5", 40, 30, 1500));
+
+		clock.moveTo(HALF_AN_HOUR_AFTER_THE_FREEZE);
+		Map<Long, Run> frozen = rowsOf(runOnTheFirstDay);
+
+		assertThat(change(theFirstDay, ofALength("Dvodnevna prva", LocalDate.parse("2027-12-31"), "5.2", 60, 45))
+				.getStatus()).isEqualTo(200);
+		assertThat(change(theSecondDay, ofALength("Dvodnevna druga", NEW_YEARS_DAY, "5.2", 60, 45))
+				.getStatus()).isEqualTo(200);
+
+		assertThat(rowsOf(runOnTheFirstDay)).as("a race of the frozen season counted its run again")
+				.isEqualTo(frozen);
+		assertThat(rowOf(runOnTheSecondDay)).as("a race of the season now running did not count its run again")
+				.isEqualTo(countedAt("5.2", 60, 45, 1500, "short"));
+	}
+
+	/**
 	 * PDL P4, THE OWNER'S ANSWER OF 10.10.2026: A RACE FROM BEFORE THE FIRST SEASON COUNTS
 	 * NOTHING AGAIN.
 	 *
