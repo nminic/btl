@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { arrivedResource, clearResourceCache, loadResource } from '../../data/client'
 import { answeredWith, did, refused, serverThat } from '../../test/serverAnswers'
 import { first } from '../../test/at'
+import { componentsOf } from '../../test/javaRecords'
 import sr from '../../i18n/sr.json'
 import {
   A_RUN_IS_SENT_TO,
@@ -331,6 +332,43 @@ describe('where each of the three writes goes', () => {
          member filled in. */
       expect(Object.hasOwn(body, 'day')).toBe(true)
       expect(Object.hasOwn(body, 'date')).toBe(false)
+    } finally {
+      stop()
+    }
+  })
+
+  it('sends every key under the name of a component of the record the route reads it into', async () => {
+    /* THE JOIN BETWEEN THE SCREEN AND THE ROUTE, which the cases around it cannot hold. They compare
+       what was sent with the literal above, and the literal is typed by the very types the screens
+       use: rename a key in the type, in the function and in the literal together and every one of
+       them goes on passing (measured on the amendment of a moderator, which is the same shape).
+       The backend does not fail on a key it does not know, and a key by another name arrives as
+       null, so the only thing that says the name is wrong is the record the route reads. It is
+       read here, out of the Java, in both directions for a correction (the six components are
+       the six keys) and in one for a run (the route reads fifteen, a body names the few its road
+       allows). */
+    const { asked, stop } = serverThat(() => did())
+
+    try {
+      await theRunWasSentIn(FROM_THE_CALENDAR)
+      await theRunWasSentIn(DESCRIBED)
+      await theCorrectionWasSentIn(41, CORRECTION)
+
+      const [fromTheCalendar, described] = asked
+        .filter((one) => one.path === A_RUN_IS_SENT_TO)
+        .map((one) => Object.keys(bodyOf(one)).sort())
+      const correction = Object.keys(bodyOf(first(asked.filter((one) => one.path === theResultAt(41))))).sort()
+
+      const ran = componentsOf('Ran', 'ResultWriteApi.java')
+
+      expect(ran.length, 'the record of a run was not found').toBeGreaterThan(0)
+      expect(fromTheCalendar?.length, 'a run from the calendar sent nothing').toBeGreaterThan(0)
+      expect(described?.length, 'a described run sent nothing').toBeGreaterThan(0)
+      expect(fromTheCalendar?.filter((key) => !ran.includes(key)), 'a key of a run from the calendar').toEqual([])
+      expect(described?.filter((key) => !ran.includes(key)), 'a key of a described run').toEqual([])
+      expect(correction, 'a correction is the six components of its record, no more and no fewer').toEqual(
+        componentsOf('Correction', 'ResultWriteApi.java'),
+      )
     } finally {
       stop()
     }

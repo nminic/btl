@@ -1,7 +1,10 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import * as writes from '../pages/admin/verificationWrites'
+import { amendedFrom, type Figure } from '../pages/admin/amendFields'
 import { must } from '../test/at'
+import { componentsOf } from '../test/javaRecords'
 import { formDef } from './definitions'
 
 /**
@@ -245,3 +248,102 @@ describe('a number the server keeps whole', () => {
     }
   })
 })
+
+/**
+ * THE NAMES A MODERATOR'S AMENDMENT TRAVELS UNDER, HELD AGAINST THE RECORDS THAT READ THEM.
+ *
+ * <p>Nothing above reads the name of a KEY on the wire. The table lands each form field in a
+ * component of a record, by names written in the table, and says nothing of what the screen
+ * calls them when it sends them: rename `amended` or `seconds` in the type, in the function that
+ * builds the body and in the literal of a case together, and every case of the front stays green
+ * (measured: 95 of 95). The route does not fail on a key it does not know, it reads the one it
+ * does not find as left out - "do not touch" - and approves the run at the runner's own figures,
+ * quietly. So the keys the screen sends are read here against the components of the records the
+ * route reads them into (`VerificationWriteApi.Answered`, `Amended`, `NewRace`).
+ */
+describe('the names an amendment is sent under', () => {
+  const VERIFICATION = 'VerificationWriteApi.java'
+  const ALL_FOUR: { name: Figure }[] = [
+    { name: 'distanceKm' },
+    { name: 'ascentM' },
+    { name: 'descentM' },
+    { name: 'seconds' },
+  ]
+  const AMENDED = amendedFrom(ALL_FOUR, {
+    distanceKm: '21,1',
+    ascentM: '120',
+    descentM: '120',
+    hours: '1',
+    minutes: '30',
+    seconds: '0',
+  })
+  const CROP = { x: 1, y: 2, size: 3 }
+
+  it('has the four figures under the four components of Amended, and no other name', () => {
+    expect(componentsOf('Amended', VERIFICATION).length, 'the record was not found').toBe(4)
+    expect(Object.keys(AMENDED).sort()).toEqual(componentsOf('Amended', VERIFICATION))
+  })
+
+  it('names the race an approval makes after the components of NewRace', () => {
+    const known = componentsOf('NewRace', VERIFICATION)
+    const typed = writes.anApprovalOnANewRace(
+      { raceName: 'Trka', raceKind: 'length', eventName: 'Događaj', city: 'Valjevo', country: 'RS' },
+      AMENDED,
+    ).newRace
+    const chosen = writes.anApprovalOnANewRace(
+      { raceName: 'Trka', raceKind: 'length', eventId: 3 },
+      AMENDED,
+    ).newRace
+
+    expect(known.length, 'the record was not found').toBeGreaterThan(0)
+    expect(Object.keys(typed ?? {}).length, 'the sample carried no key').toBeGreaterThan(0)
+    expect(Object.keys(chosen ?? {}).length, 'the sample carried no key').toBeGreaterThan(0)
+    expect(Object.keys(typed ?? {}).filter((key) => !known.includes(key))).toEqual([])
+    expect(Object.keys(chosen ?? {}).filter((key) => !known.includes(key))).toEqual([])
+  })
+
+  /* Every builder of a decision the module has, called with a sample. */
+  const BUILT: [name: string, built: object][] = [
+    ['anApproval', writes.anApproval()],
+    ['anApprovalOfTheText', writes.anApprovalOfTheText('tekst')],
+    ['anApprovalOfThePicture', writes.anApprovalOfThePicture(7, CROP)],
+    ['anApprovalWith', writes.anApprovalWith(AMENDED)],
+    [
+      'anApprovalOnANewRace',
+      writes.anApprovalOnANewRace({ raceName: 'Trka', raceKind: 'length', eventId: 3 }, AMENDED),
+    ],
+    ['anApprovalOnTheRace', writes.anApprovalOnTheRace(5, AMENDED)],
+    ['aRefusal', writes.aRefusal('razlog')],
+    ['aRefusalOfTheText', writes.aRefusalOfTheText('razlog', 'tekst')],
+    ['aRefusalOfThePicture', writes.aRefusalOfThePicture('razlog', 7, CROP)],
+  ]
+
+  it('holds every builder of a decision the module has, read off the module', () => {
+    /* So that one exported tomorrow is inside the question the day it exists. */
+    expect(
+      Object.keys(writes)
+        .filter((name) => /^a(n)?(Approval|Refusal)/.test(name))
+        .sort(),
+    ).toEqual(BUILT.map(([name]) => name).sort())
+  })
+
+  it.each(BUILT)('%s sends only keys that Answered has a component for', (_name, built) => {
+    const known = componentsOf('Answered', VERIFICATION)
+
+    expect(known.length, 'the record was not found').toBeGreaterThan(0)
+    expect(Object.keys(built).filter((key) => !known.includes(key))).toEqual([])
+  })
+
+  it('sends the amendment under the one name the route reads it by, on each road that carries it', () => {
+    /* Asked of the name itself and not only of "a component exists": `amended` renamed to
+       `newRace` would pass the case above, since that is a component too. */
+    const carrying = BUILT.filter(([name]) => /With|OnANewRace|OnTheRace/.test(name))
+
+    expect(carrying.length, 'no road carries the amendment').toBe(3)
+
+    for (const [name, built] of carrying) {
+      expect(Object.keys(built), `${name} sends the amendment under another name`).toContain('amended')
+    }
+  })
+})
+
