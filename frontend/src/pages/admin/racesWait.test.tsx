@@ -550,7 +550,14 @@ describe('an event whose races wait', () => {
    * the reason beside each race is the reason it was refused for. The kind is changed on the open
    * event, which is the one way a press has races to take away and a form that draws no table.
    */
-  it('names every race the route would not take away from an event that has no races, and does not send the reader to a table that is not there', async () => {
+  it.each([
+    ['a gathering', sr.event.kind.gathering],
+    /* THE THIRD STATE OF THE AXIS (review of PR 483, round 2, PENDING „osa vrste dogadjaja ima tri stanja,
+       drzana na dva"): a race, a gathering and a training. Both halves of the correction of V1 - the list under
+       the fields and the sentence that does not point at a table - are asked of the training as well, because
+       a mutation that gave it the sentence of the table, or drew it a table, was green. */
+    ['a training', sr.event.kind.training],
+  ])('names every race the route would not take away from %s, which has no races, and does not send the reader to a table that is not there', async (_name, kind) => {
     const { event } = await aServedEventWithRaces()
     const served = (await loadResource<Race[]>('races')).filter((one) => one.eventId === event.id)
     const firstServed = must(served[0], 'the first race of the event')
@@ -573,11 +580,11 @@ describe('an event whose races wait', () => {
     renderAt(`/sr/administracija/dogadjaji?izmena=${String(event.id)}`, 'superadmin')
     await user.selectOptions(
       await screen.findByLabelText(/^Vrsta događaja/),
-      sr.event.kind.gathering,
+      kind,
     )
     expect(
       screen.queryByRole('region', { name: /^Trke na događaju/ }),
-      'a gathering draws a table of races',
+      `${kind} draws a table of races`,
     ).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
