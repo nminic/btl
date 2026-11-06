@@ -192,9 +192,15 @@ export function PersonalData({ me }: { me: MyData }) {
   )
 }
 
-/** What of the form this panel sends, out of everything it draws: the held four are not among them. */
+/**
+ * What of the form this panel sends, out of everything it draws: the held four are not among them.
+ *
+ * <p>Every one of the seven is in what the form hands over, both at a move and at the press: the renderer
+ * fills each field of its definition, and the country beside the town, before it hands anything out
+ * (`FormRenderer`, `filled`), and none of these is ever off the screen. So there is no „missing" to read.
+ */
 function sentOf(values: FormValues): Typed {
-  const text = (name: Sent): string => String(values[name] ?? '')
+  const text = (name: Sent): string => String(values[name])
 
   return {
     firstName: text('firstName'),
