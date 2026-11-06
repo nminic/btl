@@ -236,62 +236,79 @@ describe('an event whose races wait', () => {
     expect(await rowsCalled(user, 'BBKT proba')).toBe(1)
   }, SLOW)
 
-  it('names the race that is refused after „Nazad na spisak" was pressed on a form opened by an address, and does not leave', async () => {
-    /**
-     * THE BUTTON OF A FORM OPENED BY ADDRESS REFUSES THE PRESS WHILE A SAVE IS OUT, LIKE THE ONE OF A NEW FORM
-     * (PENDING „cuvar dugmeta na obrascu otvorenom preko adrese", review of PR 483, round 4, mutation B1p).
-     *
-     * <p>The refusal in the handler of the button, kept for a NEW form only, passed twenty of twenty cases here:
-     * on a copy and on `?izmena=` the router refuses the change of the address, so the reader stays, but
-     * `forgetTheForm()` has already run in the middle of the press and the list „Trke koje nisu sačuvane"
-     * comes back EMPTY. The race that was refused is then named nowhere. The press is made here with the
-     * second race of a copy out (held, then refused by name), and what is asked is the list.
-     */
-    let racePosts = 0
-    let release: (answer: Response) => void = () => undefined
+  it.each(['a copy', 'an event that stands'])(
+    'names the race that is refused after „Nazad na spisak" was pressed on %s, opened by an address, and does not leave',
+    async (shape) => {
+      /**
+       * THE BUTTON OF A FORM OPENED BY ADDRESS REFUSES THE PRESS WHILE A SAVE IS OUT, LIKE THE ONE OF A NEW FORM
+       * (PENDING „cuvar dugmeta na obrazcu otvorenom preko adrese", review of PR 483, round 4, mutation B1p).
+       *
+       * <p>The refusal in the handler of the button, kept for a form that is NEW, passed twenty of twenty cases
+       * here: on `?izmena=` the router refuses the change of the address, so the reader stays, but
+       * `forgetTheForm()` has already run in the middle of the press and the list „Trke koje nisu sačuvane"
+       * comes back EMPTY. The race that was refused is then named nowhere. The press is made here with the
+       * second race write out (held, then refused by name), and what is asked is the list. Both addresses the
+       * form is opened by are asked: a copy, which draws a new form over another event's races, and an event
+       * that stands.
+       */
+      const served = shape === 'a copy' ? null : await aServedEventWithRaces()
+      let racesWritten = 0
+      let release: (answer: Response) => void = () => undefined
 
-    answering = (path, init) => {
-      if (path !== '/api/races' || init?.method !== 'POST') {
-        return null
+      answering = (path, init) => {
+        if (!(path === '/api/races' || path.startsWith('/api/races/')) || init?.method === undefined || init.method === 'GET') {
+          return null
+        }
+
+        racesWritten += 1
+
+        return racesWritten === 2
+          ? new Promise<Response>((done) => {
+              release = done
+            })
+          : null
       }
 
-      racePosts += 1
+      const user = setupUser()
 
-      return racePosts === 2
-        ? new Promise<Response>((done) => {
-            release = done
-          })
-        : null
-    }
+      renderAt(
+        served === null
+          ? '/sr/administracija/dogadjaji?kopija=32'
+          : `/sr/administracija/dogadjaji?izmena=${String(served.event.id)}`,
+        'superadmin',
+      )
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
 
-    const user = setupUser()
+      if (served !== null) {
+        await touchEveryRace(user)
+      }
 
-    renderAt('/sr/administracija/dogadjaji?kopija=32', 'superadmin')
-    await screen.findByRole('heading', { name: /^Trke na događaju/ })
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await waitFor(() => {
-      expect(racePosts).toBe(2)
-    })
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await waitFor(() => {
+        expect(racesWritten).toBe(2)
+      })
 
-    const back = screen.getByRole('button', { name: 'Nazad na spisak' })
+      const back = screen.getByRole('button', { name: 'Nazad na spisak' })
 
-    await user.click(back)
+      await user.click(back)
 
-    expect(back).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByRole('heading', { name: /^Trke na događaju/ })).toBeVisible()
-    expect(screen.queryByRole('table', { name: 'Događaji' })).toBeNull()
+      expect(back).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('heading', { name: /^Trke na događaju/ })).toBeVisible()
+      expect(screen.queryByRole('table', { name: 'Događaji' })).toBeNull()
 
-    await act(async () => {
-      release(refused('theDistanceIsNotKeptExactly'))
-    })
-    await screen.findByText(sr.admin.eventSavedRacesRefused)
+      await act(async () => {
+        release(refused('theDistanceIsNotKeptExactly'))
+      })
+      await screen.findByText(sr.admin.eventSavedRacesRefused)
 
-    expect(notSaved()).toEqual([
-      expect.stringMatching(
-        new RegExp(`^2\. trka \(.+\): ${sr.admin.raceSaveRefused.theDistanceIsNotKeptExactly}$`),
-      ),
-    ])
-  }, SLOW)
+      expect(notSaved()).toEqual([
+        expect.stringMatching(
+          new RegExp(`^2\. trka \(.+\): ${sr.admin.raceSaveRefused.theDistanceIsNotKeptExactly}$`),
+        ),
+      ])
+    },
+    SLOW,
+  )
 
   it('says the site is locked beside each race the proxy answered, and offers the new tab once under the list', async () => {
     /* The tab slept between the press that saved the event and the races: the event is saved, the
