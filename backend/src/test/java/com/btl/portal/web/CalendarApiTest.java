@@ -167,10 +167,12 @@ class CalendarApiTest {
 	 *
 	 * <p>A46 says an endpoint is measured by comparing its whole answer with the
 	 * file the portal serves, and for the two codebooks it is: a migration fills
-	 * them from the source the file came from. This is not one of those. The served
-	 * calendar carries text identifiers and the strings "no" and "yes", both
-	 * artefacts of one import, and the schema says bigserial and boolean; the
-	 * server answers with what the schema says (12.09.2026).
+	 * them from the source the file came from. This is not one of those. Until
+	 * 20.09.2026 the served calendar carried text identifiers and the strings "no"
+	 * and "yes", both artefacts of one import, while the schema said bigserial and
+	 * boolean; PR 325 rewrote the files into the schema's shapes (numeric ids,
+	 * booleans), and the decision of 12.09.2026 that the server answers with what
+	 * the schema says stands for the day they disagree again.
 	 *
 	 * <p>What must not move is the NAMES, because that is what every screen reads
 	 * by. Neither side is typed out here: one comes off the record, the other off
