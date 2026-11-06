@@ -665,6 +665,25 @@
   border-color: var(--text-muted);
 }
 
+/* A choice that is held and not taken: shaded and without the pointer that promises an answer, the
+   dress every other held control wears (`.field__control--held`, same two declarations, same token).
+ *
+   Owner, 06.11.2026 (PDL, „Na formi „Podaci" zaključana polja"): „zaključan pol se crta zatamnjeno kao
+   ostala zaključana polja (neizabrano dugme dobija zatamnjenu pozadinu i običan kursor)." The one that
+   is taken stays filled, held or not (the rule below it is written after this one, at the same weight, and
+   wins): it is the answer, and it is what carries the state. The cursor is
+   set on the radio as well as on the label, because the radio lies over the whole of the label
+   (`.choice__input`) and it is the radio the pointer is over. Text on the shade is `--text` on
+   `--surface-hover`, measured against 4.5:1 in `forms/held.test.tsx`. */
+.choice__input[aria-disabled='true'] {
+  cursor: default;
+}
+
+.choice__input[aria-disabled='true'] + .choice__label {
+  background: var(--surface-hover);
+  cursor: default;
+}
+
 /* The one that is taken: filled.
  *
    ~~And with a mark on it, because colour alone would leave it unsaid for

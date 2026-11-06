@@ -89,6 +89,22 @@ export function fakeQueue(waiting: ServedPendingItem[] = []): { asked: Asked[]; 
   })
 
   /**
+   * ONE RATING PER MEMBER PER EVENT, THE NEW ONE REPLACING THE OLD (PDL, 19.10.2026): what the
+   * member already has published on the event stops being served, wherever it stood - in the file
+   * or among the ones published in this visit. Both ways a rating becomes published (an approval
+   * and a rating with no words) go through here, so neither can leave two behind.
+   */
+  function replaceTheirs(memberNumber: string | null, eventId: number): void {
+    for (const list of [published, seededComments]) {
+      list.splice(
+        0,
+        list.length,
+        ...list.filter((one) => !(one.memberNumber === memberNumber && one.eventId === eventId)),
+      )
+    }
+  }
+
+  /**
    * THE DECISION ON A CARD OF THE COMMENTS, standing in for `VerificationWriteApi.decide` and
    * `publishTheComment` and for nothing else: a card of any other queue is answered by the floor
    * in `test/setup.ts` (null here), which is all those cases ever needed.
@@ -114,12 +130,7 @@ export function fakeQueue(waiting: ServedPendingItem[] = []): { asked: Asked[]; 
     decided.add(id)
 
     if (approved) {
-      const same = (one: EventComment) =>
-        one.memberNumber === card.memberNumber && String(one.eventId) === card.subjectId
-
-      for (const list of [published, seededComments]) {
-        list.splice(0, list.length, ...list.filter((one) => !same(one)))
-      }
+      replaceTheirs(card.memberNumber, Number(card.subjectId))
 
       published.unshift({
         id: nextId,
@@ -217,6 +228,8 @@ export function fakeQueue(waiting: ServedPendingItem[] = []): { asked: Asked[]; 
           added.splice(at, 1)
         }
       }
+
+      replaceTheirs(number, sent.eventId)
 
       published.unshift({
         id,

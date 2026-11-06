@@ -172,9 +172,18 @@ describe('format', () => {
   })
 
   it('leaves an unknown locale to Intl', () => {
-    expect(intlTag('en')).toBe('en')
+    expect(intlTag('en')).toBe('en-GB')
     expect(intlTag('sr')).toBe('sr-Latn')
     expect(intlTag('de')).toBe('de')
+  })
+
+  it('writes English the way the dictionary and og:locale spell it, British', () => {
+    /* `og:locale` says en_GB (app/head.ts) and the dictionary is British
+       (kilometres, organiser); a formatter left on plain „en" resolves to en-US and
+       answers „October 1, 2026". Owner's decision 26.09.2026: en-GB. The region is
+       read off what Intl resolves, not off the string above. */
+    expect(new Intl.DateTimeFormat(intlTag('en')).resolvedOptions().locale).toBe('en-GB')
+    expect(new Intl.Locale(intlTag('en')).region).toBe('GB')
   })
 })
 
@@ -223,13 +232,13 @@ describe('a day inside a sentence', () => {
        other side, when `/en` drew the Serbian dictionary and the date was asked with
        the address's language (review, 05.09.2026).
 
-       English needs no rule here at all: „it opens on October 1, 2026" is already the
+       English needs no rule here at all: „it opens on 1 October 2026" is already the
        form a verb governs. */
     expect(formatDayInSentence('2026-10-01', 'sr')).toBe('1. oktobra 2026.')
-    expect(formatDayInSentence('2026-10-01', 'en')).toBe('October 1, 2026')
+    expect(formatDayInSentence('2026-10-01', 'en')).toBe('1 October 2026')
     /* Every month, so a rule that bent only the four ending in „bar" cannot pass by
        leaving the other eight to English. */
-    expect(formatDayInSentence('2026-03-01', 'en')).toBe('March 1, 2026')
+    expect(formatDayInSentence('2026-03-01', 'en')).toBe('1 March 2026')
   })
 
   it('reads the language of the words, not the language of the address', () => {
@@ -248,7 +257,7 @@ describe('a day inside a sentence', () => {
     )
     /* And the day standing on its own follows the address, which is what the screens
        that show a date as a value ask for and what this does not change. */
-    expect(formatDate('2026-10-01', 'en')).toBe('October 1, 2026')
+    expect(formatDate('2026-10-01', 'en')).toBe('1 October 2026')
   })
 })
 

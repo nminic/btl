@@ -72,10 +72,16 @@ describe('the page of somebody who has not paid', () => {
        22.10.2026, 24.10.2026) and he SEES them held (`heldFields.test.tsx` holds how); the address of
        post is not drawn at all, as on the card. What is asked here is that none of them is a box he
        can type into. */
-    for (const label of [/^Ime oca/, /^Pol/, /^Datum rođenja/, /^Broj ličnog dokumenta/]) {
+    for (const label of [/^Ime oca/, /^Datum rođenja/, /^Broj ličnog dokumenta/]) {
       for (const box of mine.getAllByLabelText(label)) {
         expect(box, String(label)).toHaveAttribute('readonly')
       }
+    }
+
+    /* The gender is the registration's pair of buttons, and a button has no `readOnly`: it is held by
+       `aria-disabled`, which is what `forms/FormRenderer.tsx` refuses a press on. */
+    for (const button of within(mine.getByRole('radiogroup', { name: 'Pol' })).getAllByRole('radio')) {
+      expect(button).toHaveAttribute('aria-disabled', 'true')
     }
 
     expect(mine.queryByLabelText(/Adresa elektronske pošte|E-pošta|Email/i)).not.toBeInTheDocument()

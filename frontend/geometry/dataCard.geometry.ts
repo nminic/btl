@@ -2,6 +2,7 @@ import { expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { SLACK, label, notMeasured, test } from './support/harness.ts'
 import type { Answers, At } from './support/harness.ts'
+import { expectOneColumn, expectTheRegistrationsRows, fieldsOf } from './support/formRows.ts'
 
 /**
  * THE CARD „PODACI" OF A PROFILE, ASKED OF CHROME (PDL 22.10.2026, „Profil dobija karticu „Podaci"";
@@ -122,7 +123,7 @@ const controlsOf = (page: Page, card: string) =>
   }, card)
 
 for (const [who, answers, card] of [
-  ['the member himself', HIS_OWN, 'section[aria-labelledby="account-personal"]'],
+  ['the member himself', HIS_OWN, 'section[aria-labelledby="form-licni-podaci-title"]'],
   ['the administration', THE_ADMINISTRATION, 'section[aria-labelledby="form-podaci-clana-title"]'],
 ] as const) {
   for (const at of WIDTHS) {
@@ -146,3 +147,26 @@ for (const [who, answers, card] of [
     })
   }
 }
+
+/**
+ * <p><b>And the member's own form is the registration's</b> (PDL 06.11.2026, „Profil: forma „Podaci" po
+ * obliku forme za prijavu", owner: „dakle ne sve jedno ispod drugog"): its rows in thirds on a desktop, and
+ * one column on a telephone and a tablet in portrait, where the registration is one column too
+ * (`forms/FormRenderer.css`, 51.25em).
+ */
+const HIS_CARD = 'section[aria-labelledby="form-licni-podaci-title"]'
+
+test('the member’s own form stands in the registration’s rows on a desktop, 1280px, text 100%', async ({ open }) => {
+  const { page } = await open({ width: 1280, text: 100 }, ADDRESS, HIS_CARD, HIS_OWN)
+
+  expectTheRegistrationsRows(await fieldsOf(page, HIS_CARD), 'his card')
+})
+
+for (const width of [360, 768]) {
+  test(`the member’s own form is one column, ${width}px, text 100%`, async ({ open }) => {
+    const { page } = await open({ width, text: 100 }, ADDRESS, HIS_CARD, HIS_OWN)
+
+    expectOneColumn(await fieldsOf(page, HIS_CARD), 'his card')
+  })
+}
+

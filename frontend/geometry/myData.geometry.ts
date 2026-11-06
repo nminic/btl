@@ -2,6 +2,7 @@ import { expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import { SLACK, label, notMeasured, test } from './support/harness.ts'
 import type { Answers, At } from './support/harness.ts'
+import { expectOneColumn, expectTheRegistrationsRows, fieldsOf } from './support/formRows.ts'
 
 /**
  * THE PAGE „MOJI PODACI" AND THE MENU WITH THE NAME ON IT, ASKED OF CHROME, for somebody who registered
@@ -57,7 +58,7 @@ const WIDTHS: At[] = [
   { width: 1280, text: 200 },
 ]
 
-const CARD = 'section[aria-labelledby="account-personal"]'
+const CARD = 'section[aria-labelledby="form-licni-podaci-title"]'
 
 /** Every control of the panel a reader types into or chooses in, as boxes. */
 const controlsOf = (page: Page) =>
@@ -140,3 +141,22 @@ for (const at of WIDTHS) {
     expect(probe.sideways, 'the page scrolls sideways').toBe(0)
   })
 }
+
+/**
+ * <p><b>And the form is the registration's, as on the card</b> (PDL 06.11.2026, „Profil: forma „Podaci" po
+ * obliku forme za prijavu"): its rows in thirds on a desktop, one column on a telephone and a tablet.
+ */
+test('the form of his data stands in the registration’s rows on a desktop, 1280px, text 100%', async ({ open }) => {
+  const { page } = await open({ width: 1280, text: 100 }, '/sr/moji-podaci', CARD, SOMEBODY_WHO_HAS_NOT_PAID)
+
+  expectTheRegistrationsRows(await fieldsOf(page, CARD), 'his page')
+})
+
+for (const width of [360, 768]) {
+  test(`the form of his data is one column, ${width}px, text 100%`, async ({ open }) => {
+    const { page } = await open({ width, text: 100 }, '/sr/moji-podaci', CARD, SOMEBODY_WHO_HAS_NOT_PAID)
+
+    expectOneColumn(await fieldsOf(page, CARD), 'his page')
+  })
+}
+

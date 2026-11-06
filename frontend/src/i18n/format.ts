@@ -233,7 +233,7 @@ export function formatDate(isoDate: string, locale: string): string {
  * **It reads the language of the sentence, not the language of the address**, and that
  * distinction is the whole of what this function has to get right. It used to matter
  * because `/en` drew the Serbian dictionary, so a sentence there was Serbian while
- * `formatDate(d, 'en')` answered „October 1, 2026"; written with the address's language,
+ * `formatDate(d, 'en')` answered „1 October 2026"; written with the address's language,
  * the rule below made „Octobera 1, 2026" of it, a word in no language at all (review,
  * 05.09.2026). `dictionaryLocale` is the portal's own name for that difference.
  *
@@ -242,7 +242,7 @@ export function formatDate(isoDate: string, locale: string): string {
  * rule is applied to Serbian and to nothing else. Measured on the day the dictionaries
  * were wired: with the rule applied to whatever `formatDate` returns, `/en` answered
  * **„Octobera 1, 2026"**, exactly the word the note above says is in no language.
- * English needs no rule at all here — „it opens on October 1, 2026" is already the form
+ * English needs no rule at all here — „it opens on 1 October 2026" is already the form
  * a verb governs — so what a third language needs is a decision for the day it arrives
  * and not a guess made now.
  *

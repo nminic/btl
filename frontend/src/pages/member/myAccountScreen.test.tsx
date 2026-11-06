@@ -298,17 +298,20 @@ describe('a member’s own data', () => {
   it('does not say anything was kept when the server refused it', async () => {
     const user = setupUser()
     ;({ stop } = serverThat((path, init) =>
-      path === '/api/me' && init?.method === 'PUT' ? refused('aFieldIsBlank') : null,
+      path === '/api/me' && init?.method === 'PUT' ? refused('aFieldIsTooLong') : null,
     ))
 
     renderAt(HIS_CARD, 'competitor', ME.memberNumber)
 
     const panel = await personalPanel()
 
-    await user.clear(within(panel).getByRole('textbox', { name: /Prezime/ }))
+    /* Refused by the server and not by the form: an emptied name is refused before it travels since the
+       panel is the registration's form (PDL 06.11.2026), so what the server says no to is a box the form
+       had nothing against. */
+    await typeOver(user, within(panel).getByRole('textbox', { name: /Prezime/ }), 'Drugačiji')
     await user.click(within(panel).getByRole('button', { name: sr.account.save }))
 
-    expect(await within(panel).findByText(sr.account.fieldIsBlank)).toBeInTheDocument()
+    expect(await within(panel).findByText(sr.account.fieldIsTooLong)).toBeInTheDocument()
     expect(within(panel).queryByText(sr.account.saved)).not.toBeInTheDocument()
   })
 

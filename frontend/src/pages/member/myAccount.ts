@@ -1,5 +1,3 @@
-import { registracija } from '../../forms/definitions'
-import { limitOf } from '../../forms/records'
 
 /**
  * WHAT THE MEMBER'S OWN ACCOUNT SCREEN SENDS, AND WHAT EACH REFUSAL OF IT IS CALLED.
@@ -158,38 +156,17 @@ export const WHAT_THIS_SCREEN_SENDS = [
 export type Sent = (typeof WHAT_THIS_SCREEN_SENDS)[number]
 
 /**
- * THE BOXES THE SERVER WILL NOT TAKE EMPTIED, which is not yet the list of the ones asked for.
- *
- * <p>{@code MeWriteApi.NEVER_EMPTIED}: the two names and the address are refused when blank
- * ({@code competitor_*_not_blank}, V7 and V8), while a blank telephone is a REMOVAL, since it is
- * the one optional field of the form. Held to that list from the outside by
- * `myAccountScreen.test.tsx`, which reads it off the Java and compares it with what the screen
- * asks for, so a box taken off it on either side alone is a red gate on the day it is written.
- *
- * <p><b>A box is asked for where it is on this list</b> (`PersonalData.tsx`). Until 18.10.2026 it
- * was asked for only where it was on this list AND the portal knew what the server held in it
- * (PENDING 217.5), because an address the portal could not see was a box a member could leave
- * alone. The portal sees all four now, so the second half has nothing left to say and the list is
- * the answer.
- */
-export const NEVER_EMPTIED: readonly Sent[] = ['firstName', 'lastName', 'address']
-
-/**
  * THE FIELDS SOMEBODY TYPES INTO FREELY, which are the ones with a length: the town is picked or
  * typed in its own control (`PlaceField`), its country goes with it, and the size is one of seven.
+ *
+ * <p>What each box is called, how long it may be and whether it is asked for are the registration's
+ * since 06.11.2026, when the panel became the registration's form (`PersonalData.tsx`,
+ * `profile/memberData.ts`, `hisOwnForm`): whether one is asked for is held to the server's own
+ * `MeWriteApi.NEVER_EMPTIED` from the outside by `myAccountScreen.test.tsx`.
  */
 export const TYPED_BOXES = ['firstName', 'lastName', 'address', 'phone'] as const
 
 export type TypedBox = (typeof TYPED_BOXES)[number]
-
-/** How many characters each of those boxes holds, and the town's, asked of the form rather than of me. */
-export const AS_LONG_AS_THE_FORM_ALLOWS: Record<TypedBox | 'city', number> = {
-  firstName: limitOf(registracija, 'firstName'),
-  lastName: limitOf(registracija, 'lastName'),
-  address: limitOf(registracija, 'address'),
-  phone: limitOf(registracija, 'phone'),
-  city: limitOf(registracija, 'city'),
-}
 
 /** The two words of the town, which travel together or not at all. */
 const THE_TOWN: readonly Sent[] = ['city', 'country']
