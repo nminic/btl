@@ -975,6 +975,41 @@ class ARaceCorrectedRecountsItsRunsTest {
 	}
 
 	/**
+	 * THE REFUSAL OF A CHANGE OF KIND IS UNCONDITIONAL: A RACE OF A FROZEN SEASON AND A RACE OF HISTORY
+	 * KEEP THEIR KIND TOO, whatever the clock says.
+	 *
+	 * <p>Owner, 10.10.2026, decision (1): a race that carries an approved result keeps its kind, and the
+	 * decision names no season. The case above stands in the running season, so a refusal that was
+	 * asked only of a season still counted (from the first season on, and not frozen) refuses it
+	 * identically and passes (measured 06.11.2026: 100 of 100 green). Here the same change is asked of
+	 * a marathon of 2027 half an hour after the freeze and of a race of April 2026, which is before the
+	 * first season: both are refused with the reason, and the runs stay as they were, since the path
+	 * of a correction counts a race as it stands now and checks no freeze.
+	 */
+	@Test
+	void aRaceOfAFrozenSeasonAndARaceOfHistoryKeepTheirKindToo() throws Exception {
+		clock.moveTo(HALF_AN_HOUR_AFTER_THE_FREEZE);
+		Map<Long, Run> frozen = rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun);
+
+		MockHttpServletResponse ofTheFrozenSeason = change(theMarathon,
+				toALimit("Maraton", THE_MARATHONS_DAY, 21600, 300, 280));
+
+		assertThat(ofTheFrozenSeason.getStatus()).as("a race of a frozen season changed its kind").isEqualTo(409);
+		assertThat(reasonIn(ofTheFrozenSeason)).isEqualTo(RaceWriteApi.THE_KIND_CANNOT_CHANGE_ONCE_RUNS_ARE_COUNTED);
+		assertThat(rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun)).isEqualTo(frozen);
+
+		clock.moveTo(WHILE_2026_IS_HISTORY);
+		Map<Long, Run> history = rowsOf(runOfHistory);
+
+		MockHttpServletResponse ofHistory = change(aRaceOfHistory,
+				toALimit("Stara", A_DAY_OF_HISTORY, 21600, 100, 90));
+
+		assertThat(ofHistory.getStatus()).as("a race from before the first season changed its kind").isEqualTo(409);
+		assertThat(reasonIn(ofHistory)).isEqualTo(RaceWriteApi.THE_KIND_CANNOT_CHANGE_ONCE_RUNS_ARE_COUNTED);
+		assertThat(rowsOf(runOfHistory)).isEqualTo(history);
+	}
+
+	/**
 	 * PDL P4, THE OWNER'S ANSWER OF 10.10.2026: A RACE FROM BEFORE THE FIRST SEASON COUNTS
 	 * NOTHING AGAIN.
 	 *
