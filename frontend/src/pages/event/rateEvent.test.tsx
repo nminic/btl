@@ -595,7 +595,12 @@ describe('rating an event', () => {
 
     const after = await loadResource<EventComment[]>('comments')
 
-    expect(after).toHaveLength(before + 1)
+    /* ME already has a rating published on this event (the file's comment 2), and one rating per
+       member per event is the rule (PDL, 19.10.2026): the new one REPLACES it, so the event holds
+       as many comments as before, and exactly one of them is his. `before + 1` passed with two. */
+    expect(after).toHaveLength(before)
+    expect(after.filter((one) => one.memberNumber === ME)).toHaveLength(1)
+    expect(first(after).memberNumber).toBe(ME)
     expect(first(after).body).toBe('')
     expect(first(after).rating).toEqual({ organisation: 5, value: 5, ambience: 5 })
   })
@@ -1251,9 +1256,9 @@ describe('a comment a moderator lets out', () => {
     expect(list.textContent).not.toMatch(/\d,\d/)
 
     /* The day the comment was written, the same way. The Serbian date of kom-1
-       is "8. 5. 2010." and the English one is "May 8, 2010": one string cannot
+       is "8. 5. 2010." and the English one is "8 May 2010": one string cannot
        be both, so either spelling proves which language did the writing. */
-    expect(list.textContent).toContain('May 8, 2010')
+    expect(list.textContent).toContain('8 May 2010')
     expect(list.textContent).not.toContain('8. 5. 2010.')
   })
 

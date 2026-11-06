@@ -237,6 +237,56 @@ describe('an event still to be run', () => {
   }
 })
 
+describe('the boundary of the day, for somebody who is not drawn the comments', () => {
+  /* The line under an event says who the comments are for from the day it is run, and says
+     nothing before (`EventComments.tsx`: `date > today`). The member's own side of the same
+     boundary is held in `rateEvent.test.tsx`; this is the side of a reader the comments are not
+     for, which shared ONE expression with it until 18.10.2026 and has its own since. Sliding it
+     by a day, `>` to `>=`, kept every case of the file green: the cases above stand a day before
+     the race and nobody stood on it. */
+  const raceDay = (): string => {
+    const events: BtlEvent[] = JSON.parse(
+      readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'events.json'), 'utf-8'),
+    )
+
+    return must(
+      events.find((one) => one.slug === AHEAD),
+      'the event still to be run',
+    ).date
+  }
+  const dayBefore = (day: string): string =>
+    new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10)
+
+  for (const reader of READERS.filter((one) => !one.reads)) {
+    it(`tells ${reader.name} who the comments are for on the day the race is run, and not the day before`, async () => {
+      const day = raceDay()
+
+      expect(dayBefore(day) < day, 'a day that is before the race').toBe(true)
+
+      /* Before it: nothing, not even the heading. Read first, so the case on the day cannot be
+         answered by a page that was slow to draw it. */
+      const before = renderAt(`/sr/kalendar/${AHEAD}`, reader.role, reader.number, undefined, dayBefore(day))
+
+      await screen.findByRole('table', { name: 'Trke' })
+      await act(async () => {
+        await loadResource('competitors')
+      })
+
+      expect(screen.queryByText(SENTENCE), `${reader.name} was told the day before the race`).toBeNull()
+      expect(screen.queryByRole('heading', { name: 'Komentari' })).toBeNull()
+      before.unmount()
+
+      renderAt(`/sr/kalendar/${AHEAD}`, reader.role, reader.number, undefined, day)
+
+      expect(
+        await screen.findByRole('heading', { name: 'Komentari' }),
+        `${reader.name} was drawn no heading on the day of the race`,
+      ).toBeVisible()
+      expect(await screen.findByText(SENTENCE), `${reader.name} was told nothing on the day of the race`).toBeVisible()
+    }, LONGER_THAN_A_MISS)
+  }
+})
+
 describe('the list of members is no part of whether a reader reads', () => {
   /**
    * THE LIST OF MEMBERS, HELD BACK, which is the moment a part that waits for it would be drawn as
