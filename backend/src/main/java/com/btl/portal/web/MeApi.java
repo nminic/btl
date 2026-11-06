@@ -570,7 +570,7 @@ class MeApi {
 						   THE BASIS IS THE ROW OF THE SEASON ON SALE (V62, PDL P8 of 18.10.2026), and
 						   null when he holds none for it, which `@JsonInclude` turns into an absent
 						   key. */
-						+ " held.basis, " + AMemberIsActive.of("c.id", now) + " as active, c.referral_code,"
+						+ " held.basis, " + AMemberIsActive.of("c.id", now) + " as fee_stands, c.referral_code,"
 						/* AND HOW MANY HE HAS BROUGHT IN WHO EVER HELD A MEMBERSHIP.
 
 						   The owner, 06.11.2026, chosen among the options offered with my

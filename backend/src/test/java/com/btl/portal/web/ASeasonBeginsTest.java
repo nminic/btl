@@ -327,13 +327,13 @@ class ASeasonBeginsTest {
 		long osmi = team("osmi-tim", "Osmi tim", zora);
 		in(zora, osmi, 2027, null);
 
-		begins.cancelled(zora, SEASON, at(2028, 1, 1, 15, 59));
+		begins.cancelled(zora, SEASON, at(2028, 1, 1, 15, 59), begins.before(zora, SEASON, at(2028, 1, 1, 15, 59)));
 
 		assertThat(memberships()).contains("Zora Osmi tim 2027 -");
 		assertThat(teams()).contains("Osmi tim Zora");
 
-		begins.cancelled(ceca, SEASON, at(2028, 2, 10, 9, 0));
-		begins.cancelled(zora, SEASON, at(2028, 2, 10, 9, 0));
+		begins.cancelled(ceca, SEASON, at(2028, 2, 10, 9, 0), begins.before(ceca, SEASON, at(2028, 2, 10, 9, 0)));
+		begins.cancelled(zora, SEASON, at(2028, 2, 10, 9, 0), begins.before(zora, SEASON, at(2028, 2, 10, 9, 0)));
 
 		assertThat(memberships()).contains("Ceca Prvi tim" + " 2027 2027 " + Membership.THE_FEE_LAPSED,
 				"Boban Prvi tim 2027 -");
@@ -360,8 +360,8 @@ class ASeasonBeginsTest {
 		List<String> pairs = pairs();
 		List<String> messages = messages();
 
-		begins.cancelled(aca, 2027, at(2027, 2, 10, 9, 0));
-		begins.cancelled(aca, 2027, at(2028, 2, 10, 9, 0));
+		begins.cancelled(aca, 2027, at(2027, 2, 10, 9, 0), begins.before(aca, 2027, at(2027, 2, 10, 9, 0)));
+		begins.cancelled(aca, 2027, at(2028, 2, 10, 9, 0), begins.before(aca, 2027, at(2028, 2, 10, 9, 0)));
 
 		assertThat(memberships()).isEqualTo(memberships);
 		assertThat(teams()).isEqualTo(teams);

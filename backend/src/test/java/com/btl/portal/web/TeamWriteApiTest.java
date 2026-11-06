@@ -2474,7 +2474,7 @@ class TeamWriteApiTest {
 	 *
 	 * <p><b>It is here rather than as a ninth row of the table above because it needs its own
 	 * arrangement</b>, and it is the row that holds {@code c.active} inside
-	 * {@link TeamApi#WHO_STANDS_IN_A_TEAM}: take that condition out and BOTH answers below
+	 * {@link TeamApi#whoStandsInATeam}: take that condition out and BOTH answers below
 	 * move to true together, which is the one home doing its job and this case noticing.
 	 */
 	@Test
@@ -2621,7 +2621,7 @@ class TeamWriteApiTest {
 	 * ONE HOME.
 	 *
 	 * <p>{@code GET /api/teams} answers {@code administeredByMe} and this route acts on the
-	 * same question. They are built out of {@link TeamApi#WHO_STANDS_IN_A_TEAM} and
+	 * same question. They are built out of {@link TeamApi#whoStandsInATeam} and
 	 * {@link TeamApi#WHO_ADMINISTERS_IT} so that there is one rule with two readers; this is
 	 * what makes that a measurement rather than a claim.
 	 *
