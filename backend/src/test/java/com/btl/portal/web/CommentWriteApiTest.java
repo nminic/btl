@@ -276,8 +276,15 @@ class CommentWriteApiTest {
 						+ " (select id from place where rank = 1), 2027, ?, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
-				.params(number, active, String.format("%016x", ++issued))
+				.params(number, !active, String.format("%016x", ++issued))
 				.update();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
+		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
+		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		if (active) {
+			HeldOn.activeAt(db, number, ORDINARY_MOMENT.atZone(SeasonClock.ZONE));
+		}
 	}
 
 	/** The same shape {@code VerificationApiTest.event} already uses: the date is a literal
@@ -558,7 +565,8 @@ class CommentWriteApiTest {
 				.as("the member with no result on the event has one on the event of the same name")
 				.isEqualTo(1);
 
-		assertThat(db.sql("select active from competitor where member_number = ?").param(LAPSED)
+		assertThat(db.sql("select exists(select 1 from membership m join competitor c on c.id = m.competitor_id"
+						+ " where c.member_number = ?)").param(LAPSED)
 						.query(Boolean.class).single())
 				.as("the member standing for a lapsed fee really has one, or the axis measures"
 						+ " nothing")

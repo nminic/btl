@@ -621,7 +621,8 @@ class ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest {
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedIsNamedNowhere() throws Exception {
-		assertThat(db.sql("select c.active from team_membership m join competitor c on"
+		assertThat(db.sql("select exists(select 1 from membership held_now where held_now.competitor_id = c.id)"
+						+ " from team_membership m join competitor c on"
 						+ " c.id = m.competitor_id where c.member_number = ? and m.season_to is not null")
 				.param(A_LAPSED_LEAVER).query(Boolean.class).single())
 				.as("the member this case rests on has not left, or has paid, so nothing is measured")
@@ -739,7 +740,8 @@ class ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest {
 				.query(String.class).list())
 				.as("the seat is held by somebody who left, so a number read off it is a leaver's")
 				.containsExactly(THE_STAYER);
-		assertThat(db.sql("select count(*) from competitor where member_number is null and active")
+		assertThat(db.sql("select count(*) from competitor c where c.member_number is null"
+						+ " and exists(select 1 from membership held_now where held_now.competitor_id = c.id)")
 				.query(Long.class).single())
 				.as("the member with no number is gone or not active")
 				.isEqualTo(1L);
@@ -936,7 +938,7 @@ class ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest {
 
 		List<Link> held = db.sql("select c.member_number, m.team_id, m.season_from, m.season_to"
 						+ " from team_membership m join competitor c on c.id = m.competitor_id"
-						+ " where c.active")
+						+ " where exists(select 1 from membership held_now where held_now.competitor_id = c.id)")
 				.query((row, one) -> new Link(row.getString(1), row.getLong(2), row.getInt(3),
 						row.getObject(4) == null ? null : row.getInt(4)))
 				.list();
@@ -1086,8 +1088,22 @@ class ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest {
 						+ " (select id from place where rank = 1), " + HIS_FIRST_SEASON + ", ?,"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
-				.params(number, active, String.format("%016x", ++issued))
+				.params(number, !active, String.format("%016x", ++issued))
 				.update();
+
+		/* A MEMBER WHOSE FEE STANDS HOLDS EVERY SEASON THE MOMENTS OF THIS FILE ASK ABOUT, 2027 TO 2029: since
+		   AF-1 being active is a season that counts at the moment, and the last moment is 16:00 on 1 January
+		   2029. The flag is written against the seasons on purpose: since AF-1 nothing reads it. */
+		if (active) {
+			heldThrough2029(db.sql("select id from competitor where member_number = ?").param(number)
+					.query(Long.class).single());
+		}
+	}
+
+	private void heldThrough2029(long competitor) {
+		for (int season = 2027; season <= 2029; season++) {
+			HeldOn.season(db, competitor, season, "feeExempt");
+		}
 	}
 
 	/**
@@ -1097,16 +1113,23 @@ class ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest {
 	 * @return his {@code competitor.id}, which is what a membership is written by
 	 */
 	private long competitorWithNoNumber() {
-		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+		long made = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (null, 'Probni', 'Bezbrojni', 'M', date '1992-03-08',"
 						+ " (select id from place where rank = 1), " + HIS_FIRST_SEASON + ","
-						+ " true, ?, '', false, 'none', 'Otac', 'Ulica 3', 'S',"
+						+ " false, ?, '', false, 'none', 'Otac', 'Ulica 3', 'S',"
 						+ " timestamptz '2026-01-01 10:00:00+00') returning id")
 				.param(String.format("%016x", ++issued))
 				.query(Long.class).single();
+
+		/* A MEMBER WHOSE FEE STANDS HOLDS EVERY SEASON THE MOMENTS OF THIS FILE ASK ABOUT, 2027 TO 2029: since
+		   AF-1 being active is a season that counts at the moment, and the last moment is 16:00 on 1 January
+		   2029. The flag is written against the seasons on purpose: since AF-1 nothing reads it. */
+		heldThrough2029(made);
+
+		return made;
 	}
 
 	private void team(String slug, String name) {

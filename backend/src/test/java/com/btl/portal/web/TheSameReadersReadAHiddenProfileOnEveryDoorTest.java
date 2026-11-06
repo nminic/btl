@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -203,11 +204,11 @@ class TheSameReadersReadAHiddenProfileOnEveryDoorTest {
 		account(THE_ONE_WHO_HIDES, "competitor");
 		belongsTo(THE_ONE_WHO_HIDES, THE_HIDING_ONE);
 
-		/* A ROW OF membership IS NOT THE FACT BEING ASKED: this reader holds one and is not active,
-		   and the active reader above holds none, so reading „has he a membership row" answers both
-		   of them the wrong way round. */
+		/* A ROW OF ANOTHER SEASON IS NOT THE FACT BEING ASKED: this reader holds a row of 2028, which does
+		   not count today, and is not active, so reading „has he a membership row" answers him the wrong
+		   way round; and his flag says active (see `member`). */
 		member("000111", "Istekao", "Clan", false, false, "", null);
-		exemptFor("000111", 2027);
+		exemptFor("000111", 2028);
 		account(LAPSED, "competitor");
 		belongsTo(LAPSED, "000111");
 
@@ -270,17 +271,19 @@ class TheSameReadersReadAHiddenProfileOnEveryDoorTest {
 	 */
 	@Test
 	void theReadersAreWhatTheyAreCalled() {
-		assertThat(facts("select c.active, (select count(*) from membership m where m.competitor_id = c.id)"
+		assertThat(facts("select c.active, (select string_agg(m.season::text, ',') from membership m"
+				+ " where m.competitor_id = c.id)"
 				+ " from account a join competitor c on c.id = a.competitor_id where a.email = ?", LAPSED))
-				.as("the lapsed reader is active, or holds no membership row, so the fact and the row"
-						+ " cannot be told apart by him")
-				.isEqualTo("false 1");
-		assertThat(facts("select c.active, (select count(*) from membership m where m.competitor_id = c.id)"
+				.as("the lapsed reader does not carry the flag true and a row of 2028 alone, so neither the"
+						+ " flag nor a row of another season can be told from the season that counts by him")
+				.isEqualTo("true 2028");
+		assertThat(facts("select c.active, (select string_agg(m.season::text, ',') from membership m"
+				+ " where m.competitor_id = c.id)"
 				+ " from account a join competitor c on c.id = a.competitor_id where a.email = ?", ACTIVE))
-				.as("the active reader is not active, or holds a membership row, so the lapsed reader's"
-						+ " row is not the only difference between the two")
-				.isEqualTo("true 0");
-		assertThat(facts("select c.member_number is null, c.active"
+				.as("the active reader does not carry the flag false and the season that counts, so the"
+						+ " lapsed reader's season is not the only difference between the two")
+				.isEqualTo("false 2027");
+		assertThat(facts("select c.member_number is null, exists(select 1 from membership m where m.competitor_id = c.id)"
 				+ " from account a join competitor c on c.id = a.competitor_id where a.email = ?", NEVER_PAID))
 				.as("the registrant has a number or is active")
 				.isEqualTo("true false");
@@ -293,10 +296,10 @@ class TheSameReadersReadAHiddenProfileOnEveryDoorTest {
 				.as("a moderator of the fixture holds a box, so he would not be the administration for"
 						+ " being a moderator alone")
 				.isEqualTo("0");
-		assertThat(facts("select c.active from account a join competitor c on c.id = a.competitor_id"
-				+ " where a.email = ?", MODERATOR_LAPSED))
-				.as("the moderator whose fee has lapsed is active")
-				.isEqualTo("false");
+		assertThat(facts("select count(m.season) from account a join competitor c on c.id = a.competitor_id"
+				+ " left join membership m on m.competitor_id = c.id where a.email = ?", MODERATOR_LAPSED))
+				.as("the moderator whose fee has lapsed holds a season")
+				.isEqualTo("0");
 		assertThat(facts("select r.code = 'competitor' and a.competitor_id is null"
 				+ " and a.email_confirmed_at is not null from account a join role r on r.id = a.role_id"
 				+ " where a.email = ?", NAMED_BY_AN_ADDRESS))
@@ -307,7 +310,9 @@ class TheSameReadersReadAHiddenProfileOnEveryDoorTest {
 				+ " where a.email = ? and h.member_number = ?", THE_ONE_WHO_HIDES, THE_HIDING_ONE))
 				.as("the hiding member's account is not his own")
 				.isEqualTo("true");
-		assertThat(facts("select c.profile_hidden, c.active, c.photo_id is not null, c.bio <> ''"
+		assertThat(facts("select c.profile_hidden, exists(select 1 from membership held_now"
+				+ " where held_now.competitor_id = c.id and held_now.season = 2027),"
+				+ " c.photo_id is not null, c.bio <> ''"
 				+ ", (select count(*) from team_membership m where m.competitor_id = c.id"
 				+ " and m.season_to is null) from competitor c where c.member_number = ?", THE_HIDING_ONE))
 				.as("the subject is not hiding, or is not active, or has no portrait, no biography or no"
@@ -412,7 +417,8 @@ class TheSameReadersReadAHiddenProfileOnEveryDoorTest {
 	void theTeamNamesAHiddenMemberToExactlyTheReadersTheListWithholdsHimFrom() throws Exception {
 		List<String> standing = db.sql("select c.member_number || ' ' || t.slug || ' ' || m.season_from"
 						+ " from team_membership m join competitor c on c.id = m.competitor_id"
-						+ " join team t on t.id = m.team_id where m.season_to is null and c.active")
+						+ " join team t on t.id = m.team_id where m.season_to is null and exists(select 1"
+						+ " from membership held_now where held_now.competitor_id = c.id and held_now.season = 2027)")
 				.query(String.class).list();
 
 		assertThat(standing)
@@ -535,15 +541,16 @@ class TheSameReadersReadAHiddenProfileOnEveryDoorTest {
 	 * <p>The price the owner was shown and accepted (PDL P23, 03.10.2026): a member who does not
 	 * renew stops seeing hidden profiles until he pays. One session cookie throughout and one
 	 * column changed between the requests, so what answers differently is the fact and not the
-	 * account, the cookie or a session somebody kept: every request asks {@code competitor.active}
-	 * afresh.
+	 * account, the cookie or a session somebody kept: every request asks his seasons afresh
+	 * ({@link AMemberIsActive}).
 	 */
 	@Test
 	void aReaderWhoseFeeLapsesIsAnsweredAsAVisitorAtOnceAndAsAReaderAgainWhenItIsRestored() throws Exception {
 		assertThat(bioOf(ACTIVE)).as("the member is not answered the biography while his fee stands")
 				.isEqualTo(HIS_BIOGRAPHY);
 
-		db.sql("update competitor set active = false where member_number = '000110'").update();
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = '000110')")
+				.update();
 
 		assertThat(whole(ACTIVE, "/api/competitors"))
 				.as("a member whose fee lapsed a moment ago is still answered what a member is")
@@ -555,7 +562,7 @@ class TheSameReadersReadAHiddenProfileOnEveryDoorTest {
 				.as("a member whose fee lapsed a moment ago is still not told on the team who is in it")
 				.containsExactly(THE_HIDING_ONE);
 
-		db.sql("update competitor set active = true where member_number = '000110'").update();
+		HeldOn.activeAt(db, "000110", ZonedDateTime.now());
 
 		assertThat(bioOf(ACTIVE)).as("the member is not answered the biography again once his fee stands")
 				.isEqualTo(HIS_BIOGRAPHY);
@@ -682,15 +689,24 @@ class TheSameReadersReadAHiddenProfileOnEveryDoorTest {
 	/** @param number null for somebody who registered and has not paid (V16); the key is returned */
 	private long member(String number, String first, String last, boolean active, boolean hidden,
 			String bio, Long photo) {
-		return db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
+		long made = db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, first_season, active, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at, photo_id)"
 						+ " values (?, ?, ?, 'M', date '1990-01-01', (select id from place where rank = 1),"
 						+ " 2027, ?, ?, ?, ?, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00', ?) returning id")
-				.params(number, first, last, active, String.format("%016x", ++issued), bio, hidden, photo)
+				.params(number, first, last, !active, String.format("%016x", ++issued), bio, hidden, photo)
 				.query(Long.class).single();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
+		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
+		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		if (active) {
+			HeldOn.activeAt(db, made, ZonedDateTime.now());
+		}
+
+		return made;
 	}
 
 	private void team(String slug) {

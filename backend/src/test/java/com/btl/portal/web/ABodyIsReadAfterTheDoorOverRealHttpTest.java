@@ -32,6 +32,7 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -208,10 +209,14 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, ?, '',"
+						+ " (select id from place where rank = 1), 2027, false, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
 				.params(THE_MEMBERS_NUMBER, String.format("%016x", Long.parseLong(THE_MEMBERS_NUMBER)))
 				.update();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written false on purpose: since AF-1
+		   nothing reads it, and a reader that did would turn him away. */
+		HeldOn.activeAt(db, THE_MEMBERS_NUMBER, ZonedDateTime.now());
 
 		account(A_MEMBER, "competitor");
 		db.sql("update account set competitor_id = (select id from competitor where member_number = ?)"
@@ -239,7 +244,9 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Istekao', 'Istekaovic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, ?, '',"
+						/* HIS FLAG IS TRUE AND HE HOLDS NO SEASON: since AF-1 he is lapsed by the seasons
+						   alone, and a door that read the flag would let him through. */
+						+ " (select id from place where rank = 1), 2027, true, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
 				.params(THE_NUMBER_OF_THE_ONE_WHOSE_FEE_HAS_LAPSED, "b257000000000002")
@@ -799,13 +806,15 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 				.allSatisfy(email -> assertThat(db.sql("select competitor_id is null from account"
 								+ " where email = ?").param(email).query(Boolean.class).single())
 						.isTrue());
-		assertThat(db.sql("select c.member_number is null and not c.active from account a"
+		assertThat(db.sql("select c.member_number is null"
+						+ " and not exists(select 1 from membership m where m.competitor_id = c.id) from account a"
 						+ " join competitor c on c.id = a.competitor_id where a.email = ?")
 				.param(A_MEMBER_WHO_HAS_NOT_PAID).query(Boolean.class).single())
 				.as("the member who has not paid names a member who carries a number or is active, so"
 						+ " the case about him is about somebody else")
 				.isTrue();
-		assertThat(db.sql("select c.member_number is not null and not c.active from account a"
+		assertThat(db.sql("select c.member_number is not null"
+						+ " and not exists(select 1 from membership m where m.competitor_id = c.id) from account a"
 						+ " join competitor c on c.id = a.competitor_id where a.email = ?")
 				.param(A_MEMBER_WHOSE_FEE_HAS_LAPSED).query(Boolean.class).single())
 				.as("the member whose fee has lapsed names a member who carries no number or is active, so"

@@ -2,8 +2,11 @@ package com.btl.portal.web;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 
+import com.btl.portal.domain.season.SeasonClock;
+
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 
 /**
  * A MEMBERSHIP OF ONE SEASON ON ONE OF THE THREE BASES, written the way the schema takes each.
@@ -79,5 +82,34 @@ final class HeldOn {
 			}
 			default -> throw new IllegalArgumentException("no basis is called " + basis);
 		}
+	}
+
+	/**
+	 * A SEASON THAT MAKES HIM ACTIVE AT THIS MOMENT, freed of the fee, unless he already holds it; and the
+	 * flag {@code competitor.active} is NOT touched.
+	 *
+	 * <p>Since AF-1 a member is active by the rows he holds ({@link AMemberIsActive}, PDL 13.09.2026), so a
+	 * case that wants a member in good standing gives him a row, and the season is the earliest one that
+	 * counts at the moment the case reads its clock at ({@link SeasonClock#seasonsAMemberIsActiveIn}), so the
+	 * case does not go stale when the calendar moves on. The activation is {@link #AUTUMN_OF_THE_FIRST_SALE},
+	 * so the season ranks as a season held from its start does. The flag is left as the case wrote it, and
+	 * many cases write it AGAINST the row on purpose, so that a reader of the flag is caught.
+	 *
+	 * @param db         the database
+	 * @param competitor the member
+	 * @param at         the moment the case's clock reads
+	 */
+	static void activeAt(JdbcClient db, long competitor, ZonedDateTime at) {
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " values (?, ?, 'feeExempt', 'Moderator Probni', ?) on conflict do nothing")
+				.params(competitor, SeasonClock.seasonsAMemberIsActiveIn(at).first(),
+						Timestamp.from(AUTUMN_OF_THE_FIRST_SALE))
+				.update();
+	}
+
+	/** {@link #activeAt(JdbcClient, long, ZonedDateTime)}, for the member who carries this number. */
+	static void activeAt(JdbcClient db, String memberNumber, ZonedDateTime at) {
+		activeAt(db, db.sql("select id from competitor where member_number = ?").param(memberNumber)
+				.query(Long.class).single(), at);
 	}
 }

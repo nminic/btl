@@ -30,6 +30,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -1005,18 +1006,19 @@ class MePasswordApiTest {
 	 */
 	private enum Behind {
 
-		/** A member whose fee stands: a number, and active. */
+		/** A member whose fee stands: a number, and the season that counts today; his flag says false. */
 		A_FEE_THAT_STANDS,
 
 		/** Registered and never paid: no number (V16), not active, and no row of membership. */
 		NEVER_PAID,
 
-		/** A number, not active, and a row of membership for 2027 given free of the fee. */
+		/** A number, not active, a row of membership for 2028 given free of the fee (a season that does
+		 *  not count today), and his flag says true. */
 		LAPSED_WITH_A_ROW,
 
 		/**
 		 * A number, not active, and no row of membership at all: the one a rule that told a lapsed member
-		 * from somebody who never paid BY A ROW would take for somebody who never paid.
+		 * from somebody who never paid BY A ROW would take for somebody who never paid. His flag says true.
 		 */
 		LAPSED_WITHOUT_A_ROW
 	}
@@ -1042,12 +1044,18 @@ class MePasswordApiTest {
 						+ " '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00') returning id")
 				.params(kind == Behind.NEVER_PAID ? null : String.format("0009%02d", kind.ordinal()),
-						kind == Behind.A_FEE_THAT_STANDS, String.format("%016x", 0xb257b000L + kind.ordinal()))
+						/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it. */
+						kind == Behind.LAPSED_WITH_A_ROW || kind == Behind.LAPSED_WITHOUT_A_ROW,
+						String.format("%016x", 0xb257b000L + kind.ordinal()))
 				.query(Long.class).single();
+
+		if (kind == Behind.A_FEE_THAT_STANDS) {
+			HeldOn.activeAt(db, id, ZonedDateTime.now());
+		}
 
 		if (kind == Behind.LAPSED_WITH_A_ROW) {
 			db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
-							+ " values (?, 2027, 'feeExempt', 'Probni Probic',"
+							+ " values (?, 2028, 'feeExempt', 'Probni Probic',"
 							+ " timestamptz '2026-10-20 10:00:00+00')")
 					.param(id).update();
 		}
