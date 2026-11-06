@@ -32,6 +32,8 @@ import { OVER_THE_MEMBERS } from './whoReadsTheData'
    `Test timed out` (`btl/CLAUDE.md`, odeljak 25). The last case holds it. */
 configure({ asyncUtilTimeout: SLOW / 2 })
 
+/* And every case that waits is given `SLOW` as its own clock, so a wait of half of it ends first. */
+
 type FileMember = { memberNumber: string; active: boolean }
 
 const MEMBERS_ON_FILE: FileMember[] = JSON.parse(
@@ -155,7 +157,7 @@ describe('the invitations in the row of the parts of a profile', () => {
 
     standsInTheRowAfterTheParts(parts, button)
     expect(within(parts).getByRole('link', { name: 'Rezultati' })).toHaveAttribute('aria-current', 'page')
-  })
+  }, SLOW)
 
   it('stand on „Priznanja" in the same row', async () => {
     aServer()
@@ -166,7 +168,7 @@ describe('the invitations in the row of the parts of a profile', () => {
 
     standsInTheRowAfterTheParts(parts, button)
     expect(within(parts).getByRole('link', { name: 'Priznanja' })).toHaveAttribute('aria-current', 'page')
-  })
+  }, SLOW)
 
   it('are not drawn on „Podaci", to a reader who is offered them on „Rezultati"', async () => {
     const reader = moderatorWith([OVER_THE_MEMBERS])
@@ -194,7 +196,7 @@ describe('the invitations in the row of the parts of a profile', () => {
 
     expect(screen.queryByRole('button', { name: sr.pair.invite })).toBeNull()
     expect(readsOfWhatHeWaitsOn(onTheData), 'the card asked what he waits on, which only the button needs').toBe(0)
-  })
+  }, SLOW)
 
   it('leave „Poziv ... je poslat" in the row, where the button stood', async () => {
     const user = setupUser()
@@ -212,7 +214,7 @@ describe('the invitations in the row of the parts of a profile', () => {
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: sr.pair.invite })).toBeNull()
     })
-  })
+  }, SLOW)
 
   it('gives every wait half of the time a case has', () => {
     expect(getConfig().asyncUtilTimeout).toBe(SLOW / 2)
