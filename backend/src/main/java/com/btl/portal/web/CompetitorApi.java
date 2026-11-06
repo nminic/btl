@@ -106,7 +106,7 @@ import java.util.List;
  * were answered here on the caller's own row and on nobody else's.
  *
  * <p><b>That shape was right about who may read them and wrong about WHICH member it
- * could reach.</b> This query ends {@code where c.active}, so the member whose fee
+ * could reach.</b> This query ends on {@link AMemberIsActive}, so the member whose fee
  * has LAPSED has no row here and never reached the condition at all - and he is
  * exactly the man V24 section 6 promises the link to: „Svaki clan ima licni link za
  * preporuku... koji vam stoji ispisan na vasoj strani „Moja clanarina"", which is the
@@ -169,7 +169,7 @@ import java.util.List;
  * names the basis of the season being sold, with that season beside it as
  * {@code membershipSeason}. A member who holds no row for that season is answered no basis
  * at all, which is what a member who has not renewed yet holds for it.
- * {@code competitor.active} is a separate fact and is NOT moved here.
+ * Whether he is active ({@link AMemberIsActive}) is a separate fact and is NOT moved here.
  *
  * <p><b>What is NOT answered here, and why each one is a decision rather than an
  * oversight.</b> {@code referredBy} itself - the code of whoever brought the CALLER
@@ -395,7 +395,7 @@ class CompetitorApi {
 	 * which was this resource's own reading (PDL 02.10.2026, since overturned: „Skriven profil vidi
 	 * svako ko je prijavljen, i administrativni nalog koji ne trci"), and a free account and a member
 	 * whose fee has lapsed read it by it. The administration is read off the role the REQUEST
-	 * carries and a member's fee off {@code competitor.active}, so an account that races for
+	 * carries and a member's fee off {@link AMemberIsActive}, so an account that races for
 	 * nobody and is the administration still reads it, and one that races for nobody and is not
 	 * does not.
 	 *
@@ -699,7 +699,7 @@ class CompetitorApi {
 						   OWNER, 25.09.2026 (PDL P26a): the personal referral link „se sklanja
 						   sa javne liste takmicara" and stays only on „Moja clanarina". The
 						   reason is not tidiness but a measurement: this query ends
-						   `where c.active`, so the member whose fee has LAPSED never reached
+						   on `AMemberIsActive`, so the member whose fee has LAPSED never reached
 						   the `case` at all - and he is exactly the man V24 section 6 promises
 						   the link to, on exactly the page he opens to renew.
 

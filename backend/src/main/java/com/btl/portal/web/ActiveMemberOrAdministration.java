@@ -39,17 +39,16 @@ import java.util.Optional;
  * (V23: an account may race for nobody, „the ordinary case and not a fault"). So the member is
  * handed back as the key the row is written under, and not folded into a yes or no.
  *
- * <p><b>ACTIVE MEANS {@code competitor.active}, THE MEMBER NOW, AND NOT A ROW OF
- * {@code membership}.</b> V22 says what the flag answers in its own words - „one boolean with
- * no season in it. It answers "is he a member NOW"" - and it is the fact every other reader of
- * „active" on this server reads: {@link CompetitorApi}'s {@code where c.active}, which is the
- * list a member who has lapsed is not on at all, and the condition {@link PairWriteApi} and
- * {@link TeamJoiningWriteApi} put on the caller, {@code where id = ? and active}, which this
- * asks in the same words. A row of
- * {@code membership} for some season is a different question, and asking it here would let
- * this answer and the public list of members disagree about the same man - the difference
- * PDL's rule of 13.09.2026 forbids, „Nijedan javni odgovor ne sme da imenuje člana kome je
- * članarina istekla, ni posredno".
+ * <p><b>ACTIVE MEANS {@link AMemberIsActive}, THE MEMBER NOW: A ROW OF {@code membership} FOR A
+ * SEASON THAT MAKES HIM ACTIVE AT THIS MOMENT, AND NOT A ROW FOR ANY SEASON.</b> PDL, „Članstvo je
+ * činjenica po sezoni" (13.09.2026): „aktivan je onaj ko ima zapis za tekuću sezonu, a u prelaznom
+ * roku i onaj ko ga ima za narednu." It is the condition every other reader of „active" on this
+ * server asks: {@link CompetitorApi}'s list, which a member who has lapsed is not on at all, and
+ * the condition {@link PairWriteApi} and {@link TeamJoiningWriteApi} put on the caller, which this
+ * asks in the same words. Asked differently here it would let this answer and the public list of
+ * members disagree about the same man - the difference PDL's rule of 13.09.2026 forbids, „Nijedan
+ * javni odgovor ne sme da imenuje člana kome je članarina istekla, ni posredno". Until AF-1
+ * (06.11.2026) all of them read the flag {@code competitor.active}, which has no season in it.
  *
  * <p><b>AND SINCE P8U EVERY WRITE THAT IS A MEMBER'S OWN ASKS {@link #activeMember} FIRST.</b>
  * PDL P8 records the owner's choice of 10.10.2026, made between offered outcomes, as „Šta sme
@@ -179,11 +178,11 @@ class ActiveMemberOrAdministration {
 	 * profile and nothing else. {@code false} for an account that names no member, which has not lapsed
 	 * and keeps the one route a password belongs to the account for, and for a member whose fee stands.
 	 *
-	 * <p><b>HE IS TOLD APART FROM SOMEBODY WHO NEVER PAID BY THE MEMBER NUMBER, AND NOT BY THE FLAG AND
-	 * NOT BY A ROW OF {@code membership}.</b>
+	 * <p><b>HE IS TOLD APART FROM SOMEBODY WHO NEVER PAID BY THE MEMBER NUMBER, AND NOT BY WHETHER HE IS
+	 * ACTIVE AND NOT BY A ROW OF {@code membership} FOR SOME SEASON.</b>
 	 *
 	 * <ul>
-	 * <li>{@code active} is false for both, so it cannot tell them apart.
+	 * <li>Neither is active ({@link AMemberIsActive}), so being active cannot tell them apart.
 	 * <li>V16 says what a member is: „a row in `competitor` is a PERSON WHO REGISTERED. A MEMBER is a row
 	 * whose `member_number` is there", after PDL P8, 31.07.2026, „registrovan a neplacen clan nema
 	 * clanski broj". Counted over {@code src/main} on 11.10.2026, the only statements that write it are

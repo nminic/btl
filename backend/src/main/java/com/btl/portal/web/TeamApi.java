@@ -67,11 +67,10 @@ import java.util.stream.Collectors;
  * and missing there told a public reader what PDL P11 shut. The administration may
  * read the seat, so for it the subtraction is no longer a leak - but the two lists
  * still disagree, and now they disagree in the administration's hands. Measured on the
- * fixture: {@code klub-lovcen}'s seat holds {@code 000003}, whose {@code active} is
- * false; {@code /api/teams} answers the superadmin {@code "organizerMemberNumber":
+ * fixture: {@code klub-lovcen}'s seat holds {@code 000003}, who is not active; {@code /api/teams} answers the superadmin {@code "organizerMemberNumber":
  * "000003"} and {@code /api/competitors}, asked with the SAME cookie by the SAME
  * superadmin, answers {@code 000001}, {@code 000002} and {@code 000004} and no
- * {@code 000003} at all, because {@code CompetitorApi} ends on {@code where c.active}.
+ * {@code 000003} at all, because {@code CompetitorApi} ends on {@link AMemberIsActive}.
  * So {@code AdminTeams.tsx} draws a seat it cannot put a name to, and
  * {@code teamAdmin.ts} finds nobody in the roster to match.
  *
@@ -92,7 +91,7 @@ import java.util.stream.Collectors;
  * <p><b>And one half of that choice is already made ELSEWHERE, which is worth the
  * owner's knowing and is not on its own a reason to follow it here.</b>
  * {@link CommentApi} meets the same two lists and answers
- * {@code case when author.active then author.member_number end}, so a lapsed author's
+ * a {@code case} on {@link AMemberIsActive} around {@code author.member_number}, so a lapsed author's
  * number does not leave at all. Measured, and the difference measured with it: that
  * resource is PUBLIC, and its reason is the subtraction PDL P11 shut - a number leaving
  * there and missing from {@code /api/competitors} names whoever has not paid to anybody
@@ -166,7 +165,7 @@ import java.util.stream.Collectors;
  * there is no number to give you". {@code Optional.empty()} on the component, and the
  * portal's own word for that rather than one invented here: {@link CommentApi} answers
  * {@code memberNumber} as null for an author there is no profile to lead to
- * ({@code case when author.active then author.member_number end}), and
+ * (a {@code case} on {@link AMemberIsActive} around {@code author.member_number}), and
  * {@code CommentApiTest} reads it back as {@code path("memberNumber").isNull()}.</li>
  * </ul>
  *
@@ -822,11 +821,10 @@ class TeamApi {
 
 		   THE FEE IS STANDING, the condition the record and `alsoIn` end on and the one the note on this
 		   class quotes („filtered to the members whose fee is standing"): a member who has not paid is
-		   not on the public list of members (PDL P11). `c.active` IS READ HERE AS THE OTHER STATEMENTS OF
-		   THIS CLASS READ IT, AND ITEM AF OF THE PLAN - which turns that flag from a stored fact into a
-		   derived one (PDL: „Zastavica „aktivan" prestaje da bude podatak i postaje izvedena") - HAS TO
-		   REWRITE THIS STATEMENT TOGETHER WITH THEM. It is written out here and not behind a constant, so
-		   a search for `c.active` finds it, and that search is how it is found.
+		   not on the public list of members (PDL P11). It is asked through `AMemberIsActive` as the other
+		   statements of this class ask it, at the one reading of the clock this route takes; until AF-1
+		   (PDL: „Zastavica „aktivan" prestaje da bude podatak i postaje izvedena") all of them read the
+		   flag `c.active`, and AF-1 rewrote them together.
 
 		   NO MEMBER NUMBER CONDITION, ON PURPOSE, for `alsoIn`'s reason: the record has none either, so a
 		   membership of an active member is named whether or not he has a number.
@@ -888,7 +886,7 @@ class TeamApi {
 						   „manji broj clana", and a row with no number has no place in that order.
 						   `competitor.member_number` is nullable since V16 - „a row in `competitor`
 						   is a PERSON WHO REGISTERED. A MEMBER is a row whose `member_number` is
-						   there" - and nothing ties that column to `active`, so the two conditions
+						   there" - and nothing ties that column to being active, so the two conditions
 						   are independent and the fixture holds a row that satisfies one and not
 						   the other. */
 						"with standing as (" + whoStandsInATeam(now) + ")"

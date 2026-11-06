@@ -149,11 +149,11 @@ import java.util.Map;
  * band the season of each result gives him by the same rule, and the answer is the same to every
  * reader, visitor, member or administration alike - this route
  * takes no caller, and {@code everyNameThatDependsOnTheReader.test.ts} reads that off this
- * source. The condition above is written against the flag {@code competitor.active}, which is
- * on its way out: PDL 13.09.2026, „Zastavica „aktivan" prestaje da bude podatak i postaje
- * izvedena". <b>The increment that does it rewrites that {@code where}, and it must leave
- * {@code runner} exactly as it is</b> - the name does not become something that needs the
- * flag or a membership row, because the decision names the member and not his membership.
+ * source. The condition above was written against the flag {@code competitor.active} until AF-1
+ * (PDL 13.09.2026, „Zastavica „aktivan" prestaje da bude podatak i postaje izvedena"), and since then
+ * it asks {@link AMemberIsActive}. <b>That increment rewrote the {@code where} and left
+ * {@code runner} exactly as it was</b> - the name does not become something that needs a
+ * membership row, because the decision names the member and not his membership.
  *
  * <p><b>A member who hides his profile is named like any other.</b> Hiding is about the
  * profile PAGE and not about the place in a table: PDL P23, 06.09.2026, derived from the

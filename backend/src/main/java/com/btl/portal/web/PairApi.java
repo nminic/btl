@@ -102,8 +102,8 @@ import java.util.List;
  * half it was.</b> „Par se raskida kad jedna strana ne produzi clanarinu" (PDL,
  * 11.08.2026, the owner in four words: „Ne postoji par onda, raskida se."). What
  * is NOT true, and was written here until 13.09.2026, is that the ending takes
- * the row with it. A fee that lapses DELETES NOBODY: it lowers
- * {@code competitor.active}, and the row in {@code racing_pair} is untouched.
+ * the row with it. A fee that lapses DELETES NOBODY: the member stops being active
+ * ({@link AMemberIsActive}), and the row in {@code racing_pair} is untouched.
  * (Deleting the person is a different door and it does take the pair along, since
  * V12 writes both of its keys {@code on delete cascade}; that door is not this
  * one.) The row stays and this reader is the only thing between a pair that does

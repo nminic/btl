@@ -65,7 +65,7 @@ import java.util.List;
  * nije aktivan član ni administracija,
  * nikad prema aktivnom članu"), and every caller here is one of the two by construction:
  * whoever leads a team is read through {@link TeamApi#whoStandsInATeam}, which asks
- * {@code c.active}, and the administration is asked through {@link WhatHeMayDo}. That is the
+ * {@link AMemberIsActive}, and the administration is asked through {@link WhatHeMayDo}. That is the
  * condition {@link CompetitorApi} serves its list by
  * ({@code cast(:readsHiddenProfiles as boolean) or not c.profile_hidden}), so every caller here
  * is a reader it would let in. A condition on it here would hide an applicant from the one team
@@ -77,7 +77,7 @@ import java.util.List;
  *
  * <ul>
  * <li><b>An application from a member whose fee has lapsed is not listed at all</b>, because
- * {@link TeamJoiningWriteApi}'s {@code applicationHeMayDecide} carries {@code c.active} and
+ * {@link TeamJoiningWriteApi}'s {@code applicationHeMayDecide} carries {@link AMemberIsActive} and
  * the team therefore cannot answer it either way. Listed, the screen would offer „Primi u
  * tim" over a row the server refuses.
  * <li><b>An invitation to a member whose fee has lapsed IS listed, with no number on it.</b>
@@ -87,8 +87,8 @@ import java.util.List;
  * empty place, ask again, and be refused - the same broken button from the other side. What
  * is withheld is his NAME and not the row: „Nijedan javni odgovor ne sme da imenuje člana
  * kome je članarina istekla, NI POSREDNO" (PDL, 13.09.2026), carried out the way
- * {@link MyApplicationsApi}'s {@code pairInvites} carries it - {@code case when c.active then
- * c.member_number end} - because {@code /api/competitors} stops carrying him the day the fee
+ * {@link MyApplicationsApi}'s {@code pairInvites} carries it - a {@code case} on
+ * {@link AMemberIsActive} around {@code c.member_number} - because {@code /api/competitors} stops carrying him the day the fee
  * lapses and a number that is here and missing there is itself the answer.
  * </ul>
  *
@@ -297,7 +297,7 @@ class TeamJoiningApi {
 	 * EVERY APPLICATION ADDRESSED TO THIS TEAM AND TO NO OTHER, from somebody who is still a
 	 * member.
 	 *
-	 * <p>{@code c.active} is the condition {@code applicationHeMayDecide} carries, repeated
+	 * <p>{@link AMemberIsActive} is the condition {@code applicationHeMayDecide} carries, repeated
 	 * here so that this list and that refusal name one set. The team is bound from the path
 	 * and the row must agree with it, which is what makes the answer a claim about the table
 	 * rather than an echo of the address.

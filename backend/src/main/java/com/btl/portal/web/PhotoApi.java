@@ -158,9 +158,10 @@ import java.util.regex.Pattern;
  * and not an oversight:</b> shown with PR 515 (10.10.2026) that this member is handed the address
  * and not the bytes, he chose to leave it (the boundary C of that PR, written out in
  * {@link MeApi}). Every other reader, an active member and a visitor included, is answered what a
- * digest nobody wrote is answered: the refusal is inside the lookup and takes the one road out. <b>The question is asked of the HOLDER's {@code competitor.active}
- * and never of the reader's</b>, and the two are different facts that this route now asks side by
- * side: {@code readsHiddenProfiles} is the reader's, {@code his.active} is the holder's, and
+ * digest nobody wrote is answered: the refusal is inside the lookup and takes the one road out. <b>The question is asked of whether the HOLDER is active
+ * ({@link AMemberIsActive}) and never of the reader's</b>, and the two are different facts that this route
+ * now asks side by side: {@code readsHiddenProfiles} is the reader's, the condition on {@code his.id} is
+ * the holder's, and
  * written with one for the other the rule would serve the bytes of a lapsed member to every
  * active reader. {@code PhotoOfAMemberWhoseFeeHasLapsedTest} walks the four combinations.
  *
@@ -397,7 +398,7 @@ class PhotoApi {
 	 * {@code profile_hidden} is not a column of {@code team}, so a rule written over the
 	 * whole {@code or} would refuse a team's mark to every visitor the day one member hid
 	 * himself. {@code whatHoldsAPictureDecidesWhetherItIsAnswered} walks the team's mark as
-	 * a visitor and is what falls. The same goes for {@code his.active}, and a team has no fee.
+	 * a visitor and is what falls. The same goes for whether the holder is active, and a team has no fee.
 	 *
 	 * <p><b>AND THE MEMBER MUST BE ACTIVE, UNLESS THE READER IS HIM OR THE ADMINISTRATION</b>
 	 * ([IZVEDENO 10.10.2026], the paragraph on the fee of the holder at the head of this class).
@@ -418,10 +419,10 @@ class PhotoApi {
 	 * lets a lapsed holder read his own open portrait, which is what he was served before this
 	 * increment as well, and does not undo that choice. An ACTIVE holder who hides is not in this
 	 * clause at all: he is the reader of the next one, and {@code readsHiddenProfiles} is true for him.
-	 * <li>{@code his.active and (readsHidden or not hidden)} - everybody else, and an active holder
+	 * <li>{@code <his.id is active> and (readsHidden or not hidden)} - everybody else, and an active holder
 	 * who hides himself as well, and this is the
-	 * rule that stood alone until this increment with {@code his.active} in front of it. <b>It is
-	 * the HOLDER's {@code active}, a column of {@code his}</b>; the reader's fee is
+	 * rule that stood alone until this increment with the holder's fee in front of it. <b>It is
+	 * whether the HOLDER is active, {@link AMemberIsActive} asked of {@code his.id}</b>; the reader's fee is
 	 * {@code readsHiddenProfiles}, a parameter, and the two answer different questions.
 	 * </ul>
 	 *

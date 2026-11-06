@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  * <p><b>Why a route of its own and not a parameter on {@link CompetitorApi}.</b> The owner,
  * 18.10.2026 (PDL P8, „Osnov članstva ima jedan dom”): „Moderacija članova za administraciju
  * prikazuje i neaktivne članove, uz filter ... javni spisak ostaje samo aktivni.” The public list
- * ends {@code where c.active}, and the portal reads the PRESENCE of a row on it as „this member is
+ * ends on {@link AMemberIsActive}, and the portal reads the PRESENCE of a row on it as „this member is
  * active" on twenty screens ({@code frontend/src/data/types.ts}, the note on {@code Competitor}). A
  * lapsed member put on that answer for the administration would be a member the administration's
  * own screens draw as present everywhere else. So he arrives here, on an answer only the moderation
@@ -44,12 +44,12 @@ import java.util.stream.Collectors;
  * filter, because the row „Uplate" is where that man is handled. The filter itself is the screen's;
  * this answers all of them once and says which are active.
  *
- * <p><b>Active is {@code competitor.active}</b>, the column every other door reads, so the
- * moderation's „Aktivni" is exactly the public list. Since 19.10.2026 one door writes it from the rows
- * of {@code membership}: a season cancelled on the member's row ({@link MemberMembershipApi}) leaves him
- * active exactly when a row remains for the season being run, or in the window for the next one (PDL
- * P8, 13.09.2026). Nothing else lowers it yet, so a member whose fee simply lapsed at a New Year is
- * still on „Aktivni" until the flag is derived for everybody, which is its own increment (V22).
+ * <p><b>Active is {@link AMemberIsActive}</b>, the condition every other door asks, so the
+ * moderation's „Aktivni" is exactly the public list. It is read off the rows of {@code membership} at
+ * the moment of the request (PDL P8, 13.09.2026, „aktivan je onaj ko ima zapis za tekuću sezonu, a u
+ * prelaznom roku i onaj ko ga ima za narednu"), so a member whose fee lapsed at a New Year leaves
+ * „Aktivni" at 16:00 on 1 January (PDL, 06.11.2026) with nobody writing anything. Until AF-1 this read
+ * the flag {@code competitor.active}, which nothing lowered at a New Year.
  */
 @RestController
 class MembersApi {
@@ -95,7 +95,7 @@ class MembersApi {
 	 *                         Država”). The same column {@code currency} is worked out from, and the
 	 *                         same code {@link CompetitorApi.Competitor} answers; the town and the
 	 *                         country are public (PDL P23), so nothing new is told to anybody
-	 * @param active           whether his fee stands, as {@code competitor.active} says it
+	 * @param active           whether his fee stands, as {@link AMemberIsActive} says it
 	 * @param membershipBasis  the basis of the season ON SALE ({@link SeasonClock#seasonBeingPaidFor}),
 	 *                         absent for a member who holds no row of it: the same field, under the
 	 *                         same name and the same rule, as {@link CompetitorApi.Competitor}

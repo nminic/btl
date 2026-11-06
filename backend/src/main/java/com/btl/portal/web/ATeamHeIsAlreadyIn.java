@@ -67,7 +67,7 @@ import java.util.List;
  * class asks is „would that row be refused".
  *
  * <p><b>It asks nothing about the fee.</b> Whether a member is still a member is
- * {@code competitor.active}, one table away and one question along; every caller asks it
+ * {@link AMemberIsActive}, one table away and one question along; every caller asks it
  * for itself, because the answer it wants differs - one refuses the caller, one hides a
  * row, and one leaves a name out of an answer.
  */

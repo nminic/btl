@@ -980,7 +980,7 @@ class TeamWriteApi {
 	 * turns. {@link PairWriteApi} asks the identical question of its own two halves.
 	 *
 	 * <p><b>{@link #propose} asks the same question, and since P8U it asks it first.</b> It
-	 * used to read {@code competitor.active} nowhere, so the portal refused a lapsed member here
+	 * used to ask whether he was active nowhere, so the portal refused a lapsed member here
 	 * and accepted a team from him one method up; it now opens with
 	 * {@link ActiveMemberOrAdministration#activeMember} (PDL P8, 10.10.2026, „timove").
 	 */

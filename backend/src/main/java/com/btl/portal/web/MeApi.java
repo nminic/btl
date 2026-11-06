@@ -78,7 +78,7 @@ import java.util.List;
  * the entry „Šta sme neplaćen član" (10.10.2026) and its addition of 11.10.2026, by which a
  * member whose fee has lapsed is answered 404 on {@code PUT /api/me} and
  * {@code PUT /api/me/password} while one who never paid is not. The flag is
- * {@code competitor.active}, the column every other door reads, and it rides on the record beside
+ * {@link AMemberIsActive}, the condition every other door asks, and it rides on the record beside
  * the basis. Nothing is decided here about what to SHOW; this only says a fact that is his own.
  *
  * <p><b>AND THREE FIELDS THAT ARE HIS OWN BUSINESS AND NOBODY ELSE'S, each here
@@ -101,7 +101,7 @@ import java.util.List;
  * <li><b>His referral code, and the count of who he has brought in.</b> These were
  * left out with the sentence „ANSWERED ALREADY, by {@link CompetitorApi}, on the
  * caller's own row", and that sentence does not survive a probe. That route
- * computed both inside a query that ends {@code where c.active}, so a member whose
+ * computed both inside a query that ends on whether he is active, so a member whose
  * fee has lapsed is not among its rows at all and his row never reached the
  * {@code case} that would have filled them in: signed in with his own cookie he
  * asked {@code /api/competitors} and got back neither field, while an active member
@@ -325,9 +325,9 @@ class MeApi {
 	 * @param membershipSeason the season {@code membershipBasis} is the basis OF, present exactly
 	 *                     when it is, so the screen names the year rather than working it out a
 	 *                     second time from its own clock
-	 * @param active       WHETHER HIS FEE STANDS NOW, which is {@code competitor.active} and the
+	 * @param active       WHETHER HIS FEE STANDS NOW, which is {@link AMemberIsActive} and the
 	 *                     one fact this record could not tell until 11.10.2026. Never absent: the
-	 *                     column is NOT NULL. <b>It is what tells a member whose fee has lapsed
+	 *                     condition is an {@code exists}, true or false. <b>It is what tells a member whose fee has lapsed
 	 *                     from one whose fee stands</b>, who were otherwise answered the same
 	 *                     names (measured 11.10.2026 against a real database: a standing member
 	 *                     and a lapsed one differed in nothing that says anything about the fee,
@@ -341,7 +341,7 @@ class MeApi {
 	 *                     and never paid (ADL A44), a number and not active is a member whose fee
 	 *                     has lapsed, and a number and active is a member. The fourth combination,
 	 *                     active with no number, is a state nothing in the portal writes
-	 *                     ({@code PaymentApi} draws the number in the statement that sets the flag,
+	 *                     ({@code PaymentApi} draws the number in the statement that writes the season,
 	 *                     and {@code MeApiTest.everyRowHereIsAStateThePortalCanWrite} refuses it),
 	 *                     so a reader may let the number decide and use this flag only for a
 	 *                     member who has one. <b>Answered to HIM and to nobody else</b>, by the

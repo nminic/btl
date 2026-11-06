@@ -179,7 +179,7 @@ import java.util.Optional;
  * strani za obnovu clanarine")): „Želim da od svih mesta član kojem je istekla
  * članarina može da pristupa samo strani za obnovu članarine... jer se sve akcije za njega
  * brane." Getting into a team is such an action, and so is deciding about somebody's, so
- * {@code competitor.active} is asked of the caller, of the applicant and of the invitee.
+ * whether he is active ({@link AMemberIsActive}) is asked of the caller, of the applicant and of the invitee.
  * {@link JoiningATeam} does NOT ask it and says so itself - „Whether a member has paid is
  * the service layer's question, and it is still open" - so this class is that layer and this
  * paragraph is the answer. {@link TeamApi#whoStandsInATeam} already carries the same
@@ -193,12 +193,12 @@ import java.util.Optional;
  * ulaz u tim traži plaćenu narednu sezonu": „Prijava u tim, prihvatanje poziva i predlog novog
  * tima traže članstvo za sezonu za koju se plaća (naredna, u prelaznom roku). Poziv sme da se
  * pošalje i članu koji narednu nije platio, ali on ga prihvata tek kad plati. Izlazak iz tima ne
- * traži ništa." {@code competitor.active} has no season in it (V22), so a member who had paid
- * only the season being run passed every door below. Asked of
+ * traži ništa." Being active is not that question: in the window a member who has paid only the
+ * season being run is active, and until 31.10.2026 he passed every door below. Asked of
  * {@link AMembershipOfTheSeasonHeWouldJoin}, the one place that holds the question: on
  * {@link #apply} and on {@link #answer} with „Prihvati", as a 409 that names itself
  * ({@link #THE_SEASON_IS_NOT_PAID}) because the reader is the member and it is HIS fee; on
- * {@link #decide} as the applicant simply not being there, the way {@code c.active} already
+ * {@link #decide} as the applicant simply not being there, the way {@link AMemberIsActive} already
  * hides one whose fee has lapsed (PDL 06.09.2026, „Prijava člana koji je u međuvremenu dobio
  * tim se timu ne prikazuje"). {@link #invite} asks nothing of the man it invites and says so in
  * its note, and leaving asks nothing at all.

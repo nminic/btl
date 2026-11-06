@@ -99,11 +99,12 @@ import java.util.Set;
  *
  * <p><b>WHAT A CANCELLATION LEAVES</b>: the member's number (14.09.2026), his results (they stop
  * counting in that season and come back with a new membership, PDL P8, „Storno jedine sezone:
- * rezultati se ne brišu”), the referrer's reward, and {@code active} as the rows that remain say it:
+ * rezultati se ne brišu”), the referrer's reward, and the flag {@code active} as the rows that remain say it:
  * „aktivan je onaj ko ima zapis za tekuću sezonu, a u prelaznom roku i onaj ko ga ima za narednu” (PDL
- * P8, 13.09.2026). It is the first door of the portal that can make a member inactive, so it is never
- * written {@code false} blindly: a member cancelled for next season who holds the running one stays
- * active.
+ * P8, 13.09.2026). It is never written {@code false} blindly: a member cancelled for next season who
+ * holds the running one stays active. Since AF-1 the flag is only written; whether he is active is
+ * {@link AMemberIsActive}, asked of the rows themselves, so the cancellation makes him inactive by
+ * taking the row away.
  */
 @RestController
 class MemberMembershipApi {
@@ -286,9 +287,10 @@ class MemberMembershipApi {
 		   code against the book as it now stands. */
 		book.forgetThePromise(member.get(), season);
 
-		/* AND `active` IS WHAT THE ROWS THAT REMAIN SAY, from the same reading of the clock: the season
-		   being run, and in the window the next one, which `seasonBeingPaidFor` is exactly when the
-		   window is open. Outside the window the two are one season, and the one just cancelled. */
+		/* AND THE FLAG `active` IS WRITTEN AS THE ROWS THAT REMAIN SAY, from the same reading of the clock:
+		   the season being run, and in the window the next one. Since AF-1 nothing reads it (whether he is
+		   active is `AMemberIsActive`, asked of the rows themselves); it is still written so that a step
+		   back to the column is a revert. */
 		db.sql("update competitor set active = exists(select 1 from membership m"
 						+ " where m.competitor_id = competitor.id and m.season in (?, ?)) where id = ?")
 				.params(SeasonClock.seasonBeingRun(now), season, member.get())

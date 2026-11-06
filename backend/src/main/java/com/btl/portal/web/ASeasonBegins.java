@@ -50,9 +50,10 @@ import java.util.Set;
  * sent: PDL 13.09.2026, „Uplata kupuje sezonu po danu knjiženja".
  *
  * <p><b>{@code competitor.active} IS NEITHER READ NOR WRITTEN HERE</b>, and that is ADL 05.11.2026, „Posao od
- * 1. januara: tri toka i jedan redosled": the flag becomes derived in its own increment (AF). Reading it
- * would answer „was he ever activated", which every member in a team was; the membership of the season is
- * the fact.
+ * 1. januara: tri toka i jedan redosled". Reading it would answer „was he ever activated", which every
+ * member in a team was; the membership of the season is the fact. The seats are read through
+ * {@link TeamApi#whoStandsInATeam}, which since AF-1 asks {@link AMemberIsActive} at a moment, and that
+ * moment is chosen here on purpose (see {@link #begin} and {@link #before}).
  *
  * <p><b>WHAT IS WRITTEN IS WHAT THE PORTAL ALREADY WRITES BY HAND, IN THE SAME SHAPES.</b> A membership that
  * covers the season that just ended is ended at it, with a reason, exactly as {@link TeamWriteApi} ends one

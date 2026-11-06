@@ -185,8 +185,9 @@ import java.util.Optional;
  * „a condition over either column would refuse EVERY pair agreed between January and
  * September". That is true of {@code membership (competitor_id, season, basis)}, which carries
  * a season and has no row for the one being formed until it goes on sale on 11 November. <b>It
- * is false of {@code competitor.active}</b>, and V22 says so in as many words: „`competitor.
- * active` (V7) is one boolean with no season in it. It answers „is he a member NOW"." Two
+ * is false of whether he is active NOW</b>, which V22 said of the flag in as many words: „`competitor.
+ * active` (V7) is one boolean with no season in it. It answers „is he a member NOW"." Since AF-1 that
+ * question is {@link AMemberIsActive}, asked of the seasons that make him active at this moment. Two
  * columns were read as one fact, the wrong half of the sentence was carried over to the other,
  * and a whole rule was derived from it. What the review then measured is what that cost: a
  * member whose partner stopped paying was refused a new pair FROM BOTH DIRECTIONS, over a pair
@@ -642,7 +643,7 @@ class PairWriteApi {
 		   pair still HOLDS, which is a fact about the league and is the reader's answer, so a
 		   half who stopped paying makes it no. This one asks what rows stand in the way of an
 		   INSERT, and `racing_pair_one_man_a_season` is an index: it sees every row there is
-		   and does not read `competitor.active` at all. Filtered the same way, a stale row
+		   and does not ask whether anybody is active at all. Filtered the same way, a stale row
 		   whose other half had lapsed would survive the delete and then refuse the insert,
 		   and the member would meet a server fault instead of a pair. */
 
@@ -698,7 +699,7 @@ class PairWriteApi {
 	 * <p>Two branches and never a self-join: a row where {@code man} already stood abandons
 	 * whoever is on the OTHER side of it, and the same for {@code woman}, so each branch's own
 	 * join hands back the very name {@code {who}} needs without a second lookup. Neither branch
-	 * filters on {@code active} - the DELETE two lines below does not either, and a stale row
+	 * filters on whether anybody is active - the DELETE two lines below does not either, and a stale row
 	 * that survives a lapsed fee (V22) is exactly the row this method must still find, or the
 	 * member it named would meet silence where {@link #end} already answers with a name.
 	 *
@@ -908,7 +909,7 @@ class PairWriteApi {
 	 * half is called and which season it runs in. The name is read HERE rather than after the
 	 * delete, because after it there is no row left to read either of them off.
 	 *
-	 * <p><b>{@code man.active and woman.active} IS {@link PairApi}'S CONDITION AND NOT A NEW
+	 * <p><b>BOTH HALVES ACTIVE ({@link AMemberIsActive}) IS {@link PairApi}'S CONDITION AND NOT A NEW
 	 * ONE</b>, for the reason {@link #eitherHoldsAPairIn} gives: nothing deletes the row when
 	 * a fee lapses, so the row outlives the pair, and a reader is where the portal turns one
 	 * into the other. A member whose partner stopped paying is not refused anything by this -
@@ -1035,7 +1036,7 @@ class PairWriteApi {
 	 * ({@link Asking}), so there is no half answer to give: he is answered for, or he is not
 	 * there at all.
 	 *
-	 * <p><b>What it was before, and what that cost.</b> Read without {@code active}, this
+	 * <p><b>What it was before, and what that cost.</b> Read without asking whether he is active, this
 	 * route told three different stories about three people: a number nobody carries answered
 	 * 404 with an empty body, a lapsed member of the wrong gender answered 409 and named his
 	 * gender, and a lapsed member of the right gender answered 201 and named HIM. Member
@@ -1080,7 +1081,7 @@ class PairWriteApi {
 	/**
 	 * THE CALLER HIMSELF, whom the route has already let through as a member whose fee stands.
 	 *
-	 * <p>{@code single()} and no {@code active} here, because that question was asked once,
+	 * <p>{@code single()} and no question about being active here, because that question was asked once,
 	 * first, by {@link ActiveMemberOrAdministration#activeMember}, and the id came out of it: a
 	 * second copy of the condition here would be a branch nothing reaches, which the coverage gate
 	 * refuses and the next reader would delete without knowing why it was there.
@@ -1107,9 +1108,9 @@ class PairWriteApi {
 	 *
 	 * <p>„Par se raskida kad jedna strana ne produzi clanarinu" (owner, 11.08.2026, „Ne
 	 * postoji par onda, raskida se"), and nothing deletes the row when that happens: a fee
-	 * that lapses lowers {@code competitor.active} and removes nobody. So the row outlives
+	 * that lapses makes him inactive ({@link AMemberIsActive}) and removes nobody. So the row outlives
 	 * the pair, and {@link PairApi} is where the portal already turns one into the other,
-	 * with {@code where man.active and woman.active}.
+	 * by asking both halves whether they are active.
 	 *
 	 * <p><b>Counting the raw row instead was a measured fault and not a nicety.</b> A member
 	 * whose partner stopped paying would be told {@code A_PAIR_ALREADY_HOLDS} from BOTH

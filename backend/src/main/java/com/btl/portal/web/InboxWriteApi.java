@@ -96,9 +96,9 @@ import java.util.Optional;
  *
  * <p><b>WHICH MEMBERS, AND IT IS THE PORTAL'S OWN RULE ABOUT WHOM IT SHOWS rather than a
  * new one - in its first half.</b> {@code frontend/src/pages/profile/visible.ts}: a profile is
- * there when {@code competitor.active} and the member does not hide it from a reader who may
+ * there when he is active and the member does not hide it from a reader who may
  * not read a hidden profile. Only the first half is asked here, and it is exactly the list
- * {@link CompetitorApi} serves („where c.active", the owner's choice of 13.09.2026: „a member
+ * {@link CompetitorApi} serves ({@link AMemberIsActive}, the owner's choice of 13.09.2026: „a member
  * whose fee has lapsed is not on this list at all"). <b>The second half is deliberately NOT
  * asked, and the sender is not necessarily a reader who would pass it</b>: he is anybody signed
  * in with a member behind the account, and nothing here reads that member's fee, so a member
@@ -150,7 +150,7 @@ import java.util.Optional;
  * rewritten to ADL A37's replacement text by a trigger. Nothing in this class changes for
  * that - what it writes is the name of a member who is here.
  * <li><b>So the form is satisfied by the SCHEMA and not by a condition in this class.</b>
- * {@link CommentApi} needs {@code case when author.active then author.member_number end}
+ * {@link CommentApi} needs a {@code case} on {@link AMemberIsActive} around {@code author.member_number}
  * because {@code event_comment} serves a number; {@code message} has no such column at all,
  * so there is no number here to leave out.
  * <li><b>The other two forms do not fit, and that is why rather than a preference.</b> The
