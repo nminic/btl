@@ -343,7 +343,7 @@ describe('Resource, when what failed is read again and works', () => {
     expect(kept).toHaveTextContent('Trke')
     /* Hidden by the class and not by a rule of this file: jsdom applies no stylesheet, so the class
        is the only thing that says the node is not a line of the page. Without it the node is a
-       visible row and a flex item that adds a gap (measured: the class taken off, 37 passed). */
+       visible row and a flex item that adds a gap (measured: the class taken off, and the file stayed green). */
     expect(kept).toHaveClass('visually-hidden')
     /* In front of what was drawn and in the same place, which is what keeps the reader where he
        was: the next thing read is the part, and the next Tab goes into it. */
