@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor, within } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearResourceCache } from '../data/client'
 import sr from '../i18n/sr.json'
 import { renderAt } from '../test/render'
@@ -14,6 +14,14 @@ import { SLOW } from '../test/slow'
  * the record that 2027 is frozen, and never from the ladders run again (`frozenScreens.test.tsx` says how
  * the suite stands; the table of the season is there).
  */
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, as in `admin/saveWhileSaving.test.tsx`: a
+   case that ends by its own clock says nothing about what it was asked. The global wait is `SLOW`
+   (`test/setup.ts`) and a case is given five seconds, so a wait that never succeeded ended by the clock of
+   the case, and a series of mutations over these screens (06.11.2026) counted thirteen such as caught. Set
+   here, and so for this file alone. */
+vi.setConfig({ testTimeout: SLOW })
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 const json = (body: unknown) =>
   new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
@@ -113,7 +121,7 @@ describe('the top lists of a frozen season', () => {
     expect(await screen.findByRole('heading', { name: sr.topBoards.kilometers }, { timeout: 15_000 })).toBeInTheDocument()
     expect(server.asked.map((one) => one.path)).toContain('/api/frozen-tables/2027')
     expect(server.asked.map((one) => one.path)).not.toContain('/api/frozen-tables/2028')
-  }, SLOW)
+  }, 2 * SLOW)
 })
 
 describe('the team standings of a frozen season', () => {
@@ -271,5 +279,11 @@ describe("a member's trophies in a frozen season", () => {
     renderAt('/sr/takmicar/000001/priznanja?sezona=sve')
 
     expect(await screen.findByText(sr.data.error)).toBeInTheDocument()
+  })
+})
+
+describe('the clocks of this file', () => {
+  it('wait half of the time a case has, so that a wait that fails fails by its own words', () => {
+    expect(getConfig().asyncUtilTimeout * 2).toBe(SLOW)
   })
 })

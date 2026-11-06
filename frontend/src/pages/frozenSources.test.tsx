@@ -1,5 +1,5 @@
-import { screen, waitFor, within } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearResourceCache } from '../data/client'
 import type { Result } from '../data/types'
 import sr from '../i18n/sr.json'
@@ -19,6 +19,14 @@ import { SLOW } from '../test/slow'
  * - A run of 2028 by a member whose 2027 the live results do not hold: the list of progress of 2028
  *   measures him against what 2027 held at its freeze, which only the snapshot says.
  */
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, as in `admin/saveWhileSaving.test.tsx`: a
+   case that ends by its own clock says nothing about what it was asked. The global wait is `SLOW`
+   (`test/setup.ts`) and a case is given five seconds, so a wait that never succeeded ended by the clock of
+   the case, and a series of mutations over these screens (06.11.2026) counted thirteen such as caught. Set
+   here, and so for this file alone. */
+vi.setConfig({ testTimeout: SLOW })
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 const json = (body: unknown) =>
   new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } })
@@ -101,7 +109,7 @@ describe('the list of progress of the season after a frozen one', () => {
     const progress = await screen.findByRole('heading', { name: sr.topBoards.progress }, { timeout: 15_000 })
 
     await waitFor(() => expect(progress.closest('section')?.textContent).toContain('Stamenkovska'))
-  }, SLOW)
+  }, 2 * SLOW)
 })
 
 describe('the list of competitions', () => {
@@ -117,5 +125,11 @@ describe('the list of competitions', () => {
     const other = screen.getByRole('heading', { name: /Planinska liga 2027/ }).closest('section, article, li')
 
     expect(other?.textContent).toContain(`${sr.leagues.entrants}: 0`)
+  })
+})
+
+describe('the clocks of this file', () => {
+  it('wait half of the time a case has, so that a wait that fails fails by its own words', () => {
+    expect(getConfig().asyncUtilTimeout * 2).toBe(SLOW)
   })
 })

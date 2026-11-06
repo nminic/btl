@@ -1,8 +1,9 @@
-import { screen, within } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { configure, getConfig, screen, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearResourceCache } from '../data/client'
 import { renderAt } from '../test/render'
 import { serverThat } from '../test/serverAnswers'
+import { SLOW } from '../test/slow'
 
 /**
  * THE SCREENS OF A FROZEN SEASON DRAW THE SNAPSHOT, AND ONLY FOR A SEASON THE RECORD SAYS IS FROZEN.
@@ -20,6 +21,14 @@ import { serverThat } from '../test/serverAnswers'
  * Every one of those names is also somewhere the live answers would put a DIFFERENT member or number, so
  * a screen reading the live ladder instead of the snapshot cannot pass.
  */
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, as in `admin/saveWhileSaving.test.tsx`: a
+   case that ends by its own clock says nothing about what it was asked. The global wait is `SLOW`
+   (`test/setup.ts`) and a case is given five seconds, so a wait that never succeeded ended by the clock of
+   the case, and a series of mutations over these screens (06.11.2026) counted thirteen such as caught. Set
+   here, and so for this file alone. */
+vi.setConfig({ testTimeout: SLOW })
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 const FROZEN_2027 = () =>
   new Response(JSON.stringify([{ season: 2027 }]), { status: 200, headers: { 'content-type': 'application/json' } })
@@ -93,5 +102,11 @@ describe('the table of a frozen season', () => {
 
     await screen.findByRole('heading', { level: 1 })
     expect(server.asked.map((one) => one.path)).not.toContain('/api/frozen-tables/2027')
+  })
+})
+
+describe('the clocks of this file', () => {
+  it('wait half of the time a case has, so that a wait that fails fails by its own words', () => {
+    expect(getConfig().asyncUtilTimeout * 2).toBe(SLOW)
   })
 })
