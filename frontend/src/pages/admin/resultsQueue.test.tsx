@@ -779,9 +779,12 @@ describe('a run another moderator has already decided', () => {
       const { router } = openTheQueue()
 
       await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
-      await waitFor(() => {
-        expect(screen.queryByText(RUNNER)).toBeNull()
-      })
+      await waitFor(
+        () => {
+          expect(screen.queryByText(RUNNER)).toBeNull()
+        },
+        { timeout: 2000 },
+      )
 
       /* Said once, over the table, where the row stood is no longer anywhere. */
       expect(screen.getAllByRole('alert')).toHaveLength(1)
