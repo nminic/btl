@@ -308,12 +308,20 @@ class DucatApiTest {
 	 * anything the catalogue carries - the number, both his names, and the figure he
 	 * reached - so finding one is finding him and not something else.
 	 *
+	 * <p><b>And four strings are not the whole claim, so the answer is also the SAME TEXT with the
+	 * holder and without him.</b> What of him could arrive is not limited to what this case thought
+	 * to look for: the key of his row written onto a name ({@code Sezonski kilometri #1}) carries
+	 * none of the four and was measured to pass. The answer read before he exists is the reference, so
+	 * a holder who changes a single byte of it is found whatever the byte is.
+	 *
 	 * <p>The day a screen reads recognitions this case is what has to be decided against
 	 * rather than deleted: the holder is named by his MEMBER NUMBER, which is what
 	 * section 3 of the privacy policy publishes, and never by a name beside anything else off his row.
 	 */
 	@Test
 	void nothingAboutWhoHoldsADucatLeavesTheServer() throws Exception {
+		String withNobodyHoldingOne = whole();
+
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 				+ " place_id, city, country_id, first_season,"
 				+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
@@ -335,6 +343,10 @@ class DucatApiTest {
 		assertThat(whole).as("the answer carries nothing at all, so it says nothing about what it"
 				+ " leaves out").contains("duk-sezonski-km", "duk-obim-planete");
 
+		assertThat(whole)
+				.as("the answer changed by a holder existing, so something of him left the server under a"
+						+ " name the four strings below do not look for")
+				.isEqualTo(withNobodyHoldingOne);
 		assertThat(whole).as("the member number of somebody who holds a ducat left the server")
 				.doesNotContain("000777");
 		assertThat(whole).as("the name of somebody who holds a ducat left the server")

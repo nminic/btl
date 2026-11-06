@@ -299,6 +299,11 @@ class ResultsByTheLeagueApiTest {
 	void theListIsEveryMemberWithANumberActiveOrNot() throws Exception {
 		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
 				.param(BOJAN).update();
+		/* AND HIDDEN OR NOT: the list is for a moderator choosing whose result to enter, and a member who
+		   hides his profile from the public still races (the owner's sentence says every member with a
+		   number). Two of the five hide it, neither of them the first nor the last. */
+		db.sql("update competitor set profile_hidden = true where member_number in (?, ?)")
+				.params(ANA, VERA).update();
 
 		assertThat(http.perform(asking(null, get("/api/results/runners"))).andReturn().getResponse()
 				.getStatus()).isEqualTo(401);
@@ -452,6 +457,51 @@ class ResultsByTheLeagueApiTest {
 				row(VERA, null, null, null, AN_HOUR),
 				row(BOJAN, null, null, null, AN_HOUR),
 				row(MIRA, null, null, null, AN_HOUR))).getStatus()).isEqualTo(201);
+	}
+
+	/**
+	 * A RACE RUN TODAY IS TAKEN, AND TOMORROW'S IS NOT (PDL P9, 11.08.2026: „rezultat je moguće uneti na
+	 * kalendarski dan te trke ili kasnije"). The day itself is the boundary the cases beside it do not
+	 * stand on: the race to come is months away in {@link #IN_JUNE}, so a comparison that refused the
+	 * race of the current day as well as the later ones answered all of them.
+	 */
+	@Test
+	void aRaceOfTodayIsTakenAndARaceOfTomorrowIsNot() throws Exception {
+		clock.moveTo(Instant.parse("2027-09-01T10:00:00Z"));
+
+		MockHttpServletResponse today = entered(RESULTS_MODERATOR, theRaceToCome,
+				rows(row(VERA, null, null, null, AN_HOUR)));
+
+		assertThat(today.getStatus())
+				.as("a race run today was refused: %s", today.getContentAsString())
+				.isEqualTo(201);
+
+		clock.moveTo(Instant.parse("2027-08-31T10:00:00Z"));
+
+		MockHttpServletResponse tomorrow = entered(RESULTS_MODERATOR, theRaceToCome,
+				rows(row(BOJAN, null, null, null, AN_HOUR)));
+
+		assertThat(tomorrow.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(tomorrow)).isEqualTo(ResultWriteApi.THE_RACE_HAS_NOT_BEEN_RUN);
+	}
+
+	/**
+	 * THE DAY IS TODAY IN THE LEAGUE'S ZONE AND NOT IN UTC. At 22:30 UTC on 31 August it is already 1
+	 * September in Belgrade, so the race of 1 September has been run there; read in UTC it is tomorrow's.
+	 * The clock of this class answers UTC for its own zone, which is why the route has to ask for the
+	 * league's.
+	 */
+	@Test
+	void todayIsTheDateInTheLeaguesZoneAndNotInUTC() throws Exception {
+		clock.moveTo(Instant.parse("2027-08-31T22:30:00Z"));
+
+		MockHttpServletResponse answer = entered(RESULTS_MODERATOR, theRaceToCome,
+				rows(row(VERA, null, null, null, AN_HOUR)));
+
+		assertThat(answer.getStatus())
+				.as("a race of the day it already is in Belgrade was refused as one to come: %s",
+						answer.getContentAsString())
+				.isEqualTo(201);
 	}
 
 	@Test

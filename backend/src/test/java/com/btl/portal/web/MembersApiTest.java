@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.category.Category;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -131,6 +132,58 @@ class MembersApiTest {
 		account(AN_ACTIVE_MEMBER, "competitor", onlyTheNext);
 		account(A_LAPSED_MEMBER, "competitor", lapsedWithNone);
 		account(NEVER_A_MEMBER, "competitor", neverAMember);
+	}
+
+	/**
+	 * THE BAND ON THE LIST IS WORKED OUT FOR THE SEASON OF HIS CARD, AND NOT FOR THE ONE ON SALE.
+	 *
+	 * <p>Everybody else in this file was born in 1980, so two seasons a year apart give them one band and
+	 * a list that took the wrong season answered right. These two were born in 2003: aged 24 in 2027 and 25
+	 * in 2028, so the band changes with the season. On the day the file runs (2028 on sale while 2027 is
+	 * still being run) the one who holds only 2027 is carded for 2027 and the one who holds only 2028 for
+	 * 2028 (PDL, owner, 30.10.2026: the running season where he holds it, the one on sale where he holds
+	 * only that); the band the other season would give is read from the same domain function and asked to
+	 * differ, so neither answer can be right by accident.
+	 */
+	@Test
+	void theBandOnTheListIsWorkedOutForTheSeasonOfHisCard() throws Exception {
+		long running = memberBornIn2003("000031", "Ivan", "Jovic", "11aa22bb33cc44f1");
+		long onSale = memberBornIn2003("000033", "Jovana", "Ilic", "11aa22bb33cc44f2");
+
+		HeldOn.season(db, running, 2027, "payment");
+		HeldOn.season(db, onSale, 2028, "payment");
+
+		assertThat(Category.ageBandFor(2003, 2027).code())
+				.as("the two seasons give one band for somebody born in 2003, so this asks nothing")
+				.isNotEqualTo(Category.ageBandFor(2003, 2028).code());
+
+		assertThat(bandOf("000031"))
+				.as("the member who holds only the season being run is carded for it")
+				.isEqualTo(Category.ageBandFor(2003, 2027).code());
+		assertThat(bandOf("000033"))
+				.as("the member who holds only the season on sale is carded for it")
+				.isEqualTo(Category.ageBandFor(2003, 2028).code());
+	}
+
+	private String bandOf(String memberNumber) throws Exception {
+		for (JsonNode one : members()) {
+			if (memberNumber.equals(one.path("memberNumber").asString())) {
+				return one.path("ageBand").asString();
+			}
+		}
+
+		throw new AssertionError("no member " + memberNumber + " on the list");
+	}
+
+	private long memberBornIn2003(String number, String first, String last, String referralCode) {
+		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+						+ " birth_date, place_id, first_season, referral_code,"
+						+ " bio, profile_hidden, birthday_shown, father_name, address, shirt_size,"
+						+ " health_statement_at) values (?, ?, ?, 'M', date '2003-05-05',"
+						+ " (select id from place where rank = 1), 2027, ?, '', false, 'none',"
+						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
+				.params(number, first, last, referralCode)
+				.query(Long.class).single();
 	}
 
 	private long member(String number, String first, String last, String gender, boolean hidden, String referralCode) {

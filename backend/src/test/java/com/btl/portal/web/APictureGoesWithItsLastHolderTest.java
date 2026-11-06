@@ -241,6 +241,7 @@ class APictureGoesWithItsLastHolderTest {
 	 */
 	@AfterEach
 	void takeBackWhatWasReallyCommitted() throws IOException {
+		db.sql("delete from team where slug = ?").param(A_TEAM).update();
 		db.sql("delete from verification where competitor_id in"
 						+ " (select id from competitor where member_number in (?, ?))")
 				.params(HIS, ANOTHER).update();
@@ -260,6 +261,95 @@ class APictureGoesWithItsLastHolderTest {
 				}
 			}
 		}
+	}
+
+	// ---------------------------------------------------------------- a picture two columns hold
+
+	/** The team a case gives a logo to, which goes with the case. */
+	private static final String A_TEAM = "slika-tim-dva-nosioca";
+
+	/**
+	 * A PICTURE THAT TWO COLUMNS HOLD STAYS WHEN ONE OF THEM LETS GO, BY EACH OF THE FOUR DOORS THAT LET
+	 * GO OF A PICTURE.
+	 *
+	 * <p>The doors are the member taking his portrait down, the member replacing the picture that waits,
+	 * a member being deleted, and a team going with its last member. Each used to carry a {@code delete
+	 * from photo} of its own, and the rule moved into the database (V54, ADL A68, 03.10.2026): the row goes
+	 * when no column points at it. A delete written back into one of the doors is invisible to every case
+	 * above, because those start from a picture ONE column holds and the row is meant to go. It is
+	 * visible only here: the schema allows two holders of one row (every key to {@code photo} is
+	 * {@code on delete set null}), so a delete that ignored the second would empty HIS pointer. The other
+	 * member stands on the shared picture in each, and the case asks that he still does.
+	 */
+	@Test
+	void aPortraitTakenDownByOneOfTwoWhoStandOnItStaysForTheOther() throws Exception {
+		long shared = standingOn(his);
+
+		standingOn(another, shared);
+
+		assertThat(http.perform(delete("/api/me/photo").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, signedInAs(his))))
+				.andReturn().getResponse().getStatus())
+				.as("the portrait was not taken down, so this case measures nothing")
+				.isEqualTo(200);
+
+		assertThat(standingPicturesOf(HIS)).as("he still stands on what he took down").isEmpty();
+		assertThat(theRowStands(shared))
+				.as("the row was deleted though another member's profile still points at it")
+				.isTrue();
+		assertThat(standingPicturesOf(ANOTHER)).containsExactly(shared);
+	}
+
+	@Test
+	void aWaitingPictureReplacedWhileAnotherMemberStandsOnItStaysForHim() throws Exception {
+		long shared = standingOn(another);
+
+		waitingWith(his, shared);
+		sendsAPicture(signedInAs(his));
+
+		assertThat(waitingPicturesOf(his)).as("the new picture does not wait").hasSize(1)
+				.doesNotContain(shared);
+		assertThat(theRowStands(shared))
+				.as("the row of the picture that was replaced went though another member stands on it")
+				.isTrue();
+		assertThat(standingPicturesOf(ANOTHER)).containsExactly(shared);
+	}
+
+	@Test
+	void aMemberDeletedWhileAnotherStandsOnHisPortraitLeavesItForHim() throws Exception {
+		long shared = standingOn(his);
+
+		standingOn(another, shared);
+
+		assertThat(deletingTheMember(HIS).getStatus()).isEqualTo(204);
+
+		assertThat(theRowStands(shared))
+				.as("the row went with the member though another member's profile still points at it")
+				.isTrue();
+		assertThat(standingPicturesOf(ANOTHER)).containsExactly(shared);
+	}
+
+	@Test
+	void aTeamGoingWithItsLastMemberLeavesALogoAnotherMemberStandsOn() throws Exception {
+		long shared = standingOn(another);
+
+		long team = db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, logo_id,"
+						+ " first_season, admin_id) values (?, 'Tim dva nosioca', '', '',"
+						+ " (select id from place where rank = 1), null, null, ?, 2027, ?) returning id")
+				.params(A_TEAM, shared, his).query(Long.class).single();
+
+		db.sql("insert into team_membership (competitor_id, team_id, season_from) values (?, ?, 2027)")
+				.params(his, team).update();
+
+		assertThat(deletingTheMember(HIS).getStatus()).isEqualTo(204);
+
+		assertThat(db.sql("select count(*) from team where id = ?").param(team).query(Long.class).single())
+				.as("the team did not go with its last member, so this case measures nothing")
+				.isZero();
+		assertThat(theRowStands(shared))
+				.as("the logo row went with the team though a member's profile still points at it")
+				.isTrue();
+		assertThat(standingPicturesOf(ANOTHER)).containsExactly(shared);
 	}
 
 	// ---------------------------------------------------------------- a member is deleted

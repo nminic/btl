@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import tools.jackson.databind.JsonNode;
@@ -1251,8 +1251,9 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	 * both sentences name it.
 	 */
 	@ParameterizedTest
-	@ValueSource(strings = {"the refusal", "the header of a delta"})
-	void bothPlacesTheInstructionIsWrittenNameTheSameColumnsInTheSameRoles(String where) throws Exception {
+	@EnumSource(WhereTheInstructionIsWritten.class)
+	void bothPlacesTheInstructionIsWrittenNameTheSameColumnsInTheSameRoles(WhereTheInstructionIsWritten where)
+			throws Exception {
 		List<String> emptied = theKeyIntoTheCodebook("competitor");
 		List<String> filled = new ArrayList<>(columnsATypedTownIsWrittenWith("competitor"));
 
@@ -1270,6 +1271,11 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 
 		String instruction = instructionWritten(where);
 
+		assertThat(instruction.contains(A_ROW_LEAVES))
+				.as("%s: the text read is not the text of that place - the refusal is the one that says what"
+						+ " stopped the refresh, and the header of a delta is not", where)
+				.isEqualTo(where == WhereTheInstructionIsWritten.THE_REFUSAL);
+
 		assertThat(namesIn(EMPTIED, instruction))
 				.as("what %s says is emptied is not the key into the codebook", where)
 				.containsExactlyInAnyOrderElementsOf(emptied);
@@ -1278,11 +1284,40 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 				.containsExactlyInAnyOrderElementsOf(filled);
 	}
 
+	/**
+	 * The two places a person meets the instruction. An enumeration and not two strings the case compares
+	 * by spelling: the case chose its branch by {@code "the refusal".equals(where)}, nothing tied that
+	 * literal to the values the case was given, and measured, a literal changed to {@code "the refusals"}
+	 * left all 31 cases green by reading the header twice - and so did the same change together with a
+	 * refusal that lost a column. A value that is not one of these does not compile, and
+	 * {@link #instructionWritten} has no branch for it to fall into.
+	 */
+	enum WhereTheInstructionIsWritten {
+		THE_REFUSAL("the refusal"),
+		THE_HEADER_OF_A_DELTA("the header of a delta");
+
+		private final String says;
+
+		WhereTheInstructionIsWritten(String says) {
+			this.says = says;
+		}
+
+		@Override
+		public String toString() {
+			return says;
+		}
+	}
+
+	/** The sentence a refusal for a row leaving a codebook is recognised by, and a header is not. */
+	private static final String A_ROW_LEAVES =
+			"the codebook drops a row a member or an event may be standing on";
+
 	/** The text of one of the two places, asked of the generator rather than held here. */
-	private String instructionWritten(String where) throws Exception {
-		return "the refusal".equals(where)
-				? generate(aCodebookRowLeaves()).errors()
-				: generate(changes().getFirst()).output();
+	private String instructionWritten(WhereTheInstructionIsWritten where) throws Exception {
+		return switch (where) {
+			case THE_REFUSAL -> generate(aCodebookRowLeaves()).errors();
+			case THE_HEADER_OF_A_DELTA -> generate(changes().getFirst()).output();
+		};
 	}
 
 	/** The backticked names in the one sentence a pattern picks out, and it must
@@ -1329,7 +1364,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	 */
 	private static Change aCodebookRowLeaves() {
 		return refusals().stream()
-				.filter(one -> "the codebook drops a row a member or an event may be standing on".equals(one.says()))
+				.filter(one -> A_ROW_LEAVES.equals(one.says()))
 				.map(Refusal::change)
 				.findFirst()
 				.orElseThrow();

@@ -3,6 +3,8 @@ package com.btl.portal.web;
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.season.SeasonClock;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -511,6 +513,35 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 				.as("his partner of 2027 was told").isZero();
 		assertThat(db.sql("select count(*) from racing_pair where woman_id = ?").param(she).query(Long.class).single())
 				.isZero();
+		assertThat(stands(she)).isTrue();
+	}
+
+	/**
+	 * A MEMBER WHOSE ONLY SEASON WAS CANCELLED, AND WHO HAS A PAIR OF THAT SEASON, GOES FIVE YEARS AFTER IT
+	 * AND NOBODY IS TOLD: the branch that decides whom to tell asks the same question about his seasons as
+	 * the branch that decides whether he goes, so a season only his trail names is a season there too.
+	 * Asked of a member whose single season is a cancelled one, with a number and without one (a branch that
+	 * chose by the number would send the second down the other way), and whose partner stays on a later
+	 * season of her own, so a message to her is the only thing that could tell the two ways apart.
+	 */
+	@ParameterizedTest
+	@ValueSource(booleans = {true, false})
+	void aMemberWhoseOnlySeasonWasCancelledGoesWithoutAWordToHisPartnerOfThatSeason(boolean heHasANumber) {
+		long he = heHasANumber ? aMember("M") : aMember("M", null, "competitor");
+		long she = aMember("F");
+
+		cancelled(he, 2028);
+		heldOn(she, 2028, "payment");
+		heldOn(she, 2035, "payment");
+		db.sql("insert into racing_pair (season, man_id, woman_id) values (2028, ?, ?)").params(he, she).update();
+
+		assertThat(goes(he, belgrade(2034, 2, 1, 0, 0, 0))).isTrue();
+
+		assertThat(stands(he)).isFalse();
+		assertThat(db.sql("select count(*) from message where to_id = ?").param(she).query(Long.class).single())
+				.as("his partner of the cancelled season was told").isZero();
+		assertThat(db.sql("select count(*) from racing_pair where woman_id = ?").param(she).query(Long.class).single())
+				.as("the pair went with him").isZero();
 		assertThat(stands(she)).isTrue();
 	}
 
