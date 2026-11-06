@@ -55,9 +55,9 @@ class PointsAtTheFreezeConstraintsTest extends DatabaseTest {
 	@BeforeEach
 	void probe() {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date, place_id,"
-				+ " first_season, active, referral_code, bio, profile_hidden, birthday_shown, father_name,"
+				+ " first_season, referral_code, bio, profile_hidden, birthday_shown, father_name,"
 				+ " address, shirt_size, health_statement_at) values ('001120', 'Probni', 'Zamrznuti', 'M',"
-				+ " date '1990-01-01', (select id from place where rank = 1), 2027, true, '00112233445566e2',"
+				+ " date '1990-01-01', (select id from place where rank = 1), 2027, '00112233445566e2',"
 				+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')").update();
 		db.sql(frozen("2027, timestamptz '2028-01-01 15:00:00+00'")).update();
 		db.sql(points("2027, " + A_MEMBER + ", 10.00")).update();

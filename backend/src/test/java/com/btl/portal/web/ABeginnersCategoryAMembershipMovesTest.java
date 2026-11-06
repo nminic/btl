@@ -118,7 +118,7 @@ class ABeginnersCategoryAMembershipMovesTest {
 	private static final String A_TOWN_ABROAD = "(select id from place where rank = 1)";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, active,"
+			+ " birth_date, place_id, city, country_id, first_season,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -433,7 +433,7 @@ class ABeginnersCategoryAMembershipMovesTest {
 
 	private long competitor(String number, boolean ticked) {
 		long id = db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', 'Clan',"
-						+ " 'M', date '1990-05-15', " + A_TOWN_ABROAD + ", null, null, 2027, true, ?, null,"
+						+ " 'M', date '1990-05-15', " + A_TOWN_ABROAD + ", null, null, 2027, ?, null,"
 						+ " '', false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
 				.params(number, String.format("00aabbccdd%06x", ++issued))

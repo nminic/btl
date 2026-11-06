@@ -272,11 +272,11 @@ class AttendanceApiTest {
 	/** Somebody who registered and has not paid: no number, and never active (V16). */
 	private long neverPaid(String first, String last) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active,"
+						+ " birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (null, ?, ?, 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(first, last, String.format("%016x", ++issued))
@@ -323,19 +323,18 @@ class AttendanceApiTest {
 	private void member(String number, String first, String last, String gender,
 			boolean feeStanding) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, ?, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, first, last, gender, !feeStanding, String.format("%016x", ++issued))
+				.params(number, first, last, gender, String.format("%016x", ++issued))
 				.update();
 
-		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
-		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
-		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		/* ACTIVE BY THE SEASON HE HOLDS (`AMemberIsActive`): the member whose fee does not stand holds none
+		   that counts. */
 		if (feeStanding) {
 			HeldOn.activeAt(db, number, NOW.atZone(SeasonClock.ZONE));
 		}
@@ -445,36 +444,33 @@ class AttendanceApiTest {
 	 * najavljenih vide aktivni članovi (važeća članarina)". Refused as an address that maps
 	 * nothing is refused (ADL A8). Since AF-1 (PDL 13.09.2026, „aktivan je onaj ko ima zapis za tekuću
 	 * sezonu, a u prelaznom roku i onaj ko ga ima za narednu") the lapsed reader holds a row of 2028,
-	 * a season that does not count on this file's day, and his flag says active; the anchor holds the
-	 * season that counts and his flag says inactive. So what tells the two apart is the season of the
-	 * row, and neither the flag nor whether some row exists.
+	 * a season that does not count on this file's day; the anchor holds the season that counts. So
+	 * what tells the two apart is the season of the row, and not whether some row exists.
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedIsToldTheListIsNotThere() throws Exception {
-		assertThat(db.sql("select c.active, (select string_agg(m.season::text, ',') from membership m"
-								+ " where m.competitor_id = c.id) from competitor c"
-								+ " where c.member_number = ?")
+		assertThat(db.sql("select string_agg(m.season::text, ',') from membership m"
+								+ " join competitor c on c.id = m.competitor_id where c.member_number = ?")
 						.param(LAPSED)
-						.query((row, one) -> row.getBoolean(1) + " " + row.getString(2)).single())
-				.as("the lapsed reader does not carry the flag true and a row of 2028 alone, so this case"
-						+ " cannot tell the flag, or a row of another season, from the season that counts")
-				.isEqualTo("true 2028");
-		assertThat(db.sql("select c.active, (select string_agg(m.season::text, ',') from membership m"
-								+ " where m.competitor_id = c.id) from competitor c"
-								+ " where c.member_number = ?")
+						.query(String.class).single())
+				.as("the lapsed reader does not hold a row of 2028 alone, so this case cannot tell a row of"
+						+ " another season from the season that counts")
+				.isEqualTo("2028");
+		assertThat(db.sql("select string_agg(m.season::text, ',') from membership m"
+								+ " join competitor c on c.id = m.competitor_id where c.member_number = ?")
 						.param(READING_MEMBER)
-						.query((row, one) -> row.getBoolean(1) + " " + row.getString(2)).single())
-				.as("the reading member does not carry the flag false and a row of 2027, so the anchor"
-						+ " below cannot tell the flag from the row")
-				.isEqualTo("false 2027");
+						.query(String.class).single())
+				.as("the reading member does not hold a row of 2027 alone, so the anchor below cannot tell"
+						+ " the season that counts from a row of another")
+				.isEqualTo("2027");
 
 		assertThat(statusFor(LAPSED_READER))
 				.as("a member whose fee has lapsed was served who is going, and the owner decided on"
 						+ " 03.10.2026 that the list is for active members and the administration")
 				.isEqualTo(404);
 		assertThat(statusFor(A_MEMBER))
-				.as("a member in good standing whose flag says inactive was refused, so the refusal"
-						+ " above is about the flag and not about the season")
+				.as("a member in good standing was refused, so the refusal"
+						+ " above is about the season and not about the list")
 				.isEqualTo(200);
 	}
 

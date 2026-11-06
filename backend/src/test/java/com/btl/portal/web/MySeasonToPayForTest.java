@@ -128,7 +128,7 @@ class MySeasonToPayForTest {
 	/**
 	 * THE MEMBER WHO HOLDS ONLY THE SEASON BEING RUN OWES THE NEXT, AND THE ANSWER NAMES IT.
 	 *
-	 * <p>{@code competitor.active} is true for all three, so only the season he is asked about can
+	 * <p>All three are active, so only the season he is asked about can
 	 * tell them apart. The number is the season on sale, 2028, and not the season being run.
 	 */
 	@Test
@@ -185,11 +185,11 @@ class MySeasonToPayForTest {
 
 	private void member(String number, int... seasons) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', ?, 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, "Probić" + number, String.format("%016x", ++issued))

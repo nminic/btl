@@ -22,7 +22,7 @@ import { useSession } from '../../session/useSession'
  *
  * **A YES OR A NO SINCE 16.10.2026, AND NOT A STATE.** This was a `ResourceState` until that day,
  * because the answer needed the list of members: whether a fee is standing was asked of the list
- * the server serves (`where c.active`), the list is on its way for a moment or does not come, and
+ * the server serves (`AMemberIsActive`), the list is on its way for a moment or does not come, and
  * a boolean has no place for either. The owner gave the fact one home on the screen, the
  * session's (ADL, 16.10.2026, „Činjenica „član je aktivan" dobija jedan dom na ekranu"; the
  * sentence is the record's and not his own words), and the session has the answer in hand as soon

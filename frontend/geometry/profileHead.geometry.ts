@@ -412,7 +412,7 @@ for (const at of WIDTHS) {
   }
 
   test(`„Podaci" carries neither the season nor a button, ${label(at)}`, async ({ open }) => {
-    const { page, probe } = await open(at, `${HER_PAGE}/podaci`, 'section[aria-labelledby="account-personal"]', {
+    const { page, probe } = await open(at, `${HER_PAGE}/podaci`, 'section[aria-labelledby="form-licni-podaci-title"]', {
       ...THE_LISTS,
       '/api/me': meAs(HER),
     })

@@ -133,6 +133,10 @@ function TheForm({ opened }: { opened: MembersData }) {
         title={t('account.personalTitle')}
         initial={valuesFor(form, opened)}
         fixed={opened.emailConfirmed === true ? ['email'] : undefined}
+        /* The e-mail he has confirmed is held and carries no star (PDL 06.11.2026, "Isto pravilo važi i za
+           zaključanu e-poštu u administraciji": the held field is not marked, the free boxes beside it keep
+           their star). */
+        fixedUnmarked
         sendIsHeld={asking ? true : undefined}
         sendIsOut={out}
         onSubmit={(values) => {

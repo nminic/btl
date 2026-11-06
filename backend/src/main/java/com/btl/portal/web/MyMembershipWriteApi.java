@@ -217,11 +217,8 @@ class MyMembershipWriteApi {
 		String memberNumber = numbering ? numbers.draw().written() : owed.numberHeAlreadyHas().written();
 
 		if (numbering) {
-			db.sql("update competitor set member_number = ?, active = true where id = ?")
+			db.sql("update competitor set member_number = ? where id = ?")
 					.params(memberNumber, me).update();
-		}
-		else {
-			db.sql("update competitor set active = true where id = ?").param(me).update();
 		}
 
 		/* AND WHOEVER BROUGHT HIM IN IS PAID, because PDL ties the reward to ACTIVATION and says

@@ -252,7 +252,7 @@ class CompetitorWriteApiTest {
 		man(NO_ACCOUNT_AT_ALL, "Jedanaesti", "Beznaloga");
 		man(A_LAPSED_MEMBER, "Dvanaesti", "Neobnovljeni");
 
-		db.sql("update competitor set active = false where member_number = ?")
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
 				.param(A_LAPSED_MEMBER).update();
 
 		team(TEAM_THAT_EMPTIES);
@@ -912,7 +912,7 @@ class CompetitorWriteApiTest {
 	 * <p>Owner, 19.09.2026: „Clan kome je istekla clanarina dopire samo do strane za obnovu...
 	 * jer se sve akcije za njega brane." That rule is about what a MEMBER may do with his own
 	 * things. This is the administration acting ON him, and a member whose fee has lapsed is
-	 * exactly the one an administrator is likely to be deleting - so a {@code c.active}
+	 * exactly the one an administrator is likely to be deleting - so a {@code AMemberIsActive}
 	 * copied from the six resources that do read it would serve only members in good
 	 * standing.
 	 */
@@ -1214,11 +1214,11 @@ class CompetitorWriteApiTest {
 
 	private void competitor(String number, String first, String last, String gender) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name,"
 						+ " address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, first, last, gender, String.format("%016x", ++issued))

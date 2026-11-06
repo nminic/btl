@@ -419,7 +419,7 @@ describe('the referral link, on the answer the server gives', () => {
        the whole of what P26a moved.** The link was answered on the caller's OWN row of
        the public list and this case took it off that row to see what the screen drew.
 
-       The owner took it off that list altogether: it ends `where c.active`, so a member
+       The owner took it off that list altogether: it ends `AMemberIsActive`, so a member
        whose fee has LAPSED had no row there and was answered no link - and he is the man
        V24 section 6 promises it to, on exactly this page, which is the page he opens to
        renew.

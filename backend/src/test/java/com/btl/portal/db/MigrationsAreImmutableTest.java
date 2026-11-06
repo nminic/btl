@@ -730,7 +730,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			/* V85. A frozen team keeps how many races of each length it ran, the ring of its page (PDL, owner,
 			   06.11.2026). 85 and no other: main stood at V84 on 06.11.2026 (61d7d7de) and no branch of the remote
 			   held V85. */
-			new Applied("85", "V85__a_frozen_team_keeps_its_races_by_length.sql", 1853638019));
+			new Applied("85", "V85__a_frozen_team_keeps_its_races_by_length.sql", 1853638019),
+
+			/* V86. Whether a member is active has no column: `competitor.active` is dropped, and every reader
+			   already asks the seasons he holds (AF-2 after AF-1; PDL „Članstvo je činjenica po sezoni",
+			   13.09.2026). 86 and no other: main stood at V85 on 06.11.2026 (539307e6) and no branch of the
+			   remote held V86.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("86", "V86__whether_a_member_is_active_is_read_off_his_seasons.sql", 1495915210));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

@@ -166,18 +166,17 @@ class InboxWriteApiTest {
 			boolean hidden) {
 
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'F', date '1990-01-01', (select id from place where rank = 1),"
-						+ " 2027, ?, ?, '', ?, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " 2027, ?, '', ?, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, first, last, !active, String.format("%016x", ++issued), hidden)
+				.params(number, first, last, String.format("%016x", ++issued), hidden)
 				.update();
 
-		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
-		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
-		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		/* ACTIVE BY THE SEASON HE HOLDS (`AMemberIsActive`): the member whose fee does not stand holds none
+		   that counts. */
 		if (active) {
 			HeldOn.activeAt(db, number, ZonedDateTime.now());
 		}

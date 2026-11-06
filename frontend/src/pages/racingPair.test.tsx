@@ -734,7 +734,7 @@ describe('a pair whose other half the portal does not have', () => {
   it('is not offered a „Raskini", because the server answers a press on it with a 404 every time', async () => {
     /* **THE ONE ROW THAT CANNOT BE ENDED FROM HERE, NEXT TO ONE THAT CAN** (PENDING stavka 316).
        The roster the portal serves holds only members whose fee is paid (`CompetitorApi` ends
-       `where c.active`), and `PairWriteApi.pairHeIsHalfOf` asks for BOTH halves to be active, so a
+       `AMemberIsActive`), and `PairWriteApi.pairHeIsHalfOf` asks for BOTH halves to be active, so a
        pair whose other half is not in the roster is one `DELETE /api/pairs/{id}` answers 404 for,
        whoever presses and however often. A button that cannot work is not drawn.
 

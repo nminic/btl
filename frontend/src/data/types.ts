@@ -248,7 +248,7 @@ export type Competitor = {
    * javne liste takmicara" and stays only on that page.
    *
    * **The reason is a measurement rather than tidiness.** `CompetitorApi` ends
-   * `where c.active`, so a member whose fee has lapsed has no row on that list at
+   * `AMemberIsActive`, so a member whose fee has lapsed has no row on that list at
    * all and never reached the condition that filled the two fields in - and he is
    * exactly the man V24 section 6 promises the link to, on exactly the page he opens
    * to renew. Both now arrive through `GET /api/me`, which answers ONE row and that
@@ -465,7 +465,7 @@ export type Member = {
   country: string
   ageBand: AgeBand
   beginner: boolean
-  /** Whether his fee stands, as `competitor.active` says it: the flag behind the public list. */
+  /** Whether his fee stands, as the seasons he holds say it (`AMemberIsActive`): the fact behind the public list. */
   active: boolean
   /** The basis of the season ON SALE, the same field and rule as on `Competitor`. */
   membershipBasis?: MembershipBasis
@@ -1857,7 +1857,7 @@ export type InboxLine = {
  * rather than a convenience.** `GET /api/inbox` carries `teamInvitationId` and nothing
  * else about the question, while `PUT /api/teams/{id}/invitations/{invitation}` needs the
  * TEAM in its path and `TeamJoiningWriteApi.invitationHeMayAnswer` really asks for it
- * (`where i.id = ? and i.team_id = ? and i.competitor_id = ? and c.active`). So the two
+ * (`where i.id = ? and i.team_id = ? and i.competitor_id = ? and AMemberIsActive`). So the two
  * halves of one address live on two routes, and this is the one that holds the half the
  * inbox cannot say.
  *

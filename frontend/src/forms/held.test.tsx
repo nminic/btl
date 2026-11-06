@@ -2,6 +2,7 @@ import { globSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen } from '@testing-library/react'
 import { must } from '../test/at'
+import { contrast } from '../test/contrast'
 import { renderWithI18n } from '../test/render'
 import { everyRule, ruleFor } from '../test/stylesheet'
 import { bare } from '../test/sources'
@@ -135,10 +136,11 @@ const KINDS: Record<FieldType, true | string> = {
   select: true,
   country: true,
   place: true,
-  /* Not a `.field__control` at all, so there is no dress on it to take away. The
-     lock reaches it as `aria-disabled`, and that is asked over `fillsEverything`
-     in `FormRenderer.test.tsx`. */
-  choice: 'wears `choice__input` and is held by `aria-disabled` alone',
+  /* Not a `.field__control` at all, so it does not wear the class. Since 06.11.2026 it has a dress
+     of its own, the same two declarations on its own classes (`.choice__input[aria-disabled]`), and
+     that is asked in the case „dresses a group of buttons". The lock reaches it as `aria-disabled`,
+     and that is asked over `fillsEverything` in `FormRenderer.test.tsx`. */
+  choice: 'wears `choice__input`, dressed by its own rule and held by `aria-disabled`',
   checkbox: true,
   textarea: true,
   photo: true,
@@ -306,6 +308,122 @@ describe('what a held control wears', () => {
       expect(live.cursor).not.toBe('default')
     } finally {
       style.remove()
+    }
+  })
+
+  it('dresses a group of buttons that is held, the one not taken and no other', () => {
+    /* PDL, „Na formi „Podaci" zaključana polja", owner, 06.11.2026: „zaključan pol se crta zatamnjeno kao
+       ostala zaključana polja (neizabrano dugme dobija zatamnjenu pozadinu i običan kursor)." Before it,
+       a held gender looked alive: the buttons are not `.field__control`, so nothing dressed them.
+
+       Four buttons in two groups, one held and one live, each with one option taken, asked of the
+       cascade over every sheet in the worst order, as the case above asks it. Four answers: the held
+       one not taken is shaded and its pointer is not a hand (over the label AND over the radio, which
+       lies over the label and is what the pointer is over); the held one taken keeps the accent; the
+       live ones are neither shaded nor stripped of the hand. The taken one being left alone is half of
+       the sentence: a shaded answer would be an answer nobody can see. */
+    const own = join('src', 'forms', 'FormRenderer.css')
+    const sheets = [own, ...globSync('src/**/*.css').filter((file) => file !== own)]
+    const style = document.createElement('style')
+
+    style.textContent = sheets
+      .map((file) => readFileSync(join(process.cwd(), file), 'utf-8'))
+      .join(NEWLINE)
+    document.head.append(style)
+
+    const buttons: FormDef = {
+      id: 'dugmad',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: ['zakljucan', 'slobodan'].map((name) => ({
+        name,
+        type: 'choice' as const,
+        labelKey: `proba.${name}`,
+        options: [
+          { value: 'jedan', labelKey: 'proba.jedan' },
+          { value: 'dva', labelKey: 'proba.dva' },
+        ],
+      })),
+    }
+
+    renderWithI18n(
+      <FormRenderer
+        form={buttons}
+        initial={{ zakljucan: 'jedan', slobodan: 'jedan' }}
+        fixed={['zakljucan']}
+        onSubmit={() => undefined}
+      />,
+    )
+
+    try {
+      const radios = screen.getAllByRole('radio')
+
+      expect(radios, 'two groups of two buttons are not what is drawn').toHaveLength(4)
+
+      const [heldTaken, heldFree, liveTaken, liveFree] = radios.map((one) => ({
+        radio: one,
+        label: must(one.nextElementSibling, 'the label of a button'),
+      }))
+      const seen = (one: { radio: Element; label: Element }) => ({
+        ground: getComputedStyle(one.label).background,
+        hand: getComputedStyle(one.label).cursor,
+        radioHand: getComputedStyle(one.radio).cursor,
+      })
+
+      expect(heldFree?.radio).not.toBeChecked()
+      expect(heldTaken?.radio).toBeChecked()
+      expect(seen(must(heldFree, 'the held button not taken'))).toEqual({
+        ground: 'var(--surface-hover)',
+        hand: 'default',
+        radioHand: 'default',
+      })
+      expect(seen(must(heldTaken, 'the held button taken')).ground).toBe('var(--accent)')
+      expect(seen(must(liveFree, 'the live button not taken'))).toMatchObject({
+        ground: 'var(--surface)',
+        radioHand: 'pointer',
+      })
+      expect(seen(must(liveTaken, 'the live button taken')).ground).toBe('var(--accent)')
+    } finally {
+      style.remove()
+    }
+  })
+
+  it('reads the word on the shade of a held button at 4.5:1 or more, in every theme', () => {
+    /* WCAG 2.2 SC 1.4.3 on the ground this adds: `--text` on `--surface-hover`. Each palette in its own
+       terms, the way the case below asks for the grounds. */
+    const themes = palettes(bare(readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf-8')))
+    const base = must(
+      themes.find((one) => one.where === ':root'),
+      ':root palette in tokens.css',
+    ).given
+    const colour = (token: string, given: Map<string, string>) => {
+      let said = (given.get(token) ?? base.get(token) ?? '').trim()
+
+      for (let step = 0; step < 4; step += 1) {
+        const points = /^var\(--([\w-]+)\)$/.exec(said)
+
+        if (points === null) {
+          break
+        }
+
+        const next = points[1] ?? ''
+
+        said = (given.get(next) ?? base.get(next) ?? said).trim()
+      }
+
+      expect(said, `${token} does not end in a colour`).toMatch(/^#[0-9a-f]{6}$/i)
+
+      return said
+    }
+    const naming = themes.filter((one) => one.given.has('surface-hover'))
+
+    expect(naming, 'the shade is no longer written by three palettes').toHaveLength(3)
+
+    for (const theme of naming) {
+      expect(
+        contrast(colour('text', theme.given), colour('surface-hover', theme.given)),
+        `the word on a held button in ${theme.where}`,
+      ).toBeGreaterThanOrEqual(4.5)
     }
   })
 

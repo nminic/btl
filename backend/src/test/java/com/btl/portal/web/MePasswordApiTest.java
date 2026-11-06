@@ -1006,19 +1006,19 @@ class MePasswordApiTest {
 	 */
 	private enum Behind {
 
-		/** A member whose fee stands: a number, and the season that counts today; his flag says false. */
+		/** A member whose fee stands: a number, and the season that counts today. */
 		A_FEE_THAT_STANDS,
 
 		/** Registered and never paid: no number (V16), not active, and no row of membership. */
 		NEVER_PAID,
 
 		/** A number, not active, a row of membership for 2028 given free of the fee (a season that does
-		 *  not count today), and his flag says true. */
+		 *  not count today). */
 		LAPSED_WITH_A_ROW,
 
 		/**
 		 * A number, not active, and no row of membership at all: the one a rule that told a lapsed member
-		 * from somebody who never paid BY A ROW would take for somebody who never paid. His flag says true.
+		 * from somebody who never paid BY A ROW would take for somebody who never paid.
 		 */
 		LAPSED_WITHOUT_A_ROW
 	}
@@ -1036,16 +1036,14 @@ class MePasswordApiTest {
 		account(email, MY_OLD_PASSWORD, howManySessions);
 
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active,"
+						+ " birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, ?, ?,"
+						+ " (select id from place where rank = 1), 2027, ?,"
 						+ " '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00') returning id")
 				.params(kind == Behind.NEVER_PAID ? null : String.format("0009%02d", kind.ordinal()),
-						/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it. */
-						kind == Behind.LAPSED_WITH_A_ROW || kind == Behind.LAPSED_WITHOUT_A_ROW,
 						String.format("%016x", 0xb257b000L + kind.ordinal()))
 				.query(Long.class).single();
 

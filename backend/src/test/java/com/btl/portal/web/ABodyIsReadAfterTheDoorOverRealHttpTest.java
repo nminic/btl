@@ -205,17 +205,16 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 	@BeforeEach
 	void fiveKindsOfCaller() {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, ?, '',"
+						+ " (select id from place where rank = 1), 2027, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
 				.params(THE_MEMBERS_NUMBER, String.format("%016x", Long.parseLong(THE_MEMBERS_NUMBER)))
 				.update();
 
-		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written false on purpose: since AF-1
-		   nothing reads it, and a reader that did would turn him away. */
+		/* ACTIVE BY THE SEASON HE HOLDS (`AMemberIsActive`). */
 		HeldOn.activeAt(db, THE_MEMBERS_NUMBER, ZonedDateTime.now());
 
 		account(A_MEMBER, "competitor");
@@ -226,11 +225,11 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 		account(MODERATOR_WITH_EVERY_RIGHT, "moderator");
 
 		theMemberWhoHasNotPaid = db.sql("insert into competitor (member_number, first_name, last_name,"
-						+ " gender, birth_date, place_id, first_season, active,"
+						+ " gender, birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (null, 'Neplacen', 'Neplacenic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, ?, '',"
+						+ " (select id from place where rank = 1), 2027, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
 				.param("b257000000000001").query(Long.class).single();
@@ -240,13 +239,12 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 				.params(theMemberWhoHasNotPaid, A_MEMBER_WHO_HAS_NOT_PAID).update();
 
 		theMemberWhoseFeeHasLapsed = db.sql("insert into competitor (member_number, first_name, last_name,"
-						+ " gender, birth_date, place_id, first_season, active,"
+						+ " gender, birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Istekao', 'Istekaovic', 'M', date '1990-01-01',"
-						/* HIS FLAG IS TRUE AND HE HOLDS NO SEASON: since AF-1 he is lapsed by the seasons
-						   alone, and a door that read the flag would let him through. */
-						+ " (select id from place where rank = 1), 2027, true, ?, '',"
+						/* HE HOLDS NO SEASON: he is lapsed by the seasons alone (`AMemberIsActive`). */
+						+ " (select id from place where rank = 1), 2027, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
 				.params(THE_NUMBER_OF_THE_ONE_WHOSE_FEE_HAS_LAPSED, "b257000000000002")

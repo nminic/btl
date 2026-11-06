@@ -155,11 +155,11 @@ class AChangeOfBasisKeepsTheFirstActivationTest {
 
 	private long member(String number) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, city, country_id, first_season, active,"
+						+ " place_id, city, country_id, first_season,"
 						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Ime', 'Prezime', 'M', date '1990-05-05',"
-						+ " (select id from place where rank = 1), null, null, 2027, true,"
+						+ " (select id from place where rank = 1), null, null, 2027,"
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, "00112233" + number + "bb")
@@ -368,7 +368,7 @@ class AChangeOfBasisKeepsTheFirstActivationTest {
 
 	/**
 	 * THE EXEMPTION FROM BEFORE ITS TRAIL HAS NO MOMENT AND RANKS (btl/CLAUDE.md, section 11; V35 adds its
-	 * checks {@code not valid} for that one row), so a change over it carries THAT: the flag with no day,
+	 * checks {@code not valid} for that one row), so a change over it carries THAT: the exemption with no day,
 	 * and the row that replaces it ranks rather than answering the day of the change. Beside it a row with
 	 * a known day carries its day. Written by dropping V35's two checks inside this case, the shape the
 	 * row has on the server and nothing else can write.
