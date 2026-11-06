@@ -279,8 +279,10 @@ type Props = {
    * može popuniti". A held field is not asked of the reader, so it is not obligatory for him either:
    * the „field is obligatory" refusal is not raised for one, and an empty held box never keeps „Sačuvaj"
    * from going. Applies to the fields in `fixed` and to no other, and only where the screen asks for it:
-   * every other form that holds a field (`NewResult`, the events, the administration's form of a member)
-   * draws it as it always did.
+   * the member's own data and the administration's form of a member (its confirmed e-mail; PDL, "Isto
+   * pravilo važi i za zaključanu e-poštu u administraciji", 06.11.2026) ask for it, while every other form
+   * that holds a field (`NewResult`, the events, the entity editor, which locks every field while a save is
+   * out) draws it as it always did, and the free required boxes of the administration keep their star.
    */
   fixedUnmarked?: boolean
   /**

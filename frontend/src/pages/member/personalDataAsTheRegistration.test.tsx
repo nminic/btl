@@ -323,13 +323,12 @@ describe('the administration’s form on the same card', () => {
   }, SLOW)
 
   /**
-   * <p><b>The decision of 06.11.2026 is about the member's own form and not about this one</b> (PDL, „Na
-   * formi „Podaci" zaključana polja": the four held fields of the member's panel carry no mark). The
-   * administration holds the e-mail of a member who has confirmed it, and that held box keeps the star it
-   * has always had, as does every box beside it: what the renderer does for the member's panel is asked
-   * for by that panel (`fixedUnmarked`) and by no other.
+   * <p><b>The decision of 06.11.2026 reaches the administration's held e-mail too</b> (PDL, "Isto pravilo
+   * važi i za zaključanu e-poštu u administraciji": the held field carries no star). The e-mail of a member
+   * who has confirmed it is held without the star and without `aria-required`, and every free required box
+   * beside it keeps the star it has always had.
    */
-  it('keeps the star on the e-mail it holds once it is confirmed, and on every box beside it', async () => {
+  it('holds the confirmed e-mail without the star and keeps the star on every free required box beside it', async () => {
     stands(
       serverThat((path) =>
         path === '/api/members/000001/data'
@@ -362,7 +361,12 @@ describe('the administration’s form on the same card', () => {
     const email = within(form).getByRole('textbox', { name: new RegExp(`^${sr.registration.email}`) })
 
     expect(email).toHaveAttribute('aria-disabled', 'true')
-    expect(email).toHaveAttribute('aria-required', 'true')
-    expect(within(must(email.closest<HTMLElement>('.field'), 'the field of the e-mail')).getByText('*')).toBeVisible()
+    expect(email).not.toHaveAttribute('aria-required')
+    expect(within(must(email.closest<HTMLElement>('.field'), 'the field of the e-mail')).queryByText('*')).toBeNull()
+
+    const firstName = within(form).getByRole('textbox', { name: new RegExp(`^${sr.registration.firstName}`) })
+
+    expect(firstName).toHaveAttribute('aria-required', 'true')
+    expect(within(must(firstName.closest<HTMLElement>('.field'), 'the field of the first name')).getByText('*')).toBeVisible()
   }, SLOW)
 })
