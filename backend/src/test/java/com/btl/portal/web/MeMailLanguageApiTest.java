@@ -88,11 +88,11 @@ class MeMailLanguageApiTest {
 
 	@BeforeEach
 	void threeMembersOneWhoHasNotPaidAndAModerator() {
-		competitor(FIRST_BY_KEY, true);
-		competitor(HE_CHOOSES, true);
-		competitor(ALREADY_ENGLISH, true);
-		competitor(null, false);
-		competitor(LAPSED, false);
+		competitor(FIRST_BY_KEY);
+		competitor(HE_CHOOSES);
+		competitor(ALREADY_ENGLISH);
+		competitor(null);
+		competitor(LAPSED);
 
 		account(FIRST_BY_KEY + "@primer.rs", "competitor", "number", FIRST_BY_KEY);
 		account(HE_CHOOSES + "@primer.rs", "competitor", "number", HE_CHOOSES);
@@ -236,17 +236,16 @@ class MeMailLanguageApiTest {
 
 	/* ------------------------------------------------------------------- the fixture */
 
-	private void competitor(String number, boolean active) {
+	private void competitor(String number) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name,"
 						+ " address, shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', ?, 'M', date '1985-01-01',"
-						+ " (select id from place where rank = 1), 2027, ?, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, number == null ? "Neplacen" : "Clan" + number, active,
-						String.format("%016x", ++issued))
+				.params(number, number == null ? "Neplacen" : "Clan" + number, String.format("%016x", ++issued))
 				.update();
 	}
 

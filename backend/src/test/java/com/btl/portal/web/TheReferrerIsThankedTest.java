@@ -98,7 +98,7 @@ class TheReferrerIsThankedTest {
 	private static final BigDecimal WHAT_A_EURO_MEMBER_SENDS = new BigDecimal("38.00");
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, active,"
+			+ " birth_date, place_id, city, country_id, first_season,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -189,25 +189,25 @@ class TheReferrerIsThankedTest {
 						+ " values ((select id from account where email = ?), 'queue:payments')")
 				.param(CASHIER).update();
 
-		aThirdMember = competitor("Tamara", "Treca", "009003", true, IN_SERBIA, null);
-		anotherNewcomer = competitor("Nikola", "Drugi", null, false, ABROAD, null);
+		aThirdMember = competitor("Tamara", "Treca", "009003", IN_SERBIA, null);
+		anotherNewcomer = competitor("Nikola", "Drugi", null, ABROAD, null);
 	}
 
 	/** Made per case, because the country of the referrer is the axis that differs between the doors. */
 	private void thePeople(String referrerTown, String newcomerTown) {
-		referrer = competitor("Ruzica", "Preporucilac", "009001", true, referrerTown, null);
-		newcomer = competitor("Nenad", "Novajlija", null, false, newcomerTown, referrer);
+		referrer = competitor("Ruzica", "Preporucilac", "009001", referrerTown, null);
+		newcomer = competitor("Nenad", "Novajlija", null, newcomerTown, referrer);
 
 		db.sql("update competitor set referred_by = ? where id = ?").params(referrer, anotherNewcomer).update();
 	}
 
-	private long competitor(String first, String last, String memberNumber, boolean active, String town,
+	private long competitor(String first, String last, String memberNumber, String town,
 			Long broughtInBy) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, ?, ?, 'M',"
-						+ " date '1990-05-15', " + town + ", null, null, 2027, ?, ?, ?, '', false,"
+						+ " date '1990-05-15', " + town + ", null, null, 2027, ?, ?, '', false,"
 						+ " 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
-				.params(memberNumber, first, last, active, String.format("%016x", ++issued), broughtInBy)
+				.params(memberNumber, first, last, String.format("%016x", ++issued), broughtInBy)
 				.query(Long.class).single();
 	}
 

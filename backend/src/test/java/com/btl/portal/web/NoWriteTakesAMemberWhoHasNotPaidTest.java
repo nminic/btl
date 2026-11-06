@@ -1032,15 +1032,14 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 
 	private long member(String number, String gender, boolean active) {
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', ?, date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, ?, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it. */
-				.params(number, gender, !active, String.format("8b%014x", ++issued))
+				.params(number, gender, String.format("8b%014x", ++issued))
 				.query(Long.class).single();
 
 		/* A MEMBER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Entering a

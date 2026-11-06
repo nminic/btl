@@ -287,15 +287,6 @@ class MemberMembershipApi {
 		   code against the book as it now stands. */
 		book.forgetThePromise(member.get(), season);
 
-		/* AND THE FLAG `active` IS WRITTEN AS THE ROWS THAT REMAIN SAY, from the same reading of the clock:
-		   the season being run, and in the window the next one. Since AF-1 nothing reads it (whether he is
-		   active is `AMemberIsActive`, asked of the rows themselves); it is still written so that a step
-		   back to the column is a revert. */
-		db.sql("update competitor set active = exists(select 1 from membership m"
-						+ " where m.competitor_id = competitor.id and m.season in (?, ?)) where id = ?")
-				.params(SeasonClock.seasonBeingRun(now), season, member.get())
-				.update();
-
 		trail(member.get(), season, "cancelled", held.get().basis(), null, asking.account(), name);
 		tell(member.get(), WhatAMembershipChangeSays.cancelled(season));
 		category.tellHimIfItMoved(before);

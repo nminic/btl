@@ -136,9 +136,7 @@ class TheTablesOfASeasonTest {
 	}
 
 	@Test
-	void aMemberWhoseFlagIsDownStillStandsInTheSeasonHeHeld() {
-		db.sql("update competitor set active = false where member_number = '000304'").update();
-
+	void aMemberWhoseFeeLapsedStillStandsInTheSeasonHeHeld() {
 		freezeAt(2028, 1, 1, 16, 0);
 
 		assertThat(db.sql("select who from season_competitor where season = 2027 and gender = 'M' order by position")
@@ -305,7 +303,6 @@ class TheTablesOfASeasonTest {
 		pair(2027, "000302", "000301");
 		pair(2027, "000304", "000303");
 		pair(2027, "000305", "000309");
-		db.sql("update competitor set active = false where member_number = '000301'").update();
 		run("000301", "Polu", 8.00);
 
 		freezeAt(2028, 1, 1, 16, 0);
@@ -505,11 +502,11 @@ class TheTablesOfASeasonTest {
 
 	private void member(String number, String first, String last, String gender, String born) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, city, country_id, first_season, active,"
+						+ " place_id, city, country_id, first_season,"
 						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, cast(? as date),"
-						+ " (select id from place where rank = 1), null, null, 2027, true,"
+						+ " (select id from place where rank = 1), null, null, 2027,"
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, first, last, gender, born, "0011223344" + number).update();

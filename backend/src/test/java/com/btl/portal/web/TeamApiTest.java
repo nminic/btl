@@ -563,14 +563,14 @@ class TeamApiTest {
 	private void member(String number, String first, String last, String gender, boolean active,
 			String referralCode, String photo) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, city, country_id, first_season, active,"
+						+ " place_id, city, country_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at, photo_id)"
 						+ " values (?, ?, ?, ?, date '1985-04-17',"
 						+ " (select id from place where name = 'Beograd'), null, null,"
-						+ " 2027, ?, ?, '', false, 'none', 'Otac', 'Ulica 1',"
+						+ " 2027, ?, '', false, 'none', 'Otac', 'Ulica 1',"
 						+ " 'M', timestamptz '2026-09-01 10:00:00+00', " + photo + ")")
-				.params(number, first, last, gender, !active, referralCode).update();
+				.params(number, first, last, gender, referralCode).update();
 
 		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
 		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
@@ -618,12 +618,12 @@ class TeamApiTest {
 	private long registrant(String first, String last, String referralCode) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, city, country_id, first_season,"
-						+ " active, referral_code, bio,"
+						+ " referral_code, bio,"
 						+ " profile_hidden, birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at, photo_id)"
 						+ " values (null, ?, ?, 'M', date '1990-01-01',"
 						+ " (select id from place where name = 'Beograd'), null, null,"
-						+ " 2027, false, ?, '', false, 'none', 'Otac',"
+						+ " 2027, ?, '', false, 'none', 'Otac',"
 						+ " 'Ulica 2', 'L', timestamptz '2026-09-01 10:00:00+00', null)"
 						+ " returning id")
 				.params(first, last, referralCode).query(Long.class).single();
@@ -649,12 +649,12 @@ class TeamApiTest {
 	private long standingWithNoNumber(String first, String last, String referralCode) {
 		long made = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, city, country_id, first_season,"
-						+ " active, referral_code, bio,"
+						+ " referral_code, bio,"
 						+ " profile_hidden, birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at, photo_id)"
 						+ " values (null, ?, ?, 'M', date '1992-03-08',"
 						+ " (select id from place where name = 'Beograd'), null, null,"
-						+ " 2027, false, ?, '', false, 'none', 'Otac',"
+						+ " 2027, ?, '', false, 'none', 'Otac',"
 						+ " 'Ulica 3', 'S', timestamptz '2026-09-01 10:00:00+00', null)"
 						+ " returning id")
 				.params(first, last, referralCode).query(Long.class).single();

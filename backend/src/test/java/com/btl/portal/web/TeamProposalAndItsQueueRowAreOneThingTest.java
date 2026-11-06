@@ -131,25 +131,24 @@ class TeamProposalAndItsQueueRowAreOneThingTest {
 	@BeforeEach
 	void oneMemberWhoMayPropose() {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " 'a91b7c5d0e3f2401', '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.param(ME).update();
 
 		/* A MEMBER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Entering a team
-		   asks for a membership of the season on sale and not for `competitor.active` (PDL
-		   30.10.2026), so an active member with no row is a member who has not paid it. The member
-		   who holds only ONE of the two is made by `holdsOnly`; a member whose fee has lapsed
-		   (`active` false) holds neither. */
+		   asks for a membership of the season on sale (PDL 30.10.2026), so a member with no row is a
+		   member who has not paid it. The member who holds only ONE of the two is made by
+		   `holdsOnly`; a member whose fee has lapsed holds neither. */
 		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
 						+ " select c.id, s.season, 'feeExempt', 'Probni Probic',"
 						+ " timestamptz '2026-09-01 10:00:00+00'"
 						+ " from competitor c cross join (values (2027), (2028)) as s (season)"
-						+ " where c.member_number = ? and c.active")
+						+ " where c.member_number = ?")
 				.param(ME)
 				.update();
 

@@ -454,13 +454,13 @@ class PhotoOfAMemberWhoseFeeHasLapsedTest {
 	/** @param number null for somebody who registered and has not paid (V16) */
 	private void member(String number, boolean active, boolean hidden, Long photo) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at, photo_id)"
 						+ " values (?, 'Ime', 'Prezime', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, ?, ?, '', ?,"
+						+ " (select id from place where rank = 1), 2027, ?, '', ?,"
 						+ " 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00', ?)")
-				.params(number, !active, String.format("%016x", ++issued), hidden, photo)
+				.params(number, String.format("%016x", ++issued), hidden, photo)
 				.update();
 
 		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:

@@ -651,14 +651,12 @@ class CompetitorApiTest {
 			boolean hidden, String birthdayShown) {
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, city, country_id, first_season,"
-						+ " active, referral_code, referred_by, bio, profile_hidden,"
+						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, date '" + born + "', " + place + ", " + city + ", "
-						+ country + ", ?, ?, ?, " + broughtBy + ", ?, ?, ?, 'Otac', 'Ulica 1',"
+						+ country + ", ?, ?, " + broughtBy + ", ?, ?, ?, 'Otac', 'Ulica 1',"
 						+ " 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
-				/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it, so a member
-				   in good standing carries false and one whose fee has lapsed carries true. */
-				.params(number, first, last, gender, firstSeason, !active,
+				.params(number, first, last, gender, firstSeason,
 						referralCode, bio, hidden, birthdayShown)
 				.query(Long.class).single();
 

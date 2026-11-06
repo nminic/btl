@@ -506,10 +506,10 @@ class MeApiTest {
 	 */
 	@Test
 	void everyRowHereIsAStateThePortalCanWrite() {
-		assertThat(howMany("active and member_number is null"))
+		assertThat(howMany(HIS_FEE_STANDS + " and member_number is null"))
 				.as("a row here is active and has no member number, which nothing in the portal"
-						+ " writes: PaymentApi assigns the number in the same statement that sets"
-						+ " active, RegistrationApi writes active = false, and no migration writes"
+						+ " writes: PaymentApi assigns the number in the same statement that books"
+						+ " the season, RegistrationApi writes no season, and no migration writes"
 						+ " a competitor at all. Whatever a case tells apart on that row, it tells"
 						+ " apart on a state production cannot produce")
 				.isZero();
@@ -518,7 +518,7 @@ class MeApiTest {
 						+ " ADL A44 - a person is a competitor from registration and a member when"
 						+ " he is given a number - is unmeasured")
 				.isEqualTo(1);
-		assertThat(howMany("member_number is not null and not active"))
+		assertThat(howMany("member_number is not null and not " + HIS_FEE_STANDS))
 				.as("no row here has a number and a lapsed fee, so the second state the portal"
 						+ " writes is missing and the refusal above could be met by making every"
 						+ " row active")
@@ -682,15 +682,15 @@ class MeApiTest {
 	 */
 	@Test
 	void andHowManyHeBroughtInWhoseFeeStands() throws Exception {
-		assertThat(howMany("referred_by = ? and not active", competitorIdOf(ME)))
+		assertThat(howMany("referred_by = ? and not " + HIS_FEE_STANDS, competitorIdOf(ME)))
 				.as("nobody the caller brought in has let his fee lapse, so the clause that counts"
 						+ " only standing fees can be deleted and this case stays green")
 				.isPositive();
-		assertThat(howMany("referred_by is not null and referred_by <> ? and active",
+		assertThat(howMany("referred_by is not null and referred_by <> ? and " + HIS_FEE_STANDS,
 				competitorIdOf(ME)))
 				.as("nobody was brought in by anybody but the caller, so a count over EVERY member"
 						+ " with a referrer answers his own number by accident").isPositive();
-		assertThat(howMany("active and id <> ?", competitorIdOf(ME)))
+		assertThat(howMany(HIS_FEE_STANDS + " and id <> ?", competitorIdOf(ME)))
 				.as("there are no other active members, so a count over the whole table answers"
 						+ " his own number by accident").isGreaterThan(2);
 
@@ -1043,28 +1043,28 @@ class MeApiTest {
 	 * <p><b>AND HIS COUNT, WHICH IS THE OTHER HALF OF THAT AND WAS MISSING UNTIL 21.09.2026.</b>
 	 * The code had this case and the count had none, and a count is the harder of the two to
 	 * leave unmeasured by accident: while he had brought nobody in, his right answer was 0 and
-	 * every wrong one was 0 as well. {@link CompetitorApi}'s {@code where c.active} written
-	 * into the counting clause here as {@code case when c.active then ... end} answers him 0
+	 * every wrong one was 0 as well. A clause gated on the caller's own standing fee, written
+	 * into the counting clause here as {@code case when <his fee stands> then ... end}, answers him 0
 	 * and is caught by nothing; so is a clause tied to the caller's own row. He brings two
 	 * people in now and is answered 1, and the three floors below say what each wrong query
 	 * would have answered instead.
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedIsStillHandedHisOwnRecord() throws Exception {
-		assertThat(howMany("referred_by = ? and active", competitorIdOf(LAPSED)))
+		assertThat(howMany("referred_by = ? and " + HIS_FEE_STANDS, competitorIdOf(LAPSED)))
 				.as("the member whose fee has lapsed brought nobody in whose fee stands, so his"
 						+ " true count is zero - and so is the count a clause gated on his own"
 						+ " standing fee gives him, and so is the count of nobody at all. Right and"
 						+ " wrong are one number and the count below measures neither")
 				.isPositive();
-		assertThat(howMany("referred_by = ? and not active", competitorIdOf(LAPSED)))
+		assertThat(howMany("referred_by = ? and not " + HIS_FEE_STANDS, competitorIdOf(LAPSED)))
 				.as("nobody he brought in has let his fee lapse, so the clause that counts only"
 						+ " standing fees can be struck out and his number does not move")
 				.isPositive();
-		assertThat(howMany("referred_by = ? and active", competitorIdOf(LAPSED)))
+		assertThat(howMany("referred_by = ? and " + HIS_FEE_STANDS, competitorIdOf(LAPSED)))
 				.as("he and the caller were brought the same number of standing fees, so a count"
 						+ " computed off the CALLER's row answers him correctly by accident")
-				.isNotEqualTo(howMany("referred_by = ? and active", competitorIdOf(ME)));
+				.isNotEqualTo(howMany("referred_by = ? and " + HIS_FEE_STANDS, competitorIdOf(ME)));
 
 		String publicList = whatThePublicListSays(THE_LAPSED_ACCOUNT);
 
@@ -1090,8 +1090,8 @@ class MeApiTest {
 				.isEqualTo(referralCodeOf(LAPSED));
 		assertThat(his.path("referredCount").asInt())
 				.as("the count is not of the members HE brought in whose fee stands. A clause gated"
-						+ " on his own standing fee - CompetitorApi's where c.active, carried in as"
-						+ " a case - would answer 0, counting his recruit who never got a number"
+						+ " on his own standing fee, carried in as"
+						+ " a case, would answer 0, counting his recruit who never got a number"
 						+ " too would answer 2, counting off the caller's row would answer 2,"
 						+ " counting everybody anybody brought in would answer 3, and counting every"
 						+ " active member would answer 5")
@@ -1125,11 +1125,6 @@ class MeApiTest {
 	 */
 	@Test
 	void andWhetherHisFeeStandsWhichTheNumberAloneCannotSay() throws Exception {
-		/* THE FLAG IS TURNED AGAINST THE SEASONS FOR THIS CASE: since AF-1 the answer is the seasons he holds
-		   (`AMemberIsActive`), so a route that still read `competitor.active` would answer all four the other
-		   way round. */
-		db.sql("update competitor set active = not active").update();
-
 		JsonNode standing = answerFor(MY_ACCOUNT).path("member");
 		JsonNode alsoStanding = answerFor(HER_ACCOUNT).path("member");
 		JsonNode lapsed = answerFor(THE_LAPSED_ACCOUNT).path("member");
@@ -2118,21 +2113,12 @@ class MeApiTest {
 			String broughtBy) {
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, city, country_id, first_season,"
-						+ " active, referral_code, referred_by, bio, profile_hidden,"
+						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'M', date '1990-01-01', " + place + ", " + city + ", "
-						+ country + ", ?, ?, ?, " + broughtBy + ", '', false, 'none', 'Otac',"
+						+ country + ", ?, ?, " + broughtBy + ", '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
-				/* ACTIVE FOLLOWS THE NUMBER, and is worked out here rather than passed in because
-				   the portal does not let the two be chosen separately: `PaymentApi` is the only
-				   writer of `active = true` and it either draws the number in the same statement
-				   or is renewing somebody who already has one, and `RegistrationApi` writes
-				   `active = false` with no number at all. So a row with no number is never
-				   active, and the one whose fee has LAPSED is the second state the portal really
-				   does write - a number, and not active. Both halves are measured by
-				   `everyRowHereIsAStateThePortalCanWrite` rather than promised by this comment. */
 				.params(number, first, last, firstSeason,
-						number != null && !LAPSED.equals(number),
 						String.format("%016x", ++issued))
 				.query(Long.class).single();
 
@@ -2149,6 +2135,10 @@ class MeApiTest {
 	 * 2026, which the league does not have, so it is the first season.
 	 */
 	private static final int THE_SEASON_ON_SALE = 2027;
+
+	/** Whether the member of a {@code competitor} row holds the season on sale, which is what makes him active here. */
+	private static final String HIS_FEE_STANDS = "exists(select 1 from membership m"
+			+ " where m.competitor_id = competitor.id and m.season = " + THE_SEASON_ON_SALE + ")";
 
 	/**
 	 * THE CALLER, WRITTEN AS THE ONE ROW OF HIS KIND IN EVERY FIELD THE PROFILE ADDED (see the

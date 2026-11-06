@@ -415,12 +415,8 @@ class BookingAPayment {
 		String memberNumber = numbering ? numbers.draw().written() : competitor.memberNumber();
 
 		if (numbering) {
-			db.sql("update competitor set member_number = ?, active = true where id = ?")
+			db.sql("update competitor set member_number = ? where id = ?")
 					.params(memberNumber, competitor.id()).update();
-		}
-		else {
-			db.sql("update competitor set active = true where id = ?")
-					.param(competitor.id()).update();
 		}
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(new PaymentApi.Confirmed(paymentId, memberNumber,

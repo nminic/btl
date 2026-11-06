@@ -627,11 +627,11 @@ class RegistrationApi {
 		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
 		long competitor = db.sql("insert into competitor"
 						+ " (first_name, last_name, gender, place_id, city, country_id,"
-						+ "  first_season, active,"
+						+ "  first_season,"
 						+ "  referral_code, referred_by, bio, profile_hidden, birth_date,"
 						+ "  father_name, address, phone, shirt_size, health_statement_at)"
 						/* `member_number` IS NOT WRITTEN AND `member_number_seq` IS NOT ASKED.
-						   the flag `active` is false and NO BASIS IS WRITTEN: since V62 a basis is a
+						   NO BASIS IS WRITTEN, and nothing says he is active: since V62 a basis is a
 						   `membership` row of a season, and a registration is no membership of
 						   any season until a payment is recognised or the fee is waived, which
 						   is the administration's to grant and not a thing a form can claim. `profile_hidden` is false because hiding a profile is the
@@ -651,7 +651,7 @@ class RegistrationApi {
 						   `PUT /api/me`, where a moderator sees them before anybody else does.
 						   Written as a literal rather than as an empty parameter so that there
 						   is no value here for a caller to influence at all. */
-						+ " values (?, ?, ?, ?, ?, ?, ?, false, ?, ?, '', false, ?,"
+						+ " values (?, ?, ?, ?, ?, ?, ?, ?, ?, '', false, ?,"
 						+ "  ?, ?, ?, ?, ?)"
 						+ " returning id")
 				.params(typed.firstName().strip(), typed.lastName().strip(), typed.gender(),

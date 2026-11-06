@@ -376,25 +376,25 @@ class VerificationApiTest {
 	 *                    {@code /api/pairs}, and deliberately NOT read by this resource.
 	 */
 	private void member(String number, String first, String last, boolean feeStanding) {
-		competitor(number, first, last, feeStanding);
+		competitor(number, first, last);
 	}
 
 	/** Somebody who has registered and whose fee is not recorded, so he has no number
 	 *  (V16: „A MEMBER is a row whose member_number is there"). */
 	private void registered(String first, String last) {
-		competitor(null, first, last, false);
+		competitor(null, first, last);
 	}
 
-	private void competitor(String number, String first, String last, boolean feeStanding) {
+	private void competitor(String number, String first, String last) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'F', date '1990-01-01',"
-						+ " " + EVERYBODYS_TOWN + ", 2027, ?, "
+						+ " " + EVERYBODYS_TOWN + ", 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, first, last, feeStanding, String.format("%016x", ++issued))
+				.params(number, first, last, String.format("%016x", ++issued))
 				.update();
 	}
 

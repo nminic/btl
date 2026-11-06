@@ -249,7 +249,7 @@ class MyMembershipWriteApiTest {
 
 	private long competitor(String number) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active,"
+						+ " place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Clan', 'M', date '1990-01-01',"
@@ -258,7 +258,7 @@ class MyMembershipWriteApiTest {
 						   list's DINAR column: 4.200 for the early period, 600 a referral. Until V42
 						   an invoice carried both columns and where he lived changed nothing. */
 						+ " (select id from place where country_id = (select id from country"
-						+ "   where code = 'RS') order by rank limit 1), 2027, false, ?, '',"
+						+ "   where code = 'RS') order by rank limit 1), 2027, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, String.format("%016x", ++issued))
@@ -370,10 +370,9 @@ class MyMembershipWriteApiTest {
 		assertThat(body.path("memberNumber").asString()).matches("^[0-9]{6}$");
 		assertThat(body.path("fromTheBalance").path("amount").asDouble()).isEqualTo(4200.0);
 
-		assertThat(db.sql("select member_number, active from competitor where id = ?")
-						.param(theFirstTimer)
-						.query((row, i) -> row.getString(1) + " " + row.getBoolean(2)).single())
-				.isEqualTo(body.path("memberNumber").asString() + " true");
+		assertThat(db.sql("select member_number from competitor where id = ?")
+						.param(theFirstTimer).query(String.class).single())
+				.isEqualTo(body.path("memberNumber").asString());
 
 		long entry = db.sql("select id from balance_entry where competitor_id = ? and reason ="
 						+ " 'membership'").param(theFirstTimer).query(Long.class).single();

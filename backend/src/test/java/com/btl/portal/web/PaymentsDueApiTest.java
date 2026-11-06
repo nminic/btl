@@ -375,7 +375,7 @@ class PaymentsDueApiTest {
 		clock.moveTo(IN_OCTOBER_2026);
 
 		/* FIRST BY KEY, AND HE HAS NO ACCOUNT. */
-		onlyImported = competitor(ONLY_IMPORTED, "Uvezeni", "Uvezenovic", true);
+		onlyImported = competitor(ONLY_IMPORTED, "Uvezeni", "Uvezenovic");
 
 		booksCookie = account(BOOKS, "moderator", "Uros", "Uplatic", true);
 		anotherQueueCookie = account(ANOTHER_QUEUE, "moderator", "Dragana", "Drugic", true);
@@ -389,19 +389,19 @@ class PaymentsDueApiTest {
 
 		/* THE READER HOLDING THE TICK HAS NO MEMBER OF HIS OWN, which is left exactly as the
 		   `account` helper made it: `competitor_id` stays empty. */
-		aMembersOwnRecord = competitor(null, "Tijana", "Takic", false);
+		aMembersOwnRecord = competitor(null, "Tijana", "Takic");
 		belongsTo(A_MEMBER, aMembersOwnRecord);
 
-		neverPaid = competitor(null, "Marko", "Markovic", false);
-		namesake = competitor(null, "Marko", "Markovic", false);
-		didNotRenew = competitor("000210", "Jelena", "Petrovic", true);
-		paidAhead = competitor("000220", "Ana", "Nikolic", true);
-		freeOfTheFee = competitor("000230", "Petar", "Ilic", true);
-		paid = competitor("000240", "Vera", "Vukovic", true);
-		flagSaysOtherwise = competitor("000260", "Zorica", "Zoric", false);
-		notConfirmed = competitor(null, "Novak", "Jovanovic", false);
-		surnamedNovak = competitor("000250", "Dragan", "Novak", true);
-		withDiacritics = competitor(null, "Mila", "Čačić", false);
+		neverPaid = competitor(null, "Marko", "Markovic");
+		namesake = competitor(null, "Marko", "Markovic");
+		didNotRenew = competitor("000210", "Jelena", "Petrovic");
+		paidAhead = competitor("000220", "Ana", "Nikolic");
+		freeOfTheFee = competitor("000230", "Petar", "Ilic");
+		paid = competitor("000240", "Vera", "Vukovic");
+		flagSaysOtherwise = competitor("000260", "Zorica", "Zoric");
+		notConfirmed = competitor(null, "Novak", "Jovanovic");
+		surnamedNovak = competitor("000250", "Dragan", "Novak");
+		withDiacritics = competitor(null, "Mila", "Čačić");
 
 		/* THE CURRENCY AXIS, AND IT TAKES THREE PEOPLE RATHER THAN ONE.
 		   Everybody above lives in the codebook's `rank = 1`, which is Shanghai, so before these
@@ -409,18 +409,18 @@ class PaymentsDueApiTest {
 		   always added the three euro and one that never did would both have passed.
 		   Serbia is reached through BOTH homes V7 allows, because the country arrives by two
 		   different roads and a route reading only one of them answers the other in euro. */
-		billedInDinars = competitor(null, "Milan", "Aleksic", false, A_TOWN_IN_SERBIA, BORN_LONG_AGO);
-		billedInDinarsTyped = competitor(null, "Sanja", "Zivkovic", false, A_TOWN, BORN_LONG_AGO);
+		billedInDinars = competitor(null, "Milan", "Aleksic", A_TOWN_IN_SERBIA, BORN_LONG_AGO);
+		billedInDinarsTyped = competitor(null, "Sanja", "Zivkovic", A_TOWN, BORN_LONG_AGO);
 
 		/* AND THE JUNIOR LIVES ABROAD WHILE A SERBIAN PAYS THE FULL PRICE, so „junior" and
 		   „Serbia" are two axes and neither stands in for the other. With the junior in Serbia,
 		   one fixture row would carry both states and a route confusing them would pass. */
-		aJuniorAbroad = competitor(null, "Bojan", "Bogdanovic", false, A_TOWN, BORN_A_JUNIOR);
+		aJuniorAbroad = competitor(null, "Bojan", "Bogdanovic", A_TOWN, BORN_A_JUNIOR);
 
 		/* AND THE THIRD BASIS, which is off the list exactly as the other two are. A route taking a
 		   row off by asking about `payment` and `feeExempt` BY NAME would pass every case here
 		   without him, and V38 made that third word legal the day it landed. */
-		inOnHisBalance = competitor("000280", "Dusan", "Ostojic", true);
+		inOnHisBalance = competitor("000280", "Dusan", "Ostojic");
 
 		account(NEVER_PAID, "competitor", "Marko", "Markovic", true, neverPaid);
 		account(NAMESAKE, "competitor", "Marko", "Markovic", true, namesake);
@@ -648,24 +648,13 @@ class PaymentsDueApiTest {
 	}
 
 	/**
-	 * WHETHER HE IS ON THE LIST IS READ OFF THE MEMBERSHIP AND NEVER OFF THE FLAG.
+	 * WHETHER HE IS ON THE LIST IS READ OFF THE MEMBERSHIP.
 	 *
-	 * <p>{@code competitor.active} is the other home of nearly the same fact, it carries no
-	 * season, and nothing in {@code src/main} ever sets it back to false. The two accounts here
-	 * disagree in opposite directions, so a route reading the flag is wrong about both of them
-	 * and a route reading the membership is right about both.
+	 * <p>The member with a payment for the season on sale is off the list and the one paid ahead
+	 * for the next is on it, and the only thing that tells them apart is the season of the row.
 	 */
 	@Test
-	void theListIsReadOffTheMembershipAndNotOffTheFlagOnTheMember() throws Exception {
-		assertThat(db.sql("select active from competitor where id = ?")
-				.param(flagSaysOtherwise).query(Boolean.class).single())
-				.as("the fixture stopped saying what it is for")
-				.isFalse();
-		assertThat(db.sql("select active from competitor where id = ?")
-				.param(paidAhead).query(Boolean.class).single())
-				.as("the fixture stopped saying what it is for")
-				.isTrue();
-
+	void theListIsReadOffTheMembershipOfTheMember() throws Exception {
 		assertThat(keysIn(read(booksCookie, null)))
 				.doesNotContain(flagSaysOtherwise)
 				.contains(paidAhead);
@@ -1270,8 +1259,8 @@ class PaymentsDueApiTest {
 	 */
 	@Test
 	void alineInAmoneyThatIsNoLongerHisIsNotOnTheLabel() throws Exception {
-		long whoMovedAbroad = competitor("000295", "Nekad", "Dinarski", false);
-		long alsoBroughtIn = competitor("000296", "Doveden", "Nekada", true);
+		long whoMovedAbroad = competitor("000295", "Nekad", "Dinarski");
+		long alsoBroughtIn = competitor("000296", "Doveden", "Nekada");
 
 		/* AND AN ACCOUNT, because this screen reads `from account a join competitor c` - a competitor
 		   nobody can sign in as is nobody the association can ask for money. */
@@ -1505,8 +1494,8 @@ class PaymentsDueApiTest {
 
 	/** @param number null for somebody who has registered and never paid, which since V16 is an
 	 *                ordinary state and not a broken row */
-	private long competitor(String number, String first, String last, boolean active) {
-		return competitor(number, first, last, active, A_TOWN, BORN_LONG_AGO);
+	private long competitor(String number, String first, String last) {
+		return competitor(number, first, last, A_TOWN, BORN_LONG_AGO);
 	}
 
 	/**
@@ -1516,16 +1505,16 @@ class PaymentsDueApiTest {
 	 *                  period applies - so a fixture in which everybody was born in 1990 cannot
 	 *                  tell a route reading the year from one ignoring it
 	 */
-	private long competitor(String number, String first, String last, boolean active, String town,
+	private long competitor(String number, String first, String last, String town,
 			String birthDate) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active,"
+						+ " birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
-						+ " values (?, ?, ?, 'F', ?::date, " + town + ", 2027, ?,"
+						+ " values (?, ?, ?, 'F', ?::date, " + town + ", 2027,"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, first, last, birthDate, active, String.format("%016x", ++issued))
+				.params(number, first, last, birthDate, String.format("%016x", ++issued))
 				.query(Long.class).single();
 	}
 

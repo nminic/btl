@@ -1195,15 +1195,15 @@ class GroupEntryTest {
 
 	private long competitor(String number, String referral, boolean active) {
 		long made = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active,"
+						+ " birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at)"
 						+ " values (?, 'Zatecen', 'Zatecenic', 'M', date '1985-01-01',"
-						+ " (select id from place order by rank limit 1), 2027, ?,"
+						+ " (select id from place order by rank limit 1), 2027,"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 9', 'L',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, !active, referral).query(Long.class).single();
+				.params(number, referral).query(Long.class).single();
 
 		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
 		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee

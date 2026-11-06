@@ -993,14 +993,14 @@ class TeamJoiningApiTest {
 
 	private void competitor(String number, boolean active, boolean hidden) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', ?, 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, ?, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', ?, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
-				.params(number, "Probić" + number, !active, String.format("%016x", ++issued), hidden)
+				.params(number, "Probić" + number, String.format("%016x", ++issued), hidden)
 				.update();
 
 		/* A MEMBER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Entering a team

@@ -178,9 +178,9 @@ class AReferrerIsHeldWhileHisRewardIsWorkedOutTest {
 
 		cookie = session.secret();
 
-		referrer = member(THE_REFERRERS_NUMBER, "0011aabbccddee61", true, null);
-		firstNewcomer = member(null, "0011aabbccddee62", false, referrer);
-		secondNewcomer = member(null, "0011aabbccddee63", false, referrer);
+		referrer = member(THE_REFERRERS_NUMBER, "0011aabbccddee61", null);
+		firstNewcomer = member(null, "0011aabbccddee62", referrer);
+		secondNewcomer = member(null, "0011aabbccddee63", referrer);
 	}
 
 	/** Real commits, so a real delete, children before parents. */
@@ -507,7 +507,7 @@ class AReferrerIsHeldWhileHisRewardIsWorkedOutTest {
 
 	/** The same member with no line on the referrer's book: what a reward of nothing leaves behind. */
 	private void aMemberHoldingTheLastSeason() {
-		renewing = member("000962", "0011aabbccddee64", true, referrer);
+		renewing = member("000962", "0011aabbccddee64", referrer);
 
 		db.sql("insert into membership (competitor_id, season, basis, decided_by, decided_by_name, decided_at)"
 						+ " values (?, 2027, 'feeExempt', ?, 'Drzan Blagajnik', timestamptz '2027-01-10 10:00:00+00')")
@@ -568,14 +568,14 @@ class AReferrerIsHeldWhileHisRewardIsWorkedOutTest {
 				.cookie(new Cookie(SessionCookie.NAME, cookie)));
 	}
 
-	private long member(String number, String referralCode, boolean active, Long referredBy) {
+	private long member(String number, String referralCode, Long referredBy) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, referral_code, referred_by, bio,"
+						+ " place_id, first_season, referral_code, referred_by, bio,"
 						+ " profile_hidden, birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at) values (?, 'Probni', 'Preporucen', 'M', date '1990-05-15',"
-						+ " " + A_TOWN_IN_SERBIA + ", 2027, ?, ?, ?, '', false, 'none', 'Otac',"
+						+ " " + A_TOWN_IN_SERBIA + ", 2027, ?, ?, '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, active, referralCode, referredBy)
+				.params(number, referralCode, referredBy)
 				.query(Long.class).single();
 	}
 

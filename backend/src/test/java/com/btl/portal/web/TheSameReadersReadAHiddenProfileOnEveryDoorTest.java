@@ -206,7 +206,7 @@ class TheSameReadersReadAHiddenProfileOnEveryDoorTest {
 
 		/* A ROW OF ANOTHER SEASON IS NOT THE FACT BEING ASKED: this reader holds a row of 2028, which does
 		   not count today, and is not active, so reading „has he a membership row" answers him the wrong
-		   way round; and his flag says active (see `member`). */
+		   way round. */
 		member("000111", "Istekao", "Clan", false, false, "", null);
 		exemptFor("000111", 2028);
 		account(LAPSED, "competitor");
@@ -271,18 +271,18 @@ class TheSameReadersReadAHiddenProfileOnEveryDoorTest {
 	 */
 	@Test
 	void theReadersAreWhatTheyAreCalled() {
-		assertThat(facts("select c.active, (select string_agg(m.season::text, ',') from membership m"
+		assertThat(facts("select (select string_agg(m.season::text, ',') from membership m"
 				+ " where m.competitor_id = c.id)"
 				+ " from account a join competitor c on c.id = a.competitor_id where a.email = ?", LAPSED))
-				.as("the lapsed reader does not carry the flag true and a row of 2028 alone, so neither the"
-						+ " flag nor a row of another season can be told from the season that counts by him")
-				.isEqualTo("true 2028");
-		assertThat(facts("select c.active, (select string_agg(m.season::text, ',') from membership m"
+				.as("the lapsed reader does not hold a row of 2028 alone, so a row of another season cannot"
+						+ " be told from the season that counts by him")
+				.isEqualTo("2028");
+		assertThat(facts("select (select string_agg(m.season::text, ',') from membership m"
 				+ " where m.competitor_id = c.id)"
 				+ " from account a join competitor c on c.id = a.competitor_id where a.email = ?", ACTIVE))
-				.as("the active reader does not carry the flag false and the season that counts, so the"
+				.as("the active reader does not hold the season that counts alone, so the"
 						+ " lapsed reader's season is not the only difference between the two")
-				.isEqualTo("false 2027");
+				.isEqualTo("2027");
 		assertThat(facts("select c.member_number is null, exists(select 1 from membership m where m.competitor_id = c.id)"
 				+ " from account a join competitor c on c.id = a.competitor_id where a.email = ?", NEVER_PAID))
 				.as("the registrant has a number or is active")
@@ -690,13 +690,13 @@ class TheSameReadersReadAHiddenProfileOnEveryDoorTest {
 	private long member(String number, String first, String last, boolean active, boolean hidden,
 			String bio, Long photo) {
 		long made = db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at, photo_id)"
 						+ " values (?, ?, ?, 'M', date '1990-01-01', (select id from place where rank = 1),"
-						+ " 2027, ?, ?, ?, ?, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " 2027, ?, ?, ?, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00', ?) returning id")
-				.params(number, first, last, !active, String.format("%016x", ++issued), bio, hidden, photo)
+				.params(number, first, last, String.format("%016x", ++issued), bio, hidden, photo)
 				.query(Long.class).single();
 
 		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:

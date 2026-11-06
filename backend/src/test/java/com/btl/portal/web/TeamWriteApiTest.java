@@ -480,11 +480,11 @@ class TeamWriteApiTest {
 
 	private void competitor(String number) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, String.format("%016x", ++issued))
@@ -2035,11 +2035,9 @@ class TeamWriteApiTest {
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedIsNobodyAtThisAddress() throws Exception {
-		/* HE DID NOT RENEW, which since AF-1 is the season taken away; his flag is raised on purpose, so a
-		   reader that read it would still take him for a member. */
+		/* HE DID NOT RENEW, which since AF-1 is the season taken away. */
 		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
 				.param(IN_A_TEAM_NOW).update();
-		db.sql("update competitor set active = true where member_number = ?").param(IN_A_TEAM_NOW).update();
 
 		assertThat(leaveAs(IN_A_TEAM_NOW, THE_OTHER_TEAM).getStatus())
 				.as("a member whose fee has lapsed reached a route that is not the renewal page")
@@ -2484,11 +2482,9 @@ class TeamWriteApiTest {
 	void aMemberWhoseFeeHasLapsedAdministersNothingAndBothResourcesAgree() throws Exception {
 		aTeamWithTwoMembersAndEverythingHangingOffIt();
 
-		/* HE DID NOT RENEW, which since AF-1 is the season taken away; his flag is raised on purpose, so a
-		   reader that read it would still take him for a member. */
+		/* HE DID NOT RENEW, which since AF-1 is the season taken away. */
 		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
 				.param(THE_SEAT).update();
-		db.sql("update competitor set active = true where member_number = ?").param(THE_SEAT).update();
 
 		assertThat(theListTells(THE_SEAT, A_TEAM_WITH_TWO))
 				.as("/api/teams still names a lapsed member as the one who administers his team")

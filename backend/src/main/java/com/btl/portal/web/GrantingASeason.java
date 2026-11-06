@@ -205,7 +205,7 @@ class GrantingASeason {
 				? numbers.draw()
 				: new MemberNumber(memberNumber);
 
-		db.sql("update competitor set member_number = ?, active = true where id = ?")
+		db.sql("update competitor set member_number = ? where id = ?")
 				.params(number.written(), competitorId).update();
 
 		return number;

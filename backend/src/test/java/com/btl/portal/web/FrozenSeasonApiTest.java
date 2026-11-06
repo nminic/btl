@@ -225,7 +225,9 @@ class FrozenSeasonApiTest {
 	@Test
 	void aMemberWhoseFeeLapsedIsAnsweredByNumberAndNameAndTheReaderDecidesTheLink() throws Exception {
 		frozen();
-		db.sql("update competitor set active = false, profile_hidden = true where member_number = '000403'").update();
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = '000403')")
+				.update();
+		db.sql("update competitor set profile_hidden = true where member_number = '000403'").update();
 
 		assertThat(rows(tablesOf2027(null).get("standings"), "memberNumber", "who"))
 				.contains("000403 Goran Treci");
@@ -536,11 +538,11 @@ class FrozenSeasonApiTest {
 
 	private void member(String number, String first, String last, String gender) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, city, country_id, first_season, active,"
+						+ " place_id, city, country_id, first_season,"
 						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, cast(? as date),"
-						+ " (select id from place where rank = 1), null, null, 2027, true,"
+						+ " (select id from place where rank = 1), null, null, 2027,"
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, first, last, gender, "F".equals(gender) && "000404".equals(number) ? "1960-05-05"

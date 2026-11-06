@@ -151,8 +151,8 @@ class AttendanceWriteApiTest {
 		member(MODERATORS_LAPSED, false);
 		long unpaid = neverPaid();
 
-		/* A ROW OF A SEASON THAT DOES NOT COUNT ON THIS FILE'S DAY (2027 is the one that does), and his flag
-		   says active: since AF-1 neither makes him active. */
+		/* A ROW OF A SEASON THAT DOES NOT COUNT ON THIS FILE'S DAY (2027 is the one that does): since AF-1
+		   that does not make him active. */
 		exemptFor(LAPSED, 2028);
 
 		attending(FUTURE_ONE, ASKER);
@@ -187,14 +187,14 @@ class AttendanceWriteApiTest {
 
 	private void member(String number, boolean feeStanding) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, ?, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, !feeStanding, String.format("%016x", ++issued))
+				.params(number, String.format("%016x", ++issued))
 				.update();
 
 		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
@@ -208,11 +208,11 @@ class AttendanceWriteApiTest {
 	/** Somebody who registered and has not paid: no number, and never active (V16). */
 	private long neverPaid() {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active,"
+						+ " birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (null, 'Nikad', 'Placeno', 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.param(String.format("%016x", ++issued))
@@ -447,7 +447,7 @@ class AttendanceWriteApiTest {
 
 	/**
 	 * A MEMBER WHOSE FEE HAS LAPSED SAYS NOTHING EITHER WAY, AND NEITHER A ROW OF A SEASON THAT DOES NOT
-	 * COUNT NOR HIS FLAG MAKES HIM ACTIVE.
+	 * COUNT MAKES HIM ACTIVE.
 	 *
 	 * <p>PDL, 03.10.2026, recording the owner's choice between offered outcomes: „Najavu dolaska
 	 * daju ... aktivni članovi (važeća članarina)". Answered as an address that maps nothing
@@ -456,12 +456,12 @@ class AttendanceWriteApiTest {
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedSaysNothingEitherWay() throws Exception {
-		assertThat(db.sql("select active || ' ' || (select string_agg(m.season::text, ',') from membership m"
-						+ " where m.competitor_id = c.id) from competitor c where c.id = ?")
+		assertThat(db.sql("select string_agg(m.season::text, ',') from membership m"
+						+ " where m.competitor_id = ?")
 				.param(competitorId(LAPSED)).query(String.class).single())
-				.as("the lapsed member does not carry the flag true and a row of 2028 alone, so this case"
-						+ " cannot tell the flag, or a row of another season, from the season that counts")
-				.isEqualTo("true 2028");
+				.as("the lapsed member does not hold a row of 2028 alone, so this case cannot tell a row of"
+						+ " another season from the season that counts")
+				.isEqualTo("2028");
 
 		List<String> before = everyRow();
 

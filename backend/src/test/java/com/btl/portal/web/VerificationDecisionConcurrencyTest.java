@@ -149,7 +149,7 @@ class VerificationDecisionConcurrencyTest {
 	private static final String THE_NAME_HE_TYPED = "Trka koje nema";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, active,"
+			+ " birth_date, place_id, city, country_id, first_season,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -204,22 +204,21 @@ class VerificationDecisionConcurrencyTest {
 
 		founder = db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni',"
 						+ " 'Osnivac', 'M', date '1990-05-05', " + A_TOWN + ", null, null, 2027,"
-						+ " true, '00112233445588a1', null, '', false, 'none',"
+						+ " '00112233445588a1', null, '', false, 'none',"
 						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
 				.param(THE_FOUNDER)
 				.query(Long.class).single();
 
 		/* A FOUNDER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Approving a
-		   proposal asks for a membership of the season on sale and not for `competitor.active` (PDL
-		   30.10.2026), and this file runs on the real clock. Without the row both approvals are refused
+		   proposal asks for a membership of the season on sale (PDL 30.10.2026), and this file runs on the real clock. Without the row both approvals are refused
 		   with 409 BEFORE either reaches the row's lock, so the race the cases below measure is never
 		   run. The row cascades away with the founder in the cleanup below. */
 		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
 						+ " select c.id, s.season, 'feeExempt', 'Probni Probic',"
 						+ " timestamptz '2026-09-01 10:00:00+00'"
 						+ " from competitor c cross join (values (2027), (2028)) as s (season)"
-						+ " where c.id = ? and c.active")
+						+ " where c.id = ?")
 				.param(founder)
 				.update();
 
@@ -776,11 +775,11 @@ class VerificationDecisionConcurrencyTest {
 	void twoApprovalsOfTheSameTypedRaceOfAnEventThatHasNoneYetMakeOneRaceAndBothResultsAreOnIt()
 			throws Exception {
 		another = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active,"
+						+ " birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Drugi', 'Clan', 'F', date '1990-01-01', " + A_TOWN
-						+ ", 2027, true, '0011223344558a42', '', false, 'none', 'Otac',"
+						+ ", 2027, '0011223344558a42', '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.param(THE_OTHER_MEMBER).query(Long.class).single();
 
@@ -1230,11 +1229,11 @@ class VerificationDecisionConcurrencyTest {
 	void anApprovalOntoARaceTheLeagueIsEnteringHimOnWaitsForItAndIsRefusedAndNeverDeadlocks()
 			throws Exception {
 		another = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active,"
+						+ " birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Drugi', 'Clan', 'F', date '1990-01-01', " + A_TOWN
-						+ ", 2027, true, '0011223344558a42', '', false, 'none', 'Otac',"
+						+ ", 2027, '0011223344558a42', '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.param(THE_OTHER_MEMBER).query(Long.class).single();
 

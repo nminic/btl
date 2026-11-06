@@ -133,14 +133,14 @@ class AMemberIsActiveTest {
 
 	private long member(String number, boolean flag) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, city, country_id, first_season, active,"
+						+ " place_id, city, country_id, first_season,"
 						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Clan', 'M', date '1990-05-05',"
-						+ " (select id from place where rank = 1), null, null, 2027, ?,"
+						+ " (select id from place where rank = 1), null, null, 2027,"
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, flag, "0011223344" + number)
+				.params(number, "0011223344" + number)
 				.query(Long.class).single();
 	}
 }

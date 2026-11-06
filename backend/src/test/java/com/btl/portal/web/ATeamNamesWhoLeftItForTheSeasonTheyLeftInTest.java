@@ -1081,14 +1081,14 @@ class ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest {
 
 	private void competitor(String number, boolean active) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), " + HIS_FIRST_SEASON + ", ?,"
+						+ " (select id from place where rank = 1), " + HIS_FIRST_SEASON + ","
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
-				.params(number, !active, String.format("%016x", ++issued))
+				.params(number, String.format("%016x", ++issued))
 				.update();
 
 		/* A MEMBER WHOSE FEE STANDS HOLDS EVERY SEASON THE MOMENTS OF THIS FILE ASK ABOUT, 2027 TO 2029: since
@@ -1114,12 +1114,12 @@ class ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest {
 	 */
 	private long competitorWithNoNumber() {
 		long made = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active,"
+						+ " birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (null, 'Probni', 'Bezbrojni', 'M', date '1992-03-08',"
 						+ " (select id from place where rank = 1), " + HIS_FIRST_SEASON + ","
-						+ " false, ?, '', false, 'none', 'Otac', 'Ulica 3', 'S',"
+						+ " ?, '', false, 'none', 'Otac', 'Ulica 3', 'S',"
 						+ " timestamptz '2026-01-01 10:00:00+00') returning id")
 				.param(String.format("%016x", ++issued))
 				.query(Long.class).single();

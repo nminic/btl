@@ -61,7 +61,7 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 	private static final String A_LEAGUE = "(select id from league where slug = 'zamrznuta-liga')";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender, birth_date,"
-			+ " place_id, city, country_id, first_season, active, "
+			+ " place_id, city, country_id, first_season, "
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -114,11 +114,11 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 	@BeforeEach
 	void probe() {
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('001010', 'Prvi', 'Zamrznuti',"
-				+ " 'M', date '1981-01-01', " + A_TOWN + ", null, null, 2027, true, "
+				+ " 'M', date '1981-01-01', " + A_TOWN + ", null, null, 2027, "
 				+ " '00112233445566f1', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('001011', 'Prva', 'Zamrznuta',"
-				+ " 'F', date '1992-02-02', " + A_TOWN + ", null, null, 2027, true, "
+				+ " 'F', date '1992-02-02', " + A_TOWN + ", null, null, 2027, "
 				+ " '00112233445566f2', null, '', false, 'none', 'Otac', 'Ulica 2', 'S',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 
@@ -421,17 +421,18 @@ class FrozenSeasonConstraintsTest extends DatabaseTest {
 	}
 
 	/**
-	 * Deactivating a member changes nothing here, which is the state between the
+	 * Changing the member's row changes nothing here, which is the state between the
 	 * other two.
 	 *
 	 * <p>A37 names three: active, deactivated, deleted. The first two differ only in
-	 * whether the reader draws a link, and that is read off `competitor.active`
-	 * rather than out of this table - so this measures that the snapshot does NOT
-	 * react to it. A trigger written on the wrong event would.
+	 * whether the reader draws a link, and that is read off the seasons the member
+	 * holds (V86 took the flag away) rather than out of this table - so this measures
+	 * that the snapshot does NOT react to an update of the member. A trigger written on
+	 * the wrong event would.
 	 */
 	@Test
-	void deactivatingTheMemberLeavesTheFrozenRowAlone() {
-		db.sql("update competitor set active = false where member_number = '001010'").update();
+	void updatingTheMemberLeavesTheFrozenRowAlone() {
+		db.sql("update competitor set profile_hidden = true where member_number = '001010'").update();
 
 		assertThat(db.sql("select who from season_competitor").query(String.class).single())
 				.as("deactivating a member forgot his name, which only deletion may do")
