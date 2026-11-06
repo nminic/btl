@@ -388,20 +388,32 @@ describe('the section being read', () => {
       })
     })
 
-    it('stops listening when the screen closes', async () => {
+    it('stops listening when the screen closes, taking off the very functions it put on', async () => {
+      const added = vi.spyOn(window, 'addEventListener')
       const removed = vi.spyOn(window, 'removeEventListener')
       const view = await openRulebook()
 
       press(EIGHTEENTH)
       view.unmount()
 
-      const types = removed.mock.calls.map(([type]) => type)
-
-      // The list of sections listens for the end of the page, and the press for the reader's hand.
+      /* The list of sections listens for the end of the page, and the press for the reader's hand. */
       for (const type of ['scroll', 'wheel', 'touchmove', 'keydown', 'pointerdown']) {
-        expect(types, `the listener for ${type} is taken off`).toContain(type)
+        const put = added.mock.calls.filter(([one]) => one === type).map(([, listener]) => listener)
+        const off = removed.mock.calls.filter(([one]) => one === type).map(([, listener]) => listener)
+
+        expect(put.length, `a listener for ${type} was put on`).toBeGreaterThan(0)
+        expect(off.length, `the listener for ${type} is taken off`).toBeGreaterThan(0)
+
+        /* Counting the calls is not enough: `removeEventListener` is given a function and takes off
+           that one and no other, so a call that names a different function (an empty one, a copy)
+           leaves the listener standing and is counted all the same (measured: the scroll listener
+           and the wheel one each taken off with an empty function, 23 passed). */
+        for (const listener of off) {
+          expect(put, `what was taken off for ${type} is not what was put on`).toContain(listener)
+        }
       }
 
+      added.mockRestore()
       removed.mockRestore()
     })
   })

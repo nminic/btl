@@ -397,6 +397,14 @@ class PricingWriteApi {
 	 * the owner chose on 25.09.2026 - the route first, the form after - and it is written
 	 * down so the next reader finds a plan rather than a fault.
 	 *
+	 * <p><b>BOUNDARY: "the route wrote a null" and "the route never touched {@code rsd}" cannot
+	 * be told apart.</b> The equivalence above makes it impossible for a fee row to start with
+	 * a dinar price, so the update writes the dinar price as it arrived and a fee row ends with
+	 * the same null whether it was written or left alone. No case can swap one source of that
+	 * null for the other and fail, so none claims to: the cases on the fee row measure the
+	 * answer and the stored row, not where the null came from. Written down as a boundary
+	 * rather than left for a reviewer to find.
+	 *
 	 * <p><b>AND THE REFERRAL IS REFUSED ONCE THE RENEWAL WINDOW HAS OPENED.</b> Owner,
 	 * 16.08.2026 (PDL P16): „administrator podesava <b>do 1.10. u 00 po CET</b> za predstojecu
 	 * godinu", and „posle 1. oktobra u 00:00 CET iznos za tu godinu stoji, i administrator ga
@@ -607,11 +615,12 @@ class PricingWriteApi {
 	/**
 	 * Nothing at all, whether that is no field or a field of spaces.
 	 *
-	 * <p><b>The portal's third copy of these three words, word for word</b>
-	 * ({@code LeagueWriteApi} and {@code PaymentApi} carry the other two), and copied rather than
-	 * shared for the reason those two already stand apart: one class per resource, and a helper
-	 * of three words pulled into a common place would tie three routes together so that a change
-	 * to any one of them has to be reasoned about for all three.
+	 * <p><b>One of fifteen private copies of these three words under {@code web/}</b>
+	 * ({@code git grep -l "private static boolean isNothing"} lists them, and it is the count
+	 * that is measured, not a list that would age with every new route), copied rather than
+	 * shared for the reason all of them stand apart: one class per resource, and a helper of
+	 * three words pulled into a common place would tie every one of those routes together so
+	 * that a change to any of them has to be reasoned about for all.
 	 */
 	private static boolean isNothing(String value) {
 		return value == null || value.isBlank();

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { render, screen } from '@testing-library/react'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -196,19 +196,37 @@ describe('the buttons one answer is chosen from', () => {
        tick and a gap.
      *
        Asked of every rule that applies ONLY in the taken state, which is a
-       question with a bottom: the sheet is the whole of where such a rule can be
-       written, and `everyRule` reads it through the parser, queries and all. A
-       guard naming the one selector would go green the day the same mark is
+       question with a bottom: every stylesheet the portal has is where such a
+       rule can be written, and `everyRule` reads each through the parser, queries
+       and all. Not only `FormRenderer.css`: the registration screen loads at least
+       six, and the same rule written in another of them (measured, in the sheet
+       of the place field) was not seen. The sheets are FOUND under `src`, not
+       listed, so one added tomorrow is inside the question the day it exists.
+       A guard naming the one selector would go green the day the same mark is
        written under `::after`, or under a second rule, which is the shape this
        portal has been caught by before. */
-    const taken = everyRule(SHEET, 'FormRenderer.css').filter((rule) =>
-      rule.selectorText.includes(':checked'),
+    const sheets = readdirSync(join(process.cwd(), 'src'), { recursive: true })
+      .filter((name): name is string => typeof name === 'string' && name.endsWith('.css'))
+      .map((name) => join('src', name))
+
+    expect(sheets, 'the sweep does not reach the sheet of the form').toContain(
+      join('src', 'forms', 'FormRenderer.css'),
     )
 
-    expect(taken.length, 'the sheet says nothing at all about a taken option').toBeGreaterThan(0)
+    const taken = sheets.flatMap((sheet) =>
+      everyRule(readFileSync(join(process.cwd(), sheet), 'utf-8'), sheet)
+        .filter((rule) => rule.selectorText.includes(':checked') && /\.choice/.test(rule.selectorText))
+        .map((rule) => ({ sheet, rule })),
+    )
 
-    const declared = taken.flatMap((rule) =>
-      [...rule.style].map((property) => ({ property, where: rule.selectorText })),
+    expect(taken.length, 'the sheets say nothing at all about a taken option').toBeGreaterThan(0)
+    expect(
+      taken.some(({ sheet }) => sheet === join('src', 'forms', 'FormRenderer.css')),
+      'the sheet of the form no longer says what a taken option looks like',
+    ).toBe(true)
+
+    const declared = taken.flatMap(({ sheet, rule }) =>
+      [...rule.style].map((property) => ({ property, where: `${rule.selectorText} (${sheet})` })),
     )
 
     expect(declared.length, 'no property is declared for a taken option').toBeGreaterThan(0)

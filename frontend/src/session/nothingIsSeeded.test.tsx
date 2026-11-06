@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { setupUser } from '../test/user'
 import { SessionProvider } from './SessionProvider'
 import { useSession } from './useSession'
-import type { SessionValue } from './context'
 
 /**
  * A SESSION THAT HAS JUST BEEN MOUNTED HOLDS NO RECORDS AT ALL.
@@ -30,8 +29,10 @@ import type { SessionValue } from './context'
  *
  * <p>What is asked is of the SESSION VALUE ITSELF: walk its own keys, and every one of them
  * that holds records must hold none. So a collection added tomorrow is inside this question the
- * day it is added, without anybody remembering to come here, and a seeded one fails the gate
- * instead of waiting to be found on QA.
+ * day it is added IN ANY OF THE SHAPES NAMED BELOW, without anybody remembering to come here, and
+ * a seeded one fails the gate instead of waiting to be found on QA. The shapes are named because
+ * the claim was once wider than the sweep (measured 06.11.2026: a `Map` and a `Set` seeded with a
+ * record went unseen, since `Object.values` of either is an empty list).
  *
  * <h2>What „holds records" means, and the line is the owner's own</h2>
  *
@@ -48,10 +49,16 @@ import type { SessionValue } from './context'
  * `Record&lt;string, Result&gt;`), so it must be empty as well - unless what it maps to is a
  * PRIMITIVE, which is a setting and not a record. `notifications` maps a key to a boolean and
  * is exactly what the decision leaves alone; so is `going`, and so is `signedIn`, whose fields
- * are the two strings the caller is known by.</li>
+ * are the two strings the caller is known by;</li>
+ * <li>a `Map` or a `Set` is a list of records written a third way, and it must be empty as well,
+ * whatever it holds: neither is a shape a setting is written in, and `Object.values` of one is
+ * an empty list, so without its own line it would be read as holding nothing.</li>
  * </ul>
  *
- * <p><b>Where this stops, said rather than left to be found.</b> It reads one level. A record
+ * <p><b>Where this stops, said rather than left to be found.</b> A record written as ONE object
+ * whose members are all primitives (`{ id: 7, name: 'x' }`) is read as a setting, because that is
+ * the very shape of `notifications`, and no sweep can tell the two apart without being told
+ * which is which; measured, and left as the owner's own line above. It reads one level. A record
  * seeded inside another record - a default object with a list buried in it - is not seen here,
  * and the reason it is not worth guarding today is that no value in the session has that shape:
  * every collection of records is a top-level key. The day one is nested, the sweep below is
@@ -70,10 +77,15 @@ type Seeded = { name: string; held: number }
  * each shape this function knows and require it to name them, so neither test below can be
  * deleted without a case going red.
  */
-function whatIsHeldIn(value: SessionValue): Seeded[] {
+function whatIsHeldIn(value: object): Seeded[] {
   return Object.entries(value).flatMap(([name, held]): Seeded[] => {
     if (Array.isArray(held)) {
       return [{ name, held: held.length }]
+    }
+
+    /* A `Map` and a `Set` have no own keys to read, so they are asked their size. */
+    if (held instanceof Map || held instanceof Set) {
+      return [{ name, held: held.size }]
     }
 
     /* Keyed by identity, which is a list of records written the other way round. A map whose
@@ -218,5 +230,21 @@ describe('what the bundle puts into a session before anything happens', () => {
        objects, so no case built on `inbox` could ever say the array half was doing anything.
        This one can: switch that half off and a list of numbers goes unseen. */
     expect(whatTheSweepSays()).toBe('pairsBroken:1')
+  })
+
+  it('and a Map or a Set that holds a record is named too, however little the record is', () => {
+    /* The session holds neither today, so these are asked of the sweep directly, with a value built
+       for the purpose: the sweep reads any object. A record whose members are all primitives goes
+       in on purpose, since that is the shape a plain object would let through. */
+    expect(whatIsHeldIn({ kept: new Map([['takmicar-1', { firstName: 'Nešto' }]]) })).toEqual([
+      { name: 'kept', held: 1 },
+    ])
+    expect(whatIsHeldIn({ kept: new Set([{ firstName: 'Nešto' }]) })).toEqual([
+      { name: 'kept', held: 1 },
+    ])
+    expect(whatIsHeldIn({ kept: new Map(), alsoKept: new Set() })).toEqual([
+      { name: 'kept', held: 0 },
+      { name: 'alsoKept', held: 0 },
+    ])
   })
 })

@@ -348,16 +348,32 @@ describe('the field that asks for a town', () => {
   it('dresses neither of its two names differently from the other', () => {
     const rules = everyRule(place, 'PlaceField.css')
 
-    expect(
-      rules
-        .filter((rule) => rule.style.getPropertyValue('text-transform') !== '')
-        .map((rule) => rule.selectorText),
-    ).toEqual([])
-    expect(
-      rules
-        .filter((rule) => rule.style.getPropertyValue('color') !== '')
-        .map((rule) => rule.selectorText),
-    ).toEqual(['.place__country'])
+    /* Everything the dress that was taken off set, and not the two things it was first measured
+       by. It set FIVE: `text-transform`, `color`, `font-size: 0.75rem`, `letter-spacing: 0.06em`
+       and `font-weight: 700`. Put back without the first two, it survived this case (51 passed)
+       and „Država" came out 12px with 0.72px between its letters beside a „Mesto" at 16px, which
+       is half of what the owner complained of. A `font` shorthand is read by the parser as the
+       longhands it stands for, so it is inside the three font properties without being named.
+
+       Each property is held to the rules that may set it: none, except the size and the colour of
+       the country written beside a town in the list. */
+    const quieter = ['.place__country']
+    const mayBeSetBy: Record<string, string[]> = {
+      'text-transform': [],
+      color: quieter,
+      'font-size': quieter,
+      'font-weight': [],
+      'letter-spacing': [],
+    }
+
+    for (const [property, allowed] of Object.entries(mayBeSetBy)) {
+      expect(
+        rules
+          .filter((rule) => rule.style.getPropertyValue(property) !== '')
+          .map((rule) => rule.selectorText),
+        `${property} is set by a rule other than the ones allowed to`,
+      ).toEqual(allowed)
+    }
   })
 })
 
