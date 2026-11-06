@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -694,6 +695,82 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 							+ " not read one and the case above asks about nothing", route, caller)
 					.isEqualTo(400);
 		}
+	}
+
+	/**
+	 * THE ADMINISTRATION WHOSE OWN MEMBER HAS PAID DOES WHAT A MEMBER DOES (PDL P8, 10.10.2026: being the
+	 * administration opens no member's act, and does not shut one either).
+	 *
+	 * <p>The cell of the axis „who is asking x whose road" this file asked only through the moderator whose
+	 * member has NOT paid: a gate that turned away every account holding a role of the administration, on
+	 * the two acts below, would still turn him away for the reason it should and pass every case. The
+	 * owner's own account is this one (a superadmin with a member), and so is a moderator who races. Both
+	 * are answered what the member whose fee stands is answered, on the two acts of the list that have no
+	 * owner to name.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"moderator", "superadmin"})
+	void theAdministrationWhoseOwnMemberHasPaidDoesWhatAMemberDoes(String role) throws Exception {
+		String caller = "uprava-placena-" + role;
+
+		memberOf.put(caller, member("moderator".equals(role) ? "993081" : "993082", "M", true));
+		account(caller, role, memberOf.get(caller));
+
+		for (String route : List.of("POST /api/inbox", "POST /api/results")) {
+			Act act = AN_ACT_OF_HIS_OWN.get(route);
+			int whatAPaidMemberIsTold = sent(act.about(this, PAID), PAID).getStatus();
+
+			assertThat(whatAPaidMemberIsTold)
+					.as("%s: the member whose fee stands is answered as though the address were not there",
+							route)
+					.isNotEqualTo(404);
+			assertThat(sent(act.about(this, caller), caller).getStatus())
+					.as("%s as a %s whose own member has paid: being the administration turned him away from"
+							+ " an act of a member", route, role)
+					.isEqualTo(whatAPaidMemberIsTold);
+		}
+	}
+
+	/**
+	 * AND A MODERATOR WITH THE RIGHT WHOSE OWN MEMBER HAS NOT PAID STILL WORKS THE ADMINISTRATION'S ROUTES.
+	 *
+	 * <p>The other cell: the right is read off the row (ADL A8, 18.09.2026) and a member's fee is not a
+	 * question the administration's roads ask. He holds the two rights these roads need and his member never
+	 * paid; he holds a queue row of the teams tab while he reads it and deletes a team as the administration
+	 * does (inside the window, which is open on this file's day), and is not answered as a member who has
+	 * not paid is.
+	 */
+	@Test
+	void aModeratorWithTheRightWhoseOwnMemberHasNotPaidStillWorksTheAdministrationsRoutes() throws Exception {
+		String caller = "uprava-neplacena";
+
+		memberOf.put(caller, member("993083", "M", false));
+		account(caller, "moderator", memberOf.get(caller));
+
+		for (String right : List.of("queue:teams", "entity:teams")) {
+			db.sql("insert into account_admin_right (account_id, right_code)"
+							+ " values ((select id from account where email = ?), ?)")
+					.params(emailOf(caller), right).update();
+		}
+
+		assertThat(activeOf(memberOf.get(caller)))
+				.as("the moderator's member has paid, so this is not the cell it names")
+				.isFalse();
+
+		long row = db.sql("insert into verification (queue, competitor_id, subject, body)"
+						+ " values ('teams', ?, 'Tim koji ceka', '') returning id")
+				.param(memberOf.get(PAID)).query(Long.class).single();
+
+		assertThat(sent(post("/api/verification/" + row + "/hold"), caller).getStatus())
+				.as("holding a queue row was refused to a moderator because his own member has not paid")
+				.isBetween(200, 299);
+
+		long team = team("uprava-ukida", idOf(ADDRESSEE));
+
+		assertThat(sent(delete("/api/teams/" + team), caller).getStatus())
+				.as("deleting a team as the administration was refused to a moderator because his own member"
+						+ " has not paid")
+				.isEqualTo(204);
 	}
 
 	/** And the administration's routes turn away every member, paid or not: no member acts there. */

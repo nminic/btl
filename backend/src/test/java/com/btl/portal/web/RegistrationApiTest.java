@@ -712,6 +712,7 @@ class RegistrationApiTest {
 		Map<String, Object> onTheEnglishPage = aGrownUp();
 
 		onTheEnglishPage.put("mailLanguage", "en");
+		anAccountWrittenBeforeIn("sr");
 
 		assertThat(register(onTheEnglishPage).getStatus()).isEqualTo(204);
 		assertThat(theAccountAt(ADDRESS).get("mail_language")).isEqualTo("en");
@@ -725,6 +726,18 @@ class RegistrationApiTest {
 	}
 
 	/**
+	 * AN ACCOUNT ALREADY IN THE TABLE, in the language the registration under test is NOT, so the
+	 * registered row is never the only one: a language read off the first account, or the least of all of
+	 * them, is the other language here and the case that registers in the opposite one tells the two
+	 * apart ({@code min} of the two codes is the English one).
+	 */
+	private void anAccountWrittenBeforeIn(String language) {
+		db.sql("insert into account (first_name, last_name, email, role_id, mail_language) values"
+						+ " ('Raniji', 'Nalog', ?, (select id from role where code = 'competitor'), ?)")
+				.params("raniji-" + language + "@primer.rs", language).update();
+	}
+
+	/**
 	 * AND ONE TYPED ON THE SERBIAN PAGE, OR SENT WITH NO LANGUAGE AT ALL, IS SERBIAN.
 	 *
 	 * <p>„Podrazumevano srpski" (owner, 03.10.2026): absent is the column's own default, and the
@@ -735,6 +748,7 @@ class RegistrationApiTest {
 		Map<String, Object> onTheSerbianPage = aGrownUp();
 
 		onTheSerbianPage.put("mailLanguage", "sr");
+		anAccountWrittenBeforeIn("en");
 
 		assertThat(register(onTheSerbianPage).getStatus()).isEqualTo(204);
 		assertThat(theAccountAt(ADDRESS).get("mail_language")).isEqualTo("sr");

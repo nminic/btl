@@ -1366,6 +1366,10 @@ class PairWriteApiTest {
 	@Test
 	void acceptingBreaksAPairThatHasAlreadyStoppedHolding() throws Exception {
 		lapsed(THE_THIRD);
+		/* AND THE OTHER ABANDONED PARTNER TOO: the woman's side of the question is a branch of its own, and
+		   a filter on the abandoned partner written into one of the two branches is not seen by a case that
+		   lapses only the man's former partner. */
+		lapsed(THE_FOURTH);
 
 		/* Asked of HER number and not of his: he is also in the pair of the season being RUN,
 		   which still holds, so his number is on that list either way and would say nothing. */
@@ -1378,17 +1382,57 @@ class PairWriteApiTest {
 						+ " way of the insert")
 				.isOne();
 
+		assertThat(howManyPairsOf(THE_FOURTH, SHE_ANSWERS, BEING_FORMED))
+				.as("the row of the woman's former partner went when his fee lapsed")
+				.isOne();
+
 		assertThat(answerAs(SHE_ANSWERS, questionFrom(HE_ASKED_HER, SHE_ANSWERS), answering(true))
 				.getStatus())
 				.as("the stale row survived the break and then refused the insert, so a member"
 						+ " met a server fault where a pair belongs")
 				.isEqualTo(200);
 
+		assertThat(howManyPairsOf(THE_FOURTH, SHE_ANSWERS, BEING_FORMED))
+				.as("the woman's stale row is still there, and she holds two pairs in one season")
+				.isZero();
+
 		assertThat(howManyPairsOf(HE_ASKED_HER, THE_THIRD, BEING_FORMED))
 				.as("the stale row is still there, and one member now holds two pairs in one"
 						+ " season")
 				.isZero();
 		assertThat(howManyPairsOf(HE_ASKED_HER, SHE_ANSWERS, BEING_FORMED)).isOne();
+
+		/* AND NEITHER IS TOLD, because neither can open an inbox: a member whose fee has lapsed reaches only
+		   the page for renewal (owner, 19.09.2026, „Do tada ionako niko nema i ne treba da ima nacin da ga
+		   kontaktira recimo porukom"). Both former partners lapse in this case, so a filter written into one
+		   branch of `whoLosesAPairWhen` only is seen by one of the two assertions. */
+		assertThat(postFor(THE_THIRD))
+				.as("the man's former partner has a lapsed fee and has no inbox to be told in")
+				.isEmpty();
+		assertThat(postFor(THE_FOURTH))
+				.as("the woman's former partner has a lapsed fee and has no inbox to be told in")
+				.isEmpty();
+	}
+
+	/**
+	 * THE CONTROL OF THE CASE ABOVE: ONE FORMER PARTNER LAPSED AND THE OTHER STANDS, AND ONLY THE ONE WHO
+	 * STANDS IS TOLD, ONCE, BY NAME. A filter that dropped everybody, or one that read the caller's fee
+	 * instead of the abandoned partner's, would pass the case above and fail here.
+	 */
+	@Test
+	void acceptingTellsOnlyTheFormerPartnerWhoseFeeStands() throws Exception {
+		lapsed(THE_THIRD);
+
+		assertThat(answerAs(SHE_ANSWERS, questionFrom(HE_ASKED_HER, SHE_ANSWERS), answering(true))
+				.getStatus()).isEqualTo(200);
+
+		assertThat(postFor(THE_THIRD))
+				.as("his fee has lapsed, so he is told nothing")
+				.isEmpty();
+		assertThat(postFor(THE_FOURTH)).containsExactly(
+				"Balkanska trkačka liga | " + PairWriteApi.THE_PAIR_IS_BROKEN + " | "
+						+ PairWriteApi.theSupersededPairReads("Probni Probic" + SHE_ANSWERS,
+								BEING_FORMED));
 	}
 
 	/** What the public list really serves, asked of that resource rather than of this one. */

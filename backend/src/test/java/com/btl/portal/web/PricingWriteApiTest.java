@@ -406,6 +406,76 @@ class PricingWriteApiTest {
 	}
 
 	/**
+	 * THE DEADLINE BELONGS TO THE KIND OF A ROW AND NOT TO THE SPELLING OF ITS KEY.
+	 *
+	 * <p>{@code V4} gives the referral {@code key = kind = 'referral'}, so a route that read the key where
+	 * it meant the kind answered every other case in this file: the one row whose key and kind are the same
+	 * word cannot tell the two apart. The row is renamed here, in the transaction of the case, to a key that
+	 * is not its kind, and it is asked at the moment the window has opened: a migration that renamed the
+	 * key one day would otherwise quietly lift the deadline of PDL P16 without a single case failing.
+	 */
+	@Test
+	void theReferralDeadlineIsAskedOfTheKindOfARowAndNotOfItsKey() throws Exception {
+		db.sql("update price_row set key = 'preporuka' where kind = ?").param(PricingWriteApi.A_REFERRAL).update();
+		clock.moveTo(AS_THE_WINDOW_OPENS);
+
+		assertThat(keysOfKind(PricingWriteApi.A_REFERRAL))
+				.as("the row of the referral kind was not renamed, so its key and its kind are still one word")
+				.containsExactly("preporuka");
+
+		Map<String, Object> was = rowOf("preporuka");
+		MockHttpServletResponse refused = change("preporuka", NEW_LABEL, new BigDecimal("7.00"),
+				new BigDecimal("840.00"), mayCookie);
+
+		assertThat(refused.getStatus())
+				.as("the referral was written after its deadline because its key is not the word 'referral'")
+				.isEqualTo(409);
+		assertThat(refused.getContentAsString())
+				.contains(PricingWriteApi.THE_REFERRAL_IS_SETTLED_FOR_THE_COMING_SEASON);
+		assertThat(rowOf("preporuka")).isEqualTo(was);
+
+		clock.moveTo(IN_MAY);
+
+		assertThat(change("preporuka", NEW_LABEL, new BigDecimal("7.00"), new BigDecimal("840.00"), mayCookie)
+				.getStatus())
+				.as("the renamed referral could not be set in May, so the case above refused for another reason")
+				.isEqualTo(200);
+	}
+
+	/**
+	 * A LEVEL (THE JUNIOR FEE) IS PRICED LIKE A PERIOD, IN BOTH CURRENCIES, AND THE REFERRAL'S DEADLINE IS NOT ITS.
+	 *
+	 * <p>The price list has four kinds and the cases above write three of them: the periods, the fee and
+	 * the referral. The fourth is written at the moment the referral is settled, so a route that treated a
+	 * level as the referral (refusing it after the window opens) or as the fee (refusing the dinar price the
+	 * schema demands of it) is told apart from the right one. The row is found by its kind and not by its
+	 * name, and the whole row is compared, so only the two amounts move.
+	 */
+	@Test
+	void aLevelIsPricedInBothCurrenciesWhenTheReferralIsSettled() throws Exception {
+		clock.moveTo(AS_THE_WINDOW_OPENS);
+
+		assertThat(keysOfKind("level"))
+				.as("the price list does not have exactly one level, so the row asked about is not the junior fee")
+				.hasSize(1);
+
+		String level = keysOfKind("level").getFirst();
+		Map<String, Object> was = rowOf(level);
+		MockHttpServletResponse answer = change(level, new BigDecimal("21"), new BigDecimal("2500"), mayCookie);
+
+		assertThat(answer.getStatus())
+				.as("a level could not be priced at the moment the referral is settled")
+				.isEqualTo(200);
+		assertThat(read(answer).path("rsd").decimalValue().toPlainString())
+				.as("a level was answered without the dinar price it was sent, as the fee is")
+				.isEqualTo("2500.00");
+		assertThat(whatDiffers(was, rowOf(level)))
+				.as("something besides the two amounts of the level moved")
+				.containsExactly("eur", "rsd");
+		assertThat(rowOf(level).get("rsd")).isEqualTo(new BigDecimal("2500.00"));
+	}
+
+	/**
 	 * A PRICE IS CHANGED, AND NOTHING ELSE ABOUT THE ROW OR THE LIST MOVES WITH IT.
 	 *
 	 * <p><b>What is compared is the WHOLE ROW, read twice, rather than the two columns

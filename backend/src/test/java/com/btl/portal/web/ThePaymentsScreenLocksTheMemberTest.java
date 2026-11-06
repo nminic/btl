@@ -351,7 +351,7 @@ class ThePaymentsScreenLocksTheMemberTest {
 					untilThisManyAreStopped(1, submitted);
 
 					Future<MockHttpServletResponse> hisChange = pool.submit(this::movesToSerbia);
-					MockHttpServletResponse answered = hisChange.get(30, TimeUnit.SECONDS);
+					MockHttpServletResponse answered = within30Seconds(hisChange, "his change of country");
 
 					assertThat(submitted.get(0).isDone())
 							.as("the booking was answered although the reward it waits for is not settled")
@@ -364,7 +364,7 @@ class ThePaymentsScreenLocksTheMemberTest {
 				}
 			});
 
-			return List.of(submitted.get(0).get(30, TimeUnit.SECONDS), changed);
+			return List.of(within30Seconds(submitted.get(0), "the booking"), changed);
 		} finally {
 			pool.shutdownNow();
 		}
@@ -505,10 +505,29 @@ class ThePaymentsScreenLocksTheMemberTest {
 				return null;
 			});
 
-			return List.of(submitted.get(0).get(30, TimeUnit.SECONDS),
-					submitted.get(1).get(30, TimeUnit.SECONDS));
+			return List.of(within30Seconds(submitted.get(0), "the first request"),
+					within30Seconds(submitted.get(1), "the second request"));
 		} finally {
 			pool.shutdownNow();
+		}
+	}
+
+	/**
+	 * A REQUEST THAT DID NOT ANSWER IN THIRTY SECONDS FAILS ON A SENTENCE OF ITS OWN, and not on the clock
+	 * of the case. A lock that is too weak ({@code for share}, or {@code for no key update}, where
+	 * {@code for update} is needed) lets two requests take the same row between them and wait on each
+	 * other, and the only thing that ever said so was the case running out its own time, which reads as a
+	 * slow machine. Every wait for an answer in this class goes through here, and says which request it was
+	 * waiting for.
+	 */
+	private static MockHttpServletResponse within30Seconds(Future<MockHttpServletResponse> request,
+			String which) throws Exception {
+		try {
+			return request.get(30, TimeUnit.SECONDS);
+		} catch (java.util.concurrent.TimeoutException notAnswered) {
+			throw new AssertionError(which + " was not answered in thirty seconds: the row it waits for"
+					+ " is held by something the other request also holds, which is what a lock that is too"
+					+ " weak does", notAnswered);
 		}
 	}
 

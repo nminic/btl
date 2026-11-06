@@ -2030,6 +2030,11 @@ class MeWriteApiTest {
 				.as("the first member by key had his size changed by somebody else's request")
 				.isEqualTo("M");
 		assertThat(shirtOf(SOMEONE_ELSE)).isEqualTo("S");
+		assertThat(shirtOf(WHOSE_TEXT_WAITS))
+				.as("a member written AFTER the caller had his size changed by the caller's request, as a"
+						+ " statement keyed on `id >= ?` instead of `id = ?` does: every row before the caller"
+						+ " is left alone by it and only a row after him shows it")
+				.isEqualTo("M");
 		assertThat(howManyRowsInTheQueue())
 				.as("a moderator was given a shirt size to judge, which is not content the public"
 						+ " sees")
