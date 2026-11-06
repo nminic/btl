@@ -735,7 +735,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			/* V86 is PR 684's (it drops `competitor.active`) and is pinned by that PR; this one skips it on
 			   purpose, as the owner told the branch to. V87. A reset link is spent once and never given more
 			   time, enforced by the table (ADL, owner, 06.11.2026). Main stood at V85 on 06.11.2026 (758317bc). */
-			new Applied("87", "V87__a_reset_link_is_spent_once_and_never_lengthened.sql", 0));
+			new Applied("87", "V87__a_reset_link_is_spent_once_and_never_lengthened.sql", 1610863958));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
