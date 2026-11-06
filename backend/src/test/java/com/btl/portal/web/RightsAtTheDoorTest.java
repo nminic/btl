@@ -13,7 +13,10 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.access.WebInvocationPrivilegeEvaluator;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -26,11 +29,14 @@ import org.springframework.web.servlet.mvc.condition.PathPatternsRequestConditio
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -619,6 +625,10 @@ class RightsAtTheDoorTest {
 	@Autowired
 	private WebInvocationPrivilegeEvaluator privileges;
 
+	/** The interceptor itself, so a handler that exists only in this file can be put to it. */
+	@Autowired
+	private RightsAtTheDoor door;
+
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
 	/**
@@ -1136,6 +1146,11 @@ class RightsAtTheDoorTest {
 	 * <p><b>Derived from the dispatcher, so it has no list either</b>, and it names no
 	 * annotation - the route added tomorrow under a guard nobody here has heard of is
 	 * asked on the day it is mapped.
+	 *
+	 * <p><b>It measures the mark only where the marked annotation is the sole guard on its
+	 * route.</b> Beside a wired guard the member is refused by that one, and an unwired mark
+	 * is invisible here; {@link #everyKindOfGuardIsShutToAPlainMemberOnItsOwnWhereverTheRoutesPutIt}
+	 * is what asks each kind on its own.
 	 */
 	@Test
 	void everyRouteTheDoorDecidesIsShutToACompetitorAlthoughHeIsSignedIn() throws Exception {
@@ -1151,6 +1166,70 @@ class RightsAtTheDoorTest {
 							+ " guard annotation the door does not actually ask about looks exactly"
 							+ " like one it does", route)
 					.isEqualTo(404);
+		}
+	}
+
+	/**
+	 * AND EVERY KIND OF GUARD IS SHUT TO A PLAIN MEMBER ON ITS OWN, whatever other guard the routes
+	 * wearing it also carry.
+	 *
+	 * <p><b>This is the half of the floor above that it could not measure.</b> That case asks each
+	 * route as a plain member and demands 404, and 404 is what the portal answers for a dozen other
+	 * reasons: an unwired mark standing BESIDE a wired guard on the same route is shut by the wired one,
+	 * the member is told 404 either way, and the case goes on passing. Measured 06.11.2026 by marking a
+	 * third kind of guard, wiring it into nothing and putting it beside {@code OnlyTheSuperadmin}: the
+	 * whole class stayed green, where the same mark alone on its route falls.
+	 *
+	 * <p><b>So each KIND is asked on its own.</b> One instance of every annotation carrying the mark is
+	 * taken off the routes that wear it (the dispatcher says which, so there is no list), and a handler
+	 * that wears that one annotation and nothing else is put to the door itself, as a plain member. The
+	 * handler exists only here: it answers the door's own question about which annotations it carries,
+	 * so what is measured is the door's reading and not a route's other guards. A kind the door never
+	 * reads is let through and this falls, wherever the routes happen to put it.
+	 *
+	 * <p><b>What it still does not do</b>, written down rather than left to be found: it asks the door
+	 * as a member who holds nothing, so it proves a kind is READ, not that it asks the right question.
+	 * That half is the cases that cross two moderators and two rights.
+	 */
+	@Test
+	void everyKindOfGuardIsShutToAPlainMemberOnItsOwnWhereverTheRoutesPutIt() throws Exception {
+		Map<Class<? extends Annotation>, Annotation> kinds = new LinkedHashMap<>();
+
+		mappings.getHandlerMethods().values().forEach(method -> Stream.of(method.getMethod().getAnnotations())
+				.filter(one -> one.annotationType().isAnnotationPresent(AskedAtTheDoor.class))
+				.forEach(one -> kinds.putIfAbsent(one.annotationType(), one)));
+
+		assertThat(kinds)
+				.as("no route wears an annotation carrying the mark at all, so this asks about nothing")
+				.isNotEmpty();
+
+		long member = db.sql("select id from account where email = ?").param(A_MEMBER)
+				.query(Long.class).single();
+
+		SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+				new WhoIsAsking.Member(member, "competitor"), null, List.of()));
+
+		try {
+			for (Annotation kind : kinds.values()) {
+				HandlerMethod wearingOnlyThat = new HandlerMethod(new Object(),
+						Object.class.getMethod("toString")) {
+					@Override
+					public <A extends Annotation> A getMethodAnnotation(Class<A> type) {
+						return type.isInstance(kind) ? type.cast(kind) : null;
+					}
+				};
+				MockHttpServletResponse answer = new MockHttpServletResponse();
+
+				assertThat(door.preHandle(new MockHttpServletRequest(), answer, wearingOnlyThat))
+						.as("a handler wearing only @%s was let through to a plain member; the door never"
+								+ " reads it, and every route that wears it beside another guard has been"
+								+ " passing the floor above on the other guard's refusal",
+								kind.annotationType().getSimpleName())
+						.isFalse();
+				assertThat(answer.getStatus()).isEqualTo(404);
+			}
+		} finally {
+			SecurityContextHolder.clearContext();
 		}
 	}
 
