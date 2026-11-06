@@ -1234,6 +1234,85 @@ class RightsAtTheDoorTest {
 	}
 
 	/**
+	 * NO ROUTE THE DOOR DECIDES HAS A SHAPE THE SWEEPS ABOVE CANNOT ASK ABOUT.
+	 *
+	 * <p><b>The sweeps read 404 as "the door refused" only while nothing else on the road can say
+	 * 404.</b> They build an address out of the route (a word where a variable stands), send no
+	 * body, no content type, and read the number. Four shapes of route make that number mean
+	 * nothing, because the dispatcher or the handler answers the same 404 whether the door ran or
+	 * not, so knocking the door out of such a route leaves every sweep green:
+	 * <ol>
+	 * <li>a variable written with a pattern, {@code {number:[0-9]{6}}}: the substitution leaves a
+	 * brace behind, the address maps nothing, and the dispatcher says 404;
+	 * <li>a route with a {@code consumes} condition: the dispatcher refuses the missing content type
+	 * 415 before the door runs, and {@code NothingIsHereRatherThanAlmost} turns it into 404;
+	 * <li>a variable typed as an array or a collection: Spring converts the word into a list of one,
+	 * the handler runs, and it may well say 404 itself where a {@code long} would have said 400;
+	 * <li>a write with neither a required body nor a typed variable: with nothing to fail on, the
+	 * handler runs and answers on its own account.
+	 * </ol>
+	 *
+	 * <p><b>This was written down as "the class is closed" and was not.</b> The third round on
+	 * {@code PUT /api/events/{id}} measured it for every verb the portal maps and said no more than
+	 * that; the four shapes above are what that measurement did not look at. The floor does not make
+	 * the sweeps reach them, it makes the day one arrives visible: a guarded route of any of these
+	 * shapes fails here, by name, until the sweep is taught the shape or the route is named below.
+	 *
+	 * <p><b>THREE GUARDED ROUTES HAVE ONE TODAY, measured 06.11.2026 by running this with an empty
+	 * list</b>: {@code MemberInvitationApi#send}, {@code StatementApi#take} and
+	 * {@code MemberDataWriteApi#correct}. So the sweeps do not measure the door on them, and the list
+	 * in the assertion is the inventory of that, not a statement that they are safe. Whether each
+	 * route's own class measures its door was NOT established here; that is the open half of the
+	 * finding, and it is why the list is asserted in both directions and not trimmed to pass.
+	 *
+	 * <p><b>Derived from the dispatcher and from the types the handlers declare</b>, so it has no
+	 * list.
+	 */
+	@Test
+	void noRouteTheDoorDecidesHasAShapeTheSweepsCannotAskAbout() {
+		List<String> blind = new ArrayList<>();
+
+		mappings.getHandlerMethods().forEach((info, method) -> {
+			if (!theDoorDecides(method)) {
+				return;
+			}
+
+			String route = method.getBeanType().getSimpleName() + "#" + method.getMethod().getName();
+
+			if (pathsOf(info).anyMatch(pattern -> pattern.matches(".*\\{[^/}]*:.*"))) {
+				blind.add(route + " has a variable written with a pattern");
+			}
+			if (!info.getConsumesCondition().isEmpty()) {
+				blind.add(route + " has a consumes condition");
+			}
+			if (Stream.of(method.getMethodParameters())
+					.filter(one -> one.hasParameterAnnotation(PathVariable.class))
+					.anyMatch(one -> one.getParameterType().isArray()
+							|| Collection.class.isAssignableFrom(one.getParameterType()))) {
+				blind.add(route + " takes a variable as an array or a collection");
+			}
+			if (methodsOf(info).anyMatch(how -> how != HttpMethod.GET && how != HttpMethod.DELETE)
+					&& Stream.of(method.getMethodParameters()).noneMatch(one -> one.hasParameterAnnotation(RequestBody.class)
+							&& one.getParameterAnnotation(RequestBody.class).required())
+					&& Stream.of(method.getMethodParameters())
+							.filter(one -> one.hasParameterAnnotation(PathVariable.class))
+							.allMatch(one -> one.getParameterType() == String.class)) {
+				blind.add(route + " is a write with no required body and no typed variable");
+			}
+		});
+
+		assertThat(blind)
+				.as("the sweeps read 404 as the door's refusal, and on these routes it is not; a route"
+						+ " added with such a shape fails here, and so does one taken off the list")
+				.containsExactlyInAnyOrder(
+						"MemberInvitationApi#send is a write with no required body and no typed variable",
+						"StatementApi#take has a consumes condition",
+						"StatementApi#take is a write with no required body and no typed variable",
+						"MemberDataWriteApi#correct has a consumes condition",
+						"MemberDataWriteApi#correct is a write with no required body and no typed variable");
+	}
+
+	/**
 	 * EVERY KEY A ROUTE TAKES IS AN {@code AKey}, EXCEPT WHERE THE DOOR DECIDES THE ROUTE - AND THERE
 	 * IT MAY NOT BE ONE.
 	 *
