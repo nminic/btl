@@ -579,6 +579,37 @@ export async function whatTheServerSaysOfMyWaitingText(): Promise<string | null>
 }
 
 /**
+ * WHETHER HE HAS WORDS ABOUT HIMSELF, THE ONES THAT STAND OR THE ONES THAT WAIT, or nothing when the
+ * record cannot be believed.
+ *
+ * <p>Asked by the name of the card „Podaci", which is „Dovrši profil" while he has no picture or no
+ * text (owner, 06.11.2026, PDL „Boksovi „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja"),
+ * and words that wait count as words he has („poslato a neodobreno se računa kao namešteno"). So it
+ * reads `bio` and `bioWaiting` off the same record and answers the one question, rather than handing
+ * two halves to a caller who could read one of them.
+ */
+export async function whatTheServerSaysOfMyHavingWords(): Promise<boolean | null> {
+  const body = await whatTheServerAnswersMe()
+  const mine = body === null ? null : recordIn(body)
+
+  if (mine === null) {
+    return null
+  }
+
+  /* `bio` is on every record (`MeApi.MyOwnRecord`), and `bioWaiting` is ABSENT where nothing of his waits,
+     which is read as no words, the way `whatTheServerSaysOfMyWaitingText` above reads it. */
+  const standing: unknown = Reflect.get(mine, 'bio')
+  const said: unknown = Reflect.get(mine, 'bioWaiting')
+  const waiting = said === undefined ? '' : said
+
+  if (typeof standing !== 'string' || typeof waiting !== 'string') {
+    return null
+  }
+
+  return standing.trim() !== '' || waiting.trim() !== ''
+}
+
+/**
  * ONE PICTURE OF A MEMBER'S, as an address to fetch it from and the circle over it.
  *
  * <p>`photo` is an address and never a key (`MePhotoApi.Picture`): `/api/photos/<digest>` for the

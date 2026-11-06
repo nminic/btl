@@ -130,6 +130,20 @@ const SCREENS: Screen[] = [
     refusal: 500,
   },
   {
+    /* A MEMBER'S PICTURE, TAKEN DOWN BY THE ADMINISTRATION on his card „Podaci", since 06.11.2026 (owner, „Da, i
+       uklanjanje"). The cross is named in the screen's own words, and once the picture is down nothing is left on the
+       card to take down, so the second deletion of the case about an earlier sentence cannot be asked (`leaves`). */
+    name: 'a member\'s picture, taken down by the administration',
+    asks: sr.theirBoxes.pictureRemoveAsks,
+    gone: sr.theirBoxes.saved,
+    leaves: true,
+    source: 'profile/TheMembersPictureAndWords.tsx',
+    at: '/sr/takmicar/000003/podaci',
+    role: 'superadmin',
+    ask: async () => screen.findByRole('button', { name: sr.theirBoxes.pictureRemove }),
+    words: { open: sr.theirBoxes.pictureRemove, asks: sr.theirBoxes.pictureRemoveAsks },
+  },
+  {
     name: 'a member\'s own counted result',
     asks: sr.results.deleteAsk,
     gone: sr.results.deleted,

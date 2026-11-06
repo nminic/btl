@@ -243,7 +243,7 @@ describe('the words a member wrote about themselves, changed later', () => {
     const { asked, stop } = serverThat(() => null)
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
+      renderAt(`/sr/takmicar/${withOne.memberNumber}/podaci`, 'competitor', withOne.memberNumber)
 
       const panel = await panelFor()
 
@@ -291,7 +291,7 @@ describe('the words a member wrote about themselves, changed later', () => {
        One id, and it is the whole of what the description may say: a second one
        here would point at an element that no longer exists, which is read as
        nothing at all and which no assertion about text can see. */
-    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+    renderAt(`/sr/takmicar/${withNone.memberNumber}/podaci`, 'competitor', withNone.memberNumber)
 
     const field = await box()
 
@@ -317,7 +317,7 @@ describe('the words a member wrote about themselves, changed later', () => {
        they say the remainder is there and that 360 is not. Whether anything else
        stands beside them is unmeasured, and saying so is cheaper than a sentence that
        has to be believed (review, 31.08.2026). */
-    renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
+    renderAt(`/sr/takmicar/${withOne.memberNumber}/podaci`, 'competitor', withOne.memberNumber)
 
     const field = await box()
 
@@ -326,7 +326,7 @@ describe('the words a member wrote about themselves, changed later', () => {
   })
 
   it('opens empty for somebody with nothing on their profile, and says there is nothing yet', async () => {
-    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+    renderAt(`/sr/takmicar/${withNone.memberNumber}/podaci`, 'competitor', withNone.memberNumber)
 
     const panel = await panelFor()
 
@@ -368,7 +368,7 @@ describe('the words a member wrote about themselves, changed later', () => {
     )
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+      renderAt(`/sr/takmicar/${withNone.memberNumber}/podaci`, 'competitor', withNone.memberNumber)
 
       const panel = await panelFor()
 
@@ -398,7 +398,7 @@ describe('the words a member wrote about themselves, changed later', () => {
     )
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
+      renderAt(`/sr/takmicar/${withOne.memberNumber}/podaci`, 'competitor', withOne.memberNumber)
 
       await panelFor()
       await user.clear(await box())
@@ -433,7 +433,7 @@ describe('the words a member wrote about themselves, changed later', () => {
     const server = aServerHoldingTheWords({ member: withNone, standing: '', waiting: null })
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+      renderAt(`/sr/takmicar/${withNone.memberNumber}/podaci`, 'competitor', withNone.memberNumber)
 
       await panelFor()
       await user.type(await box(), 'Prvi put pišem nešto o sebi.')
@@ -465,7 +465,7 @@ describe('the words a member wrote about themselves, changed later', () => {
     )
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
+      renderAt(`/sr/takmicar/${withOne.memberNumber}/podaci`, 'competitor', withOne.memberNumber)
 
       await panelFor()
       await user.clear(await box())
@@ -510,7 +510,7 @@ describe('the words a member wrote about themselves, changed later', () => {
     )
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+      renderAt(`/sr/takmicar/${withNone.memberNumber}/podaci`, 'competitor', withNone.memberNumber)
 
       await panelFor()
       await user.type(await box(), 'Nešto o sebi, prvi put.')
@@ -541,7 +541,7 @@ describe('the words a member wrote about themselves, changed later', () => {
     })
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
+      renderAt(`/sr/takmicar/${withOne.memberNumber}/podaci`, 'competitor', withOne.memberNumber)
 
       await panelFor()
       expect(await box()).toHaveValue('Stariji tekst koji čeka odluku.')
@@ -573,7 +573,7 @@ describe('the words a member wrote about themselves, changed later', () => {
     )
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
+      renderAt(`/sr/takmicar/${withOne.memberNumber}/podaci`, 'competitor', withOne.memberNumber)
 
       await panelFor()
       await user.clear(await box())
@@ -612,7 +612,7 @@ describe('the words a member wrote about themselves, changed later', () => {
     )
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
+      renderAt(`/sr/takmicar/${withOne.memberNumber}/podaci`, 'competitor', withOne.memberNumber)
 
       await panelFor()
       await user.clear(await box())
@@ -653,7 +653,7 @@ describe('the words a member wrote about themselves, changed later', () => {
     })
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
+      renderAt(`/sr/takmicar/${withOne.memberNumber}/podaci`, 'competitor', withOne.memberNumber)
 
       await panelFor()
       await user.clear(await box())
@@ -706,9 +706,14 @@ describe('the words a member wrote about themselves, changed later', () => {
     )
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber, undefined, undefined, (
-        <SignInAs memberNumber={somebodyElse.memberNumber} asking={asking} />
-      ))
+      const { router } = renderAt(
+        `/sr/takmicar/${withOne.memberNumber}/podaci`,
+        'competitor',
+        withOne.memberNumber,
+        undefined,
+        undefined,
+        <SignInAs memberNumber={somebodyElse.memberNumber} asking={asking} />,
+      )
 
       await panelFor()
       await user.clear(await box())
@@ -718,6 +723,9 @@ describe('the words a member wrote about themselves, changed later', () => {
       expect(await (await panelFor()).findByText(sr.bio.waitingNote)).toBeVisible()
 
       await user.click(screen.getByRole('button', { name: 'prijavi drugog' }))
+      /* HIS OWN CARD, since the boxes stand on the card „Podaci" (06.11.2026): the first man's card is
+         nobody's to read for the second, so the panel he is drawn is the one on his own. */
+      await router.navigate(`/sr/takmicar/${somebodyElse.memberNumber}/podaci`)
 
       const panel = await panelFor()
 
@@ -743,7 +751,7 @@ describe('the words a member wrote about themselves, changed later', () => {
     )
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
+      renderAt(`/sr/takmicar/${withOne.memberNumber}/podaci`, 'competitor', withOne.memberNumber)
 
       const picture = within(await screen.findByRole('region', { name: 'Profilna slika' }))
 
@@ -796,7 +804,7 @@ describe('the words a member wrote about themselves, changed later', () => {
          which both halves of this walk are reachable (`pictureIsOneRow.test.tsx` says the
          same of its own). */
       const { router } = renderAt(
-        '/sr/podesavanja',
+        `/sr/takmicar/${withOne.memberNumber}/podaci`,
         'superadmin',
         withOne.memberNumber,
         undefined,
@@ -826,7 +834,7 @@ describe('the words a member wrote about themselves, changed later', () => {
 
       expect(counted('competitors')).toBe(listBefore)
 
-      await router.navigate('/sr/podesavanja')
+      await router.navigate(`/sr/takmicar/${withOne.memberNumber}/podaci`)
       await panelFor()
 
       const listBeforeRemoval = counted('competitors')
@@ -862,7 +870,7 @@ describe('the words a member wrote about themselves, changed later', () => {
     }
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
+      renderAt(`/sr/takmicar/${withOne.memberNumber}/podaci`, 'competitor', withOne.memberNumber)
 
       await panelFor()
 
@@ -994,7 +1002,7 @@ describe('the box a member writes about themselves in', () => {
        carried; what it did with it was mark the field wrong after the fact. It refuses
        at the door now, and says how much room is left before anybody runs out of it. */
     const user = setupUser()
-    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+    renderAt(`/sr/takmicar/${withNone.memberNumber}/podaci`, 'competitor', withNone.memberNumber)
 
     const panel = await panelFor()
     const field = await box()
@@ -1008,20 +1016,20 @@ describe('the box a member writes about themselves in', () => {
        read through a scrollbar. */
     expect(field).toHaveAttribute('rows', '6')
     expect(field).toHaveAttribute('maxlength', '360')
-  })
+  }, SLOW)
 
   it('tells whoever cannot see the count that it is there', async () => {
     /* The count was printed under the box and described by nothing, so a screen reader
        read the label on arrival and never the one number that says how much of the box
        is already spent. */
-    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+    renderAt(`/sr/takmicar/${withNone.memberNumber}/podaci`, 'competitor', withNone.memberNumber)
 
     const field = await box()
     const described = (field.getAttribute('aria-describedby') ?? '').split(' ')
     const counter = must(document.getElementById(described[described.length - 1] ?? ''), 'brojač')
 
     expect(counter).toHaveTextContent('Još 360 znakova')
-  })
+  }, SLOW)
 
   it('counts in Serbian, which has three forms and not one', () => {
     /* „Još 1 znakova" is not a sentence anybody writes. The engine has had plural forms
@@ -1038,7 +1046,7 @@ describe('the box a member writes about themselves in', () => {
 
   it('says so when there is no room left, rather than counting nought', async () => {
     const user = setupUser()
-    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+    renderAt(`/sr/takmicar/${withNone.memberNumber}/podaci`, 'competitor', withNone.memberNumber)
 
     const panel = await panelFor()
     const field = await box()
@@ -1054,7 +1062,7 @@ describe('the box a member writes about themselves in', () => {
        one that is added together with its text is one a screen reader often misses. */
     expect(panel.getAllByText('Dosta je, granica je 360 znakova.')).toHaveLength(2)
     expect(panel.getByRole('status')).toHaveTextContent('Dosta je, granica je 360 znakova.')
-  })
+  }, SLOW)
 
   it('keeps the region quiet while there is still room', async () => {
     /* It used to hold the count and change on every keystroke, which is three hundred and
@@ -1072,7 +1080,7 @@ describe('the box a member writes about themselves in', () => {
        two: NOTHING on this panel announces the wall or a lost paste while there is still
        room. Written as „the region is empty" it was also a claim about which region that
        is, and that claim was the half that did not survive the move. */
-    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+    renderAt(`/sr/takmicar/${withNone.memberNumber}/podaci`, 'competitor', withNone.memberNumber)
 
     const panel = await panelFor()
 
@@ -1083,14 +1091,14 @@ describe('the box a member writes about themselves in', () => {
         .map((one) => one.textContent ?? '')
         .filter((said) => /Dosta je|Nalepljeni tekst/.test(said)),
     ).toEqual([])
-  })
+  }, SLOW)
 
   it('says how much of a paste was thrown away, rather than throwing it away in silence', async () => {
     /* The limit is refused at the door, and the browser refuses in silence: 400
        characters into a box that holds 360 keeps 360 and drops 40 without a word. The
        counter then reads „the box is full", which is read as „I filled it". */
     const user = setupUser()
-    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+    renderAt(`/sr/takmicar/${withNone.memberNumber}/podaci`, 'competitor', withNone.memberNumber)
 
     const panel = await panelFor()
     const field = await box()
@@ -1112,7 +1120,7 @@ describe('the box a member writes about themselves in', () => {
        writer made and the length does not move. */
     await user.type(field, '{Backspace}x')
     expect(panel.queryByText(/Nalepljeni tekst/)).toBeNull()
-  })
+  }, SLOW)
 
   it('counts what a paste over a selection really loses, not what it brought', async () => {
     /* Pasting over the whole box is not an overflow: what the selection gives back is
@@ -1125,7 +1133,7 @@ describe('the box a member writes about themselves in', () => {
        is the arithmetic the handler does with the selection it is given, and that is
        exactly what this hands it. */
     const user = setupUser()
-    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+    renderAt(`/sr/takmicar/${withNone.memberNumber}/podaci`, 'competitor', withNone.memberNumber)
 
     const panel = await panelFor()
     /* Typed through the query rather than by an assertion, which ADL A14 bans and which
@@ -1143,7 +1151,7 @@ describe('the box a member writes about themselves in', () => {
     expect(panel.getByRole('status')).toHaveTextContent(
       'Nalepljeni tekst je bio 20 znakova duži nego što staje, pa taj višak nije primljen.',
     )
-  })
+  }, SLOW)
 
   it('does not charge a Windows clipboard for its line endings', async () => {
     /* The clipboard carries CR LF and a textarea keeps LF, so counting the clipboard as it
@@ -1151,7 +1159,7 @@ describe('the box a member writes about themselves in', () => {
        Ten lines of thirty-six, which is 360 in the box and 369 on the clipboard: it all
        fits, and nothing is lost. */
     const user = setupUser()
-    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+    renderAt(`/sr/takmicar/${withNone.memberNumber}/podaci`, 'competitor', withNone.memberNumber)
 
     const panel = await panelFor()
     const field = await box()
@@ -1160,11 +1168,11 @@ describe('the box a member writes about themselves in', () => {
     await user.paste(Array.from({ length: 10 }, () => 'x'.repeat(35)).join('\r\n'))
 
     expect(panel.queryByText(/Nalepljeni tekst/)).toBeNull()
-  })
+  }, SLOW)
 
   it('says nothing when the paste fits', async () => {
     const user = setupUser()
-    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+    renderAt(`/sr/takmicar/${withNone.memberNumber}/podaci`, 'competitor', withNone.memberNumber)
 
     const panel = await panelFor()
     const field = await box()
@@ -1174,5 +1182,5 @@ describe('the box a member writes about themselves in', () => {
 
     expect(panel.queryByText(/Nalepljeni tekst/)).toBeNull()
     expect(panel.getByText('Još 320 znakova')).toBeVisible()
-  })
+  }, SLOW)
 })

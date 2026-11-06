@@ -193,6 +193,9 @@ describe('the switch that hides a profile', () => {
   }, SLOW)
 })
 
+/** Where his words about himself are written since 06.11.2026: the bottom of his card Podaci. */
+const HIS_CARD = `/sr/takmicar/${ME}/podaci`
+
 describe('the words about himself', () => {
   let stop = (): void => {}
 
@@ -228,7 +231,7 @@ describe('the words about himself', () => {
     const server = aServerThatKeepsTheProfile({ hidden: false, bio: 'Trčim dugo.' })
 
     stop = server.stop
-    renderAt('/sr/podesavanja', 'competitor', ME)
+    renderAt(HIS_CARD, 'competitor', ME)
 
     expect(await theBox()).toHaveValue('Trčim dugo.')
 
@@ -239,7 +242,7 @@ describe('the words about himself', () => {
     })
 
     refresh()
-    renderAt('/sr/podesavanja', 'competitor', ME)
+    renderAt(HIS_CARD, 'competitor', ME)
 
     expect(await theBox()).toHaveValue('')
     expect(screen.getByText(sr.bio.none)).toBeVisible()
@@ -262,7 +265,7 @@ describe('the words about himself', () => {
     const server = aServerThatKeepsTheProfile({ hidden: false, bio: 'Trčim dugo.' })
 
     stop = server.stop
-    renderAt('/sr/podesavanja', 'competitor', ME)
+    renderAt(HIS_CARD, 'competitor', ME)
 
     await user.clear(await theBox())
     await user.type(await theBox(), 'Nove reči.')
@@ -272,7 +275,7 @@ describe('the words about himself', () => {
     })
 
     refresh()
-    renderAt('/sr/podesavanja', 'competitor', ME)
+    renderAt(HIS_CARD, 'competitor', ME)
 
     expect(await theBox()).toHaveValue('Nove reči.')
     expect(screen.getByText(sr.bio.waitingNote)).toBeVisible()
@@ -280,7 +283,7 @@ describe('the words about himself', () => {
 
     server.decide(approved)
     refresh()
-    renderAt('/sr/podesavanja', 'competitor', ME)
+    renderAt(HIS_CARD, 'competitor', ME)
 
     expect(await theBox()).toHaveValue(approved ? 'Nove reči.' : 'Trčim dugo.')
     expect(screen.queryByText(sr.bio.waitingNote), 'a text that was decided is still shown as waiting').toBeNull()
@@ -299,7 +302,7 @@ describe('the words about himself', () => {
     const server = aServerThatKeepsTheProfile({ hidden: false, bio: 'Trčim dugo.' })
 
     stop = server.stop
-    renderAt('/sr/podesavanja', 'competitor', ME)
+    renderAt(HIS_CARD, 'competitor', ME)
 
     await user.clear(await theBox())
     await user.type(await theBox(), 'Prva verzija.')
@@ -309,7 +312,7 @@ describe('the words about himself', () => {
     })
 
     refresh()
-    renderAt('/sr/podesavanja', 'competitor', ME)
+    renderAt(HIS_CARD, 'competitor', ME)
 
     await user.clear(await theBox())
     await user.type(await theBox(), 'Druga verzija.')
@@ -319,7 +322,7 @@ describe('the words about himself', () => {
     })
 
     refresh()
-    renderAt('/sr/podesavanja', 'competitor', ME)
+    renderAt(HIS_CARD, 'competitor', ME)
 
     expect(await theBox()).toHaveValue('Druga verzija.')
     expect(screen.getByText(sr.bio.waitingNote)).toBeVisible()

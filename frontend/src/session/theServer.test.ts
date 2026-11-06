@@ -7,6 +7,7 @@ import { serverThat, type Asked } from '../test/serverAnswers'
 import { myOwnRecordFromMe } from '../test/theAnswer'
 import {
   whatTheServerSaysOfMyData,
+  whatTheServerSaysOfMyHavingWords,
   whatTheServerSaysOfMyMailLanguage,
   whatTheServerSaysOfMyPictures,
   whatTheServerSaysOfMyProfile,
@@ -1434,6 +1435,45 @@ describe('the pictures of the caller himself', () => {
     })
 
     expect(await whatTheServerSaysOfMyPictures()).toBeNull()
+  })
+})
+
+/**
+ * WHETHER THE CALLER HAS WORDS ABOUT HIMSELF, THE ONES THAT STAND OR THE ONES THAT WAIT, which the name of
+ * his card „Podaci" is asked of (PDL 06.11.2026, „poslato a neodobreno se računa kao namešteno").
+ */
+describe('whether the caller has words about himself', () => {
+  it.each([
+    ['words that stand and none that wait', 'Odobren tekst.', undefined, true],
+    ['words that wait and none that stand', '', 'Tekst koji čeka.', true],
+    ['neither', '', undefined, false],
+    ['blanks on both', '   ', '  ', false],
+  ])('is said for %s', async (_what, bio, bioWaiting, has) => {
+    server = serverThat(() => saying(aMemberSaying({ ...HIS_PAGE, bio, bioWaiting })))
+
+    expect(await whatTheServerSaysOfMyHavingWords()).toBe(has)
+    expect(server.asked.map((one) => one.path)).toEqual(['/api/me'])
+  })
+
+  it.each([
+    ['words that stand sent as a number', { bio: 7 }],
+    ['words that wait sent as a number', { bio: '', bioWaiting: 7 }],
+    ['words that wait sent as null', { bio: '', bioWaiting: null }],
+  ])('is not believed for %s', async (_what, over) => {
+    server = serverThat(() => saying(aMemberSaying({ ...HIS_PAGE, ...over })))
+
+    expect(await whatTheServerSaysOfMyHavingWords()).toBeNull()
+  })
+
+  it('is nothing for an account that races for nobody, and when the chain refuses', async () => {
+    server = serverThat(() => saying(JSON.stringify({ role: 'moderator', account: 41 })))
+
+    expect(await whatTheServerSaysOfMyHavingWords()).toBeNull()
+
+    server.stop()
+    server = serverThat(() => new Response(null, { status: 401 }))
+
+    expect(await whatTheServerSaysOfMyHavingWords()).toBeNull()
   })
 })
 

@@ -6,6 +6,7 @@ import { choicesOf } from '../../forms/records'
 import {
   WHAT_THE_ADMINISTRATION_CORRECTS,
   membersDataIn,
+  whatStandsIn,
   theMembersForm,
   whatTheAdministrationChanged,
   type MembersData,
@@ -151,5 +152,34 @@ describe('the choices of a field, read off its definition', () => {
 
   it('refuse a field with no choices of its own, which is a mistake in the code and not an empty list', () => {
     expect(() => choicesOf(registracija, 'firstName')).toThrow(/firstName/)
+  })
+})
+
+describe('what stands on his profile, out of the answer of the route', () => {
+  it('is read as the public list gives it, and as nothing of either', () => {
+    const crop = { x: 0.25, y: 0.75, size: 0.5 }
+
+    expect(whatStandsIn({ memberNumber: '000032', photo: '/api/photos/abc', crop, bio: 'Reči.' })).toEqual({
+      memberNumber: '000032',
+      photo: '/api/photos/abc',
+      crop,
+      bio: 'Reči.',
+    })
+    expect(whatStandsIn({ memberNumber: '000032', photo: null, crop: null, bio: null })).toEqual({
+      memberNumber: '000032',
+      photo: null,
+      crop: null,
+      bio: null,
+    })
+  })
+
+  it.each([
+    ['nothing at all', null],
+    ['not an object', 'podaci'],
+    ['no member number', { photo: null, bio: null }],
+    ['a picture that is not an address', { memberNumber: '000032', photo: 7, bio: null }],
+    ['words that are not text', { memberNumber: '000032', photo: null, bio: 7 }],
+  ])('is not believed for %s', (_what, body) => {
+    expect(whatStandsIn(body)).toBeNull()
   })
 })

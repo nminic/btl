@@ -98,8 +98,9 @@ class NoTextHoldsAZeroTest {
 	private static final String ZERO = String.valueOf((char) 0);
 
 	/**
-	 * The five routes that read the request by hand, by controller, with the record each one
-	 * reads. The fifth, since 22.10.2026, is the administration's correction of a member's data. {@code MeCategoryWriteApi.Wish} holds no text at all, and it is here because a text
+	 * The six routes that read the request by hand, by controller, with the record each one
+	 * reads. The fifth, since 22.10.2026, is the administration's correction of a member's data, and the
+	 * sixth, since 06.11.2026, its change of a member's words about himself. {@code MeCategoryWriteApi.Wish} holds no text at all, and it is here because a text
 	 * added to it tomorrow is swept the day it is added.
 	 */
 	private static final Map<String, String> READ_BY_HAND = Map.of(
@@ -107,6 +108,7 @@ class NoTextHoldsAZeroTest {
 			"MeCategoryWriteApi", "Wish",
 			"MeWriteApi", "Change",
 			"MemberDataWriteApi", "Correction",
+			"MemberPictureAndWordsApi", "Words",
 			"VerificationWriteApi", "Answered");
 
 	/**
@@ -146,6 +148,12 @@ class NoTextHoldsAZeroTest {
 					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("MemberInvitationApi#send:memberNumber (path)",
 					"a zero in a path is a 400 before any handler is reached"),
+			Map.entry("MemberPictureAndWordsApi#setThePicture:memberNumber (path)",
+					"a zero in a path is a 400 before any handler is reached"),
+			Map.entry("MemberPictureAndWordsApi#takeThePictureDown:memberNumber (path)",
+					"a zero in a path is a 400 before any handler is reached"),
+			Map.entry("MemberPictureAndWordsApi#setTheWords:memberNumber (path)",
+					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("FrozenSeasonApi#tables:season (path)",
 					"a zero in a path is a 400 before any handler is reached"),
 			Map.entry("PhotoApi#photo:name (path)",
@@ -163,6 +171,9 @@ class NoTextHoldsAZeroTest {
 			Map.entry("MePhotoApi#send:cropX (parameter)", "parsed as a number"),
 			Map.entry("MePhotoApi#send:cropY (parameter)", "parsed as a number"),
 			Map.entry("MePhotoApi#send:cropSize (parameter)", "parsed as a number"),
+			Map.entry("MemberPictureAndWordsApi#setThePicture:cropX (parameter)", "parsed as a number"),
+			Map.entry("MemberPictureAndWordsApi#setThePicture:cropY (parameter)", "parsed as a number"),
+			Map.entry("MemberPictureAndWordsApi#setThePicture:cropSize (parameter)", "parsed as a number"),
 			Map.entry("PageApi#pages:lang (parameter)",
 					"matched against the shape of a language tag, which has no room for a zero"),
 			Map.entry("PaymentsDueApi#due:search (parameter)",

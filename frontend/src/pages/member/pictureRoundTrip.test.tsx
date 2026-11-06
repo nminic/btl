@@ -207,7 +207,7 @@ describe('a picture that waits for a moderator', () => {
     const server = aServerThatKeepsThePictures({ waiting: THE_WAITING_ONE, standing: THE_STANDING_ONE })
 
     stop = server.stop
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
     const panel = await panelFor()
 
@@ -231,7 +231,7 @@ describe('a picture that waits for a moderator', () => {
     const server = aServerThatKeepsThePictures({ waiting: THE_WAITING_ONE, standing: THE_STANDING_ONE })
 
     stop = server.stop
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
     let panel = await panelFor()
 
@@ -261,7 +261,7 @@ describe('a picture that waits for a moderator', () => {
     expect(server.pictures().waiting?.digest).toBe(THE_WAITING_ONE.digest)
 
     cleanup()
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
     panel = await panelFor()
 
     expect(await panel.findByText(sr.picture.waitingNote)).toBeVisible()
@@ -278,7 +278,7 @@ describe('a picture that waits for a moderator', () => {
     const server = aServerThatKeepsThePictures({ waiting: THE_WAITING_ONE })
 
     stop = server.stop
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
     const panel = await panelFor()
 
@@ -298,7 +298,7 @@ describe('a picture that waits for a moderator', () => {
     const server = aServerThatKeepsThePictures({ waiting: THE_WAITING_ONE })
 
     stop = server.stop
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
     const panel = await panelFor()
 
@@ -317,7 +317,7 @@ describe('a picture that waits for a moderator', () => {
     const server = aServerThatKeepsThePictures({ waiting: THE_WAITING_ONE })
 
     stop = server.stop
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
     let panel = await panelFor()
 
@@ -338,7 +338,7 @@ describe('a picture that waits for a moderator', () => {
     expect(server.pictures().waiting?.digest).not.toBe(THE_WAITING_ONE.digest)
 
     cleanup()
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
     panel = await panelFor()
 
     expect(await panel.findByText(sr.picture.waitingNote)).toBeVisible()
@@ -363,7 +363,7 @@ describe('a picture that stands on the profile', () => {
     const server = aServerThatKeepsThePictures({ standing: THE_STANDING_ONE })
 
     stop = server.stop
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
     const panel = await panelFor()
 
@@ -388,7 +388,7 @@ describe('a picture that stands on the profile', () => {
     const server = aServerThatKeepsThePictures({ standing: THE_STANDING_ONE })
 
     stop = server.stop
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
     let panel = await panelFor()
 
@@ -410,7 +410,7 @@ describe('a picture that stands on the profile', () => {
     expect(server.pictures().waiting?.crop.size).toBeCloseTo(0.7, 8)
 
     cleanup()
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
     panel = await panelFor()
 
     expect(await panel.findByText(sr.picture.waitingNote)).toBeVisible()
@@ -428,7 +428,7 @@ describe('a picture that stands on the profile', () => {
     const server = aServerThatKeepsThePictures({ standing: THE_STANDING_ONE })
 
     stop = server.stop
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
     const panel = await panelFor()
 
@@ -454,7 +454,7 @@ describe('a picture that stands on the profile', () => {
     const server = aServerThatKeepsThePictures({ standing: THE_STANDING_ONE })
 
     stop = server.stop
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
     const panel = await panelFor()
 
@@ -474,7 +474,7 @@ describe('a picture that stands on the profile', () => {
 
     stop = server.stop
     server.failToServeStanding(how)
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
     const panel = await panelFor()
 
@@ -502,7 +502,7 @@ describe('a member with no picture at all', () => {
     const server = aServerThatKeepsThePictures({})
 
     stop = server.stop
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
     let panel = await panelFor()
 
@@ -516,7 +516,7 @@ describe('a member with no picture at all', () => {
     })
 
     cleanup()
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
     panel = await panelFor()
 
     expect(await panel.findByText(sr.picture.waitingNote)).toBeVisible()

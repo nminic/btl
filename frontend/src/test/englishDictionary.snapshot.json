@@ -805,7 +805,8 @@
       "label": "Parts of the profile",
       "overview": "Results",
       "awards": "Awards",
-      "data": "Details"
+      "data": "Details",
+      "finish": "Finish your profile"
     },
     "moreDucats": "Load more ducats",
     "showingDucats": "Showing {shown} of {total}",
@@ -1175,6 +1176,7 @@
     "letMeIn": "Activate membership",
     "letIn": "Your membership for season {season} is activated.",
     "letInNumber": "Your member number is {number}.",
+    "letInBoxes": "Add your profile picture and a few words about yourself",
     "letInAlready": "Your membership for this season is already activated.",
     "letInNothingToPay": "There is no fee for you to pay for this season.",
     "letInNotEnough": "Your balance no longer covers the whole fee, so the payment details for the rest are below.",
@@ -1866,6 +1868,17 @@
       "thisIsNotAPicture": "This file is not a picture, whatever it is called. Send a photograph, in JPG or PNG form for instance.",
       "theCropIsNotACircle": "The crop is not right. Set the circle again and send it."
     }
+  },
+  "theirBoxes": {
+    "pictureStanding": "This is the picture now on the member's profile.",
+    "currentAlt": "The member's picture, with the framed part that shows",
+    "pictureRemove": "Remove the picture",
+    "pictureRemoveAsks": "Remove the member's picture?",
+    "pictureNone": "The member has no picture on the profile yet.",
+    "atOnce": "A change stands on the member's profile at once, without approval, and the member gets a message in the inbox.",
+    "pictureSave": "Save the picture",
+    "wordsSave": "Save the text",
+    "saved": "Saved. The change already stands on the profile and the member has been sent a message."
   },
   "account": {
     "personalTitle": "Personal details",

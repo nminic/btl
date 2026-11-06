@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Navigate, useLocation, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { Loader } from '../components/Loader'
@@ -14,10 +14,14 @@ import { useSession } from '../session/useSession'
 import { MEMBERS, recordsOf } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
 import { PersonalData } from './member/PersonalData'
+import { ProfileBio } from './member/ProfileBio'
+import { ProfilePicture } from './member/ProfilePicture'
 import { useMyData } from './member/useMyData'
+import { BoxesSentContext, THE_PICTURE_AND_THE_WORDS } from './profile/finishTheProfile'
 import { HisOwnRecord } from './profile/HisOwnRecord'
 import { ProfileTop } from './profile/ProfileHead'
 import { TheMembersData } from './profile/TheMembersData'
+import { TheirBoxesOffTheirData, TheMembersPictureAndWords } from './profile/TheMembersPictureAndWords'
 import { profileFor } from './profile/visible'
 import { THE_DATA, useWhoReadsTheData } from './profile/whoReadsTheData'
 import { useWhereARefusedReaderGoes } from './member/whereARefusedReaderGoes'
@@ -65,6 +69,8 @@ export function CompetitorData() {
   const asking = useServerIsStillBeingAsked()
   const reader = useWhoReadsTheData(memberNumber)
   const away = useWhereARefusedReaderGoes()
+  const [times, setTimes] = useState(0)
+  const boxesSent = useMemo(() => ({ times, sent: () => setTimes((one) => one + 1) }), [times])
 
   /* UNTIL THE SERVER HAS SAID WHO IS READING, nothing is decided (owner, 10.10.2026, PDL P26): a cold
      load of this address by the member himself would otherwise send him to the home page. */
@@ -76,10 +82,22 @@ export function CompetitorData() {
     return <Navigate to={away} replace />
   }
 
+  /* ONE COUNT FOR THE WHOLE CARD, so the boxes at its bottom and the name in its head are told the same
+     thing (`profile/finishTheProfile.ts`). */
   return (
-    <TheCard part={part} memberNumber={memberNumber}>
-      {reader === 'his' ? <HisOwnData whose={String(memberNumber)} /> : <TheMembersData memberNumber={memberNumber} />}
-    </TheCard>
+    <BoxesSentContext.Provider value={boxesSent}>
+      <TheCard
+        part={part}
+        memberNumber={memberNumber}
+        panel={reader === 'his' ? <HisOwnData whose={String(memberNumber)} /> : <TheMembersData memberNumber={memberNumber} />}
+        boxes={(competitor) =>
+          reader === 'his' ? <TheTwoBoxes me={competitor} /> : <TheMembersPictureAndWords competitor={competitor} />
+        }
+        /* A member the public list does not carry is the administration's road alone (see `TheCard`), and
+           his boxes are drawn off the administration's own route: owner, 06.11.2026, „Vidi i samu sliku". */
+        alone={reader === 'his' ? null : <TheirBoxesOffTheirData memberNumber={String(memberNumber)} />}
+      />
+    </BoxesSentContext.Provider>
   )
 }
 
@@ -95,6 +113,48 @@ function HisOwnData({ whose }: { whose: string }) {
 }
 
 /**
+ * THE PICTURE, AND BESIDE IT THE WORDS ABOUT HIMSELF, at the bottom of his card „Podaci" and under the
+ * button of the form (owner, 06.11.2026, PDL „Boksovi „Profilna slika" i „Tekst o sebi" prelaze sa
+ * Podešavanja": „prelaze sa Podešavanja na dno kartice „Podaci""; „ponašanje ostaje, menja se strana").
+ * They moved as they were, each going for review on its own (owner, 15.08.2026), from the second of the
+ * three rows the settings had (`.member__pair member__row`, PDL 22.10.2026).
+ *
+ * <p><b>Only here, and so only for a member whose fee stands</b>: the card is drawn to him and to nobody
+ * else of his own (`whoReadsTheData.ts`), and somebody who has not paid changes his data on „Moji podaci",
+ * which draws `PersonalData` and not this (PDL P8, 10.10.2026: „Ne sme ništa što ga čini vidljivim ili ga
+ * uključuje u ligu: sliku, biografiju").
+ *
+ * <p><b>`#slika` leads here</b>, from the sentence the screen of the fee says when the membership is let
+ * in (`Membership.tsx`), and the card keeps the part after `#` when it moves the reader to the profile's
+ * one address (`TheCard`). Scrolled to once the two are drawn, because the browser looked for the element
+ * before the list it is drawn from had arrived.
+ *
+ * <p><b>Handed the record the head of the card is drawn from</b>, so the head and the boxes are about one
+ * record and cannot be about two (`TheCard`).
+ */
+function TheTwoBoxes({ me }: { me: Competitor }) {
+  const { hash } = useLocation()
+  const here = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (hash === `#${THE_PICTURE_AND_THE_WORDS}`) {
+      here.current?.scrollIntoView()
+    }
+  }, [hash])
+
+  return (
+    <div ref={here} id={THE_PICTURE_AND_THE_WORDS} className="member__pair member__row">
+      <ProfilePicture me={me} />
+      {/* KEYED BY THE MEMBER, BECAUSE EVERYTHING THAT PANEL HOLDS BELONGS TO ONE PERSON: what he typed,
+          what stands on his profile, what of his is waiting, and what the server last said. One visit can
+          hold two people - a shared laptop at a race - and without this the second reads the first man's
+          words out of the box. */}
+      <ProfileBio key={me.memberNumber} me={me} />
+    </div>
+  )
+}
+
+/**
  * THE PAGE AROUND THE CARD: the profile's own head where the public list carries the member, at the one
  * address the profile has (PDL P11, „One address and no alias"), and a heading of its own where it does
  * not.
@@ -102,14 +162,21 @@ function HisOwnData({ whose }: { whose: string }) {
 function TheCard({
   part,
   memberNumber,
-  children,
+  panel,
+  boxes,
+  alone,
 }: {
   part: string | undefined
   memberNumber: string | undefined
-  children: ReactNode
+  /** The form of the data, which every road of the card draws. */
+  panel: ReactNode
+  /** The picture and the words about himself, at the bottom, drawn about the record the head is drawn from. */
+  boxes: (competitor: Competitor) => ReactNode
+  /** The same boxes for a member the public list does not carry, drawn under the form there. */
+  alone: ReactNode
 }) {
   const { locale, t } = useI18n()
-  const { search } = useLocation()
+  const { search, hash } = useLocation()
   const { signedIn, theServerHasAnswered, memberNumber: readerNumber, pairsMade, pairsBroken } = useSession()
   const { role } = useRole()
   const overlay = useOverlay()
@@ -131,7 +198,9 @@ function TheCard({
           const elsewhere = redirectTo(competitor, part, locale, THE_DATA)
 
           if (elsewhere !== null) {
-            return <Navigate to={`${elsewhere}${search}`} replace />
+            /* THE PART AFTER `#` GOES WITH THE READER, as it does wherever the portal moves him
+               (`app/Shell.tsx`): `#slika` is how the screen of the fee leads to the boxes. */
+            return <Navigate to={`${elsewhere}${search}${hash}`} replace />
           }
 
           return (
@@ -148,7 +217,8 @@ function TheCard({
                 competitors={competitors}
                 pairs={pairsNow(fromFile, pairsMade, pairsBroken)}
               />
-              {children}
+              {panel}
+              {boxes(competitor)}
             </div>
           )
         }
@@ -168,7 +238,8 @@ function TheCard({
         return (
           <div className="profile">
             <h1>{t('profile.parts.data')}</h1>
-            {children}
+            {panel}
+            {alone}
           </div>
         )
       }}
