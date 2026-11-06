@@ -161,7 +161,7 @@ class MemberPictureAndWordsApi {
 		   ten minutes). Not deleted here, which `MePhotoApi.remove` does: that is a member taking his own
 		   picture down, where the bytes should leave as soon as they can; here the administration replaces
 		   one, and an hour later is soon enough for bytes nothing serves. */
-		db.sql("delete from verification where id in (select v.id" + MePhotoApi.THE_ONE_OF_MINE_THAT_WAITS + ")")
+		db.sql("delete from verification where id in " + THE_ROW_OF_HIS_THAT_WAITS_UNDER_LOCK)
 				.param("me", member)
 				.param("tab", MePhotoApi.THE_PROFILES_TAB)
 				.update();
@@ -197,8 +197,7 @@ class MemberPictureAndWordsApi {
 
 		MePhotoApi.oneSendOfAMemberAtATime(db, member);
 
-		int waited = db.sql("delete from verification where id in (select v.id"
-						+ MePhotoApi.THE_ONE_OF_MINE_THAT_WAITS + ")")
+		int waited = db.sql("delete from verification where id in " + THE_ROW_OF_HIS_THAT_WAITS_UNDER_LOCK)
 				.param("me", member)
 				.param("tab", MePhotoApi.THE_PROFILES_TAB)
 				.update();
@@ -275,6 +274,18 @@ class MemberPictureAndWordsApi {
 	/** What the words route answers: the words that now stand on his profile. */
 	record Words(String bio) {
 	}
+
+	/**
+	 * THE ROW OF HIS THAT WAITS, READ UNDER A LOCK, for the two deletes that take it. Read without one, the
+	 * question is answered from the statement's snapshot, a moderator's decision committed while the delete
+	 * stood behind it is not seen, and once the decision lets go the delete removes the row by its key
+	 * although it no longer waits (ADL A42 point 2: a row in the queue stands for ever, approved or refused).
+	 * With {@code for update} the delete stands behind the decision at the row in the subquery, and when it
+	 * goes on it asks the question again of the row as the decision left it. This is the lock
+	 * {@code MePhotoApi.theOneThatWaits} takes for the member's own removal.
+	 */
+	private static final String THE_ROW_OF_HIS_THAT_WAITS_UNDER_LOCK =
+			"(select v.id" + MePhotoApi.THE_ONE_OF_MINE_THAT_WAITS + " for update)";
 
 	/**
 	 * His row, where the address names a member and the one asking may change him; nothing otherwise, and
