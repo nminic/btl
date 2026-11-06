@@ -282,8 +282,10 @@ class WithoutMetadataTest {
 				riffChunk("EXIF", concat(new byte[] { 'E', 'x', 'i', 'f', 0, 0 }, tiff(8, true))),
 				riffChunk("EXIF", tiff(3, false)));
 
-		assertThat(riffChunksOf(WithoutMetadata.of(headed, "image/webp")).get(3))
-				.isEqualTo(riffChunk("EXIF", WithoutMetadata.noteOf(8)));
+		List<byte[]> kept = riffChunksOf(WithoutMetadata.of(headed, "image/webp"));
+
+		assertThat(kept).as("no note was written, or a second one").hasSize(4);
+		assertThat(kept.get(3)).isEqualTo(riffChunk("EXIF", WithoutMetadata.noteOf(8)));
 	}
 
 	@Test
