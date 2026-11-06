@@ -3,6 +3,7 @@ import { at } from '../test/at'
 import SEASON from './tablesBothSidesWrite.json'
 import {
   CATEGORIES,
+  bestOfficialSeason,
   bestSingleRaces,
   rankingFor,
   rankMembers,
@@ -383,5 +384,13 @@ describe('two members level to the hundredth', () => {
         runs(higher, 9301, [1, 1, 1], [0.01, 0.01, 0.04]),
       ),
     ).toEqual([higher.memberNumber, lower.memberNumber])
+  })
+
+  it('and the best official season is the sum to the hundredth, which is what the threshold is asked of', () => {
+    /* The same two runs that make 0.060000000000000005 as a plain sum: asked of the threshold, 0.06 and
+       0.06 must be one figure, or a member exactly on the line is on one side of it on the screen and
+       the other in the server's count. */
+    expect(bestOfficialSeason(runs(lower, 9401, [0.01, 0.05], [3, 3]), lower.memberNumber)).toBe(0.06)
+    expect(bestOfficialSeason(runs(higher, 9501, [0.01, 0.01, 0.04], [2, 2, 2]), higher.memberNumber)).toBe(0.06)
   })
 })
