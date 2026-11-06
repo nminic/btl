@@ -33,6 +33,7 @@ import { WHEN_LETTING_MYSELF_IN } from '../member/fromTheBalance'
 import { WHEN_CHOOSING_THE_LANGUAGE_OF_MAIL } from '../member/mailLanguage'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
 import { WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR } from '../member/pairWrites'
+import { WHEN_BREAKING_A_PAIR } from '../member/MyRacingPairs'
 import {
   WHEN_A_WOMAN_ANSWERS_A_TEAM_INVITE,
   WHEN_ANSWERING_A_TEAM_INVITE,
@@ -512,7 +513,12 @@ describe('the reasons the server can name', () => {
        also answered on the line's first dictionary, as on `TeamJoiningWriteApi`'s line below,
        because the two doors refuse with the same two words; the count stays at eight, since no
        constant was added or taken away. */
-    ['PairWriteApi.java', [WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR], 8],
+    /* THREE MAPS SINCE 06.11.2026, AS `TeamWriteApi.java` BELOW HAS TWO, and the third is EMPTY ON PURPOSE:
+       `DELETE /api/pairs/{id}` (`PairWriteApi.end`) names no reason, only a 404 that stands for four
+       causes, so its map (`WHEN_BREAKING_A_PAIR`, which the line "Raskini" hands to `ServerSaid`) is
+       where a sentence goes the day it does. Registered here so that day makes this floor fail on a name
+       nobody answers rather than on the count alone; the count of eight does not move. */
+    ['PairWriteApi.java', [WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR, WHEN_BREAKING_A_PAIR], 8],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A TEAM, and it
        is this list's twin of the line above it in every way but one. Six constants splitting
        three ways: one is not a refusal at all (a subject line, `NOT_A_REASON`), two are real

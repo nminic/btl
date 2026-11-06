@@ -303,9 +303,13 @@ function PairsOf({
  * who is in them to anybody walking the keys.
  *
  * <p><b>Named as a constant rather than written `{}` at the call site</b>, so that the day the
- * route does name one there is a place for its sentence to go.
+ * route does name one there is a place for its sentence to go. **Exported so the floor of the
+ * refusals registers it** beside the two maps of the same route's other verbs
+ * (`pages/account/refusals.test.ts`, `PairWriteApi.java`): without that, the day `breakUp` names a
+ * reason, the floor fails on the count and the cheapest way back to green is a sentence written into
+ * the wrong map, which satisfies both of its cases while this screen goes on printing the bare code.
  */
-const WHEN_BREAKING_A_PAIR: Record<string, string> = {}
+export const WHEN_BREAKING_A_PAIR: Record<string, string> = {}
 
 /**
  * WHAT THAT 404 MEANS, SAID IN THE ROUTE'S OWN WORDS (PENDING stavka 316).
