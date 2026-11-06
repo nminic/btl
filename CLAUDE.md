@@ -164,6 +164,10 @@ neupisan rad nad tim fajlom**. Zato se pušta **isključivo nad putanjom koju je
 mutirala** i nikad nad fajlom u kom stoji nešto što nije commitovano. Ko to ne može da garantuje,
 commituje pre serije. I još jedna razlika koja ume da iznenadi: `git checkout --` vadi iz
 **indeksa**, a ne iz `HEAD`; ako je nešto stejdžovano, to su dve različite stvari.
+`<put>` je pathspec, ne fajl: direktorijum kao argument vraća i fajlove koje serija nikad nije
+dirnula. Izmereno (dva fajla u jednom direktorijumu, jedan mutiran, u drugom neupisan rad):
+`git checkout -- <direktorijum>` vraća oba, izlazni kod 0, `git status` posle toga prazan, pa
+gubitak ne ostavlja trag. Zato se navodi tačan fajl, nikad njegov direktorijum.
 
 **Sadržaj i dalje dolazi iz gita a ne sa diska**, i sada je to isto merenje: komanda iznad ne gleda
 radno stablo uopšte, pa zatečena mutacija ne može da postane osnova.

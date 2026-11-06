@@ -182,7 +182,7 @@ rows live in the named volume `deploy_postgres-data` and the uploaded files in
 `deploy_photos`, and `-v` deletes exactly those two. What is left after it is the
 newest nightly copy in R2 (see "The nightly copy and the monthly proof" below), so at
 best a day of the portal is lost and the rest comes back through "Restoring production
-from a copy" - once the timers are installed and the first real run has passed. A plain
+from a copy". A plain
 `down` leaves both volumes alone; the flag is the difference between an outage and a
 loss.
 
@@ -868,12 +868,15 @@ is attached to.
 
 ## Known gaps
 
-- **The production backup is written and not yet running.** `backup.sh` and its
-  timers are in this directory (see "The nightly copy and the monthly proof"), and
-  until the owner has made the bucket, filled `.env`, installed the timers and watched
-  the first real run pass, `deploy_postgres-data` and `deploy_photos` are still two
-  volumes on one host with no copy anywhere. What the first real run measures that
-  nothing here can is listed in that section.
+- **The production backup is running.**
+  `backup.sh` and its timers are installed on the host (see "The nightly copy and the
+  monthly proof"). Measured on the host on 06.11.2026, by reading only: the nightly timer
+  last ran at 03:00 UTC that day and runs again at 03:00 UTC, its last pass ended with the
+  copy decrypting, the dump being the one its manifest names, the copy arriving whole and
+  `DONE`, and the monthly proof timer last ran on 02.11.2026 and next runs on 02.12.2026 at
+  04:00 UTC, its last pass ending with the day's copy restoring and being kept as the
+  month's. The times in the unit files are Belgrade time (04:00 and 05:00 on the 2nd), so
+  in summer they fall an hour earlier in UTC.
   QA is different and stays different: it holds nothing that needs restoring, so
   `qa_postgres-data` and `qa_photos` are backed up by nothing on purpose and are rebuilt by
   dropping them and letting Flyway run again. Pictures left in `qa_photos` then name no row,
