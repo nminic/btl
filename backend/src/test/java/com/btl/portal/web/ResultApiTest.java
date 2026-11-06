@@ -1255,13 +1255,15 @@ class ResultApiTest {
 						AFTER_THE_FREEZE.atZone(SeasonClock.ZONE))));
 
 		for (String number : List.of("000010", "000011")) {
-			assertThat(rowsOf(number))
+			List<JsonNode> served = rowsOf(number);
+
+			assertThat(served)
 					.as("the run before the league is not served for %s, so the case measures nothing", number)
-					.hasSize(1)
-					.allSatisfy(one -> assertThat(runnerOf(one).ageBand())
-							.as("the band of %s was worked out for the season of the clock and not for the first"
-									+ " season", number)
-							.isEqualTo(Category.ageBandFor(1988, SeasonClock.FIRST_SEASON).code()));
+					.hasSize(1);
+			assertThat(runnerOf(served.get(0)).ageBand())
+					.as("the band of %s was worked out for the season of the clock and not for the first"
+							+ " season", number)
+					.isEqualTo(Category.ageBandFor(1988, SeasonClock.FIRST_SEASON).code());
 		}
 	}
 
