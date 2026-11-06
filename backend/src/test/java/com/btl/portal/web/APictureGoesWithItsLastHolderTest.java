@@ -34,6 +34,7 @@ import java.nio.file.attribute.FileTime;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -833,15 +834,21 @@ class APictureGoesWithItsLastHolderTest {
 	// ---------------------------------------------------------------- the arrangement
 
 	private long aMember(String number, String referralCode) {
-		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+		long made = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Slika', 'Bez Nosioca', 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, "
+						+ " (select id from place where rank = 1), 2027, false, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00') returning id")
 				.params(number, referralCode).query(Long.class).single();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written false on purpose: since AF-1
+		   nothing reads it, and a reader that did would turn him away. */
+		HeldOn.activeAt(db, made, ZonedDateTime.now());
+
+		return made;
 	}
 
 	/**
