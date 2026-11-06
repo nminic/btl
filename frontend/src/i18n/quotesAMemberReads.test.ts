@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import ts from 'typescript'
 import { sources } from '../test/sources'
 
@@ -24,6 +24,11 @@ import { sources } from '../test/sources'
  *    cooked value is read, so `„` written out counts exactly as the mark typed.
  * 3. **Every string in every form definition** under `src/forms/definitions`, read from
  *    the folder.
+ * 4. **Every other `.json` under `src`, outside any folder named `test`**, walked from the
+ *    folder and not named: the names of the countries (`data/countries.json`), the addresses
+ *    the portal posts (`app/postedAddresses.json`) and the rest hold text a screen draws and
+ *    are neither a dictionary nor a form. Measured in review of PR 555: „Srbija" written into
+ *    `data/countries.json` passed the three above with 13 cases green.
  *
  * **What it deliberately does not read:** comments, which the decision names as outside
  * it; the test files, which hold sentences a member TYPES (an address with a Serbian
@@ -155,6 +160,30 @@ describe('the text a reader meets on a screen', () => {
 
     expect(definitions.length).toBeGreaterThanOrEqual(10)
     expect(strings.length).toBeGreaterThan(100)
+    expect(offendersIn(strings)).toEqual([])
+  })
+})
+
+describe('the data files a screen draws from', () => {
+  it('carry no Serbian quotation mark in any string of any JSON file under src', () => {
+    const src = join(process.cwd(), 'src')
+    const files = readdirSync(src, { recursive: true, withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+      .map((entry) => relative(src, join(entry.parentPath, entry.name)))
+      .filter((path) => !path.split(sep).includes('test'))
+    const strings = files.flatMap((file) =>
+      stringsIn(JSON.parse(readFileSync(join(src, file), 'utf-8')), file),
+    )
+
+    /* The floor is the folder, as above: the files the review named are in it, and so are the
+       dictionaries and the forms, which the cases before this one read on their own. A walk
+       that lost the data folder would read as „nothing is wrong" where it meant „nothing was
+       looked at". */
+    expect(files.map((file) => file.split(sep).join('/'))).toEqual(
+      expect.arrayContaining(['data/countries.json', 'app/postedAddresses.json', 'i18n/sr.json']),
+    )
+    expect(files.length).toBeGreaterThanOrEqual(20)
+    expect(strings.length).toBeGreaterThan(2000)
     expect(offendersIn(strings)).toEqual([])
   })
 })
