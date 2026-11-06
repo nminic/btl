@@ -1,5 +1,6 @@
 import { configure, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
+import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { aNeverPaidRecord, neverPaidAsServed } from '../../test/neverPaid'
 import { renderAt } from '../../test/render'
@@ -51,24 +52,50 @@ async function thePanel(): Promise<HTMLElement> {
   return must(heading.closest('section'), 'the panel')
 }
 
-/** The four held boxes, by the words on their labels. */
-function heldBoxes(panel: HTMLElement): Record<string, HTMLInputElement> {
-  const find = (label: RegExp): HTMLInputElement => {
-    const box = within(panel).getByLabelText(label)
-
-    if (!(box instanceof HTMLInputElement)) {
-      throw new Error(`${String(label)} is not a box`)
-    }
-
-    return box
+function aBox(found: HTMLElement, label: string): HTMLInputElement {
+  if (!(found instanceof HTMLInputElement)) {
+    throw new Error(`${label} is not a box`)
   }
+
+  return found
+}
+
+/**
+ * The four held, by the words on their labels: three boxes and the gender, which is the registration's
+ * pair of buttons (`registracija.form.json`, `choice`) since the panel took the registration's shape
+ * (PDL 06.11.2026), each button a control of its own.
+ */
+function held(panel: HTMLElement): {
+  birthDate: HTMLInputElement
+  fatherName: HTMLInputElement
+  idNumber: HTMLInputElement
+  man: HTMLInputElement
+  woman: HTMLInputElement
+} {
+  const gender = within(panel).getByRole('radiogroup', { name: 'Pol' })
 
   return {
-    gender: find(/^Pol$/),
-    birthDate: find(/^Datum rođenja$/),
-    fatherName: find(/^Ime oca$/),
-    idNumber: find(/^Broj ličnog dokumenta$/),
+    birthDate: aBox(within(panel).getByRole('textbox', { name: /^Datum rođenja/ }), 'the date'),
+    fatherName: aBox(within(panel).getByRole('textbox', { name: /^Ime oca/ }), "the father's name"),
+    idNumber: aBox(within(panel).getByRole('textbox', { name: /^Broj ličnog dokumenta/ }), 'the document'),
+    man: aBox(within(gender).getByRole('radio', { name: 'Muški' }), 'a man'),
+    woman: aBox(within(gender).getByRole('radio', { name: 'Ženski' }), 'a woman'),
   }
+}
+
+/** The ids a control is described by. */
+function describedBy(control: HTMLElement): string[] {
+  return (control.getAttribute('aria-describedby') ?? '').split(' ').filter(Boolean)
+}
+
+/** The one write of his data the server was asked for, as it was sent. */
+function theWrite(asked: { path: string; init?: RequestInit }[]): unknown {
+  const sent = must(
+    asked.find((one) => one.path === '/api/me' && one.init?.method === 'PUT'),
+    'the write',
+  )
+
+  return JSON.parse(String(sent.init?.body))
 }
 
 describe('on the page „Moji podaci" of somebody who has not paid', () => {
@@ -76,14 +103,20 @@ describe('on the page „Moji podaci" of somebody who has not paid', () => {
     stands(neverPaidAsServed())
     renderAt('/sr/moji-podaci', 'visitor', null)
 
-    const boxes = heldBoxes(await thePanel())
+    const boxes = held(await thePanel())
 
-    expect(boxes['gender']).toHaveValue('Muški')
-    expect(boxes['birthDate']).toHaveValue('23. novembar 1992.')
-    expect(boxes['fatherName']).toHaveValue(aNeverPaidRecord.fatherName)
-    expect(boxes['idNumber']).toHaveValue(aNeverPaidRecord.idNumber)
+    expect(boxes.man).toBeChecked()
+    expect(boxes.woman).not.toBeChecked()
+    expect(boxes.birthDate).toHaveValue('23/11/1992')
+    expect(boxes.fatherName).toHaveValue(aNeverPaidRecord.fatherName)
+    expect(boxes.idNumber).toHaveValue(aNeverPaidRecord.idNumber)
   }, SLOW)
 
+  /**
+   * <p><b>Held, said to be held, and described by the sentence</b>, every one of the five controls; and
+   * <b>the boxes he does change are described by nothing of it</b>, so a sentence hung on every field of
+   * the form is told from one hung on the held ones (`fixedSaidBy`).
+   */
   it('holds them: read only, said to be held, and described by the sentence that says who changes them', async () => {
     stands(neverPaidAsServed())
     renderAt('/sr/moji-podaci', 'visitor', null)
@@ -91,11 +124,24 @@ describe('on the page „Moji podaci" of somebody who has not paid', () => {
     const panel = await thePanel()
     const sentence = within(panel).getByText(SENTENCE)
 
-    for (const [name, box] of Object.entries(heldBoxes(panel))) {
-      expect(box, name).toHaveAttribute('readonly')
-      expect(box, name).toHaveAttribute('aria-disabled', 'true')
-      expect(box, name).toHaveAccessibleDescription(SENTENCE)
-      expect(box.getAttribute('aria-describedby'), name).toBe(sentence.id)
+    expect(sentence.id).not.toBe('')
+
+    for (const [name, control] of Object.entries(held(panel))) {
+      expect(control, name).toHaveAttribute('aria-disabled', 'true')
+      expect(describedBy(control), name).toContain(sentence.id)
+      expect(control, name).toHaveAccessibleDescription(expect.stringContaining(SENTENCE))
+
+      if (control.type !== 'radio') {
+        expect(control, name).toHaveAttribute('readonly')
+      }
+    }
+
+    for (const name of [/^Ime$/, /^Prezime/, /^Adresa za slanje/, /^Telefon/]) {
+      const free = within(panel).getByRole('textbox', { name })
+
+      expect(free, String(name)).not.toHaveAttribute('readonly')
+      expect(free, String(name)).not.toHaveAttribute('aria-disabled')
+      expect(describedBy(free), String(name)).not.toContain(sentence.id)
     }
   }, SLOW)
 
@@ -113,14 +159,18 @@ describe('on the page „Moji podaci" of somebody who has not paid', () => {
     renderAt('/sr/moji-podaci', 'visitor', null)
 
     const panel = await thePanel()
-    const boxes = heldBoxes(panel)
+    const boxes = held(panel)
 
-    for (const box of Object.values(boxes)) {
+    for (const box of [boxes.birthDate, boxes.fatherName, boxes.idNumber]) {
       await user.type(box, 'ABC')
     }
 
-    expect(boxes['fatherName']).toHaveValue(aNeverPaidRecord.fatherName)
-    expect(boxes['idNumber']).toHaveValue(aNeverPaidRecord.idNumber)
+    await user.click(boxes.woman)
+
+    expect(boxes.fatherName).toHaveValue(aNeverPaidRecord.fatherName)
+    expect(boxes.idNumber).toHaveValue(aNeverPaidRecord.idNumber)
+    expect(boxes.birthDate).toHaveValue('23/11/1992')
+    expect(boxes.man).toBeChecked()
 
     /* Nothing was changed, so nothing is sent: the button is told off. */
     expect(within(panel).getByRole('button', { name: 'Sačuvaj' })).toHaveAttribute('aria-disabled', 'true')
@@ -130,30 +180,75 @@ describe('on the page „Moji podaci" of somebody who has not paid', () => {
     await user.click(within(panel).getByRole('button', { name: 'Sačuvaj' }))
 
     expect(await screen.findByText('Sačuvano.')).toBeVisible()
+    expect(theWrite(kept.asked)).toEqual({ address: 'Ulica Druga 5' })
+  }, SLOW)
 
-    const sent = must(
-      kept.asked.find((one) => one.path === '/api/me' && one.init?.method === 'PUT'),
-      'the write',
+  /**
+   * <p><b>And it does not stop him saving the rest</b>: a box he cannot fill is not asked of him
+   * (`hisOwnForm`), so it carries no star and the registration's rule that it be filled refuses
+   * nothing. With the rule left on, the press is refused over the held box and nothing travels.
+   */
+  it('shows the number of the document as an empty box for somebody who gave none, and saves the rest', async () => {
+    const user = setupUser()
+
+    stands(neverPaidAsServed({ idNumber: undefined }))
+
+    const kept = stands(
+      serverThat((path, init) =>
+        path === '/api/me' && init?.method === 'PUT' ? answeredWith(200) : null,
+      ),
     )
 
-    expect(JSON.parse(String(sent.init?.body))).toEqual({ address: 'Ulica Druga 5' })
-  }, SLOW)
-
-  it('shows the number of the document as an empty box for somebody who gave none', async () => {
-    stands(neverPaidAsServed({ idNumber: undefined }))
     renderAt('/sr/moji-podaci', 'visitor', null)
 
-    const boxes = heldBoxes(await thePanel())
+    const panel = await thePanel()
+    const boxes = held(panel)
 
-    expect(boxes['idNumber']).toHaveValue('')
-    expect(boxes['fatherName']).toHaveValue(aNeverPaidRecord.fatherName)
+    expect(boxes.idNumber).toHaveValue('')
+    expect(boxes.idNumber).not.toHaveAttribute('aria-required')
+    expect(boxes.fatherName).toHaveValue(aNeverPaidRecord.fatherName)
+
+    /* The empty box carries no „(neobavezno)" and no star: it is not the member's to fill. */
+    const field = must(boxes.idNumber.closest<HTMLElement>('.field'), 'the field of the number of the document')
+
+    expect(field.textContent).not.toContain(sr.form.optional)
+    expect(within(field).queryByText('*')).toBeNull()
+
+    await user.type(within(panel).getByRole('textbox', { name: /^Telefon/ }), '065 1234')
+    await user.click(within(panel).getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText('Sačuvano.')).toBeVisible()
+    expect(theWrite(kept.asked)).toEqual({ phone: '065 1234' })
   }, SLOW)
 
-  it('shows the gender as a woman is called', async () => {
+  /**
+   * <p>And a member who gave one is not asked it either (PDL, „Na formi „Podaci" zaključana polja", owner,
+   * 06.11.2026: held fields „ne nose nikakvu oznaku, ni zvezdicu ni „(neobavezno)", jer ih član ne može
+   * popuniti"). The star was drawn beside it until then, as on the registration.
+   */
+  it('marks none of the four held fields, whether or not he gave a document', async () => {
+    stands(neverPaidAsServed())
+    renderAt('/sr/moji-podaci', 'visitor', null)
+
+    const panel = await thePanel()
+
+    for (const [name, control] of Object.entries(held(panel))) {
+      const field = must(control.closest<HTMLElement>('.field'), `the field of ${name}`)
+
+      expect(control, `${name} says it is asked for`).not.toHaveAttribute('aria-required')
+      expect(within(field).queryByText('*'), `the star beside ${name}`).toBeNull()
+      expect(field.textContent, `${name} says it is optional`).not.toContain(sr.form.optional)
+    }
+  }, SLOW)
+
+  it('shows the gender of a woman', async () => {
     stands(neverPaidAsServed({ gender: 'F' }))
     renderAt('/sr/moji-podaci', 'visitor', null)
 
-    expect(heldBoxes(await thePanel())['gender']).toHaveValue('Ženski')
+    const boxes = held(await thePanel())
+
+    expect(boxes.woman).toBeChecked()
+    expect(boxes.man).not.toBeChecked()
   }, SLOW)
 })
 
@@ -162,17 +257,16 @@ describe('on the card „Podaci" of a member whose fee stands', () => {
     renderAt('/sr/takmicar/000001/podaci', 'competitor', '000001')
 
     const panel = await thePanel()
-    const boxes = heldBoxes(panel)
+    const boxes = held(panel)
 
-    expect(boxes['gender']).toHaveValue('Muški')
-    expect(boxes['birthDate']).toHaveValue('2. april 1980.')
-    expect(boxes['fatherName']).toHaveValue(myOwnRecordFromMe.fatherName)
-    expect(boxes['idNumber']).toHaveValue(myOwnRecordFromMe.idNumber)
+    expect(boxes.man).toBeChecked()
+    expect(boxes.birthDate).toHaveValue('02/04/1980')
+    expect(boxes.fatherName).toHaveValue(myOwnRecordFromMe.fatherName)
+    expect(boxes.idNumber).toHaveValue(myOwnRecordFromMe.idNumber)
     expect(within(panel).getByText(SENTENCE)).toBeVisible()
 
-    for (const [name, box] of Object.entries(boxes)) {
-      expect(box, name).toHaveAttribute('readonly')
-      expect(box, name).toHaveAttribute('aria-disabled', 'true')
+    for (const [name, control] of Object.entries(boxes)) {
+      expect(control, name).toHaveAttribute('aria-disabled', 'true')
     }
   }, SLOW)
 
@@ -186,7 +280,7 @@ describe('on the card „Podaci" of a member whose fee stands', () => {
         "The administration changes the gender, the date of birth, the father's name and the number of the document on your request.",
       ),
     ).toBeVisible()
-    expect(screen.getByLabelText("Father's name")).toHaveAttribute('readonly')
+    expect(screen.getByRole('textbox', { name: /^Father's name/ })).toHaveAttribute('readonly')
   }, SLOW)
 })
 

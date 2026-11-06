@@ -5,8 +5,6 @@ import sr from '../../i18n/sr.json'
 import { answeredWith, forgetEveryCookie, refused, serverThat } from '../../test/serverAnswers'
 import { askTheServer } from '../account/askTheServer'
 import {
-  AS_LONG_AS_THE_FORM_ALLOWS,
-  TYPED_BOXES,
   WHEN_CHANGING_MY_DATA,
   WHEN_CHANGING_MY_PASSWORD,
   hiddenIn,
@@ -187,27 +185,6 @@ describe('what of the member’s own form actually travels', () => {
     expect(
       whatChanged(...asOpened({ standing: { phone: '065 1234' }, typed: { phone: '065 1234' } })),
     ).toEqual({})
-  })
-})
-
-describe('how long each box on the member’s own form is', () => {
-  /**
-   * **The numbers are the form's and are never written here**, which is the floor under this
-   * list rather than a second copy of it: `registracija.form.json` is the one place a length
-   * is decided, `MeWriteApi.EACH_BOX_ON_THE_FORM` holds the SERVER to that same file, and
-   * this reads it through `limitOf`, which throws for a field that has no length at all.
-   *
-   * So what is left to measure is that every field this screen sends really has one, and that
-   * the four are not quietly the same number - which is what a broken read would look like.
-   */
-  it('is a real number for every box typed into, and for the town', () => {
-    expect(TYPED_BOXES.length).toBe(4)
-
-    for (const name of [...TYPED_BOXES, 'city'] as const) {
-      expect(AS_LONG_AS_THE_FORM_ALLOWS[name], name).toBeGreaterThan(0)
-    }
-
-    expect(new Set(Object.values(AS_LONG_AS_THE_FORM_ALLOWS)).size).toBeGreaterThan(1)
   })
 })
 

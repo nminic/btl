@@ -278,13 +278,6 @@ describe('what a screen says in its own voice', () => {
       'aria-autocomplete',
       'aria-controls',
       'aria-describedby',
-      /* A LOCKED BOX, 24.10.2026, and it is machinery rather than speech. It carries the word "true"
-         and a reader never meets that word: what he meets is that the box is unavailable, which the
-         browser tells him in his own language (the way every locked box of the portal is held,
-         `forms/held.ts`). `pages/member/PersonalData.tsx` writes it on the four boxes a member sees and
-         does not change (PDL 24.10.2026), as `forms/FormRenderer.tsx` writes it, from a variable.
-         Same kind of name as `aria-modal` below. */
-      'aria-disabled',
       'aria-haspopup',
       'aria-hidden',
       'aria-labelledby',
@@ -313,6 +306,14 @@ describe('what a screen says in its own voice', () => {
       'dir',
       'field',
       'fill',
+      /* THE ID OF THE SENTENCE OVER THE HELD BOXES, 06.11.2026, and it is machinery rather than speech.
+         It carries „account-held-note", which a reader never meets: what he meets is the sentence it
+         names, read out as the description of each box he does not change (PDL 24.10.2026). Written by
+         `pages/member/PersonalData.tsx`, the only form that hands one to `forms/FormRenderer.tsx`.
+         Since then that panel is the registration's form and writes no `aria-disabled` of its own:
+         the renderer writes it, from a variable, so the name went off this list. Same kind of name as
+         `describedBy` above. */
+      'fixedSaidBy',
       'focusable',
       'gender',
       'height',

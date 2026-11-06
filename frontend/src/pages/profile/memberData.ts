@@ -61,6 +61,59 @@ export function theMembersForm(withAnAddress: boolean): FormDef {
   }
 }
 
+/**
+ * WHAT THE MEMBER HIMSELF SEES OF THE REGISTRATION ON HIS OWN CARD „PODACI" AND ON THE PAGE „MOJI
+ * PODACI", in the registration's order, rows and groups.
+ *
+ * <p>Owner, 06.11.2026 (PDL, „Profil: forma „Podaci" po obliku forme za prijavu"): „Na podacima struktura
+ * forme treba da bude kao na formularu za prijavu, dakle ne sve jedno ispod drugog." So, like the
+ * administration's form above, the fields are the registration's own and not a copy of them.
+ *
+ * <p><b>Less than the administration's, and each one left out for a reason that is already written.</b>
+ * The address of post, which he changes himself „ali mora da potvrdi novu" (PDL 24.09.2026) and no route
+ * confirms one yet (`pages/member/PersonalData.tsx`). And the password, the statements and the category,
+ * for the reasons `theMembersForm` gives.
+ */
+export const WHAT_HE_SEES = [
+  'firstName',
+  'lastName',
+  'fatherName',
+  'gender',
+  'birthDate',
+  'idNumber',
+  'address',
+  'phone',
+  'city',
+  'shirtSize',
+] as const
+
+/**
+ * THE FOUR OF THEM HE SEES AND DOES NOT CHANGE (PDL 24.10.2026, owner: „clan ga vidi ali je disabled za
+ * menjanje. Moze samo da trazi od admina", and, chosen between offered outcomes with the recommendation,
+ * the same for the gender, the date of birth and the father's name). Handed to the form as `fixed`.
+ */
+export const WHAT_HE_SEES_HELD = ['fatherName', 'gender', 'birthDate', 'idNumber']
+
+/**
+ * The registration's fields he sees, those of {@link WHAT_HE_SEES}.
+ *
+ * @param withADocument whether he gave the number of an identity document. One who gave none sees that
+ *                      box held and empty, and it is not asked of him: the star says that „Sačuvaj"
+ *                      does not go without it (PDL, 12.08.2026), and he cannot fill a box he does not
+ *                      change, so asked, it would refuse every save he makes. The other three are
+ *                      never empty (`MyData`)
+ */
+export function hisOwnForm(withADocument: boolean): FormDef {
+  return {
+    ...registracija,
+    id: 'licni-podaci',
+    submitKey: 'account.save',
+    fields: registracija.fields
+      .filter((one) => WHAT_HE_SEES.some((name) => name === one.name))
+      .map((one) => (one.name === 'idNumber' && !withADocument ? { ...one, required: false } : one)),
+  }
+}
+
 /** What the server says of a member (`MemberDataApi.Data`), as the form reads and compares it. */
 export type MembersData = Record<Corrected | 'country', string> & {
   memberNumber: string
