@@ -3,6 +3,8 @@ package com.btl.portal.web;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 
 /**
@@ -93,9 +95,12 @@ class ActiveMemberOrAdministration {
 
 	private final MemberOfAccount memberOfAccount;
 
-	ActiveMemberOrAdministration(JdbcClient db, MemberOfAccount memberOfAccount) {
+	private final Clock clock;
+
+	ActiveMemberOrAdministration(JdbcClient db, MemberOfAccount memberOfAccount, Clock clock) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
+		this.clock = clock;
 	}
 
 	/**
@@ -116,7 +121,18 @@ class ActiveMemberOrAdministration {
 	 *               a request that carries none
 	 */
 	boolean includes(WhoIsAsking.Member asking) {
-		return asking != null && (isTheAdministration(asking) || activeMember(asking).isPresent());
+		return includes(asking, ZonedDateTime.now(clock));
+	}
+
+	/**
+	 * {@link #includes(WhoIsAsking.Member)} at the moment the caller has already read the clock at,
+	 * so that one request asks the door and everything after it at one instant.
+	 *
+	 * @param asking as above
+	 * @param at     the moment the request read the clock at
+	 */
+	boolean includes(WhoIsAsking.Member asking, ZonedDateTime at) {
+		return asking != null && (isTheAdministration(asking) || activeMember(asking, at).isPresent());
 	}
 
 	/**
@@ -130,13 +146,25 @@ class ActiveMemberOrAdministration {
 	 * @return {@code competitor.id}, which is the key a row about him is written under
 	 */
 	Optional<Long> activeMember(WhoIsAsking.Member asking) {
+		return activeMember(asking, ZonedDateTime.now(clock));
+	}
+
+	/**
+	 * {@link #activeMember(WhoIsAsking.Member)} at the moment the caller has already read the clock
+	 * at.
+	 *
+	 * @param asking read off the session, never off anything the caller sent
+	 * @param at     the moment the request read the clock at
+	 * @return as above
+	 */
+	Optional<Long> activeMember(WhoIsAsking.Member asking, ZonedDateTime at) {
 		Long his = memberOfAccount.competitorId(asking.account());
 
 		if (his == null) {
 			return Optional.empty();
 		}
 
-		return db.sql("select id from competitor where id = ? and active")
+		return db.sql("select id from competitor where id = ? and " + AMemberIsActive.of("competitor.id", at))
 				.param(his)
 				.query(Long.class)
 				.optional();
@@ -171,10 +199,20 @@ class ActiveMemberOrAdministration {
 	 * @param asking read off the session, never off anything the caller sent
 	 */
 	boolean hasLapsed(WhoIsAsking.Member asking) {
+		return hasLapsed(asking, ZonedDateTime.now(clock));
+	}
+
+	/**
+	 * {@link #hasLapsed(WhoIsAsking.Member)} at the moment the caller has already read the clock at.
+	 *
+	 * @param asking read off the session, never off anything the caller sent
+	 * @param at     the moment the request read the clock at
+	 */
+	boolean hasLapsed(WhoIsAsking.Member asking, ZonedDateTime at) {
 		Long his = memberOfAccount.competitorId(asking.account());
 
-		return his != null && db.sql("select member_number is not null and not active from competitor"
-						+ " where id = ?")
+		return his != null && db.sql("select member_number is not null and not "
+						+ AMemberIsActive.of("competitor.id", at) + " from competitor where id = ?")
 				.param(his)
 				.query(Boolean.class)
 				.single();

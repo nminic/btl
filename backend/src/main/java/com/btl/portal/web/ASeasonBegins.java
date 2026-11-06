@@ -142,7 +142,16 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 				.query(Long.class)
 				.list();
 
-		out(lapsed, season, false);
+		/* THE SEATS ARE READ AT THE LAST INSTANT BEFORE THE CUT, BOTH BEFORE AND AFTER. Whether a member
+		   stands in his team is whether he is active (`AMemberIsActive`), and from 16:00:00 a member who
+		   holds only the season just ended is not: read at the moment this job runs, the administrator
+		   who did not renew would already be missing from „before", „before" and „after" would agree,
+		   and the member who takes the seat would never be told. At the instant before the cut he still
+		   stands, and everybody who stays holds the new season and stands at that instant as well. */
+		ZonedDateTime beforeTheCut = SeasonClock.tablesFreeze(season - 1).minusNanos(1);
+		Set<Long> touched = teamsOf(lapsed);
+
+		out(lapsed, season, false, touched, seats(touched, beforeTheCut), beforeTheCut);
 
 		List<Long> nobodyIsIn = db.sql("select t.id from team t where not exists(select 1 from team_membership m"
 						+ " where m.team_id = t.id and (m.season_to is null or m.season_to >= ?))"
@@ -165,21 +174,25 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 	 * season being cancelled has not begun for teams, and {@link #begin} drops him at 16:00 anyway, since he
 	 * holds nothing then.
 	 *
-	 * <p>Asked by the cancellation AFTER its rows go and BEFORE {@code active} is written again, so the
-	 * seat is read while he still stands in it.
+	 * <p><b>The seats before are read by {@link #before}, which the cancellation asks BEFORE its rows go</b>,
+	 * because whether he stands in his team is whether he holds the season ({@link AMemberIsActive}): read
+	 * after the rows went, he would already be missing, „before" and „after" would agree, and the member
+	 * who takes his seat would not be told. That is the shape {@link ABeginnersCategoryAMembershipMoves}
+	 * keeps, a {@code before} taken first and handed back.
 	 *
 	 * @param member the member whose season was cancelled
 	 * @param season the season cancelled
 	 * @param now    the moment of the cancellation
+	 * @param before what {@link #before} read for him at {@code now}, before the rows went
 	 */
-	void cancelled(long member, int season, ZonedDateTime now) {
-		if (season < FIRST_SEASON_THAT_DROPS_MEMBERS || !SeasonClock.isFrozen(season - 1, now)) {
+	void cancelled(long member, int season, ZonedDateTime now, Before before) {
+		if (!aCancellationTakesHimOut(season, now)) {
 			return;
 		}
 
-		Set<Long> touched = out(List.of(member), season, true);
+		out(List.of(member), season, true, before.teams(), before.seats(), now);
 
-		for (Long team : touched) {
+		for (Long team : before.teams()) {
 			boolean nobodyIsIn = Boolean.TRUE.equals(db.sql("select not exists(select 1 from team_membership m"
 							+ " where m.team_id = ? and (m.season_to is null or m.season_to >= ?))")
 					.params(team, season)
@@ -193,13 +206,37 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 	}
 
 	/**
-	 * These members out of every team and every pair of the season, with the seats and the messages.
+	 * THE TEAMS OF A MEMBER WHOSE SEASON IS BEING CANCELLED, AND WHO ADMINISTERS EACH OF THEM, read while
+	 * he still holds the season. Nothing when the cancellation moves nobody ({@link #cancelled}).
 	 *
-	 * @param fromToday whether the seat is told with „Od danas" (a cancellation) and not with the first of
-	 *                  January (the job)
-	 * @return the teams they were in
+	 * @param member the member whose season is being cancelled
+	 * @param season the season being cancelled
+	 * @param now    the moment of the cancellation, the one {@link #cancelled} is handed
 	 */
-	private Set<Long> out(Collection<Long> members, int season, boolean fromToday) {
+	Before before(long member, int season, ZonedDateTime now) {
+		if (!aCancellationTakesHimOut(season, now)) {
+			return new Before(Set.of(), Map.of());
+		}
+
+		Set<Long> touched = teamsOf(List.of(member));
+
+		return new Before(touched, seats(touched, now));
+	}
+
+	/**
+	 * The teams a cancellation touches and who administered each of them before it.
+	 *
+	 * @param teams the teams he stood in
+	 * @param seats who administered each of them, no entry where nobody did
+	 */
+	record Before(Set<Long> teams, Map<Long, Long> seats) {
+	}
+
+	private static boolean aCancellationTakesHimOut(int season, ZonedDateTime now) {
+		return season >= FIRST_SEASON_THAT_DROPS_MEMBERS && SeasonClock.isFrozen(season - 1, now);
+	}
+
+	private Set<Long> teamsOf(Collection<Long> members) {
 		Set<Long> touched = new LinkedHashSet<>();
 
 		for (Long member : members) {
@@ -209,16 +246,28 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 					.list());
 		}
 
-		Map<Long, Long> before = seats(touched);
+		return touched;
+	}
 
+	/**
+	 * These members out of every team and every pair of the season, with the seats and the messages.
+	 *
+	 * @param fromToday whether the seat is told with „Od danas" (a cancellation) and not with the first of
+	 *                  January (the job)
+	 * @param touched   the teams they stand in, read before anything was taken away
+	 * @param before    who administered each of those teams, read while they still stood in them
+	 * @param after     the moment the seats afterwards are read at
+	 */
+	private void out(Collection<Long> members, int season, boolean fromToday, Set<Long> touched,
+			Map<Long, Long> before, ZonedDateTime after) {
 		for (Long member : members) {
 			outOfHisTeam(member, season);
 		}
 
-		Map<Long, Long> after = seats(touched);
+		Map<Long, Long> seated = seats(touched, after);
 
 		for (Long team : touched) {
-			Long now = after.get(team);
+			Long now = seated.get(team);
 
 			if (now != null && !now.equals(before.get(team))) {
 				db.sql("update team set admin_id = ? where id = ?").params(now, team).update();
@@ -232,8 +281,6 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 		for (Long member : members) {
 			outOfHisPair(member, members, season);
 		}
-
-		return touched;
 	}
 
 	/**
@@ -292,14 +339,14 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 	}
 
 	/**
-	 * Who administers each of these teams by the portal's rule, or no entry where nobody does. The rule
-	 * answers NULL for a team with nobody standing in it, read here as 0, which no key ever is.
+	 * Who administers each of these teams by the portal's rule at a moment, or no entry where nobody does.
+	 * The rule answers NULL for a team with nobody standing in it, read here as 0, which no key ever is.
 	 */
-	private Map<Long, Long> seats(Collection<Long> touched) {
+	private Map<Long, Long> seats(Collection<Long> touched, ZonedDateTime at) {
 		Map<Long, Long> seats = new HashMap<>();
 
 		for (Long team : touched) {
-			long seat = db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
+			long seat = db.sql("with standing as (" + TeamApi.whoStandsInATeam(at) + ")"
 							+ " select coalesce(" + TeamApi.WHO_ADMINISTERS_IT + ", 0) from team t where t.id = ?")
 					.param(team)
 					.query(Long.class)

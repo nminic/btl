@@ -14,6 +14,8 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.time.Clock;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 
 /**
@@ -316,10 +318,13 @@ class InboxWriteApi {
 	 */
 	private final ObjectMapper json;
 
-	InboxWriteApi(JdbcClient db, ActiveMemberOrAdministration readers, ObjectMapper json) {
+	private final Clock clock;
+
+	InboxWriteApi(JdbcClient db, ActiveMemberOrAdministration readers, ObjectMapper json, Clock clock) {
 		this.db = db;
 		this.readers = readers;
 		this.json = json;
+		this.clock = clock;
 	}
 
 	/**
@@ -414,7 +419,9 @@ class InboxWriteApi {
 	ResponseEntity<?> write(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletRequest request, HttpServletResponse response) throws IOException {
 
-		Long me = readers.activeMember(asking).orElse(null);
+		/* The clock is read once, for the sender at the door and for the addressee below. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		Long me = readers.activeMember(asking, now).orElse(null);
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 says is the ordinary case for a
 		   moderator who does not race, OR A MEMBER WHOSE FEE DOES NOT STAND (PDL P8,
@@ -431,7 +438,7 @@ class InboxWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		Optional<Long> addressee = memberShown(typed.to());
+		Optional<Long> addressee = memberShown(typed.to(), now);
 
 		if (addressee.isEmpty()) {
 			return no(HttpStatus.BAD_REQUEST, THE_MEMBER_IS_NOT_KNOWN);
@@ -478,7 +485,7 @@ class InboxWriteApi {
 	/**
 	 * THE MEMBER THIS NUMBER NAMES, IF THE PORTAL SHOWS HIM TO WHOEVER IS ASKING.
 	 *
-	 * <p>{@code active} and nothing else, which is the first half of
+	 * <p>Active ({@link AMemberIsActive}) and nothing else, which is the first half of
 	 * {@code pages/profile/visible.ts} and the same condition {@link CompetitorApi} serves its
 	 * list by. {@code profile_hidden} is deliberately NOT asked about: it takes away the way in
 	 * to a profile page from a reader who may not read a hidden profile, and the caller here is
@@ -489,9 +496,12 @@ class InboxWriteApi {
 	 * <p>A row whose {@code member_number} is empty - somebody who registered and has not
 	 * paid (V16) - cannot match an equality against it, so „is he a member at all" needs no
 	 * condition of its own.
+	 *
+	 * @param at the moment the request read the clock at
 	 */
-	private Optional<Long> memberShown(String memberNumber) {
-		return db.sql("select id from competitor where member_number = ? and active")
+	private Optional<Long> memberShown(String memberNumber, ZonedDateTime at) {
+		return db.sql("select id from competitor where member_number = ? and "
+						+ AMemberIsActive.of("competitor.id", at))
 				.param(memberNumber.strip())
 				.query(Long.class)
 				.optional();

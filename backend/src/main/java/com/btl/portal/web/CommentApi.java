@@ -9,7 +9,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 /**
@@ -170,9 +172,12 @@ class CommentApi {
 
 	private final ActiveMemberOrAdministration readers;
 
-	CommentApi(JdbcClient db, ActiveMemberOrAdministration readers) {
+	private final Clock clock;
+
+	CommentApi(JdbcClient db, ActiveMemberOrAdministration readers, Clock clock) {
 		this.db = db;
 		this.readers = readers;
+		this.clock = clock;
 	}
 
 	/**
@@ -204,8 +209,10 @@ class CommentApi {
 		/* AN ACTIVE MEMBER OR THE ADMINISTRATION, and anybody else signed in is told the address
 		   is not there (owner, 03.10.2026; ADL A8). Asked before the query and answered through
 		   `sendError`, so no row is read to refuse a reader and the refusal is the one an address
-		   that maps nothing is given. */
-		if (!readers.includes(asking)) {
+		   that maps nothing is given. The clock is read once, for the door and for the authors. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
+		if (!readers.includes(asking, now)) {
 			response.sendError(HttpStatus.NOT_FOUND.value());
 			return null;
 		}
@@ -214,10 +221,11 @@ class CommentApi {
 						/* THE NUMBER ONLY WHILE THE PROFILE IS THERE TO READ. A left join and a
 						   CASE rather than a condition on the rows: the comment comes back either
 						   way, because it is published prose and the owner kept it (07.08.2026);
-						   it is the LINK that goes. An author who is gone leaves `author.active`
-						   null and the CASE answers nothing, which is the same sentence as one
-						   who did not renew, and both are "no visible profile". */
-						+ " case when author.active then author.member_number end,"
+						   it is the LINK that goes. An author who is gone leaves `author.id` null,
+						   no row of `membership` names null, and the CASE answers nothing, which is
+						   the same sentence as one who did not renew, and both are "no visible
+						   profile". */
+						+ " case when " + AMemberIsActive.of("author.id", now) + " then author.member_number end,"
 						/* OFF THE COMMENT AND NEVER OFF THE MEMBER. V7's tombstone, and it is
 						   the one thing about the author that is still here when his row is
 						   not: the name as it was on the day while he merely left, and ADL

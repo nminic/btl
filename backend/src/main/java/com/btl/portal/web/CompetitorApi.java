@@ -400,7 +400,7 @@ class CompetitorApi {
 	 * does not.
 	 *
 	 * <p><b>A fragment rather than a query</b>: it needs the member aliased {@code c} and
-	 * {@code :readsHiddenProfiles} bound, which is the price {@link TeamApi#WHO_STANDS_IN_A_TEAM}
+	 * {@code :readsHiddenProfiles} bound, which is the price {@link TeamApi#whoStandsInATeam}
 	 * names for the same shape. The parameter is CAST because it stands alone as an operand of
 	 * {@code or}, with nothing beside it to take a type from, and PostgreSQL refuses the statement
 	 * rather than guessing („could not determine data type of parameter").
@@ -611,7 +611,7 @@ class CompetitorApi {
 		   nikad prema aktivnom članu": an active
 		   member and the administration read it, and a free account or a member whose fee has
 		   lapsed is answered what a visitor is. That is `ActiveMemberOrAdministration`, which
-		   reads the role off the REQUEST and the fee off `competitor.active`, and answers no
+		   reads the role off the REQUEST and the fee off `membership` (`AMemberIsActive`), and answers no
 		   for a request with no session (`member` is null for a visitor and the class takes
 		   it), so an account that races for nobody and is the administration still reads it.
 
@@ -620,17 +620,20 @@ class CompetitorApi {
 		   condition written as `:administration` would stop an active member seeing a hiding
 		   colleague's biography.
 		   `TheSameReadersReadAHiddenProfileOnEveryDoorTest` walks ten kinds of reader for
-		   exactly that reason. */
-		boolean readsHiddenProfiles = readers.includes(member);
+		   exactly that reason.
 
-		/* AND THE MOMENT THE CATEGORIES BELOW ARE WORKED OUT FOR, read ONCE for the whole
-		   answer rather than per row. Two members with the same year of birth must come
+		   AND IT IS ASKED AT THE MOMENT THE WHOLE ANSWER IS WORKED OUT FOR, read ONCE for the whole
+		   answer rather than per row and before the door, so the door and the list cannot stand on
+		   two sides of 16:00 on 1 January. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		boolean readsHiddenProfiles = readers.includes(member, now);
+
+		/* That moment is also the one the categories below are worked out for. Two members with the same year of birth must come
 		   back in the same band, and a clock read inside the mapper can cross midnight
 		   on 1 January between two rows of one list - which is the one night of the year
 		   the card moves on (PDL, 30.10.2026, „1.1. se njegova kategorija automatski
 		   menja"). `CategoryOfASeason.Book.seasonOfTheCard` says which season it is and why,
 		   and the book is read once too, for everybody, rather than a query per member. */
-		ZonedDateTime now = ZonedDateTime.now(clock);
 		CategoryOfASeason.Book book = categoriesOfSeasons.everybody();
 
 		/* AND THE SEASON ON SALE, WHICH IS THE ONE THE BASIS IS ANSWERED FOR, off the same reading
@@ -814,8 +817,9 @@ class CompetitorApi {
 						   se ne prikazuje na profilu... ko nije platio, ne vidi se nigde osim u
 						   istorijskim godinama." Owner, 13.09.2026, asked which shape that takes
 						   here, chose this one over serving the flag: a member whose fee has
-						   lapsed is not on this list at all. */
-						+ " where c.active"
+						   lapsed is not on this list at all. Asked of `membership` at the one
+						   reading of the clock (`AMemberIsActive`). */
+						+ " where " + AMemberIsActive.of("c.id", now)
 						+ " order by c.member_number")
 				.param("administration", administration)
 				.param("readsHiddenProfiles", readsHiddenProfiles)

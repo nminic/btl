@@ -424,7 +424,9 @@ class PairWriteApi {
 	ResponseEntity<?> invite(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			WhatWasSent<Asked> sent) throws IOException {
 
-		Long me = readers.activeMember(asking).orElse(null);
+		/* The clock is read once, for the door and for everything the invitation asks after it. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		Long me = readers.activeMember(asking, now).orElse(null);
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 calls the ordinary case for a moderator
 		   who does not race, OR A MEMBER WHOSE FEE DOES NOT STAND: pairs are on the list PDL P8
@@ -442,12 +444,12 @@ class PairWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		return inOneTransaction.execute(committing -> ask(me, typed.memberNumber().strip()));
+		return inOneTransaction.execute(committing -> ask(me, typed.memberNumber().strip(), now));
 	}
 
-	private ResponseEntity<?> ask(long me, String memberNumber) {
+	private ResponseEntity<?> ask(long me, String memberNumber, ZonedDateTime now) {
 		Half mine = himself(me);
-		Optional<Half> other = halfNumbered(memberNumber);
+		Optional<Half> other = halfNumbered(memberNumber, now);
 
 		/* THREE PEOPLE GET THIS ONE ANSWER, AND THAT IS THE POINT OF IT. Nobody of that
 		   number; a number whose member has not renewed; and himself. None of them is a form
@@ -481,7 +483,7 @@ class PairWriteApi {
 			return no(HttpStatus.CONFLICT, A_QUESTION_ALREADY_STANDS);
 		}
 
-		if (eitherHoldsAPairIn(seasonBeingFormed(), me, other.get().id())) {
+		if (eitherHoldsAPairIn(seasonBeingFormed(now), me, other.get().id(), now)) {
 			return no(HttpStatus.CONFLICT, A_PAIR_ALREADY_HOLDS);
 		}
 
@@ -557,8 +559,10 @@ class PairWriteApi {
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER OR A MEMBER WHOSE FEE DOES NOT STAND, the question
 		   `invite` opens with, and for the same reason: „Odbij" is an act about a pair as much as
-		   „Prihvati" is, and pairs are on the list PDL P8 gives (10.10.2026, „parove"). */
-		Long me = readers.activeMember(asking).orElse(null);
+		   „Prihvati" is, and pairs are on the list PDL P8 gives (10.10.2026, „parove"). The clock is
+		   read once, here, for the door and for the answer. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		Long me = readers.activeMember(asking, now).orElse(null);
 
 		if (me == null) {
 			throw nothingIsHere();
@@ -570,10 +574,10 @@ class PairWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		return inOneTransaction.execute(committing -> settle(me, id.value(), typed.accepted()));
+		return inOneTransaction.execute(committing -> settle(me, id.value(), typed.accepted(), now));
 	}
 
-	private ResponseEntity<?> settle(long me, long question, boolean accepted) {
+	private ResponseEntity<?> settle(long me, long question, boolean accepted, ZonedDateTime now) {
 		Optional<Long> whoAsked = db.sql("select from_id from pair_invite"
 						+ " where id = ? and to_id = ?")
 				.params(question, me)
@@ -594,7 +598,7 @@ class PairWriteApi {
 			return ResponseEntity.noContent().build();
 		}
 
-		Optional<Half> asker = half(whoAsked.get());
+		Optional<Half> asker = half(whoAsked.get(), now);
 		Half answerer = himself(me);
 
 		/* AND THE ONE WHO ASKED MAY HAVE STOPPED PAYING BETWEEN THE QUESTION AND THE ANSWER,
@@ -625,7 +629,7 @@ class PairWriteApi {
 			return no(HttpStatus.CONFLICT, THE_PAIR_WOULD_NOT_BE_MIXED);
 		}
 
-		int season = seasonBeingFormed();
+		int season = seasonBeingFormed(now);
 
 		/* BOTH SIDES, AND THE SEASON BEING FORMED IS THE WHOLE OF WHAT THIS REACHES. PDL,
 		   07.09.2026: „prihvatanje izvodi OBA clana iz onoga u cemu su za tu sezonu", and the
@@ -787,7 +791,7 @@ class PairWriteApi {
 			throw nothingIsHere();
 		}
 
-		return inOneTransaction.execute(committing -> end(me, id.value()));
+		return inOneTransaction.execute(committing -> end(me, id.value(), ZonedDateTime.now(clock)));
 	}
 
 	/**
@@ -798,8 +802,8 @@ class PairWriteApi {
 	 * half reads that he still is and was never told otherwise - which is the exact shape of
 	 * the fault PDL's „javljao kroz jedna vrata a cutao kroz druga" describes.
 	 */
-	private ResponseEntity<?> end(long me, long pair) {
-		Optional<Held> his = pairHeIsHalfOf(me, pair);
+	private ResponseEntity<?> end(long me, long pair, ZonedDateTime now) {
+		Optional<Held> his = pairHeIsHalfOf(me, pair, now);
 
 		if (his.isEmpty()) {
 			throw nothingIsHere();
@@ -916,7 +920,7 @@ class PairWriteApi {
 	 * {@code data/derive.ts}'s {@code pairsFrom} draws the screen with - „the pairs that hold
 	 * now" - so the server ends exactly the pairs the profile offers a „Raskini" beside.
 	 */
-	private Optional<Held> pairHeIsHalfOf(long me, long pair) {
+	private Optional<Held> pairHeIsHalfOf(long me, long pair, ZonedDateTime now) {
 		return db.sql("select case when p.man_id = :me then p.woman_id else p.man_id end,"
 						+ " case when p.man_id = :me then man.first_name else woman.first_name end,"
 						+ " case when p.man_id = :me then man.last_name else woman.last_name end,"
@@ -925,11 +929,11 @@ class PairWriteApi {
 						+ " join competitor man on man.id = p.man_id"
 						+ " join competitor woman on woman.id = p.woman_id"
 						+ " where p.id = :pair and (p.man_id = :me or p.woman_id = :me)"
-						+ " and man.active and woman.active"
+						+ " and " + AMemberIsActive.of("man.id", now) + " and " + AMemberIsActive.of("woman.id", now)
 						+ " and p.season >= :running")
 				.param("me", me)
 				.param("pair", pair)
-				.param("running", SeasonClock.seasonBeingRun(ZonedDateTime.now(clock)))
+				.param("running", SeasonClock.seasonBeingRun(now))
 				.query((row, one) -> new Held(row.getLong(1),
 						row.getString(2) + " " + row.getString(3), row.getString(5), row.getInt(4)))
 				.optional();
@@ -1013,8 +1017,8 @@ class PairWriteApi {
 	 * months of the year. The portal measured that confusion on its own side on 06.09.2026 and
 	 * split them apart.
 	 */
-	private int seasonBeingFormed() {
-		return SeasonClock.transfersTakeEffect(ZonedDateTime.now(clock));
+	private static int seasonBeingFormed(ZonedDateTime now) {
+		return SeasonClock.transfersTakeEffect(now);
 	}
 
 	/**
@@ -1040,9 +1044,9 @@ class PairWriteApi {
 	 * such a member „nije na spisku takmicara uopste", so any other answer that names him says
 	 * it by the DIFFERENCE between two answers rather than by any field in either.
 	 */
-	private Optional<Half> halfNumbered(String memberNumber) {
+	private Optional<Half> halfNumbered(String memberNumber, ZonedDateTime now) {
 		return db.sql("select id, gender, first_name, last_name from competitor"
-						+ " where member_number = ? and active")
+						+ " where member_number = ? and " + AMemberIsActive.of("competitor.id", now))
 				.param(memberNumber)
 				.query((row, one) -> new Half(row.getLong(1), row.getString(2),
 						row.getString(3) + " " + row.getString(4)))
@@ -1064,9 +1068,9 @@ class PairWriteApi {
 	 * {@link ActiveMemberOrAdministration#activeMember} before his body is read, so this asks
 	 * the other side and {@link #himself} reads the caller.
 	 */
-	private Optional<Half> half(long who) {
+	private Optional<Half> half(long who, ZonedDateTime now) {
 		return db.sql("select id, gender, first_name, last_name from competitor"
-						+ " where id = ? and active")
+						+ " where id = ? and " + AMemberIsActive.of("competitor.id", now))
 				.param(who)
 				.query((row, one) -> new Half(row.getLong(1), row.getString(2),
 						row.getString(3) + " " + row.getString(4)))
@@ -1122,11 +1126,12 @@ class PairWriteApi {
 	 * half and asserts that the pair leaves the public answer AND stops standing in the way
 	 * here, so a change to either side alone turns it red.
 	 */
-	private boolean eitherHoldsAPairIn(int season, long one, long other) {
+	private boolean eitherHoldsAPairIn(int season, long one, long other, ZonedDateTime now) {
 		return Boolean.TRUE.equals(db.sql("select exists(select 1 from racing_pair p"
 						+ " join competitor man on man.id = p.man_id"
 						+ " join competitor woman on woman.id = p.woman_id"
-						+ " where p.season = ? and man.active and woman.active"
+						+ " where p.season = ? and " + AMemberIsActive.of("man.id", now)
+						+ " and " + AMemberIsActive.of("woman.id", now)
 						+ " and (p.man_id in (?, ?) or p.woman_id in (?, ?)))")
 				.params(season, one, other, one, other)
 				.query(Boolean.class)

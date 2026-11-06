@@ -2554,7 +2554,7 @@ class VerificationWriteApi {
 				.single();
 
 		TeamJoiningWriteApi.theOtherTeamsThatAskedHim(db, proposal.competitorId(), team, him[0], him[1],
-				proposal.name());
+				proposal.name(), clock.instant().atZone(SeasonClock.ZONE));
 	}
 
 	/**

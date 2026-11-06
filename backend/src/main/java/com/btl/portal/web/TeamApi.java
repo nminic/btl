@@ -496,11 +496,11 @@ class TeamApi {
 	 * WHO IS A STANDING MEMBER OF WHICH TEAM, AS ONE SELECT THAT MORE THAN ONE RESOURCE
 	 * BUILDS ITS {@code standing} OUT OF.
 	 *
-	 * <p><b>It is a constant rather than a sentence repeated because the rule it carries has
+	 * <p><b>It is one method rather than a sentence repeated because the rule it carries has
 	 * three conditions and every one of them was decided separately.</b> {@code season_to is
 	 * null} is „the team he has", read off the record and never off the season (PDL
-	 * „Inkrement 133", 05.09.2026); {@code c.active} is the lapsed fee reaching the roster
-	 * (PDL P13, 19.09.2026); {@code member_number is not null} is V16's difference between
+	 * „Inkrement 133", 05.09.2026); {@link AMemberIsActive} at {@code at} is the lapsed fee
+	 * reaching the roster (PDL P13, 19.09.2026); {@code member_number is not null} is V16's difference between
 	 * somebody who registered and a MEMBER. Written out a second time in
 	 * {@link TeamWriteApi}, one of the three would be the one that drifts, and the drift
 	 * would read as „the administration and the team's own page disagree about who runs it".
@@ -513,11 +513,13 @@ class TeamApi {
 	 * <p>The columns are what the expressions below need and nothing more: the team it is
 	 * about, who he is, and the two the tie is broken by.
 	 */
-	static final String WHO_STANDS_IN_A_TEAM =
-			" select m.team_id, c.id, c.member_number, m.season_from"
-					+ " from team_membership m"
-					+ " join competitor c on c.id = m.competitor_id"
-					+ " where m.season_to is null and c.active and c.member_number is not null";
+	static String whoStandsInATeam(ZonedDateTime at) {
+		return " select m.team_id, c.id, c.member_number, m.season_from"
+				+ " from team_membership m"
+				+ " join competitor c on c.id = m.competitor_id"
+				+ " where m.season_to is null and " + AMemberIsActive.of("c.id", at)
+				+ " and c.member_number is not null";
+	}
 
 	/**
 	 * AND WHICH ONE OF THEM ADMINISTERS THE TEAM ALIASED {@code t}, WHICH IS THE OTHER HALF
@@ -736,8 +738,12 @@ class TeamApi {
 		   nikad prema aktivnom članu"). Asked here in the SAME words as on the record,
 		   because a reader the record answers the link to must not be told it again on the team,
 		   and one the record withholds it from must be: the two doors would otherwise name one link
-		   twice, or none. A visitor arrives as a null `member` and the class answers him no. */
-		boolean readsHiddenProfiles = readers.includes(member);
+		   twice, or none. A visitor arrives as a null `member` and the class answers him no.
+
+		   THE CLOCK IS READ ONCE, HERE, for this door and for every condition on the fee and the
+		   season below it. */
+		ZonedDateTime now = clock.instant().atZone(SeasonClock.ZONE);
+		boolean readsHiddenProfiles = readers.includes(member, now);
 
 		/* THE MEMBERS OF EACH TEAM WHOSE OWN RECORD DOES NOT NAME IT TO THIS CALLER, and only
 		   those. PDL, odeljak 16, [ODLUKA 27.09.2026, owner]: the link leaves a hidden member's
@@ -767,7 +773,7 @@ class TeamApi {
 						"select m.team_id, c.member_number, m.season_from"
 						+ " from team_membership m"
 						+ " join competitor c on c.id = m.competitor_id"
-						+ " where m.season_to is null and c.active"
+						+ " where m.season_to is null and " + AMemberIsActive.of("c.id", now)
 						+ " and not " + CompetitorApi.THE_PROFILE_IS_OPEN_TO_THE_CALLER
 						+ " order by c.member_number, c.id")
 				.param("readsHiddenProfiles", readsHiddenProfiles)
@@ -828,13 +834,11 @@ class TeamApi {
 		   ORDERED by member number, then by key, then by the season it began in, so two memberships of
 		   one member in one team come out in the order he had them, and the answer does not depend on
 		   the order the rows were written in. */
-		ZonedDateTime now = clock.instant().atZone(SeasonClock.ZONE);
-
 		Map<Long, List<EndedMembership>> ended = db.sql(
 						"select m.team_id, c.member_number, m.season_from, m.season_to"
 						+ " from team_membership m"
 						+ " join competitor c on c.id = m.competitor_id"
-						+ " where m.season_to is not null and c.active"
+						+ " where m.season_to is not null and " + AMemberIsActive.of("c.id", now)
 						+ " order by c.member_number, c.id, m.season_from")
 				.query((row, one) -> Map.entry(row.getLong(1),
 						new EndedMembership(row.getString(2), row.getInt(3), row.getObject(4, Integer.class))))
@@ -887,7 +891,7 @@ class TeamApi {
 						   there" - and nothing ties that column to `active`, so the two conditions
 						   are independent and the fixture holds a row that satisfies one and not
 						   the other. */
-						"with standing as (" + WHO_STANDS_IN_A_TEAM + ")"
+						"with standing as (" + whoStandsInATeam(now) + ")"
 						+ " select t.id, t.slug, t.name,"
 						/* The town in the two shapes V11 allows, and the country off whichever
 						   of them the team used. The same three columns and the same coalesce as

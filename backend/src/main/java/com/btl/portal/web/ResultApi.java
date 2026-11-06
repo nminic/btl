@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -272,6 +273,10 @@ class ResultApi {
 
 	@GetMapping("/api/results")
 	List<Result> results() {
+		/* THE CLOCK, read once for the whole answer: the year withheld and whose fee stands are one
+		   moment. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
 		/* THE CATEGORIES OF EVERY SEASON, read once for the whole answer (`CategoryOfASeason`). */
 		CategoryOfASeason.Book book = categories.everybody();
 
@@ -334,10 +339,11 @@ class ResultApi {
 						   fee does not stand until New Year. Reading the hiding as one that applies
 						   only to a year of 2027 or later is the coordinator's derivation from that
 						   sentence, not the owner's words. */
-						+ " where c.active or extract(year from r.race_date) <> :theSeasonRunning"
+						+ " where " + AMemberIsActive.of("c.id", now)
+						+ " or extract(year from r.race_date) <> :theSeasonRunning"
 						+ " or extract(year from r.race_date) < :theFirstSeason"
 						+ " order by r.race_date, r.id")
-				.param("theSeasonRunning", theSeasonRunning())
+				.param("theSeasonRunning", theSeasonRunning(now))
 				.param("theFirstSeason", SeasonClock.FIRST_SEASON)
 				.query((row, one) -> {
 					String memberNumber = row.getString(2);
@@ -426,7 +432,7 @@ class ResultApi {
 	 * holds that. The cases that hold the band apart from the clock stand on three different
 	 * days: {@code ResultApiTest.aResultCarriesTheBandOfTheSeasonItWasRunInWhateverTheFee}.
 	 */
-	private int theSeasonRunning() {
-		return LocalDate.now(clock.withZone(SeasonClock.ZONE)).getYear();
+	private static int theSeasonRunning(ZonedDateTime now) {
+		return now.withZoneSameInstant(SeasonClock.ZONE).getYear();
 	}
 }

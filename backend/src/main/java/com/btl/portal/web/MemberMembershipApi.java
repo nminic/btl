@@ -263,14 +263,19 @@ class MemberMembershipApi {
 
 		/* THE ROWS GO, „zapis o uplati i zapis o članstvu za tu sezonu". A payment takes its membership
 		   with it by `membership_payment_fk` (V22, ON DELETE CASCADE), so the payment is what is
-		   deleted; the other two bases have no payment and the membership itself goes. */
+		   deleted; the other two bases have no payment and the membership itself goes.
+
+		   AND WHO ADMINISTERS HIS TEAMS IS ASKED FIRST, for the reason the category is: he stands in a team
+		   while he holds the season (`AMemberIsActive`), so read after the rows went he would already be
+		   missing and the member who takes his seat would not be told. */
+		ASeasonBegins.Before seated = teamsAndPairs.before(member.get(), season, now);
 		gone(member.get(), season, held.get());
 
 		/* AND A SEASON THAT HAS BEGUN TAKES HIM OUT OF HIS TEAM AND HIS PAIR AT ONCE, PDL 05.11.2026, „Storno
 		   sezone posle 1. januara u 16h izbacuje člana iz tima i para odmah": „Jedno pravilo: bez članarine
-		   za sezonu nema tima ni para te sezone." Asked here, before `active` is written again below, so the
-		   seat of his team is read while he still stands in it. */
-		teamsAndPairs.cancelled(member.get(), season, now);
+		   za sezonu nema tima ni para te sezone." The seats before are the ones read above, before the rows
+		   went. */
+		teamsAndPairs.cancelled(member.get(), season, now, seated);
 
 		/* WHAT THE SEASON HELD AGAINST THE BALANCE COMES BACK OFF IT, by a line of its own, under the
 		   lock taken above (see `BalanceBook.reversed`). An exemption held nothing, and nothing is

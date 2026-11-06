@@ -24,7 +24,9 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -427,28 +429,30 @@ class PhotoApi {
 	 * has no type of its own; the cast gives PostgreSQL the type, as the one beside
 	 * {@code :administration} does for a boolean.
 	 */
-	private static final String THE_PICTURE_A_DIGEST_NAMES =
-			"select p.id, p.media_type from photo p where p.digest = :digest"
-			+ PhotoApi.HELD_IN_THE_OPEN_FOR_THIS_READER
-			+ " order by p.id limit 1";
+	private static String thePictureADigestNames(ZonedDateTime at) {
+		return "select p.id, p.media_type from photo p where p.digest = :digest"
+				+ heldInTheOpenForThisReader(at)
+				+ " order by p.id limit 1";
+	}
 
 	/**
 	 * WHETHER SOMETHING THIS READER MAY SEE HOLDS THE ROW {@code p}: the whole of the rule the
-	 * note on {@link #THE_PICTURE_A_DIGEST_NAMES} explains, written once.
+	 * note on {@link #thePictureADigestNames} explains, written once.
 	 *
 	 * <p><b>One string read by two statements</b>, the original's and the small picture's
-	 * ({@link #THE_SMALL_PICTURE}), so that who may see a circle and who may see the picture it
+	 * ({@link #theSmallPicture}), so that who may see a circle and who may see the picture it
 	 * was cut from are one sentence and cannot drift apart: a hidden member's face, a waiting
 	 * picture and a proposed team's mark are refused on both doors by the same words.
 	 */
-	private static final String HELD_IN_THE_OPEN_FOR_THIS_READER =
-			" and (exists (select 1 from competitor his where his.photo_id = p.id"
-			+ "  and (cast(:administration as boolean)"
-			+ "   or (not his.profile_hidden and exists (select 1 from account me"
-			+ "    where me.id = cast(:account as bigint) and me.competitor_id = his.id))"
-			+ "   or (his.active"
-			+ "    and (cast(:readsHiddenProfiles as boolean) or not his.profile_hidden))))"
-			+ " or exists (select 1 from team its where its.logo_id = p.id))";
+	private static String heldInTheOpenForThisReader(ZonedDateTime at) {
+		return " and (exists (select 1 from competitor his where his.photo_id = p.id"
+				+ "  and (cast(:administration as boolean)"
+				+ "   or (not his.profile_hidden and exists (select 1 from account me"
+				+ "    where me.id = cast(:account as bigint) and me.competitor_id = his.id))"
+				+ "   or (" + AMemberIsActive.of("his.id", at)
+				+ "    and (cast(:readsHiddenProfiles as boolean) or not his.profile_hidden))))"
+				+ " or exists (select 1 from team its where its.logo_id = p.id))";
+	}
 
 	/**
 	 * THE PICTURE A DIGEST NAMES, CUT TO THIS CIRCLE, IF SOMETHING THIS READER MAY SEE HOLDS IT
@@ -462,11 +466,12 @@ class PhotoApi {
 	 * and a waiting picture's circle is never one, because a waiting picture has no public
 	 * holder (ADL A60).
 	 */
-	private static final String THE_SMALL_PICTURE =
-			"select p.id, p.media_type from photo p where p.digest = :digest"
-			+ " and p.crop_x = :x and p.crop_y = :y and p.crop_diameter = :diameter"
-			+ PhotoApi.HELD_IN_THE_OPEN_FOR_THIS_READER
-			+ " order by p.id limit 1";
+	private static String theSmallPicture(ZonedDateTime at) {
+		return "select p.id, p.media_type from photo p where p.digest = :digest"
+				+ " and p.crop_x = :x and p.crop_y = :y and p.crop_diameter = :diameter"
+				+ heldInTheOpenForThisReader(at)
+				+ " order by p.id limit 1";
+	}
 
 	/**
 	 * WHERE A CIRCLE'S SMALL PICTURE IS ASKED FOR: the digest of the picture, and its circle
@@ -535,7 +540,7 @@ class PhotoApi {
 	 * relaxed.
 	 *
 	 * <p><b>{@code order by p.id limit 1} rather than trusting there to be one row</b>, which is
-	 * {@link #THE_PICTURE_A_DIGEST_NAMES}'s reason word for word: V8 puts no unique constraint on
+	 * {@link #thePictureADigestNames}'s reason word for word: V8 puts no unique constraint on
 	 * {@code digest} because „the digest is what says two members uploaded the same picture", so
 	 * two rows may carry one digest - and two rows through {@code .optional()} is a 500. The oldest
 	 * decides, the same tie-break the two routes beside this use.
@@ -564,6 +569,8 @@ class PhotoApi {
 
 	private final SmallPictures small;
 
+	private final Clock clock;
+
 	/**
 	 * @param folder  where the files are, which is a setting because QA and production are
 	 *                two installations of one portal and neither is this machine. ADL A43, 2,
@@ -581,12 +588,13 @@ class PhotoApi {
 	 * @param small   the small pictures already cut, and the one place a cut is made
 	 */
 	PhotoApi(JdbcClient db, @Value("${btl.photos.folder}") String folder, WhatHeMayDo mayHe,
-			ActiveMemberOrAdministration readers, SmallPictures small) {
+			ActiveMemberOrAdministration readers, SmallPictures small, Clock clock) {
 		this.db = db;
 		this.folder = Path.of(folder);
 		this.mayHe = mayHe;
 		this.readers = readers;
 		this.small = small;
+		this.clock = clock;
 	}
 
 	/** The two things the row decides: where the file is, and what it is. */
@@ -630,8 +638,9 @@ class PhotoApi {
 			return nothingIsHere(response);
 		}
 
-		Optional<Kept> kept = askedBy(member, db
-				.sql(THE_PICTURE_A_DIGEST_NAMES)
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		Optional<Kept> kept = askedBy(member, now, db
+				.sql(thePictureADigestNames(now))
 				.param("digest", name))
 				.query((row, one) -> new Kept(row.getLong(1), row.getString(2)))
 				.optional();
@@ -650,10 +659,10 @@ class PhotoApi {
 	}
 
 	/**
-	 * THE THREE FACTS ABOUT THE READER THAT {@link #HELD_IN_THE_OPEN_FOR_THIS_READER} ASKS, set
+	 * THE THREE FACTS ABOUT THE READER THAT {@link #heldInTheOpenForThisReader} ASKS, set
 	 * on a statement in one place for both doors that ask it.
 	 */
-	private JdbcClient.StatementSpec askedBy(WhoIsAsking.Member member,
+	private JdbcClient.StatementSpec askedBy(WhoIsAsking.Member member, ZonedDateTime now,
 			JdbcClient.StatementSpec statement) {
 		return statement
 				/* WHETHER THE CALLER MAY READ A HIDDEN PROFILE, which since 03.10.2026 is
@@ -662,14 +671,14 @@ class PhotoApi {
 				   administracija,
 				   nikad prema aktivnom članu"). The class reads the administration off the role the request
 				   carries, so an account that races for nobody and is a moderator still reads,
-				   and a member's fee off `competitor.active`, so a free account and a member
+				   and a member's fee off `membership` (`AMemberIsActive`), so a free account and a member
 				   whose fee has lapsed are refused the bytes exactly as a visitor is. It is
 				   asked HERE, in the same breath as the list asks it, because the digest is the
 				   whole permission: handed to a reader the list withholds it from, it would be a
 				   capability and not an access. */
-				.param("readsHiddenProfiles", readers.includes(member))
+				.param("readsHiddenProfiles", readers.includes(member, now))
 				/* AND TWO FACTS ABOUT THE READER THAT DECIDE WHETHER THE HOLDER'S OWN FEE MATTERS
-				   (the note on `THE_PICTURE_A_DIGEST_NAMES`). The administration is asked of the
+				   (the note on `thePictureADigestNames`). The administration is asked of the
 				   request's role and a visitor, who arrives as null, is not it; the account is the
 				   session's own and never anything the request carried, and null for a visitor,
 				   which no account has. */
@@ -687,7 +696,7 @@ class PhotoApi {
 	 * the moderator.
 	 *
 	 * <p><b>Who may see it is who may see the original, by the same words</b>
-	 * ({@link #HELD_IN_THE_OPEN_FOR_THIS_READER}), and every refusal takes the one road out a
+	 * ({@link #heldInTheOpenForThisReader}), and every refusal takes the one road out a
 	 * digest nobody wrote takes, so this door is open to a visitor and still answers 404 for a
 	 * hidden member's face, a waiting picture and a proposed team's mark (ADL A8, A60). It is
 	 * kept a day and privately, for {@link #FOR_A_DAY_PRIVATELY}'s reason, and that reason holds
@@ -716,8 +725,9 @@ class PhotoApi {
 		BigDecimal y = new BigDecimal(spelt.group(2));
 		BigDecimal diameter = new BigDecimal(spelt.group(3));
 
-		Optional<Kept> kept = askedBy(member, db
-				.sql(THE_SMALL_PICTURE)
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		Optional<Kept> kept = askedBy(member, now, db
+				.sql(theSmallPicture(now))
 				.param("digest", digest)
 				.param("x", x)
 				.param("y", y)

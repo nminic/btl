@@ -4,6 +4,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Clock;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
 
@@ -147,8 +149,11 @@ class PairApi {
 
 	private final JdbcClient db;
 
-	PairApi(JdbcClient db) {
+	private final Clock clock;
+
+	PairApi(JdbcClient db, Clock clock) {
 		this.db = db;
+		this.clock = clock;
 	}
 
 	/**
@@ -160,6 +165,8 @@ class PairApi {
 
 	@GetMapping("/api/pairs")
 	List<RacingPair> pairs() {
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
 		return db.sql("select p.id, p.season, man.member_number, woman.member_number"
 						+ " from racing_pair p"
 						/* Joined on the key alone. The pair of columns (man_id, man_gender) is
@@ -179,7 +186,7 @@ class PairApi {
 						   here and not there says why, through the DIFFERENCE between two
 						   answers rather than through any one field. Both halves, because
 						   either of them can be the one who did not renew. */
-						+ " where man.active and woman.active"
+						+ " where " + AMemberIsActive.of("man.id", now) + " and " + AMemberIsActive.of("woman.id", now)
 						+ " order by p.season, man.member_number, p.id")
 				.query((row, one) -> new RacingPair(row.getLong(1), row.getInt(2),
 						/* Not `List.of`: a member number is nullable since V16 and `List.of`

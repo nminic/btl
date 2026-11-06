@@ -182,7 +182,7 @@ import java.util.Optional;
  * {@code competitor.active} is asked of the caller, of the applicant and of the invitee.
  * {@link JoiningATeam} does NOT ask it and says so itself - „Whether a member has paid is
  * the service layer's question, and it is still open" - so this class is that layer and this
- * paragraph is the answer. {@link TeamApi#WHO_STANDS_IN_A_TEAM} already carries the same
+ * paragraph is the answer. {@link TeamApi#whoStandsInATeam} already carries the same
  * condition for the roster, and a member named by number is resolved exactly as
  * {@link PairWriteApi}'s {@code halfNumbered} resolves one, for the reason written there:
  * told apart from a number nobody carries, a lapsed member would be named by the DIFFERENCE
@@ -356,7 +356,7 @@ class TeamJoiningWriteApi {
 	 * <p><b>It names somebody and is still safe, which is measured rather than assumed.</b>
 	 * Which teams a member stands in is public - {@code GET /api/teams} answers the roster
 	 * to a visitor and section 3 of the privacy policy names it - and the condition behind this reason reads the
-	 * same rows ({@link TeamApi#WHO_STANDS_IN_A_TEAM} via {@link ATeamHeIsAlreadyIn}), so
+	 * same rows ({@link TeamApi#whoStandsInATeam} via {@link ATeamHeIsAlreadyIn}), so
 	 * naming it reveals nothing the portal does not already answer. That is the line
 	 * {@link PairWriteApi}'s {@code A_PAIR_ALREADY_HOLDS} draws for the same reason. A member
 	 * whose fee has lapsed never reaches it: he is 404 one statement earlier, so the
@@ -573,7 +573,7 @@ class TeamJoiningWriteApi {
 
 		/* THE FEE FIRST, because `JoiningATeam` does not ask it and says so: „Whether a
 		   member has paid is the service layer's question, and it is still open." */
-		if (!heIsStillAMember(me)) {
+		if (!heIsStillAMember(me, now)) {
 			throw nothingIsHere();
 		}
 
@@ -584,7 +584,7 @@ class TeamJoiningWriteApi {
 			throw nothingIsHere();
 		}
 
-		if (!somebodyCouldAnswerForThisTeam(team)) {
+		if (!somebodyCouldAnswerForThisTeam(team, now)) {
 			throw nothingIsHere();
 		}
 
@@ -649,7 +649,9 @@ class TeamJoiningWriteApi {
 			@PathVariable AKey id, @PathVariable AKey application, WhatWasSent<Answered> sent)
 			throws IOException {
 
-		Long me = readers.activeMember(asking).orElse(null);
+		/* The clock is read once, here, for the door and for everything the route asks after it. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		Long me = readers.activeMember(asking, now).orElse(null);
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, OR A MEMBER WHOSE FEE DOES NOT STAND (see the class
 		   note), and his body is not read: it is read below, after this question, and not bound
@@ -664,18 +666,19 @@ class TeamJoiningWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		return inOneTransaction.execute(committing -> deciding(me, id.value(), application.value(), typed.accepted()));
+		return inOneTransaction.execute(
+				committing -> deciding(me, id.value(), application.value(), typed.accepted(), now));
 	}
 
-	private ResponseEntity<?> deciding(long me, long team, long application, boolean accepted) {
-		ZonedDateTime now = ZonedDateTime.now(clock);
+	private ResponseEntity<?> deciding(long me, long team, long application, boolean accepted,
+			ZonedDateTime now) {
 
 		/* THE APPLICANT'S SEASON IS ASKED INSIDE THE STATEMENT THAT FINDS THE ROW, so an applicant
 		   whose season has been cancelled since he asked is not there to decide, for refusing as
 		   much as for accepting (see the class note), and the moment is the one read for the
 		   window below. */
 		Optional<TheApplication> his = applicationHeMayDecide(me, team, application,
-				AMembershipOfTheSeasonHeWouldJoin.season(now));
+				AMembershipOfTheSeasonHeWouldJoin.season(now), now);
 
 		if (his.isEmpty()) {
 			throw nothingIsHere();
@@ -710,7 +713,7 @@ class TeamJoiningWriteApi {
 				theSeasonHeRunsFromReads(his.get().teamName()));
 
 		theOtherTeamsThatAskedHim(db, his.get().applicant(), team, his.get().applicantName(),
-				his.get().applicantGender(), his.get().teamName());
+				his.get().applicantGender(), his.get().teamName(), now);
 
 		return ResponseEntity.noContent().build();
 	}
@@ -738,13 +741,15 @@ class TeamJoiningWriteApi {
 			throw nothingIsHere();
 		}
 
-		return inOneTransaction.execute(committing -> withdrawing(me, id.value(), application.value()));
+		return inOneTransaction.execute(
+				committing -> withdrawing(me, id.value(), application.value(), ZonedDateTime.now(clock)));
 	}
 
-	private ResponseEntity<?> withdrawing(long me, long team, long application) {
+	private ResponseEntity<?> withdrawing(long me, long team, long application, ZonedDateTime now) {
 		boolean his = db.sql("select exists(select 1 from team_application a"
 						+ " join competitor c on c.id = a.competitor_id"
-						+ " where a.id = ? and a.team_id = ? and a.competitor_id = ? and c.active)")
+						+ " where a.id = ? and a.team_id = ? and a.competitor_id = ? and "
+						+ AMemberIsActive.of("c.id", now) + ")")
 				.params(application, team, me)
 				.query(Boolean.class)
 				.single();
@@ -769,7 +774,7 @@ class TeamJoiningWriteApi {
 	 * no longer a difference between the two directions but one rule read twice.
 	 *
 	 * <p>Who leads it is {@link #heAdministersThisTeam}, which is
-	 * {@link TeamApi#WHO_ADMINISTERS_IT} over {@link TeamApi#WHO_STANDS_IN_A_TEAM} and nothing
+	 * {@link TeamApi#WHO_ADMINISTERS_IT} over {@link TeamApi#whoStandsInATeam} and nothing
 	 * written here: the roster carries the fee and the member number as well as the open
 	 * membership, so a lapsed administrator invites nobody and the title has already passed on
 	 * to whoever has been in the team longest.
@@ -798,7 +803,9 @@ class TeamJoiningWriteApi {
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER OR A MEMBER WHOSE FEE DOES NOT STAND, before the body
 		   (see the class note). */
-		Long me = readers.activeMember(asking).orElse(null);
+		/* The clock is read once, here, for the door and for everything the route asks after it. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		Long me = readers.activeMember(asking, now).orElse(null);
 
 		if (me == null) {
 			throw nothingIsHere();
@@ -811,21 +818,19 @@ class TeamJoiningWriteApi {
 		}
 
 		return inOneTransaction.execute(
-				committing -> inviting(me, id.value(), typed.memberNumber().strip()));
+				committing -> inviting(me, id.value(), typed.memberNumber().strip(), now));
 	}
 
-	private ResponseEntity<?> inviting(long me, long team, String memberNumber) {
-		if (!heAdministersThisTeam(me, team)) {
+	private ResponseEntity<?> inviting(long me, long team, String memberNumber, ZonedDateTime now) {
+		if (!heAdministersThisTeam(me, team, now)) {
 			throw nothingIsHere();
 		}
-
-		ZonedDateTime now = ZonedDateTime.now(clock);
 
 		if (!SeasonClock.transferWindowOpen(now)) {
 			return no(HttpStatus.CONFLICT, THE_WINDOW_IS_SHUT);
 		}
 
-		Optional<Long> him = memberNumbered(memberNumber);
+		Optional<Long> him = memberNumbered(memberNumber, now);
 
 		/* THREE PEOPLE GET THIS ONE ANSWER: nobody of that number, a number whose member has
 		   not renewed, and himself. None of them is a form filled in wrongly and the screen
@@ -894,7 +899,9 @@ class TeamJoiningWriteApi {
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER OR A MEMBER WHOSE FEE DOES NOT STAND, before the body
 		   (see the class note). */
-		Long me = readers.activeMember(asking).orElse(null);
+		/* The clock is read once, here, for the door and for everything the route asks after it. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		Long me = readers.activeMember(asking, now).orElse(null);
 
 		if (me == null) {
 			throw nothingIsHere();
@@ -907,11 +914,12 @@ class TeamJoiningWriteApi {
 		}
 
 		return inOneTransaction.execute(
-				committing -> answering(me, id.value(), invitation.value(), typed.accepted()));
+				committing -> answering(me, id.value(), invitation.value(), typed.accepted(), now));
 	}
 
-	private ResponseEntity<?> answering(long me, long team, long invitation, boolean accepted) {
-		Optional<TheInvitation> his = invitationHeMayAnswer(me, team, invitation);
+	private ResponseEntity<?> answering(long me, long team, long invitation, boolean accepted,
+			ZonedDateTime now) {
+		Optional<TheInvitation> his = invitationHeMayAnswer(me, team, invitation, now);
 
 		if (his.isEmpty()) {
 			throw nothingIsHere();
@@ -924,8 +932,6 @@ class TeamJoiningWriteApi {
 
 			return ResponseEntity.noContent().build();
 		}
-
-		ZonedDateTime now = ZonedDateTime.now(clock);
 
 		if (!SeasonClock.transferWindowOpen(now)) {
 			return no(HttpStatus.CONFLICT, THE_WINDOW_IS_SHUT);
@@ -947,7 +953,7 @@ class TeamJoiningWriteApi {
 		theInvitationIsOver(invitation);
 
 		theOtherTeamsThatAskedHim(db, me, team, his.get().hisName(), his.get().hisGender(),
-				his.get().teamName());
+				his.get().teamName(), now);
 
 		return ResponseEntity.noContent().build();
 	}
@@ -1001,11 +1007,12 @@ class TeamJoiningWriteApi {
 			throw nothingIsHere();
 		}
 
-		return inOneTransaction.execute(committing -> takingBack(me, id.value(), invitation.value()));
+		return inOneTransaction.execute(
+				committing -> takingBack(me, id.value(), invitation.value(), ZonedDateTime.now(clock)));
 	}
 
-	private ResponseEntity<?> takingBack(long me, long team, long invitation) {
-		if (!heAdministersThisTeam(me, team)) {
+	private ResponseEntity<?> takingBack(long me, long team, long invitation, ZonedDateTime now) {
+		if (!heAdministersThisTeam(me, team, now)) {
 			throw nothingIsHere();
 		}
 
@@ -1115,9 +1122,9 @@ class TeamJoiningWriteApi {
 	 * three cannot drift apart.
 	 */
 	static void theOtherTeamsThatAskedHim(JdbcClient db, long member, long joined, String hisName,
-			String hisGender, String joinedTeam) {
+			String hisGender, String joinedTeam, ZonedDateTime now) {
 
-		List<Long> leaders = db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
+		List<Long> leaders = db.sql("with standing as (" + TeamApi.whoStandsInATeam(now) + ")"
 						+ " select leader from ("
 						+ " select distinct " + TeamApi.WHO_ADMINISTERS_IT + " as leader"
 						+ " from team t"
@@ -1212,8 +1219,8 @@ class TeamJoiningWriteApi {
 	 * WHETHER ANYBODY COULD ANSWER FOR THIS TEAM AT ALL, which is false for two different
 	 * teams on purpose: one that does not exist, and one nobody stands in.
 	 */
-	private boolean somebodyCouldAnswerForThisTeam(long team) {
-		return db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
+	private boolean somebodyCouldAnswerForThisTeam(long team, ZonedDateTime now) {
+		return db.sql("with standing as (" + TeamApi.whoStandsInATeam(now) + ")"
 						+ " select exists(select 1 from team t"
 						+ " where t.id = ? and " + TeamApi.WHO_ADMINISTERS_IT + " is not null)")
 				.param(team)
@@ -1228,7 +1235,7 @@ class TeamJoiningWriteApi {
 	 * <p><b>It asked whether he merely STOOD in the team until 27.09.2026</b>, which was the
 	 * owner's decision of 05.09.2026 and is now his own reversal - see the note on
 	 * {@link #invite}. What replaced it is not a new rule: it is
-	 * {@link TeamApi#WHO_ADMINISTERS_IT} over {@link TeamApi#WHO_STANDS_IN_A_TEAM}, the same
+	 * {@link TeamApi#WHO_ADMINISTERS_IT} over {@link TeamApi#whoStandsInATeam}, the same
 	 * pair {@link #applicationHeMayDecide} already asks and the same pair
 	 * {@code GET /api/teams} answers {@code administeredByMe} from. Three readers of one rule
 	 * rather than a second rule, which is what {@link TeamWriteApi} says about being the
@@ -1251,8 +1258,8 @@ class TeamJoiningWriteApi {
 	 * not a case per reader:</b> all three read the same string, so a change to the rule moves
 	 * them together or fails somewhere.
 	 */
-	private boolean heAdministersThisTeam(long me, long team) {
-		return db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
+	private boolean heAdministersThisTeam(long me, long team, ZonedDateTime now) {
+		return db.sql("with standing as (" + TeamApi.whoStandsInATeam(now) + ")"
 						+ " select coalesce(" + TeamApi.WHO_ADMINISTERS_IT + " = ?, false)"
 						+ " from team t where t.id = ?")
 				.params(me, team)
@@ -1274,8 +1281,8 @@ class TeamJoiningWriteApi {
 	 * than null - the shape {@link TeamWriteApi} uses for the identical comparison.
 	 */
 	private Optional<TheApplication> applicationHeMayDecide(long me, long team, long application,
-			int season) {
-		return db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
+			int season, ZonedDateTime now) {
+		return db.sql("with standing as (" + TeamApi.whoStandsInATeam(now) + ")"
 						+ " select a.id, a.competitor_id, c.first_name || ' ' || c.last_name, c.gender,"
 						+ " t.name"
 						+ " from team_application a"
@@ -1291,7 +1298,7 @@ class TeamJoiningWriteApi {
 						   this one - which is what `takeHimIn` would write. */
 						+ " join team t on t.id = ?"
 						+ " join competitor c on c.id = a.competitor_id"
-						+ " where a.id = ? and a.team_id = t.id and c.active"
+						+ " where a.id = ? and a.team_id = t.id and " + AMemberIsActive.of("c.id", now)
 						/* HIS season, the applicant's and not the caller's: the leader of a team who
 						   has not paid the next season still decides, and the applicant who has not
 						   is the one not found. */
@@ -1310,12 +1317,14 @@ class TeamJoiningWriteApi {
 	 * <p>His own name comes back with it because accepting writes to up to two other teams
 	 * about him, and reading it afterwards would be reading it from after the row was gone.
 	 */
-	private Optional<TheInvitation> invitationHeMayAnswer(long me, long team, long invitation) {
+	private Optional<TheInvitation> invitationHeMayAnswer(long me, long team, long invitation,
+			ZonedDateTime now) {
 		return db.sql("select i.id, t.name, c.first_name || ' ' || c.last_name, c.gender"
 						+ " from team_invitation i"
 						+ " join team t on t.id = i.team_id"
 						+ " join competitor c on c.id = i.competitor_id"
-						+ " where i.id = ? and i.team_id = ? and i.competitor_id = ? and c.active")
+						+ " where i.id = ? and i.team_id = ? and i.competitor_id = ? and "
+						+ AMemberIsActive.of("c.id", now))
 				.params(invitation, team, me)
 				.query((row, one) -> new TheInvitation(row.getLong(1), row.getString(2),
 						row.getString(3), row.getString(4)))
@@ -1323,8 +1332,9 @@ class TeamJoiningWriteApi {
 	}
 
 	/** Whether he is still a member at all, which is {@link PairWriteApi}'s own condition. */
-	private boolean heIsStillAMember(long me) {
-		return db.sql("select exists(select 1 from competitor where id = ? and active)")
+	private boolean heIsStillAMember(long me, ZonedDateTime now) {
+		return db.sql("select exists(select 1 from competitor where id = ? and "
+						+ AMemberIsActive.of("competitor.id", now) + ")")
 				.param(me)
 				.query(Boolean.class)
 				.single();
@@ -1338,8 +1348,9 @@ class TeamJoiningWriteApi {
 	 * POSREDNO" (PDL, 13.09.2026). The whole of what this route's answers carry about him is
 	 * his member number, so there is no half answer to give.
 	 */
-	private Optional<Long> memberNumbered(String memberNumber) {
-		return db.sql("select id from competitor where member_number = ? and active")
+	private Optional<Long> memberNumbered(String memberNumber, ZonedDateTime now) {
+		return db.sql("select id from competitor where member_number = ? and "
+						+ AMemberIsActive.of("competitor.id", now))
 				.param(memberNumber)
 				.query(Long.class)
 				.optional();

@@ -518,8 +518,12 @@ class MeApi {
 		String mailLanguage = db.sql("select mail_language from account where id = ?")
 				.param(member.account()).query(String.class).single();
 
-		return new WhoIAm(member.role(), member.account(), me == null ? null : recordOf(me),
-				mailLanguage, SeasonClock.seasonsOpenForAReport(ZonedDateTime.now(clock)));
+		/* THE CLOCK, read once for the whole answer: whether his fee stands, his category and the
+		   seasons open for a report are three answers about one moment. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
+		return new WhoIAm(member.role(), member.account(), me == null ? null : recordOf(me, now),
+				mailLanguage, SeasonClock.seasonsOpenForAReport(now));
 	}
 
 	/**
@@ -528,12 +532,11 @@ class MeApi {
 	 * him" - so a value that is not null names a row that is there, and there is no
 	 * case here for none.
 	 */
-	private MyOwnRecord recordOf(long me) {
-		/* THE MOMENT HIS CATEGORY IS WORKED OUT FOR, read once for the whole answer, as
+	private MyOwnRecord recordOf(long me, ZonedDateTime now) {
+		/* `now` IS THE MOMENT HIS CATEGORY IS WORKED OUT FOR, read once for the whole answer, as
 		   `CompetitorApi` reads it once for a whole list: a clock read inside the mapper could cross
 		   midnight on 1 January in the middle of one row, which is the one night of the year his card
 		   moves on (PDL, 30.10.2026). Which season that is, is `CategoryOfASeason`'s to say. */
-		ZonedDateTime now = ZonedDateTime.now(clock);
 		CategoryOfASeason.Book book = categories.of(me);
 
 		/* AND THE SEASON ON SALE, WHICH IS THE ONE HIS BASIS IS ANSWERED FOR, off the same reading
@@ -555,8 +558,10 @@ class MeApi {
 						/* HIS OWN, and there is one row here, so there is no shape in which
 						   somebody else's could come out of it.
 
-						   `c.active` IS THE COLUMN EVERY OTHER DOOR READS FOR "does his fee stand",
-						   and it is answered next to the basis because it is the same kind of fact:
+						   WHETHER HIS FEE STANDS IS `AMemberIsActive`, THE CONDITION EVERY OTHER DOOR
+						   READS FOR "does his fee stand" (a row of `membership` for a season that makes
+						   him active now), and it is answered next to the basis because it is the
+						   same kind of fact:
 						   how his membership is held, and whether it is. It is NOT worked out here
 						   from the number or from the basis. The number being absent says "never
 						   paid" and nothing about a member who HAS one, and the basis is about the
@@ -565,8 +570,15 @@ class MeApi {
 						   THE BASIS IS THE ROW OF THE SEASON ON SALE (V62, PDL P8 of 18.10.2026), and
 						   null when he holds none for it, which `@JsonInclude` turns into an absent
 						   key. */
-						+ " held.basis, c.active, c.referral_code,"
-						/* AND HOW MANY HE HAS BROUGHT IN WHOSE FEE IS STANDING.
+						+ " held.basis, " + AMemberIsActive.of("c.id", now) + " as active, c.referral_code,"
+						/* AND HOW MANY HE HAS BROUGHT IN WHO EVER HELD A MEMBERSHIP.
+
+						   The owner, 06.11.2026, chosen among the options offered with my
+						   recommendation: „Broj dovedenih članova broji svakoga ko je ikad imao
+						   članarinu, ne samo one kojima članarina sada važi". Ever held is a row of
+						   `membership` for any season, the home of membership (PDL, 13.09.2026); a
+						   cancelled season leaves no row and is not counted. Until 06.11.2026 this
+						   counted those whose fee was standing.
 
 						   THIS SAID „word for word `CompetitorApi`'s" UNTIL 25.09.2026, and the
 						   twin it named is gone: P26a took both facts off the public list, so
@@ -578,7 +590,9 @@ class MeApi {
 						   Cast, because `count(*)` is a bigint and what comes back is read as
 						   a whole number that fits the portal's own type. */
 						+ " cast((select count(*) from competitor brought"
-						+ "  where brought.referred_by = c.id and brought.active) as integer)"
+						+ "  where brought.referred_by = c.id"
+						+ "  and exists(select 1 from membership ever where ever.competitor_id = brought.id))"
+						+ "  as integer)"
 						+ "  as referred_count,"
 						/* THE PROFILE, WHICH IS WHAT HIS OWN PAGE IS DRAWN FROM (class note). The
 						   names and the town are read the way `CompetitorApi` reads them, and

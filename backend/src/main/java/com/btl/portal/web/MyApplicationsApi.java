@@ -291,7 +291,7 @@ class MyApplicationsApi {
 		ZonedDateTime now = ZonedDateTime.now(clock);
 
 		return new Waiting(teamApplications(me), teamInvitations(me), teamProposals(me),
-				pairInvites(me), alreadyInATeam.standsInHisWay(me, now), seasonToPayFor(me, now));
+				pairInvites(me, now), alreadyInATeam.standsInHisWay(me, now), seasonToPayFor(me, now));
 	}
 
 	/**
@@ -353,15 +353,14 @@ class MyApplicationsApi {
 				.list();
 	}
 
-	private List<PairInvite> pairInvites(long me) {
+	private List<PairInvite> pairInvites(long me, ZonedDateTime now) {
 		return db.sql("select pi.id, pi.sent_at,"
 						/* THE OTHER ONE, whichever side this competitor stands on - AND ONLY
 						   WHILE HE IS STILL A MEMBER. The inner CASE is the sixth place this
 						   portal answers one question, and it answers it the way the other five
-						   do: `CompetitorApi` with `where c.active`, `AttendanceApi` with
-						   `and c.active`, `PairApi` with `where man.active and woman.active`,
-						   `CommentApi` with this very shape - `case when author.active then
-						   author.member_number end`.
+						   do, all through `AMemberIsActive`: `CompetitorApi` as a condition on the
+						   list, `AttendanceApi` and `PairApi` as a condition on the rows, and
+						   `CommentApi` with this very shape, a `case` around the member number.
 
 						   Why it is not merely tidy: `/api/competitors` stops carrying a member
 						   the day his fee lapses, so a number that is HERE and missing THERE is
@@ -371,7 +370,8 @@ class MyApplicationsApi {
 						   imenuje sa razlogom." The invite row itself stays - it is his own, and
 						   he is the one who withdraws it - but the person behind it stops being
 						   named. */
-						+ " case when (case when pi.from_id = :me then to_c.active else from_c.active end)"
+						+ " case when (case when pi.from_id = :me then " + AMemberIsActive.of("to_c.id", now)
+						+ "      else " + AMemberIsActive.of("from_c.id", now) + " end)"
 						+ "      then (case when pi.from_id = :me then to_c.member_number else from_c.member_number end)"
 						+ " end,"
 						+ " pi.from_id = :me"

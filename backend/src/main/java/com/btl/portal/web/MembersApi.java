@@ -172,7 +172,7 @@ class MembersApi {
 				.list();
 
 		List<Row> rows = db.sql("select c.id, c.member_number, c.first_name, c.last_name, c.gender,"
-						+ " coalesce(town.name, c.city) as city, c.active,"
+						+ " coalesce(town.name, c.city) as city, " + AMemberIsActive.of("c.id", now) + " as active,"
 						+ " sold.basis, c.birth_year,"
 						/* THE COUNTRY THROUGH BOTH OF ITS HOMES, the shape `PaymentsDueApi` reads the
 						   same column with: V7 makes exactly one of the two present. */
