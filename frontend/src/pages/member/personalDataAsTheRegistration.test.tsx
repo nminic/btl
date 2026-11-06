@@ -364,9 +364,9 @@ describe('the administration’s form on the same card', () => {
     expect(email).not.toHaveAttribute('aria-required')
     expect(within(must(email.closest<HTMLElement>('.field'), 'the field of the e-mail')).queryByText('*')).toBeNull()
 
-    const firstName = within(form).getByRole('textbox', { name: new RegExp(`^${sr.registration.firstName}`) })
+    const surname = within(form).getByRole('textbox', { name: /^Prezime/ })
 
-    expect(firstName).toHaveAttribute('aria-required', 'true')
-    expect(within(must(firstName.closest<HTMLElement>('.field'), 'the field of the first name')).getByText('*')).toBeVisible()
+    expect(surname).toHaveAttribute('aria-required', 'true')
+    expect(within(must(surname.closest<HTMLElement>('.field'), 'the field of the surname')).getByText('*')).toBeVisible()
   }, SLOW)
 })
