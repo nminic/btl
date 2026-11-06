@@ -227,10 +227,10 @@ describe('the boxes at the bottom of his card', () => {
     await waitFor(() => expect(router.state.location.pathname).toMatch(new RegExp(`^/sr/takmicar/${HIS}-.+/podaci$`)))
     expect(router.state.location.hash).toBe('#slika')
 
-    const pair = must(boxes.closest('#slika'), 'the place #slika leads to')
+    const pair = must(boxes.closest<HTMLElement>('#slika'), 'the place #slika leads to')
 
     await waitFor(() => expect(scrolled.mock.contexts).toContain(pair))
-    expect(within(pair as HTMLElement).getByRole('region', { name: sr.bio.title })).toBeVisible()
+    expect(within(pair).getByRole('region', { name: sr.bio.title })).toBeVisible()
 
     /* AND UNDER THE FORM: the boxes follow the panel of his data in the order of the page. */
     const data = await screen.findByRole('heading', { level: 2, name: sr.account.personalTitle })
