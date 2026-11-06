@@ -14,8 +14,13 @@ import type { Answers, At } from './support/harness.ts'
  * the document and on which parts; this holds where they LAND:
  *
  * <ol>
- * <li><b>In the row of the parts</b>: every button inside the row's box, never under it as a row of its
- * own.
+ * <li><b>Inside the head</b>: every button inside the box of the head's belt.
+ * <li><b>On a telephone (360px) in a line of their own</b>, together, UNDER the parts and UNDER the season,
+ * the last ending where the row ends (owner, 06.11.2026: „Na telefonu (360 px) dugmad za poziv stoje
+ * zajedno u svom redu, desno, ispod kartica i izbora godine, jer tamo ne staju u red kartica").
+ * <li><b>From 768 in the line of the parts</b>, to the right: each button overlaps a part vertically,
+ * which is what „istog reda" means and which a button under the parts, inside the same box, does not do
+ * („Od širine na kojoj staju (768 i šire) stoje u istom redu sa karticama, desno").
  * <li><b>To the right</b>: the last button ends where the row ends.
  * <li><b>Small</b>: no button is as wide as the row, unless its own words are.
  * <li><b>The format of the parts</b> („istog formata"): the same height as a part, the same letter and the
@@ -176,6 +181,7 @@ type Box = { left: number; right: number; top: number; bottom: number; width: nu
 
 type Measured = {
   viewport: number
+  gap: number
   row: Box
   name: Box
   tabs: (Box & { fontSize: string; fontWeight: string; radius: string })[]
@@ -193,7 +199,10 @@ const measure = (page: Page): Promise<Measured | null> =>
       return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height }
     }
     const nav = document.querySelector('nav[aria-label="Delovi profila"]')
-    const row = nav?.parentElement
+    /* The head, and not the box of the parts: below the breakpoint that box gives up its own
+       (`display: contents`), and a box that is not drawn has no edges to measure. The head is as wide as
+       the row at every width, so „where the row ends" is where it ends. */
+    const row = document.querySelector('.profile__top')
     const name = document.querySelector('.profile__top h1')
 
     if (nav === null || row === null || row === undefined || name === null) {
@@ -210,6 +219,8 @@ const measure = (page: Page): Promise<Measured | null> =>
 
     return {
       viewport: document.documentElement.clientWidth,
+      /* `--space-6`, the gap between the buttons, at the letter this page is drawn in. */
+      gap: 0.375 * parseFloat(getComputedStyle(document.documentElement).fontSize),
       row: boxOf(row),
       name: boxOf(name),
       tabs: [...nav.querySelectorAll('a')].map((one) => ({ ...boxOf(one), ...look(one) })),
@@ -300,6 +311,42 @@ for (const at of WIDTHS) {
             button.width,
             `„${button.text}" is wider than its own words, so it was stretched`,
           ).toBeLessThanOrEqual(Math.min(button.natural, measured.row.width) + SLACK)
+        }
+
+        const together = measured.buttons.reduce((sum, one) => sum + one.natural, 0) + measured.gap * Math.max(0, measured.buttons.length - 1)
+        const first = measured.buttons[0]
+
+        if (first !== undefined) {
+          if (at.width < 768) {
+            /* ON A TELEPHONE: under the parts and under the season, the two together in one line wherever
+               their words fit on one (at 200% they cannot, and then each is a line of its own). */
+            const season = measured.season
+
+            if (season === null) {
+              throw notMeasured(`„${part}" drew no season to stand under`)
+            }
+
+            const under = Math.max(season.bottom, ...measured.tabs.map((one) => one.bottom))
+
+            for (const button of measured.buttons) {
+              expect(button.top, `„${button.text}" does not stand under the parts and the season`).toBeGreaterThanOrEqual(under - SLACK)
+            }
+
+            if (together <= measured.row.width + SLACK) {
+              for (const button of measured.buttons) {
+                expect(Math.abs(button.top - first.top), `„${button.text}" is not in one line with the other button`).toBeLessThanOrEqual(SLACK)
+              }
+            }
+          } else {
+            /* FROM 768: in the line of a part. Asked as an overlap on the vertical axis, because a button
+               that is merely inside the box that holds the parts can be on a line under them. */
+            for (const button of measured.buttons) {
+              expect(
+                measured.tabs.some((one) => button.top < one.bottom - SLACK && button.bottom > one.top + SLACK),
+                `„${button.text}" is not in the line of the parts`,
+              ).toBe(true)
+            }
+          }
         }
 
         const last = measured.buttons.at(-1)

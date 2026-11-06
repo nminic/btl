@@ -1147,7 +1147,7 @@
  * season sits beside them; at 200% the same eight rem is 256px, the two no longer
  * plan onto one line, and the belt wraps rather than crushing either. The floor is in
  * `rem` because what has to fit inside it is words. */
-.profile__belt > .profile__tabs {
+.profile__belt > .parts {
   flex: 1 1 8rem;
   min-inline-size: 0;
 }
@@ -1161,22 +1161,28 @@
    holds nothing else. The nav's floor is zero, so at 200% text its own pills wrap inside it rather than
    pushing the page sideways (WCAG 2.2 SC 1.4.10). */
 .profile__tabs {
+  /* Gives up its box below the breakpoint, so the parts and the acts are items of the belt, and the acts
+     can stand in a line of their own under the parts AND the season (owner, 06.11.2026: „Na telefonu (360
+     px) dugmad za poziv stoje zajedno u svom redu, desno, ispod kartica i izbora godine"). The elements
+     stay in the markup; the acts come before the season in the document and are drawn after it (`order`). */
+  display: contents;
+}
+
+/* THE ACTS IN THE LINE OF THEIR OWN, on a telephone: the whole width of the belt, so nothing shares the
+   line with them, `order` after the season, and `flex-end` for the right edge. `:empty` because a visitor
+   is handed none, and a box that holds nothing would still cost the belt a gap. */
+.profile__acts {
   display: flex;
+  flex: 1 0 100%;
+  order: 1;
   flex-wrap: wrap;
-  align-items: center;
   justify-content: flex-end;
+  align-items: center;
   gap: var(--space-6);
 }
 
-.profile__tabs > .parts {
-  flex: 1 1 auto;
-  min-inline-size: 0;
-}
-
-/* The box that holds the acts gives itself up, so each button, and each sentence that stands where a button
-   stood, is an item of the row and wraps on its own. */
-.profile__acts {
-  display: contents;
+.profile__acts:empty {
+  display: none;
 }
 
 /* „Poziv ... je poslat" stands where the button stood, on its line. */
@@ -1238,6 +1244,31 @@
   }
 
   .profile__belt {
+    display: contents;
+  }
+
+  /* From here the parts and the acts are ONE ROW (owner, 06.11.2026: „Od širine na kojoj staju (768 i
+     šire) stoje u istom redu sa karticama, desno"): the parts take the room the row has and the acts stand
+     at its right end; when the two do not fit on one line the acts wrap under the parts and still stand at
+     the right, which `flex-end` says for a line that holds nothing else. The nav's floor is zero, so at
+     200% text its own pills wrap inside it rather than pushing the page sideways (WCAG 2.2 SC 1.4.10). The
+     width is the one the head already changes shape at, not a new one. */
+  .profile__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-6);
+  }
+
+  .profile__tabs > .parts {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+  }
+
+  /* The box that holds the acts gives itself up, so each button, and each sentence that stands where a
+     button stood, is an item of the row and wraps on its own. */
+  .profile__acts {
     display: contents;
   }
 
