@@ -268,7 +268,7 @@ function renderMembershipOn(
    form on the portal is still where it is worth holding. */
 
 describe('a member looking at their own profile', () => {
-  it('opens on Pregled, the same part that is marked from the list of competitors', async () => {
+  it('opens on Rezultati, the same part that is marked from the list of competitors', async () => {
     /* Owner, 23.08.2026: „kad se ulogujem u profil i odem na svoju stranu takmičara,
        treba da stoji selektovana prva opcija Pregled kao što stoji kad u nečiji
        profil uđem sa strane takmičara."
@@ -284,8 +284,10 @@ describe('a member looking at their own profile', () => {
       .getAllByRole('link')
       .filter((one) => one.getAttribute('aria-current') !== null)
 
+    /* „Pregled" in the owner's words above is „Rezultati" since 06.11.2026 (PDL „Profil: forma
+       „Podaci" po obliku forme za prijavu"). */
     expect(open.map((one) => one.textContent), 'no part of the profile is marked open').toEqual([
-      'Pregled',
+      'Rezultati',
     ])
   })
 })

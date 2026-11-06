@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.registration.WhatRegistrationAsksFor;
@@ -562,9 +563,9 @@ class GroupEntryTest {
 		assertThat(list).as("the public list carries nobody at all, so the sentence above"
 				+ " would hold however this route behaved").contains("000042");
 
-		db.sql("update competitor set active = true where id ="
-						+ " (select competitor_id from account where email = ?)")
-				.param(his).update();
+		/* HIS FEE IS RECORDED, which since AF-1 is a season he holds and not the flag. */
+		HeldOn.activeAt(db, db.sql("select competitor_id from account where email = ?").param(his)
+				.query(Long.class).single(), NOW.atZone(SeasonClock.ZONE));
 
 		assertThat(http.perform(get("/api/competitors")).andReturn().getResponse()
 				.getContentAsString())
@@ -1193,7 +1194,7 @@ class GroupEntryTest {
 	}
 
 	private long competitor(String number, String referral, boolean active) {
-		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+		long made = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, first_season, active,"
 						+ " referral_code, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size,"
@@ -1202,7 +1203,16 @@ class GroupEntryTest {
 						+ " (select id from place order by rank limit 1), 2027, ?,"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 9', 'L',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, active, referral).query(Long.class).single();
+				.params(number, !active, referral).query(Long.class).single();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
+		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
+		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		if (active) {
+			HeldOn.activeAt(db, made, NOW.atZone(SeasonClock.ZONE));
+		}
+
+		return made;
 	}
 
 	/* ---------------------------------------------------------------------- what it left */

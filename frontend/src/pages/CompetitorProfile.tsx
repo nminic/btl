@@ -1,6 +1,5 @@
 import { HisOwnRecord } from './profile/HisOwnRecord'
-import { InviteToTeam } from './profile/InviteToTeam'
-import { InviteToPair } from './profile/InviteToPair'
+import { InvitesToHim } from './profile/InvitesToHim'
 import { memberNumberIn, redirectTo } from './profileAddress'
 import { useMemo } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router'
@@ -272,18 +271,13 @@ function ProfileBody({
         pairs={pairs}
         seasons={options}
         season={season}
+        /* In the row of the parts, to the right, since 06.11.2026 (owner: „malo normalno dugme alignovano
+           desno, istog formata i reda"); until then each stood under the head as a row of its own. Each
+           draws nothing unless the reader may ask (profile/InviteToTeam.tsx, profile/InviteToPair.tsx). */
+        acts={
+          <InvitesToHim competitor={competitor} competitors={competitors} teams={teams} pairs={pairs} />
+        }
       />
-
-      {/* Under the head and above everything the profile is about, because it is
-          an act aimed at the person rather than a fact about them. It draws
-          nothing at all unless the reader is in a team and this member is not
-          (profile/InviteToTeam.tsx). */}
-      <InviteToTeam competitor={competitor} competitors={competitors} teams={teams} />
-
-      {/* And the same act for a racing pair, under it and for the same reason: aimed at the person
-          rather than a fact about them. It draws nothing unless the two of them could pair
-          (profile/InviteToPair.tsx). */}
-      <InviteToPair competitor={competitor} competitors={competitors} pairs={pairs} />
 
       {/* THE PAIR ITSELF IS IN THE LINE UNDER THE NAME SINCE 18.10.2026, and the way to end it and
           the questions still standing are on „Moja članarina" (PDL P11, owner, 18.10.2026: „Dugme

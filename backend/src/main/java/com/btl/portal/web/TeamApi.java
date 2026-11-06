@@ -67,11 +67,10 @@ import java.util.stream.Collectors;
  * and missing there told a public reader what PDL P11 shut. The administration may
  * read the seat, so for it the subtraction is no longer a leak - but the two lists
  * still disagree, and now they disagree in the administration's hands. Measured on the
- * fixture: {@code klub-lovcen}'s seat holds {@code 000003}, whose {@code active} is
- * false; {@code /api/teams} answers the superadmin {@code "organizerMemberNumber":
+ * fixture: {@code klub-lovcen}'s seat holds {@code 000003}, who is not active; {@code /api/teams} answers the superadmin {@code "organizerMemberNumber":
  * "000003"} and {@code /api/competitors}, asked with the SAME cookie by the SAME
  * superadmin, answers {@code 000001}, {@code 000002} and {@code 000004} and no
- * {@code 000003} at all, because {@code CompetitorApi} ends on {@code where c.active}.
+ * {@code 000003} at all, because {@code CompetitorApi} ends on {@link AMemberIsActive}.
  * So {@code AdminTeams.tsx} draws a seat it cannot put a name to, and
  * {@code teamAdmin.ts} finds nobody in the roster to match.
  *
@@ -92,7 +91,7 @@ import java.util.stream.Collectors;
  * <p><b>And one half of that choice is already made ELSEWHERE, which is worth the
  * owner's knowing and is not on its own a reason to follow it here.</b>
  * {@link CommentApi} meets the same two lists and answers
- * {@code case when author.active then author.member_number end}, so a lapsed author's
+ * a {@code case} on {@link AMemberIsActive} around {@code author.member_number}, so a lapsed author's
  * number does not leave at all. Measured, and the difference measured with it: that
  * resource is PUBLIC, and its reason is the subtraction PDL P11 shut - a number leaving
  * there and missing from {@code /api/competitors} names whoever has not paid to anybody
@@ -166,7 +165,7 @@ import java.util.stream.Collectors;
  * there is no number to give you". {@code Optional.empty()} on the component, and the
  * portal's own word for that rather than one invented here: {@link CommentApi} answers
  * {@code memberNumber} as null for an author there is no profile to lead to
- * ({@code case when author.active then author.member_number end}), and
+ * (a {@code case} on {@link AMemberIsActive} around {@code author.member_number}), and
  * {@code CommentApiTest} reads it back as {@code path("memberNumber").isNull()}.</li>
  * </ul>
  *
@@ -496,11 +495,11 @@ class TeamApi {
 	 * WHO IS A STANDING MEMBER OF WHICH TEAM, AS ONE SELECT THAT MORE THAN ONE RESOURCE
 	 * BUILDS ITS {@code standing} OUT OF.
 	 *
-	 * <p><b>It is a constant rather than a sentence repeated because the rule it carries has
+	 * <p><b>It is one method rather than a sentence repeated because the rule it carries has
 	 * three conditions and every one of them was decided separately.</b> {@code season_to is
 	 * null} is „the team he has", read off the record and never off the season (PDL
-	 * „Inkrement 133", 05.09.2026); {@code c.active} is the lapsed fee reaching the roster
-	 * (PDL P13, 19.09.2026); {@code member_number is not null} is V16's difference between
+	 * „Inkrement 133", 05.09.2026); {@link AMemberIsActive} at {@code at} is the lapsed fee
+	 * reaching the roster (PDL P13, 19.09.2026); {@code member_number is not null} is V16's difference between
 	 * somebody who registered and a MEMBER. Written out a second time in
 	 * {@link TeamWriteApi}, one of the three would be the one that drifts, and the drift
 	 * would read as „the administration and the team's own page disagree about who runs it".
@@ -513,11 +512,13 @@ class TeamApi {
 	 * <p>The columns are what the expressions below need and nothing more: the team it is
 	 * about, who he is, and the two the tie is broken by.
 	 */
-	static final String WHO_STANDS_IN_A_TEAM =
-			" select m.team_id, c.id, c.member_number, m.season_from"
-					+ " from team_membership m"
-					+ " join competitor c on c.id = m.competitor_id"
-					+ " where m.season_to is null and c.active and c.member_number is not null";
+	static String whoStandsInATeam(ZonedDateTime at) {
+		return " select m.team_id, c.id, c.member_number, m.season_from"
+				+ " from team_membership m"
+				+ " join competitor c on c.id = m.competitor_id"
+				+ " where m.season_to is null and " + AMemberIsActive.of("c.id", at)
+				+ " and c.member_number is not null";
+	}
 
 	/**
 	 * AND WHICH ONE OF THEM ADMINISTERS THE TEAM ALIASED {@code t}, WHICH IS THE OTHER HALF
@@ -736,8 +737,12 @@ class TeamApi {
 		   nikad prema aktivnom članu"). Asked here in the SAME words as on the record,
 		   because a reader the record answers the link to must not be told it again on the team,
 		   and one the record withholds it from must be: the two doors would otherwise name one link
-		   twice, or none. A visitor arrives as a null `member` and the class answers him no. */
-		boolean readsHiddenProfiles = readers.includes(member);
+		   twice, or none. A visitor arrives as a null `member` and the class answers him no.
+
+		   THE CLOCK IS READ ONCE, HERE, for this door and for every condition on the fee and the
+		   season below it. */
+		ZonedDateTime now = clock.instant().atZone(SeasonClock.ZONE);
+		boolean readsHiddenProfiles = readers.includes(member, now);
 
 		/* THE MEMBERS OF EACH TEAM WHOSE OWN RECORD DOES NOT NAME IT TO THIS CALLER, and only
 		   those. PDL, odeljak 16, [ODLUKA 27.09.2026, owner]: the link leaves a hidden member's
@@ -767,7 +772,7 @@ class TeamApi {
 						"select m.team_id, c.member_number, m.season_from"
 						+ " from team_membership m"
 						+ " join competitor c on c.id = m.competitor_id"
-						+ " where m.season_to is null and c.active"
+						+ " where m.season_to is null and " + AMemberIsActive.of("c.id", now)
 						+ " and not " + CompetitorApi.THE_PROFILE_IS_OPEN_TO_THE_CALLER
 						+ " order by c.member_number, c.id")
 				.param("readsHiddenProfiles", readsHiddenProfiles)
@@ -816,11 +821,10 @@ class TeamApi {
 
 		   THE FEE IS STANDING, the condition the record and `alsoIn` end on and the one the note on this
 		   class quotes („filtered to the members whose fee is standing"): a member who has not paid is
-		   not on the public list of members (PDL P11). `c.active` IS READ HERE AS THE OTHER STATEMENTS OF
-		   THIS CLASS READ IT, AND ITEM AF OF THE PLAN - which turns that flag from a stored fact into a
-		   derived one (PDL: „Zastavica „aktivan" prestaje da bude podatak i postaje izvedena") - HAS TO
-		   REWRITE THIS STATEMENT TOGETHER WITH THEM. It is written out here and not behind a constant, so
-		   a search for `c.active` finds it, and that search is how it is found.
+		   not on the public list of members (PDL P11). It is asked through `AMemberIsActive` as the other
+		   statements of this class ask it, at the one reading of the clock this route takes; until AF-1
+		   (PDL: „Zastavica „aktivan" prestaje da bude podatak i postaje izvedena") all of them read the
+		   flag `c.active`, and AF-1 rewrote them together.
 
 		   NO MEMBER NUMBER CONDITION, ON PURPOSE, for `alsoIn`'s reason: the record has none either, so a
 		   membership of an active member is named whether or not he has a number.
@@ -828,13 +832,11 @@ class TeamApi {
 		   ORDERED by member number, then by key, then by the season it began in, so two memberships of
 		   one member in one team come out in the order he had them, and the answer does not depend on
 		   the order the rows were written in. */
-		ZonedDateTime now = clock.instant().atZone(SeasonClock.ZONE);
-
 		Map<Long, List<EndedMembership>> ended = db.sql(
 						"select m.team_id, c.member_number, m.season_from, m.season_to"
 						+ " from team_membership m"
 						+ " join competitor c on c.id = m.competitor_id"
-						+ " where m.season_to is not null and c.active"
+						+ " where m.season_to is not null and " + AMemberIsActive.of("c.id", now)
 						+ " order by c.member_number, c.id, m.season_from")
 				.query((row, one) -> Map.entry(row.getLong(1),
 						new EndedMembership(row.getString(2), row.getInt(3), row.getObject(4, Integer.class))))
@@ -884,10 +886,10 @@ class TeamApi {
 						   „manji broj clana", and a row with no number has no place in that order.
 						   `competitor.member_number` is nullable since V16 - „a row in `competitor`
 						   is a PERSON WHO REGISTERED. A MEMBER is a row whose `member_number` is
-						   there" - and nothing ties that column to `active`, so the two conditions
+						   there" - and nothing ties that column to being active, so the two conditions
 						   are independent and the fixture holds a row that satisfies one and not
 						   the other. */
-						"with standing as (" + WHO_STANDS_IN_A_TEAM + ")"
+						"with standing as (" + whoStandsInATeam(now) + ")"
 						+ " select t.id, t.slug, t.name,"
 						/* The town in the two shapes V11 allows, and the country off whichever
 						   of them the team used. The same three columns and the same coalesce as

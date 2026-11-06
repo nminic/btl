@@ -193,8 +193,9 @@ class GrantingASeason {
 		   drew first, and the reason it gave - that no case could fail on the move - is answered by
 		   `FreeingTwiceAtOneInstantTest.aBookingTheDatabaseRefusesDrawsNoNumber`.
 
-		   THE NUMBER AND THE FLAG, AND NOTHING ELSE ON `competitor`. `active` is what every public
-		   reader ends on (`where c.active`, ten of them), and PDL:3417 says an activation shows
+		   THE NUMBER AND THE FLAG, AND NOTHING ELSE ON `competitor`. Since AF-1 no reader asks `active`:
+		   every public reader ends on `AMemberIsActive`, which the row written above already answers, and
+		   the flag goes on being written so that a step back is a revert. PDL:3417 says an activation shows
 		   „odmah" exactly as a booked payment does. Both are written whether or not a number was
 		   drawn, so the facts cannot come apart, and on both grounds alike: the basis is the row
 		   written above and has no second home since V62. Nothing written above reads either of the

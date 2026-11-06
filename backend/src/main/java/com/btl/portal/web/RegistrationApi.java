@@ -83,10 +83,11 @@ import java.util.regex.Pattern;
  * what that costs - the owner's own account has to come out as {@code 000001}. The
  * number is handed out where the payment is recorded, and that is not this increment.
  *
- * <p><b>THE MEMBERSHIP IS NOT ACTIVE EITHER.</b> {@code active} is false, so PDL's
+ * <p><b>THE MEMBERSHIP IS NOT ACTIVE EITHER.</b> No season is written, so he is not active
+ * ({@link AMemberIsActive}), and the flag {@code active} is written false beside it, so PDL's
  * „Pre placanja clan sme da otvori nalog, ali nigde nije vidljiv i ne moze nista da
  * radi u sistemu" is true by construction rather than by a rule somebody has to
- * remember: {@link CompetitorApi} serves {@code where c.active}, so a registration
+ * remember: {@link CompetitorApi} serves only members who are active, so a registration
  * puts nobody on the public list of who runs in the league. That was measured before
  * this was written, not argued from the column's name.
  *
@@ -630,7 +631,7 @@ class RegistrationApi {
 						+ "  referral_code, referred_by, bio, profile_hidden, birth_date,"
 						+ "  father_name, address, phone, shirt_size, health_statement_at)"
 						/* `member_number` IS NOT WRITTEN AND `member_number_seq` IS NOT ASKED.
-						   `active` is false and NO BASIS IS WRITTEN: since V62 a basis is a
+						   the flag `active` is false and NO BASIS IS WRITTEN: since V62 a basis is a
 						   `membership` row of a season, and a registration is no membership of
 						   any season until a payment is recognised or the fee is waived, which
 						   is the administration's to grant and not a thing a form can claim. `profile_hidden` is false because hiding a profile is the

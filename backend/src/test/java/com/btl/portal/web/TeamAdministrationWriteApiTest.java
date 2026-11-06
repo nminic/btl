@@ -36,6 +36,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -265,7 +266,11 @@ class TeamAdministrationWriteApiTest {
 		competitor(LAPSED);
 		competitor(ELSEWHERE);
 
-		db.sql("update competitor set active = false where member_number = ?").param(LAPSED).update();
+		/* HE DID NOT RENEW, which since AF-1 is the season taken away; his flag is raised on purpose, so a
+		   reader that read it would still take him for a member. */
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
+				.param(LAPSED).update();
+		db.sql("update competitor set active = true where member_number = ?").param(LAPSED).update();
 
 		inATeam(THE_LONGEST, THE_TEAM, A_SEASON_ALREADY_RUNNING);
 		inATeam(THE_SEAT, THE_TEAM, A_SEASON_STILL_TO_COME);
@@ -318,7 +323,7 @@ class TeamAdministrationWriteApiTest {
 				.as("the team's first season is a number this file's clock could work out")
 				.doesNotContain(ITS_FIRST_SEASON);
 
-		assertThat(db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
+		assertThat(db.sql("with standing as (" + TeamApi.whoStandsInATeam(ZonedDateTime.now(clock)) + ")"
 						+ " select s.member_number from standing s"
 						+ " join team t on t.id = s.team_id where t.slug = ?"
 						+ " order by s.season_from, s.member_number")
@@ -335,7 +340,7 @@ class TeamAdministrationWriteApiTest {
 						+ " about the fee")
 				.isEqualTo(1L);
 
-		assertThat(db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
+		assertThat(db.sql("with standing as (" + TeamApi.whoStandsInATeam(ZonedDateTime.now(clock)) + ")"
 						+ " select t.slug from standing s join team t on t.id = s.team_id"
 						+ " where s.member_number = ?")
 				.param(ELSEWHERE).query(String.class).list())
@@ -611,7 +616,7 @@ class TeamAdministrationWriteApiTest {
 	 * AND STANDING IN IT IS A MEMBERSHIP WITH NO END, WHATEVER SEASON IT BEGINS IN.
 	 *
 	 * <p>{@link #THE_SEAT} joined for a season that has not begun, which is the ordinary case of a
-	 * member who came in during the window. {@link TeamApi#WHO_STANDS_IN_A_TEAM} counts him, and so
+	 * member who came in during the window. {@link TeamApi#whoStandsInATeam} counts him, and so
 	 * the seat may be handed to him; the case above it hands it the other way, to a member whose
 	 * season HAS begun.
 	 */
@@ -738,11 +743,17 @@ class TeamAdministrationWriteApiTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, "
+						+ " (select id from place where rank = 1), 2027, false, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, String.format("%016x", ++issued))
 				.update();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written false on purpose: since AF-1
+		   nothing reads it, and a reader that did would turn him away. */
+		if (number != null) {
+			HeldOn.activeAt(db, number, OUTSIDE_THE_WINDOW.atZone(SeasonClock.ZONE));
+		}
 	}
 
 	/** Somebody who registered and has no member number (V16), which a seat may still name. */

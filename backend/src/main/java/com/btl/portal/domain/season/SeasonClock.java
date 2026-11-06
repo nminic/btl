@@ -463,6 +463,54 @@ public final class SeasonClock {
 	}
 
 	/**
+	 * THE SEASONS A ROW OF {@code membership} MAKES A MEMBER ACTIVE IN AT THIS MOMENT, both ends
+	 * included.
+	 *
+	 * <p>PDL, „Članstvo je činjenica po sezoni" (13.09.2026): „Zastavica „aktivan" prestaje da bude
+	 * podatak i postaje izvedena: aktivan je onaj ko ima zapis za tekuću sezonu, a u prelaznom roku i
+	 * onaj ko ga ima za narednu." And the owner on 06.11.2026, chosen among the options offered with
+	 * my recommendation: „Član sa članarinom samo za sezonu koja je upravo završila ostaje aktivan
+	 * 1. januara do 16:00, svuda [...] U 16:00:00 postaje neaktivan."
+	 *
+	 * <ul>
+	 * <li><b>The far end is {@link #seasonBeingPaidFor}</b>: the running season outside the transfer
+	 * window and the next one inside it, which is „u prelaznom roku i onaj ko ga ima za narednu".
+	 * <li><b>The near end is the earliest season {@link #isTheSeasonBeingRun}</b>, and when no season
+	 * of the league is being run (the autumn of 2026) it is the far end. From midnight to 16:00 on
+	 * 1 January that earliest season is the one just ended, because it has not frozen; from 16:00:00
+	 * it is the new one. So neither midnight nor 10:00 moves the answer, and 16:00:00 does, which is
+	 * the same {@link #isFrozen} the tables freeze by.
+	 * </ul>
+	 *
+	 * <p><b>A cancelled season and a payment still awaited write no row</b> („Stornirana uplata i
+	 * ona koja se čeka ne prave zapis"), so they are answered here by being absent, and so is the
+	 * cancellation of the new season before 16:00 on 1 January: whoever still holds the season just
+	 * ended is active until 16:00 like anybody else who holds only it (owner, 06.11.2026).
+	 *
+	 * @param at the moment being asked about, in any zone: it is read in the league's
+	 */
+	public static ActiveSeasons seasonsAMemberIsActiveIn(ZonedDateTime at) {
+		int last = seasonBeingPaidFor(at);
+
+		for (int season = FIRST_SEASON; season < last; season++) {
+			if (isTheSeasonBeingRun(season, at)) {
+				return new ActiveSeasons(season, last);
+			}
+		}
+
+		return new ActiveSeasons(last, last);
+	}
+
+	/**
+	 * The seasons from the first to the last, both included, a row of which makes a member active.
+	 *
+	 * @param first the earliest season
+	 * @param last  the latest season, never earlier than {@code first}
+	 */
+	public record ActiveSeasons(int first, int last) {
+	}
+
+	/**
 	 * WHETHER A SEASON OF THE LEAGUE HAS FROZEN BY THIS MOMENT, and a year before the first season
 	 * has not, because it was never one.
 	 *

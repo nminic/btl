@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import java.time.ZonedDateTime;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -143,16 +144,22 @@ class PairApiTest {
 	 */
 	private void member(String number, String first, String last, String gender,
 			boolean feeStanding) {
-		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
+		long made = db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, first_season, active, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (" + number + ", ?, ?, ?, date '1990-01-01',"
 						+ " (select id from place where rank = 1), 2027, ?, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
-						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(first, last, gender, feeStanding, String.format("%016x", ++issued))
-				.update();
+						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
+				/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it, so a member
+				   in good standing carries false and one whose fee does not stand carries true. */
+				.params(first, last, gender, !feeStanding, String.format("%016x", ++issued))
+				.query(Long.class).single();
+
+		if (feeStanding) {
+			HeldOn.activeAt(db, made, ZonedDateTime.now());
+		}
 	}
 
 	/** By surname and not by member number, because one of the ten has no number. */
@@ -476,7 +483,8 @@ class PairApiTest {
 		List<String> didNotRenew = List.of("000203", "000206");
 
 		assertThat(db.sql("select c.member_number from competitor c"
-						+ " where not c.active and exists (select 1 from racing_pair p"
+						+ " where not exists (select 1 from membership m where m.competitor_id = c.id)"
+						+ " and exists (select 1 from racing_pair p"
 						+ "   where p.man_id = c.id or p.woman_id = c.id)"
 						+ " order by c.member_number").query(String.class).list())
 				.as("the numbers refused below are not the numbers of the halves that did not"

@@ -28,6 +28,7 @@ import java.time.Duration;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -752,11 +753,14 @@ class MyResultSubmissionsApiTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name,"
 						+ " address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, "
+						+ " (select id from place where rank = 1), 2027, false, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, first, last, String.format("%016x", ++issued))
 				.update();
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written false on purpose: since AF-1
+		   nothing reads it, and a door that did would turn him away. */
+		HeldOn.activeAt(db, number, ZonedDateTime.now(clock));
 	}
 
 	private long eventInATownOfTheBook(String name, String day) {

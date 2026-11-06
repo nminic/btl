@@ -2354,14 +2354,14 @@ describe('CompetitorProfile', () => {
     renderAt('/sr/takmicar/000001')
 
     await screen.findByRole('heading', { level: 1 })
-    await user.click(screen.getByRole('link', { name: 'Priznanja i nagrade' }))
+    await user.click(within(screen.getByRole('navigation', { name: 'Delovi profila' })).getByRole('link', { name: 'Priznanja' }))
 
     expect(await screen.findByRole('heading', { name: /^Pehari \d+$/ })).toBeVisible()
     /* The season control stands on this part too, and narrows it (owner,
        31.07.2026): one choice at the top of the page governs both. */
     expect(screen.getByLabelText('Godina')).toBeVisible()
 
-    await user.click(screen.getByRole('link', { name: 'Pregled' }))
+    await user.click(within(screen.getByRole('navigation', { name: 'Delovi profila' })).getByRole('link', { name: 'Rezultati' }))
     expect(await screen.findByRole('region', { name: 'Zbirna statistika' })).toBeVisible()
   })
 

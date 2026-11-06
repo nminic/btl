@@ -25,6 +25,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -89,7 +90,7 @@ class InboxWriteApiTest {
 
 	private static final String SENDER = "000033";
 
-	/** A member whose fee has lapsed: {@code active} is false, so the portal shows him nowhere. */
+	/** A member whose fee has lapsed: he holds no season that counts, so the portal shows him nowhere. */
 	private static final String LAPSED = "000044";
 
 	/**
@@ -171,8 +172,15 @@ class InboxWriteApiTest {
 						+ " values (?, ?, ?, 'F', date '1990-01-01', (select id from place where rank = 1),"
 						+ " 2027, ?, ?, '', ?, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, first, last, active, String.format("%016x", ++issued), hidden)
+				.params(number, first, last, !active, String.format("%016x", ++issued), hidden)
 				.update();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
+		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
+		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		if (active) {
+			HeldOn.activeAt(db, number, ZonedDateTime.now());
+		}
 	}
 
 	private void account(String email, String role, String first, String last) {

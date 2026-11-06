@@ -803,8 +803,8 @@
     "clearFilters": "Clear the filters",
     "parts": {
       "label": "Parts of the profile",
-      "overview": "Overview",
-      "awards": "Awards and prizes",
+      "overview": "Results",
+      "awards": "Awards",
       "data": "Details"
     },
     "moreDucats": "Load more ducats",

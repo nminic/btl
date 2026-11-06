@@ -705,6 +705,37 @@ class MeApiTest {
 	}
 
 	/**
+	 * HE IS COUNTED EVERYBODY HE BROUGHT IN WHO EVER HELD A MEMBERSHIP, AND NOT ONLY THOSE WHOSE FEE STANDS NOW.
+	 *
+	 * <p>The owner, 06.11.2026, chosen among the options offered with my recommendation: „Broj dovedenih članova
+	 * broji svakoga ko je ikad imao članarinu, ne samo one kojima članarina sada važi". Asked in June 2028, when
+	 * the seasons the caller's recruits held (2027) no longer count: whoever held one is counted, and whoever never
+	 * held a row is not. So the lapsed recruit, given his 2027 here, is counted with the two others, and the one
+	 * the lapsed member brought in and who never got a number is not counted to him.
+	 *
+	 * <p>The wrong counts are all different numbers: counting only the members active in June 2028 answers the
+	 * caller 0, counting the flag answers him 2, and counting every recruit answers the lapsed member 2.
+	 */
+	@Test
+	void heIsCountedEverybodyHeBroughtInWhoEverHeldAMembership() throws Exception {
+		HeldOn.season(db, competitorIdOf(LAPSED), 2027, "feeExempt");
+		clock.moveTo(Instant.parse("2028-06-15T10:00:00Z"));
+
+		assertThat(howMany("referred_by = ? and exists(select 1 from membership m"
+						+ " where m.competitor_id = competitor.id and m.season >= 2028)", competitorIdOf(ME)))
+				.as("somebody the caller brought in holds a season that counts in June 2028, so a count of the"
+						+ " members active now is not told from a count of those who ever held one")
+				.isZero();
+
+		assertThat(answerFor(MY_ACCOUNT).path("member").path("referredCount").asInt())
+				.as("the caller is not counted the three he brought in who ever held a membership")
+				.isEqualTo(3);
+		assertThat(answerFor(THE_LAPSED_ACCOUNT).path("member").path("referredCount").asInt())
+				.as("the lapsed member is counted the recruit who never held a membership, or not the one who did")
+				.isEqualTo(1);
+	}
+
+	/**
 	 * AND THE OTHER DOOR ANSWERS NEITHER OF THEM, TO HIM OR TO ANYBODY.
 	 *
 	 * <p><b>This case held the opposite claim between 21.09.2026 and 25.09.2026 and is
@@ -1094,6 +1125,11 @@ class MeApiTest {
 	 */
 	@Test
 	void andWhetherHisFeeStandsWhichTheNumberAloneCannotSay() throws Exception {
+		/* THE FLAG IS TURNED AGAINST THE SEASONS FOR THIS CASE: since AF-1 the answer is the seasons he holds
+		   (`AMemberIsActive`), so a route that still read `competitor.active` would answer all four the other
+		   way round. */
+		db.sql("update competitor set active = not active").update();
+
 		JsonNode standing = answerFor(MY_ACCOUNT).path("member");
 		JsonNode alsoStanding = answerFor(HER_ACCOUNT).path("member");
 		JsonNode lapsed = answerFor(THE_LAPSED_ACCOUNT).path("member");
@@ -1108,12 +1144,10 @@ class MeApiTest {
 
 		assertThat(standing.path("active").asBoolean())
 				.as("the caller's fee stands and he was told it does not")
-				.isEqualTo(Boolean.parseBoolean(columnOf("active", ME)))
 				.isTrue();
 		assertThat(alsoStanding.path("active").asBoolean())
 				.as("she pays and her fee stands, and a flag worked out from the basis (the caller is"
 						+ " freed of the fee, she is not) was handed back to her instead")
-				.isEqualTo(Boolean.parseBoolean(columnOf("active", ABROAD)))
 				.isTrue();
 		assertThat(basisOf(ABROAD))
 				.as("she is freed of the fee after all, so the row that separates the flag from the"
@@ -1122,13 +1156,9 @@ class MeApiTest {
 		assertThat(lapsed.path("active").asBoolean())
 				.as("a member whose fee has lapsed was told it stands, which is what the portal could"
 						+ " not tell him from a standing one until this flag existed")
-				.isEqualTo(Boolean.parseBoolean(columnOf("active", LAPSED)))
 				.isFalse();
 		assertThat(neverPaid.path("active").asBoolean())
 				.as("somebody who registered and never paid was told his fee stands")
-				.isEqualTo(Boolean.parseBoolean(
-						db.sql("select active::text from competitor where member_number is null")
-								.query(String.class).single()))
 				.isFalse();
 
 		/* The pair that tells three people apart, asked of the answers themselves. The lapsed

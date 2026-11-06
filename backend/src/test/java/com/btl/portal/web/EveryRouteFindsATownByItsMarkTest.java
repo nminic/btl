@@ -33,6 +33,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -384,10 +385,14 @@ class EveryRouteFindsATownByItsMarkTest {
 							+ " birthday_shown, father_name, address, shirt_size,"
 							+ " health_statement_at)"
 							+ " values ('000700', 'Trkac', 'Trkacic', 'M', date '1990-01-01',"
-							+ " (select id from place where rank = 1), 2027, true,"
+							+ " (select id from place where rank = 1), 2027, false,"
 							+ " 'aaaabbbbccccdddd', '', false, 'none', 'Otac',"
 							+ " 'Ulica 1', 'M', timestamptz '2026-01-01 10:00:00+00')")
 					.update();
+
+			/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written false on purpose: since AF-1
+			   nothing reads it, and a reader that did would turn him away. */
+			HeldOn.activeAt(db, "000700", ZonedDateTime.now(clock));
 
 			racing = account(A_MEMBER_WHO_RACES);
 

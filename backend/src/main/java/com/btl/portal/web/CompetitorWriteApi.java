@@ -137,8 +137,8 @@ import java.util.regex.Pattern;
  * became a member cannot be reached through this address at all. Nothing has decided what
  * becomes of such a row and this route does not decide it either.
  *
- * <p><b>WHAT IS NOT ASKED HERE, AND ITS ABSENCE IS DELIBERATE: {@code competitor.active}.</b>
- * Almost every other resource reads it, because the owner's rule of 19.09.2026 refuses every
+ * <p><b>WHAT IS NOT ASKED HERE, AND ITS ABSENCE IS DELIBERATE: whether he is active
+ * ({@link AMemberIsActive}).</b> Almost every other resource asks it, because the owner's rule of 19.09.2026 refuses every
  * action to a member whose fee has lapsed. That rule is about what a MEMBER may do with his
  * own things; this is the administration acting on him, and a member whose fee lapsed is
  * exactly the one an administrator is most likely to be deleting. Read here, the route would
@@ -808,7 +808,7 @@ class CompetitorWriteApi {
 	 * <p><b>SO THE TWO STATES OF PDL'S OWN SENTENCE ARE TWO DIFFERENT COLUMNS, AND
 	 * NEITHER IS DERIVED FROM THE OTHER.</b> „Vidljiv u ligi" is the {@code competitor}
 	 * row, which exists from this moment and which the administration works with;
-	 * {@code active} is false, so {@link CompetitorApi}'s {@code where c.active} keeps him
+	 * he holds no season, so {@link CompetitorApi}'s {@link AMemberIsActive} keeps him
 	 * off the public list until his fee is recorded, exactly as it does for somebody who
 	 * registered himself. „Ne moze se prijaviti" is
 	 * {@link com.btl.portal.domain.account.SignIn}, which refuses an unconfirmed address

@@ -570,7 +570,14 @@ class TeamApiTest {
 						+ " (select id from place where name = 'Beograd'), null, null,"
 						+ " 2027, ?, ?, '', false, 'none', 'Otac', 'Ulica 1',"
 						+ " 'M', timestamptz '2026-09-01 10:00:00+00', " + photo + ")")
-				.params(number, first, last, gender, active, referralCode).update();
+				.params(number, first, last, gender, !active, referralCode).update();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
+		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
+		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		if (active) {
+			HeldOn.activeAt(db, number, Instant.parse("2027-10-20T09:00:00Z").atZone(SeasonClock.ZONE));
+		}
 	}
 
 	/** The town out of the codebook, which is one of the two shapes V11 allows. */
@@ -640,17 +647,22 @@ class TeamApiTest {
 	 * @return his {@code competitor.id}, which is what a membership is written by
 	 */
 	private long standingWithNoNumber(String first, String last, String referralCode) {
-		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+		long made = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, city, country_id, first_season,"
 						+ " active, referral_code, bio,"
 						+ " profile_hidden, birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at, photo_id)"
 						+ " values (null, ?, ?, 'M', date '1992-03-08',"
 						+ " (select id from place where name = 'Beograd'), null, null,"
-						+ " 2027, true, ?, '', false, 'none', 'Otac',"
+						+ " 2027, false, ?, '', false, 'none', 'Otac',"
 						+ " 'Ulica 3', 'S', timestamptz '2026-09-01 10:00:00+00', null)"
 						+ " returning id")
 				.params(first, last, referralCode).query(Long.class).single();
+
+		/* HE STANDS BY THE SEASON HE HOLDS, and his flag says false: since AF-1 nothing reads it. */
+		HeldOn.activeAt(db, made, Instant.parse("2027-10-20T09:00:00Z").atZone(SeasonClock.ZONE));
+
+		return made;
 	}
 
 	/** The switch in the member's Settings, written where {@code CompetitorApi} reads it. */
@@ -766,7 +778,7 @@ class TeamApiTest {
 						+ " from team_membership m"
 						+ " join competitor c on c.id = m.competitor_id"
 						+ " join team t on t.id = m.team_id"
-						+ " where m.season_to is null and c.active and c.profile_hidden"
+						+ " where m.season_to is null and exists(select 1 from membership held_now where held_now.competitor_id = c.id and held_now.season = 2027) and c.profile_hidden"
 						+ " order by t.slug, c.member_number")
 				.query((row, one) -> new Owed(row.getString(1), row.getString(2), row.getInt(3)))
 				.list();
@@ -858,7 +870,7 @@ class TeamApiTest {
 						+ " from team_membership m"
 						+ " join competitor c on c.id = m.competitor_id"
 						+ " join team t on t.id = m.team_id"
-						+ " where m.season_to is not null and c.active"
+						+ " where m.season_to is not null and exists(select 1 from membership held_now where held_now.competitor_id = c.id and held_now.season = 2027)"
 						+ " order by t.slug, c.member_number, m.season_from")
 				.query((row, one) -> new Left(row.getString(1), row.getString(2), row.getInt(3),
 						row.getInt(4)))
@@ -1429,7 +1441,7 @@ class TeamApiTest {
 
 		assertThat(db.sql("select a.email from account a join role r on r.id = a.role_id"
 						+ " left join competitor c on c.id = a.competitor_id"
-						+ " where not (coalesce(c.active, false) or r.rights_mode <> 'none')")
+						+ " where not (exists(select 1 from membership held_now where held_now.competitor_id = c.id and held_now.season = 2027) or r.rights_mode <> 'none')")
 				.query(String.class).list())
 				.as("the signed in accounts of the fixture who are neither an active member nor the"
 						+ " administration are not the ones this case calls owed what a visitor is")
@@ -1509,7 +1521,7 @@ class TeamApiTest {
 		List<Link> standing = db.sql("select c.member_number, m.team_id, m.season_from"
 						+ " from team_membership m"
 						+ " join competitor c on c.id = m.competitor_id"
-						+ " where m.season_to is null and c.active")
+						+ " where m.season_to is null and exists(select 1 from membership held_now where held_now.competitor_id = c.id and held_now.season = 2027)")
 				.query((row, one) -> new Link(row.getString(1), row.getLong(2), row.getInt(3)))
 				.list();
 
@@ -2183,7 +2195,7 @@ class TeamApiTest {
 	@Test
 	void theSeatMayNameAMemberTheAdministrationsOwnListDoesNotCarry() throws Exception {
 		String lapsed = db.sql("select seat.member_number from team t"
-						+ " join competitor seat on seat.id = t.admin_id where not seat.active")
+						+ " join competitor seat on seat.id = t.admin_id where not exists(select 1 from membership held_now where held_now.competitor_id = seat.id and held_now.season = 2027)")
 				.query(String.class).single();
 
 		String teams = whole(THE_SUPERADMIN);
@@ -2461,7 +2473,7 @@ class TeamApiTest {
 	void theSixWhoContestTheEmptySeatDifferInTheSixWaysTheRuleIsAbout() {
 		Map<String, Object> pins = new HashMap<>();
 
-		for (Map.Entry<String, Object> row : db.sql("select c.member_number, c.active,"
+		for (Map.Entry<String, Object> row : db.sql("select c.member_number, exists(select 1 from membership held_now where held_now.competitor_id = c.id and held_now.season = 2027),"
 						+ " m.season_from, m.season_to, c.id, m.id"
 						+ " from team_membership m join competitor c on c.id = m.competitor_id"
 						+ " where m.team_id = (select id from team where slug = 'vardarski-krug')")
@@ -2557,7 +2569,7 @@ class TeamApiTest {
 		List<Integer> seasons = db.sql("select m.season_from from team_membership m"
 						+ " join competitor c on c.id = m.competitor_id"
 						+ " where m.team_id = (select id from team where slug = 'vardarski-krug')"
-						+ " and m.season_to is null and c.active and c.member_number is not null")
+						+ " and m.season_to is null and exists(select 1 from membership held_now where held_now.competitor_id = c.id and held_now.season = 2027) and c.member_number is not null")
 				.query(Integer.class).list();
 
 		assertThat(seasons).as("the team whose seat names nobody has no standing member at all, so"

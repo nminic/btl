@@ -656,7 +656,9 @@ class CompetitorApiTest {
 						+ " values (?, ?, ?, ?, date '" + born + "', " + place + ", " + city + ", "
 						+ country + ", ?, ?, ?, " + broughtBy + ", ?, ?, ?, 'Otac', 'Ulica 1',"
 						+ " 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, first, last, gender, firstSeason, active,
+				/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it, so a member
+				   in good standing carries false and one whose fee has lapsed carries true. */
+				.params(number, first, last, gender, firstSeason, !active,
 						referralCode, bio, hidden, birthdayShown)
 				.query(Long.class).single();
 
@@ -666,8 +668,11 @@ class CompetitorApiTest {
 		/* THE BASIS IS A ROW OF THE SEASON ON SALE SINCE V62, and at AUTUMN_2026 that is 2027:
 		   the calendar answers 2026, which the league does not have, so `seasonBeingPaidFor`
 		   answers the first season. Written for that season and no other, which is what the
-		   per-person column used to stand for in every case of this file. */
-		HeldOn.season(db, id, THE_SEASON_ON_SALE, basis);
+		   per-person column used to stand for in every case of this file. Since AF-1 that row is also
+		   what makes him active, so the member whose fee has lapsed holds the season AFTER it instead, which
+		   does not count at AUTUMN_2026: he still has a basis to be told apart by, on a season that does
+		   not make him active. */
+		HeldOn.season(db, id, active ? THE_SEASON_ON_SALE : THE_SEASON_ON_SALE + 1, basis);
 	}
 
 	/** What {@code SeasonClock.seasonBeingPaidFor} answers at {@link #AUTUMN_2026}. */
@@ -963,7 +968,8 @@ class CompetitorApiTest {
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedIsNotOnTheList() throws Exception {
-		assertThat(db.sql("select count(*) from competitor where not active")
+		assertThat(db.sql("select count(*) from competitor c where c.member_number is not null"
+						+ " and not exists(select 1 from membership m where m.competitor_id = c.id and m.season = 2027)")
 				.query(Integer.class).single())
 				.as("the fixture has nobody whose fee has lapsed, so this case asserts nothing")
 				.isEqualTo(1);
@@ -2160,7 +2166,7 @@ class CompetitorApiTest {
 		   member this fixture writes holds one. */
 		for (Map.Entry<String, String> row : db.sql("select c.member_number, m.basis"
 						+ " from competitor c join membership m on m.competitor_id = c.id"
-						+ " and m.season = ? where c.active").param(THE_SEASON_ON_SALE)
+						+ " and m.season = ?").param(THE_SEASON_ON_SALE)
 				.query((one, number) -> Map.entry(one.getString(1), one.getString(2))).list()) {
 			onTheRows.put(row.getKey(), row.getValue());
 		}
@@ -2170,9 +2176,10 @@ class CompetitorApiTest {
 						+ " constant would satisfy this case")
 				.hasSizeGreaterThan(1);
 
+		/* HIS OWN BASIS IS OF THE SEASON AFTER THE ONE ON SALE, since his fee has lapsed (see `member`). */
 		String his = db.sql("select basis from membership where season = ? and competitor_id ="
 						+ " (select competitor_id from account where email = ?)")
-				.params(THE_SEASON_ON_SALE, THE_MODERATOR_OVER_THE_MEMBERS).query(String.class)
+				.params(THE_SEASON_ON_SALE + 1, THE_MODERATOR_OVER_THE_MEMBERS).query(String.class)
 				.single();
 
 		assertThat(onTheRows.values().stream().filter(one -> !one.equals(his)).toList())
@@ -2381,7 +2388,7 @@ class CompetitorApiTest {
 						+ " on c.id = m.competitor_id where m.season = ? and c.member_number = ?")
 				.params(THE_SEASON_ON_SALE, number).query(String.class).single();
 		assertThat(db.sql("select count(*) from competitor c join membership m"
-						+ " on m.competitor_id = c.id and m.season = ? where c.active and m.basis <> ?")
+						+ " on m.competitor_id = c.id and m.season = ? where m.basis <> ?")
 				.params(THE_SEASON_ON_SALE, hisBasis).query(Integer.class).single())
 				.as("every other row on the list is held on the same basis as his (%s), so his own"
 						+ " row carrying another row's word would read the same", hisBasis)

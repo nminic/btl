@@ -220,8 +220,9 @@ class RightToRankTest {
 		assertThat(standsIn(2027)).isEqualTo(new TreeMap<>(Map.ofEntries(
 				Map.entry("000201", true), Map.entry("000202", false), Map.entry("000203", false),
 				Map.entry("000204", false), Map.entry("000205", false), Map.entry("000206", false),
-				Map.entry("000207", true), Map.entry("000208", true), Map.entry("000209", false),
-				Map.entry("000210", false))));
+				Map.entry("000207", true), Map.entry("000208", true), Map.entry("000209", false))))
+				/* 000210 HOLDS NO SEASON, so since AF-1 he is not on the list at all (PDL 13.09.2026). */
+				.doesNotContainKey("000210");
 		assertThat(answerText("/api/competitors")).doesNotContain("unranked");
 	}
 
@@ -232,10 +233,12 @@ class RightToRankTest {
 	void aYearOnTheNextSeasonIsAskedOfItsOwnCategories() throws Exception {
 		clock.moveTo(JUNE_2028);
 
+		/* 000201 AND 000202 HOLD ONLY 2027, so in June 2028 they are not active (AF-1) and not on the list at
+		   all; that is how they are not in the table of 2028. */
 		assertThat(standsIn(2028)).containsEntry("000208", false)
 				.containsEntry("000209", true)
-				.containsEntry("000202", false)
-				.containsEntry("000201", false);
+				.doesNotContainKey("000202")
+				.doesNotContainKey("000201");
 		assertThat(standsIn(2027)).as("the season before keeps its table").containsEntry("000208", true)
 				.containsEntry("000209", false);
 	}
@@ -307,7 +310,9 @@ class RightToRankTest {
 						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Ime', 'Prezime', 'M', date '1990-05-05',"
-						+ " (select id from place where rank = 1), null, null, 2027, true,"
+						/* THE FLAG IS FALSE FOR EVERYBODY ON PURPOSE: since AF-1 nothing reads it, and the seasons
+						   each of them holds are what put him on the list. */
+						+ " (select id from place where rank = 1), null, null, 2027, false,"
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, "00112233" + number + "aa")

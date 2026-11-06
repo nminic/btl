@@ -67,6 +67,18 @@ class ResultApiTest {
 	 */
 	private static final Instant NEW_YEARS_NIGHT = Instant.parse("2027-12-31T23:30:00Z");
 
+	/**
+	 * HALF AN HOUR AFTER THE TABLES OF 2027 FROZE, 16:30 ON 1 JANUARY 2028 IN BELGRADE, where every case
+	 * about the member whose fee has lapsed stands since AF-1.
+	 *
+	 * <p>The owner, 06.11.2026, chosen among the options offered with my recommendation: „Član sa
+	 * članarinom samo za sezonu koja je upravo završila ostaje aktivan 1. januara do 16:00, svuda [...]
+	 * U 16:00:00 postaje neaktivan." So at {@link #NEW_YEARS_NIGHT} the member who holds only 2027 is
+	 * still active and is served both of his runs, which {@code untilFourOnNewYearsDayTheSeasonJustEnded
+	 * KeepsHimOnTheList} holds; here he is not, and the running season of 2028 is withheld from him.
+	 */
+	private static final Instant AFTER_THE_FREEZE = Instant.parse("2028-01-01T15:30:00Z");
+
 	/** The same fixture, a year on, when 2028 is history like every season before it. */
 	private static final Instant A_YEAR_LATER = Instant.parse("2029-06-15T12:00:00Z");
 
@@ -104,7 +116,7 @@ class ResultApiTest {
 
 	@BeforeEach
 	void theClockStandsAtNewYear() {
-		clock.moveTo(NEW_YEARS_NIGHT);
+		clock.moveTo(AFTER_THE_FREEZE);
 	}
 
 	/**
@@ -195,7 +207,9 @@ class ResultApiTest {
 						+ " (select id from place where rank = 1), null, null, 2027, ?,"
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, first, last, gender, feeStanding, referral).update();
+				/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it, and the
+				   seasons `memberOf` writes are what make each of them active or not. */
+				.params(number, first, last, gender, !feeStanding, referral).update();
 	}
 
 	private void event(String slug, String name, String day) {
@@ -295,6 +309,15 @@ class ResultApiTest {
 	private void aMember(String number, String first, String last, String gender, String born,
 			boolean feeStanding) {
 		member(number, first, last, gender, born, "0011223344" + number, feeStanding);
+
+		/* A MEMBER WHOSE FEE STANDS HOLDS EVERY SEASON THE CASES OF THIS FILE ASK ABOUT, 2027 TO 2029,
+		   since AF-1 being active is a season that counts at the moment the case reads; the one whose fee
+		   has lapsed holds none. */
+		if (feeStanding) {
+			for (int season = 2027; season <= 2029; season++) {
+				memberOf(number, season);
+			}
+		}
 	}
 
 	/** The beginners' category, wished for 2027 and so for every season after it (V81). */
@@ -384,7 +407,8 @@ class ResultApiTest {
 	private void theLapsedMemberStillRanOnBothSidesOfTheNewYear() {
 		assertThat(db.sql("select to_char(r.race_date, 'YYYY-MM-DD') from result r"
 						+ " join competitor c on c.id = r.competitor_id"
-						+ " where c.member_number = ? and not c.active order by r.race_date")
+						+ " where c.member_number = ? and not exists(select 1 from membership m"
+						+ " where m.competitor_id = c.id and m.season = 2028) order by r.race_date")
 						.param(THE_LAPSED_MEMBER).query(String.class).list())
 				.as("the fixture no longer gives the member whose fee has lapsed one run in the"
 						+ " season that is running and one in a season before it, so this case"
@@ -562,7 +586,8 @@ class ResultApiTest {
 	void aMemberWhoseFeeHasLapsedKeepsTheSeasonsHeWasAMemberIn() throws Exception {
 		assertThat(db.sql("select to_char(r.race_date, 'YYYY-MM-DD') from result r"
 						+ " join competitor c on c.id = r.competitor_id"
-						+ " where c.member_number = ? and not c.active order by r.race_date")
+						+ " where c.member_number = ? and not exists(select 1 from membership m"
+						+ " where m.competitor_id = c.id and m.season = 2028) order by r.race_date")
 						.param(THE_LAPSED_MEMBER).query(String.class).list())
 				.as("the fixture no longer gives the member whose fee has lapsed one run in the"
 						+ " season that is running and one in a season before it, so this case"
@@ -632,6 +657,10 @@ class ResultApiTest {
 	@Test
 	void theFirstSeasonItselfIsStillWithheldWhileItRuns() throws Exception {
 		clock.moveTo(Instant.parse("2027-06-15T12:00:00Z"));
+		/* IN JUNE 2027 A MEMBER WHOSE FEE HAS LAPSED HOLDS NO 2027 AT ALL: one who holds it is active
+		   (AF-1), so the season he held is taken away for this case. */
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
+				.param(THE_LAPSED_MEMBER).update();
 
 		assertThat(daysServedFor(THE_LAPSED_MEMBER))
 				.as("the run of 2027 of a member whose fee has lapsed was served while 2027 is running")
@@ -1215,7 +1244,9 @@ class ResultApiTest {
 	 * runner to the DAY of the result. Here it is held to the other reader of the same rule.
 	 *
 	 * <p>The member whose fee has lapsed is not on the list, by the decision of 13.09.2026 that
-	 * this increment leaves alone, so he is not compared: nothing to compare him with is the very
+	 * this increment leaves alone, so he is not compared (and since AF-1 a member is on it exactly while he
+	 * holds a season that counts, so in the middle of 2027 the member who holds 2027 is on it and the one
+	 * who holds only 2028 is not): nothing to compare him with is the very
 	 * reason the runner exists. The floors ask that every moment compares what the fixture writes
 	 * for it, that more than one band is compared, and that one member is compared in two seasons
 	 * and in both of his bands, since a list and a runner that both answered one constant, or one
@@ -1406,6 +1437,43 @@ class ResultApiTest {
 	 * being asked: a clock read per row through it would be invisible to the count, which is how
 	 * {@code theClockIsNotAskedAgainForEachRowOfTheAnswer} first came to pass for the wrong reason.
 	 */
+	/**
+	 * UNTIL 16:00 ON 1 JANUARY THE SEASON JUST ENDED KEEPS HIM, AND HALF PAST MIDNIGHT IS NOT 16:00.
+	 *
+	 * <p>The owner, 06.11.2026: „Član sa članarinom samo za sezonu koja je upravo završila ostaje aktivan
+	 * 1. januara do 16:00, svuda". At half past midnight the member who holds only 2027 is still active,
+	 * so both of his runs are served, the one of the season that is already running included; at 16:30
+	 * the run of 2028 is withheld ({@link #aMemberWhoseFeeHasLapsedKeepsTheSeasonsHeWasAMemberIn}).
+	 */
+	@Test
+	void untilFourOnNewYearsDayTheSeasonJustEndedKeepsHimOnTheList() throws Exception {
+		clock.moveTo(NEW_YEARS_NIGHT);
+
+		assertThat(daysServedFor(THE_LAPSED_MEMBER))
+				.as("the member who holds only 2027 lost the run of 2028 at half past midnight on 1 January,"
+						+ " and the owner decided he stays active until 16:00")
+				.containsExactly(NEW_YEARS_EVE, NEW_YEARS_DAY);
+	}
+
+	/**
+	 * AND THE SEASON WITHHELD IS THE YEAR IN BELGRADE AND NOT IN UTC, measured on the one hour where the two
+	 * differ, on a member who holds no season at all and so is not active then.
+	 *
+	 * <p>At {@link #NEW_YEARS_NIGHT} UTC is still in 2027 and Belgrade is in 2028. A server reading its own
+	 * zone would withhold his run of 2027 and serve the one of 2028; read in the league's zone it is the
+	 * other way round.
+	 */
+	@Test
+	void theRunningSeasonIsTheYearInTheLeaguesOwnZone() throws Exception {
+		clock.moveTo(NEW_YEARS_NIGHT);
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
+				.param(THE_LAPSED_MEMBER).update();
+
+		assertThat(daysServedFor(THE_LAPSED_MEMBER))
+				.as("the running season was read in a zone other than the league's")
+				.containsExactly(NEW_YEARS_EVE);
+	}
+
 	static final class AClockTheCaseMoves extends Clock {
 
 		private Instant now;
@@ -1481,7 +1549,7 @@ class ResultApiTest {
 		@Bean
 		@Primary
 		AClockTheCaseMoves aClockTheCaseMoves() {
-			return new AClockTheCaseMoves(NEW_YEARS_NIGHT);
+			return new AClockTheCaseMoves(AFTER_THE_FREEZE);
 		}
 
 	}
