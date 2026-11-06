@@ -72,8 +72,9 @@
 #
 # WHAT IT STILL DOES NOT SEE, measured rather than assumed:
 #
-#   - ROWS. Whether `place` holds the right 47016 towns is section 5; whether a migration says what
-#     it should say is the gate's question, answered against a schema built from nothing.
+#   - ROWS. Whether every table the migrations seed still holds as many rows as they leave is
+#     section 5; whether a migration says what it should say is the gate's question, answered
+#     against a schema built from nothing.
 #   - WHO OWNS an object, and the privileges on a column, a sequence or the schema. The dumps are
 #     taken `--no-owner --no-acl`, because the reference is built by `postgres` and QA runs as
 #     `btl_qa`, so ownership differs on every row by construction. What is compared instead is the
@@ -85,9 +86,10 @@
 #     That sentence stood here until 10.09.2026 and was overturned by measurement, so the running
 #     server is now asked directly whether it refuses a login without a password.
 #   - A REPEATABLE `R__` MIGRATION. The reference is built from `V*` only, so a view Flyway has
-#     applied from an `R__` file shows up as something QA carries and the migrations do not. No such
-#     file exists today; `V1` names the convention. Recorded 09.09.2026 rather than fixed, because
-#     it is a middle finding and those wait for the owner's word.
+#     applied from an `R__` file would show up as something QA carries and the migrations do not.
+#     No such file exists today; `V1` names the convention. Since 06.11.2026 section 3 REFUSES one,
+#     in the checkout or in the history, by name, instead of letting the schema comparison blame
+#     the wrong thing.
 #   - A MIGRATION THAT MAY NOT RUN IN A TRANSACTION. Flyway takes `executeInTransaction=false`;
 #     this applies each file with `psql -1`. None of the migrations needs it today. The day one does
 #     - `create index concurrently` is the likely one - it will fail HERE and be reported as a
@@ -107,14 +109,31 @@ psql() {
     -d "${QA_POSTGRES_DB:-btl_qa}" -tAc "$1"
 }
 
+# Made first, so that every section below has them and the way out removes them whichever one ends the run.
+live=$(mktemp)
+expected=$(mktemp)
+live_raw=$(mktemp)
+expected_raw=$(mktemp)
+# shellcheck disable=SC2064
+trap "docker rm -f '$REFERENCE' >/dev/null 2>&1 || true; rm -f '$live' '$expected' '$live_raw' '$expected_raw'" EXIT
+
 say '--- 1. kontejneri ---'
 docker compose -f compose.qa.yml ps --format '{{.Name}}\t{{.State}}\t{{.Status}}'
 
-for name in qa-postgres qa-backend qa-frontend; do
-  state=$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null || echo missing)
-  [ "$state" = running ] || fail "$name nije u stanju running nego $state"
+# The services are read off the compose file and not named here, so a fourth service with no
+# container, or one that is created and not running, is a failure and not a number that was
+# written by hand. `ps -a -q` also lists a container that exists and has stopped.
+services=$(docker compose -f compose.qa.yml config --services) \
+  || fail 'compose.qa.yml se ne cita, dakle spisak servisa nije poznat'
+[ -n "$services" ] || fail 'compose.qa.yml ne nosi nijedan servis'
+
+for service in $services; do
+  container=$(docker compose -f compose.qa.yml ps -a -q "$service")
+  [ -n "$container" ] || fail "servis $service nema kontejner"
+  state=$(docker inspect -f '{{.State.Status}}' "$container" 2>/dev/null || echo missing)
+  [ "$state" = running ] || fail "servis $service nije u stanju running nego $state"
 done
-say 'sva tri rade'
+say "svi servisi rade, ih je $(printf '%s\n' "$services" | wc -l)"
 
 say ''
 say '--- 2. bekend vidi bazu ---'
@@ -133,14 +152,39 @@ say '--- 3. svaka migracija koju main nosi je primenjena ---'
 
 # One version per file, read off the names rather than out of the SQL. A file is on main or it is
 # not, and nothing about what it contains matters here.
-want=$(ls "$MIGRATIONS" | sed -n 's/^V\([0-9][0-9]*\)__.*\.sql$/\1/p' | sort -n | tr '\n' ' ' | sed 's/ *$//')
-[ -n "$want" ] || fail "u $MIGRATIONS nema nijedne V<broj>__*.sql migracije, dakle checkout nije potpun"
+#
+# A REPEATABLE `R__` MIGRATION IS REFUSED, on either side, because the comparison below and the
+# reference database in section 4 both know only `V*`: a view Flyway applied from an `R__` file
+# would show up as something QA carries and the migrations do not, and the sentence that names the
+# cause would be wrong. Refusing it by name says the true thing at the first moment it can be true.
+ls "$MIGRATIONS" > "$live_raw"
+if grep -q '^R__' "$live_raw"; then
+  fail "u $MIGRATIONS stoji R__ migracija, koju ova provera ne zna; sema ispod bi bila poredjena bez nje"
+fi
 
-have=$(psql "select version from flyway_schema_history where success order by version::integer" \
-  | tr '\n' ' ' | sed 's/ *$//') \
-  || fail 'flyway_schema_history se ne cita, dakle Flyway nije ni krenuo'
+# The version AND the file name, because Flyway keeps both: a history row whose script was renamed
+# to something else is a different migration under the same number, and the numbers alone passed it.
+sed -n 's/^V\([0-9][0-9]*\)__.*\.sql$/\1 &/p' "$live_raw" | sort -n > "$expected_raw"
+[ -s "$expected_raw" ] || fail "u $MIGRATIONS nema nijedne V<broj>__*.sql migracije, dakle checkout nije potpun"
+
+# Into a file and not through a pipe, because `sh` has no pipefail: a psql that fails at the head of
+# a pipe is not seen, and the `|| fail` after it belongs to the last command of the pipe.
+psql "select version || ' ' || script from flyway_schema_history where success order by version::integer" \
+  > "$live_raw" || fail 'flyway_schema_history se ne cita, dakle Flyway nije ni krenuo'
+
+if [ "$(psql "select count(*) from flyway_schema_history where success and version is null")" != 0 ]; then
+  fail 'u istoriji stoji R__ migracija, koju ova provera ne zna'
+fi
+
+want=$(cut -d' ' -f1 "$expected_raw" | tr '\n' ' ' | sed 's/ *$//')
+have=$(cut -d' ' -f1 "$live_raw" | tr '\n' ' ' | sed 's/ *$//')
 
 [ "$want" = "$have" ] || fail "primenjene migracije su [$have], a main nosi [$want]"
+if ! diff "$expected_raw" "$live_raw" > /dev/null; then
+  say 'isti brojevi, drugi fajlovi (- main, + istorija):'
+  diff "$expected_raw" "$live_raw" | grep -E '^[<>]' || true
+  fail 'primenjene migracije nose druga imena od onih koje main nosi'
+fi
 say "primenjeno svih $(printf '%s' "$want" | wc -w): $want"
 
 failed=$(psql "select count(*) from flyway_schema_history where not success")
@@ -157,13 +201,6 @@ say '--- 4. sema je ono sto migracije opisuju, red za red ---'
 # `docker run` takes it. Measured: an image untagged while its container runs still resolves by
 # digest, and a digest that resolves to nothing exits 125 rather than pulling something else.
 image=$(docker inspect -f '{{.Image}}' qa-postgres)
-
-live=$(mktemp)
-expected=$(mktemp)
-live_raw=$(mktemp)
-expected_raw=$(mktemp)
-# shellcheck disable=SC2064
-trap "docker rm -f '$REFERENCE' >/dev/null 2>&1 || true; rm -f '$live' '$expected' '$live_raw' '$expected_raw'" EXIT
 
 docker rm -f "$REFERENCE" >/dev/null 2>&1 || true
 docker run -d --name "$REFERENCE" -e POSTGRES_PASSWORD=referentna -e POSTGRES_DB=ref "$image" >/dev/null
@@ -247,9 +284,14 @@ BAZA="select 'baza ' || d.datcollate || ' ' || d.datctype || ' ' || d.datlocprov
 # applied now, not that it is in force - measured, a setting written and not reloaded is
 # `applied=true` while the running value is still the old one - so `pending_restart` is beside it
 # and neither may be dropped for the other.
-FAJLOVI="select 'u-fajlu ' || name || ' = ' || setting
-       || ' iz ' || regexp_replace(sourcefile, '.*/', '')
-       || ' primenjeno=' || applied::text || coalesce(' greska=' || error, '')
+# `concat` and not `||`, because PostgreSQL gives a row it could not parse its `error` and NULL in
+# every other column, and a NULL anywhere in a `||` chain makes the whole line NULL: an empty line,
+# the text of the error never shown. Measured 06.11.2026 on a pg_hba.conf with two broken lines:
+# with `||` both came out as an empty line, with `concat` each carries its error. The count of
+# lines still changed, so the check did fail; what was lost was the sentence that says why.
+FAJLOVI="select concat('u-fajlu ', name, ' = ', setting,
+       ' iz ', regexp_replace(sourcefile, '.*/', ''),
+       ' primenjeno=', applied::text, coalesce(' greska=' || error, ''))
   from pg_file_settings
 union all
 select 'ceka-restart ' || name from pg_settings where pending_restart
@@ -257,13 +299,21 @@ union all
 select 'podesavanje ' || name || ' = ' || setting || ' (' || source || ')' from pg_settings
  where source not in ('default', 'client', 'session')
 union all
-select 'pristup ' || type || ' ' || array_to_string(database, ',') || ' ' || array_to_string(user_name, ',')
-       || ' ' || coalesce(address, '-') || coalesce('/' || netmask, '') || ' ' || auth_method
-       || coalesce(' greska=' || error, '')
+select concat('pristup ', coalesce(lpad(rule_number::text, 4, '0'), '----'), ' ', type, ' ',
+       array_to_string(database, ','), ' ', array_to_string(user_name, ','),
+       ' ', coalesce(address, '-'), coalesce('/' || netmask, ''), ' ', auth_method,
+       coalesce(' greska=' || error, ''))
   from pg_hba_file_rules
 union all
-select 'mapa ' || map_name || ' ' || sys_name || ' -> ' || pg_username || coalesce(' greska=' || error, '')
+select concat('mapa ', map_name, ' ', sys_name, ' -> ', pg_username, coalesce(' greska=' || error, ''))
   from pg_ident_file_mappings"
+
+# THE RULE'S NUMBER LEADS THE 'pristup' LINE, because pg_hba.conf is read top to bottom and the
+# first rule that matches decides: the lines are sorted by the client afterwards, and without the
+# number a file with the same rules in another order produced the same sorted text. Measured
+# 06.11.2026 on the rules of a fresh cluster with the catch-all moved from the bottom to the top:
+# no difference without the number, sixteen lines of difference with it. A rule that failed to
+# parse has no number and prints dashes.
 
 # WHETHER THE TRIGGERS FIRE, which has no DDL form at all: a foreign key is carried out by internal
 # triggers, `alter table ... disable trigger all` turns them off, and the DDL pg_dump writes is
@@ -336,9 +386,13 @@ VLASNIK="select 'prava-izvan-vlasnika ' || count(*)::text
 # another source address, and it is invisible again. The combinations have no end, which is the
 # shape the workspace rules say to stop enumerating.
 #
-# A reload ends it: after it, memory holds exactly what the file holds, and the file IS compared,
-# line for line, against the reference. So no rule that lives only in memory survives this check,
-# whatever it was narrowed to.
+# A reload ends it: after it, memory holds what the file holds WHEN THE FILE PARSES, and the file IS
+# compared, line for line, against the reference. So no rule that lives only in memory survives
+# this check, whatever it was narrowed to. When the file does not parse PostgreSQL refuses all of
+# it and keeps the old rules, and `pg_reload_conf()` still answers `t` because it only sends the
+# signal; memory then holds NOT what the file holds. What catches that is the comparison, which
+# reads the file afresh through `pg_hba_file_rules` and prints the error beside the broken line,
+# so the comparison is not redundant and must not be dropped as if the reload made it so.
 #
 # WHAT THIS CANNOT DO, and it is the honest half: it heals rather than alarms. A divergence that
 # existed before this ran is gone by the time the comparison happens, so the check says the state is
@@ -347,6 +401,12 @@ VLASNIK="select 'prava-izvan-vlasnika ' || count(*)::text
 #
 # The reload itself applies the file already on disk, which is what a deploy expects anyway; if that
 # file is wrong, the comparison two steps down says so and names the line.
+#
+# AND IT APPLIES MORE THAN THE FILE: a reload also puts into force a setting written with
+# `ALTER SYSTEM` that was waiting for one. Measured 06.11.2026: `alter system set
+# authentication_timeout = 120` leaves `show` at 1min until the reload and 2min after it. That is
+# not a way in (it needs the superuser the setting is written by), but it is a moment of activation
+# chosen by this script and not by whoever wrote the setting, on every deploy.
 : > "$live_raw"
 : > "$expected_raw"
 
@@ -381,13 +441,29 @@ say "podesavanja i okidaci se poklapaju, redova: $(wc -l < "$expected")"
 
 say ''
 say '--- 5. sifarnici nose ono sto migracija tvrdi ---'
-for pair in 'country:246' 'place:47016'; do
-  table=${pair%%:*}
-  want_rows=${pair##*:}
-  have_rows=$(psql "select count(*) from $table")
-  [ "$have_rows" = "$want_rows" ] || fail "$table nosi $have_rows redova, a migracija tvrdi $want_rows"
+# Every table the reference holds rows in, which are the tables the migrations seed, is counted on
+# QA and must hold as many. Read off the reference and not named here: the list used to be two
+# tables written by hand, and the migrations seed eleven (measured 06.11.2026 on the reference
+# built from the 83 migrations), so nine could be emptied on QA with this section saying all passed.
+# Counted by one catalogue query so that a table the next migration creates is in it at once.
+#
+# THE BOUNDARY: equality, so a seed table that is meant to grow on QA (nothing is today; they are
+# closed lists) would have to be taken out of this by name, with the reason beside it.
+counts="select table_name || ' ' || (xpath('/row/c/text()',
+       query_to_xml(format('select count(*) as c from %I.%I', table_schema, table_name), false, true, '')))[1]::text
+  from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE' order by 1"
+docker exec "$REFERENCE" psql -v ON_ERROR_STOP=1 -U postgres -d ref -tAc "$counts" > "$expected_raw" \
+  || fail 'redovi referentne baze se ne broje'
+
+seeded=0
+while read -r table want_rows; do
+  [ "$want_rows" != 0 ] || continue
+  have_rows=$(psql "select count(*) from public.\"$table\"")
+  [ "$have_rows" = "$want_rows" ] || fail "$table nosi $have_rows redova, a migracije ga seju sa $want_rows"
+  seeded=$((seeded + 1))
   say "$table: $have_rows"
-done
+done < "$expected_raw"
+[ "$seeded" -gt 0 ] || fail 'referentna baza ne sadrzi nijedan zasejan red, dakle ovaj odeljak ne tvrdi nista'
 
 say ''
 say 'SVE PROVERE PROSLE'
