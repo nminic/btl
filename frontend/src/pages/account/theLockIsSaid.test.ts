@@ -576,6 +576,11 @@ const OPENING: { file: string; how: How; why: string }[] = [
     why: 'MY REASONING, read off the code on 25.10.2026: correcting a member\'s data keeps the answer and draws it through `ServerSaid`. No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',
   },
   {
+    file: 'pages/profile/TheMembersPictureAndWords.tsx',
+    how: 'says',
+    why: 'MY REASONING, read off the code on 06.11.2026: the administration\'s picture and words of a member keep every answer that is not done and draw it through `ServerSaid`, under the box it answers (the removal too, whose sheet closes on any answer). No case puts the lock on this screen; what says it is drawn is `ServerSaid`\'s own case in `theSiteIsLocked.test.tsx`.',
+  },
+  {
     file: 'pages/useTeamQueue.ts',
     how: 'hands on',
     why: 'MY REASONING, read off the code on 25.10.2026: keeps every answer that is not done with its row and hands it to `TeamQueue.tsx`, which draws it through `ServerSaid`.',
