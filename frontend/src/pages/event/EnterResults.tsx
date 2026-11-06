@@ -631,19 +631,39 @@ function TheBlockAndTheRows() {
               />
             ))}
           {(block.event === null || edition) &&
-            box('city', t('newResult.city'), (described) => (
-              <PlaceField
-                id="league-block-city"
-                name="city"
-                required
-                value={block.city}
-                country={block.country}
-                wrote={block.countryWrote}
-                invalid={said('city') !== undefined}
-                describedBy={described}
-                onChange={(city, country, wrote) => setBlock((now) => withThePlace(now, city, country, wrote))}
-              />
-            ))}
+            box('city', t('newResult.city'), (described) => {
+              /* WHAT IS WRONG MAY BE THE COUNTRY AND NOT THE TOWN (`form.errors.countryMissing`): the field
+                 has a control of its own for it, and the form of the member hands it the same four things
+                 for the same case (`forms/FormRenderer.tsx`, `aboutCountry`). Handed only `invalid`, the
+                 cursor went to the town, which is not wrong, and the country that is was not marked, so a
+                 reader was told „Izaberi državu uz mesto." while standing on a box that had nothing to
+                 choose. PENDING, review of PR 600, 20.10.2026. */
+              const aboutTheCountry = said('city')?.key === 'form.errors.countryMissing'
+              const problem = blockProblemId('city')
+
+              return (
+                <PlaceField
+                  id="league-block-city"
+                  name="city"
+                  required
+                  value={block.city}
+                  country={block.country}
+                  wrote={block.countryWrote}
+                  invalid={said('city') !== undefined && !aboutTheCountry}
+                  countryInvalid={aboutTheCountry}
+                  describedBy={described}
+                  /* The town keeps what says how it works and stops carrying the country's sentence. */
+                  withoutError={
+                    (described ?? '')
+                      .split(' ')
+                      .filter((one) => one !== '' && one !== problem)
+                      .join(' ') || undefined
+                  }
+                  errorOnly={aboutTheCountry ? problem : undefined}
+                  onChange={(city, country, wrote) => setBlock((now) => withThePlace(now, city, country, wrote))}
+                />
+              )
+            })}
         </div>
         <div className="race__row">
           {box(
