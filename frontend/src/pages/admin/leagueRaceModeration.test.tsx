@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import axe from 'axe-core'
 import { arrivedResource, clearResourceCache } from '../../data/client'
 import { renderAt } from '../../test/render'
@@ -355,6 +355,98 @@ describe('which races count towards a competition', () => {
         body: { raceId: THE_RACE_OF_THAT_DAY },
       },
     ])
+
+    server.stop()
+  }, SLOW)
+
+  /**
+   * TWO PRESSES THE ROUTE ANSWERS BETWEEN ONE DRAW AND THE NEXT (PENDING „promena stize kao funkcija od
+   * zatecenog" nema cuvara).
+   *
+   * <p>`LeagueRaceModeration.tsx` and `AdminLeagues.tsx` both say in prose that a change reaches the
+   * screen as a function of what was counted, because two answers can land before the screen draws
+   * again, and a second one worked out from the list THIS draw was given writes the first one's race
+   * back. No case sent two presses between two draws, so reading the list of the draw in either
+   * place passed (19 of 19, and 673 of 673 across the pages). The writes are held here until both
+   * are out, then answered together in one go, which is the only order in which the two ways differ.
+   *
+   * <p>Asked in both directions, because they are two lines: the one that adds and the one that takes
+   * out.
+   */
+  function servingAndHolding() {
+    clearResourceCache()
+
+    const held: (() => void)[] = []
+    const server = serverThat((path, init) => {
+      if (path === '/api/leagues') {
+        return new Response(JSON.stringify(LEAGUES), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
+      if (isResource(path) || (init?.method ?? 'GET') === 'GET') {
+        return null
+      }
+
+      return new Promise<Response>((resolve) => {
+        held.push(() => {
+          resolve(did())
+        })
+      })
+    })
+
+    return { server, answerAll: () => act(() => held.forEach((answer) => answer())), held }
+  }
+
+  it('keeps both races taken out when the route answers the two presses together', async () => {
+    const { server, answerAll, held } = servingAndHolding()
+    const user = await openTheBox()
+
+    const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
+    const out = within(box).getAllByRole('button', { name: /^Izbaci trku/ })
+
+    expect(out, 'the competition counts two races, so there are two to take out').toHaveLength(2)
+
+    for (const one of out) {
+      await user.click(one)
+    }
+
+    await waitFor(() => {
+      expect(held).toHaveLength(2)
+    })
+    await answerAll()
+
+    await waitFor(() => {
+      expect(within(box).queryAllByRole('button', { name: /^Izbaci trku/ })).toHaveLength(0)
+    })
+    expect(within(box).getByText('Ovoj ligi još nije dodeljena nijedna trka.')).toBeVisible()
+
+    server.stop()
+  }, SLOW)
+
+  it('keeps both races entered when the route answers the two presses together', async () => {
+    const { server, answerAll, held } = servingAndHolding()
+    const user = await openTheBox()
+    const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
+    const day = screen.getByLabelText('Događaj', { selector: `#league-moderation-${ACTED}-event` })
+
+    await user.selectOptions(day, String(A_DAY_NOBODY_COUNTS))
+    await user.click(screen.getByRole('button', { name: 'Dodaj u ligu' }))
+    await user.selectOptions(day, String(OVER_TWO_MORNINGS))
+    await user.click(screen.getByRole('button', { name: 'Dodaj u ligu' }))
+
+    await waitFor(() => {
+      expect(held).toHaveLength(2)
+    })
+    await answerAll()
+
+    /* Two it counted already, one more of a day nobody counted, and the other morning of the day it
+       counts one of: four, and a list worked out from the draw the first press was made in has
+       three. */
+    await waitFor(() => {
+      expect(within(box).getAllByRole('button', { name: /^Izbaci trku/ })).toHaveLength(4)
+    })
 
     server.stop()
   }, SLOW)
@@ -1047,5 +1139,75 @@ describe('which races count towards a competition', () => {
 
         server.stop()
       }, SLOW)
+
+    /**
+     * WHAT THE RULES SAY, AND NOT ONLY THAT THEY ARE THERE (PENDING „nova pravila lista drzi samo
+     * provera da SELEKTOR postoji").
+     *
+     * <p>The two cases above hold that the element wears the class and that the sheet names the
+     * selector. A selector with an emptied block satisfies both, and four emptied blocks left this
+     * file green (19 of 19): among them the one declaration that puts the control of every race in one
+     * column, and the `min-width: 0` whose own comment says it is what keeps the page from sliding
+     * sideways at 360. The portal has a reader for exactly this, a rule out of a stylesheet
+     * without a browser (`test/stylesheet.ts`), and the heading case above already uses it.
+     *
+     * <p>What it cannot say is who wins the cascade, and that is not asked here: each selector is
+     * one unconditional rule of its own sheet, which `ruleFor` insists on, and what it holds is what
+     * that rule declares.
+     */
+    /**
+     * THE NAME OF AN EVENT IN THE BOX IS AN `h3` SINCE PR 540, AND ITS SIZE IS HELD BY ONE CLASS (PENDING
+     * „Nazivi događaja u admin kutiji lige su od PR-a 540 h3").
+     *
+     * <p>A bare `h3` is 1.17em with a margin of its own, so the names would grow and the lines under
+     * them (the day, the races) would move down by the margin. Nothing measured it: styling the tag
+     * instead of the class, dropping `font-size` or dropping `margin` all passed (305 of 305). The
+     * heading is asked for by what it IS (level three, named by the event), the class is read off the
+     * element, and the rule of that class is read out of the sheet.
+     */
+    it('sizes the name of every event in the box with the class the heading wears', async () => {
+      const server = serving()
+
+      await openTheBox()
+
+      const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
+      const names = within(box).getAllByRole('heading', { level: 3 })
+
+      expect(names.length, 'the box counts two events, so it names two').toBe(2)
+
+      for (const name of names) {
+        expect([...name.classList], name.textContent ?? '').toEqual(['leagues__event-name'])
+      }
+
+      const rule = ruleFor(
+        readFileSync(join(process.cwd(), 'src/pages/Leagues.css'), 'utf-8'),
+        '.leagues__event-name',
+        'Leagues.css',
+      )
+
+      expect(rule.getPropertyValue('font-size')).toBe('1rem')
+      expect(rule.getPropertyValue('margin')).toBe('0px')
+
+      server.stop()
+    }, SLOW)
+
+    it.each([
+      ['.leagues__adding', { display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center' }],
+      ['.leagues__adding .rankings__field', { flex: '1 1 12rem', 'min-width': '0px' }],
+      ['.leagues__adding .rankings__field select', { 'min-width': '0px' }],
+      ['.leagues__adding .button', { 'align-self': 'flex-end' }],
+      ['.leagues__counted-race', { display: 'flex', 'flex-wrap': 'wrap', 'align-items': 'center' }],
+      ['.leagues__counted-race .button', { 'margin-inline-start': 'auto' }],
+    ])('declares what %s is there to do', (selector, declared) => {
+      const rule = ruleFor(
+        readFileSync(join(process.cwd(), 'src/pages/Leagues.css'), 'utf-8'),
+        selector,
+        'Leagues.css',
+      )
+
+      for (const [property, value] of Object.entries(declared)) {
+        expect(rule.getPropertyValue(property), `${selector} { ${property} }`).toBe(value)
+      }
+    })
   })
 })
