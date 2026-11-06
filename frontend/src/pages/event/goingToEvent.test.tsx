@@ -927,6 +927,49 @@ describe('writing to somebody else who is going', () => {
     ).toBeNull()
   })
 
+  it('closes on its own when the number of a moderator who is a member drops away under it, the administration still reading the list', async () => {
+    /* THE CASE THAT KEEPS `me !== null` ON THE LINE THAT DRAWS THE FORM (review of PR 479, medium). The
+       case above signs out a competitor, and a reader who is signed out is no reader any more
+       (`ForAReader`, 03.10.2026): `Going` goes with him, the form with it, and the guard is never asked,
+       so a mutation that took it away was green on 813 cases. A moderator is read as the administration
+       whether or not he has a number, so when the number goes `Going` stays drawn and the form he opened
+       is the question: it must close, and not stay open under the name of the member he wrote to, for
+       a reader who is nobody's sender. */
+    const user = setupUser()
+    const { event, going, day } = await upcoming()
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const mine = must(going[0], 'somebody the file has going').memberNumber
+    const them = must(
+      competitors.find(
+        (one) => one.memberNumber !== mine && going.some(
+          (each) => each.memberNumber === one.memberNumber,
+        ),
+      ),
+      'somebody else going to it',
+    )
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'moderator', mine, undefined, day, <SignOut />)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `Piši članu ${them.firstName} ${them.lastName}`,
+      }),
+    )
+
+    expect(
+      screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'odjavi se' }))
+
+    /* The list is still on the page, so the form is gone because of the guard and not because the
+       section went: the floor that tells the two apart. */
+    expect(screen.queryByRole('list', { name: 'Ko ide' })).not.toBeNull()
+    expect(
+      screen.queryByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
+    ).toBeNull()
+  })
+
   it('draws the list, and an envelope beside every other name, to a member the session says stands though the list of members does not carry him yet', async () => {
     /* The number is handed out when the fee is recorded (PDL P8) and the list of members is read
      * once per visit, so for a while there is a member whose fee stands with nothing behind his
