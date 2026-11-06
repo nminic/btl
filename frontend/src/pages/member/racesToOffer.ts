@@ -83,18 +83,23 @@ export function racesToOffer(
     byEvent.set(race.eventId, [...(byEvent.get(race.eventId) ?? []), race])
   }
 
-  /* The races of one event in the owner's order (PDL P6, 18.10.2026, `data/raceOrder.ts`), which
-     names „izbor trke pri unosu rezultata" among the lists it holds for. The sort by the day below
-     is stable, so the races of one event on one day keep that order beside each other; a race of
-     another morning of the same event stands under its own day, which is what this list is
-     ordered by („po datumu od poslednje prema ranijim"). */
-  const pairs = events.flatMap((event) =>
-    inEventOrder(byEvent.get(event.id) ?? [])
-      .filter((race) => race.date <= today)
-      .map((race) => ({ event, race })),
-  )
-
-  pairs.sort((left, right) => right.race.date.localeCompare(left.race.date))
+  /* THE EVENTS NEWEST FIRST, AND THE RACES OF ONE EVENT IN THE OWNER'S ORDER WITH NO DAY IN IT.
+     The list was ordered by the day of each race (PDL 23.08.2026: „poređan od poslednje ka ranijim po
+     datumu"), which split the races of an event over two mornings by the morning. The owner's order of
+     18.10.2026 names „izbor trke pri unosu rezultata" among the lists it holds for and says the day of a
+     race is not in it: „Dan trke ne ulazi u redosled: i kod događaja preko dva dana trke se ređaju samo po
+     vrsti, dužini ili trajanju i nazivu" (PDL P6, 18.10.2026, `data/raceOrder.ts`). So it is the EVENTS
+     that stand newest first - by the day of the event, which is the day it begins - and the races inside
+     one event that stand in that order, together, whatever morning each is run on. The day still
+     decides which races are offered at all: a race of a morning that has not come is not run yet.
+     The sort is stable, so events that begin on one day keep the order they were handed in. */
+  const pairs = [...events]
+    .sort((left, right) => right.date.localeCompare(left.date))
+    .flatMap((event) =>
+      inEventOrder(byEvent.get(event.id) ?? [])
+        .filter((race) => race.date <= today)
+        .map((race) => ({ event, race })),
+    )
 
   return pairs.map(({ race }) => ({
     id: String(race.id),

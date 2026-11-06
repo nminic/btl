@@ -158,6 +158,17 @@ function calendar(): { stop: () => void } {
   )
 }
 
+/** The row of one round of the league in the list of races, found by its name and not by its place: the
+ *  list stands in the owner's order of an event, in which the day decides nothing (PDL P6, 18.10.2026). */
+function roundOf(round: number): HTMLElement {
+  return must(
+    within(screen.getByRole('list', { name: '' }))
+      .getAllByRole('button')
+      .find((one) => (one.textContent ?? '').startsWith(`Gradska liga, kolo ${String(round)} `)),
+    `the row of round ${String(round)}`,
+  )
+}
+
 /** Everything a run on an event he typed still asks for, once the event and the race are named. */
 async function theRestOfANewRun(user: ReturnType<typeof setupUser>): Promise<void> {
   await user.clear(screen.getByLabelText(/Datum trke/))
@@ -235,7 +246,7 @@ describe('a race chosen from the list', () => {
     try {
       await onTheEvent(user)
       await user.type(raceName(), 'kolo')
-      await user.click(first(within(screen.getByRole('list', { name: '' })).getAllByRole('button')))
+      await user.click(roundOf(10))
 
       /* The race answered for its own measures, which is what choosing one does. */
       expect(screen.getByLabelText(/^Dužina/)).not.toHaveValue('')
@@ -274,7 +285,7 @@ describe('a race chosen from the list', () => {
     try {
       await onTheEvent(user)
       await user.type(raceName(), 'kolo')
-      await user.click(first(within(screen.getByRole('list', { name: '' })).getAllByRole('button')))
+      await user.click(roundOf(10))
       await user.type(raceName(), ' po svome')
 
       expect(inputElement(screen.getByLabelText(/^Dužina/)).value).toBe('')
@@ -552,10 +563,15 @@ describe('the list of races under the name of an event', () => {
     expect(filled.map((one) => one?.date)).toEqual(['19/09/2026', '19/09/2026', '19/09/2026'])
   })
 
-  it('offers what has been run, newest first, and never what is still to come', async () => {
-    /* Owner: „U autocomplete se navode samo događaji koji su u prošlosti ili na taj dan, ne ubuduće",
-       „sortiranih po datumu od poslednje prema ranijim". The closing round of the league is still to
-       come and is not offered; the day itself counts as run. */
+  it('offers what has been run, in the order of the event and not by the day, and never what is still to come', async () => {
+    /* Owner: „U autocomplete se navode samo događaji koji su u prošlosti ili na taj dan, ne ubuduće". The
+       closing round of the league is still to come and is not offered; the day itself counts as run.
+
+       AND THE ORDER IS THE OWNER'S ORDER OF AN EVENT SINCE 06.11.2026, not „sortiranih po datumu od poslednje
+       prema ranijim" of 23.08.2026 for the races of one event: PDL P6, 18.10.2026 names „izbor trke pri unosu
+       rezultata" among the lists it holds for and says „Dan trke ne ulazi u redosled". The ten rounds are
+       one length, so they stand by name, and the OLDEST of them is first, which a list ordered by the day
+       cannot be (`racesToOffer.test.ts` holds the order itself, and that the events stand newest first). */
     const user = setupUser()
     const held = calendar()
 
@@ -564,6 +580,7 @@ describe('the list of races under the name of an event', () => {
       await user.type(raceName(), 'gradska')
 
       const rows = offered()
+      const names = rows.map((row) => must(row.split(' – ')[0], 'the name in a row'))
       const asIso = rows.map((row) => {
         const found = must(/(\d{2})\.(\d{2})\.(\d{4})\./.exec(row), 'the day in a row')
 
@@ -571,8 +588,8 @@ describe('the list of races under the name of an event', () => {
       })
 
       expect(rows.length).toBeGreaterThan(1)
-      expect([...asIso].sort().reverse(), 'the list is not newest first').toEqual(asIso)
-      expect(asIso[0]).toBe('2027-08-08')
+      expect(names, 'the list is not in the order of the event').toEqual([...names].sort((a, b) => a.localeCompare(b)))
+      expect(asIso[0], 'the day put a race first').toBe('2027-01-10')
       expect(rows.some((row) => row.includes('završno')), 'a round still to come was offered').toBe(false)
     } finally {
       held.stop()
