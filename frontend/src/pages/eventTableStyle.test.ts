@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { cleanup, screen, within } from '@testing-library/react'
 import { LOCALES, type Locale } from '../i18n/config'
 import { formatDistance, formatNumber, formatShortDate } from '../i18n/format'
 import { at, must } from '../test/at'
+import { renderAt } from '../test/render'
+import { SLOW } from '../test/slow'
 import {
   everyRule,
   ruleAt,
@@ -450,6 +453,16 @@ describe('the table of races on an event', () => {
 
     expect(placed.length, 'nothing is placed by a track number, so there is nothing to give back').toBeGreaterThan(0)
 
+    /* The second query is held to its selectors the way the first is (review of PR 482, medium): the row
+       of an event with a day and the placements it gives back, and no rule else. Asked of the rules and
+       not of the map above, which keeps one rule per selector, so a second rule for a selector it
+       already has is counted. A row written for every table of races in this query would put an event of
+       one morning in one column without any need. */
+    expect(
+      days.rules.map((rule) => squash(rule.selectorText)).toSorted(),
+      'the query of the events with a day writes more than the row of such an event and what it gives back',
+    ).toEqual([ROW_WITH_DAY, ...placed].toSorted())
+
     for (const selector of placed) {
       expect(
         squash(must(ofTheDays.get(selector), `a rule giving ${selector} the whole row`).getPropertyValue('grid-column')),
@@ -608,6 +621,57 @@ describe('the table of races on an event', () => {
       }
     }
   })
+
+  it('draws every cell of the name, the day and the figures under the same rules for a visitor and for a member of the same event', async () => {
+    /* The case above asks the model, which reads the selectors it knows, and a rule about the way in
+       that the model does not know is a rule it never reads (review of PR 482, medium): the name beside
+       a way in drawn 178px wide for a member and 267px for a visitor passed all of it, and so did a
+       `:has(th.event-races__way-in)` that the regular expression above does not spell. So the table is
+       drawn for real, for somebody who is not signed in and for somebody who may report a result, on one
+       event that runs over several mornings, and every rule of the sheet that is about the table, in any
+       query, is asked which cells of it it reaches. The two readers have to be reached by the same rules,
+       cell by cell, in the name, the day and the three figures; the way in itself is the one cell only
+       the second has and is not compared.
+
+       jsdom computes no cascade and no width (ADL A18) but it answers `matches`, `:has` included, and
+       that is the whole question: which rule picks which cell. */
+    const rules = everyRule(profile, 'Profile.css').filter(aboutTheTable)
+    const OF_BOTH = ['name', 'day', 'measure', 'ascent', 'descent']
+
+    async function reached(role: 'visitor' | 'superadmin'): Promise<{ cell: string; by: string[] }[]> {
+      renderAt('/sr/kalendar/dayrunners-ultramarathon-2016', role)
+
+      const table = await screen.findByRole('table', { name: 'Trke' })
+      const cells = [...table.querySelectorAll('th, td')]
+        .map((one) => ({ one, part: OF_BOTH.find((name) => one.classList.contains(`event-races__${name}`)) }))
+        .filter((found) => found.part !== undefined)
+      const found = cells.map(({ one, part }, index) => ({
+        cell: `${String(part)} ${String(index)}`,
+        by: rules.filter((rule) => one.matches(rule.selectorText)).map((rule) => squash(rule.selectorText)),
+      }))
+
+      /* The table of this event is one that has the way in for the second reader and not for the first,
+         which is what makes the comparison a comparison. */
+      expect(within(table).queryAllByRole('columnheader', { name: 'Opcije' })).toHaveLength(
+        role === 'visitor' ? 0 : 1,
+      )
+      cleanup()
+
+      return found
+    }
+
+    const visitor = await reached('visitor')
+    const member = await reached('superadmin')
+
+    /* A floor under the comparison: the cells were found, the rules reach some of them, and the two
+       tables have the same cells to compare. */
+    expect(visitor.length, 'no cell of the table was found').toBeGreaterThan(8)
+    expect(visitor.map((one) => one.cell)).toEqual(member.map((one) => one.cell))
+    expect(visitor.some((one) => one.by.length > 0), 'no rule of the sheet reaches a cell').toBe(true)
+    expect(member, 'a rule of the table reaches a cell of a member that it does not reach of a visitor').toEqual(
+      visitor,
+    )
+  }, SLOW)
 
   it('holds one width for the three figures, which the owner called three identical columns', () => {
     /* One rule gives all three their width, so there is no way to widen one of them: a second rule
