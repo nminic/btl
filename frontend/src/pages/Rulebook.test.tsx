@@ -1,3 +1,4 @@
+import { vi } from 'vitest'
 import { htmlElement, must } from '../test/at'
 import { intersecting, watcher } from '../test/intersection'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -153,7 +154,23 @@ describe('the rulebook', () => {
   })
 
   it('marks the last section at the end of the page even where the browser cannot say which one is on screen', async () => {
-    await openRulebook()
+    /* The page listens for the scroll from an effect, and React runs that a beat AFTER the text
+       is in the document - on a busy machine a macrotask later than the moment the heading can
+       be found. A scroll sent before that is heard by nobody, and the case then read the first
+       section where it asked for the last (seen twice in the second-day pass of the gate,
+       06.11.2026). So the case waits for the listener itself, not for the text, and only then
+       moves the page. Spied before the page is drawn, since the call is made once. */
+    const listening = vi.spyOn(window, 'addEventListener')
+
+    try {
+      await openRulebook()
+
+      await waitFor(() => {
+        expect(listening).toHaveBeenCalledWith('scroll', expect.any(Function), expect.anything())
+      })
+    } finally {
+      listening.mockRestore()
+    }
 
     expect(marked()).toHaveAccessibleName(FIRST)
 

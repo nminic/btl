@@ -76,6 +76,20 @@ class PouringFromQaScriptTest {
 	private static final Pattern CP_THE_COMMAND = Pattern.compile("(?<![\\w./-])cp(?![\\w-])");
 
 	/**
+	 * The production volume followed by a mount point and then {@code :ro}: the read only mount of
+	 * it. Anything else that names the volume on a container line is a writable one.
+	 */
+	private static final Pattern PROD_VOLUME_READ_ONLY =
+			Pattern.compile("\\$\\{?PROD_VOLUME\\}?\"?:[^\\s:]+:ro(\\s|$)");
+
+	/**
+	 * The line of the closing report that says a table: it holds {@code $t} and, in the same
+	 * double quoted string, {@code $checked_by}.
+	 */
+	private static final Pattern LETS_IN_ROW_NAMES_ITS_COLUMN =
+			Pattern.compile("^say\\s+\"[^\"]*\\$t\\b[^\"]*\\$\\{?checked_by\\}?");
+
+	/**
 	 * The quoted string a {@code docker run} is handed as {@code -c '...'}, when it opens with
 	 * {@code cp}: the whole command that copies the photographs, as one group.
 	 */
@@ -616,6 +630,15 @@ class PouringFromQaScriptTest {
 
 		assertThat(linesWith(code, "account_admin_right")).as("which rights each account holds").isNotEmpty();
 		assertThat(linesWith(code, "verification.right_code")).as("which right opens a queue").isNotEmpty();
+
+		/* THE COLUMN IS PRINTED BESIDE THE TABLE, in the very line that says the table. The SQL
+		   half is held by PouringFromQaTest; this is the half that decides what the operator
+		   sees, and a report that names the table and drops the column leaves him not knowing
+		   which of the two endings below applies to it. */
+		assertThat(code.stream().filter(one -> LETS_IN_ROW_NAMES_ITS_COLUMN.matcher(one).find()))
+				.as("the line of the closing report that says a table lets somebody in must carry the"
+						+ " column that table is checked by, in the same string as the table")
+				.hasSize(1);
 	}
 
 	/**
@@ -674,6 +697,41 @@ class PouringFromQaScriptTest {
 						+ " is older than ten minutes by its time, and a poured file arrives before"
 						+ " its row. Any other option, -a above all, has to be argued for here")
 				.containsExactlyInAnyOrder("-R", "--preserve=mode,ownership");
+	}
+
+	/**
+	 * NOBODY BUT THE ONE COPY WRITES INTO THE PRODUCTION VOLUME.
+	 *
+	 * <p>The case above holds the {@code cp} line to two options and to being the only line that
+	 * runs {@code cp}. That is a question about the COMMAND. The question the whole guard exists
+	 * for is about the VOLUME: a second container that mounts the production volume writable and
+	 * copies with {@code tar cf - . | tar xf -} or {@code rsync -a} leaves exactly one {@code cp}
+	 * line, passes that case, and puts QA's times on production's files - the danger the options
+	 * are held for. So it is asked from the other side: of every line of the script's code that
+	 * starts a container with the production volume in it, exactly one mounts it without
+	 * {@code :ro}, and it is the line that runs {@code cp}.
+	 *
+	 * <p>Read off the mount, not off the command, so a writer in any other tool is seen. The
+	 * boundary, written down: a mount spelled some way that does not put the volume's name beside
+	 * a colon (a {@code --mount} with {@code src=}) is still seen, because it is the NAME that
+	 * selects the line, and it then counts as writable unless the line says {@code :ro}.
+	 */
+	@Test
+	void theOnlyContainerThatWritesIntoTheProductionVolumeIsTheOneThatRunsCp() {
+		List<String> writers = scriptCode().stream()
+				.filter(one -> one.contains("$PROD_VOLUME") || one.contains("${PROD_VOLUME"))
+				.filter(one -> one.startsWith("container ") || one.contains("docker "))
+				.filter(one -> !PROD_VOLUME_READ_ONLY.matcher(one).find())
+				.toList();
+
+		assertThat(writers)
+				.as("lines that start a container with the production volume mounted and not read"
+						+ " only: the cp that copies the photographs and nothing else")
+				.hasSize(1);
+		assertThat(CP_THE_COMMAND.matcher(writers.get(0)).find())
+				.as("the one container allowed to write into the production volume runs cp: %s",
+						writers.get(0))
+				.isTrue();
 	}
 
 	/**
