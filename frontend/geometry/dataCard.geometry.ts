@@ -70,6 +70,8 @@ const THE_LISTS = {
 const HIS_OWN: Answers = {
   ...THE_LISTS,
   '/api/me': { role: 'competitor', account: 1, member: HIM, mailLanguage: 'sr' },
+  /* His own pictures, which the boxes at the bottom of the card and the name of the card read (06.11.2026). */
+  '/api/me/photo': { waiting: null, standing: null },
 }
 
 /** The superadmin, who races for nobody, opening the member's card from the screen of the members. */
@@ -170,3 +172,114 @@ for (const width of [360, 768]) {
   })
 }
 
+/**
+ * THE PICTURE BESIDE THE WORDS ABOUT HIMSELF, AT THE BOTTOM OF THE CARD (owner, 06.11.2026, PDL „Boksovi
+ * „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja"), for both readers: the member, whose boxes go
+ * for review, and the administration, whose save at once. One row of two from 51.25em (the `.member__pair`
+ * the settings had them in, `pages/member/Member.css`), one under the other below it, and no empty space
+ * under either field (the owner's „veliki prazan prostor", asked on the settings until that day).
+ */
+const BOXES = {
+  his: { picture: 'section[aria-labelledby="settings-picture"]', words: 'section[aria-labelledby="settings-bio"]' },
+  theirs: { picture: 'section[aria-labelledby="their-picture"]', words: 'section[aria-labelledby="their-bio"]' },
+} as const
+
+type Box = { left: number; right: number; top: number; bottom: number }
+
+const boxOf = (page: Page, selector: string): Promise<Box | null> =>
+  page.evaluate((one) => {
+    const found = document.querySelector(one)
+    const box = found?.getBoundingClientRect()
+
+    return box === undefined ? null : { left: box.left, right: box.right, top: box.top, bottom: box.bottom }
+  }, selector)
+
+/** Which arrangement the width reads, asked of the pair's own grid and not assumed. */
+const columnsOf = (page: Page, selector: string) =>
+  page.evaluate((one) => {
+    const pair = document.querySelector(one)?.closest('.member__pair')
+
+    return pair === null || pair === undefined ? 0 : getComputedStyle(pair).gridTemplateColumns.split(' ').length
+  }, selector)
+
+/** How much of the wide field is below what it holds, and what stands between it and the next thing. */
+const gapAfterTheField = (page: Page, panel: string) =>
+  page.evaluate((selector) => {
+    const section = document.querySelector(selector)
+    const field = section?.querySelector('.rankings__field--wide')
+    let next = field?.nextElementSibling ?? null
+
+    while (next !== null && getComputedStyle(next).position === 'absolute') {
+      next = next.nextElementSibling
+    }
+
+    if (section === null || section === undefined || field === null || field === undefined || next === null) {
+      return null
+    }
+
+    const box = field.getBoundingClientRect()
+    const held = Math.max(
+      ...[...field.children]
+        .filter((one) => getComputedStyle(one).position !== 'absolute')
+        .map((one) => one.getBoundingClientRect().bottom),
+    )
+
+    return {
+      emptyTail: box.bottom - held,
+      between: next.getBoundingClientRect().top - box.bottom,
+      panelGap: Number.parseFloat(getComputedStyle(section).rowGap) + Number.parseFloat(getComputedStyle(next).marginTop),
+    }
+  }, panel)
+
+for (const [who, answers, boxes] of [
+  ['the member himself', HIS_OWN, BOXES.his],
+  ['the administration', THE_ADMINISTRATION, BOXES.theirs],
+] as const) {
+  for (const at of WIDTHS) {
+    test(`the picture and the words of ${who} stand at the bottom of the card, ${label(at)}`, async ({ open }) => {
+      const { page, probe } = await open(at, ADDRESS, boxes.words, answers)
+
+      await page.locator(boxes.picture).waitFor({ state: 'visible' })
+
+      const picture = await boxOf(page, boxes.picture)
+      const words = await boxOf(page, boxes.words)
+
+      if (picture === null || words === null) {
+        throw notMeasured(`the card of ${who} drew no boxes`)
+      }
+
+      const columns = await columnsOf(page, boxes.picture)
+      const wide = at.width >= 820 && at.text === 100
+
+      expect(columns, 'the width reads the arrangement it was chosen for').toBe(wide ? 2 : 1)
+
+      if (wide) {
+        expect(Math.abs(picture.top - words.top), 'they stand in one row').toBeLessThanOrEqual(SLACK)
+        expect(Math.abs(picture.bottom - words.bottom), 'the two are as tall as each other').toBeLessThanOrEqual(SLACK)
+        expect(picture.right, 'the picture ends before the words begin').toBeLessThanOrEqual(words.left + SLACK)
+      } else {
+        expect(Math.abs(picture.left - words.left), 'they stand against one left edge').toBeLessThanOrEqual(SLACK)
+        expect(words.top, 'the words are under the picture').toBeGreaterThanOrEqual(picture.bottom - SLACK)
+      }
+
+      for (const [name, panel] of [
+        ['for choosing a picture', boxes.picture],
+        ['for the words', boxes.words],
+      ] as const) {
+        const seen = await gapAfterTheField(page, panel)
+
+        if (seen === null) {
+          throw notMeasured(`${panel} did not draw a field with something after it`)
+        }
+
+        expect(seen.emptyTail, `the field ${name} is taller than what it holds`).toBeLessThanOrEqual(SLACK)
+        expect(seen.between, `more than the panel’s own gap stands after the field ${name}`).toBeLessThanOrEqual(
+          seen.panelGap + SLACK,
+        )
+      }
+
+      expect(probe.widened, 'the page was widened by something running off its right edge').toBe(0)
+      expect(probe.sideways, 'the page scrolls sideways').toBe(0)
+    })
+  }
+}

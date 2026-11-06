@@ -393,20 +393,21 @@ describe('a part of a screen whose read failed', () => {
     expect(timesAsked('/api/ducats')).toBe(2)
   }, SLOW)
 
-  it('names the button by its own word where the part has no name, and says that two such parts are two buttons with one name', async () => {
+  it('names the button by its own word where the part has no name', async () => {
     theServerAnswers({ '/api/competitors': () => answeredWith(500) })
     renderAt('/sr/podesavanja', 'competitor', MEMBER)
 
-    /* `Settings` draws two parts from one read and neither has a `label`. They say the same
-       sentence, as they did before the button, and offer the same word twice: that is the
-       boundary written in `components/Resource.tsx`, and it is held here so that a third part
-       with no name is a decision somebody takes and not a thing that happens. */
-    await waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(2))
-    expect(screen.getAllByRole('button', { name: sr.data.retry })).toHaveLength(2)
+    /* `Settings` draws ONE part from this read since 06.11.2026, who sees the profile, and it has no
+       `label`. It drew two until then, and the second, the picture beside the words about himself, moved to
+       the card „Podaci" (PDL „Boksovi „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja"). Two parts
+       with no name offer the same word twice: that is the boundary written in `components/Resource.tsx`,
+       and a second part with no name here is a decision somebody takes and not a thing that happens. */
+    await waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(1))
+    expect(screen.getAllByRole('button', { name: sr.data.retry })).toHaveLength(1)
 
     answers.set('/api/competitors', () => null)
 
-    const first = must(screen.getAllByRole('button', { name: sr.data.retry })[0], 'the first button')
+    const first = must(screen.getAllByRole('button', { name: sr.data.retry })[0], 'the button')
 
     await setupUser().click(first)
 

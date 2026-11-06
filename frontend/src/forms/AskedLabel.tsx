@@ -48,12 +48,20 @@ export function RequiredMark() {
 export function AskedLabel({
   id,
   asked = true,
+  unmarked = false,
   className,
   children,
 }: {
   id: string
   /** False where the field may be left empty, which is one of the eight. */
   asked?: boolean
+  /**
+   * True where the name stands with NEITHER mark, the star nor „(neobavezno)": the shape `FormRenderer`
+   * gives a held field (`unmarked`, PDL 06.11.2026), and since the same day the chooser of a profile
+   * picture (owner, PDL „Boksovi „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja": „Uz „Izaberi
+   * novu sliku" ne stoji nikakva oznaka, ni zvezdica ni „(neobavezno)"").
+   */
+  unmarked?: boolean
   /**
    * What the words are styled by, where the field around them does not do it.
    *
@@ -76,9 +84,9 @@ export function AskedLabel({
             half of the same rule: the one hand written field that is optional,
             the note that goes with a deletion, said nothing at all about
             itself. */}
-        {!asked && <span className="field__optional"> ({t('form.optional')})</span>}
+        {!asked && !unmarked && <span className="field__optional"> ({t('form.optional')})</span>}
       </label>
-      {asked && <RequiredMark />}
+      {asked && !unmarked && <RequiredMark />}
     </span>
   )
 }

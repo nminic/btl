@@ -212,6 +212,10 @@ const STAYS_A_WORD = new Map([
   ['teams.join', LISTED],
   ['teams.joinWithdraw', LISTED],
   ['teams.propose', NOT_AN_ACTION],
+  /* The administration's buttons under the picture and the words of a member (PDL 06.11.2026): each saves
+     the box it stands under, the same kind of button as `picture.send` and `bio.send` on his own card. */
+  ['theirBoxes.pictureSave', FORM],
+  ['theirBoxes.wordsSave', FORM],
   ['verification.approveAll', LISTED],
 ])
 

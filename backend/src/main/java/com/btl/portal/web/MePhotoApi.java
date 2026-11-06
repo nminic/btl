@@ -377,7 +377,7 @@ class MePhotoApi {
 	static final String THE_CROP_IS_NOT_A_CIRCLE = "theCropIsNotACircle";
 
 	/** The tab a portrait waits in, which is the one PDL P28a names „Profili". */
-	private static final String THE_PROFILES_TAB = "profiles";
+	static final String THE_PROFILES_TAB = "profiles";
 
 	/**
 	 * Where the picture ON THE PROFILE is asked for, which is the public route and unchanged.
@@ -429,7 +429,7 @@ class MePhotoApi {
 	 * <p>Oldest first with the key last and {@code limit 1}, which is how V9 indexes the queue
 	 * and how {@link VerificationApi} reads it.
 	 */
-	private static final String THE_ONE_OF_MINE_THAT_WAITS =
+	static final String THE_ONE_OF_MINE_THAT_WAITS =
 			" from verification v where v.competitor_id = :me and v.queue = :tab"
 			+ " and v.state = 'waiting' and v.photo_id is not null"
 			+ " order by v.raised_at, v.id limit 1";
@@ -582,7 +582,7 @@ class MePhotoApi {
 		   so that a FIRST send finds the row the send in front of it opened instead of asking at
 		   the same moment and being told „nothing waits". The class note says why a turn and not
 		   another way, and why the turn ends with the transaction. */
-		oneSendOfAMemberAtATime(me);
+		oneSendOfAMemberAtATime(db, me);
 
 		/* ASKED BEFORE THE BYTES ARE LOOKED AT, which is the order this class already kept for
 		   the refusal that used to live here: what is waiting decides whether this send opens a
@@ -996,7 +996,7 @@ class MePhotoApi {
 		   the question finds a row that is waiting, and the delete below then removes it after
 		   the moderator has decided it. Both are measured, by
 		   `APictureTakenBackWhileItIsBeingDecidedOrSentTest`. */
-		oneSendOfAMemberAtATime(me);
+		oneSendOfAMemberAtATime(db, me);
 
 		Optional<Waits> waits = theOneThatWaits(me);
 
@@ -1110,7 +1110,7 @@ class MePhotoApi {
 	 * <p>Why a turn and not another way, and where its edge is, is the class note on the sends of
 	 * one member.
 	 */
-	private void oneSendOfAMemberAtATime(long me) {
+	static void oneSendOfAMemberAtATime(JdbcClient db, long me) {
 		db.sql("select pg_advisory_xact_lock(hashtextextended(?, 0))::text")
 				.param("profile-picture:" + me)
 				.query(String.class)
@@ -1156,7 +1156,7 @@ class MePhotoApi {
 	 *                    because „a circle of no diameter is not a crop of a photograph, it
 	 *                    is the absence of one"
 	 */
-	private static BigDecimal fraction(String written, boolean mayBeNought) {
+	static BigDecimal fraction(String written, boolean mayBeNought) {
 		if (written == null || written.isBlank()) {
 			return null;
 		}

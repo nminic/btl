@@ -736,6 +736,40 @@ class MeApiTest {
 	}
 
 	/**
+	 * A MEMBER WHO HAS NO NUMBER YET AND BROUGHT SOMEBODY IN IS COUNTED THEM.
+	 *
+	 * <p>He registered (ADL A44, owner 11.09.2026: a person is a competitor from registration and a member
+	 * when a fee is recorded), so he has a link, and {@code RegistrationApi} resolves a link with no filter
+	 * on his number or on his seasons: somebody who comes in through it and pays is his recruit. Counting
+	 * only those brought by somebody who holds a number - the condition ADL A44 sends a reader to for every
+	 * query that counts a number - would answer him 0 on the page where he looks for what his link brought.
+	 *
+	 * <p><b>The recruits are two members the fixture already has, moved to him</b>, so no row is added to a
+	 * fixture that other cases count: both hold the season on sale. He is answered 2 and the caller, who
+	 * loses both and is left with a recruit who never held a season, is answered 0. The two are different
+	 * numbers and neither is the 1 of the lapsed member, so a count read off the wrong row, or off the
+	 * recruiter's number, answers a number nobody here is owed.
+	 */
+	@Test
+	void aMemberWithNoNumberYetIsCountedThoseHeBroughtIn() throws Exception {
+		for (String recruit : List.of(ALSO_BROUGHT_BY_ME, THE_SECOND_BROUGHT_BY_ME)) {
+			db.sql("update competitor set referred_by = ? where member_number = ?")
+					.params(theOneWithNoNumber(), recruit).update();
+		}
+
+		assertThat(howMany("referred_by = ? and " + HIS_FEE_STANDS, theOneWithNoNumber()))
+				.as("the recruits moved to the member with no number do not both hold the season on sale, so"
+						+ " this is not the count the case asks for")
+				.isEqualTo(2);
+		assertThat(answerFor(THE_ACCOUNT_WITH_NO_NUMBER).path("member").path("referredCount").asInt())
+				.as("a member with no number yet was not counted the recruits who hold a season")
+				.isEqualTo(2);
+		assertThat(answerFor(MY_ACCOUNT).path("member").path("referredCount").asInt())
+				.as("the caller kept recruits that were moved to somebody else")
+				.isZero();
+	}
+
+	/**
 	 * AND THE OTHER DOOR ANSWERS NEITHER OF THEM, TO HIM OR TO ANYBODY.
 	 *
 	 * <p><b>This case held the opposite claim between 21.09.2026 and 25.09.2026 and is

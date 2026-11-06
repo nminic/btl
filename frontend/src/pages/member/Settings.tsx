@@ -11,8 +11,6 @@ import { MEMBERS, recordsOf } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
 import { ChangePassword } from './ChangePassword'
 import { MailLanguageChoice } from './MailLanguageChoice'
-import { ProfileBio } from './ProfileBio'
-import { ProfilePicture } from './ProfilePicture'
 import { ProfileVisibility } from './ProfileVisibility'
 import { useScreenForEveryAccount } from './memberScreen'
 import './Member.css'
@@ -50,13 +48,16 @@ const THEMES: Theme[] = ['dark', 'light']
  * the owner between offered outcomes - the sentences are the record's and not his own words:
  *
  * <ul>
- * <li><b>A member whose fee stands</b> is drawn everything, exactly as he was, and now the language
- * of his mail.</li>
+ * <li><b>A member whose fee stands</b> is drawn the password, the switch that hides his profile, the
+ * theme and the language of his mail. His picture and his words about himself are not here since
+ * 06.11.2026: they stand at the bottom of the card „Podaci" of his profile (owner, PDL „Boksovi
+ * „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja": „Podešavanja ostaju podešavanja naloga
+ * (lozinka, privatnost, tema, jezik pošte)").</li>
  * <li><b>A member whose fee has lapsed</b> is drawn the theme and one sentence: his data and his
  * password are answered 404 (the addition of 11.10.2026: „izmena podataka (PUT /api/me) i lozinke
- * (PUT /api/me/password) mu daje 404"), and so are the picture, the biography and the switch,
- * which this screen did not draw him before either - he is on no row of the public list they are
- * drawn from. That is now said by the shape rather than by that accident. The sentence, since
+ * (PUT /api/me/password) mu daje 404"), and so is the switch, which this screen did not draw him
+ * before either - he is on no row of the public list it is drawn from. That is now said by the shape
+ * rather than by that accident. The sentence, since
  * 16.10.2026, says his data and his password open once his fee is renewed, with a link to the page
  * he renews it on ({@link WhatOpensWhenTheFeeIsRenewed}).</li>
  * <li><b>An account with no competitor record</b> - a moderator, a superadmin - is drawn the
@@ -105,14 +106,15 @@ export function Settings() {
       <h1>{t('settings.title')}</h1>
       <p className="member__note">{t('settings.intro')}</p>
 
-      {/* **THREE TALL ROWS OF TWO COLUMNS, since 23.10.2026** (PDL, „Strana Podešavanja u tri visoka
-          reda sa dve kolone", owner: „lični podaci (prilog) ispadaju sa strane, lozinka prelazi levo na
-          njeno mesto, a Privatnost tekst iz priloga ide u desni stubac pored boksa za lozinku. Slično
-          tome, Profilna slika sa svim opcijama treba da bude u nivou levog stupca, a u desni stubac treba
-          da dođe u njenoj visini Tekst o sebi boks."). The third row is the two that were already beside
-          each other, the theme and the language of the mail. On a telephone every row is one column, as
-          the UI standard of this repository asks (`CLAUDE.md`), from the same `.member__pair`; the two
-          boxes of a row are as tall as each other (`.member__row`, `Member.css`).
+      {/* **TWO TALL ROWS OF TWO COLUMNS, since 06.11.2026.** They were three since 23.10.2026 (PDL,
+          „Strana Podešavanja u tri visoka reda sa dve kolone"), and the second, the picture beside the
+          words about oneself, moved to the bottom of the card „Podaci" (owner, 06.11.2026, PDL „Boksovi
+          „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja": „Podešavanja ostaju podešavanja
+          naloga (lozinka, privatnost, tema, jezik pošte)"; `CompetitorData.tsx`). What stays is the
+          password beside who sees the profile, then the theme beside the language of the mail. On a
+          telephone every row is one column, as the UI standard of this repository asks (`CLAUDE.md`),
+          from the same `.member__pair`; the two boxes of a row are as tall as each other (`.member__row`,
+          `Member.css`).
 
           **THE PERSONAL DATA ARE NOT ON THIS SCREEN FOR ANYBODY.** A member whose fee stands changes them
           on the card „Podaci" of his own profile (PDL 22.10.2026, „Profil dobija karticu „Podaci""), and
@@ -146,36 +148,7 @@ export function Settings() {
           (`standing === 'lapsed'`) and by nothing else. */}
       {who.standing === 'lapsed' && <WhatOpensWhenTheFeeIsRenewed />}
 
-      {/* **THE SECOND ROW: THE PICTURE, AND BESIDE IT THE WORDS ABOUT ONESELF**, each going for review
-          on its own (owner, 15.08.2026). Only for a member whose fee stands: the public list these two
-          are drawn from carries nobody else, and the server answers nobody else the writes behind them
-          (PDL P8, 10.10.2026). */}
-      {who.standing === 'standing' && (
-        <Resource state={competitors} inline>
-          {(everybody) => {
-            const me = everybody.find((one) => one.memberNumber === memberNumber)
-
-            if (me === undefined) {
-              return null
-            }
-
-            return (
-              <div className="member__pair member__row">
-                <ProfilePicture me={me} />
-                {/* KEYED BY THE MEMBER, BECAUSE EVERYTHING THAT PANEL HOLDS BELONGS TO ONE PERSON:
-                    what he typed, what stands on his profile, what of his is waiting, and what the
-                    server last said. One visit can hold two people - a shared laptop at a race - and
-                    without this the second reads the first man's words out of the box. **The reach of
-                    this `key` is this screen and no other**: `ProfileBio` is drawn here and nowhere
-                    else in `src`. */}
-                <ProfileBio key={me.memberNumber} me={me} />
-              </div>
-            )
-          }}
-        </Resource>
-      )}
-
-      {/* **THE THIRD ROW: THE THEME AND THE LANGUAGE OF THE MAIL**, beside each other since 18.10.2026
+      {/* **THE SECOND ROW: THE THEME AND THE LANGUAGE OF THE MAIL**, beside each other since 18.10.2026
           (PDL P11, owner, „Strana Podešavanja, sa snimaka": „Boksovi „Tema" i „Jezik pošte" stoje jedan
           pored drugog u istom redu"). Drawn in every shape: the language of the mail is an account's
           setting and not a competitor's right (PDL, the answers of 17.10.2026). */}

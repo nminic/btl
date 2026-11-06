@@ -472,8 +472,9 @@ class PaymentApi {
 	/**
 	 * <p><b>THERE IS NO {@code season} HERE, AND THAT IS THE POINT RATHER THAN AN
 	 * OMISSION.</b> PDL, POTVRDJENO 13.09.2026: which season a payment buys is fixed
-	 * by the day it is booked - „prozor za placanje sezone S ide od 1. oktobra godine
-	 * S-1 do 30. septembra godine S" - and {@link SeasonClock#seasonBeingPaidFor}
+	 * by the day it is booked - the next year inside the transfer window and the running one on every other
+	 * day (the dates of the window the sentence of 13.09.2026 gave were moved later; they live in
+	 * {@link SeasonClock#transferWindowOpen} and nowhere else) - and {@link SeasonClock#seasonBeingPaidFor}
 	 * already computes exactly that, the same call {@link RegistrationApi} makes for
 	 * the season somebody registers into. Asking the form instead would let one
 	 * keystroke buy the wrong year and, worse, burn a member number on it: nothing

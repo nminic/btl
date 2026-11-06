@@ -652,7 +652,7 @@ class PairWriteApi {
 		   most two: the schema allows one pair a season a side, so `man` loses at most the
 		   woman on his old row and `woman` loses at most the man on hers. */
 		List<Abandoned> abandoned = whoLosesAPairWhen(season, mixed.get().man(),
-				mixed.get().woman());
+				mixed.get().woman(), now);
 
 		db.sql("delete from racing_pair where season = ?"
 						+ " and (man_id in (?, ?) or woman_id in (?, ?))")
@@ -698,23 +698,32 @@ class PairWriteApi {
 	 *
 	 * <p>Two branches and never a self-join: a row where {@code man} already stood abandons
 	 * whoever is on the OTHER side of it, and the same for {@code woman}, so each branch's own
-	 * join hands back the very name {@code {who}} needs without a second lookup. Neither branch
-	 * filters on whether anybody is active - the DELETE two lines below does not either, and a stale row
-	 * that survives a lapsed fee (V22) is exactly the row this method must still find, or the
-	 * member it named would meet silence where {@link #end} already answers with a name.
+	 * join hands back the very name {@code {who}} needs without a second lookup.
+	 *
+	 * <p><b>Only an abandoned partner whose fee stands at {@code now} is told.</b> The DELETE
+	 * that follows removes every row there is, a stale one included, but the message goes to
+	 * somebody who can still read it. Owner, 19.09.2026, in the PDL section on members who do
+	 * not renew (anchors: a member left without a pair is told in his inbox and that is enough;
+	 * a member whose fee lapsed reaches only the page for renewal): „Do tada ionako niko nema i
+	 * ne treba da ima nacin da ga kontaktira recimo porukom". The reason given there is that the
+	 * message would fall into an inbox he cannot open. {@code ASeasonBegins.outOfHisPair} does
+	 * the same for the other half. The row of a lapsed partner is still deleted, which
+	 * {@code PairWriteApiTest.acceptingBreaksAPairThatHasAlreadyStoppedHolding} holds, and
+	 * {@link #end} asks the opposite question of a pair, whether it still holds, and answers 404
+	 * to a pair either half of which has lapsed; this one is about a row that is being removed.
 	 *
 	 * <p><b>Zero, one or two rows, never more:</b> {@code racing_pair_one_man_a_season} and
 	 * {@code racing_pair_one_woman_a_season} hold one row a season a side, so {@code man} can
 	 * abandon at most one woman and {@code woman} at most one man.
 	 */
-	private List<Abandoned> whoLosesAPairWhen(int season, long man, long woman) {
+	private List<Abandoned> whoLosesAPairWhen(int season, long man, long woman, ZonedDateTime now) {
 		return db.sql("select p.woman_id, m.first_name, m.last_name"
 						+ " from racing_pair p join competitor m on m.id = p.man_id"
-						+ " where p.season = ? and p.man_id = ?"
+						+ " where p.season = ? and p.man_id = ? and " + AMemberIsActive.of("p.woman_id", now)
 						+ " union all"
 						+ " select p.man_id, w.first_name, w.last_name"
 						+ " from racing_pair p join competitor w on w.id = p.woman_id"
-						+ " where p.season = ? and p.woman_id = ?")
+						+ " where p.season = ? and p.woman_id = ? and " + AMemberIsActive.of("p.man_id", now))
 				.params(season, man, season, woman)
 				.query((row, one) -> new Abandoned(row.getLong(1),
 						row.getString(2) + " " + row.getString(3)))

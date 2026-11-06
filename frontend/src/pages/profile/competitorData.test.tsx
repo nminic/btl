@@ -109,7 +109,11 @@ const corrections = (asked: Asked[]) =>
 async function theDataTab(): Promise<HTMLElement | null> {
   const parts = await screen.findByRole('navigation', { name: sr.profile.parts.label })
 
-  return within(parts).queryByRole('link', { name: sr.profile.parts.data })
+  /* UNDER EITHER OF ITS TWO NAMES: „Dovrši profil" while the member himself has no picture or no words about
+     himself (PDL 06.11.2026), „Podaci" otherwise. Which of the two is `finishTheProfile.test.tsx`'s. */
+  return within(parts).queryByRole('link', {
+    name: new RegExp(`^(${sr.profile.parts.data}|${sr.profile.parts.finish})$`),
+  })
 }
 
 async function sentHome(router: { state: { location: { pathname: string } } }): Promise<void> {
