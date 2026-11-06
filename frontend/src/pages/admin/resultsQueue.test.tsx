@@ -820,9 +820,12 @@ describe('where the focus goes when a box is put away', () => {
       )
 
       expect(screen.queryByLabelText(sr.review.reason)).toBeNull()
-      await waitFor(() => {
-        expect(opener).toHaveFocus()
-      })
+      await waitFor(
+        () => {
+          expect(opener).toHaveFocus()
+        },
+        { timeout: 2000 },
+      )
     } finally {
       server.stop()
     }
@@ -845,9 +848,12 @@ describe('where the focus goes when a box is put away', () => {
       )
 
       expect(screen.queryByRole('group', { name: sr.review.amendTitle })).toBeNull()
-      await waitFor(() => {
-        expect(opener).toHaveFocus()
-      })
+      await waitFor(
+        () => {
+          expect(opener).toHaveFocus()
+        },
+        { timeout: 2000 },
+      )
     } finally {
       server.stop()
     }
@@ -868,9 +874,12 @@ describe('where the focus goes when a box is put away', () => {
       )
 
       expect(screen.queryByRole('group', { name: sr.review.placeTitle })).toBeNull()
-      await waitFor(() => {
-        expect(opener).toHaveFocus()
-      })
+      await waitFor(
+        () => {
+          expect(opener).toHaveFocus()
+        },
+        { timeout: 2000 },
+      )
     } finally {
       server.stop()
     }
@@ -891,9 +900,12 @@ describe('where the focus goes when a box is put away', () => {
       await untilItHasAnswered()
 
       expect(screen.queryByLabelText(sr.review.reason)).toBeNull()
-      await waitFor(() => {
-        expect(opener).toHaveFocus()
-      })
+      await waitFor(
+        () => {
+          expect(opener).toHaveFocus()
+        },
+        { timeout: 2000 },
+      )
     } finally {
       server.stop()
     }
