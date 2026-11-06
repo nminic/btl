@@ -728,7 +728,7 @@ const NAME = 'field__control--held'
 const SEP = join('a', 'b').slice(1, -1)
 
 /**
- * WHAT A HELD BUTTON WEARS HAS SIX HOMES, AND THIS FILE NAMES THEM.
+ * WHAT A HELD BUTTON WEARS HAS SIX HOMES, AND THIS FILE NAMES THEM (and a locked choice two more rules).
  *
  * <p>The same shape of fault `forms/held.ts` records for a held FIELD (ADL A31), one storey over: a
  * button the portal holds is told off by `aria-disabled='true'` and dressed by a rule of its own,
@@ -753,7 +753,14 @@ describe('what a held button wears', () => {
     'src/components/Pager.css': [".pager .button[aria-disabled='true']"],
     'src/components/markdownEditor/MarkdownEditor.css': [".md-editor__tool[aria-disabled='true']"],
     'src/forms/DatePicker.css': [".datepicker__open[aria-disabled='true']"],
-    'src/forms/FormRenderer.css': [".form__submit[aria-disabled='true']"],
+    'src/forms/FormRenderer.css': [
+      // The sheet's two other homes are not a button but a choice the form holds, a locked sex on the
+      // member's own data (PR 681): the radio, which the pointer is over and which sets the cursor,
+      // and the label beside it, which wears the shade. Told off by `aria-disabled` all the same.
+      ".choice__input[aria-disabled='true']",
+      ".choice__input[aria-disabled='true'] + .choice__label",
+      ".form__submit[aria-disabled='true']",
+    ],
     'src/pages/Home.css': [".button[aria-disabled='true']"],
     'src/pages/admin/Entity.css': [".entity-open[aria-disabled='true']"],
   }
