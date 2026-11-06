@@ -1366,6 +1366,10 @@ class PairWriteApiTest {
 	@Test
 	void acceptingBreaksAPairThatHasAlreadyStoppedHolding() throws Exception {
 		lapsed(THE_THIRD);
+		/* AND THE OTHER ABANDONED PARTNER TOO: the woman's side of the question is a branch of its own, and
+		   a filter on the abandoned partner written into one of the two branches is not seen by a case that
+		   lapses only the man's former partner. */
+		lapsed(THE_FOURTH);
 
 		/* Asked of HER number and not of his: he is also in the pair of the season being RUN,
 		   which still holds, so his number is on that list either way and would say nothing. */
@@ -1378,17 +1382,38 @@ class PairWriteApiTest {
 						+ " way of the insert")
 				.isOne();
 
+		assertThat(howManyPairsOf(THE_FOURTH, SHE_ANSWERS, BEING_FORMED))
+				.as("the row of the woman's former partner went when his fee lapsed")
+				.isOne();
+
 		assertThat(answerAs(SHE_ANSWERS, questionFrom(HE_ASKED_HER, SHE_ANSWERS), answering(true))
 				.getStatus())
 				.as("the stale row survived the break and then refused the insert, so a member"
 						+ " met a server fault where a pair belongs")
 				.isEqualTo(200);
 
+		assertThat(howManyPairsOf(THE_FOURTH, SHE_ANSWERS, BEING_FORMED))
+				.as("the woman's stale row is still there, and she holds two pairs in one season")
+				.isZero();
+
 		assertThat(howManyPairsOf(HE_ASKED_HER, THE_THIRD, BEING_FORMED))
 				.as("the stale row is still there, and one member now holds two pairs in one"
 						+ " season")
 				.isZero();
 		assertThat(howManyPairsOf(HE_ASKED_HER, SHE_ANSWERS, BEING_FORMED)).isOne();
+
+		/* AND HE IS TOLD, THOUGH HIS OWN FEE HAS LAPSED. The question that finds who loses a pair filters on
+		   nobody's activity, as the delete does not; a filter on the abandoned partner (the one the javadoc of
+		   `whoLosesAPairWhen` brings no argument for) would leave him with a pair taken from him in silence,
+		   and no other case lapses the partner who is left. */
+		assertThat(postFor(THE_THIRD)).containsExactly(
+				"Balkanska trkačka liga | " + PairWriteApi.THE_PAIR_IS_BROKEN + " | "
+						+ PairWriteApi.theSupersededPairReads("Probni Probic" + HE_ASKED_HER,
+								BEING_FORMED));
+		assertThat(postFor(THE_FOURTH)).containsExactly(
+				"Balkanska trkačka liga | " + PairWriteApi.THE_PAIR_IS_BROKEN + " | "
+						+ PairWriteApi.theSupersededPairReads("Probni Probic" + SHE_ANSWERS,
+								BEING_FORMED));
 	}
 
 	/** What the public list really serves, asked of that resource rather than of this one. */

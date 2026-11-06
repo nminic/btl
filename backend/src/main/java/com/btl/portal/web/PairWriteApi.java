@@ -699,9 +699,11 @@ class PairWriteApi {
 	 * <p>Two branches and never a self-join: a row where {@code man} already stood abandons
 	 * whoever is on the OTHER side of it, and the same for {@code woman}, so each branch's own
 	 * join hands back the very name {@code {who}} needs without a second lookup. Neither branch
-	 * filters on whether anybody is active - the DELETE two lines below does not either, and a stale row
-	 * that survives a lapsed fee (V22) is exactly the row this method must still find, or the
-	 * member it named would meet silence where {@link #end} already answers with a name.
+	 * filters on whether anybody is active - the DELETE two lines below does not either, so a stale row
+	 * that survives a lapsed fee (V22) is removed all the same, and the member whose pair it was is told
+	 * that it is gone (held by {@code PairWriteApiTest.acceptingBreaksAPairThatHasAlreadyStoppedHolding}).
+	 * {@link #end} asks the opposite question of a pair, whether it still holds, and answers 404 to a pair
+	 * either half of which has lapsed; this one is about a row that is being removed.
 	 *
 	 * <p><b>Zero, one or two rows, never more:</b> {@code racing_pair_one_man_a_season} and
 	 * {@code racing_pair_one_woman_a_season} hold one row a season a side, so {@code man} can
