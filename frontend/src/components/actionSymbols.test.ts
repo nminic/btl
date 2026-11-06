@@ -140,7 +140,6 @@ const NOT_AN_ACTION =
 /** THE BUTTONS THAT KEEP THEIR WORD, each with its reason. */
 const STAYS_A_WORD = new Map([
   ['account.passwordSubmit', FORM],
-  ['account.save', FORM],
   ['admin.addRace', FORM],
   ['admin.changeToExemption', LISTED],
   ['admin.form.back', NOT_AN_ACTION],
