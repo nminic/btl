@@ -595,7 +595,12 @@ describe('rating an event', () => {
 
     const after = await loadResource<EventComment[]>('comments')
 
-    expect(after).toHaveLength(before + 1)
+    /* ME already has a rating published on this event (the file's comment 2), and one rating per
+       member per event is the rule (PDL, 19.10.2026): the new one REPLACES it, so the event holds
+       as many comments as before, and exactly one of them is his. `before + 1` passed with two. */
+    expect(after).toHaveLength(before)
+    expect(after.filter((one) => one.memberNumber === ME)).toHaveLength(1)
+    expect(first(after).memberNumber).toBe(ME)
     expect(first(after).body).toBe('')
     expect(first(after).rating).toEqual({ organisation: 5, value: 5, ambience: 5 })
   })
