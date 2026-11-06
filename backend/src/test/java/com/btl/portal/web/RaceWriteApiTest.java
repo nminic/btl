@@ -1013,6 +1013,28 @@ class RaceWriteApiTest {
 	}
 
 	/**
+	 * NOBODY IS TOLD THAT HIS RESULT WENT WITH THE RACE.
+	 *
+	 * <p>Owner, 11.08.2026, asked whether a member is notified when his result disappears with a
+	 * deleted race: „Ne." The class under test writes that down as a decision, and it was held by
+	 * nothing (measured 06.11.2026: a row into {@code message} for every member whose result goes
+	 * with the race, 98 of 98 green). The race deleted carries a result, so there is a member to tell,
+	 * and the inbox of the whole league is counted before and after.
+	 */
+	@Test
+	void deletingARaceWritesNothingIntoAnyInboxForTheResultsThatWentWithIt() throws Exception {
+		long inboxBefore = db.sql("select count(*) from message").query(Long.class).single();
+
+		assertThat(db.sql("select count(*) from result where race_id = ?").param(raceCalled("Duga"))
+				.query(Long.class).single()).as("the race carries no result, so there is nobody to tell").isPositive();
+		assertThat(remove(raceCalled("Duga")).getStatus()).isEqualTo(204);
+
+		assertThat(db.sql("select count(*) from message").query(Long.class).single())
+				.as("a member was told, or the whole league was, that a result went with a race")
+				.isEqualTo(inboxBefore);
+	}
+
+	/**
 	 * AND DELETING THE FIRST OF THEM MOVES THE EVENT ONTO THE ONE THAT IS NOW FIRST.
 	 *
 	 * <p>The forward direction of the owner's rule, which only a delete and a move away can
