@@ -1,10 +1,11 @@
 import { RACE_KINDS } from '../../data/types'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, htmlElement, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { racesToOffer } from './racesToOffer'
 import { serverThat } from '../../test/serverAnswers'
+import { useSession } from '../../session/useSession'
 import { myOwnRecordFromMe, whoIAm } from '../../test/theAnswer'
 import { setupUser } from '../../test/user'
 import { SLOW } from '../../test/slow'
@@ -1478,6 +1479,89 @@ describe('a run sent back, opened again by its address', () => {
    the run was written into the browser only after the server agreed. Nothing about a run sent is
    written into the browser any more, so there is no store to hold to it; that a refusal confirms
    nothing and leaves every box as it was is `resultToTheServer.test.tsx`'s. */
+
+/**
+ * THE FORM, WHEN SOMEBODY ELSE SIGNS IN WITHOUT SIGNING OUT FIRST (PENDING, review of PR 521, finding 3).
+ *
+ * <p>`useMyResultSubmissions(me, revision)` in `NewResult.tsx` hands the hook the member, and the hook drops
+ * the answer it holds the moment the member changes (`data/useResource.ts`, `theSubmissionsNowBelongTo`). On
+ * „Moji rezultati" a case holds that (`ownResult.test.tsx`); on the form none did, and the argument written
+ * as a constant (`useMyResultSubmissions('000001', revision)`) passed all 212 cases of this file. It is the
+ * form's own argument that discards the previous reader's list when the form is the first screen of the new
+ * one, and what goes if it does not is that `?ponovo=` on a shared device opens somebody else's sent-back
+ * run, with the moderator's words about it.
+ *
+ * <p>The switch is made through the portal's own live writer (`theServerSignedMeIn`, the call
+ * `member/SignIn.tsx` makes), in place, as `ownResult.test.tsx` and `inboxFromTheServer.test.tsx` do it.
+ * The server answers the run on the list of the first member and another one on the list of the second, so
+ * a form that went on with the first list is a form that opens a run that is not his.
+ */
+describe('a run sent back, when somebody else signs in without signing out first', () => {
+  let whose: 'his' | 'hers' = 'his'
+
+  function SignInAsWithoutSigningOut({ memberNumber }: { memberNumber: string }) {
+    const { theServerSignedMeIn } = useSession()
+
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          whose = 'hers'
+          theServerSignedMeIn({
+            account: 2,
+            memberNumber,
+            country: null,
+            firstSeason: null,
+            teamId: null,
+            membershipBasis: null,
+            membershipSeason: null,
+            referralCode: null,
+            referredCount: null,
+            hasARecord: true,
+            feeStands: null,
+          })
+        }}
+      >
+        sign in as somebody else, in place
+      </button>
+    )
+  }
+
+  it('is opened on the list of whoever is signed in now and not of the member the form was drawn for', async () => {
+    const user = setupUser()
+
+    whose = 'his'
+
+    const server = serverThat((path) =>
+      path.replace(/\?.*$/, '') === '/api/me/result-submissions'
+        ? new Response(JSON.stringify(whose === 'his' ? [SENT_BACK] : [{ ...SENT_BACK, id: 99, raceName: 'Njena trka' }]), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      renderAt(`${NEW}?ponovo=77`, 'competitor', ME, undefined, TODAY, <SignInAsWithoutSigningOut memberNumber="000009" />)
+
+      /* The first member's list opens his run, which is the half that has to work. */
+      expect(await screen.findByText(/Link ne otvara rezultate/, undefined, SOON)).toBeVisible()
+
+      await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
+
+      /* HER list has no run 77, so the form no longer holds his: it opens for a new run, and the words of
+         the moderator about his are not on a screen that is hers. */
+      await waitFor(
+        () => {
+          expect(screen.queryByText(/Link ne otvara rezultate/), 'his reason stayed on her screen').toBeNull()
+        },
+        { timeout: 3000 },
+      )
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+})
 
 describe('the measures of a result entered away from the calendar', () => {
   /* Owner, 16.10.2026, chosen between the outcomes offered: the form away from the calendar
