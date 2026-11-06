@@ -105,12 +105,46 @@ const A_MORNING: RaceRow = {
  * is read: the calendar below, `pages/Registration.test.tsx` („birthDate" is `1985-04-12` and
  * `2012-05-20`) and `pages/member/resultToTheServer.test.tsx` („day" is `2026-05-10`).
  */
-const ONTO_THE_WIRE: Record<string, (day: string) => string> = {
-  'admin-dogadjaj.form.json': (day) => String(storedDates(dogadjaj, { date: day }).date),
-  'admin-trka.form.json': (day) => raceUpsertFrom({ ...A_MORNING, date: day }, '77').date,
-  'registracija.form.json': (day) =>
-    String(storedDates(registracija, { birthDate: day }).birthDate),
-  'unos-rezultata.form.json': (day) => String(storedDates(unosRezultata, { date: day }).date),
+const ONTO_THE_WIRE: Record<
+  string,
+  {
+    /** What the door makes of a day, for the field of THIS form. It is a measure of the door and of
+     *  the definition, and of no screen: two of the four rows call the one shared helper. */
+    door: (day: string) => string
+    /** The case that reads what this form's SCREEN really sent, which is the half the door cannot
+     *  measure (review of PR 677, medium): a screen that began to send the day as the box holds it
+     *  would leave every `door` above green, and is caught only at the case named here. */
+    joinedAt: { file: string; title: string }
+  }
+> = {
+  'admin-dogadjaj.form.json': {
+    door: (day) => String(storedDates(dogadjaj, { date: day }).date),
+    joinedAt: {
+      file: 'src/pages/admin/dateOnTheWire.test.tsx',
+      title: 'sends the day of the event it was opened on, as the route reads it',
+    },
+  },
+  'admin-trka.form.json': {
+    door: (day) => raceUpsertFrom({ ...A_MORNING, date: day }, '77').date,
+    joinedAt: {
+      file: 'src/pages/admin/eventWrites.test.ts',
+      title: 'sends the day it is handed, and converts nothing a second time',
+    },
+  },
+  'registracija.form.json': {
+    door: (day) => String(storedDates(registracija, { birthDate: day }).birthDate),
+    joinedAt: {
+      file: 'src/pages/Registration.test.tsx',
+      title: 'writes every answer under the name the route reads it by, and nothing else',
+    },
+  },
+  'unos-rezultata.form.json': {
+    door: (day) => String(storedDates(unosRezultata, { date: day }).date),
+    joinedAt: {
+      file: 'src/pages/member/resultToTheServer.test.tsx',
+      title: 'goes to the server, naming the town and never a placeId',
+    },
+  },
 }
 
 describe('every form that asks for a day', () => {
@@ -130,8 +164,24 @@ describe('every form that asks for a day', () => {
    * conversion that swapped the pieces would answer `2027-16-01` rather than the right thing
    * by accident. A date like 05/05/2027 satisfies this case whichever way round it is read.
    */
-  it.each(Object.entries(ONTO_THE_WIRE))('sends an ISO day from %s', (_form, onto) => {
-    expect(onto('16/01/2027')).toBe('2027-01-16')
+  it.each(Object.entries(ONTO_THE_WIRE))(
+    'turns the day of the field of %s into an ISO day at the door',
+    (_form, row) => {
+      expect(row.door('16/01/2027')).toBe('2027-01-16')
+    },
+  )
+
+  /**
+   * AND EACH NAMES THE CASE THAT READS WHAT ITS SCREEN SENT, which is the half the rows above do not
+   * measure: the door is one helper and four definitions, and a screen is a different thing.
+   * Without this the table can be closed on a fifth form by a row that measures the door alone, the
+   * gate green and the road of that form's screen asserted nowhere.
+   */
+  it.each(Object.entries(ONTO_THE_WIRE))('names the case that reads the body %s sends', (_form, row) => {
+    const source = readFileSync(join(process.cwd(), row.joinedAt.file), 'utf-8')
+    /* The title between its quotes, as `it(` writes it: the name of a case that is not there any
+       more, or that was renamed, leaves the table pointing at nothing. */
+    expect(source).toContain(`'${row.joinedAt.title}'`)
   })
 })
 
