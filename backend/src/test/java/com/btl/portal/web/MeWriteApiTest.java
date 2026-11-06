@@ -244,11 +244,11 @@ class MeWriteApiTest {
 
 	private void competitor(String number, String first, String last, String bio, boolean hidden) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, ?, ?, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, first, last, String.format("%016x", ++issued), bio, hidden)
@@ -2886,8 +2886,7 @@ class MeWriteApiTest {
 		NEVER_PAID,
 
 		/** A number, not active, a row of membership for 2028 given free of the fee (a season that does
-		 *  not count today), and his flag says true, so neither a row of another season nor the flag is
-		 *  what tells him apart. */
+		 *  not count today), so a row of another season is not what tells him apart. */
 		LAPSED_WITH_A_ROW,
 
 		/** A number, not active, and no row at all: the one a rule that read the row would take for NEVER_PAID. */
@@ -2907,16 +2906,15 @@ class MeWriteApiTest {
 		};
 
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active,"
+						+ " birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Neplacen', 'Neplacenic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, ?, ?,"
+						+ " (select id from place where rank = 1), 2027, ?,"
 						+ " 'Tekst koji stoji.', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00') returning id")
 				.params(kind == NotPaid.NEVER_PAID ? null : "000900",
-						/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it. */
-						kind != NotPaid.NEVER_PAID, String.format("%016x", ++issued))
+						String.format("%016x", ++issued))
 				.query(Long.class).single();
 
 		if (kind == NotPaid.LAPSED_WITH_A_ROW) {

@@ -1808,7 +1808,7 @@ class VerificationWriteApiTest {
 	 * The item stays in the queue, like the two refusals above it.
 	 *
 	 * <p>The clock is moved INSIDE the window of 2027 because the rest of this file stands in March,
-	 * where the season on sale is the one being run and {@code competitor.active} says all there is.
+	 * where the season on sale is the one being run and whether he holds the season on sale says all there is.
 	 * <b>The same founder in both states:</b> he holds 2027 alone and is refused with the season on
 	 * sale (2028) named; he holds 2028 as well and the same answer approves.
 	 */
@@ -5036,11 +5036,11 @@ class VerificationWriteApiTest {
 
 	private void member(String number, String first, String last) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, first, last, String.format("%016x", ++issued))

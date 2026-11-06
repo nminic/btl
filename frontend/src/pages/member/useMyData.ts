@@ -11,7 +11,7 @@ import { useHeldRead } from './useHeldRead'
  * <p>PDL P8, the entry „Šta sme neplaćen član" (10.10.2026, chosen by the owner between offered
  * outcomes; the sentence is the record's): such a person may change „svoje podatke za
  * evidenciju i majicu". The settings screen draws those from a record of the public list
- * (`/api/competitors`), which ends `where c.active` and has no row for him, and from nothing
+ * (`/api/competitors`), which ends `AMemberIsActive` and has no row for him, and from nothing
  * else - so he has to be read off the one answer that has a row for him, which is `GET /api/me`
  * (`session/theServer.ts#whatTheServerSaysOfMyData`). This is `profile/useHisOwnRecord.ts`
  * for a person with no number, and it is built the same way for the same reasons.

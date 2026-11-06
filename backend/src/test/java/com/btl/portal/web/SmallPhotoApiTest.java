@@ -233,11 +233,11 @@ class SmallPhotoApiTest {
 
 	private void competitor(String number, Long photo, boolean hiding) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name,"
 						+ " address, shirt_size, health_statement_at, photo_id)"
 						+ " values (?, 'Ime', 'Prezime', 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', ?, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00', ?)")
 				.params(number, String.format("%016x", ++issued), hiding, photo)

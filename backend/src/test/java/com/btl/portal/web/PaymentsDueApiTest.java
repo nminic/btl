@@ -65,10 +65,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * ({@link #FREE_OF_THE_FEE}), and BOTH take him off. With only the first, a route reading
  * recorded payments instead of memberships passes, and the man who owes nothing stays on the
  * screen for ever.
- * <li><b>The two homes of nearly one fact.</b> {@link #FLAG_SAYS_OTHERWISE} carries
- * {@code active = false} WITH a membership for the season, and {@link #PAID_AHEAD} carries
- * {@code active = true} WITHOUT one. The pair is deliberately inconsistent, because that is the
- * only shape in which „read the membership" and „read the flag" answer differently.
+ * <li><b>The season of the row.</b> {@link #ALSO_PAID} holds a membership for the season, and
+ * {@link #PAID_AHEAD} holds one for the next only, so the season of the row is the only thing that
+ * tells the two apart.
  * <li><b>The season.</b> Three moments and not one, because no single moment separates the
  * three methods of {@link SeasonClock} that answer with a year. See {@link #IN_OCTOBER_2026}.
  * <li><b>Whether the account names a member.</b> {@link #BOOKS} does not, which the owner
@@ -161,12 +160,10 @@ class PaymentsDueApiTest {
 	private static final String DID_NOT_RENEW = "jelena@primer.rs";
 
 	/**
-	 * A MEMBERSHIP FOR A SEASON THAT IS NOT THE ONE BEING ASKED ABOUT, and {@code active} true
-	 * beside it.
+	 * A MEMBERSHIP FOR A SEASON THAT IS NOT THE ONE BEING ASKED ABOUT.
 	 *
-	 * <p>Two axes in one person on purpose: he is why the default case measures the season at
-	 * all (drop {@code m.season} and he vanishes), and he is the half of the flag axis that
-	 * says a route reading {@code competitor.active} would leave him OUT when he belongs in.
+	 * <p>He is why the default case measures the season at all (drop {@code m.season} and he
+	 * vanishes).
 	 */
 	private static final String PAID_AHEAD = "ana@primer.rs";
 
@@ -176,8 +173,8 @@ class PaymentsDueApiTest {
 	/** Paid for the season being asked about, with a recorded payment behind it. */
 	private static final String PAID = "vera@primer.rs";
 
-	/** A membership for the season, and {@code active = false} against it. */
-	private static final String FLAG_SAYS_OTHERWISE = "zorica@primer.rs";
+	/** A membership for the season, as {@link #PAID} holds it. */
+	private static final String ALSO_PAID = "zorica@primer.rs";
 
 	/** Registered and has not confirmed his address, which does not keep him off the list. */
 	private static final String NOT_CONFIRMED = "novak@primer.rs";
@@ -292,7 +289,7 @@ class PaymentsDueApiTest {
 
 	private long paid;
 
-	private long flagSaysOtherwise;
+	private long alsoPaid;
 
 	private long notConfirmed;
 
@@ -375,7 +372,7 @@ class PaymentsDueApiTest {
 		clock.moveTo(IN_OCTOBER_2026);
 
 		/* FIRST BY KEY, AND HE HAS NO ACCOUNT. */
-		onlyImported = competitor(ONLY_IMPORTED, "Uvezeni", "Uvezenovic", true);
+		onlyImported = competitor(ONLY_IMPORTED, "Uvezeni", "Uvezenovic");
 
 		booksCookie = account(BOOKS, "moderator", "Uros", "Uplatic", true);
 		anotherQueueCookie = account(ANOTHER_QUEUE, "moderator", "Dragana", "Drugic", true);
@@ -389,19 +386,19 @@ class PaymentsDueApiTest {
 
 		/* THE READER HOLDING THE TICK HAS NO MEMBER OF HIS OWN, which is left exactly as the
 		   `account` helper made it: `competitor_id` stays empty. */
-		aMembersOwnRecord = competitor(null, "Tijana", "Takic", false);
+		aMembersOwnRecord = competitor(null, "Tijana", "Takic");
 		belongsTo(A_MEMBER, aMembersOwnRecord);
 
-		neverPaid = competitor(null, "Marko", "Markovic", false);
-		namesake = competitor(null, "Marko", "Markovic", false);
-		didNotRenew = competitor("000210", "Jelena", "Petrovic", true);
-		paidAhead = competitor("000220", "Ana", "Nikolic", true);
-		freeOfTheFee = competitor("000230", "Petar", "Ilic", true);
-		paid = competitor("000240", "Vera", "Vukovic", true);
-		flagSaysOtherwise = competitor("000260", "Zorica", "Zoric", false);
-		notConfirmed = competitor(null, "Novak", "Jovanovic", false);
-		surnamedNovak = competitor("000250", "Dragan", "Novak", true);
-		withDiacritics = competitor(null, "Mila", "Čačić", false);
+		neverPaid = competitor(null, "Marko", "Markovic");
+		namesake = competitor(null, "Marko", "Markovic");
+		didNotRenew = competitor("000210", "Jelena", "Petrovic");
+		paidAhead = competitor("000220", "Ana", "Nikolic");
+		freeOfTheFee = competitor("000230", "Petar", "Ilic");
+		paid = competitor("000240", "Vera", "Vukovic");
+		alsoPaid = competitor("000260", "Zorica", "Zoric");
+		notConfirmed = competitor(null, "Novak", "Jovanovic");
+		surnamedNovak = competitor("000250", "Dragan", "Novak");
+		withDiacritics = competitor(null, "Mila", "Čačić");
 
 		/* THE CURRENCY AXIS, AND IT TAKES THREE PEOPLE RATHER THAN ONE.
 		   Everybody above lives in the codebook's `rank = 1`, which is Shanghai, so before these
@@ -409,18 +406,18 @@ class PaymentsDueApiTest {
 		   always added the three euro and one that never did would both have passed.
 		   Serbia is reached through BOTH homes V7 allows, because the country arrives by two
 		   different roads and a route reading only one of them answers the other in euro. */
-		billedInDinars = competitor(null, "Milan", "Aleksic", false, A_TOWN_IN_SERBIA, BORN_LONG_AGO);
-		billedInDinarsTyped = competitor(null, "Sanja", "Zivkovic", false, A_TOWN, BORN_LONG_AGO);
+		billedInDinars = competitor(null, "Milan", "Aleksic", A_TOWN_IN_SERBIA, BORN_LONG_AGO);
+		billedInDinarsTyped = competitor(null, "Sanja", "Zivkovic", A_TOWN, BORN_LONG_AGO);
 
 		/* AND THE JUNIOR LIVES ABROAD WHILE A SERBIAN PAYS THE FULL PRICE, so „junior" and
 		   „Serbia" are two axes and neither stands in for the other. With the junior in Serbia,
 		   one fixture row would carry both states and a route confusing them would pass. */
-		aJuniorAbroad = competitor(null, "Bojan", "Bogdanovic", false, A_TOWN, BORN_A_JUNIOR);
+		aJuniorAbroad = competitor(null, "Bojan", "Bogdanovic", A_TOWN, BORN_A_JUNIOR);
 
 		/* AND THE THIRD BASIS, which is off the list exactly as the other two are. A route taking a
 		   row off by asking about `payment` and `feeExempt` BY NAME would pass every case here
 		   without him, and V38 made that third word legal the day it landed. */
-		inOnHisBalance = competitor("000280", "Dusan", "Ostojic", true);
+		inOnHisBalance = competitor("000280", "Dusan", "Ostojic");
 
 		account(NEVER_PAID, "competitor", "Marko", "Markovic", true, neverPaid);
 		account(NAMESAKE, "competitor", "Marko", "Markovic", true, namesake);
@@ -428,7 +425,7 @@ class PaymentsDueApiTest {
 		account(PAID_AHEAD, "competitor", "Ana", "Nikolic", true, paidAhead);
 		account(FREE_OF_THE_FEE, "competitor", "Petar", "Ilic", true, freeOfTheFee);
 		account(PAID, "competitor", "Vera", "Vukovic", true, paid);
-		account(FLAG_SAYS_OTHERWISE, "competitor", "Zorica", "Zoric", true, flagSaysOtherwise);
+		account(ALSO_PAID, "competitor", "Zorica", "Zoric", true, alsoPaid);
 		account(SURNAMED_NOVAK, "competitor", "Dragan", "Novak", true, surnamedNovak);
 		account(WITH_DIACRITICS, "competitor", "Mila", "Čačić", true, withDiacritics);
 		account(BILLED_IN_DINARS, "competitor", "Milan", "Aleksic", true, billedInDinars);
@@ -465,7 +462,7 @@ class PaymentsDueApiTest {
 		   The numbers are ones nothing else here uses, so a route serving the promise is caught by
 		   the value. Most members have no promise at all - nobody ever opened their membership
 		   screen - and that is the commonest state and the reason the owner chose the book. */
-		earnedAReferral(notConfirmed, flagSaysOtherwise, "5", "EUR");
+		earnedAReferral(notConfirmed, alsoPaid, "5", "EUR");
 		acodeOncePromisedHim(notConfirmed, 2027, "99", "EUR");
 
 		/* FOUR MEMBERSHIPS, ALONG EVERY AXIS THE ROUTE READS ONE.
@@ -473,7 +470,7 @@ class PaymentsDueApiTest {
 		   season on sale at `IN_OCTOBER_2027`. */
 		membershipOnAPayment(paid, 2027);
 		membershipFreeOfTheFee(freeOfTheFee, 2027);
-		membershipOnAPayment(flagSaysOtherwise, 2027);
+		membershipOnAPayment(alsoPaid, 2027);
 
 		/* FOR 2027 ONLY, so he is off the list until the season on sale becomes 2028. */
 		membershipOnAPayment(didNotRenew, 2027);
@@ -502,7 +499,7 @@ class PaymentsDueApiTest {
 				.containsExactly(billedInDinars, aJuniorAbroad, withDiacritics, notConfirmed,
 						neverPaid, namesake, paidAhead, surnamedNovak, aMembersOwnRecord,
 						billedInDinarsTyped)
-				.doesNotContain(onlyImported, paid, freeOfTheFee, flagSaysOtherwise, didNotRenew,
+				.doesNotContain(onlyImported, paid, freeOfTheFee, alsoPaid, didNotRenew,
 						inOnHisBalance);
 	}
 
@@ -585,7 +582,7 @@ class PaymentsDueApiTest {
 		JsonNode answer = read(booksCookie, null);
 
 		assertThat(answer.get("season").asInt()).isEqualTo(2027);
-		assertThat(keysIn(answer)).doesNotContain(paid, freeOfTheFee, flagSaysOtherwise, didNotRenew);
+		assertThat(keysIn(answer)).doesNotContain(paid, freeOfTheFee, alsoPaid, didNotRenew);
 	}
 
 	/**
@@ -624,7 +621,7 @@ class PaymentsDueApiTest {
 
 		assertThat(answer.get("season").asInt()).isEqualTo(2028);
 		assertThat(keysIn(answer))
-				.contains(didNotRenew, paid, freeOfTheFee, flagSaysOtherwise)
+				.contains(didNotRenew, paid, freeOfTheFee, alsoPaid)
 				.doesNotContain(paidAhead, onlyImported);
 	}
 
@@ -648,26 +645,15 @@ class PaymentsDueApiTest {
 	}
 
 	/**
-	 * WHETHER HE IS ON THE LIST IS READ OFF THE MEMBERSHIP AND NEVER OFF THE FLAG.
+	 * WHETHER HE IS ON THE LIST IS READ OFF THE MEMBERSHIP.
 	 *
-	 * <p>{@code competitor.active} is the other home of nearly the same fact, it carries no
-	 * season, and nothing in {@code src/main} ever sets it back to false. The two accounts here
-	 * disagree in opposite directions, so a route reading the flag is wrong about both of them
-	 * and a route reading the membership is right about both.
+	 * <p>The member with a payment for the season on sale is off the list and the one paid ahead
+	 * for the next is on it, and the only thing that tells them apart is the season of the row.
 	 */
 	@Test
-	void theListIsReadOffTheMembershipAndNotOffTheFlagOnTheMember() throws Exception {
-		assertThat(db.sql("select active from competitor where id = ?")
-				.param(flagSaysOtherwise).query(Boolean.class).single())
-				.as("the fixture stopped saying what it is for")
-				.isFalse();
-		assertThat(db.sql("select active from competitor where id = ?")
-				.param(paidAhead).query(Boolean.class).single())
-				.as("the fixture stopped saying what it is for")
-				.isTrue();
-
+	void theListIsReadOffTheMembershipOfTheMember() throws Exception {
 		assertThat(keysIn(read(booksCookie, null)))
-				.doesNotContain(flagSaysOtherwise)
+				.doesNotContain(alsoPaid)
 				.contains(paidAhead);
 	}
 
@@ -1270,8 +1256,8 @@ class PaymentsDueApiTest {
 	 */
 	@Test
 	void alineInAmoneyThatIsNoLongerHisIsNotOnTheLabel() throws Exception {
-		long whoMovedAbroad = competitor("000295", "Nekad", "Dinarski", false);
-		long alsoBroughtIn = competitor("000296", "Doveden", "Nekada", true);
+		long whoMovedAbroad = competitor("000295", "Nekad", "Dinarski");
+		long alsoBroughtIn = competitor("000296", "Doveden", "Nekada");
 
 		/* AND AN ACCOUNT, because this screen reads `from account a join competitor c` - a competitor
 		   nobody can sign in as is nobody the association can ask for money. */
@@ -1505,8 +1491,8 @@ class PaymentsDueApiTest {
 
 	/** @param number null for somebody who has registered and never paid, which since V16 is an
 	 *                ordinary state and not a broken row */
-	private long competitor(String number, String first, String last, boolean active) {
-		return competitor(number, first, last, active, A_TOWN, BORN_LONG_AGO);
+	private long competitor(String number, String first, String last) {
+		return competitor(number, first, last, A_TOWN, BORN_LONG_AGO);
 	}
 
 	/**
@@ -1516,16 +1502,16 @@ class PaymentsDueApiTest {
 	 *                  period applies - so a fixture in which everybody was born in 1990 cannot
 	 *                  tell a route reading the year from one ignoring it
 	 */
-	private long competitor(String number, String first, String last, boolean active, String town,
+	private long competitor(String number, String first, String last, String town,
 			String birthDate) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active,"
+						+ " birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
-						+ " values (?, ?, ?, 'F', ?::date, " + town + ", 2027, ?,"
+						+ " values (?, ?, ?, 'F', ?::date, " + town + ", 2027,"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, first, last, birthDate, active, String.format("%016x", ++issued))
+				.params(number, first, last, birthDate, String.format("%016x", ++issued))
 				.query(Long.class).single();
 	}
 

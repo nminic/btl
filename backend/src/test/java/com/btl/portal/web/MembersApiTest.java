@@ -98,12 +98,12 @@ class MembersApiTest {
 	void membersOfEveryKind() {
 		clock.moveTo(AFTER_THE_FIFTEENTH);
 
-		long both = member("000002", "Ana", "Babic", "F", true, false, "11aa22bb33cc44d1");
-		long onlyThePast = member("000005", "Bojan", "Cvetic", "M", true, false, "11aa22bb33cc44d2");
-		long onlyTheNext = member("000007", "Vesna", "Dikic", "F", true, true, "11aa22bb33cc44d3");
-		long lapsedWithARow = member("000009", "Goran", "Eric", "M", false, false, "11aa22bb33cc44d4");
-		long lapsedWithNone = member("000011", "Dara", "Filic", "F", false, false, "11aa22bb33cc44d5");
-		long neverAMember = member(null, "Zoran", "Gajic", "M", false, false, "11aa22bb33cc44d6");
+		long both = member("000002", "Ana", "Babic", "F", false, "11aa22bb33cc44d1");
+		long onlyThePast = member("000005", "Bojan", "Cvetic", "M", false, "11aa22bb33cc44d2");
+		long onlyTheNext = member("000007", "Vesna", "Dikic", "F", true, "11aa22bb33cc44d3");
+		long lapsedWithARow = member("000009", "Goran", "Eric", "M", false, "11aa22bb33cc44d4");
+		long lapsedWithNone = member("000011", "Dara", "Filic", "F", false, "11aa22bb33cc44d5");
+		long neverAMember = member(null, "Zoran", "Gajic", "M", false, "11aa22bb33cc44d6");
 
 		/* A BOOK NEVER GOES BELOW NOUGHT, because a balance only ever pays what it holds, so a season
 		   held on a balance stands on money that was credited first. Two different amounts, so what
@@ -117,7 +117,7 @@ class MembersApiTest {
 		HeldOn.season(db, onlyThePast, 2027, "payment");
 		HeldOn.season(db, onlyTheNext, 2028, "feeExempt");
 		/* SINCE AF-1 HE IS NOT LAPSED ON THIS FILE'S DAY: in the window of 2027 a row of 2027 is a season
-		   that counts (PDL 13.09.2026), so a member who holds one is active whatever his flag says. The row
+		   that counts (PDL 13.09.2026), so a member who holds one is active. The row
 		   stays as it was because the cases about the basis of the season on sale read it. */
 		HeldOn.season(db, lapsedWithARow, 2027, "balance");
 
@@ -133,17 +133,14 @@ class MembersApiTest {
 		account(NEVER_A_MEMBER, "competitor", neverAMember);
 	}
 
-	private long member(String number, String first, String last, String gender, boolean active,
-			boolean hidden, String referralCode) {
+	private long member(String number, String first, String last, String gender, boolean hidden, String referralCode) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active, referral_code,"
+						+ " birth_date, place_id, first_season, referral_code,"
 						+ " bio, profile_hidden, birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at) values (?, ?, ?, ?, date '1980-05-05',"
-						+ " (select id from place where rank = 1), 2027, ?, ?, '', ?, 'none',"
+						+ " (select id from place where rank = 1), 2027, ?, '', ?, 'none',"
 						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
-				/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it, and the
-				   seasons below are what make each of them active or not. */
-				.params(number, first, last, gender, !active, referralCode, hidden)
+				.params(number, first, last, gender, referralCode, hidden)
 				.query(Long.class).single();
 	}
 
@@ -244,7 +241,7 @@ class MembersApiTest {
 	 */
 	@Test
 	void eachSeasonOnTheRowSaysWhetherItCarriesTheRightToRank() throws Exception {
-		long late = member("000013", "Lazar", "Hadzic", "M", true, false, "11aa22bb33cc44d7");
+		long late = member("000013", "Lazar", "Hadzic", "M", false, "11aa22bb33cc44d7");
 		HeldOn.season(db, late, 2027, "feeExempt", Instant.parse("2027-05-01T10:00:00Z"));
 		HeldOn.season(db, late, 2028, "feeExempt", Instant.parse("2027-11-20T10:00:00Z"));
 
@@ -410,11 +407,11 @@ class MembersApiTest {
 		   the junior row from 15 October; he pays in dinars and the others in euro, so a currency
 		   taken from anybody else's country reads the other column; and he has no book at all. */
 		long junior = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active, referral_code,"
+						+ " birth_date, place_id, first_season, referral_code,"
 						+ " bio, profile_hidden, birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at) values ('000013', 'Mali', 'Hadzic', 'M', date '2012-06-01',"
 						+ " (select id from place where country_id = (select id from country where code = 'RS')"
-						+ " order by rank limit 1), 2027, false, '11aa22bb33cc44d7', '', false, 'none',"
+						+ " order by rank limit 1), 2027, '11aa22bb33cc44d7', '', false, 'none',"
 						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.query(Long.class).single();
 

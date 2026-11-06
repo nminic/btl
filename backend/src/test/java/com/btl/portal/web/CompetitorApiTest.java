@@ -651,14 +651,12 @@ class CompetitorApiTest {
 			boolean hidden, String birthdayShown) {
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, city, country_id, first_season,"
-						+ " active, referral_code, referred_by, bio, profile_hidden,"
+						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, date '" + born + "', " + place + ", " + city + ", "
-						+ country + ", ?, ?, ?, " + broughtBy + ", ?, ?, ?, 'Otac', 'Ulica 1',"
+						+ country + ", ?, ?, " + broughtBy + ", ?, ?, ?, 'Otac', 'Ulica 1',"
 						+ " 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
-				/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it, so a member
-				   in good standing carries false and one whose fee has lapsed carries true. */
-				.params(number, first, last, gender, firstSeason, !active,
+				.params(number, first, last, gender, firstSeason,
 						referralCode, bio, hidden, birthdayShown)
 				.query(Long.class).single();
 
@@ -1477,7 +1475,7 @@ class CompetitorApiTest {
 	 * <p>{@link #aMemberWhoseFeeHasLapsedIsNotOnTheList} says his ROW is absent; this says that
 	 * nothing of his is anywhere in the text, which is a different claim and the one that
 	 * matters for a picture. PDL P11, owner 13.09.2026: „ko nije platio, ne vidi se nigde osim u
-	 * istorijskim godinama", and the shape that carries it here is {@code where c.active}.
+	 * istorijskim godinama", and the shape that carries it here is {@code AMemberIsActive}.
 	 *
 	 * <p><b>Not a decision of this increment and deliberately unchanged</b>: the note on
 	 * {@code CompetitorApi} says what follows from it for the header of such a member, which

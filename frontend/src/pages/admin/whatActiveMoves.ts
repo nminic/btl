@@ -15,7 +15,7 @@ import { clearResourceCache, type ResourceName } from '../../data/client'
  * this visit holds still says he does not.
  *
  * <p><b>One list, so that the three cannot drift.</b> The names are the ones `rowMembership.test.tsx`
- * reads out of the backend's own SQL (every cached name whose route has a line of SQL naming `active`),
+ * reads out of the backend's own code (every cached name whose route asks `AMemberIsActive`),
  * plus `payments` and `members`, which are the screens the write itself is made on. That floor
  * (`namesThatReadTheFlag`, now in `test/readsTheFlag.ts` and unchanged) holds THIS list to the backend and
  * drives all three paths through it; it stays what it was, a regular expression over source text, and

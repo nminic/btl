@@ -238,11 +238,11 @@ class MyApplicationsApiTest {
 
 	private void competitor(String number, String first, String last, String gender) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, first, last, gender, String.format("%016x", ++issued))
@@ -678,11 +678,8 @@ class MyApplicationsApiTest {
 	@ValueSource(strings = {PAIR_TO, PAIR_FROM})
 	void aPairInviteToSomebodyWhoDidNotRenewKeepsTheRowAndDropsTheName(String lapsed)
 			throws Exception {
-		/* HE DID NOT RENEW, which since AF-1 is the season taken away; his flag is raised on purpose, so a
-		   query that read it would still name him. */
+		/* HE DID NOT RENEW, which since AF-1 is the season taken away. */
 		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
-				.param(lapsed).update();
-		db.sql("update competitor set active = true where member_number = ?")
 				.param(lapsed).update();
 
 		List<Invite> mine = pairInvites(answer());

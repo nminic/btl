@@ -297,7 +297,8 @@ class ResultsByTheLeagueApiTest {
 	 */
 	@Test
 	void theListIsEveryMemberWithANumberActiveOrNot() throws Exception {
-		db.sql("update competitor set active = false where member_number = ?").param(BOJAN).update();
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
+				.param(BOJAN).update();
 
 		assertThat(http.perform(asking(null, get("/api/results/runners"))).andReturn().getResponse()
 				.getStatus()).isEqualTo(401);
@@ -2096,11 +2097,11 @@ class ResultsByTheLeagueApiTest {
 
 	private void member(String number, String first, String last) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active,"
+						+ " place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true,"
+						+ " (select id from place where rank = 1), 2027,"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, first, last, String.format("%016x", ++issued))
@@ -2109,11 +2110,11 @@ class ResultsByTheLeagueApiTest {
 
 	private void withoutANumber(String first, String last) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active,"
+						+ " place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (null, ?, ?, 'M', date '1991-01-01',"
-						+ " (select id from place where rank = 1), 2027, false,"
+						+ " (select id from place where rank = 1), 2027,"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(first, last, String.format("%016x", ++issued))

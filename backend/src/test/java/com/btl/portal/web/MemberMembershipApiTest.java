@@ -55,8 +55,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <li><b>the season</b> is the clock's: the cases stand after 15 October (2028 on sale while 2027 is
  * run, and the member holds both), before it, at half past midnight of 1 January in Belgrade, which
  * is still 31 December in UTC, and in 2026; the season acted on is never the only one he holds;</li>
- * <li><b>{@code active}</b> is what the remaining rows say: a member who keeps the running season stays
- * active, one who keeps only an older one does not, and one who keeps nothing does not;</li>
+ * <li><b>whether he is active</b> is what the remaining rows say (nothing is written for it since V86): a
+ * member who keeps the running season stays active, one who keeps only an older one does not, and one
+ * who keeps nothing does not;</li>
  * <li><b>the book</b> is the season's: the member also holds a credit of 2027 and a reward of his own
  * for bringing somebody in, and neither is reversed; his referrer's book is not touched;</li>
  * <li><b>the promise</b> is the season's: one stands for 2027 as well, and stays;</li>
@@ -97,7 +98,7 @@ class MemberMembershipApiTest {
 	private static final String A_TOWN_ABROAD = "(select id from place where rank = 1)";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, active,"
+			+ " birth_date, place_id, city, country_id, first_season,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -135,11 +136,11 @@ class MemberMembershipApiTest {
 	void membersAndTheAdministration() {
 		clock.moveTo(AFTER_THE_FIFTEENTH);
 
-		somebodyElse = competitor("000001", "b0", true, null);
-		referrer = competitor("000002", "b1", true, null);
-		theModeratorHimself = competitor("000003", "b2", true, null);
-		member = competitor("000005", "b3", true, referrer);
-		long broughtInByTheMember = competitor("000009", "b4", true, member);
+		somebodyElse = competitor("000001", "b0", null);
+		referrer = competitor("000002", "b1", null);
+		theModeratorHimself = competitor("000003", "b2", null);
+		member = competitor("000005", "b3", referrer);
+		long broughtInByTheMember = competitor("000009", "b4", member);
 
 		HeldOn.season(db, theModeratorHimself, 2027, "payment");
 		HeldOn.season(db, theModeratorHimself, 2028, "payment");
@@ -170,12 +171,12 @@ class MemberMembershipApiTest {
 	   THE FIXTURE
 	   ------------------------------------------------------------------------------------ */
 
-	private long competitor(String number, String suffix, boolean active, Long referredBy) {
+	private long competitor(String number, String suffix, Long referredBy) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', 'Clan',"
-						+ " 'M', date '1990-05-15', " + A_TOWN_ABROAD + ", null, null, 2027, ?, ?, ?, '',"
+						+ " 'M', date '1990-05-15', " + A_TOWN_ABROAD + ", null, null, 2027, ?, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
-				.params(number, active, "0011aabbccddee" + suffix, referredBy)
+				.params(number, "0011aabbccddee" + suffix, referredBy)
 				.query(Long.class).single();
 	}
 
@@ -277,11 +278,6 @@ class MemberMembershipApiTest {
 		return db.sql("select reason || ' ' || amount || ' ' || coalesce(season::text, '-')"
 						+ " from balance_entry where competitor_id = ? order by id")
 				.param(competitor).query(String.class).list();
-	}
-
-	private boolean active(long competitor) {
-		return Boolean.TRUE.equals(db.sql("select active from competitor where id = ?")
-				.param(competitor).query(Boolean.class).single());
 	}
 
 	/* ------------------------------------------------------------------------------------
@@ -403,12 +399,7 @@ class MemberMembershipApiTest {
 				.param(somebodyElse).query(Integer.class).list())
 				.as("a cancellation took another member's promise for the same season").containsExactly(2028);
 
-		/* ACTIVE, because the season being run is still his; and his number is his. Nobody else's
-		   `active` is recomputed: the two members below hold no season at all, so a recompute that
-		   reached them would switch them off. */
-		assertThat(active(member)).isTrue();
-		assertThat(active(somebodyElse)).as("a cancellation recomputed another member's active").isTrue();
-		assertThat(active(referrer)).as("a cancellation recomputed his referrer's active").isTrue();
+		/* HIS NUMBER IS HIS. */
 		assertThat(db.sql("select member_number from competitor where id = ?").param(member)
 				.query(String.class).single()).isEqualTo("000005");
 
@@ -426,7 +417,7 @@ class MemberMembershipApiTest {
 	@Test
 	void beforeTheFifteenthTheRunningSeasonIsCancelledAndItsCreditTakenBack() throws Exception {
 		clock.moveTo(BEFORE_THE_FIFTEENTH);
-		long alone = competitor("000011", "c1", true, null);
+		long alone = competitor("000011", "c1", null);
 		HeldOn.season(db, alone, 2027, "payment");
 		line(alone, "3.00", "overpayment", null, 2027);
 
@@ -434,21 +425,19 @@ class MemberMembershipApiTest {
 
 		assertThat(seasonsOf(alone)).isEmpty();
 		assertThat(bookOf(alone)).containsExactly("overpayment 3.00 2027", "reversal -3.00 2027");
-		assertThat(active(alone)).as("he holds no season, so he is not active").isFalse();
 		assertThat(messages()).containsExactly(alone + " " + CANCELLED);
 	}
 
 	/** AN EXEMPTION CANCELLED, held alone: nothing is written in the book, and he is inactive. */
 	@Test
 	void anExemptionCancelledWritesNoLineAndLeavesHimInactiveWhenNothingRemains() throws Exception {
-		long exempt = competitor("000012", "c2", true, null);
+		long exempt = competitor("000012", "c2", null);
 		HeldOn.season(db, exempt, 2028, "feeExempt");
 
 		assertThat(cancelled("000012", "feeExempt", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
 
 		assertThat(seasonsOf(exempt)).isEmpty();
 		assertThat(bookOf(exempt)).isEmpty();
-		assertThat(active(exempt)).isFalse();
 		assertThat(trail()).containsExactly(exempt + " 2028 cancelled feeExempt - " + accountOf(OVER_THE_MEMBERS)
 				+ " Mira Clanovic");
 	}
@@ -468,14 +457,13 @@ class MemberMembershipApiTest {
 		assertThat(seasonsOf(member)).containsExactly("2027 payment 2027");
 		assertThat(bookOf(member)).containsExactly("referral 5.00 -", "overpayment 4.00 2027",
 				"membership -30.00 2028", "reversal 30.00 2028");
-		assertThat(active(member)).isFalse();
 	}
 
 	/**
 	 * A SEASON CANCELLED IN FEBRUARY, AFTER IT BEGAN, TAKES HIM OUT OF HIS TEAM AND HIS PAIR AT ONCE (PDL
 	 * 05.11.2026, „Storno sezone posle 1. januara u 16h izbacuje člana iz tima i para odmah"), with the
 	 * messages of the turn of the season. He administered the team, so the member left in it is told he
-	 * does now: which is only true if the seat was read BEFORE the cancellation wrote {@code active} again,
+	 * does now: which is only true if the seat was read BEFORE the cancellation took the rows away,
 	 * since read after it the seat had already passed to that member and nothing would seem to move.
 	 */
 	@Test
@@ -582,7 +570,7 @@ class MemberMembershipApiTest {
 		HeldOn.season(db, somebodyElse, season, "payment");
 
 		long partner = db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000077', 'Ana',"
-						+ " 'Partnerka', 'F', date '1990-05-15', " + A_TOWN_ABROAD + ", null, null, 2027, true,"
+						+ " 'Partnerka', 'F', date '1990-05-15', " + A_TOWN_ABROAD + ", null, null, 2027,"
 						+ " '0011aabbccddeee9', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.query(Long.class).single();
@@ -608,7 +596,7 @@ class MemberMembershipApiTest {
 	@Test
 	void in2026TheFirstSeasonIsTheOneCancelled() throws Exception {
 		clock.moveTo(IN_2026);
-		long first = competitor("000013", "c3", true, null);
+		long first = competitor("000013", "c3", null);
 		HeldOn.season(db, first, 2027, "feeExempt");
 
 		MockHttpServletResponse answer = cancelled("000013", "feeExempt", OVER_THE_MEMBERS);
@@ -616,7 +604,6 @@ class MemberMembershipApiTest {
 		assertThat(answer.getStatus()).isEqualTo(200);
 		assertThat(body(answer).path("season").asInt()).isEqualTo(2027);
 		assertThat(seasonsOf(first)).isEmpty();
-		assertThat(active(first)).isFalse();
 	}
 
 	@Test
@@ -642,7 +629,6 @@ class MemberMembershipApiTest {
 		assertThat(seasonsOf(member)).containsExactly("2027 payment 2027");
 		assertThat(db.sql("select count(*) from balance_promise where competitor_id = ?").param(member)
 				.query(Long.class).single()).isOne();
-		assertThat(active(member)).isTrue();
 		assertThat(trail()).isEmpty();
 		assertThat(messages()).isEmpty();
 	}
@@ -695,7 +681,6 @@ class MemberMembershipApiTest {
 		assertThat(count("select count(*) from balance_entry where competitor_id = ?", referrer))
 				.as("the referrer was rewarded a second time").isOne();
 
-		assertThat(active(member)).isTrue();
 		assertThat(count("select last_value from member_number_seq")).isEqualTo(seqBefore);
 		assertThat(trail()).containsExactly(member + " 2028 basisChanged payment feeExempt "
 				+ accountOf(OVER_THE_MEMBERS) + " Mira Clanovic");
@@ -735,7 +720,7 @@ class MemberMembershipApiTest {
 	@CsvSource({"cancelled", "madeAnExemption"})
 	void aSurplusTakenBackAfterAnAbroadAndBackStopsAtWhatTheBalanceHolds(String door) throws Exception {
 		String his = "clan-dinari-storno@primer.rs";
-		long dinars = competitor("000014", "d1", true, null);
+		long dinars = competitor("000014", "d1", null);
 		db.sql("update competitor set place_id = (select id from place where country_id ="
 						+ " (select id from country where code = 'RS') order by rank limit 1) where id = ?")
 				.param(dinars).update();
@@ -930,7 +915,6 @@ class MemberMembershipApiTest {
 		assertThat(count("select last_value from member_number_seq")).isEqualTo(seqBefore);
 		assertThat(db.sql("select member_number from competitor where id = ?").param(member)
 				.query(String.class).single()).isEqualTo("000005");
-		assertThat(active(member)).isTrue();
 
 		assertThat(trail()).isEmpty();
 		assertThat(messages()).containsExactly(member + " " + GRANTED);
@@ -943,11 +927,11 @@ class MemberMembershipApiTest {
 	/** A lapsed member is made active again, and a referrer never rewarded for him is rewarded now. */
 	@Test
 	void aLapsedMemberIsMadeActiveAndHisReferrerRewardedTheFirstTime() throws Exception {
-		long lapsed = competitor("000014", "c4", false, referrer);
+		long lapsed = competitor("000014", "c4", referrer);
 
 		assertThat(granted("000014", "feeExempt", OVER_THE_MEMBERS).getStatus()).isEqualTo(201);
 
-		assertThat(active(lapsed)).isTrue();
+		assertThat(seasonsOf(lapsed)).as("he was let into no season").isNotEmpty();
 		assertThat(count("select count(*) from balance_entry where competitor_id = ? and reason = 'referral'"
 				+ " and referred_competitor_id = ?", referrer, lapsed)).isOne();
 		/* THE REFERRER IS THANKED FOR THE REWARD (owner, 29.10.2026), in the order the route writes: the
@@ -961,7 +945,7 @@ class MemberMembershipApiTest {
 	@CsvSource({"2027-09-10T09:00:00Z, 2027", "2027-12-31T23:30:00Z, 2028", "2026-10-18T09:00:00Z, 2027"})
 	void theSeasonGrantedIsTheOneOnSaleThatDay(Instant when, int season) throws Exception {
 		clock.moveTo(when);
-		long fresh = competitor("000015", "c5", false, null);
+		long fresh = competitor("000015", "c5", null);
 
 		MockHttpServletResponse answer = granted("000015", "feeExempt", OVER_THE_MEMBERS);
 

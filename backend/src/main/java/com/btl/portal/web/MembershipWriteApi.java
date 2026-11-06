@@ -215,7 +215,7 @@ class MembershipWriteApi {
 
 	/**
 	 * What is written once the decision is to grant: the book, the membership with its trail, the
-	 * referrer's reward, the number and {@code active}. Its own class since 19.10.2026, because the
+	 * referrer's reward and the number. Its own class since 19.10.2026, because the
 	 * member's row writes the same exemption ({@link MemberMembershipApi}); every note that stood on
 	 * this route's {@code grant} stands there now.
 	 */

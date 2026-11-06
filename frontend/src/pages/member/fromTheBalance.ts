@@ -21,7 +21,7 @@ import { MY_MEMBERSHIP } from './myMembership'
  * spend another's balance or buy a year the day does not sell.
  *
  * <p><b>`competitors` IS DROPPED WHERE THE SERVER LET HIM IN</b>, the rule `member/teamExit.ts` keeps for
- * its own write: the public list answers `where c.active`, and this write is what makes him active, so a
+ * its own write: the public list answers `AMemberIsActive`, and this write is what makes him active, so a
  * list held from before would go on leaving him out of it. A refusal leaves everything as it was.
  */
 export async function theServerWasAskedToLetMeIn(): Promise<Answer> {

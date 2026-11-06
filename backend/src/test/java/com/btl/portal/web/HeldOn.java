@@ -85,15 +85,13 @@ final class HeldOn {
 	}
 
 	/**
-	 * A SEASON THAT MAKES HIM ACTIVE AT THIS MOMENT, freed of the fee, unless he already holds it; and the
-	 * flag {@code competitor.active} is NOT touched.
+	 * A SEASON THAT MAKES HIM ACTIVE AT THIS MOMENT, freed of the fee, unless he already holds it.
 	 *
 	 * <p>Since AF-1 a member is active by the rows he holds ({@link AMemberIsActive}, PDL 13.09.2026), so a
 	 * case that wants a member in good standing gives him a row, and the season is the earliest one that
 	 * counts at the moment the case reads its clock at ({@link SeasonClock#seasonsAMemberIsActiveIn}), so the
 	 * case does not go stale when the calendar moves on. The activation is {@link #AUTUMN_OF_THE_FIRST_SALE},
-	 * so the season ranks as a season held from its start does. The flag is left as the case wrote it, and
-	 * many cases write it AGAINST the row on purpose, so that a reader of the flag is caught.
+	 * so the season ranks as a season held from its start does.
 	 *
 	 * @param db         the database
 	 * @param competitor the member

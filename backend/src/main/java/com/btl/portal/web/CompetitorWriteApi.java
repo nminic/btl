@@ -1011,10 +1011,10 @@ class CompetitorWriteApi {
 		int season = SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock));
 		long member = db.sql("insert into competitor"
 						+ " (first_name, last_name, gender, place_id, city, country_id,"
-						+ "  first_season, active,"
+						+ "  first_season,"
 						+ "  referral_code, bio, profile_hidden, birth_date,"
 						+ "  father_name, address, phone, shirt_size, health_statement_at)"
-						+ " values (?, ?, ?, ?, ?, ?, ?, false, ?, '', false, ?,"
+						+ " values (?, ?, ?, ?, ?, ?, ?, ?, '', false, ?,"
 						+ "  ?, ?, ?, ?, ?)"
 						+ " returning id")
 				.params(reading.typed().firstName().strip(), reading.typed().lastName().strip(),

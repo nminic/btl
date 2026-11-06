@@ -34,7 +34,7 @@ import { isStaff, type Role } from './context'
  * (`CompetitorProfile`, `CompetitorAwards`, `useProfileLink`, `GoingToEvent`, `readsComments`), and
  * `visible.ts` only mentions it in prose. A question about ANOTHER member - is the person whose
  * profile this is active - stays on the public list, which carries him exactly when he is
- * (`/api/competitors` ends `where c.active`), and is asked there (`profile/visible.ts`,
+ * (`/api/competitors` ends `AMemberIsActive`), and is asked there (`profile/visible.ts`,
  * `profileFor`). This module takes the session's object and not a member number, so a call site
  * cannot hand it somebody else's number: the compiler says so.
  */

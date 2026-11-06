@@ -79,10 +79,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * and no team, {@link #NOT_A_MEMBER_YET} has a team and no number.
  *
  * <p><b>AND EVERY ROW IS A STATE THE PORTAL REALLY WRITES, which the fixture before this
- * one also got wrong.</b> {@link #NOT_A_MEMBER_YET} used to be {@code active} with no member
- * number, and nothing in the portal writes that: {@code PaymentApi} is the only writer of
- * {@code active = true} and it either draws the number in the same statement or is renewing
- * somebody who already has one, {@code RegistrationApi} writes {@code active = false} with no
+ * one also got wrong.</b> {@link #NOT_A_MEMBER_YET} used to hold a season that counts with no member
+ * number, and nothing in the portal writes that: {@code PaymentApi} is the only writer of a season
+ * on a payment and it either draws the number in the same statement or is renewing
+ * somebody who already has one, {@code RegistrationApi} writes no season and no
  * number, and no migration writes a competitor at all. A difference measured on a state
  * production cannot produce is a difference nobody will ever see, so
  * {@link #everyRowHereIsAStateThePortalCanWrite} refuses it.
@@ -96,8 +96,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p><b>AND THE LAPSED MEMBER'S OWN COUNT IS 1, which is the half of that the fixture before
  * this one could not see.</b> He had brought nobody in, so his true count was 0 and his lost
- * count was 0 as well: the very clause this route exists to keep out - {@link CompetitorApi}'s
- * {@code where c.active}, carried in as {@code case when c.active then ... end} - could be
+ * count was 0 as well: the very clause this route exists to keep out - the condition {@link CompetitorApi}
+ * ends on (the member is active), carried in as {@code case when <he is active> then ... end} - could be
  * written into the counting clause here and the suite stayed green. He brings two people in
  * now, one whose fee stands and one who never got a number, so his count is 1: different from
  * 0 (the clause carried in), different from 2 (the caller's own, and the caller's season), and
@@ -173,7 +173,7 @@ class MeApiTest {
 	 *
 	 * <p><b>AND HE BROUGHT TWO PEOPLE IN HIMSELF, which is what makes his own count worth
 	 * asking for.</b> While his count was 0 it was the same number a route that had carried
-	 * {@link CompetitorApi}'s {@code where c.active} into the counting clause would have
+	 * the condition {@link CompetitorApi} ends on into the counting clause would have
 	 * answered him, and the same number a route that counted nobody at all would: right and
 	 * wrong were one value, so nothing was measured. One of his two has a standing fee and
 	 * one never got a number, so what he is answered is 1 - not 0, not the 2 that is the
@@ -188,7 +188,7 @@ class MeApiTest {
 	 * in no team are two facts and they sit on two rows.
 	 *
 	 * <p><b>And his fee does not stand, because the portal cannot write him any other way:</b>
-	 * {@code RegistrationApi} writes him {@code active = false} and {@code PaymentApi} is what
+	 * {@code RegistrationApi} writes him no season and {@code PaymentApi} is what
 	 * turns that around, in the same statement that gives him a number. He is therefore the
 	 * lapsed member's recruit who „ne donosi nista" (PDL, 13.08.2026) rather than one of the
 	 * caller's, which is what keeps the caller's own three recruits at three.
@@ -474,10 +474,10 @@ class MeApiTest {
 	 * <p>A fixture is allowed to arrange anything the schema permits, and that is exactly the
 	 * trap: a difference measured on a state production never reaches is a difference nobody
 	 * will ever see, and the case resting on it reads as though it held something. The row
-	 * before this one was {@code active} with no member number, and nothing in the portal
-	 * writes that - {@code PaymentApi} is the only writer of {@code active = true} and it
+	 * before this one held a season that counts with no member number, and nothing in the portal
+	 * writes that - {@code PaymentApi} is the only writer of a season on a payment and it
 	 * either draws the number in the same statement or is renewing somebody who already has
-	 * one, {@code RegistrationApi} writes {@code active = false} with no number at all, and no
+	 * one, {@code RegistrationApi} writes no season and no number at all, and no
 	 * migration writes a {@code competitor} row. The schema does not forbid it; this does.
 	 *
 	 * <p><b>And it is asked in three directions rather than one</b>, because „nobody is active
@@ -496,7 +496,7 @@ class MeApiTest {
 	 * the fixture outright and take the {@code teamId} measurement with it.
 	 *
 	 * <p>That is a different thing from the state this case does refuse, and the difference is
-	 * worth being exact about. An {@code active} row with no member number is a state the
+	 * worth being exact about. A row holding a season with no member number is a state the
 	 * portal <b>writes the other way round</b> and will never write, so a case leaning on it
 	 * measures a difference nobody will ever see. A membership row is a state <b>nothing writes
 	 * yet</b>: the schema holds it, the constraints govern it
@@ -506,10 +506,10 @@ class MeApiTest {
 	 */
 	@Test
 	void everyRowHereIsAStateThePortalCanWrite() {
-		assertThat(howMany("active and member_number is null"))
+		assertThat(howMany(HIS_FEE_STANDS + " and member_number is null"))
 				.as("a row here is active and has no member number, which nothing in the portal"
-						+ " writes: PaymentApi assigns the number in the same statement that sets"
-						+ " active, RegistrationApi writes active = false, and no migration writes"
+						+ " writes: PaymentApi assigns the number in the same statement that books"
+						+ " the season, RegistrationApi writes no season, and no migration writes"
 						+ " a competitor at all. Whatever a case tells apart on that row, it tells"
 						+ " apart on a state production cannot produce")
 				.isZero();
@@ -518,7 +518,7 @@ class MeApiTest {
 						+ " ADL A44 - a person is a competitor from registration and a member when"
 						+ " he is given a number - is unmeasured")
 				.isEqualTo(1);
-		assertThat(howMany("member_number is not null and not active"))
+		assertThat(howMany("member_number is not null and not " + HIS_FEE_STANDS))
 				.as("no row here has a number and a lapsed fee, so the second state the portal"
 						+ " writes is missing and the refusal above could be met by making every"
 						+ " row active")
@@ -682,15 +682,15 @@ class MeApiTest {
 	 */
 	@Test
 	void andHowManyHeBroughtInWhoseFeeStands() throws Exception {
-		assertThat(howMany("referred_by = ? and not active", competitorIdOf(ME)))
+		assertThat(howMany("referred_by = ? and not " + HIS_FEE_STANDS, competitorIdOf(ME)))
 				.as("nobody the caller brought in has let his fee lapse, so the clause that counts"
 						+ " only standing fees can be deleted and this case stays green")
 				.isPositive();
-		assertThat(howMany("referred_by is not null and referred_by <> ? and active",
+		assertThat(howMany("referred_by is not null and referred_by <> ? and " + HIS_FEE_STANDS,
 				competitorIdOf(ME)))
 				.as("nobody was brought in by anybody but the caller, so a count over EVERY member"
 						+ " with a referrer answers his own number by accident").isPositive();
-		assertThat(howMany("active and id <> ?", competitorIdOf(ME)))
+		assertThat(howMany(HIS_FEE_STANDS + " and id <> ?", competitorIdOf(ME)))
 				.as("there are no other active members, so a count over the whole table answers"
 						+ " his own number by accident").isGreaterThan(2);
 
@@ -714,7 +714,7 @@ class MeApiTest {
 	 * the lapsed member brought in and who never got a number is not counted to him.
 	 *
 	 * <p>The wrong counts are all different numbers: counting only the members active in June 2028 answers the
-	 * caller 0, counting the flag answers him 2, and counting every recruit answers the lapsed member 2.
+	 * caller 0, counting by the person's own standing fee answers him 2, and counting every recruit answers the lapsed member 2.
 	 */
 	@Test
 	void heIsCountedEverybodyHeBroughtInWhoEverHeldAMembership() throws Exception {
@@ -1036,35 +1036,35 @@ class MeApiTest {
 	 *
 	 * <p><b>AND HIS REFERRAL CODE IS ASKED OF BOTH DOORS, because that is the measurement
 	 * that overturned „answered already".</b> The other route computes it inside a query
-	 * ending {@code where c.active}, so his row never reaches the {@code case} that would
+	 * ending on the active members, so his row never reaches the {@code case} that would
 	 * fill it in: signed in with his own cookie he gets no code from it at all. V24 section
 	 * 6 promises that code on „Moja clanarina", which is the page he opens to renew.
 	 *
 	 * <p><b>AND HIS COUNT, WHICH IS THE OTHER HALF OF THAT AND WAS MISSING UNTIL 21.09.2026.</b>
 	 * The code had this case and the count had none, and a count is the harder of the two to
 	 * leave unmeasured by accident: while he had brought nobody in, his right answer was 0 and
-	 * every wrong one was 0 as well. {@link CompetitorApi}'s {@code where c.active} written
-	 * into the counting clause here as {@code case when c.active then ... end} answers him 0
+	 * every wrong one was 0 as well. A clause gated on the caller's own standing fee, written
+	 * into the counting clause here as {@code case when <his fee stands> then ... end}, answers him 0
 	 * and is caught by nothing; so is a clause tied to the caller's own row. He brings two
 	 * people in now and is answered 1, and the three floors below say what each wrong query
 	 * would have answered instead.
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedIsStillHandedHisOwnRecord() throws Exception {
-		assertThat(howMany("referred_by = ? and active", competitorIdOf(LAPSED)))
+		assertThat(howMany("referred_by = ? and " + HIS_FEE_STANDS, competitorIdOf(LAPSED)))
 				.as("the member whose fee has lapsed brought nobody in whose fee stands, so his"
 						+ " true count is zero - and so is the count a clause gated on his own"
 						+ " standing fee gives him, and so is the count of nobody at all. Right and"
 						+ " wrong are one number and the count below measures neither")
 				.isPositive();
-		assertThat(howMany("referred_by = ? and not active", competitorIdOf(LAPSED)))
+		assertThat(howMany("referred_by = ? and not " + HIS_FEE_STANDS, competitorIdOf(LAPSED)))
 				.as("nobody he brought in has let his fee lapse, so the clause that counts only"
 						+ " standing fees can be struck out and his number does not move")
 				.isPositive();
-		assertThat(howMany("referred_by = ? and active", competitorIdOf(LAPSED)))
+		assertThat(howMany("referred_by = ? and " + HIS_FEE_STANDS, competitorIdOf(LAPSED)))
 				.as("he and the caller were brought the same number of standing fees, so a count"
 						+ " computed off the CALLER's row answers him correctly by accident")
-				.isNotEqualTo(howMany("referred_by = ? and active", competitorIdOf(ME)));
+				.isNotEqualTo(howMany("referred_by = ? and " + HIS_FEE_STANDS, competitorIdOf(ME)));
 
 		String publicList = whatThePublicListSays(THE_LAPSED_ACCOUNT);
 
@@ -1090,8 +1090,8 @@ class MeApiTest {
 				.isEqualTo(referralCodeOf(LAPSED));
 		assertThat(his.path("referredCount").asInt())
 				.as("the count is not of the members HE brought in whose fee stands. A clause gated"
-						+ " on his own standing fee - CompetitorApi's where c.active, carried in as"
-						+ " a case - would answer 0, counting his recruit who never got a number"
+						+ " on his own standing fee, carried in as"
+						+ " a case, would answer 0, counting his recruit who never got a number"
 						+ " too would answer 2, counting off the caller's row would answer 2,"
 						+ " counting everybody anybody brought in would answer 3, and counting every"
 						+ " active member would answer 5")
@@ -1125,11 +1125,6 @@ class MeApiTest {
 	 */
 	@Test
 	void andWhetherHisFeeStandsWhichTheNumberAloneCannotSay() throws Exception {
-		/* THE FLAG IS TURNED AGAINST THE SEASONS FOR THIS CASE: since AF-1 the answer is the seasons he holds
-		   (`AMemberIsActive`), so a route that still read `competitor.active` would answer all four the other
-		   way round. */
-		db.sql("update competitor set active = not active").update();
-
 		JsonNode standing = answerFor(MY_ACCOUNT).path("member");
 		JsonNode alsoStanding = answerFor(HER_ACCOUNT).path("member");
 		JsonNode lapsed = answerFor(THE_LAPSED_ACCOUNT).path("member");
@@ -1920,7 +1915,7 @@ class MeApiTest {
 	 * administration's to read there and his own to read here ("Clan vidi SVOJ osnov clanstva;
 	 * tudj ne vidi niko osim administracije", owner, 20.09.2026), and since 11.10.2026 the flag
 	 * that says whether his fee stands, whose twin on the public list is the presence of the row
-	 * itself (that list ends {@code where c.active}). A fifth fact on this record that the public
+	 * itself (that list ends on the active members). A fifth fact on this record that the public
 	 * one does not carry fails the first assertion; it has to be named here with its reason or
 	 * given a twin.
 	 *
@@ -1951,10 +1946,10 @@ class MeApiTest {
 				.doesNotContain("address", "phone", "bioWaiting", "shirtSize", "fatherName", "birthDate",
 						"idNumber");
 		/* `active` IS THE FOURTH, since 11.10.2026, AND ITS TWIN IS THE ROW ITSELF. The public
-		   list is `where c.active`, so on it the fact is not a field but the presence of the
+		   list is of the active members, so on it the fact is not a field but the presence of the
 		   member (`frontend/src/data/types.ts`: "it is the PRESENCE OF THE ROW"), and a lapsed
 		   member is absent from it by the owner's decision of 13.09.2026. There is nothing to
-		   compare it with by name; what holds the two together is that both read one column. */
+		   compare it with by name; what holds the two together is that both ask `AMemberIsActive`. */
 		assertThat(mine.stream().filter(name -> !theirs.contains(name)).collect(Collectors.toSet()))
 				.as("a fact this record carries has no twin on the public list and is not one of the"
 						+ " four named for it: give it a twin, or name it here with its reason")
@@ -2118,21 +2113,12 @@ class MeApiTest {
 			String broughtBy) {
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, city, country_id, first_season,"
-						+ " active, referral_code, referred_by, bio, profile_hidden,"
+						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'M', date '1990-01-01', " + place + ", " + city + ", "
-						+ country + ", ?, ?, ?, " + broughtBy + ", '', false, 'none', 'Otac',"
+						+ country + ", ?, ?, " + broughtBy + ", '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
-				/* ACTIVE FOLLOWS THE NUMBER, and is worked out here rather than passed in because
-				   the portal does not let the two be chosen separately: `PaymentApi` is the only
-				   writer of `active = true` and it either draws the number in the same statement
-				   or is renewing somebody who already has one, and `RegistrationApi` writes
-				   `active = false` with no number at all. So a row with no number is never
-				   active, and the one whose fee has LAPSED is the second state the portal really
-				   does write - a number, and not active. Both halves are measured by
-				   `everyRowHereIsAStateThePortalCanWrite` rather than promised by this comment. */
 				.params(number, first, last, firstSeason,
-						number != null && !LAPSED.equals(number),
 						String.format("%016x", ++issued))
 				.query(Long.class).single();
 
@@ -2149,6 +2135,10 @@ class MeApiTest {
 	 * 2026, which the league does not have, so it is the first season.
 	 */
 	private static final int THE_SEASON_ON_SALE = 2027;
+
+	/** Whether the member of a {@code competitor} row holds the season on sale, which is what makes him active here. */
+	private static final String HIS_FEE_STANDS = "exists(select 1 from membership m"
+			+ " where m.competitor_id = competitor.id and m.season = " + THE_SEASON_ON_SALE + ")";
 
 	/**
 	 * THE CALLER, WRITTEN AS THE ONE ROW OF HIS KIND IN EVERY FIELD THE PROFILE ADDED (see the

@@ -89,10 +89,10 @@ class ProfilesPastTheirKeepingAreDeletedTest {
 	 */
 	private long aMember(String gender, String number, String role) {
 		long member = db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, referral_code, bio, profile_hidden, birthday_shown,"
+						+ " place_id, first_season, referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Clan', ?, date '1990-01-01', " + A_TOWN_IN_SERBIA
-						+ ", 2027, false, ?, '', false, 'none', 'Otac', 'Ulica 1', 'M', ?) returning id")
+						+ ", 2027, ?, '', false, 'none', 'Otac', 'Ulica 1', 'M', ?) returning id")
 				.params(number, gender, String.format("%016x", 0xb5e7L * 1000 + ++issued),
 						Timestamp.from(OPENED.toInstant()))
 				.query(Long.class).single();
