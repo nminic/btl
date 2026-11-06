@@ -1062,8 +1062,9 @@ class WhatEachStackRequiresTest {
 	 * which is the shape this repository distrusts, and the reason it is accepted here is
 	 * that the alternative is building the image and raising a fresh volume inside the gate -
 	 * minutes per run for a fact that changes once. So the claim is kept narrow and literal:
-	 * ONE command, before the {@code USER} line because afterwards it could not, that gives
-	 * the user the image runs as this exact path. A Dockerfile that achieves the same some
+	 * ONE command, in the last stage of the Dockerfile (the one that ships) and before the
+	 * {@code USER} line because afterwards it could not, that gives the user the image
+	 * runs as this exact path. A Dockerfile that achieves the same some
 	 * other way fails here and its author says so once, which is the direction the whole of
 	 * this file is written in.
 	 *
@@ -1111,7 +1112,19 @@ class WhatEachStackRequiresTest {
 		String whoItRunsAs = dockerfile.get(dropsPrivilege).strip().substring("USER ".length())
 				.strip();
 
-		List<String> commandsBeforeThat = dockerfile.subList(0, dropsPrivilege).stream()
+		/* FROM THE LAST `FROM` AND NOT FROM THE TOP OF THE FILE. The image that ships is the final
+		   stage; a chown in an earlier one (the build stage) is a layer that is thrown away, so
+		   reading from line zero let a command in the wrong stage satisfy this case while the
+		   shipped image had neither the folder nor its owner. */
+		int finalStage = 0;
+
+		for (int at = 0; at < dropsPrivilege; at++) {
+			if (dockerfile.get(at).strip().toUpperCase(java.util.Locale.ROOT).startsWith("FROM ")) {
+				finalStage = at;
+			}
+		}
+
+		List<String> commandsBeforeThat = dockerfile.subList(finalStage, dropsPrivilege).stream()
 				.filter(line -> !line.strip().startsWith("#"))
 				.toList();
 
