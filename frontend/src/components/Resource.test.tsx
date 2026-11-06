@@ -341,6 +341,10 @@ describe('Resource, when what failed is read again and works', () => {
 
     expect(kept, 'the focus fell out of the part').not.toBe(document.body)
     expect(kept).toHaveTextContent('Trke')
+    /* Hidden by the class and not by a rule of this file: jsdom applies no stylesheet, so the class
+       is the only thing that says the node is not a line of the page. Without it the node is a
+       visible row and a flex item that adds a gap (measured: the class taken off, 37 passed). */
+    expect(kept).toHaveClass('visually-hidden')
     /* In front of what was drawn and in the same place, which is what keeps the reader where he
        was: the next thing read is the part, and the next Tab goes into it. */
     expect(kept?.nextElementSibling).toBe(drawn)
@@ -359,7 +363,52 @@ describe('Resource, when what failed is read again and works', () => {
 
     expect(kept, 'the focus fell out of the part').not.toBe(document.body)
     expect(kept).toHaveTextContent('')
+    expect(kept).toHaveClass('visually-hidden')
     expect(kept?.nextElementSibling).toBe(screen.getByText('Fruškogorski maraton'))
+  })
+
+  it('is no stop of the tab order, so a part read again is not entered through a node nobody sees', async () => {
+    /* `tabIndex={-1}`: the node can be given the keyboard by the page and never by a key. Made `0`
+       it is an invisible stop in front of every part that was read again, and the keyboard lands
+       on a node that says nothing. Measured: `0` passed the whole file. */
+    renderWithI18n(<Harness first={aFailedRead()} inline label="Trke" />)
+    await pressWithTheKeyboard()
+
+    act(() => {
+      give(READY)
+    })
+
+    screen.getByRole('main').focus()
+    await setupUser().tab()
+
+    expect(
+      screen.getByRole('button', { name: 'Drugo dugme' }),
+      'the key stopped on the node in front of the part',
+    ).toHaveFocus()
+  })
+
+  it('keeps the node, with the keyboard on it, when the part is drawn once more', async () => {
+    /* The flag that says the part failed once is what draws the node, and it is kept for as long as
+       the part lives: cleared when the node takes the keyboard, the next drawing takes the node out
+       from under the reader and the keyboard falls to the page again (measured: cleared there, the
+       file stayed green). */
+    renderWithI18n(<Harness first={aFailedRead()} inline label="Trke" />)
+    await pressWithTheKeyboard()
+
+    act(() => {
+      give(READY)
+    })
+
+    const kept = document.activeElement
+
+    expect(kept, 'the focus fell out of the part').not.toBe(document.body)
+
+    act(() => {
+      give({ status: 'ready', data: 'drugi odgovor' })
+    })
+
+    expect(kept, 'the node was taken out from under the reader').toBeInTheDocument()
+    expect(document.activeElement).toBe(kept)
   })
 
   it('draws no such node for a part that never failed, which is the markup it always was', () => {
