@@ -246,6 +246,59 @@ class FrozenSeasonApiTest {
 				.contains("F 2 null null 12.0");
 		assertThat(rows(league(tables, "liga-2027").get("standings"), "gender", "position", "memberNumber", "who"))
 				.contains("F 2 null null");
+
+		/* THE OTHER TABLES TOO, each reading its gender from its own snapshot column: a gender read from the
+		   live member would be null for the one who is gone, and the reader would write neither
+		   „Obrisani član" nor „Obrisana članica" (A37). Vera is a woman in every table that holds her. */
+		List<JsonNode> rosters = new ArrayList<>();
+
+		tables.get("teams").forEach(team -> team.get("roster").forEach(rosters::add));
+
+		List<JsonNode> halves = new ArrayList<>();
+
+		tables.get("pairs").forEach(pair -> pair.get("halves").forEach(halves::add));
+
+		assertThat(gendersOfWhoIsGone(rosters)).as("the rosters of the teams").containsExactly("F");
+		assertThat(gendersOfWhoIsGone(halves)).as("the halves of the pairs").containsExactly("F");
+		assertThat(gendersOfWhoIsGone(tables.get("boards"))).as("the top lists").containsExactly("F");
+		assertThat(gendersOfWhoIsGone(tables.get("awards"))).as("the awards").containsExactly("F");
+	}
+
+	/**
+	 * The name of the race a top list names is the name the freeze wrote, and not the name the race has now
+	 * nor a race that is no longer there: the column is the snapshot's and the race beside it only a link
+	 * that is emptied with the race (`season_board_race_fk`). A name read from the live race says another
+	 * name after a rename and nothing after a deletion.
+	 */
+	@Test
+	void theRaceOfABestRaceRowIsNamedAsTheFreezeNamedItAfterItWasRenamedAndAfterItWasDeleted() throws Exception {
+		frozen();
+		db.sql("update race set name = 'Preimenovana' where name = 'Jesenji krug'").update();
+
+		assertThat(rows(tablesOf2027(null).get("boards"), "board", "position", "memberNumber", "raceName"))
+				.contains("bestRace 1 000403 Jesenji krug");
+
+		db.sql("delete from league_race where race_id = (select id from race where name = 'Preimenovana')").update();
+		db.sql("delete from result where race_id = (select id from race where name = 'Preimenovana')").update();
+		db.sql("delete from race where name = 'Preimenovana'").update();
+
+		assertThat(rows(tablesOf2027(null).get("boards"), "board", "position", "memberNumber", "raceName"))
+				.contains("bestRace 1 000403 Jesenji krug");
+	}
+
+	/** The genders the rows of nobody carry (no number, no name), once each; at least one row is read. */
+	private static java.util.Set<String> gendersOfWhoIsGone(Iterable<JsonNode> list) {
+		java.util.Set<String> genders = new java.util.TreeSet<>();
+
+		for (JsonNode row : list) {
+			if (row.get("memberNumber").isNull() && row.get("who").isNull()) {
+				genders.add(row.get("gender").isNull() ? "null" : row.get("gender").asString());
+			}
+		}
+
+		assertThat(genders).as("no row of nobody to read a gender from").isNotEmpty();
+
+		return genders;
 	}
 
 	@Test
