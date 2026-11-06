@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.token.SecretToken;
@@ -150,7 +151,9 @@ class AttendanceWriteApiTest {
 		member(MODERATORS_LAPSED, false);
 		long unpaid = neverPaid();
 
-		exemptFor(LAPSED, 2027);
+		/* A ROW OF A SEASON THAT DOES NOT COUNT ON THIS FILE'S DAY (2027 is the one that does), and his flag
+		   says active: since AF-1 neither makes him active. */
+		exemptFor(LAPSED, 2028);
 
 		attending(FUTURE_ONE, ASKER);
 		attending(FUTURE_ONE, FIRST_ACTIVE);
@@ -191,8 +194,15 @@ class AttendanceWriteApiTest {
 						+ " (select id from place where rank = 1), 2027, ?, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, feeStanding, String.format("%016x", ++issued))
+				.params(number, !feeStanding, String.format("%016x", ++issued))
 				.update();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
+		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
+		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		if (feeStanding) {
+			HeldOn.activeAt(db, number, NOW.atZone(SeasonClock.ZONE));
+		}
 	}
 
 	/** Somebody who registered and has not paid: no number, and never active (V16). */
@@ -436,8 +446,8 @@ class AttendanceWriteApiTest {
 	}
 
 	/**
-	 * A MEMBER WHOSE FEE HAS LAPSED SAYS NOTHING EITHER WAY, AND A ROW OF MEMBERSHIP DOES NOT
-	 * MAKE HIM ACTIVE.
+	 * A MEMBER WHOSE FEE HAS LAPSED SAYS NOTHING EITHER WAY, AND NEITHER A ROW OF A SEASON THAT DOES NOT
+	 * COUNT NOR HIS FLAG MAKES HIM ACTIVE.
 	 *
 	 * <p>PDL, 03.10.2026, recording the owner's choice between offered outcomes: „Najavu dolaska
 	 * daju ... aktivni članovi (važeća članarina)". Answered as an address that maps nothing
@@ -446,11 +456,12 @@ class AttendanceWriteApiTest {
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedSaysNothingEitherWay() throws Exception {
-		assertThat(db.sql("select count(*) from membership where competitor_id = ?")
-				.param(competitorId(LAPSED)).query(Integer.class).single())
-				.as("the lapsed member holds no membership row, so this case cannot tell the flag"
-						+ " from the row")
-				.isEqualTo(1);
+		assertThat(db.sql("select active || ' ' || (select string_agg(m.season::text, ',') from membership m"
+						+ " where m.competitor_id = c.id) from competitor c where c.id = ?")
+				.param(competitorId(LAPSED)).query(String.class).single())
+				.as("the lapsed member does not carry the flag true and a row of 2028 alone, so this case"
+						+ " cannot tell the flag, or a row of another season, from the season that counts")
+				.isEqualTo("true 2028");
 
 		List<String> before = everyRow();
 
