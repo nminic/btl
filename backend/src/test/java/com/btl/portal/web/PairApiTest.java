@@ -439,10 +439,10 @@ class PairApiTest {
 	 *
 	 * <p>„Par se raskida kad jedna strana ne produzi clanarinu" (PDL, 11.08.2026, the owner
 	 * in four words: „Ne postoji par onda, raskida se."). Nothing writes that yet: a fee
-	 * that lapses lowers {@code competitor.active} and deletes nobody, so the row in
+	 * that lapses takes his seasons away and deletes nobody, so the row in
 	 * {@code racing_pair} stays. Deleting the PERSON is a different door and does take the
 	 * pair along (V12 writes both keys {@code on delete cascade}), which is why this case
-	 * lowers the flag instead of deleting anyone. Until the increment that breaks pairs
+	 * takes the seasons away instead of deleting anyone. Until the increment that breaks pairs
 	 * arrives, the reader is the only thing between a pair that does not exist and a
 	 * public answer.
 	 *

@@ -327,10 +327,10 @@ class RegistrationApiTest {
 		assertThat(theCompetitorBehind(ADDRESS).get("member_number"))
 				.as("registering handed out a member number, which is the payment's to hand out")
 				.isNull();
-		assertThat(theCompetitorBehind(ADDRESS).get("active"))
-				.as("registering activated the membership, so he is on the public list before"
+		assertThat(howMany("membership"))
+				.as("registering booked a season, so he is on the public list before"
 						+ " anybody has recorded a payment")
-				.isEqualTo(false);
+				.isZero();
 		assertThat(db.sql("select is_called from member_number_seq").query(Boolean.class).single())
 				.as("the sequence of member numbers moved during a registration, so the next"
 						+ " member to pay would get a number with a gap before it")
@@ -341,9 +341,9 @@ class RegistrationApiTest {
 	 * AND HE IS ON NO PUBLIC LIST, measured through the resource that draws one.
 	 *
 	 * <p>PDL: „Pre placanja clan sme da otvori nalog, ali nigde nije vidljiv i ne moze
-	 * nista da radi u sistemu." {@link CompetitorApi} serves {@code where c.active}, so the
-	 * sentence is true by construction - but only as long as this route writes
-	 * {@code active} false, which is exactly what this asks. The list is read before and
+	 * nista da radi u sistemu." {@link CompetitorApi} serves only members who hold a season that counts,
+	 * so the sentence is true by construction - but only as long as this route writes no season, which
+	 * is exactly what this asks. The list is read before and
 	 * after, so a portal that already had members would still measure the difference.
 	 */
 	@Test

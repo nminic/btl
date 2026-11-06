@@ -80,7 +80,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * is on the other {@code exists}. A condition written over the whole rule would refuse them.
  *
  * <p><b>The mutations this is written against, each of which is a cell:</b> the holder's
- * {@code active} replaced by the reader's (an active member is then served a lapsed member's portrait
+ * activeness replaced by the reader's (an active member is then served a lapsed member's portrait
  * and a lapsed reader is refused an open one), the condition on {@code profile_hidden} alone (a visitor
  * is then served a lapsed member's portrait), the owner's clause widened to any account that names a
  * member (a lapsed reader is then served another lapsed member's portrait), the owner's clause removed
@@ -238,7 +238,7 @@ class PhotoOfAMemberWhoseFeeHasLapsedTest {
 
 		/* THE HOLDERS: the four ways a member who has been a member can stand, and the fifth, who never
 		   was. Being active (a season that counts, `AMemberIsActive`) is the fact the rule asks and
-		   `profile_hidden` is the second, independent one; the flag is written against it on purpose. */
+		   `profile_hidden` is the second, independent one. */
 		member("000201", true, false, activeAndOpen);
 		member("000202", true, true, activeAndHiding);
 		member("000203", false, false, lapsedAndOpen);
@@ -463,9 +463,8 @@ class PhotoOfAMemberWhoseFeeHasLapsedTest {
 				.params(number, String.format("%016x", ++issued), hidden, photo)
 				.update();
 
-		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
-		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
-		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		/* ACTIVE BY THE SEASON HE HOLDS (`AMemberIsActive`): the member whose fee does not stand holds none
+		   that counts. */
 		if (active) {
 			HeldOn.activeAt(db, number, ZonedDateTime.now());
 		}

@@ -175,9 +175,8 @@ class InboxWriteApiTest {
 				.params(number, first, last, String.format("%016x", ++issued), hidden)
 				.update();
 
-		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
-		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
-		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		/* ACTIVE BY THE SEASON HE HOLDS (`AMemberIsActive`): the member whose fee does not stand holds none
+		   that counts. */
 		if (active) {
 			HeldOn.activeAt(db, number, ZonedDateTime.now());
 		}

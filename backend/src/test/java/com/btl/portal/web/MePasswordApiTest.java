@@ -1006,19 +1006,19 @@ class MePasswordApiTest {
 	 */
 	private enum Behind {
 
-		/** A member whose fee stands: a number, and the season that counts today; his flag says false. */
+		/** A member whose fee stands: a number, and the season that counts today. */
 		A_FEE_THAT_STANDS,
 
 		/** Registered and never paid: no number (V16), not active, and no row of membership. */
 		NEVER_PAID,
 
 		/** A number, not active, a row of membership for 2028 given free of the fee (a season that does
-		 *  not count today), and his flag says true. */
+		 *  not count today). */
 		LAPSED_WITH_A_ROW,
 
 		/**
 		 * A number, not active, and no row of membership at all: the one a rule that told a lapsed member
-		 * from somebody who never paid BY A ROW would take for somebody who never paid. His flag says true.
+		 * from somebody who never paid BY A ROW would take for somebody who never paid.
 		 */
 		LAPSED_WITHOUT_A_ROW
 	}

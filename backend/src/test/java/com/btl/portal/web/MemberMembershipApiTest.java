@@ -55,8 +55,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <li><b>the season</b> is the clock's: the cases stand after 15 October (2028 on sale while 2027 is
  * run, and the member holds both), before it, at half past midnight of 1 January in Belgrade, which
  * is still 31 December in UTC, and in 2026; the season acted on is never the only one he holds;</li>
- * <li><b>{@code active}</b> is what the remaining rows say: a member who keeps the running season stays
- * active, one who keeps only an older one does not, and one who keeps nothing does not;</li>
+ * <li><b>whether he is active</b> is what the remaining rows say (nothing is written for it since V86): a
+ * member who keeps the running season stays active, one who keeps only an older one does not, and one
+ * who keeps nothing does not;</li>
  * <li><b>the book</b> is the season's: the member also holds a credit of 2027 and a reward of his own
  * for bringing somebody in, and neither is reversed; his referrer's book is not touched;</li>
  * <li><b>the promise</b> is the season's: one stands for 2027 as well, and stays;</li>
@@ -462,7 +463,7 @@ class MemberMembershipApiTest {
 	 * A SEASON CANCELLED IN FEBRUARY, AFTER IT BEGAN, TAKES HIM OUT OF HIS TEAM AND HIS PAIR AT ONCE (PDL
 	 * 05.11.2026, „Storno sezone posle 1. januara u 16h izbacuje člana iz tima i para odmah"), with the
 	 * messages of the turn of the season. He administered the team, so the member left in it is told he
-	 * does now: which is only true if the seat was read BEFORE the cancellation wrote {@code active} again,
+	 * does now: which is only true if the seat was read BEFORE the cancellation took the rows away,
 	 * since read after it the seat had already passed to that member and nothing would seem to move.
 	 */
 	@Test

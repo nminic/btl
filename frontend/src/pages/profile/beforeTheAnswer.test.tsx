@@ -54,7 +54,7 @@ const NOBODY = '/sr/takmicar/000999-niko-nikic'
  * one `CompetitorApi` selects on every row (`data/types.ts`, `profileHidden`).
  *
  * <p><b>Without the members whose fee has lapsed, which is what the server serves.</b> The file
- * still carries them, flagged `active: false`, and `/api/competitors` ends `where c.active`, so a
+ * still carries them, flagged `active: false`, and `/api/competitors` ends `AMemberIsActive`, so a
  * member whose fee has run out is on no list the server answers (`test/serverAnswers.ts`,
  * `membersAsServed`, says why a case has to build this and cannot read it). It matters here since
  * 03.10.2026: the list is where a screen reads „is this reader an active member", so a stand-in that

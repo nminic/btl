@@ -117,7 +117,7 @@ class MembersApiTest {
 		HeldOn.season(db, onlyThePast, 2027, "payment");
 		HeldOn.season(db, onlyTheNext, 2028, "feeExempt");
 		/* SINCE AF-1 HE IS NOT LAPSED ON THIS FILE'S DAY: in the window of 2027 a row of 2027 is a season
-		   that counts (PDL 13.09.2026), so a member who holds one is active whatever his flag says. The row
+		   that counts (PDL 13.09.2026), so a member who holds one is active. The row
 		   stays as it was because the cases about the basis of the season on sale read it. */
 		HeldOn.season(db, lapsedWithARow, 2027, "balance");
 

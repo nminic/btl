@@ -66,7 +66,7 @@ class CommentApiTest {
 
 	/**
 	 * An active member who wrote nothing here and holds no row of {@code membership}, so that who
-	 * reads is never one of the authors and the fact asked about is {@code competitor.active} and
+	 * reads is never one of the authors and the fact asked about is the season he holds and
 	 * not a row of another table.
 	 */
 	private static final String A_MEMBER = "takmicar@primer.rs";
@@ -436,9 +436,8 @@ class CommentApiTest {
 				.params(first, last, gender, String.format("%016x", ++issued))
 				.update();
 
-		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
-		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
-		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		/* ACTIVE BY THE SEASON HE HOLDS (`AMemberIsActive`): the member whose fee does not stand holds none
+		   that counts. */
 		if (feeStanding) {
 			HeldOn.activeAt(db, number.replace("'", ""), ZonedDateTime.now());
 		}
@@ -847,10 +846,9 @@ class CommentApiTest {
 	 * text is asked for as TEXT, over every comment of the fixture, after the case has asked the
 	 * database that the comments really are there to be withheld.
 	 *
-	 * <p><b>The anchor is an active member whose flag says inactive</b> and is served, and the lapsed
-	 * reader's flag says active and he holds a row of a season that does not count, so what tells the
-	 * two sides apart is the season that counts ({@link AMemberIsActive}), and neither the flag nor
-	 * whether some row exists.
+	 * <p><b>The anchor is an active member</b> and is served, and the lapsed reader holds a row of a
+	 * season that does not count, so what tells the two sides apart is the season that counts
+	 * ({@link AMemberIsActive}), and not whether some row exists.
 	 */
 	@Test
 	void somebodySignedInWhoIsNotAnActiveMemberIsToldTheCommentsAreNotThere() throws Exception {

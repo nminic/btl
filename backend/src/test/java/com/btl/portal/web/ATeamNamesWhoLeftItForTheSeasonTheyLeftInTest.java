@@ -1093,7 +1093,7 @@ class ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest {
 
 		/* A MEMBER WHOSE FEE STANDS HOLDS EVERY SEASON THE MOMENTS OF THIS FILE ASK ABOUT, 2027 TO 2029: since
 		   AF-1 being active is a season that counts at the moment, and the last moment is 16:00 on 1 January
-		   2029. The flag is written against the seasons on purpose: since AF-1 nothing reads it. */
+		   2029. */
 		if (active) {
 			heldThrough2029(db.sql("select id from competitor where member_number = ?").param(number)
 					.query(Long.class).single());
@@ -1126,7 +1126,7 @@ class ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest {
 
 		/* A MEMBER WHOSE FEE STANDS HOLDS EVERY SEASON THE MOMENTS OF THIS FILE ASK ABOUT, 2027 TO 2029: since
 		   AF-1 being active is a season that counts at the moment, and the last moment is 16:00 on 1 January
-		   2029. The flag is written against the seasons on purpose: since AF-1 nothing reads it. */
+		   2029. */
 		heldThrough2029(made);
 
 		return made;

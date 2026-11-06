@@ -138,7 +138,7 @@ class TeamJoiningWriteApiTest {
 	/** In no team, and the one whose question of the identical shape must be left alone. */
 	private static final String NOBODY_ELSE = "000800";
 
-	/** In no team and no longer a member: {@code competitor.active} is false. */
+	/** In no team and no longer a member: he holds no season that counts. */
 	private static final String LAPSED = "000900";
 
 	private static final String A_FIRST_TEAM = "prvi-tim";
@@ -305,11 +305,11 @@ class TeamJoiningWriteApiTest {
 	 * „Prijava u tim, prihvatanje poziva i predlog novog tima traže članstvo za sezonu za koju se
 	 * plaća". The clock is inside the window of 2027, so the season on sale is 2028 and the season
 	 * being run is 2027, which is what makes the two states of this case different at all:
-	 * {@code competitor.active} is true for both.
+	 * he is active in both.
 	 *
 	 * <p><b>Both states in one case, on one member, so that neither can pass for the wrong
 	 * reason.</b> He holds 2027 alone and is refused; he holds 2028 alone (2027 taken away) and is
-	 * let through. A version that asks {@code active}, or the season being run, lets the first
+	 * let through. A version that asks whether he is active, or the season being run, lets the first
 	 * through; one that asks for any row at all does the same.
 	 */
 	@Test
@@ -537,7 +537,7 @@ class TeamJoiningWriteApiTest {
 	}
 
 	/**
-	 * A MEMBER WHO HOLDS ONLY THE ONE SEASON GIVEN, which is the state {@code competitor.active}
+	 * A MEMBER WHO HOLDS ONLY THE ONE SEASON GIVEN, which is the state a flag on the member
 	 * cannot tell from a member who holds both: he is active either way. PDL 30.10.2026 asks for
 	 * the season he would ENTER for, so the case that needs the difference makes it here.
 	 */

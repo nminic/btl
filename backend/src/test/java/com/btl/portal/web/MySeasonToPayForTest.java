@@ -128,7 +128,7 @@ class MySeasonToPayForTest {
 	/**
 	 * THE MEMBER WHO HOLDS ONLY THE SEASON BEING RUN OWES THE NEXT, AND THE ANSWER NAMES IT.
 	 *
-	 * <p>{@code competitor.active} is true for all three, so only the season he is asked about can
+	 * <p>All three are active, so only the season he is asked about can
 	 * tell them apart. The number is the season on sale, 2028, and not the season being run.
 	 */
 	@Test

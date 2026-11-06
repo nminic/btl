@@ -214,8 +214,7 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 				.params(THE_MEMBERS_NUMBER, String.format("%016x", Long.parseLong(THE_MEMBERS_NUMBER)))
 				.update();
 
-		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written false on purpose: since AF-1
-		   nothing reads it, and a reader that did would turn him away. */
+		/* ACTIVE BY THE SEASON HE HOLDS (`AMemberIsActive`). */
 		HeldOn.activeAt(db, THE_MEMBERS_NUMBER, ZonedDateTime.now());
 
 		account(A_MEMBER, "competitor");
@@ -244,8 +243,7 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Istekao', 'Istekaovic', 'M', date '1990-01-01',"
-						/* HIS FLAG IS TRUE AND HE HOLDS NO SEASON: since AF-1 he is lapsed by the seasons
-						   alone, and a door that read the flag would let him through. */
+						/* HE HOLDS NO SEASON: he is lapsed by the seasons alone (`AMemberIsActive`). */
 						+ " (select id from place where rank = 1), 2027, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")

@@ -50,7 +50,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *
  * <p><b>What is measured, with nothing assumed:</b> the season the list is about and the season a
  * payment is booked for, the row of the price list the day falls in, the junior price replacing it,
- * the tax on a euro payment, the membership row the booking writes and the flag that activates the
+ * the tax on a euro payment, the membership row the booking writes, which is what activates the
  * member. Both edges of the window are walked from both sides, because a window that is wrong by a
  * day is wrong on exactly one of the four.
  *

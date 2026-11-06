@@ -204,8 +204,7 @@ class ASeasonBeginsTest {
 
 		/* A SEAT NAMING A MEMBER WHO NO LONGER STANDS IN IT: Tara's season 2027 was cancelled before the turn,
 		   so she holds no season, the seat is Uros's already and does not move, and the column must stop naming
-		   her all the same. Her flag is left TRUE on purpose: since AF-1 nothing reads it, and a seat read off
-		   the flag would still be hers. */
+		   her all the same. */
 		long deveti = team("deveti-tim", "Deveti tim", tara);
 		in(tara, deveti, 2027, null);
 		in(uros, deveti, 2027, null);

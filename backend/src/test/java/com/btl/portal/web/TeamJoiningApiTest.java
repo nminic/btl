@@ -501,7 +501,7 @@ class TeamJoiningApiTest {
 	 * međuvremenu dobio tim se timu ne prikazuje"): the route that answers the team would not find
 	 * him, so the list does not show him. The clock is moved INSIDE the window of 2027 because the
 	 * rest of this file stands on 15 October, where the season on sale is the one being run and
-	 * {@code competitor.active} says all there is.
+	 * whether he holds the season on sale says all there is.
 	 *
 	 * <p><b>The one man is listed and then not, and the other applicant stays.</b> That is the
 	 * difference between a filter on his season and one that empties the list, and it is the same
@@ -609,7 +609,7 @@ class TeamJoiningApiTest {
 	/**
 	 * A LAPSED APPLICANT IS NOT LISTED, AND THE REASON IS THE WRITE ROUTE.
 	 *
-	 * <p>{@code applicationHeMayDecide} carries {@code c.active}, so the team cannot answer
+	 * <p>{@code applicationHeMayDecide} carries {@code AMemberIsActive}, so the team cannot answer
 	 * him either way; listed, the screen would offer a button the server refuses. The row is
 	 * still in the table, so „not listed" is again told from „not there".
 	 */
@@ -1018,7 +1018,7 @@ class TeamJoiningApiTest {
 	}
 
 	/**
-	 * A MEMBER WHO HOLDS ONLY THE ONE SEASON GIVEN, which is the state {@code competitor.active}
+	 * A MEMBER WHO HOLDS ONLY THE ONE SEASON GIVEN, which is the state a flag on the member
 	 * cannot tell from a member who holds both: he is active either way. PDL 30.10.2026 asks for
 	 * the season he would ENTER for, so the case that needs the difference makes it here.
 	 */

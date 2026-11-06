@@ -67,7 +67,7 @@ describe('who the server says I am', () => {
       /* AND THE THREE P8a MOVED HERE ON 25.09.2026, null for the same reason: there is no
          record to read them off. Every one of them is on `/api/competitors` as well, which
          is what makes them different from the four around them, and none of the three is
-         read off it by the screen that needs them - that list ends `where c.active` and so
+         read off it by the screen that needs them - that list ends `AMemberIsActive` and so
          cannot answer the one member who opens that screen. */
       country: null,
       firstSeason: null,
@@ -255,7 +255,7 @@ describe('who the server says I am', () => {
      25.09.2026, and the axis has more states than two.** It is read here and
      nowhere else on the portal now: it was answered on the caller's own row of
      `/api/competitors` from 20.09.2026 and „Moja članarina" read it off there, and the
-     owner took it off that list (PDL P26a) because the list ends `where c.active` - so
+     owner took it off that list (PDL P26a) because the list ends `AMemberIsActive` - so
      the member whose fee has LAPSED, the one V24 section 6 promises the link to on
      exactly that page, was answered nothing at all.
 
@@ -389,7 +389,7 @@ describe('who the server says I am', () => {
 
      The five above are read here because there is nowhere else to read them. This one is
      on `/api/competitors` too, on every row, and „Moja članarina" read it off there until
-     today. It is read HERE because that list ends `where c.active`, so it answers
+     today. It is read HERE because that list ends `AMemberIsActive`, so it answers
      everybody except the member whose fee has LAPSED - who is the man that screen exists
      for, since renewing is what he opens it to do (PDL P8a).
 
@@ -643,7 +643,7 @@ describe('who the server says I am', () => {
   })
 
   /* **WHETHER HIS FEE STANDS, WHICH IS THE SEVENTH, and the axis has more states than two.**
-     `MeApi.MyOwnRecord.active` is `competitor.active`, and until 11.10.2026 the answer did not say:
+     `MeApi.MyOwnRecord.active` is read off the seasons he holds, and until 11.10.2026 the answer did not say:
      a member whose fee has lapsed was answered the same names as one whose fee stands, so the
      portal drew him every screen of a member whose fee stands (measured against a real database
      that day, `MeApiTest`). The server refuses him 404 on two of his forms (PDL P8, the addition

@@ -1333,7 +1333,7 @@ describe('what the invitation must not be confused with', () => {
  * pogađa.").
  *
  * <p>`member/InvitationAnswer.tsx` read the sex off the public list (`/api/competitors`, `where
- * c.active`), so a woman whose fee has lapsed read „Prihvatio" and „ušao" (PENDING, review of PR 604).
+ * AMemberIsActive`), so a woman whose fee has lapsed read „Prihvatio" and „ušao" (PENDING, review of PR 604).
  * It is read off `GET /api/me` now, and every value an assertion here reads has somewhere ELSE it could
  * have come from: the list is made to say the OPPOSITE of the reader's own record in both directions,
  * and the inviter is of the other sex than the reader in the second.

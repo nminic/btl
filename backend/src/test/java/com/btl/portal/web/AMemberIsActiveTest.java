@@ -25,9 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * do 16:00 [...] U 16:00:00 postaje neaktivan", and „Storno nove sezone urađen 1. januara pre 16:00 ne gasi
  * člana koji ima prethodnu sezonu pre 16:00".
  *
- * <p><b>The flag is set AGAINST the rows on purpose</b>: everybody who holds a season that makes him active
- * has {@code active = false}, and everybody who holds none has {@code active = true}, so a condition that
- * read the flag would answer every case below the other way round.
+ * <p><b>There is no flag to set against the rows</b> since V86 (AF-2): the column is gone, so a condition that
+ * read it would not run at all ({@code TheFlagHasNoColumnTest}), and what is asked here is the rows alone.
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -46,7 +45,7 @@ class AMemberIsActiveTest {
 	/** Holds 2029 only, freed of the fee. */
 	private long only2029;
 
-	/** Holds nothing, and his flag says he is active. */
+	/** Holds nothing. */
 	private long nothing;
 
 	/** Holds 2027 and had 2028, which was cancelled: the row is gone, the trail stays. */

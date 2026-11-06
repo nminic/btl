@@ -483,7 +483,7 @@ export type SessionValue = {
      *  P8a took off the public list FOR THIS SCREEN (25.09.2026). They are still on that
      *  list, and that is the difference from the four around them; what they are not is
      *  reachable by the one man „Moja članarina" is for, because the list ends
-     *  `where c.active` and his fee has lapsed. Null for a visitor, for an account that
+     *  `AMemberIsActive` and his fee has lapsed. Null for a visitor, for an account that
      *  races for nobody, and for a value of a sort this portal does not read; `teamId` is
      *  null for a member with no team as well, which is ordinary and which
      *  `session/theServer.ts` writes out as a boundary. */
@@ -583,7 +583,7 @@ export type SessionValue = {
    * first season and the team below are remembered here although `/api/competitors`
    * carries all three. **The rule that replaces it is one sentence wider and is the
    * owner's (PDL P8a): a door that cannot answer the caller is not a door.** That list
-   * ends `where c.active`, so for the member whose fee has lapsed it answers nothing at
+   * ends `AMemberIsActive`, so for the member whose fee has lapsed it answers nothing at
    * all - and he is the man „Moja članarina" exists for.
    *
    * **This paragraph said „the member number, the country, the first season and the team
@@ -634,7 +634,7 @@ export type SessionValue = {
    * **Here since 25.09.2026 and for the same reason the basis above is here: no other
    * door.** It was answered on the caller's own row of `/api/competitors` from
    * 20.09.2026 and „Moja članarina" read it off there. The owner took it off that list
-   * (PDL P26a) because the list ends `where c.active`, so the member whose fee has
+   * (PDL P26a) because the list ends `AMemberIsActive`, so the member whose fee has
    * LAPSED - the one V24 section 6 promises the link to, on the page he opens to renew -
    * was answered nothing at all.
    *

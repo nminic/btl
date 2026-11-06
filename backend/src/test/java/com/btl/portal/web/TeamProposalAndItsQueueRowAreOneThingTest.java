@@ -122,7 +122,7 @@ class TeamProposalAndItsQueueRowAreOneThingTest {
 	/**
 	 * One member, in no team, who may propose.
 	 *
-	 * <p>{@code active} is true, a member whose fee stands: since P8U proposing a team turns away
+	 * <p>A member whose fee stands: since P8U proposing a team turns away
 	 * a member whose fee does not stand before anything is written
 	 * ({@code NoWriteTakesAMemberWhoHasNotPaidTest}), and what this case is about is a write that
 	 * IS made. The row is taken out after every case, so nothing that runs after this file meets

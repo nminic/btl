@@ -84,7 +84,7 @@ import java.util.regex.Pattern;
  * number is handed out where the payment is recorded, and that is not this increment.
  *
  * <p><b>THE MEMBERSHIP IS NOT ACTIVE EITHER.</b> No season is written, so he is not active
- * ({@link AMemberIsActive}), and the flag {@code active} is written false beside it, so PDL's
+ * ({@link AMemberIsActive}), so PDL's
  * „Pre placanja clan sme da otvori nalog, ali nigde nije vidljiv i ne moze nista da
  * radi u sistemu" is true by construction rather than by a rule somebody has to
  * remember: {@link CompetitorApi} serves only members who are active, so a registration

@@ -199,7 +199,7 @@ function whatMeAnswers(): Response {
        no row for until 24.09.2026, and that conflated two things `MeApi` exists to keep
        apart: „this account races for nobody", which is administration, and „this member
        is not on the public list", which is a MEMBER WHOSE FEE HAS LAPSED. `CompetitorApi`
-       ends `where c.active` and leaves him off; `/api/me` answers him, deliberately -
+       ends `AMemberIsActive` and leaves him off; `/api/me` answers him, deliberately -
        „the profile and the historical tables of a member whose fee has lapsed need a
        resource that knows them, and it is not this one."
 

@@ -158,7 +158,7 @@ class TeamApiTest {
 	 * <li><b>{@link #LEFT_THE_TEAM_HE_JOINED_FIRST}</b> ({@code 000008}, 2027 and gone)
 	 * joined before all of them, so dropping {@code season_to is null} hands it to him.</li>
 	 * <li><b>{@link #IN_THE_TEAM_LONGEST_AND_HAS_NOT_PAID}</b> ({@code 000009}, 2027) is
-	 * the same, one condition along: dropping {@code active} hands it to him.</li>
+	 * the same, one condition along: dropping the condition on the seasons hands it to him.</li>
 	 * </ul>
 	 *
 	 * <p>And a sixth contestant has no account because he can be asked about without one:
@@ -366,7 +366,7 @@ class TeamApiTest {
 	 * stands, for as long as 2027 has not frozen (the clock of this class is pinned to October
 	 * 2027).</li>
 	 * <li>{@code 000003}, standing in {@code novosadski-trkaci} since 2029 with a fee that has
-	 * lapsed - named nowhere, which is what dropping {@code c.active} would change, and which
+	 * lapsed - named nowhere, which is what dropping the condition on the seasons would change, and which
 	 * is the door the note on {@code TeamApi} keeps shut.</li>
 	 * </ul>
 	 *
@@ -572,9 +572,8 @@ class TeamApiTest {
 						+ " 'M', timestamptz '2026-09-01 10:00:00+00', " + photo + ")")
 				.params(number, first, last, gender, referralCode).update();
 
-		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
-		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
-		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		/* ACTIVE BY THE SEASON HE HOLDS (`AMemberIsActive`): the member whose fee does not stand holds none
+		   that counts. */
 		if (active) {
 			HeldOn.activeAt(db, number, Instant.parse("2027-10-20T09:00:00Z").atZone(SeasonClock.ZONE));
 		}
@@ -609,7 +608,7 @@ class TeamApiTest {
 	 * <p>Written as its own helper rather than as a null passed to {@link #member} so
 	 * that the two are not one call with a flag: a member and a registrant differ in the
 	 * one column this whole increment turns on, and a reader of the fixture has to see
-	 * which one he is looking at. He is {@code active = false} for the same reason the
+	 * which one he is looking at. He holds no season for the same reason the
 	 * column is empty - he has not paid - which is the state {@code CompetitorApi} keeps
 	 * off its list anyway.
 	 *
@@ -641,7 +640,7 @@ class TeamApiTest {
 	 *
 	 * <p><b>Nothing in the schema forbids it, which is why it is here.</b> V16 dropped
 	 * {@code not null} from {@code member_number} and tied it to nothing: there is no
-	 * constraint between that column and {@code active}, so a rule that leant on „anybody
+	 * constraint between that column and holding a season, so a rule that leant on „anybody
 	 * active has a number" would be leaning on a habit.
 	 *
 	 * @return his {@code competitor.id}, which is what a membership is written by
@@ -659,7 +658,7 @@ class TeamApiTest {
 						+ " returning id")
 				.params(first, last, referralCode).query(Long.class).single();
 
-		/* HE STANDS BY THE SEASON HE HOLDS, and his flag says false: since AF-1 nothing reads it. */
+		/* HE STANDS BY THE SEASON HE HOLDS. */
 		HeldOn.activeAt(db, made, Instant.parse("2027-10-20T09:00:00Z").atZone(SeasonClock.ZONE));
 
 		return made;
@@ -2176,7 +2175,7 @@ class TeamApiTest {
 	 * <p><b>Both lists are asked with the SAME cookie of the SAME caller</b>, which is
 	 * the whole of the case: a difference between two callers would be authorisation
 	 * working, and a difference between one caller's two lists is two rules disagreeing.
-	 * {@code CompetitorApi} ends on {@code where c.active} by the owner's decision of
+	 * {@code CompetitorApi} ends on {@code AMemberIsActive} by the owner's decision of
 	 * 13.09.2026 (PDL P11, „ko nije platio, ne vidi se nigde"); this resource answers
 	 * the seat whatever the fee has done. So {@code AdminTeams.tsx} is handed a number
 	 * and {@code teamAdmin.ts} finds nobody in the roster to match it.

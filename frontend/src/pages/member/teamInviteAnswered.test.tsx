@@ -725,7 +725,7 @@ describe('answering a served invitation into a team', () => {
   )
 
   /* **THE SEX IS READ OFF HER OWN RECORD AND NOT OFF THE PUBLIC LIST** (PENDING, review of PR 556, PDL
-     P18: „Pol je onog člana o kome rečenica govori"). `/api/competitors` is `where c.active`, so a
+     P18: „Pol je onog člana o kome rečenica govori"). `/api/competitors` is `AMemberIsActive`, so a
      woman whose fee has lapsed is on no row of it and was told „ušao" by a screen that asked the
      list. The reader here is `000009` and she is the member the sentence is about; the first member
      on the list is `000001`, a man, so a screen that took the sex of whoever came first on the list

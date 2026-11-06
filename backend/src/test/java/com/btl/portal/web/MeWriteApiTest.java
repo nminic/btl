@@ -2886,8 +2886,7 @@ class MeWriteApiTest {
 		NEVER_PAID,
 
 		/** A number, not active, a row of membership for 2028 given free of the fee (a season that does
-		 *  not count today), and his flag says true, so neither a row of another season nor the flag is
-		 *  what tells him apart. */
+		 *  not count today), so a row of another season is not what tells him apart. */
 		LAPSED_WITH_A_ROW,
 
 		/** A number, not active, and no row at all: the one a rule that read the row would take for NEVER_PAID. */

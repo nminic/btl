@@ -268,7 +268,7 @@ class ThePaymentsScreenLocksTheMemberTest {
 
 		/* A MEMBERSHIP OF THE SAME SEASON, NOT COMMITTED: the activation reads his invoice and spends his
 		   euro first, and its own `insert into membership` then waits on this key. It cannot end on the
-		   referrer's reward the way the screen does, because it writes his row (`active = true`) before
+		   referrer's reward the way the screen does, because it writes his row before
 		   that, and his change of country would then wait for it instead of running to its commit. */
 		List<MockHttpServletResponse> both = hisChangeOfCountryCommitsInTheMiddleOf(this::heActivatesHimself,
 				() -> db.sql("insert into membership (competitor_id, season, basis, decided_by_name,"

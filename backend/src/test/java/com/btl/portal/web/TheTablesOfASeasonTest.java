@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * posle zamrzavanja sme uneti i ispraviti, ali se vidi samo na profilu tog člana").
  *
  * <p>Every fact here has a second place it could come from if the code were wrong, and the postavka
- * keeps the two apart: a member whose flag is down beside one whose flag is up, a member who left the
+ * keeps the two apart: a member whose fee lapsed beside one whose fee stands, a member who left the
  * team in the window beside one who joined it for the next season, a pair with a lapsed half beside
  * one without, a run before the freeze beside one after.
  */

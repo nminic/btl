@@ -42,7 +42,7 @@ describe('the press', () => {
     expect(first(sent).init?.body).toBe('{}')
   })
 
-  /* `competitors` answers `where c.active`, and being let in is what makes him active, so a list held
+  /* `competitors` answers `AMemberIsActive`, and being let in is what makes him active, so a list held
      from before would go on leaving him out of it. A refusal changed nothing, so it drops nothing. */
   it.each([
     ['drops the list of members where he was let in', () => letIn({ season: 2027, memberNumber: '000032' }), false],

@@ -3,8 +3,8 @@ import { join } from 'node:path'
 import { RESOURCE_NAMES, type ResourceName } from '../data/client'
 
 /**
- * THE FLOOR UNDER WHAT A CHANGE OF `active` DROPS (PENDING 29656), which is the backend's own SQL and
- * not a sentence. Moved here, byte for byte as it was, from `pages/admin/rowMembership.test.tsx` so that
+ * THE FLOOR UNDER WHAT A CHANGE OF WHETHER A MEMBER IS ACTIVE DROPS (PENDING 29656), which is the
+ * backend's own code and not a sentence. Moved here, byte for byte as it was, from `pages/admin/rowMembership.test.tsx` so that
  * the three places that move the flag are held to one reading of the backend and not to one reading
  * each (`pages/admin/whatActiveMoves.ts`).
  *
@@ -15,9 +15,9 @@ import { RESOURCE_NAMES, type ResourceName } from '../data/client'
  * READS THE FLAG when the class that declares that route asks whether a member is active: since AF-1
  * (PDL 13.09.2026, „Zastavica „aktivan" prestaje da bude podatak i postaje izvedena") that is a call to
  * `AMemberIsActive.of(`, the one condition every reader is built with and the one an act that moves a
- * membership moves; before AF-1 it was a line of SQL, a string literal, that names `active`, and that
- * reading is kept beside it, so a class that still writes the flag in SQL is counted as it was. A
- * javadoc or a comment line begins with `*` or `/` and is never one.
+ * membership moves. The column `competitor.active` is gone (V86, AF-2), so a line of SQL naming it can no
+ * longer exist and is no longer looked for. A javadoc or a comment line begins with `*` or `/` and is
+ * never a call.
  *
  * <p><b>Where it stops</b> (unchanged, and not widened here). It reads the class, not the route: a class
  * that declares two routes would lend the flag of one to the other, and none of the names does. It reads
@@ -41,14 +41,11 @@ function javaUnder(dir: string): string[] {
 
 export function namesThatReadTheFlag(): ResourceName[] {
   const sources = javaUnder(JAVA)
-  const aLineOfSqlNamingIt = /^\s*(?:\+\s*)?"[^"\n]*\bactive\b[^"\n]*"/m
   const asksWhetherAMemberIsActive = /^[^*/\n]*\bAMemberIsActive\.of\(/m
 
   return RESOURCE_NAMES.filter((name) =>
     sources.some(
-      (code) =>
-        code.includes(`@GetMapping("/api/${name}")`) &&
-        (aLineOfSqlNamingIt.test(code) || asksWhetherAMemberIsActive.test(code)),
+      (code) => code.includes(`@GetMapping("/api/${name}")`) && asksWhetherAMemberIsActive.test(code),
     ),
   )
 }

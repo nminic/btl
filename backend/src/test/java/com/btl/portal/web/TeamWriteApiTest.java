@@ -431,7 +431,7 @@ class TeamWriteApiTest {
 	 *
 	 * <p><b>Both states on one member.</b> He holds 2027 alone and is refused, with nothing
 	 * written; he holds 2028 alone (2027 taken away) and the same request goes through. Asking
-	 * {@code competitor.active}, or the season being run, lets the first through.
+	 * whether he is active, or the season being run, lets the first through.
 	 */
 	@Test
 	void aMemberWhoHoldsOnlyTheSeasonBeingRunMayNotProposeATeamAndIsToldWhy() throws Exception {
@@ -514,7 +514,7 @@ class TeamWriteApiTest {
 	}
 
 	/**
-	 * A MEMBER WHO HOLDS ONLY THE ONE SEASON GIVEN, which is the state {@code competitor.active}
+	 * A MEMBER WHO HOLDS ONLY THE ONE SEASON GIVEN, which is the state a flag on the member
 	 * cannot tell from a member who holds both: he is active either way. PDL 30.10.2026 asks for
 	 * the season he would ENTER for, so the case that needs the difference makes it here.
 	 */
@@ -2474,7 +2474,7 @@ class TeamWriteApiTest {
 	 * otisao").
 	 *
 	 * <p><b>It is here rather than as a ninth row of the table above because it needs its own
-	 * arrangement</b>, and it is the row that holds {@code c.active} inside
+	 * arrangement</b>, and it is the row that holds {@code AMemberIsActive} inside
 	 * {@link TeamApi#whoStandsInATeam}: take that condition out and BOTH answers below
 	 * move to true together, which is the one home doing its job and this case noticing.
 	 */

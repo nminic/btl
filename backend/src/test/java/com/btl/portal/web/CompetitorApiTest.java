@@ -1475,7 +1475,7 @@ class CompetitorApiTest {
 	 * <p>{@link #aMemberWhoseFeeHasLapsedIsNotOnTheList} says his ROW is absent; this says that
 	 * nothing of his is anywhere in the text, which is a different claim and the one that
 	 * matters for a picture. PDL P11, owner 13.09.2026: „ko nije platio, ne vidi se nigde osim u
-	 * istorijskim godinama", and the shape that carries it here is {@code where c.active}.
+	 * istorijskim godinama", and the shape that carries it here is {@code AMemberIsActive}.
 	 *
 	 * <p><b>Not a decision of this increment and deliberately unchanged</b>: the note on
 	 * {@code CompetitorApi} says what follows from it for the header of such a member, which

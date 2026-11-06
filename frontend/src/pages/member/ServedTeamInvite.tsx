@@ -52,7 +52,7 @@ import { ActionButton } from '../../components/ActionButton'
  * season standing on the QUESTION is not the source of it. A season computed here would be a
  * second answer, and the two would differ across midnight on 31 December.
  * <li><b>Whether he is still a member, and whether the team still exists.</b> The route asks
- * both again inside the transaction (`join team t`, `and c.active`), so a copy here would be
+ * both again inside the transaction (`join team t`, `AMemberIsActive`), so a copy here would be
  * a second home for a rule enforced in one statement.
  * <li><b>Whether the question is his.</b> The same statement asks that too, which is the
  * owner's own sentence of 05.09.2026 carried out. This screen could not ask it anyway:
@@ -70,7 +70,7 @@ import { ActionButton } from '../../components/ActionButton'
  * <p><b>THE READER'S OWN SEX COMES FROM `GET /api/me`, NEVER FROM THE PUBLIC LIST, AND THE WHOLE ANSWER
  * WAITS FOR IT.</b> The one sentence this screen changes with the sex says what the READER did
  * (PDL P18, 18.10.2026: „Pol je onog člana o kome rečenica govori"), and the list of members is the
- * wrong place to look it up: `/api/competitors` is `where c.active`, so a woman whose fee has lapsed
+ * wrong place to look it up: `/api/competitors` is `AMemberIsActive`, so a woman whose fee has lapsed
  * is on no row of it and read „ušao" (PENDING, review of PR 556, measured by drawing the screen).
  * `GET /api/me` answers one row and that row is hers, which is the door `profile/useHisOwnRecord.ts`
  * opens for her own profile.

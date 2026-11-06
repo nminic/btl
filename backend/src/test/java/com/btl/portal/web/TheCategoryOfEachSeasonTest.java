@@ -262,7 +262,7 @@ class TheCategoryOfEachSeasonTest {
 	 * A MEMBER WITH NO ROW OF EITHER SEASON IS NOT ON THE LIST AT ALL. Until AF-1 the list was the flag, so he
 	 * was on it and carded for the running season; since AF-1 being on it is holding a season that counts (PDL
 	 * 13.09.2026, „aktivan je onaj ko ima zapis za tekuću sezonu, a u prelaznom roku i onaj ko ga ima za
-	 * narednu"), so there is no card of his to read, whatever his flag says.
+	 * narednu"), so there is no card of his to read.
 	 */
 	@Test
 	void aMemberWhoHoldsNeitherSeasonIsNotOnTheList() throws Exception {

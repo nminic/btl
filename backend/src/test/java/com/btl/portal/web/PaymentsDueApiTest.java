@@ -65,10 +65,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * ({@link #FREE_OF_THE_FEE}), and BOTH take him off. With only the first, a route reading
  * recorded payments instead of memberships passes, and the man who owes nothing stays on the
  * screen for ever.
- * <li><b>The two homes of nearly one fact.</b> {@link #FLAG_SAYS_OTHERWISE} carries
- * {@code active = false} WITH a membership for the season, and {@link #PAID_AHEAD} carries
- * {@code active = true} WITHOUT one. The pair is deliberately inconsistent, because that is the
- * only shape in which „read the membership" and „read the flag" answer differently.
+ * <li><b>The season of the row.</b> {@link #ALSO_PAID} holds a membership for the season, and
+ * {@link #PAID_AHEAD} holds one for the next only, so the season of the row is the only thing that
+ * tells the two apart.
  * <li><b>The season.</b> Three moments and not one, because no single moment separates the
  * three methods of {@link SeasonClock} that answer with a year. See {@link #IN_OCTOBER_2026}.
  * <li><b>Whether the account names a member.</b> {@link #BOOKS} does not, which the owner
@@ -161,12 +160,10 @@ class PaymentsDueApiTest {
 	private static final String DID_NOT_RENEW = "jelena@primer.rs";
 
 	/**
-	 * A MEMBERSHIP FOR A SEASON THAT IS NOT THE ONE BEING ASKED ABOUT, and {@code active} true
-	 * beside it.
+	 * A MEMBERSHIP FOR A SEASON THAT IS NOT THE ONE BEING ASKED ABOUT.
 	 *
-	 * <p>Two axes in one person on purpose: he is why the default case measures the season at
-	 * all (drop {@code m.season} and he vanishes), and he is the half of the flag axis that
-	 * says a route reading {@code competitor.active} would leave him OUT when he belongs in.
+	 * <p>He is why the default case measures the season at all (drop {@code m.season} and he
+	 * vanishes).
 	 */
 	private static final String PAID_AHEAD = "ana@primer.rs";
 
@@ -176,8 +173,8 @@ class PaymentsDueApiTest {
 	/** Paid for the season being asked about, with a recorded payment behind it. */
 	private static final String PAID = "vera@primer.rs";
 
-	/** A membership for the season, and {@code active = false} against it. */
-	private static final String FLAG_SAYS_OTHERWISE = "zorica@primer.rs";
+	/** A membership for the season, as {@link #PAID} holds it. */
+	private static final String ALSO_PAID = "zorica@primer.rs";
 
 	/** Registered and has not confirmed his address, which does not keep him off the list. */
 	private static final String NOT_CONFIRMED = "novak@primer.rs";
@@ -292,7 +289,7 @@ class PaymentsDueApiTest {
 
 	private long paid;
 
-	private long flagSaysOtherwise;
+	private long alsoPaid;
 
 	private long notConfirmed;
 
@@ -398,7 +395,7 @@ class PaymentsDueApiTest {
 		paidAhead = competitor("000220", "Ana", "Nikolic");
 		freeOfTheFee = competitor("000230", "Petar", "Ilic");
 		paid = competitor("000240", "Vera", "Vukovic");
-		flagSaysOtherwise = competitor("000260", "Zorica", "Zoric");
+		alsoPaid = competitor("000260", "Zorica", "Zoric");
 		notConfirmed = competitor(null, "Novak", "Jovanovic");
 		surnamedNovak = competitor("000250", "Dragan", "Novak");
 		withDiacritics = competitor(null, "Mila", "Čačić");
@@ -428,7 +425,7 @@ class PaymentsDueApiTest {
 		account(PAID_AHEAD, "competitor", "Ana", "Nikolic", true, paidAhead);
 		account(FREE_OF_THE_FEE, "competitor", "Petar", "Ilic", true, freeOfTheFee);
 		account(PAID, "competitor", "Vera", "Vukovic", true, paid);
-		account(FLAG_SAYS_OTHERWISE, "competitor", "Zorica", "Zoric", true, flagSaysOtherwise);
+		account(ALSO_PAID, "competitor", "Zorica", "Zoric", true, alsoPaid);
 		account(SURNAMED_NOVAK, "competitor", "Dragan", "Novak", true, surnamedNovak);
 		account(WITH_DIACRITICS, "competitor", "Mila", "Čačić", true, withDiacritics);
 		account(BILLED_IN_DINARS, "competitor", "Milan", "Aleksic", true, billedInDinars);
@@ -465,7 +462,7 @@ class PaymentsDueApiTest {
 		   The numbers are ones nothing else here uses, so a route serving the promise is caught by
 		   the value. Most members have no promise at all - nobody ever opened their membership
 		   screen - and that is the commonest state and the reason the owner chose the book. */
-		earnedAReferral(notConfirmed, flagSaysOtherwise, "5", "EUR");
+		earnedAReferral(notConfirmed, alsoPaid, "5", "EUR");
 		acodeOncePromisedHim(notConfirmed, 2027, "99", "EUR");
 
 		/* FOUR MEMBERSHIPS, ALONG EVERY AXIS THE ROUTE READS ONE.
@@ -473,7 +470,7 @@ class PaymentsDueApiTest {
 		   season on sale at `IN_OCTOBER_2027`. */
 		membershipOnAPayment(paid, 2027);
 		membershipFreeOfTheFee(freeOfTheFee, 2027);
-		membershipOnAPayment(flagSaysOtherwise, 2027);
+		membershipOnAPayment(alsoPaid, 2027);
 
 		/* FOR 2027 ONLY, so he is off the list until the season on sale becomes 2028. */
 		membershipOnAPayment(didNotRenew, 2027);
@@ -502,7 +499,7 @@ class PaymentsDueApiTest {
 				.containsExactly(billedInDinars, aJuniorAbroad, withDiacritics, notConfirmed,
 						neverPaid, namesake, paidAhead, surnamedNovak, aMembersOwnRecord,
 						billedInDinarsTyped)
-				.doesNotContain(onlyImported, paid, freeOfTheFee, flagSaysOtherwise, didNotRenew,
+				.doesNotContain(onlyImported, paid, freeOfTheFee, alsoPaid, didNotRenew,
 						inOnHisBalance);
 	}
 
@@ -585,7 +582,7 @@ class PaymentsDueApiTest {
 		JsonNode answer = read(booksCookie, null);
 
 		assertThat(answer.get("season").asInt()).isEqualTo(2027);
-		assertThat(keysIn(answer)).doesNotContain(paid, freeOfTheFee, flagSaysOtherwise, didNotRenew);
+		assertThat(keysIn(answer)).doesNotContain(paid, freeOfTheFee, alsoPaid, didNotRenew);
 	}
 
 	/**
@@ -624,7 +621,7 @@ class PaymentsDueApiTest {
 
 		assertThat(answer.get("season").asInt()).isEqualTo(2028);
 		assertThat(keysIn(answer))
-				.contains(didNotRenew, paid, freeOfTheFee, flagSaysOtherwise)
+				.contains(didNotRenew, paid, freeOfTheFee, alsoPaid)
 				.doesNotContain(paidAhead, onlyImported);
 	}
 
@@ -656,7 +653,7 @@ class PaymentsDueApiTest {
 	@Test
 	void theListIsReadOffTheMembershipOfTheMember() throws Exception {
 		assertThat(keysIn(read(booksCookie, null)))
-				.doesNotContain(flagSaysOtherwise)
+				.doesNotContain(alsoPaid)
 				.contains(paidAhead);
 	}
 

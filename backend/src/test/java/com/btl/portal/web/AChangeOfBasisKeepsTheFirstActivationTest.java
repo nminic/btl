@@ -368,7 +368,7 @@ class AChangeOfBasisKeepsTheFirstActivationTest {
 
 	/**
 	 * THE EXEMPTION FROM BEFORE ITS TRAIL HAS NO MOMENT AND RANKS (btl/CLAUDE.md, section 11; V35 adds its
-	 * checks {@code not valid} for that one row), so a change over it carries THAT: the flag with no day,
+	 * checks {@code not valid} for that one row), so a change over it carries THAT: the exemption with no day,
 	 * and the row that replaces it ranks rather than answering the day of the change. Beside it a row with
 	 * a known day carries its day. Written by dropping V35's two checks inside this case, the shape the
 	 * row has on the server and nothing else can write.

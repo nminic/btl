@@ -71,7 +71,7 @@ export type TeamApplication = {
  * kome je članarina istekla, NI POSREDNO".
  *
  * <p>An application from such a member is the opposite and needs nothing here: it is not
- * listed at all, because the route that would decide it carries `c.active` and the team
+ * listed at all, because the route that would decide it carries `AMemberIsActive` and the team
  * could not answer it either way.
  */
 export type TeamInvitation = {

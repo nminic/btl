@@ -1572,7 +1572,7 @@ class VerificationApiTest {
 	 *
 	 * <p><b>There is no such subtraction here.</b> Nothing in this answer is public - the only
 	 * reader is the moderator holding that tab's tick - and the queue exists in order to be
-	 * worked: filtering on {@code competitor.active} would hide from a moderator exactly the
+	 * worked: filtering on whether he is active would hide from a moderator exactly the
 	 * work a lapsed membership creates, and would empty the payments tab, which is about
 	 * people whose fee is not recorded (PDL P28a, 22.09.2026, „Verifikacija ima pet redova",
 	 * „Uplate i aktivacija članova").

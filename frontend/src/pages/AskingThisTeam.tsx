@@ -58,7 +58,7 @@ import { theServerSaysTheScreenIsStale } from './member/pairWrites'
  * HIM.</b> A visitor, an account that races for nobody and a member whose fee has lapsed have no
  * record on `/api/competitors`; the first two cannot ask a team anything, and of the third the owner
  * said on 19.09.2026 „sve akcije za njega se brane" - which is also what both routes answer him
- * (`TeamJoiningWriteApi.heIsStillAMember`, and `c.active` in `withdrawing`). Asked anyway, the read
+ * (`TeamJoiningWriteApi.heIsStillAMember`, and `AMemberIsActive` in `withdrawing`). Asked anyway, the read
  * would be spent on a page that can draw nothing from it.
  *
  * <p><b>WHY A RENDER PROP AND NOT A ROW OF ITS OWN.</b> The two buttons stand in the row of

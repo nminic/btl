@@ -11,13 +11,14 @@ import java.time.ZonedDateTime;
  * <p>PDL, „Članstvo je činjenica po sezoni" (13.09.2026): „Zastavica „aktivan" prestaje da bude
  * podatak i postaje izvedena: aktivan je onaj ko ima zapis za tekuću sezonu, a u prelaznom roku i
  * onaj ko ga ima za narednu." So the answer is read off {@code membership}, a row of which names a
- * season, and never off {@code competitor.active}, which names none. Which seasons count at a moment
+ * season, and never off a flag on the member, which would name none (the column {@code competitor.active}
+ * went in V86, AF-2). Which seasons count at a moment
  * is {@link SeasonClock#seasonsAMemberIsActiveIn}, decided in the domain and nowhere else.
  *
- * <p><b>{@code competitor.active} is still WRITTEN, and on purpose.</b> The writers keep it as they
- * did, so that a step back to the column is a revert and not a repair; the column goes in a migration
- * of its own once this is on QA. Nothing in {@code src/main} reads it, which
- * {@code NothingReadsTheFlagTest} holds.
+ * <p><b>There is no flag to write.</b> Until V86 the writers went on writing {@code competitor.active}
+ * beside the rows so that a step back was a revert; the column is gone now, and a statement that names it
+ * stops on the day it runs ({@code TheFlagHasNoColumnTest}). Booking a season is writing its row, and
+ * taking it away is deleting that row.
  *
  * <p><b>The clock is Java's and never the database's</b>, and it is read once by the caller: the two
  * seasons are written into the statement as whole numbers, which is the shape

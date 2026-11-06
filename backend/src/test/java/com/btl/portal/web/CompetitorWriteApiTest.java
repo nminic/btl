@@ -912,7 +912,7 @@ class CompetitorWriteApiTest {
 	 * <p>Owner, 19.09.2026: „Clan kome je istekla clanarina dopire samo do strane za obnovu...
 	 * jer se sve akcije za njega brane." That rule is about what a MEMBER may do with his own
 	 * things. This is the administration acting ON him, and a member whose fee has lapsed is
-	 * exactly the one an administrator is likely to be deleting - so a {@code c.active}
+	 * exactly the one an administrator is likely to be deleting - so a {@code AMemberIsActive}
 	 * copied from the six resources that do read it would serve only members in good
 	 * standing.
 	 */
