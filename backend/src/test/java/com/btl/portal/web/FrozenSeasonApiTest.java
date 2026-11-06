@@ -84,11 +84,11 @@ class FrozenSeasonApiTest {
 		member("000403", "Goran", "Treci", "M");
 		member("000404", "Vera", "Cetvrta", "F");
 
-		/* Bojan and Goran hold 2028 too, so their team is still there after 16:00: the season that begins
+		/* All four hold 2028 too, so their two teams are still there after 16:00: the season that begins
 		   takes out of his team whoever did not renew (`ASeasonBegins`, which follows the freeze), and a team
 		   left with nobody goes with its last member. Without it a team read here would be one already
 		   deleted, and the case about the link would be the case about the name. */
-		for (String number : List.of("000402", "000403")) {
+		for (String number : List.of("000401", "000402", "000403", "000404")) {
 			db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
 							+ " values ((select id from competitor where member_number = ?), 2028, 'feeExempt',"
 							+ " 'Probni Probic', timestamptz '2027-11-20 10:00:00+00')")
@@ -119,11 +119,24 @@ class FrozenSeasonApiTest {
 		db.sql("insert into team_membership (competitor_id, team_id, season_from, season_to, left_reason)"
 				+ " select id, (select id from team where slug = 'tim-a'), 2027, null, null from competitor"
 				+ " where member_number in ('000402', '000403')").update();
+		/* THE SECOND TEAM AND THE SECOND PAIR are made of other people than the first, and other halves of
+		   them, so a read that answers every team with the first one's roster, or every pair with the first
+		   one's halves, says something else here (mutations M22 and M23, 06.11.2026). */
+		db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, logo_id, first_season,"
+				+ " admin_id) values ('tim-b', 'Tim B', '', '', (select id from place where rank = 1), null, null,"
+				+ " null, 2027, null)").update();
+		db.sql("insert into team_membership (competitor_id, team_id, season_from, season_to, left_reason)"
+				+ " select id, (select id from team where slug = 'tim-b'), 2027, null, null from competitor"
+				+ " where member_number in ('000401', '000404')").update();
 		db.sql("insert into racing_pair (season, man_id, woman_id) values (2027,"
 				+ " (select id from competitor where member_number = '000402'),"
-				+ " (select id from competitor where member_number = '000401'))").update();
-		league("liga-2027", "Liga 2027");
-		league("druga-liga-2027", "Druga liga 2027");
+				+ " (select id from competitor where member_number = '000401')),"
+				+ " (2027, (select id from competitor where member_number = '000403'),"
+				+ " (select id from competitor where member_number = '000404'))").update();
+		/* THE SECOND LEAGUE counts one race of the two, so its columns, its places and its order are not the
+		   first one's (mutations M24 and M25). */
+		league("liga-2027", "Liga 2027", "Krug", "Jesenji krug");
+		league("druga-liga-2027", "Druga liga 2027", "Jesenji krug");
 
 		memberSession = account("clan@primer.rs", "competitor", "000401");
 		superadminSession = account("admin@primer.rs", "superadmin", null);
@@ -160,12 +173,17 @@ class FrozenSeasonApiTest {
 				.containsExactly("M 1 1 000402 Bojan Drugi M40-54 45.0 2", "M 2 2 000403 Goran Treci M40-54 40.0 1",
 						"F 1 1 000401 Ana Prva Ž25-39 30.0 1", "F 2 1 000404 Vera Cetvrta Ž55+ 12.0 1");
 		assertThat(rows(tables.get("teams"), "position", "slug", "name", "points", "members"))
-				.containsExactly("1 tim-a Tim A 85.0 2");
+				.containsExactly("1 tim-a Tim A 85.0 2", "2 tim-b Tim B 42.0 2");
 		assertThat(rows(tables.get("teams").get(0).get("roster"), "position", "memberNumber", "who", "points"))
 				.containsExactly("1 000402 Bojan Drugi 45.0", "2 000403 Goran Treci 40.0");
-		assertThat(rows(tables.get("pairs"), "position", "points", "races")).containsExactly("1 55.0 1");
+		assertThat(rows(tables.get("teams").get(1).get("roster"), "position", "memberNumber", "who", "points"))
+				.containsExactly("1 000401 Ana Prva 30.0", "2 000404 Vera Cetvrta 12.0");
+		assertThat(rows(tables.get("pairs"), "position", "points", "races"))
+				.containsExactly("1 55.0 1", "2 52.0 1");
 		assertThat(rows(tables.get("pairs").get(0).get("halves"), "memberNumber", "who", "gender"))
 				.containsExactly("000401 Ana Prva F", "000402 Bojan Drugi M");
+		assertThat(rows(tables.get("pairs").get(1).get("halves"), "memberNumber", "who", "gender"))
+				.containsExactly("000403 Goran Treci M", "000404 Vera Cetvrta F");
 		assertThat(rows(tables.get("boards"), "board", "position", "memberNumber", "raceName"))
 				.contains("bestRace 1 000403 Jesenji krug", "kilometers 1 000402 null");
 		assertThat(rows(tables.get("awards"), "kind", "category", "position", "memberNumber", "teamName"))
@@ -188,14 +206,20 @@ class FrozenSeasonApiTest {
 
 		/* AND IN THE SECOND LEAGUE, whose columns were written after the first one's: their ids are never
 		   their places there, so a cell that named its column by id would point past the grid. In the first
-		   league the two can be the same numbers (mutation R6, 05.11.2026). */
+		   league the two can be the same numbers (mutation R6, 05.11.2026). It counts the autumn race only:
+		   one column, and the men stand the other way round (403 before 402). */
 		JsonNode second = league(tablesOf2027(null), "druga-liga-2027");
+
+		assertThat(rows(second.get("columns"), "eventSlug", "date", "name"))
+				.containsExactly("jesen-2027 2027-10-10 Jesen");
+		assertThat(rows(second.get("standings"), "gender", "position", "memberNumber", "points"))
+				.containsExactly("M 1 000403 40.0", "M 2 000402 20.0", "F 1 000404 12.0");
 
 		assertThat(db.sql("select count(*) from season_league_column k join league l on l.id = k.league_id"
 				+ " where l.slug = 'druga-liga-2027' and k.id = k.position").query(Long.class).single())
 				.as("the second league's columns share ids with their places, so this measures nothing").isZero();
-		assertThat(rows(second.get("standings").get(0).get("cells"), "column", "points"))
-				.containsExactly("1 25.0", "2 20.0");
+		assertThat(rows(second.get("standings").get(0).get("cells"), "column", "points")).containsExactly("1 40.0");
+		assertThat(rows(second.get("standings").get(1).get("cells"), "column", "points")).containsExactly("1 20.0");
 	}
 
 	@Test
@@ -210,6 +234,8 @@ class FrozenSeasonApiTest {
 	@Test
 	void aMemberWhoAskedToGoLeavesHisGenderAndNoNumberAndNoName() throws Exception {
 		frozen();
+		db.sql("delete from team_membership where competitor_id = (select id from competitor where member_number"
+				+ " = '000404')").update();
 		db.sql("delete from competitor where member_number = '000404'").update();
 
 		JsonNode tables = tablesOf2027(null);
@@ -249,6 +275,65 @@ class FrozenSeasonApiTest {
 				.contains("null Bojan Drugi");
 		assertThat(rows(tables.get("awards"), "kind", "memberNumber", "who"))
 				.contains("overall null Bojan Drugi", "pair null Bojan Drugi", "team null Bojan Drugi");
+
+		/* THE TOP LISTS AND THE LEAGUES TOO, each in its own table, and the pointer of every one of them is
+		   empty while the name stays (mutations M1 and M2: a name that is not the snapshot's). */
+		assertThat(whoOf(tables.get("boards"), null)).containsExactly("Bojan Drugi");
+
+		for (String slug : List.of("liga-2027", "druga-liga-2027")) {
+			assertThat(whoOf(league(tables, slug).get("standings"), null)).as("the league %s", slug)
+					.containsExactly("Bojan Drugi");
+		}
+	}
+
+	/**
+	 * A member of the portal who changed his name after the freeze is in every table under the name the
+	 * freeze wrote and not the name he has now (PDL, owner, 05.11.2026: the name stays as the snapshot has
+	 * it), so a read that took the live name where the snapshot has one says something else here
+	 * (mutations M1b and M2: the league's rows and the top lists).
+	 */
+	@Test
+	void aMemberWhoChangedHisNameAfterTheFreezeIsInEveryTableUnderTheNameTheFreezeWrote() throws Exception {
+		frozen();
+		db.sql("update competitor set first_name = 'Promenjen', last_name = 'Nadimak'").update();
+
+		JsonNode tables = tablesOf2027(null);
+
+		assertThat(whoOf(tables.get("standings"), "000402")).containsExactly("Bojan Drugi");
+		assertThat(whoOf(tables.get("teams").get(0).get("roster"), "000402")).containsExactly("Bojan Drugi");
+		assertThat(whoOf(tables.get("pairs").get(0).get("halves"), "000402")).containsExactly("Bojan Drugi");
+		assertThat(whoOf(tables.get("awards"), "000402")).containsExactly("Bojan Drugi");
+
+		JsonNode boards = tables.get("boards");
+
+		assertThat(whoOf(boards, "000402")).containsExactly("Bojan Drugi");
+		assertThat(whoOf(boards, "000403")).containsExactly("Goran Treci");
+
+		for (String slug : List.of("liga-2027", "druga-liga-2027")) {
+			JsonNode standings = league(tables, slug).get("standings");
+
+			assertThat(whoOf(standings, "000402")).as("the league %s", slug).containsExactly("Bojan Drugi");
+			assertThat(whoOf(standings, "000403")).as("the league %s", slug).containsExactly("Goran Treci");
+		}
+
+		assertThat(whoOf(league(tables, "liga-2027").get("standings"), "000401")).containsExactly("Ana Prva");
+	}
+
+	/** The names the rows of one number carry, once each; the number null for the rows of nobody. */
+	private static java.util.Set<String> whoOf(JsonNode list, String memberNumber) {
+		java.util.Set<String> names = new java.util.TreeSet<>();
+
+		for (JsonNode row : list) {
+			boolean nobody = row.get("memberNumber").isNull();
+
+			if (memberNumber == null ? nobody : !nobody && memberNumber.equals(row.get("memberNumber").asString())) {
+				names.add(row.get("who").isNull() ? "null" : row.get("who").asString());
+			}
+		}
+
+		assertThat(names).as("no row of %s to read a name from", memberNumber).isNotEmpty();
+
+		return names;
 	}
 
 	@Test
@@ -260,7 +345,7 @@ class FrozenSeasonApiTest {
 
 		JsonNode tables = tablesOf2027(null);
 
-		assertThat(rows(tables.get("teams"), "slug", "name")).containsExactly("null Tim A");
+		assertThat(rows(tables.get("teams"), "slug", "name")).containsExactly("null Tim A", "tim-b Tim B");
 		assertThat(rows(league(tables, "liga-2027").get("columns"), "eventSlug", "name"))
 				.containsExactly("prolece-2027 Prolece", "null Jesen");
 		assertThat(rows(tables.get("leagues"), "slug")).containsExactly("liga-2027");
@@ -419,11 +504,11 @@ class FrozenSeasonApiTest {
 				.params(member, points, raceName).update();
 	}
 
-	private void league(String slug, String name) {
+	private void league(String slug, String name, String... races) {
 		db.sql("insert into league (slug, name, season, rules, prizes) values (?, ?, 2027, '', '')")
 				.params(slug, name).update();
 
-		for (String race : List.of("Krug", "Jesenji krug")) {
+		for (String race : races) {
 			db.sql("insert into league_race (league_id, season, race_id) values ((select id from league where slug = ?),"
 					+ " 2027, (select id from race where name = ?))").params(slug, race).update();
 		}
