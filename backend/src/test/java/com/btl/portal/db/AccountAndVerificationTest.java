@@ -44,8 +44,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Three of these are asked of {@code information_schema} and
  * {@code pg_constraint} rather than of a list written here, which is what makes
  * them complete: a column added to either table fails whatever it is called, and
- * a rule conditioned on the confirmation fails wherever in the schema somebody
- * puts it.
+ * a constraint or an index conditioned on the confirmation fails wherever in the
+ * schema somebody puts it. A view, a trigger and a function are in neither
+ * catalogue, so a rule written as one of those is not seen here (the sentence
+ * of A38 and of the migration is about the rule, not about this reading of it).
  */
 class AccountAndVerificationTest extends DatabaseTest {
 
@@ -187,6 +189,11 @@ class AccountAndVerificationTest extends DatabaseTest {
 	 * Both catalogues, for the same reason AccountConstraintsTest reads both: a
 	 * partial index with {@code where email_confirmed_at is not null} is a rule
 	 * about confirmed accounts that {@code pg_constraint} would never mention.
+	 *
+	 * The boundary, written where it can be read: these two catalogues are all that is
+	 * asked. A {@code create view} with {@code where email_confirmed_at is not null}, a
+	 * trigger or a function is a rule about confirmed accounts that neither of them
+	 * mentions, and this case does not see it.
 	 */
 	@Test
 	void noRuleInTheSchemaIsConditionedOnTheAddressBeingConfirmed() {

@@ -228,6 +228,33 @@ class LeagueApiTest {
 		Answers.noFieldIsTheSameInEveryRecord("/api/leagues", answer());
 	}
 
+	/**
+	 * A LEAGUE ANSWERS WITH ITS OWN RULES UNDER {@code rules} AND ITS OWN PRIZES UNDER {@code prizes}.
+	 *
+	 * <p>The floor above only says that no field is the same in every record, and a server that put the
+	 * two columns in each other's place, or took the rules of the league beside it, satisfies it: the
+	 * screen would write the prizes under „Pravila" and the rules under „Nagrade" on every league (the
+	 * two swaps measured 20.09.2026, both green). Each record is asked of the table by its own slug and
+	 * by the column, so neither the swap nor the neighbour's text is what it reads.
+	 */
+	@Test
+	void aLeagueAnswersWithItsOwnRulesAndItsOwnPrizesEachUnderItsOwnName() throws Exception {
+		JsonNode all = answer();
+
+		assertThat(all.size()).as("leagues in the answer").isEqualTo(3);
+
+		for (JsonNode one : all) {
+			String slug = one.path("slug").asString();
+
+			assertThat(one.path("rules").asString()).as("the rules of %s", slug)
+					.isEqualTo(db.sql("select rules from league where slug = ?").param(slug).query(String.class)
+							.single());
+			assertThat(one.path("prizes").asString()).as("the prizes of %s", slug)
+					.isEqualTo(db.sql("select prizes from league where slug = ?").param(slug).query(String.class)
+							.single());
+		}
+	}
+
 	/** And in season order, oldest first, whatever order the rows were written in. */
 	@Test
 	void theLeaguesComeBackInSeasonOrder() throws Exception {

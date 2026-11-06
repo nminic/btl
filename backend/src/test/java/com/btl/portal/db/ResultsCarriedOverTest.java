@@ -46,6 +46,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ResultsCarriedOverTest extends DatabaseTest {
 
+	/**
+	 * THE ONE HOME OF THE NUMBER OF THE MIGRATION BOTH CASES EXECUTE.
+	 *
+	 * <p>A number written out in each case is two homes, and the day migrations are renumbered
+	 * one of them can be forgotten: the case then executes another migration and still agrees
+	 * with itself (the first case compares categories computed from the same values on both
+	 * sides, so it passes whichever migration ran; measured 06.11.2026 with 44). With one
+	 * constant, a wrong number moves BOTH cases to the same wrong migration, and the second
+	 * one, which reads a length only V47 can hold (42,1950), is the one that says so.
+	 */
+	private static final String THE_MIGRATION_OF_THE_WIDENING = "47";
+
 	@Autowired
 	JdbcTemplate jdbc;
 
@@ -117,7 +129,7 @@ class ResultsCarriedOverTest extends DatabaseTest {
 		assertThat(howManyResults()).as("the fixture wrote nothing, so this measures nothing")
 				.isEqualTo(3);
 
-		jdbc.execute(migrationSql("47"));
+		jdbc.execute(migrationSql(THE_MIGRATION_OF_THE_WIDENING));
 
 		assertThat(howManyResults()).isEqualTo(3);
 
@@ -141,7 +153,7 @@ class ResultsCarriedOverTest extends DatabaseTest {
 	 */
 	@Test
 	void andAfterwardsTheColumnKeepsAnExactMarathon() {
-		jdbc.execute(migrationSql("47"));
+		jdbc.execute(migrationSql(THE_MIGRATION_OF_THE_WIDENING));
 
 		oldRace("Tacan maraton", "42.1950");
 		oldResult("Tacan maraton", "42.1950", 14400, "26.50");

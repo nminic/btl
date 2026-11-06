@@ -469,6 +469,7 @@ class MemberMembershipApiTest {
 	@Test
 	void aSeasonCancelledAfterItBeganTakesHimOutOfHisTeamAndHisPairAtOnce() throws Exception {
 		clock.moveTo(Instant.parse("2028-02-10T09:00:00Z"));
+		theJobFroze(2027);
 		long partner = aTeamAndAPair(2028, 2028);
 
 		assertThat(cancelled("000005", "payment", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
@@ -482,6 +483,24 @@ class MemberMembershipApiTest {
 				.isEqualTo(somebodyElse);
 		assertThat(messages()).contains(somebodyElse + " " + ASeasonBegins.YOU_ADMINISTER + "Tim storna",
 				partner + " " + PairWriteApi.THE_PAIR_IS_BROKEN);
+	}
+
+	/**
+	 * AFTER 16:00 BUT BEFORE THE JOB HAS RUN NOTHING MOVES EITHER, because it is the record of the freeze and
+	 * not the hour that says the season has begun (PENDING, PR 673, krug 1, „Storno posle 16h, a pre nego
+	 * što je posao od 1. januara stvarno prošao, ispada po satu umesto po zapisu"): a server that was down at
+	 * 16:00 has frozen nothing, so a team he administers has not been written down yet and the job drops him
+	 * itself, in the transaction that writes it. Read off the clock he would be out, the member left in his team
+	 * would be named its administrator, and the team would go before its snapshot.
+	 */
+	@Test
+	void aSeasonCancelledAfterSixteenBeforeTheJobHasRunLeavesHisTeamAndPairToTheJob() throws Exception {
+		clock.moveTo(Instant.parse("2028-01-01T16:00:00Z"));
+		aTeamAndAPair(2028, 2028);
+
+		assertThat(cancelled("000005", "payment", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
+
+		assertNobodyMoved();
 	}
 
 	/**
@@ -539,11 +558,19 @@ class MemberMembershipApiTest {
 	@Test
 	void aSeasonCancelledInTheWindowOf2028IsNotTheSeasonBeingRun() throws Exception {
 		clock.moveTo(Instant.parse("2028-11-16T09:00:00Z"));
+		theJobFroze(2027);
 		aTeamAndAPair(2028, 2028, 2029);
 
 		assertThat(cancelled("000005", "payment", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
 
 		assertNobodyMoved();
+	}
+
+	/** What the job of 1 January 2028 wrote first, the record the cancellation reads. */
+	private void theJobFroze(int season) {
+		db.sql("insert into season_frozen (season, frozen_at) values (?, timestamptz '2028-01-01 15:00:00+00')")
+				.param(season)
+				.update();
 	}
 
 	private void assertNobodyMoved() {

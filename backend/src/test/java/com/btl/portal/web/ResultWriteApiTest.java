@@ -537,6 +537,39 @@ class ResultWriteApiTest {
 	}
 
 	/**
+	 * THE KEY OF A RACE IS NOT THE KEY OF AN EVENT: a key that is a race's and no event's is a race that
+	 * is not known.
+	 *
+	 * <p>The rows above send 999999999, a key neither table holds, so a check of the event that asked the
+	 * table of races instead passed them all, and it passed the fixture's own event too, whose key is
+	 * also the key of a race (measured 06.11.2026: {@code from race where id = ?} in place of
+	 * {@code from btl_event}, 103 of 103 green). The race is made after the sequence of races is moved
+	 * past anything the events have, so its key is held by no event.
+	 */
+	@Test
+	void aKeyThatIsARacesAndNoEventsIsARaceThatIsNotKnown() throws Exception {
+		db.sql("select setval(pg_get_serial_sequence('race', 'id'),"
+				+ " greatest(nextval(pg_get_serial_sequence('race', 'id')), 900000))").query().listOfRows();
+
+		long aRacesKey = db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m) values (?, 'Trka cije kljuc nije kljuc dogadjaja',"
+						+ " false, date '2027-04-04', 'length', 0, 10.00, 0, 0) returning id")
+				.param(anEventOfTheCalendar()).query(Long.class).single();
+
+		assertThat(db.sql("select count(*) from btl_event where id = ?").param(aRacesKey).query(Long.class)
+				.single()).as("the key is an event's too, so the case measures nothing").isZero();
+
+		Map<String, Object> fields = aDescribedRun();
+
+		fields.remove("eventName");
+		fields.remove("placeId");
+		fields.put("eventId", aRacesKey);
+
+		assertThat(reasonIn(reportedAs(ME, form(fields)))).isEqualTo(ResultWriteApi.THE_RACE_IS_NOT_KNOWN);
+		assertThat(howManySubmissions()).isZero();
+	}
+
+	/**
 	 * A RACE THE CALENDAR DOES NOT HOLD IS DESCRIBED, AND EVERY COLUMN AN APPROVAL WILL NEED
 	 * IS COLLECTED.
 	 *
@@ -1797,6 +1830,31 @@ class ResultWriteApiTest {
 
 		assertThat(arrived.getSubject()).isEqualTo("Vaš rezultat je obrisan");
 		assertThat(theLineInTheInboxOf(ME)).containsExactly(arrived.getSubject(), asItWasWritten(arrived));
+	}
+
+	/**
+	 * A DELETION IS TOLD IN ENGLISH TO A MEMBER WHO CHOSE ENGLISH, in the letter and in the inbox alike.
+	 *
+	 * <p>The case above is the deletion of a member who kept Serbian, so a deletion that was always told
+	 * in Serbian passes it (measured 06.11.2026: the line and the letter of a deletion written in Serbian
+	 * whatever the account says, 86 of 86 green), and the only cases in English are of a correction and
+	 * of a run sent in. The member here chose English and the member written first did not, so the
+	 * language read off another account is Serbian too, and the inbox is compared with what travelled.
+	 */
+	@Test
+	void aDeletionIsToldInEnglishToAMemberWhoChoseEnglishInTheLetterAndInTheInboxAlike() throws Exception {
+		db.sql("update account set mail_language = 'en' where email = ?").param(MY_ADDRESS).update();
+
+		deletedAs(ME, myResult);
+
+		MimeMessage arrived = theMessageThatWentOut();
+
+		assertThat(arrived.getSubject()).isEqualTo("Your result has been deleted");
+		assertThat(asItWasWritten(arrived)).startsWith("Your result has been deleted from the portal:")
+				.doesNotContain("obrisan");
+		assertThat(theLineInTheInboxOf(ME))
+				.as("the inbox says something other than what the English letter said")
+				.containsExactly(arrived.getSubject(), asItWasWritten(arrived));
 	}
 
 	/**

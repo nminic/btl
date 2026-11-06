@@ -99,6 +99,13 @@ class ARunOnAChosenEventCarriedOverTest extends DatabaseTest {
 		waiting(THE_MEMBER + ", null, date '2027-05-07', 'Opisana na izabranom', 'free', null,"
 				+ " 'Zaselak', " + A_COUNTRY + ", 12.00, 0, 0, 3300, '', 'na izabranom', null, "
 				+ THE_EVENT + ", null");
+		/* AND THE SAME RUN WITH ITS TOWN OUT OF THE CODEBOOK: V66's route asked for a town of one kind or
+		   of the other, so a chosen event carried either, and a migration that empties the typed pair
+		   alone leaves this one's `place_id` for the rule it adds to refuse (measured 06.11.2026 with the
+		   update narrowed to `city` and `country_id`). */
+		waiting(THE_MEMBER + ", null, date '2027-05-08', 'Opisana na izabranom iz sifarnika', 'free', "
+				+ A_TOWN + ", null, null, 12.50, 0, 0, 3400, '', 'na izabranom iz sifarnika', null, "
+				+ THE_EVENT + ", null");
 		waiting(THE_MEMBER + ", " + THE_RACE + ", " + THE_DAY + ", null, null, null, null, null,"
 				+ " 10.00, 0, 0, 2950, '', 'ispravka', (select id from result where competitor_id = "
 				+ THE_MEMBER + "), null, null");
@@ -133,8 +140,11 @@ class ARunOnAChosenEventCarriedOverTest extends DatabaseTest {
 		jdbc.execute(migrationSql("67"));
 
 		assertThat(db.sql("select count(*) from result_submission").query(Long.class).single())
-				.as("the migration took a waiting run away").isEqualTo(5L);
+				.as("the migration took a waiting run away").isEqualTo(6L);
 		assertThat(townOf("na izabranom")).isEqualTo("- - -");
+		assertThat(townOf("na izabranom iz sifarnika"))
+				.as("the run on a chosen event kept the town it took out of the codebook")
+				.isEqualTo("- - -");
 		assertThat(db.sql("select event_id from result_submission where comment = 'na izabranom'")
 				.query(Long.class).single())
 				.as("the run lost the event it was chosen on along with its town")

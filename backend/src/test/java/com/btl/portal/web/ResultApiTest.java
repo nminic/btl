@@ -563,6 +563,42 @@ class ResultApiTest {
 	}
 
 	/**
+	 * A MEMBER WHO CHANGED HIS NAME, HIS GENDER AND HIS DATE OF BIRTH IS READ UNDER THE NEW ONES ON EVERY
+	 * RUN OF HIS, and not under the ones he had when the first of them was served.
+	 *
+	 * <p>The runner is „joined every time and never stored" ({@code ResultApi.results}), and the case above
+	 * holds that for the race and the event. A member is a third thing it holds nothing for: a server that
+	 * kept the first value it read for a member, by his number, answers the name and the year of birth of
+	 * a member as they were (measured 06.11.2026: a static map by member number, green for the name and for
+	 * the year, 21 of 21). Three runs of one member are asked, in two seasons, so a value kept per row
+	 * and a value kept per member are both refused; the band is compared with what the rule gives for the
+	 * year he has now, not with a band written here.
+	 */
+	@Test
+	void aMemberWhoChangedHisNameHisGenderAndHisBirthIsReadUnderTheNewOnesOnEveryRunOfHis() throws Exception {
+		List<JsonNode> before = rowsOf(A_MEMBER_WHOSE_FEE_IS_STANDING);
+
+		assertThat(before).as("the member has no run to read his new name from").hasSize(3);
+
+		db.sql("update competitor set first_name = 'Promenjena', last_name = 'Prezimenjena', gender = 'M',"
+				+ " birth_date = date '1961-01-01' where member_number = ?").param(A_MEMBER_WHOSE_FEE_IS_STANDING).update();
+
+		for (JsonNode row : rowsOf(A_MEMBER_WHOSE_FEE_IS_STANDING)) {
+			int season = Integer.parseInt(row.path("date").asString().substring(0, 4));
+			TheRunner runner = runnerOf(row);
+
+			assertThat(runner.firstName()).as("the first name of the run of %s", row.path("date").asString())
+					.isEqualTo("Promenjena");
+			assertThat(runner.lastName()).as("the last name of the run of %s", row.path("date").asString())
+					.isEqualTo("Prezimenjena");
+			assertThat(runner.gender()).as("the gender of the run of %s", row.path("date").asString())
+					.isEqualTo("M");
+			assertThat(runner.ageBand()).as("the band of the run of %s", row.path("date").asString())
+					.isEqualTo(Category.ageBandFor(1961, season).code());
+		}
+	}
+
+	/**
 	 * AND A MEMBER WHOSE FEE HAS LAPSED KEEPS THE SEASONS HE WAS A MEMBER IN AND
 	 * LOSES THE ONE THAT IS RUNNING.
 	 *
@@ -1189,6 +1225,45 @@ class ResultApiTest {
 							.as("the band of %s was worked out for 2025, a season the league does not have,"
 									+ " instead of for its first", number)
 							.isEqualTo("40-54"));
+		}
+	}
+
+	/**
+	 * AND THE FIRST SEASON IS THE FIRST SEASON, NOT THE ONE THE CLOCK STANDS IN: a result older than the
+	 * league is banded for 2027 on 1 January 2028 too.
+	 *
+	 * <p>The case above stands on a member who is forty in both 2027 and 2028, so the first season and
+	 * the season of the day the answer is read on give one band, and a band worked out once per answer for
+	 * the clock's season passes it (measured 06.11.2026: the season asked of the clock in place of the
+	 * result's day, 45 of 45 green). Born in 1988 he is thirty nine in 2027 and forty in 2028, and the
+	 * clock stands on 1 January 2028, so the two seasons give two bands and only one of them
+	 * is the first season's.
+	 */
+	@Test
+	void aResultOlderThanTheLeagueIsBandedForTheFirstSeasonAndNotForTheSeasonTheClockIsIn() throws Exception {
+		event("istorija-2024", "Istorija 2024", "2024-06-01");
+		race("istorija-2024", "Starija trka", "2024-06-01", 10.00);
+		aMember("000010", "Deseti", "Granicni", "M", "1988-06-01", true);
+		aMember("000011", "Jedanaesti", "Granicni", "M", "1988-06-01", false);
+		run("000010", "Starija trka", "2024-06-01", 10.00, 5, 5, 2600, 70.00);
+		run("000011", "Starija trka", "2024-06-01", 10.00, 5, 5, 2700, 69.00);
+
+		assertThat(Category.ageBandFor(1988, SeasonClock.FIRST_SEASON))
+				.as("born in 1988 he is no longer on the boundary between the first season and the one the"
+						+ " clock stands in, so the case measures nothing")
+				.isNotEqualTo(Category.ageBandFor(1988, SeasonClock.seasonTheBandIsWorkedOutFor(
+						AFTER_THE_FREEZE.atZone(SeasonClock.ZONE))));
+
+		for (String number : List.of("000010", "000011")) {
+			List<JsonNode> served = rowsOf(number);
+
+			assertThat(served)
+					.as("the run before the league is not served for %s, so the case measures nothing", number)
+					.hasSize(1);
+			assertThat(runnerOf(served.get(0)).ageBand())
+					.as("the band of %s was worked out for the season of the clock and not for the first"
+							+ " season", number)
+					.isEqualTo(Category.ageBandFor(1988, SeasonClock.FIRST_SEASON).code());
 		}
 	}
 
