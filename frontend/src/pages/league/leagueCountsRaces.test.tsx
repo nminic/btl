@@ -133,7 +133,41 @@ const JSON_HEADERS = { 'content-type': 'application/json' }
 /** The competition, served with its races chosen and with the days named as the file wrote them. */
 let stopServing: (() => void) | null = null
 
-function servedCountingFour(): void {
+/**
+ * The races as the file wrote them, or, when `onOtherDays`, with each race COUNTED here put on a day
+ * of its own after the day of its event: the first counted race one day after, the second two, and
+ * so on, so that no counted race shares a day with its event and no two share one with each other.
+ * Which is what the line of an event needs to say whose day it writes in its brackets (review of
+ * PR 671, medium): in the file as it stands every race of this competition begins on the day of its
+ * event, so the day of the event and the day of any of its races are one string.
+ */
+function racesServed(onOtherDays: boolean): Race[] {
+  const races: Race[] = JSON.parse(
+    readFileSync(join(process.cwd(), 'src/test/mock/races.json'), 'utf-8'),
+  )
+
+  if (!onOtherDays) {
+    return races
+  }
+
+  const { events } = theArrangement()
+
+  return races.map((race) => {
+    const position = COUNTED.indexOf(race.id)
+
+    if (position === -1) {
+      return race
+    }
+
+    const day = new Date(`${must(events.find((one) => one.id === race.eventId), 'the event of the race').date}T00:00:00Z`)
+
+    day.setUTCDate(day.getUTCDate() + position + 1)
+
+    return { ...race, date: day.toISOString().slice(0, 10) }
+  })
+}
+
+function servedCountingFour(onOtherDays = false): void {
   const leagues: League[] = JSON.parse(
     readFileSync(join(process.cwd(), 'src/test/mock/leagues.json'), 'utf-8'),
   )
@@ -152,6 +186,10 @@ function servedCountingFour(): void {
         ),
         { status: 200, headers: JSON_HEADERS },
       )
+    }
+
+    if (path === '/api/races' && onOtherDays) {
+      return new Response(JSON.stringify(racesServed(true)), { status: 200, headers: JSON_HEADERS })
     }
 
     if (path === '/api/competitors') {
@@ -339,5 +377,42 @@ describe('the list of competitions, for a competition that counts some of the ra
       },
       { timeout: SLOW / 4 },
     )
+  }, SLOW)
+  it('writes in the brackets the day of the event and not the day of any race it counts', async () => {
+    const { events, races } = theArrangement()
+    const counted = racesServed(true).filter((race) => COUNTED.includes(race.id))
+
+    /* The arrangement is what the case stands on: every counted race on a day other than its
+       event's, and the days of the races all different from one another, so that the first, the
+       last and any other pick of a day gives a string the event's own day is not. */
+    for (const race of counted) {
+      expect(race.date).not.toBe(must(events.find((one) => one.id === race.eventId), 'event').date)
+    }
+    expect(new Set(counted.map((race) => race.date)).size).toBe(counted.length)
+    expect(races.length).toBeGreaterThan(counted.length)
+
+    servedCountingFour(true)
+
+    renderAt(LIST)
+
+    const box = must(
+      (await screen.findByRole('heading', { level: 2, name: /Brdska liga 2019/ })).closest('li'),
+      'the box of the competition',
+    )
+    const opens = within(box).getByRole('button', { name: /Događaji i trke/ })
+    const days = await within(
+      must(
+        document.getElementById(must(opens.getAttribute('aria-controls'), 'what the button opens')),
+        'the panel of the box',
+      ),
+    ).findAllByRole('listitem')
+
+    /* The brackets read the day each event begins on (5. 1., 14. 1., 27. 1.) and not 6. 1., 15. 1.,
+       16. 1. or 28. 1., which are the days the races of them were put on. */
+    expect(days.map((day) => /\(([^)]*)\)/.exec(day.textContent)?.[1])).toEqual([
+      '5. 1. 2019.',
+      '14. 1. 2019.',
+      '27. 1. 2019.',
+    ])
   }, SLOW)
 })
