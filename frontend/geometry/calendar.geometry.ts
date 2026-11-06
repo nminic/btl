@@ -354,11 +354,38 @@ for (const at of STACKED) {
       return [...document.querySelectorAll(`.calendar__grid a.chip--scale[href$="/kalendar/${long}"]`)].map((one) => {
         const piece = one.getBoundingClientRect()
         const style = getComputedStyle(one)
-        const name = one.querySelector('.chip__name')?.getBoundingClientRect()
+        const name = one.querySelector('.chip__name')
+        /* Where the INK ends, which is not where the box of the name ends: with the name set to
+           overflow, its box stays inside the tile and the words run out of it (review of PR 501:
+           `overflow: visible` on the name, 1625px of words against a tile ending at 1213px, and
+           every number read from the box said it was fine). A name that clips paints no further
+           than its box, however long its words are, so the words count only when nothing clips
+           them. */
+        const words = document.createRange()
+
+        if (name !== null) {
+          words.selectNodeContents(name)
+        }
 
         return {
           inside: piece.right - Number.parseFloat(style.borderRightWidth) - Number.parseFloat(style.paddingRight),
-          name: name === undefined ? null : name.right,
+          name: name === null ? null : name.getBoundingClientRect().right,
+          inkEnd:
+            name === null
+              ? null
+              : getComputedStyle(name).overflowX === 'visible'
+                ? words.getBoundingClientRect().right
+                : name.getBoundingClientRect().right,
+          /* What stands just outside the tile at the height of its name: the name, if its words
+             ran out. */
+          nameIsThere:
+            name !== null &&
+            name.contains(
+              document.elementFromPoint(
+                piece.right + 2,
+                (name.getBoundingClientRect().top + name.getBoundingClientRect().bottom) / 2,
+              ),
+            ),
         }
       })
     }, LONG.slug)
@@ -371,6 +398,11 @@ for (const at of STACKED) {
         tile.name ?? Number.POSITIVE_INFINITY,
         `the name of day ${index + 1} stays inside its own tile`,
       ).toBeLessThanOrEqual(tile.inside + SLACK)
+      expect(
+        tile.inkEnd ?? Number.POSITIVE_INFINITY,
+        `the ink of day ${index + 1} ends inside its own tile, and not only the box that holds it`,
+      ).toBeLessThanOrEqual(tile.inside + SLACK)
+      expect(tile.nameIsThere, `the name of day ${index + 1} is not what stands just outside its tile`).toBe(false)
     }
 
     for (const inside of [2, 5, 20]) {

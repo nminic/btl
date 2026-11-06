@@ -56,7 +56,10 @@ import { DOTS } from '../data/types'
  * a longhand under a shorthand, a media query, another sheet. So there is no
  * sixth stand-in. **Where it is measured instead:** in a real browser, at 360,
  * 780, 1440 and 1560 pixels and at 100% and 200% text, with the numbers written
- * where the rule is (`pages/Calendar.css`) and in ADL A26. **What holds it between
+ * where the rule is (`pages/Calendar.css`) and in ADL A26, and since 06.11.2026 by a guard that
+ * runs: `geometry/lengthDots.geometry.ts` (five dots on one line and filling the ceiling, a sixth
+ * wrapping, no row wider than the five; `flex-wrap: nowrap`, a ceiling of six and a dot of another
+ * size each fail it). **What holds it between
  * those measurements is that the row of dots has one name**, `--length-dots-row` in
  * `styles/tokens.css`, read by the ceiling over the row and by the floor under the
  * day it is drawn in. That is a smaller promise than a check and an honest one.
