@@ -25,8 +25,6 @@ export function useTellTheHeadABoxWasSent(): () => void {
   return useContext(BoxesSentContext).sent
 }
 
-type Heard = { memberNumber: string; finished: boolean }
-
 /**
  * WHETHER HIS PROFILE IS FINISHED: a picture and words about himself, each either standing on the profile
  * or waiting for a moderator. Null while that is not known, and null where the server could not be read.
@@ -41,24 +39,25 @@ type Heard = { memberNumber: string; finished: boolean }
  * only where the reader is the member himself (`ProfileParts`). Asked again whenever a box says it has
  * sent something ({@link BoxesSentContext}); while it is asked again the last answer stands, so the name
  * does not blink for the length of a request.
+ *
+ * <p>One member's: the caller keys it by his number (`ProfileHead.tsx`), so a reader who changes in one
+ * visit starts from nothing rather than from the last man's answer.
  */
 export function useHisProfileIsFinished(memberNumber: string): boolean | null {
   const { times } = useContext(BoxesSentContext)
-  const [heard, setHeard] = useState<Heard | null>(null)
+  const [finished, setFinished] = useState<boolean | null>(null)
 
   useEffect(() => {
     let stillHere = true
 
     void Promise.all([whatTheServerSaysOfMyPictures(), whatTheServerSaysOfMyHavingWords()]).then(
       ([pictures, words]) => {
-        /* Dropped where the screen has gone or the reader has changed, for the reason every read on this
-           side drops it (`member/useHeldRead.ts`); and an answer that could not be read changes nothing,
-           so a fault never names the card „Dovrši profil" for a member who has finished it. */
-        if (!stillHere || pictures === null || words === null) {
-          return
+        /* Dropped where the screen has gone, for the reason every read on this side drops it
+           (`member/useHeldRead.ts`); and an answer that could not be read changes nothing, so a fault never
+           names the card „Dovrši profil" for a member who has finished it. */
+        if (stillHere && pictures !== null && words !== null) {
+          setFinished((pictures.waiting !== null || pictures.standing !== null) && words)
         }
-
-        setHeard({ memberNumber, finished: (pictures.waiting !== null || pictures.standing !== null) && words })
       },
     )
 
@@ -67,5 +66,5 @@ export function useHisProfileIsFinished(memberNumber: string): boolean | null {
     }
   }, [memberNumber, times])
 
-  return heard === null || heard.memberNumber !== memberNumber ? null : heard.finished
+  return finished
 }

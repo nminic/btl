@@ -596,14 +596,17 @@ export async function whatTheServerSaysOfMyHavingWords(): Promise<boolean | null
     return null
   }
 
+  /* `bio` is on every record (`MeApi.MyOwnRecord`), and `bioWaiting` is ABSENT where nothing of his waits,
+     which is read as no words, the way `whatTheServerSaysOfMyWaitingText` above reads it. */
   const standing: unknown = Reflect.get(mine, 'bio')
-  const waiting: unknown = Reflect.get(mine, 'bioWaiting')
+  const said: unknown = Reflect.get(mine, 'bioWaiting')
+  const waiting = said === undefined ? '' : said
 
-  if ((standing !== null && typeof standing !== 'string') || (waiting !== undefined && typeof waiting !== 'string')) {
+  if (typeof standing !== 'string' || typeof waiting !== 'string') {
     return null
   }
 
-  return (standing ?? '').trim() !== '' || (waiting ?? '').trim() !== ''
+  return standing.trim() !== '' || waiting.trim() !== ''
 }
 
 /**

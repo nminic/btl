@@ -441,7 +441,10 @@ class MemberPictureAndWordsApiTest {
 
 	@Test
 	void aBodyThatCarriesNoWordsIsNotComplete() throws Exception {
-		for (String sent : List.of("nije json", "[]", "{}", "{\"bio\":3}", "{\"bio\":null}", "null")) {
+		/* The last is a text holding a zero character, which PostgreSQL cannot store: refused by the mapper
+		   of the application (`NoTextHoldsAZero`), never carried into the statement. */
+		for (String sent : List.of("", "nije json", "[]", "[{\"bio\":\"x\"}]", "{}", "{\"bio\":3}", "{\"bio\":null}", "null",
+				"{\"bio\":\"a\\u0000b\"}")) {
 			MockHttpServletResponse answer = words(HIS_NUMBER, sent, OVER_THE_MEMBERS);
 
 			assertThat(answer.getStatus()).as(sent).isEqualTo(400);

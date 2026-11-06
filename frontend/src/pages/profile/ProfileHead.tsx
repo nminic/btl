@@ -234,7 +234,9 @@ export function ProfileParts({ competitor }: { competitor: Competitor }) {
   const reader = useWhoReadsTheData(competitor.memberNumber)
 
   if (reader === 'his') {
-    return <HisParts competitor={competitor} />
+    /* KEYED BY HIM, so a second member signed in during the same visit is not named by the first man's
+       answer (`finishTheProfile.ts`). */
+    return <HisParts key={competitor.memberNumber} competitor={competitor} />
   }
 
   return <TheParts competitor={competitor} data={reader === null ? null : t('profile.parts.data')} />

@@ -258,20 +258,27 @@ class MemberPictureAndWordsApi {
 		return hisOwn && !mayHe.holdsEveryRightThereIs() ? null : member.get();
 	}
 
-	/** The words of a body that is an object with a {@code bio} of text, and nothing for any other body. */
+	/**
+	 * The words of a body that is an object with a {@code bio} of text, and nothing for any other body.
+	 *
+	 * <p>TYPED THROUGH THE APPLICATION'S MAPPER ({@link Words}), and not read off the tree, for the reason
+	 * {@link NoTextHoldsAZero} gives: the mapper refuses a text holding a zero character, which PostgreSQL
+	 * cannot store, and a text taken off the tree by hand would carry it into the statement as a 500.
+	 * The tree is asked first only whether {@code bio} is a text at all, since the record would take a
+	 * number as its digits.
+	 */
 	private String wordsIn(byte[] sent) {
-		JsonNode read;
-
 		try {
-			read = json.readTree(sent);
+			/* `get` of a name is nothing on every node that is not an object (a list, a number, `null`, the
+			   node of an empty body), so the one question covers them all. */
+			JsonNode read = json.readTree(sent);
+			JsonNode bio = read.get("bio");
+
+			return bio == null || !bio.isString() ? null : json.treeToValue(read, Words.class).bio();
 		}
-		catch (JacksonException notJson) {
+		catch (JacksonException notWords) {
 			return null;
 		}
-
-		JsonNode bio = read == null || !read.isObject() ? null : read.get("bio");
-
-		return bio == null || !bio.isString() ? null : bio.asString();
 	}
 
 	private void tell(long member, Said said) {

@@ -44,24 +44,12 @@ export function TheMembersPictureAndWords({ competitor }: { competitor: Competit
   )
 }
 
-/** The picture that stands on his profile, as the chooser draws one it was handed. */
-function standingOf(competitor: Competitor): Chosen | null {
-  return competitor.photo === null || competitor.crop === null
-    ? null
-    : {
-        name: competitor.photo,
-        picture: competitor.photo,
-        crop: competitor.crop,
-        file: NOTHING_CHOSEN,
-      }
-}
-
-/** Handed to the chooser in the place of a file for the picture that stands, and never sent. */
-const NOTHING_CHOSEN = new File([], 'the-picture-that-stands')
-
 function HisPicture({ competitor }: { competitor: Competitor }) {
   const { t } = useI18n()
-  const [standing, setStanding] = useState<Chosen | null>(() => standingOf(competitor))
+  /* Whether a picture stands on his profile. The picture itself is drawn in the circle at the top of the
+     card (`ProfileHead.tsx`), and the chooser draws only the one the administration has picked: moving his
+     own circle over his own picture is his (that goes to the queue), and the administration sets a picture. */
+  const [stands, setStands] = useState(competitor.photo !== null)
   const [picked, setPicked] = useState<Chosen | null>(null)
   const [sending, setSending] = useState(false)
   const outstanding = useRef(false)
@@ -93,7 +81,7 @@ function HisPicture({ competitor }: { competitor: Competitor }) {
     /* WHAT STANDS IS NOW WHAT WAS SAVED, and the list every circle of his is drawn from is no longer
        true: it carries `photo` on his row. */
     clearResourceCache('competitors')
-    setStanding({ ...chosen, file: NOTHING_CHOSEN })
+    setStands(true)
     setPicked(null)
   }
 
@@ -103,7 +91,7 @@ function HisPicture({ competitor }: { competitor: Competitor }) {
         {t('picture.title')}
       </h2>
 
-      <p className="member__note">{t(standing === null ? 'theirBoxes.pictureNone' : 'theirBoxes.pictureStanding')}</p>
+      <p className="member__note">{t(stands ? 'theirBoxes.pictureStanding' : 'theirBoxes.pictureNone')}</p>
       <p className="member__note">{t('theirBoxes.atOnce')}</p>
 
       <CropChooser
@@ -111,14 +99,11 @@ function HisPicture({ competitor }: { competitor: Competitor }) {
         label={t('picture.choose')}
         asked={false}
         unmarked
-        alt={picked !== null ? t('picture.chosenAlt') : t('theirBoxes.currentAlt')}
-        chosen={picked ?? standing}
+        alt={t('picture.chosenAlt')}
+        chosen={picked}
         onChange={(next) => {
           setAnswer(null)
-          /* A circle moved over the picture that stands, with no new file, is not taken: the administration
-             sets a picture, and moving his own circle is the member's (his send of the same picture with
-             another circle goes to the queue). */
-          setPicked(next === null || next.file === NOTHING_CHOSEN ? null : next)
+          setPicked(next)
         }}
       />
 

@@ -1870,10 +1870,9 @@
     }
   },
   "theirBoxes": {
-    "pictureStanding": "Ovo je slika koja je sada na profilu člana.",
+    "pictureStanding": "Slika koja je sada na profilu člana stoji u krugu na vrhu strane.",
     "pictureNone": "Član još nema sliku na profilu.",
     "atOnce": "Izmena odmah stoji na profilu člana, bez odobrenja, a član dobija poruku u sanduče.",
-    "currentAlt": "Slika člana, sa uokvirenim delom koji se vidi",
     "pictureSave": "Sačuvaj sliku",
     "wordsSave": "Sačuvaj tekst",
     "saved": "Sačuvano. Izmena već stoji na profilu i član je dobio poruku."

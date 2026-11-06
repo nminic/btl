@@ -1870,10 +1870,9 @@
     }
   },
   "theirBoxes": {
-    "pictureStanding": "This is the picture now on the member's profile.",
+    "pictureStanding": "The picture now on the member's profile is the one in the circle at the top of the page.",
     "pictureNone": "The member has no picture on the profile yet.",
     "atOnce": "A change stands on the member's profile at once, without approval, and the member gets a message in the inbox.",
-    "currentAlt": "The member's picture, with the framed part that shows",
     "pictureSave": "Save the picture",
     "wordsSave": "Save the text",
     "saved": "Saved. The change already stands on the profile and the member has been sent a message."
