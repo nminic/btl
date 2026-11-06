@@ -481,6 +481,86 @@ class TheTablesOfASeasonTest {
 		assertThatThrownBy(freezes::freeze).hasMessage("the pairs could not be broken");
 	}
 
+	/**
+	 * THE FOUR AXES THE FIRST REVIEW OF PR 674 FOUND UNGUARDED (PENDING, PR 674, SREDNJI 2, „Četiri ose bez
+	 * čuvara"), each with the second place its value could come from kept apart in the case. T1, the year:
+	 * a run on 31 December is in the season and one on 1 January, the day of the freeze itself, is not.
+	 */
+	@Test
+	void aRunOnThe31stOfDecemberIsInTheSeasonAndOneOnThe1stOfJanuaryIsNot() {
+		event("Silvestar", "2027-12-31");
+		race("Silvestar", "Silvestarska", 5, "2027-12-31");
+		event("Novagodina", "2028-01-01");
+		race("Novagodina", "Novogodisnja", 5, "2028-01-01");
+
+		run("000304", "Silvestarska", 10.00);
+		run("000301", "Novogodisnja", 50.00);
+
+		freezeAt(2028, 1, 1, 16, 0);
+
+		assertThat(db.sql("select who || ' ' || points || ' ' || races from season_competitor where season = 2027"
+						+ " order by gender, position").query(String.class).list())
+				.as("Goran's run of the 31st is in his 2027, Ana's run of the 1st is in nobody's")
+				.containsExactly("Ana Prva 30.00 1", "Vera Treca 12.00 1", "Goran Cetvrti 50.00 2",
+						"Bojan Drugi 45.00 2");
+	}
+
+	/**
+	 * T2, the season the category is of: a member who is 39 in the season frozen and 40 the season after it
+	 * stands in the band of the season frozen, and one who was 39 the season before stands in the band of
+	 * this one.
+	 */
+	@Test
+	void aMemberStandsInTheCategoryOfTheSeasonFrozenNotOfTheOneAfterOrBeforeIt() {
+		member("000311", "Ivana", "Dvanaesta", "F", "1988-05-05");
+		memberOf("000311", 2027, "2026-09-01 10:00:00+00");
+		run("000311", "Krug", 20.00);
+		member("000312", "Jelena", "Trinaesta", "F", "1987-05-05");
+		memberOf("000312", 2027, "2026-09-01 10:00:00+00");
+		run("000312", "Krug", 21.00);
+
+		freezeAt(2028, 1, 1, 16, 0);
+
+		assertThat(db.sql("select who || ' ' || category from season_competitor where season = 2027"
+						+ " and who in ('Ivana Dvanaesta', 'Jelena Trinaesta') order by who").query(String.class)
+				.list())
+				.as("39 in 2027 is 25-39 though 40 in 2028; 40 in 2027 is 40-54 though 39 in 2026")
+				.containsExactly("Ivana Dvanaesta Ž25-39", "Jelena Trinaesta Ž40-54");
+	}
+
+	/** T3, the beginners: a member who wished for the category and is allowed it stands in it, by its code. */
+	@Test
+	void aMemberWhoWishedForTheBeginnersCategoryStandsInItInTheTable() {
+		member("000313", "Marko", "Cetrnaesti", "M", "1995-05-05");
+		memberOf("000313", 2027, "2026-09-01 10:00:00+00");
+		db.sql("insert into category_wish (competitor_id, season, beginner) values (?, 2027, true)")
+				.param(idOf("000313")).update();
+		run("000313", "Krug", 8.00);
+
+		freezeAt(2028, 1, 1, 16, 0);
+
+		assertThat(db.sql("select category || ' ' || category_position from season_competitor where who = 'Marko"
+						+ " Cetrnaesti'").query(String.class).single())
+				.as("a beginner of 2027, not a man of 32 in 25-39")
+				.isEqualTo("M R 1");
+		assertThat(db.sql("select category from season_competitor where who = 'Bojan Drugi'")
+				.query(String.class).single()).as("and the others stand in their age bands").isEqualTo("M40-54");
+	}
+
+	/** T4, the pairs: a pair of the season after is not on the board of this one, though both of its halves ran. */
+	@Test
+	void aPairOfAnotherSeasonIsNotOnTheBoardOfPairsOfTheSeasonFrozen() {
+		pair(2027, "000302", "000301");
+		pair(2028, "000304", "000303");
+
+		freezeAt(2028, 1, 1, 16, 0);
+
+		assertThat(db.sql("select string_agg(h.who, ' + ' order by h.half) from season_pair p"
+						+ " join season_pair_half h on h.season_pair_id = p.id where p.season = 2027"
+						+ " group by p.id").query(String.class).list())
+				.containsExactly("Ana Prva + Bojan Drugi");
+	}
+
 	private ObjectProvider<WhatFollowsTheFreeze> providing(WhatFollowsTheFreeze follower) {
 		return new ObjectProvider<>() {
 			@Override

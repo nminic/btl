@@ -318,20 +318,17 @@ class ASeasonBeginsTest {
 
 	/**
 	 * A SEASON CANCELLED AFTER IT BEGAN, IN FEBRUARY: out at once, with the same messages, and a team he
-	 * was alone in goes. Before the season before it froze, nothing happens here, because the turn itself
-	 * will drop him at 16:00.
+	 * was alone in goes. It has begun when the job of 1 January has frozen the season before it, and that is
+	 * the row of {@code season_frozen} ({@link #aCancellationTakesHimOutOnlyOnceTheJobHasFrozenTheSeasonBefore}
+	 * holds the state before it).
 	 */
 	@Test
-	void aSeasonCancelledAfterTheTurnTakesHimOutAtOnceAndNotBefore() {
+	void aSeasonCancelledAfterTheTurnTakesHimOutAtOnce() {
 		begins.begin(SEASON);
+		theJobFroze(2027, at(2028, 1, 1, 16, 0));
 
 		long osmi = team("osmi-tim", "Osmi tim", zora);
 		in(zora, osmi, 2027, null);
-
-		begins.cancelled(zora, SEASON, at(2028, 1, 1, 15, 59), begins.before(zora, SEASON, at(2028, 1, 1, 15, 59)));
-
-		assertThat(memberships()).contains("Zora Osmi tim 2027 -");
-		assertThat(teams()).contains("Osmi tim Zora");
 
 		begins.cancelled(ceca, SEASON, at(2028, 2, 10, 9, 0), begins.before(ceca, SEASON, at(2028, 2, 10, 9, 0)));
 		begins.cancelled(zora, SEASON, at(2028, 2, 10, 9, 0), begins.before(zora, SEASON, at(2028, 2, 10, 9, 0)));
@@ -347,6 +344,49 @@ class ASeasonBeginsTest {
 						+ " želite ovu ulogu, javite se ligi.",
 				boban + " " + PairWriteApi.THE_PAIR_IS_BROKEN + " | Ceca Cecic nije produžila članarinu za sezonu"
 						+ " 2028, pa je vaš trkački par raskinut.");
+	}
+
+	/**
+	 * WHETHER THE SEASON BEFORE HAS FROZEN IS THE RECORD OF THE FREEZE, NOT THE CLOCK, in both directions
+	 * (PENDING, PR 673, krug 1, „Storno posle 16h, a pre nego što je posao od 1. januara stvarno prošao,
+	 * ispada po satu umesto po zapisu"). The hour says yes and the record says no on 1 January at 17:00 and
+	 * in February, when the server was down at 16:00 and the job has not run: he stays in his team and his
+	 * pair, nobody is told, and the team he was alone in stays. The hour says no and the record says yes at
+	 * 15:59: he is out, since the row is what the job writes first.
+	 */
+	@Test
+	void aCancellationTakesHimOutOnlyOnceTheJobHasFrozenTheSeasonBefore() {
+		long osmi = team("osmi-tim", "Osmi tim", zora);
+		in(zora, osmi, 2027, null);
+		pair(SEASON, ivan, zora);
+
+		List<String> memberships = memberships();
+		List<String> teams = teams();
+		List<String> pairs = pairs();
+		List<String> messages = messages();
+
+		for (ZonedDateTime hour : List.of(at(2028, 1, 1, 17, 0), at(2028, 2, 10, 9, 0))) {
+			begins.cancelled(zora, SEASON, hour, begins.before(zora, SEASON, hour));
+
+			assertThat(memberships()).as("the clock says 2027 has frozen at %s and the job has not run", hour)
+					.isEqualTo(memberships);
+			assertThat(teams()).isEqualTo(teams);
+			assertThat(pairs()).isEqualTo(pairs);
+			assertThat(messages()).isEqualTo(messages);
+		}
+
+		theJobFroze(2027, at(2028, 1, 1, 16, 0));
+
+		ZonedDateTime before16 = at(2028, 1, 1, 15, 59);
+
+		begins.cancelled(zora, SEASON, before16, begins.before(zora, SEASON, before16));
+
+		assertThat(memberships()).as("the record says it has, whatever the hour says")
+				.noneMatch(one -> one.startsWith("Zora "));
+		assertThat(teams()).as("a team he was alone in goes with him").noneMatch(one -> one.startsWith("Osmi tim"));
+		assertThat(pairs()).doesNotContain("2028 Ivan Zora");
+		assertThat(messages()).contains(ivan + " " + PairWriteApi.THE_PAIR_IS_BROKEN
+				+ " | Zora Zoric nije produžila članarinu za sezonu 2028, pa je vaš trkački par raskinut.");
 	}
 
 	/**
@@ -371,12 +411,115 @@ class ASeasonBeginsTest {
 		assertThat(messages()).isEqualTo(messages).isEmpty();
 	}
 
+	/**
+	 * A FEE BOOKED AFTER THE CUT DROPS HIM ON EVERY BASIS, NOT ONLY ON A PAYMENT (PENDING, PR 673, SREDNJI 2,
+	 * „Za osnov balance i feeExempt aktiviran posle 16h nema slučaja"). The moment is read through
+	 * {@link WhenASeasonWasActivated#of}, which finds it in three places; the other cases here write the
+	 * balance and the exemption without a moment, which is in time, so a read that found only the payment's
+	 * would pass them all. Bora spent his balance and Cana was freed half an hour after the cut and both are
+	 * out; Dara and Ena did the same half an hour before and stay, so the cut itself is held on both bases.
+	 */
+	@Test
+	void aBalanceSpentOrAnExemptionDecidedAfterTheCutDropsHimAsAPaymentDoes() {
+		long bora = member("000360", "Bora", "Boric", "M");
+		long cana = member("000361", "Cana", "Canic", "F");
+		long dara = member("000362", "Dara", "Daric", "M");
+		long ena = member("000363", "Ena", "Enic", "F");
+
+		for (long each : List.of(bora, cana, dara, ena)) {
+			HeldOn.season(db, each, 2027, "feeExempt");
+		}
+
+		HeldOn.season(db, bora, SEASON, "balance", HALF_AN_HOUR_AFTER);
+		HeldOn.season(db, cana, SEASON, "feeExempt", HALF_AN_HOUR_AFTER);
+		HeldOn.season(db, dara, SEASON, "balance", HALF_AN_HOUR_BEFORE);
+		HeldOn.season(db, ena, SEASON, "feeExempt", HALF_AN_HOUR_BEFORE);
+
+		long deseti = team("deseti-tim", "Deseti tim", dara);
+
+		for (long each : List.of(bora, cana, dara, ena)) {
+			in(each, deseti, 2027, null);
+		}
+
+		begins.begin(SEASON);
+
+		String lapsed = " 2027 2027 " + Membership.THE_FEE_LAPSED;
+
+		assertThat(memberships()).filteredOn(one -> one.contains("Deseti tim"))
+				.containsExactlyInAnyOrder(
+						"Bora Deseti tim" + lapsed,
+						"Cana Deseti tim" + lapsed,
+						"Dara Deseti tim 2027 -",
+						"Ena Deseti tim 2027 -");
+	}
+
+	/**
+	 * A SEASON CANCELLED FROM 2028 ON TAKES HIM OUT AT ONCE, NOT ONLY THE FIRST ONE (PENDING, PR 673, krug 2,
+	 * SREDNJI 4, „nije čuvano u smeru 2029 i dalje"): PDL 05.11.2026, „Storno izbacuje odmah, od 2028",
+	 * and a cancellation of 2029 in February 2029 is the same rule one year on. Written the way the route
+	 * does it: the seat is read while he still holds the season, the season goes, and then the cancellation
+	 * is told. <b>The record of the season before is held apart from the one before that</b>: with only 2027
+	 * frozen nothing moves for 2029, with 2028 frozen he is out.
+	 */
+	@Test
+	void aSeasonCancelledFor2029TakesHimOutAtOnceOnceTheSeasonBeforeItHasFrozen() {
+		long yoze = member("000364", "Yoze", "Yozic", "M");
+		long zeka = member("000365", "Zeka", "Zekic", "M");
+		long wera = member("000366", "Wera", "Werić", "F");
+
+		for (long each : List.of(yoze, zeka, wera)) {
+			HeldOn.season(db, each, 2027, "feeExempt");
+			HeldOn.season(db, each, 2028, "payment");
+			HeldOn.season(db, each, 2029, "payment");
+		}
+
+		long tim = team("tim-2029", "Tim 2029", yoze);
+		in(yoze, tim, 2027, null);
+		in(zeka, tim, 2027, null);
+		pair(2029, yoze, wera);
+
+		ZonedDateTime february = at(2029, 2, 10, 9, 0);
+
+		theJobFroze(2027, at(2028, 1, 1, 16, 0));
+
+		begins.cancelled(yoze, 2029, february, begins.before(yoze, 2029, february));
+
+		assertThat(memberships()).as("only 2027 has a record, so 2029 has not begun and nothing moved")
+				.contains("Yoze Tim 2029 2027 -");
+		assertThat(pairs()).contains("2029 Yoze Wera");
+
+		theJobFroze(2028, at(2029, 1, 1, 16, 0));
+
+		ASeasonBegins.Before before = begins.before(yoze, 2029, february);
+		db.sql("delete from membership where competitor_id = ? and season = 2029").param(yoze).update();
+
+		begins.cancelled(yoze, 2029, february, before);
+
+		assertThat(memberships()).contains("Yoze Tim 2029 2027 2028 " + Membership.THE_FEE_LAPSED,
+				"Zeka Tim 2029 2027 -");
+		assertThat(pairs()).doesNotContain("2029 Yoze Wera");
+		assertThat(adminOf("tim-2029")).isEqualTo(zeka);
+		assertThat(messages()).contains(
+				zeka + " Vi ste administrator tima Tim 2029 | Od danas vi ste administrator tima Tim 2029, jer je"
+						+ " dosadašnjem administratoru istekla članarina, a vi ste član koji je najduže u timu. Ako ne"
+						+ " želite ovu ulogu, javite se ligi.",
+				wera + " " + PairWriteApi.THE_PAIR_IS_BROKEN + " | Yoze Yozic nije produžio članarinu za sezonu"
+						+ " 2029, pa je vaš trkački par raskinut.");
+	}
+
 	/* ------------------------------------------------------------------------------------
 	   THE FIXTURE
 	   ------------------------------------------------------------------------------------ */
 
 	private static ZonedDateTime at(int year, int month, int day, int hour, int minute) {
 		return LocalDateTime.of(year, month, day, hour, minute).atZone(SeasonClock.ZONE);
+	}
+
+	/** What the job of 1 January writes first: the record that a season has frozen. */
+	private void theJobFroze(int season, ZonedDateTime when) {
+		db.sql("insert into season_frozen (season, frozen_at) values (?, ?)")
+				.params(season, java.sql.Timestamp.from(when.toInstant()))
+				.update();
 	}
 
 	private long member(String number, String first, String last, String gender) {
