@@ -1125,6 +1125,11 @@ class MeApiTest {
 	 */
 	@Test
 	void andWhetherHisFeeStandsWhichTheNumberAloneCannotSay() throws Exception {
+		/* THE FLAG IS TURNED AGAINST THE SEASONS FOR THIS CASE: since AF-1 the answer is the seasons he holds
+		   (`AMemberIsActive`), so a route that still read `competitor.active` would answer all four the other
+		   way round. */
+		db.sql("update competitor set active = not active").update();
+
 		JsonNode standing = answerFor(MY_ACCOUNT).path("member");
 		JsonNode alsoStanding = answerFor(HER_ACCOUNT).path("member");
 		JsonNode lapsed = answerFor(THE_LAPSED_ACCOUNT).path("member");
@@ -1139,12 +1144,10 @@ class MeApiTest {
 
 		assertThat(standing.path("active").asBoolean())
 				.as("the caller's fee stands and he was told it does not")
-				.isEqualTo(Boolean.parseBoolean(columnOf("active", ME)))
 				.isTrue();
 		assertThat(alsoStanding.path("active").asBoolean())
 				.as("she pays and her fee stands, and a flag worked out from the basis (the caller is"
 						+ " freed of the fee, she is not) was handed back to her instead")
-				.isEqualTo(Boolean.parseBoolean(columnOf("active", ABROAD)))
 				.isTrue();
 		assertThat(basisOf(ABROAD))
 				.as("she is freed of the fee after all, so the row that separates the flag from the"
@@ -1153,13 +1156,9 @@ class MeApiTest {
 		assertThat(lapsed.path("active").asBoolean())
 				.as("a member whose fee has lapsed was told it stands, which is what the portal could"
 						+ " not tell him from a standing one until this flag existed")
-				.isEqualTo(Boolean.parseBoolean(columnOf("active", LAPSED)))
 				.isFalse();
 		assertThat(neverPaid.path("active").asBoolean())
 				.as("somebody who registered and never paid was told his fee stands")
-				.isEqualTo(Boolean.parseBoolean(
-						db.sql("select active::text from competitor where member_number is null")
-								.query(String.class).single()))
 				.isFalse();
 
 		/* The pair that tells three people apart, asked of the answers themselves. The lapsed

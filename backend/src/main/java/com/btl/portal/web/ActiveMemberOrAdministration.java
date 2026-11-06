@@ -116,18 +116,11 @@ class ActiveMemberOrAdministration {
 	 * and not at the three new call sites so that the guard has one home, and the visitor's case on
 	 * each of the three routes is what holds it.
 	 *
+	 * <p><b>Asked at the moment the caller has already read the clock at</b>, so that one request asks
+	 * the door and everything after it at one instant; every caller reads it before the door.
+	 *
 	 * @param asking read off the session, never off anything the caller sent; {@code null} for
 	 *               a request that carries none
-	 */
-	boolean includes(WhoIsAsking.Member asking) {
-		return includes(asking, ZonedDateTime.now(clock));
-	}
-
-	/**
-	 * {@link #includes(WhoIsAsking.Member)} at the moment the caller has already read the clock at,
-	 * so that one request asks the door and everything after it at one instant.
-	 *
-	 * @param asking as above
 	 * @param at     the moment the request read the clock at
 	 */
 	boolean includes(WhoIsAsking.Member asking, ZonedDateTime at) {
