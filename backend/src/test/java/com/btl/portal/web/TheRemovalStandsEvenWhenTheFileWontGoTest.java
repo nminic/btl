@@ -35,6 +35,7 @@ import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -164,10 +165,14 @@ class TheRemovalStandsEvenWhenTheFileWontGoTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Uklonjen', 'Uklonjenovic', 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, "
+						+ " (select id from place where rank = 1), 2027, false, "
 						+ " '00000000000009fd', '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00') returning id")
 				.param(ME).query(Long.class).single();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written false on purpose: since AF-1
+		   nothing reads it, and a reader that did would turn him away. */
+		HeldOn.activeAt(db, member, ZonedDateTime.now());
 
 		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id) values"
 						+ " ('Roditelj', 'Roditeljevic', ?,"

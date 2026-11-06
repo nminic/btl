@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Clock;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 
 /**
@@ -70,7 +72,7 @@ import java.util.Optional;
  * pravom nad timovima" (31.07.2026) and „Moderator ili administrator sme da dodeli drugog kad
  * primeti da je mesto prazno" (04.09.2026). <b>Only to somebody standing in this team, which is
  * derived and not his sentence:</b> who runs a team is {@link TeamApi#WHO_ADMINISTERS_IT}, and
- * that reads the seat through {@link TeamApi#WHO_STANDS_IN_A_TEAM}, so a seat given to somebody
+ * that reads the seat through {@link TeamApi#whoStandsInATeam}, so a seat given to somebody
  * outside it would be a control that changes nothing anybody can see. <b>Left out, the seat is
  * not touched</b>: the list beside the form changes a town in its own cell (ADL, „mesto ostaje u
  * ćeliji, jer iza njega ne stoji ništa") without speaking for the seat, and the seat is served to
@@ -134,7 +136,7 @@ class TeamAdministrationWriteApi {
 	 * THE MEMBER NAMED FOR THE SEAT DOES NOT STAND IN THIS TEAM.
 	 *
 	 * <p>One answer for a member of another team, a member of this one whose fee has lapsed, and a
-	 * number nobody has: none of them is somebody {@link TeamApi#WHO_STANDS_IN_A_TEAM} counts in
+	 * number nobody has: none of them is somebody {@link TeamApi#whoStandsInATeam} counts in
 	 * this team, and telling them apart would say nothing the administration can act on beyond
 	 * what this already says.
 	 */
@@ -148,9 +150,12 @@ class TeamAdministrationWriteApi {
 	 */
 	private final TransactionTemplate inOneTransaction;
 
-	TeamAdministrationWriteApi(JdbcClient db, TransactionTemplate inOneTransaction) {
+	private final Clock clock;
+
+	TeamAdministrationWriteApi(JdbcClient db, TransactionTemplate inOneTransaction, Clock clock) {
 		this.db = db;
 		this.inOneTransaction = inOneTransaction;
+		this.clock = clock;
 	}
 
 	/**
@@ -238,7 +243,8 @@ class TeamAdministrationWriteApi {
 		Long seat = null;
 
 		if (!isNothing(typed.organizerMemberNumber())) {
-			Optional<Long> standing = standingIn(id, typed.organizerMemberNumber().strip());
+			Optional<Long> standing = standingIn(id, typed.organizerMemberNumber().strip(),
+					ZonedDateTime.now(clock));
 
 			if (standing.isEmpty()) {
 				return no(HttpStatus.CONFLICT, HE_IS_NOT_IN_THE_TEAM);
@@ -276,13 +282,13 @@ class TeamAdministrationWriteApi {
 	/**
 	 * THE MEMBER WITH THIS NUMBER, WHILE HE STANDS IN THIS TEAM, AND NOBODY OTHERWISE.
 	 *
-	 * <p>Asked of {@link TeamApi#WHO_STANDS_IN_A_TEAM} and never written out here, because that is
+	 * <p>Asked of {@link TeamApi#whoStandsInATeam} and never written out here, because that is
 	 * the portal's one answer to „who is a standing member of which team" and the seat is read
 	 * through it. A copy here would be the third reader of three conditions, and the one that
 	 * drifted would let the seat go to somebody the team's own page does not count.
 	 */
-	private Optional<Long> standingIn(long team, String memberNumber) {
-		return db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
+	private Optional<Long> standingIn(long team, String memberNumber, ZonedDateTime now) {
+		return db.sql("with standing as (" + TeamApi.whoStandsInATeam(now) + ")"
 						+ " select s.id from standing s"
 						+ " where s.team_id = ? and s.member_number = ?")
 				.params(team, memberNumber)

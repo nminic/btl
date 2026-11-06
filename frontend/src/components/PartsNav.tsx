@@ -14,7 +14,7 @@ export type Part = {
    * draws everybody else's, and the nav is built from the record's own address, so
    * `NavLink` compared two addresses that never match and **no part was marked at
    * all**: the reader saw a row of parts with nothing current on it, while the same
-   * screen entered from the list of competitors marks „Pregled" (owner,
+   * screen entered from the list of competitors marks „Rezultati" (owner,
    * 23.08.2026).
    */
   also?: string

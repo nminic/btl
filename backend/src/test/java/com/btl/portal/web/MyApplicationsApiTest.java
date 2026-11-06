@@ -22,6 +22,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -241,11 +242,15 @@ class MyApplicationsApiTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, "
+						+ " (select id from place where rank = 1), 2027, false, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, first, last, gender, String.format("%016x", ++issued))
 				.update();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written false on purpose: since AF-1
+		   nothing reads it, and a reader that did would turn him away. */
+		HeldOn.activeAt(db, number, ZonedDateTime.now());
 	}
 
 	private void team(String slug, String name) {
@@ -673,7 +678,11 @@ class MyApplicationsApiTest {
 	@ValueSource(strings = {PAIR_TO, PAIR_FROM})
 	void aPairInviteToSomebodyWhoDidNotRenewKeepsTheRowAndDropsTheName(String lapsed)
 			throws Exception {
-		db.sql("update competitor set active = false where member_number = ?")
+		/* HE DID NOT RENEW, which since AF-1 is the season taken away; his flag is raised on purpose, so a
+		   query that read it would still name him. */
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
+				.param(lapsed).update();
+		db.sql("update competitor set active = true where member_number = ?")
 				.param(lapsed).update();
 
 		List<Invite> mine = pairInvites(answer());

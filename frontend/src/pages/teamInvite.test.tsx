@@ -815,6 +815,14 @@ describe('the third door writes the season the other two write', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: /Relja Momčilović/ })).toBeVisible()
     expect(clubLine()).toContain('U timu Trkači Morave od 2028.')
+
+    /* And the same line on „Priznanja", which reads the teams through the same overlay since „Pozovi u
+       tim" stands there too (owner, 06.11.2026): a club founded during this visit is on both parts of
+       the profile or on neither. */
+    await router.navigate(`${FREE}/priznanja`)
+
+    expect(await screen.findByRole('heading', { name: /^Pehari/ })).toBeVisible()
+    expect(clubLine()).toContain('U timu Trkači Morave od 2028.')
   }, SEVERAL_SCREENS)
 })
 

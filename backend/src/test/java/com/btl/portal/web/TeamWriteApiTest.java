@@ -484,22 +484,22 @@ class TeamWriteApiTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, "
+						+ " (select id from place where rank = 1), 2027, false, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, String.format("%016x", ++issued))
 				.update();
 
 		/* A MEMBER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Entering a team
-		   asks for a membership of the season on sale and not for `competitor.active` (PDL
-		   30.10.2026), so an active member with no row is a member who has not paid it. The member
-		   who holds only ONE of the two is made by `holdsOnly`; a member whose fee has lapsed
-		   (`active` false) holds neither. */
+		   asks for a membership of the season on sale (PDL 30.10.2026), and since AF-1 being active is a
+		   season that counts. The member who holds only ONE of the two is made by `holdsOnly`; a member
+		   whose fee has lapsed holds neither. The flag is written false for everybody on purpose: since
+		   AF-1 nothing reads it. */
 		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
 						+ " select c.id, s.season, 'feeExempt', 'Probni Probic',"
 						+ " timestamptz '2026-09-01 10:00:00+00'"
 						+ " from competitor c cross join (values (2027), (2028)) as s (season)"
-						+ " where c.member_number = ? and c.active")
+						+ " where c.member_number = ?")
 				.param(number)
 				.update();
 	}
@@ -2035,8 +2035,11 @@ class TeamWriteApiTest {
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedIsNobodyAtThisAddress() throws Exception {
-		db.sql("update competitor set active = false where member_number = ?")
+		/* HE DID NOT RENEW, which since AF-1 is the season taken away; his flag is raised on purpose, so a
+		   reader that read it would still take him for a member. */
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
 				.param(IN_A_TEAM_NOW).update();
+		db.sql("update competitor set active = true where member_number = ?").param(IN_A_TEAM_NOW).update();
 
 		assertThat(leaveAs(IN_A_TEAM_NOW, THE_OTHER_TEAM).getStatus())
 				.as("a member whose fee has lapsed reached a route that is not the renewal page")
@@ -2474,15 +2477,18 @@ class TeamWriteApiTest {
 	 *
 	 * <p><b>It is here rather than as a ninth row of the table above because it needs its own
 	 * arrangement</b>, and it is the row that holds {@code c.active} inside
-	 * {@link TeamApi#WHO_STANDS_IN_A_TEAM}: take that condition out and BOTH answers below
+	 * {@link TeamApi#whoStandsInATeam}: take that condition out and BOTH answers below
 	 * move to true together, which is the one home doing its job and this case noticing.
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedAdministersNothingAndBothResourcesAgree() throws Exception {
 		aTeamWithTwoMembersAndEverythingHangingOffIt();
 
-		db.sql("update competitor set active = false where member_number = ?")
+		/* HE DID NOT RENEW, which since AF-1 is the season taken away; his flag is raised on purpose, so a
+		   reader that read it would still take him for a member. */
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
 				.param(THE_SEAT).update();
+		db.sql("update competitor set active = true where member_number = ?").param(THE_SEAT).update();
 
 		assertThat(theListTells(THE_SEAT, A_TEAM_WITH_TWO))
 				.as("/api/teams still names a lapsed member as the one who administers his team")
@@ -2621,7 +2627,7 @@ class TeamWriteApiTest {
 	 * ONE HOME.
 	 *
 	 * <p>{@code GET /api/teams} answers {@code administeredByMe} and this route acts on the
-	 * same question. They are built out of {@link TeamApi#WHO_STANDS_IN_A_TEAM} and
+	 * same question. They are built out of {@link TeamApi#whoStandsInATeam} and
 	 * {@link TeamApi#WHO_ADMINISTERS_IT} so that there is one rule with two readers; this is
 	 * what makes that a measurement rather than a claim.
 	 *

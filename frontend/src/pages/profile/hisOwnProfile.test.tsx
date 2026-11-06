@@ -219,7 +219,7 @@ describe('a member whose fee has lapsed, on his own page', () => {
     const { router } = renderAt('/sr/moj-profil', 'competitor', '000032')
 
     await screen.findByRole('heading', { level: 1, name: HIS_NAME })
-    await user.click(within(screen.getByRole('navigation', { name: 'Delovi profila' })).getByRole('link', { name: 'Priznanja i nagrade' }))
+    await user.click(within(screen.getByRole('navigation', { name: 'Delovi profila' })).getByRole('link', { name: 'Priznanja' }))
 
     expect(await screen.findByRole('heading', { level: 2, name: /^Pehari \d+$/ })).toBeVisible()
     expect(router.state.location.pathname).toBe(`${HIS_ADDRESS}/priznanja`)

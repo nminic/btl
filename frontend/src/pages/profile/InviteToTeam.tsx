@@ -221,7 +221,9 @@ function AskingHimIn({ team, member, woman }: { team: Team; member: string; woma
     <>
       <button
         type="button"
-        className="button button--secondary"
+        /* The shape of the parts beside it (owner, 06.11.2026, „istog formata"), and its own class:
+           a button is not a link, so the class of the parts is not worn here. */
+        className="button button--secondary profile__act"
         aria-disabled={sending ? true : undefined}
         onClick={() => {
           void send()

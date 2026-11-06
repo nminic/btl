@@ -614,7 +614,7 @@ describe('the season, over both parts of the profile', () => {
     await screen.findByRole('heading', { level: 1 })
     expect(selectElement(screen.getByLabelText('Godina')).value).toBe(year)
 
-    await user.click(screen.getByRole('link', { name: 'Priznanja i nagrade' }))
+    await user.click(within(screen.getByRole('navigation', { name: 'Delovi profila' })).getByRole('link', { name: 'Priznanja' }))
 
     expect(selectElement(await screen.findByLabelText('Godina'))).toHaveValue(year)
   })
@@ -669,7 +669,7 @@ describe('the years a profile offers', () => {
     expect(offered).toEqual(['sve', '2026', '2021', '2020', '2019', '2018', '2017', '2016', '2015'])
     expect(selectElement(screen.getByLabelText('Godina')).value).toBe('2019')
 
-    await user.click(screen.getByRole('link', { name: 'Pregled' }))
+    await user.click(within(screen.getByRole('navigation', { name: 'Delovi profila' })).getByRole('link', { name: 'Rezultati' }))
 
     expect(selectElement(await screen.findByLabelText('Godina'))).toHaveValue('2019')
   })

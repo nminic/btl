@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.token.SecretToken;
@@ -169,14 +170,23 @@ class ThePaymentsScreenLocksTheMemberTest {
 	}
 
 	private long aMember(String number, String code, String first, boolean active) {
-		return db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
+		long made = db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, first_season, active, referral_code, bio,"
 						+ " profile_hidden, birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at) values (?, ?, 'Zakljucan', 'M', date '1990-05-15',"
 						+ " (select id from place where rank = 1), 2027, ?, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
-				.params(number, first, active, code).query(Long.class).single();
+				/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it. */
+				.params(number, first, !active, code).query(Long.class).single();
+
+		/* A MEMBER WHOSE FEE STANDS HOLDS THE SEASON BEING RUN, 2027, so the season on sale is still his to
+		   book and he stands as a member while it is booked. */
+		if (active) {
+			HeldOn.activeAt(db, made, AFTER_THE_FIFTEENTH.atZone(SeasonClock.ZONE));
+		}
+
+		return made;
 	}
 
 	private String openedSession(long account) {

@@ -149,7 +149,9 @@ class TheBasisOfTheSeasonOnSaleTest {
 				PAID_2027_ONLY, "payment 2027");
 
 		assertThat(eachOnHisOwnDoor()).isEqualTo(expected);
-		assertThat(theAdministrationsList()).isEqualTo(expected);
+		/* THE MEMBER WHO HOLDS ONLY 2028 IS NOT ON THE LIST BEFORE THE WINDOW: since AF-1 the list is the
+		   members who hold a season that counts (PDL 13.09.2026), and outside the window 2028 does not. */
+		assertThat(theAdministrationsList()).isEqualTo(withoutHim(expected, ON_HIS_BALANCE));
 	}
 
 	@Test
@@ -182,7 +184,9 @@ class TheBasisOfTheSeasonOnSaleTest {
 				PAID_2027_ONLY, "payment 2027");
 
 		assertThat(eachOnHisOwnDoor()).isEqualTo(expected);
-		assertThat(theAdministrationsList()).isEqualTo(expected);
+		/* THE MEMBER WHO HOLDS ONLY 2028 IS NOT ON THE LIST BEFORE THE WINDOW: since AF-1 the list is the
+		   members who hold a season that counts (PDL 13.09.2026), and outside the window 2028 does not. */
+		assertThat(theAdministrationsList()).isEqualTo(withoutHim(expected, ON_HIS_BALANCE));
 	}
 
 	/**
@@ -289,6 +293,12 @@ class TheBasisOfTheSeasonOnSaleTest {
 	}
 
 	/** A clock the case moves, reporting UTC as a container's does: the shape {@code MeApiTest} uses. */
+	private static Map<String, String> withoutHim(Map<String, String> expected, String number) {
+		Map<String, String> left = new java.util.HashMap<>(expected);
+		left.remove(number);
+		return left;
+	}
+
 	static final class AClockTheCaseMoves extends Clock {
 
 		private Instant now;
