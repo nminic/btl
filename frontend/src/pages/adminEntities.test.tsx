@@ -3148,6 +3148,9 @@ describe('an event that is deleted', () => {
       })),
     ]
 
+    /* The file was read above to choose the event, so the visit holds the real one: it is dropped, or the screen
+       would never ask the server for the padded file and the case would measure nothing. */
+    clearResourceCache('results')
     answering = (path) =>
       path === '/api/results'
         ? new Response(JSON.stringify(padded), { status: 200, headers: { 'content-type': 'application/json' } })
