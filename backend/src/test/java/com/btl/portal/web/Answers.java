@@ -136,9 +136,11 @@ final class Answers {
 	 *
 	 * <p>A46 measures a codebook by comparing the whole answer with the file the
 	 * portal serves. The calendar, the leagues and the results are not codebooks:
-	 * the served files carry text identifiers and the strings "no" and "yes", both
-	 * artefacts of one import, and the schema says bigserial and boolean
-	 * (12.09.2026). What must not move is the NAMES.
+	 * until 20.09.2026 the served calendar files carried text identifiers and the
+	 * strings "no" and "yes", both artefacts of one import, while the schema says
+	 * bigserial and boolean (12.09.2026); PR 325 rewrote events.json and races.json
+	 * into those shapes, and the decision stands for the day they disagree again.
+	 * What must not move is the NAMES.
 	 *
 	 * <p><b>A subset and not an equality, and that is the decision of 12.09.2026
 	 * rather than a looser test.</b> A name the portal reads and the server does not

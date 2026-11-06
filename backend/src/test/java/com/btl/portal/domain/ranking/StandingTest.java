@@ -94,19 +94,25 @@ class StandingTest {
 	 */
 	@Test
 	void verticalIsBothHalvesAndNotOne() {
-		/* 1000 against 900, and the loser climbs eight times as much. */
+		/* 1000 against 950, and the loser climbs nine times as much AND the gap between his
+		   two halves (950) is wider than the winner's (800), so a version reading the
+		   difference orders the pair the same wrong way a climb-only one does. The
+		   loser is listed first, like in the other cases: the winner is not already
+		   where the input puts him. */
 		assertThat(orderOf(List.of(
-				row("silazi", 9, "40.00", "100.00", 5, 100, 900, 3600L),
-				row("penje", 1, "40.00", "100.00", 5, 800, 100, 3600L))))
-				.as("only the climbing half was counted, and the rulebook counts both")
+				row("penje", 1, "40.00", "100.00", 5, 950, 0, 3600L),
+				row("silazi", 9, "40.00", "100.00", 5, 100, 900, 3600L))))
+				.as("only the climbing half was counted, or the halves were subtracted, and the"
+						+ " rulebook counts both added together")
 				.containsExactly("silazi", "penje");
 
-		/* And the same the other way: 1000 against 900, the loser descends eight
-		   times as much. */
+		/* And the same the other way: 1000 against 950, the loser descends nine times
+		   as much, and his halves are further apart than the winner's. */
 		assertThat(orderOf(List.of(
-				row("penje", 9, "40.00", "100.00", 5, 900, 100, 3600L),
-				row("silazi", 1, "40.00", "100.00", 5, 100, 800, 3600L))))
-				.as("only the descending half was counted, and the rulebook counts both")
+				row("silazi", 1, "40.00", "100.00", 5, 0, 950, 3600L),
+				row("penje", 9, "40.00", "100.00", 5, 900, 100, 3600L))))
+				.as("only the descending half was counted, or the halves were subtracted, and the"
+						+ " rulebook counts both added together")
 				.containsExactly("penje", "silazi");
 	}
 
