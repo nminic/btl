@@ -69,6 +69,16 @@ import { WHEN_SENDING_AN_INVITATION } from '../admin/memberInvitation'
  * <p><b>Read across the two halves of the repo on purpose.</b> `test/serverConfig.test.ts`
  * already reads `deploy/` and `.env.example` from here for the same reason: the fact
  * being held lives on the other side of a boundary the gate runs over anyway.
+ *
+ * <p><b>WHAT THIS FLOOR DOES NOT MEASURE, AND IT IS A BOUNDARY AND NOT A GAP (PENDING „pod nad odbijenicama
+ * meri IMENA, a nista ne meri OBLIK tela").</b> It reads the NAMES a route declares and asks that each
+ * has a sentence. A body the server cannot read at all (a number where a text is expected, a field of
+ * the wrong type, JSON that is not JSON) never reaches a name: the framework answers it before the
+ * route runs, with a status and no reason, so the class „the body is not of the shape the route takes"
+ * is invisible to this file by construction, and it is the class that reached QA. What holds it is
+ * not here: it is what each screen SENDS (the cases that read the request body off the recording
+ * server) and what a screen says for an answer that names no reason at all. Nothing in this file
+ * should be read as saying a body a screen can send is a body a route can read.
  */
 
 /** Where the server's own words live. */
