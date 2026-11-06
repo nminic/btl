@@ -1402,14 +1402,33 @@ class PairWriteApiTest {
 				.isZero();
 		assertThat(howManyPairsOf(HE_ASKED_HER, SHE_ANSWERS, BEING_FORMED)).isOne();
 
-		/* AND HE IS TOLD, THOUGH HIS OWN FEE HAS LAPSED. The question that finds who loses a pair filters on
-		   nobody's activity, as the delete does not; a filter on the abandoned partner (the one the javadoc of
-		   `whoLosesAPairWhen` brings no argument for) would leave him with a pair taken from him in silence,
-		   and no other case lapses the partner who is left. */
-		assertThat(postFor(THE_THIRD)).containsExactly(
-				"Balkanska trkačka liga | " + PairWriteApi.THE_PAIR_IS_BROKEN + " | "
-						+ PairWriteApi.theSupersededPairReads("Probni Probic" + HE_ASKED_HER,
-								BEING_FORMED));
+		/* AND NEITHER IS TOLD, because neither can open an inbox: a member whose fee has lapsed reaches only
+		   the page for renewal (owner, 19.09.2026, „Do tada ionako niko nema i ne treba da ima nacin da ga
+		   kontaktira recimo porukom"). Both former partners lapse in this case, so a filter written into one
+		   branch of `whoLosesAPairWhen` only is seen by one of the two assertions. */
+		assertThat(postFor(THE_THIRD))
+				.as("the man's former partner has a lapsed fee and has no inbox to be told in")
+				.isEmpty();
+		assertThat(postFor(THE_FOURTH))
+				.as("the woman's former partner has a lapsed fee and has no inbox to be told in")
+				.isEmpty();
+	}
+
+	/**
+	 * THE CONTROL OF THE CASE ABOVE: ONE FORMER PARTNER LAPSED AND THE OTHER STANDS, AND ONLY THE ONE WHO
+	 * STANDS IS TOLD, ONCE, BY NAME. A filter that dropped everybody, or one that read the caller's fee
+	 * instead of the abandoned partner's, would pass the case above and fail here.
+	 */
+	@Test
+	void acceptingTellsOnlyTheFormerPartnerWhoseFeeStands() throws Exception {
+		lapsed(THE_THIRD);
+
+		assertThat(answerAs(SHE_ANSWERS, questionFrom(HE_ASKED_HER, SHE_ANSWERS), answering(true))
+				.getStatus()).isEqualTo(200);
+
+		assertThat(postFor(THE_THIRD))
+				.as("his fee has lapsed, so he is told nothing")
+				.isEmpty();
 		assertThat(postFor(THE_FOURTH)).containsExactly(
 				"Balkanska trkačka liga | " + PairWriteApi.THE_PAIR_IS_BROKEN + " | "
 						+ PairWriteApi.theSupersededPairReads("Probni Probic" + SHE_ANSWERS,
