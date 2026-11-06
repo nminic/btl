@@ -185,8 +185,9 @@ import java.util.Optional;
  * „a condition over either column would refuse EVERY pair agreed between January and
  * September". That is true of {@code membership (competitor_id, season, basis)}, which carries
  * a season and has no row for the one being formed until it goes on sale on 11 November. <b>It
- * is false of {@code competitor.active}</b>, and V22 says so in as many words: „`competitor.
- * active` (V7) is one boolean with no season in it. It answers „is he a member NOW"." Two
+ * is false of whether he is active NOW</b>, which V22 said of the flag in as many words: „`competitor.
+ * active` (V7) is one boolean with no season in it. It answers „is he a member NOW"." Since AF-1 that
+ * question is {@link AMemberIsActive}, asked of the seasons that make him active at this moment. Two
  * columns were read as one fact, the wrong half of the sentence was carried over to the other,
  * and a whole rule was derived from it. What the review then measured is what that cost: a
  * member whose partner stopped paying was refused a new pair FROM BOTH DIRECTIONS, over a pair
@@ -424,7 +425,9 @@ class PairWriteApi {
 	ResponseEntity<?> invite(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			WhatWasSent<Asked> sent) throws IOException {
 
-		Long me = readers.activeMember(asking).orElse(null);
+		/* The clock is read once, for the door and for everything the invitation asks after it. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		Long me = readers.activeMember(asking, now).orElse(null);
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 calls the ordinary case for a moderator
 		   who does not race, OR A MEMBER WHOSE FEE DOES NOT STAND: pairs are on the list PDL P8
@@ -442,12 +445,12 @@ class PairWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		return inOneTransaction.execute(committing -> ask(me, typed.memberNumber().strip()));
+		return inOneTransaction.execute(committing -> ask(me, typed.memberNumber().strip(), now));
 	}
 
-	private ResponseEntity<?> ask(long me, String memberNumber) {
+	private ResponseEntity<?> ask(long me, String memberNumber, ZonedDateTime now) {
 		Half mine = himself(me);
-		Optional<Half> other = halfNumbered(memberNumber);
+		Optional<Half> other = halfNumbered(memberNumber, now);
 
 		/* THREE PEOPLE GET THIS ONE ANSWER, AND THAT IS THE POINT OF IT. Nobody of that
 		   number; a number whose member has not renewed; and himself. None of them is a form
@@ -481,7 +484,7 @@ class PairWriteApi {
 			return no(HttpStatus.CONFLICT, A_QUESTION_ALREADY_STANDS);
 		}
 
-		if (eitherHoldsAPairIn(seasonBeingFormed(), me, other.get().id())) {
+		if (eitherHoldsAPairIn(seasonBeingFormed(now), me, other.get().id(), now)) {
 			return no(HttpStatus.CONFLICT, A_PAIR_ALREADY_HOLDS);
 		}
 
@@ -557,8 +560,10 @@ class PairWriteApi {
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER OR A MEMBER WHOSE FEE DOES NOT STAND, the question
 		   `invite` opens with, and for the same reason: „Odbij" is an act about a pair as much as
-		   „Prihvati" is, and pairs are on the list PDL P8 gives (10.10.2026, „parove"). */
-		Long me = readers.activeMember(asking).orElse(null);
+		   „Prihvati" is, and pairs are on the list PDL P8 gives (10.10.2026, „parove"). The clock is
+		   read once, here, for the door and for the answer. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		Long me = readers.activeMember(asking, now).orElse(null);
 
 		if (me == null) {
 			throw nothingIsHere();
@@ -570,10 +575,10 @@ class PairWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		return inOneTransaction.execute(committing -> settle(me, id.value(), typed.accepted()));
+		return inOneTransaction.execute(committing -> settle(me, id.value(), typed.accepted(), now));
 	}
 
-	private ResponseEntity<?> settle(long me, long question, boolean accepted) {
+	private ResponseEntity<?> settle(long me, long question, boolean accepted, ZonedDateTime now) {
 		Optional<Long> whoAsked = db.sql("select from_id from pair_invite"
 						+ " where id = ? and to_id = ?")
 				.params(question, me)
@@ -594,7 +599,7 @@ class PairWriteApi {
 			return ResponseEntity.noContent().build();
 		}
 
-		Optional<Half> asker = half(whoAsked.get());
+		Optional<Half> asker = half(whoAsked.get(), now);
 		Half answerer = himself(me);
 
 		/* AND THE ONE WHO ASKED MAY HAVE STOPPED PAYING BETWEEN THE QUESTION AND THE ANSWER,
@@ -625,7 +630,7 @@ class PairWriteApi {
 			return no(HttpStatus.CONFLICT, THE_PAIR_WOULD_NOT_BE_MIXED);
 		}
 
-		int season = seasonBeingFormed();
+		int season = seasonBeingFormed(now);
 
 		/* BOTH SIDES, AND THE SEASON BEING FORMED IS THE WHOLE OF WHAT THIS REACHES. PDL,
 		   07.09.2026: „prihvatanje izvodi OBA clana iz onoga u cemu su za tu sezonu", and the
@@ -638,7 +643,7 @@ class PairWriteApi {
 		   pair still HOLDS, which is a fact about the league and is the reader's answer, so a
 		   half who stopped paying makes it no. This one asks what rows stand in the way of an
 		   INSERT, and `racing_pair_one_man_a_season` is an index: it sees every row there is
-		   and does not read `competitor.active` at all. Filtered the same way, a stale row
+		   and does not ask whether anybody is active at all. Filtered the same way, a stale row
 		   whose other half had lapsed would survive the delete and then refuse the insert,
 		   and the member would meet a server fault instead of a pair. */
 
@@ -694,7 +699,7 @@ class PairWriteApi {
 	 * <p>Two branches and never a self-join: a row where {@code man} already stood abandons
 	 * whoever is on the OTHER side of it, and the same for {@code woman}, so each branch's own
 	 * join hands back the very name {@code {who}} needs without a second lookup. Neither branch
-	 * filters on {@code active} - the DELETE two lines below does not either, and a stale row
+	 * filters on whether anybody is active - the DELETE two lines below does not either, and a stale row
 	 * that survives a lapsed fee (V22) is exactly the row this method must still find, or the
 	 * member it named would meet silence where {@link #end} already answers with a name.
 	 *
@@ -787,7 +792,7 @@ class PairWriteApi {
 			throw nothingIsHere();
 		}
 
-		return inOneTransaction.execute(committing -> end(me, id.value()));
+		return inOneTransaction.execute(committing -> end(me, id.value(), ZonedDateTime.now(clock)));
 	}
 
 	/**
@@ -798,8 +803,8 @@ class PairWriteApi {
 	 * half reads that he still is and was never told otherwise - which is the exact shape of
 	 * the fault PDL's „javljao kroz jedna vrata a cutao kroz druga" describes.
 	 */
-	private ResponseEntity<?> end(long me, long pair) {
-		Optional<Held> his = pairHeIsHalfOf(me, pair);
+	private ResponseEntity<?> end(long me, long pair, ZonedDateTime now) {
+		Optional<Held> his = pairHeIsHalfOf(me, pair, now);
 
 		if (his.isEmpty()) {
 			throw nothingIsHere();
@@ -904,7 +909,7 @@ class PairWriteApi {
 	 * half is called and which season it runs in. The name is read HERE rather than after the
 	 * delete, because after it there is no row left to read either of them off.
 	 *
-	 * <p><b>{@code man.active and woman.active} IS {@link PairApi}'S CONDITION AND NOT A NEW
+	 * <p><b>BOTH HALVES ACTIVE ({@link AMemberIsActive}) IS {@link PairApi}'S CONDITION AND NOT A NEW
 	 * ONE</b>, for the reason {@link #eitherHoldsAPairIn} gives: nothing deletes the row when
 	 * a fee lapses, so the row outlives the pair, and a reader is where the portal turns one
 	 * into the other. A member whose partner stopped paying is not refused anything by this -
@@ -916,7 +921,7 @@ class PairWriteApi {
 	 * {@code data/derive.ts}'s {@code pairsFrom} draws the screen with - „the pairs that hold
 	 * now" - so the server ends exactly the pairs the profile offers a „Raskini" beside.
 	 */
-	private Optional<Held> pairHeIsHalfOf(long me, long pair) {
+	private Optional<Held> pairHeIsHalfOf(long me, long pair, ZonedDateTime now) {
 		return db.sql("select case when p.man_id = :me then p.woman_id else p.man_id end,"
 						+ " case when p.man_id = :me then man.first_name else woman.first_name end,"
 						+ " case when p.man_id = :me then man.last_name else woman.last_name end,"
@@ -925,11 +930,11 @@ class PairWriteApi {
 						+ " join competitor man on man.id = p.man_id"
 						+ " join competitor woman on woman.id = p.woman_id"
 						+ " where p.id = :pair and (p.man_id = :me or p.woman_id = :me)"
-						+ " and man.active and woman.active"
+						+ " and " + AMemberIsActive.of("man.id", now) + " and " + AMemberIsActive.of("woman.id", now)
 						+ " and p.season >= :running")
 				.param("me", me)
 				.param("pair", pair)
-				.param("running", SeasonClock.seasonBeingRun(ZonedDateTime.now(clock)))
+				.param("running", SeasonClock.seasonBeingRun(now))
 				.query((row, one) -> new Held(row.getLong(1),
 						row.getString(2) + " " + row.getString(3), row.getString(5), row.getInt(4)))
 				.optional();
@@ -1013,8 +1018,8 @@ class PairWriteApi {
 	 * months of the year. The portal measured that confusion on its own side on 06.09.2026 and
 	 * split them apart.
 	 */
-	private int seasonBeingFormed() {
-		return SeasonClock.transfersTakeEffect(ZonedDateTime.now(clock));
+	private static int seasonBeingFormed(ZonedDateTime now) {
+		return SeasonClock.transfersTakeEffect(now);
 	}
 
 	/**
@@ -1031,7 +1036,7 @@ class PairWriteApi {
 	 * ({@link Asking}), so there is no half answer to give: he is answered for, or he is not
 	 * there at all.
 	 *
-	 * <p><b>What it was before, and what that cost.</b> Read without {@code active}, this
+	 * <p><b>What it was before, and what that cost.</b> Read without asking whether he is active, this
 	 * route told three different stories about three people: a number nobody carries answered
 	 * 404 with an empty body, a lapsed member of the wrong gender answered 409 and named his
 	 * gender, and a lapsed member of the right gender answered 201 and named HIM. Member
@@ -1040,9 +1045,9 @@ class PairWriteApi {
 	 * such a member „nije na spisku takmicara uopste", so any other answer that names him says
 	 * it by the DIFFERENCE between two answers rather than by any field in either.
 	 */
-	private Optional<Half> halfNumbered(String memberNumber) {
+	private Optional<Half> halfNumbered(String memberNumber, ZonedDateTime now) {
 		return db.sql("select id, gender, first_name, last_name from competitor"
-						+ " where member_number = ? and active")
+						+ " where member_number = ? and " + AMemberIsActive.of("competitor.id", now))
 				.param(memberNumber)
 				.query((row, one) -> new Half(row.getLong(1), row.getString(2),
 						row.getString(3) + " " + row.getString(4)))
@@ -1064,9 +1069,9 @@ class PairWriteApi {
 	 * {@link ActiveMemberOrAdministration#activeMember} before his body is read, so this asks
 	 * the other side and {@link #himself} reads the caller.
 	 */
-	private Optional<Half> half(long who) {
+	private Optional<Half> half(long who, ZonedDateTime now) {
 		return db.sql("select id, gender, first_name, last_name from competitor"
-						+ " where id = ? and active")
+						+ " where id = ? and " + AMemberIsActive.of("competitor.id", now))
 				.param(who)
 				.query((row, one) -> new Half(row.getLong(1), row.getString(2),
 						row.getString(3) + " " + row.getString(4)))
@@ -1076,7 +1081,7 @@ class PairWriteApi {
 	/**
 	 * THE CALLER HIMSELF, whom the route has already let through as a member whose fee stands.
 	 *
-	 * <p>{@code single()} and no {@code active} here, because that question was asked once,
+	 * <p>{@code single()} and no question about being active here, because that question was asked once,
 	 * first, by {@link ActiveMemberOrAdministration#activeMember}, and the id came out of it: a
 	 * second copy of the condition here would be a branch nothing reaches, which the coverage gate
 	 * refuses and the next reader would delete without knowing why it was there.
@@ -1103,9 +1108,9 @@ class PairWriteApi {
 	 *
 	 * <p>„Par se raskida kad jedna strana ne produzi clanarinu" (owner, 11.08.2026, „Ne
 	 * postoji par onda, raskida se"), and nothing deletes the row when that happens: a fee
-	 * that lapses lowers {@code competitor.active} and removes nobody. So the row outlives
+	 * that lapses makes him inactive ({@link AMemberIsActive}) and removes nobody. So the row outlives
 	 * the pair, and {@link PairApi} is where the portal already turns one into the other,
-	 * with {@code where man.active and woman.active}.
+	 * by asking both halves whether they are active.
 	 *
 	 * <p><b>Counting the raw row instead was a measured fault and not a nicety.</b> A member
 	 * whose partner stopped paying would be told {@code A_PAIR_ALREADY_HOLDS} from BOTH
@@ -1122,11 +1127,12 @@ class PairWriteApi {
 	 * half and asserts that the pair leaves the public answer AND stops standing in the way
 	 * here, so a change to either side alone turns it red.
 	 */
-	private boolean eitherHoldsAPairIn(int season, long one, long other) {
+	private boolean eitherHoldsAPairIn(int season, long one, long other, ZonedDateTime now) {
 		return Boolean.TRUE.equals(db.sql("select exists(select 1 from racing_pair p"
 						+ " join competitor man on man.id = p.man_id"
 						+ " join competitor woman on woman.id = p.woman_id"
-						+ " where p.season = ? and man.active and woman.active"
+						+ " where p.season = ? and " + AMemberIsActive.of("man.id", now)
+						+ " and " + AMemberIsActive.of("woman.id", now)
 						+ " and (p.man_id in (?, ?) or p.woman_id in (?, ?)))")
 				.params(season, one, other, one, other)
 				.query(Boolean.class)

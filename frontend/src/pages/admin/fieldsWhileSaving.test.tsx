@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, configure, fireEvent, getConfig, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
@@ -58,6 +58,15 @@ import { touchEveryRace } from '../../test/touchEveryRace'
  * field is made one is the renderer's and not the editor's (`forms/FormRenderer.test.tsx`, „is locked
  * whatever kind of control it is drawn as").
  */
+
+/* **EVERY WAIT IN THIS FILE IS GIVEN LESS TIME THAN A CASE HAS** (review of PR 489, medium, and the same
+   measure `saveWhileSaving.test.tsx` took after PR 492). `test/setup.ts` gives `waitFor` the same
+   twenty seconds a case has, so a write that a hold should have stopped and never came was waited for
+   until the clock of the case ended the case (`Test timed out in 20000ms`), and six of the seven cases of
+   „what holding them closes" were told by that clock and not by their sentence: a series of mutations
+   that does not tell the two apart counts them as caught. Set here, and so for this file alone: every
+   file has a configuration of its own. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 const THE_LIST = '/sr/administracija/dogadjaji'
 
@@ -546,8 +555,15 @@ describe('an event whose save is out holds its fields', () => {
           user.type(must(screen.getAllByLabelText(/^Dužina/)[1], 'the length of the second'), '9'),
       },
       {
-        what: 'a digit is typed into the day of the second race',
-        tried: (user) => user.type(screen.getByLabelText('Datum, 2. trka'), '1'),
+        /* Typed over a whole day and not added to one: the day keeps eight digits (`maskDate`), so a
+           digit typed after a day that is complete changes nothing whether the hold is there or not,
+           and the case told nothing about it (review of PR 489, medium). */
+        what: 'a different day is typed over the day of the second race',
+        tried: async (user) => {
+          const day = screen.getByLabelText('Datum, 2. trka')
+
+          await user.type(day, '10012027', { initialSelectionStart: 0, initialSelectionEnd: 10 })
+        },
       },
       {
         what: 'the kind of the second race is changed to one that asks for more',
@@ -778,4 +794,13 @@ describe('what is not held', () => {
     },
     SLOW,
   )
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    /* The floor under the paragraph above `configure`: take that line away and every wait is `SLOW`
+       again (`test/setup.ts`), the same as a case, and a refusal that is waited for is told by a clock
+       and not by an assertion. Asked of the number that decides and not of the text of the file. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
 })

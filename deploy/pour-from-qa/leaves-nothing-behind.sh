@@ -76,8 +76,9 @@
 # the cleanup also runs after `fail` and after a plain exit, and a signal during a way out that no
 # signal began is the same fault.
 #
-# WHAT THE TERMINAL IS TOLD when a signal ends the pour: one line, naming the signal and what is
-# true afterwards (the work directory is being removed, and which two states production can be in).
+# WHAT THE TERMINAL IS TOLD when a signal ends the pour, on the terminal's own standard error
+# (descriptor 7, kept for this, so that a caller redirecting the standard error of a step does not
+# swallow it): a message naming the signal and what is true afterwards (the work directory is being removed, and which two states production can be in).
 # The status is 128 plus the signal number, as before.
 #
 # WHAT NO TRAP CAN DO is catch SIGKILL. What survives it is the work directory, which is in memory
@@ -137,9 +138,17 @@ cleanup() {
 stopped_by() {
   printf 'STOPPED: the pour was ended by %s. The work files in memory are being removed. If this came during\n'\
 'step 9, production holds either all of the pour or none of it, and `sh pour-from-qa.sh --check` says\n'\
-'which: it refuses a database that holds rows its migrations did not leave.\n' "$1" >&2
+'which: it refuses a database that holds rows its migrations did not leave.\n' "$1" >&"$TERMINAL"
   exit "$2"
 }
+
+# The terminal's own standard error, kept on a descriptor of its own. A caller that redirects the
+# standard error of a step (`step docker exec ... 2> file`) redirects it for as long as `step`
+# runs, and a trap that fires while `step` waits writes through THAT redirection, so a message
+# sent to descriptor 2 would end in the caller's file and be removed with the work directory.
+# Measured in dash on 06.11.2026. Descriptor 7 is not used by anything else in this tool.
+TERMINAL=7
+exec 7>&2
 
 trap cleanup EXIT
 trap 'stopped_by HUP 129' HUP

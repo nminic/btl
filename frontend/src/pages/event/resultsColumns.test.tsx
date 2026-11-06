@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react'
 import { clearResourceCache, loadResource } from '../../data/client'
-import type { Result } from '../../data/types'
+import type { Race, Result } from '../../data/types'
 import { formatNumber, formatPoints } from '../../i18n/format'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
@@ -34,8 +34,8 @@ const EVENT = 'stazama-branka-copica-2016'
 
 const HEADS = ['Takmičar', 'Trka', 'Dužina (km)', 'Uspon (m)', 'Spust (m)', 'Vreme', 'Bodovi']
 
-async function openResults(): Promise<HTMLElement> {
-  renderAt(`/sr/kalendar/${EVENT}`)
+async function openResults(event = EVENT): Promise<HTMLElement> {
+  renderAt(`/sr/kalendar/${event}`)
 
   return screen.findByRole('table', { name: 'Rezultati članova' })
 }
@@ -125,4 +125,46 @@ describe('the table of results on an event', () => {
       server.stop()
     }
   }, SLOW)
+
+  /* The climb and the fall of a RUN, which are not always those of its race (review of PR 536,
+     medium): on the event above every run has the figures of its race, so a column read off the
+     race and a column read off the run are one number and the case above passes on either. These
+     two events are the ones of the sample where the runs climbed and fell other metres than the
+     race is measured at, so a column read from the race is a different number in some row. */
+  it.each(['beli-kros-2016', 'tls-jastrebac-2021'])(
+    'reads the climb and the fall off the run and not off its race, on %s',
+    async (event) => {
+      const results = (await loadResource<Result[]>('results')).filter((one) => one.eventSlug === event)
+      const races = await loadResource<Race[]>('races')
+      const raceOf = (run: Result) => must(races.find((one) => one.id === run.raceId), 'the race of the run')
+
+      /* The premise, asked of the files the page reads: some run of this event climbed or fell other
+         metres than its race. Without it the case measures nothing. `tls-jastrebac-2021` differs in
+         the fall only and `beli-kros-2016` in both, so the climb is held by the second and the fall
+         by both. */
+      expect(
+        results.some(
+          (one) => one.ascentM !== raceOf(one).ascentM || one.descentM !== raceOf(one).descentM,
+        ),
+      ).toBe(true)
+
+      const table = await openResults(event)
+      const rows = within(table).getAllByRole('row').slice(1)
+
+      expect(rows).toHaveLength(results.length)
+
+      /* The two figures of one run, together, so a figure of another run is a pair nobody ran. */
+      const ran = results.map(
+        (one) => `${formatNumber(one.ascentM, 'sr')}|${formatNumber(one.descentM, 'sr')}`,
+      )
+      const said = rows.map((row) => {
+        const cells = within(row).getAllByRole('cell')
+
+        return `${String(cells[3]?.textContent)}|${String(cells[4]?.textContent)}`
+      })
+
+      expect(said.sort()).toEqual(ran.sort())
+    },
+    SLOW,
+  )
 })

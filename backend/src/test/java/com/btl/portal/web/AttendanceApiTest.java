@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.token.SecretToken;
@@ -217,7 +218,7 @@ class AttendanceApiTest {
 
 		account(LAPSED_READER, "competitor");
 		belongsTo(LAPSED_READER, LAPSED);
-		exemptFor(LAPSED, 2027);
+		exemptFor(LAPSED, 2028);
 
 		long unpaid = neverPaid("Nikad", "Placeno");
 		account(NEVER_PAID, "competitor");
@@ -329,8 +330,15 @@ class AttendanceApiTest {
 						+ " (select id from place where rank = 1), 2027, ?, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, first, last, gender, feeStanding, String.format("%016x", ++issued))
+				.params(number, first, last, gender, !feeStanding, String.format("%016x", ++issued))
 				.update();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
+		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
+		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		if (feeStanding) {
+			HeldOn.activeAt(db, number, NOW.atZone(SeasonClock.ZONE));
+		}
 	}
 
 	private void attending(String eventSlug, String memberNumber) {
@@ -430,41 +438,43 @@ class AttendanceApiTest {
 	}
 
 	/**
-	 * A MEMBER WHOSE FEE HAS LAPSED IS TOLD THE LIST IS NOT THERE, AND A ROW OF MEMBERSHIP DOES
-	 * NOT MAKE HIM ACTIVE.
+	 * A MEMBER WHOSE FEE HAS LAPSED IS TOLD THE LIST IS NOT THERE, AND A ROW OF A SEASON THAT DOES NOT
+	 * COUNT TODAY DOES NOT MAKE HIM ACTIVE.
 	 *
 	 * <p>PDL, 03.10.2026, recording the owner's choice between offered outcomes: „spisak
 	 * najavljenih vide aktivni članovi (važeća članarina)". Refused as an address that maps
-	 * nothing is refused (ADL A8). The anchor is a member in good standing who holds no
-	 * membership row at all and IS served, so what tells the two apart is
-	 * {@code competitor.active} and not whether a season's row exists.
+	 * nothing is refused (ADL A8). Since AF-1 (PDL 13.09.2026, „aktivan je onaj ko ima zapis za tekuću
+	 * sezonu, a u prelaznom roku i onaj ko ga ima za narednu") the lapsed reader holds a row of 2028,
+	 * a season that does not count on this file's day, and his flag says active; the anchor holds the
+	 * season that counts and his flag says inactive. So what tells the two apart is the season of the
+	 * row, and neither the flag nor whether some row exists.
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedIsToldTheListIsNotThere() throws Exception {
-		assertThat(db.sql("select c.active, (select count(*) from membership m"
+		assertThat(db.sql("select c.active, (select string_agg(m.season::text, ',') from membership m"
 								+ " where m.competitor_id = c.id) from competitor c"
 								+ " where c.member_number = ?")
 						.param(LAPSED)
-						.query((row, one) -> !row.getBoolean(1) && row.getInt(2) == 1).single())
-				.as("the lapsed reader is not lapsed, or holds no membership row, so this case cannot"
-						+ " tell the flag from the row")
-				.isTrue();
-		assertThat(db.sql("select c.active, (select count(*) from membership m"
+						.query((row, one) -> row.getBoolean(1) + " " + row.getString(2)).single())
+				.as("the lapsed reader does not carry the flag true and a row of 2028 alone, so this case"
+						+ " cannot tell the flag, or a row of another season, from the season that counts")
+				.isEqualTo("true 2028");
+		assertThat(db.sql("select c.active, (select string_agg(m.season::text, ',') from membership m"
 								+ " where m.competitor_id = c.id) from competitor c"
 								+ " where c.member_number = ?")
 						.param(READING_MEMBER)
-						.query((row, one) -> row.getBoolean(1) && row.getInt(2) == 0).single())
-				.as("the reading member is not active, or holds a membership row, so the anchor below"
-						+ " cannot tell the flag from the row")
-				.isTrue();
+						.query((row, one) -> row.getBoolean(1) + " " + row.getString(2)).single())
+				.as("the reading member does not carry the flag false and a row of 2027, so the anchor"
+						+ " below cannot tell the flag from the row")
+				.isEqualTo("false 2027");
 
 		assertThat(statusFor(LAPSED_READER))
 				.as("a member whose fee has lapsed was served who is going, and the owner decided on"
 						+ " 03.10.2026 that the list is for active members and the administration")
 				.isEqualTo(404);
 		assertThat(statusFor(A_MEMBER))
-				.as("a member in good standing with no membership row was refused, so the refusal"
-						+ " above is about a row and not about the fee")
+				.as("a member in good standing whose flag says inactive was refused, so the refusal"
+						+ " above is about the flag and not about the season")
 				.isEqualTo(200);
 	}
 
@@ -640,9 +650,10 @@ class AttendanceApiTest {
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedIsNotAmongThoseGoing() throws Exception {
-		assertThat(db.sql("select active from competitor where member_number = ?").param(LAPSED)
+		assertThat(db.sql("select exists(select 1 from membership m join competitor c on c.id = m.competitor_id"
+						+ " where c.member_number = ? and m.season = 2027)").param(LAPSED)
 				.query(Boolean.class).single())
-				.as("the fixture's lapsed member is not actually lapsed, so his absence below would"
+				.as("the fixture's lapsed member holds the season that counts, so his absence below would"
 						+ " not be about his membership")
 				.isFalse();
 

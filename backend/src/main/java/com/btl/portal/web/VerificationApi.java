@@ -162,7 +162,7 @@ import java.util.List;
  * There is no such subtraction to make here: nothing in this answer is public, the only
  * reader is the one moderator holding that tab's tick, and the payments tab exists
  * precisely for people whose fee is not recorded (PDL P28a, 22.09.2026, „Verifikacija ima pet
- * redova", „Uplate i aktivacija članova"). Filtering on {@code competitor.active} would empty the
+ * redova", „Uplate i aktivacija članova"). Filtering on whether he is active ({@link AMemberIsActive}) would empty the
  * tab this queue was built for. This is written down because it is the fifth place the same
  * question has been asked and the first place the answer is the other way round.
  *

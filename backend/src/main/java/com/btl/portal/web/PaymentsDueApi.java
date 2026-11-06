@@ -51,10 +51,10 @@ import java.util.stream.Collectors;
  * and it must carry the SEASON: without it, last year's member who has not renewed has „a row"
  * and disappears from the screen, which in October 2027 is most of the list.
  *
- * <p>{@code competitor.active} is the other home of nearly the same fact and this route does
- * not read it. It answers „is he a member NOW" with no season on it, {@link PaymentApi} sets it
- * true beside writing the membership, and <b>nothing in the whole of {@code src/main} ever sets
- * it back to false</b>. So the two cannot be told apart on today's rows and would come apart on
+ * <p>{@code competitor.active} was the other home of nearly the same fact and this route never
+ * read it. It answered „is he a member NOW" with no season on it, {@link PaymentApi} set it
+ * true beside writing the membership, and <b>nothing at a New Year ever set it back to false</b>.
+ * Since AF-1 nothing reads it at all ({@link AMemberIsActive}). So the two cannot be told apart on today's rows and would come apart on
  * the first row where they disagree. The question here is about a season, so the table with the
  * season in it decides, and {@code PaymentsDueApiTest} holds that with an account whose two
  * homes deliberately disagree.

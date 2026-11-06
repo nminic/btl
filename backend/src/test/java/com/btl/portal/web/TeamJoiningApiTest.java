@@ -1000,20 +1000,20 @@ class TeamJoiningApiTest {
 						+ " (select id from place where rank = 1), 2027, ?, "
 						+ " ?, '', ?, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
-				.params(number, "Probić" + number, active, String.format("%016x", ++issued), hidden)
+				.params(number, "Probić" + number, !active, String.format("%016x", ++issued), hidden)
 				.update();
 
 		/* A MEMBER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Entering a team
-		   asks for a membership of the season on sale and not for `competitor.active` (PDL
-		   30.10.2026), so an active member with no row is a member who has not paid it. The member
-		   who holds only ONE of the two is made by `holdsOnly`; a member whose fee has lapsed
-		   (`active` false) holds neither. */
+		   asks for a membership of the season on sale (PDL 30.10.2026), and since AF-1 being active is a
+		   season that counts. The member who holds only ONE of the two is made by `holdsOnly`; a member
+		   whose fee has lapsed holds neither. His flag is written AGAINST the seasons on purpose (above):
+		   since AF-1 nothing reads it. */
 		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
 						+ " select c.id, s.season, 'feeExempt', 'Probni Probic',"
 						+ " timestamptz '2026-09-01 10:00:00+00'"
 						+ " from competitor c cross join (values (2027), (2028)) as s (season)"
-						+ " where c.member_number = ? and c.active")
-				.param(number)
+						+ " where c.member_number = ? and ?")
+				.params(number, active)
 				.update();
 	}
 

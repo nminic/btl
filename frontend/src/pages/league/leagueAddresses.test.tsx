@@ -399,15 +399,29 @@ describe('a link in the words of an organiser', () => {
     )
   }
 
+  /** Every property a rule declares, by name, as the parser read it. */
+  const declaredBy = (rule: CSSStyleRule): string[] =>
+    Array.from({ length: rule.style.length }, (_, index) => rule.style.item(index))
+
   /** The rules of one sheet that say something about the decoration of text other than that it is
-   *  underlined, and whose selector reaches this element. */
+   *  underlined, and whose selector reaches this element.
+   *
+   *  **Every property that begins with `text-decoration`, and `all`** (review of PR 480, medium): the
+   *  short form alone left `text-decoration-line: none`, `text-decoration-color: transparent` and
+   *  `all: unset` on exactly these links unseen, three more ways of taking away the only thing that
+   *  tells the link from the words around it. A declaration that says `underline` keeps the line and
+   *  is not one of them; `all` is, whatever it says, because it resets the line along with
+   *  everything else. */
   function takingTheLineAway(link: Element, css: string, named: string): string[] {
     return everyRule(css, named)
-      .filter((rule) => {
-        const said = rule.style.getPropertyValue('text-decoration')
-
-        return said !== '' && !said.includes('underline')
-      })
+      .filter((rule) =>
+        declaredBy(rule).some(
+          (name) =>
+            name === 'all' ||
+            (name.startsWith('text-decoration') &&
+              !rule.style.getPropertyValue(name).includes('underline')),
+        ),
+      )
       .filter((rule) => link.matches(rule.selectorText))
       .map((rule) => `${named}: ${rule.selectorText}`)
   }
@@ -447,9 +461,23 @@ describe('a link in the words of an organiser', () => {
       takingTheLineAway(link, '.leagues__item .profile__text a { text-decoration: none; }', 'one'),
     ).toHaveLength(1)
     expect(takingTheLineAway(link, 'a { text-decoration: none; }', 'one')).toHaveLength(1)
+    /* The other ways of saying it: the long forms of the same property, and `all`. */
+    for (const declaration of [
+      'text-decoration-line: none',
+      'text-decoration-color: transparent',
+      'all: unset',
+    ]) {
+      expect(
+        takingTheLineAway(link, `.leagues__item .profile__text a { ${declaration}; }`, 'one'),
+        declaration,
+      ).toHaveLength(1)
+    }
     expect(takingTheLineAway(link, '.shell__link { text-decoration: none; }', 'one')).toEqual([])
     expect(
       takingTheLineAway(link, '.leagues__item .profile__text a { text-decoration: underline; }', 'one'),
+    ).toEqual([])
+    expect(
+      takingTheLineAway(link, '.leagues__item .profile__text a { text-decoration-line: underline; }', 'one'),
     ).toEqual([])
   }, SLOW)
 })

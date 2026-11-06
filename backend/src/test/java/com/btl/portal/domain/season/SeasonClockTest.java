@@ -1131,4 +1131,63 @@ class SeasonClockTest {
 				.as("on the first morning of the league the year before it was open as the year just ended")
 				.containsExactly(2027);
 	}
+
+	/** A moment in the league's own zone, read back in UTC so that a rule reading the zone it is handed is caught. */
+	private static ZonedDateTime belgrade(int year, int month, int day, int hour, int minute, int second, int nano) {
+		return ZonedDateTime.of(year, month, day, hour, minute, second, nano, SeasonClock.ZONE).withZoneSameInstant(UTC);
+	}
+
+	/**
+	 * THE SEASONS A ROW MAKES A MEMBER ACTIVE IN, ACROSS A WHOLE YEAR: the running season alone outside the window,
+	 * the next one with it from 11 November, the season just ended with the new one from midnight to 16:00 on
+	 * 1 January, and the new one alone from 16:00:00.
+	 *
+	 * <p>Every boundary is asked on both of its sides, a nanosecond apart where the boundary is an instant, and the
+	 * two moments that must NOT move the answer, midnight and 10:00 on 1 January, are asked on both of theirs too
+	 * (PDL, 06.11.2026: „ostaje aktivan 1. januara do 16:00 [...] U 16:00:00 postaje neaktivan").
+	 */
+	@Test
+	void theSeasonsThatMakeAMemberActiveMoveAt11NovemberAndAt16OnNewYearsDayAndNowhereElse() {
+		assertThat(SeasonClock.seasonsAMemberIsActiveIn(belgrade(2027, 6, 15, 12, 0, 0, 0)))
+				.as("in June only the season being run makes him active")
+				.isEqualTo(new SeasonClock.ActiveSeasons(2027, 2027));
+		assertThat(SeasonClock.seasonsAMemberIsActiveIn(belgrade(2027, 11, 10, 23, 59, 59, 999_999_999)))
+				.as("the last instant of 10 November, before the window opens")
+				.isEqualTo(new SeasonClock.ActiveSeasons(2027, 2027));
+		assertThat(SeasonClock.seasonsAMemberIsActiveIn(belgrade(2027, 11, 11, 0, 0, 0, 0)))
+				.as("11 November, the window open: the next season makes him active as well")
+				.isEqualTo(new SeasonClock.ActiveSeasons(2027, 2028));
+		assertThat(SeasonClock.seasonsAMemberIsActiveIn(belgrade(2027, 12, 31, 23, 59, 59, 999_999_999)))
+				.as("the last instant of the year")
+				.isEqualTo(new SeasonClock.ActiveSeasons(2027, 2028));
+		assertThat(SeasonClock.seasonsAMemberIsActiveIn(belgrade(2028, 1, 1, 0, 0, 0, 0)))
+				.as("midnight on 1 January does not take the season just ended away")
+				.isEqualTo(new SeasonClock.ActiveSeasons(2027, 2028));
+		assertThat(SeasonClock.seasonsAMemberIsActiveIn(belgrade(2028, 1, 1, 9, 59, 59, 999_999_999)))
+				.isEqualTo(new SeasonClock.ActiveSeasons(2027, 2028));
+		assertThat(SeasonClock.seasonsAMemberIsActiveIn(belgrade(2028, 1, 1, 10, 0, 0, 0)))
+				.as("10:00 on 1 January ends the reports and not the membership")
+				.isEqualTo(new SeasonClock.ActiveSeasons(2027, 2028));
+		assertThat(SeasonClock.seasonsAMemberIsActiveIn(belgrade(2028, 1, 1, 15, 59, 59, 999_999_999)))
+				.as("the last instant before the tables freeze")
+				.isEqualTo(new SeasonClock.ActiveSeasons(2027, 2028));
+		assertThat(SeasonClock.seasonsAMemberIsActiveIn(belgrade(2028, 1, 1, 16, 0, 0, 0)))
+				.as("16:00:00 on 1 January: the season just ended no longer makes him active")
+				.isEqualTo(new SeasonClock.ActiveSeasons(2028, 2028));
+	}
+
+	/**
+	 * BEFORE THE LEAGUE HAS A SEASON, ONLY THE FIRST ONE COUNTS, from its first sale on 15 October 2026 and before it
+	 * (PDL P2: there is no season 2026, so nothing makes anybody active for it).
+	 */
+	@Test
+	void beforeTheFirstSeasonOnlyTheFirstSeasonMakesAMemberActive() {
+		assertThat(SeasonClock.seasonsAMemberIsActiveIn(belgrade(2026, 10, 14, 12, 0, 0, 0)))
+				.isEqualTo(new SeasonClock.ActiveSeasons(2027, 2027));
+		assertThat(SeasonClock.seasonsAMemberIsActiveIn(belgrade(2026, 11, 6, 12, 0, 0, 0)))
+				.isEqualTo(new SeasonClock.ActiveSeasons(2027, 2027));
+		assertThat(SeasonClock.seasonsAMemberIsActiveIn(belgrade(2027, 1, 1, 12, 0, 0, 0)))
+				.as("1 January 2027 before 16:00: there is no season 2026 to stay active in")
+				.isEqualTo(new SeasonClock.ActiveSeasons(2027, 2027));
+	}
 }

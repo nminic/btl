@@ -116,6 +116,9 @@ class MembersApiTest {
 		HeldOn.season(db, both, 2027, "payment");
 		HeldOn.season(db, onlyThePast, 2027, "payment");
 		HeldOn.season(db, onlyTheNext, 2028, "feeExempt");
+		/* SINCE AF-1 HE IS NOT LAPSED ON THIS FILE'S DAY: in the window of 2027 a row of 2027 is a season
+		   that counts (PDL 13.09.2026), so a member who holds one is active whatever his flag says. The row
+		   stays as it was because the cases about the basis of the season on sale read it. */
 		HeldOn.season(db, lapsedWithARow, 2027, "balance");
 
 		account(THE_SUPERADMIN, "superadmin", null);
@@ -138,7 +141,9 @@ class MembersApiTest {
 						+ " health_statement_at) values (?, ?, ?, ?, date '1980-05-05',"
 						+ " (select id from place where rank = 1), 2027, ?, ?, '', ?, 'none',"
 						+ " 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, first, last, gender, active, referralCode, hidden)
+				/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it, and the
+				   seasons below are what make each of them active or not. */
+				.params(number, first, last, gender, !active, referralCode, hidden)
 				.query(Long.class).single();
 	}
 
@@ -298,7 +303,7 @@ class MembersApiTest {
 	}
 
 	@Test
-	void eachRowSaysWhetherHisFeeStandsAsTheFlagEveryOtherDoorReadsSaysIt() throws Exception {
+	void eachRowSaysWhetherHisFeeStandsAsEveryOtherDoorAsksIt() throws Exception {
 		Map<String, Boolean> active = new LinkedHashMap<>();
 
 		for (JsonNode one : members()) {
@@ -306,7 +311,7 @@ class MembersApiTest {
 		}
 
 		assertThat(active).containsExactly(Map.entry("000002", true), Map.entry("000005", true),
-				Map.entry("000007", true), Map.entry("000009", false), Map.entry("000011", false));
+				Map.entry("000007", true), Map.entry("000009", true), Map.entry("000011", false));
 	}
 
 	@Test
@@ -469,9 +474,10 @@ class MembersApiTest {
 	@Test
 	void thePublicListStaysTheActiveMembersEvenToTheAdministration() throws Exception {
 		/* „javni spisak ostaje samo aktivni" (PDL P8, 18.10.2026): this route is where the lapsed
-		   arrive, and the public list does not gain them for the superadmin. */
+		   arrive, and the public list does not gain them for the superadmin. 000009 holds 2027, which counts
+		   in the window of 2027, so since AF-1 he is on it; 000011 holds nothing and is not. */
 		assertThat(numbersOf(answerFor("/api/competitors", THE_SUPERADMIN)))
-				.containsExactly("000002", "000005", "000007");
+				.containsExactly("000002", "000005", "000007", "000009");
 	}
 
 	static final class AClockTheCaseMoves extends Clock {

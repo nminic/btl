@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -247,11 +248,15 @@ class MeWriteApiTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, "
+						+ " (select id from place where rank = 1), 2027, false, "
 						+ " ?, ?, ?, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, first, last, String.format("%016x", ++issued), bio, hidden)
 				.update();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written false on purpose: since AF-1
+		   nothing reads it, and a reader that did would turn him away. */
+		HeldOn.activeAt(db, number, ZonedDateTime.now());
 	}
 
 	/** An account whose NAME is nobody's member name, for the reason at the head of this file. */
@@ -2880,7 +2885,9 @@ class MeWriteApiTest {
 		/** No number (V16), not active, and no row of membership. */
 		NEVER_PAID,
 
-		/** A number, not active, and a row of membership for 2027 given free of the fee. */
+		/** A number, not active, a row of membership for 2028 given free of the fee (a season that does
+		 *  not count today), and his flag says true, so neither a row of another season nor the flag is
+		 *  what tells him apart. */
 		LAPSED_WITH_A_ROW,
 
 		/** A number, not active, and no row at all: the one a rule that read the row would take for NEVER_PAID. */
@@ -2904,15 +2911,17 @@ class MeWriteApiTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Neplacen', 'Neplacenic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, ?,"
+						+ " (select id from place where rank = 1), 2027, ?, ?,"
 						+ " 'Tekst koji stoji.', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00') returning id")
-				.params(kind == NotPaid.NEVER_PAID ? null : "000900", String.format("%016x", ++issued))
+				.params(kind == NotPaid.NEVER_PAID ? null : "000900",
+						/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it. */
+						kind != NotPaid.NEVER_PAID, String.format("%016x", ++issued))
 				.query(Long.class).single();
 
 		if (kind == NotPaid.LAPSED_WITH_A_ROW) {
 			db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
-							+ " values (?, 2027, 'feeExempt', 'Probni Probic',"
+							+ " values (?, 2028, 'feeExempt', 'Probni Probic',"
 							+ " timestamptz '2026-10-20 10:00:00+00')")
 					.param(id).update();
 		}

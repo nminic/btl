@@ -388,8 +388,10 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 	/**
 	 * SIX CALLERS, FOUR MEMBERS WHO STAND BESIDE THEM, AND A CALENDAR.
 	 *
-	 * <p>The member whose fee lapsed holds a {@code membership} row for 2028, given free of the fee:
-	 * a gate that read „he has a membership row" would let him through. The other member whose fee
+	 * <p>The member whose fee lapsed holds a {@code membership} row for 2029, given free of the fee, a
+	 * season that does not count on this file's day (2027 and, in the window, 2028 do): a gate that read
+	 * „he has a membership row" would let him through. Every flag is written AGAINST the seasons (see
+	 * {@link #member}), so a gate that read the flag would answer every case the other way. The other member whose fee
 	 * lapsed holds a number and no row at all, which is the one a gate that told him from somebody
 	 * who never paid BY A ROW would take for somebody who never paid. The moderator's own member
 	 * has not paid either, and the moderator holds no right: being the administration opens nothing a
@@ -404,7 +406,7 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 		memberOf.put(A_MODERATOR_WHO_HAS_NOT_PAID, member("993070", "M", false));
 
 		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
-						+ " values (?, 2028, 'feeExempt', 'Probni Probic',"
+						+ " values (?, 2029, 'feeExempt', 'Probni Probic',"
 						+ " timestamptz '2027-11-16 10:00:00+00')")
 				.param(memberOf.get(LAPSED)).update();
 
@@ -1004,8 +1006,10 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 				.query(Long.class).single();
 	}
 
+	/** Whether he holds a season that counts on this file's day: 2027, and in the window 2028. */
 	private boolean activeOf(long competitor) {
-		return db.sql("select active from competitor where id = ?").param(competitor)
+		return db.sql("select exists(select 1 from membership m where m.competitor_id = ?"
+						+ " and m.season in (2027, 2028))").param(competitor)
 				.query(Boolean.class).single();
 	}
 
@@ -1035,20 +1039,22 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 						+ " (select id from place where rank = 1), 2027, ?, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, gender, active, String.format("8b%014x", ++issued))
+				/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it. */
+				.params(number, gender, !active, String.format("8b%014x", ++issued))
 				.query(Long.class).single();
 
 		/* A MEMBER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Entering a
-		   team asks for a membership of the season on sale and not for `competitor.active` (PDL
-		   30.10.2026), so an active member with no row is a member who has not paid it. The one
-		   who is not active holds none here, and `LAPSED` is given his own row by the fixture. */
-		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
-						+ " select c.id, s.season, 'feeExempt', 'Probni Probic',"
-						+ " timestamptz '2026-09-01 10:00:00+00'"
-						+ " from competitor c cross join (values (2027), (2028)) as s (season)"
-						+ " where c.id = ? and c.active")
-				.param(id)
-				.update();
+		   team asks for a membership of the season on sale (PDL 30.10.2026), and since AF-1 being active
+		   is a season that counts. The one who is not active holds none here, and `LAPSED` is given his
+		   own row of a season that does not count by the fixture. */
+		if (active) {
+			db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+							+ " select ?, s.season, 'feeExempt', 'Probni Probic',"
+							+ " timestamptz '2026-09-01 10:00:00+00'"
+							+ " from (values (2027), (2028)) as s (season)")
+					.param(id)
+					.update();
+		}
 
 		return id;
 	}
