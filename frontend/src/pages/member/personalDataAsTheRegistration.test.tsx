@@ -321,4 +321,48 @@ describe('the administration’s form on the same card', () => {
       expect(box, box.id).not.toHaveAttribute('readonly')
     }
   }, SLOW)
+
+  /**
+   * <p><b>The decision of 06.11.2026 is about the member's own form and not about this one</b> (PDL, „Na
+   * formi „Podaci" zaključana polja": the four held fields of the member's panel carry no mark). The
+   * administration holds the e-mail of a member who has confirmed it, and that held box keeps the star it
+   * has always had, as does every box beside it: what the renderer does for the member's panel is asked
+   * for by that panel (`fixedUnmarked`) and by no other.
+   */
+  it('keeps the star on the e-mail it holds once it is confirmed, and on every box beside it', async () => {
+    stands(
+      serverThat((path) =>
+        path === '/api/members/000001/data'
+          ? new Response(
+              JSON.stringify({
+                memberNumber: '000001',
+                firstName: 'Vladan',
+                lastName: 'Đurišić',
+                fatherName: 'Petar',
+                gender: 'M',
+                birthDate: '1980-04-02',
+                idNumber: 'AB12345',
+                email: 'vladan@primer.rs',
+                emailConfirmed: true,
+                address: 'Bulevar 1',
+                phone: '060111222',
+                placeId: null,
+                city: 'Beograd',
+                country: 'RS',
+                shirtSize: 'L',
+              }),
+              { status: 200, headers: { 'content-type': 'application/json' } },
+            )
+          : null,
+      ),
+    )
+    renderAt(HIS_CARD, 'moderator', null, moderatorWith([OVER_THE_MEMBERS]))
+
+    const form = await screen.findByRole('form', { name: sr.account.personalTitle })
+    const email = within(form).getByRole('textbox', { name: new RegExp(`^${sr.registration.email}`) })
+
+    expect(email).toHaveAttribute('aria-disabled', 'true')
+    expect(email).toHaveAttribute('aria-required', 'true')
+    expect(within(must(email.closest('.field'), 'the field of the e-mail') as HTMLElement).getByText('*')).toBeVisible()
+  }, SLOW)
 })

@@ -160,6 +160,7 @@ export function PersonalData({ me }: { me: MyData }) {
            does not name them. */
         fixed={WHAT_HE_SEES_HELD}
         fixedSaidBy="account-held-note"
+        fixedUnmarked
         above={
           <p className="member__note" id="account-held-note">
             {t('account.heldNote')}

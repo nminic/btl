@@ -1,5 +1,6 @@
 import { configure, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
+import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { aNeverPaidRecord, neverPaidAsServed } from '../../test/neverPaid'
 import { renderAt } from '../../test/render'
@@ -207,6 +208,12 @@ describe('on the page „Moji podaci" of somebody who has not paid', () => {
     expect(boxes.idNumber).not.toHaveAttribute('aria-required')
     expect(boxes.fatherName).toHaveValue(aNeverPaidRecord.fatherName)
 
+    /* The empty box carries no „(neobavezno)" and no star: it is not the member's to fill. */
+    const field = must(boxes.idNumber.closest('.field'), 'the field of the number of the document')
+
+    expect(field.textContent).not.toContain(sr.form.optional)
+    expect(within(field as HTMLElement).queryByText('*')).toBeNull()
+
     await user.type(within(panel).getByRole('textbox', { name: /^Telefon/ }), '065 1234')
     await user.click(within(panel).getByRole('button', { name: 'Sačuvaj' }))
 
@@ -214,12 +221,24 @@ describe('on the page „Moji podaci" of somebody who has not paid', () => {
     expect(theWrite(kept.asked)).toEqual({ phone: '065 1234' })
   }, SLOW)
 
-  /** <p>And a member who gave one is asked it the way the registration asks it, with its star. */
-  it('asks the number of the document the way the registration does where he gave one', async () => {
+  /**
+   * <p>And a member who gave one is not asked it either (PDL, „Na formi „Podaci" zaključana polja", owner,
+   * 06.11.2026: held fields „ne nose nikakvu oznaku, ni zvezdicu ni „(neobavezno)", jer ih član ne može
+   * popuniti"). The star was drawn beside it until then, as on the registration.
+   */
+  it('marks none of the four held fields, whether or not he gave a document', async () => {
     stands(neverPaidAsServed())
     renderAt('/sr/moji-podaci', 'visitor', null)
 
-    expect(held(await thePanel()).idNumber).toHaveAttribute('aria-required', 'true')
+    const panel = await thePanel()
+
+    for (const [name, control] of Object.entries(held(panel))) {
+      const field = must(control.closest('.field'), `the field of ${name}`)
+
+      expect(control, `${name} says it is asked for`).not.toHaveAttribute('aria-required')
+      expect(within(field as HTMLElement).queryByText('*'), `the star beside ${name}`).toBeNull()
+      expect(field.textContent, `${name} says it is optional`).not.toContain(sr.form.optional)
+    }
   }, SLOW)
 
   it('shows the gender of a woman', async () => {

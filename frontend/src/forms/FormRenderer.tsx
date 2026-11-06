@@ -272,6 +272,18 @@ type Props = {
    */
   fixedSaidBy?: string
   /**
+   * THE HELD FIELDS CARRY NO MARK OF OBLIGATION: no star, no „(neobavezno)", no `aria-required`.
+   *
+   * <p>Owner, 06.11.2026 (PDL, „Na formi „Podaci" zaključana polja"): the fields of the member's own data
+   * that he sees and cannot change „ne nose nikakvu oznaku, ni zvezdicu ni „(neobavezno)", jer ih član ne
+   * može popuniti". A held field is not asked of the reader, so it is not obligatory for him either:
+   * the „field is obligatory" refusal is not raised for one, and an empty held box never keeps „Sačuvaj"
+   * from going. Applies to the fields in `fixed` and to no other, and only where the screen asks for it:
+   * every other form that holds a field (`NewResult`, the events, the administration's form of a member)
+   * draws it as it always did.
+   */
+  fixedUnmarked?: boolean
+  /**
    * A rule the definition cannot describe, checked when the form is submitted
    * and returned in the same shape as the rules that can: errors by field name.
    * Used for the one rule that needs to know about the other records, which is
@@ -467,6 +479,7 @@ const Field = memo(function Field({
   open = false,
   locked = false,
   saidBy,
+  unmarked = false,
   steps,
   suggesting,
 }: {
@@ -499,6 +512,9 @@ const Field = memo(function Field({
   /** The id of a sentence that says why this held field is held (`fixedSaidBy` on the form), where
    *  the screen has one. Only a field in `fixed` is ever given it. */
   saidBy?: string
+  /** Whether this held field is drawn without the star and without „(neobavezno)" (`fixedUnmarked` on the
+   *  form). Only a field in `fixed` is ever given it. */
+  unmarked?: boolean
   /** Days the date box offers beside its calendar, where the screen has any to
    *  offer. Only a date field is ever given them. */
   steps?: { label: string; title: string; to: string }[]
@@ -568,7 +584,7 @@ const Field = memo(function Field({
      native `required`, because the form is `noValidate` and answers for its own
      rules (`validate.ts`); the native attribute would put the browser's own
      bubble on top of the portal's error, in the browser's language. */
-  const asked = field.required === true ? true : undefined
+  const asked = field.required === true && !unmarked ? true : undefined
 
   const shared = {
     id: inputId,
@@ -654,11 +670,11 @@ const Field = memo(function Field({
                   left alone. This branch was given the star alone, so a
                   confirmation that is not obligatory was the one field on the
                   portal that said nothing either way. */}
-              {field.required !== true && (
+              {field.required !== true && !unmarked && (
                 <span className="field__optional"> ({t('form.optional')})</span>
               )}
             </label>
-            {field.required === true && <RequiredMark />}
+            {field.required === true && !unmarked && <RequiredMark />}
 
             {/* And no rule beside a box that is ticked. It was drawn here, in a
                 head of its own for the same reason the group of buttons has one;
@@ -687,11 +703,11 @@ const Field = memo(function Field({
               into it would be read out before every one of the buttons. */}
           <span className="field__label" id={labelId}>
             {worded(t(field.labelKey), field, locale, t)}
-            {field.required !== true && (
+            {field.required !== true && !unmarked && (
               <span className="field__optional"> ({t('form.optional')})</span>
             )}
           </span>
-          {field.required === true && <RequiredMark />}
+          {field.required === true && !unmarked && <RequiredMark />}
 
           {/* And no rule beside the name of a group. It used to be drawn here,
               deliberately out of a `<legend>` so that the three fields answered by
@@ -811,7 +827,7 @@ const Field = memo(function Field({
           which is the one field that has one today, so a link put on any
           other was dropped without a word. */}
       {worded(t(field.labelKey), field, locale, t)}
-      {field.required !== true && (
+      {field.required !== true && !unmarked && (
         <span className="field__optional"> ({t('form.optional')})</span>
       )}
     </>
@@ -845,7 +861,7 @@ const Field = memo(function Field({
             {name}
           </label>
         )}
-        {field.required === true && <RequiredMark />}
+        {field.required === true && !unmarked && <RequiredMark />}
 
         {field.hintKey !== undefined && (
           <FieldHint id={hintId} text={t(field.hintKey)} of={labelId} />
@@ -1057,6 +1073,7 @@ export function FormRenderer({
   sendIsOut,
   onChange,
   fixedSaidBy,
+  fixedUnmarked = false,
   check,
   derived,
   was,
@@ -1410,7 +1427,16 @@ export function FormRenderer({
        added while `filled` has it (see `filled` above): the rule about the
        country then said nothing in the one case where there is certainly no
        country. */
-    const own = validateForm(form, filled, today)
+    const asked = validateForm(form, filled, today)
+    /* A held field that is not marked is not asked of the reader (`fixedUnmarked`), so an empty one is
+       no reason to refuse the press. Only the refusal that it is obligatory: a held value that is
+       wrong in another way is still wrong. */
+    const own = Object.fromEntries(
+      Object.entries(asked).filter(
+        ([name, error]) =>
+          !(fixedUnmarked && fixed.includes(name) && error.key === REQUIRED_KEY),
+      ),
+    )
     const found = { ...handed, ...own }
 
     for (const [name, error] of Object.entries(handed)) {
@@ -1660,6 +1686,7 @@ export function FormRenderer({
               open={field.name === openAt}
               locked={locked.includes(field.name) || fixed.includes(field.name)}
               saidBy={fixed.includes(field.name) ? fixedSaidBy : undefined}
+              unmarked={fixedUnmarked && fixed.includes(field.name)}
               steps={field.type === 'date' ? steps : undefined}
               suggesting={suggestingOn(field)}
             />
