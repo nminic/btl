@@ -140,6 +140,17 @@ class PouringFromQaLeavesNothingBehindTest extends DatabaseTest {
 			    step docker exec -i the-database psql
 			    echo SURVIVED
 			    ;;
+			  step-signal-redirected)
+			    export SLOW=yes LEFTOVER=yes
+			    ( sleep 1; kill -"$2" $$ ) &
+			    step docker exec -i the-database psql 2> "$WORK/the-step-said"
+			    echo SURVIVED
+			    ;;
+			  stdin)
+			    printf 'the whole of the pour\n' > "$WORK/in"
+			    step cat < "$WORK/in" > "$WORK/out"
+			    printf 'GOT=%s\n' "$(cat "$WORK/out")"
+			    ;;
 			  second-signal)
 			    export SLOW=yes LEFTOVER=yes SLOW_RM=yes
 			    ( sleep 1; kill -TERM $$; sleep 1; kill -"$2" $$ ) &
@@ -381,6 +392,53 @@ class PouringFromQaLeavesNothingBehindTest extends DatabaseTest {
 					.hasSize(2)
 					.satisfies(parts -> assertThat(parts[1]).startsWith(way[0] + ".").contains("--check"));
 		}
+	}
+
+	/**
+	 * THE TERMINAL IS TOLD WHICH SIGNAL ENDED THE POUR EVEN WHEN THE CALLER HAS REDIRECTED THE STANDARD
+	 * ERROR OF THE STEP: the case above calls {@code step} bare, and the pour never does.
+	 *
+	 * <p>The pour sends the standard error of its steps to a file ({@code 2>&1} into {@code pour.log},
+	 * {@code 2>} for the read of QA), a redirection that stays in force for as long as {@code step}
+	 * runs, and in dash a trap that fires while {@code step} waits writes through it. A message sent
+	 * to descriptor 2 would end in the caller's file in the work directory and be removed with it.
+	 * The helper writes to descriptor 7, which {@code exec 7>&2} made a copy of the terminal's
+	 * before any step ran (measured in dash on 06.11.2026); this holds that the message is on the
+	 * driver's own standard error and, since the work directory is gone by then, that it did not
+	 * go only into the file the step was redirected to.
+	 */
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void theTerminalIsToldWhichSignalEndedThePourEvenWhenTheStepsErrorIsRedirected() throws Exception {
+		for (String signal : new String[] { "HUP", "INT", "TERM" }) {
+			ExecResult result = timed("step-signal-redirected", signal);
+
+			assertThat(result.getStdout()).as("after %s the script went on", signal).doesNotContain("SURVIVED");
+			assertThat(result.getStderr().split("STOPPED: the pour was ended by ", -1))
+					.as("the terminal is told once which signal ended the pour although the step's own"
+							+ " standard error was redirected to a file, after %s", signal)
+					.hasSize(2)
+					.satisfies(parts -> assertThat(parts[1]).startsWith(signal + "."));
+		}
+	}
+
+	/**
+	 * WHAT THE CALLER FEEDS A STEP REACHES THE COMMAND: THE PIPE THE POUR USES FOR WHOLE FILES OF SQL.
+	 *
+	 * <p>{@code step} starts its command in the background, and dash gives a command started with
+	 * {@code &} an empty standard input before it looks at the command's own redirections (measured
+	 * 21.10.2026), so the input goes through descriptor 4. Without that line the command reads
+	 * nothing, which for the pour is a {@code psql} that is sent an empty script and answers with
+	 * success. The case before it that feeds a step is {@code BackupLeavesNothingBehindTest}'s, on the
+	 * copy of the helper that belongs to the backup, not this one.
+	 */
+	@Test
+	void whatTheCallerFeedsAStepReachesTheCommand() throws Exception {
+		ExecResult result = run("stdin");
+
+		assertThat(result.getStdout())
+				.as("the command a step ran read nothing from the file the caller fed it")
+				.contains("GOT=the whole of the pour");
 	}
 
 	/**

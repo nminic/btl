@@ -110,6 +110,35 @@ class SharedRacingTest {
 		assertThat(SharedRacing.racesBothRan(his, hers)).containsExactly(30L, 20L, 10L);
 	}
 
+	/**
+	 * Two results of one member on one race are the race once, on either side.
+	 *
+	 * <p>V7 says the shipped data has pairs that occur twice, so a list can hold race 10
+	 * twice. The duplicate is on HIS side in one list and on HERS in the other, with
+	 * different numbers, so a version that sums every entry, or keeps the last one, or
+	 * dedups only the side it looked at first, comes out differently on the kilometres.
+	 */
+	@Test
+	void aRaceGivenTwiceInOneListIsAddedOnce() {
+		List<RanRace> his = List.of(
+				race(10, "10.00", 100, 3000L, "5.00"),
+				race(10, "10.50", 100, 3100L, "5.10"),
+				race(20, "21.10", 200, 7000L, "12.00"));
+		List<RanRace> hers = List.of(
+				race(10, "10.00", 110, 3300L, "4.50"),
+				race(20, "21.10", 210, 7700L, "11.00"),
+				race(20, "21.50", 210, 7800L, "11.20"));
+
+		Totals together = SharedRacing.together(his, hers);
+
+		assertThat(together.races()).isEqualTo(2);
+		assertThat(together.kilometers())
+				.as("a second result for the same race was added to the pair")
+				.isEqualByComparingTo("62.20");
+		assertThat(together.points()).isEqualByComparingTo("32.50");
+		assertThat(together.seconds()).isEqualTo(21000L);
+	}
+
 	/** Nobody has raced is a pair at nought, not a fall over: a pair exists before
 	 *  it has run anything together. */
 	@Test

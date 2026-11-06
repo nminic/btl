@@ -18,7 +18,10 @@ import java.util.List;
  * for races.
  *
  * <p><b>In date order, ascending, and the order is the answer.</b> That is the
- * order the portal serves and the order a calendar is read in. Sorted by
+ * order this route answers in and the order a calendar is read in; the screens' mock
+ * file {@code races.json} is NOT in it (it follows the key, and its first dates are
+ * 2019-09-14, 2015-04-17, 2016-04-15), so the order is a fact about this route and
+ * not about the file a screen is drawn from. Sorted by
  * the key instead, the list would come back in whatever order the rows were
  * written, which for an imported history is no order at all.
  *

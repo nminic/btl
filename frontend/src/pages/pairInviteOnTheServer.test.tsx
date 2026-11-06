@@ -59,6 +59,9 @@ const HER_PAGE = '/sr/takmicar/000015-katarina-novakovic'
 /** Another woman with no question standing between her and the reader, for the next profile. */
 const NEXT_PAGE = '/sr/takmicar/000006-ivona-stamenkovska'
 
+/** The man who is the reader of the cases above, read as a profile by a woman: 000002 Relja Momčilović. */
+const HIS_PAGE = '/sr/takmicar/000002-relja-momcilovic'
+
 /** A man, so the button is never offered on his page, and nothing is asked for it. */
 const SAME_SEX_PAGE = '/sr/takmicar/000004-caslav-radenkovic'
 
@@ -311,6 +314,24 @@ describe('who is offered „Pozovi u trkački par"', () => {
 
     try {
       renderAt(HER_PAGE, 'competitor', READER, undefined, DAY)
+
+      expect(await screen.findByRole('button', { name: sr.pair.invite })).toBeVisible()
+      expect(readsOfWhatHeWaitsOn(server.asked)).toBe(1)
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('is offered to a woman on the profile of a man as it is to a man on hers, because anybody may ask anybody of the other sex', async () => {
+    /* PDL P13: „svako sme da pošalje zahtev svakome, a par nastaje kad druga strana potvrdi", and a
+       pair is one man and one woman. Every other case of this file reads as the man (000002), so a
+       condition that only a man may ask passed all of them (measured: the reader's sex tested for
+       the man's, and the file stayed green). The sex of the reader is an axis with two states, and
+       the second is this one. */
+    const server = aServerForThePair({ lists: { [HER]: [] } })
+
+    try {
+      renderAt(HIS_PAGE, 'competitor', HER, undefined, DAY)
 
       expect(await screen.findByRole('button', { name: sr.pair.invite })).toBeVisible()
       expect(readsOfWhatHeWaitsOn(server.asked)).toBe(1)
@@ -772,6 +793,39 @@ describe('the press', () => {
       })
       expect(theButton()).toBeVisible()
       expect(arrivedResource('pairs')).toBeUndefined()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('lets the next press through after a refusal that sent the page to read again', async () => {
+    /* The press lets go in the layout effect that follows the read (`outstanding.current = false`).
+       Left held, the button looks live again (it is no longer told off, which the case above reads)
+       and ignores every press until the reader leaves the page: a second question is never sent.
+       Measured: the line taken out kept the whole file green, and the same line in
+       `AskingThisTeam.tsx` is held by a case of its own. What is counted is the writes, since a
+       press that goes nowhere draws nothing to read. */
+    const server = aServerForThePair({ post: () => refused('aPairAlreadyHolds', 409) })
+    const user = setupUser()
+
+    try {
+      renderAt(HER_PAGE, 'competitor', READER, undefined, DAY)
+
+      await user.click(await screen.findByRole('button', { name: sr.pair.invite }))
+      await screen.findByRole('alert')
+      await waitFor(() => {
+        expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
+      })
+      await waitFor(() => {
+        expect(theButton()).not.toHaveAttribute('aria-disabled')
+      })
+      expect(writes(server.asked)).toHaveLength(1)
+
+      await user.click(screen.getByRole('button', { name: sr.pair.invite }))
+
+      await waitFor(() => {
+        expect(writes(server.asked), 'the second press went nowhere').toHaveLength(2)
+      })
     } finally {
       server.stop()
     }

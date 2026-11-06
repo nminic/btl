@@ -323,6 +323,15 @@ class RegistrationOverRealHttpTest {
 	 * exists to refuse, the relay is reached with the transaction still open and every
 	 * sample from then on answers 1.
 	 *
+	 * <p><b>WHAT THE NARROWER WINDOW NO LONGER SEES, and the earlier wording of this file
+	 * said the opposite.</b> A connection held inside a transaction by something that happens
+	 * BEFORE the relay is reached (an outbound call made earlier in the writing, say) is not
+	 * counted, because sampling has not begun. The whole-request window did see it: a defect
+	 * of that shape, introduced by hand, left this case green and the old one red
+	 * ({@code expected: 0 but was: 1}). Nothing in {@code src/main} can make that shape
+	 * today, since the only outbound call in the portal is the post. The first outbound call
+	 * that is not the post has to bring its own case with its own gate.
+	 *
 	 * <p><b>The floor under it is the count of samples.</b> A request that finished at once
 	 * would be sampled never and would pass this by not being looked at, so the case
 	 * demands that it really was looked at while the relay really was holding it - which
@@ -457,10 +466,11 @@ class RegistrationOverRealHttpTest {
 		 * hence {@code volatile}. What it buys is written out beside the case: the writing
 		 * is a transaction of six statements and is therefore {@code idle in transaction}
 		 * between them, so a count taken before this turns true is a count of the writing
-		 * rather than of the wait. It cannot open too EARLY, which is the only direction
-		 * that would matter: the send is made by the request's own thread after
-		 * {@code TransactionTemplate} has returned, so the socket cannot be accepted before
-		 * the commit, whatever the machine is doing.
+		 * rather than of the wait. It cannot open too EARLY: the send is made by the
+		 * request's own thread after {@code TransactionTemplate} has returned, so the socket
+		 * cannot be accepted before the commit, whatever the machine is doing. It CAN open too
+		 * LATE, which is what narrowing the window gave up: see the paragraph on what the
+		 * window does not see, in the javadoc of the case.
 		 */
 		private volatile boolean reached;
 

@@ -100,12 +100,19 @@ class SecretTokenTest {
 	 * too, and every other case in this file passes with one. What can be said is WHICH
 	 * generator, so that is what this asks. A round on 11.09.2026 measured exactly that
 	 * gap.
+	 *
+	 * <p>The EXACT class is asked, not {@code instanceof}: a subclass of {@code SecureRandom}
+	 * whose {@code nextBytes} delegates to {@code new Random(42)} is still an instance of it,
+	 * and passed the first version of this case with all twelve green. Swapping the algorithm
+	 * on purpose (for instance {@code SecureRandom.getInstanceStrong()}, which returns a
+	 * subclass) fails this on purpose too, and that is the moment somebody should decide.
 	 */
 	@Test
 	void theNumbersComeFromAGeneratorMeantForThis() {
-		assertThat(SecretToken.source())
-				.as("the source of randomness is no longer one built for secrets")
-				.isInstanceOf(java.security.SecureRandom.class);
+		assertThat(SecretToken.source().getClass())
+				.as("the source of randomness is no longer exactly SecureRandom, so it may be a"
+						+ " subclass whose bytes are predictable")
+				.isEqualTo(java.security.SecureRandom.class);
 	}
 
 	/** The hash does not carry the secret, in either direction. */

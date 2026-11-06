@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -53,9 +55,20 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code PaymentApi} of {@code payment}. {@code payment.amount} and {@code payment.fee} are here
  * with {@code received} although nobody asks that question of them directly - they are COPIED out
  * of {@code price_row} on every booking, so a narrower column would round a price that the list
- * kept exactly, which is the very fault this file exists for. {@code balance_entry.amount} is left
- * out: nothing asks {@code amountIsKeptExactly} of it, and every figure that reaches it is a
- * difference of two amounts that have already passed through here.
+ * kept exactly, which is the very fault this file exists for.
+ *
+ * <p><b>The rest of the catalogue is NAMED, column by column, and it is the catalogue that
+ * says what is left.</b> Until 06.11.2026 the javadoc here named {@code balance_entry.amount} as
+ * the one amount left out and said nothing of {@code balance_promise.amount} and
+ * {@code bank_statement_line.amount}, which are money too; and the list above was both the
+ * filter of the query and the thing the assertion compared with, so a shorter list could not
+ * fail. {@link #everyOtherNumberTheSchemaKeepsIsNamedWithItsReason} asks the catalogue for EVERY
+ * numeric column outside the list and holds that set to {@link #THE_OTHER_NUMBERS} in both
+ * directions: a new numeric column anywhere is red until somebody says what it is, a column
+ * dropped from the list above is red because it is then unnamed, and an entry whose column is
+ * gone is red too. Only the three money columns are left out of the shape check on purpose:
+ * {@code amountIsKeptExactly} has two call sites in {@code src/main} ({@code PaymentApi} and
+ * {@code PricingWriteApi}) and none of them reads these.
  */
 class AnAmountMatchesTheSchemaTest extends DatabaseTest {
 
@@ -67,6 +80,50 @@ class AnAmountMatchesTheSchemaTest extends DatabaseTest {
 	 * total short and says so, rather than measuring one table and reporting two.
 	 */
 	private static final List<String> AMOUNTS_LIVE_IN = List.of("price_row", "payment");
+
+	private static final String MONEY_NOBODY_TYPES = "money, but no route asks"
+			+ " MembershipPrice.amountIsKeptExactly of it: it is written out of figures that have"
+			+ " already been through the price list or the payment";
+
+	private static final String NOT_MONEY = "not an amount of money: a count of points, a distance"
+			+ " or a ducat threshold, with a scale of its own";
+
+	/**
+	 * EVERY NUMERIC COLUMN THE SCHEMA KEEPS OUTSIDE {@link #AMOUNTS_LIVE_IN}, with the reason it
+	 * is not held to the shape of a price. Asked of the catalogue, never counted from here.
+	 */
+	private static final Map<String, String> THE_OTHER_NUMBERS = new TreeMap<>(Map.ofEntries(
+			Map.entry("balance_entry.amount", MONEY_NOBODY_TYPES),
+			Map.entry("balance_promise.amount", MONEY_NOBODY_TYPES),
+			Map.entry("bank_statement_line.amount", MONEY_NOBODY_TYPES),
+			Map.entry("ducat.last", NOT_MONEY),
+			Map.entry("ducat.step", NOT_MONEY),
+			Map.entry("ducat.threshold", NOT_MONEY),
+			Map.entry("ducat.tier_up_from", NOT_MONEY),
+			Map.entry("ducat_award.reached", NOT_MONEY),
+			Map.entry("ducat_award.threshold", NOT_MONEY),
+			Map.entry("photo.crop_diameter", NOT_MONEY),
+			Map.entry("photo.crop_x", NOT_MONEY),
+			Map.entry("photo.crop_y", NOT_MONEY),
+			Map.entry("race.distance_km", NOT_MONEY),
+			Map.entry("result.distance_km", NOT_MONEY),
+			Map.entry("result.points", NOT_MONEY),
+			Map.entry("result_submission.distance_km", NOT_MONEY),
+			Map.entry("season_award.points", NOT_MONEY),
+			Map.entry("season_board.kilometers", NOT_MONEY),
+			Map.entry("season_board.points", NOT_MONEY),
+			Map.entry("season_board.previous_points", NOT_MONEY),
+			Map.entry("season_competitor.kilometers", NOT_MONEY),
+			Map.entry("season_competitor.points", NOT_MONEY),
+			Map.entry("season_league_cell.points", NOT_MONEY),
+			Map.entry("season_league_standing.points", NOT_MONEY),
+			Map.entry("season_pair.kilometers", NOT_MONEY),
+			Map.entry("season_pair.points", NOT_MONEY),
+			Map.entry("season_points_at_freeze.points", NOT_MONEY),
+			Map.entry("season_team.kilometers", NOT_MONEY),
+			Map.entry("season_team.points", NOT_MONEY),
+			Map.entry("season_team_member.kilometers", NOT_MONEY),
+			Map.entry("season_team_member.points", NOT_MONEY)));
 
 	/** The precision and the scale of one column, as the catalogue gives them. */
 	private record Shape(String table, String column, int precision, int scale) {
@@ -134,6 +191,34 @@ class AnAmountMatchesTheSchemaTest extends DatabaseTest {
 							column.scale())
 					.isEqualByComparingTo(most);
 		}
+	}
+
+	/**
+	 * NOTHING NUMERIC IS LEFT UNNAMED: the columns the catalogue holds outside the list at the head
+	 * of this file are exactly the columns {@link #THE_OTHER_NUMBERS} says they are.
+	 *
+	 * <p>This is the floor under the list. The list is the filter of one query and the thing the
+	 * other case compares with, so a list that was SHORT passed both: dropping {@code payment}
+	 * from it measured on, {@code Tests run: 46, Failures: 0}. Here the same shortening makes
+	 * {@code payment.amount}, {@code payment.fee} and {@code payment.received} appear in the
+	 * catalogue and in no name, and this goes red.
+	 */
+	@Test
+	void everyOtherNumberTheSchemaKeepsIsNamedWithItsReason() {
+		List<String> outside = db.sql("select table_name || '.' || column_name"
+						+ " from information_schema.columns"
+						+ " where table_schema = current_schema() and data_type = 'numeric'"
+						+ "   and not (table_name = any (?))"
+						+ " order by 1")
+				.param(AMOUNTS_LIVE_IN.toArray(String[]::new))
+				.query(String.class)
+				.list();
+
+		assertThat(outside)
+				.as("a numeric column is in the schema and not in the list of amounts, and it is not"
+						+ " named in THE_OTHER_NUMBERS either (or it is named and no longer exists):"
+						+ " say whether it is an amount that MembershipPrice must agree with")
+				.containsExactlyInAnyOrderElementsOf(THE_OTHER_NUMBERS.keySet());
 	}
 
 	/**

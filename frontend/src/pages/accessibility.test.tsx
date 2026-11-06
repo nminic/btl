@@ -45,7 +45,12 @@ import { SLOW } from '../test/slow'
  * <p><b>The boundary, said rather than left to be found.</b> The floor is over routes, not over the
  * states of a screen. `/sr/novi-tim` is named by the visitor's row, which meets the sign-in sentence at
  * that very address, so the floor would still be satisfied if the row that draws the form were deleted
- * from `BEHIND`. What holds those rows is the count of `BEHIND` in `pages/publicData.test.tsx`.
+ * from `BEHIND`. What holds those rows is the count of `BEHIND` in `pages/publicData.test.tsx`, and that
+ * count holds the TABLE, not that this walk spends it: a walk narrowed in place (`BEHIND.slice(0, 15)`,
+ * or the whole public walk deleted) answered to the router's floor and to its own length alike, because
+ * both were read off the walk already narrowed (review of PR 534: 173 and 55 passed). So the case at the
+ * foot also asks the rows axe ran on against the rows the tables name, which it works out from the
+ * tables themselves and not from the walk.
  *
  * <p><b>What is waited for before axe runs.</b> A fresh render per row, so no earlier screen can still
  * be standing; then the heading that only that screen draws, which is what makes the row about the
@@ -133,16 +138,23 @@ const WITH_ROWS_WALK: Row[] = [
 /** Where the portal sends whoever arrives somewhere it has no screen for. */
 const FRONT_PAGE = 'Balkanska trkačka liga'
 
+/* The two routes that are no screen at all, so that the router's own list has no exception in it:
+   the bare root, which picks the language, and an address the portal does not have (`NotFound`).
+   Both end on the front page (owner, 30.07.2026), which is what is handed to axe. */
+const SENDS_ON: Row[] = [
+  ['/', 'visitor', null, FRONT_PAGE, DAY],
+  ['/sr/ove-adrese-nema', 'visitor', null, FRONT_PAGE, DAY],
+]
+
 const WALK: Row[] = [
   ...PUBLIC.map(([address, asVisitor]): Row => [address, 'visitor', null, asVisitor, DAY]),
   ...PUBLIC.map(([address, , asMember]): Row => [address, 'competitor', ME, asMember, DAY]),
   ...BEHIND.map(([address, role, who, heading]): Row => [address, role, who, heading, BEHIND_DAY]),
-  /* The two routes that are no screen at all, so that the router's own list has no exception in it:
-     the bare root, which picks the language, and an address the portal does not have (`NotFound`).
-     Both end on the front page (owner, 30.07.2026), which is what is handed to axe. */
-  ['/', 'visitor', null, FRONT_PAGE, DAY],
-  ['/sr/ove-adrese-nema', 'visitor', null, FRONT_PAGE, DAY],
+  ...SENDS_ON,
 ]
+
+/** A row as the floor at the foot names it: who read which address. */
+const rowOf = (address: string, role: Role): string => `${role} ${address}`
 
 /**
  * What axe finds and is known, by the screen, by the rule and by how many places, with the reason.
@@ -166,6 +178,9 @@ const met = new Set<string>()
 /** The rows axe really ran on, by the address the row names. Written after axe answers, so a row that
  *  is skipped, or that throws before axe is asked, is missing here and the floor says so. */
 const measured: string[] = []
+
+/** The same rows by who read them, for the floor that asks them against the tables. */
+const measuredBy: string[] = []
 
 /** Waits until the page stops changing: three readings of the whole body in a row, all the same and
  *  none of them empty. */
@@ -235,6 +250,7 @@ async function handToAxe([address, role, who, heading, day]: Row, draws: 'rows' 
   ).toEqual([])
 
   measured.push(address)
+  measuredBy.push(rowOf(address, role))
 
   const screenOf = `${role} ${address}`
   const known = KNOWN[screenOf] ?? {}
@@ -291,6 +307,26 @@ describe('the walk itself', () => {
        the words of a clean portal. */
     expect(measured).toHaveLength(WALK.length + WITH_ROWS_WALK.length)
     expect(missing).toEqual([])
+  })
+
+  it('walked every row the tables name, once for each way they are read, and no fewer', () => {
+    /* WORKED OUT FROM THE TABLES AND NOT FROM `WALK`. Both the length above and the router's floor
+       are answers about a walk that may already be narrower than the tables: `BEHIND.slice(0, 15)`
+       leaves 173 cases green and the whole public walk deleted leaves 55 (review of PR 534, measured),
+       because the leaves of the router are mostly reached by several rows and nothing else asks how
+       many rows there were meant to be. So the rows axe ran on are asked against the rows the tables
+       hold - each address of `PUBLIC` as a visitor and as a member, each of `BEHIND` as the role it
+       names, the two that only send a reader on, and the three that draw rows, as both - as a list
+       with its repeats, since an address in two tables is walked twice. */
+    const named = [
+      ...PUBLIC.flatMap(([address]) => [rowOf(address, 'visitor'), rowOf(address, 'competitor')]),
+      ...BEHIND.map(([address, role]) => rowOf(address, role)),
+      ...SENDS_ON.map(([address, role]) => rowOf(address, role)),
+      ...WITH_ROWS.flatMap(([address]) => [rowOf(address, 'visitor'), rowOf(address, 'competitor')]),
+    ]
+
+    expect(named.length, 'the tables name no row').toBeGreaterThan(0)
+    expect(measuredBy.toSorted()).toEqual(named.toSorted())
   })
 
   it('meets every allowance it keeps', () => {

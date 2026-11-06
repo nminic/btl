@@ -366,6 +366,21 @@ describe('the answer to „Pozovi u trkački par"', () => {
 
     expect(line).toContain('Relja Momčilović')
     expect(line).toContain('Za sezonu 2027')
+
+    /* WHERE THE PANEL STANDS: under the transfer window and not inside it (PDL P11, owner, 18.10.2026:
+       „Dugme „Raskini” i pozivi u par koji čekaju sele na „Moja članarina”, ispod prelaznog roka”).
+       Every line above reads what the panel holds and none reads its place, so `<MyRacingPairs/>` moved
+       above the section of the transfer window kept the whole file green (measured). The two are found
+       by the names they carry, and the order is asked together with the containment, since
+       `compareDocumentPosition` says „following” of a panel that sits INSIDE the other as well. */
+    const transfer = screen.getByRole('region', { name: sr.membership.transferWindow })
+    const pairs = screen.getByRole('region', { name: sr.pair.mine })
+
+    expect(transfer.contains(pairs), 'the pairs are drawn inside the transfer window').toBe(false)
+    expect(
+      transfer.compareDocumentPosition(pairs) & Node.DOCUMENT_POSITION_FOLLOWING,
+      'the pairs are drawn above the transfer window',
+    ).not.toBe(0)
     /* **NO DAY AT ALL SINCE 21.09.2026, which is why the four days above still have one job
        each.** The day the two of them confirmed „se ne prikazuje nikome" (owner, 13.09.2026)
        and `/api/pairs` does not answer it, so the line carries the season and nothing else.
