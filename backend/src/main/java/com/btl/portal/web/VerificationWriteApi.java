@@ -301,7 +301,7 @@ class VerificationWriteApi {
 
 	private static final Logger LOG = LoggerFactory.getLogger(VerificationWriteApi.class);
 
-	/** {@code verification.queue} for the three tabs this route can carry out. */
+	/** {@code verification.queue} for the four tabs this route can carry out. */
 	private static final String PROFILES = "profiles";
 
 	private static final String TEAMS = "teams";
@@ -886,7 +886,7 @@ class VerificationWriteApi {
 		}
 
 		/* AND NOTHING IS HELD IN A TAB THIS ROUTE CANNOT ANSWER. Without this a moderator
-		   of payments or results could take an item and watch fifteen minutes count down
+		   of payments could take an item and watch fifteen minutes count down
 		   towards a decision that is refused 409 whatever he presses, which is a worse
 		   answer than the refusal itself: it is the refusal, fifteen minutes late. */
 		if (!CARRIED_OUT_HERE.contains(item.get().queue())) {
@@ -1361,10 +1361,10 @@ class VerificationWriteApi {
 		   row carrying a hold would be the one shape V28 says it cannot refuse by itself. */
 		db.sql("delete from verification_lock where verification_id = ?").param(item.id()).update();
 
-		/* THREE QUEUES, THREE MEANINGS, and the chain ends on an unconditional `else` rather
-		   than on a third named check: `item.queue()` is one of exactly the three
+		/* FOUR QUEUES, FOUR MEANINGS, and the chain ends on an unconditional `else` rather
+		   than on a fourth named check: `item.queue()` is one of exactly the four
 		   `CARRIED_OUT_HERE` names by the time this runs - `decide` above already refused
-		   anything else - so asking a third time would be a branch nothing can ever take
+		   anything else - so asking a fourth time would be a branch nothing can ever take
 		   the other way, which is the shape this file removes rather than writes (V29's own
 		   trigger function says why in as many words). PROFILES is the one left as the
 		   catch, because it is the one queue this method already reads straight off `item`
