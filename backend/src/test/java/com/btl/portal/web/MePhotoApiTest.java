@@ -3,7 +3,9 @@ package com.btl.portal.web;
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.TheEndOfTheTransaction;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.photo.PicturesThatCarryMetadata;
 import com.btl.portal.domain.photo.WhatAPictureIs;
+import com.btl.portal.domain.photo.WithoutMetadata;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -641,7 +643,8 @@ class MePhotoApiTest {
 
 	/**
 	 * AND THE FILE IS ON THE DISK, UNDER THE NAME THE DATABASE ISSUED, WITH THE BYTES THAT
-	 * WERE SENT.
+	 * WERE SENT - which for a file that carries no metadata are exactly those; what happens to
+	 * one that does is {@link #whatTheCameraWroteIsTakenOffBeforeTheFileTheSizeOrTheDigest}.
 	 *
 	 * <p>V8: „the file lives on the disk under a name the database issues... The name is this
 	 * row's {@code id}." {@link PhotoApi} opens exactly that name, so this is the half that
@@ -666,6 +669,45 @@ class MePhotoApiTest {
 		assertThat(Files.readAllBytes(fileOf(photo)))
 				.as("the bytes on the disk are not the bytes that were sent")
 				.isEqualTo(sent);
+
+		Files.deleteIfExists(fileOf(photo));
+	}
+
+	/**
+	 * WHAT THE CAMERA WROTE IS TAKEN OFF BEFORE THE FILE, THE SIZE OR THE DIGEST, AND THE TURN STAYS.
+	 *
+	 * <p>ADL, owner, 06.11.2026: „Server pri svakom otpremanju slike (član i administracija) skida sve
+	 * metapodatke (EXIF, uključujući GPS, datum i model uređaja) pre upisa, a pravilnu orijentaciju
+	 * zadržava." For each of the three types: the file on the disk does not carry the sentence the
+	 * telephone wrote and is the picture {@link WithoutMetadata} gives back, which keeps the turn
+	 * ({@code WithoutMetadataTest} holds that), the row's size and digest describe THAT file and not the one sent (the digest is
+	 * the address it is served at), and the answer names the same digest.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "image/jpeg", "image/png", "image/webp" })
+	void whatTheCameraWroteIsTakenOffBeforeTheFileTheSizeOrTheDigest(String type) throws Exception {
+		byte[] sent = switch (type) {
+			case "image/jpeg" -> PicturesThatCarryMetadata.aTelephoneJpeg(6);
+			case "image/png" -> PicturesThatCarryMetadata.aPngThatSaysEverything(6);
+			default -> PicturesThatCarryMetadata.aTelephoneWebp(6);
+		};
+
+		MockHttpServletResponse answer = sending(ME, sent, type, "portret", "0.25", "0.75", "0.5");
+
+		assertThat(answer.getStatus()).as(answer.getContentAsString()).isEqualTo(200);
+
+		long photo = theWaitingPhotoOf(ME);
+		byte[] stored = Files.readAllBytes(fileOf(photo));
+
+		assertThat(PicturesThatCarryMetadata.says(stored, PicturesThatCarryMetadata.WHERE_AND_WITH_WHAT))
+				.as("the %s on the disk still says where, when and with what it was taken", type)
+				.isFalse();
+		assertThat(stored).as("the stored %s is not the picture with its metadata taken off", type)
+				.isEqualTo(WithoutMetadata.of(sent, type));
+		assertThat(theWaitingRowOf(ME).subList(5, 7))
+				.as("the row's size or digest describe the file that was sent and not the one that is stored")
+				.containsExactly(String.valueOf(stored.length), WhatAPictureIs.digestOf(stored));
+		assertThat(answerIn(answer).path("digest").asString()).isEqualTo(WhatAPictureIs.digestOf(stored));
 
 		Files.deleteIfExists(fileOf(photo));
 	}
