@@ -1800,6 +1800,31 @@ class ResultWriteApiTest {
 	}
 
 	/**
+	 * A DELETION IS TOLD IN ENGLISH TO A MEMBER WHO CHOSE ENGLISH, in the letter and in the inbox alike.
+	 *
+	 * <p>The case above is the deletion of a member who kept Serbian, so a deletion that was always told
+	 * in Serbian passes it (measured 06.11.2026: the line and the letter of a deletion written in Serbian
+	 * whatever the account says, 86 of 86 green), and the only cases in English are of a correction and
+	 * of a run sent in. The member here chose English and the member written first did not, so the
+	 * language read off another account is Serbian too, and the inbox is compared with what travelled.
+	 */
+	@Test
+	void aDeletionIsToldInEnglishToAMemberWhoChoseEnglishInTheLetterAndInTheInboxAlike() throws Exception {
+		db.sql("update account set mail_language = 'en' where email = ?").param(MY_ADDRESS).update();
+
+		deletedAs(ME, myResult);
+
+		MimeMessage arrived = theMessageThatWentOut();
+
+		assertThat(arrived.getSubject()).isEqualTo("Your result has been deleted");
+		assertThat(asItWasWritten(arrived)).startsWith("Your result has been deleted from the portal:")
+				.doesNotContain("obrisan");
+		assertThat(theLineInTheInboxOf(ME))
+				.as("the inbox says something other than what the English letter said")
+				.containsExactly(arrived.getSubject(), asItWasWritten(arrived));
+	}
+
+	/**
 	 * A RUN SENT IN IS TOLD IN HIS INBOX IN HIS LANGUAGE, with no letter, and the language is his
 	 * and not that of the member written first.
 	 */
