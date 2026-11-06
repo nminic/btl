@@ -402,6 +402,43 @@ class PasswordResetApiTest {
 				.isNull();
 	}
 
+	/**
+	 * AN ADDRESS THAT WAS ALREADY CONFIRMED KEEPS THE MOMENT IT WAS CONFIRMED AT, even by the
+	 * one reset that is allowed to confirm.
+	 *
+	 * <p>The route's comment claims `coalesce` and not a bare `now()` for exactly this, and
+	 * nothing measured it: swapping it for `now()` passed the whole gate. The account here has
+	 * NO password (so the confirming rule is the one being read) AND an address confirmed three
+	 * days ago - the honorary member of V18 whose address the owner confirmed by hand, or a
+	 * moderator who passed the resend road before opening the invitation. The moment is read
+	 * back and compared with the one written, and it is three days away from {@code now()}, so
+	 * a version that rewrites it cannot land on the same instant by being quick.
+	 */
+	@Test
+	void aResetThatConfirmsKeepsTheMomentAnAddressWasAlreadyConfirmedAt() throws Exception {
+		long account = anAccount(aFreshAddress());
+
+		db.sql("update account set email_confirmed_at = now() - interval '3 days' where id = ?")
+				.param(account).update();
+
+		Instant before = confirmedAt(account);
+
+		assertThat(before).as("the case set up no confirmed address").isNotNull();
+		assertThat(passwordHashOf(account))
+				.as("the account has a password, so the confirming rule is not the one being read")
+				.isNull();
+
+		assertThat(reset(aValidToken(account), NEW_PASSWORD, NEW_PASSWORD).getStatus())
+				.isEqualTo(204);
+
+		assertThat(new StoredPassword().matches(NEW_PASSWORD, passwordHashOf(account)))
+				.as("the reset did not happen, so the moment stood still for another reason")
+				.isTrue();
+		assertThat(confirmedAt(account))
+				.as("a reset moved a moment that was already recorded")
+				.isEqualTo(before);
+	}
+
 	private Instant confirmedAt(long account) {
 		return db.sql("select email_confirmed_at from account where id = ?")
 				.param(account).query(Instant.class).optional().orElse(null);

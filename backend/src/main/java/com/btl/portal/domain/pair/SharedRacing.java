@@ -2,6 +2,7 @@ package com.btl.portal.domain.pair;
 
 import com.btl.portal.domain.ranking.Totals;
 
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -64,21 +65,26 @@ public final class SharedRacing {
 	 * <p>The count is put back by hand after the adding, and that line is the whole
 	 * point of this method: {@link Totals#plus} counts races, so adding his race
 	 * and her race on the SAME race gives two. The pair ran one.
+	 *
+	 * <p><b>A race counts once for each of them, the first result given for it.</b>
+	 * Nothing keys a result to (member, race) in the data the portal carries over (V7:
+	 * "one hundred and sixty five pairs that occur twice"), so one list can hold the same
+	 * race twice, and adding both would put kilometres and points on the board that
+	 * {@link #racesBothRan} has already counted as one race. Which of the two is kept is his
+	 * list's order and nothing cleverer, the same order the shared races come back in.
 	 */
 	public static Totals together(List<RanRace> his, List<RanRace> hers) {
 		List<Long> shared = racesBothRan(his, hers);
 
 		Totals added = Totals.EMPTY;
 
-		for (RanRace one : his) {
-			if (shared.contains(one.raceId())) {
-				added = added.plus(one.totals());
-			}
-		}
+		for (List<RanRace> side : List.of(his, hers)) {
+			Set<Long> alreadyAdded = new HashSet<>();
 
-		for (RanRace one : hers) {
-			if (shared.contains(one.raceId())) {
-				added = added.plus(one.totals());
+			for (RanRace one : side) {
+				if (shared.contains(one.raceId()) && alreadyAdded.add(one.raceId())) {
+					added = added.plus(one.totals());
+				}
 			}
 		}
 

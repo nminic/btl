@@ -40,10 +40,15 @@ import java.lang.annotation.Target;
  * ask a question; the door asks the two questions it knows how to ask, by name. So an
  * annotation marked here and not wired into {@link RightsAtTheDoor#preHandle} would be
  * a guard that guards nothing - which is the gap this mark could otherwise open, and it
- * is closed by measurement rather than by care:
+ * is closed by measurement rather than by care, in two cases that are both needed:
  * {@code everyRouteTheDoorDecidesIsShutToACompetitorAlthoughHeIsSignedIn} asks every
  * route carrying any marked annotation, as a plain competitor, and fails on anything but
- * a refusal. That case is derived from the dispatcher, so it has no list either.
+ * a refusal - which catches an unwired mark only where it is the ONLY guard on its route,
+ * because beside a wired guard the member is refused 404 by that one and the case passes
+ * (measured 06.11.2026). {@code everyKindOfGuardIsShutToAPlainMemberOnItsOwnWhereverTheRoutesPutIt}
+ * is the other half: it puts a handler wearing one marked annotation and nothing else to the
+ * door, for every kind the routes wear, so a mark is measured wherever it is placed. Both are
+ * derived from the dispatcher, so neither has a list.
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
