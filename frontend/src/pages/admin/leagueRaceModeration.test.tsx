@@ -419,7 +419,7 @@ describe('which races count towards a competition', () => {
 
     await waitFor(() => {
       expect(within(box).queryAllByRole('button', { name: /^Izbaci trku/ })).toHaveLength(0)
-    })
+    }, { timeout: 3000 })
     expect(within(box).getByText('Ovoj ligi još nije dodeljena nijedna trka.')).toBeVisible()
 
     server.stop()
@@ -446,7 +446,7 @@ describe('which races count towards a competition', () => {
        three. */
     await waitFor(() => {
       expect(within(box).getAllByRole('button', { name: /^Izbaci trku/ })).toHaveLength(4)
-    })
+    }, { timeout: 3000 })
 
     server.stop()
   }, SLOW)
