@@ -254,6 +254,20 @@ describe('the settings of an administration account with no member', () => {
   )
 })
 
+describe('the settings of a member the list does not hold yet', () => {
+  /* A number handed out during this visit is not in the file the list is read from, and after the database
+     arrives the two can be a moment apart for a hundred other reasons. The rest of the settings still work;
+     there is simply no profile to hide. This case stood in `profilePicture.test.tsx` until 06.11.2026, about
+     the picture, and the picture has left the settings since; what is left of it is the privacy. */
+  it('draws no privacy for him, and the rest of the settings all the same', async () => {
+    renderAt('/sr/podesavanja', 'competitor', '999999')
+
+    expect(await screen.findByRole('heading', { name: 'Podešavanja' })).toBeVisible()
+    expect(await screen.findByRole('group', { name: 'Tema' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: PANELS.privacy })).not.toBeInTheDocument()
+  }, SLOW)
+})
+
 describe('the settings of a member whose fee stands', () => {
   /* 000001 is freed of the fee in the generated data and stands. The anchor of the other two:
      everything the settings of an account hold is drawn. NOT his picture and his words about himself,
