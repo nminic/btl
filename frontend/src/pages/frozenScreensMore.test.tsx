@@ -98,6 +98,13 @@ describe('the top lists of a frozen season', () => {
     expect(rowsOf(screen.getByRole('table', { name: sr.topBoards.pairs }))[0]?.[1]).toContain('Anđelija Vukotić')
     expect(rowsOf(screen.getByRole('table', { name: sr.topBoards.bestRaces }))[0]?.[2]).toBe('Beogradski maraton')
     expect(rowsOf(screen.getByRole('table', { name: sr.topBoards.onCourse })).map(([place]) => place)).toEqual(['1'])
+
+    /* The gain is the points less the season before as the freeze wrote both, 401,75 on 300,00 (mutation
+       B7, 06.11.2026). */
+    const progress = screen.getByRole('heading', { name: sr.topBoards.progress }).closest('section')
+
+    expect(progress?.textContent).toContain('101,75')
+    expect(progress?.textContent).toContain('300,00')
   })
 
   it('measure the season that follows against the frozen one, and read no snapshot of their own', async () => {

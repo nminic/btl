@@ -111,5 +111,11 @@ describe('the list of competitions', () => {
     const card = (await screen.findByRole('heading', { name: /RunTrace liga 2027/ })).closest('section, article, li')
 
     await waitFor(() => expect(card?.textContent).toContain(`${sr.leagues.entrants}: 2`))
+
+    /* And a competition the snapshot wrote no standing for is none, not the count of another one
+       (mutation S18, 06.11.2026). */
+    const other = screen.getByRole('heading', { name: /Planinska liga 2027/ }).closest('section, article, li')
+
+    expect(other?.textContent).toContain(`${sr.leagues.entrants}: 0`)
   })
 })

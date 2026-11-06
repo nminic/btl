@@ -368,6 +368,12 @@ class FrozenSeasonApiTest {
 		run("000406", "Krug", 77.00);
 
 		frozen();
+		/* Another frozen season holding other points for a member of this one: the points of 2027 are 2027's
+		   alone, which a query that forgot the season would answer with both (mutation J1, 06.11.2026). */
+		db.sql("insert into season_frozen (season, frozen_at) values (2028, timestamptz '2029-01-01 15:00:00+00')").update();
+		db.sql("insert into season_points_at_freeze (season, competitor_id, points)"
+						+ " values (2028, (select id from competitor where member_number = '000401'), 7.00)")
+				.update();
 
 		JsonNode tables = tablesOf2027(null);
 
