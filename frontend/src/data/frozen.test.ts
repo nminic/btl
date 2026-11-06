@@ -117,6 +117,12 @@ describe('the record a member of a frozen row is drawn with', () => {
     expect(drawn.categories).toEqual([{ season: 2027, ageBand: '40-54', beginner: false }])
   })
 
+  it('keeps the gender the freeze wrote where the portal serves him as the other one since', () => {
+    const drawn = standIn({ memberNumber: '000001', who: 'Vladan Đurišić', gender: 'M' }, { ...A_MEMBER, gender: 'F' }, 2027, null, '<x>')
+
+    expect(drawn.gender).toBe('M')
+  })
+
   it('is a name and nothing of today where the portal no longer serves him', () => {
     const drawn = standIn({ memberNumber: null, who: 'Relja', gender: 'M' }, undefined, 2027, null, '<x>')
 
