@@ -171,9 +171,10 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 	 * A SEASON CANCELLED AFTER IT BEGAN takes its member out of his team and his pair at once (PDL
 	 * 05.11.2026), from the season 2028 on ({@link #FIRST_SEASON_THAT_DROPS_MEMBERS}); a season before it moves
 	 * nobody. The new administrator of his team is told with „Od danas" ({@link #theSeatReadsFromToday}), not
-	 * with the first of January. Before the season before it froze, nothing happens here: until 16:00 on 1 January the
-	 * season being cancelled has not begun for teams, and {@link #begin} drops him at 16:00 anyway, since he
-	 * holds nothing then.
+	 * with the first of January. Until the season before it has a row in {@code season_frozen}, nothing happens
+	 * here: until the job of 1 January has run the season being cancelled has not begun for teams, and
+	 * {@link #begin} drops him when it does, since he holds nothing then. It is the row, not the hour, that
+	 * says so ({@link #aCancellationTakesHimOut}).
 	 *
 	 * <p><b>The seats before are read by {@link #before}, which the cancellation asks BEFORE its rows go</b>,
 	 * because whether he stands in his team is whether he holds the season ({@link AMemberIsActive}): read
@@ -187,7 +188,7 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 	 * @param before what {@link #before} read for him at {@code now}, before the rows went
 	 */
 	void cancelled(long member, int season, ZonedDateTime now, Before before) {
-		if (!aCancellationTakesHimOut(season, now)) {
+		if (!aCancellationTakesHimOut(season)) {
 			return;
 		}
 
@@ -215,7 +216,7 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 	 * @param now    the moment of the cancellation, the one {@link #cancelled} is handed
 	 */
 	Before before(long member, int season, ZonedDateTime now) {
-		if (!aCancellationTakesHimOut(season, now)) {
+		if (!aCancellationTakesHimOut(season)) {
 			return new Before(Set.of(), Map.of());
 		}
 
@@ -233,8 +234,21 @@ class ASeasonBegins implements WhatFollowsTheFreeze {
 	record Before(Set<Long> teams, Map<Long, Long> seats) {
 	}
 
-	private static boolean aCancellationTakesHimOut(int season, ZonedDateTime now) {
-		return season >= FIRST_SEASON_THAT_DROPS_MEMBERS && SeasonClock.isFrozen(season - 1, now);
+	/**
+	 * WHETHER THE SEASON BEFORE THE ONE CANCELLED HAS FROZEN IS READ FROM THE RECORD OF THE FREEZE, NOT FROM
+	 * THE CLOCK: the job of 1 January is what drops the lapsed at 16:00 and it writes {@code season_frozen}
+	 * first, in its own transaction, so a server that was not running at 16:00 has frozen nothing and dropped
+	 * nobody until it is up. A cancellation in that gap that read the clock would take him out of his team
+	 * before the snapshot had written the team down, which is „zamrzavanje pa ispadanje" turned around
+	 * (PDL, derived 19.09.2026) and „Prethodne sezone su zamrznute i ne diraju se" broken. Until the record
+	 * is there the job drops him itself, since he holds nothing of the season then.
+	 */
+	private boolean aCancellationTakesHimOut(int season) {
+		return season >= FIRST_SEASON_THAT_DROPS_MEMBERS
+				&& Boolean.TRUE.equals(db.sql("select exists(select 1 from season_frozen where season = ?)")
+						.param(season - 1)
+						.query(Boolean.class)
+						.single());
 	}
 
 	private Set<Long> teamsOf(Collection<Long> members) {
