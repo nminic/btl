@@ -339,9 +339,9 @@ describe('the tables a frozen season writes down', () => {
 describe('two members level to the hundredth', () => {
   const { competitors, results } = inputs(SEASON)
   const ranked = SEASON.members.filter((one) => one.ranks && one.gender === 'M').slice(0, 2)
-  const [lower, higher] = ranked.map((one) =>
-    given(new Map(competitors.map((each) => [each.memberNumber, each])), one.number),
-  )
+  const byNumber = new Map(competitors.map((each) => [each.memberNumber, each]))
+  const lower = given(byNumber, at(ranked, 0).number)
+  const higher = given(byNumber, at(ranked, 1).number)
   const template = given(new Map(results.map((one) => [one.id, one])), at(SEASON.runs, 0).id)
 
   /** Runs of a member that are his and nobody else's, each a run of the same day and race kind. */

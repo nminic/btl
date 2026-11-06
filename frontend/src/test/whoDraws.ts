@@ -79,7 +79,7 @@ export function drawing(path: string, code: string, wanted: string, exported: st
       continue
     }
 
-    const bindings = statement.importClause?.namedBindings
+    const bindings = ts.isImportDeclaration(statement) ? statement.importClause?.namedBindings : undefined
 
     if (bindings === undefined) {
       continue
