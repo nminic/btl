@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { screen } from '@testing-library/react'
 import { must } from '../test/at'
 import { renderWithI18n } from '../test/render'
-import { ruleFor } from '../test/stylesheet'
+import { everyRule, ruleFor } from '../test/stylesheet'
 import { bare } from '../test/sources'
 import { EventRaces } from '../pages/admin/EventRaces'
 import { newRaceRow } from '../pages/admin/raceRows'
@@ -608,3 +608,80 @@ const SHEET = readFileSync(join(process.cwd(), 'src/forms/FormRenderer.css'), 'u
 const NAME = 'field__control--held'
 /** What `globSync` puts between the folders on this machine. */
 const SEP = join('a', 'b').slice(1, -1)
+
+/**
+ * WHAT A HELD BUTTON WEARS HAS SIX HOMES, AND THIS FILE NAMES THEM.
+ *
+ * <p>The same shape of fault `forms/held.ts` records for a held FIELD (ADL A31), one storey over: a
+ * button the portal holds is told off by `aria-disabled='true'` and dressed by a rule of its own,
+ * and that rule is written wherever the button lives because the buttons are not one class
+ * (`.button`, a pager's `.button`, the open button of a record, the button beside a date, the button
+ * that sends a form, the tool of the editor of texts). Nothing counted them: a seventh could be added
+ * with `opacity`, which dims the focus ring along with the rest and which every one of the six says
+ * in its own comment it leaves out (WCAG 2.2 SC 1.4.11), or one of the six could be deleted, and the
+ * button would be live-looking beside a word that says it is refused. The count was FIVE when the
+ * review of PR 492 made it; the editor's tool is the sixth, found by reading every sheet for the
+ * attribute and not by remembering the five.
+ *
+ * <p><b>Derived, then compared.</b> The homes are found by reading every sheet the portal has
+ * (`globSync`) through the parser, for a selector that names `[aria-disabled`, hover rules aside
+ * (each home keeps one for the pointer, and that is the same dress held still). The table is the
+ * other side of the comparison and carries what the sweep cannot know, which rule is which button;
+ * it is held to the sweep in both directions, so a home that is missing from it and a row it has
+ * for a rule that is gone are the same red gate.
+ */
+describe('what a held button wears', () => {
+  const HOMES: Record<string, string[]> = {
+    'src/components/Pager.css': [".pager .button[aria-disabled='true']"],
+    'src/components/markdownEditor/MarkdownEditor.css': [".md-editor__tool[aria-disabled='true']"],
+    'src/forms/DatePicker.css': [".datepicker__open[aria-disabled='true']"],
+    'src/forms/FormRenderer.css': [".form__submit[aria-disabled='true']"],
+    'src/pages/Home.css': [".button[aria-disabled='true']"],
+    'src/pages/admin/Entity.css': [".entity-open[aria-disabled='true']"],
+  }
+
+  /** Every rule of every sheet that dresses a held thing, by the sheet, as a selector with the quotes
+   *  the portal writes (the parser hands back double ones). */
+  function dressedIn(): Record<string, { selector: string; rule: CSSStyleRule }[]> {
+    const found: Record<string, { selector: string; rule: CSSStyleRule }[]> = {}
+
+    for (const file of globSync('src/**/*.css').toSorted()) {
+      const named = file.split(SEP).join('/')
+      const rules = everyRule(readFileSync(join(process.cwd(), file), 'utf-8'), named)
+        .map((rule) => ({ selector: rule.selectorText.replaceAll('"', "'"), rule }))
+        .filter((one) => one.selector.includes('[aria-disabled') && !one.selector.includes(':hover'))
+
+      if (rules.length > 0) {
+        found[named] = rules
+      }
+    }
+
+    return found
+  }
+
+  it('is written in the sheets and the rules named here, and in no other', () => {
+    expect(
+      Object.fromEntries(
+        Object.entries(dressedIn()).map(([file, rules]) => [file, rules.map((one) => one.selector).sort()]),
+      ),
+    ).toEqual(HOMES)
+  })
+
+  it('says it is spent in colour and in the pointer, and never in opacity', () => {
+    const rules = Object.values(dressedIn()).flat()
+
+    expect(rules.length, 'the sweep found no rule that dresses a held button').toBeGreaterThan(0)
+
+    for (const { selector, rule } of rules) {
+      expect(
+        rule.style.getPropertyValue('opacity'),
+        `${selector} dims the control with opacity, which dims its focus ring too`,
+      ).toBe('')
+      expect(
+        rule.style.getPropertyValue('cursor'),
+        `${selector} leaves the pointer as it is on a button that refuses`,
+      ).not.toBe('')
+    }
+  })
+})
+
