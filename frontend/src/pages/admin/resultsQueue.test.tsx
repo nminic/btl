@@ -426,6 +426,12 @@ describe('the queue of results as the server answers it', () => {
 
       expect(await screen.findByText('Podaci se ne mogu učitati.')).toBeVisible()
       expect(screen.queryByText(sr.review.empty)).toBeNull()
+      /* AND THE NAVIGATION SAYS ITS NUMBERS CANNOT BE TRUSTED (`SectionNav.tsx`, `verification.shortCount`):
+         the file that failed feeds every queue, so five quiet noughts would read as an afternoon's work
+         done. No case held the alarm until 06.11.2026 (`data/aFailedReadIsSaid.test.ts` said so). */
+      expect(
+        within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' })).getByRole('alert'),
+      ).toHaveTextContent(sr.verification.shortCount)
     } finally {
       server.stop()
     }

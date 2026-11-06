@@ -299,7 +299,7 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
   {
     file: 'pages/admin/SectionNav.tsx',
     how: 'says',
-    why: 'THE FILE\'S OWN: the alarm says `verification.shortCount` when the file of queues failed, and every queue it feeds counts as nought. The file records that a file still on its way raises nothing. NO CASE HOLDS THE ALARM: found the same way as for `PendingQueue.tsx`.',
+    why: 'THE FILE\'S OWN: the alarm says `verification.shortCount` when the file of queues failed, and every queue it feeds counts as nought. The file records that a file still on its way raises nothing. HELD since 06.11.2026 by `pages/admin/resultsQueue.test.tsx` ("says the list could not be read rather than passing for an empty one"), which asks the navigation of the section for the alarm when the file of queues fails.',
     calls: [{ shape: 'dataOr', call: 'dataOr(items, [])' }],
   },
   {
