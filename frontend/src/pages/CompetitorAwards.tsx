@@ -12,15 +12,16 @@ import { LoadMore } from '../components/LoadMore'
 import { earnedDucats } from '../data/ducatEarned'
 import { unitFor, type Ducat } from '../data/ducatRule'
 import { pairsNow, resultsOf, seasonsWithResults } from '../data/derive'
-import type { Competitor, RacingPair } from '../data/types'
+import type { Competitor, RacingPair, Team } from '../data/types'
 import { formatNumber, formatPoints, wholePeriod } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { isActiveMemberOrAdministration } from '../roles/activeMemberOrAdministration'
 import { useRole } from '../roles/useRole'
 import { useSession } from '../session/useSession'
-import { MEMBERS, recordsOf } from './admin/entityForms'
+import { MEMBERS, TEAMS, recordsOf } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
 import { HisOwnRecord } from './profile/HisOwnRecord'
+import { InvitesToHim } from './profile/InvitesToHim'
 import { profileFor } from './profile/visible'
 import {
   combineFour,
@@ -70,7 +71,7 @@ function AwardsBody({
   /* THE PAIRS AS WELL SINCE 18.10.2026, because the head of this page is the head of the profile and
      its line now ends with the racing pair (PDL P11, owner, 18.10.2026, „Trkački par stoji u liniji
      ispod imena, posle tima"). One head on both parts (`profile/ProfileHead.tsx`): a line that said
-     the pair on „Pregled" and dropped it on „Priznanja" would be two answers about one person. */
+     the pair on „Rezultati" and dropped it on „Priznanja" would be two answers about one person. */
   const state = combinePair(
     combineFour(useCompetitors(), useResults(), useTeams(), usePairs()),
     combinePair(useDucats(), useEveryFrozenTable()),
@@ -78,11 +79,15 @@ function AwardsBody({
 
   return (
     <Resource state={state}>
-      {([[everybody, results, teams, fromFile], [ducats, frozenTables]]) => {
+      {([[everybody, results, allTeams, fromFile], [ducats, frozenTables]]) => {
         /* The same three answers as the profile itself, from the same place, and through the
            same overlay: this page draws the same head from the same record, and a check written
            on one of the two is a check on neither. */
         const competitors = recordsOf(MEMBERS, everybody, overlay)
+        /* And the teams through the same overlay as on the profile, since „Pozovi u tim" stands on this
+           part too (owner, 06.11.2026): the button asks which team the reader leads, and two parts that
+           read two lists of teams could offer it on one and not on the other. */
+        const teams = recordsOf(TEAMS, allTeams, overlay)
         const readsHiddenProfiles = isActiveMemberOrAdministration(role, signedIn)
         const readable = profileFor(
           competitors,
@@ -123,6 +128,7 @@ function AwardsBody({
             ducats={ducats}
             frozenTables={frozenTables}
             team={teams.find((one) => one.id === competitor.teamId)}
+            teams={teams}
             pairs={pairsNow(fromFile, pairsMade, pairsBroken)}
           />
         )
@@ -167,6 +173,7 @@ function AwardsFor({
   ducats,
   frozenTables,
   team,
+  teams,
   pairs,
 }: {
   competitor: Parameters<typeof awardsOf>[0]
@@ -177,6 +184,8 @@ function AwardsFor({
   /** Every frozen season's snapshot (`/api/frozen-tables/{season}`): its trophies are read, not worked out. */
   frozenTables: FrozenTables[]
   team: Parameters<typeof ProfileTop>[0]['team']
+  /** Every team, for „Pozovi u tim" in the row of the parts (`profile/InvitesToHim.tsx`). */
+  teams: Team[]
   /** The pairs that hold now, for the line under the name (`profile/ProfileHead.tsx`). */
   pairs: RacingPair[]
 }) {
@@ -285,6 +294,11 @@ function AwardsFor({
         pairs={pairs}
         seasons={seasons}
         season={season}
+        /* The same acts as on „Rezultati", in the same row (owner, 06.11.2026: on „Rezultati" and
+           „Priznanja", not on „Podaci"). */
+        acts={
+          <InvitesToHim competitor={competitor} competitors={competitors} teams={teams} pairs={pairs} />
+        }
       />
 
       <section aria-labelledby="awards-trophies">
