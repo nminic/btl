@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -174,6 +175,42 @@ class MemberPictureAndWordsApi {
 		tell(member, WhatAProfileChangeSays.about(Change.PICTURE));
 
 		return ResponseEntity.ok(new Picture("/api/photos/" + digest, new Crop(x, y, size)));
+	}
+
+	/**
+	 * HIS PICTURE TAKEN DOWN, at once: the one that stands and the one of his that waits (owner, 06.11.2026,
+	 * the answer „Da, i uklanjanje" to whether the administration may also remove). He is told, as for a
+	 * change, and only where there was something to take down. The files go with the sweep, for the reason
+	 * {@link #setThePicture} gives.
+	 */
+	@DeleteMapping("/api/members/{memberNumber}/photo")
+	@RightIsNeeded(CompetitorApi.OVER_THE_MEMBERS)
+	@Transactional
+	ResponseEntity<?> takeThePictureDown(@PathVariable String memberNumber,
+			@AuthenticationPrincipal WhoIsAsking.Member asking, HttpServletResponse response) throws IOException {
+
+		Long member = hisIfTheAskingMayChangeIt(memberNumber, asking);
+
+		if (member == null) {
+			return away(response);
+		}
+
+		MePhotoApi.oneSendOfAMemberAtATime(db, member);
+
+		int waited = db.sql("delete from verification where id in (select v.id"
+						+ MePhotoApi.THE_ONE_OF_MINE_THAT_WAITS + ")")
+				.param("me", member)
+				.param("tab", MePhotoApi.THE_PROFILES_TAB)
+				.update();
+		int stood = db.sql("update competitor set photo_id = null where id = ? and photo_id is not null")
+				.param(member)
+				.update();
+
+		if (waited + stood > 0) {
+			tell(member, WhatAProfileChangeSays.about(Change.PICTURE_REMOVED));
+		}
+
+		return ResponseEntity.ok().build();
 	}
 
 	/**

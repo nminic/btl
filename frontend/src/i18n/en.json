@@ -1870,7 +1870,10 @@
     }
   },
   "theirBoxes": {
-    "pictureStanding": "The picture now on the member's profile is the one in the circle at the top of the page.",
+    "pictureStanding": "This is the picture now on the member's profile.",
+    "currentAlt": "The member's picture, with the framed part that shows",
+    "pictureRemove": "Remove the picture",
+    "pictureRemoveAsks": "Remove the member's picture?",
     "pictureNone": "The member has no picture on the profile yet.",
     "atOnce": "A change stands on the member's profile at once, without approval, and the member gets a message in the inbox.",
     "pictureSave": "Save the picture",

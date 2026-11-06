@@ -21,7 +21,7 @@ import { BoxesSentContext, THE_PICTURE_AND_THE_WORDS } from './profile/finishThe
 import { HisOwnRecord } from './profile/HisOwnRecord'
 import { ProfileTop } from './profile/ProfileHead'
 import { TheMembersData } from './profile/TheMembersData'
-import { TheMembersPictureAndWords } from './profile/TheMembersPictureAndWords'
+import { TheirBoxesOffTheirData, TheMembersPictureAndWords } from './profile/TheMembersPictureAndWords'
 import { profileFor } from './profile/visible'
 import { THE_DATA, useWhoReadsTheData } from './profile/whoReadsTheData'
 import { useWhereARefusedReaderGoes } from './member/whereARefusedReaderGoes'
@@ -93,6 +93,9 @@ export function CompetitorData() {
         boxes={(competitor) =>
           reader === 'his' ? <TheTwoBoxes me={competitor} /> : <TheMembersPictureAndWords competitor={competitor} />
         }
+        /* A member the public list does not carry is the administration's road alone (see `TheCard`), and
+           his boxes are drawn off the administration's own route: owner, 06.11.2026, „Vidi i samu sliku". */
+        alone={reader === 'his' ? null : <TheirBoxesOffTheirData memberNumber={String(memberNumber)} />}
       />
     </BoxesSentContext.Provider>
   )
@@ -161,14 +164,16 @@ function TheCard({
   memberNumber,
   panel,
   boxes,
+  alone,
 }: {
   part: string | undefined
   memberNumber: string | undefined
   /** The form of the data, which every road of the card draws. */
   panel: ReactNode
-  /** The picture and the words about himself, at the bottom, drawn only where there is a record to draw
-   *  them about: the profile's own. A member the public list does not carry gets the form alone. */
+  /** The picture and the words about himself, at the bottom, drawn about the record the head is drawn from. */
   boxes: (competitor: Competitor) => ReactNode
+  /** The same boxes for a member the public list does not carry, drawn under the form there. */
+  alone: ReactNode
 }) {
   const { locale, t } = useI18n()
   const { search, hash } = useLocation()
@@ -234,6 +239,7 @@ function TheCard({
           <div className="profile">
             <h1>{t('profile.parts.data')}</h1>
             {panel}
+            {alone}
           </div>
         )
       }}

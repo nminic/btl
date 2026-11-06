@@ -491,7 +491,38 @@ class MemberDataWriteApiTest {
 
 		assertThat(names).containsExactlyInAnyOrder("memberNumber", "firstName", "lastName", "fatherName",
 				"gender", "birthDate", "idNumber", "email", "emailConfirmed", "address", "phone", "placeId",
-				"city", "country", "shirtSize");
+				"city", "country", "shirtSize", "bio", "photo", "crop");
+		/* No words and no picture in the fixture of this member: both null, the shape the public list gives. */
+		assertThat(data.path("bio").asString()).isEmpty();
+		assertThat(data.path("photo").isNull()).isTrue();
+		assertThat(data.path("crop").isNull()).isTrue();
+	}
+
+	/**
+	 * HIS WORDS AND HIS PICTURE AS THEY STAND (owner, 06.11.2026, PDL „Boksovi „Profilna slika" i „Tekst o sebi"
+	 * prelaze sa Podešavanja": the administration sees and changes the picture of a member whose fee has lapsed,
+	 * whom the public list does not carry). Two members with two different pictures, so a join that read the
+	 * wrong row is told from the right one.
+	 */
+	@Test
+	void hisWordsAndHisPictureAreServedAsTheyStand() throws Exception {
+		long his = db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter)"
+						+ " values ('image/jpeg', 10, ?, 0.25, 0.75, 0.5) returning id")
+				.param("a".repeat(64)).query(Long.class).single();
+		long theirs = db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter)"
+						+ " values ('image/jpeg', 10, ?, 0.1, 0.2, 0.3) returning id")
+				.param("b".repeat(64)).query(Long.class).single();
+
+		db.sql("update competitor set photo_id = ?, bio = 'Njegove reci.' where id = ?").params(his, corrected).update();
+		db.sql("update competitor set photo_id = ?, bio = 'Tudje reci.' where id = ?").params(theirs, first).update();
+
+		JsonNode data = body(read("000005", THE_SUPERADMIN));
+
+		assertThat(data.path("bio").asString()).isEqualTo("Njegove reci.");
+		assertThat(data.path("photo").asString()).isEqualTo("/api/photos/" + "a".repeat(64));
+		assertThat(data.path("crop").path("x").decimalValue()).isEqualByComparingTo("0.25");
+		assertThat(data.path("crop").path("y").decimalValue()).isEqualByComparingTo("0.75");
+		assertThat(data.path("crop").path("size").decimalValue()).isEqualByComparingTo("0.5");
 	}
 
 	@Test

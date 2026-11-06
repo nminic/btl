@@ -75,7 +75,8 @@ class MemberDataApi {
 	 */
 	record Data(String memberNumber, String firstName, String lastName, String fatherName, String gender,
 			String birthDate, String idNumber, String email, Boolean emailConfirmed, String address,
-			String phone, Long placeId, String city, String country, String shirtSize) {
+			String phone, Long placeId, String city, String country, String shirtSize, String bio, String photo,
+			MePhotoApi.Crop crop) {
 	}
 
 	@GetMapping("/api/members/{memberNumber}/data")
@@ -99,10 +100,18 @@ class MemberDataApi {
 						+ " c.birth_date::text, d.document_number, a.email,"
 						+ " case when a.id is null then null else a.email_confirmed_at is not null end,"
 						+ " c.address, c.phone, p.geonames_id, coalesce(p.name, c.city),"
-						+ " coalesce(pk.code, k.code), c.shirt_size"
+						+ " coalesce(pk.code, k.code), c.shirt_size,"
+						/* HIS WORDS AND HIS PICTURE AS THEY STAND, in the shape the public list gives them
+						   (`CompetitorApi`): the address of the picture and its circle, both null for a member
+						   with none. Here for the administration's boxes on a card the public list does not
+						   carry (owner, 06.11.2026, PDL „Boksovi „Profilna slika" i „Tekst o sebi" prelaze sa
+						   Podešavanja": the administration changes the picture and the words of a member whose
+						   fee has lapsed too, and sees the picture itself). */
+						+ " c.bio, '/api/photos/' || ph.digest, ph.crop_x, ph.crop_y, ph.crop_diameter"
 						+ " from competitor c"
 						+ " left join competitor_document d on d.competitor_id = c.id"
 						+ " left join account a on a.competitor_id = c.id"
+						+ " left join photo ph on ph.id = c.photo_id"
 						+ " left join place p on p.id = c.place_id"
 						+ " left join country k on k.id = c.country_id"
 						+ " left join country pk on pk.id = p.country_id"
@@ -111,7 +120,9 @@ class MemberDataApi {
 				.query((row, i) -> new Data(row.getString(1), row.getString(2), row.getString(3),
 						row.getString(4), row.getString(5), row.getString(6), row.getString(7),
 						row.getString(8), (Boolean) row.getObject(9), row.getString(10), row.getString(11),
-						(Long) row.getObject(12), row.getString(13), row.getString(14), row.getString(15)))
+						(Long) row.getObject(12), row.getString(13), row.getString(14), row.getString(15),
+						row.getString(16), row.getString(17), row.getString(17) == null ? null
+								: new MePhotoApi.Crop(row.getBigDecimal(18), row.getBigDecimal(19), row.getBigDecimal(20))))
 				.optional();
 	}
 }

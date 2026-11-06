@@ -36,6 +36,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
@@ -237,6 +238,10 @@ class MemberPictureAndWordsApiTest {
 		return picture(number, aJpeg("nova slika " + number), "0.5", email);
 	}
 
+	private MockHttpServletResponse takenDown(String number, String email) throws Exception {
+		return sent(delete("/api/members/" + number + "/photo").with(csrf()), email);
+	}
+
 	private MockHttpServletResponse words(String number, String body, String email) throws Exception {
 		return sent(put("/api/members/" + number + "/bio").with(csrf())
 				.contentType(MediaType.APPLICATION_JSON).content(body), email);
@@ -280,6 +285,7 @@ class MemberPictureAndWordsApiTest {
 	@Test
 	void nobodySignedInIsAskedToSignInOnBoth() throws Exception {
 		assertThat(picture(HIS_NUMBER, null).getStatus()).isEqualTo(401);
+		assertThat(takenDown(HIS_NUMBER, null).getStatus()).isEqualTo(401);
 		assertThat(words(HIS_NUMBER, "{\"bio\":\"x\"}", null).getStatus()).isEqualTo(401);
 	}
 
@@ -287,6 +293,7 @@ class MemberPictureAndWordsApiTest {
 	void whoeverLacksTheRightOverTheMembersIsAnsweredAsIfNothingWereThere() throws Exception {
 		for (String email : List.of(OVER_THE_PAYMENTS_ONLY, A_MEMBER)) {
 			assertThat(picture(HIS_NUMBER, email).getStatus()).as(email).isEqualTo(404);
+			assertThat(takenDown(HIS_NUMBER, email).getStatus()).as(email).isEqualTo(404);
 			assertThat(words(HIS_NUMBER, "{\"bio\":\"x\"}", email).getStatus()).as(email).isEqualTo(404);
 		}
 
@@ -300,6 +307,8 @@ class MemberPictureAndWordsApiTest {
 		assertThat(picture("999999", OVER_THE_MEMBERS).getStatus()).isEqualTo(404);
 		assertThat(words("999999", "{\"bio\":\"x\"}", OVER_THE_MEMBERS).getStatus()).isEqualTo(404);
 		assertThat(picture("000003", OVER_THE_MEMBERS).getStatus()).isEqualTo(404);
+		assertThat(takenDown("999999", OVER_THE_MEMBERS).getStatus()).isEqualTo(404);
+		assertThat(takenDown("000003", OVER_THE_MEMBERS).getStatus()).isEqualTo(404);
 		assertThat(words("000003", "{\"bio\":\"x\"}", OVER_THE_MEMBERS).getStatus()).isEqualTo(404);
 
 		assertThat(count("select count(*) from competitor where id = ? and (photo_id is not null or bio <> '')",
@@ -383,6 +392,36 @@ class MemberPictureAndWordsApiTest {
 			assertThat(body(sent(asking.with(csrf()), OVER_THE_MEMBERS)).get("reason").asString())
 					.isEqualTo(MePhotoApi.THE_CROP_IS_NOT_A_CIRCLE);
 		}
+	}
+
+	@Test
+	void aPictureTakenDownGoesAtOnceWithHisWaitingOneAndTellsHimAlone() throws Exception {
+		waitingPicture(him);
+		waitingText(him);
+
+		assertThat(takenDown(HIS_NUMBER, OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
+
+		assertThat(count("select count(*) from competitor where id = ? and photo_id is null", him)).isOne();
+		assertThat(picturesWaitingOf(him)).as("his waiting picture goes too").isZero();
+		assertThat(textsWaitingOf(him)).as("his waiting words are not the picture's business").isOne();
+		assertThat(picturesWaitingOf(aThird)).as("nobody else's waiting picture goes").isOne();
+		assertThat(digestStandingOn(aThird)).isEqualTo(String.format("%064x", 2));
+		assertThat(messages()).containsExactly(him + ": Uklonjena je vaša profilna slika");
+	}
+
+	@Test
+	void aPictureTakenDownWhereOnlyHisWaitingOneWasTellsHimToo() throws Exception {
+		waitingPicture(first);
+
+		assertThat(takenDown("000002", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
+		assertThat(picturesWaitingOf(first)).isZero();
+		assertThat(messages()).containsExactly(first + ": Uklonjena je vaša profilna slika");
+	}
+
+	@Test
+	void takingDownWhatIsNotThereTellsNobody() throws Exception {
+		assertThat(takenDown("000002", OVER_THE_MEMBERS).getStatus()).isEqualTo(200);
+		assertThat(messages()).isEmpty();
 	}
 
 	// THE WORDS -----------------------------------------------------------------------------------------

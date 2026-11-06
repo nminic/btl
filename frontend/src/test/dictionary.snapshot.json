@@ -1870,7 +1870,10 @@
     }
   },
   "theirBoxes": {
-    "pictureStanding": "Slika koja je sada na profilu člana stoji u krugu na vrhu strane.",
+    "pictureStanding": "Ovo je slika koja je sada na profilu člana.",
+    "currentAlt": "Slika člana, sa uokvirenim delom koji se vidi",
+    "pictureRemove": "Ukloni sliku",
+    "pictureRemoveAsks": "Ukloni sliku člana?",
     "pictureNone": "Član još nema sliku na profilu.",
     "atOnce": "Izmena odmah stoji na profilu člana, bez odobrenja, a član dobija poruku u sanduče.",
     "pictureSave": "Sačuvaj sliku",

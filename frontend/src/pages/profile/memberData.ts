@@ -240,3 +240,28 @@ export const SHARED_WITH_THE_MEMBERS_OWN: Record<string, string> = {
   theTownIsNotSaidOnce: 'account.townNotSaidOnce',
   theTownIsNotKnown: 'account.townNotKnown',
 }
+
+/**
+ * WHAT STANDS ON A MEMBER'S PROFILE: his picture with its circle and his words, both null where there are
+ * none. The shape the public list gives them (`CompetitorApi`), which `GET /api/members/{memberNumber}/data`
+ * carries as well since 06.11.2026, for the card of a member the list does not carry (owner, „Vidi i samu
+ * sliku").
+ */
+export type WhatStands = { memberNumber: string; photo: string | null; crop: unknown; bio: string | null }
+
+/** What stands, out of the answer of that route, or nothing where any of it is of a kind the portal does not know. */
+export function whatStandsIn(body: unknown): WhatStands | null {
+  if (typeof body !== 'object' || body === null) {
+    return null
+  }
+
+  const memberNumber: unknown = Reflect.get(body, 'memberNumber')
+  const photo: unknown = Reflect.get(body, 'photo')
+  const bio: unknown = Reflect.get(body, 'bio')
+
+  if (typeof memberNumber !== 'string' || (photo !== null && typeof photo !== 'string') || (bio !== null && typeof bio !== 'string')) {
+    return null
+  }
+
+  return { memberNumber, photo, crop: Reflect.get(body, 'crop'), bio }
+}

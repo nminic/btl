@@ -37,6 +37,8 @@ public final class WhatAProfileChangeSays {
 	public enum Change {
 
 		PICTURE("picture"),
+		/** His picture taken down (owner, 06.11.2026: „Da, i uklanjanje"). */
+		PICTURE_REMOVED("pictureRemoved"),
 		WORDS("words");
 
 		private final String word;

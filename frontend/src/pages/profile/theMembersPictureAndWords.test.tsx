@@ -270,16 +270,155 @@ describe('what each box opens with, and a press that cannot send', () => {
   }, SLOW)
 })
 
+describe('his picture, taken down by the administration', () => {
+  const HAS_ONE = '000003'
+
+  it('is drawn in its circle, and taken down at once after the sheet asks', async () => {
+    const user = setupUser()
+    const { asked, stop } = serverThat((path, init) =>
+      init?.method === 'DELETE' && path === `/api/members/${HAS_ONE}/photo` ? new Response(null, { status: 200 }) : null,
+    )
+
+    stops.push(stop)
+    asTheAdministration(HAS_ONE)
+
+    const panel = within(await screen.findByRole('region', { name: sr.picture.title }))
+
+    expect(await panel.findByRole('img', { name: sr.theirBoxes.currentAlt })).toBeVisible()
+    await user.click(panel.getByRole('button', { name: sr.theirBoxes.pictureRemove }))
+
+    const sheet = await screen.findByRole('dialog', { name: sr.theirBoxes.pictureRemoveAsks })
+
+    await user.click(within(sheet).getByRole('button', { name: sr.admin.form.delete }))
+
+    expect(await panel.findByText(sr.theirBoxes.pictureNone)).toBeVisible()
+    expect(panel.queryByRole('img', { name: sr.theirBoxes.currentAlt })).toBeNull()
+    expect(panel.queryByRole('button', { name: sr.theirBoxes.pictureRemove })).toBeNull()
+    expect(asked.filter((one) => one.init?.method === 'DELETE').map((one) => one.path)).toEqual([
+      `/api/members/${HAS_ONE}/photo`,
+    ])
+  }, SLOW)
+
+  it('stays where the server refused, and says so', async () => {
+    const user = setupUser()
+    const { stop } = serverThat((_path, init) =>
+      init?.method === 'DELETE' ? new Response(null, { status: 404 }) : null,
+    )
+
+    stops.push(stop)
+    asTheAdministration(HAS_ONE)
+
+    const panel = within(await screen.findByRole('region', { name: sr.picture.title }))
+
+    await user.click(await panel.findByRole('button', { name: sr.theirBoxes.pictureRemove }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: sr.admin.form.delete }))
+
+    expect(await panel.findByRole('alert')).toBeVisible()
+    expect(panel.getByRole('img', { name: sr.theirBoxes.currentAlt })).toBeVisible()
+  }, SLOW)
+
+  it('offers no way to take down what is not there', async () => {
+    asTheAdministration()
+
+    const panel = within(await screen.findByRole('region', { name: sr.picture.title }))
+
+    await panel.findByText(sr.theirBoxes.pictureNone)
+    expect(panel.queryByRole('button', { name: sr.theirBoxes.pictureRemove })).toBeNull()
+  }, SLOW)
+})
+
 describe('a member the public list does not carry', () => {
-  it('is drawn the form of his data and no boxes', async () => {
+  /** The administration's route for his data, with what stands on his profile. */
+  function hisDataSays(answer: () => Response | Promise<Response>): Asked[] {
+    const { asked, stop } = serverThat((path, init) => {
+      if (path === `/api/members/${LAPSED}/data` && init?.method === undefined) {
+        return answer()
+      }
+
+      if (init?.method === 'POST' && path === `/api/members/${LAPSED}/photo`) {
+        return json({ photo: '/api/photos/new', crop: { x: 0.25, y: 0.75, size: 0.5 } })
+      }
+
+      if (init?.method === 'DELETE' && path === `/api/members/${LAPSED}/photo`) {
+        return new Response(null, { status: 200 })
+      }
+
+      return null
+    })
+
+    stops.push(stop)
+
+    return asked
+  }
+
+  const HIS_DATA = {
+    memberNumber: LAPSED,
+    firstName: 'Vojislav',
+    lastName: 'Clan',
+    fatherName: 'Milan',
+    gender: 'M',
+    birthDate: '1980-04-02',
+    idNumber: 'AB12345',
+    email: 'vojislav@primer.rs',
+    emailConfirmed: true,
+    address: 'Ulica 1',
+    phone: null,
+    placeId: null,
+    city: 'Beograd',
+    country: 'RS',
+    shirtSize: 'L',
+    bio: 'Njegove reči.',
+    photo: '/api/photos/abc',
+    crop: { x: 0.3, y: 0.7, size: 0.45 },
+  }
+
+  it('is drawn his picture and his words off his data, and they are changed and taken down at his own address', async () => {
+    const user = setupUser()
+
     /* The list as the server serves it: every member whose fee stands, and 000032 is not one. */
     stops.push(membersAsServed().stop)
+
+    const asked = hisDataSays(() => json(HIS_DATA))
+
     asTheAdministration(LAPSED)
 
-    /* Asked once the heading of its own is there, which is drawn in the same render as the boxes would
-       be: they stand under a record the public list carries, and this member has none there. */
     expect(await screen.findByRole('heading', { level: 1, name: sr.profile.parts.data })).toBeVisible()
+
+    const picture = within(await screen.findByRole('region', { name: sr.picture.title }))
+    const words = within(await screen.findByRole('region', { name: sr.bio.title }))
+
+    expect(await picture.findByRole('img', { name: sr.theirBoxes.currentAlt })).toHaveAttribute('src', '/api/photos/abc')
+    expect(await words.findByRole('textbox')).toHaveValue('Njegove reči.')
+
+    await user.upload(
+      await picture.findByLabelText(sr.picture.choose),
+      new File(['slika'], 'nova.jpg', { type: 'image/jpeg' }),
+    )
+    await measurePicture()
+    await picture.findByLabelText('Veličina isečka')
+    await user.click(picture.getByRole('button', { name: sr.theirBoxes.pictureSave }))
+    expect(await picture.findByText(sr.theirBoxes.saved)).toBeVisible()
+
+    await user.click(picture.getByRole('button', { name: sr.theirBoxes.pictureRemove }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: sr.admin.form.delete }))
+    expect(await picture.findByText(sr.theirBoxes.pictureNone)).toBeVisible()
+
+    expect(writes(asked).map((one) => one.path)).toEqual([`/api/members/${LAPSED}/photo`])
+    expect(asked.filter((one) => one.init?.method === 'DELETE').map((one) => one.path)).toEqual([
+      `/api/members/${LAPSED}/photo`,
+    ])
+  }, SLOW)
+
+  it.each([
+    ['a refusal', () => new Response(null, { status: 500 })],
+    ['no server to reach', () => Promise.reject(new TypeError('Failed to fetch'))],
+  ] as const)('says what stands could not be read, on %s', async (_what, answer) => {
+    stops.push(membersAsServed().stop)
+    hisDataSays(answer)
+    asTheAdministration(LAPSED)
+
+    expect(await screen.findByRole('heading', { level: 1, name: sr.profile.parts.data })).toBeVisible()
+    await waitFor(() => expect(screen.getAllByRole('button', { name: sr.data.retry }).length).toBeGreaterThan(0))
     expect(screen.queryByRole('region', { name: sr.picture.title })).toBeNull()
-    expect(screen.queryByRole('region', { name: sr.bio.title })).toBeNull()
   }, SLOW)
 })
