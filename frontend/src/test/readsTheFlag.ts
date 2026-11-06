@@ -12,8 +12,12 @@ import { RESOURCE_NAMES, type ResourceName } from '../data/client'
  * knows what its author remembered; it is held against something that knows more.
  *
  * <p><b>What is asked.</b> Every cached name has one route that answers a read at `/api/<name>`. A name
- * READS THE FLAG when the class that declares that route has a line of SQL, a string literal, that names
- * `active`: a javadoc or a comment line begins with `*` or `/` and is never one.
+ * READS THE FLAG when the class that declares that route asks whether a member is active: since AF-1
+ * (PDL 13.09.2026, „Zastavica „aktivan" prestaje da bude podatak i postaje izvedena") that is a call to
+ * `AMemberIsActive.of(`, the one condition every reader is built with and the one an act that moves a
+ * membership moves; before AF-1 it was a line of SQL, a string literal, that names `active`, and that
+ * reading is kept beside it, so a class that still writes the flag in SQL is counted as it was. A
+ * javadoc or a comment line begins with `*` or `/` and is never one.
  *
  * <p><b>Where it stops</b> (unchanged, and not widened here). It reads the class, not the route: a class
  * that declares two routes would lend the flag of one to the other, and none of the names does. It reads
@@ -38,10 +42,13 @@ function javaUnder(dir: string): string[] {
 export function namesThatReadTheFlag(): ResourceName[] {
   const sources = javaUnder(JAVA)
   const aLineOfSqlNamingIt = /^\s*(?:\+\s*)?"[^"\n]*\bactive\b[^"\n]*"/m
+  const asksWhetherAMemberIsActive = /^[^*/\n]*\bAMemberIsActive\.of\(/m
 
   return RESOURCE_NAMES.filter((name) =>
     sources.some(
-      (code) => code.includes(`@GetMapping("/api/${name}")`) && aLineOfSqlNamingIt.test(code),
+      (code) =>
+        code.includes(`@GetMapping("/api/${name}")`) &&
+        (aLineOfSqlNamingIt.test(code) || asksWhetherAMemberIsActive.test(code)),
     ),
   )
 }
