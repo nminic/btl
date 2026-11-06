@@ -309,6 +309,7 @@ function PairsOf({
  * reason, the floor fails on the count and the cheapest way back to green is a sentence written into
  * the wrong map, which satisfies both of its cases while this screen goes on printing the bare code.
  */
+// oxlint-disable-next-line react/only-export-components -- a map of sentences, exported for the floor of the refusals and not a component
 export const WHEN_BREAKING_A_PAIR: Record<string, string> = {}
 
 /**

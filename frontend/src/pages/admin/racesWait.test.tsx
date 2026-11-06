@@ -301,11 +301,11 @@ describe('an event whose races wait', () => {
       })
       await screen.findByText(sr.admin.eventSavedRacesRefused)
 
-      expect(notSaved()).toEqual([
-        expect.stringMatching(
-          new RegExp(`^2\. trka \(.+\): ${sr.admin.raceSaveRefused.theDistanceIsNotKeptExactly}$`),
-        ),
-      ])
+      const [only] = notSaved()
+
+      expect(notSaved()).toHaveLength(1)
+      expect(only).toMatch(/^2\. trka \(.+\): /)
+      expect(only).toContain(sr.admin.raceSaveRefused.theDistanceIsNotKeptExactly)
     },
     SLOW,
   )

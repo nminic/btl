@@ -3167,7 +3167,7 @@ describe('an event that is deleted', () => {
       'the address would have said more than the races',
     ).toBeGreaterThan(asked.under)
     expect(await askedWith()).toMatch(
-      new RegExp(`^Ovim brišeš i ${String(racesUnder(asked.event, races))} trk[aue] i ${String(asked.under)} rezultata?\.$`),
+      new RegExp(`^Ovim brišeš i ${String(racesUnder(asked.event, races))} trk[aue] i ${String(asked.under)} rezultata?\\.$`),
     )
 
     await sayNo(user, 'Obriši događaj?')
