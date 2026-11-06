@@ -1,21 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { heldControl } from '../../forms/held'
-import { formatDate } from '../../i18n/format'
-import { AskedLabel } from '../../forms/AskedLabel'
-import { registracija } from '../../forms/definitions'
-import { PlaceField } from '../../forms/PlaceField'
-import { choicesOf } from '../../forms/records'
+import { FormRenderer } from '../../forms/FormRenderer'
+import { valuesFor } from '../../forms/records'
+import type { FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
 import type { MyData } from '../../session/theServer'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
+import { WHAT_HE_SEES_HELD, hisOwnForm } from '../profile/memberData'
 import {
-  AS_LONG_AS_THE_FORM_ALLOWS,
-  NEVER_EMPTIED,
   THE_ACCOUNT_GOES_TO,
-  TYPED_BOXES,
   WHEN_CHANGING_MY_DATA,
   whatChanged,
+  type Sent,
   type Standing,
   type Typed,
 } from './myAccount'
@@ -45,8 +41,9 @@ import {
  * registration draws it with (`PlaceField`), a name and its country; the size out of the seven the
  * registration offers, read off its definition. A town in another country moves the money he is
  * billed in, which is the server's to do (`ACountryMovesTheMoney`).</li>
- * <li><b>It does not carry the father's name</b>, which only the administration changes (PDL
- * 22.10.2026, „Ime oca i dalje menja samo administracija"), nor the gender and the date of birth.</li>
+ * <li><b>It does not send the father's name</b>, which only the administration changes (PDL
+ * 22.10.2026, „Ime oca i dalje menja samo administracija"), nor the gender, the date of birth and the
+ * number of the document: since 24.10.2026 he sees all four, held (below), and none of them travels.</li>
  * <li><b>It does not carry the address of electronic post.</b> The owner decided on
  * 24.09.2026 that a member changes it himself „ali mora da potvrdi novu", because that
  * address is also how he signs in and an unconfirmed change is somebody taking the account.
@@ -63,20 +60,28 @@ import {
  * administrator's), and the server still refuses them by name (`notYoursToChange`); what is gone is the
  * screen saying so. The date of birth is not shown anywhere, as before.
  *
+ * <p><b>Drawn in the shape of the registration since 06.11.2026</b> (PDL, „Profil: forma „Podaci" po
+ * obliku forme za prijavu", owner: „Na podacima struktura forme treba da bude kao na formularu za prijavu,
+ * dakle ne sve jedno ispod drugog."): the registration's own fields, rows and groups
+ * (`profile/memberData.ts`, `hisOwnForm`), drawn by the renderer every form of the portal is drawn by, in
+ * one column on a telephone and a tablet and in thirds from 51.25em (`forms/FormRenderer.css`). The four
+ * he does not change stand where the registration asks them, held (`fixed`), and the sentence that says
+ * who changes them stands above the fields and describes each of the four (`fixedSaidBy`).
+ *
  * <p><b>One panel for every reader who has one</b>: the card „Podaci" of a member whose fee stands,
  * and the page „Moji podaci" of somebody who has not paid yet, which is the next piece of work (PDL
  * 22.10.2026: „Neka ima u navigaciji stranu Moji Podaci dok nije odobren koja je iznad Moja
  * Članarina"). Both send to the same route and are told the same sentences.
  */
 export function PersonalData({ me }: { me: MyData }) {
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
 
   /* WHAT THE SERVER HOLDS, held here and not read off `me` on every render, because a
      successful save moves it and nothing refetches the resource. It starts as what the server
      said a moment ago (`me`, which is read fresh every time this panel is drawn - a visit to
      another screen and back asks again), and a save moves it by exactly what was sent.
 
-     The boxes START as the same four values, which is the whole of the fault of 18.10.2026: they
+     The boxes START as the same values, which is the whole of the fault of 18.10.2026: they
      used to open empty for the address and the telephone and the member who had saved them read
      that as the portal having lost them. */
   const opened: Standing = {
@@ -89,13 +94,17 @@ export function PersonalData({ me }: { me: MyData }) {
     shirtSize: me.shirtSize,
   }
   const [standing, setStanding] = useState<Standing>(opened)
+  /* What is on the screen, as the form hands it over every time a field moves (`onChange`). */
   const [typed, setTyped] = useState<Typed>(opened)
   const [asking, setAsking] = useState(false)
   const [answer, setAnswer] = useState<Answer | null>(null)
+  /* The same fact as `asking`, as a press can see it in the tick the send begins (`sendIsOut`). */
+  const out = useRef(false)
   const said = useRef<HTMLParagraphElement>(null)
+  const [form] = useState(() => hisOwnForm(me.idNumber !== ''))
+  const [initial] = useState(() => valuesFor(form, me))
 
-  const changed = whatChanged(standing, typed)
-  const nothing = Object.keys(changed).length === 0
+  const nothing = Object.keys(whatChanged(standing, typed)).length === 0
   const saved = answer !== null && answer.got === 'done'
   const refusal = answer !== null && answer.got !== 'done' ? answer : null
 
@@ -109,7 +118,18 @@ export function PersonalData({ me }: { me: MyData }) {
     }
   }, [saved])
 
-  async function send(): Promise<void> {
+  async function send(values: FormValues): Promise<void> {
+    const changed = whatChanged(standing, sentOf(values))
+
+    /* Told off rather than switched off while nothing differs (`sendIsHeld`), and the attribute stops
+       nothing by itself, so a press with nothing to save is refused here. */
+    if (Object.keys(changed).length === 0) {
+      return
+    }
+
+    /* A second press while the first is still out would send the same change twice
+       and answer this reader about the second one (`sendIsOut`). */
+    out.current = true
     setAsking(true)
 
     const answered = await askTheServer(THE_ACCOUNT_GOES_TO, changed, 'PUT')
@@ -122,164 +142,67 @@ export function PersonalData({ me }: { me: MyData }) {
     }
 
     setAnswer(answered)
+    out.current = false
     setAsking(false)
   }
 
-  /* The four boxes he sees held, in the order the registration asks them. The gender and the date are
-     said the way the portal says them everywhere (`registration.genderMale`, `formatDate`) and the
-     number of the document is empty for a member who gave none. */
-  const HELD = [
-    {
-      name: 'gender',
-      label: t('registration.gender'),
-      value: t(me.gender === 'M' ? 'registration.genderMale' : 'registration.genderFemale'),
-    },
-    { name: 'birthDate', label: t('registration.birthDate'), value: formatDate(me.birthDate, locale) },
-    { name: 'fatherName', label: t('registration.fatherName'), value: me.fatherName },
-    { name: 'idNumber', label: t('registration.idNumber'), value: me.idNumber },
-  ]
-
   return (
-    <>
-      <section className="member__panel" aria-labelledby="account-personal">
-        <h2 className="profile__section" id="account-personal">
-          {t('account.personalTitle')}
-        </h2>
-
-        <form
-          className="member__form"
-          onSubmit={(event) => {
-            event.preventDefault()
-
-            /* A second press while the first is still out would send the same change twice
-               and answer this reader about the second one. */
-            if (!asking && !nothing) {
-              void send()
-            }
-          }}
-        >
-          {TYPED_BOXES.map((name) => {
-            /* **ASKED FOR WHERE THE SERVER WILL NOT TAKE IT EMPTY** (PENDING 217.5). One fact
-               decides all three things a box says about itself, the star, `aria-required` and the
-               word „neobavezno". It used to be that fact AND whether the portal could see what the
-               server held in the box, because an address the portal could not see was a box a
-               member could leave alone; the portal sees all four now, so the server's own list is
-               the whole answer. The telephone is optional, because a blank one is how it is
-               removed. */
-            const asked = NEVER_EMPTIED.includes(name)
-
-            return (
-              <div className="rankings__field" key={name}>
-                <AskedLabel id={`account-${name}`} asked={asked}>
-                  {t(`registration.${name}`)}
-                </AskedLabel>
-                <input
-                  id={`account-${name}`}
-                  type="text"
-                  value={typed[name]}
-                  maxLength={AS_LONG_AS_THE_FORM_ALLOWS[name]}
-                  aria-required={asked ? 'true' : undefined}
-                  onChange={(event) => {
-                    /* The answer goes the moment anything moves: a „saved" left standing
-                       over a box being edited says the thing on the screen is what the
-                       server holds, which it is not. */
-                    setAnswer(null)
-                    setTyped((before) => ({ ...before, [name]: event.target.value }))
-                  }}
-                />
-              </div>
-            )
-          })}
-
-          {/* THE TOWN, IN THE CONTROL THE REGISTRATION DRAWS IT WITH, and its country beside it.
-              Asked for, as on the registration: the column is never empty (V7). */}
-          <div className="rankings__field">
-            <AskedLabel id="account-city">{t('registration.city')}</AskedLabel>
-            <PlaceField
-              id="account-city"
-              name="city"
-              value={typed.city}
-              country={typed.country}
-              required
-              invalid={false}
-              describedBy={undefined}
-              onChange={(town, country) => {
-                setAnswer(null)
-                setTyped((before) => ({ ...before, city: town, country }))
-              }}
-            />
-          </div>
-
-          {/* THE SIZE, one of the seven the registration offers, read off its definition so the two
-              cannot offer different sizes. */}
-          <div className="rankings__field">
-            <AskedLabel id="account-shirtSize">{t('registration.shirtSize')}</AskedLabel>
-            <select
-              id="account-shirtSize"
-              value={typed.shirtSize}
-              aria-required="true"
-              onChange={(event) => {
-                setAnswer(null)
-                setTyped((before) => ({ ...before, shirtSize: event.target.value }))
-              }}
-            >
-              {choicesOf(registracija, 'shirtSize').map((one) => (
-                <option key={one.value} value={one.value}>
-                  {t(one.labelKey)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* **THE FOUR HE SEES AND DOES NOT CHANGE** (PDL 24.10.2026, owner: „clan ga vidi ali je disabled za
-              menjanje. Moze samo da trazi od admina", and, chosen between offered outcomes with the
-              recommendation, the same for the gender, the date of birth and the father's name). Held and
-              not switched off, the way the portal holds a locked box everywhere (`forms/held.ts`,
-              `FormRenderer`): `readOnly` and `aria-disabled`, so a keyboard reaches each of them, a screen
-              reader reads the value and says it is held, and the number can be copied. The sentence under
-              them is their description. They are never sent: the server refuses them by name
-              (`MeWriteApi`), and `TYPED_BOXES` does not name them. */}
-          {HELD.map(({ name, label, value }) => (
-            <div className="rankings__field" key={name}>
-              <label htmlFor={`account-${name}`}>{label}</label>
-              <input
-                id={`account-${name}`}
-                type="text"
-                className={heldControl(true)}
-                value={value}
-                readOnly
-                aria-disabled="true"
-                aria-describedby="account-held-note"
-              />
-            </div>
-          ))}
+    <section className="member__panel" aria-labelledby={`form-${form.id}-title`}>
+      <FormRenderer
+        form={form}
+        title={t('account.personalTitle')}
+        initial={initial}
+        /* **THE FOUR HE SEES AND DOES NOT CHANGE** (PDL 24.10.2026, owner: „clan ga vidi ali je disabled
+           za menjanje. Moze samo da trazi od admina"), held the way the portal holds a locked box
+           everywhere (`forms/held.ts`): `readOnly` and `aria-disabled`, so a keyboard reaches each of
+           them, a screen reader reads the value and says it is held, and the number can be copied. They
+           are never sent: the server refuses them by name (`MeWriteApi`), and `WHAT_THIS_SCREEN_SENDS`
+           does not name them. */
+        fixed={WHAT_HE_SEES_HELD}
+        fixedSaidBy="account-held-note"
+        above={
           <p className="member__note" id="account-held-note">
             {t('account.heldNote')}
           </p>
+        }
+        /* Told off rather than switched off, as everywhere else on the portal: `disabled` takes the
+           button out of the tab order. Since 18.10.2026 it says nothing about why (PDL P11, owner: the
+           sentences under the buttons are gone, „Izmeni nešto da bi imao šta da sačuvaš." among them). */
+        sendIsHeld={nothing || asking ? true : undefined}
+        sendIsOut={out}
+        onChange={(values) => {
+          /* The answer goes the moment anything moves: a „saved" left standing over a box being
+             edited says the thing on the screen is what the server holds, which it is not. */
+          setAnswer(null)
+          setTyped(sentOf(values))
+        }}
+        onSubmit={(values) => {
+          void send(values)
+        }}
+      />
 
-          <p className="member__actions">
-            {/* Told off rather than switched off, as everywhere else on the portal:
-                `disabled` takes the button out of the tab order. Since 18.10.2026 it says nothing
-                about why (PDL P11, owner: the sentences under the buttons are gone), so nothing
-                points at a sentence. */}
-            <button
-              type="submit"
-              className="button button--primary"
-              aria-disabled={nothing || asking}
-            >
-              {t('account.save')}
-            </button>
-          </p>
-        </form>
+      {saved && (
+        <p className="member__note" ref={said} tabIndex={-1} role="status">
+          {t('account.saved')}
+        </p>
+      )}
 
-        {saved && (
-          <p className="member__note" ref={said} tabIndex={-1} role="status">
-            {t('account.saved')}
-          </p>
-        )}
-
-        {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_CHANGING_MY_DATA} />}
-      </section>
-    </>
+      {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_CHANGING_MY_DATA} />}
+    </section>
   )
+}
+
+/** What of the form this panel sends, out of everything it draws: the held four are not among them. */
+function sentOf(values: FormValues): Typed {
+  const text = (name: Sent): string => String(values[name] ?? '')
+
+  return {
+    firstName: text('firstName'),
+    lastName: text('lastName'),
+    address: text('address'),
+    phone: text('phone'),
+    city: text('city'),
+    country: text('country'),
+    shirtSize: text('shirtSize'),
+  }
 }

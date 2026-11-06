@@ -219,8 +219,11 @@ type Props = {
    * <p><b>`undefined` and not `false` when it is not held</b>, so a button that waits for nothing carries
    * no such word at all. The sentence that says why is the screen's (`results.sending`, under the form).
    *
-   * <p><b>Only the events hold it today, and left out nothing about any other form moves</b>, which is
-   * the condition `fixed` was written under as well: every other form draws this button as it always did.
+   * <p><b>Three screens hold it, and left out nothing about any other form moves</b>, which is the
+   * condition `fixed` was written under as well: every other form draws this button as it always did. The
+   * events and the administration's form of a member's data (`pages/profile/TheMembersData.tsx`) hold it
+   * while their save is out; the member's own panel of his data (`pages/member/PersonalData.tsx`) holds it
+   * as well while nothing on it differs from what the server holds, which it reads off `onChange`.
    */
   sendIsHeld?: boolean
   /**
@@ -240,6 +243,34 @@ type Props = {
    * two are cleared in one place.
    */
   sendIsOut?: RefObject<boolean>
+  /**
+   * WHAT IS ON THE SCREEN, HANDED TO THE SCREEN EVERY TIME A FIELD MOVES, as it is typed and not in
+   * the shape the server reads (`onSubmit` is that door).
+   *
+   * <p>For one reader, the member's own panel of his data (`pages/member/PersonalData.tsx`, PDL
+   * 06.11.2026, „Profil: forma „Podaci" po obliku forme za prijavu"), which keeps two things this
+   * form does not know about: its button waits while nothing differs from what the server holds
+   * (`sendIsHeld`), and the sentence that answered the last press goes the moment anything moves, so
+   * a „Sačuvano" never stands over a box being edited. Both need to know what is on the screen
+   * before the press, and nothing else hands it out.
+   *
+   * <p><b>Not called when the form opens</b>, only when something moved: what it opens with is what
+   * the screen handed in (`initial`). <b>Left out, nothing about any other form moves</b>, which is
+   * the condition `fixed` and `sendIsHeld` were written under.
+   */
+  onChange?: (values: FormValues) => void
+  /**
+   * THE ID OF A SENTENCE THAT SAYS WHY THE HELD FIELDS ARE HELD, added to the description of every
+   * field in `fixed` and of no other.
+   *
+   * <p>The member sees four of his own fields and does not change them, „uz rečenicu da ih menja
+   * administracija na njegov zahtev" (PDL 24.10.2026), and that sentence is their description: a
+   * reader who reaches a held box by keyboard is told by it why the box will not take what he types
+   * (`pages/member/heldFields.test.tsx`). The sentence is the screen's and is drawn by the screen
+   * (`above`); this only says which boxes it is about. Left out, no field is described by anything
+   * more than it was.
+   */
+  fixedSaidBy?: string
   /**
    * A rule the definition cannot describe, checked when the form is submitted
    * and returned in the same shape as the rules that can: errors by field name.
@@ -435,6 +466,7 @@ const Field = memo(function Field({
   onChange,
   open = false,
   locked = false,
+  saidBy,
   steps,
   suggesting,
 }: {
@@ -464,6 +496,9 @@ const Field = memo(function Field({
    * the name breaks the link and hands all four back (FormRenderer below).
    */
   locked?: boolean
+  /** The id of a sentence that says why this held field is held (`fixedSaidBy` on the form), where
+   *  the screen has one. Only a field in `fixed` is ever given it. */
+  saidBy?: string
   /** Days the date box offers beside its calendar, where the screen has any to
    *  offer. Only a date field is ever given them. */
   steps?: { label: string; title: string; to: string }[]
@@ -516,6 +551,9 @@ const Field = memo(function Field({
        is none of them to name. Written as a second condition it would be a test
        nothing can fail. */
     field.hintKey ? hintId : '',
+    /* Why it is held, after the rule the field carries and before what is wrong with it: the rule
+       says what the field is for, and this says why it will not take what is typed into it. */
+    saidBy ?? '',
     error ? errorId : '',
     field.type === 'textarea' && field.maxLength !== undefined ? leftId : '',
   ]
@@ -1017,6 +1055,8 @@ export function FormRenderer({
   fixed = [],
   sendIsHeld = false,
   sendIsOut,
+  onChange,
+  fixedSaidBy,
   check,
   derived,
   was,
@@ -1046,6 +1086,21 @@ export function FormRenderer({
    *  owed to the first field that is wrong. Set on the press and spent by the
    *  effect below, so a redraw for any other reason never moves the cursor. */
   const owed = useRef(false)
+  /** The values the screen was last told of (`onChange`), which are at first the ones it opened
+   *  with, so the form opening is not a move. */
+  const toldOf = useRef(values)
+
+  /* THE SCREEN IS TOLD WHAT IS ON IT, after the move is drawn and before anything else can be pressed.
+     Asked of the state and not of the handler a field calls, so every road that moves a value (a box,
+     a town and the country it writes beside itself, an entry chosen from a list) tells it alike. */
+  useEffect(() => {
+    if (toldOf.current === values) {
+      return
+    }
+
+    toldOf.current = values
+    onChange?.({ ...emptyValues(form), ...values })
+  }, [values, onChange, form])
 
   /**
    * THE CURSOR GOES TO THE FIRST FIELD THAT IS WRONG, AFTER A PRESS THAT WAS REFUSED.
@@ -1604,6 +1659,7 @@ export function FormRenderer({
               onChange={handleChange}
               open={field.name === openAt}
               locked={locked.includes(field.name) || fixed.includes(field.name)}
+              saidBy={fixed.includes(field.name) ? fixedSaidBy : undefined}
               steps={field.type === 'date' ? steps : undefined}
               suggesting={suggestingOn(field)}
             />
