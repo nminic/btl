@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { RACE_KINDS } from '../../data/types'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import type { BtlEvent, Race } from '../../data/types'
@@ -1606,6 +1608,35 @@ describe('the measures of a result entered away from the calendar', () => {
     for (const stands of [/^Naziv trke/, /^Datum trke/, /^Link ka zvaničnim/, /^Komentar/]) {
       expect(screen.getByLabelText(stands).closest('.form__row')).toBeNull()
     }
+  })
+
+  /**
+   * THE SAME TWO LINES ON THE FORM THAT CORRECTS A COUNTED RESULT (PENDING, review of PR 537, 17.10.2026).
+   *
+   * <p>`ISPRAVKA_PREBROJANOG` takes its fields from `unosRezultata` and so gets the lines only because it
+   * copies them; a mutation that took the line off its fields (the `row` of each) passed 674 cases of the
+   * pages of members. The form is opened on `?ispravka=` for a result of the signed-in member, read out of
+   * the file the portal ships, and asked what the full form is asked above.
+   */
+  it('draws the length in one line and the time under it on the form of a counted result as well', async () => {
+    const shipped: { id: number; memberNumber: string }[] = JSON.parse(
+      readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'results.json'), 'utf-8'),
+    )
+    const counted = must(
+      shipped.find((one) => one.memberNumber === ME),
+      'a counted result of the member',
+    )
+
+    renderAt(`${NEW}?ispravka=${String(counted.id)}`, 'competitor', ME, undefined, TODAY)
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/, undefined, SOON)
+
+    const measured = must(lineOf('Dužina (km)'), 'the line of the length')
+    const timed = must(lineOf('Sati'), 'the line of the time')
+
+    expect(boxesOn(measured)).toEqual(THE_LENGTH)
+    expect(boxesOn(timed)).toEqual(THE_TIME)
+    expect(measured).not.toBe(timed)
+    expect(measured.compareDocumentPosition(timed) & Node.DOCUMENT_POSITION_FOLLOWING).toBeGreaterThan(0)
   })
 })
 
