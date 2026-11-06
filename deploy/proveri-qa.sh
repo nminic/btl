@@ -133,7 +133,7 @@ for service in $services; do
   state=$(docker inspect -f '{{.State.Status}}' "$container" 2>/dev/null || echo missing)
   [ "$state" = running ] || fail "servis $service nije u stanju running nego $state"
 done
-say "svi servisi rade, ih je $(printf '%s\n' "$services" | wc -l)"
+say "svi servisi rade, njih je $(printf '%s\n' "$services" | wc -l)"
 
 say ''
 say '--- 2. bekend vidi bazu ---'
