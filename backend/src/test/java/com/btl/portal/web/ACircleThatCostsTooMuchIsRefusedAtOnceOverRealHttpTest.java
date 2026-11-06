@@ -146,13 +146,14 @@ class ACircleThatCostsTooMuchIsRefusedAtOnceOverRealHttpTest {
 				.build();
 
 		AtomicInteger heldTooLong = new AtomicInteger();
+		Timestamp sentAt = db.sql("select clock_timestamp()").query(Timestamp.class).single();
 		long from = System.nanoTime();
 		CompletableFuture<HttpResponse<String>> sent = client.sendAsync(request,
 				HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 		HttpResponse<String> answer = null;
 
 		while (answer == null && System.nanoTime() - from < TimeUnit.SECONDS.toNanos(WAITED_S)) {
-			heldTooLong.accumulateAndGet(backendsHeldTooLong(), Math::max);
+			heldTooLong.accumulateAndGet(backendsHeldTooLong(sentAt), Math::max);
 
 			try {
 				answer = sent.get(20, TimeUnit.MILLISECONDS);
@@ -162,7 +163,7 @@ class ACircleThatCostsTooMuchIsRefusedAtOnceOverRealHttpTest {
 		}
 
 		long tookMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - from);
-		heldTooLong.accumulateAndGet(backendsHeldTooLong(), Math::max);
+		heldTooLong.accumulateAndGet(backendsHeldTooLong(sentAt), Math::max);
 
 		assertThat(answer)
 				.as("%s did not answer a circle of %s characters in %s s, so it is reading it at the cost of a"
@@ -177,12 +178,17 @@ class ACircleThatCostsTooMuchIsRefusedAtOnceOverRealHttpTest {
 		assertThat(tookMs).as("the refusal took %s ms", tookMs).isLessThan(UNDER_A_SECOND_MS);
 	}
 
-	private int backendsHeldTooLong() {
+	/**
+	 * Backends idle in a transaction that began after this request was sent, for longer than the bound. A
+	 * transaction older than the request is somebody else's - under a mutation, the request of the case before
+	 * this one, still being parsed - and counting it would make this case measure its neighbour.
+	 */
+	private int backendsHeldTooLong(Timestamp sentAt) {
 		db.sql("select pg_stat_clear_snapshot()::text").query(String.class).single();
 		return db.sql("select count(*)::int from pg_stat_activity where state = 'idle in transaction'"
-						+ " and pid <> pg_backend_pid()"
+						+ " and pid <> pg_backend_pid() and xact_start >= ?"
 						+ " and clock_timestamp() - state_change > make_interval(secs => ?)")
-				.param(HELD_TOO_LONG_MS / 1000.0)
+				.params(sentAt, HELD_TOO_LONG_MS / 1000.0)
 				.query(Integer.class)
 				.single();
 	}
