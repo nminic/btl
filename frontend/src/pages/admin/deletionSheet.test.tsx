@@ -1,12 +1,10 @@
 import { act, configure, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import ts from 'typescript'
-import { join } from 'node:path'
 import { must } from '../../test/at'
 import { sayYes, theSheet } from '../../test/deleteSheet'
 import { renderAt } from '../../test/render'
 import { answeredWith, did, serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
-import { sources } from '../../test/sources'
+import { whoDraws } from '../../test/whoDraws'
 import { setupUser } from '../../test/user'
 import sr from '../../i18n/sr.json'
 
@@ -527,40 +525,16 @@ describe('the sheet that asks before an event is deleted', () => {
 /**
  * THE FLOOR: NO SCREEN DRAWS `RowActions` WITHOUT BEING ON THE TABLE ABOVE.
  *
- * <p>Asked of the parser and not of the text, so a tag written over two lines, or imported under another
- * name, is still a tag. `EntityEditor.tsx` defines `RowActions` and is the one file left out.
+ * <p>Asked of the IMPORT and not of the text of the tag (`test/whoDraws.ts`), over the whole of `src`: a
+ * screen that imports `RowActions` under another name or through a namespace draws the same sheet, and one
+ * outside `src/pages` is a screen as well. `EntityEditor.tsx` defines `RowActions` and is the one module
+ * left out. A file that re-exports it is a door the import cannot follow, so there is none.
  */
 describe('the screens that delete a row of the administration', () => {
   it('have a row in the table above, each', () => {
-    const pages = join(process.cwd(), 'src', 'pages')
-    const found: string[] = []
+    const found = whoDraws('pages/admin/EntityEditor.tsx', 'RowActions')
 
-    for (const { path, code } of sources()) {
-      if (!path.startsWith(pages) || path.endsWith('EntityEditor.tsx')) {
-        continue
-      }
-
-      const file = ts.createSourceFile(path, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
-      let draws = false
-
-      const visit = (node: ts.Node): void => {
-        if (
-          (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
-          node.tagName.getText(file) === 'RowActions'
-        ) {
-          draws = true
-        }
-
-        ts.forEachChild(node, visit)
-      }
-
-      visit(file)
-
-      if (draws) {
-        found.push(path.slice(pages.length + 1).split('\\').join('/'))
-      }
-    }
-
-    expect(found.sort()).toEqual(SCREENS.map((each) => each.source).sort())
+    expect(found.reExports).toEqual([])
+    expect(found.draws).toEqual(SCREENS.map((each) => `pages/${each.source}`).sort())
   })
 })
