@@ -45,8 +45,8 @@ const FILES = sources()
      Measured again on 13.09.2026, when a third component was written in that folder
      (`LeagueEvents.tsx`, the box of events and races that folds on the list of competitions): it
      is read here the moment it exists, and nothing had to be added by hand. What that buys on
-     this one is more than usual, because the box is **folded** on arrival, so the snapshot of the
-     drawn screens holds its button and not a word of what it opens. */
+     this one is more than usual, because the box is open on arrival, so the snapshot of the
+     drawn screens holds its button and the words of what it opens. */
   .filter((path) => path.endsWith('.tsx') && /league/i.test(path))
   .sort()
 
