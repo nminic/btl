@@ -77,13 +77,13 @@
       "position": 1,
       "slug": "dunavski-trkaci",
       "name": "Dunavski trkači",
-      "points": 412.5,
-      "members": 1,
-      "races": 14,
-      "kilometers": 198.4,
-      "ascent": 2100,
-      "descent": 2050,
-      "seconds": 61200,
+      "points": 800.7,
+      "members": 2,
+      "races": 26,
+      "kilometers": 368.4,
+      "ascent": 3000,
+      "descent": 3000,
+      "seconds": 113200,
       "roster": [
         {
           "position": 1,
@@ -96,6 +96,18 @@
           "ascent": 2100,
           "descent": 2050,
           "seconds": 61200
+        },
+        {
+          "position": 2,
+          "memberNumber": "000005",
+          "who": "Bogoljub Nikolajević",
+          "gender": "M",
+          "points": 388.2,
+          "races": 12,
+          "kilometers": 170.0,
+          "ascent": 900,
+          "descent": 950,
+          "seconds": 52000
         }
       ]
     },
@@ -271,6 +283,27 @@
           "gender": "F"
         }
       ]
+    },
+    {
+      "position": 2,
+      "points": 95.0,
+      "races": 2,
+      "kilometers": 20.0,
+      "ascent": 100,
+      "descent": 100,
+      "seconds": 7000,
+      "halves": [
+        {
+          "memberNumber": "000005",
+          "who": "Bogoljub Nikolajević",
+          "gender": "M"
+        },
+        {
+          "memberNumber": null,
+          "who": null,
+          "gender": "F"
+        }
+      ]
     }
   ],
   "leagues": [
@@ -304,6 +337,19 @@
             {
               "column": 2,
               "points": 44.1
+            }
+          ]
+        },
+        {
+          "gender": "M",
+          "position": 2,
+          "memberNumber": null,
+          "who": "Relja Momčilović",
+          "points": 30.0,
+          "cells": [
+            {
+              "column": 1,
+              "points": 30.0
             }
           ]
         }
@@ -438,7 +484,17 @@
       "memberNumber": "000001",
       "who": "Vladan Đurišić",
       "gender": "M",
-      "points": 412.5,
+      "points": 800.7,
+      "teamName": "Dunavski trkači"
+    },
+    {
+      "kind": "team",
+      "category": null,
+      "position": 1,
+      "memberNumber": "000005",
+      "who": "Bogoljub Nikolajević",
+      "gender": "M",
+      "points": 800.7,
       "teamName": "Dunavski trkači"
     }
   ],

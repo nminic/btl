@@ -116,7 +116,7 @@ describe('the team standings of a frozen season', () => {
     const table = await screen.findByRole('table', { name: sr.teams.title })
 
     expect(rowsOf(table).map(([place, name, , members, points]) => [place, name, members, points])).toEqual([
-      ['1', 'Dunavski trkači', '1', '412,50'],
+      ['1', 'Dunavski trkači', '2', '800,70'],
       ['2', 'VKVardarski krug', '1', '401,75'],
       ['3', 'TKTim koji je obrisan', '1', '210,00'],
     ])
@@ -133,6 +133,7 @@ describe("a team's page in a frozen season", () => {
 
     expect(rowsOf(table).map(([place, name, category, , points]) => [place, name, category, points])).toEqual([
       ['1', 'Vladan Đurišić 000001', 'M 40-54', '412,50'],
+      ['2', 'Bogoljub Nikolajević 000005', 'M 25-39', '388,20'],
     ])
   })
 
@@ -153,7 +154,10 @@ describe("a team's page in a frozen season", () => {
 
     const table = await screen.findByRole('table', { name: sr.teams.members })
 
-    expect(rowsOf(table).map(([, name, category]) => [name, category])).toEqual([['Vladan Đurišić', '']])
+    expect(rowsOf(table).map(([, name, category]) => [name, category])).toEqual([
+      ['Vladan Đurišić', ''],
+      ['Bogoljub Nikolajević 000005', 'M 25-39'],
+    ])
   })
 
   it('has nobody on it for a team the freeze did not write', async () => {
@@ -169,8 +173,15 @@ describe('a frozen competition', () => {
 
     const grid = await screen.findByRole('table', { name: sr.leagues.standing })
 
-    expect(rowsOf(grid)).toEqual([['84,20', '40,10', '44,10']])
-    expect(within(grid).getByRole('rowheader').textContent).toContain('Vladan Đurišić')
+    expect(rowsOf(grid)).toEqual([
+      ['84,20', '40,10', '44,10'],
+      ['30,00', '30,00', ''],
+    ])
+    expect(within(grid).getAllByRole('rowheader').map((one) => one.textContent)).toEqual([
+      expect.stringContaining('Vladan Đurišić'),
+      expect.stringContaining('Relja Momčilović'),
+    ])
+    expect(within(grid).queryByRole('link', { name: /Relja/ })).toBeNull()
     expect(within(grid).getByRole('link', { name: /Fruškogorski maraton/ })).toBeInTheDocument()
     expect(within(grid).queryByRole('link', { name: /Događaj koji je obrisan/ })).toBeNull()
   })
@@ -222,7 +233,7 @@ describe("a member's trophies in a frozen season", () => {
       expect.arrayContaining([
         ['2027', sr.awards.overall, '1. mesto', '412,50'],
         ['2027', 'Kategorija M 40-54', '1. mesto', '412,50'],
-        ['2027', 'Timski plasman, Dunavski trkači', '1. mesto', '412,50'],
+        ['2027', 'Timski plasman, Dunavski trkači', '1. mesto', '800,70'],
         ['2027', sr.awards.pair, '1. mesto', '160,40'],
       ]),
     )

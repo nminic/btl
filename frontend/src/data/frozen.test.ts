@@ -151,7 +151,7 @@ describe("a member's trophies in a frozen season", () => {
       { season: 2027, kind: 'category', category: 'M40-54', position: 1, points: 412.5 },
       { season: 2027, kind: 'overall', category: '', position: 1, points: 412.5 },
       { season: 2027, kind: 'pair', category: '', position: 1, points: 160.4 },
-      { season: 2027, kind: 'team', category: '', position: 1, points: 412.5, team: 'Dunavski trkači' },
+      { season: 2027, kind: 'team', category: '', position: 1, points: 800.7, team: 'Dunavski trkači' },
     ])
   })
 
