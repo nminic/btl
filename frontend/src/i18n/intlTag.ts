@@ -6,6 +6,9 @@
  */
 const INTL_TAGS: Record<string, string> = {
   sr: 'sr-Latn',
+  /* Plain "en" is American English ("October 1, 2026"), while the dictionary and
+   * `og:locale` (head.ts) are British. Owner's decision, 26.09.2026: en-GB. */
+  en: 'en-GB',
 }
 
 export function intlTag(locale: string): string {

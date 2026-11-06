@@ -1251,9 +1251,9 @@ describe('a comment a moderator lets out', () => {
     expect(list.textContent).not.toMatch(/\d,\d/)
 
     /* The day the comment was written, the same way. The Serbian date of kom-1
-       is "8. 5. 2010." and the English one is "May 8, 2010": one string cannot
+       is "8. 5. 2010." and the English one is "8 May 2010": one string cannot
        be both, so either spelling proves which language did the writing. */
-    expect(list.textContent).toContain('May 8, 2010')
+    expect(list.textContent).toContain('8 May 2010')
     expect(list.textContent).not.toContain('8. 5. 2010.')
   })
 
