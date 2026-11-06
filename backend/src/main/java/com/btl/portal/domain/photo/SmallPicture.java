@@ -409,7 +409,13 @@ public final class SmallPicture {
 		}
 	}
 
-	private static int orientationIn(byte[] bytes, int tiff) {
+	/**
+	 * The orientation tag out of the first directory of a TIFF structure that starts at {@code tiff}, 1 when
+	 * it names none. Shared with {@link WithoutMetadata}, which reads the same note out of a PNG or a WebP, so
+	 * that „which way does this picture ask to be turned" has one reader. A structure cut short throws
+	 * {@link ArrayIndexOutOfBoundsException}, which each caller answers as „as stored".
+	 */
+	static int orientationIn(byte[] bytes, int tiff) {
 		boolean little = bytes[tiff] == 'I';
 		int directory = tiff + thirtyTwo(bytes, tiff + 4, little);
 		int entries = sixteen(bytes, directory, little);

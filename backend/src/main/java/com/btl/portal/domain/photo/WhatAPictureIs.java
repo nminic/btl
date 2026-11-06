@@ -123,8 +123,12 @@ public final class WhatAPictureIs {
 	 * hole:</b> the bytes are served back under the type this method decided and never under
 	 * one the browser claimed, with {@code X-Content-Type-Options: nosniff} on the answer
 	 * ({@link com.btl.portal.web.PhotoApi}, measured there), so a file that is both a
-	 * picture and something else is still only ever offered to a browser as a picture. And a
-	 * picture reaches a profile only after a moderator has looked at it.
+	 * picture and something else is still only ever offered to a browser as a picture. A picture
+	 * a MEMBER sends reaches his profile only after a moderator has looked at it; one the
+	 * ADMINISTRATION sets ({@code MemberPictureAndWordsApi}) stands on the profile at once, with no
+	 * moderator in between, so for that door this paragraph's last guard is the administration
+	 * itself. And on both doors what the camera wrote about the picture is taken off before it is
+	 * stored ({@link WithoutMetadata}); that reads segments and chunks and still decodes nothing.
 	 *
 	 * @param bytes the whole file, never null
 	 * @return one of the three media types, or null for anything else
