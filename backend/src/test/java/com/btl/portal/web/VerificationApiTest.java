@@ -578,10 +578,15 @@ class VerificationApiTest {
 		queuedRun(MEMBER_TWO, "Sestocasovna", "", "2027-03-09 09:00:00+00",
 				sentFrom(MEMBER_TWO, aRaceToALimit, "52.4000", 640, 610, 18000, "", null));
 
+		/* THE KIND THE MEMBER GAVE IS `length` AND NOT `free`, on purpose: where the race is not the
+		   calendar's the kind of the row is his hint, and a hint of `free` is a kind whose four figures
+		   are all the member's, so reading the calendar's kind column off a race that is not there gave
+		   the same figures (measured 06.11.2026: `the_races_kind` replaced by `race_kind`, green). A
+		   hint of `length` asks the race for its distance, and there is no race to ask. */
 		long described = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
 						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
 						+ " link, comment) values ((select id from competitor where member_number = ?),"
-						+ " null, date '2027-03-07', 'Trka van kalendara', 'free', " + EVERYBODYS_TOWN
+						+ " null, date '2027-03-07', 'Trka van kalendara', 'length', " + EVERYBODYS_TOWN
 						+ ", 12.0000, 100, 90, 3000, 'https://primer.rs/van', '') returning id")
 				.param(LAPSED).query(Long.class).single();
 		queuedRun(LAPSED, "Trka van kalendara", "", "2027-03-10 09:00:00+00", described);
@@ -1650,7 +1655,7 @@ class VerificationApiTest {
 		assertThat(described.path("raceId").isNull()).as("a race nobody has entered has a key")
 				.isTrue();
 		assertThat(described.path("raceKind").asString()).as("the kind the member gave")
-				.isEqualTo("free");
+				.isEqualTo("length");
 		assertThat(described.path("raceDate").asString()).isEqualTo("2027-03-07");
 		assertThat(figuresIn(described)).isEqualTo("12 km, up 100 m, down 90 m, 3000 s");
 

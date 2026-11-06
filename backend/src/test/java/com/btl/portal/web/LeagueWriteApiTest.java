@@ -25,6 +25,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -491,6 +493,49 @@ class LeagueWriteApiTest {
 				.query(String.class).single())
 				.as("the league was not moved to the address it was changed to")
 				.isEqualTo(longest);
+	}
+
+	/**
+	 * THE BOUND IS NOT BELOW WHAT THE FORM LETS THROUGH: AN ADDRESS OF THE LENGTH THE FORM ALLOWS IS
+	 * TAKEN BY BOTH ROUTES.
+	 *
+	 * <p>Every case above builds its text from {@link LeagueWriteApi#MOST_AN_ADDRESS_CAN_BE}, the
+	 * constant it checks, so a bound lowered under the form (measured 06.11.2026: 59, 91 of 91 green)
+	 * moves the text with it and nothing is refused that was not refused before. The number the member
+	 * can type is on the form (the presedan of {@code MeWriteApiTest.everyBoxTheServerBoundsIsBoundedByTheNumberOnTheForm}),
+	 * so the address is made as long as the form's own {@code maxLength} for it, read out of the file,
+	 * and the server must write it: the route's bound floors at what the form allows, and the form is
+	 * what a member meets, so a bound under it would refuse an address the form let through and with
+	 * the sentence about its shape.
+	 */
+	@Test
+	void anAddressAsLongAsTheFormAllowsIsTakenByTheRouteThatMakesALeagueAndByTheRouteThatChangesOne()
+			throws Exception {
+		int onTheForm = 0;
+
+		for (tools.jackson.databind.JsonNode field : new ObjectMapper()
+				.readTree(Files.readString(Path.of("..", "frontend", "src", "forms", "definitions",
+						"admin-liga.form.json")))
+				.path("fields")) {
+			if ("slug".equals(field.path("name").asString())) {
+				onTheForm = field.path("maxLength").asInt();
+			}
+		}
+
+		assertThat(onTheForm).as("the form carries no maxLength for the address, so this compares nothing")
+				.isPositive();
+
+		String made = WhatAnIndexHoldsTest.aSlugOf(onTheForm);
+		String moved = "b" + WhatAnIndexHoldsTest.aSlugOf(onTheForm - 1);
+
+		assertThat(WhatAnIndexHoldsTest.answered(() -> add(
+				new LeagueWriteApi.Upsert("Liga po obrascu", made, RUNNING, "", ""))).getStatus())
+				.as("an address the form lets through was refused by the route that makes a league")
+				.isEqualTo(201);
+		assertThat(WhatAnIndexHoldsTest.answered(() -> change(acted,
+				new LeagueWriteApi.Upsert("Druga liga 2028", moved, RUNNING, "", ""))).getStatus())
+				.as("an address the form lets through was refused by the route that changes a league")
+				.isEqualTo(200);
 	}
 
 	/**

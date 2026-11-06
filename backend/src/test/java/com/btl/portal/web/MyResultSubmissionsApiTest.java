@@ -80,15 +80,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * different lists.</li>
  * </ul>
  *
- * <p><b>TWO PAIRS OF KEYS ARE NOT HELD APART, and nothing here claims they are.</b> The key of a
- * run against the key of the queue row it waits behind ({@code result_submission.id} against
- * {@code verification.id}), and the key of an event against the key of its race
- * ({@code btl_event.id} against {@code race.id}, the {@code race_id} a run carries). Written
- * alone, this fixture gives both keys of each pair the same number, because it writes one queue
- * row for every run and one race for every event, so a reading that took the wrong key of either
- * pair would answer here exactly as the right one does (found in review, PR 506, 09.10.2026).
- * That is a separate job of its own: no case in this file measures it, and a case that reads one
- * of those four keys says nothing about which of its pair it was handed.
+ * <p><b>TWO PAIRS OF KEYS ARE HELD APART, from 06.11.2026.</b> The key of a run against the key of
+ * the queue row it waits behind ({@code result_submission.id} against {@code verification.id}),
+ * and the key of an event against the key of its race ({@code btl_event.id} against
+ * {@code race.id}, the {@code race_id} a run carries). Written alone, this fixture used to give both
+ * keys of each pair the same number, because it writes one queue row for every run and one race for
+ * every event, so a reading that took the wrong key of either pair answered exactly as the right
+ * one (found in review, PR 506, 09.10.2026; measured on the two readings then: {@code rs.id} in
+ * place of {@code v.id}, and {@code ev.id as race_id}, 13 of 13 green). The sequences of the queue
+ * and of the races are now moved on before anything is written, so the two keys of each pair are
+ * different numbers.
  *
  * <p>{@link #theFixtureHoldsApartEveryPairThisFileComparesAcross} and
  * {@link #theTwoKeysThatCouldBeConfusedAreDifferentNumbers} assert each of those, so a fixture
@@ -202,6 +203,14 @@ class MyResultSubmissionsApiTest {
 
 	@BeforeEach
 	void threeMembersThreeRacesAndRunsInEveryState() {
+		/* THE KEYS OF TWO PAIRS KEPT APART: a queue row and the run it waits behind, an event and a
+		   race. `greatest(nextval(...), ...)` and never a plain `setval`, so a sequence is only ever
+		   moved forward and no row another class committed can meet a key handed out twice. */
+		db.sql("select setval(pg_get_serial_sequence('verification', 'id'),"
+				+ " greatest(nextval(pg_get_serial_sequence('verification', 'id')), 800000))").query().listOfRows();
+		db.sql("select setval(pg_get_serial_sequence('race', 'id'),"
+				+ " greatest(nextval(pg_get_serial_sequence('race', 'id')), 700000))").query().listOfRows();
+
 		competitor(FIRST_WRITTEN, "Ana", "Prva");
 		competitor(SOMEONE_ELSE, "Bojan", "Drugi");
 		competitor(ME, "Vera", "Treca");
@@ -665,6 +674,16 @@ class MyResultSubmissionsApiTest {
 	 */
 	@Test
 	void theFixtureHoldsApartEveryPairThisFileComparesAcross() {
+		assertThat(db.sql("select count(*) from verification v where v.id = v.result_submission_id")
+				.query(Long.class).single())
+				.as("a run and the queue row it waits behind carry one key, so a reading that took the wrong"
+						+ " one of the two answers here exactly as the right one")
+				.isZero();
+		assertThat(db.sql("select count(*) from race ra where ra.id = ra.event_id")
+				.query(Long.class).single())
+				.as("a race and its event carry one key, so a reading that took the wrong one of the two"
+						+ " answers here exactly as the right one")
+				.isZero();
 		assertThat(statesOn(SOMEONE_ELSE, lengthRace))
 				.as("somebody else has no run in one of the states mine are in, on my race")
 				.containsExactlyInAnyOrder("waiting", "rejected", "approved");

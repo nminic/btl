@@ -1095,6 +1095,35 @@ class EventWriteApiTest {
 	}
 
 	/**
+	 * THE GUARD ASKS THE DAY OF EACH RACE, NOT THE DAY OF THE EVENT.
+	 *
+	 * <p>The two cases around this one build an event with ONE race on the same day as the event, so
+	 * the event's column and the race's own day are one value and a guard that read the column would
+	 * pass them (measured 06.11.2026: {@code ra.date} replaced by the event's {@code date}, every case
+	 * of the file green). Here the event stands on 30 December 2027 and the race a league counts on the
+	 * 31st, so a shift of one day leaves the event inside 2027 and carries the counted race into 2028.
+	 * It is refused, and the race that counts nowhere (30 December) does not decide it.
+	 */
+	@Test
+	void theRaceAnEventCarriesOutOfItsLeaguesYearDecidesNotTheDayOfTheEventItself() throws Exception {
+		long counted = event("ligaski-dvodnevni-2027", "2027-12-30", A_TOWN);
+		race(counted, "Prva", "2027-12-30");
+		race(counted, "Ligaska druga", "2027-12-31");
+		leagueCounting("liga-2027", 2027, raceCalled("Ligaska druga"));
+
+		MockHttpServletResponse answer = change(counted, aForm().withPlace(aKnownTown())
+				.withName("Trka ligaski-dvodnevni-2027").withDay(LocalDate.parse("2027-12-31")));
+
+		assertThat(answer.getStatus())
+				.as("the event stayed inside 2027 and the race its league counts crossed into 2028,"
+						+ " and nothing refused it")
+				.isEqualTo(409);
+		assertThat(reasonIn(answer))
+				.isEqualTo(EventWriteApi.THE_RACE_COUNTS_IN_A_LEAGUE_OF_ITS_SEASON);
+		assertThat(daysOfRacesOn(counted)).containsExactly("2027-12-30", "2027-12-31");
+	}
+
+	/**
 	 * AND THE SAME EVENT MOVES FREELY INSIDE THE LEAGUE'S OWN YEAR.
 	 *
 	 * <p>The other side of the boundary, and the half that says the guard asks about the

@@ -117,6 +117,10 @@ class ResultsByTheLeagueConcurrencyTest {
 		for (long each : moreMembers) {
 			db.sql("delete from message where to_id = ?").param(each).update();
 			db.sql("delete from result where competitor_id = ?").param(each).update();
+			db.sql("delete from verification_lock where verification_id in"
+					+ " (select id from verification where competitor_id = ?)").param(each).update();
+			db.sql("delete from verification where competitor_id = ?").param(each).update();
+			db.sql("delete from result_submission where competitor_id = ?").param(each).update();
 		}
 
 		for (String slug : moreEvents) {
@@ -256,6 +260,145 @@ class ResultsByTheLeagueConcurrencyTest {
 		} finally {
 			pool.shutdownNow();
 		}
+	}
+
+	/**
+	 * THE SAVE AGAINST THE REAL APPROVAL OF A RUN OF HIS ON THE SAME RACE, THE APPROVAL FIRST IN THE QUEUE
+	 * FOR HIS ROW: one result, the approval's, and the save names the row.
+	 *
+	 * <p>The case above stands a bare connection in for the approval. This one sends the approval
+	 * ({@code VerificationWriteApi}, the run he described, counted on the race the moderator names) and
+	 * the save, both stopped behind a hold on his row, the approval queued first and the save second, so
+	 * the order in which the lock manager hands the row on is the order they were sent in. The approval
+	 * asks for his row {@code for key share} before it writes, the save asks {@code for update}: the
+	 * approval is let through first, writes, and the save then meets its result (400) and writes none of
+	 * its own. A round of the order the other way follows.
+	 */
+	@Test
+	void theRealApprovalOfAHeldRunAndTheSaveOfTheSameMemberOnTheSameRaceWriteOneResultTheApprovalFirst()
+			throws Exception {
+		long waiting = aDescribedRunWaitingToBeCountedOnTheRace();
+
+		List<MockHttpServletResponse> answers = oneAfterTheOther(
+				() -> approvedOnTheRace(ONE_MODERATOR, waiting),
+				() -> entered(THE_OTHER_MODERATOR, 4000));
+
+		assertThat(answers.get(0).getStatus()).as("the approval that was let through first was refused: %s",
+				answers.get(0).getContentAsString()).isEqualTo(200);
+		assertThat(answers.get(1).getStatus()).as("the save that came second wrote beside the approval's result")
+				.isEqualTo(400);
+		assertThat(new ObjectMapper().readTree(answers.get(1).getContentAsString()).path("rows").get(0)
+				.path("reason").asString()).isEqualTo(ResultsByTheLeagueApi.HE_HAS_A_RESULT_ON_THIS_RACE);
+		assertThat(db.sql("select seconds from result where competitor_id = ? and race_id = ?")
+				.params(member, race).query(Integer.class).list())
+				.as("the member does not have exactly the result of the approval")
+				.containsExactly(3500);
+	}
+
+	/**
+	 * AND THE OTHER ORDER: THE SAVE FIRST IN THE QUEUE FOR HIS ROW, THE REAL APPROVAL SECOND. One result, the
+	 * save's, and the approval is answered 409 with the sentence for a member who already has a result on
+	 * the race, and is taken back.
+	 */
+	@Test
+	void theRealApprovalOfAHeldRunAndTheSaveOfTheSameMemberOnTheSameRaceWriteOneResultTheSaveFirst()
+			throws Exception {
+		long waiting = aDescribedRunWaitingToBeCountedOnTheRace();
+
+		List<MockHttpServletResponse> answers = oneAfterTheOther(
+				() -> entered(THE_OTHER_MODERATOR, 4000),
+				() -> approvedOnTheRace(ONE_MODERATOR, waiting));
+
+		assertThat(answers.get(0).getStatus()).as("the save that was let through first was refused: %s",
+				answers.get(0).getContentAsString()).isEqualTo(201);
+		assertThat(answers.get(1).getStatus()).as("the approval that came second wrote beside the save's result")
+				.isEqualTo(409);
+		assertThat(db.sql("select seconds from result where competitor_id = ? and race_id = ?")
+				.params(member, race).query(Integer.class).list())
+				.as("the member does not have exactly the result of the save")
+				.containsExactly(4000);
+		assertThat(db.sql("select state from verification where id = ?").param(waiting)
+				.query(String.class).single())
+				.as("the approval that was refused stays in the queue").isEqualTo("waiting");
+	}
+
+	/**
+	 * TWO REQUESTS SENT ONE AFTER THE OTHER AGAINST A HOLD ON HIS ROW: the first is let to queue behind it
+	 * (the lock manager says so) before the second is sent, so the order is the one given and not whichever
+	 * the scheduler picks. Both are queued before the hold is let go, and neither is done while it stands.
+	 */
+	private List<MockHttpServletResponse> oneAfterTheOther(Callable<MockHttpServletResponse> first,
+			Callable<MockHttpServletResponse> second) throws Exception {
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from competitor where id = ? for update").param(member).query(Integer.class)
+						.single();
+
+				assertThat(BlockedBehindThisHold.count(db))
+						.as("the row is held and nothing has been sent yet").isZero();
+
+				submitted.add(pool.submit(first));
+
+				Instant deadline = Instant.now().plusSeconds(10);
+
+				while (BlockedBehindThisHold.count(db) < 1) {
+					assertThat(Instant.now()).as("the first request never waited for the member's row")
+							.isBefore(deadline);
+
+					try {
+						Thread.sleep(20);
+					} catch (InterruptedException e) {
+						throw new RuntimeException(e);
+					}
+				}
+
+				submitted.add(pool.submit(second));
+
+				try {
+					BlockedBehindThisHold.untilBothArrive(db, submitted);
+				} catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+
+				assertThat(submitted).as("a request went through without waiting for the member's row")
+						.noneMatch(Future::isDone);
+
+				return null;
+			});
+
+			return List.of(submitted.get(0).get(30, TimeUnit.SECONDS), submitted.get(1).get(30, TimeUnit.SECONDS));
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
+	/**
+	 * A RUN HE DESCRIBED, WAITING IN THE RESULTS TAB, for the race this class made: it names no race, so the
+	 * save's question about a submission waiting on the race cannot see it, and the moderator names the race
+	 * when he approves (the road the deadlock was measured on, {@code VerificationWriteApi.countTheResult}).
+	 */
+	private long aDescribedRunWaitingToBeCountedOnTheRace() {
+		long submission = db.sql("insert into result_submission (competitor_id, race_id, race_date, race_name,"
+						+ " race_kind, place_id, distance_km, ascent_m, descent_m, seconds, link, comment)"
+						+ " values (?, null, date '2026-05-01', 'Opisana istovremena', 'length',"
+						+ " (select id from place where rank = 1), 10.00, 50, 50, 3500,"
+						+ " 'https://primer.rs/istovremena', '') returning id")
+				.param(member).query(Long.class).single();
+
+		return db.sql("insert into verification (queue, competitor_id, subject, body, result_submission_id)"
+						+ " values ('results', ?, 'Rezultat', '', ?) returning id")
+				.params(member, submission).query(Long.class).single();
+	}
+
+	private MockHttpServletResponse approvedOnTheRace(String email, long item) throws Exception {
+		return http.perform(post("/api/verification/" + item + "/decision").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(email)))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"approved\":true,\"raceId\":" + race + "}"))
+				.andReturn().getResponse();
 	}
 
 	/**
