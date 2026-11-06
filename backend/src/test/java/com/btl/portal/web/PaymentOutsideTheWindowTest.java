@@ -238,7 +238,7 @@ class PaymentOutsideTheWindowTest {
 				.param(id).query(Long.class).single())
 				.as("a payment in June buys the running season and no other")
 				.isZero();
-		assertThat(db.sql("select active from competitor where id = ?").param(id)
+		assertThat(db.sql("select exists(select 1 from membership where competitor_id = ?)").param(id)
 				.query(Boolean.class).single()).isTrue();
 	}
 
@@ -261,7 +261,7 @@ class PaymentOutsideTheWindowTest {
 		assertThat(db.sql("select p.season || ' ' || r.key from payment p join price_row r on r.id = p.price_row_id"
 						+ " where p.id = ?").param(body.paymentId()).query(String.class).single())
 				.isEqualTo("2027 season");
-		assertThat(db.sql("select active from competitor where id = ?").param(id)
+		assertThat(db.sql("select exists(select 1 from membership where competitor_id = ?)").param(id)
 				.query(Boolean.class).single()).isTrue();
 		assertThat(db.sql("select count(*) from membership where competitor_id = ? and season = 2027")
 				.param(id).query(Long.class).single()).isEqualTo(1L);

@@ -1583,11 +1583,12 @@ class VerificationApiTest {
 	 */
 	@Test
 	void anItemFromAMemberWhoseFeeHasLapsedIsServedLikeAnyOther() throws Exception {
-		assertThat(db.sql("select active from competitor where member_number = ?")
-						.param(LAPSED).query(Boolean.class).single())
-				.as("the member this case calls lapsed has a membership in good standing, so his"
+		assertThat(db.sql("select count(*) from membership m join competitor c on c.id = m.competitor_id"
+						+ " where c.member_number = ?")
+						.param(LAPSED).query(Long.class).single())
+				.as("the member this case calls lapsed holds a season, so his"
 						+ " item being served says nothing")
-				.isFalse();
+				.isZero();
 
 		assertThat(waitingIn(TWO_QUEUES, COMMENTS))
 				.as("an item sent in by a member whose fee has lapsed was dropped, and the work it"
