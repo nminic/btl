@@ -4076,6 +4076,24 @@ class VerificationWriteApiTest {
 							+ " stands in the letter itself")
 					.containsExactly(A_COMPETITOR);
 		}
+
+		/* ONE LETTER, ONE SMTP TRANSACTION: the member's copy and the league's, two stored copies of one
+		   message and so one Message-ID. A letter posted twice stores four copies, and a second letter
+		   to the runner alone stores three, and both pass everything above (measured 06.11.2026:
+		   `postAfterwards` called twice, and a second `post` without the copy, 103 of 103 green). */
+		assertThat(SMTP.getReceivedMessages())
+				.as("the approval stored other than the two copies of one letter, the member's and the league's")
+				.hasSize(2);
+		assertThat(Arrays.stream(SMTP.getReceivedMessages()).map(one -> {
+			try {
+				return Arrays.toString(one.getHeader("Message-ID"));
+			}
+			catch (jakarta.mail.MessagingException e) {
+				throw new IllegalStateException(e);
+			}
+		}).distinct().count())
+				.as("the two copies are not of one message, so the member was written to twice")
+				.isEqualTo(1);
 	}
 
 	/**
