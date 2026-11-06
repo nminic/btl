@@ -336,6 +336,38 @@ class FrozenSeasonApiTest {
 		return names;
 	}
 
+	/**
+	 * THE RING OF A TEAM'S PAGE IS WHAT THE FREEZE COUNTED FOR THAT TEAM'S ROW OF THAT SEASON (PDL, owner,
+	 * 06.11.2026, „Krug „Trke po distanci" na strani tima zamrznute sezone crta se iz snimka"), and each of its
+	 * other sources says something else here: a marathon of 2027 entered for Tim A after the freeze, Tim B's
+	 * marathon run before it, and a row of the season after for Tim A holding an ultra. Tim B is deleted after
+	 * the freeze and keeps its ring.
+	 */
+	@Test
+	void aTeamsRingIsTheCountOfItsOwnRowAndNothingEnteredAfterOrWrittenForAnotherSeason() throws Exception {
+		db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds, distance_km, ascent_m,"
+				+ " descent_m) values ((select id from btl_event where slug = 'jesen-2027'), 'Maraton', false,"
+				+ " date '2027-10-10', 'length', 0, 42.2, 0, 0)").update();
+		run("000401", "Maraton", 60.00);
+
+		frozen();
+
+		run("000402", "Maraton", 50.00);
+		db.sql("insert into season_frozen (season, frozen_at) values (2028, timestamptz '2029-01-01 15:00:00+00')").update();
+		db.sql("insert into season_team (season, position, team_id, name, points, members, races, kilometers, ascent,"
+				+ " descent, seconds) values (2028, 1, (select id from team where slug = 'tim-a'), 'Tim A', 9, 1, 1,"
+				+ " 100, 0, 0, 3000)").update();
+		db.sql("insert into season_team_length (season_team_id, length, races) values ((select id from season_team"
+				+ " where season = 2028), 'ultra', 1)").update();
+		db.sql("delete from team where slug = 'tim-b'").update();
+
+		JsonNode teams = tablesOf2027(null).get("teams");
+
+		assertThat(rows(teams, "name", "slug")).containsExactly("Tim B null", "Tim A tim-a");
+		assertThat(rows(teams.get(0).get("racesByLength"), "length", "races")).containsExactly("short 2", "marathon 1");
+		assertThat(rows(teams.get(1).get("racesByLength"), "length", "races")).containsExactly("short 3");
+	}
+
 	@Test
 	void aTeamOrAnEventDeletedLaterIsANameWithoutALinkAndALeagueDeletedLaterIsNotAnswered() throws Exception {
 		frozen();
@@ -420,7 +452,7 @@ class FrozenSeasonApiTest {
 		JsonNode served = json.readTree(Files.readString(MOCK.resolve("frozen-tables.json"), StandardCharsets.UTF_8));
 
 		for (String[] at : List.of(new String[] {}, new String[] {"standings"}, new String[] {"teams"},
-				new String[] {"teams", "roster"}, new String[] {"boards"}, new String[] {"pairs"},
+				new String[] {"teams", "roster"}, new String[] {"teams", "racesByLength"}, new String[] {"boards"}, new String[] {"pairs"},
 				new String[] {"pairs", "halves"}, new String[] {"leagues"}, new String[] {"leagues", "columns"},
 				new String[] {"leagues", "standings"}, new String[] {"leagues", "standings", "cells"},
 				new String[] {"awards"}, new String[] {"pointsAtTheFreeze"})) {

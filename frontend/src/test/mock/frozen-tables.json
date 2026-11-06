@@ -109,6 +109,16 @@
           "descent": 950,
           "seconds": 52000
         }
+      ],
+      "racesByLength": [
+        {
+          "length": "short",
+          "races": 18
+        },
+        {
+          "length": "half",
+          "races": 8
+        }
       ]
     },
     {
@@ -135,6 +145,16 @@
           "descent": 1500,
           "seconds": 58000
         }
+      ],
+      "racesByLength": [
+        {
+          "length": "short",
+          "races": 6
+        },
+        {
+          "length": "long",
+          "races": 7
+        }
       ]
     },
     {
@@ -160,6 +180,12 @@
           "ascent": 400,
           "descent": 400,
           "seconds": 30000
+        }
+      ],
+      "racesByLength": [
+        {
+          "length": "ultra",
+          "races": 7
         }
       ]
     }

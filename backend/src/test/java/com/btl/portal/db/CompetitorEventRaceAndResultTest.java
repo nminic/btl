@@ -655,6 +655,8 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"season_points_at_freeze.season_points_at_freeze_competitor_fk cascade",
 				"season_points_at_freeze.season_points_at_freeze_season_fk restrict",
 				"season_team.season_team_fk set null",
+				/* V85. The ring of a frozen team goes only with the team's frozen row, which nothing deletes. */
+				"season_team_length.season_team_length_team_fk cascade",
 				"season_team_member.season_team_member_competitor_fk set null",
 				"season_team_member.season_team_member_team_fk cascade",
 				/* V24. Both CASCADE: nothing writes to this table yet (no page uses `includes`

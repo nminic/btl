@@ -91,9 +91,18 @@ class FrozenSeasonApi {
 			int races, BigDecimal kilometers, int ascent, int descent, int seconds) {
 	}
 
-	/** @param slug null where the team has since been deleted */
+	/** How many of a frozen team's races were run at one length; only a length it ran has one. */
+	record Length(String length, int races) {
+	}
+
+	/**
+	 * @param slug          null where the team has since been deleted
+	 * @param racesByLength the ring of the team's page, as the freeze counted it (PDL, owner, 06.11.2026, „Krug
+	 *                      „Trke po distanci" na strani tima zamrznute sezone crta se iz snimka")
+	 */
 	record Team(int position, String slug, String name, BigDecimal points, int members, int races,
-			BigDecimal kilometers, int ascent, int descent, int seconds, List<TeamMember> roster) {
+			BigDecimal kilometers, int ascent, int descent, int seconds, List<TeamMember> roster,
+			List<Length> racesByLength) {
 	}
 
 	/**
@@ -217,6 +226,21 @@ class FrozenSeasonApi {
 							row.getInt(7), row.getBigDecimal(8), row.getInt(9), row.getInt(10), row.getInt(11)));
 				});
 
+		/* In the order the five lengths are named everywhere (`SeasonTables.LENGTHS`), a vocabulary and not a
+		   place: there is no place among them to keep, and the screen reads them into a map. */
+		Map<Long, List<Length>> lengths = new LinkedHashMap<>();
+
+		db.sql("select l.season_team_id, l.length, l.races"
+						+ " from season_team_length l join season_team t on t.id = l.season_team_id"
+						+ " where t.season = ?"
+						+ " order by l.season_team_id, array_position(array['short', 'half', 'long', 'marathon', 'ultra'],"
+						+ " l.length)")
+				.param(season)
+				.query(row -> {
+					lengths.computeIfAbsent(row.getLong(1), any -> new ArrayList<>())
+							.add(new Length(row.getString(2), row.getInt(3)));
+				});
+
 		return db.sql("select t.id, t.position, team.slug, t.name, t.points, t.members, t.races, t.kilometers,"
 						+ " t.ascent, t.descent, t.seconds"
 						+ " from season_team t left join team on team.id = t.team_id"
@@ -224,7 +248,8 @@ class FrozenSeasonApi {
 				.param(season)
 				.query((row, one) -> new Team(row.getInt(2), row.getString(3), row.getString(4), row.getBigDecimal(5),
 						row.getInt(6), row.getInt(7), row.getBigDecimal(8), row.getInt(9), row.getInt(10),
-						row.getInt(11), rosters.getOrDefault(row.getLong(1), List.of())))
+						row.getInt(11), rosters.getOrDefault(row.getLong(1), List.of()),
+						lengths.getOrDefault(row.getLong(1), List.of())))
 				.list();
 	}
 

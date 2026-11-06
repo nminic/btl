@@ -58,6 +58,11 @@ describe('reading the tables of a frozen season', () => {
       [2, null, null, 'Ž R'],
     ])
     expect(tables?.teams[2]?.slug).toBeNull()
+    expect(tables?.teams.map((one) => one.racesByLength)).toEqual([
+      [{ length: 'short', races: 18 }, { length: 'half', races: 8 }],
+      [{ length: 'short', races: 6 }, { length: 'long', races: 7 }],
+      [{ length: 'ultra', races: 7 }],
+    ])
     expect(tables?.pairs[0]?.halves.map((one) => one.memberNumber)).toEqual(['000001', '000003'])
     expect(tables?.leagues[0]?.columns[1]?.eventSlug).toBeNull()
     expect(tables?.pointsAtTheFreeze).toHaveLength(4)
@@ -71,6 +76,9 @@ describe('reading the tables of a frozen season', () => {
     ['a name that is not text', servedWith('standings', 0, 'who', 7)],
     ['a number that is not one', servedWith('standings', 0, 'points', '412.5')],
     ['a previous season that is not a number', servedWith('boards', 0, 'previousPoints', 'x')],
+    ['a length of the ring that is none of the five', servedWith('teams', 0, 'racesByLength', [{ length: 'free', races: 1 }])],
+    ['a length of the ring that is not text', servedWith('teams', 0, 'racesByLength', [{ length: 1, races: 1 }])],
+    ['a count of the ring that is not a number', servedWith('teams', 0, 'racesByLength', [{ length: 'short', races: '1' }])],
     ['a pair of one', servedWith('pairs', 0, 'halves', [{ memberNumber: '000001', who: 'A', gender: 'M' }])],
     [
       'a pair of three',

@@ -25,7 +25,7 @@ import { EMPTY_TOTALS, type RankingRow, type Totals } from '../data/derive'
 import { FrozenName } from './frozen/FrozenName'
 import { useFrozenPeople, type FrozenOne } from './frozen/frozenPeople'
 import { clearResourceCache } from '../data/client'
-import type { Competitor, Team } from '../data/types'
+import type { Competitor, RaceCategory, Team } from '../data/types'
 import { askTheServer, type Answer } from './account/askTheServer'
 import { ServerSaid } from './account/ServerSaid'
 import { standsOnTheServer, WHEN_DELETING_A_TEAM } from './admin/teamWrites'
@@ -325,7 +325,11 @@ export function TeamDetail() {
            src/data/derive.ts exists to prevent (PDL P12). */
         const rows = rankMembers(members, mine)
 
-        const drawn = (totals: Totals, rows: Shown[]) => (
+        /* `ring` is what the ring of races counts: the results read above for a season read live, and the
+           count the freeze wrote for a frozen one (PDL, owner, 06.11.2026, „Krug „Trke po distanci" na strani
+           tima zamrznute sezone crta se iz snimka"), so a run entered after the freeze moves it no more than it
+           moves the figures beside it. */
+        const drawn = (totals: Totals, rows: Shown[], ring: Map<RaceCategory, number>) => (
           <>
             <PageMeta
               title={t('seo.team.recordTitle', { name: team.name, city: team.city })}
@@ -458,7 +462,7 @@ export function TeamDetail() {
                 </section>
 
                 <section className="profile__card profile__card--donut">
-                  <CategoryDonut counts={countsByCategory(mine)} caption={t('profile.byCategory')} />
+                  <CategoryDonut counts={ring} caption={t('profile.byCategory')} />
                 </section>
 
                 <Counters totals={totals} races={false} />
@@ -542,7 +546,7 @@ export function TeamDetail() {
         return frozen.some((one) => String(one.season) === season) ? (
           <FrozenTeamPage season={Number(season)} slug={team.slug} competitors={listedMembers} drawn={drawn} />
         ) : (
-          drawn(totals, rows)
+          drawn(totals, rows, countsByCategory(mine))
         )
       }}
     </Resource>
@@ -553,7 +557,8 @@ export function TeamDetail() {
 type Shown = RankingRow & { frozen?: FrozenOne }
 
 /**
- * THE TEAM'S PAGE IN A FROZEN SEASON: its figures and its members as the freeze wrote them (PDL, 31.07.2026),
+ * THE TEAM'S PAGE IN A FROZEN SEASON: its figures, its ring of races and its members as the freeze wrote them
+ * (PDL, 31.07.2026; the ring, PDL, owner, 06.11.2026),
  * the category each member had that season beside him. A team that ran nothing that season is not in the
  * snapshot and has no members on it, which is the same silence the live page says.
  */
@@ -566,7 +571,7 @@ function FrozenTeamPage({
   season: number
   slug: string
   competitors: Competitor[]
-  drawn: (totals: Totals, rows: Shown[]) => ReactNode
+  drawn: (totals: Totals, rows: Shown[], ring: Map<RaceCategory, number>) => ReactNode
 }) {
   const state = useFrozenTables(season)
   const people = useFrozenPeople(competitors, season)
@@ -578,7 +583,7 @@ function FrozenTeamPage({
         const categories = new Map(tables.standings.map((one) => [`${one.memberNumber}|${one.who}`, one.category]))
 
         if (frozen === undefined) {
-          return drawn(EMPTY_TOTALS, [])
+          return drawn(EMPTY_TOTALS, [], new Map())
         }
 
         return drawn(
@@ -607,6 +612,7 @@ function FrozenTeamPage({
                 frozen: who,
               }
             }),
+          new Map(frozen.racesByLength.map((one) => [one.length, one.races])),
         )
       }}
     </Resource>

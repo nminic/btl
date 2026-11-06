@@ -18,6 +18,9 @@ import { SLOW } from '../test/slow'
  *   snapshot's alone, and the run would give a second set if they were worked out as well.
  * - A run of 2028 by a member whose 2027 the live results do not hold: the list of progress of 2028
  *   measures him against what 2027 held at its freeze, which only the snapshot says.
+ * - A marathon of 2027 entered after the freeze, by a member of a team whose snapshot holds no marathon: the
+ *   ring of races on the team's page is what the freeze counted for THAT team, and another team of the same
+ *   season holds lengths of its own.
  */
 
 /* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, as in `admin/saveWhileSaving.test.tsx`: a
@@ -53,11 +56,11 @@ function run(memberNumber: string, date: string, points: number, id: number): Re
   }
 }
 
-function servingResults(extra: Result[]) {
+function servingResults(extra: Result[], frozen: { season: number }[] = [{ season: 2027 }]) {
   server.stop()
   server = serverThat((path) => {
     if (path === '/api/frozen-seasons') {
-      return json([{ season: 2027 }])
+      return json(frozen)
     }
 
     return path === '/api/results' ? json(extra) : null
@@ -125,6 +128,52 @@ describe('the list of competitions', () => {
     const other = screen.getByRole('heading', { name: /Planinska liga 2027/ }).closest('section, article, li')
 
     expect(other?.textContent).toContain(`${sr.leagues.entrants}: 0`)
+  })
+})
+
+describe('the ring of races on the page of a team in a frozen season', () => {
+  /* Each length of the ring and how many races it holds, as the ring's own table says them to a reader who
+     cannot see the drawing, and the total under them. */
+  async function theRing(): Promise<string[][]> {
+    await screen.findByRole('table', { name: sr.teams.members })
+
+    const ring = screen.getByRole('table', { name: sr.profile.byCategory })
+
+    return within(ring)
+      .getAllByRole('row')
+      .map((row) => [
+        within(row).getByRole('rowheader').textContent ?? '',
+        within(row).getAllByRole('cell')[0]?.textContent ?? '',
+      ])
+  }
+
+  /* Two runs of 2027 by a member of Dunavski trkači, one of them a marathon, entered after the freeze. The
+     snapshot holds 18 short and 8 half for this team and long races for Vardarski krug, so neither the live
+     results nor the row of another team gives what the freeze wrote (V1 of the review of PR 676). */
+  const afterTheFreeze = [run('000001', '2027-05-05', 10, 1), { ...run('000001', '2027-06-06', 50, 2), distanceKm: 42.2, category: 'marathon' as const }]
+
+  it('is what the freeze counted for that team, whatever was entered for the season after it', async () => {
+    servingResults(afterTheFreeze)
+
+    renderAt('/sr/tim/dunavski-trkaci?sezona=2027')
+
+    expect(await theRing()).toEqual([
+      [sr.category.short, '18'],
+      [sr.category.half, '8'],
+      [sr.profile.totals, `26 ${sr.profile.racesWord.other}`],
+    ])
+  })
+
+  it('is counted from the live results while the season is not frozen', async () => {
+    servingResults(afterTheFreeze, [])
+
+    renderAt('/sr/tim/dunavski-trkaci?sezona=2027')
+
+    expect(await theRing()).toEqual([
+      [sr.category.short, '1'],
+      [sr.category.marathon, '1'],
+      [sr.profile.totals, `2 ${sr.profile.racesWord.few}`],
+    ])
   })
 })
 

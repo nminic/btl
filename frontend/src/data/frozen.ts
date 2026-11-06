@@ -1,5 +1,6 @@
 import { AGE_BANDS, FIRST_SEASON_BAND, type AgeBand } from './categories'
-import type { Competitor, Gender, SeasonCategory } from './types'
+import { CATEGORIES } from './derive'
+import type { Competitor, Gender, RaceCategory, SeasonCategory } from './types'
 
 /**
  * THE FROZEN SEASON AS THE SERVER WROTE IT DOWN, READ AND NOT WORKED OUT.
@@ -51,6 +52,12 @@ export type FrozenTeam = FrozenTotals & {
   name: string
   members: number
   roster: FrozenTeamMember[]
+  /**
+   * The ring of the team's page: how many of its races were run at each length, as the freeze counted them
+   * (PDL, owner, 06.11.2026, „Krug „Trke po distanci" na strani tima zamrznute sezone crta se iz snimka").
+   * Only a length the team ran has a row, and the rows add up to `races`.
+   */
+  racesByLength: { length: RaceCategory; races: number }[]
 }
 
 export type FrozenBoard = FrozenPerson &
@@ -165,6 +172,17 @@ function aGender(body: unknown): Gender {
   return value
 }
 
+function aLength(body: unknown): RaceCategory {
+  const value = aText(body, 'length')
+  const length = CATEGORIES.find((one) => one === value)
+
+  if (length === undefined) {
+    throw new Unreadable('length')
+  }
+
+  return length
+}
+
 function person(body: unknown): FrozenPerson {
   return { memberNumber: aTextOrNone(body, 'memberNumber'), who: aTextOrNone(body, 'who'), gender: aGender(body) }
 }
@@ -208,6 +226,7 @@ function tablesOf(body: unknown): FrozenTables {
       name: aText(one, 'name'),
       members: aNumber(one, 'members'),
       roster: aList(one, 'roster', (member) => ({ ...person(member), ...totals(member), position: aNumber(member, 'position') })),
+      racesByLength: aList(one, 'racesByLength', (row) => ({ length: aLength(row), races: aNumber(row, 'races') })),
     })),
     boards: aList(body, 'boards', (one) => ({
       ...person(one),
