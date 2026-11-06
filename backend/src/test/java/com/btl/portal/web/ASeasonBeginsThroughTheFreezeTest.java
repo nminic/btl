@@ -153,6 +153,47 @@ class ASeasonBeginsThroughTheFreezeTest {
 				.containsExactly(2027);
 	}
 
+	/**
+	 * THE FREEZE OF 2028 BEGINS 2029, AND THE SHIFT OF ONE IS NOT THE FIRST SEASON THAT DROPS (PENDING,
+	 * PR 673, krug 3, SREDNJI 5, „Pomeraj „+1" i čuvar u `followTheFreezeOf` nisu čuvani u smeru 2029 i
+	 * dalje"). The cases above freeze only 2026 and 2027, where „the season after the frozen one" and
+	 * „2028" are the same number. Here Dane holds 2028 and not 2029 and Cana holds both, in one team: handed
+	 * the freeze of 2028 the job drops Dane, which beginning 2028 again (he holds it) would not, and a guard
+	 * that returned for every season but the first would not either.
+	 */
+	@Test
+	void theFreezeOf2028BeginsTheSeasonAfterItAndNotTheFirstOneAgain() {
+		long cana = member("000944", "Cana", "Canic", "F");
+		long dane = member("000945", "Dane", "Danic", "M");
+
+		for (long each : List.of(cana, dane)) {
+			HeldOn.season(db, each, 2027, "feeExempt");
+			HeldOn.season(db, each, 2028, "payment");
+		}
+
+		HeldOn.season(db, cana, 2029, "payment");
+
+		long treci = team("treci-tim", "Treci tim", dane);
+		in(cana, treci);
+		in(dane, treci);
+		pair(2029, dane, cana);
+
+		begins.followTheFreezeOf(2028);
+
+		assertThat(db.sql("select c.first_name || ' ' || coalesce(m.season_to::text, '-') from team_membership m"
+						+ " join competitor c on c.id = m.competitor_id where m.team_id = ? order by c.first_name")
+				.param(treci).query(String.class).list())
+				.as("Dane did not renew 2029 and is out at 2028, the season that froze; Cana renewed")
+				.containsExactly("Cana -", "Dane 2028");
+		assertThat(db.sql("select count(*) from racing_pair where season = 2029").query(Long.class).single())
+				.as("and the pair of 2029 he was in is broken").isZero();
+		assertThat(db.sql("select admin_id from team where id = ?").param(treci).query(Long.class).single())
+				.as("the seat that named him passes to Cana").isEqualTo(cana);
+		assertThat(db.sql("select count(*) from team").query(Long.class).single())
+				.as("Prvi tim and Drugi tim hold nobody who renewed 2029 and go; Treci tim stays")
+				.isEqualTo(1);
+	}
+
 	private List<String> standing() {
 		return db.sql("select 'team ' || name from team union all select 'membership ' || competitor_id || ' '"
 						+ " || season_from || ' ' || coalesce(season_to::text, '-') from team_membership"

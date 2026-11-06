@@ -47,11 +47,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * screen reads {@code GET /api/pricing} instead of the constant, and that is the pricing
  * screen's own increment (owner, 25.09.2026, PDL P12b).
  *
- * <p><b>Home 3 is not compared here and that is deliberate.</b> The generator writes V4, and
- * V4 is home 1: comparing the two would be asking whether the generator's output equals its
- * input, which {@code MigrationsAreImmutableTest} and {@code DeltaMigrationAppliesTest}
- * already cover from the side that matters. Home 4 is held by its own file and is written
- * from the journal on purpose.
+ * <p><b>Home 3 is held here too, to the TABLE and not to V4's text.</b> The generator's
+ * {@code PRICE_ROWS} is copied by hand, and nothing else reads it as numbers: {@code
+ * MigrationsAreImmutableTest} pins the checksum of V4's OUTPUT, and {@code
+ * DeltaMigrationAppliesTest} runs the generator but keeps {@code price_row} out of what a
+ * delta maintains. So the input could drift from the table with every other file green,
+ * which is measured: euro price of {@code early} changed from 35 to 36 in the generator left
+ * 69 cases across those five classes with no failure. Home 4 is held by its own file and is
+ * written from the journal on purpose.
  *
  * <p><b>And the table is compared rather than the route's answer</b>, although the answer is
  * what a screen would read. {@code PricingApiTest} already holds every field of that answer
@@ -115,6 +118,18 @@ class ThePriceListHasOneHomeTest extends DatabaseTest {
 
 	private static final Pattern A_DAY_OF_THE_YEAR =
 			Pattern.compile("%s:\\s*'([0-9]{2}-[0-9]{2})'");
+
+	private static final Path GENERATOR =
+			Path.of("tools", "generate_reference_migrations.py");
+
+	/**
+	 * A TUPLE OF THE GENERATOR'S {@code PRICE_ROWS}: key, kind, two days or None (matched,
+	 * not compared), euro, and dinars or None. Read from the file as text because it is a Python literal, and the
+	 * floor under it is the table's count so a pattern that matched less would be red.
+	 */
+	private static final Pattern A_GENERATOR_ROW = Pattern.compile(
+			"\\(\\s*'([a-z]+)',\\s*'[a-z]+',\\s*(None|'[0-9]{2}-[0-9]{2}'),"
+					+ "\\s*(None|'[0-9]{2}-[0-9]{2}'),\\s*([0-9.]+),\\s*(None|[0-9.]+),");
 
 	private record Amounts(BigDecimal eur, BigDecimal rsd) {
 	}
@@ -329,5 +344,63 @@ class ThePriceListHasOneHomeTest extends DatabaseTest {
 						+ " rows the price list has, so the comparison above is measuring less"
 						+ " than the whole list")
 				.containsExactlyInAnyOrderElementsOf(whatDaysTheTableHolds().keySet());
+	}
+
+	private static List<java.util.regex.MatchResult> theGeneratorsRows() {
+		assertThat(GENERATOR)
+				.as("the generator is not where this expects it, so home 3 is not compared")
+				.exists();
+
+		String source;
+		try {
+			source = Files.readString(GENERATOR, StandardCharsets.UTF_8);
+		} catch (IOException cannot) {
+			throw new UncheckedIOException(cannot);
+		}
+
+		int start = source.indexOf("PRICE_ROWS = [");
+		assertThat(start).as("PRICE_ROWS was not found in the generator").isNotNegative();
+		String literal = source.substring(start, source.indexOf("\n]", start));
+
+		return A_GENERATOR_ROW.matcher(literal).results().toList();
+	}
+
+	/**
+	 * THE GENERATOR'S COPY HAS EVERY ROW THE TABLE HAS, AND NO OTHER: the floor under the two
+	 * cases below, in the table's count and never a seven written here.
+	 */
+	@Test
+	void everyRowTheTableHoldsWasFoundInTheGeneratorsCopyToo() {
+		assertThat(theGeneratorsRows().stream().map(row -> row.group(1)).toList())
+				.as("the rows PRICE_ROWS carries in generate_reference_migrations.py are not the"
+						+ " rows price_row has, or the sweep no longer finds them all")
+				.containsExactlyInAnyOrderElementsOf(whatTheTableHolds().keySet());
+	}
+
+	/**
+	 * AND EVERY AMOUNT THE GENERATOR WRITES IS WHAT THE TABLE HOLDS.
+	 *
+	 * <p>Compared to the TABLE, not to {@code pricing.ts}: a sweep that read the portal's file
+	 * instead would pass whenever those two agree and say nothing about the generator.
+	 *
+	 * <p><b>The days are NOT compared, and that is measured rather than overlooked.</b>
+	 * {@code PRICE_ROWS} is what V4 said on the day V4 was written, and V4 is immutable
+	 * (ADL A2): V49 and V75 moved the selling year afterwards, so the generator's days are
+	 * history by design and the table's are current. Comparing them would have this case red
+	 * from the day V75 merged. The amounts have not moved in any migration, so for them the
+	 * generator and the table still have to agree.
+	 */
+	@Test
+	void everyPriceTheGeneratorWritesIsThePriceTheTableCharges() {
+		Map<String, Amounts> amounts = new LinkedHashMap<>();
+
+		for (java.util.regex.MatchResult row : theGeneratorsRows()) {
+			amounts.put(row.group(1), new Amounts(scaled(row.group(4)),
+					row.group(5).equals("None") ? null : scaled(row.group(5))));
+		}
+
+		assertThat(amounts)
+				.as("the amounts PRICE_ROWS writes into V4 are not what price_row charges")
+				.containsExactlyInAnyOrderEntriesOf(whatTheTableHolds());
 	}
 }

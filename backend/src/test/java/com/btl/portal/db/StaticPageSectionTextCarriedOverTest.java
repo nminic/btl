@@ -506,6 +506,43 @@ Poslednja izmena: 28.09.2026.\
 	}
 
 	/**
+	 * EVERY "BEFORE" TEXT IS WHAT THE MIGRATION THAT WROTE IT SAYS, read from that migration's own
+	 * file and not from this one.
+	 *
+	 * <p>The case above compares the database with the constant this file has just written into
+	 * it, which can only agree: a word changed in a constant (for example "ili karticom" into "ili
+	 * kreditnom karticom") passed all three of the cases that followed it, because V41 overwrites
+	 * the whole body by slug and position and so does not care what stood there before. This is the
+	 * one that notices. Five of the six constants are V24's own wording and the privacy policy's
+	 * position 2 is V26's, as the class comment says and as this now asserts; the migration is
+	 * read through {@link DatabaseTest#migrationSql}, so it is the file Flyway applied. The text
+	 * sits in a SQL literal, hence the doubled apostrophes, and it is asked as the WHOLE literal,
+	 * quotes included, so that a constant that is merely a piece of a longer body does not pass.
+	 */
+	@Test
+	void everyBeforeTextIsWhatTheMigrationThatWroteItSays() {
+		String v24 = migrationSql("24");
+		String v26 = migrationSql("26");
+
+		assertThat(v24).as("the terms, section 4, as V24 wrote it")
+				.contains(asALiteral(TERMS_BODY_BEFORE_V41));
+		assertThat(v26).as("the privacy policy, section 2, as V26 rewrote it")
+				.contains(asALiteral(PRIVACY_BODY_BEFORE_V41));
+		assertThat(v24).as("the privacy policy, section 5, as V24 wrote it")
+				.contains(asALiteral(PRIVACY_RETENTION_BODY_BEFORE_V41));
+		assertThat(v24).as("the privacy policy's sign-off, as V24 wrote it")
+				.contains(asALiteral(PRIVACY_SIGNOFF_BODY_BEFORE_V41));
+		assertThat(v24).as("the terms' sign-off, as V24 wrote it")
+				.contains(asALiteral(TERMS_SIGNOFF_BODY_BEFORE_V41));
+		assertThat(v24).as("the rulebook's sign-off, as V24 wrote it")
+				.contains(asALiteral(RULEBOOK_SIGNOFF_BODY_BEFORE_V41));
+	}
+
+	private static String asALiteral(String body) {
+		return "'" + body.replace("'", "''") + "'";
+	}
+
+	/**
 	 * THE PAYMENT METHODS TABLE AND ITS PARAGRAPH ABOUT THE CARD, exactly as the owner settled.
 	 */
 	@Test

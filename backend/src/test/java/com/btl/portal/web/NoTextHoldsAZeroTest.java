@@ -8,6 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.MethodParameter;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -112,6 +114,21 @@ class NoTextHoldsAZeroTest {
 	 * key is the controller, the handler and the parameter; the value is why a zero there does no
 	 * harm, or what refuses it.
 	 */
+	/**
+	 * THE TYPES A HANDLER PARAMETER MAY HAVE OTHER THAN {@code String}, AND WHY A ZERO CANNOT
+	 * SURVIVE IN EACH. A parameter of any other type that is not a body, the principal or the
+	 * servlet's own request and response makes
+	 * {@link #everyTextTheDispatcherBindsOutsideABodyIsAccountedFor} fail, because an
+	 * {@code Optional<String>}, a {@code List<String>} or a record bound from the query string is
+	 * text the sweep did not look at. The question is asked of the parameter's TYPE, which the
+	 * dispatcher answers, and never of how its value travels through the code.
+	 */
+	private static final Map<Class<?>, String> THE_TYPES_THAT_CANNOT_HOLD_A_ZERO = Map.of(
+			long.class, "a number: a text that is not digits is a 400 before any handler is reached",
+			AKey.class, "read from digits only; anything else, a zero included, is the key no row has",
+			MultipartFile.class, "a file, whose bytes are not text and whose name the reader of the"
+					+ " upload takes apart on its own");
+
 	private static final Map<String, String> THE_OTHER_TEXTS = Map.ofEntries(
 			Map.entry("CompetitorWriteApi#remove:memberNumber (path)",
 					"a zero in a path is a 400 before any handler is reached"),
@@ -587,23 +604,41 @@ class NoTextHoldsAZeroTest {
 	 *
 	 * <p>A path variable, a request parameter and a cookie are each a text, and none of them goes
 	 * through the reader this class is about. Derived from the handlers' parameters: a
-	 * {@code String} that is not the body, the principal or a request object is one of the three.
+	 * {@code String} that is not the body, the principal or a request object is one of the three,
+	 * and a parameter of ANY OTHER type is refused until {@link #THE_TYPES_THAT_CANNOT_HOLD_A_ZERO}
+	 * names it (an {@code Optional<String>} or a {@code @RequestHeader String} used to be skipped
+	 * without a word).
 	 * The table above is the other side, and it is compared in both directions.
 	 */
 	@Test
 	void everyTextTheDispatcherBindsOutsideABodyIsAccountedFor() {
 		SortedSet<String> found = new TreeSet<>();
+		SortedSet<String> ofATypeNobodyNamed = new TreeSet<>();
+		SortedSet<Class<?>> typesMet = new TreeSet<>(Comparator.comparing(Class::getName));
 
 		for (HandlerMethod handler : mappings.getHandlerMethods().values()) {
 			for (MethodParameter parameter : handler.getMethodParameters()) {
-				if (parameter.getParameterType() != String.class
-						|| parameter.hasParameterAnnotation(RequestBody.class)
-						|| parameter.hasParameterAnnotation(RequestHeader.class)) {
+				Class<?> type = parameter.getParameterType();
+				String where = ClassUtils.getUserClass(handler.getBeanType()).getSimpleName() + "#"
+						+ handler.getMethod().getName() + ":";
+
+				if (parameter.hasParameterAnnotation(RequestBody.class)
+						|| type == WhatWasSent.class
+						|| parameter.hasParameterAnnotation(AuthenticationPrincipal.class)
+						|| jakarta.servlet.ServletRequest.class.isAssignableFrom(type)
+						|| jakarta.servlet.ServletResponse.class.isAssignableFrom(type)) {
 					continue;
 				}
 
-				String where = ClassUtils.getUserClass(handler.getBeanType()).getSimpleName() + "#"
-						+ handler.getMethod().getName() + ":";
+				if (type != String.class) {
+					typesMet.add(type);
+					if (!THE_TYPES_THAT_CANNOT_HOLD_A_ZERO.containsKey(type)) {
+						ofATypeNobodyNamed.add(where + nameOfTheParameter(parameter) + " is a "
+								+ parameter.getGenericParameterType().getTypeName());
+					}
+					continue;
+				}
+
 				String how;
 				String name;
 
@@ -614,6 +649,10 @@ class NoTextHoldsAZeroTest {
 				else if (parameter.hasParameterAnnotation(CookieValue.class)) {
 					how = "cookie";
 					name = parameter.getParameterAnnotation(CookieValue.class).name();
+				}
+				else if (parameter.hasParameterAnnotation(RequestHeader.class)) {
+					how = "header";
+					name = parameter.getParameterAnnotation(RequestHeader.class).name();
 				}
 				else if (parameter.hasParameterAnnotation(RequestParam.class)) {
 					how = "parameter";
@@ -628,6 +667,15 @@ class NoTextHoldsAZeroTest {
 			}
 		}
 
+		assertThat(ofATypeNobodyNamed)
+				.as("a handler binds a parameter that is not a body, not the principal, not a String"
+						+ " and not a type THE_TYPES_THAT_CANNOT_HOLD_A_ZERO names: it may carry text"
+						+ " (an Optional<String>, a List<String>, a record out of the query string)"
+						+ " that the sweep never looked at")
+				.isEmpty();
+		assertThat(typesMet)
+				.as("THE_TYPES_THAT_CANNOT_HOLD_A_ZERO names a type no handler binds any more")
+				.containsExactlyInAnyOrderElementsOf(THE_TYPES_THAT_CANNOT_HOLD_A_ZERO.keySet());
 		assertThat(found)
 				.as("the texts the dispatcher binds outside a body are not the ones this class says"
 						+ " what becomes of a zero in. Say it in THE_OTHER_TEXTS, or take the entry out")
