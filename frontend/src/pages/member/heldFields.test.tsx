@@ -209,10 +209,10 @@ describe('on the page „Moji podaci" of somebody who has not paid', () => {
     expect(boxes.fatherName).toHaveValue(aNeverPaidRecord.fatherName)
 
     /* The empty box carries no „(neobavezno)" and no star: it is not the member's to fill. */
-    const field = must(boxes.idNumber.closest('.field'), 'the field of the number of the document')
+    const field = must(boxes.idNumber.closest<HTMLElement>('.field'), 'the field of the number of the document')
 
     expect(field.textContent).not.toContain(sr.form.optional)
-    expect(within(field as HTMLElement).queryByText('*')).toBeNull()
+    expect(within(field).queryByText('*')).toBeNull()
 
     await user.type(within(panel).getByRole('textbox', { name: /^Telefon/ }), '065 1234')
     await user.click(within(panel).getByRole('button', { name: 'Sačuvaj' }))
@@ -233,10 +233,10 @@ describe('on the page „Moji podaci" of somebody who has not paid', () => {
     const panel = await thePanel()
 
     for (const [name, control] of Object.entries(held(panel))) {
-      const field = must(control.closest('.field'), `the field of ${name}`)
+      const field = must(control.closest<HTMLElement>('.field'), `the field of ${name}`)
 
       expect(control, `${name} says it is asked for`).not.toHaveAttribute('aria-required')
-      expect(within(field as HTMLElement).queryByText('*'), `the star beside ${name}`).toBeNull()
+      expect(within(field).queryByText('*'), `the star beside ${name}`).toBeNull()
       expect(field.textContent, `${name} says it is optional`).not.toContain(sr.form.optional)
     }
   }, SLOW)

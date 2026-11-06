@@ -363,6 +363,6 @@ describe('the administration’s form on the same card', () => {
 
     expect(email).toHaveAttribute('aria-disabled', 'true')
     expect(email).toHaveAttribute('aria-required', 'true')
-    expect(within(must(email.closest('.field'), 'the field of the e-mail') as HTMLElement).getByText('*')).toBeVisible()
+    expect(within(must(email.closest<HTMLElement>('.field'), 'the field of the e-mail')).getByText('*')).toBeVisible()
   }, SLOW)
 })
