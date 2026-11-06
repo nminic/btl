@@ -84,6 +84,10 @@ export const RESOURCE_NAMES = [
   'comments',
   'competitors',
   'events',
+  /* THE SEASONS THE FREEZE HAS WRITTEN DOWN (`FrozenSeasonApi`, 05.11.2026), and only the list: the
+     tables of one of them are read at `/api/frozen-tables/{season}` by `data/useFrozenTables.ts`, an
+     address with a number in it that no name here can stand for. Public, and the same to every reader. */
+  'frozen-seasons',
   /* WHAT WAS WRITTEN TO WHOEVER IS ASKING, PLUS WHAT WAS WRITTEN TO THE WHOLE LEAGUE
      (V13: „a message may be addressed to one member or to the whole league, and EMPTY
      MEANS EVERYBODY"). The seventeenth, since 27.09.2026, and the third name here that

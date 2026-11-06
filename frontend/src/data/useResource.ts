@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { DucatFamily } from './ducatRule'
+import type { FrozenSeason } from './frozen'
 import { useSession } from '../session/useSession'
 import type { Message } from '../session/context'
 import {
@@ -778,6 +779,8 @@ export const RESULTS = 'results'
 export const useResults = (revision?: number): ResourceState<Result[]> =>
   useLive(useResource<Result[]>('results', { revision }), RESULTS, 'id')
 export const usePairs = () => useResource<RacingPair[]>('pairs')
+/** The seasons the freeze has written down: the record, never the clock (`data/frozen.ts`). */
+export const useFrozenSeasons = () => useResource<FrozenSeason[]>('frozen-seasons')
 export const useTeams = () => useResource<Team[]>('teams')
 
 /**

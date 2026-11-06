@@ -1,5 +1,5 @@
 import { categoryLabel } from '../data/categories'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, type ReactNode } from 'react'
 import { useToday } from '../clock/useClock'
 import { CompetitorName } from '../components/CompetitorName'
 import { NamePlate } from '../components/NamePlate'
@@ -15,8 +15,12 @@ import {
 } from '../data/derive'
 import { nextSeasonOnOffer, seasonShown } from '../data/season'
 import { offeredSeason } from '../components/season'
+import type { RankingRow } from '../data/derive'
 import type { Competitor, Gender, Result } from '../data/types'
-import { combinePair, useCompetitors, useResults } from '../data/useResource'
+import { combineResources, useCompetitors, useFrozenSeasons, useResults } from '../data/useResource'
+import { useFrozenTables } from '../data/useFrozenTables'
+import { FrozenName } from './frozen/FrozenName'
+import { useFrozenPeople, type FrozenOne } from './frozen/frozenPeople'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
@@ -37,14 +41,20 @@ type Filters = {
 /* Split out and memoised: the standing sums thousands of results, and a
  * category pressed is a whole table counted again. It was worse: until the
  * search box went (owner, 31.07.2026) this ran on every letter typed. */
+/** A row of the table: placed by the ladder for a season read live, as the freeze wrote it for a frozen one. */
+type Shown = RankingRow & { frozen?: FrozenOne }
+
 function Standing({
   competitors,
   results,
+  frozenSeasons,
   filters,
   onChange,
 }: {
   competitors: Competitor[]
   results: Result[]
+  /** The seasons the freeze has written down (`/api/frozen-seasons`): a table of one of them is its snapshot. */
+  frozenSeasons: number[]
   filters: Filters
   onChange: (next: Record<string, string>) => void
 }) {
@@ -117,7 +127,7 @@ function Standing({
      season had not started and that what stands here is trial data, which is
      true of the whole portal until January and was being said on two screens
      out of thirty. */
-  return (
+  const drawn = (shown: Shown[], codes: string[]) => (
     <>
       {/* Level with the heading, at the far right, where every screen with a
           control keeps it (owner, 05.08.2026). It is the one thing on this row
@@ -180,7 +190,7 @@ function Standing({
             >
               {t('rankings.allCategories')}
             </button>
-            {categoriesOf(competitors, gender, season).map((code) => (
+            {codes.map((code) => (
               <button
                 key={code}
                 type="button"
@@ -205,11 +215,11 @@ function Standing({
           takmičarki. */}
       <p className="rankings__count">
         {t(gender === 'F' ? 'rankings.rowCountWomen' : 'rankings.rowCount', {
-          count: rows.length,
+          count: shown.length,
         })}
       </p>
 
-      {rows.length === 0 ? (
+      {shown.length === 0 ? (
         <p className="rankings__empty">{t('rankings.empty')}</p>
       ) : (
         /* THE BOX THE CIRCLE IS ASKED ABOUT (`Rankings.css`, `rankings__scroll`, for the whole measurement). A
@@ -242,9 +252,10 @@ function Standing({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {shown.map((row) => (
                 <tr
-                  key={row.competitor.memberNumber}
+                  /* A frozen row may name nobody the portal still serves, so its place is its key. */
+                  key={row.frozen === undefined ? row.competitor.memberNumber : `place-${row.position}`}
                   /* Gold on the podium, as everywhere else
                      (src/components/podium.ts), and blue on the row of whoever
                      is reading (src/components/mine.ts). A row can be both. */
@@ -317,12 +328,23 @@ function Standing({
                         number; `Rankings.css` has the measurement. The rule is in `Rankings.css` and
                         is held, with the box it asks, by `pages/rankingsLayout.test.tsx` and
                         `styles/leagueLayout.test.ts`. */}
-                    <NamePlate competitors={[row.competitor]} faceTo={linkTo(row.competitor)}>
-                      <CompetitorName competitor={row.competitor} className="rankings__member-name" />
-                      <span className="table__member-number rankings__member-number">
-                        {row.competitor.memberNumber}
-                      </span>
-                    </NamePlate>
+                    {row.frozen === undefined ? (
+                      <NamePlate competitors={[row.competitor]} faceTo={linkTo(row.competitor)}>
+                        <CompetitorName competitor={row.competitor} className="rankings__member-name" />
+                        <span className="table__member-number rankings__member-number">
+                          {row.competitor.memberNumber}
+                        </span>
+                      </NamePlate>
+                    ) : (
+                      /* The name the freeze wrote and the link the reader is given (`frozen/frozenPeople.tsx`);
+                         a member who is no longer one has no number to show. */
+                      <NamePlate competitors={[row.competitor]} faceTo={row.frozen.to}>
+                        <FrozenName one={row.frozen} className="rankings__member-name" />
+                        <span className="table__member-number rankings__member-number">
+                          {row.frozen.memberNumber ?? ''}
+                        </span>
+                      </NamePlate>
+                    )}
                   </td>
                   <td className="table__category">{categoryLabelIn(row.competitor, season, t)}</td>
                   <td className="table__hide-phone">{row.races}</td>
@@ -338,6 +360,72 @@ function Standing({
         </div>
       )}
     </>
+  )
+
+  if (frozenSeasons.includes(season)) {
+    return (
+      <FrozenStanding
+        competitors={competitors}
+        season={season}
+        gender={gender}
+        category={category}
+        drawn={drawn}
+      />
+    )
+  }
+
+  return drawn(rows, categoriesOf(competitors, gender, season))
+}
+
+/**
+ * THE TABLE OF A FROZEN SEASON, as the freeze wrote it (PDL, 31.07.2026, „Zamrznuta sezona je
+ * materijalizovan zapis, ne izračun"): the places of one gender, or of one category inside it, the
+ * category of that season beside each (PDL, „Oblik zamrzavanja", point 6), and the categories to choose
+ * from the ones the snapshot holds. Nothing is placed here.
+ */
+function FrozenStanding({
+  competitors,
+  season,
+  gender,
+  category,
+  drawn,
+}: {
+  competitors: Competitor[]
+  season: number
+  gender: Gender
+  category: string | undefined
+  drawn: (shown: Shown[], codes: string[]) => ReactNode
+}) {
+  const state = useFrozenTables(season)
+  const people = useFrozenPeople(competitors, season)
+
+  return (
+    <Resource state={state}>
+      {(tables) => {
+        const ofTheGender = tables.standings.filter((one) => one.gender === gender)
+        const codes = [...new Set(ofTheGender.map((one) => one.category))].sort()
+        const shown: Shown[] = ofTheGender
+          .filter((one) => category === undefined || one.category === category)
+          .map((one) => {
+            const frozen = people(one, one.category)
+
+            return {
+              competitor: frozen.competitor,
+              position: category === undefined ? one.position : one.categoryPosition,
+              races: one.races,
+              kilometers: one.kilometers,
+              ascent: one.ascent,
+              descent: one.descent,
+              seconds: one.seconds,
+              points: one.points,
+              frozen,
+            }
+          })
+          .sort((left, right) => left.position - right.position)
+
+        return drawn(shown, codes)
+      }}
+    </Resource>
   )
 }
 
@@ -382,7 +470,7 @@ export function Rankings() {
   /* Only what the standing shows. Waiting on the events as well meant the whole
    * table turned into an error message if that one file failed, over data no row
    * in it has ever read. */
-  const state = combinePair(useCompetitors(), useResults())
+  const state = combineResources(useCompetitors(), useResults(), useFrozenSeasons())
   /* THROUGH THE OVERLAY, like the cards, the profile, the team and the administration: a category
      chosen a moment ago lives there until the list is read again (`member/useMyCategory.ts`), and
      PDL P7 (owner, 18.10.2026) names the buttons and the column of this table among the places that
@@ -408,10 +496,11 @@ export function Rankings() {
       <h1>{t('rankings.title')}</h1>
 
       <Resource state={state}>
-        {([competitors, results]) => (
+        {([competitors, results, frozen]) => (
           <Standing
             competitors={recordsOf(MEMBERS, competitors, overlay)}
             results={results}
+            frozenSeasons={frozen.map((one) => one.season)}
             filters={{
               gender: params.get('pol') === 'z' ? 'F' : 'M',
               category: params.get('kategorija') ?? undefined,
