@@ -305,7 +305,7 @@ export function standIn(
   const categories = ofTheSeason === null ? [] : [ofTheSeason]
 
   if (live !== undefined) {
-    return { ...live, firstName, lastName, categories, chosenCategory: undefined }
+    return { ...live, firstName, lastName, gender: one.gender, categories, chosenCategory: undefined }
   }
 
   return {

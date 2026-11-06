@@ -182,6 +182,22 @@ describe("a team's page in a frozen season", () => {
   })
 })
 
+/** The served members with one of them corrected to a woman after the freeze: his number is the same, his gender is not. */
+function correctedToWoman(memberNumber: string): Response {
+  const competitors: { memberNumber: string; gender: string }[] = JSON.parse(
+    readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'competitors.json'), 'utf-8'),
+  )
+  const one = competitors.find((each) => each.memberNumber === memberNumber)
+
+  if (one === undefined) {
+    throw new Error(`mock/competitors.json has no member ${memberNumber}`)
+  }
+
+  one.gender = 'F'
+
+  return json(competitors)
+}
+
 describe('a frozen competition', () => {
   it('is the grid the freeze wrote, an event deleted since a day that opens nothing', async () => {
     renderAt('/sr/liga/runtrace-2027')
@@ -199,6 +215,25 @@ describe('a frozen competition', () => {
     expect(within(grid).queryByRole('link', { name: /Relja/ })).toBeNull()
     expect(within(grid).getByRole('link', { name: /Fruškogorski maraton/ })).toBeInTheDocument()
     expect(within(grid).queryByRole('link', { name: /Događaj koji je obrisan/ })).toBeNull()
+  })
+
+  it('keeps a member in the half of the gender the freeze wrote, after his gender was corrected', async () => {
+    serving((path) => (path === '/api/competitors' ? correctedToWoman('000001') : null))
+    renderAt('/sr/liga/runtrace-2027')
+
+    const grid = await screen.findByRole('table', { name: sr.leagues.standing })
+
+    expect(within(grid).getAllByRole('rowheader').map((one) => one.textContent)).toEqual([
+      expect.stringContaining('Vladan Đurišić'),
+      expect.stringContaining('Relja Momčilović'),
+    ])
+  })
+
+  it('has no women in it after a man’s gender was corrected, where the freeze wrote none', async () => {
+    serving((path) => (path === '/api/competitors' ? correctedToWoman('000001') : null))
+    renderAt('/sr/liga/runtrace-2027?pol=z')
+
+    expect(await screen.findByText(sr.leagues.noneOfThese)).toBeInTheDocument()
   })
 
   it('has no women in it where the freeze wrote none', async () => {
