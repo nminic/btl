@@ -57,10 +57,13 @@ import { sources, WHOLE_PORTAL } from '../test/sources'
  * 03.10.2026, in the words of the PDL's record of it and not the owner's: „Za mesta: NE; kad šifarnik mesta
  * ne stigne, polje ostaje obično polje za tekst koje i dalje prima ukucano mesto, pa član nije
  * zaglavljen." It is held by what the field DOES and not by a row here, because this file lists the places
- * that open a state and that one opens none: on the form a result is entered on
- * (`pages/member/racesUnreadable.test.tsx`), on the proposal of a team (`pages/member/proposeTeam.test.tsx`)
- * and on the field alone (`forms/PlaceField.test.tsx`), each of which says nothing, offers nothing to ask
- * again, and takes the town that is typed.</li>
+ * that open a state and that one opens none. **Three cases look at it and they do not hold the same
+ * things (measured by reading them, 06.11.2026):** `pages/member/racesUnreadable.test.tsx` is the one
+ * that holds SILENCE, asking for no alert, no button to ask again, no list, and the town that is typed
+ * taken. `pages/member/proposeTeam.test.tsx` holds no list and the town typed taken on the proposal of a
+ * team, and `forms/PlaceField.test.tsx` holds no list on the field alone; neither asks whether anything is
+ * said. A sentence or a button added to the field would therefore be seen by the first and by neither of
+ * the other two.</li>
  * <li>Whether a reason in a row is TRUE. The guard holds that there is one. A reason that is not
  * from a recorded decision says so in its first words (MY REASONING), and one that is the file's own
  * comment says that.</li>
