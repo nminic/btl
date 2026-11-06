@@ -1303,7 +1303,7 @@ describe('membership', () => {
      what PDL P8a is about and what the screen could not do until 25.09.2026.
 
      **The public list is answered as the real server answers it** and that is the whole
-     point of the setup: `CompetitorApi` ends `where c.active`, so he has no row on it,
+     point of the setup: `CompetitorApi` ends `AMemberIsActive`, so he has no row on it,
      and `membersAsServed` is the one place that knows the generated file and the server's
      answer differ. Read off that list he was `undefined`, and the page he opens to renew
      told him his profile did not exist.

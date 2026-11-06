@@ -71,7 +71,7 @@ export function SessionProvider({
      here since 25.09.2026 (PDL P8a). `/api/competitors` carries a country, a first
      season and a team on every row, so these three are not like the four around them -
      they have a second home and are read here all the same, because that home ends
-     `where c.active` and the member whose fee has LAPSED has no row in it. He is the one
+     `AMemberIsActive` and the member whose fee has LAPSED has no row in it. He is the one
      „Moja članarina" is for. Set in the same breath as the basis, for the reason written
      above it: they come in one answer and half a session is worse than none. */
   const [myCountry, setMyCountry] = useState<string | null>(null)

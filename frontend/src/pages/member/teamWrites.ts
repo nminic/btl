@@ -34,7 +34,7 @@ import { askTheServer, type Answer } from '../account/askTheServer'
  *
  * <p><b>The team is not decoration on the address.</b>
  * `TeamJoiningWriteApi.invitationHeMayAnswer` reads
- * `where i.id = ? and i.team_id = ? and i.competitor_id = ? and c.active`, so an invitation
+ * `where i.id = ? and i.team_id = ? and i.competitor_id = ? and AMemberIsActive`, so an invitation
  * named with the wrong team is answered by the same empty 404 as one that does not exist.
  * That is why this module exists at all: `GET /api/inbox` carries `teamInvitationId` and
  * nothing else about the question, and the team has to be fetched from the one route that

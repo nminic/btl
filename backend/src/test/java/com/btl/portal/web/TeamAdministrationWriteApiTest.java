@@ -266,11 +266,9 @@ class TeamAdministrationWriteApiTest {
 		competitor(LAPSED);
 		competitor(ELSEWHERE);
 
-		/* HE DID NOT RENEW, which since AF-1 is the season taken away; his flag is raised on purpose, so a
-		   reader that read it would still take him for a member. */
+		/* HE DID NOT RENEW, which since AF-1 is the season taken away. */
 		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
 				.param(LAPSED).update();
-		db.sql("update competitor set active = true where member_number = ?").param(LAPSED).update();
 
 		inATeam(THE_LONGEST, THE_TEAM, A_SEASON_ALREADY_RUNNING);
 		inATeam(THE_SEAT, THE_TEAM, A_SEASON_STILL_TO_COME);
@@ -739,11 +737,11 @@ class TeamAdministrationWriteApiTest {
 
 	private void competitor(String number) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, String.format("%016x", ++issued))

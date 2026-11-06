@@ -255,8 +255,6 @@ class GroupEntryTest {
 
 		Map<String, Object> member = memberBehind(stored);
 
-		assertThat(member.get("active")).as("an entered member is active before anybody"
-				+ " recorded a fee").isEqualTo(false);
 		assertThat(member.get("member_number")).as("a member number was handed out by this"
 				+ " route; PDL says it is drawn when a payment is recorded and that the"
 				+ " administrator never types it").isNull();
@@ -539,9 +537,9 @@ class GroupEntryTest {
 	 * „VIDLJIV U LIGI" AND „NA JAVNOM SPISKU" ARE TWO THINGS, AND THIS ROUTE MAKES THE
 	 * FIRST AND NOT THE SECOND.
 	 *
-	 * <p>{@link CompetitorApi} serves {@code where c.active}, so an entered member is not
-	 * on it until somebody records his fee - exactly as for a man who registered himself.
-	 * The active member of the fixture is what makes this a statement about the FLAG rather
+	 * <p>{@link CompetitorApi} serves only members who are active ({@link AMemberIsActive}), so an
+	 * entered member is not on it until somebody records his fee - exactly as for a man who registered
+	 * himself. The active member of the fixture is what makes this a statement about the SEASONS rather
 	 * than about the list being empty.
 	 */
 	@Test
@@ -563,7 +561,7 @@ class GroupEntryTest {
 		assertThat(list).as("the public list carries nobody at all, so the sentence above"
 				+ " would hold however this route behaved").contains("000042");
 
-		/* HIS FEE IS RECORDED, which since AF-1 is a season he holds and not the flag. */
+		/* HIS FEE IS RECORDED, which is a season he holds. */
 		HeldOn.activeAt(db, db.sql("select competitor_id from account where email = ?").param(his)
 				.query(Long.class).single(), NOW.atZone(SeasonClock.ZONE));
 
@@ -1195,19 +1193,18 @@ class GroupEntryTest {
 
 	private long competitor(String number, String referral, boolean active) {
 		long made = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active,"
+						+ " birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size,"
 						+ " health_statement_at)"
 						+ " values (?, 'Zatecen', 'Zatecenic', 'M', date '1985-01-01',"
-						+ " (select id from place order by rank limit 1), 2027, ?,"
+						+ " (select id from place order by rank limit 1), 2027,"
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 9', 'L',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, !active, referral).query(Long.class).single();
+				.params(number, referral).query(Long.class).single();
 
-		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
-		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
-		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		/* ACTIVE BY THE SEASON HE HOLDS (`AMemberIsActive`): the member whose fee does not stand holds none
+		   that counts. */
 		if (active) {
 			HeldOn.activeAt(db, made, NOW.atZone(SeasonClock.ZONE));
 		}

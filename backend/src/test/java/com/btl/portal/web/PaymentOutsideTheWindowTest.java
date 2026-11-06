@@ -50,7 +50,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *
  * <p><b>What is measured, with nothing assumed:</b> the season the list is about and the season a
  * payment is booked for, the row of the price list the day falls in, the junior price replacing it,
- * the tax on a euro payment, the membership row the booking writes and the flag that activates the
+ * the tax on a euro payment, the membership row the booking writes, which is what activates the
  * member. Both edges of the window are walked from both sides, because a window that is wrong by a
  * day is wrong on exactly one of the four.
  *
@@ -75,7 +75,7 @@ class PaymentOutsideTheWindowTest {
 					+ " order by rank limit 1)";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, active,"
+			+ " birth_date, place_id, city, country_id, first_season,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -158,7 +158,7 @@ class PaymentOutsideTheWindowTest {
 
 	private long competitor(String referralSuffix, String memberNumber, String birthDate, String town) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', 'Takmicar',"
-						+ " 'M', ?, " + town + ", null, null, 2027, false, "
+						+ " 'M', ?, " + town + ", null, null, 2027, "
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(memberNumber, java.sql.Date.valueOf(LocalDate.parse(birthDate)),
@@ -238,7 +238,7 @@ class PaymentOutsideTheWindowTest {
 				.param(id).query(Long.class).single())
 				.as("a payment in June buys the running season and no other")
 				.isZero();
-		assertThat(db.sql("select active from competitor where id = ?").param(id)
+		assertThat(db.sql("select exists(select 1 from membership where competitor_id = ?)").param(id)
 				.query(Boolean.class).single()).isTrue();
 	}
 
@@ -261,7 +261,7 @@ class PaymentOutsideTheWindowTest {
 		assertThat(db.sql("select p.season || ' ' || r.key from payment p join price_row r on r.id = p.price_row_id"
 						+ " where p.id = ?").param(body.paymentId()).query(String.class).single())
 				.isEqualTo("2027 season");
-		assertThat(db.sql("select active from competitor where id = ?").param(id)
+		assertThat(db.sql("select exists(select 1 from membership where competitor_id = ?)").param(id)
 				.query(Boolean.class).single()).isTrue();
 		assertThat(db.sql("select count(*) from membership where competitor_id = ? and season = 2027")
 				.param(id).query(Long.class).single()).isEqualTo(1L);

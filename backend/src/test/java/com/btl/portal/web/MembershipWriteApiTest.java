@@ -111,7 +111,7 @@ class MembershipWriteApiTest {
 					+ " order by rank limit 1)";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, active,"
+			+ " birth_date, place_id, city, country_id, first_season,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -211,9 +211,9 @@ class MembershipWriteApiTest {
 
 		superadminCookie = account(SUPERADMIN, "superadmin", "Vlasnik", "Probic");
 
-		whoPays = competitor("c1", "009001", true);
-		him = competitor("c2", null, false);
-		alreadyFreeElsewhere = competitor("c3", "009003", true);
+		whoPays = competitor("c1", "009001");
+		him = competitor("c2", null);
+		alreadyFreeElsewhere = competitor("c3", "009003");
 
 		freeOfTheFee(alreadyFreeElsewhere, 2029);
 	}
@@ -241,12 +241,12 @@ class MembershipWriteApiTest {
 				.params(email, right).update();
 	}
 
-	private long competitor(String referralSuffix, String memberNumber, boolean active) {
+	private long competitor(String referralSuffix, String memberNumber) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni',"
 						+ " 'Takmicar', 'M', date '1990-05-15', " + A_TOWN + ", null, null, 2027,"
-						+ " ?, ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(memberNumber, active, "00112233445566" + referralSuffix)
+				.params(memberNumber, "00112233445566" + referralSuffix)
 				.query(Long.class).single();
 	}
 
@@ -259,7 +259,7 @@ class MembershipWriteApiTest {
 	private long competitorIn(String town, String memberNumber) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni',"
 						+ " 'Takmicar', 'M', date '1990-05-15', " + town + ", null, null, 2027,"
-						+ " false, ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(memberNumber, "0011223344" + memberNumber)
 				.query(Long.class).single();
@@ -428,13 +428,13 @@ class MembershipWriteApiTest {
 	}
 
 	/**
-	 * His number, his flag and the basis of the season the route grants (2027 at IN_JUNE_2027), or
+	 * His number and the basis of the season the route grants (2027 at IN_JUNE_2027), or
 	 * {@code none} where he holds no row for it. Until V62 the third word was the per-person column;
 	 * since then the basis has one home, and it is what the moderation of the members and „Moja
 	 * clanarina" read for the season on sale.
 	 */
 	private String competitorRow(long id) {
-		return db.sql("select coalesce(member_number, 'none') || ' ' || active || ' '"
+		return db.sql("select coalesce(member_number, 'none') || ' '"
 						+ " || coalesce((select m.basis from membership m where m.competitor_id = c.id"
 						+ " and m.season = 2027), 'none') from competitor c where c.id = ?")
 				.param(id).query(String.class).single();
@@ -464,9 +464,9 @@ class MembershipWriteApiTest {
 		assertThat(body.memberNumber()).matches("^[0-9]{6}$");
 
 		assertThat(competitorRow(him))
-				.as("the basis of the season, the number and the flag every public reader ends"
+				.as("the basis of the season and the number every public reader ends"
 						+ " on")
-				.isEqualTo(body.memberNumber() + " true feeExempt");
+				.isEqualTo(body.memberNumber() + " feeExempt");
 
 		assertThat(db.sql("select basis, payment_id, decided_by_name, decided_at from membership"
 						+ " where competitor_id = ? and season = 2027").param(him)
@@ -483,9 +483,9 @@ class MembershipWriteApiTest {
 				.isTrue();
 
 		assertThat(competitorRow(whoPays)).as("somebody else was freed of the fee as well")
-				.isEqualTo("009001 true none");
+				.isEqualTo("009001 none");
 		assertThat(competitorRow(alreadyFreeElsewhere)).as("somebody else was touched")
-				.isEqualTo("009003 true none");
+				.isEqualTo("009003 none");
 	}
 
 	/**
@@ -514,7 +514,7 @@ class MembershipWriteApiTest {
 	void whoeverBroughtHimInIsPaidWhenTheAdministrationFreesHimOfTheFee() throws Exception {
 		/* Created LAST, so nothing may pass by crediting the earliest competitor - `whoPays` is the
 		   first row and his book is asserted empty below for exactly that reason. */
-		long whoBroughtHimIn = competitor("c4", "009004", true);
+		long whoBroughtHimIn = competitor("c4", "009004");
 		db.sql("update competitor set referred_by = ? where id = ?").params(whoBroughtHimIn, him).update();
 
 		assertThat(bookOf(whoBroughtHimIn))
@@ -565,7 +565,7 @@ class MembershipWriteApiTest {
 	 */
 	@Test
 	void asecondSeasonFreeOfTheFeeEarnsTheReferrerNothingFurther() throws Exception {
-		long whoBroughtHimIn = competitor("c4", "009004", true);
+		long whoBroughtHimIn = competitor("c4", "009004");
 		db.sql("update competitor set referred_by = ? where id = ?").params(whoBroughtHimIn, him).update();
 
 		assertThat(freeHim(him, cashierCookie).getStatus()).isEqualTo(201);
@@ -664,7 +664,7 @@ class MembershipWriteApiTest {
 
 		assertThat(membershipCount()).as("a second row was written for one season")
 				.isEqualTo(rowsAfterTheFirst);
-		assertThat(competitorRow(him)).isEqualTo(number + " true feeExempt");
+		assertThat(competitorRow(him)).isEqualTo(number + " feeExempt");
 	}
 
 	/**
@@ -697,7 +697,7 @@ class MembershipWriteApiTest {
 						.param(him).query(String.class).single())
 				.as("a recorded fee was quietly turned into an exemption").isEqualTo("payment");
 		assertThat(competitorRow(him)).as("a refused grant changed the competitor anyway")
-				.isEqualTo("none false payment");
+				.isEqualTo("none payment");
 	}
 
 	/**
@@ -775,7 +775,7 @@ class MembershipWriteApiTest {
 				.isEqualTo("null Blagajnik Probic");
 
 		assertThat(competitorRow(him)).as("deleting the moderator undid the exemption itself")
-				.matches("^[0-9]{6} true feeExempt$");
+				.matches("^[0-9]{6} feeExempt$");
 	}
 
 	/** The superadmin passes by holding every right there is (V5, {@code rights_mode = 'all'}). */
@@ -810,7 +810,7 @@ class MembershipWriteApiTest {
 
 		assertThat(answer.getStatus()).isEqualTo(404);
 		assertThat(membershipCount()).as("a refused moderator still wrote a membership").isEqualTo(1);
-		assertThat(competitorRow(him)).isEqualTo("none false none");
+		assertThat(competitorRow(him)).isEqualTo("none none");
 	}
 
 	/**
@@ -846,7 +846,7 @@ class MembershipWriteApiTest {
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(refusal(answer)).isEqualTo(MembershipWriteApi.THE_FORM_IS_NOT_COMPLETE);
 		assertThat(membershipCount()).isEqualTo(1);
-		assertThat(competitorRow(him)).isEqualTo("none false none");
+		assertThat(competitorRow(him)).isEqualTo("none none");
 	}
 
 	/**
@@ -866,7 +866,7 @@ class MembershipWriteApiTest {
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(refusal(answer)).isEqualTo(MembershipWriteApi.THE_GROUND_IS_NOT_KNOWN);
 		assertThat(membershipCount()).isEqualTo(1);
-		assertThat(competitorRow(him)).isEqualTo("none false none");
+		assertThat(competitorRow(him)).isEqualTo("none none");
 		assertThat(bookOf(him)).isEqualTo("no lines");
 	}
 
@@ -1324,8 +1324,8 @@ class MembershipWriteApiTest {
 		assertThat(membershipCount()).isEqualTo(1);
 		assertThat(bookOf(him)).isEqualTo("no lines");
 		assertThat(competitorRow(him))
-				.as("no number was drawn and he was not activated")
-				.isEqualTo("none false none");
+				.as("no number was drawn and no season was booked")
+				.isEqualTo("none none");
 	}
 
 	/*
@@ -1365,8 +1365,8 @@ class MembershipWriteApiTest {
 		assertThat(fromHisBalance(him, cashierCookie).getStatus()).isEqualTo(201);
 
 		assertThat(competitorRow(him))
-				.as("numbered and active, and the season he was let into stands on the balance")
-				.matches("\\d{6} true balance");
+				.as("numbered, and the season he was let into stands on the balance")
+				.matches("\\d{6} balance");
 	}
 
 	/**

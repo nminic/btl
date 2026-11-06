@@ -75,7 +75,7 @@ class TheMemberNumberSequenceCarriedOverTest extends DatabaseTest {
 	private static final String A_TOWN = "(select id from place where rank = 1)";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, active,"
+			+ " birth_date, place_id, city, country_id, first_season,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -139,22 +139,22 @@ class TheMemberNumberSequenceCarriedOverTest extends DatabaseTest {
 
 	/** A member who holds a number, written with the number already on it. */
 	private void aMemberHolding(String number) {
-		aCompetitor(number, true);
+		aCompetitor(number);
 	}
 
 	/** A person who registered and has not been activated, so the column is empty (V16). */
 	private void anApplicant() {
-		aCompetitor(null, false);
+		aCompetitor(null);
 	}
 
-	private void aCompetitor(String number, boolean active) {
+	private void aCompetitor(String number) {
 		written++;
 
 		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', ?, 'M',"
-						+ " date '1982-02-02', " + A_TOWN + ", null, null, 2027, ?, ?, null,"
+						+ " date '1982-02-02', " + A_TOWN + ", null, null, 2027, ?, null,"
 						+ " '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, "Broj" + written, active, String.format("00112233445566%02x", written))
+				.params(number, "Broj" + written, String.format("00112233445566%02x", written))
 				.update();
 	}
 

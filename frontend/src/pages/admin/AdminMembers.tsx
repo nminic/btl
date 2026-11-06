@@ -255,7 +255,7 @@ export function AdminMembers() {
   /**
    * A PAYMENT WAS RECORDED ON A ROW, and every answer that says something different about him now
    * is dropped. The names are `whatActiveMoves.ts`'s, the one list that `Payments.tsx#onActivated` and
-   * `seasonChanged` below drop as well: the booking writes his season, his payment and his `active`
+   * `seasonChanged` below drop as well: the booking writes his season and his payment
    * (a payment can make a lapsed member active), so the payments screen must no longer list him for
    * that season, and this list, the public one, his team, his pair, the results, the list of who is
    * going and the comments must read him again. And his inbox, because the member
@@ -275,9 +275,9 @@ export function AdminMembers() {
    * and every answer that says something different about him now is dropped.
    *
    * <p>`paymentRecorded`'s names (one list, `whatActiveMoves.ts`), because a cancellation can make him
-   * inactive: `MemberMembershipApi` writes `active` from the rows that remain, and a member whose fee no
+   * inactive: `MemberMembershipApi` takes the row of the season away, and a member whose fee no
    * longer stands leaves the public list, the results of the season being run, his team's roster, his
-   * pair, the list of who is going to an event and the author's number on a comment (`where c.active` or
+   * pair, the list of who is going to an event and the author's number on a comment (`AMemberIsActive` or
    * `author.active` on each of them). `results` also carries `inItsSeason`, which a cancelled
    * season stops being. A change of basis keeps him a member of the season, and the same eight are dropped
    * for it all the same: one road for both is one road to keep right. A grant makes him a member of the
@@ -287,7 +287,7 @@ export function AdminMembers() {
    * <p><b>`attendance` AND `comments` WERE LEFT OFF UNTIL 20.10.2026</b> (PENDING 29656, review of PR 579,
    * measured), although the sentence above this one said that every answer is dropped: `deleteOne`, in
    * this same file, drops both for the same member, and a cancellation that makes him inactive takes him
-   * off the one (`AttendanceApi`, `and c.active`) and his number off the other (`CommentApi`,
+   * off the one (`AttendanceApi`, `AMemberIsActive`) and his number off the other (`CommentApi`,
    * `case when author.active then author.member_number end`). Which cached names read the flag is not
    * this file's to remember: `rowMembership.test.tsx` reads it out of the backend's own SQL and holds
    * the list to it, with `me/applications` the one exception and its reason written there. Since the

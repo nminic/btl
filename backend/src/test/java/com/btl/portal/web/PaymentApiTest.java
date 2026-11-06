@@ -100,7 +100,7 @@ class PaymentApiTest {
 	private static final BigDecimal WHAT_A_SERBIAN_MEMBER_SENDS = new BigDecimal("4200.00");
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, active,"
+			+ " birth_date, place_id, city, country_id, first_season,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -191,8 +191,8 @@ class PaymentApiTest {
 				.query(Long.class).single();
 	}
 
-	private long competitor(String referralSuffix, String memberNumber, boolean active, String birthDate) {
-		return competitor(referralSuffix, memberNumber, active, birthDate, A_TOWN);
+	private long competitor(String referralSuffix, String memberNumber, String birthDate) {
+		return competitor(referralSuffix, memberNumber, birthDate, A_TOWN);
 	}
 
 	/**
@@ -200,14 +200,13 @@ class PaymentApiTest {
 	 *             without the town becoming a second thing the caller has to undo. It decides his
 	 *             CURRENCY and therefore every amount in the case
 	 */
-	private long competitor(String referralSuffix, String memberNumber, boolean active, String birthDate,
+	private long competitor(String referralSuffix, String memberNumber, String birthDate,
 			String town) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', 'Takmicar',"
-						+ " 'M', ?, " + town + ", null, null, 2027, ?, "
+						+ " 'M', ?, " + town + ", null, null, 2027, "
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(memberNumber, java.sql.Date.valueOf(LocalDate.parse(birthDate)), active,
-						"00112233445566" + referralSuffix)
+				.params(memberNumber, java.sql.Date.valueOf(LocalDate.parse(birthDate)), "00112233445566" + referralSuffix)
 				.query(Long.class).single();
 	}
 
@@ -266,7 +265,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void aFirstTimePayerIsGivenANumberAndActivated() throws Exception {
-		long id = competitor("a1", null, false, "1990-05-15");
+		long id = competitor("a1", null, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(
 				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", null)), moderatorCookie);
@@ -280,9 +279,9 @@ class PaymentApiTest {
 		assertThat(body.fee()).isEqualByComparingTo("3.00");
 		assertThat(body.currency()).isEqualTo("EUR");
 
-		assertThat(db.sql("select member_number, active from competitor where id = ?").param(id)
-						.query((row, i) -> row.getString(1) + " " + row.getBoolean(2)).single())
-				.isEqualTo(body.memberNumber() + " true");
+		assertThat(db.sql("select member_number from competitor where id = ?").param(id)
+						.query(String.class).single())
+				.isEqualTo(body.memberNumber());
 
 		assertThat(db.sql("select season, state, reference from payment where id = ?").param(body.paymentId())
 						.query((row, i) -> row.getInt(1) + " " + row.getString(2) + " "
@@ -321,7 +320,7 @@ class PaymentApiTest {
 		   dinars are what he is billed in - which is where the fact lives, and is why this reads better
 		   than it did. The assertions below are unchanged: 4.200 and no fee at all, because V4 gives the
 		   processing row no dinar side. */
-		long id = competitor("a2", "005005", false, "1990-05-15", A_TOWN_IN_SERBIA);
+		long id = competitor("a2", "005005", "1990-05-15", A_TOWN_IN_SERBIA);
 
 		MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
 				WHAT_A_SERBIAN_MEMBER_SENDS, false, "ips", "2028000055")), moderatorCookie);
@@ -334,7 +333,7 @@ class PaymentApiTest {
 		assertThat(body.amount()).isEqualByComparingTo("4200.00");
 		assertThat(body.fee()).isEqualByComparingTo("0.00");
 
-		assertThat(db.sql("select active from competitor where id = ?").param(id)
+		assertThat(db.sql("select exists(select 1 from membership where competitor_id = ?)").param(id)
 				.query(Boolean.class).single()).isTrue();
 
 		assertThat(db.sql("select reference from payment where id = ?").param(body.paymentId())
@@ -344,7 +343,7 @@ class PaymentApiTest {
 	/** THE JUNIOR PRICE OVERRIDES THE PERIOD, whatever day it is paid on (V4, `MembershipPrice`). */
 	@Test
 	void aJuniorPaysTheJuniorPrice() throws Exception {
-		long id = competitor("a3", null, false, "2015-05-05");
+		long id = competitor("a3", null, "2015-05-05");
 
 		MockHttpServletResponse answer = confirm(json(
 				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", null)), moderatorCookie);
@@ -367,7 +366,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void confirmingTheSamePaymentTwiceIsHarmless() throws Exception {
-		long id = competitor("a4", null, false, "1990-05-15");
+		long id = competitor("a4", null, "1990-05-15");
 		PaymentApi.Confirm typed = new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", null);
 
 		MockHttpServletResponse first = confirm(json(typed), moderatorCookie);
@@ -408,7 +407,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void confirmingTheSamePaymentTwiceIsHarmlessWhenItCarriesAReference() throws Exception {
-		long id = competitor("b1", "005010", false, "1990-05-15", A_TOWN_IN_SERBIA);
+		long id = competitor("b1", "005010", "1990-05-15", A_TOWN_IN_SERBIA);
 		PaymentApi.Confirm typed = new PaymentApi.Confirm(id, WHAT_A_SERBIAN_MEMBER_SENDS, false, "ips",
 				"2028000051");
 
@@ -463,8 +462,8 @@ class PaymentApiTest {
 	 */
 	@Test
 	void aSeasonAlreadyHeldWithoutAFeeIsRefusedRatherThanMeetingTheKey() throws Exception {
-		long heldElsewhere = competitor("b3", "008008", true, "1990-05-15");
-		long id = competitor("b4", null, false, "1990-05-15");
+		long heldElsewhere = competitor("b3", "008008", "1990-05-15");
+		long id = competitor("b4", null, "1990-05-15");
 
 		freeOfTheFee(heldElsewhere, 2029);
 		freeOfTheFee(id, 2028);
@@ -491,10 +490,10 @@ class PaymentApiTest {
 				.as("the membership the administration granted was written over by a fee")
 				.isEqualTo("feeExempt null");
 
-		assertThat(db.sql("select member_number, active from competitor where id = ?").param(id)
-						.query((row, i) -> row.getObject(1) + " " + row.getBoolean(2)).single())
-				.as("a refused confirmation numbered him or activated him")
-				.isEqualTo("null false");
+		assertThat(db.sql("select member_number from competitor where id = ?").param(id)
+						.query((row, i) -> String.valueOf(row.getObject(1))).single())
+				.as("a refused confirmation numbered him")
+				.isEqualTo("null");
 	}
 
 	/**
@@ -509,8 +508,8 @@ class PaymentApiTest {
 	 */
 	@Test
 	void aMembershipInAnotherSeasonDoesNotBlockThisOne() throws Exception {
-		long heldElsewhere = competitor("b5", "008008", true, "1990-05-15");
-		long other = competitor("b6", null, false, "1990-05-15");
+		long heldElsewhere = competitor("b5", "008008", "1990-05-15");
+		long other = competitor("b6", null, "1990-05-15");
 
 		freeOfTheFee(other, 2029);
 		freeOfTheFee(heldElsewhere, 2030);
@@ -558,7 +557,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void aSeasonHeldOnAPaymentNotYetRecognisedIsRefusedToo() throws Exception {
-		long id = competitor("b7", null, false, "1990-05-15");
+		long id = competitor("b7", null, "1990-05-15");
 
 		long awaited = db.sql("insert into payment (competitor_id, season, reference, price_row_id,"
 						+ " amount, currency, fee, method, state) values"
@@ -597,7 +596,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void anUnconfirmedAccountMayStillBePaidFor() throws Exception {
-		long id = competitor("a6", null, false, "1990-05-15");
+		long id = competitor("a6", null, "1990-05-15");
 
 		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id)"
 						+ " values ('Nov', 'Clan', 'nepotvrdjen@primer.rs',"
@@ -640,7 +639,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void aSeasonSentInTheBodyIsIgnoredAndTheDayDecides() throws Exception {
-		long id = competitor("a7", null, false, "1990-05-15");
+		long id = competitor("a7", null, "1990-05-15");
 
 		/* AND THE CURRENCY IS SENT TOO, ALTHOUGH NOTHING READS IT, for the same reason the season is:
 		   this case is about a field the form does not have, and both of them are now in that
@@ -681,7 +680,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void arequestThatDoesNotSayWhetherTheBalanceIsIncludedIsNotAfilledInForm() throws Exception {
-		long id = competitor("a8", null, false, "1990-05-15");
+		long id = competitor("a8", null, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(
 				"{\"competitorId\":" + id + ",\"received\":38.00,\"method\":\"paypal\"}",
@@ -707,7 +706,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void theMethodMustBeFilledInAndAnemptyStringIsNotFilledIn() throws Exception {
-		long id = competitor("a9", null, false, "1990-05-15");
+		long id = competitor("a9", null, "1990-05-15");
 
 		for (String shape : new String[] {"", ",\"method\":\"\"", ",\"method\":\"   \""}) {
 			MockHttpServletResponse answer = confirm(
@@ -758,7 +757,7 @@ class PaymentApiTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"38.5", "0.5", "38.001", "38.006", "4.800"})
 	void anAmountWithAFractionInItIsRefusedAndNothingIsWritten(String withAFraction) throws Exception {
-		long id = competitor("ca", null, false, "1990-05-15");
+		long id = competitor("ca", null, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
 				new BigDecimal(withAFraction), true, "paypal", null)), moderatorCookie);
@@ -808,7 +807,7 @@ class PaymentApiTest {
 	@ParameterizedTest
 	@ValueSource(strings = {"99999999999.00", "100000000"})
 	void anamountTheColumnWouldNotKeepIsRefused(String notKept) throws Exception {
-		long id = competitor("cb", null, false, "1990-05-15");
+		long id = competitor("cb", null, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
 				new BigDecimal(notKept), true, "paypal", null)), moderatorCookie);
@@ -875,7 +874,7 @@ class PaymentApiTest {
 				.isIn(PaymentApi.THE_AMOUNT_IS_NOT_MONEY, PaymentApi.THE_AMOUNT_IS_NOT_WHOLE,
 						PaymentApi.THE_AMOUNT_IS_NOT_KEPT_EXACTLY);
 
-		long id = competitor("cc", null, false, "1990-05-15");
+		long id = competitor("cc", null, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
 				new BigDecimal(amount), true, "paypal", null)), moderatorCookie);
@@ -910,7 +909,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void whatTheAnswerSaysArrivedIsTheRowsOwnValueAndNotTheRequests() throws Exception {
-		long id = competitor("cd", null, false, "1990-05-15");
+		long id = competitor("cd", null, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
 				new BigDecimal("38.0"), false, "paypal", null)), moderatorCookie);
@@ -965,7 +964,7 @@ class PaymentApiTest {
 		String[] suffixes = {"bf", "ca"};
 
 		for (int one = 0; one < boxes.length; one++) {
-			long id = competitor(suffixes[one], null, false, "1990-05-15");
+			long id = competitor(suffixes[one], null, "1990-05-15");
 
 			MockHttpServletResponse answer = confirm(
 					"{\"competitorId\":" + id + ",\"received\":38.00,\"useTheBalance\":false,"
@@ -1009,7 +1008,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void anamountThatIsNotMoneyIsRefusedInAllThreeOfItsForms() throws Exception {
-		long id = competitor("ab", null, false, "1990-05-15");
+		long id = competitor("ab", null, "1990-05-15");
 
 		for (BigDecimal notMoney : new BigDecimal[] {null, BigDecimal.ZERO, new BigDecimal("-38.00")}) {
 			MockHttpServletResponse answer = confirm(json(
@@ -1029,7 +1028,7 @@ class PaymentApiTest {
 
 	@Test
 	void theMethodMustBeOneOfTheFour() throws Exception {
-		long id = competitor("ac", null, false, "1990-05-15");
+		long id = competitor("ac", null, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(
 				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "bitcoin", null)),
@@ -1109,7 +1108,7 @@ class PaymentApiTest {
 	private void assertNothingIsBookedForAReferenceOf(String typedText, String suffix, String what)
 			throws Exception {
 
-		long id = competitor(suffix, null, false, "1990-05-15");
+		long id = competitor(suffix, null, "1990-05-15");
 
 		MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(() -> confirm(json(
 				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", typedText)),
@@ -1125,10 +1124,10 @@ class PaymentApiTest {
 		assertThat(paymentCount()).as("a payment was written for a reference the route refused")
 				.isZero();
 		assertThat(membershipCount()).as("a membership was written for a refused booking").isZero();
-		assertThat(db.sql("select active, member_number is null from competitor where id = ?")
-				.param(id).query((row, i) -> row.getBoolean(1) + " " + row.getBoolean(2)).single())
-				.as("the member was activated or numbered by a booking the route had refused")
-				.isEqualTo("false true");
+		assertThat(db.sql("select member_number is null from competitor where id = ?")
+				.param(id).query(Boolean.class).single())
+				.as("the member was numbered by a booking the route had refused")
+				.isTrue();
 	}
 
 	/**
@@ -1141,7 +1140,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void aReferenceOfExactlyTenDigitsIsBookedWhole() throws Exception {
-		long id = competitor("d2", null, false, "1990-05-15");
+		long id = competitor("d2", null, "1990-05-15");
 
 		MockHttpServletResponse booked = WhatAnIndexHoldsTest.answered(() -> confirm(json(
 				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", "2028000070")),
@@ -1168,7 +1167,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void aTenDigitReferenceTypedWithSpacesAroundItIsMeasuredAfterTheyAreOff() throws Exception {
-		long id = competitor("d3", null, false, "1990-05-15");
+		long id = competitor("d3", null, "1990-05-15");
 
 		MockHttpServletResponse padded = WhatAnIndexHoldsTest.answered(() -> confirm(json(
 				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal",
@@ -1186,8 +1185,8 @@ class PaymentApiTest {
 
 	@Test
 	void aReferenceAlreadyUsedIsRefused() throws Exception {
-		long first = competitor("ae", "009009", false, "1990-05-15");
-		long second = competitor("af", null, false, "1990-05-15");
+		long first = competitor("ae", "009009", "1990-05-15");
+		long second = competitor("af", null, "1990-05-15");
 
 		confirm(json(new PaymentApi.Confirm(first, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", "2028000090")), moderatorCookie);
 
@@ -1218,7 +1217,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void aModeratorWithoutThePaymentsTickIsRefused() throws Exception {
-		long id = competitor("b0", null, false, "1990-05-15");
+		long id = competitor("b0", null, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(
 				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", null)), noRightsCookie);
@@ -1331,8 +1330,8 @@ class PaymentApiTest {
 	 */
 	@Test
 	void whatWasExpectedArrivedSoTheBoxTakesNothingOffHisBook() throws Exception {
-		long id = competitor("e1", null, false, "1990-05-15");
-		long oneHeBroughtIn = competitor("e2", "004101", true, "1991-05-15");
+		long id = competitor("e1", null, "1990-05-15");
+		long oneHeBroughtIn = competitor("e2", "004101", "1991-05-15");
 
 		rewardFor(id, oneHeBroughtIn, "EUR");
 		promised(id, 2028, "5", "EUR");
@@ -1370,9 +1369,9 @@ class PaymentApiTest {
 	 */
 	@Test
 	void lessArrivedAndTheBalanceCoversTheDifferenceSoTheDifferenceComesOff() throws Exception {
-		long id = competitor("e3", null, false, "1990-05-15", A_TOWN_IN_SERBIA);
-		long oneHeBroughtIn = competitor("e4", "004102", true, "1991-05-15");
-		long anotherHeBroughtIn = competitor("e5", "004103", true, "1992-05-15");
+		long id = competitor("e3", null, "1990-05-15", A_TOWN_IN_SERBIA);
+		long oneHeBroughtIn = competitor("e4", "004102", "1991-05-15");
+		long anotherHeBroughtIn = competitor("e5", "004103", "1992-05-15");
 
 		rewardFor(id, oneHeBroughtIn, "RSD");
 		rewardFor(id, anotherHeBroughtIn, "RSD");
@@ -1415,8 +1414,8 @@ class PaymentApiTest {
 	 */
 	@Test
 	void theBalanceIsSpentToTheEndAndTheRestIsAcceptedShort() throws Exception {
-		long id = competitor("e6", null, false, "1990-05-15", A_TOWN_IN_SERBIA);
-		long oneHeBroughtIn = competitor("e7", "004104", true, "1991-05-15");
+		long id = competitor("e6", null, "1990-05-15", A_TOWN_IN_SERBIA);
+		long oneHeBroughtIn = competitor("e7", "004104", "1991-05-15");
 
 		rewardFor(id, oneHeBroughtIn, "RSD");
 
@@ -1441,8 +1440,8 @@ class PaymentApiTest {
 	 */
 	@Test
 	void theBoxClearedTakesNothingOffHoweverShortTheMoneyIs() throws Exception {
-		long id = competitor("e8", null, false, "1990-05-15", A_TOWN_IN_SERBIA);
-		long oneHeBroughtIn = competitor("e9", "004105", true, "1991-05-15");
+		long id = competitor("e8", null, "1990-05-15", A_TOWN_IN_SERBIA);
+		long oneHeBroughtIn = competitor("e9", "004105", "1991-05-15");
 
 		rewardFor(id, oneHeBroughtIn, "RSD");
 		promised(id, 2028, "600", "RSD");
@@ -1492,8 +1491,8 @@ class PaymentApiTest {
 	@ValueSource(booleans = {true, false})
 	void aShortBookingNamesTheModeratorWhoAcceptedItAndTheMomentHeDidInBothCases(boolean theBoxIsTicked)
 			throws Exception {
-		long id = competitor("d1", null, false, "1990-05-15", A_TOWN_IN_SERBIA);
-		long oneHeBroughtIn = competitor("d2", "004110", true, "1991-05-15");
+		long id = competitor("d1", null, "1990-05-15", A_TOWN_IN_SERBIA);
+		long oneHeBroughtIn = competitor("d2", "004110", "1991-05-15");
 
 		rewardFor(id, oneHeBroughtIn, "RSD");
 
@@ -1552,8 +1551,8 @@ class PaymentApiTest {
 	 */
 	@Test
 	void amemberNobodyEverMintedAcodeForStillHasHisBalanceTaken() throws Exception {
-		long id = competitor("f1", null, false, "1990-05-15", A_TOWN_IN_SERBIA);
-		long oneHeBroughtIn = competitor("f2", "004106", true, "1991-05-15");
+		long id = competitor("f1", null, "1990-05-15", A_TOWN_IN_SERBIA);
+		long oneHeBroughtIn = competitor("f2", "004106", "1991-05-15");
 
 		rewardFor(id, oneHeBroughtIn, "RSD");
 
@@ -1592,7 +1591,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void moreArrivedThanWasExpectedSoTheSurplusIsCreditedEvenWithTheBoxCleared() throws Exception {
-		long id = competitor("f3", null, false, "1990-05-15", A_TOWN_IN_SERBIA);
+		long id = competitor("f3", null, "1990-05-15", A_TOWN_IN_SERBIA);
 
 		MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
 				new BigDecimal("5000.00"), false, "ips", null)), moderatorCookie);
@@ -1625,7 +1624,7 @@ class PaymentApiTest {
 	 */
 	@Test
 	void thesurplusIsMeasuredAgainstTheExpectedTotalAndThereforeAgainstTheFee() throws Exception {
-		long id = competitor("f4", null, false, "1990-05-15");
+		long id = competitor("f4", null, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
 				new BigDecimal("40.00"), false, "paypal", null)), moderatorCookie);
@@ -1652,8 +1651,8 @@ class PaymentApiTest {
 	 */
 	@Test
 	void theshortfallIsMeasuredAgainstTheSameTotalSoAbalanceMayPayAprocessingFee() throws Exception {
-		long id = competitor("f5", null, false, "1990-05-15");
-		long oneHeBroughtIn = competitor("f6", "004107", true, "1991-05-15");
+		long id = competitor("f5", null, "1990-05-15");
+		long oneHeBroughtIn = competitor("f6", "004107", "1991-05-15");
 
 		rewardFor(id, oneHeBroughtIn, "EUR");
 
@@ -1684,8 +1683,8 @@ class PaymentApiTest {
 	 */
 	@Test
 	void thepaymentRowCarriesBothWhatWasChargedAndWhatArrived() throws Exception {
-		long id = competitor("f7", null, false, "1990-05-15", A_TOWN_IN_SERBIA);
-		long oneHeBroughtIn = competitor("f8", "004108", true, "1991-05-15");
+		long id = competitor("f7", null, "1990-05-15", A_TOWN_IN_SERBIA);
+		long oneHeBroughtIn = competitor("f8", "004108", "1991-05-15");
 
 		rewardFor(id, oneHeBroughtIn, "RSD");
 
@@ -1735,9 +1734,9 @@ class PaymentApiTest {
 	 */
 	@Test
 	void twoConfirmationsOfOneSeasonTakeTheBalanceOnce() throws Exception {
-		long id = competitor("ba", null, false, "1990-05-15", A_TOWN_IN_SERBIA);
-		long oneHeBroughtIn = competitor("bb", "004109", true, "1991-05-15");
-		long anotherHeBroughtIn = competitor("bc", "004110", true, "1992-05-15");
+		long id = competitor("ba", null, "1990-05-15", A_TOWN_IN_SERBIA);
+		long oneHeBroughtIn = competitor("bb", "004109", "1991-05-15");
+		long anotherHeBroughtIn = competitor("bc", "004110", "1992-05-15");
 
 		rewardFor(id, oneHeBroughtIn, "RSD");
 		rewardFor(id, anotherHeBroughtIn, "RSD");
@@ -1784,8 +1783,8 @@ class PaymentApiTest {
 	 */
 	@Test
 	void arewardOfNothingPaysNobodyAndTheRouteStillAnswers() throws Exception {
-		long referrer = competitor("d5", "004008", true, "1980-05-15", A_TOWN_IN_SERBIA);
-		long newcomer = competitor("d6", null, false, "1990-05-15", A_TOWN_IN_SERBIA);
+		long referrer = competitor("d5", "004008", "1980-05-15", A_TOWN_IN_SERBIA);
+		long newcomer = competitor("d6", null, "1990-05-15", A_TOWN_IN_SERBIA);
 
 		db.sql("update competitor set referred_by = ? where id = ?").params(referrer, newcomer).update();
 		db.sql("update price_row set eur = 0, rsd = 0 where key = 'referral'").update();
@@ -1810,8 +1809,8 @@ class PaymentApiTest {
 	 */
 	@Test
 	void whoeverBroughtThePayerInIsPaidOnce() throws Exception {
-		long referrer = competitor("d3", "004007", true, "1980-05-15", A_TOWN_IN_SERBIA);
-		long newcomer = competitor("d4", null, false, "1990-05-15", A_TOWN_IN_SERBIA);
+		long referrer = competitor("d3", "004007", "1980-05-15", A_TOWN_IN_SERBIA);
+		long newcomer = competitor("d4", null, "1990-05-15", A_TOWN_IN_SERBIA);
 
 		db.sql("update competitor set referred_by = ? where id = ?").params(referrer, newcomer).update();
 
@@ -1857,8 +1856,8 @@ class PaymentApiTest {
 	 */
 	@Test
 	void therewardIsInTheReferrersMoneyAndNotTheNewcomers() throws Exception {
-		long referrer = competitor("bd", "004111", true, "1980-05-15", A_TOWN_IN_SERBIA);
-		long newcomer = competitor("be", null, false, "1990-05-15", A_TOWN);
+		long referrer = competitor("bd", "004111", "1980-05-15", A_TOWN_IN_SERBIA);
+		long newcomer = competitor("be", null, "1990-05-15", A_TOWN);
 
 		db.sql("update competitor set referred_by = ? where id = ?").params(referrer, newcomer).update();
 
@@ -1940,7 +1939,7 @@ class PaymentApiTest {
 
 		db.sql("update price_row set eur = 0, rsd = 0 where key = ?").param(free).update();
 
-		long id = competitor("bf", null, false, birthDate);
+		long id = competitor("bf", null, birthDate);
 
 		/* THREE EURO IS THE PROCESSING FEE AND IS WHAT THE SCREEN WOULD BE ASKING FOR: V4 gives the
 		   fee its own row, `MembershipPrice.on` reads it from there and never from the period, so a
@@ -1959,10 +1958,10 @@ class PaymentApiTest {
 
 		assertThat(paymentCount()).isZero();
 		assertThat(membershipCount()).isZero();
-		assertThat(db.sql("select member_number, active from competitor where id = ?").param(id)
-						.query((row, i) -> row.getString(1) + " " + row.getBoolean(2)).single())
-				.as("a refused booking numbered or activated the competitor anyway")
-				.isEqualTo("null false");
+		assertThat(db.sql("select member_number from competitor where id = ?").param(id)
+						.query((row, i) -> String.valueOf(row.getObject(1))).single())
+				.as("a refused booking numbered the competitor anyway")
+				.isEqualTo("null");
 
 		assertThat(numbersHandedOutSoFar())
 				.as("a member number was drawn for a booking that was refused, and the sequence only"
@@ -2011,7 +2010,7 @@ class PaymentApiTest {
 	void abookingTheDatabaseRefusesSpendsNoMemberNumber() throws Exception {
 		long drawnAtTheStart = numbersHandedOutSoFar();
 
-		long paid = competitor("c1", null, false, "1990-05-15");
+		long paid = competitor("c1", null, "1990-05-15");
 
 		assertThat(confirm(json(new PaymentApi.Confirm(paid, WHAT_A_EURO_MEMBER_SENDS, false,
 				"paypal", null)), moderatorCookie).getStatus()).isEqualTo(201);
@@ -2024,7 +2023,7 @@ class PaymentApiTest {
 
 		long drawnBefore = numbersHandedOutSoFar();
 
-		long id = competitor("c0", null, false, "1990-05-15");
+		long id = competitor("c0", null, "1990-05-15");
 
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
 						+ " currency, fee, method, state) values"

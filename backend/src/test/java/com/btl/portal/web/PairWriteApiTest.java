@@ -275,11 +275,11 @@ class PairWriteApiTest {
 
 	private void member(String number, String gender) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', ?, ?, date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, "Probic" + number, gender, String.format("%016x", ++issued))
@@ -1353,9 +1353,9 @@ class PairWriteApiTest {
 	 * CONDITION TO THE TWO CASES ABOVE AND IS DELIBERATE.
 	 *
 	 * <p>The two questions are not one. „Does a pair still hold" is a fact about the league,
-	 * answered with {@code active}, and it decides who may ask. „What rows stand in the way of
+	 * answered with {@code AMemberIsActive}, and it decides who may ask. „What rows stand in the way of
 	 * this INSERT" is answered by {@code racing_pair_one_man_a_season}, which is an index: it
-	 * sees every row there is and reads no flag at all.
+	 * sees every row there is and asks nothing about the seasons at all.
 	 *
 	 * <p>So the delete must reach a row whose other half has lapsed, and if it were filtered
 	 * the same way as the reader, that row would survive and then refuse the insert - and the
@@ -1413,11 +1413,11 @@ class PairWriteApiTest {
 	@Test
 	void aMemberWithNoNumberYetMayStillAnswerAQuestion() throws Exception {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (null, 'Bez', 'Broja', 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.param(String.format("%016x", ++issued))
@@ -1426,7 +1426,7 @@ class PairWriteApiTest {
 		long her = db.sql("select id from competitor where last_name = 'Broja'")
 				.query(Long.class).single();
 
-		/* SHE STANDS BY A SEASON SHE HOLDS, and her flag says false: since AF-1 nothing reads it. */
+		/* SHE STANDS BY A SEASON SHE HOLDS. */
 		HeldOn.activeAt(db, her, IN_MARCH.atZone(SeasonClock.ZONE));
 
 		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id) values"
@@ -1454,13 +1454,10 @@ class PairWriteApiTest {
 	}
 
 	/**
-	 * Somebody who did not renew, which takes his seasons away and deletes nobody, and his flag is raised on
-	 * purpose: since AF-1 nothing reads it, so a route that did would take him for a member.
+	 * Somebody who did not renew, which takes his seasons away and deletes nobody.
 	 */
 	private void lapsed(String memberNumber) {
 		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
-				.param(memberNumber).update();
-		db.sql("update competitor set active = true where member_number = ?")
 				.param(memberNumber).update();
 	}
 

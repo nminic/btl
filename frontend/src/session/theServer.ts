@@ -109,7 +109,7 @@ export type WhoTheServerSaysIAm = {
    * **Here since 25.09.2026, and unlike the four below it this one HAS another door.**
    * `/api/competitors` carries a country on every row, the caller's among them, and
    * „Moja članarina" read it off there until today. The owner closed that road for this
-   * screen (PDL P8a): that list ends `where c.active`, so the member whose fee has
+   * screen (PDL P8a): that list ends `AMemberIsActive`, so the member whose fee has
    * LAPSED has no row on it at all - and he is the whole reason the screen exists, since
    * renewing is what he opens it to do. `/api/me` answers one row, and that row is his
    * whether or not his fee is standing.
@@ -203,7 +203,7 @@ export type WhoTheServerSaysIAm = {
    * stays only on „Moja članarina".
    *
    * **What reading it the other way cost, and it is measured rather than argued.** That
-   * list ends `where c.active`, so the member whose fee has LAPSED has no row on it and
+   * list ends `AMemberIsActive`, so the member whose fee has LAPSED has no row on it and
    * was answered no link - while the terms promise him one on exactly the page he opens
    * to renew (V24, section 6). `/api/me` answers one row and that row is his, standing
    * fee or not.
@@ -248,7 +248,7 @@ export type WhoTheServerSaysIAm = {
   /**
    * WHETHER HIS FEE STANDS, and null where the answer did not say.
    *
-   * **`MeApi.MyOwnRecord.active`, which is `competitor.active`, since 11.10.2026.** Before that
+   * **`MeApi.MyOwnRecord.active`, which is read off the seasons he holds, since 11.10.2026.** Before that
    * day the answer did not say, and a member whose fee has lapsed was drawn every screen of a
    * member whose fee stands (measured against a real database that day: the two were answered the
    * same names). The server refuses him 404 on `PUT /api/me` and `PUT /api/me/password` (PDL P8,

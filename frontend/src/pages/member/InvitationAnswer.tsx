@@ -39,7 +39,7 @@ import { useHisOwnRecord } from '../profile/useHisOwnRecord'
  * još čita, ceo odgovor čeka: dugmad i rečenica se pojave zajedno kad nalog stigne, kao svuda drugde
  * na portalu, pa članica nikad ne vidi muški oblik. (2) Ako nalog ne može da se pročita, ekran kaže da
  * čitanje nije uspelo, uz ponovni pokušaj, kao svako drugo neuspelo čitanje; ništa se ne pogađa.").
- * It was read off `competitors`, which is the public list and `where c.active`, so a woman whose fee
+ * It was read off `competitors`, which is the public list and `AMemberIsActive`, so a woman whose fee
  * has lapsed was on no row of it and read „Prihvatio" and „ušao" (PENDING, review of PR 604, read
  * off the source). `GET /api/me` answers one row and that row is hers
  * (`profile/useHisOwnRecord.ts`), and `member/ServedTeamInvite.tsx` has read it the same way since

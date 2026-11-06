@@ -66,7 +66,7 @@ class CommentApiTest {
 
 	/**
 	 * An active member who wrote nothing here and holds no row of {@code membership}, so that who
-	 * reads is never one of the authors and the fact asked about is {@code competitor.active} and
+	 * reads is never one of the authors and the fact asked about is the season he holds and
 	 * not a row of another table.
 	 */
 	private static final String A_MEMBER = "takmicar@primer.rs";
@@ -319,7 +319,7 @@ class CommentApiTest {
 
 		/* A ROW OF ANOTHER SEASON IS NOT THE FACT BEING ASKED: this reader holds a row of 2028, which
 		   does not count today, and is not active, so reading „has he a membership row", for any season,
-		   answers him the wrong way round; and his flag says active (see `member`). */
+		   answers him the wrong way round. */
 		member("'" + LAPSED_READERS_NUMBER + "'", "Istekao", "Clanarinic", "M", false);
 		exemptFor(LAPSED_READERS_NUMBER, 2028);
 		account(LAPSED_READER, "competitor");
@@ -381,11 +381,11 @@ class CommentApiTest {
 	/** Somebody who registered and has not paid: no number, and never active (V16). */
 	private long neverPaid(String first, String last) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active,"
+						+ " birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (null, ?, ?, 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(first, last, String.format("%016x", ++issued))
@@ -396,11 +396,11 @@ class CommentApiTest {
 	/** An active member whose profile is hidden: the subject of another rule, and here only a reader. */
 	private void hidingMember(String number, String first, String last) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, 'Trcim skriveno.', true, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, first, last, String.format("%016x", ++issued))
@@ -426,19 +426,18 @@ class CommentApiTest {
 	private void member(String number, String first, String last, String gender,
 			boolean feeStanding) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (" + number + ", ?, ?, ?, date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, ?, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(first, last, gender, !feeStanding, String.format("%016x", ++issued))
+				.params(first, last, gender, String.format("%016x", ++issued))
 				.update();
 
-		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
-		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
-		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		/* ACTIVE BY THE SEASON HE HOLDS (`AMemberIsActive`): the member whose fee does not stand holds none
+		   that counts. */
 		if (feeStanding) {
 			HeldOn.activeAt(db, number.replace("'", ""), ZonedDateTime.now());
 		}
@@ -788,19 +787,20 @@ class CommentApiTest {
 	 */
 	@Test
 	void theReadersAreWhatTheyAreCalled() {
-		String rowAndFlag = "select c.active, (select string_agg(m.season::text, ',') from membership m"
+		String rows = "select (select string_agg(m.season::text, ',') from membership m"
 				+ " where m.competitor_id = c.id)"
 				+ " from account a join competitor c on c.id = a.competitor_id where a.email = ?";
 
-		assertThat(facts(rowAndFlag, LAPSED_READER))
-				.as("the lapsed reader does not carry the flag true and a row of 2028 alone, so neither the"
-						+ " flag nor a row of another season can be told from the season that counts by him")
-				.isEqualTo("true 2028");
-		assertThat(facts(rowAndFlag, A_MEMBER))
-				.as("the reading member does not carry the flag false and the season that counts, so the"
+		assertThat(facts(rows, LAPSED_READER))
+				.as("the lapsed reader does not hold a row of 2028 alone, so a row of another season"
+						+ " cannot be told from the season that counts by him")
+				.isEqualTo("2028");
+		assertThat(facts(rows, A_MEMBER))
+				.as("the reading member does not hold the season that counts alone, so the"
 						+ " lapsed reader's season is not the only difference between the two")
-				.isEqualTo("false 2027");
-		assertThat(facts("select c.member_number is null, c.active"
+				.isEqualTo("2027");
+		assertThat(facts("select c.member_number is null, exists(select 1 from membership m"
+				+ " where m.competitor_id = c.id)"
 				+ " from account a join competitor c on c.id = a.competitor_id where a.email = ?", NEVER_PAID))
 				.as("the registrant has a number or is active")
 				.isEqualTo("true false");
@@ -846,10 +846,9 @@ class CommentApiTest {
 	 * text is asked for as TEXT, over every comment of the fixture, after the case has asked the
 	 * database that the comments really are there to be withheld.
 	 *
-	 * <p><b>The anchor is an active member whose flag says inactive</b> and is served, and the lapsed
-	 * reader's flag says active and he holds a row of a season that does not count, so what tells the
-	 * two sides apart is the season that counts ({@link AMemberIsActive}), and neither the flag nor
-	 * whether some row exists.
+	 * <p><b>The anchor is an active member</b> and is served, and the lapsed reader holds a row of a
+	 * season that does not count, so what tells the two sides apart is the season that counts
+	 * ({@link AMemberIsActive}), and not whether some row exists.
 	 */
 	@Test
 	void somebodySignedInWhoIsNotAnActiveMemberIsToldTheCommentsAreNotThere() throws Exception {
@@ -873,8 +872,8 @@ class CommentApiTest {
 		}
 
 		assertThat(answerTo(A_MEMBER).getStatus())
-				.as("an active member whose flag says inactive was refused, so the refusals above are"
-						+ " about the flag and not about the season")
+				.as("an active member was refused, so the refusals above are"
+						+ " about the season and not about the list")
 				.isEqualTo(200);
 	}
 

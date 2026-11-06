@@ -431,7 +431,7 @@ class TeamWriteApiTest {
 	 *
 	 * <p><b>Both states on one member.</b> He holds 2027 alone and is refused, with nothing
 	 * written; he holds 2028 alone (2027 taken away) and the same request goes through. Asking
-	 * {@code competitor.active}, or the season being run, lets the first through.
+	 * whether he is active, or the season being run, lets the first through.
 	 */
 	@Test
 	void aMemberWhoHoldsOnlyTheSeasonBeingRunMayNotProposeATeamAndIsToldWhy() throws Exception {
@@ -480,11 +480,11 @@ class TeamWriteApiTest {
 
 	private void competitor(String number) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, String.format("%016x", ++issued))
@@ -514,7 +514,7 @@ class TeamWriteApiTest {
 	}
 
 	/**
-	 * A MEMBER WHO HOLDS ONLY THE ONE SEASON GIVEN, which is the state {@code competitor.active}
+	 * A MEMBER WHO HOLDS ONLY THE ONE SEASON GIVEN, which is the state a flag on the member
 	 * cannot tell from a member who holds both: he is active either way. PDL 30.10.2026 asks for
 	 * the season he would ENTER for, so the case that needs the difference makes it here.
 	 */
@@ -2035,11 +2035,9 @@ class TeamWriteApiTest {
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedIsNobodyAtThisAddress() throws Exception {
-		/* HE DID NOT RENEW, which since AF-1 is the season taken away; his flag is raised on purpose, so a
-		   reader that read it would still take him for a member. */
+		/* HE DID NOT RENEW, which since AF-1 is the season taken away. */
 		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
 				.param(IN_A_TEAM_NOW).update();
-		db.sql("update competitor set active = true where member_number = ?").param(IN_A_TEAM_NOW).update();
 
 		assertThat(leaveAs(IN_A_TEAM_NOW, THE_OTHER_TEAM).getStatus())
 				.as("a member whose fee has lapsed reached a route that is not the renewal page")
@@ -2476,7 +2474,7 @@ class TeamWriteApiTest {
 	 * otisao").
 	 *
 	 * <p><b>It is here rather than as a ninth row of the table above because it needs its own
-	 * arrangement</b>, and it is the row that holds {@code c.active} inside
+	 * arrangement</b>, and it is the row that holds {@code AMemberIsActive} inside
 	 * {@link TeamApi#whoStandsInATeam}: take that condition out and BOTH answers below
 	 * move to true together, which is the one home doing its job and this case noticing.
 	 */
@@ -2484,11 +2482,9 @@ class TeamWriteApiTest {
 	void aMemberWhoseFeeHasLapsedAdministersNothingAndBothResourcesAgree() throws Exception {
 		aTeamWithTwoMembersAndEverythingHangingOffIt();
 
-		/* HE DID NOT RENEW, which since AF-1 is the season taken away; his flag is raised on purpose, so a
-		   reader that read it would still take him for a member. */
+		/* HE DID NOT RENEW, which since AF-1 is the season taken away. */
 		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
 				.param(THE_SEAT).update();
-		db.sql("update competitor set active = true where member_number = ?").param(THE_SEAT).update();
 
 		assertThat(theListTells(THE_SEAT, A_TEAM_WITH_TWO))
 				.as("/api/teams still names a lapsed member as the one who administers his team")

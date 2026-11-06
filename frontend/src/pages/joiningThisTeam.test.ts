@@ -118,7 +118,7 @@ describe('what counts as a row the team is waiting on', () => {
   })
 
   /* AN APPLICATION NAMING NOBODY IS REFUSED, and that is the whole asymmetry between the two
-     lists read from this side. `TeamJoiningApi.waitingOn` carries `c.active`, so a member whose
+     lists read from this side. `TeamJoiningApi.waitingOn` carries `AMemberIsActive`, so a member whose
      fee has lapsed is not in this list at all; a `null` arriving here would be a route
      answering something this side does not know. The invitation below is the opposite. */
   it('refuses an application that names nobody, because that route never answers one', () => {

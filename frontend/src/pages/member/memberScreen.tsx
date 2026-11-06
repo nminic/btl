@@ -124,7 +124,7 @@ import { SignedOut } from './SignedOut'
  * profile opens, drawn from his own record (`pages/profile/visible.ts`, `his`).
  *
  * <p><b>Why that page in particular, and it is not a typo anywhere.</b> It looks the
- * caller up in `/api/competitors`, which ends `where c.active` and therefore does not
+ * caller up in `/api/competitors`, which ends `AMemberIsActive` and therefore does not
  * carry him - while `/api/me` answers him deliberately, because {@code MeApi} exists for
  * exactly this person. „Moja članarina" beside it is a fact about a DIFFERENT screen and
  * not an argument against this one: it went the same way in two fixes rather than one, a

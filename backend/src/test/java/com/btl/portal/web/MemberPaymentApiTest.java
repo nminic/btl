@@ -88,7 +88,7 @@ class MemberPaymentApiTest {
 					+ " order by rank limit 1)";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
-			+ " birth_date, place_id, city, country_id, first_season, active,"
+			+ " birth_date, place_id, city, country_id, first_season,"
 			+ " referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 			+ " father_name, address, shirt_size, health_statement_at";
 
@@ -124,13 +124,13 @@ class MemberPaymentApiTest {
 	void membersAndTheAdministration() {
 		clock.moveTo(AFTER_THE_FIFTEENTH);
 
-		referrer = competitor("000002", "a1", A_TOWN_ABROAD, true, null);
-		theModeratorHimself = competitor("000003", "a2", A_TOWN_ABROAD, true, null);
+		referrer = competitor("000002", "a1", A_TOWN_ABROAD, null);
+		theModeratorHimself = competitor("000003", "a2", A_TOWN_ABROAD, null);
 		/* LAPSED, WITH A NUMBER AND NO ACCOUNT, which is the member the owner named: „clan iz 2027.
 		   godine uplati za sezonu 2028, njega nema u redu clanova". Brought in by 000002, who has
 		   already been rewarded for it. */
-		renewing = competitor("000005", "a3", A_TOWN_ABROAD, false, referrer);
-		inDinars = competitor("000007", "a4", A_TOWN_IN_SERBIA, false, null);
+		renewing = competitor("000005", "a3", A_TOWN_ABROAD, referrer);
+		inDinars = competitor("000007", "a4", A_TOWN_IN_SERBIA, null);
 
 		HeldOn.season(db, renewing, 2027, "payment");
 		HeldOn.season(db, theModeratorHimself, 2027, "payment");
@@ -153,12 +153,12 @@ class MemberPaymentApiTest {
 		account(AN_ACTIVE_MEMBER, "competitor", referrer, "Ana", "Clanica");
 	}
 
-	private long competitor(String number, String suffix, String town, boolean active, Long referredBy) {
+	private long competitor(String number, String suffix, String town, Long referredBy) {
 		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni', 'Clan',"
-						+ " 'M', date '1990-05-15', " + town + ", null, null, 2027, ?, ?, ?, '',"
+						+ " 'M', date '1990-05-15', " + town + ", null, null, 2027, ?, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
-				.params(number, active, "0011aabbccddee" + suffix, referredBy)
+				.params(number, "0011aabbccddee" + suffix, referredBy)
 				.query(Long.class).single();
 	}
 
@@ -305,8 +305,8 @@ class MemberPaymentApiTest {
 				.isEqualTo(accountOf(OVER_THE_MEMBERS) + " Mira Clanovic");
 
 		/* A RENEWAL IS NOT A SECOND PERSON: the number stays and none is drawn. */
-		assertThat(db.sql("select member_number || ' ' || active from competitor where id = ?")
-				.param(renewing).query(String.class).single()).isEqualTo("000005 true");
+		assertThat(db.sql("select member_number from competitor where id = ?")
+				.param(renewing).query(String.class).single()).isEqualTo("000005");
 		assertThat(count("select last_value from member_number_seq")).isEqualTo(seqBefore);
 
 		/* Exact, so nothing came off his book and nothing went onto it; and the man who brought him
