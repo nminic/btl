@@ -372,7 +372,9 @@ describe('an event whose save is out cannot be left', () => {
          which is every link the router carries, pressed one by one - the ones in the panels that are
          shut as well. A link drawn tomorrow is in it without anybody remembering to add it, and a link
          that is not the router's (a plain address that would leave the page) is not in it, which is
-         what the second half asks: the only others are the skip link and the mail address. */
+         what the second half asks: the only others are the skip link and the mail address. A link of
+         the router's address that does not ask the router is in it, and is the one the click below
+         tells apart: it is not cancelled. */
       const { user, router } = await theCopyOpen('alone')
 
       await press(user)
@@ -381,12 +383,23 @@ describe('an event whose save is out cannot be left', () => {
 
       expect(ofTheRouter.length, 'the page draws no link of the router').toBeGreaterThan(20)
 
+      /* **And every one of them is the router's to answer**, asked of the click itself (review of PR 483,
+         medium): `fireEvent.click` answers false when the click was cancelled, and the router cancels
+         the click of a link it takes (`preventDefault`, then the navigation it may refuse). A link that
+         does not ask the router (`reloadDocument`) is not cancelled, so the browser would leave the page
+         by itself and no refusal here could see it; it stayed green with `reloadDocument` on the links of
+         the footer, with only a jsdom note about a navigation to another document. */
+      const notTheRouters: string[] = []
+
       for (const link of ofTheRouter) {
         await act(async () => {
-          fireEvent.click(link)
+          if (fireEvent.click(link)) {
+            notTheRouters.push(String(link.getAttribute('href')))
+          }
         })
       }
 
+      expect(notTheRouters, 'a link the page draws is not answered by the router').toEqual([])
       expectOnTheForm(router)
 
       expect(

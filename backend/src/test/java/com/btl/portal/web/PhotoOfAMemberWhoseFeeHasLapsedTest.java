@@ -29,6 +29,7 @@ import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -236,7 +237,8 @@ class PhotoOfAMemberWhoseFeeHasLapsedTest {
 		long theSameTwice = aPicture(THE_SAME_PICTURE_TWICE);
 
 		/* THE HOLDERS: the four ways a member who has been a member can stand, and the fifth, who never
-		   was. `active` is the fact the rule asks and `profile_hidden` is the second, independent one. */
+		   was. Being active (a season that counts, `AMemberIsActive`) is the fact the rule asks and
+		   `profile_hidden` is the second, independent one; the flag is written against it on purpose. */
 		member("000201", true, false, activeAndOpen);
 		member("000202", true, true, activeAndHiding);
 		member("000203", false, false, lapsedAndOpen);
@@ -316,19 +318,23 @@ class PhotoOfAMemberWhoseFeeHasLapsedTest {
 						+ " fixture does not hold")
 				.isEqualTo(EVERY_PICTURE.stream().map(Subject::digest).sorted().toList());
 
-		assertThat(facts("select active, profile_hidden, member_number is null from competitor"
+		assertThat(facts("select exists(select 1 from membership m where m.competitor_id = competitor.id),"
+				+ " profile_hidden, member_number is null from competitor"
 				+ " where photo_id = (select id from photo where digest = ?)", LAPSED_AND_OPEN.digest()))
 				.as("the lapsed and open holder is not lapsed and open")
 				.isEqualTo("false false false");
-		assertThat(facts("select active, profile_hidden, member_number is null from competitor"
+		assertThat(facts("select exists(select 1 from membership m where m.competitor_id = competitor.id),"
+				+ " profile_hidden, member_number is null from competitor"
 				+ " where photo_id = (select id from photo where digest = ?)", LAPSED_AND_HIDING.digest()))
 				.as("the lapsed and hiding holder is not lapsed and hiding")
 				.isEqualTo("false true false");
-		assertThat(facts("select active, profile_hidden, member_number is null from competitor"
+		assertThat(facts("select exists(select 1 from membership m where m.competitor_id = competitor.id),"
+				+ " profile_hidden, member_number is null from competitor"
 				+ " where photo_id = (select id from photo where digest = ?)", ACTIVE_AND_HIDING.digest()))
 				.as("the active and hiding holder is not active and hiding")
 				.isEqualTo("true true false");
-		assertThat(facts("select active, profile_hidden, member_number is null from competitor"
+		assertThat(facts("select exists(select 1 from membership m where m.competitor_id = competitor.id),"
+				+ " profile_hidden, member_number is null from competitor"
 				+ " where photo_id = (select id from photo where digest = ?)", NEVER_PAID.digest()))
 				.as("the holder who never paid has a number, or is active")
 				.isEqualTo("false false true");
@@ -454,8 +460,15 @@ class PhotoOfAMemberWhoseFeeHasLapsedTest {
 						+ " values (?, 'Ime', 'Prezime', 'M', date '1990-01-01',"
 						+ " (select id from place where rank = 1), 2027, ?, ?, '', ?,"
 						+ " 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00', ?)")
-				.params(number, active, String.format("%016x", ++issued), hidden, photo)
+				.params(number, !active, String.format("%016x", ++issued), hidden, photo)
 				.update();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
+		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
+		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		if (active) {
+			HeldOn.activeAt(db, number, ZonedDateTime.now());
+		}
 	}
 
 	private void team(String slug, long mark) {

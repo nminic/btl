@@ -523,7 +523,9 @@ class TeamWriteApi {
 	ResponseEntity<?> propose(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			WhatWasSent<Proposed> sent) throws IOException {
 
-		Long me = readers.activeMember(asking).orElse(null);
+		/* The clock is read once, for the door and for every question about the season below. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		Long me = readers.activeMember(asking, now).orElse(null);
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 says is the ordinary case for a
 		   moderator who does not race, OR A MEMBER WHOSE FEE DOES NOT STAND: teams are on the
@@ -549,8 +551,6 @@ class TeamWriteApi {
 		   the form: a member the portal would have sent away from this screen learns
 		   nothing more by filling it in correctly. Which of the two refused him is not told
 		   apart, for the reason written at the top of this class. */
-		ZonedDateTime now = ZonedDateTime.now(clock);
-
 		if (JoiningATeam.mayJoin(membershipsOf(me), now) != JoiningATeam.Answer.YES) {
 			return awayAtAnOpenAddress();
 		}
@@ -718,13 +718,12 @@ class TeamWriteApi {
 	 * team.
 	 */
 	private ResponseEntity<?> leaving(long me, long team) {
-		Optional<Membership> his = membershipHeCouldLeave(me, team);
+		ZonedDateTime now = ZonedDateTime.now(clock);
+		Optional<Membership> his = membershipHeCouldLeave(me, team, now);
 
 		if (his.isEmpty()) {
 			throw nothingIsHere();
 		}
-
-		ZonedDateTime now = ZonedDateTime.now(clock);
 
 		/* THE WINDOW, ASKED OF THE ONE PLACE THAT HAS IT. `SeasonClock.transferWindowOpen`
 		   is where 11 November lives, and `JoiningATeam` reads the same method for the other
@@ -892,7 +891,9 @@ class TeamWriteApi {
 	 * the administration deletes it as soon as the window opens.
 	 */
 	private ResponseEntity<?> removing(Long me, boolean administration, long team) {
-		if (!(administration ? thereIsSuchATeam(team) : heAdministersIt(me, team))) {
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
+		if (!(administration ? thereIsSuchATeam(team) : heAdministersIt(me, team, now))) {
 			throw nothingIsHere();
 		}
 
@@ -900,7 +901,7 @@ class TeamWriteApi {
 		   `SeasonClock.transferWindowOpen` is where 11 November lives and `leaving` reads the
 		   same method for the same reason; a month written out here would be that window
 		   with a second home. */
-		if (!SeasonClock.transferWindowOpen(ZonedDateTime.now(clock))) {
+		if (!SeasonClock.transferWindowOpen(now)) {
 			return no(HttpStatus.CONFLICT, THE_WINDOW_IS_SHUT);
 		}
 
@@ -920,7 +921,7 @@ class TeamWriteApi {
 	 * WHETHER THIS MEMBER IS THE ONE WHO ADMINISTERS THIS TEAM, ASKED OF THE PORTAL'S ONE
 	 * ANSWER TO THAT QUESTION.
 	 *
-	 * <p>{@link TeamApi#WHO_STANDS_IN_A_TEAM} and {@link TeamApi#WHO_ADMINISTERS_IT} are the
+	 * <p>{@link TeamApi#whoStandsInATeam} and {@link TeamApi#WHO_ADMINISTERS_IT} are the
 	 * same two fragments {@code GET /api/teams} builds {@code administeredByMe} out of, so
 	 * there is one rule and two readers rather than two rules. What that buys is measured
 	 * rather than claimed: {@code theDeleteRouteAndTheListAgreeOnWhoAdministersEachTeam}
@@ -938,12 +939,12 @@ class TeamWriteApi {
 	 *           nothing, and is asked before the statement so that null never reaches a
 	 *           comparison the database would answer null to
 	 */
-	private boolean heAdministersIt(Long me, long team) {
+	private boolean heAdministersIt(Long me, long team, ZonedDateTime now) {
 		if (me == null) {
 			return false;
 		}
 
-		return db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
+		return db.sql("with standing as (" + TeamApi.whoStandsInATeam(now) + ")"
 						+ " select coalesce(" + TeamApi.WHO_ADMINISTERS_IT + " = ?, false)"
 						+ " from team t where t.id = ?")
 				.params(me, team)
@@ -979,16 +980,16 @@ class TeamWriteApi {
 	 * turns. {@link PairWriteApi} asks the identical question of its own two halves.
 	 *
 	 * <p><b>{@link #propose} asks the same question, and since P8U it asks it first.</b> It
-	 * used to read {@code competitor.active} nowhere, so the portal refused a lapsed member here
+	 * used to ask whether he was active nowhere, so the portal refused a lapsed member here
 	 * and accepted a team from him one method up; it now opens with
 	 * {@link ActiveMemberOrAdministration#activeMember} (PDL P8, 10.10.2026, „timove").
 	 */
-	private Optional<Membership> membershipHeCouldLeave(long me, long team) {
+	private Optional<Membership> membershipHeCouldLeave(long me, long team, ZonedDateTime now) {
 		return db.sql("select m.team_id, m.season_from, m.season_to, m.left_reason"
 						+ " from team_membership m"
 						+ " join competitor c on c.id = m.competitor_id"
 						+ " where m.competitor_id = ? and m.team_id = ? and m.season_to is null"
-						+ " and c.active")
+						+ " and " + AMemberIsActive.of("c.id", now))
 				.params(me, team)
 				.query((row, one) -> new Membership(row.getLong(1), row.getInt(2),
 						row.getObject(3, Integer.class), row.getString(4)))

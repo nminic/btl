@@ -30,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -134,10 +135,14 @@ class NoBodyIsLargerThanOverRealHttpTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, ?, '',"
+						+ " (select id from place where rank = 1), 2027, false, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
 				.params(THE_MEMBERS_NUMBER, String.format("%016x", Long.parseLong(THE_MEMBERS_NUMBER)))
 				.update();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written false on purpose: since AF-1
+		   nothing reads it, and a reader that did would turn him away. */
+		HeldOn.activeAt(db, THE_MEMBERS_NUMBER, ZonedDateTime.now());
 
 		account(A_MEMBER, "competitor");
 		db.sql("update account set competitor_id = (select id from competitor where member_number = ?)"

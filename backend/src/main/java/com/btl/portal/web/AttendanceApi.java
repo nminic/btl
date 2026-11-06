@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 /**
@@ -186,8 +187,11 @@ class AttendanceApi {
 	List<Attendance> attendance(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletResponse response) throws IOException {
 		/* AN ACTIVE MEMBER OR THE ADMINISTRATION, and anybody else signed in is told the
-		   address is not there (owner, 03.10.2026; ADL A8). */
-		if (!readers.includes(asking)) {
+		   address is not there (owner, 03.10.2026; ADL A8). The clock is read once, for the door and
+		   for the list behind it. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
+		if (!readers.includes(asking, now)) {
 			response.sendError(HttpStatus.NOT_FOUND.value());
 			return null;
 		}
@@ -207,9 +211,9 @@ class AttendanceApi {
 						   already refuses the same leak: a number that left here and not
 						   /api/competitors would name, by subtraction, whoever has not
 						   renewed. */
-						+ " and c.active"
+						+ " and " + AMemberIsActive.of("c.id", now)
 						+ " order by a.event_id, c.member_number")
-				.param("today", today(clock))
+				.param("today", now.withZoneSameInstant(SeasonClock.ZONE).toLocalDate())
 				.query((row, one) -> new Attendance(row.getLong(1), row.getString(2)))
 				.list();
 	}

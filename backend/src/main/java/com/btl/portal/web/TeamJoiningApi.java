@@ -41,7 +41,7 @@ import java.util.List;
  *
  * <p><b>WHO MAY READ IT, AND IT IS THE SAME OBJECT THAT DECIDES THE WRITE.</b> Whoever leads
  * the team, and the administration. „Ko vodi ovaj tim" is
- * {@link TeamApi#WHO_ADMINISTERS_IT} over {@link TeamApi#WHO_STANDS_IN_A_TEAM} and nothing
+ * {@link TeamApi#WHO_ADMINISTERS_IT} over {@link TeamApi#whoStandsInATeam} and nothing
  * written here - the identical pair {@link TeamJoiningWriteApi} asks before it lets anybody
  * decide an application or send an invitation - so the list a team is shown and the acts it
  * is allowed cannot come apart. PDL 05.09.2026: „Prijavu u tim odobrava administrator tog
@@ -64,8 +64,8 @@ import java.util.List;
  * active member nor the administration (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko
  * nije aktivan član ni administracija,
  * nikad prema aktivnom članu"), and every caller here is one of the two by construction:
- * whoever leads a team is read through {@link TeamApi#WHO_STANDS_IN_A_TEAM}, which asks
- * {@code c.active}, and the administration is asked through {@link WhatHeMayDo}. That is the
+ * whoever leads a team is read through {@link TeamApi#whoStandsInATeam}, which asks
+ * {@link AMemberIsActive}, and the administration is asked through {@link WhatHeMayDo}. That is the
  * condition {@link CompetitorApi} serves its list by
  * ({@code cast(:readsHiddenProfiles as boolean) or not c.profile_hidden}), so every caller here
  * is a reader it would let in. A condition on it here would hide an applicant from the one team
@@ -77,7 +77,7 @@ import java.util.List;
  *
  * <ul>
  * <li><b>An application from a member whose fee has lapsed is not listed at all</b>, because
- * {@link TeamJoiningWriteApi}'s {@code applicationHeMayDecide} carries {@code c.active} and
+ * {@link TeamJoiningWriteApi}'s {@code applicationHeMayDecide} carries {@link AMemberIsActive} and
  * the team therefore cannot answer it either way. Listed, the screen would offer „Primi u
  * tim" over a row the server refuses.
  * <li><b>An invitation to a member whose fee has lapsed IS listed, with no number on it.</b>
@@ -87,8 +87,8 @@ import java.util.List;
  * empty place, ask again, and be refused - the same broken button from the other side. What
  * is withheld is his NAME and not the row: „Nijedan javni odgovor ne sme da imenuje člana
  * kome je članarina istekla, NI POSREDNO" (PDL, 13.09.2026), carried out the way
- * {@link MyApplicationsApi}'s {@code pairInvites} carries it - {@code case when c.active then
- * c.member_number end} - because {@code /api/competitors} stops carrying him the day the fee
+ * {@link MyApplicationsApi}'s {@code pairInvites} carries it - a {@code case} on
+ * {@link AMemberIsActive} around {@code c.member_number} - because {@code /api/competitors} stops carrying him the day the fee
  * lapses and a number that is here and missing there is itself the answer.
  * </ul>
  *
@@ -196,13 +196,14 @@ class TeamJoiningApi {
 	ResponseEntity<?> applications(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			@PathVariable AKey id) {
 
-		if (!heMayReadThisTeamsQueue(asking, id.value())) {
+		/* The clock is read once, for the door and for the queue behind it. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
+		if (!heMayReadThisTeamsQueue(asking, id.value(), now)) {
 			throw nothingIsHere();
 		}
 
-		ZonedDateTime now = ZonedDateTime.now(clock);
-
-		return ResponseEntity.ok(waitingOn(id.value()).stream()
+		return ResponseEntity.ok(waitingOn(id.value(), now).stream()
 				/* THE DECISION OF 06.09.2026, asked of the record through the one object that
 				   owns the rule rather than folded into the statement above. */
 				.filter(one -> !alreadyInATeam.standsInHisWay(one.applicant(), now))
@@ -219,11 +220,14 @@ class TeamJoiningApi {
 	ResponseEntity<?> invitations(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			@PathVariable AKey id) {
 
-		if (!heMayReadThisTeamsQueue(asking, id.value())) {
+		/* The clock is read once, for the door and for the invitations behind it. */
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
+		if (!heMayReadThisTeamsQueue(asking, id.value(), now)) {
 			throw nothingIsHere();
 		}
 
-		return ResponseEntity.ok(sentBy(id.value()));
+		return ResponseEntity.ok(sentBy(id.value(), now));
 	}
 
 	/**
@@ -239,7 +243,7 @@ class TeamJoiningApi {
 	 * for every number he tried, and „empty" and „no such team" would be one answer - the
 	 * difference {@link TeamJoiningWriteApi} keeps by joining {@code team} from the path.
 	 */
-	private boolean heMayReadThisTeamsQueue(WhoIsAsking.Member asking, long team) {
+	private boolean heMayReadThisTeamsQueue(WhoIsAsking.Member asking, long team, ZonedDateTime now) {
 		if (!thisTeamExists(team)) {
 			return false;
 		}
@@ -250,7 +254,7 @@ class TeamJoiningApi {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
-		return me != null && heAdministersThisTeam(me, team);
+		return me != null && heAdministersThisTeam(me, team, now);
 	}
 
 	private boolean thisTeamExists(long team) {
@@ -267,8 +271,8 @@ class TeamJoiningApi {
 	 * of them fails. A seat naming somebody who has left or whose fee has lapsed simply
 	 * misses it and the title passes on, which is PDL P13's „Isto kao kad je otisao".
 	 */
-	private boolean heAdministersThisTeam(long me, long team) {
-		return db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
+	private boolean heAdministersThisTeam(long me, long team, ZonedDateTime now) {
+		return db.sql("with standing as (" + TeamApi.whoStandsInATeam(now) + ")"
 						+ " select coalesce(" + TeamApi.WHO_ADMINISTERS_IT + " = ?, false)"
 						+ " from team t where t.id = ?")
 				.params(me, team)
@@ -293,16 +297,16 @@ class TeamJoiningApi {
 	 * EVERY APPLICATION ADDRESSED TO THIS TEAM AND TO NO OTHER, from somebody who is still a
 	 * member.
 	 *
-	 * <p>{@code c.active} is the condition {@code applicationHeMayDecide} carries, repeated
+	 * <p>{@link AMemberIsActive} is the condition {@code applicationHeMayDecide} carries, repeated
 	 * here so that this list and that refusal name one set. The team is bound from the path
 	 * and the row must agree with it, which is what makes the answer a claim about the table
 	 * rather than an echo of the address.
 	 */
-	private List<Awaited> waitingOn(long team) {
+	private List<Awaited> waitingOn(long team, ZonedDateTime now) {
 		return db.sql("select a.id, a.competitor_id, c.member_number, a.asked_at"
 						+ " from team_application a"
 						+ " join competitor c on c.id = a.competitor_id"
-						+ " where a.team_id = ? and c.active"
+						+ " where a.team_id = ? and " + AMemberIsActive.of("c.id", now)
 						+ " order by a.asked_at, a.id")
 				.param(team)
 				.query((row, n) -> new Awaited(row.getLong(1), row.getLong(2), row.getString(3),
@@ -330,9 +334,9 @@ class TeamJoiningApi {
 	 * <p>The {@code case} is the lapsed fee, and the class note has the whole of why the row
 	 * stays while the name goes.
 	 */
-	private List<Invitation> sentBy(long team) {
+	private List<Invitation> sentBy(long team, ZonedDateTime now) {
 		return db.sql("select i.id,"
-						+ " case when c.active then c.member_number end,"
+						+ " case when " + AMemberIsActive.of("c.id", now) + " then c.member_number end,"
 						+ " i.sent_at"
 						+ " from team_invitation i"
 						+ " join competitor c on c.id = i.competitor_id"

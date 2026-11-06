@@ -259,14 +259,18 @@ class TheCategoryOfEachSeasonTest {
 	}
 
 	/**
-	 * A MEMBER ON THE LIST WITH NO ROW OF EITHER SEASON, which the list itself treats as somebody whose fee
-	 * stands: his card speaks of the running season (my derivation from the decision, which names the two
-	 * seasons he may hold and not this), and he stands in no table, so no season is on his list.
+	 * A MEMBER WITH NO ROW OF EITHER SEASON IS NOT ON THE LIST AT ALL. Until AF-1 the list was the flag, so he
+	 * was on it and carded for the running season; since AF-1 being on it is holding a season that counts (PDL
+	 * 13.09.2026, „aktivan je onaj ko ima zapis za tekuću sezonu, a u prelaznom roku i onaj ko ga ima za
+	 * narednu"), so there is no card of his to read, whatever his flag says.
 	 */
 	@Test
-	void aMemberWhoHoldsNeitherSeasonIsCardedForTheRunningOneAndStandsInNoTable() throws Exception {
-		assertThat(card(HOLDS_NEITHER)).isEqualTo("2027 25-39 age");
-		assertThat(seasonsOf(recordOf(null, HOLDS_NEITHER))).isEmpty();
+	void aMemberWhoHoldsNeitherSeasonIsNotOnTheList() throws Exception {
+		assertThat(StreamSupport.stream(mapper.readTree(whole("/api/competitors", null)).spliterator(), false)
+				.map(one -> one.path("memberNumber").asString()).toList())
+				.as("a member who holds no season that counts is on the public list")
+				.doesNotContain(HOLDS_NEITHER)
+				.contains(ONLY_RUNNING);
 	}
 
 	@Test

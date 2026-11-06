@@ -4,6 +4,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Clock;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
 
@@ -100,8 +102,8 @@ import java.util.List;
  * half it was.</b> „Par se raskida kad jedna strana ne produzi clanarinu" (PDL,
  * 11.08.2026, the owner in four words: „Ne postoji par onda, raskida se."). What
  * is NOT true, and was written here until 13.09.2026, is that the ending takes
- * the row with it. A fee that lapses DELETES NOBODY: it lowers
- * {@code competitor.active}, and the row in {@code racing_pair} is untouched.
+ * the row with it. A fee that lapses DELETES NOBODY: the member stops being active
+ * ({@link AMemberIsActive}), and the row in {@code racing_pair} is untouched.
  * (Deleting the person is a different door and it does take the pair along, since
  * V12 writes both of its keys {@code on delete cascade}; that door is not this
  * one.) The row stays and this reader is the only thing between a pair that does
@@ -147,8 +149,11 @@ class PairApi {
 
 	private final JdbcClient db;
 
-	PairApi(JdbcClient db) {
+	private final Clock clock;
+
+	PairApi(JdbcClient db, Clock clock) {
 		this.db = db;
+		this.clock = clock;
 	}
 
 	/**
@@ -160,6 +165,8 @@ class PairApi {
 
 	@GetMapping("/api/pairs")
 	List<RacingPair> pairs() {
+		ZonedDateTime now = ZonedDateTime.now(clock);
+
 		return db.sql("select p.id, p.season, man.member_number, woman.member_number"
 						+ " from racing_pair p"
 						/* Joined on the key alone. The pair of columns (man_id, man_gender) is
@@ -179,7 +186,7 @@ class PairApi {
 						   here and not there says why, through the DIFFERENCE between two
 						   answers rather than through any one field. Both halves, because
 						   either of them can be the one who did not renew. */
-						+ " where man.active and woman.active"
+						+ " where " + AMemberIsActive.of("man.id", now) + " and " + AMemberIsActive.of("woman.id", now)
 						+ " order by p.season, man.member_number, p.id")
 				.query((row, one) -> new RacingPair(row.getLong(1), row.getInt(2),
 						/* Not `List.of`: a member number is nullable since V16 and `List.of`

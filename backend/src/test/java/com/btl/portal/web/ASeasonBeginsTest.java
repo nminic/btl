@@ -202,12 +202,14 @@ class ASeasonBeginsTest {
 		long sedmi = team("sedmi-tim", "Sedmi tim", mile);
 		in(mile, sedmi, 2028, null);
 
-		/* A SEAT NAMING A MEMBER WHO NO LONGER STANDS IN IT: Tara's flag went off before the turn, so the
-		   seat is Uros's already and does not move, and the column must stop naming her all the same. */
+		/* A SEAT NAMING A MEMBER WHO NO LONGER STANDS IN IT: Tara's season 2027 was cancelled before the turn,
+		   so she holds no season, the seat is Uros's already and does not move, and the column must stop naming
+		   her all the same. Her flag is left TRUE on purpose: since AF-1 nothing reads it, and a seat read off
+		   the flag would still be hers. */
 		long deveti = team("deveti-tim", "Deveti tim", tara);
 		in(tara, deveti, 2027, null);
 		in(uros, deveti, 2027, null);
-		db.sql("update competitor set active = false where id = ?").param(tara).update();
+		db.sql("delete from membership where competitor_id = ?").param(tara).update();
 
 		pair(SEASON, aca, vesna);
 		pair(SEASON, vlada, eva);
@@ -327,13 +329,13 @@ class ASeasonBeginsTest {
 		long osmi = team("osmi-tim", "Osmi tim", zora);
 		in(zora, osmi, 2027, null);
 
-		begins.cancelled(zora, SEASON, at(2028, 1, 1, 15, 59));
+		begins.cancelled(zora, SEASON, at(2028, 1, 1, 15, 59), begins.before(zora, SEASON, at(2028, 1, 1, 15, 59)));
 
 		assertThat(memberships()).contains("Zora Osmi tim 2027 -");
 		assertThat(teams()).contains("Osmi tim Zora");
 
-		begins.cancelled(ceca, SEASON, at(2028, 2, 10, 9, 0));
-		begins.cancelled(zora, SEASON, at(2028, 2, 10, 9, 0));
+		begins.cancelled(ceca, SEASON, at(2028, 2, 10, 9, 0), begins.before(ceca, SEASON, at(2028, 2, 10, 9, 0)));
+		begins.cancelled(zora, SEASON, at(2028, 2, 10, 9, 0), begins.before(zora, SEASON, at(2028, 2, 10, 9, 0)));
 
 		assertThat(memberships()).contains("Ceca Prvi tim" + " 2027 2027 " + Membership.THE_FEE_LAPSED,
 				"Boban Prvi tim 2027 -");
@@ -360,8 +362,8 @@ class ASeasonBeginsTest {
 		List<String> pairs = pairs();
 		List<String> messages = messages();
 
-		begins.cancelled(aca, 2027, at(2027, 2, 10, 9, 0));
-		begins.cancelled(aca, 2027, at(2028, 2, 10, 9, 0));
+		begins.cancelled(aca, 2027, at(2027, 2, 10, 9, 0), begins.before(aca, 2027, at(2027, 2, 10, 9, 0)));
+		begins.cancelled(aca, 2027, at(2028, 2, 10, 9, 0), begins.before(aca, 2027, at(2028, 2, 10, 9, 0)));
 
 		assertThat(memberships()).isEqualTo(memberships);
 		assertThat(teams()).isEqualTo(teams);

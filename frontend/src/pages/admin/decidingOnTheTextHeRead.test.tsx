@@ -118,7 +118,7 @@ describe('what a decision about a text names', () => {
     const { asked, stop } = serverThat((path) =>
       path === '/api/verification'
         ? asTheList([neda(), mira()])
-        : path === decisionPath('21')
+        : path === decisionPath('23')
           ? did()
           : null,
     )
@@ -129,17 +129,23 @@ describe('what a decision about a text names', () => {
       openQueue()
       await screen.findByRole('list', { name: /Čeka/ })
 
-      await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odbij' }))
+      await user.click(cardOf('Mira Mirić').getByRole('button', { name: 'Odbij' }))
       await user.type(screen.getByLabelText('Razlog odbijanja'), 'Prekratko.')
       await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
 
-      const sent = asked.find((one) => one.path === decisionPath('21'))
+      const sent = asked.filter((one) => one.path.endsWith('/decision'))
 
-      expect(JSON.parse(String(sent?.init?.body))).toEqual({
-        approved: false,
-        reason: 'Prekratko.',
-        seenText: NEDA_WORDS,
-      })
+      /* The SECOND card of the list, so that the words of the card and the words of the first
+         biography on the list are two different strings, and the one decision on the wire, to the
+         address of the second (review of PR 560, medium): rejected on the first card, a box that sent
+         the words of the first biography instead of the words of the card it was opened on was the
+         same request and passed. */
+      expect(sent.map((one) => ({ path: one.path, body: JSON.parse(String(one.init?.body)) }))).toEqual([
+        {
+          path: decisionPath('23'),
+          body: { approved: false, reason: 'Prekratko.', seenText: MIRA_WORDS },
+        },
+      ])
     } finally {
       stop()
     }

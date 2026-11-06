@@ -82,7 +82,10 @@ function served(): EventComment[] {
  * A server holding the comments, which answers the deletion with `status` and, from then on, serves the
  * comments without what that deletion took: every rating of his of the event, as `CommentWriteApi` does.
  */
-function holding(comments: EventComment[], status = 204): { asked: Asked[]; stop: () => void } {
+function holding(
+  comments: EventComment[],
+  status: number | 'broken' = 204,
+): { asked: Asked[]; stop: () => void } {
   let now = comments
 
   return serverThat((path, init) => {
@@ -91,6 +94,11 @@ function holding(comments: EventComment[], status = 204): { asked: Asked[]; stop
     }
 
     if (init?.method === 'DELETE' && path.startsWith('/api/comments/')) {
+      /* The request that never gets an answer: the connection breaks, which `fetch` says by rejecting. */
+      if (status === 'broken') {
+        return Promise.reject(new TypeError('Failed to fetch'))
+      }
+
       const named = now.find((one) => `/api/comments/${String(one.id)}` === path)
 
       if (named !== undefined && (status === 204 || status === 404)) {
@@ -223,7 +231,7 @@ describe('the form the pencil opens', () => {
 })
 
 describe('the deletion', () => {
-  async function deleted(status: number) {
+  async function deleted(status: number | 'broken') {
     server = holding(served(), status)
 
     const user = setupUser()
@@ -311,6 +319,20 @@ describe('the deletion', () => {
 
     expect(screen.queryByRole('alert')).toBeNull()
     expect(screen.queryByText(/Server je odgovorio brojem 404/)).toBeNull()
+  }, LONGER_THAN_A_MISS)
+
+  it('says the own words of the portal beside his rating, which stays, when the request gets no answer at all', async () => {
+    /* A broken connection is not a 404 and not a number (review of PR 590, medium): a screen that
+       swallowed it said nothing and drew the page as if the deletion had gone through or had never been
+       asked, and nothing held the sentence that is said instead. */
+    const { list } = await deleted('broken')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(sr.server.nothing)
+    expect(within(list).getByText(HIS.body)).toBeInTheDocument()
+    expect(screen.queryByText(sr.event.ratingGone)).toBeNull()
+    expect(
+      (server?.asked ?? []).filter((one) => one.init?.method === 'DELETE').map((one) => one.path),
+    ).toEqual([`/api/comments/${String(HIS.id)}`])
   }, LONGER_THAN_A_MISS)
 
   it('says any other answer beside his rating, which stays', async () => {

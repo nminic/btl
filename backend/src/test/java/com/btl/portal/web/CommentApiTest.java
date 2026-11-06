@@ -23,6 +23,7 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -273,8 +274,8 @@ class CommentApiTest {
 		   UTC is half past midnight in Belgrade, so this comment went out on the 31st in the
 		   league's own time and the column says the 30th. */
 		comment("Lukic", "fruskogorski-maraton-2010", "2010-05-30 22:30:00+00", 4, 3, 5, "");
-		/* SHE DID NOT RENEW, and the row is still here: a fee that lapses lowers `active` and
-		   deletes nobody. */
+		/* SHE DID NOT RENEW, and the row is still here: a fee that lapses leaves her without a season
+		   that counts and deletes nobody. */
 		comment("Peric", "ironman-st-polten-2010", "2010-05-15 08:00:00+00", 3, 4, 4,
 				"Startni paket ne opravdava kotizaciju.");
 		/* AND THIS ONE'S AUTHOR IS GONE FROM THE RECORD, which is what the tombstone is for. */
@@ -316,11 +317,11 @@ class CommentApiTest {
 		account(A_MEMBER, "competitor");
 		belongsTo(A_MEMBER, READING_MEMBER);
 
-		/* A ROW OF membership IS NOT THE FACT BEING ASKED: this reader holds one and is not active,
-		   and the reading member above holds none, so reading „has he a membership row", for any
-		   season, answers both of them the wrong way round. */
+		/* A ROW OF ANOTHER SEASON IS NOT THE FACT BEING ASKED: this reader holds a row of 2028, which
+		   does not count today, and is not active, so reading „has he a membership row", for any season,
+		   answers him the wrong way round; and his flag says active (see `member`). */
 		member("'" + LAPSED_READERS_NUMBER + "'", "Istekao", "Clanarinic", "M", false);
-		exemptFor(LAPSED_READERS_NUMBER, 2027);
+		exemptFor(LAPSED_READERS_NUMBER, 2028);
 		account(LAPSED_READER, "competitor");
 		belongsTo(LAPSED_READER, LAPSED_READERS_NUMBER);
 
@@ -399,11 +400,15 @@ class CommentApiTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, "
+						+ " (select id from place where rank = 1), 2027, false, "
 						+ " ?, 'Trcim skriveno.', true, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, first, last, String.format("%016x", ++issued))
 				.update();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written false on purpose: since AF-1
+		   nothing reads it, and a reader that did would turn him away. */
+		HeldOn.activeAt(db, number, ZonedDateTime.now());
 	}
 
 	private void event(String slug, String day) {
@@ -428,8 +433,15 @@ class CommentApiTest {
 						+ " (select id from place where rank = 1), 2027, ?, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(first, last, gender, feeStanding, String.format("%016x", ++issued))
+				.params(first, last, gender, !feeStanding, String.format("%016x", ++issued))
 				.update();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written AGAINST it on purpose:
+		   since AF-1 nothing reads it, so a member in good standing carries false and one whose fee
+		   does not stand carries true, and a reader of the flag would answer every case the other way. */
+		if (feeStanding) {
+			HeldOn.activeAt(db, number.replace("'", ""), ZonedDateTime.now());
+		}
 	}
 
 	/** By surname, and the name written on the comment is the author's own. */
@@ -776,17 +788,18 @@ class CommentApiTest {
 	 */
 	@Test
 	void theReadersAreWhatTheyAreCalled() {
-		String rowAndFlag = "select c.active, (select count(*) from membership m where m.competitor_id = c.id)"
+		String rowAndFlag = "select c.active, (select string_agg(m.season::text, ',') from membership m"
+				+ " where m.competitor_id = c.id)"
 				+ " from account a join competitor c on c.id = a.competitor_id where a.email = ?";
 
 		assertThat(facts(rowAndFlag, LAPSED_READER))
-				.as("the lapsed reader is active, or holds no membership row, so the fact and the row"
-						+ " cannot be told apart by him")
-				.isEqualTo("false 1");
+				.as("the lapsed reader does not carry the flag true and a row of 2028 alone, so neither the"
+						+ " flag nor a row of another season can be told from the season that counts by him")
+				.isEqualTo("true 2028");
 		assertThat(facts(rowAndFlag, A_MEMBER))
-				.as("the reading member is not active, or holds a membership row, so the lapsed"
-						+ " reader's row is not the only difference between the two")
-				.isEqualTo("true 0");
+				.as("the reading member does not carry the flag false and the season that counts, so the"
+						+ " lapsed reader's season is not the only difference between the two")
+				.isEqualTo("false 2027");
 		assertThat(facts("select c.member_number is null, c.active"
 				+ " from account a join competitor c on c.id = a.competitor_id where a.email = ?", NEVER_PAID))
 				.as("the registrant has a number or is active")
@@ -800,17 +813,18 @@ class CommentApiTest {
 				.as("a moderator of the fixture holds a box, so he would not be the administration for"
 						+ " being a moderator alone")
 				.isEqualTo("0");
-		assertThat(facts("select c.active from account a join competitor c on c.id = a.competitor_id"
-				+ " where a.email = ?", MODERATOR_LAPSED))
-				.as("the moderator whose fee has lapsed is active")
-				.isEqualTo("false");
+		assertThat(facts("select count(m.season) from account a join competitor c on c.id = a.competitor_id"
+				+ " left join membership m on m.competitor_id = c.id where a.email = ?", MODERATOR_LAPSED))
+				.as("the moderator whose fee has lapsed holds a season")
+				.isEqualTo("0");
 		assertThat(facts("select r.code = 'competitor' and a.competitor_id is null"
 				+ " and a.email_confirmed_at is not null from account a join role r on r.id = a.role_id"
 				+ " where a.email = ?", NAMED_BY_AN_ADDRESS))
 				.as("the named superadmin's row is not a confirmed competitor with no member, so the role"
 						+ " decided for the request cannot be told from the row's")
 				.isEqualTo("true");
-		assertThat(facts("select c.profile_hidden, c.active from account a join competitor c"
+		assertThat(facts("select c.profile_hidden, exists(select 1 from membership m where m.competitor_id = c.id"
+				+ " and m.season = 2027) from account a join competitor c"
 				+ " on c.id = a.competitor_id where a.email = ?", THE_ONE_WHO_HIDES))
 				.as("the hiding reader does not hide, or is not active")
 				.isEqualTo("true true");
@@ -832,8 +846,10 @@ class CommentApiTest {
 	 * text is asked for as TEXT, over every comment of the fixture, after the case has asked the
 	 * database that the comments really are there to be withheld.
 	 *
-	 * <p><b>The anchor is an active member who holds no membership row</b> and is served, so what
-	 * tells the two sides apart is {@code competitor.active} and not whether a season's row exists.
+	 * <p><b>The anchor is an active member whose flag says inactive</b> and is served, and the lapsed
+	 * reader's flag says active and he holds a row of a season that does not count, so what tells the
+	 * two sides apart is the season that counts ({@link AMemberIsActive}), and neither the flag nor
+	 * whether some row exists.
 	 */
 	@Test
 	void somebodySignedInWhoIsNotAnActiveMemberIsToldTheCommentsAreNotThere() throws Exception {
@@ -857,8 +873,8 @@ class CommentApiTest {
 		}
 
 		assertThat(answerTo(A_MEMBER).getStatus())
-				.as("an active member with no membership row was refused, so the refusals above are"
-						+ " about a row and not about the fee")
+				.as("an active member whose flag says inactive was refused, so the refusals above are"
+						+ " about the flag and not about the season")
 				.isEqualTo(200);
 	}
 
@@ -871,7 +887,7 @@ class CommentApiTest {
 	 * P23, 03.10.2026) is that a member who does not renew stops seeing what is for members until
 	 * he pays. One session cookie throughout and one column changed between the requests, so what
 	 * answers differently is the fact and not the account, the cookie or a session somebody kept:
-	 * every request asks {@code competitor.active} afresh.
+	 * every request asks his seasons afresh ({@link AMemberIsActive}).
 	 */
 	@Test
 	void aReaderWhoseFeeLapsesIsRefusedAtOnceAndServedAgainWhenItIsRestored() throws Exception {
@@ -879,13 +895,14 @@ class CommentApiTest {
 				.as("the member is refused while his fee stands")
 				.isEqualTo(200);
 
-		db.sql("update competitor set active = false where member_number = ?").param(READING_MEMBER).update();
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
+				.param(READING_MEMBER).update();
 
 		assertThat(answerTo(A_MEMBER).getStatus())
 				.as("a member whose fee lapsed a moment ago is still served the comments")
 				.isEqualTo(404);
 
-		db.sql("update competitor set active = true where member_number = ?").param(READING_MEMBER).update();
+		HeldOn.activeAt(db, READING_MEMBER, ZonedDateTime.now());
 
 		assertThat(answerTo(A_MEMBER).getStatus())
 				.as("the member is not served the comments again once his fee stands")
@@ -1276,7 +1293,8 @@ class CommentApiTest {
 	 */
 	@Test
 	void aCommentOfAMemberWhoDidNotRenewIsAnsweredWithoutHisNumber() throws Exception {
-		assertThat(db.sql("select c.member_number from competitor c where not c.active"
+		assertThat(db.sql("select c.member_number from competitor c"
+				+ " where not exists(select 1 from membership m where m.competitor_id = c.id)"
 				+ " and exists (select 1 from event_comment k where k.competitor_id = c.id)")
 				.query(String.class).list())
 				.as("nobody who wrote a comment in the fixture let the fee lapse, so whatever is"
