@@ -805,7 +805,8 @@
       "label": "Delovi profila",
       "overview": "Rezultati",
       "awards": "Priznanja",
-      "data": "Podaci"
+      "data": "Podaci",
+      "finish": "Dovrši profil"
     },
     "moreDucats": "Učitaj još dukata",
     "showingDucats": "Prikazano {shown} od {total}",
@@ -1175,6 +1176,7 @@
     "letMeIn": "Aktiviraj članstvo",
     "letIn": "Članstvo za sezonu {season} je aktivirano.",
     "letInNumber": "Tvoj članski broj je {number}.",
+    "letInBoxes": "Dodaj profilnu sliku i tekst o sebi",
     "letInAlready": "Članstvo za ovu sezonu je već aktivirano.",
     "letInNothingToPay": "Za ovu sezonu nemaš članarinu za plaćanje.",
     "letInNotEnough": "Balans više ne pokriva celu članarinu, pa su ispod podaci za uplatu ostatka.",
@@ -1866,6 +1868,15 @@
       "thisIsNotAPicture": "Ovaj fajl nije slika, kako se god zove. Pošalji fotografiju, na primer u JPG ili PNG obliku.",
       "theCropIsNotACircle": "Isečak nije ispravan. Namesti krug ponovo i pošalji."
     }
+  },
+  "theirBoxes": {
+    "pictureStanding": "Ovo je slika koja je sada na profilu člana.",
+    "pictureNone": "Član još nema sliku na profilu.",
+    "atOnce": "Izmena odmah stoji na profilu člana, bez odobrenja, a član dobija poruku u sanduče.",
+    "currentAlt": "Slika člana, sa uokvirenim delom koji se vidi",
+    "pictureSave": "Sačuvaj sliku",
+    "wordsSave": "Sačuvaj tekst",
+    "saved": "Sačuvano. Izmena već stoji na profilu i član je dobio poruku."
   },
   "account": {
     "personalTitle": "Lični podaci",

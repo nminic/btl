@@ -256,46 +256,44 @@ describe('the settings of an administration account with no member', () => {
 
 describe('the settings of a member whose fee stands', () => {
   /* 000001 is freed of the fee in the generated data and stands. The anchor of the other two:
-     everything is drawn, in the order it was always drawn in. */
-  it('draws every panel there is', async () => {
+     everything the settings of an account hold is drawn. NOT his picture and his words about himself,
+     since 06.11.2026: they are on the card „Podaci" of his profile (owner, PDL „Boksovi „Profilna slika"
+     i „Tekst o sebi" prelaze sa Podešavanja": „Podešavanja ostaju podešavanja naloga (lozinka,
+     privatnost, tema, jezik pošte)"). Asked after the privacy is drawn, which comes off the same list the
+     two were drawn from, so their absence is not a screen that has not arrived yet. */
+  it('draws every panel of the account, and not the picture or the words about himself', async () => {
     renderAt('/sr/podesavanja', 'competitor', '000001')
 
     await drawn()
 
-    for (const panel of [PANELS.picture, PANELS.biography, PANELS.password, PANELS.privacy]) {
+    for (const panel of [PANELS.password, PANELS.privacy]) {
       expect(await screen.findByRole('heading', { name: panel }), panel).toBeVisible()
     }
 
     expect(screen.queryByRole('heading', { name: PANELS.data })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: PANELS.picture })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: PANELS.biography })).not.toBeInTheDocument()
 
     expect(screen.getByRole('checkbox')).toBeVisible()
     /* Nothing to be told: his fee stands, so nothing is waiting on a renewal. */
     expectNoSentenceAboutRenewal()
   }, SLOW)
 
-  /* THREE ROWS OF TWO, IN THE OWNER'S ORDER (PDL 22.10.2026, „Strana Podešavanja u tri visoka reda sa
-     dve kolone"): the password and who sees the profile, the picture and the words about himself, the
-     theme and the language of the mail. And the personal data are not among them, for him either: they
-     are on the card „Podaci" of his profile. */
-  it('draws them in three rows, the password and the privacy, the picture and the words, the theme and the mail', async () => {
+  /* TWO ROWS OF TWO, IN THE OWNER'S ORDER: the password and who sees the profile, then the theme and the
+     language of the mail. The row of the picture and the words between them (PDL 22.10.2026, „Strana
+     Podešavanja u tri visoka reda sa dve kolone") moved to the card „Podaci" on 06.11.2026, and the personal
+     data are not here either: they are on the same card. */
+  it('draws them in two rows, the password and the privacy, the theme and the mail', async () => {
     renderAt('/sr/podesavanja', 'competitor', '000001')
 
     await drawn()
     await screen.findByRole('heading', { level: 2, name: PANELS.privacy })
-    await screen.findByRole('heading', { level: 2, name: PANELS.biography })
 
     expect(
       within(screen.getByRole('main'))
         .getAllByRole('heading', { level: 2 })
         .map((one) => one.textContent),
-    ).toEqual([
-      PANELS.password,
-      PANELS.privacy,
-      PANELS.picture,
-      PANELS.biography,
-      PANELS.appearance,
-      PANELS.mail,
-    ])
+    ).toEqual([PANELS.password, PANELS.privacy, PANELS.appearance, PANELS.mail])
   }, SLOW)
 })
 
@@ -321,22 +319,19 @@ describe('which panels of the settings stand beside which', () => {
   const panelsIn = (pair: Element | null): (string | null)[] =>
     [...(pair?.querySelectorAll(':scope > section > h2') ?? [])].map((one) => one.textContent)
 
-  it('puts the password beside the privacy, the picture beside the words, and the theme beside the mail, for a member whose fee stands', async () => {
+  it('puts the password beside the privacy and the theme beside the mail, for a member whose fee stands', async () => {
     renderAt('/sr/podesavanja', 'competitor', '000001')
 
     await drawn()
     await screen.findByRole('heading', { level: 2, name: PANELS.privacy })
-    await screen.findByRole('heading', { level: 2, name: PANELS.biography })
 
     expect(panelsIn(pairOf(PANELS.password))).toEqual([PANELS.password, PANELS.privacy])
-    expect(panelsIn(pairOf(PANELS.picture))).toEqual([PANELS.picture, PANELS.biography])
     expect(panelsIn(pairOf(PANELS.appearance))).toEqual([PANELS.appearance, PANELS.mail])
-    expect(new Set([pairOf(PANELS.password), pairOf(PANELS.picture), pairOf(PANELS.appearance)]).size,
-      'the three rows are three').toBe(3)
+    expect(new Set([pairOf(PANELS.password), pairOf(PANELS.appearance)]).size, 'the two rows are two').toBe(2)
 
     /* And every pair is one of the tall rows (`.member__row`), whose two boxes are as tall as each
        other (`Member.css`). */
-    for (const panel of [PANELS.password, PANELS.picture, PANELS.appearance]) {
+    for (const panel of [PANELS.password, PANELS.appearance]) {
       expect(pairOf(panel), panel).toHaveClass('member__row')
       /* Two boxes and nothing else, so nothing a panel draws beside itself takes a cell of the row. */
       expect(pairOf(panel)?.children, panel).toHaveLength(2)

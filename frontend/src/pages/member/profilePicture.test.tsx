@@ -98,7 +98,7 @@ describe('the picture on a profile, changed later', () => {
       )
       const user = setupUser()
 
-      renderAt('/sr/podesavanja', 'competitor', '000007')
+      renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
       const panel = await panelFor()
       const send = await panel.findByRole('button', { name: 'Pošalji na odobrenje' })
@@ -226,7 +226,7 @@ describe('the picture on a profile, changed later', () => {
     }
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', waiting.memberNumber)
+      renderAt(`/sr/takmicar/${waiting.memberNumber}/podaci`, 'competitor', waiting.memberNumber)
 
       await panelFor()
 
@@ -271,7 +271,7 @@ describe('the picture on a profile, changed later', () => {
         : null,
     )
     const user = setupUser()
-    const { router } = renderAt('/sr/podesavanja', 'superadmin', '000007')
+    const { router } = renderAt(`/sr/takmicar/${'000007'}/podaci`, 'superadmin', '000007')
 
     const panel = await panelFor()
 
@@ -322,7 +322,7 @@ describe('the picture on a profile, changed later', () => {
     )
     const user = setupUser()
 
-    renderAt('/sr/podesavanja', 'competitor', '000007')
+    renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
     const panel = await panelFor()
 
@@ -373,23 +373,11 @@ describe('the picture on a profile, changed later', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
-    await router.navigate('/sr/podesavanja')
+    await router.navigate('/sr/takmicar/000002/podaci')
 
     const panel = await panelFor()
 
     expect(await panel.findByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
-  })
-
-  it('draws no picture panel for a number the member list does not hold', async () => {
-    /* A number handed out during this visit is not in the file the list is read
-       from, and after the database arrives the two can be a moment apart for a
-       hundred other reasons. The rest of the settings still work; there is
-       simply no face to change. */
-    renderAt('/sr/podesavanja', 'competitor', '999999')
-
-    expect(await screen.findByRole('heading', { name: 'Podešavanja' })).toBeVisible()
-    expect(screen.queryByRole('region', { name: 'Profilna slika' })).not.toBeInTheDocument()
-    expect(screen.getByRole('group', { name: 'Tema' })).toBeVisible()
   })
 
   /* BOTH STATES OF THE ONE FACT THIS PANEL READS OFF THE MEMBER'S OWN RECORD, since
@@ -412,7 +400,7 @@ describe('the picture on a profile, changed later', () => {
     )
 
     try {
-      const { unmount } = renderAt('/sr/podesavanja', 'competitor', '000007')
+      const { unmount } = renderAt(`/sr/takmicar/${'000007'}/podaci`, 'competitor', '000007')
 
       expect(await (await panelFor()).findByText(sr.picture.none)).toBeVisible()
 
@@ -439,7 +427,7 @@ describe('the picture on a profile, changed later', () => {
     )
 
     try {
-      renderAt('/sr/podesavanja', 'competitor', '000003')
+      renderAt(`/sr/takmicar/${'000003'}/podaci`, 'competitor', '000003')
 
       const mine = await panelFor()
 
