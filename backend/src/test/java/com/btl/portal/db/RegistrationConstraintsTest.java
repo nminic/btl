@@ -239,6 +239,11 @@ class RegistrationConstraintsTest extends DatabaseTest {
 				Violation.notNull("photo_uploaded_at_not_null", "uploaded_at",
 						"insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter, uploaded_at)"
 								+ " values ('image/jpeg', 40960, '" + A_DIGEST + "', 0.25, 0.75, 0.5, null)"),
+				/* V88. A row says whether it may still carry metadata, or the clean-up cannot tell. */
+				Violation.notNull("photo_may_carry_metadata_not_null", "may_carry_metadata",
+						"insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter,"
+								+ " may_carry_metadata) values ('image/jpeg', 40960, '" + A_DIGEST + "', 0.25, 0.75,"
+								+ " 0.5, null)"),
 				Violation.notNull("competitor_document_written_at_not_null", "written_at",
 						"insert into competitor_document (competitor_id, document_number, written_at) values ("
 								+ OTHER_COMPETITOR + ", 'KL1112223', null)"));
