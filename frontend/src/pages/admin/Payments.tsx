@@ -1066,10 +1066,10 @@ export function Payments() {
       onActivated={() => {
         /* EIGHT NAMES, ONE LIST (`whatActiveMoves.ts`, shared with `admin/AdminMembers.tsx`), and the
            five after the first three were left off until the class of PENDING 29656 was measured here: an
-           activation sets `competitor.active`, so `attendance`, `comments`, `pairs`, `teams` and
-           `results` (every route that reads the flag) say the man is still outside the league. The
+           activation books a season, so `attendance`, `comments`, `pairs`, `teams` and
+           `results` (every route that asks whether a member is active) say the man is still outside the league. The
            first three are not tidiness either. An activation draws a member
-           number and sets `competitor.active`, and the moderation of the members
+           number and books a season, and the moderation of the members
            (`admin/AdminMembers.tsx`) reads that fact twice: the rows are `members`, which carry
            `active`, the seasons he holds and the basis of the one on sale, and the link to a
            profile is `competitors`, the public list that answers only the members whose fee

@@ -376,25 +376,25 @@ class VerificationApiTest {
 	 *                    {@code /api/pairs}, and deliberately NOT read by this resource.
 	 */
 	private void member(String number, String first, String last, boolean feeStanding) {
-		competitor(number, first, last, feeStanding);
+		competitor(number, first, last);
 	}
 
 	/** Somebody who has registered and whose fee is not recorded, so he has no number
 	 *  (V16: „A MEMBER is a row whose member_number is there"). */
 	private void registered(String first, String last) {
-		competitor(null, first, last, false);
+		competitor(null, first, last);
 	}
 
-	private void competitor(String number, String first, String last, boolean feeStanding) {
+	private void competitor(String number, String first, String last) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, 'F', date '1990-01-01',"
-						+ " " + EVERYBODYS_TOWN + ", 2027, ?, "
+						+ " " + EVERYBODYS_TOWN + ", 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				.params(number, first, last, feeStanding, String.format("%016x", ++issued))
+				.params(number, first, last, String.format("%016x", ++issued))
 				.update();
 	}
 
@@ -1572,7 +1572,7 @@ class VerificationApiTest {
 	 *
 	 * <p><b>There is no such subtraction here.</b> Nothing in this answer is public - the only
 	 * reader is the moderator holding that tab's tick - and the queue exists in order to be
-	 * worked: filtering on {@code competitor.active} would hide from a moderator exactly the
+	 * worked: filtering on whether he is active would hide from a moderator exactly the
 	 * work a lapsed membership creates, and would empty the payments tab, which is about
 	 * people whose fee is not recorded (PDL P28a, 22.09.2026, „Verifikacija ima pet redova",
 	 * „Uplate i aktivacija članova").
@@ -1583,11 +1583,12 @@ class VerificationApiTest {
 	 */
 	@Test
 	void anItemFromAMemberWhoseFeeHasLapsedIsServedLikeAnyOther() throws Exception {
-		assertThat(db.sql("select active from competitor where member_number = ?")
-						.param(LAPSED).query(Boolean.class).single())
-				.as("the member this case calls lapsed has a membership in good standing, so his"
+		assertThat(db.sql("select count(*) from membership m join competitor c on c.id = m.competitor_id"
+						+ " where c.member_number = ?")
+						.param(LAPSED).query(Long.class).single())
+				.as("the member this case calls lapsed holds a season, so his"
 						+ " item being served says nothing")
-				.isFalse();
+				.isZero();
 
 		assertThat(waitingIn(TWO_QUEUES, COMMENTS))
 				.as("an item sent in by a member whose fee has lapsed was dropped, and the work it"

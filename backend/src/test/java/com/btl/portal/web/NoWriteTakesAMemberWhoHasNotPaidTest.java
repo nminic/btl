@@ -390,8 +390,7 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 	 *
 	 * <p>The member whose fee lapsed holds a {@code membership} row for 2029, given free of the fee, a
 	 * season that does not count on this file's day (2027 and, in the window, 2028 do): a gate that read
-	 * „he has a membership row" would let him through. Every flag is written AGAINST the seasons (see
-	 * {@link #member}), so a gate that read the flag would answer every case the other way. The other member whose fee
+	 * „he has a membership row" would let him through. The other member whose fee
 	 * lapsed holds a number and no row at all, which is the one a gate that told him from somebody
 	 * who never paid BY A ROW would take for somebody who never paid. The moderator's own member
 	 * has not paid either, and the moderator holds no right: being the administration opens nothing a
@@ -1032,15 +1031,14 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 
 	private long member(String number, String gender, boolean active) {
 		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, first_season, active, "
+						+ " place_id, first_season, "
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', ?, date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, ?, "
+						+ " (select id from place where rank = 1), 2027, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it. */
-				.params(number, gender, !active, String.format("8b%014x", ++issued))
+				.params(number, gender, String.format("8b%014x", ++issued))
 				.query(Long.class).single();
 
 		/* A MEMBER WHOSE FEE STANDS HOLDS THE SEASONS THIS FILE RUNS IN, 2027 AND 2028. Entering a

@@ -1691,7 +1691,7 @@ describe('activating a membership from the payments screen', () => {
     /**
      * <p><b>AND EVERY OTHER CACHED ANSWER THAT READS `active` IS ASKED AGAIN, through both doors</b>
      * (the sibling of PENDING 29656, which `AdminMembers#seasonChanged` closed for a change of a
-     * season). An activation draws a number and sets `competitor.active`, so the public list, the
+     * season). An activation draws a number and books a season, so the public list, the
      * results, his team, his pair, the list of who is going and the author's number on a comment all
      * say something different about him afterwards. The names are the backend's own, read out of its
      * SQL (`test/readsTheFlag.ts`), not a list written here; `members` is added by name for the reason

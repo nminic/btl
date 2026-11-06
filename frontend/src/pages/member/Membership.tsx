@@ -92,7 +92,7 @@ function inTheirCurrency(
  * ONE STEP FURTHER ALONG.
  *
  * Owner, PDL P26a: „Licni link za preporuku se sklanja sa javne liste takmicara" i
- * ostaje samo na strani „Moja clanarina". The `where c.active` that had broken the
+ * ostaje samo na strani „Moja clanarina". The `AMemberIsActive` that had broken the
  * COUNTING broke the ANSWERING too: a member whose fee has lapsed has no row on that
  * list, so he reached neither field - and he is the one man V24 section 6 promises
  * the link to, on exactly this page, which is the page he opens to renew.
@@ -125,7 +125,7 @@ function inTheirCurrency(
  * alone.
  *
  * **What it was costing, measured before the decision rather than after:** this screen
- * looked the caller up in `/api/competitors`, that query ends `where c.active`, so the
+ * looked the caller up in `/api/competitors`, that query ends `AMemberIsActive`, so the
  * member whose fee had LAPSED found no row, and the screen he opens **in order to renew**
  * answered him „Ovog profila nema." He is not an edge of this page; he is what it is for.
  *
@@ -184,7 +184,7 @@ export function Membership() {
      The basis and the link are here because they have NO OTHER DOOR: P26a took the link
      off the public list outright, and the basis was never on it for a member. The
      country, the season and the team DO have another door, and are read here anyway
-     because that door answers `where c.active` - which is to say it answers everybody
+     because that door answers `AMemberIsActive` - which is to say it answers everybody
      except the one man this screen exists for (P8a). */
   const {
     myMembershipBasis,
@@ -209,7 +209,7 @@ export function Membership() {
      THREE RESOURCES AND NOT FOUR: the list of members was the fourth and is gone since
      25.09.2026 (P8a) - the caller's own row comes off `GET /api/me` through the session
      above, and it answers him whether or not his fee is standing, which `/api/competitors`
-     (`where c.active`) never did. `combineResources` is the same three-argument combiner
+     (`AMemberIsActive`) never did. `combineResources` is the same three-argument combiner
      this screen read the members list through until today, now pointed at the price list
      instead (`data/useResource.ts`). */
   const state = combineResources(useResults(), useTeams(), usePricing())
@@ -421,7 +421,7 @@ export function Membership() {
    * the only way to be standing here.
    *
    * **Who this used to be, and it is the whole reason P8a exists.** It read
-   * `competitors.find(...)` over `/api/competitors`, that query ends `where c.active`,
+   * `competitors.find(...)` over `/api/competitors`, that query ends `AMemberIsActive`,
    * so the man it turned away was the member WHOSE FEE HAD LAPSED - on the one page he
    * opens in order to pay it. First he met a bare `h1`; from 25.09.2026 a heading with a
    * way home; and neither is what he wanted, which was to renew. He does not reach this

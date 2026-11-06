@@ -99,7 +99,7 @@ import type { Place } from './places'
  * **WHY THE LAST TWO WENT, AND IT IS THE SAME MEASUREMENT TWICE.** `referredBy` could
  * not leave because it holds a KEY and never a code (V7), so the count was worked out on
  * the far side and the portal handed the number. That answer was still on a list ending
- * `where c.active`, so the member whose fee has LAPSED reached neither the link nor the
+ * `AMemberIsActive`, so the member whose fee has LAPSED reached neither the link nor the
  * count - and he is the one V24 section 6 promises them to. Owner, 25.09.2026 (PDL
  * P26a): the link „se sklanja sa javne liste takmicara" and stays only on „Moja
  * članarina". Both now come off `GET /api/me`, which answers one row and that row is his
@@ -1013,7 +1013,7 @@ describe('the answer the backend gives', () => {
          counted, and since 25.09.2026 it arrives through `/api/me`;
        - `referralCode`, which was answered on the caller's own row until 25.09.2026 and
          is on this list from that day, because the owner took it off the public list
-         altogether (PDL P26a) - the list ends `where c.active`, so the member whose fee
+         altogether (PDL P26a) - the list ends `AMemberIsActive`, so the member whose fee
          has lapsed, whom V24 section 6 promises it to, was answered nothing;
        - `membershipBasis`, which a member is not given even on his own row - the
          condition is the CALLER and never the row - and which reaches him through

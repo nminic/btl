@@ -99,12 +99,11 @@ import java.util.Set;
  *
  * <p><b>WHAT A CANCELLATION LEAVES</b>: the member's number (14.09.2026), his results (they stop
  * counting in that season and come back with a new membership, PDL P8, „Storno jedine sezone:
- * rezultati se ne brišu”), the referrer's reward, and the flag {@code active} as the rows that remain say it:
+ * rezultati se ne brišu”), and the referrer's reward. Whether he is active afterwards is what the rows that remain say:
  * „aktivan je onaj ko ima zapis za tekuću sezonu, a u prelaznom roku i onaj ko ga ima za narednu” (PDL
- * P8, 13.09.2026). It is never written {@code false} blindly: a member cancelled for next season who
- * holds the running one stays active. Since AF-1 the flag is only written; whether he is active is
- * {@link AMemberIsActive}, asked of the rows themselves, so the cancellation makes him inactive by
- * taking the row away.
+ * P8, 13.09.2026). A member cancelled for next season who holds the running one stays active. Nothing is
+ * written for it (the column went in V86): whether he is active is {@link AMemberIsActive}, asked of the
+ * rows themselves, so the cancellation makes him inactive by taking the row away.
  */
 @RestController
 class MemberMembershipApi {
@@ -287,15 +286,6 @@ class MemberMembershipApi {
 		   code against the book as it now stands. */
 		book.forgetThePromise(member.get(), season);
 
-		/* AND THE FLAG `active` IS WRITTEN AS THE ROWS THAT REMAIN SAY, from the same reading of the clock:
-		   the season being run, and in the window the next one. Since AF-1 nothing reads it (whether he is
-		   active is `AMemberIsActive`, asked of the rows themselves); it is still written so that a step
-		   back to the column is a revert. */
-		db.sql("update competitor set active = exists(select 1 from membership m"
-						+ " where m.competitor_id = competitor.id and m.season in (?, ?)) where id = ?")
-				.params(SeasonClock.seasonBeingRun(now), season, member.get())
-				.update();
-
 		trail(member.get(), season, "cancelled", held.get().basis(), null, asking.account(), name);
 		tell(member.get(), WhatAMembershipChangeSays.cancelled(season));
 		category.tellHimIfItMoved(before);
@@ -310,7 +300,7 @@ class MemberMembershipApi {
 	 * radnju koja prašta novac”), nothing off his balance, because a man who owes nothing has nothing for
 	 * a balance to pay ({@link BalanceBook#spentOnAMembership}), the referrer's reward, paid once
 	 * („OK je da se za preporuku dobije balans čak i ako je preporučen član dobio počasnu aktivaciju”,
-	 * 13.08.2026), and {@code active}. His number is the one he has: only a member who was ever given
+	 * 13.08.2026). His number is the one he has: only a member who was ever given
 	 * one is on the row.
 	 *
 	 * <p><b>No row in {@code membership_change}</b>, for V63's own reason: that table is the trail of a

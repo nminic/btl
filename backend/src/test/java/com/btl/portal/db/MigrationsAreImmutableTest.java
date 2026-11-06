@@ -732,9 +732,16 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   held V85. */
 			new Applied("85", "V85__a_frozen_team_keeps_its_races_by_length.sql", 1853638019),
 
-			/* V86 is PR 684's (it drops `competitor.active`) and is pinned by that PR; this one skips it on
-			   purpose, as the owner told the branch to. V87. A reset link is spent once and never given more
-			   time, enforced by the table (ADL, owner, 06.11.2026). Main stood at V85 on 06.11.2026 (758317bc). */
+			/* V86. Whether a member is active has no column: `competitor.active` is dropped, and every reader
+			   already asks the seasons he holds (AF-2 after AF-1; PDL „Članstvo je činjenica po sezoni",
+			   13.09.2026). 86 and no other: main stood at V85 on 06.11.2026 (539307e6) and no branch of the
+			   remote held V86.
+
+			   Pinned LAST, when the file was final, off this very assertion. */
+			new Applied("86", "V86__whether_a_member_is_active_is_read_off_his_seasons.sql", 1495915210),
+
+			/* V87. A reset link is spent once and never given more time, enforced by the table (ADL, owner,
+			   06.11.2026). 87 after PR 684's V86, which the owner told this branch to leave room for. */
 			new Applied("87", "V87__a_reset_link_is_spent_once_and_never_lengthened.sql", 1610863958));
 
 	@Test

@@ -122,15 +122,15 @@ class FrozenTablesConstraintsTest extends DatabaseTest {
 	@BeforeEach
 	void probe() {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date, place_id, city,"
-				+ " country_id, first_season, active, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
+				+ " country_id, first_season, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 				+ " father_name, address, shirt_size, health_statement_at) values ('001020', 'Prvi', 'Zamrznuti',"
-				+ " 'M', date '1981-01-01', (select id from place where rank = 1), null, null, 2027, true,"
+				+ " 'M', date '1981-01-01', (select id from place where rank = 1), null, null, 2027,"
 				+ " '00112233445566e1', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date, place_id, city,"
-				+ " country_id, first_season, active, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
+				+ " country_id, first_season, referral_code, referred_by, bio, profile_hidden, birthday_shown,"
 				+ " father_name, address, shirt_size, health_statement_at) values ('001021', 'Prva', 'Zamrznuta',"
-				+ " 'F', date '1992-02-02', (select id from place where rank = 1), null, null, 2027, true,"
+				+ " 'F', date '1992-02-02', (select id from place where rank = 1), null, null, 2027,"
 				+ " '00112233445566e2', null, '', false, 'none', 'Otac', 'Ulica 2', 'S',"
 				+ " timestamptz '2026-09-01 10:00:00+00')").update();
 		db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, logo_id, first_season, admin_id)"

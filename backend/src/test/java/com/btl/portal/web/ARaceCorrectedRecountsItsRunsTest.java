@@ -340,7 +340,8 @@ class ARaceCorrectedRecountsItsRunsTest {
 		/* THE MEMBER WHOSE FEE HAS LAPSED, the precedent's own statement
 		   (`PairWriteApiTest`, `CommentApiTest`): his record stays his and a correction of the
 		   race reaches it like anybody's. */
-		db.sql("update competitor set active = false where member_number = ?").param(LAPSED).update();
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
+				.param(LAPSED).update();
 
 		runnersFirst = result(runner, theMarathon, "42.2", 300, 280, 12600, counted("42.2", 300, 280, 12600));
 		runnersSecond = result(secondRunner, theMarathon, "42.2", 300, 280, 13800, counted("42.2", 300, 280, 13800));
@@ -1133,11 +1134,11 @@ class ARaceCorrectedRecountsItsRunsTest {
 	/** The statement {@code RaceWriteApiTest} writes a member with, column for column. */
 	private long competitor(String number, String referral) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
-						+ " birth_date, place_id, first_season, active,"
+						+ " birth_date, place_id, first_season,"
 						+ " referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Trkac', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, ?, '',"
+						+ " (select id from place where rank = 1), 2027, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
 						+ " returning id")
 				.params(number, referral).query(Long.class).single();

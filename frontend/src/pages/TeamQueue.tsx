@@ -129,7 +129,7 @@ export function TeamQueue({
    * `teams.inviteLapsed`.
    *
    * <p><b>A number the roster has not got</b> is honest and stays a number. `/api/competitors`
-   * ends `where c.active` and these two lists are read at a different moment, so a row can
+   * ends `AMemberIsActive` and these two lists are read at a different moment, so a row can
    * name somebody that answer no longer carries. Dropping the row would show the team fewer
    * questions than it has; the number is what the route already handed this reader.
    */

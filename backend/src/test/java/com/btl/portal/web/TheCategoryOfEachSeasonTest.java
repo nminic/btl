@@ -262,7 +262,7 @@ class TheCategoryOfEachSeasonTest {
 	 * A MEMBER WITH NO ROW OF EITHER SEASON IS NOT ON THE LIST AT ALL. Until AF-1 the list was the flag, so he
 	 * was on it and carded for the running season; since AF-1 being on it is holding a season that counts (PDL
 	 * 13.09.2026, „aktivan je onaj ko ima zapis za tekuću sezonu, a u prelaznom roku i onaj ko ga ima za
-	 * narednu"), so there is no card of his to read, whatever his flag says.
+	 * narednu"), so there is no card of his to read.
 	 */
 	@Test
 	void aMemberWhoHoldsNeitherSeasonIsNotOnTheList() throws Exception {
@@ -431,9 +431,9 @@ class TheCategoryOfEachSeasonTest {
 
 	private long competitor(String number, String gender, String born) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date, place_id,"
-						+ " first_season, active, referral_code, bio, profile_hidden, birthday_shown, father_name,"
+						+ " first_season, referral_code, bio, profile_hidden, birthday_shown, father_name,"
 						+ " address, shirt_size, health_statement_at) values (?, 'Probni', ?, ?, cast(? as date),"
-						+ " (select id from place where rank = 1), 2027, true, ?, '', false, 'none', 'Otac',"
+						+ " (select id from place where rank = 1), 2027, ?, '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, "Clan" + number, gender, born, String.format("00aa%012x", ++issued))
 				.query(Long.class).single();

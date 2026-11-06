@@ -142,10 +142,10 @@ class ResultApiTest {
 	 */
 	@BeforeEach
 	void aHistoryOutOfOrder() {
-		member("000001", "Prvi", "Clan", "M", "1990-05-05", "00112233445566aa", true);
+		member("000001", "Prvi", "Clan", "M", "1990-05-05", "00112233445566aa");
 		member(A_MEMBER_WHOSE_FEE_IS_STANDING, "Druga", "Clanica", "F", "1978-11-20",
-				"00112233445566bb", true);
-		member(THE_LAPSED_MEMBER, "Treci", "Neclan", "M", "1985-07-07", "00112233445566cc", false);
+				"00112233445566bb");
+		member(THE_LAPSED_MEMBER, "Treci", "Neclan", "M", "1985-07-07", "00112233445566cc");
 
 		/* TWO EVENTS ON ONE DAY, and that is not decoration. The order asked for below
 		   is by the day and then by the key; every other field of the answer has to give
@@ -198,18 +198,16 @@ class ResultApiTest {
 	}
 
 	private void member(String number, String first, String last, String gender, String born,
-			String referral, boolean feeStanding) {
+			String referral) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, city, country_id, first_season, active,"
+						+ " place_id, city, country_id, first_season,"
 						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, ?, ?, ?, date '" + born + "',"
-						+ " (select id from place where rank = 1), null, null, 2027, ?,"
+						+ " (select id from place where rank = 1), null, null, 2027,"
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00')")
-				/* THE FLAG IS WRITTEN AGAINST THE SEASONS ON PURPOSE: since AF-1 nothing reads it, and the
-				   seasons `memberOf` writes are what make each of them active or not. */
-				.params(number, first, last, gender, !feeStanding, referral).update();
+				.params(number, first, last, gender, referral).update();
 	}
 
 	private void event(String slug, String name, String day) {
@@ -308,7 +306,7 @@ class ResultApiTest {
 	 */
 	private void aMember(String number, String first, String last, String gender, String born,
 			boolean feeStanding) {
-		member(number, first, last, gender, born, "0011223344" + number, feeStanding);
+		member(number, first, last, gender, born, "0011223344" + number);
 
 		/* A MEMBER WHOSE FEE STANDS HOLDS EVERY SEASON THE CASES OF THIS FILE ASK ABOUT, 2027 TO 2029,
 		   since AF-1 being active is a season that counts at the moment the case reads; the one whose fee
@@ -338,11 +336,11 @@ class ResultApiTest {
 	private void anApplicantWithNoMemberNumber(String first, String last, String gender,
 			String born) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, city, country_id, first_season, active,"
+						+ " place_id, city, country_id, first_season,"
 						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (null, ?, ?, ?, date '" + born + "',"
-						+ " (select id from place where rank = 1), null, null, 2027, false,"
+						+ " (select id from place where rank = 1), null, null, 2027,"
 						+ " '00112233440000ab', null, '', false, 'none', 'Otac', 'Ulica 1',"
 						+ " 'M', timestamptz '2026-09-01 10:00:00+00')")
 				.params(first, last, gender).update();

@@ -59,7 +59,7 @@ class GrantingASeason {
 	 * WRITES THE MEMBERSHIP, AND THE TWO GROUNDS DIFFER IN TWO PLACES RATHER THAN BEING TWO
 	 * METHODS.
 	 *
-	 * <p>Everything that is the same is the same by construction - the number, {@code active}, the
+	 * <p>Everything that is the same is the same by construction - the number, the
 	 * referrer being paid, the one transaction around all of it - and what differs is named below
 	 * with what decided it. Two methods would let one of the four common things be edited in one of
 	 * them.
@@ -193,19 +193,18 @@ class GrantingASeason {
 		   drew first, and the reason it gave - that no case could fail on the move - is answered by
 		   `FreeingTwiceAtOneInstantTest.aBookingTheDatabaseRefusesDrawsNoNumber`.
 
-		   THE NUMBER AND THE FLAG, AND NOTHING ELSE ON `competitor`. Since AF-1 no reader asks `active`:
-		   every public reader ends on `AMemberIsActive`, which the row written above already answers, and
-		   the flag goes on being written so that a step back is a revert. PDL:3417 says an activation shows
-		   „odmah" exactly as a booked payment does. Both are written whether or not a number was
-		   drawn, so the facts cannot come apart, and on both grounds alike: the basis is the row
-		   written above and has no second home since V62. Nothing written above reads either of the
-		   two: the book and the referral touch `balance_entry`, and the only column of `competitor`
-		   they read is `referred_by`. */
+		   THE NUMBER, AND NOTHING ELSE ON `competitor`. Whether he is active is no column since V86 (AF-2):
+		   every public reader ends on `AMemberIsActive`, which the row written above already answers.
+		   PDL:3417 says an activation shows „odmah" exactly as a booked payment does, and it does: the
+		   row is the activation. The number is written whether or not one was drawn, on both grounds
+		   alike: the basis is the row written above and has no second home since V62. Nothing written
+		   above reads the number: the book and the referral touch `balance_entry`, and the only column
+		   of `competitor` they read is `referred_by`. */
 		MemberNumber number = memberNumber == null
 				? numbers.draw()
 				: new MemberNumber(memberNumber);
 
-		db.sql("update competitor set member_number = ?, active = true where id = ?")
+		db.sql("update competitor set member_number = ? where id = ?")
 				.params(number.written(), competitorId).update();
 
 		return number;

@@ -25,9 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * do 16:00 [...] U 16:00:00 postaje neaktivan", and „Storno nove sezone urađen 1. januara pre 16:00 ne gasi
  * člana koji ima prethodnu sezonu pre 16:00".
  *
- * <p><b>The flag is set AGAINST the rows on purpose</b>: everybody who holds a season that makes him active
- * has {@code active = false}, and everybody who holds none has {@code active = true}, so a condition that
- * read the flag would answer every case below the other way round.
+ * <p><b>There is no flag to set against the rows</b> since V86 (AF-2): the column is gone, so a condition that
+ * read it would not run at all ({@code TheFlagHasNoColumnTest}), and what is asked here is the rows alone.
  */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
@@ -46,7 +45,7 @@ class AMemberIsActiveTest {
 	/** Holds 2029 only, freed of the fee. */
 	private long only2029;
 
-	/** Holds nothing, and his flag says he is active. */
+	/** Holds nothing. */
 	private long nothing;
 
 	/** Holds 2027 and had 2028, which was cancelled: the row is gone, the trail stays. */
@@ -133,14 +132,14 @@ class AMemberIsActiveTest {
 
 	private long member(String number, boolean flag) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
-						+ " place_id, city, country_id, first_season, active,"
+						+ " place_id, city, country_id, first_season,"
 						+ " referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Clan', 'M', date '1990-05-05',"
-						+ " (select id from place where rank = 1), null, null, 2027, ?,"
+						+ " (select id from place where rank = 1), null, null, 2027,"
 						+ " ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, flag, "0011223344" + number)
+				.params(number, "0011223344" + number)
 				.query(Long.class).single();
 	}
 }

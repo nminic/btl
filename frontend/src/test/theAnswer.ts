@@ -108,7 +108,7 @@ export const aCompetitorWithNoPortrait = {
  *
  * **What it carried and why both went.** His own `referralCode` and `referredCount`,
  * answered on his row and on no other. The owner took them off the public list on
- * 25.09.2026 (PDL P26a) because that query ends `where c.active` and a member whose fee
+ * 25.09.2026 (PDL P26a) because that query ends `AMemberIsActive` and a member whose fee
  * has lapsed never had a row for them to be put on - and he is the man V24 section 6
  * promises the link to. Both are on `myOwnRecordFromMe` below, which is `/api/me`.
  *
