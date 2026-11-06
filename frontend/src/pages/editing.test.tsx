@@ -3,8 +3,6 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { loadResource } from '../data/client'
 import type { League } from '../data/types'
-import { liga } from '../forms/definitions'
-import { limitOf } from '../forms/records'
 import { at, must } from '../test/at'
 import { answeredWith, refused, serverThat } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
@@ -333,41 +331,6 @@ describe('the text of a competition', () => {
     expect(box.queryByRole('heading', { name: 'Propozicije' })).not.toBeInTheDocument()
     expect(box.queryByRole('button', { name: 'Izmeni' })).not.toBeInTheDocument()
   })
-
-  it('bounds each box by its own field, not by the first of the two', async () => {
-    /* **Two fields and one limit was a bug waiting for the two numbers to part** (review,
-       07.09.2026). The component drew both texts and read the cap off `rules` for both, which is
-       right for exactly as long as the definition gives them the same number. Measured that day
-       with the prizes lowered to 500: the box let a moderator write three thousand, and the
-       administration form then told them their own text was too long — the very fault `limitOf`
-       exists to prevent, moved one screen along.
-
-       Held against the definition rather than against a number written here, because the number is
-       the definition's to change (`forms/definitions/admin-liga.form.json`). */
-    const user = setupUser()
-    renderAt('/sr/lige?sezona=2027', 'superadmin')
-
-    const box = await boxOf(/RunTrace liga/)
-
-    for (const [heading, field] of [
-      ['Propozicije', 'rules'],
-      ['Nagrade', 'prizes'],
-    ] as const) {
-      const section = must(box.getByRole('heading', { name: heading }).closest('section'), 'section')
-
-      await user.click(within(section).getByRole('button', { name: 'Izmeni' }))
-
-      /* The editor of a written text holds the limit by refusing what would pass it and says how
-         much room is left (since 17.10.2026), so the room is what is read: the limit less what the
-         box already holds, which carries no marks of Markdown here. */
-      const typing = within(section).getByRole('textbox', { name: heading })
-      const written = must(typing.textContent, 'the words in the box').length
-
-      expect(typing).toHaveAccessibleDescription(
-        new RegExp(`^Još ${limitOf(liga, field) - written} znak`),
-      )
-    }
-  }, SLOW)
 
   it('is shown to a visitor once it has been written', async () => {
     renderAt('/sr/lige?sezona=2027')

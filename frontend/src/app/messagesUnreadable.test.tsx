@@ -112,6 +112,27 @@ describe('the inbox in the header when it could not be read', () => {
     expect(panel.queryByRole('button', { name: new RegExp(sr.data.retry) })).toBeNull()
   }, SLOW)
 
+  it('keeps the title of the panel out of the tab order, so the next Tab goes to what can be pressed', async () => {
+    /* The title takes the keyboard when a press on „Pokusaj ponovo" leaves (`tabIndex={-1}`, so it
+       can be focused by the page and never by a key). Made a tab stop, it would be a stop in front
+       of the way on in every pass through the panel, and a reader would land on a line of words
+       that does nothing. Measured: `tabIndex={0}` on it passed the whole file. */
+    theInboxAnswers(() => answeredWith(500))
+
+    const user = setupUser()
+    const panel = await openThePanel(user)
+
+    await panel.findByText(sr.shell.messagesUnreadable)
+
+    screen.getByRole('button', { name: /Otvori poruke/ }).focus()
+    await user.tab()
+
+    expect(
+      panel.getByRole('button', { name: `${sr.data.retry}: ${sr.shell.messages}` }),
+      'the key went to something other than the first thing the panel offers',
+    ).toHaveFocus()
+  }, SLOW)
+
   it('draws what arrives when it is asked again and the server answers', async () => {
     theInboxAnswers(() => answeredWith(500))
 

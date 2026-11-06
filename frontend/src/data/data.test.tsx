@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { render, screen, waitFor } from '@testing-library/react'
 import { SessionProvider } from '../session/SessionProvider'
 import { aFailedRead } from '../test/failedRead'
-import { first, must } from '../test/at'
+import { at as theOne, first, must } from '../test/at'
 import { eventSlug } from '../pages/admin/entityForms'
 import { loadResource, type ResourceName } from './client'
 import countries from './countries.json'
@@ -25,6 +25,7 @@ import {
   useResource,
   type ResourceState,
 } from './useResource'
+import * as resources from './useResource'
 
 function Probe({ name }: { name: ResourceName }) {
   const state = useResource<unknown[]>(name)
@@ -311,7 +312,11 @@ describe('combinePair', () => {
  * drifts is a screen that asks for half of what failed.
  *
  * <p>The axes are how many failed (one, which is handed back as it is, and several), which one asks
- * (the first of the two and the second), and whether anything is already asking.
+ * (the first of the two and the second), and whether anything is already asking. The table of two
+ * reads below cannot stand for the others: `theFailure` takes a list, and a loop that stops after
+ * its second member is right for every case with two reads in it (measured: `readAgain` and
+ * `reading` both read from the first two failures only, and the whole file stayed green). So the
+ * last block holds every combination of positions for each combiner at its own width.
  */
 describe('the combiners, when more than one read failed', () => {
   const ready = <T,>(data: T): ResourceState<T> => ({ status: 'ready', data })
@@ -368,6 +373,78 @@ describe('the combiners, when more than one read failed', () => {
     expect(combine(ready(1), failure)).toBe(failure)
     expect(combine(failure, loading)).toBe(failure)
   })
+
+  type ByPosition = (states: ResourceState<unknown>[]) => ResourceState<unknown>
+
+  /** Each combiner at its own width, reading its reads by position. */
+  const BY_POSITION: [name: string, width: number, combine: ByPosition][] = [
+    ['combinePair', 2, (all) => combinePair(theOne(all, 0), theOne(all, 1))],
+    ['combineResources', 3, (all) => combineResources(theOne(all, 0), theOne(all, 1), theOne(all, 2))],
+    [
+      'combineFour',
+      4,
+      (all) => combineFour(theOne(all, 0), theOne(all, 1), theOne(all, 2), theOne(all, 3)),
+    ],
+  ]
+
+  /** Every set of positions at which something failed, one or more of the width. */
+  function everyWayToFail(width: number): number[][] {
+    return Array.from({ length: 2 ** width - 1 }, (_, index) =>
+      Array.from({ length: width }, (_, position) => position).filter(
+        (position) => Math.floor((index + 1) / 2 ** position) % 2 === 1,
+      ),
+    )
+  }
+
+  it('holds every combiner the module has, and only those', () => {
+    /* Read off the module and not written here, so a fourth is inside the cases below the day it is
+       exported. */
+    expect(Object.keys(resources).filter((name) => name.startsWith('combine')).sort()).toEqual(
+      BY_POSITION.map(([name]) => name).sort(),
+    )
+  })
+
+  it.each(BY_POSITION)(
+    '%s asks again for exactly the reads that failed, wherever in its list they stand',
+    (_name, width, combine) => {
+      for (const failing of everyWayToFail(width)) {
+        const asked: number[] = []
+        const reads = Array.from({ length: width }, (_, position): ResourceState<unknown> =>
+          failing.includes(position)
+            ? aFailedRead({ readAgain: () => asked.push(position) })
+            : ready(position),
+        )
+
+        aFailure(combine(reads)).readAgain()
+
+        expect(asked.toSorted(), `failing at ${failing.join(',')}`).toEqual(failing)
+      }
+    },
+  )
+
+  it.each(BY_POSITION)(
+    '%s says it is asking when any one of its reads is, wherever in its list that one stands',
+    (_name, width, combine) => {
+      for (const failing of everyWayToFail(width)) {
+        const reading = (asking: number | null) =>
+          aFailure(
+            combine(
+              Array.from({ length: width }, (_, position): ResourceState<unknown> =>
+                failing.includes(position)
+                  ? aFailedRead({ reading: position === asking })
+                  : ready(position),
+              ),
+            ),
+          ).reading
+
+        expect(reading(null), `failing at ${failing.join(',')}, none asking`).toBe(false)
+
+        for (const asking of failing) {
+          expect(reading(asking), `failing at ${failing.join(',')}, ${asking} asking`).toBe(true)
+        }
+      }
+    },
+  )
 })
 
 describe('dataOr and failed', () => {
