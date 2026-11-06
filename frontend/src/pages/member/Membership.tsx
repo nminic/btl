@@ -38,6 +38,7 @@ import { MyBalanceLine } from './MyBalanceLine'
 import { WhatHeSends } from './WhatHeSends'
 import { WHEN_LETTING_MYSELF_IN } from './fromTheBalance'
 import { useLetMeIn } from './useLetMeIn'
+import { THE_PICTURE_AND_THE_WORDS } from '../profile/finishTheProfile'
 import './Member.css'
 
 /**
@@ -892,6 +893,21 @@ export function Membership() {
                         {lettingIn.outcome.newNumber !== null && (
                           <p className="member__note">
                             {t('membership.letInNumber', { number: lettingIn.outcome.newNumber })}
+                          </p>
+                        )}
+                        {/* AND THE WAY TO THE PICTURE AND THE WORDS ABOUT HIMSELF, beside the sentence
+                            that he is in (owner, 06.11.2026, PDL „Boksovi „Profilna slika" i „Tekst o
+                            sebi" prelaze sa Podešavanja": „Veza ka slici i opisu uz rečenicu „Članstvo za
+                            sezonu ... je aktivirano." na Mojoj članarini ostaje"). To the bottom of his card
+                            „Podaci", by the number alone: the card moves him to the profile's one address
+                            and keeps the `#` (`CompetitorData.tsx`). The words are the assistant's. */}
+                        {(lettingIn.outcome.newNumber ?? memberNumber) !== null && (
+                          <p className="member__note">
+                            <Link
+                              to={`/${locale}/takmicar/${lettingIn.outcome.newNumber ?? memberNumber}/podaci#${THE_PICTURE_AND_THE_WORDS}`}
+                            >
+                              {t('membership.letInBoxes')}
+                            </Link>
                           </p>
                         )}
                       </>

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { must } from '../../test/at'
 import { measurePicture } from '../../test/picture'
@@ -10,6 +10,10 @@ import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
 import { thePictureArrives } from '../../test/waitingPicture'
 import { useSession } from '../../session/useSession'
+
+/* Every wait of this file is given half of the time a case has, so a wait that never succeeds ends the
+   case with the assertion's own words and not with the case's clock (`btl/CLAUDE.md`, section 25). */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /**
  * ONE UPLOAD IS ONE ROW IN FRONT OF THE MODERATOR, AND HE DECIDES IT THROUGH THE ROUTE.
@@ -190,7 +194,9 @@ function SignInAs({ memberNumber, asking }: { memberNumber: string; asking: { wh
           referralCode: null,
           referredCount: null,
           hasARecord: true,
-          feeStands: null,
+          /* HIS FEE STANDS, since the picture is sent from his own card „Podaci", which is drawn only to a
+             member whose fee stands (`profile/whoReadsTheData.ts`). */
+          feeStands: true,
         })
       }}
     >
@@ -201,14 +207,17 @@ function SignInAs({ memberNumber, asking }: { memberNumber: string; asking: { wh
 
 const THE_QUEUE = '/sr/administracija/verifikacija/trkacki-profil'
 
-/** Sends a picture from the settings screen, as a member who may also moderate - which is
+/** Where the picture is sent from since 06.11.2026, the bottom of his card Podaci. */
+const HIS_CARD = '/sr/takmicar/000007/podaci'
+
+/** Sends a picture from his card Podaci, as a member who may also moderate - which is
  *  what the owner is, and the one session in which both halves of this are reachable. */
-async function send(user: ReturnType<typeof setupUser>, at = '/sr/podesavanja') {
+async function send(user: ReturnType<typeof setupUser>, at = HIS_CARD) {
   const { router } = renderAt(at, 'superadmin', '000007')
 
-  if (at !== '/sr/podesavanja') {
+  if (at !== HIS_CARD) {
     await screen.findByRole('list', { name: /Čeka/ })
-    await router.navigate('/sr/podesavanja')
+    await router.navigate(HIS_CARD)
   }
 
   const panel = await panelFor()
@@ -344,7 +353,7 @@ describe('a picture sent for a decision', () => {
          of the browser's own - `prop-1`, which is what it was - could never be reached by it,
          and a mark cleared by ANY decision would be no key at all. */
       await user.click(cardOf(String(SOMEBODY_ELSE.who)).getByRole('button', { name: 'Odobri' }))
-      await router.navigate('/sr/podesavanja')
+      await router.navigate(HIS_CARD)
 
       const stillWaiting = await panelFor()
 
@@ -355,10 +364,14 @@ describe('a picture sent for a decision', () => {
       /* Waited for by the heading of THIS card rather than by the list around it: the list is
          still in the document from the walk above, so a case that waited on it would read the
          queue as it stood before this navigation. */
-      await screen.findByRole('heading', { name: 'Strahinja Vukićević' })
+      /* AND INSIDE THE LIST, since the picture is sent from his profile (06.11.2026): the heading of the
+         profile carries the same name and stays in the document until the queue is drawn. */
+      await within(await screen.findByRole('list', { name: /Čeka/ })).findByRole('heading', {
+        name: 'Strahinja Vukićević',
+      })
       thePictureArrives(cardOf('Strahinja Vukićević'))
       await user.click(cardOf('Strahinja Vukićević').getByRole('button', { name: 'Odobri' }))
-      await router.navigate('/sr/podesavanja')
+      await router.navigate(HIS_CARD)
 
       const panel = await panelFor()
 
@@ -385,7 +398,11 @@ describe('a picture sent for a decision', () => {
     const server = theServer(THE_ROUTE_NAMES_THE_ROW, asking)
 
     try {
-      renderAt('/sr/podesavanja', 'superadmin', '000007', undefined, null, (
+      /* AS A MEMBER, since the picture is sent from the card „Podaci" (06.11.2026): the session this harness
+         signs the second man into keeps the role it was opened with, and a superadmin reading 000002's card
+         is the administration, which is drawn the administration's boxes and not his. Nothing of this case
+         needs the queue. */
+      const { router } = renderAt(HIS_CARD, 'competitor', '000007', undefined, null, (
         <SignInAs memberNumber="000002" asking={asking} />
       ))
 
@@ -401,6 +418,8 @@ describe('a picture sent for a decision', () => {
       await waitFor(() => (expect(screen.getByText(/čeka odobrenje/)).toBeVisible()))
 
       await user.click(screen.getByRole('button', { name: 'sign in somebody else' }))
+      /* HIS OWN CARD: the first man's card is nobody's to read for the second (06.11.2026). */
+      await router.navigate('/sr/takmicar/000002/podaci')
 
       const theirs = await panelFor()
 

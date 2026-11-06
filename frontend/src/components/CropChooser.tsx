@@ -31,7 +31,7 @@ import './Crop.css'
  * The two positions are the same two numbers a crop is made of, so nothing is
  * converted between what a member drags and what a record keeps.
  */
-export function CropChooser({ id, label, alt, asked = true, chosen, onChange }: {
+export function CropChooser({ id, label, alt, asked = true, unmarked = false, chosen, onChange }: {
   /** What the file field is called on this screen, so two of these can stand on
    *  one page without their labels pointing at each other. */
   id: string
@@ -50,6 +50,8 @@ export function CropChooser({ id, label, alt, asked = true, chosen, onChange }: 
    *  the star that says which is the rule the owner set on 12.08.2026 for every
    *  form on the portal (forms/AskedLabel.tsx). */
   asked?: boolean
+  /** True where the name stands with no mark at all (`forms/AskedLabel.tsx`, `unmarked`). */
+  unmarked?: boolean
   chosen: Chosen | null
   onChange: (chosen: Chosen | null) => void
 }) {
@@ -110,7 +112,7 @@ export function CropChooser({ id, label, alt, asked = true, chosen, onChange }: 
   return (
     <>
       <div className="rankings__field rankings__field--wide">
-        <AskedLabel id={id} asked={asked}>
+        <AskedLabel id={id} asked={asked} unmarked={unmarked}>
           {label}
         </AskedLabel>
         <input

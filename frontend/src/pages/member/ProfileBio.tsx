@@ -15,6 +15,7 @@ import {
   standingTextIn,
   waitingIn,
 } from './myAccount'
+import { useTellTheHeadABoxWasSent } from '../profile/finishTheProfile'
 import { useMyWaitingText } from './useMyWaitingText'
 
 /**
@@ -97,6 +98,7 @@ function TheBio({ me, waitingOpening }: { me: Competitor; waitingOpening: string
   const [written, setWritten] = useState(waitingOpening === '' ? (me.bio ?? '') : waitingOpening)
   /** What the last press did, so the sentence that follows it is the one for that road. */
   const [justDid, setJustDid] = useState<'sent' | 'removed' | null>(null)
+  const tellTheHead = useTellTheHeadABoxWasSent()
   /* While the request is out. Two states rather than one, the shape `ProfilePicture.tsx` and
      `ProposeTeam.tsx` already have: the ref is what refuses a second press within one render,
      because state set in a handler is not readable by the next press in the same turn, and the
@@ -184,6 +186,9 @@ function TheBio({ me, waitingOpening }: { me: Competitor; waitingOpening: string
 
     setAnswer(answered)
     setJustDid(asked === '' ? 'removed' : 'sent')
+    /* AND THE NAME OF THE CARD IS ASKED AGAIN: words sent are words he has, and words removed may be the
+       last he had (`profile/finishTheProfile.ts`). */
+    tellTheHead()
   }
 
   return (

@@ -284,6 +284,13 @@ describe('after the press', () => {
     expect(screen.queryByText('5.100 RSD')).not.toBeInTheDocument()
     /* He had a number, so none is announced. */
     expect(screen.queryByText(/^Tvoj članski broj je/)).not.toBeInTheDocument()
+    /* AND THE WAY TO HIS PICTURE AND HIS WORDS, beside the sentence (owner, 06.11.2026, PDL „Boksovi
+       „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja": „Veza ka slici i opisu uz rečenicu
+       „Članstvo za sezonu ... je aktivirano." na Mojoj članarini ostaje"), to the bottom of his card. */
+    expect(screen.getByRole('link', { name: 'Dodaj profilnu sliku i tekst o sebi' })).toHaveAttribute(
+      'href',
+      `/sr/takmicar/${LAPSED}/podaci#slika`,
+    )
   }, SLOW)
 
   it('puts the focus on what it says, because the button that had it is gone', async () => {
@@ -506,6 +513,11 @@ describe('somebody who has not paid', () => {
 
     expect(await screen.findByText('Članstvo za sezonu 2027 je aktivirano.')).toBeVisible()
     expect(screen.getByText('Tvoj članski broj je 000077.')).toBeVisible()
+    /* The card of the number the route gave him, and not of whatever the session draws next. */
+    expect(screen.getByRole('link', { name: 'Dodaj profilnu sliku i tekst o sebi' })).toHaveAttribute(
+      'href',
+      '/sr/takmicar/000077/podaci#slika',
+    )
   }, SLOW)
 
   it('is told a moderator gives it, where his balance does not cover the fee', async () => {

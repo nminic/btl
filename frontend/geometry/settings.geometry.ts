@@ -12,21 +12,19 @@ import type { Answers, At } from './support/harness.ts'
  * panel then LANDS, and this is what the owner looked at:
  *
  * <ol>
- * <li><b>Three tall rows of two since 23.10.2026: the password beside the privacy, the picture beside
- * the words about himself, the theme beside the language of the mail</b> (PDL, „Strana Podešavanja u
- * tri visoka reda sa dve kolone": „lozinka prelazi levo na njeno mesto, a Privatnost tekst iz priloga
- * ide u desni stubac pored boksa za lozinku [...] u desni stubac treba da dođe u njenoj visini Tekst o
- * sebi boks"), <b>the two of a row as tall as each other, and on a telephone one under the other</b>
+ * <li><b>Two tall rows of two since 06.11.2026: the password beside the privacy, the theme beside the
+ * language of the mail</b> (PDL, „Strana Podešavanja u tri visoka reda sa dve kolone": „lozinka prelazi
+ * levo na njeno mesto, a Privatnost tekst iz priloga ide u desni stubac pored boksa za lozinku"; the row
+ * of the picture beside the words about himself moved to the card „Podaci" on 06.11.2026, PDL „Boksovi
+ * „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja", and is asked there,
+ * `dataCard.geometry.ts`), <b>the two of a row as tall as each other, and on a telephone one under the other</b>
  * (the UI standard of the repository, `CLAUDE.md`). Beside is asked as the same top, the same bottom,
  * and the first's right edge not past the second's left; under is asked as the same left edge and the
  * second's top not above the first's bottom. Asked for a member whose fee stands. Somebody who has not
  * paid is not drawn the settings since 23.10.2026 (PDL 22.10.2026), so his arrangement is not asked.
  * <li><b>No empty space under the field for choosing a picture, and none between the box for the words
- * about himself and the button</b> (his words: „veliki prazan prostor"). The cause was
- * `.rankings__field--wide { flex: 1 1 14rem }` meeting a column, where the basis is a HEIGHT: each field
- * stood 224px tall around a control that is 30px (`pages/member/Member.css`). Asked as a relation, not
- * as a number: the field ends where its last child ends, and what separates it from the next thing is
- * no more than the panel's own gap.
+ * about himself and the button</b> (his words: „veliki prazan prostor"): asked on the card „Podaci" since
+ * 06.11.2026, where the two boxes now stand (`dataCard.geometry.ts`).
  * <li><b>The page does not move sideways</b> at any of the widths (PDL P24).
  * </ol>
  *
@@ -188,85 +186,23 @@ for (const [columns, widths] of [
   [1, UNDER],
 ] as const) {
   for (const at of widths) {
-    test(`three rows, the two of each ${columns === 2 ? 'beside' : 'under'} each other, for a member whose fee stands, ${label(at)}`, async ({ open: opener }) => {
+    test(`two rows, the two of each ${columns === 2 ? 'beside' : 'under'} each other, for a member whose fee stands, ${label(at)}`, async ({ open: opener }) => {
       const { page, probe } = await open(opener, at, A_MEMBER)
 
       await page.locator(PANELS.mail).waitFor({ state: 'visible' })
       await page.locator(PANELS.privacy).waitFor({ state: 'visible' })
-      await page.locator(PANELS.bio).waitFor({ state: 'visible' })
 
       expect(await pairsAreTwoColumns(page), 'the width reads the arrangement it was chosen for').toBe(columns)
 
       await expectPair(page, PANELS.password, PANELS.privacy, columns, 'the password and the privacy')
-      await expectPair(page, PANELS.picture, PANELS.bio, columns, 'the picture and the words about himself')
       await expectPair(page, PANELS.theme, PANELS.mail, columns, 'the theme and the language of the mail')
+      /* AND NOT THE PICTURE OR THE WORDS, which stand on the card „Podaci" since 06.11.2026. Asked once the
+         privacy is drawn, which comes off the same list the two were drawn from. */
+      expect(await page.locator(PANELS.picture).count(), 'the picture is not on the settings').toBe(0)
+      expect(await page.locator(PANELS.bio).count(), 'the words are not on the settings').toBe(0)
 
       expect(probe.widened, 'the page was widened by something running off its right edge').toBe(0)
       expect(probe.sideways, 'the page scrolls sideways').toBe(0)
-    })
-  }
-}
-
-/** The field that takes what is left of a row, and what comes after it, in one panel. */
-const gapAfterTheField = (page: Page, panel: string) =>
-  page.evaluate((selector) => {
-    const section = document.querySelector(selector)
-    const field = section?.querySelector('.rankings__field--wide')
-    /* The next thing that is IN the flow: a visually hidden sibling (the picture measured off the
-       screen) is taken out of it and stands nowhere that matters. */
-    let next = field?.nextElementSibling ?? null
-
-    while (next !== null && getComputedStyle(next).position === 'absolute') {
-      next = next.nextElementSibling
-    }
-
-    if (section === null || section === undefined || field === null || field === undefined || next === null) {
-      return null
-    }
-
-    const box = field.getBoundingClientRect()
-    /* What the field holds, where it ends: the lowest bottom of a child that is IN the flow. A visually
-       hidden child (the live region of the box for the words) is taken out of it and stands wherever its
-       static position happens to be, which is above the field's own top. */
-    const held = Math.max(
-      ...[...field.children]
-        .filter((one) => getComputedStyle(one).position !== 'absolute')
-        .map((one) => one.getBoundingClientRect().bottom),
-    )
-
-    return {
-      height: box.height,
-      /* How much of the field is below what it holds: nothing, when it is exactly as tall as that. */
-      emptyTail: box.bottom - held,
-      /* What stands between the field and the next thing, which is the panel's own gap and nothing else. */
-      between: next.getBoundingClientRect().top - box.bottom,
-      /* The gap, and the margin the next thing asks for above itself: both are spacing somebody wrote. */
-      panelGap: Number.parseFloat(getComputedStyle(section).rowGap) + Number.parseFloat(getComputedStyle(next).marginTop),
-    }
-  }, panel)
-
-for (const at of [...BESIDE, ...UNDER]) {
-  for (const [name, panel] of [
-    ['for choosing a picture', PANELS.picture],
-    ['for the words about himself', PANELS.bio],
-  ] as const) {
-    test(`there is no empty space under the field ${name}, ${label(at)}`, async ({ open: opener }) => {
-      const { page } = await open(opener, at, A_MEMBER)
-
-      await page.locator(panel).waitFor({ state: 'visible' })
-      await page.locator(`${panel} .rankings__field--wide`).waitFor({ state: 'visible' })
-
-      const seen = await gapAfterTheField(page, panel)
-
-      if (seen === null) {
-        throw notMeasured(`${panel} did not draw a field with something after it`)
-      }
-
-      expect(seen.height, 'the field has a height').toBeGreaterThan(0)
-      expect(seen.emptyTail, 'the field is taller than what it holds').toBeLessThanOrEqual(SLACK)
-      expect(seen.between, 'more than the panel’s own gap stands between the field and what follows it').toBeLessThanOrEqual(
-        seen.panelGap + SLACK,
-      )
     })
   }
 }

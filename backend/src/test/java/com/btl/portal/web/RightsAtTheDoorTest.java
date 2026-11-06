@@ -1309,7 +1309,11 @@ class RightsAtTheDoorTest {
 						"StatementApi#take has a consumes condition",
 						"StatementApi#take is a write with no required body and no typed variable",
 						"MemberDataWriteApi#correct has a consumes condition",
-						"MemberDataWriteApi#correct is a write with no required body and no typed variable");
+						"MemberDataWriteApi#correct is a write with no required body and no typed variable",
+						"MemberPictureAndWordsApi#setThePicture has a consumes condition",
+						"MemberPictureAndWordsApi#setThePicture is a write with no required body and no typed variable",
+						"MemberPictureAndWordsApi#setTheWords has a consumes condition",
+						"MemberPictureAndWordsApi#setTheWords is a write with no required body and no typed variable");
 	}
 
 	/**

@@ -16,6 +16,7 @@ import {
   THE_PICTURE_GOES_TO,
   WHEN_SENDING_A_PICTURE,
 } from './photoWrites'
+import { useTellTheHeadABoxWasSent } from '../profile/finishTheProfile'
 import { useMyPictures } from './useMyPictures'
 
 /**
@@ -202,6 +203,7 @@ async function theBytesAt(address: string): Promise<File | null> {
 function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) {
   const { t } = useI18n()
   const { sendPicture } = useSession()
+  const tellTheHead = useTellTheHeadABoxWasSent()
   const [origin, setOrigin] = useState<Origin | null>(() => originOf(pictures))
   /* A NEW FILE the member chose, and the circle he set over it. */
   const [picked, setPicked] = useState<Chosen | null>(null)
@@ -346,6 +348,9 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
     setPicked(null)
     setCircle(null)
     setJustSent(true)
+    /* AND THE NAME OF THE CARD IS ASKED AGAIN, since a picture that waits is a picture he has set
+       (`profile/finishTheProfile.ts`). */
+    tellTheHead()
   }
 
   return (
@@ -373,6 +378,11 @@ function ThePicture({ me, pictures }: { me: Competitor; pictures: MyPictures }) 
       <CropChooser
         id="picture-file"
         label={t('picture.choose')}
+        /* NO MARK BESIDE IT, neither the star nor „(neobavezno)" (owner, 06.11.2026, PDL „Boksovi
+           „Profilna slika" i „Tekst o sebi" prelaze sa Podešavanja"). The profile is approved without a
+           picture (PDL 11.08.2026, „Profil se odobrava i bez slike"), so it is not asked of him either. */
+        asked={false}
+        unmarked
         alt={
           picked !== null
             ? t('picture.chosenAlt')
