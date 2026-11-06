@@ -279,11 +279,19 @@ class PairWriteApiTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', ?, ?, date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, "
+						+ " (select id from place where rank = 1), 2027, false, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(number, "Probic" + number, gender, String.format("%016x", ++issued))
 				.update();
+
+		/* ACTIVE BY THE SEASON HE HOLDS AND NOT BY THE FLAG, which is written false on purpose: since AF-1
+		   nothing reads it, and a reader that did would turn him away. */
+		HeldOn.activeAt(db, number, IN_MARCH.atZone(SeasonClock.ZONE));
+		/* AND THE SEASON A YEAR ON, for the one case that moves the clock to March 2028: a pair of a season
+		   that is over is only meaningful while both halves still stand. Nothing on this route reads a
+		   season of membership but whether he is active. */
+		HeldOn.activeAt(db, number, IN_MARCH.atZone(SeasonClock.ZONE).plusYears(1));
 
 		account(number + "@primer.rs", number);
 	}
@@ -1186,7 +1194,8 @@ class PairWriteApiTest {
 		lapsed(SHE_IS_ASKED);
 		lapsed(FIRST_MAN);
 
-		assertThat(db.sql("select count(*) from competitor where not active")
+		assertThat(db.sql("select count(*) from competitor c where c.member_number is not null"
+						+ " and not exists(select 1 from membership m where m.competitor_id = c.id)")
 				.query(Long.class).single())
 				.as("nobody in this fixture has let a fee lapse, so the answers below are about"
 						+ " nothing at all")
@@ -1408,7 +1417,7 @@ class PairWriteApiTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (null, 'Bez', 'Broja', 'F', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, true, "
+						+ " (select id from place where rank = 1), 2027, false, "
 						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.param(String.format("%016x", ++issued))
@@ -1416,6 +1425,9 @@ class PairWriteApiTest {
 
 		long her = db.sql("select id from competitor where last_name = 'Broja'")
 				.query(Long.class).single();
+
+		/* SHE STANDS BY A SEASON SHE HOLDS, and her flag says false: since AF-1 nothing reads it. */
+		HeldOn.activeAt(db, her, IN_MARCH.atZone(SeasonClock.ZONE));
 
 		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id) values"
 						+ " ('Bez', 'Broja', ?, (select id from role where code = 'competitor'), ?)")
@@ -1441,9 +1453,14 @@ class PairWriteApiTest {
 				.isOne();
 	}
 
-	/** Somebody who did not renew, which lowers a flag and deletes nobody. */
+	/**
+	 * Somebody who did not renew, which takes his seasons away and deletes nobody, and his flag is raised on
+	 * purpose: since AF-1 nothing reads it, so a route that did would take him for a member.
+	 */
 	private void lapsed(String memberNumber) {
-		db.sql("update competitor set active = false where member_number = ?")
+		db.sql("delete from membership where competitor_id = (select id from competitor where member_number = ?)")
+				.param(memberNumber).update();
+		db.sql("update competitor set active = true where member_number = ?")
 				.param(memberNumber).update();
 	}
 
