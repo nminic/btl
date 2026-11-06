@@ -612,6 +612,12 @@ class ModeratorWriteApiTest {
 		MockHttpServletResponse answer = save(accountOf(ACTED), List.of(LEFT_ALONE, GIVEN));
 
 		assertThat(answer.getStatus()).isEqualTo(200);
+		assertThat(new ObjectMapper().readTree(answer.getContentAsString()).path("id").asLong())
+				.as("the answer does not name the moderator whose boxes were saved, and the screen"
+						+ " redraws a row from it; a key of nobody (0) is not his, and neither is"
+						+ " the key of the moderator written beside him")
+				.isEqualTo(accountOf(ACTED))
+				.isNotEqualTo(accountOf(FIRST_WRITTEN));
 		assertThat(rightsIn(answer))
 				.as("the answer does not carry the row that was saved")
 				.containsExactly(GIVEN, LEFT_ALONE);

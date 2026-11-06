@@ -3,6 +3,7 @@ package com.btl.portal.db;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.dao.DataIntegrityViolationException;
 
@@ -252,6 +253,28 @@ class MembershipChangeConstraintsTest extends DatabaseTest {
 	void theSeasonOnALineCannotBeRewritten() {
 		assertThatThrownBy(() -> db.sql("update membership_change set season = 2029").update())
 				.hasMessageContaining("cannot be changed once written");
+	}
+
+	/**
+	 * EVERY OTHER COLUMN OF A WRITTEN LINE IS HELD TOO, one case for each, because the trigger compares the
+	 * row as a whole and a later {@code create or replace function} that left a column out of the
+	 * comparison (the member, the action, either basis, the moment) would pass the two cases above, which
+	 * move only the season and the name. Each update changes the one column; the message asked for is the
+	 * trigger's, which runs before the schema's own checks, so a column dropped from the comparison is
+	 * answered by a different refusal or by none. The member is the one column with a refusal of its own:
+	 * it may be forgotten when he is deleted (V79) and never pointed at somebody else.
+	 */
+	@ParameterizedTest
+	@CsvSource(delimiter = '|', value = {
+			"competitor_id = (select id from competitor where member_number = '006001') | cannot be made to name somebody else",
+			"action = 'basisChanged' | cannot be changed once written",
+			"basis_before = 'balance' | cannot be changed once written",
+			"basis_after = 'feeExempt' | cannot be changed once written",
+			"decided_at = timestamptz '2026-10-19 09:00:00+00' | cannot be changed once written"})
+	void everyOtherColumnOfAWrittenLineIsHeldToo(String assignment, String refusal) {
+		assertThatThrownBy(() -> db.sql("update membership_change set " + assignment).update())
+				.as("%s was let through", assignment)
+				.hasMessageContaining(refusal);
 	}
 
 	/** Nor who did it, which is a second case because the first refusal aborts the transaction. */

@@ -275,6 +275,38 @@ class TheMemberNumberSequenceCarriedOverTest extends DatabaseTest {
 	}
 
 	/**
+	 * A SEQUENCE THAT HAS BEEN CALLED, AND STANDS ONE BELOW THE HIGHEST NUMBER HELD, IS MOVED ONTO IT.
+	 *
+	 * <p>The one cell of the {@code is_called} axis the cases around it do not reach where it matters:
+	 * (12, true) is far ahead of every number held, so the value the next draw is worked out as (13) is
+	 * above 7 whichever way it is worked out, and (1, false) is as low as it goes. Here the sequence
+	 * stands at 6 and has been called, so the next draw would be 7, which a member already holds: the
+	 * comparison has to read it as {@code last_value + 1} for the sequence to be moved, to (7, true), and
+	 * the next draw is 8. A comparison that cannot say what the next draw is leaves it at 6 and the
+	 * first activation draws 7.
+	 */
+	@Test
+	void aCalledSequenceOneBelowTheHighestNumberHeldIsMovedOntoIt() throws Exception {
+		aMemberHolding("000002");
+		aMemberHolding("000007");
+		aMemberHolding("000003");
+		putTheSequenceAt(6, true);
+
+		assertThat(theSequence())
+				.as("the fixture did not put the sequence one below the highest number held, called")
+				.isEqualTo(new Standing(6, true));
+
+		theMigration();
+
+		assertThat(theSequence())
+				.as("the sequence was left where the next draw is a number somebody holds")
+				.isEqualTo(new Standing(7, true));
+		assertThat(nextNumber())
+				.as("the next member to be activated would be given 000007, which is already held")
+				.isEqualTo(8L);
+	}
+
+	/**
 	 * AND A SEQUENCE THAT STANDS AHEAD WITHOUT HAVING BEEN CALLED IS NOT PUSHED ON EITHER.
 	 *
 	 * <p>Put at 20 with {@code is_called} false, which is how it stands after {@code setval(20, false)}

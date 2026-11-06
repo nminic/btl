@@ -194,6 +194,29 @@ class StatementApiTest {
 		assertThat(db.sql("select count(*) from membership").query(Long.class).single()).isZero();
 	}
 
+	/**
+	 * A REFERENCE THAT NAMES A MEMBER IS SUGGESTED BEFORE THE PAYER'S NAME, and the payer's name is not
+	 * asked at all while the reference names somebody.
+	 *
+	 * <p>In every other case the payer of a line with a reference is the very member the reference names, so
+	 * the two ways of finding the member gave one answer and a suggestion that ignored the reference went
+	 * unseen. Here the reference names {@code 000045} and the payer's name is {@code 000046}'s: the first is
+	 * the suggestion, the second is not among them (the amount is not the expected one, so the line waits).
+	 */
+	@Test
+	void aReferenceThatNamesAMemberIsSuggestedAndTheNameOfThePayerIsNotAsked() throws Exception {
+		long named = competitor("000045", "Poziv", "Brojem", A_TOWN_IN_SERBIA);
+		long byName = competitor("000046", "Placa", "Imenom", A_TOWN_IN_SERBIA);
+
+		JsonNode taken = taken(statement(2).credit("PLACA IMENOM", "4199.00", "2028000045", order()));
+
+		assertThat(field(taken, "waitsBecause")).containsExactly("notTheExpectedAmount");
+		assertThat(candidates(taken, 0))
+				.as("the member the reference names was not suggested, or the payer's name was asked too")
+				.containsExactly(named)
+				.doesNotContain(byName);
+	}
+
 	/* ------------------------------------------------------------------------------------
 	   A PAYMENT WITHOUT A REFERENCE
 	   ------------------------------------------------------------------------------------ */

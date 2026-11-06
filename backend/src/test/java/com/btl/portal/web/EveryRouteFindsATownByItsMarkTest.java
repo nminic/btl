@@ -28,6 +28,9 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 import tools.jackson.databind.ObjectMapper;
 
 import java.sql.Timestamp;
+import java.lang.reflect.GenericArrayType;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.time.Duration;
 import java.time.Clock;
 import java.time.Instant;
@@ -78,7 +81,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *
  * <p><b>What the floor does NOT see, written down rather than left to be found.</b> It asks
  * the components of the body type and of any record nested inside it, so it sees a town
- * however deeply a request wraps it; it does not see a town that arrives as a path variable,
+ * however deeply a request wraps it, in a record or in a list of them; it does not see a town that arrives as a path variable,
  * as a query parameter, or under a different name. There is none today - {@code placeId} on
  * a request body is the only shape on the portal - and the day one of those is written this
  * floor will not say so.
@@ -158,6 +161,9 @@ class EveryRouteFindsATownByItsMarkTest {
 		db.sql("insert into account_admin_right (account_id, right_code)"
 						+ " values ((select id from account where email = ?), 'entity:events')")
 				.param(MODERATOR).update();
+		db.sql("insert into account_admin_right (account_id, right_code)"
+						+ " values ((select id from account where email = ?), 'entity:members')")
+				.param(MODERATOR).update();
 	}
 
 	/**
@@ -236,6 +242,7 @@ class EveryRouteFindsATownByItsMarkTest {
 		table.put("PUT /api/events/{id}", this::anEventEdited);
 		table.put("POST /api/registration", this::aMemberRegistered);
 		table.put("POST /api/results", this::aRunReported);
+		table.put("POST /api/competitors", this::aGroupEntered);
 
 		return table;
 	}
@@ -313,6 +320,46 @@ class EveryRouteFindsATownByItsMarkTest {
 		assertThat(answer.getStatus())
 				.as("a registration naming a town of the codebook by its mark was refused")
 				.isEqualTo(204);
+
+		return db.sql("select c.place_id from competitor c"
+						+ " join account a on a.competitor_id = c.id where a.email = ?")
+				.param(address).query(Long.class).single();
+	}
+
+	/**
+	 * A GROUP ENTERED OFF A SHEET OF PAPER, which is the fourth road a town arrives by and the first
+	 * whose town is inside a LIST: the body is a wrapper whose only component is a list of rows.
+	 *
+	 * <p>The moderator of this file is given the right over the members for it in the setup, and the
+	 * row is a complete one, since a row refused as incomplete would write nothing and the probe would
+	 * answer for a reason that has nothing to do with a town.
+	 */
+	private long aGroupEntered(Town town) throws Exception {
+		String address = "grupa" + town.mark() + "@primer.rs";
+		Map<String, Object> row = new LinkedHashMap<>();
+
+		row.put("firstName", "Petar");
+		row.put("lastName", "Petrovic");
+		row.put("fatherName", "Milorad");
+		row.put("birthDate", LocalDate.now(SeasonClock.ZONE).minusYears(30).toString());
+		row.put("gender", "M");
+		row.put("beginner", true);
+		row.put("email", address);
+		row.put("address", "Ulica slobode 15/4");
+		row.put(THE_TOWN, town.mark());
+		row.put("idNumber", "AB1234567");
+		row.put("shirtSize", "L");
+		row.put("healthStatement", true);
+
+		MockHttpServletResponse answer = http.perform(post("/api/competitors").with(csrf())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(new ObjectMapper().writeValueAsString(Map.of("members", List.of(row))))
+						.cookie(new Cookie(SessionCookie.NAME, session)))
+				.andReturn().getResponse();
+
+		assertThat(answer.getStatus())
+				.as("a group naming a town of the codebook by its mark was refused")
+				.isEqualTo(201);
 
 		return db.sql("select c.place_id from competitor c"
 						+ " join account a on a.competitor_id = c.id where a.email = ?")
@@ -489,8 +536,8 @@ class EveryRouteFindsATownByItsMarkTest {
 	 * WHETHER THIS HANDLER TAKES A TOWN, and it is the record that answers rather than a
 	 * list of routes.
 	 *
-	 * <p>Nested records are followed, so a request that one day wraps its town in a type of
-	 * its own is still seen; {@code seen} is what stops a record that holds one of its own
+	 * <p>Nested records are followed, and so is whatever a collection or an array holds, so a
+	 * request that one day wraps its town in a type of its own, or in a list of them, is still seen; {@code seen} is what stops a record that holds one of its own
 	 * kind from walking forever.
 	 */
 	private static boolean takesATown(HandlerMethod handler) {
@@ -499,14 +546,36 @@ class EveryRouteFindsATownByItsMarkTest {
 				.isPresent();
 	}
 
-	private static boolean holdsATown(Class<?> type, Set<Class<?>> seen) {
-		if (!type.isRecord() || !seen.add(type)) {
+	private static boolean holdsATown(Type type, Set<Type> seen) {
+		/* A COLLECTION IS ASKED ABOUT WHAT IT HOLDS. `POST /api/competitors` takes a body whose only
+		   component is a `List` of records that carry the town, so a walk that stopped at anything
+		   that is not itself a record never reached `placeId` and the route was missing from
+		   `routesTakingATown()`. The type arguments of a parameterized type are the language's own
+		   answer to „what does this hold", and an array is asked about its element, so no list of
+		   collection types is written here. */
+		if (type instanceof ParameterizedType parameterized) {
+			return Stream.of(parameterized.getActualTypeArguments()).anyMatch(one -> holdsATown(one, seen));
+		}
+
+		if (type instanceof GenericArrayType array) {
+			return holdsATown(array.getGenericComponentType(), seen);
+		}
+
+		if (!(type instanceof Class<?> plain)) {
 			return false;
 		}
 
-		return Stream.of(type.getRecordComponents())
+		if (plain.isArray()) {
+			return holdsATown(plain.getComponentType(), seen);
+		}
+
+		if (!plain.isRecord() || !seen.add(plain)) {
+			return false;
+		}
+
+		return Stream.of(plain.getRecordComponents())
 				.anyMatch(one -> one.getName().equals(THE_TOWN)
-						|| holdsATown(one.getType(), seen));
+						|| holdsATown(one.getGenericType(), seen));
 	}
 
 	/**
