@@ -1147,7 +1147,7 @@
  * season sits beside them; at 200% the same eight rem is 256px, the two no longer
  * plan onto one line, and the belt wraps rather than crushing either. The floor is in
  * `rem` because what has to fit inside it is words. */
-.profile__belt > .parts {
+.profile__belt .parts {
   flex: 1 1 8rem;
   min-inline-size: 0;
 }

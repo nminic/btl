@@ -151,14 +151,24 @@ const THE_LISTS: Answers = {
   '/api/teams/2/invitations': [],
 }
 
-type Reader = { name: string; buttons: 0 | 1 | 2; answers: Answers }
+type Reader = { name: string; buttons: 0 | 1 | 2; tabs: 2 | 3; answers: Answers }
 
 const READERS: Reader[] = [
-  { name: 'a visitor', buttons: 0, answers: THE_LISTS },
-  { name: 'a member who may ask her into a pair', buttons: 1, answers: { ...THE_LISTS, '/api/me': meAs(ONE_BUTTON) } },
+  { name: 'a visitor', buttons: 0, tabs: 2, answers: THE_LISTS },
+  /* THE MEMBER ON HER OWN PROFILE: three parts („Podaci" is hers alone) and no invitation. The reader the
+     season-beside-the-parts claim was missing: the belt rule that keeps the two on one line had a selector
+     that matched nothing, and no reader here had three parts on „Rezultati" to show it. */
+  { name: 'the member on her own page', buttons: 0, tabs: 3, answers: { ...THE_LISTS, '/api/me': meAs(HER) } },
+  {
+    name: 'a member who may ask her into a pair',
+    buttons: 1,
+    tabs: 2,
+    answers: { ...THE_LISTS, '/api/me': meAs(ONE_BUTTON) },
+  },
   {
     name: 'a member who may ask her into a pair and into his team',
     buttons: 2,
+    tabs: 2,
     answers: { ...THE_LISTS, '/api/me': meAs(TWO_BUTTONS) },
   },
 ]
@@ -185,8 +195,14 @@ type Measured = {
   row: Box
   name: Box
   tabs: (Box & { fontSize: string; fontWeight: string; radius: string })[]
+  /** The gap between the parts and the season, as drawn. */
+  beltGap: number
   buttons: (Box & { text: string; natural: number; fontSize: string; fontWeight: string; radius: string })[]
   season: Box | null
+  /** The box that holds the season with its label, which is what stands in the line. */
+  seasonSlot: Box | null
+  /** The letter of the page, one rem. */
+  root: number
   head: Box[]
 }
 
@@ -216,6 +232,7 @@ const measure = (page: Page): Promise<Measured | null> =>
     }
     const buttons = [...row.querySelectorAll('button')].filter((one) => !nav.contains(one))
     const season = document.querySelector('.profile__top select')
+    const slot = document.querySelector('.profile__top .profile__season')
 
     return {
       viewport: document.documentElement.clientWidth,
@@ -224,6 +241,7 @@ const measure = (page: Page): Promise<Measured | null> =>
       row: boxOf(row),
       name: boxOf(name),
       tabs: [...nav.querySelectorAll('a')].map((one) => ({ ...boxOf(one), ...look(one) })),
+      beltGap: parseFloat(getComputedStyle(document.querySelector('.profile__belt') ?? nav).columnGap) || 0,
       buttons: buttons.map((one) => {
         /* How wide its own words make it, so „not as wide as the row" can be asked of a button whose
            words are shorter than the row and not of one whose words are not. */
@@ -243,6 +261,8 @@ const measure = (page: Page): Promise<Measured | null> =>
         return { ...boxOf(one), ...look(one), text: one.textContent ?? '', natural }
       }),
       season: season === null ? null : boxOf(season),
+      seasonSlot: slot === null ? null : boxOf(slot),
+      root: parseFloat(getComputedStyle(document.documentElement).fontSize),
       head: [...(document.querySelector('.profile__top')?.querySelectorAll('h1, a, button, select') ?? [])].map(boxOf),
     }
   })
@@ -287,6 +307,7 @@ for (const at of WIDTHS) {
         }
 
         expect(measured.buttons, 'how many buttons stand in the row').toHaveLength(reader.buttons)
+        expect(measured.tabs, 'how many parts stand in the row').toHaveLength(reader.tabs)
         expect(measured.season !== null, 'whether the season stands in the head').toBe(season)
 
         const tab = measured.tabs[0]
@@ -311,6 +332,36 @@ for (const at of WIDTHS) {
             button.width,
             `„${button.text}" is wider than its own words, so it was stretched`,
           ).toBeLessThanOrEqual(Math.min(button.natural, measured.row.width) + SLACK)
+        }
+
+        /* THE SEASON IN THE LINE OF THE PARTS, on a telephone, wherever the line is planned to hold both (PDL
+           23.08.2026: „Sezona silazi u red sa karticama kad se ekran skupi"; owner, 06.11.2026, refused „izbor
+           godine u drugi red"). The line is planned around the floor of the parts, eight rem (`Profile.css`,
+           `.profile__belt .parts`), the gap and the season with its label. Measured 06.11.2026 at 360px: at 100%
+           text that is 266px of 328, so the season stands beside the parts for a visitor (two parts, one line)
+           and for the member on her own page (three parts, which wrap onto two lines beside it); at 200% the
+           floor alone is 256px and the belt wraps by design, the season falls under the parts, which is the
+           one case this does not ask. What is asked: no part is a taller box than another (asked of a season
+           that merely overlaps a part, a part made tall by wrapping its own words would satisfy it alone),
+           and the season overlaps a part vertically and stands to the right of every part it overlaps. */
+        if (at.width < 560 && measured.season !== null && measured.seasonSlot !== null) {
+          const slot = measured.seasonSlot
+          const planned = measured.root * 8 + measured.beltGap + slot.width
+
+          if (planned <= measured.row.width + SLACK) {
+            const shortest = Math.min(...measured.tabs.map((one) => one.height))
+            const beside = measured.tabs.filter((one) => slot.top < one.bottom - SLACK && slot.bottom > one.top + SLACK)
+
+            for (const one of measured.tabs) {
+              expect(one.height - shortest, 'a part is taller than another, so it wrapped its own words').toBeLessThanOrEqual(SLACK)
+            }
+
+            expect(beside.length, 'the season is not in the line of any part').toBeGreaterThan(0)
+
+            for (const one of beside) {
+              expect(slot.left, 'the season does not stand to the right of a part it shares a line with').toBeGreaterThanOrEqual(one.right - SLACK)
+            }
+          }
         }
 
         const together = measured.buttons.reduce((sum, one) => sum + one.natural, 0) + measured.gap * Math.max(0, measured.buttons.length - 1)
