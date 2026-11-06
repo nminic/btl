@@ -355,6 +355,10 @@ describe('a sentence with a value put into it', () => {
       'admin.showing',
       'awards.category',
       'awards.position <- formatNumber',
+      /* „Timski plasman, {team}", the trophy of a frozen season's winning team on a member's page (PDL,
+         owner, 05.11.2026). The team's name stands after a comma as the thing named, in the nominative
+         its name is written in, so it has no case to be wrong in. */
+      'awards.team',
       /* „Nov događaj {date}", and the date is written in numbers: „1. 10. 2026." has no
          month word in it, so it has no case to be wrong in. */
       'calendar.addOnDay <- formatShortDate',

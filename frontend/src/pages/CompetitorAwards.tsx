@@ -310,7 +310,7 @@ function AwardsFor({
               </thead>
               <tbody>
                 {awards.map((award) => (
-                  <tr key={`${award.season}-${award.kind}-${award.category}`}>
+                  <tr key={`${award.season}-${award.kind}`}>
                     <td>{award.season}</td>
                     {/* The label of a category board carries the category, written `M 55+`, and is held
                         on one line like every other cell that draws one (`styles/table.css`,

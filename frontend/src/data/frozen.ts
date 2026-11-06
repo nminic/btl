@@ -253,12 +253,8 @@ function tablesOf(body: unknown): FrozenTables {
 export function frozenTablesIn(body: unknown): FrozenTables | null {
   try {
     return tablesOf(body)
-  } catch (unreadable) {
-    if (unreadable instanceof Unreadable) {
-      return null
-    }
-
-    throw unreadable
+  } catch {
+    return null
   }
 }
 
