@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { at } from '../test/at'
 import SEASON from './tablesBothSidesWrite.json'
 import {
   CATEGORIES,
@@ -314,5 +315,73 @@ describe('the tables a frozen season writes down', () => {
     ]) {
       expect(list?.length ?? 0).toBeGreaterThan(1)
     }
+  })
+})
+
+/**
+ * THE SUMS A TABLE IS ORDERED BY ARE THE SERVER'S AND NOT THE MACHINE'S (PENDING „Živi ekran sabira bodove
+ * kao `number`, snimak kao decimalu").
+ *
+ * <p>The server adds `BigDecimal`s (`TheTablesOfASeason.java`, `row.getBigDecimal`); the screen added
+ * `number`s, and 0.01 + 0.05 is 0.060000000000000005 while 0.01 + 0.01 + 0.04 is 0.06. Two members level
+ * to the hundredth were therefore level in the table the server writes down at 16:00 on 1 January and
+ * apart on the screen of the season that was running, and the rung that should have decided between them
+ * never got asked. The file above holds no such pair (it was written with sums that happen to agree), so
+ * it cannot say; this case makes one.
+ *
+ * <p>Two members whose points are the same to the hundredth, one with three runs and one with two, and
+ * kilometres level as well. The ladder is points, kilometres, then MORE RACES (`STANDING`), so the one
+ * with three runs is first. The sum of the two-run member is the larger of the two as a `number`, so a
+ * screen that adds with `+` puts HIM first. Their member numbers are the other way round, so the
+ * fallback below the ladder does not agree with the right answer by accident.
+ */
+describe('two members level to the hundredth', () => {
+  const { competitors, results } = inputs(SEASON)
+  const ranked = SEASON.members.filter((one) => one.ranks && one.gender === 'M').slice(0, 2)
+  const [lower, higher] = ranked.map((one) =>
+    given(new Map(competitors.map((each) => [each.memberNumber, each])), one.number),
+  )
+  const template = given(new Map(results.map((one) => [one.id, one])), at(SEASON.runs, 0).id)
+
+  /** Runs of a member that are his and nobody else's, each a run of the same day and race kind. */
+  function runs(of: Competitor, firstId: number, points: number[], kilometers: number[]) {
+    return points.map((each, index) => ({
+      ...template,
+      id: firstId + index,
+      memberNumber: of.memberNumber,
+      points: each,
+      distanceKm: at(kilometers, index),
+      ascentM: 0,
+      descentM: 0,
+      seconds: 0,
+      inItsStanding: true,
+    }))
+  }
+
+  function order(mine: Result[], his: Result[]): string[] {
+    return rankingFor([lower, higher], [...mine, ...his], { season: SEASON.season, gender: 'M' }).map(
+      (row) => row.competitor.memberNumber,
+    )
+  }
+
+  it('are ordered by the next rung and not by what a floating point sum makes of them', () => {
+    expect(ranked).toHaveLength(2)
+    expect(lower.memberNumber < higher.memberNumber).toBe(true)
+
+    /* The LOWER number has two runs and the larger float sum; the HIGHER has three. */
+    expect(
+      order(runs(lower, 9001, [0.01, 0.05], [3, 3]), runs(higher, 9101, [0.01, 0.01, 0.04], [2, 2, 2])),
+    ).toEqual([higher.memberNumber, lower.memberNumber])
+  })
+
+  it('and the kilometres are added the same way, which is the rung under the points', () => {
+    /* Level in points, level to the hundredth in kilometres (0.06 against 0.06), and the same
+       arrangement of runs as above: the larger float sum belongs to the member with fewer runs. */
+    expect(
+      order(
+        runs(lower, 9201, [1.5, 1.5], [0.01, 0.05]),
+        runs(higher, 9301, [1, 1, 1], [0.01, 0.01, 0.04]),
+      ),
+    ).toEqual([higher.memberNumber, lower.memberNumber])
   })
 })
