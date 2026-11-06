@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { createElement } from 'react'
 import { WHOLE } from '../../components/crop'
 import { CropWindow } from '../../components/CropWindow'
+import { must } from '../../test/at'
 import { renderWithI18n } from '../../test/render'
 import { everyRule, ruleFor } from '../../test/stylesheet'
 
@@ -55,10 +56,19 @@ describe('the picture a moderator is deciding about', () => {
 
     expect(drawn.length).toBeGreaterThan(1)
 
+    /* The last compound of each selector of a rule, the part that names the element it styles: the
+       card the picture stands in is not drawn here, so `.card .pending__picture` would otherwise be
+       a rule that picks nothing. Over-asking is the safe direction, a rule that styles some other
+       element of that name would be reported and looked at. */
+    const subjectsOf = (selectors: string): string[] =>
+      selectors.split(',').map((one) => must(one.trim().split(/\s*[\s>+~]\s*/).pop(), 'a selector'))
+
     const capping = everyRule(css, 'Verification.css').filter(
       (rule) =>
         /max-(block-size|height)\s*:/.test(rule.cssText) &&
-        drawn.some((element) => element?.matches(rule.selectorText)),
+        subjectsOf(rule.selectorText).some((subject) =>
+          drawn.some((element) => element?.matches(subject)),
+        ),
     )
 
     expect(capping.map((rule) => rule.cssText)).toEqual([])
