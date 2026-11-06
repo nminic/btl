@@ -139,8 +139,21 @@ class FrozenSeasonApi {
 			BigDecimal points, String teamName) {
 	}
 
+	/**
+	 * What one member held in the season at its freeze (V83), with the right to rank or without it.
+	 *
+	 * <p>The season after this one reads it on the list of best progress: „najbolji napredak ... uzimaju
+	 * broj iz snimka" (PDL, derived 10.10.2026), and the season before counts „whether or not he held it with
+	 * the right to rank" (owner, 30.10.2026, „prethodna sezona bez prava rangiranja se računa kao prethodna").
+	 * The table of the season holds only the members who ranked, so it cannot answer that. Nothing new about
+	 * a member leaves here: his runs of that season and his points on them are answered by
+	 * {@code /api/results} already. A member who is gone has no row, because V83's row goes with him.
+	 */
+	record Held(String memberNumber, BigDecimal points) {
+	}
+
 	record Tables(int season, List<Standing> standings, List<Team> teams, List<Board> boards, List<Pair> pairs,
-			List<League> leagues, List<Award> awards) {
+			List<League> leagues, List<Award> awards, List<Held> pointsAtTheFreeze) {
 	}
 
 	@GetMapping("/api/frozen-seasons")
@@ -173,7 +186,8 @@ class FrozenSeasonApi {
 
 		int one = frozen.getFirst();
 
-		return new Tables(one, standings(one), teams(one), boards(one), pairs(one), leagues(one), awards(one));
+		return new Tables(one, standings(one), teams(one), boards(one), pairs(one), leagues(one), awards(one),
+				pointsAtTheFreeze(one));
 	}
 
 	private List<Standing> standings(int season) {
@@ -290,6 +304,15 @@ class FrozenSeasonApi {
 				.params(season, season)
 				.query((row, one) -> new League(row.getString(2), row.getString(3),
 						columns.getOrDefault(row.getLong(1), List.of()), rows.getOrDefault(row.getLong(1), List.of())))
+				.list();
+	}
+
+	private List<Held> pointsAtTheFreeze(int season) {
+		return db.sql("select c.member_number, p.points from season_points_at_freeze p"
+						+ " join competitor c on c.id = p.competitor_id"
+						+ " where p.season = ? and c.member_number is not null order by c.member_number")
+				.param(season)
+				.query((row, one) -> new Held(row.getString(1), row.getBigDecimal(2)))
 				.list();
 	}
 

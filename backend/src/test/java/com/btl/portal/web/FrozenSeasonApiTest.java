@@ -351,6 +351,32 @@ class FrozenSeasonApiTest {
 		assertThat(rows(tables.get("leagues"), "slug")).containsExactly("liga-2027");
 	}
 
+	/**
+	 * What every member held at the freeze, a member WITHOUT the right to rank among them: the list of best
+	 * progress of the season after reads it, and counts the season before „whether or not he held it with the
+	 * right to rank" (owner, 30.10.2026). He is in no table of the season, which is the other half.
+	 */
+	@Test
+	void thePointsAtTheFreezeNameEveryMemberWhoHeldTheSeasonAndOnlyThem() throws Exception {
+		member("000405", "Dejan", "Peti", "M");
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " values ((select id from competitor where member_number = '000405'), 2027, 'feeExempt',"
+						+ " 'Probni Probic', timestamptz '2027-04-15 10:00:00+00')")
+				.update();
+		run("000405", "Krug", 99.00);
+		member("000406", "Djordje", "Sesti", "M");
+		run("000406", "Krug", 77.00);
+
+		frozen();
+
+		JsonNode tables = tablesOf2027(null);
+
+		assertThat(rows(tables.get("pointsAtTheFreeze"), "memberNumber", "points"))
+				.containsExactly("000401 30.0", "000402 45.0", "000403 40.0", "000404 12.0", "000405 99.0");
+		assertThat(rows(tables.get("standings"), "memberNumber"))
+				.as("a member without the right to rank stood in the table").doesNotContain("000405");
+	}
+
 	@Test
 	void everyReaderIsAnsweredTheSameTables() throws Exception {
 		frozen();
@@ -391,7 +417,7 @@ class FrozenSeasonApiTest {
 				new String[] {"teams", "roster"}, new String[] {"boards"}, new String[] {"pairs"},
 				new String[] {"pairs", "halves"}, new String[] {"leagues"}, new String[] {"leagues", "columns"},
 				new String[] {"leagues", "standings"}, new String[] {"leagues", "standings", "cells"},
-				new String[] {"awards"})) {
+				new String[] {"awards"}, new String[] {"pointsAtTheFreeze"})) {
 			assertThat(Answers.fieldsOf(first(answered, at)))
 					.as("the answer and frozen-tables.json under %s", String.join(".", at))
 					.isEqualTo(Answers.fieldsOf(first(served, at)));
