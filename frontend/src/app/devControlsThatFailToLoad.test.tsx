@@ -1,5 +1,4 @@
 import { screen } from '@testing-library/react'
-import { renderAt } from '../test/render'
 
 /* A build that carries the development controls (QA), whose loader is refused: the chunk is
    gone after a deploy, or the connection dropped while it was fetched.
@@ -25,6 +24,19 @@ vi.mock('../dev/tools', () => ({
 
 describe('the header of a build whose development controls cannot be loaded (PENDING 28870)', () => {
   it('is drawn all the same, without them, and says in the console what was refused', async () => {
+    /* IMPORTED INSIDE THE CASE, and not at the head of the file. `Shell` awaits the loader while it
+       is evaluated, so with the `catch` taken out of it (or made to throw on) a static import
+       rejects while the file loads and no case starts at all: Vitest reports „no tests”, which is
+       neither a pass nor a fail on the assertion, and both mutations went unmeasured. Imported here,
+       the same rejection is a thing the case holds in its hand and says in its own words. */
+    const drawing = await import('../test/render').catch((failure: unknown) => failure)
+
+    expect(drawing, 'the header did not load when the controls were refused').toHaveProperty(
+      'renderAt',
+    )
+
+    const { renderAt } = await import('../test/render')
+
     renderAt('/sr')
 
     /* The row the two would stand in, drawn: a blank page has no language menu, and that is

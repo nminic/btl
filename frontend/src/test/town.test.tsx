@@ -55,6 +55,13 @@ describe('typing a town the codebook knows', () => {
       await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
 
       expect(screen.getByLabelText(/^Država/)).toHaveValue('SI')
+      /* AND WRITTEN BY THE CODEBOOK AND NOT BY A HAND. The value alone is the same whoever put it
+         there, which is the pair of sources the helper exists to tell apart (`town.ts:12-14`: the old
+         way „measures neither”). The sign only the codebook gives is that the select is switched off
+         beside the town it recognised (`forms/PlaceField.tsx`); a country chosen by hand leaves it
+         live. Measured: a hand-chosen country after the typing kept every case that uses the helper
+         green. */
+      expect(screen.getByLabelText(/^Država/)).toBeDisabled()
     } finally {
       server.stop()
     }
