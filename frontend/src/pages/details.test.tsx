@@ -384,10 +384,10 @@ describe('LeagueDetail', () => {
        the events of its races. So the row follows the box. Written as a comparison of the two
        rather than as a number, because a number written here would let them drift apart again and
        the day it happened nobody would be told which one to believe. */
-    /* The box has to be opened first: its panel carries `hidden` while it is folded, which is
-       what keeps `aria-controls` pointing at something that exists, and a folded panel is not
-       part of the accessibility tree. Opening it is also the state the member compares the two
-       numbers in. */
+    /* The box is open on arrival (owner, 03.11.2026), which is the state the member compares the
+       two numbers in. Its panel carries `hidden` only while somebody has folded it, which is what
+       keeps `aria-controls` pointing at something that exists, and a folded panel is not part of
+       the accessibility tree. */
     const opens = within(box).getByRole('button', { name: /Događaji i trke/ })
 
     /* Open on arrival since 03.11.2026, so nothing is pressed. One line to an event since the same
