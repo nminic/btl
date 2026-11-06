@@ -116,7 +116,8 @@ public final class MembershipPrice {
 	 *
 	 * <p><b>AND ADL A12 DOES NOT FORBID THESE TWO, WHICH IS WORTH WRITING DOWN BECAUSE IT
 	 * READS AS THOUGH IT MIGHT.</b> „Iznosi se cuvaju u {@code NUMERIC}, nikad u
-	 * {@code double}, i <b>nikad kao broj upisan u kodu</b>" (ADL.md) is about
+	 * {@code double}, i <b>nikad kao broj upisan u kodu</b>" ({@code ADL.md}, found by the words
+	 * "nikad kao broj upisan u kodu", which occur once there) is about
 	 * the amount a member is CHARGED, and the reason it gives is its own scope: „da se
 	 * cenovnik i ono sto portal objavljuje ne raziđu". Not one price is written here - they
 	 * are all in {@code price_row}, which is exactly what this class refuses to repeat. A

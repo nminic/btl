@@ -151,9 +151,9 @@ public final class WhatAResultChangeSays {
 	}
 
 	/**
-	 * THE THREE OCCASIONS, AND EACH SAYS HOW MANY FACTS ITS WORDS TAKE.
+	 * THE OCCASIONS, AND EACH SAYS HOW MANY FACTS ITS WORDS TAKE.
 	 *
-	 * <p><b>An enum rather than three keys typed at three call sites, and the count is what
+	 * <p><b>An enum rather than keys typed at the call sites, and the count is what
 	 * makes it one.</b> {@code MessageFormat} does not complain about a hole nobody fills: a
 	 * body written with {@code {1}} in it and handed one value renders the literal
 	 * „{1}" into a member's letter, and a body written with one hole and handed two drops the
@@ -164,7 +164,7 @@ public final class WhatAResultChangeSays {
 	 * <p><b>This is deliberately the shape {@code WhatANoticeSays} has on the branch that will
 	 * absorb it</b> - an occasion, a key, a count, and floors that sweep {@code values()} and
 	 * the dictionary's own {@code keySet()} so that no list is typed anywhere. Folding the two
-	 * together is then three constants moving across and {@link #inWords} staying behind,
+	 * together is then the constants moving across and {@link #inWords} staying behind,
 	 * rather than two classes being reconciled.
 	 */
 	public enum Told {

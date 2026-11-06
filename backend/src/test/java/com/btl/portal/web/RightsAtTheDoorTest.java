@@ -1474,8 +1474,9 @@ class RightsAtTheDoorTest {
 	 * {@code ApiSecurity} says so in as many words („AND OPTIONS, which is NOT a read and is
 	 * opened anyway"), and the reason to leave it open is that class's own reasoning rather
 	 * than a decision either journal records - a citation of the code, not of the journal:
-	 * ApiSecurity.java ("What is open by name has nothing to hide about which verbs it
-	 * takes"). (Neither journal has a decision saying so: the one place {@code OPTIONS} is
+	 * ApiSecurity.java ("nothing to hide about which verbs it takes, and" - one line there,
+	 * so {@code grep -c -F} over {@code src/main} finds it once, where the sentence it ends
+	 * runs across a line break and cannot be found by a search at all). (Neither journal has a decision saying so: the one place {@code OPTIONS} is
 	 * discussed at all is a different case, a moderator route whose own existence leaked
 	 * through the same {@code Allow} header, which that entry treats as a problem to close
 	 * rather than a reason to leave anything open - a boundary worth naming, not a source
