@@ -1229,6 +1229,43 @@ class ResultApiTest {
 	}
 
 	/**
+	 * AND THE FIRST SEASON IS THE FIRST SEASON, NOT THE ONE THE CLOCK STANDS IN: a result older than the
+	 * league is banded for 2027 on 1 January 2028 too.
+	 *
+	 * <p>The case above stands on a member who is forty in both 2027 and 2028, so the first season and
+	 * the season of the day the answer is read on give one band, and a band worked out once per answer for
+	 * the clock's season passes it (measured 06.11.2026: the season asked of the clock in place of the
+	 * result's day, 45 of 45 green). Born in 1988 he is thirty nine in 2027 and forty in 2028, and the
+	 * clock stands on 1 January 2028, so the two seasons give two bands and only one of them
+	 * is the first season's.
+	 */
+	@Test
+	void aResultOlderThanTheLeagueIsBandedForTheFirstSeasonAndNotForTheSeasonTheClockIsIn() throws Exception {
+		event("istorija-2024", "Istorija 2024", "2024-06-01");
+		race("istorija-2024", "Starija trka", "2024-06-01", 10.00);
+		aMember("000010", "Deseti", "Granicni", "M", "1988-06-01", true);
+		aMember("000011", "Jedanaesti", "Granicni", "M", "1988-06-01", false);
+		run("000010", "Starija trka", "2024-06-01", 10.00, 5, 5, 2600, 70.00);
+		run("000011", "Starija trka", "2024-06-01", 10.00, 5, 5, 2700, 69.00);
+
+		assertThat(Category.ageBandFor(1988, SeasonClock.FIRST_SEASON))
+				.as("born in 1988 he is no longer on the boundary between the first season and the one the"
+						+ " clock stands in, so the case measures nothing")
+				.isNotEqualTo(Category.ageBandFor(1988, SeasonClock.seasonTheBandIsWorkedOutFor(
+						AFTER_THE_FREEZE.atZone(SeasonClock.ZONE))));
+
+		for (String number : List.of("000010", "000011")) {
+			assertThat(rowsOf(number))
+					.as("the run before the league is not served for %s, so the case measures nothing", number)
+					.hasSize(1)
+					.allSatisfy(one -> assertThat(runnerOf(one).ageBand())
+							.as("the band of %s was worked out for the season of the clock and not for the first"
+									+ " season", number)
+							.isEqualTo(Category.ageBandFor(1988, SeasonClock.FIRST_SEASON).code()));
+		}
+	}
+
+	/**
 	 * AND A BAND DOES NOT MOVE WHEN THE NEXT SEASON GOES ON SALE.
 	 *
 	 * <p>From 15 October a payment buys NEXT year and {@code SeasonClock.seasonBeingPaidFor}
