@@ -379,19 +379,28 @@ describe('the list of competitions, for a competition that counts some of the ra
     )
   }, SLOW)
   it('writes in the brackets the day of the event and not the day of any race it counts', async () => {
-    const { events, races } = theArrangement()
-    const counted = racesServed(true).filter((race) => COUNTED.includes(race.id))
+    const { events } = theArrangement()
 
-    /* The arrangement is what the case stands on: every counted race on a day other than its
-       event's, and the days of the races all different from one another, so that the first, the
-       last and any other pick of a day gives a string the event's own day is not. */
+    servedCountingFour(true)
+
+    /* The arrangement is what the case stands on, **asked of what is served and not of the function
+       that builds it**: whether those races are served at all is decided by `servedCountingFour(true)`
+       and by its branch for `/api/races`, and a premise checked on `racesServed(true)` stays true
+       when that call loses its argument or the branch is switched off (review of PR 677, medium).
+       Every counted race on a day other than its event's, and the days of the races all different
+       from one another, so that the first, the last and any other pick of a day gives a string the
+       event's own day is not. */
+    const served: Race[] = await (await fetch('/api/races')).json()
+    const counted = served.filter((race) => COUNTED.includes(race.id))
+
+    expect(counted.map((race) => race.id).sort((left, right) => left - right)).toEqual(
+      [...COUNTED].sort((left, right) => left - right),
+    )
     for (const race of counted) {
       expect(race.date).not.toBe(must(events.find((one) => one.id === race.eventId), 'event').date)
     }
     expect(new Set(counted.map((race) => race.date)).size).toBe(counted.length)
-    expect(races.length).toBeGreaterThan(counted.length)
-
-    servedCountingFour(true)
+    expect(served.length).toBeGreaterThan(counted.length)
 
     renderAt(LIST)
 

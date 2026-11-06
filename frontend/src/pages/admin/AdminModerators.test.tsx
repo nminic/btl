@@ -177,6 +177,11 @@ describe('the moderators screen', () => {
 
     await user.clear(screen.getByLabelText(/^Ime/))
     await user.type(screen.getByLabelText(/^Ime/), 'Zorana')
+    /* AND THE SURNAME TOO, so that what the box holds and what the row already had are two different
+       strings (review, medium): with only the first name changed, a save that took the surname off
+       the row instead of off the form sent the right body and was told apart from this one nowhere. */
+    await user.clear(screen.getByLabelText(/^Prezime/))
+    await user.type(screen.getByLabelText(/^Prezime/), 'Vukić')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     await screen.findByRole('status', { name: 'Sačuvano' })
@@ -189,7 +194,7 @@ describe('the moderators screen', () => {
       {
         path: `/api/moderators/${TWO_RIGHTS}/name`,
         how: 'PUT',
-        body: { firstName: 'Zorana', lastName: 'Vuković' },
+        body: { firstName: 'Zorana', lastName: 'Vukić' },
       },
     ])
 
@@ -198,6 +203,7 @@ describe('the moderators screen', () => {
     const listed = within(await screen.findByRole('table', { name: 'Moderatori' }))
 
     expect(listed.getByText('Zorana')).toBeVisible()
+    expect(listed.getByText('Vukić')).toBeVisible()
     /* Read off the list, untouched - nothing on the form this save just submitted
        could have moved it. */
     expect(listed.getByText('zoran.vukovic@primer.rs')).toBeVisible()

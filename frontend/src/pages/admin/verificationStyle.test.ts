@@ -1,6 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ruleFor } from '../../test/stylesheet'
+import { createElement } from 'react'
+import { WHOLE } from '../../components/crop'
+import { CropWindow } from '../../components/CropWindow'
+import { must } from '../../test/at'
+import { renderWithI18n } from '../../test/render'
+import { everyRule, ruleFor } from '../../test/stylesheet'
 
 /* What the stylesheet of the verification queues has to say, read as text.
  *
@@ -25,5 +30,47 @@ describe('the picture a moderator is deciding about', () => {
     const rule = ruleFor(css, '.pending__picture', 'Verification.css')
 
     expect(rule.getPropertyValue('max-block-size')).toBe('')
+  })
+
+  it('is capped by no rule of the sheet, written under either name of the property and from any rule that picks an element of it', () => {
+    /* The case above reads one rule and one spelling, which is the question „how is the declaration
+       written" and not „does the picture have a cap" (review of PR 677, medium): `max-height: 20rem`
+       in the same rule, and `max-block-size: 20rem` from a second rule that picks the same element,
+       both passed it. So the picture is drawn for real, the element the card stands it in and
+       everything the window draws inside it, and every rule of the sheet, in any query, is asked
+       whether it picks one of them. Both names are asked because they are one property written two
+       ways, and the sheet's own text is asked and not the declaration jsdom computes, which keeps
+       the one it was given and drops the other. */
+    const { container } = renderWithI18n(
+      createElement(
+        'div',
+        { className: 'pending__picture' },
+        createElement(CropWindow, {
+          picture: 'data:image/png;base64,x',
+          crop: WHOLE,
+          alt: 'Slika koja čeka',
+        }),
+      ),
+    )
+    const drawn = [container.firstElementChild, ...container.querySelectorAll('.pending__picture *')]
+
+    expect(drawn.length).toBeGreaterThan(1)
+
+    /* The last compound of each selector of a rule, the part that names the element it styles: the
+       card the picture stands in is not drawn here, so `.card .pending__picture` would otherwise be
+       a rule that picks nothing. Over-asking is the safe direction, a rule that styles some other
+       element of that name would be reported and looked at. */
+    const subjectsOf = (selectors: string): string[] =>
+      selectors.split(',').map((one) => must(one.trim().split(/\s*[\s>+~]\s*/).pop(), 'a selector'))
+
+    const capping = everyRule(css, 'Verification.css').filter(
+      (rule) =>
+        /max-(block-size|height)\s*:/.test(rule.cssText) &&
+        subjectsOf(rule.selectorText).some((subject) =>
+          drawn.some((element) => element?.matches(subject)),
+        ),
+    )
+
+    expect(capping.map((rule) => rule.cssText)).toEqual([])
   })
 })

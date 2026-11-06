@@ -1,8 +1,10 @@
 import { screen } from '@testing-library/react'
+import { isValidElement, type ReactElement } from 'react'
 import { join, relative, sep } from 'node:path'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { AddressesAsLinks } from '../../components/AddressesAsLinks'
+import { must } from '../../test/at'
 import { renderWithI18n } from '../../test/render'
 import { SLOW } from '../../test/slow'
 import { sources, WHOLE_PORTAL } from '../../test/sources'
@@ -81,16 +83,19 @@ const AS_THE_BUNDLER_DOES: ts.CompilerOptions = {
 }
 
 /**
- * Every module of the portal that imports the given one, and how many were read.
+ * What each module of the portal imports, by the place of both under `src`, and how many were read.
  *
  * The count comes back with the answer and is asserted beside it, because a sweep narrowed by accident
  * answers "nothing imports it" in the very words of a portal with one home.
  */
-function modulesImporting(wanted: string): { walked: number; importing: string[] } {
+function theImportGraph(): { walked: number; imports: Map<string, Set<string>> } {
   let walked = 0
+  const imports = new Map<string, Set<string>>()
 
-  const importing = sources().flatMap((one) => {
-    const imports = ts.preProcessFile(one.code, true, true).importedFiles.some((ref) => {
+  for (const one of sources()) {
+    const reached = new Set<string>()
+
+    for (const ref of ts.preProcessFile(one.code, true, true).importedFiles) {
       const { resolvedModule } = ts.resolveModuleName(
         ref.fileName,
         one.path,
@@ -98,18 +103,52 @@ function modulesImporting(wanted: string): { walked: number; importing: string[]
         ts.sys,
       )
 
-      return resolvedModule !== undefined && named(resolvedModule.resolvedFileName) === wanted
-    })
+      if (resolvedModule !== undefined) {
+        reached.add(named(resolvedModule.resolvedFileName))
+      }
+    }
 
     /* Counted after the file has been read rather than before, so this says what was parsed and not
        what was offered. */
     walked += 1
+    imports.set(named(one.path), reached)
+  }
 
-    return imports ? [named(one.path)] : []
-  })
-
-  return { walked, importing }
+  return { walked, imports }
 }
+
+/** Every module of the portal that imports the given one, and how many were read. */
+function modulesImporting(wanted: string): { walked: number; importing: string[] } {
+  const { walked, imports } = theImportGraph()
+
+  return {
+    walked,
+    importing: [...imports].filter(([, reached]) => reached.has(wanted)).map(([path]) => path),
+  }
+}
+
+/** Whether `from` reaches `wanted` through any number of imports, itself included. */
+function reaches(from: string, wanted: string): boolean {
+  const { imports } = theImportGraph()
+  const seen = new Set<string>()
+  const queue = [from]
+
+  for (let next = queue.pop(); next !== undefined; next = queue.pop()) {
+    if (next === wanted) {
+      return true
+    }
+
+    if (!seen.has(next)) {
+      seen.add(next)
+      queue.push(...(imports.get(next) ?? []))
+    }
+  }
+
+  return false
+}
+
+/** Every module of the portal that draws something, to be asked what it exports. */
+const MODULES = import.meta.glob<Record<string, unknown>>('/src/**/*.tsx')
 
 /**
  * Every module that draws a link out of `addressesIn`, and how this file makes it draw one.
@@ -119,9 +158,10 @@ function modulesImporting(wanted: string): { walked: number; importing: string[]
 /* Since 17.10.2026 the module that asks `addressesIn` is the reading of a written text
    (`components/markdownText.ts`), and what draws its links is `components/Markdown.tsx`, asked for
    them by the box of a competition. The seat draws that box, which is where the links stand. */
-const SEATS: Record<string, (text: string) => void> = {
-  'components/markdownText.ts': (text) => {
-    renderWithI18n(
+const SEATS: Record<string, { from: string; seat: (text: string) => ReactElement }> = {
+  'components/markdownText.ts': {
+    from: 'pages/league/EditableText.tsx',
+    seat: (text) => (
       <EditableText
         value={text}
         field="rules"
@@ -129,14 +169,15 @@ const SEATS: Record<string, (text: string) => void> = {
         heading="Propozicije"
         canEdit={false}
         onSave={() => Promise.resolve(true)}
-      />,
-    )
+      />
+    ),
   },
   /* The words a member sent beside a result, drawn in the moderator's queue (PDL P9, 03.10.2026,
      PENDING 28904). The seat draws the component and not the queue around it, which is where the
      text is handed over (`pages/admin/reviewLink.test.tsx` holds that it is). */
-  'components/AddressesAsLinks.tsx': (text) => {
-    renderWithI18n(<AddressesAsLinks text={text} />)
+  'components/AddressesAsLinks.tsx': {
+    from: 'components/AddressesAsLinks.tsx',
+    seat: (text) => <AddressesAsLinks text={text} />,
   },
 }
 
@@ -193,9 +234,32 @@ describe('the modules that draw a link out of addressesIn', () => {
     expect(importing.toSorted()).toEqual(Object.keys(SEATS).toSorted())
   }, SLOW)
 
-  describe.each(Object.entries(SEATS))('%s', (_module, draw) => {
+  /**
+   * AND EACH SEAT DRAWS A THING THAT REALLY REACHES ITS MODULE, which is the join between the two
+   * halves above (review of PR 487, medium): the floor says which modules import `addressesIn` and
+   * the cases say what a seat draws, and nothing said that the seat of a module draws THAT module's
+   * links. A new importer that drew its links without `dir`, given a seat that drew the box of a
+   * competition, passed all of it. So the seat is asked what it draws: the element is looked up by
+   * identity among the exports of the module the row names, and that module must reach the module
+   * the row is for through the imports of the portal, itself included. The shape is the one
+   * `pages/member/oneQuestion.test.tsx` asks of the router (`exported.includes(drawn)`).
+   *
+   * **Where this is narrower than it looks.** It holds that the seat draws something that can lead to
+   * the module, not that the link in the module is the one drawn: a module reached through a branch
+   * that is never taken is reached all the same.
+   */
+  it.each(Object.entries(SEATS))('draws, at the seat of %s, a component that reaches it', async (module, { from, seat }) => {
+    const drawn = seat('www.runtrace.net')
+    const load = must(MODULES[`/src/${from}`], `the module ${from}`)
+
+    expect(isValidElement(drawn)).toBe(true)
+    expect(Object.values(await load()), `${from} exports what the seat of ${module} draws`).toContain(drawn.type)
+    expect(reaches(from, module), `${from} reaches ${module}`).toBe(true)
+  }, SLOW)
+
+  describe.each(Object.entries(SEATS))('%s', (_module, { seat }) => {
     it.each(TEXTS)('draws every link left to right: $shape', ({ text, links }) => {
-      draw(text)
+      renderWithI18n(seat(text))
 
       const found = screen.getAllByRole('link')
 
