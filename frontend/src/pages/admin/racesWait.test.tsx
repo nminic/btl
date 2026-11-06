@@ -236,6 +236,63 @@ describe('an event whose races wait', () => {
     expect(await rowsCalled(user, 'BBKT proba')).toBe(1)
   }, SLOW)
 
+  it('names the race that is refused after „Nazad na spisak" was pressed on a form opened by an address, and does not leave', async () => {
+    /**
+     * THE BUTTON OF A FORM OPENED BY ADDRESS REFUSES THE PRESS WHILE A SAVE IS OUT, LIKE THE ONE OF A NEW FORM
+     * (PENDING „cuvar dugmeta na obrascu otvorenom preko adrese", review of PR 483, round 4, mutation B1p).
+     *
+     * <p>The refusal in the handler of the button, kept for a NEW form only, passed twenty of twenty cases here:
+     * on a copy and on `?izmena=` the router refuses the change of the address, so the reader stays, but
+     * `forgetTheForm()` has already run in the middle of the press and the list „Trke koje nisu sačuvane"
+     * comes back EMPTY. The race that was refused is then named nowhere. The press is made here with the
+     * second race of a copy out (held, then refused by name), and what is asked is the list.
+     */
+    let racePosts = 0
+    let release: (answer: Response) => void = () => undefined
+
+    answering = (path, init) => {
+      if (path !== '/api/races' || init?.method !== 'POST') {
+        return null
+      }
+
+      racePosts += 1
+
+      return racePosts === 2
+        ? new Promise<Response>((done) => {
+            release = done
+          })
+        : null
+    }
+
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji?kopija=32', 'superadmin')
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await waitFor(() => {
+      expect(racePosts).toBe(2)
+    })
+
+    const back = screen.getByRole('button', { name: 'Nazad na spisak' })
+
+    await user.click(back)
+
+    expect(back).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('heading', { name: /^Trke na događaju/ })).toBeVisible()
+    expect(screen.queryByRole('table', { name: 'Događaji' })).toBeNull()
+
+    await act(async () => {
+      release(refused('theDistanceIsNotKeptExactly'))
+    })
+    await screen.findByText(sr.admin.eventSavedRacesRefused)
+
+    expect(notSaved()).toEqual([
+      expect.stringMatching(
+        new RegExp(`^2\. trka \(.+\): ${sr.admin.raceSaveRefused.theDistanceIsNotKeptExactly}$`),
+      ),
+    ])
+  }, SLOW)
+
   it('says the site is locked beside each race the proxy answered, and offers the new tab once under the list', async () => {
     /* The tab slept between the press that saved the event and the races: the event is saved, the
        second and the third race meet the lock, the first is taken and the fourth is refused by name.
