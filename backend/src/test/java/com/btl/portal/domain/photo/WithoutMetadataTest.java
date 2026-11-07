@@ -209,7 +209,7 @@ class WithoutMetadataTest {
 	void aMarkerWhoseLengthCannotBeTrueIsSkippedAndNotBelieved() {
 		/* A length under two is a break; the two bytes of the marker are dropped and the next marker is looked for. */
 		for (byte[] bogus : List.of(new byte[] { (byte) 0xFF, (byte) 0xE1, 0, 1, 9 },
-				new byte[] { (byte) 0xFF, (byte) 0xE1, 0, 0 })) {
+				new byte[] { (byte) 0xFF, (byte) 0xE1, 0, 0 }, new byte[] { (byte) 0xFF, (byte) 0xC4, 0, 1 })) {
 			isCleanedAsAViewerWouldReadIt(withSegments(jpeg(false), bogus, exifSegment(6), xmpSegment()), 6);
 		}
 	}
@@ -287,7 +287,8 @@ class WithoutMetadataTest {
 	@Test
 	void aCriticalChunkNobodyKnowsIsTakenTooBecauseNothingForcesItToHoldOnlyPixels() {
 		byte[] png = png();
-		byte[] sent = withChunks(png, chunk("GPSx", said()), chunk("tEXt", said()));
+		byte[] palette = chunk("PLTE", new byte[] { 1, 2, 3 });
+		byte[] sent = withChunks(png, palette, chunk("GPSx", said()), chunk("tEXt", said()));
 
 		assertThat(says(sent, WHERE_AND_WITH_WHAT)).isTrue();
 
@@ -295,7 +296,7 @@ class WithoutMetadataTest {
 
 		assertThat(chunksOf(kept)).doesNotContain("GPSx", "tEXt");
 		assertThat(says(kept, WHERE_AND_WITH_WHAT)).isFalse();
-		assertThat(kept).as("one of the four critical chunks of the format was touched").isEqualTo(png);
+		assertThat(kept).as("one of the four critical chunks of the format was touched").isEqualTo(withChunks(png, palette));
 	}
 
 	@Test
@@ -443,6 +444,23 @@ class WithoutMetadataTest {
 
 		assertThat(Arrays.copyOfRange(keptCut, 12, keptCut.length))
 				.isEqualTo(concat(withFlags(chunks.get(0), 0x10), chunks.get(1), cutImage));
+	}
+
+	@Test
+	void anExifChunkInFrontOfTheImageIsTakenAndTheNoteGoesAfterTheImageWhichIsTheLastChunk() {
+		byte[] webp = webp(EXTENDED_WEBP);
+		List<byte[]> chunks = riffChunksOf(webp);
+		byte[] sent = webpOf(webp, 0x08, chunks.get(0), chunks.get(1), riffChunk("EXIF", tiff(6, false)),
+				chunks.get(2));
+
+		assertThat(says(sent, WHERE_AND_WITH_WHAT)).isTrue();
+
+		byte[] kept = WithoutMetadata.of(sent, "image/webp");
+
+		assertThat(riffChunksOf(kept).stream().map(PicturesThatCarryMetadata::typeOf))
+				.containsExactly("VP8X", "ALPH", "VP8 ", "EXIF");
+		assertThat(says(kept, WHERE_AND_WITH_WHAT)).isFalse();
+		assertThat(WithoutMetadata.of(kept, "image/webp")).isEqualTo(kept);
 	}
 
 	@Test
