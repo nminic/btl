@@ -351,7 +351,7 @@ class ThePaymentsScreenLocksTheMemberTest {
 					untilThisManyAreStopped(1, submitted);
 
 					Future<MockHttpServletResponse> hisChange = pool.submit(this::movesToSerbia);
-					MockHttpServletResponse answered = within30Seconds(hisChange, "his change of country");
+					MockHttpServletResponse answered = answeredUnlessStoppedBehindTheBooking(hisChange);
 
 					assertThat(submitted.get(0).isDone())
 							.as("the booking was answered although the reward it waits for is not settled")
@@ -529,6 +529,38 @@ class ThePaymentsScreenLocksTheMemberTest {
 					+ " is held by something the other request also holds, which is what a lock that is too"
 					+ " weak does", notAnswered);
 		}
+	}
+
+	/**
+	 * HIS CHANGE OF COUNTRY, ANSWERED OR SHOWN STOPPED BY THE LOCK MANAGER, whichever comes first, and a lock
+	 * that is too weak is the second. The booking is stopped behind this connection's hold and the test
+	 * thread waits for his change, so a booking that holds his row (a lock weaker than {@code for update}
+	 * lets it start) makes his change wait for the booking, which waits for the hold, which is released only
+	 * after this method returns: a circle through the test thread, that no deadlock detector of the database
+	 * can see, and that used to be found only when {@link #within30Seconds} ran out (measured 30,77 s for
+	 * the case, 7 run and 1 failed, with {@code PaymentApi#lockTheMember} at {@code for no key update}).
+	 *
+	 * <p>The guarded screen is stopped before it holds anything of his, so his change is not stopped by
+	 * anybody and is answered at once: <b>a second request behind the hold, asked of the lock manager
+	 * ({@link BlockedBehindThisHold#count}, the whole queue rooted at this connection), is his change stopped
+	 * by the booking</b>, and the case fails on a sentence of its own in the time it takes to ask.
+	 */
+	private MockHttpServletResponse answeredUnlessStoppedBehindTheBooking(Future<MockHttpServletResponse> hisChange)
+			throws Exception {
+
+		Instant deadline = Instant.now().plusSeconds(30);
+
+		while (!hisChange.isDone() && Instant.now().isBefore(deadline)) {
+			assertThat(BlockedBehindThisHold.count(db))
+					.as("his change of country is stopped behind the booking, which is stopped behind the"
+							+ " hold: the lock the booking takes on his row is too weak, since a booking that"
+							+ " holds his row is what makes his change wait for it")
+					.isLessThan(2);
+
+			Thread.sleep(20);
+		}
+
+		return within30Seconds(hisChange, "his change of country");
 	}
 
 	private void untilThisManyAreStopped(int expected, List<Future<MockHttpServletResponse>> submitted)

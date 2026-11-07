@@ -24,8 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.HandlerExecutionChain;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
+import org.springframework.web.util.ServletRequestPathUtils;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
@@ -1238,19 +1240,26 @@ class RightsAtTheDoorTest {
 	 *
 	 * <p><b>The sweeps read 404 as "the door refused" only while nothing else on the road can say
 	 * 404.</b> They build an address out of the route (a word where a variable stands), send no
-	 * body, no content type, and read the number. Four shapes of route make that number mean
+	 * body, no content type, and read the number. Shapes of route make that number mean
 	 * nothing, because the dispatcher or the handler answers the same 404 whether the door ran or
 	 * not, so knocking the door out of such a route leaves every sweep green:
 	 * <ol>
-	 * <li>a variable written with a pattern, {@code {number:[0-9]{6}}}: the substitution leaves a
-	 * brace behind, the address maps nothing, and the dispatcher says 404;
-	 * <li>a route with a {@code consumes} condition: the dispatcher refuses the missing content type
-	 * 415 before the door runs, and {@code NothingIsHereRatherThanAlmost} turns it into 404;
+	 * <li><b>anything the dispatcher refuses that request for, ASKED OF THE DISPATCHER</b> and not
+	 * recognised by its spelling: a variable written with a pattern (the substitution leaves a brace
+	 * behind and the address maps nothing), a {@code consumes} condition (415 before the door runs,
+	 * which {@code NothingIsHereRatherThanAlmost} turns into 404), a {@code params} or a
+	 * {@code headers} condition (nothing is mapped, and the sweeps get the 404 of an address that is
+	 * not there). The request is built the way the sweeps build theirs and handed to
+	 * {@code getHandler}, so a fifth kind of condition is caught the day it is written, with no list
+	 * of kinds (measured on review of PR 686: a route with a {@code params} condition and its door
+	 * knocked out left 22 cases passing);
 	 * <li>a variable typed as an array or a collection: Spring converts the word into a list of one,
 	 * the handler runs, and it may well say 404 itself where a {@code long} would have said 400;
 	 * <li>a write with neither a required body nor a typed variable: with nothing to fail on, the
 	 * handler runs and answers on its own account.
 	 * </ol>
+	 * The last two are read off the types the handler declares, which is the only place they are
+	 * written.
 	 *
 	 * <p><b>This was written down as "the class is closed" and was not.</b> The third round on
 	 * {@code PUT /api/events/{id}} measured it for every verb the portal maps and said no more than
@@ -1261,9 +1270,12 @@ class RightsAtTheDoorTest {
 	 * <p><b>THREE GUARDED ROUTES HAVE ONE TODAY, measured 06.11.2026 by running this with an empty
 	 * list</b>: {@code MemberInvitationApi#send}, {@code StatementApi#take} and
 	 * {@code MemberDataWriteApi#correct}. So the sweeps do not measure the door on them, and the list
-	 * in the assertion is the inventory of that, not a statement that they are safe. Whether each
-	 * route's own class measures its door was NOT established here; that is the open half of the
-	 * finding, and it is why the list is asserted in both directions and not trimmed to pass.
+	 * in the assertion is the inventory of that, not a statement that they are safe. The inventory is
+	 * asserted in both directions and not trimmed to pass. Whether each route's own class measures its
+	 * door was measured on 07.11.2026 by taking the door off the route: {@code StatementApiTest} fails
+	 * (25 cases, 1 failing, a moderator without the tick is no longer told the address is not there) and
+	 * so does {@code MemberDataWriteApiTest} (37 cases, 1 failing). {@code MemberInvitationApi#send} was
+	 * not measured here.
 	 *
 	 * <p><b>Derived from the dispatcher and from the types the handlers declare</b>, so it has no
 	 * list.
@@ -1279,11 +1291,9 @@ class RightsAtTheDoorTest {
 
 			String route = method.getBeanType().getSimpleName() + "#" + method.getMethod().getName();
 
-			if (pathsOf(info).anyMatch(pattern -> pattern.matches(".*\\{[^/}]*:.*"))) {
-				blind.add(route + " has a variable written with a pattern");
-			}
-			if (!info.getConsumesCondition().isEmpty()) {
-				blind.add(route + " has a consumes condition");
+			if (methodsOf(info).anyMatch(how -> pathsOf(info)
+					.anyMatch(pattern -> !theDispatcherGivesTheSweepsRequestTo(method, how, pattern)))) {
+				blind.add(route + " is not the handler the dispatcher gives the request the sweeps send");
 			}
 			if (Stream.of(method.getMethodParameters())
 					.filter(one -> one.hasParameterAnnotation(PathVariable.class))
@@ -1306,13 +1316,13 @@ class RightsAtTheDoorTest {
 						+ " added with such a shape fails here, and so does one taken off the list")
 				.containsExactlyInAnyOrder(
 						"MemberInvitationApi#send is a write with no required body and no typed variable",
-						"StatementApi#take has a consumes condition",
+						"StatementApi#take is not the handler the dispatcher gives the request the sweeps send",
 						"StatementApi#take is a write with no required body and no typed variable",
-						"MemberDataWriteApi#correct has a consumes condition",
+						"MemberDataWriteApi#correct is not the handler the dispatcher gives the request the sweeps send",
 						"MemberDataWriteApi#correct is a write with no required body and no typed variable",
-						"MemberPictureAndWordsApi#setThePicture has a consumes condition",
+						"MemberPictureAndWordsApi#setThePicture is not the handler the dispatcher gives the request the sweeps send",
 						"MemberPictureAndWordsApi#setThePicture is a write with no required body and no typed variable",
-						"MemberPictureAndWordsApi#setTheWords has a consumes condition",
+						"MemberPictureAndWordsApi#setTheWords is not the handler the dispatcher gives the request the sweeps send",
 						"MemberPictureAndWordsApi#setTheWords is a write with no required body and no typed variable");
 	}
 
@@ -1843,10 +1853,33 @@ class RightsAtTheDoorTest {
 				.filter(one -> theDoorDecides(one.getValue()))
 				.flatMap(one -> methodsOf(one.getKey())
 						.flatMap(how -> pathsOf(one.getKey())
-								.map(pattern -> new Route(how,
-										pattern.replaceAll("\\{[^/}]*\\}", NOT_AN_ID)
-											.replace("**", NOT_AN_ID)))))
+								.map(pattern -> new Route(how, theSweepsAddress(pattern)))))
 				.distinct().sorted(Route.BY_ADDRESS).toList();
+	}
+
+	/** The address the sweeps send to a route written as this pattern: a word where a variable stands. */
+	private static String theSweepsAddress(String pattern) {
+		return pattern.replaceAll("\\{[^/}]*\\}", NOT_AN_ID).replace("**", NOT_AN_ID);
+	}
+
+	/**
+	 * WHETHER THE DISPATCHER GIVES THE REQUEST THE SWEEPS SEND TO THIS HANDLER, asked of the dispatcher.
+	 * The request is the sweeps' own: the route's verb, {@link #theSweepsAddress}, no body, no content
+	 * type, no parameter and no header. A dispatcher that refuses it (a {@code consumes} it does not meet,
+	 * a {@code params} or {@code headers} condition, an address that keeps a brace) or that gives it to
+	 * another handler has answered something that is not the door, and the sweeps would read it as one.
+	 */
+	private boolean theDispatcherGivesTheSweepsRequestTo(HandlerMethod handler, HttpMethod how, String pattern) {
+		MockHttpServletRequest asking = new MockHttpServletRequest(how.name(), theSweepsAddress(pattern));
+		ServletRequestPathUtils.parseAndCache(asking);
+
+		try {
+			HandlerExecutionChain chain = mappings.getHandler(asking);
+
+			return chain != null && ((HandlerMethod) chain.getHandler()).getMethod().equals(handler.getMethod());
+		} catch (Exception refused) {
+			return false;
+		}
 	}
 
 	/** One route: the method it answers to and the address it answers at. */

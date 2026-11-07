@@ -118,6 +118,14 @@ class ASeasonFreezes {
 	 * @return whether this run froze it, false where it was frozen already
 	 */
 	private boolean freeze(int season, ZonedDateTime now) {
+		/* THE LOCK THAT PUTS THIS RUN AND A CANCELLATION IN ORDER IS TAKEN BEFORE ANY SNAPSHOT: this transaction
+		   reads at REPEATABLE READ, and its view is fixed when its first SELECT or data modification begins,
+		   but LOCK TABLE is neither (PostgreSQL manual, „Explicit Locking"). Taken first, it makes a request that
+		   holds the lock ({@link ASeasonBegins#holdingTheFreezeStill}) finish before this run reads anything,
+		   so the run sees what the request committed; taken after the insert below, the run would already
+		   hold the snapshot that does not. */
+		db.sql("lock table season_frozen in share row exclusive mode").update();
+
 		int taken = db.sql("insert into season_frozen (season, frozen_at) values (?, ?) on conflict do nothing")
 				.params(season, Timestamp.from(now.toInstant()))
 				.update();

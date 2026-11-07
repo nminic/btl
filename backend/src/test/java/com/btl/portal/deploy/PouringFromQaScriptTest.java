@@ -83,6 +83,15 @@ class PouringFromQaScriptTest {
 			Pattern.compile("\\$\\{?PROD_VOLUME\\}?\"?:[^\\s:]+:ro(\\s|$)");
 
 	/**
+	 * A MOUNT OF THE PRODUCTION VOLUME, found by the mount and not by what the line around it does: the
+	 * volume's name beside a colon ({@code -v "$PROD_VOLUME":/to}), or behind {@code src=} or
+	 * {@code source=} ({@code --mount}). A line that only prints the name, compares it or assigns it
+	 * has no colon after it and is not one.
+	 */
+	private static final Pattern A_MOUNT_OF_THE_PRODUCTION_VOLUME =
+			Pattern.compile("\\$\\{?PROD_VOLUME\\}?\"?:|(?:src|source)=\"?\\$\\{?PROD_VOLUME");
+
+	/**
 	 * The line of the closing report that says a table: it holds {@code $t} and, in the same
 	 * double quoted string, {@code $checked_by}.
 	 */
@@ -708,25 +717,28 @@ class PouringFromQaScriptTest {
 	 * copies with {@code tar cf - . | tar xf -} or {@code rsync -a} leaves exactly one {@code cp}
 	 * line, passes that case, and puts QA's times on production's files - the danger the options
 	 * are held for. So it is asked from the other side: of every line of the script's code that
-	 * starts a container with the production volume in it, exactly one mounts it without
-	 * {@code :ro}, and it is the line that runs {@code cp}.
+	 * mounts the production volume, exactly one mounts it without {@code :ro}, and it is the line that
+	 * runs {@code cp}.
 	 *
-	 * <p>Read off the mount, not off the command, so a writer in any other tool is seen. The
-	 * boundary, written down: a mount spelled some way that does not put the volume's name beside
-	 * a colon (a {@code --mount} with {@code src=}) is still seen, because it is the NAME that
-	 * selects the line, and it then counts as writable unless the line says {@code :ro}.
+	 * <p>Read off the mount, not off the command and not off how the line starts, so a writer in any
+	 * other tool is seen, and so is one written as {@code if ! container ...}, which a filter on
+	 * {@code container } at the start of the line or {@code docker } anywhere in it passed (measured on
+	 * review of PR 682, 13 cases passing). The mount is the volume's name beside a colon or behind
+	 * {@code src=} or {@code source=}, and it counts as writable unless the line says {@code :ro}.
+	 * The boundary, written down: a volume handed over through ANOTHER variable
+	 * ({@code V=$PROD_VOLUME}, then {@code -v "$V":/to}) is not seen, because it is the NAME that
+	 * selects the line.
 	 */
 	@Test
 	void theOnlyContainerThatWritesIntoTheProductionVolumeIsTheOneThatRunsCp() {
 		List<String> writers = scriptCode().stream()
-				.filter(one -> one.contains("$PROD_VOLUME") || one.contains("${PROD_VOLUME"))
-				.filter(one -> one.startsWith("container ") || one.contains("docker "))
+				.filter(one -> A_MOUNT_OF_THE_PRODUCTION_VOLUME.matcher(one).find())
 				.filter(one -> !PROD_VOLUME_READ_ONLY.matcher(one).find())
 				.toList();
 
 		assertThat(writers)
-				.as("lines that start a container with the production volume mounted and not read"
-						+ " only: the cp that copies the photographs and nothing else")
+				.as("lines that mount the production volume and not read only: the cp that copies the"
+						+ " photographs and nothing else")
 				.hasSize(1);
 		assertThat(CP_THE_COMMAND.matcher(writers.get(0)).find())
 				.as("the one container allowed to write into the production volume runs cp: %s",

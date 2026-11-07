@@ -31,7 +31,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * track, so that is asked of the catalog, and the question is shown to see a function that names the column.</li>
  * <li><b>Does a statement that names it stop?</b> This is what took the place of the list of writers the
  * source was swept for while the column was still written: a statement of {@code src/main} that writes or reads
- * the flag again fails the day it runs, because there is nothing to write or read.</li>
+ * the flag again fails the day it runs, because there is nothing to write or read.
+ * <b>The limit is the word „runs".</b> The body of a lambda that no case reaches, written on a line that does
+ * run, never runs, and the coverage gate does not see it either: it counts LINE and BRANCH
+ * ({@code backend/pom.xml}), and a line is covered when any one of its instructions ran. Measured on review of
+ * PR 684: a dead {@code ifPresent(h -> db.sql("select active from competitor ..."))} on a line of
+ * {@code MemberMembershipApi} that every case executes left its 60 cases passing, with no line or branch
+ * missed. Counting METHOD in the gate would close it and is a wider decision than this file; until then a
+ * reader of the flag in a rare branch is a 500 in production and not a red build.</li>
  * </ul>
  *
  * <p><b>The rows are the disagreement AF-1 measured, and its mirror.</b> One member whose flag says active

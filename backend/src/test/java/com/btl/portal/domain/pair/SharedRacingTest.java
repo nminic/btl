@@ -113,8 +113,9 @@ class SharedRacingTest {
 	/**
 	 * Two results of one member on one race are the race once, on either side.
 	 *
-	 * <p>V7 says the shipped data has pairs that occur twice, so a list can hold race 10
-	 * twice. The duplicate is on HIS side in one list and on HERS in the other, with
+	 * <p>V65 refuses a second result of one member on one race, so the database never hands
+	 * over a list that holds race 10 twice; this is the defence for a list that comes from
+	 * anywhere else (V7 shipped pairs that occurred twice). The duplicate is on HIS side in one list and on HERS in the other, with
 	 * different numbers, so a version that sums every entry, or keeps the last one, or
 	 * dedups only the side it looked at first, comes out differently on the kilometres.
 	 */
