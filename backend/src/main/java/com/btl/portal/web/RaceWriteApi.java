@@ -169,6 +169,16 @@ class RaceWriteApi {
 
 	static final String THE_ADDRESS_IS_TAKEN = "theAddressIsTaken";
 
+	/**
+	 * PDL P9, owner, 06.11.2026: on the morning of 1 January from 00:00 to 10:00 a race of the year just
+	 * ended is refused on an event that is still ahead, because the event would begin on it and be pulled
+	 * back into the year before ({@link TheDayOfAnEvent#pullsAnEventStillAheadIntoTheYearJustEnded}). The
+	 * same literal {@code ResultsByTheLeagueApi} holds, declared again as {@link #THE_ADDRESS_IS_TAKEN}
+	 * is. 409.
+	 */
+	static final String AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED =
+			"anEventStillAheadWouldMoveIntoTheYearJustEnded";
+
 	/** PDL P10b: a race that carries a result already written may not be moved across
 	 *  1 January. The same literal {@link EventWriteApi#THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR}
 	 *  holds, declared again rather than referenced - the same choice this class already
@@ -346,6 +356,14 @@ class RaceWriteApi {
 			Checked checked = checked(typed, event.get());
 			LocalDate beginning = TheDayOfAnEvent.theDayItWillBeginOn(db, event.get(), null,
 					checked.date());
+
+			/* PDL P9, 06.11.2026: asked before the address, which it would otherwise be answered by
+			   (the move into the year before is what makes the address another). */
+			if (TheDayOfAnEvent.pullsAnEventStillAheadIntoTheYearJustEnded(event.get(), beginning,
+					now())) {
+				return no(HttpStatus.CONFLICT, AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED);
+			}
+
 			String address = TheDayOfAnEvent.addressFor(event.get(), beginning);
 
 			if (EventWriteApi.addressIsTakenBySomebodyElse(db, address, event.get().id())) {
@@ -594,6 +612,13 @@ class RaceWriteApi {
 
 			LocalDate beginning = TheDayOfAnEvent.theDayItWillBeginOn(db, event.get(), id,
 					checked.date());
+
+			/* The same question as in {@link #add}, asked of the day this race is moved to. */
+			if (TheDayOfAnEvent.pullsAnEventStillAheadIntoTheYearJustEnded(event.get(), beginning,
+					now())) {
+				return no(HttpStatus.CONFLICT, AN_EVENT_STILL_AHEAD_WOULD_MOVE_INTO_THE_YEAR_JUST_ENDED);
+			}
+
 			String address = TheDayOfAnEvent.addressFor(event.get(), beginning);
 
 			if (EventWriteApi.addressIsTakenBySomebodyElse(db, address, event.get().id())) {

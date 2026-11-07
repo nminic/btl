@@ -52,6 +52,11 @@ export const WHEN_THE_LEAGUE_ENTERS_RESULTS: Record<string, string> = {
      answer to a request that got past it. A name of one edition does not reach it from the screen since
      23.10.2026: that day makes a new edition, which is sent as a new event. */
   theDayIsNotInTheEventsYear: 'leagueResults.refused.theDayIsNotInTheEventsYear',
+  /* PDL P9, owner, 06.11.2026, „U prozoru 1. januara od 00:00 do 10:00 server odbija trku iz stare godine na
+     događaju koji još predstoji”: the one thing the morning of 1 January does NOT allow of what the
+     decision of 20.10.2026 above allows. Answered by the server to a save. */
+  anEventStillAheadWouldMoveIntoTheYearJustEnded:
+    'leagueResults.refused.anEventStillAheadWouldMoveIntoTheYearJustEnded',
 }
 
 /**
