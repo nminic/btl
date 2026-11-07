@@ -3111,6 +3111,68 @@ describe('an event that is deleted', () => {
     }
   }, SLOW)
 
+  it('counts the results through the races of the event and not through its address', async () => {
+    /**
+     * THE CLAIM OF `AdminEvents.tsx` THAT HAD NO CASE (PENDING „Tvrdnja „broj se broji kroz TRKE, ne kroz
+     * adresu" nema cuvara"): a result names its event by address as well as by race, and the database takes
+     * the results that hang off the RACES. Measured over the shipped data the two counts never differ (no
+     * two events answer at one address, and a copy is moved to the next season before it is saved), which
+     * is why counting by address passed every case: the data cannot tell them apart.
+     *
+     * <p>So this case makes the data tell them apart. Seven results are added to the served file that
+     * carry the ADDRESS of the event asked about and the race of another event. Counted through its races
+     * the event keeps its own number; counted through its address it would say seven more, over results the
+     * deletion does not take. Whether that arrangement can happen in production is not the question the
+     * count answers: it is what the count is made of.
+     */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const races = await loadResource<Race[]>('races')
+    const scored = await loadResource<Result[]>('results')
+    const asked = must(
+      events
+        .map((one) => ({ event: one, under: resultsUnder(one, races, scored) }))
+        .find((one) => one.under > 0 && one.under !== racesUnder(one.event, races)),
+      'an event with results',
+    )
+    const elsewhere = must(
+      scored.find((one) => !races.some((race) => race.id === one.raceId && race.eventId === asked.event.id)),
+      'a result of another event',
+    )
+    const padded = [
+      ...scored,
+      ...Array.from({ length: 7 }, (_, index) => ({
+        ...elsewhere,
+        id: 900_000 + index,
+        eventSlug: asked.event.slug,
+      })),
+    ]
+
+    /* The file was read above to choose the event, so the visit holds the real one: it is dropped, or the screen
+       would never ask the server for the padded file and the case would measure nothing. */
+    clearResourceCache('results')
+    answering = (path) =>
+      path === '/api/results'
+        ? new Response(JSON.stringify(padded), { status: 200, headers: { 'content-type': 'application/json' } })
+        : null
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
+
+    const row = await rowOf(asked.event, user)
+
+    await user.click(within(row).getByRole('button', { name: `Obriši: ${asked.event.name}` }))
+
+    expect(
+      padded.filter((one) => one.eventSlug === asked.event.slug).length,
+      'the address would have said more than the races',
+    ).toBeGreaterThan(asked.under)
+    expect(await askedWith()).toMatch(
+      new RegExp(`^Ovim brišeš i ${String(racesUnder(asked.event, races))} trk[aue] i ${String(asked.under)} rezultata?\\.$`),
+    )
+
+    await sayNo(user, 'Obriši događaj?')
+  }, SLOW)
+
   it('draws no race of its own when the route made one and named no identity', async () => {
     /**
      * THE WRITE HAPPENED AND THERE IS NOTHING TO ADDRESS IT BY.

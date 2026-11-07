@@ -1374,8 +1374,13 @@ export function AdminEvents() {
            * <p><b>Counted through the RACES and not through the address</b>, because that
            * is what the database will really do. A result names its event by address as
            * well, and the two answers differ exactly where two events answer at one
-           * address - the window a copy opens before its day is changed - so the address
-           * would say „and 40 results" over an event that has none of them.
+           * address, so the address would say „and 40 results" over an event that has none
+           * of them. **No such pair exists in the shipped data and none can be saved today**
+           * (the address of an event is unique, and a copy is moved to the next season before
+           * it is saved), so the data alone cannot tell the two counts apart; the case
+           * „counts the results through the races of the event and not through its address"
+           * (`adminEntities.test.tsx`) serves the file with results that carry the address and
+           * not the races, which is what holds the choice.
            *
            * <p><b>The second state is that the number is not yet known, and it is said
            * rather than guessed.</b> The results are the largest file the portal has and

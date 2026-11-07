@@ -298,14 +298,27 @@ export function seasonsOfTheTable(results: Result[], today: string): number[] {
   )
 }
 
+/**
+ * A SUM OF TWO FIGURES THE DATABASE KEEPS TO THE HUNDREDTH, which is what the server adds (`numeric(8,2)`
+ * for points and `numeric(6,2)` for kilometres, added as `BigDecimal`) and a `number` does not: 0.01 +
+ * 0.05 is 0.060000000000000005 and 0.01 + 0.01 + 0.04 is 0.06, so two members level to the hundredth
+ * were apart on the screen and level in the table the freeze writes down at 16:00 on 1 January, and the
+ * rung under the points never got asked (PENDING „Živi ekran sabira bodove kao `number`"). Rounded back to
+ * the hundredth after every addition, a sum of figures of two decimals is the nearest `number` to the
+ * exact one, and two sums that are equal to the hundredth are the same `number`.
+ */
+export function plusHundredths(left: number, right: number): number {
+  return Math.round((left + right) * 100) / 100
+}
+
 export function addToTotals(totals: Totals, result: Result): Totals {
   return {
     races: totals.races + 1,
-    kilometers: totals.kilometers + result.distanceKm,
+    kilometers: plusHundredths(totals.kilometers, result.distanceKm),
     ascent: totals.ascent + result.ascentM,
     descent: totals.descent + result.descentM,
     seconds: totals.seconds + result.seconds,
-    points: totals.points + result.points,
+    points: plusHundredths(totals.points, result.points),
   }
 }
 
@@ -598,7 +611,7 @@ export function bestOfficialSeason(results: Result[], memberNumber: string): num
     const season = seasonOf(result)
 
     if (result.memberNumber === memberNumber && season !== null && season >= FIRST_SEASON) {
-      seasons.set(season, (seasons.get(season) ?? 0) + result.points)
+      seasons.set(season, plusHundredths(seasons.get(season) ?? 0, result.points))
     }
   }
 
