@@ -3226,54 +3226,142 @@ class VerificationWriteApiTest {
 	}
 
 	/**
-	 * AN EVENT THAT IS STILL AHEAD IS NOT PULLED BACK INTO THE YEAR JUST ENDED BY AN APPROVAL EITHER (PDL P9,
-	 * owner, 06.11.2026, „U prozoru 1. januara od 00:00 do 10:00 server odbija trku iz stare godine na
-	 * događaju koji još predstoji”): the last second before ten on 1 January, the event dated tomorrow, the
-	 * run of New Year's Eve. The approval is refused with the sentence of its own, the run keeps waiting,
-	 * and nothing is written to the calendar. The same approval at ten o'clock, and on an event dated
-	 * today, goes through, so what is held is the window and the day and not a blanket refusal.
+	 * AN EVENT THAT IS STILL AHEAD IS NOT PULLED BACK INTO THE YEAR JUST ENDED BY AN APPROVAL EITHER, AT ANY TIME
+	 * OF THE YEAR (PDL P9, owner, 06.11.2026, „U prozoru 1. januara od 00:00 do 10:00 server odbija trku iz stare
+	 * godine na događaju koji još predstoji", widened on 07.11.2026: „Trka koja bi događaj koji još predstoji
+	 * povukla u prošlu godinu odbija se uvek, na svim putevima (administracija, liga, odobravanje), ne samo u
+	 * prozoru 1.1."). The run is of New Year's Eve and is approved at three moments, each on an event that is ahead:
+	 * the last second before ten on 1 January, the second the old window closed, and the middle of June. Every one is
+	 * refused with the sentence of its own, the run keeps waiting, and nothing is written to the calendar.
 	 */
 	@Test
-	void onNewYearsMorningARaceOfTheYearJustEndedIsRefusedOnAnEventThatIsStillAhead() throws Exception {
-		clock.moveTo(Instant.parse("2028-01-01T08:59:59Z"));
-
-		long tomorrows = event("novogodisnja-trka-2028", "Novogodišnja trka", LocalDate.of(2028, 1, 2));
-		race(tomorrows, "Novogodišnja desetka", LocalDate.of(2028, 1, 2), "10.0000", 20, 20);
+	void aRaceOfTheYearJustEndedIsRefusedOnAnEventThatIsStillAheadAtAnyTimeOfTheYear() throws Exception {
 		long run = describedRun(ANA, "Silvestarska", "length", LocalDate.of(2027, 12, 31), "5.0000", 10, 10,
 				1500);
+		Instant[] moments = {Instant.parse("2028-01-01T08:59:59Z"), Instant.parse("2028-01-01T09:00:00Z"),
+				Instant.parse("2028-06-15T10:00:00Z")};
+		LocalDate[] eventDays = {LocalDate.of(2028, 1, 2), LocalDate.of(2028, 1, 2), LocalDate.of(2028, 9, 1)};
+
+		for (int at = 0; at < moments.length; at++) {
+			clock.moveTo(moments[at]);
+
+			String address = "novogodisnja-trka-2028-" + at;
+			long ahead = event(address, "Novogodišnja trka " + at, eventDays[at]);
+			race(ahead, "Novogodišnja desetka " + at, eventDays[at], "10.0000", 20, 20);
+			int races = howManyRaces();
+
+			MockHttpServletResponse refused = decideWith(THE_SUPERADMIN, run,
+					makingTheRaceOn(ahead, "Silvestarska petica"));
+
+			assertThat(refused.getStatus()).as(moments[at].toString()).isEqualTo(409);
+			assertThat(reasonIn(refused)).as(moments[at].toString())
+					.startsWith("Događaj tek predstoji, a trka je iz prošle godine");
+			assertThat(howManyRaces()).isEqualTo(races);
+			assertThat(theEventAt(address).date()).isEqualTo(eventDays[at]);
+			assertThat(stateOf(run)).isEqualTo("waiting");
+			assertThat(howManyResults(ANA)).isZero();
+		}
+	}
+
+	/**
+	 * AN EVENT DATED TODAY IS AHEAD TOO (owner, 07.11.2026, „Događaj zakazan za danas takođe „još predstoji",
+	 * pa se u prozoru odbija i trka od 31.12. na događaju od 1.1."), on the morning of 1 January and in June alike.
+	 */
+	@Test
+	void aRaceOfTheYearJustEndedIsRefusedOnAnEventDatedToday() throws Exception {
+		long run = describedRun(ANA, "Silvestarska", "length", LocalDate.of(2027, 12, 31), "5.0000", 10, 10,
+				1500);
+		Instant[] moments = {Instant.parse("2028-01-01T08:00:00Z"), Instant.parse("2028-06-15T10:00:00Z")};
+		LocalDate[] days = {LocalDate.of(2028, 1, 1), LocalDate.of(2028, 6, 15)};
+
+		for (int at = 0; at < moments.length; at++) {
+			clock.moveTo(moments[at]);
+
+			String address = "danas-trka-2028-" + at;
+			long today = event(address, "Danasnja trka " + at, days[at]);
+			race(today, "Danasnja desetka " + at, days[at], "10.0000", 20, 20);
+
+			MockHttpServletResponse refused = decideWith(THE_SUPERADMIN, run,
+					makingTheRaceOn(today, "Silvestarska petica"));
+
+			assertThat(refused.getStatus()).as(moments[at].toString()).isEqualTo(409);
+			assertThat(reasonIn(refused)).startsWith("Događaj tek predstoji, a trka je iz prošle godine");
+			assertThat(theEventAt(address).date()).isEqualTo(days[at]);
+			assertThat(stateOf(run)).isEqualTo("waiting");
+		}
+	}
+
+	/**
+	 * EVERY EARLIER YEAR THAN THE EVENT'S IS REFUSED ON AN APPROVAL TOO (owner, 07.11.2026, „odbija se i trka iz
+	 * 2026. na događaju iz 2028, i trka od 30.12. na događaju zakazanom za 1.3. sledeće godine"): a run of 2026 on
+	 * an event of 2028 and a run of 30 December on an event of 1 March of the next year, in June. Nothing is
+	 * written and the run keeps waiting.
+	 */
+	@Test
+	void aRaceOfAnyEarlierYearIsRefusedOnAnEventThatIsStillAhead() throws Exception {
+		clock.moveTo(Instant.parse("2028-06-15T10:00:00Z"));
+
+		long run = describedRun(ANA, "Stara", "length", LocalDate.of(2026, 12, 31), "5.0000", 10, 10, 1500);
+		long december = describedRun(BOJAN, "Decembarska", "length", LocalDate.of(2028, 12, 30), "5.0000", 10,
+				10, 1500);
+		long ofTwentyEight = event("prolece-2028", "Prolece 2028", LocalDate.of(2028, 9, 1));
+		race(ofTwentyEight, "Jesenja", LocalDate.of(2028, 9, 1), "10.0000", 20, 20);
+		long ofNextYear = event("prolece-2029", "Prolece 2029", LocalDate.of(2029, 3, 1));
+		race(ofNextYear, "Prolecna", LocalDate.of(2029, 3, 1), "10.0000", 20, 20);
 		int races = howManyRaces();
 
-		MockHttpServletResponse refused = decideWith(THE_SUPERADMIN, run,
-				makingTheRaceOn(tomorrows, "Silvestarska petica"));
+		MockHttpServletResponse first = decideWith(THE_SUPERADMIN, run,
+				makingTheRaceOn(ofTwentyEight, "Stara petica"));
+		MockHttpServletResponse second = decideWith(THE_SUPERADMIN, december,
+				makingTheRaceOn(ofNextYear, "Decembarska petica"));
 
-		assertThat(refused.getStatus()).isEqualTo(409);
-		assertThat(reasonIn(refused)).startsWith("Događaj tek predstoji, a trka je iz prošle godine");
+		for (MockHttpServletResponse refused : List.of(first, second)) {
+			assertThat(refused.getStatus()).isEqualTo(409);
+			assertThat(reasonIn(refused)).startsWith("Događaj tek predstoji, a trka je iz prošle godine");
+		}
+
 		assertThat(howManyRaces()).isEqualTo(races);
-		assertThat(theEventAt("novogodisnja-trka-2028").date()).isEqualTo(LocalDate.of(2028, 1, 2));
+		assertThat(theEventAt("prolece-2028").date()).isEqualTo(LocalDate.of(2028, 9, 1));
+		assertThat(theEventAt("prolece-2029").date()).isEqualTo(LocalDate.of(2029, 3, 1));
 		assertThat(stateOf(run)).isEqualTo("waiting");
-		assertThat(howManyResults(ANA)).isZero();
+		assertThat(stateOf(december)).isEqualTo("waiting");
+	}
 
-		/* The second the window closes. */
-		clock.moveTo(Instant.parse("2028-01-01T09:00:00Z"));
+	/**
+	 * AN EVENT THAT IS NOT AHEAD TAKES THE RACE OF THE YEAR JUST ENDED, which the decision of 20.10.2026 allowed and
+	 * the two of 06.11.2026 and 07.11.2026 leave alone: the event is dated yesterday, so it is over, and it begins
+	 * on the earlier day and answers at the address of the year before.
+	 */
+	@Test
+	void aRaceOfTheYearJustEndedIsApprovedOnAnEventDatedYesterday() throws Exception {
+		clock.moveTo(Instant.parse("2028-06-15T10:00:00Z"));
 
-		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceOn(tomorrows, "Silvestarska petica"))
-				.getStatus()).as("10:00:00, the window is over").isEqualTo(200);
+		long yesterdays = event("novogodisnja-trka-2028", "Novogodišnja trka", LocalDate.of(2028, 6, 14));
+		race(yesterdays, "Novogodišnja desetka", LocalDate.of(2028, 6, 14), "10.0000", 20, 20);
+		long run = describedRun(ANA, "Silvestarska", "length", LocalDate.of(2027, 12, 31), "5.0000", 10, 10,
+				1500);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceOn(yesterdays, "Silvestarska petica"))
+				.getStatus()).isEqualTo(200);
 		assertThat(theEventAt("novogodisnja-trka-2027").date()).isEqualTo(LocalDate.of(2027, 12, 31));
 	}
 
-	/** An event dated today is not ahead, so the approval of a race of New Year's Eve goes through. */
+	/**
+	 * AND A RACE OF THE NEW YEAR STILL GOES ON AN EVENT THAT IS AHEAD, whatever the moment: the event begins on the
+	 * earlier of its races and nothing is pulled into the year before.
+	 */
 	@Test
-	void onNewYearsMorningARaceOfTheYearJustEndedIsApprovedOnAnEventDatedToday() throws Exception {
+	void aRaceOfTheNewYearIsApprovedOnAnEventThatIsStillAhead() throws Exception {
 		clock.moveTo(Instant.parse("2028-01-01T08:00:00Z"));
 
-		long today = event("novogodisnja-trka-2028", "Novogodišnja trka", LocalDate.of(2028, 1, 1));
-		race(today, "Novogodišnja desetka", LocalDate.of(2028, 1, 1), "10.0000", 20, 20);
-		long run = describedRun(ANA, "Silvestarska", "length", LocalDate.of(2027, 12, 31), "5.0000", 10, 10,
+		long tomorrows = event("novogodisnja-trka-2028", "Novogodišnja trka", LocalDate.of(2028, 1, 2));
+		race(tomorrows, "Novogodišnja desetka", LocalDate.of(2028, 1, 2), "10.0000", 20, 20);
+		long run = describedRun(ANA, "Prva u godini", "length", LocalDate.of(2028, 1, 1), "5.0000", 10, 10,
 				1500);
 
-		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceOn(today, "Silvestarska petica"))
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRaceOn(tomorrows, "Prva u godini petica"))
 				.getStatus()).isEqualTo(200);
-		assertThat(theEventAt("novogodisnja-trka-2027").date()).isEqualTo(LocalDate.of(2027, 12, 31));
+		assertThat(theEventAt("novogodisnja-trka-2028").date()).isEqualTo(LocalDate.of(2028, 1, 1));
 	}
 
 	/**
