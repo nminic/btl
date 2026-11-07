@@ -165,6 +165,32 @@ class MembersApiTest {
 				.isEqualTo(Category.ageBandFor(2003, 2028).code());
 	}
 
+	/**
+	 * THE MEMBER WHO HOLDS BOTH SEASONS IS CARDED FOR THE ONE BEING RUN, and not for the latest he holds (PENDING
+	 * 06.11.2026, item 32). Everybody born in 2003 above holds ONE season, so for each of them the latest season
+	 * he holds IS the season of his card, and a route that took it from the rows it already reads
+	 * ({@code held}) in place of asking {@code CategoryOfASeason} answered the same band: 15 cases, none failed.
+	 * This one is born in 2003 as well, holds 2027 and 2028, and 2028 is written first, so that the latest by
+	 * season, the latest by row and the season on sale are all 2028 while his card speaks of 2027 (PDL, owner,
+	 * 30.10.2026: the running season where he holds it, and holds it with the right to rank). The band 2027
+	 * gives and the band 2028 gives are asked to differ, so neither answer can be right by accident.
+	 */
+	@Test
+	void theBandOfAMemberWhoHoldsBothSeasonsIsWorkedOutForTheOneBeingRun() throws Exception {
+		long both = memberBornIn2003("000035", "Marko", "Savic", "11aa22bb33cc44f3");
+
+		HeldOn.season(db, both, 2028, "payment");
+		HeldOn.season(db, both, 2027, "payment");
+
+		assertThat(Category.ageBandFor(2003, 2027).code())
+				.as("the two seasons give one band for somebody born in 2003, so this asks nothing")
+				.isNotEqualTo(Category.ageBandFor(2003, 2028).code());
+
+		assertThat(bandOf("000035"))
+				.as("he holds the season being run, so his card speaks of it and not of the later one he also holds")
+				.isEqualTo(Category.ageBandFor(2003, 2027).code());
+	}
+
 	private String bandOf(String memberNumber) throws Exception {
 		for (JsonNode one : members()) {
 			if (memberNumber.equals(one.path("memberNumber").asString())) {
