@@ -920,6 +920,45 @@ describe('where the focus goes when a box is put away', () => {
     }
   })
 
+  it.each([
+    ['the same row', '000020'],
+    ['another row', '000030'],
+  ])('stays on the button pressed when no box is open and the route refuses it, after a box was opened and put away on %s', async (_which, pressedOn) => {
+    /* Review of PR 694: the button that opened a box was remembered for good, so the next answer for that
+       row - to a plain „Odobri" with no box open - gave the focus to „Odbij". A box that is closed spends it.
+       The control is the same press with no box before it, where the focus stays on „Odobri". */
+    const user = setupUser()
+    const server = serverWith(RUNS, () => refused('O stavci je već odlučeno.', 409))
+
+    try {
+      openTheQueue()
+
+      const opener = (await rowOf('000020')).getByRole('button', { name: sr.review.sendBack })
+
+      await user.click(opener)
+      await user.click(
+        within(screen.getByRole('group', { name: sr.review.sendBack })).getByRole('button', { name: sr.review.cancel }),
+      )
+      await waitFor(
+        () => {
+          expect(opener).toHaveFocus()
+        },
+        { timeout: 2000 },
+      )
+
+      const approve = (await rowOf(pressedOn)).getByRole('button', { name: sr.review.approve })
+
+      await user.click(approve)
+      await untilItHasAnswered()
+
+      expect(decisionsIn(server.asked)).toHaveLength(1)
+      expect(screen.getByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
+      expect((await rowOf(pressedOn)).getByRole('button', { name: sr.review.approve })).toHaveFocus()
+    } finally {
+      server.stop()
+    }
+  })
+
   it('is not taken from a box that is open over another row when a row elsewhere is settled', async () => {
     const user = setupUser()
     const server = serverWith(RUNS)

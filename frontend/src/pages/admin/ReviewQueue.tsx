@@ -252,6 +252,10 @@ export function ReviewQueue() {
     const by = openedBy.current
 
     if (by !== null && ids.has(by.slice(0, by.lastIndexOf(':')))) {
+      /* THE BOX IS PUT AWAY, SO THE OPENER IS SPENT: left standing, the next answer for this row - to a plain
+         "Odobri" that nobody opened a box for - would take the focus from the button pressed and give it to
+         the one that opened a box long ago (review of PR 694). */
+      openedBy.current = null
       setFocusBackTo(by)
     }
   }
