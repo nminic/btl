@@ -374,13 +374,14 @@ public final class WithoutMetadata {
 			inflater.setInput(all);
 			byte[] sink = new byte[8192];
 
-			while (!inflater.finished()) {
-				if (inflater.inflate(sink) == 0 && !inflater.finished()) {
-					return all.length;
-				}
+			boolean moving = true;
+
+			while (moving && !inflater.finished()) {
+				moving = inflater.inflate(sink) > 0;
 			}
 
-			return all.length - inflater.getRemaining();
+			/* An inflater that stops short of the end wants more input, which this file does not have. */
+			return inflater.finished() ? all.length - inflater.getRemaining() : all.length;
 		} catch (DataFormatException notAStream) {
 			return all.length;
 		} finally {
