@@ -651,8 +651,11 @@ Poslednja izmena: 28.09.2026.\
 						/* The one place the root is not the payment card: since V73 (owner, 24.10.2026) the row
 						   about the number of the identity document says who sees it, "na svojoj kartici Podaci",
 						   which is the card of the member's own profile and has nothing to do with paying, and the same words
-						   (in the second person) in the list of what is never shown. Taken out by their words, so a payment card anywhere beside it is still found. */
-						+ "   and replace(replace(s.body, 'na svojoj kartici Podaci', ''), 'na vašoj kartici Podaci', '')"
+						   (in the second person) in the list of what is never shown; and since V89 (owner, 06.11.2026) the sentence of the
+						   rights that says the profile fields, the picture and the text about oneself are changed "na kartici Podaci svog
+						   profila". Taken out by their words, so a payment card anywhere beside it is still found. */
+						+ "   and replace(replace(replace(s.body, 'na svojoj kartici Podaci', ''), 'na vašoj kartici Podaci', ''),"
+						+ "       'na kartici Podaci svog profila', '')"
 						+ "       ilike '%karti%'")
 				.query(String.class)
 				.list();
