@@ -48,7 +48,20 @@ import java.util.concurrent.TimeUnit;
  * ({@link WithoutMetadata}). A row whose file cannot be read is left TRUE and is told to the operator, so it
  * is tried again; that is a warning an hour per such row, which is the price of not marking a row done that
  * nothing was done to (a volume restored later would bring the metadata back under a row that says it is
- * gone). Once every row is false a run is one query that finds nothing.
+ * gone). Once every row is false a run is one query that finds nothing. <b>A file that is not of the type its
+ * row says</b> (one byte, a truncated copy: {@link WithoutMetadata#of} throws on it) is the same case, told
+ * and left TRUE, and the run goes on to the next row; before 07.11.2026 it ended the run, so one such row
+ * stopped every picture after it from ever being cleaned.
+ *
+ * <p><b>THE FILE IS READ BY {@link PhotoApi#bytesOf}, NOT BY {@code readAllBytes}</b>, the one place in the
+ * portal that reads a picture off the disk and refuses a symbolic link there. This job WRITES what it reads
+ * back over the same name, so a link in the folder (a restored backup writes whatever the archive holds) would
+ * have been replaced by a regular file holding the cleaned copy of whatever it pointed at. A refused link is an
+ * {@code IOException}, the road a missing file takes: told and left TRUE. <b>No case measures that flag, and
+ * that is {@code PhotoApi}'s boundary carried over and not a new one</b>: a link cannot be made on the machine
+ * this is written on (measured again 07.11.2026, {@code Administrator privilege required}), so a case would
+ * only ever run on CI, which {@code PhotoApi#bytesOf} has already decided is a case nobody watches. Taking the
+ * flag out leaves the gate green.
  *
  * <p><b>WHAT A FAILURE BETWEEN THE FILE AND THE ROW LEAVES, named:</b> the move is done before the row is
  * written, so a commit that fails leaves a cleaned file under a row that still carries the old digest and
@@ -112,13 +125,25 @@ class OldPicturesAreCleaned {
 		byte[] stored;
 
 		try {
-			stored = Files.readAllBytes(file);
+			stored = PhotoApi.bytesOf(file);
 		} catch (IOException unread) {
 			LOG.warn("picture {} could not be read under {} to be cleaned: {}", photo, folder, unread.toString());
 			return;
 		}
 
-		byte[] clean = WithoutMetadata.of(stored, mediaType.get());
+		byte[] clean;
+
+		try {
+			clean = WithoutMetadata.of(stored, mediaType.get());
+		} catch (RuntimeException notAPicture) {
+			/* THE DOOR SNIFFS A FILE BEFORE IT CLEANS IT AND THIS DOES NOT, so a file stored under a type it is
+			   not (one byte, a truncated copy) throws here. Left uncaught it ends the run at this row and every
+			   run after it, and no later picture is ever cleaned; caught, it is the same case as a file that
+			   cannot be read. Narrow on purpose: only the cleaning of the bytes, never the database. */
+			LOG.warn("picture {} could not be cleaned, its file is not of the type its row says: {}", photo,
+					notAPicture.toString());
+			return;
+		}
 
 		if (!Arrays.equals(clean, stored) && !written(photo, file, clean)) {
 			return;

@@ -383,6 +383,74 @@ class TheLetterAfterTheAddressTest {
 	}
 
 	/**
+	 * E: THE SEASON ON SALE IS ALREADY HIS, TAKEN OUT OF HIS BALANCE (PENDING 06.11.2026, item 41). The letter is
+	 * read off the basis of his membership of that season ({@code WhatTheWelcomeSays.which}, through the
+	 * {@code TheLetterAfterTheAddress#written} that asks it), and the words are the balance's, not the
+	 * exemption's and not the payment's: subject, the sentence about the balance, and the link to the page
+	 * that shows what is left of it. No file goes with it.
+	 */
+	@Test
+	void aMemberWhoseSeasonOnSaleWasTakenOutOfHisBalanceIsToldSo() throws Exception {
+		long account = aMember("sa-balansa@primer.rs", A_TOWN_IN_SERBIA, "1990-01-01", true);
+
+		HeldOn.season(db, memberOf(account), ON_SALE, "balance");
+
+		confirm(aConfirmationLink(account));
+
+		Opened letter = opened(theOnlyLetterTo("sa-balansa@primer.rs"));
+
+		assertThat(letter.subject()).isEqualTo("Članarina za 2027. godinu je izmirena");
+		assertThat(letter.text())
+				.contains("pokrio je vaš balans iz programa preporuke")
+				.contains("https://probni-portal.primer.rs/moja-clanarina")
+				.doesNotContain("oslobođeni")
+				.doesNotContain("je plaćena");
+		assertThat(letter.file()).isNull();
+	}
+
+	/**
+	 * F: THE SEASON ON SALE IS ALREADY HIS, ON A PAYMENT RECORDED BEFORE HE CONFIRMED. Its subject is the
+	 * exemption's word for word („Član ste lige za 2027. godinu”), so the SUBJECT cannot tell the two apart and
+	 * the body is what is asked: paid, and not freed of the fee.
+	 */
+	@Test
+	void aMemberWhoseSeasonOnSaleWasPaidBeforeHeConfirmedIsToldSo() throws Exception {
+		long account = aMember("platio@primer.rs", A_TOWN_IN_SERBIA, "1990-01-01", true);
+
+		HeldOn.season(db, memberOf(account), ON_SALE, "payment");
+
+		confirm(aConfirmationLink(account));
+
+		Opened letter = opened(theOnlyLetterTo("platio@primer.rs"));
+
+		assertThat(letter.subject()).isEqualTo("Član ste lige za 2027. godinu");
+		assertThat(letter.text())
+				.contains("članarina za 2027. godinu je plaćena")
+				.doesNotContain("oslobođeni")
+				.doesNotContain("balans");
+		assertThat(letter.file()).isNull();
+	}
+
+	/**
+	 * A MEMBERSHIP OF 2028, BY BALANCE OR BY PAYMENT, IS NOT THE SEASON ON SALE EITHER: the second source of the
+	 * basis is the season it is of, as the exemption's own case above asks of it. He is still asked to pay for 2027.
+	 */
+	@Test
+	void aMembershipOfAnotherSeasonByBalanceOrByPaymentIsNotTheSeasonOnSale() throws Exception {
+		for (String basis : new String[] {"balance", "payment"}) {
+			long account = aMember("druga-sezona-" + basis + "@primer.rs", A_TOWN_IN_SERBIA, "1990-01-01", true);
+
+			HeldOn.season(db, memberOf(account), ON_SALE + 1, basis);
+
+			confirm(aConfirmationLink(account));
+
+			assertThat(opened(theOnlyLetterTo("druga-sezona-" + basis + "@primer.rs")).subject())
+					.as("holding 2028 on a " + basis)
+					.isEqualTo("Uplatnica za članarinu za 2027. godinu");
+		}
+	}
+
+	/**
 	 * A MEMBERSHIP OF ANOTHER SEASON SAYS NOTHING ABOUT THIS ONE: freed of 2028, he is still asked to
 	 * pay for 2027, the season on sale (owner, 27.09.2026, „BESPLATNI CLANOVI NISU BESPLATNI
 	 * DOZIVOTNO").

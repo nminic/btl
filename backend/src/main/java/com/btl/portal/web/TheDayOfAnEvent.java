@@ -1,11 +1,13 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.event.EventAddress;
+import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.Optional;
 
 /**
@@ -78,6 +80,49 @@ final class TheDayOfAnEvent {
 		}
 
 		return others.filter(day -> day.isBefore(andThisRace)).orElse(andThisRace);
+	}
+
+	/**
+	 * WHETHER THIS WRITE WOULD PULL AN EVENT THAT IS STILL AHEAD BACK INTO THE YEAR JUST ENDED, which is
+	 * refused on the morning of 1 January from 00:00 to 10:00 and at no other time.
+	 *
+	 * <p>PDL P9, owner, 06.11.2026, „[ODLUKA 06.11.2026, vlasnik, izabrao između ponuđenih] U prozoru
+	 * 1. januara od 00:00 do 10:00 server odbija trku iz stare godine na događaju koji još predstoji.
+	 * Povod (primer izložen vlasniku): događaj zakazan za 5.1. na koji se doda trka od 31.12. pomerio bi
+	 * se na prošlu godinu (datum događaja je dan najranije trke, 21.09.2026) i izgubio najave dolaska.
+	 * Dopuna odluke od 20.10.2026 o prozoru." It narrows the decision of 20.10.2026, „U prozoru 1. januara
+	 * od 00:00 do 10:00 sme se sastaviti trka na događaju druge godine": the race of New Year's Eve still
+	 * goes on an event that is not ahead, and a race of the new year still goes on an event of the old.
+	 *
+	 * <p><b>The three halves of the sentence, each asked of its own value:</b>
+	 * <ul>
+	 * <li><b>The window</b> is {@link SeasonClock#reportingEnds} of the year just ended, the ten o'clock that
+	 * has one home, read in the league's zone; it is asked of the moment the write is made, which
+	 * every caller hands in from its own clock bean.
+	 * <li><b>Still ahead</b> is {@code event.date() > today}, STRICTLY. That is my reading of „još
+	 * predstoji" and the owner may overrule it: the one other place the portal says an event is ahead,
+	 * {@code AttendanceApi.STILL_AHEAD}, says {@code >=}, but with {@code >=} an event dated today is
+	 * ahead too and the only events of the new year that could take a race of the year just ended in those
+	 * ten hours would be none, which would void the decision of 20.10.2026 instead of narrowing it. Kept to
+	 * one line here so that the other reading is a one-token change.
+	 * <li><b>A race of the year just ended</b> is the day the event WOULD BEGIN ON, not the day typed: the
+	 * event begins on the earliest of its races, so what is refused is the move into the year before, and
+	 * a race of that year added to an event that already begins in it moves nothing (that event is not
+	 * ahead).
+	 * </ul>
+	 *
+	 * @param beginning the day the event will begin on once this write has landed
+	 *                  ({@link #theDayItWillBeginOn})
+	 * @param now       the moment of the write
+	 */
+	static boolean pullsAnEventStillAheadIntoTheYearJustEnded(Standing event, LocalDate beginning,
+			ZonedDateTime now) {
+		ZonedDateTime inTheLeague = now.withZoneSameInstant(SeasonClock.ZONE);
+		int year = inTheLeague.getYear();
+
+		return inTheLeague.isBefore(SeasonClock.reportingEnds(year - 1))
+				&& event.date().isAfter(inTheLeague.toLocalDate())
+				&& beginning.getYear() == year - 1;
 	}
 
 	/**
